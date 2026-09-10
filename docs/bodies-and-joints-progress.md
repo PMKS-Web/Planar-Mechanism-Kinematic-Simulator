@@ -5,7 +5,7 @@
 - Goal: implement **all S0–S8** of [the plan](bodies-and-joints-plan.md), including native default editor, consumer cutover and obsolete-runtime removal. No push or publication.
 - Implementation starting commit: `487d535` on `bodies-and-joints-plan`.
 - Worktree: `.claude/worktrees/funny-swirles-3c6486`.
-- Current checkpoint: **S0 audit open; isolated S1 records in progress**. No implementation checkpoint is verified yet. Concrete interface choices are in [the contract](bodies-and-joints-contract.md); frozen catalogs/reference hashes are in [the baseline](bodies-and-joints-baseline.json).
+- Current checkpoint: **S0 baseline complete; S1 awaiting F1 review**. Native editor cutover has not begun. Concrete interface choices are in [the contract](bodies-and-joints-contract.md); frozen catalogs/reference hashes are in [the baseline](bodies-and-joints-baseline.json).
 - Sole implementation owner: Codex. Fable reviews only at the four specified gates.
 - Preserve other worktrees and unrelated changes. The starting tracked worktree was clean.
 - Runtime for these commands: Node `v24.18.0`, explicitly prepended to PATH; the login shell otherwise selects unsupported Node 20.
@@ -15,8 +15,8 @@
 
 | Checkpoint | Status | Evidence / next work |
 | --- | --- | --- |
-| S0 | In progress | Six unit suites pass (182 tests), seven new compatibility tests pass, build passes, template-open 11/11, template-graphs 3978/3978, ui-copy 17/17. Timing and visual baselines are recorded; per-site semantic consumer audit remains pending. Existing drag timing failures are reproduced on original test files, not waived. |
-| S1 | In progress | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, binary pin bundles, cylinder factory and reference validation are implemented in isolation. Five native spec files plus five specified legacy suites pass 71 tests including the final slender-bar check (`S1-slender-bar-unit.log`). Browser two-mechanisms 13/13, cylinder-mount 31/31, build and ui-copy 17/17 pass. S0 audit and remaining S1 self-review/F1 remain open. No F1 review yet. |
+| S0 | Baseline complete | Six unit suites pass (182 tests), seven new compatibility tests pass, build passes, template-open 11/11, template-graphs 3978/3978, ui-copy 17/17. Timing, visual baseline and operation-level consumer classification are recorded. Existing drag timing failures are reproduced on original test files, not waived; S7 must meet the measured comparison budget. |
+| S1 | In progress | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, binary pin bundles, cylinder factory and reference validation are implemented in isolation. Five native spec files plus five specified legacy suites pass 71 tests including the final slender-bar check (`S1-slender-bar-unit.log`). Browser two-mechanisms 13/13, cylinder-mount 31/31, build and ui-copy 17/17 pass. F1 is running against `59296bb`; its findings remain to be resolved before S2. No F1 review yet. |
 | S2 | Pending | Native positions, mobility, continuation, agreement and performance. |
 | S3 | Pending | Analytic rates, physical wrenches, independent examples and F2. |
 | S4 | Pending | Native transactions, codec/import, lifecycle, history and F3. |
@@ -103,7 +103,7 @@ Known accounted spend: $0.073899. Nominal ceiling less known spend: $34.926101; 
 
 ## Current source audit findings
 
-- Mechanical inventory: **1,592 sites / 85 production files**, `consumer-sites.tsv`. Per-site semantic classification is pending; the scan is now retained in `docs/bodies-and-joints-consumers.tsv`. Regex hits are not a completed audit. Catalog extraction uses the shared template reader and the TypeScript AST for gallery names (a quoted apostrophe defeated the first simple name match).
+- Mechanical inventory: **1,592 sites / 85 production files**, `consumer-sites.tsv`. The original scan is now classified by enclosing operation in `docs/bodies-and-joints-consumers.tsv`, with native output owners and deliberate mixed concerns. Adding eight transitive geometry helpers gives 1,629 sites across 93 files. Conversion/deletion remains pending; see `docs/bodies-and-joints-consumer-audit.md`. Catalog extraction uses the shared template reader and the TypeScript AST for gallery names (a quoted apostrophe defeated the first simple name match).
 - Nine reference/MATLAB files have frozen SHA-256 hashes. The checked-in baseline also freezes 43 public IDs, three dev IDs and 66 gallery names.
 - Five template payloads are copied verbatim from `b7ec8d7`. The extra welded/load payload was **authored with that historical commit's own eight pure codec modules**, not taken from a shipped template. The generation script and decoded records are in S0 artifacts. Source version alone does not identify a deployed commit.
 - Plan clarification: reversing carrier/rider on a freely rotating pin-in-slot is a physical change, not a harmless A/B permutation. Keep guide ownership explicit and test equivalent transformations only.
@@ -119,7 +119,7 @@ Known accounted spend: $0.073899. Nominal ceiling less known spend: $34.926101; 
 
 ## Next action
 
-Finish the remaining per-site semantic classification before claiming S0 verified. The contract and baseline are concrete enough to begin isolated native record/frame modules while that audit remains explicitly open. No editor cutover or F1 approval is claimed. Complete the specified S1 tests and legacy regression gates before F1.
+Read the completed F1 review from session `aab450ea-661d-45fc-a91a-6286dd1d8614` / process handle 22599 when it returns. Record actual cost, fix actionable findings with regressions, then proceed to S2 native constraint compilation/position solving. Do not rerun a review while its process remains live. The independent row/derivative derivation is in `docs/bodies-and-joints-equations.md`.
 
 ## Native implementation progress (S1, not yet a verified checkpoint)
 
@@ -128,7 +128,7 @@ Finish the remaining per-site semantic classification before claiming S0 verifie
 - Group annotations keep explicit aggregate mass/CoM/inertia separate from member-derived properties; a dangling annotation after a split fails validation. Membership-changing transaction policy remains S4 work.
 - The native validator is currently a typed-record/reference validator. S4 still owes the defensive unknown-input codec boundary; do not mistake this for a complete decoder. Solver feasibility (including internal joint consistency/drive conflict) remains S2 work.
 - `S1-first-tests.log`: initial test helper type failure, fixed. `S1-tests-2.log`: 16 tests passed. `S1-tests-3.log`: 18 tests passed. The reversal and complete rebase assertions pass in `S1-gate-unit.log` (68). The validator extraction briefly caused a void-return compile failure (`S1-gate-unit-final.log`), corrected in `S1-gate-unit-verified.log` (69). Guide ownership adds a 70th assertion case (`S1-guide-owner-unit.log`); slender-bar compatibility brings the final total to 71 (`S1-slender-bar-unit.log`).
-- Still open before F1: finish S0 semantic audit; finish S1 self-review and extend edge-case coverage as needed; recover earlier canceled-review spending. No paid review has been run.
+- F1 is now running after the S1 self-review and gates. The canceled planning cost is conservatively reserved below. No F1 approval or finding disposition is claimed until the completed review is inspected.
 
 ### Additional source findings and current verification
 
@@ -140,4 +140,12 @@ Finish the remaining per-site semantic classification before claiming S0 verifie
 - Baseline/contract commit: `05e0780`. This freezes evidence and the open inventory, not a claim that S0 is fully verified. Native foundation is the next progress commit; no push.
 
 - Final foundation checks: `S1-slender-bar-unit.log` passes 71 tests across ten files. A subsequent locale-independent ID comparator passes the two affected suites (10 tests), and the newly added non-UUID ordering regression passes in `S1-codepoint-order-unit.log` (4 weld tests). IDs choose derived frames by code-point order, never client locale or display label.
-- Recovery state: baseline commit `05e0780` plus the native-foundation progress commit. Only the localhost dev server is intended to remain running. All listed test/browser/build sessions completed; there is no pending external review.
+- Recovery state: baseline commit `05e0780` plus the native-foundation progress commit. All earlier test/browser/build sessions completed. The localhost server and the explicitly tracked F1 review are now the only intended running work.
+
+## F1 review launch accounting
+
+The canceled planning session is `93cfef40-4bbb-4454-81b8-a2317a37861f`. Its persisted transcript ends with a user interruption and no billed-cost result. Token totals must be deduplicated by message ID; individual streaming content blocks repeat usage. The five unique message usage records are retained in `reviews/canceled-planning-usage.json`. Actual cost remains **unknown**; reserve **$6** against it. This is a conservative budget allocation, not a reported charge.
+
+Working ceiling $35 minus known probe $0.073899 minus reservation $6 leaves $28.926101. Reserve F1/F2/F3/F4 caps of $5/$10/$7/$6 (total $28), leaving $0.926101 unallocated before actual review costs are returned. Savings in each completed review replenish headroom; do not spend the canceled-call reservation.
+
+F1 reviews native source at `59296bb` (diff from `05e0780`), with the contract and current tests. The remaining inventory edits are documentation only. No approval is claimed until a completed result and its findings are read and resolved.
