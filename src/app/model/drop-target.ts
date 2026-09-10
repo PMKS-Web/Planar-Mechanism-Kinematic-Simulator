@@ -48,6 +48,31 @@ export const MERGE_REFUSAL_MESSAGES: Record<MergeRefusal, string> = {
 };
 
 /**
+ * The same refusals, short enough to sit under the ring while the drag lasts.
+ *
+ * A red ring on its own leaves the reader to guess which of a dozen rules they
+ * hit, and the sentence above arrives in a notification *after* the release --
+ * by which time the gesture they would have changed is over. These are the
+ * words the canvas says during the drag, in the same voice the context menu
+ * grays a row in: lowercase, a phrase rather than a sentence, and short enough
+ * not to cover the joints on either side of the one being refused.
+ */
+export const MERGE_REFUSAL_REASONS: Record<MergeRefusal, string> = {
+  'same-joint': 'the same joint',
+  'shares-a-link': 'already one bar',
+  prismatic: 'that end is a slot',
+  'two-sliders': 'one block per pin',
+  'over-constrained': 'already tied together',
+  'own-carrier': 'its own carrier',
+  'not-a-real-joint': 'not a joint',
+  'sealed-cylinder': 'sealed inside the ram',
+  'driven-joint': 'a driven pair',
+  'own-cylinder': 'the same ram',
+  'weld-cannot-survive': 'the weld cannot survive',
+  'crosses-machines': 'needs the start pose',
+};
+
+/**
  * Whether `source` may be folded into `target`, and if not, why.
  *
  * Returns `undefined` when the merge is legal. The reason is returned rather
@@ -244,20 +269,29 @@ export interface SlotDropCandidate {
  *
  * A link the dragged joint already belongs to is never offered. It would be a
  * joint sliding in its own body, and offering it only to refuse it would put a
- * red preview on the one link the user is most likely to sweep across.
+ * red preview on the one link the user is most likely to sweep across. Nor is
+ * one holding the other end of the dragged joint's own ram — see
+ * `slotWouldFoldACylinder`.
  */
 export function resolveSlotDropTarget(
   source: Joint,
   x: number,
   y: number,
   links: Link[],
-  radius: number
+  radius: number,
+  /** The drawing's sealed cylinders, when the caller has them. */
+  cylinders: Cylinder[] = []
 ): SlotDropCandidate | undefined {
   let best: SlotDropCandidate | undefined;
   let bestDistance = radius;
 
   for (const carrier of links) {
     if (carrier.joints.some((joint) => joint.id === source.id)) continue;
+    // Not offered rather than previewed and refused, for the same reason the
+    // far end of the link you are holding is not offered: the drawing already
+    // says the ram and this body are joined, so there is no rule there worth
+    // explaining, and a legal bar further out can still win the drop.
+    if (slotWouldFoldACylinder(source, carrier, cylinders)) continue;
     for (const members of slotJointPools(carrier)) {
       for (let i = 0; i < members.length; i++) {
         for (let j = i + 1; j < members.length; j++) {
@@ -272,6 +306,39 @@ export function resolveSlotDropTarget(
   }
 
   return best;
+}
+
+/**
+ * Whether a slot on `carrier` would make `source`'s own ram ride a body its
+ * other end is already fixed to.
+ *
+ * The drop pulls the dragged joint onto the carrier's line, and when that line
+ * already passes through the ram's other mount there is nowhere for the part to
+ * go but shorter. Far enough and it folds inside out — the mount crosses back
+ * past its own barrel's near end, at which point the roles are derived the
+ * other way round and the drawing puts a letter on an interior joint and hides
+ * the mount the reader was dragging. This is the slot half of `own-cylinder`:
+ * the merge path has refused folding a ram onto itself all along, and the two
+ * ends being one part is just as true when the thing between them is a slot.
+ *
+ * Asked of every ram the joint is a mount of, not the first — a shared mount is
+ * one ram's rod end and the next one's barrel end, and either of the two far
+ * ends lying on the carrier is enough.
+ */
+export function slotWouldFoldACylinder(
+  source: Joint,
+  carrier: Link,
+  cylinders: Cylinder[]
+): boolean {
+  const farEnds = cylinders
+    .filter((c) => c.barrelFar.id === source.id || c.rodFar.id === source.id)
+    .map((c) => (c.barrelFar.id === source.id ? c.rodFar.id : c.barrelFar.id));
+  if (farEnds.length === 0) return false;
+  const members = new Set<string>();
+  const collect = (link: Link) => link.joints.forEach((joint) => members.add(joint.id));
+  collect(carrier);
+  if (carrier instanceof RealLink) carrier.subset.forEach(collect);
+  return farEnds.some((id) => members.has(id));
 }
 
 /**

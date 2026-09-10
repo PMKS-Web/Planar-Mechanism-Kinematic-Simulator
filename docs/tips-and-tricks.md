@@ -2408,3 +2408,50 @@ browser suite here — and four of the doors have a shape their names do not giv
   right-click meant for it lands on the bar, so the menu never opens and the failure is a locator
   timeout with nothing to read. Put fixture geometry in clear canvas rather than trusting that a
   `boundingBox()` came back.
+
+### `filmstrip()` clears its directory, so one run gets one filmstrip
+
+`filmstrip(page, dir)` starts with `rmSync(dir)`. Two filmstrips on the same directory therefore
+destroy each other's frames -- the second one wipes the first's, and the only symptom is a
+contact sheet that is missing the half you captured first. Make one at the top of the suite and
+pass it around, or give each its own directory.
+
+### A cylinder's cycle runs out and back, so its last sample is its first
+
+A pin turns one way and comes back to where it started; a ram extends and then retracts. Both
+are one cycle, but for a ram that means sample `n-1` is at the *same pose* as sample 0, and a
+check that seeks to the last sample to see full extension sees the start pose instead and reads
+as "the animation does nothing". Full extension is the sample furthest from the start -- scan for
+it. (`animate()` also takes a sample index rather than a fraction; see above.)
+
+### `cylinderAt(link)` asks whether a body *contains* a ram, not whether it *is* one
+
+`ownsMember` is deliberately recursive: "a compound that has itself been welded into something
+larger still owns the member, and a delete or a drag that missed it would tear the ram it was
+carrying." That is the right question for a **cascade**. It is the wrong one for **identity**, and
+until a mount could be welded nothing could tell the two apart, because no compound ever held a
+cylinder leaf. Now one does, and every consumer that asks `cylinderAt(selectedLink)` in order to
+*name* the selection answers with the ram: select the welded bracket and the panel says "Edit
+Cylinder AB", the menu header says "Cylinder AB · Barrel and rod", and its Delete row says
+"Delete Cylinder" and takes only the ram -- while the keyboard Delete on that same selection takes
+the whole body. The identity question is `link.id === cylinder.barrel.id || link.id ===
+cylinder.rod.id`, which is what `skinnedLink` in the canvas already uses. Separating the two
+queries is the plan's own work item 15.
+
+### The compound path drops a welded *rod* leaf and keeps a welded *barrel* leaf
+
+`RealLink.getCompoundPathString` filters out `isSealedRodLeaf` -- a leaf recognized "through its
+pin: the joint that shares a SliderBlock with a sealed slider". A **barrel** leaf has no such
+joint (its two joints are the mount and the buried near end), so welding a bracket to a ram's
+*barrel* mount leaves the barrel in the compound's union: it is drawn once by the compound, in the
+bracket's color, and once by the cylinder skin over the top. With a random palette the two are
+often near enough to hide it; recolor the two bodies and the barrel comes out painted the
+bracket's color with a hard seam partway along the part. The rod case is clean, and the difference
+is only which leaf the filter knows how to name.
+
+The information needed to recognize the barrel is not reachable from the compound: after the weld
+the leaf's joints list only the root in `links`, and the sealed `PrisJoint` -- which is the one
+object that knows (`carrier` is the root, `slotJointA`/`slotJointB` are the leaf's two joints) --
+is reachable only from the rod's pin, which a barrel-welded compound does not contain. Fixing it
+means giving the model the answer the canvas already has in `cylinderList`, which is the plan's
+"derived render plan with explicit visible fragments".

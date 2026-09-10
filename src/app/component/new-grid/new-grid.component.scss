@@ -701,6 +701,18 @@
     pointer-events: none;
   }
 
+  // The refusal in words, under its ring. Painted rather than stroked -- a
+  // stroked glyph at this size closes its own counters -- and carrying the
+  // page's own background as a halo so it stays readable over whatever bar
+  // happens to be behind it.
+  .snapRefusedReason {
+    fill: #f44336;
+    stroke: #fbfbfb;
+    stroke-width: 0.09em;
+    paint-order: stroke fill;
+    pointer-events: none;
+  }
+
   // Where a held bar lets the dragged joint go: amber, dashed, and behind the
   // joint, so it reads as a track rather than as a part.
   .holdGuide {

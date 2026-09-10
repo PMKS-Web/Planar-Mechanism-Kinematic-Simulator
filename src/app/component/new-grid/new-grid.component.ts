@@ -89,6 +89,7 @@ import {
 import {
   JointDropCandidate,
   MERGE_REFUSAL_MESSAGES,
+  MERGE_REFUSAL_REASONS,
   MergeRefusal,
   resolveDropCandidate,
   resolveSlotDropTarget,
@@ -2929,7 +2930,10 @@ export class NewGridComponent implements OnDestroy {
             this.mechanismSrv.links.filter(
               (link) => link instanceof RealLink && !this.isCylinderMemberLink(link)
             ),
-            this.slotDropRadius()
+            this.slotDropRadius(),
+            // The mount rules are only legible against the whole drawing, and
+            // the ring has to be asked with the same facts the commit uses.
+            this.mechanismSrv.sealedStructures()
           );
   }
 
@@ -3155,6 +3159,18 @@ export class NewGridComponent implements OnDestroy {
     return this.mergeArrowReversed
       ? `${joint.name} \u2190 ${source.name}`
       : `${source.name} \u2192 ${joint.name}`;
+  }
+
+  /**
+   * Why the joint under the cursor will not take this merge, said now.
+   *
+   * The ring says no; this says which rule. Without it the reader has to let
+   * go to find out, and the notification that then appears is about a gesture
+   * they have already finished.
+   */
+  get refusalReason(): string {
+    const refusal = this.refusedTarget?.refusal;
+    return refusal ? MERGE_REFUSAL_REASONS[refusal] : '';
   }
 
   /** Whether this joint is the one being dragged into another. */

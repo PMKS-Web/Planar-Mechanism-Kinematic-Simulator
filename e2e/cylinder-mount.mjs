@@ -35,6 +35,10 @@ page.on('console', (m) => {
 });
 page.on('pageerror', (e) => consoleErrors.push(String(e)));
 mkdirSync(OUT, { recursive: true });
+// One filmstrip for the whole run: `filmstrip()` clears its directory when it
+// is made, so a second one on the same directory throws away the first one's
+// frames.
+const film = filmstrip(page, OUT);
 
 /**
  * A fresh grid holding a ram with a bracket on its rod mount.
@@ -188,22 +192,34 @@ async function clickMenuRow(label) {
   await page.waitForTimeout(600);
 }
 
-/** Drag one joint onto another, reading the ring at the moment of hover. */
-async function ringDuring(fromId, toId) {
+/**
+ * Drag one joint onto another, reading the ring at the moment of hover.
+ *
+ * The words are read off the rendered canvas rather than off the component,
+ * because a reason the model knows and the drawing never says is the thing
+ * this is here to catch.
+ */
+async function ringDuring(fromId, toId, shot) {
   const from = await page.locator(`#joint_${fromId}`).boundingBox();
   const to = await page.locator(`#joint_${toId}`).boundingBox();
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();
   await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 14 });
-  await page.waitForTimeout(200);
+  await page.waitForTimeout(250);
   const ring = await page.evaluate(() => {
     const grid = ng.getComponent(document.querySelector('app-new-grid'));
     return {
       accepted: grid.snapTargetJoint?.id ?? null,
       refused: grid.refusedTarget?.joint?.id ?? null,
       why: grid.refusedTarget?.refusal ?? null,
+      rings: document.querySelectorAll('.snapRefused').length,
+      said: document.querySelector('.snapRefusedReason')?.textContent?.trim() ?? '',
+      notifications: [...document.querySelectorAll('.notificationText')].map((one) =>
+        one.textContent.trim()
+      ),
     };
   });
+  if (shot) await shot();
   await page.mouse.up();
   await page.waitForTimeout(500);
   return ring;
@@ -290,11 +306,16 @@ await menuOnJoint(ids.mount);
 await clickMenuRow('Slider');
 await menuOnJoint(ids.other.near);
 await clickMenuRow('Slider');
-ring = await ringDuring(ids.other.near, ids.mount);
+ring = await ringDuring(ids.other.near, ids.mount, () => film.shot('refused-live'));
 check(
   'and a second block dragged onto a mount that has one is refused, live, with the reason',
   ring.refused === ids.mount && ring.why === 'two-sliders' && !ring.accepted,
-  JSON.stringify(ring)
+  JSON.stringify({ refused: ring.refused, why: ring.why, accepted: ring.accepted })
+);
+check(
+  'and the drawing says which rule while the drag is still live, not after it',
+  ring.rings === 1 && ring.said === 'one block per pin',
+  JSON.stringify({ rings: ring.rings, said: ring.said, notifications: ring.notifications })
 );
 
 // ------------------------------------------------------------ 4. slot drops
@@ -333,15 +354,20 @@ check(
   JSON.stringify(slotStates)
 );
 
-ids = await weldedMount();
+// The floating flavor: a mount dropped onto a body somewhere else in the
+// drawing, which is the whole point of letting a mount take a slot.
+ids = await weldedMount({ otherBar: true });
 const slotDrop = await page.evaluate((where) => {
   const m = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
-  const mount = m.joints.find((j) => j.id === where.barrelFar);
-  const compound = m.links.find((l) => (l.subset ?? []).length > 0);
-  const leaf = compound.subset.find((x) => x.joints.some((j) => j.id === where.tip));
-  const [a, b] = leaf.joints;
+  const mount = m.joints.find((j) => j.id === where.mount);
+  const bar = m.links.find(
+    (l) =>
+      l.joints.some((j) => j.id === where.other.near) &&
+      l.joints.some((j) => j.id === where.other.mid)
+  );
+  const [a, b] = bar.joints;
   const took = m.cutSlotOn(mount, {
-    carrier: compound,
+    carrier: bar,
     a,
     b,
     x: (a.x + b.x) / 2,
@@ -356,9 +382,78 @@ const slotDrop = await page.evaluate((where) => {
   };
 }, ids);
 check(
-  'and dropping one on a neighboring body makes it float on that body instead',
-  slotDrop.took && slotDrop.floating && slotDrop.carrier && slotDrop.rams === 1,
+  'and dropping one on an unrelated body makes it float on that body instead',
+  slotDrop.took && slotDrop.floating && slotDrop.carrier === 'DE' && slotDrop.rams === 1,
   JSON.stringify(slotDrop)
+);
+
+// The body the ram is already fixed to is not one of them: dropping the barrel
+// mount onto the bracket welded to the rod mount would pull the part shorter
+// until it turned inside out. Refused in the preview and again at the commit,
+// and the commit must not have written anything on its way to saying no.
+ids = await weldedMount();
+// First the preview: sweep the barrel mount across the middle of the bracket
+// and no channel opens there.
+const mountBox = await page.locator(`#joint_${ids.mount}`).boundingBox();
+const tipJointBox = await page.locator(`#joint_${ids.tip}`).boundingBox();
+const barrelBox = await page.locator(`#joint_${ids.barrelFar}`).boundingBox();
+const middle = {
+  x: (mountBox.x + tipJointBox.x) / 2 + mountBox.width / 2,
+  y: (mountBox.y + tipJointBox.y) / 2 + mountBox.height / 2,
+};
+await page.mouse.move(barrelBox.x + barrelBox.width / 2, barrelBox.y + barrelBox.height / 2);
+await page.mouse.down();
+await page.mouse.move(middle.x, middle.y, { steps: 16 });
+await page.waitForTimeout(200);
+const previewed = await page.evaluate(
+  () => ng.getComponent(document.querySelector('app-new-grid')).slotCandidate?.carrier?.id ?? null
+);
+await page.mouse.up();
+await page.waitForTimeout(400);
+
+// Then the commit, which has to say the same thing with the same facts -- and
+// must not have written anything on its way to saying no.
+ids = await weldedMount();
+const foldRefused = await page.evaluate((where) => {
+  const m = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+  const barrelFar = m.joints.find((j) => j.id === where.barrelFar);
+  const mount = m.joints.find((j) => j.id === where.mount);
+  const compound = m.links.find((l) => (l.subset ?? []).length > 0);
+  const leaf = compound.subset.find((x) => x.joints.some((j) => j.id === where.tip));
+  const [a, b] = leaf.joints;
+  const before = { x: barrelFar.x, y: barrelFar.y };
+  const was = Math.hypot(mount.x - barrelFar.x, mount.y - barrelFar.y);
+  const took = m.cutSlotOn(barrelFar, {
+    carrier: compound,
+    a,
+    b,
+    x: (a.x + b.x) / 2,
+    y: (a.y + b.y) / 2,
+  });
+  const ram = m.sealedStructures()[0];
+  return {
+    took,
+    moved: barrelFar.x !== before.x || barrelFar.y !== before.y,
+    stretched: Math.abs(Math.hypot(mount.x - barrelFar.x, mount.y - barrelFar.y) - was) > 1e-6,
+    blocks: m.joints.filter((j) => j.constructor?.name === 'PrisJoint' && !j.isSealed).length,
+    barrelFar: ram?.barrelFar.id,
+    rams: m.sealedStructures().length,
+  };
+}, ids);
+check(
+  'a slot that would fold the ram is never previewed on the body it would fold onto',
+  previewed === null,
+  JSON.stringify({ previewed })
+);
+check(
+  'and the commit says the same, before it writes anything',
+  foldRefused.took === false &&
+    !foldRefused.moved &&
+    !foldRefused.stretched &&
+    foldRefused.blocks === 0 &&
+    foldRefused.barrelFar === ids.barrelFar &&
+    foldRefused.rams === 1,
+  JSON.stringify(foldRefused)
 );
 
 ids = await weldedMount();
@@ -555,7 +650,6 @@ check(
 // ------------------------------------------------------------- 9. filmstrips
 console.log('\nfilmstrips: a compound drag, and the part running');
 ids = await weldedMount();
-const film = filmstrip(page, OUT);
 const tipBox = await page.locator(`#joint_${ids.tip}`).boundingBox();
 await page.mouse.move(tipBox.x + tipBox.width / 2, tipBox.y + tipBox.height / 2);
 await page.mouse.down();

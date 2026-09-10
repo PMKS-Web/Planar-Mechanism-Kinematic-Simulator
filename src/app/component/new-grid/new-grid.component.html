@@ -1923,6 +1923,23 @@
   }
 
   <g id="jointTagHolder" style="pointer-events: none">
+    <!-- A refused merge says which rule it hit while the drag is still live.
+         The ring alone leaves the reader to guess, and the notification that
+         spells it out arrives on release -- after the gesture they would have
+         changed. Below the joint, so it never covers the joint's own name. -->
+    @if (refusedTarget; as refused) {
+      <svg
+        [attr.x]="refused.joint.x"
+        [attr.y]="-1 * refused.joint.y + settings.objectScale * 0.62"
+        [attr.height]="10"
+        [attr.width]="10"
+        style="overflow: visible; text-anchor: middle"
+      >
+        <text class="snapRefusedReason" [style.font-size.px]="tagFontSize">
+          {{ refusalReason }}
+        </text>
+      </svg>
+    }
     @for (joint of mechanismSrv.getJoints(); track joint) {
       <svg
         [attr.x]="joint.x - settings.objectScale * 0.3"

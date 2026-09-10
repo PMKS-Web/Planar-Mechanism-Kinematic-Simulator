@@ -96,7 +96,12 @@ import { PositionSolver, SAMPLES_PER_STROKE } from '../model/mechanism/position-
 import { ColorService } from './color.service';
 import { siUnitFactorsForLength } from '../model/unit-conversions';
 import { transformRigidCoord, transformRigidPath } from '../model/compound-link-path';
-import { MERGE_REFUSAL_MESSAGES, MergeRefusal, refuseJointMerge } from '../model/drop-target';
+import {
+  MERGE_REFUSAL_MESSAGES,
+  MergeRefusal,
+  refuseJointMerge,
+  slotWouldFoldACylinder,
+} from '../model/drop-target';
 import { CylinderPose } from '../model/cylinder';
 import { constrainForceAnchor } from '../model/force-anchor';
 import { redundantlyHeldJointSets } from '../model/rigid-bodies';
@@ -4820,6 +4825,12 @@ export class MechanismService {
     // A mount is not covered by this and must not be: reassigning the block on
     // a mount is exactly how a carriage is dropped onto a new rail.
     if (cylinderInteriorsAt(this.sealedStructures(), pin).length > 0) return false;
+    // Nor is a body that already holds the other end of this joint's own ram:
+    // the drop pulls the mount onto that body's line and there is nowhere for
+    // the part to go but shorter. The preview does not offer it, and this is
+    // the commit, so it is asked here too -- before any coordinate is written,
+    // because writing first is how a refusal comes to have half happened.
+    if (slotWouldFoldACylinder(pin, slot.carrier, this.sealedStructures())) return false;
     // Two blocks on one pin is a different joint type, not a second slot.
     const existing = pin.links.find((link): link is SliderBlock => link instanceof SliderBlock);
     const slider = existing?.joints.find((joint): joint is PrisJoint => joint instanceof PrisJoint);
