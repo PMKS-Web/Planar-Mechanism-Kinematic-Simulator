@@ -57,7 +57,7 @@ export function inverse(frame: Pose): Pose {
 }
 
 export function relativePose(frame: Pose, other: Pose): Pose {
-  return compose(inverse(frame), other);
+  return { ...worldToLocal(frame, other), angle: other.angle - frame.angle };
 }
 
 export function finitePoint(point: Point): boolean {

@@ -71,7 +71,10 @@ Changing groups updates annotations transactionally. An explicit target wins on 
 
 `compileDocument(document)` returns validation/refusal or one immutable ownership index, weld mapping and partitions. WORLD/frame components may be sampled by several partitions without joining their moving bodies. Keep ownership separate from sample availability. Loose material gets an underconstrained partition/readiness result, never garbage collection.
 
-Each `CompiledPartition` owns its unknown ordering, boundary map, equation rows, coordinate evaluators, scaled Jacobian system, driver, limits and material result mapping. Unknowns are `(x, y, angle)` per moving solver group. Row/column scaling is reversible and recorded; force multipliers use the physical unscaled rows. Sparse local row blocks may assemble dense matrices initially, but no global mutable route or rate map is allowed.
+Each `CompiledPartition` owns its unknown ordering, boundary map, equation rows, coordinate evaluators, scaled Jacobian system, driver, limits and material result mapping. Unknowns are `(x, y, angle)` per moving solver group. The analysis compiler may translate
+a derived group frame toward its referenced constraint attachments, carrying member transforms,
+anchors and SI mass centers together. This is numerical preconditioning, never an edit to
+a material frame. Unreferenced tracers and display geometry cannot choose that origin. Row/column scaling is reversible and recorded; force multipliers use the physical unscaled rows. Sparse local row blocks may assemble dense matrices initially, but no global mutable route or rate map is allowed.
 
 Position results are discriminated: accepted pose/command/branch state, or `branch`, `travel`, `unsolved`, rank/admission refusal with diagnostics. A failed attempt leaves continuation state untouched. A returned success has converged residuals, directed branch agreement, all passive/driven limits and finite values. A cut/iteration cap can refuse; it cannot manufacture success.
 
