@@ -674,6 +674,7 @@ export class PositionSolver {
       this.finishOrder(joints, links, orderNum, knownJointsIds);
       return;
     }
+    let drivenReferenceIndex: number | undefined;
     inputJoint.connectedJoints.forEach((j) => {
       if (!(j instanceof RealJoint)) {
         return;
@@ -691,11 +692,20 @@ export class PositionSolver {
       // store the solve type from the input solver
       switch (inputJoint.constructor) {
         case RevJoint: {
+          // Independent rounded rotations slowly shear a ternary crank. Its other
+          // points must follow one direction, like every other rigid body's tracers.
+          if (drivenReferenceIndex !== undefined) {
+            this.desiredAnalysisJointMap.set(j.id, 'determineTracerJoint');
+            this.desiredConnectedJointIndicesMap.set(j.id, [inputJointIndex, drivenReferenceIndex]);
+            break;
+          }
           this.desiredAnalysisJointMap.set(j.id, 'incrementRevInput');
           this.jointDistMap.set(
             inputJoint.id + ',' + j.id,
             euclideanDistance(inputJoint.x, inputJoint.y, j.x, j.y)
           );
+          if (euclideanDistance(inputJoint.x, inputJoint.y, j.x, j.y) > DEGENERATE_SLOT_TOLERANCE)
+            drivenReferenceIndex = joints.findIndex((joint) => joint.id === j.id);
           break;
         }
         case PrisJoint: {

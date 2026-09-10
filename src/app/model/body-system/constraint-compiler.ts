@@ -37,7 +37,7 @@ export function compileBodyDocument(document: BodyDocument): BodyCompilation {
     materialFrames.set(compiled.id, compiled);
     for (const [id, transform] of group.members) {
       const body = document.bodies.find((candidate) => candidate.id === id)!;
-      if (!sameTransform(relativePose(group.pose, body.pose), transform))
+      if (!sameTransform(relativePose(group.pose, body.pose), transform, [group.pose, body.pose]))
         return { ok: false, issues: [{ code: 'inconsistent-weld-pose', path: `bodies.${id}` }] };
       groupOf.set(id, compiled.id);
     }
