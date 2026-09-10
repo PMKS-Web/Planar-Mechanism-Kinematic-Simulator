@@ -2385,3 +2385,26 @@ constraint set and is *not* a drawing the editor would leave alone. `welded-moun
 is the other kind: built through the service so the reconcilers run, saved and reopened, and
 checked for the same bodies, the same DOF and a bracket that stays rigid. Cite that one when
 claiming the feature works; cite the fixtures when checking arithmetic.
+
+### Four things that cost an afternoon while writing `e2e/cylinder-mount.mjs`
+
+Building a fixture *through the service*, the way the canvas does, is the only honest way to write a
+browser suite here — and four of the doors have a shape their names do not give away.
+
+- **`animate(progress)` takes a sample index, not a fraction of the cycle.** It rounds and clamps to
+  `masterMechanism().joints.length`, so `animate(0.35, false)` is `animate(0)` — the start pose,
+  silently. A test that means "a third of the way round" has to ask the machine how many samples it
+  has and name one. This is why "the mount really is somewhere else mid-cycle" is its own check in
+  that suite rather than an assumption inside the paused-editing one.
+- **A component that never reaches ground is not one of the partitions.** `partitionMechanisms` says
+  so in as many words: no anchor, no solvable position, so it is reported as unassigned instead. A
+  drawing of two floating pieces therefore has *zero* partitions, not two, and "a second machine on
+  the same grid" needs a ground on each chain before the count means anything.
+- **`toggleSlider()` leaves the slot dangling.** A fresh slot is neither anchored in the world nor
+  riding a carrier, and a dangling slot is not solvable — the mechanism comes back `dof: 1` and
+  `isMechanismValid(): false`, which reads like a solver bug and is not one. Ground it (`toggleGround`
+  with the pin selected pins the direction it is already pointing) or give it a carrier.
+- **A joint drawn below about y = 900 on a 1000px-tall viewport is under the playback bar.** The
+  right-click meant for it lands on the bar, so the menu never opens and the failure is a locator
+  timeout with nothing to read. Put fixture geometry in clear canvas rather than trusting that a
+  `boundingBox()` came back.
