@@ -314,6 +314,7 @@ const stopFrameSampler = async (page) => {
     count: gaps.length,
     medianMs: q(0.5),
     p90Ms: q(0.9),
+    p95Ms: q(0.95),
     worstMs: q(1),
     over50ms: gaps.filter((g) => g > 50).length,
     over100ms: gaps.filter((g) => g > 100).length,
