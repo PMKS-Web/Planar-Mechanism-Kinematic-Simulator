@@ -23,6 +23,18 @@ export function bodyPositionScale(
   if (points.length)
     for (const point of points)
       length = Math.max(length, Math.hypot(point.x - points[0].x, point.y - points[0].y));
+  const precision =
+    64 * Number.EPSILON * Math.max(0, ...points.map((point) => Math.hypot(point.x, point.y)));
+  if (length <= precision) length = 0;
+  const moving = new Set(partition.unknowns);
+  // A single pin's coincident points have no span, but an offset moving origin
+  // still couples angular and linear motion. WORLD's absolute anchor is not a lever arm.
+  for (const { pair } of partition.rows) {
+    if (moving.has(pair.groupA))
+      length = Math.max(length, Math.hypot(pair.anchorA.x, pair.anchorA.y));
+    if (moving.has(pair.groupB))
+      length = Math.max(length, Math.hypot(pair.anchorB.x, pair.anchorB.y));
+  }
   for (const row of partition.rows)
     if (row.kind === 'travel')
       length = Math.max(

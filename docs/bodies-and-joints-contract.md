@@ -82,6 +82,53 @@ Rates use the same accepted rows. Evaluate `J`, command partials and the analyti
 
 `SimulationSnapshot` contains per-partition samples/times and typed maps for body poses/rates, attachment world points/rates, joint coordinates/reactions and driver efforts. A sample's identity and availability accompany every result. Display sampling may interpolate only compatible accepted neighboring poses; it cannot alter design geometry. Existing graph, CAD and table adapters read this contract and never mutate it. No new UI consumer reads legacy letter-key maps.
 
+## Cycle controller and stop events (S3 implementation contract)
+
+The position advance proves the accepted **endpoint** and checks the private candidates it
+visits. It is not yet a continuous playback interval. Keep that distinction visible in the
+sample API: a successful `advanceBodyCommand` alone is insufficient to publish an interval
+that might cross a passive limit and return inside it.
+
+The cycle controller must retain one numerical frame and continuation per partition. It must:
+
+1. Probe motion on the current directed branch and keep intermediate candidates private.
+   A sample/iteration/cut budget is an `unsolved` outcome, never a reversal or a successful
+   truncated cycle. Refusal discards candidate positions, times and rates together.
+2. Inspect every coordinate limit, including passive ram strokes and limits internal to a
+   welded group. Use coordinate derivatives from the analytic rate system with unit command
+   speed and zero command acceleration. Search interior stationary points as well as endpoint
+   crossings; adaptive subdivisions must be able to reveal an excursion whose endpoints both
+   satisfy the bound. Do not treat same-side endpoints as evidence of a clear interval.
+3. Bracket the first crossing in the requested direction and refine it on the same continued
+   branch. Keep the bound ID/side, command, safe-side pose and localization residual. An
+   extremum touching a bound and returning inside is not a reversal. Coincident events must
+   be independent of limit enumeration. Ambiguous or unresolvable event searches remain
+   unavailable; do not silently accept them when a refinement budget expires. Numerical
+   event detection does not constitute a formal interval proof of an arbitrary nonlinear path.
+4. Reverse only at a proved coordinate crossing or the input-fold evidence described in the
+   equation notes. `branch` is retried with subdivision; `unsolved` does not establish a
+   physical limit. Handle an initial pose already at a bound without a zero-duration loop.
+5. Preserve the known return branch. A stop pose may have a singular command Jacobian;
+   it must not be fed back through singular-start admission or given invented rates. The
+   controller can reuse accepted geometry in reverse order for an exact retrace and continue
+   the unexplored side from its stored regular state. A velocity discontinuity at reversal
+   has no finite acceleration or dynamic-force result in this model; impact dynamics are
+   outside this migration. Keep that unavailability distinct from ordinary interior samples.
+6. Record command, time, direction, pose status and rate/force availability per sample. A
+   failed candidate cannot stand in for a published sample, and no previous rate map may be
+   reused. Reconstruct material/witness geometry from body-local records; interpolation must
+   not turn those records into independently moving points. Native renderer integration must
+   verify intermediate frames, not only the solver's stored endpoints.
+
+Required cycle probes before S3 closes: a limit crossed and reentered between safe endpoints;
+a stationary touch that remains feasible; a tighter passive stop before the driven ram's
+stop; simultaneous bounds in reversed order; outward/inward commands from a stop; positive
+and negative requested speeds; exact retracing of a rocking cycle; a full-rotation branch
+through an isolated singular sample; refusal followed by recovery without stale rates; and
+two partitions sharing WORLD with independent clocks. Keep position-versus-rate availability
+explicit at folds and reversals. The five worked examples and full numerical/force gates
+remain required in addition to these controller tests.
+
 ## Transaction boundary
 
 `planBodyEdit(document, revision, command, context)` is pure and returns structured refusal or a candidate document, exact effects/cascade, selection remap, invalidated partitions and captured base revision. Permission previews invoke the same command preflight; they do not carry private rules. `commitBodyEdit` checks revision and replaces authority exactly once, with one history entry and one notification batch. A stale preview is replanned. Refusal/no-op creates no partial writes or empty Undo entry.

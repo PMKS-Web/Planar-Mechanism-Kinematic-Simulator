@@ -146,3 +146,33 @@ direction, the requested command lies beyond it, and the inspected curve poses s
 coordinate bounds. Both limits of the rocker-input fixture agree with its independent
 triangle formula. Iteration/cut exhaustion without this evidence remains branch/unsolved.
 This fold diagnostic is not an accepted sample or a mutation of the prior continuation.
+
+
+## Rate-system implementation and consistency
+
+`solveBodyRates` uses the compiled physical row gradients and the same position scaling. It
+solves the scaled rectangular system twice, using one pivoted QR factorization:
+`Jq qdot = cdot - Jb bdot`, then `Jq qddot = cddot - Jb bddot - gamma(qdot,bdot)`.
+The command term is present only in rows carrying a command ID. Boundary poses and both
+orders of boundary rates must be supplied explicitly; there is no implied moving-frame zero.
+The answer includes those prescribed groups. A missing input, invalid pose, rank deficiency
+or inconsistent derivative system returns a refusal containing no motion map.
+
+Consistency uses each row's term magnitude plus a floating-point allowance proportional to
+its norm and the scaled solution norm. Without the latter, a mathematically zero angular
+rate contaminated by elimination round-off was incorrectly refused on an oblique carriage.
+There is no absolute one-unit floor: conflicting commands of 1e-12 and 1.01e-12 are refused
+at both derivative orders. The moving-boundary fixtures exercise nonzero acceleration along
+the constrained rows and the angular/linear rate transformation at a relocated boundary
+origin. An unreferenced boundary at extreme position/rate scales does not enter the matrices,
+quadratic terms or scaling; its prescribed output remains available.
+
+A single offset revolute pair also exposed a position-conditioning issue: coincident anchor
+points differed only by round-off, but that difference became the mechanism's length scale.
+The scale now discards spans at arithmetic precision and includes referenced moving-origin
+lever arms. An absolute WORLD anchor is not such a lever arm. Existing large-translation,
+small/large-scale and independent reference position checks pass with this correction.
+
+These are the initial native rate primitives, not the complete S3 sample, force or cycle
+implementation. The stop-event contract in `bodies-and-joints-contract.md` remains to be
+implemented and tested before playback intervals may be published.
