@@ -119,3 +119,61 @@ export function nativeFourBarWithUnloadedWeld() {
   };
   return { document, body, bracket, weld };
 }
+
+/** A rotating carrier guides a tilted carriage whose center pin stays in a horizontal ground slot. */
+export function nativeDrivenCarrierCarriage() {
+  const f = new BodyFactory(),
+    angle = 0.6,
+    travel = 1 / Math.sin(angle);
+  const carrier = f.body('rotating carrier', { x: 0, y: 0, angle }, [
+    { x: 0, y: 0 },
+    { x: 3, y: 0 },
+  ]);
+  const carriage = f.body(
+    'guided carriage',
+    { x: travel * Math.cos(angle), y: 1, angle: angle + 0.2 },
+    [
+      { x: -0.5, y: 0 },
+      { x: 0.5, y: 0 },
+    ]
+  );
+  const pivot = f.joint(
+    'revolute',
+    f.attachment(WORLD, { x: 0, y: 0 }),
+    f.attachment(carrier, { x: 0, y: 0 })
+  );
+  const guide = f.joint(
+    'prismatic',
+    f.attachment(carrier, { x: 0, y: 0 }),
+    f.attachment(carriage, { x: 0, y: 0 }),
+    angle
+  );
+  const slot = f.joint(
+    'pin-in-slot',
+    f.attachment(WORLD, { x: 0, y: 1 }),
+    f.attachment(carriage, { x: 0, y: 0 }),
+    0
+  );
+  const driver = {
+    id: newRecordId<'driver'>(),
+    coordinate: { jointId: pivot.id, coordinate: 'angle' as const },
+    profile: { kind: 'constant-speed' as const, initial: 0, speed: 0.8 },
+  };
+  const document: BodyDocument = {
+    ...f.document,
+    drivers: [driver],
+    bodies: f.document.bodies.map((body) =>
+      body.id === carriage && body.kind === 'material'
+        ? {
+            ...body,
+            mass: {
+              ...body.mass,
+              mass: { mode: 'explicit', value: 2 },
+              inertia: { mode: 'explicit', value: 0.3 },
+            },
+          }
+        : body
+    ),
+  };
+  return { document, carrier, carriage, pivot, guide, slot, driver, angle, travel };
+}

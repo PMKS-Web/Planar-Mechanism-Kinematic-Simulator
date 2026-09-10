@@ -82,17 +82,21 @@ export function fixedBodyAdmission(system: CompiledBodySystem): BodyAdmissionRef
     drivers: system.fixedDrivers,
     limits: system.fixedLimits,
   };
-  const poses = new Map([...system.groups].map(([id, group]) => [id, group.pose]));
+  const worldPoses = new Map([...system.groups].map(([id, group]) => [id, group.pose]));
+  const frame = createBodySolveFrame(fixed, worldPoses);
+  const local = frame.partition,
+    poses = frame.initialPoses;
   const commands = new Map(fixed.drivers.map((driver) => [driver.id, driver.initial]));
-  const scale = bodyPositionScale(fixed, poses, commands);
+  const scale = bodyPositionScale(local, poses, commands);
   if (
-    fixed.rows.some(
+    local.rows.some(
       (row, i) =>
         !Number.isFinite(bodyRowValue(row, poses, commands)) ||
-        Math.abs(bodyRowValue(row, poses, commands) * scale.rows[i]) > 1e-9
+        Math.abs(bodyRowValue(row, poses, commands) * scale.rows[i]) >
+          1e-9 + (row.kind === 'angle' ? 0 : frame.inputPrecision * scale.rows[i])
     )
   )
     return 'inconsistent';
-  const limit = checkBodyLimits(fixed, poses, scale);
+  const limit = checkBodyLimits(local, poses, scale);
   return limit ? (limit.reason === 'travel' ? 'travel' : 'invalid') : undefined;
 }
