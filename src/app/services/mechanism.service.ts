@@ -2314,11 +2314,45 @@ export class MechanismService {
    * name the cascade before the click rather than after it.
    */
   jointsOrphanedByDeleting(link: Link): RealJoint[] {
-    const doomed = new Set<Link>([link, ...(link instanceof RealLink ? link.subset : [])]);
-    return link.joints.filter(
+    // Everything the deletion actually takes, worked out the way the deletion
+    // works it out: the body's own leaves, plus the bars of every ram the body
+    // owns, because deleting a body takes its rams whole. Asking the body's
+    // own joint list alone missed the ram's *opposite* mount -- a joint at the
+    // far end of the drawing, plainly visible, that the row did not mention
+    // and the click removed.
+    const doomed = new Set<string>(
+      [link, ...(link instanceof RealLink ? link.subset : [])].map((one) => one.id)
+    );
+    for (const sealed of this.cylindersOfLink(link)) {
+      for (const bar of [sealed.barrel, sealed.rod, sealed.block]) doomed.add(bar.id);
+    }
+    const survives = (candidate: Link): boolean => {
+      if (doomed.has(candidate.id)) return false;
+      if (!(candidate instanceof RealLink) || candidate.subset.length === 0) return true;
+      // A compound survives only as much of it as is left.
+      return candidate.subset.some((leaf) => !doomed.has(leaf.id));
+    };
+    const held = (joint: Joint) =>
+      this.links.some(
+        (candidate) =>
+          survives(candidate) &&
+          (candidate.joints.includes(joint) ||
+            (candidate instanceof RealLink &&
+              candidate.subset.some((leaf) => !doomed.has(leaf.id) && leaf.joints.includes(joint))))
+      );
+    // The ram's own three interior joints are never drawn, named or counted:
+    // saying "and 3 joints" about parts of a cylinder nobody can see would be
+    // a number the reader cannot check against the screen.
+    const inside = new Set(
+      this.cylindersOfLink(link).flatMap((sealed) => [
+        sealed.barrelNear.id,
+        sealed.pin.id,
+        sealed.slider.id,
+      ])
+    );
+    return this.joints.filter(
       (joint): joint is RealJoint =>
-        joint instanceof RealJoint &&
-        !this.links.some((other) => !doomed.has(other) && other.joints.includes(joint))
+        joint instanceof RealJoint && !inside.has(joint.id) && !held(joint)
     );
   }
 
@@ -2475,10 +2509,41 @@ export class MechanismService {
         ? (link.subset.filter((item) => item instanceof RealLink) as RealLink[])
         : [link]
     );
-    return this.createNewCompoundLinkFromSubset(leaves);
+    // A weld that absorbs more members into an existing body is that body
+    // carrying on, so it keeps what somebody chose for it -- its paint, its
+    // name, its typed mass properties. Rebuilt without a predecessor it took
+    // an arbitrary leaf's color and lost the rest.
+    //
+    // Welding two bodies that were both already compounds joins two
+    // identities, and one of them has to win: the one with more members, and
+    // the earlier id when they have the same number. Arbitrary, but stated,
+    // and stable against the order the links were handed over in.
+    const predecessors = linksToWeld
+      .filter((link) => link.subset.length > 0)
+      .sort(
+        (left, right) => right.subset.length - left.subset.length || left.id.localeCompare(right.id)
+      );
+    return this.createNewCompoundLinkFromSubset(leaves, predecessors[0]);
   }
 
-  private createNewCompoundLinkFromSubset(subset: RealLink[], keepFill?: string): RealLink {
+  /**
+   * Build the body a set of leaves make, optionally as the continuation of one
+   * that already existed.
+   *
+   * `continues` is the difference between a body being rebuilt and a body
+   * being born. A compound that gains or loses a member is the same body: it
+   * keeps its paint, its name, and any mass, inertia or center of mass
+   * somebody typed onto the *root* -- with the anchor those were placed
+   * against, or the point walks the next time the drawing moves. Without it, a
+   * bracket that lost a ram came back in another color, under a generated
+   * name, with its typed inertia replaced by a sum and its placed center of
+   * mass moved.
+   *
+   * Nothing is inherited when there is no predecessor, and a genuine split
+   * into several bodies has at most one continuation -- copying a root's typed
+   * aggregate onto every child would describe material that is not in either.
+   */
+  private createNewCompoundLinkFromSubset(subset: RealLink[], continues?: RealLink): RealLink {
     const leaves = subset.filter(
       (link, index) => subset.findIndex((candidate) => candidate.id === link.id) === index
     );
@@ -2520,14 +2585,37 @@ export class MechanismService {
     );
 
     const newLink = new RealLink(id, newLinkJoints, totalMass, massMoI, CoM, leaves);
-    // The parallel-axis sum above is worth keeping exactly when a part's
-    // numbers were chosen by a person; parts that all followed their geometry
-    // leave the compound following its geometry too.
-    newLink.moiIsCustom = leaves.some((leaf) => leaf instanceof RealLink && leaf.moiIsCustom);
-    newLink.comIsCustom = leaves.some((leaf) => leaf instanceof RealLink && leaf.comIsCustom);
-    if (newLink.comIsCustom) newLink.captureComOffset();
+    // Custom is an override of *this body*, not a summary of its members. It
+    // used to be set whenever any member had one, which locked the aggregate
+    // against the derivation in `uniformBodyFor` -- and that derivation is the
+    // only thing that reads a member's shape rather than whatever number was
+    // last stored on it. A body of one typed bar and one automatic bar came
+    // out with the automatic one's contribution frozen at a stale value, and
+    // in one case dropped entirely.
+    //
+    // So a body assembled from members stays derived, and the numbers above
+    // are a seed the next property pass will replace. Only a root that was
+    // itself overridden carries that override forward.
+    newLink.moiIsCustom = continues?.moiIsCustom ?? false;
+    newLink.comIsCustom = continues?.comIsCustom ?? false;
+    if (continues?.moiIsCustom) newLink.massMoI = continues.massMoI;
+    if (continues?.comIsCustom) {
+      // The anchor as well as the point. A center of mass placed against the
+      // grid keeps its world coordinate while the body moves, and one placed
+      // against the centroid rides the shape -- so a rebuild that kept the
+      // coordinate and dropped the anchor moved the point the next time
+      // anything else did.
+      newLink.comAnchor = continues.comAnchor;
+      newLink.comAnchorOffset = continues.comAnchorOffset
+        ? { ...continues.comAnchorOffset }
+        : undefined;
+      newLink.fixedLocation = { ...continues.fixedLocation };
+      newLink.CoM = new Coord(continues.CoM.x, continues.CoM.y);
+      newLink.captureComOffset();
+    }
+    if (continues && continues.name !== continues.id) newLink.name = continues.name;
     newLink.fill =
-      keepFill ?? leaves[0]?.fill ?? ColorService.instance?.getNextLinkColor() ?? '#555555';
+      continues?.fill ?? leaves[0]?.fill ?? ColorService.instance?.getNextLinkColor() ?? '#555555';
     return newLink;
   }
 
@@ -2564,6 +2652,10 @@ export class MechanismService {
       }
     });
     force.link = link;
+    // A leaf is a body somebody can point at; a compound is what a weld makes
+    // of several. So the *member* is what is remembered, and welding onto a
+    // compound leaves that memory alone -- it is what an unweld will need.
+    if (link.subset.length === 0) force.anchoredTo = link.id;
     if (!link.forces.some((candidate) => candidate.id === force.id)) link.forces.push(force);
   }
 
@@ -2603,8 +2695,7 @@ export class MechanismService {
   // repair below has an answer for and never got to give.
   public finishStructuralEdit(save: boolean = true): void {
     this.rebuildJointGraph();
-    this.reconcileSlots();
-    this.reconcileAssemblyWelds();
+    this.settleTopology();
     this.activeObjService.reconcilePartSelection(this.joints, this.links, this.forces);
     PositionSolver.setUpSolvingForces(this.forces);
     this.updateMechanism(save);
@@ -2672,6 +2763,31 @@ export class MechanismService {
    * nobody had chosen: where it points. A slot's direction is geometry, and the
    * honest answer to losing it is to say so rather than to pick one.
    */
+  /**
+   * Run the repairs until they stop changing anything.
+   *
+   * Slots first, because weld recognition reads a well-formed slot: a Slide is
+   * only a Slide while its block still has a bore to ride. But a weld repair
+   * *rebuilds a compound* -- new object, new id -- and a slot may have just
+   * been pointed at the one it replaced. One pass each left the bore naming a
+   * body that was no longer in the drawing: nothing downstream noticed, the
+   * mechanism solved, and the next save wrote a carrier reference that could
+   * not be decoded. Reopening the file threw.
+   *
+   * So they go round until nothing moves. Each pass either changes nothing or
+   * repairs a joint whose flag had outrun its compound, and there are finitely
+   * many of those; the cap is there because a fixed point that needs more than
+   * a couple of passes is a bug in one of them, and looping forever would hide
+   * it rather than report it.
+   */
+  private settleTopology(): void {
+    this.reconcileSlots();
+    for (let pass = 0; pass < 4 && this.reconcileAssemblyWelds(); pass++) {
+      this.rebuildJointGraph();
+      this.reconcileSlots();
+    }
+  }
+
   private reconcileSlots(): void {
     this.joints.forEach((joint) => {
       if (!(joint instanceof PrisJoint) || !joint.isFloating) return;
@@ -2745,7 +2861,8 @@ export class MechanismService {
    * neither a slide assembly nor a compound has nothing left to be rigid about.
    * Turning the Slider toggle off at a Slide is how that arises.
    */
-  private reconcileAssemblyWelds(): void {
+  private reconcileAssemblyWelds(): boolean {
+    let changed = false;
     this.joints.forEach((joint) => {
       if (!(joint instanceof RealJoint) || !joint.isWelded) return;
       const assembly = slideAssemblyAt(joint);
@@ -2761,6 +2878,7 @@ export class MechanismService {
           joint.isWelded = false;
           if (this.weldJointTopology(joint)) {
             this.rebuildJointGraph();
+            changed = true;
           } else {
             joint.isWelded = true;
           }
@@ -2795,11 +2913,13 @@ export class MechanismService {
         joint.isWelded = false;
         if (this.weldJointTopology(joint)) {
           this.rebuildJointGraph();
+          changed = true;
         } else {
           joint.isWelded = true;
         }
       }
     });
+    return changed;
   }
 
   /**
@@ -7444,25 +7564,44 @@ export class MechanismService {
       }
       components.push(component);
     }
+    // Which of the pieces, if any, is the body carrying on. One compound left
+    // and the rest coming out as single bars is a body that lost members; two
+    // compounds is a body that split, and neither of them is the original --
+    // handing a typed inertia to both would describe material twice.
+    const stillABody = components.filter((component) => component.length > 1);
+    const continuation = stillABody.length === 1 ? stillABody[0] : undefined;
     const replacements = components.map((component) =>
       component.length === 1
         ? component[0]
-        : // A body that is still a body keeps the color it had. Rebuilt from
-          // its surviving leaves it took the first one's fill instead -- so
-          // removing a ram from a bracket repainted the bracket, and where the
-          // surviving leaf had no color of its own the whole body went to the
-          // placeholder gray. Nothing about the drawing changed except which
-          // leaf happened to be listed first.
-          this.createNewCompoundLinkFromSubset(component, compound.fill)
+        : this.createNewCompoundLinkFromSubset(
+            component,
+            component === continuation ? compound : undefined
+          )
     );
     const forces = this.forces.filter((force) => force.link === compound);
     compound.forces = [];
     for (const force of forces) {
-      const owner = [...replacements].sort((left, right) => {
-        const distance =
-          this.distanceFromForceToLink(force, left) - this.distanceFromForceToLink(force, right);
-        return distance === 0 ? left.id.localeCompare(right.id) : distance;
-      })[0];
+      // The body that holds the bar this force was put on, if that bar is
+      // still in the drawing. Distance cannot answer this: a force anchored
+      // where two leaves meet is exactly as far from both, and the tie-break
+      // that followed handed a bracket's load to a cylinder's rod without
+      // anything moving.
+      const remembered = force.anchoredTo;
+      const kept =
+        remembered === undefined
+          ? undefined
+          : replacements.find(
+              (candidate) =>
+                candidate.id === remembered ||
+                candidate.subset.some((leaf) => leaf.id === remembered)
+            );
+      const owner =
+        kept ??
+        [...replacements].sort((left, right) => {
+          const distance =
+            this.distanceFromForceToLink(force, left) - this.distanceFromForceToLink(force, right);
+          return distance === 0 ? left.id.localeCompare(right.id) : distance;
+        })[0];
       if (owner) this.attachForceToLink(force, owner);
       else this.detachForce(force);
     }

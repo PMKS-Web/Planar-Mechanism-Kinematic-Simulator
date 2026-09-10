@@ -23,6 +23,20 @@ export class Force {
   private _angleRad: number;
 
   private _showHighlight: boolean = false;
+  /**
+   * The body this force was put on, by name, kept across every rebuild.
+   *
+   * `link` is the *current* owner, and a weld replaces it: the bar somebody
+   * anchored to becomes a leaf of a compound, and the compound is what the
+   * force then belongs to. Unwelding has to give it back, and the only way to
+   * do that is to have remembered. Guessing from geometry does not work --
+   * where two leaves meet, every candidate is the same distance away, and the
+   * tie-break sent a bracket's load to a cylinder's rod without moving it.
+   *
+   * Undefined for a force from a payload written before this was recorded; the
+   * old distance rule is what those still fall back to.
+   */
+  public anchoredTo?: string;
   /** Locked in place while editing: neither handle nor the body may be dragged. */
   public locked: boolean = false;
   /**
