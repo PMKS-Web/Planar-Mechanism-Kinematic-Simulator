@@ -30,7 +30,7 @@ There is no lint target (`tslint.json` is vestigial). Formatting follows `.prett
 
 **About 50 files predate the config and do not satisfy it.** Running Prettier across one of them rewrites code you did not touch and buries your change — so format only the files you actually edited, and check first, because a file being unformatted is the normal case rather than the exception. Cleaning up the backlog belongs in its own PR. `.prettierignore` deliberately excludes Markdown (Prettier pads every table cell and rewrites `*emphasis*` as `_emphasis_`, so a one-line doc edit lands as hundreds of lines of realignment) and the generated `src/test-data/verification` tables.
 
-## UI validation: run it yourself, then have GPT-5.6 sol review it
+## UI validation: run it yourself
 
 **Run UI validation, browser automation, screenshots, and end-to-end interaction checks
 directly**, following the `ui-validate` skill (`.claude/skills/ui-validate/SKILL.md`) — which
@@ -54,25 +54,6 @@ gitignored `artifacts/`. Inspect your own screenshots rather than trusting an ex
   or GitHub page, something already open in front of them) and not for routine checks of the app,
   which belong in a disposable profile. Never sign in, buy, post or submit on their behalf without
   being asked.
-
-**Then send the same UI work to GPT-5.6 sol for review**, through the Codex CLI:
-
-```bash
-codex exec -m gpt-5.6-sol --sandbox workspace-write \
-  -c sandbox_workspace_write.network_access=true "<what to check, and what correct looks like>"
-```
-
-**Say what to review, not how to review it.** GPT-5.6 sol has its own browser skills on its end,
-so describe the change, the URL or flow, and what "correct" means — never which tools to call,
-which profile to open, or how to drive the page. Prescribing its tool use overrides skills that
-know the job better than the prompt does.
-
-The same command is how to get a second opinion on a hard non-UI problem.
-
-**The model id is `gpt-5.6-sol`, and the suffix is load-bearing.** Plain `gpt-5.6` is rejected —
-*"not supported when using Codex with a ChatGPT account"* — behind a misleading
-`Model metadata for 'gpt-5.6' not found. Defaulting to fallback metadata` warning that reads like
-it worked. Verified against codex-cli 0.146.0.
 
 Tests are Vitest but written in Jasmine style (globals via `vitest/globals`). Vitest errors on spec files containing no tests.
 
