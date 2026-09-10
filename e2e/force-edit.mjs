@@ -268,9 +268,13 @@ const weldMenu = await page.evaluate(() =>
   }))
 );
 const cylinderItem = weldMenu.find((item) => item.label === 'Cylinder');
+// A welded joint takes a cylinder now, and the ram joins the body it lands on
+// -- a weld says every body meeting there is rigid, and the ram arriving is one
+// more of them. This used to be refused, on the grounds that the model had no
+// answer for a third body inside one rigid statement; it has one.
 record(
-  'a welded joint will not take a cylinder',
-  !cylinderItem || cylinderItem.disabled,
+  'a welded joint takes a cylinder, which joins its body',
+  !!cylinderItem && !cylinderItem.disabled,
   weldMenu.map((item) => `${item.label}${item.disabled ? ' (off)' : ''}`)
 );
 
