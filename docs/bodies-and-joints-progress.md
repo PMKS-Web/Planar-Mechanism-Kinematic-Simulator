@@ -5,7 +5,7 @@
 - Goal: implement **all S0–S8** of [the plan](bodies-and-joints-plan.md), including native default editor, consumer cutover and obsolete-runtime removal. No push or publication.
 - Implementation starting commit: `487d535` on `bodies-and-joints-plan`.
 - Worktree: `.claude/worktrees/funny-swirles-3c6486`.
-- Current checkpoint: **S0 and S1 complete; S2 starting**. Native editor cutover has not begun. Concrete interface choices are in [the contract](bodies-and-joints-contract.md); frozen catalogs/reference hashes are in [the baseline](bodies-and-joints-baseline.json).
+- Current checkpoint: **S0 and S1 complete; S2 in progress**. Native editor cutover has not begun. Concrete interface choices are in [the contract](bodies-and-joints-contract.md); frozen catalogs/reference hashes are in [the baseline](bodies-and-joints-baseline.json).
 - Sole implementation owner: Codex. Fable reviews only at the four specified gates.
 - Preserve other worktrees and unrelated changes. The starting tracked worktree was clean.
 - Runtime for these commands: Node `v24.18.0`, explicitly prepended to PATH; the login shell otherwise selects unsupported Node 20.
@@ -17,7 +17,7 @@
 | --- | --- | --- |
 | S0 | Baseline complete | Six unit suites pass (182 tests), seven new compatibility tests pass, build passes, template-open 11/11, template-graphs 3978/3978, ui-copy 17/17. Timing, visual baseline and operation-level consumer classification are recorded. Existing drag timing failures are reproduced on original test files, not waived; S7 must meet the measured comparison budget. |
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
-| S2 | Starting | Native constraint compilation, positions, mobility, continuation, agreement and performance. |
+| S2 | In progress | Native row compiler, physical Jacobians, SI groups/partitions, pivoted QR, local position correction and independent four-bar checks implemented. Mobility, admission, branch/limit continuation, full agreement and S2 gates remain pending. |
 | S3 | Pending | Analytic rates, physical wrenches, independent examples and F2. |
 | S4 | Pending | Native transactions, codec/import, lifecycle, history and F3. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
@@ -120,7 +120,7 @@ Known reported spend: **$3.47922375**, including the probe and F1 auxiliary usag
 
 ## Next action
 
-Proceed to S2 native constraint compilation/position solving; F1 resolution gates pass. F1 process 22599 completed successfully; no further F1 call is pending or required for routine fixes. The independent row/derivative derivation is in `docs/bodies-and-joints-equations.md`.
+Continue S2 with partition-local numerical coordinates, mobility/admission and continuation. F1 resolution is committed as `447dfb9`; its gates pass. F1 process 22599 completed successfully; no further F1 call is pending or required for routine fixes. The independent row/derivative derivation is in `docs/bodies-and-joints-equations.md`.
 
 ## S1 implementation history (pre-review evidence)
 
@@ -181,3 +181,43 @@ The expanded provenance/unit tests pass (35 native tests). Final S1 gate passes 
 The reviewed foundation plus these resolutions completes S1. Browser gates remain the earlier
 verified legacy-app runs: none of this native code is imported by the active editor.
 No live editor consumer has switched to native records; S2–S8 remain open.
+
+## S2 progress: rows and local correction (not a completed checkpoint)
+
+- `constraint-compiler` validates references and weld pose consistency, converts analysis data
+  to SI, condenses welds, and keeps material mapping. A design pose inconsistent with its weld
+  rest is refused rather than silently reconstructed. Derived solver frames are translated
+  near referenced connection points; no authored frame or geometry is changed.
+- R/P/pin-in-slot compile to native scalar rows with exact physical Jacobian blocks. Coordinate
+  drives have command partial -1. Internal relationships are retained, including constant
+  rows, commands and limits in an entirely fixed group. Compilation is not admission.
+- Moving components sharing WORLD remain separate; an unconnected material body remains an
+  underconstrained candidate. WORLD ownership and sample availability are distinct.
+- Pivoted Householder QR provides rectangular solves, rank and nullspace without normal
+  equations. Tests cover redundant rows, column pivoting, small independent directions,
+  scale changes, malformed inputs and inconsistent right sides. Least-squares output is not
+  itself a consistency verdict.
+- `relaxBodyPosition` is a bounded local Newton correction with backtracking and immutable
+  seeds. It deliberately does **not** certify branch, bounds or mobility; only the forthcoming
+  continuation/admission layer may accept a simulation sample. Caps refuse, never return the
+  last iterate as success. No current app consumer uses this layer.
+- A one-pin rod retains its rigid witness point through a complete commanded turn. Oblique
+  carriage correction is tested from 1e-12 through 1e5 length scales and after large local-frame
+  changes. The first test exposed a scale near zero when nominally coincident guide origins
+  differed by round-off; commanded travel/bounds now supply physical scale in this case, and
+  the trust cap limits angular change instead of imposing an arbitrary translation limit.
+- A native four-bar matches independent circle-intersection coordinates at three commands,
+  including redundant R rows and reversed body/joint enumeration. This proves local nonlinear
+  correction only, not full-cycle branch safety or agreement with every legacy fixture.
+- `S2-first-rows.log`: 48 tests pass. `S2-linear-algebra.log`: five pass.
+  `S2-position-first.log`: one scale regression fails; `S2-position-scaled.log`: all 56 pass.
+  `S2-four-bar.log`: the independent nonlinear test passes. The formatted combined native/MATLAB
+  regression gate passes **60 tests / 13 files**, `S2-rows-correction-gate.log` (57 native
+  tests and three existing MATLAB regression tests). This is a progress gate, not all of S2.
+
+Next work must not skip these requirements: partition-local numerical origins for large global
+coordinate translations (material-local recentering alone does not solve global floating-point
+cancellation); singular/rank and nonlinear mobility checks; sample branch/limit classification,
+retry and rollback; passive/fixed drive/limit admission; full S2 numerical and browser gates.
+The global translation behavior is unverified at this progress commit. S3 still owes analytic
+rates/wrenches and F2. S4–S8 and native default cutover/removal remain entirely open.
