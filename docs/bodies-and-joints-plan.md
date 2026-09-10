@@ -640,6 +640,17 @@ the browser tools, verify the served revision/route, manipulate the controls and
 motion. Do not substitute a hosted preview, conceptual mockup, or precomputed plot for this.
 Use the assigned `localhost` port even if a stale skill example hardcodes 127.0.0.1:4200.
 
+**Use both workflows at S0, S5, S6 and S8 (user decision, September 10, 2026).** Run the
+automated Playwright checks and filmstrips, then use standard Codex computer use
+(`mcp__cua_repl`) in incognito Chrome for live UX spot checks on the same build. Playwright
+does the bulk of repeatable testing; native computer use exercises selection, the Edit panel,
+context menus, drags and playback through ordinary user actions. Record which workflow
+produced each observation in the progress ledger. Both were exercised successfully on
+localhost before implementation. This is not a measured token-cost benchmark: the practical
+reason for the split is compact, repeatable scripted checks plus direct interaction review.
+If computer use is unavailable, keep the missing check explicit and continue independent
+testing; do not silently substitute a Playwright result for both workflows.
+
 For each observation session, use the actual editor to create or open the representative
 mechanisms, play at ordinary speed, pause/seek, drag, select, undo and redo. Capture short
 sequences/contact sheets or recordings at enough intermediate frames to inspect the motion;
