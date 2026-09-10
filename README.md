@@ -592,8 +592,10 @@ tracked files, which hostname the dev server answers on — is in
 
 ### Branches and deploys
 
-- **Never push to `main`.** Commits there deploy straight to production at
+- **Never push to `main`.** It is the production branch for
   [app.pmksplus.com](https://app.pmksplus.com).
+- **Automatic publishing to production is paused in Netlify.** Nothing reaches app.pmksplus.com
+  until someone publishes it by hand, so being on `main` does not mean being live.
 - Every other branch publishes to `https://[BRANCHNAME]--pmksnew.netlify.app`.
 - The `version` in `package.json` is what Settings shows to a user; raise it in the PR that ships
   a release.

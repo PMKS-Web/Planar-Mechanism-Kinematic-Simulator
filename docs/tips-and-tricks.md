@@ -1361,8 +1361,12 @@ poses reached by playback, where a one-sample lag is invisible.
 
 ## Deploys, domains and surrounding services
 
-- **Production is [app.pmksplus.com](https://app.pmksplus.com)**, deployed from `main`. **Never
-  push to `main`** unless someone has told you to: a commit there ships.
+- **Production is [app.pmksplus.com](https://app.pmksplus.com)**, and `main` is its branch. **Never
+  push to `main`** unless someone has told you to.
+- **Automatic publishing to production is paused in Netlify** (since September 2026), so a commit on
+  `main` does not ship by itself; publishing is a manual step. Do not read `main` as what students
+  have: on 2026-09-10 `main` was 2.1.0 and app.pmksplus.com served 2.0.3, with no floating slots,
+  slides or cylinders in its bundle. Grep production's own bundle, as below, to find out.
 - **There are two Netlify sites, and branch builds come from `pmksnew`.** Branch previews are
   `https://[BRANCHNAME]--pmksnew.netlify.app`. The older `--pmks.netlify.app` pattern 404s, which is
   at least honest; `[BRANCH]--pmksprod.netlify.app` is the trap, because it still answers **200 with

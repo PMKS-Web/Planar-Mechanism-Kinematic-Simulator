@@ -92,7 +92,14 @@ PMKS_FIXTURE_BASE_URL=https://deploy-preview-NNN--pmksnew.netlify.app npm run fi
 
 ## Deployment / branch rules
 
-**Never push directly to `main`** — commits to `main` auto-deploy to production (app.pmksplus.com). Work in branches/forks and open PRs. Every non-main branch auto-publishes to `https://[BRANCHNAME]--pmksnew.netlify.app`.
+**Never push directly to `main`** — it is the production branch for app.pmksplus.com. Work in branches/forks and open PRs. Every non-main branch auto-publishes to `https://[BRANCHNAME]--pmksnew.netlify.app`.
+
+**Automatic publishing to production is paused in Netlify.** The maintainer paused it in September
+2026, so a commit on `main` no longer reaches students by itself: putting a build on
+app.pmksplus.com is a deliberate, manual step. The rule above stands anyway. It also means "it is on
+`main`" does not mean "it is live" — on 2026-09-10 `main` was at 2.1.0 while app.pmksplus.com still
+served 2.0.3, without floating slots, slides or cylinders. Ask production's bundle, not `main`,
+what students have.
 
 **There are two Netlify sites, and the branch one moved.** Branch and preview builds come from
 `pmksnew` now; `[BRANCH]--pmksprod.netlify.app` still answers 200 and serves a **months-stale
