@@ -1,3 +1,5 @@
+import { nativeFourBar } from './native-body-fixtures';
+import { compose, worldToLocal } from '../../app/model/body-system/body-frame';
 import { BodyFactory } from '../../app/model/body-system/body-factory';
 import { BodyDocument, emptyBodyDocument } from '../../app/model/body-system/body-document';
 import { newRecordId, WORLD } from '../../app/model/body-system/body-id';
@@ -49,4 +51,71 @@ export function nativeLoadedRod(
     ],
   };
   return { document, body, driver, angle };
+}
+
+/** A 3 kg, 1 m slender bracket at (1,1), rotated 0.3 rad in the loaded rod's frame. */
+export function nativeWeldedLoadedRod(units: BodyUnits = SI_UNITS) {
+  const fixture = nativeLoadedRod(units);
+  const factors = unitFactors(units);
+  const f = new BodyFactory(fixture.document);
+  const relative = { x: 1 / factors.length, y: 1 / factors.length, angle: 0.3 };
+  const bracket = f.body(
+    'welded bracket',
+    compose({ x: 0, y: 0, angle: fixture.angle }, relative),
+    [
+      { x: 0, y: 0 },
+      { x: 1 / factors.length, y: 0 },
+    ]
+  );
+  const weld = f.joint(
+    'weld',
+    f.attachment(fixture.body, { x: 0, y: 0 }),
+    f.attachment(bracket, { x: 0, y: 0 })
+  );
+  const document: BodyDocument = {
+    ...f.document,
+    bodies: f.document.bodies.map((body) =>
+      body.kind === 'material' && body.id === bracket
+        ? { ...body, mass: { ...body.mass, mass: { mode: 'explicit', value: 3 / factors.mass } } }
+        : body
+    ),
+    forces: f.document.forces.map((load) => ({
+      ...load,
+      bodyId: bracket,
+      point: worldToLocal(relative, { x: 2 / factors.length, y: 0 }),
+    })),
+  };
+  return { ...fixture, document, bracket, weld };
+}
+
+/** An unloaded welded leaf must not acquire a reaction from the coupler's numerical balance error. */
+export function nativeFourBarWithUnloadedWeld() {
+  const fixture = nativeFourBar();
+  const body = fixture.document.attachments.find((anchor) => anchor.id === fixture.witness)!.bodyId;
+  const pose = fixture.document.bodies.find((record) => record.id === body)!.pose;
+  const f = new BodyFactory(fixture.document);
+  const bracket = f.body('unloaded welded leaf', compose(pose, { x: 0.6, y: 0.8, angle: 0.2 }), [
+    { x: 0, y: 0 },
+    { x: 1, y: 0 },
+  ]);
+  const weld = f.joint(
+    'weld',
+    f.attachment(body, { x: 0, y: 0 }),
+    f.attachment(bracket, { x: 0, y: 0 })
+  );
+  const document: BodyDocument = {
+    ...f.document,
+    forces: [
+      {
+        id: newRecordId<'force'>(),
+        bodyId: body,
+        point: { x: 1, y: 0.3 },
+        vector: { x: 0.3, y: -0.7 },
+        couple: 0.4,
+        frame: 'world',
+        label: 'coupler load',
+      },
+    ],
+  };
+  return { document, body, bracket, weld };
 }

@@ -18,7 +18,7 @@
 | S0 | Baseline complete | Six unit suites pass (182 tests), seven new compatibility tests pass, build passes, template-open 11/11, template-graphs 3978/3978, ui-copy 17/17. Timing, visual baseline and operation-level consumer classification are recorded. Existing drag timing failures are reproduced on original test files, not waived; S7 must meet the measured comparison budget. |
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
 | S2 | Complete | Native compiler, analytic Jacobians, mobility/admission, branch continuation, folds, limits and frame conditioning. Seven native/legacy and four native/MATLAB comparisons retain the original ceilings. Geometric redundancy, two slots on a carrier and one-pin/shared-WORLD cases pass. Combined S2/initial-rate gate: 255 tests / 37 files; current-editor browser gate is green. Continuous cycle event publication remains an explicit S3 obligation. |
-| S3 | In progress | Analytic rates, moving-group force loads, physical reaction multipliers and explicit shared-support policy implemented and initially verified. Latest native/reference gate: 267 tests / 40 files. Internal member/weld recovery, force-cycle policy selection, sample schema, cycle events, remaining worked examples, full gates and F2 are pending. |
+| S3 | In progress | Analytic rates, moving-group force loads, physical multipliers, shared-support policy and material/weld reaction recovery implemented and initially verified. Latest native/reference gate: 274 tests / 42 files; build passes. Force-frame publication, shared fixed-frame ownership, force-cycle policy selection, sample schema, cycle events, remaining worked examples, full gates and F2 are pending. |
 | S4 | Pending | Native transactions, codec/import, lifecycle, history and F3. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
 | S6 | Pending | All consumers, synthesis, tutorial, fixtures/templates and default cutover. |
@@ -460,3 +460,81 @@ confirmed live by its process handle and HTTP 200. `PMKS_BASE_URL=http://localho
 PMKS_PLAYWRIGHT_DIR=.. node e2e/ui-copy.mjs` passed **17/17**, zero browser errors,
 `S3-force-ui-copy.log`. All touched TypeScript files pass Prettier; `git diff --check` passes.
 The browser check protects the current app's copy; it is not a native-editor integration gate.
+
+## S3 material and weld reaction recovery
+
+Continued from clean checkpoint `3d1f4a6`. The preceding goal turn made verified source
+progress; no stopped process was restarted on the strength of a stale log. No public editor,
+production solver route or legacy runtime was changed by this checkpoint.
+
+`body-load-wrenches` now owns the shared physical load/inertia calculation used by both
+`groupForceLoads` and `memberForceLoads`.
+The latter places every material balance at the group's numerical origin, retaining the
+actual material mass and load owner. It refuses ambiguous aggregate inertia/CoM/mass only
+when those values affect the requested calculation: static/no-gravity remains available;
+an inertia-only override does not block statics with gravity. WORLD is excluded when counting
+material owners, so a single grounded material can use its complete aggregate override.
+An active imported multi-material load scope returns `load-owner`; external group loads remain
+available and no reference owner is silently adopted as the unique material owner.
+
+`internal-force-partition` restores the original material pair for every internal R/P/slot
+row and adds three full-wrench channels per weld. These are force-reference frames, not a
+second motion model. Authored weld ends need not coincide. Fixed rows are included exactly
+once whether already present in the supplied frame or obtained from the compiled system.
+`recoverMemberReactions` subtracts known external row wrenches from the owning member,
+solves internal equilibrium in unique mode, then transports each side to its named material
+origin. It preserves a determinate bridge beside an indeterminate weld cycle. Missing external
+reactions refuse recovery; a stated external evenest split can supply boundary values, but
+recovered results retain that label. Internal weld cycles never select that split themselves.
+Approximate external values that cannot balance the members remain unavailable.
+
+The two-stage subtraction exposed a real cancellation problem: an unloaded welded leaf on a
+loaded four-bar acquired an almost-zero balance error, which the internal solver compared to
+itself and refused. The load calculation now retains contributing term magnitudes and
+recovery adds the known external reaction magnitudes, supplying an explicit epsilon-sized
+arithmetic allowance to `solveBodyEfforts`. Raw residual and allowance are both reported.
+No absolute one-unit load floor was added; a 1e-10 N injected imbalance still refuses and the
+next valid call recovers.
+
+Independent evidence:
+
+- `nativeWeldedLoadedRod` adds a 1 m, 3 kg slender bracket at (1,1), rotated 0.3 rad relative to
+  the existing loaded rod. Static/dynamic member force, moment transport and zero internal
+  power match hand arithmetic at three commanded poses with omega 3 and alpha -0.5, in SI and
+  inch/pound units, with rebasing and construction-array reversal. Member power/energy sums
+  match the external group values.
+- A three-member weld cycle keeps all cycle reactions unavailable, while a fourth loaded
+  leaf's bridge has its hand-derived wrench in both enumeration orders.
+- Fixed-frame support wrenches are recovered without a drive or rates in statics. Adding an
+  internal pin makes the redundant weld/pin reactions unavailable without erasing the
+  identifiable support wrench. Supplying fixed rows through the frame does not duplicate them.
+- The unloaded four-bar leaf has zero wrench; genuine imbalance, missing external reactions,
+  missing rates, aggregate properties and imported load provenance remain distinct refusals.
+- Repeated external ground pins require the explicitly selected support split; conditional
+  weld results say `evenest` and still match the bracket's independent force/moment answer.
+- Single grounded material overrides and an inertia-only static override are not over-refused.
+
+Four deliberate mutations were run separately and restored before the final gate. Removing
+rounding provenance failed the zero-leaf test with `unbalanced`; dropping internal non-weld
+rows falsely made a redundant weld unique; regularizing the internal cycle fabricated a
+reaction split; omitting moment transport missed the hand result by about 21 N·m. All four
+failed their intended assertions (not compilation). Exact records:
+`S3-member-mutations.json` and `S3-member-mutation-{roundoff,internal-pin,cycle-split,moment-reference}.log`.
+
+Final verification under Node 24:
+
+- Same exact S2/native argument list from `S2-reference-gate-scope.json`, now including the
+  member suites: **274 tests / 42 files pass**, `S3-member-complete-checkpoint.log`.
+- `npm run build`: **pass**, existing warnings, `S3-member-complete-build.log`.
+- Touched TypeScript formatted only; `git diff --check` passes. No UI or animated/dragging
+  behavior changed, so no new native-editor browser result is claimed. The current app's last
+  UI-copy check remains the 17/17 check recorded at the preceding force checkpoint. The full
+  S3 browser gate and S5/S6/S8 paired browser workflows are still required.
+
+Both new fixture constructors are recorded in `native-force-fixtures.ts`. Their native
+codec/gallery publication remains an explicit S6 task, alongside the earlier loaded rod.
+F2 has not been called and review spending is unchanged. Next: integrate per-partition force
+frames and availability, choose support policy across a cycle, settle shared fixed-frame
+ownership, implement the already-written continuous-stop/sample contract, finish the five
+worked examples/reference rates, then run the full S3 gate and F2. **S3 is not closed; S4–S8
+remain pending.**

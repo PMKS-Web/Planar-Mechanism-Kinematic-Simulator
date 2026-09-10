@@ -21,6 +21,7 @@ export type BodyEfforts =
       readonly nullity: number;
       readonly freeEquilibriumDirections: number;
       readonly residual: number;
+      readonly roundoffAllowance: number;
     };
 
 /** Use one support policy for a whole cycle; an isolated toggle must not select an even split. */
@@ -28,7 +29,8 @@ export function solveBodyEfforts(
   partition: CompiledBodyPartition,
   poses: GroupPoses,
   required: ReadonlyMap<BodyId, Wrench>,
-  supportPolicy: 'unique' | 'evenest' = 'unique'
+  supportPolicy: 'unique' | 'evenest' = 'unique',
+  arithmeticScale: ReadonlyMap<BodyId, Wrench> = new Map()
 ): BodyEfforts {
   const ids = [...partition.unknowns, ...partition.boundary];
   if (
@@ -38,7 +40,11 @@ export function solveBodyEfforts(
       (row) => !ids.includes(row.pair.groupA) || !ids.includes(row.pair.groupB)
     ) ||
     new Set(partition.rows.map((row) => row.key)).size !== partition.rows.length ||
-    partition.unknowns.some((id) => !required.has(id) || !finiteWrench(required.get(id)!))
+    partition.unknowns.some((id) => !required.has(id) || !finiteWrench(required.get(id)!)) ||
+    [...arithmeticScale.values()].some(
+      (wrench) =>
+        !finiteWrench(wrench) || wrench.force.x < 0 || wrench.force.y < 0 || wrench.moment < 0
+    )
   )
     return { ok: false, reason: 'invalid' };
   const scaling = bodyPositionScale(partition, poses);
@@ -64,8 +70,23 @@ export function solveBodyEfforts(
   );
   const load = Math.hypot(...rhs);
   const residual = load === 0 ? error : error / load;
+  const roundoffAllowance =
+    128 *
+    Number.EPSILON *
+    Math.hypot(
+      ...partition.unknowns
+        .flatMap((id) => {
+          const terms = arithmeticScale.get(id);
+          return terms ? [terms.force.x, terms.force.y, terms.moment] : [0, 0, 0];
+        })
+        .map((value, i) => value * scaling.columns[i])
+    );
   // Scale to the applied loads, not large canceling reactions that could conceal a failed balance.
-  if (!Number.isFinite(residual) || residual > (sharedSupport ? 1e-3 : 1e-8))
+  if (
+    !Number.isFinite(residual) ||
+    !Number.isFinite(roundoffAllowance) ||
+    error > (sharedSupport ? 1e-3 : 1e-8) * load + roundoffAllowance
+  )
     return { ok: false, reason: 'unbalanced' };
   const nullspace = bodyNullSpace(factor);
   const efforts = new Map<string, RowEffort>();
@@ -92,5 +113,6 @@ export function solveBodyEfforts(
     nullity: partition.rows.length - factor.rank,
     freeEquilibriumDirections: matrix.length - factor.rank,
     residual,
+    roundoffAllowance,
   };
 }

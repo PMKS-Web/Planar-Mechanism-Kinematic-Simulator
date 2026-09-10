@@ -220,3 +220,65 @@ The later cycle/result controller must choose one support policy for the whole c
 an isolated singular pose distinct from persistent support redundancy. Internal weld/member
 recovery, fixed-frame reaction ownership and aggregate-inertia/load-provenance ambiguities
 remain separate pending work; these moving-group primitives do not claim to solve them.
+
+## Recovering material reactions inside a welded group
+
+Member balances use the same `bodyLoadWrenches` law as the external group balance. Let O be
+the group's numerical origin at the current sample. For every material member m, form
+`b_m = [m a_C, I_C alpha + r_OC × m a_C] - w_applied,m - w_external,m`, with all moments about O.
+External row wrenches are assigned to the material IDs on the joint record, not to whichever
+member happens to name the condensed group. WORLD has no material balance equation.
+
+`internalForcePartition` assigns each material an equilibrium frame at O. These frames are
+only moment references for a force matrix; they do not create another set of kinematic
+poses, persistent bodies, joints or geometry. Each internal R/P/slot row retains its original
+A/B derivative blocks and local geometry, with the two group IDs replaced by the original
+material IDs. This matters even for an internal pin that adds no motion constraint after
+condensation: it can make a weld's force indeterminate.
+
+A weld supplies three reaction channels, with A/B blocks `(-Fx,-Fy,-M)` and `(Fx,Fy,M)` about
+that same O. Referring a full wrench to O is valid even when the weld's two authored attachment
+points differ; no coincidence assumption replaces its captured rigid transform. The resulting
+material equilibrium matrix is solved in unique mode. Nullspace participation makes a reaction
+unavailable. Thus a cycle of redundant welds has no invented internal split, while a bridge
+from that cycle to a loaded leaf still has a determinate wrench. WORLD-connected welds are
+included and their material equations recover a fixed bracket's support load.
+
+Before presentation, transport each side from O to its own material origin:
+`M_member = M_O - r_O,member × F`. Forces remain world-oriented SI components. Moments at the
+two different material origins are generally not opposites. The off-axis loaded-bracket test
+checks both transport to a common origin and zero net internal power using each origin's
+actual velocity. It covers static/dynamic loads, nonzero angular acceleration, SI/inch units,
+reordered construction arrays and a rebased bracket origin.
+
+A second solve can receive an almost-zero balance after subtracting opposing known external
+loads. Checking that residual only against the canceled remainder would reject a valid
+zero-load weld. The member load compiler retains magnitudes of contributing load/inertia
+terms; recovery adds the known external reaction magnitudes. `solveBodyEfforts` accepts this
+explicit arithmetic scale to add a `128*epsilon` rounding allowance in its normalized
+coordinates, with no one-unit floor. The reported residual remains the raw residual, and
+`roundoffAllowance` records the separate normalized allowance. A four-bar with an unloaded
+welded leaf proves this is necessary: removing the allowance refuses its zero reaction;
+adding an actual 1e-10 N imbalance still refuses, and a following valid call recovers.
+
+External support policy and internal weld uniqueness remain separate. If an external reaction
+is unavailable, member recovery returns `external-reaction`; it does not set that reaction
+to zero. An explicitly chosen external evenest split can supply known boundary values, but
+recovered internal results retain the `evenest` label to disclose that dependence. The internal
+solve still does not regularize a weld cycle. If approximate external support values do not
+balance the members at the internal solve's precision, recovery remains unavailable rather
+than inventing an additional material load distribution.
+
+An aggregate mass/CoM/inertia override does not specify how changed inertia is distributed
+among several materials. Dynamic member balances with such an override return
+`aggregate-properties`. Static balances need no inertia distribution: an inertia-only
+override is harmless; mass/CoM overrides matter if gravity is present. With gravity off,
+static member forces remain computable. A group with only one material (WORLD excluded) has
+no distribution ambiguity and uses its complete group override. An active imported group
+load whose provenance names multiple materials returns `load-owner`; its external group
+wrench remains available. Neither refusal erases the material records or invalidates the
+external group force answer.
+
+These functions recover one supplied group's forces at one sample. Publication of complete
+per-partition force frames, whole-cycle support policy, shared fixed-frame ownership across
+independent machine clocks and all availability-aware consumer accessors remain S3/S6 work.

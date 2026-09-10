@@ -47,3 +47,11 @@ export function wrenchPower(wrench: Wrench, twist: BodyTwist): number {
 export function finiteWrench(wrench: Wrench): boolean {
   return [wrench.force.x, wrench.force.y, wrench.moment].every(Number.isFinite);
 }
+
+/** Component magnitudes retain the arithmetic scale when opposing load terms cancel. */
+export function absoluteWrench(wrench: Wrench): Wrench {
+  return {
+    force: { x: Math.abs(wrench.force.x), y: Math.abs(wrench.force.y) },
+    moment: Math.abs(wrench.moment),
+  };
+}
