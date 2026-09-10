@@ -5,7 +5,7 @@
 - Goal: implement **all S0–S8** of [the plan](bodies-and-joints-plan.md), including native default editor, consumer cutover and obsolete-runtime removal. No push or publication.
 - Implementation starting commit: `487d535` on `bodies-and-joints-plan`.
 - Worktree: `.claude/worktrees/funny-swirles-3c6486`.
-- Current checkpoint: **S0 and S1 complete; S2 in progress**. Native editor cutover has not begun. Concrete interface choices are in [the contract](bodies-and-joints-contract.md); frozen catalogs/reference hashes are in [the baseline](bodies-and-joints-baseline.json).
+- Current checkpoint: **S0–S2 complete; S3 in progress**. Native editor cutover has not begun. Concrete interface choices are in [the contract](bodies-and-joints-contract.md); frozen catalogs/reference hashes are in [the baseline](bodies-and-joints-baseline.json).
 - Sole implementation owner: Codex. Fable reviews only at the four specified gates.
 - Preserve other worktrees and unrelated changes. The starting tracked worktree was clean.
 - Runtime for these commands: Node `v24.18.0`, explicitly prepended to PATH; the login shell otherwise selects unsupported Node 20.
@@ -17,8 +17,8 @@
 | --- | --- | --- |
 | S0 | Baseline complete | Six unit suites pass (182 tests), seven new compatibility tests pass, build passes, template-open 11/11, template-graphs 3978/3978, ui-copy 17/17. Timing, visual baseline and operation-level consumer classification are recorded. Existing drag timing failures are reproduced on original test files, not waived; S7 must meet the measured comparison budget. |
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
-| S2 | In progress | Native row compiler, physical Jacobians, SI groups/partitions, pivoted QR, local correction, numerical frames, mobility/admission and bounded continuation are implemented and under verification. Seven native/legacy and four native/MATLAB position comparisons pass; frame/scale checks and current-editor browser gates pass. Broader native singularity/redundancy probes and continuous-event handling remain open. |
-| S3 | Pending | Analytic rates, physical wrenches, independent examples and F2. |
+| S2 | Complete | Native compiler, analytic Jacobians, mobility/admission, branch continuation, folds, limits and frame conditioning. Seven native/legacy and four native/MATLAB comparisons retain the original ceilings. Geometric redundancy, two slots on a carrier and one-pin/shared-WORLD cases pass. Combined S2/initial-rate gate: 255 tests / 37 files; current-editor browser gate is green. Continuous cycle event publication remains an explicit S3 obligation. |
+| S3 | In progress | Analytic body/point rates and numerical-frame rate transforms implemented and initially verified. Forces, sample schema, cycle events, remaining worked examples, full gates and F2 are pending. |
 | S4 | Pending | Native transactions, codec/import, lifecycle, history and F3. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
 | S6 | Pending | All consumers, synthesis, tutorial, fixtures/templates and default cutover. |
@@ -120,7 +120,7 @@ Known reported spend: **$3.47922375**, including the probe and F1 auxiliary usag
 
 ## Next action
 
-Finish S2 native singularity/redundancy probes and the continuous-event contract; reference agreement and browser checks now pass (see latest evidence below). Numerical frames, mobility/admission and continuation are now implemented; inspect the latest evidence below. F1 resolution is committed as `447dfb9`; its gates pass. F1 process 22599 completed successfully; no further F1 call is pending or required for routine fixes. The independent row/derivative derivation is in `docs/bodies-and-joints-equations.md`.
+Continue S3 with physical wrenches, native sample/cycle ownership, continuous stop events and all five end-to-end examples, then the full numerical/UI gates and F2. S2 position verification is complete; its continuous-cycle obligations are recorded explicitly in the contract. Numerical frames, mobility/admission and continuation are now implemented; inspect the latest evidence below. F1 resolution is committed as `447dfb9`; its gates pass. F1 process 22599 completed successfully; no further F1 call is pending or required for routine fixes. The independent row/derivative derivation is in `docs/bodies-and-joints-equations.md`.
 
 ## S1 implementation history (pre-review evidence)
 
@@ -347,3 +347,54 @@ specified S2 legacy suites. The native frame/factory subset independently passes
 with the existing dependency/style warnings. Only touched source files were formatted.
 The comparison bridge was renamed to include `position` so its limited property scope is
 visible at the call site; its 11-case verification is rerun after that rename.
+
+
+## S2 closure and initial S3 rate implementation
+
+S2 now passes its remaining native probes. `native-redundancy-fixtures.ts` builds a third
+parallel crank whose redundancy is geometric rather than a duplicated row, and two distinct
+pin-in-slot joints on one rotating carrier, with separately grounded riders and off-axis
+witnesses. The parallel branch traverses two turns, exact collinear samples, and the reverse
+path in both array orders. Both slot riders agree with independent ray/circle intersections
+through a full revolution. One-pin bodies retain their material shape and heading through
+full turns without invented endpoint joints; two such machines sharing WORLD stay in
+separate partitions. Fixture publication through native editor commands remains S6 work.
+
+`body-rates.ts` and `body-point-rates.ts` begin S3. They return physical velocity/acceleration
+from the accepted row set, including explicit moving boundaries, nonuniform command
+acceleration, off-axis material points and numerical-origin changes. They hold no global
+maps and return no motions on refusal. Tests cover R and P pairs with boundary acceleration
+projecting into their rows, an unreferenced extreme-speed boundary, rank/missing-input and
+contradictory-acceleration refusals, tiny incompatible commands, pinned/welded ram carriages,
+a geometrically redundant parallel crank, and success → singular sample → recovery.
+
+Two initial failures improved the implementation:
+
+- `S3-rates-first.log`: the offset R pair was refused at its drawn pose because the tiny
+  rounding difference between coincident anchors became the scale. The position scale now
+  accounts for arithmetic precision and referenced moving-origin lever arms, with no absolute
+  WORLD distance. Native position invariance/reference gates remain green.
+- `S3-rates-offset-scale.log`: exact zero angular rates inherited tiny QR round-off and were
+  misclassified as inconsistent. The residual check now includes a scaled floating-point
+  allowance, without an absolute rate floor. Tiny conflicting commands still refuse.
+- `S3-fixture-rates-first.log` was a test-title apostrophe syntax error, corrected before
+  the mechanism checks ran; it is not solver evidence. `S3-rate-consistency-fixed.log`
+  passes the initial eight rate tests. The added tiny-rate conflict probe raises that to nine.
+
+`S2-final-and-S3-rates.log` passes **255 tests / 37 files**, containing every required S2 unit
+suite plus the initial rate specs. No production UI module imports the native body-system
+runtime yet, so the last five-suite Playwright gate at `d9f6e59` still covers the unchanged
+live editor. Browser/native integration is not claimed. The new stop-event section in
+`bodies-and-joints-contract.md` states S3's required controller behavior and counterexamples;
+it is an implementation contract, not a completed controller.
+
+S3 is **not complete**. It still owes physical joint/member wrenches and power checks, the
+remaining independent end-to-end examples, broader reference-rate checks, native sample and
+cycle publication with interior-stop detection, the full S3 gate, and F2. S4–S8 are pending.
+No Fable call was made; the recorded review budget is unchanged.
+
+
+The closure build passes in `S2-close-S3-rates-build.log` with existing warnings. Source was
+formatted only where touched, and `git diff --check` is clean. Current live-UI behavior is
+unchanged by these native-only additions; later S5/S6/S8 still require both Playwright and
+standard Codex computer use in incognito Chrome.
