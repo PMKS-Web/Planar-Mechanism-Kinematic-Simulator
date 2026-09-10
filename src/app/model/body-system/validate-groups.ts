@@ -51,7 +51,8 @@ export function validateGroups(context: ValidationContext): void {
         (member) =>
           !sameTransform(
             member.poseInReference,
-            relativePose(group.members.get(force.bodyId)!, group.members.get(member.bodyId)!)
+            relativePose(group.members.get(force.bodyId)!, group.members.get(member.bodyId)!),
+            [group.members.get(force.bodyId)!, group.members.get(member.bodyId)!]
           )
       )
     ) {

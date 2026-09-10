@@ -97,7 +97,14 @@ export class BodyFactory {
       localToWorld(poseA, anchorA.point)
     );
     // Capture datums only from feasible anchors; a travel zero cannot repair a lateral offset.
-    const tolerance = 1e-10 * Math.max(1, Math.hypot(displacement.x, displacement.y));
+    const tolerance =
+      64 *
+      Number.EPSILON *
+      Math.max(
+        ...[poseA, poseB, anchorA.point, anchorB.point, displacement].map((point) =>
+          Math.hypot(point.x, point.y)
+        )
+      );
     if (
       (kind === 'revolute' && Math.hypot(displacement.x, displacement.y) > tolerance) ||
       ((kind === 'prismatic' || kind === 'pin-in-slot') &&

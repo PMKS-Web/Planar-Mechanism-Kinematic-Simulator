@@ -20,6 +20,48 @@ function bar(f: BodyFactory, x: number) {
 }
 
 describe('native constraint compilation', () => {
+  it('keeps consistent oblique weld cycles under unit scaling and distant frame cancellation', () => {
+    for (const size of [1e-9, 1, 1e6])
+      for (const offset of [0, 1e9 * size]) {
+        const f = new BodyFactory();
+        const ids = [0, 1, 2].map((i) =>
+          f.body(
+            String(i),
+            { x: offset + i * size, y: offset - i * size, angle: 0.7 + i * 0.2 },
+            [
+              { x: 0, y: 0 },
+              { x: size, y: 0 },
+            ],
+            size / 10
+          )
+        );
+        const anchors = ids.map((id) => f.attachment(id, { x: 0, y: 0 }));
+        f.joint('weld', anchors[0], anchors[1]);
+        f.joint('weld', anchors[1], anchors[2]);
+        f.joint('weld', anchors[2], anchors[0]);
+        f.joint('weld', f.attachment(WORLD, { x: offset, y: offset }), anchors[0]);
+        for (const doc of [f.document, { ...f.document, joints: [...f.document.joints].reverse() }])
+          expect(compileBodyDocument(doc).ok, `size ${size}, offset ${offset}`).toBe(true);
+      }
+  });
+
+  it('does not use a distant world origin as permission to repair a broken weld', () => {
+    const f = new BodyFactory();
+    const a = bar(f, 1e9);
+    f.joint('weld', f.attachment(WORLD, { x: 1e9, y: 0 }), f.attachment(a, { x: 0, y: 0 }));
+    expect(compileBodyDocument(f.document).ok).toBe(true);
+    const moved = {
+      ...f.document,
+      bodies: f.document.bodies.map((body) =>
+        body.id === a ? { ...body, pose: { ...body.pose, x: body.pose.x + 0.01 } } : body
+      ),
+    };
+    expect(compileBodyDocument(moved)).toMatchObject({
+      ok: false,
+      issues: [{ code: 'inconsistent-weld-pose' }],
+    });
+  });
+
   it('keeps two grounded cranks as distinct partitions and retains an unconnected material body', () => {
     const f = new BodyFactory();
     const ids = [bar(f, 0), bar(f, 4)];

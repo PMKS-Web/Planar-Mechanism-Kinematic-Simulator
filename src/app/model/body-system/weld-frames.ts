@@ -67,7 +67,7 @@ export function compileWeldFrames(document: BodyDocument): WeldFrameCompilation 
           return { ok: false, code: 'invalid-frame', jointId: edge.jointId };
         const previous = transforms.get(edge.to);
         if (previous) {
-          if (!sameTransform(previous, candidate))
+          if (!sameTransform(previous, candidate, [transforms.get(from)!, edge.transform]))
             return { ok: false, code: 'weld-cycle', jointId: edge.jointId };
         } else {
           transforms.set(edge.to, candidate);
@@ -90,7 +90,13 @@ export function compileWeldFrames(document: BodyDocument): WeldFrameCompilation 
 }
 
 /** Rest angles share one unwrapped pose set; a turn mismatch changes relative coordinates. */
-export function sameTransform(a: Pose, b: Pose): boolean {
-  const size = Math.max(1, Math.hypot(a.x, a.y), Math.hypot(b.x, b.y));
-  return Math.hypot(a.x - b.x, a.y - b.y) <= 1e-10 * size && Math.abs(a.angle - b.angle) <= 1e-10;
+export function sameTransform(a: Pose, b: Pose, operands: readonly Pose[] = []): boolean {
+  // Cancellation can leave a near-zero result from distant frames. Account for the
+  // arithmetic that produced it, without granting a geometric tolerance of 1e-10 of WORLD.
+  const size = Math.max(...[a, b, ...operands].map((pose) => Math.hypot(pose.x, pose.y)));
+  const angleSize = Math.max(1, ...[a, b, ...operands].map((pose) => Math.abs(pose.angle)));
+  return (
+    Math.hypot(a.x - b.x, a.y - b.y) <= 64 * Number.EPSILON * size &&
+    Math.abs(a.angle - b.angle) <= Math.min(1e-10, 64 * Number.EPSILON * angleSize)
+  );
 }

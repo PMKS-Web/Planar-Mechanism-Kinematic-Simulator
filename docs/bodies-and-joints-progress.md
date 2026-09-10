@@ -17,7 +17,7 @@
 | --- | --- | --- |
 | S0 | Baseline complete | Six unit suites pass (182 tests), seven new compatibility tests pass, build passes, template-open 11/11, template-graphs 3978/3978, ui-copy 17/17. Timing, visual baseline and operation-level consumer classification are recorded. Existing drag timing failures are reproduced on original test files, not waived; S7 must meet the measured comparison budget. |
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
-| S2 | In progress | Native row compiler, physical Jacobians, SI groups/partitions, pivoted QR, local correction, numerical frames, mobility/admission and bounded continuation are implemented and under verification. Full native/reference agreement, remaining event/singularity probes, performance and browser gates remain pending. |
+| S2 | In progress | Native row compiler, physical Jacobians, SI groups/partitions, pivoted QR, local correction, numerical frames, mobility/admission and bounded continuation are implemented and under verification. Seven native/legacy and four native/MATLAB position comparisons pass; frame/scale checks and current-editor browser gates pass. Broader native singularity/redundancy probes and continuous-event handling remain open. |
 | S3 | Pending | Analytic rates, physical wrenches, independent examples and F2. |
 | S4 | Pending | Native transactions, codec/import, lifecycle, history and F3. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
@@ -120,7 +120,7 @@ Known reported spend: **$3.47922375**, including the probe and F1 auxiliary usag
 
 ## Next action
 
-Finish S2 native/reference agreement and remaining event/singularity probes, then its browser/build gates. Numerical frames, mobility/admission and continuation are now implemented; inspect the latest evidence below. F1 resolution is committed as `447dfb9`; its gates pass. F1 process 22599 completed successfully; no further F1 call is pending or required for routine fixes. The independent row/derivative derivation is in `docs/bodies-and-joints-equations.md`.
+Finish S2 native singularity/redundancy probes and the continuous-event contract; reference agreement and browser checks now pass (see latest evidence below). Numerical frames, mobility/admission and continuation are now implemented; inspect the latest evidence below. F1 resolution is committed as `447dfb9`; its gates pass. F1 process 22599 completed successfully; no further F1 call is pending or required for routine fixes. The independent row/derivative derivation is in `docs/bodies-and-joints-equations.md`.
 
 ## S1 implementation history (pre-review evidence)
 
@@ -269,3 +269,81 @@ singularity/redundancy set, and browser/build/ui-copy gates. Event localization 
 passive-limit extrema between samples must be handled before S3's cycle precomputation can
 claim continuous playback respects stops. The current frame/mobility/continuation code is
 isolated from the live app. S3–S8, native default cutover and legacy removal remain open.
+
+
+## S2 progress: independent reference agreement and frame precision
+
+The position-only bridge `native-position-reference-fixture.ts` builds native records directly
+from declarative reference geometry. It never reads solved legacy positions to set a body's
+shape. Grounded free sliders become pin-in-slot relationships; welded riders become P
+relationships, without synthetic blocks. Material attachments retain every reference tracer.
+The bridge deliberately does **not** migrate loads or mass specifications and is not a codec
+or editor adapter. S3 must not use its placeholder properties for force comparisons; S6 must
+replace this bridge with published native fixtures built through editor commands.
+
+`native-reference-position.spec.ts` advances the native continuation through every legacy
+sample, in both native array orders, at the crank coordinate retained by that sample. Legacy
+crank points are rounded at each rotation, so reconstructing the nominal integer degree is
+not the same coordinate (the first attempt exposed that mismatch). Separately, every MATLAB
+sample is solved at its published input angle, including the extra rocking extrema absent
+from the legacy cycle. No MATLAB rows or singular/toggle samples are skipped. MATLAB's
+slider-crank sensor E is explicitly mapped to B, as its source fixture documents.
+
+Maximum Euclidean position differences (reference length units), from
+`S2-native-reference-errors.json`; ceilings remain 0.001 against legacy and 0.01 against MATLAB:
+
+| Mechanism | Legacy samples | Native vs legacy | MATLAB samples | Native vs MATLAB |
+| --- | --- | --- | --- | --- |
+| four-bar | 361 | 0.000159614052 | 361 | 9.06039944e-15 |
+| slider-crank | 361 | 9.39926944e-05 | 361 | 1.83240863e-09 |
+| Stephenson III | 199 | 0.000291999503 | 201 | 2.19379226e-08 |
+| Watt I | 21 | 0.000455165508 | 23 | 1.49778267e-08 |
+| inverted slider-crank | 361 | 0.000142040352 | — | — |
+| guided rod | 361 | 9.95012174e-05 | — | — |
+| offset-pivot lever | 361 | 0.000182947751 | — | — |
+
+Three concrete defects were reproduced and fixed:
+
+- The old grounded-input ordering rotated each point of a ternary crank independently.
+  Repeated coordinate rounding changed the angle between B and tracer H: native/legacy
+  error reached 0.002154 near the end of a revolution. The same rigid-tracer placement used
+  elsewhere now carries additional input-body points from one direction. This small legacy
+  correction is needed to maintain a trustworthy transition baseline; it is not a new legacy
+  architecture. `S2-native-reference-diagnostic.log` records the failure; the unchanged
+  0.001 agreement assertion passes after the correction.
+- A weld to WORLD at x=1e9 accepted a body displaced by 0.01 because `sameTransform`
+  allowed 1e-10 times the world distance. The failure is in `S2-weld-origin-before.log`.
+  Frame comparison now accounts for floating-point precision of its operands, including
+  cancellation, rather than that geometric fraction. Oblique, redundant grounded weld
+  cycles pass at sizes 1e-9, 1 and 1e6, near and far from the origin. Unwrapped angle
+  comparison remains capped at 1e-10; a large angle cannot hide a whole-turn mismatch.
+- The factory used the opposite fixed-length half-measure: its absolute anchor tolerance
+  rejected a feasible four-bar at size 1e6 before the solver ran. `S2-frame-invariance-first.log`
+  records that refusal. Anchor feasibility now uses operand precision too. Native continued
+  four-bars at sizes 1e-9, 1 and 1e6 pass at world rotations -1.1 and 0.9 with every material
+  frame rebased; the independent circle-intersection answers agree after normalization to
+  eight decimal places. Malformed anchor refusals remain covered by the F1 regression suite.
+
+The pre-fix S2 browser gate completed (phase2 6/6, phase3 8/8, cylinder-mount 31/31,
+playback-direction 14/14, ui-copy 17/17) and the build passed. After the legacy crank
+correction, all five browser suites were rerun and pass again in
+`S2-browser-after-reference/`. Codex inspected its running-ram and playback-reversal
+filmstrips: the welded bracket remains attached, the block follows its guide, the design
+pose stays visible, and reversal preserves the current pose. The phase2/phase3 reports and
+screenshots are copied into that gate directory. These Playwright checks protect the current
+editor; native editor integration and the later live incognito gates remain pending.
+
+S2 is still **in progress**: broaden the native redundancy/singularity cases, especially two
+slots on one carrier and nonlinear singular continuation, before closing the position gate.
+Continuous passive-bound event localization belongs with the cycle controller before S3 can
+claim playback stays inside every stop. No S3–S8 completion is claimed, and no Fable call was
+made for this self-review checkpoint.
+
+
+Final gate for this progress change: **243 tests / 34 files pass** in
+`S2-reference-gate-final.log`, including the unchanged original MATLAB regression and all
+specified S2 legacy suites. The native frame/factory subset independently passes 93 tests
+(`S2-frame-invariance-fixed.log`). `S2-reference-build.log` is a passing production build
+with the existing dependency/style warnings. Only touched source files were formatted.
+The comparison bridge was renamed to include `position` so its limited property scope is
+visible at the call site; its 11-case verification is rerun after that rename.
