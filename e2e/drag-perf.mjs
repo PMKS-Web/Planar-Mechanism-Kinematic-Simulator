@@ -77,7 +77,14 @@ for (const sc of SCENARIOS) {
     const run = await plainDrag(page, await dragTarget(page, sc), -1);
     const appMs = Math.max(0, run.msPerMove - floor);
     const p90 = run.frames.p90Ms;
-    measured[sc.id] = { appMsPerMove: Math.round(appMs * 10) / 10, frameP90Ms: p90 };
+    measured[sc.id] = {
+      appMsPerMove: Math.round(appMs * 10) / 10,
+      frameP90Ms: p90,
+      frameP50Ms: run.frames.medianMs,
+      frameP95Ms: run.frames.p95Ms,
+      frameWorstMs: run.frames.worstMs,
+      frameCount: run.frames.count,
+    };
     const was = baseline.scenarios[sc.id];
     let ok = true;
     let verdict = 'no baseline';

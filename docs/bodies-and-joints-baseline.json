@@ -1,0 +1,2024 @@
+{
+  "baselineCommit": "487d535d69db7d33ce0e2c1371e0b3c4fedf213b",
+  "referenceFiles": [
+    {
+      "path": "src/app/SixBarVerification.m",
+      "sha256": "331345a9ba9674ff9836d98530418ea9f0448c14ac29c8e5e46a6937800dfd83"
+    },
+    {
+      "path": "src/test-data/motiongen/gripper-curves.csv",
+      "sha256": "2274e857f8a6b13dbabf8877a5b7df81461cbb23bdcd10a01783c02aae8aea00"
+    },
+    {
+      "path": "src/test-data/verification/README.md",
+      "sha256": "61cbc5295af3ee85e16127b804a8106754118be37316f2d184e333e3b97851f2"
+    },
+    {
+      "path": "src/test-data/verification/slider-crank-tracer-10rpm.ts",
+      "sha256": "68f9a56e472f6fef77a4ac9322eea42a0bd7ca4c5bcd9e685b120ed078a7b454"
+    },
+    {
+      "path": "src/test-data/verification/stephenson-iii-ex2-10rpm.ts",
+      "sha256": "0d15a4a60adfe84f9bb3daeaac72855e5dba18af243ca954d530d5136a1a36e1"
+    },
+    {
+      "path": "src/test-data/verification/teaching-lab-four-bar-10-31rpm.ts",
+      "sha256": "310b15ea0feaf97570d68a425e3b916e8c09fd0a161f3507eb9ea7d3e28c2b55"
+    },
+    {
+      "path": "src/test-data/verification/teaching-lab-slider-crank-15-1rpm.ts",
+      "sha256": "7da4bead6deea758e275115794ee9ef5428904c2114104dbaeafe2c741843844"
+    },
+    {
+      "path": "src/test-data/verification/types.ts",
+      "sha256": "30fb54044a5d72443d19ef2e171c5af368ae484345b8bb63c044abb06ff12fb1"
+    },
+    {
+      "path": "src/test-data/verification/watt-i-10rpm.ts",
+      "sha256": "26b06534c532c41b30fe792f536823213d5872bca8aa4c7fa91eeaf697b1682a"
+    }
+  ],
+  "consumerSearch": {
+    "files": 85,
+    "sites": 1592,
+    "patterns": {
+      "point-topology": "\\.joints\\b|connectedJoints|instanceof\\s+(RealJoint|RevJoint|PrisJoint)",
+      "compound-material": "\\.subset\\b|instanceof\\s+(RealLink|SliderBlock)|rootLinkOwning|rootCarrying",
+      "letter-identity": "determineNextLetter|charAt\\(|\\.id\\.split\\(|\\.id\\[[^]]+\\]|jointId\\[[^]]+\\]",
+      "shape-frame": "angleRad|outlineLoops\\(|getPathString|centerOfMass|massMoI"
+    },
+    "artifact": "artifacts/bodies-and-joints/S0/consumer-sites.tsv",
+    "status": "Mechanical inventory; semantic review pending"
+  },
+  "publicTemplateIds": [
+    "4-Bar",
+    "Watt_I",
+    "Watt_II",
+    "Stephenson_III",
+    "Slider_Crank",
+    "Locked_Four_Bar",
+    "Cylinder_Gripper",
+    "Aircraft_Landing_Gear",
+    "Hood_Hinge",
+    "Excavator_Bucket",
+    "Car_Steering",
+    "Whitworth_Quick_Return",
+    "Scotch_Yoke",
+    "Cylinder_Boom",
+    "Radial_Engine",
+    "Chebyshev_Straight_Line",
+    "Windshield_Wiper",
+    "Elliptical_Crank",
+    "Jansen_Leg",
+    "Backhoe_Bucket",
+    "Scissor_Lift",
+    "Shaper_Quick_Return",
+    "Pedaling_Leg",
+    "Oscillating_Fan",
+    "Pumpjack",
+    "Punch_Press",
+    "Derrick_Crane",
+    "Toggle_Clamp",
+    "Offset_Load_Rocker",
+    "Bell_Crank",
+    "Flywheel_Engine",
+    "Elliptical_Trammel",
+    "Peaucellier",
+    "Pantograph",
+    "Double_Butterfly",
+    "Crane_Two_Loads",
+    "Three_Machines",
+    "Walking_Pair",
+    "Straight_Line_Pair",
+    "Pumping_Field",
+    "Landing_Gear",
+    "Four_Bar_Inversions",
+    "Slider_Crank_Inversions"
+  ],
+  "devTemplateIds": [
+    "Dev_All_Mechanism_Types",
+    "Dev_Object_Gallery",
+    "Dev_Render_Stress"
+  ],
+  "galleryNames": [
+    "Punch press",
+    "Derrick crane",
+    "Toggle clamp",
+    "Rocker with an offset load",
+    "Hydraulic cylinder",
+    "Cylinder-driven boom",
+    "Aircraft landing gear",
+    "Cylinder-driven gripper",
+    "Parallel gripper",
+    "Gripper on rails",
+    "Gripper the cylinder closes",
+    "Backhoe bucket",
+    "Toggle press",
+    "Scissor lift",
+    "Shaper's quick-return drive",
+    "Slider-crank whose rod comes square to the guide",
+    "MotionGen gripper",
+    "Gripper with the redundancy removed",
+    "Radial engine, five cylinders",
+    "Chebyshev straight-line linkage",
+    "Windshield wiper",
+    "Jansen leg",
+    "Elliptical crank",
+    "Inverted slider-crank",
+    "Whitworth proportions",
+    "Slotted lever pinned off its slot",
+    "Guided rod pushed by a link",
+    "Slotted lever with a rod that cannot tilt",
+    "Inverted slider-crank with a load",
+    "Four-bar with a slotted coupler",
+    "Scotch yoke",
+    "Scotch yoke with a tracer",
+    "Scotch yoke guided at the far end",
+    "Elliptical trammel",
+    "Four-bar driven at its coupler-rocker pin",
+    "Leg on a bicycle crank",
+    "Oscillating fan",
+    "Walking-beam pumping unit",
+    "TeachingLab four-bar",
+    "TeachingLab four-bar, locked except the crank",
+    "TeachingLab slider-crank",
+    "Slider-crank with a tracer",
+    "Stephenson III",
+    "Watt I",
+    "Crank on the edge of Grashof",
+    "Four-bar with four equal sides",
+    "Parallelogram with a third parallel crank",
+    "Rocker that swings more than a turn",
+    "Crank holding its length",
+    "Two four-bars",
+    "Engine with a flywheel",
+    "Crane carrying two loads",
+    "Three machines, three drives",
+    "Peaucellier-Lipkin linkage",
+    "Pantograph",
+    "Double butterfly linkage",
+    "Drag link",
+    "Bell crank",
+    "Elliptical trammel, driven",
+    "Screw jack",
+    "Loader bucket",
+    "Four-bar inversions",
+    "Slider-crank inversions",
+    "Walking pair",
+    "Approximate and exact",
+    "Pumping field"
+  ],
+  "performance": {
+    "at": "2026-09-10T20:06:19.501Z",
+    "machine": {
+      "platform": "darwin",
+      "release": "25.5.0",
+      "cpu": "Apple M1 Pro"
+    },
+    "browser": "151.0.7922.34",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "method": "New page per template. Navigation readiness includes network/UI startup. Nine complete service rebuilds with solved-partition cache cleared; first recorded separately and p50/p95 from remaining eight. Heap measured after GC, page only. No physical setting, sample density or reference answer changed.",
+    "precompute": [
+      {
+        "id": "4-Bar",
+        "firstRebuildMs": 5.400000000372529,
+        "warmCacheColdRebuildP50Ms": 3.199999999254942,
+        "warmCacheColdRebuildP95Ms": 3.700000001117587,
+        "heapBytes": 24017028,
+        "settings": {
+          "objectScale": 200,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          361
+        ]
+      },
+      {
+        "id": "Watt_I",
+        "firstRebuildMs": 7.699999999254942,
+        "warmCacheColdRebuildP50Ms": 5.200000001117587,
+        "warmCacheColdRebuildP95Ms": 6.099999999627471,
+        "heapBytes": 25486352,
+        "settings": {
+          "objectScale": 200,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          361
+        ]
+      },
+      {
+        "id": "Watt_II",
+        "firstRebuildMs": 6.599999999627471,
+        "warmCacheColdRebuildP50Ms": 5.5,
+        "warmCacheColdRebuildP95Ms": 6.099999999627471,
+        "heapBytes": 26888940,
+        "settings": {
+          "objectScale": 200,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          361
+        ]
+      },
+      {
+        "id": "Stephenson_III",
+        "firstRebuildMs": 7.699999999254942,
+        "warmCacheColdRebuildP50Ms": 5.699999999254942,
+        "warmCacheColdRebuildP95Ms": 6.5,
+        "heapBytes": 26760776,
+        "settings": {
+          "objectScale": 200,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          361
+        ]
+      },
+      {
+        "id": "Slider_Crank",
+        "firstRebuildMs": 5,
+        "warmCacheColdRebuildP50Ms": 2.900000000372529,
+        "warmCacheColdRebuildP95Ms": 3.599999999627471,
+        "heapBytes": 25767940,
+        "settings": {
+          "objectScale": 200,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          361
+        ]
+      },
+      {
+        "id": "Locked_Four_Bar",
+        "firstRebuildMs": 4.900000000372529,
+        "warmCacheColdRebuildP50Ms": 2.799999998882413,
+        "warmCacheColdRebuildP95Ms": 3.599999999627471,
+        "heapBytes": 25357436,
+        "settings": {
+          "objectScale": 187.6,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          305
+        ]
+      },
+      {
+        "id": "Cylinder_Gripper",
+        "firstRebuildMs": 108.59999999962747,
+        "warmCacheColdRebuildP50Ms": 87.09999999962747,
+        "warmCacheColdRebuildP95Ms": 91.79999999888241,
+        "heapBytes": 34781012,
+        "settings": {
+          "objectScale": 140,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          359
+        ]
+      },
+      {
+        "id": "Aircraft_Landing_Gear",
+        "firstRebuildMs": 25.90000000037253,
+        "warmCacheColdRebuildP50Ms": 12.800000000745058,
+        "warmCacheColdRebuildP95Ms": 16.5,
+        "heapBytes": 31268464,
+        "settings": {
+          "objectScale": 95.19999999999999,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          359
+        ]
+      },
+      {
+        "id": "Hood_Hinge",
+        "firstRebuildMs": 10.699999999254942,
+        "warmCacheColdRebuildP50Ms": 6.599999999627471,
+        "warmCacheColdRebuildP95Ms": 8.100000001490116,
+        "heapBytes": 27540372,
+        "settings": {
+          "objectScale": 100,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          129
+        ]
+      },
+      {
+        "id": "Excavator_Bucket",
+        "firstRebuildMs": 33.59999999962747,
+        "warmCacheColdRebuildP50Ms": 23.5,
+        "warmCacheColdRebuildP95Ms": 26,
+        "heapBytes": 28110056,
+        "settings": {
+          "objectScale": 60,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          141
+        ]
+      },
+      {
+        "id": "Car_Steering",
+        "firstRebuildMs": 22.199999999254942,
+        "warmCacheColdRebuildP50Ms": 14.099999999627471,
+        "warmCacheColdRebuildP95Ms": 16.09999999962747,
+        "heapBytes": 30240708,
+        "settings": {
+          "objectScale": 10,
+          "lengthUnit": 2,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          367
+        ]
+      },
+      {
+        "id": "Whitworth_Quick_Return",
+        "firstRebuildMs": 5,
+        "warmCacheColdRebuildP50Ms": 3.599999999627471,
+        "warmCacheColdRebuildP95Ms": 5.5,
+        "heapBytes": 25613932,
+        "settings": {
+          "objectScale": 140,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          361
+        ]
+      },
+      {
+        "id": "Scotch_Yoke",
+        "firstRebuildMs": 3.800000000745058,
+        "warmCacheColdRebuildP50Ms": 3.800000000745058,
+        "warmCacheColdRebuildP95Ms": 4.599999999627471,
+        "heapBytes": 26425480,
+        "settings": {
+          "objectScale": 46.9,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          361
+        ]
+      },
+      {
+        "id": "Cylinder_Boom",
+        "firstRebuildMs": 8.5,
+        "warmCacheColdRebuildP50Ms": 4.5,
+        "warmCacheColdRebuildP95Ms": 6.300000000745058,
+        "heapBytes": 26549904,
+        "settings": {
+          "objectScale": 53.22,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          359
+        ]
+      },
+      {
+        "id": "Radial_Engine",
+        "firstRebuildMs": 10.799999998882413,
+        "warmCacheColdRebuildP50Ms": 7.400000000372529,
+        "warmCacheColdRebuildP95Ms": 9.400000000372529,
+        "heapBytes": 29197028,
+        "settings": {
+          "objectScale": 140,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          361
+        ]
+      },
+      {
+        "id": "Chebyshev_Straight_Line",
+        "firstRebuildMs": 4.599999999627471,
+        "warmCacheColdRebuildP50Ms": 4.400000000372529,
+        "warmCacheColdRebuildP95Ms": 5.300000000745058,
+        "heapBytes": 25664712,
+        "settings": {
+          "objectScale": 53.29,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          363
+        ]
+      },
+      {
+        "id": "Windshield_Wiper",
+        "firstRebuildMs": 9.899999998509884,
+        "warmCacheColdRebuildP50Ms": 5.599999999627471,
+        "warmCacheColdRebuildP95Ms": 6.900000000372529,
+        "heapBytes": 26912660,
+        "settings": {
+          "objectScale": 140,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          361
+        ]
+      },
+      {
+        "id": "Elliptical_Crank",
+        "firstRebuildMs": 20.90000000037253,
+        "warmCacheColdRebuildP50Ms": 14.599999999627471,
+        "warmCacheColdRebuildP95Ms": 15.900000000372529,
+        "heapBytes": 27198300,
+        "settings": {
+          "objectScale": 140,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          361
+        ]
+      },
+      {
+        "id": "Jansen_Leg",
+        "firstRebuildMs": 10.300000000745058,
+        "warmCacheColdRebuildP50Ms": 6.800000000745058,
+        "warmCacheColdRebuildP95Ms": 9.5,
+        "heapBytes": 27527640,
+        "settings": {
+          "objectScale": 1400,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          361
+        ]
+      },
+      {
+        "id": "Backhoe_Bucket",
+        "firstRebuildMs": 11.400000000372529,
+        "warmCacheColdRebuildP50Ms": 6.899999998509884,
+        "warmCacheColdRebuildP95Ms": 9.799999998882413,
+        "heapBytes": 27785032,
+        "settings": {
+          "objectScale": 140,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          359
+        ]
+      },
+      {
+        "id": "Scissor_Lift",
+        "firstRebuildMs": 14.400000000372529,
+        "warmCacheColdRebuildP50Ms": 10.099999999627471,
+        "warmCacheColdRebuildP95Ms": 12.199999999254942,
+        "heapBytes": 29127116,
+        "settings": {
+          "objectScale": 140,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          359
+        ]
+      },
+      {
+        "id": "Shaper_Quick_Return",
+        "firstRebuildMs": 7.099999999627471,
+        "warmCacheColdRebuildP50Ms": 4.799999998882413,
+        "warmCacheColdRebuildP95Ms": 6,
+        "heapBytes": 26490092,
+        "settings": {
+          "objectScale": 140,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          361
+        ]
+      },
+      {
+        "id": "Pedaling_Leg",
+        "firstRebuildMs": 7.800000000745058,
+        "warmCacheColdRebuildP50Ms": 4.900000000372529,
+        "warmCacheColdRebuildP95Ms": 6.5,
+        "heapBytes": 24623576,
+        "settings": {
+          "objectScale": 140,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          133
+        ]
+      },
+      {
+        "id": "Oscillating_Fan",
+        "firstRebuildMs": 13.099999999627471,
+        "warmCacheColdRebuildP50Ms": 9.699999999254942,
+        "warmCacheColdRebuildP95Ms": 11.5,
+        "heapBytes": 26149396,
+        "settings": {
+          "objectScale": 140,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          361
+        ]
+      },
+      {
+        "id": "Pumpjack",
+        "firstRebuildMs": 13.5,
+        "warmCacheColdRebuildP50Ms": 8.899999998509884,
+        "warmCacheColdRebuildP95Ms": 11.300000000745058,
+        "heapBytes": 25492640,
+        "settings": {
+          "objectScale": 140,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          121
+        ]
+      },
+      {
+        "id": "Punch_Press",
+        "firstRebuildMs": 6.900000000372529,
+        "warmCacheColdRebuildP50Ms": 5,
+        "warmCacheColdRebuildP95Ms": 5.799999998882413,
+        "heapBytes": 25875700,
+        "settings": {
+          "objectScale": 140,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          361
+        ]
+      },
+      {
+        "id": "Derrick_Crane",
+        "firstRebuildMs": 7.400000000372529,
+        "warmCacheColdRebuildP50Ms": 5.299999998882413,
+        "warmCacheColdRebuildP95Ms": 7.100000001490116,
+        "heapBytes": 26401864,
+        "settings": {
+          "objectScale": 140,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          361
+        ]
+      },
+      {
+        "id": "Toggle_Clamp",
+        "firstRebuildMs": 5.200000001117587,
+        "warmCacheColdRebuildP50Ms": 4.700000001117587,
+        "warmCacheColdRebuildP95Ms": 6.099999999627471,
+        "heapBytes": 26053476,
+        "settings": {
+          "objectScale": 52.79,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          361
+        ]
+      },
+      {
+        "id": "Offset_Load_Rocker",
+        "firstRebuildMs": 11.199999999254942,
+        "warmCacheColdRebuildP50Ms": 7.699999999254942,
+        "warmCacheColdRebuildP95Ms": 10.5,
+        "heapBytes": 27712952,
+        "settings": {
+          "objectScale": 140,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          619
+        ]
+      },
+      {
+        "id": "Bell_Crank",
+        "firstRebuildMs": 10.400000000372529,
+        "warmCacheColdRebuildP50Ms": 6.5,
+        "warmCacheColdRebuildP95Ms": 9.400000000372529,
+        "heapBytes": 27837692,
+        "settings": {
+          "objectScale": 140,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          361
+        ]
+      },
+      {
+        "id": "Flywheel_Engine",
+        "firstRebuildMs": 5.400000000372529,
+        "warmCacheColdRebuildP50Ms": 3.5,
+        "warmCacheColdRebuildP95Ms": 4.699999999254942,
+        "heapBytes": 25505584,
+        "settings": {
+          "objectScale": 140,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          361
+        ]
+      },
+      {
+        "id": "Elliptical_Trammel",
+        "firstRebuildMs": 4,
+        "warmCacheColdRebuildP50Ms": 3.400000000372529,
+        "warmCacheColdRebuildP95Ms": 4,
+        "heapBytes": 25586308,
+        "settings": {
+          "objectScale": 45.39,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          363
+        ]
+      },
+      {
+        "id": "Peaucellier",
+        "firstRebuildMs": 11.599999999627471,
+        "warmCacheColdRebuildP50Ms": 6.699999999254942,
+        "warmCacheColdRebuildP95Ms": 9,
+        "heapBytes": 27582240,
+        "settings": {
+          "objectScale": 140,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          409
+        ]
+      },
+      {
+        "id": "Pantograph",
+        "firstRebuildMs": 12.900000000372529,
+        "warmCacheColdRebuildP50Ms": 6.800000000745058,
+        "warmCacheColdRebuildP95Ms": 8.400000000372529,
+        "heapBytes": 28166248,
+        "settings": {
+          "objectScale": 140,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          361
+        ]
+      },
+      {
+        "id": "Double_Butterfly",
+        "firstRebuildMs": 32.5,
+        "warmCacheColdRebuildP50Ms": 23.09999999962747,
+        "warmCacheColdRebuildP95Ms": 27,
+        "heapBytes": 28459216,
+        "settings": {
+          "objectScale": 140,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          361
+        ]
+      },
+      {
+        "id": "Crane_Two_Loads",
+        "firstRebuildMs": 10,
+        "warmCacheColdRebuildP50Ms": 7.5,
+        "warmCacheColdRebuildP95Ms": 8.5,
+        "heapBytes": 26359400,
+        "settings": {
+          "objectScale": 140,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true
+        ],
+        "samples": [
+          361
+        ]
+      },
+      {
+        "id": "Three_Machines",
+        "firstRebuildMs": 10.799999998882413,
+        "warmCacheColdRebuildP50Ms": 7.799999998882413,
+        "warmCacheColdRebuildP95Ms": 11.099999999627471,
+        "heapBytes": 29255440,
+        "settings": {
+          "objectScale": 140,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true,
+          true,
+          true
+        ],
+        "samples": [
+          361,
+          361,
+          361
+        ]
+      },
+      {
+        "id": "Walking_Pair",
+        "firstRebuildMs": 18.300000000745058,
+        "warmCacheColdRebuildP50Ms": 12.600000001490116,
+        "warmCacheColdRebuildP95Ms": 15.5,
+        "heapBytes": 31494760,
+        "settings": {
+          "objectScale": 1400,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true,
+          true
+        ],
+        "samples": [
+          361,
+          361
+        ]
+      },
+      {
+        "id": "Straight_Line_Pair",
+        "firstRebuildMs": 13.199999999254942,
+        "warmCacheColdRebuildP50Ms": 11.099999999627471,
+        "warmCacheColdRebuildP95Ms": 12.300000000745058,
+        "heapBytes": 30067180,
+        "settings": {
+          "objectScale": 140,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true,
+          true
+        ],
+        "samples": [
+          363,
+          409
+        ]
+      },
+      {
+        "id": "Pumping_Field",
+        "firstRebuildMs": 28.300000000745058,
+        "warmCacheColdRebuildP50Ms": 23.5,
+        "warmCacheColdRebuildP95Ms": 26.40000000037253,
+        "heapBytes": 28218116,
+        "settings": {
+          "objectScale": 360.89,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true,
+          true,
+          true
+        ],
+        "samples": [
+          121,
+          121,
+          121
+        ]
+      },
+      {
+        "id": "Landing_Gear",
+        "firstRebuildMs": 13.5,
+        "warmCacheColdRebuildP50Ms": 8.900000000372529,
+        "warmCacheColdRebuildP95Ms": 9.699999999254942,
+        "heapBytes": 29368252,
+        "settings": {
+          "objectScale": 140,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true,
+          true
+        ],
+        "samples": [
+          359,
+          359
+        ]
+      },
+      {
+        "id": "Four_Bar_Inversions",
+        "firstRebuildMs": 17,
+        "warmCacheColdRebuildP50Ms": 12.200000001117587,
+        "warmCacheColdRebuildP95Ms": 15,
+        "heapBytes": 32319472,
+        "settings": {
+          "objectScale": 140,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "samples": [
+          361,
+          361,
+          361,
+          365
+        ]
+      },
+      {
+        "id": "Slider_Crank_Inversions",
+        "firstRebuildMs": 18.40000000037253,
+        "warmCacheColdRebuildP50Ms": 10.5,
+        "warmCacheColdRebuildP95Ms": 16,
+        "heapBytes": 31850796,
+        "settings": {
+          "objectScale": 140,
+          "lengthUnit": 1,
+          "gravity": true
+        },
+        "valid": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "samples": [
+          361,
+          361,
+          361,
+          365
+        ]
+      }
+    ],
+    "drag": {
+      "at": "2026-09-10T20:01:44.897Z",
+      "floorMs": 8.19607636666667,
+      "steps": 30,
+      "measured": {
+        "workbench-joint": {
+          "appMsPerMove": 11.4,
+          "frameP90Ms": 9,
+          "frameP50Ms": 8,
+          "frameP95Ms": 9,
+          "frameWorstMs": 9,
+          "frameCount": 70
+        },
+        "edit-joint": {
+          "appMsPerMove": 6.9,
+          "frameP90Ms": 9,
+          "frameP50Ms": 8,
+          "frameP95Ms": 9,
+          "frameWorstMs": 9,
+          "frameCount": 54
+        },
+        "edit-link": {
+          "appMsPerMove": 6.8,
+          "frameP90Ms": 9,
+          "frameP50Ms": 8,
+          "frameP95Ms": 9,
+          "frameWorstMs": 9,
+          "frameCount": 53
+        },
+        "edit-traces": {
+          "appMsPerMove": 4.9,
+          "frameP90Ms": 9,
+          "frameP50Ms": 8,
+          "frameP95Ms": 9,
+          "frameWorstMs": 9,
+          "frameCount": 47
+        },
+        "kin-1row": {
+          "appMsPerMove": 7,
+          "frameP90Ms": 9,
+          "frameP50Ms": 8,
+          "frameP95Ms": 9,
+          "frameWorstMs": 17,
+          "frameCount": 52
+        },
+        "kin-3rows": {
+          "appMsPerMove": 15,
+          "frameP90Ms": 9,
+          "frameP50Ms": 8,
+          "frameP95Ms": 17,
+          "frameWorstMs": 42,
+          "frameCount": 74
+        },
+        "kin-3rows-compare": {
+          "appMsPerMove": 14.5,
+          "frameP90Ms": 9,
+          "frameP50Ms": 8,
+          "frameP95Ms": 17,
+          "frameWorstMs": 41,
+          "frameCount": 71
+        },
+        "kin-link-3rows": {
+          "appMsPerMove": 16,
+          "frameP90Ms": 9,
+          "frameP50Ms": 8,
+          "frameP95Ms": 9,
+          "frameWorstMs": 42,
+          "frameCount": 80
+        },
+        "force-2rows": {
+          "appMsPerMove": 14.1,
+          "frameP90Ms": 9,
+          "frameP50Ms": 8,
+          "frameP95Ms": 9,
+          "frameWorstMs": 33,
+          "frameCount": 74
+        },
+        "jansen-edit": {
+          "appMsPerMove": 10.4,
+          "frameP90Ms": 9,
+          "frameP50Ms": 8,
+          "frameP95Ms": 9,
+          "frameWorstMs": 9,
+          "frameCount": 66
+        },
+        "jansen-3rows": {
+          "appMsPerMove": 26.7,
+          "frameP90Ms": 17,
+          "frameP50Ms": 9,
+          "frameP95Ms": 17,
+          "frameWorstMs": 50,
+          "frameCount": 90
+        },
+        "four-machines": {
+          "appMsPerMove": 8,
+          "frameP90Ms": 9,
+          "frameP50Ms": 8,
+          "frameP95Ms": 9,
+          "frameWorstMs": 9,
+          "frameCount": 58
+        }
+      },
+      "errors": []
+    }
+  },
+  "consumerFiles": {
+    "src/app/component/BLOCKS/editable-title/editable-title.component.ts": {
+      "sites": 2,
+      "categories": [
+        "selection",
+        "material geometry"
+      ],
+      "nativeOwner": "preserved shared control with native selection/dimension input",
+      "checkpoint": "S5",
+      "conversionStatus": "pending"
+    },
+    "src/app/component/BLOCKS/hold-field/hold-field.component.ts": {
+      "sites": 1,
+      "categories": [
+        "selection",
+        "material geometry"
+      ],
+      "nativeOwner": "preserved shared control with native selection/dimension input",
+      "checkpoint": "S5",
+      "conversionStatus": "pending"
+    },
+    "src/app/component/MODALS/templates/templates.component.ts": {
+      "sites": 1,
+      "categories": [
+        "topology",
+        "attachment",
+        "material geometry"
+      ],
+      "nativeOwner": "native records, commands, coordinates",
+      "checkpoint": "S1/S4/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/component/analysis-graph-section/analysis-graph-section.component.ts": {
+      "sites": 1,
+      "categories": [
+        "analysis result",
+        "material geometry",
+        "attachment"
+      ],
+      "nativeOwner": "native sample/geometry adapters",
+      "checkpoint": "S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/component/analysis-graph/analysis-graph.component.ts": {
+      "sites": 2,
+      "categories": [
+        "analysis result",
+        "material geometry",
+        "attachment"
+      ],
+      "nativeOwner": "native sample/geometry adapters",
+      "checkpoint": "S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/component/analysis-panel/analysis-panel.component.ts": {
+      "sites": 8,
+      "categories": [
+        "analysis result",
+        "material geometry",
+        "attachment"
+      ],
+      "nativeOwner": "native sample/geometry adapters",
+      "checkpoint": "S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/component/analysis-setup/analysis-setup.component.ts": {
+      "sites": 12,
+      "categories": [
+        "analysis result",
+        "material geometry",
+        "attachment"
+      ],
+      "nativeOwner": "native sample/geometry adapters",
+      "checkpoint": "S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/component/edit-panel/edit-panel.component.html": {
+      "sites": 3,
+      "categories": [
+        "selection",
+        "render mark",
+        "topology",
+        "material geometry",
+        "attachment"
+      ],
+      "nativeOwner": "native command/refusal model and rendering views",
+      "checkpoint": "S5",
+      "conversionStatus": "pending"
+    },
+    "src/app/component/edit-panel/edit-panel.component.ts": {
+      "sites": 39,
+      "categories": [
+        "selection",
+        "render mark",
+        "topology",
+        "material geometry",
+        "attachment"
+      ],
+      "nativeOwner": "native command/refusal model and rendering views",
+      "checkpoint": "S5",
+      "conversionStatus": "pending"
+    },
+    "src/app/component/edit-panel/lock-banner.component.ts": {
+      "sites": 1,
+      "categories": [
+        "selection",
+        "render mark",
+        "topology",
+        "material geometry",
+        "attachment"
+      ],
+      "nativeOwner": "native command/refusal model and rendering views",
+      "checkpoint": "S5",
+      "conversionStatus": "pending"
+    },
+    "src/app/component/linkage-table/linkage-table.component.html": {
+      "sites": 5,
+      "categories": [
+        "analysis result",
+        "material geometry",
+        "attachment"
+      ],
+      "nativeOwner": "native sample/geometry adapters",
+      "checkpoint": "S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/component/linkage-table/linkage-table.component.ts": {
+      "sites": 27,
+      "categories": [
+        "analysis result",
+        "material geometry",
+        "attachment"
+      ],
+      "nativeOwner": "native sample/geometry adapters",
+      "checkpoint": "S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/component/mechanism-panel/mechanism-panel.component.ts": {
+      "sites": 8,
+      "categories": [
+        "topology",
+        "attachment",
+        "material geometry"
+      ],
+      "nativeOwner": "native records, commands, coordinates",
+      "checkpoint": "S1/S4/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/component/multi-edit-panel/multi-edit-panel.component.ts": {
+      "sites": 14,
+      "categories": [
+        "selection",
+        "render mark",
+        "topology",
+        "material geometry",
+        "attachment"
+      ],
+      "nativeOwner": "native command/refusal model and rendering views",
+      "checkpoint": "S5",
+      "conversionStatus": "pending"
+    },
+    "src/app/component/new-grid/new-grid.component.html": {
+      "sites": 3,
+      "categories": [
+        "selection",
+        "render mark",
+        "topology",
+        "material geometry",
+        "attachment"
+      ],
+      "nativeOwner": "native command/refusal model and rendering views",
+      "checkpoint": "S5",
+      "conversionStatus": "pending"
+    },
+    "src/app/component/new-grid/new-grid.component.ts": {
+      "sites": 104,
+      "categories": [
+        "selection",
+        "render mark",
+        "topology",
+        "material geometry",
+        "attachment"
+      ],
+      "nativeOwner": "native command/refusal model and rendering views",
+      "checkpoint": "S5",
+      "conversionStatus": "pending"
+    },
+    "src/app/component/playback-bar/playback-bar.component.ts": {
+      "sites": 2,
+      "categories": [
+        "topology",
+        "attachment",
+        "material geometry"
+      ],
+      "nativeOwner": "native records, commands, coordinates",
+      "checkpoint": "S1/S4/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/component/right-panel/right-panel.component.ts": {
+      "sites": 1,
+      "categories": [
+        "topology",
+        "attachment",
+        "material geometry"
+      ],
+      "nativeOwner": "native records, commands, coordinates",
+      "checkpoint": "S1/S4/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/component/settings-panel/settings-panel.component.ts": {
+      "sites": 1,
+      "categories": [
+        "topology",
+        "attachment",
+        "material geometry"
+      ],
+      "nativeOwner": "native records, commands, coordinates",
+      "checkpoint": "S1/S4/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/component/synthesis-panel/synthesis-panel.component.ts": {
+      "sites": 1,
+      "categories": [
+        "attachment",
+        "topology",
+        "selection"
+      ],
+      "nativeOwner": "native construction commands and progression facts",
+      "checkpoint": "S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/component/top-bar/top-bar.component.ts": {
+      "sites": 1,
+      "categories": [
+        "topology",
+        "attachment",
+        "material geometry"
+      ],
+      "nativeOwner": "native records, commands, coordinates",
+      "checkpoint": "S1/S4/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/component/view-controls/view-controls.component.html": {
+      "sites": 1,
+      "categories": [
+        "render mark",
+        "material geometry",
+        "selection"
+      ],
+      "nativeOwner": "native view bounds, marks, assembly roles",
+      "checkpoint": "S5/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/component/view-controls/view-controls.component.ts": {
+      "sites": 4,
+      "categories": [
+        "render mark",
+        "material geometry",
+        "selection"
+      ],
+      "nativeOwner": "native view bounds, marks, assembly roles",
+      "checkpoint": "S5/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/actuator.ts": {
+      "sites": 5,
+      "categories": [
+        "topology",
+        "attachment",
+        "material geometry"
+      ],
+      "nativeOwner": "native records, commands, coordinates",
+      "checkpoint": "S1/S4/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/body-label.ts": {
+      "sites": 2,
+      "categories": [
+        "render mark",
+        "material geometry",
+        "selection"
+      ],
+      "nativeOwner": "native view bounds, marks, assembly roles",
+      "checkpoint": "S5/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/cylinder-pose-plan.ts": {
+      "sites": 6,
+      "categories": [
+        "topology",
+        "attachment",
+        "material geometry"
+      ],
+      "nativeOwner": "native records, commands, coordinates",
+      "checkpoint": "S1/S4/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/cylinder.ts": {
+      "sites": 22,
+      "categories": [
+        "topology",
+        "attachment",
+        "material geometry"
+      ],
+      "nativeOwner": "native records, commands, coordinates",
+      "checkpoint": "S1/S4/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/draw-order.ts": {
+      "sites": 5,
+      "categories": [
+        "render mark",
+        "material geometry",
+        "selection"
+      ],
+      "nativeOwner": "native view bounds, marks, assembly roles",
+      "checkpoint": "S5/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/drop-target.ts": {
+      "sites": 17,
+      "categories": [
+        "topology",
+        "attachment",
+        "material geometry"
+      ],
+      "nativeOwner": "native records, commands, coordinates",
+      "checkpoint": "S1/S4/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/force-anchor.ts": {
+      "sites": 3,
+      "categories": [
+        "material geometry",
+        "attachment",
+        "analysis result"
+      ],
+      "nativeOwner": "body-local geometry and material loads",
+      "checkpoint": "S1/S3/S4",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/force.ts": {
+      "sites": 15,
+      "categories": [
+        "material geometry",
+        "attachment",
+        "analysis result"
+      ],
+      "nativeOwner": "body-local geometry and material loads",
+      "checkpoint": "S1/S3/S4",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/hold-solver.ts": {
+      "sites": 1,
+      "categories": [
+        "topology",
+        "attachment",
+        "material geometry"
+      ],
+      "nativeOwner": "native records, commands, coordinates",
+      "checkpoint": "S1/S4/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/joint-operation-permission.ts": {
+      "sites": 2,
+      "categories": [
+        "topology",
+        "attachment",
+        "material geometry"
+      ],
+      "nativeOwner": "native records, commands, coordinates",
+      "checkpoint": "S1/S4/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/joint.ts": {
+      "sites": 12,
+      "categories": [
+        "topology",
+        "attachment",
+        "material geometry"
+      ],
+      "nativeOwner": "native records, commands, coordinates",
+      "checkpoint": "S1/S4/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/link-holds.ts": {
+      "sites": 9,
+      "categories": [
+        "topology",
+        "attachment",
+        "material geometry"
+      ],
+      "nativeOwner": "native records, commands, coordinates",
+      "checkpoint": "S1/S4/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/link.ts": {
+      "sites": 46,
+      "categories": [
+        "material geometry",
+        "attachment",
+        "analysis result"
+      ],
+      "nativeOwner": "body-local geometry and material loads",
+      "checkpoint": "S1/S3/S4",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/lock-set.ts": {
+      "sites": 5,
+      "categories": [
+        "topology",
+        "attachment",
+        "material geometry"
+      ],
+      "nativeOwner": "native records, commands, coordinates",
+      "checkpoint": "S1/S4/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/mechanism/anchor.ts": {
+      "sites": 3,
+      "categories": [
+        "topology",
+        "analysis result"
+      ],
+      "nativeOwner": "native compiler and per-partition snapshots",
+      "checkpoint": "S1/S2/S3",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/mechanism/bodies.ts": {
+      "sites": 3,
+      "categories": [
+        "topology",
+        "analysis result"
+      ],
+      "nativeOwner": "native compiler and per-partition snapshots",
+      "checkpoint": "S1/S2/S3",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/mechanism/drive-profile.ts": {
+      "sites": 2,
+      "categories": [
+        "topology",
+        "analysis result"
+      ],
+      "nativeOwner": "native compiler and per-partition snapshots",
+      "checkpoint": "S1/S2/S3",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/mechanism/finite-difference-kinematics.ts": {
+      "sites": 8,
+      "categories": [
+        "topology",
+        "analysis result"
+      ],
+      "nativeOwner": "native compiler and per-partition snapshots",
+      "checkpoint": "S1/S2/S3",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/mechanism/force-solver.ts": {
+      "sites": 46,
+      "categories": [
+        "topology",
+        "analysis result"
+      ],
+      "nativeOwner": "native compiler and per-partition snapshots",
+      "checkpoint": "S1/S2/S3",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/mechanism/kinematic-solver.ts": {
+      "sites": 45,
+      "categories": [
+        "topology",
+        "analysis result"
+      ],
+      "nativeOwner": "native compiler and per-partition snapshots",
+      "checkpoint": "S1/S2/S3",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/mechanism/loop-solver.ts": {
+      "sites": 14,
+      "categories": [
+        "topology",
+        "analysis result"
+      ],
+      "nativeOwner": "native compiler and per-partition snapshots",
+      "checkpoint": "S1/S2/S3",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/mechanism/mechanism-partition.ts": {
+      "sites": 21,
+      "categories": [
+        "topology",
+        "analysis result"
+      ],
+      "nativeOwner": "native compiler and per-partition snapshots",
+      "checkpoint": "S1/S2/S3",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/mechanism/mechanism.ts": {
+      "sites": 85,
+      "categories": [
+        "topology",
+        "analysis result"
+      ],
+      "nativeOwner": "native compiler and per-partition snapshots",
+      "checkpoint": "S1/S2/S3",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/mechanism/mobility.ts": {
+      "sites": 4,
+      "categories": [
+        "topology",
+        "analysis result"
+      ],
+      "nativeOwner": "native compiler and per-partition snapshots",
+      "checkpoint": "S1/S2/S3",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/mechanism/position-solver.ts": {
+      "sites": 77,
+      "categories": [
+        "topology",
+        "analysis result"
+      ],
+      "nativeOwner": "native compiler and per-partition snapshots",
+      "checkpoint": "S1/S2/S3",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/mechanism/readiness.ts": {
+      "sites": 10,
+      "categories": [
+        "topology",
+        "analysis result"
+      ],
+      "nativeOwner": "native compiler and per-partition snapshots",
+      "checkpoint": "S1/S2/S3",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/rigid-bodies.ts": {
+      "sites": 3,
+      "categories": [
+        "topology",
+        "analysis result"
+      ],
+      "nativeOwner": "native compiler and per-partition snapshots",
+      "checkpoint": "S1/S2/S3",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/selection-closure.ts": {
+      "sites": 11,
+      "categories": [
+        "selection",
+        "attachment",
+        "topology"
+      ],
+      "nativeOwner": "typed selection and transaction commands",
+      "checkpoint": "S4/S5",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/selection-transform.ts": {
+      "sites": 14,
+      "categories": [
+        "selection",
+        "attachment",
+        "topology"
+      ],
+      "nativeOwner": "typed selection and transaction commands",
+      "checkpoint": "S4/S5",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/selection.ts": {
+      "sites": 4,
+      "categories": [
+        "selection",
+        "attachment",
+        "topology"
+      ],
+      "nativeOwner": "typed selection and transaction commands",
+      "checkpoint": "S4/S5",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/slide-assembly.ts": {
+      "sites": 6,
+      "categories": [
+        "topology",
+        "attachment",
+        "material geometry"
+      ],
+      "nativeOwner": "native records, commands, coordinates",
+      "checkpoint": "S1/S4/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/model/tutorial-steps.ts": {
+      "sites": 5,
+      "categories": [
+        "attachment",
+        "topology",
+        "selection"
+      ],
+      "nativeOwner": "native construction commands and progression facts",
+      "checkpoint": "S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/active-obj.service.ts": {
+      "sites": 6,
+      "categories": [
+        "selection",
+        "attachment",
+        "topology"
+      ],
+      "nativeOwner": "typed selection and transaction commands",
+      "checkpoint": "S4/S5",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/analysis-sample.service.ts": {
+      "sites": 2,
+      "categories": [
+        "analysis result",
+        "material geometry",
+        "attachment"
+      ],
+      "nativeOwner": "native sample/geometry adapters",
+      "checkpoint": "S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/context-menu-builder.service.ts": {
+      "sites": 23,
+      "categories": [
+        "selection",
+        "render mark",
+        "topology",
+        "material geometry",
+        "attachment"
+      ],
+      "nativeOwner": "native command/refusal model and rendering views",
+      "checkpoint": "S5",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/edit-permission.service.ts": {
+      "sites": 1,
+      "categories": [
+        "topology",
+        "attachment",
+        "material geometry"
+      ],
+      "nativeOwner": "native records, commands, coordinates",
+      "checkpoint": "S1/S4/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/export/dxf/dxf-export.service.ts": {
+      "sites": 27,
+      "categories": [
+        "analysis result",
+        "material geometry",
+        "attachment"
+      ],
+      "nativeOwner": "native sample/geometry adapters",
+      "checkpoint": "S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/export/dxf/link-bodies.ts": {
+      "sites": 5,
+      "categories": [
+        "analysis result",
+        "material geometry",
+        "attachment"
+      ],
+      "nativeOwner": "native sample/geometry adapters",
+      "checkpoint": "S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/export/dxf/semantic-dxf.ts": {
+      "sites": 39,
+      "categories": [
+        "analysis result",
+        "material geometry",
+        "attachment"
+      ],
+      "nativeOwner": "native sample/geometry adapters",
+      "checkpoint": "S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/export/export-catalog.service.ts": {
+      "sites": 9,
+      "categories": [
+        "analysis result",
+        "material geometry",
+        "attachment"
+      ],
+      "nativeOwner": "native sample/geometry adapters",
+      "checkpoint": "S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/export/export-columns.service.ts": {
+      "sites": 3,
+      "categories": [
+        "analysis result",
+        "material geometry",
+        "attachment"
+      ],
+      "nativeOwner": "native sample/geometry adapters",
+      "checkpoint": "S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/export/export-flow.service.ts": {
+      "sites": 1,
+      "categories": [
+        "analysis result",
+        "material geometry",
+        "attachment"
+      ],
+      "nativeOwner": "native sample/geometry adapters",
+      "checkpoint": "S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/export/export-writer.service.ts": {
+      "sites": 3,
+      "categories": [
+        "analysis result",
+        "material geometry",
+        "attachment"
+      ],
+      "nativeOwner": "native sample/geometry adapters",
+      "checkpoint": "S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/export/mechanism-svg.ts": {
+      "sites": 5,
+      "categories": [
+        "analysis result",
+        "material geometry",
+        "attachment"
+      ],
+      "nativeOwner": "native sample/geometry adapters",
+      "checkpoint": "S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/grid-utils.service.ts": {
+      "sites": 85,
+      "categories": [
+        "topology",
+        "attachment",
+        "material geometry"
+      ],
+      "nativeOwner": "native records, commands, coordinates",
+      "checkpoint": "S1/S4/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/keyboard-shortcuts.service.ts": {
+      "sites": 2,
+      "categories": [
+        "selection",
+        "attachment",
+        "topology"
+      ],
+      "nativeOwner": "typed selection and transaction commands",
+      "checkpoint": "S4/S5",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/mechanism.service.ts": {
+      "sites": 432,
+      "categories": [
+        "topology",
+        "attachment",
+        "material geometry"
+      ],
+      "nativeOwner": "native records, commands, coordinates",
+      "checkpoint": "S1/S4/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/multi-edit.service.ts": {
+      "sites": 17,
+      "categories": [
+        "selection",
+        "render mark",
+        "topology",
+        "material geometry",
+        "attachment"
+      ],
+      "nativeOwner": "native command/refusal model and rendering views",
+      "checkpoint": "S5",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/number-unit-parser.service.ts": {
+      "sites": 1,
+      "categories": [
+        "material geometry",
+        "units"
+      ],
+      "nativeOwner": "explicit native unit boundary",
+      "checkpoint": "S3/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/selection-batch.service.ts": {
+      "sites": 55,
+      "categories": [
+        "selection",
+        "attachment",
+        "topology"
+      ],
+      "nativeOwner": "typed selection and transaction commands",
+      "checkpoint": "S4/S5",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/slider-mark.service.ts": {
+      "sites": 9,
+      "categories": [
+        "render mark",
+        "material geometry",
+        "selection"
+      ],
+      "nativeOwner": "native view bounds, marks, assembly roles",
+      "checkpoint": "S5/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/svg-grid.service.ts": {
+      "sites": 2,
+      "categories": [
+        "render mark",
+        "material geometry",
+        "selection"
+      ],
+      "nativeOwner": "native view bounds, marks, assembly roles",
+      "checkpoint": "S5/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/synthesis/synthesis-solution.service.ts": {
+      "sites": 14,
+      "categories": [
+        "attachment",
+        "topology",
+        "selection"
+      ],
+      "nativeOwner": "native construction commands and progression facts",
+      "checkpoint": "S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/transcoding/base64-converter.ts": {
+      "sites": 1,
+      "categories": [
+        "parser (not joint-letter identity)"
+      ],
+      "nativeOwner": "bounded production reader",
+      "checkpoint": "S4/S7",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/transcoding/mechanism-builder.ts": {
+      "sites": 33,
+      "categories": [
+        "topology",
+        "attachment",
+        "persistence"
+      ],
+      "nativeOwner": "native codec and legacy production reader",
+      "checkpoint": "S4/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/transcoding/string-disassembler.ts": {
+      "sites": 2,
+      "categories": [
+        "parser (not joint-letter identity)"
+      ],
+      "nativeOwner": "bounded production reader",
+      "checkpoint": "S4/S7",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/transcoding/string-transcoder.ts": {
+      "sites": 28,
+      "categories": [
+        "topology",
+        "attachment",
+        "persistence"
+      ],
+      "nativeOwner": "native codec and legacy production reader",
+      "checkpoint": "S4/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/transcoding/transcoder-data.ts": {
+      "sites": 2,
+      "categories": [
+        "topology",
+        "attachment",
+        "persistence"
+      ],
+      "nativeOwner": "native codec and legacy production reader",
+      "checkpoint": "S4/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/transcoding/transcoder-interface.ts": {
+      "sites": 2,
+      "categories": [
+        "topology",
+        "attachment",
+        "persistence"
+      ],
+      "nativeOwner": "native codec and legacy production reader",
+      "checkpoint": "S4/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/tutorial.service.ts": {
+      "sites": 11,
+      "categories": [
+        "attachment",
+        "topology",
+        "selection"
+      ],
+      "nativeOwner": "native construction commands and progression facts",
+      "checkpoint": "S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/url-generation.service.ts": {
+      "sites": 17,
+      "categories": [
+        "topology",
+        "attachment",
+        "persistence"
+      ],
+      "nativeOwner": "native codec and legacy production reader",
+      "checkpoint": "S4/S6",
+      "conversionStatus": "pending"
+    },
+    "src/app/services/url-processor.service.ts": {
+      "sites": 2,
+      "categories": [
+        "topology",
+        "attachment",
+        "persistence"
+      ],
+      "nativeOwner": "native codec and legacy production reader",
+      "checkpoint": "S4/S6",
+      "conversionStatus": "pending"
+    }
+  }
+}
