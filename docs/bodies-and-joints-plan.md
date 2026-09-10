@@ -25,11 +25,12 @@ Do not leave these as questions for an unattended agent to discover halfway thro
 | Pair selection at a multiway pin | Keep one pin glyph, but expose the actual body pair when an operation needs it. Welding two bodies does not automatically weld a third body attached there later. This deliberately replaces today's inherited weld flag. |
 | Geometry and dimensions | Give every body a persistent local frame and authored geometry. Support zero or one connection; a connection is not a required shape vertex. Keep project display units; convert to SI at the analysis boundary. |
 | Aggregate custom mass properties | Preserve existing explicit overrides on a continuing group. Never copy one aggregate override to several pieces. A true split that cannot distribute an override is refused with one model reason until the author resets it to member-derived values. Do not invent a distribution. |
-| Body deletion | “Delete Body” deletes the selected physical member; “Delete Welded Group” deletes its members. “Delete Cylinder” deletes the assembly. Cascade previews name affected assemblies and connections. Do not make one ambiguous “Delete Link” silently choose among these meanings in the new UI. |
+| Body deletion | Deleting an ordinary selected Link deletes its physical body; “Delete Welded Group” explicitly deletes its members. “Delete Cylinder” deletes the assembly. Cascade previews name affected assemblies and connections. Do not make one ambiguous “Delete Link” silently choose among these meanings in the new UI. |
 | Detached ends | An unconnected end is an attachment/tracer on a body, not an R joint to imaginary ground. Keep authoring drafts separate from valid physical joint records. |
 | Initial driver support | One independent prescribed coordinate per moving partition, as today. Schema supports angle/travel references and later couplings; unsupported drive combinations get a readiness reason. No new multi-input solver in this migration. |
 | Initial P and pin-in-slot scope | Grounded and floating, passive and driven, including both cylinder mounts. No deferral of floating mount slots. A pin-in-slot's angle coordinate exists even if its rotary-drive UI is deferred. |
 | Gear UI | Design the extension points now; implement neither gear solving nor a permanently disabled promotional menu row. When gears land, axle spacing **and a ratio** determine pitch radii. |
+| UI continuity | Preserve the current grid-selection → Edit panel/context-menu workflow, BLOCKS form composition, vocabulary, theme/palettes, shadows and motion. The migration changes necessary controls and behavior, not the app's design language. The earlier UX sketch is conceptual, not a style specification. |
 | Removing unused code | Substantial removal of the superseded runtime is a required deliverable, not optional cleanup. New tests and native code may offset the line-count reduction; report the actual removed systems and remaining compatibility surface. |
 | Live UX observation | At S0, S5, S6 and S8, open the correct localhost build and watch/manipulate the running mechanisms, in addition to automated Playwright checks and filmstrips. Record what was observed and fix usability/animation defects even if scripted assertions pass. |
 | Fable budget | About $40 remains. Use a $35 working ceiling including follow-ups and CLI-reported auxiliary cost, leaving roughly $5 of headroom. Four planned reviews total at most $28 in assigned caps; reserve $7 for necessary follow-ups. Codex self-reviews the other checkpoints. |
@@ -371,6 +372,46 @@ mechanisms, including rotating carriers. Keep results at material bodies and joi
 aggregate group views are derived. No fluid, friction, compliance, collision or impact model
 is part of this migration.
 
+## Preserve PMKS+'s interaction philosophy and visual style
+
+This is a model migration with necessary UX changes, not a visual redesign. Before planning
+this addition, the current selection service, Edit panel/template, context-menu builder and
+renderer, BLOCKS controls, global theme, palette and motion definitions were inspected at
+`51add00`. Use those actual components as the reference, not the earlier schematic mockup's
+simplified colors, layout or wording. A new native entity does not require a new navigation
+system, inspector window or interaction metaphor.
+
+| Preserve | Concrete source / implementation rule |
+| --- | --- |
+| Grid-first selection | `services/active-obj.service.ts`, `model/selection.ts`, `component/edit-panel/edit-panel.component.html`, `services/context-menu-builder.service.ts`. Click/tap identifies the object; the Edit panel and right-click/long-press menu offer edits of that same object. Keep their target, highlight, values and permission answers synchronized. Pair selection for a multiway joint extends this flow inside the existing panel/menu. |
+| Click selects, drag tunes | Preserve `ActiveObjService`'s distinction between the gesture target and the object the analysis panel is about. Dragging another point while watching a graph must not replace that graph. Preserve existing multi-selection, deselection, keyboard and touch behavior. |
+| Panel composition | Reuse `component/BLOCKS/panel-section`, `editable-title`, `collapsible-subseciton`, `input`, `dual-input`, `hold-field`, `state-input`, `toggle`, `button`, `segmented` and `radio`. Use the existing title/actions, labeled blocks, brief explanatory text, help marks, units and grouped inputs. Extend shared blocks where needed rather than rebuilding bespoke fields in the native joint panel. Do not fix the legacy subsection directory spelling as part of this work. |
+| Stable context menus | The builder's established group order is Attach, State, Machine, then the destructive footer. Within an object kind, unavailable actions stay in their learned location and gray with the model's reason. Preserve the documented multi-selection/synthesis exceptions. A type-specific connection menu may have new rows, but menu and panel must offer the same operation and result. |
+| Readable unavailable states | Preserve `panel-section`'s `panelAttached`, `panelLive` and inert-body behavior: explain the refusal without hiding the selected object's information or disabling unrelated live properties. Retain compact inline reasons and the existing tooltip behavior. |
+| Typography and colors | `src/mytheme.scss` uses Roboto, Material indigo primary and amber accent; ordinary panel copy uses the existing 14px/18px body style. `model/joint-colors.ts` owns the six indigo/teal part colors, warm joint families and amber `SELECTION_RING`. New glyph kinds reuse these identity/hover/selection semantics; do not invent a new color per joint kind, recolor the product, or turn the conceptual mockup's cyan into a new theme. |
+| Surfaces and shadows | Reuse `src/styles.scss`: `--card-surface`, `--card-radius` (10px), `--card-gap` (12px), `--card-shadow`, and the 5px `--border-radius` used by accent-topped panels. `panel-section` already has its 5px primary accent edge. `left-tabs.vars.scss` owns layout gaps and shadow clearance. Context menus deliberately use Material elevation 16 above the cards. Keep these distinctions; no new shadow/radius system or clipping of card shadows. |
+| Controls and motion | Inputs already use compact Material fields and unit suffixes; `segmented-block` uses a measured sliding thumb (180ms, `cubic-bezier(0.4,0,0.2,1)`). Subsections and context menus use short 150ms ease-in-out transitions; collapsible panels use 200ms. The phone sheet uses a measured-height 240ms `cubic-bezier(0.2,0,0,1)` slide. Reuse the components and reduced-motion behavior, not independently copied timing constants. No new bounce, spring, flourish or whole-panel replacement animation. |
+| Physical animation | Preserve elapsed-time playback, speed/direction and continuous motion. UI easing must never alter a mechanism's physical timing or make its glyphs lag behind the body pose. Selection must not resize a cylinder or make its skin jump. |
+| Product vocabulary | Keep familiar terms such as Link, Joint, Cylinder, Add Input, Remove Input, Input Settings, Input Speed, Fixed Length and Fixed Angle wherever their meaning survives. `Body`, `Driver`, `JointCoordinateRef`, WORLD and solver partitions are implementation terms, not a mandate to rename every visible label. Introduce Prismatic, Pin-in-slot, connected pairs and explicit deletion scopes only where they explain a real new choice. Use short, concrete American English and the same action names in help, menu and panel. |
+| Overall layout | Preserve the top mode strip, left object panel, canvas, bottom playback/view controls, right drawer, and responsive bottom sheet. No broad layout, typography, icon-system, theme or dark-mode project is bundled into the migration. |
+
+The new joint kind selector belongs in the familiar settings blocks. Pair labels should use
+recognizable names such as Barrel, Rod, Link AB or the author's name, not opaque BodyIds.
+Use the existing pick-one control where labels fit; when a pair list needs more room, extend
+the established field pattern without squeezing unreadable labels into four tiny segments.
+A derived group selection may add explicit scope choices while preserving the familiar
+selected-object title and actions. For ordinary members, keep the visible word “Link” even
+though the native type is `Body`.
+
+This orientation is preparation, not another standalone implementation milestone or a paid
+review. Before the first visible migration change, revisit a representative object in the
+running localhost app: select it, edit through the panel, perform the equivalent menu action,
+expand/collapse settings, hover/focus a field, play/pause and inspect the phone sheet. Keep
+baseline frames in S0's artifacts. At S5/S6/S8 compare those same flows in the native editor,
+including shadows, spacing, palette, wording, focus, transitions and reduced motion. Fix
+unnecessary visual drift even if the underlying operation is correct. Code removal targets
+superseded mechanism logic; reusable presentation components are assets to preserve.
+
 ## Editing, rendering and the joint grammar
 
 `BodyDocument` is the design authority. A `SimulationSnapshot` supplies solved body poses for
@@ -416,7 +457,7 @@ the plan's revision at commit. A stale preview must be replanned, never partiall
 | Delete | Plan the exact closure first: selected members/group/assembly, incident connections, owned loads and now-unreferenced metadata. A connecting neighbor stays unless it is explicitly in that closure. Deleting a cylinder removes both members even when they occupy different welded groups; unrelated group members survive. |
 
 A cylinder member cannot be deleted in isolation: offer the explicit “Delete Cylinder” action
-and its complete cascade, while generic “Delete Body” quotes the assembly protection reason.
+and its complete cascade, while generic member deletion quotes the assembly protection reason.
 Do not silently escalate a body action to deleting an assembly.
 
 Deleting a relationship does not delete the material at its attachment. Deleting a body deletes
@@ -620,7 +661,8 @@ part of Codex's own validation and do not spend Fable credits. Repeat the affect
 
 ### S0 — Freeze native contracts and migration inventory (Codex self-review)
 
-**Scope:** proposed body-system type/coordinate interfaces, a checked inventory of live
+**Scope:** use the UI continuity reference above for a brief baseline orientation, then
+proposed body-system type/coordinate interfaces, a checked inventory of live
 `.joints`, joint-letter keys, `instanceof`, subset and shape consumers; production legacy
 payload fixtures; test-utils fixture builders. Write the contract before parallel edits.
 
@@ -996,7 +1038,8 @@ there is no need to change models or create other user-visible tasks.
 The complete `/goal` objective is:
 
 > Implement S0–S8 of docs/bodies-and-joints-plan.md in this task's authorized feature branch.
-> Replace the point-centric runtime with persistent bodies connected by typed binary joints,
+> Preserve the existing interaction philosophy, shared UI components, visual style, motion and
+> vocabulary while replacing the point-centric runtime with persistent bodies and binary joints,
 > including the native editor, solver/rates/forces, versioned persistence, supported production
 > imports, rebuilt templates and fixtures, and legacy-runtime removal. Obtain Fable 5.1 reviews
 > at F1–F4 within the $35 Fable working budget, resolve actionable findings, and satisfy every
@@ -1180,7 +1223,8 @@ templates/fixtures; selection, tutorial, analysis, exports and visual integratio
 **The full migration is done only when** a cylinder consists of two persistent physical bodies
 and one internal P, every live connection is a typed binary relationship, welds derive groups
 without rebuilding material identity, and no consumer needs hidden joints to define a body.
-The removal manifest is closed, superseded runtime/handlers are deleted, and every retained
+The UI continuity contract is met: necessary new controls fit the existing selection/panel/menu
+workflow and styling. The removal manifest is closed, superseded runtime/handlers are deleted, and every retained
 compatibility or optimization module has a named live consumer.
 All creation and edit paths use one document transaction and one refusal model. Native URLs,
 history and supported production imports preserve the intended drawing. The five worked
