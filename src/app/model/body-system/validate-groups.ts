@@ -1,9 +1,10 @@
 import { ValidationContext } from './validation-context';
-import { finitePoint } from './body-frame';
+import { finitePoint, relativePose } from './body-frame';
 import { compileWeldGroups } from './weld-groups';
+import { compileWeldFrames, sameTransform } from './weld-frames';
 
 export function validateGroups(context: ValidationContext): void {
-  const { document, issue, issues } = context;
+  const { document, issue } = context;
   const annotationKeys = new Set<string>();
   for (const group of document.groups) {
     const key = JSON.stringify([...group.members].sort());
@@ -24,8 +25,7 @@ export function validateGroups(context: ValidationContext): void {
         issue('invalid-group-mass', 'groups');
     }
   }
-  if (issues.length) return;
-  const compiled = compileWeldGroups(document);
+  const compiled = compileWeldFrames(document);
   if (!compiled.ok) {
     issue(compiled.code, `joints.${compiled.jointId}`);
     return;
@@ -40,10 +40,25 @@ export function validateGroups(context: ValidationContext): void {
     )
       issue('invalid-group-annotation', 'groups');
   }
-  for (const force of document.forces)
-    if (force.legacyGroupScope) {
-      const group = compiled.groupOf.get(force.bodyId)!;
-      if (force.legacyGroupScope.some((id) => compiled.groupOf.get(id) !== group))
-        issue('split-load-scope', `forces.${force.id}`);
+  for (const force of document.forces) {
+    const scope = force.legacyGroupScope;
+    if (!scope) continue;
+    const group = compiled.groupOf.get(force.bodyId);
+    if (!group || scope.members.some((member) => compiled.groupOf.get(member.bodyId) !== group)) {
+      issue('split-load-scope', `forces.${force.id}`);
+    } else if (
+      scope.members.some(
+        (member) =>
+          !sameTransform(
+            member.poseInReference,
+            relativePose(group.members.get(force.bodyId)!, group.members.get(member.bodyId)!)
+          )
+      )
+    ) {
+      issue('load-scope-changed', `forces.${force.id}`);
     }
+  }
+  const properties = compileWeldGroups(document);
+  if (!properties.ok && properties.code === 'invalid-properties')
+    issue(properties.code, `bodies.${properties.bodyId}`);
 }

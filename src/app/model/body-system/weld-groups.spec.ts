@@ -76,7 +76,7 @@ describe('native weld groups', () => {
 
   it('refuses incompatible translations and directed angles around a weld cycle', () => {
     const { f, cycle } = fixture();
-    for (const patch of [{ x: 0.1 }, { angle: Math.PI }]) {
+    for (const patch of [{ x: 0.1 }, { angle: Math.PI }, { angle: -0.4 + 2 * Math.PI }]) {
       const document = {
         ...f.document,
         joints: f.document.joints.map((joint) =>

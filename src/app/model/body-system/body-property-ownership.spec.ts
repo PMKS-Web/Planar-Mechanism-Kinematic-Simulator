@@ -1,8 +1,9 @@
+import { captureLoadScope } from './load-provenance';
 import { areaProperties, resolveMass } from './body-properties';
 import { BodyFactory } from './body-factory';
 import { newRecordId } from './body-id';
 import { BodyUnits, SI_UNITS } from './body-units';
-import { compileWeldGroups } from './weld-groups';
+import { compileWeldGroups, groupPoseSI } from './weld-groups';
 import { localToWorld } from './body-frame';
 import { validateBodyDocument } from './body-validation';
 
@@ -67,7 +68,14 @@ describe('native material properties', () => {
     expect(body.presentation.fill).toBe('#26a69a');
     expect(body.label).toBe('ram');
     expect(body.geometry.kind).toBe('bar');
-    const imported = { ...document, forces: [{ ...force, legacyGroupScope: [a, b] }] };
+    const compiled = compileWeldGroups(document);
+    if (!compiled.ok) throw new Error(compiled.code);
+    const imported = {
+      ...document,
+      forces: [
+        { ...force, legacyGroupScope: captureLoadScope(compiled.groupOf.get(b)!, b, [a, b]) },
+      ],
+    };
     expect(validateBodyDocument(imported)).toEqual([]);
     expect(
       validateBodyDocument({ ...imported, joints: [] }).some(
@@ -154,7 +162,10 @@ describe('native material properties', () => {
     if (!result.ok) throw new Error(result.code);
     const mass = result.groupOf.get(a)!.materialMass;
     expect(mass.mass).toBe(8);
-    const worldCenter = localToWorld(result.groupOf.get(a)!.pose, mass.center!);
+    const worldCenter = localToWorld(
+      groupPoseSI(result.groupOf.get(a)!, document.units),
+      mass.center!
+    );
     expect(worldCenter.x).toBeCloseTo(3, 12);
     expect(worldCenter.y).toBeCloseTo(0, 12);
     expect(mass.inertia).toBeCloseTo(3 + 5 + 2 * 3 ** 2 + 6 * 1 ** 2, 12);
@@ -193,7 +204,10 @@ describe('native material properties', () => {
     const group = result.groupOf.get(a)!;
     expect(group.mass.mass).toBe(12);
     expect(group.mass.inertia).toBe(17);
-    expect(localToWorld(group.pose, group.mass.center!)).toEqual({ x: 3, y: 2 });
+    expect(localToWorld(groupPoseSI(group, document.units), group.mass.center!)).toEqual({
+      x: 3,
+      y: 2,
+    });
     expect(group.materialMass.mass).toBe(2);
     // An annotation cannot be copied onto an arbitrary surviving piece by a rebuild.
     expect(

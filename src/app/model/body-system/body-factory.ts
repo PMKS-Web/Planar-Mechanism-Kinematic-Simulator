@@ -6,6 +6,7 @@ import {
   relativePose,
   worldToLocal,
   dot,
+  cross,
   rotate,
   subtract,
   localToWorld,
@@ -24,7 +25,13 @@ export class BodyFactory {
   }
 
   body(label: string, pose: Pose, points: readonly [Point, Point], width = 0.1): BodyId {
-    if (!finitePose(pose) || !points.every(finitePoint) || !Number.isFinite(width) || width <= 0) {
+    if (
+      !finitePose(pose) ||
+      !points.every(finitePoint) ||
+      !Number.isFinite(width) ||
+      width <= 0 ||
+      (points[0].x === points[1].x && points[0].y === points[1].y)
+    ) {
       throw new Error('Invalid body geometry');
     }
     const id = newRecordId<'body'>();
@@ -85,10 +92,19 @@ export class BodyFactory {
     };
     const angleZero = poseB.angle - poseA.angle;
     const direction = rotate({ x: 1, y: 0 }, worldAxis);
-    const travelZero = dot(
-      direction,
-      subtract(localToWorld(poseB, anchorB.point), localToWorld(poseA, anchorA.point))
+    const displacement = subtract(
+      localToWorld(poseB, anchorB.point),
+      localToWorld(poseA, anchorA.point)
     );
+    // Capture datums only from feasible anchors; a travel zero cannot repair a lateral offset.
+    const tolerance = 1e-10 * Math.max(1, Math.hypot(displacement.x, displacement.y));
+    if (
+      (kind === 'revolute' && Math.hypot(displacement.x, displacement.y) > tolerance) ||
+      ((kind === 'prismatic' || kind === 'pin-in-slot') &&
+        Math.abs(cross(direction, displacement)) > tolerance)
+    )
+      throw new Error('Joint anchors do not satisfy the requested connection');
+    const travelZero = dot(direction, displacement);
     const joint: BodyJoint =
       kind === 'weld'
         ? { ...pair, kind, rest: relativePose(poseA, poseB) }

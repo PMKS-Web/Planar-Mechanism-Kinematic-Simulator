@@ -8,7 +8,13 @@ export function validGeometry(geometry: BodyGeometry): boolean {
   if (!['polygon', 'bar'].includes(geometry.kind) || !geometry.vertices.every(finitePoint))
     return false;
   if (geometry.kind === 'bar')
-    return geometry.vertices.length === 2 && Number.isFinite(geometry.width) && geometry.width > 0;
+    return (
+      geometry.vertices.length === 2 &&
+      Number.isFinite(geometry.width) &&
+      geometry.width > 0 &&
+      (geometry.vertices[0].x !== geometry.vertices[1].x ||
+        geometry.vertices[0].y !== geometry.vertices[1].y)
+    );
   if (geometry.kind === 'polygon' && !simplePolygon(geometry.vertices)) return false;
   try {
     const properties = areaProperties(geometry);
