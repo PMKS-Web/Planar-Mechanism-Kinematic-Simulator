@@ -105,3 +105,44 @@ For a body's CoM/witness local point `c`, use `p=r+R c`,
 `pdot=v+omega E R c`, `pddot=a+alpha E R c-omega² R c`.
 No angular acceleration is recovered by dividing arbitrary endpoint components. Each
 accepted sample owns its rates and branch state; a refused attempt publishes neither.
+
+## Numerical frames and continuation
+
+The compiled material/group frames remain independent of a partition's numerical origin O.
+For a constant group-local offset h, the numerical origin is `r_n = r + R h - O`, the
+attachment becomes `a_n = a - h`, and theta is unchanged. Moving group origins are already
+near their constraint geometry; fixed boundary origins are relocated near O too, so a WORLD
+anchor at a large coordinate does not reintroduce cancellation. Then
+`p_world = O + r_n + R a_n`. Continuation stores `r_n`, never a world pose rounded by adding O.
+World reconstruction is only an output boundary. The S2 test at translation 1e9 failed with
+global correction and passes with this frame; no convergence threshold was relaxed.
+
+S3 must carry the same frame change through rates and wrenches:
+`v_n = v + omega E R h`, `a_n = a + alpha E R h - omega² R h`.
+For a wrench reported about the old origin, `M_old = M_n + cross(R h, F)`.
+A frame change cannot turn a transported P guide moment into an independent reaction couple.
+
+`bodyMobility` removes drive rows, obtains the tangent nullspace of scaled J, and checks
+`J xddot = -gamma(v)` for its basis directions and their pairwise sums. A sole tangent
+direction obstructed at second order is an isolated pose (the two stretched rods test).
+With multiple tangent directions, an obstructed basis does not prove isolation: compatible
+mixtures may exist, so report singular/undetermined rather than zero mobility. An unobstructed
+redundant system is labeled second-order compatible, not a proof against all higher-order
+singularities. Admission still requires one controlled freedom, a full-rank driven system,
+consistent drawn rows and all bounds. Singular starts retain a refusal.
+
+Continuation predicts with dx/dc, corrects against the commanded rows and subdivides a step
+whose correction is too far from its prediction. Limits are checked on settled candidates;
+private substeps are discarded together if the requested advance fails. Rank-reduced local
+correction is allowed only on continuation from an admitted regular start, retaining its
+previous tangent through an isolated singular sample; it does not relax initial admission.
+The parallel-branch test crosses exact collinear poses over multiple turns.
+
+A numerical refusal alone is not an input limit. `findBodyFold` follows the undriven regular
+curve with an arc-plane equation, brackets a change in the sign of dc/ds, and evaluates
+`d²c/ds² = J_c xddot + gamma_c` from analytic rows. It reports a physical input fold only if
+the passive Jacobian still has rank n-1, the extremum is nondegenerate in the requested
+direction, the requested command lies beyond it, and the inspected curve poses satisfy
+coordinate bounds. Both limits of the rocker-input fixture agree with its independent
+triangle formula. Iteration/cut exhaustion without this evidence remains branch/unsolved.
+This fold diagnostic is not an accepted sample or a mutation of the prior continuation.

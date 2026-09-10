@@ -71,15 +71,22 @@ export function solveBodyRows(
   factor: RowFactorization,
   rhs: readonly number[]
 ): number[] | undefined {
-  if (factor.rank !== factor.width || rhs.length !== factor.height || !rhs.every(Number.isFinite))
-    return undefined;
+  return factor.rank === factor.width ? fitBodyRows(factor, rhs) : undefined;
+}
+
+/** One least-squares solution in the pivot basis; unused free coordinates are zero. */
+export function fitBodyRows(
+  factor: RowFactorization,
+  rhs: readonly number[]
+): number[] | undefined {
+  if (rhs.length !== factor.height || !rhs.every(Number.isFinite)) return undefined;
   const transformed = [...rhs];
   for (const { start, vector } of factor.reflectors) {
     const projection = vector.reduce((sum, value, i) => sum + value * transformed[start + i], 0);
     for (let i = 0; i < vector.length; i++) transformed[start + i] -= 2 * vector[i] * projection;
   }
   const x = new Array<number>(factor.width).fill(0);
-  for (let i = factor.width - 1; i >= 0; i--) {
+  for (let i = factor.rank - 1; i >= 0; i--) {
     let value = transformed[i];
     for (let j = i + 1; j < factor.width; j++) value -= factor.triangular[i][j] * x[j];
     x[i] = value / factor.triangular[i][i];

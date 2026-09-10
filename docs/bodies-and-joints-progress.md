@@ -17,7 +17,7 @@
 | --- | --- | --- |
 | S0 | Baseline complete | Six unit suites pass (182 tests), seven new compatibility tests pass, build passes, template-open 11/11, template-graphs 3978/3978, ui-copy 17/17. Timing, visual baseline and operation-level consumer classification are recorded. Existing drag timing failures are reproduced on original test files, not waived; S7 must meet the measured comparison budget. |
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
-| S2 | In progress | Native row compiler, physical Jacobians, SI groups/partitions, pivoted QR, local position correction and independent four-bar checks implemented. Mobility, admission, branch/limit continuation, full agreement and S2 gates remain pending. |
+| S2 | In progress | Native row compiler, physical Jacobians, SI groups/partitions, pivoted QR, local correction, numerical frames, mobility/admission and bounded continuation are implemented and under verification. Full native/reference agreement, remaining event/singularity probes, performance and browser gates remain pending. |
 | S3 | Pending | Analytic rates, physical wrenches, independent examples and F2. |
 | S4 | Pending | Native transactions, codec/import, lifecycle, history and F3. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
@@ -120,7 +120,7 @@ Known reported spend: **$3.47922375**, including the probe and F1 auxiliary usag
 
 ## Next action
 
-Continue S2 with partition-local numerical coordinates, mobility/admission and continuation. F1 resolution is committed as `447dfb9`; its gates pass. F1 process 22599 completed successfully; no further F1 call is pending or required for routine fixes. The independent row/derivative derivation is in `docs/bodies-and-joints-equations.md`.
+Finish S2 native/reference agreement and remaining event/singularity probes, then its browser/build gates. Numerical frames, mobility/admission and continuation are now implemented; inspect the latest evidence below. F1 resolution is committed as `447dfb9`; its gates pass. F1 process 22599 completed successfully; no further F1 call is pending or required for routine fixes. The independent row/derivative derivation is in `docs/bodies-and-joints-equations.md`.
 
 ## S1 implementation history (pre-review evidence)
 
@@ -221,3 +221,51 @@ cancellation); singular/rank and nonlinear mobility checks; sample branch/limit 
 retry and rollback; passive/fixed drive/limit admission; full S2 numerical and browser gates.
 The global translation behavior is unverified at this progress commit. S3 still owes analytic
 rates/wrenches and F2. S4–S8 and native default cutover/removal remain entirely open.
+
+## S2 progress: admission, continuation and geometric folds
+
+- The 1e9 world-translation probe first failed with `unsolved` at normalized residual
+  9.67e-9 (`S2-global-frame-probe.log`). Continuation now retains a partition-local pose and
+  transformed fixed-boundary anchors. The probe passes without weakening residual tolerance
+  (`S2-global-frame-fixed.log`). The earlier `S2-global-frame-before.log` was only an import-path
+  compile failure, not numerical evidence; that fixture extraction path was corrected.
+- `bodyMobility` separates regular rank, second-order compatibility and an obstructed tangent.
+  The stretched two-rod example has one infinitesimal direction but zero actual local freedom;
+  redundant four-bar rows retain DOF 1. Multiple obstructed directions report singular rather
+  than falsely proving immobility. Higher-order singularity classification is not claimed.
+- Analytic `bodyRowQuadratic` landed for these mobility/fold checks and is reusable by S3.
+  Every native row kind is checked on independent curved paths with nonzero unknown/boundary
+  acceleration and command acceleration. This is not the completed S3 rate/force layer.
+- Admission checks the drawn rows, one drive, control rank, mobility and passive bounds;
+  all-fixed internal rows/commands/bounds remain visible. A drive on a welded internal R is
+  refused when it fails to control its surrounding moving body. P versus free pin-in-slot
+  admits/refuses the expected DOF counts. Large-world input quantization is accounted for only
+  when validating the authored start; corrected local residuals still use the strict tolerance.
+- Continuation uses a tangent predictor and private bounded subdivisions, preserves unwrapped
+  body angles, and discards all substeps on refusal. The four-bar retraces, the parallelogram
+  traverses exact collinear samples over two complete turns, and cut/attempt/passive-bound
+  refusals preserve the original command, poses and tangent. A tiny unbounded carriage moves
+  from zero without a unit-dependent subdivision loop.
+- A physical input fold is a separate proof using the passive regular curve, a bracketed input
+  extremum and analytic curvature. The initial test exposed that exhaustion can say branch as
+  well as unsolved near a true fold (`S2-fold-first.log`); either is upgraded to travel only
+  after that proof. Both extrema match the rocker fixture's triangle formula. A forced
+  attempt cap alone is still not a travel event (`S2-fold-directions.log`).
+- The native axial ram/carriage fixture has three actual material bodies and four relationships,
+  no synthetic slider. Both R and weld mount variants solve at three guide headings, retain
+  the independent off-axis witness and enforce the ram stroke plus a tighter passive carriage
+  bound (`S2-cylinder-position.log`). Rates, forces and UI construction remain S3/S5/S6 work.
+- New fixture helpers are under `src/test-utils/verification/native-body-fixtures.ts` and
+  `native-cylinder-fixtures.ts`. They are test construction candidates, not yet published UI
+  fixtures; S4/S6 must route them through editor commands and the native codec/gallery.
+- Intermediate passing evidence: `S2-admission-first.log` 66 tests;
+  `S2-continuation-first.log` five; `S2-admission-boundaries.log` five;
+  `S2-fold-directions.log` six; `S2-cylinder-position.log` two. The expanded required unit gate
+  passes **229 tests / 33 files**, recorded by `S2-unit-gate-scope.json` / `S2-unit-gate.log`.
+  Those legacy suites protect existing behavior; they are not native/reference agreement evidence.
+
+Still pending before S2 is complete: full agreement on the reference mechanisms, a broader
+singularity/redundancy set, and browser/build/ui-copy gates. Event localization and checking
+passive-limit extrema between samples must be handled before S3's cycle precomputation can
+claim continuous playback respects stops. The current frame/mobility/continuation code is
+isolated from the live app. S3–S8, native default cutover and legacy removal remain open.
