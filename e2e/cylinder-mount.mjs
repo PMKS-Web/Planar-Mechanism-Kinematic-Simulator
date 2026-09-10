@@ -299,6 +299,40 @@ check(
 
 // ------------------------------------------------------------ 4. slot drops
 console.log('\nslot drops at a mount');
+
+// A slot arrives dangling -- neither anchored in the world nor riding a
+// carrier -- and the two ways out of that are the two flavors this has to
+// cover: ground it, or drop it on a body.
+ids = await weldedMount();
+await menuOnJoint(ids.mount);
+await clickMenuRow('Slider');
+const slotStates = await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const m = grid.mechanismSrv;
+  const slot = () => m.joints.find((j) => j.constructor?.name === 'PrisJoint' && !j.isSealed);
+  const say = () => ({
+    ground: !!slot().ground,
+    floating: !!slot().isFloating,
+    carrier: slot().carrier?.id ?? null,
+  });
+  const fresh = say();
+  grid.activeObjService.updateSelectedObj(
+    m.joints.find(
+      (j) => j.constructor?.name === 'RevJoint' && j.connectedJoints.some((c) => c === slot())
+    )
+  );
+  m.toggleGround();
+  return { fresh, grounded: say(), rams: m.sealedStructures().length };
+});
+check(
+  'a block put on a mount arrives dangling, and grounding anchors its slot',
+  !slotStates.fresh.ground &&
+    !slotStates.fresh.floating &&
+    slotStates.grounded.ground &&
+    slotStates.rams === 1,
+  JSON.stringify(slotStates)
+);
+
 ids = await weldedMount();
 const slotDrop = await page.evaluate((where) => {
   const m = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
@@ -306,7 +340,13 @@ const slotDrop = await page.evaluate((where) => {
   const compound = m.links.find((l) => (l.subset ?? []).length > 0);
   const leaf = compound.subset.find((x) => x.joints.some((j) => j.id === where.tip));
   const [a, b] = leaf.joints;
-  const took = m.cutSlotOn(mount, { carrier: compound, a, b, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+  const took = m.cutSlotOn(mount, {
+    carrier: compound,
+    a,
+    b,
+    x: (a.x + b.x) / 2,
+    y: (a.y + b.y) / 2,
+  });
   const slider = m.joints.find((j) => j.constructor?.name === 'PrisJoint' && !j.isSealed);
   return {
     took,
@@ -316,8 +356,8 @@ const slotDrop = await page.evaluate((where) => {
   };
 }, ids);
 check(
-  'a floating slot can be cut into a neighboring body at a mount',
-  slotDrop.took && slotDrop.floating && slotDrop.rams === 1,
+  'and dropping one on a neighboring body makes it float on that body instead',
+  slotDrop.took && slotDrop.floating && slotDrop.carrier && slotDrop.rams === 1,
   JSON.stringify(slotDrop)
 );
 
@@ -366,9 +406,31 @@ check(
   onBody.type === 'Link' && onBody.link === ids.compound,
   JSON.stringify(onBody)
 );
+check(
+  'and draws its leaves inside it as outlines rather than as things to click',
+  await page.evaluate((where) => {
+    const group = document.querySelector(`#${where.compound}__components`);
+    if (!group) return false;
+    const leaves = group.querySelectorAll('path');
+    return (
+      leaves.length === 2 &&
+      group.getAttribute('pointer-events') === 'none' &&
+      [...leaves].every((one) => one.id.endsWith('__component'))
+    );
+  }, ids),
+  JSON.stringify(
+    await page.evaluate(
+      (where) =>
+        [...(document.querySelector(`#${where.compound}__components`)?.children ?? [])].map(
+          (one) => one.id
+        ),
+      ids
+    )
+  )
+);
 const onBarrel = await clickAt(`#${ids.barrel}`);
 check(
-  'and the ram beside it is still its own body to click',
+  'while the ram beside it is still its own body to click',
   onBarrel.type === 'Link' && onBarrel.link !== ids.compound,
   JSON.stringify(onBarrel)
 );
