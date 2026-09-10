@@ -266,6 +266,21 @@ export class RealLink extends Link {
    */
   public drawnAsDisc = false;
   /**
+   * Whether a cylinder's skin stands in for this bar, so a compound holding it
+   * must not draw it a second time.
+   *
+   * A leaf cannot work this out for itself. After a weld its joints list only
+   * the compound root in `links`, and the one object that knows the pairing is
+   * the sealed `PrisJoint` — its `carrier` is the root and its two slot joints
+   * are the barrel's — which is reachable from the rod's pin and from nowhere
+   * else. A compound welded at a *barrel* mount does not contain that pin, so
+   * the structural test below finds the rod and never the barrel, and the
+   * barrel came out painted in the bracket's color with a seam partway along
+   * the part. Set by whoever resolves the sealed structures, which is the one
+   * place the answer exists.
+   */
+  public drawnByACylinderSkin = false;
+  /**
    * A hand-placed center of mass, held against the link's own frame: along
    * and across the unit direction joints[0]→joints[1], measured from the
    * uniform-body centroid. "Stored against the centroid" is what lets a
@@ -554,10 +569,16 @@ export class RealLink extends Link {
   getCompoundPathString(): string {
     // A compound is drawn from the outlines of its parts, never as a disc.
     this.drawnAsDisc = false;
-    // A sealed cylinder's rod welded into this compound is drawn by the skin,
-    // above the block; the compound repeating it drew the same bar twice, one
-    // copy on the wrong side of the block. The leaf is recognized through its
-    // pin: the joint that shares a SliderBlock with a sealed slider.
+    // A sealed cylinder's barrel or rod welded into this compound is drawn by
+    // the skin; the compound repeating it draws the same bar twice -- the rod
+    // once appeared on the wrong side of the block, and the barrel came out in
+    // the bracket's color with a seam where the compound's copy ended.
+    //
+    // `drawnByACylinderSkin` is the whole answer when somebody has resolved the
+    // structures and said so. The structural test beside it is the fallback for
+    // a link built without a service to ask -- it recognizes a rod through its
+    // pin, the joint that shares a SliderBlock with a sealed slider, and there
+    // is no equivalent for a barrel, which is why the flag exists.
     const isSealedRodLeaf = (leaf: RealLink) =>
       leaf.joints.length === 2 &&
       leaf.joints.some(
@@ -568,9 +589,10 @@ export class RealLink extends Link {
               l instanceof SliderBlock && l.joints.some((j) => j instanceof PrisJoint && j.isSealed)
           )
       );
+    const drawnElsewhere = (leaf: RealLink) => leaf.drawnByACylinderSkin || isSealedRodLeaf(leaf);
     const linkSubset = this.subset.filter(
       (link): link is RealLink =>
-        link instanceof RealLink && !(this.subset.length > 1 && isSealedRodLeaf(link))
+        link instanceof RealLink && !(this.subset.length > 1 && drawnElsewhere(link))
     );
     linkSubset.forEach((link) => link.reComputeDPath());
     const geometry = buildCompoundPath(

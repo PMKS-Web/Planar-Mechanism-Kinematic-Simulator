@@ -2452,6 +2452,26 @@ is only which leaf the filter knows how to name.
 The information needed to recognize the barrel is not reachable from the compound: after the weld
 the leaf's joints list only the root in `links`, and the sealed `PrisJoint` -- which is the one
 object that knows (`carrier` is the root, `slotJointA`/`slotJointB` are the leaf's two joints) --
-is reachable only from the rod's pin, which a barrel-welded compound does not contain. Fixing it
-means giving the model the answer the canvas already has in `cylinderList`, which is the plan's
-"derived render plan with explicit visible fragments".
+is reachable only from the rod's pin, which a barrel-welded compound does not contain. So the
+answer is *told* to the leaf instead: `RealLink.drawnByACylinderSkin`, set by
+`MechanismService.tellEachBarWhoDrawsIt` wherever the sealed structures are resolved, which is the
+one place it exists. It is cleared over the bars marked *last* time rather than over the drawing,
+because deleting a ram takes its bars out of `links` before the next resolve runs, and a bar that
+keeps the flag is a bar that stops drawing itself the moment it is welded into anything else.
+
+### A ram's bore is a channel, and welding its barrel mount gave the channel to the bracket
+
+`SliderMarkService.channels` walks every floating `PrisJoint` and emits a capsule for its carrier
+-- the sealed one included. That never showed while the barrel was the carrier: a barrel is
+skinned, so `linkPathWithChannels` returns `''` for it and the bore goes with it. Weld the barrel
+mount and the carrier becomes the **compound**, which is not skinned, so the bore was appended to
+the compound's outline as a second subpath -- and since it does not overlap the bracket, even-odd
+filled it in rather than subtracting it: a capsule the length of the barrel, in the bracket's
+color, laid over the part it is supposed to be inside. The plan asks for exactly this ("the
+internal bore stays hidden even when its carrier root also contains a neighboring leaf with a
+visible slot"), and the fix is one `if (joint.isSealed) continue;`.
+
+Worth knowing while chasing this: the compound's `d` and what the canvas *draws* are two different
+strings. `linkPathWithChannels` is `outlineWithMotor(link)` -- which is `link.d` plus any motor
+bodies, cached per pose -- followed by `channelsCutInto(link)`. A discrepancy between
+`getLinkProp(link, 'd')` and the element's `d` attribute is the channels, not the outline.

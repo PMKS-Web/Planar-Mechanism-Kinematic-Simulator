@@ -417,6 +417,14 @@ export class SliderMarkService {
     const found: Channel[] = [];
     for (const joint of joints) {
       if (!(joint instanceof PrisJoint) || !joint.isFloating) continue;
+      // A ram's bore is not an ordinary channel. The skin draws it, mouth and
+      // all, and while the barrel was the carrier this never mattered: the
+      // barrel is skinned, so the link layer suppressed its outline and the
+      // channel with it. Weld the barrel mount and the carrier becomes the
+      // compound, which is not skinned -- and the bore came out as a filled
+      // capsule the length of the barrel, in the bracket's color, laid over
+      // the part it is supposed to be inside.
+      if (joint.isSealed) continue;
       if (!joint.isSlotWellFormed) continue;
       const a = joint.slotJointA!;
       const b = joint.slotJointB!;

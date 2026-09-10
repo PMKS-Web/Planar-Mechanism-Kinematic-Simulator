@@ -3769,12 +3769,36 @@ export class MechanismService {
    */
   sealedStructures(): Cylinder[] {
     if (this.structuresCache?.revision !== this.cylinderRevision) {
-      this.structuresCache = {
-        revision: this.cylinderRevision,
-        list: sealedCylinderStructures(this.joints),
-      };
+      const list = sealedCylinderStructures(this.joints);
+      this.structuresCache = { revision: this.cylinderRevision, list };
+      this.tellEachBarWhoDrawsIt(list);
     }
     return this.structuresCache.list;
+  }
+
+  /**
+   * Mark the bars a cylinder's skin stands in for.
+   *
+   * A compound holding a barrel or a rod must not draw it: the skin does, and
+   * a compound drawing it too puts the bracket's color under the part with a
+   * seam where the copy ends. The leaf cannot answer this itself -- see
+   * `RealLink.drawnByACylinderSkin` -- and this is the one place the structures
+   * are resolved, so it is the one place that can say.
+   *
+   * Cleared over whatever was marked last time rather than over the drawing:
+   * deleting a ram takes its bars out of `links` before this runs, so a pass
+   * over the drawing would leave them marked forever -- and a bar that keeps
+   * the flag is a bar that stops drawing itself the moment it is welded into
+   * anything.
+   */
+  private barsDrawnBySkins: RealLink[] = [];
+
+  private tellEachBarWhoDrawsIt(cylinders: Cylinder[]): void {
+    this.barsDrawnBySkins.forEach((bar) => (bar.drawnByACylinderSkin = false));
+    this.barsDrawnBySkins = cylinders.flatMap((cylinder) =>
+      [cylinder.barrel, cylinder.rod].filter((bar): bar is RealLink => bar instanceof RealLink)
+    );
+    this.barsDrawnBySkins.forEach((bar) => (bar.drawnByACylinderSkin = true));
   }
 
   /**

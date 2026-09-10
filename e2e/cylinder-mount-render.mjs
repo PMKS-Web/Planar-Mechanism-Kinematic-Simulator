@@ -53,7 +53,7 @@ async function draw(recipe) {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
   await waitForReady(page);
   await page.waitForTimeout(250);
-  return page.evaluate((which) => {
+  const drawn = await page.evaluate((which) => {
     const grid = ng.getComponent(document.querySelector('app-new-grid'));
     const m = grid.mechanismSrv;
     const S = 200;
@@ -164,6 +164,16 @@ async function draw(recipe) {
       samples: m.masterMechanism()?.joints.length ?? 0,
     };
   }, recipe);
+  // The service is done; the canvas is not. Every recipe draws at least one
+  // ram, so its skin appearing is the signal that this pose has been painted
+  // -- without it the facts below are read off the drawing before it exists,
+  // and a shape comes back with nothing on it at all.
+  await page.waitForFunction(
+    (many) => document.querySelectorAll('.cylinder-mark .cylinder-barrel').length >= many,
+    recipe === 'shared-mount' ? 2 : 1
+  );
+  await page.waitForTimeout(150);
+  return drawn;
 }
 
 /** The structural facts a drawing has to satisfy, whatever it is of. */
@@ -202,6 +212,31 @@ const renderFacts = () =>
       mountsDrawn: rams
         .flatMap((r) => [r.barrelFar.id, r.rodFar.id])
         .filter((id) => count(`joint_${id}`) === 1),
+      // The skin is still there to draw them: one barrel path per ram.
+      skinsDrawn: document.querySelectorAll('.cylinder-mark .cylinder-barrel').length,
+      // And no compound's outline covers the middle of a ram. A compound that
+      // holds a barrel or a rod must leave it to the skin; drawing it too puts
+      // the bracket's color over the part, which the random palette hides more
+      // often than not -- so this asks the geometry rather than the pixels.
+      compoundsOverARam: (() => {
+        const over = [];
+        const middle = (one, two) => new DOMPoint((one.x + two.x) / 2, (one.y + two.y) / 2);
+        bodies
+          .filter((l) => (l.subset ?? []).length > 0)
+          .forEach((root) => {
+            const drawn = document.querySelector(`[id="${root.id}"]`);
+            if (!drawn?.isPointInFill) return;
+            rams.forEach((ram) => {
+              [
+                ['barrel', middle(ram.barrelFar, ram.barrelNear)],
+                ['rod', middle(ram.pin, ram.rodFar)],
+              ].forEach(([what, point]) => {
+                if (drawn.isPointInFill(point)) over.push(`${root.id} covers a ${what}`);
+              });
+            });
+          });
+        return over;
+      })(),
       rams: rams.length,
       links: bodies.map((l) => l.id),
     };
@@ -259,6 +294,15 @@ for (const shape of shapes) {
       missing: facts.bodiesNotDrawn,
       leaves: facts.leavesDrawnAsBodies,
       links: facts.links,
+    })
+  );
+  check(
+    `${shape}: the skin draws each ram, and no compound draws one again`,
+    facts.skinsDrawn === facts.rams && facts.compoundsOverARam.length === 0,
+    JSON.stringify({
+      skins: facts.skinsDrawn,
+      rams: facts.rams,
+      over: facts.compoundsOverARam,
     })
   );
   check(
