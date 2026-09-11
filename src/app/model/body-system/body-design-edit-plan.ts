@@ -1,4 +1,5 @@
 import { editBodyPoint } from './body-point-edit';
+import { convertBodyUnits } from './body-unit-edit';
 import { editBodyDrive, isBodyDriveOperation } from './body-drive-edit';
 import { editBodyGeometry, isBodyGeometryOperation } from './body-geometry-edit';
 import { remapEditedCenters } from './body-center-edit';
@@ -52,6 +53,14 @@ export function planBodyDesignEdit(
   const source = snapshotCopy(document);
   const invalid = validateBodyEditDocument(source);
   if (invalid) return invalid;
+  const conversions = command.operations.filter((operation) => operation.kind === 'convert-units');
+  if (conversions.length > 1) return bodyEditRefusal('invalid-command');
+  const converted = conversions.length
+    ? convertBodyUnits(source, conversions[0].units)
+    : { ok: true as const, document: source };
+  if (!converted.ok) return converted;
+  // Every dimensional operand in a unit-changing batch uses the destination units, regardless of array order.
+  const workingSource = converted.document;
   const reset = new Set<BodyId>();
   for (const operation of command.operations)
     if (operation.kind === 'reset-group-mass') {
@@ -60,8 +69,8 @@ export function planBodyDesignEdit(
       reset.add(operation.member);
     }
   const lineageSource = {
-    ...source,
-    groups: source.groups.map((group) => {
+    ...workingSource,
+    groups: workingSource.groups.map((group) => {
       if (!group.members.some((id) => reset.has(id))) return group;
       const { mass, ...retained } = group;
       return retained;
@@ -113,7 +122,7 @@ export function planBodyDesignEdit(
       const changed = editBodyProperties(candidate, operation);
       if (!changed.ok) return changed;
       candidate = changed.document;
-    } else if (!['insert', 'delete', 'reset-group-mass'].includes(operation.kind))
+    } else if (!['insert', 'delete', 'reset-group-mass', 'convert-units'].includes(operation.kind))
       return bodyEditRefusal('invalid-command');
   }
   if (command.operations.some((operation) => operation.kind === 'joint-kind'))
@@ -133,7 +142,7 @@ export function planBodyDesignEdit(
   if (!lineage.ok) return lineage;
   candidate = { ...candidate, groups: lineage.groups };
   candidate = remapEditedCenters(
-    source,
+    workingSource,
     candidate,
     new Set(
       command.operations.flatMap((operation) =>
@@ -143,7 +152,7 @@ export function planBodyDesignEdit(
       )
     )
   );
-  candidate = retainCenterEditAnchors(source, candidate);
+  candidate = retainCenterEditAnchors(workingSource, candidate);
   for (const operation of command.operations)
     if (operation.kind === 'group-properties') {
       const changed = editBodyProperties(candidate, operation);
@@ -154,7 +163,7 @@ export function planBodyDesignEdit(
   if (refused) return refused;
   const held = validateBodyEditHolds(candidate);
   if (held) return held;
-  const locked = validateBodyEditLocks(source, candidate);
+  const locked = validateBodyEditLocks(workingSource, candidate);
   if (locked) return locked;
   const effects = bodyEditEffects(source, candidate);
   return snapshotCopy({

@@ -811,6 +811,13 @@ selection. Cylinder creation constructs two bodies/P once; skins cannot create t
 All preview/commit paths use S4 permissions. Include keyboard/touch, deselection, force
 handles, locks/holds and editing from analysis modes. No hidden five-point fallback.
 
+Unit controls must preserve meaningful precision for nonzero marker lengths across cm/m/in.
+The S4 incognito reference check found that a 0.27 cm Object Size displayed as 0.00 after
+switching to meters, and a size/coverage warning appeared despite unchanged on-screen size.
+Do not inherit these legacy defects. Native acceptance must cover conversion and Undo/Redo
+with unchanged framing, marker proportions and physically equivalent settings; coverage
+advisories must reflect settled screen coverage rather than the unit label or raw magnitude.
+
 **New specs:** `body-joint-marks.spec.ts` and `body-joint-interaction.spec.ts`; new browser
 `body-joint-editing.mjs` and `body-joint-render.mjs`. Existing browser gates:
 `context-menu`, `context-menu-modes`, `disabled-toggles`, `creation-previews`,

@@ -19,7 +19,7 @@
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
 | S2 | Complete | Native compiler, analytic Jacobians, mobility/admission, branch continuation, folds, limits and frame conditioning. Seven native/legacy and four native/MATLAB comparisons retain the original ceilings. Geometric redundancy, two slots on a carrier and one-pin/shared-WORLD cases pass. Combined S2/initial-rate gate: 255 tests / 37 files; current-editor browser gate is green. Continuous cycle event publication remains an explicit S3 obligation. |
 | S3 | Complete | Native rates/forces, immutable results, interval/cycle/window publication, all five hand-derived cylinder examples and native/MATLAB positions/rates. F2 reviewed d842ffd and all findings resolved below. Final full gate: 2682 tests / 285 files; host build passes; ui-copy 17/17 with zero console errors. Earlier S3 browser and live-incognito evidence remains recorded. Native UI cutover is S5–S6, not claimed here. |
-| S4 | In progress | Native codec/project state, structural/property commands, connected point proposals, canonical geometry/pose primitives, whole-body locks, CoM edit mapping, captured display and constrained re-anchoring tested in slices. Full gesture/coordinate-pose/axis/copy/unit edits, cylinder dimensions, production import/recovery, full lifecycle/service matrix and F3 remain. Stable-ID drive and working-limit commands are implemented and tested below. F2 is resolved; no public-route cutover yet. |
+| S4 | In progress | Native codec/project state, structural/property commands, connected point proposals, canonical geometry/pose primitives, whole-body locks, CoM edit mapping, captured display and constrained re-anchoring tested in slices. Full gesture/coordinate-pose/axis/copy edits, cylinder dimensions, production import/recovery, full lifecycle/service matrix and F3 remain. Stable-ID drive/working-limit commands and physical unit conversion are implemented and tested below. F2 is resolved; no public-route cutover yet. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
 | S6 | Pending | All consumers, synthesis, tutorial, fixtures/templates and default cutover. |
 | S7 | Pending | Removal manifest closed and performance budget met. |
@@ -1798,3 +1798,60 @@ scheduling/performance must be measured against the plan without omitting commit
 Both browser workflows at S5/S6/S8, native default/consumer cutover, obsolete-runtime removal
 and all final gates remain. No Fable call or spending change in this checkpoint. No push or
 publication.
+
+
+## S4 continuation — physical unit conversion (2026-09-11)
+
+Checkpoint based on `886e0d9`. The preceding reminder-only turn confirmed already-recorded
+browser requirements but made no implementation progress; this continuation rechecked the
+worktree and terminal test artifacts, then completed the pending checkpoint documentation.
+
+One `convert-units` transaction scales every dimensional native record using independent
+length, mass, inertia and force factors. Other batch operands use the destination units in
+either array order. A converted source supplies lineage, CoM and lock comparisons so a unit
+change preserves physical settings without exempting another edit in the same transaction.
+The shared settings start restriction applies; malformed units and mixed failures are atomic.
+
+Eight command tests cover hand-derived loaded-rod rates/reactions, explicit and density-based
+mass/inertia, custom and aggregate CoM, force provenance/locks, length/angle holds, cylinder
+stroke/ownership, independent display units, synthesis and saved framing, exact history and
+native save/reopen. The hand disk has mass 16π and inertia 32π; the triangle has mass 6 and
+inertia 13/3. A returning travel coordinate scales its values without changing its clock leg.
+
+A real initial failure exposed a fully fixed P whose driver scaled from 2 to 200 while its
+clock stayed 2: it belongs to no moving partition. Clocks now scale travel values directly,
+then compare actual physical motion/driver changes against the converted source. The initial
+objectScale assumption was also corrected against the contract before the final gate: it is
+a document-length marker setting, not dimensionless. Its ratio to saved camera span stays
+constant across units. No physical constraint is derived from it.
+
+Rechecked evidence in `artifacts/bodies-and-joints/`:
+
+- `S4-unit-edit-full-unit.log`: **2807 tests / 310 files pass**, session 2959 exit 0.
+- `S4-unit-edit-build.log`: production build passes, session 55547 exit 0; existing CommonJS warnings.
+- `S4-unit-edit-ui-copy.log`: **17/17**, zero console errors, session 71967 exit 0.
+- `S4-unit-edit-unit-undo-view.log`: **6/6**, session 35087 exit 0, on localhost:4307.
+- `S4-unit-edit-focused-initial.log`: actual fixed-coordinate clock regression before its fix.
+- `S4-unit-edit-mutation-density-area.log` and `S4-unit-edit-mutation-independent-inertia.log`:
+  each intended hand-answer assertion fails when its conversion defect is inserted. The
+  mutation runner restored source byte-for-byte; final full tests/build include restored code
+  and the subsequent objectScale correction. Restoration is recorded in `S4-unit-edit-mutations.log`.
+- Touched TypeScript formatted; `git diff --check` passes. Documentation-only closure does
+  not require repeating the already-terminal source gates.
+
+The preceding live check used standard Codex computer use in **incognito Chrome**, alongside
+Playwright, on the owned localhost:4307 server (PID 13660, worktree and HTTP 200 checked).
+Selected cylinder GC and grounded rod OC retained screen positions, cylinder skin, selected
+yellow outline, panel blocks and card styling through cm→m→Undo. Screenshots were inspected
+inline, not saved as a filmstrip. This is a legacy-route unit/view reference check, **not**
+native UI or full-cycle animation evidence. Existing native S5/S6/S8 live/filmstrip gates remain.
+
+Two legacy issues observed there are now explicit S5 native acceptance requirements: Object
+Size 0.27 cm becomes a nonzero meter value displayed as 0.00, and a size/coverage warning
+appears despite unchanged on-screen proportions. Fix these in the native settings UI; do not
+silently inherit them or count the current headless tests as their UI verification.
+
+**Next required:** coordinate pose/axis and cylinder dimensions, active travel projection and
+full gestures, typed copy/remap, bounded production 2.0.3 import and atomic recovery, complete
+lifecycle/service coverage and remaining named S4 browser gates, then F3. S4 remains in
+progress. No Fable call or spending change, no push or publication.
