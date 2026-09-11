@@ -98,7 +98,9 @@ for (const mode of ['Edit', 'Kinematic Analysis', 'Force Analysis']) {
   const pausedRows = await rows();
   check(
     `${mode}: topology changes disabled at paused pose`,
-    pausedRows.filter((r) => !/Vectors$|^Trace path$|^Locked$/.test(r.label)).every((r) => r.disabled),
+    pausedRows
+      .filter((r) => !/Vectors$|^Trace path$|^Locked$/.test(r.label))
+      .every((r) => r.disabled),
     pausedRows
   );
   check(
@@ -146,7 +148,9 @@ for (const mode of ['Edit', 'Kinematic Analysis', 'Force Analysis']) {
   );
   check(
     `${mode}: topology changes stay disabled after grab-to-pause`,
-    playingRows.filter((r) => !/Vectors$|^Trace path$|^Locked$/.test(r.label)).every((r) => r.disabled),
+    playingRows
+      .filter((r) => !/Vectors$|^Trace path$|^Locked$/.test(r.label))
+      .every((r) => r.disabled),
     playingRows
   );
   await page.keyboard.press('Escape');
@@ -155,11 +159,13 @@ for (const mode of ['Edit', 'Kinematic Analysis', 'Force Analysis']) {
 await openMechanism(page, `${BASE}/?${TEMPLATE_LINKAGES['4-Bar']}`);
 await page.locator('#AB').click();
 await page.locator('#BC').click({ modifiers: ['Meta'] });
-const deleteFits = await page.getByRole('button', { name: 'Delete', exact: true }).evaluate(button => {
-  const box = button.getBoundingClientRect();
-  const label = button.querySelector('.mdc-button__label').getBoundingClientRect();
-  return label.left >= box.left && label.right <= box.right;
-});
+const deleteFits = await page
+  .getByRole('button', { name: 'Delete', exact: true })
+  .evaluate((button) => {
+    const box = button.getBoundingClientRect();
+    const label = button.querySelector('.mdc-button__label').getBoundingClientRect();
+    return label.left >= box.left && label.right <= box.right;
+  });
 check('bulk: short Delete label fits beside Lock', deleteFits);
 
 await page.evaluate(() => {
@@ -167,7 +173,9 @@ await page.evaluate(() => {
   m.seekMechanism(0, m.mechanisms[0].cyclePeriod / 4);
 });
 const length = page.locator('app-multi-edit-panel input[data-field="length"]');
-await page.waitForFunction(() => document.querySelector('app-multi-edit-panel input[data-field="length"]')?.disabled);
+await page.waitForFunction(
+  () => document.querySelector('app-multi-edit-panel input[data-field="length"]')?.disabled
+);
 check(
   'bulk: paused numeric fields explain their refusal',
   (await length.isDisabled()) &&
@@ -184,14 +192,12 @@ check('bulk: return-to-start action enables numeric fields', await length.isEnab
 await page.setViewportSize({ width: 390, height: 600 });
 await openMechanism(page, `${BASE}/?${TEMPLATE_LINKAGES['4-Bar']}`);
 await openJoint();
-const bounds = await page
-  .locator('#contextMenu')
-  .evaluate((el) => ({
-    height: el.getBoundingClientRect().height,
-    client: el.clientHeight,
-    scroll: el.scrollHeight,
-    overflow: getComputedStyle(el).overflowY,
-  }));
+const bounds = await page.locator('#contextMenu').evaluate((el) => ({
+  height: el.getBoundingClientRect().height,
+  client: el.clientHeight,
+  scroll: el.scrollHeight,
+  overflow: getComputedStyle(el).overflowY,
+}));
 check(
   'mobile: combined menu fits the viewport and scrolls',
   bounds.height <= 584 && bounds.overflow === 'auto',

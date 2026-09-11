@@ -160,7 +160,11 @@ export class DrawingExportComponent {
     // The drawing's own name, because "the DXF on its own" was on screen while
     // an SVG was being written.
     { label: 'None', note: 'The drawing on its own.', value: 'none' },
-    { label: 'CSV', note: 'Separate files for joints, links and any applied forces.', value: 'csv' },
+    {
+      label: 'CSV',
+      note: 'Separate files for joints, links and any applied forces.',
+      value: 'csv',
+    },
     { label: 'JSON', note: 'The same tables, one structured file.', value: 'json' },
   ];
 

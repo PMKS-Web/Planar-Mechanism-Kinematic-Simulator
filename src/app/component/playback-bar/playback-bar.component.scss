@@ -19,8 +19,8 @@
   // the only thing on the card that says which.
   $track: linear-gradient(
     to right,
-    var(--travelled, #3f51b5) 0 var(--along, 0%),
-    #d5d7e0 var(--along, 0%) 100%
+    var(--travelled, var(--brand)) 0 var(--along, 0%),
+    var(--surface-disabled) var(--along, 0%) 100%
   );
   // Right-aligned in every mode, so the view controls at its right-hand end sit
   // in exactly the same place whatever mode is open. They used to be pushed
@@ -125,7 +125,7 @@
     border: none;
     border-radius: 6px;
     background: transparent;
-    color: #5f6368;
+    color: var(--text-secondary);
     font-family: inherit;
     font-size: 13px;
     font-weight: 500;
@@ -137,7 +137,7 @@
     }
 
     &:disabled {
-      color: #b7bac7;
+      color: var(--text-disabled-5);
       cursor: default;
     }
   }
@@ -154,13 +154,13 @@
     height: 40px;
     border: none;
     border-radius: 6px;
-    background: #d5d7e0;
-    color: #fff;
+    background: var(--surface-disabled);
+    color: var(--text-on-accent);
     cursor: pointer;
     padding: 0;
 
     &.live {
-      background: #5c6bc0;
+      background: var(--brand-mid);
     }
 
     &:disabled {
@@ -188,7 +188,7 @@
     border: none;
     border-radius: 6px;
     background: transparent;
-    color: #5f6368;
+    color: var(--text-secondary);
     cursor: pointer;
 
     &:hover:not(:disabled) {
@@ -196,7 +196,7 @@
     }
 
     &:disabled {
-      color: #c8cad3;
+      color: var(--text-disabled-6);
       cursor: default;
     }
 
@@ -222,7 +222,7 @@
     border: none;
     border-radius: var(--card-radius) var(--card-radius) 0 0;
     background: var(--card-surface);
-    color: #5f6368;
+    color: var(--text-secondary);
     font-family: inherit;
     font-size: 12px;
     white-space: nowrap;
@@ -233,8 +233,8 @@
     box-shadow: 0 -3px 6px -2px rgba(0, 0, 0, 0.18);
 
     &.on {
-      background: #eef1fc;
-      color: #3f51b5;
+      background: var(--selection);
+      color: var(--brand);
     }
 
     mat-icon {
@@ -265,14 +265,14 @@
       cursor: pointer;
 
       &:hover {
-        background: #eceef5;
+        background: var(--border-rule);
       }
 
       // A shade darker, and that is the whole of it. Nothing added, nothing
       // moved -- not even the name's weight, which would reflow the line it
       // leads for a state the surface under it already says.
       &.selected {
-        background: #e9ebf3;
+        background: var(--surface-selected);
       }
     }
   }
@@ -323,7 +323,7 @@
     // thing for it to select.
     &.plain {
       cursor: default;
-      color: #5f6368;
+      color: var(--text-secondary);
     }
   }
 
@@ -336,7 +336,7 @@
     gap: 4px;
     flex: 0 0 auto;
     font-size: 11px;
-    color: #8a6100;
+    color: var(--warning-text-4);
     white-space: nowrap;
     cursor: help;
   }
@@ -345,7 +345,7 @@
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background: #f2b01e;
+    background: var(--accent-3);
   }
 
   .rowNote {
@@ -365,7 +365,7 @@
     min-width: 0;
     gap: 4px;
     font-size: 11px;
-    color: #5f6368;
+    color: var(--text-secondary);
     white-space: nowrap;
     overflow: hidden;
 
@@ -375,7 +375,7 @@
       flex: 0 0 auto;
       font-size: 13px;
       line-height: 13px;
-      color: #9aa0a6;
+      color: var(--text-muted);
     }
   }
 
@@ -390,8 +390,8 @@
     padding: 0 8px;
     flex: 0 0 auto;
     border-radius: 9px;
-    background: #fce8e6;
-    color: #c5221f;
+    background: var(--refusal-bg);
+    color: var(--refusal-text);
     font-size: 11px;
     font-weight: 400;
     white-space: nowrap;
@@ -401,7 +401,7 @@
     flex: 0 1 auto;
     min-width: 0;
     font-size: 13px;
-    color: #5f6368;
+    color: var(--text-secondary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -440,8 +440,8 @@
     padding: 0 4px 0 8px;
     flex: 0 0 auto;
     border-radius: 9px;
-    background: #e8eaf6;
-    color: #303f9f;
+    background: var(--brand-tint);
+    color: var(--brand-dark);
     font-size: 11px;
     font-weight: 500;
     white-space: nowrap;
@@ -451,15 +451,15 @@
       padding: 0 6px;
       border: none;
       border-radius: 8px;
-      background: #fff;
-      color: #303f9f;
+      background: var(--surface);
+      color: var(--brand-dark);
       font-family: inherit;
       font-size: 11px;
       font-weight: 500;
       cursor: pointer;
 
       &:hover {
-        background: #f1f3fb;
+        background: var(--selection-2);
       }
     }
   }
@@ -473,7 +473,7 @@
     height: 18px;
     flex: 0 0 auto;
     border-radius: 9px;
-    background: #fff;
+    background: var(--surface);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.14);
     // The menu hangs off it.
     position: relative;
@@ -487,7 +487,7 @@
     height: 18px;
     border: none;
     background: transparent;
-    color: #303f9f;
+    color: var(--brand-dark);
     font-family: inherit;
     font-size: 11px;
     font-weight: 500;
@@ -526,7 +526,7 @@
   }
 
   .startChip.open .startChipCaret {
-    background: #eef1fc;
+    background: var(--selection);
   }
 
   .startChipRule {
@@ -565,7 +565,7 @@
   .rowPosition {
     font-size: 11px;
     font-weight: 500;
-    color: #2c2c2c;
+    color: var(--text-primary);
   }
 
   .rowTime {
@@ -608,7 +608,7 @@
   }
 
   .dirButton {
-    color: #5f6368;
+    color: var(--text-secondary);
 
     mat-icon {
       width: 15px;
@@ -654,7 +654,7 @@
     margin-left: -12px;
     padding: 0;
     box-sizing: border-box;
-    border: 1.5px dashed #303f9f;
+    border: 1.5px dashed var(--brand-dark);
     border-radius: 10px;
     // Not opaque: the rail runs behind it, and the seat is a place on the rail
     // rather than something standing on it.
@@ -684,7 +684,7 @@
     top: 4px;
     height: 8px;
     border-radius: 4px;
-    background: #eceef5;
+    background: var(--border-rule);
     pointer-events: none;
   }
 
@@ -742,7 +742,7 @@
       margin-top: -6px;
       border: 1px solid rgba(0, 0, 0, 0.16);
       border-radius: 10px;
-      background: #fff;
+      background: var(--surface);
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
       cursor: inherit;
     }
@@ -753,7 +753,7 @@
       height: 20px;
       border: 1px solid rgba(0, 0, 0, 0.16);
       border-radius: 10px;
-      background: #fff;
+      background: var(--surface);
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
       cursor: inherit;
     }
@@ -848,14 +848,14 @@
       border: 0;
       border-radius: 6px;
       background: transparent;
-      color: #5f6368;
+      color: var(--text-secondary);
       font-family: inherit;
       font-size: 12px;
       cursor: pointer;
 
       &.on {
-        background: #eef1fc;
-        color: #303f9f;
+        background: var(--selection);
+        color: var(--brand-dark);
       }
 
       mat-icon {

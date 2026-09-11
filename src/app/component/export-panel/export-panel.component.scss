@@ -117,14 +117,14 @@
     .stepBar {
       height: 3px;
       border-radius: 2px;
-      background: #eceef5;
+      background: var(--border-rule);
 
       &.current {
         background: $indigo;
       }
 
       &.done {
-        background: #c5cae9;
+        background: var(--brand-pale);
       }
     }
 
@@ -200,7 +200,7 @@
     .mechName {
       font-size: 14px;
       font-weight: 500;
-      color: #2c2c2c;
+      color: var(--text-primary);
     }
 
     // Wraps. It used to ellipse, and the drawer was widened for it; at the
@@ -252,16 +252,16 @@
       cursor: pointer;
 
       &:hover:not(:disabled) {
-        background: #f4f5f9;
+        background: var(--surface-hover);
       }
 
       // The part the reader picked on the canvas, so the list opens at the
       // thing they were already looking at.
       &.onGrid {
-        background: #fff8e1;
+        background: var(--accent-tint);
 
         &:hover:not(:disabled) {
-          background: #fff3cd;
+          background: var(--accent-tint-hover);
         }
       }
 
@@ -287,7 +287,7 @@
       border-radius: 2px;
       box-sizing: border-box;
       flex: 0 0 auto;
-      color: #fff;
+      color: var(--text-on-accent);
 
       &.ticked {
         border-color: $indigo;
@@ -304,12 +304,12 @@
 
     .pickRow.off .box {
       border-color: rgba(0, 0, 0, 0.2);
-      background: #f4f4f7;
+      background: var(--surface-sunken-3);
     }
 
     .rowName {
       font-size: 14px;
-      color: #2c2c2c;
+      color: var(--text-primary);
     }
 
     .rowNote {
@@ -341,7 +341,7 @@
       padding: 10px 15px 6px;
       font-size: 14px;
       font-weight: 500;
-      color: #2c2c2c;
+      color: var(--text-primary);
     }
 
     .settingRow {
@@ -353,7 +353,7 @@
       &.spaced {
         margin-top: 6px;
         padding-top: 12px;
-        border-top: 1px solid #eceef5;
+        border-top: 1px solid var(--border-rule);
       }
     }
 
@@ -428,7 +428,7 @@
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background: #fff;
+      background: var(--surface);
     }
 
     .formatText {
@@ -439,7 +439,7 @@
 
     .formatName {
       font-size: 14px;
-      color: #2c2c2c;
+      color: var(--text-primary);
     }
 
     .formatNote {
@@ -453,7 +453,7 @@
       gap: 6px;
       padding: 8px 0;
       margin-top: 4px;
-      border-top: 1px solid #eceef5;
+      border-top: 1px solid var(--border-rule);
     }
 
     .nameField {
@@ -463,11 +463,11 @@
       border: none;
       border-bottom: 1px solid rgba(0, 0, 0, 0.42);
       border-radius: 4px 4px 0 0;
-      background: #f0f1f5;
+      background: var(--surface-field);
       box-sizing: border-box;
       font-family: inherit;
       font-size: 14px;
-      color: #2c2c2c;
+      color: var(--text-primary);
 
       &:focus {
         outline: none;
@@ -486,7 +486,7 @@
       gap: 10px;
       margin: 4px 15px 12px;
       padding: 10px 12px;
-      background: #f7f8fc;
+      background: var(--surface-sunken);
       border-radius: 5px;
     }
 
@@ -496,7 +496,7 @@
       height: 22px;
       font-size: 22px;
       line-height: 22px;
-      color: #5f6368;
+      color: var(--text-secondary);
     }
 
     .summaryText {
@@ -509,7 +509,7 @@
     .summaryName {
       font-size: 13px;
       font-weight: 500;
-      color: #2c2c2c;
+      color: var(--text-primary);
     }
 
     .summaryNote {
@@ -526,7 +526,7 @@
       flex-direction: column;
       gap: 6px;
       padding: 8px 15px;
-      border-top: 1px solid #eceef5;
+      border-top: 1px solid var(--border-rule);
     }
 
     .barRow {
@@ -553,8 +553,8 @@
       align-items: center;
       gap: 12px;
       padding: 12px 15px;
-      border-top: 1px solid #eceef5;
-      background: #fafbfd;
+      border-top: 1px solid var(--border-rule);
+      background: var(--surface-subtle);
     }
 
     .footNote {
@@ -592,14 +592,14 @@
       border: none;
       border-radius: 4px;
       background: $indigo;
-      color: #fff;
+      color: var(--text-on-accent);
       font-family: inherit;
       font-size: 14px;
       font-weight: 500;
       cursor: pointer;
 
       &:disabled {
-        background: #d5d7e0;
+        background: var(--surface-disabled);
         color: rgba(0, 0, 0, 0.38);
         cursor: default;
       }
@@ -613,7 +613,7 @@
       width: 16px;
       height: 16px;
       border: 2px solid rgba(255, 255, 255, 0.45);
-      border-top-color: #fff;
+      border-top-color: var(--text-on-accent);
       border-radius: 50%;
       animation: exportSpin 0.7s linear infinite;
     }

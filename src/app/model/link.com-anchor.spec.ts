@@ -69,7 +69,6 @@ afterEach(() => {
 });
 
 describe('what a placed center of mass is held against', () => {
-
   it('rides the link when held against the link, which is the standing default', () => {
     const { link } = bar();
     expect(link.comAnchor).toBe('centroid');

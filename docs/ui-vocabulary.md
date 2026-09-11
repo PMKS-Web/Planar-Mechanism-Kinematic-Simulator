@@ -1,5 +1,7 @@
 # Words this app uses
 
+> **Status:** Reference — follow it when writing any label, message or tooltip. `e2e/ui-copy.mjs` enforces its spelling rule.
+
 A reference for anyone adding a label, a message or a tooltip. It exists
 because the words drifted further than the code did: four verbs for adding a
 thing, three names for playing the mechanism, and two ideas about what a message
@@ -23,7 +25,7 @@ One carve-out: the **action chips on a notification** stay sentence case, becaus
 written as the end of the sentence above them — `Keep it, insert a new one` is a phrase, not
 a control name, and Title Case makes it absurd.
 
-**Spell American.** `analyze`, `analyzed`, `analyzing` — never `analyze`. The noun is
+**Spell American.** `analyze`, `analyzed`, `analyzing` — never `analyse`. The noun is
 `Analysis`, which is spelled the same either way, and it is what named the modes.
 
 **Write to the person, about their mechanism.** Not about the program.

@@ -3,19 +3,19 @@
 
 /* The panel is the app's indigo throughout; these are the same values
    mytheme.scss resolves to, written out so a rule can be read on its own. */
-$ink: #2c2c2c;
-$indigo: #3f51b5;
-$indigo-mid: #5c6bc0;
-$indigo-pale: #e8eaf6;
-$indigo-tint: #f7f8fd;
-$fill: #f0f1f5;
-$rule: #eceef5;
-$edge: #e6e7ee;
+$ink: var(--text-primary);
+$indigo: var(--brand);
+$indigo-mid: var(--brand-mid);
+$indigo-pale: var(--brand-tint);
+$indigo-tint: var(--brand-wash-2);
+$fill: var(--surface-field);
+$rule: var(--border-rule);
+$edge: var(--border-divider);
 $quiet: rgba(0, 0, 0, 0.55);
-$amber: #f5a623;
-$amber-ink: #b26a00;
-$green: #2e7d32;
-$red: #e53935;
+$amber: var(--accent-4);
+$amber-ink: var(--warning-text);
+$green: var(--success);
+$red: var(--danger-2);
 
 /**
  * Shipped through the theme mixin, like every other panel in the app.
@@ -107,7 +107,7 @@ $red: #e53935;
         cursor: pointer;
 
         &:hover {
-          background: #eef1fc;
+          background: var(--selection);
         }
       }
 
@@ -115,7 +115,7 @@ $red: #e53935;
        thing a reader wants to know about it. */
       &--off {
         border: 1px solid $edge;
-        background: #fafafc;
+        background: var(--surface-subtle-2);
         cursor: not-allowed;
 
         .kindCard__name,
@@ -125,7 +125,7 @@ $red: #e53935;
 
         .kindCard__icon {
           background: $fill;
-          color: #b0b3c0;
+          color: var(--text-disabled-3);
         }
       }
 
@@ -173,7 +173,7 @@ $red: #e53935;
       padding: 0 7px;
       border-radius: 9px;
       background: $fill;
-      color: #8a8d99;
+      color: var(--text-tertiary-3);
       font-size: 11px;
       font-weight: 500;
       white-space: nowrap;
@@ -451,7 +451,7 @@ $red: #e53935;
       border: 1px solid $indigo;
       border-radius: 4px;
       background: $indigo;
-      color: #fff;
+      color: var(--text-on-accent);
       font-family: Roboto, sans-serif;
       font-size: 13px;
       font-weight: 500;
@@ -466,7 +466,7 @@ $red: #e53935;
       /* Armed reads as a mode the reader is *in*, so it inverts rather than
        brightening: the button is now the way out of it. */
       &--armed {
-        background: #eef1fc;
+        background: var(--selection);
         color: $indigo;
       }
 
@@ -474,7 +474,7 @@ $red: #e53935;
         width: 28px;
         padding: 0;
         justify-content: center;
-        background: #fff;
+        background: var(--surface);
         color: $indigo;
       }
     }
@@ -489,12 +489,12 @@ $red: #e53935;
       padding: 5px 4px;
       border: 1.5px solid $edge;
       border-radius: 5px;
-      background: #fff;
+      background: var(--surface);
       cursor: pointer;
 
       &--sel {
-        border-color: #ffc107;
-        background: #fffdf5;
+        border-color: var(--accent);
+        background: var(--accent-wash);
       }
 
       &__n {
@@ -514,14 +514,14 @@ $red: #e53935;
         }
 
         border-radius: 10px;
-        background: #dfe1e8;
+        background: var(--surface-well-2);
         color: rgba(0, 0, 0, 0.45);
         font-size: 12px;
         font-weight: 500;
 
         &--placed {
           background: $indigo-mid;
-          color: #fff;
+          color: var(--text-on-accent);
         }
       }
 
@@ -542,7 +542,7 @@ $red: #e53935;
         font-size: 18px;
         width: 18px;
         height: 18px;
-        color: #b6bac6;
+        color: var(--text-disabled-4);
         cursor: help;
 
         &--ok {
@@ -569,7 +569,7 @@ $red: #e53935;
         font-size: 17px;
         width: 17px;
         height: 17px;
-        color: #9aa0ac;
+        color: var(--text-muted-2);
         cursor: pointer;
 
         mat-icon {
@@ -579,7 +579,7 @@ $red: #e53935;
         }
 
         &--off {
-          color: #e2e4ea;
+          color: var(--text-faint);
           cursor: default;
         }
       }
@@ -594,10 +594,10 @@ $red: #e53935;
       padding: 7px 9px;
       border: 1px solid $rule;
       border-radius: 5px;
-      background: #fff;
+      background: var(--surface);
 
       &--on {
-        border-color: #d3d8f0;
+        border-color: var(--selection-border-2);
         background: $indigo-tint;
       }
 
@@ -618,7 +618,7 @@ $red: #e53935;
         font-size: 18px;
         width: 18px;
         height: 18px;
-        color: #c4c7d0;
+        color: var(--text-disabled);
       }
 
       &__text {
@@ -669,7 +669,7 @@ $red: #e53935;
       }
 
       &:disabled .switch__knob {
-        background: #f2f2f2;
+        background: var(--switch-thumb-disabled);
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
       }
 
@@ -680,7 +680,7 @@ $red: #e53935;
         width: 20px;
         height: 20px;
         border-radius: 10px;
-        background: #fafafa;
+        background: var(--switch-thumb);
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
         transition: left 120ms ease-out;
       }
@@ -726,11 +726,11 @@ $red: #e53935;
         font: inherit;
         font-size: 12px;
         font-weight: 500;
-        color: #8a6d1b;
+        color: var(--warning-text-5);
         cursor: pointer;
 
         &--on {
-          color: #c62828;
+          color: var(--danger-dark);
         }
       }
 
@@ -783,7 +783,7 @@ $red: #e53935;
       }
 
       &--bad {
-        background: #fdf6f6;
+        background: var(--refusal-bg-3);
         color: rgba(0, 0, 0, 0.7);
 
         mat-icon {
@@ -793,11 +793,11 @@ $red: #e53935;
 
       &--good {
         align-items: center;
-        background: #e6f4ea;
-        color: #1a4a29;
+        background: var(--success-bg);
+        color: var(--success-text-strong);
 
         mat-icon {
-          color: #137333;
+          color: var(--success-text);
         }
 
         span {
@@ -811,7 +811,7 @@ $red: #e53935;
         background: none;
         font: inherit;
         font-weight: 500;
-        color: #137333;
+        color: var(--success-text);
         cursor: pointer;
       }
     }
@@ -839,21 +839,21 @@ $red: #e53935;
       border: 0;
       border-radius: 4px;
       background: $indigo;
-      color: #fff;
+      color: var(--text-on-accent);
       font-family: Roboto, sans-serif;
       font-size: 14px;
       font-weight: 500;
       cursor: pointer;
 
       &:disabled {
-        background: #d5d7e0;
-        color: #8f93a1;
+        background: var(--surface-disabled);
+        color: var(--text-tertiary-4);
         cursor: default;
       }
 
       &--busy:disabled {
-        background: #9fa8da;
-        color: #fff;
+        background: var(--brand-light);
+        color: var(--text-on-accent);
       }
 
       &--insert {
@@ -866,7 +866,7 @@ $red: #e53935;
       position: relative;
       height: 4px;
       border-radius: 2px;
-      background: #e4e6ef;
+      background: var(--surface-well);
       overflow: hidden;
 
       &__bar {
@@ -922,7 +922,7 @@ $red: #e53935;
       padding: 6px;
       border: 1px solid $edge;
       border-radius: 5px;
-      background: #fff;
+      background: var(--surface);
       text-align: left;
       font: inherit;
       cursor: pointer;
@@ -936,7 +936,7 @@ $red: #e53935;
         }
 
         .card__thumb {
-          background: #fff;
+          background: var(--surface);
         }
       }
 
@@ -962,7 +962,7 @@ $red: #e53935;
       }
 
       &__thumb {
-        background: #fafafc;
+        background: var(--surface-subtle-2);
         border-radius: 3px;
       }
 
@@ -1012,7 +1012,7 @@ $red: #e53935;
       display: flex;
       flex-direction: column;
       border-radius: 5px;
-      background: #f4f5f9;
+      background: var(--surface-hover);
       overflow: hidden;
 
       &__head {
@@ -1074,7 +1074,7 @@ $red: #e53935;
       gap: 8px;
       padding: 8px;
       border-top: 1px solid $edge;
-      background: #fbfbfd;
+      background: var(--surface-subtle-3);
     }
 
     /* The search reporting itself, directly over the button that started it.
@@ -1093,7 +1093,7 @@ $red: #e53935;
       border: 0;
       border-radius: 6px;
       background: none;
-      color: #5f6368;
+      color: var(--text-secondary);
       cursor: pointer;
 
       &:hover {
@@ -1124,7 +1124,7 @@ $red: #e53935;
       border-radius: 6px;
 
       &--playing {
-        background: #e9ebf3;
+        background: var(--surface-selected);
       }
 
       &__line {
@@ -1174,7 +1174,7 @@ $red: #e53935;
         top: 0;
         height: 8px;
         border-radius: 4px;
-        background: #d5d7e0;
+        background: var(--surface-disabled);
       }
 
       &__done {
@@ -1198,7 +1198,7 @@ $red: #e53935;
         pointer-events: none;
 
         &--ok {
-          background: #43a047;
+          background: var(--success-2);
         }
       }
 
@@ -1239,7 +1239,7 @@ $red: #e53935;
           margin-top: -6px;
           border: 1px solid rgba(0, 0, 0, 0.16);
           border-radius: 10px;
-          background: #fff;
+          background: var(--surface);
           box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
           cursor: inherit;
         }
@@ -1250,7 +1250,7 @@ $red: #e53935;
           height: 20px;
           border: 1px solid rgba(0, 0, 0, 0.16);
           border-radius: 10px;
-          background: #fff;
+          background: var(--surface);
           box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
           cursor: inherit;
         }

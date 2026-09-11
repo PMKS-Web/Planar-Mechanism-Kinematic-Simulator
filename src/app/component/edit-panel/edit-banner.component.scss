@@ -25,8 +25,8 @@
   height: 54px;
   padding: 9px 15px;
   box-sizing: border-box;
-  background: #e8eaf6;
-  color: #303f9f;
+  background: var(--brand-tint);
+  color: var(--brand-dark);
   font-size: 12.5px;
   line-height: 18px;
   // Full-bleed: `#editWrapper` insets its children, and the strip takes the
@@ -69,6 +69,6 @@
   line-height: 18px;
 
   &:hover {
-    color: #1a237e;
+    color: var(--brand-darker);
   }
 }

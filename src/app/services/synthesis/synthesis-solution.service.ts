@@ -281,11 +281,13 @@ export class SynthesisSolutionService {
     // that gone it would have been dead in every design. The construction is
     // what the reader picked; both of its closures are theirs to look at.
     const offered = new Map(this.candidates().map((c) => [c.pair, c.name]));
-    return this.cached.filter((c) => offered.has(c.pair)).map((c) => {
-      // The letter identifies a construction, including its other assembly.
-      c.name = offered.get(c.pair)!;
-      return c;
-    });
+    return this.cached
+      .filter((c) => offered.has(c.pair))
+      .map((c) => {
+        // The letter identifies a construction, including its other assembly.
+        c.name = offered.get(c.pair)!;
+        return c;
+      });
   }
 
   rejections(): CandidateRejections {

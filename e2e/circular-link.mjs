@@ -11,13 +11,15 @@
  * exist. `synthesis-redesign.mjs` covers that flow against the API it has now,
  * driver and all, so the section was removed rather than rewritten twice.
  *
- *   PMKS_BASE_URL=http://127.0.0.1:4200 node e2e/circular-link.mjs
+ *   PMKS_BASE_URL=http://localhost:4200 node e2e/circular-link.mjs
  */
-const { chromium } = await import('/tmp/pmks-playwright/node_modules/playwright/index.mjs');
+const { chromium } = await import(
+  (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
+);
 import { waitForReady } from './app-ready.mjs';
 import { mkdirSync } from 'node:fs';
 
-const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
+const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const SHOTS = new URL('../artifacts/screenshots/', import.meta.url).pathname;
 mkdirSync(SHOTS, { recursive: true });
 

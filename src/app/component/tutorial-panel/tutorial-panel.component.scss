@@ -151,12 +151,12 @@
       display: block;
       height: 3px;
       border-radius: 2px;
-      background: #eceef5;
+      background: var(--border-rule);
       transition: background 0.18s ease-in-out;
     }
 
     &.done::after {
-      background: #c5cae9;
+      background: var(--brand-pale);
     }
 
     &.here::after {
@@ -168,7 +168,7 @@
     }
 
     &:hover:not(:disabled):not(.here)::after {
-      background: #aeb4d8;
+      background: var(--brand-light-2);
     }
   }
 
@@ -184,7 +184,7 @@
       width: 18px;
       height: 18px;
       line-height: 19px;
-      color: #137333;
+      color: var(--success-text);
     }
 
     span {
@@ -224,7 +224,7 @@
     width: 16px;
     height: 16px;
     line-height: 16px;
-    color: #137333;
+    color: var(--success-text);
 
     &.justNow {
       animation: tutorialTick 0.42s cubic-bezier(0.22, 1, 0.36, 1);
@@ -250,13 +250,13 @@
   // banner: the words have not changed, and the card is about to move on by
   // itself, so this says "that one is done" without taking a line to say it.
   .settling .stepTitle {
-    color: #137333;
+    color: var(--success-text);
   }
 
   .doneNote {
     font-size: 13px;
     font-weight: 500;
-    color: #137333;
+    color: var(--success-text);
   }
 
   .nextButton {
@@ -297,7 +297,7 @@
     margin-top: 12px;
     padding: 9px 11px;
     border-radius: 4px;
-    background: #f5f6fa;
+    background: var(--surface-sunken-2);
 
     mat-icon {
       flex: 0 0 auto;
@@ -330,7 +330,7 @@
     height: 20px;
     padding: 0 8px;
     border-radius: 10px;
-    background: #eef0f4;
+    background: var(--surface-chip);
     color: rgba(0, 0, 0, 0.54);
     font-size: 12px;
     white-space: nowrap;
@@ -338,20 +338,20 @@
     // Quoted from the mode chip, color included — same three states as the
     // top strip and the analysis setup drawers.
     &.blocker {
-      background: #fce8e6;
-      color: #c5221f;
+      background: var(--refusal-bg);
+      color: var(--refusal-text);
     }
 
     &.ok {
-      background: #e6f4ea;
-      color: #137333;
+      background: var(--success-bg);
+      color: var(--success-text);
     }
   }
 
   .cardRule {
     height: 1px;
     margin: 14px 0 10px;
-    background: #eceef5;
+    background: var(--border-rule);
   }
 
   .cardActions {
@@ -383,7 +383,7 @@
   // ---------- the completion card ----------
 
   .doneCard {
-    border-top-color: #137333;
+    border-top-color: var(--success-text);
   }
 
   .doneHead {
@@ -398,7 +398,7 @@
     width: 20px;
     height: 20px;
     line-height: 20px;
-    color: #137333;
+    color: var(--success-text);
   }
 
   .doneTitle {
@@ -443,7 +443,7 @@
     gap: 11px;
     width: 100%;
     padding: 10px 12px;
-    border: 1px solid #dfe1ea;
+    border: 1px solid var(--border-divider-5);
     border-radius: 4px;
     background: var(--card-surface);
     font-family: inherit;
@@ -451,7 +451,7 @@
     cursor: pointer;
 
     &:hover {
-      background: #f5f6fa;
+      background: var(--surface-sunken-2);
     }
 
     mat-icon {
@@ -468,7 +468,7 @@
     align-items: center;
     padding: 13px 14px;
     border-color: rgba(63, 81, 181, 0.35);
-    background: #f3f5ff;
+    background: var(--brand-wash-3);
 
     .doorName {
       color: $indigo;
@@ -521,7 +521,7 @@
     padding: 0 14px;
     border-radius: 4px;
     background: $indigo;
-    color: #fff;
+    color: var(--text-on-accent);
     font-weight: 500;
   }
 }

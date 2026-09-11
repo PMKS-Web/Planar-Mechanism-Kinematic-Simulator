@@ -6,13 +6,13 @@
 // always been: the indigo below is the app's own primary, written out because
 // the dialog is the only thing wearing it here and a mixin would put its rules
 // in the global sheet for one overlay.
-$primary: #3f51b5;
-$primary-mid: #5c6bc0;
-$primary-dark: #303f9f;
-$primary-tint: #e8eaf6;
-$primary-wash: #f5f6fb;
-$primary-pale: #c5cae9;
-$rule: #eceef5;
+$primary: var(--brand);
+$primary-mid: var(--brand-mid);
+$primary-dark: var(--brand-dark);
+$primary-tint: var(--brand-tint);
+$primary-wash: var(--brand-wash);
+$primary-pale: var(--brand-pale);
+$rule: var(--border-rule);
 
 .drawingExport {
   display: flex;
@@ -50,7 +50,7 @@ $rule: #eceef5;
     padding: 10px 12px;
     border-radius: 5px;
     background: $primary-wash;
-    color: #3a4166;
+    color: var(--text-note);
 
     mat-icon {
       flex: 0 0 auto;
@@ -77,7 +77,7 @@ $rule: #eceef5;
     .presetTitle {
       font-size: 14px;
       font-weight: 500;
-      color: #2c2c2c;
+      color: var(--text-primary);
     }
   }
 
@@ -110,7 +110,7 @@ $rule: #eceef5;
     box-sizing: border-box;
     border: 1.5px solid rgba(0, 0, 0, 0.12);
     border-radius: 6px;
-    background: #fff;
+    background: var(--surface);
     font: inherit;
     text-align: left;
     cursor: pointer;
@@ -126,7 +126,7 @@ $rule: #eceef5;
       gap: 6px;
       font-size: 13.5px;
       font-weight: 500;
-      color: #2c2c2c;
+      color: var(--text-primary);
 
       mat-icon {
         font-size: 18px;
@@ -188,13 +188,13 @@ $rule: #eceef5;
     padding: 11px 24px;
     border: 0;
     border-bottom: 1px solid $rule;
-    background: #fff;
+    background: var(--surface);
     font: inherit;
     text-align: left;
     cursor: pointer;
 
     &:hover {
-      background: #f4f5f9;
+      background: var(--surface-hover);
     }
 
     mat-icon {
@@ -214,7 +214,7 @@ $rule: #eceef5;
       display: block;
       padding: 0;
       font-size: 14px;
-      color: #2c2c2c;
+      color: var(--text-primary);
     }
 
     .sectionSummary {
@@ -235,7 +235,7 @@ $rule: #eceef5;
     gap: 14px;
     padding: 14px 24px 16px;
     border-bottom: 1px solid $rule;
-    background: #fcfcfe;
+    background: var(--surface-subtle-4);
 
     &.tight {
       gap: 0;
@@ -294,11 +294,11 @@ $rule: #eceef5;
     border: 0;
     border-bottom: 1px solid rgba(0, 0, 0, 0.42);
     border-radius: 4px 4px 0 0;
-    background: #f0f1f5;
+    background: var(--surface-field);
     box-sizing: border-box;
     font: inherit;
     font-size: 14px;
-    color: #2c2c2c;
+    color: var(--text-primary);
 
     // Wide enough for a derived pin diameter, which is not a round number:
     // 62px clipped the last digit of "0.067".
@@ -343,14 +343,14 @@ $rule: #eceef5;
         width: 6px;
         height: 6px;
         border-radius: 50%;
-        background: #fff;
+        background: var(--surface);
       }
     }
   }
 
   .radioLabel {
     font-size: 14px;
-    color: #2c2c2c;
+    color: var(--text-primary);
   }
 
   .checkRow {
@@ -358,7 +358,7 @@ $rule: #eceef5;
     border-radius: 4px;
 
     &.blocked {
-      background: #fafafc;
+      background: var(--surface-subtle-2);
       cursor: help;
     }
 
@@ -406,8 +406,8 @@ $rule: #eceef5;
     border-radius: 2px;
     box-sizing: border-box;
     flex: 0 0 auto;
-    background: #f4f4f7;
-    color: #fff;
+    background: var(--surface-sunken-3);
+    color: var(--text-on-accent);
 
     // Sized to the 14px the two borders leave inside an 18px box, not to the
     // box: a 15px glyph is a pixel too wide for it, and flex answers that by
@@ -433,7 +433,7 @@ $rule: #eceef5;
 
     &.off {
       border-color: rgba(0, 0, 0, 0.2);
-      background: #f4f4f7;
+      background: var(--surface-sunken-3);
     }
 
     &.on.off {
@@ -450,7 +450,7 @@ $rule: #eceef5;
 
   .checkName {
     font-size: 14px;
-    color: #2c2c2c;
+    color: var(--text-primary);
   }
 
   .blocked .checkName {
@@ -483,16 +483,16 @@ $rule: #eceef5;
     align-items: center;
     gap: 14px;
     padding: 12px 24px;
-    background: #f7f8fc;
+    background: var(--surface-sunken);
   }
 
   .preview {
     flex: 0 0 auto;
     width: 120px;
     height: 90px;
-    border: 1px solid #e2e4ee;
+    border: 1px solid var(--border-divider-3);
     border-radius: 4px;
-    background: #fff;
+    background: var(--surface);
     overflow: hidden;
   }
 
@@ -504,14 +504,14 @@ $rule: #eceef5;
   }
 
   .previewHole {
-    fill: #fff;
-    stroke: #263238;
+    fill: var(--surface);
+    stroke: var(--canvas-ink);
     stroke-width: 1.2;
   }
 
   .previewEmpty {
     fill: none;
-    stroke: #e2e4ee;
+    stroke: var(--border-divider-3);
     stroke-width: 3;
     stroke-dasharray: 8 8;
   }
@@ -542,7 +542,7 @@ $rule: #eceef5;
     gap: 5px;
     font-size: 12px;
     line-height: 16px;
-    color: #a35c00;
+    color: var(--warning-text-2);
 
     mat-icon {
       flex: 0 0 auto;

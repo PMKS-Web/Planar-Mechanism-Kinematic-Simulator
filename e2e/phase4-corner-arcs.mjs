@@ -7,7 +7,7 @@ const { chromium } = await import(
 );
 import { waitForReady } from './app-ready.mjs';
 
-const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
+const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 
 const MECHS = {
   tlab: '?2P.Fe.K,0.1011.MA,A,0,0,0.GB,B,Nm,0,0.GC,C,126,lL,0.KD,D,17S,0,0.GE,E,1As,PW,0.GF,F,dq,Uc,0.GG,G,W5,tN,0.GH,H,Bu,G4,0.GI,I,11K,UW,0..YRABH,ABH,2ZQ,n9pzh4,01Zi,bM,c5cae9,A,B,H,,.YRBCFG,BCFG,9o,A80cTW,jM2,p3C,303e9f,B,C,F,G,,.YRCDEI,CDEI,1Cb,w-akVq,1pNm,0550,0d125a,C,D,E,I,,...N_U',

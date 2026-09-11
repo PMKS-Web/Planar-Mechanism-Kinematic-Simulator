@@ -36,7 +36,6 @@ afterEach(() => {
 });
 
 describe('a link drawn as a circle', () => {
-
   it('is offered on a grounded crank and nowhere else', () => {
     expect(crank().link.canBeCircular()).toBe(true);
 

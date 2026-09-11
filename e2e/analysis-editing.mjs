@@ -326,7 +326,10 @@ record(
   'a drag lays the curves from before it under the live ones',
   overlay.names.filter((n) => / before$/.test(n)).length === 2 &&
     overlay.names.length === 2 &&
-    overlay.live.map((l) => l.name).sort().join() === 'X,Y',
+    overlay.live
+      .map((l) => l.name)
+      .sort()
+      .join() === 'X,Y',
   { chart: overlay.names, overlay: overlay.live.map((l) => l.name) }
 );
 record(
@@ -615,8 +618,8 @@ for (let i = 1; i <= 6; i++) {
   await page.waitForTimeout(90);
 }
 const axisDuring = await axisOf();
-const reach = await page.evaluate(() =>
-  window.ng.getComponent(document.querySelector('app-analysis-graph')).stats
+const reach = await page.evaluate(
+  () => window.ng.getComponent(document.querySelector('app-analysis-graph')).stats
 );
 record(
   'the axis still holds the whole of the curve from before the drag',
@@ -629,7 +632,9 @@ record(
   'and the earlier reach it prints is one the axis can show',
   reach.length > 0 &&
     reach.every(
-      (one) => one.before && asNumber(one.before.max) <= axisDuring.max + 1e-9 &&
+      (one) =>
+        one.before &&
+        asNumber(one.before.max) <= axisDuring.max + 1e-9 &&
         asNumber(one.before.min) >= axisDuring.min - 1e-9
     ),
   { reach, axisDuring }

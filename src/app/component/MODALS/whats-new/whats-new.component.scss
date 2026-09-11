@@ -110,7 +110,7 @@
     font-size: 15px;
     font-weight: 500;
     line-height: 20px;
-    color: #2c2c2c;
+    color: var(--text-primary);
   }
 
   .wnNoteBody {
@@ -171,7 +171,7 @@
     padding: 0 18px;
     height: 40px;
     background: $indigo-500;
-    color: #fff;
+    color: var(--text-on-accent);
     font-family: inherit;
     font-size: 14px;
     font-weight: 500;

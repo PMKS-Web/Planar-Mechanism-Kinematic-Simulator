@@ -63,7 +63,8 @@ const handStatics = (mechanism: Mechanism, t: number, guideId: string) => {
   const pinHeight = at('B').y - at('A').y;
   return {
     torque: fx * pinHeight,
-    couple: fx * (load.startCoord.y - at('A').y - pinHeight) - fy * (load.startCoord.x - at(guideId).x),
+    couple:
+      fx * (load.startCoord.y - at('A').y - pinHeight) - fy * (load.startCoord.x - at(guideId).x),
   };
 };
 

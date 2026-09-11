@@ -27,7 +27,8 @@
 @use 'app/component/BLOCKS/color-picker/color-picker.component.scss' as color-picker;
 @use 'src/app/component/analysis-panel/analysis-panel.component.scss' as analysis-panel;
 @use 'src/app/component/analysis-graph/analysis-graph.component.scss' as analysis-graph;
-@use 'src/app/component/analysis-graph-section/analysis-graph-section.component.scss' as analysis-graph-section;
+@use 'src/app/component/analysis-graph-section/analysis-graph-section.component.scss' as
+  analysis-graph-section;
 @use 'src/app/component/export-panel/export-panel.component.scss' as export-panel;
 @use 'src/app/component/tutorial-panel/tutorial-panel.component.scss' as tutorial-panel;
 @use 'src/app/component/right-panel/right-panel.component.scss' as right-panel;

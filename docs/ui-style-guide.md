@@ -193,12 +193,20 @@ a neighbor's CSS into a new component; that is how the app once had three differ
 controls. A block's styles are a theme mixin, `@include`d from `src/mytheme.scss`, so a new block
 needs its mixin added there as well.
 
-**New colors, radii, shadows and gaps must be tokens.** A token is a CSS custom property on `:root`.
-Today the tokens are in `src/styles.scss` (`--card-surface`, `--card-radius`, `--card-gap`,
-`--card-shadow`, and a few others). The design-tokens PR moves them into a dedicated token file,
-and stylelint will then reject a raw color in a component stylesheet. The gallery's **Tokens** page
-reads the tokens from the loaded stylesheets at runtime. It always shows what is actually defined,
-and it picks up the token file with no change.
+**New colors, radii, shadows and gaps must be tokens.** A token is a CSS custom property on `:root`,
+defined once in [`src/styles/_tokens.scss`](../src/styles/_tokens.scss) and grouped by role:
+surfaces, borders, text tiers, brand, selection, accent, warning, refusal, success, canvas marks,
+shadows, radii and the card gap. Write `var(--token)`; no import is needed.
+
+- **Reach for a role, not a shade.** A numbered token such as `--text-disabled-3` is a near-duplicate
+  kept only so the move to tokens changed no pixels. It is a merge waiting to happen, not a color
+  to pick.
+- **A raw hex color in a component stylesheet fails CI.** `npm run lint:styles` (stylelint) rejects it
+  everywhere but the token file. If no role fits, add one there, with a comment saying what it is
+  for.
+
+The gallery's **Tokens** page reads the custom properties from the loaded stylesheets at runtime,
+so it always shows what is actually defined.
 
 ---
 

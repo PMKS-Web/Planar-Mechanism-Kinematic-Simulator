@@ -1,5 +1,7 @@
 # Brief: let a cylinder's mounts weld and carry sliders, like any other joint
 
+> **Status:** Built — mounts now weld and carry sliders, through `docs/cylinder-mount-joints-plan.md`. The ask below describes the app before that change.
+
 ## The ask
 
 A cylinder's two **mounts** — `barrelFar` (mount A, the end the barrel pivots about) and `rodFar`

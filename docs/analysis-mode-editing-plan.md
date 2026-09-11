@@ -1,7 +1,8 @@
 # Editing in Analysis mode — tuning a mechanism against its own curves
 
-**Status: built, then redesigned.** Phases A, B and C shipped; `e2e/analysis-editing.mjs` is the
-suite that keeps them honest. The visual language below (a dashed *live* curve, a peak pill) was
+> **Status:** Built, then redesigned — Phases A, B and C shipped and `e2e/analysis-editing.mjs` guards them; the panel was redesigned afterwards.
+
+The visual language below (a dashed *live* curve, a peak pill) was
 the first version; the panel was redesigned afterwards — one card of rows, a Magnitude / X & Y
 split, the *earlier* curve dashed and faded under a live curve that never changes, and a max/min
 table with the before values — and `docs/analysis-editing-visual-brief.md` describes what shipped.
