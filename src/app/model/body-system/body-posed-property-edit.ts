@@ -5,8 +5,8 @@ import {
   BodyEditOperation,
   BodyEditResult,
 } from './body-edit-types';
-import { BodyEditFrame, withBodyEditFrame } from './body-edit-frame';
-import { planBodyDesignEdit } from './body-design-edit-plan';
+import { BodyEditFrame } from './body-edit-frame';
+import { preparePosedBodyEdit } from './body-posed-edit-source';
 import { isBodyPropertyOperation } from './body-property-edit';
 import { bodyEditEffects, sameBodyRecord } from './body-edit-effects';
 import { validateBodyEditDocument } from './body-edit-validation';
@@ -43,28 +43,9 @@ export function planPosedBodyProperties(
   context: BodyEditContext,
   frame: BodyEditFrame
 ): BodyEditResult {
-  if (frame.revision !== revision) return bodyEditRefusal('stale-pose');
-  const source = snapshotCopy(document);
-  const invalid = validateBodyEditDocument(source);
-  if (invalid) return invalid;
-  if (
-    frame.poses.size !== document.bodies.length ||
-    document.bodies.some((body) => !frame.poses.has(body.id)) ||
-    frame.clocks.length !== document.drivers.length ||
-    new Set(frame.clocks.map((clock) => clock.driverId)).size !== frame.clocks.length ||
-    frame.clocks.some(
-      (clock) =>
-        ![clock.anchor, clock.command, clock.time].every(Number.isFinite) ||
-        clock.time < 0 ||
-        typeof clock.synced !== 'boolean' ||
-        (clock.direction !== undefined && clock.direction !== 1 && clock.direction !== -1)
-    ) ||
-    document.drivers.some((driver) => !frame.clocks.some((clock) => clock.driverId === driver.id))
-  )
-    return bodyEditRefusal('stale-pose');
-  const displayed = withBodyEditFrame(source, frame);
-  const changed = planBodyDesignEdit(displayed, revision, command, context);
-  if (!changed.ok) return changed;
+  const prepared = preparePosedBodyEdit(document, revision, command, context, frame);
+  if (!prepared.ok) return prepared;
+  const { source, displayed, changed } = prepared;
   const proposed = changed.document;
   // A directly mapped tracer must not carry a held neighbor's physical connection or resize its body.
   if (

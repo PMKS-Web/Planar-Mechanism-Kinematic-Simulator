@@ -1,6 +1,6 @@
 import { BodyDocument } from './body-document';
 import type { BodyClockState } from './body-document-authority';
-import { BodyId } from './body-id';
+import { BodyId, DriverId } from './body-id';
 import { Pose } from './body-frame';
 import { SimulationView } from './simulation-view';
 import { simulationBodyPose } from './simulation-body-readers';
@@ -13,6 +13,7 @@ export interface BodyEditFrame {
   readonly revision: number;
   readonly poses: ReadonlyMap<BodyId, Pose>;
   readonly clocks: readonly BodyClockState[];
+  readonly paths: ReadonlyMap<DriverId, 'window' | 'cycle'>;
 }
 
 export function captureBodyEditFrame(
@@ -32,6 +33,7 @@ export function captureBodyEditFrame(
   const length = unitFactors(document.units).length;
   const poses = new Map<BodyId, Pose>();
   const nextClocks = new Map(clocks.map((clock) => [clock.driverId, clock]));
+  const paths = new Map<DriverId, 'window' | 'cycle'>();
   for (const body of document.bodies) {
     const key = view.snapshot.bodyPartition.get(body.id);
     const partition = key ? view.snapshot.partitions.get(key) : undefined;
@@ -54,6 +56,7 @@ export function captureBodyEditFrame(
     if (!selected?.ok) return undefined;
     const sample = selected.value.input.sample;
     for (const driver of partition.frame.partition.drivers) {
+      paths.set(driver.id, partition.path.kind === 'window' ? 'window' : 'cycle');
       const old = nextClocks.get(driver.id);
       if (!old) return undefined;
       nextClocks.set(driver.id, {
@@ -64,7 +67,7 @@ export function captureBodyEditFrame(
       });
     }
   }
-  return snapshotCopy({ revision, poses, clocks: [...nextClocks.values()] });
+  return snapshotCopy({ revision, poses, clocks: [...nextClocks.values()], paths });
 }
 
 /** Holds turn with the displayed material during playback but still constrain edits in world axes. */

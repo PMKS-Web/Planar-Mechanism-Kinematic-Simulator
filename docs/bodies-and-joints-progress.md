@@ -19,7 +19,7 @@
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
 | S2 | Complete | Native compiler, analytic Jacobians, mobility/admission, branch continuation, folds, limits and frame conditioning. Seven native/legacy and four native/MATLAB comparisons retain the original ceilings. Geometric redundancy, two slots on a carrier and one-pin/shared-WORLD cases pass. Combined S2/initial-rate gate: 255 tests / 37 files; current-editor browser gate is green. Continuous cycle event publication remains an explicit S3 obligation. |
 | S3 | Complete | Native rates/forces, immutable results, interval/cycle/window publication, all five hand-derived cylinder examples and native/MATLAB positions/rates. F2 reviewed d842ffd and all findings resolved below. Final full gate: 2682 tests / 285 files; host build passes; ui-copy 17/17 with zero console errors. Earlier S3 browser and live-incognito evidence remains recorded. Native UI cutover is S5–S6, not claimed here. |
-| S4 | In progress | Native codec/project state, structural/property commands, canonical geometry/pose primitives, whole-body locks, CoM edit mapping, lifecycle and local history tested in slices. Connected gesture solving, displayed-frame capture/re-anchoring, coordinate/drive/copy/unit edits, cylinder dimensions, production import/recovery, full lifecycle matrix and F3 remain. F2 is resolved; no public-route cutover yet. |
+| S4 | In progress | Native codec/project state, structural/property commands, connected point proposals, canonical geometry/pose primitives, whole-body locks, CoM edit mapping, captured display and constrained re-anchoring tested in slices. Full gesture/coordinate/drive/copy/unit edits, cylinder dimensions, production import/recovery, full lifecycle/service matrix and F3 remain. F2 is resolved; no public-route cutover yet. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
 | S6 | Pending | All consumers, synthesis, tutorial, fixtures/templates and default cutover. |
 | S7 | Pending | Removal manifest closed and performance budget met. |
@@ -1644,3 +1644,88 @@ then F3. The service exposes the frame but does not yet own simulation schedulin
 public renderer. S5/S6/S8 require both Playwright filmstrips and standard Codex computer use in
 incognito Chrome. Paid-review spending/reservations are unchanged; substantial legacy removal
 and all S5–S8 acceptance criteria remain required. No push/publication.
+
+
+## S4 constrained paused geometry and anchor recovery — implementation checkpoint
+
+Continued from **108d9bc**. The previous reminder response only confirmed the already tracked
+requirement to use both browser workflows; it was not implementation progress. Resumption
+inspected the actual uncommitted source and the terminal passive-gap test log. That test
+failed with `unreachable` where the hand-derived mechanism retains a route to its anchor.
+
+The displayed transaction now handles constraint-changing geometry/topology through the same
+canonical planner, then restores affected partitions to their authored input coordinates.
+The staging source, lock/hold checks and all-or-nothing history behavior are shared with the
+direct property mapper. Unaffected material poses and clocks remain exact, including stationary
+drivers outside movable partitions. A stopped input still at its own start does not need to
+build a finite-speed cycle just because another machine is displaced.
+
+- `restoreBodyPartitionAnchor` recovers the old coordinate and rebuilds the changed motion to
+  find the displayed pose by material geometry and direction. New times come from the changed
+  cycle, preserving a returning cylinder's leg. Bracket insertion carries new material back
+  with its welded group. A weld that makes a nonzero driven linkage immobile still refuses
+  through existing final validation; the test was corrected instead of weakening that rule.
+- `reachBodyAnchor` checks an alternate angular route when direct continuation encounters a
+  stop. The rotary carriage has y=r sin(theta), r=0.8 enlarged to 1, and an upper stop y=0.95.
+  The old theta=0.4 and displayed theta=2.8 remain feasible although the direct route crosses
+  the sine maximum. A completed cycle retains the anchor around the other side. A second
+  test adds an input upper bound that closes that route and proves the reset is appropriate.
+- `bodyAnchorTurns` keeps integer turns coherent across welded material and P angle rows.
+  The native rotating-cylinder fixture supplies carrier, welded barrel and rod; the source
+  before cylinder insertion is made by the actual assembly-deletion command, so the new
+  members have no previous angle seed. Both construction orders preserve the hand poses.
+- `bodyCycleCrossings` corrects crossings of the rebuilt cycle and compares material position
+  and orientation. It checks passive limits as well as residual correction. Returned material
+  angles and command share the same unwrapped turn. Display position matching allows the
+  solve frame's world-coordinate input precision without weakening its angle tolerance.
+- A nonlooping window validates its direct interval and displayed pose, in addition to the
+  signed elapsed-time calculation. Valid endpoints cannot bypass a passive stop. A window
+  that cannot represent the edited display resets explicitly; it does not silently become a
+  cycle. Numerical exhaustion and failed clock matching say `anchor-unsolved`, separately from
+  positively proved `unreachable`, changed coordinates and unavailable motion.
+- Locks apply where the gesture is displayed, while anchor recovery transports rigid material
+  as motion would. Final authored/displayed documents both validate constraints and limits;
+  stored angle holds are transported consistently. Undo/Redo includes the display frame and
+  local clocks; shared encoding remains the authored document only.
+
+Independent expectations cover the four-bar after a radius change (including an off-axis
+coupler witness), a driven bar beside independently clocked and fixed machines, a returning
+axial ram with a changed welded carriage, a newly welded bracket and a physically lost anchor.
+Sixteen record-order/opaque-ID variants preserve the four-bar answer. A negative-speed cycle
+checks equivalent command and material angles. These are headless native transaction checks;
+the unchanged legacy browser renderer is not evidence for the future native gesture UI.
+
+Final verification after byte-for-byte mutation restoration:
+
+- `S4-reanchor-full-unit.log`: **2791 tests / 308 files pass**, session **4818 exit 0**.
+- `S4-reanchor-build.log`: production build passes, session **98730 exit 0**; existing
+  CommonJS warnings only. Touched TypeScript formatted; whitespace checks pass.
+- `S4-reanchor-ui-copy.log`: **17/17**, zero console errors, session **5933 exit 0**.
+  PID 13660's cwd was rechecked in this exact worktree; localhost:4307 answered HTTP 200.
+  Repository Playwright used `PMKS_PLAYWRIGHT_DIR=..`. This checks the current legacy UI.
+- `S4-reanchor-lift-window.log`: **4 tests / 3 files pass**, session **91452 exit 0** before
+  the additional bounded-input test and the inserted-member refinement; both are included
+  in the final full gate above. Earlier `S4-reanchor-alternate.log` passed **10 / 4**,
+  session **4357 exit 0**.
+
+Mutation runner **45436 exited 0**, restored every source byte-for-byte, and the logs in
+`artifacts/bodies-and-joints/` demonstrate:
+
+- `S4-reanchor-mutation-direct-route.log`: **1 failed / 1 passed** when an angular stop is again
+  treated as sufficient reason to reset. The alternate-route retained-anchor assertion fails.
+- `S4-reanchor-mutation-coherent-turn.log`: **1 failed / 1 total** when P turn coherence is
+  disabled; the newly inserted cylinder's hand angle fails.
+- `S4-reanchor-mutation-unchecked-window.log`: **1 failed / 1 passed** when only elapsed time
+  is checked; the window incorrectly crosses the passive gap.
+- `S4-reanchor-passive-gap-initial.log` retains the original real failing regression. Earlier
+  invalid-fixture/syntax explorations and the first mutation's unreachable-code build failure
+  are retained as diagnostics, not counted as verification. The latter probe was rewritten
+  to preserve TypeScript control-flow narrowing and then failed its intended assertion.
+
+**Still required before S4/F3:** coordinate/drive/limit and cylinder-dimension operations,
+active travel projection and full gesture policies, unit conversion, typed copy/remap,
+production 2.0.3 import, atomic load/save/recovery, the full lifecycle/service matrix and the
+named S4 browser gates. S5/S6/S8 still require both live incognito computer use and Playwright
+filmstrips against the native route. F3 has not run; Fable spending and reservations are
+unchanged. Substantial obsolete-runtime removal and all later acceptance criteria remain.
+No push or publication.
