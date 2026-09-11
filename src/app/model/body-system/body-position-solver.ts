@@ -27,8 +27,12 @@ export function relaxBodyPosition(
     readonly maxIterations?: number;
     readonly scale?: BodyPositionScale;
     readonly allowSingularCorrection?: boolean;
+    readonly residualTolerance?: number;
   } = {}
 ): BodyRelaxation {
+  const tolerance = options.residualTolerance ?? 1e-10;
+  if (!Number.isFinite(tolerance) || tolerance <= 0)
+    return { ok: false, reason: 'invalid-pose', residual: Infinity, iterations: 0 };
   if (
     [...partition.unknowns, ...partition.boundary].some(
       (id) => !seed.has(id) || !finitePose(seed.get(id)!)
@@ -49,7 +53,7 @@ export function relaxBodyPosition(
     const residual = Math.max(0, ...values.map(Math.abs));
     if (!Number.isFinite(residual))
       return { ok: false, reason: 'unsolved', residual, iterations: iteration };
-    if (residual <= 1e-10) return { ok: true, poses, residual, iterations: iteration };
+    if (residual <= tolerance) return { ok: true, poses, residual, iterations: iteration };
     if (iteration === maxIterations)
       return { ok: false, reason: 'unsolved', residual, iterations: iteration };
     const jacobian = bodyRowsJacobian(partition.rows, poses, partition.unknowns).map((row, i) =>

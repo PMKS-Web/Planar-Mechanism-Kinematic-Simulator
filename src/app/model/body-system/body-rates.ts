@@ -25,7 +25,12 @@ export type BodyRatesResult =
   | {
       readonly ok: false;
       readonly reason:
-        'invalid' | 'pose' | 'rank' | 'velocity-inconsistent' | 'acceleration-inconsistent';
+        | 'invalid'
+        | 'pose'
+        | 'rank'
+        | 'reversal'
+        | 'velocity-inconsistent'
+        | 'acceleration-inconsistent';
     };
 
 /** No caches or fallback: an unavailable sample cannot inherit a previous sample's rates. */

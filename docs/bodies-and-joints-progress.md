@@ -18,7 +18,7 @@
 | S0 | Baseline complete | Six unit suites pass (182 tests), seven new compatibility tests pass, build passes, template-open 11/11, template-graphs 3978/3978, ui-copy 17/17. Timing, visual baseline and operation-level consumer classification are recorded. Existing drag timing failures are reproduced on original test files, not waived; S7 must meet the measured comparison budget. |
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
 | S2 | Complete | Native compiler, analytic Jacobians, mobility/admission, branch continuation, folds, limits and frame conditioning. Seven native/legacy and four native/MATLAB comparisons retain the original ceilings. Geometric redundancy, two slots on a carrier and one-pin/shared-WORLD cases pass. Combined S2/initial-rate gate: 255 tests / 37 files; current-editor browser gate is green. Continuous cycle event publication remains an explicit S3 obligation. |
-| S3 | In progress | Analytic rates, moving/fixed-group forces, material/weld recovery, immutable force frames and series support-policy selection implemented and initially verified. Passive frame bars no longer join independent clocks. Latest native/reference/frame-force gate: 316 tests / 52 files; build passes; latest unchanged-editor ui-copy 17/17. Fixed component availability and regular collective foundations implemented. Full sample schema, cycle events, remaining worked examples, full gates and F2 are pending. |
+| S3 | In progress | Analytic rates, moving/fixed-group forces, material/weld recovery, immutable force frames and series support-policy selection implemented and initially verified. Passive frame bars no longer join independent clocks. Latest native/reference/frame-force gate: 330 tests / 54 files; build passes; latest unchanged-editor ui-copy 17/17. Fixed component availability and regular collective foundations implemented. Checked intervals, closed-cycle/retrace publication and immutable per-sample rate/force inputs implemented. Full snapshot/accessors, integration audit, remaining worked examples, full gates and F2 are pending. |
 | S4 | Pending | Native transactions, codec/import, lifecycle, history and F3. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
 | S6 | Pending | All consumers, synthesis, tutorial, fixtures/templates and default cutover. |
@@ -775,3 +775,82 @@ then request F2. Regular collective foundations are now implemented, not still p
 isolated foundations remain a stated limit of the rank proof and ordinary admission, rather
 than being silently classified fixed. S4–S8, native default cutover, consumer conversion and
 substantial obsolete-code removal all remain required.
+
+
+## S3 checked intervals and native cycle publication
+
+The preceding goal turn made verified progress (`75e3459`, `224e837`). This turn implements the
+next two missing layers instead of treating a successful position endpoint as a playback
+interval. `inspectBodyInterval` privately probes the continued branch with bounds removed,
+checks all coordinate limits at endpoints and analytic stationary points, refines the first
+crossing and returns a clear endpoint, coordinate/fold stop, or branch/unsolved refusal.
+Coincident contact values belong to the selected safe-side pose and sort by stable ID.
+Budgets never manufacture a reversal or a successfully truncated series.
+
+`buildBodyCycle` retains one admitted frame, explores the requested direction and (for a
+bounded motion) the other direction from the initial state, then reuses accepted geometry
+for the return path. It closes angular motion only after full commanded turns and a body-pose
+closure check. Times follow physical speed; both speed signs and an initial stop work without
+zero-time duplicate samples. Pose maps, tangents, contacts and samples are immutable copies.
+`bodyCycleInputs` stamps each sample and recomputes analytic rates with its signed speed;
+reversal rates and dynamic forces are unavailable, statics remain available, and later regular
+samples recover. Wrong-partition stamping refuses. No native editor consumer has switched yet.
+
+Thirteen initial tests plus one added singular-limit regression establish:
+
+- R*cos(theta) carriage excursions between safe endpoints, both directions, scales
+  1e-8/1/1e8, off-center narrow maxima, stationary touches, ordered passive/driven bounds,
+  coincident limits under reversed enumeration, outward/inward starts and rollback/recovery.
+- A welded axial carriage hitting tighter passive limits before the ram's own bounds has the
+  hand-derived 7-second cycle at either ±0.2 speed. Every stored pose satisfies every bound,
+  reused return poses are exact, signed carriage velocities match the guide heading, and
+  dynamic/static force availability differs correctly at the reversals.
+- An initially bounded carriage has an 11-second cycle and proper seam events. Two cranks on
+  one frame retain durations pi and 2pi. Budget exhaustion publishes no cycle or stale values.
+- A rocker-driven mechanism reaches both independent geometric fold angles and the expected
+  duration. A tighter passive coordinate wins before a fold; nonbinding driven/passive bounds
+  remain checked at the fold. Private passive-tangent signs are not published as velocities.
+- A parallelogram completes a full turn through an isolated singular sample, both with and
+  without a nonbinding passive limit. Position remains available, singular rates refuse as
+  rank, and the next regular sample has fresh rates.
+
+The tests exposed and corrected two accuracy/availability defects during this turn:
+
+1. A shallow crossing amplifies ordinary pose residuals into command error. The initial
+   calculation missed the hand crossing by about 4.28e-7 radians; private event probes now
+   polish to 1e-13 while ordinary relaxation keeps its 1e-10 default. The unchanged
+   eight-decimal angle assertion passes (`S3-interval-first.log`, `S3-interval-polished.log`).
+2. A nonbinding passive limit at an isolated singular non-fold initially refused after 134
+   probes (`S3-limited-singular-probe.log`). A local geometric enclosure now clears distant
+   bounds without undefined rates. The tracked regression also verifies that a stop 1e-7
+   radians before the singularity is still found. The temporary diagnostic was removed after
+   moving the scenario into the tracked interval and full-cycle tests; no failing expectation
+   was replaced by an assertion that the unsupported behavior is correct.
+
+`bodies-and-joints-equations.md` records the adaptive criteria, fold treatment and enclosure
+inequality. These are numerical event-search checks, not a formal global interval proof.
+Near a singular contact that cannot be cleared/localized the answer remains unsolved, not an
+invented physical stop. Further adversarial event/performance review belongs in F2/S7.
+
+Verification under `artifacts/bodies-and-joints/`:
+
+- `S3-cycle-interval-final.log`: **330 tests / 54 files pass**; same S2 broad list plus existing
+  frame-force references, with original MATLAB/native ceilings. This is not the full unit suite.
+- `S3-cycle-interval-final-build.log`: host production build passes with existing warnings.
+- `S3-interval-no-interior.log` / `S3-interval-mutation.json`: testing only the interval start
+  fails five crossing tests, with three unrelated tests passing. Source restored before gates.
+- `S3-interval-enclosure.log`: all 14 new tests pass before the final full-turn limit variant;
+  that additional variant is included in the final broad gate above.
+- Only touched TypeScript formatted; whitespace check passes. Latest unchanged-editor ui-copy
+  remains 17/17. No live native animation/UI gate is claimed; S5/S6/S8 still require both tools.
+
+**S3 remains in progress.** Next build the document-wide SimulationSnapshot and availability-
+aware material/attachment/coordinate accessors, retaining each numerical frame and revision.
+Integrate fixed-foundation contexts/support policies across selected independent samples.
+The closed-cycle producer intentionally refuses unbounded/nonperiodic travel; audit the
+existing behavior and supply an explicit finite nonlooping analysis range if needed rather
+than inventing physical stops or treating every valid linear motion as a periodic cycle.
+Finish remaining independent examples/reference rates, the complete S3 unit/browser gates,
+then F2. Publish the new cosine-carriage fixture through the native codec/gallery at S6.
+S4–S8 and substantial old-runtime removal remain required. No paid review ran; spending is
+unchanged, and nothing was pushed or published.
