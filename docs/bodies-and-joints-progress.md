@@ -18,7 +18,7 @@
 | S0 | Baseline complete | Six unit suites pass (182 tests), seven new compatibility tests pass, build passes, template-open 11/11, template-graphs 3978/3978, ui-copy 17/17. Timing, visual baseline and operation-level consumer classification are recorded. Existing drag timing failures are reproduced on original test files, not waived; S7 must meet the measured comparison budget. |
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
 | S2 | Complete | Native compiler, analytic Jacobians, mobility/admission, branch continuation, folds, limits and frame conditioning. Seven native/legacy and four native/MATLAB comparisons retain the original ceilings. Geometric redundancy, two slots on a carrier and one-pin/shared-WORLD cases pass. Combined S2/initial-rate gate: 255 tests / 37 files; current-editor browser gate is green. Continuous cycle event publication remains an explicit S3 obligation. |
-| S3 | In progress | Analytic rates, forces, continuous intervals/cycles, immutable document snapshots and material/attachment/coordinate/group readers implemented. Native/reference/frame-force gate: 342 tests / 57 files; host build passes; live ui-copy 17/17. Full unit run: 2648 passed, two legacy failures reproduced unchanged at b1df740 (details below); these must be resolved before S3 closes. Remaining independent/reference-rate audit, browser gate and F2 remain pending. |
+| S3 | In progress | Analytic rates, forces, continuous intervals/cycles, immutable document snapshots and result readers implemented. Full unit suite: 2655 tests / 276 files pass, including native/MATLAB point and angular rates. Both reproduced legacy test failures are resolved with boundary-specific tracer assertions and explicit quantization bounds plus a full native butterfly branch comparison. Host build and ui-copy pass. Current-editor S3 browser gate is green. Remaining native worked examples and F2 remain pending. |
 | S4 | Pending | Native transactions, codec/import, lifecycle, history and F3. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
 | S6 | Pending | All consumers, synthesis, tutorial, fixtures/templates and default cutover. |
@@ -925,3 +925,96 @@ full S3 browser/unit gates and request F2 within its existing $10 cap. Publish t
 carriage and other native fixtures in the S6 gallery once the native codec exists. S4–S8,
 transaction/codec/history, native editor and consumer cutover, substantial obsolete-runtime
 removal, performance and paired Playwright/incognito visual gates are all still required.
+
+## S3 frozen rate references and full-unit gate repair
+
+Snapshot checkpoint: **7b91c0c**. This follow-up resolves the two independently reproduced
+legacy test failures and adds the missing direct native comparisons with frozen MATLAB rates.
+No legacy/runtime solver formula or production UI code changed in this follow-up.
+
+The coupled-route assertion now allows a tracer placement **only on the prescribed input
+body**. PositionSolver already deliberately carries the extra points of a ternary input from
+one rotated direction to avoid accumulated shearing. The test still requires exactly one
+simultaneous step, last, and forbids walking any other body or using another placement kind.
+
+The butterfly smoothness check now compares possible unrounded step lengths. Every coordinate
+is published to four decimals, so subtracting two points introduces a displacement-length
+uncertainty of at most sqrt(2)*1e-4. The factor-six test and 1e-3 floor remain, applied to the
+next step's lower bound and the preceding step's upper bound. This resolves the original
+0.000062 near-stationary false positive using the actual quantization scale, not a tuned factor.
+As an independent branch check, native-reference-position now compares every butterfly sample
+in both construction orders at the unchanged **1e-3** ceiling: worst error **0.0001942861**.
+
+`native-reference-rates.spec.ts` constructs native geometry and compares every published
+point velocity/acceleration and material angular velocity/acceleration directly with all four
+frozen MATLAB datasets, in both array orders. The geometry bridge now exposes its material
+lookup; placeholder mass and CoM are explicitly excluded from this kinematic comparison.
+MATLAB's slider-crank E/B sensor and BCE/BC material alias remain explicit. Expected values
+never come from the legacy solver or another native run. Dataset-specific absolute/relative
+tolerances are unchanged, and none of these four datasets has excluded/singular rate samples.
+
+| Reference | Published samples | Worst point velocity | Worst point acceleration | Worst angular velocity | Worst angular acceleration |
+| --- | --- | --- | --- | --- | --- |
+| Four-bar | 361 | 3.69e-14 | 5.20e-14 | 1.13e-14 | 1.49e-14 |
+| Slider-crank | 361 | 1.37e-10 | 1.21e-10 | 1.22e-12 | 1.99e-12 |
+| Stephenson III | 201 | 2.28e-7 | 8.74e-6 | 1.59e-8 | 6.21e-7 |
+| Watt I | 23 | 1.32e-6 | 3.57e-4 | 3.45e-7 | 9.36e-5 |
+
+Rates use the reference geometry's SI interpretation; angular rates are rad/s and rad/s².
+The Watt I values near the end of its sweep pass the source's absolute-plus-relative ceiling;
+no tolerances were inferred from these observed errors. Exact results are in
+`S3-native-reference-rate-errors.json`, with test output in `S3-native-reference-rates.log`.
+`S3-legacy-gate-repair.log` has 32 tests / three files passing.
+
+**Full unit verification:** `S3-native-reference-full-unit.log` reports **2655 tests / 276
+files passing** after formatting. The prior two failures are resolved, not waived. The final
+snapshot production build and 17/17 live ui-copy remain current for the runtime; this follow-up
+changes only test/reference helpers. Four required current-editor browser suites are being
+run separately from the full unit suite, with their results to be recorded below.
+
+The native five-example audit is still open before F2: axial carriage has a native cylinder
+fixture and independent rates; the moving-boundary row tests and the rotating-carriage/welded-
+rod tests prove relevant terms, but do **not** replace native cylinder constructions for the
+oblique guide, translating bracket, rotating carrier and selective welded-bracket scenarios.
+The legacy coupled-mount suite remains green and useful as reference evidence. Build those
+native cases with independent closed forms and retain their S4/S6 history/editor/gallery
+obligations; do not claim solver fixtures alone prove drawable integration. No Fable spending
+in this follow-up; F2's $10 cap and the later review reserves remain unchanged.
+
+### S3 browser and live observation follow-through
+
+The sequential browser runner completed (session 18936, exit 0):
+
+- force-analysis-panels: **15/15**, no reported issues.
+- force-units: **20/20**.
+- template-graphs: **3978/3978 across 43 templates**. Its existing singular/source-
+  nondifferentiability reports remain explicit; no source or thresholds were changed.
+- export-flow: **50 PASS checks**, no failures, exit 0. Downloaded data/report behavior is
+  asserted by the existing suite, including distinct machine clocks.
+
+Logs are `S3-force-analysis-panels.log`, `S3-force-units.log`, `S3-template-graphs.log` and
+`S3-export-flow.log`. Visually inspected the link force graph, kgf Settings controls and the
+butterfly acceleration chart: headings, values, controls and graph labels fit without clipping.
+These are the existing editor's integration gates, not evidence of native consumer cutover.
+
+Standard Codex computer use also reconnected to the **incognito** localhost:4307 window.
+Played the existing cylinder-driven boom, captured **96 distinct native screenshots over
+7.332 seconds**, then inspected a labeled 24-frame contact sheet. The Edit panel reports
+2.82 cm travel at 1 cm/s, so the recording spans more than a full out-and-back cycle. The sheet
+shows both reversals and repeated poses; the barrel/rod skin stays aligned, with the start
+pose ghost distinct and no observed assembly flip or jump. Full frames and timestamps remain
+under `artifacts/bodies-and-joints/S3-live-incognito/`; `cycle-sheet.png` and
+`selected-cylinder.png` are the inspected/live artifacts.
+
+Paused, returned to start, selected the cylinder directly on the grid and opened its context
+menu. The panel says Edit Cylinder GC, and the menu names the same cylinder, its two joints,
+input, fixed-angle and lock controls. The familiar BLOCKS layout, blue palette, shadows and
+selection treatment are the reference for S5. Escape also clears selection; reselected the
+cylinder and left it paused at start. The obsolete third Sliding Body mass row is still
+visible in the current editor and remains a removal obligation for native cutover.
+No authored geometry, public settings or regular Chrome tabs were changed by this inspection.
+
+The full-unit gate is now green, the requested S3 current-editor browser suites are green,
+and both browser workflows were actually used. **S3 is not complete:** native constructions
+for the remaining worked cylinder examples and F2 still precede S4. All S4–S8 obligations,
+including full native visual/integration gates and substantial old-code removal, remain open.

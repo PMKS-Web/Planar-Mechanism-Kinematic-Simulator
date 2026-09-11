@@ -5,9 +5,10 @@ import { AttachmentId, BodyId, newRecordId, WORLD } from '../../app/model/body-s
 import { worldToLocal } from '../../app/model/body-system/body-frame';
 
 /**
- * Position-only comparison bridge from declarative reference geometry, never a runtime graph.
+ * Geometry-only comparison bridge from declarative reference geometry, never a runtime graph.
  * Off-axis reference points are material attachments. Bar artwork and default masses are
- * placeholders here; neither supplies a distance, angle or position to the solver.
+ * placeholders here; neither supplies a distance, angle, position or rate to the solver.
+ * Intrinsic CoM and force checks need their own material specifications.
  * S6 replaces this bridge with published, editor-constructed native fixtures.
  */
 export function nativePositionReferenceFixture(fixture: MechanismFixture) {
@@ -88,6 +89,7 @@ export function nativePositionReferenceFixture(fixture: MechanismFixture) {
   return {
     document: { ...f.document, drivers: [driver] },
     witnesses,
+    bodies,
     driver,
     input: input.id,
     crankTip,

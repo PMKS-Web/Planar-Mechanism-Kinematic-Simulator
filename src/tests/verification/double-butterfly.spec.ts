@@ -160,8 +160,15 @@ describe('the double butterfly linkage', () => {
       // solve falling to another root looks like is a step with no relation to
       // the ones either side of it, and that is orders of magnitude, not a
       // factor of a few.
+      // Each coordinate is rounded to four decimals. A two-point displacement
+      // therefore has at most sqrt(2)*1e-4 length error; compare the possible
+      // unrounded steps, since a tiny previous step amplifies that quantization.
+      // The native reference suite also checks the entire branch at 1e-3.
+      const roundingError = Math.SQRT2 * 1e-4;
       for (let i = 1; i < steps.length; i++) {
-        expect(steps[i]).toBeLessThan(Math.max(steps[i - 1] * 6, 1e-3));
+        expect(Math.max(0, steps[i] - roundingError)).toBeLessThan(
+          Math.max((steps[i - 1] + roundingError) * 6, 1e-3)
+        );
       }
     }
   });

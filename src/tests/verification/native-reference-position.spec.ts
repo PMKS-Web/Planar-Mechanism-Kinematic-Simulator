@@ -14,6 +14,7 @@ import {
   offsetPivotLeverFixture,
 } from '../../test-utils/verification/slot-fixtures';
 import { nativePositionReferenceFixture } from '../../test-utils/verification/native-position-reference-fixture';
+import { doubleButterflyFixture } from '../../test-utils/verification/classic-fixtures';
 import { compileBodyDocument } from '../../app/model/body-system/constraint-compiler';
 import { admitBodyPartition } from '../../app/model/body-system/body-admission';
 import {
@@ -49,6 +50,7 @@ const CASES = [
   { name: 'inverted slider-crank', make: invertedSliderCrankFixture },
   { name: 'guided rod', make: guidedRodOnALinkFixture },
   { name: 'offset-pivot lever', make: offsetPivotLeverFixture },
+  { name: 'double butterfly', make: doubleButterflyFixture },
 ];
 
 function solveReference(fixture: MechanismFixture, reversed: boolean) {
