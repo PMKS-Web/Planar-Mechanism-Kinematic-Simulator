@@ -509,8 +509,8 @@ while statics may still be evaluated. At an isolated singular sample with a reta
 branch, rank refusal does not erase position or leak a previous rate map. The next regular
 sample gets a fresh solve. A cycle cannot be stamped for a different partition.
 
-The complete document-wide SimulationSnapshot, material/attachment/coordinate read accessors,
-fixed-foundation context selection and policy integration still belong to S3.
+The document-wide snapshot and its readers are described below. They retain these sample
+availability rules rather than borrowing values across frames.
 
 An additional probe found that a nonbinding passive angle limit still refused at an isolated
 singular **non-fold** pose (134 probes, unsolved). These samples do not have the fold's regular
@@ -525,3 +525,56 @@ nearby bound does not pass this clearance test. The tracked regression clears th
 limit, still finds a stop 1e-7 radians before the singularity, and keeps analysis rates
 unavailable at the singular pose. Full-turn cycle tests now cover both limited and unlimited
 variants; a bound that cannot be cleared or localized still yields unsolved, not a reversal.
+
+## Immutable simulation snapshots and selected clocks
+
+`buildSimulationSnapshot` compiles one design revision, admits and precomputes each moving
+partition independently, and owns deep immutable copies of its design, numerical frames,
+poses, rate results and force series. Read-only Maps cannot be mutated through a cast.
+The editable source is neither frozen nor aliased. Failed admission/trajectory results stay
+on their partition; they do not erase another machine's samples.
+
+`selectSimulationView` requires a matching revision and an explicit index for each selected
+clock. Missing, invalid or refused selections never default to index zero. It combines exactly
+those selected force frames for fixed-foundation equilibrium. A foundation requires all of its
+incident machine samples; unrelated foundations remain independent. Its support policy is
+chosen once from fixed geometry (or an explicit per-component override), not from whichever
+clock sample is currently displayed. Full column rank plus redundant external rows selects
+the conditional evenest policy. Internal weld cycles are still indeterminate.
+
+Material and attachment readers compose the retained numerical group pose with the member's
+local frame. Position alone adds the world origin at the presentation boundary; point rates
+remain in the numerical frame:
+
+- p = o + R(theta) r
+- v_p = v_o + omega E R(theta) r
+- a_p = a_o + alpha E R(theta) r - omega² R(theta) r.
+
+Their local point argument uses document length units; returned positions, rates and wrenches
+use world-oriented SI. `simulationMaterialCenter` uses intrinsic member properties;
+`simulationGroupCenter` uses the compiled aggregate, including its explicit override.
+An override never rewrites raw material properties. Zero mass has no physical center.
+WORLD is a computational collection of foundations, not one user-facing aggregate center.
+An arbitrary material witness remains available when its mass is zero.
+
+Coordinate readers transform both pair anchors into the retained solve frame before
+evaluating value, gradient and analytic gamma. A rotating carrier's P travel and a horizontal
+slot independently give s = csc(theta) - csc(theta0) and
+x = cot(theta) - cot(theta0). For constant angular speed w:
+s' = -w cos(theta)/sin²(theta),
+s'' = w²(1+cos²(theta))/sin³(theta),
+x' = -w/sin²(theta), x'' = 2w² cos(theta)/sin³(theta).
+The snapshot tests compare all of these directly with the published values at each sample.
+
+## Explicit nonlooping analysis duration
+
+The existing `Mechanism` does not publish open-ended slider travel: its sample/work budget
+eventually refuses a path as `cycle-never-closes` (`mechanism.ts`, loop budget after the seam
+checks). Native unbounded travel need not become a fictitious out-and-back cycle to be useful.
+`buildBodyMotionWindow`, requested by an explicit snapshot path duration, checks the same
+continuous intervals as a cycle and ends at the first proved physical stop or the requested
+time. A time endpoint is labeled `duration`; it retains signed rates and dynamics, with no
+reversal marker or automatic loop. A physical stop is labeled `stop` and retains the normal
+unavailable reversal rates. Exhausted work/sample budgets publish no partial trajectory.
+The window API is implemented; choosing and exposing its duration in the native transport
+still belongs to S5/S6. The current editor has not switched to it.

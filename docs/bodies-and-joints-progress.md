@@ -18,7 +18,7 @@
 | S0 | Baseline complete | Six unit suites pass (182 tests), seven new compatibility tests pass, build passes, template-open 11/11, template-graphs 3978/3978, ui-copy 17/17. Timing, visual baseline and operation-level consumer classification are recorded. Existing drag timing failures are reproduced on original test files, not waived; S7 must meet the measured comparison budget. |
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
 | S2 | Complete | Native compiler, analytic Jacobians, mobility/admission, branch continuation, folds, limits and frame conditioning. Seven native/legacy and four native/MATLAB comparisons retain the original ceilings. Geometric redundancy, two slots on a carrier and one-pin/shared-WORLD cases pass. Combined S2/initial-rate gate: 255 tests / 37 files; current-editor browser gate is green. Continuous cycle event publication remains an explicit S3 obligation. |
-| S3 | In progress | Analytic rates, moving/fixed-group forces, material/weld recovery, immutable force frames and series support-policy selection implemented and initially verified. Passive frame bars no longer join independent clocks. Latest native/reference/frame-force gate: 330 tests / 54 files; build passes; latest unchanged-editor ui-copy 17/17. Fixed component availability and regular collective foundations implemented. Checked intervals, closed-cycle/retrace publication and immutable per-sample rate/force inputs implemented. Full snapshot/accessors, integration audit, remaining worked examples, full gates and F2 are pending. |
+| S3 | In progress | Analytic rates, forces, continuous intervals/cycles, immutable document snapshots and material/attachment/coordinate/group readers implemented. Native/reference/frame-force gate: 342 tests / 57 files; host build passes; live ui-copy 17/17. Full unit run: 2648 passed, two legacy failures reproduced unchanged at b1df740 (details below); these must be resolved before S3 closes. Remaining independent/reference-rate audit, browser gate and F2 remain pending. |
 | S4 | Pending | Native transactions, codec/import, lifecycle, history and F3. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
 | S6 | Pending | All consumers, synthesis, tutorial, fixtures/templates and default cutover. |
@@ -854,3 +854,74 @@ Finish remaining independent examples/reference rates, the complete S3 unit/brow
 then F2. Publish the new cosine-carriage fixture through the native codec/gallery at S6.
 S4–S8 and substantial old-runtime removal remain required. No paid review ran; spending is
 unchanged, and nothing was pushed or published.
+
+## S3 document snapshots, readers and finite analysis windows
+
+This turn made verified progress from b1df740. The preceding note-only response did not advance
+the migration; the current implementation and gates below do. No goal scope was reduced.
+
+`buildSimulationSnapshot` now owns one compiled design revision, independent partition
+admission/trajectory results, numerical frames, rates and force series. Deep copies preserve
+shared records while removing mutable Map interfaces; neither freezing nor later editor
+changes reach the other side of the snapshot boundary. `selectSimulationView` checks revision
+and explicit per-clock indices and assembles only the selected fixed-foundation context.
+A missing/failed clock never supplies index zero, and an unrelated foundation can still answer.
+
+New readers cover material poses and point motion, attachments, intrinsic material CoM,
+aggregate group CoM, scalar coordinates and derivatives, pair-owned reactions, driver effort
+and power. Their public values use world-oriented SI, with local point arguments in document
+units. Rates stay in the numerical frame until publication. Group overrides affect the
+aggregate center without overwriting intrinsic member properties; WORLD does not masquerade
+as one physical aggregate center. Force results preserve the unique/evenest basis.
+
+Fixed support policy is selected once per component from its geometry, with explicit overrides
+validated against component identity. The frame construction formerly inside fixedForceBalance
+is shared with this policy calculation; existing distant-origin/foundation tests still pass.
+
+`buildBodyMotionWindow` supplies an explicit nonlooping duration for unbounded/nonperiodic
+motion. It uses the same checked intervals as cycles, stops early at proved physical bounds,
+and never treats a time endpoint as a reversal. A sample/probe budget refuses the trajectory
+atomically. Code audit found the old Mechanism eventually refuses unclosed linear travel under
+its cycle budget; it supplies no existing finite-window policy to preserve. Native transport
+controls/default duration and intermediate-time display behavior remain S5/S6 work.
+
+Twelve new tests in simulation-snapshot, simulation-availability and body-motion-window cover:
+
+- Owned immutable snapshots, unchanged editable input, revision/index refusal and recovery.
+- Off-axis welded member/witness positions and v/a against R(theta), SI/inch-pound units,
+  local-frame rebasing and construction enumeration changes.
+- Independent clock selections, shared-foundation context requirements, a no-drive machine
+  beside a working machine, static-only material drawings, fixed support policy overrides.
+- Intrinsic versus overridden aggregate centers, zero-mass center refusal and usable witnesses.
+- Unbounded oblique translation at either speed sign, no false endpoint reversal, real early
+  stop, budget refusal, and fresh later builds. A one-probe unbounded interval can validly
+  succeed; the probe-exhaustion assertion therefore uses a bounded interval requiring checks.
+- Rotating-carrier P and horizontal-slot coordinates against independent csc(theta)/cot(theta)
+  values and their first/second derivatives at every sample, including the carriage acceleration.
+
+Verification under artifacts/bodies-and-joints:
+
+- `S3-snapshot-expanded.log`: 12 tests / three files pass. The final endpoint arithmetic uses
+  the exact requested target instead of reconstructing it; subsequent gates include that change.
+- `S3-snapshot-native-reference.log`: **342 tests / 57 files pass**, with the original S2
+  argument list plus frame-body-forces and unchanged reference ceilings.
+- `S3-snapshot-final-build.log`: host production build passes with existing warnings.
+- `S3-snapshot-ui-copy.log`: **17/17**, zero browser errors. Dev server session 70166 was
+  revalidated live, HTTP 200 and PID 13660 cwd matched this worktree. No native-editor or
+  complete-cycle visual gate is claimed by this check.
+- `S3-snapshot-full-unit.log`: **2648 passed / two failed, 275 files**. The failures are
+  coupled-routing's rejection of `determineTracerJoint` on the driven body and double-butterfly's
+  near-stationary step ratio (0.0014035668847612065 versus 0.001341640786502705).
+- Both failures reproduce in isolation (`S3-snapshot-isolated-failures.log`) and in a clean
+  git-archive b1df740 copy (`S3-snapshot-baseline-failures.log`, location in
+  `S3-snapshot-baseline-path.txt`). Neither test imports the native kernel. This establishes
+  baseline failures, not a waiver: diagnose the intended invariants and resolve them before F2.
+- Only touched TypeScript formatted; whitespace check passes. No Fable call or additional
+  review spending; no push or publication.
+
+**S3 remains in progress.** Next resolve the two full-suite baseline failures without weakening
+motion/route invariants, audit the remaining independent example/reference rates, complete the
+full S3 browser/unit gates and request F2 within its existing $10 cap. Publish the new linear
+carriage and other native fixtures in the S6 gallery once the native codec exists. S4–S8,
+transaction/codec/history, native editor and consumer cutover, substantial obsolete-runtime
+removal, performance and paired Playwright/incognito visual gates are all still required.

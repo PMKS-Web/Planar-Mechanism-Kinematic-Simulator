@@ -1,7 +1,7 @@
 import { ForceDocument } from './force-document';
-import { compareRecordIds, WORLD } from './body-id';
-import { CompiledBodyPartition, CompiledBodySystem } from './compiled-body-system';
-import { createBodySolveFrame } from './body-solve-frame';
+import { compareRecordIds } from './body-id';
+import { CompiledBodySystem } from './compiled-body-system';
+import { fixedForceFrame } from './fixed-force-frame';
 import { BodyRatesResult } from './body-rates';
 import { groupForceLoads } from './body-force-loads';
 import { solveBodyEfforts } from './body-efforts';
@@ -10,8 +10,6 @@ import { forceAvailable } from './force-frame-result';
 import { FixedForceInputs } from './fixed-force-inputs';
 import { FixedBodyForces, FixedForceOptions } from './fixed-force-result';
 import { freezeResult, snapshotMap } from './sample-results';
-import { scale } from './body-frame';
-import { unitFactors } from './body-units';
 
 /** Equilibrium uses a read-only material view, never a replacement editable document. */
 export function fixedForceBalance(
@@ -23,37 +21,13 @@ export function fixedForceBalance(
 ): FixedBodyForces {
   const refuse = (reason: Extract<FixedBodyForces, { ok: false }>['reason']): FixedBodyForces =>
     freezeResult({ ok: false, reason });
-  const groups = [...system.groups.values()]
-    .filter((group) => group.fixed)
-    .sort((a, b) => compareRecordIds(a.id, b.id));
-  const unknowns = groups.filter((group) => group.id !== WORLD).map((group) => group.id);
-  const partition: CompiledBodyPartition = {
-    key: 'fixed-forces',
-    unknowns,
-    boundary: [WORLD],
-    materialIds: unknowns.flatMap((id) => [...system.groups.get(id)!.members.keys()]),
-    rows: system.fixedRows,
-    drivers: system.fixedDrivers,
-    limits: system.fixedLimits,
-  };
-  // A WORLD-only weld group has no moving origin to choose. Refer its force
-  // balance to nearby material instead of subtracting moments about a distant zero.
-  const reference = document.bodies
-    .filter(
-      (body) => body.kind === 'material' && system.groups.get(system.groupOf.get(body.id)!)?.fixed
-    )
-    .sort((a, b) => compareRecordIds(a.id, b.id))[0];
-  const frame = createBodySolveFrame(
-    partition,
-    new Map(groups.map((group) => [group.id, group.pose])),
-    reference && scale(reference.pose, unitFactors(document.units).length)
-  );
+  const frame = fixedForceFrame(document, system);
   const poses = frame.initialPoses;
   const rates: BodyRatesResult = {
     ok: true,
     motions: new Map(
-      groups.map((group) => [
-        group.id,
+      [...poses.keys()].map((id) => [
+        id,
         { velocity: { vx: 0, vy: 0, omega: 0 }, acceleration: { ax: 0, ay: 0, alpha: 0 } },
       ])
     ),
