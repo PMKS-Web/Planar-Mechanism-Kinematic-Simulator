@@ -1,3 +1,4 @@
+import { sameBodyRecord } from './body-edit-effects';
 import { BodyDocument } from './body-document';
 import { BodyEditRefusal, BodySelectionRef } from './body-edit-types';
 import { Point, localToWorld } from './body-frame';
@@ -10,6 +11,23 @@ export function validateBodyEditLocks(
   after: BodyDocument
 ): BodyEditRefusal | undefined {
   const moved: BodySelectionRef[] = [];
+  for (const body of before.bodies) {
+    const next = after.bodies.find((item) => item.id === body.id);
+    if (body.kind !== 'material' || !body.locked || next?.kind !== 'material' || !next.locked)
+      continue;
+    const angle = next.pose.angle - body.pose.angle;
+    const anchorsMoved = before.attachments.some((a) => {
+      const b = after.attachments.find((point) => point.id === a.id);
+      return a.bodyId === body.id && b && !samePosition(a.point, b.point);
+    });
+    if (
+      !samePosition(body.pose, next.pose) ||
+      Math.abs(Math.sin(angle / 2)) > 8 * Number.EPSILON ||
+      !sameBodyRecord(body.geometry, next.geometry) ||
+      anchorsMoved
+    )
+      moved.push({ kind: 'body', id: body.id });
+  }
   for (const id of before.locks) {
     if (!after.locks.includes(id)) continue;
     const a = before.attachments.find((point) => point.id === id)!;

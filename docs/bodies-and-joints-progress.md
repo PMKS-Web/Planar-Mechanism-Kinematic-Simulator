@@ -19,7 +19,7 @@
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
 | S2 | Complete | Native compiler, analytic Jacobians, mobility/admission, branch continuation, folds, limits and frame conditioning. Seven native/legacy and four native/MATLAB comparisons retain the original ceilings. Geometric redundancy, two slots on a carrier and one-pin/shared-WORLD cases pass. Combined S2/initial-rate gate: 255 tests / 37 files; current-editor browser gate is green. Continuous cycle event publication remains an explicit S3 obligation. |
 | S3 | Complete | Native rates/forces, immutable results, interval/cycle/window publication, all five hand-derived cylinder examples and native/MATLAB positions/rates. F2 reviewed d842ffd and all findings resolved below. Final full gate: 2682 tests / 285 files; host build passes; ui-copy 17/17 with zero console errors. Earlier S3 browser and live-incognito evidence remains recorded. Native UI cutover is S5–S6, not claimed here. |
-| S4 | In progress | Native codec/project state, structural/property commands, lifecycle and local history implemented and tested in slices. Geometry/pose/drive/copy commands, displayed-frame capture, production import/recovery, full lifecycle matrix and F3 remain. F2 is resolved; no public-route cutover yet. |
+| S4 | In progress | Native codec/project state, structural/property commands, canonical geometry/pose primitives, whole-body locks, CoM edit mapping, lifecycle and local history tested in slices. Connected gesture solving, displayed-frame capture/re-anchoring, coordinate/drive/copy/unit edits, cylinder dimensions, production import/recovery, full lifecycle matrix and F3 remain. F2 is resolved; no public-route cutover yet. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
 | S6 | Pending | All consumers, synthesis, tutorial, fixtures/templates and default cutover. |
 | S7 | Pending | Removal manifest closed and performance budget met. |
@@ -1429,3 +1429,77 @@ Then finish production import, the atomic native load/save/recovery facade, the 
 independent enumeration and save/reopen lifecycle matrix, and the named S4 browser gates.
 Only then request F3. Fable spending/reservations are unchanged. S5–S8, substantial legacy
 runtime removal, both live browser workflows and final integration remain required.
+
+
+## S4 canonical geometry, body locks and center mapping
+
+The preceding checkpoint is **dd82745**. This slice implements the canonical geometry/pose
+transaction primitives that the connected gesture solver will consume. S4 remains **in
+progress**, the native UI is not active, and no F3 review was requested.
+
+- `body-geometry`, `attachment-position` and `body-poses` now run through `planBodyEdit`.
+  Shape and pose are separate operations. Bound endpoint edits update the actual vertex and
+  every marker explicitly bound to it; unbound connection/tracer edits leave shape unchanged.
+  `BodyFactory.vertexAttachment` makes binding a deliberate construction choice. Partial
+  one-sided R edits and incomplete welded-group pose proposals fail settled validation.
+  Complete three-way proposals and whole welded/cylinder poses commit once with unchanged
+  local shapes/rest transforms. Generic edits preserve cylinder intrinsic geometry; assembly
+  dimension editing remains its own pending command, not an allowed arbitrary leaf resize.
+- A persistent optional material `locked` flag handles the one-pin rotating-body case.
+  Its pose, geometry and surviving attachments cannot move while locked. Individual point
+  locks still permit rotation about the point. Mass/color/labels and deletion remain allowed;
+  unlock-and-move is one transaction. Codec/history preserve the new body lock.
+- Length/angle holds are checked on the settled candidate and return the shared
+  `held-dimension` refusal. They never become simulation rows. The pending gesture solver
+  must use holds when finding a proposal, not merely rely on rejection after an arbitrary move.
+- Material centers now follow their body/centroid, fixed grid or selected attachment during
+  canonical edits. A body-relative center retains a stable named geometry direction in
+  `editAxis`; shape rotation rotates its offset, and a later longer polygon diagonal or array
+  reversal cannot reinterpret it. Save/reopen preserves that pair; removing the pair rebases
+  without moving the center. Copy/remap must include these VertexIds.
+- Group centers retain their explicit reference and aggregate overrides. Body-relative group
+  offsets use the member geometry-derived aggregate centroid in the group's stable frame;
+  grid/attachment offsets stay in world axes. Existing reference deletion is applied **after**
+  pose mapping, so deleting the attachment during a turn preserves the old world center.
+  Newly supplied invalid references are not eligible for repair. Explicit center properties
+  override automatic remapping even if the supplied number equals its old value.
+
+Tests use the new reusable `nativeEditableBar` construction helper and the existing native
+three-leaf/three-cylinder fixtures through actual authority commands. They cover binding and
+free tracers, accepted/refused multiway proposals in both orders, rigid group/cylinder poses,
+held length/angle, one-pin versus whole-body locks, atomic refusal and unlock, all three CoM
+reference modes under extension/rotation/translation, deletion during a turn, and a polygon
+whose longest vertex pair changes between two edits with save/reopen in between. They also
+check annotation/material retention and undo/redo. Public native fixture URLs remain an S6
+gate; these source fixtures are not being counted as native UI evidence.
+
+Verification in `artifacts/bodies-and-joints/` (Node 24.18.0):
+
+- Final `S4-geometry-full-unit.log`: **2749 tests / 297 files pass**, session 6963 exit 0.
+- Final `S4-geometry-build.log`: production build passes, session 73065 exit 0; existing
+  CommonJS warnings only. Earlier full/build sessions 36055/79534 passed before the final
+  CoM deletion/polygon additions and are superseded by the final logs.
+- `S4-geometry-focused.log`: 26 tests / 4 files pass (session 78273 exit 0), before the last
+  polygon assertion was added; the full final suite includes that assertion.
+- `S4-geometry-mutation-body-lock-angle.log` and `S4-geometry-mutation-center-direction.log`:
+  each deliberate defect produces **one intended assertion failure / six passes**. The first
+  accepts a locked body's rotation; the second produces the wrong custom-center position.
+  The Python process (session 19094 exit 0) restored each source byte-for-byte in `finally`
+  before the final full tests/build. These are behavior failures, not compile failures.
+- `S4-geometry-ui-copy.log`: **17/17**, zero console errors (session 29598 exit 0). Server
+  PID 13660 was rechecked with cwd in this worktree and HTTP 200 at localhost:4307. The initial
+  invocation failed because `/tmp/pmks-playwright` is gone; the rerun used the repository's
+  installed Playwright with `PMKS_PLAYWRIGHT_DIR=..`. The initial failure is retained as
+  `S4-geometry-ui-copy-missing-temp-install.log`. No new browser installation was needed.
+- All touched TypeScript files formatted; whitespace checks pass. No renderer, gesture handler
+  or legacy public edit path changed, so this unchanged-route copy check is not native UX
+  acceptance. Required live/incognito and filmstrip checks still accompany S5/S6/S8.
+
+**Next required work:** implement the connected gesture proposal solver and paused displayed-
+frame mapping/re-anchoring using these canonical primitives. Do not simply lift their temporary
+start-pose guard or commit a displayed body pose as the authored anchor. The current primitive
+checks complete proposals but does not discover their closure, solve held CAD geometry, or
+reparameterize input commands. Coordinate/drive edits, cylinder dimensions and assembly angle
+holds, unit conversion, copy/remap, production import/recovery, the full independent lifecycle
+matrix and named S4 browser gates remain required before F3. Fable spending/reservations are
+unchanged. S5–S8 and substantial obsolete-runtime removal remain pending; no push/publication.

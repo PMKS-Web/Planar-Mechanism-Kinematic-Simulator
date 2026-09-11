@@ -10,26 +10,32 @@ const geometry = either(
 const explicit = object({ mode: literal('explicit'), value: finite });
 const automatic = object({ mode: literal('automatic') });
 export const centerEditAnchor = either(literal('body', 'grid'), object({ attachmentId: id }));
-const center = object({ mode: literal('explicit'), point, editAnchor: centerEditAnchor });
+const center = object(
+  { mode: literal('explicit'), point, editAnchor: centerEditAnchor },
+  { editAxis: list(id, 2) }
+);
 export const presentation = object(
   { fill: text(128), hidden: boolean, showCenter: boolean },
   { outline: literal('geometry', 'circle') }
 );
 export const material = either(
   object({ kind: literal('world'), id: literal(WORLD), pose }),
-  object({
-    kind: literal('material'),
-    id,
-    label: text(),
-    pose,
-    geometry,
-    mass: object({
-      mass: either(explicit, object({ mode: literal('density'), value: finite })),
-      inertia: either(automatic, explicit),
-      center: either(automatic, center),
-    }),
-    presentation,
-  })
+  object(
+    {
+      kind: literal('material'),
+      id,
+      label: text(),
+      pose,
+      geometry,
+      mass: object({
+        mass: either(explicit, object({ mode: literal('density'), value: finite })),
+        inertia: either(automatic, explicit),
+        center: either(automatic, center),
+      }),
+      presentation,
+    },
+    { locked: boolean }
+  )
 );
 export const attachment = object(
   { id, bodyId: id, point, label: text(), trace: boolean },

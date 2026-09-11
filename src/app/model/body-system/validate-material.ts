@@ -21,6 +21,8 @@ export function validateMaterial(context: ValidationContext): void {
       issue('invalid-body-kind', path);
       continue;
     }
+    if (body.locked !== undefined && typeof body.locked !== 'boolean')
+      issue('invalid-body-lock', path);
     if (!validGeometry(body.geometry)) issue('invalid-geometry', path);
     if (
       !validMass(body.mass) ||
@@ -28,6 +30,19 @@ export function validateMaterial(context: ValidationContext): void {
         !validCenterEditAnchor(document, body.mass.center.editAnchor, [body.id]))
     )
       issue('invalid-mass', path);
+    if (body.mass.center.mode === 'explicit' && body.mass.center.editAxis) {
+      const axis = body.mass.center.editAxis;
+      if (
+        axis.length !== 2 ||
+        new Set(axis).size !== 2 ||
+        body.geometry.kind === 'circle' ||
+        axis.some(
+          (id) =>
+            body.geometry.kind !== 'circle' && !body.geometry.vertices.some((v) => v.id === id)
+        )
+      )
+        issue('invalid-center-axis', path);
+    }
     if (body.geometry.kind === 'bar' && body.mass.mass.mode === 'density')
       issue('bar-needs-explicit-mass', path);
     if (body.geometry.kind !== 'circle')

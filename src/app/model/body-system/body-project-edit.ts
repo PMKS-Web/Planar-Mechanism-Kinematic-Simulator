@@ -1,3 +1,4 @@
+import { isBodyGeometryOperation } from './body-geometry-edit';
 import { isBodyPropertyOperation } from './body-property-edit';
 import { BodyDocument } from './body-document';
 import { BodyEditOperation } from './body-edit-types';
@@ -19,6 +20,7 @@ export function bodyOperationPermission(
     (operation.kind === 'force-properties' && operation.change.frame !== undefined)
   )
     return menuRefusal(state, 'start');
+  if (isBodyGeometryOperation(operation)) return menuRefusal(state, 'start');
   if (isBodyPropertyOperation(operation)) return menuRefusal(state, 'preserve');
   if (operation.kind === 'project') {
     if (operation.settings && (state.playing || !state.atStart)) return SETTINGS_AT_START_ONLY;
