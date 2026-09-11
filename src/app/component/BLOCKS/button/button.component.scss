@@ -41,10 +41,10 @@
     //If not disabled
     &:not([disabled]) {
       &.warn > mat-icon > svg > path {
-        fill: #f44336;
+        fill: var(--danger);
       }
 
-      border-color: #f44336;
+      border-color: var(--danger);
 
       &:not(.warn) {
         border-color: mat.m2-get-color-from-palette($primary-palette, 500) !important;

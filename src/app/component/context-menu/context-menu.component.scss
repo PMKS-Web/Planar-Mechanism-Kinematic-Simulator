@@ -44,7 +44,7 @@
       flex-shrink: 0;
     }
     padding: 0 0 4px;
-    background-color: #ffffff;
+    background-color: var(--surface);
     border-radius: var(--border-radius);
     user-select: none;
 
@@ -96,7 +96,7 @@
       cursor: pointer;
 
       &:hover {
-        background-color: #eeeeee;
+        background-color: var(--surface-hover-3);
       }
 
       mat-icon {
@@ -151,7 +151,7 @@
       }
 
       &:hover {
-        background-color: #f1f3f4;
+        background-color: var(--surface-hover-2);
       }
 
       // Ink is solid black and the *group* is 60%, rather than a 60% ink:
@@ -165,7 +165,7 @@
         height: 18px;
         font-size: 18px;
         line-height: 18px;
-        color: #000;
+        color: var(--text-black);
         opacity: 0.6;
       }
     }
@@ -237,10 +237,10 @@
 
     // The footer. Alone under a rule, and always the last row.
     .cm-row--destructive {
-      color: #d32f2f;
+      color: var(--danger-4);
 
       mat-icon {
-        color: #d32f2f;
+        color: var(--danger-4);
         opacity: 1;
       }
     }
@@ -249,7 +249,7 @@
       color: rgba(0, 0, 0, 0.32);
 
       mat-icon {
-        color: #000;
+        color: var(--text-black);
         opacity: 0.24;
       }
     }

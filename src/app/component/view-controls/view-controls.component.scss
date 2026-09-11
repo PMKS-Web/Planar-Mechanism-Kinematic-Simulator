@@ -68,7 +68,7 @@
     border: none;
     border-radius: 6px;
     background: transparent;
-    color: #5f6368;
+    color: var(--text-secondary);
     cursor: pointer;
 
     mat-icon {
@@ -79,8 +79,8 @@
     }
 
     &.on {
-      background: #eef1fc;
-      color: #303f9f;
+      background: var(--selection);
+      color: var(--brand-dark);
     }
   }
 }

@@ -14,10 +14,10 @@
   .dual-button {
     .buttonDisabled {
       path {
-        fill: #969696 !important;
+        fill: var(--text-disabled-gray) !important;
       }
 
-      border-color: #bbbbbb !important;
+      border-color: var(--border-disabled-gray) !important;
     }
 
     // Each button is as wide as its own words, and the two share what is

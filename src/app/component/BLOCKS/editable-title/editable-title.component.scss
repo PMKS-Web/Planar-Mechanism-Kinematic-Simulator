@@ -54,7 +54,7 @@
 
         .mdc-text-field--filled:not(.mdc-text-field--disabled) {
           //background-color: #eff1f8;
-          background-color: #f0f1f5;
+          background-color: var(--surface-field);
         }
 
         .mat-mdc-text-field-wrapper {

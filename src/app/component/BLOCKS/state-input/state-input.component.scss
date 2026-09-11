@@ -17,13 +17,13 @@
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  border: 1.5px solid #9fa8da;
+  border: 1.5px solid var(--brand-light);
   background: transparent;
 }
 
 .state-dot.filled {
-  background: #3f51b5;
-  border-color: #3f51b5;
+  background: var(--brand);
+  border-color: var(--brand);
 }
 
 /* The suffix rides the field's visible center, not the text baseline. The

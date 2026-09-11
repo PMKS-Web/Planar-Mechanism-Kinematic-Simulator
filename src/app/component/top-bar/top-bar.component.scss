@@ -98,7 +98,7 @@
       height: 22px;
       flex: 0 0 auto;
       margin: 0 2px;
-      background: #e2e4ec;
+      background: var(--border-divider-2);
     }
   }
 
@@ -148,7 +148,7 @@
     background: transparent;
     font-family: inherit;
     font-size: 15px;
-    color: #3c4043;
+    color: var(--text-control);
     cursor: pointer;
     white-space: nowrap;
 
@@ -278,7 +278,7 @@
     flex: 0 0 1px;
     width: 1px;
     height: 26px;
-    background: #e2e4ec;
+    background: var(--border-divider-2);
     margin: 0 8px;
   }
 
@@ -295,8 +295,8 @@
     height: 20px;
     padding: 0 8px;
     border-radius: 10px;
-    background: #eef0f4;
-    color: #5f6368;
+    background: var(--surface-chip);
+    color: var(--text-secondary);
     font-size: 12px;
     font-weight: 400;
     white-space: nowrap;
@@ -306,23 +306,23 @@
     // green has nothing to say. Force analysis asks for a fourth -- see
     // `statusOf` -- and it is the plain chip above, stated but not colored.
     &.neutral {
-      background: #eef0f4;
-      color: #5f6368;
+      background: var(--surface-chip);
+      color: var(--text-secondary);
     }
 
     &.blocker {
-      background: #fce8e6;
-      color: #c5221f;
+      background: var(--refusal-bg);
+      color: var(--refusal-text);
     }
 
     &.warning {
-      background: #fef3e0;
-      color: #b26a00;
+      background: var(--warning-bg);
+      color: var(--warning-text);
     }
 
     &.ok {
-      background: #e6f4ea;
-      color: #137333;
+      background: var(--success-bg);
+      color: var(--success-text);
     }
   }
 
@@ -335,7 +335,7 @@
     border: none;
     border-radius: 6px;
     background: transparent;
-    color: #3c4043;
+    color: var(--text-control);
     cursor: pointer;
 
     &:hover {
@@ -360,7 +360,7 @@
     border: none;
     border-radius: 6px;
     background: transparent;
-    color: #5f6368;
+    color: var(--text-secondary);
     font-family: inherit;
     font-size: 14px;
     cursor: pointer;
@@ -377,7 +377,7 @@
     }
 
     &:disabled {
-      color: #c4c7d0;
+      color: var(--text-disabled);
       cursor: default;
       background: transparent;
     }
@@ -431,7 +431,7 @@
     background: transparent;
     font-family: inherit;
     font-size: 14px;
-    color: #2c2c2c;
+    color: var(--text-primary);
     cursor: pointer;
     text-align: left;
 
@@ -440,7 +440,7 @@
       height: 21px;
       font-size: 21px;
       line-height: 21px;
-      color: #5f6368;
+      color: var(--text-secondary);
       flex: 0 0 auto;
     }
 
@@ -476,7 +476,7 @@
 
   .menuDivider {
     height: 1px;
-    background: #e6e7ee;
+    background: var(--border-divider);
     margin: 6px 14px;
   }
 
