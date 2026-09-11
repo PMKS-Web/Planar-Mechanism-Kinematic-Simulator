@@ -1,3 +1,4 @@
+import { nativeTriangleFoundation } from '../../../test-utils/verification/native-triangle-foundation-fixture';
 import { nativeSeparateFoundations } from '../../../test-utils/verification/native-fixed-frame-fixtures';
 import { BodyDocument } from './body-document';
 import { BodyFactory } from './body-factory';
@@ -55,6 +56,48 @@ function componentResult(snapshot: FixedForceSnapshot, body: BodyId) {
 }
 
 describe('fixed force availability by material component', () => {
+  it('balances a two-body triangle foundation from its independent crank samples', () => {
+    const fixture = nativeTriangleFoundation(),
+      [left, right] = fixture.foundations;
+    // Moments about (0,0) and (4,0), with H acting at (1,2) on the left:
+    // Hy - 2Hx = 5 + 10 cos(left); 3Hy + 2Hx = -15 + 10 cos(right).
+    const hy = 2.5 * (Math.cos(left.angle) + Math.cos(right.angle) - 1);
+    const hx = (hy - 5 - 10 * Math.cos(left.angle)) / 2;
+    for (const document of [
+      fixture.document,
+      {
+        ...fixture.document,
+        bodies: [...fixture.document.bodies].reverse(),
+        joints: [...fixture.document.joints].reverse(),
+      },
+    ]) {
+      const f = prepare(document, { x: 0, y: 0 });
+      const snapshot = f.run([...f.frames].reverse());
+      expect(componentResult(snapshot, left.body).ok).toBe(true);
+      for (const [joint, body, x, y, moment] of [
+        [left.support, left.body, -hx, 10 - hy, 0],
+        [right.support, right.body, hx, 10 + hy, 0],
+        [fixture.apex, left.body, hx, hy, hy - 2 * hx],
+        [fixture.apex, right.body, -hx, -hy, 3 * hy + 2 * hx],
+      ] as const) {
+        const wrench = fixedJointBodyWrench(snapshot, joint.id, body);
+        if (!wrench.ok) throw new Error(wrench.reason);
+        expect(wrench.value.force.x).toBeCloseTo(x, 9);
+        expect(wrench.value.force.y).toBeCloseTo(y, 9);
+        expect(wrench.value.moment).toBeCloseTo(moment, 9);
+      }
+      const missing = f.run(f.frames.slice(0, 1));
+      expect(componentResult(missing, left.body)).toMatchObject({
+        ok: false,
+        reason: 'missing-sample',
+      });
+      expect(componentResult(missing, right.body)).toMatchObject({
+        ok: false,
+        reason: 'missing-sample',
+      });
+    }
+  });
+
   it('keeps a selected shared-support policy on its own foundation', () => {
     const fixture = nativeSeparateFoundations(),
       [first, second] = fixture.foundations;
