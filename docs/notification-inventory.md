@@ -1,5 +1,7 @@
 # Every message the app can say
 
+> **Status:** History — the snackbar before `services/notification.service.ts` replaced it. Two items under "Still open" were open when last updated.
+
 An inventory of the snackbar, taken **before** rebuilding it, and kept as the
 record of what was there. Only messages that were **reachable** are listed — a
 call site that no template bound, or that sat behind a comment, is in the dead

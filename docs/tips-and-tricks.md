@@ -19,12 +19,14 @@ to work on it without stepping in the same holes.
 - [Spelling: American, everywhere](#spelling-american-everywhere)
 - [Formatting, and why you should not just run Prettier](#formatting-and-why-you-should-not-just-run-prettier)
 - [Angular and build gotchas](#angular-and-build-gotchas)
-- [Editing, playback, and who is allowed to say no](#editing-playback-and-who-is-allowed-to-say-no)
 - [SCSS gotchas](#scss-gotchas)
+- [Editing, playback, and who is allowed to say no](#editing-playback-and-who-is-allowed-to-say-no)
 - [Domain facts worth knowing before you debug](#domain-facts-worth-knowing-before-you-debug)
 - [Deploys, domains and surrounding services](#deploys-domains-and-surrounding-services)
 - [Checking an exported file](#checking-an-exported-file)
 - [Working out whether a failure is yours](#working-out-whether-a-failure-is-yours)
+- [Short notes](#short-notes) — one surprise each, mostly charts, panels, solvers, cylinders and
+  welds. Search the file for the symbol you are working on rather than reading straight through.
 
 ---
 
@@ -49,8 +51,8 @@ the keys it declares, so the build command, publish directory and functions dire
 from each site's own UI settings — which is what you want here, since there are two sites and this
 one file has to suit both.
 
-**The e2e scripts still look in `/tmp/pmks-playwright` by default**, overridable with
-`PMKS_PLAYWRIGHT_DIR` — which can now be the repo itself. The resolver appends
+**The e2e scripts still look in `/tmp/pmks-playwright` by default**, and every suite honors
+`PMKS_PLAYWRIGHT_DIR` to look somewhere else — which can now be the repo itself. The resolver appends
 `/node_modules/playwright/index.mjs` to what you give it and imports that *relative to the script*,
 so the repo root is `..` and not `.` — `.` resolves inside `e2e/` and fails with a
 module-not-found that reads like a missing install:
@@ -59,12 +61,19 @@ module-not-found that reads like a missing install:
 PMKS_PLAYWRIGHT_DIR=.. node e2e/locking.mjs     # the project's own copy
 ```
 
-The `/tmp` install is still what the suites default to, and it carries two packages the filmstrip
-helper needs that the project does not:
+The `/tmp` install is still what the suites default to, and it carries two packages the project
+does not: `gif-encoder` and `pngjs`, which `template-animations.mjs` imports from that install's
+own `node_modules` (so that suite needs the `/tmp` install, or a `PMKS_PLAYWRIGHT_DIR` that has them):
 
 ```bash
 mkdir -p /tmp/pmks-playwright && cd /tmp/pmks-playwright && npm i playwright gif-encoder pngjs && npx playwright install chromium
 ```
+
+**The filmstrip helper's contact sheet needs Pillow, not a Node package.** `contactSheet` in
+`e2e/filmstrip.mjs` tiles the frames through `python3` (it tries `python3`, `/usr/bin/python3` and
+Homebrew's in turn). When none of them has `PIL` it prints `contact sheet skipped` and returns; the
+frames are still in `artifacts/`, and the suite's verdict is its checks. `pip3 install pillow`
+under whichever python you run brings the sheets back.
 
 **`/tmp` is cleared on reboot**, so that install disappears and every browser suite starts failing
 with a module-not-found. Reinstalling — or pointing `PMKS_PLAYWRIGHT_DIR` at the repo — is the first
@@ -78,7 +87,8 @@ and the panel it then reads has no field of the name it wants -- `Cannot read pr
 the same clicks work in a fresh page, delete the profile directory named in the suite and run again.
 
 **Two suites need more than Chromium.** `playback-loop-indicator` compares the same bar across
-engines, so it needs Firefox and WebKit too, and reports three confusing failures without them:
+Chromium, Firefox and WebKit, and reports three confusing failures without the other two;
+`pointer-pairing` runs its checks in Chromium and WebKit. Install the extra engines once:
 
 ```bash
 cd /tmp/pmks-playwright && npx playwright install firefox webkit
@@ -90,6 +100,27 @@ to run unless `MOUSECTL` points at a compiled `e2e/tools/mousectl.swift`. It is 
 
 **macOS has no `timeout`.** A loop written as `timeout 240 node e2e/thing.mjs` fails with
 `command not found` and reads as a test failure. Use `gtimeout` from coreutils, or nothing.
+
+**Use `localhost`, not `127.0.0.1`.** The dev server listens on the IPv6 loopback only, so
+`http://localhost:4200/` answers and `http://127.0.0.1:4200/` refuses the connection. No e2e script
+starts a server of its own: every suite runs against whatever `PMKS_BASE_URL` names, and the
+default is `http://localhost:4200`. An old command line or note that says `127.0.0.1` fails to
+connect for this reason alone.
+
+**`angular.json` sets no dev-server port**, so `npm start` takes Angular's default, 4200. A second
+checkout running its own server — another worktree, or a baseline served beside your change — has
+to choose a free port, and the suites have to be told it:
+
+```bash
+npx ng serve --port 4300
+PMKS_BASE_URL=http://localhost:4300 node e2e/locking.mjs
+```
+
+**A new worktree starts from the wrong branch.** Worktrees are cut from `origin/main`, the
+repository's default branch, but work goes to `staging` (see
+[Deploys](#deploys-domains-and-surrounding-services)). Before the first change in a fresh one, run
+`git fetch origin` and `git reset --hard origin/staging`. A new worktree also has no
+`node_modules`: run `npm ci`, or symlink the main checkout's.
 
 ---
 
@@ -112,10 +143,8 @@ the README/JSON, even when the drawing is exported in another length unit.
 npm start          # http://localhost:4200
 ```
 
-**Use `localhost`, not `127.0.0.1`.** The dev server binds the hostname, so
-`PMKS_BASE_URL=http://127.0.0.1:4200` fails to connect while `http://localhost:4200` works. Several
-e2e scripts default to `127.0.0.1`, which is fine when they start their own server and wrong when
-you point them at yours. Pass `PMKS_BASE_URL=http://localhost:<port>` and the problem goes away.
+Open it as `localhost`, never `127.0.0.1`, and give a second server its own port; both rules are
+under [Environment](#environment).
 
 **Do not gate a script on the tail of the serve log.** This looks reasonable and hangs forever:
 
@@ -194,24 +223,28 @@ silently reduced "every template" to 18 of the 42. `ALL_LINKAGES` adds the three
 unescapes the backslashes two of them contain. Call `assertTemplatesParsed()` in anything that
 sweeps.
 
-**Some suites rewrite tracked files.** `template-animations`, `template-thumbnails`, `readme-shots`
-and `shot` regenerate GIFs and PNGs under `src/assets/gifs` and `docs/images`. Running them dirties
-the working tree, and a careless `git add -A` commits twenty binary files nobody asked for:
+**Three suites rewrite tracked files.** `template-animations` and `template-thumbnails` regenerate
+the library cards' images under `src/assets/gifs`, and `readme-shots` regenerates the README's
+screenshots under `docs/images/readme`. (`shot` looks similar and writes only to the gitignored
+`artifacts/shots`.) Running any of the three dirties the working tree, and a careless `git add -A`
+commits a pile of binary files nobody asked for:
 
 ```bash
-git checkout -- src/assets docs        # after running any of those
+git checkout -- src/assets/gifs docs/images/readme        # after running any of those
 ```
 
-Both accept `ONLY=<template-id>` to do one drawing instead of all of them.
+All three accept `ONLY=` to retake part of the set: a comma-separated list of template ids for the
+two card scripts (`ONLY=Jansen_Leg,Pantograph`), and of shot names for `readme-shots`
+(`ONLY=hero,templates`).
 
 **Screenshots and reports** land in `artifacts/`, which is gitignored. Look at them; an exit code
 tells you a check failed, not what the page looked like.
 
-**`getByText` is a substring match, and the dialogs have hint text.** `.getByText('R12')` in the
-CAD Export dialog matches both the R12 button and the note "R12 is for old CAM only" beside it, and
+**`getByText` is a substring match, and the panels and dialogs have hint text.** A short button
+label that also appears inside a sentence nearby — a note, a hint, a tooltip — matches twice, and
 Playwright's strict mode fails the run rather than picking one. Reach for
-`getByRole('button', { name: 'R12', exact: true })` when a short label also appears inside a
-sentence nearby.
+`getByRole('button', { name: '…', exact: true })` whenever a label is short enough to turn up in
+prose on the same screen.
 
 **Force analysis needs a load.** Only five templates have one — `Punch_Press`, `Derrick_Crane`,
 `Toggle_Clamp`, `Offset_Load_Rocker`, `Crane_Two_Loads`. Every other drawing reports "A load to
@@ -243,8 +276,9 @@ ng.getComponent(document.querySelector('app-synthesis-panel')) // design, soluti
 ng.getComponent(document.querySelector('app-export-panel'))
 ```
 
-`TabID` is `0` Synthesis, `1` Edit, `2` Kinematic analysis, `3` Force analysis. The number keys do
-the same thing from the keyboard, and pressing `3` is often less trouble than clicking a tab.
+`TabID` is `0` Synthesis, `1` Edit, `2` Kinematic analysis, `3` Force analysis. The number keys
+pick the same modes but count from one: keys `1`–`4` select `TabID` 0–3, so pressing `3` opens
+Kinematic analysis, and is often less trouble than clicking a tab.
 
 **Prefer the model over the picture.** A check written against joint coordinates survives a theme
 change, a re-layout and a pan-zoom animation; one written against SVG markup does not. `playback-timing`
@@ -255,8 +289,8 @@ used to compare whole SVG strings and failed a third of the time on the camera s
 ## Spelling: American, everywhere
 
 **Comments, user-facing strings, identifiers, docs and test names are all American English.**
-`e2e/ui-copy.mjs` already fails the build on `colour`, `centre`, `neighbour` and `analyse` in
-anything the user can read; the rest is convention. It is a consistency rule rather than a taste
+`e2e/ui-copy.mjs` flags `colour`, `centre`, `neighbour` and `analyse` on the surfaces it walks,
+but it is run by hand and not in CI, so nothing fails the build on them; the rest is convention. It is a consistency rule rather than a taste
 one: `centre` and `center` are the same word to a reader and two different symbols to `grep`, so a
 codebase holding both quietly answers half of every search. In identifiers it is worse, where
 `colourOf` and `colorOf` are two functions nobody meant to write.
@@ -313,24 +347,21 @@ Afterwards, grep for the American stem followed by a suspicious ending — `cent
 
 ## Formatting, and why you should not just run Prettier
 
-**About fifty source files and six e2e files predate the Prettier config.** Running
-`prettier --write` across one of them reformats code you did not write, and your actual change
-disappears into three hundred lines of reflow.
-
-Format only files you edited, **and only if they were already clean**. To find out:
+**Some source and e2e files predate the Prettier config.** Running `prettier --write` across one
+of them reformats code you did not write, and your actual change disappears into three hundred
+lines of reflow. Ask Prettier for the current list rather than trusting a count (on 2026-09-11 it
+named 21 files under `src/` and 9 in `e2e/`):
 
 ```bash
-git stash push -u -- path/to/file
-npx prettier --check path/to/file
-git stash pop
+npx prettier --list-different src e2e
 ```
 
-The unformatted e2e files, as of this writing, are `cylinder-drag`, `phase1-drag`,
-`phase2-floating-slot`, `phase3-slide`, `synthesis-redesign` and `template-animations`. Edit those
-by hand and leave them unformatted.
+Format only files you edited, **and only if they were already clean**. Check a file with
+`npx prettier --check path/to/file` *before* your first edit to it. A file on the list gets edited
+by hand and stays unformatted.
 
-A blanket `npx prettier --write "e2e/*.mjs"` will quietly reformat four files you never touched.
-Check `git status` afterwards and revert anything you did not mean to change.
+A blanket `npx prettier --write "e2e/*.mjs"` will quietly reformat every listed file you never
+touched. Check `git status` afterwards and revert anything you did not mean to change.
 
 `.prettierignore` deliberately excludes Markdown — Prettier pads every table cell and rewrites
 `*emphasis*` as `_emphasis_`, so a one-line doc edit lands as hundreds of lines of realignment.
@@ -369,7 +400,7 @@ Check `git status` afterwards and revert anything you did not mean to change.
 
 ## SCSS gotchas
 
-**A panel's `styleUrls` does not scope it. The `@mixin` does the opposite.** 39 of the 43 component
+**A panel's `styleUrls` does not scope it. The `@mixin` does the opposite.** Most component
 stylesheets are written as `@mixin css($theme)` and `@include`d from `src/mytheme.scss`, and a mixin
 emits nothing where it is declared — so the `styleUrls` entry on the component is inert and every
 rule in the mixin lands in the *global* stylesheet exactly as written. `.check { padding-top: 10px }`
@@ -377,16 +408,15 @@ inside `some-panel.component.scss` styles every `.check` in the app. Which panel
 is decided by the order of the `@include` lines at the bottom of `mytheme.scss`; the later one wins
 ties.
 
-Rules written *outside* the mixin — `edit-panel.component.scss` has 32 of them — get both
+Rules written *outside* the mixin — `edit-panel.component.scss` has a run of them after it — get both
 treatments: Angular emits an `_ngcontent`-attributed copy from `styleUrls`, and `mytheme.scss` emits
 an unscoped copy from the `@use`. The attributed copy wins, so the global one is dead weight that
 still leaks.
 
 This has bitten more than once, as a panel whose spacing is set by a panel it has nothing to do
-with. `analysis-setup` is scoped now; fourteen bare class names are still shared across components —
-`.row`, `.label-help`, `.chip`, `.cardActions`, the six `.help*`, `.mechHead`, `.nextButton`,
-`.rowNote`, `.stepBar` — some deliberately (`blocks.common.scss` and the help panel exist to be
-shared) and some not. Read the shipped rules rather than the sources to tell which is which. Guard
+with. `analysis-setup` is scoped now, but bare class names are still shared across components
+(names like `.row`, `.label-help`, `.chip` and the `.help*` family) — some deliberately
+(`blocks.common.scss` and the help panel exist to be shared) and some not. Read the shipped rules rather than the sources to tell which is which. Guard
 the cross-origin sheets and recurse into `@media`, or you will miss most of them:
 
 ```js
@@ -571,7 +601,7 @@ holds. A failed simultaneous constraint solve must leave every joint unchanged.
   that opened it, so `:host`-scoped rules never apply: the transport's start-pose menu and the
   phone's view drawer both live in `src/styles.scss` for that reason. Put the trigger's styles in
   the component and the panel's styles in the global sheet.
-- **A range input's thumb does not travel edge to edge.** Its centre runs from half its width to
+- **A range input's thumb does not travel edge to edge.** Its center runs from half its width to
   half its width short of the far end, while a `linear-gradient` percentage on the track is measured
   across the whole thing -- so a mark positioned as a plain percentage drifts from the handle by up
   to half a thumb. The anchor seat uses the thumb's own geometry
@@ -591,7 +621,7 @@ holds. A failed simultaneous constraint solve must leave every joint unchanged.
   reads in the drag paths take their target from `activeObjService.selectedJoint`, so the press
   still selects. What is held is what the panels are *about*
   (`ActiveObjService.holdGraphSubject`), and the canvas puts the selection itself back when a
-  gesture that travelled ends. The hold has to live on the service: the selection changes on
+  gesture that traveled ends. The hold has to live on the service: the selection changes on
   pointer-down and the drag state that would gate it is not armed until after, so a panel
   gating on `isPointerDown` in `ngDoCheck` sees the swap and keeps it.
 - **Read `travelled` off the gesture's own outcome, not off the service.** `release()` clears
@@ -640,13 +670,13 @@ holds. A failed simultaneous constraint solve must leave every joint unchanged.
   `closeStaleStaging` settles it first. A staging opened without a pointer (a menu action, a test)
   closes itself and is never treated as abandoned, and a deliberate commit says so with
   `committingPosedEdit`, because by then the pointer is already up.
-- **Cancelling a posed edit is a commit without the save, not a `= null`.** Every pointer move has
+- **Canceling a posed edit is a commit without the save, not a `= null`.** Every pointer move has
   already solved a provisional cycle whose sample 0 is the pose under the hand, so a machine merely
   unstaged has the displaced pose as its canonical t = 0. But only settle when a rebuild *has* run
   while staged (`stagedRebuilt`) -- otherwise a click that selects and releases without moving
   anything settles onto its own anchor and rewinds the drawing under the reader.
 - **An edit that captures the pose it is made at must be staged like a drag.** Adding a link,
-  welding, dropping a cylinder: §6.2 calls these *capturing*, and they rebuilt directly, so the
+  welding, dropping a cylinder: §6.2 of `docs/edit-mode-playback-plan.md` calls these *capturing*, and they rebuilt directly, so the
   restore ran over them. `MechanismService.capturingPose` stages, runs and settles, holding the
   inner save so the gesture is still one undo entry.
 - **`updateLinkageUnits` scales the live joints, which mid-cycle are a solved sample.** Rewind
@@ -689,7 +719,7 @@ holds. A failed simultaneous constraint solve must leave every joint unchanged.
   the miss reads exactly like the app refusing the gesture. Set `driveSpeed` low first.
 - **A four-bar a third of the way round its cycle puts a joint several hundred pixels below the
   window.** A Playwright press aimed there lands on nothing and reads exactly like the drag being
-  refused. Re-frame (the Reset View control) after seeking, before aiming at anything.
+  refused. Re-frame (the **Fit to view** control) after seeking, before aiming at anything.
 - **The phone's bottom stack is two rows now**, not one: the shared scrub row came back so a phone
   can park mid-cycle. Per-machine rows and the sync toggle stay desktop-only. Two consequences for
   tests: **a fixed canvas coordinate near the bottom of a phone viewport is no longer open grid**
@@ -743,7 +773,7 @@ new start on every successful re-anchor, so it stays a description of the curren
 `e2e/posed-edit-audit.mjs` tries every row, field and key at a displaced pose on three
 mechanisms and judges what is left behind (nothing staged, clocks agreeing, the start pose or the
 anchor kept, Undo exact). Run it after touching the canvas gestures, the menu builder, the panel
-or the anchors; it takes about a quarter of an hour.
+or the anchors; `e2e/README.md` says how long it takes.
 
 ### A drag in an analysis mode tunes; it never merges, snaps to a joint or cuts a slot
 
@@ -824,9 +854,12 @@ still refused. The way out is the one the refusal itself names: back to the star
   `Mechanism.addedSamples`. Time per sample is therefore not always uniform; `stepAtTime` and
   `timeAtStep` binary-search the real sample times, and code that divides the period by the frame
   count is making an assumption.
-- **Editing is gated on being at the start pose.** `isAtStartPose()` is false while playing or at a
-  non-zero timestep, and the Edit panel and several menu rows go quiet. If a UI test cannot edit,
-  check the playhead before checking the feature.
+- **Some edits are gated on being at the start pose.** `isAtStartPose()` is false while playing or
+  parked away from the start. Playing refuses everything; paused away from the start, a drag, a
+  build, a structural edit and undo still go through in Edit, but the pose-bound fields (joint X/Y,
+  link angle, masses, forces, cylinders, input speed) are refused, and an analysis mode also refuses
+  building and restructuring (`refusalFor` in `model/edit-permission.ts`). If a UI test cannot
+  edit, check the playhead before checking the feature.
 - **A big drawing arrives unsolved.** Past 24 joints solving is deferred out of Edit and paid when
   an analysis mode is pressed, behind the loading cover. `mechanisms` being empty in Edit is normal
   for those.
@@ -1044,12 +1077,12 @@ system (`EVENEST_REFINEMENTS`). The ridge is sized to `SINGULAR_PIVOT_TOLERANCE`
 unit size, the way the elimination scales them: a direction the matrix holds firmly passes through
 and the refinement takes away what the ridge cost it, while a direction it barely holds -- the hair
 between two rails meant to share a line -- is damped to the even split instead of followed into an
-enormous cancelling pair. The first cut used a ridge a million times smaller, which put the
+enormous canceling pair. The first cut used a ridge a million times smaller, which put the
 change-over among round-off, so the answer could flip between the two from one pose to the next.
 `frame-body-forces.spec.ts` walks the hair from 1e-9 to 1e-1 and requires the answer to move
 smoothly from the even split to the exact one. The residual is measured against the loads, not
 against the size of the solution as the main solve does, because the exact answer of a nearly
-dependent system is a huge cancelling pair that would make an unbalanced load look balanced.
+dependent system is a huge canceling pair that would make an unbalanced load look balanced.
 `SHARED_SUPPORT_RESIDUAL` (1e-3 of the largest load) accepts the even split. The frame carries
 `sharedSupport`, the series counts `sharedSupportFrames`, and the setup drawer says so as a
 warning. A toggle that loses its pivot at two poses in the cycle keeps its gaps, because the first
@@ -1066,7 +1099,7 @@ Only placement snaps: dragging an existing force's handle is left exact, because
 ### The rate solver walks dyads; where it cannot, the graphs difference the poses
 
 `KinematicsSolver` finds velocities and accelerations along the same chains of dyads the position
-walk uses. A mechanism the position solver had to settle all at once (§2.7a: the gripper on rails,
+walk uses. A mechanism the position solver had to settle all at once (§2.7a of `docs/joint-types-plan.md`: the gripper on rails,
 whose carriage, four links and two jaws no two known joints locate) solves its poses and then has
 no rates at all, and every velocity graph was a row of gaps over a mechanism that visibly moved.
 `AnalysisSampleService` now fills the blanks from the solved positions
@@ -1106,8 +1139,8 @@ claims `partition.links`, frame pieces included, so a rail's **link** found its 
 graphed its angle and its center of mass, while the two **pins** at that rail's own ends found
 nothing: `mechanismForId` returned undefined, `determineAnalysis` returned three empty arrays,
 and the reader got fourteen empty charts per pin with no explanation, over a panel saying the
-mechanism could not be solved about a machine reading Ready. The library gripper rides two such
-rails, which is where `analysis-audit` found it -- 56 blank findings on `Cylinder_Gripper`, on
+mechanism could not be solved about a machine reading Ready. The built-in gripper template rides
+two such rails, which is where `analysis-audit` found it -- 56 blank findings on `Cylinder_Gripper`, on
 joints K, L, O and P.
 
 So there are now two lookups. `indexOfMechanismContaining` / `mechanismContaining` is ownership,
@@ -1267,60 +1300,35 @@ the same pose. `drive-profile.spec.ts` walks the boom's handle out and back and 
 
 ### Where a drag's time goes, and how to re-measure it
 
-Measured on 2 Sep 2026 in a real Chromium with the DevTools profiler and tracer, on the
-production build and the dev server (`e2e/drag-profile.mjs`). The lag was JavaScript, not
-rendering: paint is about 1% of a drag second, style and layout at most 12%, and production was
-only 15 to 20% faster than the dev server. Six things ran on **every pointer move**, and each was
-fixed on 3 Sep 2026 (commits eedd5d8 through 70dda33); the numbers are app time per pointer move
-on the dev server, before and after:
+Profiled in a real Chromium with the DevTools profiler and tracer, on the production build and the
+dev server (`e2e/drag-profile.mjs`). The lag was JavaScript, not rendering: paint is about 1% of a
+drag second, style and layout at most 12%, and production was only 15 to 20% faster than the dev
+server. Each of these once ran on **every pointer move**, and each is cached or deferred now. Keep
+it that way:
 
-| Scenario | before | after |
-| --- | --- | --- |
-| four-bar, Edit, drag a joint | 20 ms | 9 ms |
-| four-bar, Edit, every joint tracing its path | 24 ms | 8 ms |
-| four-bar, Kinematic, three graph rows open | 58 ms | 14 ms |
-| Jansen leg, Edit | 49 ms | 12 ms |
-| Jansen leg, Kinematic, three rows | 98 ms | 27 ms |
-| four machines in one drawing, one joint dragged | 60 ms | 19 ms |
-
-1. **The position sweep copied link artwork, not positions.** For each of the ~360 timesteps
-   and each link, `findFullMovementPos` built a `RealLink` whose constructor re-tokenized the
-   SVG path with a regex, rotated every point and reformatted every number with `toFixed(9)`:
-   two thirds of the sweep. Now the copy is deferred: a solved sample's link keeps its
-   `visualSource` and realizes the path on the first read of `d` or the outline
-   (`link.deferred-artwork.spec.ts`).
-2. **Each open graph re-solved the whole cycle's kinematics on its own.** Three rows, three
-   full solves. `AnalysisSampleService` now keeps the solver's answer per sample, weakly keyed
-   on the mechanism a drag replaces on every move.
-3. **ApexCharts rebuilt every plot from scratch** through `updateOptions`, about 8 ms per chart
-   per move and ~7,000 DOM mutations. While the hand is down the bridge now draws the live
-   curves as paths over the standing plot (`showLive` in `analysis-apex-chart.component.ts`) and
-   the chart is handed the final series once, on release. The overlay goes up before the chart
-   drops its live series and comes down only after the chart has redrawn them, so no frame ever
-   shows the earlier curve alone -- `e2e/analysis-editing.mjs` samples every frame for exactly
-   that.
-4. **Every machine in the drawing was rebuilt when one joint moved.** `updateMechanism` now
-   fingerprints each partition from everything its solve reads and keeps the `Mechanism` whose
-   fingerprint did not change (`mechanism.rebuild-reuse.spec.ts`).
-5. **Traced paths were rebuilt in a template binding** on each of the ~12 change-detection
-   passes a pointer move causes. `getJointPath` now keeps its strings per solved machine.
-6. **A pointer can report faster than the screen refreshes**, and every report cost a solve. The
-   canvas now takes the latest move on the next animation frame; a release lands the move still
-   waiting before it is read.
-
-7. **The mark cache's fingerprint was rebuilt on every read** (5 Sep 2026). `freshMarks` keys
-   its cache on an exhaustive string -- every joint's coordinates and flags, every link's color,
-   every drive's direction -- and built that string on every call. `channelList` is read through
-   several bindings per link on every change-detection pass, and the app runs about a hundred
-   passes a second *at rest* (see below), so on a 49-joint, 4-machine workbench the string was
-   being built about eleven thousand times a second with nothing moving: 75 ms per pointer move
-   dragging, a p90 frame of 33 ms zooming and 42 ms panning. `drawingDigest` now rebuilds it only
-   when `poseRevision`, `solveRevision`, `cylinderRevision` or the object scale has moved, and
-   `channelsCutInto` / `markChannelsCutInto` keep their polygon-clipped merges per carrier and per
-   piece while the channel array keeps its identity. After: 27 ms per move, p90 11 ms for both.
-   The `workbench-joint` scenario in `drag-perf-harness.mjs` is that drawing. The rule it
-   teaches: anything a template binding reaches must cost a comparison, never a walk of the
-   drawing -- the passes multiply it by a hundred before a finger has moved.
+- **Link artwork is not copied per sample.** A solved sample's link keeps its `visualSource` and
+  realizes the path on the first read of `d` or the outline (`link.deferred-artwork.spec.ts`);
+  re-tokenizing and reformatting every path was two thirds of the sweep.
+- **An open graph does not re-solve the cycle.** `AnalysisSampleService` keeps the solver's answer
+  per sample, weakly keyed on the mechanism a drag replaces on every move.
+- **The chart is not rebuilt under a drag.** While the hand is down the bridge draws the live
+  curves as paths over the standing plot (`showLive` in `analysis-apex-chart.component.ts`) and
+  hands the chart the final series once, on release. The overlay goes up before the chart drops
+  its live series and comes down only after the chart has redrawn them, so no frame ever shows the
+  earlier curve alone -- `e2e/analysis-editing.mjs` samples every frame for exactly that.
+- **A machine whose inputs did not change is not rebuilt.** `updateMechanism` fingerprints each
+  partition from everything its solve reads and keeps the `Mechanism` whose fingerprint did not
+  change (`mechanism.rebuild-reuse.spec.ts`).
+- **A template binding costs a comparison, never a walk of the drawing.** `getJointPath` keeps its
+  strings per solved machine, and `drawingDigest` rebuilds the mark cache's fingerprint only when
+  `poseRevision`, `solveRevision`, `cylinderRevision` or the object scale has moved, while
+  `channelsCutInto` / `markChannelsCutInto` keep their merges per carrier and per piece. The app
+  runs about a hundred change-detection passes a second *at rest*, so a walk in a binding is paid a
+  hundred times before a finger has moved. The `workbench-joint` scenario in
+  `drag-perf-harness.mjs` is the 49-joint, four-machine drawing that shows it.
+- **One solve per frame.** A pointer can report faster than the screen refreshes, so the canvas
+  takes the latest move on the next animation frame; a release lands the move still waiting before
+  it is read.
 
 Still true and worth knowing: change detection runs about a dozen times per pointer move (the
 Edit panel's two `setTimeout`s per selection publish, the top bar's animation frame from every
@@ -1334,8 +1342,7 @@ Edit mode, joint labels, the center-of-mass marks, the canvas SVG itself.
 suite "regresses" while the app-time column has gone *down*. Read the two columns separately, and
 when every scenario fails by the same frame number, it is the environment. The honest comparison
 for a perf change is the same suite against HEAD served beside the change (see "Working out
-whether a failure is yours"), which was how the workbench fix above was measured: 52 to 3 ms per
-move on the same machine, the same afternoon.
+whether a failure is yours").
 
 **Guarding it.** `node e2e/drag-perf.mjs` drags every scenario with nothing attached and fails
 any that runs more than 35% above `e2e/drag-perf-baseline.json`. The baseline is for the
@@ -1348,7 +1355,7 @@ blank page at the start of each run, and profile the second drag on a page, beca
 runs 15 to 25% slower while the JIT warms up.
 
 **The deferred link artwork is a snapshot, and has to stay one.** A solved sample's `RealLink`
-carries its outline across from the editable link lazily (fix 1 above). The first version kept a
+carries its outline across from the editable link lazily (see above). The first version kept a
 reference to the editable link and read its `d` and its joints when the outline was first asked
 for -- which is the first frame of a seek, after the display has already moved those joints and
 written the previous frame's path over `d`. The rigid move from source to sample was then the
@@ -1361,12 +1368,19 @@ poses reached by playback, where a one-sample lag is invisible.
 
 ## Deploys, domains and surrounding services
 
-- **Production is [app.pmksplus.com](https://app.pmksplus.com)**, and `main` is its branch. **Never
-  push to `main`** unless someone has told you to.
-- **Automatic publishing to production is paused in Netlify** (since September 2026), so a commit on
-  `main` does not ship by itself; publishing is a manual step. Do not read `main` as what students
-  have: on 2026-09-10 `main` was 2.1.0 and app.pmksplus.com served 2.0.3, with no floating slots,
-  slides or cylinders in its bundle. Grep production's own bundle, as below, to find out.
+- **Production is [app.pmksplus.com](https://app.pmksplus.com)**, and `main` is its branch.
+  **Nobody pushes to `main` directly.**
+- **Pull requests go to `staging`.** Agents and contributors open theirs against `staging`, never
+  against `main`. A release is a pull request from `staging` to `main` that the team opens by hand.
+  (A new worktree starts from `origin/main`; reset it to `origin/staging` first — see
+  [Environment](#environment).)
+- **Automatic publishing to production is paused in Netlify**, so a commit on `main` does not ship
+  by itself; publishing is a manual step, and being on `main` does not mean being live. Do not read
+  `main` as what students have: production has served a bundle several releases behind it. Grep
+  production's own bundle, as below, for something only the release has; a 200 proves nothing.
+- **CI runs four steps and no browser.** `.github/workflows/verification.yml` runs `npm ci`,
+  `npm test -- --watch=false`, `npm run build` and `git diff --check` on every pull request. No e2e
+  suite runs there, `e2e/ui-copy.mjs` included: those are run by hand.
 - **There are two Netlify sites, and branch builds come from `pmksnew`.** Branch previews are
   `https://[BRANCHNAME]--pmksnew.netlify.app`. The older `--pmks.netlify.app` pattern 404s, which is
   at least honest; `[BRANCH]--pmksprod.netlify.app` is the trap, because it still answers **200 with
@@ -1411,7 +1425,7 @@ poses reached by playback, where a one-sample lag is invisible.
 in a way that is obvious the moment you look at it. Two real examples, both caught by rendering and
 neither by a test: every `DIMENSION` named an anonymous block that was emitted *empty* (AutoCAD and
 Fusion redraw the picture from the measurement and never complained, but a reader that draws only
-the block shows nothing -- which is the entire reason the R12 option exists), and the dimension line
+the block shows nothing -- and R12 exists to be read by exactly those readers), and the dimension line
 was offset a fixed distance in -Y, so on a vertical link it lay exactly along the centerline it was
 dimensioning.
 
@@ -1490,7 +1504,7 @@ failure that reproduces there was already there.
 ```bash
 git worktree add --detach /path/to/baseline HEAD
 ln -s "$PWD/node_modules" /path/to/baseline/node_modules
-(cd /path/to/baseline && npx ng serve --port 4340 --host 127.0.0.1)
+(cd /path/to/baseline && npx ng serve --port 4340)
 (cd /path/to/baseline && PMKS_BASE_URL=http://localhost:4340 node e2e/the-suite.mjs)
 git worktree remove --force /path/to/baseline    # when you are done
 ```
@@ -1519,7 +1533,14 @@ git stash push -u -- src/app/component/new-grid/new-grid.component.ts
 When you find one, fix it to assert the rule rather than the coincidence. A check that computes what
 the answer should be cannot be invalidated by a palette or a template.
 
-## Analysis graphs: keep annotations in the options, not on the chart
+---
+
+## Short notes
+
+One surprise each, in no particular order. Each heading states the rule; search for the symbol
+you are touching.
+
+### Analysis graphs: keep annotations in the options, not on the chart
 
 `ApexCharts.addXaxisAnnotation(…, pushToMemory=false)` draws onto the chart, and *any* later
 `updateOptions` — the series changing, the axis refitting, the bridge's width watcher — redraws the
@@ -1530,7 +1551,7 @@ next playback tick. `showAnnotations` in `analysis-graph.component.ts` now write
 into `chartOptions.annotations` *and* draws it; the options are what every redraw reads, the
 drawing is what makes a moving playhead cheap.
 
-## A record read by several components has to be brought up to date before any of them
+### A record read by several components has to be brought up to date before any of them
 
 The tuning gesture (`AnalysisCompareService`) is polled, because every edit ends in a rebuild
 that publishes on nothing. Polled from a component's own `ngDoCheck`, it was updated by whichever
@@ -1540,13 +1561,13 @@ switch). `AppComponent.ngDoCheck` syncs it now, before any child is checked. The
 "before" curves are taken and dropped from that same sync for the same reason: a graph deciding in
 its own check decided after the panel above it had asked whether there was anything to compare.
 
-## `analysis-graph.component.spec.ts` builds its own injector
+### `analysis-graph.component.spec.ts` builds its own injector
 
 Its production-fixture tests construct the component with `withTestInjector([...providers])`, so a
 service that is `providedIn: 'root'` is *not* available there: adding an `inject()` to the graph
 means adding a provider (or a stub) to that list, or every fixture test fails with NG0201.
 
-## The chart gets one series set per redraw, and the bridge redraws one at a time
+### The chart gets one series set per redraw, and the bridge redraws one at a time
 
 `buildChart` used to assign every live series to `displayedSeries` and leave the chosen ones to
 a 1 ms timer. Under a drag -- a redraw per frame -- ApexCharts drew the first set before the
@@ -1557,7 +1578,7 @@ the `seriesName` attributes did (`e2e/analysis-editing.mjs`, "no frame of a Magn
 (`analysis-apex-chart.component.ts`) runs one `updateOptions` at a time, re-running once from
 the options current at the end if more were asked for meanwhile.
 
-## `segmented-block` is the pick-one control
+### `segmented-block` is the pick-one control
 
 Every "choose one of two or three" in the app is `segmented-block`: `radio-block` wraps it for
 form-bound settings, the graph rows use it for Magnitude / X & Y, the export drawers use it
@@ -1566,7 +1587,7 @@ directly. The pill under the chosen option is positioned by measuring that optio
 at the end of a settings row) or share the width equally (the default in a panel). Its buttons
 carry the plain button role and `aria-pressed`, which is what the suites find them by.
 
-## ApexCharts draws every annotation in front, and has no option about it
+### ApexCharts draws every annotation in front, and has no option about it
 
 `annotations.position` is not a thing (only `grid.position` and the crosshairs have one), so a
 zero line drawn as a y-axis annotation crossed the curve it was there to be read against. The
@@ -1575,14 +1596,14 @@ chart bridge moves the axis-annotation groups under the series group after each 
 redraws too. The move must be a no-op once the order is right: moving a node that is already in
 place is itself a mutation, and the first version of this looped the tab solid.
 
-## `panel-section` has a live slot for what a frozen panel may still change
+### `panel-section` has a live slot for what a frozen panel may still change
 
 `[frozen]` makes the card's body `inert`. A child marked `panelLive` is projected after the
 body, outside it, and stays usable while the rest is gray: that is how the mass fields are typed
 while the machine plays. The frozen look in `edit-panel.component.scss` is scoped to `[inert]`
 descendants for the same reason, so the live section keeps its ink.
 
-## Template payloads outside the generated block are edited by hand
+### Template payloads outside the generated block are edited by hand
 
 `npm run template-payloads` rewrites only the block between the `<generated …>` markers in
 `template-linkages.ts`; the entries above it and everything in `dev-templates.ts` are typed in.
@@ -1591,7 +1612,7 @@ in those strings too: the first two characters are the packed bool settings in t
 base-64 alphabet, and the checksum on the end is a function of the length alone, so a flipped
 bit needs no other change.
 
-## A context menu is one menu per kind of thing
+### A context menu is one menu per kind of thing
 
 A row on the right-click menu never comes and goes with the situation. It is there on every joint
 (or every bar, every cylinder, every force) and it grays, with the model's own reason in the slot,
@@ -1613,7 +1634,7 @@ while positions exist, because a permanent grayed "Delete Synthesis Positions" o
 Edit would be noise about a mode the reader is not in. `context-menu-builder.service.spec.ts` and
 `e2e/context-menu.mjs` are the guards.
 
-## The right drawer is as wide as the view controls and stops one gap above them
+### The right drawer is as wide as the view controls and stops one gap above them
 
 Both numbers are measured, not chosen: `ViewControlsComponent.publishGeometry` writes
 `--view-controls-width` and `--view-controls-clearance` on the root, and
@@ -1752,16 +1773,14 @@ nothing is a switch that lies, so the refusal is the answer rather than a longer
 
 ### The gripper's drag lag was the simultaneous solver's normal matrix
 
-Dragging a joint of the gripper on rails cost 115 ms a move, and a CPU profile (a Playwright
-script over `Profiler.start` / `Profiler.stop`, self time by function) put nearly all of it in
-`solveDamped` and `solveLinear`, under `reachSpan`: the simultaneous position solve of all 359
-samples, once per pointer move. Two things were wasteful. `JᵀJ` was accumulated over every column
-pair of a Jacobian whose rows each touch four to six of forty-six columns; `normalEquations` now
-walks the nonzeros and is built once per Jacobian rather than once per damping attempt. And the
-damped normal matrix is symmetric positive definite, so `solveSymmetric` (Cholesky) replaces the
-Gauss-Jordan reduction for it, at a sixth of the arithmetic, with the elimination kept as the
-fallback where a pivot is not positive. The same drag is 23 ms a move now. The forces on the
-link were a red herring: a rocker with a load costs a millisecond more per move than one without.
+A drawing the walk cannot solve is re-solved simultaneously, all its samples, on every pointer
+move (`solveDamped` and `solveLinear`, under `reachSpan`), so that solve's arithmetic is drag lag.
+Two things keep it cheap; do not undo them. `normalEquations` walks the Jacobian's nonzeros (each
+row touches a handful of columns) and is built once per Jacobian, not once per damping attempt.
+And the damped normal matrix is symmetric positive definite, so `solveSymmetric` (Cholesky) solves
+it, with the elimination kept as the fallback where a pivot is not positive. To find a drag's cost,
+profile it (`Profiler.start` / `Profiler.stop`, self time by function) before suspecting the
+loads: forces on a link add about a millisecond a move.
 
 ### The geometry rescue asks which freedoms survive *together*
 
@@ -1827,16 +1846,12 @@ through `e2e/template-thumbnails.mjs` and `e2e/template-animations.mjs`).
 
 ### A contact sheet needs Pillow, and no python on this machine has it any more
 
-`contactSheet` in `e2e/filmstrip.mjs` tiles a suite's frames through Pillow, and used to throw
-when `python3` had no `PIL` -- which is the state of this machine now, under every interpreter on
-the path -- so `link-holds` and `playback-direction` exited 1 after every check had passed. The
-helper now tries `python3`, `/usr/bin/python3` and Homebrew's in turn and, when none has Pillow,
-prints `contact sheet skipped` and returns; the frames themselves are still in `artifacts/`, and
-a suite's verdict is its checks. `pip3 install pillow` under whichever python you run brings the
-sheets back. Two other suites that stopped short in the same round were stale persistent Chrome
-profiles again (`/tmp/pmks-chrome-undo`, `/tmp/pmks-chrome-attachcyl`): a cdk overlay backdrop
-intercepting every click is the What's New dialog of a profile that remembers an older visit.
-Delete the profile and rerun.
+`contactSheet` in `e2e/filmstrip.mjs` skips the sheet, with `contact sheet skipped`, when no python
+it can find has Pillow; the setup is under [Environment](#environment). A suite that exits 1 after
+every check has passed is worth checking for that first. The other thing that stops a suite short
+is a stale persistent Chrome profile (`/tmp/pmks-chrome-undo`, `/tmp/pmks-chrome-attachcyl`): a cdk
+overlay backdrop intercepting every click is the What's New dialog of a profile that remembers an
+older visit. Delete the profile and rerun.
 
 The `link-holds` and `edit-playback` suites also carried expectations from before the analysis
 modes took a drag: a hold's chip stays up in Kinematic Analysis now, because a drag there is held
@@ -1869,10 +1884,10 @@ backdrop to exist under `src/assets/backdrops/`.
 Two traps met adding the four. `Landing_Gear` already names a library template (a two-machine
 drawing under Many Mechanisms), so the aircraft is `Aircraft_Landing_Gear`; a duplicate key in
 `template-linkages.ts` is a compile error the dev server shows as an overlay, and a Playwright
-run that lands on that overlay shoots the overlay. And `e2e/ui-copy.mjs`'s vocabulary check reads
-card names too: it is "Car Steering", never "Steering Linkage". The animation script needs `pngjs`
-under the Playwright install; it vanishes with that install and `npm i pngjs@7` there brings it
-back.
+run that lands on that overlay shoots the overlay. And card names follow `docs/ui-vocabulary.md`
+like any other copy — "Car Steering", never "Steering Linkage" — but `e2e/ui-copy.mjs` does not
+open the library, so nothing checks a card name for you. The animation script's `pngjs` and
+`gif-encoder` live in the Playwright install (see [Environment](#environment)) and vanish with it.
 
 ### "A part of this mechanism is tied to nothing" is the geometry's second opinion on a dead position
 
@@ -1910,7 +1925,7 @@ walk already knows until the slot passes through the block. It used to insist th
 of the slot's two ends, which every Whitworth and shaper in the library satisfies -- and a
 locomotive's combination lever, pinned to the frame at a *third* joint with its slot cut between
 the other two, did not. The walk left the lever unplaced, the simultaneous fallback refuses any
-slot on a moving link by policy (§4), and the reader was told the part was "tied to nothing".
+slot on a moving link by policy (§4 of `docs/phase-3-slide-spec.md`), and the reader was told the part was "tied to nothing".
 
 Now the pivot may be any known pin of the carrier, a slot joint first when one is known. In the
 carrier's frame the slot is a line at a fixed signed distance `offset` from the pivot, and the
@@ -1940,7 +1955,7 @@ entry -- was rescued to "one freedom" and handed to a solver that could not step
 
 ### A weld at a block joint holds the rider level, and a level rod cannot follow a swinging pin
 
-Welding the pin where a rod meets its slider block makes a *Slide* (§2.1): rod and block are one
+Welding the pin where a rod meets its slider block makes a *Slide* (§2.1 of `docs/joint-types-plan.md`): rod and block are one
 body, and on a grounded guide that body cannot turn. A rod pinned at its other end to a lever
 that swings about a fixed pivot is then locked -- the pin on the lever moves on a circle, the
 rod's end may only move along the guide. The locomotive drawing had exactly this at T, so the
@@ -2021,13 +2036,13 @@ hang off the barrel mount's letter and are numbered -- `A1`, `A2`, `A3` -- by
 the part, and `determineNextLetter` ranks ids by their place in the alphabet, so it walks past
 them instead of letting a cylinder's interior push the *visible* joints into double letters.
 
-`e2e/phase4-cylinder.mjs` spelled the old scheme out and had been failing on it for some time,
-which is easy to mistake for a regression in creation. It asks the model which joint plays which
-role now (`sealedStructures()[0]`), and every other suite that names a cylinder's joints should
-do the same rather than assert the naming scheme by accident.
+A suite that names a cylinder's joints should ask the model which joint plays which role
+(`sealedStructures()[0]`, as `e2e/phase4-cylinder.mjs` does) rather than assert the naming scheme
+by accident; a suite that spells out the scheme fails in a way that looks like a regression in
+creation.
 
-Three of its other checks were stale in the same way, and are worth knowing about because they
-are all consequences of deliberate changes: a cylinder joint's menu **grays** the Slider row
+Three more things a cylinder suite can assert by accident, all consequences of deliberate
+changes: a cylinder joint's menu **grays** the Slider row
 rather than omitting it (every joint's menu is the same shape now, each refusal explained); a
 cylinder body's menu has gained Fixed Angle and the vector switches, so an exact-list assertion
 goes red whenever the menu legitimately grows; and the panel's speed field is **Input Speed**
@@ -2268,11 +2283,11 @@ addressed by link id from a URL has the same exposure; check it against a compou
 ### A creation gesture is a structural edit, and all six ended in the wrong place
 
 The six link-creation cases in `new-grid.component.ts`'s mouse-**down** path (the bar is committed
-by the second click, not by a release) finished at `updateMechanism`. That runs
-`normalizeSealedCylinders` without `reconcileSlots` or `reconcileAssemblyWelds` before it, so a bar
-drawn at a joint that was already welded left the joint flagged welded with a loose bar beside it
--- welded and pinned at once, which the repair has an answer for and never got to give. They end
-at `finishStructuralEdit` now. Its doc comment already said they had to.
+by the second click, not by a release) end at `finishStructuralEdit`, and any new creation path
+belongs there too. `updateMechanism` alone runs `normalizeSealedCylinders` without
+`reconcileSlots` or `reconcileAssemblyWelds` before it, so a bar drawn at a joint that was already
+welded would leave the joint flagged welded with a loose bar beside it -- welded and pinned at
+once, which the repair has an answer for and never gets to give.
 
 ### Building a welded mount in a test: the order is the only way in
 

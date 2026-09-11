@@ -438,17 +438,19 @@ mechanisms: the Chebyshev midpoint really is straight, the radial engine's pisto
 twice the crank throw, the Jansen leg really walks. Alongside those sit mobility, assembly-branch,
 slot-tangency and redundant-constraint cases that are easy to get subtly wrong.
 
-**In a real browser.** Fifty-odd Playwright suites drive the actual app: every context-menu action on
-every kind of part, drag gestures and snapping, playback timing measured against the wall clock,
-the graphs of every template cross-checked against difference quotients of the series above them.
+**In a real browser.** Playwright suites drive the actual app: every context-menu action on every
+kind of part, drag gestures and snapping, playback timing measured against the wall clock, the
+graphs of every template cross-checked against difference quotients of the series above them.
+
+Measured September 2026:
 
 | | |
 | --- | --- |
-| Application source | ~55,000 lines of TypeScript |
-| Unit + verification specs | 157 files (~27,000 lines) |
-| Browser-driven scripts | 62 in `e2e/`, of which 57 assert and 5 are helpers or asset writers |
+| Application source | ~79,000 lines of TypeScript |
+| Unit + verification specs | 232 files (~45,000 lines) |
+| Browser-driven scripts | every one in `e2e/`, listed with what it covers in [`e2e/README.md`](e2e/README.md) |
 | MATLAB reference cases | 5 |
-| Mechanisms published as links | 53, in [`docs/fixture-urls.md`](docs/fixture-urls.md) |
+| Mechanisms published as links | every gallery fixture, in [`docs/fixture-urls.md`](docs/fixture-urls.md) |
 
 The gallery is published as URLs because a fixture is a TypeScript object and the app only speaks
 URLs. Without it, a reviewer has to rebuild a linkage by hand to see what a failing test is about. A
@@ -578,11 +580,11 @@ npm start          # http://localhost:4200
 | `npm run template-payloads` | Regenerate the mechanism library's payloads |
 | `node e2e/readme-shots.mjs` | Regenerate the screenshots in this file |
 
-Browser-driven suites live in [`e2e/`](e2e/README.md) and run under plain Node with a Playwright
-install kept outside the repo. It is deliberately not a devDependency, because it would bloat deploy
-installs.
+Browser-driven suites live in [`e2e/`](e2e/README.md) and run under plain Node. Playwright is a
+devDependency; `netlify.toml` stops deploy installs from downloading a browser for it. Use `nvm use`
+first: `.nvmrc` pins Node 24.
 
-**On formatting:** about fifty files predate the Prettier config. Format only the files you actually
+**On formatting:** some files predate the Prettier config. Format only the files you actually
 edited. Running Prettier across an untouched file rewrites code you did not write and buries your
 change.
 
@@ -592,11 +594,14 @@ tracked files, which hostname the dev server answers on — is in
 
 ### Branches and deploys
 
+- **Open pull requests against `staging`.** The team opens a release pull request from `staging`
+  to `main` by hand when a release is ready.
 - **Never push to `main`.** It is the production branch for
   [app.pmksplus.com](https://app.pmksplus.com).
 - **Automatic publishing to production is paused in Netlify.** Nothing reaches app.pmksplus.com
   until someone publishes it by hand, so being on `main` does not mean being live.
 - Every other branch publishes to `https://[BRANCHNAME]--pmksnew.netlify.app`.
+- CI runs the unit suite, the production build and `git diff --check` on every pull request.
 - The `version` in `package.json` is what Settings shows to a user; raise it in the PR that ships
   a release.
 
@@ -604,8 +609,8 @@ tracked files, which hostname the dev server answers on — is in
 
 ## Contributing
 
-Work happens on the [project board](https://github.com/orgs/PMKS-Web/projects/1). Fork, branch,
-open a pull request against `main`.
+Work happens on the [project board](https://github.com/orgs/PMKS-Web/projects/1). Fork, branch
+from `staging`, and open a pull request against `staging`.
 
 What we ask of a change:
 
