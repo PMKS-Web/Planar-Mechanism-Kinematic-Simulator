@@ -67,7 +67,8 @@ describe('every actuator family reaches the coupled route', () => {
 
   for (const { name, fixture } of families) {
     it(`solves ${name} as one system`, () => {
-      const { built, steps } = builtCoupled(fixture());
+      const drawing = fixture();
+      const { built, steps } = builtCoupled(drawing);
 
       // One coupled step, and it is the last thing planned. A grounded input
       // still places its own body first -- that is the moving boundary the
@@ -75,6 +76,18 @@ describe('every actuator family reaches the coupled route', () => {
       expect(steps.filter((how) => how === 'simultaneousSystem')).toHaveLength(1);
       expect(steps[steps.length - 1]).toBe('simultaneousSystem');
       const placementSteps = ['incrementRevInput', 'incrementPrisInput', 'simultaneousSystem'];
+      // A ternary input carries extra points from one direction so rounded rotations
+      // cannot shear it. No body outside this prescribed boundary may use that step.
+      if (steps.includes('determineTracerJoint')) {
+        const input = drawing.joints.find((joint) => joint.input)!;
+        const driven = new Set(
+          drawing.links.find((link) => link.joints.includes(input.id))!.joints
+        );
+        for (const [, ids] of solver.jointNumOrderSolverMap)
+          if (solver.desiredAnalysisJointMap.get(ids[0]) === 'determineTracerJoint')
+            expect(ids.every((id) => driven.has(id))).toBe(true);
+        placementSteps.push('determineTracerJoint');
+      }
       expect(steps.filter((how) => !placementSteps.includes(how))).toEqual([]);
       expect(built.mechanism.isMechanismValid()).toBe(true);
     });
