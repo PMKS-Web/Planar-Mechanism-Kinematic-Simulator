@@ -1571,3 +1571,76 @@ continuous gesture semantics. Do not simply lift the temporary shared start-pose
 S5/S6/S8 retain both Playwright filmstrips and standard Codex computer use in incognito Chrome,
 as recorded in CLAUDE.md and the plan. Review spending/reservations remain unchanged; S5–S8
 and substantial obsolete-runtime removal remain pending. Nothing was pushed or published.
+
+
+## S4 displayed properties, force ownership and local frame history
+
+The preceding connected-point checkpoint is **4f0379a**. This slice establishes the native
+displayed-frame boundary and completes direct paused mappings for properties and free points.
+S4 remains **in progress**, with constrained geometry/topology re-anchoring still required.
+No paid review or public editor cutover occurred.
+
+- The authority/service accepts an existing `SimulationView` only when its revision and full
+  source document match. Every runnable partition needs an explicitly selected sample. Native
+  material poses and scalar commands convert from the readers' SI boundary into document units;
+  selected times/directions join local clocks while authored anchors and sync choices survive.
+  Capture does not mutate the document or add history. Clock changes invalidate the captured
+  frame; selection changes alone retain it.
+- The canonical transaction implementation moved to `body-design-edit-plan.ts`; the public
+  `planBodyEdit` still owns permission and now chooses the displayed mapping when available.
+  Posed force axes/owner changes use actual displayed transforms. Free unbound/unconnected
+  tracer targets map into their material frame. Final lock checks apply at the displayed pose,
+  then exact authored body poses and driver initial values are restored. The mapper refuses
+  an incidental geometry/connection/pose change that requires the pending re-anchor solve.
+- Angle holds travel into the displayed frame for editing and back to the authored frame for
+  storage; unchanged holds retain their exact records across repeated property edits. Capturing
+  a new angle hold without a displayed frame now quotes the shared start-pose refusal instead
+  of inferring it from the wrong angle. Other canonical property behavior stays available.
+- Accepted direct mappings preserve all clocks. A moved free tracer invalidates its analysis
+  samples but does not reset the input command. History stores the local displayed frame and
+  restores it on Undo/Redo, stamping change events with the restored revision. Shared encoding
+  includes neither frame nor clock state and reopens at the authored start. Frame getters keep
+  stable identity between changes so ordinary UI reads do not invalidate caches.
+- Preview commit replans against the current authority frame, including a seek to another
+  sample without a document edit. Missing, foreign and stale views are rejected without
+  disturbing the last accepted view or local clocks. Playing and failed bulk changes remain
+  atomic and produce no history/event.
+
+The new 11 tests use actual native snapshots and commands. A rod authored at 0.4 rad is shown
+at 1 rad beside an independently translating carriage; expected world/local points and force
+vectors come from those hand angles and translations. Tests cover SI/English frame capture,
+locked force axis/owner changes, a locked zero-magnitude arrow, a free tracer's local target,
+independent clocks, angle-hold stability, save/reopen versus local history, stale/foreign/missing
+samples, a seek between preview and commit, and an atomic locked bulk refusal. A real ram cycle
+adds the return leg: an outward and returning sample have identical poses but different times
+and directions, which must survive the edit and Undo/Redo.
+
+Verification in `artifacts/bodies-and-joints/` (Node 24.18.0):
+
+- `S4-posed-property-full-unit.log`: **2778 tests / 303 files pass**, session 70454 exit 0.
+- `S4-posed-property-build.log`: production build passes, session 54488 exit 0; existing
+  CommonJS warnings only. Touched TypeScript files formatted and whitespace checks pass.
+- `S4-posed-property-focused.log`: **11 tests / 2 files pass**, session 31858 exit 0.
+  Earlier focused coverage included existing authority/property tests; the full gate above
+  covers all of them. `S4-posed-property-initial.log` retains the initial exact decimal-time
+  assertion failure; the expected time now uses a numerical tolerance, with no runtime change.
+- `S4-posed-property-mutation-clock.log`: disabling clock retention gives **1 failed / 9 passed**,
+  resetting the tracer owner's command to zero. `S4-posed-property-mutation-direction.log`:
+  forcing every sample to the outward direction gives the intended **1 failed / 1 total**.
+  Runner session 60727 exited 0 and confirmed byte-for-byte source restoration in `finally`
+  before the final full suite/build.
+- `S4-posed-property-ui-copy.log`: **17/17**, zero console errors, session 20360 exit 0.
+  Server PID 13660's cwd was verified in this worktree; localhost:4307 returns HTTP 200 with
+  the required network permission. Repository Playwright used `PMKS_PLAYWRIGHT_DIR=..`.
+  This is still the unchanged legacy renderer, not native paused-gesture acceptance.
+
+**Next required:** extend the displayed transaction to constrained geometry and topology by
+solving back to each surviving authored input anchor, retaining branch/return-leg identity
+and the explicit unreachable-anchor policy. Do not merely restore old body poses after a
+length change, or lift all paused guards because direct properties now work. Complete the
+remaining coordinate/drive/cylinder/hold commands, unit conversion, typed copy/remap, production
+import and atomic load/save/recovery, the full lifecycle matrix and named S4 browser gates,
+then F3. The service exposes the frame but does not yet own simulation scheduling or the
+public renderer. S5/S6/S8 require both Playwright filmstrips and standard Codex computer use in
+incognito Chrome. Paid-review spending/reservations are unchanged; substantial legacy removal
+and all S5–S8 acceptance criteria remain required. No push/publication.

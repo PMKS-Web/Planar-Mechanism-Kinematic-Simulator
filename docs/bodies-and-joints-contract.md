@@ -215,9 +215,9 @@ and the heading in its chosen reference axes when its vector is zero). Arrow siz
 metadata does not become a physical force. `force-properties` switches axes without rotating
 the physical vector; `force-owner` preserves the world application point, vector and free
 couple while assigning an explicit material owner and clearing an import-only ambiguous
-scope. World-direction inference currently uses the design frames and therefore refuses a
-displaced-pose conversion until the S4 displayed-frame boundary is implemented. Remove that
-temporary restriction through the posed-edit implementation before native UI acceptance.
+scope. With a current displayed frame, world-direction inference uses the displayed owner
+transforms. Without one, a posed conversion quotes the shared start-pose refusal; a paused
+clock alone is not evidence of which material transform the reader is looking at.
 
 Locks are checked against settled surviving positions at the end of every transaction.
 A force lock protects its application and direction handles, while magnitude, color, label
@@ -262,6 +262,34 @@ point guarantee or completed gesture continuation. Travel bounds still validate 
 answer rather than actively clamping pointer motion. Coordinate/dimension commands, paused
 mapping, branch-continuous live gestures, independent-clock integration and native UI evidence
 remain required S4/S5 work before this capability replaces the public editor.
+
+### Displayed properties and local frame history
+
+`NativeBodyDocumentService.setSimulationView` captures a `BodyEditFrame` through the authority.
+The snapshot's revision and complete source document must match; every runnable partition
+needs an explicit sample selection. Capture converts the existing native readers' SI material
+poses and commands to document units, retains each selected time and direction, and keeps
+the authored anchors and sync choices. An admission-refused drawing remains at its design
+pose. Capture changes no authored record, revision or Undo entry. Changing local clocks
+invalidates the captured frame; selecting another object with the same clocks does not.
+
+Properties, force-frame/owner conversions and unbound, unconnected point edits can map directly
+through that frame. `body-posed-property-edit.ts` invokes the same canonical transaction in
+displayed material coordinates, including lock/hold validation, and restores the exact authored
+body poses and initial driver values. It refuses a proposal that also changes body geometry,
+physical connections or material poses: that requires the pending re-anchoring solver. World
+angle holds are transported into the displayed frame for the edit and back for storage;
+unchanged holds retain their exact original records. The outer effects and history describe
+the canonical document, not the temporary displayed candidate.
+
+Accepted direct mappings retain all clocks, even if moving a free tracer invalidates its
+analysis samples. History retains the displayed material frames alongside local state and
+restores them with the new revision on Undo/Redo. Shared serialization still contains only the
+authored document and reopens at its starting pose. A stale preview keeps its original command
+and replans against the authority's current frame, including a seek with no document revision
+change. The service exposes the frame and includes it in change events; it does not yet own
+simulation scheduling or the public renderer. Native live interaction/filmstrip evidence and
+the full branch-neutral geometry/topology re-anchoring path remain required before cutover.
 
 ## Self-review questions carried into implementation
 
