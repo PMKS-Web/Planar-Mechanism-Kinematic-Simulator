@@ -6,11 +6,13 @@
  *
  *   PMKS_BASE_URL=<origin> node e2e/link-holds-angles.mjs
  */
-import { chromium } from '/tmp/pmks-playwright/node_modules/playwright/index.mjs';
+const { chromium } = await import(
+  (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
+);
 import { waitForReady } from './app-ready.mjs';
 import { contactSheet } from './filmstrip.mjs';
 import { mkdirSync, rmSync } from 'node:fs';
-const base = process.env.PMKS_BASE_URL ?? 'http://localhost:4340';
+const base = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const FOUR_BAR =
   '0P.TY.K,0.101.MA,A,0mv,0VU,0.GB,B,0e_,E6,0.GC,C,l1,WW,0.KD,D,qD,0Pk,0..YRAB,AB,Fe,Fe,0ix,08i,c5cae9,A,B,,.YRBC,BC,Fe,Fe,32,NJ,303e9f,B,C,,.YRCD,CD,Fe,Fe,nd,3P,0d125a,C,D,,...JBq';
 const OUT = 'artifacts/link-holds-angles';

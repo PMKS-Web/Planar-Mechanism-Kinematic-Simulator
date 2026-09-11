@@ -2,7 +2,9 @@
   @if (!editMode) {
     <div class="editModeRow titleRow">
       <ng-container *ngTemplateOutlet="contentTpl"></ng-container>
-      <span class="objectName">{{ ' ' + (displayName() ?? activeObjService.getSelectedObj()?.name ?? '') }}</span>
+      <span class="objectName">{{
+        ' ' + (displayName() ?? activeObjService.getSelectedObj()?.name ?? '')
+      }}</span>
       <!--            [matTooltipShowDelay]='1000' matTooltipPosition='above'>-->
     </div>
   }

@@ -19,7 +19,7 @@ const { chromium } = await import(
 );
 import { waitForReady } from './app-ready.mjs';
 
-const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
+const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 
 const checks = [];
 const check = (what, ok, detail) => {
@@ -201,14 +201,23 @@ check(
   await row('Y').fill('2');
   await page.keyboard.press('Tab');
   await page.waitForTimeout(400);
-  check('and a row with no angle yet is still not a position', (await panel('(p) => p.design.getAllPoses().length')) === 0);
+  check(
+    'and a row with no angle yet is still not a position',
+    (await panel('(p) => p.design.getAllPoses().length')) === 0
+  );
   await row('angle').fill('15');
   await page.keyboard.press('Tab');
   await page.waitForTimeout(500);
   const typed = await page.evaluate(() => {
     const d = ng.getComponent(document.querySelector('app-synthesis-panel')).design;
     const pose = d.isPoseDefined(1) ? d.getPose(1) : undefined;
-    return pose && { x: +(pose.position.x / 200).toFixed(2), y: +(pose.position.y / 200).toFixed(2), t: Math.round(pose.thetaDegrees) };
+    return (
+      pose && {
+        x: +(pose.position.x / 200).toFixed(2),
+        y: +(pose.position.y / 200).toFixed(2),
+        t: Math.round(pose.thetaDegrees),
+      }
+    );
   });
   check(
     'and the row becomes a position once it says where and which way',
@@ -218,9 +227,11 @@ check(
   // Back to nothing, so the placing checks below start where they always did.
   await page.locator('#synthesisPanel .poseRow').first().locator('.poseRow__remove').click();
   await page.waitForTimeout(400);
-  check('and it can be taken off again', (await panel('(p) => p.design.getAllPoses().length')) === 0);
+  check(
+    'and it can be taken off again',
+    (await panel('(p) => p.design.getAllPoses().length')) === 0
+  );
 }
-
 
 await page.locator('#synthesisPanel .pill', { hasText: 'Add position' }).click();
 await page.waitForTimeout(250);

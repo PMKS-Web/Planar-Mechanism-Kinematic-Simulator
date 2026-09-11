@@ -250,7 +250,9 @@
   font-size: 10.5px;
   color: rgba(0, 0, 0, 0.55);
 
-  .dot { margin-right: -2px; }
+  .dot {
+    margin-right: -2px;
+  }
 
   .resetAll {
     margin-left: auto;
@@ -262,9 +264,11 @@
     cursor: pointer;
     padding: 0;
 
-    &:disabled { color: rgba(0, 0, 0, 0.3); cursor: default; }
+    &:disabled {
+      color: rgba(0, 0, 0, 0.3);
+      cursor: default;
+    }
   }
-
 }
 
 /* A disabled button is not a hover target, so the pointer would fall through to
@@ -293,7 +297,10 @@
   background: transparent;
   flex: none;
 
-  &.filled { background: var(--brand); border-color: var(--brand); }
+  &.filled {
+    background: var(--brand);
+    border-color: var(--brand);
+  }
 }
 
 .massArea .dotRow {
@@ -338,7 +345,6 @@
   gap: 5px;
   margin-left: 4px;
 
-
   .clearDot {
     border: none;
     background: none;
@@ -348,7 +354,9 @@
     color: rgba(0, 0, 0, 0.45);
     cursor: pointer;
 
-    &:hover { color: rgba(0, 0, 0, 0.8); }
+    &:hover {
+      color: rgba(0, 0, 0, 0.8);
+    }
   }
 }
 
@@ -374,8 +382,6 @@
 .massArea input-block + input-block {
   margin-top: 8px;
 }
-
-
 
 .massArea .comPairRow {
   display: flex;
@@ -425,7 +431,6 @@
 .massArea .comPairRow.derived .customInput {
   color: rgba(0, 0, 0, 0.5);
 }
-
 
 /* The mock's one field column: Mass, the frame select and Rotational
    Inertia share one width, one left edge and one right edge — the center

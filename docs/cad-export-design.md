@@ -1,11 +1,13 @@
 # CAD Export — screen design brief
 
+> **Status:** Built — the CAD Export dialog follows this brief: presets, File/Geometry/Layers/Data sections, pin diameter and a data file (`component/MODALS/drawing-export/`, `services/export/dxf/`). Checked by `e2e/dxf-sweep.mjs` and `e2e/release-export-ui.mjs`.
+
 For a designer producing a mockup. It lists every control the screen needs once the planned DXF
 work lands, what each one does, and how they should be arranged. It is a brief, not a
 specification of the final visual design — spacing, type and component choices are the designer's.
 
-The engineering behind it is planned but not built; today's dialog carries four checkboxes and a
-file name. This describes where it is going, so the mockup can be drawn once rather than twice.
+It was written before the DXF work and this dialog were built, so the mockup could be drawn once
+rather than twice; both have since shipped.
 
 ---
 

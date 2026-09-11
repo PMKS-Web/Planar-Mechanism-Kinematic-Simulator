@@ -11,7 +11,7 @@ const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
 
-const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
+const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const OUT = 'artifacts/multi-select-and-dxf';
 const FOURBAR =
   '?2P.Ay,1E8.5,0.1011.4O,O,0,0,0.0A,A,72,MM,0.2C,C,pa,bW,0.4D,D,_W,0,0.0T,T,Wq,pa,0..YROA,OA,Fe,Fe,3X,BB,c5cae9,O,A,,.YRACT,ACT,Fe,Fe,UU,b9,303e9f,A,C,T,,.YRCD,CD,Fe,Fe,v2,Im,0d125a,C,D,,...N_3';

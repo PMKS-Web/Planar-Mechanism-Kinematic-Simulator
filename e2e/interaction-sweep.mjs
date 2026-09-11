@@ -23,7 +23,7 @@ const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
 
-const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
+const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
 import { waitForReady } from './app-ready.mjs';
 

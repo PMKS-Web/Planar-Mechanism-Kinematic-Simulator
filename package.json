@@ -7,6 +7,8 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "lint": "eslint src",
+    "lint:format": "prettier --check \"src/**/*.{ts,html,scss}\" \"e2e/**/*.mjs\"",
     "format": "npx prettier --write .",
     "format:check": "npx prettier --check .",
     "lint:styles": "stylelint \"src/**/*.scss\"",
@@ -48,11 +50,14 @@
     "@types/hull.js": "^1.0.2",
     "@types/node": "^24.13.2",
     "dxf-parser": "^1.1.2",
+    "eslint": "^10.10.0",
     "jsdom": "^29.1.1",
     "playwright": "^1.62.1",
     "postcss-scss": "^4.0.9",
+    "prettier": "3.9.6",
     "stylelint": "^17.15.0",
     "typescript": "~6.0.3",
+    "typescript-eslint": "^8.70.0",
     "vitest": "^4.1.9"
   }
 }

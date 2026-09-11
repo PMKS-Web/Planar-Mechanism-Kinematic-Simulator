@@ -204,18 +204,21 @@ describe('DrawingExportComponent', () => {
     expect(revoke).toHaveBeenCalledWith('blob:dxf');
   });
 
-  it.each([-1, 0, NaN, Infinity])('refuses an invalid pin diameter (%s) without exporting missing holes', (diameter) => {
-    const { component, fixture, element } = render();
-    component.touch({ pinDiameter: diameter });
-    fixture.detectChanges();
-    expect(component.warning).toContain('greater than zero');
-    expect(element.querySelector('button[mat-flat-button]').disabled).toBe(true);
-    component.download();
-    expect(exportService.create).not.toHaveBeenCalled();
+  it.each([-1, 0, NaN, Infinity])(
+    'refuses an invalid pin diameter (%s) without exporting missing holes',
+    (diameter) => {
+      const { component, fixture, element } = render();
+      component.touch({ pinDiameter: diameter });
+      fixture.detectChanges();
+      expect(component.warning).toContain('greater than zero');
+      expect(element.querySelector('button[mat-flat-button]').disabled).toBe(true);
+      component.download();
+      expect(exportService.create).not.toHaveBeenCalled();
 
-    // Omitting holes is a deliberate geometry choice, independent of their size.
-    component.touch({ jointCircles: 'marks' });
-    fixture.detectChanges();
-    expect(element.querySelector('button[mat-flat-button]').disabled).toBe(false);
-  });
+      // Omitting holes is a deliberate geometry choice, independent of their size.
+      component.touch({ jointCircles: 'marks' });
+      fixture.detectChanges();
+      expect(element.querySelector('button[mat-flat-button]').disabled).toBe(false);
+    }
+  );
 });

@@ -11,7 +11,7 @@ await fs.mkdir(screenshotDir, { recursive: true });
 const chromePath =
   process.env.PMKS_CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const userDataDir = `/tmp/pmks-playwright-profile-${Date.now()}`;
-const baseUrl = process.env.PMKS_BASE_URL || process.env.PMKS_URL || 'http://127.0.0.1:4200/';
+const baseUrl = process.env.PMKS_BASE_URL || process.env.PMKS_URL || 'http://localhost:4200/';
 const verificationQuery =
   '0P.SS.K,0.101.MA,A,0wS,0bg,0.GB,B,0gW,EE,0.GC,C,Oi,6k,0.GD,D,03m,_g,0.GE,E,1FO,1I_,0.GF,F,1-C,qM,0.KG,G,1oO,0ss,0..YRAB,AB,Fe,Fe,0oU,0Bk,c5cae9,A,B,,.YRBCD,BCD,Fe,Fe,07C,Rt,303e9f,B,C,D,,.YRDE,DE,Fe,Fe,bq,18q,0d125a,D,E,,.YREF,EF,Fe,Fe,1dI,13g,B2DFDB,E,F,,.YRFCG,FCG,Fe,Fe,1Om,1Q,26A69A,F,C,G,,...JGp';
 const runPrefix = process.env.RUN_PREFIX || 'tour';

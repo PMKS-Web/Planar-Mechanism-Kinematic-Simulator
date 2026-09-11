@@ -31,7 +31,7 @@ const PLAYWRIGHT = process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright';
 const { chromium } = await import(PLAYWRIGHT + '/node_modules/playwright/index.mjs');
 
 export const baseUrl = () =>
-  process.env.PMKS_BASE_URL ?? process.env.PMKS_URL ?? 'http://127.0.0.1:4200';
+  process.env.PMKS_BASE_URL ?? process.env.PMKS_URL ?? 'http://localhost:4200';
 
 /** Pointer moves per drag, and how far each one travels. */
 export const STEPS = 30;

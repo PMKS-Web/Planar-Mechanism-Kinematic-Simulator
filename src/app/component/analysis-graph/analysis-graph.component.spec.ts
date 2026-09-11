@@ -441,7 +441,10 @@ describe('AnalysisGraphComponent lifecycle', () => {
     component.mechPart = 'A3';
     component.axisTitle = 'Force (N)';
     component.numberOfSeries = 1;
-    component.displayedSeries = [{ name: 'Z', data: [-5] }, { name: 'Z before', data: [-2] }];
+    component.displayedSeries = [
+      { name: 'Z', data: [-5] },
+      { name: 'Z before', data: [-2] },
+    ];
     expect(component.graphSummary).toContain('Input Force');
     expect(component.graphSummary).toContain('current, before drag');
     expect(component.graphSummary).not.toContain('Magnitude');
@@ -451,7 +454,10 @@ describe('AnalysisGraphComponent lifecycle', () => {
   it('announces the before-drag vector magnitude without an out-of-plane Z component', () => {
     const component = createComponent(buildMechanismFixture(TEMPLATE_LINKAGES['4-Bar']));
     component.numberOfSeries = 3;
-    component.displayedSeries = [{ name: 'Z', data: [5] }, { name: 'Z before', data: [2] }];
+    component.displayedSeries = [
+      { name: 'Z', data: [5] },
+      { name: 'Z before', data: [2] },
+    ];
     expect(component.graphSummary).toContain('Magnitude, Magnitude before drag');
     expect(component.graphSummary).not.toContain('Z');
   });
@@ -734,8 +740,13 @@ describe('AnalysisGraphComponent rendered controls', () => {
 
 describe('graph tick precision', () => {
   it('distinguishes small force ticks and removes rounded negative zero', () => {
-    expect([-0.03, -0.02, -0.01, 0, 0.01].map(value => formatAxisTick(value, 0.01)))
-      .toEqual(['-0.03', '-0.02', '-0.01', '0.00', '0.01']);
+    expect([-0.03, -0.02, -0.01, 0, 0.01].map((value) => formatAxisTick(value, 0.01))).toEqual([
+      '-0.03',
+      '-0.02',
+      '-0.01',
+      '0.00',
+      '0.01',
+    ]);
     expect(formatAxisTick(-1e-12, 0.01)).toBe('0.00');
     expect(formatAxisTick(2.725, 0.025)).toBe('2.725');
     expect(formatAxisTick(0.0000002, 0.0000001)).toBe('2.00e-7');

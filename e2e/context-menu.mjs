@@ -20,7 +20,7 @@ const { chromium } = await import(
 );
 import { openMechanism } from './app-ready.mjs';
 
-const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
+const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 
 /** A crank-rocker with a tracer on the coupler. */
 const FOURBAR =
@@ -356,8 +356,7 @@ check(
 // inside, and none of those three joints is selectable to right-click on.
 check(
   'a mount takes a block, like any other joint',
-  rowNamed(cylinderJoint, 'Slider') !== undefined &&
-    rowNamed(cylinderJoint, 'Slider')?.slot === '',
+  rowNamed(cylinderJoint, 'Slider') !== undefined && rowNamed(cylinderJoint, 'Slider')?.slot === '',
   rowNamed(cylinderJoint, 'Slider')
 );
 
