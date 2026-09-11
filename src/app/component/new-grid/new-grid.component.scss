@@ -68,7 +68,7 @@
   .tutorialRing {
     circle {
       fill: none;
-      stroke: #ffca28;
+      stroke: var(--accent-2);
       vector-effect: non-scaling-stroke;
     }
 
@@ -109,7 +109,7 @@
   // grid's own numbers wear, so it reads over whatever it has landed on.
   #jointTagHolder text {
     paint-order: stroke;
-    stroke: #fff;
+    stroke: var(--canvas-halo);
     stroke-linejoin: round;
     stroke-linecap: round;
   }
@@ -118,7 +118,7 @@
     // Lighter than body text: these are a reference, not something to read.
     fill: rgba(0, 0, 0, 0.55);
     paint-order: stroke;
-    stroke: #fff;
+    stroke: var(--canvas-halo);
     stroke-linejoin: round;
     stroke-linecap: round;
     alignment-baseline: middle;
@@ -179,14 +179,14 @@
   // joint drawn in the pale color it has always been drawn in.
   .lockBadge {
     .lockGlyph {
-      fill: #263238;
+      fill: var(--canvas-ink);
     }
 
     // Only a welded joint brings its own chip -- a plain one's circle is chip
     // enough.
     .lockChip {
-      fill: #ffffff;
-      stroke: #26323855;
+      fill: var(--surface);
+      stroke: var(--canvas-ink-faint);
     }
   }
 
@@ -207,7 +207,7 @@
   .joint-pointed {
     filter: url(#elevation-3);
     fill: mat.m2-get-color-from-palette($accent-palette, 400);
-    stroke: #3f51b5;
+    stroke: var(--brand);
     stroke-width: 0.06;
   }
 
@@ -233,14 +233,14 @@
   // Scenery in the analysis modes: still drawn, so the reader can see it is
   // there, but gray and out of the way of the machine being analyzed.
   .link-inert {
-    fill: #c4c7d0 !important;
-    stroke: #c4c7d0 !important;
+    fill: var(--canvas-inert) !important;
+    stroke: var(--canvas-inert) !important;
     fill-opacity: 0.45;
   }
 
   .joint-inert {
     filter: none;
-    fill: #d9dbe2;
+    fill: var(--canvas-inert-joint);
   }
 
   // A force on a body the analysis modes have nothing to say about. The arrow
@@ -250,12 +250,12 @@
     .forceLine,
     .forceArrow,
     .forceAnchor {
-      stroke: #c4c7d0;
-      fill: #c4c7d0;
+      stroke: var(--canvas-inert);
+      fill: var(--canvas-inert);
     }
 
     .forceAnchor {
-      stroke: #c4c7d0;
+      stroke: var(--canvas-inert);
     }
   }
 
@@ -285,7 +285,7 @@
   // photograph.
   .bgImageHandle {
     fill: mat.m2-get-color-from-palette($accent-palette, 500);
-    stroke: #fff;
+    stroke: var(--canvas-halo);
   }
 
   // What holds the turn knob off the top edge, so it is not read as a corner.
@@ -309,7 +309,7 @@
     // the underlay's are over a dark photograph.
     .selectionHandle {
       fill: mat.m2-get-color-from-palette($accent-palette, 500);
-      stroke: #fff;
+      stroke: var(--canvas-halo);
     }
 
     .selectionHandle:hover {
@@ -378,7 +378,7 @@
   }
 
   .synthRefRing {
-    fill: #fff;
+    fill: var(--surface);
     stroke: inherit;
   }
 
@@ -392,7 +392,7 @@
   }
 
   .synthPosePin {
-    fill: #ffecb2;
+    fill: var(--accent-pale);
     stroke: rgba(0, 0, 0, 0.4);
     pointer-events: none;
   }
@@ -402,7 +402,7 @@
   // size beside every pin would be more chrome than linkage.
   .synthPreviewTag {
     fill: rgba(0, 0, 0, 0.72);
-    stroke: #fff;
+    stroke: var(--canvas-halo);
     stroke-width: 3;
     paint-order: stroke;
     font-family: Roboto, sans-serif;
@@ -411,7 +411,7 @@
   }
 
   .synthPreviewJoint {
-    fill: #ffecb2;
+    fill: var(--accent-pale);
     stroke: rgba(0, 0, 0, 0.4);
   }
 
@@ -479,13 +479,13 @@
       }
 
       .ghostEdge {
-        stroke: #303f9f;
+        stroke: var(--brand-dark);
         stroke-linecap: round;
       }
 
       .ghostPin {
-        fill: #fff;
-        stroke: #303f9f;
+        fill: var(--surface);
+        stroke: var(--brand-dark);
       }
     }
   }
@@ -500,7 +500,7 @@
   }
 
   .startGhostTag {
-    fill: #fff;
+    fill: var(--surface);
     text-anchor: start;
     font-family: Roboto, 'Helvetica Neue', sans-serif;
   }
@@ -509,7 +509,7 @@
   // thing on screen the reader is definitely looking at, instead of floating
   // over a linkage whose own marks it has to dodge.
   .startGhostTagPill {
-    fill: #303f9f;
+    fill: var(--brand-dark);
   }
 
   // Where the middle of the coupler goes over the whole of the travel.
@@ -563,7 +563,7 @@
 
   .synthHandle {
     fill: mat.m2-get-color-from-palette($accent-palette, 500);
-    stroke: #fff;
+    stroke: var(--canvas-halo);
   }
 
   .synthStalk {
@@ -574,7 +574,7 @@
   // pill, because it is read against whatever the drawing happens to put behind
   // it -- gray words over a link are words nobody can read.
   .synthChip {
-    fill: #fff;
+    fill: var(--surface);
     stroke: rgba(0, 0, 0, 0.12);
 
     &--sel {
@@ -584,12 +584,12 @@
   }
 
   .synthChipDot {
-    stroke: #fff;
+    stroke: var(--canvas-halo);
     stroke-width: 1;
   }
 
   .synthChipNumber {
-    fill: #fff;
+    fill: var(--surface);
     font-family: Roboto, sans-serif;
     font-weight: 500;
     text-anchor: middle;
@@ -697,7 +697,7 @@
   // The same ring in red, for a joint in range that refuses the merge.
   .snapRefused {
     fill: none;
-    stroke: #f44336;
+    stroke: var(--danger);
     pointer-events: none;
   }
 
@@ -706,8 +706,8 @@
   // page's own background as a halo so it stays readable over whatever bar
   // happens to be behind it.
   .snapRefusedReason {
-    fill: #f44336;
-    stroke: #fbfbfb;
+    fill: var(--danger);
+    stroke: var(--canvas-halo-2);
     stroke-width: 0.09em;
     paint-order: stroke fill;
     pointer-events: none;
@@ -717,7 +717,7 @@
   // joint, so it reads as a track rather than as a part.
   .holdGuide {
     fill: none;
-    stroke: #ffc107;
+    stroke: var(--accent);
     opacity: 0.85;
     pointer-events: none;
   }
@@ -727,18 +727,18 @@
   .holdChip,
   .dimensionPill {
     rect {
-      fill: #fff;
+      fill: var(--surface);
       stroke: rgba(0, 0, 0, 0.12);
     }
 
     text {
-      fill: #263238;
+      fill: var(--canvas-ink);
       font-weight: 500;
       stroke: none;
     }
 
     .holdChipGlyph {
-      fill: #263238;
+      fill: var(--canvas-ink);
     }
   }
 
@@ -759,7 +759,7 @@
     path,
     line {
       fill: none;
-      stroke: #000;
+      stroke: var(--canvas-black);
     }
   }
 

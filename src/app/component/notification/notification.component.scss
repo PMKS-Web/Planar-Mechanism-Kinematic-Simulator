@@ -12,11 +12,11 @@ $accent: 5px;
   // sentence is harder to read and the glyph has already said which of the
   // four this is.
   $kinds: (
-    'success': #2e7d32,
-    'refusal': #455a64,
-    'warning': #ef6c00,
-    'news': #303f9f,
-    'failure': #c62828,
+    'success': var(--success),
+    'refusal': var(--refusal-neutral),
+    'warning': var(--warning),
+    'news': var(--brand-dark),
+    'failure': var(--danger-dark),
   );
 
   // Below the top strip rather than over it, and out of the way of the pointer:
@@ -45,7 +45,7 @@ $accent: 5px;
     gap: 10px;
     padding: 11px 8px 11px 13px;
     background: var(--card-surface);
-    color: #2c2c2c;
+    color: var(--text-primary);
     box-shadow: var(--card-shadow);
     pointer-events: auto;
 

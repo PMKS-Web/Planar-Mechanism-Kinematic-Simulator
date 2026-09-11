@@ -43,14 +43,14 @@
     height: 20px;
     padding: 0 8px;
     border-radius: 10px;
-    background: #fce8e6;
-    color: #c5221f;
+    background: var(--refusal-bg);
+    color: var(--refusal-text);
     font-size: 12px;
     cursor: pointer;
 
     &.ready {
-      background: #e6f4ea;
-      color: #137333;
+      background: var(--success-bg);
+      color: var(--success-text);
     }
   }
 
@@ -69,7 +69,7 @@
     padding: 0 10px;
     border: 1px solid mat.m2-get-color-from-palette($primary-palette, 500);
     border-radius: 4px;
-    background: #fff;
+    background: var(--surface);
     color: mat.m2-get-color-from-palette($primary-palette, 500);
     font-family: inherit;
     font-size: 14px;
@@ -83,8 +83,8 @@
     }
 
     &.danger {
-      border-color: #f44336;
-      color: #f44336;
+      border-color: var(--danger);
+      color: var(--danger);
     }
   }
 
@@ -96,7 +96,7 @@
     height: 40px;
     padding: 0 15px;
     border: none;
-    border-top: 1px solid #eceef5;
+    border-top: 1px solid var(--border-rule);
     background: transparent;
     font-family: inherit;
     font-size: 15px;
@@ -127,12 +127,12 @@
 
   .mechanismPanel .factValue {
     font-size: 13px;
-    color: #2c2c2c;
+    color: var(--text-primary);
 
     // The one number on the panel that can be wrong, in the ink the status
     // chip uses for a blocker.
     &.bad {
-      color: #c5221f;
+      color: var(--refusal-text);
       font-weight: 500;
     }
   }
@@ -183,12 +183,12 @@
   }
 
   .linkLength {
-    color: #2c2c2c;
+    color: var(--text-primary);
   }
 
   .mechFooter {
     padding: 12px 15px 16px;
-    border-top: 1px solid #eceef5;
+    border-top: 1px solid var(--border-rule);
 
     p {
       font-size: 13px;

@@ -137,11 +137,11 @@ visible name, not its internal id; `turnsClockwise`, not `isNegative`.
 
 Prettier owns layout: 100-character width, single quotes, 2-space indent (`.prettierrc`).
 
-- `npm run lint:format` checks `.ts`, `.html` and e2e `.mjs`, and CI fails a pull request on it.
-  `npx prettier --write <file>` fixes a file. Prettier is pinned in `devDependencies`, so everyone
-  gets the same output.
-- `.scss` is not checked yet: a few stylesheets predate the config. It joins the check once they
-  are formatted.
+- `npm run lint:format` checks `.ts`, `.html`, `.scss` and e2e `.mjs`, and CI fails a pull request
+  on it. `npx prettier --write <file>` fixes a file. Prettier is pinned in `devDependencies`, so
+  everyone gets the same output.
+- `npm run lint:styles` (stylelint) rejects a raw hex color in any stylesheet except
+  `src/styles/_tokens.scss`, where colors are named once as custom properties. CI fails on it too.
 - Markdown is excluded on purpose (`.prettierignore`). Prettier realigns every table cell and
   rewrites emphasis, so a one-line doc edit becomes hundreds of changed lines.
 - The TypeScript and HTML under `src/` were reformatted in one commit. That commit is listed in

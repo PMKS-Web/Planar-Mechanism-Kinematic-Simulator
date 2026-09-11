@@ -14,11 +14,11 @@
     position: relative;
     margin: 0 -6px;
     padding: 0 6px;
-    border-top: 1px solid #eceef5;
+    border-top: 1px solid var(--border-rule);
     background: var(--card-surface);
 
     &.open {
-      background: #fbfcff;
+      background: var(--surface-subtle-5);
     }
   }
 
@@ -36,7 +36,7 @@
     background: transparent;
     font-family: inherit;
     font-size: 13.5px;
-    color: #2c2c2c;
+    color: var(--text-primary);
     text-align: left;
     cursor: pointer;
 
@@ -51,7 +51,7 @@
     gap: 4px;
     min-width: 0;
     font-weight: 400;
-    color: #2c2c2c;
+    color: var(--text-primary);
 
     .graphSection.open & {
       font-weight: 500;
@@ -79,11 +79,11 @@
     text-align: right;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
-    color: #2c2c2c;
+    color: var(--text-primary);
   }
 
   .graphUnit {
-    color: #5f6368;
+    color: var(--text-secondary);
   }
 
   .graphHeader .graphChevron {
@@ -92,7 +92,7 @@
     height: 18px;
     font-size: 18px;
     line-height: 18px;
-    color: #b0b4c0;
+    color: var(--text-disabled-2);
 
     .graphSection.open & {
       color: mat.m2-get-color-from-palette($primary-palette, 500);
