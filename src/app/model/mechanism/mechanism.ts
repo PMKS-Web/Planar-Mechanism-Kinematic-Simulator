@@ -1215,6 +1215,7 @@ export class Mechanism {
   get reciprocates(): boolean {
     return (
       this._inputAngularVelocities.some((speed) => speed > 0) &&
+      // eslint-disable-next-line no-restricted-syntax -- a sign change, not a direction
       this._inputAngularVelocities.some((speed) => speed < 0)
     );
   }

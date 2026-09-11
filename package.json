@@ -7,6 +7,7 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "lint": "eslint src",
     "format": "npx prettier --write .",
     "format:check": "npx prettier --check .",
     "fixture-urls": "PMKS_WRITE_FIXTURE_URLS=1 ng test --watch=false --include=src/tests/verification/fixture-gallery.spec.ts",
@@ -47,9 +48,12 @@
     "@types/hull.js": "^1.0.2",
     "@types/node": "^24.13.2",
     "dxf-parser": "^1.1.2",
+    "eslint": "^10.10.0",
     "jsdom": "^29.1.1",
     "playwright": "^1.62.1",
+    "prettier": "3.9.6",
     "typescript": "~6.0.3",
+    "typescript-eslint": "^8.70.0",
     "vitest": "^4.1.9"
   }
 }
