@@ -578,3 +578,175 @@ reversal marker or automatic loop. A physical stop is labeled `stop` and retains
 unavailable reversal rates. Exhausted work/sample budgets publish no partial trajectory.
 The window API is implemented; choosing and exposing its duration in the native transport
 still belongs to S5/S6. The current editor has not switched to it.
+
+## Five native cylinder constructions and independent expectations
+
+These examples now have material bodies and binary joints in
+`src/test-utils/verification/native-*-cylinder-*.ts`. They use `BodyFactory` and
+`createBodyCylinder`, not legacy joint lowering. S4/S6 still must route their construction
+through the editor's transaction commands, publish native gallery URLs, and exercise
+save/reopen and undo/redo. The following is computational evidence, not native UI evidence.
+Every formula uses fixture constants and command only. All lengths, masses, inertias, rates,
+loads and moments are SI; angles are radians. Off-axis point assertions use an absolute plus
+relative tolerance of `1e-8 * (1 + |expected|)` for the meter-scale fixtures. Existing MATLAB
+and legacy comparison ceilings remain unchanged.
+
+Write `u(theta)=(cos(theta),sin(theta))`, `n=E u`. For any material origin `p` and local
+witness `a`, direct trigonometric evaluation gives `p+R(theta)a`,
+`v+omega E R(theta)a`, and `acceleration+alpha E R(theta)a-omega² R(theta)a`.
+The helper `handOffset` implements only this explicit differentiation and never reads a
+solved group frame. Each example checks three noncollinear local points of every material
+body, plus directed heading, omega and alpha. Therefore the tests do not merely restate
+mount coincidence or a scalar span that a reversed body could satisfy.
+
+### Axial carriage
+
+The barrel mount is `O=(1,-2)` and its heading is fixed at `theta`. For extension `s`,
+barrel length 3 and rod length 2, rod origin is `O+(1+s)u`, carriage origin is
+`O+(3+s)u`, and carriage heading is `theta+0.3`. Rod and carriage have `v=sdot*u`,
+`a=sddot*u`, omega=alpha=0. The barrel is pinned to WORLD, giving a determinate transverse
+reaction when the rod-carriage connection is R; the alternate connection is a pair weld.
+The internal P has bounds `[0,1.5]`. Four bodies including WORLD and four joints compile
+into three moving groups for R, or two for the welded variant, with one passive freedom.
+
+A static world force F at carriage-local `a` and a couple C require guide normal
+`-F·n`, guide moment about the carriage origin `-(R(theta+0.3)a × F + C)`, and ram effort
+`-F·u`. The unloaded pin-mounted ram is axial. The WORLD-side and carriage-side guide
+wrenches balance after transporting both to WORLD's origin, including the separated P
+origins' lever arm.
+
+### Oblique guide intersection
+
+Guide heading is 0.4, foot coordinate `c=4`, and the fixed rod eye is `c*u+h*n`.
+With `L=3+s`, choose the named signed root `q=branch*sqrt(L²-h²)`; carriage coordinate
+`t=c-q`, barrel heading `theta=0.4+atan2(h,q)`. Then
+
+- `t_L=-L/q`, `t_LL=h²/q³`;
+- `theta_L=-h/(L*q)`;
+- `theta_LL=h*(2*L²-h²)/(L²*q³)`;
+- rod origin is the fixed eye minus `2*u(theta)`.
+
+Each first derivative is multiplied by sdot; each acceleration is
+`f_LL*sdot²+f_L*sddot`. Test both roots, reversed guide labels, and h=2 versus near-tangent
+h=3.2. With h=3.2, the actual fold is s=0.2; s=0.1 is geometrically infeasible despite
+being inside the ram's physical stroke. The solver must locate that fold without switching
+roots. Ordinary h=2 cycles stop at the two finite travel bounds instead.
+
+### Translating bracket
+
+Heading is 0.7, original barrel mount O=(1,-2), and rod eye `O+3.8*u` is pinned to WORLD.
+The driven grounded guide moves a bracket welded to the barrel by `t*u`; the passive ram
+extension is `s=0.8-t`. Every bracket and barrel witness translates with `tdot*u`,
+`tddot*u` and zero angular motion; rod origin `O+1.8*u` stays fixed. Reversing the guide axis
+maps its command, velocity and acceleration to `(-t,-tdot,-tddot)`. Passive cylinder stops
+at s=0 and s=1.5 therefore stop the bracket at t=0.8 and t=-0.7.
+
+### Rotating floating carrier
+
+Carrier pivot `P=(1,-1)`, fixed rod eye `Q=(5,4)`, and theta=-0.1+c.
+Set `t=(Q-P)·u`, `L=(Q-P)·n`; barrel mount `O=P+t*u`. Thus
+`t'=L*omega`, `t''=L*alpha-t*omega²`, and
+
+- `O'=t'*u+t*omega*n`;
+- `O''=(t''-t*omega²)u+(2*t'*omega+t*alpha)n`.
+
+The block follows heading theta; its welded barrel follows theta+pi/2. Rod origin is
+`Q-3*n`. Carrier origin is deliberately `P+R(theta)(0.4,0.3)`. The carrier has distinct
+pivot and guide anchors at P and P+u; their numerical centroid is P+0.5*u, so prescribed
+linear acceleration retains nonzero row projections after compilation. Merely offsetting
+the artwork origin would not suffice: coincident carrier anchors rebase the numerical
+origin onto the fixed pivot. The passive carrier slot bounds t to `[0.5,6]`,
+and the cylinder bounds L to `[4,6.5]`. Its two actual stops are t=0.5 and L=4; their angular
+separation is `acos(0.5/sqrt(41))-asin(4/sqrt(41))`. At angular speed 0.2, the out-and-back
+duration is ten times that separation.
+
+The translating and rotating companions first compile and admit the full drawing, then
+prescribe the carrier group's hand-derived pose and rates, leaving the same constraint rows
+and scalar command. The original driver row is a redundant compatibility condition.
+Supplying boundary velocity but omitting boundary acceleration must refuse as
+`acceleration-inconsistent`. Boundary acceleration's maximum row projection is explicitly
+required to exceed 0.1; it cannot disappear through the orthogonality in the old example.
+
+### Selective welded bracket
+
+Barrel pivot is (0,0), boom pivot D=(3,0), boom length r=4, and ram span L=3+s. Its upper
+intersection C=(x,y) has
+`x=(L²+3²-r²)/6`, `y=sqrt(L²-x²)`. Differentiate:
+`x_L=L/3`, `x_LL=1/3`, `y_L=(L-x*x_L)/y`,
+`y_LL=(1-x_L²-x*x_LL-y_L²)/y`.
+For barrel/rod/bracket heading theta=atan2(y,x),
+`theta_L=(x*y_L-y*x_L)/L²`,
+`theta_LL=(x*y_LL-y*x_LL)/L²-2*(x*y_L-y*x_L)/L³`.
+Boom heading phi=atan2(y,x-3) gives
+`phi_L=((x-3)*y_L-y*x_L)/r²` and
+`phi_LL=((x-3)*y_LL-y*x_LL)/r²`.
+Rod origin is C-2*u(theta); bracket origin is C. Only rod and bracket share a weld group;
+the boom retains its R at C and its relative angle demonstrably changes.
+
+With a static load F at witness `W=C+R(theta)a` and couple K, the unloaded boom's reaction
+on the bracket is `T*u(phi)`, where whole-machine moment balance about (0,0) gives
+`T=-(W×F+K)/(C×u(phi))`. The rod-bracket weld therefore applies
+`-F-T*u(phi)` and moment `-(R(theta)a×F+K)` about the bracket origin. The coincident R
+applies no bracket-origin couple. These expected reactions are computed before consulting
+any force result. Dynamic checks separately require
+`effort*sdot = sum(m*vCoM·aCoM + I*omega*alpha) - (F·vWitness+K*omega)`.
+
+## Arithmetic consistency of native rates
+
+A constant-speed translating bracket exposed a distinction between acceleration accuracy
+and acceleration-row consistency. QR solves an exactly zero angular velocity as a small
+round-off-sized value. In a redundant lateral row, `2*omega*relativeSpeed` then contributes a
+tiny gamma. Least squares distributes this RHS error into other rows, including angle rows
+whose RHS is exactly zero. A consistency test scaled only by the acceleration answer rejects
+this coherent pure translation; interval slope evaluation then fails before the first step.
+
+`body-rate-roundoff.ts` carries arithmetic uncertainty through the actual analytic terms.
+Unknown twists get a round-off estimate of `128*epsilon*|scaled velocity|` in scaled columns;
+boundary twists are prescribed. With angular uncertainty dw, the change in w² is bounded by
+`2*|w|*dw+dw²`. For the mixed product w*v, the bound is
+`dw*|v|+|w|*dv+dw*dv`. Anchor lengths and pair separation transport these bounds to the
+row's physical units. A separate evaluation allowance uses the absolute quadratic operands,
+so cancellation in gamma cannot supply its own vanishing scale. Angle rows have no gamma.
+
+Likewise `body-rate-prescription.ts` keeps the magnitude of command and individual boundary
+products before they cancel into the RHS. This handles a boundary-only row whose prescribed
+motion and scalar command agree analytically. It does not use the largest remote point or
+a global physical displacement, and still rejects incompatible tiny inputs.
+
+For scaled matrix A and a RHS uncertainty envelope e, the actual least-squares residual
+perturbation is `(I-A*Aplus)*deltaRHS`. Compute the component bound
+`abs(I-A*Aplus)*e` using the retained Householder reflectors. Do not simply give every row
+the largest RHS error: a disconnected row must not borrow that tolerance. The usual
+relative row consistency check and solve round-off allowance remain, with this propagated
+bound added. Tests cover pure translation at speeds 1e-12 through 1e8, reject an added
+acceleration conflict of `1e-6*speed²`, and isolate a redundant pair from an unrelated pair.
+This is a floating-point error allowance, not a proof of accuracy near arbitrarily ill-
+conditioned geometry. Admission/rank checks, analytic reference tests and pose tolerances
+still apply.
+
+The ordinary native pose residual target is now 1e-12 (formerly 1e-10). The oblique example
+at h=3.2 showed why: its inverse-square-root derivatives amplify a small pose error enough
+to fail the independently chosen acceleration tolerance near tangency. Tightening the pose
+solve fixes that error without changing the hand-answer tolerance. Private interval probes
+retain their existing 1e-13 polishing target.
+
+At a proved fold, limits on the driver coordinate remain affine in the command with slope
+one. They need no near-singular geometric enclosure. `resolvedBodyInterval` retains ordinary
+branch/heading checks and crossing localization, but does not force driver-only limits into
+the small enclosure required for genuinely passive coordinates. Other passive limits still require the geometric/tangent checks; work-cap exhaustion
+remains an unsolved refusal. A separate exhaustive-order probe found that passive arc
+correction stopped at 1e-11 while the consuming event probe demanded 1e-13. The resulting
+fold coordinate could lie about 5e-12 beyond the true extremum, and a midpoint requested
+there could not be polished. Arc correction now also targets 1e-13. The deterministic
+regression permutes all six body orders and all 24 joint-row orders on both signed roots;
+none may classify an unproved solver refusal as a physical stop.
+
+
+The exhaustive ordering test also demonstrated a second seed problem: the closest accepted
+Newton sample can lie within arithmetic distance of the singularity and carry an unreliable
+command tangent. In a failing case the normal advance exhausted 484 attempts, while the
+same fold search from the original regular pose immediately established a minimum at
+s=0.2 with positive curvature. On an otherwise refused advance, fold localization now tries
+that original pose if the closest candidate did not prove a fold. Each seed must pass the
+same oriented passive-curve bracket and curvature tests. This is not a fallback solver or
+permission to label a bare Newton refusal as a travel limit.

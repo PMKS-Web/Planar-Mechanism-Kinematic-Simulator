@@ -113,9 +113,14 @@ export function advanceBodyCommand(
     options.maxCuts === undefined &&
     options.maxAttempts === undefined
   ) {
-    const scale = bodyPositionScale(partition, closest.poses, new Map([[driver.id, target]]));
-    const fold = findBodyFold(partition, closest.poses, closest.tangent, target, scale);
-    if (fold) return { ok: false, reason: 'travel', fold, attempts };
+    // The closest Newton sample may sit within round-off of the singularity with an
+    // unreliable command tangent. The original regular pose still orients the same branch.
+    const seeds = closest === start ? [start] : [closest, start];
+    for (const seed of seeds) {
+      const scale = bodyPositionScale(partition, seed.poses, new Map([[driver.id, target]]));
+      const fold = findBodyFold(partition, seed.poses, seed.tangent, target, scale);
+      if (fold) return { ok: false, reason: 'travel', fold, attempts };
+    }
   }
   return result;
 }

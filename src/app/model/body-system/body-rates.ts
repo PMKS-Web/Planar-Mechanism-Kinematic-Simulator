@@ -5,6 +5,8 @@ import { bodyRowGradient, bodyRowValue, GroupPoses } from './body-constraint-row
 import { CompiledBodyPartition } from './compiled-body-system';
 import { bodyPositionScale } from './body-position-scale';
 import { factorBodyRows, solveBodyRows } from './body-linear-algebra';
+import { quadraticRoundoff, projectedRowRoundoff, rateRowsConsistent } from './body-rate-roundoff';
+import { bodyRatePrescription } from './body-rate-prescription';
 
 export interface BodyAcceleration {
   readonly ax: number;
@@ -73,45 +75,55 @@ export function solveBodyRates(
   const factor = factorBodyRows(matrix, partition.unknowns.length * 3);
   if (!factor || factor.rank !== partition.unknowns.length * 3)
     return { ok: false, reason: 'rank' };
-  const prescribed = (index: number, order: 'velocity' | 'acceleration') => {
-    let value = 0;
-    for (const id of partition.boundary) {
-      const row = gradients[index].get(id);
-      if (!row) continue;
-      const motion = boundary.get(id)!;
-      const vector =
-        order === 'velocity'
-          ? [motion.velocity.vx, motion.velocity.vy, motion.velocity.omega]
-          : [motion.acceleration.ax, motion.acceleration.ay, motion.acceleration.alpha];
-      value += row.reduce((sum, coefficient, j) => sum + coefficient * vector[j], 0);
-    }
-    return value;
-  };
-  const solve = (rhs: number[]) => {
+  const solve = (rhs: number[], uncertainty: readonly number[] = []) => {
     const scaled = rhs.map((value, i) => value * scaling.rows[i]);
     const answer = solveBodyRows(factor, scaled);
-    if (!answer || !rateRowsConsistent(matrix, answer, scaled)) return undefined;
+    if (
+      !answer ||
+      !rateRowsConsistent(
+        matrix,
+        answer,
+        scaled,
+        projectedRowRoundoff(
+          factor,
+          uncertainty.map((value, i) => value * scaling.rows[i])
+        )
+      )
+    )
+      return undefined;
     return answer.map((value, j) => value * scaling.columns[j]);
   };
-  const velocity = solve(
-    partition.rows.map(
-      (row, i) =>
-        (row.commandId ? commands.get(row.commandId)!.velocity : 0) - prescribed(i, 'velocity')
-    )
-  );
+  const velocityInput = bodyRatePrescription(partition, gradients, commands, boundary, 'velocity');
+  const velocity = solve(velocityInput.rhs, velocityInput.roundoff);
   if (!velocity) return { ok: false, reason: 'velocity-inconsistent' };
   const twists = new Map(partition.boundary.map((id) => [id, boundary.get(id)!.velocity]));
   partition.unknowns.forEach((id, i) =>
     twists.set(id, { vx: velocity[3 * i], vy: velocity[3 * i + 1], omega: velocity[3 * i + 2] })
   );
+  const velocityRoundoff =
+    128 * Number.EPSILON * Math.hypot(...velocity.map((value, i) => value / scaling.columns[i]));
+  const errors = new Map(
+    partition.unknowns.map((id, i) => [
+      id,
+      {
+        linear: Math.SQRT2 * velocityRoundoff * scaling.columns[3 * i],
+        angular: velocityRoundoff * scaling.columns[3 * i + 2],
+      },
+    ])
+  );
   // Gamma follows the complete velocity, including a moving boundary. Its acceleration
   // enters through the boundary columns separately; differentiating only q loses both terms.
+  const accelerationInput = bodyRatePrescription(
+    partition,
+    gradients,
+    commands,
+    boundary,
+    'acceleration'
+  );
   const acceleration = solve(
+    partition.rows.map((row, i) => accelerationInput.rhs[i] - bodyRowQuadratic(row, poses, twists)),
     partition.rows.map(
-      (row, i) =>
-        (row.commandId ? commands.get(row.commandId)!.acceleration : 0) -
-        prescribed(i, 'acceleration') -
-        bodyRowQuadratic(row, poses, twists)
+      (row, i) => quadraticRoundoff(row, poses, twists, errors) + accelerationInput.roundoff[i]
     )
   );
   if (!acceleration) return { ok: false, reason: 'acceleration-inconsistent' };
@@ -140,27 +152,4 @@ function finiteMotion(motion: BodyMotion): boolean {
     motion.acceleration.ay,
     motion.acceleration.alpha,
   ].every(Number.isFinite);
-}
-
-/** A least-squares fit must satisfy every row, including a redundant row with tiny rates. */
-function rateRowsConsistent(
-  matrix: readonly number[][],
-  answer: readonly number[],
-  rhs: readonly number[]
-): boolean {
-  const solutionNorm = Math.hypot(...answer);
-  return matrix.every((row, i) => {
-    const terms = row.map((value, j) => value * answer[j]);
-    const residual = terms.reduce((sum, value) => sum + value, -rhs[i]);
-    const magnitude = terms.reduce((sum, value) => sum + Math.abs(value), Math.abs(rhs[i]));
-    // A mathematically zero component can inherit elimination round-off from another
-    // column. This allowance scales with the solve, never with an absolute unit of rate.
-    const roundoff = 128 * Number.EPSILON * Math.hypot(...row) * solutionNorm;
-    return (
-      Number.isFinite(residual) &&
-      Number.isFinite(magnitude) &&
-      Number.isFinite(roundoff) &&
-      Math.abs(residual) <= 1e-9 * magnitude + roundoff
-    );
-  });
 }

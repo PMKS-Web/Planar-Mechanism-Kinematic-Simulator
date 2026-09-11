@@ -15,6 +15,16 @@ export function resolvedBodyInterval(
     if (Math.abs(angles[1] - angles[0]) + Math.abs(angles[2] - angles[1]) > 0.1) return false;
   }
   if (right.fold) {
+    const driver = probes.admitted.frame.partition.drivers[0].row;
+    // The commanded coordinate is affine in the command even at a geometric fold.
+    // Only passive coordinates need a small geometric enclosure and passive tangents;
+    // forcing driver-only limits into that enclosure asks Newton to resolve a singularity.
+    if (
+      probes.admitted.frame.partition.limits.every(
+        (limit) => limit.row.jointId === driver.jointId && limit.row.kind === driver.kind
+      )
+    )
+      return true;
     // At a proved fold use a short geometric leaf and the oriented passive tangent.
     // Command derivatives diverge there; these probe slopes are never analysis rates.
     const spread = Math.max(
