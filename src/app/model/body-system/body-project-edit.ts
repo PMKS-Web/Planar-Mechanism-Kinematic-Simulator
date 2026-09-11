@@ -16,6 +16,8 @@ export function bodyOperationPermission(
   state: EditState,
   displayedMapping = false
 ): EditRefusal | null {
+  if (operation.kind === 'convert-units')
+    return state.playing || !state.atStart ? SETTINGS_AT_START_ONLY : null;
   // World-dependent edits require a current displayed frame, not just permission to edit while paused.
   if (
     operation.kind === 'force-owner' ||

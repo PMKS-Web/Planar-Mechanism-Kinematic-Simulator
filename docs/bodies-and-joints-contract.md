@@ -61,6 +61,28 @@ Synthesis mode. Document settings quote `SETTINGS_AT_START_ONLY`; metadata chang
 restart clocks. Gravity/force-mode changes invalidate force results, including in mixed batches,
 without using that broader invalidation to restart an unrelated machine.
 
+## Transactional unit conversion
+
+`convert-units` converts the whole authored document in one history entry. Length, mass,
+inertia and force factors are independent; density scales by mass/length², and a couple by
+force×length. Convert geometry, material and WORLD attachments, weld translations, guide
+stations/datums, travel profiles/bounds, cylinder dimensions, CoM and imported load-scope
+transforms, holds, synthesis placement, backdrop and camera dimensions. Angles and stable
+references stay unchanged. Object scale is a marker **length in document units** and scales
+with camera span; it never supplies a physical constraint or mass dimension.
+
+A batch allows one destination unit system. All other dimensional operands use that
+destination, independent of the conversion operation's position in the array. Compare
+locks, holds, lineage and CoM editing against the converted source, then validate the final
+candidate normally. This permits representation changes without waiving physical edits.
+Invalid units or any refused operation roll back the entire batch.
+
+The shared settings start-only permission applies. Pure conversion preserves elapsed time,
+direction and synchronization while scaling travel clock anchors/commands, including fixed
+coordinates that belong to no moving partition. Actual geometry/drive edits in the same
+batch still invalidate affected clocks. Undo restores the exact prior document and local
+state. Native UI precision and coverage-warning checks remain S5 obligations.
+
 ## Joint shape and ordering
 
 Each joint has ordered `bodyA` / `bodyB` and two explicit local frame records. Each frame stores an AttachmentId for its origin and a local angle for its directed axis. Both attachment owners must match the named bodies. Storing the axis as an angle guarantees normalization; derive vectors with sine/cosine and reject non-finite angles. Rendering stations are separate guide-local metadata with their own material owner and frame, never attachment points used to locate bodies. Reversing P equation order cannot hand its visible guide to the other member. A pin-in-slot

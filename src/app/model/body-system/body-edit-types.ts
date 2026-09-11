@@ -1,5 +1,6 @@
 import { BodyPointMove } from './body-point-edit';
 import { BodyDriveOperation } from './body-drive-edit';
+import { BodyUnits } from './body-units';
 import type { BodyEditFrame } from './body-edit-frame';
 import type { BodyAnchorChange } from './body-anchor-change';
 import { BodyGeometryOperation } from './body-geometry-edit';
@@ -47,6 +48,7 @@ export type BodyInsertRecords = Partial<
   >
 >;
 export type BodyEditOperation =
+  | { readonly kind: 'convert-units'; readonly units: BodyUnits }
   | BodyDriveOperation
   | BodyPropertyOperation
   | BodyGeometryOperation

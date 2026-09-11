@@ -11,6 +11,7 @@ export interface BodyProjectSettings {
   readonly showMajorGrid: boolean;
   readonly showMinorGrid: boolean;
   readonly showIds: boolean;
+  /** Marker length uses document units but never controls physical constraints or mass. */
   readonly objectScale: number;
   /** New drives capture these defaults; existing drives retain their own signed rates. */
   readonly defaultDrive: { readonly angular: number; readonly linear: number };
