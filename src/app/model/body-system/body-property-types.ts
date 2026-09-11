@@ -50,6 +50,7 @@ export type BodyPropertyOperation =
       readonly targets: readonly (
         | { readonly kind: 'attachment'; readonly id: AttachmentId }
         | { readonly kind: 'force'; readonly id: ForceId }
+        | { readonly kind: 'body'; readonly id: BodyId }
       )[];
       readonly locked: boolean;
     }

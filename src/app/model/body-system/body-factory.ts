@@ -1,5 +1,5 @@
 import { BodyDocument, emptyBodyDocument } from './body-document';
-import { AttachmentId, BodyId, newRecordId } from './body-id';
+import { AttachmentId, BodyId, VertexId, newRecordId } from './body-id';
 import {
   Point,
   Pose,
@@ -73,6 +73,24 @@ export class BodyFactory {
     };
     this.value = { ...this.value, attachments: [...this.value.attachments, attachment] };
     return attachment.id;
+  }
+
+  /** Binding is explicit: adding an ordinary connection at an endpoint must not reshape material later. */
+  vertexAttachment(bodyId: BodyId, vertexId: VertexId, label = ''): AttachmentId {
+    const body = this.value.bodies.find((item) => item.id === bodyId);
+    const vertex =
+      body?.kind === 'material' && body.geometry.kind !== 'circle'
+        ? body.geometry.vertices.find((item) => item.id === vertexId)
+        : undefined;
+    if (!vertex) throw new Error('Missing geometry vertex');
+    const id = this.attachment(bodyId, vertex, label);
+    this.value = {
+      ...this.value,
+      attachments: this.value.attachments.map((point) =>
+        point.id === id ? { ...point, vertexId } : point
+      ),
+    };
+    return id;
   }
 
   joint(kind: BodyJoint['kind'], a: AttachmentId, b: AttachmentId, worldAxis = 0): BodyJoint {

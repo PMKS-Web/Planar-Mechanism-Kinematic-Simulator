@@ -1,3 +1,6 @@
+import { editBodyGeometry, isBodyGeometryOperation } from './body-geometry-edit';
+import { remapEditedCenters } from './body-center-edit';
+import { validateBodyEditHolds } from './body-hold-validation';
 import { retainCenterEditAnchors } from './body-center-anchor';
 import { validateBodyEditLocks } from './body-lock-validation';
 import { isBodyPropertyOperation, editBodyProperties } from './body-property-edit';
@@ -95,6 +98,10 @@ export function planBodyEdit(
       const changed = changeBodyJointKind(candidate, operation, `${command.id}:${index}`);
       if (!changed.ok) return changed;
       candidate = changed.document;
+    } else if (isBodyGeometryOperation(operation)) {
+      const changed = editBodyGeometry(candidate, operation);
+      if (!changed.ok) return changed;
+      candidate = changed.document;
     } else if (operation.kind === 'project') candidate = editBodyProject(candidate, operation);
     else if (operation.kind === 'group-properties') continue;
     else if (isBodyPropertyOperation(operation)) {
@@ -119,7 +126,19 @@ export function planBodyEdit(
   }
   const lineage = bodyGroupLineage(lineageSource, candidate, command.targetGroupMember);
   if (!lineage.ok) return lineage;
-  candidate = retainCenterEditAnchors(source, { ...candidate, groups: lineage.groups });
+  candidate = { ...candidate, groups: lineage.groups };
+  candidate = remapEditedCenters(
+    source,
+    candidate,
+    new Set(
+      command.operations.flatMap((operation) =>
+        operation.kind === 'body-properties' && operation.change.mass?.center !== undefined
+          ? [operation.bodyId]
+          : []
+      )
+    )
+  );
+  candidate = retainCenterEditAnchors(source, candidate);
   for (const operation of command.operations)
     if (operation.kind === 'group-properties') {
       const changed = editBodyProperties(candidate, operation);
@@ -128,6 +147,8 @@ export function planBodyEdit(
     }
   const refused = validateBodyEditDocument(candidate);
   if (refused) return refused;
+  const held = validateBodyEditHolds(candidate);
+  if (held) return held;
   const locked = validateBodyEditLocks(source, candidate);
   if (locked) return locked;
   const effects = bodyEditEffects(source, candidate);

@@ -1,3 +1,4 @@
+import { WORLD } from './body-id';
 import { BodyDocument } from './body-document';
 import { BodyPropertyOperation } from './body-property-types';
 import { BodyEditRefusal } from './body-edit-types';
@@ -12,12 +13,18 @@ export function editBodyMarks(
     case 'lock': {
       const points = new Set(document.locks);
       const forces = new Set<string>();
+      const bodies = new Set<string>();
       for (const target of operation.targets) {
         if (target.kind === 'attachment') {
           if (!document.attachments.some((item) => item.id === target.id))
             return bodyEditRefusal('missing-target');
           if (operation.locked) points.add(target.id);
           else points.delete(target.id);
+        } else if (target.kind === 'body') {
+          if (target.id === WORLD) return bodyEditRefusal('immutable-world', [target]);
+          if (!document.bodies.some((item) => item.id === target.id))
+            return bodyEditRefusal('missing-target', [target]);
+          bodies.add(target.id);
         } else {
           if (!document.forces.some((item) => item.id === target.id))
             return bodyEditRefusal('missing-target');
@@ -27,6 +34,11 @@ export function editBodyMarks(
       next = {
         ...document,
         locks: [...points],
+        bodies: document.bodies.map((body) => {
+          if (body.kind === 'world' || !bodies.has(body.id)) return body;
+          const { locked, ...rest } = body;
+          return operation.locked ? { ...rest, locked: true } : rest;
+        }),
         forces: document.forces.map((force) => {
           if (!forces.has(force.id)) return force;
           const { locked, ...rest } = force;

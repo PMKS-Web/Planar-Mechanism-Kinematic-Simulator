@@ -26,6 +26,8 @@ export interface MassSpecification {
         readonly mode: 'explicit';
         readonly point: Point;
         readonly editAnchor: CenterEditAnchor;
+        /** Stable geometry direction for centroid-relative deformation, independent of array order. */
+        readonly editAxis?: readonly [VertexId, VertexId];
       };
 }
 
@@ -42,6 +44,8 @@ export interface MaterialBody {
   readonly label: string;
   readonly pose: Pose;
   readonly geometry: BodyGeometry;
+  /** An edit lock freezes material placement even when the body has only one attachment. */
+  readonly locked?: boolean;
   readonly mass: MassSpecification;
   readonly presentation: BodyPresentation;
 }

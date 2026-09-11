@@ -185,9 +185,30 @@ An explicit CoM carries `editAnchor: 'body' | 'grid' | { attachmentId }`. A memb
 belong to that material; a group anchor must belong to one of that group's materials. Physics
 still uses the stored local `point`. If an existing editing attachment is deleted, retain the
 physical center and fall back to the body's frame; do not transfer the anchor to another pin.
-A newly supplied invalid anchor does not qualify for that fallback. Geometry/posed editing
-must still implement the anchor mapping, including the existing centroid-relative behavior
-of the body's default editing anchor; this record extension alone is not that implementation.
+A newly supplied invalid anchor does not qualify for that fallback. Canonical design geometry
+and pose operations now map these references in one settled transaction. A body-relative
+center follows the geometry centroid and a stable named vertex pair (`editAxis`, captured on
+first deformation). A polygon's later longest pair or reordered vertices cannot choose a new
+frame. Losing the named direction rebases the reference without moving the center. Grid and
+attachment references retain world-axis offsets during edits; simulation still carries the
+resulting local point rigidly. An explicit center property in the same command wins over this
+remapping. Shared codecs validate and preserve the vertex references; copy must remap them.
+
+`body-geometry` replaces local shape and updates explicitly bound attachments;
+`attachment-position` changes one canonical local point and its bound vertex/other markers;
+`body-poses` supplies complete material poses without changing local shape. Final validation
+refuses a partial disconnected proposal, changed weld rest relation, violated hold/lock or
+cylinder travel bound. These are canonical transaction primitives, **not** connected cursor
+solvers. The connected gesture planner and displayed-frame re-anchoring are still required;
+these operations temporarily use the shared start-pose permission until that boundary exists.
+Generic shape/attachment edits cannot change a cylinder's intrinsic member geometry, mounts
+or internal P references; cylinder dimension edits must own that complete proposal.
+
+`MaterialBody.locked` protects its pose, shape and surviving attachment positions even with
+only one connection. An attachment lock protects only that point, so a body may rotate about
+it. Locks do not add physical constraints or prevent deletion, mass or color edits. Holds
+validate authored endpoint lengths/directions against the settled proposal and likewise do
+not enter the motion solver.
 
 A load retains optional lock state and presentation (color, arrow length in document units,
 and the heading in its chosen reference axes when its vector is zero). Arrow size/direction
