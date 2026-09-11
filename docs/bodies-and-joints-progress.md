@@ -19,7 +19,7 @@
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
 | S2 | Complete | Native compiler, analytic Jacobians, mobility/admission, branch continuation, folds, limits and frame conditioning. Seven native/legacy and four native/MATLAB comparisons retain the original ceilings. Geometric redundancy, two slots on a carrier and one-pin/shared-WORLD cases pass. Combined S2/initial-rate gate: 255 tests / 37 files; current-editor browser gate is green. Continuous cycle event publication remains an explicit S3 obligation. |
 | S3 | Complete | Native rates/forces, immutable results, interval/cycle/window publication, all five hand-derived cylinder examples and native/MATLAB positions/rates. F2 reviewed d842ffd and all findings resolved below. Final full gate: 2682 tests / 285 files; host build passes; ui-copy 17/17 with zero console errors. Earlier S3 browser and live-incognito evidence remains recorded. Native UI cutover is S5–S6, not claimed here. |
-| S4 | In progress | Native codec/project state, structural/property commands, connected point proposals, canonical geometry/pose primitives, whole-body locks, CoM edit mapping, captured display and constrained re-anchoring tested in slices. Full gesture/coordinate-pose/axis edits, cylinder dimensions, production import/recovery, full lifecycle/service matrix and F3 remain. Stable-ID drive/working-limit commands, physical unit conversion, same-document copying and captured cross-document clipboard/paste are implemented and tested below. Platform clipboard/UI integration remains S5. F2 is resolved; no public-route cutover yet. |
+| S4 | In progress | Native codec/project state, structural/property commands, connected point proposals, canonical geometry/pose primitives, whole-body locks, CoM edit mapping, captured display and constrained re-anchoring tested in slices. Full rigid-body gestures/axis edits, cylinder dimensions, production import/recovery, full lifecycle/service matrix and F3 remain. Stable-ID drive/working-limit commands, physical unit conversion, exact coordinate pose edits, same-document copying and captured cross-document clipboard/paste are implemented and tested below. Platform clipboard/UI integration remains S5. F2 is resolved; no public-route cutover yet. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
 | S6 | Pending | All consumers, synthesis, tutorial, fixtures/templates and default cutover. |
 | S7 | Pending | Removal manifest closed and performance budget met. |
@@ -1998,3 +1998,85 @@ full-cycle filmstrip and do not claim uninterrupted live endpoint observation. S
 gestures, bounded production 2.0.3 import and atomic recovery, complete lifecycle/service
 coverage and remaining named S4 browser gates, then F3. S4 remains in progress. No paid review,
 push or publication occurred; Fable budget/reservations are unchanged.
+
+## S4 continuation — exact rigid coordinate edits (2026-09-11)
+
+`move-coordinate` now changes an existing R angle, P travel or pin-in-slot angle/travel using
+one canonical transaction. It preserves local material/attachments, coordinate datums, weld
+rests, cylinder dimensions and force ownership. Passive coordinates gain no persistent drive;
+a selected existing driver keeps its identity/speed and captures the accepted coordinate.
+Other prescribed coordinates, locks, force handles and holds stay constrained. WORLD and
+unrelated machines do not follow the edit.
+
+The former point-only model is now `body-edit-model`; `body-edit-rows` holds the shared
+physical/hold/lock equations and coordinate differentiation. The point wrapper retains only
+its positional goals. Coordinate motion disables all local shape variables and follows small
+normalized increments. It never changes a bar's length to reach a pose. Correction/continuation
+exhaustion refuses the complete command. These are exact typed-coordinate operations; guide
+axis edits, dimension changes, pointer clamping and full gesture continuation remain open.
+
+Three actual failures shaped this implementation:
+
+- The paused return-leg test initially reported no change: re-anchoring recovered exactly the
+  original authored document and the authority discarded the requested display movement.
+  Posed planning now also compares display poses/clocks. A display-only coordinate edit produces
+  one revision/history event; Undo/Redo retain both authored start and selected motion leg.
+- A cosine carriage at angles -0.025 and +0.075 lies inside x=0.99999 at both endpoints while
+  crossing x=1 between them. Small pose corrections plus endpoint bounds wrongly accepted it.
+  Regular single-input motion now also uses the established `inspectBodyInterval` fold and
+  interior-stop search, and compares its branch with the edit candidate. Refusal cannot fall
+  through to a sketch solve.
+- Adding a freely pinned member makes that drawing a loose sketch, outside ordinary motion
+  admission, and exposed the same gap again. Edit segments now inspect interior values and
+  analytic minimum-norm tangents, refine their Hermite shape and bracket extrema. Both kernels
+  share the extracted scalar refinement criterion. The loose fixture still accepts nearby
+  valid travel; it is not a blanket refusal of sketches. Searches are bounded numerical
+  evidence, not interval arithmetic, and exhaustion refuses without changing the drawing.
+
+Fourteen new tests include locks/holds/loads, both slot coordinates, passive/driven R,
+unwrapped angles, paused returning travel/history, SI/centimeter/English travel, reversed P
+order with WORLD on B, separate machines, corrupt targets/permissions, canonical save/reopen,
+and all five worked cylinder shapes through actual commands. Oblique branches, guide directions
+and construction order are permuted. The existing closed forms supply expected world poses
+and off-axis witnesses; every command also checks unchanged local material, joints and assembly
+records. The four additional examples are inserted through native creation transactions.
+
+Verification under `artifacts/bodies-and-joints/`:
+
+- `S4-coordinate-initial.log`: **2 failed / 23 passed** (session 60109 exit 1): one test incorrectly
+  compared codec-canonical array order with input order; the other exposed the real display-only
+  commit loss. Reopen now compares canonical payloads, retaining all physical/identity assertions.
+- `S4-coordinate-focused.log`: **42 tests / 7 files pass**, session 23274 exit 0.
+- `S4-coordinate-passive-gap-initial.log`: **1 failed / 7 passed**, session 65548 exit 1.
+- `S4-coordinate-path-focused.log`: **43 tests / 7 files pass**, session 93325 exit 0.
+- `S4-coordinate-examples-initial.log`: **13 tests / 2 files pass**, session 54940 exit 0.
+- `S4-coordinate-loose-gap-initial.log`: **1 failed / 8 passed**, session 25548 exit 1.
+- `S4-coordinate-interval-focused.log`: **23 tests / 3 files pass**, session 4202 exit 0.
+- Final `S4-coordinate-full-unit.log`: **2842 tests / 314 files pass**, session 47974 exit 0.
+- `S4-coordinate-build.log`: production build passes, session 20150 exit 0; existing CommonJS warnings.
+- `S4-coordinate-ui-copy.log`: **17/17**, zero console errors, session 92868 exit 0.
+
+The owned localhost:4307 server was reverified: PID 13660, this worktree, HTTP 200. The required
+legacy `posed-editing` suite initially passed **56/58**, session 57297 exit 1. Both failures
+compared the old normalized rocker fraction with the rebuilt track. The isolated probe
+`S4-coordinate-rocker-probe-final.log` reproduces **848 → 851** while every displayed joint
+remains exactly unchanged and the new anchor equals the shown input angle. Its initial harness
+used the wrong numbered section and failed before loading; that log is retained separately.
+No production transport implementation changed. The tracked suite now asserts exact physical
+pose preservation, the actual input angle, the new anchor/current-thumb relationship, and the
+seat's rendered position after moving away. This replaces a stale cross-range comparison with
+stronger physical and rendered checks, not a larger unexplained tolerance.
+
+`S4-coordinate-posed-editing-final.log` passes **60/60**, zero page errors, session 24978 exit 0.
+`artifacts/posed-editing/drag.png` contains nine intermediate frames and was inspected: selection,
+panel blocks, authored ghost and the moving joint remain visually distinct, and the displayed
+point remains in place on release. A reference distance-angle field changes on release despite
+that retained point; S5 now explicitly requires displayed-frame measurements across re-anchoring
+and Undo/Redo. No native editor is active yet, so these reference checks do not prove native UI.
+The final browser-only cleanup changes the test's old center-spelling identifiers; syntax is
+checked after that rename. Core unit/build results above cover the unchanged production code.
+
+**Next required:** guide axis edits, cylinder dimensions, active travel projection/full rigid-body
+and pointer gestures, bounded production 2.0.3 import, atomic recovery, full lifecycle/service
+matrix and remaining S4 browser gates, then F3. Preview performance still needs measurement at
+native UI integration. S4 stays in progress. No paid review, push or publication; budget unchanged.

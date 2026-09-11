@@ -817,6 +817,10 @@ switching to meters, and a size/coverage warning appeared despite unchanged on-s
 Do not inherit these legacy defects. Native acceptance must cover conversion and Undo/Redo
 with unchanged framing, marker proportions and physically equivalent settings; coverage
 advisories must reflect settled screen coverage rather than the unit label or raw magnitude.
+The S4 paused-drag reference filmstrip also shows a distance-angle readout jumping on release
+while the selected joint remains in place. Native panel acceptance must compare distance and
+direction against the displayed attachments before, during and after re-anchoring, including
+Undo/Redo; never populate a displayed measurement from an authored-start transform.
 
 **New specs:** `body-joint-marks.spec.ts` and `body-joint-interaction.spec.ts`; new browser
 `body-joint-editing.mjs` and `body-joint-render.mjs`. Existing browser gates:

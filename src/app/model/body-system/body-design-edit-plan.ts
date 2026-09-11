@@ -1,3 +1,4 @@
+import { editBodyCoordinate } from './body-coordinate-edit';
 import {
   BODY_INSERT_TABLES as TABLES,
   insertBodyRecords,
@@ -112,6 +113,10 @@ export function planBodyDesignEdit(
       candidate = changed.document;
     } else if (isBodyDriveOperation(operation)) {
       const changed = editBodyDrive(candidate, operation, `${command.id}:${index}`);
+      if (!changed.ok) return changed;
+      candidate = changed.document;
+    } else if (operation.kind === 'move-coordinate') {
+      const changed = editBodyCoordinate(candidate, operation);
       if (!changed.ok) return changed;
       candidate = changed.document;
     } else if (operation.kind === 'move-point') {

@@ -11,6 +11,7 @@
 const playwright = process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright';
 const { chromium } = await import(playwright + '/node_modules/playwright/index.mjs');
 import { mkdirSync } from 'node:fs';
+import { filmstrip, contactSheet } from './filmstrip.mjs';
 import { openMechanism } from './app-ready.mjs';
 import { startQuiet } from './quiet-start.mjs';
 import { TEMPLATE_LINKAGES } from './template-payloads.mjs';
@@ -138,11 +139,19 @@ const grab = await jointAt('B');
 await page.mouse.click(grab.x, grab.y);
 await page.waitForTimeout(250);
 await page.mouse.move(grab.x, grab.y);
+const dragFilm = filmstrip(page, `${SHOTS}/drag-frames`);
+await dragFilm.shot('before');
 await page.mouse.down();
-await page.mouse.move(grab.x + 20, grab.y - 14, { steps: 8 });
+for (let step = 1; step <= 4; step++) {
+  await page.mouse.move(grab.x + step * 5, grab.y - step * 3.5, { steps: 2 });
+  await dragFilm.shot('dragging');
+}
 const midDrag = await look();
 record('the drag staged the machine it is editing', midDrag.posedKey !== null, midDrag);
-await page.mouse.move(grab.x + 34, grab.y - 22, { steps: 6 });
+for (let step = 1; step <= 3; step++) {
+  await page.mouse.move(grab.x + 20 + (step * 14) / 3, grab.y - 14 - (step * 8) / 3, { steps: 2 });
+  await dragFilm.shot('dragging');
+}
 await page.mouse.up();
 await page.waitForTimeout(700);
 
@@ -159,6 +168,8 @@ record(
   { before: before.anchorCoordinate, after: after.anchorCoordinate }
 );
 await page.screenshot({ path: `${SHOTS}/2-after-posed-drag.png` });
+await dragFilm.shot('committed');
+console.log(await contactSheet(`${SHOTS}/drag-frames/*.png`, `${SHOTS}/drag.png`, 3, 0.5));
 
 // ---- 3. stopping returns the input to the anchored value ----------------
 
@@ -642,19 +653,25 @@ const transport = () =>
   page.evaluate(() => {
     const bar = window.ng.getComponent(document.querySelector('app-playback-bar'));
     const row = bar.rows[0];
+    const anchor = bar.mechanism.anchorOf(0);
+    const a = bar.mechanism.joints.find((joint) => joint.id === anchor?.jointId);
+    const b = bar.mechanism.joints.find((joint) => joint.id === anchor?.rule.referenceId);
     const input = document.querySelector('.rowScrubber');
     const box = input.getBoundingClientRect();
-    // A range thumb's centre: half a thumb in, half a thumb short of the end.
-    const centreAt = (per1000) => box.left + 12 + ((box.width - 24) * per1000) / 1000;
+    // A range thumb's center: half a thumb in, half a thumb short of the end.
+    const centerAt = (per1000) => box.left + 12 + ((box.width - 24) * per1000) / 1000;
     const seat = document.querySelector('.anchorSeat');
     const seatBox = seat && seat.getBoundingClientRect();
     return {
+      joints: bar.mechanism.joints.map((joint) => ({ id: joint.id, x: joint.x, y: joint.y })),
+      anchorCoordinate: anchor?.coordinate,
+      inputAngle: a && b ? Math.atan2(b.y - a.y, b.x - a.x) : undefined,
       scrub: row.scrub,
       anchorAt: row.anchorAt,
       chip: row.displaced ?? null,
       seats: document.querySelectorAll('.anchorSeat').length,
-      seatCentre: seatBox ? seatBox.left + seatBox.width / 2 : null,
-      wantSeatAt: row.anchorAt === undefined ? null : centreAt(row.anchorAt),
+      seatCenter: seatBox ? seatBox.left + seatBox.width / 2 : null,
+      wantSeatAt: row.anchorAt === undefined ? null : centerAt(row.anchorAt),
     };
   });
 
@@ -690,7 +707,7 @@ record(
 // matter what it was told, and looked right for as long as the value was zero.
 record(
   'and it is drawn where the handle stood, to the pixel',
-  Math.abs(away.seatCentre - away.wantSeatAt) < 1.5,
+  Math.abs(away.seatCenter - away.wantSeatAt) < 1.5,
   away
 );
 // The chip is a distance, and the readout beside it is a position. On a rocker
@@ -707,8 +724,23 @@ await page.waitForTimeout(700);
 const moved = await transport();
 record(
   'moving the start here moves the mark with it',
-  moved.anchorAt === away.scrub && moved.seats === 0 && moved.chip === null,
+  moved.anchorAt === moved.scrub && moved.seats === 0 && moved.chip === null,
   moved
+);
+// Rebuilding the sampled rocker range can change its normalized track fraction. The physical start must not move.
+record(
+  'promoting the start keeps every displayed joint in place',
+  moved.joints.length === away.joints.length &&
+    moved.joints.every((joint) => {
+      const old = away.joints.find((item) => item.id === joint.id);
+      return old && Math.hypot(joint.x - old.x, joint.y - old.y) < 1e-9;
+    }),
+  { before: away.joints, after: moved.joints }
+);
+record(
+  'the new anchor names the actual input angle that was displayed',
+  Math.abs(Math.sin((moved.anchorCoordinate - away.inputAngle) / 2)) < 1e-10,
+  { anchor: moved.anchorCoordinate, displayed: away.inputAngle }
 );
 await page.evaluate(() =>
   window.ng
@@ -719,7 +751,10 @@ await page.waitForTimeout(400);
 const afterMove = await transport();
 record(
   'and the seat is at the new start once the handle leaves it',
-  afterMove.seats === 1 && afterMove.anchorAt === away.scrub,
+  afterMove.seats === 1 &&
+    afterMove.anchorAt === moved.anchorAt &&
+    afterMove.anchorCoordinate === moved.anchorCoordinate &&
+    Math.abs(afterMove.seatCenter - afterMove.wantSeatAt) < 1.5,
   afterMove
 );
 
