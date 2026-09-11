@@ -43,7 +43,20 @@ export function restoreBodyPartitionAnchor(
   const reached = reachBodyAnchor(admitted, system, source, target, length);
   if (!reached.ok) return reached;
   const restored = bodyAnchorMaterialPoses(system, admitted.frame, reached.poses, length);
-  const direction = ((clock.direction ?? (oldDriver!.profile.speed < 0 ? -1 : 1)) * sign) as 1 | -1;
+  const oldSpeed = oldDriver!.profile.speed * sign;
+  const reversed =
+    oldSpeed !== 0 &&
+    driver.profile.speed !== 0 &&
+    Math.sign(oldSpeed) !== Math.sign(driver.profile.speed);
+  // Changing a coordinate's sign preserves physical direction; changing drive direction reverses the current leg.
+  const direction =
+    oldSpeed === 0 && driver.profile.speed !== 0
+      ? driver.profile.speed < 0
+        ? -1
+        : 1
+      : (((clock.direction ?? (oldDriver!.profile.speed < 0 ? -1 : 1)) *
+          sign *
+          (reversed ? -1 : 1)) as 1 | -1);
   let shown: ReturnType<typeof bodyAnchorClock>;
   if (clock.time === 0 && driver.profile.initial * factor === target) {
     // Another machine being displaced does not make this machine's unchanged start require a cycle.
