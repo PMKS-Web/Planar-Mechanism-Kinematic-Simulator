@@ -19,7 +19,7 @@
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
 | S2 | Complete | Native compiler, analytic Jacobians, mobility/admission, branch continuation, folds, limits and frame conditioning. Seven native/legacy and four native/MATLAB comparisons retain the original ceilings. Geometric redundancy, two slots on a carrier and one-pin/shared-WORLD cases pass. Combined S2/initial-rate gate: 255 tests / 37 files; current-editor browser gate is green. Continuous cycle event publication remains an explicit S3 obligation. |
 | S3 | Complete | Native rates/forces, immutable results, interval/cycle/window publication, all five hand-derived cylinder examples and native/MATLAB positions/rates. F2 reviewed d842ffd and all findings resolved below. Final full gate: 2682 tests / 285 files; host build passes; ui-copy 17/17 with zero console errors. Earlier S3 browser and live-incognito evidence remains recorded. Native UI cutover is S5–S6, not claimed here. |
-| S4 | In progress | Native core codec, project settings/synthesis/view records and initial structural transaction/lifecycle/history service implemented and tested. Remaining property/edit operations, posed re-anchoring, production import, recovery, full lifecycle matrix and F3 remain. F2 is resolved; no public-route cutover yet. |
+| S4 | In progress | Native codec/project state, structural/property commands, lifecycle and local history implemented and tested in slices. Geometry/pose/drive/copy commands, displayed-frame capture, production import/recovery, full lifecycle matrix and F3 remain. F2 is resolved; no public-route cutover yet. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
 | S6 | Pending | All consumers, synthesis, tutorial, fixtures/templates and default cutover. |
 | S7 | Pending | Removal manifest closed and performance budget met. |
@@ -1365,3 +1365,67 @@ pass**. The final byte-budget check adds one further test; `S4-project-budget-un
 **20 tests / 3 files pass** (project/authority/codec), and `S4-project-schema-build.log` passes
 the production build. Both processes finished with exit 0. The UI-copy gate above remains
 17/17 with no public renderer change. The two earlier clock/provenance mutation probes remain restored.
+
+
+## S4 authored properties, editing references and clock separation
+
+The preceding project/schema checkpoint is **e1571b1**. This slice adds native material/group,
+force, attachment, label, lock and hold property commands through the existing transaction.
+S4 is **still in progress**; there is no public editor cutover and no F3 call yet.
+
+- Material properties stay on persistent bodies. Group color/name/mass edits target exact
+  final membership and run after lineage; they do not overwrite member properties. Ordinary
+  no-op properties and refused bulk changes create no events/history. Identity fields cannot
+  be smuggled through a property change's object spread.
+- Material and group CoM records now support attachment editing anchors with actual ownership
+  validation. Deleting an existing reference keeps the physical center and falls back to the
+  body's editing frame. A newly supplied invalid reference is not silently repaired away.
+  Group anchors can name members; member anchors cannot name another material's point.
+- Loads retain color, optional authored arrow length, zero-magnitude heading and lock state;
+  attachments retain color as well as labels/traces. Force-frame switching and explicit
+  material-owner reassignment preserve world application point/vector and free couple at the
+  design pose. Owner reassignment deliberately resolves an imported ambiguous load scope.
+- Settled transaction validation checks surviving point/force locks. Force magnitude, color,
+  label and couple can change, but neither arrow handle can move. Locked objects can delete.
+  Setting a force to zero preserves its previous direction rather than turning its arrow.
+- Clock invalidation now uses a motion-only record projection. Physical-property, load, trace,
+  annotation and edit-mark changes can require fresh analysis without resetting a paused
+  command/time. A mixed batch still invalidates the actual changed motion partitions.
+
+Tests build on the existing native three-leaf and four-bar fixtures. They exercise a single
+bulk property/history event; exact material versus group values; save/reopen; releasing welds
+with owned force color/locks and anchored custom CoM; oblique force-frame/owner conversion
+against hand sine/cosine arithmetic; locked force handles; deleting member and group editing
+references; malformed new anchors in deletion batches; and paused analysis-mode mass/trace/
+length-hold edits with the same nonzero clock retained.
+
+Verification (Node 24.18.0, `artifacts/bodies-and-joints/`):
+
+- `S4-property-full-unit.log`: **2735 tests / 295 files pass**, session 26024 exit 0.
+- `S4-property-build.log`: production build passes, session 22349 exit 0; only existing
+  CommonJS warnings. All touched TypeScript files were formatted and whitespace checks pass.
+- `S4-property-mutation-{clock,force-lock,center-owner}.log`: each deliberately reintroduced
+  defect gives exactly one intended assertion failure / seven passes. The mutation process
+  restored each source file in `finally` before the full passing suite. These failures show
+  wrong clock values, accepted locked-handle movement, and accepted invalid center ownership;
+  they are not compile/admission failures.
+- `S4-property-test-syntax.log` records an initial missing-brace compile failure in the new
+  test; it is corrected, not counted as evidence. The earlier focused gate passed 33 tests.
+- The owned server remains PID 13660 in this exact worktree and returns HTTP 200 on
+  localhost:4307. `S4-property-ui-copy.log` reports **17/17 pass**, zero console errors,
+  session 47571 exit 0, on that unchanged legacy route.
+
+**Next required S4 work:** native pose/geometry/coordinate/drive edits, copy/remap, unit
+conversion, cylinder dimensions/angle holds, whole-body locking for a one-connection body,
+and anchor-preserving paused editing through displayed body frames. In particular,
+`force-owner` and `force-properties` frame conversions temporarily quote the start-pose
+refusal because their current mapper has only design frames. This is an incomplete internal
+capability, not an approved regression: complete the displayed-frame mapper and its tests
+before S5/S6 native UI acceptance. Other canonical local properties/length holds retain paused
+clocks; no native gesture/angle-hold filmstrip is claimed here. Match the existing body/centroid,
+grid and attachment CoM behavior when implementing deformation.
+
+Then finish production import, the atomic native load/save/recovery facade, the complete
+independent enumeration and save/reopen lifecycle matrix, and the named S4 browser gates.
+Only then request F3. Fable spending/reservations are unchanged. S5–S8, substantial legacy
+runtime removal, both live browser workflows and final integration remain required.

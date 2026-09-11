@@ -171,6 +171,44 @@ Multiway R bundles persist a hub and spanning tree. Removing a hub requires re-e
 
 History stores validated document snapshots plus local selection metadata and per-machine anchor/display state. Shared encoding stores only authored document state. Decoding validates a full candidate before replacing the current document or recovery backup. Native/legacy route selection happens before loading; there is one authority per editor instance. S6 makes native default; S7 removes the old editor and temporary adapters.
 
+## Property commands and edit references (S4)
+
+`body-properties` changes a material's label, presentation and mass specification.
+`group-properties` targets an exact final weld membership and changes only its annotation;
+member values remain intact. It runs after structural lineage so a new override cannot be
+copied into the wrong successor. `reset-group-mass` remains the explicit pre-lineage resolution
+for an ambiguous split/merge; a property edit on a vanished group does not retarget itself.
+`attachment-properties`, `label`, `lock` and `hold` share the same transaction and refusal
+boundary. Property changes reject identity fields rather than letting a spread rename records.
+
+An explicit CoM carries `editAnchor: 'body' | 'grid' | { attachmentId }`. A member anchor must
+belong to that material; a group anchor must belong to one of that group's materials. Physics
+still uses the stored local `point`. If an existing editing attachment is deleted, retain the
+physical center and fall back to the body's frame; do not transfer the anchor to another pin.
+A newly supplied invalid anchor does not qualify for that fallback. Geometry/posed editing
+must still implement the anchor mapping, including the existing centroid-relative behavior
+of the body's default editing anchor; this record extension alone is not that implementation.
+
+A load retains optional lock state and presentation (color, arrow length in document units,
+and the heading in its chosen reference axes when its vector is zero). Arrow size/direction
+metadata does not become a physical force. `force-properties` switches axes without rotating
+the physical vector; `force-owner` preserves the world application point, vector and free
+couple while assigning an explicit material owner and clearing an import-only ambiguous
+scope. World-direction inference currently uses the design frames and therefore refuses a
+displaced-pose conversion until the S4 displayed-frame boundary is implemented. Remove that
+temporary restriction through the posed-edit implementation before native UI acceptance.
+
+Locks are checked against settled surviving positions at the end of every transaction.
+A force lock protects its application and direction handles, while magnitude, color, label
+and couple remain editable. Deleting or explicitly unlocking an object is allowed. Point
+locks protect world attachment positions. Whole-body locking for one-connection bodies and
+geometry/drag hold enforcement remain explicit obligations of the next editing slice.
+
+All record effects remain available to history/analysis consumers, but `bodyMotionRecord`
+selects only coordinate/geometry/topology data for clock invalidation. Mass, load, annotation,
+trace and edit-mark changes must not reset a displayed motion clock. Physical analysis may
+need recalculation while the motion and its elapsed time stay unchanged.
+
 ## Self-review questions carried into implementation
 
 - Do axis datums and input signs survive a local-frame rebase and a reordered binary R/P?

@@ -9,7 +9,8 @@ const geometry = either(
 );
 const explicit = object({ mode: literal('explicit'), value: finite });
 const automatic = object({ mode: literal('automatic') });
-const center = object({ mode: literal('explicit'), point, editAnchor: literal('body', 'grid') });
+export const centerEditAnchor = either(literal('body', 'grid'), object({ attachmentId: id }));
+const center = object({ mode: literal('explicit'), point, editAnchor: centerEditAnchor });
 export const presentation = object(
   { fill: text(128), hidden: boolean, showCenter: boolean },
   { outline: literal('geometry', 'circle') }
@@ -32,7 +33,7 @@ export const material = either(
 );
 export const attachment = object(
   { id, bodyId: id, point, label: text(), trace: boolean },
-  { vertexId: id }
+  { vertexId: id, color: text(128) }
 );
 export const group = object(
   { members: list(id), frameBody: id },
@@ -44,7 +45,7 @@ export const group = object(
       {
         mass: finite,
         inertia: finite,
-        center: object({ point, editAnchor: literal('body', 'grid') }),
+        center: object({ point, editAnchor: centerEditAnchor }),
       }
     ),
   }
@@ -60,6 +61,8 @@ export const load = object(
     couple: finite,
   },
   {
+    locked: boolean,
+    presentation: object({}, { color: text(128), length: finite, zeroAngle: finite }),
     legacyGroupScope: object({ members: list(object({ bodyId: id, poseInReference: pose })) }),
   }
 );

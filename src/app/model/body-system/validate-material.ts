@@ -1,3 +1,4 @@
+import { validCenterEditAnchor } from './body-center-anchor';
 import { ValidationContext } from './validation-context';
 import { WORLD } from './body-id';
 import { finitePoint, finitePose } from './body-frame';
@@ -21,7 +22,12 @@ export function validateMaterial(context: ValidationContext): void {
       continue;
     }
     if (!validGeometry(body.geometry)) issue('invalid-geometry', path);
-    if (!validMass(body.mass)) issue('invalid-mass', path);
+    if (
+      !validMass(body.mass) ||
+      (body.mass.center.mode === 'explicit' &&
+        !validCenterEditAnchor(document, body.mass.center.editAnchor, [body.id]))
+    )
+      issue('invalid-mass', path);
     if (body.geometry.kind === 'bar' && body.mass.mass.mode === 'density')
       issue('bar-needs-explicit-mass', path);
     if (body.geometry.kind !== 'circle')
@@ -60,8 +66,6 @@ function validMass(mass: MassSpecification): boolean {
         Number.isFinite(mass.inertia.value) &&
         mass.inertia.value >= 0)) &&
     (mass.center.mode === 'automatic' ||
-      (mass.center.mode === 'explicit' &&
-        finitePoint(mass.center.point) &&
-        ['body', 'grid'].includes(mass.center.editAnchor)))
+      (mass.center.mode === 'explicit' && finitePoint(mass.center.point)))
   );
 }

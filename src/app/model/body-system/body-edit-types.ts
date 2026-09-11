@@ -1,3 +1,4 @@
+import { BodyPropertyOperation } from './body-property-types';
 import { BodyProjectSettings, BodyProjectView, BodySynthesisDesign } from './body-project';
 import { EditRefusal, EditState } from '../edit-permission';
 import { BodyDocument } from './body-document';
@@ -41,6 +42,7 @@ export type BodyInsertRecords = Partial<
   >
 >;
 export type BodyEditOperation =
+  | BodyPropertyOperation
   | {
       readonly kind: 'project';
       readonly settings?: BodyProjectSettings;
@@ -80,7 +82,8 @@ export type BodyEditCode =
   | 'ambiguous-load-owner'
   | 'invalid-command'
   | 'connection-point'
-  | 'drive-in-rigid-group';
+  | 'drive-in-rigid-group'
+  | 'locked-position';
 export interface BodyEditRefusal {
   readonly ok: false;
   readonly code: BodyEditCode;

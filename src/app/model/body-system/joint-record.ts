@@ -8,6 +8,7 @@ export interface Attachment {
   readonly label: string;
   readonly trace: boolean;
   readonly vertexId?: VertexId;
+  readonly color?: string;
 }
 
 export interface JointFrame {

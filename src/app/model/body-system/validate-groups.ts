@@ -1,3 +1,4 @@
+import { validCenterEditAnchor } from './body-center-anchor';
 import { ValidationContext } from './validation-context';
 import { finitePoint, relativePose } from './body-frame';
 import { compileWeldGroups } from './weld-groups';
@@ -20,7 +21,9 @@ export function validateGroups(context: ValidationContext): void {
       if (
         (mass !== undefined && (!Number.isFinite(mass) || mass < 0)) ||
         (inertia !== undefined && (!Number.isFinite(inertia) || inertia < 0)) ||
-        (center && (!finitePoint(center.point) || !['body', 'grid'].includes(center.editAnchor)))
+        (center &&
+          (!finitePoint(center.point) ||
+            !validCenterEditAnchor(document, center.editAnchor, group.members)))
       )
         issue('invalid-group-mass', 'groups');
     }
