@@ -448,3 +448,80 @@ The distant-bracket probe derives force and moment from its local force arm and 
 and inch/pound units, with and without an override. The original calculation missed Fx by
 about 3.8e-6 N; choosing a nearby origin alone still missed the moment by about 4.4e-7 N·m.
 Both corrections pass the unchanged 1e-9 decimal-place assertions at offsets 0 and 1e9.
+
+
+## Directed interval checks and cycle publication
+
+`inspectBodyInterval` adds the missing interval layer above `advanceBodyCommand`. It keeps
+one admitted numerical frame and privately removes coordinate bounds from continuation, so
+it can evaluate the far side of a crossing. It still applies all pose/branch constraints.
+The public result is a clear endpoint, a localized coordinate stop or proved geometric fold,
+or an explicit branch/unsolved refusal. Private outside poses never become cycle samples.
+An already-invalid starting bound refuses rather than becoming a new stop event.
+
+At a regular pose, solve the analytic body rates with command speed 1 and acceleration 0.
+For any passive coordinate g, its probe slope is grad(g)·x′ and its second derivative is
+`grad(g)·x″ + gamma_g(x′)`. `bodyCoordinateMotion` also serves future coordinate sample readers;
+it includes both body frames and the rotating guide terms. Directly commanded coordinates
+have probe slope 1, and a coordinate internal to one rigid group has slope 0 even when other
+parts' instantaneous rates are unavailable.
+
+Regular interval leaves limit commanded/individual body angular change to 0.1 scaled units.
+Midpoint values and slopes are compared with the endpoint cubic Hermite interpolant; an
+unbracketed predicted derivative root forces subdivision. Real derivative sign brackets in
+each half locate interior stationary points using continued poses, and every lower/upper
+bound is tested at the ordered knots. Thus a carriage x=R cos(theta) cannot cross a stop and
+reenter unseen merely because both requested endpoints are safe. A maximum touching the stop
+and returning inside stays clear. Crossing refinement retains the last inside pose and checks
+its bound residual, with coincident contacts evaluated at that same selected pose and sorted
+by stable limit ID. Contact localization does not depend on limit enumeration.
+
+A shallow stop exposed why event probes need more accurate poses than ordinary drawing
+samples. With a maximum only 1e-7 beyond the bound, the previous 1e-10 normalized pose residual
+moved the computed crossing angle by about 4.28e-7 radians. Event probes now polish to 1e-13;
+`relaxBodyPosition` keeps its ordinary 1e-10 default. The unchanged eight-decimal crossing-angle
+assertion passes. This is local event refinement, not a global relaxation of solver tolerances.
+
+At a proved input fold, command derivatives may diverge. The final geometric leaf instead
+uses the oriented nullspace tangent of the still-regular passive curve for endpoint slope
+signs and refines until scaled translations/angular changes are at most 1e-5. These slopes
+are private event evidence, never published velocities. Nonbinding coordinate limits remain
+checked at the fold; a tighter passive bound wins earlier. Budgets (4096 probes, depth 40 by
+default) return unsolved; exhausting a search is not a physical reversal. This adaptive
+sampling and local curve treatment is numerical evidence, **not a formal interval-arithmetic
+proof for arbitrary nonlinear motion**. Keep adversarial extrema/branch tests in the S3 gate.
+
+`buildBodyCycle` explores each direction from the original admitted state. An angular branch
+can close only after a complete commanded turn and a body-pose closure check (angles modulo
+2pi, translations in the numerical frame). A bounded rocking cycle explores both stops,
+then reuses accepted geometry in reverse order. It never readmits a singular stop or solves
+an arbitrary new return branch. Time increments by absolute command travel / absolute speed;
+negative speeds choose the first direction without changing elapsed-time sign. Initial stops
+own the cycle seam and do not insert zero-duration duplicate samples. A sample/turn budget
+refuses the cycle entirely instead of publishing a truncated loop. Unbounded linear motion or
+one-sided nonperiodic travel does not become an invented periodic animation.
+
+The cycle's pose maps, tangents, stop records and sample array are immutable copies.
+`bodyCycleInputs` adds revision/partition/index/time/command/direction stamps, immutable command
+and motion maps, and recomputes rates at each regular sample with its signed physical speed.
+At a reversal the rate result is explicitly unavailable; dynamic force frames report reversal,
+while statics may still be evaluated. At an isolated singular sample with a retained geometric
+branch, rank refusal does not erase position or leak a previous rate map. The next regular
+sample gets a fresh solve. A cycle cannot be stamped for a different partition.
+
+The complete document-wide SimulationSnapshot, material/attachment/coordinate read accessors,
+fixed-foundation context selection and policy integration still belong to S3.
+
+An additional probe found that a nonbinding passive angle limit still refused at an isolated
+singular **non-fold** pose (134 probes, unsolved). These samples do not have the fold's regular
+one-dimensional passive tangent. They now use a small geometric enclosure when derivative
+probes are unavailable. The leaf must have translation/angle radii at most 1e-5 scaled units,
+and every bound must lie outside an enclosure expanded to twice the observed radii. For angle,
+variation is bounded by the sum of the two angular radii. For travel u·d, use
+|u'·d'−u·d| <= |d'−d| + |u'−u| |d|, including both anchor rotations. This bounds the coordinate
+inside that local pose box without assigning a velocity. As with other adaptive leaves, the
+sampled curve's enclosure is numerical evidence rather than a global interval proof. A
+nearby bound does not pass this clearance test. The tracked regression clears the nonbinding
+limit, still finds a stop 1e-7 radians before the singularity, and keeps analysis rates
+unavailable at the singular pose. Full-turn cycle tests now cover both limited and unlimited
+variants; a bound that cannot be cleared or localized still yields unsolved, not a reversal.
