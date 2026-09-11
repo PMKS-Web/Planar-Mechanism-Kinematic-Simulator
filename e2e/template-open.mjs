@@ -50,7 +50,7 @@ const openTemplates = async (page) => {
 const page = await context.newPage();
 page.setDefaultTimeout(15000);
 newPages = 0; // ignore the page we created ourselves
-const BASE = process.env.PMKS_BASE_URL ?? process.env.PMKS_URL ?? 'http://127.0.0.1:4200/';
+const BASE = process.env.PMKS_BASE_URL ?? process.env.PMKS_URL ?? 'http://localhost:4200/';
 await page.goto(BASE, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
 await page.waitForTimeout(600);

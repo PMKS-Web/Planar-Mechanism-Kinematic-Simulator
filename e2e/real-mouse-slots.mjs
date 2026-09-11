@@ -24,7 +24,7 @@ const { chromium } = await import(
 
 const MOUSE = process.env.MOUSECTL;
 if (!MOUSE) throw new Error('set MOUSECTL to the compiled e2e/tools/mousectl.swift');
-const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
+const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const OUT = 'artifacts/real-mouse';
 mkdirSync(OUT, { recursive: true });
 

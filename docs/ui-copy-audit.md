@@ -1,10 +1,13 @@
 # What the app says, and how it says it
 
+> **Status:** Built — most proposals were applied, and later redesigns overtook a few (the right-click menu is now a ladder). For the rules that came out of it, follow `docs/ui-vocabulary.md`.
+
 An inventory of every string a user can read — context-menu items, panel labels,
 tooltips, snackbars, and the messages the model produces when it refuses
 something — with the inconsistencies called out and a proposal for each.
 
-This is a proposal, not a change. Nothing here has been applied.
+It was written as a proposal and most of it has since been applied, so the *Now* columns describe
+the app as it was.
 
 The project has been written by several hands over several years and it shows in
 the words more than anywhere else in the code: three different verbs for adding

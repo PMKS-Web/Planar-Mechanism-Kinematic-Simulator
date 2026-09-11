@@ -14,7 +14,7 @@ import path from 'node:path';
 const screenshotDir = path.resolve('artifacts/screenshots');
 await fs.mkdir(screenshotDir, { recursive: true });
 
-const baseUrl = process.env.PMKS_BASE_URL || process.env.PMKS_URL || 'http://127.0.0.1:4200/';
+const baseUrl = process.env.PMKS_BASE_URL || process.env.PMKS_URL || 'http://localhost:4200/';
 const runPrefix = process.env.RUN_PREFIX || 'force-panels';
 const chromePath =
   process.env.PMKS_CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
@@ -235,7 +235,10 @@ try {
   );
 
   // Flip the shared setting to dynamic from the joint side.
-  await page.locator('.forceModeRow segmented-block button', { hasText: 'In-motion' }).first().click();
+  await page
+    .locator('.forceModeRow segmented-block button', { hasText: 'In-motion' })
+    .first()
+    .click();
   await page.waitForTimeout(1500);
   await shot('03-joint-dynamic.png');
   const afterFlip = await toggleLabels();

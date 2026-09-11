@@ -16,7 +16,7 @@ import { waitForReady } from './app-ready.mjs';
 import { startQuiet } from './quiet-start.mjs';
 import { filmstrip, contactSheet } from './filmstrip.mjs';
 
-const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
+const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
 
 const browser = await chromium.launch();

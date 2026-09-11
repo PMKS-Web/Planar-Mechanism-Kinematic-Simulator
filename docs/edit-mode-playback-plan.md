@@ -1,9 +1,11 @@
 # Playback in Edit mode — softening the wall between editing and watching
 
+> **Status:** Built — all three phases shipped (`model/edit-permission.ts`, `model/mechanism/anchor.ts`). Gates checked by `e2e/edit-playback.mjs` and `e2e/posed-editing.mjs`.
+
 **Purpose:** decide how PMKS+ can allow playback inside Edit mode, and later allow edits at any
 paused pose, without corrupting the saved design, the undo history, or shared URLs.
 
-**Status: all three phases are built.** This began as a planning document and is kept as the
+This began as a planning document and is kept as the
 record of *why* the code is shaped the way it is — the audit of what the code did before, the
 design decisions, the trade-offs, and the build order. Read it that way: where it says "will",
 it now describes what does happen.
