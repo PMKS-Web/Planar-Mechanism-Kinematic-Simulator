@@ -19,7 +19,7 @@
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
 | S2 | Complete | Native compiler, analytic Jacobians, mobility/admission, branch continuation, folds, limits and frame conditioning. Seven native/legacy and four native/MATLAB comparisons retain the original ceilings. Geometric redundancy, two slots on a carrier and one-pin/shared-WORLD cases pass. Combined S2/initial-rate gate: 255 tests / 37 files; current-editor browser gate is green. Continuous cycle event publication remains an explicit S3 obligation. |
 | S3 | Complete | Native rates/forces, immutable results, interval/cycle/window publication, all five hand-derived cylinder examples and native/MATLAB positions/rates. F2 reviewed d842ffd and all findings resolved below. Final full gate: 2682 tests / 285 files; host build passes; ui-copy 17/17 with zero console errors. Earlier S3 browser and live-incognito evidence remains recorded. Native UI cutover is S5–S6, not claimed here. |
-| S4 | In progress | Native core-record codec implemented and tested. Complete project metadata, production import, transactions/lifecycle/history and F3 remain. F2 is resolved; no public-route cutover yet. |
+| S4 | In progress | Native core codec and initial structural transaction/lifecycle/history service implemented and tested. Complete authored metadata, remaining editing operations, posed re-anchoring, production import, recovery and F3 remain. F2 is resolved; no public-route cutover yet. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
 | S6 | Pending | All consumers, synthesis, tutorial, fixtures/templates and default cutover. |
 | S7 | Pending | Removal manifest closed and performance budget met. |
@@ -1233,3 +1233,61 @@ codec facade and history/recovery. Build native lifecycle fixtures through those
 save/reopen them. Run S4's full named unit/browser gates and F3 before native UI work. The
 current codec is not wired into UrlProcessorService or public templates, and no legacy or
 native drawing has been silently converted in place. S5–S8 remain unchanged requirements.
+
+
+## S4 structural transactions, lifecycle and local history
+
+The core codec checkpoint is **d8bb9e6**. This slice adds `planBodyEdit`,
+`BodyDocumentAuthority` and the inactive `NativeBodyDocumentService` facade. They accept one
+command, compute a complete candidate, validate its physical records and drawn constraints,
+and publish one immutable document/change/history entry. Commit replans stale previews;
+refusal and no-op publish nothing. Local selection/independent clocks are history metadata,
+not shared drawing data. Updating local playback state retains the design document identity.
+
+Current commands cover insertion, exact deletions, joint-kind changes and explicit aggregate
+mass reset. This is **not complete S4 editing**: pose/geometry/property/driver operations,
+copy/remap and paused-pose re-anchoring still need implementation. Capture operations currently
+require the start pose through the existing permission model; this temporary restriction must
+not survive as a regression in the native public editor. No UI consumer has switched authority.
+
+Lifecycle behavior now has direct native-command assertions:
+
+- All six construction orders of three cylinders sharing a pin, deleting each cylinder, and
+  deleting the junction itself. A native junction is a connection bundle: removing it keeps
+  physical bodies and all three assemblies. Removing a cylinder preserves the other two and
+  reconnects their surviving pin attachments after loss of the original hub.
+- Explicit edge removal happens before lost-hub connectivity is collapsed. A combined body
+  and connection deletion must not reconstruct the connection the author removed. An unweld
+  at the same point retains attachment and bundle IDs; a different point creates new anchors.
+- A selected welded group owning two cylinders deletes both complete assemblies; brackets in
+  their opposite groups survive. A slot always keeps its actual material owner and never moves
+  to a lookalike sharing its two ends. Loads, locks, holds, traces and valid selections follow
+  actual retained records. No native fewer-than-two-pins garbage collection exists.
+- Continuing groups retain paint/name, true splits restore member presentation, and merging
+  honors the explicit target before stable size/ID precedence. Aggregate mass is never invented
+  on split or nonzero-inertia membership change; an explicit reset can be in the same batch.
+  Losing a zero-contribution frame member reexpresses custom CoM in the surviving frame.
+  Zero mass with nonzero inertia is still a physical contribution.
+- New annotations reach validation even when invalid; they cannot be silently discarded by
+  lineage. Empty overrides and unaffected singleton annotations survive no-ops unchanged.
+- Converting P to pin-in-slot honors the actual guide owner, including reversed coordinate,
+  speed and limit signs. Removed driven/limited coordinates require an explicit decision.
+  Welding the two sides of an actively driven coordinate refuses even if the drawn pose fits.
+
+These assertions cover small construction-order enumeration and targeted reversed arrays;
+independent Cartesian permutations of body/joint/label/member order and all named legacy
+lifecycle ports remain part of the full S4 gate. The native save/reopen lifecycle matrix,
+production import and native recovery facade also remain pending.
+
+Verified evidence (Node 24.18.0, logs under `artifacts/bodies-and-joints/`):
+
+- `S4-structural-final-unit.log`: **2716 tests / 293 files pass**.
+- `S4-structural-final-build.log`: production build passes, existing CommonJS warnings only.
+- Four intentional defect mutations fail their intended assertions and were restored before
+  the final suite: `S4-mutation-explicit-pin-delete.log`, `S4-mutation-pin-identity.log`,
+  `S4-mutation-annotation-drop.log`, `S4-mutation-rigid-drive.log`. The last reports one expected
+  failure / five passes, observing an erroneously accepted driven weld, not a compile failure.
+- The owned server's cwd and HTTP 200 were rechecked at localhost:4307. `S4-structural-ui-copy.log` reports **17/17 pass**, zero console errors; this unchanged legacy page is not evidence of native browser editing.
+
+F3 has not been requested; spending/reservations are unchanged. Next: complete authored project
+state and remaining commands, then production import and recovery integration before F3/S5.
