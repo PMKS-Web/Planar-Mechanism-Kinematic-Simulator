@@ -13,6 +13,7 @@ const MESSAGES: Record<Exclude<BodyEditCode, 'permission'>, string> = {
   'aggregate-properties': 'Use member mass properties before changing this welded group.',
   'ambiguous-load-owner':
     'Choose a material owner for this force before splitting its welded group.',
+  'unsolved-edit': 'This move could not preserve the connected geometry. Try a smaller move.',
   'held-dimension': 'Release the fixed length or angle before changing that dimension.',
   'locked-position': 'Unlock the selected position before moving it.',
   'invalid-command': 'This change is not valid for the selected objects.',

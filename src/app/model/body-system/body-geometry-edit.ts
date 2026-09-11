@@ -60,7 +60,19 @@ export function editBodyGeometry(
   const bodyId = operation.kind === 'body-geometry' ? operation.bodyId : attachment!.bodyId;
   const body = document.bodies.find((item) => item.id === bodyId);
   if (!body) return bodyEditRefusal('missing-target');
-  if (body.kind === 'world') return bodyEditRefusal('immutable-world');
+  if (body.kind === 'world') {
+    if (operation.kind !== 'attachment-position') return bodyEditRefusal('immutable-world');
+    if (!finitePoint(operation.point)) return bodyEditRefusal('invalid-command');
+    return {
+      ok: true,
+      document: {
+        ...document,
+        attachments: document.attachments.map((point) =>
+          point.id === operation.attachmentId ? { ...point, point: operation.point } : point
+        ),
+      },
+    };
+  }
   const cylinder = document.assemblies.find(
     (item) => item.barrel === bodyId || item.rod === bodyId
   );

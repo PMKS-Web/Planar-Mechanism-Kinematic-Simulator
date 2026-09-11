@@ -1503,3 +1503,71 @@ reparameterize input commands. Coordinate/drive edits, cylinder dimensions and a
 holds, unit conversion, copy/remap, production import/recovery, the full independent lifecycle
 matrix and named S4 browser gates remain required before F3. Fable spending/reservations are
 unchanged. S5–S8 and substantial obsolete-runtime removal remain pending; no push/publication.
+
+
+## S4 connected point proposals and exact edit derivatives
+
+The preceding geometry checkpoint is **5097c94**. This slice adds the native `move-point`
+command and its connected geometry/pose proposal solver. S4 remains **in progress**. No native
+UI cutover or paid review occurred; F3 remains after the complete S4 gate.
+
+- A point command captures the requested authored world coordinate. Exact placement must
+  reach it; pointer projection can follow available local motion. Both use canonical geometry
+  operations inside the existing one-document transaction. A stale preview retains the original
+  command, so a weld inserted before commit is included in the replanned rigid-group move.
+- The model closes binary R attachment relationships, explicit vertex bindings and holds,
+  then follows connected bodies without using WORLD as a bridge. Requested ground anchors
+  can move, while unrequested ground anchors remain fixed. This corrects the preceding
+  canonical primitive's overly broad WORLD-attachment refusal; the WORLD frame stays immutable.
+- R/P/slot, drive, hold and lock rows use exact first derivatives of changing local geometry
+  and rigid poses. Welded/cylinder material moves through condensed rigid frames, with a
+  geometry-centered normalized motion metric. Independent body/joint/attachment order and
+  opaque ID changes do not pick another answer in the 16-way three-cylinder junction test.
+- A length-held bar's actual bound ends imply rigid material motion, so its off-axis witness
+  follows its rotation. Holds between unbound points still permit local geometry changes.
+  The Jacobian fixture explicitly keeps that latter case mutable; otherwise a rigid length
+  row would no longer test the local-geometry derivative its name promised.
+- Correction/projection are bounded searches and refuse on exhaustion. A zero tangent step
+  with remaining pointer error checks nearby feasible directions, catching the stationary
+  maximum at the opposite side of a held circle. Projection can seed exact placement but
+  cannot substitute for reaching the typed coordinate. Refusals create no partial history.
+- Material rebasing now also rotates a body-frame force's stored zero-magnitude heading.
+  A body/world-frame zero-force test, including a lock, checks both world arrow ends.
+
+The new four-file, 18-test set includes hand-derived held-circle positions and off-axis
+witnesses, exact versus projected refusal, antipodal targets, explicit versus unrequested
+ground edits, three-way R closure, an unbound welded tracer, a cylinder's accepted travel and
+rejected stop, stale previews after a weld, rigid local-shape retention, all three row families
+against central differences, enumeration/opaque ID permutations, scales 1e-5/1/1e5, translated
+oblique poses and material-frame rebasing. The geometry fixture now supports explicit scale
+and pose without changing its default construction. These source fixtures still await native
+UI/gallery integration; they are not browser acceptance evidence.
+
+Verification in `artifacts/bodies-and-joints/` (Node 24.18.0):
+
+- `S4-point-full-unit.log`: **2767 tests / 301 files pass**, session 89844 exit 0, including
+  the corrected mutable-geometry derivative fixture.
+- `S4-point-build.log`: production build passes, session 50280 exit 0; existing CommonJS
+  warnings only. Touched TypeScript files are formatted; whitespace checks pass.
+- `S4-point-mutation-held-material.log`: disabling held-bar rigidity produces the intended
+  **3 failed / 9 passed** assertions, leaving off-axis witnesses behind.
+  `S4-point-mutation-stationary-maximum.log`: disabling the improving-direction probe produces
+  the intended **1 failed / 11 passed**, accepting the farthest point. Both mutated source
+  sites were confirmed restored before the final full suite. The mutation runner's session
+  was no longer available after context restoration; the retained logs provide its test
+  outcomes, and the subsequent full suite verifies the restored files.
+- `S4-point-projection-initial.log` retains the initial projection convergence failure; it
+  was corrected before the passing focused/full suites, not counted as passing evidence.
+- `S4-point-ui-copy.log`: **17/17**, zero console errors, against the owned localhost:4307
+  server (PID 13660, correct worktree cwd and HTTP 200 verified). Repository Playwright was
+  used via `PMKS_PLAYWRIGHT_DIR=..`. This still exercises the unchanged legacy UI only.
+
+**Required next:** displayed-frame mapping and anchor-preserving paused edits; coordinate and
+drive edits, cylinder dimensions/assembly holds, active travel projection policies and gesture
+continuation; independent-clock integration, unit conversion and typed copy/remap; production
+import/recovery and the complete native lifecycle/save-reopen matrix; named S4 browser gates
+and F3. This local projection does not claim a global nearest solution or completed branch-
+continuous gesture semantics. Do not simply lift the temporary shared start-pose guards.
+S5/S6/S8 retain both Playwright filmstrips and standard Codex computer use in incognito Chrome,
+as recorded in CLAUDE.md and the plan. Review spending/reservations remain unchanged; S5–S8
+and substantial obsolete-runtime removal remain pending. Nothing was pushed or published.

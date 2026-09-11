@@ -1,3 +1,4 @@
+import { BodyPointMove } from './body-point-edit';
 import { BodyGeometryOperation } from './body-geometry-edit';
 import { BodyPropertyOperation } from './body-property-types';
 import { BodyProjectSettings, BodyProjectView, BodySynthesisDesign } from './body-project';
@@ -45,6 +46,7 @@ export type BodyInsertRecords = Partial<
 export type BodyEditOperation =
   | BodyPropertyOperation
   | BodyGeometryOperation
+  | BodyPointMove
   | {
       readonly kind: 'project';
       readonly settings?: BodyProjectSettings;
@@ -86,7 +88,8 @@ export type BodyEditCode =
   | 'connection-point'
   | 'drive-in-rigid-group'
   | 'locked-position'
-  | 'held-dimension';
+  | 'held-dimension'
+  | 'unsolved-edit';
 export interface BodyEditRefusal {
   readonly ok: false;
   readonly code: BodyEditCode;
