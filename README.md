@@ -601,7 +601,8 @@ tracked files, which hostname the dev server answers on — is in
 - **Automatic publishing to production is paused in Netlify.** Nothing reaches app.pmksplus.com
   until someone publishes it by hand, so being on `main` does not mean being live.
 - Every other branch publishes to `https://[BRANCHNAME]--pmksnew.netlify.app`.
-- CI runs the unit suite, the production build and `git diff --check` on every pull request.
+- CI runs ESLint, a Prettier check, the unit suite, the production build and `git diff --check` on
+  every pull request, and a pull request into `staging` or `main` cannot merge until it passes.
 - The `version` in `package.json` is what Settings shows to a user; raise it in the PR that ships
   a release.
 

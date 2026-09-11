@@ -7,8 +7,13 @@ Three things hold the line, in order of how much they catch:
 
 - **Review**, against this page.
 - **`npm run lint`** (ESLint, `eslint.config.mjs`) — a few targeted rules, listed
-  [at the end](#what-the-linter-enforces). CI runs it right after `npm ci`.
-- **Prettier** (`.prettierrc`) for layout. Nobody should argue about layout in a review.
+  [at the end](#what-the-linter-enforces).
+- **Prettier** (`.prettierrc`) for layout, checked by `npm run lint:format`. Nobody should argue
+  about layout in a review.
+
+Both run in CI on every pull request, and a pull request cannot merge into `staging` or `main`
+until that check passes. A repository ruleset enforces it; only a repository admin can override,
+and that is for emergencies.
 
 ---
 
@@ -132,8 +137,11 @@ visible name, not its internal id; `turnsClockwise`, not `isNegative`.
 
 Prettier owns layout: 100-character width, single quotes, 2-space indent (`.prettierrc`).
 
-- `npm run format:check` reports; `npm run format` fixes. Prettier is pinned in
-  `devDependencies`, so everyone gets the same output.
+- `npm run lint:format` checks `.ts`, `.html` and e2e `.mjs`, and CI fails a pull request on it.
+  `npx prettier --write <file>` fixes a file. Prettier is pinned in `devDependencies`, so everyone
+  gets the same output.
+- `.scss` is not checked yet: a few stylesheets predate the config. It joins the check once they
+  are formatted.
 - Markdown is excluded on purpose (`.prettierignore`). Prettier realigns every table cell and
   rewrites emphasis, so a one-line doc edit becomes hundreds of changed lines.
 - The TypeScript and HTML under `src/` were reformatted in one commit. That commit is listed in
