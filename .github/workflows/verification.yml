@@ -32,6 +32,9 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
+      - name: Lint stylesheets
+        run: npm run lint:styles
+
       - name: Run unit and verification tests
         run: npm test -- --watch=false
 
