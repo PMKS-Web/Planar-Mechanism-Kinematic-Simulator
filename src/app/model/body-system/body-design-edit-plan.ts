@@ -1,3 +1,9 @@
+import {
+  BODY_INSERT_TABLES as TABLES,
+  insertBodyRecords,
+  insertedBodySelection,
+} from './body-insert-records';
+import { planBodyCopy } from './body-copy-edit';
 import { editBodyPoint } from './body-point-edit';
 import { convertBodyUnits } from './body-unit-edit';
 import { editBodyDrive, isBodyDriveOperation } from './body-drive-edit';
@@ -10,7 +16,12 @@ import { isBodyPropertyOperation, editBodyProperties } from './body-property-edi
 import { retainPinConnections } from './body-pin-lifecycle';
 import { editBodyProject } from './body-project-edit';
 import { BodyDocument } from './body-document';
-import { BodyEditCommand, BodyEditContext, BodyEditResult } from './body-edit-types';
+import {
+  BodyEditCommand,
+  BodyEditContext,
+  BodyEditResult,
+  BodySelectionRef,
+} from './body-edit-types';
 import { bodyEditRefusal } from './joint-permission';
 import { deleteBodyRecords } from './body-delete-plan';
 import { bodyGroupLineage } from './body-group-lineage';
@@ -19,20 +30,6 @@ import { bodyEditEffects, retainBodySelection } from './body-edit-effects';
 import { validateBodyEditDocument } from './body-edit-validation';
 import { snapshotCopy } from './sample-results';
 import { BodyId } from './body-id';
-
-const TABLES = [
-  'bodies',
-  'attachments',
-  'joints',
-  'junctions',
-  'assemblies',
-  'drivers',
-  'limits',
-  'forces',
-  'groups',
-  'holds',
-  'locks',
-] as const;
 
 /** One candidate and one final validation govern previews, bulk actions and commit alike. */
 export function planBodyDesignEdit(
@@ -86,21 +83,23 @@ export function planBodyDesignEdit(
         )
       )
         return bodyEditRefusal('invalid-command');
-      candidate = {
-        ...candidate,
-        ...Object.fromEntries(
-          TABLES.map((table) => [table, [...candidate[table], ...(operation.records[table] ?? [])]])
-        ),
-      };
+      candidate = insertBodyRecords(candidate, operation.records);
     }
   if (
     command.targetGroupMember &&
     !candidate.bodies.some((body) => body.id === command.targetGroupMember)
   )
     return bodyEditRefusal('missing-target', [{ kind: 'body', id: command.targetGroupMember }]);
-  const pinSource = candidate;
+  let pinSource = candidate;
+  const copiedSelection: BodySelectionRef[] = [];
   for (const [index, operation] of command.operations.entries()) {
-    if (operation.kind === 'joint-kind') {
+    if (operation.kind === 'copy-bodies') {
+      const copied = planBodyCopy(candidate, operation, `${command.id}:${index}`);
+      if (!copied.ok) return copied;
+      copiedSelection.push(...insertedBodySelection(copied.records));
+      candidate = insertBodyRecords(candidate, copied.records);
+      pinSource = insertBodyRecords(pinSource, copied.records);
+    } else if (operation.kind === 'joint-kind') {
       const changed = changeBodyJointKind(candidate, operation, `${command.id}:${index}`);
       if (!changed.ok) return changed;
       candidate = changed.document;
@@ -173,6 +172,9 @@ export function planBodyDesignEdit(
     document: candidate,
     changed: effects.added.length + effects.removed.length + effects.changed.length > 0,
     effects,
-    selection: retainBodySelection(candidate, context.selection),
+    selection: retainBodySelection(
+      candidate,
+      copiedSelection.length ? copiedSelection : context.selection
+    ),
   });
 }

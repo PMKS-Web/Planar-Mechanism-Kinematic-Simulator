@@ -19,7 +19,7 @@
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
 | S2 | Complete | Native compiler, analytic Jacobians, mobility/admission, branch continuation, folds, limits and frame conditioning. Seven native/legacy and four native/MATLAB comparisons retain the original ceilings. Geometric redundancy, two slots on a carrier and one-pin/shared-WORLD cases pass. Combined S2/initial-rate gate: 255 tests / 37 files; current-editor browser gate is green. Continuous cycle event publication remains an explicit S3 obligation. |
 | S3 | Complete | Native rates/forces, immutable results, interval/cycle/window publication, all five hand-derived cylinder examples and native/MATLAB positions/rates. F2 reviewed d842ffd and all findings resolved below. Final full gate: 2682 tests / 285 files; host build passes; ui-copy 17/17 with zero console errors. Earlier S3 browser and live-incognito evidence remains recorded. Native UI cutover is S5–S6, not claimed here. |
-| S4 | In progress | Native codec/project state, structural/property commands, connected point proposals, canonical geometry/pose primitives, whole-body locks, CoM edit mapping, captured display and constrained re-anchoring tested in slices. Full gesture/coordinate-pose/axis/copy edits, cylinder dimensions, production import/recovery, full lifecycle/service matrix and F3 remain. Stable-ID drive/working-limit commands and physical unit conversion are implemented and tested below. F2 is resolved; no public-route cutover yet. |
+| S4 | In progress | Native codec/project state, structural/property commands, connected point proposals, canonical geometry/pose primitives, whole-body locks, CoM edit mapping, captured display and constrained re-anchoring tested in slices. Full gesture/coordinate-pose/axis edits, cylinder dimensions, clipboard integration, production import/recovery, full lifecycle/service matrix and F3 remain. Stable-ID drive/working-limit commands, physical unit conversion and same-document copying with typed remaps are implemented and tested below. F2 is resolved; no public-route cutover yet. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
 | S6 | Pending | All consumers, synthesis, tutorial, fixtures/templates and default cutover. |
 | S7 | Pending | Removal manifest closed and performance budget met. |
@@ -1855,3 +1855,79 @@ silently inherit them or count the current headless tests as their UI verificati
 full gestures, typed copy/remap, bounded production 2.0.3 import and atomic recovery, complete
 lifecycle/service coverage and remaining named S4 browser gates, then F3. S4 remains in
 progress. No Fable call or spending change, no push or publication.
+
+
+## S4 continuation — copied material, annotations and exact source clocks (2026-09-11)
+
+Checkpoint based on `5e619d9`. `copy-bodies` is now a canonical transaction with explicit
+material selection, translation and ground inclusion. It closes a cylinder's ownership once,
+retains selected riders through an omitted multiway-pin hub, allocates all new IDs before
+mapping references, and selects the new assemblies/material. Partial imported load scopes
+and custom aggregates refuse atomically. Existing source material, synthesis ownership,
+project settings and camera are preserved.
+
+The typed remap covers all included material geometry/vertex bindings, custom CoM axes and
+anchors, group frames/properties, forces/couples/provenance, locks, holds, guide stations,
+pin bundles, cylinder roles, drivers and limits. WORLD is retained only as the explicit ground
+body; copied ground anchors get new IDs and the placement offset. A weld rest is recaptured
+for either WORLD pair order. Undo/Redo and native save/reopen preserve the copied identities;
+deleting a copy leaves the original cylinder, bracket, loads and drives intact.
+
+Self-review probes found and fixed five defects before this commit:
+
+1. A later joint-kind edit in a mixed batch discarded the newly copied pin bundle. The pin
+   lifecycle source now includes copied records as well as the original pre-kind graph.
+2. A copied grounded fabrication attempted a second annotation on the same WORLD weld group.
+   Existing presentation lineage governs that shared group; aggregate copying there refuses
+   until member-derived properties are selected.
+3. A paused copy needlessly solved the unchanged original back to its anchor, perturbing its
+   exact return-leg clock from 6 to 5.9999999999255 seconds. `unchangedBodyMotion` compares the
+   actual material, incident constraints, referenced boundary points, drives, limits and holds
+   before anchor recovery. Analysis may still be invalidated by the changed fixed group.
+4. Eleven copied materials changed raw ID sort order (body:10 before body:2), changing the
+   fallback name/paint of a copied weld group. Complete groups now capture their visible
+   presentation without rewriting the leaves' own presentation.
+5. The first presentation fix assumed groups had at least two members, dropping a valid
+   singleton mass/inertia/CoM override. Explicit singleton annotations are now retained too.
+
+Eleven command tests cover those defects, grounded/floating connections, oblique guide
+stations, source/reference isolation, custom mass/force/hold data, cylinder closure, paused
+return-leg copying, history, serialization, and table/selection permutations. The paused
+copy starts its new input at the captured pose while preserving every original authored body
+and the exact original clock. Geometry-changing edit and drive tests remain alongside it so
+that the unchanged-motion check cannot replace necessary anchor recovery.
+
+Evidence in `artifacts/bodies-and-joints/` (all process handles terminal):
+
+- `S4-copy-initial.log`: test-authoring TypeScript error using the codec write-result object
+  as a string, session 18477 exit 1. Corrected to unwrap the typed payload; not passing evidence.
+- `S4-copy-focused.log`: initial **5/5**, session 49637 exit 0.
+- `S4-copy-boundaries-initial.log`: **3 failed / 6 passed**, session 19592 exit 1, reproducing
+  the pin bundle, WORLD annotation and exact-clock defects above before their fixes.
+- `S4-copy-fixed-focused.log`: **24 tests / 3 files pass**, session 29957 exit 0, including
+  existing posed geometry and drive commands.
+- `S4-copy-mutation-center-axis.log` and `S4-copy-mutation-ground-weld.log`: deliberately
+  omitted CoM-axis remapping and WORLD-weld translation each fail intended runtime tests.
+  `S4-copy-mutations.log` records byte-for-byte restoration; runner session 62631 exit 0.
+- `S4-copy-identity-initial.log`: **1 failed / 9 passed**, session 91939 exit 1, proving the
+  fallback identity change before its fix.
+- `S4-copy-full-unit.log`: intermediate **2817 tests / 311 files pass**, session 2695 exit 0.
+- `S4-copy-singleton-initial.log`: **1 failed / 10 passed**, session 3904 exit 1, proving the
+  missing singleton override before its fix.
+- `S4-copy-final-full-unit.log`: final **2818 tests / 311 files pass**, session 63907 exit 0.
+- `S4-copy-build.log`: production build passes, session 62763 exit 0; existing CommonJS warnings.
+- `S4-copy-edit-undo.log`: all **6 assertions pass**, session 65816 exit 0.
+- `S4-copy-ui-copy.log`: **17/17**, zero console errors, session 53752 exit 0.
+
+The browser checks used repository Playwright on the verified owned localhost:4307 server;
+PID 13660's working directory and HTTP 200 were rechecked before running them. They are
+unchanged legacy-route regressions, not native clipboard/UI or animation evidence. This
+checkpoint adds no live renderer; both browser workflows and the specified native filmstrips
+remain required at S5/S6/S8. Touched TypeScript formatted; whitespace checks pass.
+
+**Next required:** integrate clipboard capture/cross-document units/paste through the native
+facade using these same maps, coordinate pose/axis and cylinder-dimension commands, active
+travel projection/full gestures, bounded production 2.0.3 import and atomic recovery,
+complete lifecycle/service coverage and remaining named S4 browser gates, then F3. Preview
+performance must still be measured at native UI integration. S4 is not complete; no Fable
+review was solicited and spending is unchanged. No push or publication.

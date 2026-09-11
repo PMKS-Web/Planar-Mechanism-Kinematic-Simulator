@@ -1,3 +1,4 @@
+import { unchangedBodyMotion } from './body-unchanged-motion';
 import { restoreBodyPartitionAnchor } from './body-anchor-partition';
 import { BodyDocument } from './body-document';
 import { BodyEditFrame } from './body-edit-frame';
@@ -71,6 +72,17 @@ export function reanchorBodyEdit(
     anchors.push({ driverId: id, status, previous: old?.anchor, anchor: driver.profile.initial });
   };
   for (const part of after.system.partitions) {
+    const oldPart = before.system.partitions.find((item) => item.key === part.key);
+    if (unchangedBodyMotion(displayed, proposed, oldPart, part)) {
+      part.materialIds.forEach((id) =>
+        poses.set(id, source.bodies.find((body) => body.id === id)!.pose)
+      );
+      for (const driver of part.drivers) {
+        const old = frame.clocks.find((clock) => clock.driverId === driver.id);
+        if (old) clocks.set(driver.id, old);
+      }
+      continue;
+    }
     if (!part.materialIds.some((id) => affected.has(id))) {
       for (const driver of part.drivers) {
         const old = frame.clocks.find((clock) => clock.driverId === driver.id);
