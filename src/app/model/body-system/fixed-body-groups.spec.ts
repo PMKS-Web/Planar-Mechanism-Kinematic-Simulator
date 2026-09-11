@@ -124,6 +124,37 @@ describe('passively fixed native frames', () => {
     }
   });
 
+  it('keeps a proved foundation available beside an inconsistent attached branch', () => {
+    const fixture = nativeTwinCranksOnPinnedFrame();
+    const f = new BodyFactory(fixture.document);
+    const pose = fixture.document.bodies.find((body) => body.id === fixture.frame)!.pose;
+    const bad = f.body('inconsistent branch', pose, [
+      { x: 0, y: 0 },
+      { x: 4, y: 0 },
+    ]);
+    for (const x of [0, 4])
+      f.joint('revolute', f.attachment(fixture.frame, { x, y: 0 }), f.attachment(bad, { x, y: 0 }));
+    const extra = f.joint('revolute', f.attachment(WORLD, pose), f.attachment(bad, { x: 0, y: 0 }));
+    const document = {
+      ...f.document,
+      attachments: f.document.attachments.map((item) =>
+        item.id === extra.frameA.attachmentId
+          ? { ...item, point: { ...item.point, x: item.point.x + 0.01 } }
+          : item
+      ),
+    };
+    const system = compile(document);
+    expect(system.groups.get(fixture.frame)!.fixed).toBe(true);
+    expect(system.groups.get(bad)!.fixed).toBe(false);
+    expect(system.partitions.length).toBe(3);
+    for (const crank of fixture.cranks) {
+      const part = system.partitions.find((item) => item.materialIds.includes(crank.body))!;
+      expect(admitBodyPartition(system, part).ok).toBe(true);
+    }
+    const badPart = system.partitions.find((item) => item.materialIds.includes(bad))!;
+    expect(admitBodyPartition(system, badPart).ok).toBe(false);
+  });
+
   it('does not discard an inconsistent support while identifying a frame', () => {
     const fixture = nativeTwinCranksOnPinnedFrame();
     const badAnchor = fixture.supports[1].frameA.attachmentId;

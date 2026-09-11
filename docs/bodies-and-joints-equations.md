@@ -321,21 +321,44 @@ must supply the complete accepted series and retain each sample's provenance.
 
 ## Material frames fixed by passive joints
 
-WORLD weld membership is not the only way to hold a body fixed. A material bar with two
-distinct ground pins has no motion, and independent machines attached to that bar must not
-be joined into one clock. `fixedBodyGroups` iteratively marks a group fixed when its passive
-rows to already-fixed groups have a consistent drawn pose and a full-rank three-column
-Jacobian. It uses local solve frames and the existing physical row/column scaling; command
-rows are excluded. This changes only derived fixedness, never material/weld membership or
-the identity and force channels of the support joints. Retained fixed rows, drives and limits
-still pass fixed admission, now in a locally conditioned frame.
+WORLD weld membership is not the only way to hold material fixed. The single-body test
+still marks a body when consistent passive relations to known ground have rank three. This
+preserves independent valid foundations beside faulty attached branches. When that propagation
+stalls, `fixedBodyGroups` now tests connected passive candidate sets, excluding command rows.
+It uses the same local solve frame, row/column scaling, QR rank and residual tolerances.
 
-Full rank against already-fixed neighbors is a sufficient local isolation test. A body with
-zero instantaneous speed somewhere in a moving mechanism does not satisfy this test merely
-because it is at a turning point. Coincident redundant ground pins retain rank two and allow
-rotation. The implementation does not yet discover every possible collectively rigid
-multi-body foundation with no individually fixed member; that case remains an explicit
-partition audit before S3 closure, not a claim of general rigid-core decomposition.
+For a candidate C, retain only rows whose two endpoints lie in C or known fixed boundary.
+A consistent Jacobian of full column rank 3|C| proves its drawn pose locally isolated: a
+full-rank square subset has an isolated zero by the inverse function theorem, and the remaining
+rows also hold. Mark those groups fixed without changing material/weld ownership. A deficient
+candidate is pruned by removing every body with a nonzero component in any scaled nullspace
+basis vector. Rebuild the rows after removing those bodies, and repeat. The 1e-8 null-component
+cutoff selects candidates only; no candidate is accepted without the independent full-rank
+and residual checks. Every iteration either removes a body or returns; no iteration cap can
+silently certify a body. The outer propagation stops when no new group is proved fixed.
+
+A crank-rocker at its turning point illustrates why the repeated proof matters. The rocker
+has zero instantaneous velocity while crank and coupler move. After those moving bodies and
+their rows leave the candidate, the rocker has only its ground pin, rank two, and stays
+movable. This also holds when its ground pins belong to a collectively rigid foundation.
+Singular isolated structures with deficient first-order rank are not certified by this method;
+a collinear two-bar foundation remains subject to ordinary admission. Inconsistent candidates
+remain unclassified, with all their original rows retained for admission. This is a sufficient
+regular-rigidity test, not a nonlinear proof for every singular structure.
+
+Two worked passive cores test beyond individual-body and pair shortcuts: a triangle with two
+material bars pinned at (0,0), (4,0), and a common apex (1,2); and a platform on three RR struts.
+The latter's strut directions yield vx=0, vy+2ω=0, vx+vy−2ω=0 at the platform, forcing all three
+platform rates to zero and then fixing the struts. Both carry independent cranks and retain
+all physical support channels. Rebase, scale, unit and enumeration checks preserve the two
+clocks and material identities. A nonzero command on a fixed core still refuses as fixed-drive.
+
+For the loaded triangle with gravity zero and two 10 N downward crank-tip loads, let H=(Hx,Hy)
+be the apex force on the left bar and θL,θR the crank headings. Moments about each ground pin
+give Hy−2Hx=5+10cosθL and 3Hy+2Hx=−15+10cosθR. Thus Hy=2.5(cosθL+cosθR−1),
+Hx=(Hy−5−10cosθL)/2, with ground forces (−Hx,10−Hy) and (Hx,10+Hy). The component snapshot
+matches these forces and the apex moments transported to each material origin; removing either
+crank sample refuses this shared foundation instead of publishing a partial balance.
 
 A per-machine force frame publishes its reaction on the shared material frame. Its ground
 supports and internal frame welds return `frame-context`: their complete reactions need

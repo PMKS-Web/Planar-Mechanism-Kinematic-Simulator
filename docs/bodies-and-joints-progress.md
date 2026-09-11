@@ -18,7 +18,7 @@
 | S0 | Baseline complete | Six unit suites pass (182 tests), seven new compatibility tests pass, build passes, template-open 11/11, template-graphs 3978/3978, ui-copy 17/17. Timing, visual baseline and operation-level consumer classification are recorded. Existing drag timing failures are reproduced on original test files, not waived; S7 must meet the measured comparison budget. |
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
 | S2 | Complete | Native compiler, analytic Jacobians, mobility/admission, branch continuation, folds, limits and frame conditioning. Seven native/legacy and four native/MATLAB comparisons retain the original ceilings. Geometric redundancy, two slots on a carrier and one-pin/shared-WORLD cases pass. Combined S2/initial-rate gate: 255 tests / 37 files; current-editor browser gate is green. Continuous cycle event publication remains an explicit S3 obligation. |
-| S3 | In progress | Analytic rates, moving/fixed-group forces, material/weld recovery, immutable force frames and series support-policy selection implemented and initially verified. Passive frame bars no longer join independent clocks. Latest native/reference/frame-force gate: 308 tests / 51 files; build passes; latest unchanged-editor ui-copy 17/17. Fixed component availability implemented. Collective rigid-core audit, full sample schema, cycle events, remaining worked examples, full gates and F2 are pending. |
+| S3 | In progress | Analytic rates, moving/fixed-group forces, material/weld recovery, immutable force frames and series support-policy selection implemented and initially verified. Passive frame bars no longer join independent clocks. Latest native/reference/frame-force gate: 316 tests / 52 files; build passes; latest unchanged-editor ui-copy 17/17. Fixed component availability and regular collective foundations implemented. Full sample schema, cycle events, remaining worked examples, full gates and F2 are pending. |
 | S4 | Pending | Native transactions, codec/import, lifecycle, history and F3. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
 | S6 | Pending | All consumers, synthesis, tutorial, fixtures/templates and default cutover. |
@@ -723,3 +723,55 @@ velocity alone is unsafe at a rocker turning point. Then complete immutable simu
 continuous interval/stop/reversal publication, stable fixed-support policies across those
 samples, remaining hand-derived examples/reference rates, the full S3 gate and F2. **S3 remains
 in progress; S4–S8 remain pending.** No paid review ran; spending is unchanged.
+
+
+## S3 collectively rigid foundations
+
+The previous pending force work is committed as `75e3459`. This turn then reproduced the
+next documented gap before changing the compiler: two ground-pinned bars joined at an apex
+remained movable, incorrectly joining their independently driven cranks. The new fixture's
+fixed-foundation assertion and fixed-drive refusal failed against that committed implementation
+(`S3-collective-fixed-before.log`); the ordinary turning-point guard passed.
+
+`fixedBodyGroups` retains single-body propagation first, preserving a proved foundation beside
+an inconsistent attached branch. Once that stalls, it searches passive connected candidates.
+It removes bodies with nonzero instantaneous nullspace components, removes their incident
+rows, and repeats. Acceptance requires a consistent full-column-rank Jacobian on the retained
+subsystem and already-fixed boundary. Thus a transiently still rocker does not borrow its
+moving neighbors' constraints to become permanent ground. This changes only derived fixedness;
+all material identities, support channels, drives and travel limits remain represented.
+
+Added evidence:
+
+- A two-body triangle supports two independent crank clocks in SI/inch-pound units, across
+  1e-8/1/1e8 scale, remote origins, local rebasing and reversed enumeration. Six passive
+  support rows and both material identities survive. A fixed-core drive still refuses.
+- A four-body platform carried by three RR struts has an independent three-equation rigidity
+  derivation. It too keeps two crank clocks, proving the implementation is not a pair shortcut.
+- A crank-rocker at its extremum stays movable both on WORLD and on the collective triangle.
+  Independent circle-intersection positions establish that the rocker changes on either
+  side of the zero-rate pose. A faulty apex remains inconsistent; a singular straight
+  foundation is not certified as a regular fixed core.
+- A frame that is independently fixed stays available beside an inconsistent attached branch;
+  the good cranks still admit separately. This guards the retained single-body propagation.
+- Triangle support/apex forces and transported moments match the hand equations in
+  `bodies-and-joints-equations.md` to nine decimal places. Both crank samples are required for
+  its one fixed force component; dropping one refuses both sides instead of a partial balance.
+- The instantaneous-only mutation bypassed the retained-subsystem proof. Both rocker tests
+  and the inconsistent-core test failed, with three other tests passing. Source restored:
+  `S3-collective-fixed-instant-only.log` / `S3-collective-fixed-mutation.json`.
+
+Final verification: `S3-collective-fixed-final.log` has **316 tests / 52 files passing** with the
+same broad argument list and unchanged native/reference ceilings. Host production build passes
+with existing warnings (`S3-collective-fixed-final-build.log`). Only touched TypeScript formatted;
+whitespace check passes. No production editor import changed; the latest live ui-copy remains
+17/17, and no native UX gate is claimed. New foundation fixtures need S6 native codec/gallery
+publication alongside the other native fixtures. No Fable review ran; spending is unchanged.
+
+**S3 remains in progress.** Next implement the continuous interval/stop/reversal controller and
+full immutable simulation sample schema described in the contract, integrate stable fixed
+support policies, finish the remaining independent example/reference rates and full S3 gate,
+then request F2. Regular collective foundations are now implemented, not still pending. Singular
+isolated foundations remain a stated limit of the rank proof and ordinary admission, rather
+than being silently classified fixed. S4–S8, native default cutover, consumer conversion and
+substantial obsolete-code removal all remain required.
