@@ -215,9 +215,7 @@ export interface RowRefusal {
     NgTemplateOutlet,
   ],
 })
-export class PlaybackBarComponent
-  implements OnInit, AfterViewInit, AfterViewChecked, OnDestroy
-{
+export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChecked, OnDestroy {
   mechanism = inject(MechanismService);
   settings = inject(SettingsService);
   activeObj = inject(ActiveObjService);
@@ -888,7 +886,10 @@ export class PlaybackBarComponent
     const host = this.host.nativeElement as HTMLElement;
     const notes = [...host.querySelectorAll<HTMLElement>('.rowNote[data-row]')];
     const key = notes
-      .map((note) => `${note.dataset['row']}:${note.dataset['full']}:${note.parentElement?.clientWidth}`)
+      .map(
+        (note) =>
+          `${note.dataset['row']}:${note.dataset['full']}:${note.parentElement?.clientWidth}`
+      )
       .join('|');
     if (key === this.noteFitKey) return;
     this.noteFitKey = key;

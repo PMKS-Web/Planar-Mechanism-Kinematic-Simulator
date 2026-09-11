@@ -601,7 +601,8 @@ tracked files, which hostname the dev server answers on — is in
 - **Automatic publishing to production is paused in Netlify.** Nothing reaches app.pmksplus.com
   until someone publishes it by hand, so being on `main` does not mean being live.
 - Every other branch publishes to `https://[BRANCHNAME]--pmksnew.netlify.app`.
-- CI runs the unit suite, the production build and `git diff --check` on every pull request.
+- CI runs ESLint, a Prettier check, the unit suite, the production build and `git diff --check` on
+  every pull request, and a pull request into `staging` or `main` cannot merge until it passes.
 - The `version` in `package.json` is what Settings shows to a user; raise it in the PR that ships
   a release.
 
@@ -617,7 +618,9 @@ What we ask of a change:
 1. **Comment *why*, not *how*.** The code should say what it does; the comment should say why it
    had to be that way. Most files here open with a paragraph explaining the decision behind them;
    match that.
-2. **Keep classes under ~200 lines** and functions short.
+2. **Give each file one responsibility.** Split a file when it does two things, never to fit a
+   line count, and keep functions short. [docs/code-style.md](docs/code-style.md) has the full
+   guide; `npm run lint` checks the invariants it lists.
 3. **Follow Angular naming**: `foo-bar.service.ts`, `FooBarComponent`, `app-` selector prefix.
 4. **Add the mechanism to the fixtures**, not to a spec. New linkages go in `FIXTURE_GALLERY` so
    they get a published URL.

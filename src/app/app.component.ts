@@ -1,4 +1,10 @@
-import { Component, ChangeDetectionStrategy, DoCheck, afterNextRender, inject } from '@angular/core';
+import {
+  Component,
+  ChangeDetectionStrategy,
+  DoCheck,
+  afterNextRender,
+  inject,
+} from '@angular/core';
 import { MatIconRegistry } from '@angular/material/icon';
 import { DomSanitizer } from '@angular/platform-browser';
 import { NewGridComponent } from './component/new-grid/new-grid.component';

@@ -32,6 +32,12 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
+      - name: Lint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run lint:format
+
       - name: Run unit and verification tests
         run: npm test -- --watch=false
 

@@ -774,8 +774,7 @@ describe('editing at a displaced pose', () => {
     const shown = service.joints.map((joint) => ({ id: joint.id, x: joint.x, y: joint.y }));
     const clocks = service.partitions.map((_, index) => service.secondsOf(index));
     const [, b, c] = second.joints;
-    const wanted = new Coord((b.x + c.x) / 2 + (c.y - b.y) / 5,
-      (b.y + c.y) / 2 - (c.x - b.x) / 5);
+    const wanted = new Coord((b.x + c.x) / 2 + (c.y - b.y) / 5, (b.y + c.y) / 2 - (c.x - b.x) / 5);
     active.updateSelectedObj(second.links[1]);
     expect(service.canAttachAtPose(second.links[1])).toBe(true);
     const beforeSaves = harness.saveCount();
@@ -785,13 +784,18 @@ describe('editing at a displaced pose', () => {
     expect(tracer.x).toBeCloseTo(wanted.x, 3);
     expect(tracer.y).toBeCloseTo(wanted.y, 3);
     const tail = new Coord((b.x + c.x) / 2, (b.y + c.y) / 2);
-    const force = service.createForce(tail, new Coord(tail.x + 0.2, tail.y + 0.8), second.links[1])!;
+    const force = service.createForce(
+      tail,
+      new Coord(tail.x + 0.2, tail.y + 0.8),
+      second.links[1]
+    )!;
     expect(force.startCoord.x).toBeCloseTo(tail.x, 3);
     expect(force.startCoord.y).toBeCloseTo(tail.y, 3);
     expect(force.angleRad).toBeCloseTo(Math.atan2(0.8, 0.2), 6);
     expect(harness.saveCount() - beforeSaves).toBe(2);
     for (const expected of start) {
-      const actual = service.mechanisms.flatMap((frames) => frames.joints[0])
+      const actual = service.mechanisms
+        .flatMap((frames) => frames.joints[0])
         .find((joint) => joint.id === expected.id)!;
       expect({ id: actual.id, x: actual.x, y: actual.y }).toEqual(expected);
     }
@@ -819,7 +823,8 @@ describe('editing at a displaced pose', () => {
     service.deleteJoint();
     expect(service.joints).toHaveLength(start.length);
     for (const expected of start) {
-      const actual = service.mechanisms.flatMap((frames) => frames.joints[0])
+      const actual = service.mechanisms
+        .flatMap((frames) => frames.joints[0])
         .find((joint) => joint.id === expected.id)!;
       expect({ id: actual.id, x: actual.x, y: actual.y }).toEqual(expected);
     }
@@ -844,13 +849,19 @@ describe('editing at a displaced pose', () => {
     expect(force.local).toBe(true);
     expect(force.angleRad).toBeCloseTo(originalAngle, 6);
     const initialForce = service.mechanisms[0].forces[0][0];
-    expect(Math.cos(initialForce.angleRad)).toBeCloseTo(Math.cos(originalAngle + startTurn - beforeTurn), 6);
+    expect(Math.cos(initialForce.angleRad)).toBeCloseTo(
+      Math.cos(originalAngle + startTurn - beforeTurn),
+      6
+    );
     service.changeForceDirection();
     expect(Math.cos(force.angleRad)).toBeCloseTo(-Math.cos(originalAngle), 6);
     expect(Math.sin(force.angleRad)).toBeCloseTo(-Math.sin(originalAngle), 6);
     service.changeForceLocal();
     expect(force.local).toBe(false);
-    expect(Math.cos(service.mechanisms[0].forces[0][0].angleRad)).toBeCloseTo(-Math.cos(originalAngle), 6);
+    expect(Math.cos(service.mechanisms[0].forces[0][0].angleRad)).toBeCloseTo(
+      -Math.cos(originalAngle),
+      6
+    );
     expect(force.startCoord.x).toBeCloseTo(tail.x, 6);
     expect(force.startCoord.y).toBeCloseTo(tail.y, 6);
     expect(joints.map((joint) => [joint.x, joint.y])).toEqual(shown);

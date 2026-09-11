@@ -308,9 +308,18 @@ describe('DxfExportService', () => {
     a.links.push(slider);
     const json = JSON.parse(service['dataJson']('cm', { origin: 'ground' }));
     expect(json.joints[0]).toMatchObject({ x: 0, y: 0 });
-    expect(json.links.find((link: { id: string }) => link.id === 'slide')).toMatchObject({ type: 'prismatic', inertia: null });
-    expect(json.joints[0].links.every((id: string) => json.links.some((link: { id: string }) => link.id === id))).toBe(true);
-    expect(service['jointCsv']('cm', { origin: 'ground' })).toContain('A,A,revolute,0.000000,0.000000');
+    expect(json.links.find((link: { id: string }) => link.id === 'slide')).toMatchObject({
+      type: 'prismatic',
+      inertia: null,
+    });
+    expect(
+      json.joints[0].links.every((id: string) =>
+        json.links.some((link: { id: string }) => link.id === id)
+      )
+    ).toBe(true);
+    expect(service['jointCsv']('cm', { origin: 'ground' })).toContain(
+      'A,A,revolute,0.000000,0.000000'
+    );
     expect(json).toMatchObject({ massUnit: 'kg', inertiaUnit: 'kg*m^2', forceUnit: 'N' });
   });
 
@@ -318,11 +327,18 @@ describe('DxfExportService', () => {
     const { service, mechanism } = setup();
     const b = mechanism.joints[1];
     const pausedX = b.x;
-    mechanism.encodeFromStartPose.mockImplementation(run => {
+    mechanism.encodeFromStartPose.mockImplementation((run) => {
       b.x = MODEL_SCALE;
-      try { return run(27); } finally { b.x = pausedX; }
+      try {
+        return run(27);
+      } finally {
+        b.x = pausedX;
+      }
     });
-    const table = vi.spyOn(service as unknown as { jointCsv: (unit: string) => string }, 'jointCsv');
+    const table = vi.spyOn(
+      service as unknown as { jointCsv: (unit: string) => string },
+      'jointCsv'
+    );
     service.create({ dataFile: 'csv', unit: 'cm', origin: 'model' });
     expect(table.mock.results[0].value).toContain('B,B,revolute,1.000000,1.000000');
     expect(b.x).toBe(pausedX);

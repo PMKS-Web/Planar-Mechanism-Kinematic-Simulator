@@ -347,21 +347,22 @@ Afterwards, grep for the American stem followed by a suspicious ending — `cent
 
 ## Formatting, and why you should not just run Prettier
 
-**Some source and e2e files predate the Prettier config.** Running `prettier --write` across one
-of them reformats code you did not write, and your actual change disappears into three hundred
-lines of reflow. Ask Prettier for the current list rather than trusting a count (on 2026-09-11 it
-named 21 files under `src/` and 9 in `e2e/`):
+**`.ts`, `.html` and e2e `.mjs` files are all formatted, and CI keeps them that way.**
+`npm run lint:format` fails a pull request whose files are not Prettier-clean, and the ruleset on
+`staging` and `main` will not merge a failing check. Run `npx prettier --write <file>` on what you
+edited before you push.
+
+**A few `.scss` files still predate the config.** Running `prettier --write` across one of them
+reformats rules you did not write, and your actual change disappears into the reflow. Ask Prettier
+for the current list rather than trusting a count:
 
 ```bash
 npx prettier --list-different src e2e
 ```
 
-Format only files you edited, **and only if they were already clean**. Check a file with
-`npx prettier --check path/to/file` *before* your first edit to it. A file on the list gets edited
-by hand and stays unformatted.
-
-A blanket `npx prettier --write "e2e/*.mjs"` will quietly reformat every listed file you never
-touched. Check `git status` afterwards and revert anything you did not mean to change.
+Format a stylesheet only if you edited it and it was already clean. A blanket
+`npx prettier --write src` will quietly reformat every listed stylesheet you never touched; check
+`git status` afterwards and revert anything you did not mean to change.
 
 `.prettierignore` deliberately excludes Markdown — Prettier pads every table cell and rewrites
 `*emphasis*` as `_emphasis_`, so a one-line doc edit lands as hundreds of lines of realignment.
@@ -1378,9 +1379,12 @@ poses reached by playback, where a one-sample lag is invisible.
   by itself; publishing is a manual step, and being on `main` does not mean being live. Do not read
   `main` as what students have: production has served a bundle several releases behind it. Grep
   production's own bundle, as below, for something only the release has; a 200 proves nothing.
-- **CI runs four steps and no browser.** `.github/workflows/verification.yml` runs `npm ci`,
-  `npm test -- --watch=false`, `npm run build` and `git diff --check` on every pull request. No e2e
-  suite runs there, `e2e/ui-copy.mjs` included: those are run by hand.
+- **CI runs lint, formatting, tests and the build, but no browser.**
+  `.github/workflows/verification.yml` runs `npm ci`, `npm run lint`, `npm run lint:format`,
+  `npm test -- --watch=false`, `npm run build` and `git diff --check` on every pull request. A
+  repository ruleset makes that `test` check required on `staging` and `main`, blocks direct and
+  force pushes to both, and lets only a repository admin override. No e2e suite runs there,
+  `e2e/ui-copy.mjs` included: those are run by hand.
 - **There are two Netlify sites, and branch builds come from `pmksnew`.** Branch previews are
   `https://[BRANCHNAME]--pmksnew.netlify.app`. The older `--pmks.netlify.app` pattern 404s, which is
   at least honest; `[BRANCH]--pmksprod.netlify.app` is the trap, because it still answers **200 with

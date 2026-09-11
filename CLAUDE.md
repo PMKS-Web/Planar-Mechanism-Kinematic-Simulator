@@ -35,9 +35,9 @@ loads `.agents/skills/` instead; each skill there is a pointer to its `.claude` 
 
 `.nvmrc` pins Node 24; run `nvm use` first, because a login shell may otherwise hand you an unsupported Node 20.
 
-There is no lint target. Formatting follows `.prettierrc`: 100-char width, single quotes, 2-space indent. `npm run format:check` reports the state; `npm run format` fixes it.
+`npm run lint` runs ESLint over the invariants in [`docs/code-style.md`](docs/code-style.md); `npm run lint:format` checks that `.ts`, `.html` and e2e `.mjs` files are Prettier-formatted. **CI fails a PR on either, and a PR cannot merge into `staging` or `main` without a passing check.** Formatting follows `.prettierrc`: 100-char width, single quotes, 2-space indent; `npx prettier --write <file>` fixes a file.
 
-**Some files predate the config and do not satisfy it** (`npx prettier --list-different src e2e` lists them). Running Prettier across one of them rewrites code you did not touch and buries your change — so format only the files you actually edited, and check first. Cleaning up the backlog belongs in its own PR. `.prettierignore` deliberately excludes Markdown (Prettier pads every table cell and rewrites `*emphasis*` as `_emphasis_`, so a one-line doc edit lands as hundreds of lines of realignment) and the generated `src/test-data/verification` tables.
+A few `.scss` files still predate the config (`npx prettier --list-different src e2e` lists them). Format only the stylesheets you actually edited, so an unrelated reformat does not bury your change. `.prettierignore` deliberately excludes Markdown (Prettier pads every table cell and rewrites `*emphasis*` as `_emphasis_`, so a one-line doc edit lands as hundreds of lines of realignment) and the generated `src/test-data/verification` tables.
 
 ## UI validation: run it yourself
 
@@ -87,10 +87,12 @@ origin/staging`.
 until someone publishes it by hand. Being on `main` therefore does not mean being live; ask
 production's own bundle what students have.
 
-**CI** (`.github/workflows/verification.yml`) runs on every pull request: `npm ci`,
-`npm test -- --watch=false`, `npm run build`, and `git diff --check`, which fails on trailing
-whitespace. No e2e suite runs in CI, `e2e/ui-copy.mjs` included, so run the ones your change needs
-yourself.
+**CI** (`.github/workflows/verification.yml`) runs on every pull request: `npm ci`, `npm run lint`,
+`npm run lint:format`, `npm test -- --watch=false`, `npm run build`, and `git diff --check`, which
+fails on trailing whitespace. **A repository ruleset makes that check (`test`) required:** a pull
+request into `staging` or `main` cannot merge while it is red, and neither branch accepts direct or
+force pushes. Only a repository admin can override, and that is for emergencies. No e2e suite runs
+in CI, `e2e/ui-copy.mjs` included, so run the ones your change needs yourself.
 
 **There are two Netlify sites, and the branch one moved.** Branch and preview builds come from
 `pmksnew` now; `[BRANCH]--pmksprod.netlify.app` still answers 200 and serves a **months-stale
@@ -234,5 +236,5 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
 
 ## Conventions (from README)
 
-- Keep classes under ~200 lines and functions short; comment *why*, not *how*.
+- One responsibility per file: split when a file does two things, never to fit a line count; keep functions short; comment *why*, not *how*. The full guide, including the invariants the linter checks, is [`docs/code-style.md`](docs/code-style.md). Run `npm run lint` before you push.
 - Standard Angular naming: dash-delimited filenames with type suffixes (`foo-bar.service.ts`), `Component`/`Service`/`Module`/`Pipe` class suffixes, `app-` selector prefix.

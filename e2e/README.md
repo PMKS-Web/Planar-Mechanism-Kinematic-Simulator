@@ -13,8 +13,10 @@ here.
 
 ## What CI runs
 
-`.github/workflows/verification.yml` runs `npm ci`, `npm test -- --watch=false`, `npm run build`
-and `git diff --check`. **No e2e suite runs in CI.** They are run by hand, locally, against a dev
+`.github/workflows/verification.yml` runs `npm ci`, `npm run lint`, `npm run lint:format`,
+`npm test -- --watch=false`, `npm run build` and `git diff --check`, and a pull request cannot merge
+until it passes. `lint:format` covers these scripts too, so format an `.mjs` you edit.
+**No e2e suite runs in CI.** They are run by hand, locally, against a dev
 server — so a suite that nobody ran can be broken without anything turning red.
 
 ## Prerequisites
