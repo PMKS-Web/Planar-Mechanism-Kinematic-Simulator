@@ -51,3 +51,31 @@ export function freezeResult<T>(value: T): T {
   }
   return value;
 }
+
+/** Published snapshots own all records, including nested Maps; freezing must not reach editable input. */
+export function snapshotCopy<T>(value: T): T {
+  const copied = new WeakMap<object, unknown>();
+  const copy = (item: unknown): unknown => {
+    if (item === null || typeof item !== 'object') return item;
+    if (copied.has(item)) return copied.get(item);
+    if (item instanceof Map || item instanceof SnapshotMap) {
+      const result = snapshotMap(
+        [...item].map(([key, child]) => [copy(key), copy(child)] as const)
+      );
+      copied.set(item, result);
+      return result;
+    }
+    if (Array.isArray(item)) {
+      const result: unknown[] = [];
+      copied.set(item, result);
+      result.push(...item.map(copy));
+      return Object.freeze(result);
+    }
+    const result: Record<string, unknown> = {};
+    copied.set(item, result);
+    for (const [key, child] of Object.entries(item))
+      Object.defineProperty(result, key, { value: copy(child), enumerable: true });
+    return Object.freeze(result);
+  };
+  return copy(value) as T;
+}

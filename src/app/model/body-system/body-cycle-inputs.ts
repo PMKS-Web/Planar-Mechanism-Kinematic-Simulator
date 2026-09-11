@@ -7,7 +7,7 @@ import { freezeResult, snapshotMap } from './sample-results';
 /** Every rate solve reads this sample's geometry; neither a reversal nor a refusal inherits a previous map. */
 export function bodyCycleInputs(
   admitted: AdmittedBodySystem,
-  cycle: Extract<BodyCycle, { ok: true }>,
+  cycle: Pick<Extract<BodyCycle, { ok: true }>, 'partitionKey' | 'samples'>,
   revision: number
 ):
   | { readonly ok: true; readonly inputs: readonly BodyForceInput[] }
