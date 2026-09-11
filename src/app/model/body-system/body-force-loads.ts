@@ -5,7 +5,7 @@ import { BodySolveFrame, solveFramePoint } from './body-solve-frame';
 import { GroupPoses } from './body-constraint-rows';
 import { BodyRatesResult } from './body-rates';
 import { finitePoint, Point } from './body-frame';
-import { Wrench } from './joint-wrenches';
+import { MaterialWrenches, Wrench } from './joint-wrenches';
 import { bodyLoadWrenches, frameBodyLoad } from './body-load-wrenches';
 import { unitFactors } from './body-units';
 
@@ -16,6 +16,7 @@ export type GroupForceLoads =
       readonly required: ReadonlyMap<BodyId, Wrench>;
       readonly applied: ReadonlyMap<BodyId, Wrench>;
       readonly inertia: ReadonlyMap<BodyId, Wrench>;
+      readonly arithmeticScale: ReadonlyMap<BodyId, Wrench>;
       readonly kineticEnergyRate?: number;
       readonly appliedPower?: number;
     };
@@ -28,13 +29,15 @@ export function groupForceLoads(
   poses: GroupPoses,
   mode: 'static' | 'dynamic',
   gravity: Point,
-  rates?: BodyRatesResult
+  rates?: BodyRatesResult,
+  materialWrenches: MaterialWrenches = new Map()
 ): GroupForceLoads {
   if (!finitePoint(gravity)) return { ok: false, reason: 'invalid' };
   if (mode === 'dynamic' && !rates?.ok) return { ok: false, reason: 'missing-rates' };
   const required = new Map<BodyId, Wrench>(),
     applied = new Map<BodyId, Wrench>(),
-    inertia = new Map<BodyId, Wrench>();
+    inertia = new Map<BodyId, Wrench>(),
+    arithmeticScale = new Map<BodyId, Wrench>();
   const factors = unitFactors(document.units);
   let energyRate = 0,
     power = 0;
@@ -57,11 +60,22 @@ export function groupForceLoads(
           factors
         );
       });
+    for (const [bodyId, wrenches] of materialWrenches) {
+      const member = group.members.get(bodyId);
+      if (member)
+        for (const wrench of wrenches)
+          loads.push({
+            point: solveFramePoint(frame, id, member),
+            vector: wrench.force,
+            couple: wrench.moment,
+          });
+    }
     const result = bodyLoadWrenches(mass, pose, loads, mode, gravity, motion);
     if (!result.ok) return result;
     required.set(id, result.required);
     applied.set(id, result.applied);
     inertia.set(id, result.inertia);
+    arithmeticScale.set(id, result.arithmeticScale);
     energyRate += result.kineticEnergyRate ?? 0;
     power += result.appliedPower ?? 0;
   }
@@ -72,6 +86,7 @@ export function groupForceLoads(
     required,
     applied,
     inertia,
+    arithmeticScale,
     ...(rates?.ok ? { kineticEnergyRate: energyRate, appliedPower: power } : {}),
   };
 }

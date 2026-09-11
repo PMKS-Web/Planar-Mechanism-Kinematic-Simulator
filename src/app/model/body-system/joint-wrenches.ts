@@ -2,12 +2,15 @@ import { BodyConstraintRow } from './compiled-body-system';
 import { bodyRowBlocks, GroupPoses } from './body-constraint-rows';
 import { add, cross, Point, scale } from './body-frame';
 import { BodyTwist } from './body-row-quadratic';
+import { BodyId } from './body-id';
 
 /** SI force and counterclockwise moment about the explicitly named body/group origin. */
 export interface Wrench {
   readonly force: Point;
   readonly moment: number;
 }
+/** SI wrenches at material origins; retaining terms separately preserves cancellation provenance. */
+export type MaterialWrenches = ReadonlyMap<BodyId, readonly Wrench[]>;
 export const ZERO_WRENCH: Wrench = Object.freeze({
   force: Object.freeze({ x: 0, y: 0 }),
   moment: 0,

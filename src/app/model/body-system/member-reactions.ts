@@ -65,9 +65,10 @@ export function recoverMemberReactions(
     if (onA === onB) continue;
     const joint = joints.get(row.jointId),
       effort = external.efforts.get(row.key);
-    if (!joint || !effort?.ok) return { ok: false, reason: 'external-reaction' };
+    if (!joint) return { ok: false, reason: 'invalid' };
     const id = onA ? joint.bodyA : joint.bodyB;
     if (!required.has(id)) continue;
+    if (!effort?.ok) return { ok: false, reason: 'external-reaction' };
     const reaction = rowWrenches(row, poses, effort.value);
     const wrench = onA ? reaction.a : reaction.b;
     required.set(id, addWrenches(required.get(id)!, scaleWrench(wrench, -1)));

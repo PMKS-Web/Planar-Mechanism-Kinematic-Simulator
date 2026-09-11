@@ -18,7 +18,7 @@
 | S0 | Baseline complete | Six unit suites pass (182 tests), seven new compatibility tests pass, build passes, template-open 11/11, template-graphs 3978/3978, ui-copy 17/17. Timing, visual baseline and operation-level consumer classification are recorded. Existing drag timing failures are reproduced on original test files, not waived; S7 must meet the measured comparison budget. |
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
 | S2 | Complete | Native compiler, analytic Jacobians, mobility/admission, branch continuation, folds, limits and frame conditioning. Seven native/legacy and four native/MATLAB comparisons retain the original ceilings. Geometric redundancy, two slots on a carrier and one-pin/shared-WORLD cases pass. Combined S2/initial-rate gate: 255 tests / 37 files; current-editor browser gate is green. Continuous cycle event publication remains an explicit S3 obligation. |
-| S3 | In progress | Analytic rates, moving-group forces, material/weld recovery, immutable per-partition force frames and series support-policy selection implemented and initially verified. Passive frame bars no longer join independent clocks. Latest native/reference gate: 290 tests / 47 files; build passes; live ui-copy 17/17. Complete fixed-frame forces/rigid-core audit, full sample schema, cycle events, remaining worked examples, full gates and F2 are pending. |
+| S3 | In progress | Analytic rates, moving/fixed-group forces, material/weld recovery, immutable force frames and series support-policy selection implemented and initially verified. Passive frame bars no longer join independent clocks. Latest native/reference/frame-force gate: 303 tests / 49 files; build passes; latest unchanged-editor ui-copy 17/17. Fixed component availability/rigid-core audit, full sample schema, cycle events, remaining worked examples, full gates and F2 are pending. |
 | S4 | Pending | Native transactions, codec/import, lifecycle, history and F3. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
 | S6 | Pending | All consumers, synthesis, tutorial, fixtures/templates and default cutover. |
@@ -609,3 +609,69 @@ publication, remaining examples/reference rates, complete fixed-frame reactions,
 gate and F2 remain open. **S3 stays in progress; S4–S8 remain pending.** No Fable call was made
 and review spending is unchanged. S0/S5/S6/S8 still require both browser workflows; the plan's
 decision table now makes that requirement explicit as well as its detailed workflow section.
+
+## S3 fixed-foundation force context
+
+The preceding goal turn was verified progress, committed as `e89ce11`; this turn adds the
+fixed-foundation producer rather than repeating its status. `solveFixedBodyForces` now combines
+the selected moving-machine reactions with fixed material's own loads. It retains every
+required sample identity, accepts independent clock times, and refuses missing/duplicate
+samples, mixed revision/mode/gravity and unavailable incident reactions. A separate machine
+whose reaction acts directly on WORLD is not required to balance fixed material. Moving
+force frames now carry immutable gravity provenance to prevent mixed calculations.
+
+Selected reactions enter as SI wrenches at their original material origins, without synthetic
+document force records. Contributions remain separate until the load calculation records
+their pre-cancellation magnitudes; group equilibrium now carries that arithmetic scale too.
+The foundation's external fixed rows are solved under the explicit support policy, followed
+by member recovery including WORLD welds. Fixed material has zero acceleration even when its
+machines have dynamic forces, so its own member balance needs no distribution of an overridden
+moment of inertia. Weight and imported load-owner ambiguities still apply. Member recovery
+also ignores an unavailable reaction acting directly on WORLD before asking for its value;
+WORLD is not a material balance equation.
+
+Independent checks in `fixed-body-forces.spec.ts`:
+
+- Two differently timed cranks plus an explicit frame load and gravity: both pin reactions
+  match hand force/moment equilibrium in statics/dynamics, SI/inch-pound units, rebased frame
+  coordinates and reversed enumeration. The two-pin support split is unavailable in unique
+  mode and explicitly conditional in evenest mode; moments are transported to the material
+  frame origin.
+- Replacing those supports with one WORLD weld gives the hand-derived unique total reaction.
+  Missing or refused samples cannot yield a partial foundation load, and a subsequent valid
+  call recovers. Duplicate sample keys and mixed calculation provenance refuse explicitly.
+- A redundant crank support can supply a declared evenest split; the foundation's resulting
+  weld reaction remains labeled conditional even when its own external policy is unique.
+- A third, unrelated crank acting directly on WORLD requires no sample in this context.
+- Indeterminate fixed pin reactions acting directly on WORLD do not hide a separate material
+  bracket's unique weld reaction; its hand answer remains (0,10) N and 5 N·m.
+- A fixed internal weld cycle stays indeterminate in both support policies, while its unique
+  total WORLD support remains available. An inertia-only override does not obstruct this
+  stationary balance, even with the context set to dynamic mode.
+
+The omission mutation removed all selected-machine contributions from both group and member
+loads. Both pinned and welded hand-answer tests failed their force assertions (not compilation),
+then the source was restored: `S3-fixed-force-missing-contributions.log` and
+`S3-fixed-force-mutation.json`. The untouched internal-cycle/no-required-clock probes passed.
+
+Verification:
+
+- All native tests before the final unit extension: **133 tests / 33 files pass**,
+  `S3-fixed-force-expanded.log`.
+- The exact broad list in `S2-reference-gate-scope.json` plus
+  `src/tests/verification/frame-body-forces.spec.ts`: **303 tests / 49 files pass**,
+  `S3-fixed-force-final-checkpoint.log`, including the final SI/inch-pound and independent
+  WORLD/material-balance probes. The preceding 302-test result is retained separately in
+  `S3-fixed-force-checkpoint.log`.
+- Host production build passes with existing warnings, `S3-fixed-force-build.log`.
+- Only touched TypeScript was formatted; `git diff --check` passes. No production editor
+  imports or visual/animation behavior changed. The latest live ui-copy remains the verified
+  17/17 at `e89ce11`; no new native-editor browser gate is claimed.
+
+This is still one all-fixed context. Add component-level fixed availability before S3 closure
+so a missing machine on one independent foundation does not hide a valid result on another.
+The fixed-support policy also needs integration into the full snapshot/cycle producer, rather
+than per-sample guessing by a consumer. Continue the rigid-foundation audit, complete simulation
+schema and continuous stop/reversal controller, remaining examples/reference rates, full S3
+gates and F2. **S3 remains in progress; S4–S8 are pending.** Fable spending is unchanged, and
+the new native fixtures still need S6 codec/gallery publication.

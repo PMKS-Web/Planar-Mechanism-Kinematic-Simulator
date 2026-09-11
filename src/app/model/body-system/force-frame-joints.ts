@@ -8,7 +8,14 @@ import { BodyRatesResult } from './body-rates';
 import { BodyEfforts } from './body-efforts';
 import { memberForceLoads } from './member-force-loads';
 import { recoverMemberReactions } from './member-reactions';
-import { addWrenches, finiteWrench, rowWrenches, transportWrench, Wrench } from './joint-wrenches';
+import {
+  addWrenches,
+  finiteWrench,
+  rowWrenches,
+  transportWrench,
+  Wrench,
+  MaterialWrenches,
+} from './joint-wrenches';
 import { ForceValue, PairWrench, forceAvailable, forceUnavailable } from './force-frame-result';
 
 /** Joint records assign material ownership; a condensed group's representative does not. */
@@ -20,7 +27,8 @@ export function forceFrameJoints(
   rates: BodyRatesResult | undefined,
   efforts: Extract<BodyEfforts, { ok: true }>,
   mode: 'static' | 'dynamic',
-  gravity: Point
+  gravity: Point,
+  context: { readonly recoverBoundary?: boolean; readonly materialWrenches?: MaterialWrenches } = {}
 ):
   | { readonly ok: false; readonly reason: 'invalid' }
   | { readonly ok: true; readonly joints: ReadonlyMap<JointId, ForceValue<PairWrench>> } {
@@ -30,9 +38,10 @@ export function forceFrameJoints(
   const records = new Map(document.joints.map((joint) => [joint.id, joint]));
   // A shared material frame can be held by pins instead of a WORLD weld. Its
   // supports need every attached clock's reactions, not just this partition's.
-  for (const row of system.fixedRows)
-    if (ids.has(row.pair.groupA) || ids.has(row.pair.groupB))
-      joints.set(row.jointId, forceUnavailable('frame-context'));
+  if (!context.recoverBoundary)
+    for (const row of system.fixedRows)
+      if (ids.has(row.pair.groupA) || ids.has(row.pair.groupB))
+        joints.set(row.jointId, forceUnavailable('frame-context'));
   for (const row of partition.rows) {
     if (row.pair.groupA === row.pair.groupB) continue;
     const joint = records.get(row.jointId);
@@ -78,11 +87,21 @@ export function forceFrameJoints(
       (joint) => system.groupOf.get(joint.bodyA) === id && system.groupOf.get(joint.bodyB) === id
     );
     if (internal.length === 0) continue;
-    if (!owned.has(id)) {
+    if (!owned.has(id) && !context.recoverBoundary) {
       for (const joint of internal) joints.set(joint.id, forceUnavailable('frame-context'));
       continue;
     }
-    const members = memberForceLoads(document, system, frame, poses, id, mode, gravity, rates);
+    const members = memberForceLoads(
+      document,
+      system,
+      frame,
+      poses,
+      id,
+      mode,
+      gravity,
+      rates,
+      context.materialWrenches
+    );
     const recovered = recoverMemberReactions(document, system, frame, poses, id, members, efforts);
     for (const joint of internal) {
       if (!recovered.ok) {
