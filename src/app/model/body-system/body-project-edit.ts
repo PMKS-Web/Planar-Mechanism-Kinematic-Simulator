@@ -41,7 +41,8 @@ export function bodyOperationPermission(
   }
   return operation.kind === 'insert' ||
     operation.kind === 'joint-kind' ||
-    operation.kind === 'copy-bodies'
+    operation.kind === 'copy-bodies' ||
+    operation.kind === 'paste-bodies'
     ? displayedMapping && state.mode === 'edit'
       ? refusalFor('build', state)
       : menuRefusal(state, 'start')

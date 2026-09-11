@@ -422,9 +422,41 @@ material to a shared fixed group may invalidate force analysis without changing 
 The re-anchoring path tests these physical records before unnecessarily solving the old
 anchor again. A change to the original geometry still follows normal anchor recovery.
 
-The same-document command and typed remap are implemented. Clipboard capture, cross-document
-unit conversion/paste and the service/UI dispatch remain integration work; they must reuse
-these maps and final transaction validation rather than copying a legacy graph.
+### Clipboard capture and paste between drawings
+
+`captureNativeClipboard` reads the selected material from one validated authored/displayed
+snapshot, closes cylinder ownership, and serializes an isolated native drawing through the
+existing bounded, checksummed codec. Unselected material, project settings, synthesis targets
+and ownership, camera and backdrop are excluded. Copy makes no history entry or notification.
+Its immutable payload survives source edits/deletion; failed capture preserves the prior
+clipboard. Copying away from the start requires a current display frame. It is a read action
+and may capture an accepted frame while playback runs.
+
+`paste-bodies` carries the decoded source drawing and a destination-unit placement offset.
+The canonical transaction validates the clipboard, converts its physical records into the
+current destination units, and uses the same complete ID map as ordinary copy. Every paste
+allocates fresh identities. The destination's units/settings/view/synthesis remain its own.
+Previews retain the captured clipboard in their command; committing a stale preview replans
+against the latest destination, including its unit system, without rereading a changed buffer.
+The placement offset is interpreted in those destination units. A live placement gesture must
+reuse its command ID across previews and cancel/restart if its coordinate display units change.
+
+An isolated clipboard can retain a complete WORLD-welded group's custom aggregate and
+presentation. Pasting into an empty fixed frame preserves those properties. Joining an
+existing fixed fabrication uses its presentation lineage. An incoming custom aggregate may
+survive when the old frame has no override and all its members have zero mass **and** zero
+inertia; its custom center is mapped into the retained group's actual frame before the late
+group-property stage. Real added inertia or two competing overrides require an explicit reset.
+No override is split, combined numerically, or silently discarded.
+
+`NativeBodyDocumentService.copy`, `previewPaste` and `paste` expose this path; commit,
+selection, re-anchoring, history and notifications use the same authority as other edits.
+Pasting while paused preserves an untouched destination machine's exact clock; a newly pasted
+input starts at the clipboard's captured pose with time zero. Corrupt/inconsistent payloads
+and permission refusals leave the destination and clipboard unchanged.
+
+The service-level clipboard integration is implemented. Platform clipboard access, keyboard/
+context-menu placement and the native browser/UI evidence remain S5 work.
 
 ## Self-review questions carried into implementation
 

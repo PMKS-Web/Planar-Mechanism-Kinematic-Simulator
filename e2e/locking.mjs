@@ -2,7 +2,7 @@
  * The Lock feature, exercised the way a hand would: lock a link and watch its
  * drag refuse with an Unlock in the message; lock one joint and watch a link
  * drag become a swing about it; undo a lock, which proves the mark rides the
- * URL; press play and watch the black marks stand down.
+ * URL; keep lock marks while paused in analysis and hide them during playback.
  *
  *   PMKS_BASE_URL=<origin> node e2e/locking.mjs
  */
@@ -11,6 +11,7 @@ const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
 import { waitForReady } from './app-ready.mjs';
+import { filmstrip, contactSheet } from './filmstrip.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 
@@ -361,40 +362,113 @@ record(
   moved
 );
 
-// --- The marks answer "is this paused", not "which mode is this" -----------
-//
-// They were an Edit affordance once, and this checked that an analysis mode
-// painted clean. Then the analysis modes were made editable at a paused pose and
-// the marks were deliberately kept: `lockVisualsOn()` is `!isPlaying`, and
-// nothing in it asks which tab is open. The check outlived the rule it was
-// written for by months, and went on passing nothing, because nothing ran it.
-// Both halves are here now, so the next reversal has to argue with one of them.
-const marks = () =>
-  page.evaluate(() => document.querySelectorAll('.lockBadge, .joint-locked, .link-locked').length);
-
+// Analysis is editable while paused; playing is the boundary for lock marks.
+await page.goto(`${BASE}/?${FOUR_BAR}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
 await page.evaluate(() => {
-  const c = ng.getComponent(document.querySelector('app-new-grid'));
-  c.tabService.setTab(2); // TabID.ANALYZE
+  const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+  srv.setDriveSpeed(
+    srv.joints.find((joint) => joint.input),
+    60
+  );
+  srv.updateMechanism();
+  srv.toggleLock(srv.joints.find((joint) => joint.id === 'B'));
 });
 await page.waitForTimeout(300);
+const marks = () =>
+  page.evaluate(() => ({
+    badges: document.querySelectorAll('.lockBadge').length,
+    joints: [...document.querySelectorAll('.joint-locked')].map((node) => node.id).sort(),
+    stored: ng
+      .getComponent(document.querySelector('app-new-grid'))
+      .mechanismSrv.joints.filter((joint) => joint.locked)
+      .map((joint) => joint.id)
+      .sort(),
+  }));
+const pausedMarks = await marks();
 record(
-  'the marks stay in an analysis mode, where the pose can still be edited',
-  (await marks()) > 0
+  'a fresh paused drawing has a visible lock to check in analysis',
+  pausedMarks.badges > 0 && pausedMarks.joints.includes('joint_B'),
+  pausedMarks
 );
-
-await page.locator('.playButton').click();
-await page.waitForTimeout(500);
-// If this drawing will not run, the next check is measuring nothing -- so say
-// which of the two failed rather than reporting a clean canvas as a pass.
-const running = await page.evaluate(
-  () => ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.isPlaying
+const shotRoot = 'artifacts/locking-modes';
+const modesFilm = filmstrip(page, `${shotRoot}/modes`);
+await modesFilm.shot('edit-paused');
+for (const [mode, label] of [
+  [2, 'kinematic analysis'],
+  [3, 'force analysis'],
+]) {
+  await modesFilm.during(80, 3, `mode-${mode}`, async () => {
+    await page.evaluate(
+      (tab) => ng.getComponent(document.querySelector('app-new-grid')).tabService.setTab(tab),
+      mode
+    );
+    await page.waitForTimeout(300);
+  });
+  const current = await marks();
+  record(
+    `lock marks remain visible while paused in ${label}`,
+    JSON.stringify(current) === JSON.stringify(pausedMarks),
+    current
+  );
+}
+await page.evaluate(() =>
+  ng.getComponent(document.querySelector('app-new-grid')).tabService.setTab(2)
 );
-record('pressing play starts it', running === true, { running });
-record('and the marks stand down while it runs, in every mode', (await marks()) === 0);
-
-await page.locator('.playButton').click();
-await page.waitForTimeout(500);
-record('and come back when it is paused again', (await marks()) > 0);
+await page.waitForTimeout(300);
+const motionFilm = filmstrip(page, `${shotRoot}/motion`, {
+  x: 250,
+  y: 60,
+  width: 1250,
+  height: 850,
+});
+await motionFilm.shot('paused');
+await page.getByRole('button', { name: 'Play', exact: true }).click();
+const samples = [];
+for (let i = 0; i < 12; i++) {
+  await motionFilm.shot('playing');
+  samples.push(
+    await page.evaluate(() => {
+      const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+      const joint = srv.joints.find((point) => point.id === 'B');
+      return {
+        playing: srv.isPlaying,
+        seconds: srv.secondsOf(0),
+        x: joint.x,
+        y: joint.y,
+        badges: document.querySelectorAll('.lockBadge, .joint-locked, .link-locked').length,
+        locked: joint.locked,
+      };
+    })
+  );
+  await page.waitForTimeout(100);
+}
+record(
+  'playing hides lock cues without erasing the lock',
+  samples.every((sample) => sample.playing && sample.badges === 0 && sample.locked),
+  samples
+);
+record(
+  'the locked joint moves during simulation',
+  samples.some((sample) => Math.hypot(sample.x - samples[0].x, sample.y - samples[0].y) > 1),
+  samples
+);
+record(
+  'the observed playback crosses a complete cycle',
+  samples.some((sample, i) => i > 0 && sample.seconds < samples[i - 1].seconds),
+  samples.map((sample) => sample.seconds)
+);
+await page.getByRole('button', { name: 'Pause', exact: true }).click();
+await page.waitForTimeout(300);
+await motionFilm.shot('paused-again');
+const resumedMarks = await marks();
+record(
+  'pausing restores the same lock marks and stored locks',
+  JSON.stringify(resumedMarks) === JSON.stringify(pausedMarks),
+  resumedMarks
+);
+console.log(await contactSheet(`${shotRoot}/modes/*.png`, `${shotRoot}/modes.png`, 3, 0.5));
+console.log(await contactSheet(`${shotRoot}/motion/*.png`, `${shotRoot}/motion.png`, 4, 0.5));
 
 // ---- a lock says where one end is, not that the bar cannot change length ----
 //

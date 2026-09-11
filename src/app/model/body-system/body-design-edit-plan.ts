@@ -3,6 +3,8 @@ import {
   insertBodyRecords,
   insertedBodySelection,
 } from './body-insert-records';
+import { BodyPropertyOperation } from './body-property-types';
+import { planBodyPaste } from './body-paste-edit';
 import { planBodyCopy } from './body-copy-edit';
 import { editBodyPoint } from './body-point-edit';
 import { convertBodyUnits } from './body-unit-edit';
@@ -92,11 +94,16 @@ export function planBodyDesignEdit(
     return bodyEditRefusal('missing-target', [{ kind: 'body', id: command.targetGroupMember }]);
   let pinSource = candidate;
   const copiedSelection: BodySelectionRef[] = [];
+  const copiedProperties: BodyPropertyOperation[] = [];
   for (const [index, operation] of command.operations.entries()) {
-    if (operation.kind === 'copy-bodies') {
-      const copied = planBodyCopy(candidate, operation, `${command.id}:${index}`);
+    if (operation.kind === 'copy-bodies' || operation.kind === 'paste-bodies') {
+      const copied =
+        operation.kind === 'copy-bodies'
+          ? planBodyCopy(candidate, operation, `${command.id}:${index}`)
+          : planBodyPaste(candidate, operation, `${command.id}:${index}`);
       if (!copied.ok) return copied;
       copiedSelection.push(...insertedBodySelection(copied.records));
+      copiedProperties.push(...(copied.properties ?? []));
       candidate = insertBodyRecords(candidate, copied.records);
       pinSource = insertBodyRecords(pinSource, copied.records);
     } else if (operation.kind === 'joint-kind') {
@@ -152,7 +159,7 @@ export function planBodyDesignEdit(
     )
   );
   candidate = retainCenterEditAnchors(workingSource, candidate);
-  for (const operation of command.operations)
+  for (const operation of [...copiedProperties, ...command.operations])
     if (operation.kind === 'group-properties') {
       const changed = editBodyProperties(candidate, operation);
       if (!changed.ok) return changed;
