@@ -19,7 +19,7 @@
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
 | S2 | Complete | Native compiler, analytic Jacobians, mobility/admission, branch continuation, folds, limits and frame conditioning. Seven native/legacy and four native/MATLAB comparisons retain the original ceilings. Geometric redundancy, two slots on a carrier and one-pin/shared-WORLD cases pass. Combined S2/initial-rate gate: 255 tests / 37 files; current-editor browser gate is green. Continuous cycle event publication remains an explicit S3 obligation. |
 | S3 | Complete | Native rates/forces, immutable results, interval/cycle/window publication, all five hand-derived cylinder examples and native/MATLAB positions/rates. F2 reviewed d842ffd and all findings resolved below. Final full gate: 2682 tests / 285 files; host build passes; ui-copy 17/17 with zero console errors. Earlier S3 browser and live-incognito evidence remains recorded. Native UI cutover is S5–S6, not claimed here. |
-| S4 | In progress | Native core codec and initial structural transaction/lifecycle/history service implemented and tested. Complete authored metadata, remaining editing operations, posed re-anchoring, production import, recovery and F3 remain. F2 is resolved; no public-route cutover yet. |
+| S4 | In progress | Native core codec, project settings/synthesis/view records and initial structural transaction/lifecycle/history service implemented and tested. Remaining property/edit operations, posed re-anchoring, production import, recovery, full lifecycle matrix and F3 remain. F2 is resolved; no public-route cutover yet. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
 | S6 | Pending | All consumers, synthesis, tutorial, fixtures/templates and default cutover. |
 | S7 | Pending | Removal manifest closed and performance budget met. |
@@ -1291,3 +1291,77 @@ Verified evidence (Node 24.18.0, logs under `artifacts/bodies-and-joints/`):
 
 F3 has not been requested; spending/reservations are unchanged. Next: complete authored project
 state and remaining commands, then production import and recovery integration before F3/S5.
+
+
+## S4 authored project state and persistence follow-through
+
+The structural edit checkpoint is **77b2cb1**. The next slice extends `BodyDocument` with
+required project settings and optional synthesis/view records; their exact fields and units
+are in the contract. This is still S4 in progress, not a public/native editor cutover.
+
+- Settings retain display angle/force units, gravity, force-analysis mode, major/minor grid
+  and ID visibility, object scale, and signed defaults for newly created drives. Existing
+  drivers retain their actual profiles. Length-unit conversion is not implemented by this
+  operation; relabeling units without converting geometry is not permitted.
+- Synthesis retains ordered target poses, length/reference/search options, pivot region,
+  generated material/joint/attachment IDs, original attachment placements and the partial
+  ownership flag. Removing generated material preserves the design, marks partial ownership,
+  and prunes only references to records that existed before deletion. Invalid ownership in a
+  mixed author/delete batch remains invalid and refuses the whole batch.
+- View metadata retains a model-space camera center/span and shipped backdrop path, center,
+  width, angle, opacity and label. Remote/private data URLs and path traversal are refused.
+  Actual asset loading remains an S5/S6 UI task. Local photos, snap preferences, global CoM/
+  trace switches, selected objects and playback clocks do not become shared payload fields.
+- The project command participates in the same preview/commit/effects/history boundary.
+  Synthesis-only changes are allowed in Synthesis mode; settings quote the existing
+  `SETTINGS_AT_START_ONLY` model. Metadata-only changes retain clocks. Changing gravity
+  invalidates force results, but its broad invalidation does not reset unrelated clocks when
+  combined with deletion. Two ordinary four-bars paused after a whole revolution assert that
+  distinction through the actual authority, including the retained elapsed time.
+
+The save/reopen tests exposed a pre-existing native-factory schema mismatch: structural typing
+allowed a `Pose` as a `Point`; object spreading then copied `angle` into an attachment. The
+factory now captures only the fields declared by point/pose/vertex records. The codec keeps its
+strict unknown-field check. The initial compile failure (a union of branded ID arrays needed
+`Set<string>`) and original round-trip failures are retained in `S4-project-initial-compile.log`
+and `S4-project-shape-failure.log`; they are not passing evidence.
+
+Verification under `artifacts/bodies-and-joints/` (Node 24.18.0):
+
+- `S4-project-full-unit.log`: **2723 tests / 294 files pass** before moving the shared schema into the model.
+  The two clock tests were subsequently strengthened to use completed full crank revolutions;
+  `S4-project-final-focused.log` reports **7/7 pass** for those final assertions.
+- `S4-project-build.log`: production build passes; only existing CommonJS warnings.
+- `S4-project-ui-copy.log`: **17/17 pass**, zero console errors, unchanged legacy localhost
+  route. No native UI or animation change is claimed by this checkpoint.
+- `S4-mutation-synthesis-owner.log`: removing the provenance check yields the intended one
+  failed assertion (bad owner silently accepted). `S4-mutation-settings-clock.log`: using
+  force invalidation to reset clocks yields the intended one failed assertion: the surviving
+  crank's command/time reset from 2π to zero. Both mutation processes restored source in
+  `finally`; `S4-project-restored-unit.log` reports **11/11 pass** afterward.
+
+**Remaining before F3:** finish pose/geometry/coordinate/property/load/hold/lock/drive commands,
+copy/remap and branch-neutral paused re-anchoring; complete production import and atomic native
+load/save/recovery facade; port the full enumerated lifecycle/save-reopen matrix and named
+legacy behavioral assertions. The source audit also confirms missing native force color/lock
+and attachment-anchored custom CoM representation; those existing user properties must be
+carried before import/editor cutover, not silently dropped. Connect project gravity/analysis
+settings to the native runtime options when the service begins owning simulation. Complete
+S4's named browser gates and focused F3 review before S5. Paid review accounting is unchanged.
+
+
+### S4 shared schema and acceptance budget
+
+The exact native schema now lives in `model/body-system/document-schema/`; both the codec and
+edit validator ask it. This prevents an accepted typed edit from introducing an unknown field
+that the next save refuses. The existing 8 MiB decoded-document budget also lives in the model
+and is enforced before accepting an edit, using UTF-8 bytes rather than JavaScript character
+count. The envelope retains the same limit and public refusal shape. A regression inserts
+individually valid Unicode labels whose aggregate exceeds the envelope and expects refusal
+without a history entry or document change. This is resource validation, not compression.
+
+After schema centralization, `S4-project-schema-full-unit.log` reports **2724 tests / 294 files
+pass**. The final byte-budget check adds one further test; `S4-project-budget-unit.log` reports
+**20 tests / 3 files pass** (project/authority/codec), and `S4-project-schema-build.log` passes
+the production build. Both processes finished with exit 0. The UI-copy gate above remains
+17/17 with no public renderer change. The two earlier clock/provenance mutation probes remain restored.

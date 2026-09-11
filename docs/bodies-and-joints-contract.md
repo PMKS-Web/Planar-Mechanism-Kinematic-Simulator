@@ -29,6 +29,38 @@ nearest polygon or drop the load. Native load creation always names a material m
 never creates this import-only provenance. F1 challenged co-membership-only provenance and
 led to the relative-frame requirement; F3 must review its transaction and importer behavior.
 
+## Authored project state (S4)
+
+The required `settings` record carries angle/force display units, gravity, static/dynamic force
+analysis, major/minor grid and ID visibility, object scale, and signed defaults for *new* drives.
+Angular defaults are radians/second; linear defaults and object scale use document length
+units. A drive's captured profile remains authoritative after a default changes. Physical
+`units` stay separate from display preferences. Unit conversion must transform authored values;
+relabeling `units` alone is not an editing operation.
+
+Optional `synthesis` contains up to three ordered target poses in document lengths/radians,
+end-effector length/reference, search options and pivot region. Generated body/joint IDs and
+attachment IDs with their original world positions retain replacement provenance. A deletion
+prunes only previously existing references that actually disappear and marks the result partial.
+It must not repair away nonexistent references supplied by a malformed command. No selected row,
+armed placement gesture, cached candidate list or old point-graph object enters this record.
+
+Optional `view` contains camera center/span and a shipped backdrop asset with center, width,
+rotation, opacity and label. A camera span is the model length across the shorter usable viewport
+side; the other side follows the viewport aspect ratio. Shared backdrop references are bounded
+`assets/backdrops/<name>.<image extension>` paths, never data URLs, remote URLs or traversal.
+Asset loading remains a UI concern. Local photo data, snap preferences, global trace/CoM toggles,
+active selection and playback clocks remain local. Shared camera/backdrop coordinates use the
+same document units and start frame as the drawing.
+
+The shared model schema and 8 MiB UTF-8 envelope budget apply to accepted edits as well as
+loading; an edit cannot knowingly produce a document that its codec refuses to save.
+
+Project edits use the same transaction/history boundary. Synthesis-only authoring works in
+Synthesis mode. Document settings quote `SETTINGS_AT_START_ONLY`; metadata changes do not
+restart clocks. Gravity/force-mode changes invalidate force results, including in mixed batches,
+without using that broader invalidation to restart an unrelated machine.
+
 ## Joint shape and ordering
 
 Each joint has ordered `bodyA` / `bodyB` and two explicit local frame records. Each frame stores an AttachmentId for its origin and a local angle for its directed axis. Both attachment owners must match the named bodies. Storing the axis as an angle guarantees normalization; derive vectors with sine/cosine and reject non-finite angles. Rendering stations are separate guide-local metadata with their own material owner and frame, never attachment points used to locate bodies. Reversing P equation order cannot hand its visible guide to the other member. A pin-in-slot

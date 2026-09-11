@@ -39,12 +39,13 @@ export class BodyFactory {
       id,
       kind: 'material',
       label,
-      pose: { ...pose },
+      pose: { x: pose.x, y: pose.y, angle: pose.angle },
       geometry: {
         kind: 'bar',
         width,
         vertices: points.map((point) => ({
-          ...point,
+          x: point.x,
+          y: point.y,
           id: newRecordId<'vertex'>(),
         })) as [GeometryVertex, GeometryVertex],
       },
@@ -66,7 +67,7 @@ export class BodyFactory {
     const attachment: Attachment = {
       id: newRecordId<'attachment'>(),
       bodyId,
-      point: { ...point },
+      point: { x: point.x, y: point.y },
       label,
       trace: false,
     };

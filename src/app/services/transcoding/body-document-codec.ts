@@ -1,6 +1,6 @@
 import { BodyDocument } from '../../model/body-system/body-document';
 import { DocumentIssue, validateBodyDocument } from '../../model/body-system/body-validation';
-import { hasBodyDocumentShape } from './native-schema/document';
+import { hasBodyDocumentShape } from '../../model/body-system/document-schema/document';
 import { canonicalBodyDocument } from './body-document-canonical';
 import { bodyDocumentEnvelope, readBodyDocumentEnvelope } from './body-document-envelope';
 

@@ -1,5 +1,5 @@
 import { retainPinConnections } from './body-pin-lifecycle';
-import { menuRefusal, refusalFor } from '../edit-permission';
+import { bodyOperationPermission, editBodyProject } from './body-project-edit';
 import { BodyDocument } from './body-document';
 import { BodyEditCommand, BodyEditContext, BodyEditResult } from './body-edit-types';
 import { bodyEditRefusal } from './joint-permission';
@@ -40,12 +40,9 @@ export function planBodyEdit(
     command.operations.length > 1000
   )
     return bodyEditRefusal('invalid-command');
-  const capture = command.operations.some(
-    (operation) => operation.kind === 'insert' || operation.kind === 'joint-kind'
-  );
-  const permission = capture
-    ? menuRefusal(context.state, 'start')
-    : refusalFor('structure', context.state);
+  const permission = command.operations
+    .map((operation) => bodyOperationPermission(operation, context.state))
+    .find(Boolean);
   if (permission)
     return { ok: false, code: 'permission', message: permission.long, targets: [], permission };
   // The source is copied once so a returned preview cannot observe later caller mutations.
@@ -95,7 +92,8 @@ export function planBodyEdit(
       const changed = changeBodyJointKind(candidate, operation, `${command.id}:${index}`);
       if (!changed.ok) return changed;
       candidate = changed.document;
-    } else if (!['insert', 'delete', 'reset-group-mass'].includes(operation.kind))
+    } else if (operation.kind === 'project') candidate = editBodyProject(candidate, operation);
+    else if (!['insert', 'delete', 'reset-group-mass'].includes(operation.kind))
       return bodyEditRefusal('invalid-command');
   }
   if (command.operations.some((operation) => operation.kind === 'joint-kind'))

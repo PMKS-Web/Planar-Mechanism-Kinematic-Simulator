@@ -1,5 +1,6 @@
+import { MAX_BODY_DOCUMENT_BYTES as MAX_NATIVE_DOCUMENT_BYTES } from '../../model/body-system/body-document-budget';
 export const NATIVE_DOCUMENT_PREFIX = 'pmks2:';
-export const MAX_NATIVE_DOCUMENT_BYTES = 8 * 1024 * 1024;
+export { MAX_BODY_DOCUMENT_BYTES as MAX_NATIVE_DOCUMENT_BYTES } from '../../model/body-system/body-document-budget';
 
 /** CRC32 detects damaged share strings; it is not an authenticity or permission check. */
 function checksum(bytes: Uint8Array): string {

@@ -13,13 +13,14 @@ describe('native structural edit planning', () => {
   it('inserts a complete construction atomically, owns its preview, and produces no-op plans without effects', () => {
     const fixture = nativeObliqueCylinder().document,
       source = emptyBodyDocument(),
-      { version, units, ...records } = fixture;
+      { version, units, settings, synthesis, view, ...records } = fixture;
     const plan = planBodyEdit(
       source,
       7,
       {
         id: 'create',
         operations: [
+          { kind: 'project', settings, synthesis, view },
           {
             kind: 'insert',
             records: { ...records, bodies: records.bodies.filter((body) => body.id !== WORLD) },
