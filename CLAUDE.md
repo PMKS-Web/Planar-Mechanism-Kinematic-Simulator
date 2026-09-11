@@ -42,11 +42,18 @@ There is no lint target. Formatting follows `.prettierrc`: 100-char width, singl
 ## UI validation: run it yourself
 
 **Verify UI changes in the running app yourself**, following the `ui-validate` skill
-(`.claude/skills/ui-validate/SKILL.md`). It holds the detail: Playwright in a disposable profile,
-reports and screenshots in gitignored `artifacts/`, **a filmstrip rather than a screenshot for
-anything that animates or responds to a drag**, and which of the Playwright MCP, a tracked e2e
-suite, or claude-in-chrome fits the job. Inspect your own screenshots rather than trusting an
-exit code.
+(`.claude/skills/ui-validate/SKILL.md`; Codex loads its pointer in `.agents/skills/`). It holds the
+detail: Playwright in a disposable profile, reports and screenshots in gitignored `artifacts/`, and
+**a filmstrip rather than a screenshot for anything that animates or responds to a drag**. The live
+browser tool depends on which runner you are in:
+
+- **Claude Code:** the Playwright MCP (`mcp__playwright__*`) to explore and reproduce;
+  claude-in-chrome (`mcp__claude-in-chrome__*`) only when the user's logged-in Chrome is the point.
+- **Codex:** standard Codex computer use (`mcp__cua_repl`), in an incognito Chrome window, to
+  explore and check live. Codex has neither the Playwright MCP nor claude-in-chrome.
+- **Both:** a tracked `e2e/*.mjs` suite to keep what you found.
+
+Inspect your own screenshots rather than trusting an exit code.
 
 Tests are Vitest but written in Jasmine style (globals via `vitest/globals`). Vitest errors on spec files containing no tests.
 

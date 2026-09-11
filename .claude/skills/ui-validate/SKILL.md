@@ -9,26 +9,39 @@ Run browser and computer-use work directly. Reuse or extend the tracked
 Playwright scripts in `e2e/*.mjs`, inspect the resulting screenshots and JSON
 reports yourself, and return a compact PASS/FAIL summary.
 
-## Three ways to drive a browser, for different jobs
+## Driving a browser: the tool depends on the runner
 
-The tool names below are Claude Code's. In Codex, use its own browser or computer-use tool for the
-MCP and claude-in-chrome jobs; the rules around each job stay the same.
+Claude Code and Codex have different browser tools. Use the column for the runner you are in.
+**If a tool named here is not in your tool list, you are in the other runner:** use that column,
+and never report a live check as passed with a tool you could not call.
 
-- **The Playwright MCP** (`mcp__playwright__*`) — reach for this first when
-  exploring or reproducing. It holds one live browser across calls and answers
-  with the accessibility tree, so a selector is something you read rather than
-  something you guess: finding out that a mode tab is `.tabButton` and not
-  `.modeTab` costs one call here and a whole app boot otherwise. It launches its
-  own browser with a temporary profile.
-- **A tracked `e2e/*.mjs` suite** — how a finding gets *kept*. An MCP session
-  proves something worked once, in one conversation; only a suite that exits
-  non-zero can catch the regression months later. Explore with the MCP, then
-  write the suite with the guesswork already burned off.
-- **claude-in-chrome** (`mcp__claude-in-chrome__*`) — drives the user's real,
-  logged-in Chrome. Use it only when that is the point (a deploy preview behind a
-  login, a Netlify or GitHub page, something already open in front of them),
-  never for routine checks of the app, and never to sign in, buy, post or submit
-  without being asked.
+| Job | Claude Code | Codex |
+| --- | --- | --- |
+| Explore or reproduce in a live browser | Playwright MCP (`mcp__playwright__*`) | Standard Codex computer use (`mcp__cua_repl`), in an incognito Chrome window |
+| Keep a finding as a check that can fail | A tracked `e2e/*.mjs` suite | A tracked `e2e/*.mjs` suite (the same scripts) |
+| Act in the user's real, logged-in Chrome | claude-in-chrome (`mcp__claude-in-chrome__*`) | Standard Codex computer use, in their regular Chrome window |
+
+- **The Playwright MCP** (Claude Code) — reach for this first when exploring or
+  reproducing. It holds one live browser across calls and answers with the
+  accessibility tree, so a selector is something you read rather than something
+  you guess: finding out that a mode tab is `.tabButton` and not `.modeTab` costs
+  one call here and a whole app boot otherwise. It launches its own browser with
+  a temporary profile.
+- **Standard Codex computer use** (`mcp__cua_repl`, Codex) — use incognito Chrome
+  for live UX checks on the localhost build. It can operate Chrome through the
+  native app surface when no Chrome browser connector is available. Confirm the
+  window is incognito before loading the local app; leave the user's regular tabs
+  and extension permissions alone. Read controls from the accessibility tree, and
+  use fresh screenshots for grid targets that expose no actionable label.
+- **A tracked `e2e/*.mjs` suite** (both) — how a finding gets *kept*. A live
+  session proves something worked once, in one conversation; only a suite that
+  exits non-zero can catch the regression months later. Explore with your
+  runner's live tool, then write the suite with the guesswork already burned off.
+- **claude-in-chrome** (Claude Code), or Codex computer use in the user's regular
+  Chrome — only when the user's real, logged-in browser is the point (a deploy
+  preview behind a login, a Netlify or GitHub page, something already open in
+  front of them). Never for routine checks of the app, and never to sign in, buy,
+  post or submit without being asked.
 
 ## Safety
 
