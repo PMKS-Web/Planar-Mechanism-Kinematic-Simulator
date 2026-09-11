@@ -6,7 +6,7 @@ import {
 } from './body-project';
 import { AttachmentId, BodyId, DriverId, ForceId, LimitId } from './body-id';
 import { Point, Pose } from './body-frame';
-import { Body, BodyPresentation, WORLD_BODY } from './material-body';
+import { Body, BodyPresentation, CenterEditAnchor, WORLD_BODY } from './material-body';
 import { Attachment, BodyJoint, JointCoordinateRef, PinJunction } from './joint-record';
 import { CylinderAssembly } from './assembly-record';
 import { BodyUnits, SI_UNITS } from './body-units';
@@ -41,6 +41,14 @@ export interface BodyLoad {
   readonly frame: 'world' | 'body';
   readonly vector: Point;
   readonly couple: number;
+  readonly locked?: boolean;
+  readonly presentation?: {
+    readonly color?: string;
+    readonly length?: number;
+    /** A zero load retains its arrow heading in the force's reference axes. */
+    readonly zeroAngle?: number;
+  };
+
   /** Import-only ambiguity is retained until the author chooses a material owner. */
   readonly legacyGroupScope?: LegacyLoadScope;
 }
@@ -57,7 +65,7 @@ export interface GroupAnnotation {
 export interface GroupMassOverride {
   readonly mass?: number;
   readonly inertia?: number;
-  readonly center?: { readonly point: Point; readonly editAnchor: 'body' | 'grid' };
+  readonly center?: { readonly point: Point; readonly editAnchor: CenterEditAnchor };
 }
 
 export interface BodyHold {

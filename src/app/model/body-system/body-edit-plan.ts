@@ -1,3 +1,6 @@
+import { retainCenterEditAnchors } from './body-center-anchor';
+import { validateBodyEditLocks } from './body-lock-validation';
+import { isBodyPropertyOperation, editBodyProperties } from './body-property-edit';
 import { retainPinConnections } from './body-pin-lifecycle';
 import { bodyOperationPermission, editBodyProject } from './body-project-edit';
 import { BodyDocument } from './body-document';
@@ -93,7 +96,12 @@ export function planBodyEdit(
       if (!changed.ok) return changed;
       candidate = changed.document;
     } else if (operation.kind === 'project') candidate = editBodyProject(candidate, operation);
-    else if (!['insert', 'delete', 'reset-group-mass'].includes(operation.kind))
+    else if (operation.kind === 'group-properties') continue;
+    else if (isBodyPropertyOperation(operation)) {
+      const changed = editBodyProperties(candidate, operation);
+      if (!changed.ok) return changed;
+      candidate = changed.document;
+    } else if (!['insert', 'delete', 'reset-group-mass'].includes(operation.kind))
       return bodyEditRefusal('invalid-command');
   }
   if (command.operations.some((operation) => operation.kind === 'joint-kind'))
@@ -111,9 +119,17 @@ export function planBodyEdit(
   }
   const lineage = bodyGroupLineage(lineageSource, candidate, command.targetGroupMember);
   if (!lineage.ok) return lineage;
-  candidate = { ...candidate, groups: lineage.groups };
+  candidate = retainCenterEditAnchors(source, { ...candidate, groups: lineage.groups });
+  for (const operation of command.operations)
+    if (operation.kind === 'group-properties') {
+      const changed = editBodyProperties(candidate, operation);
+      if (!changed.ok) return changed;
+      candidate = changed.document;
+    }
   const refused = validateBodyEditDocument(candidate);
   if (refused) return refused;
+  const locked = validateBodyEditLocks(source, candidate);
+  if (locked) return locked;
   const effects = bodyEditEffects(source, candidate);
   return snapshotCopy({
     ok: true,

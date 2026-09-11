@@ -1,3 +1,4 @@
+import { bodyMotionRecord } from './body-motion-record';
 import { BodyDocument } from './body-document';
 import { BodyEditEffects, BodySelectionRef, BodyRecordRef } from './body-edit-types';
 import { BodyId, compareRecordIds, WORLD } from './body-id';
@@ -14,7 +15,10 @@ function recordText(value: unknown): string {
       : item
   );
 }
-function records(document: BodyDocument): Map<string, { ref: BodyRecordRef; value: unknown }> {
+function records(
+  document: BodyDocument,
+  scope: 'all' | 'motion' = 'all'
+): Map<string, { ref: BodyRecordRef; value: unknown }> {
   const entries: { ref: BodyRecordRef; value: unknown }[] = [];
   for (const field of ['settings', 'synthesis', 'view', 'units'] as const)
     if (document[field] !== undefined)
@@ -41,11 +45,21 @@ function records(document: BodyDocument): Map<string, { ref: BodyRecordRef; valu
       value: hold,
     });
   for (const id of document.locks) entries.push({ ref: { kind: 'lock', id }, value: id });
-  return new Map(entries.map((entry) => [recordText(entry.ref), entry]));
+  const kept =
+    scope === 'all'
+      ? entries
+      : entries
+          .map((entry) => ({ ...entry, value: bodyMotionRecord(entry.ref, entry.value) }))
+          .filter((entry) => entry.value !== undefined);
+  return new Map(kept.map((entry) => [recordText(entry.ref), entry]));
 }
-export function bodyEditEffects(before: BodyDocument, after: BodyDocument): BodyEditEffects {
-  const old = records(before),
-    next = records(after),
+export function bodyEditEffects(
+  before: BodyDocument,
+  after: BodyDocument,
+  scope: 'all' | 'motion' = 'all'
+): BodyEditEffects {
+  const old = records(before, scope),
+    next = records(after, scope),
     added: BodyRecordRef[] = [],
     removed: BodyRecordRef[] = [],
     changed: BodyRecordRef[] = [];

@@ -1,4 +1,4 @@
-import { BodyId, VertexId, WORLD } from './body-id';
+import { AttachmentId, BodyId, VertexId, WORLD } from './body-id';
 import { IDENTITY_POSE, Point, Pose } from './body-frame';
 
 export interface GeometryVertex extends Point {
@@ -15,6 +15,8 @@ export type BodyGeometry =
   | { readonly kind: 'circle'; readonly center: Point; readonly radius: number };
 
 export type ScalarProperty = { readonly mode: 'explicit'; readonly value: number };
+export type CenterEditAnchor = 'body' | 'grid' | { readonly attachmentId: AttachmentId };
+
 export interface MassSpecification {
   readonly mass: ScalarProperty | { readonly mode: 'density'; readonly value: number };
   readonly inertia: ScalarProperty | { readonly mode: 'automatic' };
@@ -23,7 +25,7 @@ export interface MassSpecification {
     | {
         readonly mode: 'explicit';
         readonly point: Point;
-        readonly editAnchor: 'body' | 'grid';
+        readonly editAnchor: CenterEditAnchor;
       };
 }
 

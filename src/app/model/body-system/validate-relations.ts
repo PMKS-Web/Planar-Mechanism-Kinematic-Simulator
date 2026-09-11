@@ -9,6 +9,14 @@ export function validateLoads(context: ValidationContext): void {
     if (bodies.get(force.bodyId)?.kind !== 'material') issue('missing-material-owner', path);
     if (!finitePoint(force.point) || !finitePoint(force.vector) || !Number.isFinite(force.couple))
       issue('nonfinite-load', path);
+    if (
+      (force.locked !== undefined && typeof force.locked !== 'boolean') ||
+      (force.presentation?.length !== undefined &&
+        (!Number.isFinite(force.presentation.length) || force.presentation.length <= 0)) ||
+      (force.presentation?.zeroAngle !== undefined &&
+        !Number.isFinite(force.presentation.zeroAngle))
+    )
+      issue('invalid-load-presentation', path);
     if (!['world', 'body'].includes(force.frame)) issue('invalid-load-frame', path);
     if (
       force.legacyGroupScope &&

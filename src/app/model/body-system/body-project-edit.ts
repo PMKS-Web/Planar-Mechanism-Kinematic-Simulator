@@ -1,3 +1,4 @@
+import { isBodyPropertyOperation } from './body-property-edit';
 import { BodyDocument } from './body-document';
 import { BodyEditOperation } from './body-edit-types';
 import {
@@ -12,6 +13,13 @@ export function bodyOperationPermission(
   operation: BodyEditOperation,
   state: EditState
 ): EditRefusal | null {
+  // These conversions infer a world direction from the design; posed capture still needs the displayed body frames.
+  if (
+    operation.kind === 'force-owner' ||
+    (operation.kind === 'force-properties' && operation.change.frame !== undefined)
+  )
+    return menuRefusal(state, 'start');
+  if (isBodyPropertyOperation(operation)) return menuRefusal(state, 'preserve');
   if (operation.kind === 'project') {
     if (operation.settings && (state.playing || !state.atStart)) return SETTINGS_AT_START_ONLY;
     if (operation.synthesis !== undefined || operation.view?.backdrop || operation.view === null)
