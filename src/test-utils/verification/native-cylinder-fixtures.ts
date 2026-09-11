@@ -5,7 +5,11 @@ import { createBodyCylinder } from '../../app/model/body-system/cylinder-factory
 import { localToWorld } from '../../app/model/body-system/body-frame';
 
 /** Both the ram and carriage keep authored geometry; their mounts are ordinary relationships. */
-export function nativeAxialCarriage(connection: 'revolute' | 'weld' = 'revolute', angle = 0.4) {
+export function nativeAxialCarriage(
+  connection: 'revolute' | 'weld' = 'revolute',
+  angle = 0.4,
+  barrelConnection: 'revolute' | 'weld' = 'weld'
+) {
   const origin = { x: 1, y: -2, angle },
     initial = 0.4;
   const { document: cylinder, assembly } = createBodyCylinder(
@@ -15,7 +19,7 @@ export function nativeAxialCarriage(connection: 'revolute' | 'weld' = 'revolute'
     initial
   );
   const f = new BodyFactory(cylinder);
-  f.joint('weld', f.attachment(WORLD, origin), assembly.barrelMount);
+  f.joint(barrelConnection, f.attachment(WORLD, origin), assembly.barrelMount);
   const mount = localToWorld(origin, { x: 3 + initial, y: 0 });
   const carriage = f.body(
     'carriage',

@@ -30,7 +30,8 @@ export function relaxBodyPosition(
     readonly residualTolerance?: number;
   } = {}
 ): BodyRelaxation {
-  const tolerance = options.residualTolerance ?? 1e-10;
+  // Near a fold, acceleration amplifies pose error more strongly than position does.
+  const tolerance = options.residualTolerance ?? 1e-12;
   if (!Number.isFinite(tolerance) || tolerance <= 0)
     return { ok: false, reason: 'invalid-pose', residual: Infinity, iterations: 0 };
   if (

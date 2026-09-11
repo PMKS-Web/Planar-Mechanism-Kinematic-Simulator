@@ -18,7 +18,7 @@
 | S0 | Baseline complete | Six unit suites pass (182 tests), seven new compatibility tests pass, build passes, template-open 11/11, template-graphs 3978/3978, ui-copy 17/17. Timing, visual baseline and operation-level consumer classification are recorded. Existing drag timing failures are reproduced on original test files, not waived; S7 must meet the measured comparison budget. |
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
 | S2 | Complete | Native compiler, analytic Jacobians, mobility/admission, branch continuation, folds, limits and frame conditioning. Seven native/legacy and four native/MATLAB comparisons retain the original ceilings. Geometric redundancy, two slots on a carrier and one-pin/shared-WORLD cases pass. Combined S2/initial-rate gate: 255 tests / 37 files; current-editor browser gate is green. Continuous cycle event publication remains an explicit S3 obligation. |
-| S3 | In progress | Analytic rates, forces, continuous intervals/cycles, immutable document snapshots and result readers implemented. Full unit suite: 2655 tests / 276 files pass, including native/MATLAB point and angular rates. Both reproduced legacy test failures are resolved with boundary-specific tracer assertions and explicit quantization bounds plus a full native butterfly branch comparison. Host build and ui-copy pass. Current-editor S3 browser gate is green. Remaining native worked examples and F2 remain pending. |
+| S3 | In progress | Analytic rates, forces, continuous intervals/cycles, immutable document snapshots and result readers implemented. Full unit suite: 2655 tests / 276 files pass, including native/MATLAB point and angular rates. Both reproduced legacy test failures are resolved with boundary-specific tracer assertions and explicit quantization bounds plus a full native butterfly branch comparison. Host build and ui-copy pass. Current-editor S3 browser gate is green. All five native worked examples now have closed-form motion, cycle and loaded-reaction checks; F2 remains pending. Latest full unit gate: 2676 tests / 282 files, build and ui-copy 17/17 pass. |
 | S4 | Pending | Native transactions, codec/import, lifecycle, history and F3. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
 | S6 | Pending | All consumers, synthesis, tutorial, fixtures/templates and default cutover. |
@@ -120,7 +120,10 @@ Known reported spend: **$3.47922375**, including the probe and F1 auxiliary usag
 
 ## Next action
 
-Continue S3 with physical wrenches, native sample/cycle ownership, continuous stop events and all five end-to-end examples, then the full numerical/UI gates and F2. S2 position verification is complete; its continuous-cycle obligations are recorded explicitly in the contract. Numerical frames, mobility/admission and continuation are now implemented; inspect the latest evidence below. F1 resolution is committed as `447dfb9`; its gates pass. F1 process 22599 completed successfully; no further F1 call is pending or required for routine fixes. The independent row/derivative derivation is in `docs/bodies-and-joints-equations.md`.
+Launch F2 against the verified native S3 kernel and resolve actionable findings before S4.
+The five worked examples, continuous paths, rate/force ownership and frozen references now
+pass the full computational gate. See the latest entry below for the exact evidence and
+budget. S4–S8 remain required; the current editor and gallery still use the legacy route.
 
 ## S1 implementation history (pre-review evidence)
 
@@ -1018,3 +1021,85 @@ The full-unit gate is now green, the requested S3 current-editor browser suites 
 and both browser workflows were actually used. **S3 is not complete:** native constructions
 for the remaining worked cylinder examples and F2 still precede S4. All S4–S8 obligations,
 including full native visual/integration gates and substantial old-code removal, remain open.
+
+
+## S3 five hand-derived cylinder examples and numerical consistency
+
+Computational checkpoint after `b2d27e3`; the commit containing this entry records the
+implementation. S3 remains in progress until F2 resolves. S4–S8 are untouched and required.
+
+All five scenarios now exist as native constructions: axial carriage (pinned and welded),
+both roots of an oblique guide intersection, a translating welded bracket with passive
+cylinder stops, a rotating carrier with a separate sliding block and welded barrel, and a
+selectively welded rod/bracket with a third pinned boom. The explicit scalar derivatives,
+body poses, witness motion, independent static reactions and dynamic power derivations are
+in `docs/bodies-and-joints-equations.md`.
+
+The computational tests assert exact body/joint/group/DOF counts, every row and travel bound,
+every material body's directed heading and three noncollinear points, velocities and
+accelerations under two nonuniform instantaneous command profiles, independent material
+CoM energy rates, input effort/power, finite travel stops, an actual geometric fold,
+return motion and unavailable rates at reversals. Construction order and external A/B
+reversal variants preserve signs. The selective weld keeps the boom in a different group,
+with changing relative angle; its load reactions are derived by whole-machine moment
+balance rather than copied from the constraint solver. The axial transverse load has an
+independent guide normal/couple answer, including moments about a common world point.
+
+Two moving-boundary companions preserve the admitted constraint set and its driver as a
+redundant compatibility row. They prescribe hand-derived poses as well as velocities and
+accelerations; omitting the acceleration must refuse. The maximum **linear acceleration**
+projection is required to exceed 0.1. Merely offsetting the carrier's material origin did
+not accomplish this: numerical compilation rebased coincident anchors onto the pivot.
+Separate pivot and guide anchors keep their numerical mean moving, so the intended test
+now survives compilation. This was a fixture defect, not a missing analytic term.
+
+Three numerical issues emerged:
+
+1. The near-tangent oblique example amplified a 1e-10 pose residual into an acceleration
+   error beyond the preselected 1e-8 absolute/relative tolerance. Ordinary native position
+   correction now targets 1e-12. The expected-answer tolerance was retained.
+2. Pure translation at constant speed generated round-off angular velocities, and their
+   tiny Coriolis terms made redundant acceleration rows appear inconsistent. The velocity
+   arithmetic error is now propagated through the row's analytic products and the actual
+   least-squares residual projection. Boundary/command cancellation retains operand scales.
+   Regression tests reject contradictory acceleration across speeds 1e-12 to 1e8 and keep
+   unrelated rows from borrowing a tolerance. No finite-difference displacement was added.
+3. Fold localization's 1e-11 passive arc tolerance was looser than its consumers' 1e-13
+   event polish; the reported fold could fall about 5e-12 beyond the true extremum. Arc
+   correction now matches event precision. Separately, a closest Newton sample may carry
+   an unreliable tangent near singularity; the original regular seed can still prove the
+   fold. It is tried only after the closer seed fails, with the same positive bracket and
+   curvature requirements. Driver-coordinate bounds remain affine at a fold, so they do
+   not require a geometric enclosure intended for genuinely passive coordinates.
+
+The deterministic `body-fold-order.spec.ts` covers **6 body orders × 24 joint-row orders ×
+2 roots = 288 cases**. The old behavior was observed to exhaust 484 advance attempts and
+return unsolved while a direct fold search from the original pose proved s=0.2. This replaces
+an exploratory randomized stress probe, whose 300 constructions were insufficient to catch
+all order-dependent failures. Diagnostics remain in ignored artifacts; temporary diagnostic
+specs and instrumentation have been removed.
+
+Verification with Node 24.18.0:
+
+- `npm test -- --watch=false`: **2676 tests / 282 files pass**;
+  `artifacts/bodies-and-joints/S3-five-examples-full-unit.log`, session 71397 exit 0.
+- Focused final fold/cylinder/interval/continuation gate: **33 tests / 7 files pass**,
+  `S3-fold-order-seed-repair.log`; the exhaustive permutation test is included.
+- `npm run build`: **passes** outside the sandbox, existing CommonJS warnings only;
+  `S3-five-examples-build.log`, session 79529 exit 0.
+- `PMKS_BASE_URL=http://localhost:4307 PMKS_PLAYWRIGHT_DIR=.. node e2e/ui-copy.mjs`:
+  **17/17**, zero console errors; `S3-five-examples-ui-copy.log`, session 49485 exit 0.
+  The first launch lacked the explicit Playwright installation path and did not run tests;
+  the corrected host launch used the verified worktree server (PID 13660, HTTP 200).
+- Only edited TypeScript files were formatted; diff whitespace checks pass.
+
+The earlier S3 current-editor browser suites and incognito live cycle observations are
+recorded above. This checkpoint changes native computational code and fixtures, not the
+currently served editor. It does not claim new native UI evidence. Native gallery URLs,
+transaction construction, save/reopen, undo/redo and the default editor are still explicit
+S4–S6 obligations. Substantial legacy removal remains S7; the full goal is not complete.
+
+No additional Anthropic call has yet been made for this checkpoint. Prepare the single F2
+review against its committed hash, with a $10 cap, preserving the $6 unknown-call reservation
+and the F3/F4 allocations. The bounded reviewer brief is in
+`artifacts/bodies-and-joints/reviews/F2-brief.md`.

@@ -63,7 +63,9 @@ export function stepBodyArc(
     const values = residual(poses),
       norm = Math.hypot(...values);
     if (!Number.isFinite(norm)) return undefined;
-    if (norm <= 1e-11) {
+    // A fold endpoint seeds 1e-13 interval probes. A looser arc correction can put
+    // the reported extremum beyond the feasible curve, making its midpoint unsolvable.
+    if (norm <= 1e-13) {
       const tangent = passiveBodyTangent(partition, poses, scale, start.tangent);
       return tangent && { poses, tangent };
     }
