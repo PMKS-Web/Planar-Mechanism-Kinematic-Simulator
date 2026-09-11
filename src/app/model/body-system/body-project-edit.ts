@@ -32,7 +32,9 @@ export function bodyOperationPermission(
     return null;
   }
   return operation.kind === 'insert' || operation.kind === 'joint-kind'
-    ? menuRefusal(state, 'start')
+    ? displayedMapping && state.mode === 'edit'
+      ? refusalFor('build', state)
+      : menuRefusal(state, 'start')
     : refusalFor('structure', state);
 }
 

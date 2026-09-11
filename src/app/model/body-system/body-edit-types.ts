@@ -1,5 +1,6 @@
 import { BodyPointMove } from './body-point-edit';
 import type { BodyEditFrame } from './body-edit-frame';
+import type { BodyAnchorChange } from './body-anchor-change';
 import { BodyGeometryOperation } from './body-geometry-edit';
 import { BodyPropertyOperation } from './body-property-types';
 import { BodyProjectSettings, BodyProjectView, BodySynthesisDesign } from './body-project';
@@ -129,5 +130,6 @@ export interface BodyEditPlan {
   readonly effects: BodyEditEffects;
   readonly selection: readonly BodySelectionRef[];
   readonly display?: BodyEditFrame;
+  readonly anchors?: readonly BodyAnchorChange[];
 }
 export type BodyEditResult = BodyEditPlan | BodyEditRefusal;

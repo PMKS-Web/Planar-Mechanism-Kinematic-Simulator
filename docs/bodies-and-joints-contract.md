@@ -223,7 +223,8 @@ Locks are checked against settled surviving positions at the end of every transa
 A force lock protects its application and direction handles, while magnitude, color, label
 and couple remain editable. Deleting or explicitly unlocking an object is allowed. Point
 locks protect world attachment positions. The canonical geometry and connected point commands
-enforce whole-body locks and held dimensions; displayed-frame gestures remain pending.
+enforce whole-body locks and held dimensions, including captured paused frames. Live gesture
+continuation and the complete command matrix remain pending.
 
 All record effects remain available to history/analysis consumers, but `bodyMotionRecord`
 selects only coordinate/geometry/topology data for clock invalidation. Mass, load, annotation,
@@ -260,7 +261,7 @@ Projection checks allowed directions when a zero slope could be a maximum (for e
 pointer across the diameter of a held circle). This is local projection, not a global nearest
 point guarantee or completed gesture continuation. Travel bounds still validate the settled
 answer rather than actively clamping pointer motion. Coordinate/dimension commands, paused
-mapping, branch-continuous live gestures, independent-clock integration and native UI evidence
+coordinate reparameterization, branch-continuous live gestures and native UI evidence
 remain required S4/S5 work before this capability replaces the public editor.
 
 ### Displayed properties and local frame history
@@ -277,7 +278,7 @@ Properties, force-frame/owner conversions and unbound, unconnected point edits c
 through that frame. `body-posed-property-edit.ts` invokes the same canonical transaction in
 displayed material coordinates, including lock/hold validation, and restores the exact authored
 body poses and initial driver values. It refuses a proposal that also changes body geometry,
-physical connections or material poses: that requires the pending re-anchoring solver. World
+physical connections or material poses; those commands use the constrained re-anchoring path below. World
 angle holds are transported into the displayed frame for the edit and back for storage;
 unchanged holds retain their exact original records. The outer effects and history describe
 the canonical document, not the temporary displayed candidate.
@@ -289,7 +290,50 @@ authored document and reopens at its starting pose. A stale preview keeps its or
 and replans against the authority's current frame, including a seek with no document revision
 change. The service exposes the frame and includes it in change events; it does not yet own
 simulation scheduling or the public renderer. Native live interaction/filmstrip evidence and
-the full branch-neutral geometry/topology re-anchoring path remain required before cutover.
+the full command/lifecycle matrix remain required before cutover.
+
+### Constrained paused edits and anchor recovery
+
+`planPosedBodyGeometry` stages the same canonical transaction against the captured display.
+`reanchorBodyEdit` then compiles the changed drawing and identifies every affected partition,
+including old and new membership after a topology edit. Each surviving input retains its
+original coordinate anchor when its ordered physical coordinate is unchanged (or explicitly
+sign-reversed). New or reparameterized coordinates reset explicitly. Unaffected bodies restore
+exact authored poses; unrelated clocks, including stationary inputs outside movable partitions,
+remain exact. All accepted record changes and local frames still form one Undo entry.
+
+`reachBodyAnchor` first continues backward to the original command through the ordinary interval
+validator. An angular stop on that route alone does not establish infeasibility: a full rebuilt
+cycle can reach an equivalent angle around the other side of a newly introduced passive gap.
+Search its command crossings, using old material geometry as the assembly seed. New material
+has no old pose to match. The chosen whole-turn adjustment must be coherent across welded
+members and non-command angle rows (P joints); fixed boundary angles do not move. The driven
+relative angle sets the difference between the two groups' turn counts. Validate finite
+unwrapped angular limits and all constraint rows after changing that representation.
+
+Once the canonical anchor has been recovered, rebuild its cycle and locate the proposed display
+by both physical material pose and travel direction. The elapsed time comes from this edited
+cycle, not the old sample index. Equivalent cycle angles return matching unwrapped material
+frames and commands together; the next edit must see a consistent display. A nonlooping window
+uses its signed speed and the direct validated interval; it cannot silently become a cycle or
+jump through a passive stop. If that policy cannot represent the proposed display, recovery is
+unsolved and the accepted displayed pose becomes the new start with an explicit notice.
+
+A proved missing coordinate in a completed cycle is `unreachable`; exhausted continuation,
+failed cycle construction or failed clock/branch matching is `anchor-unsolved`. A changed
+input coordinate or unavailable motion has its own status. None silently promotes a sampled
+pose to an authored anchor. `bodyAnchorNotice` supplies the future UI's shared explanation.
+Stopped inputs at their unchanged start do not require a finite-speed cycle. These notices
+and the captured paths are local transaction/history data, not shared document records.
+
+Validate surviving locks in the displayed domain, where the edit occurs. Re-anchoring is rigid
+simulation transport and must not make an editing lock prohibit ordinary motion. Validate
+constraints/limits in both final authored and displayed documents, and transport angle holds
+back to the stored material frame. Invalid or overconstrained topology still refuses atomically.
+This supports the tested bound-bar/four-bar edits, welded-carriage geometry, bracket insertion,
+positive/negative and return-leg clocks, and passive-gap examples. Coordinate/drive/dimension
+commands, active travel projection, the full lifecycle/service matrix and UI integration remain
+required S4/S5 work; this is not a completed native editing release.
 
 ## Self-review questions carried into implementation
 
