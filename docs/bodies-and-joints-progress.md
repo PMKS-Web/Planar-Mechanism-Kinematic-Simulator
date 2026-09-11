@@ -5,7 +5,7 @@
 - Goal: implement **all S0–S8** of [the plan](bodies-and-joints-plan.md), including native default editor, consumer cutover and obsolete-runtime removal. No push or publication.
 - Implementation starting commit: `487d535` on `bodies-and-joints-plan`.
 - Worktree: `.claude/worktrees/funny-swirles-3c6486`.
-- Current checkpoint: **S0–S3 complete; S4 starting**. Native editor cutover has not begun. Concrete interface choices are in [the contract](bodies-and-joints-contract.md); frozen catalogs/reference hashes are in [the baseline](bodies-and-joints-baseline.json).
+- Current checkpoint: **S0–S3 complete; S4 in progress**. Native editor cutover has not begun. Concrete interface choices are in [the contract](bodies-and-joints-contract.md); frozen catalogs/reference hashes are in [the baseline](bodies-and-joints-baseline.json).
 - Sole implementation owner: Codex. Fable reviews only at the four specified gates.
 - Preserve other worktrees and unrelated changes. The starting tracked worktree was clean.
 - Runtime for these commands: Node `v24.18.0`, explicitly prepended to PATH; the login shell otherwise selects unsupported Node 20.
@@ -19,7 +19,7 @@
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
 | S2 | Complete | Native compiler, analytic Jacobians, mobility/admission, branch continuation, folds, limits and frame conditioning. Seven native/legacy and four native/MATLAB comparisons retain the original ceilings. Geometric redundancy, two slots on a carrier and one-pin/shared-WORLD cases pass. Combined S2/initial-rate gate: 255 tests / 37 files; current-editor browser gate is green. Continuous cycle event publication remains an explicit S3 obligation. |
 | S3 | Complete | Native rates/forces, immutable results, interval/cycle/window publication, all five hand-derived cylinder examples and native/MATLAB positions/rates. F2 reviewed d842ffd and all findings resolved below. Final full gate: 2682 tests / 285 files; host build passes; ui-copy 17/17 with zero console errors. Earlier S3 browser and live-incognito evidence remains recorded. Native UI cutover is S5–S6, not claimed here. |
-| S4 | Starting | Native transactions, codec/import, lifecycle, history and F3. F2 is resolved; no public-route cutover yet. |
+| S4 | In progress | Native core-record codec implemented and tested. Complete project metadata, production import, transactions/lifecycle/history and F3 remain. F2 is resolved; no public-route cutover yet. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
 | S6 | Pending | All consumers, synthesis, tutorial, fixtures/templates and default cutover. |
 | S7 | Pending | Removal manifest closed and performance budget met. |
@@ -1189,3 +1189,47 @@ S3 is complete. S4 now owns native transaction construction, lifecycle, project 
 codec/import and history, followed by F3. S5–S8 remain mandatory, including the native UI,
 all catalog/consumer cutovers, actual live animation gates, substantial removal and final
 performance/integration evidence. The narrow-fold fixture joins the S6 native gallery list.
+
+
+## S4 first persistence slice — native core records
+
+S3/F2 completion is committed as **bca3492**. S4 is in progress, not complete.
+
+`services/transcoding/body-document-codec.ts` now reads/writes the current computational
+BodyDocument through an explicit `pmks2:` envelope. Its JSON includes version 2, uses full
+JavaScript numeric precision, and carries a CRC32 over its UTF-8 bytes. CRC is a damaged-data
+check, not authentication. There is no compression yet. Table/set ordering is canonical;
+authored geometry sequence/winding is retained. The decoder returns a whole candidate or a
+structured refusal, never a partly loaded record collection and never a mutation of the live
+legacy document.
+
+A separate exact-shape boundary precedes the typed model validator: unknown fields/kinds,
+wrong-kind fields, unsupported versions, nonfinite/malformed nested values and missing or
+duplicate references refuse. This matters because the pure typed validators assume their
+required nested objects exist. Bounds are 8 MiB decoded JSON, 20,000 entries per general
+collection (4,096 polygon vertices), 200,000 aggregate JSON nodes, depth 32, 128-character IDs
+and 2,048-character labels. These are candidate resource limits, not claimed UI capacities.
+The schema is intentionally explicit; adding a persistent native field requires updating it
+and its round-trip assertion rather than silently dropping that field.
+
+Tests cover native joint kinds and the worked cylinder/fold-pair constructions, Unicode
+labels, tiny/full-precision poses, stable bytes under record reordering, retained bar vertex
+ordering, group/material mass and paint overrides, circular geometry, material force ownership,
+holds, locks and traces. Corrupt bytes, valid-checksum unsupported physics, invalid references,
+malformed JSON, sparse author-side arrays and resource excesses all refuse without a document.
+
+Verification: `S4-codec-properties-unit.log` reports **21 tests / 3 files pass** (7 codec tests
+plus material ownership and joint-record regressions), session 28024. The initial test compile
+exposed a TypeScript narrowing error in the new assertion; the corrected tuple construction
+is checked by this passing run. Host production build also passes, session 56427 exit 0,
+`S4-codec-build.log`; only the existing CommonJS warnings remain. The new files were formatted
+and whitespace checks pass. This is a native core-persistence checkpoint, not the S4 gate.
+
+**Next required work:** extend the authored document/schema for complete project settings and
+synthesis state; preserve shipped backdrop/camera metadata while keeping existing local-only
+photo semantics explicit. Implement the one native edit authority, typed commands and shared
+permission results, exact deletion closure and group lineage, then bounded production import,
+codec facade and history/recovery. Build native lifecycle fixtures through those commands and
+save/reopen them. Run S4's full named unit/browser gates and F3 before native UI work. The
+current codec is not wired into UrlProcessorService or public templates, and no legacy or
+native drawing has been silently converted in place. S5–S8 remain unchanged requirements.
