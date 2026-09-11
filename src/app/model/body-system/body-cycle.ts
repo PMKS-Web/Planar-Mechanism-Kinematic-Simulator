@@ -4,12 +4,13 @@ import {
   initialBodyContinuation,
 } from './body-continuation';
 import { inspectBodyInterval, BodyStop } from './body-interval';
-import { freezeResult, snapshotMap } from './sample-results';
+import { freezeResult } from './sample-results';
+import { BodyPoseSample, bodyPoseSample } from './body-pose-sample';
 
 export interface BodyCycleSample {
   readonly time: number;
   readonly direction: 1 | -1;
-  readonly state: BodyContinuationState;
+  readonly state: BodyPoseSample;
   /** Rates at a direction discontinuity are unavailable; a position still exists. */
   readonly stop?: BodyStop;
 }
@@ -136,13 +137,7 @@ export function buildBodyCycle(
     return freezeResult({
       time,
       direction,
-      state: {
-        ...point.state,
-        poses: snapshotMap(
-          [...point.state.poses].map(([id, pose]) => [id, freezeResult({ ...pose })] as const)
-        ),
-        tangent: Object.freeze([...point.state.tangent]),
-      },
+      state: bodyPoseSample(point.state),
       ...(point.stop ? { stop: freezeResult({ ...point.stop }) } : {}),
     });
   });

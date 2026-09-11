@@ -109,7 +109,12 @@ function crossing(
     const middle = probes.exact(left, command);
     if (margin(middle) >= 0) left = middle;
     else right = middle;
-    if (Math.abs(right.state.command - left.state.command) <= 1e-11 * probes.commandScale) break;
+    // Near a fold a small command gap can still span a large passive-coordinate gap.
+    if (
+      Math.abs(right.state.command - left.state.command) <= 1e-11 * probes.commandScale &&
+      Math.abs(margin(left)) <= tolerance
+    )
+      break;
   }
   if (Math.abs(margin(left)) > tolerance) throw new BodyIntervalRefusal('unsolved');
   return left;
