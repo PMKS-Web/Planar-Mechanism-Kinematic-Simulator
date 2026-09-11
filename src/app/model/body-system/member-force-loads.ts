@@ -8,6 +8,7 @@ import { bodyLoadWrenches, BodyLoadWrenches, frameBodyLoad } from './body-load-w
 import { finitePoint, localToWorld, Point } from './body-frame';
 import { resolveMass } from './body-properties';
 import { unitFactors } from './body-units';
+import { MaterialWrenches } from './joint-wrenches';
 
 export type MemberForceLoads =
   | {
@@ -28,7 +29,8 @@ export function memberForceLoads(
   groupId: BodyId,
   mode: 'static' | 'dynamic',
   gravity: Point,
-  rates?: BodyRatesResult
+  rates?: BodyRatesResult,
+  materialWrenches: MaterialWrenches = new Map()
 ): MemberForceLoads {
   if (!finitePoint(gravity)) return { ok: false, reason: 'invalid' };
   const group = system.groups.get(groupId),
@@ -83,6 +85,8 @@ export function memberForceLoads(
     const applied = loads
       .filter((load) => load.bodyId === id)
       .map((load) => frameBodyLoad(load, member, pose.angle, factors));
+    for (const reaction of materialWrenches.get(id) ?? [])
+      applied.push({ point: member, vector: reaction.force, couple: reaction.moment });
     const result = bodyLoadWrenches(mass, pose, applied, mode, gravity, motion);
     if (!result.ok) return result;
     members.set(id, result);

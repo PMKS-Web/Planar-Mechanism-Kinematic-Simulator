@@ -219,7 +219,7 @@ exact coincidence. Internal condensed relationships remain unavailable under eit
 The force-series producer selects one support policy for all supplied samples, keeping an
 isolated singular pose distinct from persistent support redundancy. It does not prove that
 the supplied samples constitute a complete cycle. Internal material recovery is described
-below; complete fixed-frame ownership across clocks remains a separate pending layer.
+below; complete fixed-frame ownership across clocks is described in the fixed-context section.
 
 ## Recovering material reactions inside a welded group
 
@@ -280,8 +280,8 @@ wrench remains available. Neither refusal erases the material records or invalid
 external group force answer.
 
 These functions recover one supplied group's forces at one sample. The force-frame layer
-below publishes moving partitions; a complete fixed-frame context across independent clocks
-and the S6 consumer cutover remain pending.
+below publishes moving partitions; the fixed-context producer combines their material
+reactions. Component-level availability and the S6 consumer cutover remain pending.
 
 ## Force frames, boundary power and series policy
 
@@ -340,5 +340,50 @@ partition audit before S3 closure, not a claim of general rigid-core decompositi
 A per-machine force frame publishes its reaction on the shared material frame. Its ground
 supports and internal frame welds return `frame-context`: their complete reactions need
 the loads from every attached clock plus the frame's own loads. Distinct sample times on two
-machines cannot silently select one machine as the owner of the whole frame. Combining that
-context and recovering all fixed support/member reactions is still pending S3 work.
+machines cannot silently select one machine as the owner of the whole frame.
+
+## Combining a fixed foundation's force context
+
+`solveFixedBodyForces` accepts a revision, mode, SI gravity and selected per-machine force
+frames. `fixedForceInputs` requires exactly one selected frame for every machine whose rows
+act on fixed material. A pin acting directly on WORLD has no material balance and does not
+add a required clock. Samples may have different times: the context stores all the sample
+identities rather than choosing one as a global time. Duplicate frames, missing required
+samples, mixed revisions/modes/gravity and unavailable incident reactions are explicit
+refusals. Per-machine force frames now carry gravity as immutable calculation provenance.
+
+For every incident joint, take the wrench on its fixed material side about that material's
+origin. Pass these SI wrenches directly into the group's/member's load calculation. Do not
+create persistent force records or convert the wrench to document units and back. Keep
+contributions separate until `bodyLoadWrenches` can retain their magnitudes before
+cancellation. Group equilibrium now passes that arithmetic scale into the same existing
+round-off allowance used by member recovery.
+
+The fixed-force matrix has the non-WORLD fixed weld groups as equilibrium unknowns and WORLD
+as boundary; all retained fixed rows remain force channels. No kinematic pose is advanced.
+Solve the external group reactions under the explicitly selected support policy, then recover
+each group's member reactions, including WORLD-welded material. Its own balance is static
+even when the attached machines supplied dynamic reactions: zero fixed-body acceleration
+needs no distribution of an overridden moment of inertia. Gravity can still require a mass
+or CoM distribution, and imported load-owner ambiguity remains explicit. An unavailable
+reaction acting directly on WORLD is not a missing load on a material member.
+
+Internal weld cycles are still solved in unique mode. An evenest external support split, or
+a moving-machine reaction already conditional on that split, labels subsequent available
+fixed reactions `evenest`; it does not make an internal weld cycle identifiable.
+
+The two-clock pinned-frame test derives the support split independently. For frame unit axis
+u, normal n, length L=4, and the total applied foundation wrench `(F,M)` about the first pin,
+the evenest tangential reaction at each support is `-dot(F,u)/2`. The second normal reaction
+is `-M/L`; the first is `-dot(F,n)+M/L`. F and M include the frame's weight/applied load plus
+each crank's centripetal reaction and motor counter-torque at its own selected angle. SI and
+inch/pound documents, rebased material origins and reversed enumeration yield the same
+physical reactions. Replacing the two pins by one WORLD weld gives the unique wrench
+`(-F,-M)` at that pin. Omitting the machine contributions fails both hand answers.
+
+This producer returns one complete all-fixed context. A refused required clock currently
+refuses that context as a whole; it does not erase any already-published moving-machine
+frame. Before S3 closure, add component-level fixed availability so an unrelated failed
+foundation cannot hide an independently valid fixed material result. The full simulation
+snapshot/cycle controller must also select and retain fixed support policy consistently;
+this per-context function is not itself a cycle or a UI adapter.

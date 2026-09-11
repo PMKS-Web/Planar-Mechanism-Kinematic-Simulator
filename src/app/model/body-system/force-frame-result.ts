@@ -1,5 +1,6 @@
 import { BodyId, DriverId, JointId } from './body-id';
 import { Wrench } from './joint-wrenches';
+import { Point } from './body-frame';
 import { SampleIdentity, freezeResult } from './sample-results';
 
 export type ForceRefusal =
@@ -49,6 +50,7 @@ export interface GroupForceBalance {
 interface ForceFrameStamp {
   readonly sample: SampleIdentity;
   readonly mode: 'static' | 'dynamic';
+  readonly gravity: Point;
 }
 export type BodyForceFrame = ForceFrameStamp &
   (

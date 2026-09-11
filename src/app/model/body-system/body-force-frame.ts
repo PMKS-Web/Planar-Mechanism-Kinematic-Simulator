@@ -44,9 +44,10 @@ export function solveBodyForceFrame(
   }
 ): BodyForceFrame {
   const sample = freezeResult({ ...input.sample }),
-    mode = options.mode;
+    mode = options.mode,
+    gravity = freezeResult({ ...options.gravity });
   const refused = (reason: ForceRefusal): BodyForceFrame =>
-    freezeResult({ sample, mode, ok: false as const, reason });
+    freezeResult({ sample, mode, gravity, ok: false as const, reason });
   if (!validStamp(sample, frame)) return refused('invalid');
   if (!input.pose.ok) return refused('pose');
   if (input.reversal && mode === 'dynamic') return refused('reversal');
@@ -80,7 +81,13 @@ export function solveBodyForceFrame(
   const loads = groupForceLoads(document, system, frame, poses, mode, options.gravity, rates);
   if (!loads.ok) return refused(loads.reason);
   const supportPolicy = options.supportPolicy ?? 'unique';
-  const efforts = solveBodyEfforts(partition, poses, loads.required, supportPolicy);
+  const efforts = solveBodyEfforts(
+    partition,
+    poses,
+    loads.required,
+    supportPolicy,
+    loads.arithmeticScale
+  );
   if (!efforts.ok) return refused(efforts.reason);
   const mapped = forceFrameJoints(
     document,
@@ -124,6 +131,7 @@ export function solveBodyForceFrame(
     sample,
     mode,
     ok: true as const,
+    gravity,
     joints: snapshotMap([...joints].sort(([a], [b]) => compareRecordIds(a, b))),
     drivers: snapshotMap(drivers),
     groups: snapshotMap<BodyId, GroupForceBalance>(groups),
