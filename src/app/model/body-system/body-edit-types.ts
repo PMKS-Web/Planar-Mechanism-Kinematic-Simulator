@@ -1,3 +1,4 @@
+import { BodyCopyOperation } from './body-copy-edit';
 import { BodyPointMove } from './body-point-edit';
 import { BodyDriveOperation } from './body-drive-edit';
 import { BodyUnits } from './body-units';
@@ -50,6 +51,7 @@ export type BodyInsertRecords = Partial<
 export type BodyEditOperation =
   | { readonly kind: 'convert-units'; readonly units: BodyUnits }
   | BodyDriveOperation
+  | BodyCopyOperation
   | BodyPropertyOperation
   | BodyGeometryOperation
   | BodyPointMove

@@ -382,8 +382,49 @@ direction. An input resuming from zero speed takes the new signed speed’s dire
 the authored anchor and new speed, with local playback starting at time zero. Drive/limit
 restructuring retains the analysis-mode start restriction; speed edits have the captured
 paused-frame mapping. Every playing/missing-frame refusal quotes the shared permission model.
-Coordinate pose/axis edits, unit conversion, cylinder dimensions and full service/UI dispatch
+Coordinate pose/axis edits, cylinder dimensions and full service/UI dispatch
 remain required; these commands alone do not complete S4.
+
+### Copying material and its references
+
+`copy-bodies` names material BodyIds, a world translation in document units, and an explicit
+`includeGround` choice. Duplicate selections are deduplicated. Selecting either cylinder
+member includes the complete cylinder; it does not absorb an unselected welded bracket.
+Connections whose material endpoints are both included are copied. An R bundle retains the
+coincidence between selected riders even when its original hub is absent. A drive on an
+omitted relationship is not transferred to a newly named pair.
+
+`planBodyCopy` extracts that material, allocates the complete typed ID map first, then
+`copyBodyRecords` remaps every included reference. Vertex IDs are scoped by material;
+shape bindings, custom CoM edit axes/anchors, group frames, load scopes, holds, locks, guide
+display frames, pin bundles, cylinder roles, drivers and limits all use the same maps.
+With ground included, WORLD itself is shared but its copied attachment points receive new
+IDs and the placement offset. Welds to WORLD recapture the translated rest in either pair
+order. Copied material never retains an attachment or material owner from the original.
+
+Mass, inertia, forces/couples, local geometry, presentation and signed coordinate values
+are preserved. Copying part of a custom aggregate or an ambiguous imported force scope
+refuses rather than choosing a distribution/owner. A complete copied group captures the
+visible fallback name/paint before new opaque IDs can choose a different member. A singleton
+group's explicit override also survives. Grounded copies share the existing WORLD weld
+group's presentation lineage, not a second contradictory annotation. An aggregate override
+on that shared WORLD group requires resetting to member properties before copying.
+
+One transaction selects the copied assemblies/material and creates one Undo entry. A later
+joint-kind operation in the same batch must retain the copied pin bundle as well as the
+original. Source synthesis ownership, targets, camera and settings stay with the project;
+ordinary copies do not become additional generated synthesis results.
+
+A paused copy is placed from the captured display and starts its new drive at that pose.
+Original authored poses and clocks remain exact when their material, incident physical
+connections, relevant boundary points, drives, limits and holds have not changed. Adding
+material to a shared fixed group may invalidate force analysis without changing that motion.
+The re-anchoring path tests these physical records before unnecessarily solving the old
+anchor again. A change to the original geometry still follows normal anchor recovery.
+
+The same-document command and typed remap are implemented. Clipboard capture, cross-document
+unit conversion/paste and the service/UI dispatch remain integration work; they must reuse
+these maps and final transaction validation rather than copying a legacy graph.
 
 ## Self-review questions carried into implementation
 
