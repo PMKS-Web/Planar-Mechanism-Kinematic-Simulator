@@ -6,7 +6,7 @@
  * listed here as a template payload plus a short script of things to do
  * before the shutter, so the whole set is one command:
  *
- *   PMKS_BASE_URL=http://127.0.0.1:4200 node e2e/readme-shots.mjs
+ *   PMKS_BASE_URL=http://localhost:4200 node e2e/readme-shots.mjs
  *
  * Output goes to `docs/images/readme/` — tracked, unlike `artifacts/`, because
  * the README has to be able to reach them from GitHub.

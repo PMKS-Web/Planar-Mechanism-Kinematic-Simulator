@@ -21,7 +21,7 @@ const { chromium } = await import(
 import { waitForReady } from './app-ready.mjs';
 import { TEMPLATE_LINKAGES } from './template-payloads.mjs';
 
-const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
+const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const payload = TEMPLATE_LINKAGES['Cylinder_Boom'];
 
 mkdirSync('artifacts/cylinder-drag', { recursive: true });
@@ -45,8 +45,9 @@ const readPanel = () =>
   page.evaluate(() => {
     const rows = [...document.querySelectorAll('#input-block')];
     const value = (label) =>
-      rows.find((row) => row.querySelector('.label')?.textContent?.trim() === label)?.querySelector('input')
-        ?.value ?? null;
+      rows
+        .find((row) => row.querySelector('.label')?.textContent?.trim() === label)
+        ?.querySelector('input')?.value ?? null;
     return {
       travel: value('Travel'),
       startsAt: value('Starts at'),
@@ -58,7 +59,9 @@ const readPanel = () =>
 const mountAt = () =>
   page.evaluate(() => {
     const svg = document.querySelector('#canvas') ?? document.querySelector('svg');
-    const circles = [...svg.querySelectorAll('circle')].filter((c) => c.getBoundingClientRect().width > 6);
+    const circles = [...svg.querySelectorAll('circle')].filter(
+      (c) => c.getBoundingClientRect().width > 6
+    );
     // The boom tip is the highest joint on screen.
     const boxes = circles.map((c) => c.getBoundingClientRect());
     const top = boxes.reduce((best, box) => (box.y < best.y ? box : best));
@@ -83,7 +86,9 @@ async function drag(dx, dy, name) {
   }
   // Read the transient notice before releasing: it belongs to the gesture.
   const notice = await page.evaluate(
-    () => document.querySelector('simple-snack-bar, .mat-mdc-snack-bar-label')?.textContent?.trim() ?? null
+    () =>
+      document.querySelector('simple-snack-bar, .mat-mdc-snack-bar-label')?.textContent?.trim() ??
+      null
   );
   await page.mouse.up();
   await page.waitForTimeout(500);

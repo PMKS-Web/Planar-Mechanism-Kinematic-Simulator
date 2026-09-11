@@ -1,5 +1,7 @@
 # Phase 3 — Slide (pure prismatic): implementation spec
 
+> **Status:** Built — Phase 3 shipped in PR #228 with Gate 3 met, and §9's welded-assembly statics landed later (`GuideCouple` in `force-solver.ts`). Guarded by `e2e/phase3-slide.mjs`.
+
 Companion to [`joint-types-plan.md`](joint-types-plan.md) §Phase 3. The plan says what Phase 3 is
 for; this says what it does, in what order, and what each step drags along behind it.
 

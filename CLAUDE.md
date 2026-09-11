@@ -1,6 +1,8 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to any coding agent working in this repository. Claude Code reads it
+directly; Codex reaches it through [`AGENTS.md`](AGENTS.md). Where a tool exists in only one of
+them, the instruction says so and names the other's counterpart.
 
 ## Project
 
@@ -13,47 +15,45 @@ Requires Node ≥22.22 (or 24.x). The esbuild `application` builder is used; `ou
 [`docs/tips-and-tricks.md`](docs/tips-and-tricks.md) collects the things that cost somebody an hour
 to find out — including the
 [spelling rule](docs/tips-and-tricks.md#spelling-american-everywhere): this codebase is American
-English throughout, in identifiers as well as prose, and `e2e/ui-copy.mjs` fails the build on the
-British forms in anything the user can read. Also: where Playwright is installed and why it vanishes, which e2e suites rewrite tracked
+English throughout, in identifiers as well as prose, and `e2e/ui-copy.mjs` (run by hand, not in CI)
+fails on the British forms in anything the user can read. Also: where Playwright is installed and why it vanishes, which e2e suites rewrite tracked
 files, why `npx vitest` fails where `npm test` works, which hostname the dev server answers on, the
 two `@media (max-width: 600px)` blocks in one stylesheet where the later silently wins, and how to
 tell a failure you caused from one that was already there. Read it before your first change, and
-**add to it whenever something surprises you.**
+**add to it whenever something surprises you.** [`docs/README.md`](docs/README.md) indexes every
+other document and says which are current and which are history.
+
+Project skills live in `.claude/skills/<name>/SKILL.md` and load when their task comes up. Codex
+loads `.agents/skills/` instead; each skill there is a pointer to its `.claude` copy, so edit the
+`.claude` copy and leave the pointer alone.
 
 ## Commands
 
-- `npm start` — dev server at http://localhost:4200 (live reload)
+- `npm start` — dev server at http://localhost:4200 (live reload). Use `localhost`, never `127.0.0.1`: the server binds IPv6 loopback only, so the IPv4 address refuses the connection. A worktree running its own server picks another free port (`ng serve --port <n>`).
 - `npm run build` — production build to `dist/pmksweb`
 - `npm test -- --watch=false` — Vitest suite (jsdom) via `@angular/build:unit-test`; drop the flag for watch mode
 
-There is no lint target (`tslint.json` is vestigial). Formatting follows `.prettierrc`: 100-char width, single quotes, 2-space indent. `npm run format:check` reports the state; `npm run format` fixes it.
+`.nvmrc` pins Node 24; run `nvm use` first, because a login shell may otherwise hand you an unsupported Node 20.
 
-**About 50 files predate the config and do not satisfy it.** Running Prettier across one of them rewrites code you did not touch and buries your change — so format only the files you actually edited, and check first, because a file being unformatted is the normal case rather than the exception. Cleaning up the backlog belongs in its own PR. `.prettierignore` deliberately excludes Markdown (Prettier pads every table cell and rewrites `*emphasis*` as `_emphasis_`, so a one-line doc edit lands as hundreds of lines of realignment) and the generated `src/test-data/verification` tables.
+There is no lint target. Formatting follows `.prettierrc`: 100-char width, single quotes, 2-space indent. `npm run format:check` reports the state; `npm run format` fixes it.
+
+**Some files predate the config and do not satisfy it** (`npx prettier --list-different src e2e` lists them). Running Prettier across one of them rewrites code you did not touch and buries your change — so format only the files you actually edited, and check first. Cleaning up the backlog belongs in its own PR. `.prettierignore` deliberately excludes Markdown (Prettier pads every table cell and rewrites `*emphasis*` as `_emphasis_`, so a one-line doc edit lands as hundreds of lines of realignment) and the generated `src/test-data/verification` tables.
 
 ## UI validation: run it yourself
 
-**Run UI validation, browser automation, screenshots, and end-to-end interaction checks
-directly**, following the `ui-validate` skill (`.claude/skills/ui-validate/SKILL.md`) — which
-**requires a filmstrip, not a screenshot, for anything that animates or responds to a drag**
-(`e2e/filmstrip.mjs`): Playwright, a disposable profile, screenshots and JSON reports into
-gitignored `artifacts/`. Inspect your own screenshots rather than trusting an exit code.
+**Verify UI changes in the running app yourself**, following the `ui-validate` skill
+(`.claude/skills/ui-validate/SKILL.md`; Codex loads its pointer in `.agents/skills/`). It holds the
+detail: Playwright in a disposable profile, reports and screenshots in gitignored `artifacts/`, and
+**a filmstrip rather than a screenshot for anything that animates or responds to a drag**. The live
+browser tool depends on which runner you are in:
 
-**Three ways to drive a browser here, and they are for different jobs.**
+- **Claude Code:** the Playwright MCP (`mcp__playwright__*`) to explore and reproduce;
+  claude-in-chrome (`mcp__claude-in-chrome__*`) only when the user's logged-in Chrome is the point.
+- **Codex:** standard Codex computer use (`mcp__cua_repl`), in an incognito Chrome window, to
+  explore and check live. Codex has neither the Playwright MCP nor claude-in-chrome.
+- **Both:** a tracked `e2e/*.mjs` suite to keep what you found.
 
-- **The Playwright MCP** (`mcp__playwright__*`, `npx @playwright/mcp@latest`) — **reach for this
-  first when exploring or reproducing.** It holds one live browser across calls and answers with the
-  accessibility tree, so a selector is something you read rather than something you guess. Finding
-  out that a mode tab is `.tabButton` and not `.modeTab` costs one call here and a whole script run
-  otherwise. It launches its own browser with a temporary profile, so it never touches a logged-in
-  session.
-- **A tracked `e2e/*.mjs` suite** — how a finding gets *kept*. An MCP session proves something
-  worked once, in one conversation; it cannot gate a merge or catch the regression in three months.
-  Explore with the MCP, then write the suite with the guesswork already burned off.
-- **claude-in-chrome** (`mcp__claude-in-chrome__*`) — allowed, and the one that drives the user's
-  real, logged-in Chrome. Use it when that is the point (a deploy preview behind a login, a Netlify
-  or GitHub page, something already open in front of them) and not for routine checks of the app,
-  which belong in a disposable profile. Never sign in, buy, post or submit on their behalf without
-  being asked.
+Inspect your own screenshots rather than trusting an exit code.
 
 Tests are Vitest but written in Jasmine style (globals via `vitest/globals`). Vitest errors on spec files containing no tests.
 
@@ -73,14 +73,24 @@ PMKS_FIXTURE_BASE_URL=https://deploy-preview-NNN--pmksnew.netlify.app npm run fi
 
 ## Deployment / branch rules
 
-**Never push directly to `main`** — it is the production branch for app.pmksplus.com. Work in branches/forks and open PRs. Every non-main branch auto-publishes to `https://[BRANCHNAME]--pmksnew.netlify.app`.
+**Agents and contributors open pull requests against `staging`.** The team manually opens a
+release pull request from `staging` to `main`. Never push directly to `main` — it is the production
+branch for app.pmksplus.com — and don't push directly to `staging` either. Every non-main branch
+auto-publishes to `https://[BRANCHNAME]--pmksnew.netlify.app`, and a PR gets
+`https://deploy-preview-NNN--pmksnew.netlify.app`.
 
-**Automatic publishing to production is paused in Netlify.** The maintainer paused it in September
-2026, so a commit on `main` no longer reaches students by itself: putting a build on
-app.pmksplus.com is a deliberate, manual step. The rule above stands anyway. It also means "it is on
-`main`" does not mean "it is live" — on 2026-09-10 `main` was at 2.1.0 while app.pmksplus.com still
-served 2.0.3, without floating slots, slides or cylinders. Ask production's bundle, not `main`,
-what students have.
+**A new worktree starts from `origin/main`**, the repository's default branch, which lags `staging`
+by a whole release. Reset it before writing anything: `git fetch origin && git reset --hard
+origin/staging`.
+
+**Automatic publishing to production is paused in Netlify**, so nothing reaches app.pmksplus.com
+until someone publishes it by hand. Being on `main` therefore does not mean being live; ask
+production's own bundle what students have.
+
+**CI** (`.github/workflows/verification.yml`) runs on every pull request: `npm ci`,
+`npm test -- --watch=false`, `npm run build`, and `git diff --check`, which fails on trailing
+whitespace. No e2e suite runs in CI, `e2e/ui-copy.mjs` included, so run the ones your change needs
+yourself.
 
 **There are two Netlify sites, and the branch one moved.** Branch and preview builds come from
 `pmksnew` now; `[BRANCH]--pmksprod.netlify.app` still answers 200 and serves a **months-stale
@@ -141,7 +151,7 @@ Pure computation, mostly static classes: `loop-solver` (finds kinematic loops), 
 - Links: `Link` → `RealLink` / `SliderBlock` (the block that rides a slot; there is no `Piston` class any more). A **welded** compound link is a `RealLink` whose `subset` holds its constituent sub-links; weld/unweld logic in MechanismService restructures joints' `links`/`connectedJoints` arrays and link IDs (link IDs are the concatenated, sorted joint letters).
 - A driven joint carries its own speed: `Joint.driveSpeed`, signed for direction, in rpm for a pin and length/second for a slider. **Negative is clockwise**, and `model/drive-direction.ts` (`turnsClockwise` / `speedTurning`) is the only place that knows it — route any new direction question through it rather than writing `speed < 0` again. Zero means "use the document-wide default" — which is what every URL written before this existed says. A drawing with several machines needs one speed per machine, so it lives on the joint rather than in settings.
 - `mechanism/readiness.ts` produces the per-machine blocker/warning list the mode chips and setup drawers show; `mechanism/actuator.ts` decides what can be driven.
-- **Mobility is Gruebler's count, rescued by the geometry where the count is wrong.** `mechanism/mobility.ts` takes the rank of the constraint Jacobian, then steps along each freedom it finds and drops the ones that die at second order — a parallelogram with a redundant third crank moves; a tangency does not. Asked only when the count says < 1, and believed only when it says ≥ 1. See [tips-and-tricks](docs/tips-and-tricks.md#gruebler-s-count-is-one-sided-so-the-geometry-gets-the-last-word).
+- **Mobility is Gruebler's count, rescued by the geometry where the count is wrong.** `mechanism/mobility.ts` takes the rank of the constraint Jacobian, then steps along each freedom it finds and drops the ones that die at second order — a parallelogram with a redundant third crank moves; a tangency does not. Asked only when the count says < 1, and believed only when it says ≥ 1. See [tips-and-tricks](docs/tips-and-tricks.md#grueblers-count-is-one-sided-so-the-geometry-gets-the-last-word).
 - Joint IDs are single letters assigned alphabetically (`determineNextLetter`).
 - `utils.ts` is a large grab-bag: interaction state enums (`gridStates`, `jointStates`, `linkStates`, `forceStates`), unit enums (`LengthUnit`, `GlobalUnit`, ...), and geometry helpers.
 
@@ -151,7 +161,7 @@ Pure computation, mostly static classes: `loop-solver` (finds kinematic loops), 
 
 | Region | Component | Holds |
 | --- | --- | --- |
-| Top strip | `app-top-bar` | project menu + logo · the four **mode tabs**, each with a readiness chip · a corner card that is Undo/Redo in Synthesis/Edit and swaps to **Export Data** in the analysis modes |
+| Top strip | `app-top-bar` | project menu + logo · the four **mode tabs**, the two analysis tabs each carrying a readiness chip · a corner card that is Undo/Redo in Synthesis/Edit and swaps to **Export Data** in the analysis modes |
 | Left card (below the strip, `left: 0`) | `app-left-tabs` | the current mode's panel — Synthesis form, Edit properties, or Analysis graphs. 250px, widening to 400px in analysis |
 | Canvas (full bleed, behind everything) | `app-new-grid` | grid, right-click context menus, drag |
 | Bottom center | `app-playback-bar` | transport card (speed · play/pause · stop-to-start) and a scrub card with **one row per machine**. Present in Edit and both analyses, including over an empty grid; hidden only in Synthesis. **On a phone the two merge into one card** and the view controls join its transport line |

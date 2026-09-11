@@ -1,9 +1,10 @@
 # Velocity and acceleration through a floating slot — implementation plan
 
+> **Status:** Built — Option B (typed loop edges) shipped with Phase 2 (PR #227), and Gate 2 is met. Guarded by `e2e/phase2-floating-slot.mjs`.
+
 Phase 2 task 2.9 (`docs/joint-types-plan.md`; task 2.11 is de-scoped — §6). Positions and static
 forces are done and verified; this is what stands between here and Gate 2.
 
-**Status: implemented.** Option B — typed loop edges — was chosen and is shipped; Gate 2 is met.
 What follows is the plan as written before implementation, kept as the record. Two things went
 differently in practice and are noted in place: §7.2's dedup rule needed a single canonical slot
 anchor as well (the multiset rule alone does not collapse the two ways into a carrier), and §3's

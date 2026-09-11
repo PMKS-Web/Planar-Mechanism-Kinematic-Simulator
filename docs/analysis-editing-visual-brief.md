@@ -1,5 +1,7 @@
 # PMKS+ — Analysis-mode editing: visual brief
 
+> **Status:** Built — §1 describes the analysis panel as shipped (`component/analysis-panel/`). Guarded by `e2e/analysis-editing.mjs`.
+
 **For:** design review — and now the record of what shipped from it
 **Scope:** the visual treatments added when we made the analysis modes editable. The first
 version of this brief asked a designer's opinion of them; §1 now describes the design that came
@@ -52,7 +54,7 @@ marks is the row's own number.
 
 | | Before curve | Live curve |
 |---|---|---|
-| Colour | the series' own colour, faded (34% alpha; 42% for amber, which vanished at 34%) | full |
+| Color | the series' own color, faded (34% alpha; 42% for amber, which vanished at 34%) | full |
 | Stroke | 1.8px, dashed | 2.6px, solid |
 | Draw order | behind | in front |
 
@@ -61,7 +63,7 @@ tells the two curves apart is only that the earlier one is faded and dashed.
 
 **The table.** Under the plot, a row per series: its **max** and **min** with the unit, and under
 each the value from before the drag while the comparison is on. This replaced a pill that quoted
-only the larger peak and coloured the change green or amber — a value judgement about a number a
+only the larger peak and colored the change green or amber — a value judgment about a number a
 student may have wanted larger. Negative numbers use a typographic minus.
 
 **Lifecycle.** One baseline per gesture, taken on the first travel of a drag in an analysis mode

@@ -1,7 +1,9 @@
 # Cylinder mount joints: implementation plan
 
-Planning baseline: `staging` at `c56f757`, September 8, 2026. No implementation accompanies
-this document. Read `CLAUDE.md` and `docs/cylinder-mount-joints-brief.md` first. References
+> **Status:** Built — steps 1–6 shipped September 8–10, 2026 (`d8721d3` removed the mount ban; `slotWouldFoldACylinder` in `model/drop-target.ts`). Guarded by `e2e/cylinder-mount.mjs`, `e2e/cylinder-mount-render.mjs` and `src/tests/verification/welded-mount-release.spec.ts`.
+
+Planning baseline: `staging` at `c56f757`, September 8, 2026. It was written before any
+implementation. Read `CLAUDE.md` and `docs/cylinder-mount-joints-brief.md` first. References
 below use paths relative to `src/app/` unless another root is given; function names are the
 durable anchors when line numbers move.
 

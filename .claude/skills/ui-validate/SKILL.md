@@ -9,31 +9,59 @@ Run browser and computer-use work directly. Reuse or extend the tracked
 Playwright scripts in `e2e/*.mjs`, inspect the resulting screenshots and JSON
 reports yourself, and return a compact PASS/FAIL summary.
 
+## Driving a browser: the tool depends on the runner
+
+Claude Code and Codex have different browser tools. Use the column for the runner you are in.
+**If a tool named here is not in your tool list, you are in the other runner:** use that column,
+and never report a live check as passed with a tool you could not call.
+
+| Job | Claude Code | Codex |
+| --- | --- | --- |
+| Explore or reproduce in a live browser | Playwright MCP (`mcp__playwright__*`) | Standard Codex computer use (`mcp__cua_repl`), in an incognito Chrome window |
+| Keep a finding as a check that can fail | A tracked `e2e/*.mjs` suite | A tracked `e2e/*.mjs` suite (the same scripts) |
+| Act in the user's real, logged-in Chrome | claude-in-chrome (`mcp__claude-in-chrome__*`) | Standard Codex computer use, in their regular Chrome window |
+
+- **The Playwright MCP** (Claude Code) — reach for this first when exploring or
+  reproducing. It holds one live browser across calls and answers with the
+  accessibility tree, so a selector is something you read rather than something
+  you guess: finding out that a mode tab is `.tabButton` and not `.modeTab` costs
+  one call here and a whole app boot otherwise. It launches its own browser with
+  a temporary profile.
+- **Standard Codex computer use** (`mcp__cua_repl`, Codex) — use incognito Chrome
+  for live UX checks on the localhost build. It can operate Chrome through the
+  native app surface when no Chrome browser connector is available. Confirm the
+  window is incognito before loading the local app; leave the user's regular tabs
+  and extension permissions alone. Read controls from the accessibility tree, and
+  use fresh screenshots for grid targets that expose no actionable label.
+- **A tracked `e2e/*.mjs` suite** (both) — how a finding gets *kept*. A live
+  session proves something worked once, in one conversation; only a suite that
+  exits non-zero can catch the regression months later. Explore with your
+  runner's live tool, then write the suite with the guesswork already burned off.
+- **claude-in-chrome** (Claude Code), or Codex computer use in the user's regular
+  Chrome — only when the user's real, logged-in browser is the point (a deploy
+  preview behind a login, a Netlify or GitHub page, something already open in
+  front of them). Never for routine checks of the app, and never to sign in, buy,
+  post or submit without being asked.
+
 ## Safety
 
-- Use a disposable Chrome profile under `/tmp` for routine Playwright testing.
-  The Playwright MCP does this for you: it makes a temporary profile unless
-  told otherwise.
-- A task-specific persistent profile under `/tmp` is allowed when the user
-  explicitly authenticates it for the task.
-- Do not point *scripted* automation at the user's normal browser profile — a
-  suite that reruns has no business in a logged-in session. claude-in-chrome
-  (`mcp__claude-in-chrome__*`) is the sanctioned way into that browser when the
-  task genuinely needs it, one deliberate step at a time; never sign in, buy,
-  post or submit there without being asked.
+- Routine Playwright runs use a disposable profile under `/tmp`. A task-specific
+  persistent profile is allowed only when the user authenticates it for the task.
+- Never point *scripted* automation at the user's normal browser profile.
 - Keep screenshots and reports in gitignored `artifacts/` directories.
 
 ## Preconditions
 
-1. For local PMKS+ checks, verify that `http://localhost:4200/` returns `200`.
-   Start `npm start` and wait for compilation if needed. (`localhost`, not
-   `127.0.0.1` — the dev server binds the hostname.)
-2. The e2e scripts look for Playwright at `/tmp/pmks-playwright`, overridable
-   with `PMKS_PLAYWRIGHT_DIR`. `playwright` is also a devDependency now, so
-   `PMKS_PLAYWRIGHT_DIR=..` runs a suite against the project's own copy — `..`
-   and not `.`, because the resolver imports relative to the script in `e2e/`.
-   If the `/tmp` install is missing (it is cleared on reboot):
-   `mkdir -p /tmp/pmks-playwright && cd /tmp/pmks-playwright && npm i playwright gif-encoder pngjs && npx playwright install chromium`
+1. **A dev server serving your code.** `npm start` serves on
+   `http://localhost:4200`; in a worktree, start your own with
+   `npx ng serve --port <free port>`, because 4200 is usually already serving
+   another checkout. Always use `localhost`, never `127.0.0.1`: the server binds
+   IPv6 loopback only. Point suites at it with `PMKS_BASE_URL=http://localhost:<port>`.
+2. **Playwright.** It is a devDependency, so `PMKS_PLAYWRIGHT_DIR=..` runs a suite
+   against the project's own copy (`..`, not `.`, because the resolver imports
+   relative to the script). The install outside the repo, and what else some
+   suites need, is in
+   [`docs/tips-and-tricks.md#environment`](../../../docs/tips-and-tricks.md#environment).
 
 ## Filmstrips are mandatory for any animated or gestural change
 
@@ -44,56 +72,33 @@ looked at** — not a before-and-after pair.
 
 Use `e2e/filmstrip.mjs`: `filmstrip(page, dir, clip)` gives numbered burst
 frames and `during(everyMs, count, tag, work)` captures while an interaction
-runs; `contactSheet(pattern, out, columns)` tiles them into one image to read.
-Playwright's `recordVideo` is not a substitute — a `.webm` cannot be inspected
-here (no ffmpeg), and a whole animation as one sheet costs about what a single
-screenshot costs.
+runs; `contactSheet(pattern, out, columns)` tiles them into one image to read
+(it needs Pillow under python3, and skips the sheet without it). Playwright's
+`recordVideo` is not a substitute — a `.webm` cannot be inspected here.
 
-Then **look at the sheet**. Collecting frames and asserting nothing proves
+Then **look at the frames**. Collecting frames and asserting nothing proves
 nothing. Two real bugs were caught this way and by nothing else: a card that
 snapped to its full width before the control it was making room for had begun
-to slide, throwing two buttons 200px sideways in one frame; and that control
-being clipped at the card's edge for the first third of its entrance. Both were
-invisible in the finished screenshot.
+to slide, and that control being clipped at the card's edge for the first third
+of its entrance. Both were invisible in the finished screenshot.
 
-What to film, at minimum: the interaction's start (the frame the gesture takes
-hold), two or three frames mid-way, the release, and the settle. For a drag,
-film a pose *away from* the start of the cycle as well — a gesture at t = 0 and
-the same gesture parked mid-cycle are different code paths here.
-
-## Explore with the MCP, keep it in a suite
-
-The Playwright MCP (`mcp__playwright__*`) holds one live browser across calls
-and answers with the accessibility tree, so a selector is something you read
-rather than something you guess. Use it to find the handles and confirm a
-reproduction — it is far cheaper than a write-run-read-fix loop over a `.mjs`
-file, each turn of which costs an app boot.
-
-Then write the tracked suite. An MCP session proves something worked once, in
-one conversation; only a suite that exits non-zero gates a merge or catches the
-regression months later. The MCP is the reconnaissance, not the record.
+What to film, at minimum: the frame the gesture takes hold, two or three frames
+mid-way, the release, and the settle. For a drag, film a pose *away from* the
+start of the cycle as well — a gesture at t = 0 and the same gesture parked
+mid-cycle are different code paths here.
 
 ## Running checks
 
-- Run scripts with plain Node and
-  `NODE_PATH=/tmp/pmks-playwright/node_modules` when needed.
 - Capture console errors, page crashes, and element counts at meaningful
-  checkpoints.
-- Inspect screenshots and reports rather than trusting process exit status
-  alone.
-- Keep browser automation repeatable. Add generally useful PMKS+ workflows to
-  `e2e/`; keep one-off external-site or authenticated helpers under `/tmp`.
-
-## Existing PMKS+ scripts
-
-- `e2e/full-tour.mjs` — broad tour: panels, templates, settings, share URL,
-  mobile viewport
-- `e2e/interaction-sweep.mjs` — every context-menu action on every kind of
-  object; narrow it with `ONLY=4-Bar node e2e/interaction-sweep.mjs`
-- `e2e/phase1-drag.mjs` — drag gestures, snapping, merging, one undo per gesture
-
-`e2e/README.md` lists the rest. Prefer a suite that asserts and exits non-zero
-over one that only takes screenshots: the point is to fail, not to look.
+  checkpoints, and inspect screenshots and reports rather than trusting the exit
+  status alone.
+- Run only the suites that cover the change: the whole batch takes about an hour.
+  `e2e/README.md` says what each suite covers and which ones rewrite tracked
+  files.
+- Add generally useful PMKS+ workflows to `e2e/`; keep one-off external-site or
+  authenticated helpers out of the repo.
+- Prefer a suite that asserts and exits non-zero over one that only takes
+  screenshots: the point is to fail, not to look.
 
 The PMKS+ canvas places joints from tracked mouse movement rather than click
 coordinates. Move to the target before the finalizing click, and prefer the

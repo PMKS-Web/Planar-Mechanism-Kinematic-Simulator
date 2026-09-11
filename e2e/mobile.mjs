@@ -9,7 +9,7 @@
  * panel is a sheet that gets out of the way -- and, at the end, that a bar can
  * actually be drawn with nothing but taps.
  *
- *   PMKS_BASE_URL=http://127.0.0.1:4200 node e2e/mobile.mjs
+ *   PMKS_BASE_URL=http://localhost:4200 node e2e/mobile.mjs
  */
 
 const playwright = process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright';

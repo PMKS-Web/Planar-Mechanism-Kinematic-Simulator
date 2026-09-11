@@ -1,5 +1,7 @@
 # Joint types: floating sliders, prismatic joints, and cylinders
 
+> **Status:** Partly built — Phases 0–6 shipped with their gates met (PRs #223–#230). Phase 7's rank-based mobility shipped (`model/mechanism/mobility.ts`), but Gate 7 is not met, because the MotionGen gripper is still refused. Phase 7a appears built (`elliptical-crank.spec.ts` turns a full revolution), though both sections still say "Not started". A bodies-and-joints migration on the `bodies-and-joints-plan` branch may revisit §2.2's zero-length slider block.
+
 Plan of record for extending PMKS+ from "revolute joints plus one grounded slider" to the
 joint set needed for the standard 2D kinematics curriculum.
 
