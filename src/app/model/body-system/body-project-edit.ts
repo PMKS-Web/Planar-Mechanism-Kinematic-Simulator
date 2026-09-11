@@ -20,7 +20,8 @@ export function bodyOperationPermission(
     (operation.kind === 'force-properties' && operation.change.frame !== undefined)
   )
     return menuRefusal(state, 'start');
-  if (isBodyGeometryOperation(operation)) return menuRefusal(state, 'start');
+  if (operation.kind === 'move-point' || isBodyGeometryOperation(operation))
+    return menuRefusal(state, 'start');
   if (isBodyPropertyOperation(operation)) return menuRefusal(state, 'preserve');
   if (operation.kind === 'project') {
     if (operation.settings && (state.playing || !state.atStart)) return SETTINGS_AT_START_ONLY;

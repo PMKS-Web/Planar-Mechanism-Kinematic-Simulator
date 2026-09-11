@@ -87,6 +87,14 @@ export function rebaseBody(document: BodyDocument, id: BodyId, newFrameInOld: Po
               force.frame === 'world'
                 ? force.vector
                 : worldToLocal({ x: 0, y: 0, angle: newFrameInOld.angle }, force.vector),
+            ...(force.frame === 'body' && force.presentation?.zeroAngle !== undefined
+              ? {
+                  presentation: {
+                    ...force.presentation,
+                    zeroAngle: force.presentation.zeroAngle - newFrameInOld.angle,
+                  },
+                }
+              : {}),
           }),
       ...(force.legacyGroupScope
         ? {

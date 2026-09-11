@@ -198,8 +198,8 @@ remapping. Shared codecs validate and preserve the vertex references; copy must 
 `attachment-position` changes one canonical local point and its bound vertex/other markers;
 `body-poses` supplies complete material poses without changing local shape. Final validation
 refuses a partial disconnected proposal, changed weld rest relation, violated hold/lock or
-cylinder travel bound. These are canonical transaction primitives, **not** connected cursor
-solvers. The connected gesture planner and displayed-frame re-anchoring are still required;
+cylinder travel bound. These are canonical transaction primitives; the `move-point` command
+below plans a connected proposal through them. Displayed-frame re-anchoring is still required;
 these operations temporarily use the shared start-pose permission until that boundary exists.
 Generic shape/attachment edits cannot change a cylinder's intrinsic member geometry, mounts
 or internal P references; cylinder dimension edits must own that complete proposal.
@@ -222,13 +222,46 @@ temporary restriction through the posed-edit implementation before native UI acc
 Locks are checked against settled surviving positions at the end of every transaction.
 A force lock protects its application and direction handles, while magnitude, color, label
 and couple remain editable. Deleting or explicitly unlocking an object is allowed. Point
-locks protect world attachment positions. Whole-body locking for one-connection bodies and
-geometry/drag hold enforcement remain explicit obligations of the next editing slice.
+locks protect world attachment positions. The canonical geometry and connected point commands
+enforce whole-body locks and held dimensions; displayed-frame gestures remain pending.
 
 All record effects remain available to history/analysis consumers, but `bodyMotionRecord`
 selects only coordinate/geometry/topology data for clock invalidation. Mass, load, annotation,
 trace and edit-mark changes must not reset a displayed motion clock. Physical analysis may
 need recalculation while the motion and its elapsed time stay unchanged.
+
+### Connected point proposals
+
+`move-point` names one AttachmentId and an authored world `target`. Its default `exact` mode
+must reach that coordinate; `project` treats it as a pointer goal on the locally available
+motion. A projected answer may seed an exact correction but cannot replace exact success.
+The original command stays in the preview so a stale commit solves against current topology.
+All resulting geometry/pose operations share the outer transaction, final validation and Undo.
+
+The planner distinguishes editable local points from rigid material. Binary R closure moves
+all attachments at the requested pin. Holds and explicit vertex bindings discover related
+geometry; joints discover the bodies whose poses may follow. WORLD is a boundary rather than
+a bridge to other machines. An explicitly requested WORLD attachment can move, matching a
+draggable ground anchor; unrelated ground attachments and the WORLD frame stay fixed.
+Welded material and cylinder intrinsic geometry move through complete rigid-group poses.
+A bar with a length hold between its actual two bound vertices also carries its material
+rigidly, including off-axis witnesses. Holds on unbound points do not rigidify unrelated shape.
+Unbound free tracers on welded material remain editable without moving the group.
+
+The edit rows use exact first derivatives through both local geometry and rigid transforms.
+They express R coincidence, P lateral/directed-angle constraints, pin-slot lateral constraints,
+authored drive values, CAD length/direction holds, point locks and force-handle locks. Welds
+are condensed before solving. Translational variables use a geometry-derived length, and
+rigid-group translation is measured at a geometry-derived center so arbitrary material-frame
+origins do not choose the motion. Rank tests refuse a target with no local freedom. Bounded
+correction and projection refuse on exhaustion instead of publishing an unfinished result.
+
+Projection checks allowed directions when a zero slope could be a maximum (for example, a
+pointer across the diameter of a held circle). This is local projection, not a global nearest
+point guarantee or completed gesture continuation. Travel bounds still validate the settled
+answer rather than actively clamping pointer motion. Coordinate/dimension commands, paused
+mapping, branch-continuous live gestures, independent-clock integration and native UI evidence
+remain required S4/S5 work before this capability replaces the public editor.
 
 ## Self-review questions carried into implementation
 

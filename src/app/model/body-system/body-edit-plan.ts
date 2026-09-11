@@ -1,3 +1,4 @@
+import { editBodyPoint } from './body-point-edit';
 import { editBodyGeometry, isBodyGeometryOperation } from './body-geometry-edit';
 import { remapEditedCenters } from './body-center-edit';
 import { validateBodyEditHolds } from './body-hold-validation';
@@ -96,6 +97,10 @@ export function planBodyEdit(
   for (const [index, operation] of command.operations.entries()) {
     if (operation.kind === 'joint-kind') {
       const changed = changeBodyJointKind(candidate, operation, `${command.id}:${index}`);
+      if (!changed.ok) return changed;
+      candidate = changed.document;
+    } else if (operation.kind === 'move-point') {
+      const changed = editBodyPoint(candidate, operation);
       if (!changed.ok) return changed;
       candidate = changed.document;
     } else if (isBodyGeometryOperation(operation)) {
