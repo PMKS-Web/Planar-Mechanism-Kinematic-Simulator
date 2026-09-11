@@ -1,0 +1,28 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Canvas entities" />
+
+# Canvas entities: planned
+
+**This page is a placeholder.** There are no canvas stories yet, and that is deliberate.
+
+A gallery of what the canvas draws belongs here. It would include joints, links, slots, slides,
+cylinders, forces, the glyph primitives they are composed from, and the ambiguous hit targets where
+two of them overlap.
+
+That gallery is stage **S6** of the bodies-and-joints migration, planned on the unmerged branch
+`bodies-and-joints-plan` in `docs/bodies-and-joints-plan.md`. The stage's aim is to "rebuild the
+dev object gallery to expose all new entities and ambiguous hit targets". Building it now, against
+today's `Joint` and `Link` classes, would mean building it twice.
+
+## Where the stories will go
+
+`src/stories/canvas/`. That directory already exists, and it holds only a `README.md` that says
+the same as this page.
+
+## Until then
+
+- The visual grammar these stories will illustrate is written down in
+  `docs/joint-types-plan.md`, §2.8 "Visual grammar". In short: link colors carry no meaning,
+  carrier and rider are told apart by structure, and the driven arrow is always white.
+- `docs/ui-style-guide.md` summarizes that grammar under "Canvas grammar".
