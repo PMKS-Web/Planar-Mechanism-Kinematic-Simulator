@@ -142,7 +142,7 @@ A numerical refusal alone is not an input limit. `findBodyFold` follows the undr
 curve with an arc-plane equation, brackets a change in the sign of dc/ds, and evaluates
 `d²c/ds² = J_c xddot + gamma_c` from analytic rows. It reports a physical input fold only if
 the passive Jacobian still has rank n-1, the extremum is nondegenerate in the requested
-direction, the requested command lies beyond it, and the inspected curve poses satisfy
+direction, the requested command reaches or lies beyond it, and the inspected curve poses satisfy
 coordinate bounds. Both limits of the rocker-input fixture agree with its independent
 triangle formula. Iteration/cut exhaustion without this evidence remains branch/unsolved.
 This fold diagnostic is not an accepted sample or a mutation of the prior continuation.
@@ -501,7 +501,9 @@ own the cycle seam and do not insert zero-duration duplicate samples. A sample/t
 refuses the cycle entirely instead of publishing a truncated loop. Unbounded linear motion or
 one-sided nonperiodic travel does not become an invented periodic animation.
 
-The cycle's pose maps, tangents, stop records and sample array are immutable copies.
+The cycle's pose maps, stop records and sample array are immutable copies. Published
+`BodyPoseSample` records omit the numerical continuation tangent entirely, including regular
+samples. A fold's retained predictor is private solver state, not a physical derivative.
 `bodyCycleInputs` adds revision/partition/index/time/command/direction stamps, immutable command
 and motion maps, and recomputes rates at each regular sample with its signed physical speed.
 At a reversal the rate result is explicitly unavailable; dynamic force frames report reversal,
@@ -750,3 +752,51 @@ s=0.2 with positive curvature. On an otherwise refused advance, fold localizatio
 that original pose if the closest candidate did not prove a fold. Each seed must pass the
 same oriented passive-curve bracket and curvature tests. This is not a fallback solver or
 permission to label a bare Newton refusal as a travel limit.
+
+
+## F2: exact fold contacts and closely spaced extrema
+
+A requested command equal to a proved fold is a stop. The one-sided rejection is now
+`direction*(foldCommand-target) > 1e-12*coordinateScale`; the previous comparison also
+excluded equality. A successful Newton endpoint is not sufficient evidence against a fold:
+its residual neighborhood can include an extremum, or its correction can land beyond two
+nearby extrema. Interval probes now search the passive curve before accepting that endpoint.
+A subdivided interval retries from its closer regular left seed even when its right endpoint
+was cached. This preserves on-grid folds in complete out-and-back cycles on both roots.
+
+For an arc step with left unit tangent t0 and right unit tangent t1, the arc-plane coordinate
+is h=t0·(x-x0), not the right point's arc length. Thus the Hermite endpoint derivative at the
+right is c_s/(t0·t1). With directed command increment D and endpoint slopes d0,d1, the
+interpolated derivative in normalized h has coefficients
+`a=-6D+3h(d0+d1)`, `b=6D-h(4d0+2d1)`, `c=h*d0`.
+A nonpositive interior minimum or a poorly aligned tangent requests a smaller arc step.
+That polynomial is only a subdivision signal. A physical stop still requires an actual
+slope sign bracket, a small endpoint slope, and the existing analytic nonzero curvature
+check. Failed correction, exhausted arc work, or an unresolved bracket remains `unsolved`;
+it cannot clear the interval or become a reversal. The 48-step local arc budget can be
+retried through the interval's bounded subdivision. Its physical scale cannot shrink below
+the admitted scale: for a lone P, scaling every halved command by itself would leave the
+same search distance forever. The existing supported isolated singular continuation remains
+available when there is no regular one-dimensional passive arc to inspect.
+
+`native-fold-pair-fixture.ts` is an independent counterexample with no coordinate limits.
+A rotating carrier has angle theta; a block slides on it and its origin A lies on y=1,
+so A=(cot(theta),1). The block's local witness (0,-r) is B=A+(r sin(theta),-r cos(theta)).
+A vertical slot on a horizontally translating carriage contains B, giving the driven
+coordinate `x(theta)=cot(theta)+r sin(theta)`. Choose
+`theta0=acos(1/sqrt(3))`, `r=(3sqrt(3)/2)*(1+epsilon)`, and start at theta0-0.03.
+The derivative `x'=-csc²(theta)+r cos(theta)` has two nearby zeros around theta0.
+The expected first stop is obtained by scalar bisection of this written derivative, with
+no solver positions/rates in the answer. Epsilon 1e-3, 1e-4 and 1e-5, forward/reversed record
+orders, all stop at that first zero when commanded to x(theta0+0.06). The old fixed arc
+steps skipped both zeros for epsilon 1e-5 and accepted the far endpoint. This is adversarial
+numerical evidence, not a global proof that finite sampling detects every nonlinear turn.
+The S6 fixture gallery must expose this mechanism through the native transaction/codec path.
+
+The near-fold passive stop exposed a separate localization defect: a command bracket can
+be tiny while its passive-coordinate gap remains significant. Crossing refinement now
+requires both the small command interval and the selected inside pose's coordinate residual
+before stopping, retaining the final residual check on work exhaustion. The test places a
+passive guide stop 0.0002 before an h=3.2 oblique cylinder tangency, only about 6.25e-9 above
+the fold in cylinder travel. It must report the named coordinate stop before the geometric
+fold, without moving to the outside pose or publishing rates at reversal.

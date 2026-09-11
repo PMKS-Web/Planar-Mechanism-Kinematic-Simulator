@@ -2,7 +2,8 @@ import { AdmittedBodySystem, advanceBodyCommand, BodyContinuationState } from '.
 import { BodyMotion, solveBodyRates } from './body-rates';
 import { bodyCoordinateMotion } from './body-coordinate-rates';
 import { relaxBodyPosition } from './body-position-solver';
-import { BodyFold } from './body-fold';
+import { BodyFold, searchBodyFold } from './body-fold';
+import { bodyPositionScale } from './body-position-scale';
 import { passiveBodyTangent } from './body-arc-step';
 import { bodyRowGradient, bodyRowValue } from './body-constraint-rows';
 import { BodyIntervalPoint, BodyIntervalRefusal } from './body-interval-types';
@@ -76,8 +77,27 @@ export class BodyIntervalProbes {
       }),
     };
   }
-  read(from: BodyIntervalPoint, command: number): BodyIntervalPoint {
+  findFold(from: BodyIntervalPoint, command: number): BodyIntervalPoint | undefined {
     if (++this.count > this.maximum) throw new BodyIntervalRefusal('unsolved');
+    const partition = this.unrestricted.frame.partition;
+    const currentScale = bodyPositionScale(
+      partition,
+      from.state.poses,
+      new Map([[partition.drivers[0].id, command]])
+    );
+    // Shrinking a command must shrink the arc to search, even for a lone P whose only
+    // instantaneous length is that same command. Keep the admitted physical scale.
+    const scale =
+      currentScale.length >= this.admitted.scale.length ? currentScale : this.admitted.scale;
+    const found = searchBodyFold(partition, from.state.poses, from.state.tangent, command, scale);
+    if (found.kind === 'unresolved') throw new BodyIntervalRefusal('unsolved');
+    return found.kind === 'fold' ? this.foldPoint(from, command, found.fold) : undefined;
+  }
+  read(from: BodyIntervalPoint, command: number): BodyIntervalPoint {
+    // Newton can accept the far side or a residual-sized neighborhood of a fold.
+    // A positive passive-curve proof takes precedence over that endpoint answer.
+    const fold = this.findFold(from, command);
+    if (fold) return fold;
     const advance = advanceBodyCommand(this.unrestricted, from.state, command);
     if (advance.ok) {
       // Near a shallow crossing, a tiny pose residual is a much larger command error.
@@ -90,17 +110,14 @@ export class BodyIntervalProbes {
       if (!polished.ok) throw new BodyIntervalRefusal('unsolved');
       return this.point({ ...advance.state, poses: polished.poses });
     }
-    if (advance.fold)
-      return this.point(
-        {
-          poses: advance.fold.poses,
-          command: advance.fold.command,
-          tangent: from.state.tangent,
-          regular: false,
-        },
-        { value: advance.fold, direction: Math.sign(command - from.state.command) }
-      );
+    if (advance.fold) return this.foldPoint(from, command, advance.fold);
     throw new BodyIntervalRefusal(advance.reason === 'branch' ? 'branch' : 'unsolved');
+  }
+  private foldPoint(from: BodyIntervalPoint, command: number, fold: BodyFold): BodyIntervalPoint {
+    return this.point(
+      { poses: fold.poses, command: fold.command, tangent: from.state.tangent, regular: false },
+      { value: fold, direction: Math.sign(command - from.state.command) }
+    );
   }
   value(point: BodyIntervalPoint, index: number): number {
     const value =

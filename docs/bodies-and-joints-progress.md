@@ -5,7 +5,7 @@
 - Goal: implement **all S0–S8** of [the plan](bodies-and-joints-plan.md), including native default editor, consumer cutover and obsolete-runtime removal. No push or publication.
 - Implementation starting commit: `487d535` on `bodies-and-joints-plan`.
 - Worktree: `.claude/worktrees/funny-swirles-3c6486`.
-- Current checkpoint: **S0–S2 complete; S3 in progress**. Native editor cutover has not begun. Concrete interface choices are in [the contract](bodies-and-joints-contract.md); frozen catalogs/reference hashes are in [the baseline](bodies-and-joints-baseline.json).
+- Current checkpoint: **S0–S3 complete; S4 starting**. Native editor cutover has not begun. Concrete interface choices are in [the contract](bodies-and-joints-contract.md); frozen catalogs/reference hashes are in [the baseline](bodies-and-joints-baseline.json).
 - Sole implementation owner: Codex. Fable reviews only at the four specified gates.
 - Preserve other worktrees and unrelated changes. The starting tracked worktree was clean.
 - Runtime for these commands: Node `v24.18.0`, explicitly prepended to PATH; the login shell otherwise selects unsupported Node 20.
@@ -18,8 +18,8 @@
 | S0 | Baseline complete | Six unit suites pass (182 tests), seven new compatibility tests pass, build passes, template-open 11/11, template-graphs 3978/3978, ui-copy 17/17. Timing, visual baseline and operation-level consumer classification are recorded. Existing drag timing failures are reproduced on original test files, not waived; S7 must meet the measured comparison budget. |
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
 | S2 | Complete | Native compiler, analytic Jacobians, mobility/admission, branch continuation, folds, limits and frame conditioning. Seven native/legacy and four native/MATLAB comparisons retain the original ceilings. Geometric redundancy, two slots on a carrier and one-pin/shared-WORLD cases pass. Combined S2/initial-rate gate: 255 tests / 37 files; current-editor browser gate is green. Continuous cycle event publication remains an explicit S3 obligation. |
-| S3 | In progress | Analytic rates, forces, continuous intervals/cycles, immutable document snapshots and result readers implemented. Full unit suite: 2655 tests / 276 files pass, including native/MATLAB point and angular rates. Both reproduced legacy test failures are resolved with boundary-specific tracer assertions and explicit quantization bounds plus a full native butterfly branch comparison. Host build and ui-copy pass. Current-editor S3 browser gate is green. All five native worked examples now have closed-form motion, cycle and loaded-reaction checks; F2 remains pending. Latest full unit gate: 2676 tests / 282 files, build and ui-copy 17/17 pass. |
-| S4 | Pending | Native transactions, codec/import, lifecycle, history and F3. |
+| S3 | Complete | Native rates/forces, immutable results, interval/cycle/window publication, all five hand-derived cylinder examples and native/MATLAB positions/rates. F2 reviewed d842ffd and all findings resolved below. Final full gate: 2682 tests / 285 files; host build passes; ui-copy 17/17 with zero console errors. Earlier S3 browser and live-incognito evidence remains recorded. Native UI cutover is S5–S6, not claimed here. |
+| S4 | Starting | Native transactions, codec/import, lifecycle, history and F3. F2 is resolved; no public-route cutover yet. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
 | S6 | Pending | All consumers, synthesis, tutorial, fixtures/templates and default cutover. |
 | S7 | Pending | Removal manifest closed and performance budget met. |
@@ -91,16 +91,17 @@ Local historical source `b7ec8d7` declares package version 2.0.3. Its shipped te
 
 ## Anthropic reviews
 
-Working ceiling: **$35**, planned caps F1 $5 / F2 $10 / F3 $7 / F4 $6; $7 reserve. F1 completed; F2–F4 remain required.
+Working ceiling: **$35**, planned caps F1 $5 / F2 $10 / F3 $7 / F4 $6; $7 reserve. F1 resolved; F2 completed with open findings; F3–F4 remain required.
 
 | Call | Session | Actual reported cost | Status |
 | --- | --- | --- | --- |
 | Planning availability probe | `1e1aa8aa-e65e-4f52-957b-56ef372e594e` | $0.073899 | `claude-fable-5-1`, `FABLE_OK`; availability only |
 | Earlier canceled planning review | `93cfef40-4bbb-4454-81b8-a2317a37861f` | Unknown; reserve $6 | Transcript ends interrupted; no findings or approval claimed |
 | F1 | `aab450ea-661d-45fc-a91a-6286dd1d8614` | $3.40532475 | Completed on `59296bb`; regressions and resolution below |
-| F2–F4 | Pending | Not spent | Caps $10 / $7 / $6 |
+| F2 | `6df95b2b-659f-4349-9876-86a4fff7a5d8` | $6.00034425 | Completed on `d842ffd`; findings open below |
+| F3–F4 | Pending | Not spent | Caps $7 / $6 |
 
-Known reported spend: **$3.47922375**, including the probe and F1 auxiliary usage. With the $6 canceled-call reservation, $25.52077625 remains inside the $35 ceiling. F2/F3/F4 caps total $23; unallocated headroom is $2.52077625. Do not spend the reservation.
+Known reported spend: **$9.479568**, including the probe and both reviews' auxiliary usage. With the $6 canceled-call reservation, $19.520432 remains inside the $35 ceiling. F3/F4 caps total $13; unallocated headroom is $6.520432. Do not spend the reservation.
 
 ## Current source audit findings
 
@@ -1103,3 +1104,88 @@ No additional Anthropic call has yet been made for this checkpoint. Prepare the 
 review against its committed hash, with a $10 cap, preserving the $6 unknown-call reservation
 and the F3/F4 allocations. The bounded reviewer brief is in
 `artifacts/bodies-and-joints/reviews/F2-brief.md`.
+
+
+## F2 completed review — findings open
+
+- Reviewed hash: **d842ffd**. Fable 5.1, read-only Read/Grep/Glob tools, $10 cap.
+- CLI session `6df95b2b-659f-4349-9876-86a4fff7a5d8`, process 19618 completed exit 0;
+  JSON `subtype: success`, `is_error: false`.
+- Total cost **$6.00034425**, comprising Fable $5.99759825 and auxiliary Haiku $0.002746.
+  Cumulative known spend is **$9.479568**. Keep the $6 unknown canceled-call reservation;
+  $19.520432 remains against the $35 working ceiling, including the $13 F3/F4 allocation.
+- Complete prompt, result, cost metadata and readable findings:
+  `artifacts/bodies-and-joints/reviews/F2-{brief.md,findings.md,launch.json}` and `F2.json`.
+  Persisted transcript: the worktree's Claude project directory, session ID above.
+
+Findings to reproduce and resolve before S4:
+
+1. **F2-1 / medium:** `findBodyFold` rejects a proved extremum when it coincides with the
+   requested command (the beyond-target guard also excludes equality). Add on-grid fold
+   cycle cases and a passive limit near a fold; prove the correct typed stop and retained
+   branch. The reviewer proposes a one-sided beyond-target test; validate it rather than
+   accepting it solely on review authority.
+2. **F2-2 / low, latent:** a published fold sample retains the previous regular sample's
+   tangent even though the command derivative is not defined. Rates currently recompute
+   and reversal readers refuse correctly, but make the continuation type/availability
+   prevent future consumers treating that stale tangent as a rate.
+3. **F2-3 / high-risk verification gap:** no-limit intervals skip interior event inspection.
+   Test a pair of folds narrower than a single command step and determine whether
+   continuation can jump across them. Keep adaptive evidence distinguished from formal
+   global proof; do not claim the missing adversarial case passed.
+
+Fable found no incorrect analytic acceleration terms, residual-projection derivation,
+P wrench transport sign, member recovery or shared-foundation clock ownership in the
+reviewed sources. That is independent review evidence, not a substitute for regression
+probes on the open continuation findings. **S3 and F2 are still open; do not begin S4.**
+
+
+## F2 resolutions and S3 completion
+
+The checkpoint containing this entry resolves F2 locally; no additional paid call was needed.
+The actual F2 cost and remaining F3/F4 allocation above are unchanged. The preceding review
+findings section is the historical open state; all three items now have reproductions and
+passing replacement behavior.
+
+- **F2-1:** the one-sided fold guard alone was insufficient. Exact on-grid endpoints also
+  needed passive-curve inspection before Newton acceptance and a fresh search from closer
+  subdivision seeds despite cached endpoints. Both oblique roots and command steps 0.1/0.2
+  now retain the fold and complete the 13-second return cycle. A separate near-fold passive
+  stop failed because crossing refinement stopped on command width while its coordinate
+  residual remained too large. Both criteria now govern refinement. Original failures and
+  incremental isolation are retained in `reviews/F2-contact-*.log` and
+  `F2-near-limit-{stack,residual}.log`; temporary instrumentation was removed.
+- **F2-2:** cycles and finite windows publish only immutable `BodyPoseSample` poses, command
+  and regularity. Predictors remain private continuation state. The regression inspects
+  every regular/fold sample and confirms reversal inputs still carry unavailable rates.
+- **F2-3:** constructed an actual native carrier/rider/carriage with hand-derived
+  `x(theta)=cot(theta)+r*sin(theta)`, no coordinate limits, and two nearby extrema.
+  The old fixed-step search accepted theta=1.015316618 beyond both turns for epsilon=1e-5,
+  instead of stopping at theta=0.953490490 and command=-0.000041165644.
+  Adaptive arc-plane Hermite derivative checks request subdivision; a physical stop still
+  requires the real slope bracket and analytic curvature. Three widths and both record
+  orders now hit the independently bisected first extremum. Work exhaustion refuses, and
+  a shorter interval can retry without changing its start. No finite sampling algorithm
+  is claimed as a global proof; equations document this limit explicitly.
+
+A broader regression caught a refinement-scale trap: shrinking the command of a lone P
+also shrank its only numerical length, leaving normalized arc work unchanged. The search
+now retains the admitted scale as a floor. Unbounded oblique motion in SI/English, passive
+stops, supported isolated singular samples, repeated cycles and frozen references pass.
+
+Final verification with Node 24.18.0:
+
+- Full unit suite: **2682 tests / 285 files pass**, session 53516 exit 0,
+  `artifacts/bodies-and-joints/reviews/F2-resolution-full-unit.log`.
+- Earlier broad native/reference gate: **215 tests / 52 files pass**,
+  `F2-native-scale-gate.log`; final full gate also includes the added work-cap test.
+- Host production build: **pass**, session 22387 exit 0,
+  `F2-resolution-build.log`; existing CommonJS warnings only.
+- `ui-copy`: **17/17**, zero console errors, session 11711 exit 0,
+  `F2-resolution-ui-copy.log`. Host HTTP 200; server PID 13660 has this worktree as cwd.
+- Edited TypeScript files only were formatted; `git diff --check` passes.
+
+S3 is complete. S4 now owns native transaction construction, lifecycle, project metadata,
+codec/import and history, followed by F3. S5–S8 remain mandatory, including the native UI,
+all catalog/consumer cutovers, actual live animation gates, substantial removal and final
+performance/integration evidence. The narrow-fold fixture joins the S6 native gallery list.

@@ -43,7 +43,13 @@ export function inspectBodyInterval(
     if (command === left.state.command) return finish(left);
     let right: BodyIntervalPoint;
     try {
-      right = known ?? probes.read(left, command);
+      // Subdivision gives the fold search a closer regular seed. A cached Newton endpoint
+      // must not suppress a new positive stop proof from that seed.
+      right = known
+        ? known.fold
+          ? known
+          : (probes.findFold(left, command) ?? known)
+        : probes.read(left, command);
     } catch (error) {
       if (!(error instanceof BodyIntervalRefusal) || depth >= maxDepth || probes.count >= maximum)
         throw error;

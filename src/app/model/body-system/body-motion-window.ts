@@ -2,6 +2,7 @@ import { AdmittedBodySystem, initialBodyContinuation } from './body-continuation
 import { BodyCycleSample } from './body-cycle';
 import { inspectBodyInterval } from './body-interval';
 import { snapshotCopy } from './sample-results';
+import { bodyPoseSample } from './body-pose-sample';
 
 export type BodyMotionWindow =
   | {
@@ -51,7 +52,7 @@ export function buildBodyMotionWindow(
     direction = driver.speed > 0 ? 1 : -1;
   const target = start.command + driver.speed * options.duration;
   if (!Number.isFinite(target)) return { ok: false, reason: 'invalid', probes: 0 };
-  const samples: BodyCycleSample[] = [{ time: 0, direction, state: start }];
+  const samples: BodyCycleSample[] = [{ time: 0, direction, state: bodyPoseSample(start) }];
   let current = start,
     probes = 0;
   while (samples.length < maximum) {
@@ -66,7 +67,7 @@ export function buildBodyMotionWindow(
     const sample: BodyCycleSample = {
       time: Math.abs(result.state.command - start.command) / Math.abs(driver.speed),
       direction,
-      state: result.state,
+      state: bodyPoseSample(result.state),
       ...(result.stop ? { stop: result.stop } : {}),
     };
     if (result.state.command === current.command) samples[samples.length - 1] = sample;

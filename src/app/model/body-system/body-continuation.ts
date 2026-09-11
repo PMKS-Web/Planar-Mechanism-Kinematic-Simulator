@@ -10,7 +10,7 @@ import { checkBodyLimits } from './body-limits';
 export interface BodyContinuationState {
   readonly poses: GroupPoses;
   readonly command: number;
-  /** Physical pose derivative per driver coordinate; retained across an isolated singular sample. */
+  /** Numerical prediction seed; only a regular state has a command derivative. Never publish as rates. */
   readonly tangent: readonly number[];
   readonly regular: boolean;
 }
