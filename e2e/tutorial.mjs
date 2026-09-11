@@ -15,7 +15,7 @@ const { chromium } = await import(
 import { waitForReady } from './app-ready.mjs';
 import { TEMPLATE_LINKAGES } from './template-payloads.mjs';
 
-const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
+const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const FOUR_BAR = TEMPLATE_LINKAGES['4-Bar'];
 
 const OUT = 'artifacts/tutorial';

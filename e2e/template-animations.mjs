@@ -33,7 +33,7 @@ import { TEMPLATE_LINKAGES, assertTemplatesParsed } from './template-payloads.mj
 
 assertTemplatesParsed();
 
-const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
+const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const CATALOG = 'src/app/component/MODALS/templates/template-catalog.ts';
 const ASSETS = 'src/assets/gifs';
 

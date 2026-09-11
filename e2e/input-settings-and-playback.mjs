@@ -10,7 +10,7 @@ const { chromium } = await import(
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { waitForReady } from './app-ready.mjs';
 
-const BASE = process.env.PMKS_BASE_URL ?? process.env.PMKS_URL ?? 'http://127.0.0.1:4200/';
+const BASE = process.env.PMKS_BASE_URL ?? process.env.PMKS_URL ?? 'http://localhost:4200/';
 // Same encoded four-bar the other e2e scripts use — loading by URL avoids the
 // template dialog entirely.
 const FOUR_BAR =

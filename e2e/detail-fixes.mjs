@@ -13,7 +13,7 @@ const { chromium } = await import(
 );
 import { waitForReady } from './app-ready.mjs';
 
-const BASE = process.env.PMKS_BASE_URL ?? 'http://127.0.0.1:4200';
+const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 import { ALL_LINKAGES as payloads } from './template-payloads.mjs';
 
 /**
@@ -895,8 +895,8 @@ await page.locator('.forceRedirectAction').click();
 await page.waitForTimeout(700);
 record(
   'and pressing it lands in Force Analysis, where the card offers the link that carries it',
-  (await page.evaluate(
-    () => window.ng.getComponent(document.querySelector('app-new-grid')).tabService.getCurrentTab()
+  (await page.evaluate(() =>
+    window.ng.getComponent(document.querySelector('app-new-grid')).tabService.getCurrentTab()
   )) === 3 && /Graph /.test(await page.locator('app-analysis-panel').innerText())
 );
 await page.locator('.forceRedirectAction').click();
