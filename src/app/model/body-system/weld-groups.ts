@@ -49,7 +49,7 @@ export function compileWeldGroups(document: BodyDocument): WeldCompilation {
     let materialMass: ResolvedMass;
     let mass: ResolvedMass;
     try {
-      materialMass = aggregateMaterial(document, frame.members);
+      materialMass = aggregateMaterialMass(document, frame.members);
       const annotation = document.groups.find((item) => frame.members.has(item.frameBody));
       mass = applyGroupMassOverride(materialMass, annotation, frame.members, document.units);
       if (![materialMass, mass].every(validResolvedMass))
@@ -80,8 +80,8 @@ function validResolvedMass(value: ResolvedMass): boolean {
   );
 }
 
-function aggregateMaterial(
-  document: BodyDocument,
+export function aggregateMaterialMass(
+  document: Pick<BodyDocument, 'units' | 'bodies'>,
   members: ReadonlyMap<BodyId, Pose>
 ): ResolvedMass {
   const length = unitFactors(document.units).length;

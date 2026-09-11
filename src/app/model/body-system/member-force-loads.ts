@@ -1,14 +1,15 @@
-import { BodyDocument } from './body-document';
+import { ForceDocument } from './force-document';
 import { BodyId, WORLD } from './body-id';
 import { CompiledBodySystem } from './compiled-body-system';
 import { BodySolveFrame, solveFramePoint } from './body-solve-frame';
 import { GroupPoses } from './body-constraint-rows';
 import { BodyRatesResult } from './body-rates';
 import { bodyLoadWrenches, BodyLoadWrenches, frameBodyLoad } from './body-load-wrenches';
-import { finitePoint, localToWorld, Point } from './body-frame';
+import { finitePoint, localToWorld, Point, scale } from './body-frame';
 import { resolveMass } from './body-properties';
 import { unitFactors } from './body-units';
 import { MaterialWrenches } from './joint-wrenches';
+import { applyGroupMassOverride } from './group-properties';
 
 export type MemberForceLoads =
   | {
@@ -22,7 +23,7 @@ export type MemberForceLoads =
 
 /** Material balances share the group's numerical origin, so internal wrenches cancel before transport. */
 export function memberForceLoads(
-  document: BodyDocument,
+  document: ForceDocument,
   system: CompiledBodySystem,
   frame: BodySolveFrame,
   poses: GroupPoses,
@@ -73,15 +74,26 @@ export function memberForceLoads(
     const member = { ...solveFramePoint(frame, groupId, transform), angle: transform.angle };
     const own = resolveMass(body, document.units);
     const center = localToWorld(member, own.center ?? own.displayCenter);
-    // A single material has no distribution ambiguity; its group override is its whole inertia.
+    const localMass = { ...own, center: own.center && center, displayCenter: center };
+    // Reconstruct from local material geometry before applying an override. A
+    // precompiled WORLD center has already rounded away small, meaningful offsets.
     const mass =
-      materialCount === 1
-        ? {
-            ...group.mass,
-            center: group.mass.center && solveFramePoint(frame, groupId, group.mass.center),
-            displayCenter: solveFramePoint(frame, groupId, group.mass.displayCenter),
-          }
-        : { ...own, center: own.center && center, displayCenter: center };
+      materialCount === 1 && override
+        ? applyGroupMassOverride(
+            localMass,
+            annotation,
+            new Map(
+              [...group.members].map(([bodyId, pose]) => [
+                bodyId,
+                {
+                  ...scale(solveFramePoint(frame, groupId, pose), 1 / factors.length),
+                  angle: pose.angle,
+                },
+              ])
+            ),
+            document.units
+          )
+        : localMass;
     const applied = loads
       .filter((load) => load.bodyId === id)
       .map((load) => frameBodyLoad(load, member, pose.angle, factors));

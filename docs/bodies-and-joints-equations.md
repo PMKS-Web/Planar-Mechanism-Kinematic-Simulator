@@ -381,9 +381,47 @@ inch/pound documents, rebased material origins and reversed enumeration yield th
 physical reactions. Replacing the two pins by one WORLD weld gives the unique wrench
 `(-F,-M)` at that pin. Omitting the machine contributions fails both hand answers.
 
-This producer returns one complete all-fixed context. A refused required clock currently
-refuses that context as a whole; it does not erase any already-published moving-machine
-frame. Before S3 closure, add component-level fixed availability so an unrelated failed
-foundation cannot hide an independently valid fixed material result. The full simulation
-snapshot/cycle controller must also select and retain fixed support policy consistently;
-this per-context function is not itself a cycle or a UI adapter.
+This diagnostic producer returns one complete all-fixed context. Consumers use the
+component-level producer below so a missing sample does not hide an unrelated foundation.
+The full simulation snapshot/cycle controller must still select and retain fixed support
+policy consistently; these per-context functions are not themselves a cycle or a UI adapter.
+
+## Fixed material components and numerical moment references
+
+`solveFixedForceComponents` is the fixed-force entry point for the simulation snapshot.
+`fixedForceComponents` connects fixed material through every actual fixed joint, excluding
+WORLD as an intermediate material vertex. Two WORLD welds can therefore have independent
+force contexts, even at the same visible point; adding a weld or P directly between their
+material joins the contexts. The snapshot carries a material-to-component index, per-component
+calculation provenance/refusals and the material-pair joint results. A generic `frame-context`
+joint refusal retains its detailed cause on the component result.
+
+Each component requests only its own incident clock samples. Missing, refused, duplicated or
+mixed-provenance samples affect that component alone. Support policy is also selected per
+component and retained in the result. `fixedForceProjection` keeps the original numerical
+frames, members and owned support rows; it restricts WORLD's material members and recalculates
+their material mass with the shared aggregation helper. This is a `ForceDocument` view of
+units/material/joints/loads/annotations, deliberately not a complete editable/persistable
+`BodyDocument`. It creates no persistent bodies or force records and does not alter the source.
+
+A group mass/CoM override spanning independent foundations has no specified distribution
+under gravity. Both affected components return `aggregate-properties`; a third independent
+carriage can still report its own hand-derived support force/couple. With zero gravity and
+zero fixed-body acceleration the cross-component mass override contributes no load. An active
+imported load whose provenance spans components returns `load-owner` on those components,
+rather than assigning it solely to the reference body. An actual material joint joining the
+foundations keeps the complete coupled force problem instead of applying this split.
+
+A WORLD-only welded foundation also needs a nearby moment reference. Otherwise a small
+bracket at coordinates of order 1e9 solves moments of order 1e10 and subtracts them to present
+a material moment of order 1. `fixedForceBalance` now supplies a nearby material origin to
+`createBodySolveFrame`; its ordinary position-solver callers retain the previous default.
+This alone cannot recover local precision already lost in a cached WORLD center of mass.
+`memberForceLoads` therefore reconstructs material mass geometry in the numerical frame, then
+applies a single-material group override using that same local frame. A body-local custom CoM
+stays local until the force calculation, rather than being rounded through WORLD first.
+
+The distant-bracket probe derives force and moment from its local force arm and CoM, in SI
+and inch/pound units, with and without an override. The original calculation missed Fx by
+about 3.8e-6 N; choosing a nearby origin alone still missed the moment by about 4.4e-7 N·m.
+Both corrections pass the unchanged 1e-9 decimal-place assertions at offsets 0 and 1e9.

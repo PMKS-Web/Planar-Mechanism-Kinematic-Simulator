@@ -1,4 +1,4 @@
-import { BodyDocument } from './body-document';
+import { ForceDocument } from './force-document';
 import { BodyId, JointId } from './body-id';
 import { Point, rotate, scale } from './body-frame';
 import { CompiledBodySystem } from './compiled-body-system';
@@ -20,7 +20,7 @@ import { ForceValue, PairWrench, forceAvailable, forceUnavailable } from './forc
 
 /** Joint records assign material ownership; a condensed group's representative does not. */
 export function forceFrameJoints(
-  document: BodyDocument,
+  document: ForceDocument,
   system: CompiledBodySystem,
   frame: BodySolveFrame,
   poses: GroupPoses,

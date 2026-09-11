@@ -87,7 +87,13 @@ export function jointBodyWrench(
   body: BodyId
 ): ForceValue<Wrench> {
   if (!frame.ok) return forceUnavailable(frame.reason);
-  const result = frame.joints.get(jointId);
+  return pairBodyWrench(frame.joints.get(jointId), body);
+}
+
+export function pairBodyWrench(
+  result: ForceValue<PairWrench> | undefined,
+  body: BodyId
+): ForceValue<Wrench> {
   if (!result) return forceUnavailable('outside-sample');
   if (!result.ok) return result;
   const pair = result.value;

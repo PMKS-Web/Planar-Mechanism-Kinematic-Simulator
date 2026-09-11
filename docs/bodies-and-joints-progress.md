@@ -18,7 +18,7 @@
 | S0 | Baseline complete | Six unit suites pass (182 tests), seven new compatibility tests pass, build passes, template-open 11/11, template-graphs 3978/3978, ui-copy 17/17. Timing, visual baseline and operation-level consumer classification are recorded. Existing drag timing failures are reproduced on original test files, not waived; S7 must meet the measured comparison budget. |
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
 | S2 | Complete | Native compiler, analytic Jacobians, mobility/admission, branch continuation, folds, limits and frame conditioning. Seven native/legacy and four native/MATLAB comparisons retain the original ceilings. Geometric redundancy, two slots on a carrier and one-pin/shared-WORLD cases pass. Combined S2/initial-rate gate: 255 tests / 37 files; current-editor browser gate is green. Continuous cycle event publication remains an explicit S3 obligation. |
-| S3 | In progress | Analytic rates, moving/fixed-group forces, material/weld recovery, immutable force frames and series support-policy selection implemented and initially verified. Passive frame bars no longer join independent clocks. Latest native/reference/frame-force gate: 303 tests / 49 files; build passes; latest unchanged-editor ui-copy 17/17. Fixed component availability/rigid-core audit, full sample schema, cycle events, remaining worked examples, full gates and F2 are pending. |
+| S3 | In progress | Analytic rates, moving/fixed-group forces, material/weld recovery, immutable force frames and series support-policy selection implemented and initially verified. Passive frame bars no longer join independent clocks. Latest native/reference/frame-force gate: 308 tests / 51 files; build passes; latest unchanged-editor ui-copy 17/17. Fixed component availability implemented. Collective rigid-core audit, full sample schema, cycle events, remaining worked examples, full gates and F2 are pending. |
 | S4 | Pending | Native transactions, codec/import, lifecycle, history and F3. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
 | S6 | Pending | All consumers, synthesis, tutorial, fixtures/templates and default cutover. |
@@ -675,3 +675,51 @@ than per-sample guessing by a consumer. Continue the rigid-foundation audit, com
 schema and continuous stop/reversal controller, remaining examples/reference rates, full S3
 gates and F2. **S3 remains in progress; S4–S8 are pending.** Fable spending is unchanged, and
 the new native fixtures still need S6 codec/gallery publication.
+
+
+## S3 independent fixed-component publication and precision
+
+The previous implementation turn made verified progress; the intervening user-requested
+workflow reminder verified the existing paired-browser requirement without changing source.
+The pending implementation is now verified against its files and final logs, not inferred
+from the earlier session. `solveFixedForceComponents` is the consumer entry point; the
+all-fixed `solveFixedBodyForces` remains a diagnostic convenience. Fixed material connectivity
+excludes WORLD as an intermediary. Each component validates only its incident moving samples,
+retains its own support policy, and publishes immutable availability and body-side reactions.
+A missing/refused/mixed/duplicate clock on one foundation leaves another foundation's hand-
+derived forces available, including when their visible ground points coincide. Actual material
+welds or P connections instead join their force context. The source drawing stays unchanged.
+Cross-component mass/load ownership ambiguity refuses affected foundations; a third independent
+carriage still reports its hand-derived support. These checks include reversed enumeration,
+independent clock times, policy labels, immutable outputs and recovery on a subsequent call.
+
+The force projection is a read-only `ForceDocument`, not a persistable/editable document.
+A fixed WORLD weld at a remote origin exposed two separate precision losses: choosing the
+WORLD origin produced about 3.8e-6 N force error; choosing a nearby material origin alone still
+left about 4.4e-7 N·m moment error because the cached world CoM had already rounded away its
+local offset. Fixed balance now uses a nearby material origin and member loading reconstructs
+the local mass center before applying a single-material override. The same nine-decimal hand
+force/moment assertions pass at zero and 1e9 origins, in SI and inch/pound units, with and
+without custom CoM/mass. No tolerance was widened.
+
+Evidence under `artifacts/bodies-and-joints/`:
+
+- `S3-fixed-components-final-checkpoint.log`: **308 tests / 51 files pass**, exact S2 broad
+  list plus the existing frame-force reference suite. Earlier native gate: 138/35.
+- `S3-fixed-components-build.log`: host build completed with output location and existing
+  warnings; its former process handle is now absent (terminal), not a reason to restart it.
+- `S3-fixed-precision-before.log` and `S3-fixed-precision-local-origin.log` preserve the two
+  intended hand-answer failures before the complete fix.
+- `S3-fixed-components-unscoped.log` / `S3-fixed-components-mutation.json`: removing scoped
+  input selection fails the independent-foundation force assertion (one failure, three
+  passes); source restored before the final broad gate.
+- Only touched TypeScript formatted; whitespace check passes. No native editor imports yet;
+  no new live UX gate is claimed. Both browser workflows remain required at S5/S6/S8.
+
+Next: audit a collectively rigid passive foundation (two ground-pinned bars joined at their
+apex) carrying independent cranks. The existing single-body fixed-neighbor rank test cannot
+prove that shape. Require a consistent full-column-rank passive subsystem; instantaneous zero
+velocity alone is unsafe at a rocker turning point. Then complete immutable simulation samples,
+continuous interval/stop/reversal publication, stable fixed-support policies across those
+samples, remaining hand-derived examples/reference rates, the full S3 gate and F2. **S3 remains
+in progress; S4–S8 remain pending.** No paid review ran; spending is unchanged.
