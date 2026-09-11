@@ -55,3 +55,6 @@ artifacts/
 # Where the Playwright MCP drops its console logs and page snapshots when it is
 # driven from the repo root. Session scratch, not a finding worth keeping.
 .playwright-mcp/
+
+*storybook.log
+storybook-static

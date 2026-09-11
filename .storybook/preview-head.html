@@ -1,0 +1,36 @@
+<!-- The same fonts the app loads in src/index.html, so a block is measured in
+     the typeface it is measured in on screen. -->
+<link rel="preconnect" href="https://fonts.gstatic.com" />
+<link
+  href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap"
+  rel="stylesheet"
+/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+
+<style>
+  /*
+   * src/styles.scss clips the document and turns off text selection, because
+   * the app fills the window and scrolls inside its own cards. A docs page is a
+   * long document, so the gallery gives both back -- and nothing else.
+   */
+  html,
+  body {
+    height: auto !important;
+    overflow: auto !important;
+  }
+
+  body {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  /* The left mode card a block normally stands in: 250px wide, on the card surface. */
+  .sb-panel-frame {
+    box-sizing: border-box;
+    width: var(--sb-frame-width, 250px);
+    padding: var(--sb-frame-padding, 12px);
+    background: var(--card-surface, #fff);
+    border-radius: var(--card-radius, 10px);
+    box-shadow: var(--card-shadow, none);
+  }
+</style>

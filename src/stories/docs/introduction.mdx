@@ -1,0 +1,53 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Introduction" />
+
+# PMKS+ component gallery
+
+The panels in PMKS+ are assembled from a small set of form primitives in
+`src/app/component/BLOCKS/`. This gallery shows each of them on its own, one state per story,
+rendered with the app's real stylesheets (`src/mytheme.scss` and `src/styles.scss`) and its
+Angular Material theme. A block looks here the way it looks in the Edit panel.
+
+## What it is for
+
+- **Finding the block before building one.** Most "new" controls already exist: a labeled number,
+  a pair of numbers, a pick-one, a switch, a card. Look here first.
+- **Seeing every state at once.** Default, disabled with its reason, invalid, and the dense or
+  long-label case that breaks a layout. A state that is not in the gallery is a state nobody has
+  looked at.
+- **Reviewing a change to a block** without having to build a mechanism that happens to show it.
+
+## Build from these, and do not copy a neighbor's CSS
+
+If a panel needs a field, use `input-block`. If it needs a pick-one, use `segmented-block`. If a
+block cannot do what you need, **extend the block** and add a story for the new state.
+
+Copying the SCSS of the panel next door gives you a control that looks right today and drifts
+tomorrow. That is how the app once had three different pick-one controls. New colors, radii,
+shadows and gaps are tokens: see the **Tokens** page.
+
+## Running it
+
+- `npm run storybook` starts the gallery at `http://localhost:6006`, and reloads it on change.
+- `npm run build-storybook` builds a static site into `storybook-static/`, which is gitignored.
+
+## What is in it
+
+- **Tokens:** every CSS custom property defined on `:root`, read live from the loaded stylesheets.
+- **Blocks:** one entry per primitive in `src/app/component/BLOCKS/`.
+- **Feedback:** the notification kinds `NotificationService` can say.
+- **Canvas entities:** planned, not built. Joints, links and glyphs arrive with stage S6 of the
+  bodies-and-joints migration.
+
+## Adding a story
+
+- Put one file per block in `src/stories/blocks/`, named after the block's directory.
+- Read the block's inputs from its source. Do not invent inputs, and do not wrap a block in a
+  component that changes its look.
+- A block that injects app services gets a minimal stub from `src/stories/support/stubs.ts`,
+  never the real `MechanismService`.
+- Use words from `docs/ui-vocabulary.md` in stories too. A story is where a label is first read.
+
+The rules a gallery cannot show (how refusals are worded, one undo per gesture, how motion is
+proved) are in `docs/ui-style-guide.md`.

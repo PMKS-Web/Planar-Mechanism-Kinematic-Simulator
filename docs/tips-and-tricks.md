@@ -2509,3 +2509,18 @@ Worth knowing while chasing this: the compound's `d` and what the canvas *draws*
 strings. `linkPathWithChannels` is `outlineWithMotor(link)` -- which is `link.d` plus any motor
 bodies, cached per pose -- followed by `channelsCutInto(link)`. A discrepancy between
 `getLinkProp(link, 'd')` and the element's `d` attribute is the channels, not the outline.
+
+### The component gallery borrows the app's styles from `angular.json`
+
+`npm run storybook` serves the BLOCKS gallery on port 6006; `npm run build-storybook` writes a
+static copy to gitignored `storybook-static/`. The Storybook builder only loads the global
+stylesheets listed on its *own* target, so an unstyled gallery is the first thing you see if that
+list drifts. `.storybook/main.ts` avoids the second list entirely: it reads `styles` and
+`includePaths` from the app's `build` target in `angular.json` and prepends them to the preview.
+Add a global stylesheet to the app's target, or `@use` it from `src/styles.scss` as the token file
+is, and the gallery picks it up with no change.
+
+Storybook 10 with `@analogjs/vite-plugin-angular` would not install on Angular 22.0 without
+`--force`: the plugin's optional `@angular/localize` peer resolves to the newest 22.1, which demands
+a matching `@angular/compiler-cli`. That is why Angular moved to 22.1 first. If a later Storybook
+upgrade refuses the same way, keep Angular's minor in step rather than forcing the lock.

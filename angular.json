@@ -119,6 +119,24 @@
             "runner": "vitest",
             "setupFiles": ["src/test-setup.ts"]
           }
+        },
+        "storybook": {
+          "builder": "@storybook/angular-vite:start-storybook",
+          "options": {
+            "configDir": ".storybook",
+            "browserTarget": "PMKSWeb:build",
+            "zoneless": false,
+            "port": 6006
+          }
+        },
+        "build-storybook": {
+          "builder": "@storybook/angular-vite:build-storybook",
+          "options": {
+            "configDir": ".storybook",
+            "browserTarget": "PMKSWeb:build",
+            "zoneless": false,
+            "outputDir": "storybook-static"
+          }
         }
       }
     }
