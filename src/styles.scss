@@ -1,5 +1,9 @@
 /* You can add global styles to this file, and also import other style files */
 
+// Colors, shadows, radii and the card gap, as custom properties on :root. The
+// one place a hex color may be written; see the file for why.
+@use 'styles/tokens';
+
 // The app fills the window and everything inside it scrolls on its own, so the
 // document itself never should. Without this a drawer parked past the right
 // edge can be scrolled back into view after being closed.
@@ -24,28 +28,6 @@ body {
   -moz-user-select: none; /* Firefox */
   -ms-user-select: none; /* IE10+/Edge */
   user-select: none; /* Standard */
-}
-
-:root {
-  --border-radius: 5px;
-  --mat-warning-color: #f44336;
-
-  /*
-   * The app's chrome, in one place.
-   *
-   * Every surface that floats above the grid -- the top strip, the transport,
-   * the view controls, the drawers, the panels, the status strip -- is the same
-   * white, sits at the same height above it, and is separated from its
-   * neighbors by the same gap. These are those three facts. Anything that
-   * writes its own #fff, its own box-shadow or its own 10px is either wrong or
-   * has a reason worth writing down beside it.
-   */
-  --card-surface: #fff;
-  --card-radius: 10px;
-  --card-gap: 12px;
-  --card-shadow:
-    0 3px 5px -1px rgba(0, 0, 0, 0.2), 0 6px 10px 0 rgba(0, 0, 0, 0.14),
-    0 1px 18px 0 rgba(0, 0, 0, 0.12);
 }
 
 /* Remove all default margins and padding */
@@ -103,11 +85,8 @@ input {
   padding: 4px 0;
   box-sizing: border-box;
   border-radius: 5px;
-  background: #fff;
-  box-shadow:
-    0 8px 10px -5px rgba(0, 0, 0, 0.2),
-    0 16px 24px 2px rgba(0, 0, 0, 0.14),
-    0 6px 30px 5px rgba(0, 0, 0, 0.12);
+  background: var(--surface);
+  box-shadow: var(--menu-shadow);
 
   button {
     display: flex;
@@ -153,11 +132,8 @@ input {
   padding: 6px 0 8px;
   box-sizing: border-box;
   border-radius: 12px;
-  background: #fff;
-  box-shadow:
-    0 8px 10px -5px rgba(0, 0, 0, 0.2),
-    0 16px 24px 2px rgba(0, 0, 0, 0.14),
-    0 6px 30px 5px rgba(0, 0, 0, 0.12);
+  background: var(--surface);
+  box-shadow: var(--menu-shadow);
 
   .viewSheetGrip {
     display: block;
@@ -174,13 +150,13 @@ input {
     font-weight: 500;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #8a8a92;
+    color: var(--text-tertiary-2);
   }
 
   .viewSheetRule {
     height: 1px;
     margin: 6px 0;
-    background: #eceef5;
+    background: var(--border-rule);
   }
 
   // 44px, which is the smallest a finger should have to aim at.
@@ -193,7 +169,7 @@ input {
     padding: 0 16px;
     border: none;
     background: transparent;
-    color: #1c1c20;
+    color: var(--text-strong-2);
     font-family: inherit;
     font-size: 15px;
     text-align: left;
@@ -214,7 +190,7 @@ input {
       flex: 0 0 auto;
       font-size: 22px;
       line-height: 22px;
-      color: #5f6368;
+      color: var(--text-secondary);
     }
 
     &:disabled > mat-icon {
@@ -261,7 +237,7 @@ input {
       width: 20px;
       height: 20px;
       border-radius: 50%;
-      background: #fafafa;
+      background: var(--switch-thumb);
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
       transition: transform 120ms ease-out;
     }
@@ -270,7 +246,7 @@ input {
       background: rgba(63, 81, 181, 0.54);
 
       &::after {
-        background: #3f51b5;
+        background: var(--brand);
         transform: translateX(16px);
       }
     }

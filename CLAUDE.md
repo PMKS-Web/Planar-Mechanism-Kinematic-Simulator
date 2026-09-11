@@ -35,9 +35,7 @@ loads `.agents/skills/` instead; each skill there is a pointer to its `.claude` 
 
 `.nvmrc` pins Node 24; run `nvm use` first, because a login shell may otherwise hand you an unsupported Node 20.
 
-`npm run lint` runs ESLint over the invariants in [`docs/code-style.md`](docs/code-style.md); `npm run lint:format` checks that `.ts`, `.html` and e2e `.mjs` files are Prettier-formatted. **CI fails a PR on either, and a PR cannot merge into `staging` or `main` without a passing check.** Formatting follows `.prettierrc`: 100-char width, single quotes, 2-space indent; `npx prettier --write <file>` fixes a file.
-
-A few `.scss` files still predate the config (`npx prettier --list-different src e2e` lists them). Format only the stylesheets you actually edited, so an unrelated reformat does not bury your change. `.prettierignore` deliberately excludes Markdown (Prettier pads every table cell and rewrites `*emphasis*` as `_emphasis_`, so a one-line doc edit lands as hundreds of lines of realignment) and the generated `src/test-data/verification` tables.
+`npm run lint` runs ESLint over the invariants in [`docs/code-style.md`](docs/code-style.md); `npm run lint:format` checks that `.ts`, `.html`, `.scss` and e2e `.mjs` files are Prettier-formatted; `npm run lint:styles` (stylelint) rejects a raw hex color anywhere but `src/styles/_tokens.scss`, so a new color is a named token. **CI fails a PR on any of them, and a PR cannot merge into `staging` or `main` without a passing check.** Formatting follows `.prettierrc`: 100-char width, single quotes, 2-space indent; `npx prettier --write <file>` fixes a file. `.prettierignore` deliberately excludes Markdown (Prettier pads every table cell and rewrites `*emphasis*` as `_emphasis_`, so a one-line doc edit lands as hundreds of lines of realignment) and the generated `src/test-data/verification` tables.
 
 ## UI validation: run it yourself
 

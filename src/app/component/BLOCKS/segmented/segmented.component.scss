@@ -26,7 +26,7 @@
     gap: var(--gap);
     padding: var(--pad);
     border-radius: 8px;
-    background: #f1f2f6;
+    background: var(--surface-field-2);
     box-sizing: border-box;
 
     &.compact {
@@ -40,7 +40,7 @@
       left: var(--thumb-left, var(--pad));
       width: var(--thumb-width, 0);
       border-radius: 6px;
-      background: #fff;
+      background: var(--surface);
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
       transition:
         left 0.18s cubic-bezier(0.4, 0, 0.2, 1),
@@ -60,7 +60,7 @@
       font-family: inherit;
       font-size: 12.5px;
       line-height: 1;
-      color: #5f6368;
+      color: var(--text-secondary);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -77,11 +77,11 @@
       // more classes in the selector -- so a grayed option darkened under the
       // cursor and read as pressable right up until the click did nothing.
       &:not(.chosen):not(:disabled):hover {
-        color: #2c2c2c;
+        color: var(--text-primary);
       }
 
       &:disabled {
-        color: #b0b4c0;
+        color: var(--text-disabled-2);
         cursor: default;
       }
     }

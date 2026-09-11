@@ -1,0 +1,239 @@
+// The app's design tokens: every color, shadow, radius and gap that more than
+// one stylesheet has to agree on, as custom properties on :root.
+//
+// Loaded once, from src/styles.scss, so every component stylesheet -- the ones
+// src/mytheme.scss pulls in and the ones a component loads through styleUrls --
+// can say var(--token) without importing anything.
+//
+// This is the one stylesheet allowed to write a hex color. Stylelint's
+// color-no-hex (.stylelintrc.json) refuses one anywhere else, so a new
+// component matches the look by naming a role rather than by copying a
+// neighbor's hex.
+//
+// The values are exactly what the stylesheets wrote before the tokens existed,
+// near-duplicates included. Where two grays were plainly meant to be one color
+// they are still two tokens here -- the base role and a numbered variant, say
+// --text-disabled and --text-disabled-3 -- because merging them changes pixels
+// and belongs in a change of its own. A numbered variant is a merge waiting to
+// happen, not a new shade to reach for.
+//
+// Not here: Material palette colors (mat.m2-get-color-from-palette), and
+// colors decided at runtime -- link colors, SVG fills set from TypeScript.
+
+:root {
+  /* ---- Surfaces ---------------------------------------------------------- */
+
+  /*
+   * The app's chrome, in one place.
+   *
+   * Every surface that floats above the grid -- the top strip, the transport,
+   * the view controls, the drawers, the panels, the status strip -- is the same
+   * white, sits at the same height above it, and is separated from its
+   * neighbors by the same gap. These are those three facts. Anything that
+   * writes its own white, its own box-shadow or its own 10px is either wrong or
+   * has a reason worth writing down beside it.
+   */
+  --surface: #fff;
+  --card-surface: var(--surface);
+  --card-radius: 10px;
+  /* The one gap. The same 12px as $card-inset in left-tabs.vars.scss, which
+     layout arithmetic needs as a Sass number. */
+  --card-gap: 12px;
+  --card-shadow:
+    0 3px 5px -1px rgba(0, 0, 0, 0.2), 0 6px 10px 0 rgba(0, 0, 0, 0.14),
+    0 1px 18px 0 rgba(0, 0, 0, 0.12);
+
+  /* Near-white panels: placeholders, footers, a card that is switched off. */
+  --surface-subtle: #fafbfd;
+  --surface-subtle-2: #fafafc;
+  --surface-subtle-3: #fbfbfd;
+  --surface-subtle-4: #fcfcfe;
+  --surface-subtle-5: #fbfcff;
+
+  /* A step down from the card: summaries, hints, an unticked box. */
+  --surface-sunken: #f7f8fc;
+  --surface-sunken-2: #f5f6fa;
+  --surface-sunken-3: #f4f4f7;
+
+  /* A row under the pointer. */
+  --surface-hover: #f4f5f9;
+  --surface-hover-2: #f1f3f4;
+  --surface-hover-3: #eeeeee;
+
+  /* Filled text fields, and the track of a segmented control. */
+  --surface-field: #f0f1f5;
+  --surface-field-2: #f1f2f6;
+
+  /* A neutral status chip. */
+  --surface-chip: #eef0f4;
+
+  /* A chosen row that is not a selection on the drawing. */
+  --surface-selected: #e9ebf3;
+
+  /* Wells a control sits in. */
+  --surface-well: #e4e6ef;
+  --surface-well-2: #dfe1e8;
+
+  /* A filled button that is off, and the part of a track not yet travelled. */
+  --surface-disabled: #d5d7e0;
+
+  /* The knob of the app's own switch. */
+  --switch-thumb: #fafafa;
+  --switch-thumb-disabled: #f2f2f2;
+
+  /* ---- Borders ----------------------------------------------------------- */
+
+  /* The hairline between sections of a card. */
+  --border-rule: #eceef5;
+  --border-rule-2: #f1f2f7;
+
+  /* A divider between controls, and a quiet outline. */
+  --border-divider: #e6e7ee;
+  --border-divider-2: #e2e4ec;
+  --border-divider-3: #e2e4ee;
+  --border-divider-4: #e0e2ec;
+  --border-divider-5: #dfe1ea;
+
+  /* The older dual-button block's disabled outline. */
+  --border-disabled-gray: #bbbbbb;
+
+  /* ---- Text -------------------------------------------------------------- */
+
+  /* Darker than body text: a value to read, a title. */
+  --text-strong: #202124;
+  --text-strong-2: #1c1c20;
+  --text-strong-3: #14161f;
+
+  /* Body text. */
+  --text-primary: #2c2c2c;
+
+  /* Labels on the top strip's controls. */
+  --text-control: #3c4043;
+
+  /* Indigo-gray prose inside a brand-tinted note. */
+  --text-note: #3a4166;
+
+  /* Secondary text and the app's gray icons. */
+  --text-secondary: #5f6368;
+
+  /* Captions, table heads, overlines. */
+  --text-tertiary: #8a8f9e;
+  --text-tertiary-2: #8a8a92;
+  --text-tertiary-3: #8a8d99;
+  --text-tertiary-4: #8f93a1;
+
+  /* Icons that stay out of the way. */
+  --text-muted: #9aa0a6;
+  --text-muted-2: #9aa0ac;
+
+  /* A control that cannot be used. */
+  --text-disabled: #c4c7d0;
+  --text-disabled-2: #b0b4c0;
+  --text-disabled-3: #b0b3c0;
+  --text-disabled-4: #b6bac6;
+  --text-disabled-5: #b7bac7;
+  --text-disabled-6: #c8cad3;
+
+  /* Barely there: a remove button on a row that cannot lose it. */
+  --text-faint: #e2e4ea;
+
+  /* Text and glyphs on a filled brand or status color. */
+  --text-on-accent: #fff;
+
+  /* Pure black, for the context menu's icons. */
+  --text-black: #000;
+
+  /* The older dual-button block's disabled glyph. */
+  --text-disabled-gray: #969696;
+
+  /* ---- Brand (Material indigo) ------------------------------------------- */
+
+  --brand: #3f51b5;
+  --brand-dark: #303f9f;
+  --brand-darker: #1a237e;
+  --brand-mid: #5c6bc0;
+  --brand-light: #9fa8da;
+  --brand-light-2: #aeb4d8;
+  --brand-pale: #c5cae9;
+  --brand-tint: #e8eaf6;
+  --brand-wash: #f5f6fb;
+  --brand-wash-2: #f7f8fd;
+  --brand-wash-3: #f3f5ff;
+
+  /* ---- Selection: a switch or chip that is on ---------------------------- */
+
+  --selection: #eef1fc;
+  --selection-2: #f1f3fb;
+  --selection-hover: #e4e8fa;
+  --selection-border: #c5cbf0;
+  --selection-border-2: #d3d8f0;
+
+  /* ---- Accent (Material amber): highlights and guides -------------------- */
+
+  --accent: #ffc107;
+  --accent-2: #ffca28;
+  --accent-3: #f2b01e;
+  --accent-4: #f5a623;
+  --accent-pale: #ffecb2;
+  --accent-tint: #fff8e1;
+  --accent-tint-hover: #fff3cd;
+  --accent-wash: #fffdf5;
+
+  /* ---- Warning: needs attention, does not block -------------------------- */
+
+  --warning: #ef6c00;
+  --warning-text: #b26a00;
+  --warning-text-2: #a35c00;
+  --warning-text-3: #9a6a00;
+  --warning-text-4: #8a6100;
+  --warning-text-5: #8a6d1b;
+  --warning-text-6: #7a5600;
+  --warning-text-7: #7a5a00;
+  --warning-bg: #fef3e0;
+  --warning-bg-2: #fdf3dd;
+
+  /* ---- Refusal: blocks, destroys or failed ------------------------------- */
+
+  --danger: #f44336;
+  --mat-warning-color: var(--danger);
+  --danger-2: #e53935;
+  --danger-3: #d93025;
+  --danger-4: #d32f2f;
+  --danger-dark: #c62828;
+  --refusal-text: #c5221f;
+  --refusal-text-2: #b3261e;
+  --refusal-bg: #fce8e6;
+  --refusal-bg-2: #ffebee;
+  --refusal-bg-3: #fdf6f6;
+  /* A gesture refused on purpose: blue-gray, because nothing went wrong. */
+  --refusal-neutral: #455a64;
+
+  /* ---- Success ----------------------------------------------------------- */
+
+  --success: #2e7d32;
+  --success-2: #43a047;
+  --success-text: #137333;
+  --success-text-strong: #1a4a29;
+  --success-bg: #e6f4ea;
+
+  /* ---- Canvas: the SVG drawing's own marks ------------------------------- */
+
+  --canvas-ink: #263238;
+  --canvas-ink-faint: #26323855;
+  /* The white outline that keeps a label legible over a busy drawing. */
+  --canvas-halo: #fff;
+  --canvas-halo-2: #fbfbfb;
+  /* A part that belongs to no machine that can run. */
+  --canvas-inert: #c4c7d0;
+  --canvas-inert-joint: #d9dbe2;
+  --canvas-black: #000;
+
+  /* ---- Shadows and radii ------------------------------------------------- */
+
+  /* A menu drawn over the drawing: deeper than a card's, so it reads as
+     floating over the page rather than laid beside the other cards. */
+  --menu-shadow:
+    0 8px 10px -5px rgba(0, 0, 0, 0.2), 0 16px 24px 2px rgba(0, 0, 0, 0.14),
+    0 6px 30px 5px rgba(0, 0, 0, 0.12);
+  --border-radius: 5px;
+}

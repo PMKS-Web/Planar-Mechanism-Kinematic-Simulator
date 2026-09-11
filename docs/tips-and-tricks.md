@@ -347,22 +347,18 @@ Afterwards, grep for the American stem followed by a suspicious ending — `cent
 
 ## Formatting, and why you should not just run Prettier
 
-**`.ts`, `.html` and e2e `.mjs` files are all formatted, and CI keeps them that way.**
+**Every `.ts`, `.html`, `.scss` and e2e `.mjs` file is formatted, and CI keeps it that way.**
 `npm run lint:format` fails a pull request whose files are not Prettier-clean, and the ruleset on
 `staging` and `main` will not merge a failing check. Run `npx prettier --write <file>` on what you
-edited before you push.
+edited before you push; `npx prettier --list-different src e2e` shows anything you missed.
 
-**A few `.scss` files still predate the config.** Running `prettier --write` across one of them
-reformats rules you did not write, and your actual change disappears into the reflow. Ask Prettier
-for the current list rather than trusting a count:
+Prettier is pinned in `devDependencies`, so a local run and CI agree. A different Prettier fetched
+by a bare `npx` in a checkout without `node_modules` can disagree about a line or two — run
+`npm ci` first.
 
-```bash
-npx prettier --list-different src e2e
-```
-
-Format a stylesheet only if you edited it and it was already clean. A blanket
-`npx prettier --write src` will quietly reformat every listed stylesheet you never touched; check
-`git status` afterwards and revert anything you did not mean to change.
+**A stylesheet cannot hold a raw hex color.** `npm run lint:styles` (stylelint, `color-no-hex`)
+fails CI on one anywhere but `src/styles/_tokens.scss`. Name a role there, or reuse one: a numbered
+token such as `--text-disabled-3` is a near-duplicate waiting to be merged, not a shade to reach for.
 
 `.prettierignore` deliberately excludes Markdown — Prettier pads every table cell and rewrites
 `*emphasis*` as `_emphasis_`, so a one-line doc edit lands as hundreds of lines of realignment.

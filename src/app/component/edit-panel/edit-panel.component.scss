@@ -153,7 +153,7 @@
 .bgNote {
   font-size: 12px;
   color: rgba(0, 0, 0, 0.55);
-  background: #f0f1f5;
+  background: var(--surface-field);
   border-radius: 4px;
   padding: 8px 10px;
   margin: 0;
@@ -166,8 +166,8 @@
 // measured from, are both drawn on the canvas and used to be said here too.
 .sliderWarning {
   font-size: 12px;
-  background: #ffebee;
-  color: #b3261e;
+  background: var(--refusal-bg-2);
+  color: var(--refusal-text-2);
   border-radius: 4px;
   padding: 6px 8px;
   margin: 0 0 8px;
@@ -187,7 +187,7 @@
 
   &__row {
     display: flex;
-    border: 1px solid #c5cae9;
+    border: 1px solid var(--brand-pale);
     border-radius: 6px;
     overflow: hidden;
     margin-bottom: 8px;
@@ -199,16 +199,16 @@
       height: 30px;
       border: 0;
       cursor: pointer;
-      background: #fff;
-      color: #3f51b5;
+      background: var(--surface);
+      color: var(--brand);
 
       &:not(:first-child) {
-        border-left: 1px solid #c5cae9;
+        border-left: 1px solid var(--brand-pale);
       }
 
       &.is-on {
-        background: #3f51b5;
-        color: #fff;
+        background: var(--brand);
+        color: var(--text-on-accent);
       }
 
       // Offered but not available: the note under the row says what is missing.
@@ -226,10 +226,10 @@
   margin: 0 0 10px;
   padding: 8px 10px;
   border-radius: 4px;
-  background: #fff8e1;
+  background: var(--accent-tint);
   font-size: 12px;
   line-height: 17px;
-  color: #7a5a00;
+  color: var(--warning-text-7);
 }
 
 /* --- Derived-vs-typed state, worn by the app's own input fields ----------
@@ -250,21 +250,25 @@
   font-size: 10.5px;
   color: rgba(0, 0, 0, 0.55);
 
-  .dot { margin-right: -2px; }
+  .dot {
+    margin-right: -2px;
+  }
 
   .resetAll {
     margin-left: auto;
     border: none;
     background: none;
-    color: #3f51b5;
+    color: var(--brand);
     font: inherit;
     font-weight: 500;
     cursor: pointer;
     padding: 0;
 
-    &:disabled { color: rgba(0, 0, 0, 0.3); cursor: default; }
+    &:disabled {
+      color: rgba(0, 0, 0, 0.3);
+      cursor: default;
+    }
   }
-
 }
 
 /* A disabled button is not a hover target, so the pointer would fall through to
@@ -289,11 +293,14 @@
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  border: 1.5px solid #9fa8da;
+  border: 1.5px solid var(--brand-light);
   background: transparent;
   flex: none;
 
-  &.filled { background: #3f51b5; border-color: #3f51b5; }
+  &.filled {
+    background: var(--brand);
+    border-color: var(--brand);
+  }
 }
 
 .massArea .dotRow {
@@ -318,7 +325,7 @@
   font-size: 14px;
   border: none;
   border-radius: 4px;
-  background: #f0f1f5;
+  background: var(--surface-field);
   height: 30px;
   padding: 0 8px;
   width: 112px;
@@ -338,7 +345,6 @@
   gap: 5px;
   margin-left: 4px;
 
-
   .clearDot {
     border: none;
     background: none;
@@ -348,7 +354,9 @@
     color: rgba(0, 0, 0, 0.45);
     cursor: pointer;
 
-    &:hover { color: rgba(0, 0, 0, 0.8); }
+    &:hover {
+      color: rgba(0, 0, 0, 0.8);
+    }
   }
 }
 
@@ -374,8 +382,6 @@
 .massArea input-block + input-block {
   margin-top: 8px;
 }
-
-
 
 .massArea .comPairRow {
   display: flex;
@@ -425,7 +431,6 @@
 .massArea .comPairRow.derived .customInput {
   color: rgba(0, 0, 0, 0.5);
 }
-
 
 /* The mock's one field column: Mass, the frame select and Rotational
    Inertia share one width, one left edge and one right edge — the center

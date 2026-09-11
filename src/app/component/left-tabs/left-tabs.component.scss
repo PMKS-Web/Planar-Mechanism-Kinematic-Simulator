@@ -52,7 +52,7 @@
 
   .helpRule {
     height: 1px;
-    background: #e6e7ee;
+    background: var(--border-divider);
     margin: 14px 0;
   }
 
@@ -131,7 +131,7 @@
     border: none;
     border-radius: 4px;
     background: mat.m2-get-color-from-palette($primary-palette, 500);
-    color: #fff;
+    color: var(--text-on-accent);
     font-family: inherit;
     font-size: 13px;
     font-weight: 500;

@@ -67,7 +67,7 @@
       background: rgba(0, 0, 0, 0.05);
       font-family: inherit;
       font-size: 13px;
-      color: #3c4043;
+      color: var(--text-control);
       white-space: nowrap;
       cursor: pointer;
       transition:
@@ -127,7 +127,7 @@
         background: transparent;
         font-family: inherit;
         font-size: 13.5px;
-        color: #202124;
+        color: var(--text-strong);
       }
 
       .clearSearch {
@@ -266,7 +266,7 @@
     .cardName {
       font-size: 14px;
       font-weight: 500;
-      color: #202124;
+      color: var(--text-strong);
     }
 
     .cardDescription {
@@ -405,7 +405,7 @@
     .choiceFilled {
       border: 1.5px solid transparent;
       background: $indigo-700;
-      color: #fff;
+      color: var(--text-on-accent);
       font-weight: 500;
 
       &:hover {

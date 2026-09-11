@@ -35,6 +35,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Lint stylesheets
+        run: npm run lint:styles
+
       - name: Check formatting
         run: npm run lint:format
 
