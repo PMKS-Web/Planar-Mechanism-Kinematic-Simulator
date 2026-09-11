@@ -1,3 +1,6 @@
+import { captureNativeClipboard, nativePasteCommand } from './native-body-clipboard';
+import { BodyId, newRecordId } from '../model/body-system/body-id';
+import { Point } from '../model/body-system/body-frame';
 import { Injectable } from '@angular/core';
 import { Subject } from 'rxjs';
 import { emptyBodyDocument } from '../model/body-system/body-document';
@@ -14,8 +17,37 @@ import { SimulationView } from '../model/body-system/simulation-view';
 @Injectable({ providedIn: 'root' })
 export class NativeBodyDocumentService {
   private readonly authority = new BodyDocumentAuthority(emptyBodyDocument());
+  private clipboardPayload: string | undefined;
   private readonly updates = new Subject<BodyDocumentChange>();
   readonly changes = this.updates.asObservable();
+  get clipboard() {
+    return this.clipboardPayload;
+  }
+  copy(bodyIds: readonly BodyId[], includeGround: boolean, state: EditState) {
+    const result = captureNativeClipboard(
+      this.document,
+      this.revision,
+      bodyIds,
+      includeGround,
+      state,
+      this.display
+    );
+    if (result.ok) this.clipboardPayload = result.payload;
+    return result;
+  }
+  previewPaste(
+    offset: Point,
+    state: EditState,
+    payload = this.clipboard,
+    id: string = newRecordId<'edit'>()
+  ) {
+    const read = nativePasteCommand(payload, offset, id);
+    return read.ok ? this.preview(read.command, state) : read;
+  }
+  paste(offset: Point, state: EditState, payload = this.clipboard) {
+    const read = nativePasteCommand(payload, offset, newRecordId<'edit'>());
+    return read.ok ? this.commit(read.command, state) : read;
+  }
   get document() {
     return this.authority.document;
   }

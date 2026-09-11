@@ -1,3 +1,4 @@
+import { BodyPasteOperation } from './body-paste-edit';
 import { BodyCopyOperation } from './body-copy-edit';
 import { BodyPointMove } from './body-point-edit';
 import { BodyDriveOperation } from './body-drive-edit';
@@ -52,6 +53,7 @@ export type BodyEditOperation =
   | { readonly kind: 'convert-units'; readonly units: BodyUnits }
   | BodyDriveOperation
   | BodyCopyOperation
+  | BodyPasteOperation
   | BodyPropertyOperation
   | BodyGeometryOperation
   | BodyPointMove

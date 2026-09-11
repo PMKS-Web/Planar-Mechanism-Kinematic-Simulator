@@ -1,5 +1,6 @@
 import { compileWeldFrames } from './weld-frames';
 import { bodyGroupPresentation } from './body-group-presentation';
+import { BodyPropertyOperation } from './body-property-types';
 import { BodyDocument } from './body-document';
 import { BodyEditRefusal, BodyInsertRecords } from './body-edit-types';
 import { BodyId, WORLD } from './body-id';
@@ -16,16 +17,22 @@ export interface BodyCopyOperation {
   /** Ground is a deliberate copied connection, never an accidental reference back into the source drawing. */
   readonly includeGround: boolean;
 }
-type CopyResult =
-  | { readonly ok: true; readonly records: BodyInsertRecords; readonly ids: BodyCopyIds }
+export type BodyCopyResult =
+  | {
+      readonly ok: true;
+      readonly records: BodyInsertRecords;
+      readonly ids: BodyCopyIds;
+      readonly properties?: readonly BodyPropertyOperation[];
+    }
   | BodyEditRefusal;
 
 /** Copy the selected material, closing cylinder ownership but not absorbing unselected welded neighbors. */
 export function planBodyCopy(
   document: BodyDocument,
   operation: BodyCopyOperation,
-  commandId: string
-): CopyResult {
+  commandId: string,
+  isolated = false
+): BodyCopyResult {
   if (
     !finitePoint(operation.offset) ||
     typeof operation.includeGround !== 'boolean' ||
@@ -69,7 +76,8 @@ export function planBodyCopy(
   for (const group of document.groups)
     if (
       group.members.some((id) => members.has(id)) &&
-      (!group.members.every(owns) || (operation.includeGround && group.members.includes(WORLD))) &&
+      (!group.members.every(owns) ||
+        (!isolated && operation.includeGround && group.members.includes(WORLD))) &&
       group.mass &&
       Object.values(group.mass).some((value) => value !== undefined)
     )
@@ -96,8 +104,8 @@ export function planBodyCopy(
       (group) =>
         (group.members.size > 1 ||
           document.groups.some((annotation) => annotation.members.includes(group.frameBody))) &&
-        !group.members.has(WORLD) &&
-        [...group.members.keys()].every((id) => members.has(id))
+        (!group.members.has(WORLD) || (isolated && operation.includeGround)) &&
+        [...group.members.keys()].every(owns)
     )
     .map(
       (group) =>

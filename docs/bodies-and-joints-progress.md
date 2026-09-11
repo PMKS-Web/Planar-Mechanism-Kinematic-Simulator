@@ -19,7 +19,7 @@
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
 | S2 | Complete | Native compiler, analytic Jacobians, mobility/admission, branch continuation, folds, limits and frame conditioning. Seven native/legacy and four native/MATLAB comparisons retain the original ceilings. Geometric redundancy, two slots on a carrier and one-pin/shared-WORLD cases pass. Combined S2/initial-rate gate: 255 tests / 37 files; current-editor browser gate is green. Continuous cycle event publication remains an explicit S3 obligation. |
 | S3 | Complete | Native rates/forces, immutable results, interval/cycle/window publication, all five hand-derived cylinder examples and native/MATLAB positions/rates. F2 reviewed d842ffd and all findings resolved below. Final full gate: 2682 tests / 285 files; host build passes; ui-copy 17/17 with zero console errors. Earlier S3 browser and live-incognito evidence remains recorded. Native UI cutover is S5–S6, not claimed here. |
-| S4 | In progress | Native codec/project state, structural/property commands, connected point proposals, canonical geometry/pose primitives, whole-body locks, CoM edit mapping, captured display and constrained re-anchoring tested in slices. Full gesture/coordinate-pose/axis edits, cylinder dimensions, clipboard integration, production import/recovery, full lifecycle/service matrix and F3 remain. Stable-ID drive/working-limit commands, physical unit conversion and same-document copying with typed remaps are implemented and tested below. F2 is resolved; no public-route cutover yet. |
+| S4 | In progress | Native codec/project state, structural/property commands, connected point proposals, canonical geometry/pose primitives, whole-body locks, CoM edit mapping, captured display and constrained re-anchoring tested in slices. Full gesture/coordinate-pose/axis edits, cylinder dimensions, production import/recovery, full lifecycle/service matrix and F3 remain. Stable-ID drive/working-limit commands, physical unit conversion, same-document copying and captured cross-document clipboard/paste are implemented and tested below. Platform clipboard/UI integration remains S5. F2 is resolved; no public-route cutover yet. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
 | S6 | Pending | All consumers, synthesis, tutorial, fixtures/templates and default cutover. |
 | S7 | Pending | Removal manifest closed and performance budget met. |
@@ -1931,3 +1931,70 @@ travel projection/full gestures, bounded production 2.0.3 import and atomic reco
 complete lifecycle/service coverage and remaining named S4 browser gates, then F3. Preview
 performance must still be measured at native UI integration. S4 is not complete; no Fable
 review was solicited and spending is unchanged. No push or publication.
+
+## S4 continuation — captured clipboard and destination-unit paste (2026-09-11)
+
+The native service now captures selected material into a minimal validated `pmks2:` drawing
+and previews/commits paste through the same transaction authority. Capture uses an accepted
+displayed pose, excludes unselected material and project settings, and leaves source history
+untouched. The immutable payload survives deleting/seeking its source. Paste converts all
+physical records into destination units before adding the destination-unit placement offset.
+Repeated pastes allocate independent references, preserve locks/holds/drives/assembly ownership
+and produce one history entry each. Stale previews retain their captured source and replan
+against current destination units; S5 placement must reuse the gesture's command ID and
+cancel/restart its screen gesture when display units change.
+
+A complete WORLD-welded aggregate can be captured in isolation. Pasting it onto an existing
+zero-mass, zero-inertia support preserves destination presentation and maps its CoM through
+world coordinates into the retained group frame. Existing custom aggregates or nonzero
+material mass/inertia refuse ambiguous merging. A new hand-center test initially exposed an
+overly broad refusal of the zero-inertia case; that production defect was corrected. No
+aggregate distribution or guessed merging of custom properties was introduced.
+
+Ten service tests cover minimal selection, source independence, SI/centimeter/English units,
+forces/couples/inertia, repeated three-cylinder bundles, stale previews, paused return-leg
+clocks, full history/save-reopen, corrupt/physically inconsistent payloads, playing refusals,
+WORLD aggregate transfer and the oblique destination frame. Failed operations leave clipboard,
+destination, history and local state unchanged. Platform clipboard and native UI remain S5.
+
+Verification under `artifacts/bodies-and-joints/`:
+
+- `S4-clipboard-full-unit.log`: **2828 tests / 312 files pass**, session 44951 exit 0.
+- `S4-clipboard-build.log`: production build passes, session 47942 exit 0; existing CommonJS warnings.
+- `S4-clipboard-ui-copy.log`: **17/17**, zero console errors, session 37714 exit 0.
+- `S4-clipboard-initial.log`: fixture-label test error; corrected to the fixture's actual labels.
+- `S4-clipboard-zero-frame-initial.log`: real zero-inertia support refusal before its fix.
+- `S4-clipboard-ground-focused.log`: **21 tests / 2 files pass**, session 71181 exit 0.
+- `S4-clipboard-mutation-units.log` and `S4-clipboard-mutation-center-frame.log`: suppressing
+  source conversion and omitting the CoM frame map each fail their intended runtime assertion.
+  `S4-clipboard-mutations.log` records byte-for-byte restoration, session 54198 exit 0. An
+  earlier mutation caused a TypeScript error and is separately retained; it is not counted
+  as runtime evidence. Final full tests/build ran after restoration.
+
+The required legacy locking suite initially passed **27/28**, failing only its assertion
+that lock badges disappear outside Edit. That expectation predates `7ec4721`; pre-checkpoint
+`2949dbb` already keeps lock marks in every paused mode and hides them only while playing.
+The suite now asserts the actual shared boundary: identical stored locks and visible badges
+in paused Edit/Kinematic/Force Analysis, no badges during playback, physical motion despite
+an edit lock, a complete observed cycle crossing, and restored badges on Pause. No production
+lock behavior changed. `S4-clipboard-locking-final.log` reports **34/34**, zero page errors;
+the original terminal handle is now absent and the final log is complete.
+
+Both `artifacts/locking-modes/modes.png` and `motion.png` were inspected. The first motion crop
+clipped part of the rocker/path; the suite was widened and rerun, and the final 14-frame sheet
+was inspected again. It shows the full linkage moving through a cycle, the stationary faint
+authored ghost, hidden playback lock and its return on Pause. Mode-panel cards retain the
+reference app's layout and lock marks. This is legacy reference evidence, not native UI proof.
+
+Standard Codex computer use also exercised the owned localhost:4307 incognito Chrome drawing:
+locked cylinder GC, inspected disabled dimension fields, opened Kinematic Analysis, played
+and inspected closing and opening poses, paused, returned to start, then undid the test lock.
+The drawing is restored at its start with editable fields; screenshots were inspected inline,
+not saved as a separate artifact. These sampled live observations complement the scripted
+full-cycle filmstrip and do not claim uninterrupted live endpoint observation. Server PID
+13660's worktree and HTTP 200 were verified before the browser checks.
+
+**Still required:** coordinate pose/axis and cylinder dimensions, active travel projection/full
+gestures, bounded production 2.0.3 import and atomic recovery, complete lifecycle/service
+coverage and remaining named S4 browser gates, then F3. S4 remains in progress. No paid review,
+push or publication occurred; Fable budget/reservations are unchanged.
