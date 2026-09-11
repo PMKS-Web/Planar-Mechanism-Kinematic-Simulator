@@ -3,6 +3,8 @@ import { BodyEditCode, BodyEditRefusal, BodySelectionRef } from './body-edit-typ
 import { JointId } from './body-id';
 
 const MESSAGES: Record<Exclude<BodyEditCode, 'permission'>, string> = {
+  'stale-pose':
+    'The displayed pose is out of date. Wait for the drawing to update, then try again.',
   'invalid-document': 'This change would leave an invalid drawing.',
   'missing-target': 'That object is no longer in the drawing.',
   'immutable-world': 'The ground reference cannot be changed or deleted.',

@@ -1,4 +1,5 @@
 import { BodyPointMove } from './body-point-edit';
+import type { BodyEditFrame } from './body-edit-frame';
 import { BodyGeometryOperation } from './body-geometry-edit';
 import { BodyPropertyOperation } from './body-property-types';
 import { BodyProjectSettings, BodyProjectView, BodySynthesisDesign } from './body-project';
@@ -73,6 +74,7 @@ export interface BodyEditCommand {
 export interface BodyEditContext {
   readonly state: EditState;
   readonly selection: readonly BodySelectionRef[];
+  readonly display?: BodyEditFrame;
 }
 export type BodyEditCode =
   | 'permission'
@@ -89,6 +91,7 @@ export type BodyEditCode =
   | 'drive-in-rigid-group'
   | 'locked-position'
   | 'held-dimension'
+  | 'stale-pose'
   | 'unsolved-edit';
 export interface BodyEditRefusal {
   readonly ok: false;
@@ -125,5 +128,6 @@ export interface BodyEditPlan {
   readonly changed: boolean;
   readonly effects: BodyEditEffects;
   readonly selection: readonly BodySelectionRef[];
+  readonly display?: BodyEditFrame;
 }
 export type BodyEditResult = BodyEditPlan | BodyEditRefusal;

@@ -12,16 +12,18 @@ import {
 
 export function bodyOperationPermission(
   operation: BodyEditOperation,
-  state: EditState
+  state: EditState,
+  displayedMapping = false
 ): EditRefusal | null {
-  // These conversions infer a world direction from the design; posed capture still needs the displayed body frames.
+  // World-dependent edits require a current displayed frame, not just permission to edit while paused.
   if (
     operation.kind === 'force-owner' ||
+    (operation.kind === 'hold' && operation.dimension === 'angle') ||
     (operation.kind === 'force-properties' && operation.change.frame !== undefined)
   )
-    return menuRefusal(state, 'start');
+    return menuRefusal(state, displayedMapping ? 'attachment' : 'start');
   if (operation.kind === 'move-point' || isBodyGeometryOperation(operation))
-    return menuRefusal(state, 'start');
+    return menuRefusal(state, displayedMapping ? 'attachment' : 'start');
   if (isBodyPropertyOperation(operation)) return menuRefusal(state, 'preserve');
   if (operation.kind === 'project') {
     if (operation.settings && (state.playing || !state.atStart)) return SETTINGS_AT_START_ONLY;

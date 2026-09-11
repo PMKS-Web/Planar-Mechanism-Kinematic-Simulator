@@ -8,6 +8,7 @@ import {
 } from '../model/body-system/body-document-authority';
 import { BodyEditCommand, BodyEditPlan } from '../model/body-system/body-edit-types';
 import { EditState } from '../model/edit-permission';
+import { SimulationView } from '../model/body-system/simulation-view';
 
 /** Used only by the native editor route; the legacy MechanismService never writes this document. */
 @Injectable({ providedIn: 'root' })
@@ -23,6 +24,12 @@ export class NativeBodyDocumentService {
   }
   get local() {
     return this.authority.local;
+  }
+  get display() {
+    return this.authority.display;
+  }
+  setSimulationView(view: SimulationView) {
+    return this.authority.setSimulationView(view);
   }
   get undoDepth() {
     return this.authority.undoDepth;

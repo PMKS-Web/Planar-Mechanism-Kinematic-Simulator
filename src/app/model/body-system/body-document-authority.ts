@@ -1,4 +1,6 @@
 import { clocksAfterBodyEdit } from './body-edit-clocks';
+import { BodyEditFrame, captureBodyEditFrame } from './body-edit-frame';
+import { SimulationView } from './simulation-view';
 import { EditState, refusalFor } from '../edit-permission';
 import { BodyDocument } from './body-document';
 import {
@@ -9,7 +11,7 @@ import {
 } from './body-edit-types';
 import { DriverId } from './body-id';
 import { planBodyEdit } from './body-edit-plan';
-import { retainBodySelection } from './body-edit-effects';
+import { retainBodySelection, sameBodyRecord } from './body-edit-effects';
 import { validateBodyEditDocument } from './body-edit-validation';
 import { snapshotCopy } from './sample-results';
 
@@ -20,6 +22,7 @@ export interface BodyClockState {
   readonly command: number;
   readonly time: number;
   readonly synced: boolean;
+  readonly direction?: 1 | -1;
 }
 export interface BodyLocalState {
   readonly selection: readonly BodySelectionRef[];
@@ -28,6 +31,7 @@ export interface BodyLocalState {
 interface HistoryEntry {
   readonly document: BodyDocument;
   readonly local: BodyLocalState;
+  readonly display?: BodyEditFrame;
 }
 export interface BodyDocumentChange {
   readonly kind: 'edit' | 'undo' | 'redo';
@@ -35,6 +39,7 @@ export interface BodyDocumentChange {
   readonly document: BodyDocument;
   readonly local: BodyLocalState;
   readonly plan?: BodyEditPlan;
+  readonly display?: BodyEditFrame;
 }
 export type BodyCommitResult =
   | {
@@ -78,6 +83,19 @@ export class BodyDocumentAuthority {
   get revision(): number {
     return this.currentRevision;
   }
+  get display(): BodyEditFrame | undefined {
+    return this.value.display;
+  }
+  setSimulationView(view: SimulationView): boolean {
+    const display = captureBodyEditFrame(this.document, this.revision, this.local.clocks, view);
+    if (!display) return false;
+    this.value = Object.freeze({
+      ...this.value,
+      local: snapshotCopy({ ...this.local, clocks: display.clocks }),
+      display,
+    });
+    return true;
+  }
   get undoDepth(): number {
     return this.cursor;
   }
@@ -88,6 +106,7 @@ export class BodyDocumentAuthority {
     return planBodyEdit(this.document, this.revision, command, {
       state,
       selection: this.local.selection,
+      display: this.display,
     });
   }
   setLocalState(local: BodyLocalState): boolean {
@@ -99,12 +118,16 @@ export class BodyDocumentAuthority {
           !ids.has(clock.driverId) ||
           ![clock.anchor, clock.command, clock.time].every(Number.isFinite) ||
           clock.time < 0 ||
+          (clock.direction !== undefined && clock.direction !== 1 && clock.direction !== -1) ||
           typeof clock.synced !== 'boolean'
       )
     )
       return false;
     this.value = Object.freeze({
       document: this.document,
+      ...(sameBodyRecord(local.clocks, this.local.clocks) && this.value.display
+        ? { display: this.value.display }
+        : {}),
       local: snapshotCopy({
         ...local,
         selection: retainBodySelection(this.document, local.selection),
@@ -120,10 +143,14 @@ export class BodyDocumentAuthority {
     if (!plan.changed) return { ok: true, changed: false, revision: this.revision };
     const local = {
       selection: plan.selection,
-      clocks: clocksAfterBodyEdit(this.document, this.local.clocks, plan),
+      clocks: plan.display?.clocks ?? clocksAfterBodyEdit(this.document, this.local.clocks, plan),
     };
     this.history[this.cursor] = this.value;
-    this.value = snapshotCopy({ document: plan.document, local });
+    this.value = snapshotCopy({
+      document: plan.document,
+      local,
+      ...(plan.display ? { display: { ...plan.display, revision: this.revision + 1 } } : {}),
+    });
     this.history = this.history.slice(0, this.cursor + 1);
     this.history.push(this.value);
     this.cursor++;
@@ -152,7 +179,12 @@ export class BodyDocumentAuthority {
       refused = validateBodyEditDocument(target.document);
     if (refused) return refused;
     this.history[this.cursor] = this.value;
-    this.value = target;
+    this.value = target.display
+      ? Object.freeze({
+          ...target,
+          display: snapshotCopy({ ...target.display, revision: this.revision + 1 }),
+        })
+      : target;
     this.cursor = index;
     this.currentRevision++;
     return {
