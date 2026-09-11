@@ -224,5 +224,5 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
 
 ## Conventions (from README)
 
-- Keep classes under ~200 lines and functions short; comment *why*, not *how*.
+- One responsibility per file: split when a file does two things, never to fit a line count; keep functions short; comment *why*, not *how*. The full guide, including the invariants the linter checks, is [`docs/code-style.md`](docs/code-style.md). Run `npm run lint` before you push.
 - Standard Angular naming: dash-delimited filenames with type suffixes (`foo-bar.service.ts`), `Component`/`Service`/`Module`/`Pipe` class suffixes, `app-` selector prefix.

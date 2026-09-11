@@ -612,7 +612,9 @@ What we ask of a change:
 1. **Comment *why*, not *how*.** The code should say what it does; the comment should say why it
    had to be that way. Most files here open with a paragraph explaining the decision behind them;
    match that.
-2. **Keep classes under ~200 lines** and functions short.
+2. **Give each file one responsibility.** Split a file when it does two things, never to fit a
+   line count, and keep functions short. [docs/code-style.md](docs/code-style.md) has the full
+   guide; `npm run lint` checks the invariants it lists.
 3. **Follow Angular naming**: `foo-bar.service.ts`, `FooBarComponent`, `app-` selector prefix.
 4. **Add the mechanism to the fixtures**, not to a spec. New linkages go in `FIXTURE_GALLERY` so
    they get a published URL.
