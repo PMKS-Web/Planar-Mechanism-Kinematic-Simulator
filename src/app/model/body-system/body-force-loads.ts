@@ -1,4 +1,4 @@
-import { BodyDocument } from './body-document';
+import { ForceDocument } from './force-document';
 import { BodyId } from './body-id';
 import { CompiledBodySystem } from './compiled-body-system';
 import { BodySolveFrame, solveFramePoint } from './body-solve-frame';
@@ -23,7 +23,7 @@ export type GroupForceLoads =
 
 /** External equilibrium uses aggregate inertia; member recovery retains the material distribution. */
 export function groupForceLoads(
-  document: BodyDocument,
+  document: ForceDocument,
   system: CompiledBodySystem,
   frame: BodySolveFrame,
   poses: GroupPoses,

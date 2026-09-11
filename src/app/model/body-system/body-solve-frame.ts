@@ -16,13 +16,16 @@ export interface BodySolveFrame {
 /** Continuation stays local: adding a distant world origin is a presentation boundary only. */
 export function createBodySolveFrame(
   partition: CompiledBodyPartition,
-  worldPoses: GroupPoses
+  worldPoses: GroupPoses,
+  preferredOrigin?: Point
 ): BodySolveFrame {
   const ids = [...partition.unknowns, ...partition.boundary];
   const reference = partition.unknowns[0] ?? partition.boundary[0];
-  const origin = reference
-    ? { x: worldPoses.get(reference)!.x, y: worldPoses.get(reference)!.y }
-    : { x: 0, y: 0 };
+  const origin = preferredOrigin
+    ? { x: preferredOrigin.x, y: preferredOrigin.y }
+    : reference
+      ? { x: worldPoses.get(reference)!.x, y: worldPoses.get(reference)!.y }
+      : { x: 0, y: 0 };
   const boundary = new Set(partition.boundary);
   const groupOffsets = new Map<BodyId, Point>();
   const initialPoses = new Map<BodyId, Pose>();

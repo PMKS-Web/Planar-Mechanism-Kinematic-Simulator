@@ -1,4 +1,4 @@
-import { BodyDocument } from './body-document';
+import { ForceDocument } from './force-document';
 import { BodyId, JointId } from './body-id';
 import { CompiledBodySystem } from './compiled-body-system';
 import { BodySolveFrame, solveFramePoint } from './body-solve-frame';
@@ -43,7 +43,7 @@ export type MemberReactions =
 
 /** Condensation removes internal efforts, not the material balances needed to recover them. */
 export function recoverMemberReactions(
-  document: BodyDocument,
+  document: ForceDocument,
   system: CompiledBodySystem,
   frame: BodySolveFrame,
   poses: GroupPoses,

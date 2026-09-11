@@ -24,13 +24,31 @@ export function fixedForceInputs(
   revision: number,
   frames: readonly BodyForceFrame[],
   mode: 'static' | 'dynamic',
-  gravity: Point
+  gravity: Point,
+  scope?: ReadonlySet<BodyId>
 ): FixedForceInputs {
   if (!Number.isInteger(revision) || revision < 0 || !finitePoint(gravity))
     return { ok: false, reason: 'invalid' };
   const partitions = new Map(system.partitions.map((partition) => [partition.key, partition]));
+  const joints = new Map(document.joints.map((joint) => [joint.id, joint]));
+  const incidentByPartition = new Map<string, Map<JointId, BodyId>>();
+  for (const partition of system.partitions) {
+    const incident = new Map<JointId, BodyId>();
+    for (const row of partition.rows) {
+      const joint = joints.get(row.jointId);
+      if (!joint) return { ok: false, reason: 'invalid' };
+      for (const [groupId, bodyId] of [
+        [row.pair.groupA, joint.bodyA],
+        [row.pair.groupB, joint.bodyB],
+      ] as const)
+        if (bodyId !== WORLD && system.groups.get(groupId)!.fixed && (!scope || scope.has(bodyId)))
+          incident.set(joint.id, bodyId);
+    }
+    if (incident.size) incidentByPartition.set(partition.key, incident);
+  }
   const supplied = new Map<string, BodyForceFrame>();
   for (const frame of frames) {
+    if (scope && !incidentByPartition.has(frame.sample.partitionKey)) continue;
     if (supplied.has(frame.sample.partitionKey)) return { ok: false, reason: 'duplicate-sample' };
     if (
       !partitions.has(frame.sample.partitionKey) ||
@@ -42,23 +60,11 @@ export function fixedForceInputs(
       return { ok: false, reason: 'mixed-context' };
     supplied.set(frame.sample.partitionKey, frame);
   }
-  const joints = new Map(document.joints.map((joint) => [joint.id, joint]));
   const materialWrenches = new Map<BodyId, Wrench[]>(),
     samples: SampleIdentity[] = [];
   let conditional = false;
-  for (const partition of system.partitions) {
-    const incident = new Map<JointId, BodyId>();
-    for (const row of partition.rows) {
-      const joint = joints.get(row.jointId);
-      if (!joint) return { ok: false, reason: 'invalid' };
-      for (const [groupId, bodyId] of [
-        [row.pair.groupA, joint.bodyA],
-        [row.pair.groupB, joint.bodyB],
-      ] as const)
-        if (bodyId !== WORLD && system.groups.get(groupId)!.fixed) incident.set(joint.id, bodyId);
-    }
-    if (!incident.size) continue;
-    const frame = supplied.get(partition.key);
+  for (const [key, incident] of incidentByPartition) {
+    const frame = supplied.get(key);
     if (!frame) return { ok: false, reason: 'missing-sample' };
     if (!frame.ok) return { ok: false, reason: 'external-reaction' };
     samples.push({ ...frame.sample });

@@ -1,4 +1,4 @@
-import { BodyDocument } from './body-document';
+import { ForceDocument } from './force-document';
 import { BodyId, compareRecordIds, WORLD } from './body-id';
 import {
   BodyConstraintRow,
@@ -11,7 +11,7 @@ import { GroupPoses } from './body-constraint-rows';
 
 /** These are material equilibrium frames at one common origin, never an alternative pose model. */
 export function internalForcePartition(
-  document: BodyDocument,
+  document: ForceDocument,
   system: CompiledBodySystem,
   frame: BodySolveFrame,
   poses: GroupPoses,
