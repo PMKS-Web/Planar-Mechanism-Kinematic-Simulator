@@ -1,4 +1,5 @@
 import { isBodyGeometryOperation } from './body-geometry-edit';
+import { isBodyDriveOperation } from './body-drive-edit';
 import { isBodyPropertyOperation } from './body-property-edit';
 import { BodyDocument } from './body-document';
 import { BodyEditOperation } from './body-edit-types';
@@ -24,6 +25,11 @@ export function bodyOperationPermission(
     return menuRefusal(state, displayedMapping ? 'attachment' : 'start');
   if (operation.kind === 'move-point' || isBodyGeometryOperation(operation))
     return menuRefusal(state, displayedMapping ? 'attachment' : 'start');
+  if (isBodyDriveOperation(operation)) {
+    if (operation.kind !== 'driver-speed' && state.mode !== 'edit')
+      return menuRefusal(state, 'start');
+    return menuRefusal(state, displayedMapping ? 'attachment' : 'start');
+  }
   if (isBodyPropertyOperation(operation)) return menuRefusal(state, 'preserve');
   if (operation.kind === 'project') {
     if (operation.settings && (state.playing || !state.atStart)) return SETTINGS_AT_START_ONLY;

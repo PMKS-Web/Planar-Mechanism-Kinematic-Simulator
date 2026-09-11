@@ -331,9 +331,37 @@ simulation transport and must not make an editing lock prohibit ordinary motion.
 constraints/limits in both final authored and displayed documents, and transport angle holds
 back to the stored material frame. Invalid or overconstrained topology still refuses atomically.
 This supports the tested bound-bar/four-bar edits, welded-carriage geometry, bracket insertion,
-positive/negative and return-leg clocks, and passive-gap examples. Coordinate/drive/dimension
+positive/negative and return-leg clocks, and passive-gap examples. Coordinate pose/dimension
 commands, active travel projection, the full lifecycle/service matrix and UI integration remain
 required S4/S5 work; this is not a completed native editing release.
+
+### Drive and working-limit commands
+
+`add-driver` captures the selected joint coordinate from the current candidate pose. New IDs
+come from the transaction identity, so previews and commits agree. `driver-speed` and
+`remove-driver` target an explicit DriverId; they never infer a pair or retarget a drive.
+Adding a second drive to the same coordinate refuses through the shared coordinate rule.
+Other multiple-input combinations remain valid editable records with the existing unsupported
+motion-readiness result. Speeds use signed radians/second or document length/second; the UI
+unit boundary retains the familiar speed/direction controls.
+
+`add-limit` supplies a named joint coordinate and finite ordered bounds; `limit-bounds` and
+`remove-limit` target an explicit LimitId. Multiple working limits on one coordinate are
+intersected by the existing solver. Editing one cannot change the first matching record
+instead. A cylinder's intrinsic `strokeLimit` is protected from these generic mutations;
+its dimension command owns that record. A separate working limit on the internal P is allowed.
+Final validation refuses a bound that excludes the edited displayed pose. If it excludes only
+the original anchor, the ordinary re-anchoring policy provides a proved reset and one history
+entry, preserving the cylinder's physical stroke record.
+
+Paused speed changes retime the same physical pose on the rebuilt motion. A sign reversal
+reverses the currently selected leg, while a pure coordinate sign change preserves physical
+direction. An input resuming from zero speed takes the new signed speed’s direction. Undo restores both the prior speed and display clock. Shared save/reopen keeps
+the authored anchor and new speed, with local playback starting at time zero. Drive/limit
+restructuring retains the analysis-mode start restriction; speed edits have the captured
+paused-frame mapping. Every playing/missing-frame refusal quotes the shared permission model.
+Coordinate pose/axis edits, unit conversion, cylinder dimensions and full service/UI dispatch
+remain required; these commands alone do not complete S4.
 
 ## Self-review questions carried into implementation
 

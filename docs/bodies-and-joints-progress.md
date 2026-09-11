@@ -19,7 +19,7 @@
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
 | S2 | Complete | Native compiler, analytic Jacobians, mobility/admission, branch continuation, folds, limits and frame conditioning. Seven native/legacy and four native/MATLAB comparisons retain the original ceilings. Geometric redundancy, two slots on a carrier and one-pin/shared-WORLD cases pass. Combined S2/initial-rate gate: 255 tests / 37 files; current-editor browser gate is green. Continuous cycle event publication remains an explicit S3 obligation. |
 | S3 | Complete | Native rates/forces, immutable results, interval/cycle/window publication, all five hand-derived cylinder examples and native/MATLAB positions/rates. F2 reviewed d842ffd and all findings resolved below. Final full gate: 2682 tests / 285 files; host build passes; ui-copy 17/17 with zero console errors. Earlier S3 browser and live-incognito evidence remains recorded. Native UI cutover is S5–S6, not claimed here. |
-| S4 | In progress | Native codec/project state, structural/property commands, connected point proposals, canonical geometry/pose primitives, whole-body locks, CoM edit mapping, captured display and constrained re-anchoring tested in slices. Full gesture/coordinate/drive/copy/unit edits, cylinder dimensions, production import/recovery, full lifecycle/service matrix and F3 remain. F2 is resolved; no public-route cutover yet. |
+| S4 | In progress | Native codec/project state, structural/property commands, connected point proposals, canonical geometry/pose primitives, whole-body locks, CoM edit mapping, captured display and constrained re-anchoring tested in slices. Full gesture/coordinate-pose/axis/copy/unit edits, cylinder dimensions, production import/recovery, full lifecycle/service matrix and F3 remain. Stable-ID drive and working-limit commands are implemented and tested below. F2 is resolved; no public-route cutover yet. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
 | S6 | Pending | All consumers, synthesis, tutorial, fixtures/templates and default cutover. |
 | S7 | Pending | Removal manifest closed and performance budget met. |
@@ -1729,3 +1729,72 @@ named S4 browser gates. S5/S6/S8 still require both live incognito computer use 
 filmstrips against the native route. F3 has not run; Fable spending and reservations are
 unchanged. Substantial obsolete-runtime removal and all later acceptance criteria remain.
 No push or publication.
+
+
+## S4 explicit drives and working limits — implementation checkpoint
+
+Continued from **d3b7621**, the committed constrained re-anchoring checkpoint. Added native
+`add-driver`, `driver-speed`, `remove-driver`, `add-limit`, `limit-bounds` and `remove-limit`
+operations through `planBodyDesignEdit`. Existing records are addressed by stable IDs; adding a
+drive names its exact joint coordinate and captures the candidate's current value. Transaction
+IDs supply deterministic new record IDs, so repeated previews agree with commit. No incident
+body or first matching limit chooses ownership. Duplicate coordinate drives, unavailable
+coordinates, missing targets, nonfinite values and invalid bounds refuse the entire batch.
+
+A cylinder's intrinsic stroke-limit ID remains owned by the cylinder dimension command.
+Generic limit editing/removal quotes `assembly-interior`; a separate working limit on the
+same P coordinate is allowed. Two working limits on one coordinate can be independently edited
+or removed in either array order. The existing interval solver intersects their bounds.
+A working bound that excludes the displayed pose refuses; one that excludes only the old
+anchor uses the proved re-anchoring reset and preserves the intrinsic cylinder record.
+
+Speed changes use constrained re-anchoring to retain the physical display and recompute the
+clock. The regression found that a negative speed replacement was still matching the old
+returning direction. The fixed selection reverses the current leg when the speed sign changes,
+but treats a coordinate sign reversal separately so representation does not reverse motion.
+A second failing probe found that an input starting from zero speed reused its previous
+placeholder direction. A stopped input now takes its new speed's direction, with a second
+independently displaced machine keeping its exact clock.
+
+The hand clock for the cylinder starts at travel 0.4, reaches 1.5 and is shown returning at
+1.3. Changing +0.2 to +0.4 gives `(1.5-.4+1.5-1.3)/.4`; changing it to -0.4 gives an outward
+sample at `(.4+1.3)/.4`. The displayed material poses remain exact, Undo restores the old
+speed/clock, and native save/reopen keeps the authored anchor and new speed with time zero.
+Speed edits have a captured paused-frame mapping in analysis; drive/limit restructuring
+retains the shared analysis start restriction. Playing and missing-frame checks compare the
+returned refusal against `menuRefusal`, rather than copying its wording into the tests.
+
+Evidence in `artifacts/bodies-and-joints/`:
+
+- `S4-drive-edit-initial.log`: **1 failed / 5 passed**, session **18732 exit 1**. The real
+  negative-speed return-leg defect fails the direction assertion before its fix.
+- `S4-drive-edit-focused.log`: **15 tests / 3 files pass**, session **3300 exit 0** after that
+  fix, including the preceding geometry and passive-gap regressions.
+- `S4-drive-edit-stopped-initial.log`: **1 failed / 7 passed**, session **6939 exit 1**. The
+  real zero-to-negative-speed defect fails the new direction assertion before its fix.
+- `S4-drive-edit-final-focused.log` contains a test-authoring compile error (`kinematic`
+  instead of the shared mode's `analysis`); it is not passing evidence. The final full gate
+  below includes the corrected permission/save-reopen test.
+- `S4-drive-edit-full-unit.log`: intermediate **2798 tests / 309 files pass**, session
+  **23283 exit 0**. `S4-drive-edit-build.log`, session **66841 exit 0**, passed at that state.
+- `S4-drive-edit-ui-copy.log`: **17/17**, zero console errors, session **99594 exit 0**, on
+  the verified localhost:4307 server using repository Playwright. The later stopped-input
+  fix changes only native headless direction selection, not that legacy UI route.
+
+Final verification after the stopped-input fix:
+
+- `S4-drive-edit-final-full-unit.log`: **2799 tests / 309 files pass**, session **96535 exit 0**.
+- `S4-drive-edit-final-build.log`: production build passes, session **3590 exit 0**; existing
+  CommonJS warnings only. Touched TypeScript formatted and whitespace checks pass.
+
+These eight command tests are a transaction slice, not the full S4 service/browser gate.
+No native renderer or live user control has been switched yet.
+
+**Next required:** coordinate pose/axis and cylinder-dimension commands, active travel
+projection and full gesture policy, typed copy/remap and unit conversion, bounded production
+2.0.3 import and atomic load/save/recovery, the complete lifecycle/service matrix and named
+S4 browser gates, then F3. Preview currently performs full anchor recovery; future live gesture
+scheduling/performance must be measured against the plan without omitting commit validation.
+Both browser workflows at S5/S6/S8, native default/consumer cutover, obsolete-runtime removal
+and all final gates remain. No Fable call or spending change in this checkpoint. No push or
+publication.
