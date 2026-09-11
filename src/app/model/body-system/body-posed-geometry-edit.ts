@@ -7,7 +7,7 @@ import { reanchorBodyEdit } from './body-reanchor-edit';
 import { validateBodyEditDocument } from './body-edit-validation';
 import { validateBodyEditHolds } from './body-hold-validation';
 import { bodyEditRefusal } from './joint-permission';
-import { bodyEditEffects } from './body-edit-effects';
+import { bodyEditEffects, sameBodyRecord } from './body-edit-effects';
 import { snapshotCopy } from './sample-results';
 
 /** Locks are checked under the pointer, before re-anchoring transports the accepted material as simulation would. */
@@ -36,6 +36,10 @@ export function planPosedBodyGeometry(
     ...changed,
     ...restored,
     effects,
-    changed: effects.added.length + effects.removed.length + effects.changed.length > 0,
+    // A coordinate edit can move the paused view while recovering exactly the same authored start.
+    changed:
+      effects.added.length + effects.removed.length + effects.changed.length > 0 ||
+      !sameBodyRecord(restored.display.clocks, frame.clocks) ||
+      [...restored.display.poses].some(([id, pose]) => !sameBodyRecord(pose, frame.poses.get(id))),
   });
 }

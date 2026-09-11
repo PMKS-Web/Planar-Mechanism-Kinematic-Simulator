@@ -6,7 +6,7 @@ import { finitePoint, Point } from './body-frame';
 import { BodyEditRefusal } from './body-edit-types';
 import { BodyGeometryOperation, editBodyGeometry } from './body-geometry-edit';
 import { compileWeldFrames } from './weld-frames';
-import { createPointEditModel } from './body-point-model';
+import { createBodyEditModel } from './body-edit-model';
 import { pointEditRows } from './body-point-rows';
 import { relaxBodyEdit } from './body-edit-relaxation';
 import { bodyEditRefusal } from './joint-permission';
@@ -45,7 +45,7 @@ function pointCandidate(document: BodyDocument, operation: BodyPointMove): Point
   }
   const compiled = compileWeldFrames(document);
   if (!compiled.ok) return bodyEditRefusal('invalid-document');
-  const model = createPointEditModel(
+  const model = createBodyEditModel(
     document,
     operation.attachmentId,
     compiled.groups,

@@ -15,7 +15,7 @@ import {
   editPointAdd,
 } from './body-edit-scalar';
 
-export interface PointEditModel {
+export interface BodyEditModel {
   readonly document: BodyDocument;
   readonly target: AttachmentId;
   readonly origin: Point;
@@ -31,17 +31,19 @@ export interface PointEditModel {
   };
   operations(values: readonly number[]): BodyGeometryOperation[];
 }
-export function createPointEditModel(
+export function createBodyEditModel(
   document: BodyDocument,
   target: AttachmentId,
   groups: readonly WeldFrameGroup[],
-  groupOf: ReadonlyMap<BodyId, WeldFrameGroup>
-): PointEditModel {
+  groupOf: ReadonlyMap<BodyId, WeldFrameGroup>,
+  rigid = false
+): BodyEditModel {
   const anchors = new Map(document.attachments.map((p) => [p.id, p]));
   const bodies = new Map(document.bodies.map((b) => [b.id, b]));
   const start = anchors.get(target)!;
   const origin = localToWorld(bodies.get(start.bodyId)!.pose, start.point);
   const { editable, reached } = pointEditReach(document, target, groupOf);
+  if (rigid) editable.clear();
   const fixedFrames = new Set([...editable].map((id) => anchors.get(id)!.bodyId));
   let length = 0;
   for (const id of reached) {

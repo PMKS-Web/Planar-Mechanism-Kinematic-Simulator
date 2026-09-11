@@ -25,7 +25,11 @@ export function bodyOperationPermission(
     (operation.kind === 'force-properties' && operation.change.frame !== undefined)
   )
     return menuRefusal(state, displayedMapping ? 'attachment' : 'start');
-  if (operation.kind === 'move-point' || isBodyGeometryOperation(operation))
+  if (
+    operation.kind === 'move-point' ||
+    operation.kind === 'move-coordinate' ||
+    isBodyGeometryOperation(operation)
+  )
     return menuRefusal(state, displayedMapping ? 'attachment' : 'start');
   if (isBodyDriveOperation(operation)) {
     if (operation.kind !== 'driver-speed' && state.mode !== 'edit')

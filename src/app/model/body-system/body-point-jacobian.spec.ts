@@ -1,4 +1,4 @@
-import { createPointEditModel } from './body-point-model';
+import { createBodyEditModel } from './body-edit-model';
 import { pointEditRows } from './body-point-rows';
 import { compileWeldFrames } from './weld-frames';
 import { BodyDocument } from './body-document';
@@ -10,7 +10,7 @@ import { BodyFactory } from './body-factory';
 function check(document: BodyDocument, target: AttachmentId) {
   const welds = compileWeldFrames(document);
   if (!welds.ok) throw new Error('Expected weld frames');
-  const model = createPointEditModel(document, target, welds.groups, welds.groupOf);
+  const model = createBodyEditModel(document, target, welds.groups, welds.groupOf);
   const values = Array.from({ length: model.width }, (_, i) => Math.sin(i + 1) * 0.07);
   const rows = pointEditRows(model, values, model.origin);
   expect(rows.length).toBeGreaterThan(2);

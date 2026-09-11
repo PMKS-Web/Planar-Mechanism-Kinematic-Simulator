@@ -282,7 +282,7 @@ correction and projection refuse on exhaustion instead of publishing an unfinish
 Projection checks allowed directions when a zero slope could be a maximum (for example, a
 pointer across the diameter of a held circle). This is local projection, not a global nearest
 point guarantee or completed gesture continuation. Travel bounds still validate the settled
-answer rather than actively clamping pointer motion. Coordinate/dimension commands, paused
+answer rather than actively clamping pointer motion. Dimension/axis commands, paused
 coordinate reparameterization, branch-continuous live gestures and native UI evidence
 remain required S4/S5 work before this capability replaces the public editor.
 
@@ -382,8 +382,38 @@ direction. An input resuming from zero speed takes the new signed speed’s dire
 the authored anchor and new speed, with local playback starting at time zero. Drive/limit
 restructuring retains the analysis-mode start restriction; speed edits have the captured
 paused-frame mapping. Every playing/missing-frame refusal quotes the shared permission model.
-Coordinate pose/axis edits, cylinder dimensions and full service/UI dispatch
+Axis edits, cylinder dimensions and full service/UI dispatch
 remain required; these commands alone do not complete S4.
+
+### Exact coordinate pose edits
+
+`move-coordinate` names an existing R angle, P travel, or pin-in-slot angle/travel and an exact
+value in radians/document length units. It changes physical poses without changing geometry,
+attachments, weld rests, assembly dimensions or coordinate datums. Passive coordinates do not
+gain permanent drives. An existing drive on the selected coordinate keeps its ID/speed and
+captures the accepted value; every other prescribed coordinate remains constrained.
+
+`body-edit-model` supplies the same centered, scaled rigid-group variables used by design-point
+edits, with local geometry variables disabled. `body-edit-rows` is shared physical/hold/lock
+logic; the point-specific wrapper adds its two positional goals. Exact coordinate continuation
+adds one scalar goal instead. Small normalized command increments and bounded pose corrections
+retain the local solution; exhaustion refuses the entire transaction. Locks, held angles,
+force handles, welds and all cylinder members participate without interior shape exemptions.
+
+Each edit segment probes passive bounds at interior points and derivative-bracketed extrema.
+Loose sketches use the minimum-norm edit tangent, since a unique physical motion need not
+exist. The scalar Hermite refinement criterion is shared with the motion interval search.
+Regular one-degree-of-freedom partitions additionally use `inspectBodyInterval` for physical
+fold/interior-stop detection and final assembly-branch agreement. Failure on that path cannot
+fall back to an unchecked sketch endpoint. Neither adaptive search claims an interval-arithmetic
+proof; exhausted probes/corrections refuse, and no partial placement is published. Pointer
+clamping/contact feedback and continuous multi-event gesture state remain required work.
+
+At a captured paused pose the same re-anchoring policy restores the authored start and keeps
+the requested coordinate on the selected motion leg. A changed display/clock is a real history
+change even when the recovered authored document is exactly unchanged; the authority emits one
+revision/event and Undo restores the prior displayed pose and clocks. Shared URLs retain the
+authored start and exclude those local clocks. Missing/playing frames quote the shared model.
 
 ### Copying material and its references
 
