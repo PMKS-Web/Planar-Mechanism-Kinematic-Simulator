@@ -1,3 +1,4 @@
+import { retainSynthesisOwnership } from './body-project-edit';
 import { BodyDocument } from './body-document';
 import { BodyDeleteTarget, BodyEditRefusal } from './body-edit-types';
 import { AssemblyId, AttachmentId, BodyId, ForceId, JointId, JunctionId, WORLD } from './body-id';
@@ -132,9 +133,9 @@ export function deleteBodyRecords(
   };
   return {
     ok: true,
-    document: {
+    document: retainSynthesisOwnership(document, {
       ...candidate,
       ...retainPinConnections(document, candidate, junctions, commandId, disconnected),
-    },
+    }),
   };
 }

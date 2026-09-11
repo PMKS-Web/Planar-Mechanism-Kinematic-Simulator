@@ -1,3 +1,4 @@
+import { BodyProjectSettings, BodyProjectView, BodySynthesisDesign } from './body-project';
 import { EditRefusal, EditState } from '../edit-permission';
 import { BodyDocument } from './body-document';
 import {
@@ -40,6 +41,12 @@ export type BodyInsertRecords = Partial<
   >
 >;
 export type BodyEditOperation =
+  | {
+      readonly kind: 'project';
+      readonly settings?: BodyProjectSettings;
+      readonly synthesis?: BodySynthesisDesign | null;
+      readonly view?: BodyProjectView | null;
+    }
   | { readonly kind: 'insert'; readonly records: BodyInsertRecords }
   | { readonly kind: 'delete'; readonly targets: readonly BodyDeleteTarget[] }
   | {
@@ -83,6 +90,7 @@ export interface BodyEditRefusal {
   readonly permission?: EditRefusal;
 }
 export type BodyRecordRef =
+  | { readonly kind: 'project'; readonly field: 'settings' | 'synthesis' | 'view' | 'units' }
   | BodySelectionRef
   | { readonly kind: 'driver'; readonly id: DriverId }
   | { readonly kind: 'limit'; readonly id: LimitId }

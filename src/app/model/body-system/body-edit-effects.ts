@@ -16,6 +16,9 @@ function recordText(value: unknown): string {
 }
 function records(document: BodyDocument): Map<string, { ref: BodyRecordRef; value: unknown }> {
   const entries: { ref: BodyRecordRef; value: unknown }[] = [];
+  for (const field of ['settings', 'synthesis', 'view', 'units'] as const)
+    if (document[field] !== undefined)
+      entries.push({ ref: { kind: 'project', field }, value: document[field] });
   for (const [table, kind] of [
     ['bodies', 'body'],
     ['attachments', 'attachment'],
@@ -55,6 +58,15 @@ export function bodyEditEffects(before: BodyDocument, after: BodyDocument): Body
   for (const document of [before, after])
     for (const ref of [...added, ...removed, ...changed]) {
       switch (ref.kind) {
+        case 'project':
+          if (
+            ref.field === 'units' ||
+            (ref.field === 'settings' &&
+              (before.settings.gravity !== after.settings.gravity ||
+                before.settings.forceAnalysis !== after.settings.forceAnalysis))
+          )
+            document.bodies.forEach((body) => affected.add(body.id));
+          break;
         case 'body':
           affected.add(ref.id);
           break;

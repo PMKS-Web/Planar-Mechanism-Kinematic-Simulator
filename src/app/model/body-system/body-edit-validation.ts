@@ -1,3 +1,5 @@
+import { fitsBodyDocumentBudget } from './body-document-budget';
+import { hasBodyDocumentShape } from './document-schema/document';
 import { BodyDocument } from './body-document';
 import { BodyEditRefusal } from './body-edit-types';
 import { bodyRowValue } from './body-constraint-rows';
@@ -11,6 +13,8 @@ import { bodyEditRefusal } from './joint-permission';
 /** An underconstrained drawing is editable; a connection with conflicting anchors is not a repair request. */
 export function validateBodyEditDocument(document: BodyDocument): BodyEditRefusal | undefined {
   try {
+    if (!hasBodyDocumentShape(document) || !fitsBodyDocumentBudget(document))
+      return bodyEditRefusal('invalid-document');
     const compiled = compileBodyDocument(document);
     if (!compiled.ok) {
       const scope = compiled.issues.some(

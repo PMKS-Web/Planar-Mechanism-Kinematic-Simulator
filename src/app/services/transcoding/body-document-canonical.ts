@@ -8,6 +8,19 @@ export function canonicalBodyDocument(document: BodyDocument): string {
   const ids = (values: readonly string[]) => [...values].sort(compareRecordIds);
   const normalized = {
     ...document,
+    ...(document.synthesis
+      ? {
+          synthesis: {
+            ...document.synthesis,
+            generated: {
+              ...document.synthesis.generated,
+              bodies: ids(document.synthesis.generated.bodies),
+              joints: ids(document.synthesis.generated.joints),
+              attachments: byId(document.synthesis.generated.attachments),
+            },
+          },
+        }
+      : {}),
     bodies: byId(document.bodies),
     attachments: byId(document.attachments),
     joints: byId(document.joints),

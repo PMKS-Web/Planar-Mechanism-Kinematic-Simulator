@@ -1,3 +1,4 @@
+import { validateProject } from './validate-project';
 import { BodyDocument } from './body-document';
 import { unitFactors } from './body-units';
 import { DocumentIssue, ValidationContext } from './validation-context';
@@ -46,6 +47,7 @@ export function validateBodyDocument(document: BodyDocument): readonly DocumentI
     anchors: new Map(document.attachments.map((anchor) => [anchor.id, anchor])),
     joints: new Map(document.joints.map((joint) => [joint.id, joint])),
   };
+  validateProject(context);
   validateMaterial(context);
   validateAttachments(context);
   validateJoints(context);

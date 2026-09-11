@@ -1,3 +1,4 @@
+import { clocksAfterBodyEdit } from './body-edit-clocks';
 import { EditState, refusalFor } from '../edit-permission';
 import { BodyDocument } from './body-document';
 import {
@@ -10,7 +11,6 @@ import { DriverId } from './body-id';
 import { planBodyEdit } from './body-edit-plan';
 import { retainBodySelection } from './body-edit-effects';
 import { validateBodyEditDocument } from './body-edit-validation';
-import { compileBodyDocument } from './constraint-compiler';
 import { snapshotCopy } from './sample-results';
 
 export interface BodyClockState {
@@ -118,7 +118,10 @@ export class BodyDocumentAuthority {
     const plan = this.preview(command, state);
     if (!plan.ok) return plan;
     if (!plan.changed) return { ok: true, changed: false, revision: this.revision };
-    const local = { selection: plan.selection, clocks: this.afterEditClocks(plan) };
+    const local = {
+      selection: plan.selection,
+      clocks: clocksAfterBodyEdit(this.document, this.local.clocks, plan),
+    };
     this.history[this.cursor] = this.value;
     this.value = snapshotCopy({ document: plan.document, local });
     this.history = this.history.slice(0, this.cursor + 1);
@@ -162,27 +165,6 @@ export class BodyDocumentAuthority {
         ...this.value,
       }),
     };
-  }
-  private afterEditClocks(plan: BodyEditPlan): BodyClockState[] {
-    const affected = new Set<DriverId>();
-    for (const document of [this.document, plan.document]) {
-      const compiled = compileBodyDocument(document);
-      if (!compiled.ok) continue;
-      for (const partition of compiled.system.partitions)
-        if (plan.effects.invalidatedPartitions.includes(partition.key))
-          partition.drivers.forEach((driver) => affected.add(driver.id));
-    }
-    return plan.document.drivers.map((driver) => {
-      const clock = this.local.clocks.find((item) => item.driverId === driver.id);
-      if (clock && !affected.has(driver.id)) return clock;
-      return {
-        driverId: driver.id,
-        anchor: driver.profile.initial,
-        command: driver.profile.initial,
-        time: 0,
-        synced: clock?.synced ?? true,
-      };
-    });
   }
 }
 export function commitBodyEdit(

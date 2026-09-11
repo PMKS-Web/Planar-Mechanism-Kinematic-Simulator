@@ -28,10 +28,11 @@ export function executeNativeEdit(
   return plan.document;
 }
 export function insertNativeFixture(document: BodyDocument): BodyDocument {
-  const { version, units, ...records } = document;
+  const { version, units, settings, synthesis, view, ...records } = document;
   return executeNativeEdit(
-    emptyBodyDocument(units),
+    { ...emptyBodyDocument(units), settings },
     [
+      { kind: 'project', synthesis, view },
       {
         kind: 'insert',
         records: { ...records, bodies: records.bodies.filter((body) => body.id !== WORLD) },

@@ -1,4 +1,4 @@
-import { WORLD } from '../../../model/body-system/body-id';
+import { WORLD } from '../body-id';
 import { boolean, either, finite, id, list, literal, object, point, pose, text } from './shape';
 
 const vertex = object({ id, x: finite, y: finite });

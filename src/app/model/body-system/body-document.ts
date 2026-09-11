@@ -1,3 +1,9 @@
+import {
+  BodyProjectSettings,
+  BodyProjectView,
+  BodySynthesisDesign,
+  defaultBodyProjectSettings,
+} from './body-project';
 import { AttachmentId, BodyId, DriverId, ForceId, LimitId } from './body-id';
 import { Point, Pose } from './body-frame';
 import { Body, BodyPresentation, WORLD_BODY } from './material-body';
@@ -65,6 +71,9 @@ export interface BodyHold {
 export interface BodyDocument {
   readonly version: 2;
   readonly units: BodyUnits;
+  readonly settings: BodyProjectSettings;
+  readonly synthesis?: BodySynthesisDesign;
+  readonly view?: BodyProjectView;
   readonly bodies: readonly Body[];
   readonly attachments: readonly Attachment[];
   readonly joints: readonly BodyJoint[];
@@ -82,6 +91,7 @@ export function emptyBodyDocument(units: BodyUnits = SI_UNITS): BodyDocument {
   return {
     version: 2,
     units,
+    settings: defaultBodyProjectSettings(units),
     bodies: [WORLD_BODY],
     attachments: [],
     joints: [],
