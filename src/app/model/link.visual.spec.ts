@@ -143,7 +143,6 @@ afterEach(() => {
 });
 
 describe('welded link SVG geometry', () => {
-
   it('keeps every frame of the Safari regression mechanism deterministic and finite', () => {
     const { mechanism } = buildMechanismFixture(LOOPLESS_WELDED_MECHANISM);
     expectEverySimulatedCompoundPathStable(mechanism);
@@ -166,7 +165,6 @@ describe('welded link SVG geometry', () => {
 });
 
 describe('a bar whose joints have all landed on one point', () => {
-
   it('draws its end cap instead of a path full of NaN', () => {
     // Reachable: drop a joint exactly onto another joint of its own link and the
     // merge is correctly refused, leaving the two coincident. Every edge of the

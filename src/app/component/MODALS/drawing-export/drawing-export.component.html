@@ -308,7 +308,8 @@
       @if (open.data) {
         <div class="sectionBody">
           <span class="groupName"
-            >Tables of joints, links and any applied forces — the numbers a drawing cannot carry.</span
+            >Tables of joints, links and any applied forces — the numbers a drawing cannot
+            carry.</span
           >
           @for (choice of dataChoices; track choice.value) {
             <button class="radioRow" (click)="touch({ dataFile: choice.value })">
@@ -353,7 +354,12 @@
 
   <div mat-dialog-actions align="end">
     <button mat-button mat-dialog-close>Cancel</button>
-    <button mat-flat-button color="primary" [disabled]="isEmpty || !!pinDiameterError" (click)="download()">
+    <button
+      mat-flat-button
+      color="primary"
+      [disabled]="isEmpty || !!pinDiameterError"
+      (click)="download()"
+    >
       <mat-icon>download</mat-icon>
       {{ exportLabel }}
     </button>

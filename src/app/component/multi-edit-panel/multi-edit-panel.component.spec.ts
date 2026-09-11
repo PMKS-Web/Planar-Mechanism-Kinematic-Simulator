@@ -207,8 +207,13 @@ describe('MultiEditPanelComponent', () => {
 
   function posedState(): EditState {
     return {
-      mode: 'analysis', playing: false, atStart: false, sharedStepZero: false,
-      solveDeferred: false, empty: false, runnable: true,
+      mode: 'analysis',
+      playing: false,
+      atStart: false,
+      sharedStepZero: false,
+      solveDeferred: false,
+      empty: false,
+      runnable: true,
     };
   }
 
@@ -221,8 +226,14 @@ describe('MultiEditPanelComponent', () => {
     mechanism.joints = [a, b, c];
     mechanism.links = [ab, bc];
     active.restorePartSelection(
-      { refs: [{ kind: 'link', id: 'AB' }, { kind: 'link', id: 'BC' }] },
-      mechanism.joints, mechanism.links
+      {
+        refs: [
+          { kind: 'link', id: 'AB' },
+          { kind: 'link', id: 'BC' },
+        ],
+      },
+      mechanism.joints,
+      mechanism.links
     );
     return { ab, bc };
   }
@@ -244,8 +255,9 @@ describe('MultiEditPanelComponent', () => {
       expect(panel.form.controls.fixedAngle.enabled).toBe(true);
       expect(panel.form.controls.length.disabled).toBe(true);
       expect(panel.form.controls.angle.disabled).toBe(true);
-      expect((element.querySelector('[data-action="duplicate"]') as HTMLButtonElement).disabled)
-        .toBe(true);
+      expect(
+        (element.querySelector('[data-action="duplicate"]') as HTMLButtonElement).disabled
+      ).toBe(true);
       panel.delete();
       panel.duplicate();
     }
@@ -255,8 +267,14 @@ describe('MultiEditPanelComponent', () => {
     expect(multi.setLocked).toHaveBeenCalled();
 
     active.restorePartSelection(
-      { refs: [{ kind: 'joint', id: 'A' }, { kind: 'joint', id: 'B' }] },
-      mechanism.joints, mechanism.links
+      {
+        refs: [
+          { kind: 'joint', id: 'A' },
+          { kind: 'joint', id: 'B' },
+        ],
+      },
+      mechanism.joints,
+      mechanism.links
     );
     fixture.detectChanges();
     expect(panel.form.controls.trace.enabled).toBe(true);
@@ -268,12 +286,19 @@ describe('MultiEditPanelComponent', () => {
 
   it('enables mapped force values and frame while respecting a force direction lock', () => {
     const { ab, bc } = selectBars();
-    mechanism.forces = [ab, bc].map((link, index) =>
-      new Force(`F${index + 1}`, link, new Coord(S, S), new Coord(S, 2 * S))
+    mechanism.forces = [ab, bc].map(
+      (link, index) => new Force(`F${index + 1}`, link, new Coord(S, S), new Coord(S, 2 * S))
     );
     active.restorePartSelection(
-      { refs: [{ kind: 'force', id: 'F1' }, { kind: 'force', id: 'F2' }] },
-      mechanism.joints, mechanism.links, mechanism.forces
+      {
+        refs: [
+          { kind: 'force', id: 'F1' },
+          { kind: 'force', id: 'F2' },
+        ],
+      },
+      mechanism.joints,
+      mechanism.links,
+      mechanism.forces
     );
     vi.spyOn(TestBed.inject(EditPermissionService), 'state').mockReturnValue(posedState());
     const element = render();
@@ -281,8 +306,11 @@ describe('MultiEditPanelComponent', () => {
     expect(controls.magnitude.enabled).toBe(true);
     expect(controls.forceAngle.enabled).toBe(true);
     expect(controls.isGlobal.enabled).toBe(true);
-    expect([...element.querySelectorAll('radio-block button')]
-      .every((button) => !(button as HTMLButtonElement).disabled)).toBe(true);
+    expect(
+      [...element.querySelectorAll('radio-block button')].every(
+        (button) => !(button as HTMLButtonElement).disabled
+      )
+    ).toBe(true);
     mechanism.forces[0].locked = true;
     fixture.detectChanges();
     expect(controls.forceAngle.disabled).toBe(true);
@@ -298,8 +326,9 @@ describe('MultiEditPanelComponent', () => {
     const element = render();
     const assertFrozen = () => {
       expect(element.querySelector('[inert]')).not.toBeNull();
-      expect(Object.values(fixture.componentInstance.form.controls)
-        .every((control) => control.disabled)).toBe(true);
+      expect(
+        Object.values(fixture.componentInstance.form.controls).every((control) => control.disabled)
+      ).toBe(true);
       expect(headerDelete(element)!.disabled).toBe(true);
     };
     assertFrozen();
