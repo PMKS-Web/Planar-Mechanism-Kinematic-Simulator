@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatIcon } from '@angular/material/icon';
 import { WHATS_NEW, WHATS_NEW_ALSO, ReleaseNote } from '../../../model/whats-new';
+import { CloseButtonComponent } from '../../BLOCKS/close-button/close-button.component';
 
 /**
  * What changed, for somebody who was here before.
@@ -16,7 +17,7 @@ import { WHATS_NEW, WHATS_NEW_ALSO, ReleaseNote } from '../../../model/whats-new
   templateUrl: './whats-new.component.html',
   styleUrls: ['./whats-new.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [MatIcon],
+  imports: [MatIcon, CloseButtonComponent],
 })
 export class WhatsNewComponent {
   private dialogRef = inject<MatDialogRef<WhatsNewComponent>>(MatDialogRef);

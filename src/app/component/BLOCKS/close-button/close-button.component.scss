@@ -1,0 +1,34 @@
+@mixin css($theme) {
+  /* The host stands aside so the button sits where a bare <button> sat, and a
+     caller that has to place it -- the drawer pins its own to a corner -- has
+     one element to position rather than two nested boxes. */
+  close-button {
+    display: contents;
+  }
+
+  .closeButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--hover-wash);
+    }
+
+    mat-icon {
+      width: 20px;
+      height: 20px;
+      font-size: 20px;
+      line-height: 20px;
+    }
+  }
+}

@@ -212,6 +212,8 @@ export const SCENES = [
     },
     clip: '#templates',
     settle: 900,
+    expectedChange:
+      'the close button is now one shared control, 32px and round. This one was a Material 40px icon button. Part of the deliberate unification of five different close buttons.',
   },
   {
     name: 'release notes',
@@ -221,6 +223,8 @@ export const SCENES = [
     storage: { tutorialSeen: 'true' },
     clip: '#whatsNew',
     settle: 900,
+    expectedChange:
+      'the close button is now one shared control, 32px and round. This one was a 36px with 6px corners. Part of the deliberate unification of five different close buttons.',
   },
   {
     name: 'CAD export dialog',
@@ -233,6 +237,8 @@ export const SCENES = [
     },
     clip: '.drawingExport',
     settle: 900,
+    expectedChange:
+      'the close button is now one shared control, 32px and round. This one was a Material 40px icon button. Part of the deliberate unification of five different close buttons.',
   },
 
   // -------------------------------------------------------- bottom furniture
@@ -301,6 +307,8 @@ export const SCENES = [
     },
     clip: '#templates',
     settle: 900,
+    expectedChange:
+      'the close button is now one shared control, 32px and round. This one was a Material 40px icon button. Part of the deliberate unification of five different close buttons.',
   },
   {
     name: 'phone top strip',

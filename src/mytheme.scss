@@ -10,6 +10,7 @@
 @use 'src/app/component/edit-panel/edit-panel.component.scss' as edit-panel;
 @use 'app/component/BLOCKS/button/button.component.scss' as button-block;
 @use 'app/component/BLOCKS/chip/chip.component.scss' as chip-block;
+@use 'app/component/BLOCKS/close-button/close-button.component.scss' as close-button;
 @use 'app/component/BLOCKS/input/input.component.scss' as input-block;
 @use 'app/component/BLOCKS/panel-section/panel-section.component.scss' as panel-section;
 @use 'app/component/BLOCKS/dual-input/dual-input.component.scss' as dual-input-block;
@@ -117,6 +118,7 @@ $my-theme: mat.m2-define-light-theme(
 @include title-block.css($my-theme);
 @include button-block.css($my-theme);
 @include chip-block.css($my-theme);
+@include close-button.css($my-theme);
 @include input-block.css($my-theme);
 @include dual-input-block.css($my-theme);
 @include hold-field-block.css($my-theme);

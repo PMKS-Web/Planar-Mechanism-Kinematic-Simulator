@@ -24,6 +24,7 @@ import { NotificationService } from '../../services/notification.service';
 import { ExportFlowService } from '../../services/export/export-flow.service';
 import { TemplatesComponent } from '../MODALS/templates/templates.component';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
+import { CloseButtonComponent } from '../BLOCKS/close-button/close-button.component';
 
 /**
  * The tutorial, as a drawer page.
@@ -59,6 +60,7 @@ import { RightPanelComponent } from '../right-panel/right-panel.component';
     MatDialogActions,
     MatDialogClose,
     ChipComponent,
+    CloseButtonComponent,
   ],
 })
 export class TutorialPanelComponent implements DoCheck {

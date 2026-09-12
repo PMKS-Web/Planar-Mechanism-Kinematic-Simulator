@@ -39,9 +39,6 @@ Each entry is **where** it is, what it draws, and the block to use instead.
 - **`linkage-table.component.html`**, sixteen raw `<input type=text>` and a CSS-radio tab strip.
   Fields and a pick-one with none of the blocks' behavior. Put `appStandardField` on the inputs and
   `segmented-block` on the tabs.
-- **Five close buttons, five ways:** `tutorial-panel` `.closeCard`, `whats-new` `.wnClose`,
-  `drawing-export` `button.close`, `templates` `mat-icon-button[mat-dialog-close]`, `right-panel`
-  `.closeDrawer`. One shared close button.
 - **`analysis-setup.component.scss`** (`#input-block .row`) and
   **`analysis-panel.component.scss`** (`#toggle-block .row`, `.label-help`). A panel reaching into
   a block's private ids from outside to restyle it. Make it an input on the block.
@@ -86,6 +83,17 @@ cycle to appear is a panel reaching another panel's static — register a handle
 
 ## Done
 
+- `close-button` replaced all five, and **the look was deliberately unified**. They agreed on
+  nothing: 32px round in the tutorial card and the right drawer, 36px with 6px corners in the
+  release notes, Material's 40px icon button in the library and the CAD export dialog — and even
+  the two round ones washed differently on hover, at 4% and 6%. The one look is the 32px round one
+  two of them already shared, at the 4% every other icon button in the app uses. Three call sites
+  therefore changed on purpose, each declared in `e2e/reuse-parity.mjs` with its shots saved.
+  Its host is `display: contents`, so a caller that has to place it positions `.closeButton`.
+- Four dead rules went with them: `.factGrid` / `.fact` / `.factLabel` / `.factValue` and
+  `.sectionHint` in `analysis-setup` (the fact grid is the mechanism panel's, and that panel has
+  its own copy), `.actionButton.slim` in the same file, and `.settingRow.spaced` in `export-panel`.
+  None had a call site.
 - `quiet-note` in `blocks.common.scss` is now the one definition of truncated secondary text, and
   the playback bar's copy of it is **scoped**. Written bare it was a global `.rowNote` rule, so the
   export drawer's object notes were inheriting its flex sizing — and, below the phone breakpoint,

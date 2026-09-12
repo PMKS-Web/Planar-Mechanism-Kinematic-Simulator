@@ -2,9 +2,7 @@
      never both true, so the drawer holds one card either way. -->
 @if (!tutorial.done) {
   <div class="tutorialCard" [class.settling]="tutorial.settling">
-    <button class="closeCard" (click)="close()" aria-label="Close tutorial" title="Close">
-      <mat-icon>close</mat-icon>
-    </button>
+    <close-button class="closeCard" label="Close tutorial" (pressed)="close()"></close-button>
     <div class="cardTitle">Tutorial</div>
     <p class="cardLead">{{ lead }}</p>
 
