@@ -5,7 +5,7 @@
 - Current authorization (2026-09-12): the user disabled the persistent goal. **Finish S4, complete F3 and address its findings, then stop before S5.** Do not reactivate a goal. The full migration plan remains S0–S8; later steps are intentionally not authorized in this continuation. No push or publication.
 - Implementation starting commit: `487d535` on `bodies-and-joints-plan`.
 - Worktree: `.claude/worktrees/funny-swirles-3c6486`.
-- Current checkpoint: **S0–S3 complete; S4 in progress**. Native editor cutover has not begun. Concrete interface choices are in [the contract](bodies-and-joints-contract.md); frozen catalogs/reference hashes are in [the baseline](bodies-and-joints-baseline.json).
+- Current checkpoint: **S0–S4 complete; F3 resolved; stopped before S5**. Native editor cutover has not begun. Concrete interface choices are in [the contract](bodies-and-joints-contract.md); frozen catalogs/reference hashes are in [the baseline](bodies-and-joints-baseline.json).
 - Sole implementation owner: Codex. Fable reviews only at the four specified gates.
 - Preserve other worktrees and unrelated changes. The starting tracked worktree was clean.
 - Runtime for these commands: Node `v24.18.0`, explicitly prepended to PATH; the login shell otherwise selects unsupported Node 20.
@@ -19,7 +19,7 @@
 | S1 | Complete | Native records, frames/rebasing, coordinates, material/group mass, weld compiler, pin bundles, cylinder factory and reference validation. F1 completed and resolved; final gate 12 files / 84 tests (`reviews/F1-final-unit.log`), build passes (`reviews/F1-build.log`). Earlier unchanged-editor browser gates: two-mechanisms 13/13, cylinder-mount 31/31 and ui-copy 17/17. No native UI cutover yet. |
 | S2 | Complete | Native compiler, analytic Jacobians, mobility/admission, branch continuation, folds, limits and frame conditioning. Seven native/legacy and four native/MATLAB comparisons retain the original ceilings. Geometric redundancy, two slots on a carrier and one-pin/shared-WORLD cases pass. Combined S2/initial-rate gate: 255 tests / 37 files; current-editor browser gate is green. Continuous cycle event publication remains an explicit S3 obligation. |
 | S3 | Complete | Native rates/forces, immutable results, interval/cycle/window publication, all five hand-derived cylinder examples and native/MATLAB positions/rates. F2 reviewed d842ffd and all findings resolved below. Final full gate: 2682 tests / 285 files; host build passes; ui-copy 17/17 with zero console errors. Earlier S3 browser and live-incognito evidence remains recorded. Native UI cutover is S5–S6, not claimed here. |
-| S4 | In progress | Native codec/project state, structural/property commands, connected point proposals, canonical geometry/pose primitives, whole-body locks, CoM edit mapping, captured display and constrained re-anchoring tested in slices. Full rigid-body gestures/axis edits, cylinder dimensions, production import/recovery, full lifecycle/service matrix and F3 remain. Stable-ID drive/working-limit commands, physical unit conversion, exact coordinate pose edits, same-document copying and captured cross-document clipboard/paste are implemented and tested below. Platform clipboard/UI integration remains S5. F2 is resolved; no public-route cutover yet. |
+| S4 | Complete | Native authority/transactions, structural and property commands, connected gestures, axes/dimensions, drives/units/copy/paste, paused re-anchoring, native codec/history, bounded production import and recovery. F3 completed in two focused passes and findings resolved at `7f1bdbbb`. Final gates: 2893 tests / 323 files, production build, ui-copy 17/17; all named legacy browser gates and live incognito observations recorded below. Native UI and platform clipboard wiring remain S5. |
 | S5 | Pending | Native editor and both browser workflows; existing visual language. |
 | S6 | Pending | All consumers, synthesis, tutorial, fixtures/templates and default cutover. |
 | S7 | Pending | Removal manifest closed and performance budget met. |
@@ -91,7 +91,7 @@ Local historical source `b7ec8d7` declares package version 2.0.3. Its shipped te
 
 ## Anthropic reviews
 
-**The user removed the review budget cap on 2026-09-12.** Earlier caps and reservations below are historical. Continue recording actual charges and use focused review requests. F1/F2 are resolved; F3 coverage is complete and its follow-up fixes are in final verification. F4 belongs to S8.
+**The user removed the review budget cap on 2026-09-12.** Earlier caps and reservations below are historical. Continue recording actual charges and use focused review requests. F1/F2 are resolved; F3 coverage and all actionable resolutions are complete at `7f1bdbbb`. F4 belongs to S8.
 
 | Call | Session | Actual reported cost | Status |
 | --- | --- | --- | --- |
@@ -2421,3 +2421,33 @@ anchor coordinate with the old command at exact equality; their one-ulp differen
 The assertion now checks the notice exactly and its coordinate to 12 decimal places. Final
 whole-suite/build gates follow below. No additional paid review is needed for these bounded
 fixes; Codex inspected their effects and retained the failing-before probes.
+
+
+## S4 final checkpoint — stop before S5 (2026-09-12)
+
+**Implementation and F3 are complete.** Tested code is committed as
+**7f1bdbbb5227dab2fe4c0f383144de9d765a8547** on `bodies-and-joints-plan`; the following commit
+only records this completion. No push, publication, S5 work or goal reactivation occurred.
+
+Final gates on that code:
+
+- `S4-complete-full-unit.log`: **2893 tests / 323 files passed**, session 56222 exit 0.
+- `S4-complete-build.log`: production build passed, session 21168 exit 0; existing CommonJS
+  dependency warnings remain.
+- `S4-complete-ui-copy.log`: **17/17**, zero console errors, session 88077 exit 0, against the
+  worktree's localhost:4307 dev server.
+- `git diff --check` passes. Only touched TypeScript files were formatted.
+- Earlier named S4 browser gates remain valid: edit-undo 6/6, unit-undo-view 6/6, locking 34/34,
+  posed-editing 60/60, link-pose-readout 10/10, link-holds-angles 8/8, analysis-editing 55/55,
+  two-mechanisms 13/13 and export-flow 50/50. The follow-up fixes touch only the private native
+  facade. The actual localhost/incognito observations and inspected Playwright filmstrips are
+  recorded above; no native DOM or native animation gate is claimed at S4.
+
+F3 review calls together cost **$14.07537075**; cumulative known migration review/probe spend
+is **$23.55493875**, plus the unknown earlier canceled planning call. The user removed the
+cap; no further availability probe or review call was made after the focused follow-up.
+
+Next, only after new authorization: S5 native selection/grid/Edit-panel/context-menu cutover
+behind the development route, including native notices, clipboard preview identity, and both
+Playwright motion evidence and live incognito computer use. Large obsolete-runtime removal
+remains S7 after consumers are migrated; it has not been silently dropped from the plan.
