@@ -47,6 +47,10 @@ a reason to worry about.
 
 ## Outputs
 
+`gear-preview.mjs` checks the temporary solver-fixture viewer at `http://localhost:4329`:
+playback filmstrip, scrubbing, direction/speed changes, five-turn closure and phone layout.
+Start it with `node scripts/gear-preview.mjs`; evidence goes to `artifacts/gears/`.
+
 `solver-explanation.mjs` checks worked analysis equations, free-body diagrams, construction
 steps, multiple machines, scrubbing, and phone layout. It uses installed Chrome with a
 disposable profile and saves evidence in `artifacts/solver-worksheet/`.
@@ -380,3 +384,20 @@ Not suites — import them from one.
 - **`#bottomBar` is a read-only strip** with `pointer-events: none`. It shows the mode, a status
   phrase, `Degrees of freedom: N` (omitted when the drawing has no mobility to report), the cursor
   coordinates when there are any, and the units.
+
+## Fixed-axis external gears
+
+- `gear-production.mjs` ? real canvas creation, explicit mesh, invalid-edit repair, reverse/scrub,
+  deletion history, pair/four-bar playback filmstrips and narrow layout. `PMKS_BASE_URL` defaults
+  to `http://localhost:4330`; `--open` leaves a disposable Chrome window showing the gear pair.
+- `gear-results.mjs` ? production Save/Open/Share/reload, keyboard deletion/undo/redo, selected
+  gear graphs, worksheet, CSV/XLSX downloads and the idler example.
+- `gear-gallery.mjs` ? all 15 gear property/relationship/rendering stories from a built
+  `storybook-static` served at `PMKS_STORYBOOK_URL` (default `http://localhost:4331`).
+
+Gear browser artifacts are written beneath `artifacts/gears/`. The separate `gear-preview.mjs`
+remains a developer-only computational diagnostic; it is not the production gear UI.
+
+- `force-worksheet-usability.mjs` ? force worksheet reading and diagram usability checks.
+
+- `kinematic-visuals.mjs` - kinematic worksheet loop and angular-convention visual checks.

@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PMKS+ Gear Solver Preview</title>
+    <style>
+      body {
+        margin: 0 auto;
+        padding: 24px;
+        max-width: 1060px;
+        font:
+          16px system-ui,
+          sans-serif;
+        color: #222;
+        background: #f6f7f9;
+      }
+      h1 {
+        font-size: 26px;
+        margin-bottom: 8px;
+      }
+      p {
+        line-height: 1.5;
+      }
+      .controls {
+        display: flex;
+        gap: 18px;
+        flex-wrap: wrap;
+        align-items: end;
+        margin: 20px 0;
+      }
+      label {
+        display: grid;
+        gap: 6px;
+      }
+      button,
+      select {
+        font: inherit;
+        padding: 8px 12px;
+      }
+      svg {
+        width: 100%;
+        height: 440px;
+        background: white;
+        border: 1px solid #d5d8df;
+        border-radius: 8px;
+      }
+      #scrub {
+        width: 100%;
+      }
+      output {
+        font-variant-numeric: tabular-nums;
+      }
+      .readouts {
+        display: flex;
+        gap: 28px;
+        flex-wrap: wrap;
+        padding: 16px 0;
+      }
+      .readouts div {
+        display: grid;
+        gap: 6px;
+      }
+      .note {
+        color: #555;
+        font-size: 14px;
+      }
+      @media (max-width: 600px) {
+        body {
+          padding: 12px;
+        }
+        svg {
+          height: 300px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>PMKS+ Gear Solver Preview</h1>
+    <p>Explore the actual solver results for two gears and a gear-driven four-bar.</p>
+    <p class="note">
+      Experimental fixture viewer. Gear creation, property editing, saving, and the final PMKS
+      interface come in later stages. Circles and ticks are symbolic pitch geometry.
+    </p>
+    <div class="controls">
+      <label
+        >Mechanism<select id="fixture">
+          <option value="fourbar">20T → 40T → four-bar</option>
+          <option value="pair">20T → 40T pair</option>
+          <option value="five">20T → 100T (five input turns)</option>
+        </select></label
+      >
+      <label
+        >Input direction<select id="direction">
+          <option value="1">Counterclockwise</option>
+          <option value="-1">Clockwise</option>
+        </select></label
+      >
+      <label
+        >Input speed <output id="speedValue">60 RPM</output
+        ><input
+          id="speed"
+          aria-label="Input speed"
+          type="range"
+          min="15"
+          max="120"
+          value="60"
+          step="15"
+      /></label>
+      <button id="play" type="button">Play</button
+      ><button id="reset" type="button">Return to start</button>
+    </div>
+    <svg id="drawing" viewBox="-8 -4 14 8" role="img" aria-label="Gear-driven mechanism"></svg>
+    <label
+      >Cycle position<input id="scrub" type="range" min="0" max="720" step="1" value="0"
+    /></label>
+    <div class="readouts">
+      <div>Time / complete cycle<output id="time"></output></div>
+      <div>Input travel<output id="travel"></output></div>
+      <div>Output angle<output id="angle"></output></div>
+      <div>Output speed<output id="omega"></output></div>
+      <div>Output angular acceleration<output id="alpha"></output></div>
+    </div>
+    <p class="note" id="point"></p>
+    <p class="note">
+      One independent input. The output gear carries crank CD; its attachment arm has length 1,
+      independent of its pitch radius. Scrubbing shows stored solver frames; speed changes scale
+      their time and derivatives.
+    </p>
+    <script type="module" src="/viewer.js"></script>
+  </body>
+</html>

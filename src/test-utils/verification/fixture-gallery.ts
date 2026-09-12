@@ -1,4 +1,5 @@
 import { MechanismFixture, BuiltMechanism, buildMechanism } from './fixture';
+import { GEAR_GALLERY } from './gear-gallery';
 import {
   fourBarDrivenAtFixture,
   sliderCrankTracerFixture,
@@ -338,6 +339,7 @@ export interface PublishedSpeed {
 const LIBRARY_RPM = 10;
 
 export const FIXTURE_GALLERY: GalleryEntry[] = [
+  ...GEAR_GALLERY,
   {
     name: 'Punch press',
     purpose:
@@ -970,6 +972,8 @@ export function fixturePayload(
         joints: built.joints,
         links: built.links,
         forces: built.forces,
+        gears: fixture.transmission?.gears.map((g) => ({ ...g, module: g.module * MODEL_SCALE })),
+        gearMeshes: fixture.transmission?.meshes,
         mechanismTimeStep: 0,
       } as unknown as MechanismService,
       settings

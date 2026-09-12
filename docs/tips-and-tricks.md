@@ -164,6 +164,13 @@ until curl -sf -o /dev/null http://localhost:4200/; do sleep 2; done
 
 ## Unit tests
 
+**On Windows, generated-text checks need LF input.** `fixture-gallery.spec.ts` compares the
+generated Markdown byte-for-byte, and `template-payloads.spec.ts` matches rows with explicit
+newline patterns. A checkout or validation archive with CRLF can fail these while every payload
+is unchanged. Normalize only the line endings before diagnosing a codec regression. PowerShell
+can also report redirected Angular warning output as `NativeCommandError`; preserve/check the
+native process exit code rather than equating a warning stream with a compiler error.
+
 ```bash
 npm test -- --watch=false      # drop the flag for watch mode
 ```
@@ -840,6 +847,12 @@ display back where the hand was, so the machine is still displaced afterwards an
 still refused. The way out is the one the refusal itself names: back to the start.
 
 ## Domain facts worth knowing before you debug
+
+**Geared coupled positions must retain solver precision.** The Stage 2 four-bar initially
+failed complete-constraint auditing because `recordJointPosition` rounded its converged point
+to four decimal places. The geared route keeps full precision; the existing gear-free behavior
+is unchanged. Gear travel is stored per snapshot, not reconstructed from wrapped geometry.
+See [the gear implementation report](gears-implementation.md) before changing these paths.
 
 - **The transport's handle measures the *input*, not the clock, and the start pose is usually not at
   either end of it.** `drive-profile.ts` maps each solved sample to `along` ∈ 0..1 across everything
@@ -2637,3 +2650,25 @@ On Windows, `npm.ps1` may be blocked by execution policy; `npm.cmd` is usable. H
 putting a portable Node first in PATH need not change the Node that `npm.cmd` runs:
 it can prefer the executable next to itself. Invoke the compatible portable Node with
 `node_modules/@angular/cli/bin/ng.js` directly when the system Node is too old.
+
+Gear integration findings (September 2026):
+
+- `RevJoint` takes input fourth and ground fifth. Reversing those arguments creates a moving
+  axis rather than a passive grounded gear. Assert both flags in editor integration tests.
+- Angular 22 components default to OnPush. A layer reading mutable service arrays needs the
+  repository's eager change-detection convention. Pass coordinate values to `upright` as a
+  fresh point: its computed signal cannot observe mutation of a Joint object held by identity.
+- A gear's pitch-circle radius is independent of its reference-arm length. Include pitch extents
+  in fit-to-view and exported diagram bounds, even when no joint reaches the pitch circle.
+- The gear URL extension keeps authored coordinates at 15 significant digits; the legacy joint
+  tokens alone round to .001 project unit. Do not compensate by moving centers or relaxing the
+  solver's center-distance tolerance. Repeated diagonal round trips must be byte-stable.
+- A continuous gear cycle's two ends share geometry but have different travel. `distinctEnds`
+  in DriveProfile prevents the scrubber from resolving the full-cycle endpoint to sample zero.
+- File Open must save the arrival as a history entry, or Undo after the first edit restores the
+  previous document. Test opening over a different drawing, then deleting and undoing a gear.
+- Use `--live-reload=false --hmr=false` during browser verification on an actively shared
+  checkout. Concurrent source edits otherwise navigate away in the middle of a file picker.
+- Trim CSV header lines before splitting them into column names. A Windows CRLF checkout
+  otherwise leaves the last axis named `y\r`, silently preserving an initialized `y = 0` in
+  readers that construct point objects. Check raw coordinates before blaming reference data.

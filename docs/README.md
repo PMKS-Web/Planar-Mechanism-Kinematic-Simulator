@@ -29,6 +29,9 @@ In this order, the first time:
 
 ## Design records
 
+- [gears-plan.md](gears-plan.md) — gear architecture and implementation specification; fixed-axis V1 implemented locally; later gear families remain planned. *Partly built*
+- [gears-production.md](gears-production.md) ? production V1 workflows, persistence, validation evidence, 30-point handoff and release caveats. *Reference*
+- [gears-implementation.md](gears-implementation.md) — Stage 1/2 interfaces, solver verification, temporary interactive preview, and remaining limitations. *Reference*
 - [joint-types-plan.md](joint-types-plan.md) — plan of record for floating slots, slides, driven prismatic joints and cylinders, Phases 0–7a. *Partly built*
 - [floating-slot-kinematics-design.md](floating-slot-kinematics-design.md) — velocity and acceleration through a floating slot (Phase 2, task 2.9). *Built*
 - [phase-3-slide-spec.md](phase-3-slide-spec.md) — implementation spec for the Slide, the welded slider assembly. *Built*

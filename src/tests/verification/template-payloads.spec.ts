@@ -147,7 +147,10 @@ describe('every template the library dialog offers', () => {
         // machines and a three-DoF document, and it is the machines the reader
         // presses play on.
         const { service } = buildMechanismFixture(TEMPLATE_LINKAGES[id]);
-        const partitioning = partitionMechanisms(service.joints, service.links, service.forces);
+        const partitioning = partitionMechanisms(service.joints, service.links, service.forces, {
+          gears: service.gears,
+          meshes: service.gearMeshes,
+        });
         expect(partitioning.mechanisms.length).toBeGreaterThan(0);
         expect(partitioning.unassigned.looseJoints.length).toBe(0);
 
@@ -161,7 +164,8 @@ describe('every template the library dialog offers', () => {
             'cm',
             SOLVED_INPUT_ANG_VEL,
             'adaptive',
-            new Set(partition.ownJoints.map((joint: { id: string }) => joint.id))
+            new Set(partition.ownJoints.map((joint: { id: string }) => joint.id)),
+            partition.transmission
           );
           expect(machine.dof).toBe(1);
           expect(machine.isMechanismValid()).toBe(true);

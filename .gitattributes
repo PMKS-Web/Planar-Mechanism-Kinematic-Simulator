@@ -1,0 +1,3 @@
+# Generated verification text is compared byte-for-byte with its LF generator output.
+docs/fixture-urls.md text eol=lf
+src/app/component/MODALS/templates/template-linkages.ts text eol=lf

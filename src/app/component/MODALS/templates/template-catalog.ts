@@ -98,6 +98,28 @@ export interface TemplateCard {
  */
 export const TEMPLATE_CARDS: readonly TemplateCard[] = [
   {
+    id: 'Simple_Gear_Pair',
+    name: 'Simple Gear Pair',
+    category: 'start',
+    description:
+      '20T drives 40T in the opposite direction at half speed, over a two-input-turn cycle.',
+    thumbnail: 'assets/gifs/gear-pair.svg',
+  },
+  {
+    id: 'Gear_Driven_Four_Bar',
+    name: 'Gear-Driven Four-Bar',
+    category: 'start',
+    description: 'A gear pair drives a closed four-bar with one independent input.',
+    thumbnail: 'assets/gifs/gear-four-bar.svg',
+  },
+  {
+    id: 'Idler_Gear_Train',
+    name: 'Idler Gear Train',
+    category: 'start',
+    description: '20T–40T–20T: the idler restores the final rotation direction.',
+    thumbnail: 'assets/gifs/gear-idler.svg',
+  },
+  {
     id: '4-Bar',
     name: 'Four-Bar',
     category: 'start',

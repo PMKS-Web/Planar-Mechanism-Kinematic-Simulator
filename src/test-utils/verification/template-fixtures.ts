@@ -15,6 +15,9 @@ import {
  * row cannot come to mean different linkages.
  */
 export const LIBRARY_TEMPLATE_SOURCES: Record<LibraryTemplateID, string> = {
+  Simple_Gear_Pair: 'Simple gear pair',
+  Gear_Driven_Four_Bar: 'Gear-driven four-bar',
+  Idler_Gear_Train: 'Idler gear train',
   Whitworth_Quick_Return: 'Whitworth proportions',
   Scotch_Yoke: 'Scotch yoke',
   Cylinder_Boom: 'Cylinder-driven boom',

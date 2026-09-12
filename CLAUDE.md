@@ -158,6 +158,15 @@ traps.
 
 ### Solvers (`src/app/model/mechanism/`)
 
+Fixed-axis external gears are ordinary link attachments (`GearAssembly`), with separate mesh
+relationships. `GearEditorService` owns the production edits; the canvas/panels live in
+`component/gears`. The existing URL codec carries authored metadata and precise coordinates in
+an additive `G1` extension (`transcoding/gear-codec.ts`). Ratios prescribe body points into the
+existing coupled solver, with continuous travel and complete constraint auditing. Dependent
+centers never gain input flags. Gear forces and compounds are unsupported. The production
+handoff, examples, tests and scope are in [gears-production.md](docs/gears-production.md);
+[gears-implementation.md](docs/gears-implementation.md) retains the Stage 1/2 architecture evidence.
+
 Pure computation, mostly static classes: `loop-solver` (finds kinematic loops), `position-solver`, `kinematic-solver` (velocity/acceleration), `force-solver`. `app.component.spec.ts` numerically verifies these against MATLAB results (`SixBarVerification.m`) for a sixbar linkage — treat it as the regression test for solver changes.
 
 ### Model classes (`src/app/model/`)
