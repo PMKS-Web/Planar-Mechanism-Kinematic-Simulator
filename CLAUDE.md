@@ -246,6 +246,8 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
 
 ### Misc
 
+- MATLAB export lives beside the other formats in `services/export/`: `matlab-writer.ts` writes selected PMKS results, plots and RMSE; `matlab-mechanism.ts` generates an independent kinematic solver for supported pin/fixed-guide mechanisms. Force output is reference data. `component/measurement-comparison/` compares pasted timestamped data within each analysis quantity through `model/measurement-comparison.ts`. Measurements are panel-session state, not URL state. See `docs/matlab-and-measurements.md` for scope and conventions.
+
 - `netlify/functions/getEmailJSKey.ts` is a Netlify serverless function supplying the EmailJS key for the feedback form.
 - Circular service dependencies are broken with Angular's `Injector` (`injector.get(...)` at call time) in MechanismService, SaveHistoryService, and UrlProcessorService — keep that pattern in mind before adding constructor injections between those services.
 

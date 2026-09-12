@@ -5,7 +5,7 @@ import { Link } from '../../model/link';
 export type PartKind = 'joint' | 'link';
 
 /** What the file is written as. */
-export type ExportFormat = 'csv' | 'xlsx' | 'images' | 'report';
+export type ExportFormat = 'csv' | 'xlsx' | 'images' | 'report' | 'matlab';
 
 /** How many digits a written number keeps. `full` writes what the solver held. */
 export type Decimals = 2 | 4 | 6 | 'full';

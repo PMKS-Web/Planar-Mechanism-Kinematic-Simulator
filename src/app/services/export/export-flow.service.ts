@@ -360,13 +360,15 @@ export class ExportFlowService {
     // formats after typing a complete filename. Keep other dots (e.g. v1.2).
     const stem = this.typedName
       .trim()
-      .replace(/\.(csv|xlsx|pdf|png|svg|zip)$/i, '')
+      .replace(/\.(csv|xlsx|pdf|png|svg|zip|m)$/i, '')
       .trim();
     return stem || this.defaultName();
   }
 
   extension(): string {
     switch (this.format) {
+      case 'matlab':
+        return '.m';
       case 'xlsx':
         return '.xlsx';
       case 'images':

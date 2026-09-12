@@ -57,5 +57,15 @@
         (shownSeriesChange)="adoptSeries($event)"
       ></app-analysis-graph>
     }
+    <app-measurement-comparison
+      [hidden]="!expanded()"
+      [analysis]="analysis()"
+      [analysisType]="analysisType()"
+      [mechProp]="mechProp()"
+      [mechPart]="mechPart()"
+      [reactionLinkId]="reactionLinkId()"
+      [unit]="unit"
+      [names]="measurementNames"
+    ></app-measurement-comparison>
   </div>
 </div>

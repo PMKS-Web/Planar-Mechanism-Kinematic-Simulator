@@ -23,6 +23,7 @@ import { ANALYSIS_SERIES_COLORS, angularScale, formatReading } from '../../model
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
 import { SegmentedComponent } from '../BLOCKS/segmented/segmented.component';
+import { MeasurementComparisonComponent } from '../measurement-comparison/measurement-comparison.component';
 
 /** One value of one series, at the pose on screen. */
 export interface SeriesPreview {
@@ -68,7 +69,13 @@ export function selectionFor(count: number, mode: SeriesMode): SeriesSelection {
   templateUrl: './analysis-graph-section.component.html',
   styleUrls: ['./analysis-graph-section.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [MatIcon, MatTooltip, AnalysisGraphComponent, SegmentedComponent],
+  imports: [
+    MatIcon,
+    MatTooltip,
+    AnalysisGraphComponent,
+    SegmentedComponent,
+    MeasurementComparisonComponent,
+  ],
 })
 export class AnalysisGraphSectionComponent {
   private mechanismService = inject(MechanismService);
@@ -170,6 +177,18 @@ export class AnalysisGraphSectionComponent {
     // The preview computes it; asking for the preview first keeps the cache warm.
     this.preview;
     return this.previewCache?.unit ?? '';
+  }
+
+  private measurementLabels: string[] = [];
+  get measurementNames(): string[] {
+    const preview = this.preview;
+    if (
+      preview.length !== this.measurementLabels.length ||
+      preview.some((series, i) => series.name !== this.measurementLabels[i])
+    ) {
+      this.measurementLabels = preview.map((series) => series.name);
+    }
+    return this.measurementLabels;
   }
 
   /**

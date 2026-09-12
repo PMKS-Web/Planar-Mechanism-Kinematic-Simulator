@@ -163,7 +163,16 @@
       </div>
 
       <div class="settingBlock">
-        @if (flow.format !== 'images') {
+        @if (flow.format === 'matlab') {
+          <p class="empty">
+            Full precision, one script per mechanism. MATLAB R2016b or newer; no toolbox needed.
+            Force results are PMKS reference values.
+          </p>
+          @for (note of matlabNotes; track note) {
+            <p class="empty">{{ note }}</p>
+          }
+        }
+        @if (flow.format !== 'images' && flow.format !== 'matlab') {
           <div class="settingRow">
             <span class="settingName">Decimals</span>
             <mat-icon

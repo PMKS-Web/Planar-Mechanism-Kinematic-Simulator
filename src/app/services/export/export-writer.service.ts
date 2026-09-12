@@ -16,6 +16,12 @@ import { plotSvg } from './graph-svg';
 import { mechanismSvg } from './mechanism-svg';
 import { canvasSnapshot } from './canvas-svg';
 import { Measure, ReportSection, reportHtml, reportPages } from './report-html';
+import { matlabFileName, matlabResults, MATLAB_COMPARISON_FUNCTION } from './matlab-writer';
+import {
+  matlabGeometry,
+  matlabGeometryReason,
+  MATLAB_KINEMATICS_FUNCTIONS,
+} from './matlab-mechanism';
 
 const SERIES_COLORS: Record<string, string> = {
   X: ANALYSIS_SERIES_COLORS.X,
@@ -100,6 +106,9 @@ export class ExportWriterService {
     const tables = await this.tables.tablesAsync();
     if (tables.length === 0) return false;
     switch (this.flow.format) {
+      case 'matlab':
+        this.writeMatlab(tables);
+        return true;
       case 'xlsx':
         this.writeWorkbook(tables);
         return true;
@@ -121,6 +130,34 @@ export class ExportWriterService {
         mime: 'text/csv;charset=utf-8',
         text: toCsv(table, this.flow.decimals),
       })),
+      stem
+    );
+  }
+
+  matlabNotes(): string[] {
+    return this.flow.mechanismIndexes().map((index) => {
+      const reason = matlabGeometryReason(this.mechanism.mechanisms[index]);
+      return `M${index + 1}: ${reason || 'Includes independent kinematics from geometry for revolute joints and fixed, free-turning sliders.'}`;
+    });
+  }
+
+  private writeMatlab(tables: ExportTable[]): void {
+    const stem = this.flow.name();
+    const projectUrl = this.urls.generateFullUrl();
+    this.deliver(
+      tables.map((table) => {
+        const mechanism = this.mechanism.mechanisms[table.mechanismIndex];
+        const supported = !matlabGeometryReason(mechanism);
+        return {
+          name: matlabFileName(stem, table.suffix),
+          mime: 'text/plain;charset=utf-8',
+          text:
+            matlabResults(table, projectUrl) +
+            matlabGeometry(mechanism) +
+            MATLAB_COMPARISON_FUNCTION +
+            (supported ? MATLAB_KINEMATICS_FUNCTIONS : ''),
+        };
+      }),
       stem
     );
   }
@@ -153,6 +190,7 @@ export class ExportWriterService {
     // promised a `results.csv` where `results_M1.csv` and `results_M2.csv`
     // landed. How many are coming is the line underneath.
     const suffix = files > 1 ? this.tables.plan()[0]?.suffix : undefined;
+    if (this.flow.format === 'matlab') return matlabFileName(stem, suffix);
     const named = suffix ? `${stem}_${safe(suffix)}` : stem;
     return `${named}${this.flow.extension()}`;
   }

@@ -317,6 +317,7 @@ Not suites — import them from one.
 - `synthesis-redesign.mjs` — Synthesis end to end: place three positions, generate, browse and
   compare candidates, preview, insert, undo, and survive a shared link.
 - `export-flow.mjs` — the Export Data drawer end to end, including reading the downloaded file.
+- `matlab-measurements.mjs` — MATLAB script downloads, measured/theoretical plots, RMSE, invalid input, stale comparisons, and phone layout.
 - `release-export-ui.mjs` — malformed URL recovery, semantic field names, and a phone CAD origin
   chooser with twelve joints.
 - `dxf-sweep.mjs` — every template through the real CAD export dialog, each file parsed back and

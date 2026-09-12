@@ -10,6 +10,8 @@ import { ExportColumn, ExportPart, ExportSeries } from './export-model';
 
 /** One quantity of one part over a whole cycle: a graph, and a run of columns. */
 export interface ExportPlot {
+  /** A full turn in displayed units for angular-position comparisons; rates never wrap. */
+  anglePeriod?: number;
   /** `Position of Joint B` — what a graph would be titled. */
   title: string;
   /** `Position B` — what a column head opens with. */
@@ -416,6 +418,10 @@ export class ExportTableService {
     const names = this.seriesNames(width).slice(0, kept);
     return {
       title: series.head || `${series.label} of ${part.label}`,
+      anglePeriod:
+        series.mechProp === 'Angular Link Pos'
+          ? 360 * angularScale(series.mechProp, this.settings.angleUnit.value)
+          : 0,
       head: series.head || `${series.label} ${this.shortName(part)}`,
       unit: series.unit,
       columnKey: column.key,

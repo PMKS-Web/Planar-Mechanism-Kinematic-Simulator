@@ -76,6 +76,11 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
    */
   readonly formats: { key: ExportFormat; name: string; note: string }[] = [
     {
+      key: 'matlab',
+      name: 'MATLAB Script (.m)',
+      note: 'Selected PMKS results, plots and measured-data RMSE. Includes a geometry-based kinematic solver for supported mechanisms.',
+    },
+    {
       key: 'csv',
       name: 'CSV',
       note: 'One time column, one per series.',
@@ -320,6 +325,10 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
     // How many files there are is the line under this one, in the glyph's own
     // words; saying it twice made a two-line card read as a paragraph.
     return `${summary.columns} columns`;
+  }
+
+  get matlabNotes(): string[] {
+    return this.writer.matlabNotes();
   }
 
   private pictureCount(): number {

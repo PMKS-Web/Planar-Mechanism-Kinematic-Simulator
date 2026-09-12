@@ -32,6 +32,14 @@ to work on it without stepping in the same holes.
 
 ## Environment
 
+**On Windows, use `npm.cmd` if PowerShell blocks `npm.ps1`.** The shell's execution policy does
+not need changing. Also check the Node version: this checkout needs Node 22.22.3+ or 24.15+.
+Git's `core.autocrlf=true` can give a fresh worktree CRLF text while Prettier requires LF;
+normalize line endings in the isolated checkout before interpreting repository-wide format
+failures as code changes. Filesystem-based checks must normalize `path.relative` separators
+before comparing with names such as `src/styles/_tokens.scss`, or Windows counts the exempt
+token file as a violation. The stylesheet fence now does this explicitly.
+
 **Node** 22.22.3+, 24.15+ or 26+ — the range the Angular 22 toolchain declares. `npm ci` for a
 clean install.
 

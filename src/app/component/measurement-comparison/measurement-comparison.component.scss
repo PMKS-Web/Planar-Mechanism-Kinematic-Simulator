@@ -1,0 +1,68 @@
+:host {
+  display: block;
+}
+:host([hidden]) {
+  display: none;
+}
+.measurementComparison {
+  padding: var(--card-gap);
+  border-top: 1px solid var(--border-rule);
+  color: var(--text-primary);
+  font-size: 12px;
+  p {
+    line-height: 1.5;
+    color: var(--text-secondary);
+    margin: var(--card-gap) 0;
+  }
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: var(--card-gap) 0;
+    font-weight: 500;
+  }
+  textarea,
+  input,
+  select {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--border-divider);
+    border-radius: var(--card-radius);
+    color: var(--text-primary);
+    background: var(--surface-field);
+    font: inherit;
+  }
+  textarea {
+    resize: vertical;
+    font-family: monospace;
+  }
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+  .measurementError {
+    color: var(--refusal-text);
+  }
+}
+.measurementToggle {
+  border: 0;
+  padding: 4px 0;
+  color: var(--brand);
+  background: transparent;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+.measurementActions {
+  display: flex;
+  gap: var(--card-gap);
+}
+.measurementResult {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--card-gap);
+  background: var(--surface-sunken);
+  border-radius: var(--card-radius);
+}

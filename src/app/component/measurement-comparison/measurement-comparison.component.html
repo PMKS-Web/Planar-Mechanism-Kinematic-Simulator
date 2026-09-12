@@ -1,0 +1,86 @@
+<div class="measurementComparison">
+  <button
+    type="button"
+    class="measurementToggle"
+    (click)="open.set(!open())"
+    [attr.aria-expanded]="open()"
+  >
+    {{ open() ? 'Hide Measurements' : 'Compare Measurements' }}
+  </button>
+  @if (open()) {
+    <p>
+      Paste two columns: time in seconds, then measured value in {{ unit() }}. Use the drawing's
+      origin and positive directions. Time 0 is the mechanism's start pose.
+    </p>
+    <p>Measurements stay here while this quantity is open. They are not saved in project links.</p>
+    @if (names().length > 1) {
+      <div role="group" aria-label="Measured Component">
+        <p>Component</p>
+        <segmented-block
+          [options]="names()"
+          [selected]="component()"
+          [compact]="true"
+          (selectedChange)="selectComponent($event)"
+        ></segmented-block>
+      </div>
+    }
+    <label
+      >Measured Values ({{ unit() }})
+      <textarea
+        rows="5"
+        [value]="text()"
+        (input)="editText($event)"
+        placeholder="Time,Value&#10;0,1.25&#10;0.1,1.32"
+        spellcheck="false"
+      ></textarea>
+    </label>
+    <label
+      >Time Offset (s)
+      <input
+        appStandardField
+        type="number"
+        step="any"
+        [value]="offset()"
+        (input)="editOffset($event)"
+      />
+    </label>
+    <p>
+      Compared time = measured time + offset. Only overlapping, valid samples count; no outliers are
+      removed.
+    </p>
+    @if (mechProp() === 'Angular Link Pos') {
+      <p>
+        Angle errors use the shortest rotation. The comparison plot shows equivalent angles on a
+        continuous curve.
+      </p>
+    }
+    @if (stale()) {
+      <p role="status">The analysis changed. Check the units and compare again.</p>
+    }
+    <div class="measurementActions">
+      <button-block [click]="compare" [disabled]="!text().trim()">Calculate RMSE</button-block>
+      <button-block [click]="clear" [disabled]="!text()">Clear</button-block>
+    </div>
+    @if (error()) {
+      <p class="measurementError" role="alert">{{ error() }}</p>
+    }
+    @if (result(); as comparison) {
+      <div class="measurementResult" role="status">
+        <strong>RMSE: {{ reading(comparison.rmse) }} {{ unit() }}</strong>
+        <span>{{ comparison.points.length }} compared · {{ comparison.excluded }} excluded</span>
+        <span>Mean error: {{ reading(comparison.bias) }} {{ unit() }}</span>
+        <span>Peak absolute error: {{ reading(comparison.peakError) }} {{ unit() }}</span>
+      </div>
+      <app-analysis-apex-chart
+        [chart]="chart"
+        [series]="chartSeries()"
+        [colors]="colors"
+        [stroke]="stroke"
+        [markers]="markers"
+        [xaxis]="xaxis"
+        [yaxis]="yaxis"
+        [dataLabels]="dataLabels"
+      ></app-analysis-apex-chart>
+    }
+  }
+</div>
