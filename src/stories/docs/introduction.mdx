@@ -49,11 +49,9 @@ tokens, and stylelint refuses a raw hex color anywhere else.
 
 ## Where it is
 
-- **Hosted:** [docs.pmksplus.com](https://docs.pmksplus.com) — a static build of this gallery on
-  the `pmksdocs` Netlify site, published by hand with
-  `netlify deploy --prod --no-build --dir storybook-static --site pmksdocs` after
-  `npm run build-storybook`. It shows whatever was last published, so prefer a local run when you
-  are checking a change.
+- **Hosted:** [docs.pmksplus.com](https://docs.pmksplus.com) — this gallery as built from the
+  `staging` branch, republished by Netlify on every merge there. It shows `staging`, not your
+  branch, so check a change in a local run.
 - **Source:** [PMKS-Web/Planar-Mechanism-Kinematic-Simulator](https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator)
   on GitHub. The gallery is `.storybook/` and `src/stories/`; the components are
   `src/app/component/`; the guides are `docs/`.

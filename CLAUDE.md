@@ -93,10 +93,10 @@ force pushes. Only a repository admin can override, and that is for emergencies.
 in CI, `e2e/ui-copy.mjs` included, so run the ones your change needs yourself.
 
 **The component gallery is hosted at [docs.pmksplus.com](https://docs.pmksplus.com)**, a third
-Netlify site (`pmksdocs`) that nothing builds automatically: publish it by hand with
-`npm run build-storybook` then
-`netlify deploy --prod --no-build --dir storybook-static --site e07ce29d-65df-4d24-832d-449f966dbfe9`.
-It shows whatever was last published, so a local `npm run storybook` is the one to check a change in.
+Netlify site (`pmksdocs`) that builds `npm run build-storybook` from `staging` on every push and
+publishes `storybook-static/`, the way the app sites build the app. It therefore shows `staging`,
+not your branch: check a change in a local `npm run storybook`. Its build command and publish
+directory live in that site's own settings, like the other two, and `netlify.toml` stays as it is.
 
 **There are two Netlify sites for the app, and the branch one moved.** Branch and preview builds come from
 `pmksnew` now; `[BRANCH]--pmksprod.netlify.app` still answers 200 and serves a **months-stale
