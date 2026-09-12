@@ -2595,6 +2595,14 @@ renderer stays out of the initial application bundle. Keep the force column/sign
 with each body load: the two sides of a pin share a symbol but have opposite signs.
 Circle-line explanations use a parametric guide instead of a slope, including vertical guides.
 
+Worksheet sign choices are coordinate changes: reverse both the relevant matrix column and
+its solved unknown, and reverse assumed arrows on both bodies of a reaction. The physical
+load vectors do not change. A custom loop is a signed combination of the original loop rows;
+apply that combination to both A and b for velocity and acceleration. Check independence
+using signed body/joint incidences so a path through a tracer point on a rigid body telescopes
+correctly. An internal loop need not visit ground. Keep the production solver's cached
+loops and rates untouched; `WorksheetPreferencesService` shares only the presentation choices.
+
 On Windows, normalize `path.relative()` separators before comparing them with repository
 paths such as `src/styles/_tokens.scss`. Otherwise the stylesheet fence counts the token
 file it was meant to exclude. Prettier also expects LF: CRLF-only checkout changes can be

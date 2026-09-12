@@ -17,6 +17,10 @@ import { constructionDiagram, freeBodyDiagram, mechanismDiagram } from './worksh
 import { Diagram, SolverDiagramComponent } from './solver-diagram.component';
 import { SolverMatrixComponent } from './solver-matrix.component';
 import { SolverMathComponent } from './solver-math.component';
+import { WorksheetPreferencesService } from '../../services/worksheet-preferences.service';
+import { replaceWorksheetLoop } from '../../model/mechanism/worksheet-loops';
+import { WorksheetChoicesComponent } from './worksheet-choices.component';
+import { WorksheetLoopEditorComponent } from './worksheet-loop-editor.component';
 
 @Component({
   selector: 'app-solver-explanation',
@@ -30,6 +34,8 @@ import { SolverMathComponent } from './solver-math.component';
     SolverDiagramComponent,
     SolverMatrixComponent,
     SolverMathComponent,
+    WorksheetChoicesComponent,
+    WorksheetLoopEditorComponent,
   ],
 })
 export class SolverExplanationComponent {
@@ -37,6 +43,7 @@ export class SolverExplanationComponent {
   protected readonly mechanism = inject(MechanismService);
   protected readonly settings = inject(SettingsService);
   private readonly explain = inject(SolverExplanationService);
+  protected readonly preferences = inject(WorksheetPreferencesService);
   private readonly dialogs = inject(MatDialog);
   private readonly dialog = inject(MatDialogRef<SolverExplanationComponent>, { optional: true });
   private readonly dialogData = inject<{ force: boolean; section: number; machine: string }>(
@@ -91,12 +98,13 @@ export class SolverExplanationComponent {
   }
   protected get view() {
     if (!this.valid) return undefined;
-    const key = `${this.mechanism.poseRevision}|${this.step}|${this.isForce()}|${this.settings.forceAnalysisMode.value}|${this.assumed()}`;
+    const key = `${this.mechanism.poseRevision}|${this.step}|${this.isForce()}|${this.settings.forceAnalysisMode.value}|${this.assumed()}|${this.preferences.revision()}`;
     if (this.cache?.mechanism !== this.solved || this.cache.key !== key)
       this.cache = { mechanism: this.solved, key, value: this.build(this.solved, this.step) };
     return this.cache.value;
   }
   private build(mechanism: Mechanism, step: number) {
+    const preferences = this.preferences.get(mechanism);
     const joints = mechanism.joints[step];
     const force = this.isForce()
       ? this.explain.forceAt(mechanism, step, this.settings.forceAnalysisMode.value)
@@ -106,11 +114,21 @@ export class SolverExplanationComponent {
         ? forceWorksheet(
             force.frame.explanation,
             force.system,
-            this.settings.forceAnalysisMode.value === 'dynamic'
+            this.settings.forceAnalysisMode.value === 'dynamic',
+            preferences.forces
           )
         : undefined;
     const rates = !this.isForce() ? this.explain.kinematicsAt(mechanism, step) : undefined;
-    const kine = rates ? kinematicWorksheet(mechanism, step, rates) : undefined;
+    const kine = rates
+      ? kinematicWorksheet(
+          mechanism,
+          step,
+          rates,
+          preferences.loops,
+          preferences.angular,
+          preferences.angularByBody
+        )
+      : undefined;
     const circles = this.explain.circlesAt(mechanism, step);
     const circleLines = this.explain.circleLinesAt(mechanism, step);
     const positions = mechanism.positionExplanation.map((one) => {
@@ -202,6 +220,8 @@ export class SolverExplanationComponent {
     });
     const loops = kine?.loops.map((loop) => ({
       ...loop,
+      validate: (path: string) =>
+        replaceWorksheetLoop(mechanism, preferences.loops, loop.index, path).reason,
       diagram: {
         points: [
           ...new Map(
@@ -215,11 +235,12 @@ export class SolverExplanationComponent {
             from: e.from,
             to: e.to,
             arrow: true,
-            color: 'var(--brand)',
-            label: `r${e.to.id}/${e.from.id}`,
+            color: e.kind === 'ground' ? 'var(--text-tertiary)' : 'var(--brand)',
+            dashed: e.kind === 'ground',
+            label: e.kind === 'ground' ? 'ground' : `r${e.to.id}/${e.from.id}`,
             midpointLabel: true,
           })),
-          ...(loop.first && loop.last
+          ...(loop.first && loop.last && loop.first.id !== loop.last.id
             ? [
                 {
                   from: loop.last,
@@ -236,6 +257,31 @@ export class SolverExplanationComponent {
       } as Diagram,
     }));
     return {
+      angularValues: rates
+        ? [...rates.omega].map(
+            ([id, omega]) =>
+              `\\omega_{${texName(id)}}=${texNumber((preferences.angularByBody[id] ?? preferences.angular) * omega)}\\;\\mathrm{rad/s},\\quad\\alpha_{${texName(id)}}=${texNumber((preferences.angularByBody[id] ?? preferences.angular) * (rates.alpha.get(id) ?? 0))}\\;\\mathrm{rad/s^2}`
+          )
+        : [],
+      bodyAngularChoices: rates
+        ? [...rates.omega.keys()].map((id) => ({
+            key: id,
+            label: `Link ${id}`,
+            description: 'Positive angular velocity and acceleration for this link.',
+            options: ['Counterclockwise', 'Clockwise'],
+            selected: (preferences.angularByBody[id] ?? preferences.angular) === 1 ? 0 : 1,
+          }))
+        : [],
+      angularChoices: [
+        {
+          key: 'angular',
+          label: 'Default Angular Direction',
+          description:
+            'Sets every link, including the known input. Use the per-link choices below for mixed conventions. Linear x and y directions stay unchanged.',
+          options: ['Counterclockwise', 'Clockwise'],
+          selected: preferences.angular === 1 ? 0 : 1,
+        },
+      ],
       force,
       forceWork,
       rates,
@@ -270,6 +316,7 @@ export class SolverExplanationComponent {
     });
   };
   protected readonly closeWorksheet = () => this.dialog?.close();
+  protected readonly resetConventions = () => this.preferences.reset(this.solved);
   protected seek(value: string | number) {
     const sample = Number(value);
     if (!this.valid || !Number.isInteger(sample) || sample < 0 || sample > this.lastStep) return;

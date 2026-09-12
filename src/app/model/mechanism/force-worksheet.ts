@@ -1,12 +1,14 @@
 import { BodyLoad, ForceExplanation, LinearSystemExplanation } from './solver-explanation';
 import { MODEL_SCALE } from '../render-scale';
 import { numericEquation, signedSum, texName, texNumber, vector } from './worksheet-math';
+import { forceConventions, signedSystem, WorksheetSign } from './worksheet-conventions';
 
 /** Joint-based symbols make the reaction shared by two free bodies recognizable. */
 export function forceWorksheet(
   trace: ForceExplanation,
   system: LinearSystemExplanation,
-  dynamic: boolean
+  dynamic: boolean,
+  conventions: Record<string, WorksheetSign> = {}
 ) {
   const symbols = system.unknowns.map((_, index) => {
     const load = trace.bodies
@@ -33,6 +35,12 @@ export function forceWorksheet(
     const suffix = similar.length > 1 ? `,${similar.findIndex((l) => l.column === index) + 1}` : '';
     return `${texName(load.jointId!)}_{${axis}${suffix}}`;
   });
+  const choices = forceConventions(trace);
+  const signs = system.unknowns.map(() => 1);
+  choices.forEach((choice) =>
+    choice.columns.forEach((i) => (signs[i] = conventions[choice.key] ?? 1))
+  );
+  system = signedSystem(system, signs);
   const namedSystem = {
     ...system,
     unknowns: system.unknowns.map((u, i) => ({ ...u, label: symbols[i] })),
@@ -49,7 +57,12 @@ export function forceWorksheet(
       .sort((a, b) => Number(a.kind === 'weight') - Number(b.kind === 'weight'))
       .map((load) => ({
         ...load,
+        sign: load.column === undefined ? load.sign : (load.sign ?? 1) * signs[load.column],
         symbol: loadSymbol(load),
+        valueEquation:
+          load.column === undefined
+            ? loadSymbol(load)
+            : `${loadSymbol(load)}=${texNumber(system.x[load.column])}`,
         displayLabel: loadSymbol(load)
           .replace(/\\mathrm\{(.*?)\}/g, '$1')
           .replace(/[{}\\]/g, '')
@@ -132,6 +145,13 @@ export function forceWorksheet(
     return { ...body, loads, forceVector, momentVector, components };
   });
   return {
+    choices: choices.map((choice) => ({
+      ...choice,
+      selected: conventions[choice.key] === -1 ? 1 : 0,
+      description: choice.negativeBody
+        ? `The ${choice.couple ? 'couple' : 'force'} on ${choice.negativeBody} has the opposite sign.${choice.columns.length === 2 ? ' Both components change together.' : ''}`
+        : 'Choose the reference direction on this body.',
+    })),
     bodies,
     system: namedSystem,
     definitions: system.unknowns.map((unknown, i) => ({

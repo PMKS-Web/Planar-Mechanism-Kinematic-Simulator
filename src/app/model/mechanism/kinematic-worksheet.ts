@@ -4,14 +4,41 @@ import { PrisJoint, RealJoint } from '../joint';
 import { RealLink } from '../link';
 import { MODEL_SCALE } from '../render-scale';
 import { column, signedSum, texName, texNumber, vector } from './worksheet-math';
+import { defaultWorksheetLoops, loopSystem, WorksheetLoop } from './worksheet-loops';
+import { signedSystem, WorksheetSign } from './worksheet-conventions';
 
 /** Symbolic kinematics is written from directed edges, never from sorted link IDs. */
-export function kinematicWorksheet(mechanism: Mechanism, step: number, rates: KinematicSnapshot) {
+export function kinematicWorksheet(
+  mechanism: Mechanism,
+  step: number,
+  rates: KinematicSnapshot,
+  chosenLoops: WorksheetLoop[] = defaultWorksheetLoops(mechanism.requiredLoops),
+  angular: WorksheetSign = 1,
+  angularByBody: Record<string, WorksheetSign> = {}
+) {
   const joints = mechanism.joints[step];
   const links = mechanism.links[step];
+  const signOf = (id: string) => angularByBody[id] ?? angular;
+  const convert = (system: KinematicSnapshot['velocity']) => {
+    const rows = rates.route === 'loops' ? loopSystem(system, chosenLoops) : system;
+    return (
+      rows &&
+      signedSystem(
+        rows,
+        rows.unknowns.map((u) =>
+          u.unit.startsWith('rad/') ? signOf(u.label.slice(u.label.indexOf('_') + 1)) : 1
+        )
+      )
+    );
+  };
+  const systems = { velocity: convert(rates.velocity), acceleration: convert(rates.acceleration) };
+  const angularVector = (symbol: string, id: string) =>
+    signOf(id) === 1
+      ? vector(symbol, texName(id))
+      : `\\left(-${vector(symbol, texName(id))}\\right)`;
   const scaled = (v: [number, number] | undefined) =>
     v ? column(v.map((n) => n / MODEL_SCALE)) : '\\text{unavailable}';
-  const loops = mechanism.requiredLoops.map((loop, index) => {
+  const loops = chosenLoops.map((loop, index) => {
     const edges = loop.edges.map((edge) => ({
       ...edge,
       from: joints.find((j) => j.id === edge.fromId)!,
@@ -20,26 +47,39 @@ export function kinematicWorksheet(mechanism: Mechanism, step: number, rates: Ki
     const first = edges[0]?.from,
       last = edges.at(-1)?.to;
     const r = (from: string, to: string) => vector('r', `${texName(to)}/${texName(from)}`);
-    const closure = first && last ? r(last.id, first.id) : '0';
-    const position = [...edges.map((e) => r(e.from.id, e.to.id)), closure].join('+') + '=\\vec0';
+    const position = edges.map((e) => r(e.from.id, e.to.id)).join('+') + '=\\vec0';
     const velocity =
-      edges.map((e) => vector('v', `${texName(e.to.id)}/${texName(e.from.id)}`)).join('+') +
-      '+\\underbrace{\\vec v_{\\mathrm{ground}}}_{0}=\\vec0';
+      edges
+        .map((e) =>
+          e.kind === 'ground'
+            ? '\\underbrace{\\vec v_{\\mathrm{ground}}}_{0}'
+            : vector('v', `${texName(e.to.id)}/${texName(e.from.id)}`)
+        )
+        .join('+') + '=\\vec0';
     const acceleration =
-      edges.map((e) => vector('a', `${texName(e.to.id)}/${texName(e.from.id)}`)).join('+') +
-      '+\\underbrace{\\vec a_{\\mathrm{ground}}}_{0}=\\vec0';
-    const velocityTerms = edges.map((e) =>
-      e.kind === 'link'
-        ? `${vector('\\omega', texName(e.linkId))}\\times${r(e.from.id, e.to.id)}`
-        : `${vector('v', `${texName(e.to.id)}/${texName(e.from.id)}`)}`
-    );
-    const accelerationTerms = edges.map((e) =>
-      e.kind === 'link'
-        ? `${vector('\\alpha', texName(e.linkId))}\\times${r(e.from.id, e.to.id)}+${vector('\\omega', texName(e.linkId))}\\times\\left(${vector('\\omega', texName(e.linkId))}\\times${r(e.from.id, e.to.id)}\\right)`
-        : `${vector('a', `${texName(e.to.id)}/${texName(e.from.id)}`)}`
-    );
+      edges
+        .map((e) =>
+          e.kind === 'ground'
+            ? '\\underbrace{\\vec a_{\\mathrm{ground}}}_{0}'
+            : vector('a', `${texName(e.to.id)}/${texName(e.from.id)}`)
+        )
+        .join('+') + '=\\vec0';
+    const velocityTerms = edges
+      .filter((e) => e.kind !== 'ground')
+      .map((e) =>
+        e.kind === 'link' && links.some((l) => l.id === e.linkId && l instanceof RealLink)
+          ? `${angularVector('\\omega', e.linkId)}\\times${r(e.from.id, e.to.id)}`
+          : `${vector('v', `${texName(e.to.id)}/${texName(e.from.id)}`)}`
+      );
+    const accelerationTerms = edges
+      .filter((e) => e.kind !== 'ground')
+      .map((e) =>
+        e.kind === 'link' && links.some((l) => l.id === e.linkId && l instanceof RealLink)
+          ? `${angularVector('\\alpha', e.linkId)}\\times${r(e.from.id, e.to.id)}+${angularVector('\\omega', e.linkId)}\\times\\left(${angularVector('\\omega', e.linkId)}\\times${r(e.from.id, e.to.id)}\\right)`
+          : `${vector('a', `${texName(e.to.id)}/${texName(e.from.id)}`)}`
+      );
     const systemRows = (acc: boolean) => {
-      const system = acc ? rates.acceleration : rates.velocity;
+      const system = acc ? systems.acceleration : systems.velocity;
       return [0, 1].flatMap((axis) => {
         if (!system?.A[index * 2 + axis]) return [];
         const symbols = system.unknowns.map((u) =>
@@ -83,8 +123,8 @@ export function kinematicWorksheet(mechanism: Mechanism, step: number, rates: Ki
       origin = texName(source.id),
       id = texName(body.id);
     const r = vector('r', `${p}/${origin}`),
-      w = vector('\\omega', id),
-      a = vector('\\alpha', id);
+      w = angularVector('\\omega', body.id),
+      a = angularVector('\\alpha', body.id);
     const grounded = source instanceof RealJoint && source.ground && !(source instanceof PrisJoint);
     const base = (symbol: string) =>
       grounded ? `\\underbrace{${vector(symbol, origin)}}_{0}` : vector(symbol, origin);
@@ -94,6 +134,9 @@ export function kinematicWorksheet(mechanism: Mechanism, step: number, rates: Ki
       as = rates.jointAcceleration.get(source.id);
     const omega = rates.omega.get(body.id),
       alpha = rates.alpha.get(body.id);
+    const sign = signOf(body.id);
+    const wNumber = `${sign === -1 ? '(-1)' : ''}(${texNumber(sign * omega!)})`;
+    const aNumber = `${sign === -1 ? '(-1)' : ''}(${texNumber(sign * alpha!)})`;
     const dx = (point.x - source.x) / MODEL_SCALE,
       dy = (point.y - source.y) / MODEL_SCALE;
     return {
@@ -106,8 +149,8 @@ export function kinematicWorksheet(mechanism: Mechanism, step: number, rates: Ki
       radius: `${r}=${column([dx, dy, 0])}`,
       velocity: `${vector('v', p)}=${base('v')}+${w}\\times${r}`,
       acceleration: `${vector('a', p)}=${base('a')}+${a}\\times${r}+${w}\\times(${w}\\times${r})`,
-      velocityNumbers: `${scaled(vs)}+${column([`-${texNumber(omega!)}(${texNumber(dy)})`, `${texNumber(omega!)}(${texNumber(dx)})`])}=${scaled(v)}`,
-      accelerationNumbers: `${scaled(as)}+${column([`-${texNumber(alpha!)}(${texNumber(dy)})-${texNumber(omega!)}^2(${texNumber(dx)})`, `${texNumber(alpha!)}(${texNumber(dx)})-${texNumber(omega!)}^2(${texNumber(dy)})`])}=${scaled(acc)}`,
+      velocityNumbers: `${scaled(vs)}+${column([`-${wNumber}(${texNumber(dy)})`, `${wNumber}(${texNumber(dx)})`])}=${scaled(v)}`,
+      accelerationNumbers: `${scaled(as)}+${column([`-${aNumber}(${texNumber(dy)})-\\left(${wNumber}\\right)^2(${texNumber(dx)})`, `${aNumber}(${texNumber(dx)})-\\left(${wNumber}\\right)^2(${texNumber(dy)})`])}=${scaled(acc)}`,
       velocityValue: `${vector('v', p)}=${scaled(v)}`,
       accelerationValue: `${vector('a', p)}=${scaled(acc)}`,
       v,
@@ -133,5 +176,5 @@ export function kinematicWorksheet(mechanism: Mechanism, step: number, rates: Ki
     const result = motionAt({ id: `G_${l.id}`, x: l.CoM.x, y: l.CoM.y }, l, true);
     return result ? [result] : [];
   });
-  return { loops, points, centers };
+  return { loops, points, centers, ...systems };
 }

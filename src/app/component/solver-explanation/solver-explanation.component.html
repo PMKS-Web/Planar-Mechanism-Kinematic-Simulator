@@ -77,8 +77,8 @@
         <div class="assumptions">
           <h3>Knowns & Assumptions</h3>
           <p>
-            Motion lies in the x–y plane. Positive x points right, positive y points up, and
-            positive rotation is counterclockwise about z.
+            Motion lies in the x–y plane. Positive x points right, positive y points up, and the
+            positive z axis points out of the page. Counterclockwise rotation follows positive z.
           </p>
           @if (isForce()) {
             <p>
@@ -113,6 +113,59 @@
           }
         </div>
       </div>
+      <details class="numericDetails conventions">
+        <summary>Choose Your Equation Conventions</summary>
+        <p>
+          Match the signs and paths in your written solution. These choices update this worksheet's
+          equations and signed answers; the physical motion, loads, and graph axes stay the same.
+          Choices are kept while this mechanism is loaded, including when you close the worksheet.
+        </p>
+        @if (isForce()) {
+          <p>
+            “+ on” uses positive x and y (or the guide's positive normal) on the named body; “− on”
+            reverses that reference. A pure couple uses counterclockwise as its initial positive
+            direction.
+          </p>
+          <app-worksheet-choices
+            [choices]="data.forceWork?.choices ?? []"
+            (chosen)="preferences.setForce(solved, $event.key, $event.index === 0 ? 1 : -1)"
+          ></app-worksheet-choices>
+        } @else {
+          <app-worksheet-choices
+            [choices]="data.angularChoices"
+            (chosen)="preferences.setAngular(solved, $event.index === 0 ? 1 : -1)"
+          ></app-worksheet-choices>
+          <p>
+            Clockwise-positive angular values enter the cross products with a minus sign to convert
+            to the positive z axis.
+          </p>
+          <details class="numericDetails">
+            <summary>Choose Angular Directions per Link</summary>
+            <app-worksheet-choices
+              [choices]="data.bodyAngularChoices"
+              (chosen)="preferences.setBodyAngular(solved, $event.key, $event.index === 0 ? 1 : -1)"
+            ></app-worksheet-choices>
+          </details>
+          <details class="numericDetails">
+            <summary>Angular Values in This Convention</summary>
+            @for (value of data.angularValues; track $index) {
+              <app-solver-math [equation]="value"></app-solver-math>
+            }
+          </details>
+          @if (data.rates?.route === 'loops') {
+            <p>
+              Edit a closed path or reverse its direction in the Velocity and Acceleration loop
+              cards below.
+            </p>
+          } @else {
+            <p>
+              This mechanism uses constraints or direct rigid-body motion, so there is no loop
+              matrix to replace. Angular direction choices still apply.
+            </p>
+          }
+        }
+        <button-block [click]="resetConventions">Reset Worksheet Conventions</button-block>
+      </details>
       @if (isForce()) {
         @if (data.force?.frame?.status !== 'ok') {
           <p class="notice" role="status">
@@ -228,10 +281,14 @@
               </div>
               <details class="numericDetails">
                 <summary>Substitute This Sample & Check the Balance</summary>
+                <p class="caption">
+                  Signed unknowns follow your convention. The values on the right are the physical
+                  x/y components (or z couple) acting on this body.
+                </p>
                 <div class="loadList">
                   @for (load of body.loads; track $index) {
                     <div>
-                      <app-solver-math [equation]="load.symbol"></app-solver-math
+                      <app-solver-math [equation]="load.valueEquation"></app-solver-math
                       ><span>
                         @if (load.couple !== undefined) {
                           {{ n(load.couple / scale) }} N·m
@@ -366,19 +423,30 @@
           {{ section() === 1 ? 'Velocity Solving' : 'Acceleration Solving' }}
         </h3>
         @if (data.rates?.route === 'loops') {
-          @for (loop of data.loops; track loop.id) {
+          <p>
+            {{ data.loops?.length }} independent loop(s). A replacement must keep the full set
+            independent; reversing a loop changes its equation signs without changing the angular
+            answers.
+          </p>
+          @for (loop of data.loops; track loop.index) {
             <article class="loopCard">
               <h3>
                 <span class="stepNumber">{{ loop.index + 1 }}</span
                 >Closed Vector Loop
               </h3>
+              <app-worksheet-loop-editor
+                [path]="loop.id"
+                [validate]="loop.validate"
+                (applied)="preferences.setLoop(solved, loop.index, $event)"
+                (reversed)="preferences.reverseLoop(solved, loop.index)"
+              ></app-worksheet-loop-editor>
               <div class="bodyLayout">
                 <figure>
                   <app-solver-diagram
                     [diagram]="loop.diagram"
                     label="Closed vector loop"
                   ></app-solver-diagram>
-                  <figcaption>{{ loop.id }} → ground closure</figcaption>
+                  <figcaption>{{ loop.id }}</figcaption>
                 </figure>
                 <div class="derivation">
                   <h4>Position Closure</h4>
@@ -423,13 +491,13 @@
               Coriolis term when the guide rotates.
             </p>
           </details>
-          @if (section() === 1 && data.rates?.velocity; as system) {
+          @if (section() === 1 && data.kine?.velocity; as system) {
             <app-solver-matrix
               [system]="system"
               title="Velocity matrix and solution"
             ></app-solver-matrix>
           }
-          @if (section() === 2 && data.rates?.acceleration; as system) {
+          @if (section() === 2 && data.kine?.acceleration; as system) {
             <app-solver-matrix
               [system]="system"
               title="Acceleration matrix and solution"

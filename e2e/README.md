@@ -51,6 +51,12 @@ a reason to worry about.
 steps, multiple machines, scrubbing, and phone layout. It uses installed Chrome with a
 disposable profile and saves evidence in `artifacts/solver-worksheet/`.
 
+`worksheet-conventions.mjs` checks user-selected reaction and angular signs, reversed and
+alternative independent loops, invalid-path refusals, reset, dialog persistence, and phone
+layout. It saves screenshots and a sign-change filmstrip in `artifacts/worksheet-conventions/`.
+Set `PMKS_STORYBOOK_URL` to a running local gallery to also check the nine new convention
+and loop-editor stories, including the interactive choice and refusal states.
+
 Each suite that saves anything writes it to its own directory under `artifacts/`, which is
 gitignored — for example `artifacts/link-holds/` or `artifacts/posed-edit-audit/matrix.md`. A few
 older suites share `artifacts/screenshots/`, and most of those prefix their filenames with
