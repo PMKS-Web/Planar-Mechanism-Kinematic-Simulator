@@ -2201,3 +2201,64 @@ Verification in `artifacts/bodies-and-joints/`:
 
 S4's remaining native work and F3 are still pending as listed above. No paid review, push or
 publication. The live browser finding was fixed rather than dismissed because scripts passed.
+
+## S4 continuation — native cylinder dimension edits (2026-09-12)
+
+`cylinder-dimensions` now proposes barrel length, rod length, bore, rod diameter and physical
+stroke through the canonical transaction. Dimensions use destination document units and the
+same physical inequalities as cylinder creation; object-mark scale never sets the bounds.
+Each member's bar stretches about its outer material attachment, preserving that attachment's
+local point, body/vertex IDs, weld rests and load records. Bound vertex attachments follow the
+shape; unbound attachments retain their local coordinates. Internal P origins and barrel-mouth
+station update together, and the existing final center-remapping rules preserve body/grid/member
+CoM edit references. No member or compound is rebuilt under a new ID.
+
+The chosen outer attachment (barrel by default, rod explicitly) remains at its captured world
+position. The connected material settles rigidly at its captured internal extension, with
+existing drives/holds/locks participating. Passive travel adds no permanent driver. The first
+hand-position test failed because an off-axis welded bracket caused the least-motion answer
+to rotate a floating cylinder slightly while lengthening it. The solver now prefers the
+captured heading where feasible, but relaxes that preference when a physical connection needs
+a turn. A vertical external slot validates the latter against x fixed and
+`y=sqrt(newSpan^2-x^2)`, with its positive branch named by the initial pose.
+
+Locked points use the original document as their positional reference during shape relaxation;
+other edit callers retain the default unchanged reference. Final body/attachment/force locks,
+holds, travel bounds and the canonical document validator still refuse the complete command.
+Bounded continuation exhaustion never publishes a partial edit. This is a design-shape change,
+not playback through the old constraint set. Existing native assembly member geometry is the
+factory-authored bar; the resize does not invent a remeshing rule for arbitrary non-bar material.
+
+Six specs cover both outer anchors, a welded off-axis bracket, forced rotation on a vertical
+slot, locked material and shortened-stroke refusal without earlier property leakage, reordered
+bodies/attachments/vertices, independent material-frame rebases, bound mouth vertices, custom
+body-relative CoM, identity/load retention, codec round trips, paused extension re-anchoring
+and Undo, destination-unit batches in both operation orders, no-op and malformed dimensions.
+The paused case retains the original 0.4 extension anchor, displayed command and clock while
+moving the shown outer attachment to the hand-derived new span.
+
+Verification under `artifacts/bodies-and-joints/`:
+
+- `S4-cylinder-dimensions-initial.log`: **1 failed / 1 passed**, session 74922 exit 1; the
+  unintended floating heading change shifted the expected rod x by 0.0170076.
+- `S4-cylinder-dimensions-heading.log`: **3/3**, session 20377 exit 0, including the independently
+  derived vertical-guide case that requires rotation.
+- `S4-cylinder-dimensions-lifecycle.log`: **5/5**, session 88526 exit 0.
+- `S4-cylinder-dimensions-full-unit.log`: **2858 tests / 317 files pass**, session 72180 exit 0.
+- `S4-cylinder-dimensions-build.log`: production build passes, session 75785 exit 0; existing CommonJS warnings.
+- `S4-cylinder-dimensions-ui-copy.log`: **17/17**, zero console errors, session 57309 exit 0.
+- `S4-cylinder-dimensions-analysis-editing.log`: required legacy browser gate **55/55**, zero
+  page errors, session 76558 exit 0. The comparison and force screenshots were inspected:
+  selected graph subjects remain distinct from dragged joints, previous/live curves and their
+  ranges remain readable, and the existing mode/panel/grid styling is retained. This suite's
+  captures are settled screenshots; its per-move assertions do not constitute a new native
+  drag filmstrip. The separately recorded full-cycle/readout filmstrip and successful standard
+  computer-use retry remain the live reference evidence for this continuation.
+
+Before browser checks, node PID **19077** was verified to serve this worktree at localhost:4307
+with HTTP 200. Its owned terminal session remains **13661**. No native UI is active yet.
+
+**Still required for S4/F3:** active travel projection and full body/pointer gestures, bounded
+production 2.0.3 import, atomic load/recovery, completion of the native lifecycle/service
+matrix and remaining named browser gates `two-mechanisms` and `export-flow` (plus final stage
+integration). S4 is in progress. No paid review, push or publication; Fable budget unchanged.

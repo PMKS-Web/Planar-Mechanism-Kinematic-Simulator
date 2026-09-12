@@ -1,3 +1,4 @@
+import { BodyCylinderDimensionEdit } from './body-cylinder-dimension-edit';
 import { BodyGuideAxisEdit } from './body-guide-axis-edit';
 import { BodyCoordinateMove } from './body-coordinate-edit';
 import { BodyPasteOperation } from './body-paste-edit';
@@ -61,6 +62,7 @@ export type BodyEditOperation =
   | BodyPointMove
   | BodyCoordinateMove
   | BodyGuideAxisEdit
+  | BodyCylinderDimensionEdit
   | {
       readonly kind: 'project';
       readonly settings?: BodyProjectSettings;
