@@ -1,3 +1,4 @@
+import { remapEditedCenters } from './body-center-edit';
 import { bodyGroupPresentation } from './body-group-presentation';
 import { BodyDocument, GroupAnnotation } from './body-document';
 import { BodyEditRefusal } from './body-edit-types';
@@ -11,11 +12,14 @@ import { compileWeldFrames, WeldFrameGroup } from './weld-frames';
 export function bodyGroupLineage(
   before: BodyDocument,
   candidate: BodyDocument,
+  placement: BodyDocument,
   target?: BodyId
 ): { readonly ok: true; readonly groups: readonly GroupAnnotation[] } | BodyEditRefusal {
   const old = compileWeldFrames(before),
     next = compileWeldFrames(candidate);
   if (!old.ok || !next.ok) return bodyEditRefusal('invalid-document');
+  // Resolve editing anchors while the doomed frame and its attachments still have their moved poses.
+  const centered = remapEditedCenters(before, placement);
   const inherited = new Map<string, GroupAnnotation>();
   for (const annotation of before.groups) {
     const successors = new Set(annotation.members.flatMap((id) => next.groupOf.get(id) ?? []));
@@ -45,19 +49,28 @@ export function bodyGroupLineage(
       const frameBody = successor.members.has(annotation.frameBody)
         ? annotation.frameBody
         : successor.frameBody;
-      const center = annotation.mass.center;
-      const oldFrame = before.bodies.find((body) => body.id === annotation.frameBody)!.pose;
+      const center =
+        centered.groups.find(
+          (group) =>
+            group.frameBody === annotation.frameBody &&
+            group.members.length === annotation.members.length &&
+            annotation.members.every((id) => group.members.includes(id))
+        )?.mass?.center ?? annotation.mass.center;
+      const oldFrame = placement.bodies.find((body) => body.id === annotation.frameBody)!.pose;
       const newFrame = candidate.bodies.find((body) => body.id === frameBody)!.pose;
       inherited.set(successor.key, {
         members: [...successor.members.keys()],
         frameBody,
         mass: {
           ...annotation.mass,
-          ...(center && frameBody !== annotation.frameBody
+          ...(center
             ? {
                 center: {
                   ...center,
-                  point: worldToLocal(newFrame, localToWorld(oldFrame, center.point)),
+                  point:
+                    frameBody === annotation.frameBody
+                      ? center.point
+                      : worldToLocal(newFrame, localToWorld(oldFrame, center.point)),
                 },
               }
             : {}),

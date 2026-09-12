@@ -156,6 +156,7 @@ export function planBodyDesignEdit(
       ...candidate,
       ...retainPinConnections(pinSource, candidate, new Set(), `${command.id}:kind`),
     };
+  const placement = candidate;
   const targets = command.operations.flatMap((operation) =>
     operation.kind === 'delete' ? operation.targets : []
   );
@@ -164,7 +165,7 @@ export function planBodyDesignEdit(
     if (!deletion.ok) return deletion;
     candidate = deletion.document;
   }
-  const lineage = bodyGroupLineage(lineageSource, candidate, command.targetGroupMember);
+  const lineage = bodyGroupLineage(lineageSource, candidate, placement, command.targetGroupMember);
   if (!lineage.ok) return lineage;
   candidate = { ...candidate, groups: lineage.groups };
   candidate = remapEditedCenters(

@@ -2324,3 +2324,45 @@ Next: commit this reviewed-internally S4 candidate, send one F3 lifecycle review
 recorded $7 cap, reproduce and resolve actionable findings, rerun affected/final gates and
 stop before S5. No paid call has yet been made in this continuation; budget remains
 $9.479568 known spend plus the $6 canceled-call reservation.
+
+
+## F3 initial review and resolutions (2026-09-12)
+
+Reviewed **b33355b1**; Fable 5.1 confirmed (`claude-fable-5-1`), read-only tools. Session
+**04e221a8-f7f7-492d-8333-f95c87943c0d**, process session 49113 exit 0, JSON success/non-error.
+Artifacts: `reviews/F3-{brief.md,input.txt,launch.json,findings.md,stderr.log}` and `F3.json`.
+Actual total **$4.571421** = Fable $4.538566 + auxiliary Haiku $0.032855. Cumulative known
+migration review/probe spend is **$14.050989**, plus the prior unknown canceled-call amount
+(previously reserved at $6). **The user removed the review budget cap while this run was
+underway.** Original ceilings are historical; keep accounting and avoid unnecessary calls.
+
+- **F3-1 confirmed and extended:** moving a group and deleting its zero-inertia frame member
+  kept the aggregate center at its old world location. Probes fail for body-relative,
+  surviving-attachment and deleted-attachment edit anchors (x=2.1 instead of 3.1). Grid-fixed
+  center behavior was already correct. Capture the pre-deletion placement, run the existing
+  center-edit rules while all old frames/points still exist, then express the result in the
+  retained group's frame. Do not transform when the frame has not changed, preserving exact
+  no-ops and unit values. Translation, rotation, reversed arrays, all four anchor cases and
+  Undo/Redo are covered.
+- **F3-2 not reproduced as stated:** weld deletion splitting a legacy load scope already
+  returns `ambiguous-load-owner`, through `validateBodyEditDocument`'s explicit mapping of
+  `split-load-scope`. The new probe passed before fixes; no new refusal rule was added.
+- **F3-3 hardened:** the reviewer could not name a naturally late non-clamp refusal. A fault-
+  injected test confirms that a future refusal after accepted substeps could commit a hidden
+  partial event. `advance` now restores its entry draft on refusal/exception; only successful
+  limited previews keep partial travel. The operation budget reserves its bisection allowance.
+  This is a transaction fault-injection test, not a claimed reproduction in a real drawing.
+- Suggested probes for duplicate groups after units and temporary drag attachment leakage
+  both pass before changes. `lineageSource` is already the converted source; candidate old
+  annotations share those references. Rigid drag operations contain body poses only.
+
+`F3-probes-before.log`: **4 failed / 4 passed**, session 60450 exit 1, intended center and
+fault-injected gesture failures. First correction `F3-probes-fixed.log`: **47 passed / 2 failed**
+(session 51230 exit 1); unit/no-op tests caught unnecessary same-frame floating round trips.
+Final `F3-center-final.log`: **16/16** (review probes plus unit edits), session 28529 exit 0.
+Earlier remaining lifecycle/property/gesture checks passed in the 49-test run.
+
+The initial reviewer explicitly left pin reconnection, copy/paste, re-anchoring and codec
+unreviewed. That is a coverage gap, not approval of all F3. A single focused follow-up will
+review those areas plus the resolved changes, without a budget cap, before S4 is closed.
+S5 remains pending and must not start in this continuation.
