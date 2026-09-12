@@ -16,7 +16,7 @@ import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { InputComponent } from '../BLOCKS/input/input.component';
 import { Subscription } from 'rxjs';
 import { NOT_A } from '../../ui-text';
-import { EditPanelComponent } from '../edit-panel/edit-panel.component';
+import { editPanelHandle } from '../../services/edit-panel-handle';
 
 /** One editable row of the mass table: a body, and what to call it. */
 export interface MassRow {
@@ -505,9 +505,7 @@ export class AnalysisSetupComponent {
     }
     // The arrow next to a mass cell points at the mass fields, so land on
     // them even when the reader last left that section folded shut.
-    if (part instanceof RealLink && EditPanelComponent.instance) {
-      EditPanelComponent.instance.sectionExpanded['LMass'] = true;
-    }
+    if (part instanceof RealLink) editPanelHandle()?.expandSection('LMass');
   }
 
   nameOf(part: Joint | Link | undefined): string {

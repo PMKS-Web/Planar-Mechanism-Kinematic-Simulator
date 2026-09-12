@@ -85,12 +85,12 @@ export class SegmentedComponent implements AfterViewInit, OnDestroy {
     this.watch?.disconnect();
   }
 
-  choose(index: number): void {
+  protected choose(index: number): void {
     if (this.disabled() || this.disabledAt().includes(index) || index === this.selected()) return;
     this.selectedChange.emit(index);
   }
 
-  isDisabledAt(index: number): boolean {
+  protected isDisabledAt(index: number): boolean {
     return this.disabled() || this.disabledAt().includes(index);
   }
 

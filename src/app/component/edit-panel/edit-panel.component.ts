@@ -40,7 +40,8 @@ import { EditPermissionService } from '../../services/edit-permission.service';
 import { EditRefusal } from '../../model/edit-permission';
 import { GridUtilsService } from '../../services/grid-utils.service';
 import { Link, RealLink } from '../../model/link';
-import { NewGridComponent } from '../new-grid/new-grid.component';
+import { canvasHandle } from '../../services/canvas-handle';
+import { registerEditPanel } from '../../services/edit-panel-handle';
 import { MODEL_SCALE } from '../../model/render-scale';
 import { SubtitleComponent } from '../BLOCKS/subtitle/subtitle.component';
 import { EditBannerComponent } from './edit-banner.component';
@@ -458,6 +459,9 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   constructor() {
     //Set the instance to this
     EditPanelComponent.instance = this;
+    // The analysis setup drawer lands the reader on a section through this
+    // rather than through the static, so it never imports this panel.
+    registerEditPanel({ expandSection: (key) => (this.sectionExpanded[key] = true) });
     // The picture can now be moved and resized on the canvas as well as typed
     // at, so the fields follow it rather than only leading it. Patched without
     // emitting, so mirroring a drag cannot loop back into a commit.
@@ -486,6 +490,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     this.onDestroySubscriptions.forEach((subscription) => subscription.unsubscribe());
     this.otherJoitnsSubscriptions.forEach((subscription) => subscription.unsubscribe());
     if (this.pendingFieldSync !== undefined) clearTimeout(this.pendingFieldSync);
+    if (EditPanelComponent.instance === this) registerEditPanel(undefined);
   }
 
   lengthUnit: LengthUnit = this.settingsService.lengthUnit.value;
@@ -2528,7 +2533,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     const link = this.activeSrv.selectedLink;
     const showing = on && !!link;
     this.settingsService.previewCoMLinkId = showing ? link.id : null;
-    NewGridComponent.instance.setComMeasureOverlay(
+    canvasHandle()?.setComMeasureOverlay(
       showing
         ? {
             axis,
@@ -2542,25 +2547,25 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
 
   /** Point at a part's mass field, see that part lit on the ram. */
   setCylinderPartPreview(part: 'barrel' | 'rod' | 'head' | undefined) {
-    NewGridComponent.instance.setCylinderPartPreview(part);
+    canvasHandle()?.setCylinderPartPreview(part);
   }
 
   setShowLinkLengthOverlay($event: number) {
-    NewGridComponent.instance.showLinkLengthOverlay = $event;
+    canvasHandle()?.setLinkLengthOverlay($event, this.listOfOtherJoints);
   }
 
   setShowLinkAngleOverlay($event: number) {
-    NewGridComponent.instance.showLinkAngleOverlay = $event;
+    canvasHandle()?.setLinkAngleOverlay($event, this.listOfOtherJoints);
   }
 
   /** Show what a grounded slot's angle is measured from, while it is pointed at. */
   setSlotAngleOverlay(showing: boolean) {
-    NewGridComponent.instance.setSlotAngleOverlay(showing);
+    canvasHandle()?.setSlotAngleOverlay(showing);
   }
 
   /** Show the ram's travel on the canvas while one of its size fields is pointed at. */
   setCylinderRangeOverlay(which: 'travel' | 'start' | undefined) {
-    NewGridComponent.instance.setCylinderRangeOverlay(which);
+    canvasHandle()?.setCylinderRangeOverlay(which);
   }
 
   getOtherJointsInLink(selectedJoint: RealJoint): RealJoint[] {

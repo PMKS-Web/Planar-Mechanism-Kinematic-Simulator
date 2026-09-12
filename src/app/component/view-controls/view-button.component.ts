@@ -55,7 +55,7 @@ export class ViewButtonComponent {
    * which left a screen reader with no way to tell an on switch from an off
    * one. The plain actions have no state and no such attribute.
    */
-  readonly label = computed(() => this.tooltip() ?? `Show ${this.noun()}`);
+  protected readonly label = computed(() => this.tooltip() ?? `Show ${this.noun()}`);
 
   /**
    * The tooltip names what pressing it would do, which is the other state.
@@ -63,10 +63,12 @@ export class ViewButtonComponent {
    * Prose only: the shortcut is drawn as a key cap by `appShortcutTip`, at the
    * end, rather than written into this sentence in brackets.
    */
-  readonly tip = computed(() =>
+  protected readonly tip = computed(() =>
     this.noun() ? `${this.shown() ? 'Hide' : 'Show'} ${this.noun()}` : (this.tooltip() ?? '')
   );
 
   /** The glyph draws the grid as it is: the crossed-out one means hidden. */
-  readonly glyph = computed(() => (this.shown() ? this.shownIcon() : this.hiddenIcon()) ?? '');
+  protected readonly glyph = computed(
+    () => (this.shown() ? this.shownIcon() : this.hiddenIcon()) ?? ''
+  );
 }

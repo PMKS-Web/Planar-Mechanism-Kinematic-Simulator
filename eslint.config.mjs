@@ -45,6 +45,29 @@ export default defineConfig([
     rules: { 'max-lines': 'off' },
   },
   {
+    // The import graph runs one way: components import services, never the
+    // reverse. Three services once reached the canvas and a drawer through
+    // their statics, and put every block that injects MechanismService on an
+    // import cycle (see docs/code-style.md). A service that needs the canvas
+    // reads a handle the canvas registers -- services/canvas-handle.ts.
+    files: ['src/app/services/**/*.ts', 'src/app/*.service.ts'],
+    ignores: ['src/**/*.spec.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/component/**/*.component'],
+              message:
+                'A service does not import a component. Have the component register a handle the service reads (services/canvas-handle.ts), or excuse a dialog open on this line.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // Components read solved samples through the services; they do not run
     // the solvers. A warning while existing imports remain.
     files: ['src/app/component/**/*.ts'],

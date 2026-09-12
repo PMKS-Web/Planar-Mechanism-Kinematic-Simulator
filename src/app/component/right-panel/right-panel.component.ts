@@ -1,6 +1,14 @@
 import { TabID } from '../../selected-tab.service';
 import { CHROME_MOVED } from '../../model/chrome-motion';
-import { Component, inject, ChangeDetectionStrategy, DoCheck, HostListener } from '@angular/core';
+import {
+  Component,
+  inject,
+  ChangeDetectionStrategy,
+  DestroyRef,
+  DoCheck,
+  HostListener,
+} from '@angular/core';
+import { whenModeChanges } from '../../services/mode-change-hooks';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { NewGridComponent } from '../new-grid/new-grid.component';
 import { gridStates, jointStates, linkStates, forceStates } from '../../model/utils';
@@ -123,6 +131,15 @@ export class RightPanelComponent implements DoCheck {
   }
 
   private analytics: AnalyticsService = inject(AnalyticsService);
+
+  constructor() {
+    // A setup drawer answers a question about one mode, so it goes when that
+    // mode does. The tab service announces the change; the drawer reacts here
+    // rather than being called from the service, which would make a service
+    // import a component (mode-change-hooks.ts).
+    const stop = whenModeChanges((tab) => RightPanelComponent.closeSetupUnlessFor(tab));
+    inject(DestroyRef).onDestroy(stop);
+  }
 
   static openTab = 0; //Default open tab to "Edit" /
   static isOpen = false; // Is the tab open?

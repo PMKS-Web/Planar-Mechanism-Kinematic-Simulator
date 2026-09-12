@@ -30,7 +30,7 @@ let nextInputId = 0;
   ],
 })
 export class InputComponent {
-  readonly labelId = `pmks-input-label-${nextInputId++}`;
+  protected readonly labelId = `pmks-input-label-${nextInputId++}`;
   @Input() unit: string | undefined;
   /** Widens the field for values whose unit suffix does not fit the default. */
   @Input({ transform: booleanAttribute }) wide: boolean = false;
@@ -61,7 +61,7 @@ export class InputComponent {
   >();
   readonly unitFormControl = input<string>();
 
-  get hasUnitSelect(): boolean {
+  protected get hasUnitSelect(): boolean {
     return !!this.unitOptions()?.length && !!this.unitFormControl();
   }
 
@@ -83,7 +83,7 @@ export class InputComponent {
   private focused = false;
   private showing = false;
 
-  updateOverlay(): void {
+  private updateOverlay(): void {
     const wants = this.mouseOver || this.focused;
     // Re-asserted every time it is wanted, not only on the change from not
     // wanted. The canvas clears its overlays whenever the selected object
@@ -97,12 +97,12 @@ export class InputComponent {
     this.fieldEntry.emit(wants ? this.emitterOutputID() : -2);
   }
 
-  setMouseOver(over: boolean): void {
+  protected setMouseOver(over: boolean): void {
     this.mouseOver = over;
     this.updateOverlay();
   }
 
-  setFocused(focused: boolean): void {
+  protected setFocused(focused: boolean): void {
     this.focused = focused;
     this.updateOverlay();
   }

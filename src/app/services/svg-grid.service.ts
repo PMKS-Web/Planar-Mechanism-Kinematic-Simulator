@@ -3,7 +3,7 @@ import { afterNextRender, DestroyRef, Injectable, Injector, inject } from '@angu
 // CommonJS (export =) modules - use default imports for these two.
 import svgPanZoom from 'svg-pan-zoom';
 import { Coord } from '../model/coord';
-import { NewGridComponent } from '../component/new-grid/new-grid.component';
+import { canvasHandle } from './canvas-handle';
 import { SettingsService } from './settings.service';
 import { DragStateService } from './drag-state.service';
 import { NotificationService } from './notification.service';
@@ -233,7 +233,7 @@ export class SvgGridService {
 
         // Handle tap (click) and no drag.
         this.hammer.on('tap', function (ev: HammerInput) {
-          NewGridComponent.instance.handleTap();
+          canvasHandle()?.handleTap();
         });
 
         // Handle pan
@@ -331,7 +331,7 @@ export class SvgGridService {
       if (event.type === 'pointerup' && heardByCanvas) {
         return;
       }
-      NewGridComponent.instance?.releaseCanvasGestures(event as PointerEvent);
+      canvasHandle()?.releaseCanvasGestures(event as PointerEvent);
     };
     window.addEventListener('pointerup', release, true);
     window.addEventListener('pointercancel', release, true);
@@ -343,7 +343,7 @@ export class SvgGridService {
     //
     // Treated as a cancel rather than a release, because that is what it is:
     // nobody finished the gesture, and there is no position to finish it at.
-    const lost = () => NewGridComponent.instance?.releaseCanvasGestures();
+    const lost = () => canvasHandle()?.releaseCanvasGestures();
     window.addEventListener('blur', lost);
     window.addEventListener('pagehide', lost);
     document.addEventListener('visibilitychange', () => {
@@ -636,11 +636,7 @@ export class SvgGridService {
     // It used to be recognized by what was last clicked, which never stopped
     // being a pose: the canvas could not be panned again until something else
     // was selected.
-    if (
-      this.dragState.isDragging ||
-      NewGridComponent.isSynthesisGestureLive() ||
-      NewGridComponent.isSelectionGestureLive()
-    ) {
+    if (this.dragState.isDragging || canvasHandle()?.isGestureLive()) {
       return oldPan;
     }
     return newPan;
@@ -899,7 +895,8 @@ export class SvgGridService {
     // Nothing to fit if the canvas has gone. Left unguarded this throws where
     // nothing is waiting to catch it, and the flag below stays stuck on — which
     // disables the grid for the rest of the session.
-    if (!this.panZoomObject || !NewGridComponent.instance) {
+    const canvas = canvasHandle();
+    if (!this.panZoomObject || !canvas) {
       this.settingsService.tempGridDisable = false;
       return;
     }
@@ -910,11 +907,12 @@ export class SvgGridService {
       this.queuedFit = { animate, target: 'drawing' };
       return;
     }
-    NewGridComponent.instance.afterGlide(() => this.frameDrawing(animate));
+    canvas.afterGlide(() => this.frameDrawing(animate));
   }
 
   private fitToFullMotion(animate: boolean): void {
-    if (!this.panZoomObject || !NewGridComponent.instance) {
+    const canvas = canvasHandle();
+    if (!this.panZoomObject || !canvas) {
       this.settingsService.tempGridDisable = false;
       return;
     }
@@ -923,7 +921,7 @@ export class SvgGridService {
       this.queuedFit = { animate, target: 'motion' };
       return;
     }
-    NewGridComponent.instance.afterGlide(() => this.frameFullMotion(animate));
+    canvas.afterGlide(() => this.frameFullMotion(animate));
   }
 
   /**
@@ -1047,7 +1045,7 @@ export class SvgGridService {
     if (!canvas) return;
     const center = centerOf(drawn);
 
-    if (animate) NewGridComponent.instance?.enableGridAnimationForThisAction();
+    if (animate) canvasHandle()?.enableGridAnimationForThisAction();
     this.ourOwnMove(() => {
       this.setZoom(targetZoom);
       // A refused zoom locks the next pan out, and the pan is the half of this
@@ -1213,7 +1211,7 @@ export class SvgGridService {
       this.growChosenView(growth);
       return;
     }
-    if (!this.panZoomObject || !NewGridComponent.instance) return;
+    if (!this.panZoomObject || !canvasHandle()) return;
     this.settlePending = true;
 
     const startedAt = performance.now();

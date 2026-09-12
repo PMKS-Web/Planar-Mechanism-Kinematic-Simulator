@@ -16,7 +16,7 @@ import { INK_FLIPS_AT, luminanceOf } from '../../../model/contrast';
   imports: [MatIcon, MatTooltip],
 })
 export class ColorPickerComponent implements OnChanges {
-  colorService = inject(ColorService);
+  private colorService = inject(ColorService);
   private mechanism = inject(MechanismService);
 
   readonly link = input<RealLink>();
@@ -35,6 +35,9 @@ export class ColorPickerComponent implements OnChanges {
    * one color to point at -- and pressing one gives them all that color.
    */
   readonly parts = input<readonly (RealLink | Joint | Force)[]>();
+
+  // The index of the selected color, or -1 if none is selected
+  private selectedIndex: number = 0;
 
   ngOnChanges(): void {
     const link = this.link();
@@ -73,7 +76,7 @@ export class ColorPickerComponent implements OnChanges {
   }
 
   /** One picker serves whichever part is selected, so the tick is read from it. */
-  chosenIndex(): number {
+  protected chosenIndex(): number {
     const parts = this.parts();
     if (parts) return parts.length ? this.commonIndex(parts) : -1;
     const joint = this.joint();
@@ -87,11 +90,8 @@ export class ColorPickerComponent implements OnChanges {
     return this.selectedIndex;
   }
 
-  // The index of the selected color, or -1 if none is selected
-  selectedIndex: number = 0;
-
   // A method that handles the click event on a color swatch
-  selectColor(index: number) {
+  protected selectColor(index: number) {
     this.selectedIndex = index;
     const parts = this.parts();
     if (parts) {
@@ -128,7 +128,7 @@ export class ColorPickerComponent implements OnChanges {
     }
   }
 
-  getCorrectColors(): string[] {
+  protected getCorrectColors(): string[] {
     switch (this.type()) {
       case 'link':
         return this.colorService.getLinkColorOptions();
@@ -142,7 +142,7 @@ export class ColorPickerComponent implements OnChanges {
   }
 
   /** What each swatch is called, for the reader who is hovering one. */
-  nameOf(index: number): string {
+  protected nameOf(index: number): string {
     if (this.type() !== 'joint') return '';
     const family = this.colorService.getJointFamilies()[index];
     return family ? (index === 0 ? family.name + ' (default)' : family.name) : '';
@@ -154,7 +154,7 @@ export class ColorPickerComponent implements OnChanges {
    * It used to be white on every swatch, which was invisible on the pale end of
    * the link palette and on the first of the joint ones.
    */
-  tickInk(color: string): string {
+  protected tickInk(color: string): string {
     // Against the middle of the swatch, which is what the tick is drawn over --
     // not the ring around it, which is a different color on every joint family
     // and would have put a white tick on four pale centers.

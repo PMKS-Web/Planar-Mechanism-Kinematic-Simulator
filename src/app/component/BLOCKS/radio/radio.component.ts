@@ -30,20 +30,20 @@ export class RadioComponent {
   private cachedOptions: string[] = [];
 
   /** The labels, held so the pill is not handed a new array every pass. */
-  get options(): string[] {
+  protected get options(): string[] {
     const next = [this.option1() ?? '', this.option2() ?? '', this.option3].filter(
       (label): label is string => label !== undefined
     );
-    if (next.join('\u0001') !== this.cachedOptions.join('\u0001')) this.cachedOptions = next;
+    if (next.join('') !== this.cachedOptions.join('')) this.cachedOptions = next;
     return this.cachedOptions;
   }
 
-  get selectedIndex(): number {
+  protected get selectedIndex(): number {
     const value = Number(this.formGroup().get(this._formControl())?.value);
     return Number.isInteger(value) && value >= 0 ? value : 0;
   }
 
-  choose(index: number): void {
+  protected choose(index: number): void {
     const control = this.formGroup().get(this._formControl());
     if (!control || control.value === String(index)) return;
     control.markAsDirty();

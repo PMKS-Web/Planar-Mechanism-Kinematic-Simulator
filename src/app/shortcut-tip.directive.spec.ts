@@ -61,8 +61,13 @@ describe('the shortcut tooltip', () => {
     fixture.componentRef.setInput('shortcut', 'view.jointIds');
     fixture.detectChanges();
     // The prose is prose. The key is added beside it by the directive, so it
-    // lands at the end however long the sentence in front of it grows.
-    expect(fixture.componentInstance.tip()).toBe('Show Joint IDs');
-    expect(fixture.componentInstance.tip()).not.toContain('(');
+    // lands at the end however long the sentence in front of it grows. Read
+    // from the directive the button binds it to, which is what a reader gets.
+    const tip = fixture.debugElement
+      .query(By.directive(ShortcutTipDirective))
+      .injector.get(ShortcutTipDirective)
+      .appShortcutTip();
+    expect(tip).toBe('Show Joint IDs');
+    expect(tip).not.toContain('(');
   });
 });

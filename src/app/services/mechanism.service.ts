@@ -67,7 +67,7 @@ import {
   topologyOf,
 } from '../model/mechanism/anchor';
 import { ActiveObjService } from './active-obj.service';
-import { NewGridComponent } from '../component/new-grid/new-grid.component';
+import { currentJointState } from './joint-drag-state';
 import { angleReference, describeActuator, resolveActuator } from '../model/actuator';
 import { NotificationService } from './notification.service';
 import { SettingsService } from './settings.service';
@@ -7074,13 +7074,13 @@ export class MechanismService {
 
   private jointStateClass(joint: Joint) {
     if (
-      NewGridComponent.debugGetJointState() == jointStates.dragging &&
+      currentJointState() == jointStates.dragging &&
       joint.id === this.activeObjService.selectedJoint.id
     ) {
       return 'joint-dragging';
     }
     if (
-      NewGridComponent.debugGetJointState() !== jointStates.dragging &&
+      currentJointState() !== jointStates.dragging &&
       (this.activeObjService.objType == 'Joint' ||
         this.activeObjService.objType == 'MultiSelection') &&
       this.activeObjService.containsPart({ kind: 'joint', id: joint.id })

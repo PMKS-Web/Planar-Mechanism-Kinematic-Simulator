@@ -1,6 +1,8 @@
+import packageJson from '../../package.json';
+
 export const environment = {
   production: true,
-  appVersion: require('../../package.json').version,
+  appVersion: packageJson.version,
   firebase: {
     apiKey: 'AIzaSyCsxZBueBaFOqbaFKM8O3kpm4S48UvawAk',
     authDomain: 'pmksplus.firebaseapp.com',
