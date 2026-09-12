@@ -627,36 +627,8 @@
               </div>
               <div class="dotRow">
                 <span class="dotRowLabel">Center of mass</span>
-                <!-- Marked on the options, not with [value] on the select. Setting
-                 the select's value only takes if its options already exist,
-                 and these are rebuilt whenever the panel re-renders this block
-                 — a different link selected, a mass edited — after which the
-                 binding is unchanged and so is never re-applied, leaving the
-                 control reading Centroid over a link held some other way. An
-                 option that knows itself to be the selected one cannot drift. -->
-                <!-- Not a form control, so the pose freeze that disables the
-                     fields around it does not reach here on its own. It has to:
-                     the frame decides what the two numbers below mean, and
-                     picking one at a displaced pose captures an offset from the
-                     pose on screen rather than from the design. -->
-                <select
-                  class="comFrameSelect"
-                  [disabled]="!permission.may('properties')"
-                  (change)="setComFrame($any($event.target).value)"
-                  title="What the center of mass is held against while you edit, and the frame the two numbers below are read in. Centroid rides the link; Grid keeps its place on the drawing; a joint follows that pin alone. Once the mechanism runs it rides the link either way."
-                >
-                  <option value="centroid" [selected]="comFrame === 'centroid'">Centroid</option>
-                  <option value="grid" [selected]="comFrame === 'grid'">Grid</option>
-                  @for (joint of activeSrv.selectedLink.joints; track joint.id) {
-                    <option
-                      [value]="'joint:' + joint.id"
-                      [selected]="comFrame === 'joint:' + joint.id"
-                    >
-                      Joint {{ joint.name || joint.id }}
-                    </option>
-                  }
-                </select>
               </div>
+              <p class="comCoordinateLabel">Grid coordinates ({{ centerOfMassUnit() }})</p>
               <!-- Each field wears the pair's state, as the mock draws it. -->
               <div class="comPairRow" [class.derived]="!activeSrv.selectedLink.comIsCustom">
                 <span class="axisTag">X</span>
@@ -678,6 +650,32 @@
                   (hovered)="setComPreview('y', $event)"
                 />
               </div>
+              <collapsible-subsection titleLabel="CoM Reference" [nested]="true">
+                <label class="dotRow"
+                  >Moves With
+                  <select
+                    class="comFrameSelect"
+                    aria-label="Center of Mass Reference"
+                    [disabled]="!permission.may('properties')"
+                    (change)="setComFrame($any($event.target).value)"
+                  >
+                    <option value="centroid" [selected]="comFrame === 'centroid'">Link</option>
+                    <option value="grid" [selected]="comFrame === 'grid'">Grid</option>
+                    @for (joint of activeSrv.selectedLink.joints; track joint.id) {
+                      <option
+                        [value]="'joint:' + joint.id"
+                        [selected]="comFrame === 'joint:' + joint.id"
+                      >
+                        Joint {{ joint.name || joint.id }}
+                      </option>
+                    }
+                  </select>
+                </label>
+                <p class="shapeNote">
+                  A custom center follows this reference during edits. X and Y always show its grid
+                  position. During motion it stays attached to the body.
+                </p>
+              </collapsible-subsection>
               <input-block
                 [formGroup]="linkForm"
                 _formControl="massMoI"

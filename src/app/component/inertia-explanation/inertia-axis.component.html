@@ -1,0 +1,73 @@
+@if (working; as view) {
+  <div class="working">
+    <label class="axis-choice"
+      >Axis Through
+      <select aria-label="Axis Through" (change)="selected.set($any($event.target).value)">
+        @for (joint of body().joints; track joint.id) {
+          <option [value]="joint.id" [selected]="view.key === joint.id">
+            Joint {{ joint.name || joint.id }}
+          </option>
+        }
+        <option value="grid" [selected]="view.key === 'grid'">Grid origin</option>
+      </select>
+    </label>
+    <p>
+      P is the selected point. Both axes are perpendicular to the drawing. This comparison leaves
+      the solver’s center-of-mass inertia unchanged.
+    </p>
+    <app-equation [math]="parallel" />
+    @if (view.result) {
+      <p class="result">
+        Inertia about P: <strong>{{ view.result }}</strong>
+      </p>
+    }
+    @if (view.reason) {
+      <p class="note">{{ view.reason }}</p>
+    }
+    <collapsible-subsection [nested]="true" titleLabel="Parallel-Axis Working">
+      <p>
+        Measure from P to the center of mass G, square the distance, then add the mass times that
+        squared distance.
+      </p>
+      @for (equation of view.equations; track $index) {
+        <app-equation [math]="equation" />
+      }
+    </collapsible-subsection>
+    <collapsible-subsection [nested]="true" titleLabel="Force Moments About P">
+      <p>
+        The general moment equation includes the moment of the translational inertia. Here r points
+        from P to G, and a is acceleration in the grid frame.
+      </p>
+      @for (equation of general; track $index) {
+        <app-equation [math]="equation" />
+      }
+      @if (view.fixedPin) {
+        <p>
+          P is a grounded revolute joint on this body, so it has zero acceleration. The equation
+          simplifies to:
+        </p>
+        <app-equation [math]="fixed" />
+      } @else {
+        <p>If P stays fixed on the body, the same balance can be written using its acceleration:</p>
+        @for (equation of moving; track $index) {
+          <app-equation [math]="equation" />
+        }
+        <p>
+          A moving joint can accelerate even when its velocity is momentarily zero. The
+          parallel-axis theorem alone does not remove this term.
+        </p>
+      }
+      <p>
+        For static analysis, both acceleration terms are omitted and the sum of external moments
+        about any point is zero.
+      </p>
+      <app-equation math="\sum M_P = 0" />
+      <a
+        href="https://ocw.mit.edu/courses/16-07-dynamics-fall-2009/befffaf20475c1a379c3ac52e91a78cb_MIT16_07F09_Lec21.pdf"
+        target="_blank"
+        rel="noopener noreferrer"
+        >Rigid-body dynamics derivation (MIT)</a
+      >
+    </collapsible-subsection>
+  </div>
+}

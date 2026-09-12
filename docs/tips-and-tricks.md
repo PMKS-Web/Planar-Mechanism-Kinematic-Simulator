@@ -141,6 +141,24 @@ that slot too or it appears before Mass Settings regardless of its template orde
 about the uniform centroid even when the center of mass is custom. The explanation states this;
 it must not invent a parallel-axis shift the solver never applied. Compound member overrides
 are honored in `uniformMassProperties`; a compound itself can still override its total inertia.
+The read-only “About Another Point” calculator refuses a numerical parallel-axis result when a
+relocated custom CoM is paired with automatic centroidal inertia. With consistent properties it
+adds mass times squared distance; it never writes that result back to `massMoI`. A moving joint
+also needs the translational acceleration moment in the force balance. Only a grounded revolute
+point on the body can omit that term simply because the reference is stationary.
+
+**The CoM readout is a grid position, not an anchor offset.** Zero offsets from the centroid
+looked like a CoM at the origin while the canvas drew it elsewhere. The fields now read and write
+grid coordinates; CoM Reference only chooses what a custom center follows during edits. Read
+changes from `ngDoCheck`, because paused seeking mutates the CoM without a form event. Compare a
+model signature before refreshing so unfinished text is not overwritten. Keep the hover's origin
+at the grid origin too.
+
+**Restart the dev server after changing `angular.json` styles.** Adding KaTeX's stylesheet while
+`ng serve` was running left both its MathML and HTML visible, even though the rebuilt gallery was
+correct. The inertia e2e check now verifies the MathML duplicate is visually hidden, as well as
+checking that fractions render and long equations fit the panel. MathML remains available to
+assistive technology.
 
 ## Running the app
 

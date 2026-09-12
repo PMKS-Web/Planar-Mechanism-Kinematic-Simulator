@@ -12,6 +12,15 @@
   $foreground: map.get($theme, foreground);
 
   .collapsibleSubsection {
+    &.nested {
+      > .panel-header .panel-header__toggle {
+        padding: 0;
+      }
+      > .panel-content {
+        padding-left: 0;
+        padding-right: 0;
+      }
+    }
     // The header is a row: the toggle takes all of it unless a section has put
     // something beside it, and then that something takes what it needs.
     /* Edge to edge. The inset used to be here, which meant the toggle's own
@@ -74,6 +83,11 @@
     }
 
     .panel-content {
+      // Projected children exist before Angular applies the initial animation
+      // state. Keep closed working hidden during that first frame too.
+      &[inert] {
+        visibility: hidden;
+      }
       // Tighter under the header than above the next one: a section's contents
       // belong to the title above them, and an equal gap on both sides left
       // them floating between the two.

@@ -1,39 +1,66 @@
 <collapsible-subsection
-  titleLabel="How inertia is calculated"
-  [expanded]="expanded()"
+  titleLabel="How Inertia Is Calculated"
+  [expanded]="open() ?? expanded()"
   (opened)="open.set(true)"
   (closed)="open.set(false)"
 >
-  @if (open() || expanded()) {
+  @if (open() ?? expanded()) {
     @let view = working;
     <section class="working" aria-label="Mass moment of inertia calculation">
-      <p>
-        Mass moment of inertia measures resistance to angular acceleration: I = ∫ r² dm. The axis is
-        perpendicular to the drawing through the center of mass. This is a mass property, distinct
-        from the area moment used in beam bending.
-      </p>
       <p class="result">
         Value used: <strong>{{ view.used }}</strong>
       </p>
-      @for (note of view.notes; track note) {
-        <p class="note">{{ note }}</p>
+      @if (realBody?.moiIsCustom) {
+        <p class="note">
+          This value is set by you or a saved file. The shape estimate below is a comparison.
+        </p>
       }
+      @if (!(body().mass > 0)) {
+        <p class="note">Zero mass gives zero inertia. Gravity and inertia skip this body.</p>
+      }
+      <collapsible-subsection [nested]="true" titleLabel="Meaning and Assumptions">
+        <p>
+          Mass moment of inertia measures resistance to angular acceleration. The axis passes
+          through the center of mass G, perpendicular to the drawing.
+        </p>
+        <app-equation math="I_G = \int r^2\,\mathrm{d}m" />
+        <p>
+          Here r is each mass element’s distance from the axis. This is a mass property, distinct
+          from the area moment used in beam bending.
+        </p>
+        @for (note of view.notes; track note) {
+          <p class="note">{{ note }}</p>
+        }
+      </collapsible-subsection>
       <h4>{{ view.title }}</h4>
       @for (step of view.steps; track $index) {
-        <h5>{{ step.title }}</h5>
-        <p>{{ step.text }}</p>
-        <p class="formula">{{ step.formula }}</p>
+        <collapsible-subsection [nested]="true" [titleLabel]="step.title">
+          <p>{{ step.text }}</p>
+          @for (equation of step.equations; track $index) {
+            <app-equation [math]="equation" />
+          }
+        </collapsible-subsection>
       }
       @if (view.derived) {
         <p class="result">
           Shape estimate: <strong>{{ view.derived }}</strong>
         </p>
       }
-      <p>
-        Dynamic force analysis uses the entered or derived I in ΣM about the center of mass = Iα.
-        Static analysis omits the acceleration terms. Values shown here are rounded to six
-        significant digits.
-      </p>
+      <collapsible-subsection [nested]="true" titleLabel="Force Moments at the CoM">
+        <p>
+          Dynamic analysis balances external moments about G against rotational inertia. The
+          translational inertia has no moment arm about G.
+        </p>
+        <app-equation math="\sum M_G = I_G\alpha" />
+        <p>Static analysis omits acceleration terms.</p>
+        <app-equation math="\sum M_G = 0" />
+      </collapsible-subsection>
+      @if (realBody; as link) {
+        <collapsible-subsection [nested]="true" titleLabel="About Another Point">
+          <app-inertia-axis [body]="link" [lengthUnit]="lengthUnit()" />
+        </collapsible-subsection>
+      }
+      <p class="note precision">Values use six significant digits.</p>
     </section>
   }
 </collapsible-subsection>

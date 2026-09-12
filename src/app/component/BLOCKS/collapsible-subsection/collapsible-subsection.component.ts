@@ -35,6 +35,8 @@ import { MatIcon } from '@angular/material/icon';
   imports: [MatIcon],
 })
 export class CollapsibleSubsectionComponent implements OnChanges {
+  /** Nested working already has the containing section's inset. */
+  readonly nested = input(false);
   readonly hideHeader = input<boolean>(false); //If this is true the content cannot be expanded
 
   @Input() expanded: boolean = false;

@@ -55,7 +55,11 @@
             "polyfills": ["zone.js"],
             "tsConfig": "tsconfig.app.json",
             "assets": ["src/favicon.ico", "src/assets", "src/manifest.webmanifest", "src/_headers"],
-            "styles": ["src/mytheme.scss", "src/styles.scss"],
+            "styles": [
+              "src/mytheme.scss",
+              "src/styles.scss",
+              "node_modules/katex/dist/katex.min.css"
+            ],
             "scripts": ["node_modules/apexcharts/dist/apexcharts.min.js"],
             "browser": "src/main.ts",
             "stylePreprocessorOptions": {

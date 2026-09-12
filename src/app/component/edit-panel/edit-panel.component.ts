@@ -47,7 +47,6 @@ import { MODEL_SCALE } from '../../model/render-scale';
 import { SubtitleComponent } from '../BLOCKS/subtitle/subtitle.component';
 import { EditBannerComponent } from './edit-banner.component';
 import { StateInputComponent } from '../BLOCKS/state-input/state-input.component';
-import { uniformBodyOf } from '../../model/uniform-body';
 import {
   cylinderSpanLayoutFrom,
   cylinderSpanRange,
@@ -370,6 +369,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     }
     this.freezePoseBoundFields();
     this.freezeMassesWhilePlaying();
+    this.refreshMovingCoM();
     if (!this.editingRefused() || this.activeSrv.objType !== 'Joint') return;
     const joint = this.activeSrv.selectedJoint;
     if (!joint) return;
@@ -2150,7 +2150,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   }
 
   /**
-   * The frame the Center of Mass is both typed in and held against, read off
+   * The reference the center of mass follows during edits, read off
    * the selected link rather than remembered here — it is the link's property,
    * so selecting another link shows that link's answer and a reloaded drawing
    * shows the one it was saved with.
@@ -2178,15 +2178,20 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     this.refreshDerivedMassFields();
   }
 
-  /** Where the chosen frame's zero sits, in model coordinates. */
-  private comFrameOrigin(link: RealLink): { x: number; y: number } {
-    if (this.comFrame === 'grid') return { x: 0, y: 0 };
-    if (this.comFrame.startsWith('joint:')) {
-      const id = this.comFrame.slice('joint:'.length);
-      const joint = link.joints.find((candidate) => candidate.id === id);
-      if (joint) return { x: joint.x, y: joint.y };
-    }
-    return uniformBodyOf(link.joints).centroid;
+  protected centerOfMassUnit(): string {
+    return this.nup.unitLabel(this.settingsService.lengthUnit.value);
+  }
+
+  // Coordinate changes, including seeking a paused pose, must reach the fields.
+  // A model signature leaves unfinished text alone until the model itself moves.
+  private comReadoutSignature = '';
+  private refreshMovingCoM(): void {
+    if (this.activeSrv.objType !== 'Link') return;
+    const link = this.activeSrv.selectedLink;
+    const signature = `${link.id}:${link.CoM.x}:${link.CoM.y}:${this.settingsService.lengthUnit.value}`;
+    if (signature === this.comReadoutSignature) return;
+    this.comReadoutSignature = signature;
+    this.refreshDerivedMassFields();
   }
 
   // ---------------------------------------------------------------------------
@@ -2282,10 +2287,9 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
       return;
     }
 
-    const origin = this.comFrameOrigin(link);
     const point = {
-      x: axis === 'x' ? origin.x + value : link.CoM.x,
-      y: axis === 'y' ? origin.y + value : link.CoM.y,
+      x: axis === 'x' ? value : link.CoM.x,
+      y: axis === 'y' ? value : link.CoM.y,
     };
     link.placeCustomCoM(point);
     this.mechanismService.updateMechanism(true);
@@ -2324,7 +2328,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     const link = this.activeSrv.selectedLink;
     if (!link) return;
     const length = this.settingsService.lengthUnit.getValue();
-    const origin = this.comFrameOrigin(link);
     const display = this.nup.displayInertiaUnit(length);
     const inertia = this.nup.convertInertia(
       link.massMoI,
@@ -2334,10 +2337,10 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     this.linkForm.patchValue(
       {
         // The unit is typed into the box, as every Basic Settings field does
-        // it; the center-of-mass pair stays bare — its unit is the frame's.
+        // it; the center-of-mass pair stays bare with its unit labeled above.
         massMoI: this.nup.formatValueAndUnit(inertia, display),
-        comX: ((link.CoM.x - origin.x) / MODEL_SCALE).toFixed(2),
-        comY: ((link.CoM.y - origin.y) / MODEL_SCALE).toFixed(2),
+        comX: (link.CoM.x / MODEL_SCALE).toFixed(2),
+        comY: (link.CoM.y / MODEL_SCALE).toFixed(2),
       },
       { emitEvent: false }
     );
@@ -2529,7 +2532,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   }
 
   /** Point at a CoM field, see what it states: the CoM mark, plus the
-   *  distance drawn from the chosen frame's zero along that axis — the same
+   *  distance drawn from the grid origin along that axis — the same
    *  show-me the length and angle fields give. */
   setComPreview(axis: 'x' | 'y', on: boolean) {
     const link = this.activeSrv.selectedLink;
@@ -2539,9 +2542,9 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
       showing
         ? {
             axis,
-            origin: this.comFrameOrigin(link),
+            origin: { x: 0, y: 0 },
             com: { x: link.CoM.x, y: link.CoM.y },
-            mode: this.comFrame === 'grid' ? 'axis' : 'origin',
+            mode: 'axis',
           }
         : undefined
     );

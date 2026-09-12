@@ -1,10 +1,10 @@
-<div class="collapsibleSubsection">
+<div class="collapsibleSubsection" [class.nested]="nested()">
   @if (!hideHeader()) {
     <!-- The title and the chevron are one button; anything a section wants to
          put beside them sits outside it. A control nested inside a button is
          neither valid nor operable -- the outer button swallows the press. -->
     <div class="panel-header">
-      <button class="panel-header__toggle" (click)="toggleExpand()">
+      <button class="panel-header__toggle" [attr.aria-expanded]="expanded" (click)="toggleExpand()">
         {{ titleLabel() }}
         <mat-icon class="{{ expanded ? 'rotate180' : '' }}"> expand_more </mat-icon>
       </button>
@@ -17,6 +17,8 @@
   <div
     [@openClose]="expanded ? 'open' : 'closed'"
     class="panel-content"
+    [attr.inert]="expanded ? null : ''"
+    [attr.aria-hidden]="!expanded"
     [class.settled]="expanded && settled"
   >
     <ng-content></ng-content>

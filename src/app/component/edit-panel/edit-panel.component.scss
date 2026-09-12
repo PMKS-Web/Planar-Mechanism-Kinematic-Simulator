@@ -488,3 +488,9 @@
 .massArea #input-block.state-input-host .customInputForm .mat-mdc-text-field-wrapper {
   width: 80px;
 }
+// The reference that a custom center follows is independent of its readout.
+.comCoordinateLabel {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin: 0 0 4px;
+}

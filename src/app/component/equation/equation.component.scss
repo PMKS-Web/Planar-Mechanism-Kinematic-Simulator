@@ -1,0 +1,10 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+.equation {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 0;
+  font-size: 12px;
+}

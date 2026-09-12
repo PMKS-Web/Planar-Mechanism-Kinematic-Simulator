@@ -41,3 +41,19 @@ export const LongTitle: Story = {
 
 /** No header at all: the section cannot be opened or closed by the reader. */
 export const WithoutHeader: Story = { args: { hideHeader: true } };
+
+/** Nested steps keep the parent's content width; closing a step removes its controls from Tab order. */
+export const Nested: Story = {
+  render: () => ({
+    template: `
+      <collapsible-subsection titleLabel="Calculation" [expanded]="true">
+        <collapsible-subsection titleLabel="1. Measure the Span" [nested]="true" [expanded]="true">
+          <p>Use the farthest pair of joints.</p>
+        </collapsible-subsection>
+        <collapsible-subsection titleLabel="2. Distribute the Mass" [nested]="true">
+          <p>Integrate along the full length.</p>
+        </collapsible-subsection>
+      </collapsible-subsection>
+    `,
+  }),
+};

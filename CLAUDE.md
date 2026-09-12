@@ -196,7 +196,12 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
   welded members combined with the parallel-axis theorem. `uniform-body.ts` carries the
   polygon intermediates so the explanation cannot choose a different shape algorithm. The
   gallery's Feedback / Inertia Explanation stories cover derived/custom, zero mass, compounds
-  and the three unit systems. `e2e/inertia-explanation.mjs` guards the live working.
+  and the three unit systems. Each step folds independently; `component/equation/` renders
+  display math with stacked fractions and accessible MathML. “About Another Point” compares
+  inertia at a joint or the grid origin without changing solver inputs, and explains the
+  acceleration moment required at a moving point. The CoM fields always show grid coordinates;
+  the separate CoM Reference controls what a custom center follows during edits.
+  `e2e/inertia-explanation.mjs` guards the live working and CoM readout.
 - **The analysis modes are editable.** They allow the same context-menu actions as Edit at the start pose. Away from it,
   topology changes stay disabled in both modes. Paused menus allow locks, dimension holds,
   display shape, force properties, and traces. Tracer points and force application points map

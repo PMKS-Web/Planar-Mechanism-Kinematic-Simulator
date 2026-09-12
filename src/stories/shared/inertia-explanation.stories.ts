@@ -26,6 +26,7 @@ custom.massMoI = 0.075;
 custom.moiIsCustom = true;
 const offset = rod();
 offset.comIsCustom = true;
+offset.CoM.x += MODEL_SCALE;
 const disc = rod();
 disc.isCircle = true;
 const compound = body(

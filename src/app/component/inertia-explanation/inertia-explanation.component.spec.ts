@@ -29,8 +29,13 @@ describe('inertia explanation in project units', () => {
     fixture.detectChanges();
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('25 g·cm²');
-    expect(text).toContain('L = 5 cm');
-    expect(text).toContain('12 × 25 / 12');
+    const math = Array.from(fixture.nativeElement.querySelectorAll('annotation')).map(
+      (node) => (node as Element).textContent
+    );
+    expect(math).toContain(String.raw`L = 5\,\mathrm{cm}`);
+    expect(math).toContain(String.raw`I_G = \frac{12\times 25}{12}`);
+    expect(fixture.nativeElement.querySelectorAll('mfrac').length).toBeGreaterThan(0);
+    expect(fixture.nativeElement.querySelector('.katex-error')).toBeNull();
     expect(text).not.toContain('kg·cm²');
   });
 
