@@ -11,6 +11,7 @@ it describes a system that has since been replaced.
 
 - [tips-and-tricks.md](tips-and-tricks.md) — the traps that cost somebody an hour: environment, e2e suites, deploys, spelling. Read before your first change. *Reference*
 - [../CLAUDE.md](../CLAUDE.md) — architecture, commands and branch rules.
+- `npm run storybook` — the component gallery, which is also where the UI guides below are read: it renders `ui-style-guide.md`, `ui-vocabulary.md` and `code-style.md` beside the components they govern, plus the design tokens and a reuse backlog.
 
 ## Reference
 

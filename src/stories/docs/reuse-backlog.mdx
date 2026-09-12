@@ -1,0 +1,100 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Reuse backlog" />
+
+# Reuse backlog
+
+Where the app still draws one of the gallery's components by hand, and which component it should
+use instead. Found by a survey of `src/app/component` in September 2026; each item names the file
+so it can be picked up as its own small change. Remove an item when its refactor lands.
+
+The rule this enforces is on the Introduction: build from the blocks, and do not copy a neighbor's
+CSS. Every item below is a place where that was not done, and most of them have already drifted
+from the block they copy.
+
+## Hand-rolled copies of a block
+
+Each entry is **where** it is, what it draws, and the block to use instead.
+
+- **`synthesis-panel.component.html`**, two `.switch` buttons, styled in its `.scss` as
+  `.switch` / `.switch--on` / `.switch__knob`. A slide switch with its own disabled state, and the
+  only one outside the block. Use `toggle-block`.
+- **`export-panel.component.html`**, eight `.settingRow` / `.settingName` / `.spacer` rows. The
+  label + help icon + spacer + control row that every field block already has. Use `radio-block`
+  or `input-block`.
+- **`synthesis-panel.component.html`**, eight `.row__label` / `.row__help` / `.row__spacer` fields
+  on a raw `input[appStandardField]`. The same row renamed into BEM, which also opts it out of the
+  shared help-mark rule in `blocks.common.scss`. Use `input-block`.
+- **`analysis-setup.component.html`** `.actionButton` (three) and **`synthesis-panel`** `.pill`. A
+  stroked primary button with an icon and a label. Use `button-block`.
+- **`analysis-setup.component.html`** `.sectionToggle` and **`mechanism-panel`** `.sectionHeader`.
+  A collapsible section header: 40px, top rule, primary-500 label, a chevron; the two files also
+  duplicate `.factGrid` / `.fact`. Use `collapsible-subseciton`, whose `[headerActions]` slot
+  exists for this.
+- **`analysis-setup`, `top-bar`, `tutorial-panel`** `.chip`, three identical rule blocks, plus a
+  smaller fourth in `synthesis-panel`. A status chip with `blocker` / `warning` / `ok` variants.
+  Needs a `chip-block` that does not exist yet.
+- **`MODALS/templates/templates.component.html`** `.chipRow` / `.chip[aria-pressed]`. A filter
+  control drawn as pressable chips. Use `segmented-block` in a multi-select mode.
+- **`analysis-panel.component.html`** `.drawingChip` and **`analysis-setup`** `.sectionToggle`. An
+  icon toggle with `aria-pressed`. Use `app-view-button` (under **Actions**), which is already the
+  de-duplicated form of six of these.
+- **`linkage-table.component.html`**, sixteen raw `<input type=text>` and a CSS-radio tab strip.
+  Fields and a pick-one with none of the blocks' behavior. Put `appStandardField` on the inputs and
+  `segmented-block` on the tabs.
+- **Five close buttons, five ways:** `tutorial-panel` `.closeCard`, `whats-new` `.wnClose`,
+  `drawing-export` `button.close`, `templates` `mat-icon-button[mat-dialog-close]`, `right-panel`
+  `.closeDrawer`. One shared close button.
+- **`export-panel`** `.rowNote` (12px) and **`playback-bar`** `.rowNote` (11px). Truncated
+  secondary text, two sizes, two inks. One shared rule.
+- **`analysis-setup.component.scss`** (`#input-block .row`) and
+  **`analysis-panel.component.scss`** (`#toggle-block .row`, `.label-help`). A panel reaching into
+  a block's private ids from outside to restyle it. Make it an input on the block.
+
+## Components that should move here
+
+These are shared already, or would be with one caller changed, and belong beside the blocks:
+
+- **`app-edit-banner` + `app-lock-banner`** (`component/edit-panel/`) — shown under **Feedback**.
+  They share a stylesheet, and the lock banner is a hardcoded instance of the other; one banner
+  block with a `refusal` input covers both.
+- **`app-view-button`** (`component/view-controls/`) — shown under **Actions**. It is the generic
+  icon toggle the items above keep re-drawing.
+- **`app-context-menu`** (`component/context-menu/`) — shown under **Feedback**. Fully data-driven
+  from `menu-model.ts`, one caller.
+- **`ShortcutTipDirective` / `app-shortcut-tip`** (`src/app/`) — a `matTooltip` re-implemented so
+  it can draw a key cap. It lives at the app root and belongs next to the tooltip conventions the
+  blocks follow.
+
+## Blocks that overlap
+
+- **`title-block` and `subtitle-block`** have the same three inputs (`icon`, `buttonLabel`,
+  `description`) and the same imports; they differ in type size. One block with a `level`.
+- **`dual-input-block` duplicates `input-block`'s** hover-and-focus overlay logic, and has
+  diverged from it: `input-block` re-asserts the overlay every time (the canvas clears it),
+  `dual-input-block` only on a change. `hold-field` and `toggle-block` carry a third and fourth
+  copy. `input-block` with a `count` of two, and one overlay helper.
+- **`state-input`** (two usages) and **`hold-field-block`** (two usages) are single-consumer blocks
+  from the Edit panel; **`dual-button`** (two usages) likewise.
+- **`appStandardField`** has one consumer, `synthesis-panel`. Once that panel moves onto
+  `input-block`, the directive either becomes the behavior `input-block` uses internally or goes.
+- **Names:** `collapsible-subseciton` is misspelled in its folder, its selector and 38 call sites;
+  and the `-block` suffix is carried by some selectors and not others (`dual-button`,
+  `color-picker`, `panel-section`, `state-input`). Settle both in one rename.
+
+## Import cycles
+
+`node .storybook/tools/cycles.mjs` lists every static-import cycle through a component. The base
+of this work had 65; two remain, both through `RightPanelComponent`'s statics from `export-panel`
+and `tutorial-panel`. A service never imports a component now (the linter refuses it), so the next
+cycle to appear is a panel reaching another panel's static — register a handle instead, as
+`services/canvas-handle.ts` does.
+
+## Done
+
+- `panel-section-collapsible` had no usage in the app and was retired, together with the chevron
+  machinery `title-block` carried only for it.
+- Every BLOCKS component's non-input members are `protected` or `private`, so the properties
+  tables above show inputs and nothing else.
+- Three services no longer import components, and the Edit panel, the canvas and the analysis
+  setup drawer no longer reach each other through statics.

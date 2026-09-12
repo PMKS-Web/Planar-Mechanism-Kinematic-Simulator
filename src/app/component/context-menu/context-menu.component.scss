@@ -96,7 +96,7 @@
       cursor: pointer;
 
       &:hover {
-        background-color: var(--surface-hover-3);
+        background-color: var(--surface-hover);
       }
 
       mat-icon {
@@ -151,7 +151,7 @@
       }
 
       &:hover {
-        background-color: var(--surface-hover-2);
+        background-color: var(--surface-hover);
       }
 
       // Ink is solid black and the *group* is 60%, rather than a 60% ink:
@@ -237,10 +237,10 @@
 
     // The footer. Alone under a rule, and always the last row.
     .cm-row--destructive {
-      color: var(--danger-4);
+      color: var(--danger);
 
       mat-icon {
-        color: var(--danger-4);
+        color: var(--danger);
         opacity: 1;
       }
     }

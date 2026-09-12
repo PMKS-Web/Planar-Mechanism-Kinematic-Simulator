@@ -2,52 +2,72 @@ import { Meta } from '@storybook/addon-docs/blocks';
 
 <Meta title="Introduction" />
 
-# PMKS+ component gallery
+# PMKS+ UI
 
-The panels in PMKS+ are assembled from a small set of form primitives in
-`src/app/component/BLOCKS/`. This gallery shows each of them on its own, one state per story,
-rendered with the app's real stylesheets (`src/mytheme.scss` and `src/styles.scss`) and its
-Angular Material theme. A block looks here the way it looks in the Edit panel.
+The one place for how the app's interface looks, behaves and is worded. The components are
+rendered live with the app's real stylesheets and Material theme, so a control looks here the way
+it looks in the Edit panel; the written rules are the repository's own `docs/*.md`, rendered on
+the **Guides** pages at build time so there is exactly one copy of each.
+
+## How it is organized
+
+- **Guides** — the UI style guide (interaction, layout, motion, canvas grammar), the vocabulary
+  every label and message is held to, and the code style guide.
+- **Tokens** — every color, shadow, radius and gap the app names, read live from the loaded
+  stylesheets and grouped by role.
+- **Fields** — a number, a pair of numbers, a length-and-angle pair with padlocks, a bare field, a
+  color.
+- **Choices** — a switch, a pick-one as a segmented pill, a pick-one bound to a form.
+- **Actions** — the panel's stroked button, the two-button row, the view-controls button.
+- **Structure** — the card, its collapsible sections, its headings, the editable name at the top.
+- **Feedback** — the notification kinds, the refusal banners under a panel's title, the right-click
+  menu.
+- **Reuse backlog** — where the app still hand-rolls one of the above, and which block it should
+  use instead.
+- **Canvas entities** — planned, not built: joints, links and glyphs arrive with stage S6 of the
+  bodies-and-joints migration.
 
 ## What it is for
 
-- **Finding the block before building one.** Most "new" controls already exist: a labeled number,
-  a pair of numbers, a pick-one, a switch, a card. Look here first.
+- **Finding the component before building one.** Most "new" controls already exist. Look in the
+  section for the job -- a field, a choice, an action -- before writing markup.
 - **Seeing every state at once.** Default, disabled with its reason, invalid, and the dense or
-  long-label case that breaks a layout. A state that is not in the gallery is a state nobody has
-  looked at.
-- **Reviewing a change to a block** without having to build a mechanism that happens to show it.
+  long-label case that breaks a layout. One story per state is the convention, so a state that is
+  not here is a state nobody has looked at.
+- **Reviewing a change to a component** without having to build a mechanism that happens to show
+  it.
+- **Reading the rules where the components are.** A refusal's wording, the one breakpoint, one
+  undo per gesture: the Guides say it, and the stories beside them show it.
 
 ## Build from these, and do not copy a neighbor's CSS
 
 If a panel needs a field, use `input-block`. If it needs a pick-one, use `segmented-block`. If a
-block cannot do what you need, **extend the block** and add a story for the new state.
+block cannot do what you need, **extend the block** and add a story for the new state. Copying the
+SCSS of the panel next door gives a control that looks right today and drifts tomorrow; the Reuse
+backlog lists the places where that already happened. New colors, radii, shadows and gaps are
+tokens, and stylelint refuses a raw hex color anywhere else.
 
-Copying the SCSS of the panel next door gives you a control that looks right today and drifts
-tomorrow. That is how the app once had three different pick-one controls. New colors, radii,
-shadows and gaps are tokens: see the **Tokens** page.
+## Where it is
 
-## Running it
-
-- `npm run storybook` starts the gallery at `http://localhost:6006`, and reloads it on change.
-- `npm run build-storybook` builds a static site into `storybook-static/`, which is gitignored.
-
-## What is in it
-
-- **Tokens:** every CSS custom property defined on `:root`, read live from the loaded stylesheets.
-- **Blocks:** one entry per primitive in `src/app/component/BLOCKS/`.
-- **Feedback:** the notification kinds `NotificationService` can say.
-- **Canvas entities:** planned, not built. Joints, links and glyphs arrive with stage S6 of the
-  bodies-and-joints migration.
+- **Hosted:** [docs.pmksplus.com](https://docs.pmksplus.com) — a static build of this gallery on
+  the `pmksdocs` Netlify site, published by hand with
+  `netlify deploy --prod --no-build --dir storybook-static --site pmksdocs` after
+  `npm run build-storybook`. It shows whatever was last published, so prefer a local run when you
+  are checking a change.
+- **Source:** [PMKS-Web/Planar-Mechanism-Kinematic-Simulator](https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator)
+  on GitHub. The gallery is `.storybook/` and `src/stories/`; the components are
+  `src/app/component/`; the guides are `docs/`.
+- **Locally:** `npm run storybook` starts the gallery at `http://localhost:6006` and reloads it on
+  change; `npm run build-storybook` builds the static site into `storybook-static/`, which is
+  gitignored.
 
 ## Adding a story
 
-- Put one file per block in `src/stories/blocks/`, named after the block's directory.
-- Read the block's inputs from its source. Do not invent inputs, and do not wrap a block in a
-  component that changes its look.
-- A block that injects app services gets a minimal stub from `src/stories/support/stubs.ts`,
+- One file per component: `src/stories/blocks/` for a BLOCKS primitive, `src/stories/shared/`
+  for a shared component from elsewhere in `src/app/component/`. Title it `Section/Name`.
+- Read the component's inputs from its source. Do not invent inputs, and do not wrap a component
+  in one that changes its look. Only `@Input`/`input()` members should appear in the properties
+  table; if something else shows up there, it is a public member that should be `protected`.
+- A component that injects app services gets a minimal stub from `src/stories/support/stubs.ts`,
   never the real `MechanismService`.
-- Use words from `docs/ui-vocabulary.md` in stories too. A story is where a label is first read.
-
-The rules a gallery cannot show (how refusals are worded, one undo per gesture, how motion is
-proved) are in `docs/ui-style-guide.md`.
+- Use the words on the Vocabulary page. A story is where a label is first read.

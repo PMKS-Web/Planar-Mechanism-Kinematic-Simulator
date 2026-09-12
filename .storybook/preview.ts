@@ -33,7 +33,19 @@ const preview: Preview = {
     controls: { expanded: true },
     options: {
       storySort: {
-        order: ['Introduction', 'Tokens', 'Blocks', 'Feedback', 'Canvas entities'],
+        order: [
+          'Introduction',
+          'Guides',
+          ['UI style guide', 'Vocabulary', 'Code style'],
+          'Tokens',
+          'Fields',
+          'Choices',
+          'Actions',
+          'Structure',
+          'Feedback',
+          'Reuse backlog',
+          'Canvas entities',
+        ],
       },
     },
   },

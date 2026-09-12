@@ -61,7 +61,8 @@ import { SynthesisCanvasService } from 'src/app/services/synthesis/synthesis-can
 import { SynthesisSolutionService } from 'src/app/services/synthesis/synthesis-solution.service';
 import { ColorService } from '../../services/color.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
-import { EditPanelComponent } from '../edit-panel/edit-panel.component';
+import { publishJointDragState } from '../../services/joint-drag-state';
+import { CanvasHandle, registerCanvas } from '../../services/canvas-handle';
 import { DragStateService } from '../../services/drag-state.service';
 import { SelectionBatchService } from '../../services/selection-batch.service';
 import {
@@ -246,6 +247,11 @@ export class NewGridComponent implements OnDestroy {
   constructor() {
     //This is for debug purposes, do not make anything else static!
     NewGridComponent.instance = this;
+    // The hub and the pan-zoom service reach the canvas through these rather
+    // than through the static, so neither has to import it (see
+    // joint-drag-state.ts and canvas-handle.ts).
+    publishJointDragState(() => this.dragState.joint);
+    registerCanvas(this);
     // Ahead of the CDK's own contextmenu listener, so the menu card knows
     // which corner the pointer is in before it is measured.
     trackContextMenuPointer();
@@ -327,6 +333,22 @@ export class NewGridComponent implements OnDestroy {
   // 0-N => Joint length and angle shown for joint N (in list from edit panel)
   public showLinkLengthOverlay: number = -2;
   public showLinkAngleOverlay: number = -2;
+  /**
+   * The selected joint's neighbors, as the Edit panel lists them: an overlay
+   * index above -1 names one of these. Handed over with the index, so the
+   * canvas does not have to read the panel (`CanvasHandle`).
+   */
+  private overlayOtherJoints: readonly RealJoint[] = [];
+
+  setLinkLengthOverlay(index: number, others: readonly RealJoint[]): void {
+    this.overlayOtherJoints = others;
+    this.showLinkLengthOverlay = index;
+  }
+
+  setLinkAngleOverlay(index: number, others: readonly RealJoint[]): void {
+    this.overlayOtherJoints = others;
+    this.showLinkAngleOverlay = index;
+  }
 
   static instance: NewGridComponent;
   //To distinguish between a click and a drag
@@ -452,6 +474,8 @@ export class NewGridComponent implements OnDestroy {
     // made unrelated specs fail depending on what had run before them.
     if (NewGridComponent.instance === this) {
       NewGridComponent.instance = undefined as unknown as NewGridComponent;
+      publishJointDragState(undefined);
+      registerCanvas(undefined);
     }
   }
 
@@ -3852,6 +3876,11 @@ export class NewGridComponent implements OnDestroy {
     return this.instance?.selectionGesture !== undefined;
   }
 
+  /** Either of the two, for the pan-zoom service (`CanvasHandle`). */
+  isGestureLive(): boolean {
+    return this.synthCanvas.dragging || this.selectionGesture !== undefined;
+  }
+
   // --- Synthesis on the canvas -------------------------------------------
   //
   // Thin plumbing only: every handler turns a screen point into a model point
@@ -6214,8 +6243,7 @@ export class NewGridComponent implements OnDestroy {
         }
         default:
           let thisJoint = this.activeObjService.selectedJoint;
-          let otherJoint =
-            EditPanelComponent.instance.listOfOtherJoints[this.showLinkLengthOverlay];
+          let otherJoint = this.overlayOtherJoints[this.showLinkLengthOverlay];
           x1 = thisJoint.x;
           y1 = thisJoint.y;
           x2 = otherJoint.x;
@@ -6241,7 +6269,7 @@ export class NewGridComponent implements OnDestroy {
         }
         default:
           let thisJoint = this.activeObjService.selectedJoint;
-          let otherJoint = EditPanelComponent.instance.listOfOtherJoints[this.showLinkAngleOverlay];
+          let otherJoint = this.overlayOtherJoints[this.showLinkAngleOverlay];
           x1 = thisJoint.x;
           y1 = thisJoint.y;
           x2 = otherJoint.x;

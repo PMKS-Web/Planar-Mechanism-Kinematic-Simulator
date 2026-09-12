@@ -7,15 +7,15 @@ $ink: var(--text-primary);
 $indigo: var(--brand);
 $indigo-mid: var(--brand-mid);
 $indigo-pale: var(--brand-tint);
-$indigo-tint: var(--brand-wash-2);
+$indigo-tint: var(--brand-wash);
 $fill: var(--surface-field);
 $rule: var(--border-rule);
 $edge: var(--border-divider);
 $quiet: rgba(0, 0, 0, 0.55);
-$amber: var(--accent-4);
+$amber: var(--accent);
 $amber-ink: var(--warning-text);
 $green: var(--success);
-$red: var(--danger-2);
+$red: var(--danger);
 
 /**
  * Shipped through the theme mixin, like every other panel in the app.
@@ -115,7 +115,7 @@ $red: var(--danger-2);
        thing a reader wants to know about it. */
       &--off {
         border: 1px solid $edge;
-        background: var(--surface-subtle-2);
+        background: var(--surface-subtle);
         cursor: not-allowed;
 
         .kindCard__name,
@@ -125,7 +125,7 @@ $red: var(--danger-2);
 
         .kindCard__icon {
           background: $fill;
-          color: var(--text-disabled-3);
+          color: var(--text-disabled);
         }
       }
 
@@ -173,7 +173,7 @@ $red: var(--danger-2);
       padding: 0 7px;
       border-radius: 9px;
       background: $fill;
-      color: var(--text-tertiary-3);
+      color: var(--text-tertiary);
       font-size: 11px;
       font-weight: 500;
       white-space: nowrap;
@@ -514,7 +514,7 @@ $red: var(--danger-2);
         }
 
         border-radius: 10px;
-        background: var(--surface-well-2);
+        background: var(--surface-well);
         color: rgba(0, 0, 0, 0.45);
         font-size: 12px;
         font-weight: 500;
@@ -542,7 +542,7 @@ $red: var(--danger-2);
         font-size: 18px;
         width: 18px;
         height: 18px;
-        color: var(--text-disabled-4);
+        color: var(--text-disabled);
         cursor: help;
 
         &--ok {
@@ -569,7 +569,7 @@ $red: var(--danger-2);
         font-size: 17px;
         width: 17px;
         height: 17px;
-        color: var(--text-muted-2);
+        color: var(--text-muted);
         cursor: pointer;
 
         mat-icon {
@@ -597,7 +597,7 @@ $red: var(--danger-2);
       background: var(--surface);
 
       &--on {
-        border-color: var(--selection-border-2);
+        border-color: var(--selection-border);
         background: $indigo-tint;
       }
 
@@ -669,7 +669,7 @@ $red: var(--danger-2);
       }
 
       &:disabled .switch__knob {
-        background: var(--switch-thumb-disabled);
+        background: var(--surface-well);
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
       }
 
@@ -680,7 +680,7 @@ $red: var(--danger-2);
         width: 20px;
         height: 20px;
         border-radius: 10px;
-        background: var(--switch-thumb);
+        background: var(--surface-subtle);
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
         transition: left 120ms ease-out;
       }
@@ -726,7 +726,7 @@ $red: var(--danger-2);
         font: inherit;
         font-size: 12px;
         font-weight: 500;
-        color: var(--warning-text-5);
+        color: var(--warning-text);
         cursor: pointer;
 
         &--on {
@@ -783,7 +783,7 @@ $red: var(--danger-2);
       }
 
       &--bad {
-        background: var(--refusal-bg-3);
+        background: var(--refusal-bg);
         color: rgba(0, 0, 0, 0.7);
 
         mat-icon {
@@ -794,7 +794,7 @@ $red: var(--danger-2);
       &--good {
         align-items: center;
         background: var(--success-bg);
-        color: var(--success-text-strong);
+        color: var(--success-text);
 
         mat-icon {
           color: var(--success-text);
@@ -847,7 +847,7 @@ $red: var(--danger-2);
 
       &:disabled {
         background: var(--surface-disabled);
-        color: var(--text-tertiary-4);
+        color: var(--text-tertiary);
         cursor: default;
       }
 
@@ -962,7 +962,7 @@ $red: var(--danger-2);
       }
 
       &__thumb {
-        background: var(--surface-subtle-2);
+        background: var(--surface-subtle);
         border-radius: 3px;
       }
 
@@ -1074,7 +1074,7 @@ $red: var(--danger-2);
       gap: 8px;
       padding: 8px;
       border-top: 1px solid $edge;
-      background: var(--surface-subtle-3);
+      background: var(--surface-subtle);
     }
 
     /* The search reporting itself, directly over the button that started it.
@@ -1198,7 +1198,7 @@ $red: var(--danger-2);
         pointer-events: none;
 
         &--ok {
-          background: var(--success-2);
+          background: var(--success);
         }
       }
 

@@ -44,7 +44,7 @@ export class CollapsibleSubsecitonComponent implements OnChanges {
    * synthetic listener needs the animation providers, and a spec that mounts
    * a panel without them then throws on the listener alone.
    */
-  settled = true;
+  protected settled = true;
   private settling?: ReturnType<typeof setTimeout>;
 
   private unsettle(): void {
@@ -61,7 +61,7 @@ export class CollapsibleSubsecitonComponent implements OnChanges {
   readonly closed = output<boolean>();
   readonly opened = output<boolean>();
 
-  toggleExpand() {
+  protected toggleExpand() {
     this.expanded = !this.expanded;
     this.unsettle();
 

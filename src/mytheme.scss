@@ -11,8 +11,6 @@
 @use 'app/component/BLOCKS/button/button.component.scss' as button-block;
 @use 'app/component/BLOCKS/input/input.component.scss' as input-block;
 @use 'app/component/BLOCKS/panel-section/panel-section.component.scss' as panel-section;
-@use 'app/component/BLOCKS/panel-section-collapsible/panel-section-collapsible.component.scss' as
-  panel-section-collapsible;
 @use 'app/component/BLOCKS/dual-input/dual-input.component.scss' as dual-input-block;
 @use 'app/component/BLOCKS/hold-field/hold-field.component.scss' as hold-field-block;
 @use 'app/component/BLOCKS/radio/radio.component.scss' as radio-block;
@@ -115,7 +113,6 @@ $my-theme: mat.m2-define-light-theme(
 
 @include blocks-common.css($my-theme);
 @include panel-section.css($my-theme);
-@include panel-section-collapsible.css($my-theme);
 @include title-block.css($my-theme);
 @include button-block.css($my-theme);
 @include input-block.css($my-theme);

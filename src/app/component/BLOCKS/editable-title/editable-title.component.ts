@@ -13,7 +13,6 @@ import { FocusOnShowDirective } from '../../../focus-on-show.directive';
 import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
-import { KeyboardShortcutsService } from '../../../services/keyboard-shortcuts.service';
 import { ShortcutTipDirective } from '../../../shortcut-tip.directive';
 
 @Component({
@@ -36,9 +35,8 @@ import { ShortcutTipDirective } from '../../../shortcut-tip.directive';
 })
 export class EditableTitleComponent {
   readonly deleteDisabled = input(false);
-  readonly shortcuts = inject(KeyboardShortcutsService);
   private fb = inject(FormBuilder);
-  activeObjService = inject(ActiveObjService);
+  protected activeObjService = inject(ActiveObjService);
   private mechanismService = inject(MechanismService);
   private notify = inject(NotificationService);
 
@@ -75,22 +73,22 @@ export class EditableTitleComponent {
   readonly lockState = input<boolean | 'mixed'>();
   readonly toggleLockAction = input<() => void>();
 
-  editMode = false;
+  protected editMode = false;
 
-  newIDForm = this.fb.group({ newID: [''] });
+  protected newIDForm = this.fb.group({ newID: [''] });
 
-  gotoEditMode() {
+  protected gotoEditMode() {
     this.newIDForm.controls['newID'].setValue(this.activeObjService.getSelectedObj().name);
     this.editMode = true;
   }
 
-  isAlphanumeric(str: string): boolean {
+  private isAlphanumeric(str: string): boolean {
     return /^[a-zA-Z0-9]+$/.test(str);
   }
 
   // Check whether new id name is valid
   // Return empty string if valid, or error message if not
-  validateNewID(newID: string): string {
+  private validateNewID(newID: string): string {
     // If the new ID only contains spaces, don't save it
     if (newID === '') {
       return 'The name cannot be empty.';
@@ -124,7 +122,7 @@ export class EditableTitleComponent {
     return '';
   }
 
-  saveNewID() {
+  protected saveNewID() {
     let newID = this.newIDForm.value.newID!.trim();
 
     // If the new ID is not valid, send error notif and do not update to new id
@@ -144,7 +142,7 @@ export class EditableTitleComponent {
     this.mechanismService.updateMechanism(true);
   }
 
-  exitEditModeWithoutSaving() {
+  protected exitEditModeWithoutSaving() {
     this.editMode = false;
   }
 
@@ -153,25 +151,25 @@ export class EditableTitleComponent {
    * that can be locked. Self-serve rather than an input, like the rename:
    * every panel this block heads is about the selected object anyway.
    */
-  lockTarget(): RealJoint | Link | Force | undefined {
+  private lockTarget(): RealJoint | Link | Force | undefined {
     const obj = this.activeObjService.getSelectedObj();
     if (obj instanceof RealJoint || obj instanceof Link || obj instanceof Force) return obj;
     return undefined;
   }
 
   /** Whether there is a lock to show at all, from either source. */
-  showsLock(): boolean {
+  protected showsLock(): boolean {
     return this.toggleLockAction() !== undefined || this.lockTarget() !== undefined;
   }
 
-  isLocked(): boolean {
+  protected isLocked(): boolean {
     const given = this.lockState();
     if (given !== undefined) return given === true;
     const target = this.lockTarget();
     return target !== undefined && this.mechanismService.isLockedTarget(target);
   }
 
-  toggleLock() {
+  protected toggleLock() {
     const given = this.toggleLockAction();
     if (given) {
       given();

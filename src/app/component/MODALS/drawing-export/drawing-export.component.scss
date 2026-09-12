@@ -50,7 +50,7 @@ $rule: var(--border-rule);
     padding: 10px 12px;
     border-radius: 5px;
     background: $primary-wash;
-    color: var(--text-note);
+    color: var(--text-secondary);
 
     mat-icon {
       flex: 0 0 auto;
@@ -235,7 +235,7 @@ $rule: var(--border-rule);
     gap: 14px;
     padding: 14px 24px 16px;
     border-bottom: 1px solid $rule;
-    background: var(--surface-subtle-4);
+    background: var(--surface-subtle);
 
     &.tight {
       gap: 0;
@@ -358,7 +358,7 @@ $rule: var(--border-rule);
     border-radius: 4px;
 
     &.blocked {
-      background: var(--surface-subtle-2);
+      background: var(--surface-subtle);
       cursor: help;
     }
 
@@ -406,7 +406,7 @@ $rule: var(--border-rule);
     border-radius: 2px;
     box-sizing: border-box;
     flex: 0 0 auto;
-    background: var(--surface-sunken-3);
+    background: var(--surface-sunken);
     color: var(--text-on-accent);
 
     // Sized to the 14px the two borders leave inside an 18px box, not to the
@@ -433,7 +433,7 @@ $rule: var(--border-rule);
 
     &.off {
       border-color: rgba(0, 0, 0, 0.2);
-      background: var(--surface-sunken-3);
+      background: var(--surface-sunken);
     }
 
     &.on.off {
@@ -490,7 +490,7 @@ $rule: var(--border-rule);
     flex: 0 0 auto;
     width: 120px;
     height: 90px;
-    border: 1px solid var(--border-divider-3);
+    border: 1px solid var(--border-divider);
     border-radius: 4px;
     background: var(--surface);
     overflow: hidden;
@@ -511,7 +511,7 @@ $rule: var(--border-rule);
 
   .previewEmpty {
     fill: none;
-    stroke: var(--border-divider-3);
+    stroke: var(--border-divider);
     stroke-width: 3;
     stroke-dasharray: 8 8;
   }
@@ -542,7 +542,7 @@ $rule: var(--border-rule);
     gap: 5px;
     font-size: 12px;
     line-height: 16px;
-    color: var(--warning-text-2);
+    color: var(--warning-text);
 
     mat-icon {
       flex: 0 0 auto;

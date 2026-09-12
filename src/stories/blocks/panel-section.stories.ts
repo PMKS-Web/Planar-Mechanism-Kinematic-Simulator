@@ -18,7 +18,7 @@ import { atWidth } from '../support/frame';
  * a block; here it is a plain line quoting the same model.
  */
 const meta: Meta = {
-  title: 'Blocks/Panel Section',
+  title: 'Structure/Panel Section',
   component: PanelSectionComponent,
   tags: ['autodocs'],
   decorators: [

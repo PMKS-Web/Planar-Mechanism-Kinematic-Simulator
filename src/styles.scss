@@ -150,7 +150,7 @@ input {
     font-weight: 500;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--text-tertiary-2);
+    color: var(--text-tertiary);
   }
 
   .viewSheetRule {
@@ -169,7 +169,7 @@ input {
     padding: 0 16px;
     border: none;
     background: transparent;
-    color: var(--text-strong-2);
+    color: var(--text-strong);
     font-family: inherit;
     font-size: 15px;
     text-align: left;
@@ -237,7 +237,7 @@ input {
       width: 20px;
       height: 20px;
       border-radius: 50%;
-      background: var(--switch-thumb);
+      background: var(--surface-subtle);
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
       transition: transform 120ms ease-out;
     }

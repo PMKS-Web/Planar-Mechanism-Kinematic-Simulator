@@ -64,7 +64,7 @@ export class EditBannerComponent {
   /** A refusal to state instead of the one this component would ask for. */
   readonly refusal = input<EditRefusal | null>(null);
 
-  banner(): EditRefusal | null {
+  protected banner(): EditRefusal | null {
     return this.refusal() ?? this.permission.editingBanner();
   }
 
@@ -75,7 +75,7 @@ export class EditBannerComponent {
    * would double up in `long`, which joins the three pieces itself -- and a full
    * stop that follows the link directly wants no space at all.
    */
-  tailOf(why: EditRefusal): string {
+  protected tailOf(why: EditRefusal): string {
     const tail = why.tail ?? '';
     return /^[.,;:!?]/.test(tail) ? tail : ` ${tail}`;
   }
@@ -86,7 +86,7 @@ export class EditBannerComponent {
    * Two answers only, because there are two ways out of any of these: get the
    * mechanism back to where it started, or leave the mode that locked it.
    */
-  take(why: EditRefusal): void {
+  protected take(why: EditRefusal): void {
     if (why.actionKind === 'toEdit') {
       this.tabs.setTab(TabID.EDIT);
       return;

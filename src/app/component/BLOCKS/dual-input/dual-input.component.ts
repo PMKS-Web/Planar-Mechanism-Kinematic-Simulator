@@ -1,6 +1,4 @@
 import {
-  Output,
-  EventEmitter,
   booleanAttribute,
   Component,
   Input,
@@ -11,7 +9,7 @@ import {
 import { FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
-import { MatFormField, MatSuffix } from '@angular/material/form-field';
+import { MatFormField } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
 
 let nextInputId = 0;
@@ -24,10 +22,10 @@ let nextInputId = 0;
   imports: [MatIcon, MatTooltip, FormsModule, ReactiveFormsModule, MatFormField, MatInput],
 })
 export class DualInputComponent {
-  readonly labelId = `pmks-dual-input-label-${nextInputId++}`;
+  protected readonly labelId = `pmks-dual-input-label-${nextInputId++}`;
 
   /** Speak the quantity, including where the compact caption is only a glyph. */
-  fieldName(label: string): string {
+  protected fieldName(label: string): string {
     const names: Record<string, string> = {
       L: 'Length',
       D: 'Distance',
@@ -61,17 +59,17 @@ export class DualInputComponent {
   readonly field2Entry = output<number>();
   readonly emitterOutputID = input<number>(-2);
 
-  isField1MouseOver: boolean = false;
-  isField1Focused: boolean = false;
-  showField1Overlay: boolean = false;
-  lastShowField1Overlay: boolean = false;
+  protected isField1MouseOver: boolean = false;
+  protected isField1Focused: boolean = false;
+  private showField1Overlay: boolean = false;
+  private lastShowField1Overlay: boolean = false;
 
-  isField2MouseOver: boolean = false;
-  isField2Focused: boolean = false;
-  showField2Overlay: boolean = false;
-  lastShowField2Overlay: boolean = false;
+  protected isField2MouseOver: boolean = false;
+  protected isField2Focused: boolean = false;
+  private showField2Overlay: boolean = false;
+  private lastShowField2Overlay: boolean = false;
 
-  updateOverlay() {
+  protected updateOverlay() {
     if (this.disabled()) {
       this.showField1Overlay = false;
       this.showField2Overlay = false;
@@ -99,6 +97,4 @@ export class DualInputComponent {
     }
     this.lastShowField2Overlay = this.showField2Overlay;
   }
-
-  constructor() {}
 }

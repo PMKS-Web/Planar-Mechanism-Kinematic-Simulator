@@ -42,14 +42,14 @@ export class LockBannerComponent {
   private gridUtils = inject(GridUtilsService);
   private mechanism = inject(MechanismService);
 
-  lockedInPlace(): boolean {
+  protected lockedInPlace(): boolean {
     if (this.active.objType !== 'Link' || !this.active.selectedLink) return false;
     const frozen = this.gridUtils.frozenJointIds();
     const joints = this.active.selectedLink.joints;
     return joints.length > 0 && joints.every((joint) => frozen.has(joint.id));
   }
 
-  unlock(): void {
+  protected unlock(): void {
     this.mechanism.toggleLock(this.active.selectedLink);
   }
 }

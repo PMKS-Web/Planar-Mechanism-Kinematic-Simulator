@@ -2,16 +2,14 @@
   <div class="row">
     <ng-content></ng-content>
     @if (buttonLabel && icon) {
-      <button id="title-button" mat-flat-button (click)="toggleExpand()" color="primary">
-        @if (icon) {
-          <mat-icon>{{ icon }}</mat-icon>
-        }
+      <button id="title-button" mat-flat-button color="primary">
+        <mat-icon>{{ icon }}</mat-icon>
         {{ buttonLabel }}
       </button>
     }
     @if (!buttonLabel && icon) {
-      <button id="title-icon-button" (click)="toggleExpand()" mat-icon-button>
-        <mat-icon>{{ this.shownIcon }}</mat-icon>
+      <button id="title-icon-button" mat-icon-button>
+        <mat-icon>{{ icon }}</mat-icon>
       </button>
     }
   </div>

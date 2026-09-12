@@ -8,7 +8,7 @@ import { inPanel } from '../support/frame';
  * label is projected content; the value is a reactive form control.
  */
 const meta: Meta = {
-  title: 'Blocks/Input',
+  title: 'Fields/Input',
   component: InputComponent,
   tags: ['autodocs'],
   decorators: [inPanel()],

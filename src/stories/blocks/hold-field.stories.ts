@@ -17,7 +17,7 @@ function bar(): RealLink {
 }
 
 const meta: Meta = {
-  title: 'Blocks/Hold Field',
+  title: 'Fields/Hold Field',
   component: HoldFieldComponent,
   tags: ['autodocs'],
   decorators: [inPanel()],

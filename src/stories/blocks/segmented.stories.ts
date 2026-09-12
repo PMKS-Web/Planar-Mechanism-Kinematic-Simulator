@@ -8,7 +8,7 @@ import { inPanel } from '../support/frame';
  * place when the control first appears.
  */
 const meta: Meta = {
-  title: 'Blocks/Segmented',
+  title: 'Choices/Segmented',
   component: SegmentedComponent,
   tags: ['autodocs'],
   decorators: [inPanel()],

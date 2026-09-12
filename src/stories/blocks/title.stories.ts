@@ -3,12 +3,12 @@ import { TitleBlock } from '../../app/component/BLOCKS/title/title.component';
 import { inPanel } from '../support/frame';
 
 /**
- * `title-block`: a card's heading. With `expand_less` or `expand_more` as its
- * icon the button swaps chevrons on press, which is how
- * `panel-section-collapsible` opens and closes.
+ * `title-block`: a card's heading, with an optional description line and an
+ * optional icon button on the right. It shares its inputs with
+ * `subtitle-block`, which differs only in type size; see the Reuse backlog.
  */
 const meta: Meta = {
-  title: 'Blocks/Title',
+  title: 'Structure/Title',
   component: TitleBlock,
   tags: ['autodocs'],
   decorators: [inPanel()],
@@ -31,7 +31,7 @@ export const WithDescription: Story = {
   args: { description: 'Grounded, and driven at 10 RPM.' },
 };
 
-export const Collapsible: Story = { args: { text: 'Input Settings', icon: 'expand_less' } };
+export const WithIcon: Story = { args: { text: 'Input Settings', icon: 'expand_less' } };
 
 export const WithButton: Story = {
   args: { text: 'Mechanisms', icon: 'add', buttonLabel: 'Add' },

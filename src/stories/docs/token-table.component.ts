@@ -2,6 +2,7 @@ import {
   afterNextRender,
   ChangeDetectionStrategy,
   Component,
+  computed,
   DestroyRef,
   inject,
   signal,
@@ -124,6 +125,90 @@ function sourceOf(sheet: CSSStyleSheet): string {
   return 'inline <style>';
 }
 
+/** A heading's worth of tokens: one role, described once. */
+export interface TokenGroup {
+  title: string;
+  about: string;
+  rows: TokenRow[];
+}
+
+/**
+ * The roles, in the order the token file lists them. A token joins the first
+ * role whose test it passes, so `--border-radius` is a shape before it is a
+ * border and `--card-surface` a surface before it is a card.
+ */
+const ROLES: { title: string; about: string; test: (name: string) => boolean }[] = [
+  {
+    title: 'Shape',
+    about: 'The radii, the gap and the shadows every card and menu shares.',
+    test: (n) => /(radius|shadow|gap)$/.test(n),
+  },
+  {
+    title: 'Surfaces',
+    about: 'What things sit on: the card, the panels under it, fields, wells and a hovered row.',
+    test: (n) => /^--(surface|card-surface|switch-)/.test(n),
+  },
+  {
+    title: 'Borders',
+    about: 'Hairlines and dividers.',
+    test: (n) => n.startsWith('--border'),
+  },
+  {
+    title: 'Text',
+    about: 'The tiers of ink, from a value to read down to a control that cannot be used.',
+    test: (n) => n.startsWith('--text'),
+  },
+  {
+    title: 'Brand',
+    about: "Material indigo: the app's own color, from the filled button to the faintest wash.",
+    test: (n) => n.startsWith('--brand'),
+  },
+  {
+    title: 'Selection',
+    about: 'A switch or chip that is on, and a row that is chosen.',
+    test: (n) => n.startsWith('--selection'),
+  },
+  {
+    title: 'Accent',
+    about: 'Material amber: the selection ring on the drawing, highlights and guides.',
+    test: (n) => n.startsWith('--accent'),
+  },
+  {
+    title: 'Warning',
+    about: 'Needs attention, does not block.',
+    test: (n) => n.startsWith('--warning'),
+  },
+  {
+    title: 'Refusal',
+    about: 'Blocks, destroys or failed. The neutral one is a gesture refused on purpose.',
+    test: (n) => /^--(danger|refusal|mat-warning-color)/.test(n),
+  },
+  {
+    title: 'Success',
+    about: 'Done, and ready.',
+    test: (n) => n.startsWith('--success'),
+  },
+  {
+    title: 'Canvas',
+    about: "The SVG drawing's own marks: ink, the halo behind a label, an inert part.",
+    test: (n) => n.startsWith('--canvas'),
+  },
+];
+
+export function groupTokens(rows: TokenRow[]): TokenGroup[] {
+  const groups = ROLES.map((role) => ({
+    title: role.title,
+    about: role.about,
+    rows: [] as TokenRow[],
+  }));
+  const other: TokenGroup = { title: 'Other', about: 'Named, but in no role above.', rows: [] };
+  for (const row of rows) {
+    const at = ROLES.findIndex((role) => role.test(row.name));
+    (at >= 0 ? groups[at] : other).rows.push(row);
+  }
+  return [...groups, other].filter((group) => group.rows.length > 0);
+}
+
 function kindOf(name: string, value: string): TokenKind {
   if (!value || typeof CSS === 'undefined') return 'other';
   if (/shadow/i.test(name) && CSS.supports('box-shadow', value)) return 'shadow';
@@ -156,9 +241,20 @@ function kindOf(name: string, value: string): TokenKind {
       @if (reading().app.length === 0) {
         <p class="empty">The app declares no custom properties on <code>:root</code> yet.</p>
       } @else {
-        <div class="app-tokens">
-          <ng-container *ngTemplateOutlet="table; context: { $implicit: reading().app }" />
-        </div>
+        <nav class="roles">
+          @for (group of groups(); track group.title) {
+            <a [href]="'#tokens-' + group.title.toLowerCase()"
+              >{{ group.title }} ({{ group.rows.length }})</a
+            >
+          }
+        </nav>
+        @for (group of groups(); track group.title) {
+          <section class="app-tokens" [id]="'tokens-' + group.title.toLowerCase()">
+            <h3>{{ group.title }}</h3>
+            <p class="about">{{ group.about }}</p>
+            <ng-container *ngTemplateOutlet="table; context: { $implicit: group.rows }" />
+          </section>
+        }
       }
 
       <details>
@@ -248,6 +344,24 @@ function kindOf(name: string, value: string): TokenKind {
       padding: 4px 10px;
       cursor: pointer;
     }
+    .roles {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 14px;
+      margin: 4px 0 12px;
+    }
+    .roles a {
+      color: inherit;
+    }
+    h3 {
+      margin: 20px 0 2px;
+      font-size: 15px;
+      font-weight: 500;
+    }
+    .about {
+      margin: 0 0 6px;
+      color: rgba(0, 0, 0, 0.6);
+    }
     .scroll {
       overflow-x: auto;
     }
@@ -315,6 +429,7 @@ function kindOf(name: string, value: string): TokenKind {
 })
 export class TokenTableComponent {
   readonly reading = signal<TokenReading>({ app: [], material: [], sheetsRead: 0, unreadable: [] });
+  readonly groups = computed(() => groupTokens(this.reading().app));
   private readonly destroyRef = inject(DestroyRef);
 
   constructor() {

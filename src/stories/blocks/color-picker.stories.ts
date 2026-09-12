@@ -10,7 +10,7 @@ import { mechanismStub } from '../support/stubs';
  * state.
  */
 const meta: Meta = {
-  title: 'Blocks/Color Picker',
+  title: 'Fields/Color Picker',
   component: ColorPickerComponent,
   tags: ['autodocs'],
   decorators: [inPanel(), applicationConfig({ providers: [mechanismStub()] })],

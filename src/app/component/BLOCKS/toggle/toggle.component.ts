@@ -1,11 +1,4 @@
-import {
-  Component,
-  ElementRef,
-  ChangeDetectionStrategy,
-  input,
-  output,
-  viewChild,
-} from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output } from '@angular/core';
 import { FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
@@ -66,12 +59,12 @@ export class ToggleComponent {
   private focused = false;
   private showing = false;
 
-  setMouseOver(over: boolean): void {
+  protected setMouseOver(over: boolean): void {
     this.mouseOver = over;
     this.updateOverlay();
   }
 
-  setFocused(focused: boolean): void {
+  protected setFocused(focused: boolean): void {
     this.focused = focused;
     this.updateOverlay();
   }
@@ -82,14 +75,4 @@ export class ToggleComponent {
     this.showing = wants;
     this.fieldEntry.emit(wants);
   }
-
-  readonly field = viewChild.required<ElementRef>('field');
-
-  // ngOnChanges() {
-  //   //Get the #field input element
-  //   // const field = document.getElementById('field');
-  //   console.log(this.field.nativeElement);
-  //   (this.field.nativeElement as HTMLInputElement).select();
-  //   (this.field.nativeElement as HTMLInputElement).blur();
-  // }
 }

@@ -26,7 +26,7 @@
     gap: var(--gap);
     padding: var(--pad);
     border-radius: 8px;
-    background: var(--surface-field-2);
+    background: var(--surface-field);
     box-sizing: border-box;
 
     &.compact {
@@ -81,7 +81,7 @@
       }
 
       &:disabled {
-        color: var(--text-disabled-2);
+        color: var(--text-disabled);
         cursor: default;
       }
     }

@@ -92,7 +92,13 @@ request into `staging` or `main` cannot merge while it is red, and neither branc
 force pushes. Only a repository admin can override, and that is for emergencies. No e2e suite runs
 in CI, `e2e/ui-copy.mjs` included, so run the ones your change needs yourself.
 
-**There are two Netlify sites, and the branch one moved.** Branch and preview builds come from
+**The component gallery is hosted at [docs.pmksplus.com](https://docs.pmksplus.com)**, a third
+Netlify site (`pmksdocs`) that nothing builds automatically: publish it by hand with
+`npm run build-storybook` then
+`netlify deploy --prod --no-build --dir storybook-static --site e07ce29d-65df-4d24-832d-449f966dbfe9`.
+It shows whatever was last published, so a local `npm run storybook` is the one to check a change in.
+
+**There are two Netlify sites for the app, and the branch one moved.** Branch and preview builds come from
 `pmksnew` now; `[BRANCH]--pmksprod.netlify.app` still answers 200 and serves a **months-stale
 bundle**, which is worse than a 404 because it looks like a deploy that simply ignored your commit.
 Confirm a build landed by asking for something only the new commit has, not by the page loading.
@@ -189,7 +195,7 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
 - `SelectedTabService` (`TabID` enum) coordinates the four modes; the Edit and analysis panels operate on whatever `ActiveObjService` says is selected (joint, link, force, mechanism, background image, or synthesis pose).
 - The right drawer is addressed by number through statics on `RightPanelComponent`: 1 Settings, 3 Help, 4 Debug (dev only), 5 `KINEMATIC_SETUP_TAB`, 6 `FORCE_SETUP_TAB`, 7 `EXPORT_TAB`. **Tab 2 (`app-equation-panel`) is unreachable** — nothing calls `tabClicked(2)` and its content is placeholder images. It is unfinished work, not a feature.
 - `SettingsService` exposes document-wide settings as RxJS BehaviorSubjects (units, gravity, grid and snap visibility, object scale). Input **speed and direction are not global** — they belong to the driven joint (`Joint.driveSpeed`), because a drawing can hold several machines; the SettingsService values are only the default a joint falls back to. `forceUnit` is the unit a force is *read* in (lbf under English; N or kgf under metric and SI) and not the one it is stored in — see [tips-and-tricks](docs/tips-and-tricks.md#a-force-is-stored-in-one-unit-and-read-in-another).
-- `component/BLOCKS/` holds the reusable form primitives (input, toggle, radio, dual-input, panel-section, ...) that the panels are composed from. Each one is shown, state by state, in the component gallery (`npm run storybook`; stories and docs pages in `src/stories/`) — build new panel UI from these rather than copying a neighbor's CSS, and read [`docs/ui-style-guide.md`](docs/ui-style-guide.md) for the interaction, motion and wording rules the gallery cannot show. `component/MODALS/` holds the Templates dialog and the release-notes splash.
+- `component/BLOCKS/` holds the reusable form primitives (input, toggle, radio, dual-input, panel-section, ...) that the panels are composed from. **The component gallery (`npm run storybook`) is the one place for UI documentation:** every block and shared component state by state, sectioned as Fields, Choices, Actions, Structure and Feedback; the design tokens grouped by role; the UI style guide, vocabulary and code style rendered from `docs/*.md` at build time (edit the `.md`, never the page); and a Reuse backlog naming where the app still hand-rolls a block. Build new panel UI from the blocks rather than copying a neighbor's CSS. Only `@Input`/`input()` members belong in a block's public surface: everything else is `protected` or `private`, or it shows up in the gallery's properties table. `component/MODALS/` holds the Templates dialog and the release-notes splash.
 - Messages to the user go through `NotificationService`, which replaced the old `NewGridComponent.sendNotification()` static. Some components still talk through statics (e.g. `RightPanelComponent.openTab` / `insistOn`) — grep for the static before assuming a service is the only channel.
 - Four-bar synthesis (generating a linkage from three desired coupler poses) lives in `services/synthesis/`.
 - **Phone layout.** `ViewportService` owns the one breakpoint (600px). Below it the mode panel is a

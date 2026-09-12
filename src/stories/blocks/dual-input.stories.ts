@@ -8,7 +8,7 @@ import { inPanel } from '../support/frame';
  * captions `L`, `D`, `M` and `⊾` are read aloud by name.
  */
 const meta: Meta = {
-  title: 'Blocks/Dual Input',
+  title: 'Fields/Dual Input',
   component: DualInputComponent,
   tags: ['autodocs'],
   decorators: [inPanel()],

@@ -1,5 +1,5 @@
-import { RightPanelComponent } from './component/right-panel/right-panel.component';
 import { Injectable, inject, signal } from '@angular/core';
+import { modeChanged } from './services/mode-change-hooks';
 import { BehaviorSubject } from 'rxjs';
 import { MechanismService } from './services/mechanism.service';
 import { SynthesisBuilderService } from './services/synthesis/synthesis-builder.service';
@@ -114,8 +114,10 @@ export class SelectedTabService {
   private onNewTab(previousTab: TabID) {
     // A setup drawer answers a question about one mode, so it goes when that
     // mode does -- otherwise the Force list sits over the Synthesis canvas
-    // looking like the app is stuck between two places.
-    RightPanelComponent.closeSetupUnlessFor(this.getCurrentTab());
+    // looking like the app is stuck between two places. The drawer registers
+    // that reaction itself (mode-change-hooks.ts), so this service does not
+    // import a component.
+    modeChanged(this.getCurrentTab());
 
     // What each mode boundary does to the pose and to playback.
     //

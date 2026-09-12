@@ -1,0 +1,10 @@
+import { Meta, Markdown } from '@storybook/addon-docs/blocks';
+import style from '../../../docs/code-style.md?raw';
+
+<Meta title="Guides/Code style" />
+
+> Rendered from `docs/code-style.md` when the gallery is built. Edit that file, not this page. It is
+> here because a component is code too: the invariants the linter checks apply to a block as much
+> as to a solver.
+
+<Markdown options={{ overrides: { code: 'code' } }}>{style}</Markdown>

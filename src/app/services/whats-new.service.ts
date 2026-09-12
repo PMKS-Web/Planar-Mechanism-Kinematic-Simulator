@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
+// eslint-disable-next-line no-restricted-imports -- MatDialog.open needs the dialog's class
 import { WhatsNewComponent } from '../component/MODALS/whats-new/whats-new.component';
 import { local_storage_available } from '../model/utils';
 import { WHATS_NEW_VERSION } from '../model/whats-new';

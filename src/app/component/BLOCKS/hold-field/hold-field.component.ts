@@ -60,23 +60,23 @@ export class HoldFieldComponent {
   private focused = { length: false, angle: false };
   private shown = { length: false, angle: false };
 
-  readonly lockPath =
+  protected readonly lockPath =
     'M7 10V7a5 5 0 0 1 10 0v3h2.5v11h-15V10H7Zm2 0h6V7a3 3 0 0 0-6 0v3ZM6.5 12v7h11v-7h-11Z';
-  readonly unlockPath =
+  protected readonly unlockPath =
     'M7 10V7a5 5 0 0 1 10 0v1.5h-2V7a3 3 0 0 0-6 0v3H7Zm-2.5 0h15v11h-15V10Zm2 2v7h11v-7h-11Z';
 
   /** The rows to show: both values, or the one this part has. */
-  rows(): Which[] {
+  protected rows(): Which[] {
     const only = this.only();
     return only ? [only] : ['length', 'angle'];
   }
 
   /** The word this row is about, for its caption and for its field's name. */
-  labelFor(which: Which): string {
+  protected labelFor(which: Which): string {
     return which === 'length' ? 'Length' : 'Angle';
   }
 
-  helpFor(which: Which): string {
+  protected helpFor(which: Which): string {
     if (which === 'length') return 'Distance between the two joints of this link.';
     return (
       this.angleHelp() ??
@@ -85,7 +85,7 @@ export class HoldFieldComponent {
   }
 
   /** The hold this bar is under, if any. */
-  hold(): LinkHold {
+  private hold(): LinkHold {
     // Through the service, which has the drawing: a cylinder is recognized
     // from its joints, and its hold is written on a member the reader may not
     // be the one looking at.
@@ -93,7 +93,7 @@ export class HoldFieldComponent {
   }
 
   /** Whether this part can hold a value at all, and is not already pinned in place. */
-  holdable(): boolean {
+  protected holdable(): boolean {
     const shaped =
       this.mechanism.cylinderOfLink(this.link()) !== undefined || holdableBar(this.link());
     return shaped && !this.disabled() && !this.lockedInPlace();
@@ -106,7 +106,7 @@ export class HoldFieldComponent {
    * stretch from it, so locking its length or angle still means something,
    * and the padlocks stay.
    */
-  lockedInPlace(): boolean {
+  private lockedInPlace(): boolean {
     const frozen = this.gridUtils.frozenJointIds();
     const joints = this.pinned();
     return joints.length > 0 && joints.every((joint) => frozen.has(joint.id));
@@ -124,11 +124,11 @@ export class HoldFieldComponent {
     return sealed ? [sealed.barrelFar, sealed.rodFar] : this.link().joints;
   }
 
-  held(which: Which): boolean {
+  protected held(which: Which): boolean {
     return this.hold() === which;
   }
 
-  padlockTitle(which: Which): string {
+  protected padlockTitle(which: Which): string {
     const other = which === 'length' ? 'angle' : 'length';
     if (this.held(which))
       return `Release the fixed ${which}. Typing a number keeps it fixed at that number`;
@@ -136,29 +136,29 @@ export class HoldFieldComponent {
     return `Fix the ${which}`;
   }
 
-  toggle(which: Which, event: Event): void {
+  protected toggle(which: Which, event: Event): void {
     event.stopPropagation();
     if (!this.holdable()) return;
     this.mechanism.setHold(this.link(), this.held(which) ? undefined : which);
   }
 
-  enter(which: Which): void {
+  protected enter(which: Which): void {
     this.hovered[which] = true;
     this.announce(which);
   }
 
-  leave(which: Which): void {
+  protected leave(which: Which): void {
     this.hovered[which] = false;
     this.announce(which);
   }
 
-  focus(which: Which, field: HTMLInputElement): void {
+  protected focus(which: Which, field: HTMLInputElement): void {
     this.focused[which] = true;
     field.select();
     this.announce(which);
   }
 
-  blur(which: Which): void {
+  protected blur(which: Which): void {
     this.focused[which] = false;
     this.announce(which);
   }

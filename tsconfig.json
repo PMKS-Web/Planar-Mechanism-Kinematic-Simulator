@@ -6,6 +6,7 @@
     "ignoreDeprecations": "6.0",
     "baseUrl": "./",
     "esModuleInterop": true,
+    "resolveJsonModule": true,
     "outDir": "./dist/out-tsc",
     "forceConsistentCasingInFileNames": true,
     "strict": true,
