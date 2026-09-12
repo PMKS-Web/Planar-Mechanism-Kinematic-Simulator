@@ -24,6 +24,6 @@ export function reverseJoint(joint: BodyJoint): BodyJoint {
     frameA: { ...joint.frameB, angle: joint.frameA.angle - joint.angleZero },
     frameB: joint.frameA,
     // The visible guide keeps its material owner when equation ordering changes.
-    guideDisplay: joint.guideDisplay,
+    guideDisplay: joint.guideDisplay ?? { bodyId: joint.bodyA, frame: joint.frameA },
   };
 }

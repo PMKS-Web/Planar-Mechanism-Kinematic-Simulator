@@ -36,14 +36,14 @@ export function createBodyEditModel(
   target: AttachmentId,
   groups: readonly WeldFrameGroup[],
   groupOf: ReadonlyMap<BodyId, WeldFrameGroup>,
-  rigid = false
+  options: { readonly rigid?: boolean; readonly fixedBodies?: ReadonlySet<BodyId> } = {}
 ): BodyEditModel {
   const anchors = new Map(document.attachments.map((p) => [p.id, p]));
   const bodies = new Map(document.bodies.map((b) => [b.id, b]));
   const start = anchors.get(target)!;
   const origin = localToWorld(bodies.get(start.bodyId)!.pose, start.point);
   const { editable, reached } = pointEditReach(document, target, groupOf);
-  if (rigid) editable.clear();
+  if (options.rigid) editable.clear();
   const fixedFrames = new Set([...editable].map((id) => anchors.get(id)!.bodyId));
   let length = 0;
   for (const id of reached) {
@@ -87,6 +87,7 @@ export function createBodyEditModel(
       [...group.members.keys()].some(
         (id) =>
           fixedFrames.has(id) ||
+          options.fixedBodies?.has(id) ||
           (bodies.get(id)?.kind === 'material' && (bodies.get(id) as { locked?: boolean }).locked)
       )
     )

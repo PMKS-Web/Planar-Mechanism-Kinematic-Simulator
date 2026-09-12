@@ -31,9 +31,16 @@ export function validateJoints(context: ValidationContext): void {
         (!Number.isFinite(joint.travelZero) ||
           (joint.guideDisplay &&
             !(
-              Number.isFinite(joint.guideDisplay.from) &&
-              Number.isFinite(joint.guideDisplay.to) &&
-              joint.guideDisplay.from < joint.guideDisplay.to &&
+              ((joint.guideDisplay.from === undefined && joint.guideDisplay.to === undefined) ||
+                (joint.guideDisplay.from !== undefined &&
+                  joint.guideDisplay.to !== undefined &&
+                  Number.isFinite(joint.guideDisplay.from) &&
+                  Number.isFinite(joint.guideDisplay.to) &&
+                  joint.guideDisplay.from < joint.guideDisplay.to)) &&
+              (joint.guideDisplay.station === undefined ||
+                Number.isFinite(joint.guideDisplay.station)) &&
+              (joint.guideDisplay.normalOffset === undefined ||
+                Number.isFinite(joint.guideDisplay.normalOffset)) &&
               Number.isFinite(joint.guideDisplay.frame.angle) &&
               [joint.bodyA, joint.bodyB].includes(joint.guideDisplay.bodyId) &&
               (joint.kind !== 'pin-in-slot' || joint.guideDisplay.bodyId === joint.bodyA) &&

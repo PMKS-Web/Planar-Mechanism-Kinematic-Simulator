@@ -8,7 +8,10 @@ export const joint = either(
   object(
     { ...pair, kind: literal('prismatic', 'pin-in-slot'), angleZero: finite, travelZero: finite },
     {
-      guideDisplay: object({ bodyId: id, frame, from: finite, to: finite }),
+      guideDisplay: object(
+        { bodyId: id, frame },
+        { station: finite, normalOffset: finite, from: finite, to: finite }
+      ),
     }
   )
 );

@@ -1,3 +1,4 @@
+import { JointId } from './body-id';
 import { BodyDocument, BodyDriver } from './body-document';
 
 /** Carry only the same physical coordinate, including the explicit sign change of an ordered P pair. */
@@ -5,7 +6,8 @@ export function bodyAnchorCoordinateSign(
   before: BodyDocument,
   after: BodyDocument,
   old: BodyDriver,
-  next: BodyDriver
+  next: BodyDriver,
+  axisEdits: ReadonlySet<JointId> = new Set()
 ): 1 | -1 | undefined {
   if (old.coordinate.coordinate !== next.coordinate.coordinate) return undefined;
   const a = before.joints.find((joint) => joint.id === old.coordinate.jointId);
@@ -27,7 +29,8 @@ export function bodyAnchorCoordinateSign(
   const first = sign === 1 ? a.frameA.attachmentId : a.frameB.attachmentId;
   const second = sign === 1 ? a.frameB.attachmentId : a.frameA.attachmentId;
   return oldCarrier === b.bodyA &&
-    b.frameA.angle === axis &&
+    // An explicit guide-axis edit carries the same signed distance onto the newly authored axis.
+    (b.frameA.angle === axis || (a.id === b.id && axisEdits.has(a.id))) &&
     b.frameA.attachmentId === first &&
     b.frameB.attachmentId === second
     ? sign

@@ -2080,3 +2080,77 @@ checked after that rename. Core unit/build results above cover the unchanged pro
 and pointer gestures, bounded production 2.0.3 import, atomic recovery, full lifecycle/service
 matrix and remaining S4 browser gates, then F3. Preview performance still needs measurement at
 native UI integration. S4 stays in progress. No paid review, push or publication; budget unchanged.
+
+## S4 continuation — guide-axis transactions and visual stations (2026-09-12)
+
+The latest goal instruction names S0–S4. S4 remains in progress; no later-stage cutover or
+completion is claimed. S0–S3 evidence and the migration's later-stage requirements remain
+recorded, without redefining those later deliverables as accomplished.
+
+`guide-axis`/`guide-axes` now author headings at the captured edit pose through the existing
+transaction authority. The carrier and its welded group remain fixed while connected material
+moves rigidly at its captured signed travel. Existing prescriptions remain; passive travel
+uses temporary edit equations rather than a stored driver. Coupled guides change together in
+one solve, and independent components keep their own numerical origins, tested with another
+machine displaced by 1e9. Locks, holds, assembly interiors and final validation share the
+existing model refusals. Failure cancels all operations/history, including earlier properties.
+
+An early focused test exposed asymmetric paused re-anchoring: a normal P lost its travel start
+while its reversed equation order retained it. Typed axis commands now explicitly carry that
+same signed coordinate across the newly authored heading; attachment/datum/pair checks remain.
+The exception is not granted to general record edits. The shared rigid edit model gained fixed
+carrier groups; coordinate and point callers retain their previous variable sets.
+
+New P/slot records retain guide ownership even without physical rail extents. Reversing an old
+record lacking display metadata captures its original A owner before swapping equation order.
+Existing bounded records still decode, as do older native records without any display record.
+New optional `station` and `normalOffset` preserve artwork independently of shared attachments;
+`from`/`to` are optional only as a pair. Unit conversion scales all four distances. Axis edits
+re-express displaced artwork at the physical origin before rotating it; no trace/lock/vertex is
+moved to relocate a glyph. Internal cylinder P marks now have an explicit barrel-mouth station.
+The native format has not shipped publicly; new optional records need not be readable by an
+older pre-release native build. Public production payload handling is unchanged.
+
+Ten focused tests cover both P orders, floating P and slot carriers, separately prescribed
+slot rotation, a guided cylinder with welded off-axis witness, locked/grounded refusal,
+paused travel/history, distant and coupled batch enumeration, codec, unit conversion, old
+metadata, malformed extents and no-op/permission boundaries. The separate artwork tests use
+hand world positions, including a locked/traced offset origin and the stationary barrel mouth
+at three extensions. Intermediate continuation describes an authored design change, not
+playback of the old constraint set; final relationships and bounds must pass validation.
+
+Verification under `artifacts/bodies-and-joints/`:
+
+- Earlier `S4-guide-axis-initial.log`: **1 failed / 27 passed**, session 61598 exit 1;
+  the real normal-P paused-anchor loss, subsequently fixed.
+- `S4-guide-axis-focused.log`: **27 tests / 7 files pass**, session 46479 exit 0.
+- `S4-guide-axis-batch-focused.log`: **37 tests / 4 files pass**, session 93905 exit 0.
+- `S4-guide-station-focused.log`: **10 tests / 2 files pass**, session 76016 exit 0.
+- `S4-guide-axis-full-unit.log`: **2852 tests / 316 files pass**, session 6535 exit 0.
+- `S4-guide-axis-build.log`: production build passes, session 31493 exit 0; existing CommonJS warnings.
+- `S4-guide-axis-ui-copy.log`: **17/17**, zero console errors, session 88396 exit 0.
+
+The required legacy `link-holds-angles` gate initially failed before browser launch because
+it hard-coded a missing `/tmp` Playwright install. It now honors `PMKS_PLAYWRIGHT_DIR`, matching
+the other suites. `S4-guide-axis-link-holds-final.log` passes **8/8**, session 38324 exit 0.
+Its contact sheet was inspected: label, hold chip and center mark remain distinct at every
+angle. Other bodies and ground artwork can cross the label, which this narrow test does not
+claim to prevent. This is a static angle sweep on the reference renderer, not a native
+animation filmstrip. Server PID 13660's worktree and HTTP 200 were verified before these checks.
+
+A standard Codex computer-use attempt opened a separate localhost four-bar tab in incognito
+Chrome. Focus changed to another task's Storybook page during observation. The test tab alone
+was closed and the other page left untouched. This attempt is **not** counted as a live UX pass;
+previous recorded live checks stand, and the native integration gates still require both
+browser workflows.
+
+**Still required before F3:** cylinder dimension commands (including the mouth station), active
+travel projection and full body/pointer gestures, bounded production 2.0.3 import and atomic
+recovery, complete native lifecycle/service matrix, and remaining S4 browser gates
+`analysis-editing`, `two-mechanisms`, `export-flow`. No paid review, push or publication;
+Fable budget and reservations are unchanged.
+
+`S4-guide-station-mutation.log` restores the discarded normal-offset defect and fails the
+intended runtime assertion (0.2 instead of 0.7), while the cylinder-mouth test still passes.
+Session 76162 exits 0 only after requiring that failure and restoring the implementation
+byte-for-byte. The full green suite/build above used those same restored production bytes.

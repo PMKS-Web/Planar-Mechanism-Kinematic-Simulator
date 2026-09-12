@@ -1,3 +1,4 @@
+import { editBodyGuideAxis } from './body-guide-axis-edit';
 import { editBodyCoordinate } from './body-coordinate-edit';
 import {
   BODY_INSERT_TABLES as TABLES,
@@ -113,6 +114,10 @@ export function planBodyDesignEdit(
       candidate = changed.document;
     } else if (isBodyDriveOperation(operation)) {
       const changed = editBodyDrive(candidate, operation, `${command.id}:${index}`);
+      if (!changed.ok) return changed;
+      candidate = changed.document;
+    } else if (operation.kind === 'guide-axis' || operation.kind === 'guide-axes') {
+      const changed = editBodyGuideAxis(candidate, operation);
       if (!changed.ok) return changed;
       candidate = changed.document;
     } else if (operation.kind === 'move-coordinate') {

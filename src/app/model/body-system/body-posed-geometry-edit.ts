@@ -22,7 +22,16 @@ export function planPosedBodyGeometry(
   if (!prepared.ok) return prepared;
   const { source, displayed, changed } = prepared;
   if (!changed.changed) return { ...changed, document: source, display: frame };
-  const restored = reanchorBodyEdit(source, displayed, changed.document, frame);
+  const axes = new Set(
+    command.operations.flatMap((operation) =>
+      operation.kind === 'guide-axis'
+        ? [operation.jointId]
+        : operation.kind === 'guide-axes'
+          ? operation.axes.map((axis) => axis.jointId)
+          : []
+    )
+  );
+  const restored = reanchorBodyEdit(source, displayed, changed.document, frame, axes);
   if (!restored) return bodyEditRefusal('unsolved-edit');
   const finalDisplay = withBodyEditFrame(restored.document, restored.display);
   const refused =

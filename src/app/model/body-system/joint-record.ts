@@ -38,8 +38,13 @@ export interface GuidedJoint extends JointPair {
   readonly guideDisplay?: {
     readonly bodyId: BodyId;
     readonly frame: JointFrame;
-    readonly from: number;
-    readonly to: number;
+    /** Glyph position along this frame, independent of the physical joint origins. */
+    readonly station?: number;
+    /** Artwork may be displaced from the physical line without relocating its shared attachment. */
+    readonly normalOffset?: number;
+    /** Omitted extents leave symbol sizing to the view while retaining its material owner. */
+    readonly from?: number;
+    readonly to?: number;
   };
 }
 

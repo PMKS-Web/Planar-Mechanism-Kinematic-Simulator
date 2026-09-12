@@ -82,8 +82,18 @@ export function convertBodyUnits(
             ? {
                 guideDisplay: {
                   ...joint.guideDisplay,
-                  from: joint.guideDisplay.from * length,
-                  to: joint.guideDisplay.to * length,
+                  ...(joint.guideDisplay.station === undefined
+                    ? {}
+                    : { station: joint.guideDisplay.station * length }),
+                  ...(joint.guideDisplay.normalOffset === undefined
+                    ? {}
+                    : { normalOffset: joint.guideDisplay.normalOffset * length }),
+                  ...(joint.guideDisplay.from === undefined
+                    ? {}
+                    : {
+                        from: joint.guideDisplay.from * length,
+                        to: joint.guideDisplay.to! * length,
+                      }),
                 },
               }
             : {}),
