@@ -1,3 +1,4 @@
+import { InertiaExplanationComponent } from '../inertia-explanation/inertia-explanation.component';
 import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { Joint, RealJoint } from '../../model/joint';
 import { Link, RealLink, SliderBlock } from '../../model/link';
@@ -43,7 +44,13 @@ export interface MassRow {
   templateUrl: './analysis-setup.component.html',
   styleUrls: ['./analysis-setup.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [MatIcon, ScrollShadowDirective, ReactiveFormsModule, InputComponent],
+  imports: [
+    InertiaExplanationComponent,
+    MatIcon,
+    ScrollShadowDirective,
+    ReactiveFormsModule,
+    InputComponent,
+  ],
 })
 export class AnalysisSetupComponent {
   mechanism = inject(MechanismService);

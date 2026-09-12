@@ -29,15 +29,32 @@ export interface UniformBody {
   centroid: Coord;
   /** Squared radius of gyration about the centroid, in squared model units. */
   gyrationSq: number;
+  /** Intermediate values from the same calculation, for the learning panel. */
+  calculation:
+    | { kind: 'point' }
+    | { kind: 'rod'; lengthSq: number }
+    | {
+        kind: 'plate';
+        origin: { x: number; y: number };
+        area: number;
+        polarOverMass: number;
+        centroidX: number;
+        centroidY: number;
+        vertices: { x: number; y: number }[];
+      };
 }
 
 export function uniformBodyOf(joints: { x: number; y: number }[]): UniformBody {
   const points = dedupe(joints);
   if (points.length === 0) {
-    return { centroid: new Coord(0, 0), gyrationSq: 0 };
+    return { centroid: new Coord(0, 0), gyrationSq: 0, calculation: { kind: 'point' } };
   }
   if (points.length === 1) {
-    return { centroid: new Coord(points[0].x, points[0].y), gyrationSq: 0 };
+    return {
+      centroid: new Coord(points[0].x, points[0].y),
+      gyrationSq: 0,
+      calculation: { kind: 'point' },
+    };
   }
   if (points.length >= 3) {
     const hull = convexHull(points);
@@ -67,6 +84,7 @@ function rod(points: { x: number; y: number }[]): UniformBody {
   return {
     centroid: new Coord((a.x + b.x) / 2, (a.y + b.y) / 2),
     gyrationSq: Math.max(longest, 0) / 12,
+    calculation: { kind: 'rod', lengthSq: Math.max(longest, 0) },
   };
 }
 
@@ -112,6 +130,15 @@ function platedPolygon(points: { x: number; y: number }[]): UniformBody | undefi
   return {
     centroid: new Coord(centroidX + origin.x, centroidY + origin.y),
     gyrationSq: Math.max(gyrationSq, 0),
+    calculation: {
+      kind: 'plate',
+      origin,
+      area,
+      polarOverMass,
+      centroidX,
+      centroidY,
+      vertices: hull,
+    },
   };
 }
 

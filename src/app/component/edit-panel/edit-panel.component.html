@@ -712,6 +712,11 @@
             }
           </div>
         </collapsible-subsection>
+        <app-inertia-explanation
+          panelLive
+          [body]="activeSrv.selectedLink"
+          [lengthUnit]="settingsService.lengthUnit.value"
+        />
         @if (activeSrv.selectedLink.isCompound) {
           <collapsible-subsection
             [expanded]="sectionExpanded['LCompound']"

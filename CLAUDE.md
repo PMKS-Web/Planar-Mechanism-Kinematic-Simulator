@@ -189,6 +189,14 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
 - **The canvas draws y-up and the screen is y-down.** A drawing layer wears the `modelFrame` directive and everything inside it is written in the drawing's own coordinates; anything that must read the right way up wears `upright` (both in `model-frame.directive.ts`). `SvgGridService.screenToModel` / `modelToScreen` are the matching pair of conversions, and both carry the flip. See [tips-and-tricks](docs/tips-and-tricks.md#the-drawing-is-y-up-the-screen-is-y-down-and-two-directives-say-so).
 - `AppComponent` is just a shell that registers SVG icons; `component/new-grid/new-grid.component.ts` is the real center — the SVG canvas handling the mouse/touch interaction state machine, with pan/zoom via `SvgGridService` (svg-pan-zoom + hammerjs).
 - The right-click menu is **built in a service, not in the canvas**: `services/context-menu-builder.service.ts` turns whatever was right-clicked, plus the current mode, into a `ContextMenuModel` (`component/context-menu/menu-model.ts`), and `component/context-menu/` renders it. Every grayed row quotes the model that enforces it — `describeActuatorRefusal` in `model/actuator.ts`, `weldRefusal` in `grid-utils`, `locksHolding` in `model/lock-set.ts` — rather than restating the rule, so the menu, the panel and the drag ring cannot disagree. New rows belong in the builder; the canvas only supplies the gesture handlers (`MenuHandlers`).
+- **Mass moment of inertia has visible working.** `component/inertia-explanation/` shows the
+  selected body's shape assumptions, formulas and substituted values beside Mass Settings in
+  Edit and under each body's row in Force Analysis setup. `model/mass-properties.ts` is shared
+  by the explanation and `MechanismService`: slender rods, uniform convex-hull plates, and
+  welded members combined with the parallel-axis theorem. `uniform-body.ts` carries the
+  polygon intermediates so the explanation cannot choose a different shape algorithm. The
+  gallery's Feedback / Inertia Explanation stories cover derived/custom, zero mass, compounds
+  and the three unit systems. `e2e/inertia-explanation.mjs` guards the live working.
 - **The analysis modes are editable.** They allow the same context-menu actions as Edit at the start pose. Away from it,
   topology changes stay disabled in both modes. Paused menus allow locks, dimension holds,
   display shape, force properties, and traces. Tracer points and force application points map

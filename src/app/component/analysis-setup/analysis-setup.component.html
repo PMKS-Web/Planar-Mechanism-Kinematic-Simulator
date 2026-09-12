@@ -99,6 +99,7 @@
                   <span></span>
                 }
               </div>
+              <app-inertia-explanation [body]="row.body" [lengthUnit]="settings.lengthUnit.value" />
             }
             @if (massEditable()) {
               <div class="dotLegend">

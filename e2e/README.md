@@ -45,6 +45,8 @@ asset generators and `shot.mjs` are not checks.
 **The full batch takes about an hour.** Run the suites that cover the change, plus any you can name
 a reason to worry about.
 
+- `inertia-explanation.mjs` — worked inertia values, mass edits, custom/reset, selection, keyboard, phone layout and disclosure filmstrip. Set `SB_URL` to also verify and capture the gallery examples.
+
 ## Outputs
 
 Each suite that saves anything writes it to its own directory under `artifacts/`, which is

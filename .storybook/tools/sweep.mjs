@@ -1,6 +1,7 @@
 // Visit every entry in the running gallery and report console errors and empty renders.
 const ROOT = process.cwd();
-const { chromium } = await import(`${ROOT}/node_modules/playwright/index.mjs`);
+import { pathToFileURL } from 'node:url';
+const { chromium } = await import(pathToFileURL(`${ROOT}/node_modules/playwright/index.mjs`).href);
 const BASE = process.env.SB_URL ?? 'http://localhost:6006';
 
 const index = await (await fetch(`${BASE}/index.json`)).json();

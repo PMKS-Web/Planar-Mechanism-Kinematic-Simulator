@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
+import { join, relative, resolve, sep } from 'node:path';
 import { PHONE_MAX_WIDTH } from '../../app/services/viewport.service';
 
 /**
@@ -23,7 +23,8 @@ function stylesheets(dir = resolve(ROOT, 'src')): string[] {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
     if (statSync(path).isDirectory()) return stylesheets(path);
-    return name.endsWith('.scss') ? [relative(ROOT, path)] : [];
+    // The exclusions above use repository paths, including on Windows.
+    return name.endsWith('.scss') ? [relative(ROOT, path).split(sep).join('/')] : [];
   });
 }
 

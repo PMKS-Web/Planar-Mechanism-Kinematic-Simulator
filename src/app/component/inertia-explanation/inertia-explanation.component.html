@@ -1,0 +1,39 @@
+<collapsible-subsection
+  titleLabel="How inertia is calculated"
+  [expanded]="expanded()"
+  (opened)="open.set(true)"
+  (closed)="open.set(false)"
+>
+  @if (open() || expanded()) {
+    @let view = working;
+    <section class="working" aria-label="Mass moment of inertia calculation">
+      <p>
+        Mass moment of inertia measures resistance to angular acceleration: I = ∫ r² dm. The axis is
+        perpendicular to the drawing through the center of mass. This is a mass property, distinct
+        from the area moment used in beam bending.
+      </p>
+      <p class="result">
+        Value used: <strong>{{ view.used }}</strong>
+      </p>
+      @for (note of view.notes; track note) {
+        <p class="note">{{ note }}</p>
+      }
+      <h4>{{ view.title }}</h4>
+      @for (step of view.steps; track $index) {
+        <h5>{{ step.title }}</h5>
+        <p>{{ step.text }}</p>
+        <p class="formula">{{ step.formula }}</p>
+      }
+      @if (view.derived) {
+        <p class="result">
+          Shape estimate: <strong>{{ view.derived }}</strong>
+        </p>
+      }
+      <p>
+        Dynamic force analysis uses the entered or derived I in ΣM about the center of mass = Iα.
+        Static analysis omits the acceleration terms. Values shown here are rounded to six
+        significant digits.
+      </p>
+    </section>
+  }
+</collapsible-subsection>

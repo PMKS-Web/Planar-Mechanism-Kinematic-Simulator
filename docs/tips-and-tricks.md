@@ -124,6 +124,24 @@ repository's default branch, but work goes to `staging` (see
 
 ---
 
+**Repository paths in verification scripts use forward slashes.** On Windows, `relative()`
+returns backslashes. Normalize them before comparing with `src/styles/_tokens.scss`; otherwise
+the stylesheet fence counts the token file itself and reports 99 colors against a ceiling of 87.
+Dynamic `import()` of an absolute Windows path likewise needs `pathToFileURL`, as the gallery
+sweep now uses.
+
+**A new calculation panel must use eager change detection.** Angular 22's default no longer
+matches the app's mutable link objects. Use `ChangeDetectionStrategy.Eager`, as the neighboring
+panels do: an `input()` holding the same link object does not notify when its mass changes.
+`e2e/inertia-explanation.mjs` edits mass through the field and checks that the working updates.
+Mass Settings is projected into `panel-section`'s `[panelLive]` slot; a sibling explanation needs
+that slot too or it appears before Mass Settings regardless of its template order.
+
+**Inertia's axis and a custom center are separate choices today.** The automatic estimate stays
+about the uniform centroid even when the center of mass is custom. The explanation states this;
+it must not invent a parallel-axis shift the solver never applied. Compound member overrides
+are honored in `uniformMassProperties`; a compound itself can still override its total inertia.
+
 ## Running the app
 
 **Reload recovery must belong to the tab.** `last-drawing.ts` writes a session backup and a

@@ -1,0 +1,28 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+.working {
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  p {
+    margin: 0 0 var(--card-gap);
+  }
+  h4,
+  h5 {
+    margin: var(--card-gap) 0;
+    color: var(--text-strong);
+    font-size: inherit;
+  }
+  .note {
+    color: var(--text-secondary);
+  }
+  .formula,
+  .result {
+    background: var(--surface-sunken);
+    padding: var(--card-gap);
+    font-variant-numeric: tabular-nums;
+  }
+}

@@ -1,14 +1,25 @@
 import { Coord } from './coord';
 import { RealLink } from './link';
-import { uniformBodyOf } from './uniform-body';
+import { UniformBody, uniformBodyOf } from './uniform-body';
 
-/** Uniform bodies combined by the parallel-axis theorem, retaining member overrides. */
-export function uniformMassProperties(link: RealLink, factor: number): { com: Coord; moi: number } {
+/** Shared by the editable mechanism and its explanation: member overrides and
+ * parallel-axis terms must have exactly one definition. Factor converts stored
+ * mass times squared model lengths to stored inertia. */
+export interface MassProperties {
+  com: Coord;
+  moi: number;
+  shape?: UniformBody;
+  parts: { body: RealLink; mass: number; com: Coord; moi: number }[];
+}
+
+export function uniformMassProperties(link: RealLink, factor: number): MassProperties {
   if (link.subset.length === 0) {
     const body = uniformBodyOf(link.joints);
     return {
       com: new Coord(body.centroid.x, body.centroid.y),
       moi: link.mass * body.gyrationSq * factor,
+      shape: body,
+      parts: [],
     };
   }
   const parts = link.subset
@@ -16,6 +27,7 @@ export function uniformMassProperties(link: RealLink, factor: number): { com: Co
     .map((member) => {
       const own = uniformMassProperties(member, factor);
       return {
+        body: member,
         mass: member.mass,
         com: member.comIsCustom ? new Coord(member.CoM.x, member.CoM.y) : own.com,
         moi: member.moiIsCustom ? member.massMoI : own.moi,
@@ -37,5 +49,5 @@ export function uniformMassProperties(link: RealLink, factor: number): { com: Co
       sum + part.moi + part.mass * ((part.com.x - com.x) ** 2 + (part.com.y - com.y) ** 2) * factor,
     0
   );
-  return { com, moi };
+  return { com, moi, parts };
 }
