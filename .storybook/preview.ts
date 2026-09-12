@@ -3,6 +3,11 @@ import { provideZoneChangeDetection } from '@angular/core';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { applicationConfig, type Preview } from '@storybook/angular-vite';
 import { provideAppIcons } from '../src/stories/support/icons';
+import ApexCharts from 'apexcharts';
+
+// Angular's app target loads this renderer as a global script. Vite's gallery
+// preview needs the same constructor for app-analysis-apex-chart.
+window.ApexCharts = ApexCharts;
 
 /**
  * Every story is bootstrapped the way `src/main.ts` bootstraps the app: with

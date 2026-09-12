@@ -79,6 +79,10 @@ links or included automatically in an exported script.
 
 ## Verification
 
+The UI gallery's **Feedback → Measurement Comparison** stories show the collapsed, empty,
+invalid, compared, unsolved and narrow angular states using the real component with synthetic
+samples. Run the local gallery to review a branch; docs.pmksplus.com reflects `staging`.
+
 `measurement-comparison.spec.ts` tests interpolation, offsets, RMSE, missing samples, invalid
 input and angular wrapping. `matlab-writer.spec.ts` checks exported numeric literals and
 constraints against the teaching-lab four-bar and slider-crank pose histories, and checks scope

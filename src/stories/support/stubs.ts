@@ -12,6 +12,29 @@ import {
 import { MechanismService } from '../../app/services/mechanism.service';
 import { SettingsService } from '../../app/services/settings.service';
 import { SelectedTabService } from '../../app/selected-tab.service';
+import { AnalysisSampleService } from '../../app/services/analysis-sample.service';
+import { AngleUnit } from '../../app/model/unit-enums';
+
+/** Deterministic samples for the comparison UI; no drawing, solver or undo history. */
+export function measurementStubs(valid = true): Provider[] {
+  return [
+    {
+      provide: MechanismService,
+      useValue: {
+        solveRevision: 1,
+        mechanismForId: () => ({
+          isMechanismValid: () => valid,
+          timeNum: [0, 0.1, 0.2, 0.3],
+        }),
+      },
+    },
+    { provide: SettingsService, useValue: { angleUnit: { value: AngleUnit.DEGREE } } },
+    {
+      provide: AnalysisSampleService,
+      useValue: { sampleAt: (_mechanism: unknown, step: number) => [step, 3 - step] },
+    },
+  ];
+}
 
 /**
  * The few members of `MechanismService` a block reaches for, and none of what
