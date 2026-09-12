@@ -19,13 +19,19 @@
       <p>
         Dashed lines connect known instant centers. Two lines intersect at each secondary center.
       </p>
-      <p>
-        The current solver uses closed-loop equations, with position differences where needed. IC
-        velocities use Kennedy constructions and velocity ratios independently. Positions and
-        accelerations still use the current solver.
-      </p>
+      <p>Choose the centers to include below. Construction lines follow your selection.</p>
+      @if (ic.displayed().length) {
+        <div class="selectionActions">
+          <button-block [click]="selectAll">Select All</button-block>
+          <button-block [click]="clearSelection">Clear Selection</button-block>
+        </div>
+      }
       @for (drawing of ic.displayed(); track drawing.machine) {
         <h3>{{ drawing.machine }} · Centers at the displayed pose</h3>
+        <p>
+          {{ ic.selectedCenters(drawing).length }} of
+          {{ drawing.geometry.centers.length }} selected.
+        </p>
         <div class="tableScroll">
           <table aria-label="Instant center locations">
             <thead>
@@ -38,7 +44,17 @@
             <tbody>
               @for (center of drawing.geometry.centers; track center.id) {
                 <tr>
-                  <th>{{ ic.label(center) }}</th>
+                  <th scope="row">
+                    <div class="centerChoice">
+                      <app-view-button
+                        [noun]="drawing.machine + ' ' + ic.label(center)"
+                        [shown]="ic.selected(drawing, center)"
+                        [icon]="ic.selected(drawing, center) ? 'visibility' : 'visibility_off'"
+                        (pressed)="ic.toggle(drawing, center)"
+                      />
+                      <span>{{ ic.label(center) }}</span>
+                    </div>
+                  </th>
                   <td>{{ center.kind }}</td>
                   <td>{{ location(drawing.geometry, center) }}</td>
                 </tr>
@@ -49,6 +65,11 @@
       } @empty {
         <p>Draw a mechanism with one input to preview its instant centers.</p>
       }
+      <p>
+        The current solver uses closed-loop equations, with position differences where needed. IC
+        velocities use Kennedy constructions and velocity ratios independently. Positions and
+        accelerations still use the current solver.
+      </p>
       @for (comparison of comparisons(); track comparison.machine) {
         <h3>{{ comparison.machine }} · Angular velocity (rad/s)</h3>
         <p>Sample {{ comparison.step }}. Pause or scrub to compare another pose.</p>

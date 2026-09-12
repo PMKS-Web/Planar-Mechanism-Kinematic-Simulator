@@ -120,6 +120,37 @@ try {
     after
   );
   await page.screenshot({ path: `${dir}/desktop.png` });
+  const choose = (name) => page.getByRole('button', { name, exact: true });
+  await choose('Clear Selection').click();
+  check(
+    'clearing selection hides markers and construction lines',
+    (await page.locator('.icMarker, .icConstruction').count()) === 0
+  );
+  await choose('Show M1 I(0, AB)').click();
+  check(
+    'a primary center can be shown alone without construction lines',
+    (await page.locator('.icMarker').count()) === 1 &&
+      (await page.locator('.icConstruction').count()) === 0
+  );
+  await choose('Clear Selection').click();
+  const secondary = choose('Show M1 I(0, BC)');
+  await secondary.focus();
+  await page.keyboard.press('Space');
+  check(
+    'a secondary center brings only its two construction lines',
+    (await page.locator('.icMarker').count()) === 1 &&
+      (await page.locator('.icConstruction').count()) === 2
+  );
+  const selectionFilm = filmstrip(page, `${dir}/selection-motion`);
+  await selectionFilm.during(100, 6, 'selected', () => choose('Play').click());
+  await choose('Pause').click();
+  await waitForReady(page);
+  check(
+    'selection survives animation with hidden source markers',
+    (await page.locator('.icMarker').count()) === 1 &&
+      (await secondary.getAttribute('aria-pressed')) === 'true'
+  );
+  await page.screenshot({ path: `${dir}/selected.png` });
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
   check('overlay stays out of Edit mode', (await page.locator('.icMarker').count()) === 0);
   check(
@@ -129,6 +160,16 @@ try {
   await mode().click();
   await mode().click();
   await page.getByRole('button', { name: 'Instant Centers' }).click();
+  check(
+    'per-center selection survives reopening the setup',
+    (await page.locator('.icMarker').count()) === 1 &&
+      (await secondary.getAttribute('aria-pressed')) === 'true'
+  );
+  await choose('Select All').click();
+  check(
+    'Select All restores the complete overlay',
+    (await page.locator('.icMarker').count()) === 6
+  );
   check(
     'overlay preference survives reopening setup',
     await page.getByRole('switch', { name: 'Show Instant Centers' }).isChecked()
@@ -158,6 +199,10 @@ try {
   await construction().click();
   check('construction toggle works on phone', (await page.locator('.icConstruction').count()) > 0);
   check('overlay works with reduced motion', (await page.locator('.icMarker').count()) > 0);
+  await choose('Clear Selection').click();
+  await choose('Show M1 I(0, AB)').click();
+  check('phone selection keeps one center', (await page.locator('.icMarker').count()) === 1);
+  await page.screenshot({ path: `${dir}/phone-selected.png` });
 
   await page.setViewportSize({ width: 1500, height: 950 });
   await open('Slider_Crank');
@@ -177,6 +222,18 @@ try {
   check(
     'each machine has its own comparison',
     (await page.getByRole('table', { name: 'Velocity method comparison' }).count()) === 3
+  );
+  await page.getByRole('switch', { name: 'Show Instant Centers' }).click();
+  const firstMachineCount = await page.locator('.icMarker[data-machine="M1"]').count();
+  const secondMachineCount = await page.locator('.icMarker[data-machine="M2"]').count();
+  await page
+    .getByRole('button', { name: /^Show M2 I\(/ })
+    .first()
+    .click();
+  check(
+    'hiding a center affects only its own machine',
+    (await page.locator('.icMarker[data-machine="M1"]').count()) === firstMachineCount &&
+      (await page.locator('.icMarker[data-machine="M2"]').count()) === secondMachineCount - 1
   );
   const independent = await page.evaluate(() => {
     const service = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;

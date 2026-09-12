@@ -57,6 +57,24 @@ export const SwitchOff: Story = { args: { shown: false } };
 /** Nothing to show or hide, so pressing it would change nothing. */
 export const Disabled: Story = { args: { shown: false, disabled: true } };
 
+/** The center list reuses the same view toggle; press it to include or exclude a center. */
+export const InstantCenterSelection: Story = {
+  render: () => ({
+    props: { selected: true },
+    template: `
+      <div class="sb-view-controls">
+        <app-view-button
+          noun="M1 I(0, BC)"
+          [shown]="selected"
+          [icon]="selected ? 'visibility' : 'visibility_off'"
+          (pressed)="selected = !selected"
+        ></app-view-button>
+        <span>I(0, BC)</span>
+      </div>
+    `,
+  }),
+};
+
 /** Plain actions: a name, a glyph, no state. Material ligatures on the left, the app's own SVGs on the right. */
 export const PlainActions: Story = {
   render: () => ({

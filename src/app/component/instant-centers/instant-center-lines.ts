@@ -12,7 +12,8 @@ export interface ConstructionLine {
 export function instantCenterLines(
   geometry: CenterGeometry,
   corner: ModelPoint,
-  opposite: ModelPoint
+  opposite: ModelPoint,
+  selectedIds?: ReadonlySet<string>
 ): ConstructionLine[] {
   const centers = new Map(geometry.centers.map((center) => [center.id, center]));
   const used = new Set<string>();
@@ -23,6 +24,7 @@ export function instantCenterLines(
   const top = (Math.max(corner.y, opposite.y) - geometry.origin[1]) / geometry.scale;
   if (!(right > left && top > bottom)) return result;
   for (const center of geometry.centers) {
+    if (selectedIds && !selectedIds.has(center.id)) continue;
     for (const sources of center.construction ?? []) {
       const id = JSON.stringify([...sources].sort());
       if (used.has(id)) continue;

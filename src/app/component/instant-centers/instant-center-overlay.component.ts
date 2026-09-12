@@ -1,10 +1,9 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { InstantCenterService } from '../../services/instant-center.service';
+import { InstantCenterDrawing, InstantCenterService } from '../../services/instant-center.service';
 import { SettingsService } from '../../services/settings.service';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { ModelFrameDirective, UprightDirective } from '../../model-frame.directive';
 import { SvgGridService } from '../../services/svg-grid.service';
-import { CenterGeometry } from '../../model/mechanism/instant-center-solver';
 import { instantCenterLines } from './instant-center-lines';
 
 @Component({
@@ -17,9 +16,10 @@ import { instantCenterLines } from './instant-center-lines';
       <svg:g modelFrame>
         @for (drawing of ic.displayed(); track drawing.machine) {
           @if (ic.showConstruction.value) {
-            @for (line of lines(drawing.geometry); track line.id) {
+            @for (line of lines(drawing); track line.id) {
               <svg:line
                 class="icConstruction"
+                [attr.data-machine]="drawing.machine"
                 [attr.data-sources]="line.id"
                 [attr.x1]="line.start.x"
                 [attr.y1]="line.start.y"
@@ -29,9 +29,14 @@ import { instantCenterLines } from './instant-center-lines';
             }
           }
           @if (ic.show.value) {
-            @for (center of drawing.geometry.centers; track center.id) {
+            @for (center of ic.selectedCenters(drawing); track center.id) {
               @if (ic.point(drawing.geometry, center); as point) {
-                <svg:g class="icMarker" [attr.data-center]="center.id" [upright]="point">
+                <svg:g
+                  class="icMarker"
+                  [attr.data-machine]="drawing.machine"
+                  [attr.data-center]="center.id"
+                  [upright]="point"
+                >
                   <svg:path [attr.d]="center.kind === 'secondary' ? diamond : cross" />
                   <svg:text
                     [attr.x]="size * 1.5"
@@ -81,11 +86,12 @@ export class InstantCenterOverlayComponent {
   private readonly settings = inject(SettingsService);
   private readonly grid = inject(SvgGridService);
   protected readonly analyze = TabID.ANALYZE;
-  protected lines(geometry: CenterGeometry) {
+  protected lines(drawing: InstantCenterDrawing) {
     return instantCenterLines(
-      geometry,
+      drawing.geometry,
       this.grid.screenToModelFromXY(0, 0),
-      this.grid.screenToModelFromXY(window.innerWidth, window.innerHeight)
+      this.grid.screenToModelFromXY(window.innerWidth, window.innerHeight),
+      new Set(this.ic.selectedCenters(drawing).map((center) => center.id))
     );
   }
   protected get size() {

@@ -25,6 +25,15 @@ h3 {
 .tableScroll {
   overflow-x: auto;
 }
+.selectionActions,
+.centerChoice {
+  display: flex;
+  align-items: center;
+  gap: var(--card-gap);
+}
+.selectionActions {
+  flex-wrap: wrap;
+}
 table {
   border-collapse: collapse;
   width: 100%;

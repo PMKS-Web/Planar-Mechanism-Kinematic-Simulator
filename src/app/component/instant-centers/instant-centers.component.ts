@@ -3,6 +3,8 @@ import { FormControl, FormGroup } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { CollapsibleSubsectionComponent } from '../BLOCKS/collapsible-subsection/collapsible-subsection.component';
 import { ToggleComponent } from '../BLOCKS/toggle/toggle.component';
+import { ButtonComponent } from '../BLOCKS/button/button.component';
+import { ViewButtonComponent } from '../view-controls/view-button.component';
 import { InstantCenterService } from '../../services/instant-center.service';
 import { MechanismService } from '../../services/mechanism.service';
 import { AnalysisSampleService } from '../../services/analysis-sample.service';
@@ -13,7 +15,7 @@ import { RealLink } from '../../model/link';
 @Component({
   selector: 'app-instant-centers',
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [CollapsibleSubsectionComponent, ToggleComponent],
+  imports: [CollapsibleSubsectionComponent, ToggleComponent, ButtonComponent, ViewButtonComponent],
   templateUrl: './instant-centers.component.html',
   styleUrl: './instant-centers.component.scss',
 })
@@ -22,6 +24,8 @@ export class InstantCentersComponent {
   protected readonly mechanism = inject(MechanismService);
   private readonly samples = inject(AnalysisSampleService);
   protected readonly open = signal(false);
+  protected readonly selectAll = () => this.ic.selectAll(true);
+  protected readonly clearSelection = () => this.ic.selectAll(false);
   protected readonly form = new FormGroup({
     show: new FormControl(this.ic.show.value, { nonNullable: true }),
     construction: new FormControl(this.ic.showConstruction.value, { nonNullable: true }),

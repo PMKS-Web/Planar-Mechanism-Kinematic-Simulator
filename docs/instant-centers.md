@@ -6,6 +6,8 @@ In Kinematic Analysis, click the active mode tab again to open Analysis setup. E
 
 **Show Construction Lines** independently toggles dashed Kennedy lines from the solver's recorded construction pairs. Each secondary center lies at the intersection of its two lines. The lines follow the displayed pose and extend to the edges of the view; a known center at infinity supplies a parallel direction. A line entirely at infinity has no visible segment. Both overlay toggles start off and keep their settings when the setup drawer is reopened. These are instant-center constructions, not center-of-mass calculations.
 
+Use the eye button beside a center to include or exclude it from the overlay. **Select All** and **Clear Selection** apply to all listed machines. All centers are selected initially; the master toggles control whether selected points or their construction lines are drawn. Selecting a secondary center draws only its own two construction lines, using hidden source centers as needed without revealing their markers. Location and velocity tables remain complete. Choices persist through animation, mode changes, drawer reopening, and rebuilds with the same machine identity and body pairs; they are session display preferences, not saved in shared URLs.
+
 ## Recovered implementation
 
 The implementation was present in PMKSConversion's history, although absent from its current master checkout:

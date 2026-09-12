@@ -61,4 +61,10 @@ describe('instant-center construction lines', () => {
       expect(instantCenterLines(geometry(p, q), corner, opposite)).toEqual([]);
     }
   });
+  it('draws selected constructions using hidden source centers', () => {
+    const drawing = geometry([0, 0, 1], [0, 1, 1]);
+    expect(instantCenterLines(drawing, corner, opposite, new Set(['c'])).length).toBe(1);
+    expect(instantCenterLines(drawing, corner, opposite, new Set(['a']))).toEqual([]);
+    expect(instantCenterLines(drawing, corner, opposite, new Set())).toEqual([]);
+  });
 });
