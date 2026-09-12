@@ -1,5 +1,6 @@
 @use 'sass:map';
 @use '@angular/material' as mat;
+@use '../BLOCKS/blocks.common.scss' as blocks;
 @use 'src/app/component/left-tabs/left-tabs.vars' as nav;
 
 @mixin css($theme) {
@@ -95,25 +96,11 @@
     }
 
     .sectionHeader {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      width: 100%;
-      /* Padding inside the 100%, not on top of it: content-box pushed the
-         right-hand element 15px past the drawer's edge and sliced it off. */
-      box-sizing: border-box;
-      min-height: 40px;
-      padding: 0 15px;
-      border: none;
-      border-top: 1px solid var(--border-rule);
-      background: transparent;
-      font-family: inherit;
-      font-size: 15px;
-      font-weight: 500;
-      color: mat.m2-get-color-from-palette($primary-palette, 500);
-      cursor: pointer;
-      text-align: left;
+      @include blocks.section-header($theme);
 
+      // This drawer's own two: a section that is not a mechanism says so
+      // quietly, and the whole band answers the pointer because the whole
+      // band folds it.
       &.muted {
         color: var(--text-secondary);
       }

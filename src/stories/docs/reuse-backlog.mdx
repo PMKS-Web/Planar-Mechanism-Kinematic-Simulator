@@ -27,10 +27,12 @@ Each entry is **where** it is, what it draws, and the block to use instead.
   shared help-mark rule in `blocks.common.scss`. Use `input-block`.
 - **`analysis-setup.component.html`** `.actionButton` (three) and **`synthesis-panel`** `.pill`. A
   stroked primary button with an icon and a label. Use `button-block`.
-- **`analysis-setup.component.html`** `.sectionToggle` and **`mechanism-panel`** `.sectionHeader`.
-  A collapsible section header: 40px, top rule, primary-500 label, a chevron; the two files also
-  duplicate `.factGrid` / `.fact`. Use `collapsible-subsection`, whose `[headerActions]` slot
-  exists for this.
+- **`analysis-setup` and `mechanism-panel` should still adopt `collapsible-subsection`** for their
+  foldable sections. The *duplication* between them is gone (see below), but the block remains the
+  right home: it already has the `[headerActions]` slot these want. Doing it is a visible redesign
+  of two panels — the block heads its sections at `subtitle-2` (14px) where these are 15px, draws
+  its chevron by rotating one glyph where these swap two, and animates its content open where these
+  simply appear — so it wants a change that says so rather than being folded into a reuse pass.
 - **`MODALS/templates/templates.component.html`** `.chipRow` / `.chip[aria-pressed]`. A filter
   control drawn as pressable chips. Use `segmented-block` in a multi-select mode.
 - **`analysis-panel.component.html`** `.drawingChip` and **`analysis-setup`** `.sectionToggle`. An
@@ -83,6 +85,11 @@ cycle to appear is a panel reaching another panel's static — register a handle
 
 ## Done
 
+- `section-header` in `blocks.common.scss` is the one definition of the band that heads a foldable
+  section. `analysis-setup` and `mechanism-panel` wrote it out twice, fourteen identical
+  declarations each, differing only in a hover and a `muted` variant that stayed with the caller
+  that has them. The duplicated `.factGrid` / `.fact` went the other way: the analysis setup's copy
+  had no call site at all and was deleted.
 - `title-block` and `subtitle-block` are one block. They had the same three inputs, the same
   imports and the same template down to the `id`s inside it, and differed in type size and
   padding. **Both tags still select it**, rather than the subtitle becoming
