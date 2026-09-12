@@ -2,7 +2,7 @@
 
 ## Authority and status
 
-- Goal: implement **all S0–S8** of [the plan](bodies-and-joints-plan.md), including native default editor, consumer cutover and obsolete-runtime removal. No push or publication.
+- Current authorization (2026-09-12): the user disabled the persistent goal. **Finish S4, complete F3 and address its findings, then stop before S5.** Do not reactivate a goal. The full migration plan remains S0–S8; later steps are intentionally not authorized in this continuation. No push or publication.
 - Implementation starting commit: `487d535` on `bodies-and-joints-plan`.
 - Worktree: `.claude/worktrees/funny-swirles-3c6486`.
 - Current checkpoint: **S0–S3 complete; S4 in progress**. Native editor cutover has not begun. Concrete interface choices are in [the contract](bodies-and-joints-contract.md); frozen catalogs/reference hashes are in [the baseline](bodies-and-joints-baseline.json).
@@ -2262,3 +2262,65 @@ with HTTP 200. Its owned terminal session remains **13661**. No native UI is act
 production 2.0.3 import, atomic load/recovery, completion of the native lifecycle/service
 matrix and remaining named browser gates `two-mechanisms` and `export-flow` (plus final stage
 integration). S4 is in progress. No paid review, push or publication; Fable budget unchanged.
+
+
+## S4 completed implementation, F3 preparation (2026-09-12)
+
+The remaining native facade is implemented: bounded multi-event point/body/coordinate
+previews with one commit/history entry, active travel projection and interval checks, the
+isolated production 2.0.3 reader, atomic document replacement and versioned recovery. Full
+contracts and S5 obligations are at the end of `bodies-and-joints-contract.md`.
+
+Codex's lifecycle audit reproduced an additional load-loss defect: deleting the material
+used only as a legacy compound load's reference frame silently deleted that load while other
+scoped members survived. `S4-aggregate-load-before.log` fails the intended assertion (accepted
+partial deletion instead of `ambiguous-load-owner`). The fixed cascade checks surviving scope
+before interpreting the reference BodyId as an automatic load deletion. Both body/joint orders
+pass. Explicitly deleting the force or its complete scope remains allowed.
+
+The native regression mapping is now explicit:
+
+| Original behavioral gate | Native evidence |
+| --- | --- |
+| welded-mount-identity/release/drawing | body-lifecycle, body-lifecycle-ownership, body-lifecycle-integration, body-property-edit/ownership: stable material/paint/forces, group lineage, merge/release, physical witnesses |
+| cylinder-mount-topology | body-lifecycle's 18 delete-one cases (all six construction orders), all-order shared-junction deletion; crossed-cylinder group ownership and group deletion |
+| slot-lifecycle | actual-carrier deletion with a same-endpoint neighbor; merge/release preserves actual slot record and guide frame in body-lifecycle-integration; reversed-P conversion/axes specs |
+| url-weld-force / url-welded-mount | body-document-codec, native lifecycle save/reopen, production compound load/provenance test |
+| url-com-anchor / url-locking / url-part-color | body-document-codec, body-property-edit, body-geometry-properties and integration: body/grid/attachment centers, material/force/attachment locks, color/trace/holds, local selection/history |
+| cylinder-edit-transaction / cylinder-weld-guards | body-edit-plan, body-point-edit/order, body-cylinder-dimension-edit, joint-permission: atomic refusal, connected compound motion, mount pair edits allowed, internal P/member mutation refused |
+| paused edit/history with independent clocks | body-document-authority, body-posed-property/geometry, coordinate/dimension/unit/copy tests; NativeBodyGesture rejects stale revision/display/clocks and foreign editor tokens |
+| persistence loss/recovery | native-body-recovery, legacy-production-reader: failed load preserves history/selection/revision/backups; native-only versioned recovery, tab priority, stale fallback and denied storage |
+
+New focused gate `S4-native-integration.log`: **58 tests / 12 files**, session 4576 exit 0.
+`S4-final-full-unit.log`: **2878 tests / 321 files**, session 81773 exit 0.
+After the final gesture-only scale/clock hardening, `S4-gesture-final.log`: **5/5**, session
+14086 exit 0, including grounded attachment motion and clock staleness. `S4-final-build.log`
+passes (session 86543 exit 0; existing CommonJS warnings). `S4-final-ui-copy.log` **17/17**,
+zero console errors (session 23908 exit 0).
+
+Legacy browser gates `S4-two-mechanisms.log` **13/13** (39446 exit 0) and
+`S4-export-flow.log` **50/50** (90366 exit 0) complete the named S4 list alongside earlier
+recorded edit-undo, unit-undo-view, posed-editing, link-pose-readout, analysis-editing, locking
+and link-holds-angles. These two suites have assertions rather than screenshot outputs.
+
+The old owned server PID 19077 was absent and localhost:4307 refused connections. Restarted
+only this worktree's server: session **24304**, node **42589**, HTTP 200 on localhost:4307;
+log `S4-final-dev-server.log`. Standard computer use then confirmed an incognito Chrome
+window, opened a separate frozen four-bar reference tab, selected AB, inspected its Edit
+blocks and live readout, watched successive playback screenshots (120/110/98 degrees),
+paused at 41 degrees, inspected the context menu and returned to 80 degrees. The selection,
+shadow/card vocabulary and authored ghost were coherent. Only that new tab was closed;
+the original test tab was left at its prior start pose. Earlier tracked full-cycle/drag
+filmstrips remain the reusable motion evidence. No native rendering is claimed at S4.
+
+Known draft failures: the first slider import used a vertex object as a circle center and
+was correctly refused by the exact schema; fixed to an x/y point. Two initial assertions
+compared pre-codec arrays directly with canonical post-codec arrays; corrected to compare
+identity/records or canonical encodings. A proposed physical-path check on every exact point
+edit refused a valid loose three-cylinder design edit; it is scoped to rigid body motion,
+while exact point design edits retain their existing semantics. No validator was weakened.
+
+Next: commit this reviewed-internally S4 candidate, send one F3 lifecycle review with the
+recorded $7 cap, reproduce and resolve actionable findings, rerun affected/final gates and
+stop before S5. No paid call has yet been made in this continuation; budget remains
+$9.479568 known spend plus the $6 canceled-call reservation.

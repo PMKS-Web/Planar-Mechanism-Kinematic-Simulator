@@ -1,3 +1,7 @@
+import { NativeBodyGesture, BodyGestureTarget } from './native-body-gesture';
+import { readBodyDocument } from './transcoding/body-document-reader';
+import { encodeBodyDocument } from './transcoding/body-document-codec';
+import { NativeBodyRecovery } from './native-body-recovery';
 import { captureNativeClipboard, nativePasteCommand } from './native-body-clipboard';
 import { BodyId, newRecordId } from '../model/body-system/body-id';
 import { Point } from '../model/body-system/body-frame';
@@ -20,6 +24,50 @@ export class NativeBodyDocumentService {
   private clipboardPayload: string | undefined;
   private readonly updates = new Subject<BodyDocumentChange>();
   readonly changes = this.updates.asObservable();
+  beginGesture(target: BodyGestureTarget, state: EditState, id: string = newRecordId<'edit'>()) {
+    return new NativeBodyGesture(this.authority, id, target, state);
+  }
+  finishGesture(gesture: NativeBodyGesture, state: EditState) {
+    const result = gesture.finish(this.authority, state);
+    if (result.ok && result.event) {
+      this.saveRecovery();
+      this.updates.next(result.event);
+    }
+    return result;
+  }
+  private recoveryStore?: NativeBodyRecovery;
+  private recoveryResult: ReturnType<NativeBodyRecovery['save']> | undefined;
+  get recoveryStatus() {
+    return this.recoveryResult;
+  }
+  private saveRecovery() {
+    return (this.recoveryResult = this.recoveryStore?.save(this.document));
+  }
+  attachRecovery(store: NativeBodyRecovery) {
+    this.recoveryStore = store;
+  }
+  save() {
+    return encodeBodyDocument(this.document);
+  }
+  load(payload: string, state: EditState) {
+    const decoded = readBodyDocument(payload);
+    if (!decoded.ok) return decoded;
+    const result = this.authority.replace(decoded.document, state);
+    if (result.ok && result.event) {
+      const recovery = this.saveRecovery();
+      this.updates.next(result.event);
+      return { ...result, recovery };
+    }
+    return result;
+  }
+  recover(state: EditState) {
+    const candidate = this.recoveryStore?.read();
+    if (!candidate?.ok)
+      return candidate ?? { ok: false as const, reason: 'no-valid-backup' as const };
+    const result = this.authority.replace(candidate.document, state);
+    if (result.ok && result.event) this.updates.next(result.event);
+    return { ...result, source: candidate.source, rejected: candidate.rejected };
+  }
   get clipboard() {
     return this.clipboardPayload;
   }
@@ -77,17 +125,26 @@ export class NativeBodyDocumentService {
   }
   commit(plan: BodyEditPlan | BodyEditCommand, state: EditState) {
     const result = this.authority.commit(plan, state);
-    if (result.ok && result.event) this.updates.next(result.event);
+    if (result.ok && result.event) {
+      this.saveRecovery();
+      this.updates.next(result.event);
+    }
     return result;
   }
   undo(state: EditState) {
     const result = this.authority.undo(state);
-    if (result.ok && result.event) this.updates.next(result.event);
+    if (result.ok && result.event) {
+      this.saveRecovery();
+      this.updates.next(result.event);
+    }
     return result;
   }
   redo(state: EditState) {
     const result = this.authority.redo(state);
-    if (result.ok && result.event) this.updates.next(result.event);
+    if (result.ok && result.event) {
+      this.saveRecovery();
+      this.updates.next(result.event);
+    }
     return result;
   }
 }
