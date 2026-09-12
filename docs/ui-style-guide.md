@@ -198,9 +198,9 @@ defined once in [`src/styles/_tokens.scss`](../src/styles/_tokens.scss) and grou
 surfaces, borders, text tiers, brand, selection, accent, warning, refusal, success, canvas marks,
 shadows, radii and the card gap. Write `var(--token)`; no import is needed.
 
-- **Reach for a role, not a shade.** A numbered token such as `--text-disabled-3` is a near-duplicate
-  kept only so the move to tokens changed no pixels. It is a merge waiting to happen, not a color
-  to pick.
+- **Reach for a role, not a shade.** There are about sixty tokens because every distinct hex the
+  stylesheets once used was collapsed into the role it was playing. If no role fits, add one; do
+  not add a second shade of one that does.
 - **A raw hex color in a component stylesheet fails CI.** `npm run lint:styles` (stylelint) rejects it
   everywhere but the token file. If no role fits, add one there, with a comment saying what it is
   for.

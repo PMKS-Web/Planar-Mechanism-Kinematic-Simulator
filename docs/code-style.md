@@ -58,6 +58,16 @@ everything used to go, which is how they got to their size. **They take no new b
 - If a change seems to need a hub's private state, that is usually a sign the state belongs to the
   new model too.
 
+**A service never imports a component.** The import graph runs one way: components import
+services, services import models. Three services used to reach a component through its static
+instance, and between them they put every block that injects `MechanismService` on an import
+cycle — which esbuild happens to tolerate and an unbundled module graph (the component gallery)
+does not. When a service needs something only the canvas or a drawer can do, the component
+registers a small handle the service reads: `services/canvas-handle.ts`,
+`services/joint-drag-state.ts` and `services/mode-change-hooks.ts` are the three, and the pattern
+for the next one. The one allowed exception is opening a dialog, which needs the component class;
+say so on the line. The linter rejects the rest.
+
 ## Invariants
 
 Each of these is a mistake that has already shipped at least once. The file named is the one to
@@ -163,6 +173,7 @@ script; errors do.
 | --- | --- | --- | --- |
 | `no-restricted-syntax` | error | `speed < 0` or `x.driveSpeed < 0`. Use `turnsClockwise`. | `model/drive-direction.ts` |
 | `no-restricted-imports` | warning | A file under `src/app/component/` importing `position-solver`, `kinematic-solver`, `force-solver` or `loop-solver` from `model/mechanism/`. Components get solved values through the services. | Spec files |
+| `no-restricted-imports` | error | A service (`src/app/services/`, `src/app/*.service.ts`) importing a `*.component`. Register a handle the service reads instead; a dialog open is the one excused line. | Spec files |
 | `max-lines` | warning | A file over 800 lines, not counting blank lines and comments. | Spec files |
 
 The solver-import rule is a warning because three components already import a solver: two only for

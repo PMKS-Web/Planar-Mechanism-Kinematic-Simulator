@@ -8,7 +8,7 @@ import { inPanel } from '../support/frame';
  * hollow dot follows the shape; a filled dot with a clear button was typed.
  */
 const meta: Meta = {
-  title: 'Blocks/State Input',
+  title: 'Fields/State Input',
   component: StateInputComponent,
   tags: ['autodocs'],
   decorators: [inPanel(120)],

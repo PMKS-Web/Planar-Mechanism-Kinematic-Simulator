@@ -357,8 +357,10 @@ by a bare `npx` in a checkout without `node_modules` can disagree about a line o
 `npm ci` first.
 
 **A stylesheet cannot hold a raw hex color.** `npm run lint:styles` (stylelint, `color-no-hex`)
-fails CI on one anywhere but `src/styles/_tokens.scss`. Name a role there, or reuse one: a numbered
-token such as `--text-disabled-3` is a near-duplicate waiting to be merged, not a shade to reach for.
+fails CI on one anywhere but `src/styles/_tokens.scss`. Reuse a role, or name a new one there: the
+set was collapsed from 116 to about 60 by folding every near-duplicate shade into the role it
+played, and the gallery's Tokens page shows them grouped. A second shade of an existing role is
+how it got to 116.
 
 `.prettierignore` deliberately excludes Markdown — Prettier pads every table cell and rewrites
 `*emphasis*` as `_emphasis_`, so a one-line doc edit lands as hundreds of lines of realignment.
@@ -2524,3 +2526,25 @@ Storybook 10 with `@analogjs/vite-plugin-angular` would not install on Angular 2
 `--force`: the plugin's optional `@angular/localize` peer resolves to the newest 22.1, which demands
 a matching `@angular/compiler-cli`. That is why Angular moved to 22.1 first. If a later Storybook
 upgrade refuses the same way, keep Angular's minor in step rather than forcing the lock.
+
+**The gallery runs the app's modules unbundled, and that is what found the import cycle.** Vite
+serves each file as its own ES module in the order the graph demands, so a cycle esbuild quietly
+tolerates -- `color-picker` → `mechanism.service` → `svg-grid.service` → `new-grid.component` →
+`edit-panel` → `multi-edit-panel` → `color-picker` -- became `Cannot access 'ColorPickerComponent'
+before initialization`, and every block that injects `MechanismService` rendered nothing. The
+cause was three services importing components (`docs/code-style.md`, "A service never imports a
+component"); the fix was three registries the components fill in. `node .storybook/tools/import-path.mjs
+<from> <to>` (paths relative to `src/app`) prints the shortest import path between two files, which
+is how to find the next one. `require()` fails the same way: the environment files used it for the version and now
+import `package.json`.
+
+**Three gallery traps.** Storybook's MDX does not render Markdown tables (a table comes out as raw
+pipes); use a list, or the `Markdown` block, which does. That block turns an inline code span that
+wraps a line into a source block inside a paragraph, which React logs as a nesting error on every
+docs page that renders `docs/*.md` -- pass `options={{ overrides: { code: 'code' } }}`. And a
+Playwright `goto` with `waitUntil: 'networkidle'` never returns on the notification story, because
+the stack and the dev server's HMR socket keep the page busy; wait for `load` and a fixed pause.
+`node .storybook/tools/sweep.mjs` (against a running gallery; `SB_URL` picks another port) visits
+every entry in `index.json` and fails on a console error or an empty render; it is the check to run
+after touching a block. `node .storybook/tools/token-usage.mjs` counts where each token is used,
+least-used first, which is how to spot a shade nobody needed.

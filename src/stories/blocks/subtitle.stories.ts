@@ -4,7 +4,7 @@ import { inPanel } from '../support/frame';
 
 /** `subtitle-block`: a heading inside a card, with an optional description and button. */
 const meta: Meta = {
-  title: 'Blocks/Subtitle',
+  title: 'Structure/Subtitle',
   component: SubtitleComponent,
   tags: ['autodocs'],
   decorators: [inPanel()],

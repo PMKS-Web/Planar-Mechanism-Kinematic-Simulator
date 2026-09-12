@@ -10,7 +10,7 @@ import { inPanel } from '../support/frame';
  * chevron are one button; anything beside them goes in `[headerActions]`.
  */
 const meta: Meta = {
-  title: 'Blocks/Collapsible Subsection',
+  title: 'Structure/Collapsible Subsection',
   component: CollapsibleSubsecitonComponent,
   tags: ['autodocs'],
   decorators: [inPanel(), moduleMetadata({ imports: [InputComponent] })],

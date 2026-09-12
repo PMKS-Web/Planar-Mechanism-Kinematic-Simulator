@@ -8,7 +8,7 @@ import { inPanel } from '../support/frame';
  * pill as `segmented-block`; the control holds the chosen index as a string.
  */
 const meta: Meta = {
-  title: 'Blocks/Radio',
+  title: 'Choices/Radio',
   component: RadioComponent,
   tags: ['autodocs'],
   decorators: [inPanel()],

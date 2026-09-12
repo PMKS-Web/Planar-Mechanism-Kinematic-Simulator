@@ -1,0 +1,12 @@
+import { Meta, Markdown } from '@storybook/addon-docs/blocks';
+import vocabulary from '../../../docs/ui-vocabulary.md?raw';
+
+<Meta title="Guides/Vocabulary" />
+
+> Rendered from `docs/ui-vocabulary.md` when the gallery is built. It is the only place the app's
+> words are defined: edit that file, not this page. A story is where a label is first read, so
+> stories use these words too.
+
+{/* Inline code stays inline: the default override turns a code span that wraps a line into a
+    source block, which cannot sit inside a paragraph. */}
+<Markdown options={{ overrides: { code: 'code' } }}>{vocabulary}</Markdown>

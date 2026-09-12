@@ -8,7 +8,7 @@ import { inPanel } from '../support/frame';
  * a caller that disables it owes the reader one nearby.
  */
 const meta: Meta = {
-  title: 'Blocks/Dual Button',
+  title: 'Actions/Dual Button',
   component: DualButtonComponent,
   tags: ['autodocs'],
   decorators: [inPanel()],

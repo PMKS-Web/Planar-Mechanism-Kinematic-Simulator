@@ -9,7 +9,7 @@ import { inPanel } from '../support/frame';
  * then press Enter.
  */
 const meta: Meta = {
-  title: 'Blocks/Standard Field',
+  title: 'Fields/Standard Field',
   tags: ['autodocs'],
   decorators: [inPanel(), moduleMetadata({ imports: [StandardFieldDirective] })],
   render: () => ({

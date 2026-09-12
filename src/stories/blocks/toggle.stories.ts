@@ -9,7 +9,7 @@ import { inPanel } from '../support/frame';
  * `disabled` grays the switch; `disableInput` is only about the field.
  */
 const meta: Meta = {
-  title: 'Blocks/Toggle',
+  title: 'Choices/Toggle',
   component: ToggleComponent,
   tags: ['autodocs'],
   decorators: [inPanel()],

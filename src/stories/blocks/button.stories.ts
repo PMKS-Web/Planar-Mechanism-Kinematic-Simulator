@@ -10,7 +10,7 @@ import { inPanel } from '../support/frame';
  * still opens while the button is disabled -- which is when a reason is needed.
  */
 const meta: Meta = {
-  title: 'Blocks/Button',
+  title: 'Actions/Button',
   component: ButtonComponent,
   tags: ['autodocs'],
   decorators: [inPanel()],

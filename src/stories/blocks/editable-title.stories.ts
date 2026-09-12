@@ -10,7 +10,7 @@ import { mechanismStub, selectionStub } from '../support/stubs';
  * Lock and Delete press nothing real.
  */
 const meta: Meta = {
-  title: 'Blocks/Editable Title',
+  title: 'Structure/Editable Title',
   component: EditableTitleComponent,
   tags: ['autodocs'],
   decorators: [

@@ -18,12 +18,14 @@ global styles, taken from its own build target. For each property the table show
 - a sample, when the value is a color, a shadow, a radius or a length.
 
 Because of that, the table shows what is really defined, with nothing to update. The app's tokens
-live in [`src/styles/_tokens.scss`](../../styles/_tokens.scss), grouped by role: surfaces, borders,
-text tiers, brand, selection, accent, warning, refusal, success, canvas marks, shadows, radii and the
-card gap. Add one there and it appears here the next time the gallery loads.
+live in `src/styles/_tokens.scss`, and the page groups them by role: shape, surfaces, borders, text
+tiers, brand, selection, accent, warning, refusal, success and canvas marks. Add one there and it
+appears here the next time the gallery loads.
 
-A numbered token such as `--text-disabled-3` is a near-duplicate, kept only so the move to tokens
-changed no pixels. It is a merge waiting to happen, not a shade to reach for.
+**Reach for a role, not a shade.** There are about sixty tokens because every distinct hex the
+stylesheets once used was collapsed into the role it was playing: a dozen near-identical grays
+became `--text-disabled`, seven ambers became `--warning-text`. If the role you need is not here,
+add one to the file with a comment saying what it is for; do not add a second shade of one that is.
 
 Angular Material's theme also writes dozens of its own `--mat-*` tokens onto the same element. They
 are listed separately, collapsed, at the bottom of the table.
