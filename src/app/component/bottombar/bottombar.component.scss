@@ -73,7 +73,7 @@
     .dof,
     .cursor,
     .units {
-      color: rgba(0, 0, 0, 0.55);
+      color: var(--text-secondary);
       white-space: nowrap;
     }
 

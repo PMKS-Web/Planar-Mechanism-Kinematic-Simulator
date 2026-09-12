@@ -52,7 +52,7 @@
 
     .label {
       @include mat.m2-typography-level($typography-config, 'body-2');
-      color: rgba(0, 0, 0, 0.6);
+      color: var(--text-secondary);
       //font-size: 14px;
       //font-weight: 200;
     }
@@ -83,7 +83,7 @@
   // room each has; what a help mark *is* is said once, here.
   .label-help,
   .graphHelp {
-    color: rgba(0, 0, 0, 0.3);
+    color: var(--text-disabled);
     cursor: help;
     transition: color 0.12s ease-in-out;
 

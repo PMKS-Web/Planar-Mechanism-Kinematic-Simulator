@@ -34,7 +34,7 @@
 
     #title-description {
       @include mat.m2-typography-level($typography-config, 'body-2');
-      color: rgba(0, 0, 0, 0.6);
+      color: var(--text-secondary);
       //font-weight: 200;
       //font-size: 12px;
     }

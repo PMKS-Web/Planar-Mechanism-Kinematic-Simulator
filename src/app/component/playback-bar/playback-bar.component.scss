@@ -352,7 +352,7 @@
     flex: 0 1 auto;
     min-width: 0;
     font-size: 11px;
-    color: rgba(0, 0, 0, 0.5);
+    color: var(--text-tertiary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -570,7 +570,7 @@
 
   .rowTime {
     font-size: 11px;
-    color: rgba(0, 0, 0, 0.5);
+    color: var(--text-tertiary);
   }
 
   // Inside the row's padding rather than on its edge, at the same 22px as the

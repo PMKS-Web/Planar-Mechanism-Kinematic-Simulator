@@ -52,12 +52,12 @@ describe('stylesheet fences', () => {
   });
 
   it('does not add a raw rgba() color outside the token file', () => {
-    // Most of what is left is black at some alpha, doing the job of the
-    // --text ladder, and mapping it onto that ladder moves pixels; that is
-    // its own change. Until it lands the count only goes down: lower the
-    // ceiling when you remove some, and name a role in the token file rather
-    // than raising it.
-    const CEILING = 268;
+    // What is left is black at a low alpha on a border, a wash, a shadow or a
+    // divider, plus a few brand and white tints; the text inks were folded
+    // onto the --text ladder. The count only goes down: lower the ceiling
+    // when you remove some, and name a role in the token file rather than
+    // raising it.
+    const CEILING = 87;
     const count = stylesheets()
       .filter((path) => path !== TOKENS)
       .reduce((sum, path) => sum + (read(path).match(/\brgba?\(/g)?.length ?? 0), 0);

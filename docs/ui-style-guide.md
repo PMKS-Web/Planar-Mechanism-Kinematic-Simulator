@@ -264,11 +264,13 @@ is needed.
 - **A raw hex or named color in a component stylesheet fails CI.** `npm run lint:styles`
   (stylelint) rejects both everywhere but the token file. If no role fits, add one there, with a
   comment saying what it is for.
-- **A raw `rgba()` is the same mistake, and stylelint cannot see it.** About 270 remain, most of
-  them black at some alpha standing in for a text tier, and `stylesheet-fences.spec.ts` holds
-  that count so it can only go down. Use the tier (`--text-secondary`), the wash
-  (`--hover-wash`, `--press-wash`) or the shadow (`--scroll-shadow`, `--thumb-shadow`) instead,
-  and lower the ceiling when you remove some.
+- **A raw `rgba()` is the same mistake, and stylelint cannot see it.** Text ink is a tier of
+  the `--text` ladder, never black at an alpha; the ladder is what the stylesheets' 180-odd
+  alphas were folded onto. What remains, under ninety, is black at a low alpha on a border, a
+  wash, a shadow or a divider, and `stylesheet-fences.spec.ts` holds that count so it can only
+  go down. Use the wash (`--hover-wash`, `--press-wash`) or the shadow (`--scroll-shadow`,
+  `--thumb-shadow`), name a new role in the token file if none fits, and lower the ceiling when
+  you remove some.
 - **Two places may write a color literal**: the canvas, where a mark's color is decided at
   runtime from the link it belongs to, and the exporters, whose output has to stand on its own
   outside the app. Both are named in the token file's header.

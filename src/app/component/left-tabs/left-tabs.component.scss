@@ -46,7 +46,7 @@
   .helpLead {
     font-size: 14px;
     line-height: 20px;
-    color: rgba(0, 0, 0, 0.6);
+    color: var(--text-secondary);
     margin: 6px 0 0;
   }
 
@@ -90,14 +90,14 @@
     font-size: 14px;
     font-weight: 500;
     line-height: 20px;
-    color: rgba(0, 0, 0, 0.87);
+    color: var(--text-strong);
   }
 
   .offerWhy {
     margin: 3px 0 0;
     font-size: 13px;
     line-height: 19px;
-    color: rgba(0, 0, 0, 0.6);
+    color: var(--text-secondary);
   }
 
   // Start, and the way to say no. The offer is a question, and a question with
@@ -117,7 +117,7 @@
     background: transparent;
     font-family: inherit;
     font-size: 13px;
-    color: rgba(0, 0, 0, 0.55);
+    color: var(--text-secondary);
     cursor: pointer;
 
     &:hover {
@@ -202,7 +202,7 @@
     align-items: flex-start;
     font-size: 14px;
     line-height: 20px;
-    color: rgba(0, 0, 0, 0.6);
+    color: var(--text-secondary);
 
     mat-icon {
       flex: 0 0 auto;

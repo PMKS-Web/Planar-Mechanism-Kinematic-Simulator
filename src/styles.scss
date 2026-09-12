@@ -118,7 +118,7 @@ input {
     flex: 0 0 32px;
     border: none;
     background: transparent;
-    color: rgba(0, 0, 0, 0.87);
+    color: var(--text-strong);
     font-family: inherit;
     font-size: 13.5px;
     white-space: nowrap;
@@ -135,7 +135,7 @@ input {
       flex: 0 0 auto;
       font-size: 18px;
       line-height: 18px;
-      color: rgba(0, 0, 0, 0.6);
+      color: var(--text-secondary);
     }
   }
 }
@@ -197,7 +197,7 @@ input {
     cursor: pointer;
 
     &:disabled {
-      color: rgba(0, 0, 0, 0.38);
+      color: var(--text-muted);
       cursor: default;
     }
 
@@ -215,7 +215,7 @@ input {
     }
 
     &:disabled > mat-icon {
-      color: rgba(0, 0, 0, 0.3);
+      color: var(--text-disabled);
     }
 
     // A setting that is on with nothing to draw is still on, and the row says
@@ -237,7 +237,7 @@ input {
   .viewRowWhy {
     font-size: 12px;
     line-height: 16px;
-    color: rgba(0, 0, 0, 0.38);
+    color: var(--text-muted);
   }
 
   // The app's switch, at the size the rows want.
@@ -279,6 +279,6 @@ input {
     flex: 0 0 auto;
     font-size: 20px;
     line-height: 20px;
-    color: rgba(0, 0, 0, 0.38);
+    color: var(--text-muted);
   }
 }

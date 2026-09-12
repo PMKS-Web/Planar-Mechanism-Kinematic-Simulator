@@ -189,7 +189,7 @@
     // Deliberately *not* a disabled look. The mode cannot be entered yet, but
     // the button still does something: it opens the list of what is missing.
     &.notReady .tabLabel {
-      color: rgba(0, 0, 0, 0.55);
+      color: var(--text-secondary);
     }
   }
 
@@ -423,7 +423,7 @@
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: 11px;
       line-height: 15px;
-      color: rgba(0, 0, 0, 0.55);
+      color: var(--text-secondary);
     }
 
     padding: 0 14px;

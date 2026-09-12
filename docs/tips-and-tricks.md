@@ -367,8 +367,9 @@ Tokens page shows them grouped. A second shade of an existing role is how it got
 and a z-index all pass `lint:styles`. `src/tests/verification/stylesheet-fences.spec.ts` is the
 fence for the first two: a named width (600, 720, 380, 780 or 1340) written as a literal in a media
 query fails it, and so does a rise in the count of raw `rgba()` colors outside the token file.
-Write `nav.$phone-max-width` from `left-tabs.vars.scss`, and a role token (`--hover-wash`,
-`--scroll-shadow`); lower the ceiling in the spec when you remove some. The layers (`--layer-*`)
+Write `nav.$phone-max-width` from `left-tabs.vars.scss`, and a role token: a text tier
+(`--text-secondary`, never `rgba(0, 0, 0, 0.6)`), a wash (`--hover-wash`) or a shadow
+(`--scroll-shadow`); lower the ceiling in the spec when you remove some. The layers (`--layer-*`)
 are held by review: nothing at the app level writes a z-index number of its own.
 
 **Reduced motion is one rule in `styles.scss`, not one per component.** Under
