@@ -605,3 +605,12 @@ checksum cannot detect all same-length corruption; strict syntax/reference/physi
 adds protection but cannot reconstruct a lost content digest. Native saves use their own CRC.
 Old explicit mass/CoM values are retained; native automatic geometry uses the native material
 model. The initial frame has angle zero and its geometry carries the old drawn orientation.
+
+
+A combined move/delete command resolves group CoM edit anchors at the pre-deletion placement,
+while the old frame and even a doomed attachment are still available. Only then does lineage
+change the coordinate frame. A body-relative center rides the material, a grid center stays
+fixed, and an attachment-relative center receives that attachment's displacement before a
+lost reference falls back to body-relative editing. Unchanged frames retain exact coordinates.
+A refused gesture event restores its prior draft, even if a non-clamp refusal follows accepted
+substeps; release can never commit that hidden partial event.

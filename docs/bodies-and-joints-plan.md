@@ -1103,6 +1103,13 @@ of both a numerical derivation and its independent expected-answer review to the
 
 ### Four focused Fable checkpoints and a bounded credit budget
 
+**User update, 2026-09-12:** the review budget cap has been removed. The dollar ceilings and
+per-call caps below record the original plan, not a current limit. Keep actual-cost accounting,
+focused checkpoints and read-only reviews; do not send unnecessary requests. Complete any
+substantive review gaps. F3 had already launched with its original $7 CLI cap when this update
+arrived; subsequent review calls need not use that cap.
+
+
 The user has approximately **$40 of usage credits remaining for this migration**. Treat that
 as a ceiling, not a target to spend. Use a **$35 working ceiling**, leaving roughly $5 for
 estimation/CLI overhead and the uncertainty of an approximate balance. Do not buy credits,

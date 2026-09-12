@@ -67,6 +67,17 @@ export class NativeBodyGesture {
     if (!Number.isFinite(this.step) || this.step <= 0) throw new Error('Invalid gesture scale');
   }
   advance(target: Point | number, state: EditState) {
+    const previous = { plan: this.plan, operations: this.operations, last: this.last };
+    try {
+      const result = this.advanceCandidate(target, state);
+      if (!result.ok) Object.assign(this, previous);
+      return result;
+    } catch (error) {
+      Object.assign(this, previous);
+      throw error;
+    }
+  }
+  private advanceCandidate(target: Point | number, state: EditState) {
     if (!this.current()) return bodyEditRefusal('stale-pose');
     if (
       typeof target !== typeof this.last ||
@@ -88,7 +99,7 @@ export class NativeBodyGesture {
             y: (start as Point).y + (target.y - (start as Point).y) * fraction,
           };
     const steps = Math.ceil(distance / this.step);
-    if (steps > 256 || this.operations.length + steps > 1000)
+    if (steps > 256 || this.operations.length + steps + 24 > 1000)
       return bodyEditRefusal('unsolved-edit');
     let prior = 0;
     for (let i = 1; i <= steps; i++) {
