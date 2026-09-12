@@ -60,6 +60,7 @@ export interface MemberLoadsSuccess {
   readonly member: ResolvedStructuralMember;
   readonly gravityModel: 'none' | 'lumped-at-com' | 'uniform-line';
   readonly massModel: 'none' | 'uniform-line';
+  readonly motionSource?: 'pmks-analytical' | 'prescribed' | 'unspecified';
   readonly events: readonly MemberEvent[];
   readonly segments: readonly InternalLoadSegment[];
   readonly extrema: {

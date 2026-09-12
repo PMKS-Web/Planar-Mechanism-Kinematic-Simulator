@@ -10,6 +10,8 @@ export interface MemberMassDistribution {
   readonly memberId: string;
 }
 export interface BodySectionMotionState extends BodyDynamicState {
+  /** Provenance only; absent on older/pure caller states. */
+  readonly source?: 'pmks-analytical' | 'prescribed';
   /** Signed CCW-positive rad/s, from the same sample as the accelerations. */
   readonly angularVelocityRadPerS: number;
 }

@@ -52,6 +52,7 @@ export function snapshotPmksMemberMotion(sample: PmksDynamicSample): MemberMotio
   const { rates, ...snapshot } = result;
   const states = snapshot.states.map((state) => ({
     ...state,
+    source: 'pmks-analytical' as const,
     angularVelocityRadPerS: rates.linkAngularVelocities?.get(state.linkId) ?? NaN,
   }));
   if (states.some((state) => !Number.isFinite(state.angularVelocityRadPerS)))

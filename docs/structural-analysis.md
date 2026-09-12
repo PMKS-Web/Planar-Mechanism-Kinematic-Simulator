@@ -1,6 +1,38 @@
-# Structural analysis: S0 through S3
+# Structural analysis: S0 through S4
 
-> **Status:** Built — S0/S1, S2 inverse dynamics, and S3 internal member loads on `feature/structural-analysis`, based on `origin/staging` at `acba1b77`. S0/S1 is commit `79a8ef0c`, S2 is `f97d275a`, and S3 follows separately. S4–S7 remain future work.
+> **Status:** Built — S0/S1 (`79a8ef0c`), S2 (`f97d275a`), S3 (`04d06680`), and S4 analytical stress on `feature/structural-analysis`, based on staging. Each milestone is a separate commit. S5–S7 remain future work.
+
+## S4 section audit and implementation contract
+
+Before S4 implementation, the audit inspected `cross-section.ts`,
+`structural-properties.ts`, `member-results.ts`, `member-diagram.ts`,
+`member-load-recovery.ts`, and their tests. Only rectangle and solid circle are
+implemented. Both are centroidal symmetric sections; centroid y=0 is implicit.
+
+| Section | Dimensions | Area A | Centroidal out-of-plane I | Extreme fiber c | Modulus Z |
+| --- | --- | --- | --- | --- | --- |
+| Rectangle | width b out of plane, height h along +n | b h | b h³/12 | h/2 | I/c |
+| Solid circle | diameter d, radius R=d/2 | pi d²/4 | pi d⁴/64 | R | I/c |
+
+All dimensions are meters. `sectionProperties` already rejects unsupported
+types, nonpositive/nonfinite dimensions, and derived property overflow/underflow.
+S4 reuses it without interpreting rendered link outlines. S0 material validation
+also remains authoritative; absent yield strength makes a criterion unavailable,
+not the material-independent stress field invalid.
+
+Section coordinate y runs along S3's +n. On the A-side exposed +e face, normal
+traction is sigma=N/A-M y/I and transverse traction is
+tau=-k V/A (1-(y/c)²), with k=3/2 for a rectangle and 4/3 for a circle.
+Thus positive sagging M compresses the top fiber, and integral(tau dA)=-V,
+the signed +n component of S3's cut shear. The circle formula is the elementary
+width-averaged beam distribution through depth, not a full two-dimensional
+elasticity solution at every point on its curved circumference.
+
+Extrema must include both sides of S3 events and section-interior candidates.
+Use real stationary roots for section depth and polynomial interval candidates;
+bound the remaining two-variable von Mises search using Bernstein polynomial
+subdivision with an explicit attained value, upper bound, and convergence limit.
+A nonconverged search returns a diagnostic, never a sampled engineering maximum.
 
 ## S3 geometry audit and conventions (implementation contract)
 
@@ -990,3 +1022,322 @@ benchmark JSON, and browser artifacts are in the worktree's ignored `artifacts/`
 directory (`s3-*`, `force-units/`, and `screenshots/s3-force-panels-*`). The S0/S1
 and S2 reports above remain historical records. S3 is a separate commit after
 `f97d275a`, with no squash or push.
+
+## S4 Stress Analysis
+
+S4 is a pure downstream nominal elementary-beam stress engine for **rectangles
+and solid circles only**. It consumes a successful S3 result, an explicit cross
+section, x/side/y coordinates, and optional material. It does not solve
+kinematics or reactions, reinterpret mass or gravity, alter geometry, consult
+Angular state, or calculate deformation. The section audit at the beginning of
+this document records the pre-implementation contract.
+
+### Coordinates, assumptions, and signs
+
+Section coordinate y is measured from the centroid toward member-local +n:
+positive at the top of a horizontal A-to-B member, negative at the bottom.
+For rectangle width b and height h, c=h/2; for circle diameter d, c=d/2.
+Width is out-of-plane thickness; height is in-plane bending depth. Coordinates
+outside [-c,c], including just outside a boundary, are refused without clamping.
+
+On S3's A-side segment, the exposed face normal is +e. Its traction components
+are sigma along +e and tau along +n. The plane-stress model is:
+
+```text
+sigma_x = N/A - M y/I
+sigma_y = 0
+tau_xy  = -k V/A (1 - (y/c)^2)
+
+k = 3/2 for rectangle; k = 4/3 for solid circle
+```
+
+Therefore positive N creates tension; positive sagging M compresses the +y fiber
+and tensions the -y fiber. Since S3's positive cut shear points opposite +n,
+positive V creates **negative** tau_xy. Independent section integration gives:
+
+```text
+integral sigma_x dA = N
+integral (-y sigma_bending) dA = M
+integral tau_xy dA = -V
+```
+
+For a circle, dA is the chord width 2 sqrt(R²-y²) times dy. This is the
+elementary beam width-averaged depth distribution: center magnitude 4|V|/(3A),
+zero at y=±R. It does not claim the full local shear vector on every point of
+a curved circumference. The corresponding rectangle profile has center
+magnitude 3|V|/(2A) and zero at y=±c. The beam shear approximation and its
+width assumption are described in the
+[University of Alberta beam notes](https://engcourses-uofa.ca/beam-structures/plane-beam-approximations/);
+[MIT's beam relations](https://ocw.mit.edu/courses/16-01-unified-engineering-i-ii-iii-iv-fall-2005-spring-2006/26a4c795200c276094411ecf58e297d3_beamsquizhandout.pdf)
+provide a reference for section properties and stress-resultant relations.
+
+These are nominal prismatic-beam stresses, with no torsional or through-thickness
+normal stress. Adding a finite cross section for stress does not replace S3's
+explicit line-mass idealization or infer root mass from material density.
+
+### Point, profile, and material APIs
+
+```ts
+const point = evaluateMemberStress(memberLoads, crossSection,
+  { xM: 1, side: 'right', yM: 0.005 }, material);
+const profile = evaluateStressProfileAtStation(memberLoads, crossSection,
+  { xM: 1, side: 'right' }, [-0.01, 0, 0.01], material);
+const sectionCritical = findSectionStressExtrema(memberLoads, crossSection,
+  { xM: 1, side: 'right' }, material);
+const memberCritical = findMemberStressExtrema(memberLoads, crossSection, material);
+```
+
+The point API obtains N/V/M through S3's `evaluateMemberLoads`; it does not
+duplicate load evaluation. Profile evaluation defaults to bottom, centroid, and
+top if no y list is supplied. Requested profiles are visualization data, not
+an extrema approximation. All numeric stresses are Pa, with no formatted unit
+strings. Point results include the copied location, original local internal
+loads, separate axial and bending normal contributions, their sum, transverse
+shear, von Mises, both in-plane principal stresses, criterion, and provenance.
+
+For sigma_y=0, von Mises is `hypot(sigma_x, sqrt(3) tau_xy)`.
+Principal stresses are sigma_x/2 ± hypot(sigma_x/2,tau_xy), returned in
+descending order. The smaller principal is evaluated using the determinant
+relation to avoid subtractive cancellation. The third principal stress is zero;
+the two in-plane values are not mislabeled as the global 3-D maximum/minimum.
+Zero stress components are normalized to +0 for JSON round trips.
+
+Stress needs no material or elastic modulus. `validateStructuralProperties`
+remains the material validator. Missing yield strength yields a valid stress
+with criterion `unavailable / missing-yield-strength`; invalid supplied material
+likewise leaves stresses valid, with `invalid-material-properties`. Ultimate
+strength is never substituted for yield strength. No brittle or ultimate
+criterion is implemented.
+
+For valid Sy, the named `ductile-von-mises-yield` criterion reports utilization
+sigma_vm/Sy and factor of safety Sy/sigma_vm. At zero demand, utilization is
+zero, FoS is null, and `factorOfSafetyState` is `unbounded-zero-demand`.
+A nonzero-demand FoS beyond numeric range is null with `exceeds-numeric-range`;
+an unrepresentable utilization makes the criterion unavailable with
+`numerical-failure`. No infinity, NaN, or arbitrary huge sentinel is returned.
+This is a ductile-yield check, not a universal failure prediction.
+
+### Discontinuities and provenance
+
+Every station query requires a left or right side. The two sides of a point
+force or couple event can have different stress states; they are never averaged.
+Both exterior and interior endpoint limits from S3 remain accessible. Member
+extrema preserve the side belonging to each interval, including roots that
+round onto an endpoint.
+
+Provenance retains member/body IDs, static/dynamic mode, no/lumped/uniform gravity,
+mass model, distributed-uniform-line inertia where applicable, stress model,
+and copied section dimensions/properties. Four small additive S3 metadata changes
+retain motion provenance: `BodySectionMotionState.source`,
+`MemberLoadsSuccess.motionSource`, the analytical adapter's source label, and
+recovery's pass-through. PMKS snapshots are `pmks-analytical`; explicit callers
+can identify `prescribed` motion. Older/unlabeled results remain `unspecified`.
+S4 never invents an analytical-source claim. S2's acceleration-only interface,
+S3 equations, and mass tolerances are unchanged.
+
+### Section extrema
+
+Let t=y/c and write sigma=a+b t, tau=d(1-t²), where a=N/A,
+b=-M c/I, and d=-kV/A. Normal extrema occur at t=±1; shear magnitude
+is largest at t=0. For von Mises, maximize:
+
+```text
+f(t) = sigma_vm² = (a+b t)² + 3 d² (1-t²)²
+f'(t)/2 = a b + (b²-6d²)t + 6d² t³
+```
+
+The routine considers both fibers, the centroid, and every real in-domain root
+of this cubic. It uses coefficient normalization and recursive derivative root
+isolation with bisection on monotone intervals, retaining repeated roots.
+Thus combined loading may govern at an interior y other than zero. A checked
+example has a=2.6875 MPa, b=0.5 MPa, d=1 MPa and governs at t=1/4.
+
+### Whole-member extrema and numerical bounds
+
+Each S3 interval is mapped to dimensionless u in [0,1], with its exact
+polynomials retained. Normal-stress maxima/minima use both fibers and roots of
+their x derivatives; maximum absolute shear uses the center-depth V polynomial
+and its derivative roots. Both sides of every event are included separately.
+
+Von Mises squared is a tensor polynomial of at most degree six in u and four
+in t. Boundary/neutral-axis x stationary roots and section-coordinate roots
+provide candidates. Alternating stationary-root refinement improves the current
+witness. A global search then converts the polynomial to tensor Bernstein form
+and subdivides its control net using de Casteljau averages. Nonnegative
+Bernstein weights sum to one, so the largest control coefficient bounds the
+polynomial on each box; see the
+[MIT Bézier surface reference](https://web.mit.edu/hyperbook/Patrikalakis-Maekawa-Cho/node14.html).
+Boxes are discarded only when their upper bounds cannot exceed the attained
+value. This closes the gap left by checking only fixed y values or alternating
+roots, which alone would not establish a global maximum.
+
+The bounded search normalizes stress coefficients before squaring. Its stopping
+criterion is an upper-minus-attained squared-stress gap of 1e-10 times the
+attained normalized squared stress (floor 1e-24), plus twice a roundoff allowance
+of 2e-12 times the original control-net magnitude (floor 1e-30). Subdivision
+is limited to 20,000 boxes split per interval; nonconvergence returns
+`numerical-failure` with no extrema result. This is a floating-point numerical
+bound with a documented roundoff allowance, not a formal interval-arithmetic
+certificate. No coarse member/section plotting grid supplies the maximum.
+
+Results report maximum tensile demand, compressive demand, absolute normal
+stress, absolute shear, and von Mises. Each includes magnitude, signed value,
+and a full stress-point witness identifying x/side/y. Tension and compression
+demands are nonnegative; zero indicates no demand of that sign. One witness is
+returned for ties or constant fields, rather than claiming a unique location.
+The numerical gap bounds the maximum value, not a unique location error on flat
+fields. Analytical isolated-location tests verify the expected x and y.
+
+`governingYieldCriterion` uses the attained maximum; `conservativeYieldCriterion`
+uses the reported von Mises upper bound, giving a conservative minimum FoS and
+maximum utilization within the numerical bound. Diagnostics include that upper
+bound, its gap in Pa, method, and number of subdivisions. Section-only extrema
+use stationary roots directly and report zero subdivision gap.
+
+### Worked stress and yield example
+
+At x=1 m, right side, let N=2400 N, V=800 N, M=10 N m. Use a rectangle
+b=0.01 m, h=0.02 m: A=0.0002 m², I=6.6666666667e-9 m⁴, c=0.01 m.
+At y=+0.005 m with Sy=180 MPa:
+
+| Quantity | Calculation | Result |
+| --- | --- | --- |
+| Axial normal stress | N/A | +12 MPa |
+| Bending normal stress | -M y/I | -7.5 MPa |
+| Combined normal stress | 12 - 7.5 | +4.5 MPa |
+| Transverse shear | -1.5 V/A (1-0.5²) | -4.5 MPa |
+| Von Mises | sqrt(4.5² + 3×4.5²) | 9 MPa |
+| Yield utilization | 9/180 | 0.05 |
+| Yield FoS | 180/9 | 20 |
+
+This is a point result, not the maximum over the section or member. The test
+creates these internal loads through the gallery's held 2 m crank and S1/S3,
+with an end force and located end couple, then evaluates S4 downstream.
+
+### Validation and performance
+
+Hand checks cover A axial tension, B compression, C sagging rectangular bending,
+D rectangle shear, E circle shear, F axial-plus-bending, G normal-plus-shear
+von Mises, H yield utilization/FoS, and I zero demand. Independent quadrature
+integrates both supported stress distributions back to N, M, and signed -V.
+Circle integration substitutes y=R sin(theta) to handle the curved chord width.
+Other tests cover all three event jumps, rotation/translation invariance,
+nonzero static/dynamic equivalence, gravity-model differences, analytical versus
+prescribed provenance, serialization, malformed inputs, and numerical overflow.
+
+Critical-point tests include a section-interior maximum at y=c/4, uniform-gravity
+beam maximum at x=2 m, a centripetal axial maximum at x=1 m, and a separable
+two-variable polynomial with its independently known global maximum at
+u=0.37, t=0.25. Twelve deterministic additional polynomial fields are checked
+against independent dense probes as a regression oracle; those probes are not
+part of the production maximum algorithm.
+
+Diagnostic benchmark, Windows Node 24.21 / Angular Vitest, on the gallery's
+4 m uniform supported member under gravity. Medians in ms per operation:
+
+| Section | One stress point | Section extrema | Whole-member extrema |
+| --- | --- | --- | --- |
+| Rectangle | 0.0103 | 0.0576 | 0.5323 |
+| Solid circle | 0.0047 | 0.0404 | 0.4390 |
+
+Twenty-five warmups precede five batches of 50 operations. These include S4
+validation but exclude fixture construction and S1/S2/S3. Independent batches
+include JIT/GC variation; harder polynomial fields and more events cost more.
+Run `stress-performance.spec.ts` with `PMKS_BENCHMARK_STRESS=1` to reproduce
+`artifacts/s4-performance.json`. No timing threshold or shared mutable cache exists.
+
+### Diagnostics, limitations, and S5 recommendation
+
+Stress failures include `missing-cross-section`, `unsupported-cross-section`,
+`invalid-section-coordinate`, `invalid-section-properties`, `invalid-station`,
+`invalid-member-load-result`, `upstream-analysis-failed`, and `numerical-failure`.
+Material-criterion unavailability is separate from stress failure. Malformed
+event/interval topology, nonfinite coefficients, unsupported mechanics
+provenance, or inconsistent interval limits are refused before evaluation.
+S4 validates the downstream data contract; it does not rerun S3 mass validation
+or body equilibrium.
+
+The existing rounded-coordinate limitation is inherited: if S3 refuses a PMKS
+sample because its pins, CoM, and inertia fail uniform-line consistency, S4
+returns upstream failure. No tolerance or position-precision changes were made.
+The same restriction applies to uniform-line distributed gravity recovery.
+
+Only nominal plane beam stresses are supported. There is no torsion, section
+warping, arbitrary-section VQ/It model, local notch/hole/fillet concentration,
+pin shear, bearing/contact/tear-out, buckling, fatigue, deformation, reaction
+redistribution, FEA, or cycle aggregation. Exceeding yield is a nominal elastic
+demand check, not a plastic stress solution. Circular shear retains the
+width-averaged beam approximation described above.
+
+S5 should orchestrate explicitly selected mechanism samples through S2/S3/S4,
+retaining each sample index, time, input angle, x/side/y witness, and mechanics
+provenance. Aggregate stress envelopes and signed tension/compression ranges,
+and record the critical mechanism sample/angle for each demand. Minimum cycle
+FoS should use conservative per-sample bounds, with the corresponding actual
+stress witness available separately. A finite sample sweep is an envelope of
+those samples; continuous-cycle claims require additional angular/time refinement
+or a bound between samples.
+
+Address PMKS coordinate precision in a separate verified task before claiming
+complete exact dynamic cycle coverage. Failed samples must remain explicit gaps
+with an incomplete-envelope status, never zero stress or silently skipped
+contributions to a claimed safe cycle. Static envelopes likewise inherit any
+uniform-gravity distribution refusal.
+
+Before fatigue, retain signed stress histories at consistent material points,
+including mean/alternating components, shear/normal phase relationships, cycle
+counts, and loading history. Nonnegative von Mises maxima alone cannot supply
+that information. Fatigue needs a separately chosen material/life model,
+appropriate strength data, and any justified geometric/surface/environment
+corrections; S5 envelopes alone do not establish fatigue life.
+
+### S4 file inventory
+
+Added under `src/app/model/structural/`:
+
+- `member-stress.ts`: point/profile stress, provenance, and optional yield checks.
+- `stress-results.ts`, `stress-validation.ts`: typed results and downstream contract.
+- `stress-polynomial.ts`, `stress-maximizer.ts`, `stress-extrema.ts`: stationary
+  roots, bounded two-variable search, and section/member extrema.
+- `member-stress.spec.ts`, `stress-extrema.spec.ts`, `stress-performance.spec.ts`.
+
+Also added `src/test-utils/verification/stress-verification.ts` for real S1/S3
+test inputs and independent section-resultant integration. Existing gallery
+mechanisms are reused; no new mechanism URL or persistence format was needed.
+Modified `member-mass.ts`, `member-results.ts`, `member-load-recovery.ts`, and
+`pmks-dynamic-state.ts` solely for optional motion-source provenance, plus this
+document, `docs/README.md`, and `docs/tips-and-tricks.md`. No S0 section formulas,
+S1/S2 equations, S3 mass tolerances, legacy force solver, dependency, component,
+stylesheet, or hub-service changes are part of S4.
+
+### S4 verification results
+
+The targeted run passes **222/222** tests across S4, all prior structural tests,
+structural persistence, verification, and fixture gallery. S4 adds 34 tests in
+three spec files. The full PMKS run reports **2,706 passed, 3 failed / 2,709**
+in 251 files (249 passed, 2 failed).
+
+The complete baseline was rerun at `04d06680` before S4 code changes:
+**2,672 passed, 3 failed / 2,675**. All three failures have the same values in
+the S4 run:
+
+- MotionGen gripper initial gap: 1.036629237211164, expected greater than 2.3.
+- MotionGen gripper captured pose error: 1.051501, expected less than 0.0001.
+- Stylesheet raw rgba count: 99, expected at most 87.
+
+`npm run check` passes with zero errors and the existing 15 ESLint warnings,
+plus stylelint and Prettier. Production and Storybook builds succeed with
+existing size/CommonJS warnings. `git diff --check` passes.
+
+Browser regressions on the S4 worktree at `http://localhost:4348`:
+`e2e/force-units.mjs` **20/20** and `e2e/force-analysis-panels.mjs` **15/15**,
+with no reported page errors or issues. Joint in-motion force, link force graph,
+and metric kgf settings screenshots were inspected. CUA exposed no browser/app
+surface; tracked suites used disposable Playwright/Chrome profiles. S4 adds no
+UI, animation, or gesture behavior.
+
+Logs and benchmark JSON are in the worktree's ignored `artifacts/s4-*` files;
+browser screenshots are in `artifacts/screenshots/s4-force-panels-*` and
+`artifacts/force-units/`. The repository guides published at docs.pmksplus.com
+remain the code, style, and vocabulary references. S4 is kept as a separate
+commit after `04d06680`; no earlier milestone is squashed and nothing is pushed.

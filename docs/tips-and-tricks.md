@@ -1,5 +1,16 @@
 # Tips and tricks
 
+**Stress maxima can occur inside both a member interval and its section.** S4's
+normal stress is N/A-My/I; shear traction on S3's A-side face integrates to -V.
+Checking only the two outer fibers misses shear-dominated von Mises demand.
+Use `findSectionStressExtrema` / `findMemberStressExtrema`, not a plotting grid.
+The latter reports an attained witness and a Bernstein-based numerical upper
+bound; use its conservative yield criterion when an engineering check needs a
+lower FoS bound. `stress-extrema.spec.ts` includes a maximum at u=0.37 and y/c=0.25.
+Circular shear is the elementary width-averaged depth distribution, not a full
+curved-boundary traction field. S3 now carries optional motion-source metadata
+so S4 can retain analytical versus prescribed provenance without guessing it.
+
 **A sampled straight rod is not automatically an exact uniform mass line.**
 S3's `snapshotPmksMemberMotion` reads signed analytical angular velocity in rad/s
 alongside S2 accelerations. Its section recovery additionally validates that the

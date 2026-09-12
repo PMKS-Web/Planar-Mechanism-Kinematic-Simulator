@@ -252,6 +252,7 @@ function recover(
   return {
     status: 'ok',
     mode: dynamic ? 'dynamic' : 'static',
+    ...(dynamic ? { motionSource: dynamic.motion.source ?? ('unspecified' as const) } : {}),
     member,
     gravityModel: gravity ? options.gravityModel! : 'none',
     massModel:
