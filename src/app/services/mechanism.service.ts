@@ -1,3 +1,13 @@
+import { solveFingerprint } from '../model/mechanism/solve-fingerprint';
+import {
+  at,
+  blendAngle,
+  niceSpeed,
+  HeldPlayback,
+  HeldPose,
+  PausedPlaybackPose,
+} from '../model/mechanism/playback-values';
+export { niceSpeed, PausedPlaybackPose } from '../model/mechanism/playback-values';
 import { Injectable, Injector, inject } from '@angular/core';
 import { LinkHold } from '../model/link';
 import { cylinderHoldCarrier, holdOf, holdableBar } from '../model/link-holds';
@@ -117,76 +127,6 @@ import { SynthesisBuilderService } from './synthesis/synthesis-builder.service';
  * where a joint's name is a token in a comma- and period-delimited payload.
  */
 const JOINT_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-
-/** One machine's playback state, carried across a rebuild by `partitionKey`. */
-interface HeldPlayback {
-  seconds: number;
-  playing: boolean;
-  direction: number;
-  /** Running backwards only because its drive was turned round in place. */
-}
-
-/** A paused drawing's place in each cycle, independent of sample counts. */
-export interface PausedPlaybackPose {
-  mechanisms: { id: string; fraction: number }[];
-}
-
-/**
- * One machine's displayed pose, carried across a rebuild that re-measures it.
- *
- * The clock cannot carry it -- that is the whole point -- so what is kept is
- * the driven coordinate in the *new* rule plus the pose itself, which is what
- * tells the two legs of a reversing cycle apart. Exactly what an anchor keeps,
- * about the displayed pose rather than the start.
- */
-interface HeldPose {
-  rule: CoordinateRule;
-  coordinate: number;
-  seed: ReadonlyMap<string, { x: number; y: number }>;
-}
-
-/**
- * One solved object out of a frame, by id, in constant time.
- *
- * A Mechanism holds the same objects in the same order at every sample, so the
- * position an id sits at is fixed for the machine's whole life and worth
- * looking up once (see `frameIndexOf`). The id at that position is still
- * checked, and the linear search is still there behind it: a frame is allowed
- * to drop an object the solver could not place, and a wrong answer here moves a
- * joint to another joint's coordinates.
- */
-function at<T extends { id: string }>(
-  frame: T[],
-  where: Map<string, number>,
-  id: string
-): T | undefined {
-  const guess = frame[where.get(id) ?? -1];
-  return guess?.id === id ? guess : frame.find((candidate) => candidate.id === id);
-}
-
-/** Blend two angles along the shorter arc, so a wrap past pi does not spin. */
-function blendAngle(from: number, to: number, blend: number): number {
-  let delta = to - from;
-  while (delta > Math.PI) delta -= 2 * Math.PI;
-  while (delta < -Math.PI) delta += 2 * Math.PI;
-  return from + delta * blend;
-}
-
-/**
- * The nearest number a person would have picked: 1, 2 or 5 times a power of ten.
- *
- * A default that reads 13.7 rpm claims to have been calculated from something,
- * and invites the reader to treat it as a result rather than as a starting
- * point. The ladder is the one every axis and every ruler climbs.
- */
-export function niceSpeed(raw: number): number {
-  if (!Number.isFinite(raw) || raw <= 0) return 0;
-  const decade = Math.pow(10, Math.floor(Math.log10(raw)));
-  const steps = [1, 2, 5, 10].map((step) => step * decade);
-  return steps.reduce((best, step) =>
-    Math.abs(Math.log(step / raw)) < Math.abs(Math.log(best / raw)) ? step : best
-  );
-}
 
 @Injectable({
   providedIn: 'root',
@@ -665,41 +605,13 @@ export class MechanismService {
    * the same frames, so the earlier ones can stand.
    */
   private solveFingerprint(partition: MechanismPartition, unitStr: string): string {
-    const joints = partition.joints.map((joint) => {
-      const real = joint instanceof RealJoint ? joint : undefined;
-      const slide = joint instanceof PrisJoint ? joint.angle_rad : '';
-      // Spelled, not read off the class: a production build renames classes.
-      const kind = joint instanceof PrisJoint ? 'P' : joint instanceof RevJoint ? 'R' : 'J';
-      const flags = [real?.ground && 'g', real?.input && 'i', real?.isWelded && 'w']
-        .filter(Boolean)
-        .join('');
-      return `${joint.id}@${joint.x},${joint.y}:${kind}${flags}${slide}`;
-    });
-    const links = partition.links.map((link) => {
-      const body = link instanceof RealLink ? link : undefined;
-      const pins = link.joints.map((joint) => joint.id).join('');
-      const subset = body?.subset.map((part) => part.id).join('+') ?? '';
-      const shape = `${body?.isCircle ? 'o' : ''}d${body?.d.length ?? ''}`;
-      const center = `${body?.CoM.x ?? ''},${body?.CoM.y ?? ''}`;
-      const inertia = `m${link.mass}I${body?.massMoI ?? ''}`;
-      const kind = body ? 'L' : link instanceof SliderBlock ? 'S' : 'K';
-      return `${link.id}[${pins}]${kind}${inertia}c${center}${shape}s${subset}`;
-    });
-    const forces = partition.forces.map((force) => {
-      const from = `${force.startCoord.x},${force.startCoord.y}`;
-      const to = `${force.endCoord.x},${force.endCoord.y}`;
-      const at = `${from}-${to}`;
-      return `${force.id}>${force.link.id}@${at}m${force.mag}${force.local ? 'l' : ''}`;
-    });
-    return [
-      joints.join('|'),
-      links.join('|'),
-      forces.join('|'),
-      this.settingsService.isGravity.value,
+    return solveFingerprint(
+      partition,
       unitStr,
+      this.settingsService.isGravity.value,
       this.inputVelocityFor(partition),
-      this.ics.length,
-    ].join('#');
+      this.ics.length
+    );
   }
 
   private inputVelocityFor(partition: MechanismPartition): number {
