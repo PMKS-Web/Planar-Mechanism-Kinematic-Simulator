@@ -92,7 +92,13 @@ request into `staging` or `main` cannot merge while it is red, and neither branc
 force pushes. Only a repository admin can override, and that is for emergencies. No e2e suite runs
 in CI, `e2e/ui-copy.mjs` included, so run the ones your change needs yourself.
 
-**There are two Netlify sites, and the branch one moved.** Branch and preview builds come from
+**The component gallery is hosted at [docs.pmksplus.com](https://docs.pmksplus.com)**, a third
+Netlify site (`pmksdocs`) that nothing builds automatically: publish it by hand with
+`npm run build-storybook` then
+`netlify deploy --prod --no-build --dir storybook-static --site e07ce29d-65df-4d24-832d-449f966dbfe9`.
+It shows whatever was last published, so a local `npm run storybook` is the one to check a change in.
+
+**There are two Netlify sites for the app, and the branch one moved.** Branch and preview builds come from
 `pmksnew` now; `[BRANCH]--pmksprod.netlify.app` still answers 200 and serves a **months-stale
 bundle**, which is worse than a 404 because it looks like a deploy that simply ignored your commit.
 Confirm a build landed by asking for something only the new commit has, not by the page loading.

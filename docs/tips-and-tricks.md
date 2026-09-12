@@ -2515,7 +2515,12 @@ bodies, cached per pose -- followed by `channelsCutInto(link)`. A discrepancy be
 ### The component gallery borrows the app's styles from `angular.json`
 
 `npm run storybook` serves the BLOCKS gallery on port 6006; `npm run build-storybook` writes a
-static copy to gitignored `storybook-static/`. The Storybook builder only loads the global
+static copy to gitignored `storybook-static/`. That copy is what [docs.pmksplus.com](https://docs.pmksplus.com)
+serves: the `pmksdocs` Netlify site, published by hand with
+`netlify deploy --prod --no-build --dir storybook-static --site <site id>` (the CLI wants the id
+from `netlify sites:list`, not the name, and `--no-build` because there is nothing for Netlify to
+build). `docs.pmksplus.com` is a `NETLIFY` record in the `pmksplus.com` zone, created by attaching
+the domain to the site. The CLI leaves a `.netlify/state.json` link file behind; it is gitignored. The Storybook builder only loads the global
 stylesheets listed on its *own* target, so an unstyled gallery is the first thing you see if that
 list drifts. `.storybook/main.ts` avoids the second list entirely: it reads `styles` and
 `includePaths` from the app's `build` target in `angular.json` and prepends them to the preview.

@@ -47,10 +47,19 @@ SCSS of the panel next door gives a control that looks right today and drifts to
 backlog lists the places where that already happened. New colors, radii, shadows and gaps are
 tokens, and stylelint refuses a raw hex color anywhere else.
 
-## Running it
+## Where it is
 
-- `npm run storybook` starts the gallery at `http://localhost:6006` and reloads it on change.
-- `npm run build-storybook` builds a static site into `storybook-static/`, which is gitignored.
+- **Hosted:** [docs.pmksplus.com](https://docs.pmksplus.com) — a static build of this gallery on
+  the `pmksdocs` Netlify site, published by hand with
+  `netlify deploy --prod --no-build --dir storybook-static --site pmksdocs` after
+  `npm run build-storybook`. It shows whatever was last published, so prefer a local run when you
+  are checking a change.
+- **Source:** [PMKS-Web/Planar-Mechanism-Kinematic-Simulator](https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator)
+  on GitHub. The gallery is `.storybook/` and `src/stories/`; the components are
+  `src/app/component/`; the guides are `docs/`.
+- **Locally:** `npm run storybook` starts the gallery at `http://localhost:6006` and reloads it on
+  change; `npm run build-storybook` builds the static site into `storybook-static/`, which is
+  gitignored.
 
 ## Adding a story
 
