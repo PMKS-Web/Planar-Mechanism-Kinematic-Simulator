@@ -109,6 +109,12 @@ export class BottombarComponent {
    */
   private synthesisStatus(): string {
     if (this.design.stage === 'chooser') return 'Pick a synthesis type to begin';
+    if (this.design.stage === 'path') {
+      const count = this.design.path.points.length;
+      return count
+        ? `${count} path points · target-curve preview`
+        : 'Add path points or choose a starting shape';
+    }
     if (this.design.regionDraw) {
       return 'Drag on the grid to draw the region the ground pins must sit in';
     }

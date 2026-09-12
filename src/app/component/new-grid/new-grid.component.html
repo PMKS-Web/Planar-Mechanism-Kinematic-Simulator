@@ -1235,7 +1235,7 @@
        drawing, which is why none of it goes through the mechanism's holders and
        none of it survives a tab change without being inserted first. -->
   @if (showSynthesisPositions()) {
-    <g id="synthesis" modelFrame [class.shadow]="synthesisShadowOnly()">
+    <g id="synthesis" modelFrame [class.shadow]="!showSynthesis()">
       <!-- Where the ground pivots have to land, if that has been asked for.
            Under the parts: it is a constraint on the answer, not the answer. -->
       @if (showSynthesis() && synthCanvas.regionBox(); as region) {
@@ -2457,6 +2457,7 @@
       </g>
     </g>
   }
+  <g appPathSynthesisCanvas></g>
 </svg>
 <!-- The file dialog the Add background image menu item opens. Off-screen
      rather than display:none, because a hidden input cannot be driven by the

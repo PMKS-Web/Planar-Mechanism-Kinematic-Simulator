@@ -1,0 +1,138 @@
+<div class="heading">
+  <button type="button" class="icon-button" (click)="back()" aria-label="Back to synthesis choices">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+  <div>
+    <h2>Path Synthesis</h2>
+    <p>Define the curve a coupler point should follow.</p>
+  </div>
+</div>
+<div class="content">
+  <section>
+    <h3>Target Path</h3>
+    <p>Place points on the canvas or enter coordinates below. Drag a point to reshape the curve.</p>
+    <label class="preset"
+      >Starting Shape
+      <select
+        appStandardField
+        aria-label="Starting shape"
+        [value]="preset()"
+        (change)="choosePreset($event)"
+      >
+        @for (name of presets; track name) {
+          <option [value]="name" [selected]="name === preset()">{{ name }}</option>
+        }
+      </select>
+    </label>
+    <button-block [click]="loadPreset">{{
+      editor.target.points.length ? 'Replace Path with Shape' : 'Use Shape'
+    }}</button-block>
+    <div class="choice" role="group" aria-label="Path ends">
+      Path Ends
+      <segmented-block
+        [options]="['Open', 'Closed']"
+        [selected]="editor.target.closed ? 1 : 0"
+        (selectedChange)="setClosed($event)"
+      />
+    </div>
+    <div class="choice" role="group" aria-label="Connections">
+      Connections
+      <segmented-block
+        [options]="['Straight', 'Smooth']"
+        [selected]="editor.target.smooth ? 1 : 0"
+        (selectedChange)="setSmooth($event)"
+      />
+    </div>
+    <button-block [click]="placePoints">{{
+      editor.armed ? 'Done Placing Points' : 'Place Points on Canvas'
+    }}</button-block>
+    @if (editor.armed) {
+      <p role="status">Click or tap to add each point. Choose Done or press Escape to finish.</p>
+    }
+  </section>
+  <section>
+    <h3>
+      Path Points <span>({{ unit }})</span>
+    </h3>
+    @if (error()) {
+      <p class="error" role="alert">{{ error() }}</p>
+    }
+    @if (editor.target.points.length) {
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Point</th>
+            <th scope="col">X</th>
+            <th scope="col">Y</th>
+            <th scope="col">Order</th>
+            <th scope="col"><span class="sr-only">Delete</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (point of editor.target.points; track $index; let i = $index) {
+            <tr [class.selected]="editor.selected === i">
+              <th scope="row">P{{ i + 1 }}</th>
+              <td>
+                <input
+                  appStandardField
+                  type="text"
+                  inputmode="decimal"
+                  [attr.aria-label]="'Path point ' + (i + 1) + ' X'"
+                  [value]="format(point.x)"
+                  (change)="coordinate(i, 'x', $event)"
+                />
+              </td>
+              <td>
+                <input
+                  appStandardField
+                  type="text"
+                  inputmode="decimal"
+                  [attr.aria-label]="'Path point ' + (i + 1) + ' Y'"
+                  [value]="format(point.y)"
+                  (change)="coordinate(i, 'y', $event)"
+                />
+              </td>
+              <td class="order">
+                <button
+                  type="button"
+                  class="icon-button"
+                  [disabled]="i === 0"
+                  [attr.aria-label]="'Move path point ' + (i + 1) + ' earlier'"
+                  (click)="editor.reorder(i, -1)"
+                >
+                  <mat-icon>arrow_upward</mat-icon>
+                </button>
+                <button
+                  type="button"
+                  class="icon-button"
+                  [disabled]="i === editor.target.points.length - 1"
+                  [attr.aria-label]="'Move path point ' + (i + 1) + ' later'"
+                  (click)="editor.reorder(i, 1)"
+                >
+                  <mat-icon>arrow_downward</mat-icon>
+                </button>
+              </td>
+              <td>
+                <button
+                  type="button"
+                  class="icon-button"
+                  [attr.aria-label]="'Delete path point ' + (i + 1)"
+                  (click)="editor.remove(i)"
+                >
+                  <mat-icon>close</mat-icon>
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    } @else {
+      <p>No path points yet. Choose a shape or add your first point.</p>
+    }
+    <button-block [click]="addPoint">Add Path Point</button-block>
+    <button-block [click]="clear" [disabled]="editor.target.points.length === 0"
+      >Delete All Path Points</button-block
+    >
+  </section>
+  <p class="notice">Target-path preview only. Automatic mechanism fitting is not built yet.</p>
+</div>

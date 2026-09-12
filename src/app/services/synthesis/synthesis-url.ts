@@ -8,6 +8,7 @@ import {
 import { FlagPacker } from '../transcoding/flag-packer';
 import { SynthesisBuilderService } from './synthesis-builder.service';
 import { COR, SynthesisPose } from './synthesis-util';
+import { PathSynthesisDesign } from '../../model/path-synthesis';
 
 /**
  * The synthesis design, in and out of the URL.
@@ -53,6 +54,11 @@ const REFERENCES = [COR.BACK, COR.CENTER, COR.FRONT];
  */
 export function encodeSynthesisDesign(design: SynthesisBuilderService): string[] {
   const poses = design.getAllPoses();
+  const pathStarted =
+    design.stage === 'path' ||
+    design.path.points.length > 0 ||
+    !design.path.closed ||
+    !design.path.smooth;
   const untouched =
     poses.length === 0 &&
     design.stage === 'chooser' &&
@@ -61,7 +67,7 @@ export function encodeSynthesisDesign(design: SynthesisBuilderService): string[]
     !design.constrain &&
     design.ownedJointIds.length === 0 &&
     !design.ownershipPartial;
-  if (untouched) return [];
+  if (untouched && !pathStarted) return [];
 
   const marks = [
     'SD~' +
@@ -78,6 +84,14 @@ export function encodeSynthesisDesign(design: SynthesisBuilderService): string[]
         false,
       ]),
   ];
+
+  // New tags leave all existing motion-design entries and flag positions intact.
+  if (pathStarted) {
+    marks.push(
+      'ST~' + FlagPacker.pack([design.stage === 'path', design.path.closed, design.path.smooth])
+    );
+    design.path.points.forEach((p) => marks.push('SQ~' + length(p.x) + '~' + length(p.y)));
+  }
 
   poses.forEach((pose: SynthesisPose) => {
     marks.push(
@@ -123,6 +137,19 @@ export function applySynthesisDesign(marks: string[], design: SynthesisBuilderSe
   }
 
   const [lengthText, referenceText, flagsText] = header.substring(3).split('~');
+  const target = new PathSynthesisDesign();
+  const pathHeader = marks.find((entry) => entry.startsWith('ST~'));
+  const [pathWorking, closed, smooth] = pathHeader
+    ? FlagPacker.unpack(pathHeader.substring(3), 3)
+    : [false, true, true];
+  target.closed = closed;
+  target.smooth = smooth;
+  target.points = marks
+    .filter((entry) => entry.startsWith('SQ~'))
+    .map((entry) => {
+      const [x, y] = entry.substring(3).split('~');
+      return { x: unlength(x), y: unlength(y) };
+    });
   const [endsOnly, allowDefect, constrain, working, ownershipPartial] = FlagPacker.unpack(
     flagsText,
     FLAGS
@@ -134,7 +161,8 @@ export function applySynthesisDesign(marks: string[], design: SynthesisBuilderSe
     endsOnly,
     allowDefect,
     constrain,
-    stage: working ? 'working' : 'chooser',
+    stage: pathWorking ? 'path' : working ? 'working' : 'chooser',
+    path: target,
     poses: marks
       .filter((entry) => entry.startsWith('SP~'))
       .map((entry) => {

@@ -101,7 +101,8 @@ $red: var(--danger);
       font: inherit;
       color: inherit;
 
-      &--on {
+      &--on,
+      &--path {
         border: 1.5px solid $indigo;
         background: $indigo-tint;
         cursor: pointer;

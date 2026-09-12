@@ -58,6 +58,7 @@ import { EditPermissionService } from 'src/app/services/edit-permission.service'
 import { StartPoseGhost } from 'src/app/model/mechanism/anchor';
 import { SynthesisPose } from 'src/app/services/synthesis/synthesis-util';
 import { SynthesisCanvasService } from 'src/app/services/synthesis/synthesis-canvas.service';
+import { PathSynthesisCanvasComponent } from '../path-synthesis-canvas/path-synthesis-canvas.component';
 import { SynthesisSolutionService } from 'src/app/services/synthesis/synthesis-solution.service';
 import { ColorService } from '../../services/color.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
@@ -197,6 +198,7 @@ const SELECTION_RING_PX = 3;
     LongPressDirective,
     ModelFrameDirective,
     UprightDirective,
+    PathSynthesisCanvasComponent,
   ],
 })
 export class NewGridComponent implements OnDestroy {
@@ -507,7 +509,7 @@ export class NewGridComponent implements OnDestroy {
 
   /** Whether Synthesis owns the canvas: its handles, ghost and preview. */
   showSynthesis(): boolean {
-    return this.tabService.getCurrentTab() === TabID.SYNTHESIZE;
+    return this.synthCanvas.active;
   }
 
   /**
@@ -521,11 +523,6 @@ export class NewGridComponent implements OnDestroy {
    */
   showSynthesisPositions(): boolean {
     return this.showSynthesis() || this.synthesisBuilder.getAllPoses().length > 0;
-  }
-
-  /** Positions drawn, but as a record rather than as controls. */
-  synthesisShadowOnly(): boolean {
-    return !this.showSynthesis();
   }
 
   /**

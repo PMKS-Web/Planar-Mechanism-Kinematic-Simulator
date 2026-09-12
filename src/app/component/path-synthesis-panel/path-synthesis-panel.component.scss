@@ -1,0 +1,156 @@
+@use '../left-tabs/left-tabs.vars' as nav;
+
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  color: var(--text-primary);
+}
+.heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border-divider);
+}
+h2 {
+  font-size: 16px;
+  margin: 0;
+}
+h3 {
+  font-size: 13px;
+  margin: 0 0 12px;
+}
+p {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin: 8px 0;
+}
+.content {
+  overflow-y: auto;
+  min-height: 0;
+}
+section {
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--border-divider);
+}
+.choice,
+.preset {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  margin: 12px 0;
+}
+segmented-block {
+  width: 65%;
+}
+select {
+  max-width: 65%;
+}
+table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+th,
+td {
+  padding: 3px 2px;
+  text-align: left;
+}
+th:first-child {
+  width: 32px;
+}
+th:nth-child(4) {
+  width: 64px;
+}
+th:last-child {
+  width: 32px;
+}
+input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+input,
+select {
+  border: 1px solid var(--border-divider);
+  border-radius: var(--border-radius);
+  background: var(--surface-field);
+  color: var(--text-primary);
+  font: inherit;
+  padding: 7px 5px;
+}
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--brand);
+}
+.order {
+  display: flex;
+}
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 36px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: var(--border-radius);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.icon-button:hover,
+.selected {
+  background: var(--hover-wash);
+}
+.icon-button:focus-visible {
+  outline: 2px solid var(--brand);
+}
+.icon-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+}
+.notice {
+  margin: 12px;
+  padding: 10px;
+  border: 1px solid var(--border-divider);
+  border-radius: var(--border-radius);
+}
+.error {
+  color: var(--refusal-text);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+@media (max-width: nav.$phone-max-width) {
+  .icon-button {
+    width: 44px;
+    height: 44px;
+  }
+  th:nth-child(4) {
+    width: 88px;
+  }
+  th:last-child {
+    width: 44px;
+  }
+  input,
+  select {
+    min-height: 44px;
+  }
+}

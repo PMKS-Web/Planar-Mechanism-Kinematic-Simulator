@@ -753,7 +753,7 @@ export class StringTranscoder extends GenericTranscoder {
   private validateDecodedSynthesis(): void {
     // Field counts per entry. `SO` is the one that varies: it lists the joints
     // the design owns, and how many there are depends on the linkage.
-    const expected: { [tag: string]: number } = { SD: 3, SP: 3, SR: 4 };
+    const expected: { [tag: string]: number } = { SD: 3, SP: 3, SR: 4, ST: 1, SQ: 2 };
     /*
       Every character the number encoder can emit, and nothing else.
 
@@ -791,6 +791,9 @@ export class StringTranscoder extends GenericTranscoder {
       if (tag !== 'SO' && parts.some((part) => !numeric.test(part))) {
         throw new Error('URL contains an unreadable synthesis number');
       }
+      if (tag === 'SQ' && parts.some((part) => !Number.isFinite(fromUrlSafeDecimal(part)))) {
+        throw new Error('URL contains a non-finite path coordinate');
+      }
     });
     if ((seen.get('SP') ?? 0) > 3) {
       throw new Error('URL contains more than three synthesis positions');
@@ -798,11 +801,14 @@ export class StringTranscoder extends GenericTranscoder {
     // One design per URL. Two headers, or two of anything that describes the
     // design as a whole, means the section was assembled by something other
     // than this app, and there is no sensible way to choose between them.
-    (['SD', 'SR', 'SO', 'SW'] as const).forEach((tag) => {
+    (['SD', 'SR', 'SO', 'SW', 'ST'] as const).forEach((tag) => {
       if ((seen.get(tag) ?? 0) > 1) {
         throw new Error('URL repeats a synthesis entry');
       }
     });
+    if ((seen.has('ST') && !seen.has('SD')) || (seen.has('SQ') && !seen.has('ST'))) {
+      throw new Error('URL contains path points without their design');
+    }
   }
 
   /**

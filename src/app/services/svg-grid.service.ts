@@ -106,6 +106,7 @@ const DRAWING_LAYERS = [
   // often the only thing on the canvas, and a fit that could not see them
   // framed an empty grid and left them off the side of it.
   'synthesis',
+  'pathSynthesisTarget',
 ] as const;
 
 /**

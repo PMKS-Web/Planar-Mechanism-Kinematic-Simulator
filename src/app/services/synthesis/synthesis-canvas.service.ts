@@ -7,6 +7,7 @@ import { SynthesisBuilderService } from './synthesis-builder.service';
 import { SynthesisSolutionService } from './synthesis-solution.service';
 import { solveFourBar, endLetters } from './synthesis-candidates';
 import { COR } from './synthesis-util';
+import { SelectedTabService, TabID } from '../../selected-tab.service';
 
 /** A bar drawn on the grid: two pins, a fill, and what it is called. */
 export interface PoseBar {
@@ -166,6 +167,11 @@ export class SynthesisCanvasService {
   private design = inject(SynthesisBuilderService);
   private solution = inject(SynthesisSolutionService);
   private colors = inject(ColorService);
+  private tabs = inject(SelectedTabService);
+
+  get active(): boolean {
+    return this.tabs.getCurrentTab() === TabID.SYNTHESIZE && this.design.stage !== 'path';
+  }
 
   /** Where the pointer last was, in model coordinates. */
   public cursor: Coord | undefined;

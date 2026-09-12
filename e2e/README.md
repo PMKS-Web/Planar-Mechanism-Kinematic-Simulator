@@ -316,6 +316,8 @@ Not suites — import them from one.
 - `template-backdrops.mjs` — the real-life library section and the picture each card opens on.
 - `synthesis-redesign.mjs` — Synthesis end to end: place three positions, generate, browse and
   compare candidates, preview, insert, undo, and survive a shared link.
+- `path-synthesis.mjs` — target-path presets, coordinates, point order, drag filmstrip,
+  placement, undo/redo, reload, shared URLs, and the phone layout with reduced motion.
 - `export-flow.mjs` — the Export Data drawer end to end, including reading the downloaded file.
 - `release-export-ui.mjs` — malformed URL recovery, semantic field names, and a phone CAD origin
   chooser with twelve joints.

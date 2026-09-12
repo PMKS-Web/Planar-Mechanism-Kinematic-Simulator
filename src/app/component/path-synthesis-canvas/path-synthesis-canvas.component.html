@@ -1,0 +1,57 @@
+@if (editor.active && editor.armed) {
+  <svg:rect
+    class="placement"
+    [attr.x]="grid.viewBoxMinX"
+    [attr.y]="grid.viewBoxMinY"
+    [attr.width]="grid.viewBoxMaxX - grid.viewBoxMinX"
+    [attr.height]="grid.viewBoxMaxY - grid.viewBoxMinY"
+    (pointerdown)="down($event)"
+    (pointermove)="move($event)"
+    (pointerup)="up($event)"
+    (pointercancel)="cancel()"
+    (lostpointercapture)="cancel()"
+  />
+}
+<svg:g modelFrame [class.shadow]="!editor.active" id="pathSynthesisTarget">
+  <svg:path
+    class="target"
+    [attr.d]="editor.target.curve"
+    vector-effect="non-scaling-stroke"
+    pointer-events="none"
+  />
+  @for (point of editor.target.points; track $index; let i = $index) {
+    <svg:g class="point" [class.selected]="editor.active && editor.selected === i">
+      <svg:circle
+        class="dot"
+        [attr.cx]="point.x"
+        [attr.cy]="point.y"
+        [attr.r]="grid.scaleWithZoom(5)"
+        vector-effect="non-scaling-stroke"
+        pointer-events="none"
+      />
+      @if (editor.active) {
+        <svg:circle
+          class="hit"
+          [attr.cx]="point.x"
+          [attr.cy]="point.y"
+          [attr.r]="grid.scaleWithZoom(22)"
+          [attr.data-path-point]="i + 1"
+          (pointerdown)="down($event, i)"
+          (pointermove)="move($event)"
+          (pointerup)="up($event)"
+          (pointercancel)="cancel()"
+          (lostpointercapture)="cancel()"
+        />
+        <svg:g [upright]="point" pointer-events="none">
+          <svg:text
+            [attr.x]="grid.scaleWithZoom(10)"
+            [attr.y]="grid.scaleWithZoom(-10)"
+            [attr.font-size]="grid.scaleWithZoom(12)"
+          >
+            P{{ i + 1 }}
+          </svg:text>
+        </svg:g>
+      }
+    </svg:g>
+  }
+</svg:g>

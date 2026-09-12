@@ -144,6 +144,11 @@ not whether it may go or what may be built onto it.
 
 ### Parts
 
+**Path point** is a target coordinate in the path-synthesis editor; it is not a joint or a
+tracer point on a mechanism. **Target path** is the curve through those ordered points.
+**Target-path preview** describes this editor's output; generating a fitted mechanism is
+not implemented yet.
+
 | Use | For |
 | --- | --- |
 | **joint** | a pin, a slider, a tracer point — anything with an id letter |

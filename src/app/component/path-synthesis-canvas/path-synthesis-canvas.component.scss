@@ -1,0 +1,40 @@
+.placement,
+.hit {
+  fill: transparent;
+  touch-action: none;
+}
+.placement {
+  cursor: crosshair;
+}
+.hit {
+  cursor: grab;
+}
+.hit:active {
+  cursor: grabbing;
+}
+.target {
+  fill: none;
+  stroke: var(--brand);
+  stroke-width: 2;
+  stroke-dasharray: 7 4;
+}
+.dot {
+  fill: var(--canvas-halo);
+  stroke: var(--brand);
+  stroke-width: 2;
+}
+.selected .dot {
+  fill: var(--accent);
+  stroke: var(--brand-dark);
+}
+text {
+  fill: var(--brand-dark);
+  stroke: var(--canvas-halo);
+  stroke-width: 3px;
+  paint-order: stroke;
+  font-weight: 600;
+}
+.shadow {
+  opacity: 0.3;
+  pointer-events: none;
+}

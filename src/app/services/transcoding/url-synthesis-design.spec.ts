@@ -86,6 +86,55 @@ function restamp(encoded: string, edit: (body: string) => string): string {
 }
 
 describe('a synthesis design in the URL', () => {
+  it('keeps path options chosen before the first point when switching synthesis types', () => {
+    const design = designFor(new SettingsService());
+    design.path.closed = false;
+    design.path.smooth = false;
+    const restored = decodeInto(encode(design));
+    expect(restored.stage).toBe('chooser');
+    expect(restored.path.closed).toBe(false);
+    expect(restored.path.smooth).toBe(false);
+  });
+  it('round-trips path points and keeps an existing motion design', () => {
+    const design = worked();
+    design.stage = 'path';
+    design.path.points = [
+      { x: -2.5 * S, y: 1.25 * S },
+      { x: 6 * S, y: 0 },
+    ];
+    design.path.closed = false;
+    design.path.smooth = false;
+    const restored = decodeInto(encode(design));
+    expect(restored.stage).toBe('path');
+    expect(restored.path.points).toEqual(design.path.points);
+    expect(restored.path.closed).toBe(false);
+    expect(restored.path.smooth).toBe(false);
+    expect(restored.getAllPoses().length).toBe(3);
+    expect(restored.hasDesign()).toBe(true);
+  });
+
+  it('clears the target on undo to an older URL and rescales it with document units', () => {
+    const design = worked();
+    design.path.points = [{ x: 2 * S, y: -S }];
+    design.convertLengths(2.54);
+    expect(design.path.points[0].x).toBeCloseTo(5.08 * S, 8);
+    const decoder = new StringTranscoder();
+    decoder.decodeURL(encode(worked()));
+    applySynthesisDesign(decoder.getSynthesisMarks(), design);
+    expect(design.path.points).toEqual([]);
+    expect(design.stage).toBe('working');
+    design.path.points = [{ x: 1, y: 2 }];
+    applySynthesisDesign([], design);
+    expect(design.path.points).toEqual([]);
+  });
+
+  it('rejects incomplete and orphaned path entries', () => {
+    const url = encode(worked());
+    for (const tail of [',SQ~0~0', ',ST~7,SQ~0', ',ST~7,ST~7']) {
+      expect(() => new StringTranscoder().decodeURL(restamp(url, (body) => body + tail))).toThrow();
+    }
+  });
+
   it('adds nothing at all when no design has been started', () => {
     expect(encode(designFor(new SettingsService()))).toBe(encode());
   });

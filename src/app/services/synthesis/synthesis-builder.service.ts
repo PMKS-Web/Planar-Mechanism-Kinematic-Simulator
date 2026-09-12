@@ -6,6 +6,7 @@ import { NumberUnitParserService } from '../number-unit-parser.service';
 import { SettingsService } from '../settings.service';
 import { MODEL_SCALE } from 'src/app/model/render-scale';
 import { CandidateSearch, PosePoint } from './synthesis-candidates';
+import { PathSynthesisDesign } from '../../model/path-synthesis';
 
 /*
 Service responsible for storing end-effector poses to be synthesized
@@ -27,12 +28,11 @@ export class SynthesisBuilderService {
   /**
    * Which screen of Synthesis the reader is on.
    *
-   * 'chooser' asks what kind of synthesis this is; 'working' is the one kind
-   * that exists. It is a screen rather than a setting because the answer
-   * decides what every control below it means, and because the second kind --
-   * fitting a linkage to a path -- is coming and has to have somewhere to go.
+   * 'working' designs a mechanism through three poses; 'path' edits a target
+   * curve. Keeping both designs lets the reader move between them without loss.
    */
-  public stage: 'chooser' | 'working' = 'chooser';
+  public stage: 'chooser' | 'working' | 'path' = 'chooser';
+  public path = new PathSynthesisDesign();
 
   /**
    * Whether the next click on the grid drops a position.
@@ -469,7 +469,7 @@ export class SynthesisBuilderService {
    * a template, say -- has to ask this too, not only the drawing.
    */
   hasDesign(): boolean {
-    return this.getAllPoses().length > 0 || this.constrain;
+    return this.getAllPoses().length > 0 || this.constrain || this.path.points.length > 0;
   }
 
   /**
@@ -482,6 +482,7 @@ export class SynthesisBuilderService {
    */
   convertLengths(scale: number): void {
     if (scale === 1) return;
+    this.path.convertLengths(scale);
     for (const pose of this.getAllPoses()) {
       pose.position = new Coord(pose.position.x * scale, pose.position.y * scale);
     }
@@ -501,6 +502,7 @@ export class SynthesisBuilderService {
 
   /** Nothing designed, nothing asked for -- what a fresh visit looks like. */
   clearDesign(): void {
+    this.path = new PathSynthesisDesign();
     this.poses = {};
     this._COR = COR.CENTER;
     this._length = 5 * MODEL_SCALE;
@@ -531,7 +533,8 @@ export class SynthesisBuilderService {
     endsOnly: boolean;
     allowDefect: boolean;
     constrain: boolean;
-    stage: 'chooser' | 'working';
+    stage: 'chooser' | 'working' | 'path';
+    path?: PathSynthesisDesign;
     poses: { at: Coord; thetaDegrees: number }[];
     region?: { x: number; y: number; w: number; h: number };
     ownedJointIds: string[];
@@ -549,6 +552,7 @@ export class SynthesisBuilderService {
     this.allowDefect = decoded.allowDefect;
     this.constrain = decoded.constrain;
     this.stage = decoded.stage;
+    this.path = decoded.path ?? new PathSynthesisDesign();
     this.armed = false;
     this.regionDraw = false;
     this.ownedJointIds = decoded.ownedJointIds;

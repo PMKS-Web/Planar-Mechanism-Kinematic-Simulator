@@ -28,6 +28,8 @@ In this order, the first time:
 
 ## Design records
 
+- [path-synthesis.md](path-synthesis.md) — recovered PMKSConversion target-path editor, source commits, URL entries and remaining mechanism-fitting scope. *Partly built*
+
 - [joint-types-plan.md](joint-types-plan.md) — plan of record for floating slots, slides, driven prismatic joints and cylinders, Phases 0–7a. *Partly built*
 - [floating-slot-kinematics-design.md](floating-slot-kinematics-design.md) — velocity and acceleration through a floating slot (Phase 2, task 2.9). *Built*
 - [phase-3-slide-spec.md](phase-3-slide-spec.md) — implementation spec for the Slide, the welded slider assembly. *Built*

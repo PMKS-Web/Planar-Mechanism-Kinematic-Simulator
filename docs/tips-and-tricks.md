@@ -2581,3 +2581,21 @@ the stack and the dev server's HMR socket keep the page busy; wait for `load` an
 every entry in `index.json` and fails on a console error or an empty render; it is the check to run
 after touching a block. `node .storybook/tools/token-usage.mjs` counts where each token is used,
 least-used first, which is how to spot a shade nobody needed.
+
+**PMKSConversion's path prototype is in history, not its current default UI.** Commits
+`62abecf`, `5aa1e55` and `19596bd` hold the point table, curve preview and shape picker.
+They describe a target path; they do not fit a mechanism to it. The transfer and its remaining
+scope are documented in [path-synthesis.md](path-synthesis.md).
+
+**Copy a `Coord` through its getters.** `{ ...coord }` copies `_x` and `_y`, not `x` and `y`.
+A path point made that way looked present in the array but serialized to the origin. Use
+`{ x: coord.x, y: coord.y }` when copying into a plain point; the path-editor unit test keeps
+this canvas-placement failure covered.
+
+**Windows worktrees need LF source files for the current verification readers.** Prefer
+`git -c core.autocrlf=false worktree add ...` when creating one. CRLF makes the fixture-gallery
+comparison fail, hides the last CSV axis behind `y\r` in the MotionGen reference, breaks the
+template-row regex, and makes Prettier report hundreds of untouched files. Normalize checkout
+line endings without regenerating fixture data. The stylesheet fence now normalizes path
+separators too, so its token-file exclusion works on Windows. Use `npm.cmd` in PowerShell when
+the machine's script policy refuses `npm.ps1`; no policy change is needed.

@@ -207,6 +207,10 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
 - `component/BLOCKS/` holds the reusable form primitives (input, toggle, radio, dual-input, panel-section, ...) that the panels are composed from. **The component gallery (`npm run storybook`) is the one place for UI documentation:** every block and shared component state by state, sectioned as Fields, Choices, Actions, Structure and Feedback; the design tokens grouped by role; the UI style guide, vocabulary and code style rendered from `docs/*.md` at build time (edit the `.md`, never the page); and a Reuse backlog naming where the app still hand-rolls a block. Build new panel UI from the blocks rather than copying a neighbor's CSS. Only `@Input`/`input()` members belong in a block's public surface: everything else is `protected` or `private`, or it shows up in the gallery's properties table. `component/MODALS/` holds the Templates dialog and the release-notes splash.
 - Messages to the user go through `NotificationService`, which replaced the old `NewGridComponent.sendNotification()` static. Some components still talk through statics (e.g. `RightPanelComponent.openTab` / `insistOn`) — grep for the static before assuming a service is the only channel.
 - Four-bar synthesis (generating a linkage from three desired coupler poses) lives in `services/synthesis/`.
+- Path synthesis defines an editable target curve alongside motion synthesis; automatic mechanism
+  fitting is not implemented. `model/path-synthesis.ts` owns its geometry, `path-editor.service.ts`
+  records edits, and `component/path-synthesis-panel/` and `component/path-synthesis-canvas/` render
+  it. Both designs ride in the URL and support Undo in Synthesis. See `docs/path-synthesis.md`.
 - **Phone layout.** `ViewportService` owns the one breakpoint (600px; the stylesheets write it as
   `nav.$phone-max-width` from `left-tabs.vars.scss`, and `stylesheet-fences.spec.ts` keeps the two
   equal). Below it the mode panel is a

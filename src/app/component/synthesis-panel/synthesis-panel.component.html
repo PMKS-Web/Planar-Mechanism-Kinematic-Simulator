@@ -1,7 +1,5 @@
 <div id="synthesisPanel">
-  <!-- What kind of synthesis this is. One kind exists; the second is named
-       rather than hidden, because "can it fit a path?" is the first question
-       anyone asks of this screen and an empty answer is worse than a dated one. -->
+  <!-- Motion synthesis generates a mechanism; path synthesis defines a target curve. -->
   @if (isChooser) {
     <div class="chooser">
       <div class="chooser__head">
@@ -29,20 +27,22 @@
           </span>
         </button>
 
-        <div class="kindCard kindCard--off">
+        <button type="button" class="kindCard kindCard--path" (click)="startPathSynthesis()">
           <span class="kindCard__icon"><mat-icon>show_chart</mat-icon></span>
           <span class="kindCard__text">
             <span class="kindCard__row">
               <span class="kindCard__name">Path &mdash; points on a curve</span>
-              <span class="chip">Not built yet</span>
+              <span class="chip">Target-path preview</span>
             </span>
             <span class="kindCard__detail">
-              Sketch a curve and fit a mechanism whose coupler point follows it.
+              Place path points, choose a starting shape, and preview the target curve.
             </span>
           </span>
-        </div>
+        </button>
       </div>
     </div>
+  } @else if (design.stage === 'path') {
+    <app-path-synthesis-panel />
   } @else {
     <div class="work">
       <div class="work__head">
