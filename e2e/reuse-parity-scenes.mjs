@@ -1,0 +1,187 @@
+/**
+ * The scenes `reuse-parity.mjs` photographs, and the clicks that reach them.
+ *
+ * One scene per place the reuse backlog touches, plus the neighbors those
+ * edits could disturb. A scene is deliberately a *pose*: a panel opened, a
+ * section expanded, a control hovered or focused — never the animating canvas,
+ * which is compared by the suites that own it.
+ *
+ * `clip` is the element photographed. Prefer the smallest box that contains
+ * the change: a whole-viewport shot fails on anything, and then says nothing
+ * about what moved.
+ */
+
+/** The four mode tabs, by the order they sit in the top strip. */
+const MODE = { synthesis: 0, edit: 1, kinematic: 2, force: 3 };
+
+const clickMode = (page, which) => page.locator('.tabStrip .tabButton').nth(MODE[which]).click();
+
+/** Open a right-drawer page by its number (the statics on RightPanelComponent). */
+const openDrawer = (page, n) =>
+  page.evaluate(
+    (n) => ng.getComponent(document.querySelector('app-right-panel')).constructor.tabClicked(n),
+    n
+  );
+
+/** Select something on the canvas, which is what makes the Edit panel show a form. */
+const selectFirstJoint = async (page) => {
+  await page.locator('.joint, [id^="joint"]').first().click({ force: true });
+};
+
+/**
+ * Select a whole machine, which is the only thing that draws the mechanism
+ * panel. A background click selects the *grid*, not the mechanism, so this
+ * goes through the service the way the setup drawer's own link does.
+ */
+const selectMechanism = (page, index = 0) =>
+  page.evaluate((i) => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    grid.activeObjService.selectMechanism(i);
+    ng.applyChanges(grid);
+  }, index);
+
+export const SCENES = [
+  // ---------------------------------------------------------------- top strip
+  {
+    name: 'top-bar chips, valid mechanism',
+    linkage: '4-Bar',
+    clip: 'app-top-bar .topStrip',
+  },
+  {
+    name: 'top-bar chips, blocked mechanism',
+    // An empty drawing cannot be analyzed, so every chip shows its blocker.
+    query: '',
+    clip: 'app-top-bar .topStrip',
+  },
+  {
+    name: 'top-bar corner card in analysis',
+    linkage: '4-Bar',
+    setup: (page) => clickMode(page, 'kinematic'),
+    clip: 'app-top-bar .topStrip',
+  },
+
+  // ------------------------------------------------------------ left mode card
+  {
+    name: 'synthesis panel',
+    linkage: '4-Bar',
+    setup: (page) => clickMode(page, 'synthesis'),
+    clip: 'app-left-tabs .panel',
+  },
+  {
+    name: 'synthesis panel on empty drawing',
+    query: '',
+    setup: (page) => clickMode(page, 'synthesis'),
+    clip: 'app-left-tabs .panel',
+  },
+  {
+    name: 'edit panel, nothing selected',
+    linkage: '4-Bar',
+    setup: (page) => clickMode(page, 'edit'),
+    clip: 'app-left-tabs .panel',
+  },
+  {
+    name: 'edit panel, joint selected',
+    linkage: '4-Bar',
+    setup: async (page) => {
+      await clickMode(page, 'edit');
+      await selectFirstJoint(page);
+    },
+    clip: 'app-left-tabs .panel',
+  },
+  {
+    name: 'mechanism panel, editable',
+    linkage: '4-Bar',
+    setup: async (page) => {
+      await clickMode(page, 'edit');
+      await selectMechanism(page);
+    },
+    clip: '.mechanismPanel',
+  },
+  {
+    name: 'mechanism panel, read-only in analysis',
+    linkage: '4-Bar',
+    setup: async (page) => {
+      await clickMode(page, 'kinematic');
+      await selectMechanism(page);
+    },
+    clip: '.mechanismPanel',
+  },
+  {
+    name: 'kinematic analysis panel',
+    linkage: '4-Bar',
+    setup: (page) => clickMode(page, 'kinematic'),
+    clip: 'app-left-tabs .panel',
+  },
+  {
+    name: 'force analysis panel',
+    linkage: '4-Bar',
+    setup: (page) => clickMode(page, 'force'),
+    clip: 'app-left-tabs .panel',
+  },
+
+  // ------------------------------------------------------------- right drawer
+  {
+    name: 'drawer settings',
+    linkage: '4-Bar',
+    setup: (page) => openDrawer(page, 1),
+    clip: '#rightPanel',
+  },
+  {
+    name: 'drawer help',
+    linkage: '4-Bar',
+    setup: (page) => openDrawer(page, 3),
+    clip: '#rightPanel',
+  },
+  {
+    name: 'drawer debug and linkage table',
+    linkage: '4-Bar',
+    setup: (page) => openDrawer(page, 4),
+    clip: '#rightPanel',
+  },
+  {
+    name: 'drawer kinematic setup',
+    linkage: '4-Bar',
+    setup: (page) => openDrawer(page, 5),
+    clip: '#rightPanel',
+  },
+  {
+    name: 'drawer force setup',
+    linkage: '4-Bar',
+    setup: (page) => openDrawer(page, 6),
+    clip: '#rightPanel',
+  },
+  {
+    name: 'drawer export',
+    linkage: '4-Bar',
+    setup: (page) => openDrawer(page, 7),
+    clip: '#rightPanel',
+  },
+  {
+    name: 'drawer force setup on empty drawing',
+    query: '',
+    setup: (page) => openDrawer(page, 6),
+    clip: '#rightPanel',
+  },
+
+  // -------------------------------------------------------- bottom furniture
+  {
+    name: 'playback bar',
+    linkage: '4-Bar',
+    clip: 'app-playback-bar .playbackRow',
+  },
+  {
+    name: 'playback bar, two machines',
+    linkage: 'Slider_Crank',
+    clip: 'app-playback-bar .playbackRow',
+  },
+  {
+    name: 'view controls',
+    linkage: '4-Bar',
+    clip: 'app-view-controls',
+  },
+  {
+    name: 'bottom bar',
+    linkage: '4-Bar',
+    clip: '#bottomBar',
+  },
+];
