@@ -173,6 +173,8 @@ Not suites — import them from one.
   gate gives one answer, and the mode-switch table edge by edge.
 - `posed-editing.mjs` — Gate 2: a drag at a paused pose stages and re-anchors, the ghost warns
   while the hand moves, the snackbar says when the start moved, and undo rewinds.
+- `link-pose-readout.mjs` — selected link dimensions follow seeks, playback, rewind and Undo without requiring reselection; unchanged poses leave unfinished typing alone. Captures playback and rewind frames under `artifacts/link-pose-readout/`.
+
 - `posed-editing-adversarial.mjs` — gestures that are not edits must not become them: a view
   gesture ending a center-of-mass drag, a pinch after a drag began, a synced drawing edited on the
   machine that is not the master.

@@ -791,7 +791,7 @@ multiway drives, deletion closures and branch-neutral paused-pose editing.
 **Gate:** new native lifecycle/transaction/codec/history specs and native versions of the
 regression set above, `cylinder-edit-transaction` and `cylinder-weld-guards`; keep legacy
 versions passing while that route is active. Existing browser regressions on the legacy route: browser `edit-undo`,
-`unit-undo-view`, `posed-editing`, `analysis-editing`, `locking`, `link-holds-angles`,
+`unit-undo-view`, `posed-editing`, `link-pose-readout`, `analysis-editing`, `locking`, `link-holds-angles`,
 `two-mechanisms`, `export-flow`; build and ui-copy. The native service harness must test the
 same paused-edit/history sequence without depending on unfinished UI. S5 supplies its native
 filmstrip. This checkpoint is not evidence that native browser editing is complete. F3 challenges the
@@ -821,6 +821,10 @@ The S4 paused-drag reference filmstrip also shows a distance-angle readout jumpi
 while the selected joint remains in place. Native panel acceptance must compare distance and
 direction against the displayed attachments before, during and after re-anchoring, including
 Undo/Redo; never populate a displayed measurement from an authored-start transform.
+Also port `link-pose-readout`: a selected link must refresh after seek/play/pause/rewind without
+reselection, while unchanged poses leave unfinished typed input alone. The S4 live retry found
+the legacy Angle field keeping 23° beside an 80° rewound drawing; that reference defect was
+fixed, so it must not return during native cutover.
 
 **New specs:** `body-joint-marks.spec.ts` and `body-joint-interaction.spec.ts`; new browser
 `body-joint-editing.mjs` and `body-joint-render.mjs`. Existing browser gates:

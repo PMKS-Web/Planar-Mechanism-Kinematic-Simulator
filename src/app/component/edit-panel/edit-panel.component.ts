@@ -344,6 +344,8 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     this.mechanismService.easeToStart();
   }
 
+  private shownLinkPoseRevision = -1;
+
   /**
    * Keep the shown coordinates honest while the mechanism moves.
    *
@@ -356,6 +358,17 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
    * card is: `animate()` mutates the joints in place and publishes on nothing.
    */
   ngDoCheck(): void {
+    const revision = this.mechanismService.poseRevision;
+    if (revision !== this.shownLinkPoseRevision) {
+      this.shownLinkPoseRevision = revision;
+      // A seek changes the drawing without changing selection; an unchanged pose must leave typing alone.
+      if (this.activeSrv.objType === 'Link' && this.activeSrv.selectedLink) {
+        this.patchLinkLength();
+        this.patchLinkAngle();
+        this.patchCylinderForm();
+        this.refreshDerivedMassFields();
+      }
+    }
     if (this.cylinderClamped) {
       const cylinder = this.selectedCylinder;
       if (
