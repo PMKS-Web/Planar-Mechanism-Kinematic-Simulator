@@ -256,4 +256,57 @@ export const SCENES = [
     linkage: '4-Bar',
     clip: '#bottomBar',
   },
+
+  // ------------------------------------------------------------------- phone
+  // Below the one breakpoint several of these rules change or switch off, and
+  // two of the backlog's items are rules that currently reach each other
+  // across a media query. A desktop-only comparison would not see it.
+  {
+    name: 'phone playback bar',
+    linkage: '4-Bar',
+    viewport: 'phone',
+    storage: QUIET,
+    clip: 'app-playback-bar .playbackRow',
+  },
+  {
+    name: 'phone export drawer',
+    linkage: '4-Bar',
+    viewport: 'phone',
+    storage: QUIET,
+    setup: (page) => openDrawer(page, 7),
+    clip: '#rightPanel',
+    expectedChange:
+      "each object's note ('grounded, input') is back. The playback bar's " +
+      '.rowNote rule was written without a container selector, so below the ' +
+      'phone breakpoint its display:none was hiding notes in a panel it has ' +
+      'nothing to do with. Scoping that rule is the fix.',
+  },
+  {
+    name: 'phone force setup drawer',
+    linkage: '4-Bar',
+    viewport: 'phone',
+    storage: QUIET,
+    setup: (page) => openDrawer(page, 6),
+    clip: '#rightPanel',
+  },
+  {
+    name: 'phone mechanism library',
+    linkage: '4-Bar',
+    viewport: 'phone',
+    storage: QUIET,
+    setup: async (page) => {
+      await page.locator('.brandCard .iconButton').click();
+      await page.locator('#templatesButton').click();
+      await page.locator('#templates').waitFor({ state: 'visible' });
+    },
+    clip: '#templates',
+    settle: 900,
+  },
+  {
+    name: 'phone top strip',
+    linkage: '4-Bar',
+    viewport: 'phone',
+    storage: QUIET,
+    clip: 'app-top-bar .topStrip',
+  },
 ];

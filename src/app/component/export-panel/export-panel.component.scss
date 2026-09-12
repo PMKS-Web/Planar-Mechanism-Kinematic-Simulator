@@ -1,5 +1,6 @@
 @use 'sass:map';
 @use '@angular/material' as mat;
+@use '../BLOCKS/blocks.common.scss' as blocks;
 
 @mixin css($theme) {
   $color-config: mat.m2-get-color-config($theme);
@@ -313,11 +314,7 @@
     }
 
     .rowNote {
-      font-size: 12px;
-      color: var(--text-tertiary);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      @include blocks.quiet-note(12px);
     }
 
     .rowUnit {

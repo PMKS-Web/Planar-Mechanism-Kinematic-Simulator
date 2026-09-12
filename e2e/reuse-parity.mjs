@@ -24,6 +24,12 @@
  *
  * Pass `--only <substring>` to run a subset while iterating on one item.
  *
+ * A scene may declare `expectedChange: '<why>'` where an edit is *meant* to
+ * change what is drawn -- a bug fix, or a look being deliberately unified. Such
+ * a scene passes when it differs and **fails when it does not**, which is what
+ * keeps the flag from becoming a blanket excuse; either way its shots are
+ * saved, because the point is that a reviewer can look at what changed.
+ *
  * Comparison is exact. Both sides are the same Chromium on the same machine
  * drawing the same DOM, so anti-aliasing is not a source of noise here and a
  * tolerance would only hide the 1px drift this is looking for. Scenes avoid
@@ -50,7 +56,14 @@ mkdirSync(OUT, { recursive: true });
 const results = [];
 const record = (what, ok, detail) => {
   results.push([what, ok]);
-  console.log(`${ok ? 'PASS' : 'FAIL'}  ${what}${ok ? '' : ' — ' + JSON.stringify(detail)}`);
+  // A pass that changed something on purpose says so: silence would make a
+  // declared change indistinguishable from no change at all.
+  const say = ok
+    ? detail?.changedOnPurpose
+      ? ' — CHANGED ON PURPOSE: ' + JSON.stringify(detail)
+      : ''
+    : ' — ' + JSON.stringify(detail);
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${what}${say}`);
 };
 
 /**
@@ -177,10 +190,17 @@ async function settleAnimations(page, rounds = 12) {
   );
 }
 
+/** The window a scene is shot in. Phone scenes cross the one breakpoint. */
+const DESKTOP = { width: 1500, height: 950 };
+const PHONE = { width: 390, height: 844 };
+
 /** Drive one page to one scene and photograph the region the scene names. */
 async function shoot(page, base, scene) {
   const linkage = scene.linkage ?? '4-Bar';
   const query = scene.query ?? (linkage ? `?${payloads[linkage]}` : '');
+  // Set before the load, so the layout a phone gets is decided on the way in
+  // rather than by a resize the app has to catch up with.
+  await page.setViewportSize(scene.viewport === 'phone' ? PHONE : DESKTOP);
   await page.goto(`${base}/${query}`, { waitUntil: 'domcontentloaded' });
   // What greets a reader is decided from localStorage on the way in, so a
   // scene that wants the release notes -- or wants the tutorial to stay out
@@ -244,9 +264,8 @@ async function shoot(page, base, scene) {
 }
 
 const browser = await chromium.launch();
-const viewport = { width: 1500, height: 950 };
-const before = await browser.newPage({ viewport });
-const after = await browser.newPage({ viewport });
+const before = await browser.newPage({ viewport: DESKTOP });
+const after = await browser.newPage({ viewport: DESKTOP });
 const worker = await browser.newPage({ viewport: { width: 200, height: 200 } });
 const errors = [];
 for (const [label, page] of [
@@ -292,14 +311,22 @@ for (const scene of scenes) {
     }
 
     if (shotA.equals(shotB)) {
-      verdict = { ok: true, detail: attempt > 1 ? { settledOnRetry: true } : undefined };
+      // A scene that declares a deliberate change and then does not change is
+      // a fix that did not land. That is worth failing on: the whole value of
+      // naming the expected change is that it stops being a blanket excuse.
+      verdict = scene.expectedChange
+        ? { ok: false, detail: { expectedAChange: scene.expectedChange, butNothingChanged: true } }
+        : { ok: true, detail: attempt > 1 ? { settledOnRetry: true } : undefined };
       break;
     }
 
     const diff = await diffPngs(worker, shotA, shotB);
     verdict = {
-      ok: false,
+      // Declared changes are still photographed and still saved -- the point
+      // is that a reviewer can look at what changed, not that it goes unseen.
+      ok: Boolean(scene.expectedChange),
       detail: {
+        ...(scene.expectedChange ? { changedOnPurpose: scene.expectedChange } : {}),
         ...(diff.sizeMismatch ? { sizeMismatch: diff.sizeMismatch } : {}),
         ...(diff.differing !== undefined
           ? {
@@ -320,7 +347,9 @@ for (const scene of scenes) {
     };
   }
 
+  // A declared change writes its shots too, so the PR can point at them.
   if (verdict.ok) {
+    verdict.write?.();
     record(`scene ${scene.name}`, true, verdict.detail);
   } else {
     verdict.write?.();
