@@ -28,7 +28,8 @@ In this order, the first time:
 
 ## Design records
 
-- [path-synthesis.md](path-synthesis.md) — recovered PMKSConversion target-path editor, source commits, URL entries and remaining mechanism-fitting scope. *Partly built*
+- [path-synthesis.md](path-synthesis.md) — recovered target-path editor, numerical four-bar fitting, insertion and persistence. *S0–S2 built*
+- [path-synthesis-backend.md](path-synthesis-backend.md) — backend audit, four-bar mathematics, variable projection, optimization, production verification and limitations. *Technical reference*
 
 - [joint-types-plan.md](joint-types-plan.md) — plan of record for floating slots, slides, driven prismatic joints and cylinders, Phases 0–7a. *Partly built*
 - [floating-slot-kinematics-design.md](floating-slot-kinematics-design.md) — velocity and acceleration through a floating slot (Phase 2, task 2.9). *Built*

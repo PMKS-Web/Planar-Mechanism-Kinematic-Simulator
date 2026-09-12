@@ -17,15 +17,34 @@ import {
 import { MODEL_SCALE } from '../../model/render-scale';
 import { Coord } from '../../model/coord';
 import { freeCanvasRect } from '../../services/view-framing';
+import { PathSynthesisService } from '../../services/synthesis/path-synthesis.service';
+import { PathSynthesisResultComponent } from '../path-synthesis-result/path-synthesis-result.component';
 
 @Component({
   selector: 'app-path-synthesis-panel',
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [MatIcon, ButtonComponent, SegmentedComponent, StandardFieldDirective],
+  imports: [
+    MatIcon,
+    ButtonComponent,
+    SegmentedComponent,
+    StandardFieldDirective,
+    PathSynthesisResultComponent,
+  ],
   templateUrl: './path-synthesis-panel.component.html',
   styleUrls: ['./path-synthesis-panel.component.scss'],
 })
 export class PathSynthesisPanelComponent implements OnDestroy {
+  protected synthesis = inject(PathSynthesisService);
+  protected get fitMetrics() {
+    const errors = this.synthesis.candidate?.errors;
+    return errors
+      ? {
+          rms: this.format(errors.rms),
+          maximum: this.format(errors.maximum),
+          normalized: `${(errors.normalizedRms * 100).toFixed(2)}%`,
+        }
+      : undefined;
+  }
   protected editor = inject(PathEditorService);
   private design = inject(SynthesisBuilderService);
   private grid = inject(SvgGridService);
@@ -37,6 +56,7 @@ export class PathSynthesisPanelComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.editor.armed = false;
+    if (this.synthesis.busy()) this.synthesis.cancel();
   }
 
   protected back(): void {

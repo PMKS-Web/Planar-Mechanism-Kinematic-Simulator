@@ -1,0 +1,39 @@
+<collapsible-subsection titleLabel="Four-Bar Synthesis" [expanded]="true">
+  <p>Fits a coupler path using equal input-angle steps and evenly spaced target samples.</p>
+  <button-block [click]="synthesize()" [disabled]="!!refusal() || busy()" [tooltip]="refusal()"
+    >Synthesize Four-Bar</button-block
+  >
+  @if (refusal() && !busy()) {
+    <p>{{ refusal() }}</p>
+  }
+  @if (busy()) {
+    <p role="status">{{ message() }} {{ evaluations() }} evaluations.</p>
+    <button-block [click]="cancel()">Cancel Search</button-block>
+  } @else if (message()) {
+    <p role="status">{{ message() }}</p>
+  }
+  @if (metrics(); as errors) {
+    <dl aria-label="Path fit errors">
+      <dt>RMS Path Error</dt>
+      <dd>{{ errors.rms }}</dd>
+      <dt>Maximum Error</dt>
+      <dd>{{ errors.maximum }}</dd>
+      <dt>Normalized RMS Error</dt>
+      <dd>{{ errors.normalized }}</dd>
+    </dl>
+    <p>
+      Dashed: target · solid: generated · small dots: evaluation points · bars: starting mechanism.
+    </p>
+    <button-block [click]="create()" [disabled]="!!createRefusal()" [tooltip]="createRefusal()"
+      >Create Mechanism</button-block
+    >
+    @if (createRefusal()) {
+      <p>{{ createRefusal() }}</p>
+    }
+    @if (partial()) {
+      <p>
+        The fit covers a partial input sweep. Animation shows the mechanism’s full feasible motion.
+      </p>
+    }
+  }
+</collapsible-subsection>

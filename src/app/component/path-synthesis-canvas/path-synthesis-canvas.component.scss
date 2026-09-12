@@ -38,3 +38,20 @@ text {
   opacity: 0.3;
   pointer-events: none;
 }
+.generated {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+.mechanism {
+  fill: none;
+  stroke: var(--text-secondary);
+  stroke-width: 5;
+  opacity: 0.65;
+}
+.evaluation {
+  fill: var(--brand);
+}
+.ground {
+  fill: var(--text-primary);
+}

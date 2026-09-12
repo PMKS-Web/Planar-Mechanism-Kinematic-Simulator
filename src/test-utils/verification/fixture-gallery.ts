@@ -82,6 +82,7 @@ import { ColorService } from '../../app/services/color.service';
 import { urlGeneratorFor } from '../url-encoding';
 import { Link, RealLink } from '../../app/model/link';
 import { MODEL_SCALE } from '../../app/model/render-scale';
+import { PATH_SYNTHESIS_GALLERY } from './path-fixtures';
 
 /**
  * Every mechanism the verification suite asserts on, as something a reviewer
@@ -338,6 +339,7 @@ export interface PublishedSpeed {
 const LIBRARY_RPM = 10;
 
 export const FIXTURE_GALLERY: GalleryEntry[] = [
+  ...PATH_SYNTHESIS_GALLERY,
   {
     name: 'Punch press',
     purpose:

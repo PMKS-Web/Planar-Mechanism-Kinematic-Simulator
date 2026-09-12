@@ -146,8 +146,11 @@ not whether it may go or what may be built onto it.
 
 **Path point** is a target coordinate in the path-synthesis editor; it is not a joint or a
 tracer point on a mechanism. **Target path** is the curve through those ordered points.
-**Target-path preview** describes this editor's output; generating a fitted mechanism is
-not implemented yet.
+**Generated path** is the coupler trajectory from a numerical fit. **Synthesize Four-Bar**
+searches and previews; **Create Mechanism** adds the verified result to the drawing.
+**RMS Path Error** and **Maximum Error** are distances in the document's length unit.
+**Normalized RMS Error** divides RMS error by the target's bounding-box diagonal, displayed
+as a percentage. **Evaluation points** are resampled target locations, not additional joints.
 
 | Use | For |
 | --- | --- |

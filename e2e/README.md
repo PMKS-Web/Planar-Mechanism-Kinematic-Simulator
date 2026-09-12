@@ -316,6 +316,10 @@ Not suites — import them from one.
 - `template-backdrops.mjs` — the real-life library section and the picture each card opens on.
 - `synthesis-redesign.mjs` — Synthesis end to end: place three positions, generate, browse and
   compare candidates, preview, insert, undo, and survive a shared link.
+- `path-synthesis-gallery.mjs` — serve the built `storybook-static/` locally and check the eight
+  path-result states with screenshots, render-error capture and axe accessibility assertions.
+- `path-synthesis-backend.mjs` — fit a production-generated coupler target, cancel, preview,
+  insert beside an existing machine, undo/redo, normal-motion filmstrip, reload and phone access.
 - `path-synthesis.mjs` — target-path presets, coordinates, point order, drag filmstrip,
   placement, undo/redo, reload, shared URLs, and the phone layout with reduced motion.
 - `export-flow.mjs` — the Export Data drawer end to end, including reading the downloaded file.

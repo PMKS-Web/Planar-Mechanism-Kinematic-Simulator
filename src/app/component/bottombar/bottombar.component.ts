@@ -112,7 +112,7 @@ export class BottombarComponent {
     if (this.design.stage === 'path') {
       const count = this.design.path.points.length;
       return count
-        ? `${count} path points · target-curve preview`
+        ? `${count} path points · four-bar path synthesis`
         : 'Add path points or choose a starting shape';
     }
     if (this.design.regionDraw) {

@@ -3,6 +3,8 @@ import { PathEditorService } from '../../services/synthesis/path-editor.service'
 import { SvgGridService } from '../../services/svg-grid.service';
 import { ModelFrameDirective, UprightDirective, ModelPoint } from '../../model-frame.directive';
 import { KeyboardShortcutsService } from '../../services/keyboard-shortcuts.service';
+import { PathSynthesisService } from '../../services/synthesis/path-synthesis.service';
+import { pathCurve } from '../../model/path-synthesis';
 
 /** A separate SVG layer keeps target editing out of the mechanism's drag state machine. */
 @Component({
@@ -13,6 +15,19 @@ import { KeyboardShortcutsService } from '../../services/keyboard-shortcuts.serv
   styleUrls: ['./path-synthesis-canvas.component.scss'],
 })
 export class PathSynthesisCanvasComponent implements OnDestroy {
+  protected synthesis = inject(PathSynthesisService);
+  protected get generatedCurve(): string {
+    const result = this.synthesis.result;
+    return result?.best ? pathCurve(result.best.trajectory, !!result.target?.closed, false) : '';
+  }
+  protected get mechanismCurve(): string {
+    const p = this.synthesis.candidate?.parameters;
+    if (!p) return '';
+    const pose = this.synthesis.startPose;
+    return !pose
+      ? ''
+      : `M ${p.A.x} ${p.A.y} L ${pose.B.x} ${pose.B.y} L ${pose.C.x} ${pose.C.y} L ${p.D.x} ${p.D.y} M ${pose.B.x} ${pose.B.y} L ${pose.P.x} ${pose.P.y} L ${pose.C.x} ${pose.C.y}`;
+  }
   protected editor = inject(PathEditorService);
   protected grid = inject(SvgGridService);
   private keySub = inject(KeyboardShortcutsService).pressed.subscribe((id) => {

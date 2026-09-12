@@ -76,7 +76,7 @@ check(
 check(
   'offers the target-path editor alongside motion synthesis',
   (await page.locator('#synthesisPanel .kindCard--path').innerText()).includes(
-    'Target-path preview'
+    'Four-bar path fitting'
   )
 );
 check(

@@ -2599,3 +2599,17 @@ template-row regex, and makes Prettier report hundreds of untouched files. Norma
 line endings without regenerating fixture data. The stylesheet fence now normalizes path
 separators too, so its token-file exclusion works on Windows. Use `npm.cmd` in PowerShell when
 the machine's script policy refuses `npm.ps1`; no policy change is needed.
+
+**Path-fit truth depends on correspondence, not only on the source mechanism.** A coupler path
+generated at constant crank speed is not traversed at constant arc-length speed. Feeding that
+curve through arc-length resampling and then requiring equal input-angle progression therefore
+does not promise a zero-error reconstruction, even from a known four-bar. Compare the fitted
+trajectory, not the recovered dimensions; equivalent assemblies may swap under floating-point
+ties. Keep normalized fit error separate from invalidity penalties. The equations and the exact
+whole-sweep closure certificate are in [path-synthesis-backend.md](path-synthesis-backend.md).
+
+**A synthesized preview must not replace the live position solver's state.** The current
+production solver is static. `pmks-path-adapter.ts` validates fresh normal entities synchronously,
+then restores the saved data fields in `finally`. Never introduce an `await` into that borrowed
+state interval. The pure search can run in a worker independently; a future instance-based
+production solver should replace the adapter's static isolation.

@@ -54,4 +54,30 @@
       }
     </svg:g>
   }
+  @if (editor.active && synthesis.candidate) {
+    <svg:g pointer-events="none" data-path-result="verified">
+      <svg:path class="generated" [attr.d]="generatedCurve" vector-effect="non-scaling-stroke" />
+      <svg:path class="mechanism" [attr.d]="mechanismCurve" vector-effect="non-scaling-stroke" />
+      @for (point of synthesis.result?.target?.samples; track $index) {
+        <svg:circle
+          class="evaluation"
+          [attr.cx]="point.x"
+          [attr.cy]="point.y"
+          [attr.r]="grid.scaleWithZoom(2)"
+        />
+      }
+      @for (
+        point of [synthesis.candidate.parameters.A, synthesis.candidate.parameters.D];
+        track $index
+      ) {
+        <svg:rect
+          class="ground"
+          [attr.x]="point.x - grid.scaleWithZoom(5)"
+          [attr.y]="point.y - grid.scaleWithZoom(5)"
+          [attr.width]="grid.scaleWithZoom(10)"
+          [attr.height]="grid.scaleWithZoom(10)"
+        />
+      }
+    </svg:g>
+  }
 </svg:g>

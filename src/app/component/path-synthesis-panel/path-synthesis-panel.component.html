@@ -134,5 +134,16 @@
       >Delete All Path Points</button-block
     >
   </section>
-  <p class="notice">Target-path preview only. Automatic mechanism fitting is not built yet.</p>
+  <app-path-synthesis-result
+    [busy]="synthesis.busy()"
+    [message]="synthesis.statusMessage"
+    [refusal]="synthesis.refusal"
+    [createRefusal]="synthesis.createRefusal"
+    [evaluations]="synthesis.evaluations()"
+    [metrics]="fitMetrics"
+    [partial]="!editor.target.closed"
+    [synthesize]="synthesis.synthesize"
+    [cancel]="synthesis.cancel"
+    [create]="synthesis.create"
+  />
 </div>
