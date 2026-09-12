@@ -64,7 +64,7 @@
     // The controls Angular has not disabled -- the switches, the buttons -- have
     // to *look* the way the disabled ones already do. `inert` takes them out of
     // reach without changing a pixel.
-    --frozen-ink: rgba(0, 0, 0, 0.38);
+    --frozen-ink: var(--text-muted);
 
     // The section titles, which carry the panel's indigo when it is live.
     // Only inside what is actually inert: a section the card keeps live -- the
@@ -131,7 +131,7 @@
 .bgFileName {
   padding: 0 15px 8px;
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.55);
+  color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -152,7 +152,7 @@
 // other read-only notes in this panel.
 .bgNote {
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.55);
+  color: var(--text-secondary);
   background: var(--surface-field);
   border-radius: 4px;
   padding: 8px 10px;
@@ -181,7 +181,7 @@
 
   &__label {
     font-size: 14px;
-    color: rgba(0, 0, 0, 0.6);
+    color: var(--text-secondary);
     margin-bottom: 7px;
   }
 
@@ -213,7 +213,7 @@
 
       // Offered but not available: the note under the row says what is missing.
       &:disabled {
-        color: rgba(0, 0, 0, 0.38);
+        color: var(--text-muted);
         cursor: default;
       }
     }
@@ -248,7 +248,7 @@
   padding: 2px 0 8px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   font-size: 10.5px;
-  color: rgba(0, 0, 0, 0.55);
+  color: var(--text-secondary);
 
   .dot {
     margin-right: -2px;
@@ -265,7 +265,7 @@
     padding: 0;
 
     &:disabled {
-      color: rgba(0, 0, 0, 0.3);
+      color: var(--text-disabled);
       cursor: default;
     }
   }
@@ -285,7 +285,7 @@
   margin: 6px 0 0;
   font-size: 10.5px;
   line-height: 1.35;
-  color: rgba(0, 0, 0, 0.55);
+  color: var(--text-secondary);
 }
 
 .massArea .dot {
@@ -315,7 +315,7 @@
 .massArea .dotRowLabel {
   font-size: 13px;
   flex: 1 1 auto;
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--text-secondary);
   /* One line always; the field column cedes the width this needs. */
   white-space: nowrap;
 }
@@ -334,7 +334,7 @@
   margin-left: auto;
 
   &:disabled {
-    color: rgba(0, 0, 0, 0.38);
+    color: var(--text-muted);
     opacity: 1;
   }
 }
@@ -351,11 +351,11 @@
     padding: 0;
     font-size: 14px;
     line-height: 1;
-    color: rgba(0, 0, 0, 0.45);
+    color: var(--text-tertiary);
     cursor: pointer;
 
     &:hover {
-      color: rgba(0, 0, 0, 0.8);
+      color: var(--text-primary);
     }
   }
 }
@@ -363,7 +363,7 @@
 /* Gray means derived; the components' own ink means typed. */
 .massArea input-block.derived .customInput,
 .massArea dual-input-block.derived .customInput {
-  color: rgba(0, 0, 0, 0.5);
+  color: var(--text-tertiary);
 }
 
 .massArea .massNote {
@@ -371,7 +371,7 @@
   margin: 8px 0 2px;
   font-size: 11.5px;
   line-height: 16px;
-  color: rgba(0, 0, 0, 0.55);
+  color: var(--text-secondary);
 }
 
 /* Air between stacked mass rows: the cylinder's three parts read as three
@@ -400,7 +400,7 @@
   /* The axis letters read as small captions, not headings. */
   .axisTag {
     font-size: 12px;
-    color: rgba(0, 0, 0, 0.45);
+    color: var(--text-tertiary);
     flex: none;
   }
 }
@@ -429,7 +429,7 @@
 
 /* Gray means derived, in the pair too. */
 .massArea .comPairRow.derived .customInput {
-  color: rgba(0, 0, 0, 0.5);
+  color: var(--text-tertiary);
 }
 
 /* The mock's one field column: Mass, the frame select and Rotational
@@ -474,7 +474,7 @@
   /* One label size for the whole section — Mass, Center of Mass and
      Rotational Inertia read as siblings, not as different ranks. */
   font-size: 13px;
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--text-secondary);
 }
 
 .massArea #input-block:not(.state-input-host) .customInputForm {

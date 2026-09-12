@@ -13,7 +13,7 @@
 
     // Below the mode strip, which on a phone takes the top of the window and
     // the notch's inset with it.
-    @media (max-width: 600px) {
+    @media (max-width: nav.$phone-max-width) {
       top: calc(34px + env(safe-area-inset-top) + #{nav.$card-inset});
       // And clear of the rounded corners, which is the same question sideways.
       left: calc(#{nav.$card-inset} + env(safe-area-inset-left));
@@ -26,7 +26,7 @@
     display: flex;
     align-items: flex-start;
     gap: var(--card-gap);
-    z-index: 6;
+    z-index: var(--layer-strip);
     pointer-events: none;
 
     .card {
@@ -161,7 +161,7 @@
     }
 
     &:hover {
-      background: rgba(0, 0, 0, 0.04);
+      background: var(--hover-wash);
     }
 
     // A ring for the reader who tabbed here, and none for the one who clicked.
@@ -177,7 +177,7 @@
     &:focus-visible {
       outline: 2px solid mat.m2-get-color-from-palette($primary-palette, 500);
       outline-offset: -2px;
-      background: rgba(0, 0, 0, 0.04);
+      background: var(--hover-wash);
     }
 
     &.active {
@@ -189,7 +189,7 @@
     // Deliberately *not* a disabled look. The mode cannot be entered yet, but
     // the button still does something: it opens the list of what is missing.
     &.notReady .tabLabel {
-      color: rgba(0, 0, 0, 0.55);
+      color: var(--text-secondary);
     }
   }
 
@@ -339,7 +339,7 @@
     cursor: pointer;
 
     &:hover {
-      background: rgba(0, 0, 0, 0.04);
+      background: var(--hover-wash);
     }
 
     &.on {
@@ -373,7 +373,7 @@
     }
 
     &:hover:not(:disabled) {
-      background: rgba(0, 0, 0, 0.04);
+      background: var(--hover-wash);
     }
 
     &:disabled {
@@ -386,7 +386,7 @@
   .menuScrim {
     position: fixed;
     inset: 0;
-    z-index: 19;
+    z-index: var(--layer-menu-scrim);
   }
 
   // Under the card that opened it, the same distance below it as that card is
@@ -399,7 +399,7 @@
     padding: 4px 0;
     background: var(--card-surface);
     border-radius: var(--border-radius);
-    z-index: 20;
+    z-index: var(--layer-menu);
     box-shadow: var(--card-shadow);
   }
 
@@ -416,14 +416,14 @@
     .menuKeys {
       margin-left: auto;
       padding: 1px 5px;
-      border: 1px solid rgba(0, 0, 0, 0.18);
+      border: 1px solid var(--border-keycap);
       border-bottom-width: 2px;
       border-radius: 4px;
       background: rgba(0, 0, 0, 0.03);
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: 11px;
       line-height: 15px;
-      color: rgba(0, 0, 0, 0.55);
+      color: var(--text-secondary);
     }
 
     padding: 0 14px;
@@ -445,7 +445,7 @@
     }
 
     &:hover {
-      background: rgba(0, 0, 0, 0.04);
+      background: var(--hover-wash);
     }
 
     // Opening the menu moves focus into its first row, which is what lets a
@@ -470,7 +470,7 @@
     .byKeyboard &:focus {
       outline: 2px solid mat.m2-get-color-from-palette($primary-palette, 500);
       outline-offset: -2px;
-      background: rgba(0, 0, 0, 0.04);
+      background: var(--hover-wash);
     }
   }
 
@@ -482,7 +482,7 @@
 
   // The last resort, and only that: if even the smallest state does not fit,
   // the tab card scrolls rather than putting a mode off the edge of the window.
-  @media (max-width: 380px) {
+  @media (max-width: nav.$narrow-phone) {
     .topStrip .tabCard {
       flex: 1 1 auto;
       overflow-x: auto;

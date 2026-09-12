@@ -55,11 +55,11 @@
     border: none;
     border-radius: 50%;
     background: transparent;
-    color: rgba(0, 0, 0, 0.54);
+    color: var(--text-secondary);
     cursor: pointer;
 
     &:hover {
-      background: rgba(0, 0, 0, 0.04);
+      background: var(--hover-wash);
     }
 
     // In the completion card it shares a line with the title rather than
@@ -84,14 +84,14 @@
     font-size: 20px;
     font-weight: 500;
     line-height: 32px;
-    color: rgba(0, 0, 0, 0.87);
+    color: var(--text-strong);
   }
 
   .cardLead {
     margin: 0;
     font-size: 14px;
     line-height: 18px;
-    color: rgba(0, 0, 0, 0.6);
+    color: var(--text-secondary);
   }
 
   // The measure and the way back through it on one line: an arrow at each end
@@ -114,7 +114,7 @@
     border: none;
     border-radius: 50%;
     background: transparent;
-    color: rgba(0, 0, 0, 0.54);
+    color: var(--text-secondary);
     cursor: pointer;
 
     &:hover:not(:disabled) {
@@ -190,7 +190,7 @@
     span {
       font-size: 13px;
       line-height: 19px;
-      color: rgba(0, 0, 0, 0.45);
+      color: var(--text-tertiary);
     }
   }
 
@@ -204,14 +204,14 @@
     font-size: 14px;
     font-weight: 500;
     line-height: 20px;
-    color: rgba(0, 0, 0, 0.87);
+    color: var(--text-strong);
   }
 
   .stepText {
     margin: 4px 0 0;
     font-size: 13px;
     line-height: 19px;
-    color: rgba(0, 0, 0, 0.6);
+    color: var(--text-secondary);
     text-wrap: pretty;
   }
 
@@ -286,7 +286,7 @@
     background: transparent;
     font-family: inherit;
     font-size: 13px;
-    color: rgba(0, 0, 0, 0.45);
+    color: var(--text-tertiary);
     cursor: pointer;
   }
 
@@ -305,13 +305,13 @@
       width: 18px;
       height: 18px;
       line-height: 18px;
-      color: rgba(0, 0, 0, 0.54);
+      color: var(--text-secondary);
     }
 
     span {
       font-size: 12px;
       line-height: 17px;
-      color: rgba(0, 0, 0, 0.6);
+      color: var(--text-secondary);
     }
   }
 
@@ -331,7 +331,7 @@
     padding: 0 8px;
     border-radius: 10px;
     background: var(--surface-chip);
-    color: rgba(0, 0, 0, 0.54);
+    color: var(--text-secondary);
     font-size: 12px;
     white-space: nowrap;
 
@@ -377,7 +377,7 @@
   }
 
   .exitButton {
-    color: rgba(0, 0, 0, 0.45);
+    color: var(--text-tertiary);
   }
 
   // ---------- the completion card ----------
@@ -405,14 +405,14 @@
     flex: 1 1 auto;
     font-size: 18px;
     font-weight: 500;
-    color: rgba(0, 0, 0, 0.87);
+    color: var(--text-strong);
   }
 
   .doneLine {
     margin: 9px 0 0;
     font-size: 13px;
     line-height: 19px;
-    color: rgba(0, 0, 0, 0.7);
+    color: var(--text-secondary);
     text-wrap: pretty;
   }
 
@@ -422,7 +422,7 @@
     font-weight: 500;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: rgba(0, 0, 0, 0.45);
+    color: var(--text-tertiary);
   }
 
   .doors {
@@ -499,7 +499,7 @@
     display: block;
     font-size: 13px;
     font-weight: 500;
-    color: rgba(0, 0, 0, 0.87);
+    color: var(--text-strong);
   }
 
   .doorWhy {
@@ -507,7 +507,7 @@
     margin-top: 2px;
     font-size: 12px;
     line-height: 17px;
-    color: rgba(0, 0, 0, 0.6);
+    color: var(--text-secondary);
   }
 
   .doneActions {

@@ -6,7 +6,7 @@ import { componentWrapperDecorator } from '@storybook/angular-vite';
  * canvas is not the block a reader sees.
  *
  * `padding` stands in for the section a field usually sits in (a
- * `collapsible-subseciton` supplies it in the Edit panel). A block that sits
+ * `collapsible-subsection` supplies it in the Edit panel). A block that sits
  * straight on the card, as `editable-title-block` does, wants 0.
  */
 export function inPanel(width = 250, padding = 12) {

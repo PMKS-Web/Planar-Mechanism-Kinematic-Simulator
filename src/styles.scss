@@ -4,6 +4,27 @@
 // one place a hex color may be written; see the file for why.
 @use 'styles/tokens';
 
+// A reader who has asked for reduced motion gets none, from every stylesheet at
+// once. Durations go to almost zero rather than to none so that a transition
+// still ends and still fires `transitionend`; a spinner keeps one iteration
+// so that a script waiting on it is not left waiting. Where a panel ends up is
+// not motion, so nothing here changes what a rule sets, only how fast. A
+// component with a script-driven animation still asks `matchMedia` itself
+// (`LeftTabsComponent.slide` does), because this cannot reach the Web
+// Animations API.
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 // The app fills the window and everything inside it scrolls on its own, so the
 // document itself never should. Without this a drawer parked past the right
 // edge can be scrolled back into view after being closed.
@@ -97,7 +118,7 @@ input {
     flex: 0 0 32px;
     border: none;
     background: transparent;
-    color: rgba(0, 0, 0, 0.87);
+    color: var(--text-strong);
     font-family: inherit;
     font-size: 13.5px;
     white-space: nowrap;
@@ -105,7 +126,7 @@ input {
     cursor: pointer;
 
     &:hover {
-      background: rgba(0, 0, 0, 0.06);
+      background: var(--press-wash);
     }
 
     mat-icon {
@@ -114,7 +135,7 @@ input {
       flex: 0 0 auto;
       font-size: 18px;
       line-height: 18px;
-      color: rgba(0, 0, 0, 0.6);
+      color: var(--text-secondary);
     }
   }
 }
@@ -176,12 +197,12 @@ input {
     cursor: pointer;
 
     &:disabled {
-      color: rgba(0, 0, 0, 0.38);
+      color: var(--text-muted);
       cursor: default;
     }
 
     &:not(:disabled):active {
-      background: rgba(0, 0, 0, 0.06);
+      background: var(--press-wash);
     }
 
     > mat-icon {
@@ -194,7 +215,7 @@ input {
     }
 
     &:disabled > mat-icon {
-      color: rgba(0, 0, 0, 0.3);
+      color: var(--text-disabled);
     }
 
     // A setting that is on with nothing to draw is still on, and the row says
@@ -216,7 +237,7 @@ input {
   .viewRowWhy {
     font-size: 12px;
     line-height: 16px;
-    color: rgba(0, 0, 0, 0.38);
+    color: var(--text-muted);
   }
 
   // The app's switch, at the size the rows want.
@@ -258,6 +279,6 @@ input {
     flex: 0 0 auto;
     font-size: 20px;
     line-height: 20px;
-    color: rgba(0, 0, 0, 0.38);
+    color: var(--text-muted);
   }
 }

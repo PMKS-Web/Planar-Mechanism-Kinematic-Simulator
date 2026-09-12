@@ -67,13 +67,13 @@
     .cm-header__title {
       font-size: 14px;
       font-weight: 500;
-      color: rgba(0, 0, 0, 0.87);
+      color: var(--text-strong);
       line-height: 18px;
     }
 
     .cm-header__subtitle {
       font-size: 11.5px;
-      color: rgba(0, 0, 0, 0.54);
+      color: var(--text-secondary);
       line-height: 15px;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -92,7 +92,7 @@
       border: none;
       border-radius: 4px;
       background: transparent;
-      color: rgba(0, 0, 0, 0.6);
+      color: var(--text-secondary);
       cursor: pointer;
 
       &:hover {
@@ -109,7 +109,7 @@
 
     // The readiness refusal rides the icon rather than costing a row.
     .cm-cross--off {
-      color: rgba(0, 0, 0, 0.26);
+      color: var(--text-disabled);
       cursor: default;
 
       &:hover {
@@ -131,7 +131,7 @@
       font-weight: 500;
       letter-spacing: 0.07em;
       text-transform: uppercase;
-      color: rgba(0, 0, 0, 0.42);
+      color: var(--text-muted);
     }
 
     .cm-row {
@@ -141,7 +141,7 @@
       height: 30px;
       padding: 0 14px;
       cursor: pointer;
-      color: rgba(0, 0, 0, 0.87);
+      color: var(--text-strong);
       @include mat.m2-typography-level($typography-config, 'subtitle-2');
       font-size: 13.5px;
       font-weight: 400;
@@ -197,7 +197,7 @@
       flex: none;
       padding-left: 10px;
       font-size: 11.5px;
-      color: rgba(0, 0, 0, 0.38);
+      color: var(--text-muted);
       white-space: nowrap;
     }
 
@@ -207,19 +207,19 @@
     .cm-row__key {
       padding: 1px 5px;
       margin-left: 10px;
-      border: 1px solid rgba(0, 0, 0, 0.18);
+      border: 1px solid var(--border-keycap);
       border-bottom-width: 2px;
       border-radius: 4px;
       background: rgba(0, 0, 0, 0.03);
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: 11px;
       line-height: 15px;
-      color: rgba(0, 0, 0, 0.55);
+      color: var(--text-secondary);
     }
 
     // Grayed, with the reason beside it. Never clickable-and-then-refused.
     .cm-row--off {
-      color: rgba(0, 0, 0, 0.32);
+      color: var(--text-disabled);
       cursor: default;
 
       &:hover {
@@ -231,7 +231,7 @@
       }
 
       .cm-row__reason {
-        color: rgba(0, 0, 0, 0.36);
+        color: var(--text-muted);
       }
     }
 
@@ -246,7 +246,7 @@
     }
 
     .cm-row--destructive.cm-row--off {
-      color: rgba(0, 0, 0, 0.32);
+      color: var(--text-disabled);
 
       mat-icon {
         color: var(--text-black);

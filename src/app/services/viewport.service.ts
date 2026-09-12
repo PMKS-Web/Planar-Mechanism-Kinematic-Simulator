@@ -7,8 +7,12 @@ import { Injectable, signal } from '@angular/core';
  * and the analysis one 420px, and below about this a panel standing at the side
  * takes more of the window than it leaves. Above it there is room to stand
  * beside one, which is the layout the rest of the app is built for.
+ *
+ * The stylesheets write the same width as `$phone-max-width` in
+ * `left-tabs.vars.scss`, because a media query cannot read a TypeScript
+ * constant; `stylesheet-fences.spec.ts` fails when the two differ.
  */
-const PHONE_MAX_WIDTH = 600;
+export const PHONE_MAX_WIDTH = 600;
 
 /**
  * Whether the window is phone-shaped, as one answer.

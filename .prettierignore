@@ -14,3 +14,10 @@
 # MATLAB verification runs, so reformatting them is noise that would also make
 # the next regeneration look like a change.
 /src/test-data/verification
+
+# Storybook docs pages. Prettier's MDX printer rewrites the `*` of a JSX comment
+# (`{/* … */}`) as `_`, which breaks the comment.
+*.mdx
+
+# A rendering of a brief, kept beside its PDF. Not source.
+/docs/*.html

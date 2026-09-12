@@ -61,11 +61,11 @@
   }
 
   .versionLabel {
-    color: rgba(0, 0, 0, 0.45);
+    color: var(--text-tertiary);
   }
 
   .versionValue {
     margin-left: auto;
-    color: rgba(0, 0, 0, 0.6);
+    color: var(--text-secondary);
   }
 }

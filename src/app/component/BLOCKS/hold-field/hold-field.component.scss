@@ -96,7 +96,7 @@
         500 11px/1 Roboto,
         sans-serif;
       letter-spacing: 0.2px;
-      color: rgba(0, 0, 0, 0.3);
+      color: var(--text-disabled);
       cursor: pointer;
 
       &:hover,

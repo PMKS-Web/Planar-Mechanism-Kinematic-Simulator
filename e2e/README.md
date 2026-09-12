@@ -13,9 +13,10 @@ here.
 
 ## What CI runs
 
-`.github/workflows/verification.yml` runs `npm ci`, `npm run lint`, `npm run lint:format`,
-`npm test -- --watch=false`, `npm run build` and `git diff --check`, and a pull request cannot merge
-until it passes. `lint:format` covers these scripts too, so format an `.mjs` you edit.
+`.github/workflows/verification.yml` runs `npm ci`, `npm run lint`, `npm run lint:styles`,
+`npm run lint:format`, `npm test -- --watch=false`, `npm run build`, `npm run build-storybook` and
+`git diff --check`, and a pull request cannot merge until it passes. `lint:format` covers these
+scripts too, so format an `.mjs` you edit.
 **No e2e suite runs in CI.** They are run by hand, locally, against a dev
 server — so a suite that nobody ran can be broken without anything turning red.
 
@@ -287,6 +288,9 @@ Not suites — import them from one.
   nothing outside the tab card, no sideways scroll, no flicker between label levels.
 - `right-drawer.mjs` — the right drawer's width, left edge and bottom gap against the view
   controls, with the tutorial pinned and on a short window.
+- `reduced-motion.mjs` — the app with `prefers-reduced-motion` on, which `src/styles.scss`
+  answers for every stylesheet at once: the boot splash still leaves, the phone sheet still opens
+  and shuts by its handle, and no page error.
 - `mobile.mjs` — the phone layout on an iPhone 13 profile with touch: a held finger opens the
   menu, taps and swipes do not, the mode panel is a sheet, the playback cluster clears it, and a
   link drawn with taps.

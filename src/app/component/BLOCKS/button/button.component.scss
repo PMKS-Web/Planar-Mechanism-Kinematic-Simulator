@@ -61,11 +61,7 @@
       mat-icon {
         svg {
           path {
-            //fill: rgba(0, 0, 0, 0.6);
-            //fill: white;
-            //Indigo
-            fill: gray;
-            //fill: #F44336;
+            fill: var(--text-muted);
           }
         }
       }

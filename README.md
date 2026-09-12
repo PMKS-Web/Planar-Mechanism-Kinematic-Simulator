@@ -575,7 +575,9 @@ npm start          # http://localhost:4200
 | `npm start` | Dev server with live reload |
 | `npm run build` | Production build into `dist/pmksweb` |
 | `npm test -- --watch=false` | The Vitest suite (drop the flag for watch mode) |
-| `npm run format:check` | Prettier state; see the note below |
+| `npm run check` | The three linters CI runs: ESLint, stylelint and Prettier |
+| `npm run format` | Prettier over everything it can read |
+| `npm run storybook` | The component gallery and the UI guides, at http://localhost:6006 |
 | `npm run fixture-urls` | Regenerate [`docs/fixture-urls.md`](docs/fixture-urls.md) |
 | `npm run template-payloads` | Regenerate the mechanism library's payloads |
 | `node e2e/readme-shots.mjs` | Regenerate the screenshots in this file |
@@ -584,9 +586,8 @@ Browser-driven suites live in [`e2e/`](e2e/README.md) and run under plain Node. 
 devDependency; `netlify.toml` stops deploy installs from downloading a browser for it. Use `nvm use`
 first: `.nvmrc` pins Node 24.
 
-**On formatting:** some files predate the Prettier config. Format only the files you actually
-edited. Running Prettier across an untouched file rewrites code you did not write and buries your
-change.
+**On formatting:** everything Prettier can read is formatted, and CI checks it. Run
+`npm run format` before you push; `.editorconfig` keeps your editor in step.
 
 The rest of what is worth knowing before you start — where Playwright lives, which suites rewrite
 tracked files, which hostname the dev server answers on — is in
@@ -601,8 +602,9 @@ tracked files, which hostname the dev server answers on — is in
 - **Automatic publishing to production is paused in Netlify.** Nothing reaches app.pmksplus.com
   until someone publishes it by hand, so being on `main` does not mean being live.
 - Every other branch publishes to `https://[BRANCHNAME]--pmksnew.netlify.app`.
-- CI runs ESLint, a Prettier check, the unit suite, the production build and `git diff --check` on
-  every pull request, and a pull request into `staging` or `main` cannot merge until it passes.
+- CI runs ESLint, stylelint, a Prettier check, the unit suite, the production build, the gallery
+  build and `git diff --check` on every pull request, and a pull request into `staging` or `main`
+  cannot merge until it passes.
 - The `version` in `package.json` is what Settings shows to a user; raise it in the PR that ships
   a release.
 
@@ -611,7 +613,8 @@ tracked files, which hostname the dev server answers on — is in
 ## Contributing
 
 Work happens on the [project board](https://github.com/orgs/PMKS-Web/projects/1). Fork, branch
-from `staging`, and open a pull request against `staging`.
+from `staging`, and open a pull request against `staging`; the template asks why, what changed
+and how it was verified.
 
 What we ask of a change:
 
@@ -620,12 +623,17 @@ What we ask of a change:
    match that.
 2. **Give each file one responsibility.** Split a file when it does two things, never to fit a
    line count, and keep functions short. [docs/code-style.md](docs/code-style.md) has the full
-   guide; `npm run lint` checks the invariants it lists.
+   guide, including how this codebase writes Angular; `npm run check` runs the linters.
 3. **Follow Angular naming**: `foo-bar.service.ts`, `FooBarComponent`, `app-` selector prefix.
 4. **Add the mechanism to the fixtures**, not to a spec. New linkages go in `FIXTURE_GALLERY` so
    they get a published URL.
 5. **Do not change the URL codec casually.** Links other people have already sent are a
    compatibility surface.
+6. **For anything a reader sees, follow the UI style guide.**
+   [docs/ui-style-guide.md](docs/ui-style-guide.md) says how a control behaves, moves and is
+   worded, [docs/ui-vocabulary.md](docs/ui-vocabulary.md) holds the words, and the gallery
+   (`npm run storybook`, hosted at [docs.pmksplus.com](https://docs.pmksplus.com)) shows the
+   blocks to build from. The pull request template carries the UI checklist.
 
 ---
 

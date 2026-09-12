@@ -1,5 +1,6 @@
 @use 'sass:map';
 @use '@angular/material' as mat;
+@use 'src/app/component/left-tabs/left-tabs.vars' as nav;
 
 @mixin css($theme) {
   $color-config: mat.m2-get-color-config($theme);
@@ -70,14 +71,14 @@
       z-index: 2;
       padding: 12px 15px 12px;
       background: var(--card-surface);
-      box-shadow: 0 3px 6px -3px rgba(0, 0, 0, 0);
+      box-shadow: var(--scroll-shadow-hidden);
       transition: box-shadow 0.15s ease-in-out;
     }
 
     // Something above, out of sight: the list runs under the head, and without
     // this a scrolled card read as a card that simply started there.
     .setup.scrolled > .setupHead {
-      box-shadow: 0 3px 6px -3px rgba(0, 0, 0, 0.35);
+      box-shadow: var(--scroll-shadow);
     }
 
     .setupTitle {
@@ -89,7 +90,7 @@
     .setupSummary {
       font-size: 14px;
       line-height: 20px;
-      color: rgba(0, 0, 0, 0.6);
+      color: var(--text-secondary);
       margin: 6px 0 0;
     }
 
@@ -179,7 +180,7 @@
 
     .factLabel {
       font-size: 11px;
-      color: rgba(0, 0, 0, 0.45);
+      color: var(--text-tertiary);
     }
 
     .factValue {
@@ -213,7 +214,7 @@
       }
 
       &.muted {
-        color: rgba(0, 0, 0, 0.4);
+        color: var(--text-muted);
       }
     }
 
@@ -230,7 +231,7 @@
     .checkText {
       font-size: 12px;
       line-height: 18px;
-      color: rgba(0, 0, 0, 0.6);
+      color: var(--text-secondary);
       margin: 2px 0 0;
 
       &.note {
@@ -253,7 +254,7 @@
          "Drag coupler", and 47px of name column reads them all as "Link D…".
          The moment of inertia gives the room back — it is the number a reader
          is least often reading on a phone, and it keeps its own ellipsis. */
-      @media (max-width: 600px) {
+      @media (max-width: nav.$phone-max-width) {
         grid-template-columns: minmax(96px, 1.4fr) 72px minmax(72px, 1fr) 16px;
       }
 
@@ -271,7 +272,7 @@
         font-size: 9px;
         letter-spacing: 0.05em;
         text-transform: uppercase;
-        color: rgba(0, 0, 0, 0.5);
+        color: var(--text-tertiary);
         font-weight: 600;
         padding-bottom: 5px;
         margin-bottom: 3px;
@@ -283,10 +284,10 @@
 
       /* The whole weightless row mutes as one thing: label, both fields. */
       &.weightless .massName {
-        color: rgba(0, 0, 0, 0.4);
+        color: var(--text-muted);
       }
       &.weightless .cellField .customInput {
-        color: rgba(0, 0, 0, 0.35);
+        color: var(--text-disabled);
       }
     }
 
@@ -301,7 +302,7 @@
     }
 
     .massMoI {
-      color: rgba(0, 0, 0, 0.6);
+      color: var(--text-secondary);
     }
 
     // The table's cells ARE the shared input component; the only difference
@@ -330,7 +331,7 @@
       }
 
       &.derived .customInput {
-        color: rgba(0, 0, 0, 0.5);
+        color: var(--text-tertiary);
       }
     }
 
@@ -362,7 +363,7 @@
       margin: 0;
       padding: 8px 0 0;
       font-size: 10.5px;
-      color: rgba(0, 0, 0, 0.55);
+      color: var(--text-secondary);
       border-bottom: none;
 
       .resetAll {
@@ -376,7 +377,7 @@
         padding: 0;
 
         &:disabled {
-          color: rgba(0, 0, 0, 0.3);
+          color: var(--text-disabled);
           cursor: default;
         }
       }
@@ -387,7 +388,7 @@
       background: none;
       padding: 0;
       cursor: pointer;
-      color: rgba(0, 0, 0, 0.4);
+      color: var(--text-muted);
       display: inline-flex;
       justify-content: center;
       width: 22px;
@@ -447,7 +448,7 @@
     .sectionHeader .sectionHint {
       margin-left: auto;
       font-size: 11.5px;
-      color: rgba(0, 0, 0, 0.5);
+      color: var(--text-tertiary);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -459,10 +460,10 @@
     // rather than leaving rows that merely cannot be clicked.
     .massTable.readonly {
       .massName {
-        color: rgba(0, 0, 0, 0.45);
+        color: var(--text-tertiary);
       }
       .cellField .customInput {
-        color: rgba(0, 0, 0, 0.45);
+        color: var(--text-tertiary);
       }
     }
 

@@ -9,9 +9,15 @@ it describes a system that has since been replaced.
 
 ## Start here
 
-- [tips-and-tricks.md](tips-and-tricks.md) — the traps that cost somebody an hour: environment, e2e suites, deploys, spelling. Read before your first change. *Reference*
-- [../CLAUDE.md](../CLAUDE.md) — architecture, commands and branch rules.
-- `npm run storybook` — the component gallery, which is also where the UI guides below are read: it renders `ui-style-guide.md`, `ui-vocabulary.md` and `code-style.md` beside the components they govern, plus the design tokens and a reuse backlog.
+In this order, the first time:
+
+1. [../README.md](../README.md) — what the app is, and the four principles behind it.
+2. [../CLAUDE.md](../CLAUDE.md) — architecture, commands and branch rules. Named for one agent, written for all of them and for people.
+3. [code-style.md](code-style.md) — what we ask of code, how this codebase writes Angular, and what `npm run check` enforces.
+4. [ui-style-guide.md](ui-style-guide.md) and [ui-vocabulary.md](ui-vocabulary.md) — before touching anything a reader sees.
+5. [tips-and-tricks.md](tips-and-tricks.md), Environment through SCSS gotchas — the traps that cost somebody an hour. The rest of it is searched by symbol, not read through. *Reference*
+
+`npm run storybook` (hosted at [docs.pmksplus.com](https://docs.pmksplus.com)) is the component gallery, which also renders the three guides above beside the components they govern, plus the design tokens and a reuse backlog.
 
 ## Reference
 

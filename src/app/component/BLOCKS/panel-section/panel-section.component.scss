@@ -74,7 +74,7 @@
       background: var(--card-surface);
       // Nothing under it yet, so nothing to cast onto -- but declared here so
       // the shadow fades in rather than appearing the instant a card moves.
-      box-shadow: 0 3px 6px -3px rgba(0, 0, 0, 0);
+      box-shadow: var(--scroll-shadow-hidden);
       transition: box-shadow 0.15s ease-in-out;
     }
 
@@ -86,7 +86,7 @@
     &.scrolled > .sectionBody:first-child > title-block:first-child,
     &.scrolled > .sectionBody:first-child > editable-title-block:first-child,
     &.scrolled > .sectionBody:first-child > .panelHead:first-child {
-      box-shadow: 0 3px 6px -3px rgba(0, 0, 0, 0.35);
+      box-shadow: var(--scroll-shadow);
     }
   }
 }

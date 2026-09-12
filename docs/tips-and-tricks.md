@@ -17,7 +17,7 @@ to work on it without stepping in the same holes.
 - [Browser tests](#browser-tests)
 - [Getting inside the running app](#getting-inside-the-running-app)
 - [Spelling: American, everywhere](#spelling-american-everywhere)
-- [Formatting, and why you should not just run Prettier](#formatting-and-why-you-should-not-just-run-prettier)
+- [Formatting and the fences](#formatting-and-the-fences)
 - [Angular and build gotchas](#angular-and-build-gotchas)
 - [SCSS gotchas](#scss-gotchas)
 - [Editing, playback, and who is allowed to say no](#editing-playback-and-who-is-allowed-to-say-no)
@@ -345,22 +345,46 @@ Afterwards, grep for the American stem followed by a suspicious ending — `cent
 
 ---
 
-## Formatting, and why you should not just run Prettier
+## Formatting and the fences
 
-**Every `.ts`, `.html`, `.scss` and e2e `.mjs` file is formatted, and CI keeps it that way.**
-`npm run lint:format` fails a pull request whose files are not Prettier-clean, and the ruleset on
-`staging` and `main` will not merge a failing check. Run `npx prettier --write <file>` on what you
-edited before you push; `npx prettier --list-different src e2e` shows anything you missed.
+**Everything Prettier can read is formatted, and CI keeps it that way.** `npm run lint:format` is
+`prettier --check .`, it fails a pull request whose files are not Prettier-clean, and the ruleset on
+`staging` and `main` will not merge a failing check. `npm run format` fixes all of it before you
+push; `npx prettier --list-different .` shows what it would touch. Markdown, `.mdx` and the
+generated tables are ignored on purpose (`.prettierignore` says why for each).
 
 Prettier is pinned in `devDependencies`, so a local run and CI agree. A different Prettier fetched
 by a bare `npx` in a checkout without `node_modules` can disagree about a line or two — run
 `npm ci` first.
 
-**A stylesheet cannot hold a raw hex color.** `npm run lint:styles` (stylelint, `color-no-hex`)
-fails CI on one anywhere but `src/styles/_tokens.scss`. Reuse a role, or name a new one there: the
-set was collapsed from 116 to about 60 by folding every near-duplicate shade into the role it
-played, and the gallery's Tokens page shows them grouped. A second shade of an existing role is
-how it got to 116.
+**A stylesheet cannot hold a raw hex color, or a named one.** `npm run lint:styles` (stylelint,
+`color-no-hex` and `color-named`) fails CI on `#999` or `white` anywhere but
+`src/styles/_tokens.scss`. Reuse a role, or name a new one there: the set was collapsed from 116
+to about 60 by folding every near-duplicate shade into the role it played, and the gallery's
+Tokens page shows them grouped. A second shade of an existing role is how it got to 116.
+
+**A number is not a color, so stylelint cannot see it.** A width in a media query, an `rgba()`
+and a z-index all pass `lint:styles`. `src/tests/verification/stylesheet-fences.spec.ts` is the
+fence for the first two: a named width (600, 720, 380, 780 or 1340) written as a literal in a media
+query fails it, and so does a rise in the count of raw `rgba()` colors outside the token file.
+Write `nav.$phone-max-width` from `left-tabs.vars.scss`, and a role token: a text tier
+(`--text-secondary`, never `rgba(0, 0, 0, 0.6)`), a wash (`--hover-wash`) or a shadow
+(`--scroll-shadow`); lower the ceiling in the spec when you remove some. The layers (`--layer-*`)
+are held by review: nothing at the app level writes a z-index number of its own.
+
+**Reduced motion is one rule in `styles.scss`, not one per component.** Under
+`prefers-reduced-motion: reduce` every transition and animation is cut to almost nothing, with
+`!important`, from the one global stylesheet. If something still moves with the preference on it
+is script-driven -- the Web Animations API does not read the stylesheet -- and needs its own
+`matchMedia` check, as `LeftTabsComponent.slide` has. `e2e/reduced-motion.mjs` opens the app with
+the preference on.
+
+**The linter's warnings are a ratchet, and the hubs are capped.** `npm run lint` runs with
+`--max-warnings` at today's count, so a new warning fails the script the way an error would; the
+number is in `package.json`, and you lower it when you fix one. `mechanism.service.ts` and
+`new-grid.component.ts` are held by `max-lines` *errors* at their own counts in
+`eslint.config.mjs`, so a fix that adds lines to a hub fails until something moves out of it. That
+is the rule "the two hubs only delegate" with teeth; the number goes down, not up.
 
 `.prettierignore` deliberately excludes Markdown — Prettier pads every table cell and rewrites
 `*emphasis*` as `_emphasis_`, so a one-line doc edit lands as hundreds of lines of realignment.

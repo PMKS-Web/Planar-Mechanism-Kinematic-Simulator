@@ -116,7 +116,7 @@
 
   #axes_numbers {
     // Lighter than body text: these are a reference, not something to read.
-    fill: rgba(0, 0, 0, 0.55);
+    fill: var(--text-secondary);
     paint-order: stroke;
     stroke: var(--canvas-halo);
     stroke-linejoin: round;
@@ -370,7 +370,7 @@
   // The datum each position's coordinates are measured from. Drawn as a
   // crosshair rather than another circle, so it is not read as a third pin.
   .synthRef {
-    stroke: rgba(0, 0, 0, 0.55);
+    stroke: var(--text-secondary);
 
     line {
       stroke: inherit;
@@ -385,7 +385,7 @@
   // The chevron inside a position, pointing at its front end.
   .synthBarArrow {
     fill: none;
-    stroke: rgba(0, 0, 0, 0.42);
+    stroke: var(--text-muted);
     stroke-linecap: round;
     stroke-linejoin: round;
     pointer-events: none;
@@ -393,7 +393,7 @@
 
   .synthPosePin {
     fill: var(--accent-pale);
-    stroke: rgba(0, 0, 0, 0.4);
+    stroke: var(--text-muted);
     pointer-events: none;
   }
 
@@ -401,7 +401,7 @@
   // boxed: they sit over whatever the drawing has behind them, and a box that
   // size beside every pin would be more chrome than linkage.
   .synthPreviewTag {
-    fill: rgba(0, 0, 0, 0.72);
+    fill: var(--text-secondary);
     stroke: var(--canvas-halo);
     stroke-width: 3;
     paint-order: stroke;
@@ -412,7 +412,7 @@
 
   .synthPreviewJoint {
     fill: var(--accent-pale);
-    stroke: rgba(0, 0, 0, 0.4);
+    stroke: var(--text-muted);
   }
 
   #synthesisPreview {
@@ -596,12 +596,12 @@
   }
 
   .synthChipText {
-    fill: rgba(0, 0, 0, 0.65);
+    fill: var(--text-secondary);
     font-family: Roboto, sans-serif;
     font-weight: 500;
 
     &--sel {
-      fill: rgba(0, 0, 0, 0.87);
+      fill: var(--text-strong);
     }
   }
 
@@ -612,7 +612,7 @@
     font-weight: 500;
 
     &--sub {
-      fill: rgba(0, 0, 0, 0.5);
+      fill: var(--text-tertiary);
       font-weight: 400;
     }
   }

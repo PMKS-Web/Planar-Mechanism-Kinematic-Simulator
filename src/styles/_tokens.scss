@@ -17,8 +17,10 @@
 // A token that reads var(--other) is the same color under a second name,
 // kept because the role is worth naming on its own.
 //
-// Not here: Material palette colors (mat.m2-get-color-from-palette), and
-// colors decided at runtime -- link colors, SVG fills set from TypeScript.
+// Not here: Material palette colors (mat.m2-get-color-from-palette); colors
+// decided at runtime -- link colors, SVG fills set from TypeScript; and the
+// exporters (services/export/), whose output has to stand on its own outside
+// the app and so writes its colors out in full.
 
 :root {
   /* ---- Surfaces ---------------------------------------------------------- */
@@ -140,6 +142,16 @@
   --canvas-inert-joint: #d9dbe2;
   --canvas-black: var(--text-black);
 
+  /* ---- Washes: a translucent tint over whatever is beneath --------------- */
+
+  /* A bare or icon button under the pointer. Translucent, unlike
+     --surface-hover, because the button may sit on any surface. */
+  --hover-wash: rgba(0, 0, 0, 0.04);
+  /* The same button while pressed, or a row that is active. */
+  --press-wash: rgba(0, 0, 0, 0.06);
+  /* The edge of a keycap drawn in a tooltip or a menu row. */
+  --border-keycap: rgba(0, 0, 0, 0.18);
+
   /* ---- Shadows and radii ------------------------------------------------- */
 
   /* A menu drawn over the drawing: deeper than a card's, so it reads as
@@ -147,5 +159,40 @@
   --menu-shadow:
     0 8px 10px -5px rgba(0, 0, 0, 0.2), 0 16px 24px 2px rgba(0, 0, 0, 0.14),
     0 6px 30px 5px rgba(0, 0, 0, 0.12);
+  /* The shadow a sticky head casts once content has scrolled under it, and
+     the same shadow at zero so a transition has somewhere to start. */
+  --scroll-shadow: 0 3px 6px -3px rgba(0, 0, 0, 0.35);
+  --scroll-shadow-hidden: 0 3px 6px -3px rgba(0, 0, 0, 0);
+  /* A range slider's thumb. */
+  --thumb-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
   --border-radius: 5px;
+
+  /* ---- Layers: who paints over whom -------------------------------------- */
+
+  /* The canvas has no z-index: every card over it is positioned and later in
+     the DOM. These are the cards, lowest first. A number inside a card's own
+     stacking context (a sticky head over its rows, a thumb over its track)
+     stays a small literal in the component; only what has to be compared
+     across files is named here. */
+  --layer-panel: 5;
+  --layer-strip: 6;
+  /* The phone sheet is the panel at the strip's height, with its handle one
+     above so it hangs over the sheet's top edge. */
+  --layer-sheet: var(--layer-strip);
+  --layer-status: 7;
+  --layer-sheet-handle: var(--layer-status);
+  /* The bottom cluster, and the right drawer that has to win over it. */
+  --layer-cluster: 8;
+  --layer-drawer: 9;
+  /* The project menu over its own click-catching scrim. */
+  --layer-menu-scrim: 19;
+  --layer-menu: 20;
+  /* Angular's CDK draws tooltips, dialogs and the context menu at 1000, in a
+     container appended after the app. The toast stack ties that number and
+     loses on document order, so a tooltip or menu paints over a toast; raise
+     this above 1000 to change that. */
+  --layer-toast: 1000;
+  /* The loading scrim: over the chrome, over the drawer, under nothing but
+     the boot splash, which index.html draws at 4000 before this file loads. */
+  --layer-loading: 3000;
 }

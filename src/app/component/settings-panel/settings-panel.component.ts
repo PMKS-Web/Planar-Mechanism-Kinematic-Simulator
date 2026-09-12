@@ -16,7 +16,7 @@ import { combineLatest, skip, Subscription } from 'rxjs';
 import { MODEL_SCALE } from '../../model/render-scale';
 import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
 import { TitleBlock } from '../BLOCKS/title/title.component';
-import { CollapsibleSubsecitonComponent } from '../BLOCKS/collapsible-subseciton/collapsible-subseciton.component';
+import { CollapsibleSubsectionComponent } from '../BLOCKS/collapsible-subsection/collapsible-subsection.component';
 import { RadioComponent } from '../BLOCKS/radio/radio.component';
 import { ToggleComponent } from '../BLOCKS/toggle/toggle.component';
 import { InputComponent } from '../BLOCKS/input/input.component';
@@ -55,7 +55,7 @@ const MAX_SCALE = 50;
   imports: [
     PanelSectionComponent,
     TitleBlock,
-    CollapsibleSubsecitonComponent,
+    CollapsibleSubsectionComponent,
     RadioComponent,
     FormsModule,
     ReactiveFormsModule,

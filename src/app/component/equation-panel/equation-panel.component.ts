@@ -2,7 +2,7 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
 import { NotReadyWarningComponent } from '../not-ready-warning/not-ready-warning.component';
 import { TitleBlock } from '../BLOCKS/title/title.component';
-import { CollapsibleSubsecitonComponent } from '../BLOCKS/collapsible-subseciton/collapsible-subseciton.component';
+import { CollapsibleSubsectionComponent } from '../BLOCKS/collapsible-subsection/collapsible-subsection.component';
 
 @Component({
   selector: 'app-equation-panel',
@@ -13,7 +13,7 @@ import { CollapsibleSubsecitonComponent } from '../BLOCKS/collapsible-subseciton
     PanelSectionComponent,
     NotReadyWarningComponent,
     TitleBlock,
-    CollapsibleSubsecitonComponent,
+    CollapsibleSubsectionComponent,
   ],
 })
 export class EquationPanelComponent {}

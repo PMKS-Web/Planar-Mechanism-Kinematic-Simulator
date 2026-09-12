@@ -70,7 +70,7 @@
   font-size: 20px;
   font-weight: 500;
   line-height: 30px;
-  color: rgba(0, 0, 0, 0.87);
+  color: var(--text-strong);
 }
 
 #analysisWrapper .panelTitleText,
@@ -109,7 +109,7 @@
   padding-top: 2px;
   font-size: 13px;
   line-height: 18px;
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--text-secondary);
 }
 
 // The switch that shows or hides the curves from before the drag, on every
@@ -209,7 +209,7 @@
 #analysisWrapper panel-section .forceRedirect {
   font-size: 13px;
   line-height: 1.5;
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--text-secondary);
 }
 
 #analysisWrapper panel-section .forceRedirectAction {
@@ -252,7 +252,7 @@
     width: 18px;
     height: 18px;
     font-size: 15px;
-    color: rgba(0, 0, 0, 0.3);
+    color: var(--text-disabled);
     cursor: help;
   }
 
@@ -288,7 +288,7 @@
     transition: background 0.12s;
 
     &:hover {
-      background: rgba(0, 0, 0, 0.04);
+      background: var(--hover-wash);
     }
 
     &.drawingChip--on {

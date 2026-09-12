@@ -139,7 +139,7 @@ record(
 );
 // Behind a collapsed section, which is also where its tooltip lives.
 await page
-  .locator('app-edit-panel collapsible-subseciton', { hasText: 'Visual Settings' })
+  .locator('app-edit-panel collapsible-subsection', { hasText: 'Visual Settings' })
   .locator('.panel-header__toggle')
   .first()
   .click()

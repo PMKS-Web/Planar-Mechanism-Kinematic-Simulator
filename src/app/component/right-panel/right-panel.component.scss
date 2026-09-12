@@ -65,7 +65,7 @@
     }
 
     &:hover {
-      background: rgba(0, 0, 0, 0.06);
+      background: var(--press-wash);
     }
   }
 
@@ -160,7 +160,7 @@
     // anyway; with two, a row put them side by side in a drawer one card wide.
     display: flex;
     flex-direction: column;
-    z-index: 9;
+    z-index: var(--layer-drawer);
 
     // As wide as the view controls it stands over, which the view controls
     // measure and publish -- so the two edges line up however many buttons that

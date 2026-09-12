@@ -1,3 +1,4 @@
+@use 'src/app/component/left-tabs/left-tabs.vars' as nav;
 // The CAD Export dialog. Four folded sections between a pair of preset cards
 // and a footer that says what is about to come down -- the arrangement the
 // brief argues for in docs/cad-export-design.md, and the designer drew.
@@ -18,7 +19,7 @@ $rule: var(--border-rule);
   display: flex;
   flex-direction: column;
   max-height: inherit;
-  color: rgba(0, 0, 0, 0.87);
+  color: var(--text-strong);
 
   .titleRow {
     display: flex;
@@ -38,7 +39,7 @@ $rule: var(--border-rule);
   .subtitle {
     margin: 0;
     padding: 0 24px 12px;
-    color: rgba(0, 0, 0, 0.58);
+    color: var(--text-secondary);
     font-size: 13px;
   }
 
@@ -139,7 +140,7 @@ $rule: var(--border-rule);
     .presetNote {
       font-size: 11.5px;
       line-height: 15px;
-      color: rgba(0, 0, 0, 0.55);
+      color: var(--text-secondary);
     }
   }
 
@@ -201,7 +202,7 @@ $rule: var(--border-rule);
       font-size: 18px;
       width: 18px;
       height: 18px;
-      color: rgba(0, 0, 0, 0.45);
+      color: var(--text-tertiary);
       transition: transform 0.15s ease-in-out;
 
       &.open {
@@ -222,7 +223,7 @@ $rule: var(--border-rule);
       min-width: 0;
       text-align: right;
       font-size: 12px;
-      color: rgba(0, 0, 0, 0.5);
+      color: var(--text-tertiary);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -256,7 +257,7 @@ $rule: var(--border-rule);
 
   .groupName {
     font-size: 14px;
-    color: rgba(0, 0, 0, 0.6);
+    color: var(--text-secondary);
   }
 
   .field,
@@ -274,7 +275,7 @@ $rule: var(--border-rule);
   .fieldName {
     flex: 0 0 auto;
     font-size: 14px;
-    color: rgba(0, 0, 0, 0.6);
+    color: var(--text-secondary);
   }
 
   .field .fieldName {
@@ -283,7 +284,7 @@ $rule: var(--border-rule);
 
   .fieldNote {
     font-size: 12px;
-    color: rgba(0, 0, 0, 0.45);
+    color: var(--text-tertiary);
   }
 
   .textInput {
@@ -454,13 +455,13 @@ $rule: var(--border-rule);
   }
 
   .blocked .checkName {
-    color: rgba(0, 0, 0, 0.38);
+    color: var(--text-muted);
   }
 
   .checkNote {
     font-size: 12px;
     line-height: 16px;
-    color: rgba(0, 0, 0, 0.5);
+    color: var(--text-tertiary);
   }
 
   .spacer {
@@ -472,7 +473,7 @@ $rule: var(--border-rule);
   .cadName {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 11px;
-    color: rgba(0, 0, 0, 0.42);
+    color: var(--text-muted);
     white-space: nowrap;
   }
 
@@ -526,13 +527,13 @@ $rule: var(--border-rule);
 
   .liveSummary {
     font-size: 12.5px;
-    color: rgba(0, 0, 0, 0.7);
+    color: var(--text-secondary);
     font-variant-numeric: tabular-nums;
   }
 
   .deliveryLine {
     font-size: 12px;
-    color: rgba(0, 0, 0, 0.5);
+    color: var(--text-tertiary);
   }
 
   // Amber rather than red: the export will work, the part will not.
@@ -567,7 +568,7 @@ $rule: var(--border-rule);
 
   // On a phone the sections are what make this survive: the cards stack, the
   // summaries keep their ellipsis, and nothing scrolls sideways.
-  @media (max-width: 600px) {
+  @media (max-width: nav.$phone-max-width) {
     .titleRow,
     .subtitle,
     [mat-dialog-content] {

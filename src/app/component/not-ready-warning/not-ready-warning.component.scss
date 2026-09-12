@@ -21,7 +21,7 @@
     gap: 15px;
 
     @include mat.m2-typography-level($typography-config, 'caption');
-    color: rgba(0, 0, 0, 0.6);
+    color: var(--text-secondary);
 
     img {
       width: 30px;

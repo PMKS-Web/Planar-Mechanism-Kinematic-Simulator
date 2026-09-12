@@ -1,6 +1,6 @@
 import { FormControl, FormGroup } from '@angular/forms';
 import { moduleMetadata, type Meta, type StoryObj } from '@storybook/angular-vite';
-import { CollapsibleSubsecitonComponent } from '../../app/component/BLOCKS/collapsible-subseciton/collapsible-subseciton.component';
+import { CollapsibleSubsectionComponent } from '../../app/component/BLOCKS/collapsible-subsection/collapsible-subsection.component';
 import { InputComponent } from '../../app/component/BLOCKS/input/input.component';
 import { PanelSectionComponent } from '../../app/component/BLOCKS/panel-section/panel-section.component';
 import { TitleBlock } from '../../app/component/BLOCKS/title/title.component';
@@ -13,7 +13,7 @@ import { atWidth } from '../support/frame';
  * `[panelLive]`, for what stays editable while the card is frozen.
  *
  * Composed the way the Edit panel composes it: fields inside a
- * `collapsible-subseciton`, which is what gives them their padding. The
+ * `collapsible-subsection`, which is what gives them their padding. The
  * attached strip in the app is the Edit panel's own refusal strip, which is not
  * a block; here it is a plain line quoting the same model.
  */
@@ -23,7 +23,7 @@ const meta: Meta = {
   tags: ['autodocs'],
   decorators: [
     atWidth(250),
-    moduleMetadata({ imports: [TitleBlock, InputComponent, CollapsibleSubsecitonComponent] }),
+    moduleMetadata({ imports: [TitleBlock, InputComponent, CollapsibleSubsectionComponent] }),
   ],
   args: { frozen: false },
   render: (args) => ({
@@ -42,14 +42,14 @@ const meta: Meta = {
         @if (frozen) {
           <p panelAttached style="margin: 0; padding: 8px 15px; font-size: 13px; line-height: 18px">{{ refusal }}</p>
         }
-        <collapsible-subseciton titleLabel="Position" [expanded]="true">
+        <collapsible-subsection titleLabel="Position" [expanded]="true">
           <input-block [formGroup]="form" _formControl="x" tooltip="Distance from the origin, along x.">X</input-block>
           <input-block [formGroup]="form" _formControl="y" tooltip="Distance from the origin, along y.">Y</input-block>
-        </collapsible-subseciton>
+        </collapsible-subsection>
         <div panelLive>
-          <collapsible-subseciton titleLabel="Mass" [expanded]="true">
+          <collapsible-subsection titleLabel="Mass" [expanded]="true">
             <input-block [formGroup]="form" _formControl="mass" unit="kg" tooltip="The mass of this joint.">Mass</input-block>
-          </collapsible-subseciton>
+          </collapsible-subsection>
         </div>
       </panel-section>
     `,
