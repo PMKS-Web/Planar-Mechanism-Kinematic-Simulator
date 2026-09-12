@@ -13,6 +13,9 @@ import { roundNumber } from '../utils';
 import { LBF_IN_PER_NEWTON_METER, LBF_PER_NEWTON } from '../unit-conversions';
 import { MODEL_SCALE } from '../render-scale';
 import { PositionStepExplanation } from './solver-explanation';
+import { GearAssembly } from '../gear';
+import { compileGearDrive, GearDrive, gearMotionAt } from './gear-drive';
+import { GearDiagnostic } from './gear-validation';
 
 /**
  * Why a mechanism will not run. One of these, not a boolean, because the ways a
@@ -52,6 +55,19 @@ function scalarCell(value: number | undefined): string {
 }
 
 export class Mechanism {
+  readonly transmission: GearAssembly;
+  readonly gearDiagnostics: readonly GearDiagnostic[];
+  readonly gearDrive?: GearDrive;
+  private _gearTravel: number[] = [];
+  /** Authoritative signed input travel for each stored geared pose. */
+  get gearTravel(): readonly number[] {
+    return this._gearTravel;
+  }
+  gearMotionAtSample(index: number) {
+    return this.gearDrive && this._gearTravel[index] !== undefined
+      ? gearMotionAt(this.gearDrive, this._gearTravel[index], this._inputAngularVelocities[index])
+      : undefined;
+  }
   private _failure: MechanismFailure | undefined;
   private _unusableCylinder: string | undefined;
   /** Joints the position ordering never reached, captured at the failure. */
@@ -122,8 +138,13 @@ export class Mechanism {
     // driven pin reads as this machine's input: it is handed the foreign
     // speed, skips the "nothing drives this" blocker, and then solves a
     // mechanism nothing actually turns. Omitted means every joint is its own.
-    ownJointIds?: ReadonlySet<string>
+    ownJointIds?: ReadonlySet<string>,
+    transmission: GearAssembly = { gears: [], meshes: [] }
   ) {
+    this.transmission = Object.freeze({
+      gears: Object.freeze(transmission.gears.map((gear) => Object.freeze({ ...gear }))),
+      meshes: Object.freeze(transmission.meshes.map((mesh) => Object.freeze({ ...mesh }))),
+    });
     joints.forEach((j) => {
       const clone = this.cloneJointAt(j, j.x, j.y);
       // Cleared on the copy, so every solver downstream -- loops, positions,
@@ -183,6 +204,12 @@ export class Mechanism {
     // ics.forEach(ic => { this._ics[0].push(ic); });
     this._gravity = gravity;
     this._unit = unit;
+    const compiled =
+      this.transmission.gears.length || this.transmission.meshes.length
+        ? compileGearDrive(this.transmission, this._joints[0], this._links[0])
+        : undefined;
+    this.gearDrive = compiled?.ok ? compiled.drive : undefined;
+    this.gearDiagnostics = compiled && !compiled.ok ? compiled.diagnostics : [];
     this._dof = this.determineDegreesOfFreedom();
     this._inputAngularVelocities.push(inputAngVel);
     // no index found for input Joint
@@ -198,7 +225,9 @@ export class Mechanism {
     // order the panel reports them in: a slider with nothing to slide along has
     // no mobility worth counting, and adding an input to a linkage whose
     // mobility is wrong will not make it run.
-    if (dangling) {
+    if (this.gearDiagnostics.length) {
+      this.setMechanismInvalid('mobility');
+    } else if (dangling) {
       this.setMechanismInvalid('dangling-slider');
     } else if (this._dof !== 1) {
       this.setMechanismInvalid('mobility');
@@ -411,7 +440,7 @@ export class Mechanism {
     bodies.add(WORLD);
     const N = bodies.size;
     let J1 = 0;
-    const J2 = 0;
+    const J2 = this.transmission.meshes.length;
     this.joints[0].forEach((j) => {
       if (!(j instanceof RealJoint)) {
         return;
@@ -420,6 +449,8 @@ export class Mechanism {
     });
     const counted = 3 * (N - 1) - 2 * J1 - J2;
     this.countedFreedoms = counted;
+    if (this.gearDiagnostics.length) return NaN;
+    if (this.gearDrive) return this.measuredFreedoms() ?? counted;
     if (counted >= 1) return counted;
 
     // Counted as unable to move. Gruebler's error is one-sided -- it charges
@@ -452,7 +483,12 @@ export class Mechanism {
   /** The freedoms the drawing's geometry has, second order and all. */
   private measuredFreedoms(): number | undefined {
     const { bodyOf, bodiesAt, movingBodies } = assignBodies(this.joints[0], this.links[0]);
-    return mobilityFromGeometry(this.joints[0], this.links[0], { bodyOf, bodiesAt, movingBodies });
+    return mobilityFromGeometry(
+      this.joints[0],
+      this.links[0],
+      { bodyOf, bodiesAt, movingBodies },
+      this.gearDrive ? this.transmission : undefined
+    );
   }
 
   /**
@@ -634,6 +670,10 @@ export class Mechanism {
     revoluteStep: number = Math.PI / 180,
     prismaticStep?: number
   ) {
+    if (this.gearDrive) {
+      revoluteStep = Math.min(revoluteStep, this.gearDrive.step);
+      this._gearTravel = [0];
+    }
     // The loop below flips inputAngVel at each reversal; a re-solve has to
     // start from the speed that was asked for, not the one the loop ended on.
     const requestedAngVel = inputAngVel;
@@ -649,13 +689,13 @@ export class Mechanism {
     // fully rotating revolute input closes its cycle after exactly this many samples.
     // Ending on that count instead of on a position tolerance keeps the sample count
     // — and therefore the t=0 pose — identical every time the mechanism is rebuilt.
-    const STEPS_PER_REVOLUTION = 360;
+    const STEPS_PER_REVOLUTION = this.gearDrive ? Math.round((2 * Math.PI) / revoluteStep) : 360;
     // How many turns a crank is given to bring the whole drawing home. One
     // closes most cycles; a rod that passes through tangency with its slot
     // comes home on the second; a winding of three is the most this will
     // wait for, and a drawing that is not home by then is refused below
     // rather than shown with a teleport at the wrap.
-    const MAX_REVOLUTIONS = 3;
+    const MAX_REVOLUTIONS = this.gearDrive ? this.gearDrive.periodTurns * 3 : 3;
     // Whole steps of crank a cycle may spend. A rocker's cycle is out and back
     // over each side of its start, and a limit may lie as far away as the
     // crank is allowed to turn -- so four times that, and not a step more.
@@ -667,6 +707,7 @@ export class Mechanism {
     let reversals = 0;
     const angularSpeed = Math.abs(inputAngVel);
     PositionSolver.resetStaticVariables();
+    PositionSolver.gearDrive = this.gearDrive;
     // After the reset, which is what puts the default back.
     PositionSolver.revoluteSampleStep = revoluteStep;
     PositionSolver.determineJointOrder(this.joints[0], this.links[0]);
@@ -798,7 +839,7 @@ export class Mechanism {
       revoluteInput &&
       PositionSolver.stepsByRevoluteSampleStep &&
       jumpLimit > 0;
-    let revolutionsToClose = 1;
+    let revolutionsToClose = this.gearDrive?.periodTurns ?? 1;
     const cycleIncomplete = () =>
       revoluteInput && reversals === 0
         ? gridSteps < STEPS_PER_REVOLUTION * revolutionsToClose
@@ -906,6 +947,10 @@ export class Mechanism {
         this.attachForcesToLinks(currentTimeStamp + 1);
         falseTwice = 0;
         currentTimeStamp++;
+        if (this.gearDrive) {
+          this._gearTravel.push(PositionSolver.gearTravel);
+          PositionSolver.gearFrames.set(this._joints[currentTimeStamp], PositionSolver.gearTravel);
+        }
         if (curTimeNum + timeNumIncrement * attempt.fraction <= 0) {
           timeNumIncrement = timeNumIncrement * -1;
         }
@@ -963,7 +1008,7 @@ export class Mechanism {
         const seam = this.seamGapAt(currentTimeStamp);
         closestSeam = Math.min(closestSeam, seam);
         if (seam > differentPose && revolutionsToClose < MAX_REVOLUTIONS) {
-          revolutionsToClose += 1;
+          revolutionsToClose += this.gearDrive?.periodTurns ?? 1;
         }
       }
       // A rocker walks home over the points it walked out on, so it is back
@@ -1233,6 +1278,7 @@ export class Mechanism {
   }
 
   private setMechanismInvalid(cause: MechanismFailure) {
+    this._gearTravel = [];
     // TODO: Set all of the joints, links, force, instant center positions as empty
     this.joints = [[]];
     this.links = [[]];

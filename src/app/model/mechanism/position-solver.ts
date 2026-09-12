@@ -32,6 +32,8 @@ import {
 import { angleReference, resolveActuator } from '../actuator';
 import { MARK } from '../joint-marks';
 import { SettingsService } from '../../services/settings.service';
+import { GearDrive, gearMotionAt } from './gear-drive';
+import { constraintMotionHolds } from './constraint-motion';
 
 /**
  * How far a driven prismatic input advances along its slot per solved sample,
@@ -271,6 +273,10 @@ interface PinDrive {
  * back later. See `PositionSolver.captureDriveState`.
  */
 export interface PositionSolverDriveState {
+  gearTravel?: number;
+  gearDrive?: GearDrive;
+  gearFrames?: WeakMap<Joint[], number>;
+  fullGearSystem?: SimultaneousSystem;
   cylinderDrive?: CylinderDrive;
   pinDrive?: PinDrive;
   simultaneousSystem?: SimultaneousSystem;
@@ -302,6 +308,7 @@ function isRateUnknown(joint: Joint): joint is RealJoint {
 
 /** What `capturePose` hands back: enough to stand the solver back up. */
 export interface SolverPose {
+  gearTravel?: number;
   positions: Map<string, number[]>;
   prior: Map<string, number[]>;
   /**
@@ -318,6 +325,10 @@ export interface SolverPose {
 }
 
 export class PositionSolver {
+  static gearDrive?: GearDrive;
+  static gearTravel = 0;
+  static gearFrames = new WeakMap<Joint[], number>();
+  private static fullGearSystem?: SimultaneousSystem;
   /** Preserve the actual construction plan before another mechanism overwrites the statics. */
   static explanationPlan(joints: Joint[]) {
     return [...this.jointNumOrderSolverMap].flatMap(([order, ids]) =>
@@ -527,6 +538,10 @@ export class PositionSolver {
    */
   static captureDriveState(): PositionSolverDriveState {
     return {
+      gearDrive: this.gearDrive,
+      gearTravel: this.gearTravel,
+      gearFrames: this.gearFrames,
+      fullGearSystem: this.fullGearSystem,
       cylinderDrive: this.cylinderDrive,
       pinDrive: this.pinDrive,
       simultaneousSystem: this.simultaneousSystem,
@@ -538,6 +553,10 @@ export class PositionSolver {
   /** Put this solver back on the constraints of the mechanism named by `state`. */
   static restoreDriveState(state: PositionSolverDriveState | undefined): void {
     if (!state) return;
+    this.gearDrive = state.gearDrive;
+    this.gearTravel = state.gearTravel ?? 0;
+    this.gearFrames = state.gearFrames ?? new WeakMap();
+    this.fullGearSystem = state.fullGearSystem;
     this.cylinderDrive = state.cylinderDrive;
     this.pinDrive = state.pinDrive;
     this.simultaneousSystem = state.simultaneousSystem;
@@ -546,6 +565,10 @@ export class PositionSolver {
   }
 
   static resetStaticVariables() {
+    this.gearDrive = undefined;
+    this.gearTravel = 0;
+    this.gearFrames = new WeakMap();
+    this.fullGearSystem = undefined;
     this.jointMapPositions = new Map<string, Array<number>>();
     this.priorJointPositions = new Map<string, Array<number>>();
     this.refusalKind = 'none';
@@ -616,6 +639,10 @@ export class PositionSolver {
     });
     const inputJoint = joints[inputJointIndex];
     if (!(inputJoint instanceof RealJoint)) {
+      return;
+    }
+    if (this.gearDrive) {
+      this.orderGearPartition(joints, links, knownJointsIds);
       return;
     }
     // The drive turns one body, so only that body's joints travel with it.
@@ -818,6 +845,43 @@ export class PositionSolver {
     }
   }
 
+  private static orderGearPartition(joints: Joint[], links: Link[], known: string[]): void {
+    const motion = gearMotionAt(this.gearDrive!, 0, 0);
+    const constraints = this.collectConstraints(
+      joints,
+      links,
+      joints.map((joint) => joint.id)
+    );
+    if (!motion || !constraints) {
+      this.unsolvableJoints = joints.map((joint) => joint.id);
+      return;
+    }
+    this.fullGearSystem = { unknownIds: joints.map((joint) => joint.id), constraints };
+    this.gearFrames.set(joints, 0);
+    for (const [id, at] of motion.positions) {
+      this.jointMapPositions.set(id, at);
+      if (!known.includes(id)) known.push(id);
+    }
+    const target = this.gearDrive!.bodies[0].points.find(
+      (point) => point.id !== this.gearDrive!.bodies[0].centerId
+    )!.id;
+    this.jointNumOrderSolverMap.set(1, [target]);
+    this.desiredConnectedJointIndicesMap.set(target, []);
+    this.desiredAnalysisJointMap.set(target, 'prescribedGearBodies');
+    this.stepCount = 1;
+    this.coupledRoute = true;
+    this.routeCoupled(joints, links, 2, known);
+  }
+
+  private static placeGearBodies(forward: boolean): boolean {
+    const next = this.gearTravel + (forward ? this.revoluteSampleStep : -this.revoluteSampleStep);
+    const motion = gearMotionAt(this.gearDrive!, next, 0);
+    if (!motion) return false;
+    for (const [id, at] of motion.positions) this.jointMapPositions.set(id, at);
+    this.gearTravel = next;
+    return true;
+  }
+
   private static orderCoupledPartition(
     joints: Joint[],
     links: Link[],
@@ -833,6 +897,7 @@ export class PositionSolver {
       })
       .map((joint) => joint.id);
     if (unknownIds.length === 0) {
+      if (this.gearDrive) this.simultaneousSystem = { unknownIds: [], constraints: [] };
       // Everything is prescribed already, so there is nothing for this solver
       // to place -- but "nothing to place" is not the same as "anything goes".
       // The drawing still has to satisfy its own constraints, so they are
@@ -1850,6 +1915,16 @@ export class PositionSolver {
     // it -- the walk had no primitive for its shape, and the loop solver has
     // no equation for it either, so its rates come from the same constraints
     // its positions did.
+    if (this.gearDrive) {
+      const q = this.gearFrames.get(joints);
+      if (q === undefined) return undefined;
+      return this.gearKinematics(
+        joints,
+        new Map(joints.map((joint) => [joint.id, [joint.x, joint.y]])),
+        q,
+        commandRate
+      );
+    }
     if (!this.cylinderDrive && !this.pinDrive && !this.coupledRoute) {
       return undefined;
     }
@@ -1944,6 +2019,37 @@ export class PositionSolver {
    * ground nor part of the driven body: a rate invented for one would be
    * reported as measured.
    */
+  private static gearKinematics(joints: Joint[], positions: PositionMap, q: number, rate: number) {
+    const motion = gearMotionAt(this.gearDrive!, q, rate);
+    const system = this.simultaneousSystem;
+    const full = this.fullGearSystem;
+    if (!motion || !system || !full) return undefined;
+    const scale = this.mechanismScale(full, positions) || 1;
+    for (const [id, expected] of motion.positions) {
+      const actual = positions.get(id);
+      if (!actual || Math.hypot(actual[0] - expected[0], actual[1] - expected[1]) > scale * 1e-6)
+        return undefined;
+    }
+    for (const joint of joints) {
+      if (joint instanceof RevJoint && joint.ground) {
+        motion.velocity.set(joint.id, [0, 0]);
+        motion.acceleration.set(joint.id, [0, 0]);
+      }
+    }
+    const rates = system.unknownIds.length
+      ? constraintRates(system, positions, 0, 0, motion)
+      : {
+          velocity: new Map<string, [number, number]>(),
+          acceleration: new Map<string, [number, number]>(),
+        };
+    if (!rates) return undefined;
+    for (const [id, value] of motion.velocity) rates.velocity.set(id, value);
+    for (const [id, value] of motion.acceleration) rates.acceleration.set(id, value);
+    return constraintMotionHolds(full, positions, rates.velocity, rates.acceleration, scale)
+      ? rates
+      : undefined;
+  }
+
   private static boundaryMotion(
     joints: Joint[],
     system: SimultaneousSystem,
@@ -3164,6 +3270,7 @@ export class PositionSolver {
    */
   static capturePose(): SolverPose {
     return {
+      gearTravel: this.gearTravel,
       positions: new Map(this.jointMapPositions),
       prior: new Map(this.priorJointPositions),
       boundary: this.boundaryPose
@@ -3174,6 +3281,7 @@ export class PositionSolver {
   }
 
   static restorePose(pose: SolverPose): void {
+    this.gearTravel = pose.gearTravel ?? 0;
     this.jointMapPositions = new Map(pose.positions);
     this.priorJointPositions = new Map(pose.prior);
     this.boundaryPose = pose.boundary
@@ -3207,6 +3315,9 @@ export class PositionSolver {
       const desired_analysis = this.desiredAnalysisJointMap.get(joint_id)!;
       let possible: boolean = true; // Doesn't need to be defined
       switch (desired_analysis) {
+        case 'prescribedGearBodies':
+          possible = this.placeGearBodies(angVelDir);
+          break;
         case 'incrementRevInput':
           this.incrementRevInput(joints[connected_joint_indices[0]], joint, angVelDir);
           possible = true;
@@ -3281,6 +3392,8 @@ export class PositionSolver {
     if (!this.headingsHeld()) {
       return false;
     }
+    if (this.gearDrive && !this.gearKinematics(joints, this.jointMapPositions, this.gearTravel, 1))
+      return false;
     forces.forEach((f) => {
       this.determineTracerForce(f.link.joints[0], f.link.joints[1], f, 'start');
       this.forceMagnitudeMap.set(f.id + 'x', f.mag);
@@ -3427,7 +3540,12 @@ export class PositionSolver {
     if (previous) {
       this.priorJointPositions.set(id, previous);
     }
-    this.jointMapPositions.set(id, [roundNumber(x, 4), roundNumber(y, 4)]);
+    // Geared boundaries are audited against the full constraint set. Rounding a
+    // converged dependent point here would break the equations just solved.
+    this.jointMapPositions.set(
+      id,
+      this.gearDrive ? [x, y] : [roundNumber(x, 4), roundNumber(y, 4)]
+    );
   }
 
   /**

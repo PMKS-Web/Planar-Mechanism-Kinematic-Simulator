@@ -5,6 +5,7 @@ import { KinematicsSolver } from './kinematic-solver';
 import { Loop } from './loop-solver';
 import { siUnitFactors, SiUnitFactors } from '../unit-conversions';
 import { BodyExplanation, ForceExplanation } from './solver-explanation';
+import { GearAssembly } from '../gear';
 
 export type ForceAnalysisMode = 'static' | 'dynamic';
 
@@ -79,6 +80,7 @@ interface FrameKinematics {
 }
 
 interface MechanismFrames {
+  transmission?: GearAssembly;
   joints: Joint[][];
   links: Link[][];
   timeNum: number[];
@@ -195,7 +197,7 @@ export class ForceSolver {
     evenest = false
   ): ForceAnalysisFrame {
     let fallback: FrameKinematics[] = [];
-    if (mode === 'dynamic') {
+    if (mode === 'dynamic' && !mechanism.transmission?.gears.length) {
       fallback =
         this.explanationFallback.get(mechanism) ??
         this.finiteDifferenceKinematics(mechanism, mechanism.joints.length);
@@ -246,11 +248,23 @@ export class ForceSolver {
     links: Link[],
     analysisType: string,
     gravity: boolean,
-    unit: string
+    unit: string,
+    transmission?: GearAssembly
   ): ForceAnalysisFrame {
     const mode = this.normalizeMode(analysisType);
     const kinematics = mode === 'dynamic' ? this.captureCurrentKinematics(links) : undefined;
-    const result = this.analyzeFrame(joints, links, mode, gravity, unit, 0, kinematics);
+    const result = this.analyzeFrame(
+      joints,
+      links,
+      mode,
+      gravity,
+      unit,
+      0,
+      kinematics,
+      false,
+      false,
+      transmission
+    );
 
     this.lastResult = result;
     this.unknownVariableForcesMap = new Map(
@@ -270,6 +284,32 @@ export class ForceSolver {
     mode: ForceAnalysisMode
   ): ForceAnalysisSeries {
     const frameCount = Math.min(mechanism.joints.length, mechanism.links.length);
+    if (mechanism.transmission?.gears.length) {
+      const frames = mechanism.joints
+        .slice(0, frameCount)
+        .map((joints, index) =>
+          this.analyzeFrame(
+            joints,
+            mechanism.links[index],
+            mode,
+            mechanism.gravity,
+            mechanism.unit,
+            mechanism.timeNum[index] ?? index,
+            undefined,
+            false,
+            false,
+            mechanism.transmission
+          )
+        );
+      return {
+        mode,
+        frames,
+        successfulFrames: 0,
+        sharedSupportFrames: 0,
+        reactionIndex: { linksByJoint: new Map(), jointsByLink: new Map() },
+        diagnostic: frames[0]?.message,
+      };
+    }
     const fallback =
       mode === 'dynamic' ? this.finiteDifferenceKinematics(mechanism, frameCount) : [];
     const frames: ForceAnalysisFrame[] = [];
@@ -322,7 +362,7 @@ export class ForceSolver {
     capture = false
   ): ForceAnalysisFrame {
     let kinematics: FrameKinematics | undefined;
-    if (mode === 'dynamic') {
+    if (mode === 'dynamic' && !mechanism.transmission?.gears.length) {
       // Clear the solver's shared maps each frame so a mid-solve failure at
       // frame k cannot leave frame k-1's finite values in place — which would
       // read as "current" and hide the failure from the fallback below.
@@ -349,7 +389,8 @@ export class ForceSolver {
       mechanism.timeNum[index] ?? index,
       kinematics,
       evenest,
-      capture
+      capture,
+      mechanism.transmission
     );
   }
 
@@ -362,7 +403,8 @@ export class ForceSolver {
     timeSeconds = 0,
     kinematics?: FrameKinematics,
     evenest = false,
-    capture = false
+    capture = false,
+    transmission?: GearAssembly
   ): ForceAnalysisFrame {
     const every = links.filter(
       (link): link is RealLink | SliderBlock =>
@@ -390,6 +432,8 @@ export class ForceSolver {
       message,
     });
 
+    if (transmission?.gears.length)
+      return empty('unsupported-topology', 'Force transmission through gears is not supported.');
     if (bodies.length === 0) return empty('unsupported-topology');
     const badProperty = this.invalidProperty(bodies, units);
     if (badProperty) return empty('invalid-properties', badProperty);

@@ -1,6 +1,7 @@
 import { Joint, PrisJoint, RealJoint } from '../joint';
 import { Link } from '../link';
 import { Force } from '../force';
+import { GearAssembly } from '../gear';
 import { assignBodies, WORLD } from './bodies';
 
 /** One independently solvable machine within the drawing. */
@@ -26,6 +27,7 @@ export interface MechanismPartition {
   ownJoints: Joint[];
   links: Link[];
   forces: Force[];
+  transmission?: GearAssembly;
 }
 
 /**
@@ -95,7 +97,8 @@ export function partitionKey(partition: MechanismPartition): string {
 export function partitionMechanisms(
   joints: Joint[],
   links: Link[],
-  forces: Force[] = []
+  forces: Force[] = [],
+  transmission?: GearAssembly
 ): Partitioning {
   const { bodyOf, bodiesAt, movingBodies } = assignBodies(joints, links);
 
@@ -121,6 +124,16 @@ export function partitionMechanisms(
       moving.slice(1).forEach((body) => union(moving[0], body));
     });
 
+  // A mesh connects machines but never welds their rotating bodies.
+  for (const mesh of transmission?.meshes ?? []) {
+    const host = (id: string) =>
+      links.find(
+        (link) => link.id === transmission!.gears.find((gear) => gear.id === id)?.hostLinkId
+      );
+    const a = host(mesh.gearAId),
+      b = host(mesh.gearBId);
+    if (a && b && parent.has(bodyOf(a)) && parent.has(bodyOf(b))) union(bodyOf(a), bodyOf(b));
+  }
   const groundedComponents = new Set<string>();
   realJoints.forEach((joint) => {
     const bodies = bodiesAt(joint);
@@ -248,11 +261,25 @@ export function partitionMechanisms(
   const mechanisms: MechanismPartition[] = grounded.map((component, index) => {
     const entry = memberOf(component);
     const partitionLinks = [...entry.links];
+    const gears = transmission?.gears.filter((gear) =>
+      partitionLinks.some((link) => link.id === gear.hostLinkId)
+    );
+    const gearIds = new Set(gears?.map((gear) => gear.id));
     return {
       id: `M${index + 1}`,
       joints: [...entry.joints],
       ownJoints: [...entry.owned],
       links: partitionLinks,
+      ...(gears?.length
+        ? {
+            transmission: {
+              gears,
+              meshes: transmission!.meshes.filter(
+                (mesh) => gearIds.has(mesh.gearAId) || gearIds.has(mesh.gearBId)
+              ),
+            },
+          }
+        : {}),
       forces: forces.filter((force) => partitionLinks.some((link) => link.id === force.link?.id)),
     };
   });

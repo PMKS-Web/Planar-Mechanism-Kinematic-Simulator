@@ -8,6 +8,7 @@ import { Mechanism } from '../../app/model/mechanism/mechanism';
 import { ColorService } from '../../app/services/color.service';
 import { SettingsService } from '../../app/services/settings.service';
 import { MODEL_SCALE } from '../../app/model/render-scale';
+import { GearAssembly } from '../../app/model/gear';
 
 /**
  * Declarative description of a linkage that mirrors the MATLAB models in
@@ -15,6 +16,8 @@ import { MODEL_SCALE } from '../../app/model/render-scale';
  * MechanismService, which rounds user-entered coordinates to 3 decimals).
  */
 export interface MechanismFixture {
+  /** Computational gear fixtures; URL support is deliberately a later stage. */
+  transmission?: GearAssembly;
   /** Joint ids must be the single letters the dataset uses, in creation order. */
   joints: {
     id: string;
@@ -351,7 +354,9 @@ function buildMechanismNow(
     // The MATLAB tables are stated one row per degree of crank and compared
     // one to one, so this harness defaults to the grid they are stated on;
     // the specs that exercise adaptive sampling ask for it by name.
-    sampling
+    sampling,
+    undefined,
+    fixture.transmission
   );
   return { mechanism, joints, links, forces, fixture };
 }

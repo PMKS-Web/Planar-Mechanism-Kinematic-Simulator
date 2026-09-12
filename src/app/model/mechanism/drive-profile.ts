@@ -24,6 +24,8 @@ import { Mechanism } from './mechanism';
  * is just no longer what the handle means.
  */
 export interface DriveProfile {
+  /** Continuous gear travel distinguishes a full cycle from its zero pose. */
+  distinctEnds?: boolean;
   /** 0..1 for each solved sample: where the input is, out of everything it does. */
   readonly along: number[];
   /** True when the input goes all the way round rather than turning back. */
@@ -73,7 +75,11 @@ export function driveProfileOf(mechanism: Mechanism, ram?: RamEnds): DriveProfil
   // as not, and the second one has no name a reader would recognize. Anything
   // else linear has no extension to speak of, so it is measured along the line
   // it slides on.
-  const raw = linear ? ((ram && lengthOf(frames, ram)) ?? strokeOf(frames, at)) : turnOf(mechanism);
+  const raw = mechanism.gearDrive
+    ? [...mechanism.gearTravel]
+    : linear
+      ? ((ram && lengthOf(frames, ram)) ?? strokeOf(frames, at))
+      : turnOf(mechanism);
   if (!raw) {
     return undefined;
   }
@@ -97,6 +103,7 @@ export function driveProfileOf(mechanism: Mechanism, ram?: RamEnds): DriveProfil
     const denominator = Math.abs(total) > 1e-9 ? total : 1;
     return {
       along: raw.map((value) => (value - raw[0]) / denominator),
+      distinctEnds: !!mechanism.gearDrive,
       continuous,
       linear,
       span: Math.abs(total),
@@ -298,7 +305,9 @@ function nearestSample(profile: DriveProfile, along: number, near: number): numb
     let bestCost = Infinity;
     profile.along.forEach((value, sample) => {
       const gap = Math.abs(value - along);
-      const cost = Math.min(gap, 1 - gap) + (Math.abs(sample - near) / last) * 1e-6;
+      const cost =
+        (profile.distinctEnds ? gap : Math.min(gap, 1 - gap)) +
+        (Math.abs(sample - near) / last) * 1e-6;
       if (cost < bestCost) {
         bestCost = cost;
         best = sample;

@@ -1,5 +1,6 @@
 import { Joint, PrisJoint, RealJoint } from '../joint';
 import { Link } from '../link';
+import { GearAssembly } from '../gear';
 import { BodyAssignment, WORLD } from './bodies';
 
 /**
@@ -36,7 +37,8 @@ import { BodyAssignment, WORLD } from './bodies';
 export function mobilityFromGeometry(
   joints: Joint[],
   links: Link[],
-  assignment: BodyAssignment
+  assignment: BodyAssignment,
+  transmission?: GearAssembly
 ): number | undefined {
   const bodies = [...assignment.movingBodies];
   if (bodies.length === 0) return undefined;
@@ -55,6 +57,21 @@ export function mobilityFromGeometry(
   });
 
   const constraints = constraintsOf(joints, assignment, bodyAt);
+  for (const mesh of transmission?.meshes ?? []) {
+    const a = transmission!.gears.find((gear) => gear.id === mesh.gearAId)!;
+    const b = transmission!.gears.find((gear) => gear.id === mesh.gearBId)!;
+    const aLink = links.find((link) => link.id === a.hostLinkId)!;
+    const bLink = links.find((link) => link.id === b.hostLinkId)!;
+    const scale = Math.max(a.teeth, b.teeth);
+    constraints.push({
+      kind: 'gear',
+      at: aLink.joints[0],
+      a: bodyAt(assignment.bodyOf(aLink)),
+      b: bodyAt(assignment.bodyOf(bLink)),
+      aWeight: a.teeth / scale,
+      bWeight: b.teeth / scale,
+    });
+  }
   if (constraints.length === 0) return undefined;
 
   const rows = constraints.flatMap((one) => rowsFor(one, width));
@@ -244,7 +261,7 @@ function scaledStep(
   let worst = 0;
   for (const constraint of constraints) {
     const bodies =
-      constraint.kind === 'pin'
+      constraint.kind !== 'slide'
         ? [constraint.a, constraint.b]
         : [constraint.block, constraint.carrier];
     for (const body of bodies) {
@@ -267,6 +284,14 @@ interface Body {
 }
 
 type Constraint =
+  | {
+      kind: 'gear';
+      at: { x: number; y: number };
+      a: Body;
+      b: Body;
+      aWeight: number;
+      bWeight: number;
+    }
   | { kind: 'pin'; at: { x: number; y: number }; a: Body; b: Body }
   | { kind: 'slide'; at: { x: number; y: number }; block: Body; carrier: Body; angle: number };
 
@@ -377,6 +402,12 @@ function constraintsOf(
 /** One constraint's two rows: what it forbids, to first order. */
 function rowsFor(constraint: Constraint, width: number): number[][] {
   const row = () => new Array<number>(width).fill(0);
+  if (constraint.kind === 'gear') {
+    const turning = row();
+    if (constraint.a.at !== undefined) turning[constraint.a.at + 2] += constraint.aWeight;
+    if (constraint.b.at !== undefined) turning[constraint.b.at + 2] += constraint.bWeight;
+    return [turning];
+  }
   const arm = (body: Body, at: { x: number; y: number }) => ({
     x: at.x - body.pivot.x,
     y: at.y - body.pivot.y,
@@ -433,6 +464,12 @@ function moved(body: Body, at: { x: number; y: number }, d: number[]): { x: numb
 
 /** How far apart a constraint's two sides really are, after a displacement. */
 function residual(constraint: Constraint, d: number[]): number[] {
+  if (constraint.kind === 'gear') {
+    return [
+      (constraint.a.at === undefined ? 0 : d[constraint.a.at + 2] * constraint.aWeight) +
+        (constraint.b.at === undefined ? 0 : d[constraint.b.at + 2] * constraint.bWeight),
+    ];
+  }
   if (constraint.kind === 'pin') {
     const a = moved(constraint.a, constraint.at, d);
     const b = moved(constraint.b, constraint.at, d);
@@ -476,7 +513,7 @@ function survivesSecondOrder(
   let worst = 0;
   for (const constraint of constraints) {
     const bodies =
-      constraint.kind === 'pin'
+      constraint.kind !== 'slide'
         ? [constraint.a, constraint.b]
         : [constraint.block, constraint.carrier];
     for (const body of bodies) {
