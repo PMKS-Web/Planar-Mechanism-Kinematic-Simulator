@@ -550,7 +550,7 @@ coordinates rather than on screenshots and exits non-zero on any failure.
 | 2.8 | Carrier lifecycle and topology — see 2.8a | many |
 | 2.9 | Kinematic solver: add the carrier's ω×r term | [`kinematic-solver.ts:186-202, 269-270`](../src/app/model/mechanism/kinematic-solver.ts) |
 | 2.10 | Force solver: rotate the reaction direction, drop the `.ground` guard, add carrier-side incidence | [`force-solver.ts:476-486, 551`](../src/app/model/mechanism/force-solver.ts) |
-| 2.11 | ~~IC solver: prismatic IC is at infinity ⊥ to a direction that now rotates~~ **De-scoped** — the IC solver is dead code (see status below) | [`ic-solver.ts:107-112`](../src/app/model/mechanism/ic-solver.ts) |
+| 2.11 | ~~IC solver: prismatic IC is at infinity ⊥ to a direction that now rotates~~ **De-scoped** — the IC solver is dead code (see status below) | [`ic-solver.ts:107-112`](https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/blob/8384ee39035f5f6b372cfe467982a8fab29a5f6f/src/app/model/mechanism/ic-solver.ts) |
 
 **Status: 2.1–2.10 done, 2.11 de-scoped, Gate 2 met.**
 

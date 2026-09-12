@@ -1,4 +1,5 @@
 import { Meta, Markdown } from '@storybook/addon-docs/blocks';
+import { linkToRepo } from '../support/repo-links';
 import vocabulary from '../../../docs/ui-vocabulary.md?raw';
 
 <Meta title="Guides/Vocabulary" />
@@ -9,4 +10,4 @@ import vocabulary from '../../../docs/ui-vocabulary.md?raw';
 
 {/* Inline code stays inline: the default override turns a code span that wraps a line into a
     source block, which cannot sit inside a paragraph. */}
-<Markdown options={{ overrides: { code: 'code' } }}>{vocabulary}</Markdown>
+<Markdown options={{ overrides: { code: 'code' } }}>{linkToRepo(vocabulary, 'docs/ui-vocabulary.md')}</Markdown>

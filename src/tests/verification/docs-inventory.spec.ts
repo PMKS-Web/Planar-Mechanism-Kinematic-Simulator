@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { anchorOf } from '../../test-utils/markdown-anchors';
 
 /**
  * The three hand-kept lists an agent is told to read first. Each one drifted before this spec
@@ -9,15 +10,6 @@ import { resolve } from 'node:path';
  */
 const ROOT = resolve(__dirname, '../../..');
 const read = (path: string) => readFileSync(resolve(ROOT, path), 'utf8');
-
-/** GitHub's heading anchor: lowercase, punctuation dropped, each space a hyphen. */
-function anchorOf(heading: string): string {
-  return heading
-    .trim()
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s_-]/gu, '')
-    .replace(/\s/g, '-');
-}
 
 describe('documentation inventories', () => {
   it('names every e2e script in e2e/README.md', () => {

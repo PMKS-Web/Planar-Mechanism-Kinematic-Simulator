@@ -1,4 +1,5 @@
 import { Meta, Markdown } from '@storybook/addon-docs/blocks';
+import { linkToRepo } from '../support/repo-links';
 import style from '../../../docs/code-style.md?raw';
 
 <Meta title="Guides/Code style" />
@@ -7,4 +8,4 @@ import style from '../../../docs/code-style.md?raw';
 > here because a component is code too: the invariants the linter checks apply to a block as much
 > as to a solver.
 
-<Markdown options={{ overrides: { code: 'code' } }}>{style}</Markdown>
+<Markdown options={{ overrides: { code: 'code' } }}>{linkToRepo(style, 'docs/code-style.md')}</Markdown>
