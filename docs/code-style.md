@@ -1,19 +1,23 @@
 # Code style
 
+> **Status:** Reference — what we ask of code, and what `npm run check` enforces.
+
 What we ask of code in this repository, and why. It is short on purpose: most of it is a handful
 of decisions the codebase has already paid for once, written down so nobody pays again.
 
 Three things hold the line, in order of how much they catch:
 
 - **Review**, against this page.
-- **`npm run lint`** (ESLint, `eslint.config.mjs`) — a few targeted rules, listed
-  [at the end](#what-the-linter-enforces).
-- **Prettier** (`.prettierrc`) for layout, checked by `npm run lint:format`. Nobody should argue
-  about layout in a review.
+- **`npm run check`** — ESLint (`eslint.config.mjs`) over the invariants listed
+  [at the end](#what-the-linter-enforces), stylelint (`.stylelintrc.json`) over the stylesheets,
+  and Prettier (`.prettierrc`) for layout. Nobody should argue about layout in a review.
+- **A few specs that read the source** (`src/tests/verification/`): the hand-kept lists, the
+  stylesheet fences, the fixture URLs. A rule a person remembers drifts; a rule a spec checks does
+  not.
 
-Both run in CI on every pull request, and a pull request cannot merge into `staging` or `main`
-until that check passes. A repository ruleset enforces it; only a repository admin can override,
-and that is for emergencies.
+All of it runs in CI on every pull request, and a pull request cannot merge into `staging` or
+`main` until that check passes. A repository ruleset enforces it; only a repository admin can
+override, and that is for emergencies.
 
 ---
 
@@ -49,7 +53,10 @@ away.
 ## The two hubs only delegate
 
 `services/mechanism.service.ts` and `component/new-grid/new-grid.component.ts` are where
-everything used to go, which is how they got to their size. **They take no new behavior.**
+everything used to go, which is how they got to their size. **They take no new behavior**, and
+the linter holds each at the size it had when that was written: `max-lines` is an error for those
+two files, at their own counts. Lower a cap when a move lands. Raise one only in a pull request
+that says why the code could not live in a model or a narrower service.
 
 - A new rule, calculation or decision goes into a model (`src/app/model/`) or a service with a
   narrow interface. The hub calls it.
@@ -143,17 +150,80 @@ Standard Angular naming:
 Name a thing for what it means to a reader of the domain, not for how it is stored. A joint's
 visible name, not its internal id; `turnsClockwise`, not `isNegative`.
 
+## Angular, as this codebase writes it
+
+Angular offers two ways to do most things. The codebase has chosen, and a new file matches the
+choice rather than the tutorial:
+
+- **`inject()`, not constructor parameters.** Every service and component resolves its
+  dependencies with `inject()`. Specs that build services by hand use `Injector.create` and
+  `runInInjectionContext` for the same reason (`src/test-utils/mechanism-harness.ts` is the
+  pattern).
+- **`@if`, `@for` and `@switch`** in templates. There is no `*ngIf` or `*ngFor` left.
+- **`input()` and `output()`**, not the decorators. About thirty `@Input()` remain from before the
+  signal forms existed; convert one when you are already editing its component, and do not write
+  a new one. Only inputs are a component's public surface: everything else is `protected` or
+  `private`, or it shows up as a property in the gallery.
+- **State that belongs to one component is a signal.** A stream shared between services is still
+  an RxJS `BehaviorSubject` (`SettingsService`, `MechanismService.onMechUpdateState`) and stays one
+  until it is migrated whole. Do not start a third pattern by mixing the two in one service.
+- **Default change detection, not `OnPush`.** Matching the rest of the app matters more than the
+  theoretical win.
+- **Fully standalone.** No `NgModule`; a component declares its own `imports`, and a service never
+  imports a component (above).
+- **Relative imports** between files under `src/app`. A path starting with `src/` resolves, but
+  it is the exception here, and a file that mixes the two hides half its dependencies from a
+  search.
+
+## Tests
+
+- **A unit spec sits beside its source** (`src/**/*.spec.ts`), Vitest through the Angular builder
+  (`npm test -- --watch=false`), written in Jasmine style with the globals from `vitest/globals`. A
+  spec file with no test in it is an error, not a skip.
+- **A component spec imports the component.** There is no declaring module.
+- **A mechanism a test needs goes in `FIXTURE_GALLERY`**
+  (`src/test-utils/verification/fixture-gallery.ts`), never inline, so it is published as a URL in
+  `docs/fixture-urls.md` and a reviewer can open it. `src/test-utils/` holds the harnesses:
+  `createMechanismHarness` builds a real `MechanismService` with its dependencies stubbed just
+  enough for structural edits, and `urlGeneratorFor` wires the encoder.
+- **The solvers are held to MATLAB.** `app.component.spec.ts` compares them against
+  `src/test-data/verification`; treat it as the regression test for any solver change.
+- **What a browser has to see is an `e2e/*.mjs` suite**, run by hand against a dev server; none
+  runs in CI. Run the suites that cover your change and name them in the pull request.
+  `e2e/README.md` says what each covers and which ones rewrite tracked files.
+- **A list a person keeps is checked by a spec.** `docs-inventory.spec.ts` holds the docs index,
+  the e2e README and the tips contents to the files; `stylesheet-fences.spec.ts` holds the named
+  breakpoints and the `rgba()` count; `fixture-gallery.spec.ts` holds the fixture URLs. When you
+  add a hand-kept list, add the check.
+
+## Commits and pull requests
+
+- **A commit subject is one sentence** in the imperative, saying what changed and why it had to:
+  "Refuse raw hex colors outside the token file", not "fix colors" or "chore: lint". The log is the
+  first place a reader looks for the why, and it should read the way this page does.
+- **A move is its own commit.** Taking a piece out of a hub and changing it are two things, and a
+  reviewer should see the move as a move.
+- **A pull request goes to `staging`** and fills in `.github/pull_request_template.md`: why, what
+  changed, how it was verified, and the UI checklist when a reader can see the change. Name the
+  e2e suites you ran; nothing runs them for you.
+- **Run `npm run check` before you push.** CI runs the same three linters, then the unit suite,
+  the production build and the gallery build, and a red check blocks the merge.
+
 ## Formatting
 
 Prettier owns layout: 100-character width, single quotes, 2-space indent (`.prettierrc`).
+`.editorconfig` says the same to your editor, so a file arrives close to formatted and without the
+trailing whitespace that fails `git diff --check`.
 
-- `npm run lint:format` checks `.ts`, `.html`, `.scss` and e2e `.mjs`, and CI fails a pull request
-  on it. `npx prettier --write <file>` fixes a file. Prettier is pinned in `devDependencies`, so
-  everyone gets the same output.
-- `npm run lint:styles` (stylelint) rejects a raw hex color in any stylesheet except
-  `src/styles/_tokens.scss`, where colors are named once as custom properties. CI fails on it too.
-- Markdown is excluded on purpose (`.prettierignore`). Prettier realigns every table cell and
-  rewrites emphasis, so a one-line doc edit becomes hundreds of changed lines.
+- `npm run lint:format` checks everything Prettier can read, and CI fails a pull request on it.
+  `npm run format` fixes all of it; `npx prettier --write <file>` fixes one file. Prettier is
+  pinned in `devDependencies`, so everyone gets the same output.
+- `npm run lint:styles` (stylelint) rejects a raw hex color and a named color (`white`, `gray`) in
+  any stylesheet except `src/styles/_tokens.scss`, where colors are named once as custom
+  properties. CI fails on it too.
+- Markdown and `.mdx` are excluded on purpose (`.prettierignore`). Prettier realigns every table
+  cell and rewrites emphasis, so a one-line doc edit becomes hundreds of changed lines, and its MDX
+  printer breaks a JSX comment.
 - The TypeScript and HTML under `src/` were reformatted in one commit. That commit is listed in
   `.git-blame-ignore-revs`. To make `git blame` skip it locally, run once:
 
@@ -166,20 +236,28 @@ Prettier owns layout: 100-character width, single quotes, 2-space indent (`.pret
 ## What the linter enforces
 
 `npm run lint` runs ESLint over `src` with the TypeScript parser. **No recommended rule set is
-enabled**: the linter guards the invariants above and nothing else. Warnings do not fail the
-script; errors do.
+enabled**: the linter guards the invariants above and nothing else. Errors fail the script. So
+does a *new* warning: the script runs with `--max-warnings` set to today's count, so the number
+of warnings can only go down. Lower it in `package.json` when you remove one.
 
 | Rule | Level | What it catches | Exempt |
 | --- | --- | --- | --- |
-| `no-restricted-syntax` | error | `speed < 0` or `x.driveSpeed < 0`. Use `turnsClockwise`. | `model/drive-direction.ts` |
+| `no-restricted-syntax` | error | A speed compared with zero in any direction: `speed < 0`, `x.driveSpeed >= 0`, `0 < speed`. Use `turnsClockwise`. | `model/drive-direction.ts` |
 | `no-restricted-imports` | warning | A file under `src/app/component/` importing `position-solver`, `kinematic-solver`, `force-solver` or `loop-solver` from `model/mechanism/`. Components get solved values through the services. | Spec files |
 | `no-restricted-imports` | error | A service (`src/app/services/`, `src/app/*.service.ts`) importing a `*.component`. Register a handle the service reads instead; a dialog open is the one excused line. | Spec files |
-| `max-lines` | warning | A file over 800 lines, not counting blank lines and comments. | Spec files |
+| `max-lines` | warning | A file over 800 lines, not counting blank lines and comments. | Spec files, and the snapshot in `template-baseline.ts` |
+| `max-lines` | error | Either hub growing past the count it had when the cap was set (`eslint.config.mjs` holds the two numbers). | — |
 
 The solver-import rule is a warning because three components already import a solver: two only for
 the `ForceAnalysisMode` and `ForceReactionIndex` types, and `analysis-graph.component.ts` to reset
 `KinematicsSolver`'s static state. Do not add new ones. When you remove the last one, raise the rule to an
 error.
+
+`npm run lint:styles` runs stylelint over every `.scss` under `src` with two rules, `color-no-hex`
+and `color-named`, and one exemption, `src/styles/_tokens.scss`. What neither linter can see is a
+number: `src/tests/verification/stylesheet-fences.spec.ts` refuses a named breakpoint written as
+a literal and a rise in the count of raw `rgba()` colors. The rules themselves are in the
+[UI style guide](ui-style-guide.md#layout).
 
 If a rule is wrong for one line, disable it for that line only and say why after `--`:
 

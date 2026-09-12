@@ -1,5 +1,7 @@
 # UI style guide
 
+> **Status:** Reference — how anything a reader sees should look, behave and be worded.
+
 What to know before adding or changing anything a reader sees. The component gallery
 (`npm run storybook`) shows what the building blocks look like; this page covers what a gallery
 cannot show: how things behave, how they move, and how they are worded.
@@ -101,13 +103,28 @@ layer](../CLAUDE.md#ui-layer) in `CLAUDE.md`: top strip, left mode card, full-bl
 transport, view controls, status strip and right drawer. Put a new control in the region whose job
 it is. Do not invent a new region.
 
-**There is one breakpoint: 600px.** It is `PHONE_MAX_WIDTH` in
-[`viewport.service.ts`](../src/app/services/viewport.service.ts). Ask `ViewportService.isPhone()`,
-or key off the class it sets. Do not write another width into a stylesheet. Below the breakpoint
-the mode panel becomes a bottom sheet. The sheet starts collapsed, declares
+**There is one layout breakpoint: 600px.** It is `PHONE_MAX_WIDTH` in
+[`viewport.service.ts`](../src/app/services/viewport.service.ts) and `$phone-max-width` in
+[`left-tabs.vars.scss`](../src/app/component/left-tabs/left-tabs.vars.scss), and
+`stylesheet-fences.spec.ts` fails if the two ever differ. Ask `ViewportService.isPhone()`, key off
+the class it sets, or write `@media (max-width: nav.$phone-max-width)`. Below the breakpoint the
+mode panel becomes a bottom sheet. The sheet starts collapsed, declares
 `data-canvas-inset="bottom"` so the canvas frames above it, and publishes `--sheet-height`.
 `isTouch` is a separate question: the layout follows the window, but the words for a gesture follow
 the input. `e2e/mobile.mjs` guards the phone layout.
+
+**A width two files share is named in `left-tabs.vars.scss`**, beside the card gap and the rest
+of the chrome's measurements: `$lower-line-tightens` (720px, where the transport and the view
+controls give up padding together), `$narrow-phone` (380px, the narrowest window the chrome is
+laid out for), `$cluster-wraps` (780px) and `$cluster-clears-panel` (1340px). A media query that
+writes one of those numbers as a literal fails the spec. A width one element needs for itself
+alone may stay a literal, with a comment saying what overflowed at it.
+
+**Layers are tokens.** Who paints over whom at the app level is the `--layer-*` group in the token
+file: panel, strip, status, cluster, drawer, menu, toast, loading, in that order. A card's own
+stacking context keeps small literals (a sticky head over its rows, a thumb over its track), and
+`isolation: isolate` on the card keeps them local. Do not write a new number above 9 anywhere
+else; if two cards need a new order, name the layer.
 
 ---
 
@@ -120,13 +137,43 @@ the input. `e2e/mobile.mjs` guards the phone layout.
   bottom sheet's real heights and animates between them with the Web Animations API. A CSS
   transition on `max-height` spends most of its time moving a ceiling nothing touches. The result
   looks like a snap followed by a crawl.
-- **Respect reduced motion.** Every animation checks `prefers-reduced-motion: reduce`: in script,
-  as `slide` does, or in a `@media` block, as `segmented-block` and `loading-overlay` do. Where a
-  panel ends up is not an animation, so it still happens.
+- **Reduced motion is honored in one place.** [`src/styles.scss`](../src/styles.scss) shortens
+  every transition and animation to nothing under `prefers-reduced-motion: reduce`, so a
+  stylesheet needs no guard of its own. A script-driven animation still asks `matchMedia` itself,
+  as `LeftTabsComponent.slide` does, because the Web Animations API does not read the stylesheet.
+  Where a panel ends up is not motion, so it still happens. `e2e/reduced-motion.mjs` opens the
+  app with the preference on and checks that everything still arrives.
 - **Prove it with a filmstrip, not a screenshot.** A screenshot shows the end state, and motion bugs
   live in the frames before it. Use [`e2e/filmstrip.mjs`](../e2e/filmstrip.mjs) and its contact
   sheet, and look at the sheet yourself. The [`ui-validate`](../.claude/skills/ui-validate/SKILL.md)
   skill makes this mandatory for anything that animates or responds to a drag.
+
+---
+
+## Accessibility
+
+Accessibility is one of the four principles, and it is checked, not assumed.
+
+- **Every control works from the keyboard.** A button is a `<button>`, a switch is a switch, and
+  a control drawn as a `<div>` needs a role, a `tabindex` and a key handler. App-wide keys go
+  through `KeyboardShortcutsService`
+  ([`keyboard-shortcuts.service.ts`](../src/app/services/keyboard-shortcuts.service.ts)), the one
+  registry: a shortcut gets an id, a section and a label there, and `appShortcutTip` shows its
+  keys in the control's tooltip.
+- **Focus is visible.** A focused control shows a ring. Style `:focus-visible`, so a mouse click
+  does not draw one, and never write `outline: none` without putting a ring back.
+- **An icon-only control has an `aria-label`**, in the vocabulary's words. A control that shows a
+  state carries `aria-pressed`, as `app-view-button` does. A grayed control carries its reason
+  where a screen reader can reach it, not only in a tooltip.
+- **Color is never the only signal.** The canvas grammar says so for links; it holds for chips,
+  banners and rows too. A refusal is red and says so.
+- **Contrast is a property of a token pairing**, so it is decided once, in the token file, and
+  not per component. A new pairing of text and surface is a new decision: 4.5:1 for text, 3:1
+  for a large label or a control's edge.
+- **The gallery's Accessibility panel is the check.** It runs axe on the story that is open;
+  open it for a new or changed story and clear what it reports before the story merges.
+  `e2e/mobile.mjs` covers touch: a held finger opens the menu, and the sheet's handle is 44px,
+  the smallest thing a thumb can be asked to hit.
 
 ---
 
@@ -177,33 +224,54 @@ The gallery shows all five kinds.
 
 **Build from BLOCKS.** The primitives in `src/app/component/BLOCKS/` are shown state by state in
 the gallery. Run it with `npm run storybook`, or build it as a static site with
-`npm run build-storybook`. Its stories are in `src/stories/blocks/`. Use a block for each job:
+`npm run build-storybook`. Its stories are in `src/stories/blocks/` and `src/stories/shared/`.
+Use the component that does the job:
 
-| Job | Block |
+| Job | Component |
 | --- | --- |
 | A labeled number | `input-block` |
 | A pair of numbers | `dual-input-block` |
+| A length or angle with a padlock to hold it | `hold-field-block` |
+| A bare field with a derived-or-typed mark | `state-input` |
+| A hand-written `<input>` | add `appStandardField` |
+| A color | `color-picker` |
 | A choice of one option | `segmented-block`, or `radio-block` when bound to a form |
 | A switch | `toggle-block` |
-| A panel card | `panel-section` |
-| A hand-written `<input>` | add `appStandardField` |
+| The panel's stroked button | `button-block` |
+| Two buttons on one row | `dual-button` |
+| A view toggle that shows its state | `app-view-button` |
+| A panel card, and a section of it that folds | `panel-section`, `collapsible-subsection` |
+| A heading, large or small | `title-block`, `subtitle-block` |
+| The editable name at the top of a panel | `editable-title-block` |
+| The refusal strip under a panel's title | `app-edit-banner`, `app-lock-banner` |
+| A message to the reader | `NotificationService`, never a snackbar of your own |
+| An action on a part | a row in `ContextMenuBuilderService` |
 
 If a block cannot do what you need, extend the block and add a story for the new state. Do not copy
 a neighbor's CSS into a new component; that is how the app once had three different pick-one
 controls. A block's styles are a theme mixin, `@include`d from `src/mytheme.scss`, so a new block
 needs its mixin added there as well.
 
-**New colors, radii, shadows and gaps must be tokens.** A token is a CSS custom property on `:root`,
-defined once in [`src/styles/_tokens.scss`](../src/styles/_tokens.scss) and grouped by role:
-surfaces, borders, text tiers, brand, selection, accent, warning, refusal, success, canvas marks,
-shadows, radii and the card gap. Write `var(--token)`; no import is needed.
+**New colors, radii, shadows, gaps and layers must be tokens.** A token is a CSS custom property
+on `:root`, defined once in [`src/styles/_tokens.scss`](../src/styles/_tokens.scss) and grouped
+by role: surfaces, borders, text tiers, brand, selection, accent, warning, refusal, success,
+canvas marks, washes, shadows, radii, the card gap and the layers. Write `var(--token)`; no import
+is needed.
 
 - **Reach for a role, not a shade.** There are about sixty tokens because every distinct hex the
   stylesheets once used was collapsed into the role it was playing. If no role fits, add one; do
   not add a second shade of one that does.
-- **A raw hex color in a component stylesheet fails CI.** `npm run lint:styles` (stylelint) rejects it
-  everywhere but the token file. If no role fits, add one there, with a comment saying what it is
-  for.
+- **A raw hex or named color in a component stylesheet fails CI.** `npm run lint:styles`
+  (stylelint) rejects both everywhere but the token file. If no role fits, add one there, with a
+  comment saying what it is for.
+- **A raw `rgba()` is the same mistake, and stylelint cannot see it.** About 270 remain, most of
+  them black at some alpha standing in for a text tier, and `stylesheet-fences.spec.ts` holds
+  that count so it can only go down. Use the tier (`--text-secondary`), the wash
+  (`--hover-wash`, `--press-wash`) or the shadow (`--scroll-shadow`, `--thumb-shadow`) instead,
+  and lower the ceiling when you remove some.
+- **Two places may write a color literal**: the canvas, where a mark's color is decided at
+  runtime from the link it belongs to, and the exporters, whose output has to stand on its own
+  outside the app. Both are named in the token file's header.
 
 The gallery's **Tokens** page reads the custom properties from the loaded stylesheets at runtime,
 so it always shows what is actually defined.
@@ -212,14 +280,8 @@ so it always shows what is actually defined.
 
 ## UI pull request checklist
 
-Copy this into the PR description, and check each box.
-
-- [ ] A screenshot is attached, or a **filmstrip** if anything moves or responds to a drag.
-- [ ] Every refusal reason comes from the model that enforces the rule. No rule is restated in a
-      template.
-- [ ] Every new or changed word is checked against [`ui-vocabulary.md`](ui-vocabulary.md).
-- [ ] The spelling is American English, in identifiers and in copy.
-- [ ] `e2e/ui-copy.mjs` was run against the change and passes.
-- [ ] A new or changed BLOCKS state has a story.
-- [ ] One gesture is one undo, and nothing clamps silently.
-- [ ] Layout changes were checked below 600px (`e2e/mobile.mjs`) and with reduced motion on.
+The pull request template ([`.github/pull_request_template.md`](../.github/pull_request_template.md))
+carries the checklist for a change a reader can see: a screenshot or a filmstrip, refusals quoted
+from the model, words checked against the vocabulary, a story for a new block state, one undo per
+gesture, the phone layout, reduced motion and the keyboard. GitHub fills it in; do not delete the
+section for a change a reader can see.

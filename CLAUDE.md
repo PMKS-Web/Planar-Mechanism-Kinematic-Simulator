@@ -19,9 +19,16 @@ English throughout, in identifiers as well as prose, and `e2e/ui-copy.mjs` (run 
 fails on the British forms in anything the user can read. Also: where Playwright is installed and why it vanishes, which e2e suites rewrite tracked
 files, why `npx vitest` fails where `npm test` works, which hostname the dev server answers on, the
 two `@media (max-width: 600px)` blocks in one stylesheet where the later silently wins, and how to
-tell a failure you caused from one that was already there. Read it before your first change, and
-**add to it whenever something surprises you.** [`docs/README.md`](docs/README.md) indexes every
-other document and says which are current and which are history.
+tell a failure you caused from one that was already there. It is long: the sections from
+Environment through SCSS gotchas are the part to read before your first change, and the rest is
+searched by the symbol you are working on, as its Contents says. **Add to it whenever something
+surprises you.** [`docs/README.md`](docs/README.md) gives the reading order and indexes every
+other document, saying which are current and which are history.
+
+Two of those are the rules: [`docs/code-style.md`](docs/code-style.md) is what we ask of code and
+what `npm run check` enforces, and [`docs/ui-style-guide.md`](docs/ui-style-guide.md) is how
+anything a reader sees should look, behave and be worded, with
+[`docs/ui-vocabulary.md`](docs/ui-vocabulary.md) for the words. Read them before writing either.
 
 Project skills live in `.claude/skills/<name>/SKILL.md` and load when their task comes up. Codex
 loads `.agents/skills/` instead; each skill there is a pointer to its `.claude` copy, so edit the
@@ -35,7 +42,7 @@ loads `.agents/skills/` instead; each skill there is a pointer to its `.claude` 
 
 `.nvmrc` pins Node 24; run `nvm use` first, because a login shell may otherwise hand you an unsupported Node 20.
 
-`npm run lint` runs ESLint over the invariants in [`docs/code-style.md`](docs/code-style.md); `npm run lint:format` checks that `.ts`, `.html`, `.scss` and e2e `.mjs` files are Prettier-formatted; `npm run lint:styles` (stylelint) rejects a raw hex color anywhere but `src/styles/_tokens.scss`, so a new color is a named token. **CI fails a PR on any of them, and a PR cannot merge into `staging` or `main` without a passing check.** Formatting follows `.prettierrc`: 100-char width, single quotes, 2-space indent; `npx prettier --write <file>` fixes a file. `.prettierignore` deliberately excludes Markdown (Prettier pads every table cell and rewrites `*emphasis*` as `_emphasis_`, so a one-line doc edit lands as hundreds of lines of realignment) and the generated `src/test-data/verification` tables.
+`npm run check` runs the three linters CI runs: `npm run lint` (ESLint over the invariants in [`docs/code-style.md`](docs/code-style.md), with `--max-warnings` at today's count so a new warning fails), `npm run lint:styles` (stylelint: no raw hex or named color anywhere but `src/styles/_tokens.scss`, so a new color is a named token) and `npm run lint:format` (Prettier over everything it can read). **CI fails a PR on any of them, and a PR cannot merge into `staging` or `main` without a passing check.** Formatting follows `.prettierrc`: 100-char width, single quotes, 2-space indent; `npm run format` fixes everything and `npx prettier --write <file>` one file. `.prettierignore` deliberately excludes Markdown and `.mdx` (Prettier pads every table cell and rewrites `*emphasis*` as `_emphasis_`, so a one-line doc edit lands as hundreds of lines of realignment, and its MDX printer breaks a JSX comment) and the generated `src/test-data/verification` tables.
 
 ## UI validation: run it yourself
 
@@ -86,8 +93,10 @@ until someone publishes it by hand. Being on `main` therefore does not mean bein
 production's own bundle what students have.
 
 **CI** (`.github/workflows/verification.yml`) runs on every pull request: `npm ci`, `npm run lint`,
-`npm run lint:format`, `npm test -- --watch=false`, `npm run build`, and `git diff --check`, which
-fails on trailing whitespace. **A repository ruleset makes that check (`test`) required:** a pull
+`npm run lint:styles`, `npm run lint:format`, `npm test -- --watch=false`, `npm run build`,
+`npm run build-storybook`, and `git diff --check`, which fails on trailing whitespace. Every pull
+request fills in `.github/pull_request_template.md`: why, what changed, how it was verified, and
+the UI checklist when a reader can see the change. **A repository ruleset makes that check (`test`) required:** a pull
 request into `staging` or `main` cannot merge while it is red, and neither branch accepts direct or
 force pushes. Only a repository admin can override, and that is for emergencies. No e2e suite runs
 in CI, `e2e/ui-copy.mjs` included, so run the ones your change needs yourself.
@@ -198,7 +207,9 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
 - `component/BLOCKS/` holds the reusable form primitives (input, toggle, radio, dual-input, panel-section, ...) that the panels are composed from. **The component gallery (`npm run storybook`) is the one place for UI documentation:** every block and shared component state by state, sectioned as Fields, Choices, Actions, Structure and Feedback; the design tokens grouped by role; the UI style guide, vocabulary and code style rendered from `docs/*.md` at build time (edit the `.md`, never the page); and a Reuse backlog naming where the app still hand-rolls a block. Build new panel UI from the blocks rather than copying a neighbor's CSS. Only `@Input`/`input()` members belong in a block's public surface: everything else is `protected` or `private`, or it shows up in the gallery's properties table. `component/MODALS/` holds the Templates dialog and the release-notes splash.
 - Messages to the user go through `NotificationService`, which replaced the old `NewGridComponent.sendNotification()` static. Some components still talk through statics (e.g. `RightPanelComponent.openTab` / `insistOn`) — grep for the static before assuming a service is the only channel.
 - Four-bar synthesis (generating a linkage from three desired coupler poses) lives in `services/synthesis/`.
-- **Phone layout.** `ViewportService` owns the one breakpoint (600px). Below it the mode panel is a
+- **Phone layout.** `ViewportService` owns the one breakpoint (600px; the stylesheets write it as
+  `nav.$phone-max-width` from `left-tabs.vars.scss`, and `stylesheet-fences.spec.ts` keeps the two
+  equal). Below it the mode panel is a
   bottom sheet that starts collapsed and is opened by its handle, and it declares
   `data-canvas-inset="bottom"` so `freeCanvasRect` frames above it rather than beside it. The sheet
   publishes `--sheet-height`, and stands on `--controls-top` -- the measured
