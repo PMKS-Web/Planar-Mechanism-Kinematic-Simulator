@@ -1,5 +1,19 @@
 # Tips and tricks
 
+**A sampled straight rod is not automatically an exact uniform mass line.**
+S3's `snapshotPmksMemberMotion` reads signed analytical angular velocity in rad/s
+alongside S2 accelerations. Its section recovery additionally validates that the
+explicit uniform line reproduces the root mass, CoM, and inertia. Some position
+paths round solved pins to four raw-coordinate decimals while transporting CoM
+and retaining inertia independently. A 2 m project-coordinate rod at sample 30
+can therefore pass S2 but fail S3's mass-distribution check. That refusal is
+intentional: do not rescale inertia, shift CoM, loosen the check to fit a plot,
+or replace distributed inertia with a hidden CoM lump. Use a consistent explicit
+model, or separately fix and verify kinematic precision before promising exact
+full-cycle diagrams. See `member-adapter.spec.ts` for both the refusal and a
+successful nonzero model-coordinate sample, and
+[structural-analysis.md](structural-analysis.md#s3-internal-loads) for tolerances.
+
 **Dynamic snapshots must not borrow the UI's kinematic maps.** Use
 `Mechanism.snapshotAccelerations(index)` or the structural
 `snapshotPmksDynamicState` adapter. They evaluate the existing analytical equations

@@ -61,6 +61,14 @@ export function structuralToggleFixture(): MechanismFixture {
 /** Keep the structural verification family and its published descriptions together. */
 export const STRUCTURAL_GALLERY: GalleryEntry[] = [
   {
+    name: 'Structural uniform supported member',
+    purpose:
+      'A 4 m, 4 kg uniform member: point-load jumps and distributed gravity or inertial section cuts',
+    spec: 'structural/member-load-recovery.spec.ts',
+    floatingSlot: false,
+    fixture: structuralUniformMemberFixture(),
+  },
+  {
     name: 'Structural dynamic eccentric crank',
     purpose:
       'At 2 rad/s, eccentric CoM acceleration is (-4, -2) m/s²; root mass and inertia stay authoritative',
@@ -90,3 +98,10 @@ export const STRUCTURAL_GALLERY: GalleryEntry[] = [
     fixture: structuralToggleFixture(),
   },
 ];
+
+/** The existing supported beam with explicit mass properties of a uniform centerline. */
+export function structuralUniformMemberFixture(): MechanismFixture {
+  const fixture = structuralBeamFixture();
+  fixture.links[0] = { joints: 'AB', mass: 4, moi: 16 / 3, com: [2, 0] };
+  return fixture;
+}

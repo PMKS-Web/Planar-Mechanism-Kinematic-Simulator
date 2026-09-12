@@ -8,6 +8,9 @@ import type { BodyDynamicState } from './dynamic-state';
 import type { LoadCase } from './loads';
 import { PmksStructuralFrame, snapshotPmksConfiguration } from './pmks-configuration';
 import { DynamicForceAnalysisResult, StructuralFailure, structuralFailure } from './results';
+import type { KinematicAccelerationSnapshot } from '../mechanism/kinematic-snapshot';
+import type { BodySectionMotionState } from './member-mass';
+import { MemberFailure, memberFailure } from './member-results';
 
 /** The mechanism object is the explicitly selected partition, never an implicit index zero. */
 export interface PmksDynamicSample {
@@ -30,6 +33,40 @@ export type DynamicStateSnapshot =
 
 /** Copy authoritative root properties and analytical accelerations for exactly this sample. */
 export function snapshotPmksDynamicState(sample: PmksDynamicSample): DynamicStateSnapshot {
+  const result = readPmksDynamicState(sample);
+  if (result.status !== 'ok') return result;
+  const { rates: _rates, ...snapshot } = result;
+  return snapshot;
+}
+
+export type MemberMotionSnapshot =
+  | (Omit<Extract<DynamicStateSnapshot, { status: 'ok' }>, 'states'> & {
+      readonly states: readonly BodySectionMotionState[];
+    })
+  | MemberFailure;
+
+/** Same isolated analytical evaluation as S2, with the rad/s needed for material-point acceleration. */
+export function snapshotPmksMemberMotion(sample: PmksDynamicSample): MemberMotionSnapshot {
+  const result = readPmksDynamicState(sample);
+  if (result.status !== 'ok') return memberFailure(result.status, result.diagnostics.message!);
+  const { rates, ...snapshot } = result;
+  const states = snapshot.states.map((state) => ({
+    ...state,
+    angularVelocityRadPerS: rates.linkAngularVelocities?.get(state.linkId) ?? NaN,
+  }));
+  if (states.some((state) => !Number.isFinite(state.angularVelocityRadPerS)))
+    return memberFailure(
+      'missing-angular-velocity',
+      'Analytical root angular velocity is unavailable for the selected sample.'
+    );
+  return { ...snapshot, states };
+}
+
+function readPmksDynamicState(
+  sample: PmksDynamicSample
+):
+  | (Extract<DynamicStateSnapshot, { status: 'ok' }> & { rates: KinematicAccelerationSnapshot })
+  | StructuralFailure {
   const { mechanism, sampleIndex } = sample;
   if (
     !mechanism ||
@@ -80,6 +117,7 @@ export function snapshotPmksDynamicState(sample: PmksDynamicSample): DynamicStat
       accelerationSource: 'pmks-analytical',
       configuration,
       states,
+      rates,
     };
   } catch (error) {
     return structuralFailure(

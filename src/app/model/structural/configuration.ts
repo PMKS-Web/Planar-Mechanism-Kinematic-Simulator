@@ -14,6 +14,8 @@ export interface StructuralBody {
   readonly frameJointIds: readonly [string, string];
   readonly massProperties?: MassProperties;
   readonly structural?: StructuralProperties;
+  /** Adapter provenance for member recovery; absence means an explicit caller-supplied idealization. */
+  readonly memberGeometry?: 'two-pin' | 'multi-pin' | 'compound' | 'non-beam';
 }
 
 export interface StructuralJoint {

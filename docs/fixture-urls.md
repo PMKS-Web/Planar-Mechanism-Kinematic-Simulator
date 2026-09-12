@@ -19,6 +19,7 @@ PMKS_FIXTURE_BASE_URL=https://deploy-preview-NNN--pmksnew.netlify.app npm run fi
 
 | Mechanism | What it is for | Floating slot | Slide | Asserted in |
 | --- | --- | --- | --- | --- |
+| [Structural uniform supported member](https://app.pmksplus.com/?2v.Ay,1E8.5,0.1011.4A,A,0,0,0.0B,B,_W,0,0.4C,C,_W,ku,0..YRAB,AB,_W,1JL,VG,0,c5cae9,A,B,,.YRBC,BC,0,0,_W,NS,303e9f,B,C,,..2F1,AB,F1,Fe,0,Fe,0Fe,OQW..N_Q*3eYVmV) | A 4 m, 4 kg uniform member: point-load jumps and distributed gravity or inertial section cuts | — | — | `structural/member-load-recovery.spec.ts` |
 | [Structural dynamic eccentric crank](https://app.pmksplus.com/?2v.Ay,1E8.5,0.1011.6A,A,0,0,0.0B,B,VG,0,0..YRAB,AB,VG,Bk,Fe,7q,c5cae9,A,B,,..2F1,AB,F1,VG,0,VG,0Fe,OQW..N_i*0J2YZq) | At 2 rad/s, eccentric CoM acceleration is (-4, -2) m/s²; root mass and inertia stay authoritative | — | — | `structural/pmks-dynamic-state.spec.ts` |
 | [Structural supported beam](https://app.pmksplus.com/?2v.Ay,1E8.5,0.1011.4A,A,0,0,0.0B,B,_W,0,0.4C,C,_W,ku,0..YRAB,AB,0,0,VG,0,c5cae9,A,B,,.YRBC,BC,0,0,_W,NS,303e9f,B,C,,..2F1,AB,F1,Fe,0,Fe,0Fe,OQW..N_N*0pEJl5) | A quarter-span 100 N load gives 75 N and 25 N support reactions | — | — | `structural/static-force-solver.spec.ts` |
 | [Structural held crank](https://app.pmksplus.com/?2v.Ay,1E8.5,0.1011.6A,A,0,0,0.0B,B,VG,0,0..YRAB,AB,VG,AR,Fe,0,c5cae9,A,B,,..2F1,AB,F1,VG,0,VG,0Fe,OQW..N_h*0Ce9xJ) | A 100 N tip load requires 200 N m holding torque on a 2 m crank | — | — | `structural/static-force-solver.spec.ts` |

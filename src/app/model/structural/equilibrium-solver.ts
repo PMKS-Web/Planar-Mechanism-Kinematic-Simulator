@@ -2,6 +2,7 @@ import { Matrix, SingularValueDecomposition } from 'ml-matrix';
 import type { StructuralBody, StructuralConfiguration } from './configuration';
 import { finiteVector, LoadCase, validateLoadCase, Vector2 } from './loads';
 import { validateStructuralProperties } from './structural-properties';
+import { bodyFrame, resolvePointForce } from './load-coordinates';
 import {
   JointReactionResult,
   SolverDiagnostics,
@@ -55,13 +56,7 @@ export function analyzeEquilibrium(
   const jointById = new Map(joints.map((joint) => [joint.id, joint]));
   const bodyById = new Map(bodies.map((body, i) => [body.id, i]));
   const origins = bodies.map((body) => jointById.get(body.frameJointIds[0])!.positionM);
-  const axes = bodies.map((body, i) => {
-    const end = jointById.get(body.frameJointIds[1])!.positionM;
-    const dx = end.x - origins[i].x;
-    const dy = end.y - origins[i].y;
-    const length = Math.hypot(dx, dy);
-    return { x: dx / length, y: dy / length };
-  });
+  const frames = bodies.map((body) => bodyFrame(body, jointById));
   const lengthM = Math.max(
     ...bodies.flatMap((body, i) =>
       body.jointIds.map((id) => {
@@ -137,13 +132,7 @@ export function analyzeEquilibrium(
     if (load.kind === 'moment') {
       b[3 * body + 2] -= load.momentNm / lengthM;
     } else {
-      const rotated = (p: Vector2) => rotate(p, axes[body]);
-      const offset = load.at.frame === 'link' ? rotated(load.at.positionM) : load.at.positionM;
-      const point =
-        load.at.frame === 'link'
-          ? { x: origins[body].x + offset.x, y: origins[body].y + offset.y }
-          : offset;
-      const force = load.directionFrame === 'link' ? rotated(load.forceN) : load.forceN;
+      const { point, force } = resolvePointForce(load, frames[body]);
       addForce(body, point, force);
     }
   }
@@ -210,10 +199,6 @@ export function analyzeEquilibrium(
   } catch {
     return structuralFailure('numerical-failure', 'The matrix decomposition failed.', diagnostics);
   }
-}
-
-function rotate(p: Vector2, axis: Vector2): Vector2 {
-  return { x: axis.x * p.x - axis.y * p.y, y: axis.y * p.x + axis.x * p.y };
 }
 
 function solveEquilibrium(

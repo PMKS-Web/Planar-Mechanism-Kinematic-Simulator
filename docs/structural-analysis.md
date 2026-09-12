@@ -1,6 +1,50 @@
-# Structural analysis: S0, S1, and S2
+# Structural analysis: S0 through S3
 
-> **Status:** Built — S0/S1 and S2 inverse dynamics implemented on `feature/structural-analysis`, based on `origin/staging` at `acba1b77`. S0/S1 is commit `79a8ef0c`; S3–S7 remain future work.
+> **Status:** Built — S0/S1, S2 inverse dynamics, and S3 internal member loads on `feature/structural-analysis`, based on `origin/staging` at `acba1b77`. S0/S1 is commit `79a8ef0c`, S2 is `f97d275a`, and S3 follows separately. S4–S7 remain future work.
+
+## S3 geometry audit and conventions (implementation contract)
+
+The audit inspected `link.ts`, `compound-link-path.ts`, `uniform-body.ts`,
+`structural/configuration.ts`, `pmks-configuration.ts`, and the shared
+equilibrium assembly. A rigid body has pins and mass properties; it does not
+carry a general beam path or a load-transfer graph for its constituent bars.
+
+| PMKS representation | S3 V1 interpretation |
+| --- | --- |
+| Simple RealLink, exactly two revolute pins | Candidate only: caller explicitly declares a straight prismatic member between those pins |
+| Rounded ends / generated SVG hull / object scale | Rendering, not a cross section, mass distribution, or structural boundary |
+| Circular/disc drawing or cylinder skin | No automatic straight-member mapping |
+| Multi-pin root, including collinear tracers | Refuse automatic mapping; explicit decomposition is future work |
+| Welded root with subset leaves | Refuse one-axis recovery, even if it has only two external pins |
+| A constituent leaf passed separately | Not an independent root; no inferred reaction transfer from its parent |
+| Slider, cylinder, gear | Outside the initial member model |
+| Structural metadata on Link/root | Copy material/section data; do not infer them from the outline |
+| Joint coordinates and S1 frame | Global y-up SI snapshot; S1 local load frame is its first named pin toward its second |
+
+For member A→B, x=0 at A, x=L at B, e=(B-A)/L, n=(-e.y,e.x).
+Always cut the A-side segment. Its exposed face carries **+N along e**,
+**positive V opposite n**, and **positive M counterclockwise**. N is positive
+in tension; M is positive sagging for the ordinary horizontal simply supported
+beam. Thus N=-sum Fx, V=sum Fy, and M=-sum moments about the cut.
+
+```text
+      +n ↑                  cut force: N →, V ↓
+ A ●───────────────│        cut couple: M ↺
+   └──── +e → ─────┘
+```
+
+Off-axis point loads transfer at their projection s onto the axis, with
+equivalent couple -yOffset*Fx. This explicitly assumes a rigid load arm.
+Projections outside [0,L] are refused. A free body-level applied couple has no
+spatial location: S3 requires its optional application point to be supplied.
+S1/S2 continue to accept unlocated couples.
+
+Events distinguish x-minus (exclude the event) and x-plus (include it).
+Endpoints include the exterior limits 0-minus and L-plus, which should be zero
+for a balanced member; 0-plus and L-minus are the interior end loads.
+Static gravity is explicitly either lumped at the authoritative CoM or uniform
+line gravity with validated mass distribution. Lumped gravity is not exact
+distributed self-weight.
 
 ## Repository audit and design
 
@@ -44,7 +88,7 @@ PMKS solved joints/links (chosen partition and sample)
   + LoadCase (explicit point forces, couples, optional gravity)
   -> static-force-solver.ts (three equilibrium rows per moving body)
   -> StaticForceAnalysisResult (body-side reactions, driver effort, residuals)
-  -> future internal member loads -> stress -> engineering checks -> UI
+  -> S3 internal member loads -> future stress -> engineering checks -> UI
 ```
 
 Concrete files live in `src/app/model/structural/`: `structural-properties.ts`,
@@ -660,3 +704,289 @@ Modified:
 All `model/` and `services/` paths above are under `src/app/`;
 `test-utils/` is under `src/`. No dependency, persistence, legacy force-solver,
 component, stylesheet, or hub-service changes are part of S2.
+
+## S3 Internal Loads
+
+S3 implements both static recovery and exact dynamic recovery **within the
+explicit uniform-line model**. It consumes reactions from a successful S1/S2
+result and the original configuration and LoadCase. It never solves reactions
+again. The geometry audit and sign contract at the beginning of this document
+were recorded before the section-cut implementation.
+
+### Physical member and public API
+
+`StructuralMember` declares `kind: 'straight-prismatic'`, a member `id`,
+`bodyId`, `startJointId`, and `endJointId`. `resolveStructuralMember` produces
+copied SI endpoints, unit axial/transverse vectors, length, and a deep copy of
+the root's optional material/cross-section metadata. Neither a material nor a
+section is required to compute loads. They will be required by the relevant S4
+stress calculation. No density-derived mass is substituted.
+
+The member must span one complete two-pin revolute root. The PMKS adapter
+records whether its source is simple, multi-pin, compound, or non-beam, so even
+a compound with two external pins is refused. A pure caller explicitly takes
+responsibility for the declared straight prismatic interpretation. The current
+`uniformBodyOf` helper can calculate rod or convex-hull plate mass properties;
+that does not supply a structural decomposition for a multi-pin body. Similarly,
+the compound outline is a rendering union, not a beam load-transfer graph.
+
+```ts
+const member: StructuralMember = {
+  kind: 'straight-prismatic', id: 'member-AB', bodyId: 'AB',
+  startJointId: 'A', endJointId: 'B',
+};
+const equilibrium = analyzeStatic(configuration, loadCase);
+const diagram = recoverStaticMemberLoads(configuration, member, loadCase, equilibrium);
+if (diagram.status === 'ok') {
+  const section = evaluateMemberLoads(diagram, { xM: 0.8, side: 'left' });
+}
+```
+
+For dynamics, use `snapshotPmksMemberMotion(selectedSample)`, pass its
+configuration and states to `analyzeDynamic`, then call
+`recoverDynamicMemberLoads(configuration, member, loadCase, equilibrium,
+selectedBodyMotion, { massDistribution })`. This explicit sequence ensures one
+selected partition/sample supplies geometry and all rates. It introduces no
+active-selection lookup, global mutable state, or UI dependency.
+
+### Cuts, events, and exact intervals
+
+With local axes e and n from the audit, transform a global force with dot
+products: Fx=F dot e and Fy=F dot n. On the A-side segment the exposed cut load
+is N e - V n, with moment +M CCW. For effective line loads qx(s), qy(s), point
+forces (Fxi,Fyi) at si, and axis couples Ci:
+
+```text
+N(x) = -sum Fxi - integral[0,x] qx(s) ds
+V(x) =  sum Fyi + integral[0,x] qy(s) ds
+M(x) =  sum ((x-si) Fyi - Ci) + integral[0,x] (x-s) qy(s) ds
+```
+
+The sums include events strictly before x for a left limit, and events at x
+for a right limit. Loads include supplied body-side joint reactions, driver
+couples at their actual pins, point forces, and located free couples. The shared
+`load-coordinates.ts` resolver gives S1/S2/S3 identical global/link-frame
+interpretations. Off-axis application uses the rigid-arm transfer described
+above, including its -yOffset*Fx couple; a projection outside the member span
+is refused. Explicit free-couple locations are optional for legacy S1/S2 and
+mandatory for S3. Their optional `at` field round-trips through existing T1
+load-case persistence without a version change.
+
+At each event, jumps are deltaN=-Fx, deltaV=Fy, deltaM=-C. Coincident actions
+share an event with their source labels retained. Distinct interior coordinates
+remain distinct, including nearby loads. Endpoint projections alone snap within
+max(1e-12 m, 1e-12 L). Queries never silently snap; `side` is mandatory.
+
+`events` contain both limits at 0, each load/couple position, and L. `segments`
+contain polynomial coefficients in ascending powers of **u=x-startM**. N and V
+are at most quadratic and M at most cubic. This supports arbitrary station
+queries and future plotting without sampling away a discontinuity or asking a
+component to recompute physics. At a constant-load interval, dM/dx=V;
+generally dN/dx=-qx and dV/dx=qy.
+
+Each component exposes signed `minimum` and `maximum`, and nonnegative
+`absoluteMaximum`, with event-side/interior locations and any whole constant
+intervals. Stationary points are found analytically from polynomial derivatives.
+Locations matching within 1e-10 times max(1, magnitude) are retained as ties.
+Constant intervals describe their interiors; endpoint sides remain explicit.
+The zero exterior limits participate in extrema, so no tensile/compressive
+demand gives a zero positive/negative envelope. For an absolute maximum, use
+the returned station to recover its signed value when S4 needs it.
+
+### Worked static shear/moment diagram
+
+The gallery's supported 4 m beam has a downward 100 N point load at x=1 m.
+Its S1 vertical reactions are +75 N at A and +25 N at B, with zero axial load.
+
+| Station | N (N) | V (N) | M (N m) |
+| --- | --- | --- | --- |
+| 0-minus, exterior | 0 | 0 | 0 |
+| 0-plus | 0 | 75 | 0 |
+| 1-minus | 0 | 75 | 75 |
+| 1-plus | 0 | -25 | 75 |
+| 4-minus | 0 | -25 | 0 |
+| 4-plus, exterior | 0 | 0 | 0 |
+
+Thus V=75 on (0,1), V=-25 on (1,4), M=75x before the load,
+and M=100-25x after it. Maximum |V| is 75 N throughout (0,1), and
+maximum |M| is 75 N m at x=1. A +12 N m located couple, independently
+tested, produces a -12 N m moment jump with no shear jump.
+
+### Gravity, mass distribution, and dynamics
+
+Gravity requires an explicit `gravityModel`. `lumped-at-com` puts m g at the
+authoritative CoM and labels the result accordingly. It represents that lumped
+load system, not exact distributed self-weight. `uniform-line` applies mu g
+along the axis and requires the same validated distribution as dynamics.
+
+`MemberMassDistribution` currently has only `{ kind: 'uniform-line', memberId }`.
+It has **no second mass field**: mu=m/L uses the authoritative root mass. The
+line integrates to m, midpoint CoM, and IG=m L²/12. CoM tolerance is
+max(1e-12 m, 1e-8 L); inertia tolerance is max(1e-12 kg m²,
+1e-8 max(IG, implied IG)). Mismatches report their errors and refuse recovery;
+mass properties are never rescaled or relocated. This is a slender line
+idealization, not a finite-width mass model. A zero-mass line is permitted only
+with consistent zero inertia and its declared midpoint; zero never fills a
+missing input.
+
+`BodySectionMotionState` extends the acceleration state with signed CCW-positive
+`angularVelocityRadPerS`. The PMKS adapter reads the existing analytical
+`linkAngVelMap` from the same isolated kinematic evaluation as the accelerations.
+It uses neither finite differences nor a fallback zero. S2's public snapshot
+shape and acceleration-only requirement remain unchanged. Tests cover both
+velocity signs, selected samples, meters/centimeters/inches, and model/project
+coordinates with MODEL_SCALE removed at the SI boundary.
+
+For a line point s, r=(s-L/2)e relative to the validated CoM. The material
+acceleration is aG + alpha cross r - omega² r. In member axes, the effective
+applied-minus-inertial line load is:
+
+```text
+qx(s) = mu gx - mu (aGx - omega² (s-L/2))
+qy(s) = mu gy - mu (aGy + alpha (s-L/2))
+```
+
+Omit the g terms for no gravity or for separately lumped gravity. These affine
+fields are integrated in closed form in the cut equations. There is no CoM
+lumped-inertia substitute and no visually sampled pseudo-load.
+
+Hand-integrated 2 kg, 2 m rod cases, with x in meters:
+
+| Motion | Internal loads |
+| --- | --- |
+| Translation aGx=3, omega=alpha=0 | N=-6+3x; V=M=0 |
+| Angular acceleration about A: alpha=3, aGy=3, omega=0 | V=6-1.5x²; M=-8+6x-0.5x³ |
+| Steady rotation about A: omega=±2, aGx=-4, alpha=0 | N=8-2x²; V=M=0 |
+
+Additional tests combine gravity, both inertial terms, off-axis loading, and a
+couple; find an interior cubic-moment maximum and an interior centripetal axial
+maximum; and reduce zero-motion dynamic recovery to static recovery.
+
+### Independent verification and diagnostics
+
+The test helper rebuilds original load positions and global forces independently
+of the production resolver and diagram coefficients. It checks both sides of
+every event, both ends, and four arbitrary interior cuts. For dynamic cuts it
+integrates the actual mass acceleration and moment with an independent Simpson
+integral (exact for these polynomial integrands). This verifies global force and
+moment equilibrium, including off-axis arms, and directly bridges S1/S2 joint
+reactions to the member's interior endpoint loads.
+
+Static tests cover A tension, B cantilever tip load, C supported point load,
+D couple, E combined loading, F off-axis loading, and G lumped gravity.
+Dynamic tests cover H translation, I angular acceleration, J centripetal force,
+and K inconsistent mass properties. Other checks cover orientation reversal,
+world rotation/translation, event jumps/coincidence, nonzero PMKS samples,
+immutable inputs, legacy couple persistence, and interpretation refusals.
+
+Recovery also verifies complete, nonduplicated reaction/driver identities and
+whole-member closure. Its closure residual is max(|N(L+)|, |V(L+)|,
+|M(L+)|/L), normalized by a force scale from all point/couple and line actions
+(at least 1 N); acceptance limit is 1e-8. Tests require less than 1e-10 for
+their successful cases. This detects inconsistent supplied reactions/loads/
+motion without resolving them. Callers still must supply one matching sample:
+whole-body balance alone cannot identify spatially different load systems with
+the same resultant.
+
+Failures return only a status and message, never a partial diagram. Added
+statuses include `unsupported-member-geometry`, `ambiguous-member-mapping`,
+`invalid-station`, `load-not-on-supported-member`, `missing-mass-distribution`,
+`mass-distribution-mismatch`, `missing-angular-velocity`, `unsupported-compound`,
+`missing-gravity-model`, `invalid-equilibrium-result`, and
+`upstream-analysis-failed`. Existing geometry, property, load, dynamic-state,
+and numerical-failure diagnoses remain available. Nonfinite input, integration
+overflow, unavailable rates, unsupported roots, or unlocated couples fail closed.
+
+### Cost and current limitations
+
+Windows Node 24.21 / Angular Vitest medians, 25 warmups followed by five batches
+of 100 operations, with already-computed S1/S2 reactions:
+
+| Interior point loads | Static recovery (ms/member/sample) | Dynamic recovery | One station query |
+| --- | --- | --- | --- |
+| 1 | 0.0653 | 0.0561 | 0.00100 |
+| 10 | 0.1061 | 0.0853 | 0.00060 |
+
+These include validation, event construction, integration, and extrema; exclude
+position solving, motion adaptation, and SVD. Small timings include JIT/GC
+variation, not a guaranteed ordering or frame budget. Run
+`member-performance.spec.ts` with `PMKS_BENCHMARK_MEMBER=1` to reproduce
+`artifacts/s3-performance.json`. There is no machine-speed test or shared cache.
+
+PMKS rounds some solved pin coordinates to four decimal places in raw model
+coordinates (`PositionSolver.incrementRevInput`). Transported CoM and stored
+inertia can then disagree with a uniform line through those pins. A project-meter
+2 m rod at sample 30, for example, has midpoint error 0.0000213010 m and inertia
+error 0.0000284017 kg m²: S2 succeeds, but exact S3 explicitly refuses that pose.
+A nonzero model-centimeter sample that meets the same tolerance is verified
+successfully. S3 does not loosen the mass check, move pins, or repair root
+properties to hide this limitation. A later precision change needs separate
+kinematic verification before promising full-cycle exact recovery.
+
+No branched/multi-pin/compound decomposition, arbitrary distributed loads,
+nonuniform or point-mass distributions, sliders/cylinders/gears, finite-width
+inertia, stress, deformation, FEA, fatigue, or full-cycle envelope is implemented.
+Off-axis loads assume a rigid arm whose own structural loads are not recovered.
+The sample adapter retains PMKS's constant-speed drive convention; independently
+prescribed consistent motion is available through the pure API. Prismatic section
+and material data remain optional metadata and are not inferred from rendering.
+
+### S3 file inventory and S4 recommendation
+
+Added under `src/app/model/structural/`:
+
+- `load-coordinates.ts`: shared body/local load interpretation.
+- `member.ts`, `member-mass.ts`, `member-results.ts`: explicit geometry,
+  authoritative-mass distribution validation, motion extension, and results.
+- `member-diagram.ts`, `member-load-recovery.ts`: event/segment integration,
+  arbitrary station evaluation, extrema, and downstream static/dynamic APIs.
+- `member-load-recovery.spec.ts`, `member-dynamics.spec.ts`,
+  `member-adapter.spec.ts`, `member-performance.spec.ts`.
+
+Also added `src/test-utils/verification/member-verification.ts`, the independent
+cut-equilibrium oracle. Modified `configuration.ts` and `pmks-configuration.ts`
+to retain geometry provenance; `loads.ts` for optional couple positions;
+`equilibrium-solver.ts` to reuse the resolver; `pmks-dynamic-state.ts` and
+`model/mechanism/kinematic-snapshot.ts` for the analytical velocity extension.
+Updated `structural-fixtures.ts`, generated `docs/fixture-urls.md`, this document,
+`docs/README.md`, and `docs/tips-and-tricks.md`. No dependency, legacy force-solver,
+component, stylesheet, or hub-service change is part of S3.
+
+S4 should be another pure downstream module: successful S3 result plus validated
+cross section/material and explicit section coordinates yields signed stress
+at a requested station/side. Reuse `evaluateMemberLoads`, preserve provenance
+(`mode`, gravity model, mass model), and keep section-specific axial/bending/shear
+relations separate from material failure criteria. Compute combined stress and
+factor of safety only for explicitly supported sections/criteria. Load extrema
+alone need not locate every combined-stress maximum; S4 should evaluate its own
+critical points over S3's exact intervals and both sides of jumps. Keep UI
+formatting, future cycle aggregation, and compound load transfer separate.
+
+### S3 verification results
+
+All **188/188** tests in the targeted structural, persistence, verification, and
+fixture-gallery run pass. S3 adds 53 tests in four new spec files and two
+gallery checks. The full PMKS suite reports **2,672 passed, 3 failed / 2,675**
+in 248 files (246 passed, 2 failed). Before any S3 code change, the preserved
+S2 commit `f97d275a` was rerun: **2,617 passed, 3 failed / 2,620**. The same
+three assertions fail with identical values:
+
+- MotionGen gripper initial gap: 1.036629237211164, expected greater than 2.3.
+- MotionGen gripper captured pose error: 1.051501, expected less than 0.0001.
+- Stylesheet raw rgba count: 99, expected at most 87.
+
+Production and Storybook builds succeed with existing size/CommonJS warnings.
+`npm run check` passes with zero errors, the existing 15 ESLint warnings,
+stylelint, and Prettier. `git diff --check` passes.
+Browser suites on `http://localhost:4347` pass: `e2e/force-units.mjs` **20/20**,
+`e2e/force-analysis-panels.mjs` **15/15**, no reported page errors or issues.
+The in-motion joint panel, link force graph, and metric kgf settings screenshots
+were inspected. CUA again exposed no app/browser surface, so the tracked suites
+used disposable Playwright/Chrome profiles. No animation or gesture changed.
+
+The implementation follows the repository code/style/vocabulary documents
+published in the requested PMKS documentation gallery. Verification logs,
+benchmark JSON, and browser artifacts are in the worktree's ignored `artifacts/`
+directory (`s3-*`, `force-units/`, and `screenshots/s3-force-panels-*`). The S0/S1
+and S2 reports above remain historical records. S3 is a separate commit after
+`f97d275a`, with no squash or push.

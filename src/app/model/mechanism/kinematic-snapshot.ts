@@ -9,6 +9,8 @@ export interface KinematicAccelerationSnapshot {
   readonly linkAccelerations: ReadonlyMap<string, readonly [number, number]>;
   /** Radians per second squared (unlike the degree-valued position map). */
   readonly linkAngularAccelerations: ReadonlyMap<string, number>;
+  /** Optional extension for section recovery; S2 does not require or use velocity. */
+  readonly linkAngularVelocities?: ReadonlyMap<string, number>;
 }
 
 /**
@@ -40,5 +42,6 @@ export function snapshotKinematicAccelerations(
   return {
     linkAccelerations: SampleKinematicsSolver.linkAccMap,
     linkAngularAccelerations: SampleKinematicsSolver.linkAngAccMap,
+    linkAngularVelocities: SampleKinematicsSolver.linkAngVelMap,
   };
 }

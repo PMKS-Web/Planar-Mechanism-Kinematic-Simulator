@@ -16,7 +16,13 @@ export type AppliedLoad =
       readonly forceN: Vector2;
       readonly directionFrame: 'global' | 'link';
     }
-  | { readonly kind: 'moment'; readonly linkId: string; readonly momentNm: number };
+  | {
+      readonly kind: 'moment';
+      readonly linkId: string;
+      readonly momentNm: number;
+      /** Optional for body equilibrium; required for spatial section-cut recovery. */
+      readonly at?: ApplicationPoint;
+    };
 
 export interface LoadCase {
   readonly name: string;
@@ -46,6 +52,13 @@ export function validateLoadCase(loadCase: LoadCase): void {
     }
     if (load.kind === 'moment') {
       if (!Number.isFinite(load.momentNm)) throw new Error('An applied moment must be finite.');
+      if (
+        load.at !== undefined &&
+        (!load.at ||
+          !['global', 'link'].includes(load.at.frame) ||
+          !finiteVector(load.at.positionM))
+      )
+        throw new Error('A located couple needs a finite application point.');
     } else if (load.kind === 'point-force') {
       if (
         !load.at ||

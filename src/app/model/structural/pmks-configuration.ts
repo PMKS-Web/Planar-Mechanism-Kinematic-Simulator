@@ -113,6 +113,13 @@ export function snapshotPmksConfiguration(frame: PmksStructuralFrame): Configura
       })),
       bodies: moving.map((link) => ({
         id: link.id,
+        memberGeometry: link.subset.length
+          ? 'compound'
+          : link.isCircle || link.drawnByACylinderSkin
+            ? 'non-beam'
+            : link.joints.length === 2
+              ? 'two-pin'
+              : 'multi-pin',
         jointIds: link.joints.map((j) => j.id),
         frameJointIds: [link.joints[0].id, link.joints[1].id],
         massProperties: {
