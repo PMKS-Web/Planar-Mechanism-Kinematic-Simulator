@@ -1,67 +1,61 @@
-import { Component, computed, effect, input, output } from '@angular/core';
-import { FormControl, FormGroup } from '@angular/forms';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { InputComponent } from '../BLOCKS/input/input.component';
+import { Component, computed, input, output } from '@angular/core';
+import { SegmentedComponent } from '../BLOCKS/segmented/segmented.component';
 import { ButtonComponent } from '../BLOCKS/button/button.component';
 
 @Component({
   selector: 'app-worksheet-loop-editor',
-  imports: [InputComponent, ButtonComponent],
+  imports: [SegmentedComponent, ButtonComponent],
   template: `
-    <input-block
-      [formGroup]="form"
-      _formControl="path"
-      stacked
-      wide
-      tooltip="List joint IDs in order, separated by spaces or arrows. Repeat the first joint to close the path."
-      >Loop Path</input-block
-    >
-    <div class="actions">
-      <button-block [click]="apply" [disabled]="!!reason()">Apply Path</button-block>
-      <button-block [click]="reverseDirection">Reverse Loop</button-block>
-    </div>
-    @if (reason()) {
-      <p class="refusal" role="status">{{ reason() }}</p>
+    <segmented-block
+      [dropdown]="true"
+      label="Loop Path"
+      [options]="labels()"
+      [selected]="selected()"
+      [disabledAt]="disabledAt()"
+      (selectedChange)="choose($event)"
+    ></segmented-block>
+    <button-block [click]="reverseDirection">Reverse Loop</button-block>
+    <p>
+      Choose a closed path. Dependent paths are unavailable because the other loops already supply
+      those equations.
+    </p>
+    @if (limited()) {
+      <p>
+        The menu shows a bounded selection for this large mechanism, including the current loops.
+      </p>
     }
   `,
   styles: [
     `
       :host {
-        display: block;
+        display: grid;
+        gap: var(--card-gap);
         margin-block: var(--card-gap);
       }
-      .actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: var(--card-gap);
-      }
-      .actions button-block {
-        flex: 1;
-        min-width: 120px;
-      }
-      .refusal {
-        color: var(--text-secondary);
-        background: var(--warning-bg);
-        border-left: 2px solid var(--warning);
-        padding: var(--card-gap);
+      p {
+        margin: 0;
         font-size: 12px;
+        color: var(--text-secondary);
       }
     `,
   ],
 })
 export class WorksheetLoopEditorComponent {
   readonly path = input.required<string>();
-  readonly validate = input.required<(path: string) => string | undefined>();
+  readonly options = input.required<{ value: string; label: string; disabled: boolean }[]>();
+  readonly limited = input(false);
   readonly applied = output<string>();
   readonly reversed = output<void>();
-  protected readonly form = new FormGroup({ path: new FormControl('', { nonNullable: true }) });
-  private readonly draft = toSignal(this.form.controls.path.valueChanges, { initialValue: '' });
-  protected readonly reason = computed(() => this.validate()(this.draft()));
-  protected readonly apply = () => {
-    if (!this.reason()) this.applied.emit(this.draft());
-  };
-  protected readonly reverseDirection = () => this.reversed.emit();
-  constructor() {
-    effect(() => this.form.controls.path.setValue(this.path()));
+  protected readonly labels = computed(() => this.options().map((o) => o.label));
+  protected readonly selected = computed(() =>
+    this.options().findIndex((o) => o.value === this.path())
+  );
+  protected readonly disabledAt = computed(() =>
+    this.options().flatMap((o, i) => (o.disabled ? [i] : []))
+  );
+  protected choose(index: number) {
+    const option = this.options()[index];
+    if (option && !option.disabled) this.applied.emit(option.value);
   }
+  protected readonly reverseDirection = () => this.reversed.emit();
 }

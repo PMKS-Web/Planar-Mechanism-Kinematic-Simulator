@@ -119,7 +119,7 @@ export function kinematicWorksheet(
         (j) => j.id !== point.id && j instanceof RealJoint && j.ground && !(j instanceof PrisJoint)
       ) ?? body.joints.find((j) => j.id !== point.id)!;
     if (!source) return undefined;
-    const p = com ? `G_{${texName(body.id)}}` : texName(point.id),
+    const p = com ? `\\mathrm{CoM}_{${texName(body.id)}}` : texName(point.id),
       origin = texName(source.id),
       id = texName(body.id);
     const r = vector('r', `${p}/${origin}`),
@@ -173,7 +173,7 @@ export function kinematicWorksheet(
     });
   const centers = links.flatMap((l) => {
     if (!(l instanceof RealLink)) return [];
-    const result = motionAt({ id: `G_${l.id}`, x: l.CoM.x, y: l.CoM.y }, l, true);
+    const result = motionAt({ id: `CoM_${l.id}`, x: l.CoM.x, y: l.CoM.y }, l, true);
     return result ? [result] : [];
   });
   return { loops, points, centers, ...systems };

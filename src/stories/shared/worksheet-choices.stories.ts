@@ -10,10 +10,17 @@ const meta: Meta<WorksheetChoicesComponent> = {
   args: {
     choices: [
       {
-        key: 'B',
-        label: 'Joint B',
-        description: 'The force on BCFG has the opposite sign. Both components change together.',
-        options: ['+ on ABH', '− on ABH'],
+        key: 'Bx',
+        label: 'X Direction on ABH',
+        description: 'The direction on BCFG is opposite.',
+        options: ['+X →', '−X ←'],
+        selected: 0,
+      },
+      {
+        key: 'By',
+        label: 'Y Direction on ABH',
+        description: 'The direction on BCFG is opposite.',
+        options: ['+Y ↑', '−Y ↓'],
         selected: 0,
       },
     ],
@@ -34,7 +41,9 @@ const meta: Meta<WorksheetChoicesComponent> = {
 export default meta;
 type Story = StoryObj<WorksheetChoicesComponent>;
 export const Default: Story = {};
-export const Reversed: Story = { args: { choices: [{ ...meta.args!.choices![0], selected: 1 }] } };
+export const Reversed: Story = {
+  args: { choices: [{ ...meta.args!.choices![0], selected: 1 }, meta.args!.choices![1]] },
+};
 export const AngularDirection: Story = {
   args: {
     choices: [

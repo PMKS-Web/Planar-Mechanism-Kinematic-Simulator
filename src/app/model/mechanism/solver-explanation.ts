@@ -19,6 +19,8 @@ export interface BodyLoad {
   sign?: number;
   direction?: [number, number];
   jointId?: string;
+  /** Worksheet label for an applied force's existing application point. */
+  applicationId?: string;
 }
 
 export interface BodyExplanation {

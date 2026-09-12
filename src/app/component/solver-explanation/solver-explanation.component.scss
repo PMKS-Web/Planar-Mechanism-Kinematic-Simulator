@@ -169,7 +169,7 @@ summary {
   justify-content: space-between;
   gap: var(--card-gap);
   padding: 5px 0;
-  border-bottom: 1px solid var(--border-rule);
+  border-bottom: 1px solid var(--border-divider);
 }
 .symbolList span {
   font-size: 12px;
@@ -266,4 +266,16 @@ summary {
   .wide {
     font-size: 13px;
   }
+}
+.forceConvention {
+  padding-block: var(--card-gap);
+  border-bottom: 1px solid var(--border-rule);
+}
+.forcePreviewRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: var(--card-gap);
+}
+.forcePreviewRow figure {
+  margin: 0;
 }

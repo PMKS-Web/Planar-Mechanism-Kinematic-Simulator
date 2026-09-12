@@ -18,7 +18,7 @@ import { Diagram, SolverDiagramComponent } from './solver-diagram.component';
 import { SolverMatrixComponent } from './solver-matrix.component';
 import { SolverMathComponent } from './solver-math.component';
 import { WorksheetPreferencesService } from '../../services/worksheet-preferences.service';
-import { replaceWorksheetLoop } from '../../model/mechanism/worksheet-loops';
+import { worksheetLoopOptions } from '../../model/mechanism/worksheet-loop-options';
 import { WorksheetChoicesComponent } from './worksheet-choices.component';
 import { WorksheetLoopEditorComponent } from './worksheet-loop-editor.component';
 
@@ -115,7 +115,9 @@ export class SolverExplanationComponent {
             force.frame.explanation,
             force.system,
             this.settings.forceAnalysisMode.value === 'dynamic',
-            preferences.forces
+            preferences.forces,
+            preferences.momentPoints,
+            mechanism.unit
           )
         : undefined;
     const rates = !this.isForce() ? this.explain.kinematicsAt(mechanism, step) : undefined;
@@ -220,8 +222,7 @@ export class SolverExplanationComponent {
     });
     const loops = kine?.loops.map((loop) => ({
       ...loop,
-      validate: (path: string) =>
-        replaceWorksheetLoop(mechanism, preferences.loops, loop.index, path).reason,
+      ...worksheetLoopOptions(mechanism, preferences.loops, loop.index),
       diagram: {
         points: [
           ...new Map(
@@ -257,6 +258,27 @@ export class SolverExplanationComponent {
       } as Diagram,
     }));
     return {
+      forceChoices:
+        forceWork?.choices.map((choice) => ({
+          ...choice,
+          previews: forceWork.bodies
+            .filter((b) =>
+              b.loads.some((l) => l.column !== undefined && choice.columns.includes(l.column))
+            )
+            .map((body) => ({
+              name: body.name,
+              diagram: freeBodyDiagram(
+                {
+                  ...body,
+                  loads: body.loads.filter(
+                    (l) => l.column !== undefined && choice.columns.includes(l.column)
+                  ),
+                },
+                true,
+                false
+              ),
+            })),
+        })) ?? [],
       angularValues: rates
         ? [...rates.omega].map(
             ([id, omega]) =>
@@ -294,6 +316,10 @@ export class SolverExplanationComponent {
       bodies:
         forceWork?.bodies.map((body) => ({
           ...body,
+          referenceLabels: body.referenceOptions.map((p) =>
+            p.id === '@CoM' ? 'CoM (Center of Mass)' : p.label
+          ),
+          referenceIndex: body.referenceOptions.findIndex((p) => p.id === body.reference.id),
           diagram: freeBodyDiagram(body, this.assumed()),
         })) ?? [],
       grounds: joints

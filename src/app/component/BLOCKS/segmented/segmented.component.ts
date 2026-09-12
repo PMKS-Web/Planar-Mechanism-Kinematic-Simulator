@@ -54,6 +54,9 @@ export class SegmentedComponent implements AfterViewInit, OnDestroy {
    * squeezed to a third of the row read "X, Y, Ma…".
    */
   readonly fill = input<boolean>(true);
+  /** A long list uses a native dropdown while keeping the same index-based choice API. */
+  readonly dropdown = input(false);
+  readonly label = input('Choose an Option');
 
   private readonly buttons = viewChildren<ElementRef<HTMLButtonElement>>('option');
   private watch?: ResizeObserver;

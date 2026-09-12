@@ -122,14 +122,29 @@
         </p>
         @if (isForce()) {
           <p>
-            “+ on” uses positive x and y (or the guide's positive normal) on the named body; “− on”
-            reverses that reference. A pure couple uses counterclockwise as its initial positive
-            direction.
+            Choose X and Y independently. These sketches show the assumed positive directions; the
+            reaction on the other body points the opposite way.
           </p>
-          <app-worksheet-choices
-            [choices]="data.forceWork?.choices ?? []"
-            (chosen)="preferences.setForce(solved, $event.key, $event.index === 0 ? 1 : -1)"
-          ></app-worksheet-choices>
+          @for (choice of data.forceChoices; track choice.key) {
+            <section class="forceConvention" [attr.data-force-choice]="choice.label">
+              <h4>{{ choice.label }}</h4>
+              <div class="forcePreviewRow">
+                @for (preview of choice.previews; track preview.name) {
+                  <figure>
+                    <app-solver-diagram
+                      [diagram]="preview.diagram"
+                      [label]="'Assumed force directions on ' + preview.name"
+                    ></app-solver-diagram>
+                    <figcaption>{{ preview.name }} · assumed directions</figcaption>
+                  </figure>
+                }
+              </div>
+              <app-worksheet-choices
+                [choices]="choice.axes"
+                (chosen)="preferences.setForce(solved, $event.key, $event.index === 0 ? 1 : -1)"
+              ></app-worksheet-choices>
+            </section>
+          }
         } @else {
           <app-worksheet-choices
             [choices]="data.angularChoices"
@@ -154,7 +169,7 @@
           </details>
           @if (data.rates?.route === 'loops') {
             <p>
-              Edit a closed path or reverse its direction in the Velocity and Acceleration loop
+              Choose a closed path or reverse its direction in the Velocity and Acceleration loop
               cards below.
             </p>
           } @else {
@@ -189,13 +204,15 @@
             <div>
               <h4>Angular Motion</h4>
               <app-solver-math [equation]="motionDefinitions"></app-solver-math>
-              <p>G denotes the center of mass of the body currently isolated.</p>
+              <p>CoM denotes the center of mass of the body currently isolated.</p>
             </div>
           </div>
           <app-solver-math [equation]="crossProduct"></app-solver-math>
           <p>
-            A moment arm runs <strong>from G to the force application point</strong>. Weight acts at
-            G, so its moment about G is zero.
+            A moment arm runs
+            <strong>from the selected moment reference to the force application point</strong>.
+            Weight acts at CoM, so its moment about CoM is zero. Applied forces are labeled P1, P2,
+            and so on at their existing application points.
           </p>
           <h3 class="chapterTitle">2 · Name the Unknowns</h3>
           <p>
@@ -244,6 +261,30 @@
                 >{{ body.name }}
                 <small>{{ body.rowCount === 3 ? 'Rigid body' : 'Slider block' }}</small>
               </h3>
+              @if (body.rowCount === 3) {
+                <segmented-block
+                  [dropdown]="true"
+                  [label]="'Moment Reference Point for ' + body.name"
+                  [options]="body.referenceLabels"
+                  [selected]="body.referenceIndex"
+                  (selectedChange)="
+                    preferences.setMomentPoint(solved, body.id, body.referenceOptions[$event].id)
+                  "
+                ></segmented-block>
+                <p class="caption">
+                  The blue ring marks {{ body.reference.label }}. Choose any joint, tracer point,
+                  CoM, or labeled force point on this body.
+                </p>
+              }
+              @for (load of body.loads; track $index) {
+                @if (load.applicationId) {
+                  <p class="caption">
+                    {{ load.applicationId }}: {{ load.label }} is applied at ({{
+                      n(load.point[0] / scale)
+                    }}, {{ n(load.point[1] / scale) }}) {{ solved.unit }}.
+                  </p>
+                }
+              }
               <div class="bodyLayout">
                 <figure>
                   <app-solver-diagram
@@ -262,8 +303,34 @@
                   <h4>Vector Force Balance</h4>
                   <app-solver-math [equation]="body.forceVector"></app-solver-math>
                   @if (body.rowCount === 3) {
-                    <h4>Vector Moment Balance About G</h4>
+                    <h4>Vector Moment Balance About {{ body.reference.label }}</h4>
                     <app-solver-math [equation]="body.momentVector"></app-solver-math>
+                    @if (
+                      body.reference.id !== '@CoM' && settings.forceAnalysisMode.value === 'dynamic'
+                    ) {
+                      <p>
+                        The reference point may move. The balance includes the moment of m a at CoM
+                        as well as I at CoM times angular acceleration.
+                      </p>
+                    }
+                    <h4>Expand the Cross Products</h4>
+                    @for (product of body.crossProducts; track $index; let first = $first) {
+                      <details class="numericDetails crossProduct" [open]="first">
+                        <summary>Force at {{ product.point }}</summary>
+                        <app-solver-math [equation]="product.definition"></app-solver-math>
+                        <app-solver-math [equation]="product.determinant"></app-solver-math>
+                        <app-solver-math [equation]="product.expansion"></app-solver-math>
+                        @if (product.zero) {
+                          <p>The force acts at the moment reference, so its moment arm is zero.</p>
+                        }
+                        <app-solver-math [equation]="product.numbers"></app-solver-math>
+                        <app-solver-math [equation]="product.evaluation"></app-solver-math>
+                      </details>
+                    }
+                    <p class="caption">
+                      A pure couple contributes directly to the moment balance and is the same about
+                      every reference point.
+                    </p>
                   } @else {
                     <p>
                       The ideal slider block contributes two force equations. It has no independent
@@ -436,7 +503,8 @@
               </h3>
               <app-worksheet-loop-editor
                 [path]="loop.id"
-                [validate]="loop.validate"
+                [options]="loop.options"
+                [limited]="loop.limited"
                 (applied)="preferences.setLoop(solved, loop.index, $event)"
                 (reversed)="preferences.reverseLoop(solved, loop.index)"
               ></app-worksheet-loop-editor>

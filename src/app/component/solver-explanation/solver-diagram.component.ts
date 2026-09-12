@@ -6,6 +6,7 @@ export interface DiagramPoint {
   label?: string;
   color?: string;
   ground?: boolean;
+  reference?: boolean;
 }
 export interface DiagramLine {
   from: DiagramPoint;
@@ -24,6 +25,7 @@ export interface DiagramCircle {
   color: string;
 }
 export interface Diagram {
+  momentLabel?: string;
   note?: string;
   points: DiagramPoint[];
   lines: DiagramLine[];
@@ -92,6 +94,16 @@ let nextDiagram = 0;
       }
     }
     @for (point of diagram().points; track $index) {
+      @if (point.reference) {
+        <circle
+          [attr.cx]="sx(point.x)"
+          [attr.cy]="sy(point.y)"
+          r="9"
+          fill="none"
+          stroke="var(--brand)"
+          stroke-width="2"
+        />
+      }
       @if (point.ground) {
         <path [attr.d]="ground(point)" fill="none" stroke="var(--canvas-ink)" stroke-width="1" />
       }
@@ -113,13 +125,35 @@ let nextDiagram = 0;
         </text>
       }
     }
+    @if (diagram().momentLabel) {
+      <text x="8" y="18" fill="var(--brand)">Moments about {{ diagram().momentLabel }}</text>
+    }
     <path
-      d="M18 232 h24 M18 232 v-24"
+      class="axisX"
+      d="M18 232 h28"
       stroke="var(--text-secondary)"
+      stroke-width="1.5"
       fill="none"
       [attr.marker-end]="'url(#' + markerId + ')'"
     />
-    <text x="46" y="236">x</text>
+    <path
+      class="axisY"
+      d="M18 232 v-26"
+      stroke="var(--text-secondary)"
+      stroke-width="1.5"
+      fill="none"
+      [attr.marker-end]="'url(#' + markerId + ')'"
+    />
+    <path
+      class="positiveMoment"
+      d="M104 232 A14 14 0 1 0 83 244"
+      stroke="var(--text-secondary)"
+      stroke-width="1.5"
+      fill="none"
+      [attr.marker-end]="'url(#' + markerId + ')'"
+    />
+    <text x="113" y="237">+Mz (CCW)</text>
+    <text x="50" y="236">x</text>
     <text x="14" y="202">y</text>
   </svg>`,
   styles: [

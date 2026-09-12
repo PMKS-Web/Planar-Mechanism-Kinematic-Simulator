@@ -28,7 +28,7 @@ adapts its isolated-body and equation sequence to the current solvers and UI.
 - **Definitions:** mechanism sketch, coordinate/gravity assumptions, force and moment
   vectors, cross-product expansion, and names of the unknowns.
 - **Free Bodies:** every moving root body, orange reaction arrows, vector force balance,
-  vector moment balance about its center of mass G, then scalar x, y, and z equations.
+  vector moment balance about a chosen reference (CoM by default), then scalar x, y, and z equations.
   Expand the numerical details for current loads and actual coefficient rows.
 - **System:** the combined bracketed matrix `A x = b`, ordered unknowns, answers, and residual.
 
@@ -46,8 +46,21 @@ The notes' second friction pass is **not implemented**. The worksheet identifies
 limitation and does not add friction forces or torques to the current solution.
 
 Some imported CAD examples specify centers of mass far outside their joint outlines.
-To keep the free body legible, the diagram marks a schematic **G*** with an explanatory
+To keep the free body legible, the diagram marks a schematic **CoM*** with an explanatory
 note. Moment equations still use the specified center without moving it in the model.
+
+Each rigid body's **Moment Reference Point** dropdown includes its joints, tracer points,
+CoM, and labeled application points. A blue ring identifies the chosen point. Both axes
+have arrowheads, and a curved arrow shows positive counterclockwise z rotation.
+The reference is where moments are summed; it need not be a stationary pivot or the
+instantaneous center of rotation. In motion, the balance about P is
+`ΣM_P = I_CoM α + r_CoM/P × m a_CoM`. The extra term is retained for moving points too.
+
+**Expand the Cross Products** shows each force and arm as columns, the determinant,
+the component expansion, numerical vectors, and the resulting moment. A force through
+the reference has zero arm. Pure couples contribute directly, independent of reference.
+Existing applied-force locations receive names P1, P2, …, skipping names already used
+by joints or tracers. The worksheet never moves an applied force when naming its point.
 
 ## Kinematic worksheet
 
@@ -77,9 +90,9 @@ formulas are shown without substituting a loop matrix that the solver did not us
 ### Choosing signs and loop paths
 
 **Choose Your Equation Conventions** appears in both worksheets. For forces, choose
-**+ on [body]** or **− on [body]** for each pin reaction, guide reaction, or input effort.
-Both components of a pin force change together, and its other body always has the
-opposite sign. Assumed arrows, vector/scalar equations, substitutions, and solved unknowns
+each pin's **X Direction** and **Y Direction** independently, or reverse a guide reaction
+or input effort. Link previews show the assumed arrows, including the opposite reaction
+on the other body. Assumed arrows, vector/scalar equations, substitutions, and solved unknowns
 all follow the choice. The physical load components listed beside them keep the world axes.
 
 Kinematic angular values can be clockwise-positive or counterclockwise-positive, either
@@ -89,16 +102,17 @@ their coordinate directions. Clockwise-positive angular values acquire a minus s
 converted to the positive-z cross products.
 
 In **Velocity** or **Acceleration**, **Reverse Loop** reverses a closed path. **Loop Path**
-accepts joint IDs separated by spaces, commas, or arrows; repeat the first joint at the end.
-**Apply Path** replaces that loop. For example, a TeachingLab four-bar can start at B with
-`B C D A B`; Jansen's second loop can be replaced with the internal path `A B C E D A`.
+is a dropdown of closed paths through the mechanism. Choosing one replaces that loop
+immediately; Jansen's second loop can use the internal path `A → B → C → E → D → A`.
 The sketch, closure, differentiated equations, and both matrices update together.
 
-The model checks connectivity, closure, and independence. A disconnected or redundant
-path stays in the field with an explanation and a disabled Apply button; the last valid
-equations remain visible. Ground connections may close a path, but an internal closed
+The model checks connectivity, closure, and independence. Dependent paths are labeled
+and disabled. Disconnected paths are not offered. Ground connections may close a path, but an internal closed
 loop need not touch ground. Paths outside the current solver's loop space are refused.
 Changing the loop basis is offered only when the rates use the loop solver.
+The body/joint graph supplies simple cycles, avoiding false tracer triangles within a
+single rigid body. Large searches are bounded at 30,000 visits or 512 cycles; the menu
+states when this limit is reached and always considers the current loops.
 
 These are worksheet presentation choices. They do not change graph axes, applied loads,
 input motion, or the physical solution. Choices survive scrubbing, switching analysis
@@ -113,10 +127,11 @@ solution; the combined transformation is `A′ = (C ⊗ I₂) A D`, `b′ = (C �
 Independence is checked with signed real elimination, not unsigned cycle membership.
 The production solver keeps its existing basis; the worksheet presents equivalent equations.
 
-The models are `worksheet-conventions.ts` and `worksheet-loops.ts` under
+The models include `worksheet-conventions.ts`, `worksheet-loops.ts`, `worksheet-loop-options.ts`,
+`force-reference.ts`, and `force-body-equations.ts` under
 `src/app/model/mechanism/`. `WorksheetPreferencesService` shares the choices between
-the panel and dialog. The new controls reuse `input-block`, `button-block`, and
-`segmented-block`, with isolated states under **Analysis** in the local Storybook gallery.
+the panel and dialog. The controls reuse `button-block` and `segmented-block` (including
+its dropdown variant), with isolated states under **Analysis** and **Choices** in Storybook.
 
 ### Solver snapshots
 
@@ -162,6 +177,9 @@ invariance and mixed angular directions, validates alternative Jansen bases, ref
 dependent paths, and checks preference isolation/reset. `node e2e/worksheet-conventions.mjs`
 checks those controls in Chrome, including dialog persistence, a sign-change filmstrip,
 and phone layout. Its evidence is in `artifacts/worksheet-conventions/`.
+`force-reference.spec.ts` re-solves independent component conventions about every available
+point, independently totals physical moments, checks cross-product typesetting, and tests
+application-point names and the loop dropdown catalog.
 
 With the dev server running, `node e2e/solver-explanation.mjs` checks TeachingLab worksheets,
 multi-machine selection, the constraint route, scrubbing, dismissal, reduced motion, and

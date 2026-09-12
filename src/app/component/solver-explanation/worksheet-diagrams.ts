@@ -36,8 +36,12 @@ export function mechanismDiagram(mechanism: Mechanism, step: number): Diagram {
 }
 
 export function freeBodyDiagram(
-  body: BodyExplanation & { loads: (BodyLoad & { displayLabel: string })[] },
-  assumed: boolean
+  body: BodyExplanation & {
+    loads: (BodyLoad & { displayLabel: string })[];
+    reference?: { id: string; label: string; point: number[] };
+  },
+  assumed: boolean,
+  showReference = true
 ): Diagram {
   const centroid = {
     x: body.points.reduce((s, p) => s + p.x, 0) / body.points.length,
@@ -49,11 +53,12 @@ export function freeBodyDiagram(
   );
   const offset = Math.hypot(body.center[0] - centroid.x, body.center[1] - centroid.y) > radius * 2;
   // Some legacy CAD mass centers are far outside the outline. Keep the body readable,
-  // mark G*, and retain the specified center in every moment calculation.
+  // mark CoM*, and retain the specified center in every moment calculation.
   const center = {
     x: offset ? centroid.x + radius * 1.25 : body.center[0],
     y: offset ? centroid.y + radius * 0.4 : body.center[1],
-    label: offset ? 'G*' : body.points.some((p) => p.id === 'G') ? 'G (CoM)' : 'G',
+    label: offset ? 'CoM*' : 'CoM',
+    reference: showReference && body.reference?.id === '@CoM',
   };
   const span = radius * 0.65;
   const outline = hull(body.points);
@@ -95,7 +100,23 @@ export function freeBodyDiagram(
   }
   const points = body.points
     .filter((p, i, a) => a.findIndex((q) => q.x === p.x && q.y === p.y) === i)
-    .map((p) => ({ ...p, label: p.id }));
+    .map((p) => ({ ...p, label: p.id, reference: showReference && body.reference?.id === p.id }));
+  for (const load of body.loads.filter((l) => l.applicationId)) {
+    const existing = points.find(
+      (p) => Math.hypot(p.x - load.point[0], p.y - load.point[1]) < 1e-9
+    );
+    if (existing) {
+      existing.label += ` / ${load.applicationId}`;
+      existing.reference ||= showReference && body.reference?.id === load.applicationId;
+    } else
+      points.push({
+        id: load.applicationId!,
+        x: load.point[0],
+        y: load.point[1],
+        label: load.applicationId!,
+        reference: showReference && body.reference?.id === load.applicationId,
+      });
+  }
   if (body.rowCount === 2) {
     outline.splice(
       0,
@@ -110,10 +131,11 @@ export function freeBodyDiagram(
   } else points.push(center as (typeof points)[number]);
   return {
     points,
+    momentLabel: showReference && body.rowCount === 3 ? body.reference?.label : undefined,
     lines,
     outlines: outline.length > 2 ? [outline] : [],
     note: offset
-      ? 'G* is placed schematically: the specified center of mass lies far outside this body. All moment arms use the specified center.'
+      ? 'CoM* is placed schematically: the specified center of mass lies far outside this body. All moment arms use the specified center.'
       : undefined,
   };
 }

@@ -2603,6 +2603,21 @@ using signed body/joint incidences so a path through a tracer point on a rigid b
 correctly. An internal loop need not visit ground. Keep the production solver's cached
 loops and rates untouched; `WorksheetPreferencesService` shares only the presentation choices.
 
+Pin-force X and Y signs are independent. When they differ, put the component signs inside
+the force vector's column definition and keep the action/reaction sign outside it. Group
+components by physical joint/pair, never by the chosen sign, or one force becomes two vectors.
+
+A worksheet moment reference is a summation point, not necessarily a fixed pivot.
+Translate the displayed moment row with `rowMz += dx * rowFy - dy * rowFx`, and apply the
+same operation to b, known loads, and inertia. Here dx/dy are CoM minus reference in meters:
+model coordinates need **both** the unit conversion and division by MODEL_SCALE. In motion,
+keep `I_CoM α + r_CoM/P × m a_CoM`; replacing this with `I_P α` is generally incorrect.
+Label existing applied-force points without changing their physical coordinates.
+
+Keep loop-menu ordering stable when a choice changes. Moving the selected path to index 0
+can leave a native select displaying its previous DOM index if Angular sees an unchanged
+bound index. The browser suite checks the selected label as well as the underlying loop.
+
 On Windows, normalize `path.relative()` separators before comparing them with repository
 paths such as `src/styles/_tokens.scss`. Otherwise the stylesheet fence counts the token
 file it was meant to exclude. Prettier also expects LF: CRLF-only checkout changes can be
