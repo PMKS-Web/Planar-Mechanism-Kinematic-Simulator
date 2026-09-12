@@ -294,6 +294,7 @@ try {
       ['plate', '40 g·cm²'],
       ['compound', 'Welded compound'],
       ['custom', '75 g·cm²'],
+      ['custom-center', 'Custom properties are retained'],
       ['zero-mass', 'Zero mass gives zero inertia'],
       ['point-mass', 'Point mass'],
       ['si', '25 kg·m²'],
@@ -361,6 +362,17 @@ try {
 
           await button.click();
         }
+      }
+      if (story === 'custom-center') {
+        await working.getByRole('button', { name: 'About Another Point', exact: true }).click();
+        await working
+          .locator('.note')
+          .filter({ hasText: 'The custom center of mass differs from the uniform centroid' })
+          .waitFor();
+        assert.doesNotMatch(await working.innerText(), /Inertia about P:/);
+        await working
+          .locator('app-inertia-axis')
+          .screenshot({ path: `${out}/gallery-custom-center-refusal.png` });
       }
       if (story === 'applied-loads') {
         await working.getByRole('button', { name: 'About Another Point', exact: true }).click();

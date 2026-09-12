@@ -1,5 +1,5 @@
 import { RealLink } from '../../model/link';
-import { MassProperties } from '../../model/mass-properties';
+import { MassProperties, PlateMassTrace } from '../../model/mass-properties';
 import { UniformBody } from '../../model/uniform-body';
 import { MODEL_SCALE } from '../../model/render-scale';
 import { InertiaFormat, InertiaStep } from './inertia-format';
@@ -7,7 +7,13 @@ import { InertiaFormat, InertiaStep } from './inertia-format';
 type Plate = Extract<UniformBody['calculation'], { kind: 'plate' }>;
 
 /** Display the integrator's unrounded edge terms, never integrate a second outline. */
-export function plateSteps(c: Plate, properties: MassProperties, link: RealLink, f: InertiaFormat) {
+export function plateSteps(
+  c: Plate,
+  properties: MassProperties,
+  trace: PlateMassTrace,
+  link: RealLink,
+  f: InertiaFormat
+) {
   const n = (value: number, power = 1) => f.tex(value / MODEL_SCALE ** power);
   const q = (value: number, power = 1) => (power === 1 ? f.length(value) : f.power(value, power));
   const vertexName = (i: number) => {
@@ -44,15 +50,15 @@ export function plateSteps(c: Plate, properties: MassProperties, link: RealLink,
             `Q_{y,${i + 1}}=${q(e.qy, 2)}`,
             String.raw`\Delta J_{x,i}=\frac{c_iQ_{y,i}}{12}`,
             String.raw`\Delta J_{x,${i + 1}}=\frac{(${n(e.cross, 2)})(${n(e.qy, 2)})}{12}`,
-            String.raw`\Delta J_{x,${i + 1}}=${q((e.cross * e.qy) / 12, 4)}`,
+            String.raw`\Delta J_{x,${i + 1}}=${q(e.areaMomentX, 4)}`,
             String.raw`\Delta J_{y,i}=\frac{c_iQ_{x,i}}{12}`,
             String.raw`\Delta J_{y,${i + 1}}=\frac{(${n(e.cross, 2)})(${n(e.qx, 2)})}{12}`,
-            String.raw`\Delta J_{y,${i + 1}}=${q((e.cross * e.qx) / 12, 4)}`,
+            String.raw`\Delta J_{y,${i + 1}}=${q(e.areaMomentY, 4)}`,
             String.raw`\Delta J_{O,i}=\Delta J_{x,i}+\Delta J_{y,i}`,
-            String.raw`\Delta J_{O,${i + 1}}=${q(e.polar / 12, 4)}`,
+            String.raw`\Delta J_{O,${i + 1}}=${q(e.polarAreaMoment, 4)}`,
             String.raw`\Delta I_{O,i}=\frac{m}{A}\Delta J_{O,i}`,
-            String.raw`\Delta I_{O,${i + 1}}=\frac{${f.tex(link.mass)}}{${n(c.area, 2)}}(${n(e.polar / 12, 4)})`,
-            String.raw`\Delta I_{O,${i + 1}}=${f.inertia(((link.mass * e.polar) / (12 * c.area)) * f.factor)}`,
+            String.raw`\Delta I_{O,${i + 1}}=\frac{${f.tex(link.mass)}}{${n(c.area, 2)}}(${n(e.polarAreaMoment, 4)})`,
+            String.raw`\Delta I_{O,${i + 1}}=${f.inertia(trace.edgeMoi[i])}`,
           ]
         : [
             String.raw`c_i=x_i y_j-x_j y_i`,
@@ -60,17 +66,17 @@ export function plateSteps(c: Plate, properties: MassProperties, link: RealLink,
             `c_{${i + 1}}=${q(e.cross, 2)}`,
             String.raw`A_i=\frac{c_i}{2}`,
             String.raw`A_{${i + 1}}=\frac{${n(e.cross, 2)}}{2}`,
-            `A_{${i + 1}}=${q(e.cross / 2, 2)}`,
+            `A_{${i + 1}}=${q(e.area, 2)}`,
             String.raw`S_{x,i}=\frac{(x_i+x_j)c_i}{6}`,
             `u_x=(${n(a.x)})+(${n(b.x)})`,
             `u_x=${q(a.x + b.x)}`,
             String.raw`S_{x,${i + 1}}=\frac{(${n(a.x + b.x)})(${n(e.cross, 2)})}{6}`,
-            `S_{x,${i + 1}}=${q(e.firstX / 6, 3)}`,
+            `S_{x,${i + 1}}=${q(e.firstMomentX, 3)}`,
             String.raw`S_{y,i}=\frac{(y_i+y_j)c_i}{6}`,
             `u_y=(${n(a.y)})+(${n(b.y)})`,
             `u_y=${q(a.y + b.y)}`,
             String.raw`S_{y,${i + 1}}=\frac{(${n(a.y + b.y)})(${n(e.cross, 2)})}{6}`,
-            `S_{y,${i + 1}}=${q(e.firstY / 6, 3)}`,
+            `S_{y,${i + 1}}=${q(e.firstMomentY, 3)}`,
           ];
       return {
         title: `Edge ${e.from + 1} to ${e.to + 1}${e.to === 0 ? ' (Closing)' : ''}`,
@@ -135,25 +141,25 @@ export function plateSteps(c: Plate, properties: MassProperties, link: RealLink,
           equations: [
             ...total(
               'A',
-              c.edges.map((e) => e.cross / 2),
+              c.edges.map((e) => e.area),
               2,
               c.area
             ),
             ...total(
               'S_x',
-              c.edges.map((e) => e.firstX / 6),
+              c.edges.map((e) => e.firstMomentX),
               3,
-              c.sums.firstX / 6
+              c.firstMomentX
             ),
             ...total(
               'S_y',
-              c.edges.map((e) => e.firstY / 6),
+              c.edges.map((e) => e.firstMomentY),
               3,
-              c.sums.firstY / 6
+              c.firstMomentY
             ),
-            String.raw`\bar{x}=\frac{${n(c.sums.firstX / 6, 3)}}{${n(c.area, 2)}}`,
+            String.raw`\bar{x}=\frac{${n(c.firstMomentX, 3)}}{${n(c.area, 2)}}`,
             String.raw`\bar{x}=${q(c.centroidX)}`,
-            String.raw`\bar{y}=\frac{${n(c.sums.firstY / 6, 3)}}{${n(c.area, 2)}}`,
+            String.raw`\bar{y}=\frac{${n(c.firstMomentY, 3)}}{${n(c.area, 2)}}`,
             String.raw`\bar{y}=${q(c.centroidY)}`,
             String.raw`x_G^{grid}=O_x^{grid}+\bar{x}`,
             `x_G^{grid}=${q(properties.com.x)}`,
@@ -196,14 +202,14 @@ export function plateSteps(c: Plate, properties: MassProperties, link: RealLink,
           equations: [
             ...total(
               'J_O',
-              c.edges.map((e) => e.polar / 12),
+              c.edges.map((e) => e.polarAreaMoment),
               4,
-              c.sums.polar / 12
+              c.polarAreaMoment
             ),
             `m=${f.mass(link.mass)}`,
             `A=${q(c.area, 2)}`,
-            String.raw`I_O=\frac{${f.tex(link.mass)}}{${n(c.area, 2)}}(${n(c.sums.polar / 12, 4)})`,
-            `I_O=${f.inertia(link.mass * c.polarOverMass * f.factor)}`,
+            String.raw`I_O=\frac{${f.tex(link.mass)}}{${n(c.area, 2)}}(${n(c.polarAreaMoment, 4)})`,
+            `I_O=${f.inertia(trace.originMoi)}`,
             `k_O^2=${q(c.polarOverMass, 2)}`,
           ],
         },
@@ -214,10 +220,10 @@ export function plateSteps(c: Plate, properties: MassProperties, link: RealLink,
       text: 'The barred centroid is measured from O. Subtract its parallel-axis term. Translation and planar rigid rotation preserve IG; a changed shape or mass need not.',
       equations: [
         String.raw`d_{OG}^2=\bar{x}^2+\bar{y}^2`,
-        `d_{OG}^2=${q(c.centroidX ** 2 + c.centroidY ** 2, 2)}`,
+        `d_{OG}^2=${q(c.centroidDistanceSq, 2)}`,
         String.raw`I_G=I_O-md_{OG}^2`,
         String.raw`I_G=m(k_O^2-d_{OG}^2)`,
-        String.raw`I_G=${f.tex(link.mass)}\left(${n(c.polarOverMass, 2)}-${n(c.centroidX ** 2 + c.centroidY ** 2, 2)}\right)`,
+        String.raw`I_G=${f.tex(link.mass)}\left(${n(c.polarOverMass, 2)}-${n(c.centroidDistanceSq, 2)}\right)`,
         `I_G=${f.inertia(properties.moi)}`,
       ],
     },

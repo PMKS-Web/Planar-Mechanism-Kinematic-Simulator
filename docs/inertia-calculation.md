@@ -136,6 +136,8 @@ I_P=I_G+md^2
 
 The axes must be parallel and G must be the center-of-mass axis for the supplied mass distribution. The calculator refuses a numerical shift when a relocated custom CoM is paired with the automatic uniform-centroid inertia. It cannot independently validate a user's custom mass distribution.
 
+The same refusal propagates through automatic welded combinations with unsupported member pairings. A custom inertia supplied for the entire compound is treated as the author's assertion about the whole body. See the [final calculation audit](inertia-review-handoff.md) for source traces, custom-property precedence and explicit invariants.
+
 The ephemeral grid overlay marks G with a circle and P with a square, connects them, and labels d. It reads current pose objects so seeking/playback changes the coordinates and mark positions. Closing the axis explanation removes it. Selection never changes the solver's stored inertia, undo history, or shared URL.
 
 ## Force moments are a different calculation

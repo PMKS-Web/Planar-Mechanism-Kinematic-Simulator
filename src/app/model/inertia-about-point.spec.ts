@@ -2,8 +2,56 @@ import { RevJoint } from './joint';
 import { RealLink } from './link';
 import { MODEL_SCALE } from './render-scale';
 import { inertiaAboutPoint } from './inertia-about-point';
+import { uniformMassProperties } from './mass-properties';
 
 describe('inertia about a parallel axis', () => {
+  it('refuses an unsupported member pairing in an automatic welded combination', () => {
+    const first = rod(),
+      second = rod();
+    first.comIsCustom = true;
+    first.CoM.x += MODEL_SCALE;
+    const compound = new RealLink('AB', first.joints, 24, undefined, undefined, [first, second]);
+    const factor = 0.001 / MODEL_SCALE ** 2;
+    const derived = uniformMassProperties(compound, factor);
+    compound.CoM = derived.com;
+    compound.massMoI = derived.moi;
+    const refused = inertiaAboutPoint(compound, compound.joints[0], factor);
+    expect(refused.available).toBe(false);
+    expect(!refused.available && refused.reason).toContain('member AB');
+    first.moiIsCustom = true;
+    expect(inertiaAboutPoint(compound, compound.joints[0], factor).available).toBe(true);
+    first.moiIsCustom = false;
+    compound.moiIsCustom = true;
+    expect(inertiaAboutPoint(compound, compound.joints[0], factor).available).toBe(true);
+  });
+  it('refuses invalid numeric properties rather than reporting an inertia', () => {
+    const body = rod();
+    const factor = 0.001 / MODEL_SCALE ** 2;
+    for (const inertia of [-1, NaN, Infinity]) {
+      body.massMoI = inertia;
+      expect(inertiaAboutPoint(body, body.joints[0], factor).available).toBe(false);
+    }
+    body.massMoI = 1;
+    body.mass = 0;
+    expect(inertiaAboutPoint(body, body.joints[0], factor).available).toBe(false);
+  });
+  it('uses the same shift identity at arbitrary parallel reference points', () => {
+    const body = rod();
+    const factor = 0.001 / MODEL_SCALE ** 2;
+    for (const [x, y] of [
+      [0, 0],
+      [2, -3],
+      [-8, 4],
+      [1.5, 2],
+    ]) {
+      const point = { x: x * MODEL_SCALE, y: y * MODEL_SCALE };
+      const result = inertiaAboutPoint(body, point, factor);
+      if (!result.available) throw new Error('Expected a supported axis');
+      const expected =
+        body.mass * ((body.CoM.x - point.x) ** 2 + (body.CoM.y - point.y) ** 2) * factor;
+      expect(result.inertia - body.massMoI).toBeCloseTo(expected, 12);
+    }
+  });
   function rod(factor = 0.001 / MODEL_SCALE ** 2) {
     const link = new RealLink(
       'AB',

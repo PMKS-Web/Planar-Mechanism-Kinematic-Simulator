@@ -11,7 +11,7 @@ export function inertiaSteps(
   f: InertiaFormat
 ): { title: string; steps: InertiaStep[] } {
   const calculation = properties.shape?.calculation;
-  if (calculation?.kind === 'rod')
+  if (calculation?.kind === 'rod' && properties.trace?.kind === 'rod')
     return {
       title: 'Uniform slender rod',
       steps: [
@@ -48,17 +48,18 @@ export function inertiaSteps(
           text: 'For this automatic uniform rod, either endpoint is half the measured length from G. This is the shape estimate; custom properties need the separate About Another Point calculation.',
           equations: [
             String.raw`d=\frac{L}{2}`,
-            `d=${f.length(Math.sqrt(calculation.lengthSq) / 2)}`,
+            `d=${f.length(Math.sqrt(properties.trace.endpoint.distanceSq))}`,
             String.raw`I_P=I_G+md^2`,
             String.raw`I_{\mathrm{end}}=\frac{mL^2}{12}+m\left(\frac{L}{2}\right)^2`,
             String.raw`I_{\mathrm{end}}=\frac{mL^2}{3}`,
             String.raw`I_{\mathrm{end}}=\frac{${f.tex(link.mass)}\times ${f.tex(calculation.lengthSq / MODEL_SCALE ** 2)}}{3}`,
-            `I_{\\mathrm{end}}=${f.inertia((link.mass * calculation.lengthSq * f.factor) / 3)}`,
+            `I_{\\mathrm{end}}=${f.inertia(properties.trace.endpoint.inertia)}`,
           ],
         },
       ],
     };
-  if (calculation?.kind === 'plate') return plateSteps(calculation, properties, link, f);
+  if (calculation?.kind === 'plate' && properties.trace?.kind === 'plate')
+    return plateSteps(calculation, properties, properties.trace, link, f);
   if (properties.parts.length) return compoundSteps(properties, f);
   return {
     title: 'Point mass',
@@ -86,16 +87,15 @@ function compoundSteps(properties: MassProperties, f: InertiaFormat) {
     },
   ];
   properties.parts.forEach((part, i) => {
-    const d2 = (part.com.x - properties.com.x) ** 2 + (part.com.y - properties.com.y) ** 2;
     steps.push({
       title: `${i + 2}. Add ${part.body.name || part.body.id}`,
       text: `The member’s inertia ${part.body.moiIsCustom ? 'is set by you' : 'comes from its uniform shape'}. Measure its center’s distance to G, then add the parallel-axis term.`,
       equations: [
         `m_i = ${f.mass(part.mass)}`,
-        `d_i^2 = ${f.square(d2)}`,
+        `d_i^2 = ${f.square(part.distanceSq)}`,
         `I_i = ${f.inertia(part.moi)}`,
         String.raw`I_{i,G} = I_i + m_i d_i^2`,
-        `I_{i,G} = ${f.inertia(part.moi + part.mass * d2 * f.factor)}`,
+        `I_{i,G} = ${f.inertia(part.contribution)}`,
       ],
     });
   });

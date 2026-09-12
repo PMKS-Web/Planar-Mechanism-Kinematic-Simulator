@@ -9,6 +9,9 @@ import { StringTranscoder } from '../../app/services/transcoding/string-transcod
 import { LinkData, LINK_TYPE } from '../../app/services/transcoding/transcoder-data';
 import { createMechanismHarness, MechanismHarness } from '../../test-utils/mechanism-harness';
 import { uniformBodyOf } from '../../app/model/uniform-body';
+import { siUnitFactorsForLength } from '../../app/model/unit-conversions';
+import { inertiaFormat } from '../../app/component/inertia-explanation/inertia-format';
+import { NumberUnitParserService } from '../../app/services/number-unit-parser.service';
 
 // Auto-derived mass properties, end to end: a link left in auto follows its
 // own geometry through every edit, a link somebody typed at holds still, and
@@ -40,6 +43,43 @@ function twoBarChain(harness: MechanismHarness): RealLink[] {
 }
 
 describe('auto mass properties on the editable mechanism', () => {
+  it('preserves physical mass and inertia through project-unit changes and converts the displayed values', () => {
+    const harness = createMechanismHarness();
+    const [body] = twoBarChain(harness);
+    body.mass = 12;
+    harness.service.updateMechanism();
+    const nup = new NumberUnitParserService();
+    expect(inertiaFormat(LengthUnit.CM, nup).inertiaText(body.massMoI)).toBe('25 g·cm²');
+    let from = LengthUnit.CM;
+    for (const to of [LengthUnit.METER, LengthUnit.INCH, LengthUnit.CM]) {
+      harness.service.updateLinkageUnits(from, to);
+      harness.settings.lengthUnit.next(to);
+      harness.service.updateMechanism();
+      const units = siUnitFactorsForLength(to);
+      expect(body.mass * units.massToKg).toBeCloseTo(0.012, 12);
+      expect(body.massMoI * units.inertiaToKgM2).toBeCloseTo(0.0000025, 12);
+      expect((body.CoM.x / MODEL_SCALE) * units.distanceToM).toBeCloseTo(0.015, 12);
+      expect((body.CoM.y / MODEL_SCALE) * units.distanceToM).toBeCloseTo(0.02, 12);
+      from = to;
+    }
+    expect(inertiaFormat(LengthUnit.CM, nup).inertiaText(body.massMoI)).toBe('25 g·cm²');
+  });
+  it('scales automatic inertia with supplied mass but retains a custom inertia', () => {
+    const harness = createMechanismHarness();
+    const [body] = twoBarChain(harness);
+    harness.service.assignBodyMass(body, 12);
+    harness.service.updateMechanism();
+    const before = body.massMoI;
+    harness.service.assignBodyMass(body, 24);
+    harness.service.updateMechanism();
+    expect(body.massMoI).toBeCloseTo(2 * before, 12);
+    body.massMoI = 0.075;
+    body.moiIsCustom = true;
+    harness.service.assignBodyMass(body, 48);
+    harness.service.updateMechanism();
+    expect(body.massMoI).toBe(0.075);
+    expect(body.moiIsCustom).toBe(true);
+  });
   it('derives MoI = mL²/12 in the stored unit, and the centroid, for an auto bar', () => {
     const harness = createMechanismHarness();
     const [ab] = twoBarChain(harness);

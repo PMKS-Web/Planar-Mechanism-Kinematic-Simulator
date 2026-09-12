@@ -69,9 +69,10 @@ export class InertiaAxisComponent implements DoCheck, OnDestroy {
     const point = atGrid ? { x: 0, y: 0 } : joint;
     if (!point) return undefined;
     const result = inertiaAboutPoint(body, point, f.factor);
-    const dx = point.x - body.CoM.x;
-    const dy = point.y - body.CoM.y;
-    const distanceSq = dx * dx + dy * dy;
+    // The trace arm is P to G; the displayed displacement is G to P.
+    const dx = -result.dx;
+    const dy = -result.dy;
+    const distanceSq = result.distanceSq;
     const pair = (name: string, at: { x: number; y: number }) =>
       String.raw`${name}=(${f.tex(at.x / MODEL_SCALE)},${f.tex(at.y / MODEL_SCALE)})\,\mathrm{${f.unit}}`;
     const coordinates = [

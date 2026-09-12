@@ -202,6 +202,9 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
   acceleration moment required at a moving point. The CoM fields always show grid coordinates;
   the separate CoM Reference controls what a custom center follows during edits.
   Polygon edges carry the actual integration terms into individually foldable working.
+  Normalized area moments, origin/edge mass moments and welded/endpoint shifts also come
+  from model traces. `parallel-axis.ts` is shared by the calculation and the reference tool;
+  unsupported custom member pairings propagate through automatic welded combinations.
   A read-only G/P overlay follows the pose and highlights applied-force moment arms.
   “Mass Model Being Used” names the automatic idealization and optionally overlays the
   actual centerline, convex hull, point, or numbered welded members on the visible drawing.

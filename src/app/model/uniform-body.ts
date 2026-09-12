@@ -37,8 +37,12 @@ export interface UniformBody {
         origin: { x: number; y: number };
         area: number;
         polarOverMass: number;
+        polarAreaMoment: number;
+        firstMomentX: number;
+        firstMomentY: number;
         centroidX: number;
         centroidY: number;
+        centroidDistanceSq: number;
         vertices: { x: number; y: number }[];
         edges: PolygonEdge[];
         sums: { area2: number; firstX: number; firstY: number; polar: number };
@@ -56,6 +60,12 @@ export interface PolygonEdge {
   qx: number;
   qy: number;
   polar: number;
+  area: number;
+  firstMomentX: number;
+  firstMomentY: number;
+  areaMomentX: number;
+  areaMomentY: number;
+  polarAreaMoment: number;
 }
 
 export function uniformBodyOf(joints: { x: number; y: number }[]): UniformBody {
@@ -139,7 +149,22 @@ function platedPolygon(points: { x: number; y: number }[]): UniformBody | undefi
     cx += firstX;
     cy += firstY;
     inertia += polar;
-    edges.push({ from: i, to: (i + 1) % hull.length, cross, firstX, firstY, qx, qy, polar });
+    edges.push({
+      from: i,
+      to: (i + 1) % hull.length,
+      cross,
+      firstX,
+      firstY,
+      qx,
+      qy,
+      polar,
+      area: cross / 2,
+      firstMomentX: firstX / 6,
+      firstMomentY: firstY / 6,
+      areaMomentX: (cross * qy) / 12,
+      areaMomentY: (cross * qx) / 12,
+      polarAreaMoment: polar / 12,
+    });
   }
   const area = area2 / 2;
   const span = hull.reduce(
@@ -154,7 +179,8 @@ function platedPolygon(points: { x: number; y: number }[]): UniformBody | undefi
   // Polar second moment per unit mass about the origin, then moved to the
   // centroid by the parallel-axis theorem.
   const polarOverMass = inertia / (6 * area2);
-  const gyrationSq = polarOverMass - (centroidX * centroidX + centroidY * centroidY);
+  const centroidDistanceSq = centroidX * centroidX + centroidY * centroidY;
+  const gyrationSq = polarOverMass - centroidDistanceSq;
   return {
     centroid: new Coord(centroidX + origin.x, centroidY + origin.y),
     gyrationSq: Math.max(gyrationSq, 0),
@@ -163,8 +189,12 @@ function platedPolygon(points: { x: number; y: number }[]): UniformBody | undefi
       origin,
       area,
       polarOverMass,
+      polarAreaMoment: inertia / 12,
+      firstMomentX: cx / 6,
+      firstMomentY: cy / 6,
       centroidX,
       centroidY,
+      centroidDistanceSq,
       vertices: hull,
       edges,
       sums: { area2, firstX: cx, firstY: cy, polar: inertia },

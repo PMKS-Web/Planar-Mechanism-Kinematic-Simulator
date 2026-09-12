@@ -59,6 +59,10 @@ export class InertiaExplanationComponent {
       notes.push(
         'The center of mass is custom. The shape estimate stays about the uniform centroid; moving the center does not shift it. Enter a matching custom inertia for your actual mass distribution.'
       );
+    if (link.moiIsCustom)
+      notes.push(
+        'Custom inertia is interpreted about the shown CoM. Changing the supplied mass does not rescale custom inertia; you must keep those properties consistent.'
+      );
     return {
       ...shape,
       used: f.inertiaText(link.massMoI),

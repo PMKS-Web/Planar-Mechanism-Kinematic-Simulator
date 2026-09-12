@@ -55,3 +55,29 @@ True concavity, holes, cutouts and curved boundaries need an authored mass domai
 7. Validate against analytical rods, finite rectangles, discs/annuli, holes and concave plates, translated/rotated copies, compound offsets, unit conversions, serialization and custom overrides. Check mass invariance under all display-only controls.
 
 This leaves drawing geometry intentionally separate where it is decoration, while allowing an explicitly chosen physical model to be the source for both a faithful drawing and mass properties.
+
+## Staged handoff for a separate feature
+
+None of P0–P4 is implemented by `feature/mass-inertia-explanation`.
+
+| Stage | Deliverable | Acceptance boundary |
+| --- | --- | --- |
+| P0 — Data model | Per-body definition distinguishing legacy skeleton, parametric shape and supplied properties, with a reserved explicit-outline extension. Body-frame anchors, unit semantics and compatible URL representation. | Old URLs, saved custom values, undo/redo, copies and existing solver inputs behave exactly as before. No automatic migration to a new physical shape. |
+| P1 — Rectangle | Opt-in uniform rectangle with explicit width/height, placement and total mass. Shared trace, drawing and export adapters. | Analytical result below; translation, rotation, unit conversion, serialization and parallel-axis benchmarks. Object Scale changes none of its physical dimensions. |
+| P2 — Disc | Explicit radius and body-frame center with analytical properties. | The disc result below, the same invariants, and no dependency on presentation-only `isCircle`, ground-pivot eligibility or display cap radius. |
+| P3 — More parametric shapes | Evaluate capsule/rounded bar and other common parts against real teaching needs. | Each addition has explicit dimensions, analytical/independent benchmarks and documented mass-distribution assumptions. |
+| P4 — Explicit outline | Authored/imported concave domains, holes and line/arc boundaries; decide whether density/material options belong here or in a later stage. | Valid topology, explicit tolerances, bounded integration error, independently verified moments and compatible physical drawing/export. Only proceed after P0–P3 establish the shared architecture. |
+
+The future uniform rectangle benchmark is:
+
+\[
+I_G=\frac{m}{12}(w^2+h^2)
+\]
+
+The future uniform disc benchmark is:
+
+\[
+I_G=\frac{1}{2}mR^2
+\]
+
+Before P0, decide the semantics of reshaping joints, custom-property precedence, total mass versus density-derived mass, and overlapping welded parts. The current member sum must remain the legacy meaning; a physical material union needs a separate explicit choice.

@@ -21,6 +21,11 @@
       <app-inertia-mass-model [body]="body()" />
       <collapsible-subsection [nested]="true" titleLabel="Meaning and Assumptions">
         <p>
+          Mass comes from the supplied body or member values, not an inferred material density. PMKS
+          derives the center of mass (CoM) and mass moment of inertia unless you override them.
+          Custom values do not reveal the actual mass distribution.
+        </p>
+        <p>
           Mass moment of inertia measures resistance to angular acceleration. The axis passes
           through the center of mass G, perpendicular to the drawing.
         </p>
