@@ -296,6 +296,14 @@ Not suites — import them from one.
   `--only <substring>` runs a subset. Its scenes live in `reuse-parity-scenes.mjs`.
 - `reuse-parity-scenes.mjs` — the scene list `reuse-parity.mjs` photographs: which panel, which
   mode, and the clicks that reach it. Not a check on its own.
+- `gallery-parity.mjs` — the other half of `reuse-parity.mjs`: every **story** in the component
+  gallery, drawn by two builds, compared pixel for pixel. The gallery builds its own page and
+  prepends the app's global stylesheets itself, so a change to `mytheme.scss` or a moved stylesheet
+  can leave the app untouched and still strip the background off every card in the docs — which is
+  exactly what the app suite cannot see. Needs **two Storybook servers**, `PMKS_GALLERY_URL` and
+  `PMKS_GALLERY_BASE_URL`; it reads the story list from Storybook's own `index.json`, so a story
+  added tomorrow is compared tomorrow. Docs pages are skipped: their "Show code" block is the
+  story's source, so every source edit would fail them for no visual reason.
 - `field-overlay-reassert.mjs` — pointing at a number in the Edit panel draws it on the grid, and
   it comes back when you point at the same field again after a committed edit. That is the one rule
   in `BLOCKS/field-overlay.ts` that is not obvious: the canvas drops its overlays when the selected

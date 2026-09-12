@@ -35,6 +35,26 @@ to work on it without stepping in the same holes.
 **Node** 22.22.3+, 24.15+ or 26+ — the range the Angular 22 toolchain declares. `npm ci` for a
 clean install.
 
+**A worktree carries its own `node_modules`, and it goes stale the moment `staging` bumps a
+dependency — and a stale one looks exactly like a CSS regression you wrote.** A worktree created
+before the Angular 22.1 upgrade still had `@angular/material@22.0.6` installed while `package.json`
+and the lockfile both said 22.1.6. Material's form-field rules differ between the two, so every
+input in the app and the gallery drew a **3px black underline** instead of a 1px grey one, and
+every stroked button a heavy colored border. It reads as "the theme is not loading", and the hunt
+goes to `mytheme.scss` — which was fine.
+
+Two things make it findable fast. Compare what is *installed* against what the lockfile says:
+
+```bash
+node -e "console.log(require('./node_modules/@angular/material/package.json').version)"
+node -e "console.log(require('./package-lock.json').packages['node_modules/@angular/material'].version)"
+```
+
+And know that **`require.resolve` walks up**: a worktree under `.claude/worktrees/` with no
+`node_modules` of its own silently resolves packages from the repository root's, so two worktrees
+can disagree about a dependency's version without either one looking wrong. `npm ci` in the
+worktree settles it.
+
 **Playwright is now a devDependency**, added alongside the Playwright MCP server so Claude Code and
 the e2e scripts can share one install. The browsers it drives are *not* in `node_modules`: Playwright
 keeps them in a per-user cache (`~/Library/Caches/ms-playwright` on macOS), so a project-local
