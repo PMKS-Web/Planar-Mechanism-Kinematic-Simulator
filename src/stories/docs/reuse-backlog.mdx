@@ -49,10 +49,10 @@ Each entry is **where** it is, what it draws, and the block to use instead.
 
 ## Blocks that overlap
 
-- **`dual-input-block` duplicates `input-block`'s** hover-and-focus overlay logic, and has
-  diverged from it: `input-block` re-asserts the overlay every time (the canvas clears it),
-  `dual-input-block` only on a change. `hold-field` and `toggle-block` carry a third and fourth
-  copy. `input-block` with a `count` of two, and one overlay helper.
+- **`dual-input-block` is still not `input-block` with a `count` of two.** The overlay half of that
+  item is done — see below — but the two still draw their own markup, and merging them means one
+  block whose field count is an input. `input-accessibility.spec.ts` pins the exact accessible-name
+  list and the `pmks-` id scheme across both, which is the spec to read first.
 - **`state-input`** (two usages) and **`hold-field-block`** (two usages) are single-consumer blocks
   from the Edit panel; **`dual-button`** (two usages) likewise.
 - **`appStandardField`** has one consumer, `synthesis-panel`. Once that panel moves onto
@@ -70,6 +70,17 @@ cycle to appear is a panel reaching another panel's static — register a handle
 
 ## Done
 
+- `BLOCKS/field-overlay.ts` is the one copy of the hover-and-focus rule that tells the canvas to
+  draw a field's dimension. Four blocks held their own — `input-block`, `dual-input-block`,
+  `hold-field-block`, `toggle-block` — with four shapes of state and, between them, four different
+  answers to whether a disabled field counts and whether `focus` or `focusin` is the event.
+  `dual-input-block` mutated its four booleans straight from the template.
+  **One honest note:** only `input-block` re-asserted a wanted overlay every time, and the comment
+  it carried says why (the canvas drops overlays on a committed edit, so emitting only on a change
+  leaves the dimension gone under a pointer that never moved). All four re-assert now. I could not
+  reproduce a user-visible failure in the other three — `hold-field-block` survives the sequence on
+  the base branch too — so this is written up as the divergence it is, not as a bug fix.
+  `e2e/field-overlay-reassert.mjs` guards the rule for the one block it can drive.
 - **The four shared components moved into `BLOCKS/`**, where the rest of the gallery lives:
   `app-edit-banner` + `app-lock-banner` (from `edit-panel/`, now `BLOCKS/banner/`), `app-view-button`
   (from `view-controls/`), `app-context-menu` with its `menu-model.ts` (from `context-menu/`), and

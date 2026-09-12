@@ -9,6 +9,7 @@ import { LinkHold, RealLink } from '../../../model/link';
 import { holdableBar } from '../../../model/link-holds';
 import { GridUtilsService } from '../../../services/grid-utils.service';
 import { MechanismService } from '../../../services/mechanism.service';
+import { FieldOverlay } from '../field-overlay';
 
 /** One of the two values this block shows and can hold. */
 type Which = 'length' | 'angle';
@@ -56,9 +57,25 @@ export class HoldFieldComponent {
   private mechanism = inject(MechanismService);
   private gridUtils = inject(GridUtilsService);
 
-  private hovered = { length: false, angle: false };
-  private focused = { length: false, angle: false };
-  private shown = { length: false, angle: false };
+  /**
+   * One per field, shared with the other three field blocks. These used to
+   * emit only on a change -- the bug `FieldOverlay` describes, where a
+   * dimension dropped by a committed edit never came back.
+   */
+  private readonly overlays: Record<Which, FieldOverlay<number>> = {
+    length: new FieldOverlay<number>(
+      (value) => this.lengthEntry.emit(value),
+      () => -1,
+      () => -2,
+      () => !this.disabled()
+    ),
+    angle: new FieldOverlay<number>(
+      (value) => this.angleEntry.emit(value),
+      () => -1,
+      () => -2,
+      () => !this.disabled()
+    ),
+  };
 
   protected readonly lockPath =
     'M7 10V7a5 5 0 0 1 10 0v3h2.5v11h-15V10H7Zm2 0h6V7a3 3 0 0 0-6 0v3ZM6.5 12v7h11v-7h-11Z';
@@ -143,31 +160,19 @@ export class HoldFieldComponent {
   }
 
   protected enter(which: Which): void {
-    this.hovered[which] = true;
-    this.announce(which);
+    this.overlays[which].hover(true);
   }
 
   protected leave(which: Which): void {
-    this.hovered[which] = false;
-    this.announce(which);
+    this.overlays[which].hover(false);
   }
 
   protected focus(which: Which, field: HTMLInputElement): void {
-    this.focused[which] = true;
     field.select();
-    this.announce(which);
+    this.overlays[which].focus(true);
   }
 
   protected blur(which: Which): void {
-    this.focused[which] = false;
-    this.announce(which);
-  }
-
-  /** Tell the canvas when the dimension for this field should appear and go. */
-  private announce(which: Which): void {
-    const show = !this.disabled() && (this.hovered[which] || this.focused[which]);
-    if (show === this.shown[which]) return;
-    this.shown[which] = show;
-    (which === 'length' ? this.lengthEntry : this.angleEntry).emit(show ? -1 : -2);
+    this.overlays[which].focus(false);
   }
 }

@@ -11,6 +11,7 @@ import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
 import { MatFormField, MatSuffix } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
+import { FieldOverlay } from '../field-overlay';
 
 let nextInputId = 0;
 
@@ -89,31 +90,18 @@ export class InputComponent {
   readonly fieldEntry = output<number>();
   readonly emitterOutputID = input<number>(-2);
 
-  private mouseOver = false;
-  private focused = false;
-  private showing = false;
-
-  private updateOverlay(): void {
-    const wants = this.mouseOver || this.focused;
-    // Re-asserted every time it is wanted, not only on the change from not
-    // wanted. The canvas clears its overlays whenever the selected object
-    // announces itself -- which a committed edit makes it do, for the same
-    // object -- and this block is not rebuilt by that, so it went on believing
-    // the dimension was drawn. Nothing then re-asked for it: pointing at the
-    // same field again was a no-change, and the field's dimension stayed gone
-    // until the reader selected something else and came back.
-    if (!wants && !this.showing) return;
-    this.showing = wants;
-    this.fieldEntry.emit(wants ? this.emitterOutputID() : -2);
-  }
+  /** The rule this block wrote first, now shared: see `FieldOverlay`. */
+  private readonly overlay = new FieldOverlay<number>(
+    (value) => this.fieldEntry.emit(value),
+    () => this.emitterOutputID(),
+    () => -2
+  );
 
   protected setMouseOver(over: boolean): void {
-    this.mouseOver = over;
-    this.updateOverlay();
+    this.overlay.hover(over);
   }
 
   protected setFocused(focused: boolean): void {
-    this.focused = focused;
-    this.updateOverlay();
+    this.overlay.focus(focused);
   }
 }
