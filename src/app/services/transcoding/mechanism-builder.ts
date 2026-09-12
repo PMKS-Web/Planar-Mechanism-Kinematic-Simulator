@@ -130,6 +130,9 @@ export class MechanismBuilder {
     //for (let joint of revoluteJoints) joint.links.push(link);
 
     link.name = linkData.name;
+    link.structural = this.transcoder
+      .getStructuralDocument()
+      .links.find((entry) => entry.id === linkData.id)?.properties;
 
     return link;
   }

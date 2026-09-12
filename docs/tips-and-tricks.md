@@ -1,5 +1,21 @@
 # Tips and tricks
 
+**Structural analysis uses explicit SI snapshots.** `model/structural/pmks-configuration.ts`
+requires both the project length unit and `coordinateSpace`: real app samples are
+`model` (divide coordinates by `MODEL_SCALE`), while numerical verification fixtures
+are `project`. Forgetting the factor makes holding torque 200 times too large.
+`ForceSolver.jointReactionsByLink` is keyed by **joint id first, body id second**,
+despite the field name; the structural API uses explicit joint/body records instead.
+Structural metadata is included in `solveFingerprint`, because a material-only edit
+otherwise leaves cached samples carrying stale properties. See [structural-analysis.md](structural-analysis.md).
+
+**Windows line endings affect verification.** A CRLF checkout makes the generated
+fixture Markdown differ from its LF generator and breaks the template-payload parser's
+line matching. Normalize an isolated checkout to the LF content already stored in Git
+before treating these as solver regressions. PowerShell 5 can also report a failed
+wrapper status when a successful native tool writes warnings to redirected stderr;
+inspect the tool's completion and use its `$LASTEXITCODE` when recording an exit code.
+
 Things that cost somebody an hour to find out. Read it before your first change, and **add to it
 whenever something surprises you** — a surprise you do not write down is one the next person pays
 for again.

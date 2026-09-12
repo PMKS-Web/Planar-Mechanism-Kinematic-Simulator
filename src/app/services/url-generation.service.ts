@@ -25,6 +25,8 @@ import { MODEL_SCALE } from '../model/render-scale';
 import { DEFAULT_FORCE_COLOR } from '../model/joint-colors';
 import { SynthesisBuilderService } from './synthesis/synthesis-builder.service';
 import { encodeSynthesisDesign } from './synthesis/synthesis-url';
+import { StructuralAnalysisService } from './structural-analysis.service';
+import { structuralDocumentOf } from './transcoding/structural-codec';
 
 /*
  * This service is responsible for generating the URL from the current mechanism.
@@ -43,6 +45,7 @@ export class UrlGenerationService {
   private mechanism = inject(MechanismService);
   private settings = inject(SettingsService);
   private synthesis = inject(SynthesisBuilderService);
+  private structural = inject(StructuralAnalysisService);
 
   _addJointToEncoder(encoder: StringTranscoder, joint: Joint) {
     if (joint instanceof RevJoint) {
@@ -240,6 +243,9 @@ export class UrlGenerationService {
       // stack of these strings, so a design left out of them could not be
       // undone, and a link shared mid-design would open on an empty panel.
       encoder.setSynthesisMarks(encodeSynthesisDesign(this.synthesis));
+      encoder.setStructuralDocument(
+        structuralDocumentOf(this.mechanism.links, this.structural.loadCases)
+      );
 
       // Encode global settings
       encoder.addEnumSetting(

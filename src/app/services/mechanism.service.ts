@@ -678,10 +678,10 @@ export class MechanismService {
     const links = partition.links.map((link) => {
       const body = link instanceof RealLink ? link : undefined;
       const pins = link.joints.map((joint) => joint.id).join('');
-      const subset = body?.subset.map((part) => part.id).join('+') ?? '';
+      const subset = JSON.stringify(body?.subset.map((part) => [part.id, part.structural]));
       const shape = `${body?.isCircle ? 'o' : ''}d${body?.d.length ?? ''}`;
       const center = `${body?.CoM.x ?? ''},${body?.CoM.y ?? ''}`;
-      const inertia = `m${link.mass}I${body?.massMoI ?? ''}`;
+      const inertia = JSON.stringify([link.mass, body?.massMoI, link.structural]);
       const kind = body ? 'L' : link instanceof SliderBlock ? 'S' : 'K';
       return `${link.id}[${pins}]${kind}${inertia}c${center}${shape}s${subset}`;
     });

@@ -1,4 +1,5 @@
 import { Joint, PrisJoint, RealJoint } from './joint';
+import type { StructuralProperties } from './structural/structural-properties';
 import { uniformBodyOf } from './uniform-body';
 import { Coord } from './coord';
 import { Force } from './force';
@@ -44,6 +45,8 @@ export interface Bound {
 }
 
 export class Link {
+  /** Optional SI material/section metadata; existing mass fields remain authoritative. */
+  public structural?: StructuralProperties;
   private _id: string;
   private _name: string = ''; //The name of the link
   private _mass: number;
@@ -460,6 +463,10 @@ export class RealLink extends Link {
     // having to remember it.
     if (visualSource !== undefined) {
       this.isCircle = visualSource.isCircle;
+      this.structural =
+        visualSource.structural === undefined
+          ? undefined
+          : structuredClone(visualSource.structural);
     }
     if (
       visualSource?.isVisualGeometryCurrent &&

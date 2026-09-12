@@ -1,5 +1,6 @@
 import { ACTIVE_TYPE, ActiveObjData, ForceData, JointData, LinkData } from './transcoder-data';
 import { EnumSetting, DecimalSetting, IntSetting, BoolSetting } from './stored-settings';
+import { StructuralDocument } from './structural-codec';
 
 /*
  * This file contains the interface for the encoder and decoder,
@@ -10,6 +11,16 @@ import { EnumSetting, DecimalSetting, IntSetting, BoolSetting } from './stored-s
  */
 
 export abstract class GenericTranscoder {
+  protected structuralDocument: StructuralDocument = { links: [], loadCases: [] };
+
+  setStructuralDocument(document: StructuralDocument): void {
+    this.structuralDocument = structuredClone(document);
+  }
+
+  getStructuralDocument(): StructuralDocument {
+    return structuredClone(this.structuralDocument);
+  }
+
   protected joints: JointData[] = [];
   protected links: LinkData[] = [];
   protected forces: ForceData[] = [];

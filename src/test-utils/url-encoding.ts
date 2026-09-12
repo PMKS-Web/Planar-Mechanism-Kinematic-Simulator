@@ -4,6 +4,7 @@ import { SettingsService } from '../app/services/settings.service';
 import { UrlGenerationService } from '../app/services/url-generation.service';
 import { SynthesisBuilderService } from '../app/services/synthesis/synthesis-builder.service';
 import { NumberUnitParserService } from '../app/services/number-unit-parser.service';
+import { StructuralAnalysisService } from '../app/services/structural-analysis.service';
 
 /**
  * A UrlGenerationService wired to the given mechanism and settings.
@@ -19,7 +20,8 @@ import { NumberUnitParserService } from '../app/services/number-unit-parser.serv
 export function urlGeneratorFor(
   mechanism: MechanismService,
   settings: SettingsService,
-  design?: SynthesisBuilderService
+  design?: SynthesisBuilderService,
+  structural: StructuralAnalysisService = new StructuralAnalysisService()
 ): UrlGenerationService {
   const injector = Injector.create({
     providers: [
@@ -30,6 +32,7 @@ export function urlGeneratorFor(
         ? { provide: SynthesisBuilderService, useValue: design }
         : { provide: SynthesisBuilderService, deps: [] },
       { provide: UrlGenerationService, deps: [] },
+      { provide: StructuralAnalysisService, useValue: structural },
     ],
   });
   return injector.get(UrlGenerationService);

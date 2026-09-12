@@ -1,4 +1,5 @@
 import { MechanismFixture, BuiltMechanism, buildMechanism } from './fixture';
+import { STRUCTURAL_GALLERY } from './structural-fixtures';
 import {
   fourBarDrivenAtFixture,
   sliderCrankTracerFixture,
@@ -338,6 +339,7 @@ export interface PublishedSpeed {
 const LIBRARY_RPM = 10;
 
 export const FIXTURE_GALLERY: GalleryEntry[] = [
+  ...STRUCTURAL_GALLERY,
   {
     name: 'Punch press',
     purpose:

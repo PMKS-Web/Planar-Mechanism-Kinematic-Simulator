@@ -11,6 +11,7 @@ import { SelectedTabService, TabID } from '../selected-tab.service';
 import { SynthesisBuilderService } from './synthesis/synthesis-builder.service';
 import { applySynthesisDesign } from './synthesis/synthesis-url';
 import { SynthesisSolutionService } from './synthesis/synthesis-solution.service';
+import { StructuralAnalysisService } from './structural-analysis.service';
 
 /** The one query that names a screen instead of describing a mechanism. */
 const LIBRARY_QUERY = 'library';
@@ -275,6 +276,9 @@ export class UrlProcessorService {
         // before the rebuild below, so the panel and the canvas come up
         // describing the same state.
         applySynthesisDesign(decoder.getSynthesisMarks(), this.synthesis);
+        this.injector
+          .get(StructuralAnalysisService)
+          .replaceLoadCases(decoder.getStructuralDocument().loadCases);
         // Ownership names joints this URL is supposed to carry. Anything it
         // names that is not here was removed by hand at some point, and a
         // claim on an object that does not exist is not a claim worth keeping.
