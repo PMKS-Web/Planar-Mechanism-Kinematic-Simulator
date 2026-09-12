@@ -1,3 +1,4 @@
+import { InertiaOverlayComponent } from '../inertia-explanation/inertia-overlay.component';
 import { SvgGridService } from '../../services/svg-grid.service';
 import { heldBars, heldBarsReaching, heldBySentence, holdList } from '../../model/link-holds';
 import {
@@ -192,6 +193,7 @@ const SELECTION_RING_PX = 3;
   styleUrls: ['./new-grid.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
+    InertiaOverlayComponent,
     CdkContextMenuTrigger,
     ContextMenuComponent,
     LongPressDirective,

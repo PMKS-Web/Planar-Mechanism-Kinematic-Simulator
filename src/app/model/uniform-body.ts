@@ -41,7 +41,22 @@ export interface UniformBody {
         centroidX: number;
         centroidY: number;
         vertices: { x: number; y: number }[];
+        edges: PolygonEdge[];
+        sums: { area2: number; firstX: number; firstY: number; polar: number };
       };
+}
+
+/** Unrounded terms actually accumulated by the polygon integrator. Coordinates
+ * are translated to the first hull vertex, with axes parallel to the grid. */
+export interface PolygonEdge {
+  from: number;
+  to: number;
+  cross: number;
+  firstX: number;
+  firstY: number;
+  qx: number;
+  qy: number;
+  polar: number;
 }
 
 export function uniformBodyOf(joints: { x: number; y: number }[]): UniformBody {
@@ -104,14 +119,21 @@ function platedPolygon(points: { x: number; y: number }[]): UniformBody | undefi
   let cx = 0;
   let cy = 0;
   let inertia = 0; // polar second moment about the origin, times 6/area2 pending
+  const edges: PolygonEdge[] = [];
   for (let i = 0; i < hull.length; i++) {
     const p = hull[i];
     const q = hull[(i + 1) % hull.length];
     const cross = p.x * q.y - q.x * p.y;
     area2 += cross;
-    cx += (p.x + q.x) * cross;
-    cy += (p.y + q.y) * cross;
-    inertia += cross * (p.x * p.x + p.x * q.x + q.x * q.x + p.y * p.y + p.y * q.y + q.y * q.y);
+    const firstX = (p.x + q.x) * cross;
+    const firstY = (p.y + q.y) * cross;
+    const qx = p.x * p.x + p.x * q.x + q.x * q.x;
+    const qy = p.y * p.y + p.y * q.y + q.y * q.y;
+    const polar = cross * (qx + qy);
+    cx += firstX;
+    cy += firstY;
+    inertia += polar;
+    edges.push({ from: i, to: (i + 1) % hull.length, cross, firstX, firstY, qx, qy, polar });
   }
   const area = area2 / 2;
   const span = hull.reduce(
@@ -138,6 +160,8 @@ function platedPolygon(points: { x: number; y: number }[]): UniformBody | undefi
       centroidX,
       centroidY,
       vertices: hull,
+      edges,
+      sums: { area2, firstX: cx, firstY: cy, polar: inertia },
     },
   };
 }

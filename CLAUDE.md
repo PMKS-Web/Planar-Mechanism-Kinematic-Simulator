@@ -201,7 +201,10 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
   inertia at a joint or the grid origin without changing solver inputs, and explains the
   acceleration moment required at a moving point. The CoM fields always show grid coordinates;
   the separate CoM Reference controls what a custom center follows during edits.
-  `e2e/inertia-explanation.mjs` guards the live working and CoM readout.
+  Polygon edges carry the actual integration terms into individually foldable working.
+  A read-only G/P overlay follows the pose and highlights applied-force moment arms.
+  [The calculation audit](docs/inertia-calculation.md) records exact formulas and the applied-load
+  subtotal limitation. `e2e/inertia-explanation.mjs` guards the working, readout, and overlay.
 - **The analysis modes are editable.** They allow the same context-menu actions as Edit at the start pose. Away from it,
   topology changes stay disabled in both modes. Paused menus allow locks, dimension holds,
   display shape, force properties, and traces. Tracer points and force application points map

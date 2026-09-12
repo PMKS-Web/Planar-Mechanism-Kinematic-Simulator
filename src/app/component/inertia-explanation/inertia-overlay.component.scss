@@ -1,0 +1,25 @@
+.axis-preview {
+  stroke: var(--brand);
+  fill: none;
+  .center {
+    fill: var(--surface-subtle);
+  }
+  .reference {
+    stroke: var(--text-strong);
+  }
+  .force-arm {
+    stroke-dasharray: 6 4;
+  }
+  .force-highlight {
+    opacity: 0.5;
+  }
+  text {
+    fill: var(--text-strong);
+    stroke: var(--surface-subtle);
+    stroke-width: 3px;
+    paint-order: stroke;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+    text-anchor: middle;
+  }
+}

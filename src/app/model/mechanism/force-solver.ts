@@ -1,3 +1,4 @@
+import { forceMoment } from '../force-moment';
 import { Joint, PrisJoint, RealJoint } from '../joint';
 import { Link, SliderBlock, RealLink } from '../link';
 import { slideAssemblies } from '../slide-assembly';
@@ -543,11 +544,10 @@ export class ForceSolver {
         for (const force of body.forces) {
           const fx = force.mag * Math.cos(force.angleRad) * units.forceToN;
           const fy = force.mag * Math.sin(force.angleRad) * units.forceToN;
-          const rx = (force.startCoord.x - body.CoM.x) * units.distanceToM;
-          const ry = (force.startCoord.y - body.CoM.y) * units.distanceToM;
+          const term = forceMoment(force.startCoord, body.CoM, fx, fy, units.distanceToM);
           b[rows.start] -= fx;
           b[rows.start + 1] -= fy;
-          b[rows.start + 2] -= rx * fy - ry * fx;
+          b[rows.start + 2] -= term.moment;
         }
       }
     }

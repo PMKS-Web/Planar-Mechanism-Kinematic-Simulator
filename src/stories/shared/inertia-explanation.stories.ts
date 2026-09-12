@@ -1,3 +1,5 @@
+import { Force } from '../../app/model/force';
+import { Coord } from '../../app/model/coord';
 import { RevJoint } from '../../app/model/joint';
 import { RealLink, SliderBlock } from '../../app/model/link';
 import { type Meta, type StoryObj } from '@storybook/angular-vite';
@@ -13,7 +15,9 @@ function body(points: number[][], mass = 12): RealLink {
     ([x, y], i) => new RevJoint('ABCD'[i], x * MODEL_SCALE, y * MODEL_SCALE)
   );
   const link = new RealLink(joints.map((j) => j.id).join(''), joints, mass);
-  link.massMoI = uniformMassProperties(link, 0.001 / MODEL_SCALE ** 2).moi;
+  const properties = uniformMassProperties(link, 0.001 / MODEL_SCALE ** 2);
+  link.massMoI = properties.moi;
+  link.CoM = properties.com;
   return link;
 }
 const rod = () =>
@@ -47,7 +51,9 @@ compound.subset = [
     [4, 3],
   ]),
 ];
-compound.massMoI = uniformMassProperties(compound, 0.001 / MODEL_SCALE ** 2).moi;
+const compoundProperties = uniformMassProperties(compound, 0.001 / MODEL_SCALE ** 2);
+compound.massMoI = compoundProperties.moi;
+compound.CoM = compoundProperties.com;
 // Keep cyclic geometry out of Storybook args: Docs serializes controls to JSON.
 const show = (link: RealLink | SliderBlock) => (args: Record<string, unknown>) => ({
   props: { ...args, body: link },
@@ -121,3 +127,63 @@ export const SI: Story = { render: show(si), args: { lengthUnit: LengthUnit.METE
 const english = rod();
 english.massMoI = 25;
 export const English: Story = { render: show(english), args: { lengthUnit: LengthUnit.INCH } };
+
+const shiftedPlate = body([
+  [2, 3],
+  [8, 3],
+  [8, 5],
+  [2, 5],
+]);
+export const TranslatedPlate: Story = { render: show(shiftedPlate) };
+export const AsymmetricTriangle: Story = {
+  render: show(
+    body([
+      [2, 3],
+      [6, 3],
+      [3, 6],
+    ])
+  ),
+};
+const angle = 0.731;
+export const RotatedPlate: Story = {
+  render: show(
+    body(
+      [
+        [2, 3],
+        [8, 3],
+        [8, 5],
+        [2, 5],
+      ].map(([x, y]) => [
+        x * Math.cos(angle) - y * Math.sin(angle),
+        x * Math.sin(angle) + y * Math.cos(angle),
+      ])
+    )
+  ),
+};
+const loaded = body([
+  [2, 3],
+  [8, 3],
+  [8, 5],
+  [2, 5],
+]);
+loaded.forces = [
+  new Force(
+    'F1',
+    loaded,
+    new Coord(4 * MODEL_SCALE, 3 * MODEL_SCALE),
+    new Coord(4 * MODEL_SCALE, 4 * MODEL_SCALE),
+    false,
+    true,
+    2
+  ),
+  new Force(
+    'F2',
+    loaded,
+    new Coord(7 * MODEL_SCALE, 3 * MODEL_SCALE),
+    new Coord(7 * MODEL_SCALE, 2 * MODEL_SCALE),
+    false,
+    true,
+    3
+  ),
+];
+export const AppliedLoads: Story = { render: show(loaded) };

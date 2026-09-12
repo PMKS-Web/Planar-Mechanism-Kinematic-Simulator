@@ -1,4 +1,4 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, ViewEncapsulation, computed, inject, input } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
 import katex from 'katex';
 
@@ -6,6 +6,7 @@ import katex from 'katex';
  * technology. Only bounded KaTeX output crosses the HTML trust boundary. */
 @Component({
   selector: 'app-equation',
+  encapsulation: ViewEncapsulation.None,
   template: '<div class="equation" [innerHTML]="rendered()"></div>',
   styleUrl: './equation.component.scss',
 })

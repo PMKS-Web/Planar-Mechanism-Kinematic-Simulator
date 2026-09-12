@@ -1,0 +1,37 @@
+<collapsible-subsection
+  [nested]="true"
+  titleLabel="Moment Contributions"
+  (closed)="preview.highlight()"
+>
+  <p>
+    This is the applied-load subtotal, including gravity when enabled. Joint reactions, drive
+    effort, and constraint couples are not included here; use Force Analysis for the complete solved
+    balance. A free couple C has the same moment about every point.
+  </p>
+  <collapsible-subsection [nested]="true" titleLabel="Moment-Arm Formula">
+    @for (equation of formula; track $index) {
+      <app-equation [math]="equation" />
+    }
+  </collapsible-subsection>
+  @let view = working;
+  @for (row of view.rows; track $index) {
+    <collapsible-subsection
+      [nested]="true"
+      [titleLabel]="row.step.title"
+      (opened)="preview.highlight(row.force)"
+      (closed)="preview.highlight()"
+    >
+      <p>{{ row.step.text }}</p>
+      @for (equation of row.step.equations; track $index) {
+        <app-equation [math]="equation" />
+      }
+    </collapsible-subsection>
+  } @empty {
+    <p>No applied forces; gravity is off. The applied-load subtotal is zero.</p>
+  }
+  <collapsible-subsection [nested]="true" titleLabel="Sum Applied-Load Moments">
+    @for (equation of view.sums; track $index) {
+      <app-equation [math]="equation" />
+    }
+  </collapsible-subsection>
+</collapsible-subsection>

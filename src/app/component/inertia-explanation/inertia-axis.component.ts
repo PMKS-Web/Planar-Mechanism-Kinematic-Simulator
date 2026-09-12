@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  input,
+  signal,
+  DoCheck,
+  OnDestroy,
+} from '@angular/core';
 import { RevJoint } from '../../model/joint';
 import { RealLink } from '../../model/link';
 import { inertiaAboutPoint } from '../../model/inertia-about-point';
@@ -6,16 +14,38 @@ import { LengthUnit } from '../../model/unit-enums';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { CollapsibleSubsectionComponent } from '../BLOCKS/collapsible-subsection/collapsible-subsection.component';
 import { EquationComponent } from '../equation/equation.component';
+import { InertiaPreviewService } from '../../services/inertia-preview.service';
+import { InertiaForcesComponent } from './inertia-forces.component';
+import { PrisJoint } from '../../model/joint';
+import { MODEL_SCALE } from '../../model/render-scale';
 import { inertiaFormat } from './inertia-format';
 
 @Component({
   selector: 'app-inertia-axis',
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [CollapsibleSubsectionComponent, EquationComponent],
+  imports: [CollapsibleSubsectionComponent, EquationComponent, InertiaForcesComponent],
   templateUrl: './inertia-axis.component.html',
   styleUrl: './inertia-explanation.component.scss',
 })
-export class InertiaAxisComponent {
+export class InertiaAxisComponent implements DoCheck, OnDestroy {
+  private readonly preview = inject(InertiaPreviewService);
+  private previewBody?: RealLink;
+  private previewKey?: string;
+  ngDoCheck() {
+    const view = this.working;
+    if (view && (this.previewBody !== this.body() || this.previewKey !== view.key)) {
+      this.previewBody = this.body();
+      this.previewKey = view.key;
+      this.preview.show(this, this.body(), view.key);
+    }
+  }
+  protected activate() {
+    const view = this.working;
+    if (view) this.preview.show(this, this.body(), view.key);
+  }
+  ngOnDestroy() {
+    this.preview.clear(this);
+  }
   readonly body = input.required<RealLink>();
   readonly lengthUnit = input.required<LengthUnit>();
   protected readonly selected = signal<string | undefined>(undefined);
@@ -39,28 +69,42 @@ export class InertiaAxisComponent {
     const point = atGrid ? { x: 0, y: 0 } : joint;
     if (!point) return undefined;
     const result = inertiaAboutPoint(body, point, f.factor);
+    const dx = point.x - body.CoM.x;
+    const dy = point.y - body.CoM.y;
+    const distanceSq = dx * dx + dy * dy;
+    const pair = (name: string, at: { x: number; y: number }) =>
+      String.raw`${name}=(${f.tex(at.x / MODEL_SCALE)},${f.tex(at.y / MODEL_SCALE)})\,\mathrm{${f.unit}}`;
+    const coordinates = [
+      pair('G', body.CoM),
+      pair('P', point),
+      String.raw`\Delta x=${f.length(dx)}`,
+      String.raw`\Delta y=${f.length(dy)}`,
+      `d=${f.length(Math.sqrt(distanceSq))}`,
+    ];
     const equations = [
-      `x_P = ${f.length(point.x)}`,
-      `y_P = ${f.length(point.y)}`,
-      `x_G = ${f.length(body.CoM.x)}`,
-      `y_G = ${f.length(body.CoM.y)}`,
+      String.raw`\Delta x=x_P-x_G`,
+      String.raw`\Delta y=y_P-y_G`,
+      String.raw`d=\sqrt{(\Delta x)^2+(\Delta y)^2}`,
+      String.raw`d^2=(x_P-x_G)^2+(y_P-y_G)^2`,
+      String.raw`\begin{aligned}d^2&=(${f.length(dx)})^2\\&+(${f.length(dy)})^2\end{aligned}`,
+      `d^2=${f.square(distanceSq)}`,
+      `m=${f.mass(body.mass)}`,
+      `I_G=${f.inertia(body.massMoI)}`,
     ];
     if (result.available)
       equations.push(
-        String.raw`r_x = x_G - x_P`,
-        `r_x = ${f.length(result.dx)}`,
-        String.raw`r_y = y_G - y_P`,
-        `r_y = ${f.length(result.dy)}`,
-        String.raw`d^2 = r_x^2 + r_y^2`,
-        `d^2 = ${f.square(result.distanceSq)}`,
-        `I_G = ${f.inertia(body.massMoI)}`,
-        `m = ${f.mass(body.mass)}`,
-        `md^2 = ${f.inertia(result.shift)}`,
-        `I_P = ${f.inertiaNumber(body.massMoI)} + ${f.inertiaNumber(result.shift)}`,
-        `I_P = ${f.inertia(result.inertia)}`
+        String.raw`md^2=(${f.mass(body.mass)})(${f.square(distanceSq)})`,
+        `md^2=${f.inertia(result.shift)}`,
+        String.raw`\begin{aligned}I_P&=${f.inertia(body.massMoI)}\\&+${f.inertia(result.shift)}\end{aligned}`,
+        `I_P=${f.inertia(result.inertia)}`
       );
     return {
       key: atGrid ? 'grid' : joint.id,
+      point,
+      coordinates,
+      label: atGrid
+        ? 'Grid origin'
+        : `Joint ${joint.name || joint.id} (${joint instanceof PrisJoint ? 'prismatic' : joint instanceof RevJoint ? 'revolute' : 'joint'}${joint instanceof RevJoint && joint.ground ? ', grounded' : ''})`,
       result: result.available ? f.inertiaText(result.inertia) : undefined,
       reason: result.available ? undefined : result.reason,
       fixedPin: !atGrid && joint instanceof RevJoint && joint.ground,

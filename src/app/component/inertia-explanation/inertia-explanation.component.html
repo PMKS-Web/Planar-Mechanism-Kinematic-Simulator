@@ -32,14 +32,25 @@
           <p class="note">{{ note }}</p>
         }
       </collapsible-subsection>
+      <collapsible-subsection [nested]="true" titleLabel="Coordinates and Signs">
+        <p>
+          Grid x points right; grid y points up. Positive angular motion and moments are
+          counterclockwise, along the out-of-plane positive z axis.
+        </p>
+        <p>
+          Polygon local coordinates subtract the first hull vertex from the current grid
+          coordinates. These axes stay parallel to the grid; they are not rotating body axes. Barred
+          coordinates locate the centroid relative to that local origin.
+        </p>
+        <p>
+          Rigid translation or planar rotation preserves centroidal inertia. Moving the reference
+          axis changes the parallel-axis term. Reshaping the linkage or changing its mass can change
+          the centroidal inertia.
+        </p>
+      </collapsible-subsection>
       <h4>{{ view.title }}</h4>
       @for (step of view.steps; track $index) {
-        <collapsible-subsection [nested]="true" [titleLabel]="step.title">
-          <p>{{ step.text }}</p>
-          @for (equation of step.equations; track $index) {
-            <app-equation [math]="equation" />
-          }
-        </collapsible-subsection>
+        <app-inertia-step [step]="step" />
       }
       @if (view.derived) {
         <p class="result">
@@ -56,8 +67,15 @@
         <app-equation math="\sum M_G = 0" />
       </collapsible-subsection>
       @if (realBody; as link) {
-        <collapsible-subsection [nested]="true" titleLabel="About Another Point">
-          <app-inertia-axis [body]="link" [lengthUnit]="lengthUnit()" />
+        <collapsible-subsection
+          [nested]="true"
+          titleLabel="About Another Point"
+          (opened)="axisOpen.set(true)"
+          (closed)="axisOpen.set(false)"
+        >
+          @if (axisOpen()) {
+            <app-inertia-axis [body]="link" [lengthUnit]="lengthUnit()" />
+          }
         </collapsible-subsection>
       }
       <p class="note precision">Values use six significant digits.</p>

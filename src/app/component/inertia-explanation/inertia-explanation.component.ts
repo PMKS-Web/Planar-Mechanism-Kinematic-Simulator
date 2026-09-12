@@ -7,6 +7,7 @@ import { CollapsibleSubsectionComponent } from '../BLOCKS/collapsible-subsection
 import { EquationComponent } from '../equation/equation.component';
 import { InertiaAxisComponent } from './inertia-axis.component';
 import { inertiaFormat, InertiaStep } from './inertia-format';
+import { InertiaStepComponent } from './inertia-step.component';
 import { inertiaSteps } from './inertia-steps';
 
 /** Read mutable links afresh: a mass edit, undo or new selection must update the
@@ -14,7 +15,12 @@ import { inertiaSteps } from './inertia-steps';
 @Component({
   selector: 'app-inertia-explanation',
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [CollapsibleSubsectionComponent, EquationComponent, InertiaAxisComponent],
+  imports: [
+    CollapsibleSubsectionComponent,
+    EquationComponent,
+    InertiaAxisComponent,
+    InertiaStepComponent,
+  ],
   templateUrl: './inertia-explanation.component.html',
   styleUrl: './inertia-explanation.component.scss',
 })
@@ -22,6 +28,7 @@ export class InertiaExplanationComponent {
   readonly body = input.required<Link>();
   readonly lengthUnit = input<LengthUnit>(LengthUnit.CM);
   readonly expanded = input(false);
+  protected readonly axisOpen = signal(false);
   protected readonly open = signal<boolean | undefined>(undefined);
   private readonly nup = inject(NumberUnitParserService);
   protected get realBody(): RealLink | undefined {

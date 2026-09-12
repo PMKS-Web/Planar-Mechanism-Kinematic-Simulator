@@ -160,6 +160,12 @@ correct. The inertia e2e check now verifies the MathML duplicate is visually hid
 checking that fractions render and long equations fit the panel. MathML remains available to
 assistive technology.
 
+**An overlay must not be reclaimed on every change-detection pass.** The inertia working can be
+open in both Edit and the Force Analysis drawer. Each axis component publishes only when its
+body/reference changes or it receives an interaction; otherwise two owners alternately set the
+same signal forever. Destroying an inactive owner must not clear the active owner's preview.
+The component spec keeps this two-panel case.
+
 ## Running the app
 
 **Reload recovery must belong to the tab.** `last-drawing.ts` writes a session backup and a

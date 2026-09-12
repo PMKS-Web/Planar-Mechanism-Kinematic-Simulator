@@ -138,17 +138,88 @@ try {
   await explanation.getByRole('button', { name: 'About Another Point', exact: true }).click();
   const axis = explanation.locator('app-inertia-axis');
   assert.match(await axis.innerText(), /Inertia about P:/);
-  const axisValue = await axis.locator('.result').innerText();
+  const overlay = page.locator('[app-inertia-overlay] .axis-distance');
+  await overlay.waitFor();
+  const endpoint = await overlay.getAttribute('x2');
+  const axisValue = await axis
+    .locator('.result')
+    .filter({ hasText: 'Inertia about P:' })
+    .innerText();
   await axis.getByRole('combobox', { name: 'Axis Through' }).selectOption('grid');
-  assert.notEqual(await axis.locator('.result').innerText(), axisValue);
+  assert.notEqual(await overlay.getAttribute('x2'), endpoint);
+  await page.screenshot({ path: `${out}/axis-grid-overlay.png` });
+  assert.notEqual(
+    await axis.locator('.result').filter({ hasText: 'Inertia about P:' }).innerText(),
+    axisValue
+  );
+  await axis.getByRole('combobox', { name: 'Axis Through' }).scrollIntoViewIfNeeded();
+  const beforeMotion = await overlay.getAttribute('x1');
+  const movingFilm = filmstrip(page, `${out}/axis-motion`, {
+    x: 0,
+    y: 0,
+    width: 1440,
+    height: 1000,
+  });
+  await movingFilm.during(40, 12, 'seek', async () => {
+    for (let frame = 1; frame <= 6; frame++) {
+      await page.evaluate((fraction) => {
+        const grid = ng.getComponent(document.querySelector('app-new-grid'));
+        grid.mechanismSrv.seekMechanism(0, grid.mechanismSrv.mechanisms[0].cyclePeriod * fraction);
+        ng.applyChanges(grid);
+      }, frame / 24);
+      await page.waitForTimeout(40);
+    }
+  });
+  assert.notEqual(
+    await overlay.getAttribute('x1'),
+    beforeMotion,
+    'The CoM overlay follows the moving body'
+  );
+  const expectedG = await page.evaluate(
+    () => ng.getComponent(document.querySelector('app-edit-panel')).activeSrv.selectedLink.CoM.x
+  );
+  assert.ok(Math.abs(Number(await overlay.getAttribute('x1')) - expectedG) < 1e-8);
+  await page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    grid.mechanismSrv.seekMechanism(0, 0);
+    ng.applyChanges(grid);
+  });
   await axis.getByRole('button', { name: 'Force Moments About P', exact: true }).click();
   assert.match(await axis.innerText(), /general moment equation/);
   await axis.getByRole('combobox', { name: 'Axis Through' }).selectOption({ index: 0 });
   assert.match(await axis.innerText(), /grounded revolute joint/);
   await axis.getByRole('button', { name: 'Parallel-Axis Working', exact: true }).click();
   await axis.screenshot({ path: `${out}/parallel-axis.png` });
+  await axis.getByRole('button', { name: 'Parallel-Axis Working', exact: true }).click();
+  await axis.getByRole('button', { name: 'Force Moments About P', exact: true }).click();
+  await page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const link = grid.activeObjService.selectedLink;
+    const at = link.joints[1];
+    const force = grid.mechanismSrv.createForce(at, { x: at.x + 100, y: at.y }, link);
+    force.setMagnitude(2);
+    grid.mechanismSrv.updateMechanism(true);
+    ng.applyChanges(grid);
+  });
+  await axis.getByRole('button', { name: 'Moment Contributions', exact: true }).click();
+  await axis.getByRole('button', { name: /Load 1:/ }).click();
+  await page.locator('[app-inertia-overlay] .force-arm').waitFor();
+  await page.waitForTimeout(250);
+  await page.screenshot({ path: `${out}/force-arm-overlay.png` });
+  assert.match(await axis.innerText(), /applied-load subtotal/);
+  await axis.getByRole('button', { name: /Load 1:/ }).click();
+  await axis.getByRole('button', { name: 'Moment Contributions', exact: true }).click();
+
+  assert.deepEqual(await axis.locator('.katex-error').allTextContents(), []);
+  const axisOverflow = await axis
+    .locator('.equation')
+    .evaluateAll((nodes) =>
+      nodes.filter((el) => el.scrollWidth > el.clientWidth + 1).map((el) => el.textContent)
+    );
+  assert.deepEqual(axisOverflow, [], 'Axis and force equations fit the panel');
   await explanation.getByRole('button', { name: 'About Another Point', exact: true }).click();
   assert.equal(await explanation.getByRole('combobox', { name: 'Axis Through' }).count(), 0);
+  assert.equal(await overlay.count(), 0, 'Closing the explanation clears the overlay');
   const mass = page.locator('app-edit-panel input-block[_formControl="mass"] input');
   await mass.fill('24');
   await mass.press('Tab');
@@ -200,11 +271,26 @@ try {
   await massTable.locator('.panel-content.settled').first().waitFor({ state: 'visible' });
   assert.match(await massTable.innerText(), /Uniform slender rod/);
   await page.screenshot({ path: `${out}/force-setup.png` });
+  await explanation.getByRole('button', { name: 'About Another Point', exact: true }).click();
+  await massTable.getByRole('button', { name: 'About Another Point', exact: true }).click();
+  await page.waitForTimeout(300);
+  assert.equal(
+    await page.locator('[app-inertia-overlay] .axis-distance').count(),
+    1,
+    'Two panels share one active overlay'
+  );
+  await explanation.getByRole('button', { name: 'About Another Point', exact: true }).click();
+  await massTable.getByRole('button', { name: 'About Another Point', exact: true }).click();
+
   if (process.env.SB_URL) {
     const gallery = await browser.newPage({ viewport: { width: 500, height: 2100 } });
     gallery.on('pageerror', (error) => errors.push(String(error)));
     for (const [story, expected] of [
       ['rod', '25 g·cm²'],
+      ['translated-plate', '40 g\u00b7cm\u00b2'],
+      ['asymmetric-triangle', 'Uniform plate'],
+      ['rotated-plate', '40 g\u00b7cm\u00b2'],
+      ['applied-loads', 'Uniform plate'],
       ['plate', '40 g·cm²'],
       ['compound', 'Welded compound'],
       ['custom', '75 g·cm²'],
@@ -220,8 +306,17 @@ try {
       await working.waitFor({ state: 'visible' });
       await gallery.evaluate(() => document.fonts.ready);
       assert.ok((await working.innerText()).includes(expected), `${story} must show ${expected}`);
-      if (['rod', 'plate', 'compound'].includes(story)) {
-        const steps = working.locator(':scope > collapsible-subsection');
+      if (
+        [
+          'rod',
+          'plate',
+          'compound',
+          'translated-plate',
+          'asymmetric-triangle',
+          'rotated-plate',
+        ].includes(story)
+      ) {
+        const steps = working.locator(':scope > app-inertia-step');
         for (let i = 0; i < (await steps.count()); i++) {
           const button = steps.nth(i).getByRole('button').first();
           if (!/^\d/.test(await button.innerText())) continue;
@@ -234,10 +329,68 @@ try {
               nodes.filter((el) => el.scrollWidth > el.clientWidth + 1).map((el) => el.textContent)
             );
           assert.deepEqual(overflows, [], `${story} equations must fit the panel`);
-          assert.equal(await working.locator('.katex-error').count(), 0);
+          assert.deepEqual(
+            await working.locator('.katex-error').allTextContents(),
+            [],
+            `${story} math parses`
+          );
           await steps.nth(i).screenshot({ path: `${out}/gallery-${story}-step-${i}.png` });
+          if (story === 'translated-plate' || story === 'rotated-plate') {
+            const children = steps
+              .nth(i)
+              .locator(
+                ':scope > collapsible-subsection > .collapsibleSubsection > .panel-content > app-inertia-step'
+              );
+            for (let j = 0; j < (await children.count()); j++) {
+              const child = children.nth(j);
+              const control = child.getByRole('button').first();
+              await control.click();
+              await gallery.waitForTimeout(180);
+              const edges = child.locator(
+                ':scope > collapsible-subsection > .collapsibleSubsection > .panel-content > app-inertia-step'
+              );
+              if (await edges.count()) {
+                await edges.nth(1).getByRole('button').first().click();
+                await gallery.waitForTimeout(180);
+              }
+              await child.screenshot({ path: `${out}/gallery-${story}-${i}-detail-${j}.png` });
+              if (await edges.count()) await edges.nth(1).getByRole('button').first().click();
+              await control.click();
+            }
+          }
+
           await button.click();
         }
+      }
+      if (story === 'applied-loads') {
+        await working.getByRole('button', { name: 'About Another Point', exact: true }).click();
+        await working.getByRole('button', { name: 'Moment Contributions', exact: true }).click();
+        await working.getByRole('button', { name: 'Load 1: F1', exact: true }).click();
+        const forceOverflow = await working
+          .locator('app-inertia-forces .equation')
+          .evaluateAll((nodes) =>
+            nodes.filter((el) => el.scrollWidth > el.clientWidth + 1).map((el) => el.textContent)
+          );
+        assert.deepEqual(forceOverflow, [], 'Force contributions fit the gallery panel');
+        await gallery.waitForTimeout(250);
+        await working
+          .locator('app-inertia-forces')
+          .screenshot({ path: `${out}/gallery-force-contribution.png` });
+        await working.getByRole('button', { name: 'Load 1: F1', exact: true }).click();
+        await working
+          .getByRole('button', { name: 'Sum Applied-Load Moments', exact: true })
+          .click();
+        assert.ok(
+          (await working.locator('annotation').allTextContents()).some((s) =>
+            s.includes('M_{loads}=-0.11353')
+          ),
+          'Known signed loads plus gravity must sum correctly'
+        );
+        assert.deepEqual(await working.locator('.katex-error').allTextContents(), []);
+        await gallery.waitForTimeout(250);
+        await working
+          .locator('app-inertia-forces')
+          .screenshot({ path: `${out}/gallery-force-sum.png` });
       }
       await gallery
         .locator('app-inertia-explanation')

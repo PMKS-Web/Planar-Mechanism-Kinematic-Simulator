@@ -1,3 +1,4 @@
+import { plateSteps } from './polygon-working';
 import { RealLink } from '../../model/link';
 import { MassProperties } from '../../model/mass-properties';
 import { MODEL_SCALE } from '../../model/render-scale';
@@ -44,7 +45,7 @@ export function inertiaSteps(
         },
       ],
     };
-  if (calculation?.kind === 'plate') return plateSteps(calculation, properties, link.mass, f);
+  if (calculation?.kind === 'plate') return plateSteps(calculation, properties, link, f);
   if (properties.parts.length) return compoundSteps(properties, f);
   return {
     title: 'Point mass',
@@ -56,69 +57,6 @@ export function inertiaSteps(
       },
     ],
   };
-}
-
-function plateSteps(
-  c: Extract<NonNullable<MassProperties['shape']>['calculation'], { kind: 'plate' }>,
-  properties: MassProperties,
-  mass: number,
-  f: InertiaFormat
-) {
-  const steps: InertiaStep[] = [
-    {
-      title: '1. Form the Outer Polygon',
-      text: 'Use a uniform plate over the convex hull. Interior joints add no material. Vertices run counterclockwise relative to the first vertex O.',
-      equations: [
-        `O_x = ${f.length(c.origin.x)}`,
-        `O_y = ${f.length(c.origin.y)}`,
-        ...c.vertices.flatMap((v, i) => [
-          `x_{${i + 1}} = ${f.length(v.x)}`,
-          `y_{${i + 1}} = ${f.length(v.y)}`,
-        ]),
-      ],
-    },
-    {
-      title: '2. Find Area and Centroid',
-      text: 'Sum over every edge, including the closing edge. The barred coordinates are relative to O; G is the centroid on the grid.',
-      equations: [
-        String.raw`c_i = x_i y_j - x_j y_i`,
-        String.raw`A = \frac{\sum_i c_i}{2}`,
-        `A = ${f.square(c.area)}`,
-        String.raw`\bar{x} = \frac{\sum_i (x_i + x_j)c_i}{6A}`,
-        `\\bar{x} = ${f.length(c.centroidX)}`,
-        String.raw`\bar{y} = \frac{\sum_i (y_i + y_j)c_i}{6A}`,
-        `\\bar{y} = ${f.length(c.centroidY)}`,
-        `x_G = O_x + \\bar{x}`,
-        `x_G = ${f.length(properties.com.x)}`,
-        `y_G = O_y + \\bar{y}`,
-        `y_G = ${f.length(properties.com.y)}`,
-      ],
-    },
-    {
-      title: '3. Integrate About O',
-      text: 'Group the squared-coordinate terms for each edge. Dividing the polar area moment by area gives squared radius of gyration about O.',
-      equations: [
-        String.raw`Q_{x,i} = x_i^2 + x_i x_j + x_j^2`,
-        String.raw`Q_{y,i} = y_i^2 + y_i y_j + y_j^2`,
-        String.raw`k_O^2 = \frac{\sum_i c_i (Q_{x,i}+Q_{y,i})}{12A}`,
-        String.raw`\frac{I_O}{m} = k_O^2`,
-        `k_O^2 = ${f.square(c.polarOverMass)}`,
-      ],
-    },
-    {
-      title: '4. Move to the Centroid',
-      text: 'Subtract the parallel-axis term to move the perpendicular axis from O to G.',
-      equations: [
-        String.raw`d^2 = \bar{x}^2 + \bar{y}^2`,
-        `d^2 = ${f.square(c.centroidX ** 2 + c.centroidY ** 2)}`,
-        String.raw`I_G = I_O - md^2`,
-        String.raw`I_G = m(k_O^2 - d^2)`,
-        `I_G = ${f.tex(mass)}\\left(${f.tex(c.polarOverMass / MODEL_SCALE ** 2)} - ${f.tex((c.centroidX ** 2 + c.centroidY ** 2) / MODEL_SCALE ** 2)}\\right)`,
-        `I_G = ${f.inertia(properties.moi)}`,
-      ],
-    },
-  ];
-  return { title: 'Uniform plate', steps };
 }
 
 function compoundSteps(properties: MassProperties, f: InertiaFormat) {

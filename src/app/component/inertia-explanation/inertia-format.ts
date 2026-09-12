@@ -26,6 +26,8 @@ export function inertiaFormat(length: LengthUnit, nup: NumberUnitParserService) 
     mass: (value: number) => quantity(value, massUnit),
     length: (value: number) => quantity(value / MODEL_SCALE, unit),
     square: (value: number) => quantity(value / MODEL_SCALE ** 2, unit) + '^{2}',
+    power: (value: number, exponent: number) =>
+      quantity(value / MODEL_SCALE ** exponent, unit) + `^{${exponent}}`,
     inertia: (value: number) =>
       `${tex(inertiaValue(value))}\\,\\mathrm{${massUnit}}\\cdot\\mathrm{${unit}}^{2}`,
     inertiaText: (value: number) => `${number(inertiaValue(value))} ${nup.unitLabel(display)}`,
@@ -37,4 +39,5 @@ export interface InertiaStep {
   title: string;
   text: string;
   equations: string[];
+  children?: InertiaStep[];
 }

@@ -5,8 +5,55 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { MODEL_SCALE } from '../../model/render-scale';
 import { LengthUnit } from '../../model/unit-enums';
 import { InertiaExplanationComponent } from './inertia-explanation.component';
+import katex from 'katex';
+import { NumberUnitParserService } from '../../services/number-unit-parser.service';
+import { inertiaFormat, InertiaStep } from './inertia-format';
+import { inertiaSteps } from './inertia-steps';
+import { uniformMassProperties } from '../../model/mass-properties';
+import { InertiaAxisComponent } from './inertia-axis.component';
+import { InertiaPreviewService } from '../../services/inertia-preview.service';
 
 describe('inertia explanation in project units', () => {
+  it('does not let two open panels continuously reclaim the same overlay', () => {
+    const preview = TestBed.inject(InertiaPreviewService);
+    const show = vi.spyOn(preview, 'show');
+    const first = TestBed.createComponent(InertiaAxisComponent);
+    const second = TestBed.createComponent(InertiaAxisComponent);
+    for (const fixture of [first, second]) {
+      fixture.componentRef.setInput('body', makeRod());
+      fixture.componentRef.setInput('lengthUnit', LengthUnit.CM);
+      fixture.detectChanges();
+    }
+    first.detectChanges();
+    second.detectChanges();
+    expect(show).toHaveBeenCalledTimes(2);
+    first.destroy();
+    expect(preview.selection()?.owner).toBe(second.componentInstance);
+    second.destroy();
+    expect(preview.selection()).toBeUndefined();
+  });
+  it('renders every edge equation and distinguishes local zero from a nonzero grid vertex', () => {
+    const link = new RealLink(
+      'ABC',
+      [new RevJoint('A', 400, 600), new RevJoint('B', 1200, 600), new RevJoint('C', 600, 1200)],
+      12
+    );
+    const f = inertiaFormat(LengthUnit.CM, new NumberUnitParserService());
+    const working = inertiaSteps(link, uniformMassProperties(link, f.factor), f);
+    const equations: string[] = [];
+    const visit = (steps: InertiaStep[]) =>
+      steps.forEach((step) => {
+        equations.push(...step.equations);
+        visit(step.children ?? []);
+      });
+    visit(working.steps);
+    expect(equations).toContain(String.raw`x_{1}^{local} = 0\,\mathrm{cm}`);
+    expect(equations).toContain(String.raw`x_{1}^{grid} = 2\,\mathrm{cm}`);
+    for (const equation of equations) {
+      expect(equation).not.toMatch(/[\x00-\x1f]/);
+      expect(() => katex.renderToString(equation, { throwOnError: true })).not.toThrow();
+    }
+  });
   const makeRod = () =>
     new RealLink(
       'AB',

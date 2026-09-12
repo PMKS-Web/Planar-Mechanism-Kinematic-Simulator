@@ -166,6 +166,10 @@ const linkBox = await page.locator('#linkHolder path[id]').first().boundingBox()
 await page.mouse.move(linkBox.x + linkBox.width / 2, linkBox.y + linkBox.height / 2);
 await page.mouse.click(linkBox.x + linkBox.width / 2, linkBox.y + linkBox.height / 2);
 await page.waitForTimeout(500);
+// Read the control as a user would: a closed inert disclosure has no visible text.
+const visualSettings = page.getByRole('button', { name: 'Visual Settings', exact: true });
+if ((await visualSettings.getAttribute('aria-expanded')) !== 'true') await visualSettings.click();
+await page.locator('app-edit-panel .shapeToggle').waitFor({ state: 'visible' });
 const shape = await page
   .locator('app-edit-panel .shapeToggle')
   .innerText()

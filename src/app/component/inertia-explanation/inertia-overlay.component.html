@@ -1,0 +1,64 @@
+@if (view; as v) {
+  <svg:g modelFrame class="axis-preview" aria-label="Inertia reference geometry">
+    <svg:line
+      class="axis-distance"
+      [attr.x1]="v.g.x"
+      [attr.y1]="v.g.y"
+      [attr.x2]="v.p.x"
+      [attr.y2]="v.p.y"
+      [attr.stroke-width]="grid.scaleWithZoom(2)"
+    />
+    <svg:circle
+      class="center"
+      [attr.cx]="v.g.x"
+      [attr.cy]="v.g.y"
+      [attr.r]="grid.scaleWithZoom(7)"
+      [attr.stroke-width]="grid.scaleWithZoom(2)"
+    />
+    <svg:rect
+      class="reference"
+      [attr.x]="v.p.x - grid.scaleWithZoom(8)"
+      [attr.y]="v.p.y - grid.scaleWithZoom(8)"
+      [attr.width]="grid.scaleWithZoom(16)"
+      [attr.height]="grid.scaleWithZoom(16)"
+      [attr.stroke-width]="grid.scaleWithZoom(2)"
+    />
+    <svg:g [upright]="v.g">
+      <svg:text [attr.y]="-grid.scaleWithZoom(12)" [attr.font-size]="grid.scaleWithZoom(14)">
+        G
+      </svg:text>
+    </svg:g>
+    <svg:g [upright]="v.p">
+      <svg:text [attr.y]="grid.scaleWithZoom(25)" [attr.font-size]="grid.scaleWithZoom(14)">
+        P
+      </svg:text>
+    </svg:g>
+    <svg:g [upright]="v.mid">
+      <svg:text [attr.y]="-grid.scaleWithZoom(10)" [attr.font-size]="grid.scaleWithZoom(13)">
+        d = {{ v.distance }}
+      </svg:text>
+    </svg:g>
+    @if (v.force; as force) {
+      <svg:line
+        class="force-arm"
+        [attr.x1]="v.p.x"
+        [attr.y1]="v.p.y"
+        [attr.x2]="force.startCoord.x"
+        [attr.y2]="force.startCoord.y"
+        [attr.stroke-width]="grid.scaleWithZoom(2)"
+      />
+      <svg:path
+        class="force-highlight"
+        [attr.d]="force.forceLine"
+        [attr.stroke-width]="grid.scaleWithZoom(5)"
+      />
+      <svg:circle
+        class="reference"
+        [attr.cx]="force.startCoord.x"
+        [attr.cy]="force.startCoord.y"
+        [attr.r]="grid.scaleWithZoom(8)"
+        [attr.stroke-width]="grid.scaleWithZoom(2)"
+      />
+    }
+  </svg:g>
+}

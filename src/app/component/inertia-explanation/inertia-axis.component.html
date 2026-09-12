@@ -1,5 +1,5 @@
 @if (working; as view) {
-  <div class="working">
+  <div class="working" (focusin)="activate()" (pointerdown)="activate()">
     <label class="axis-choice"
       >Axis Through
       <select aria-label="Axis Through" (change)="selected.set($any($event.target).value)">
@@ -12,9 +12,19 @@
       </select>
     </label>
     <p>
-      P is the selected point. Both axes are perpendicular to the drawing. This comparison leaves
-      the solver’s center-of-mass inertia unchanged.
+      The axes through G and P are parallel and perpendicular to the drawing. G must be the center
+      of mass for these properties. This comparison leaves the solver’s CoM inertia unchanged.
     </p>
+    <p class="result" aria-live="polite">
+      P: <strong>{{ view.label }}</strong>
+    </p>
+    <p>
+      All coordinates below are grid coordinates. The circle marks G; the square marks P. The line
+      shows their separation d.
+    </p>
+    @for (equation of view.coordinates; track $index) {
+      <app-equation [math]="equation" />
+    }
     <app-equation [math]="parallel" />
     @if (view.result) {
       <p class="result">
@@ -35,9 +45,20 @@
     </collapsible-subsection>
     <collapsible-subsection [nested]="true" titleLabel="Force Moments About P">
       <p>
-        The general moment equation includes the moment of the translational inertia. Here r points
-        from P to G, and a is acceleration in the grid frame.
+        PMKS solves force balance in grid x and y and moment balance about G, including reactions,
+        applied forces, gravity, and supported drive or constraint couples. Dynamic analysis uses
+        the CoM acceleration and angular acceleration; static analysis sets them to zero.
       </p>
+      <app-equation math="\sum F_x=ma_{G,x}" />
+      <app-equation math="\sum F_y=ma_{G,y}" />
+      <app-equation math="\sum M_G=I_G\alpha" />
+      <p>
+        The general moment equation about P includes translational inertia. Here r points from P to
+        G, opposite to the displayed displacement Δ. This is an instantaneous Newton–Euler balance,
+        not a claim that angular momentum about any moving point has derivative Iₚα.
+      </p>
+      <app-equation math="r_x=-\Delta x" />
+      <app-equation math="r_y=-\Delta y" />
       @for (equation of general; track $index) {
         <app-equation [math]="equation" />
       }
@@ -69,5 +90,6 @@
         >Rigid-body dynamics derivation (MIT)</a
       >
     </collapsible-subsection>
+    <app-inertia-forces [body]="body()" [point]="view.point" [lengthUnit]="lengthUnit()" />
   </div>
 }
