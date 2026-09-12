@@ -2,6 +2,9 @@
 
 > **Status:** Reference — fixed-axis external circular gears implemented in the actual PMKS application, September 12, 2026. Local acceptance build; not published. Verification and release scope are recorded below.
 
+This records the initial shared-checkout handoff. The current branch and acceptance review are
+in [gears-stabilization.md](gears-stabilization.md).
+
 ## Try it
 
 Open **http://localhost:4330** and choose **Project menu → Mechanism Library → Start Here**.
@@ -316,22 +319,22 @@ This is a local implementation handoff, not a published release or completed mer
 Final checks on September 12, 2026, using the supported portable Node 24.15 runtime:
 
 - **Full unit suite: PASS — 248 files, 2,595 tests.**
-  [Full test log](../artifacts/gears/final-unit-tests.log).
+  Full test log (`../artifacts/gears/final-unit-tests.log`).
 - **Focused gear/lifecycle/documentation checks: PASS — 10 files, 107 tests.**
-  [Focused log](../artifacts/gears/final-gear-tests.log).
+  Focused log (`../artifacts/gears/final-gear-tests.log`).
 - **`npm run check`: PASS.** ESLint has zero errors and the existing 15 allowed warnings;
-  stylelint and Prettier pass. [Check log](../artifacts/gears/final-check.log).
+  stylelint and Prettier pass. Check log (`../artifacts/gears/final-check.log`).
 - **Production build: PASS.** Existing stylesheet budget and CommonJS warnings remain.
-  [Build log](../artifacts/gears/final-production-build.log).
+  Build log (`../artifacts/gears/final-production-build.log`).
 - **Storybook build: PASS; all 15 gear states: PASS.**
-  [Build log](../artifacts/gears/storybook-build.log),
-  [gallery record](../artifacts/gears/gallery/report.json).
+  Build log (`../artifacts/gears/storybook-build.log`),
+  gallery record (`../artifacts/gears/gallery/report.json`).
 - **Native production workflows: PASS.**
-  [Browser record](../artifacts/gears/production/browser-check.json),
-  [motion filmstrip](../artifacts/gears/production/filmstrip/).
+  Browser record (`../artifacts/gears/production/browser-check.json`),
+  motion filmstrip (`../artifacts/gears/production/filmstrip/`).
 - **Save/share/file/history, results and printable report: PASS.**
-  [Results record](../artifacts/gears/results/report.json),
-  [captured printable report](../artifacts/gears/results/gear-report.html).
+  Results record (`../artifacts/gears/results/report.json`),
+  captured printable report (`../artifacts/gears/results/gear-report.html`).
 - **`git diff --check`: PASS.** No whitespace errors; Git emits its usual Windows line-ending notices.
 
 Artifacts are local and gitignored. The development server is left running at
