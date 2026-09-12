@@ -72,7 +72,7 @@ import { angleReference, describeActuator, resolveActuator } from '../model/actu
 import { NotificationService } from './notification.service';
 import { SettingsService } from './settings.service';
 import { slotHalfLength } from '../model/joint-marks';
-import { uniformBodyOf } from '../model/uniform-body';
+import { uniformMassProperties } from '../model/mass-properties';
 import { siUnitFactors } from '../model/unit-conversions';
 import { DragStateService } from './drag-state.service';
 import { Coord } from '../model/coord';
@@ -3970,7 +3970,7 @@ export class MechanismService {
         }
       }
       if (link.moiIsCustom && link.comIsCustom) continue;
-      const derived = this.uniformBodyFor(link, factor);
+      const derived = uniformMassProperties(link, factor);
       if (!link.comIsCustom) {
         link.CoM = new Coord(derived.com.x, derived.com.y);
         link.updateCoMDs();
@@ -4000,55 +4000,6 @@ export class MechanismService {
       default:
         return 'cm';
     }
-  }
-
-  /**
-   * The uniform body a link derives its auto properties from.
-   *
-   * A plain link is a rod or a hull plate over its own joints. A compound is
-   * the *sum of its parts* — each member as its own body, combined by the
-   * parallel-axis theorem — never a plate over the whole hull: a V-shaped
-   * weld is two bars, and a plate spanning the crook would weigh material
-   * that is not there. Members somebody typed at contribute the numbers they
-   * were given.
-   */
-  private uniformBodyFor(link: RealLink, factor: number): { com: Coord; moi: number } {
-    if (link.subset.length === 0) {
-      const body = uniformBodyOf(link.joints);
-      return {
-        com: new Coord(body.centroid.x, body.centroid.y),
-        moi: link.mass * body.gyrationSq * factor,
-      };
-    }
-    const parts = link.subset
-      .filter((member): member is RealLink => member instanceof RealLink)
-      .map((member) => {
-        const own = this.uniformBodyFor(member, factor);
-        return {
-          mass: member.mass,
-          com: member.comIsCustom ? new Coord(member.CoM.x, member.CoM.y) : own.com,
-          moi: member.moiIsCustom ? member.massMoI : own.moi,
-        };
-      });
-    const totalMass = parts.reduce((sum, part) => sum + part.mass, 0);
-    const com =
-      totalMass > 0
-        ? new Coord(
-            parts.reduce((sum, part) => sum + part.mass * part.com.x, 0) / totalMass,
-            parts.reduce((sum, part) => sum + part.mass * part.com.y, 0) / totalMass
-          )
-        : new Coord(
-            parts.reduce((sum, part) => sum + part.com.x, 0) / Math.max(1, parts.length),
-            parts.reduce((sum, part) => sum + part.com.y, 0) / Math.max(1, parts.length)
-          );
-    const moi = parts.reduce(
-      (sum, part) =>
-        sum +
-        part.moi +
-        part.mass * ((part.com.x - com.x) ** 2 + (part.com.y - com.y) ** 2) * factor,
-      0
-    );
-    return { com, moi };
   }
 
   /**
