@@ -11,6 +11,7 @@ export type StructuralStatus =
   | 'invalid-geometry'
   | 'invalid-load'
   | 'invalid-properties'
+  | 'invalid-dynamic-state'
   | 'numerical-failure';
 
 export interface SolverDiagnostics {
@@ -56,12 +57,36 @@ export type StaticForceAnalysisResult =
       readonly linkEquilibrium: readonly LinkEquilibriumResult[];
       readonly driverReactions: readonly DriverReactionResult[];
     }
-  | { readonly status: Exclude<StructuralStatus, 'ok'>; readonly diagnostics: SolverDiagnostics };
+  | StructuralFailure;
+
+export interface StructuralFailure {
+  readonly status: Exclude<StructuralStatus, 'ok'>;
+  readonly diagnostics: SolverDiagnostics;
+}
+
+/** All moments use momentReferenceM, including the translated inertial target. */
+export interface DynamicBodyEquilibriumResult extends LinkEquilibriumResult {
+  readonly knownAppliedForceN: Vector2;
+  readonly knownAppliedMomentNm: number;
+  readonly inertialForceN: Vector2;
+  readonly inertialMomentNm: number;
+}
+
+export type DynamicForceAnalysisResult = { readonly mode: 'dynamic' } & (
+  | {
+      readonly status: 'ok';
+      readonly diagnostics: SolverDiagnostics;
+      readonly jointReactions: readonly JointReactionResult[];
+      readonly driverReactions: readonly DriverReactionResult[];
+      readonly bodyEquilibrium: readonly DynamicBodyEquilibriumResult[];
+    }
+  | StructuralFailure
+);
 
 export function structuralFailure(
   status: Exclude<StructuralStatus, 'ok'>,
   message: string,
   diagnostics: SolverDiagnostics = { equationCount: 0, unknownCount: 0 }
-): StaticForceAnalysisResult {
+): StructuralFailure {
   return { status, diagnostics: { ...diagnostics, message } };
 }

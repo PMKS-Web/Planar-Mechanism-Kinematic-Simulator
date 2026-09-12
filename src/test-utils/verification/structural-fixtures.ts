@@ -31,6 +31,15 @@ export function structuralCrankFixture(): MechanismFixture {
   };
 }
 
+/** Constant-speed crank with a deliberately eccentric authoritative CoM. */
+export function structuralDynamicCrankFixture(): MechanismFixture {
+  const fixture = structuralCrankFixture();
+  fixture.links[0] = { joints: 'AB', mass: 2, moi: 0.75, com: [1, 0.5] };
+  fixture.inputAngVel = 2;
+  fixture.gravity = true;
+  return fixture;
+}
+
 /** All four pins collinear: the unrestrained transverse motion makes the pose singular. */
 export function structuralToggleFixture(): MechanismFixture {
   return {
@@ -51,6 +60,14 @@ export function structuralToggleFixture(): MechanismFixture {
 
 /** Keep the structural verification family and its published descriptions together. */
 export const STRUCTURAL_GALLERY: GalleryEntry[] = [
+  {
+    name: 'Structural dynamic eccentric crank',
+    purpose:
+      'At 2 rad/s, eccentric CoM acceleration is (-4, -2) m/s²; root mass and inertia stay authoritative',
+    spec: 'structural/pmks-dynamic-state.spec.ts',
+    floatingSlot: false,
+    fixture: structuralDynamicCrankFixture(),
+  },
   {
     name: 'Structural supported beam',
     purpose: 'A quarter-span 100 N load gives 75 N and 25 N support reactions',

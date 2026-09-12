@@ -1,5 +1,24 @@
 # Tips and tricks
 
+**Dynamic snapshots must not borrow the UI's kinematic maps.** Use
+`Mechanism.snapshotAccelerations(index)` or the structural
+`snapshotPmksDynamicState` adapter. They evaluate the existing analytical equations
+in fresh contexts using that mechanism's captured drive state. Missing rates are
+refused; they are not silently filled by position differences. PMKS linear
+accelerations use the input geometry's coordinate units per second squared;
+angular acceleration is already rad/s², although angular position is in degrees.
+The legacy force path does not remove `MODEL_SCALE` from acceleration.
+
+**An imported superclass can pass targeted tests and fail the full Angular bundle.**
+Angular's test build lazily initializes split modules. Vite's SSR transform
+hoists a binding for an imported `class X extends ImportedClass`, even when the
+class declaration lives inside a function; it can capture an undefined constructor
+before the lazy initializer runs. In `kinematic-snapshot.ts`, resolve the live
+import into a local variable **inside the function**, then extend that local.
+`ng test --dump-virtual-files` exposes the generated chunks; `--filter` keeps the
+full entry-point graph while narrowing which tests run. Do not treat a targeted
+pass as proof that the full graph has the same module initialization order.
+
 **Structural analysis uses explicit SI snapshots.** `model/structural/pmks-configuration.ts`
 requires both the project length unit and `coordinateSpace`: real app samples are
 `model` (divide coordinates by `MODEL_SCALE`), while numerical verification fixtures

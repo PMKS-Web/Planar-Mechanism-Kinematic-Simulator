@@ -8,6 +8,7 @@ import { InstantCenter } from '../instant-center';
 import { Loop, LoopSolver } from './loop-solver';
 import { Coord } from '../coord';
 import { KinematicsSolver } from './kinematic-solver';
+import { snapshotKinematicAccelerations } from './kinematic-snapshot';
 import { ForceAnalysisMode, ForceAnalysisSeries, ForceSolver } from './force-solver';
 import { roundNumber } from '../utils';
 import { LBF_IN_PER_NEWTON_METER, LBF_PER_NEWTON } from '../unit-conversions';
@@ -1319,6 +1320,18 @@ export class Mechanism {
   prepareSolvers(): void {
     PositionSolver.restoreDriveState(this._driveState);
     KinematicsSolver.requiredLoops = this._requiredLoops;
+  }
+
+  /** Explicit sample rates, independent of the shared solvers and displayed sample. */
+  snapshotAccelerations(sampleIndex: number) {
+    if (!this._driveState) throw new Error('This mechanism has no solved drive state.');
+    return snapshotKinematicAccelerations(
+      this.joints[sampleIndex],
+      this.links[sampleIndex],
+      this.inputAngularVelocities[sampleIndex],
+      this._requiredLoops,
+      this._driveState
+    );
   }
 
   /**

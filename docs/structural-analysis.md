@@ -1,6 +1,6 @@
-# Structural analysis: S0 and S1
+# Structural analysis: S0, S1, and S2
 
-> **Status:** Built — S0 and S1 implemented on `feature/structural-analysis`, based on `origin/staging` at `acba1b77`. S2–S7 remain future work.
+> **Status:** Built — S0/S1 and S2 inverse dynamics implemented on `feature/structural-analysis`, based on `origin/staging` at `acba1b77`. S0/S1 is commit `79a8ef0c`; S3–S7 remain future work.
 
 ## Repository audit and design
 
@@ -273,7 +273,9 @@ independent of display units. S1 does not automatically distribute root metadata
 to leaves on unweld, or remap load targets after link renaming/merging/deletion.
 Those editing policies belong to the future structural UI.
 
-## S2 and later phases
+## Roadmap recorded after S0/S1
+
+The following preserves the S0/S1 roadmap. The implemented S2 API is documented below.
 
 S1 uses no velocity, acceleration, or inertia torque. For S2, add an explicit
 per-body kinematic state with SI center-of-mass acceleration and angular
@@ -341,3 +343,320 @@ worktree's ignored `artifacts/` directory.
   three published structural verification mechanisms.
 - `package.json` and `package-lock.json`: pinned matrix dependency and its dependencies.
 - `docs/README.md` and `docs/tips-and-tricks.md`: index and durable integration notes.
+
+## S2: inverse dynamics
+
+S2 extends the same rigid-body equilibrium assembly. The legacy force solver,
+URL format, structural metadata, position equations, and existing UI remain
+unchanged. This is a model/service API milestone, not a new analysis screen.
+The published [code style](https://docs.pmksplus.com/?path=/docs/guides-code-style--docs),
+[UI guide](https://docs.pmksplus.com/?path=/docs/guides-ui-style-guide--docs), and
+[vocabulary](https://docs.pmksplus.com/?path=/docs/guides-vocabulary--docs)
+render the repository guides; the implementation follows their model/service
+boundaries and explicit refusal rules.
+
+### Legacy dynamics and acceleration audit
+
+The relevant sources are `model/mechanism/force-solver.ts`,
+`kinematic-solver.ts`, `position-solver.ts`, `mechanism.ts`,
+`services/analysis-sample.service.ts`, and
+`model/mechanism/finite-difference-kinematics.ts`.
+
+| Concern | Existing PMKS behavior | S2 behavior |
+| --- | --- | --- |
+| CoM acceleration | Force series asks KinematicsSolver for each frame's root `linkAccMap`; missing rates fall back to sampled position differences | Consume analytical root accelerations only; unavailable/nonfinite rates are refused |
+| Angular acceleration | `linkAngAccMap` in rad/s²; fallback differentiates unwrapped first-two-pin angles | Consume rad/s² directly, with no degree conversion |
+| Mass and inertia | Root RealLink `mass`, `massMoI`; independent nonnegative checks | The same authoritative root properties, copied into SI configuration |
+| CoM | Actual RealLink CoM; analytic kinematics rigidly transforms a known pin's acceleration to it | The solved root CoM and the existing transformed CoM acceleration |
+| Moment reference | Legacy RealLink equations use CoM directly | Shared S1 assembly uses the first frame pin; translate the inertial moment exactly |
+| Revolute joints | Shared pin unknowns; free multiway pin uses a star connection | Binary internal pins only, one unknown pair and its exact negative |
+| Prismatic joints | Guide-normal reaction, translating block equations, guide couples for welded sliders | Explicitly unsupported |
+| Cylinders and slides | Legacy resolves carrier/rider/root bodies and prismatic driver force | Explicitly unsupported; no partial result from supported bodies |
+| Frame bodies | A rigid body with two distinct grounded pins is excluded | Preserve S1's exclusion; frame pins support moving bodies |
+| Compounds | Root mass/CoM/inertia; no independent leaf equations | Root only, including multi-joint roots; never derive inertia from section/density |
+| Drivers | First recognized input/body; revolute torque or prismatic effort | Explicit grounded revolute driver/body incidence; ambiguous PMKS drivers refused |
+| Singular supports | A series can retry with an approximate evenest/ridge support split | SVD diagnostics, no numerical reactions for deficient or ill-conditioned systems |
+| Geometry units | Legacy force conversion assumes project coordinates | Explicit project/model distinction; remove MODEL_SCALE where appropriate |
+
+The legacy series computes finite-difference fallback data even when analytical
+rates are available, and can mix analytical and approximate values by body.
+Its three-point second difference supports unequal time steps but substitutes
+timestamps for invalid/nonmonotonic input, and uses the nearest interior stencil
+at endpoints. Fewer than three samples cannot supply a second derivative.
+These are useful display fallbacks, not S2 engineering conventions. S2 neither
+repairs timestamps nor substitutes zero for a missing body acceleration.
+
+The existing analytical kinematics uses the loop route for ordinary grounded
+cranks, a constant-speed rigid-root route for loopless cranks/compounds, and
+differentiated position constraints for coupled mechanisms. It computes
+`aG = aP + alpha cross rPG - omega² rPG` using the root's actual CoM.
+Angular **position** is stored in degrees; angular acceleration is **rad/s²**.
+The drive speed is signed rad/s and PMKS's commanded angular acceleration is
+zero. Driven rockers/couplers can nevertheless have nonzero angular acceleration.
+No velocity is required by the new pure inverse-dynamics API.
+
+### State, equations, and results
+
+`analyzeDynamic(configuration, states, loadCase)` is pure. Its inputs are:
+
+- The S1 `StructuralConfiguration`, with mandatory `massProperties` on every
+  moving body: `massKg`, `centerOfMassM`, and `inertiaKgM2` about CoM.
+- Exactly one `BodyDynamicState` per moving root ID, in any order:
+  `centerOfMassAccelerationMPerS2` and `angularAccelerationRadPerS2`.
+- An ordinary SI `LoadCase`, including optional `gravityMPerS2`.
+
+Keeping mass and CoM in the supplied configuration avoids two competing copies.
+The two inputs together are the complete dynamic snapshot. The solver never
+reads PMKS links, displayed samples, materials, or rendered geometry.
+
+For a body with first frame pin O and CoM G:
+
+```text
+sum Fx = m aGx
+sum Fy = m aGy
+sum M_O = I_G alpha + (xG - xO) m aGy - (yG - yO) m aGx
+```
+
+Gravity is the **known applied force** `m g` at G. It is not subtracted from
+or added to the supplied kinematic acceleration. Point loads (global or
+link-relative), applied couples, gravity, and inertia all participate in the
+required driver torque. Positive x/right, y/up, and counterclockwise moments
+are unchanged from S1.
+
+`equilibrium-solver.ts` factors S1's existing topology, load assembly, scaling,
+SVD, reaction extraction, and diagnostics. Dynamics supplies inertial targets;
+static analysis supplies none. The public `analyzeStatic` function and its
+result shape remain unchanged.
+
+`DynamicForceAnalysisResult` is explicitly tagged `mode: 'dynamic'`, including
+failures. Success returns `jointReactions`, `driverReactions`, and
+`bodyEquilibrium`. The neutral `driverReactions[].momentNm` field means the
+required **driver torque**, not a static holding torque. Binary-pin forces are
+reported on both bodies as exact negatives of one shared solved unknown.
+
+Each body record contains its moment reference, known applied force/moment,
+inertial force/moment target, and force/moment residuals. All those moments use
+the stated reference O. Joint/driver records identify the body, so a caller can
+reconstruct the complete free-body balance. To recover spatial internal loads
+later, retain the configuration and LoadCase as well: a resultant alone cannot
+locate multiple point loads.
+
+### Explicit PMKS sample adapter
+
+```typescript
+const sample = {
+  mechanism: selectedPartition,
+  sampleIndex: chosenIndex,
+  lengthUnit: LengthUnit.METER,
+  coordinateSpace: 'model' as const,
+};
+const snapshot = snapshotPmksDynamicState(sample);
+const result = analyzePmksDynamicFrame(sample, selectedLoadCase);
+// Or: structuralAnalysisService.analyzeDynamic(sample, selectedLoadCase)
+```
+
+The caller supplies the **Mechanism object representing the selected partition**;
+there is no implicit `mechanisms[0]`, displayed time, or singleton lookup.
+A successful snapshot also identifies its sample index, time in seconds, and
+`accelerationSource: 'pmks-analytical'`. LoadCase forces stay explicit; the
+call does not silently collect the drawing's forces. Use
+`loadCaseFromPmksForces` with the same sample if those are the intended loads.
+
+`Mechanism.snapshotAccelerations` delegates to `kinematic-snapshot.ts`.
+The helper evaluates the existing equations in fresh subclasses of the
+kinematic and position solvers, initialized from that mechanism's saved drive
+state and loops. A narrow overridable position-rate provider in KinematicsSolver
+allows those contexts to remain isolated. It neither resets nor saves/restores
+the UI's global maps. Loop and constraint routes are tested out of order with
+other mechanisms; frozen source geometry and constraints remain unchanged.
+No cache, serialization, undo entry, geometry edit, or asynchronous shared-state
+window is introduced.
+
+| Quantity crossing the adapter | Conversion |
+| --- | --- |
+| Position and CoM | raw coordinate × meters/project-unit ÷ MODEL_SCALE in model space |
+| Linear acceleration | raw acceleration × the same distance factor; seconds already apply |
+| Angular acceleration | unchanged rad/s² |
+| Mass | PMKS mass × existing unit system's massToKg |
+| Inertia about CoM | PMKS massMoI × existing inertiaToKgM2; no model-scale factor |
+
+The project unit systems are meters/kg/kg·m², centimeters/g/kg·cm², and
+inches/lbm/lbm·in², matching `siUnitFactorsForLength`. In particular, centimeter
+mass and inertia have different factors (0.001 and 0.0001). The six combinations
+of length unit and coordinate space are tested for CoM, acceleration, mass,
+inertia, and reactions. Nonzero angular acceleration is separately verified
+against differentiated four-bar closure equations: at the fixture's initial
+pose, alphaBC = 0.04544290973869205 and alphaCDL = 0.6462922334444641 rad/s².
+Changing sample timestamps does not rescale analytical accelerations.
+
+### Analytical and legacy validation
+
+The pure prescribed-state tests verify equilibrium independently of a position
+solver. Such a supplied state is not a proof of kinematic compatibility with
+the supports; that remains the responsibility of the upstream kinematic solve.
+
+| Case | Expected result |
+| --- | --- |
+| A: axial CoM acceleration, m=2 kg, ax=3 m/s² | Rx=6 N, Ry=0, torque=0 |
+| B: m=2 kg, ay=4 m/s², G=(1,0) m | Without gravity Ry=8 N and torque=8 N·m; with g=(0,-9.80665), Ry=27.6133 N and torque=27.6133 N·m |
+| C: CoM at the grounded pivot, IG=3, alpha=4 | Zero pin force, driver torque=12 N·m |
+| D: m=2, G=(1,0.5), IG=0.75, omega=2, alpha=3 | aG=(-5.5,1), pin force=(-11,2) N, driver torque=9.75 N·m |
+| D with gravity, -100 N tip load at (2,0), +7 N·m applied couple | Pin force=(-11,121.6133) N; driver torque=222.3633 N·m |
+| E: AB/BC two-body assembly | B on AB=(11/3,29/6) N, exact negative on BC; A=(7/3,19/6), C=(-7/3,47/6) N; external force=(0,11) N |
+| F: existing welded bell crank, root mass=7, inertia=1.3 | One CDE body, actual solved CoM, no CD/DE leaf states despite deliberately different leaf properties |
+| G: zero acceleration, same configuration and LoadCase | S1 and S2 reactions, driver moments, and diagnostics agree |
+
+For D, the worked moment balance is:
+`0.75*3 + 1*2 - 0.5*(-11) = 9.75 N·m`.
+The additional load/gravity contribution is
+`200 + 19.6133 - 7 = 212.6133 N·m`.
+For E, the external moment about A is
+`4*(47/6) - 3*(-7/3) = 115/3 N·m`, equal to the sum of the two bodies'
+inertial moments about A. Tests independently sum every pin, known load, driver
+couple, and inertial target and check body residuals.
+
+Legacy comparisons explicitly prepare the existing analytical kinematic solver,
+then use `ForceSolver.analyzeFrame(..., 'dynamic', ...)` with no evenest retry.
+Crank, loaded four-bar, and bell-crank fixtures are compared at samples 0, 30,
+and 90, with gravity both enabled and disabled: 18 complete reaction/driver
+comparisons. Both equilibrium solvers consume the same physical kinematics, so
+this independently checks force assembly and solution, not the kinematic source.
+The hand cases and differentiated loop equations provide the independent
+physics references. Agreement uses 1e-8 × max(1, abs(reference)) tolerance.
+
+| Initial eccentric crank quantity | Legacy | S2 | Difference |
+| --- | --- | --- | --- |
+| Project/SI coordinates, Rx | -8 N | -8 N | <1e-8 N |
+| Project/SI, tip load -100 N, gravity off, Ry | 96 N | 96 N | <9.6e-7 N |
+| Project/SI, tip load and gravity, driver torque | 219.6133 N·m | 219.6133 N·m | <2.20e-6 N·m |
+| Model coordinates, no applied loads, Rx | -1600 N | -8 N | -1592 N (legacy minus S2) |
+
+The last row is intentional. The legacy force path treats model acceleration
+as physical project acceleration; its displayed torque correction does not
+repair that force error. Multiplying both translational acceleration and lever
+arms by MODEL_SCALE can also multiply the translated inertial torque by its
+square, while the separately stored IG alpha term is not scaled that way.
+S2 removes the coordinate scale at the adapter boundary. It does not alter the
+legacy solver or copy its display corrections.
+
+### Diagnostics and limits
+
+S2 retains all S1 topology, rank, residual, and conditioning checks. It adds
+`invalid-dynamic-state` for missing/duplicate/wrong body IDs, missing analytical
+rates, nonfinite accelerations, unavailable drive state, and invalid sample
+selection/time/rate metadata. Missing or negative/nonfinite mass/inertia/CoM
+is `invalid-properties`; assembly overflow is `numerical-failure`.
+Nonfinite geometry and invalid loads retain their separate statuses.
+
+Zero mass and zero inertia are **explicit idealizations**, independently allowed
+as in PMKS: massless links, point masses, and ideal rotational-inertia elements.
+Zero is never a substitute for missing data. Structural density/sections do not
+fill absent properties or override the PMKS mass model.
+
+Unknown/equation counts, rank, equilibrium deficiency, reaction redundancy,
+condition number, characteristic length, and normalized residual remain exposed.
+Rank tolerance is 1e-12 relative to the largest singular value, maximum accepted
+condition number 1e10, and normalized residual limit 1e-9. Tests include
+underconstraint, inconsistent inertia, redundant supports, a singular toggle,
+and a full-rank near-toggle rejected for conditioning. Failures carry no
+numerical force or driver result.
+
+Supported topology is still revolute rigid roots with binary free pins and
+grounded rotational drivers. Sliders, cylinders, friction, flexibility,
+impact impulses, redundant reaction sharing, and floating/ambiguous drivers
+remain unsupported. PMKS sample adaptation assumes the existing constant-speed
+drive convention; prescribed nonzero input angular acceleration is supported
+through the pure state API, not invented by the sample adapter.
+
+### Per-sample cost
+
+A diagnostic benchmark runs 25 warmups, then five batches of 50 evaluations,
+cycling over five solved samples. These are Windows Node 24.21 / Angular Vitest
+measurements, not browser or real-time performance guarantees. Medians in ms:
+
+| Moving bodies | Pure equilibrium | Adapter only | Adapter + equilibrium |
+| --- | --- | --- | --- |
+| 1, eccentric crank | 0.036 | 0.102 | 0.148 |
+| 3, loaded four-bar | 0.117 | 0.118 | 0.264 |
+| 5, welded bell crank | 0.113 | 0.168 | 0.319 |
+
+Independent batches include JIT/GC effects, so columns need not add exactly.
+Setup/position solving is excluded. Re-run `structural-performance.spec.ts`
+with `PMKS_BENCHMARK_STRUCTURAL=1` to write `artifacts/s2-performance.json`.
+There is no timing assertion and no premature matrix cache.
+
+### S3 recommendation
+
+Keep N/V/M recovery as a pure downstream consumer of the configuration, complete
+LoadCase, and successful S1/S2 result. First define section stations, cut-side
+signs, and a mapping from a real body to supported beam segments. Share the
+global point-load resolver with equilibrium, retain jumps at point forces and
+couples, and validate both ends and independent cut balances. Do not infer a
+beam axis for every multi-joint compound.
+
+For **dynamic** cut recovery, m, CoM, and IG alone do not define the distributed
+inertial loading. Require an explicit mass distribution and angular velocity
+for `a(r) = aG + alpha cross r - omega² r`, or state a deliberate lumped-mass
+approximation. That extra velocity input belongs to S3 when it is needed.
+Do not silently apply all inertia at CoM and call the resulting diagram exact.
+Keep S4 stress, FEA, fatigue, and full-cycle envelopes outside S3.
+
+### S2 verification and file inventory
+
+The targeted run covers the new S2 tests, S0/S1 structural and persistence tests,
+and generated fixture gallery: **119/119 passing**. There are 62 tests in the
+three new S2 spec files, plus two gallery checks for the additional fixture.
+The complete suite reports **2,617 passed, 3 failed / 2,620**, in 244 files
+(242 passed, 2 failed).
+
+The baseline was rerun at `79a8ef0c` before S2 edits: **2,553 passed, 3 failed**.
+The same assertions fail after S2:
+
+- MotionGen gripper initial gap: 1.036629237211164, expected greater than 2.3.
+- MotionGen gripper captured pose error: 1.051501, expected less than 0.0001.
+- Raw-color fence: 99 rgba colors, with the actual ceiling **87**. The S0/S1
+  prose above reported 97; the fresh baseline log confirms 87. This is a
+  correction to that report, not a new stylesheet change.
+
+An initial full-bundle failure in the new snapshot helper was fixed, then the
+full suite was rerun. Angular lazy initialization plus Vite's imported-superclass
+transform required resolving the constructors locally at invocation time.
+The equations did not change. The durable explanation is in tips-and-tricks.
+
+Browser regressions on the worktree server:
+`e2e/force-units.mjs` **20/20**, and `e2e/force-analysis-panels.mjs` **15/15**,
+with no reported browser errors/issues. Screenshots of the in-motion joint
+panel, link force graph, and force-unit settings were inspected. CUA exposed
+no browser surface; the tracked suites used disposable Playwright/Chrome
+profiles. No motion or gesture behavior was changed.
+
+Final `npm run check` passes (zero errors, the existing 15 ESLint warnings,
+stylelint, and Prettier). Production and Storybook builds complete successfully;
+existing bundle-size/CommonJS warnings remain. `git diff --check` passes.
+The baseline, final full-suite, targeted, build, check, browser, and benchmark
+logs are in the worktree's ignored `artifacts/s2-*` files. S2 is kept as a
+separate commit after `79a8ef0c`; this work is not pushed.
+
+Added:
+
+- `model/mechanism/kinematic-snapshot.ts`: isolated analytical acceleration context.
+- `model/structural/equilibrium-solver.ts`: shared S1/S2 assembly and strict solve.
+- `model/structural/dynamic-state.ts`, `dynamic-force-solver.ts`,
+  `pmks-dynamic-state.ts`: explicit SI dynamics and selected-sample adapter.
+- `model/structural/dynamic-force-solver.spec.ts`,
+  `pmks-dynamic-state.spec.ts`, `structural-performance.spec.ts`.
+
+Modified:
+
+- `model/mechanism/kinematic-solver.ts`: overridable position-rate provider only;
+  `mechanism.ts`: explicit sample delegation.
+- `model/structural/static-force-solver.ts`: stable public wrapper over the shared core;
+  `results.ts`: dynamic result, per-body balance, and invalid-state status.
+- `services/structural-analysis.service.ts`: explicit dynamic analysis method.
+- `test-utils/verification/structural-fixtures.ts` and generated
+  `docs/fixture-urls.md`: eccentric dynamic crank in the public gallery.
+- This document, `docs/README.md`, and `docs/tips-and-tricks.md`.
+
+All `model/` and `services/` paths above are under `src/app/`;
+`test-utils/` is under `src/`. No dependency, persistence, legacy force-solver,
+component, stylesheet, or hub-service changes are part of S2.

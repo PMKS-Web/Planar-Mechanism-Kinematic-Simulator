@@ -21,6 +21,8 @@ interface SlotFrame {
 }
 
 export class KinematicsSolver {
+  /** A fresh evaluation context may supply its own position-rate state. */
+  protected static positionSolver = PositionSolver;
   static jointIndexMap = new Map<string, number>();
   static jointVelMap = new Map<string, [number, number]>();
   static jointAccMap = new Map<string, [number, number]>();
@@ -202,7 +204,7 @@ export class KinematicsSolver {
     // answer to a different one. Better an empty graph than a wrong curve --
     // and an empty graph is what the caller then has to make, which is why
     // this reports the refusal rather than simply stopping.
-    if (PositionSolver.coupledRoute) {
+    if (this.positionSolver.coupledRoute) {
       return false;
     }
 
@@ -380,7 +382,7 @@ export class KinematicsSolver {
     simLinks: Link[],
     commandRate: number
   ): boolean {
-    const rates = PositionSolver.constraintKinematics(simJoints, simLinks, commandRate);
+    const rates = this.positionSolver.constraintKinematics(simJoints, simLinks, commandRate);
     if (!rates) {
       return false;
     }
