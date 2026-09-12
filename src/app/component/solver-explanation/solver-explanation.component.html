@@ -309,6 +309,10 @@
           </details>
         } @else if (section() === 1) {
           <h3 class="chapterTitle">Free-Body Equations · Without Friction</h3>
+          <p>
+            Isolate one body, read its loads, then write its balance equations. Repeat for each body
+            to build the system.
+          </p>
           <segmented-block
             [options]="arrowOptions"
             [selected]="assumed() ? 0 : 1"
@@ -323,50 +327,49 @@
             Arrow lengths are schematic.
           </p>
           @for (body of data.bodies; track body.id; let i = $index) {
-            <details class="bodyCard" [attr.data-body]="body.id">
+            <details class="bodyCard" [attr.data-body]="body.id" [open]="i === 0">
               <summary>
                 <span class="stepNumber">{{ i + 1 }}</span
                 >{{ body.name }}
                 <small>{{ body.rowCount === 3 ? 'Rigid body' : 'Slider block' }}</small>
               </summary>
-              @if (body.rowCount === 3) {
-                <segmented-block
-                  [dropdown]="true"
-                  [label]="'Moment Reference Point for ' + body.name"
-                  [options]="body.referenceLabels"
-                  [selected]="body.referenceIndex"
-                  (selectedChange)="
-                    preferences.setMomentPoint(solved, body.id, body.referenceOptions[$event].id)
-                  "
-                ></segmented-block>
-                <p class="caption">
-                  The blue ring marks {{ body.reference.label }}. Choose any joint, tracer point,
-                  CoM, or labeled force point on this body.
-                </p>
-              }
-              @for (load of body.loads; track $index) {
-                @if (load.applicationId) {
+              <app-force-balance
+                [diagram]="body.diagram"
+                [name]="body.name"
+                [equations]="body.components"
+                [assumed]="assumed()"
+                [dynamic]="forceMode() === 'dynamic'"
+                [reference]="body.reference.label"
+              />
+              <details class="numericDetails bodyAdjustments">
+                <summary>Adjust Moment Reference & Review Force Points</summary>
+                @if (body.rowCount === 3) {
+                  <segmented-block
+                    [dropdown]="true"
+                    [label]="'Moment Reference Point for ' + body.name"
+                    [options]="body.referenceLabels"
+                    [selected]="body.referenceIndex"
+                    (selectedChange)="
+                      preferences.setMomentPoint(solved, body.id, body.referenceOptions[$event].id)
+                    "
+                  ></segmented-block>
                   <p class="caption">
-                    {{ load.applicationId }}: {{ load.label }} is applied at ({{
-                      n(load.point[0] / scale)
-                    }}, {{ n(load.point[1] / scale) }}) {{ solved.unit }}.
+                    The blue ring marks {{ body.reference.label }}. Choose any joint, tracer point,
+                    CoM, or labeled force point on this body.
                   </p>
                 }
-              }
-              <div class="bodyLayout">
-                <figure>
-                  <app-solver-diagram
-                    [diagram]="body.diagram"
-                    [label]="'Free-body diagram of ' + body.name"
-                  ></app-solver-diagram>
-                  <figcaption>
-                    Isolate {{ body.name }} ·
-                    {{ assumed() ? 'assumed directions' : 'solved directions' }}
-                  </figcaption>
-                  @if (body.diagram.note) {
-                    <p class="caption">{{ body.diagram.note }}</p>
+                @for (load of body.loads; track $index) {
+                  @if (load.applicationId) {
+                    <p class="caption">
+                      {{ load.applicationId }}: {{ load.label }} is applied at ({{
+                        n(load.point[0] / scale)
+                      }}, {{ n(load.point[1] / scale) }}) {{ solved.unit }}.
+                    </p>
                   }
-                </figure>
+                }
+              </details>
+              <details class="numericDetails vectorDerivation">
+                <summary>How the Vectors Become These Equations</summary>
                 <div class="derivation">
                   <h4>Vector Force Balance</h4>
                   <app-solver-math [equation]="body.forceVector"></app-solver-math>
@@ -416,17 +419,8 @@
                       moment row.
                     </p>
                   }
-                  <details class="numericDetails componentBalances">
-                    <summary>Resolve Into Components</summary>
-                    @for (equation of body.components; track $index) {
-                      <div class="equationStep">
-                        <span class="axisLabel">{{ equation.label }}</span
-                        ><app-solver-math [equation]="equation.symbolic"></app-solver-math>
-                      </div>
-                    }
-                  </details>
                 </div>
-              </div>
+              </details>
               <details class="numericDetails">
                 <summary>Substitute This Sample & Check the Balance</summary>
                 <p class="caption">
@@ -461,6 +455,14 @@
               as supports and have no independent equilibrium rows.
             </p>
           }
+          <div class="systemNext">
+            <h4>3 · Assemble All Bodies into One System</h4>
+            <p>
+              Each equation above becomes one matrix row. A shared reaction uses the same unknown on
+              both bodies, with opposite action–reaction signs.
+            </p>
+            <button-block [click]="showForceSystem">Assemble & Solve</button-block>
+          </div>
         } @else {
           <h3 class="chapterTitle">Assemble the System & Solve</h3>
           <p>

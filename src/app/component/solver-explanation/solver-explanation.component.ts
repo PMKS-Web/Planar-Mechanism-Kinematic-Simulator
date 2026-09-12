@@ -1,4 +1,4 @@
-import { Component, inject, input, signal } from '@angular/core';
+import { Component, inject, input, linkedSignal, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -24,6 +24,7 @@ import { WorksheetPreferencesService } from '../../services/worksheet-preference
 import { worksheetLoopOptions } from '../../model/mechanism/worksheet-loop-options';
 import { WorksheetChoicesComponent } from './worksheet-choices.component';
 import { WorksheetLoopEditorComponent } from './worksheet-loop-editor.component';
+import { ForceBalanceComponent } from './force-balance.component';
 
 @Component({
   selector: 'app-solver-explanation',
@@ -40,6 +41,7 @@ import { WorksheetLoopEditorComponent } from './worksheet-loop-editor.component'
     WorksheetChoicesComponent,
     WorksheetLoopEditorComponent,
     WorksheetLoopVisualComponent,
+    ForceBalanceComponent,
   ],
 })
 export class SolverExplanationComponent {
@@ -56,7 +58,9 @@ export class SolverExplanationComponent {
     { optional: true }
   );
   protected readonly wide = !!this.dialogData;
-  protected readonly section = signal(this.dialogData?.section ?? 0);
+  protected readonly section = linkedSignal(
+    () => this.dialogData?.section ?? (this.isForce() ? 1 : 0)
+  );
   protected readonly chosenMachine = signal(this.dialogData?.machine ?? '');
   protected readonly assumed = signal(true);
   protected readonly forceOptions = ['Static', 'In-motion'];
@@ -342,6 +346,7 @@ export class SolverExplanationComponent {
     });
   };
   protected readonly closeWorksheet = () => this.dialog?.close();
+  protected readonly showForceSystem = () => this.section.set(2);
   protected readonly resetConventions = () => this.preferences.reset(this.solved);
   protected seek(value: string | number) {
     const sample = Number(value);

@@ -56,7 +56,7 @@ try {
   assert.equal(await d.locator('.definitionSection[open], .overviewDetails[open]').count(), 0);
   await page.screenshot({ path: `${out}/definitions-collapsed.png` });
   await d.getByRole('button', { name: 'Free Bodies', exact: true }).click();
-  assert.equal(await d.locator('.bodyCard[open]').count(), 0);
+  assert.equal(await d.locator('.bodyCard[open]').count(), 1);
   await d.getByRole('button', { name: 'In-motion', exact: true }).click();
   const moving = await snapshot(d);
   assert.equal(moving.mode, 'dynamic');
@@ -66,8 +66,7 @@ try {
   assert(moving.bodies.some((b) => b.inertia.some((v) => Math.abs(v) > 1e-6)));
   await page.screenshot({ path: `${out}/bodies-collapsed.png` });
   const body = d.locator('.bodyCard').first();
-  await body.locator(':scope > summary').click();
-  assert.equal(await body.locator('.crossProduct[open], .componentBalances[open]').count(), 0);
+  assert.equal(await body.locator('.crossProduct[open], .vectorDerivation[open]').count(), 0);
   const fixed = await geometry(body);
   await d
     .getByRole('combobox', { name: 'Worksheet Gravity' })
@@ -90,6 +89,7 @@ try {
   assert.deepEqual((await snapshot(d)).x, noWeight.x);
   await d.getByRole('combobox', { name: 'Worksheet Gravity' }).selectOption('0');
   assert.deepEqual((await snapshot(d)).x, moving.x);
+  await body.locator('.vectorDerivation > summary').click();
   await body.locator('.inertiaTerms > summary').click();
   await body.scrollIntoViewIfNeeded();
   await page.screenshot({ path: `${out}/in-motion-body.png` });

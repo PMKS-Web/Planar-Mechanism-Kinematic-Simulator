@@ -9,6 +9,7 @@ export interface DiagramPoint {
   reference?: boolean;
 }
 export interface DiagramLine {
+  balanceAxes?: number[];
   from: DiagramPoint;
   to: DiagramPoint;
   label?: string;

@@ -90,7 +90,13 @@ try {
   });
   assert.equal(report.force.trace, report.force.graph);
   for (let i = 0; i < 3; i++) {
-    await dialog.locator('.bodyCard').nth(i).locator(':scope > summary').click();
+    if (
+      !(await dialog
+        .locator('.bodyCard')
+        .nth(i)
+        .evaluate((el) => el.open))
+    )
+      await dialog.locator('.bodyCard').nth(i).locator(':scope > summary').click();
     await dialog
       .locator('.bodyCard')
       .nth(i)

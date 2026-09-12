@@ -78,6 +78,7 @@ export function freeBodyDiagram(
           from: at(i),
           to: at(i + 1),
           arrow: i === 11,
+          balanceAxes: [2],
           width: 1.7,
           color: orange,
           ...(i === 6 ? { label: load.displayLabel } : {}),
@@ -91,6 +92,17 @@ export function freeBodyDiagram(
     if (mag < 1e-10) continue;
     lines.push({
       from,
+      balanceAxes: [
+        ...(Math.abs(direction[0]) > 1e-10 ? [0] : []),
+        ...(Math.abs(direction[1]) > 1e-10 ? [1] : []),
+        ...(body.reference &&
+        Math.abs(
+          ((load.point[0] - body.reference.point[0]) * direction[1]) / mag -
+            ((load.point[1] - body.reference.point[1]) * direction[0]) / mag
+        ) > 1e-10
+          ? [2]
+          : []),
+      ],
       to: { x: from.x + (span * direction[0]) / mag, y: from.y + (span * direction[1]) / mag },
       arrow: true,
       width: 1.7,

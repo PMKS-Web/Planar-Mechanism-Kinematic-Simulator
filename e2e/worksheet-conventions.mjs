@@ -82,7 +82,7 @@ try {
   assert.deepEqual((await snapshot(dialog)).force.x, flipped.force.x);
   await dialog.getByRole('button', { name: 'Free Bodies', exact: true }).click();
   const body = dialog.locator('.bodyCard').first();
-  await body.locator(':scope > summary').click();
+  await body.locator('.bodyAdjustments > summary').click();
   const reference = body.getByRole('combobox', { name: 'Moment Reference Point for ABH' });
   await reference.selectOption({ label: 'H' });
   assert.equal((await snapshot(dialog)).references[0].id, 'H');
@@ -106,18 +106,25 @@ try {
   dialog = await open('Rocker with an offset load', true);
   await dialog.getByRole('button', { name: 'Free Bodies', exact: true }).click();
   const loadedBody = dialog.locator('.bodyCard[data-body="CDL"]');
-  await loadedBody.locator(':scope > summary').click();
-  await loadedBody.getByRole('combobox').selectOption({ label: 'P1 (Applied Force)' });
+  if (!(await loadedBody.evaluate((el) => el.open)))
+    await loadedBody.locator(':scope > summary').click();
+  await loadedBody.locator('.bodyAdjustments > summary').click();
+  await loadedBody
+    .getByRole('combobox', { name: /Moment Reference Point/ })
+    .selectOption({ label: 'P1 (Applied Force)' });
   const applied = await snapshot(dialog);
   assert(applied.references.some((p) => p.id === 'P1'));
   const throughReference = loadedBody.locator('.crossProduct').filter({ hasText: 'Force at P1' });
+  await loadedBody.locator('.vectorDerivation > summary').click();
   if (!(await throughReference.evaluate((details) => details.open)))
     await throughReference.locator('summary').click();
   assert((await throughReference.innerText()).includes('moment arm is zero'));
   await page.setViewportSize({ width: 1440, height: 2400 });
   await loadedBody.screenshot({ path: `${out}/applied-point.png` });
   await page.setViewportSize({ width: 390, height: 844 });
-  await loadedBody.getByRole('combobox').scrollIntoViewIfNeeded();
+  await loadedBody
+    .getByRole('combobox', { name: /Moment Reference Point/ })
+    .scrollIntoViewIfNeeded();
   await page.screenshot({ path: `${out}/force-phone.png` });
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await clean();

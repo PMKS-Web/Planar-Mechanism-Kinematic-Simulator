@@ -127,6 +127,15 @@ Directions per Link** for an isolated sketch, the conversion to a +z vector, and
 signed angular values. These are reference directions, not animations of the actual motion;
 the arc's location does not identify a pivot. Negative values point opposite the reference.
 
+Force worksheets open on **Free Bodies**, with the first body expanded. Each body presents its
+complete FBD beside its two or three scalar balance equations. **Read the FBD** highlights the
+X, Y, or moment contributions and the matching equation without changing geometry or the solve.
+Moment highlighting includes pure couples and forces with a nonzero perpendicular arm to the
+selected reference. A force whose line of action passes through that point is gray. Slanted force arrows
+can contribute to both X and Y. **How the Vectors Become These Equations** keeps vector balances
+and cross-product expansions underneath. Moment references, force points, and numerical checks
+remain collapsible. **Assemble & Solve** continues from these body equations to the shared system.
+
 In **Velocity** or **Acceleration**, **Reverse Loop** reverses a closed path. **Loop Path**
 is a dropdown of closed paths through the mechanism. Choosing one replaces that loop
 immediately; Jansen's second loop can use the internal path `A → B → C → E → D → A`.
@@ -223,6 +232,9 @@ reversals, and phone layout. Its screenshots and arrow-change filmstrip are unde
 body geometry, full-mechanism context, each trace step, closure, reversed and internal paths,
 signed equations, and phone layout. Screenshots and an angular-change filmstrip are under
 `artifacts/kinematic-visuals/`. Storybook has **Analysis/Angular Reference** and **Analysis/Trace a Loop**.
+`node e2e/force-diagram-equations.mjs` checks the FBD-first entry, visible balance equations,
+axis highlighting, unchanged geometry, sign/reference changes, static and dynamic balances,
+system navigation, slider rows, and phone layout. Storybook has **Analysis/From FBD to Equations**.
 
 With the dev server running, `node e2e/solver-explanation.mjs` checks TeachingLab worksheets,
 multi-machine selection, the constraint route, scrubbing, dismissal, reduced motion, and
