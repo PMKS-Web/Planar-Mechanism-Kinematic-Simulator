@@ -1,5 +1,6 @@
 import { Meta, Markdown } from '@storybook/addon-docs/blocks';
 import { linkToRepo } from '../support/repo-links';
+import { GuideLink } from '../support/guide-link';
 import guide from '../../../docs/ui-style-guide.md?raw';
 
 <Meta title="Guides/UI style guide" />
@@ -7,4 +8,4 @@ import guide from '../../../docs/ui-style-guide.md?raw';
 > Rendered from `docs/ui-style-guide.md` when the gallery is built. Edit that file, not this page.
 > Its links into the repository open on GitHub.
 
-<Markdown options={{ overrides: { code: 'code' } }}>{linkToRepo(guide, 'docs/ui-style-guide.md')}</Markdown>
+<Markdown options={{ overrides: { code: 'code', a: GuideLink } }}>{linkToRepo(guide, 'docs/ui-style-guide.md')}</Markdown>
