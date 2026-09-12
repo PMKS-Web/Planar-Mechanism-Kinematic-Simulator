@@ -98,7 +98,7 @@
       height: 22px;
       flex: 0 0 auto;
       margin: 0 2px;
-      background: var(--border-divider-2);
+      background: var(--border-divider);
     }
   }
 
@@ -148,7 +148,7 @@
     background: transparent;
     font-family: inherit;
     font-size: 15px;
-    color: var(--text-control);
+    color: var(--text-primary);
     cursor: pointer;
     white-space: nowrap;
 
@@ -278,7 +278,7 @@
     flex: 0 0 1px;
     width: 1px;
     height: 26px;
-    background: var(--border-divider-2);
+    background: var(--border-divider);
     margin: 0 8px;
   }
 
@@ -335,7 +335,7 @@
     border: none;
     border-radius: 6px;
     background: transparent;
-    color: var(--text-control);
+    color: var(--text-primary);
     cursor: pointer;
 
     &:hover {

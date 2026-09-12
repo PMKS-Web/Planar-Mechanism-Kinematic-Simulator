@@ -137,7 +137,7 @@
     }
 
     &:disabled {
-      color: var(--text-disabled-5);
+      color: var(--text-disabled);
       cursor: default;
     }
   }
@@ -196,7 +196,7 @@
     }
 
     &:disabled {
-      color: var(--text-disabled-6);
+      color: var(--text-disabled);
       cursor: default;
     }
 
@@ -336,7 +336,7 @@
     gap: 4px;
     flex: 0 0 auto;
     font-size: 11px;
-    color: var(--warning-text-4);
+    color: var(--warning-text);
     white-space: nowrap;
     cursor: help;
   }
@@ -345,7 +345,7 @@
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background: var(--accent-3);
+    background: var(--accent);
   }
 
   .rowNote {
@@ -459,7 +459,7 @@
       cursor: pointer;
 
       &:hover {
-        background: var(--selection-2);
+        background: var(--selection);
       }
     }
   }

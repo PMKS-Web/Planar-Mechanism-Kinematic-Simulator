@@ -18,7 +18,7 @@
     background: var(--card-surface);
 
     &.open {
-      background: var(--surface-subtle-5);
+      background: var(--surface-subtle);
     }
   }
 
@@ -92,7 +92,7 @@
     height: 18px;
     font-size: 18px;
     line-height: 18px;
-    color: var(--text-disabled-2);
+    color: var(--text-disabled);
 
     .graphSection.open & {
       color: mat.m2-get-color-from-palette($primary-palette, 500);

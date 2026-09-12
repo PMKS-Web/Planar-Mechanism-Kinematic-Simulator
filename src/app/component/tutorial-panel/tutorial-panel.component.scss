@@ -168,7 +168,7 @@
     }
 
     &:hover:not(:disabled):not(.here)::after {
-      background: var(--brand-light-2);
+      background: var(--brand-light);
     }
   }
 
@@ -297,7 +297,7 @@
     margin-top: 12px;
     padding: 9px 11px;
     border-radius: 4px;
-    background: var(--surface-sunken-2);
+    background: var(--surface-sunken);
 
     mat-icon {
       flex: 0 0 auto;
@@ -443,7 +443,7 @@
     gap: 11px;
     width: 100%;
     padding: 10px 12px;
-    border: 1px solid var(--border-divider-5);
+    border: 1px solid var(--border-divider);
     border-radius: 4px;
     background: var(--card-surface);
     font-family: inherit;
@@ -451,7 +451,7 @@
     cursor: pointer;
 
     &:hover {
-      background: var(--surface-sunken-2);
+      background: var(--surface-sunken);
     }
 
     mat-icon {
@@ -468,7 +468,7 @@
     align-items: center;
     padding: 13px 14px;
     border-color: rgba(63, 81, 181, 0.35);
-    background: var(--brand-wash-3);
+    background: var(--brand-wash);
 
     .doorName {
       color: $indigo;

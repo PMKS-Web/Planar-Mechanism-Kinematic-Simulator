@@ -68,7 +68,7 @@
   .tutorialRing {
     circle {
       fill: none;
-      stroke: var(--accent-2);
+      stroke: var(--accent);
       vector-effect: non-scaling-stroke;
     }
 
@@ -707,7 +707,7 @@
   // happens to be behind it.
   .snapRefusedReason {
     fill: var(--danger);
-    stroke: var(--canvas-halo-2);
+    stroke: var(--canvas-halo);
     stroke-width: 0.09em;
     paint-order: stroke fill;
     pointer-events: none;
