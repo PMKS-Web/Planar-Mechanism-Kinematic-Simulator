@@ -228,6 +228,23 @@ export class ExportColumnsService {
             torque
           )
         );
+        if (
+          solved.joints[0].some(
+            (joint) => joint instanceof RealJoint && hasFriction(joint.friction)
+          )
+        ) {
+          columns.push(
+            this.force(
+              'Additional input effort from friction',
+              `Additional ${effort.toLowerCase()} from all friction at ${part.label}`,
+              part,
+              driven.id,
+              '',
+              'Additional Input Effort',
+              torque
+            )
+          );
+        }
       }
 
       if (part.kind === 'joint') {
@@ -324,7 +341,7 @@ export class ExportColumnsService {
       head,
       unit,
       // A reaction is a vector; an input effort is one number.
-      components: mechProp === 'Input Effort' || mechProp.startsWith('Friction ') ? 1 : 3,
+      components: mechProp.endsWith('Input Effort') || mechProp.startsWith('Friction ') ? 1 : 3,
       analysis: 'force',
       mechProp,
       mechPart,

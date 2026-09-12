@@ -79,6 +79,10 @@ try {
     await panel.getByText('Slider Guide', { exact: true }).isVisible()
   );
   record('Known coupled friction is visible', (await panel.innerText()).includes('18.75 N'));
+  record(
+    'Additional actuator effort is distinguished from the contact force',
+    (await panel.innerText()).includes('Additional input torque from all friction: 50 N·cm')
+  );
   await panel.getByRole('textbox', { name: 'Kinetic Coefficient', exact: true }).fill('0.4');
   await panel.getByRole('button', { name: 'Apply Friction' }).click();
   record(
@@ -144,6 +148,26 @@ try {
       properties.includes(property)
     )
   );
+  const addedInputColumn = await page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    grid.activeObjService.updateSelectedObj(grid.mechanismSrv.joints.find((one) => one.id === 'A'));
+    const flow = ng.getComponent(document.querySelector('app-export-panel')).flow;
+    flow.setParts(
+      flow
+        .partGroups()
+        .flatMap((group) => group.parts)
+        .filter((part) => part.id === 'A'),
+      true
+    );
+    return flow
+      .columnGroups('forces')
+      .some((group) =>
+        group.columns.some((column) =>
+          column.series.some((series) => series.mechProp === 'Additional Input Effort')
+        )
+      );
+  });
+  record('Export includes the additional input effort from friction', addedInputColumn);
   await openMechanism(page, `${base}/?${payload('Pin bearing with friction')}`);
   await select('A');
   const pin = page.locator('app-edit-panel app-friction-panel');

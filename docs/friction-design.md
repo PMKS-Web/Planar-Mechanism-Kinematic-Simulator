@@ -2,6 +2,12 @@
 
 > **Status:** Partly built — prescribed-motion sliding friction and local static limits are implemented on `feature/friction`; forward dynamics and static holding solves remain future work.
 
+**Current app limit:** Friction in **Static analysis** (which omits inertia) is supported.
+This does not solve stationary holding friction. In-motion friction is refused for
+bodies with nonzero mass or inertia because an inherited force-solver drawing-scale error changes
+their bearing loads. Zero-inertia In-motion cases and unscaled domain calculations remain supported.
+See the audit below; this restriction prevents unverified physical results from reaching users.
+
 ## Branch and purpose
 
 Develop on `feature/friction`, created from `origin/staging` at `acba1b77` on September 12,
@@ -102,6 +108,10 @@ saves one undoable edit. Setting both coefficients to zero restores a frictionle
 The same section in Force Analysis reports normal load, signed friction effort, and the local
 static limit at the current sample. Export Data offers these three quantities alongside the
 existing reactions and input effort, which include the effect of friction.
+It also reports **additional input effort from all friction**, computed as the total input effort
+minus the frictionless solve at the identical pose, acceleration and external loading. This is a
+signed force or torque in the input's convention, not a per-contact allocation. Export offers it
+on the driven joint (or the visible pin of a driven guide).
 
 `joint-friction.ts` owns parameters and validation. `friction-contacts.ts` resolves the contacts
 behind a selectable pin and the refusal for a moment-carrying guide. `friction-analysis.ts`
@@ -191,3 +201,139 @@ staging: two MotionGen gripper reference assertions and the Windows path handlin
 stylesheet color fence. The fourth was the template-payload check's literal-LF assumption;
 it passes after normalizing this worktree's line endings. See
 [tips-and-tricks.md](tips-and-tricks.md#friction-reads-motion-even-in-static-force-analysis).
+
+## Rigorous follow-up audit
+
+The baseline was commit `75ef54ee`, reviewed in full against `origin/staging` `acba1b77`.
+There were no subsequent friction commits or uncommitted changes before the audit. A fresh fetch
+confirmed that origin/staging remained current; local staging was older, so no backward rebase
+was performed. Other worktrees were left alone.
+
+### Corrections and numerical conventions
+
+- Fixed single-link Duplicate dropping friction properties. Both single-link and batch copies
+  now retain independent property objects. URL history, refreshed browser state, tiny radii,
+  old records, malformed records with valid checksums, and the actual cm/inch conversion path
+  have coverage. SVG/DXF are drawings, not mechanism-state import formats; friction persists
+  through PMKS's URL/file/history codec, and numeric friction results through data export.
+- Fixed the stationary threshold ignoring the internal drawing scale. Linear motion is
+  approximately stationary when `abs(v_relative) <= 1e-9 m/s + roundoff`, with the floor converted
+  into the supplied coordinate system. `FrictionMotion.coordinateScale` is 200 for application
+  samples and defaults to 1 for direct unscaled domain calls. Angular motion uses `1e-9 rad/s`.
+  Roundoff is `32 * Number.EPSILON * max(abs(incoming rates))` in the same rate units, accounting
+  for cancellation when a carrier moves. These are deterministic deadbands, with no memory,
+  smoothing, force blending or guessed static holding force. They are distinct from the force
+  matrix's dimensionless singular-pivot tolerance. Sampled-rate truncation error may exceed
+  roundoff near a reversal; exact one-sided breakaway calculations remain future work.
+- The guide tangent is `(cos(slotAngle), sin(slotAngle))`; its positive normal is `(-ty, tx)`.
+  Normal load is the absolute normal projection, never the total guide resultant. Pin load is
+  the radial resultant for one supported pair. Output signs identify the receiving body.
+- Force and moment equilibrium are re-solved with equal/opposite contact loads, with relaxation
+  0.5 and a 100-iteration ceiling. Convergence requires a friction-effort change below
+  `1e-10 * max(1, abs(old), abs(new))` for every contact. This finds a consistent equilibrium,
+  not a proof of global uniqueness for arbitrary high-friction geometry. It may reject a
+  physically solvable but poorly conditioned case. Failure returns a diagnostic and gaps,
+  never the initial frictionless values as a successful friction result.
+- Added the additional actuator-effort result to the domain frame, display adapter and export.
+  Static capacity remains `muS*N` or `muS*N*r`, using the converged moving load. It is not the
+  actuator breakaway torque. At rest the current inverse problem leaves friction/actuation
+  underdetermined: below/at/above static-demand comparisons are **not** reported as solved.
+- Native fields and Apply are disabled during playback, with the model's reason. Read-only
+  results do not query edit permissions. Changing selection clears obsolete validation errors.
+  The reusable section exposes its expanded state; nine gallery stories cover its states.
+
+### Inherited In-motion limitation, reproduced on staging
+
+A 1 kg bar drawn 4 cm long has its CoM at 2 cm. At 1 rad/s with no external forces, its required
+centripetal reaction is `1 * 0.02 * 1^2 = 0.02 N`. The app's internal coordinates and linear
+accelerations are 200 times the physical values. Staging's force assembly multiplies that
+internal acceleration by cm-to-m without removing the drawing scale and returns **4 N**.
+Angular-inertia moments and applied-force lever arms also use different scale conventions.
+
+The no-friction probe was run against unchanged staging source and reproduced exactly.
+`friction-inertia.spec.ts` retains the reproduction and verifies the refusal for affected
+friction cases. An unscaled physical case verifies the expected 0.02 N bearing load and
+0.00002 N*m resisting torque. Fixing the general inertia normalization must be a deliberate
+force-analysis change: this branch preserves the explicitly required friction-disabled staging
+behavior. Until that correction is verified, application In-motion friction with nonzero mass
+or inertia is refused, including static-capacity readouts derived from those loads. Static mode
+omits inertia and remains available. This is a material V1 limitation, not forward dynamics.
+
+Internal torque outputs retain the existing force solver's drawing-length factor so existing
+graphs remain compatible. `AnalysisSampleService` removes that factor and applies the shared
+force/length conversions for display/export. Raw `valueSI` on an app frame is therefore not a
+standalone physical torque API; a future stress/energy consumer must use the same boundary.
+
+### Independent verification repository
+
+Downloaded copies were found under `C:/Users/adg66/Downloads/PMKS_Verification-master/`.
+They were preserved. The audit created a clean checkout of PMKS-Web/PMKS_Verification at
+`artifacts/PMKS_Verification` in this worktree, on its own `feature/friction` branch, based on
+`5882a1a`. Its local commit `0f2d7745efef285e35574878592ec09141fc1f5b` adds the independent reference.
+
+The repository's reviewed v1 contract explicitly excludes friction. Its legacy teaching friction
+script also uses frictionless pin loads and CoM-to-pin distances as radii, so agreement with
+those old outputs would not establish this model's correctness. New cases live separately in
+`verification/friction/`, labeled experimental. No reviewed v1 data was changed.
+
+The Python generator derives closed-form guide equilibrium with signed-normal branch checks.
+The MATLAB function independently solves the two-unknown equilibrium matrix for each branch;
+neither imports PMKSWeb's implementation or uses its iterative algorithm. There are 560 rows:
+70 crank angles, both motion directions, both transverse-load directions, with and without
+ground-bearing friction. Power and rod moment balance are checked; deliberate corruption of
+friction, normal load, bearing torque, and row count must be rejected.
+
+PMKSWeb vendors the CSV in `src/test-data/friction/`, with source commit and normalized-LF SHA256
+in `provenance.json`. The actual PMKS force solver is compared against all 560 rows in both
+meters and centimeters (1,120 pose comparisons), including actuator effort and dissipation.
+The independent generator and comparison can be rerun with:
+
+```text
+python verification/friction/reference.py --check verification/friction/reference.csv
+```
+
+No MATLAB or Octave executable was located. The new manually dispatched `friction-reference.yml`
+workflow is ready to run MATLAB R2024a and compare its output, but it has **not** been executed:
+the user explicitly prohibited pushing. Python checks are not labeled MATLAB verification.
+Existing verification-repository schema checks (six cases), dynamics checks (two cases), and
+14 contract unit tests pass locally.
+
+### Examples and remaining extensions
+
+The fixture gallery now contains a simple driven slider (100 N normal, 20 N kinetic resistance,
+30 N static capacity), a loaded slider-crank, a loaded pin bearing, and combined pin/guide
+friction. The simple block has no rigid-link manufacturing outline; its DXF reference entities
+still round-trip. The gallery test now applies its rigid-body assertion only to rigid links.
+
+Bearing friction is an effective-radius Coulomb approximation. It is not a rolling-bearing
+catalog model. Future work includes the inertia correction above, stationary feasibility and
+direction-specific startup envelopes, explicit multi-link bearing pairs, separated guide
+contact loads, viscous friction, rolling resistance, lubrication/Stribeck curves, seals,
+backlash/contact effects and user-defined laws. Arbitrary surface contact, stress/FEA, thermal
+effects, wear and forward stick-slip integration are outside this branch.
+
+### Final follow-up validation
+
+- Focused friction domain, reference, component and persistence tests: **64/64**, eight files.
+- Full application suite: **2,566 passed, three failed**, 2,569 tests in 245 files. The only
+  failures are the two MotionGen gripper assertions and the Windows stylesheet path fence.
+  A fresh unchanged-staging run of those two files reproduced all three (four tests passed).
+  The separate unchanged-staging inertia reproduction also passed its one diagnostic test.
+- `npm run check`: passed, zero errors and the existing 15 permitted lint warnings.
+- Production build and static Storybook build: passed.
+- Storybook/application TypeScript source check: passed using
+  `tsc -p .storybook/tsconfig.json --noEmit --rootDir . --skipLibCheck --types node,vitest/globals`.
+  The command supplies the repository root and globals needed by the configuration's broad
+  source include. Dependency declaration checking is skipped because installed Storybook
+  declarations reference the absent React renderer; this is not a dependency-type audit.
+- `e2e/friction.mjs`: **15/15**; `e2e/friction-stories.mjs`: **9/9**;
+  `e2e/ui-copy.mjs`: **17/17**. No uncaught browser errors. Gallery screenshots and the final
+  14-frame interaction/animation filmstrip were inspected. On Windows the automatic contact
+  sheet helper could not find its Unix Python candidates; the captured frames were tiled with
+  the installed Pillow runtime and inspected separately.
+- Independent Python reference: **560 rows and four corruption checks** passed. Existing
+  PMKS_Verification contracts remain green: six schema cases, two dynamics cases, 14 unit tests.
+  MATLAB execution is pending, as described above.
+- `git diff --check`: passed. Builds, logs, screenshots, and the independent repository checkout
+  are in this worktree's ignored `artifacts/`; only source, tests, provenance and notes are
+  included in the application commit. No push or merge was performed.

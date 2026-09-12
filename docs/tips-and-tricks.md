@@ -2606,3 +2606,16 @@ against forward-slash paths and counts the token file's 12 rgba colors (99 inste
 Two `motiongen-gripper.spec.ts` assertions also fail on the unchanged staging snapshot: the
 reference starts at a gap of 1.036629 rather than over 2.3, and the captured pose differs by
 1.051501 rather than less than 0.0001. These were reproduced separately from friction changes.
+
+**In-motion inertia still mixes drawing and physical scales.** A 1 kg rotating bar with its
+CoM at 2 cm and speed 1 rad/s needs 0.02 N, but unchanged staging returns 4 N from its internal
+acceleration. Do not use that bearing load to certify friction. The friction path refuses
+application In-motion cases with mass/inertia until the general force solver is corrected;
+Static mode is available. See `friction-inertia.spec.ts` and the design notes for the reproduced
+case. Preserve the frictionless compatibility path when addressing this in a separate change.
+
+**A component gallery needs its actual bindings.** The friction section's `model()` input
+is explicitly bound in its Storybook render template. Build the gallery and exercise the
+real expanded content; a hidden section or a screenshot of its title does not verify a state.
+Provide each mock service once per story: combining decorators that replace the same token
+can select the earlier provider instead of the intended diagnostic state.

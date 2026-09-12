@@ -45,7 +45,10 @@
                 >Effective Radius</input-block
               >
             }
-            <button-block [click]="contact.apply" dataAction="apply-friction"
+            <button-block
+              [click]="contact.apply"
+              [disabled]="!!permission.refusal('properties')"
+              dataAction="apply-friction"
               >Apply Friction</button-block
             >
           </div>
@@ -71,6 +74,14 @@
                 <dd>{{ number(values[2]) }} {{ effortUnit(contact.pin) }}</dd>
               </dl>
               <p class="note">{{ reading.sign }}</p>
+              @if (reading.additionalEffort !== undefined) {
+                <p class="note">
+                  Additional input {{ reading.inputIsTorque ? 'torque' : 'force' }} from all
+                  friction: {{ number(reading.additionalEffort) }}
+                  {{ effortUnit(!!reading.inputIsTorque) }}. This is the change from the
+                  frictionless result at the same pose and motion.
+                </p>
+              }
               <p class="note">
                 The static limit uses this contact's current load. It is not the input effort needed
                 to start the whole mechanism.

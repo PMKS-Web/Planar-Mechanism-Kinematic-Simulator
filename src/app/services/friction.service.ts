@@ -28,7 +28,13 @@ export class FrictionService {
     return undefined;
   }
 
-  reading(joint: RealJoint): { values?: number[]; message?: string; sign?: string } {
+  reading(joint: RealJoint): {
+    values?: number[];
+    message?: string;
+    sign?: string;
+    additionalEffort?: number;
+    inputIsTorque?: boolean;
+  } {
     const machineIndex = this.mechanism.indexOfMechanismSolving(joint);
     const solved = this.mechanism.mechanisms[machineIndex];
     if (!solved?.isMechanismValid())
@@ -46,6 +52,21 @@ export class FrictionService {
       joint instanceof PrisJoint
         ? 'Force on the block is positive along the guide angle.'
         : `Torque on Link ${body?.name ?? result?.positiveBodyId} is positive counterclockwise.`;
-    return { values, sign };
+    const additionalEffort = frame.additionalFrictionEffort
+      ? this.samples.sampleAt(
+          solved,
+          index,
+          'force',
+          mode,
+          'Additional Input Effort',
+          frame.additionalFrictionEffort.jointId
+        )[0]
+      : undefined;
+    return {
+      values,
+      sign,
+      additionalEffort,
+      inputIsTorque: frame.additionalFrictionEffort?.kind === 'torque',
+    };
   }
 }

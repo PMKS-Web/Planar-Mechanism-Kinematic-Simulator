@@ -1,6 +1,7 @@
 import DxfParser from 'dxf-parser';
 import { IEntity } from 'dxf-parser';
 import { LengthUnit } from '../../../model/unit-enums';
+import { RealLink } from '../../../model/link';
 import { buildMechanism } from '../../../../test-utils/verification/fixture';
 import { FIXTURE_GALLERY } from '../../../../test-utils/verification/fixture-gallery';
 import { DxfExportChoices, DXF_PRESETS, NEUTRAL_DXF_OPTIONS } from './dxf-options';
@@ -110,9 +111,15 @@ describe('every published mechanism, exported and parsed back', () => {
       const bodies = document.entities.filter(
         (entity) => entity.type === 'POLYLINE' && /^PMKS_LINK_/.test(entity.layer)
       );
-      return { name: entry.name, bodies: bodies.length };
+      return {
+        name: entry.name,
+        bodies: bodies.length,
+        hasRigidLink: built.links.some((link) => link instanceof RealLink),
+      };
     });
-    const empty = withBodies.filter((one) => one.bodies === 0);
+    // A lone slider block has no rigid-link outline to manufacture. Its guide/pin entities
+    // are still required by the per-fixture round trips above.
+    const empty = withBodies.filter((one) => one.hasRigidLink && one.bodies === 0);
     expect(empty).toEqual([]);
   });
 });

@@ -1,5 +1,6 @@
 import { MechanismFixture } from './fixture';
 import type { GalleryEntry } from './fixture-gallery';
+import { NEWTONS_PER_KGF, siUnitFactors } from '../../app/model/unit-conversions';
 
 /** A weightless slider-crank with a 100 N transverse load applied at its slider pin. */
 export function frictionSliderCrankFixture(): MechanismFixture {
@@ -45,6 +46,20 @@ export function frictionBearingFixture(): MechanismFixture {
 
 export const FRICTION_GALLERY: GalleryEntry[] = [
   {
+    name: 'Driven slider with friction',
+    floatingSlot: false,
+    purpose: '100 N guide load, 20 N kinetic friction and 30 N static capacity',
+    spec: 'friction-boundary.spec.ts',
+    fixture: frictionDrivenSliderFixture(),
+  },
+  {
+    name: 'Combined slider and bearing friction',
+    floatingSlot: false,
+    purpose: 'Guide and pin losses contribute to the same required input torque',
+    spec: 'friction-reference.spec.ts',
+    fixture: frictionCombinedFixture(),
+  },
+  {
     name: 'Slider-crank with friction',
     floatingSlot: false,
     purpose: 'Coupled normal load, sliding friction and static contact limit',
@@ -59,3 +74,31 @@ export const FRICTION_GALLERY: GalleryEntry[] = [
     fixture: frictionBearingFixture(),
   },
 ];
+
+export function frictionDrivenSliderFixture(unit = 'cm'): MechanismFixture {
+  return {
+    joints: [{ id: 'A', x: 1, y: 0 }],
+    links: [],
+    slider: {
+      at: 'A',
+      prisId: 'B',
+      angleRad: 0,
+      pistonMass: 100 / (NEWTONS_PER_KGF * siUnitFactors(unit).massToKg),
+      input: true,
+      driveSpeed: 1,
+    },
+    inputAngVel: 1,
+    gravity: true,
+    friction: [
+      { jointId: 'B', properties: { staticCoefficient: 0.3, kineticCoefficient: 0.2, radius: 0 } },
+    ],
+  };
+}
+export function frictionCombinedFixture(): MechanismFixture {
+  const fixture = frictionSliderCrankFixture();
+  fixture.friction!.push({
+    jointId: 'A',
+    properties: { staticCoefficient: 0.2, kineticCoefficient: 0.12, radius: 0.05 },
+  });
+  return fixture;
+}

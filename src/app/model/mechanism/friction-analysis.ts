@@ -1,11 +1,13 @@
 import { Joint, PrisJoint, RealJoint } from '../joint';
 import { Link, RealLink, SliderBlock } from '../link';
-import { frictionPropertyError, hasFriction } from '../joint-friction';
+import { frictionPropertyError, hasFriction, INERTIA_FRICTION_REFUSAL } from '../joint-friction';
 import { guideFrictionRefusal } from '../friction-contacts';
 import type { ForceAnalysisFrame, ForceVector } from './force-solver';
 
 /** Rates in the same coordinate system as the force solver; angular rates are rad/s. */
 export interface FrictionMotion {
+  /** Internal drawing lengths per user length; direct, unscaled domain callers use 1. */
+  coordinateScale?: number;
   jointVelocities: Map<string, ForceVector>;
   angularVelocities: Map<string, number>;
 }
@@ -36,6 +38,7 @@ interface Contact {
   negative?: Link;
   tangent: ForceVector;
   rate: number;
+  rateTolerance: number;
   radius: number;
   kind: 'force' | 'torque';
 }
@@ -69,6 +72,16 @@ export function analyzeWithFriction(
 ): ForceAnalysisFrame {
   const initial = solve([]);
   if (initial.status !== 'ok') return initial;
+  // The legacy app force solver mixes drawing-scale accelerations with physical mass/inertia.
+  // Preserve its frictionless path, but do not certify the resulting bearing loads as friction.
+  // Unscaled direct-domain solves and zero-inertia fixtures remain independently verifiable.
+  if (
+    initial.mode === 'dynamic' &&
+    (motion?.coordinateScale ?? 1) !== 1 &&
+    bodies.some((body) => body.mass !== 0 || (body instanceof RealLink && body.massMoI !== 0))
+  ) {
+    return refusal(initial, INERTIA_FRICTION_REFUSAL);
+  }
   if (initial.sharedSupport) {
     return refusal(initial, 'Friction needs a unique bearing load. Remove the redundant support.');
   }
@@ -113,7 +126,22 @@ export function analyzeWithFriction(
         ? (velocity[0] - carrierVelocity[0]) * tangent[0] +
           (velocity[1] - carrierVelocity[1]) * tangent[1]
         : NaN;
-      contact = { joint, positive, negative, tangent, rate, radius: 1, kind: 'force' };
+      // 1 nm/s in physical units, plus the roundoff of subtracting carrier velocities.
+      const rateTolerance =
+        (1e-9 * (motion.coordinateScale ?? 1)) / distanceToM +
+        32 *
+          Number.EPSILON *
+          Math.max(Math.hypot(...(velocity ?? [0, 0])), Math.hypot(...carrierVelocity));
+      contact = {
+        joint,
+        positive,
+        negative,
+        tangent,
+        rate,
+        rateTolerance,
+        radius: 1,
+        kind: 'force',
+      };
     } else {
       // A massless, free-turning block has no moment equation. It cannot react a bearing
       // couple; silently treating it as ground would create an unbalanced external torque.
@@ -139,6 +167,14 @@ export function analyzeWithFriction(
         negative,
         tangent: [0, 0],
         rate,
+        rateTolerance:
+          1e-9 +
+          32 *
+            Number.EPSILON *
+            Math.max(
+              Math.abs(motion.angularVelocities.get(positive.id) ?? 0),
+              Math.abs(negative ? (motion.angularVelocities.get(negative.id) ?? 0) : 0)
+            ),
         radius: joint.friction.radius * distanceToM,
         kind: 'torque',
       };
@@ -146,8 +182,7 @@ export function analyzeWithFriction(
     if (!Number.isFinite(contact.rate)) {
       return refusal(initial, `Joint ${joint.name} is missing relative velocity data.`);
     }
-    const physicalRate = contact.rate * (contact.kind === 'force' ? distanceToM : 1);
-    if (Math.abs(physicalRate) <= 1e-9) {
+    if (Math.abs(contact.rate) <= contact.rateTolerance) {
       return refusal(
         initial,
         `Joint ${joint.name} has zero relative motion. Static friction is a range at this pose; the prescribed-motion analysis cannot select a unique holding force.`
@@ -231,6 +266,12 @@ export function analyzeWithFriction(
         frame.jointReactions.set(contact.joint.id, byBody.get(contact.positive.id)!);
       });
       frame.friction = new Map(results.map((one) => [one.jointId, one]));
+      if (frame.inputEffort && initial.inputEffort) {
+        frame.additionalFrictionEffort = {
+          ...frame.inputEffort,
+          valueSI: frame.inputEffort.valueSI - initial.inputEffort.valueSI,
+        };
+      }
       return frame;
     }
     efforts = efforts.map((one, index) => (one + results[index].effort) / 2);

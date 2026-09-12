@@ -5,6 +5,7 @@ import { KinematicsSolver } from './kinematic-solver';
 import { Loop } from './loop-solver';
 import { siUnitFactors, SiUnitFactors } from '../unit-conversions';
 import { hasFriction } from '../joint-friction';
+import { MODEL_SCALE } from '../render-scale';
 import { completeFrictionMotion } from './friction-motion';
 import {
   analyzeWithFriction,
@@ -33,6 +34,8 @@ export interface ForceAnalysisEffort {
 }
 
 export interface ForceAnalysisFrame {
+  /** Total input effort minus the frictionless solve at the identical pose and inertia. */
+  additionalFrictionEffort?: ForceAnalysisEffort;
   friction?: Map<string, FrictionResult>;
   mode: ForceAnalysisMode;
   status: ForceAnalysisStatus;
@@ -338,6 +341,7 @@ export class ForceSolver {
       }
       kinematics = this.captureCurrentKinematics(mechanism.links[index], fallback[index]);
       motion = {
+        coordinateScale: MODEL_SCALE,
         jointVelocities: new Map(KinematicsSolver.jointVelMap),
         angularVelocities: new Map(KinematicsSolver.linkAngVelMap),
       };

@@ -1,0 +1,11 @@
+{
+  "repository": "https://github.com/PMKS-Web/PMKS_Verification",
+  "baseCommit": "5882a1a",
+  "sourceCommit": "0f2d7745efef285e35574878592ec09141fc1f5b",
+  "sourcePath": "verification/friction/reference.csv",
+  "sha256": "7389e1ec1e1cb15146a9de148fff67699634745290bc88cd44c8fe5de92851e1",
+  "rows": 560,
+  "trust": "Experimental independent closed-form reference; outside reviewed reference-data/v1",
+  "pythonExecuted": true,
+  "matlabExecuted": false
+}

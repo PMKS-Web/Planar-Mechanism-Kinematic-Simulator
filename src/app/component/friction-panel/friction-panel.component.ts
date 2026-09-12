@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, DoCheck, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DoCheck,
+  inject,
+  input,
+  model,
+  signal,
+} from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { PrisJoint, RealJoint } from '../../model/joint';
 import { frictionContactsOf, guideFrictionRefusal } from '../../model/friction-contacts';
@@ -27,7 +35,8 @@ export class FrictionPanelComponent implements DoCheck {
   private settings = inject(SettingsService);
   private parser = inject(NumberUnitParserService);
   protected readonly error = signal('');
-  protected readonly expanded = signal(false);
+  /** A caller can retain the section's open state when switching property views. */
+  readonly expanded = model(false);
   protected readonly contacts = signal<
     { joint: RealJoint; pin: boolean; form: FormGroup; apply: () => void; remove: () => void }[]
   >([]);
@@ -39,6 +48,7 @@ export class FrictionPanelComponent implements DoCheck {
       joints.map((one) => [one.id, one.friction]),
       this.settings.lengthUnit.value,
       this.readOnly(),
+      !this.readOnly() && !!this.permission.refusal('properties'),
     ]);
     if (
       signature === this.signature &&
@@ -46,6 +56,7 @@ export class FrictionPanelComponent implements DoCheck {
     )
       return;
     this.signature = signature;
+    this.error.set('');
     this.contacts.set(
       joints.map((joint) => {
         const form = new FormGroup({
@@ -57,6 +68,7 @@ export class FrictionPanelComponent implements DoCheck {
             nonNullable: true,
           }),
         });
+        if (!this.readOnly() && this.permission.refusal('properties')) form.disable();
         return {
           joint,
           pin: !(joint instanceof PrisJoint),

@@ -9,6 +9,9 @@ export function frictionless(): JointFriction {
   return { staticCoefficient: 0, kineticCoefficient: 0, radius: 0 };
 }
 
+export const INERTIA_FRICTION_REFUSAL =
+  'In-motion friction cannot yet give reliable results for bodies with mass or inertia. Use Static analysis.';
+
 export function hasFriction(value: JointFriction): boolean {
   return value.staticCoefficient !== 0 || value.kineticCoefficient !== 0;
 }
