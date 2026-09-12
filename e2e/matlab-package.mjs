@@ -99,10 +99,20 @@ try {
     'solve_acceleration.m',
     'solve_forces.m',
     'plot_results.m',
+    'position_equations.m',
+    'velocity_equations.m',
+    'acceleration_equations.m',
+    'force_equations.m',
+    'named_results.m',
+    'validate_equations.m',
+    'ANALYSIS_README.md',
     '+pmks/constraints.m',
   ])
     assert.ok(get(name), name);
   assert.ok(!get('pmks_reference.csv'));
+  assert.match(get('position_equations.m'), /c_B_on_AB_x/);
+  assert.match(get('force_equations.m'), /A_on_AB_x \+ B_on_AB_x/);
+  assert.match(get('named_results.m'), /r\.bodies\.BC\.angularVelocity/);
   for (const name of [
     'solve_position.m',
     'solve_velocity.m',
@@ -152,6 +162,31 @@ try {
   assert.equal(await drawer.locator('.nextButton').isDisabled(), true);
   assert.match(await drawer.getByRole('alert').innerText(), /grounded rotary driver/);
   pass('Unsupported driver is refused before export');
+  // Reopen the original zero-mass M1 and export only kinematics.
+  await page.goto(`${base}/?${TEMPLATE_LINKAGES['4-Bar']}`);
+  await waitForReady(page);
+  await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
+  await page.locator('.historyButton', { hasText: 'Export Data' }).click();
+  await drawer.getByRole('button', { name: 'Select All', exact: true }).click();
+  for (let step = 0; step < 5 && !(await drawer.locator('.formatBlock').count()); step++) {
+    const all = drawer.getByRole('button', { name: 'Select All', exact: true });
+    if (await all.count()) await all.click();
+    if (await drawer.getByText('In-motion', { exact: true }).count())
+      await drawer.getByRole('button', { name: 'Select None', exact: true }).click();
+    await drawer.locator('.nextButton').click();
+  }
+  await drawer.getByRole('button', { name: /MATLAB Analysis Package/ }).click();
+  await page.screenshot({ path: `${dir}/export-kinematics.png` });
+  const kinematic = await download('kinematics-only-analysis');
+  assert.ok(kinematic.some((f) => f.name.endsWith('/position_equations.m')));
+  assert.ok(kinematic.some((f) => f.name.endsWith('/ANALYSIS_README.md')));
+  assert.ok(!kinematic.some((f) => /\/(solve_forces|force_equations)\.m$/.test(f.name)));
+  assert.ok(
+    !kinematic.find((f) => f.name.endsWith('/run_pmks_analysis.m')).text.includes('solve_forces(')
+  );
+  pass(
+    'Kinematics-only browser export omits force files and retains readable independent equations'
+  );
   assert.deepEqual(errors, []);
 } finally {
   writeFileSync(`${dir}/report.json`, JSON.stringify({ checks, errors }, null, 2));

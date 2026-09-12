@@ -292,12 +292,7 @@ describe('independent MATLAB analysis package equations', () => {
     expect(first['pmks_reference.csv']).toBeUndefined();
     expect(first['compare_measurements.m']).toBeUndefined();
     expect(first['mechanism_data.m']).toContain("'A''s crank end'");
-    for (const file of [
-      'solve_position.m',
-      'solve_velocity.m',
-      'solve_acceleration.m',
-      'solve_forces.m',
-    ]) {
+    for (const file of ['solve_position.m', 'solve_velocity.m', 'solve_acceleration.m']) {
       expect(first[file]).toBeTruthy();
       expect(first[file]).not.toContain('reference');
       expect(first[file]).not.toMatch(/\b(syms|fsolve|lsqnonlin)\b/);
@@ -306,6 +301,10 @@ describe('independent MATLAB analysis package equations', () => {
       first['run_pmks_analysis.m'].indexOf('compare_pmks')
     );
     expect(first['mechanism_data.m']).not.toContain('reference =');
+    expect(first['solve_forces.m']).toBeUndefined();
+    expect(first['force_equations.m']).toBeUndefined();
+    expect(first['run_pmks_analysis.m']).not.toContain('solve_forces(');
+    expect(first['named_results.m']).not.toContain('r.reactions');
     expect(matlabPackage(m, true, 'Time,Value1\n0,1')['pmks_reference.csv']).toContain(
       'Time,Value1'
     );

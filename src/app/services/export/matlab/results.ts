@@ -1,10 +1,12 @@
-export const RESULT_FILES: Record<string, string> = {
-  'run_pmks_analysis.m': `function results = run_pmks_analysis()
+export function resultFiles(forces: boolean): Record<string, string> {
+  return {
+    'run_pmks_analysis.m': `function results = run_pmks_analysis()
 % RUN_PMKS_ANALYSIS Independently solve the exported mechanism in base MATLAB.
 % Unzip, change MATLAB's current folder to this folder, then run:
 %   results = run_pmks_analysis;
 % No reference file or experimental data is needed to solve the mechanism.
 m = mechanism_data();
+validate_equations(m);
 time = unique([0:m.settings.step:m.settings.duration, m.settings.duration, ...
     m.driver.segments(m.driver.segments(:,1)<=m.settings.duration,1)']);
 n = numel(m.initial); count = numel(time);
@@ -12,8 +14,13 @@ results.time = time(:); results.model = m; results.solved_frames = 0;
 results.q = NaN(n,count); results.v = results.q; results.a = results.q;
 results.jointPosition = NaN(numel(m.joints),2,count);
 results.jointVelocity = results.jointPosition; results.jointAcceleration = results.jointPosition;
-results.reaction = NaN(numel(m.joints),numel(m.bodies),2,count);
-results.torque = NaN(count,1); results.failure = '';
+${
+  forces
+    ? `results.reaction = NaN(numel(m.joints),numel(m.bodies),2,count);
+results.torque = NaN(count,1); results.lambda = NaN(numel(m.constraints)+1,count);
+`
+    : ''
+}results.failure = '';
 q = m.initial;
 for k = 1:count
     try
@@ -31,10 +38,16 @@ for k = 1:count
             results.jointAcceleration(j,:,k) = (D*a+curvature)';
         end
         results.solved_frames = k;
-        if ~strcmp(m.settings.force_mode,'none')
+${
+  forces
+    ? `        if ~strcmp(m.settings.force_mode,'none')
             [lambda,reactions] = solve_forces(m,q,a,J);
             results.torque(k) = lambda(end); results.reaction(:,:,:,k) = reactions;
+            results.lambda(:,k) = lambda;
         end
+`
+    : ''
+}
     catch failure
         results.failure = sprintf('Stopped at t=%.12g s: %s',time(k),failure.message);
         warning('PMKS:Stopped','%s',results.failure); break;
@@ -42,6 +55,7 @@ for k = 1:count
 end
 results.values = NaN(count,numel(m.channels));
 for c = 1:numel(m.channels), results.values(:,c) = pmks.channel(results,m.channels(c)); end
+results = named_results(results);
 plot_results(results);
 fprintf('Solved %d of %d requested frames. Units: m, s, rad, kg, N, N*m.\\n',results.solved_frames,count);
 % Optional verification is intentionally called after the independent solve.
@@ -54,7 +68,7 @@ if exist(fullfile(fileparts(mfilename('fullpath')),'pmks_reference.csv'),'file')
 end
 end
 `,
-  '+pmks/channel.m': `function value = channel(r,c)
+    '+pmks/channel.m': `function value = channel(r,c)
 % Read one named engineering result, always in its documented SI unit.
 switch c.quantity
     case {'jointPosition','jointVelocity','jointAcceleration'}
@@ -83,12 +97,39 @@ if c.component == 3, value = hypot(vector(:,1),vector(:,2));
 else, value = vector(:,c.component); end
 end
 `,
-  'plot_results.m': `function plot_results(r)
-% The selected quantities, calculated by MATLAB; labels include body/joint and units.
-for k = 1:numel(r.model.channels)
-    c = r.model.channels(k);
-    figure('Name',c.label); plot(r.time,r.values(:,k)); grid on;
-    xlabel('Time (s)'); ylabel(c.unit,'Interpreter','none'); title(c.label,'Interpreter','none');
+    'plot_results.m': `function plot_results(r)
+% At most four analysis figures plus one trajectory figure, using only selected channels.
+% Each quantity/component gets a subplot; legends identify the selected joints/bodies.
+channels = r.model.channels;
+if isempty(channels), return; end
+groups = {{'jointPosition','bodyPosition','angle'}, ...
+    {'jointVelocity','bodyVelocity','omega'}, ...
+    {'jointAcceleration','bodyAcceleration','alpha'}, {'reaction','torque'}};
+names = {'Position','Velocity','Acceleration','Force'};
+labels = struct('jointPosition','Joint position','bodyPosition','CoM position','angle','Link angle', ...
+    'jointVelocity','Joint velocity','bodyVelocity','CoM velocity','omega','Angular velocity', ...
+    'jointAcceleration','Joint acceleration','bodyAcceleration','CoM acceleration','alpha','Angular acceleration', ...
+    'reaction','Joint reaction','torque','Driver torque');
+components = {'X','Y','Magnitude'};
+for g = 1:numel(groups)
+    selected = find(ismember({channels.quantity},groups{g}));
+    if isempty(selected), continue; end
+    keys = arrayfun(@(c) sprintf('%s_%d',c.quantity,c.component),channels(selected),'UniformOutput',false);
+    panels = unique(keys,'stable'); columns = min(3,ceil(sqrt(numel(panels)))); rows = ceil(numel(panels)/columns);
+    figure('Name',names{g},'Units','normalized','Position',[0.05 0.1 0.9 0.8]);
+    for u = 1:numel(panels)
+        members = selected(strcmp(keys,panels{u})); first = channels(members(1));
+        subplot(rows,columns,u); hold on;
+        for k = members
+            plot(r.time,r.values(:,k),'DisplayName',channels(k).label);
+        end
+        heading = labels.(first.quantity);
+        if ~any(strcmp(first.quantity,{'angle','omega','alpha','torque'}))
+            heading = [heading ' ' components{first.component}];
+        end
+        grid on; xlabel('Time (s)'); ylabel(first.unit,'Interpreter','none');
+        title(heading); legend('show','Interpreter','none','Location','best');
+    end
 end
 if ~isempty(r.model.channels) && any(strcmp({r.model.channels.quantity},'jointPosition'))
     figure('Name','Joint and tracer paths'); hold on;
@@ -100,7 +141,7 @@ if ~isempty(r.model.channels) && any(strcmp({r.model.channels.quantity},'jointPo
 end
 end
 `,
-  'compare_pmks.m': `function report = compare_pmks(r)
+    'compare_pmks.m': `function report = compare_pmks(r)
 % Verification only. Deleting pmks_reference.csv does not change the solution.
 file = fullfile(fileparts(mfilename('fullpath')),'pmks_reference.csv');
 report = [];
@@ -117,7 +158,7 @@ for k = 1:numel(r.model.channels)
 end
 end
 `,
-  'compare_measurements.m': `function stats = compare_measurements(results,file,column,time_offset,units)
+    'compare_measurements.m': `function stats = compare_measurements(results,file,column,time_offset,units)
 % Example: compare_measurements(results,'measurements.csv',1,0,'m')
 % CSV header: Time,Value. Time is seconds from the initial pose.
 % column selects results.model.channels(column); inspect its label and unit.
@@ -141,7 +182,7 @@ fprintf('RMSE %.6g, bias %.6g, peak %.6g %s; %d compared, %d excluded.\\n', ...
     stats.rmse,stats.bias,stats.peak,c.unit,stats.count,stats.excluded);
 end
 `,
-  '+pmks/compare.m': `function s = compare(time,value,measured,offset,period)
+    '+pmks/compare.m': `function s = compare(time,value,measured,offset,period)
 % Linear interpolation within valid adjacent samples only. Angles use shortest errors.
 time = time(:); value = value(:);
 if size(measured,2) ~= 2 || isempty(measured) || any(~isfinite(measured(:))) || ...
@@ -173,4 +214,5 @@ if scale == 0, s.rmse = 0; else, s.rmse = scale*sqrt(mean((s.residual/scale).^2)
 s.bias = mean(s.residual); s.peak = scale;
 end
 `,
-};
+  };
+}

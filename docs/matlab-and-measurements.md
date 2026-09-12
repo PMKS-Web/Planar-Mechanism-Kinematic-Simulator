@@ -26,12 +26,18 @@ Folder names have a deterministic `pmks_` prefix and safe letters, digits and un
 | File | Purpose |
 | --- | --- |
 | `mechanism_data.m` | Named joints, root bodies, initial geometry, constraints, SI mass properties, loads and drive commands |
+| `ANALYSIS_README.md` | This mechanism's geometry, link/ground distances, coordinate meanings, constraint row map and signed free-body equations |
+| `position_equations.m` | Executable named point transforms and explicit constraint, Jacobian and curvature rows |
+| `velocity_equations.m`, `acceleration_equations.m` | Mechanism-specific differentiated row explanations and actual right-hand sides |
+| `force_equations.m` | Per-body Newton/Euler rows and applied-load assembly, when force quantities are selected |
 | `run_pmks_analysis.m` | One entry point; calculates results before optionally verifying them |
+| `validate_equations.m` | Runtime topology guard and comparison of generated equations with the generic IR interpreter |
 | `solve_position.m` | Numerical Newton iteration with backtracking |
 | `solve_velocity.m` | Analytic Jacobian equation `J*q_dot = driver RHS` |
 | `solve_acceleration.m` | `J*q_ddot = -J_dot*q_dot + driver acceleration RHS` |
 | `solve_forces.m` | `J' * lambda = M*q_ddot - applied loads`; static mode zeros inertial terms |
-| `plot_results.m` | Selected MATLAB result channels, plus joint/tracer paths when position is selected |
+| `named_results.m` | Joint/body/driver aliases of the solved arrays, with deterministic safe field names |
+| `plot_results.m` | Grouped Position, Velocity, Acceleration and Force figures, plus joint/tracer paths |
 | `+pmks/` | Reusable point transforms, constraints, linear solving, continuation, driver, channel and comparison helpers |
 | `compare_pmks.m` | Optional comparison to `pmks_reference.csv` |
 | `compare_measurements.m`, `measurements.csv` | Optional experimental comparison and an empty CSV template |
@@ -42,6 +48,65 @@ MATLAB R2016b or newer is the target. No Symbolic Math Toolbox, Optimization Too
 PMKS_Verification installation is required. **Actual MATLAB execution remains unverified on the
 development machine, where neither MATLAB nor Octave was found.** Equation tests are not a
 substitute for running the emitted MATLAB files. Octave compatibility is not claimed.
+
+These are standard MATLAB `.m` files. Some editors also associate `.m` with Objective-C; choose
+MATLAB language mode or configure MATLAB language support if the highlighting looks like C.
+Inspection of the user's `pmks_M1_kinematics_analysis.zip` confirmed MATLAB function contents,
+not C/C++ source or a packaging extension problem. The extension remains `.m`.
+
+### Read the engineering equations
+
+Start with `ANALYSIS_README.md`, then open `position_equations.m`. For M1 it identifies the
+three moving bodies AB, BC and CD, the fixed ground reference, joints A/B/C/D, and the rotary
+driver about A. It lists initial coordinates, each body's CoM/mass/inertia, rigid joint-pair
+lengths and ground spacing A–D. The coordinate map explains `q(1)=x_AB`, `q(2)=y_AB`,
+`q(3)=theta_AB`, and the corresponding velocity/acceleration entries. Body rotations are
+relative to the initial pose; named result angles include the initial absolute angle.
+
+The generated position code explicitly constructs named points, for example
+`p_B_on_AB = [x_AB;y_AB]+R_AB*r_initial`, and assembles the shared-pin row
+`c_B_on_AB_x = n_B_on_AB_x*(p_B_on_AB-p_B_on_BC)`. The same row constructs its analytic
+Jacobian and curvature. The velocity and acceleration files identify the matching point-rate
+equalities, show where `-omega^2*r` enters, and form their driver right-hand sides. Newton
+continuation and base-MATLAB linear algebra remain generic.
+
+**The readable equations are on the execution path.** One `equationPlan` made from the plain
+analysis IR supplies point bindings, coordinate offsets, constraint row ordering, reaction
+names/signs and body balance rows to every renderer. The solve routines call these generated
+equation files. Force coefficients are read directly from the same Jacobian as `A_force=J'`;
+the body balance descriptions and named force unknowns use those constraint rows. No separate
+four-bar or Stephenson derivation is maintained.
+
+Before running, `validate_equations.m` checks body/driver/constraint bindings and compares the
+generated position/Jacobian/curvature, velocity and acceleration equations at deterministic
+probes against `+pmks/constraints.m`. Force packages also check their assembled matrix and RHS
+against generic free-body assembly. A changed topology, normal direction or binding requires
+re-export, avoiding a stale row guide. Geometry, mass properties and load values remain editable
+in `mechanism_data.m`. These checks execute in MATLAB when the user runs the package; they have
+not been claimed as executed on this development machine.
+
+### Named results and grouped plots
+
+Raw `q`, `v` and `a` remain available. `results.joints.B.position`, `.velocity` and
+`.acceleration` are time-by-XY arrays. `results.bodies.BC` includes CoM position/velocity/
+acceleration and `.angle`, `.angularVelocity`, `.angularAcceleration` for rotating bodies.
+Force packages also expose `results.reactions.B.AB` and `.BC` as the total XY forces on the
+respective bodies; `results.forceUnknowns.B_on_AB_x` maps directly to its scalar `lambda` row;
+and `results.driver.torque` is the driver torque in N*m. Original names and IDs remain in the
+entries/model, while deterministic MATLAB identifiers avoid keywords, invalid characters,
+collisions and the 63-character field-name limit.
+
+Plots use at most four analysis figures (Position, Velocity, Acceleration, Force) and one
+trajectory figure. Each quantity/component gets its own subplot, so X, Y, magnitude, CoM and
+angular quantities do not share an undifferentiated plot. Legends identify selected joints/
+bodies, and axes retain their SI units. This follows the historical grouped-plot intent without
+hard-coded joint names or `.mat` intermediates. MATLAB plot appearance remains subject to runtime
+validation; browser screenshots validate the export UI only.
+
+Kinematics-only packages omit `solve_forces.m`, `force_equations.m`, force execution and named
+reaction/torque fields. Position, velocity and acceleration remain together because the latter
+depend on the former. To add force analysis, select force quantities in PMKS and export again.
+The force-enabled package can switch between static and dynamic analysis in its settings.
 
 ### Constraint and force support
 
@@ -210,6 +275,15 @@ and reversing multi-loop Stephenson III. It checks joint positions/rates, body a
 equal-and-opposite reactions and driver torque. Additional tests check analytic Jacobians by
 finite differences, static local/world loads, reversed playback, topology refusal, deterministic
 files, escaped names and optional-data independence.
+
+`matlab-equations.spec.ts` additionally checks generated row bindings against the equation
+contract, evaluates the rendered scalar Newton/Euler balances under nonzero mass/inertia and
+both local/world loads in static and dynamic modes, verifies naming and channel mappings, and
+checks coherent kinematics-only content. It covers M1, the tracer four-bar, slider-crank and
+Stephenson III. With `PMKS_WRITE_MATLAB` set, it writes inspectable M1 kinematics, M1 dynamic
+(explicitly configured 0.2 kg / 0.0001 kg*m² bodies), and Stephenson III ZIPs under
+`<PMKS_WRITE_MATLAB>/readable-equations/`. M1 geometry and clockwise speed are checked against
+the user's inspected download. Numerical equation tests remain distinct from MATLAB execution.
 
 These are **TypeScript equation-contract versus PMKS comparisons**, not results from executing
 MATLAB. No MATLAB runtime is installed on the development machine. The generated code targets

@@ -2,23 +2,40 @@ import { AnalysisExportModel } from '../../../model/analysis-export';
 import { matlabMatrix, matlabString } from '../matlab-writer';
 import { KINEMATIC_FILES } from './kinematics';
 import { FORCE_FILE } from './dynamics';
-import { RESULT_FILES } from './results';
+import { resultFiles } from './results';
+import { equationPlan, EquationPlan, coordinateComments, commentText } from './equation-plan';
+import { positionEquations, rateEquations } from './equations';
+import { forceEquations } from './force-equations';
+import { engineeringGuide, mechanismOverview } from './engineering-guide';
+import { namedResults } from './named-results';
+import { validateEquations } from './validate-equations';
 
-const vector = (v: number[]) => matlabMatrix([v]);
+const vector = (v: number[]) => `[${v.join(' ')}]`;
 /** Named structures make the definition readable; locals are derived from the initial geometry. */
-export function mechanismData(m: AnalysisExportModel): string {
+export function mechanismData(
+  m: AnalysisExportModel,
+  plan: EquationPlan = equationPlan(m)
+): string {
   const lines = [
     'function m = mechanism_data()',
     '% Mechanism definition exported from PMKS. Geometry/properties are inputs, not solved histories.',
     '% SI: meters, seconds, radians, kilograms, kg*m^2, newtons, N*m. CCW and +Y upward.',
     '% Body rotation coordinates are relative to this initial configuration.',
+    '% Start with ANALYSIS_README.md; executable equations are in position_equations.m.',
+    ...mechanismOverview(m, plan).map((line) => '% ' + line),
+    ...coordinateComments(m, plan),
     `m.name = ${matlabString(m.name)};`,
     'm.bodies = struct([]); m.joints = struct([]); m.constraints = struct([]); m.loads = struct([]); m.channels = struct([]);',
   ];
   m.bodies.forEach((b, i) =>
     lines.push(
-      `% Body ${i + 1}: ${b.id.replace(/[\r\n]/g, ' ')} (joint membership below)`,
-      `m.bodies(${i + 1}) = struct('id',${matlabString(b.id)},'name',${matlabString(b.name)},'joints',{{${b.joints.map(matlabString).join(',')}}},'offset',${b.offset + 1},'dof',${b.dof},'initial_center',${vector(b.initialCenter)},'initial_angle',${b.initialAngle},'mass',${b.mass},'inertia',${b.inertia});`
+      `% Body ${i + 1}: ${commentText(b.name)} (joint membership below)`,
+      `m.bodies(${i + 1}) = struct( ...`,
+      `    'id',${matlabString(b.id)}, 'name',${matlabString(b.name)}, ...`,
+      `    'joints',{{${b.joints.map(matlabString).join(',')}}}, ...`,
+      `    'initial_center',${vector(b.initialCenter)}, 'initial_angle',${b.initialAngle}, ...`,
+      `    'mass',${b.mass}, 'inertia',${b.inertia}, ...`,
+      `    'offset',${b.offset + 1}, 'dof',${b.dof}); % q entries described above.`
     )
   );
   const local = (body: number, joint: number) =>
@@ -27,14 +44,20 @@ export function mechanismData(m: AnalysisExportModel): string {
       : `m.joints(${joint + 1}).initial-m.bodies(${body + 1}).initial_center`;
   m.joints.forEach((j, i) =>
     lines.push(
-      `m.joints(${i + 1}) = struct('id',${matlabString(j.id)},'name',${matlabString(j.name)},'initial',${vector(j.initial)},'ground',${+j.ground},'kind',${matlabString(j.kind)},'tracer',${+j.tracer},'body',${j.point.body + 1},'local',[0 0]);`,
+      `m.joints(${i + 1}) = struct( ...`,
+      `    'id',${matlabString(j.id)}, 'name',${matlabString(j.name)}, 'initial',${vector(j.initial)}, ...`,
+      `    'ground',${+j.ground}, 'kind',${matlabString(j.kind)}, 'tracer',${+j.tracer}, ...`,
+      `    'body',${j.point.body + 1}, 'local',[0 0]);`,
       `m.joints(${i + 1}).local = ${local(j.point.body, i)};`
     )
   );
   m.constraints.forEach((c, i) =>
     lines.push(
-      `% ${m.joints[c.joint].id.replace(/[\r\n]/g, ' ')}: positive force on body ${c.positive.body + 1}, opposite on body ${c.negative.body + 1} (0 = world).`,
-      `m.constraints(${i + 1}) = struct('joint',${c.joint + 1},'positive_body',${c.positive.body + 1},'positive_local',${local(c.positive.body, c.joint)},'negative_body',${c.negative.body + 1},'negative_local',${local(c.negative.body, c.joint)},'normal',${vector(c.normal)});`
+      `% Row ${i + 1}: ${plan.rows[i].description}.`,
+      `m.constraints(${i + 1}) = struct('joint',${c.joint + 1}, ...`,
+      `    'positive_body',${c.positive.body + 1}, 'positive_local',${local(c.positive.body, c.joint)}, ...`,
+      `    'negative_body',${c.negative.body + 1}, 'negative_local',${local(c.negative.body, c.joint)}, ...`,
+      `    'normal',${vector(c.normal)});`
     )
   );
   m.loads.forEach((l, i) =>
@@ -65,12 +88,25 @@ export function matlabPackage(
   measurements = true,
   reference?: string
 ): Record<string, string> {
+  const plan = equationPlan(m),
+    forces = m.settings.forceMode !== 'none';
+  if (!forces && m.channels.some((c) => c.quantity === 'reaction' || c.quantity === 'torque'))
+    throw new Error('Force result channels require a static or dynamic MATLAB package.');
   const files: Record<string, string> = {
-    'mechanism_data.m': mechanismData(m),
+    'mechanism_data.m': mechanismData(m, plan),
+    'ANALYSIS_README.md': engineeringGuide(m, plan),
+    'position_equations.m': positionEquations(m, plan),
+    'velocity_equations.m': rateEquations(m, plan, false),
+    'acceleration_equations.m': rateEquations(m, plan, true),
+    'named_results.m': namedResults(m, plan),
+    'validate_equations.m': validateEquations(m, plan),
     ...KINEMATIC_FILES,
-    'solve_forces.m': FORCE_FILE,
-    ...RESULT_FILES,
+    ...resultFiles(forces),
   };
+  if (forces) {
+    files['solve_forces.m'] = FORCE_FILE;
+    files['force_equations.m'] = forceEquations(m, plan);
+  }
   if (!measurements) delete files['compare_measurements.m'];
   else files['measurements.csv'] = 'Time,Value\n';
   if (reference !== undefined) files['pmks_reference.csv'] = reference;
@@ -79,12 +115,20 @@ Unzip and change MATLAB's current folder to this folder. Run:
   results = run_pmks_analysis;
 MATLAB R2016b or newer. Base MATLAB only: no Symbolic or Optimization Toolbox.
 Actual MATLAB execution must be validated on your installation; generation/equation tests are separate.
+These are MATLAB .m files. Some editors identify .m as Objective-C unless MATLAB language support is configured.
 
+Start with ANALYSIS_README.md: this mechanism's geometry, coordinates, constraint rows and signed balances.
 mechanism_data.m: human-readable initial geometry, membership, masses, inertias, loads, drive and units.
+position_equations.m: executable named point transforms and each actual C/J/curvature row.
+velocity_equations.m and acceleration_equations.m: differentiated rows and driver right-hand sides.
 solve_position/velocity/acceleration.m: independent constraint equations and analytic Jacobian.
-solve_forces.m: static or dynamic free-body equilibrium from MATLAB's kinematics.
+${forces ? 'force_equations.m and solve_forces.m: named Newton/Euler balances and static/dynamic equilibrium.' : 'Kinematics-only export: force_equations.m and solve_forces.m are intentionally omitted.'}
+named_results.m: readable joint/body/driver aliases of the raw solved arrays, with original names preserved.
+validate_equations.m: checks generated assembly against the generic model before running; refuses changed topology.
 +pmks/: reusable point, constraint, drive, linear solve, continuation and comparison functions.
-plot_results.m: selected result channels and joint/tracer paths.
+plot_results.m: grouped Position, Velocity, Acceleration, Force (if selected) and joint/tracer paths.
+Different units have separate subplots, rather than opening a window for each scalar channel.
+Edit geometry/properties in mechanism_data.m; re-export after changing topology or constraint directions.
 All calculation uses SI (m, s, rad, kg, N, N*m); no PMKS results are used to solve.
 External load application points rotate with their body. Local vectors also rotate; global vectors do not.
 No independent applied-couple field exists in current PMKS. Driver torque is solved, not prescribed.

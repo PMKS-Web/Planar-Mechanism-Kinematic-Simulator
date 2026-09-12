@@ -57,13 +57,13 @@ end
 % The caller subdivides motion steps; a failed solve never supplies a new pose.
 q = previous; zero = zeros(size(q));
 for iteration = 1:50
-    [c,J] = pmks.constraints(m,q,zero,angle);
+    [c,J] = position_equations(m,q,zero,angle);
     delta = pmks.linear(J,c);
     if norm(c,inf) < 1e-11, return; end
     fraction = 1;
     while fraction > 1/128
         candidate = q-fraction*delta;
-        next = pmks.constraints(m,candidate,zero,angle);
+        next = position_equations(m,candidate,zero,angle);
         if norm(next,inf) < norm(c,inf), break; end
         fraction = fraction/2;
     end
@@ -75,15 +75,13 @@ end
   'solve_velocity.m': `function [v,J] = solve_velocity(m,q,angle,omega)
 % q = [CoM x, CoM y, rotation] per rigid body; sliders have only x,y.
 % Differentiate constraints: J(q)*q_dot = driver velocity RHS.
-[~,J] = pmks.constraints(m,q,zeros(size(q)),angle);
-rhs = zeros(size(J,1),1); rhs(end) = omega;
+[J,rhs] = velocity_equations(m,q,angle,omega);
 v = pmks.linear(J,rhs);
 end
 `,
   'solve_acceleration.m': `function a = solve_acceleration(m,q,v,angle,alpha)
 % Differentiate once more: J*q_ddot = -J_dot*q_dot + driver acceleration.
-[~,J,curvature] = pmks.constraints(m,q,v,angle);
-rhs = -curvature; rhs(end) = alpha;
+[J,rhs] = acceleration_equations(m,q,v,angle,alpha);
 a = pmks.linear(J,rhs);
 end
 `,
