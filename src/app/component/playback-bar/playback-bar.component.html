@@ -265,8 +265,8 @@
               <button
                 class="dirButton"
                 (click)="flipDirection(row); $event.stopPropagation()"
-                title="Input direction"
-                [attr.aria-label]="'Reverse ' + row.id"
+                [title]="directionHelp(row)"
+                [attr.aria-label]="directionLabel(row)"
               >
                 <mat-icon>{{ row.clockwise ? 'rotate_right' : 'rotate_left' }}</mat-icon>
               </button>

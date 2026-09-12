@@ -77,6 +77,33 @@ async function analysis() {
   await panel.locator('.panel-content.settled').waitFor();
   return panel;
 }
+async function scrub(from, to, tag) {
+  const rail = page.getByRole('slider', { name: 'M1 position in its cycle' });
+  const box = await rail.boundingBox();
+  assert.ok(box);
+  const x = (fraction) => box.x + 8 + (box.width - 16) * fraction;
+  await page.mouse.move(x(from), box.y + box.height / 2);
+  await film.during(60, 6, tag, async () => {
+    await page.mouse.down();
+    await page.mouse.move(x(to), box.y + box.height / 2, { steps: 12 });
+    await page.mouse.up();
+  });
+}
+async function matchesSolvedSample(id) {
+  return page.evaluate((id) => {
+    const service = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+    const frame =
+      service.mechanisms[0].getForceAnalysis('static').frames[service.currentSampleOf(0)];
+    const effort = frame.friction?.get(id)?.effort;
+    const drawn = document.querySelector(`[data-friction-contact="${id}"]`);
+    return (
+      Number.isFinite(effort) &&
+      drawn &&
+      Math.abs(Number(drawn.getAttribute('data-effort')) - effort) < 1e-9 &&
+      service.directionOf(0) === 1
+    );
+  }, id);
+}
 try {
   await openMechanism(page, `${base}/?${payload('Slider-crank with friction')}`);
   let panel = await edit('C');
@@ -130,6 +157,25 @@ try {
       (await glyph('D').locator('text').textContent()).includes('Friction')
   );
   await page.screenshot({ path: path.join(out, 'slider-analysis.png') });
+  record(
+    'Static-analysis helper distinguishes omitted inertia from kinetic friction',
+    (await panel.locator('[data-static-friction-help]').innerText()) ===
+      'Static analysis ignores inertia. Moving contacts use kinetic friction.'
+  );
+  record(
+    'Default results keep secondary explanations collapsed',
+    !(await panel.innerText()).includes('start the whole mechanism') &&
+      (await panel.locator('details').getAttribute('open')) === null
+  );
+  await panel.locator('summary').click();
+  record(
+    'Expanded calculation retains reaction, direction and static-capacity explanations',
+    (await panel.locator('details').innerText()).includes(
+      "already included in the guide's reported reaction"
+    ) && (await panel.locator('details').innerText()).includes('start the whole mechanism')
+  );
+  await page.screenshot({ path: path.join(out, 'slider-expanded.png') });
+  await panel.locator('summary').click();
   const initialPath = await glyph('D').locator('.friction-vector').getAttribute('d');
   await film.during(100, 10, 'motion', async () => {
     await page.getByRole('button', { name: 'Play', exact: true }).click();
@@ -139,6 +185,13 @@ try {
   record(
     'Current-sample friction vector updates during motion',
     initialPath !== (await glyph('D').locator('.friction-vector').getAttribute('d'))
+  );
+  await scrub(0.1, 0.3, 'scrub-forward');
+  record('Forward timeline scrubbing reads the solved sample', await matchesSolvedSample('D'));
+  await scrub(0.3, 0.1, 'scrub-backward');
+  record(
+    'Backward timeline scrubbing does not reverse the prescribed velocity',
+    await matchesSolvedSample('D')
   );
   // Return to the same pose before reversing the prescribed drive.
   await page.locator('button.stopButton').click();
@@ -198,6 +251,20 @@ try {
     sweep < 0 && (await glyph('A').getAttribute('data-kind')) === 'torque'
   );
   await page.screenshot({ path: path.join(out, 'bearing-analysis.png') });
+  const size = await glyph('A').locator('.friction-vector').boundingBox();
+  record(
+    'Bearing arc is restrained at normal fit and stays below a 225-degree sweep',
+    size.width < 120 && size.height < 120 && Math.abs(sweep) <= 1.25 * Math.PI + 1e-9
+  );
+  await page.getByRole('button', { name: 'Zoom Out', exact: true }).click();
+  await page.getByRole('button', { name: 'Zoom Out', exact: true }).click();
+  await page.screenshot({ path: path.join(out, 'bearing-zoom-out.png') });
+  record(
+    'Bearing numeric torque stays readable when zoomed out',
+    await glyph('A').locator('text').isVisible()
+  );
+  await page.getByRole('button', { name: 'Zoom In', exact: true }).click();
+  await page.getByRole('button', { name: 'Zoom In', exact: true }).click();
   await film.during(80, 6, 'reverse-bearing', () =>
     page.getByRole('button', { name: 'Reverse M1', exact: true }).click()
   );
@@ -222,6 +289,85 @@ try {
     (await panel.locator('.input-comparison').count()) === 1
   );
   await page.screenshot({ path: path.join(out, 'combined-analysis.png') });
+
+  await openMechanism(page, `${base}/?${payload('Reciprocating slider-crank with friction')}`);
+  await edit('C');
+  panel = await analysis();
+  await glyph('D').waitFor();
+  record(
+    'Reciprocating forward playback offers an explicit rewind action',
+    await page.getByRole('button', { name: 'Rewind M1 playback', exact: true }).isVisible()
+  );
+  await page.evaluate(() => {
+    const service = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+    window.frictionCycleBeforeRewind = service.mechanisms[0];
+  });
+  await film.during(70, 6, 'reciprocating-rewind', async () => {
+    await page.getByRole('button', { name: 'Rewind M1 playback', exact: true }).click();
+    await page.getByRole('button', { name: 'Play', exact: true }).click();
+    await page.waitForTimeout(180);
+    await page.getByRole('button', { name: 'Pause', exact: true }).click();
+  });
+  record(
+    'Reciprocating rewind is labeled and withholds contact loads and input comparison',
+    (await page.locator('.rowNote').innerText()) === 'Rewinding' &&
+      (await panel.innerText()).includes('does not reverse the prescribed drive') &&
+      (await glyph('D').count()) === 0 &&
+      (await panel.locator('dl').count()) === 0
+  );
+  await page.screenshot({ path: path.join(out, 'reciprocating-rewind.png') });
+  await scrub(0.3, 0.15, 'rewind-scrub');
+  record(
+    'Pausing and scrubbing a rewind do not reveal misleading friction',
+    (await glyph('D').count()) === 0 && (await panel.locator('dl').count()) === 0
+  );
+  await page.getByRole('button', { name: 'Resume M1 prescribed playback', exact: true }).click();
+  record(
+    'Forward playback restores the original solved samples without a display-only sign flip',
+    (await matchesSolvedSample('D')) &&
+      (await page.evaluate(
+        () =>
+          ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.mechanisms[0] ===
+          window.frictionCycleBeforeRewind
+      ))
+  );
+  await page.screenshot({ path: path.join(out, 'reciprocating-forward.png') });
+  const period = await page.evaluate(
+    () =>
+      ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.mechanisms[0].cyclePeriod
+  );
+  const returnLegs = new Set();
+  const cycleTimes = [];
+  await film.during(period * 160, 8, 'reciprocating-cycle', async () => {
+    await page.getByRole('button', { name: 'Play', exact: true }).click();
+    for (let i = 0; i < 16; i++) {
+      await page.waitForTimeout(period * 80);
+      const sample = await page.evaluate(() => {
+        const service = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+        const frame =
+          service.mechanisms[0].getForceAnalysis('static').frames[service.currentSampleOf(0)];
+        const contact = frame.friction?.get('D');
+        const drawn = document.querySelector('[data-friction-contact="D"]');
+        return {
+          seconds: service.secondsOf(0),
+          sign: contact ? Math.sign(contact.relativeRate) : 0,
+          agrees:
+            frame.status === 'ok' && contact?.effort
+              ? !!drawn &&
+                Math.abs(Number(drawn.getAttribute('data-effort')) - contact.effort) < 1e-9
+              : !drawn,
+        };
+      });
+      assert.ok(sample.agrees, 'reciprocating return leg shows its own solved force or refusal');
+      if (sample.sign) returnLegs.add(sample.sign);
+      cycleTimes.push(sample.seconds);
+    }
+    await page.getByRole('button', { name: 'Pause', exact: true }).click();
+  });
+  record(
+    'Forward reciprocating playback reads both solved motion directions across the cycle seam',
+    returnLegs.size === 2 && cycleTimes.some((time, i) => i > 0 && time < cycleTimes[i - 1])
+  );
 
   await openMechanism(page, `${base}/?${payload('Bearing friction with inertia safeguard')}`);
   await edit('A');

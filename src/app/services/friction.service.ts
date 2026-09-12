@@ -8,6 +8,9 @@ import { SettingsService } from './settings.service';
 import { AnalysisSampleService } from './analysis-sample.service';
 import { labelForBody } from '../model/body-label';
 
+export const FRICTION_REWIND_MESSAGE =
+  'Friction results are hidden while playback is set to rewind. Rewind traverses existing samples; it does not reverse the prescribed drive. Switch to forward playback to show friction.';
+
 export interface FrictionReading {
   state: 'Off' | 'Sliding' | 'Relative Rotation' | 'Stationary' | 'Unavailable';
   values?: number[];
@@ -50,6 +53,11 @@ export class FrictionService {
         state: 'Unavailable',
         message: 'Complete a driven mechanism to calculate friction.',
       };
+    // A traversal flag is not a reversed drive solve. Keep this guard while paused too,
+    // so pausing or scrubbing a rewind cannot briefly reveal misleading directional loads.
+    // Ordinary backward scrubbing does not change directionOf and still reads its sample.
+    if (this.mechanism.directionOf(machineIndex) < 0)
+      return { state: 'Unavailable', message: FRICTION_REWIND_MESSAGE };
     const index = this.mechanism.currentSampleOf(machineIndex);
     const mode = this.settings.forceAnalysisMode.value;
     const frame = solved.getForceAnalysis(mode).frames[index];

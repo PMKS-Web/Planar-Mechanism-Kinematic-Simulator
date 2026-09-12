@@ -33,6 +33,16 @@ For a solved moving contact, the panel shows **Contact State: Sliding** or **Rel
 **Normal Load** for a guide / **Radial Load** for a bearing, the signed **Friction Force/Torque**,
 and **Static Friction Limit**. The expandable calculation shows the coefficient, load, optional
 physical radius, resulting magnitude and the opposition-to-relative-motion rule.
+The default view keeps the contact identity, Enabled/Off state, these readings and the separate
+input comparison. Coefficients, direction conventions, reaction decomposition and startup
+interpretation live inside **How Friction Is Calculated**, closed by default. The input labels
+remain unchanged: **Additional from All Friction** fits the narrow panel and explicitly includes
+every contact, while its own section identifies the actuator consequence.
+
+The existing **Static / In-motion** mode labels and mode help tooltip remain unchanged. The
+read-only friction panel adds a visible helper in Static mode: **Static analysis ignores inertia.
+Moving contacts use kinetic friction.** Thus no-inertia force balance, contact motion state and
+static friction capacity remain separate concepts without renaming force analysis across the app.
 The guide's existing reaction results include the friction component. The panel explicitly says
 so: the contact arrow is a decomposition of that resultant, not another force to add to it.
 
@@ -58,8 +68,11 @@ In Force Analysis, supported enabled contacts show their current solved loads by
   arrows. The SVG description names the receiving body and direction convention; the panel's
   calculation is keyboard accessible through a native disclosure.
 - Magnitude is encoded relative to **that contact's cycle maximum**: force length uses the
-  existing 8.5% of swept-span scale, and torque sweep reaches 270 degrees at its maximum, with
-  radius 5% of the swept span. Read the numeric label for physical magnitude. Arrow lengths must
+  existing 8.5% of swept-span scale, and torque sweep reaches 225 degrees at its maximum, with
+  radius 2% of the swept span. The radius is constant throughout that cycle; torque magnitude
+  changes only the sweep. This reduces the previous radius by 60%, keeping the arc close to its
+  pin. The numeric label sits above the arc with the existing zoom-stable text offset and surface
+  halo, clear of the joint label in the checked fixtures. Read it for physical magnitude. Arrow lengths must
   not be compared across contacts, between force and torque, or with user-applied load artwork.
 - The overlay reads each mechanism's own current sample. Scale data is cached by its force-frame
   array, so edits, unit changes, and reversed-drive solves replace the cache. It does not draw a
@@ -99,13 +112,44 @@ Dense mechanisms can still have overlapping labels; there is no new label-placem
 overlay-management system. The visibility switch is reached through a friction contact's panel.
 The input comparison is a current-pose readout, not three new history graphs. This pass does not
 change motion laws, solve stationary holding/startup/stall, or correct the general inertia solver.
-The arrows describe the solver's prescribed sample, not the direction in which a reader scrubs
-the timeline. For a fully rotating input, Reverse replaces the prescribed drive and its force
-cache, and both friction directions are browser-tested. The existing Reverse control on a
-reciprocating machine instead rewinds its cycle (`setPlaybackDirection`); it does not create a
-new prescribed force solution at the same pose. Reconciling that replay behavior with force
-readings is a separate playback/force-analysis follow-up; this UI pass does not infer new loads
-by simply negating a friction arrow.
+### Prescribed motion, scrubbing and rewind
+
+**Play** advances each running machine's own clock through its precomputed cycle, at the chosen
+playback multiplier. Cycle time wraps. A reciprocating input already has both motion directions
+in that cycle: its return leg uses the corresponding solved sample rates, not a UI sign flip.
+Normal forward traversal therefore shows the current friction solution on both legs.
+
+For a fully rotating input, **Reverse** replaces the prescribed drive with `withReversedDrive`,
+negating prescribed rates and reflecting its phase to preserve the pose. The force cache is
+cleared and the coupled friction solution is recalculated. That physical drive reversal is
+different from the traversal flag returned by `directionOf`.
+
+For a reciprocating input, the transport now explicitly offers **Rewind M1 playback**, followed
+by **Resume M1 prescribed playback**. Its help explains that this traverses existing samples;
+the visible direction note says **Rewinding**. The existing `setPlaybackDirection` implementation
+is unchanged. A reversed traversal does not solve a new physical motion, so `FrictionService`
+returns Unavailable while that machine's traversal direction is negative. This suppresses its
+contact numbers, input comparison and drawing glyphs, including while paused or scrubbed in
+rewind mode. The diagnostic says:
+
+> Friction results are hidden while playback is set to rewind. Rewind traverses existing samples; it does not reverse the prescribed drive. Switch to forward playback to show friction.
+
+Resuming prescribed playback restores the same solved cycle's readings. Nothing negates only
+an arrow or guesses a new normal load. This is a presentation guard; the solver cache, exports,
+general force graphs and reaction readouts still describe the **prescribed solution**, not a
+physical rewind. Extending physical reverse solving to every playback path remains separate work.
+
+**Timeline scrubbing** selects a solved pose. One machine's handle measures input travel and
+selects the nearby leg of a reciprocating cycle; a combined handle measures shared time. Neither
+drag direction changes the prescribed speed nor sets the rewind flag. Forward and backward mouse
+drags therefore show the actual selected sample's friction, not friction inferred from the mouse.
+If rewind was already selected, the guard stays in place until prescribed playback is resumed.
+The browser suite films real drags and both reverse actions; the adapter tests also read the same
+sample after visiting an earlier/later one and verify unchanged friction.
+
+Eased returns to the start pose are likewise navigation through samples, not a newly prescribed
+motion. This pass leaves their existing navigation behavior intact. No forward dynamics or new
+motion-system normalization is introduced.
 
 ## Branch and purpose
 
@@ -465,3 +509,40 @@ remove the inertia/stationary refusal guards.
 
 Nothing was pushed or merged. A future force-analysis pass should address the documented
 inertia scaling and reciprocating playback convention before broadening the supported scope.
+
+### V1 polish validation
+
+The finishing pass preserves all three earlier friction commits (`75ef54ee`, `6110b2c7`,
+`c0eb0fa4`) on the same staging base, `acba1b77`. No friction equation, inertia normalization,
+serialization format or physical stationary-contact behavior changed.
+
+- Focused friction domain, result adapters, components, vector geometry and existing
+  reversal/time-based playback tests: **174/174**, 15 files.
+- Full application suite: **2,594 passed, three failed**, 2,597 tests in 247 files.
+  The two MotionGen gripper assertions and Windows stylesheet path fence were rerun on the
+  unchanged staging snapshot: **four passed, three failed**. Both baseline spec files have
+  identical Git blob hashes to `origin/staging`. There are no new failing application tests.
+- Fixture gallery: **4/4**, including the new reciprocating slider-crank URL.
+- `e2e/friction-visualization.mjs`: **37/37**, no uncaught browser errors. Its **66-frame**
+  capture covers saving, motion, forward/backward mouse scrubbing, prescribed guide/bearing
+  reverse, reciprocating rewind, scrubbing while rewinding, a full forward reciprocating
+  cycle including both motion directions and its seam, and the In-motion refusal.
+- `e2e/friction-stories.mjs`: **15/15**, including compact default analysis, visible Static
+  helper, expanded calculation and playback rewind at 250px panel width. Existing off,
+  enabled, collapsed, stationary, inertia refusal, saved, invalid and disabled states remain.
+- `e2e/friction.mjs`: **15/15**. Its static-limit assertion now opens the disclosure where
+  that explanation lives. `e2e/ui-copy.mjs`: **17/17**, zero console errors.
+- `npm run check`: passed, zero errors and the existing 15 permitted warnings.
+- Production and Storybook builds: passed. Source type checking passed with the same
+  `--skipLibCheck` dependency-declaration limitation documented in the earlier audit.
+- Screenshots and filmstrip sheets were visually inspected for the compact and expanded
+  panel, slider force, bearing torque in both directions and two zoom levels, combined
+  contacts, reciprocating motion/rewind, stationary and In-motion refusal states. Labels
+  keep the existing text halo and zoom-stable offset. Dense-label layout remains deferred.
+- `git diff --check`: passed. Artifacts remain ignored; no push or merge was performed.
+
+The independent PMKS_Verification checkout and reference data are unchanged by this polish.
+Its 1,120 application reference-pose comparisons remain in the full suite; MATLAB execution
+is still pending. The next separate physics task should be the inherited In-motion inertia
+scaling correction, retaining its factor-of-200 reproduction and friction refusal until the
+general force path is independently verified.

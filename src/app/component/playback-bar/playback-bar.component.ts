@@ -845,6 +845,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
    * around, which is not something the reader needs told twice a cycle.
    */
   private noteFor(index: number): string {
+    if (this.mechanism.directionOf(index) < 0) return 'Rewinding';
     const profile = this.mechanism.driveProfileOf(index);
     const outward = this.mechanism.travelingForward(index);
     if (profile?.linear) {
@@ -1218,6 +1219,19 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
       return;
     }
     this.mechanism.reverseDrive(row.index);
+  }
+
+  protected directionLabel(row: PlaybackRow): string {
+    if (!this.mechanism.mechanisms[row.index]?.reciprocates) return `Reverse ${row.id}`;
+    return this.mechanism.directionOf(row.index) < 0
+      ? `Resume ${row.id} prescribed playback`
+      : `Rewind ${row.id} playback`;
+  }
+
+  protected directionHelp(row: PlaybackRow): string {
+    return this.mechanism.mechanisms[row.index]?.reciprocates
+      ? 'Traverse the solved motion backward or forward. Rewind does not reverse the prescribed drive; friction results are hidden during rewind.'
+      : 'Reverse the prescribed input direction and recalculate force results.';
   }
 
   /**

@@ -134,6 +134,8 @@ export function buildMechanismFixture(payload: string): MechanismFixture {
   // One machine, so its own place in its cycle is the shared step. The real
   // one reads a per-machine clock the harness has no reason to run.
   service.currentSampleOf = () => service.mechanismTimeStep;
+  // These panel fixtures read prescribed samples; they never rewind playback.
+  service.directionOf = () => 1;
   // And the seconds the analysis panel's subtitle reads at: the harness never
   // runs a clock, so its one machine stands at the start of its cycle.
   service.secondsOf = () => 0;

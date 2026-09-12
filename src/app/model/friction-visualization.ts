@@ -30,8 +30,10 @@ export function frictionGlyph(
       sweep: 0,
     };
   }
-  const radius = span * 0.05;
-  const sweep = ratio * Math.PI * 1.5;
+  // Keep the bearing glyph close to its pin. Magnitude changes its sweep, not its radius;
+  // the numeric label is authoritative and cannot be compared to a force arrow's length.
+  const radius = span * 0.02;
+  const sweep = ratio * Math.PI * 1.25;
   return {
     d: momentArrowPath(joint.x, joint.y, radius, sweep),
     leader: '',

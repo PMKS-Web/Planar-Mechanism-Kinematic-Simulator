@@ -37,9 +37,19 @@ describe('friction drawing geometry in model coordinates', () => {
     const ccw = frictionGlyph(joint, contact(10, 'torque'), 100, 10)!;
     expect(cw.sweep).toBeLessThan(0);
     expect(ccw.sweep).toBe(-cw.sweep);
-    expect(cw.d).toContain('A 5 5');
+    expect(cw.d).toContain('A 2 2');
     expect(cw.fx).toBe(0);
     expect(cw.fy).toBe(0);
+  });
+  it('keeps bearing radius at two percent of span while magnitude changes only the sweep', () => {
+    const joint = new RevJoint('A', 0, 0);
+    const half = frictionGlyph(joint, contact(5, 'torque'), 100, 10)!;
+    const full = frictionGlyph(joint, contact(10, 'torque'), 100, 10)!;
+    expect(half.label).toEqual(full.label);
+    expect(full.label.y).toBe(2);
+    expect(full.sweep).toBeCloseTo(1.25 * Math.PI, 12);
+    expect(half.sweep).toBeCloseTo(full.sweep / 2, 12);
+    expect(frictionGlyph(joint, contact(10, 'torque'), 50, 10)!.label.y).toBe(1);
   });
   for (const effort of [0, NaN, Infinity]) {
     it(`does not draw an invented arrow for ${effort}`, () => {

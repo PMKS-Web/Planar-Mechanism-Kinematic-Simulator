@@ -15,7 +15,7 @@ here.
 undo/redo, persistence and changing contact readings. Screenshots and a filmstrip go to
 `artifacts/friction/`.
 
-`friction-stories.mjs` checks the 13 friction gallery states at `SB_URL`, including
+`friction-stories.mjs` checks the 15 friction gallery states at `SB_URL`, including
 native disabled fields, validation, radius units and panel overflow. Screenshots go to
 `artifacts/friction-stories/`.
 
@@ -23,6 +23,12 @@ native disabled fields, validation, radius units and panel overflow. Screenshots
 arrows and bearing moments, direction reversals, visibility, combined contacts, input comparison,
 and the In-motion inertia diagnostic. Screenshots and a filmstrip go to
 `artifacts/friction-visualization/`.
+
+The friction visualization checks also cover the compact/expanded calculation, the Static
+no-inertia helper, the restrained bearing arc at two zoom levels, actual forward/backward
+timeline drags, and reciprocating rewind suppression/restoration. The fixture gallery includes
+`Reciprocating slider-crank with friction` for this traversal behavior. Rewind is distinct from
+a newly prescribed reverse drive; no test infers a physical velocity from mouse direction.
 
 ## What CI runs
 

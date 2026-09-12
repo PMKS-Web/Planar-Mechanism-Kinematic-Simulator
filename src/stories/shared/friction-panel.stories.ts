@@ -5,6 +5,7 @@ import { LengthUnit } from '../../app/model/unit-enums';
 import { INERTIA_FRICTION_REFUSAL } from '../../app/model/joint-friction';
 import { inPanel } from '../support/frame';
 import { frictionStoryState } from '../support/friction-stubs';
+import { FRICTION_REWIND_MESSAGE } from '../../app/services/friction.service';
 
 const meta: Meta<FrictionPanelComponent> = {
   title: 'Structure/Friction Panel',
@@ -40,6 +41,7 @@ export const RadiusInInches: Story = state('pin', true, LengthUnit.INCH);
 export const PlaybackDisabled: Story = state('guide', true, LengthUnit.CM, true);
 export const Stationary: Story = state('guide', true, LengthUnit.CM, false, true);
 const inertiaState = frictionStoryState('guide');
+inertiaState.settings.forceAnalysisMode.next('dynamic');
 inertiaState.service.reading = () => ({ state: 'Unavailable', message: INERTIA_FRICTION_REFUSAL });
 export const InMotionUnavailable: Story = {
   args: { joint: inertiaState.joint, readOnly: true },
@@ -75,4 +77,16 @@ export const SavedSettings: Story = {
 export const CollapsedEnabled: Story = {
   ...state('guide'),
   args: { ...state('guide').args, expanded: false },
+};
+export const ExpandedCalculation: Story = {
+  ...SliderAnalysis,
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByText('How Friction Is Calculated'));
+  },
+};
+const rewindState = frictionStoryState('guide');
+rewindState.service.reading = () => ({ state: 'Unavailable', message: FRICTION_REWIND_MESSAGE });
+export const PlaybackRewind: Story = {
+  args: { joint: rewindState.joint, readOnly: true },
+  decorators: [applicationConfig({ providers: rewindState.providers })],
 };

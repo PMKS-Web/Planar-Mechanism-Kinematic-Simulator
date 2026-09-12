@@ -2630,3 +2630,7 @@ input's Reverse command rebuilds the prescribed drive and friction solution. Rec
 playback also has a timeline-rewind path; negating just the arrow there would disagree with
 the coupled guide normal load and actuator effort. See the presentation limits in
 `friction-design.md` before changing that convention.
+The V1 panel now hides contact readings and its input comparison while that machine's
+`directionOf` is negative, and the transport explicitly calls this Rewind. Ordinary backward
+scrubbing does not set that flag: it continues to read the selected prescribed sample. Keep
+the guard active when rewind is paused, so pausing cannot reveal the misleading load again.

@@ -48,6 +48,9 @@ export class FrictionPanelComponent implements DoCheck {
   protected readonly permission = inject(EditPermissionService);
   private settings = inject(SettingsService);
   private parser = inject(NumberUnitParserService);
+  protected get staticAnalysis(): boolean {
+    return this.settings.forceAnalysisMode.value === 'static';
+  }
   protected readonly error = signal('');
   protected readonly confirmation = signal('');
   protected readonly feedbackJoint = signal('');

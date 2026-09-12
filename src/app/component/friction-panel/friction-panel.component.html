@@ -13,9 +13,11 @@
       [attr.aria-label]="'Friction ' + (anyEnabled() ? 'Enabled' : 'Off')"
       >{{ anyEnabled() ? 'Enabled' : 'Off' }}</span
     >
-    <p class="note">
-      Friction changes the required input effort. Motion stays at the prescribed speed.
-    </p>
+    @if (readOnly() && staticAnalysis) {
+      <p class="note" data-static-friction-help>
+        Static analysis ignores inertia. Moving contacts use kinetic friction.
+      </p>
+    }
     @for (contact of contacts(); track contact.joint.id) {
       <div class="contact" [attr.data-friction-joint]="contact.joint.id">
         <h4>
@@ -84,15 +86,6 @@
           }
         }
         @if (enabled(contact.joint)) {
-          @if (readOnly()) {
-            <p class="note">
-              Static coefficient {{ contact.joint.friction.staticCoefficient }} · Kinetic
-              coefficient {{ contact.joint.friction.kineticCoefficient }}
-              @if (contact.pin) {
-                · Effective radius {{ number(radius(contact.joint)) }} {{ lengthUnit }}
-              }
-            </p>
-          }
           @if (service.reading(contact.joint); as reading) {
             <p class="contact-state" [attr.data-contact-state]="reading.state">
               Contact State: {{ reading.state }}
@@ -106,14 +99,18 @@
                 <dt>Static Friction Limit</dt>
                 <dd>{{ number(values[2]) }} {{ effortUnit(contact.pin) }}</dd>
               </dl>
-              <p class="note">{{ reading.sign }}</p>
-              @if (!contact.pin) {
-                <p class="note">
-                  This tangent component is already included in the guide's reported reaction.
-                </p>
-              }
               <details class="calculation">
                 <summary>How Friction Is Calculated</summary>
+                <p class="note">
+                  Friction changes the required input effort. Motion stays at the prescribed speed.
+                </p>
+                <p class="note">
+                  Static coefficient {{ contact.joint.friction.staticCoefficient }} · Kinetic
+                  coefficient {{ contact.joint.friction.kineticCoefficient }}
+                  @if (contact.pin) {
+                    · Effective radius {{ number(radius(contact.joint)) }} {{ lengthUnit }}
+                  }
+                </p>
                 <p class="note">
                   Magnitude = μk ×
                   {{ contact.pin ? 'radial load × effective radius' : 'normal load' }}<br />
@@ -126,11 +123,23 @@
                   {{ effortUnit(contact.pin) }}.<br />
                   Direction opposes relative {{ contact.pin ? 'rotation' : 'sliding' }}.
                 </p>
+                <p class="note">{{ reading.sign }}</p>
+                @if (!contact.pin) {
+                  <p class="note">
+                    This tangent component is already included in the guide's reported reaction.
+                  </p>
+                }
+                <p class="note">
+                  The static limit is μs × this contact's current
+                  {{ contact.pin ? 'radial load × effective radius' : 'normal load' }}. It is not
+                  the input effort needed to start the whole mechanism.
+                </p>
+                <p class="note">
+                  Dashed arrows show calculated contact loads on the named body. The opposite action
+                  acts on its contact partner. Numeric labels give the physical magnitude; glyph
+                  sizes are not comparable across contacts or with applied forces.
+                </p>
               </details>
-              <p class="note">
-                The static limit uses this contact's current load. It is not the input effort needed
-                to start the whole mechanism.
-              </p>
             }
             @if (reading.message) {
               <div class="diagnostic" role="status">
@@ -186,10 +195,6 @@
           (pressed)="flipOverlay()"
         />
       </div>
-      <p class="note">
-        Dashed arrows show calculated contact loads on the named body. The opposite action acts on
-        its contact partner.
-      </p>
     }
   </collapsible-subsection>
 }

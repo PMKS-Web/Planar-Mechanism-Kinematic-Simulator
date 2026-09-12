@@ -31,6 +31,8 @@ try {
     'bearing-analysis',
     'saved-settings',
     'collapsed-enabled',
+    'expanded-calculation',
+    'playback-rewind',
   ]) {
     await page.goto(`${base}/iframe.html?id=structure-friction-panel--${story}&viewMode=story`);
     const panel = page.locator('app-friction-panel');
@@ -39,7 +41,7 @@ try {
     await page.waitForTimeout(300);
     const text = await panel.innerText();
     if (story !== 'collapsed-enabled')
-      assert.ok(text.includes('Friction changes the required input effort'), `${story} opens`);
+      assert.ok(text.includes('Guide at') || text.includes('Bearing at'), `${story} opens`);
     else {
       assert.equal(
         await panel.getByRole('button', { name: /^Friction/ }).getAttribute('aria-expanded'),
@@ -66,6 +68,20 @@ try {
     if (story.endsWith('-analysis')) {
       assert.equal(await panel.locator('input').count(), 0);
       assert.ok(text.includes('With Friction') && text.includes('Additional from All Friction'));
+      assert.ok(
+        text.includes('Static analysis ignores inertia. Moving contacts use kinetic friction.')
+      );
+      assert.equal(await panel.locator('details').getAttribute('open'), null);
+      assert.ok(!text.includes('start the whole mechanism'));
+    }
+    if (story === 'expanded-calculation') {
+      assert.notEqual(await panel.locator('details').getAttribute('open'), null);
+      assert.ok(text.includes("already included in the guide's reported reaction"));
+      assert.ok(text.includes('start the whole mechanism'));
+    }
+    if (story === 'playback-rewind') {
+      assert.ok(text.includes('does not reverse the prescribed drive'));
+      assert.equal(await panel.locator('dl').count(), 0);
     }
     const overflow = await panel.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
     assert.equal(overflow, false, `${story} fits the panel width`);

@@ -46,6 +46,14 @@ export function frictionBearingFixture(): MechanismFixture {
 
 export const FRICTION_GALLERY: GalleryEntry[] = [
   {
+    name: 'Reciprocating slider-crank with friction',
+    floatingSlot: false,
+    purpose:
+      'Short connecting rod limits the input swing; distinguish solved motion from playback rewind',
+    spec: 'friction-overlay.service.spec.ts',
+    fixture: frictionReciprocatingFixture(),
+  },
+  {
     name: 'Bearing friction with inertia safeguard',
     floatingSlot: false,
     purpose:
@@ -83,6 +91,13 @@ export const FRICTION_GALLERY: GalleryEntry[] = [
     fixture: frictionBearingFixture(),
   },
 ];
+
+export function frictionReciprocatingFixture(): MechanismFixture {
+  const fixture = frictionSliderCrankFixture();
+  fixture.joints[2].x = 3;
+  fixture.load!.at = [3, 0];
+  return fixture;
+}
 
 export function frictionInertiaFixture(): MechanismFixture {
   const fixture = frictionBearingFixture();

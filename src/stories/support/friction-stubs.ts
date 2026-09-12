@@ -66,6 +66,7 @@ export function frictionStoryState(
   return {
     joint,
     service,
+    settings,
     providers: [
       { provide: SettingsService, useValue: settings },
       { provide: FrictionService, useValue: service },

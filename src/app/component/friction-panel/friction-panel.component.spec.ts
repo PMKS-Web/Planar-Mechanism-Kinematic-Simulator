@@ -96,4 +96,18 @@ describe('friction panel states', () => {
       'Additional from All Friction'
     );
   });
+  it('keeps educational detail inside a closed disclosure and distinguishes no-inertia analysis', () => {
+    const { root } = mount('guide', true, false, true);
+    expect(root.querySelector('[data-static-friction-help]')!.textContent).toContain(
+      'Static analysis ignores inertia. Moving contacts use kinetic friction.'
+    );
+    const details = root.querySelector('details')!;
+    expect(details.open).toBe(false);
+    expect(details.textContent).toContain("already included in the guide's reported reaction");
+    expect(details.textContent).toContain('start the whole mechanism');
+    expect(details.textContent).toContain('Kinetic coefficient');
+    expect(root.querySelector('.contact > dl')).not.toBeNull();
+    details.querySelector('summary')!.click();
+    expect(details.open).toBe(true);
+  });
 });

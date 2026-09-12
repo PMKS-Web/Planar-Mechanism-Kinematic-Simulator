@@ -5,6 +5,7 @@ import {
   frictionSliderCrankFixture,
   frictionBearingFixture,
   frictionCombinedFixture,
+  frictionReciprocatingFixture,
 } from '../../test-utils/verification/friction-fixtures';
 import { FrictionOverlayService } from './friction-overlay.service';
 import { FrictionService } from './friction.service';
@@ -72,6 +73,36 @@ describe('current-sample friction overlays and readings', () => {
     const next = h.overlay.overlays()[0];
     expect(next.fx).toBeLessThan(0);
     expect(next.d).not.toBe(first.d);
+  });
+  it('backward scrubbing reads the same solved friction as forward scrubbing at that sample', () => {
+    const h = setup();
+    h.service.mechanismTimeStep = 20;
+    const first = h.overlay.overlays()[0];
+    h.service.mechanismTimeStep = 40;
+    h.overlay.overlays();
+    h.service.mechanismTimeStep = 20;
+    expect(h.overlay.overlays()[0]).toEqual(first);
+    expect(h.service.directionOf(0)).toBe(1);
+  });
+  it('withholds loads and input comparison throughout reciprocating rewind, then restores them', () => {
+    const h = setup(frictionReciprocatingFixture());
+    expect(h.mechanism.isMechanismValid()).toBe(true);
+    expect(h.mechanism.reciprocates).toBe(true);
+    const joint = h.service.joints.find((j) => j.id === 'D') as RealJoint;
+    const before = h.friction.reading(joint);
+    expect(before.values).toBeDefined();
+    const series = h.mechanism.getForceAnalysis('static');
+    h.service.directionOf = () => -1;
+    expect(h.friction.reading(joint).message).toContain('does not reverse the prescribed drive');
+    expect(h.friction.reading(joint).values).toBeUndefined();
+    expect(h.friction.reading(joint).totalEffort).toBeUndefined();
+    expect(h.overlay.overlays()).toEqual([]);
+    h.service.mechanismTimeStep = 10;
+    expect(h.overlay.overlays()).toEqual([]);
+    h.service.mechanismTimeStep = 0;
+    h.service.directionOf = () => 1;
+    expect(h.friction.reading(joint)).toEqual(before);
+    expect(h.mechanism.getForceAnalysis('static')).toBe(series);
   });
   it('hides all numeric results at a solved stationary-contact refusal', () => {
     const h = setup(frictionBearingFixture());
