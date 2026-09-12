@@ -12,6 +12,8 @@ interface GearDocument extends GearAssembly {
 
 const MAX_PAYLOAD = 500_000;
 const canonical = (value: number) => Number(value.toPrecision(15));
+// Authored identifiers are ASCII. Locale collation is not a document-format rule.
+const byId = (a: { id: string }, b: { id: string }) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 const identifier = (value: unknown): value is string =>
   typeof value === 'string' && /^[A-Za-z0-9_-]{1,80}$/.test(value);
 const finite = (value: unknown): value is number =>
@@ -20,27 +22,23 @@ const finite = (value: unknown): value is number =>
 export function encodeGearDocument(assembly: GearAssembly, joints: JointData[]): string[] {
   if (!assembly.gears.length && !assembly.meshes.length) return [];
   const document: GearDocument = {
-    gears: [...assembly.gears]
-      .sort((a, b) => a.id.localeCompare(b.id))
-      .map((gear) => ({
-        id: gear.id,
-        hostLinkId: gear.hostLinkId,
-        centerJointId: gear.centerJointId,
-        referenceJointId: gear.referenceJointId,
-        teeth: gear.teeth,
-        module: canonical(gear.module),
-        ...(gear.name === undefined ? {} : { name: gear.name }),
-      })),
-    meshes: [...assembly.meshes]
-      .sort((a, b) => a.id.localeCompare(b.id))
-      .map((mesh) => ({
-        id: mesh.id,
-        gearAId: mesh.gearAId,
-        gearBId: mesh.gearBId,
-        kind: mesh.kind,
-      })),
+    gears: [...assembly.gears].sort(byId).map((gear) => ({
+      id: gear.id,
+      hostLinkId: gear.hostLinkId,
+      centerJointId: gear.centerJointId,
+      referenceJointId: gear.referenceJointId,
+      teeth: gear.teeth,
+      module: canonical(gear.module),
+      ...(gear.name === undefined ? {} : { name: gear.name }),
+    })),
+    meshes: [...assembly.meshes].sort(byId).map((mesh) => ({
+      id: mesh.id,
+      gearAId: mesh.gearAId,
+      gearBId: mesh.gearBId,
+      kind: mesh.kind,
+    })),
     points: [...joints]
-      .sort((a, b) => a.id.localeCompare(b.id))
+      .sort(byId)
       .map((joint) => [joint.id, canonical(joint.x), canonical(joint.y)]),
   };
   const bytes = new TextEncoder().encode(JSON.stringify(document));

@@ -180,7 +180,7 @@ export class ExportColumnsService {
     parts.forEach((part) => {
       if (part.kind === 'gear') return;
       const solved = this.mechanism.mechanisms[part.mechanismIndex];
-      if (!solved?.isMechanismValid()) return;
+      if (!solved?.isMechanismValid() || solved.transmission.gears.length) return;
       const index = solved.getForceAnalysis(mode).reactionIndex;
       const columns: ExportColumn[] =
         part.kind === 'joint'

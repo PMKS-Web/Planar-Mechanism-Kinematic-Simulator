@@ -278,7 +278,10 @@ export class ExportCatalogService {
     const facts = this.mechanism.readinessOfEachMechanism()[index]?.facts ?? [];
     const running = !!facts.find((fact) => fact.label === 'Input speed')?.value;
     const objects = `${count} ${count === 1 ? 'object' : 'objects'}`;
-    return running ? objects : `${objects} · not running`;
+    const note = running ? objects : `${objects} · not running`;
+    return this.mechanism.mechanisms[index]?.transmission.gears.length
+      ? `${note} · gear forces unavailable`
+      : note;
   }
 
   /**
