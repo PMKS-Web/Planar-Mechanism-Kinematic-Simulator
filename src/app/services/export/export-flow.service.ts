@@ -65,6 +65,8 @@ export class ExportFlowService {
   imageFormat: 'png' | 'svg' = 'png';
   /** Empty until the reader types: the name shown is derived while it is. */
   typedName = '';
+  matlabReference = false;
+  matlabMeasurements = true;
 
   private pickedParts = new Set<string>();
   private pickedColumns = new Set<string>();
@@ -367,6 +369,8 @@ export class ExportFlowService {
 
   extension(): string {
     switch (this.format) {
+      case 'matlab-package':
+        return '.zip';
       case 'matlab':
         return '.m';
       case 'xlsx':

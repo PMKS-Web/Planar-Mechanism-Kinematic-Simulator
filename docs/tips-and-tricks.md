@@ -1571,6 +1571,21 @@ the answer should be cannot be invalidated by a palette or a template.
 
 ## Short notes
 
+**Independent force exports must remove canvas scale before assembling inertia.**
+`Mechanism.getForceAnalysis()` currently passes canvas-scaled geometry and linear accelerations
+to `ForceSolver`, while mass and mass moment of inertia are physical properties. Dividing only
+the final driver torque by `MODEL_SCALE` cannot undo the mixed inertial terms. The independent
+MATLAB adapter converts initial geometry to SI first. Its tests compare against PMKS's free-body
+assembly supplied with physical coordinates/accelerations, and separately reproduce the existing
+display discrepancy. Keep optional PMKS reference samples faithful to the current app so the
+comparison exposes this difference. See [MATLAB units and validation](matlab-and-measurements.md)
+before changing either the exporter or the backend force boundary.
+
+**A reversed drive can reuse the original pose array.** `withReversedDrive()` negates speeds and
+sets `framesRunBackwards`; it does not reverse `joints`, `links` or `timeNum`. Independent exports
+must align optional reference rows with travel direction. The MATLAB adapter handles closed
+constant-speed cycles and explicitly refuses fast-reversed open/reversing cycles.
+
 One surprise each, in no particular order. Each heading states the rule; search for the symbol
 you are touching.
 

@@ -76,9 +76,14 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
    */
   readonly formats: { key: ExportFormat; name: string; note: string }[] = [
     {
+      key: 'matlab-package',
+      name: 'MATLAB Analysis Package (.zip)',
+      note: 'Independent position, velocity, acceleration and selected force analysis from your mechanism definition.',
+    },
+    {
       key: 'matlab',
-      name: 'MATLAB Script (.m)',
-      note: 'Selected PMKS results, plots and measured-data RMSE. Includes a geometry-based kinematic solver for supported mechanisms.',
+      name: 'PMKS Reference Script (.m)',
+      note: 'PMKS result tables, plots and RMSE, with a limited kinematic example. Use the analysis package for independent solving.',
     },
     {
       key: 'csv',
@@ -150,6 +155,7 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
    * than no glyph at all.
    */
   get deliveryGlyph(): string {
+    if (this.flow.format === 'matlab-package') return 'folder';
     if (this.flow.format === 'report') return 'print';
     if (this.flow.format === 'xlsx') return 'grid_on';
     const count = this.flow.format === 'images' ? this.pictureCount() : this.writer.summary().files;
@@ -158,6 +164,7 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
   }
 
   get deliveryNote(): string {
+    if (this.flow.format === 'matlab-package') return 'MATLAB files in one ZIP archive';
     if (this.flow.format === 'report') return 'Opens the print dialog, where Save as PDF writes it';
     const count = this.flow.format === 'images' ? this.pictureCount() : this.writer.summary().files;
     if (count > 2) return `${count} files, in one zip folder`;
@@ -312,6 +319,8 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
   // --- step 3 ---------------------------------------------------------------
 
   get summaryLine(): string {
+    if (this.flow.format === 'matlab-package')
+      return 'Mechanism definition, independent solvers and selected plots';
     const summary = this.writer.summary();
     if (this.flow.format === 'images') {
       const pictures = this.pictureCount();
@@ -329,6 +338,10 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
 
   get matlabNotes(): string[] {
     return this.writer.matlabNotes();
+  }
+
+  protected get matlabRefusal(): string {
+    return this.writer.matlabPackageRefusal();
   }
 
   private pictureCount(): number {
@@ -375,7 +388,7 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
    */
   canGoOn(): boolean {
     if (this.flow.step === 'parts') return this.flow.selectedParts().length > 0;
-    if (this.flow.step === 'file') return this.flow.canExport();
+    if (this.flow.step === 'file') return this.flow.canExport() && !this.matlabRefusal;
     return true;
   }
 

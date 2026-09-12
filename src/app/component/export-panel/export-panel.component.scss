@@ -357,6 +357,15 @@
       }
     }
 
+    .settingRow.matlabOption {
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--card-gap);
+      .settingName {
+        white-space: normal;
+      }
+    }
+
     .settingName {
       font-size: 14px;
       color: var(--text-secondary);

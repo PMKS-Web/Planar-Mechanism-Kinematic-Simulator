@@ -2,42 +2,167 @@
 
 > **Status:** Reference — MATLAB export and experimental comparison in the analysis modes.
 
-## Generate a script
+## MATLAB Analysis Package
 
-In Kinematic or Force mode, open **Export Data**, choose the parts and quantities, then select
-**MATLAB Script (.m)** and press **Export**. Each selected mechanism gets its own script and time
-column. More than two scripts arrive together in a ZIP archive.
+In the actual PMKS application, load a mechanism and enter Kinematic or Force Analysis. Open
+**Export Data**, choose objects and quantities, then select **MATLAB Analysis Package (.zip)**.
+Force selections use the drawer's **Static** or **In-motion** setting. The complete mechanism
+defines the equations even when only one object's results are selected for plotting.
 
-The filename preview uses a `pmks_` prefix, letters, digits and underscores so MATLAB can run
-the script. Long names are shortened while keeping the mechanism suffix distinct.
+Export, unzip, and change MATLAB's current folder to the mechanism's folder. Run:
 
-Run the whole script in MATLAB R2016b or newer. No toolbox or separate copy of
-[PMKS_Verification](https://github.com/PMKS-Web/PMKS_Verification) is required. It contains:
+```matlab
+results = run_pmks_analysis;
+```
 
-- Full-precision PMKS reference samples and plots of the selected quantities. Labels include
-  units; missing or singular solver values remain `NaN`.
-- An editable experimental comparison: set `measured` to rows of `[time value]`, select
-  `measurement_column` (index into `labels`), and set `time_offset` in seconds.
-- An independent **kinematic** solver when the geometry is supported. It solves rigid-body
-  constraints using Newton iteration, then solves velocity and acceleration using the constraint
-  Jacobian. It uses the mechanism's initial geometry, not PMKS output positions or rates.
+MATLAB independently calculates configurations, joint/tracer and CoM velocities/accelerations,
+link angles/angular rates, and selected static or dynamic joint reactions and driver torque.
+No PMKS result table supplies the theoretical solution. **Delete `pmks_reference.csv` and the
+complete supported analysis still runs.** Each selected mechanism gets its own folder in one ZIP.
+Folder names have a deterministic `pmks_` prefix and safe letters, digits and underscores.
 
-Independent kinematics supports a constant-speed, grounded revolute input, rigid bodies joined
-by pins, and fixed guides with free-turning sliders. Compound bodies and tracer points belong
-to their root rigid body. Floating slots, welded sliders, cylinders, slider inputs and reversing
-inputs export reference results, plots and RMSE only; the drawer and script state that limit.
-Singular or nonconvergent poses stop the independent solve with a warning and leave the remaining
-samples as `NaN`. It does not choose a branch through a toggle. Force results are PMKS references,
-not an independent MATLAB force solve.
+### Generated files
 
-Independent results live in `geometry`. `body_ids`, `joint_ids`, and `solved_frames` describe their
-order and valid extent. Translations use the project length unit; independent angular quantities
-use radians. Each body's rotation coordinate starts at zero; `geometry.link_angle` adds its
-initial absolute orientation. Reference results retain the selected display units.
+| File | Purpose |
+| --- | --- |
+| `mechanism_data.m` | Named joints, root bodies, initial geometry, constraints, SI mass properties, loads and drive commands |
+| `run_pmks_analysis.m` | One entry point; calculates results before optionally verifying them |
+| `solve_position.m` | Numerical Newton iteration with backtracking |
+| `solve_velocity.m` | Analytic Jacobian equation `J*q_dot = driver RHS` |
+| `solve_acceleration.m` | `J*q_ddot = -J_dot*q_dot + driver acceleration RHS` |
+| `solve_forces.m` | `J' * lambda = M*q_ddot - applied loads`; static mode zeros inertial terms |
+| `plot_results.m` | Selected MATLAB result channels, plus joint/tracer paths when position is selected |
+| `+pmks/` | Reusable point transforms, constraints, linear solving, continuation, driver, channel and comparison helpers |
+| `compare_pmks.m` | Optional comparison to `pmks_reference.csv` |
+| `compare_measurements.m`, `measurements.csv` | Optional experimental comparison and an empty CSV template |
+| `README.txt` | Run instructions, units and limitations |
 
-This follows the initialization, plots and RMSE organization in PMKS_Verification, including the
-February 7, 2025 teaching-lab slider work. It does not copy sensor-specific paths, automatic
-offsets, extrapolation or outlier filtering.
+The package uses base MATLAB syntax and linear algebra (`A\b`, `rcond`, `readtable`, plotting).
+MATLAB R2016b or newer is the target. No Symbolic Math Toolbox, Optimization Toolbox, or separate
+PMKS_Verification installation is required. **Actual MATLAB execution remains unverified on the
+development machine, where neither MATLAB nor Octave was found.** Equation tests are not a
+substitute for running the emitted MATLAB files. Octave compatibility is not claimed.
+
+### Constraint and force support
+
+Supported: revolute pins; ground pins; rigid binary, ternary and multi-joint bodies; root compound
+bodies; rigidly attached tracer points; fixed guides with free-turning slider blocks; one
+grounded rotary driver. The mathematical formulation is the same for all mechanism graphs.
+Frame bodies pinned at two distinct ground points are excluded from moving-body equilibrium;
+their pins are ground supports for adjacent bodies. A slider block has two translational
+coordinates and no rotational inertia. Its guide reaction is normal to the fixed line.
+
+Not supported: linear or floating drivers, floating slots, welded slides, sealed cylinders,
+redundant/underdetermined systems, ambiguous support splitting, friction, flexibility, structural
+stress or deformation. These topologies are refused before export instead of silently falling
+back to reference results. A singular initial pose is also refused. An encountered singularity
+or nonconvergence stops the analysis, records the failure, and leaves later results `NaN`.
+
+Position continuation starts from the previous assembly and subdivides failed/large angular
+steps. It does not choose a branch through a toggle. The exported drive has a compact
+piecewise-constant command profile, preserving PMKS's recorded reversal timing and direction.
+These command boundaries are inputs; they are not solved joint coordinates. Acceleration is
+zero between command changes. Instantaneous reversal impulses are outside this model, and rates
+at a reversal are right-sided. Edit `m.settings.duration`, `step`, and `m.driver.segments` to
+investigate a different prescribed motion; automatic rediscovery of stroke limits is not included.
+
+Dynamics uses `sum F = m*a_G` and `sum M_G = I_G*alpha` on each moving body. Constraint reactions
+act equally and oppositely across pins. Reactions are indexed by **joint and body**, never just a
+joint name; driver torque is positive counterclockwise. Gravity is `[0,-9.80665] m/s^2` when
+enabled. Force application points stay attached to their body; local force vectors rotate with
+it and global vectors retain their world direction. Current PMKS has no separate applied-couple
+property to extract; driver torque is solved. Static mode suppresses inertia only, retaining loads
+and gravity. The solver does not use PMKS force values for either analysis mode.
+
+### Units and property mapping
+
+The adapter uses PMKS's `siUnitFactors` and removes `MODEL_SCALE = 200` from every canvas length
+at the boundary. All generated engineering calculations use m, kg, s, rad, N and N*m. In the
+centimeter system PMKS stores mass in g and inertia in kg*cm^2; inertia therefore has its own
+conversion, not the product of the mass conversion and squared coordinate conversion.
+
+| PMKS property | Generated MATLAB field |
+| --- | --- |
+| Joint ID/name, initial x/y | `m.joints(i).id`, `.name`, `.initial` (m) |
+| Ground/slider/tracer state | `m.joints(i).ground`, `.kind`, `.tracer` |
+| Root link membership | `m.bodies(b).joints` (joint IDs) |
+| CoM and initial orientation | `m.bodies(b).initial_center`, `.initial_angle` (m, rad) |
+| Mass and moment of inertia | `m.bodies(b).mass`, `.inertia` (kg, kg*m^2) |
+| Pin and fixed-guide constraints | `m.constraints(k)`; positive/negative body, local point, normal, joint |
+| Input joint/body, speed and reversals | `m.driver.joint`, `.body`, `.segments` (`time, relative angle, rad/s`) |
+| Applied force | `m.loads(i).body`, `.point`, `.force`, `.local` (m, N) |
+| Gravity | `m.gravity` (m/s^2) |
+| Analysis mode | `m.settings.force_mode`: `none`, `static`, `dynamic` |
+| Selected quantities | `m.channels`: label, quantity, joint/body index, component, SI unit |
+
+Rigid-body coordinates are `[CoM_x, CoM_y, rotation_from_initial]`; slider coordinates are `[x,y]`.
+`results.q`, `.v`, `.a` are coordinate-by-time matrices. `jointPosition`, `jointVelocity`, and
+`jointAcceleration` are joint-by-XY-by-time. `reaction` is joint-by-body-by-XY-by-time and `torque`
+is time-by-one. `results.values` is time-by-selected-channel, with metadata in `results.model.channels`.
+
+### PMKS verification data
+
+**Include PMKS reference results for verification** is off by default. Enabling it adds a CSV of
+the selected PMKS values, converted to the channel's SI unit. MATLAB first calculates its own
+solution, then interpolates that solution to reference times and reports RMSE, bias and peak
+absolute error. Missing samples are excluded. Verification failure does not discard the independent
+results. No calibration, fitting, extrapolation or outlier removal is performed.
+
+**Known PMKS dynamic-force discrepancy:** current `Mechanism.getForceAnalysis` passes canvas-scale
+geometry/linear acceleration to `ForceSolver`, while mass and inertia remain physical properties.
+`AnalysisSampleService` subsequently divides torque by 200, but does not correct the mixed inertial
+terms. Consequently current app dynamic-force readings are not an authoritative SI numerical
+baseline. This pass preserves those app readings and exports them honestly when verification is
+requested. The MATLAB solver uses physical SI equations; it is not rescaled to imitate that issue.
+Tests compare against the current PMKS free-body equations on physical user-unit frames and record
+the display-path discrepancy separately. Correcting the app's dynamics unit boundary is a separate
+follow-up requiring its existing force regressions to be reviewed.
+
+### Experimental comparison in MATLAB
+
+Choose **Include measurement-comparison template** (on by default). Enter CSV columns `Time,Value`;
+time is seconds from the initial pose and values use the chosen result channel's SI unit. Inspect
+`results.model.channels`, then call, for example:
+
+```matlab
+stats = compare_measurements(results,'measurements.csv',1,0,'m');
+```
+
+The arguments identify file, selected channel, time offset, and measurement unit. A mismatched unit
+is refused; convert measurements explicitly. Timestamps must be finite and strictly increasing.
+The offset is added to measured time. Linear interpolation never crosses a missing solve or extends
+beyond the solved interval. Angular position errors take the shortest rotation. The comparison
+plots theoretical and measured values and reports RMSE, bias, peak error, compared/excluded counts.
+Measurements are never required to run the solver and the empty template is not automatically loaded.
+
+### Historical reference and architectural audit
+
+`PMKS_Verification/Mechanisms/Stephenson_III/Example_1` and `CommonUtils` provide the historical
+design: initialization → position → velocity/acceleration → free-body forces → plots → experimental
+RMSE. The February 7, 2025 work demonstrates the experimental workflow. The current PMKS backend
+defines the geometry, mass properties, constraints and conventions.
+
+The audit covered Initializer, PosSolver, VelAccSolver, ForceSolver, StressSolver, Plots, RMSE and
+Utils, plus the corresponding CommonUtils helpers. The prototype hard-codes joint sequences,
+uses Symbolic Math Toolbox, saves many `.mat` intermediates, has inconsistent CoM/plot names,
+copy/paste intersection checks, and an extraneous D-reaction moment on BC. Its stress helper is an
+axial approximation with topology-specific dimensions; current PMKS has no validated structural
+model to export. None of those assumptions is carried into this generator.
+
+Current PMKS combines a geometric position walk and a simultaneous constraint solver (distance,
+coincidence, rigid offsets, fixed/moving lines, fixed angles and driver constraints). Rates use
+differentiated constraints or loop equations. This exporter expresses its supported subset with
+rigid-body coordinates; it preserves rigid offsets including collinear multi-joint bodies and
+gives force equilibrium the transpose of the same analytic Jacobian. Unsupported constraint kinds
+are explicitly refused. `model/analysis-export.ts` is a plain-data engineering IR;
+`services/export/matlab-model.ts` is the PMKS adapter; `services/export/matlab/` contains separate
+data, kinematic, dynamic and result/comparison generators. The generator never imports UI services.
+
+### Retained reference script
+
+**PMKS Reference Script (.m)** retains the earlier table/plot/RMSE export and its limited example
+kinematic solver. It remains reference-oriented and does not independently solve forces. Use
+**MATLAB Analysis Package** for independent analysis.
 
 ## Compare measurements in PMKS
 
@@ -78,6 +203,50 @@ part may discard it. Measurements stay in this panel session: they are not saved
 links or included automatically in an exported script.
 
 ## Verification
+
+`matlab-package.spec.ts` tests the plain model/equation contract independently of UI rendering:
+four-bar, teaching-lab four-bar with tracer points and mass properties, fixed-guide slider-crank,
+and reversing multi-loop Stephenson III. It checks joint positions/rates, body angular rates,
+equal-and-opposite reactions and driver torque. Additional tests check analytic Jacobians by
+finite differences, static local/world loads, reversed playback, topology refusal, deterministic
+files, escaped names and optional-data independence.
+
+These are **TypeScript equation-contract versus PMKS comparisons**, not results from executing
+MATLAB. No MATLAB runtime is installed on the development machine. The generated code targets
+base MATLAB R2016b or newer; actual MATLAB execution remains unverified. Octave compatibility
+is not claimed. The next validation stage is to run the exported fixture packages in MATLAB.
+
+The September 2026 validation measured the following maximum errors. Position and rate errors
+use `abs(actual-reference)/max(1,abs(reference))` in SI. Force and torque errors use maximum
+absolute error divided by `max(1, cycle peak reference magnitude)`; this avoids unstable relative
+errors at zero crossings. Force references use the physical-coordinate PMKS assembly described
+above, not the app's uncorrected dynamic-force readouts.
+
+| Mechanism | Compared frames | Position | Largest velocity/acceleration/angular error | Reaction | Driver torque |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Basic four-bar | 361 | 1.79e-8 | 2.36e-6 | 0 | 0 |
+| Teaching-lab four-bar with tracers | 361 | 5.54e-8 | 3.23e-7 | 1.17e-6 | 1.52e-6 |
+| Teaching-lab slider-crank | 361 | 2.25e-8 | 7.79e-8 | 4.80e-10 | 7.85e-10 |
+| Stephenson III | 367 | 7.44e-7 | 6.39e-5 | 4.65e-5 | 4.73e-5 |
+
+Acceptance limits are 1e-6 for positions and 1e-4 for rates and cycle-normalized force/torque.
+The basic template has zero masses by default; a separate test assigns 0.2 kg and 0.0001 kg*m²
+to each body, checks nonzero dynamics and reproduces the current PMKS scale discrepancy.
+Ideal reversal instants are excluded from rate/force comparisons when the two solvers use
+opposite sides of the velocity jump. PMKS's rounded positions amplify rate differences near
+Stephenson's limiting configurations.
+
+Set `PMKS_WRITE_MATLAB=artifacts/matlab-package-validation` when running that spec to retain
+the per-fixture generated files and JSON numerical reports. `e2e/matlab-package.mjs` exercises
+the actual application: select analysis quantities, export the ZIP, inspect/extract its files,
+verify that enabling reference CSV changes no solver file, check phone controls and refuse an
+unsupported driver. Its artifacts include an example ZIP, extracted MATLAB files, screenshots
+and the drawer-opening filmstrip under `artifacts/matlab-package/`.
+
+PMKS's fast reverse-playback optimization retains its original pose order. Closed,
+constant-speed cycles are supported and the optional reference rows are reordered by elapsed
+time. Fast-reversed open or reversing cycles are explicitly refused; rebuild that motion before
+export. Normally solved reversing cycles use their compact prescribed reversal profile.
 
 The UI gallery's **Feedback → Measurement Comparison** stories show the collapsed, empty,
 invalid, compared, unsolved and narrow angular states using the real component with synthetic

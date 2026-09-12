@@ -318,6 +318,7 @@ Not suites — import them from one.
   compare candidates, preview, insert, undo, and survive a shared link.
 - `export-flow.mjs` — the Export Data drawer end to end, including reading the downloaded file.
 - `matlab-measurements.mjs` — MATLAB script downloads, measured/theoretical plots, RMSE, invalid input, stale comparisons, and phone layout.
+- `matlab-package.mjs` — actual app export of an independent MATLAB analysis ZIP, force options, optional reference data, phone layout, and unsupported-driver refusal. Uses configured four-bar masses/inertias; artifacts include the extracted runnable package.
 - `measurement-stories.mjs` — the six measurement-comparison Storybook states, including the rendered chart. Set `SB_URL` to the local gallery URL (default `http://localhost:6006`).
 - `release-export-ui.mjs` — malformed URL recovery, semantic field names, and a phone CAD origin
   chooser with twelve joints.

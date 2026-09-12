@@ -4,6 +4,11 @@ import { RealJoint } from '../../model/joint';
 import { MechanismService } from '../mechanism.service';
 import { NumberUnitParserService } from '../number-unit-parser.service';
 import { SettingsService } from '../settings.service';
+import { AnalysisSampleService } from '../analysis-sample.service';
+import { FORCE_TO_N } from '../../model/unit-conversions';
+import { analysisExportModel, analysisExportRefusal, matlabReferenceFrames } from './matlab-model';
+import { matlabChannels } from './matlab-channels';
+import { matlabPackage } from './matlab/package';
 import { UrlGenerationService } from '../url-generation.service';
 import { ExportCatalogService } from './export-catalog.service';
 import { ExportFlowService } from './export-flow.service';
@@ -45,6 +50,7 @@ export class ExportWriterService {
   private settings = inject(SettingsService);
   private nup = inject(NumberUnitParserService);
   private urls = inject(UrlGenerationService);
+  private samples = inject(AnalysisSampleService);
 
   /**
    * What the export would produce, forecast rather than measured.
@@ -101,6 +107,7 @@ export class ExportWriterService {
    * must not be reported as one that worked.
    */
   async run(): Promise<boolean> {
+    if (this.flow.format === 'matlab-package') return this.writeMatlabPackage();
     // Sampled in slices rather than in one go, so the page keeps drawing --
     // the spinner on the button that started this among other things.
     const tables = await this.tables.tablesAsync();
@@ -135,10 +142,83 @@ export class ExportWriterService {
   }
 
   matlabNotes(): string[] {
+    if (this.flow.format === 'matlab-package') {
+      return this.flow
+        .mechanismIndexes()
+        .map(
+          (index) =>
+            `M${index + 1}: ${analysisExportRefusal(this.mechanism.mechanisms[index], this.matlabForceMode()) || 'Independent kinematics from geometry; selected forces use MATLAB equilibrium. SI units throughout.'}`
+        );
+    }
     return this.flow.mechanismIndexes().map((index) => {
       const reason = matlabGeometryReason(this.mechanism.mechanisms[index]);
       return `M${index + 1}: ${reason || 'Includes independent kinematics from geometry for revolute joints and fixed, free-turning sliders.'}`;
     });
+  }
+
+  private matlabForceMode(): 'none' | 'static' | 'dynamic' {
+    return this.flow.selectedColumns('forces').length ? this.flow.forceMode() : 'none';
+  }
+
+  matlabPackageRefusal(): string {
+    if (this.flow.format !== 'matlab-package') return '';
+    return (
+      this.flow
+        .mechanismIndexes()
+        .map((i) => analysisExportRefusal(this.mechanism.mechanisms[i], this.matlabForceMode()))
+        .find(Boolean) ?? ''
+    );
+  }
+
+  private writeMatlabPackage(): boolean {
+    if (!this.flow.canExport()) return false;
+    const refusal = this.matlabPackageRefusal();
+    if (refusal) throw new Error(refusal);
+    const files: { name: string; data: Uint8Array }[] = [];
+    for (const index of this.flow.mechanismIndexes()) {
+      const mechanism = this.mechanism.mechanisms[index];
+      const m = analysisExportModel(mechanism, this.matlabForceMode(), `M${index + 1}`);
+      const sources = matlabChannels(
+        m,
+        this.flow.selectedParts().filter((p) => p.mechanismIndex === index),
+        this.flow.selectedColumns(),
+        this.flow.withMagnitude,
+        mechanism.unit,
+        FORCE_TO_N[this.settings.forceUnit.value]
+      );
+      let reference: string | undefined;
+      if (this.flow.matlabReference) {
+        const rows = matlabReferenceFrames(mechanism).map(({ time, index: k }) =>
+          [
+            time,
+            ...sources.map(
+              (source) =>
+                this.samples.sampleAt(
+                  mechanism,
+                  k,
+                  source.series.analysis,
+                  this.flow.forceMode(),
+                  source.series.mechProp,
+                  source.part,
+                  source.series.reactionLinkId
+                )[source.component] * source.scale
+            ),
+          ]
+            .map((x) => (Number.isFinite(x) ? String(x) : 'NaN'))
+            .join(',')
+        );
+        reference = ['Time,' + m.channels.map((_, i) => `Value${i + 1}`).join(','), ...rows].join(
+          '\n'
+        );
+      }
+      const folder = matlabFileName(this.flow.name(), `M${index + 1}`).slice(0, -2);
+      for (const [name, text] of Object.entries(
+        matlabPackage(m, this.flow.matlabMeasurements, reference)
+      ))
+        files.push({ name: `${folder}/${name}`, data: utf8(text) });
+    }
+    this.hand({ name: this.arrivingName(), mime: 'application/zip', bytes: zipStore(files) });
+    return true;
   }
 
   private writeMatlab(tables: ExportTable[]): void {
@@ -172,6 +252,12 @@ export class ExportWriterService {
    */
   arrivingName(): string {
     const stem = this.flow.name();
+    if (this.flow.format === 'matlab-package')
+      return (
+        matlabFileName(stem)
+          .slice(0, -2)
+          .replace(/_analysis$/, '') + '_analysis.zip'
+      );
     if (this.flow.format === 'report') return `${stem}.pdf`;
     if (this.flow.format === 'images') {
       const plan = this.tables.plan();

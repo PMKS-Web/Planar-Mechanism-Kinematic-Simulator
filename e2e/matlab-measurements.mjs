@@ -118,7 +118,7 @@ try {
   for (let step = 0; step < 5 && !(await drawer.locator('.formatBlock').count()); step++) {
     await drawer.locator('.nextButton').click();
   }
-  await drawer.getByRole('button', { name: /MATLAB Script/ }).click();
+  await drawer.getByRole('button', { name: /PMKS Reference Script/ }).click();
   await page.waitForTimeout(250);
   await page.screenshot({ path: `${dir}/matlab-export.png` });
   const downloadPromise = page.waitForEvent('download');

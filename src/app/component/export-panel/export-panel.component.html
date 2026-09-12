@@ -163,6 +163,41 @@
       </div>
 
       <div class="settingBlock">
+        @if (flow.format === 'matlab-package') {
+          <p class="empty">
+            Unzip and run run_pmks_analysis in MATLAB. The complete mechanism supplies the
+            equations; your selected quantities determine the plots. Force selection uses the chosen
+            Static or In-motion mode.
+          </p>
+          <div class="settingRow matlabOption">
+            <span class="settingName">Include PMKS reference results for verification</span>
+            <segmented-block
+              [options]="['No', 'Yes']"
+              [selected]="flow.matlabReference ? 1 : 0"
+              [compact]="true"
+              (selectedChange)="flow.matlabReference = $event === 1"
+            ></segmented-block>
+          </div>
+          <div class="settingRow matlabOption">
+            <span class="settingName">Include measurement-comparison template</span>
+            <segmented-block
+              [options]="['No', 'Yes']"
+              [selected]="flow.matlabMeasurements ? 1 : 0"
+              [compact]="true"
+              (selectedChange)="flow.matlabMeasurements = $event === 1"
+            ></segmented-block>
+          </div>
+          <p class="empty">
+            MATLAB R2016b or newer, base MATLAB only. SI units. Singular poses stop the solve;
+            reversal impulses and structural stress are not modeled.
+          </p>
+          @for (note of matlabNotes; track note) {
+            <p class="empty">{{ note }}</p>
+          }
+          @if (matlabRefusal) {
+            <p class="empty" role="alert">{{ matlabRefusal }}</p>
+          }
+        }
         @if (flow.format === 'matlab') {
           <p class="empty">
             Full precision, one script per mechanism. MATLAB R2016b or newer; no toolbox needed.
@@ -172,7 +207,9 @@
             <p class="empty">{{ note }}</p>
           }
         }
-        @if (flow.format !== 'images' && flow.format !== 'matlab') {
+        @if (
+          flow.format !== 'images' && flow.format !== 'matlab' && flow.format !== 'matlab-package'
+        ) {
           <div class="settingRow">
             <span class="settingName">Decimals</span>
             <mat-icon
