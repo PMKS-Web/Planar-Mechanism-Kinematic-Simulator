@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { gearBodyFor } from '../model/mechanism/gear-drive';
 import { Mechanism } from '../model/mechanism/mechanism';
 import { ForceAnalysisMode, ForceSolver } from '../model/mechanism/force-solver';
 import { KinematicsSolver } from '../model/mechanism/kinematic-solver';
@@ -82,9 +83,10 @@ export class SolverExplanationService {
     const plan = mechanism.gearDrive;
     if (!plan) return [];
     const motion = mechanism.gearMotionAtSample(step);
-    return plan.bodies.map((body) => {
-      const gear = mechanism.transmission.gears.find((g) => g.id === body.gearId)!;
-      const current = motion?.angles.get(body.gearId);
+    return plan.gears.map((reference) => {
+      const gear = mechanism.transmission.gears.find((g) => g.id === reference.gearId)!;
+      const body = gearBodyFor(plan, gear.id)!;
+      const current = motion?.angles.get(gear.id);
       return {
         id: gear.id,
         name: gear.name || gear.id,

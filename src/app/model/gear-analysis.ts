@@ -1,4 +1,5 @@
 import type { Mechanism } from './mechanism/mechanism';
+import { gearBodyFor } from './mechanism/gear-drive';
 
 export const GEAR_QUANTITIES = [
   { label: 'Angular Position', property: 'Angular Gear Pos', suffix: '' },
@@ -14,7 +15,7 @@ export function gearSample(
   id: string,
   property: string
 ): number[] {
-  const body = mechanism.gearDrive?.bodies.find((b) => b.gearId === id);
+  const body = gearBodyFor(mechanism.gearDrive, id);
   const motion = mechanism.gearMotionAtSample(index)?.angles.get(id);
   if (!body || !motion) return [NaN];
   switch (property) {

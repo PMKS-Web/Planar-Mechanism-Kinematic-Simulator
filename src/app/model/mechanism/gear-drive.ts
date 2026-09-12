@@ -8,17 +8,21 @@ export interface GearRatio {
   readonly denominator: bigint;
 }
 export interface GearBodyMotion {
-  readonly gearId: string;
   readonly hostLinkId: string;
   readonly centerId: string;
   readonly center: readonly [number, number];
-  readonly heading: number;
   readonly ratio: GearRatio;
   readonly multiplier: number;
   readonly points: readonly { readonly id: string; readonly offset: readonly [number, number] }[];
 }
 export interface GearDrive {
   readonly bodies: readonly GearBodyMotion[];
+  /** Gear identity/phase references one physical body's motion; no second shaft state. */
+  readonly gears: readonly {
+    readonly gearId: string;
+    readonly bodyIndex: number;
+    readonly heading: number;
+  }[];
   readonly periodTurns: number;
   readonly step: number;
   readonly inputJointId: string;
@@ -56,30 +60,41 @@ export function compileGearDrive(
   if (diagnostics.length) return { ok: false, diagnostics };
   const inputs = joints.filter((joint) => joint instanceof RealJoint && joint.input);
   const roots = assembly.gears.filter((gear) => gear.centerJointId === inputs[0]?.id);
-  if (inputs.length !== 1 || roots.length !== 1) {
+  if (inputs.length !== 1 || new Set(roots.map((g) => g.hostLinkId)).size !== 1) {
     return refuse(
       'input',
       inputs.map((joint) => joint.id),
       'Choose one grounded gear center as the independent input.'
     );
   }
+  // Vertices are rigid hosts. A mesh's tooth weights still belong to its individual endpoints.
+  const hosts = [...new Set(assembly.gears.map((g) => g.hostLinkId))];
   const neighbors = new Map(
-    assembly.gears.map((gear) => [gear.id, [] as { id: string; mesh: string }[]])
+    hosts.map((id) => [
+      id,
+      [] as { id: string; mesh: string; fromTeeth: number; toTeeth: number }[],
+    ])
   );
   const gears = new Map(assembly.gears.map((gear) => [gear.id, gear]));
   for (const mesh of assembly.meshes) {
-    neighbors.get(mesh.gearAId)!.push({ id: mesh.gearBId, mesh: mesh.id });
-    neighbors.get(mesh.gearBId)!.push({ id: mesh.gearAId, mesh: mesh.id });
+    const a = gears.get(mesh.gearAId)!,
+      b = gears.get(mesh.gearBId)!;
+    neighbors
+      .get(a.hostLinkId)!
+      .push({ id: b.hostLinkId, mesh: mesh.id, fromTeeth: a.teeth, toTeeth: b.teeth });
+    neighbors
+      .get(b.hostLinkId)!
+      .push({ id: a.hostLinkId, mesh: mesh.id, fromTeeth: b.teeth, toTeeth: a.teeth });
   }
-  const ratios = new Map<string, GearRatio>([[roots[0].id, ratio(1n, 1n)]]);
-  const queue = [roots[0].id];
+  const ratios = new Map<string, GearRatio>([[roots[0].hostLinkId, ratio(1n, 1n)]]);
+  const queue = [roots[0].hostLinkId];
   for (let index = 0; index < queue.length; index++) {
     const id = queue[index];
     const current = ratios.get(id)!;
     for (const neighbor of neighbors.get(id)!) {
       const next = ratio(
-        -current.numerator * BigInt(gears.get(id)!.teeth),
-        current.denominator * BigInt(gears.get(neighbor.id)!.teeth)
+        -current.numerator * BigInt(neighbor.fromTeeth),
+        current.denominator * BigInt(neighbor.toTeeth)
       );
       const prior = ratios.get(neighbor.id);
       if (prior && (prior.numerator !== next.numerator || prior.denominator !== next.denominator)) {
@@ -95,10 +110,10 @@ export function compileGearDrive(
       }
     }
   }
-  if (ratios.size !== assembly.gears.length) {
+  if (ratios.size !== hosts.length) {
     return refuse(
       'unreachable',
-      assembly.gears.filter((gear) => !ratios.has(gear.id)).map((gear) => gear.id),
+      assembly.gears.filter((gear) => !ratios.has(gear.hostLinkId)).map((gear) => gear.id),
       'Every dependent gear must be reachable from the independent input.'
     );
   }
@@ -116,17 +131,15 @@ export function compileGearDrive(
   // Includes the authored frame. Keep the solver's existing global cap.
   if (!Number.isFinite(samples) || samples + 1 > 6000)
     return refuse('work-limit', [], 'The complete gear cycle exceeds 6,000 samples.');
-  const bodies = assembly.gears.map((gear) => {
-    const host = links.find((link) => link.id === gear.hostLinkId)!;
+  const bodies = hosts.map((hostId) => {
+    const gear = assembly.gears.find((g) => g.hostLinkId === hostId)!;
+    const host = links.find((link) => link.id === hostId)!;
     const center = joints.find((joint) => joint.id === gear.centerJointId)!;
-    const reference = joints.find((joint) => joint.id === gear.referenceJointId)!;
-    const exact = ratios.get(gear.id)!;
+    const exact = ratios.get(hostId)!;
     return Object.freeze({
-      gearId: gear.id,
       hostLinkId: host.id,
       centerId: center.id,
       center: Object.freeze([center.x, center.y] as const),
-      heading: Math.atan2(reference.y - center.y, reference.x - center.x),
       ratio: exact,
       multiplier: Number(exact.numerator) / Number(exact.denominator),
       points: Object.freeze(
@@ -139,15 +152,33 @@ export function compileGearDrive(
       ),
     });
   });
+  const references = assembly.gears.map((gear) => {
+    const center = joints.find((j) => j.id === gear.centerJointId)!;
+    const reference = joints.find((j) => j.id === gear.referenceJointId)!;
+    return Object.freeze({
+      gearId: gear.id,
+      bodyIndex: hosts.indexOf(gear.hostLinkId),
+      heading: Math.atan2(reference.y - center.y, reference.x - center.x),
+    });
+  });
   return {
     ok: true,
     drive: Object.freeze({
       bodies: Object.freeze(bodies),
+      gears: Object.freeze(references),
       periodTurns: Number(period),
       step: (2 * Math.PI) / stepsPerTurn,
       inputJointId: inputs[0].id,
     }),
   };
+}
+
+export function gearBodyFor(
+  drive: GearDrive | undefined,
+  gearId: string
+): GearBodyMotion | undefined {
+  const reference = drive?.gears.find((g) => g.gearId === gearId);
+  return reference && drive!.bodies[reference.bodyIndex];
 }
 
 export interface GearMotion {
@@ -176,11 +207,6 @@ export function gearMotionAt(
     const alpha = body.multiplier * qDDot;
     const c = Math.cos(angle),
       s = Math.sin(angle);
-    result.angles.set(body.gearId, {
-      angle: body.heading + angle,
-      velocity: omega,
-      acceleration: alpha,
-    });
     for (const point of body.points) {
       const rx = c * point.offset[0] - s * point.offset[1];
       const ry = s * point.offset[0] + c * point.offset[1];
@@ -201,6 +227,14 @@ export function gearMotionAt(
         map.set(point.id, value);
       }
     }
+  }
+  for (const reference of drive.gears) {
+    const body = drive.bodies[reference.bodyIndex];
+    result.angles.set(reference.gearId, {
+      angle: reference.heading + body.multiplier * q,
+      velocity: body.multiplier * qDot,
+      acceleration: body.multiplier * qDDot,
+    });
   }
   return result;
 }

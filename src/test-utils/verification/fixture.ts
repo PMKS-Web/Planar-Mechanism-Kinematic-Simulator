@@ -16,7 +16,7 @@ import { GearAssembly } from '../../app/model/gear';
  * MechanismService, which rounds user-entered coordinates to 3 decimals).
  */
 export interface MechanismFixture {
-  /** Computational gear fixtures; URL support is deliberately a later stage. */
+  /** Authored gear attachments shared by computational fixtures and production URLs. */
   transmission?: GearAssembly;
   /** Joint ids must be the single letters the dataset uses, in creation order. */
   joints: {

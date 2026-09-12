@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, DoCheck, OnDestroy, inject } from '
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { validateGearAssembly } from '../../model/mechanism/gear-validation';
+import { gearBodyFor } from '../../model/mechanism/gear-drive';
 import { Gear, gearPitchRadius } from '../../model/gear';
 import { RealJoint } from '../../model/joint';
 import { MODEL_SCALE } from '../../model/render-scale';
@@ -253,7 +254,7 @@ export class GearPanelComponent implements DoCheck, OnDestroy {
     const solved = this.mechanism.mechanisms.find((m) =>
       m.transmission.gears.some((item) => item.id === g.id)
     );
-    const body = solved?.gearDrive?.bodies.find((b) => b.gearId === g.id);
+    const body = gearBodyFor(solved?.gearDrive, g.id);
     const root = solved?.transmission.gears.find(
       (gear) => gear.centerJointId === solved.gearDrive?.inputJointId
     );

@@ -1,4 +1,4 @@
-import { GearAssembly } from '../../model/gear';
+import { GearAssembly, MAX_GEAR_PLANES } from '../../model/gear';
 import { MAX_GEARS, MAX_GEAR_MESHES } from '../../model/mechanism/gear-validation';
 import { JointData, LinkData } from './transcoder-data';
 
@@ -30,6 +30,7 @@ export function encodeGearDocument(assembly: GearAssembly, joints: JointData[]):
       teeth: gear.teeth,
       module: canonical(gear.module),
       ...(gear.name === undefined ? {} : { name: gear.name }),
+      ...(gear.plane ? { plane: gear.plane } : {}),
     })),
     meshes: [...assembly.meshes].sort(byId).map((mesh) => ({
       id: mesh.id,
@@ -87,6 +88,8 @@ export function decodeGearDocument(
       !finite(gear.module) ||
       gear.module <= 0 ||
       !Number.isFinite(gear.module * gear.teeth) ||
+      (gear.plane !== undefined &&
+        (!Number.isInteger(gear.plane) || gear.plane < 0 || gear.plane >= MAX_GEAR_PLANES)) ||
       (gear.name !== undefined && (typeof gear.name !== 'string' || gear.name.length > 200))
     )
       throw new Error('Malformed gear definition.');
@@ -148,6 +151,7 @@ export function decodeGearDocument(
       teeth: g.teeth,
       module: g.module,
       ...(g.name === undefined ? {} : { name: g.name }),
+      ...(g.plane ? { plane: g.plane } : {}),
     })),
     meshes: value.meshes.map((m) => ({
       id: m.id,

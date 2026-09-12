@@ -1,7 +1,7 @@
 import { GearAssembly } from '../../app/model/gear';
 import { MechanismFixture } from './fixture';
 
-/** Temporary computational fixtures: publishing URL records waits for the codec stage. */
+/** Deterministic solver fixtures also published through the normal G1 document codec. */
 export interface GearFixture extends MechanismFixture {
   transmission: GearAssembly;
 }

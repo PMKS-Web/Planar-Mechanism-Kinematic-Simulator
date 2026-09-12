@@ -8,7 +8,12 @@ export interface Gear {
   /** Pitch diameter per tooth, in model length units. */
   readonly module: number;
   readonly name?: string;
+  /** Axial plane, zero-based. Omitted means plane 0 for existing G1 documents. */
+  readonly plane?: number;
 }
+
+export const MAX_GEAR_PLANES = 128;
+export const gearPlane = (gear: Gear): number => gear.plane ?? 0;
 
 export interface GearMesh {
   readonly id: string;

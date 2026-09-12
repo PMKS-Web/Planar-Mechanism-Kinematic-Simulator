@@ -1,6 +1,6 @@
 import { Joint, RealJoint, RevJoint } from '../joint';
 import { Link, RealLink } from '../link';
-import { GearAssembly, gearPitchRadius } from '../gear';
+import { Gear, GearAssembly, gearPitchRadius, gearPlane, MAX_GEAR_PLANES } from '../gear';
 import { MODEL_SCALE } from '../render-scale';
 import { assignBodies, WORLD } from './bodies';
 
@@ -11,6 +11,9 @@ export type GearDiagnosticCode =
   | 'invalid-reference'
   | 'moving-axis'
   | 'compound-host'
+  | 'shaft-reference'
+  | 'overlapping-plane'
+  | 'incompatible-plane'
   | 'missing-gear'
   | 'self-mesh'
   | 'duplicate-mesh'
@@ -47,7 +50,7 @@ export function validateGearAssembly(
   }
   const assignment = assignBodies(joints, links);
   const gearIds = new Set<string>();
-  const hosts = new Map<string, string>();
+  const hosts = new Map<string, Gear[]>();
   const bodyByGear = new Map<string, string>();
   for (const gear of assembly.gears) {
     if (!gear.id || gearIds.has(gear.id))
@@ -68,6 +71,11 @@ export function validateGearAssembly(
         'Use a positive integer tooth count and a positive finite module.'
       );
     }
+    if (
+      gear.plane !== undefined &&
+      (!Number.isInteger(gear.plane) || gear.plane < 0 || gear.plane >= MAX_GEAR_PLANES)
+    )
+      fail('invalid-definition', [gear.id], 'Choose an axial plane from 1 to 128.');
     const host = links.find((link) => link.id === gear.hostLinkId);
     if (!(host instanceof RealLink)) {
       fail('missing-host', [gear.id, gear.hostLinkId], 'A gear needs an ordinary rigid link host.');
@@ -78,16 +86,34 @@ export function validateGearAssembly(
     if (
       host.subset.length ||
       body === WORLD ||
-      hosts.has(body) ||
       links.filter((link) => assignment.bodyOf(link) === body).length !== 1
     ) {
       fail(
         'compound-host',
         [gear.id, host.id],
-        'V1 supports one gear on a simple rotating link body.'
+        'Gears require a simple rotating link body; welded host assemblies are unsupported.'
       );
     }
-    hosts.set(body, gear.id);
+    const siblings = hosts.get(body) ?? [];
+    const shared = siblings[0];
+    if (
+      shared &&
+      (shared.centerJointId !== gear.centerJointId ||
+        shared.referenceJointId !== gear.referenceJointId)
+    )
+      fail(
+        'shaft-reference',
+        [shared.id, gear.id],
+        'Gears on one shaft must share its center and reference point.'
+      );
+    const overlap = siblings.find((g) => gearPlane(g) === gearPlane(gear));
+    if (overlap)
+      fail(
+        'overlapping-plane',
+        [overlap.id, gear.id],
+        'Gears on one shaft must occupy different axial planes.'
+      );
+    hosts.set(body, [...siblings, gear]);
     const center = joints.find((joint) => joint.id === gear.centerJointId);
     const reference = joints.find((joint) => joint.id === gear.referenceJointId);
     if (!(center instanceof RevJoint) || !center.ground) {
@@ -142,14 +168,15 @@ export function validateGearAssembly(
     if (Math.abs(a.module - b.module) > 1e-10 * Math.max(a.module, b.module)) {
       fail('incompatible-module', [mesh.id], 'Meshed gears must have matching module.');
     }
+    if (gearPlane(a) !== gearPlane(b))
+      fail('incompatible-plane', [mesh.id], 'Meshed gears must occupy the same axial plane.');
     const ca = joints.find((joint) => joint.id === a.centerJointId);
     const cb = joints.find((joint) => joint.id === b.centerJointId);
     if (ca && cb) {
       const actual = Math.hypot(cb.x - ca.x, cb.y - ca.y);
       const required = gearPitchRadius(a) + gearPitchRadius(b);
-      // This API receives unquantized model geometry. A future URL loader may
-      // need a separate rounding allowance; applying that here admits visibly
-      // separated pitch circles in small computational fixtures.
+      // G1 preserves canonical authored geometry. Do not repair or widen this
+      // check for serialization: that would admit separated pitch circles.
       const tolerance = 1e-8 * Math.max(actual, required);
       if (!Number.isFinite(actual) || actual === 0 || Math.abs(actual - required) > tolerance) {
         fail(
