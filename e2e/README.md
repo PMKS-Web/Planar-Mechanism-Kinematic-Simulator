@@ -46,6 +46,7 @@ asset generators and `shot.mjs` are not checks.
 a reason to worry about.
 
 - `inertia-explanation.mjs` — worked inertia values, mass edits, custom/reset, selection, keyboard, phone layout and disclosure filmstrip. Set `SB_URL` to also verify and capture the gallery examples.
+- `mass-geometry-explanation.mjs` — automatic model labels, ephemeral mass-domain overlays and pose filmstrip, rod endpoint and interior-joint examples, welded/point previews, and intact copied TeX. Requires the app and gallery (`PMKS_BASE_URL`, `SB_URL`).
 
 ## Outputs
 

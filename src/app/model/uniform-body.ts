@@ -14,8 +14,7 @@ import { Coord } from './coord';
  *   - two joints — a slender rod between them: centroid at the midpoint,
  *     k² = L²/12;
  *   - three or more — a uniform plate over the convex hull of the joints,
- *     which is the same hull the link is drawn as: polygon centroid, polygon
- *     second moment;
+ *     without the drawing's rounded boundary: polygon centroid and second moment;
  *   - a degenerate hull (collinear joints, e.g. a tracer on the bar's own
  *     axis) — the rod again, between the two farthest joints.
  *
@@ -32,7 +31,7 @@ export interface UniformBody {
   /** Intermediate values from the same calculation, for the learning panel. */
   calculation:
     | { kind: 'point' }
-    | { kind: 'rod'; lengthSq: number }
+    | { kind: 'rod'; lengthSq: number; endpoints: { x: number; y: number }[] }
     | {
         kind: 'plate';
         origin: { x: number; y: number };
@@ -99,7 +98,14 @@ function rod(points: { x: number; y: number }[]): UniformBody {
   return {
     centroid: new Coord((a.x + b.x) / 2, (a.y + b.y) / 2),
     gyrationSq: Math.max(longest, 0) / 12,
-    calculation: { kind: 'rod', lengthSq: Math.max(longest, 0) },
+    calculation: {
+      kind: 'rod',
+      lengthSq: Math.max(longest, 0),
+      endpoints: [
+        { x: a.x, y: a.y },
+        { x: b.x, y: b.y },
+      ],
+    },
   };
 }
 

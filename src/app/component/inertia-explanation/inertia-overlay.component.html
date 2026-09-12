@@ -1,3 +1,8 @@
+@if (massPreview.selection(); as selection) {
+  <svg:g modelFrame>
+    <svg:g app-mass-geometry [body]="selection.body" [markSize]="grid.scaleWithZoom(7)" />
+  </svg:g>
+}
 @if (view; as v) {
   <svg:g modelFrame class="axis-preview" aria-label="Inertia reference geometry">
     <svg:line

@@ -166,6 +166,12 @@ body/reference changes or it receives an interaction; otherwise two owners alter
 same signal forever. Destroying an inactive owner must not clear the active owner's preview.
 The component spec keeps this two-panel case.
 
+**Read generated documentation as UTF-8, and verify the saved file.** A PowerShell pipe into
+Python replaced inserted superscripts and en dashes with literal question marks in the inertia
+audit (`span?`, `Newton?Euler`). Fixing the terminal encoding after the write cannot recover
+them. Use a UTF-8 patch or explicit Unicode escapes for inserted text; the mass-geometry e2e
+suite checks source artifacts and copied equation TeX as well as browser rendering.
+
 ## Running the app
 
 **Reload recovery must belong to the tab.** `last-drawing.ts` writes a session backup and a

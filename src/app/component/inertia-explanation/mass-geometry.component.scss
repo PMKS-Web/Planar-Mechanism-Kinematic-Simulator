@@ -1,0 +1,31 @@
+.mass-domain {
+  fill: none;
+  stroke: var(--text-strong);
+  path,
+  circle {
+    vector-effect: non-scaling-stroke;
+    stroke-width: 2px;
+  }
+  .domain-halo {
+    stroke: var(--surface-subtle);
+    stroke-width: 5px;
+  }
+  .domain-edge {
+    stroke-dasharray: 7 4;
+  }
+  .domain-plate {
+    fill: var(--brand);
+    fill-opacity: 0.12;
+  }
+  .domain-point {
+    fill: var(--surface-subtle);
+  }
+  text {
+    fill: var(--text-strong);
+    stroke: var(--surface-subtle);
+    stroke-width: 3px;
+    paint-order: stroke;
+    vector-effect: non-scaling-stroke;
+    text-anchor: middle;
+  }
+}

@@ -53,8 +53,8 @@ describe('a uniform body over a link skeleton', () => {
   });
 
   it('ignores a joint interior to the hull', () => {
-    // The plate is the drawn shape, and the drawn shape is the hull: a joint
-    // strictly inside it adds no material.
+    // The integrated plate is the straight-edged hull. An interior joint adds
+    // no material; drawing offsets and rounded boundaries are separate.
     const withInterior = uniformBodyOf([
       { x: 0, y: 0 },
       { x: 6, y: 0 },

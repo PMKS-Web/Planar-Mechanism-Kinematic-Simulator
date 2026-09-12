@@ -203,6 +203,11 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
   the separate CoM Reference controls what a custom center follows during edits.
   Polygon edges carry the actual integration terms into individually foldable working.
   A read-only G/P overlay follows the pose and highlights applied-force moment arms.
+  “Mass Model Being Used” names the automatic idealization and optionally overlays the
+  actual centerline, convex hull, point, or numbered welded members on the visible drawing.
+  This preview is ephemeral and independent of G/P. The gallery includes an interior-joint
+  demonstration and the slender rod's endpoint result; physical outline integration remains
+  a [separate design proposal](docs/mass-geometry-design.md).
   [The calculation audit](docs/inertia-calculation.md) records exact formulas and the applied-load
   subtotal limitation. `e2e/inertia-explanation.mjs` guards the working, readout, and overlay.
 - **The analysis modes are editable.** They allow the same context-menu actions as Edit at the start pose. Away from it,

@@ -1,0 +1,27 @@
+@for (domain of domains; track $index) {
+  <svg:g class="mass-domain" [attr.data-kind]="domain.kind">
+    <svg:title>
+      Member {{ $index + 1 }}: {{ domain.body.name || domain.body.id }} — {{ domain.kind }}
+    </svg:title>
+    @if (domain.kind === 'point') {
+      <svg:circle
+        class="domain-point"
+        [attr.cx]="domain.center.x"
+        [attr.cy]="domain.center.y"
+        [attr.r]="markSize()"
+      />
+    } @else {
+      <svg:path class="domain-halo" [attr.d]="domain.path" />
+      <svg:path
+        class="domain-edge"
+        [class.domain-plate]="domain.kind === 'plate'"
+        [attr.d]="domain.path"
+      />
+    }
+    <svg:g [upright]="domain.center">
+      <svg:text [attr.y]="-markSize() * 1.7" [attr.font-size]="markSize() * 2">
+        {{ $index + 1 }}
+      </svg:text>
+    </svg:g>
+  </svg:g>
+}

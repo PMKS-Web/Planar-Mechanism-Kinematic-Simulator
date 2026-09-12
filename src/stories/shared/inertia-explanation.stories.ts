@@ -2,7 +2,8 @@ import { Force } from '../../app/model/force';
 import { Coord } from '../../app/model/coord';
 import { RevJoint } from '../../app/model/joint';
 import { RealLink, SliderBlock } from '../../app/model/link';
-import { type Meta, type StoryObj } from '@storybook/angular-vite';
+import { moduleMetadata, type Meta, type StoryObj } from '@storybook/angular-vite';
+import { MassGeometryExampleComponent } from '../support/mass-geometry-example.component';
 import { InertiaExplanationComponent } from '../../app/component/inertia-explanation/inertia-explanation.component';
 import { uniformMassProperties } from '../../app/model/mass-properties';
 import { MODEL_SCALE } from '../../app/model/render-scale';
@@ -12,7 +13,7 @@ import { inPanel } from '../support/frame';
 // Bodies alone, never a running mechanism or its root service.
 function body(points: number[][], mass = 12): RealLink {
   const joints = points.map(
-    ([x, y], i) => new RevJoint('ABCD'[i], x * MODEL_SCALE, y * MODEL_SCALE)
+    ([x, y], i) => new RevJoint('ABCDEFGHIJKLMNOPQRSTUVWXYZ'[i], x * MODEL_SCALE, y * MODEL_SCALE)
   );
   const link = new RealLink(joints.map((j) => j.id).join(''), joints, mass);
   const properties = uniformMassProperties(link, 0.001 / MODEL_SCALE ** 2);
@@ -52,8 +53,10 @@ compound.subset = [
   ]),
 ];
 const compoundProperties = uniformMassProperties(compound, 0.001 / MODEL_SCALE ** 2);
+compound.subset[1].name = 'BC';
 compound.massMoI = compoundProperties.moi;
 compound.CoM = compoundProperties.com;
+compound.reComputeDPath();
 // Keep cyclic geometry out of Storybook args: Docs serializes controls to JSON.
 const show = (link: RealLink | SliderBlock) => (args: Record<string, unknown>) => ({
   props: { ...args, body: link },
@@ -187,3 +190,45 @@ loaded.forces = [
   ),
 ];
 export const AppliedLoads: Story = { render: show(loaded) };
+
+const comparison = (link: RealLink, caption: string, interior = false): Story => ({
+  decorators: [moduleMetadata({ imports: [MassGeometryExampleComponent] })],
+  render: () => ({
+    props: { body: link, caption, interior },
+    template:
+      '<app-mass-geometry-example [body]="body" [caption]="caption" [interior]="interior" />',
+  }),
+});
+export const SlenderRodEndpoint = comparison(
+  rod(),
+  'A 12 g rod, 5 cm long: 25 g·cm² about G, 100 g·cm² about either endpoint. Open Shift to an Endpoint for the worked result.'
+);
+export const InteriorJoint = comparison(
+  body([
+    [0, 0],
+    [6, 0],
+    [6, 2],
+    [0, 2],
+    [3, 1],
+  ]),
+  'A 12 g convex plate: hull area 12 cm² and centroidal inertia 40 g·cm². The fifth joint E adds no material.',
+  true
+);
+export const VisibleOutline = comparison(
+  body([
+    [0, 0],
+    [1, 0],
+  ]),
+  'A thick-looking rounded link is still an automatic slender rod. Its displayed width and caps add no mass extent.'
+);
+export const MemberDecomposition = comparison(
+  compound,
+  'The two numbered centerlines are separate welded members. The filled drawing between and around them is not a single integrated plate.'
+);
+export const CoincidentGeometry = comparison(
+  body([
+    [0, 0],
+    [0, 0],
+  ]),
+  'Coincident joints define a point mass. The marker radius is for visibility only.'
+);

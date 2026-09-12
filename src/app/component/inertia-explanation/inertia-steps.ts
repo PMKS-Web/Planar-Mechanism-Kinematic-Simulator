@@ -43,6 +43,19 @@ export function inertiaSteps(
             `I_G = ${f.inertia(properties.moi)}`,
           ],
         },
+        {
+          title: '4. Shift to an Endpoint',
+          text: 'For this automatic uniform rod, either endpoint is half the measured length from G. This is the shape estimate; custom properties need the separate About Another Point calculation.',
+          equations: [
+            String.raw`d=\frac{L}{2}`,
+            `d=${f.length(Math.sqrt(calculation.lengthSq) / 2)}`,
+            String.raw`I_P=I_G+md^2`,
+            String.raw`I_{\mathrm{end}}=\frac{mL^2}{12}+m\left(\frac{L}{2}\right)^2`,
+            String.raw`I_{\mathrm{end}}=\frac{mL^2}{3}`,
+            String.raw`I_{\mathrm{end}}=\frac{${f.tex(link.mass)}\times ${f.tex(calculation.lengthSq / MODEL_SCALE ** 2)}}{3}`,
+            `I_{\\mathrm{end}}=${f.inertia((link.mass * calculation.lengthSq * f.factor) / 3)}`,
+          ],
+        },
       ],
     };
   if (calculation?.kind === 'plate') return plateSteps(calculation, properties, link, f);

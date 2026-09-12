@@ -1,0 +1,57 @@
+<div class="working">
+  <p class="mass-model-summary">
+    Automatic model: <strong>{{ title }}</strong>
+  </p>
+  <p class="note">The visible outline is not the integrated mass geometry.</p>
+  @if (custom) {
+    <p class="note">
+      Custom properties are retained. This geometry explains the automatic estimate only.
+    </p>
+  }
+  <collapsible-subsection
+    [nested]="true"
+    titleLabel="Mass Model Being Used"
+    (opened)="opened.set(true)"
+    (closed)="close()"
+  >
+    <div (focusin)="activate()" (pointerdown)="activate()">
+      @if (compound) {
+        <p>
+          Each member keeps its own mass and center. Parallel-axis terms combine their inertias.
+          Empty space between members adds no material; overlapping members still contribute
+          separately.
+        </p>
+      }
+      @for (part of parts; track $index) {
+        @if (compound) {
+          <collapsible-subsection [nested]="true" [titleLabel]="'Member ' + part.label">
+            <p>
+              <strong>{{ part.name }}</strong>
+            </p>
+            <p>{{ part.detail }}</p>
+            @if (part.custom) {
+              <p class="note">
+                This member has custom properties; its automatic geometry is a comparison.
+              </p>
+            }
+          </collapsible-subsection>
+        } @else {
+          <p>{{ part.detail }}</p>
+        }
+      }
+      <p>
+        Caps, fillets, disc outlines, and CAD/export boundaries are drawing geometry. They do not
+        add material to this model.
+      </p>
+      <button-block [click]="toggle">{{
+        showing() ? 'Hide Mass Geometry' : 'Show Mass Geometry'
+      }}</button-block>
+      @if (showing()) {
+        <p class="note">
+          Dashed marks show the automatic mass domain over the visible outline. Numbers identify
+          members above. Marker size and stroke width are only for visibility.
+        </p>
+      }
+    </div>
+  </collapsible-subsection>
+</div>

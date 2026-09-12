@@ -171,10 +171,17 @@ export function plateSteps(c: Plate, properties: MassProperties, link: RealLink,
         {
           title: 'Formula',
           text: '',
+          equations: [String.raw`J_O=\sum_i\Delta J_{O,i}`, String.raw`k_O^2=\frac{J_O}{A}`],
+        },
+        {
+          title: 'Area Moment to Mass Moment',
+          text: 'J is the polar area second moment: geometry alone, with dimensions length to the fourth power. I is mass moment of inertia, with dimensions mass times length squared. Uniform areal mass density converts one to the other.',
           equations: [
-            String.raw`J_O=\sum_i\Delta J_{O,i}`,
+            String.raw`[J_O]=L^4`,
+            String.raw`[I_G]=ML^2`,
+            String.raw`\rho_A=\frac{m}{A}`,
+            String.raw`I_O=\rho_A J_O`,
             String.raw`I_O=\frac{m}{A}J_O`,
-            String.raw`k_O^2=\frac{J_O}{A}`,
           ],
         },
         {

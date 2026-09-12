@@ -12,8 +12,43 @@ import { inertiaSteps } from './inertia-steps';
 import { uniformMassProperties } from '../../model/mass-properties';
 import { InertiaAxisComponent } from './inertia-axis.component';
 import { InertiaPreviewService } from '../../services/inertia-preview.service';
+import { InertiaMassModelComponent } from './inertia-mass-model.component';
+import { MassGeometryPreviewService } from '../../services/mass-geometry-preview.service';
 
 describe('inertia explanation in project units', () => {
+  it('cleans up mass geometry on disclosure close and destruction without reclaiming another panel', () => {
+    const preview = TestBed.inject(MassGeometryPreviewService);
+    const fixtures = [
+      TestBed.createComponent(InertiaMassModelComponent),
+      TestBed.createComponent(InertiaMassModelComponent),
+    ];
+    const click = (index: number, label: string) => {
+      const fixture = fixtures[index];
+      const button = Array.from(fixture.nativeElement.querySelectorAll('button')).find((el) =>
+        (el as HTMLElement).textContent?.includes(label)
+      ) as HTMLButtonElement;
+      button.click();
+      fixture.detectChanges();
+    };
+    for (const [i, fixture] of fixtures.entries()) {
+      fixture.componentRef.setInput('body', makeRod());
+      fixture.detectChanges();
+      click(i, 'Mass Model Being Used');
+      click(i, 'Show Mass Geometry');
+    }
+    const show = vi.spyOn(preview, 'show');
+    fixtures.forEach((fixture) => fixture.detectChanges());
+    expect(show).not.toHaveBeenCalled();
+    fixtures[0].destroy();
+    expect(preview.selection()?.owner).toBe(fixtures[1].componentInstance);
+    click(1, 'Mass Model Being Used');
+    expect(preview.selection()).toBeUndefined();
+    click(1, 'Mass Model Being Used');
+    expect(preview.selection()).toBeUndefined();
+    click(1, 'Show Mass Geometry');
+    fixtures[1].destroy();
+    expect(preview.selection()).toBeUndefined();
+  });
   it('does not let two open panels continuously reclaim the same overlay', () => {
     const preview = TestBed.inject(InertiaPreviewService);
     const show = vi.spyOn(preview, 'show');
@@ -81,6 +116,11 @@ describe('inertia explanation in project units', () => {
     );
     expect(math).toContain(String.raw`L = 5\,\mathrm{cm}`);
     expect(math).toContain(String.raw`I_G = \frac{12\times 25}{12}`);
+    expect(math).toContain(String.raw`I_{\mathrm{end}}=100\,\mathrm{g}\cdot\mathrm{cm}^{2}`);
+    for (const equation of math) {
+      expect(equation).not.toMatch(/[\x00-\x1f\ufffd]/);
+      expect(() => katex.renderToString(equation ?? '', { throwOnError: true })).not.toThrow();
+    }
     expect(fixture.nativeElement.querySelectorAll('mfrac').length).toBeGreaterThan(0);
     expect(fixture.nativeElement.querySelector('.katex-error')).toBeNull();
     expect(text).not.toContain('kg·cm²');

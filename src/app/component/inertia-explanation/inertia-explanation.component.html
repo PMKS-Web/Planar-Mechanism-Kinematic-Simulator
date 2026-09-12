@@ -18,6 +18,7 @@
       @if (!(body().mass > 0)) {
         <p class="note">Zero mass gives zero inertia. Gravity and inertia skip this body.</p>
       }
+      <app-inertia-mass-model [body]="body()" />
       <collapsible-subsection [nested]="true" titleLabel="Meaning and Assumptions">
         <p>
           Mass moment of inertia measures resistance to angular acceleration. The axis passes

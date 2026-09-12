@@ -9,6 +9,7 @@ import { InertiaAxisComponent } from './inertia-axis.component';
 import { inertiaFormat, InertiaStep } from './inertia-format';
 import { InertiaStepComponent } from './inertia-step.component';
 import { inertiaSteps } from './inertia-steps';
+import { InertiaMassModelComponent } from './inertia-mass-model.component';
 
 /** Read mutable links afresh: a mass edit, undo or new selection must update the
  * worked values even when the input still holds the same object. */
@@ -20,6 +21,7 @@ import { inertiaSteps } from './inertia-steps';
     EquationComponent,
     InertiaAxisComponent,
     InertiaStepComponent,
+    InertiaMassModelComponent,
   ],
   templateUrl: './inertia-explanation.component.html',
   styleUrl: './inertia-explanation.component.scss',

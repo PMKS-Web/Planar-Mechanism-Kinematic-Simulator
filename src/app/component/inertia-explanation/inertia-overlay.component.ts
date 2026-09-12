@@ -5,16 +5,19 @@ import { SvgGridService } from '../../services/svg-grid.service';
 import { SettingsService } from '../../services/settings.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { MODEL_SCALE } from '../../model/render-scale';
+import { MassGeometryPreviewService } from '../../services/mass-geometry-preview.service';
+import { MassGeometryComponent } from './mass-geometry.component';
 
 @Component({
   selector: 'g[app-inertia-overlay]',
-  imports: [ModelFrameDirective, UprightDirective],
+  imports: [ModelFrameDirective, UprightDirective, MassGeometryComponent],
   changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './inertia-overlay.component.html',
   styleUrl: './inertia-overlay.component.scss',
   host: { 'pointer-events': 'none' },
 })
 export class InertiaOverlayComponent {
+  protected readonly massPreview = inject(MassGeometryPreviewService);
   protected readonly preview = inject(InertiaPreviewService);
   protected readonly grid = inject(SvgGridService);
   private readonly settings = inject(SettingsService);
