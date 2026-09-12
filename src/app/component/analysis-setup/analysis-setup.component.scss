@@ -254,31 +254,22 @@
       color: var(--text-secondary);
     }
 
-    // The table's cells ARE the shared input component; the only difference
-    // is size, so size is the only thing written here. Label and help are the
-    // row's own columns, so the component's header parts hide.
+    // The table's cells ARE the shared input component, told so: `cell` gives
+    // the field the whole column and hides the header parts the table's own
+    // headings already say, and `quiet` grays a value the reader cannot set.
+    // Both used to be written here, as rules naming `#input-block`'s insides
+    // from outside it.
     .cellField {
       min-width: 0;
 
-      .customInput {
-        font-size: 12.5px;
-      }
-
-      #input-block .label,
-      #input-block .label-help,
-      #input-block .spacer {
-        display: none;
-      }
-
-      #input-block .row {
-        gap: 0;
-      }
-
-      #input-block .customInputForm .mat-mdc-text-field-wrapper {
-        width: 100%;
-        padding: 0 7px;
-      }
-
+      // Kept exactly as it was, and deliberately not folded into the block.
+      // Measured in the running app, this loses: a derived value's field is
+      // *disabled*, and Material's disabled ink wins over it, so the rule has
+      // no effect in either state the drawer actually shows. Moving it onto
+      // the block raised its specificity enough to start winning -- which is a
+      // visible change to a panel this work is not meant to be changing.
+      // Whether the value should be this ink is a question for whoever owns
+      // the mass table; it is not a reuse question.
       &.derived .customInput {
         color: var(--text-tertiary);
       }
@@ -389,6 +380,7 @@
       .massName {
         color: var(--text-tertiary);
       }
+      // Same story as `.derived` above: overridden by the disabled ink today.
       .cellField .customInput {
         color: var(--text-tertiary);
       }

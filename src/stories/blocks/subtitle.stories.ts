@@ -1,11 +1,19 @@
 import type { Meta, StoryObj } from '@storybook/angular-vite';
-import { SubtitleComponent } from '../../app/component/BLOCKS/subtitle/subtitle.component';
+import { TitleBlock } from '../../app/component/BLOCKS/title/title.component';
 import { inPanel } from '../support/frame';
 
-/** `subtitle-block`: a heading inside a card, with an optional description and button. */
+/**
+ * `subtitle-block`: a heading inside a card, with an optional description and
+ * button.
+ *
+ * The same block as Title, at the smaller of its two levels. Which level you
+ * get is the tag you write — `subtitle-block` here — because `panel-section`
+ * slots its sticky heading by selecting `title-block`, and a subtitle renamed
+ * to that tag would jump out of the card body and into the sticky row.
+ */
 const meta: Meta = {
   title: 'Structure/Subtitle',
-  component: SubtitleComponent,
+  component: TitleBlock,
   tags: ['autodocs'],
   decorators: [inPanel()],
   args: { text: 'Traces', description: undefined, icon: undefined, buttonLabel: undefined },

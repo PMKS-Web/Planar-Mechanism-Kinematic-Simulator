@@ -72,11 +72,13 @@
                 <span class="massName" [attr.title]="row.label">{{ row.label }}</span>
                 <input-block
                   class="cellField"
+                  cell
                   [formGroup]="tableForm"
                   [_formControl]="massControlName(row)"
                 />
                 <input-block
                   class="cellField"
+                  cell
                   [formGroup]="tableForm"
                   [_formControl]="moiControlName(row)"
                   [class.derived]="row.isBlock || moiIsAuto(row)"

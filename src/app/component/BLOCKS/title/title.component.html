@@ -1,8 +1,8 @@
-<div id="title-block">
+<div [id]="blockId">
   <div class="row">
     <ng-content></ng-content>
     @if (buttonLabel && icon) {
-      <button id="title-button" mat-flat-button color="primary">
+      <button id="title-button" mat-flat-button color="primary" (click)="click()?.()">
         <mat-icon>{{ icon }}</mat-icon>
         {{ buttonLabel }}
       </button>

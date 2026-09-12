@@ -36,6 +36,15 @@ export class ToggleComponent {
    * optional number field this block can carry, not about the switch.
    */
   readonly disabled = input<boolean>(false);
+  /**
+   * Sized to sit on a subtitle's line rather than on a panel row of its own:
+   * a smaller label, a smaller help mark, and the switch scaled to the line.
+   *
+   * The analysis panel's "compare with before the drag" switch is the one of
+   * these. It used to get this by naming `#toggle-block`'s insides from its
+   * own stylesheet.
+   */
+  readonly compact = input<boolean>(false);
 
   readonly addInput = input<boolean>(false);
   readonly _formControlForInput = input<string | undefined>(undefined);

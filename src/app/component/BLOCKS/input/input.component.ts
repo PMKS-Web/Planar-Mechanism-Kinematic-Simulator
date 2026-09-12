@@ -43,6 +43,16 @@ export class InputComponent {
    * Position and Center of Mass.
    */
   readonly stacked = input<boolean, unknown>(false, { transform: booleanAttribute });
+  /**
+   * A cell in a table rather than a field in a panel.
+   *
+   * The mass table in the analysis setup drawer heads its own columns, so the
+   * block's label, help mark and spacer would say everything twice; the field
+   * takes the cell instead. The drawer used to get this by naming this block's
+   * insides from its own stylesheet, which is how renaming anything in here
+   * broke a panel nobody had edited.
+   */
+  readonly cell = input<boolean, unknown>(false, { transform: booleanAttribute });
   readonly tooltip = input<string>();
   @Input() _formControl!: string;
   @Input() formGroup!: FormGroup;

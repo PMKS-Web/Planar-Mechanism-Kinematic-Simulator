@@ -1,4 +1,4 @@
-<div id="toggle-block" [class.toggle-block--disabled]="disabled()">
+<div id="toggle-block" [class.toggle-block--disabled]="disabled()" [class.compact]="compact()">
   <div [formGroup]="this.formGroup()" class="row">
     <!-- <input type="checkbox" id="vehicle1" name="vehicle1" value="Bike" [formControlName]="this._formControl" /> -->
     <span class="label"><ng-content></ng-content></span>

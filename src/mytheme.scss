@@ -17,7 +17,6 @@
 @use 'app/component/BLOCKS/hold-field/hold-field.component.scss' as hold-field-block;
 @use 'app/component/BLOCKS/radio/radio.component.scss' as radio-block;
 @use 'app/component/BLOCKS/segmented/segmented.component.scss' as segmented-block;
-@use 'app/component/BLOCKS/subtitle/subtitle.component.scss' as subtitle-block;
 @use 'app/component/BLOCKS/toggle/toggle.component.scss' as toggle-block;
 @use 'app/component/BLOCKS/blocks.common.scss' as blocks-common;
 @use 'app/component/BLOCKS/editable-title/editable-title.component.scss' as editable-title-block;
@@ -124,7 +123,6 @@ $my-theme: mat.m2-define-light-theme(
 @include hold-field-block.css($my-theme);
 @include radio-block.css($my-theme);
 @include segmented-block.css($my-theme);
-@include subtitle-block.css($my-theme);
 @include toggle-block.css($my-theme);
 @include editable-title-block.css($my-theme);
 @include collapsible-subsection.css($my-theme);

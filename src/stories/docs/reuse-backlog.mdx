@@ -39,9 +39,11 @@ Each entry is **where** it is, what it draws, and the block to use instead.
 - **`linkage-table.component.html`**, sixteen raw `<input type=text>` and a CSS-radio tab strip.
   Fields and a pick-one with none of the blocks' behavior. Put `appStandardField` on the inputs and
   `segmented-block` on the tabs.
-- **`analysis-setup.component.scss`** (`#input-block .row`) and
-  **`analysis-panel.component.scss`** (`#toggle-block .row`, `.label-help`). A panel reaching into
-  a block's private ids from outside to restyle it. Make it an input on the block.
+- **`edit-panel.component.scss`** still reaches into `#input-block`'s insides in three rules
+  (`.massArea #input-block:not(.state-input-host) .spacer`, `.massArea input-block.moiBlock
+  .label-help`, and the `.customInputForm` width beside it). The two the survey named are done —
+  see below — and these are the same shape: they want inputs on the block, most likely `hideHelp`
+  and a named width, rather than a fourth caller knowing the block's private markup.
 
 ## Components that should move here
 
@@ -60,8 +62,6 @@ These are shared already, or would be with one caller changed, and belong beside
 
 ## Blocks that overlap
 
-- **`title-block` and `subtitle-block`** have the same three inputs (`icon`, `buttonLabel`,
-  `description`) and the same imports; they differ in type size. One block with a `level`.
 - **`dual-input-block` duplicates `input-block`'s** hover-and-focus overlay logic, and has
   diverged from it: `input-block` re-asserts the overlay every time (the canvas clears it),
   `dual-input-block` only on a change. `hold-field` and `toggle-block` carry a third and fourth
@@ -83,6 +83,16 @@ cycle to appear is a panel reaching another panel's static — register a handle
 
 ## Done
 
+- `title-block` and `subtitle-block` are one block. They had the same three inputs, the same
+  imports and the same template down to the `id`s inside it, and differed in type size and
+  padding. **Both tags still select it**, rather than the subtitle becoming
+  `<title-block level="subtitle">`: `panel-section` slots its sticky heading with
+  `<ng-content select="title-block, editable-title-block">`, so a subtitle renamed to that tag
+  would stop landing in the card body and start landing in the sticky title row. The level is read
+  from the tag the caller wrote.
+- `input-block` gained `cell` and `quiet`, and `toggle-block` gained `compact`, replacing the rules
+  in `analysis-setup` and `analysis-panel` that named those blocks' private ids from outside. That
+  is the coupling that made renaming anything inside a block break a panel nobody had edited.
 - `close-button` replaced all five, and **the look was deliberately unified**. They agreed on
   nothing: 32px round in the tutorial card and the right drawer, 36px with 6px corners in the
   release notes, Material's 40px icon button in the library and the CAD export dialog — and even

@@ -43,7 +43,7 @@ import { Link, RealLink } from '../../model/link';
 import { canvasHandle } from '../../services/canvas-handle';
 import { registerEditPanel } from '../../services/edit-panel-handle';
 import { MODEL_SCALE } from '../../model/render-scale';
-import { SubtitleComponent } from '../BLOCKS/subtitle/subtitle.component';
+import { TitleBlock } from '../BLOCKS/title/title.component';
 import { EditBannerComponent } from './edit-banner.component';
 import { StateInputComponent } from '../BLOCKS/state-input/state-input.component';
 import { uniformBodyOf } from '../../model/uniform-body';
@@ -95,7 +95,7 @@ const INPUT_SPEED_UNITS = [
     EditBannerComponent,
     MatTooltip,
     MatIcon,
-    SubtitleComponent,
+    TitleBlock,
     StateInputComponent,
     MechanismPanelComponent,
     PanelSectionComponent,

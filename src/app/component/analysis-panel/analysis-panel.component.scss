@@ -113,38 +113,11 @@
 }
 
 // The switch that shows or hides the curves from before the drag, on every
-// open graph at once. The app's toggle block, a size down for the subtitle's
-// line: its label at the subtitle's size, its help mark beside it, and the
-// switch itself scaled to the line's height.
+// open graph at once. The app's toggle block at its `compact` size, which is
+// what the block now calls the treatment this file used to write by hand --
+// four rules naming `#toggle-block`'s private ids from outside it.
 #analysisWrapper .compareToggle {
   flex: 0 0 auto;
-
-  #toggle-block .row {
-    gap: 6px;
-  }
-
-  #toggle-block .label {
-    font-size: 12.5px;
-    color: var(--text-primary);
-    white-space: nowrap;
-  }
-
-  #toggle-block .label-help {
-    width: 16px;
-    height: 16px;
-    font-size: 15px;
-    line-height: 16px;
-  }
-
-  #toggle-block .spacer {
-    display: none;
-  }
-
-  mat-slide-toggle {
-    transform: scale(0.8);
-    transform-origin: right center;
-    margin-left: -6px;
-  }
 }
 
 // The rows, on the panel's text gutter, closed off by a rule under the last.
