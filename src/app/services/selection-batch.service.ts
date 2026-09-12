@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Cylinder, cylinderJoints } from '../model/cylinder';
 import { Coord } from '../model/coord';
 import { Force } from '../model/force';
@@ -54,7 +54,7 @@ const staleSelection = (): BatchRefusal => ({
 /** Atomic structural operations shared by the multi-selection menu and shortcuts. */
 @Injectable({ providedIn: 'root' })
 export class SelectionBatchService {
-  constructor(private readonly mechanism: MechanismService) {}
+  private readonly mechanism = inject(MechanismService);
 
   deleteRefusal(refs: readonly SelectedPartRef[]): BatchRefusal | undefined {
     const resolved = resolve(this.mechanism, refs);

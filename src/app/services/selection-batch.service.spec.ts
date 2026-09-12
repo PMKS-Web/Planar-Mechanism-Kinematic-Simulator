@@ -1,4 +1,5 @@
 import '../model/joint';
+import { runInInjectionContext } from '@angular/core';
 import { Coord } from '../model/coord';
 import { sealedCylinderStructures } from '../model/cylinder';
 import { Force } from '../model/force';
@@ -20,7 +21,12 @@ function chain(count = 4) {
   harness.service.joints = joints;
   harness.service.links = links;
   wireGraph(harness.service);
-  return { ...harness, batch: new SelectionBatchService(harness.service), joints, links };
+  return {
+    ...harness,
+    batch: runInInjectionContext(harness.injector, () => new SelectionBatchService()),
+    joints,
+    links,
+  };
 }
 
 describe('SelectionBatchService duplication', () => {
@@ -110,7 +116,7 @@ describe('SelectionBatchService duplication', () => {
     h.service.joints = [same, a, b];
     h.service.links = [link];
     wireGraph(h.service);
-    const batch = new SelectionBatchService(h.service);
+    const batch = runInInjectionContext(h.injector, () => new SelectionBatchService());
 
     const result = batch.duplicateSelected([{ kind: 'joint', id: 'AB' }], { x: 3, y: 4 });
 
@@ -139,7 +145,7 @@ describe('SelectionBatchService duplication', () => {
     h.service.joints = [a, b, c, d, outsider, slot];
     h.service.links = [rider, carrier, outside, block];
     wireGraph(h.service);
-    const batch = new SelectionBatchService(h.service);
+    const batch = runInInjectionContext(h.injector, () => new SelectionBatchService());
 
     const result = batch.duplicateSelected([{ kind: 'link', id: rider.id }], { x: 20, y: 30 });
 
@@ -218,7 +224,7 @@ describe('SelectionBatchService duplication', () => {
     const original = sealedCylinderStructures(h.service.joints)[0];
     original.slider.locked = true;
     const beforeSaves = h.saveCount();
-    const batch = new SelectionBatchService(h.service);
+    const batch = runInInjectionContext(h.injector, () => new SelectionBatchService());
 
     const result = batch.duplicateSelected(
       [
@@ -311,7 +317,7 @@ describe('SelectionBatchService deletion', () => {
     h.service.joints = [a, b, c, d, slot];
     h.service.links = [rider, carrier, block];
     wireGraph(h.service);
-    const batch = new SelectionBatchService(h.service);
+    const batch = runInInjectionContext(h.injector, () => new SelectionBatchService());
 
     const result = batch.deleteSelected([{ kind: 'link', id: carrier.id }]);
 
@@ -389,7 +395,7 @@ describe('SelectionBatchService deletion', () => {
     h.service.createCylinderFrom(new Coord(0, 0), new Coord(600, 0));
     const cylinder = sealedCylinderStructures(h.service.joints)[0];
     const beforeSaves = h.saveCount();
-    const batch = new SelectionBatchService(h.service);
+    const batch = runInInjectionContext(h.injector, () => new SelectionBatchService());
 
     const result = batch.deleteSelected([{ kind: 'link', id: cylinder.rod.id }]);
 
@@ -406,7 +412,7 @@ describe('SelectionBatchService deletion', () => {
     const cylinder = sealedCylinderStructures(h.service.joints)[0];
     cylinder.slider.locked = true;
     const beforeSaves = h.saveCount();
-    const batch = new SelectionBatchService(h.service);
+    const batch = runInInjectionContext(h.injector, () => new SelectionBatchService());
 
     const result = batch.deleteSelected([{ kind: 'link', id: cylinder.rod.id }]);
 
