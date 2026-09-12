@@ -37,6 +37,8 @@ export class ViewButtonComponent {
   /** Or a plain action drawn from the app's own SVG registry rather than Material's. */
   readonly svg = input<string>();
   readonly tooltip = input<string>();
+  /** Optional explanation appended to the action tooltip, without changing its accessible name. */
+  readonly help = input<string>();
 
   /** The shortcut this button doubles, if it has one: its keys go in the tip. */
   readonly shortcut = input<ShortcutId>();
@@ -63,8 +65,9 @@ export class ViewButtonComponent {
    * Prose only: the shortcut is drawn as a key cap by `appShortcutTip`, at the
    * end, rather than written into this sentence in brackets.
    */
-  protected readonly tip = computed(() =>
-    this.noun() ? `${this.shown() ? 'Hide' : 'Show'} ${this.noun()}` : (this.tooltip() ?? '')
+  protected readonly tip = computed(
+    () =>
+      `${this.noun() ? `${this.shown() ? 'Hide' : 'Show'} ${this.noun()}` : (this.tooltip() ?? '')}${this.help() ? '. ' + this.help() : ''}`
   );
 
   /** The glyph draws the grid as it is: the crossed-out one means hidden. */

@@ -9,15 +9,18 @@
       headerActions
       class="state-chip"
       [class.enabled]="anyEnabled()"
+      [class.warning]="collapsedWarning()"
       role="status"
-      [attr.aria-label]="'Friction ' + (anyEnabled() ? 'Enabled' : 'Off')"
-      >{{ anyEnabled() ? 'Enabled' : 'Off' }}</span
-    >
-    @if (readOnly() && staticAnalysis) {
-      <p class="note" data-static-friction-help>
-        Static analysis ignores inertia. Moving contacts use kinetic friction.
-      </p>
-    }
+      [attr.aria-label]="
+        'Friction ' +
+        (anyEnabled() ? 'Enabled' : 'Off') +
+        (collapsedWarning() ? ': ' + collapsedWarning() : '')
+      "
+      >{{ anyEnabled() ? 'Enabled' : 'Off' }}
+      @if (collapsedWarning(); as warning) {
+        <br />{{ warning }}
+      }
+    </span>
     @for (contact of contacts(); track contact.joint.id) {
       <div class="contact" [attr.data-friction-joint]="contact.joint.id">
         <h4>
@@ -25,7 +28,12 @@
         </h4>
         <p class="contact-state">Friction: {{ enabled(contact.joint) ? 'Enabled' : 'Off' }}</p>
         @if (unsupported(contact.joint); as reason) {
-          <p class="note">{{ reason }}</p>
+          <div class="diagnostic" role="status">
+            <strong>Unsupported Friction Contact</strong>
+            <collapsible-subsection titleLabel="Why Is This Unavailable?" [compact]="true">
+              <p class="note">{{ reason }}</p>
+            </collapsible-subsection>
+          </div>
           @if (!readOnly() && enabled(contact.joint)) {
             <button-block [click]="contact.remove" [disabled]="!!permission.refusal('properties')"
               >Disable Friction</button-block
@@ -85,7 +93,7 @@
             <p class="note">{{ refusal.long }}</p>
           }
         }
-        @if (enabled(contact.joint)) {
+        @if (enabled(contact.joint) && !unsupported(contact.joint)) {
           @if (service.reading(contact.joint); as reading) {
             <p class="contact-state" [attr.data-contact-state]="reading.state">
               Contact State: {{ reading.state }}
@@ -99,47 +107,56 @@
                 <dt>Static Friction Limit</dt>
                 <dd>{{ number(values[2]) }} {{ effortUnit(contact.pin) }}</dd>
               </dl>
-              <details class="calculation">
-                <summary>How Friction Is Calculated</summary>
-                <p class="note">
-                  Friction changes the required input effort. Motion stays at the prescribed speed.
-                </p>
-                <p class="note">
-                  Static coefficient {{ contact.joint.friction.staticCoefficient }} · Kinetic
-                  coefficient {{ contact.joint.friction.kineticCoefficient }}
+              <collapsible-subsection
+                class="calculation"
+                titleLabel="How Friction Is Calculated"
+                [compact]="true"
+              >
+                <dl>
+                  <dt>Static coefficient μs</dt>
+                  <dd>{{ number(contact.joint.friction.staticCoefficient) }}</dd>
+                  <dt>Kinetic coefficient μk</dt>
+                  <dd>{{ number(contact.joint.friction.kineticCoefficient) }}</dd>
                   @if (contact.pin) {
-                    · Effective radius {{ number(radius(contact.joint)) }} {{ lengthUnit }}
+                    <dt>Effective radius</dt>
+                    <dd>{{ number(radius(contact.joint)) }} {{ lengthUnit }}</dd>
                   }
-                </p>
+                </dl>
                 <p class="note">
-                  Magnitude = μk ×
-                  {{ contact.pin ? 'radial load × effective radius' : 'normal load' }}<br />
+                  <strong>Magnitude</strong><br />
+                  {{ contact.pin ? 'T = μk N reff' : 'F = μk N' }}<br />
                   = {{ number(contact.joint.friction.kineticCoefficient) }} ×
                   {{ number(values[0]) }} {{ forceUnit }}
                   @if (contact.pin) {
                     × {{ number(radius(contact.joint)) }} {{ lengthUnit }}
                   }
                   <br />= {{ number(values[1] < 0 ? -values[1] : values[1]) }}
-                  {{ effortUnit(contact.pin) }}.<br />
-                  Direction opposes relative {{ contact.pin ? 'rotation' : 'sliding' }}.
+                  {{ effortUnit(contact.pin) }}
                 </p>
-                <p class="note">{{ reading.sign }}</p>
+                <p class="note">
+                  <strong>Direction</strong><br />
+                  Opposes relative {{ contact.pin ? 'rotation' : 'sliding' }}. {{ reading.sign }}
+                </p>
                 @if (!contact.pin) {
                   <p class="note">
-                    This tangent component is already included in the guide's reported reaction.
+                    <strong>Reaction</strong><br />
+                    Tangential friction is already included in the guide's reported reaction.
                   </p>
                 }
                 <p class="note">
-                  The static limit is μs × this contact's current
-                  {{ contact.pin ? 'radial load × effective radius' : 'normal load' }}. It is not
-                  the input effort needed to start the whole mechanism.
+                  <strong>Static Limit</strong><br />
+                  {{ contact.pin ? 'μs N reff' : 'μs N' }} = {{ number(values[2]) }}
+                  {{ effortUnit(contact.pin) }}<br />
+                  Local capacity at this load, not the input effort needed to start the whole
+                  mechanism.
                 </p>
                 <p class="note">
-                  Dashed arrows show calculated contact loads on the named body. The opposite action
-                  acts on its contact partner. Numeric labels give the physical magnitude; glyph
-                  sizes are not comparable across contacts or with applied forces.
+                  <strong>Drawing</strong><br />
+                  Dashed loads act on the named body; the partner receives the opposite action. Read
+                  numeric labels. Glyph sizes are not comparable across contacts or with applied
+                  forces.
                 </p>
-              </details>
+              </collapsible-subsection>
             }
             @if (reading.message) {
               <div class="diagnostic" role="status">
@@ -148,11 +165,21 @@
                     ? 'Indeterminate at Rest'
                     : 'Friction Results Unavailable'
                 }}</strong>
-                <p>{{ reading.message }}</p>
+                <p>{{ diagnosticSummary(reading) }}</p>
+                <collapsible-subsection
+                  [titleLabel]="
+                    reading.state === 'Stationary'
+                      ? 'Why Is This Indeterminate?'
+                      : 'Why Is This Unavailable?'
+                  "
+                  [compact]="true"
+                >
+                  <p class="note">{{ reading.message }}</p>
+                </collapsible-subsection>
               </div>
             }
           }
-        } @else {
+        } @else if (!enabled(contact.joint)) {
           <p class="note">Frictionless contact.</p>
         }
       </div>
@@ -164,13 +191,7 @@
             Input {{ reading.inputIsTorque ? 'Torque' : 'Force' }} at {{ reading.inputJoint }}
           </h4>
           <dl>
-            <dt>Without Friction</dt>
-            <dd>
-              {{ number(reading.frictionlessEffort!) }} {{ effortUnit(!!reading.inputIsTorque) }}
-            </dd>
-            <dt>With Friction</dt>
-            <dd>{{ number(reading.totalEffort!) }} {{ effortUnit(!!reading.inputIsTorque) }}</dd>
-            <dt><strong>Additional from All Friction</strong></dt>
+            <dt><strong>Additional from Friction</strong></dt>
             <dd>
               <strong
                 >{{ number(reading.additionalEffort) }}
@@ -178,10 +199,28 @@
               >
             </dd>
           </dl>
-          <p class="note">
-            Required actuator effort at the same pose and motion. Includes every friction contact in
-            this mechanism.
-          </p>
+          <collapsible-subsection
+            class="input-details"
+            titleLabel="Input Effort Details"
+            [compact]="true"
+          >
+            <dl>
+              <dt>Without Friction</dt>
+              <dd>
+                {{ number(reading.frictionlessEffort!) }} {{ effortUnit(!!reading.inputIsTorque) }}
+              </dd>
+              <dt>With Friction</dt>
+              <dd>{{ number(reading.totalEffort!) }} {{ effortUnit(!!reading.inputIsTorque) }}</dd>
+              <dt>Additional from Friction</dt>
+              <dd>
+                {{ number(reading.additionalEffort) }} {{ effortUnit(!!reading.inputIsTorque) }}
+              </dd>
+            </dl>
+            <p class="note">
+              Required input effort at the same pose and prescribed motion. Includes all friction
+              contacts. Motion stays at the prescribed speed.
+            </p>
+          </collapsible-subsection>
         </section>
       }
     }
@@ -190,6 +229,7 @@
         <span>Friction on Drawing</span>
         <app-view-button
           noun="Friction on Drawing"
+          help="This only changes drawing visibility; friction remains in the analysis."
           [icon]="overlay.visible() ? 'visibility' : 'visibility_off'"
           [shown]="overlay.visible()"
           (pressed)="flipOverlay()"

@@ -114,12 +114,13 @@ try {
   const analysis = page.locator('app-analysis-panel app-friction-panel');
   await analysis.getByRole('button', { name: /^Friction/ }).click();
   await analysis.locator('.panel-content.settled').waitFor();
-  await analysis.getByText('How Friction Is Calculated', { exact: true }).click();
+  await analysis.getByRole('button', { name: 'How Friction Is Calculated', exact: true }).click();
+  await analysis.locator('.calculation .panel-content.settled').waitFor();
   record(
     'Force Analysis explains the static contact limit',
     (await analysis.innerText()).includes('start the whole mechanism')
   );
-  await analysis.getByText('How Friction Is Calculated', { exact: true }).click();
+  await analysis.getByRole('button', { name: 'How Friction Is Calculated', exact: true }).click();
   await film.during(100, 8, 'animation', () =>
     page.getByRole('button', { name: 'Play', exact: true }).click()
   );

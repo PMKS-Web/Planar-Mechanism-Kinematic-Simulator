@@ -20,6 +20,7 @@ import { MatIcon } from '@angular/material/icon';
       state(
         'closed',
         style({
+          visibility: 'hidden',
           opacity: '0',
           height: '0px',
           padding: '0px',
@@ -36,6 +37,8 @@ import { MatIcon } from '@angular/material/icon';
 })
 export class CollapsibleSubsectionComponent implements OnChanges {
   readonly hideHeader = input<boolean>(false); //If this is true the content cannot be expanded
+  /** A lightweight disclosure within a panel, using the same keyboard and collapse behavior. */
+  readonly compact = input(false);
 
   @Input() expanded: boolean = false;
   /**

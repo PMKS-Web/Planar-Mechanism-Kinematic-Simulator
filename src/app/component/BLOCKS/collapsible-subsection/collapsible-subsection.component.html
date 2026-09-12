@@ -1,4 +1,4 @@
-<div class="collapsibleSubsection">
+<div class="collapsibleSubsection" [class.compact]="compact()">
   @if (!hideHeader()) {
     <!-- The title and the chevron are one button; anything a section wants to
          put beside them sits outside it. A control nested inside a button is
@@ -18,6 +18,8 @@
     [@openClose]="expanded ? 'open' : 'closed'"
     class="panel-content"
     [class.settled]="expanded && settled"
+    [attr.inert]="expanded ? null : ''"
+    [attr.aria-hidden]="!expanded"
   >
     <ng-content></ng-content>
   </div>

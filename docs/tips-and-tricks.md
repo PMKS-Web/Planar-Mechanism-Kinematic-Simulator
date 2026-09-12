@@ -2634,3 +2634,9 @@ The V1 panel now hides contact readings and its input comparison while that mach
 `directionOf` is negative, and the transport explicitly calls this Rewind. Ordinary backward
 scrubbing does not set that flag: it continues to read the selected prescribed sample. Keep
 the guard active when rewind is paused, so pausing cannot reveal the misleading load again.
+
+**Collapsed content is now actually hidden.** `collapsible-subsection` sets hidden visibility,
+`inert` and `aria-hidden` when closed, as well as shrinking the box. A browser test that once
+read clipped content with `innerText()` must now open the section, just as a reader would.
+The UI-copy shape-button check opens Visual Settings; friction checks operate the shared
+disclosure buttons by role/name, not exact text that includes an icon's ligature.

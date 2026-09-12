@@ -12,6 +12,21 @@
   $foreground: map.get($theme, foreground);
 
   .collapsibleSubsection {
+    &.compact {
+      > .panel-header {
+        height: 28px;
+        border-top: 0;
+        > .panel-header__toggle {
+          padding: 0;
+          font-size: 12px;
+          text-align: left;
+        }
+      }
+      > .panel-content {
+        padding: 4px 0 6px;
+        gap: 6px;
+      }
+    }
     // The header is a row: the toggle takes all of it unless a section has put
     // something beside it, and then that something takes what it needs.
     /* Edge to edge. The inset used to be here, which meant the toggle's own

@@ -34,20 +34,23 @@ For a solved moving contact, the panel shows **Contact State: Sliding** or **Rel
 and **Static Friction Limit**. The expandable calculation shows the coefficient, load, optional
 physical radius, resulting magnitude and the opposition-to-relative-motion rule.
 The default view keeps the contact identity, Enabled/Off state, these readings and the separate
-input comparison. Coefficients, direction conventions, reaction decomposition and startup
-interpretation live inside **How Friction Is Calculated**, closed by default. The input labels
-remain unchanged: **Additional from All Friction** fits the narrow panel and explicitly includes
-every contact, while its own section identifies the actuator consequence.
+**Additional from Friction** input summary. Coefficients, direction conventions, reaction
+decomposition and startup interpretation live inside **How Friction Is Calculated**, closed by
+default. Expanded content uses labeled groups: coefficients, Magnitude, Direction, Reaction,
+Static Limit and Drawing. Substituted equations sit next to the values they explain.
 
-The existing **Static / In-motion** mode labels and mode help tooltip remain unchanged. The
-read-only friction panel adds a visible helper in Static mode: **Static analysis ignores inertia.
-Moving contacts use kinetic friction.** Thus no-inertia force balance, contact motion state and
-static friction capacity remain separate concepts without renaming force analysis across the app.
+The existing **Static / In-motion** mode labels and help tooltip retain the distinction:
+**Static omits inertia; In-motion includes it. Moving contacts use kinetic friction in both
+modes.** The redundant permanent helper paragraph has been removed from the friction panel.
+No-inertia force balance, contact motion state and static friction capacity remain separate
+concepts without renaming force analysis across the app.
 The guide's existing reaction results include the friction component. The panel explicitly says
 so: the contact arrow is a decomposition of that resultant, not another force to add to it.
 
-A separate **Input Force/Torque at [input]** section shows **Without Friction**, **With Friction**,
-and **Additional from All Friction** in the input's own force or torque units. It appears once in
+A separate **Input Force/Torque at [input]** section shows **Additional from Friction** by default.
+Its closed-by-default **Input Effort Details** shows **Without Friction**, **With Friction**, and
+the additional effort together, explaining that all contacts contribute at the same prescribed
+pose and motion. All values use the input's force or torque units. It appears once in
 the contact panel, outside its per-contact rows. These are mechanism-level quantities at the
 same pose and prescribed motion, not a local contact force. The frictionless value is total minus
 the already-solved additional effort, through `AnalysisSampleService` so display conversions and
@@ -66,7 +69,7 @@ In Force Analysis, supported enabled contacts show their current solved loads by
 - Both reuse the analysis force ink and `vector-trace.ts` arrowhead geometry. A dashed stroke
   and explicit **Friction at [pin]: [value]** label distinguish them from the solid applied-load
   arrows. The SVG description names the receiving body and direction convention; the panel's
-  calculation is keyboard accessible through a native disclosure.
+  calculation uses the shared compact collapsible section and is keyboard accessible.
 - Magnitude is encoded relative to **that contact's cycle maximum**: force length uses the
   existing 8.5% of swept-span scale, and torque sweep reaches 225 degrees at its maximum, with
   radius 2% of the swept span. The radius is constant throughout that cycle; torque magnitude
@@ -91,7 +94,8 @@ is unavailable says **Unavailable**. Neither invents zero friction, a unique hol
 a static capacity from an unsolved normal load. Unsupported and failed solves retain their
 diagnostics and suppress numeric contact and actuator results and glyphs.
 
-The In-motion inertia guard is unchanged. Its visible diagnostic reads:
+The In-motion inertia guard is unchanged. The visible summary says **In-motion inertia scaling
+issue. Use Static analysis.** Its **Why Is This Unavailable?** disclosure retains the full reason:
 
 > Friction results are withheld because the existing In-motion inertia calculation has a scaling error for bodies with mass or inertia. Use Static analysis.
 
@@ -130,7 +134,8 @@ the visible direction note says **Rewinding**. The existing `setPlaybackDirectio
 is unchanged. A reversed traversal does not solve a new physical motion, so `FrictionService`
 returns Unavailable while that machine's traversal direction is negative. This suppresses its
 contact numbers, input comparison and drawing glyphs, including while paused or scrubbed in
-rewind mode. The diagnostic says:
+rewind mode. The visible reason is **Playback rewind does not reverse the prescribed drive.**
+Its **Why Is This Unavailable?** disclosure retains the full explanation:
 
 > Friction results are hidden while playback is set to rewind. Rewind traverses existing samples; it does not reverse the prescribed drive. Switch to forward playback to show friction.
 
@@ -150,6 +155,43 @@ sample after visiting an earlier/later one and verify unchanged friction.
 Eased returns to the start pose are likewise navigation through samples, not a newly prescribed
 motion. This pass leaves their existing navigation behavior intact. No forward dynamics or new
 motion-system normalization is introduced.
+
+### Final density audit and accessibility
+
+The panel follows **Result first. Explanation on demand**, also recorded in the shared UI style
+guide. The deliberate classification of the previous default content is:
+
+| Content | Presentation | Why |
+| --- | --- | --- |
+| Contact identity, Enabled/Off, motion state | Always visible | Identifies which result is being read |
+| Normal/radial load, friction effort, static capacity | Always visible | Core engineering results |
+| Input identity, additional effort | Always visible | Immediate mechanism-level consequence |
+| Without/with/additional comparison and prescribed-motion explanation | Input Effort Details | Full comparison on demand |
+| Coefficients, radius, equations, sign, reactions, capacity and drawing conventions | How Friction Is Calculated | Engineering explanation on demand |
+| Static analysis versus kinetic friction | Existing Force analysis type help | Avoids a permanent paragraph |
+| Drawing visibility versus disabling friction | Existing view-button tooltip | Explains the eye without extra panel prose |
+| Stationary, In-motion, rewind and unsupported states | Visible diagnostic summary | Warnings cannot disappear into an explanation |
+| Diagnostic reasoning | Why Is This Indeterminate? / Why Is This Unavailable? | Full reasoning on demand |
+
+Only applicable disclosures are present, all closed by default. Normal solved contacts use
+Calculation and Input Effort Details; unresolved contacts use the relevant diagnostic disclosure.
+Stationary results still say **Indeterminate at Rest** and **Static holding force is not solved**.
+Unsupported guides say **Unsupported Friction Contact**, with the original bearing-spacing and
+contact-load explanation retained. No warning manufactures numeric capacity or friction.
+Collapsing the entire Friction section retains Enabled/Off and adds **Unavailable** or
+**Indeterminate at Rest** to its header when applicable.
+
+The shared `collapsible-subsection` gains a backward-compatible `compact` appearance, with no
+new accordion implementation. Its button retains `aria-expanded`; closed content now has
+`inert`, `aria-hidden` and hidden visibility. Enter/Space operate both disclosure styles, focus
+remains visible, and closed content cannot receive focus. The view button's optional `help`
+extends its existing tooltip without changing its accessible name or pressed state.
+
+An axe audit caught the existing input-unit suffix at 4.45:1 contrast; it now uses the existing
+secondary-text token. Friction warning text uses primary text on the warning surface for readable
+contrast. No palette or general warning-token redesign was introduced. The Storybook browser
+suite runs the installed axe engine against every friction state, including the 250px compact,
+expanded, saved, disabled, stationary, unsupported and rewind layouts.
 
 ## Branch and purpose
 
@@ -546,3 +588,36 @@ Its 1,120 application reference-pose comparisons remain in the full suite; MATLA
 is still pending. The next separate physics task should be the inherited In-motion inertia
 scaling correction, retaining its factor-of-200 reproduction and friction refusal until the
 general force path is independently verified.
+
+### Final UI-density validation
+
+This pass follows `949d6fcb` on `feature/friction`, preserving the staging base `acba1b77`
+and all earlier friction commits. It changes presentation and shared UI accessibility only;
+no domain/solver, result adapter, persistence, export or canvas-geometry file changed.
+
+- Focused friction model, component and result-adapter tests: **127/127**, 12 files.
+- Full suite: **2,595 passed, three failed**, 2,598 tests in 247 files. Both MotionGen gripper
+  failures and the Windows stylesheet fence were reproduced on unchanged staging again:
+  **four passed, three failed**. Both baseline spec files match their staging Git blob hashes.
+- Friction visualization browser checks: **41/41**. Existing friction browser checks:
+  **15/15**. No uncaught browser errors. Disclosures preserve current calculated values;
+  the existing motion, reverse, rewind and canvas checks remain unchanged in meaning.
+- Storybook: **17/17** friction states at 250px, with **zero axe violations across all 17**.
+  Meaningful additions are expanded input effort and an unsupported guide. The shared
+  subsection also has a Compact story. Keyboard checks verify Enter/Space, `aria-expanded`,
+  visible focus, refusal of focus inside closed content, and warning state in a collapsed header.
+- UI copy: **17/17**, zero console errors. Its shape-button check now opens Visual Settings
+  before reading a control that the shared collapse correctly hides.
+- Production build, Storybook build, source type checking and `npm run check`: passed.
+  Lint retains 15 existing warnings and zero errors. Source type checking uses the same
+  dependency-declaration `--skipLibCheck` limitation documented in the earlier audit.
+- Visual inspection: before/after compact panel comparison, expanded calculation and input
+  comparison, stationary/inertia/rewind/unsupported states, and disclosure motion. The browser
+  suite captures **84 frames**, including 18 added disclosure frames. The screenshots and
+  comparison sheet are in ignored `artifacts/friction-density/` and `artifacts/friction-stories/`.
+- `git diff --check`: passed. No push or merge. The independent verification checkout and data
+  remain unchanged, and MATLAB execution remains pending as previously documented.
+
+The panel is sufficiently compact for V1 review. General inertia correction, static holding
+feasibility and physical reciprocating reverse remain separate physics tasks; general label
+layout remains separate UI infrastructure.

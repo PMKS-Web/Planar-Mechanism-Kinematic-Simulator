@@ -143,7 +143,8 @@ try {
   );
   record(
     'Input comparison includes without, with and additional friction',
-    (await panel.locator('.input-comparison dt').allTextContents()).length === 3
+    (await panel.locator('.input-details dt').count()) === 3 &&
+      (await panel.locator('.input-comparison > dl dt').count()) === 1
   );
   record(
     'Slider glyph lies along the guide and acts on its block',
@@ -157,25 +158,65 @@ try {
       (await glyph('D').locator('text').textContent()).includes('Friction')
   );
   await page.screenshot({ path: path.join(out, 'slider-analysis.png') });
+  await page.locator('app-analysis-panel .forceModeRow .label-help').hover();
+  await page.locator('.mat-mdc-tooltip').first().waitFor();
   record(
-    'Static-analysis helper distinguishes omitted inertia from kinetic friction',
-    (await panel.locator('[data-static-friction-help]').innerText()) ===
-      'Static analysis ignores inertia. Moving contacts use kinetic friction.'
+    'Force-analysis help distinguishes omitted inertia from kinetic friction',
+    (await page.locator('.mat-mdc-tooltip').first().innerText()).includes('Static omits inertia') &&
+      (await page.locator('.mat-mdc-tooltip').first().innerText()).includes(
+        'Moving contacts use kinetic friction'
+      )
   );
+  await page.mouse.move(1400, 50);
   record(
     'Default results keep secondary explanations collapsed',
     !(await panel.innerText()).includes('start the whole mechanism') &&
-      (await panel.locator('details').getAttribute('open')) === null
+      (await panel
+        .getByRole('button', { name: 'How Friction Is Calculated' })
+        .getAttribute('aria-expanded')) === 'false'
   );
-  await panel.locator('summary').click();
+  const calculation = panel.getByRole('button', { name: 'How Friction Is Calculated' });
+  await calculation.focus();
+  await film.during(50, 6, 'calculation-open', () => calculation.press('Enter'));
   record(
     'Expanded calculation retains reaction, direction and static-capacity explanations',
-    (await panel.locator('details').innerText()).includes(
+    (await panel.locator('.calculation').innerText()).includes(
       "already included in the guide's reported reaction"
-    ) && (await panel.locator('details').innerText()).includes('start the whole mechanism')
+    ) && (await panel.locator('.calculation').innerText()).includes('start the whole mechanism')
   );
   await page.screenshot({ path: path.join(out, 'slider-expanded.png') });
-  await panel.locator('summary').click();
+  await film.during(50, 6, 'calculation-close', () => calculation.press('Space'));
+  record(
+    'Keyboard collapse removes explanation from focus and preserves contact values',
+    (await calculation.getAttribute('aria-expanded')) === 'false' &&
+      (await panel.locator('.calculation .panel-content').evaluate((el) => el.inert)) &&
+      !(await panel.innerText()).includes('start the whole mechanism') &&
+      (await matchesSolvedSample('D'))
+  );
+  const inputDetails = panel.getByRole('button', { name: 'Input Effort Details' });
+  record(
+    'Input summary stays visible while the full comparison is closed',
+    !(await panel.innerText()).includes('Without Friction') &&
+      (await panel.locator('.input-comparison > dl').innerText()).includes('50 N')
+  );
+  await inputDetails.focus();
+  await film.during(50, 6, 'input-details-open', () => inputDetails.press('Enter'));
+  record(
+    'Keyboard expansion reveals all input values without changing physics',
+    (await inputDetails.getAttribute('aria-expanded')) === 'true' &&
+      (await panel.innerText()).includes('Without Friction') &&
+      (await matchesSolvedSample('D'))
+  );
+  await page.screenshot({ path: path.join(out, 'input-expanded.png') });
+  await inputDetails.press('Space');
+  record(
+    'Focused disclosure has a visible focus indicator',
+    await inputDetails.evaluate(
+      (el) =>
+        getComputedStyle(el).outlineStyle !== 'none' &&
+        parseFloat(getComputedStyle(el).outlineWidth) > 0
+    )
+  );
   const initialPath = await glyph('D').locator('.friction-vector').getAttribute('d');
   await film.during(100, 10, 'motion', async () => {
     await page.getByRole('button', { name: 'Play', exact: true }).click();
@@ -378,7 +419,7 @@ try {
   await panel.getByText('Friction Results Unavailable', { exact: true }).waitFor();
   record(
     'In-motion diagnostic explains withheld results and the available alternative',
-    (await panel.innerText()).includes('scaling error') &&
+    (await panel.innerText()).includes('scaling issue') &&
       (await panel.innerText()).includes('Use Static analysis')
   );
   record(

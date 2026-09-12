@@ -20,7 +20,7 @@ const meta: Meta = {
       form: new FormGroup({ speed: new FormControl('10'), mass: new FormControl('1.5') }),
     },
     template: `
-      <collapsible-subsection [titleLabel]="titleLabel" [expanded]="expanded" [hideHeader]="hideHeader">
+      <collapsible-subsection [titleLabel]="titleLabel" [expanded]="expanded" [hideHeader]="hideHeader" [compact]="compact">
         <input-block [formGroup]="form" _formControl="speed" unit="RPM" tooltip="How fast the input turns.">Speed</input-block>
         <input-block [formGroup]="form" _formControl="mass" unit="kg" tooltip="The mass of this link.">Mass</input-block>
       </collapsible-subsection>
@@ -34,6 +34,9 @@ type Story = StoryObj;
 export const Expanded: Story = {};
 
 export const Collapsed: Story = { args: { expanded: false } };
+export const Compact: Story = {
+  args: { compact: true, expanded: false, titleLabel: 'Input Effort Details' },
+};
 
 export const LongTitle: Story = {
   args: { titleLabel: 'Center of Mass and Moment of Inertia' },

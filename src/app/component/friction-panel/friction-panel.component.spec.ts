@@ -23,7 +23,7 @@ describe('friction panel states', () => {
   it('uses guide coefficients without an irrelevant radius', () => {
     const { root } = mount('guide');
     expect(root.querySelectorAll('input').length).toBe(2);
-    expect(root.textContent).toContain('Additional from All Friction');
+    expect(root.textContent).toContain('Additional from Friction');
     expect(root.textContent).not.toContain('Effective Radius');
   });
   it('exposes a physical bearing radius and static capacity', () => {
@@ -87,27 +87,42 @@ describe('friction panel states', () => {
     expect(root.textContent).toContain('Contact State: Stationary');
     expect(root.textContent).toContain('Indeterminate at Rest');
     expect(root.querySelector('dl')).toBeNull();
+    root.querySelector<HTMLButtonElement>('.panel-header__toggle')!.click();
+    fixture.detectChanges();
+    expect(root.querySelector('.state-chip')!.textContent).toContain('Indeterminate at Rest');
   });
   it('shows one actuator comparison separately from contact results', () => {
     const { root } = mount('guide');
     expect(root.querySelectorAll('.input-comparison').length).toBe(1);
     expect(root.querySelector('.input-comparison')!.textContent).toContain('With Friction120 N');
-    expect(root.querySelector('.contact')!.textContent).not.toContain(
-      'Additional from All Friction'
-    );
+    expect(root.querySelector('.contact')!.textContent).not.toContain('Additional from Friction');
   });
-  it('keeps educational detail inside a closed disclosure and distinguishes no-inertia analysis', () => {
-    const { root } = mount('guide', true, false, true);
-    expect(root.querySelector('[data-static-friction-help]')!.textContent).toContain(
-      'Static analysis ignores inertia. Moving contacts use kinetic friction.'
-    );
-    const details = root.querySelector('details')!;
-    expect(details.open).toBe(false);
+  it('keeps educational detail inside the shared closed disclosure', () => {
+    const { root, fixture } = mount('guide', true, false, true);
+    const details = root.querySelector('.calculation')!;
+    const toggle = details.querySelector<HTMLButtonElement>('button')!;
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(details.querySelector('.panel-content')!.hasAttribute('inert')).toBe(true);
     expect(details.textContent).toContain("already included in the guide's reported reaction");
     expect(details.textContent).toContain('start the whole mechanism');
     expect(details.textContent).toContain('Kinetic coefficient');
     expect(root.querySelector('.contact > dl')).not.toBeNull();
-    details.querySelector('summary')!.click();
-    expect(details.open).toBe(true);
+    toggle.click();
+    fixture.detectChanges();
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(details.querySelector('.panel-content')!.hasAttribute('inert')).toBe(false);
+  });
+  it('keeps only added input effort in the summary and makes the full comparison expandable', () => {
+    const { root, fixture, state } = mount('guide', true, false, true);
+    const before = state.service.reading();
+    expect(root.querySelectorAll('.input-comparison > dl dt').length).toBe(1);
+    const details = root.querySelector('.input-details')!;
+    const toggle = details.querySelector<HTMLButtonElement>('button')!;
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(details.querySelectorAll('dt').length).toBe(3);
+    toggle.click();
+    fixture.detectChanges();
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(state.service.reading()).toEqual(before);
   });
 });

@@ -15,9 +15,13 @@ here.
 undo/redo, persistence and changing contact readings. Screenshots and a filmstrip go to
 `artifacts/friction/`.
 
-`friction-stories.mjs` checks the 15 friction gallery states at `SB_URL`, including
+`friction-stories.mjs` checks the 17 friction gallery states at `SB_URL`, including
 native disabled fields, validation, radius units and panel overflow. Screenshots go to
 `artifacts/friction-stories/`.
+
+Each friction story is also checked with the installed axe accessibility engine. Compact and
+expanded input/calculation views use the shared collapsible subsection; keyboard checks cover
+Enter/Space, inert closed content, and diagnostic state retained in the collapsed header.
 
 `friction-visualization.mjs` follows Save/Disable through Force Analysis, checks current slider
 arrows and bearing moments, direction reversals, visibility, combined contacts, input comparison,

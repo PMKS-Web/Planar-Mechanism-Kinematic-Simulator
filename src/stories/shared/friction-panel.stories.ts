@@ -6,6 +6,8 @@ import { INERTIA_FRICTION_REFUSAL } from '../../app/model/joint-friction';
 import { inPanel } from '../support/frame';
 import { frictionStoryState } from '../support/friction-stubs';
 import { FRICTION_REWIND_MESSAGE } from '../../app/services/friction.service';
+import { RealLink } from '../../app/model/link';
+import { RealJoint, RevJoint } from '../../app/model/joint';
 
 const meta: Meta<FrictionPanelComponent> = {
   title: 'Structure/Friction Panel',
@@ -84,9 +86,29 @@ export const ExpandedCalculation: Story = {
     await userEvent.click(within(canvasElement).getByText('How Friction Is Calculated'));
   },
 };
+export const ExpandedInputEffort: Story = {
+  ...SliderAnalysis,
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      within(canvasElement).getByRole('button', { name: 'Input Effort Details' })
+    );
+  },
+};
 const rewindState = frictionStoryState('guide');
 rewindState.service.reading = () => ({ state: 'Unavailable', message: FRICTION_REWIND_MESSAGE });
 export const PlaybackRewind: Story = {
   args: { joint: rewindState.joint, readOnly: true },
   decorators: [applicationConfig({ providers: rewindState.providers })],
+};
+const unsupportedState = frictionStoryState('guide');
+const block = unsupportedState.joint.links[0];
+const welded = block.joints.find((j) => j !== unsupportedState.joint) as RealJoint;
+welded.isWelded = true;
+const end = new RevJoint('C', 400, 0);
+const rider = new RealLink('BC', [welded, end]);
+welded.links.push(rider);
+end.links = [rider];
+export const UnsupportedGuide: Story = {
+  args: { joint: unsupportedState.joint, readOnly: true },
+  decorators: [applicationConfig({ providers: unsupportedState.providers })],
 };

@@ -34,11 +34,15 @@ dd {
     background: var(--brand-tint);
     color: var(--brand-dark);
   }
+  &.warning {
+    max-width: 120px;
+    color: var(--text-primary);
+    background: var(--warning-bg);
+  }
 }
 .contact-state,
 .visibility-row,
-.confirmation,
-summary {
+.confirmation {
   font-size: 12px;
 }
 .confirmation {
@@ -56,14 +60,14 @@ summary {
 .diagnostic {
   padding: 10px;
   background: var(--warning-bg);
-  color: var(--warning-text);
+  color: var(--text-primary);
   font-size: 12px;
   line-height: 1.5;
   p {
     margin: 4px 0 0;
   }
 }
-summary {
-  color: var(--brand-dark);
-  cursor: pointer;
+.calculation .note,
+.input-details .note {
+  margin: 0;
 }

@@ -166,6 +166,13 @@ const linkBox = await page.locator('#linkHolder path[id]').first().boundingBox()
 await page.mouse.move(linkBox.x + linkBox.width / 2, linkBox.y + linkBox.height / 2);
 await page.mouse.click(linkBox.x + linkBox.width / 2, linkBox.y + linkBox.height / 2);
 await page.waitForTimeout(500);
+// The shared collapse now truly hides content and removes it from keyboard navigation.
+// Open the link's visual settings before checking its shape control's visible wording.
+const linkVisuals = page
+  .locator('app-edit-panel')
+  .getByRole('button', { name: 'Visual Settings', exact: true });
+if ((await linkVisuals.getAttribute('aria-expanded')) !== 'true') await linkVisuals.click();
+await page.locator('app-edit-panel .shapeToggle').waitFor({ state: 'visible' });
 const shape = await page
   .locator('app-edit-panel .shapeToggle')
   .innerText()

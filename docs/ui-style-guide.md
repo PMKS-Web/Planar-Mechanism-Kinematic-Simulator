@@ -152,6 +152,14 @@ else; if two cards need a new order, name the layer.
 
 ## Accessibility
 
+**Result first. Explanation on demand.** Analysis panels prioritize the current numeric result,
+contact or mechanism identity, and state. Keep critical warnings visible. Put equations,
+assumptions, sign conventions, derivations and secondary prose in shared compact disclosures or
+existing help affordances. A useful summary can remain visible while a full comparison expands
+on demand. Expanded explanations should use short labeled groups and equations, not a wall of
+text. Reuse `collapsible-subsection` with `compact` for a disclosure within a panel; avoid deeper
+accordion nesting. A collapsed warning section must retain its state in the header.
+
 Accessibility is one of the four principles, and it is checked, not assumed.
 
 - **Every control works from the keyboard.** A button is a `<button>`, a switch is a switch, and

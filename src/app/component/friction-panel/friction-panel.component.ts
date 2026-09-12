@@ -14,9 +14,13 @@ import {
   guideFrictionRefusal,
   frictionContactName,
 } from '../../model/friction-contacts';
-import { hasFriction } from '../../model/joint-friction';
+import { hasFriction, INERTIA_FRICTION_REFUSAL } from '../../model/joint-friction';
 import { MODEL_SCALE } from '../../model/render-scale';
-import { FrictionService } from '../../services/friction.service';
+import {
+  FrictionService,
+  FrictionReading,
+  FRICTION_REWIND_MESSAGE,
+} from '../../services/friction.service';
 import { FrictionOverlayService } from '../../services/friction-overlay.service';
 import { ViewButtonComponent } from '../view-controls/view-button.component';
 import { SettingsService } from '../../services/settings.service';
@@ -48,8 +52,13 @@ export class FrictionPanelComponent implements DoCheck {
   protected readonly permission = inject(EditPermissionService);
   private settings = inject(SettingsService);
   private parser = inject(NumberUnitParserService);
-  protected get staticAnalysis(): boolean {
-    return this.settings.forceAnalysisMode.value === 'static';
+  protected diagnosticSummary(reading: FrictionReading): string {
+    if (reading.state === 'Stationary') return 'Static holding force is not solved.';
+    if (reading.message === INERTIA_FRICTION_REFUSAL)
+      return 'In-motion inertia scaling issue. Use Static analysis.';
+    if (reading.message === FRICTION_REWIND_MESSAGE)
+      return 'Playback rewind does not reverse the prescribed drive.';
+    return reading.message ?? 'No solved friction result.';
   }
   protected readonly error = signal('');
   protected readonly confirmation = signal('');
@@ -111,8 +120,21 @@ export class FrictionPanelComponent implements DoCheck {
   protected anyEnabled(): boolean {
     return this.contacts().some((contact) => this.enabled(contact.joint));
   }
+  protected collapsedWarning(): string | undefined {
+    if (this.expanded()) return undefined;
+    for (const contact of this.contacts()) {
+      if (this.unsupported(contact.joint)) return 'Unavailable';
+      if (!this.enabled(contact.joint)) continue;
+      const reading = this.service.reading(contact.joint);
+      if (reading.state === 'Stationary') return 'Indeterminate at Rest';
+      if (reading.message) return 'Unavailable';
+    }
+    return undefined;
+  }
   protected inputReading() {
-    const contact = this.contacts().find((one) => this.enabled(one.joint));
+    const contact = this.contacts().find(
+      (one) => this.enabled(one.joint) && !this.unsupported(one.joint)
+    );
     return contact ? this.service.reading(contact.joint) : undefined;
   }
   protected flipOverlay(): void {

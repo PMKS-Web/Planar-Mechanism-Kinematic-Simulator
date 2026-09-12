@@ -80,7 +80,7 @@
 
       .input-unit {
         margin-left: 4px;
-        color: map.get($foreground, 'secondary-text');
+        color: var(--text-secondary);
         white-space: nowrap;
       }
 
