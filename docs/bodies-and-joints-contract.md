@@ -246,6 +246,27 @@ these operations temporarily use the shared start-pose permission until that bou
 Generic shape/attachment edits cannot change a cylinder's intrinsic member geometry, mounts
 or internal P references; cylinder dimension edits must own that complete proposal.
 
+`cylinder-dimensions` owns that proposal: barrel length, rod length, bore, rod diameter and
+physical stroke are supplied in destination document units. Positive finite dimensions must
+satisfy rod diameter < bore, stroke < rod length ≤ barrel length, independently of display
+scale. The operation preserves the captured signed extension, all IDs, outer attachment local
+points and weld rests. It stretches each member's authored bar about its outer attachment,
+updates bound vertices and the two internal P origins, and maintains the barrel-mouth station.
+Unbound material attachments and loads retain their local records. Existing center-of-mass
+edit anchors are remapped by the same final transaction as other geometry changes.
+
+The command's anchor is the barrel outer attachment by default, or explicitly the rod outer
+attachment. That point stays at its captured displayed location. The connected material solves
+rigidly around it; preserving the anchored member's heading is preferred when feasible, so
+an off-axis welded bracket cannot make a free cylinder rotate merely by changing the numerical
+least-motion metric. If the connections require a turn, the physical constraints determine it.
+Existing drives, holds and original locked-point locations constrain the whole solve. Passive
+internal travel uses an edit row, not a new stored drive. Settled bounds/locks/holds still apply,
+and failure cancels the complete transaction. Re-anchoring retains a surviving driven extension
+and its paused clock through dimension changes. These are dimension-design proposals, not
+physical playback intervals through the original shape.
+
+
 `MaterialBody.locked` protects its pose, shape and surviving attachment positions even with
 only one connection. An attachment lock protects only that point, so a body may rotate about
 it. Locks do not add physical constraints or prevent deletion, mass or color edits. Holds

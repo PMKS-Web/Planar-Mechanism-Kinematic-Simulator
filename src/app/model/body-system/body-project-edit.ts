@@ -30,6 +30,7 @@ export function bodyOperationPermission(
     operation.kind === 'move-coordinate' ||
     operation.kind === 'guide-axis' ||
     operation.kind === 'guide-axes' ||
+    operation.kind === 'cylinder-dimensions' ||
     isBodyGeometryOperation(operation)
   )
     return menuRefusal(state, displayedMapping ? 'attachment' : 'start');

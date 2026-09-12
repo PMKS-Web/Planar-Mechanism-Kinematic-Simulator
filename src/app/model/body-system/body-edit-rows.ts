@@ -1,3 +1,5 @@
+import { BodyDocument } from './body-document';
+import { localToWorld } from './body-frame';
 import { BodyEditModel } from './body-edit-model';
 import { BodyJoint, JointCoordinate } from './joint-record';
 import {
@@ -12,7 +14,11 @@ import {
 } from './body-edit-scalar';
 
 /** The edit system differentiates the same joint semantics, plus CAD holds and positional goals. */
-export function bodyEditRows(model: BodyEditModel, values: readonly number[]): EditScalar[] {
+export function bodyEditRows(
+  model: BodyEditModel,
+  values: readonly number[],
+  lockReference?: BodyDocument
+): EditScalar[] {
   const { document, reached, length } = model,
     view = model.at(values),
     c = view.constant;
@@ -64,7 +70,20 @@ export function bodyEditRows(model: BodyEditModel, values: readonly number[]): E
   const initial = model.at(Array(model.width).fill(0));
   const pinInitial = (p: ReturnType<typeof view.point>, old: ReturnType<typeof view.point>) =>
     rows.push(editSubtract(p.x, c(old.x.value)), editSubtract(p.y, c(old.y.value)));
-  for (const id of document.locks) pinInitial(view.point(id), initial.point(id));
+  for (const id of document.locks) {
+    if (!lockReference) pinInitial(view.point(id), initial.point(id));
+    else {
+      const point = lockReference.attachments.find((a) => a.id === id)!;
+      const world = localToWorld(
+        lockReference.bodies.find((b) => b.id === point.bodyId)!.pose,
+        point.point
+      );
+      pinInitial(view.point(id), {
+        x: c((world.x - model.origin.x) / length),
+        y: c((world.y - model.origin.y) / length),
+      });
+    }
+  }
   for (const force of document.forces) {
     if (!force.locked || !reached.has(force.bodyId)) continue;
     pinInitial(

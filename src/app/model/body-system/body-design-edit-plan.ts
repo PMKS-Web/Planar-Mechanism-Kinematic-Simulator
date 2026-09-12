@@ -1,3 +1,4 @@
+import { editBodyCylinderDimensions } from './body-cylinder-dimension-edit';
 import { editBodyGuideAxis } from './body-guide-axis-edit';
 import { editBodyCoordinate } from './body-coordinate-edit';
 import {
@@ -118,6 +119,10 @@ export function planBodyDesignEdit(
       candidate = changed.document;
     } else if (operation.kind === 'guide-axis' || operation.kind === 'guide-axes') {
       const changed = editBodyGuideAxis(candidate, operation);
+      if (!changed.ok) return changed;
+      candidate = changed.document;
+    } else if (operation.kind === 'cylinder-dimensions') {
+      const changed = editBodyCylinderDimensions(candidate, operation);
       if (!changed.ok) return changed;
       candidate = changed.document;
     } else if (operation.kind === 'move-coordinate') {
