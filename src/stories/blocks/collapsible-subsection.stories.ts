@@ -41,3 +41,22 @@ export const LongTitle: Story = {
 
 /** No header at all: the section cannot be opened or closed by the reader. */
 export const WithoutHeader: Story = { args: { hideHeader: true } };
+
+/** Nested analysis sections share the parent's inset, leaving room for tables and curves. */
+export const NestedAnalysis: Story = {
+  render: () => ({
+    template: `
+      <collapsible-subsection titleLabel="Instant Centers" [expanded]="true">
+        <collapsible-subsection titleLabel="Center Selection" [inset]="false">
+          <p>Select which centers appear on the canvas.</p>
+        </collapsible-subsection>
+        <collapsible-subsection titleLabel="IC Velocity Analysis" [expanded]="true" [inset]="false">
+          <p>Known input A: 1 rad/s.</p>
+          <collapsible-subsection titleLabel="Body BC · IC Calculation" [expanded]="true" [inset]="false">
+            <p>vₓ = −ω rᵧ; vᵧ = ω rₓ.</p>
+          </collapsible-subsection>
+        </collapsible-subsection>
+      </collapsible-subsection>
+    `,
+  }),
+};

@@ -89,6 +89,9 @@
       &.settled {
         overflow: visible;
       }
+      &.panel-content--flush {
+        padding-inline: 0;
+      }
 
       &.hidden {
         transform: scaleY(0);

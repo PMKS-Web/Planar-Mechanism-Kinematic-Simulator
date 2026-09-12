@@ -19,86 +19,184 @@
       <p>
         Dashed lines connect known instant centers. Two lines intersect at each secondary center.
       </p>
-      <p>Choose the centers to include below. Construction lines follow your selection.</p>
-      @if (ic.displayed().length) {
-        <div class="selectionActions">
-          <button-block [click]="selectAll">Select All</button-block>
-          <button-block [click]="clearSelection">Clear Selection</button-block>
-        </div>
-      }
-      @for (drawing of ic.displayed(); track drawing.machine) {
-        <h3>{{ drawing.machine }} · Centers at the displayed pose</h3>
-        <p>
-          {{ ic.selectedCenters(drawing).length }} of
-          {{ drawing.geometry.centers.length }} selected.
-        </p>
-        <div class="tableScroll">
-          <table aria-label="Instant center locations">
-            <thead>
-              <tr>
-                <th>Center</th>
-                <th>Kind</th>
-                <th>Location</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (center of drawing.geometry.centers; track center.id) {
-                <tr>
-                  <th scope="row">
-                    <div class="centerChoice">
-                      <app-view-button
-                        [noun]="drawing.machine + ' ' + ic.label(center)"
-                        [shown]="ic.selected(drawing, center)"
-                        [icon]="ic.selected(drawing, center) ? 'visibility' : 'visibility_off'"
-                        (pressed)="ic.toggle(drawing, center)"
-                      />
-                      <span>{{ ic.label(center) }}</span>
-                    </div>
-                  </th>
-                  <td>{{ center.kind }}</td>
-                  <td>{{ location(drawing.geometry, center) }}</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      } @empty {
-        <p>Draw a mechanism with one input to preview its instant centers.</p>
-      }
-      <p>
-        The current solver uses closed-loop equations, with position differences where needed. IC
-        velocities use Kennedy constructions and velocity ratios independently. Positions and
-        accelerations still use the current solver.
-      </p>
-      @for (comparison of comparisons(); track comparison.machine) {
-        <h3>{{ comparison.machine }} · Angular velocity (rad/s)</h3>
-        <p>Sample {{ comparison.step }}. Pause or scrub to compare another pose.</p>
-        @if (comparison.result.reason) {
-          <p role="status">{{ comparison.result.reason }}</p>
+      <collapsible-subsection
+        titleLabel="Center Selection"
+        [inset]="false"
+        [expanded]="selectionOpen()"
+        (opened)="selectionOpen.set(true)"
+        (closed)="selectionOpen.set(false)"
+      >
+        @if (selectionOpen()) {
+          <p>Choose the centers to include below. Construction lines follow your selection.</p>
+          @if (ic.displayed().length) {
+            <div class="selectionActions">
+              <button-block [click]="selectAll">Select All</button-block>
+              <button-block [click]="clearSelection">Clear Selection</button-block>
+            </div>
+          }
+          @for (drawing of ic.displayed(); track drawing.machine) {
+            <h3>{{ drawing.machine }} · Centers at the displayed pose</h3>
+            <p>
+              {{ ic.selectedCenters(drawing).length }} of
+              {{ drawing.geometry.centers.length }} selected.
+            </p>
+            <div class="tableScroll">
+              <table aria-label="Instant center locations">
+                <thead>
+                  <tr>
+                    <th>Center</th>
+                    <th>Kind</th>
+                    <th>Location</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (center of drawing.geometry.centers; track center.id) {
+                    <tr>
+                      <th scope="row">
+                        <div class="centerChoice">
+                          <app-view-button
+                            [noun]="drawing.machine + ' ' + ic.label(center)"
+                            [shown]="ic.selected(drawing, center)"
+                            [icon]="ic.selected(drawing, center) ? 'visibility' : 'visibility_off'"
+                            (pressed)="ic.toggle(drawing, center)"
+                          />
+                          <span>{{ ic.label(center) }}</span>
+                        </div>
+                      </th>
+                      <td>{{ center.kind }}</td>
+                      <td>{{ location(drawing.geometry, center) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @empty {
+            <p>Draw a mechanism with one input to preview its instant centers.</p>
+          }
         }
-        <div class="tableScroll">
-          <table aria-label="Velocity method comparison">
-            <thead>
-              <tr>
-                <th>Body</th>
-                <th>Current solver</th>
-                <th>Instant centers</th>
-                <th>Difference</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (row of comparison.rows; track row.id) {
-                <tr>
-                  <th>{{ row.name }}</th>
-                  <td>{{ number(row.current) }}</td>
-                  <td>{{ number(row.ic) }}</td>
-                  <td>{{ number(row.ic === undefined ? undefined : row.ic - row.current) }}</td>
-                </tr>
-              }
-            </tbody>
-          </table>
+      </collapsible-subsection>
+      <collapsible-subsection
+        titleLabel="IC Velocity Analysis"
+        [inset]="false"
+        [expanded]="analysisOpen()"
+        (opened)="analysisOpen.set(true)"
+        (closed)="analysisOpen.set(false)"
+      >
+        @if (analysisOpen()) {
+          <p>
+            This teaching preview uses IC velocities independently. Final analysis, default graphs
+            and exports use the current solver: closed-loop equations with position differences
+            where needed.
+          </p>
+          @for (comparison of comparisons(); track comparison.machine) {
+            <h3>{{ comparison.machine }} · Angular velocity (rad/s)</h3>
+            <p>Sample {{ comparison.step }}. Pause or scrub to compare another pose.</p>
+            <p>
+              Known input {{ comparison.input }}: {{ number(comparison.rate) }}
+              {{ comparison.rateUnit }}.
+            </p>
+            @if (comparison.result.reason) {
+              <p role="status">{{ comparison.result.reason }}</p>
+            }
+            <div class="tableScroll">
+              <table aria-label="Velocity method comparison">
+                <thead>
+                  <tr>
+                    <th>Body</th>
+                    <th>Current solver</th>
+                    <th>Instant centers</th>
+                    <th>Difference</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of comparison.rows; track row.id) {
+                    <tr>
+                      <th>{{ row.name }}</th>
+                      <td>{{ number(row.current) }}</td>
+                      <td>{{ number(row.ic) }}</td>
+                      <td>{{ number(row.ic === undefined ? undefined : row.ic - row.current) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <collapsible-subsection
+              [titleLabel]="comparison.machine + ' Joint Velocities'"
+              [inset]="false"
+            >
+              <p>Velocity components ({{ lengthUnit }}/s) at this sample.</p>
+              <div class="tableScroll">
+                <table aria-label="Joint velocity method comparison">
+                  <thead>
+                    <tr>
+                      <th>Joint</th>
+                      <th>IC (X, Y)</th>
+                      <th>Current (X, Y)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (joint of comparison.joints; track joint.id) {
+                      <tr>
+                        <th>{{ joint.id }}</th>
+                        <td>({{ number(joint.ic[0]) }}, {{ number(joint.ic[1]) }})</td>
+                        <td>({{ number(joint.current[0]) }}, {{ number(joint.current[1]) }})</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </collapsible-subsection>
+            @for (row of comparison.rows; track row.id) {
+              <collapsible-subsection
+                [titleLabel]="comparison.machine + ' Body ' + row.name + ' · IC Calculation'"
+                [inset]="false"
+                [expanded]="bodyOpen.has(comparison.machine + row.id)"
+                (opened)="bodyOpen.add(comparison.machine + row.id)"
+                (closed)="bodyOpen.delete(comparison.machine + row.id)"
+              >
+                @if (bodyOpen.has(comparison.machine + row.id)) {
+                  <app-instant-center-body
+                    [mechanism]="comparison.mechanism"
+                    [index]="comparison.step"
+                    [linkId]="row.id"
+                  />
+                }
+              </collapsible-subsection>
+            }
+          } @empty {
+            <p>Draw a mechanism with one input to compare velocity methods.</p>
+          }
+        }
+      </collapsible-subsection>
+      <collapsible-subsection titleLabel="How the IC Method Works" [inset]="false">
+        <div class="workedExample">
+          <p>
+            PMKSConversion used v = ω × r: start with the known input, use shared-center velocities
+            to determine other body rates, then find point velocities. This preview retains that
+            logic, solving the shared-center constraints together to avoid fragile divisions by one
+            coordinate.
+          </p>
+          <p>
+            For a finite ground IC, vₓ = −ω(y − yᵢ), vᵧ = ω(x − xᵢ), and speed = |ω| × distance to
+            the IC. A center at infinity represents translation.
+          </p>
+          <p>
+            IC velocity analysis is valid for planar rigid-body motion when the centers and rates
+            can be determined. Nearly coincident construction lines can be ill-conditioned;
+            unresolved or singular cases are shown as unavailable.
+          </p>
+          <p>
+            A zero-velocity center need not have zero acceleration. Treating a moving IC as a fixed
+            pivot gives an incorrect acceleration formula. This preview therefore calculates
+            velocities; positions and accelerations continue to come from the current method.
+          </p>
+          <p>
+            Canvas centers follow the displayed pose. The calculations use the recorded sample
+            identified above, so the two can differ slightly during animation. Hiding centers
+            changes only the display.
+          </p>
         </div>
-      }
+      </collapsible-subsection>
       <p class="legend">
         Crosses mark fixed or permanent centers; diamonds mark secondary centers. Centers at
         infinity and unresolved centers are listed here. Distant centers may lie outside the canvas

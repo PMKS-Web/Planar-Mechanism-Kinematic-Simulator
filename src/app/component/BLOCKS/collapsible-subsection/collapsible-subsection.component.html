@@ -4,7 +4,7 @@
          put beside them sits outside it. A control nested inside a button is
          neither valid nor operable -- the outer button swallows the press. -->
     <div class="panel-header">
-      <button class="panel-header__toggle" (click)="toggleExpand()">
+      <button class="panel-header__toggle" [attr.aria-expanded]="expanded" (click)="toggleExpand()">
         {{ titleLabel() }}
         <mat-icon class="{{ expanded ? 'rotate180' : '' }}"> expand_more </mat-icon>
       </button>
@@ -17,6 +17,8 @@
   <div
     [@openClose]="expanded ? 'open' : 'closed'"
     class="panel-content"
+    [class.panel-content--flush]="!inset()"
+    [attr.inert]="expanded ? null : ''"
     [class.settled]="expanded && settled"
   >
     <ng-content></ng-content>

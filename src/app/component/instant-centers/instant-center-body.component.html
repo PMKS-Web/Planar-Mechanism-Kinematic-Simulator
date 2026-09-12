@@ -1,0 +1,94 @@
+@if (detail(); as worked) {
+  <div class="workedExample">
+    <p>Sample {{ index() }} · time {{ number(mechanism().timeNum[index()]) }} s.</p>
+    @if (worked.result.reason) {
+      <p role="status">{{ worked.result.reason }}</p>
+    } @else {
+      <h4>1. Locate the ground instant center</h4>
+      @if (worked.origin; as origin) {
+        <p>
+          {{ ic.label(worked.center!) }} = ({{ number(origin.x) }}, {{ number(origin.y) }})
+          {{ lengthUnit }}.
+        </p>
+      } @else if (worked.center?.location === 'infinite') {
+        <p>The ground instant center is at infinity: this body translates without rotating.</p>
+      } @else {
+        <p>This body belongs to ground and has zero velocity.</p>
+      }
+      <h4>2. Determine angular velocity</h4>
+      <p>
+        The known input rate and equal velocities at shared instant centers determine the body rates
+        together.
+      </p>
+      @if (worked.ratio; as ratio) {
+        <p>
+          At {{ ic.label(ratio.pair) }}, body {{ ratio.other }} has ω =
+          {{ number(ratio.otherOmega) }} rad/s. Its velocity there is ({{ number(ratio.vx) }},
+          {{ number(ratio.vy) }}) {{ lengthUnit }}/s.
+        </p>
+        <p>
+          From this body's ground IC to that shared center, r = ({{ number(ratio.dx) }},
+          {{ number(ratio.dy) }}) {{ lengthUnit }}.
+        </p>
+        <p class="equation">ω = (−rᵧ vₓ + rₓ vᵧ) / (rₓ² + rᵧ²) = {{ number(ratio.omega) }} rad/s</p>
+        <p>
+          This substitution checks the shared-center equation using the independently solved body
+          rates.
+        </p>
+      }
+      <p class="equation">ω = {{ number(worked.omega) }} rad/s · positive is counterclockwise.</p>
+      <h4>3. Determine the CoM velocity</h4>
+      @if (worked.radius; as r) {
+        <p>
+          CoM P = ({{ number(worked.point.x) }}, {{ number(worked.point.y) }}) {{ lengthUnit }}.
+          From the ground IC, r = ({{ number(r.x) }}, {{ number(r.y) }}) {{ lengthUnit }}.
+        </p>
+        <p class="equation">
+          vₓ = −ω rᵧ = −({{ number(worked.omega) }}) × {{ number(r.y) }} =
+          {{ number(worked.velocity?.[0]) }} {{ lengthUnit }}/s
+        </p>
+        <p class="equation">
+          vᵧ = ω rₓ = {{ number(worked.omega) }} × {{ number(r.x) }} =
+          {{ number(worked.velocity?.[1]) }} {{ lengthUnit }}/s
+        </p>
+        <p>Velocity is perpendicular to r. The same equation gives each joint's velocity.</p>
+      } @else {
+        <p>
+          Every point on this body has v = ({{ number(worked.velocity?.[0]) }},
+          {{ number(worked.velocity?.[1]) }}) {{ lengthUnit }}/s. A finite-radius formula is
+          unnecessary.
+        </p>
+      }
+    }
+    <p>
+      Current solver CoM v = ({{ number(currentVelocity()[0]) }},
+      {{ number(currentVelocity()[1]) }}) {{ lengthUnit }}/s.
+    </p>
+    <h4>Velocity over the cycle</h4>
+    <segmented-block
+      [options]="options"
+      [selected]="property()"
+      (selectedChange)="property.set($event)"
+      [compact]="true"
+    />
+    <p>
+      {{ property() === 0 ? 'Angular velocity (rad/s)' : 'CoM speed (' + lengthUnit + '/s)' }} ·
+      solid: current solver; dashed: instant centers.
+    </p>
+    <app-analysis-apex-chart
+      role="img"
+      [attr.aria-label]="linkId() + ' IC and current solver velocity curves'"
+      [series]="plot()"
+      [chart]="chart"
+      [stroke]="stroke"
+      [colors]="colors"
+      [dataLabels]="dataLabels"
+      [xaxis]="xaxis"
+      [yaxis]="yaxis"
+    />
+    <p>
+      {{ plotted }} sampled poses across the cycle; {{ unavailable }} have no IC velocity and appear
+      as gaps. Curves may overlap when the methods agree.
+    </p>
+  </div>
+}

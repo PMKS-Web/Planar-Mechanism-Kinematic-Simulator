@@ -1,10 +1,15 @@
 // Visit every entry in the running gallery and report console errors and empty renders.
+import { pathToFileURL } from 'node:url';
 const ROOT = process.cwd();
-const { chromium } = await import(`${ROOT}/node_modules/playwright/index.mjs`);
+const { chromium } = await import(pathToFileURL(`${ROOT}/node_modules/playwright/index.mjs`).href);
 const BASE = process.env.SB_URL ?? 'http://localhost:6006';
 
 const index = await (await fetch(`${BASE}/index.json`)).json();
-const entries = Object.values(index.entries);
+// A shared block change can check its own states without visiting unrelated components.
+const entries = Object.values(index.entries).filter(
+  (entry) => !process.env.SB_FILTER || entry.id.includes(process.env.SB_FILTER)
+);
+if (!entries.length) throw new Error('No gallery entries matched SB_FILTER.');
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1000, height: 800 } });
 let bad = 0;

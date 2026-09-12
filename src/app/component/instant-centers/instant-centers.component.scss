@@ -53,3 +53,16 @@ th {
 .legend {
   font-size: 11px;
 }
+.workedExample {
+  padding: var(--card-gap);
+  overflow-wrap: anywhere;
+}
+.equation {
+  padding: var(--card-gap);
+  background: var(--surface-field);
+  font-variant-numeric: tabular-nums;
+}
+h4 {
+  color: var(--text-primary);
+  font-size: 12px;
+}

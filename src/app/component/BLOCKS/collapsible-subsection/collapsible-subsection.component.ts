@@ -36,6 +36,8 @@ import { MatIcon } from '@angular/material/icon';
 })
 export class CollapsibleSubsectionComponent implements OnChanges {
   readonly hideHeader = input<boolean>(false); //If this is true the content cannot be expanded
+  /** Nested sections can share their parent's inset instead of narrowing charts at every level. */
+  readonly inset = input<boolean>(true);
 
   @Input() expanded: boolean = false;
   /**

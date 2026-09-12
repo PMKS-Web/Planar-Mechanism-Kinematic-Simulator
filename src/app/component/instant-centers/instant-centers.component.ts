@@ -11,11 +11,21 @@ import { AnalysisSampleService } from '../../services/analysis-sample.service';
 import { CenterGeometry, PairCenter } from '../../model/mechanism/instant-center-solver';
 import { MODEL_SCALE } from '../../model/render-scale';
 import { RealLink } from '../../model/link';
+import { PrisJoint, RealJoint } from '../../model/joint';
+import { SettingsService } from '../../services/settings.service';
+import { NumberUnitParserService } from '../../services/number-unit-parser.service';
+import { InstantCenterBodyComponent } from './instant-center-body.component';
 
 @Component({
   selector: 'app-instant-centers',
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [CollapsibleSubsectionComponent, ToggleComponent, ButtonComponent, ViewButtonComponent],
+  imports: [
+    CollapsibleSubsectionComponent,
+    ToggleComponent,
+    ButtonComponent,
+    ViewButtonComponent,
+    InstantCenterBodyComponent,
+  ],
   templateUrl: './instant-centers.component.html',
   styleUrl: './instant-centers.component.scss',
 })
@@ -24,6 +34,14 @@ export class InstantCentersComponent {
   protected readonly mechanism = inject(MechanismService);
   private readonly samples = inject(AnalysisSampleService);
   protected readonly open = signal(false);
+  protected readonly selectionOpen = signal(false);
+  protected readonly analysisOpen = signal(false);
+  protected readonly bodyOpen = new Set<string>();
+  private readonly settings = inject(SettingsService);
+  private readonly units = inject(NumberUnitParserService);
+  protected get lengthUnit() {
+    return this.units.unitLabel(this.settings.lengthUnit.value);
+  }
   protected readonly selectAll = () => this.ic.selectAll(true);
   protected readonly clearSelection = () => this.ic.selectAll(false);
   protected readonly form = new FormGroup({
@@ -63,11 +81,38 @@ export class InstantCentersComponent {
       const step = this.mechanism.currentSampleOf(index);
       const result = this.ic.at(mechanism, step);
       if (!result) return [];
+      const input = mechanism.joints[step].find(
+        (joint) => joint instanceof RealJoint && joint.input
+      );
       return [
         {
+          mechanism,
           machine: `M${index + 1}`,
           step,
+          input: input?.id,
+          rate:
+            mechanism.inputAngularVelocities[step] / (input instanceof PrisJoint ? MODEL_SCALE : 1),
+          rateUnit: input instanceof PrisJoint ? this.lengthUnit + '/s' : 'rad/s',
           result,
+          joints: mechanism.joints[step].map((joint) => ({
+            id: joint.id,
+            ic: this.samples.sampleAt(
+              mechanism,
+              step,
+              'kinematic',
+              'ic',
+              'Linear Joint Vel',
+              joint.id
+            ),
+            current: this.samples.sampleAt(
+              mechanism,
+              step,
+              'kinematic',
+              'loop',
+              'Linear Joint Vel',
+              joint.id
+            ),
+          })),
           rows: mechanism.links[step]
             .filter((link) => link instanceof RealLink)
             .map((link) => ({

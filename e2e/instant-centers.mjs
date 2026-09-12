@@ -22,6 +22,12 @@ const check = (name, ok, detail) => {
   console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${ok ? '' : `: ${JSON.stringify(detail)}`}`);
 };
 const mode = () => page.getByRole('button', { name: /^Kinematic Analysis/ });
+async function expandDetails() {
+  for (const name of ['Center Selection', 'IC Velocity Analysis']) {
+    const control = page.getByRole('button', { name, exact: true });
+    if ((await control.getAttribute('aria-expanded')) !== 'true') await control.click();
+  }
+}
 async function open(id) {
   await page.goto(`${base}/?${TEMPLATE_LINKAGES[id]}`);
   await waitForReady(page);
@@ -42,6 +48,16 @@ try {
   await fold.focus();
   const opening = filmstrip(page, `${dir}/opening`);
   await opening.during(35, 8, 'open', () => page.keyboard.press('Enter'));
+  check(
+    'selection and velocity sections start collapsed',
+    (await page
+      .getByRole('button', { name: 'Center Selection', exact: true })
+      .getAttribute('aria-expanded')) === 'false' &&
+      (await page
+        .getByRole('button', { name: 'IC Velocity Analysis', exact: true })
+        .getAttribute('aria-expanded')) === 'false'
+  );
+  await expandDetails();
   await page.getByRole('table', { name: 'Instant center locations' }).waitFor();
   check(
     'six four-bar centers are listed',
@@ -62,13 +78,65 @@ try {
       );
   const linesBefore = await linePaths();
   const comparison = await page
-    .getByRole('table', { name: 'Velocity method comparison' })
+    .getByRole('table', { name: 'Velocity method comparison', exact: true })
     .innerText();
   check(
     'independent velocity comparison is available',
     !comparison.includes('Unavailable') && comparison.includes('Instant centers'),
     comparison
   );
+  await page.getByRole('button', { name: 'Center Selection', exact: true }).click();
+  const calculation = page.getByRole('button', {
+    name: 'M1 Body BC · IC Calculation',
+    exact: true,
+  });
+  const workedFilm = filmstrip(page, `${dir}/worked-opening`);
+  await workedFilm.during(50, 8, 'worked', () => calculation.click());
+  await page.locator('app-instant-center-body .apexcharts-svg').waitFor();
+  check(
+    'worked calculation shows the numeric velocity equations',
+    (await page.locator('app-instant-center-body').innerText()).includes('vₓ = −ω rᵧ')
+  );
+  const curves = await page
+    .locator('app-instant-center-body')
+    .evaluate((host) => ng.getComponent(host).plot());
+  check(
+    'independent angular velocity curves agree for the four-bar',
+    curves.length === 2 &&
+      curves[0].data.every(
+        (point, i) =>
+          point.y === null ||
+          curves[1].data[i].y === null ||
+          Math.abs(point.y - curves[1].data[i].y) < 1e-5
+      )
+  );
+  await page.getByRole('button', { name: 'CoM Speed', exact: true }).click();
+  const comCurves = await page
+    .locator('app-instant-center-body')
+    .evaluate((host) => ng.getComponent(host).plot());
+  check(
+    'CoM speed is plotted by both methods',
+    comCurves[1].data.some((point) => point.y > 0) &&
+      comCurves[0].data.every(
+        (point, i) =>
+          point.y === null ||
+          comCurves[1].data[i].y === null ||
+          Math.abs(point.y - comCurves[1].data[i].y) < 1e-5
+      )
+  );
+  await page.screenshot({ path: `${dir}/worked-velocity.png` });
+  await calculation.click();
+  check(
+    'closing the calculation removes its chart',
+    (await page.locator('app-instant-center-body').count()) === 0
+  );
+  await page.getByRole('button', { name: 'M1 Joint Velocities', exact: true }).click();
+  check(
+    'joint velocity comparison is available',
+    await page.getByRole('table', { name: 'Joint velocity method comparison' }).isVisible()
+  );
+  await page.getByRole('button', { name: 'M1 Joint Velocities', exact: true }).click();
+  await expandDetails();
   const before = await page
     .locator('.icMarker')
     .evaluateAll((nodes) => nodes.map((n) => n.getAttribute('transform')));
@@ -160,6 +228,7 @@ try {
   await mode().click();
   await mode().click();
   await page.getByRole('button', { name: 'Instant Centers' }).click();
+  await expandDetails();
   check(
     'per-center selection survives reopening the setup',
     (await page.locator('.icMarker').count()) === 1 &&
@@ -203,10 +272,22 @@ try {
   await choose('Show M1 I(0, AB)').click();
   check('phone selection keeps one center', (await page.locator('.icMarker').count()) === 1);
   await page.screenshot({ path: `${dir}/phone-selected.png` });
+  await page.getByRole('button', { name: 'Center Selection', exact: true }).click();
+  await calculation.click();
+  await page.locator('app-instant-center-body .apexcharts-svg').waitFor();
+  await page.getByRole('button', { name: 'CoM Speed', exact: true }).click();
+  const phoneChart = await page.locator('app-instant-center-body .apexcharts-svg').boundingBox();
+  check(
+    'phone velocity graph fits the window',
+    phoneChart && phoneChart.x >= 0 && phoneChart.x + phoneChart.width <= 390
+  );
+  await page.screenshot({ path: `${dir}/phone-worked.png` });
+  await calculation.click();
 
   await page.setViewportSize({ width: 1500, height: 950 });
   await open('Slider_Crank');
   await page.getByRole('button', { name: 'Instant Centers' }).click();
+  await expandDetails();
   await construction().click();
   check(
     'slider construction lines remain finite',
@@ -219,9 +300,11 @@ try {
   await page.screenshot({ path: `${dir}/slider.png` });
   await open('Three_Machines');
   await page.getByRole('button', { name: 'Instant Centers' }).click();
+  await expandDetails();
   check(
     'each machine has its own comparison',
-    (await page.getByRole('table', { name: 'Velocity method comparison' }).count()) === 3
+    (await page.getByRole('table', { name: 'Velocity method comparison', exact: true }).count()) ===
+      3
   );
   await page.getByRole('switch', { name: 'Show Instant Centers' }).click();
   const firstMachineCount = await page.locator('.icMarker[data-machine="M1"]').count();
