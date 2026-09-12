@@ -1,0 +1,189 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+.solverCard {
+  background: var(--card-surface, #fff);
+  border-radius: 10px;
+  overflow: hidden;
+  color: #262c3e;
+  box-shadow: 0 2px 8px #00000012;
+}
+header {
+  padding: 18px 15px 12px;
+}
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-size: 10px;
+  font-weight: 600;
+  color: #4a559b;
+}
+h2 {
+  font-size: 20px;
+  margin: 7px 0;
+  font-weight: 500;
+}
+h3 {
+  font-size: 15px;
+  margin: 7px 0 12px;
+  font-weight: 600;
+}
+h4 {
+  font-size: 12px;
+  margin: 16px 0 8px;
+}
+p {
+  font-size: 12px;
+  line-height: 1.55;
+  color: #626b7e;
+  margin: 6px 0;
+}
+.controls {
+  padding: 0 15px 14px;
+  display: grid;
+  gap: 10px;
+  border-bottom: 1px solid #e0e4ef;
+}
+.controlRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+label {
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+input,
+select {
+  font: inherit;
+}
+select,
+input[type='number'] {
+  padding: 5px;
+  border-radius: 5px;
+  border: 1px solid #ccd2e4;
+  background: transparent;
+}
+input[type='number'] {
+  width: 62px;
+}
+.time {
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  color: #313aa7;
+}
+.slider {
+  width: 100%;
+  margin: 0;
+  accent-color: #313aa7;
+}
+.bodyCard {
+  margin: 0 12px;
+  padding: 16px 3px;
+  border-bottom: 1px solid #dce1ed;
+}
+.convention,
+.systemCard {
+  padding: 15px;
+  font-size: 12px;
+}
+.convention {
+  background: #f3f5fb;
+}
+.stepTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.stepTitle h3 {
+  flex: 1;
+  margin: 0;
+}
+.stepTitle small {
+  color: #737c90;
+  font-size: 10px;
+}
+.stepNumber {
+  border-radius: 50%;
+  background: #e7ebfa;
+  color: #384693;
+  font-size: 11px;
+  padding: 5px 8px;
+}
+.equation {
+  padding: 9px 10px;
+  margin: 5px 0;
+  background: #f5f6fa;
+  border-left: 2px solid #bcc4e4;
+  border-radius: 0 5px 5px 0;
+  font:
+    12px/1.7 ui-monospace,
+    Consolas,
+    monospace;
+  overflow-wrap: anywhere;
+}
+.equation small {
+  display: block;
+  font: 10px system-ui;
+  color: #727b91;
+  margin-bottom: 4px;
+}
+.load {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid #eef0f6;
+  font-size: 11px;
+}
+.loadList {
+  margin-top: 8px;
+}
+.reaction {
+  color: #a65320;
+}
+.applied {
+  color: #7250a2;
+}
+.weight {
+  color: #218579;
+}
+.drive {
+  color: #c33f63;
+}
+.law {
+  color: #34447f;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.fine {
+  font-size: 10.5px;
+}
+.notice {
+  padding: 10px;
+  margin: 12px 15px;
+  border-left: 3px solid #deac4e;
+  background: #fff8e8;
+  color: #64502e;
+}
+.positionOrder {
+  margin: 14px;
+  padding-left: 22px;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.positionOrder small {
+  display: block;
+  color: #747d8f;
+}
+.answer {
+  padding: 10px;
+  border-radius: 5px;
+  background: #eaf4f1;
+  color: #246b5d;
+  font-size: 13px;
+}

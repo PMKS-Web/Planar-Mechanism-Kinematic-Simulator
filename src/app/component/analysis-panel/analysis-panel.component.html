@@ -1,4 +1,11 @@
 <div id="analysisWrapper">
+  <div class="resultViewSwitch">
+    <segmented-block aria-label="Analysis view" [options]="resultViews" [selected]="resultView"
+      (selectedChange)="resultView = $event"></segmented-block>
+  </div>
+  @if (resultView === 1) {
+    <app-solver-explanation [force]="showForce"></app-solver-explanation>
+  } @else {
   <!--
   //Param 1: analysis: "force","stress","kinematic"
 
@@ -411,5 +418,6 @@
         </span>
       </div>
     </panel-section>
+  }
   }
 </div>

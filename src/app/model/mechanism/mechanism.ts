@@ -12,6 +12,7 @@ import { ForceAnalysisMode, ForceAnalysisSeries, ForceSolver } from './force-sol
 import { roundNumber } from '../utils';
 import { LBF_IN_PER_NEWTON_METER, LBF_PER_NEWTON } from '../unit-conversions';
 import { MODEL_SCALE } from '../render-scale';
+import { PositionStepExplanation } from './solver-explanation';
 
 /**
  * Why a mechanism will not run. One of these, not a boolean, because the ways a
@@ -84,6 +85,8 @@ export class Mechanism {
   private _inputAngularVelocities: number[] = [];
   private _requiredLoops: Loop[] = [];
   private _driveState?: PositionSolverDriveState;
+  positionExplanation: PositionStepExplanation[] = [];
+  get usesCoupledPositionSolve(): boolean { return this._driveState?.coupledRoute ?? false; }
   private mechanismValid = true;
   /**
    * Whether the drive now runs against the order the frames were solved in.
@@ -211,6 +214,7 @@ export class Mechanism {
       // the same statics, and by the time a graph asks they belong elsewhere.
       PositionSolver.ensureSimultaneousSystem(this._joints[0], this._links[0]);
       this._driveState = PositionSolver.captureDriveState();
+      this.positionExplanation = PositionSolver.explanationPlan(this._joints[0] ?? []);
       // A sealed cylinder with no stroke emits no steps, so the failure above
       // is already recorded -- as "nothing can move", which is true but says
       // nothing a student can act on. Name the ram instead.

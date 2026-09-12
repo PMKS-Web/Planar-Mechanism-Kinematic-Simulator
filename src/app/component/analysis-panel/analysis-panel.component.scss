@@ -1,6 +1,8 @@
 @use 'sass:map';
 @use '@angular/material' as mat;
 
+.resultViewSwitch { padding: 10px 15px; background: var(--card-surface, #fff); border-radius: 10px; }
+
 @mixin css($theme) {
   // Get the color config from the theme.
   $color-config: mat.m2-get-color-config($theme);

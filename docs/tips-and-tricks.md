@@ -2581,3 +2581,26 @@ the stack and the dev server's HMR socket keep the page busy; wait for `load` an
 every entry in `index.json` and fails on a console error or an empty render; it is the check to run
 after touching a block. `node .storybook/tools/token-usage.mjs` counts where each token is used,
 least-used first, which is how to spot a shade nobody needed.
+
+### Educational analysis snapshots and Windows preview setup
+
+PMKSConversion's free-body/equation walkthrough lives on `origin/restructureBackend`,
+in the toolbar's `changeTabs()` cases; it is easy to miss when reading only `master`.
+The current adaptation is documented in [solver-explanations.md](solver-explanations.md).
+Capture equation coefficients and their ordered unknowns together, from the same solve.
+The old public force matrix fields are compatibility remnants, not the current assembler.
+
+Copy joint coordinates explicitly into diagram data: `Joint.x` and `Joint.y` are getters,
+so spreading a joint into a plain object does not copy them. The result compiles but
+produces `NaN` SVG coordinates. The browser regression checks console errors as well as
+the numeric construction residuals for this reason.
+
+Position steps can target multiple joints. Their method is registered on the **first**
+joint of the step; looking it up individually mislabels the remaining joints as prescribed.
+A simultaneous position step also does not necessarily mean the *rates* took the fully
+coupled route. Inspect each solver's actual route instead of inferring it from the mechanism name.
+
+On Windows, `npm.ps1` may be blocked by execution policy; `npm.cmd` is usable. However,
+putting a portable Node first in PATH need not change the Node that `npm.cmd` runs:
+it can prefer the executable next to itself. Invoke the compatible portable Node with
+`node_modules/@angular/cli/bin/ng.js` directly when the system Node is too old.

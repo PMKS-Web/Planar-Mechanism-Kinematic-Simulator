@@ -4,6 +4,7 @@ import { slideAssemblies } from '../slide-assembly';
 import { KinematicsSolver } from './kinematic-solver';
 import { Loop } from './loop-solver';
 import { siUnitFactors, SiUnitFactors } from '../unit-conversions';
+import { BodyExplanation, ForceExplanation } from './solver-explanation';
 
 export type ForceAnalysisMode = 'static' | 'dynamic';
 
@@ -20,6 +21,7 @@ export interface ForceAnalysisEffort {
 }
 
 export interface ForceAnalysisFrame {
+  explanation?: ForceExplanation;
   mode: ForceAnalysisMode;
   status: ForceAnalysisStatus;
   timeSeconds: number;
@@ -183,6 +185,19 @@ const SINGULAR_PIVOT_TOLERANCE = 1e-4;
  * verification callers. New code should consume analyzeFrame/analyzeMechanism.
  */
 export class ForceSolver {
+  private static explanationFallback = new WeakMap<MechanismFrames, FrameKinematics[]>();
+
+  /** Reassemble one inspected frame through the same path used by the graphs. */
+  static explainAt(mechanism: MechanismFrames, mode: ForceAnalysisMode, index: number,
+    evenest = false): ForceAnalysisFrame {
+    let fallback: FrameKinematics[] = [];
+    if (mode === 'dynamic') {
+      fallback = this.explanationFallback.get(mechanism) ??
+        this.finiteDifferenceKinematics(mechanism, mechanism.joints.length);
+      this.explanationFallback.set(mechanism, fallback);
+    }
+    return this.frameAt(mechanism, mode, fallback, index, evenest, true);
+  }
   static unknownVariableForcesMap = new Map<string, ForceVector>();
   static unknownVariableTorque = 0;
   static A_matrix: number[][] = [];
@@ -298,7 +313,8 @@ export class ForceSolver {
     mode: ForceAnalysisMode,
     fallback: FrameKinematics[],
     index: number,
-    evenest: boolean
+    evenest: boolean,
+    capture = false
   ): ForceAnalysisFrame {
     let kinematics: FrameKinematics | undefined;
     if (mode === 'dynamic') {
@@ -327,7 +343,8 @@ export class ForceSolver {
       mechanism.unit,
       mechanism.timeNum[index] ?? index,
       kinematics,
-      evenest
+      evenest,
+      capture
     );
   }
 
@@ -339,7 +356,8 @@ export class ForceSolver {
     unit: string,
     timeSeconds = 0,
     kinematics?: FrameKinematics,
-    evenest = false
+    evenest = false,
+    capture = false
   ): ForceAnalysisFrame {
     const every = links.filter(
       (link): link is RealLink | SliderBlock =>
@@ -454,6 +472,14 @@ export class ForceSolver {
 
     const A = Array.from({ length: rowCount }, () => Array(unknownCount).fill(0));
     const b = Array(rowCount).fill(0);
+    const bodyTrace: BodyExplanation[] = capture ? bodies.map((body) => {
+      const rows = bodyRows.get(body.id)!;
+      const center: [number, number] = body instanceof RealLink
+        ? [body.CoM.x, body.CoM.y] : [body.joints[0].x, body.joints[0].y];
+      return { id: body.id, name: body.name || body.id, center,
+        points: body.joints.map((joint) => ({ id: joint.id, x: joint.x, y: joint.y })),
+        startRow: rows.start, rowCount: rows.count, loads: [], known: [0, 0, 0], inertia: [0, 0, 0] };
+    }) : [];
 
     const addForceCoefficient = (
       body: Link,
@@ -550,6 +576,22 @@ export class ForceSolver {
           b[rows.start + 2] -= rx * fy - ry * fx;
         }
       }
+      if (capture) {
+        const trace = bodyTrace.find((one) => one.id === body.id)!;
+        trace.inertia = [massKg * acceleration[0] * units.distanceToM,
+          massKg * acceleration[1] * units.distanceToM,
+          body instanceof RealLink && mode === 'dynamic'
+            ? body.massMoI * units.inertiaToKgM2 * kinematics!.linkAngularAccelerations.get(body.id)! : 0];
+        if (gravity) trace.loads.push({ label: 'W', point: trace.center,
+          vector: [0, -massKg * GRAVITY], kind: 'weight' });
+        if (body instanceof RealLink) for (const force of body.forces) {
+          trace.loads.push({ label: force.name || force.id,
+            point: [force.startCoord.x, force.startCoord.y], kind: 'applied',
+            vector: [force.mag * Math.cos(force.angleRad) * units.forceToN,
+              force.mag * Math.sin(force.angleRad) * units.forceToN] });
+        }
+        trace.known = trace.inertia.slice(0, rows.count).map((value, axis) => value - b[rows.start + axis]);
+      }
     }
 
     // Statics alone cannot split a load between supports that share a line
@@ -626,6 +668,46 @@ export class ForceSolver {
           }
         : undefined;
 
+    let explanation: ForceExplanation | undefined;
+    if (capture) {
+      const unknowns = reactions.map((reaction) => ({
+        label: `R${reaction.column + 1} (${reaction.joint.id}→${reaction.positiveBody.id}, ${
+          reaction.direction[0] === 1 ? 'x' : reaction.direction[1] === 1 ? 'y' : 'normal'})`, unit: 'N' }));
+      for (const reaction of reactions) {
+        const value = solution.values[reaction.column];
+        for (const [body, sign] of [[reaction.positiveBody, 1], [reaction.negativeBody, -1]] as const) {
+          if (body) bodyTrace.find((one) => one.id === body.id)!.loads.push({
+            label: `${sign === -1 ? '−' : ''}R${reaction.column + 1}`,
+            point: [reaction.joint.x, reaction.joint.y],
+            vector: [sign * value * reaction.direction[0], sign * value * reaction.direction[1]],
+            kind: 'reaction' });
+        }
+      }
+      for (const couple of couples) {
+        unknowns.push({ label: `C${couple.slider.id}`, unit: 'moment' });
+        for (const [body, sign] of [[couple.rider, 1], [couple.carrier, -1]] as const) {
+          if (body) bodyTrace.find((one) => one.id === body.id)!.loads.push({
+            label: `C${couple.slider.id}`, point: [couple.slider.x, couple.slider.y], vector: [0, 0],
+            couple: sign * solution.values[couple.column], kind: 'reaction' });
+        }
+      }
+      if (inputBody && inputKind && inputJoint) {
+        unknowns.push({ label: inputKind === 'torque' ? 'T input' : 'F input', unit: inputKind === 'torque' ? 'moment' : 'N' });
+        const value = solution.values[inputColumn];
+        bodyTrace.find((one) => one.id === inputBody.id)!.loads.push({ label: 'Input',
+          point: [inputJoint.x, inputJoint.y], vector: [value * inputDirection[0], value * inputDirection[1]],
+          ...(inputKind === 'torque' ? { couple: value } : {}), kind: 'drive' });
+        if (inputKind === 'force' && inputJoint instanceof PrisJoint && inputJoint.isFloating) {
+          const carrier = this.rootBody(bodies, inputJoint.carrier);
+          if (carrier) bodyTrace.find((one) => one.id === carrier.id)!.loads.push({ label: '−Input',
+            point: [inputJoint.x, inputJoint.y], vector: [-value * inputDirection[0], -value * inputDirection[1]], kind: 'drive' });
+        }
+      }
+      explanation = { bodies: bodyTrace, fixedBodies: [...frame], system: {
+        A: A.map((row) => [...row]), b: [...b], x: [...solution.values], unknowns,
+        rows: bodyTrace.flatMap((body) => ['ΣFx', 'ΣFy', 'ΣMz @ G'].slice(0, body.rowCount).map((axis) => `${body.name}: ${axis}`)) } };
+    }
+
     return {
       mode,
       status: 'ok',
@@ -638,6 +720,7 @@ export class ForceSolver {
       residual: solution.residual,
       minPivot: solution.minPivot,
       sharedSupport,
+      ...(explanation ? { explanation } : {}),
     };
   }
 
