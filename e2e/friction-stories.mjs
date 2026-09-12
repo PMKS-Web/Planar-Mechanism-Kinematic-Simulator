@@ -70,6 +70,10 @@ try {
       assert.ok(await panel.getByText('Friction settings saved.', { exact: true }).isVisible());
     if (story.endsWith('-analysis')) {
       assert.equal(await panel.locator('input').count(), 0);
+      assert.ok(!text.includes('Friction: Enabled'));
+      assert.ok(await panel.getByRole('status', { name: 'Friction Enabled' }).isVisible());
+      assert.ok(text.includes('Contact State:'));
+      assert.equal(await panel.locator('.contact > dl dt').count(), 3);
       assert.ok(!text.includes('With Friction') && text.includes('Additional from Friction'));
       assert.equal(
         await panel

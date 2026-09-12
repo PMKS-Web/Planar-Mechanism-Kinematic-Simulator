@@ -26,7 +26,9 @@
         <h4>
           {{ contact.pin ? 'Pin Bearing' : 'Slider Guide' }} at {{ contactName(contact.joint) }}
         </h4>
-        <p class="contact-state">Friction: {{ enabled(contact.joint) ? 'Enabled' : 'Off' }}</p>
+        @if (contacts().length > 1) {
+          <p class="contact-state">Friction: {{ enabled(contact.joint) ? 'Enabled' : 'Off' }}</p>
+        }
         @if (unsupported(contact.joint); as reason) {
           <div class="diagnostic" role="status">
             <strong>Unsupported Friction Contact</strong>

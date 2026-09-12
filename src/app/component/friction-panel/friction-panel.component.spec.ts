@@ -3,6 +3,7 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { FrictionPanelComponent } from './friction-panel.component';
 import { frictionStoryState } from '../../../stories/support/friction-stubs';
 import { LengthUnit } from '../../model/unit-enums';
+import { RevJoint } from '../../model/joint';
 
 function mount(kind: 'guide' | 'pin', enabled = true, disabled = false, readOnly = false) {
   const state = frictionStoryState(kind, enabled, LengthUnit.CM, disabled);
@@ -25,12 +26,29 @@ describe('friction panel states', () => {
     expect(root.querySelectorAll('input').length).toBe(2);
     expect(root.textContent).toContain('Additional from Friction');
     expect(root.textContent).not.toContain('Effective Radius');
+    expect(root.querySelector('.contact')!.textContent).not.toContain('Friction: Enabled');
+    expect(root.querySelector('.state-chip')!.getAttribute('aria-label')).toBe('Friction Enabled');
   });
   it('exposes a physical bearing radius and static capacity', () => {
     const { root } = mount('pin');
     expect(root.querySelectorAll('input').length).toBe(3);
     expect(root.textContent).toContain('Effective Radius');
     expect(root.textContent).toContain('Static Friction Limit');
+    expect(root.querySelector('.contact')!.textContent).not.toContain('Friction: Enabled');
+    expect(root.querySelector('[data-contact-state]')!.textContent).toContain('Relative Rotation');
+  });
+  it('retains independent contact configuration when a selected pin also exposes its guide', () => {
+    const { root, fixture, state } = mount('guide', false, false, true);
+    const pin = state.joint.links[0].joints.find((joint) => joint instanceof RevJoint)!;
+    pin.friction = { staticCoefficient: 0.3, kineticCoefficient: 0.2, radius: 1 };
+    fixture.componentRef.setInput('joint', pin);
+    fixture.detectChanges();
+    expect(root.querySelector('.state-chip')!.getAttribute('aria-label')).toBe('Friction Enabled');
+    expect(root.querySelectorAll('.contact').length).toBe(2);
+    expect(root.querySelector('[data-friction-joint="B"]')!.textContent).toContain(
+      'Friction: Enabled'
+    );
+    expect(root.querySelector('[data-friction-joint="P"]')!.textContent).toContain('Friction: Off');
   });
   it('identifies frictionless defaults', () => {
     expect(mount('guide', false).root.textContent).toContain('Frictionless contact.');

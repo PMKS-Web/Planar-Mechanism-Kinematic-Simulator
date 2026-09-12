@@ -20,7 +20,10 @@ Selecting another body does not silently reverse this convention.
 ### Settings and feedback
 
 The joint's Friction header carries an **Enabled** or **Off** chip, visible even when collapsed.
-Each contact also states whether its saved coefficients enable friction. **Save Friction Settings**
+Single-contact panels use that header state alone. A selected slider pin can expose both its
+saved bearing contact and its guide, with independent coefficients. Such multi-contact panels
+retain per-contact Enabled/Off text because the header aggregates whether **any** contact is
+enabled. **Save Friction Settings**
 commits the form; it does not apply an external load or start playback. A confirmation appears
 beside the save control, and **Disable Friction** resets both coefficients to zero in one undo
 step while retaining the effective radius. Unsaved typing does not claim a new enabled state.
@@ -621,3 +624,72 @@ no domain/solver, result adapter, persistence, export or canvas-geometry file ch
 The panel is sufficiently compact for V1 review. General inertia correction, static holding
 feasibility and physical reciprocating reverse remain separate physics tasks; general label
 layout remains separate UI infrastructure.
+
+### Final micro-polish and V1 readiness review
+
+This review follows `46059f6a`, preserving it and every prior friction commit. The sole product
+change removes the body `Friction: Enabled/Off` line when the panel contains one contact.
+Multi-contact panels retain it because their individual configuration can differ from the
+aggregate header. The existing **Contact State** wording stays; no new badge, spacing value,
+shared component, story variant, solver, adapter, persistence, export or drawing change is needed.
+At the actual 250px width, removing one line improves the contact hierarchy while preserving
+the numeric rows and existing separators. The two educational disclosures remain closed by
+default. Warnings remain visible, including their existing collapsed-header status.
+
+#### Implementation walkthrough
+
+1. `joint-friction.ts` defines and validates the saved coefficients and bearing radius.
+   `FrictionService.set` commits settings through the existing undoable mechanism update;
+   the URL transcoder and mechanism builder preserve them across save/load and undo/redo.
+2. `force-solver.ts` invokes `analyzeWithFriction` only for enabled friction. That function in
+   `model/mechanism/friction-analysis.ts` iterates equilibrium and Coulomb contact loads together,
+   applies equal/opposite actions, and returns converged contact loads and input effort.
+3. `AnalysisSampleService` converts the selected sample's solved values into display units.
+   `FrictionService.reading` supplies the state, diagnostic, contact readings, receiving-body
+   convention and separate actuator comparison. It also withholds results during playback rewind.
+4. `FrictionPanelComponent` presents those readings using shared controls and disclosures.
+   `FrictionOverlayService` and the dedicated SVG component draw the same sample's dashed
+   analysis loads. The panel and drawing do not calculate a second friction solution.
+
+#### Readiness answers
+
+| Review question | Finding |
+| --- | --- |
+| 1. Physics internally consistent? | Yes within prescribed-motion V1: coupled guide/bearing loads, opposition to relative motion, equal/opposite actions, unit conversion and convergence refusal are covered. This does not certify unsupported forward dynamics. |
+| 2. Zero friction backward compatible? | Yes. Zero coefficients retain the frictionless force path; old joint records decode to zero coefficients. Existing reference and compatibility tests pass. |
+| 3. Settings persisted correctly? | Yes. Guide and bearing coefficients/radius round-trip; old records, invalid fields, undo/redo and reload are covered. |
+| 4. Contact and actuator consequences distinct? | Yes. Three local rows sit under the contact; a separate input section gives the added effort from all contacts. |
+| 5. Stationary contacts honest? | Yes. Indeterminate at Rest withholds a unique force and unsolved capacity; no startup or holding solve is claimed. |
+| 6. Unsupported cases refused? | Yes. Unsupported bearings, guides requiring contact spacing, ambiguous support loads, missing motion and nonconvergence retain refusals. |
+| 7. Inherited inertia issue blocked? | Yes. Scaled application In-motion solves with nonzero mass/inertia remain guarded, with a visible Static-analysis alternative. |
+| 8. Rewind and physical reverse distinct? | Yes. Rotating-drive reverse recalculates; reciprocating rewind is labeled navigation and suppresses directional friction readouts/glyphs, even while paused or scrubbed. |
+| 9. Panel compact enough? | Yes for V1. Slider and bearing fit the checked 250px width without overflow; no new spacing or visual system is introduced. |
+| 10. Explanations available? | Yes. Calculation and Input Effort Details retain their content, closed by default; critical diagnostics remain visible. |
+| 11. Tests sufficient for a V1 PR? | Yes for review within the stated scope: analytic and independent references, persistence, units, contact boundaries, adapters, component states, browser motion and accessibility are covered. MATLAB execution is still pending. |
+| 12. Any review blocker? | No newly identified friction blocker. Ready for PR with documented limitation. The three reproduced staging test failures are separate CI issues to resolve before merge; this is not a green-merge claim. |
+
+#### Validation of the micro-polish
+
+- Focused friction, component and result-adapter tests: **128/128**, 12 files.
+- Full suite: **2,596 passed, three failed**, 2,599 tests in 247 files. The same two MotionGen
+  gripper assertions and Windows stylesheet fence were reproduced on the unchanged staging
+  snapshot: **four passed, three failed**. Both baseline spec files match their `origin/staging`
+  Git blob hashes. No newly failing test remains.
+- Browser suites: `friction-stories.mjs` **17/17**, `friction-visualization.mjs` **41/41**,
+  `friction.mjs` **15/15**, and `ui-copy.mjs` **17/17**; zero uncaught browser errors.
+- **Zero axe violations across all 17 Storybook states.** Keyboard checks retain Enter/Space,
+  `aria-expanded`, visible focus, closed-content focus exclusion and collapsed warning status.
+  Added assertions check the single-contact cleanup and retained accessible state; the component
+  test covers independently Enabled/Off contacts under one aggregate Enabled header.
+- `npm run check` passes with zero errors and the existing 15 warnings. Production and Storybook
+  builds pass. `git diff --check` passes.
+- Inspected the 250px before/after comparison, bearing, expanded disclosures, collapsed header,
+  stationary/inertia/rewind/unsupported states, and motion/disclosure filmstrips. The visualization
+  suite retains its **84-frame** capture. Artifacts are ignored under `artifacts/friction-micro/`.
+  A separate Chrome demonstration opens actual slider and bearing results plus local Storybook.
+- **No physics changed.** The independent PMKS_Verification checkout remains clean at `0f2d774`;
+  its 1,120 application reference-pose comparisons remain covered. No new MATLAB run is claimed.
+
+No push or merge. The next independent task should correct the inherited In-motion force/inertia
+scaling, using its existing reproduction and independent force references before removing the
+friction guard. That task is not started here.
