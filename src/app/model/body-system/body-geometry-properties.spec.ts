@@ -232,7 +232,7 @@ describe('geometry edit locks and center references', () => {
       'editAxis'
     );
   });
-  it('keeps the center at its world position when its editing attachment is deleted during a turn', () => {
+  it('follows the final attachment displacement before its editing anchor is deleted during a turn', () => {
     const f = nativeEditableBar(),
       authority = new BodyDocumentAuthority(f.document);
     commit(authority, [
@@ -254,8 +254,8 @@ describe('geometry edit locks and center references', () => {
       },
     ]);
     const point = center(reopen(authority.document), f.body.id);
-    expect(point.x).toBeCloseTo(4, 12);
-    expect(point.y).toBeCloseTo(3, 12);
+    expect(point.x).toBeCloseTo(9, 12);
+    expect(point.y).toBeCloseTo(5, 12);
     expect(material(authority.document, f.body.id).mass.center).toMatchObject({
       editAnchor: 'body',
     });

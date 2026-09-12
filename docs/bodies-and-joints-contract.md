@@ -226,7 +226,8 @@ boundary. Property changes reject identity fields rather than letting a spread r
 An explicit CoM carries `editAnchor: 'body' | 'grid' | { attachmentId }`. A member anchor must
 belong to that material; a group anchor must belong to one of that group's materials. Physics
 still uses the stored local `point`. If an existing editing attachment is deleted, retain the
-physical center and fall back to the body's frame; do not transfer the anchor to another pin.
+center resolved at that attachment's final pre-deletion placement and fall back to the body's
+frame; do not transfer the anchor to another pin.
 A newly supplied invalid anchor does not qualify for that fallback. Canonical design geometry
 and pose operations now map these references in one settled transaction. A body-relative
 center follows the geometry centroid and a stable named vertex pair (`editAxis`, captured on
@@ -384,7 +385,8 @@ unsolved and the accepted displayed pose becomes the new start with an explicit 
 
 A proved missing coordinate in a completed cycle is `unreachable`; exhausted continuation,
 failed cycle construction or failed clock/branch matching is `anchor-unsolved`. A changed
-input coordinate or unavailable motion has its own status. None silently promotes a sampled
+input coordinate or unavailable motion has its own status. Removing the last input emits `drive-removed` when surviving material adopts the paused
+pose as its start, even though no driver remains to own a reset clock. None silently promotes a sampled
 pose to an authored anchor. `bodyAnchorNotice` supplies the future UI's shared explanation.
 Stopped inputs at their unchanged start do not require a finite-speed cycle. These notices
 and the captured paths are local transaction/history data, not shared document records.
@@ -607,10 +609,16 @@ Old explicit mass/CoM values are retained; native automatic geometry uses the na
 model. The initial frame has angle zero and its geometry carries the old drawn orientation.
 
 
-A combined move/delete command resolves group CoM edit anchors at the pre-deletion placement,
+A combined move/delete command resolves material and group CoM edit anchors at the pre-deletion placement,
 while the old frame and even a doomed attachment are still available. Only then does lineage
 change the coordinate frame. A body-relative center rides the material, a grid center stays
 fixed, and an attachment-relative center receives that attachment's displacement before a
 lost reference falls back to body-relative editing. Unchanged frames retain exact coordinates.
 A refused gesture event restores its prior draft, even if a non-clamp refusal follows accepted
 substeps; release can never commit that hidden partial event.
+
+Unchanged world-angle holds recover their exact source records on both direct and constrained
+paused edit paths. A singleton WORLD annotation is valid; grounded paste merges into it using
+the destination presentation and the same aggregate-property policy as other fixed groups.
+Partial copying of a legacy load scope refuses for either selected side, regardless of which
+member happens to carry the load's reference frame.

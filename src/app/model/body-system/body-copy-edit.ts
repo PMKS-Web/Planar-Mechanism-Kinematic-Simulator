@@ -83,8 +83,11 @@ export function planBodyCopy(
     )
       return bodyEditRefusal('aggregate-properties', [{ kind: 'group', members: group.members }]);
   const forces = document.forces.filter((force) => members.has(force.bodyId));
-  for (const force of forces)
-    if (force.legacyGroupScope?.members.some((member) => !owns(member.bodyId)))
+  for (const force of document.forces)
+    if (
+      force.legacyGroupScope?.members.some((member) => members.has(member.bodyId)) &&
+      force.legacyGroupScope.members.some((member) => !owns(member.bodyId))
+    )
       return bodyEditRefusal('ambiguous-load-owner', [{ kind: 'force', id: force.id }]);
   const base: BodyDocument = {
     ...document,
