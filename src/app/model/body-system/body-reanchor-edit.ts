@@ -1,3 +1,5 @@
+import { removedBodyDriveAnchors } from './body-removed-drive-anchor';
+import { reanchorBodyHolds } from './body-reanchor-holds';
 import { unchangedBodyMotion } from './body-unchanged-motion';
 import { restoreBodyPartitionAnchor } from './body-anchor-partition';
 import { BodyDocument } from './body-document';
@@ -121,6 +123,9 @@ export function reanchorBodyEdit(
   }
   for (const driver of proposed.drivers)
     if (!clocks.has(driver.id)) reset(driver.id, 'motion-unavailable');
+  anchors.push(
+    ...removedBodyDriveAnchors(source, proposed, before.system, after.system, frame, poses)
+  );
   const document: BodyDocument = {
     ...proposed,
     bodies: proposed.bodies.map((body) => ({ ...body, pose: poses.get(body.id)! })),
@@ -128,17 +133,7 @@ export function reanchorBodyEdit(
       ...driver,
       profile: { ...driver.profile, initial: initials.get(driver.id)! },
     })),
-    holds: proposed.holds.map((hold) =>
-      hold.angle === undefined
-        ? hold
-        : {
-            ...hold,
-            angle:
-              hold.angle +
-              poses.get(hold.bodyId)!.angle -
-              proposed.bodies.find((body) => body.id === hold.bodyId)!.pose.angle,
-          }
-    ),
+    holds: reanchorBodyHolds(source, displayed, proposed, poses),
   };
   return {
     document,

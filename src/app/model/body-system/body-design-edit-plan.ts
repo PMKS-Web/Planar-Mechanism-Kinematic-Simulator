@@ -156,6 +156,19 @@ export function planBodyDesignEdit(
       ...candidate,
       ...retainPinConnections(pinSource, candidate, new Set(), `${command.id}:kind`),
     };
+  const centered = remapEditedCenters(
+    workingSource,
+    candidate,
+    new Set(
+      command.operations.flatMap((operation) =>
+        operation.kind === 'body-properties' && operation.change.mass?.center !== undefined
+          ? [operation.bodyId]
+          : []
+      )
+    )
+  );
+  // Resolve material anchors before deletion removes their final placement. Group lineage does the same.
+  candidate = { ...candidate, bodies: centered.bodies };
   const placement = candidate;
   const targets = command.operations.flatMap((operation) =>
     operation.kind === 'delete' ? operation.targets : []
@@ -168,17 +181,6 @@ export function planBodyDesignEdit(
   const lineage = bodyGroupLineage(lineageSource, candidate, placement, command.targetGroupMember);
   if (!lineage.ok) return lineage;
   candidate = { ...candidate, groups: lineage.groups };
-  candidate = remapEditedCenters(
-    workingSource,
-    candidate,
-    new Set(
-      command.operations.flatMap((operation) =>
-        operation.kind === 'body-properties' && operation.change.mass?.center !== undefined
-          ? [operation.bodyId]
-          : []
-      )
-    )
-  );
   candidate = retainCenterEditAnchors(workingSource, candidate);
   for (const operation of [...copiedProperties, ...command.operations])
     if (operation.kind === 'group-properties') {

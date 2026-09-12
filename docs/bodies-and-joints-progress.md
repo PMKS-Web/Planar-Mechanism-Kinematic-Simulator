@@ -91,17 +91,19 @@ Local historical source `b7ec8d7` declares package version 2.0.3. Its shipped te
 
 ## Anthropic reviews
 
-Working ceiling: **$35**, planned caps F1 $5 / F2 $10 / F3 $7 / F4 $6; $7 reserve. F1 resolved; F2 completed with open findings; F3–F4 remain required.
+**The user removed the review budget cap on 2026-09-12.** Earlier caps and reservations below are historical. Continue recording actual charges and use focused review requests. F1/F2 are resolved; F3 coverage is complete and its follow-up fixes are in final verification. F4 belongs to S8.
 
 | Call | Session | Actual reported cost | Status |
 | --- | --- | --- | --- |
 | Planning availability probe | `1e1aa8aa-e65e-4f52-957b-56ef372e594e` | $0.073899 | `claude-fable-5-1`, `FABLE_OK`; availability only |
-| Earlier canceled planning review | `93cfef40-4bbb-4454-81b8-a2317a37861f` | Unknown; reserve $6 | Transcript ends interrupted; no findings or approval claimed |
+| Earlier canceled planning review | `93cfef40-4bbb-4454-81b8-a2317a37861f` | Unknown | Transcript ends interrupted; no findings or approval claimed |
 | F1 | `aab450ea-661d-45fc-a91a-6286dd1d8614` | $3.40532475 | Completed on `59296bb`; regressions and resolution below |
-| F2 | `6df95b2b-659f-4349-9876-86a4fff7a5d8` | $6.00034425 | Completed on `d842ffd`; findings open below |
-| F3–F4 | Pending | Not spent | Caps $7 / $6 |
+| F2 | `6df95b2b-659f-4349-9876-86a4fff7a5d8` | $6.00034425 | Completed on `d842ffd`; resolved at `bca3492` |
+| F3 initial | `04e221a8-f7f7-492d-8333-f95c87943c0d` | $4.571421 | Reviewed `b33355b1`; resolved at `ae91f07c`; omitted coverage completed below |
+| F3 follow-up | `a2a1ef0a-f5bc-4af6-9ffe-9c2d365b59db` | $9.50394975 | Reviewed `ae91f07c`; all requested coverage complete, resolutions below |
+| F4 | Pending S8 | Not spent | No dollar cap |
 
-Known reported spend: **$9.479568**, including the probe and both reviews' auxiliary usage. With the $6 canceled-call reservation, $19.520432 remains inside the $35 ceiling. F3/F4 caps total $13; unallocated headroom is $6.520432. Do not spend the reservation.
+Known reported spend: **$23.55493875**, including the availability probe and auxiliary usage. The canceled planning call's actual cost remains unknown; its former $6 reservation was not a reported charge.
 
 ## Current source audit findings
 
@@ -2366,3 +2368,56 @@ The initial reviewer explicitly left pin reconnection, copy/paste, re-anchoring 
 unreviewed. That is a coverage gap, not approval of all F3. A single focused follow-up will
 review those areas plus the resolved changes, without a budget cap, before S4 is closed.
 S5 remains pending and must not start in this continuation.
+
+
+## F3 follow-up completed and resolved (2026-09-12)
+
+Fable 5.1 reviewed stable **ae91f07c** with read-only tools and no dollar cap. Session
+**a2a1ef0a-f5bc-4af6-9ffe-9c2d365b59db**, process session 68581 exit 0, JSON success/non-error.
+Actual **$9.50394975** = Fable $9.49555675 + auxiliary Haiku $0.008393. Artifacts are
+`reviews/F3-followup-{input.txt,launch.json,findings.md,stderr.log}` and `F3-followup.json`.
+The prompt construction initially failed locally before any CLI request; it incurred no review
+call. This review explicitly completed pin reconnection, copy/paste, paused re-anchoring and
+codec/schema coverage omitted from the initial pass, and audited the prior fixes. It did not
+repeat S3 numerical derivations, deletion/import or previously covered recovery atomicity.
+
+All six proposed behavioral probes failed against ae91f07c for the predicted reasons,
+`reviews/F3-followup-before.log` (session 93125 exit 1). The initial test draft had TypeScript
+fixture/narrowing errors, corrected before this run; those were not model failures.
+
+- **F3b-1, confirmed inconsistency:** materials lost the final displacement of a deleted
+  attachment center anchor, while groups retained it. Material remapping now also happens
+  before deletion. Both receive the attachment's final displacement, then fall back to body
+  anchoring; grid and body anchor behavior remains distinct. The old material test deliberately
+  pinned the opposite interpretation and is rewritten to the unified rule (world 9,5 rather
+  than 4,3). The contract now names both materials and groups.
+- **F3b-2, confirmed:** copying the non-reference side of an ambiguous load scope silently
+  omitted the load. Check every scope that overlaps selected material before filtering copied
+  loads. Either side refuses atomically; both enumeration orders are tested.
+- **F3b-3, confirmed missing notice:** removing a displaced machine's last drive left no driver
+  for the reset loop, silently retaining the sampled pose as authored start. The accepted pose
+  still becomes the start, with an explicit `drive-removed` anchor notice and no ghost clock.
+  It identifies a removed driver whose surviving material is adopted by a driverless partition;
+  a surviving coordinate supplies its actual new value. Undo restores the source and paused
+  display. S5 must render this through the same `bodyAnchorNotice` model as other resets.
+- **F3b-4, confirmed with a corrected numeric probe:** 1.1 happened to round-trip exactly; 0.7
+  returned as 0.7000000000000002. Unchanged holds recover the original record when the authored
+  angle is restored, keeping unrelated material out of invalidation effects. Changed holds
+  still receive their required frame transformation.
+- **F3b-5, confirmed:** deleting only a rotated group's center editing attachment changed
+  0.1,0.4 to 0.10000000000000013,0.3999999999999999. Resolving before deletion removes the
+  unnecessary second round trip, preserving exact coordinates with the anchor fallback.
+- **F3b-6, documented API obligation:** new actions need fresh command UUIDs; a shown paste
+  commits its existing plan. `paste()` starts a separate action. Duplicate IDs already refuse
+  atomically, so no second ID allocator or retry semantics were added. Recorded in tips.
+- **F3b-7, confirmed:** singleton WORLD annotations are valid and survive the codec. Grounded
+  paste now uses the ordinary annotation/aggregate merge policy when such an annotation
+  exists, keeping its presentation and incoming properties without duplicate group records.
+  The test checks explicit mass, inertia, hand-transformed center, Undo/Redo and encoding.
+
+Focused post-fix run `reviews/F3-followup-fixed.log`: **58 passed / 1 failed** across seven
+files (session 75237 exit 1). The remaining assertion compared an independently evaluated
+anchor coordinate with the old command at exact equality; their one-ulp difference is correct.
+The assertion now checks the notice exactly and its coordinate to 12 decimal places. Final
+whole-suite/build gates follow below. No additional paid review is needed for these bounded
+fixes; Codex inspected their effects and retained the failing-before probes.

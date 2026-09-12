@@ -39,7 +39,11 @@ export function planBodyPaste(
   if (!copied.ok) return copied;
   const frames = compileWeldFrames(destination);
   if (!frames.ok) return bodyEditRefusal('invalid-document');
-  if (frames.groupOf.get(WORLD)!.members.size === 1) return copied;
+  if (
+    frames.groupOf.get(WORLD)!.members.size === 1 &&
+    !destination.groups.some((group) => group.members.includes(WORLD))
+  )
+    return copied;
   const ground = copied.records.groups?.find((group) => group.members.includes(WORLD));
   const properties = pastedGroundProperties(
     destination,
