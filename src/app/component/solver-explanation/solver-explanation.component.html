@@ -1,16 +1,15 @@
-<section class="solverCard">
-  <header>
-    <div class="eyebrow">
-      {{ force() ? 'Force analysis' : 'Kinematic analysis' }} · worked solution
+<section class="worksheet" [class.wide]="wide">
+  <header class="worksheetHeader">
+    <div>
+      <div class="eyebrow">Worked Derivation · {{ machineId }}</div>
+      <h2>{{ isForce() ? 'Force Analysis' : 'Kinematic Analysis' }}</h2>
+      <p>From the mechanism sketch to the equations and solution.</p>
     </div>
-    <h2>{{ force() ? 'Free bodies & equilibrium' : 'How the mechanism moves' }}</h2>
-    <p>
-      {{
-        force()
-          ? 'Isolate each body, account for its loads, then assemble and solve its equilibrium equations.'
-          : 'Follow the vector loops and the geometric steps behind the pose on the drawing.'
-      }}
-    </p>
+    @if (wide) {
+      <button-block [click]="closeWorksheet">Close Worksheet</button-block>
+    } @else {
+      <button-block [click]="openWorksheet">Open Full Worksheet</button-block>
+    }
   </header>
   <div class="controls">
     <div class="controlRow">
@@ -19,347 +18,481 @@
         <select
           aria-label="Explanation mechanism"
           [ngModel]="machineId"
-          (ngModelChange)="chosenMachine = $event"
+          (ngModelChange)="chosenMachine.set($event)"
         >
           @for (partition of mechanism.partitions; track partition.id) {
             <option [value]="partition.id">{{ partition.id }}</option>
           }
         </select></label
       >
-      <span class="time">{{ seconds | number: '1.3-3' }} s</span>
-    </div>
-    <div class="controlRow sampleRow">
       <label
         >Sample
         <input
+          aria-label="Explanation sample number"
           type="number"
           min="0"
           [max]="lastStep"
-          step="1"
-          aria-label="Explanation sample number"
           [ngModel]="step"
           (change)="seek($any($event.target).value)"
           [disabled]="!valid"
         />
         / {{ lastStep }}</label
       >
+      <span>{{ seconds | number: '1.3-3' }} s</span>
     </div>
     <input
       class="slider"
-      type="range"
       aria-label="Explanation sample"
+      type="range"
       min="0"
       [max]="lastStep"
-      step="1"
       [value]="step"
       (input)="seek($any($event.target).value)"
       [disabled]="!valid"
     />
-    @if (force()) {
+    @if (isForce()) {
       <segmented-block
         [options]="forceOptions"
         [selected]="settings.forceAnalysisMode.value === 'dynamic' ? 1 : 0"
         (selectedChange)="settings.forceAnalysisMode.next($event === 1 ? 'dynamic' : 'static')"
       ></segmented-block>
-    } @else {
-      <segmented-block
-        [options]="kinematicOptions"
-        [selected]="section"
-        (selectedChange)="section = $event"
-      ></segmented-block>
     }
+    <segmented-block
+      aria-label="Worksheet section"
+      [options]="isForce() ? forceSections : kinematicSections"
+      [selected]="section()"
+      (selectedChange)="section.set($event)"
+    ></segmented-block>
   </div>
   @if (view; as data) {
-    @if (force()) {
-      <div class="convention">
-        <strong>Positive x → · positive y ↑ · positive moment ↺</strong>
-        <p>
-          Moments are taken about each body's center of mass G. Arrows show solved directions, with
-          schematic lengths. Zero forces remain in the load list.
-        </p>
-        <p class="legend">
-          <span class="reaction">Reactions</span> · <span class="applied">Applied loads</span> ·
-          <span class="weight">Weight</span> · <span class="drive">Input effort</span>
-        </p>
-      </div>
-      @if (data.force?.frame?.status !== 'ok') {
-        <p class="notice" role="status">
-          {{ data.force?.frame?.message }} No valid free-body solution is available at this sample.
-        </p>
-      }
-      @if (data.force?.frame?.sharedSupport) {
-        <p class="notice">
-          Shared supports: equilibrium allows more than one load split. The solver uses the most
-          even split.
-        </p>
-      }
-      @for (body of data.bodies; track body.id; let i = $index) {
-        <article class="bodyCard" [attr.data-body]="body.id">
-          <div class="stepTitle">
-            <span class="stepNumber">{{ i + 1 }}</span>
-            <h3>{{ body.name }}</h3>
-            <small>{{ body.rowCount === 3 ? 'Rigid body' : 'Slider block' }}</small>
-          </div>
+    <div class="worksheetContent">
+      <div class="overview">
+        <figure>
           <app-solver-diagram
-            [diagram]="body.diagram"
-            [label]="'Free-body diagram of ' + body.name"
+            [diagram]="data.diagram"
+            label="Mechanism sketch with joint labels"
           ></app-solver-diagram>
-          <div class="loadList">
-            @for (load of body.loads; track $index) {
-              <div class="load" [class]="'load ' + load.kind">
-                <strong>{{ load.label }}</strong
-                ><span>
-                  @if (load.couple !== undefined) {
-                    {{ n(load.couple / scale) }} N·m
-                  } @else {
-                    ({{ n(load.vector[0]) }}, {{ n(load.vector[1]) }}) N
-                  }
-                </span>
+          <figcaption>Mechanism sketch · sample {{ step }}</figcaption>
+        </figure>
+        <div class="assumptions">
+          <h3>Knowns & Assumptions</h3>
+          <p>
+            Motion lies in the x–y plane. Positive x points right, positive y points up, and
+            positive rotation is counterclockwise about z.
+          </p>
+          @if (isForce()) {
+            <p>
+              <strong
+                >{{
+                  settings.forceAnalysisMode.value === 'dynamic'
+                    ? 'In-motion balance'
+                    : 'Static equilibrium'
+                }}.</strong
+              >
+              {{
+                settings.forceAnalysisMode.value === 'dynamic'
+                  ? 'Mass and inertia terms use the motion at this sample.'
+                  : 'Acceleration terms are zero for this force calculation.'
+              }}
+            </p>
+            <p>
+              <strong>Gravity:</strong>
+              {{ solved.gravity ? 'included in the negative y direction' : 'off' }}.
+              <strong>Joint friction:</strong> not modeled.
+            </p>
+          } @else {
+            <p>
+              Grounded joints have known positions and zero velocity and acceleration. Input motion
+              supplies the first moving boundary.
+            </p>
+            @for (ground of data.grounds; track ground.id) {
+              <app-solver-math
+                [equation]="section() === 0 ? ground.equation : ground.zero"
+              ></app-solver-math>
+            }
+          }
+        </div>
+      </div>
+      @if (isForce()) {
+        @if (data.force?.frame?.status !== 'ok') {
+          <p class="notice" role="status">
+            {{ data.force?.frame?.message }} No valid force solution is available at this sample.
+          </p>
+        }
+        @if (data.force?.frame?.sharedSupport) {
+          <p class="notice">
+            The supports allow multiple load splits. This solution uses the solver's most even
+            split.
+          </p>
+        }
+        @if (section() === 0) {
+          <h3 class="chapterTitle">1 · Define the Vectors</h3>
+          <div class="definitionGrid">
+            <div>
+              <h4>Forces & Moments</h4>
+              <app-solver-math [equation]="vectorDefinitions"></app-solver-math>
+              <p>Planar forces have x and y components. A pure couple has only a z component.</p>
+            </div>
+            <div>
+              <h4>Angular Motion</h4>
+              <app-solver-math [equation]="motionDefinitions"></app-solver-math>
+              <p>G denotes the center of mass of the body currently isolated.</p>
+            </div>
+          </div>
+          <app-solver-math [equation]="crossProduct"></app-solver-math>
+          <p>
+            A moment arm runs <strong>from G to the force application point</strong>. Weight acts at
+            G, so its moment about G is zero.
+          </p>
+          <h3 class="chapterTitle">2 · Name the Unknowns</h3>
+          <p>
+            Aₓ and Aᵧ are the two components of the force at A. The same reaction appears with
+            opposite signs on its two connected bodies.
+          </p>
+          <div class="symbolList">
+            @for (definition of data.forceWork?.definitions; track $index) {
+              <div>
+                <app-solver-math [equation]="definition.symbol"></app-solver-math
+                ><span>{{ definition.meaning }}</span>
               </div>
             }
           </div>
-          <h4>
+          <aside class="referenceNote">
+            <h4>About the Friction Pass in the Examples</h4>
+            <p>
+              The supplied notes first solve without friction, then calculate friction forces and
+              joint torques for a second pass. PMKS currently solves the frictionless system. Those
+              additional forces and torques are not included in these equations or results.
+            </p>
+            <p>
+              The gravity assumption comes from this mechanism's settings; an example's out-of-plane
+              gravity assumption is not applied automatically.
+            </p>
+          </aside>
+        } @else if (section() === 1) {
+          <h3 class="chapterTitle">Free-Body Equations · Without Friction</h3>
+          <segmented-block
+            [options]="arrowOptions"
+            [selected]="assumed() ? 0 : 1"
+            (selectedChange)="assumed.set($event === 0)"
+          ></segmented-block>
+          <p class="caption">
             {{
-              settings.forceAnalysisMode.value === 'dynamic'
-                ? 'Newton–Euler equations'
-                : 'Equilibrium equations'
+              assumed()
+                ? 'Orange arrows define the positive unknown directions, before solving. A negative answer reverses that direction.'
+                : 'Orange arrows follow the signed solution at this sample.'
             }}
-          </h4>
-          <p class="law">
-            {{
-              settings.forceAnalysisMode.value === 'dynamic'
-                ? 'ΣFx = m aGx · ΣFy = m aGy · ΣMz,G = IG α'
-                : 'ΣFx = 0 · ΣFy = 0 · ΣMz,G = 0'
-            }}
+            Arrow lengths are schematic.
           </p>
-          @for (axis of axes.slice(0, body.rowCount); track $index; let a = $index) {
-            <div class="equation">
-              <small>{{ axis }} · {{ a === 2 ? 'N·m' : 'N' }}</small>
-              <div>{{ forceEquation(body, a) }}</div>
-            </div>
+          @for (body of data.bodies; track body.id; let i = $index) {
+            <article class="bodyCard" [attr.data-body]="body.id">
+              <h3>
+                <span class="stepNumber">{{ i + 1 }}</span
+                >{{ body.name }}
+                <small>{{ body.rowCount === 3 ? 'Rigid body' : 'Slider block' }}</small>
+              </h3>
+              <div class="bodyLayout">
+                <figure>
+                  <app-solver-diagram
+                    [diagram]="body.diagram"
+                    [label]="'Free-body diagram of ' + body.name"
+                  ></app-solver-diagram>
+                  <figcaption>
+                    Isolate {{ body.name }} ·
+                    {{ assumed() ? 'assumed directions' : 'solved directions' }}
+                  </figcaption>
+                  @if (body.diagram.note) {
+                    <p class="caption">{{ body.diagram.note }}</p>
+                  }
+                </figure>
+                <div class="derivation">
+                  <h4>Vector Force Balance</h4>
+                  <app-solver-math [equation]="body.forceVector"></app-solver-math>
+                  @if (body.rowCount === 3) {
+                    <h4>Vector Moment Balance About G</h4>
+                    <app-solver-math [equation]="body.momentVector"></app-solver-math>
+                  } @else {
+                    <p>
+                      The ideal slider block contributes two force equations. It has no independent
+                      moment row.
+                    </p>
+                  }
+                  <h4>Resolve Into Components</h4>
+                  @for (equation of body.components; track $index) {
+                    <div class="equationStep">
+                      <span class="axisLabel">{{ equation.label }}</span
+                      ><app-solver-math [equation]="equation.symbolic"></app-solver-math>
+                    </div>
+                  }
+                </div>
+              </div>
+              <details class="numericDetails">
+                <summary>Substitute This Sample & Check the Balance</summary>
+                <div class="loadList">
+                  @for (load of body.loads; track $index) {
+                    <div>
+                      <app-solver-math [equation]="load.symbol"></app-solver-math
+                      ><span>
+                        @if (load.couple !== undefined) {
+                          {{ n(load.couple / scale) }} N·m
+                        } @else {
+                          ({{ n(load.vector[0]) }}, {{ n(load.vector[1]) }}) N
+                        }
+                      </span>
+                    </div>
+                  }
+                </div>
+                @for (equation of body.components; track $index) {
+                  <h4>{{ equation.label }} · {{ equation.unit }}</h4>
+                  <app-solver-math [equation]="equation.collected"></app-solver-math
+                  ><app-solver-math [equation]="equation.substitution"></app-solver-math>
+                }
+              </details>
+            </article>
           }
-          <p class="fine">
-            The parenthesized term is the sum of known loads{{
-              body.rowCount === 3 ? ' or their moments about G' : ''
-            }}. The right side is
-            {{
-              settings.forceAnalysisMode.value === 'dynamic'
-                ? 'the inertia term from the solver'
-                : 'zero'
-            }}.
-          </p>
-          @if (body.rowCount === 2) {
-            <p class="fine">
-              This ideal slider block has no independent rotational degree of freedom, so its solver
-              writes two force rows.
+          @if (data.force?.frame?.explanation?.fixedBodies?.length) {
+            <p class="notice">
+              Fixed frame bodies {{ data.force?.frame?.explanation?.fixedBodies?.join(', ') }} act
+              as supports and have no independent equilibrium rows.
             </p>
           }
-        </article>
-      }
-      @if (data.force?.frame?.explanation?.fixedBodies?.length) {
-        <p class="notice">
-          Fixed frame bodies ({{ data.force?.frame?.explanation?.fixedBodies?.join(', ') }}) are
-          treated as supports, so they have no independent equilibrium rows.
-        </p>
-      }
-      @if (data.force?.system; as system) {
-        <div class="systemCard">
-          <h3>Assemble all bodies</h3>
+        } @else {
+          <h3 class="chapterTitle">Assemble the System & Solve</h3>
           <p>
-            Shared reactions occur with opposite signs on the two bodies. Move known loads to the
-            right to obtain A x = b.
+            Each rigid body contributes three rows: x force, y force, and z moment about G. Each
+            ideal slider block contributes two. Collect the unknown reactions and input effort into
+            x and move known terms to b.
           </p>
-          <app-solver-matrix
-            [system]="system"
-            title="Force matrix and solution"
-          ></app-solver-matrix>
-        </div>
-      }
-    } @else if (section === 0) {
-      @if (data.kinematics?.route === 'loops') {
-        <div class="convention">
-          <strong>Closed vector loops</strong>
-          <p>
-            Follow each directed link vector and close the chain through ground (dashed gray).
-            Differentiating closure gives two velocity and two acceleration equations per loop.
+          @if (data.forceWork?.system; as system) {
+            <app-solver-matrix
+              [system]="system"
+              title="Force matrix and solution"
+              [expanded]="true"
+            ></app-solver-matrix>
+          }
+        }
+      } @else if (section() === 0) {
+        <h3 class="chapterTitle">Position Solving · Joint by Joint</h3>
+        @if (solved.usesCoupledPositionSolve) {
+          <p class="notice">
+            This mechanism's unknown positions are solved together through simultaneous constraints.
           </p>
-          <p class="law">
-            Σr = 0<br />Σ(ω × r + vrelative) = 0<br />Σ(α × r − ω²r + 2ω × vrelative + arelative) =
-            0
-          </p>
-        </div>
-        @for (loop of data.loops; track loop.id) {
-          <article class="bodyCard loopCard">
-            <div class="stepTitle">
-              <span class="stepNumber">{{ loop.index + 1 }}</span>
-              <h3>Vector loop {{ loop.index + 1 }}</h3>
-            </div>
-            <app-solver-diagram
-              [diagram]="loop.diagram"
-              [label]="'Closed vector loop ' + (loop.index + 1)"
-            ></app-solver-diagram>
-            <p class="fine">{{ loop.id }}</p>
-            <h4>Position closure · {{ solved.unit }}</h4>
-            <div class="equation">
-              <small>x components</small>
-              <div>
-                @for (value of loop.x; track $index; let last = $last) {
-                  ({{ n(value) }}){{ last ? ' = 0' : ' + ' }}
+        }
+        @for (position of data.positions; track $index; let i = $index) {
+          <article
+            class="positionCard"
+            [class.circleCard]="position.circleMethod"
+            [class.circleLineCard]="position.guide"
+          >
+            <h3>
+              <span class="stepNumber">{{ i + 1 }}</span
+              >Joint {{ position.jointId }} <small>{{ position.method }}</small>
+            </h3>
+            <div class="bodyLayout">
+              <figure>
+                <app-solver-diagram
+                  [diagram]="position.diagram"
+                  [label]="position.method + ' for joint ' + position.jointId"
+                ></app-solver-diagram>
+                <figcaption>
+                  {{
+                    position.refs.length
+                      ? 'Known references: ' + position.knownIds.join(', ')
+                      : position.method
+                  }}
+                </figcaption>
+              </figure>
+              <div class="derivation">
+                @if (position.equations.length) {
+                  <h4>Rigid-Length Constraints</h4>
+                }
+                @for (equation of position.equations; track $index) {
+                  <app-solver-math [equation]="equation.symbolic"></app-solver-math>
+                }
+                @if (position.prescribed) {
+                  <p>The known input angle selects a point on the crank's circle.</p>
+                }
+                @if (position.rigid) {
+                  <p>
+                    Both distances stay constant. The current solver carries this point with the
+                    rigid body, preserving its shape, rather than recomputing a circle intersection.
+                  </p>
+                }
+                @if (position.guide) {
+                  <h4>Guide-Line Constraint</h4>
+                  <p>
+                    Intersect the rigid-length circle with the guide. The parametric line also works
+                    for a vertical guide.
+                  </p>
+                }
+                @for (equation of position.extra; track $index) {
+                  <app-solver-math [equation]="equation"></app-solver-math>
+                }
+                @if (position.circleMethod) {
+                  <p>
+                    Solve the two circle equations together. Each intersection is a possible
+                    assembly position.
+                  </p>
+                }
+                @if (position.candidates.length) {
+                  <details class="numericDetails">
+                    <summary>Substitute Coordinates & Find the Candidates</summary>
+                    @for (equation of position.equations; track $index) {
+                      <app-solver-math [equation]="equation.numbers"></app-solver-math>
+                    }
+                    @for (candidate of position.candidates; track $index) {
+                      <app-solver-math [equation]="candidate"></app-solver-math>
+                    }
+                  </details>
+                  <p class="caption">
+                    Keep the branch consistent with the preceding motion. The solver predicts from
+                    recent positions; sample 0 is the initial drawing.
+                  </p>
+                }
+                <div class="answer">
+                  <app-solver-math [equation]="position.answer"></app-solver-math>
+                </div>
+                @if (position.residual !== undefined) {
+                  <p class="caption">
+                    Maximum constraint error: {{ n(position.residual) }} {{ solved.unit }}
+                  </p>
                 }
               </div>
             </div>
-            <div class="equation">
-              <small>y components</small>
-              <div>
-                @for (value of loop.y; track $index; let last = $last) {
-                  ({{ n(value) }}){{ last ? ' = 0' : ' + ' }}
-                }
-              </div>
-            </div>
-            @if (loop.hasSlot) {
-              <p class="notice">
-                This loop includes sliding. The matrix includes guide travel and, for a moving
-                guide, carrier rotation and Coriolis terms.
-              </p>
-            }
-            <h4>Velocity · {{ solved.unit }}/s</h4>
-            <div class="equation"><small>x</small>{{ kinematicEquation(loop.index, 0) }}</div>
-            <div class="equation"><small>y</small>{{ kinematicEquation(loop.index, 1) }}</div>
-            <h4>Acceleration · {{ solved.unit }}/s²</h4>
-            <div class="equation"><small>x</small>{{ kinematicEquation(loop.index, 0, true) }}</div>
-            <div class="equation"><small>y</small>{{ kinematicEquation(loop.index, 1, true) }}</div>
           </article>
         }
-        <div class="systemCard">
-          <h3>Combine the independent loops</h3>
-          <p>
-            Known input motion is on the right. Angular unknowns use radians; linear unknowns use
-            {{ solved.unit }}. Extra equations are solved by least squares.
-          </p>
-          @if (data.kinematics?.velocity; as system) {
+      } @else {
+        <h3 class="chapterTitle">
+          {{ section() === 1 ? 'Velocity Solving' : 'Acceleration Solving' }}
+        </h3>
+        @if (data.rates?.route === 'loops') {
+          @for (loop of data.loops; track loop.id) {
+            <article class="loopCard">
+              <h3>
+                <span class="stepNumber">{{ loop.index + 1 }}</span
+                >Closed Vector Loop
+              </h3>
+              <div class="bodyLayout">
+                <figure>
+                  <app-solver-diagram
+                    [diagram]="loop.diagram"
+                    label="Closed vector loop"
+                  ></app-solver-diagram>
+                  <figcaption>{{ loop.id }} → ground closure</figcaption>
+                </figure>
+                <div class="derivation">
+                  <h4>Position Closure</h4>
+                  <app-solver-math [equation]="loop.position"></app-solver-math>
+                  <h4>{{ section() === 1 ? 'Differentiate Once' : 'Differentiate Twice' }}</h4>
+                  <app-solver-math
+                    [equation]="section() === 1 ? loop.velocity : loop.acceleration"
+                  ></app-solver-math>
+                  <h4>
+                    {{
+                      section() === 1
+                        ? 'Expand Relative Velocities'
+                        : 'Tangential & Normal Acceleration'
+                    }}
+                  </h4>
+                  <app-solver-math
+                    [equation]="section() === 1 ? loop.velocityExpanded : loop.accelerationExpanded"
+                  ></app-solver-math>
+                </div>
+              </div>
+              <details class="numericDetails">
+                <summary>Substitute the Vectors & Collect Unknowns</summary>
+                @for (row of loop.vectorRows; track $index) {
+                  <app-solver-math [equation]="row.symbol + '=' + row.value"></app-solver-math>
+                }
+                @for (
+                  row of section() === 1 ? loop.velocityRows : loop.accelerationRows;
+                  track $index
+                ) {
+                  <app-solver-math [equation]="row"></app-solver-math>
+                }
+              </details>
+            </article>
+          }
+          <details class="numericDetails">
+            <summary>Relative Motion in a Moving Guide</summary>
+            <app-solver-math
+              [equation]="section() === 1 ? slidingLaw : slidingAcceleration"
+            ></app-solver-math>
+            <p>
+              For a slot edge, relative motion includes guide travel. Acceleration includes the
+              Coriolis term when the guide rotates.
+            </p>
+          </details>
+          @if (section() === 1 && data.rates?.velocity; as system) {
             <app-solver-matrix
               [system]="system"
               title="Velocity matrix and solution"
             ></app-solver-matrix>
           }
-          @if (data.kinematics?.acceleration; as system) {
+          @if (section() === 2 && data.rates?.acceleration; as system) {
             <app-solver-matrix
               [system]="system"
               title="Acceleration matrix and solution"
             ></app-solver-matrix>
           }
-        </div>
-      } @else {
-        <div class="systemCard">
-          <h3>
-            {{
-              data.kinematics?.route === 'constraints'
-                ? 'Differentiated constraints'
-                : data.kinematics?.route === 'rigid-body'
-                  ? 'Rigid-body motion'
-                  : 'No analytic rate solution at this pose'
-            }}
-          </h3>
-          @if (data.kinematics?.route === 'constraints') {
-            <p>
-              This mechanism is solved through its geometric constraints. A loop-only derivation
-              would describe a different system, so no loop matrix is presented here.
-            </p>
-            <div class="equation">F(q, t) = 0<br />J q̇ = −Ft<br />J q̈ = −(dJ/dt) q̇ − dFt/dt</div>
-            <p>
-              q holds the unknown joint coordinates. J is the constraint Jacobian. Prescribed input
-              motion supplies the moving boundary terms. A numerical Jacobian walkthrough is not yet
-              exposed in this view.
-            </p>
-          } @else if (data.kinematics?.route === 'rigid-body') {
-            <p>
-              No closed loop is needed for a single rigid body moving about its prescribed input.
-            </p>
-            <div class="equation">vP = vO + ω × rOP<br />aP = aO + α × rOP − ω²rOP</div>
-          } @else {
-            <p>
-              The analytic solver has no usable rate system at this sample. Graphs may fill missing
-              rates by differencing neighboring solved positions.
-            </p>
-          }
-        </div>
-      }
-    } @else {
-      <div class="convention">
-        <strong>Position construction order</strong>
-        <p>
-          Known ground and input positions come first. The following steps are recorded from this
-          mechanism's position solver.
-        </p>
-      </div>
-      @if (solved.usesCoupledPositionSolve) {
-        <p class="notice">
-          This mechanism's joints are settled together using simultaneous geometric constraints. A
-          two-circle walkthrough is not its solution method.
-        </p>
-      } @else {
-        <ol class="positionOrder">
-          @for (one of positionSteps; track $index) {
-            <li>
-              <strong>{{ one.jointId }}</strong> · {{ positionMethod(one) }}
-              @if (one.knownIds.length) {
-                <small>from {{ one.knownIds.join(', ') }}</small>
-              }
-            </li>
-          }
-        </ol>
-      }
-      @for (circle of data.circles; track circle.jointId) {
-        <article class="bodyCard circleCard">
-          <h3>Locate {{ circle.jointId }} from {{ circle.a.id }} and {{ circle.b.id }}</h3>
-          <app-solver-diagram
-            [diagram]="circle.diagram"
-            [label]="'Two-circle construction for joint ' + circle.jointId"
-          ></app-solver-diagram>
-          <h4>1 · Known centers and rigid lengths</h4>
+        } @else if (data.rates?.route === 'constraints') {
+          <h3>Differentiated Constraints</h3>
+          <app-solver-math [equation]="constraintLaw"></app-solver-math>
           <p>
-            {{ circle.a.id }} = ({{ n(circle.a.x / scale) }}, {{ n(circle.a.y / scale) }}), r₁ =
-            {{ n(circle.r0 / scale) }} {{ solved.unit }}<br />{{ circle.b.id }} = ({{
-              n(circle.b.x / scale)
-            }}, {{ n(circle.b.y / scale) }}), r₂ = {{ n(circle.r1 / scale) }} {{ solved.unit }}
+            This mechanism's rates come from differentiating its geometric constraints. q contains
+            the unknown coordinates; J is their Jacobian. A numerical Jacobian derivation is not yet
+            shown here.
           </p>
-          <h4>2 · Intersect the circles</h4>
-          <div class="equation">
-            (x − {{ n(circle.a.x / scale) }})² + (y − {{ n(circle.a.y / scale) }})² =
-            {{ n(circle.r0 / scale) }}²<br />(x − {{ n(circle.b.x / scale) }})² + (y −
-            {{ n(circle.b.y / scale) }})² = {{ n(circle.r1 / scale) }}²
-          </div>
-          @for (candidate of circle.candidates; track $index; let i = $index) {
-            <p>
-              P{{ i + 1 }} = ({{ n(candidate[0] / scale) }}, {{ n(candidate[1] / scale) }})
-              {{ solved.unit }}
-            </p>
-          }
-          @if (!circle.candidates.length) {
-            <p class="notice">
-              No distinct pair of intersections at this pose. Coincident centers need a
-              continuity-based construction.
-            </p>
-          }
-          <h4>3 · Keep the assembly branch</h4>
+        } @else if (data.rates?.route === 'rigid-body') {
           <p>
-            The solver follows the intersection nearest its current position. At coincident centers
-            it uses motion continuity. Sample 0 is the initial drawing.
+            This mechanism uses direct rigid-body motion; it does not need a closed-loop rate
+            system.
           </p>
-          <div class="answer">
-            {{ circle.jointId }} = ({{ n(circle.point.x / scale) }},
-            {{ n(circle.point.y / scale) }}) {{ solved.unit }}
-          </div>
-          <p class="fine">Maximum radius error: {{ n(circle.residual) }} {{ solved.unit }}</p>
-        </article>
+        } @else {
+          <p class="notice">The analytic solver has no usable rate solution at this sample.</p>
+        }
+        <h3 class="chapterTitle">
+          Find Each Joint's {{ section() === 1 ? 'Velocity' : 'Acceleration' }}
+        </h3>
+        @for (motion of data.kine?.points; track motion.id) {
+          <article class="motionCard">
+            <h4>{{ motion.title }} · on {{ motion.bodyId }}</h4>
+            <p>Use {{ motion.source }} as the reference point on this rigid body.</p>
+            <app-solver-math
+              [equation]="section() === 1 ? motion.velocity : motion.acceleration"
+            ></app-solver-math>
+            <details class="numericDetails">
+              <summary>Substitute This Sample</summary>
+              <app-solver-math [equation]="motion.radius"></app-solver-math
+              ><app-solver-math
+                [equation]="section() === 1 ? motion.velocityNumbers : motion.accelerationNumbers"
+              ></app-solver-math>
+            </details>
+            <div class="answer">
+              <app-solver-math
+                [equation]="section() === 1 ? motion.velocityValue : motion.accelerationValue"
+              ></app-solver-math
+              ><span>{{ solved.unit }}/{{ section() === 1 ? 's' : 's²' }}</span>
+            </div>
+          </article>
+        }
+        <h3 class="chapterTitle">Centers of Mass</h3>
+        @for (motion of data.kine?.centers; track motion.id) {
+          <article class="motionCard">
+            <h4>{{ motion.title }}</h4>
+            <app-solver-math
+              [equation]="section() === 1 ? motion.velocity : motion.acceleration"
+            ></app-solver-math>
+            <div class="answer">
+              <app-solver-math
+                [equation]="section() === 1 ? motion.velocityValue : motion.accelerationValue"
+              ></app-solver-math
+              ><span>{{ solved.unit }}/{{ section() === 1 ? 's' : 's²' }}</span>
+            </div>
+          </article>
+        }
       }
-      @if (!data.circles.length && !solved.usesCoupledPositionSolve) {
-        <p class="notice">
-          This mechanism has no two-circle steps. Use the four-bar library example to explore that
-          construction.
-        </p>
-      }
-    }
+    </div>
   } @else {
     <p class="notice">Finish this mechanism's analysis setup to inspect its solution.</p>
   }

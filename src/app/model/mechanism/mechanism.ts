@@ -86,7 +86,9 @@ export class Mechanism {
   private _requiredLoops: Loop[] = [];
   private _driveState?: PositionSolverDriveState;
   positionExplanation: PositionStepExplanation[] = [];
-  get usesCoupledPositionSolve(): boolean { return this._driveState?.coupledRoute ?? false; }
+  get usesCoupledPositionSolve(): boolean {
+    return this._driveState?.coupledRoute ?? false;
+  }
   private mechanismValid = true;
   /**
    * Whether the drive now runs against the order the frames were solved in.

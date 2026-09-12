@@ -1,134 +1,124 @@
-# Analysis: How it works
+﻿# Analysis: How it works
 
-Open **Force Analysis → How it works** or **Kinematic Analysis → How it works**.
-The mechanism selector and sample slider choose the same mechanism and pose used by the
-canvas. The ordinary charts remain under **Graphs**.
+> **Status:** Reference
 
-For a first look, use the **Punch Press** library example for forces, and **4-Bar** for
-vector loops and two-circle position construction. Scrub away from the initial pose to
-see the coefficients and diagrams change.
+Open **Kinematic Analysis → How it works** or **Force Analysis → How it works**, then
+**Open Full Worksheet**. The wide worksheet places sketches beside their equations.
+The mechanism selector and sample slider use the same machine and pose as the canvas.
+**Graphs** keeps the ordinary plots. Escape closes the full worksheet.
 
-## What moved from PMKSConversion
+The TeachingLab four-bar and slider-crank examples in the Mechanism Library are good
+starting points. Move the sample slider to see the constructions and answers change.
 
-The educational walkthrough is present on PMKSConversion's `origin/restructureBackend`
-branch, particularly `src/app/toolbar/toolbar.component.ts` in `changeTabs()` and its
-force/kinematic cases. It isolates links, builds force arrows, and uses the force solver's
-matrix and index maps to write equations. Looking only at Conversion's `master` misses
-this implementation.
+## Presentation references
 
-This version adapts that teaching sequence to the current Angular analysis panel and
-current solvers. It does not run the old solver beside the new one.
+The worksheet follows the supplied notes' sequence: sketch, knowns, vector definitions,
+symbolic equations, numerical substitution, and solution. References reviewed were
+`Kinematics_TL_4_Bar.pdf`, `Force_Analysis_TL_4_Bar.pdf`, `Kinematics_OTIS_4_Bar.pdf`,
+`Force_Analysis_TL_4_Bar Copy.pdf` (the OTIS force example),
+`TL_Slider_Crank_Kinematics Copy.pdf`, and `TL_Slider_Crank_Force_Analysis.pdf`.
+Their example-specific assumptions do not override the mechanism's settings.
 
-## Force data: maps and a matrix
+PMKSConversion's earlier educational implementation is on `origin/restructureBackend`,
+in `src/app/toolbar/toolbar.component.ts`, especially `changeTabs()`. This worksheet
+adapts its isolated-body and equation sequence to the current solvers and UI.
 
-`Mechanism.getForceAnalysis(mode)` supplies the existing cached frames. Each frame has
-`jointReactionsByLink: Map<jointId, Map<bodyId, [Fx, Fy]>>`, a default joint-reaction map,
-guide couples, input effort, and solve status. The per-body map matters: the reaction on
-one side of a pin has the opposite sign on the other side.
+## Force worksheet
 
-`ForceSolver.explainAt()` runs the selected frame through the same assembly and solve
-used by those frames, with explanation capture enabled. It records:
+- **Definitions:** mechanism sketch, coordinate/gravity assumptions, force and moment
+  vectors, cross-product expansion, and names of the unknowns.
+- **Free Bodies:** every moving root body, orange reaction arrows, vector force balance,
+  vector moment balance about its center of mass G, then scalar x, y, and z equations.
+  Expand the numerical details for current loads and actual coefficient rows.
+- **System:** the combined bracketed matrix `A x = b`, ordered unknowns, answers, and residual.
 
-- The actual `A`, `b`, solved `x`, and ordered unknown labels.
-- Each moving root body's row offsets, joint positions, and center of mass G.
-- Applied forces, gravity, pin/guide reactions, guide couples, and input effort.
-- The known-load sum and inertia term for each body row.
+Joint-based names such as Aₓ and Bᵧ replace opaque column names. Shared reactions have
+opposite signs on their two bodies. **Assumed Directions** shows the sign convention;
+**Solved Directions** reverses arrows when the answer is negative. Lengths are schematic.
+Both choices describe the same equations and solution.
 
-The force panel draws each body's free-body diagram and displays its x/y force equations
-and z moment equation about **G**. In-motion analysis uses the solver's Newton–Euler
-inertia terms. Ideal slider blocks have two force rows; fixed frame bodies are identified
-as supports without independent equilibrium rows. Welded links are one rigid root body.
+**Static** sets the force calculation's acceleration terms to zero. **In Motion** uses
+current Newton–Euler inertia terms. Ideal slider blocks have two force rows; welded links
+form one rigid root body. Fixed bodies are supports. Shared-support and singular-system
+notices come from the solver. Gravity acts in negative y when enabled.
 
-Below the bodies, expand **Force matrix and solution** to see the combined system and
-solved unknowns. Shared-support solutions retain the solver's notice about the even load
-split. Invalid or singular frames display the solver's reason instead of a previous frame's
-free-body solution.
+The notes' second friction pass is **not implemented**. The worksheet identifies that
+limitation and does not add friction forces or torques to the current solution.
 
-The arrows indicate the solved direction and have schematic lengths. Zero-valued loads
-stay in the list but have no arrow. The view uses N and N·m. `displayForceSystem()` applies
-the same internal moment-scale normalization used by the analysis sampler, rescaling both
-rows and moment columns so the displayed equation still satisfies `A x = b`. This change
-preserves the existing force arithmetic and graph values.
+Some imported CAD examples specify centers of mass far outside their joint outlines.
+To keep the free body legible, the diagram marks a schematic **G*** with an explanatory
+note. Moment equations still use the specified center without moving it in the model.
 
-## Kinematics: loops where the solver uses loops
+## Kinematic worksheet
 
-`KinematicsSolver` still assembles velocity and acceleration matrices for its loop route,
-then puts the solved rates into joint/link maps. With capture enabled, it snapshots the
-two systems immediately after solving, alongside the **actual ordered unknown list**.
-The new UI does not guess column order from a different map.
+- **Position:** grounded coordinates, then every joint in construction order. Input rotation,
+  two-circle intersection, circle-line intersection, and rigid-body placement show geometry
+  and governing equations. Numerical details include candidates, the selected position,
+  and distance error. Tracer points have their own cards.
+- **Velocity:** directed closed loops, vector closure differentiated once, expanded cross
+  products, grounded zero terms, and the assembled system. Every moving joint and every
+  body's center of mass then has its relative-velocity equation and substitution.
+- **Acceleration:** the second derivative of closure, tangential and centripetal terms,
+  the acceleration system, and individual joint/center-of-mass equations and substitutions.
 
-For that route the panel displays:
+The position plan is saved when the mechanism is built. Intersection cards reconstruct
+candidates from that plan and the selected pose; their answer is the actual solved position.
+Circle-line construction uses a parametric guide, including vertical guides. Rigid-body
+placements are identified as rigid transforms rather than claimed circle intersections.
 
-1. Directed vectors for every required loop, including its ground closure.
-2. The x and y position-closure sums at this pose.
-3. The velocity and acceleration equations with this pose's coefficients.
-4. The two combined matrices and their solved unknowns.
+Loop sketches include the fixed return vector of the solver's directed ground-to-ground
+chain. Sliding edges include relative motion. The view names the actual rate-solving route:
+loop matrices, differentiated geometric constraints, or direct rigid-body motion. A numeric
+Jacobian walkthrough for the constraint route is still not implemented; its governing
+formulas are shown without substituting a loop matrix that the solver did not use.
 
-Current `Loop` objects are directed ground-to-ground chains; the drawing adds the fixed
-return vector to close them. Sliding edges are marked, and the differentiated equations
-include relative sliding motion. Angular unknowns are in radians; linear terms use the
-mechanism's length unit. Values shown on screen are rounded, while residuals use the
-unrounded snapshot.
+## Data flow
 
-The solver can also use differentiated geometric constraints or direct rigid-body motion.
-The panel names that route and shows its governing formulas. **A numeric Jacobian
-walkthrough for the constraint route is not implemented here.** It does not substitute a
-loop matrix when that is not the system used for the rates.
+`Mechanism.getForceAnalysis(mode)` retains its cached frames and
+`jointReactionsByLink: Map<jointId, Map<bodyId, [Fx, Fy]>>`. `ForceSolver.explainAt()` uses
+the same assembly and solve with optional capture of `A`, `b`, `x`, column order, body row
+offsets, geometry, loads, and inertia. Column/sign metadata connects body arrows to global
+unknowns. `displayForceSystem()` applies the graph sampler's moment-scale normalization;
+displayed forces are N and moments N·m. Solver arithmetic and graph values are preserved.
 
-## Position: actual construction steps
+`KinematicsSolver` snapshots its actual velocity and acceleration matrices immediately
+after solving, including column order. `SolverExplanationService` also copies its joint
+and body-center velocity/acceleration maps, omega, and alpha. Those maps drive individual
+joint and center-of-mass derivations.
 
-`PositionSolver.explanationPlan()` copies the construction order, method, reference joints,
-and rigid distances into `Mechanism.positionExplanation` when a mechanism is built.
-This preserves the plan before the next machine overwrites the solver's static maps.
-All joints in a simultaneous step retain that step's method.
-
-**Position steps** lists this order. For every recorded two-circle step, the service uses
-the selected frame's two known centers and the recorded rigid lengths to reconstruct
-both intersections. The diagram labels the selected intersection with its joint ID;
-the text shows centers, radii, circle equations, candidate coordinates, selected coordinates,
-and radius error.
-
-The solver normally follows the candidate nearest its previous position. Coincident
-centers use its existing motion-continuity rule; sample zero is the initial drawing.
-Circle-line, rigid-body, and simultaneous steps are named in the order list, but do not
-yet have individual geometric walkthrough cards. Fully coupled solves are identified
-explicitly rather than depicted as two-circle constructions.
-
-## Code map and validation
+Before inspecting a frame, the service restores that machine's solver state. The panel
+caches by machine, pose revision, sample, force mode, and arrow choice. Full systems are
+captured on request, not stored for every precomputed frame.
 
 | Responsibility | File |
 | --- | --- |
-| Entry toggle | `src/app/component/analysis-panel/analysis-panel.component.html` |
-| Panel, diagrams, matrix rendering | `src/app/component/solver-explanation/` |
+| Entry and deferred loading | `src/app/component/analysis-panel/analysis-panel.component.html` |
+| Worksheet, SVG diagrams, matrix display | `src/app/component/solver-explanation/` |
+| Joint-named force equations | `src/app/model/mechanism/force-worksheet.ts` |
+| Loop and relative-motion derivations | `src/app/model/mechanism/kinematic-worksheet.ts` |
 | Snapshot types | `src/app/model/mechanism/solver-explanation.ts` |
-| Per-sample access and display units | `src/app/services/solver-explanation.service.ts` |
-| Force assembly capture | `src/app/model/mechanism/force-solver.ts` |
-| Rate matrix capture | `src/app/model/mechanism/kinematic-solver.ts` |
-| Saved construction plan | `src/app/model/mechanism/position-solver.ts`, `mechanism.ts` |
+| Per-sample access, intersections, units | `src/app/services/solver-explanation.service.ts` |
+| Optional solver capture | `force-solver.ts`, `kinematic-solver.ts`, `position-solver.ts` in `src/app/model/mechanism/` |
 
-The service calls `mechanism.prepareSolvers()` before an inspected solve to restore that
-machine's drive state and loops. The panel caches its explanation by mechanism, pose
-revision, sample, and force mode. Full equation snapshots are captured only on request,
-not stored for every precomputed frame.
+Equations use KaTeX, loaded with the worksheet. Joint names are escaped and rendering
+uses `trust: false`. Wide equations scroll within their container, including on phones.
+Displayed numbers are rounded; residuals use original values.
 
-`solver-explanation.service.spec.ts` checks force-cache agreement, balance of the drawn
-loads, matrix residuals, unchanged loop rates, two-circle candidates, saved construction
-plans, and route restoration. Existing six-bar, force-analysis, force-fixture, and sample
-service tests cover the arithmetic that the instrumentation observes.
+## Validation and preview
 
-`node e2e/solver-explanation.mjs` checks the running development build using a disposable
-Chrome profile. It covers the punch press, four-bar, two independently selectable
-four-bars, a cylinder-driven boom, sample scrubbing, and phone layout. Screenshots, the
-scrub filmstrip/contact sheet, and a JSON report are written under
-`artifacts/solver-explanation/` (gitignored).
+`solver-explanation.service.spec.ts` checks force-cache agreement, load balances, matrix
+residuals, unchanged loop rates, circle candidates, saved plans, and machine restoration.
+`worksheet.spec.ts` checks equation rendering, reaction signs, every TeachingLab joint/center
+relative-motion equation, and slider intersection candidates.
 
-On this Windows installation, a compatible portable Node is installed at
-`C:\Users\adg66\.cache\pmks-tools\node_modules\node\bin\node.exe`.
-From the PMKS repository, start the preview with:
+With the dev server running, `node e2e/solver-explanation.mjs` checks TeachingLab worksheets,
+multi-machine selection, the constraint route, scrubbing, dismissal, reduced motion, and
+phone layout. It uses disposable Chrome and writes screenshots, a scrub filmstrip/contact
+sheet, and a JSON report under `artifacts/solver-worksheet/` (gitignored).
+
+From the repository root, `npm start` serves `http://localhost:4200/` with a compatible Node.
+On this Windows setup, use the compatible portable Node directly:
 
 ```powershell
 & 'C:\Users\adg66\.cache\pmks-tools\node_modules\node\bin\node.exe' node_modules/@angular/cli/bin/ng.js serve --host localhost --port 4200
 ```
-
-Then open `http://localhost:4200/`. If using a normally installed compatible Node,
-`npm start` performs the same development-server task.

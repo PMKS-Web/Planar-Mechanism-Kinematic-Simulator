@@ -2,7 +2,12 @@ import { Injectable } from '@angular/core';
 import { Mechanism } from '../model/mechanism/mechanism';
 import { ForceAnalysisMode, ForceSolver } from '../model/mechanism/force-solver';
 import { KinematicsSolver } from '../model/mechanism/kinematic-solver';
-import { BodyExplanation, LinearSystemExplanation } from '../model/mechanism/solver-explanation';
+import {
+  BodyExplanation,
+  LinearSystemExplanation,
+  KinematicSnapshot,
+} from '../model/mechanism/solver-explanation';
+import { Joint, PrisJoint } from '../model/joint';
 import { MODEL_SCALE } from '../model/render-scale';
 import { circleCircleIntersection } from '../model/utils';
 
@@ -84,7 +89,7 @@ export class SolverExplanationService {
     };
   }
 
-  kinematicsAt(mechanism: Mechanism, step: number) {
+  kinematicsAt(mechanism: Mechanism, step: number): KinematicSnapshot {
     mechanism.prepareSolvers();
     KinematicsSolver.resetVariables();
     KinematicsSolver.captureExplanation = true;
@@ -95,6 +100,12 @@ export class SolverExplanationService {
         mechanism.inputAngularVelocities[step]
       );
       return {
+        jointVelocity: new Map(KinematicsSolver.jointVelMap),
+        jointAcceleration: new Map(KinematicsSolver.jointAccMap),
+        bodyVelocity: new Map(KinematicsSolver.linkVelMap),
+        bodyAcceleration: new Map(KinematicsSolver.linkAccMap),
+        omega: new Map(KinematicsSolver.linkAngVelMap),
+        alpha: new Map(KinematicsSolver.linkAngAccMap),
         route: KinematicsSolver.explanationRoute,
         velocity: displayKinematicSystem(KinematicsSolver.velocityExplanation, mechanism.unit),
         acceleration: displayKinematicSystem(
@@ -132,6 +143,60 @@ export class SolverExplanationService {
               Math.max(
                 Math.abs(Math.hypot(point.x - a.x, point.y - a.y) - r0),
                 Math.abs(Math.hypot(point.x - b.x, point.y - b.y) - r1)
+              ) / MODEL_SCALE,
+          },
+        ];
+      });
+  }
+
+  /** A circle–line construction in parametric form also covers vertical guides. */
+  circleLinesAt(mechanism: Mechanism, step: number) {
+    if (mechanism.usesCoupledPositionSolve) return [];
+    const joints = mechanism.joints[step];
+    return mechanism.positionExplanation
+      .filter((one) => one.method === 'circleLineIntersectionPoints')
+      .flatMap((one) => {
+        const point = joints.find((j) => j.id === one.jointId);
+        const center = joints.find((j) => j.id === one.knownIds[0]);
+        const slider = joints.find(
+          (j) =>
+            j instanceof PrisJoint &&
+            (one.knownIds.includes(j.id) || j.connectedJoints.some((p) => p.id === point?.id))
+        ) as PrisJoint | undefined;
+        if (!point || !center || !slider) return [];
+        const radius = one.radii[0];
+        const origin: Joint = slider.isFloating
+          ? slider.slotJointA!
+          : mechanism.joints[0].find((j) => j.id === slider.id)!;
+        const u: [number, number] = [Math.cos(slider.slotAngle), Math.sin(slider.slotAngle)];
+        const dx = center.x - origin.x,
+          dy = center.y - origin.y;
+        const along = dx * u[0] + dy * u[1];
+        const normal = dx * -u[1] + dy * u[0];
+        const square = radius * radius - normal * normal;
+        const roots =
+          square < -1e-6
+            ? []
+            : Math.abs(square) < 1e-6
+              ? [along]
+              : [along - Math.sqrt(square), along + Math.sqrt(square)];
+        const candidates = roots.map((s): [number, number] => [
+          origin.x + s * u[0],
+          origin.y + s * u[1],
+        ]);
+        return [
+          {
+            ...one,
+            point,
+            center,
+            radius,
+            origin,
+            u,
+            candidates,
+            residual:
+              Math.max(
+                Math.abs(Math.hypot(point.x - center.x, point.y - center.y) - radius),
+                Math.abs((point.x - origin.x) * -u[1] + (point.y - origin.y) * u[0])
               ) / MODEL_SCALE,
           },
         ];

@@ -23,7 +23,8 @@ function stylesheets(dir = resolve(ROOT, 'src')): string[] {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
     if (statSync(path).isDirectory()) return stylesheets(path);
-    return name.endsWith('.scss') ? [relative(ROOT, path)] : [];
+    // Compare portable paths with VARS/TOKENS on Windows as well as Unix.
+    return name.endsWith('.scss') ? [relative(ROOT, path).replaceAll('\\', '/')] : [];
   });
 }
 

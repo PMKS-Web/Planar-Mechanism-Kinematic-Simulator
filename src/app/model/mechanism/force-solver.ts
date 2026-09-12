@@ -188,11 +188,16 @@ export class ForceSolver {
   private static explanationFallback = new WeakMap<MechanismFrames, FrameKinematics[]>();
 
   /** Reassemble one inspected frame through the same path used by the graphs. */
-  static explainAt(mechanism: MechanismFrames, mode: ForceAnalysisMode, index: number,
-    evenest = false): ForceAnalysisFrame {
+  static explainAt(
+    mechanism: MechanismFrames,
+    mode: ForceAnalysisMode,
+    index: number,
+    evenest = false
+  ): ForceAnalysisFrame {
     let fallback: FrameKinematics[] = [];
     if (mode === 'dynamic') {
-      fallback = this.explanationFallback.get(mechanism) ??
+      fallback =
+        this.explanationFallback.get(mechanism) ??
         this.finiteDifferenceKinematics(mechanism, mechanism.joints.length);
       this.explanationFallback.set(mechanism, fallback);
     }
@@ -472,14 +477,26 @@ export class ForceSolver {
 
     const A = Array.from({ length: rowCount }, () => Array(unknownCount).fill(0));
     const b = Array(rowCount).fill(0);
-    const bodyTrace: BodyExplanation[] = capture ? bodies.map((body) => {
-      const rows = bodyRows.get(body.id)!;
-      const center: [number, number] = body instanceof RealLink
-        ? [body.CoM.x, body.CoM.y] : [body.joints[0].x, body.joints[0].y];
-      return { id: body.id, name: body.name || body.id, center,
-        points: body.joints.map((joint) => ({ id: joint.id, x: joint.x, y: joint.y })),
-        startRow: rows.start, rowCount: rows.count, loads: [], known: [0, 0, 0], inertia: [0, 0, 0] };
-    }) : [];
+    const bodyTrace: BodyExplanation[] = capture
+      ? bodies.map((body) => {
+          const rows = bodyRows.get(body.id)!;
+          const center: [number, number] =
+            body instanceof RealLink
+              ? [body.CoM.x, body.CoM.y]
+              : [body.joints[0].x, body.joints[0].y];
+          return {
+            id: body.id,
+            name: body.name || body.id,
+            center,
+            points: body.joints.map((joint) => ({ id: joint.id, x: joint.x, y: joint.y })),
+            startRow: rows.start,
+            rowCount: rows.count,
+            loads: [],
+            known: [0, 0, 0],
+            inertia: [0, 0, 0],
+          };
+        })
+      : [];
 
     const addForceCoefficient = (
       body: Link,
@@ -578,19 +595,37 @@ export class ForceSolver {
       }
       if (capture) {
         const trace = bodyTrace.find((one) => one.id === body.id)!;
-        trace.inertia = [massKg * acceleration[0] * units.distanceToM,
+        trace.inertia = [
+          massKg * acceleration[0] * units.distanceToM,
           massKg * acceleration[1] * units.distanceToM,
           body instanceof RealLink && mode === 'dynamic'
-            ? body.massMoI * units.inertiaToKgM2 * kinematics!.linkAngularAccelerations.get(body.id)! : 0];
-        if (gravity) trace.loads.push({ label: 'W', point: trace.center,
-          vector: [0, -massKg * GRAVITY], kind: 'weight' });
-        if (body instanceof RealLink) for (const force of body.forces) {
-          trace.loads.push({ label: force.name || force.id,
-            point: [force.startCoord.x, force.startCoord.y], kind: 'applied',
-            vector: [force.mag * Math.cos(force.angleRad) * units.forceToN,
-              force.mag * Math.sin(force.angleRad) * units.forceToN] });
-        }
-        trace.known = trace.inertia.slice(0, rows.count).map((value, axis) => value - b[rows.start + axis]);
+            ? body.massMoI *
+              units.inertiaToKgM2 *
+              kinematics!.linkAngularAccelerations.get(body.id)!
+            : 0,
+        ];
+        if (gravity)
+          trace.loads.push({
+            label: 'W',
+            point: trace.center,
+            vector: [0, -massKg * GRAVITY],
+            kind: 'weight',
+          });
+        if (body instanceof RealLink)
+          for (const force of body.forces) {
+            trace.loads.push({
+              label: force.name || force.id,
+              point: [force.startCoord.x, force.startCoord.y],
+              kind: 'applied',
+              vector: [
+                force.mag * Math.cos(force.angleRad) * units.forceToN,
+                force.mag * Math.sin(force.angleRad) * units.forceToN,
+              ],
+            });
+          }
+        trace.known = trace.inertia
+          .slice(0, rows.count)
+          .map((value, axis) => value - b[rows.start + axis]);
       }
     }
 
@@ -672,40 +707,104 @@ export class ForceSolver {
     if (capture) {
       const unknowns = reactions.map((reaction) => ({
         label: `R${reaction.column + 1} (${reaction.joint.id}→${reaction.positiveBody.id}, ${
-          reaction.direction[0] === 1 ? 'x' : reaction.direction[1] === 1 ? 'y' : 'normal'})`, unit: 'N' }));
+          reaction.direction[0] === 1 ? 'x' : reaction.direction[1] === 1 ? 'y' : 'normal'
+        })`,
+        unit: 'N',
+      }));
       for (const reaction of reactions) {
         const value = solution.values[reaction.column];
-        for (const [body, sign] of [[reaction.positiveBody, 1], [reaction.negativeBody, -1]] as const) {
-          if (body) bodyTrace.find((one) => one.id === body.id)!.loads.push({
-            label: `${sign === -1 ? '−' : ''}R${reaction.column + 1}`,
-            point: [reaction.joint.x, reaction.joint.y],
-            vector: [sign * value * reaction.direction[0], sign * value * reaction.direction[1]],
-            kind: 'reaction' });
+        for (const [body, sign] of [
+          [reaction.positiveBody, 1],
+          [reaction.negativeBody, -1],
+        ] as const) {
+          if (body)
+            bodyTrace
+              .find((one) => one.id === body.id)!
+              .loads.push({
+                label: `${sign === -1 ? '−' : ''}R${reaction.column + 1}`,
+                point: [reaction.joint.x, reaction.joint.y],
+                vector: [
+                  sign * value * reaction.direction[0],
+                  sign * value * reaction.direction[1],
+                ],
+                kind: 'reaction',
+                column: reaction.column,
+                sign,
+                direction: [...reaction.direction],
+                jointId: reaction.joint.id,
+              });
         }
       }
       for (const couple of couples) {
         unknowns.push({ label: `C${couple.slider.id}`, unit: 'moment' });
-        for (const [body, sign] of [[couple.rider, 1], [couple.carrier, -1]] as const) {
-          if (body) bodyTrace.find((one) => one.id === body.id)!.loads.push({
-            label: `C${couple.slider.id}`, point: [couple.slider.x, couple.slider.y], vector: [0, 0],
-            couple: sign * solution.values[couple.column], kind: 'reaction' });
+        for (const [body, sign] of [
+          [couple.rider, 1],
+          [couple.carrier, -1],
+        ] as const) {
+          if (body)
+            bodyTrace
+              .find((one) => one.id === body.id)!
+              .loads.push({
+                label: `C${couple.slider.id}`,
+                point: [couple.slider.x, couple.slider.y],
+                vector: [0, 0],
+                couple: sign * solution.values[couple.column],
+                kind: 'reaction',
+                column: couple.column,
+                sign,
+                jointId: couple.slider.id,
+              });
         }
       }
       if (inputBody && inputKind && inputJoint) {
-        unknowns.push({ label: inputKind === 'torque' ? 'T input' : 'F input', unit: inputKind === 'torque' ? 'moment' : 'N' });
+        unknowns.push({
+          label: inputKind === 'torque' ? 'T input' : 'F input',
+          unit: inputKind === 'torque' ? 'moment' : 'N',
+        });
         const value = solution.values[inputColumn];
-        bodyTrace.find((one) => one.id === inputBody.id)!.loads.push({ label: 'Input',
-          point: [inputJoint.x, inputJoint.y], vector: [value * inputDirection[0], value * inputDirection[1]],
-          ...(inputKind === 'torque' ? { couple: value } : {}), kind: 'drive' });
+        bodyTrace
+          .find((one) => one.id === inputBody.id)!
+          .loads.push({
+            label: 'Input',
+            point: [inputJoint.x, inputJoint.y],
+            vector: [value * inputDirection[0], value * inputDirection[1]],
+            ...(inputKind === 'torque' ? { couple: value } : {}),
+            kind: 'drive',
+            column: inputColumn,
+            sign: 1,
+            direction: [...inputDirection],
+            jointId: inputJoint.id,
+          });
         if (inputKind === 'force' && inputJoint instanceof PrisJoint && inputJoint.isFloating) {
           const carrier = this.rootBody(bodies, inputJoint.carrier);
-          if (carrier) bodyTrace.find((one) => one.id === carrier.id)!.loads.push({ label: '−Input',
-            point: [inputJoint.x, inputJoint.y], vector: [-value * inputDirection[0], -value * inputDirection[1]], kind: 'drive' });
+          if (carrier)
+            bodyTrace
+              .find((one) => one.id === carrier.id)!
+              .loads.push({
+                label: '−Input',
+                point: [inputJoint.x, inputJoint.y],
+                vector: [-value * inputDirection[0], -value * inputDirection[1]],
+                kind: 'drive',
+                column: inputColumn,
+                sign: -1,
+                direction: [...inputDirection],
+                jointId: inputJoint.id,
+              });
         }
       }
-      explanation = { bodies: bodyTrace, fixedBodies: [...frame], system: {
-        A: A.map((row) => [...row]), b: [...b], x: [...solution.values], unknowns,
-        rows: bodyTrace.flatMap((body) => ['ΣFx', 'ΣFy', 'ΣMz @ G'].slice(0, body.rowCount).map((axis) => `${body.name}: ${axis}`)) } };
+      explanation = {
+        bodies: bodyTrace,
+        fixedBodies: [...frame],
+        system: {
+          A: A.map((row) => [...row]),
+          b: [...b],
+          x: [...solution.values],
+          unknowns,
+          rows: bodyTrace.flatMap((body) =>
+            ['ΣFx', 'ΣFy', 'ΣMz @ G'].slice(0, body.rowCount).map((axis) => `${body.name}: ${axis}`)
+          ),
+        },
+      };
     }
 
     return {

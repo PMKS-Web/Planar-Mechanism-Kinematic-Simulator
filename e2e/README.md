@@ -47,6 +47,10 @@ a reason to worry about.
 
 ## Outputs
 
+`solver-explanation.mjs` checks worked analysis equations, free-body diagrams, construction
+steps, multiple machines, scrubbing, and phone layout. It uses installed Chrome with a
+disposable profile and saves evidence in `artifacts/solver-worksheet/`.
+
 Each suite that saves anything writes it to its own directory under `artifacts/`, which is
 gitignored — for example `artifacts/link-holds/` or `artifacts/posed-edit-audit/matrix.md`. A few
 older suites share `artifacts/screenshots/`, and most of those prefix their filenames with

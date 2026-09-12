@@ -5,6 +5,7 @@ export interface DiagramPoint {
   y: number;
   label?: string;
   color?: string;
+  ground?: boolean;
 }
 export interface DiagramLine {
   from: DiagramPoint;
@@ -14,6 +15,7 @@ export interface DiagramLine {
   dashed?: boolean;
   arrow?: boolean;
   width?: number;
+  midpointLabel?: boolean;
 }
 export interface DiagramCircle {
   x: number;
@@ -22,9 +24,11 @@ export interface DiagramCircle {
   color: string;
 }
 export interface Diagram {
+  note?: string;
   points: DiagramPoint[];
   lines: DiagramLine[];
   circles?: DiagramCircle[];
+  outlines?: DiagramPoint[][];
 }
 
 let nextDiagram = 0;
@@ -45,6 +49,15 @@ let nextDiagram = 0;
         <path d="M0 0 L10 5 L0 10 Z" fill="context-stroke" />
       </marker>
     </defs>
+    @for (outline of diagram().outlines ?? []; track $index) {
+      <polygon
+        [attr.points]="polygon(outline)"
+        fill="var(--surface)"
+        stroke="var(--canvas-ink)"
+        stroke-width="2"
+        stroke-linejoin="round"
+      />
+    }
     @for (circle of diagram().circles ?? []; track $index) {
       <circle
         [attr.cx]="sx(circle.x)"
@@ -62,7 +75,7 @@ let nextDiagram = 0;
         [attr.y1]="sy(line.from.y)"
         [attr.x2]="sx(line.to.x)"
         [attr.y2]="sy(line.to.y)"
-        [attr.stroke]="line.color ?? '#a9b0c7'"
+        [attr.stroke]="line.color ?? 'var(--canvas-ink)'"
         [attr.stroke-width]="line.width ?? (line.arrow ? 2 : 6)"
         stroke-linecap="round"
         [attr.stroke-dasharray]="line.dashed ? '5 4' : null"
@@ -70,28 +83,31 @@ let nextDiagram = 0;
       />
       @if (line.label) {
         <text
-          [attr.x]="sx(line.to.x) + 5"
-          [attr.y]="sy(line.to.y) - 6"
-          [attr.fill]="line.color ?? '#4f5670'"
+          [attr.x]="sx(line.midpointLabel ? (line.from.x + line.to.x) / 2 : line.to.x) + 5"
+          [attr.y]="sy(line.midpointLabel ? (line.from.y + line.to.y) / 2 : line.to.y) - 6"
+          [attr.fill]="line.color ?? 'var(--canvas-ink)'"
         >
           {{ line.label }}
         </text>
       }
     }
     @for (point of diagram().points; track $index) {
+      @if (point.ground) {
+        <path [attr.d]="ground(point)" fill="none" stroke="var(--canvas-ink)" stroke-width="1" />
+      }
       <circle
         [attr.cx]="sx(point.x)"
         [attr.cy]="sy(point.y)"
         r="4"
-        fill="white"
-        [attr.stroke]="point.color ?? '#424b72'"
+        fill="var(--surface)"
+        [attr.stroke]="point.color ?? 'var(--canvas-ink)'"
         stroke-width="1.5"
       />
       @if (point.label) {
         <text
           [attr.x]="sx(point.x) + 7"
           [attr.y]="sy(point.y) + 15"
-          [attr.fill]="point.color ?? '#424b72'"
+          [attr.fill]="point.color ?? 'var(--canvas-ink)'"
         >
           {{ point.label }}
         </text>
@@ -99,7 +115,7 @@ let nextDiagram = 0;
     }
     <path
       d="M18 232 h24 M18 232 v-24"
-      stroke="#747b90"
+      stroke="var(--text-secondary)"
       fill="none"
       [attr.marker-end]="'url(#' + markerId + ')'"
     />
@@ -114,13 +130,15 @@ let nextDiagram = 0;
       svg {
         width: 100%;
         display: block;
-        background: #f7f8fc;
-        border-radius: 8px;
+        background: var(--surface);
+        border-radius: var(--border-radius);
       }
       text {
-        font: 11px system-ui;
+        font:
+          italic 12px Georgia,
+          serif;
         paint-order: stroke;
-        stroke: #f7f8fc;
+        stroke: var(--surface);
         stroke-width: 3px;
         stroke-linejoin: round;
       }
@@ -131,6 +149,14 @@ export class SolverDiagramComponent {
   readonly diagram = input.required<Diagram>();
   readonly label = input('Solver diagram');
   readonly markerId = `solver-arrow-${nextDiagram++}`;
+  protected polygon(points: DiagramPoint[]) {
+    return points.map((p) => `${this.sx(p.x)},${this.sy(p.y)}`).join(' ');
+  }
+  protected ground(p: DiagramPoint) {
+    const x = this.sx(p.x),
+      y = this.sy(p.y);
+    return `M${x - 10} ${y + 12}L${x} ${y}L${x + 10} ${y + 12}Z M${x - 15} ${y + 13}h30 m-25 0l-4 5 m10-5l-4 5 m10-5l-4 5 m10-5l-4 5`;
+  }
   get bounds() {
     const all = [
       ...this.diagram().points,

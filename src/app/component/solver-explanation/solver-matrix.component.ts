@@ -1,121 +1,96 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import { LinearSystemExplanation } from '../../model/mechanism/solver-explanation';
 import { numberText } from '../../services/solver-explanation.service';
+import { column, texNumber } from '../../model/mechanism/worksheet-math';
+import { SolverMathComponent } from './solver-math.component';
 
 @Component({
   selector: 'app-solver-matrix',
-  changeDetection: ChangeDetectionStrategy.Eager,
-  template: `<details>
-    <summary>{{ title() }} · A x = b</summary>
+  imports: [SolverMathComponent],
+  template: `<details [open]="expanded()">
+    <summary>{{ title() }}</summary>
     <p>
-      Each row is one equation. Columns follow the unknowns listed below. Values are rounded here
-      for reading.
+      Rows follow the body or loop equations above. The column vector names each unknown in order.
     </p>
-    <div class="matrixScroll" tabindex="0" aria-label="Solver matrix">
-      <table>
-        <thead>
-          <tr>
-            <th>Equation</th>
-            @for (unknown of system().unknowns; track $index) {
-              <th>{{ symbol($index) }}</th>
-            }
-            <th>b</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (row of system().A; track $index; let i = $index) {
-            <tr>
-              <th>{{ system().rows[i] }}</th>
-              @for (value of row; track $index) {
-                <td>{{ n(value) }}</td>
-              }
-              <td class="rhs">{{ n(system().b[i]) }}</td>
-            </tr>
-          }
-        </tbody>
-      </table>
+    <app-solver-math [equation]="matrix()"></app-solver-math>
+    <h4>Solved Unknowns</h4>
+    <div class="solutions">
+      @for (unknown of system().unknowns; track $index; let i = $index) {
+        <div>
+          <app-solver-math [equation]="answer(i)"></app-solver-math><span>{{ unknown.unit }}</span>
+        </div>
+      }
     </div>
-    <h4>Solved unknowns · x</h4>
-    @for (unknown of system().unknowns; track $index; let i = $index) {
-      <div class="answer">
-        <span>{{ unknown.label }}</span
-        ><strong
-          >{{ n(system().x[i]) }} <small>{{ unknown.unit }}</small></strong
-        >
-      </div>
-    }
-    <p>Maximum |A x − b|: {{ n(residual) }}</p>
+    <p>Maximum |A x − b|: {{ n(residual) }} · evaluated before rounding.</p>
+    <details>
+      <summary>Equation Row Order</summary>
+      <ol>
+        @for (row of system().rows; track $index) {
+          <li>{{ row }}</li>
+        }
+      </ol>
+    </details>
   </details>`,
   styles: [
     `
       details {
-        margin-top: 12px;
-        border-top: 1px solid #e1e4ee;
-        padding-top: 12px;
+        padding: 12px 0;
+        border-top: 1px solid var(--border-rule);
       }
       summary {
         cursor: pointer;
         font-size: 13px;
         font-weight: 600;
-        color: #343e87;
+        color: var(--brand);
       }
-      p {
-        font-size: 11px;
-        color: #687083;
-        line-height: 1.5;
-      }
-      .matrixScroll {
-        overflow: auto;
-        max-height: 360px;
-      }
-      table {
-        border-collapse: collapse;
-        font:
-          11px ui-monospace,
-          monospace;
-        width: max-content;
-        min-width: 100%;
-      }
-      td,
-      th {
-        padding: 7px;
-        border: 1px solid #dfe3ee;
-        white-space: nowrap;
-        text-align: right;
-      }
-      th {
-        background: #f0f2f8;
-        font-weight: 500;
-      }
-      .rhs {
-        background: #eef5f4;
+      p,
+      li {
+        font-size: 12px;
+        color: var(--text-secondary);
+        line-height: 1.6;
       }
       h4 {
-        margin: 14px 0 8px;
-        font-size: 12px;
+        font-size: 14px;
+        margin-bottom: 8px;
       }
-      .answer {
+      .solutions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+      }
+      .solutions > div {
         display: flex;
-        justify-content: space-between;
-        gap: 10px;
-        font-size: 11px;
-        padding: 6px 0;
-        border-bottom: 1px solid #eef0f5;
+        align-items: center;
+        gap: 8px;
+        border-bottom: 1px solid var(--border-rule);
       }
-      small {
-        font-weight: 400;
+      span {
+        font-size: 12px;
+        color: var(--text-secondary);
       }
     `,
   ],
 })
 export class SolverMatrixComponent {
   readonly system = input.required<LinearSystemExplanation>();
-  readonly title = input('Assembled system');
-  n = numberText;
-  symbol(index: number) {
-    return this.system().unknowns[index].label.split(' (')[0];
+  readonly title = input('Assembled System');
+  readonly expanded = input(false);
+  protected n = numberText;
+  private symbol(index: number) {
+    return this.system()
+      .unknowns[index].label.split(' (')[0]
+      .replace('ω', '\\omega')
+      .replace('α', '\\alpha')
+      .replace(/_([^\{].*)$/, '_{$1}');
   }
-  get residual() {
+  protected readonly matrix = computed(() => {
+    const s = this.system();
+    return `\\underbrace{\\begin{bmatrix}${s.A.map((r) => r.map(texNumber).join('&')).join('\\\\')}\\end{bmatrix}}_{A}\\underbrace{${column(s.x.map((_, i) => this.symbol(i)))}}_{x}=\\underbrace{${column(s.b)}}_{b}`;
+  });
+  protected answer(index: number) {
+    return `${this.symbol(index)}=${texNumber(this.system().x[index])}`;
+  }
+  protected get residual() {
     const s = this.system();
     return Math.max(
       0,

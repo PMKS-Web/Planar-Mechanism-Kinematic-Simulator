@@ -1,258 +1,279 @@
-import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
+import { Component, inject, input, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { SegmentedComponent } from '../BLOCKS/segmented/segmented.component';
+import { ButtonComponent } from '../BLOCKS/button/button.component';
 import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService } from '../../services/settings.service';
-import {
-  SolverExplanationService,
-  equationText,
-  numberText,
-} from '../../services/solver-explanation.service';
+import { SolverExplanationService, numberText } from '../../services/solver-explanation.service';
 import { Mechanism } from '../../model/mechanism/mechanism';
-import { BodyExplanation, PositionStepExplanation } from '../../model/mechanism/solver-explanation';
 import { MODEL_SCALE } from '../../model/render-scale';
+import { RealJoint, PrisJoint } from '../../model/joint';
+import { forceWorksheet } from '../../model/mechanism/force-worksheet';
+import { kinematicWorksheet } from '../../model/mechanism/kinematic-worksheet';
+import { column, texName, texNumber, vector } from '../../model/mechanism/worksheet-math';
+import { constructionDiagram, freeBodyDiagram, mechanismDiagram } from './worksheet-diagrams';
 import { Diagram, SolverDiagramComponent } from './solver-diagram.component';
 import { SolverMatrixComponent } from './solver-matrix.component';
-
-const INK = { reaction: '#da7930', applied: '#7250a2', weight: '#218579', drive: '#c33f63' };
+import { SolverMathComponent } from './solver-math.component';
 
 @Component({
   selector: 'app-solver-explanation',
   templateUrl: './solver-explanation.component.html',
   styleUrls: ['./solver-explanation.component.scss'],
-  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
     DecimalPipe,
     FormsModule,
     SegmentedComponent,
+    ButtonComponent,
     SolverDiagramComponent,
     SolverMatrixComponent,
+    SolverMathComponent,
   ],
 })
 export class SolverExplanationComponent {
   readonly force = input(false);
-  readonly mechanism = inject(MechanismService);
-  readonly settings = inject(SettingsService);
-  private explain = inject(SolverExplanationService);
-  readonly forceOptions = ['Static', 'In-motion'];
-  readonly kinematicOptions = ['Vector loops', 'Position steps'];
-  readonly axes = ['ΣFx', 'ΣFy', 'ΣMz about G'];
-  section = 0;
-  chosenMachine = '';
-  n = numberText;
-  readonly scale = MODEL_SCALE;
+  protected readonly mechanism = inject(MechanismService);
+  protected readonly settings = inject(SettingsService);
+  private readonly explain = inject(SolverExplanationService);
+  private readonly dialogs = inject(MatDialog);
+  private readonly dialog = inject(MatDialogRef<SolverExplanationComponent>, { optional: true });
+  private readonly dialogData = inject<{ force: boolean; section: number; machine: string }>(
+    MAT_DIALOG_DATA,
+    { optional: true }
+  );
+  protected readonly wide = !!this.dialogData;
+  protected readonly section = signal(this.dialogData?.section ?? 0);
+  protected readonly chosenMachine = signal(this.dialogData?.machine ?? '');
+  protected readonly assumed = signal(true);
+  protected readonly forceOptions = ['Static', 'In-motion'];
+  protected readonly forceSections = ['Definitions', 'Free Bodies', 'System'];
+  protected readonly kinematicSections = ['Position', 'Velocity', 'Acceleration'];
+  protected readonly arrowOptions = ['Assumed Directions', 'Solved Directions'];
+  protected n = numberText;
+  protected readonly scale = MODEL_SCALE;
+  protected readonly vectorDefinitions = String.raw`\vec F=\begin{bmatrix}F_x\\F_y\\0\end{bmatrix},\quad\vec M=\begin{bmatrix}0\\0\\M_z\end{bmatrix}`;
+  protected readonly motionDefinitions = String.raw`\vec\omega=\begin{bmatrix}0\\0\\\omega\end{bmatrix},\quad\vec\alpha=\begin{bmatrix}0\\0\\\alpha\end{bmatrix}`;
+  protected readonly crossProduct = String.raw`(\vec r\times\vec F)_z=r_x F_y-r_y F_x`;
+  protected readonly slidingLaw = String.raw`\vec v=\vec\omega\times\vec r+\dot s\,\hat u`;
+  protected readonly slidingAcceleration = String.raw`\vec a=\vec\alpha\times\vec r-\omega^2\vec r+2\vec\omega\times(\dot s\,\hat u)+\ddot s\,\hat u`;
+  protected readonly constraintLaw = String.raw`F(q,t)=0,\quad J\dot q=-F_t,\quad J\ddot q=-\dot J\dot q-\dot F_t`;
   private cache?: {
     mechanism: Mechanism;
     key: string;
     value: ReturnType<SolverExplanationComponent['build']>;
   };
-
-  get index() {
-    const index = this.mechanism.partitions.findIndex((p) => p.id === this.chosenMachine);
-    return index < 0 ? 0 : index;
+  protected isForce() {
+    return this.dialogData?.force ?? this.force();
   }
-  get machineId() {
+  protected get index() {
+    const i = this.mechanism.partitions.findIndex((p) => p.id === this.chosenMachine());
+    return i < 0 ? 0 : i;
+  }
+  protected get machineId() {
     return this.mechanism.partitions[this.index]?.id ?? '';
   }
-  get solved() {
+  protected get solved() {
     return this.mechanism.mechanisms[this.index];
   }
-  get step() {
+  protected get step() {
     return this.mechanism.currentSampleOf(this.index);
   }
-  get lastStep() {
+  protected get lastStep() {
     return Math.max(0, (this.solved?.joints.length ?? 1) - 1);
   }
-  get valid() {
+  protected get valid() {
     return this.solved?.isMechanismValid() ?? false;
   }
-  get seconds() {
+  protected get seconds() {
     return this.solved?.timeNum[this.step] ?? 0;
   }
-  get positionSteps() {
-    return this.solved?.positionExplanation ?? [];
-  }
-
-  get view() {
+  protected get view() {
     if (!this.valid) return undefined;
-    const key = `${this.mechanism.poseRevision}|${this.step}|${this.force()}|${this.settings.forceAnalysisMode.value}`;
-    if (this.cache?.mechanism !== this.solved || this.cache.key !== key) {
+    const key = `${this.mechanism.poseRevision}|${this.step}|${this.isForce()}|${this.settings.forceAnalysisMode.value}|${this.assumed()}`;
+    if (this.cache?.mechanism !== this.solved || this.cache.key !== key)
       this.cache = { mechanism: this.solved, key, value: this.build(this.solved, this.step) };
-    }
     return this.cache.value;
   }
-
   private build(mechanism: Mechanism, step: number) {
-    const force = this.force()
+    const joints = mechanism.joints[step];
+    const force = this.isForce()
       ? this.explain.forceAt(mechanism, step, this.settings.forceAnalysisMode.value)
       : undefined;
-    const kinematics = !this.force() ? this.explain.kinematicsAt(mechanism, step) : undefined;
-    const circles = this.explain.circlesAt(mechanism, step).map((circle) => ({
-      ...circle,
+    const forceWork =
+      force?.frame.explanation && force.system
+        ? forceWorksheet(
+            force.frame.explanation,
+            force.system,
+            this.settings.forceAnalysisMode.value === 'dynamic'
+          )
+        : undefined;
+    const rates = !this.isForce() ? this.explain.kinematicsAt(mechanism, step) : undefined;
+    const kine = rates ? kinematicWorksheet(mechanism, step, rates) : undefined;
+    const circles = this.explain.circlesAt(mechanism, step);
+    const circleLines = this.explain.circleLinesAt(mechanism, step);
+    const positions = mechanism.positionExplanation.map((one) => {
+      const point = joints.find((j) => j.id === one.jointId)!;
+      const initial = mechanism.joints[0].find((j) => j.id === one.jointId)!;
+      const refs = one.knownIds.flatMap((id) => {
+        const j = joints.find((p) => p.id === id);
+        return j ? [j] : [];
+      });
+      const radii = refs.map((p, i) => {
+        const ref = mechanism.joints[0].find((j) => j.id === p.id)!;
+        return Number.isFinite(one.radii[i])
+          ? one.radii[i]
+          : Math.hypot(initial.x - ref.x, initial.y - ref.y);
+      });
+      const circle = circles.find((c) => c.jointId === point.id);
+      const line = circleLines.find((c) => c.jointId === point.id);
+      const circleMethod = one.method === 'twoCircleIntersectionPoints';
+      const rigid = one.method === 'determineTracerJoint';
+      const prescribed = one.method === 'incrementRevInput';
+      const guide = one.method === 'circleLineIntersectionPoints';
+      const method = circleMethod
+        ? 'Two-circle intersection'
+        : guide
+          ? 'Circle–line intersection'
+          : rigid
+            ? 'Rigid-body point'
+            : prescribed
+              ? 'Prescribed crank motion'
+              : /simultaneous/i.test(one.method)
+                ? 'Simultaneous constraints'
+                : 'Guide / rigid-body construction';
+      const equations = refs.slice(0, guide || prescribed ? 1 : 2).map((p, i) => ({
+        symbolic: `(x_{${texName(point.id)}}-x_{${texName(p.id)}})^2+(y_{${texName(point.id)}}-y_{${texName(p.id)}})^2=r_{${texName(point.id + p.id)}}^2`,
+        numbers: `(x-(${texNumber(p.x / MODEL_SCALE)}))^2+(y-(${texNumber(p.y / MODEL_SCALE)}))^2=${texNumber(radii[i] / MODEL_SCALE)}^2`,
+      }));
+      const diagram = constructionDiagram(
+        point,
+        refs.slice(0, guide || prescribed ? 1 : 2),
+        radii,
+        circle?.candidates ?? line?.candidates
+      );
+      const extra: string[] = [];
+      if (prescribed && refs[0]) {
+        const r = radii[0] / MODEL_SCALE,
+          theta = Math.atan2(point.y - refs[0].y, point.x - refs[0].x);
+        extra.push(
+          `\\begin{aligned}x_{${point.id}}&=x_{${refs[0].id}}+r_{${point.id + refs[0].id}}\\cos\\theta\\\\y_{${point.id}}&=y_{${refs[0].id}}+r_{${point.id + refs[0].id}}\\sin\\theta\\end{aligned}`,
+          `r=${texNumber(r)},\\quad\\theta=${texNumber((theta * 180) / Math.PI)}^\\circ`
+        );
+      }
+      if (line) {
+        const range = line.radius * 1.5;
+        diagram.lines.push({
+          from: { x: line.origin.x - range * line.u[0], y: line.origin.y - range * line.u[1] },
+          to: { x: line.origin.x + range * line.u[0], y: line.origin.y + range * line.u[1] },
+          width: 2,
+          color: 'var(--canvas-ink)',
+          label: 'guide',
+        });
+        extra.push(
+          `${column(['x', 'y'])}=${column([line.origin.x / MODEL_SCALE, line.origin.y / MODEL_SCALE])}+s${column(line.u)}`,
+          `${texNumber(-line.u[1])}(x-(${texNumber(line.origin.x / MODEL_SCALE)}))+${texNumber(line.u[0])}(y-(${texNumber(line.origin.y / MODEL_SCALE)}))=0`
+        );
+      }
+      if (rigid && refs[0])
+        extra.push(
+          `${vector('r', texName(point.id))}=${vector('r', texName(refs[0].id))}+R(\\theta)${vector('r', `${texName(point.id)}/${texName(refs[0].id)},0`)}`
+        );
+      return {
+        ...one,
+        point,
+        refs,
+        radii,
+        method,
+        diagram,
+        equations,
+        extra,
+        rigid,
+        prescribed,
+        guide,
+        circleMethod,
+        candidates: (circle?.candidates ?? line?.candidates ?? []).map(
+          (candidate, i) => `P_${i + 1}=${column(candidate.map((v) => v / MODEL_SCALE))}`
+        ),
+        answer: `${vector('r', texName(point.id))}=${column([point.x / MODEL_SCALE, point.y / MODEL_SCALE])}\\;\\mathrm{${mechanism.unit}}`,
+        residual: circle?.residual ?? line?.residual,
+      };
+    });
+    const loops = kine?.loops.map((loop) => ({
+      ...loop,
       diagram: {
         points: [
-          { x: circle.a.x, y: circle.a.y, label: circle.a.id },
-          { x: circle.b.x, y: circle.b.y, label: circle.b.id },
-          ...circle.candidates.map(([x, y], i) => ({
-            x,
-            y,
-            label:
-              Math.hypot(x - circle.point.x, y - circle.point.y) < 0.001
-                ? `P${i + 1} / ${circle.point.id}`
-                : `P${i + 1}`,
-            color:
-              Math.hypot(x - circle.point.x, y - circle.point.y) < 0.001 ? '#313aa7' : '#8e92a3',
-          })),
+          ...new Map(
+            loop.edges
+              .flatMap((e) => [e.from, e.to])
+              .map((j) => [j.id, { x: j.x, y: j.y, label: j.id }])
+          ).values(),
         ],
         lines: [
-          { from: circle.a, to: circle.point, color: '#5e6bc0', dashed: true, arrow: true },
-          { from: circle.b, to: circle.point, color: '#218579', dashed: true, arrow: true },
-        ],
-        circles: [
-          { x: circle.a.x, y: circle.a.y, r: circle.r0, color: '#5e6bc0' },
-          { x: circle.b.x, y: circle.b.y, r: circle.r1, color: '#218579' },
+          ...loop.edges.map((e) => ({
+            from: e.from,
+            to: e.to,
+            arrow: true,
+            color: 'var(--brand)',
+            label: `r${e.to.id}/${e.from.id}`,
+            midpointLabel: true,
+          })),
+          ...(loop.first && loop.last
+            ? [
+                {
+                  from: loop.last,
+                  to: loop.first,
+                  arrow: true,
+                  dashed: true,
+                  color: 'var(--text-tertiary)',
+                  label: 'ground',
+                  midpointLabel: true,
+                },
+              ]
+            : []),
         ],
       } as Diagram,
     }));
-    const loops = mechanism.requiredLoops.map((loop, index) => {
-      const joints = mechanism.joints[step];
-      const lines = loop.edges.flatMap((edge, i) => {
-        const from = joints.find((j) => j.id === edge.fromId);
-        const to = joints.find((j) => j.id === edge.toId);
-        return from && to
-          ? [
-              {
-                from,
-                to,
-                arrow: true,
-                color: '#5d68b5',
-                label: `r${i + 1}`,
-                dashed: edge.kind === 'slot',
-              },
-            ]
-          : [];
-      });
-      const first = lines[0]?.from;
-      const last = lines.at(-1)?.to;
-      const closure =
-        first && last
-          ? { from: last, to: first, arrow: true, color: '#9297a6', dashed: true, label: 'rG' }
-          : undefined;
-      const all = closure ? [...lines, closure] : lines;
-      return {
-        index,
-        id: loop.id,
-        hasSlot: loop.edges.some((edge) => edge.kind === 'slot'),
-        diagram: {
-          points: [
-            ...new Map(
-              all
-                .flatMap((line) => [line.from, line.to])
-                .map((joint) => [joint.id, { x: joint.x, y: joint.y, label: joint.id }])
-            ).values(),
-          ],
-          lines: all,
-        } as Diagram,
-        x: all.map((line) => (line.to.x - line.from.x) / MODEL_SCALE),
-        y: all.map((line) => (line.to.y - line.from.y) / MODEL_SCALE),
-      };
-    });
     return {
       force,
-      kinematics,
+      forceWork,
+      rates,
+      kine,
+      positions,
       circles,
+      circleLines,
       loops,
+      diagram: mechanismDiagram(mechanism, step),
       bodies:
-        force?.frame.explanation?.bodies.map((body) => ({
+        forceWork?.bodies.map((body) => ({
           ...body,
-          diagram: this.bodyDiagram(body),
+          diagram: freeBodyDiagram(body, this.assumed()),
         })) ?? [],
+      grounds: joints
+        .filter((j) => j instanceof RealJoint && j.ground && !(j instanceof PrisJoint))
+        .map((j) => ({
+          id: j.id,
+          equation: `${vector('r', j.id)}=${column([j.x / MODEL_SCALE, j.y / MODEL_SCALE])}`,
+          zero: `${vector('v', j.id)}=${vector('a', j.id)}=\\vec0`,
+        })),
     };
   }
-
-  private bodyDiagram(body: BodyExplanation): Diagram {
-    const center = { x: body.center[0], y: body.center[1], label: 'G' };
-    const span =
-      Math.max(
-        1,
-        ...body.points.map((point) => Math.hypot(point.x - center.x, point.y - center.y))
-      ) * 0.55;
-    const lines: Diagram['lines'] = body.points.map((point) => ({ from: center, to: point }));
-    for (const load of body.loads) {
-      const magnitude = Math.hypot(...load.vector);
-      const from = { x: load.point[0], y: load.point[1] };
-      if (load.couple !== undefined) {
-        if (Math.abs(load.couple) < 1e-10) continue;
-        // A short curved-arrow approximation made of directed segments around the application point.
-        const sign = load.couple < 0 ? -1 : 1;
-        for (let i = 0; i < 10; i++) {
-          const at = (j: number) => ({
-            x: from.x + span * 0.38 * Math.cos((sign * j * Math.PI) / 7),
-            y: from.y + span * 0.38 * Math.sin((sign * j * Math.PI) / 7),
-          });
-          lines.push({
-            from: at(i),
-            to: at(i + 1),
-            arrow: i === 9,
-            width: 2,
-            color: INK[load.kind],
-            ...(i === 9 ? { label: load.label } : {}),
-          });
-        }
-      } else if (magnitude > 1e-10) {
-        lines.push({
-          from,
-          to: {
-            x: from.x + (span * load.vector[0]) / magnitude,
-            y: from.y + (span * load.vector[1]) / magnitude,
-          },
-          arrow: true,
-          color: INK[load.kind],
-          label: load.label,
-        });
-      }
-    }
-    return { points: [...body.points.map((p) => ({ ...p, label: p.id })), center], lines };
-  }
-
-  forceEquation(body: BodyExplanation, axis: number): string {
-    const system = this.view?.force?.system;
-    if (!system) return '';
-    const row = body.startRow + axis;
-    const lhs = equationText(
-      system.A[row],
-      system.unknowns.map((unknown) => unknown.label.split(' (')[0])
-    );
-    const divisor = axis === 2 ? MODEL_SCALE : 1;
-    return `${lhs} + (${this.n(body.known[axis] / divisor)}) = ${this.n(body.inertia[axis] / divisor)}`;
-  }
-
-  kinematicEquation(index: number, axis: number, acceleration = false): string {
-    const system = acceleration
-      ? this.view?.kinematics?.acceleration
-      : this.view?.kinematics?.velocity;
-    const row = index * 2 + axis;
-    if (!system?.A[row]) return 'This route did not assemble a loop equation.';
-    return `${equationText(
-      system.A[row],
-      system.unknowns.map((unknown) => unknown.label)
-    )} = ${this.n(system.b[row])}`;
-  }
-
-  positionMethod(step: PositionStepExplanation): string {
-    if (step.method === 'twoCircleIntersectionPoints') return 'Two-circle intersection';
-    if (step.method === 'circleLineIntersectionPoints') return 'Circle and guide-line intersection';
-    if (step.method === 'determineTracerJoint') return 'Carried by a rigid body';
-    if (/simultaneous|coupled/i.test(step.method)) return 'Simultaneous constraints';
-    if (/input|increment|prescribed/i.test(step.method)) return 'Prescribed input motion';
-    return 'Rigid-body / guide construction';
-  }
-
-  seek(value: string | number): void {
-    if (!this.valid || !Number.isFinite(Number(value))) return;
-    const time =
-      this.solved.timeNum[Math.max(0, Math.min(this.lastStep, Math.round(Number(value))))];
+  protected readonly openWorksheet = () => {
+    this.dialogs.open(SolverExplanationComponent, {
+      data: { force: this.isForce(), section: this.section(), machine: this.machineId },
+      width: '1120px',
+      maxWidth: '96vw',
+      height: '92vh',
+      ariaLabel: this.isForce() ? 'Force analysis worksheet' : 'Kinematic analysis worksheet',
+      autoFocus: 'dialog',
+    });
+  };
+  protected readonly closeWorksheet = () => this.dialog?.close();
+  protected seek(value: string | number) {
+    const sample = Number(value);
+    if (!this.valid || !Number.isInteger(sample) || sample < 0 || sample > this.lastStep) return;
+    const time = this.solved.timeNum[sample];
     if (time === undefined) return;
     this.mechanism.seekMechanism(
       this.index,

@@ -2590,6 +2590,16 @@ The current adaptation is documented in [solver-explanations.md](solver-explanat
 Capture equation coefficients and their ordered unknowns together, from the same solve.
 The old public force matrix fields are compatibility remnants, not the current assembler.
 
+The worked worksheet renders escaped symbols with KaTeX and loads through `@defer` so its
+renderer stays out of the initial application bundle. Keep the force column/sign metadata
+with each body load: the two sides of a pin share a symbol but have opposite signs.
+Circle-line explanations use a parametric guide instead of a slope, including vertical guides.
+
+On Windows, normalize `path.relative()` separators before comparing them with repository
+paths such as `src/styles/_tokens.scss`. Otherwise the stylesheet fence counts the token
+file it was meant to exclude. Prettier also expects LF: CRLF-only checkout changes can be
+normalized without changing Git's stored content.
+
 Copy joint coordinates explicitly into diagram data: `Joint.x` and `Joint.y` are getters,
 so spreading a joint into a plain object does not copy them. The result compiles but
 produces `NaN` SVG coordinates. The browser regression checks console errors as well as

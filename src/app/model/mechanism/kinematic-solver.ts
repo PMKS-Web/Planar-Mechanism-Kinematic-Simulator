@@ -775,9 +775,19 @@ export class KinematicsSolver {
         b: (velocity ? this.B_matrix_AngVel : this.B_matrix_AngAcc).map((row) => row[0]),
         x: X.map((row) => row[0]),
         unknowns: unknownLinks.map((part) => ({
-          label: `${part instanceof RealLink ? (velocity ? 'ω' : 'α') : (velocity ? 'v' : 'a')}_${part.id}`,
-          unit: part instanceof RealLink ? (velocity ? 'rad/s' : 'rad/s²') : (velocity ? 'model/s' : 'model/s²') })),
-        rows: (velocity ? this.A_matrix_AngVel : this.A_matrix_AngAcc).map((_, i) => `Loop ${Math.floor(i / 2) + 1} ${i % 2 ? 'y' : 'x'}`),
+          label: `${part instanceof RealLink ? (velocity ? 'ω' : 'α') : velocity ? 'v' : 'a'}_${part.id}`,
+          unit:
+            part instanceof RealLink
+              ? velocity
+                ? 'rad/s'
+                : 'rad/s²'
+              : velocity
+                ? 'model/s'
+                : 'model/s²',
+        })),
+        rows: (velocity ? this.A_matrix_AngVel : this.A_matrix_AngAcc).map(
+          (_, i) => `Loop ${Math.floor(i / 2) + 1} ${i % 2 ? 'y' : 'x'}`
+        ),
       };
       if (velocity) this.velocityExplanation = system;
       else this.accelerationExplanation = system;

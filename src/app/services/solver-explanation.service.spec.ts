@@ -120,7 +120,9 @@ describe('SolverExplanationService: explanations of the actual solve', () => {
   it('records every joint belonging to a simultaneous position step', () => {
     const mechanism = buildMechanismFixture(fixturePayload(ellipticalCrankFixture())).mechanism;
     expect(service.circlesAt(mechanism, 10)).toEqual([]);
-    const together = mechanism.positionExplanation.filter((step) => step.method === 'simultaneousSystem');
+    const together = mechanism.positionExplanation.filter(
+      (step) => step.method === 'simultaneousSystem'
+    );
     expect(together.map((step) => step.jointId)).toEqual(expect.arrayContaining(['C', 'D', 'E']));
   });
 
