@@ -230,7 +230,7 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
     expect(fixture.nativeElement.querySelectorAll('app-analysis-graph-section')).toHaveLength(6);
     // One heading each, and no accordion wrapping the six of them.
     expect(sectionLabels(fixture)).toHaveLength(6);
-    expect(fixture.nativeElement.querySelector('collapsible-subseciton')).toBeNull();
+    expect(fixture.nativeElement.querySelector('collapsible-subsection')).toBeNull();
     fixture.destroy();
   });
 

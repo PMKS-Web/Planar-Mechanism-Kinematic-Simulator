@@ -2,7 +2,7 @@
   <panel-section>
     <!-- {{ this.currentAngleUnit }} -->
     <title-block> Settings</title-block>
-    <collapsible-subseciton titleLabel="Basic Settings" [expanded]="true">
+    <collapsible-subsection titleLabel="Basic Settings" [expanded]="true">
       <!-- The Edit panel's own strip, verbatim: same indigo, same glyph, same
            underlined way out. It was a bare sentence here, which read as a
            note somebody had left rather than as the panel saying why the
@@ -59,9 +59,9 @@
       </toggle-block>
       <!-- Input direction and speed belong to the input joint, so they live in that
            joint's Input Settings section in the Edit panel rather than here. -->
-    </collapsible-subseciton>
+    </collapsible-subsection>
 
-    <collapsible-subseciton titleLabel="Visual Settings" [expanded]="true">
+    <collapsible-subsection titleLabel="Visual Settings" [expanded]="true">
       <toggle-block
         [formGroup]="this.settingsForm"
         _formControl="showMajorGrid"
@@ -102,7 +102,7 @@
       <button-block icon="auto_fix_normal" [click]="updateObjectScale.bind(this)"
         >Auto-size Objects</button-block
       >
-    </collapsible-subseciton>
+    </collapsible-subsection>
 
     <!-- Which build this is. It used to sit in the status strip along the
          bottom, where it was permanent furniture answering a question asked

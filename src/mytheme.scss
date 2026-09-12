@@ -19,8 +19,8 @@
 @use 'app/component/BLOCKS/toggle/toggle.component.scss' as toggle-block;
 @use 'app/component/BLOCKS/blocks.common.scss' as blocks-common;
 @use 'app/component/BLOCKS/editable-title/editable-title.component.scss' as editable-title-block;
-@use 'app/component/BLOCKS/collapsible-subseciton/collapsible-subseciton.component.scss' as
-  collapsible-subseciton;
+@use 'app/component/BLOCKS/collapsible-subsection/collapsible-subsection.component.scss' as
+  collapsible-subsection;
 @use 'app/component/BLOCKS/dual-button/dual-button.component.scss' as dual-button;
 @use 'app/component/BLOCKS/color-picker/color-picker.component.scss' as color-picker;
 @use 'src/app/component/analysis-panel/analysis-panel.component.scss' as analysis-panel;
@@ -123,7 +123,7 @@ $my-theme: mat.m2-define-light-theme(
 @include subtitle-block.css($my-theme);
 @include toggle-block.css($my-theme);
 @include editable-title-block.css($my-theme);
-@include collapsible-subseciton.css($my-theme);
+@include collapsible-subsection.css($my-theme);
 @include dual-button.css($my-theme);
 @include color-picker.css($my-theme);
 

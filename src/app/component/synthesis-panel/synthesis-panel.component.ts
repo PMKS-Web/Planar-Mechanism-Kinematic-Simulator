@@ -14,7 +14,7 @@ import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
-import { CollapsibleSubsecitonComponent } from '../BLOCKS/collapsible-subseciton/collapsible-subseciton.component';
+import { CollapsibleSubsectionComponent } from '../BLOCKS/collapsible-subsection/collapsible-subsection.component';
 import { StandardFieldDirective } from '../BLOCKS/standard-field/standard-field.directive';
 import { MechanismService } from '../../services/mechanism.service';
 import { NotificationService } from '../../services/notification.service';
@@ -109,7 +109,7 @@ export function niceRound(value: number): number {
     ReactiveFormsModule,
     MatIcon,
     MatTooltip,
-    CollapsibleSubsecitonComponent,
+    CollapsibleSubsectionComponent,
     StandardFieldDirective,
     SegmentedComponent,
   ],

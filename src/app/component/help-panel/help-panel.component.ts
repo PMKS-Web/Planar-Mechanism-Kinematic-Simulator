@@ -18,7 +18,7 @@ import { AnalyticsService } from '../../services/analytics.service';
 import { NotificationService } from '../../services/notification.service';
 import { UrlGenerationService } from '../../services/url-generation.service';
 import { ButtonComponent } from '../BLOCKS/button/button.component';
-import { CollapsibleSubsecitonComponent } from '../BLOCKS/collapsible-subseciton/collapsible-subseciton.component';
+import { CollapsibleSubsectionComponent } from '../BLOCKS/collapsible-subsection/collapsible-subsection.component';
 import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
 import { SubtitleComponent } from '../BLOCKS/subtitle/subtitle.component';
 import { TitleBlock } from '../BLOCKS/title/title.component';
@@ -47,7 +47,7 @@ export class MyErrorStateMatcher implements ErrorStateMatcher {
   imports: [
     PanelSectionComponent,
     TitleBlock,
-    CollapsibleSubsecitonComponent,
+    CollapsibleSubsectionComponent,
     ButtonComponent,
     SubtitleComponent,
     FormsModule,

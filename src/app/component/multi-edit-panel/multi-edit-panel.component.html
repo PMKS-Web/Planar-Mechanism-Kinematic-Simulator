@@ -15,7 +15,7 @@
   <app-edit-banner panelAttached />
 
   @if (homogeneousJoints) {
-    <collapsible-subseciton titleLabel="Basic Settings" [expanded]="true">
+    <collapsible-subsection titleLabel="Basic Settings" [expanded]="true">
       <dual-input-block
         label1="X"
         label2="Y"
@@ -64,8 +64,8 @@
       >
         Welded
       </toggle-block>
-    </collapsible-subseciton>
-    <collapsible-subseciton titleLabel="Visual Settings" [expanded]="true">
+    </collapsible-subsection>
+    <collapsible-subsection titleLabel="Visual Settings" [expanded]="true">
       <toggle-block
         [formGroup]="form"
         _formControl="trace"
@@ -79,11 +79,11 @@
       <color-picker type="joint" [parts]="joints" tooltip="The color of every selected joint."
         >Joint Color</color-picker
       >
-    </collapsible-subseciton>
+    </collapsible-subsection>
   }
 
   @if (homogeneousLinks) {
-    <collapsible-subseciton titleLabel="Basic Settings" [expanded]="true">
+    <collapsible-subsection titleLabel="Basic Settings" [expanded]="true">
       @if (ordinaryBinaryLinks) {
         <dual-input-block
           label1="L"
@@ -138,16 +138,16 @@
           Fixed Angle
         </toggle-block>
       }
-    </collapsible-subseciton>
-    <collapsible-subseciton titleLabel="Visual Settings" [expanded]="true">
+    </collapsible-subsection>
+    <collapsible-subsection titleLabel="Visual Settings" [expanded]="true">
       <color-picker type="link" [parts]="links" tooltip="The color of every selected link."
         >Link Color</color-picker
       >
-    </collapsible-subseciton>
+    </collapsible-subsection>
   }
 
   @if (homogeneousForces) {
-    <collapsible-subseciton titleLabel="Basic Settings" [expanded]="true">
+    <collapsible-subsection titleLabel="Basic Settings" [expanded]="true">
       <!-- The three a set of forces has in common. Not where they are: a force
            is anchored to the body it acts on, so its position is that body's
            to decide. -->
@@ -179,23 +179,23 @@
       >
         Force Base Frame
       </radio-block>
-    </collapsible-subseciton>
-    <collapsible-subseciton titleLabel="Visual Settings" [expanded]="true">
+    </collapsible-subsection>
+    <collapsible-subsection titleLabel="Visual Settings" [expanded]="true">
       <color-picker type="force" [parts]="forces" tooltip="The color of every selected force."
         >Force Color</color-picker
       >
-    </collapsible-subseciton>
+    </collapsible-subsection>
   }
 
   @if (!homogeneousJoints && !homogeneousLinks && !homogeneousForces) {
-    <collapsible-subseciton titleLabel="Selected Objects" [expanded]="true">
+    <collapsible-subsection titleLabel="Selected Objects" [expanded]="true">
       <p class="multiNote">
         A selection of more than one kind of object. Drag it, or use its canvas handles to move,
         rotate or scale it together; the fields for a value appear when every selected part has that
         value. A force in the selection travels with the body it acts on rather than on its own,
         because that is what decides where a force is.
       </p>
-    </collapsible-subseciton>
+    </collapsible-subsection>
   }
 
   <div class="multiActions" aria-label="Selection actions">

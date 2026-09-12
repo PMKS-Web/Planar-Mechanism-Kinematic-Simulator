@@ -232,7 +232,7 @@ $red: var(--danger);
     /* The collapsible sections carry their own header, so this styles the box
        around whichever kind a section is -- a plain <section> for the results,
        a collapsible for the design above them. */
-    collapsible-subseciton.sect {
+    collapsible-subsection.sect {
       display: block;
       padding: 0;
       /* Its header already draws the rule above it. Carrying `.sect`'s own rule

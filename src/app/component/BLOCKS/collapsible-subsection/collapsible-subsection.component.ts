@@ -3,7 +3,7 @@ import { animate, AUTO_STYLE, state, style, transition, trigger } from '@angular
 import { MatIcon } from '@angular/material/icon';
 
 @Component({
-  selector: 'collapsible-subseciton',
+  selector: 'collapsible-subsection',
   animations: [
     trigger('openClose', [
       state(
@@ -29,12 +29,12 @@ import { MatIcon } from '@angular/material/icon';
       transition('* => *', [animate('0.15s ease-in-out')]),
     ]),
   ],
-  templateUrl: './collapsible-subseciton.component.html',
-  styleUrls: ['./collapsible-subseciton.component.scss'],
+  templateUrl: './collapsible-subsection.component.html',
+  styleUrls: ['./collapsible-subsection.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [MatIcon],
 })
-export class CollapsibleSubsecitonComponent implements OnChanges {
+export class CollapsibleSubsectionComponent implements OnChanges {
   readonly hideHeader = input<boolean>(false); //If this is true the content cannot be expanded
 
   @Input() expanded: boolean = false;

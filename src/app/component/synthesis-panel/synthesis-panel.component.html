@@ -63,7 +63,7 @@
              when it happens to be pinned at its ends. That is precisely what
              the first requirement decides, and the two readings of the word
              made the requirement read like a contradiction. -->
-        <collapsible-subseciton class="sect" titleLabel="End-effector link" [expanded]="true">
+        <collapsible-subsection class="sect" titleLabel="End-effector link" [expanded]="true">
           <div class="row">
             <span class="row__label">Length</span>
             <mat-icon class="row__help" [matTooltip]="help.length" [matTooltipShowDelay]="400">
@@ -94,10 +94,10 @@
               (selectedChange)="setReference(referenceOptions()[$event].value)"
             ></segmented-block>
           </div>
-        </collapsible-subseciton>
+        </collapsible-subsection>
 
         <!-- The three positions ------------------------------------------ -->
-        <collapsible-subseciton class="sect" titleLabel="Positions" [expanded]="true">
+        <collapsible-subsection class="sect" titleLabel="Positions" [expanded]="true">
           <!-- Beside the heading rather than under it: they were a row of their
                own, which cost a band of vertical space in a panel that has
                little to spare, and left a gap once all three were placed and
@@ -223,10 +223,10 @@
               </button>
             </div>
           }
-        </collapsible-subseciton>
+        </collapsible-subsection>
 
         <!-- What a solution has to satisfy -------------------------------- -->
-        <collapsible-subseciton class="sect" titleLabel="Requirements" [expanded]="true">
+        <collapsible-subsection class="sect" titleLabel="Requirements" [expanded]="true">
           @for (rq of requirements(); track rq.key) {
             <div class="req" [class.req--on]="rq.on">
               <button type="button" class="req__line" (click)="rq.toggle()">
@@ -301,7 +301,7 @@
               }
             </div>
           }
-        </collapsible-subseciton>
+        </collapsible-subsection>
 
         <!-- Under the requirements rather than inside them: it is not one of
              them, it is what they have jointly done. -->

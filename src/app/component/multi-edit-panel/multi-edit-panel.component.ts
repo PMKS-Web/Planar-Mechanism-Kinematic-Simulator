@@ -25,7 +25,7 @@ import { SelectionBatchService } from '../../services/selection-batch.service';
 import { SettingsService } from '../../services/settings.service';
 import { SvgGridService } from '../../services/svg-grid.service';
 import { ButtonComponent } from '../BLOCKS/button/button.component';
-import { CollapsibleSubsecitonComponent } from '../BLOCKS/collapsible-subseciton/collapsible-subseciton.component';
+import { CollapsibleSubsectionComponent } from '../BLOCKS/collapsible-subsection/collapsible-subsection.component';
 import { ColorPickerComponent } from '../BLOCKS/color-picker/color-picker.component';
 import { DualInputComponent } from '../BLOCKS/dual-input/dual-input.component';
 import { EditableTitleComponent } from '../BLOCKS/editable-title/editable-title.component';
@@ -43,7 +43,7 @@ import { EditBannerComponent } from '../edit-panel/edit-banner.component';
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
     ButtonComponent,
-    CollapsibleSubsecitonComponent,
+    CollapsibleSubsectionComponent,
     ColorPickerComponent,
     DualInputComponent,
     EditableTitleComponent,

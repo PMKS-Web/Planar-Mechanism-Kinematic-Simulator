@@ -1,17 +1,16 @@
 import { FormControl, FormGroup } from '@angular/forms';
 import { moduleMetadata, type Meta, type StoryObj } from '@storybook/angular-vite';
-import { CollapsibleSubsecitonComponent } from '../../app/component/BLOCKS/collapsible-subseciton/collapsible-subseciton.component';
+import { CollapsibleSubsectionComponent } from '../../app/component/BLOCKS/collapsible-subsection/collapsible-subsection.component';
 import { InputComponent } from '../../app/component/BLOCKS/input/input.component';
 import { inPanel } from '../support/frame';
 
 /**
- * `collapsible-subseciton` (the directory and selector are spelled that way in
- * the app, and renaming them is not this gallery's business). The title and
- * chevron are one button; anything beside them goes in `[headerActions]`.
+ * `collapsible-subsection`. The title and chevron are one button; anything
+ * beside them goes in `[headerActions]`.
  */
 const meta: Meta = {
   title: 'Structure/Collapsible Subsection',
-  component: CollapsibleSubsecitonComponent,
+  component: CollapsibleSubsectionComponent,
   tags: ['autodocs'],
   decorators: [inPanel(), moduleMetadata({ imports: [InputComponent] })],
   args: { titleLabel: 'Input Settings', expanded: true, hideHeader: false },
@@ -21,10 +20,10 @@ const meta: Meta = {
       form: new FormGroup({ speed: new FormControl('10'), mass: new FormControl('1.5') }),
     },
     template: `
-      <collapsible-subseciton [titleLabel]="titleLabel" [expanded]="expanded" [hideHeader]="hideHeader">
+      <collapsible-subsection [titleLabel]="titleLabel" [expanded]="expanded" [hideHeader]="hideHeader">
         <input-block [formGroup]="form" _formControl="speed" unit="RPM" tooltip="How fast the input turns.">Speed</input-block>
         <input-block [formGroup]="form" _formControl="mass" unit="kg" tooltip="The mass of this link.">Mass</input-block>
-      </collapsible-subseciton>
+      </collapsible-subsection>
     `,
   }),
 };

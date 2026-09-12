@@ -29,7 +29,7 @@ Each entry is **where** it is, what it draws, and the block to use instead.
   stroked primary button with an icon and a label. Use `button-block`.
 - **`analysis-setup.component.html`** `.sectionToggle` and **`mechanism-panel`** `.sectionHeader`.
   A collapsible section header: 40px, top rule, primary-500 label, a chevron; the two files also
-  duplicate `.factGrid` / `.fact`. Use `collapsible-subseciton`, whose `[headerActions]` slot
+  duplicate `.factGrid` / `.fact`. Use `collapsible-subsection`, whose `[headerActions]` slot
   exists for this.
 - **`analysis-setup`, `top-bar`, `tutorial-panel`** `.chip`, three identical rule blocks, plus a
   smaller fourth in `synthesis-panel`. A status chip with `blocker` / `warning` / `ok` variants.
@@ -78,9 +78,8 @@ These are shared already, or would be with one caller changed, and belong beside
   from the Edit panel; **`dual-button`** (two usages) likewise.
 - **`appStandardField`** has one consumer, `synthesis-panel`. Once that panel moves onto
   `input-block`, the directive either becomes the behavior `input-block` uses internally or goes.
-- **Names:** `collapsible-subseciton` is misspelled in its folder, its selector and 38 call sites;
-  and the `-block` suffix is carried by some selectors and not others (`dual-button`,
-  `color-picker`, `panel-section`, `state-input`). Settle both in one rename.
+- **Names:** the `-block` suffix is carried by some selectors and not others (`dual-button`,
+  `color-picker`, `panel-section`, `state-input`). Settle it in one rename.
 
 ## Import cycles
 
@@ -92,6 +91,8 @@ cycle to appear is a panel reaching another panel's static — register a handle
 
 ## Done
 
+- `collapsible-subseciton` was renamed `collapsible-subsection`: the folder, the selector and
+  every call site, in one commit.
 - `panel-section-collapsible` had no usage in the app and was retired, together with the chevron
   machinery `title-block` carried only for it.
 - Every BLOCKS component's non-input members are `protected` or `private`, so the properties

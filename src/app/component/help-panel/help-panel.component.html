@@ -2,13 +2,13 @@
   <panel-section>
     <title-block>Help</title-block>
 
-    <collapsible-subseciton titleLabel="Learn PMKS+" [expanded]="true">
+    <collapsible-subsection titleLabel="Learn PMKS+" [expanded]="true">
       <button-block icon="help_center" [click]="gotoHelpSite">Tutorial Videos</button-block>
       <subtitle-block>PMKS+ is open source! Do you want to help us develop it?</subtitle-block>
       <button-block customIcon="github" [click]="gotoGithub">GitHub Repository</button-block>
-    </collapsible-subseciton>
+    </collapsible-subsection>
 
-    <collapsible-subseciton titleLabel="Glossary" [expanded]="false">
+    <collapsible-subsection titleLabel="Glossary" [expanded]="false">
       <dl class="glossaryList">
         @for (entry of glossary; track entry.term) {
           <div class="glossaryEntry">
@@ -17,11 +17,11 @@
           </div>
         }
       </dl>
-    </collapsible-subseciton>
+    </collapsible-subsection>
 
     <!-- Where the keys are written down. Every hint in the app is drawn from
          the same table this list is, so a key that moves moves in both. -->
-    <collapsible-subseciton titleLabel="Keyboard Shortcuts" [expanded]="false">
+    <collapsible-subsection titleLabel="Keyboard Shortcuts" [expanded]="false">
       @for (group of shortcuts.bySection(); track group.section) {
         <div class="keyGroup">
           <h4 class="keyHeading">{{ group.section }}</h4>
@@ -33,9 +33,9 @@
           }
         </div>
       }
-    </collapsible-subseciton>
+    </collapsible-subsection>
 
-    <collapsible-subseciton titleLabel="Send Feedback" [expanded]="true">
+    <collapsible-subsection titleLabel="Send Feedback" [expanded]="true">
       <p class="sectionNote">
         Do you want to attach a file? Send us an email at help&#64;pmksplus.com
       </p>
@@ -78,6 +78,6 @@
           Send Message
         </button-block>
       </form>
-    </collapsible-subseciton>
+    </collapsible-subsection>
   </panel-section>
 </div>

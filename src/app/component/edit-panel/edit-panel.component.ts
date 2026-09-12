@@ -63,7 +63,7 @@ import { TutorialService } from '../../services/tutorial.service';
 import { MechanismPanelComponent } from '../mechanism-panel/mechanism-panel.component';
 import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
 import { EditableTitleComponent } from '../BLOCKS/editable-title/editable-title.component';
-import { CollapsibleSubsecitonComponent } from '../BLOCKS/collapsible-subseciton/collapsible-subseciton.component';
+import { CollapsibleSubsectionComponent } from '../BLOCKS/collapsible-subsection/collapsible-subsection.component';
 import { DualInputComponent } from '../BLOCKS/dual-input/dual-input.component';
 import { HoldFieldComponent } from '../BLOCKS/hold-field/hold-field.component';
 import { LockBannerComponent } from './lock-banner.component';
@@ -100,7 +100,7 @@ const INPUT_SPEED_UNITS = [
     MechanismPanelComponent,
     PanelSectionComponent,
     EditableTitleComponent,
-    CollapsibleSubsecitonComponent,
+    CollapsibleSubsectionComponent,
     DualInputComponent,
     HoldFieldComponent,
     LockBannerComponent,
