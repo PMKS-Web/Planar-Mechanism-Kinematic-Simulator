@@ -1,5 +1,6 @@
 @use 'sass:map';
 @use '@angular/material' as mat;
+@use 'src/app/component/left-tabs/left-tabs.vars' as nav;
 
 @mixin css($theme) {
   $color-config: mat.m2-get-color-config($theme);
@@ -70,14 +71,14 @@
       z-index: 2;
       padding: 12px 15px 12px;
       background: var(--card-surface);
-      box-shadow: 0 3px 6px -3px rgba(0, 0, 0, 0);
+      box-shadow: var(--scroll-shadow-hidden);
       transition: box-shadow 0.15s ease-in-out;
     }
 
     // Something above, out of sight: the list runs under the head, and without
     // this a scrolled card read as a card that simply started there.
     .setup.scrolled > .setupHead {
-      box-shadow: 0 3px 6px -3px rgba(0, 0, 0, 0.35);
+      box-shadow: var(--scroll-shadow);
     }
 
     .setupTitle {
@@ -253,7 +254,7 @@
          "Drag coupler", and 47px of name column reads them all as "Link D…".
          The moment of inertia gives the room back — it is the number a reader
          is least often reading on a phone, and it keeps its own ellipsis. */
-      @media (max-width: 600px) {
+      @media (max-width: nav.$phone-max-width) {
         grid-template-columns: minmax(96px, 1.4fr) 72px minmax(72px, 1fr) 16px;
       }
 

@@ -59,7 +59,7 @@
     cursor: pointer;
 
     &:hover {
-      background: rgba(0, 0, 0, 0.04);
+      background: var(--hover-wash);
     }
 
     // In the completion card it shares a line with the title rather than

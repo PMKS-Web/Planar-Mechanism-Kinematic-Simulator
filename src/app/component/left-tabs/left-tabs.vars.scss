@@ -47,6 +47,35 @@ $playback-clearance: 110px;
 $view-controls-clearance: 110px;
 
 /**
+ * Where the phone layout starts: the one breakpoint that changes the layout.
+ *
+ * The same 600 as `PHONE_MAX_WIDTH` in `viewport.service.ts`, which puts the
+ * class the sheet is styled by on the panel; a spec fails when the two differ.
+ * Chosen from the panel rather than from a device list: below about this a
+ * panel standing at the side takes more of the window than it leaves.
+ */
+$phone-max-width: 600px;
+
+/**
+ * Where the lower line tightens.
+ *
+ * The view controls and the transport share that line on a phone, and they
+ * give up padding at the same width so the two cards change together. The
+ * status strip drops its units and cursor readouts here too.
+ */
+$lower-line-tightens: 720px;
+
+/**
+ * The narrowest window the chrome is laid out for.
+ *
+ * The sizes were fitted to a 390px phone; a 360px one is thirty narrower. Below
+ * this the cards give up what padding they can, the view buttons shrink, and
+ * as a last resort the tab card scrolls rather than putting a mode off the edge
+ * of the window.
+ */
+$narrow-phone: 380px;
+
+/**
  * Where the bottom cluster stops fitting across one line.
  *
  * Three cards need 759px: the row's own 24px of padding, the 160px transport,

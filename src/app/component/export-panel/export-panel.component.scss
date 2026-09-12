@@ -25,7 +25,7 @@
     // Something is above, out of sight. Read off the body rather than set on it,
     // because the band that casts the shadow is not the one that scrolls.
     &:has(.exportBody.scrolled) .exportHead {
-      box-shadow: 0 3px 6px -3px rgba(0, 0, 0, 0.35);
+      box-shadow: var(--scroll-shadow);
     }
 
     .spacer {
@@ -38,7 +38,7 @@
       background: var(--card-surface);
       // Nothing yet: the shadow only means "there is more above", so it is drawn
       // when the list underneath has actually been scrolled.
-      box-shadow: 0 3px 6px -3px rgba(0, 0, 0, 0);
+      box-shadow: var(--scroll-shadow-hidden);
       transition: box-shadow 0.15s ease-in-out;
       z-index: 3;
     }

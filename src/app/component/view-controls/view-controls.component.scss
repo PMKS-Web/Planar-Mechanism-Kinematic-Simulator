@@ -1,4 +1,5 @@
 @use '../BLOCKS/blocks.common' as blocks;
+@use 'src/app/component/left-tabs/left-tabs.vars' as nav;
 
 @mixin css($theme) {
   // A floating card at the bottom right, beside the transport rather than
@@ -16,14 +17,14 @@
     // One place, in every mode. It used to carry an extra 16px in Edit that it
     // gave up in analysis, so the card slid sideways on the way into a mode
     // whose controls have nothing to do with it.
-    @media (max-width: 720px) {
+    @media (max-width: nav.$lower-line-tightens) {
       padding: 0 6px;
       gap: 2px;
     }
 
     // On a phone this shares one row with the transport, and the two together
     // want about seventy pixels more than the window has.
-    @media (max-width: 600px) {
+    @media (max-width: nav.$phone-max-width) {
       height: 52px;
       padding: 0 4px;
       gap: 0;
@@ -49,7 +50,7 @@
     height: 24px;
     background: rgba(0, 0, 0, 0.12);
 
-    @media (max-width: 720px) {
+    @media (max-width: nav.$lower-line-tightens) {
       height: 20px;
     }
   }

@@ -38,7 +38,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
         border-radius: 4px;
         /* Measured from a live matTooltip rather than guessed. */
         background: rgb(66, 66, 66);
-        color: #fff;
+        color: var(--text-on-accent);
         font-size: 12px;
         line-height: 16px;
         animation: shortcutTipShow 0.15s cubic-bezier(0, 0, 0.2, 1) forwards;

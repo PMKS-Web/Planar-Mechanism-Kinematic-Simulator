@@ -1,3 +1,4 @@
+@use 'src/app/component/left-tabs/left-tabs.vars' as nav;
 // The CAD Export dialog. Four folded sections between a pair of preset cards
 // and a footer that says what is about to come down -- the arrangement the
 // brief argues for in docs/cad-export-design.md, and the designer drew.
@@ -567,7 +568,7 @@ $rule: var(--border-rule);
 
   // On a phone the sections are what make this survive: the cards stack, the
   // summaries keep their ellipsis, and nothing scrolls sideways.
-  @media (max-width: 600px) {
+  @media (max-width: nav.$phone-max-width) {
     .titleRow,
     .subtitle,
     [mat-dialog-content] {

@@ -121,7 +121,7 @@
     cursor: pointer;
 
     &:hover {
-      background: rgba(0, 0, 0, 0.04);
+      background: var(--hover-wash);
     }
   }
 
@@ -242,7 +242,7 @@
     max-height: calc(100% - #{nav.$top-strip-height} - var(--panel-clearance));
     max-width: calc(100vw - 24px);
     display: flex;
-    z-index: 5;
+    z-index: var(--layer-panel);
 
     &.analysis {
       // Measured by the playback bar, which is the only thing that knows how
@@ -378,7 +378,7 @@
       // state and the open one. The card's upward shadow is 8px of haze under a
       // 5px indigo bar; losing it costs nothing anybody can see, and buys a
       // handle that means the same thing in both states.
-      z-index: 6;
+      z-index: var(--layer-sheet);
 
       // Shut, the sheet is just its handle and a sliver of the card behind it,
       // so the drawing has the window. The height is a cap rather than a fixed
@@ -460,7 +460,7 @@
     // because the number it comes from is not in the stylesheet.
     padding: 0;
     background: transparent;
-    z-index: 7;
+    z-index: var(--layer-sheet-handle);
     cursor: pointer;
     // Only the pill itself takes presses, so the canvas either side of it is
     // still canvas.

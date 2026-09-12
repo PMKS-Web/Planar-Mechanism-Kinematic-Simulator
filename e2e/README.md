@@ -288,6 +288,9 @@ Not suites — import them from one.
 - `right-drawer.mjs` — the right drawer's width, left edge and bottom gap against the view
   controls, with the tutorial pinned and on a short window.
 - `mobile.mjs` — the phone layout on an iPhone 13 profile with touch: a held finger opens the
+- `reduced-motion.mjs` — the app with `prefers-reduced-motion` on, which `src/styles.scss`
+  answers for every stylesheet at once: the boot splash still leaves, the phone sheet still opens
+  and shuts by its handle, and no page error.
   menu, taps and swipes do not, the mode panel is a sheet, the playback cluster clears it, and a
   link drawn with taps.
 - `menu-focus.mjs` — the project menu's focus ring appears for the keyboard and not for a click,

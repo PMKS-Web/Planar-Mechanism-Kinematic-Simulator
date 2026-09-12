@@ -1,3 +1,4 @@
+@use 'src/app/component/left-tabs/left-tabs.vars' as nav;
 @mixin css($theme) {
   // The host is only a wrapper; the button is what the row lays out.
   app-view-button {
@@ -34,7 +35,7 @@
     }
 
     &:hover:not(:disabled) {
-      background: rgba(0, 0, 0, 0.04);
+      background: var(--hover-wash);
     }
 
     // On means a tint behind the glyph, and nothing else. The glyph itself
@@ -56,7 +57,7 @@
   // On a phone this row shares one line with the transport, and the two at
   // their desk sizes want about seventy pixels more than the window has. 34
   // still clears the size a finger needs; 40 does not fit.
-  @media (max-width: 600px) {
+  @media (max-width: nav.$phone-max-width) {
     .viewButton {
       width: 34px;
       height: 34px;
@@ -69,7 +70,7 @@
   // its margin are the same `$card-inset` the top strip keeps and `mobile.mjs`
   // measures, and neither card can shrink below the buttons inside it. So the
   // buttons give the width up, only on the windows that need it.
-  @media (max-width: 380px) {
+  @media (max-width: nav.$narrow-phone) {
     .viewButton {
       width: 30px;
       height: 30px;

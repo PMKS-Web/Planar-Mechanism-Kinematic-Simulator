@@ -8,7 +8,7 @@
   opacity: 1;
   border: 1px solid;
   overflow: visible;
-  background-color: white;
+  background-color: var(--surface);
   border-collapse: separate;
   visibility: visible;
 }
@@ -18,7 +18,7 @@
 }
 
 .linkageTabs label {
-  background: white;
+  background: var(--surface);
   //font-weight: lighter;
   border: 1px solid;
   text-align: center;
@@ -30,13 +30,13 @@
 
 .linkageTabs .tab {
   width: 100%;
-  background: white;
+  background: var(--surface);
   order: 1;
   display: none;
 }
 
 .linkageTabs input[type='radio']:hover + label {
-  background: lightgray;
+  background: var(--surface-well);
 }
 
 .linkageTabs input[type='radio']:checked + label + .tab {
@@ -47,15 +47,15 @@
 }
 
 .linkageTabs input[type='radio']:checked + label {
-  background: gray;
+  background: var(--surface-disabled);
 }
 
 .linkageTabs input[type='radio']:checked + label + .tab thead {
-  background: gray;
+  background: var(--surface-disabled);
 }
 
 .linkageTabs input[type='radio']:checked + label + .tab th {
-  border: 1px solid black;
+  border: 1px solid var(--text-black);
 }
 
 .linkageTabs input[type='radio']:checked + label + .tab input {
@@ -64,7 +64,7 @@
 }
 
 .linkageTabs input[type='radio']:checked + label + .tab tbody td {
-  border: 1px solid black;
+  border: 1px solid var(--text-black);
 }
 
 .linkageTabs input[type='radio']:checked + label + .tab tbody table {

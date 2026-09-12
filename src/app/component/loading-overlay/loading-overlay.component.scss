@@ -3,7 +3,7 @@
   inset: 0;
   // Over the chrome, over the drawer, under nothing. The point of covering the
   // app is that the controls behind it are not answering yet.
-  z-index: 3000;
+  z-index: var(--layer-loading);
   display: flex;
   align-items: center;
   justify-content: center;

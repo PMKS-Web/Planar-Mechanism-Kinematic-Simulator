@@ -1240,7 +1240,7 @@ $red: var(--danger);
           border: 1px solid rgba(0, 0, 0, 0.16);
           border-radius: 10px;
           background: var(--surface);
-          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+          box-shadow: var(--thumb-shadow);
           cursor: inherit;
         }
 
@@ -1251,7 +1251,7 @@ $red: var(--danger);
           border: 1px solid rgba(0, 0, 0, 0.16);
           border-radius: 10px;
           background: var(--surface);
-          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+          box-shadow: var(--thumb-shadow);
           cursor: inherit;
         }
       }

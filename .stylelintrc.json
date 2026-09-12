@@ -1,13 +1,15 @@
 {
   "customSyntax": "postcss-scss",
   "rules": {
-    "color-no-hex": true
+    "color-no-hex": true,
+    "color-named": "never"
   },
   "overrides": [
     {
       "files": ["src/styles/_tokens.scss"],
       "rules": {
-        "color-no-hex": null
+        "color-no-hex": null,
+        "color-named": null
       }
     }
   ]

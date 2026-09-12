@@ -134,6 +134,8 @@
       #bootSplash {
         position: fixed;
         inset: 0;
+        /* Over the loading scrim, --layer-loading in src/styles/_tokens.scss.
+           A literal, because this paints before that file has loaded. */
         z-index: 4000;
         display: flex;
         flex-direction: column;

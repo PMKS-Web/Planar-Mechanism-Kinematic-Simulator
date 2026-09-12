@@ -19,9 +19,9 @@
     align-items: center;
     gap: 18px;
     padding: 0 14px;
-    background-color: white;
+    background-color: var(--surface);
     box-sizing: border-box;
-    z-index: 7;
+    z-index: var(--layer-status);
     pointer-events: none;
     user-select: none;
 
@@ -48,7 +48,7 @@
     // full height under it. It is also flush to the window's edges rather than
     // inset like the floating cards below it, which is what makes it read as
     // the window's own edge instead of a fourth card.
-    @media (max-width: 600px) {
+    @media (max-width: nav.$phone-max-width) {
       top: 0;
       bottom: auto;
       height: calc(34px + env(safe-area-inset-top));
@@ -89,7 +89,7 @@
     // On a phone the version and the units are the first things to go: the
     // mode and what it means for the mechanism are the reason this strip
     // exists.
-    @media (max-width: 720px) {
+    @media (max-width: nav.$lower-line-tightens) {
       .units,
       .cursor {
         display: none;

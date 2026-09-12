@@ -45,7 +45,7 @@
     // takes the upper one.
     gap: var(--card-gap);
     padding: 0 var(--card-gap);
-    z-index: 8;
+    z-index: var(--layer-cluster);
     pointer-events: none;
   }
 
@@ -63,7 +63,7 @@
     }
   }
 
-  @media (max-width: 600px) {
+  @media (max-width: nav.$phone-max-width) {
     .playbackRow {
       // Fixed to the bottom, just above the status strip. The sheet opens over
       // the canvas *above* this row rather than under it, so nothing here moves
@@ -133,7 +133,7 @@
     padding: 0;
 
     &:hover:not(:disabled) {
-      background: rgba(0, 0, 0, 0.04);
+      background: var(--hover-wash);
     }
 
     &:disabled {
@@ -192,7 +192,7 @@
     cursor: pointer;
 
     &:hover:not(:disabled) {
-      background: rgba(0, 0, 0, 0.04);
+      background: var(--hover-wash);
     }
 
     &:disabled {
@@ -424,7 +424,7 @@
     cursor: pointer;
 
     &:hover {
-      background: rgba(0, 0, 0, 0.06);
+      background: var(--press-wash);
     }
   }
 
@@ -590,7 +590,7 @@
     padding: 0;
 
     &:hover {
-      background: rgba(0, 0, 0, 0.06);
+      background: var(--press-wash);
     }
   }
 
@@ -743,7 +743,7 @@
       border: 1px solid rgba(0, 0, 0, 0.16);
       border-radius: 10px;
       background: var(--surface);
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+      box-shadow: var(--thumb-shadow);
       cursor: inherit;
     }
 
@@ -754,7 +754,7 @@
       border: 1px solid rgba(0, 0, 0, 0.16);
       border-radius: 10px;
       background: var(--surface);
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+      box-shadow: var(--thumb-shadow);
       cursor: inherit;
     }
 
@@ -790,7 +790,7 @@
 
   // The phone's own spacing, at the width the view controls tighten up at, so
   // the two cards on the lower line change together.
-  @media (max-width: 720px) {
+  @media (max-width: nav.$lower-line-tightens) {
     .playbackRow {
       gap: 8px;
       padding: 0 8px;
@@ -810,7 +810,7 @@
   // shows only the shared row (`shownRows`) and does not offer the control that
   // would produce the others. What is left is a name, a reading and a handle on
   // one line above the transport.
-  @media (max-width: 600px) {
+  @media (max-width: nav.$phone-max-width) {
     // One card, edge to edge on the line the top strip runs on. The transport
     // and the view controls are inside it now, so there is nothing left to wrap
     // and nothing to space apart.
@@ -929,7 +929,7 @@
   // two of them at their phone sizes want more than the window has, and what
   // overflowed was the page itself: `top-strip-states` found a document that
   // scrolled sideways by a pixel at 360.
-  @media (max-width: 380px) {
+  @media (max-width: nav.$narrow-phone) {
     .transportCard {
       padding: 0 4px;
     }

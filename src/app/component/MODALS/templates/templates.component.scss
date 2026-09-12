@@ -1,5 +1,6 @@
 @use 'sass:map';
 @use '@angular/material' as mat;
+@use 'src/app/component/left-tabs/left-tabs.vars' as nav;
 
 // Everything here lives inside the mixin, which mytheme.scss includes once. The
 // dialog is rendered into Angular's overlay and has to reach Material's own
@@ -308,7 +309,7 @@
     // rules they replace, so they only win by coming after them. Put beside
     // `.filterBar` where they read best, the search kept its 190px flex-basis
     // -- which in a column is a height -- and came out as a 190px-tall box.
-    @media (max-width: 600px) {
+    @media (max-width: nav.$phone-max-width) {
       .filterBar {
         flex-direction: column;
         align-items: stretch;

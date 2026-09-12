@@ -1,7 +1,7 @@
 @use 'sass:map';
 @use 'sass:math';
 @use '@angular/material' as mat;
-@use 'src/app/component/left-tabs/left-tabs.vars.scss' as vars;
+@use 'src/app/component/left-tabs/left-tabs.vars' as nav;
 
 /** Width of the accent, and therefore the corner radius. See below. */
 $accent: 5px;
@@ -23,10 +23,10 @@ $accent: 5px;
   // the canvas underneath is still being worked on while a message sits here.
   .notificationStack {
     position: fixed;
-    top: vars.$top-strip-bottom + vars.$card-inset;
+    top: nav.$top-strip-bottom + nav.$card-inset;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 1000;
+    z-index: var(--layer-toast);
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -66,7 +66,7 @@ $accent: 5px;
     //
     // The sentence keeps the first line; the verbs drop to a line of their
     // own, which is what every snackbar this narrow does.
-    @media (max-width: 600px) {
+    @media (max-width: nav.$phone-max-width) {
       flex-wrap: wrap;
       row-gap: 4px;
 
@@ -160,7 +160,7 @@ $accent: 5px;
     cursor: pointer;
 
     &:hover {
-      background: rgba(0, 0, 0, 0.06);
+      background: var(--press-wash);
     }
   }
 
@@ -181,7 +181,7 @@ $accent: 5px;
     cursor: pointer;
 
     &:hover {
-      background: rgba(0, 0, 0, 0.06);
+      background: var(--press-wash);
       color: rgba(0, 0, 0, 0.7);
     }
 
