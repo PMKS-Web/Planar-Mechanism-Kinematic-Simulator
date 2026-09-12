@@ -90,7 +90,7 @@
               [svg]="drawingSwitchGlyph(one)"
               [ink]="drawingSwitchInk(one)"
               [shown]="drawingSwitchIsOn(one)"
-              [disabled]="!!one.row.refusal"
+              [refused]="!!one.row.refusal"
               [tooltip]="drawingSwitchTip(one)"
               (pressed)="flipDrawingSwitch(one)"
             ></app-view-button>

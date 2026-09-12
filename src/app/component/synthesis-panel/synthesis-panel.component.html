@@ -120,7 +120,7 @@
                 icon="content_copy"
                 [tooltip]="help.duplicate"
                 [click]="duplicateLast.bind(this)"
-                aria-label="Duplicate last position"
+                ariaLabel="Duplicate last position"
               ></button-block>
             }
           </ng-container>
@@ -243,9 +243,10 @@
                 </button>
                 <toggle-block
                   class="req__switch"
+                  bare
                   [formGroup]="switchForm"
                   [_formControl]="rq.key === 'coupler' ? 'coupler' : 'region'"
-                  [attr.aria-label]="rq.label"
+                  [ariaLabel]="rq.label"
                 ></toggle-block>
               </div>
 
@@ -448,14 +449,25 @@
                   help_outline
                 </mat-icon>
                 <span class="row__spacer"></span>
-                <toggle-block
+                <!-- The reason hangs on a wrapper, not on the block: a
+                     disabled control takes no pointer events, and the block's
+                     own help mark is hidden in this row. That is the pattern
+                     `button-block` uses for the same reason. -->
+                <span
                   class="row__switch"
-                  [formGroup]="switchForm"
-                  _formControl="driver"
-                  [disabled]="!!driverRefusal"
-                  [tooltip]="driverRefusal ?? ''"
-                  aria-label="Add driver"
-                ></toggle-block>
+                  [matTooltip]="driverRefusal ?? ''"
+                  [matTooltipDisabled]="!driverRefusal"
+                  [matTooltipShowDelay]="200"
+                  matTooltipPosition="above"
+                >
+                  <toggle-block
+                    bare
+                    [formGroup]="switchForm"
+                    _formControl="driver"
+                    [disabled]="!!driverRefusal"
+                    ariaLabel="Add driver"
+                  ></toggle-block>
+                </span>
               </div>
 
               <div class="dims">

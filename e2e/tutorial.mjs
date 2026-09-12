@@ -127,8 +127,8 @@ for (const expected of [2, 3, 4, 5]) {
     await page.screenshot({ path: `${OUT}/03-step3-ring.png` });
   }
   if (expected === 4) {
-    check('step 4 quotes the chip', await page.locator('.chipHint .chip').isVisible());
-    const chip = (await page.locator('.chipHint .chip').innerText()).trim();
+    check('step 4 quotes the chip', await page.locator('.chipHint chip-block').isVisible());
+    const chip = (await page.locator('.chipHint chip-block').innerText()).trim();
     // The mock said "1 to set", which is the *Force* chip's wording. Reading
     // the live value is what stops the sentence drifting from the control.
     check('the quote uses the kinematic wording', /^(Ready|\d+ (fix|fixes))$/.test(chip), chip);

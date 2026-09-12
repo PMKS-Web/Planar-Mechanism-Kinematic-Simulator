@@ -31,7 +31,7 @@
   $close-air: 8px;
 
   // Only where it goes; what it looks like is `close-button`'s business now.
-  .closeDrawer .closeButton {
+  .closeDrawer {
     position: absolute;
     // Measured from the page box rather than from the frame, because the frame
     // may be holding the tutorial's card above this one -- and a button placed

@@ -408,17 +408,6 @@ $red: var(--danger);
 
     .row__switch {
       flex: 0 0 auto;
-
-      #toggle-block .label,
-      #toggle-block .label-help,
-      #toggle-block .spacer {
-        display: none;
-      }
-
-      mat-slide-toggle {
-        transform: scale(0.8);
-        transform-origin: right center;
-      }
     }
 
     /* The pick-one pills at the end of a row: as wide as the old strip. */
@@ -575,19 +564,9 @@ $red: var(--danger);
 
       /* Scaled to the row the way the analysis panel scales its own, so a
          requirement's switch is not taller than the line it belongs to. */
+      /* What it looks like is `toggle-block bare`; this is only where it sits. */
       &__switch {
         flex: 0 0 auto;
-
-        #toggle-block .label,
-        #toggle-block .label-help,
-        #toggle-block .spacer {
-          display: none;
-        }
-
-        mat-slide-toggle {
-          transform: scale(0.8);
-          transform-origin: right center;
-        }
       }
 
       &__icon {

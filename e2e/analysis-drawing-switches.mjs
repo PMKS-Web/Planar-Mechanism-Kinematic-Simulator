@@ -47,8 +47,9 @@ async function selectIn(selector, index, mode) {
  * What the panel's switches say: their order, which are gray, and why on hover.
  *
  * These are `app-view-button` at its labelled size now, not a hand-drawn
- * `.drawingChip` -- so `data-switch` rides the host, the state is the button's
- * own `disabled`, and the word is `.viewButtonLabel`.
+ * `.drawingChip` -- so `data-switch` rides the host and the word is
+ * `.viewButtonLabel`. Grayed is `aria-disabled`, not `disabled`: a disabled
+ * button takes no pointer events, so its reason could never reach the pointer.
  */
 const switches = () =>
   page.evaluate(() => {
@@ -61,7 +62,7 @@ const switches = () =>
       return {
         key,
         label: node?.querySelector('.viewButtonLabel')?.textContent?.trim(),
-        off: !!node?.disabled,
+        off: node?.getAttribute('aria-disabled') === 'true',
         why: one?.row.refusal?.short,
         tip: one ? panel.drawingSwitchTip(one) : undefined,
         on: node?.getAttribute('aria-pressed') === 'true',

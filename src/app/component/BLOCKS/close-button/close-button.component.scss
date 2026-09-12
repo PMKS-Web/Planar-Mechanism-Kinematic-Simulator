@@ -1,9 +1,14 @@
 @mixin css($theme) {
-  /* The host stands aside so the button sits where a bare <button> sat, and a
-     caller that has to place it -- the drawer pins its own to a corner -- has
-     one element to position rather than two nested boxes. */
+  /* The host is the box. It was `display: contents` first, so the button would
+     land exactly where a bare <button> sat -- but a `display: contents` element
+     has no box of its own, which means a caller's class on it cannot be
+     positioned, cannot be measured, and cannot be clicked by a test. Three
+     suites and a layout check addressed `.closeDrawer` and `.closeCard`
+     directly, and all of them would have had to learn a two-part selector for
+     no gain. A flex host lays the button out the same way. */
   close-button {
-    display: contents;
+    display: flex;
+    flex: 0 0 auto;
   }
 
   .closeButton {

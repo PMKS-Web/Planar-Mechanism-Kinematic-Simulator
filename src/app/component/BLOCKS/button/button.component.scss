@@ -11,6 +11,21 @@
   $background: map.get($theme, background);
   $foreground: map.get($theme, foreground);
 
+  /* An inline button's row shrinks to it. Left at the panel's full width, the
+     row is a band of nothing beside a short button -- and the middle of that
+     band, which is where a pointer aimed at the control lands, is not the
+     button. "Go To Joint A" is 132px in a 283px row: every press past its
+     right edge did nothing, and the drawer's own suite caught it. The host
+     shrinks with the row, or the band simply moves out one level. */
+  button-block:has(> .row.inlineRow) {
+    display: inline-flex;
+  }
+
+  button-block .row.inlineRow {
+    display: inline-flex;
+    width: auto;
+  }
+
   #button-block {
     width: 100%;
 

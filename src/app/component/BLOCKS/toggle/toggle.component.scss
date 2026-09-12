@@ -44,6 +44,22 @@
     }
   }
 
+  // The switch alone, on a row that has already said what it is. Written in
+  // `synthesis-panel.component.scss` before this, as rules naming this block's
+  // private ids from outside it.
+  #toggle-block.bare {
+    .label,
+    .label-help,
+    .spacer {
+      display: none;
+    }
+
+    mat-slide-toggle {
+      transform: scale(0.8);
+      transform-origin: right center;
+    }
+  }
+
   #toggle-block {
     .mixed-state {
       color: mat.m2-get-color-from-palette($primary-palette, 700);

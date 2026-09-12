@@ -15,10 +15,11 @@ import { MatTooltip } from '@angular/material/tooltip';
  * already shared, washing on hover at the 4% every other icon button in the
  * app uses. That is a visible change to the other three, made deliberately.
  *
- * **The host is `display: contents`**, so the button lands in its parent's
- * layout exactly where a bare `<button>` did and a caller that needs to place
- * it -- the drawer pins its own to a corner -- writes one rule against
- * `.closeButton` rather than fighting a wrapper box.
+ * **The host is the box**, so a caller places it by its own class the way it
+ * placed the button it replaced. It was `display: contents` first, which looks
+ * tidier and is worse: such an element has no box, so a class on it cannot be
+ * positioned, measured or clicked, and every suite that addressed
+ * `.closeDrawer` or `.closeCard` would have needed a two-part selector.
  */
 @Component({
   selector: 'close-button',

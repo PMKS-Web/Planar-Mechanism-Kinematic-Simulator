@@ -384,15 +384,17 @@ const CRANK_LOADED_FOUR_BAR =
 
 describe('AnalysisPanelComponent drawing switches', () => {
   // These are `app-view-button` at its labelled size now, not a hand-drawn
-  // `.drawingChip`: `data-switch` rides the host, the grayed state is the
-  // button's own `disabled`, and the word is `.viewButtonLabel`.
+  // `.drawingChip`: `data-switch` rides the host and the word is
+  // `.viewButtonLabel`. Grayed is `aria-disabled`, not `disabled` -- a
+  // disabled button takes no pointer events, and the reason a switch is gray
+  // is the one tooltip a reader most needs.
   const switches = (fixture: ComponentFixture<AnalysisPanelComponent>) =>
     [...fixture.nativeElement.querySelectorAll('app-view-button')].map((host: Element) => {
       const node = host.querySelector('.viewButton') as HTMLButtonElement | null;
       return {
         key: host.getAttribute('data-switch'),
         label: node?.querySelector('.viewButtonLabel')?.textContent?.trim(),
-        off: !!node?.disabled,
+        off: node?.getAttribute('aria-disabled') === 'true',
         on: node?.getAttribute('aria-pressed') === 'true',
       };
     });

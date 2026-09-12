@@ -3,13 +3,14 @@
      reason is the one tooltip a reader most needs. -->
 <div
   class="row"
+  [class.inlineRow]="inline()"
   [matTooltip]="this.tooltip() ?? ''"
   [matTooltipDisabled]="!this.tooltip()"
   [matTooltipShowDelay]="disabled() ? 400 : 1000"
 >
   <button
     id="button-block"
-    (click)="click()?.()"
+    (click)="click()?.(); pressed.emit()"
     mat-stroked-button
     [color]="this.color()"
     [disabled]="this.disabled()"
@@ -17,6 +18,7 @@
     [class.inline]="inline()"
     [class.filled]="filled()"
     [attr.data-action]="dataAction()"
+    [attr.aria-label]="ariaLabel()"
   >
     @if (icon && !customIcon) {
       <mat-icon>{{ icon }}</mat-icon>

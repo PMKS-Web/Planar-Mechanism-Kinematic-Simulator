@@ -6,6 +6,7 @@ import { KeyboardShortcutsService } from '../../services/keyboard-shortcuts.serv
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import {
   Component,
+  DoCheck,
   OnInit,
   OnDestroy,
   ChangeDetectionStrategy,
@@ -120,7 +121,7 @@ export function niceRound(value: number): number {
     ToggleComponent,
   ],
 })
-export class SynthesisPanelComponent implements OnInit, OnDestroy {
+export class SynthesisPanelComponent implements OnInit, DoCheck, OnDestroy {
   private shortcuts = inject(KeyboardShortcutsService);
   private tabs = inject(SelectedTabService);
   private fb = inject(FormBuilder);
@@ -169,6 +170,21 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
   readonly switchForm = this.fb.group({ coupler: [false], region: [false], driver: [false] });
 
   regionForm = this.fb.group({ rx: [''], ry: [''], rw: [''], rh: [''] }, { updateOn: 'blur' });
+
+  /**
+   * Put the switches back where the model is, every check.
+   *
+   * Not a subscription, for the same reason the tutorial card counts this way:
+   * most of what moves these is announced on nothing. `design.endsOnly` is a
+   * plain field, and `driverOn` is a function of a refusal and a wanted flag
+   * that the solution service changes on its own -- choosing another
+   * candidate, a search finishing, a reset. Mirroring on `valueChanges` left
+   * the coupler switch showing the opposite of the check mark beside it, and
+   * the next press on it looked dead because the model was already there.
+   */
+  ngDoCheck(): void {
+    this.syncSwitches();
+  }
 
   ngOnInit(): void {
     this.sizeCouplerToView();
@@ -691,14 +707,20 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
    * shows the reader a switch that disagrees with the panel under it.
    */
   private syncSwitches(): void {
-    this.switchForm.setValue(
-      {
-        coupler: this.design.endsOnly,
-        region: this.design.constrain,
-        driver: this.driverOn,
-      },
-      { emitEvent: false }
-    );
+    const want = {
+      coupler: this.design.endsOnly,
+      region: this.design.constrain,
+      driver: this.driverOn,
+    };
+    const have = this.switchForm.getRawValue();
+    if (
+      have.coupler === want.coupler &&
+      have.region === want.region &&
+      have.driver === want.driver
+    ) {
+      return;
+    }
+    this.switchForm.setValue(want, { emitEvent: false });
   }
 
   private toggleRequirement(which: 'endsOnly' | 'constrain'): void {

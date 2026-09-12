@@ -52,6 +52,8 @@
     &.labelled {
       width: auto;
       height: 34px;
+      // The chip this replaced faded on hover rather than snapping.
+      transition: background 0.12s;
       gap: 6px;
       padding: 0 8px;
       font: inherit;
@@ -77,6 +79,18 @@
 
       &:disabled {
         border-color: var(--border-rule);
+      }
+
+      // Grayed but still hoverable, so the reason can reach the pointer. The
+      // shape `.drawingChip--off` had.
+      &.refused {
+        border-color: var(--border-rule);
+        color: var(--text-disabled);
+        cursor: default;
+
+        &:hover {
+          background: transparent;
+        }
       }
 
       mat-icon {

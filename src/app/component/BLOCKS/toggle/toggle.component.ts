@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, input, output } from '@angular/core';
+import { booleanAttribute, Component, ChangeDetectionStrategy, input, output } from '@angular/core';
 import { FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
@@ -46,6 +46,25 @@ export class ToggleComponent {
    * own stylesheet.
    */
   readonly compact = input<boolean>(false);
+  /**
+   * The switch's accessible name, where the block's own label is hidden or the
+   * row says it some other way.
+   *
+   * It has to be an input rather than an `aria-label` on the tag: the host is
+   * a role-less custom element, so an attribute there names nothing, and the
+   * `mat-slide-toggle` inside is what carries the `switch` role.
+   */
+  readonly ariaLabel = input<string>();
+  /**
+   * The switch alone: no label, no help mark, no spacer, and scaled to sit on
+   * a row that has already said what it is.
+   *
+   * The synthesis panel's requirement rows and its driver row are these. They
+   * were reaching into this block's private ids from their own stylesheets to
+   * get it, which is the coupling `cell` and `compact` were added to remove
+   * elsewhere.
+   */
+  readonly bare = input<boolean, unknown>(false, { transform: booleanAttribute });
 
   readonly addInput = input<boolean>(false);
   readonly _formControlForInput = input<string | undefined>(undefined);

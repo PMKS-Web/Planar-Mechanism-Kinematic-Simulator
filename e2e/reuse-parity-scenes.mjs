@@ -184,6 +184,24 @@ export const SCENES = [
     clip: 'app-left-tabs .panel',
   },
 
+  {
+    // A tight clip on the part of the synthesis panel that did **not** change,
+    // left undeclared on purpose. The two whole-panel scenes above carry an
+    // `expectedChange`, and a declaration exempts everything in its frame --
+    // so without this the position rows would be riding under a note written
+    // about the help marks and the Add button.
+    name: 'synthesis position rows',
+    query: '',
+    storage: QUIET,
+    setup: async (page) => {
+      await clickMode(page, 'synthesis');
+      await page.locator('.kindCard--on').click();
+      await page.locator('.work').waitFor({ state: 'visible' });
+    },
+    clip: '.poseRow',
+    settle: 700,
+  },
+
   // ------------------------------------------------------------- right drawer
   {
     name: 'drawer settings',
@@ -222,6 +240,27 @@ export const SCENES = [
     linkage: '4-Bar',
     setup: (page) => openDrawer(page, 7),
     clip: '#rightPanel',
+  },
+  {
+    // An undriven mechanism is the one state that offers "Go To Joint A", the
+    // action button this work moved onto `button-block`. Nothing else reaches
+    // it, so the change went unphotographed until Fable's review said so.
+    name: 'drawer kinematic setup, undriven mechanism',
+    linkage: '4-Bar',
+    storage: QUIET,
+    setup: async (page) => {
+      await page.evaluate(() => {
+        const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+        srv.joints.forEach((joint) => (joint.input = false));
+        srv.updateMechanism();
+      });
+      await page.waitForTimeout(400);
+      await openDrawer(page, 5);
+    },
+    clip: '#rightPanel',
+    settle: 900,
+    expectedChange:
+      "the check's action button is button-block inline, where it was a hand-drawn 32px stroked button. Its press target is now the button rather than a band of empty row beside it -- pressing right of the label used to do nothing.",
   },
   {
     name: 'drawer force setup on empty drawing',

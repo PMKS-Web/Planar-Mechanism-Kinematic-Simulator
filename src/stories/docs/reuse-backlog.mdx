@@ -78,6 +78,14 @@ cycle to appear is a panel reaching another panel's static — register a handle
 
 ## Done
 
+*A review by Fable 5.1 on this branch caught three things worth naming here, because each is a
+shape this work could repeat. A mirror held in a form goes stale when the thing it mirrors
+announces nothing — derive it every check instead. A tooltip hung on a `disabled` control can never
+open, so a refusal wants `aria-disabled` and a live hover. And an inline button inside a
+full-width wrapper leaves a band of empty row beside it that swallows presses: "Go To Joint A" was
+132px inside 283px, and every press right of the label did nothing.*
+
+
 - `BLOCKS/field-overlay.ts` is the one copy of the hover-and-focus rule that tells the canvas to
   draw a field's dimension. Four blocks held their own — `input-block`, `dual-input-block`,
   `hold-field-block`, `toggle-block` — with four shapes of state and, between them, four different
@@ -95,7 +103,7 @@ cycle to appear is a panel reaching another panel's static — register a handle
   `ShortcutTipDirective` / `app-shortcut-tip` (from the app root). Their stories moved from
   `src/stories/shared/` to `src/stories/blocks/` with them, and the shortcut tip — the one of the
   four with no gallery entry at all — has one now, under **Feedback**.
-- The synthesis panel's two hand-drawn `.switch` knobs are `toggle-block`. A control cannot live
+- The synthesis panel's two hand-drawn `.switch` knobs are `toggle-block` at its new `bare` size. A control cannot live
   inside a button, so the requirement row now presses through its own `.req__press` and the switch
   sits beside it; the panel keeps a small `switchForm` because `toggle-block` binds through a form,
   and `syncSwitches` keeps that mirror level with the services that are the real state. Both ways
@@ -125,7 +133,7 @@ cycle to appear is a panel reaching another panel's static — register a handle
   `<ng-content select="title-block, editable-title-block">`, so a subtitle renamed to that tag
   would stop landing in the card body and start landing in the sticky title row. The level is read
   from the tag the caller wrote.
-- `input-block` gained `cell` and `quiet`, and `toggle-block` gained `compact`, replacing the rules
+- `input-block` gained `cell`, and `toggle-block` gained `compact` and `bare`, replacing the rules
   in `analysis-setup` and `analysis-panel` that named those blocks' private ids from outside. That
   is the coupling that made renaming anything inside a block break a panel nobody had edited.
 - `close-button` replaced all five, and **the look was deliberately unified**. They agreed on

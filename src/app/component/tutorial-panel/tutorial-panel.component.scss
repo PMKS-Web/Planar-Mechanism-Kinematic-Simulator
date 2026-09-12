@@ -45,7 +45,7 @@
   // Only where it goes; what it looks like is `close-button`'s business now.
   // The `.flush` variant that used to live here -- static, 28px, for the
   // completion card -- had no call site left and went with the rest.
-  .closeCard .closeButton {
+  .closeCard {
     position: absolute;
     top: 8px;
     right: 8px;

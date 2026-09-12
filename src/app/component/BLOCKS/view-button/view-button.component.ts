@@ -69,6 +69,15 @@ export class ViewButtonComponent {
    * switch teaches that color before the reader meets it on the drawing.
    */
   readonly ink = input<string>();
+  /**
+   * Offered but not available right now: grayed, and the reason on hover.
+   *
+   * Deliberately not `disabled`. A disabled button takes no pointer events, so
+   * its tooltip can never open -- and the reason a control is gray is the one
+   * tooltip a reader most needs. The press is refused by the caller, which
+   * already knows why.
+   */
+  readonly refused = input<boolean, unknown>(false, { transform: booleanAttribute });
 
   /** The shortcut this button doubles, if it has one: its keys go in the tip. */
   readonly shortcut = input<ShortcutId>();
@@ -97,8 +106,13 @@ export class ViewButtonComponent {
    * Prose only: the shortcut is drawn as a key cap by `appShortcutTip`, at the
    * end, rather than written into this sentence in brackets.
    */
-  protected readonly tip = computed(() =>
-    this.noun() ? `${this.shown() ? 'Hide' : 'Show'} ${this.noun()}` : (this.tooltip() ?? '')
+  protected readonly tip = computed(
+    () =>
+      // An explicit tooltip wins. The generated sentence is for a switch whose
+      // whole story is its noun; a caller that has something else to say --
+      // the analysis panel says *why* a switch is refused -- was having it
+      // thrown away, because passing a noun used to be enough to silence it.
+      this.tooltip() ?? (this.noun() ? `${this.shown() ? 'Hide' : 'Show'} ${this.noun()}` : '')
   );
 
   /** The glyph draws the grid as it is: the crossed-out one means hidden. */

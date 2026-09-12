@@ -506,13 +506,6 @@ export class AnalysisSetupComponent {
    * changed the mechanism, and pressing Undo afterwards should take back the
    * last edit rather than the last time the reader looked at something.
    */
-  /**
-   * `button-block` takes the action as a function rather than firing an
-   * output, so a row that jumps to a part hands it one bound to that part.
-   */
-  goToAction(part: Joint | Link | undefined): () => void {
-    return () => this.goTo(part);
-  }
 
   goTo(part: Joint | Link | undefined): void {
     if (!part) return;

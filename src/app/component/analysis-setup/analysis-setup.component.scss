@@ -243,9 +243,8 @@
 
     // The table's cells ARE the shared input component, told so: `cell` gives
     // the field the whole column and hides the header parts the table's own
-    // headings already say, and `quiet` grays a value the reader cannot set.
-    // Both used to be written here, as rules naming `#input-block`'s insides
-    // from outside it.
+    // headings already say. That used to be written here, as rules naming
+    // `#input-block`'s insides from outside it.
     .cellField {
       min-width: 0;
 

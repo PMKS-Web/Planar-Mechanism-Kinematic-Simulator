@@ -1,4 +1,9 @@
-<div id="toggle-block" [class.toggle-block--disabled]="disabled()" [class.compact]="compact()">
+<div
+  id="toggle-block"
+  [class.toggle-block--disabled]="disabled()"
+  [class.compact]="compact()"
+  [class.bare]="bare()"
+>
   <div [formGroup]="this.formGroup()" class="row">
     <!-- <input type="checkbox" id="vehicle1" name="vehicle1" value="Bike" [formControlName]="this._formControl" /> -->
     <span class="label"><ng-content></ng-content></span>
@@ -36,6 +41,7 @@
       [disabled]="this.disabled()"
       [formControlName]="this._formControl()"
       [attr.data-action]="dataAction()"
+      [aria-label]="ariaLabel() ?? ''"
     ></mat-slide-toggle>
     @if (mixed()) {
       <span class="mixed-state">Mixed</span>

@@ -1,4 +1,11 @@
-import { Component, Input, ChangeDetectionStrategy, booleanAttribute, input } from '@angular/core';
+import {
+  Component,
+  Input,
+  ChangeDetectionStrategy,
+  booleanAttribute,
+  input,
+  output,
+} from '@angular/core';
 import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
@@ -13,6 +20,15 @@ import { MatTooltip } from '@angular/material/tooltip';
 export class ButtonComponent {
   @Input() icon: string | undefined;
   readonly click = input<(() => void) | undefined>(undefined);
+  /**
+   * Pressed.
+   *
+   * Prefer this where the action needs an argument: `(pressed)="goTo(part)"`
+   * reads better than a `[click]` bound to a helper that returns a closure,
+   * and it is evaluated when the press happens rather than during change
+   * detection. `click` stays for the many call sites that pass a bound method.
+   */
+  readonly pressed = output<void>();
   readonly color = input<string>('primary');
 
   @Input() customIcon: string | undefined;
@@ -42,4 +58,11 @@ export class ButtonComponent {
    * `filled` off.
    */
   readonly filled = input<boolean, unknown>(false, { transform: booleanAttribute });
+  /**
+   * The button's accessible name, for one whose content is an icon alone.
+   *
+   * An `aria-label` written on the tag names the host, which is a role-less
+   * custom element; the `<button>` inside is the thing that needs the name.
+   */
+  readonly ariaLabel = input<string>();
 }
