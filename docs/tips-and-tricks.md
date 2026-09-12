@@ -11,6 +11,7 @@ to work on it without stepping in the same holes.
 
 ## Contents
 
+- [Free path timing: preview geometry and comparison points are different](#free-path-timing-preview-geometry-and-comparison-points-are-different)
 - [Environment](#environment)
 - [Running the app](#running-the-app)
 - [Unit tests](#unit-tests)
@@ -2613,3 +2614,22 @@ production solver is static. `pmks-path-adapter.ts` validates fresh normal entit
 then restores the saved data fields in `finally`. Never introduce an `await` into that borrowed
 state interval. The pure search can run in a worker independently; a future instance-based
 production solver should replace the adapter's static isolation.
+
+
+## Free path timing: preview geometry and comparison points are different
+
+Free timing pairs arc-length target samples with nonuniform input angles. Do not draw only those
+paired points as if they sampled the full mechanism trajectory uniformly: an allowed large timing
+gap can hide a curved section. `PathSynthesisService.generatedTrajectory` caches 513 uniform-angle
+samples for the preview, while candidate `trajectory` and `angles` remain the engineering pairs.
+
+The S3 benchmark's transform check also distinguishes world RMS from normalized RMS. The existing
+normalization length is an **axis-aligned** bounding-box diagonal; rotating a target changes it.
+For a fixed geometry trial, world RMS should scale with the drawing; normalized errors should be
+comparable under rotation, not bit-identical. Do not loosen world reconstruction checks to hide a
+normalization-definition difference.
+
+`npm run benchmark:path` is intentionally expensive. Do not run a production build concurrently
+when measuring representative runtime: CPU contention can multiply a free-timing run's wall time.
+Use the per-case objective/correspondence timings and the browser responsiveness report as well as
+total runtime. The search budget is evaluations and iterations, never elapsed wall time.

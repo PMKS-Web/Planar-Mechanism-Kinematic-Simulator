@@ -6,6 +6,32 @@ export interface PathPoint {
 export type Interval = readonly [number, number];
 export type Assembly = -1 | 1;
 export type InputDirection = 'clockwise' | 'counterclockwise';
+export type CorrespondenceMode = 'equal-input-angle' | 'monotone-free-timing';
+export interface CorrespondenceDiagnostics {
+  mode: CorrespondenceMode;
+  inputStart: number;
+  inputEnd: number;
+  minDelta: number;
+  maxDelta: number;
+  meanDelta: number;
+  medianDelta: number;
+  monotone: boolean;
+  targetSamples: number;
+  trajectorySamples: number;
+  iterations: number;
+  /** Costs in normalized squared-distance units; no hidden size/timing penalty. */
+  geometricCost: number;
+  regularization: number;
+  totalCost: number;
+}
+
+export interface CompactnessDiagnostics {
+  groundRatio: number;
+  maxMovingLinkRatio: number;
+  totalMovingLinkRatio: number;
+  couplerOffsetRatio: number;
+  characteristicSize: number;
+}
 
 export interface PathTarget {
   points: readonly PathPoint[];
@@ -41,7 +67,7 @@ export interface PathConstraints {
 export interface PathSynthesisRequest {
   family: 'four-bar';
   target: PathTarget;
-  correspondence: { kind: 'equal-input-angle' };
+  correspondence: { kind: CorrespondenceMode };
   direction: InputDirection | 'either';
   settings: PathSynthesisSettings;
   constraints?: PathConstraints;
@@ -56,6 +82,14 @@ export const DEFAULT_PATH_SETTINGS: PathSynthesisSettings = {
   starts: 2,
   maxEvaluations: 48000,
   acceptableNormalizedRms: 0.025,
+};
+
+/** The measured S3 standard budget; free timing does more work inside each objective. */
+export const DEFAULT_FREE_TIMING_SETTINGS: PathSynthesisSettings = {
+  ...DEFAULT_PATH_SETTINGS,
+  starts: 1,
+  generations: 90,
+  maxEvaluations: 16000,
 };
 
 export interface PreparedPath {
@@ -130,6 +164,8 @@ export interface PathSynthesisCandidate {
   /** Never included in engineering error. Feasible candidates have no penalty. */
   penalty: number;
   production: ProductionValidation;
+  correspondence?: CorrespondenceDiagnostics;
+  compactness?: CompactnessDiagnostics;
 }
 
 export type SynthesisStatus =
@@ -151,6 +187,9 @@ export interface SynthesisDiagnostics {
   rejected: Record<string, number>;
   messages: string[];
   elapsedMs: number;
+  objectiveMs?: number;
+  correspondenceMs?: number;
+  maxObjectiveMs?: number;
 }
 
 export interface PathSynthesisResult {
@@ -159,6 +198,10 @@ export interface PathSynthesisResult {
   target?: PreparedPath;
   candidates: PathSynthesisCandidate[];
   best?: PathSynthesisCandidate;
+  /** Distinct production-passing choices, best first. Empty before verification. */
+  rankedCandidates?: PathSynthesisCandidate[];
+  rejectedFinalists?: PathSynthesisCandidate[];
+  duplicateFinalists?: PathSynthesisCandidate[];
   diagnostics: SynthesisDiagnostics;
 }
 

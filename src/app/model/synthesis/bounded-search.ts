@@ -20,11 +20,11 @@ export interface BoundedSearchOptions {
   stop: () => boolean;
 }
 
-/** Bounded DE/rand/1/bin followed by coordinate refinement; yields after each generation. */
+/** Bounded DE/rand/1/bin followed by coordinate refinement; yields between objective evaluations; true marks a completed iteration. */
 export function* boundedSearch(
   objective: (point: number[]) => number,
   options: BoundedSearchOptions
-): Generator<void> {
+): Generator<boolean> {
   const { bounds, random, stop } = options,
     dimensions = bounds.length;
   const score = (unit: number[]) =>
@@ -33,6 +33,7 @@ export function* boundedSearch(
   for (let i = 0; i < options.population && !stop(); i++) {
     const point = bounds.map(() => random());
     population.push({ point, score: score(point) });
+    yield false;
   }
   if (population.length < 4) return;
   for (let generation = 0; generation < options.generations && !stop(); generation++) {
@@ -50,8 +51,9 @@ export function* boundedSearch(
       });
       const value = score(trial);
       if (value < population[i].score) population[i] = { point: trial, score: value };
+      yield false;
     }
-    yield;
+    yield true;
   }
   let best = population.reduce((a, b) => (a.score <= b.score ? a : b));
   let step = 0.025;
@@ -71,9 +73,10 @@ export function* boundedSearch(
           best = { point: trial, score: value };
           improved = true;
         }
+        yield false;
       }
     }
     if (!improved) step *= 0.5;
-    yield;
+    yield true;
   }
 }

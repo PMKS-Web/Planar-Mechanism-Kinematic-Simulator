@@ -7,7 +7,8 @@ const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
-const OUT = 'artifacts/path-backend';
+const MODE = process.env.PMKS_PATH_TIMING ?? 'equal-input-angle';
+const OUT = process.env.PMKS_PATH_OUTPUT ?? 'artifacts/path-backend';
 mkdirSync(OUT, { recursive: true });
 const fixture = readFileSync('docs/fixture-urls.md', 'utf8').match(
   /\[Path synthesis reference four-bar\]\(([^)]+)\)/
@@ -40,6 +41,16 @@ try {
   await waitForReady(page);
   await tab('Synthesis');
   await page.locator('.kindCard--path').click();
+  const timing = page.getByRole('group', { name: 'Path timing', exact: true });
+  const modeFilm = filmstrip(page, OUT + '/timing-choice');
+  await timing.scrollIntoViewIfNeeded();
+  await modeFilm.during(30, 7, 'switch', async () => {
+    await timing.getByRole('button', { name: 'Equal Input Angle', exact: true }).click();
+    await page.waitForTimeout(80);
+    if (MODE === 'monotone-free-timing')
+      await timing.getByRole('button', { name: 'Free Timing', exact: true }).click();
+  });
+  await modeFilm.shot('settled');
   assert.equal(await button('Synthesize Four-Bar').isDisabled(), true);
   pass('Insufficient target points have a disabled action and an explanation');
   await page.evaluate(() => {
@@ -59,24 +70,70 @@ try {
   await page.waitForTimeout(100);
   const before = await drawing();
   await button('Synthesize Four-Bar').click();
+  assert.equal(
+    await timing.getByRole('button', { name: 'Equal Input Angle', exact: true }).isDisabled(),
+    true
+  );
+  const cancelStarted = Date.now();
   await button('Cancel Search').click();
   await page.waitForFunction(
     () => !ng.getComponent(document.querySelector('app-path-synthesis-panel')).synthesis.busy()
   );
+  const cancelMs = Date.now() - cancelStarted;
+  assert.ok(cancelMs < 2000, 'Cancel response ' + cancelMs + 'ms');
+  writeFileSync(OUT + '/responsiveness.json', JSON.stringify({ cancelMs }));
   assert.deepEqual(await drawing(), before);
   pass('Search cancellation leaves the target and existing drawing intact');
+  await page.evaluate(() => {
+    const monitor = (window.__pathFrames = {
+      count: 0,
+      maxGap: 0,
+      last: performance.now(),
+      stopped: false,
+    });
+    const frame = (time) => {
+      monitor.maxGap = Math.max(monitor.maxGap, time - monitor.last);
+      monitor.last = time;
+      monitor.count++;
+      if (!monitor.stopped) requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  });
   const started = Date.now();
   await button('Synthesize Four-Bar').click();
   await page.waitForFunction(
     () => !ng.getComponent(document.querySelector('app-path-synthesis-panel')).synthesis.busy(),
     {},
-    { timeout: 60000 }
+    { timeout: 180000 }
+  );
+  const frames = await page.evaluate(() => {
+    window.__pathFrames.stopped = true;
+    return window.__pathFrames;
+  });
+  assert.ok(frames.count > 10 && frames.maxGap < 500, JSON.stringify(frames));
+  writeFileSync(
+    OUT + '/responsiveness.json',
+    JSON.stringify({
+      cancelMs,
+      animationFrames: frames.count,
+      maxAnimationFrameGapMs: frames.maxGap,
+    })
   );
   const result = await page.evaluate(
     () => ng.getComponent(document.querySelector('app-path-synthesis-panel')).synthesis.result
   );
   assert.ok(result?.best, JSON.stringify(result?.diagnostics));
   assert.equal(result.best.production.status, 'passed');
+  assert.equal(result.best.correspondence.mode, MODE);
+  assert.equal(result.best.correspondence.monotone, true);
+  assert.ok(result.rankedCandidates.every((c) => c.production.status === 'passed'));
+  const curveCount = await page.evaluate(
+    () =>
+      ng.getComponent(document.querySelector('app-path-synthesis-panel')).synthesis
+        .generatedTrajectory.length
+  );
+  assert.equal(curveCount, 513);
+  if (MODE === 'monotone-free-timing') assert.ok(result.best.errors.normalizedRms < 0.025);
   assert.ok(result.best.errors.normalizedRms < 0.04);
   assert.deepEqual(await drawing(), before);
   assert.equal(await page.locator('[data-path-result="verified"]').count(), 1);
@@ -92,6 +149,21 @@ try {
     OUT + '/browser-result.json',
     JSON.stringify({ ...result, wallMs: Date.now() - started }, null, 2)
   );
+  await timing
+    .getByRole('button', {
+      name: MODE === 'monotone-free-timing' ? 'Equal Input Angle' : 'Free Timing',
+      exact: true,
+    })
+    .click();
+  assert.equal(await page.locator('[data-path-result="verified"]').count(), 0);
+  await timing
+    .getByRole('button', {
+      name: MODE === 'monotone-free-timing' ? 'Free Timing' : 'Equal Input Angle',
+      exact: true,
+    })
+    .click();
+  assert.equal(await page.locator('[data-path-result="verified"]').count(), 1);
+  pass('The preview belongs to its target and timing mode');
   await button('Create Mechanism').click();
   await page.waitForFunction(
     () => ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.joints.length === 10
@@ -165,13 +237,26 @@ try {
   await field.press('Tab');
   assert.equal(await page.locator('[data-path-result="verified"]').count(), 0);
   pass('Derived results are transient and cannot be applied after a target edit or reload');
-  await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(400);
   // The existing sheet handle is the public route on phone layouts.
   const handle = page.locator('.sheetHandle');
   if ((await handle.count()) && (await handle.getAttribute('aria-expanded')) === 'false')
     await handle.click();
+  await page.waitForTimeout(400);
   await button('Synthesize Four-Bar').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(100);
+  const actionBox = await button('Synthesize Four-Bar').boundingBox();
+  assert.ok(
+    actionBox &&
+      actionBox.x >= 0 &&
+      actionBox.x + actionBox.width <= 390 &&
+      actionBox.y >= 0 &&
+      actionBox.y + actionBox.height <= 844,
+    JSON.stringify(actionBox)
+  );
+  assert.equal(await handle.getAttribute('aria-expanded'), 'true');
   await page.screenshot({ path: OUT + '/phone.png' });
   pass('The synthesis action remains reachable on a phone with reduced motion');
   assert.deepEqual(errors, []);

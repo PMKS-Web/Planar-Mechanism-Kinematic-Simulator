@@ -1,6 +1,6 @@
 # Path synthesis
 
-> **Status:** S0–S2 — target-path editing and numerical four-bar fitting are available.
+> **Status:** S0–S3 — target editing, equal-angle/free-timing four-bar fitting, and production-verified insertion are available.
 
 The Synthesis chooser offers **Path — points on a curve** beside three-position motion
 synthesis. It opens a target-path editor with ordered points, coordinate fields, canvas
@@ -31,8 +31,8 @@ wrapped neighbors so the tangent is continuous at the seam.
 ## Fit and create a four-bar
 
 Choose **Synthesize Four-Bar** to search bounded four-bar dimensions and a rigid coupler point.
-The target curve is resampled to 64 arc-length samples. Correspondence uses equal input-angle
-steps, a full revolution for a closed path, or an optimized finite sweep for an open path.
+The target curve is resampled to 64 arc-length samples. Choose ordered Free Timing or the
+Equal Input Angle baseline. Closed paths fit a full revolution; open paths fit a finite sweep.
 **Cancel Search** keeps the drawing and target. Changing the target also cancels a pending search.
 
 The best production-verified candidate is drawn over the target: a solid generated path, small
@@ -70,3 +70,12 @@ placement, one-step undo/redo, reload, sharing, phone layout and reduced motion.
 and screenshots are written to `artifacts/path-synthesis/`. `e2e/synthesis-redesign.mjs` retains
 the motion-synthesis workflow. Unit coverage includes the curve, path editing, URL round trips,
 malformed entries, unit conversion and synthesis history permissions.
+
+
+The Path Timing choice now defaults to **Free Timing**, which keeps the points ordered while
+allowing uneven input-angle steps. **Equal Input Angle** remains an explicit baseline. The result
+shows the fitted sweep and count of distinct verified candidates; creation uses the best fit.
+Free timing takes longer. Search can be canceled, and changing timing invalidates the old preview.
+The solid preview samples the whole fitted sweep independently of the timing correspondence.
+See [the backend reference](path-synthesis-backend.md#prescribed-and-unprescribed-timing) for the
+mathematics, deterministic benchmark and limitations.

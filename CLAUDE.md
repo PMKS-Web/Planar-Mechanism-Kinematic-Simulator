@@ -156,6 +156,15 @@ forward with every mid-cycle tweak. `docs/edit-mode-playback-plan.md` is the who
 [tips-and-tricks](docs/tips-and-tricks.md#editing-playback-and-who-is-allowed-to-say-no) has the
 traps.
 
+### Path synthesis
+
+`model/synthesis/` fits four-bar coupler paths with Equal Input Angle or Monotone Free Timing.
+The latter nests ordered correspondence inside the existing four/five-variable geometry search.
+Only candidates passing ordinary Mechanism/PositionSolver verification can be inserted.
+`npm run benchmark:path` runs the explicit 24-case production-target comparison; it is separate
+from ordinary unit tests. The formulas, timing bounds, ranked results, metadata proposal and
+limitations are in [path-synthesis-backend.md](docs/path-synthesis-backend.md).
+
 ### Solvers (`src/app/model/mechanism/`)
 
 Pure computation, mostly static classes: `loop-solver` (finds kinematic loops), `position-solver`, `kinematic-solver` (velocity/acceleration), `force-solver`. `app.component.spec.ts` numerically verifies these against MATLAB results (`SixBarVerification.m`) for a sixbar linkage — treat it as the regression test for solver changes.

@@ -11,6 +11,7 @@ const meta: Meta<PathSynthesisResultComponent> = {
 export default meta;
 type Story = StoryObj<PathSynthesisResultComponent>;
 export const Ready: Story = {};
+export const EqualInputAngle: Story = { args: { mode: 'equal-input-angle' } };
 export const InsufficientPoints: Story = {
   args: { refusal: 'Add at least three distinct path points.' },
 };

@@ -1,6 +1,6 @@
 # Four-bar path synthesis backend
 
-> Status: S0–S2 implemented on the local `feature/path-synthesis-backend` continuation.
+> Status: S0–S3 implemented locally on `feature/path-synthesis-free-timing`: monotone free timing, a 24-case benchmark, and ranked verified candidates.
 
 ## Audit and starting point
 
@@ -32,7 +32,7 @@ own worktree; the original branch and unrelated working trees are preserved. Not
 
 The search uses analytic circle closure, bounded differential evolution plus local coordinate
 refinement, and variable projection of linear parameters. Finalists must pass the production
-solver. The search yields between generations for cancellation and browser responsiveness.
+solver. The search yields between objective evaluations for cancellation and browser responsiveness.
 
 ## Architecture and entry points
 
@@ -148,7 +148,7 @@ closed: θ_i = θ0 + direction × 2π × i/N
 
 Both input directions are searched by default. θ0 optimizes the phase relative to the first
 ordered target point; the target order is never independently permuted during a trial.
-This is *not* free-timing path synthesis. An arbitrary known mechanism travels at nonuniform
+This **EqualInputAngle baseline** is not free-timing path synthesis; the second mode below removes equal-step timing. An arbitrary known mechanism travels at nonuniform
 path speed at constant crank speed; its arc-length-resampled path is generally not an exact
 zero-error target under this correspondence. Verification therefore compares returned
 trajectories, not recovery of original dimensions, and reports nonzero engineering error.
@@ -271,17 +271,225 @@ determinism, transformed targets, open targets, known-mechanism recovery, adapte
 production trajectory agreement and static state restoration. Reference mechanisms are published
 in the fixture gallery. `e2e/path-synthesis-backend.mjs` covers the end-to-end engineering
 workflow, including preservation of an existing machine, cancellation, insertion, history and
-normal animation. The result block has eight gallery states and uses existing action/section blocks.
+normal animation. The result block has nine gallery states and uses existing choice/action/section blocks.
 
-The next stage should implement a **monotone free-timing correspondence** while preserving the
-same physical trajectory and production-validation gates. It should compare equal-input-angle
-and free-timing results on a benchmark set of full-cycle and partial known mechanisms. Then
-expose meaningful bounds and candidate comparison before adding another topology.
+S3 now implements the correspondence and benchmark described below. The next useful stage is
+an independent dense trajectory-quality check, timing-resolution/convergence studies, and an
+explicit bounds/candidate comparison interface before another topology.
 
 Deferred: six-bars, slider-cranks, arbitrary topology, Burmester construction, force/stress or
 multiobjective optimization, ML, simultaneous synthesis of several mechanisms, collision/clearance
 design, prescribed precision-point angles and nonuniform weighting. Search is heuristic; default
 bounds may yield mechanisms large compared with their traced curves. Singular passages are
-conservatively excluded. The generated preview connects 64 samples with lines, and the UI exposes
+conservatively excluded. The generated preview connects 513 uniform-angle samples with lines, independently of fitted timing, and the UI exposes
 one best candidate; API results retain one per independent run. Worker execution, persisted search
 settings and partial-interval animation are subsequent work, not claims of this implementation.
+
+
+## S3 audit and continuation
+
+The S3 continuation starts at backend commit `2455c85cce4a4119bc225cc6a6393e46362df3b8`.
+The September 12 fetch of staging still resolved to `acba1b770a20551b37a9b2f24b459c224c8ed0fc`,
+already included: no rebase was needed. Work is isolated in `feature/path-synthesis-free-timing`.
+The original backend, target editor, ordinary mechanism model, and production solvers are preserved.
+No push or merge is part of this work.
+
+New numerical files: `path-correspondence.ts` (ordered assignment and continuous timing refinement),
+`path-projection.ts` (the existing six-coefficient linear fit at arbitrary ordered angles), and
+`path-candidates.ts` (verified ranking and duplicate diagnostics). `path-objective.ts` composes them.
+Requests/results remain plain serializable values. No numerical dependency was added.
+
+## Prescribed and unprescribed timing
+
+A prescribed-timing problem specifies which input angle belongs to each target point. That mode
+is future work. **EqualInputAngle** is the retained baseline: it imposes equal crank-angle steps
+on the equal-arc-length target samples. **MonotoneFreeTiming** lets those steps vary while retaining
+point order, the requested rotation direction, a single assembly, and the entire fitted interval.
+It is unprescribed timing with explicit numerical slope bounds, not unrestricted per-point matching.
+
+Let target points be qᵢ, characteristic length L, and normalized positive progress be tᵢ.
+Let s = +1 for CCW and −1 for CW. Then
+
+```
+θᵢ = θ₀ + s Δθ tᵢ
+minimize  (1/N) Σ ||P(geometry, θᵢ) − qᵢ||² / L²
+```
+
+For open paths, t₀ = 0 and tₙ₋₁ = 1. For closed paths, t₀ = 0, tₙ₋₁ < 1, and a virtual
+endpoint tₙ = 1 enforces the seam. The virtual point is **not** counted a second time in RMS.
+The full closed sweep is exactly 2π. Positive progress is strictly increasing for both directions;
+only the conversion to physical angles changes sign. Angles remain unwrapped across ±π or 2π.
+
+The outer chromosome remains three log length ratios, input phase, and (open paths only) sweep.
+There is no additional angle per target point in differential evolution. At fixed ordered angles,
+the six linear coefficients of `P = translation + a B + b JB + c e + d Je` are still solved with
+rank-checked Householder QR. Reconstructing them gives the same ordinary world-space four-bar.
+
+## Inner correspondence calculation
+
+Each feasible outer trial begins with the equal-angle projection. It is retained if valid, so a
+failed or worse timing update cannot erase a better feasible iterate of that same geometry trial.
+A dense canonical trajectory has M = 8K intervals (M+1 points), where K=N for closed paths and
+K=N−1 for open paths. The initial ordered assignment solves
+
+```
+D(i,j) = ||qᵢ − Pⱼ||² + min D(i−1,k)
+                              j−8M/K ≤ k ≤ j−1
+```
+
+with the fixed endpoint and seam conditions above. Each target advances by at least one dense
+grid state. A sliding deque of predecessor minima evaluates the recurrence in O(NM) time and
+O(NM) backtracking storage. Deterministic scan order resolves ties. There are no repeated states,
+independent nearest neighbors, horizontal DTW steps, backward jumps, or arbitrary reordering.
+
+After this first assignment, five bounded alternating rounds refine timing and refit the six
+linear coefficients. Timing uses two coordinate-descent sweeps (forward/backward); each coordinate
+uses 12 golden-section interval reductions and retains its original value if it cannot improve.
+Its admissible interval is bounded by its neighbors and two mean steps around its current value.
+These are local searches, not proofs of the global correspondence minimum. The first DP solve is
+global only for its discrete grid and current linear coefficients.
+
+The inner timing search interpolates the dense trajectory linearly for speed. QR and **every
+reported candidate point/error use analytic circle closure at the resulting angles**. Every
+candidate is rechecked against whole-sweep feasibility and world bounds. Only better *analytic*
+feasible candidates are retained; an interpolation improvement is not trusted as engineering error.
+The dense preview uses 513 uniform-angle samples independently of the matched timing.
+
+## Anti-degeneracy and cyclic phase
+
+For each positive progress gap, including the virtual closed seam:
+
+```
+0.05/K ≤ tᵢ₊₁ − tᵢ ≤ 8/K
+```
+
+The DP initialization has the stronger minimum 1/(8K). Continuous refinement may relax that to
+0.05/K. Fixed endpoints prevent collapse of the total interval. The minimum stops coincident
+states and concentrated many-to-one matches; the maximum prevents a jump across a large fraction
+of the requested motion. These bounds admit strongly nonuniform progression, but exclude extreme
+speed ratios. No time-smoothness, compactness, or timing penalty is blended into path RMS.
+
+All angles across the full interval still pass the analytic feasibility certificate, and production
+checks sample the complete motion independently of correspondence. These timing bounds are not a
+Hausdorff-distance guarantee between sample points: a fine loop between comparison points may
+still be underrepresented. Dense independent geometric coverage and adaptive target sampling are
+useful next checks; low paired RMS alone is not a global curve-equivalence proof.
+
+The first target point anchors the cyclic order. Existing θ₀ optimization supplies mechanism phase;
+rotation/translation remain in the linear projection. No separate cyclic target shuffle is needed
+to represent a one-to-one full traversal, because θ₀ may begin anywhere in the full revolution.
+The heuristic can still settle in a poorer phase basin. Multiple phase starts help but do not prove
+that every basin was visited. A self-intersection never permits switching to a backward branch.
+
+## Alternatives considered
+
+| Method | Decision |
+| --- | --- |
+| Independent nearest-point matching | Rejected: can reverse, collapse, or jump between crossing branches |
+| Ordinary unconstrained DTW | Rejected: repeated states can manufacture a low geometric score |
+| Dense ordered DP alone | Useful initialization, but quantized timing has an avoidable error floor |
+| Continuous ordered nearest-point descent alone | Fast, but dependent on its starting basin; used after DP |
+| Alternating correspondence and linear projection | Selected: preserves the small nonlinear search and existing QR boundary |
+| A few spline timing parameters | Possible later speed alternative; chosen basis would restrict legitimate timing shapes |
+| One global variable per target angle | Rejected: needlessly expands the outer search by roughly 64 dimensions |
+
+The ordering/slope ideas follow the primary teaching reference on
+[DTW variants and degeneracy](https://www.audiolabs-erlangen.de/resources/MIR/FMP/C3/C3S2_DTWvariants.html).
+The retained separable least-squares strategy follows the
+[NIST variable-projection explanation](https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=150866).
+The recurrence, endpoint treatment and integration here are specific to PMKS, not copied code.
+
+## Diagnostics, ranking and cost
+
+Every generated candidate includes correspondence mode, unwrapped start/end angle, positive
+minimum/maximum/mean/median angular gap, verified monotonicity, target/grid sample counts, and
+retained alternating iteration count. Closed gap statistics include the virtual seam. Geometric
+cost is normalized RMS squared; regularization is zero; total optimization cost is geometric cost.
+RMS/max remain in caller units (internal PMKS coordinates for the UI). The fitted direction and
+sweep are also explicit in `parameters`.
+
+Compactness is diagnostic only: ground/L, maximum moving link/L, total moving links/L, local
+tracer offset magnitude/L, and characteristic size in caller units. No hidden size preference.
+
+`candidates` retains all independent-run finalists for inspection. After authoritative production
+verification, `rankedCandidates` contains distinct passing candidates in ascending RMS order,
+`rejectedFinalists` contains failures, and `duplicateFinalists` contains passing near-duplicates.
+`best` is the first ranked verified result. The UI currently inserts only that best result.
+A passing duplicate never hides a failed production candidate or changes its path RMS.
+
+Duplicate distance is RMS component distance in normalized ground-pivot coordinates, moving-link
+lengths, local tracer offset, sine/cosine of input phase, and sweep/(2π), with threshold 0.015.
+Different assembly/direction combinations remain distinct. This removes numerical repeats; it is
+not an algebraic classification of cognate or pivot-swapped four-bars. At most one finalist from
+each independent outer run is retained, so the list is not an exhaustive Pareto front.
+
+## Benchmark methodology and reproduction
+
+`src/test-utils/verification/path-benchmark-fixtures.ts` defines 24 stable IDs: 20 mechanisms or
+traversals and four transformed reference cases. Categories include crank-rocker, double-crank,
+CW/CCW, both assemblies, full/partial sweeps, non-Grashof motion, short/long ground and coupler,
+several tracer placements, safe near-toggle clearance, nonuniform speed, compact geometry, large
+mechanism relative to its path, translation, rotation and scale. All are published as ordinary
+mechanism URLs in `docs/fixture-urls.md`.
+
+`productionReference` first verifies the source, constructs ordinary PMKS entities, and records
+its actual animation frames over the first requested traversal. It unwraps input travel and
+interpolates the final frame when an open endpoint falls between production samples. Closed
+samples omit the duplicate seam. The original progress samples are interpolated by cumulative
+polyline arc length into a timing oracle **kept outside the optimizer request**. The request contains
+only target geometry, closure, generic bounds, requested mode, either direction, and search settings.
+The optimizer never receives source dimensions, pivot locations, source angles, or a warm start.
+
+Both modes use seed 20260912, N=64, population 36, 90 generations, 90 refinement iterations,
+one independent start per assembly/direction, and maximum 16,000 objective evaluations. This is
+the measured standard budget now used by the Free Timing UI. The Equal Input Angle UI retains its
+existing 48,000 maximum, and backend callers can request larger free-timing settings. Equal budgets do not
+mean equal wall time; the inner correspondence makes free timing more expensive.
+
+Run `npm run benchmark:path` (several minutes). Optional `PMKS_PATH_BENCHMARK_CASES` selects
+comma-separated IDs for diagnosis. Output is checkpointed after every case to
+`artifacts/path-free-timing/benchmark.json` and `benchmark.md`; the checked-in snapshot is linked
+from the documentation index. `path-benchmark.spec.ts` validates all source fixtures in the ordinary
+regression suite; expensive fitting is opt-in. JSON includes per-case status/verification, path
+errors, evaluations, runtime, mean inner/outer objective cost, maximum single-objective duration,
+production discrepancy/tolerance, fitted sweep, timing/oracle diagnostics, size, and rejected
+finalists. Runtime is measured, never used as a stopping rule. Machine load affects it substantially.
+
+Success means production-verified and normalized RMS ≤2.5%. Verified-fit rate counts passing
+physical results regardless of fit threshold. Error aggregates exclude missing results; success
+and verification rates count them as failures. The report includes median/mean/p90/worst error,
+median/p90 runtime and median evaluations, plus each mode's per-case comparison. Oracle timing
+RMS compares normalized progress, not absolute angle: equivalent synthesized linkages need not
+recover the generating crank phase or speed law.
+
+Transform checks compare trajectories, not exact link parameters. The existing characteristic
+length is an axis-aligned bounding-box diagonal and therefore changes under rotation; world RMS
+scales exactly for a fixed nonlinear trial, while normalized quality is expected to be comparable,
+not numerically identical. Production rounding and heuristic basin selection can further change
+which equivalent candidate wins.
+
+## Browser execution and retained metadata
+
+The generator now yields after each objective evaluation, as well as completed iterations.
+`PathSynthesisService` consumes it in roughly 12 ms slices. Cancellation is checked before each
+trial; a trial itself is synchronous. A plain-data worker is a compatible future transport, but
+was not required to preserve the existing architecture. Production verification remains a short
+synchronous, non-reentrant compatibility boundary; PMKS entities are never transferred to workers.
+At very large sample counts the O(NM) inner solver can still make a single trial expensive.
+
+An initial browser run at the inherited large budget took about a minute; the 24-case benchmark
+met the fit threshold at the smaller standard budget, so Free Timing uses `DEFAULT_FREE_TIMING_SETTINGS`
+(16,000 maximum evaluations) in the service. This is an evidence-based budget choice, not a change
+to the inner equations or validity gates.
+
+The UI's shared segmented choice switches Free Timing / Equal Input Angle. Changing it invalidates
+the transient result; target edits and cancellation retain their existing protections. Results
+include the fitted interval and errors, but normal mechanism insertion still saves only ordinary
+geometry. In particular, normal playback of a partial fit can run outside its fitted interval.
+
+Persisting provenance would require an additive versioned URL extension, for example an optional
+`path-synthesis` record keyed to the **driver joint ID**, containing source, start/end, direction,
+mode and original errors. It would need handling for driver deletion, renaming, partition merges,
+unit changes, undo and geometry edits. Treat historical error as stale after any geometry edit;
+do not use metadata to restrict normal motion. This merits a separate codec/lifecycle change:
+S3 leaves the URL schema untouched and retains the complete interval in the transient result.

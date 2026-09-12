@@ -376,3 +376,10 @@ Not suites — import them from one.
 - **`#bottomBar` is a read-only strip** with `pointer-events: none`. It shows the mode, a status
   phrase, `Degrees of freedom: N` (omitted when the drawing has no mobility to report), the cursor
   coordinates when there are any, and the units.
+
+
+- `path-synthesis-free-timing.mjs` — timing-mode switching, free-search cancellation latency,
+  production-verified fitting, dense trajectory preview, stale-result invalidation and phone
+  controls. Uses a disposable browser and writes reports/filmstrips under `artifacts/path-free-timing/`.
+- `npm run benchmark:path` — explicit numerical 24-case Equal Input Angle / Free Timing comparison,
+  separate from the normal browser suites. Source fixtures are checked in ordinary unit tests.

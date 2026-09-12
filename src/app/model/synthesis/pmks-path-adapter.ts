@@ -4,14 +4,10 @@ import { RealLink } from '../link';
 import { Mechanism } from '../mechanism/mechanism';
 import { PositionSolver } from '../mechanism/position-solver';
 import { speedTurning } from '../drive-direction';
-import {
-  FourBarParameters,
-  PathSynthesisCandidate,
-  PathSynthesisResult,
-  ProductionValidation,
-} from './path-types';
+import { FourBarParameters, PathSynthesisResult, ProductionValidation } from './path-types';
 import { evaluateFourBar, fourBarPose } from './four-bar';
 import { distance } from './path-target';
+import { rankCandidates } from './path-candidates';
 
 export interface PathMechanismEntities {
   joints: RevJoint[];
@@ -180,12 +176,10 @@ export function validatePathMechanism(
 /** Rank only production-verified finalists as usable results. Unverified output is never insertable. */
 export function validatePathResult(result: PathSynthesisResult): PathSynthesisResult {
   if (!result.target || result.status === 'cancelled') return result;
-  const start = Date.now(),
-    accepted: PathSynthesisCandidate[] = [];
+  const start = Date.now();
   for (const candidate of result.candidates) {
     candidate.production = validatePathMechanism(candidate.parameters, result.target.dimension);
-    if (candidate.production.status === 'passed') accepted.push(candidate);
-    else {
+    if (candidate.production.status !== 'passed') {
       result.diagnostics.rejected['production-validation'] =
         (result.diagnostics.rejected['production-validation'] ?? 0) + 1;
       result.diagnostics.messages.push(
@@ -193,7 +187,11 @@ export function validatePathResult(result: PathSynthesisResult): PathSynthesisRe
       );
     }
   }
-  result.best = accepted[0];
+  const ranked = rankCandidates(result.candidates, result.target);
+  result.rankedCandidates = ranked.ranked;
+  result.rejectedFinalists = ranked.rejected;
+  result.duplicateFinalists = ranked.duplicates;
+  result.best = ranked.ranked[0];
   if (!result.best && result.candidates.length) result.status = 'production-validation-failed';
   else if (
     result.best &&

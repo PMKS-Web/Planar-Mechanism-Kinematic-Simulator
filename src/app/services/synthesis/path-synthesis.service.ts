@@ -3,12 +3,17 @@ import { SynthesisBuilderService } from './synthesis-builder.service';
 import { MechanismService } from '../mechanism.service';
 import { EditPermissionService } from '../edit-permission.service';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
-import { DEFAULT_PATH_SETTINGS, PathSynthesisResult } from '../../model/synthesis/path-types';
+import {
+  CorrespondenceMode,
+  DEFAULT_FREE_TIMING_SETTINGS,
+  DEFAULT_PATH_SETTINGS,
+  PathSynthesisResult,
+} from '../../model/synthesis/path-types';
 import { searchPath } from '../../model/synthesis/path-engine';
 import { preparePath } from '../../model/synthesis/path-target';
 import { pathMechanism, validatePathResult } from '../../model/synthesis/pmks-path-adapter';
 import { LoadingService } from '../loading.service';
-import { fourBarPose } from '../../model/synthesis/four-bar';
+import { evaluateFourBar, fourBarPose } from '../../model/synthesis/four-bar';
 
 /** Owns transient numerical results; only targets and created normal mechanisms enter history. */
 @Injectable({ providedIn: 'root' })
@@ -21,6 +26,31 @@ export class PathSynthesisService {
   readonly busy = signal(false);
   readonly evaluations = signal(0);
   readonly message = signal('');
+  readonly correspondence = signal<CorrespondenceMode>('monotone-free-timing');
+  setCorrespondence(mode: CorrespondenceMode): void {
+    if (mode === this.correspondence()) return;
+    if (this.busy()) this.cancel();
+    this.correspondence.set(mode);
+  }
+  get timingSummary(): string {
+    const result = this.result,
+      p = result?.best?.parameters;
+    return p
+      ? `Fitted sweep: ${((p.sweep * 180) / Math.PI).toFixed(1)}° ${p.direction}. ${result!.rankedCandidates?.length ?? 1} distinct verified candidates.`
+      : '';
+  }
+  private curveCandidate?: PathSynthesisResult['best'];
+  private previewCurve: { x: number; y: number }[] = [];
+  get generatedTrajectory() {
+    const candidate = this.candidate;
+    if (candidate !== this.curveCandidate) {
+      this.curveCandidate = candidate;
+      const evaluated =
+        candidate && evaluateFourBar(candidate.parameters, 513, !!this.result?.target?.closed);
+      this.previewCurve = evaluated && evaluated.valid ? evaluated.poses.map((pose) => pose.P) : [];
+    }
+    return this.previewCurve;
+  }
   private generation = 0;
   private resultKey = '';
   private solved?: PathSynthesisResult;
@@ -30,7 +60,12 @@ export class PathSynthesisService {
 
   private key(): string {
     const path = this.design.path;
-    return JSON.stringify([path.closed, path.smooth, path.points.map((p) => [p.x, p.y])]);
+    return JSON.stringify([
+      this.correspondence(),
+      path.closed,
+      path.smooth,
+      path.points.map((p) => [p.x, p.y]),
+    ]);
   }
 
   private target() {
@@ -49,7 +84,7 @@ export class PathSynthesisService {
   }
   get statusMessage(): string {
     return this.solved && this.resultKey !== this.key()
-      ? 'The target changed. Synthesize again to update the fit.'
+      ? 'The target or path timing changed. Synthesize again to update the fit.'
       : this.message();
   }
   get startPose() {
@@ -102,9 +137,13 @@ export class PathSynthesisService {
       {
         family: 'four-bar',
         target: this.target(),
-        correspondence: { kind: 'equal-input-angle' },
+        correspondence: { kind: this.correspondence() },
         direction: 'either',
-        settings: { ...DEFAULT_PATH_SETTINGS },
+        settings: {
+          ...(this.correspondence() === 'monotone-free-timing'
+            ? DEFAULT_FREE_TIMING_SETTINGS
+            : DEFAULT_PATH_SETTINGS),
+        },
       },
       { cancelled }
     );

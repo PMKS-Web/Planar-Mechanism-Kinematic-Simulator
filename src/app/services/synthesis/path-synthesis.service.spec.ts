@@ -61,4 +61,12 @@ describe('path search orchestration', () => {
     service.create();
     expect(save).not.toHaveBeenCalled();
   });
+  it('invalidates a running search when the correspondence mode changes', async () => {
+    service.synthesize();
+    service.setCorrespondence('equal-input-angle');
+    await vi.runAllTimersAsync();
+    expect(service.busy()).toBe(false);
+    expect(service.candidate).toBeUndefined();
+    expect(save).not.toHaveBeenCalled();
+  });
 });

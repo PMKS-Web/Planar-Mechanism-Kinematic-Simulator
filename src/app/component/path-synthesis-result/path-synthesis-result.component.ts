@@ -1,4 +1,6 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { CorrespondenceMode } from '../../model/synthesis/path-types';
+import { SegmentedComponent } from '../BLOCKS/segmented/segmented.component';
 import { ButtonComponent } from '../BLOCKS/button/button.component';
 import { CollapsibleSubsectionComponent } from '../BLOCKS/collapsible-subsection/collapsible-subsection.component';
 
@@ -6,11 +8,14 @@ import { CollapsibleSubsectionComponent } from '../BLOCKS/collapsible-subsection
 @Component({
   selector: 'app-path-synthesis-result',
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [ButtonComponent, CollapsibleSubsectionComponent],
+  imports: [ButtonComponent, CollapsibleSubsectionComponent, SegmentedComponent],
   templateUrl: './path-synthesis-result.component.html',
   styleUrls: ['./path-synthesis-result.component.scss'],
 })
 export class PathSynthesisResultComponent {
+  readonly mode = input<CorrespondenceMode>('monotone-free-timing');
+  readonly modeChange = output<CorrespondenceMode>();
+  readonly timingSummary = input('');
   readonly busy = input(false);
   readonly message = input('');
   readonly refusal = input('');

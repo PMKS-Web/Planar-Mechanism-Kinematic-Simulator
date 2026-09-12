@@ -22,7 +22,7 @@ function settingsValid(request: PathSynthesisRequest): boolean {
     !r || (r.length === 2 && r.every(Number.isFinite) && r[0] > 0 && r[1] >= r[0]);
   return (
     request.family === 'four-bar' &&
-    request.correspondence.kind === 'equal-input-angle' &&
+    ['equal-input-angle', 'monotone-free-timing'].includes(request.correspondence.kind) &&
     ['clockwise', 'counterclockwise', 'either'].includes(request.direction) &&
     integer(s.seed, 0, 4294967295) &&
     integer(s.population, 4, 256) &&
@@ -103,7 +103,22 @@ export function* searchPath(
         let best: PathSynthesisCandidate | undefined;
         const objective = (point: number[]) => {
           diagnostics.evaluations++;
-          const trial = fitFourBar(point, assembly, direction, target, constraints);
+          const measured = performance.now(),
+            profile = { correspondenceMs: 0 };
+          const trial = fitFourBar(
+            point,
+            assembly,
+            direction,
+            target,
+            constraints,
+            request.correspondence.kind,
+            profile
+          );
+          const duration = performance.now() - measured;
+          diagnostics.objectiveMs = (diagnostics.objectiveMs ?? 0) + duration;
+          diagnostics.correspondenceMs =
+            (diagnostics.correspondenceMs ?? 0) + profile.correspondenceMs;
+          diagnostics.maxObjectiveMs = Math.max(diagnostics.maxObjectiveMs ?? 0, duration);
           if ('reason' in trial)
             diagnostics.rejected[trial.reason] = (diagnostics.rejected[trial.reason] ?? 0) + 1;
           else {
@@ -113,7 +128,7 @@ export function* searchPath(
           }
           return trial.score;
         };
-        for (const _ of boundedSearch(objective, {
+        for (const iterationComplete of boundedSearch(objective, {
           bounds,
           population: s.population,
           generations: s.generations,
@@ -121,7 +136,7 @@ export function* searchPath(
           random,
           stop: stopped,
         })) {
-          diagnostics.iterations++;
+          if (iterationComplete) diagnostics.iterations++;
           yield {
             evaluations: diagnostics.evaluations,
             bestNormalizedRms: best?.errors.normalizedRms,
@@ -144,7 +159,9 @@ export function* searchPath(
   if (diagnostics.evaluations >= s.maxEvaluations)
     diagnostics.messages.push('The evaluation budget was exhausted.');
   diagnostics.messages.push(
-    'Equal input-angle progression is compared with uniform target arc length; free timing is not optimized.'
+    request.correspondence.kind === 'equal-input-angle'
+      ? 'Equal input-angle progression is compared with uniform target arc length.'
+      : 'Monotone free timing is optimized by ordered assignment and alternating projection; the result is a bounded local fit.'
   );
   return finish();
 }

@@ -1,5 +1,6 @@
 import {
   Assembly,
+  CorrespondenceMode,
   FourBarParameters,
   InputDirection,
   PathConstraints,
@@ -10,7 +11,13 @@ import {
 } from './path-types';
 import { distance } from './path-target';
 import { evaluateFourBar } from './four-bar';
-import { linearFit } from './linear-fit';
+import {
+  orderedTiming,
+  refineTiming,
+  timingDiagnostics,
+  TIMING_GRID_FACTOR,
+} from './path-correspondence';
+import { poseAtProgress, projectedPoint, projectPath } from './path-projection';
 
 export function pathErrors(
   generated: readonly PathPoint[],
@@ -48,6 +55,10 @@ export function withinConstraints(
   );
 }
 
+export interface ObjectiveProfile {
+  correspondenceMs: number;
+}
+
 export type ObjectiveTrial =
   { candidate: PathSynthesisCandidate; score: number } | { reason: string; score: number };
 
@@ -61,7 +72,9 @@ export function fitFourBar(
   assembly: Assembly,
   direction: InputDirection,
   target: PreparedPath,
-  constraints: PathConstraints
+  constraints: PathConstraints,
+  mode: CorrespondenceMode = 'equal-input-angle',
+  profile?: ObjectiveProfile
 ): ObjectiveTrial {
   const reject = (reason: string): ObjectiveTrial => ({ reason, score: Infinity });
   const canonical: FourBarParameters = {
@@ -79,16 +92,70 @@ export function fitFourBar(
   };
   const evaluation = evaluateFourBar(canonical, target.samples.length, target.closed);
   if (!evaluation.valid) return reject(evaluation.reason);
-  const rows: number[][] = [],
-    rhs: number[] = [];
-  evaluation.poses.forEach(({ B, C }, i) => {
-    const ex = (C.x - B.x) / canonical.coupler,
-      ey = (C.y - B.y) / canonical.coupler;
-    rows.push([1, 0, B.x, -B.y, ex, -ey], [0, 1, B.y, B.x, ey, ex]);
-    rhs.push(target.normalized[i].x, target.normalized[i].y);
-  });
-  const coefficients = linearFit(rows, rhs);
+  const count = target.samples.length,
+    intervals = target.closed ? count : count - 1;
+  let progress = Array.from({ length: count }, (_, i) => i / intervals);
+  let coefficients = projectPath(canonical, progress, target.normalized);
   if (!coefficients) return reject('rank-deficient-fit');
+  let best: ObjectiveTrial = reconstruct(
+    canonical,
+    coefficients,
+    progress,
+    target,
+    constraints,
+    mode,
+    0,
+    count
+  );
+  if (mode === 'equal-input-angle') return best;
+  const denseCount = intervals * TIMING_GRID_FACTOR;
+  const densePoses = Array.from({ length: denseCount + 1 }, (_, i) =>
+    poseAtProgress(canonical, i / denseCount)
+  );
+  // Alternating minimization is local. Retain the initial feasible projection and every better
+  // feasible iterate; a later out-of-bounds fit must not erase an earlier usable mechanism.
+  for (let iteration = 0; iteration < 5; iteration++) {
+    const curve = densePoses.map((pose) => projectedPoint(pose, canonical.coupler, coefficients!));
+    const correspondenceStart = performance.now();
+    if (iteration === 0) progress = orderedTiming(target.normalized, curve, target.closed);
+    const pointAt = (t: number) => {
+      const at = Math.min(denseCount - 1, Math.floor(t * denseCount)),
+        f = t * denseCount - at;
+      return {
+        x: curve[at].x * (1 - f) + curve[at + 1].x * f,
+        y: curve[at].y * (1 - f) + curve[at + 1].y * f,
+      };
+    };
+    progress = refineTiming(target.normalized, progress, target.closed, pointAt);
+    if (profile) profile.correspondenceMs += performance.now() - correspondenceStart;
+    coefficients = projectPath(canonical, progress, target.normalized);
+    if (!coefficients) break;
+    const trial = reconstruct(
+      canonical,
+      coefficients,
+      progress,
+      target,
+      constraints,
+      mode,
+      iteration + 1,
+      denseCount + 1
+    );
+    if (trial.score < best.score) best = trial;
+  }
+  return best;
+}
+
+function reconstruct(
+  canonical: FourBarParameters,
+  coefficients: readonly number[],
+  progress: number[],
+  target: PreparedPath,
+  constraints: PathConstraints,
+  mode: CorrespondenceMode,
+  iterations: number,
+  trajectorySamples: number
+): ObjectiveTrial {
+  const reject = (reason: string): ObjectiveTrial => ({ reason, score: Infinity });
   const [tx, ty, a, b, c, d] = coefficients;
   const scale = Math.hypot(a, b),
     rotation = Math.atan2(b, a),
@@ -112,15 +179,39 @@ export function fitFourBar(
   if (!withinConstraints(p, target, constraints)) return reject('geometry-bounds');
   const result = evaluateFourBar(p, target.samples.length, target.closed);
   if (!result.valid) return reject(result.reason);
-  const trajectory = result.poses.map((pose) => pose.P),
+  const trajectory = progress.map((t) => poseAtProgress(p, t).P),
     errors = pathErrors(trajectory, target.samples, dim);
   if (!Number.isFinite(errors.normalizedRms)) return reject('nonfinite-error');
+  const correspondence = timingDiagnostics(
+    p,
+    progress,
+    target.closed,
+    mode,
+    errors.normalizedRms ** 2,
+    trajectorySamples,
+    iterations
+  );
+  if (!correspondence.monotone) return reject('invalid-correspondence');
   return {
     score: errors.normalizedRms * errors.normalizedRms,
     candidate: {
       parameters: p,
       trajectory,
-      angles: result.angles,
+      angles: progress.map((t) => p.theta0 + (p.direction === 'clockwise' ? -1 : 1) * p.sweep * t),
+      correspondence,
+      compactness: {
+        groundRatio: distance(p.A, p.D) / dim,
+        maxMovingLinkRatio: Math.max(p.crank, p.coupler, p.rocker) / dim,
+        totalMovingLinkRatio: (p.crank + p.coupler + p.rocker) / dim,
+        couplerOffsetRatio: Math.hypot(p.u, p.v) / dim,
+        characteristicSize: Math.max(
+          distance(p.A, p.D),
+          p.crank,
+          p.coupler,
+          p.rocker,
+          Math.hypot(p.u, p.v)
+        ),
+      },
       errors,
       valid: true,
       minClearance: result.minClearance,

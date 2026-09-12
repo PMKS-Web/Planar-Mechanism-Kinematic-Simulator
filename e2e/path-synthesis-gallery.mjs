@@ -46,7 +46,7 @@ try {
   const entries = Object.values(index.entries).filter(
     (e) => e.type === 'story' && e.title === 'Feedback/Path synthesis'
   );
-  assert.equal(entries.length, 8);
+  assert.equal(entries.length, 9);
   for (const entry of entries) {
     await page.goto(base + '/iframe.html?id=' + entry.id + '&viewMode=story');
     await page.locator('app-path-synthesis-result').waitFor();

@@ -135,6 +135,9 @@
     >
   </section>
   <app-path-synthesis-result
+    [mode]="synthesis.correspondence()"
+    (modeChange)="synthesis.setCorrespondence($event)"
+    [timingSummary]="synthesis.timingSummary"
     [busy]="synthesis.busy()"
     [message]="synthesis.statusMessage"
     [refusal]="synthesis.refusal"

@@ -1,0 +1,4157 @@
+{
+  "schemaVersion": 1,
+  "settings": {
+    "sampleCount": 64,
+    "seed": 20260912,
+    "population": 36,
+    "generations": 90,
+    "refinementIterations": 90,
+    "starts": 1,
+    "maxEvaluations": 16000,
+    "acceptableNormalizedRms": 0.025
+  },
+  "units": "PMKS model coordinates (200 per displayed unit)",
+  "equal": {
+    "cases": 24,
+    "successRate": 0.4166666666666667,
+    "verifiedRate": 1,
+    "medianNormalizedRms": 0.025753548710176887,
+    "meanNormalizedRms": 0.021510439454793157,
+    "p90NormalizedRms": 0.03381480545424304,
+    "worstNormalizedRms": 0.03560798983018553,
+    "medianRuntimeMs": 1344.5671999999904,
+    "p90RuntimeMs": 2803.9446000000025,
+    "medianEvaluations": 14568
+  },
+  "free": {
+    "cases": 24,
+    "successRate": 1,
+    "verifiedRate": 1,
+    "medianNormalizedRms": 0.0039041865448702848,
+    "meanNormalizedRms": 0.004103063250370679,
+    "p90NormalizedRms": 0.00832614150239401,
+    "worstNormalizedRms": 0.01704860127987194,
+    "medianRuntimeMs": 15199.64439999999,
+    "p90RuntimeMs": 24925.99669999999,
+    "medianEvaluations": 13936
+  },
+  "improvedCases": 24,
+  "rows": [
+    {
+      "id": "crank-rocker",
+      "description": "Reference crank-rocker with an offset tracer",
+      "categories": ["crank-rocker", "full", "ccw"],
+      "sourceSamples": 361,
+      "requestedSweep": 6.283185307179586,
+      "sourceValidation": {
+        "status": "passed",
+        "samples": 720,
+        "playbackSamples": 361,
+        "maximumDifference": 0.0002938893255255617,
+        "tolerance": 0.016
+      },
+      "oracle": {
+        "dimension": 464.9904579494078,
+        "progress": [
+          0, 0.017108767823812703, 0.036040550206871934, 0.05672979743661487, 0.07841248079670143,
+          0.09987922731934193, 0.12024031085249777, 0.1392399495741433, 0.15696508960707947,
+          0.1736169326850555, 0.18938834687559333, 0.20444018429365762, 0.2189097861599682,
+          0.23290224430255257, 0.2465058464844405, 0.25979494331103986, 0.27283297706505194,
+          0.28567423288251625, 0.2983686744511798, 0.3109643382183243, 0.32350521547972744,
+          0.3360372345915162, 0.34860719955046743, 0.3612632015145415, 0.3740607081465788,
+          0.3870574110899083, 0.4003202530608454, 0.41392734374125695, 0.4279698658687545,
+          0.442554291536943, 0.4578031660850944, 0.4738731983443405, 0.49094447401644703,
+          0.5092417802546237, 0.529023430097059, 0.5505606812028464, 0.5740482270423393,
+          0.5993439759829668, 0.6256243347719141, 0.6514310808952766, 0.6754967902871547,
+          0.6973364911588658, 0.7170504009954769, 0.7349539657414699, 0.7513767216443048,
+          0.7666002221395208, 0.7808421155810997, 0.7942918698862943, 0.807092939647284,
+          0.8193761150704002, 0.8312353310108997, 0.8427661916091793, 0.8540481413726513,
+          0.8651550983010571, 0.8761578199686463, 0.8871265573621558, 0.8981335026398621,
+          0.9092558254430099, 0.9205792453084768, 0.9322016485765677, 0.9442372828681032,
+          0.956836332467451, 0.9701685542258385, 0.9844653620341784
+        ]
+      },
+      "equal": {
+        "status": "iteration-limit",
+        "success": false,
+        "verified": true,
+        "normalizedRms": 0.025753550137296355,
+        "rms": 11.975155072164467,
+        "maximum": 19.23165674502063,
+        "evaluations": 14376,
+        "runtimeMs": 6840.7739,
+        "meanObjectiveMs": 0.44103512103505027,
+        "meanCorrespondenceMs": 0,
+        "maxObjectiveMs": 187.0681999999979,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 361,
+          "maximumDifference": 0.0014020378586294838,
+          "tolerance": 0.009299809158988157
+        },
+        "compactness": {
+          "groundRatio": 3.0300261512011497,
+          "maxMovingLinkRatio": 3.072226066357351,
+          "totalMovingLinkRatio": 4.3807978921277595,
+          "couplerOffsetRatio": 0.7185618665118323,
+          "characteristicSize": 1428.5558055196122
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "equal-input-angle",
+          "inputStart": 0.3318328958026173,
+          "inputEnd": 6.6150182029822036,
+          "minDelta": 0.09817477042468103,
+          "maxDelta": 0.09817477042468103,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09817477042468103,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 64,
+          "iterations": 0,
+          "geometricCost": 0.0006632453446742371,
+          "regularization": 0,
+          "totalCost": 0.0006632453446742371
+        },
+        "oracleProgressRms": 0.03102524717195216,
+        "parameters": {
+          "A": {
+            "x": 392.48614448317744,
+            "y": 100.72257506559595
+          },
+          "D": {
+            "x": -239.31865665028775,
+            "y": -1158.608830715334
+          },
+          "crank": 112.71465981165632,
+          "coupler": 495.75875271301874,
+          "rocker": 1428.5558055196122,
+          "u": -334.05377758614657,
+          "v": -6.869931343173091,
+          "theta0": 0.3318328958026173,
+          "sweep": 6.283185307179586,
+          "assembly": 1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      },
+      "free": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.003906557613957158,
+        "rms": 1.816512013919685,
+        "maximum": 6.351397201666226,
+        "evaluations": 13808,
+        "runtimeMs": 56388.0778,
+        "meanObjectiveMs": 4.043386044322102,
+        "meanCorrespondenceMs": 1.6053032589802976,
+        "maxObjectiveMs": 558.8662999999942,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 360,
+          "maximumDifference": 0.0020743281252587134,
+          "tolerance": 0.009299809158988157
+        },
+        "compactness": {
+          "groundRatio": 3.40878595136973,
+          "maxMovingLinkRatio": 7.901504494827839,
+          "totalMovingLinkRatio": 15.521940360498066,
+          "couplerOffsetRatio": 6.89982283545932,
+          "characteristicSize": 3674.1241935393014
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "monotone-free-timing",
+          "inputStart": 3.0931928537706748,
+          "inputEnd": -3.1899924534089115,
+          "minDelta": 0.06602160139371167,
+          "maxDelta": 0.15759810358300735,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.08749323526271657,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 513,
+          "iterations": 5,
+          "geometricCost": 1.5261192391166646e-5,
+          "regularization": 0,
+          "totalCost": 1.5261192391166646e-5
+        },
+        "oracleProgressRms": 0.024144592897377855,
+        "parameters": {
+          "A": {
+            "x": 1171.7045990629847,
+            "y": -2749.3856976425755
+          },
+          "D": {
+            "x": 558.5041693899338,
+            "y": -1287.7502925272427
+          },
+          "crank": 141.79483808909632,
+          "coupler": 3401.6351248629944,
+          "rocker": 3674.1241935393014,
+          "u": 369.4795704664905,
+          "v": 3187.0058034822646,
+          "theta0": 3.0931928537706748,
+          "sweep": 6.283185307179586,
+          "assembly": -1,
+          "direction": "clockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      }
+    },
+    {
+      "id": "clockwise",
+      "description": "The reference linkage traversed clockwise",
+      "categories": ["crank-rocker", "full", "cw"],
+      "sourceSamples": 360,
+      "requestedSweep": 6.283185307179586,
+      "sourceValidation": {
+        "status": "passed",
+        "samples": 720,
+        "playbackSamples": 361,
+        "maximumDifference": 0.0011691283474361512,
+        "tolerance": 0.016
+      },
+      "oracle": {
+        "dimension": 464.99052406500715,
+        "progress": [
+          0, 0.015534598919841441, 0.029831526425665663, 0.04316365986917947, 0.05576265336277486,
+          0.06779837126841283, 0.0794207346686606, 0.09074415166689112, 0.10186650264885382,
+          0.11287346199999072, 0.12384218774802344, 0.13484491692966324, 0.1459518618378238,
+          0.15723381185507293, 0.16876468319465335, 0.1806238700640286, 0.19290706225214146,
+          0.205708097938736, 0.2191579315214577, 0.23339978716964654, 0.24862325528045953,
+          0.2650460257566863, 0.2829496040324146, 0.3026634459379185, 0.32450329404659833,
+          0.34856890872049967, 0.37437573550879094, 0.4006560652490484, 0.4259516504461382,
+          0.4494393974688853, 0.47097655690294815, 0.49075820430966, 0.5090555513553359,
+          0.5261267312525938, 0.5421967626610966, 0.5574457139989243, 0.572030147978816,
+          0.5860726464758161, 0.5996797076410603, 0.6129425607736361, 0.6259393235461391,
+          0.6387368121603014, 0.6513927590949337, 0.6639627694816107, 0.6764947898450238,
+          0.6890356716078335, 0.7016313405907103, 0.7143257743351658, 0.7271669852592917,
+          0.7402050804779802, 0.7534941656637236, 0.7670977397938507, 0.7810902404823826,
+          0.795559812432357, 0.8106116134897771, 0.8263830970856232, 0.8430348955548106,
+          0.8607600133792642, 0.8797597334895743, 0.9001208150183526, 0.9215875351374443,
+          0.9432702022939032, 0.9639594677844489, 0.9828911807984265
+        ]
+      },
+      "equal": {
+        "status": "iteration-limit",
+        "success": false,
+        "verified": true,
+        "normalizedRms": 0.025753540062203505,
+        "rms": 11.975152090053164,
+        "maximum": 19.231687500462083,
+        "evaluations": 14208,
+        "runtimeMs": 2803.9446000000025,
+        "meanObjectiveMs": 0.18749399634008454,
+        "meanCorrespondenceMs": 0,
+        "maxObjectiveMs": 4.007099999987986,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 361,
+          "maximumDifference": 0.002729484429008423,
+          "tolerance": 0.009299810481300144
+        },
+        "compactness": {
+          "groundRatio": 3.0300263027940555,
+          "maxMovingLinkRatio": 3.072223413343402,
+          "totalMovingLinkRatio": 4.3807955853194205,
+          "couplerOffsetRatio": 0.7185623299996923,
+          "characteristicSize": 1428.5547750153335
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "equal-input-angle",
+          "inputStart": 0.3318320938745041,
+          "inputEnd": -5.951353213305082,
+          "minDelta": 0.09817477042468103,
+          "maxDelta": 0.09817477042468103,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09817477042468103,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 64,
+          "iterations": 0,
+          "geometricCost": 0.0006632448257355209,
+          "regularization": 0,
+          "totalCost": 0.0006632448257355209
+        },
+        "oracleProgressRms": 0.031025244197976275,
+        "parameters": {
+          "A": {
+            "x": 392.48658655958275,
+            "y": 100.72274958686899
+          },
+          "D": {
+            "x": -239.320434641006,
+            "y": -1158.6078453806867
+          },
+          "crank": 112.7146814773571,
+          "coupler": 495.7589785466565,
+          "rocker": 1428.5547750153335,
+          "u": -334.0540019533243,
+          "v": -6.871813576291865,
+          "theta0": 0.3318320938745041,
+          "sweep": 6.283185307179586,
+          "assembly": 1,
+          "direction": "clockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      },
+      "free": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.0039041865448702848,
+        "rms": 1.8154097475467832,
+        "maximum": 6.363837102457795,
+        "evaluations": 13864,
+        "runtimeMs": 20878.13560000001,
+        "meanObjectiveMs": 1.4902276543565869,
+        "meanCorrespondenceMs": 0.5746963502596385,
+        "maxObjectiveMs": 15.623500000001513,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 360,
+          "maximumDifference": 0.000576267430086156,
+          "tolerance": 0.009299810481300144
+        },
+        "compactness": {
+          "groundRatio": 3.4206732822940107,
+          "maxMovingLinkRatio": 7.977668663482078,
+          "totalMovingLinkRatio": 15.741839724108566,
+          "couplerOffsetRatio": 6.944292461687367,
+          "characteristicSize": 3709.5403326495166
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "monotone-free-timing",
+          "inputStart": 3.0768758999365513,
+          "inputEnd": 9.360061207116138,
+          "minDelta": 0.06594265191288293,
+          "maxDelta": 0.15760394445239292,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.087430955508152,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 513,
+          "iterations": 5,
+          "geometricCost": 1.5242672577146172e-5,
+          "regularization": 0,
+          "totalCost": 1.5242672577146172e-5
+        },
+        "oracleProgressRms": 0.024135445640902486,
+        "parameters": {
+          "A": {
+            "x": 1154.411854647428,
+            "y": -2777.262634044582
+          },
+          "D": {
+            "x": 582.988573683162,
+            "y": -1292.8697356171397
+          },
+          "crank": 142.5893768235159,
+          "coupler": 3467.6765935875574,
+          "rocker": 3709.5403326495166,
+          "u": 359.1275646984318,
+          "v": 3208.9972525380686,
+          "theta0": 3.0768758999365513,
+          "sweep": 6.283185307179586,
+          "assembly": -1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      }
+    },
+    {
+      "id": "other-assembly",
+      "description": "Opposite assembly of the reference linkage",
+      "categories": ["crank-rocker", "full", "assembly"],
+      "sourceSamples": 361,
+      "requestedSweep": 6.283185307179586,
+      "sourceValidation": {
+        "status": "passed",
+        "samples": 720,
+        "playbackSamples": 361,
+        "maximumDifference": 0.00030415806447837366,
+        "tolerance": 0.016
+      },
+      "oracle": {
+        "dimension": 485.20843959483017,
+        "progress": [
+          0, 0.015322483098362887, 0.02978309355598803, 0.04362706581055746, 0.05703342987946076,
+          0.07013572774732849, 0.08303633656409075, 0.0958186804673193, 0.10855407069861052,
+          0.12130389165624698, 0.13412441610061257, 0.14706800206105528, 0.1601886796008748,
+          0.17353723784472436, 0.18716919472870386, 0.2011441646620982, 0.21552760932998108,
+          0.23039121709968902, 0.2458243838953867, 0.26191664074105425, 0.27877785271037575,
+          0.2965183946950033, 0.31523808675677556, 0.33497193381598384, 0.3556070651338977,
+          0.37678005369481915, 0.3978682949409422, 0.4182181671270653, 0.43741898851960803,
+          0.45536926249547044, 0.4721556842398315, 0.48794273551151657, 0.5029104671054824,
+          0.5172019460005011, 0.5309490045734621, 0.5442539743932526, 0.5571998215680303,
+          0.5698604662107659, 0.5822913666250601, 0.5945453517243771, 0.6066636563929043,
+          0.6186880771015149, 0.6306544269145062, 0.6425974902996915, 0.6545521860392509,
+          0.666553305064868, 0.6786395415597024, 0.6908506022047283, 0.7032330054923904,
+          0.7158422915568916, 0.7287430385095852, 0.742015962293261, 0.7557685223717584,
+          0.7701431927652055, 0.7853330956548032, 0.8016259157770887, 0.8194503180504797,
+          0.8395138055466558, 0.862848116625938, 0.8901982957555713, 0.9187981912525013,
+          0.9438994127191964, 0.965038104735071, 0.9834329535977268
+        ]
+      },
+      "equal": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.023931801876853374,
+        "rms": 11.611912245360653,
+        "maximum": 19.551014840434345,
+        "evaluations": 14128,
+        "runtimeMs": 1270.9447999999975,
+        "meanObjectiveMs": 0.08595827434880468,
+        "meanCorrespondenceMs": 0,
+        "maxObjectiveMs": 1.3003999999928055,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 361,
+          "maximumDifference": 0.008643771808515716,
+          "tolerance": 0.009704168791896605
+        },
+        "compactness": {
+          "groundRatio": 4.1886787587698,
+          "maxMovingLinkRatio": 7.99999742865407,
+          "totalMovingLinkRatio": 12.913547568109493,
+          "couplerOffsetRatio": 0.659230323001067,
+          "characteristicSize": 3881.666269119895
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "equal-input-angle",
+          "inputStart": 6.373820901277839,
+          "inputEnd": 12.657006208457425,
+          "minDelta": 0.09817477042468103,
+          "maxDelta": 0.09817477042468103,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09817477042468103,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 64,
+          "iterations": 0,
+          "geometricCost": 0.0005727311410729627,
+          "regularization": 0,
+          "totalCost": 0.0005727311410729627
+        },
+        "oracleProgressRms": 0.02971875712738989,
+        "parameters": {
+          "A": {
+            "x": 4.477912414304228,
+            "y": 105.88590550651443
+          },
+          "D": {
+            "x": 1675.6581103663573,
+            "y": 1262.4906332980052
+          },
+          "crank": 196.5169696681875,
+          "coupler": 2187.5790263679387,
+          "rocker": 3881.666269119895,
+          "u": 83.36547933594056,
+          "v": 308.80940689670905,
+          "theta0": 6.373820901277839,
+          "sweep": 6.283185307179586,
+          "assembly": -1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      },
+      "free": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.0031815898212161084,
+        "rms": 1.5437342325830627,
+        "maximum": 3.6169179411646137,
+        "evaluations": 13880,
+        "runtimeMs": 16023.719799999992,
+        "meanObjectiveMs": 1.1436832780978907,
+        "meanCorrespondenceMs": 0.4487986023055389,
+        "maxObjectiveMs": 9.935399999987567,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 361,
+          "maximumDifference": 0.0015657678235424309,
+          "tolerance": 0.009704168791896605
+        },
+        "compactness": {
+          "groundRatio": 2.5952472870443652,
+          "maxMovingLinkRatio": 3.2347061561876598,
+          "totalMovingLinkRatio": 5.056084766350683,
+          "couplerOffsetRatio": 3.596102638459331,
+          "characteristicSize": 1744.8593498297037
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "monotone-free-timing",
+          "inputStart": 8.00540986828631,
+          "inputEnd": 1.7222245611067244,
+          "minDelta": 0.06666117228218851,
+          "maxDelta": 0.1429321654132369,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09243917172347615,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 513,
+          "iterations": 5,
+          "geometricCost": 1.0122513790465948e-5,
+          "regularization": 0,
+          "totalCost": 1.0122513790465948e-5
+        },
+        "oracleProgressRms": 0.027081494724398362,
+        "parameters": {
+          "A": {
+            "x": 1315.2108868865312,
+            "y": 1375.5894861405143
+          },
+          "D": {
+            "x": 86.35344020394521,
+            "y": 1650.5156464202407
+          },
+          "crank": 113.2009268227534,
+          "coupler": 770.5473465258472,
+          "rocker": 1569.5067265916055,
+          "u": 1474.7509520256635,
+          "v": -932.5469318954061,
+          "theta0": 8.00540986828631,
+          "sweep": 6.283185307179586,
+          "assembly": 1,
+          "direction": "clockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      }
+    },
+    {
+      "id": "double-crank",
+      "description": "Short ground with two rotating adjacent links",
+      "categories": ["double-crank", "short-ground"],
+      "sourceSamples": 361,
+      "requestedSweep": 6.283185307179586,
+      "sourceValidation": {
+        "status": "passed",
+        "samples": 720,
+        "playbackSamples": 361,
+        "maximumDifference": 0.0004325650059041783,
+        "tolerance": 0.0092
+      },
+      "oracle": {
+        "dimension": 1181.706677515956,
+        "progress": [
+          0, 0.010488580461386336, 0.021174327683788054, 0.032093160657209824, 0.04327174584747186,
+          0.054728165621271425, 0.0664727492512841, 0.07851333153149893, 0.09084647122113278,
+          0.10346865464730415, 0.1163726023487215, 0.12955107252109987, 0.14299181597392546,
+          0.15668496629757803, 0.17062048350580963, 0.18478870931657332, 0.19918097773584098,
+          0.21378972099789542, 0.22861107595732572, 0.24363901563871138, 0.258871730179746,
+          0.27430920550813864, 0.2899525932488215, 0.305804398885325, 0.3218709566469595,
+          0.33815867011959183, 0.35467555199090117, 0.37143162494090043, 0.3884379102368664,
+          0.40570638947199533, 0.423250440818378, 0.4410803986663122, 0.4592089200222373,
+          0.4776447839665278, 0.4963975909812151, 0.5154704019474716, 0.5348644535980083,
+          0.5545762717646457, 0.5745969015689758, 0.594912282286181, 0.6155009798889362,
+          0.6363333147496407, 0.6573726578793346, 0.6785695920573612, 0.699862552842723,
+          0.7211723928102397, 0.7423974975323917, 0.7634079708665147, 0.784039061148848,
+          0.8040916663712416, 0.8233434242131534, 0.841579348229623, 0.8586252847959612,
+          0.8744082319169526, 0.8889632171722257, 0.9023980596201904, 0.9148859165952185,
+          0.9266142006878089, 0.9377596296026768, 0.9484829827567772, 0.9589251241542609,
+          0.9692045870404983, 0.979422819190631, 0.9896649675410424
+        ]
+      },
+      "equal": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.003772803297384837,
+        "rms": 4.458346849473879,
+        "maximum": 8.800063524258617,
+        "evaluations": 15072,
+        "runtimeMs": 1476.719299999997,
+        "meanObjectiveMs": 0.09475741772834778,
+        "meanCorrespondenceMs": 0,
+        "maxObjectiveMs": 1.4441999999980908,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 361,
+          "maximumDifference": 0.000878128890758451,
+          "tolerance": 0.023634133550319122
+        },
+        "compactness": {
+          "groundRatio": 1.5111681353830317,
+          "maxMovingLinkRatio": 1.9358291493016966,
+          "totalMovingLinkRatio": 3.21182430468257,
+          "couplerOffsetRatio": 0.039127794703643436,
+          "characteristicSize": 2287.5822322598474
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "equal-input-angle",
+          "inputStart": -0.2604036588971424,
+          "inputEnd": 6.022781648282444,
+          "minDelta": 0.09817477042468103,
+          "maxDelta": 0.09817477042468103,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09817477042468103,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 64,
+          "iterations": 0,
+          "geometricCost": 1.42340447207579e-5,
+          "regularization": 0,
+          "totalCost": 1.42340447207579e-5
+        },
+        "oracleProgressRms": 0.037259468053637744,
+        "parameters": {
+          "A": {
+            "x": 103.40086950588162,
+            "y": 27.88359609434132
+          },
+          "D": {
+            "x": 1562.7655992164284,
+            "y": -1001.2832272670303
+          },
+          "crank": 407.9027618615087,
+          "coupler": 1099.9492337300794,
+          "rocker": 2287.5822322598474,
+          "u": -23.366616169666422,
+          "v": -39.89880585709278,
+          "theta0": -0.2604036588971424,
+          "sweep": 6.283185307179586,
+          "assembly": -1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      },
+      "free": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.000526305641557533,
+        "rms": 0.621938891042856,
+        "maximum": 4.286078179666767,
+        "evaluations": 13880,
+        "runtimeMs": 24925.99669999999,
+        "meanObjectiveMs": 1.7809754682997816,
+        "meanCorrespondenceMs": 0.6777411743517077,
+        "maxObjectiveMs": 118.12289999998757,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 361,
+          "maximumDifference": 0.0035991433990384,
+          "tolerance": 0.023634133550319122
+        },
+        "compactness": {
+          "groundRatio": 0.7802042442713485,
+          "maxMovingLinkRatio": 3.109546090114538,
+          "totalMovingLinkRatio": 6.537990576731817,
+          "couplerOffsetRatio": 0.06159115713483171,
+          "characteristicSize": 3674.5713787319823
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "monotone-free-timing",
+          "inputStart": -0.23827691111190807,
+          "inputEnd": 6.044908396067678,
+          "minDelta": 0.08987132400641895,
+          "maxDelta": 0.11257426234127711,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.0984648270819432,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 513,
+          "iterations": 5,
+          "geometricCost": 2.7699762833528643e-7,
+          "regularization": 0,
+          "totalCost": 2.7699762833528643e-7
+        },
+        "oracleProgressRms": 0.03757909753861785,
+        "parameters": {
+          "A": {
+            "x": 83.38365748564135,
+            "y": 3.75342617361828
+          },
+          "D": {
+            "x": 145.26095065488437,
+            "y": -916.1403784159357
+          },
+          "crank": 403.69419028724707,
+          "coupler": 3647.721553041155,
+          "rocker": 3674.5713787319823,
+          "u": 9.240119634323793,
+          "v": 72.19375969624697,
+          "theta0": -0.23827691111190807,
+          "sweep": 6.283185307179586,
+          "assembly": 1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      }
+    },
+    {
+      "id": "long-ground",
+      "description": "A long ground and short input crank",
+      "categories": ["long-ground", "crank-rocker"],
+      "sourceSamples": 360,
+      "requestedSweep": 6.283185307179586,
+      "sourceValidation": {
+        "status": "passed",
+        "samples": 720,
+        "playbackSamples": 361,
+        "maximumDifference": 0.0003616666836855511,
+        "tolerance": 0.024
+      },
+      "oracle": {
+        "dimension": 294.41185924935155,
+        "progress": [
+          -8.834874115176436e-18, 0.023203715930655074, 0.050852279335102425, 0.0798465902647014,
+          0.10523729324278072, 0.1265697103644383, 0.14502373007677807, 0.16149010474554007,
+          0.17653564828529705, 0.19053417447586637, 0.20373133070215224, 0.21630441643199802,
+          0.22838086456355108, 0.24006368693043723, 0.2514344372452903, 0.2625590084487672,
+          0.27349468960447404, 0.28429234512887575, 0.2949984871257674, 0.3056572912678795,
+          0.31631283449731074, 0.32701040798233055, 0.33779762817373654, 0.34872687179081635,
+          0.359858140190934, 0.37126155571533165, 0.3830215351781317, 0.3952503850005366,
+          0.40808228510633315, 0.4217155303301719, 0.43641876528904017, 0.45261265555719254,
+          0.4709991803507031, 0.49286723333086957, 0.5210729734942845, 0.5609413041478629,
+          0.601837911441745, 0.6313653391375454, 0.6544213448517531, 0.6738954722199934,
+          0.6911043116484418, 0.7067428478479105, 0.7212372677926698, 0.7348609658919868,
+          0.7478096626340822, 0.7602234977207476, 0.7722176581790072, 0.7838754123074444,
+          0.795275914830015, 0.8064833106953161, 0.8175556164375544, 0.8285469211101216,
+          0.8395101232552127, 0.8504980485183196, 0.8615662090541915, 0.8727750974988405,
+          0.8841929689715468, 0.8958991168581089, 0.9079884236436355, 0.9205889087773553,
+          0.9338552911434437, 0.9480152236207501, 0.9633849395837992, 0.9804533957420327
+        ]
+      },
+      "equal": {
+        "status": "iteration-limit",
+        "success": false,
+        "verified": true,
+        "normalizedRms": 0.03239812642900879,
+        "rms": 9.538392638160033,
+        "maximum": 21.036273826440986,
+        "evaluations": 14472,
+        "runtimeMs": 1494.4808000000194,
+        "meanObjectiveMs": 0.0999349295189819,
+        "meanCorrespondenceMs": 0,
+        "maxObjectiveMs": 1.4345000000030268,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 360,
+          "maximumDifference": 0.0008740879537909701,
+          "tolerance": 0.005888237184987032
+        },
+        "compactness": {
+          "groundRatio": 3.9110949643190414,
+          "maxMovingLinkRatio": 3.224536368251039,
+          "totalMovingLinkRatio": 5.26534000513014,
+          "couplerOffsetRatio": 2.1942019626023233,
+          "characteristicSize": 1151.4727401459452
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "equal-input-angle",
+          "inputStart": 0.9134090341323422,
+          "inputEnd": 7.196594341311928,
+          "minDelta": 0.09817477042468103,
+          "maxDelta": 0.09817477042468103,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09817477042468103,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 64,
+          "iterations": 0,
+          "geometricCost": 0.0010496385961100382,
+          "regularization": 0,
+          "totalCost": 0.0010496385961100382
+        },
+        "oracleProgressRms": 0.03609962757362344,
+        "parameters": {
+          "A": {
+            "x": 442.525483733697,
+            "y": 1010.529352619747
+          },
+          "D": {
+            "x": 41.43262699753893,
+            "y": -68.8287860786366
+          },
+          "crank": 104.22082581540613,
+          "coupler": 949.3417473939402,
+          "rocker": 496.61596728100835,
+          "u": 502.20133116582394,
+          "v": 406.3356168648267,
+          "theta0": 0.9134090341323422,
+          "sweep": 6.283185307179586,
+          "assembly": -1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      },
+      "free": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.003792944393724329,
+        "rms": 1.1166878109857843,
+        "maximum": 3.492997175177524,
+        "evaluations": 13888,
+        "runtimeMs": 17311.4632,
+        "meanObjectiveMs": 1.2369231854837603,
+        "meanCorrespondenceMs": 0.4879946284561911,
+        "maxObjectiveMs": 12.873200000001816,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 361,
+          "maximumDifference": 0.0013819323394519026,
+          "tolerance": 0.005888237184987032
+        },
+        "compactness": {
+          "groundRatio": 1.9387722601747164,
+          "maxMovingLinkRatio": 2.9713885416951915,
+          "totalMovingLinkRatio": 5.255799037069825,
+          "couplerOffsetRatio": 4.525033350096443,
+          "characteristicSize": 1332.2234817672156
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "monotone-free-timing",
+          "inputStart": -0.4847293978420262,
+          "inputEnd": -6.767914705021612,
+          "minDelta": 0.05797116318849863,
+          "maxDelta": 0.1842829466155546,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.0888571651862679,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 513,
+          "iterations": 5,
+          "geometricCost": 1.4386427173884818e-5,
+          "regularization": 0,
+          "totalCost": 1.4386427173884818e-5
+        },
+        "oracleProgressRms": 0.03295061703377597,
+        "parameters": {
+          "A": {
+            "x": 1677.306758013024,
+            "y": 91.44232216343795
+          },
+          "D": {
+            "x": 1115.763269906567,
+            "y": -10.923439850450393
+          },
+          "crank": 77.49074311408644,
+          "coupler": 874.8120251127007,
+          "rocker": 595.0667981178916,
+          "u": 1254.286436092899,
+          "v": 448.9821172444807,
+          "theta0": -0.4847293978420262,
+          "sweep": 6.283185307179586,
+          "assembly": -1,
+          "direction": "clockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      }
+    },
+    {
+      "id": "short-coupler",
+      "description": "Short coupler compared with the grounded span",
+      "categories": ["short-coupler"],
+      "sourceSamples": 361,
+      "requestedSweep": 6.283185307179586,
+      "sourceValidation": {
+        "status": "passed",
+        "samples": 720,
+        "playbackSamples": 361,
+        "maximumDifference": 0.0006041116551173836,
+        "tolerance": 0.016
+      },
+      "oracle": {
+        "dimension": 269.30782056377416,
+        "progress": [
+          0, 0.010901285997080514, 0.02221328891928698, 0.034069060210184625, 0.046629354905181865,
+          0.060135122200441024, 0.07492381124395289, 0.09155000960229992, 0.11090475193240301,
+          0.13442711148046618, 0.16304304725966576, 0.19244840478050151, 0.21745658598202194,
+          0.2383855556203468, 0.256576023055111, 0.27292864561050695, 0.2879855031352816,
+          0.30210173186312916, 0.31551574698057655, 0.3284048090585107, 0.34089939470021896,
+          0.3531077164211015, 0.3651164591825287, 0.37700436488181316, 0.38883979554022313,
+          0.40068763258625373, 0.4126092957337044, 0.4246643459541896, 0.4369157001895647,
+          0.4494240232257171, 0.4622572417069183, 0.4754845201436766, 0.4891887268986983,
+          0.5034660506979524, 0.518429851405642, 0.5342266325986031, 0.5510511566482681,
+          0.5691661874749194, 0.5889528383440059, 0.6109569018868047, 0.6359256825719024,
+          0.6645448828202132, 0.6958808673303285, 0.725917271311368, 0.7517250346657135,
+          0.7735410583067551, 0.7924006293771109, 0.8091226167630136, 0.824269127886979,
+          0.8382218075765813, 0.8512480837968894, 0.8635489871583175, 0.8752680062208723,
+          0.8865226213216124, 0.8974095017689276, 0.9080045926198387, 0.918376393160297,
+          0.9285864691279863, 0.9386887384371925, 0.9487347429096428, 0.9587764542948393,
+          0.9688659762300065, 0.9790589283609735, 0.9894140213567175
+        ]
+      },
+      "equal": {
+        "status": "iteration-limit",
+        "success": false,
+        "verified": true,
+        "normalizedRms": 0.03348794905727364,
+        "rms": 9.01856657576506,
+        "maximum": 16.892697903722198,
+        "evaluations": 14256,
+        "runtimeMs": 2130.604800000001,
+        "meanObjectiveMs": 0.1445521675083127,
+        "meanCorrespondenceMs": 0,
+        "maxObjectiveMs": 1.3893000000098255,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 360,
+          "maximumDifference": 0.0013055820013951887,
+          "tolerance": 0.005386156411275484
+        },
+        "compactness": {
+          "groundRatio": 2.9741313454338187,
+          "maxMovingLinkRatio": 2.061054323392934,
+          "totalMovingLinkRatio": 3.9494333502418013,
+          "couplerOffsetRatio": 1.619066165769824,
+          "characteristicSize": 800.9568307091871
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "equal-input-angle",
+          "inputStart": 6.178411994381855,
+          "inputEnd": 12.46159730156144,
+          "minDelta": 0.09817477042468103,
+          "maxDelta": 0.09817477042468103,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09817477042468103,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 64,
+          "iterations": 0,
+          "geometricCost": 0.0011214427320625545,
+          "regularization": 0,
+          "totalCost": 0.0011214427320625545
+        },
+        "oracleProgressRms": 0.03527870550930528,
+        "parameters": {
+          "A": {
+            "x": -437.9278968420942,
+            "y": 147.828537379275
+          },
+          "D": {
+            "x": -2.676788259663354,
+            "y": 820.2036686396975
+          },
+          "crank": 64.07654645673496,
+          "coupler": 444.4786936622741,
+          "rocker": 555.0580478964953,
+          "u": 9.918170348219522,
+          "v": -435.91436313785306,
+          "theta0": 6.178411994381855,
+          "sweep": 6.283185307179586,
+          "assembly": 1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      },
+      "free": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.004333154168334413,
+        "rms": 1.166952305240974,
+        "maximum": 4.68001876809883,
+        "evaluations": 13848,
+        "runtimeMs": 18355.905900000012,
+        "meanObjectiveMs": 1.315359207105471,
+        "meanCorrespondenceMs": 0.5186672660311685,
+        "maxObjectiveMs": 10.42840000000433,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 360,
+          "maximumDifference": 0.0005945477643623301,
+          "tolerance": 0.005386156411275484
+        },
+        "compactness": {
+          "groundRatio": 1.3623620519178283,
+          "maxMovingLinkRatio": 1.0539378161684396,
+          "totalMovingLinkRatio": 2.167008632665788,
+          "couplerOffsetRatio": 0.9447421159557672,
+          "characteristicSize": 366.8947550207817
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "monotone-free-timing",
+          "inputStart": 0.7743295850316945,
+          "inputEnd": 7.05751489221128,
+          "minDelta": 0.04382999415197447,
+          "maxDelta": 0.1646343488362943,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09019072569935328,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 513,
+          "iterations": 5,
+          "geometricCost": 1.8776225046553896e-5,
+          "regularization": 0,
+          "totalCost": 1.8776225046553896e-5
+        },
+        "oracleProgressRms": 0.03321196138942242,
+        "parameters": {
+          "A": {
+            "x": -137.59728426085616,
+            "y": 430.53972448035836
+          },
+          "D": {
+            "x": -496.30276391318836,
+            "y": 353.4544461896903
+          },
+          "crank": 89.37219406334233,
+          "coupler": 283.8336962820661,
+          "rocker": 210.38648166069913,
+          "u": 58.35893480513726,
+          "v": 247.64298541057312,
+          "theta0": 0.7743295850316945,
+          "sweep": 6.283185307179586,
+          "assembly": 1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      }
+    },
+    {
+      "id": "long-coupler",
+      "description": "Long coupler with its tracer near the middle",
+      "categories": ["long-coupler"],
+      "sourceSamples": 361,
+      "requestedSweep": 6.283185307179586,
+      "sourceValidation": {
+        "status": "passed",
+        "samples": 720,
+        "playbackSamples": 361,
+        "maximumDifference": 0.0003535390976609235,
+        "tolerance": 0.02
+      },
+      "oracle": {
+        "dimension": 520.7875765199569,
+        "progress": [
+          0, 0.02913354077162358, 0.056599108419027926, 0.07931742026563852, 0.09873970988069927,
+          0.11606981659417398, 0.13199495879497125, 0.1469350483969647, 0.1611500381248603,
+          0.17482094075988627, 0.18807884967917268, 0.2010235071897191, 0.21373170289898305,
+          0.22626349136386772, 0.23867443524456242, 0.2510086961764152, 0.2633085194757556,
+          0.2756122692574163, 0.28795714981832277, 0.30037932142869833, 0.31291735573433777,
+          0.3256095077244523, 0.3384988501012022, 0.35163374782352486, 0.36506619627277925,
+          0.37885916538854764, 0.39308714729966404, 0.4078394911097464, 0.4232322000483971,
+          0.43940592072068024, 0.4565541440512727, 0.4749248861364283, 0.4948747929694938,
+          0.5168644670844016, 0.5414594675648071, 0.5689792089592515, 0.5983957160886576,
+          0.6267764103015674, 0.651887327161426, 0.6735996605150558, 0.6925947208052866,
+          0.7095293847565929, 0.7249034873686612, 0.7390612940703271, 0.7522652820658066,
+          0.7647106827653062, 0.7765464392748211, 0.7878920408629735, 0.7988445519795627,
+          0.8094883123352379, 0.8198980832416752, 0.8301404210142374, 0.8402815022477,
+          0.850387117232509, 0.8605253190074625, 0.870772024780977, 0.8812122500128853,
+          0.8919511594255374, 0.9031242048529282, 0.9149120526134706, 0.9275611948811084,
+          0.9414716279677213, 0.957289876473299, 0.9761516062324024
+        ]
+      },
+      "equal": {
+        "status": "iteration-limit",
+        "success": false,
+        "verified": true,
+        "normalizedRms": 0.029805465527803398,
+        "rms": 15.522316159273851,
+        "maximum": 27.6866313998706,
+        "evaluations": 15216,
+        "runtimeMs": 1481.9948999999906,
+        "meanObjectiveMs": 0.09433708596222892,
+        "meanCorrespondenceMs": 0,
+        "maxObjectiveMs": 1.2630999999819323,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 361,
+          "maximumDifference": 0.00047580921624619353,
+          "tolerance": 0.010415751530399139
+        },
+        "compactness": {
+          "groundRatio": 4.688045906556052,
+          "maxMovingLinkRatio": 3.5614502867919,
+          "totalMovingLinkRatio": 6.136399087355793,
+          "couplerOffsetRatio": 5.4883780699626685,
+          "characteristicSize": 2858.279114081137
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "equal-input-angle",
+          "inputStart": 1.310055292110312,
+          "inputEnd": -4.973130015069274,
+          "minDelta": 0.09817477042468103,
+          "maxDelta": 0.09817477042468103,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09817477042468103,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 64,
+          "iterations": 0,
+          "geometricCost": 0.0008883657753290767,
+          "regularization": 0,
+          "totalCost": 0.0008883657753290767
+        },
+        "oracleProgressRms": 0.032845107001157794,
+        "parameters": {
+          "A": {
+            "x": 2173.366918153308,
+            "y": 2647.5304034161077
+          },
+          "D": {
+            "x": 1717.6751456967295,
+            "y": 248.957829825625
+          },
+          "crank": 195.31808530317045,
+          "coupler": 1854.759063754659,
+          "rocker": 1145.6832602054692,
+          "u": 2851.8052222290953,
+          "v": -192.26665977050985,
+          "theta0": 1.310055292110312,
+          "sweep": 6.283185307179586,
+          "assembly": -1,
+          "direction": "clockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      },
+      "free": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.0034456081978908146,
+        "rms": 1.7944299430168535,
+        "maximum": 4.692969301677063,
+        "evaluations": 13992,
+        "runtimeMs": 21372.826299999986,
+        "meanObjectiveMs": 1.5127981132074602,
+        "meanCorrespondenceMs": 0.5626216623784004,
+        "maxObjectiveMs": 91.16459999998915,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 361,
+          "maximumDifference": 0.0007403342583457106,
+          "tolerance": 0.010415751530399139
+        },
+        "compactness": {
+          "groundRatio": 1.3061322873252896,
+          "maxMovingLinkRatio": 1.309600784677799,
+          "totalMovingLinkRatio": 1.9053082196050954,
+          "couplerOffsetRatio": 0.5976624462409702,
+          "characteristicSize": 682.0238188609849
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "monotone-free-timing",
+          "inputStart": 0.2918393867115804,
+          "inputEnd": 6.575024693891167,
+          "minDelta": 0.07296034766477719,
+          "maxDelta": 0.20219671943385809,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.08518897769549583,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 513,
+          "iterations": 5,
+          "geometricCost": 1.1872215853372386e-5,
+          "regularization": 0,
+          "totalCost": 1.1872215853372386e-5
+        },
+        "oracleProgressRms": 0.023771710961114082,
+        "parameters": {
+          "A": {
+            "x": 393.18396159006267,
+            "y": 210.55539928824277
+          },
+          "D": {
+            "x": 1046.1854882075577,
+            "y": 401.0411224524902
+          },
+          "crank": 96.44891189636255,
+          "coupler": 213.78811945434404,
+          "rocker": 682.0238188609849,
+          "u": -308.61042609247306,
+          "v": 40.48938241318332,
+          "theta0": 0.2918393867115804,
+          "sweep": 6.283185307179586,
+          "assembly": -1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      }
+    },
+    {
+      "id": "tracer-on-bar",
+      "description": "Tracer almost on the coupler centerline",
+      "categories": ["tracer-close"],
+      "sourceSamples": 361,
+      "requestedSweep": 6.283185307179586,
+      "sourceValidation": {
+        "status": "passed",
+        "samples": 720,
+        "playbackSamples": 361,
+        "maximumDifference": 0.0002938893255255617,
+        "tolerance": 0.016
+      },
+      "oracle": {
+        "dimension": 462.0188472470469,
+        "progress": [
+          0, 0.02211249328704836, 0.04428817038551998, 0.0652921202661454, 0.08470653941149124,
+          0.10264355384243695, 0.11935462122822993, 0.13508666840458125, 0.15004782359452742,
+          0.16438459489231344, 0.1782242787102786, 0.19166193605998222, 0.20477211720466343,
+          0.2176222811897831, 0.23026591099422172, 0.24274855016834138, 0.25511434920584874,
+          0.2674013939676296, 0.2796475773785752, 0.29188985112858234, 0.304166395049036,
+          0.3165161713041672, 0.3289845425761989, 0.34161697732049484, 0.3544731376170105,
+          0.3676139326033314, 0.381116914520939, 0.39507506533902936, 0.40959961199090666,
+          0.4248206679740581, 0.44090575580868985, 0.45802990203169386, 0.4763917558400585,
+          0.4961409017668442, 0.517310050303437, 0.5396753691532117, 0.5626805407599704,
+          0.5855719557005304, 0.6076889764564207, 0.6286566228102435, 0.6483663524908105,
+          0.666869845811391, 0.6842768276887845, 0.7007285601999954, 0.7163535492047254,
+          0.7312674515977189, 0.7455784414873246, 0.7593803141237048, 0.7727569962590094,
+          0.7857844433240144, 0.798533411181254, 0.811075542543872, 0.8234751761825186,
+          0.8358039969590951, 0.8481342028640724, 0.8605456312733255, 0.873129996233515,
+          0.8859916692877265, 0.8992654696184685, 0.9131100355872162, 0.9277321149193707,
+          0.9434121597311751, 0.9604752261290216, 0.9792869285727165
+        ]
+      },
+      "equal": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.0225682681399602,
+        "rms": 10.426965230386665,
+        "maximum": 15.56746931138662,
+        "evaluations": 15096,
+        "runtimeMs": 4523.208899999998,
+        "meanObjectiveMs": 0.2896365461047869,
+        "meanCorrespondenceMs": 0,
+        "maxObjectiveMs": 95.25209999998333,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 361,
+          "maximumDifference": 0.000421730926001239,
+          "tolerance": 0.009240376944940938
+        },
+        "compactness": {
+          "groundRatio": 4.347135321811295,
+          "maxMovingLinkRatio": 4.759411121043468,
+          "totalMovingLinkRatio": 6.814074013334469,
+          "couplerOffsetRatio": 1.5731581114402309,
+          "characteristicSize": 2198.937639719278
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "equal-input-angle",
+          "inputStart": 6.827240335874931,
+          "inputEnd": 13.110425643054517,
+          "minDelta": 0.09817477042468103,
+          "maxDelta": 0.09817477042468103,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09817477042468103,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 64,
+          "iterations": 0,
+          "geometricCost": 0.0005093267268371426,
+          "regularization": 0,
+          "totalCost": 0.0005093267268371426
+        },
+        "oracleProgressRms": 0.018358502810961717,
+        "parameters": {
+          "A": {
+            "x": -196.70854138240998,
+            "y": -446.3264653880527
+          },
+          "D": {
+            "x": 1455.9460277827554,
+            "y": 695.0053098807156
+          },
+          "crank": 181.9305869935889,
+          "coupler": 2198.937639719278,
+          "rocker": 767.3623939839831,
+          "u": 726.4120218612072,
+          "v": 24.607509973477608,
+          "theta0": 6.827240335874931,
+          "sweep": 6.283185307179586,
+          "assembly": 1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      },
+      "free": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.0018343673212567284,
+        "rms": 0.847512275194687,
+        "maximum": 2.6600225854911614,
+        "evaluations": 13936,
+        "runtimeMs": 23456.18219999998,
+        "meanObjectiveMs": 1.6689174727326028,
+        "meanCorrespondenceMs": 0.6263964408724351,
+        "maxObjectiveMs": 35.6083000000217,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 360,
+          "maximumDifference": 0.0031685266631168705,
+          "tolerance": 0.009240376944940938
+        },
+        "compactness": {
+          "groundRatio": 1.184393496273782,
+          "maxMovingLinkRatio": 0.9696866760017254,
+          "totalMovingLinkRatio": 1.8105021325698312,
+          "couplerOffsetRatio": 0.43966156716917293,
+          "characteristicSize": 547.2121178353124
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "monotone-free-timing",
+          "inputStart": 0.49366472632229524,
+          "inputEnd": 6.776850033501882,
+          "minDelta": 0.07808181226557687,
+          "maxDelta": 0.15329017033216036,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.090803844463945,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 513,
+          "iterations": 5,
+          "geometricCost": 3.3649034692945853e-6,
+          "regularization": 0,
+          "totalCost": 3.3649034692945853e-6
+        },
+        "oracleProgressRms": 0.006544243557507954,
+        "parameters": {
+          "A": {
+            "x": 323.8030123044009,
+            "y": 2.798041157393243
+          },
+          "D": {
+            "x": 843.7202951086613,
+            "y": 173.46473664084903
+          },
+          "crank": 114.08921699710005,
+          "coupler": 274.38337099399564,
+          "rocker": 448.0135202371378,
+          "u": -193.8061553458988,
+          "v": 60.84205219475663,
+          "theta0": 0.49366472632229524,
+          "sweep": 6.283185307179586,
+          "assembly": -1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      }
+    },
+    {
+      "id": "tracer-far",
+      "description": "Tracer well away from the coupler",
+      "categories": ["tracer-far", "perpendicular-offset"],
+      "sourceSamples": 361,
+      "requestedSweep": 6.283185307179586,
+      "sourceValidation": {
+        "status": "passed",
+        "samples": 720,
+        "playbackSamples": 361,
+        "maximumDifference": 0.0005845294108501223,
+        "tolerance": 0.016
+      },
+      "oracle": {
+        "dimension": 678.8107269840173,
+        "progress": [
+          0, 0.009726337930605367, 0.020097943756515597, 0.031331739337187914, 0.04373546896062771,
+          0.057817547998633756, 0.07452301786003158, 0.09600228821682377, 0.12937406653787328,
+          0.1810487922469184, 0.21569795187657095, 0.24171999783161965, 0.26398225659381575,
+          0.2841726776766547, 0.3030984013886784, 0.32120642898605173, 0.33877791814627084,
+          0.35597380125344347, 0.3728709001801096, 0.3894661256060462, 0.40569574760341814,
+          0.4214648638786314, 0.4366971567978828, 0.45135371271110836, 0.46545008785592723,
+          0.47903817782561053, 0.4921948018542222, 0.5050044302265958, 0.5175561170248157,
+          0.5299381164984145, 0.5422362257712123, 0.5545379334139877, 0.5669337882471117,
+          0.5795264667477545, 0.592431842161098, 0.6057971071334927, 0.619824605449283,
+          0.6348071475500673, 0.651218336336543, 0.6699694918340273, 0.6933505995540274,
+          0.7330137138178691, 0.7818263732502153, 0.8041601797444193, 0.8204973127450187,
+          0.8340320551990686, 0.8458889197743805, 0.8566285547330859, 0.8665735348271515,
+          0.8759164633168799, 0.8848149010230956, 0.8933714124994625, 0.9016672787591408,
+          0.9097691523821702, 0.917733415487137, 0.9256091983638183, 0.933441099257236,
+          0.9412719982381422, 0.9491448063234058, 0.9571022158992329, 0.965190222001103,
+          0.9734600282908399, 0.9819701064892161, 0.9907893445822636
+        ]
+      },
+      "equal": {
+        "status": "iteration-limit",
+        "success": false,
+        "verified": true,
+        "normalizedRms": 0.03297494468215432,
+        "rms": 22.38374617195093,
+        "maximum": 55.88531595214377,
+        "evaluations": 14568,
+        "runtimeMs": 1466.014200000005,
+        "meanObjectiveMs": 0.0970045579352125,
+        "meanCorrespondenceMs": 0,
+        "maxObjectiveMs": 2.723200000007637,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 360,
+          "maximumDifference": 0.0013213805782464557,
+          "tolerance": 0.013576214539680347
+        },
+        "compactness": {
+          "groundRatio": 2.182342702525036,
+          "maxMovingLinkRatio": 1.567814829434832,
+          "totalMovingLinkRatio": 3.0020066011831177,
+          "couplerOffsetRatio": 3.1942025483179366,
+          "characteristicSize": 2168.258953957899
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "equal-input-angle",
+          "inputStart": 4.049395731412201,
+          "inputEnd": 10.332581038591787,
+          "minDelta": 0.09817477042468103,
+          "maxDelta": 0.09817477042468103,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09817477042468103,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 64,
+          "iterations": 0,
+          "geometricCost": 0.0010873469767911374,
+          "regularization": 0,
+          "totalCost": 0.0010873469767911374
+        },
+        "oracleProgressRms": 0.0772250319009221,
+        "parameters": {
+          "A": {
+            "x": -1373.736782164046,
+            "y": 2584.46172325945
+          },
+          "D": {
+            "x": -807.1910512033689,
+            "y": 1215.6794571745538
+          },
+          "crank": 138.04191617254986,
+          "coupler": 835.5028430423997,
+          "rocker": 1064.2495241449813,
+          "u": 2052.9598879099503,
+          "v": -697.6407313591756,
+          "theta0": 4.049395731412201,
+          "sweep": 6.283185307179586,
+          "assembly": 1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      },
+      "free": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.010105018826077394,
+        "rms": 6.859395175516777,
+        "maximum": 17.866402917034353,
+        "evaluations": 13920,
+        "runtimeMs": 12781.89790000001,
+        "meanObjectiveMs": 0.9118865804597297,
+        "meanCorrespondenceMs": 0.3650036494252278,
+        "maxObjectiveMs": 9.913300000014715,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 361,
+          "maximumDifference": 0.004014103387827512,
+          "tolerance": 0.013576214539680347
+        },
+        "compactness": {
+          "groundRatio": 2.3959188462537426,
+          "maxMovingLinkRatio": 1.5960253566685492,
+          "totalMovingLinkRatio": 3.1740106367072642,
+          "couplerOffsetRatio": 0.7992169764519366,
+          "characteristicSize": 1626.375413820211
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "monotone-free-timing",
+          "inputStart": 1.6883957257186488,
+          "inputEnd": -4.594789581460938,
+          "minDelta": 0.01231764686569778,
+          "maxDelta": 0.3856064796607428,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.08573716540561346,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 513,
+          "iterations": 5,
+          "geometricCost": 0.00010211140547537856,
+          "regularization": 0,
+          "totalCost": 0.00010211140547537856
+        },
+        "oracleProgressRms": 0.09061924030740469,
+        "parameters": {
+          "A": {
+            "x": -84.98299623382465,
+            "y": 739.8602016107644
+          },
+          "D": {
+            "x": 130.05803438845723,
+            "y": 2351.9564586090146
+          },
+          "crank": 264.0720833082393,
+          "coupler": 807.0812518049194,
+          "rocker": 1083.3991326451032,
+          "u": 541.7842173987784,
+          "v": 28.18898189215296,
+          "theta0": 1.6883957257186488,
+          "sweep": 6.283185307179586,
+          "assembly": -1,
+          "direction": "clockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      }
+    },
+    {
+      "id": "beyond-b",
+      "description": "Tracer extends behind coupler joint B",
+      "categories": ["beyond-b"],
+      "sourceSamples": 361,
+      "requestedSweep": 6.283185307179586,
+      "sourceValidation": {
+        "status": "passed",
+        "samples": 720,
+        "playbackSamples": 361,
+        "maximumDifference": 0.00048255469689608517,
+        "tolerance": 0.016
+      },
+      "oracle": {
+        "dimension": 753.9214304397044,
+        "progress": [
+          0, 0.012302223933053021, 0.02473990843318188, 0.03738649783262415, 0.05030862775891361,
+          0.06358128689358057, 0.07727877305987776, 0.09147803053103681, 0.10626627259486326,
+          0.12172745542262357, 0.137956139874861, 0.1550389846007066, 0.17305906133238236,
+          0.19206568384979525, 0.21206058443522804, 0.2329475241160081, 0.25451198932365887,
+          0.2764033550417997, 0.2981919624026501, 0.3194630970235426, 0.3398997983413457,
+          0.35933759942481164, 0.3777345133373085, 0.39512688753449404, 0.41161318009725073,
+          0.4273015151921435, 0.44230570092451305, 0.4567344982262693, 0.4706874337413517,
+          0.48425211129768614, 0.4975066363817132, 0.5105180570059022, 0.523348781074275,
+          0.536054096998518, 0.5486825452593496, 0.5612819518636776, 0.5738966709904929,
+          0.5865701667278373, 0.5993475323302078, 0.6122752385024466, 0.6254023026435945,
+          0.6387852467410959, 0.6524884494219514, 0.6665839174123009, 0.6811620947341183,
+          0.696325169431395, 0.712198369439359, 0.7289254615856351, 0.7466529772296896,
+          0.7654860960281061, 0.7853604511008536, 0.8058802356907248, 0.826276222778955,
+          0.8457484126149385, 0.8638731853269161, 0.8806164428040842, 0.8961582737518866,
+          0.9107369669107198, 0.924558679556312, 0.9378071203129212, 0.9506358852121809,
+          0.9631686939553981, 0.9755135478828418, 0.9877629230106717
+        ]
+      },
+      "equal": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.02042150366764416,
+        "rms": 15.396209256839954,
+        "maximum": 21.32672098585998,
+        "evaluations": 15096,
+        "runtimeMs": 1076.6926000000094,
+        "meanObjectiveMs": 0.06928036565976517,
+        "meanCorrespondenceMs": 0,
+        "maxObjectiveMs": 2.582200000004377,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 360,
+          "maximumDifference": 0.0038888151755160803,
+          "tolerance": 0.01507842860879409
+        },
+        "compactness": {
+          "groundRatio": 2.9336872352961407,
+          "maxMovingLinkRatio": 3.852744142335483,
+          "totalMovingLinkRatio": 6.25522615376236,
+          "couplerOffsetRatio": 0.7198861844502233,
+          "characteristicSize": 2904.6663749077593
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "equal-input-angle",
+          "inputStart": 0.241831838921297,
+          "inputEnd": 6.5250171461008835,
+          "minDelta": 0.09817477042468103,
+          "maxDelta": 0.09817477042468103,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09817477042468103,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 64,
+          "iterations": 0,
+          "geometricCost": 0.00041703781204760384,
+          "regularization": 0,
+          "totalCost": 0.00041703781204760384
+        },
+        "oracleProgressRms": 0.018468613436353726,
+        "parameters": {
+          "A": {
+            "x": 49.173192676596784,
+            "y": 239.24587311571162
+          },
+          "D": {
+            "x": 1481.9751685178198,
+            "y": -1445.6884287688722
+          },
+          "crank": 213.71909204642225,
+          "coupler": 1597.5635826141868,
+          "rocker": 2904.6663749077593,
+          "u": -539.7683825301049,
+          "v": 56.69408685165811,
+          "theta0": 0.241831838921297,
+          "sweep": 6.283185307179586,
+          "assembly": 1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      },
+      "free": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.0014479007467065937,
+        "rms": 1.0916034020917513,
+        "maximum": 2.151267005532174,
+        "evaluations": 14008,
+        "runtimeMs": 13878.229899999977,
+        "meanObjectiveMs": 0.9835979511709172,
+        "meanCorrespondenceMs": 0.38965671045145306,
+        "maxObjectiveMs": 8.695999999996275,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 361,
+          "maximumDifference": 0.0008359077822721916,
+          "tolerance": 0.01507842860879409
+        },
+        "compactness": {
+          "groundRatio": 1.6802079351509436,
+          "maxMovingLinkRatio": 1.52211112375091,
+          "totalMovingLinkRatio": 2.7316606059204678,
+          "couplerOffsetRatio": 0.601486536442076,
+          "characteristicSize": 1266.7447699051415
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "monotone-free-timing",
+          "inputStart": 0.29897257588107573,
+          "inputEnd": 6.5821578830606615,
+          "minDelta": 0.07961794986706777,
+          "maxDelta": 0.1332888987344229,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09183667945618951,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 513,
+          "iterations": 5,
+          "geometricCost": 2.096416572313512e-6,
+          "regularization": 0,
+          "totalCost": 2.096416572313512e-6
+        },
+        "oracleProgressRms": 0.010218266424509452,
+        "parameters": {
+          "A": {
+            "x": 29.397592440521407,
+            "y": 117.5064677906169
+          },
+          "D": {
+            "x": 1056.7192851348323,
+            "y": -623.6092126545652
+          },
+          "crank": 197.17723114969596,
+          "coupler": 714.728044635181,
+          "rocker": 1147.552195706472,
+          "u": -451.78386933316494,
+          "v": -39.110512495072186,
+          "theta0": 0.29897257588107573,
+          "sweep": 6.283185307179586,
+          "assembly": 1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      }
+    },
+    {
+      "id": "beyond-c",
+      "description": "Tracer extends beyond coupler joint C",
+      "categories": ["beyond-c"],
+      "sourceSamples": 361,
+      "requestedSweep": 6.283185307179586,
+      "sourceValidation": {
+        "status": "passed",
+        "samples": 720,
+        "playbackSamples": 361,
+        "maximumDifference": 0.00030505672631729505,
+        "tolerance": 0.016
+      },
+      "oracle": {
+        "dimension": 496.6183587114053,
+        "progress": [
+          0, 0.016406678221456226, 0.03600694828209637, 0.059902542806847425, 0.08606956610300084,
+          0.10972892295177784, 0.12994010468729472, 0.14764267248454077, 0.16364027554395272,
+          0.1784461333195752, 0.19239892472569053, 0.20572740531374042, 0.21859306551702687,
+          0.23112838317991924, 0.24343466446020523, 0.25560318890505124, 0.2677156389760134,
+          0.27985437502227234, 0.29210523150505846, 0.3045661898555984, 0.31735220107689543,
+          0.3306115211591106, 0.3445526896149458, 0.35947773330178634, 0.37585319809367645,
+          0.39450400581447287, 0.41700972981435247, 0.4458007408281468, 0.47815969802860186,
+          0.5056137978374424, 0.5283186738010273, 0.5482633868507828, 0.5665802218126502,
+          0.5838970486427986, 0.6006147058347042, 0.6170003345231683, 0.6332502272917665,
+          0.6495142241928754, 0.6659038415470844, 0.6824880902063102, 0.6992791557434825,
+          0.7162088988558044, 0.7331121792284233, 0.7497416125746683, 0.7658280219215854,
+          0.781166420991423, 0.795651377377488, 0.8092845476342045, 0.8221324147152037,
+          0.8342819361791611, 0.8458491633957035, 0.8569355914919975, 0.8676383690606523,
+          0.8780481017302496, 0.888246238177784, 0.8983157021386996, 0.9083350686967856,
+          0.9183867022133474, 0.9285576380365375, 0.9389463193252798, 0.9496770686286552,
+          0.9608966087730352, 0.9728114635718513, 0.9857018644713097
+        ]
+      },
+      "equal": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.0214994440888301,
+        "rms": 10.677018636602428,
+        "maximum": 21.650351198779457,
+        "evaluations": 15984,
+        "runtimeMs": 1734.5795999999973,
+        "meanObjectiveMs": 0.10387196571593506,
+        "meanCorrespondenceMs": 0,
+        "maxObjectiveMs": 3.369699999981094,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 361,
+          "maximumDifference": 0.0012070624089887383,
+          "tolerance": 0.009932367174228107
+        },
+        "compactness": {
+          "groundRatio": 2.8899739682620997,
+          "maxMovingLinkRatio": 2.1432091397892834,
+          "totalMovingLinkRatio": 3.821776684597325,
+          "couplerOffsetRatio": 3.6066163691054953,
+          "characteristicSize": 1791.1119017268588
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "equal-input-angle",
+          "inputStart": 1.7095657399371196,
+          "inputEnd": 7.992751047116705,
+          "minDelta": 0.09817477042468103,
+          "maxDelta": 0.09817477042468103,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09817477042468103,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 64,
+          "iterations": 0,
+          "geometricCost": 0.0004622260961287315,
+          "regularization": 0,
+          "totalCost": 0.0004622260961287315
+        },
+        "oracleProgressRms": 0.04714136944680141,
+        "parameters": {
+          "A": {
+            "x": 1116.8176490532273,
+            "y": 2349.0992739084377
+          },
+          "D": {
+            "x": 1723.2198997536145,
+            "y": 1048.2857184905658
+          },
+          "crank": 173.0359592046925,
+          "coupler": 1064.3570053774367,
+          "rocker": 660.5714998841102,
+          "u": 1742.3382351920711,
+          "v": -415.13771051951466,
+          "theta0": 1.7095657399371196,
+          "sweep": 6.283185307179586,
+          "assembly": -1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      },
+      "free": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.005250089637216086,
+        "rms": 2.6072908987220096,
+        "maximum": 12.10869882063476,
+        "evaluations": 13928,
+        "runtimeMs": 12369.800799999968,
+        "meanObjectiveMs": 0.8812744327976253,
+        "meanCorrespondenceMs": 0.3493576321078173,
+        "maxObjectiveMs": 9.16900000005262,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 360,
+          "maximumDifference": 0.0010568098670466445,
+          "tolerance": 0.009932367174228107
+        },
+        "compactness": {
+          "groundRatio": 2.344273603266371,
+          "maxMovingLinkRatio": 1.548182975760776,
+          "totalMovingLinkRatio": 3.221071858958969,
+          "couplerOffsetRatio": 1.9444967872840329,
+          "characteristicSize": 1164.209309224617
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "monotone-free-timing",
+          "inputStart": 0.1827789787353168,
+          "inputEnd": 6.465964285914903,
+          "minDelta": 0.03849371661961882,
+          "maxDelta": 0.1965497527193556,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09472140610122465,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 513,
+          "iterations": 5,
+          "geometricCost": 2.7563441198803732e-5,
+          "regularization": 0,
+          "totalCost": 2.7563441198803732e-5
+        },
+        "oracleProgressRms": 0.0447349972388137,
+        "parameters": {
+          "A": {
+            "x": -132.2779466774565,
+            "y": 211.34308523221858
+          },
+          "D": {
+            "x": 883.246911876736,
+            "y": -357.948208697126
+          },
+          "crank": 191.81279834079305,
+          "coupler": 638.9745331396495,
+          "rocker": 768.8560884072559,
+          "u": 912.5776299846157,
+          "v": 315.79428706884244,
+          "theta0": 0.1827789787353168,
+          "sweep": 6.283185307179586,
+          "assembly": 1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      }
+    },
+    {
+      "id": "high-offset",
+      "description": "Large perpendicular tracer offset",
+      "categories": ["perpendicular-offset"],
+      "sourceSamples": 361,
+      "requestedSweep": 6.283185307179586,
+      "sourceValidation": {
+        "status": "passed",
+        "samples": 720,
+        "playbackSamples": 361,
+        "maximumDifference": 0.0006297465915773294,
+        "tolerance": 0.016
+      },
+      "oracle": {
+        "dimension": 783.2543544344329,
+        "progress": [
+          0, 0.00938818659007436, 0.01922523408158017, 0.02964608004217664, 0.04080369638827959,
+          0.05292756237094928, 0.06637948502950924, 0.08174245628116841, 0.10011849805882418,
+          0.12433279621755863, 0.16920165328732434, 0.24062016796528615, 0.2736596612718048,
+          0.29895316603210836, 0.3205686438114909, 0.3399139665556808, 0.3576630199541021,
+          0.3741928188905586, 0.3897425702308109, 0.40447529583983527, 0.4185147641172459,
+          0.431960578884591, 0.44490205003831274, 0.4574145601737912, 0.46957507815714855,
+          0.48144645596327373, 0.4930960852755765, 0.5045833640127789, 0.5159657214130222,
+          0.5272996269748899, 0.538641744094334, 0.5500508885444286, 0.5615911103613378,
+          0.5733324970598188, 0.5853564552972871, 0.5977653177937597, 0.610690646145558,
+          0.6243147485457107, 0.6388978075291407, 0.6548851826730273, 0.673065056194752,
+          0.6952904914758444, 0.7285825319162312, 0.7791279653312599, 0.8047704877114764,
+          0.8225972736149049, 0.8370712480732578, 0.8496351687605177, 0.860940130450832,
+          0.8713556053034245, 0.881127797658015, 0.890408941763296, 0.899321281783373,
+          0.9079513141263703, 0.9163702668542327, 0.9246381910366586, 0.9328073541986469,
+          0.9409245340677733, 0.949033433949396, 0.9571762538098462, 0.9653957744902781,
+          0.9737366988425408, 0.98224730809409, 0.9909813360270204
+        ]
+      },
+      "equal": {
+        "status": "iteration-limit",
+        "success": false,
+        "verified": true,
+        "normalizedRms": 0.03560798983018553,
+        "rms": 27.89011308714982,
+        "maximum": 66.87460512172619,
+        "evaluations": 14360,
+        "runtimeMs": 1257.2233000000124,
+        "meanObjectiveMs": 0.08484967270183272,
+        "meanCorrespondenceMs": 0,
+        "maxObjectiveMs": 3.243099999963306,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 361,
+          "maximumDifference": 0.0005763675504986651,
+          "tolerance": 0.015665087088688658
+        },
+        "compactness": {
+          "groundRatio": 3.9049793300437172,
+          "maxMovingLinkRatio": 2.7399339274633383,
+          "totalMovingLinkRatio": 5.479425782665407,
+          "couplerOffsetRatio": 3.961172738073778,
+          "characteristicSize": 3102.605795763252
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "equal-input-angle",
+          "inputStart": 2.6967820565937677,
+          "inputEnd": -3.5864032505858185,
+          "minDelta": 0.09817477042468103,
+          "maxDelta": 0.09817477042468103,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09817477042468103,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 64,
+          "iterations": 0,
+          "geometricCost": 0.0012679289397465963,
+          "regularization": 0,
+          "totalCost": 0.0012679289397465963
+        },
+        "oracleProgressRms": 0.07526982144159416,
+        "parameters": {
+          "A": {
+            "x": -456.3990199307852,
+            "y": 4022.21171190577
+          },
+          "D": {
+            "x": 239.67366500076912,
+            "y": 1043.8785820019868
+          },
+          "crank": 244.68736513865565,
+          "coupler": 2146.0651795482972,
+          "rocker": 1901.031559386028,
+          "u": 2778.7374802646577,
+          "v": 1380.137942263795,
+          "theta0": 2.6967820565937677,
+          "sweep": 6.283185307179586,
+          "assembly": -1,
+          "direction": "clockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      },
+      "free": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.00832614150239401,
+        "rms": 6.52148658738736,
+        "maximum": 26.126677639698762,
+        "evaluations": 13944,
+        "runtimeMs": 12812.425700000022,
+        "meanObjectiveMs": 0.9123094736089482,
+        "meanCorrespondenceMs": 0.3655542383817502,
+        "maxObjectiveMs": 10.64079999999376,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 361,
+          "maximumDifference": 0.0020728116291138486,
+          "tolerance": 0.015665087088688658
+        },
+        "compactness": {
+          "groundRatio": 1.550699898699904,
+          "maxMovingLinkRatio": 1.4033290972520587,
+          "totalMovingLinkRatio": 2.246670534998614,
+          "couplerOffsetRatio": 2.1707495845015328,
+          "characteristicSize": 1700.2490644475615
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "monotone-free-timing",
+          "inputStart": 0.7333354375932872,
+          "inputEnd": 7.0165207447728735,
+          "minDelta": 0.055725133714925816,
+          "maxDelta": 0.20633868924671517,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.0882792250982169,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 513,
+          "iterations": 5,
+          "geometricCost": 6.9324632317888e-5,
+          "regularization": 0,
+          "totalCost": 6.9324632317888e-5
+        },
+        "oracleProgressRms": 0.078452562402008,
+        "parameters": {
+          "A": {
+            "x": -827.8480772067305,
+            "y": 2539.2905517340573
+          },
+          "D": {
+            "x": -1990.0659691367212,
+            "y": 2186.4671021090767
+          },
+          "crank": 208.91464638273595,
+          "coupler": 1099.1636261272167,
+          "rocker": 451.6362070072484,
+          "u": 614.3369429649657,
+          "v": 1585.3822888071093,
+          "theta0": 0.7333354375932872,
+          "sweep": 6.283185307179586,
+          "assembly": 1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      }
+    },
+    {
+      "id": "near-toggle",
+      "description": "Small but positive full-sweep toggle clearance",
+      "categories": ["near-toggle", "nonuniform-speed"],
+      "sourceSamples": 361,
+      "requestedSweep": 6.283185307179586,
+      "sourceValidation": {
+        "status": "passed",
+        "samples": 720,
+        "playbackSamples": 361,
+        "maximumDifference": 0.00035730308685968487,
+        "tolerance": 0.016
+      },
+      "oracle": {
+        "dimension": 434.2639768475506,
+        "progress": [
+          0, 0.01353052788034473, 0.02944751731151267, 0.04989200910744617, 0.08476283593110504,
+          0.1408672928897135, 0.16855527727592867, 0.18924195212747855, 0.20672943037817185,
+          0.2223160468354562, 0.2365980771604689, 0.249936378776326, 0.26254222571021807,
+          0.274578057954748, 0.28614794322256415, 0.2973343028822069, 0.3082057763935781,
+          0.31881704178855924, 0.32921886991467697, 0.3394575979037049, 0.3495784813882792,
+          0.3596335000362152, 0.36968547111530076, 0.37982013418993615, 0.39016419300435445,
+          0.40092691117089185, 0.41249786847368, 0.4256321454089452, 0.4414420064797457,
+          0.4589666666359579, 0.4756574086702767, 0.491589517809047, 0.5074548280953893,
+          0.5237865836099, 0.5410668003722182, 0.5599024133833558, 0.5812853486417787,
+          0.6074684102177794, 0.64797563795848, 0.7181320577962614, 0.7465865944827795,
+          0.7665135578659429, 0.7827020380340112, 0.7967112125544255, 0.8092608652315779,
+          0.8207697304086974, 0.8315008766688279, 0.841637526218556, 0.8513006641394624,
+          0.8606056510788312, 0.869627655074357, 0.8784331959773953, 0.8870842777409901,
+          0.8956334023777555, 0.9041301656902186, 0.9126233517343427, 0.9211625167976807,
+          0.9298001823653077, 0.9385942194271316, 0.9476142407794039, 0.9569423405635048,
+          0.9666724012251088, 0.9769565733158597, 0.9879719344298878
+        ]
+      },
+      "equal": {
+        "status": "iteration-limit",
+        "success": false,
+        "verified": true,
+        "normalizedRms": 0.03074701260128475,
+        "rms": 13.352319968415667,
+        "maximum": 33.641448288787444,
+        "evaluations": 14896,
+        "runtimeMs": 1193.0279999999912,
+        "meanObjectiveMs": 0.077514124597343,
+        "meanCorrespondenceMs": 0,
+        "maxObjectiveMs": 2.7910000000265427,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 361,
+          "maximumDifference": 0.0007302750602359843,
+          "tolerance": 0.008685279536951014
+        },
+        "compactness": {
+          "groundRatio": 0.8687652771152298,
+          "maxMovingLinkRatio": 0.6040496029531384,
+          "totalMovingLinkRatio": 1.480198441149174,
+          "couplerOffsetRatio": 0.9041338175886013,
+          "characteristicSize": 392.63274722838395
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "equal-input-angle",
+          "inputStart": 5.854279032514619,
+          "inputEnd": 12.137464339694205,
+          "minDelta": 0.09817477042468103,
+          "maxDelta": 0.09817477042468103,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09817477042468103,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 64,
+          "iterations": 0,
+          "geometricCost": 0.0009453787839035631,
+          "regularization": 0,
+          "totalCost": 0.0009453787839035631
+        },
+        "oracleProgressRms": 0.06419220708095641,
+        "parameters": {
+          "A": {
+            "x": 594.4674028602587,
+            "y": 560.7077390180506
+          },
+          "D": {
+            "x": 218.2651963929761,
+            "y": 589.1184170969206
+          },
+          "crank": 125.00661334728746,
+          "coupler": 255.4732654380841,
+          "rocker": 262.31698279161384,
+          "u": 344.39472178896796,
+          "v": -188.55436828672893,
+          "theta0": 5.854279032514619,
+          "sweep": 6.283185307179586,
+          "assembly": 1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      },
+      "free": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.01704860127987194,
+        "rms": 7.403593391485431,
+        "maximum": 28.057632374182823,
+        "evaluations": 14064,
+        "runtimeMs": 10028.486499999999,
+        "meanObjectiveMs": 0.7083908489757577,
+        "meanCorrespondenceMs": 0.28303709470969524,
+        "maxObjectiveMs": 5.913500000024214,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 361,
+          "maximumDifference": 0.002665888994485909,
+          "tolerance": 0.008685279536951014
+        },
+        "compactness": {
+          "groundRatio": 2.1864681302319093,
+          "maxMovingLinkRatio": 2.144913240434015,
+          "totalMovingLinkRatio": 2.8205225763602337,
+          "couplerOffsetRatio": 0.39761100932897214,
+          "characteristicSize": 949.5043454849372
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "monotone-free-timing",
+          "inputStart": 0.899656287031419,
+          "inputEnd": -5.383529020148167,
+          "minDelta": 0.004929039569041042,
+          "maxDelta": 0.37727037940331265,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09726223450844468,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 513,
+          "iterations": 5,
+          "geometricCost": 0.0002906548056000512,
+          "regularization": 0,
+          "totalCost": 0.0002906548056000512
+        },
+        "oracleProgressRms": 0.06039640782202493,
+        "parameters": {
+          "A": {
+            "x": 114.62417257853518,
+            "y": 479.1355524249595
+          },
+          "D": {
+            "x": 1008.6796742930937,
+            "y": 159.4118248902205
+          },
+          "crank": 137.6686146409912,
+          "coupler": 155.72418237366142,
+          "rocker": 931.4585537838419,
+          "u": 137.02543046904393,
+          "v": -105.06339675077858,
+          "theta0": 0.899656287031419,
+          "sweep": 6.283185307179586,
+          "assembly": 1,
+          "direction": "clockwise"
+        },
+        "rankedCandidates": 3,
+        "rejectedFinalists": ["PMKS and analytic trajectories disagree at sample 502."],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      }
+    },
+    {
+      "id": "nonuniform-speed",
+      "description": "Tracer near the slow end of a crank-rocker coupler",
+      "categories": ["nonuniform-speed"],
+      "sourceSamples": 361,
+      "requestedSweep": 6.283185307179586,
+      "sourceValidation": {
+        "status": "passed",
+        "samples": 720,
+        "playbackSamples": 361,
+        "maximumDifference": 0.0003068014112412796,
+        "tolerance": 0.016
+      },
+      "oracle": {
+        "dimension": 402.03879960303584,
+        "progress": [
+          0, 0.0582811648676233, 0.09304800598806731, 0.11399704271801162, 0.13089849166752648,
+          0.14567866240684688, 0.15912367290156176, 0.17163788545433437, 0.1834707233634386,
+          0.19478208616667156, 0.20569245467572211, 0.21628561830290693, 0.22663033988478956,
+          0.23678304530532354, 0.24678839846804584, 0.25668671718554387, 0.2665160610740444,
+          0.27631009882259, 0.2861032449205297, 0.295931078491764, 0.30582841966918556,
+          0.31583751130632876, 0.3260022698140038, 0.3363747721665923, 0.347021744197425,
+          0.3580235907803412, 0.36948299439999255, 0.38154881489346304, 0.3944081031185606,
+          0.40837703510935264, 0.4239548325360824, 0.44204382837375167, 0.46478572255187234,
+          0.5006643056466554, 0.5913026988698322, 0.625844328151464, 0.6509267966385767,
+          0.6717127978617597, 0.6898618652410822, 0.7061817252545988, 0.7211294578982782,
+          0.7350086695573236, 0.7480277544881622, 0.7603404731928437, 0.7720689734263831,
+          0.7833054205803337, 0.7941294119126768, 0.8046105151171324, 0.8148099824479964,
+          0.824781360685937, 0.8345716985435107, 0.8442333823148697, 0.8538114803218093,
+          0.8633570000269526, 0.8729222669001472, 0.882565675076809, 0.8923548441577338,
+          0.9023708103623547, 0.9127202586807841, 0.9235376081340283, 0.9350204225519015,
+          0.9474667444367123, 0.9614059467230368, 0.977892749088901
+        ]
+      },
+      "equal": {
+        "status": "iteration-limit",
+        "success": false,
+        "verified": true,
+        "normalizedRms": 0.03381480545424304,
+        "rms": 13.594863793634062,
+        "maximum": 35.764333273048486,
+        "evaluations": 15584,
+        "runtimeMs": 1102.5567000000156,
+        "meanObjectiveMs": 0.0684917158622322,
+        "meanCorrespondenceMs": 0,
+        "maxObjectiveMs": 3.54749999998603,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 360,
+          "maximumDifference": 0.0026556352076756626,
+          "tolerance": 0.008040775992060718
+        },
+        "compactness": {
+          "groundRatio": 0.4704184480121042,
+          "maxMovingLinkRatio": 0.4204738486128199,
+          "totalMovingLinkRatio": 0.6025724476759415,
+          "couplerOffsetRatio": 1.289556758701524,
+          "characteristicSize": 518.4518512883425
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "equal-input-angle",
+          "inputStart": 3.1727956795922907,
+          "inputEnd": -3.1103896275872955,
+          "minDelta": 0.09817477042468103,
+          "maxDelta": 0.09817477042468103,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09817477042468103,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 64,
+          "iterations": 0,
+          "geometricCost": 0.001143441067908305,
+          "regularization": 0,
+          "totalCost": 0.001143441067908305
+        },
+        "oracleProgressRms": 0.052887465646343015,
+        "parameters": {
+          "A": {
+            "x": 734.4831707087696,
+            "y": -36.66417797677059
+          },
+          "D": {
+            "x": 552.9255641592193,
+            "y": 16.304269790342744
+          },
+          "crank": 18.277388937361867,
+          "coupler": 54.933313239370065,
+          "rocker": 169.04680136076672,
+          "u": 475.66375053300595,
+          "v": 206.24334785195833,
+          "theta0": 3.1727956795922907,
+          "sweep": 6.283185307179586,
+          "assembly": -1,
+          "direction": "clockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      },
+      "free": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.007056345385123918,
+        "rms": 2.836924628219642,
+        "maximum": 12.553484555670089,
+        "evaluations": 14160,
+        "runtimeMs": 10800.68399999995,
+        "meanObjectiveMs": 0.7577172669492168,
+        "meanCorrespondenceMs": 0.30436368644079914,
+        "maxObjectiveMs": 5.299699999974109,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 361,
+          "maximumDifference": 0.0011380244004642825,
+          "tolerance": 0.008040775992060718
+        },
+        "compactness": {
+          "groundRatio": 2.616269610316532,
+          "maxMovingLinkRatio": 1.7293179195380828,
+          "totalMovingLinkRatio": 3.5861910373141015,
+          "couplerOffsetRatio": 1.8779476577414662,
+          "characteristicSize": 1051.8418935695609
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "monotone-free-timing",
+          "inputStart": 0.3562755961359909,
+          "inputEnd": -5.926909711043596,
+          "minDelta": 0.012274362338973503,
+          "maxDelta": 0.2587316918838459,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.08436614991256258,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 513,
+          "iterations": 5,
+          "geometricCost": 4.979201019415962e-5,
+          "regularization": 0,
+          "totalCost": 4.979201019415962e-5
+        },
+        "oracleProgressRms": 0.04340156386024653,
+        "parameters": {
+          "A": {
+            "x": -284.5205776306206,
+            "y": 158.11843370113328
+          },
+          "D": {
+            "x": 736.6622233228823,
+            "y": -93.986814369505
+          },
+          "crank": 164.87277392318924,
+          "coupler": 695.2529005031101,
+          "rocker": 581.6622653626281,
+          "u": 755.0038228929353,
+          "v": 2.457387263397945,
+          "theta0": 0.3562755961359909,
+          "sweep": 6.283185307179586,
+          "assembly": 1,
+          "direction": "clockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      }
+    },
+    {
+      "id": "compact",
+      "description": "Compact linkage with a large tracer path",
+      "categories": ["compact"],
+      "sourceSamples": 360,
+      "requestedSweep": 6.283185307179586,
+      "sourceValidation": {
+        "status": "passed",
+        "samples": 720,
+        "playbackSamples": 361,
+        "maximumDifference": 0.0004877745720761274,
+        "tolerance": 0.008
+      },
+      "oracle": {
+        "dimension": 443.05012542330917,
+        "progress": [
+          -8.834874115176436e-18, 0.011970840946035018, 0.025617057507528605, 0.04184187579679124,
+          0.062438832696493404, 0.09084108349354857, 0.12631856300757335, 0.15710964551542417,
+          0.18213407020708325, 0.2037054604767544, 0.2231103327093212, 0.24104474247704294,
+          0.2579213041446018, 0.2740051845809791, 0.2894839194395027, 0.304488875815472,
+          0.31912444678438306, 0.3334695239566906, 0.3475901055225592, 0.3615424917995163,
+          0.3753746435324857, 0.38912942897871383, 0.40284607847681325, 0.4165619490630176,
+          0.4303139643464289, 0.44413929444343175, 0.45807747901155127, 0.4721719214272527,
+          0.4864732792733073, 0.5010400656672903, 0.5159430674477952, 0.5312740069071309,
+          0.5471493373289291, 0.5637332553187492, 0.5812543231325772, 0.600052243170703,
+          0.6207069707835186, 0.6442459763780538, 0.6729130329113643, 0.7109122535197258,
+          0.7490413200759055, 0.7748198837755421, 0.7938059818069846, 0.8092201713835238,
+          0.8224503949905512, 0.8341922220771036, 0.8448820777248333, 0.8547789337936554,
+          0.8640794628614149, 0.8729103151415689, 0.8813852823336582, 0.8895876938441044,
+          0.8975882090693268, 0.9054479766093787, 0.9132226204419226, 0.9209672484971192,
+          0.9287334264623884, 0.9365743821536353, 0.9445480267435814, 0.9527206309388613,
+          0.9611677780720629, 0.9699842499711044, 0.9792837456264591, 0.9892147766858307
+        ]
+      },
+      "equal": {
+        "status": "iteration-limit",
+        "success": false,
+        "verified": true,
+        "normalizedRms": 0.03488358462699659,
+        "rms": 15.45517654420546,
+        "maximum": 30.19887035618591,
+        "evaluations": 14280,
+        "runtimeMs": 976.8141000000178,
+        "meanObjectiveMs": 0.06603626750711811,
+        "meanCorrespondenceMs": 0,
+        "maxObjectiveMs": 2.8822999999974854,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 360,
+          "maximumDifference": 0.0026213770937394093,
+          "tolerance": 0.008861002508466184
+        },
+        "compactness": {
+          "groundRatio": 1.7566953085506776,
+          "maxMovingLinkRatio": 1.392823461820197,
+          "totalMovingLinkRatio": 2.2987915368893344,
+          "couplerOffsetRatio": 2.8386347824754936,
+          "characteristicSize": 1257.6574964067354
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "equal-input-angle",
+          "inputStart": 4.01398432042377,
+          "inputEnd": -2.2692009867558163,
+          "minDelta": 0.09817477042468103,
+          "maxDelta": 0.09817477042468103,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09817477042468103,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 64,
+          "iterations": 0,
+          "geometricCost": 0.0012168644764288328,
+          "regularization": 0,
+          "totalCost": 0.0012168644764288328
+        },
+        "oracleProgressRms": 0.07258550909337672,
+        "parameters": {
+          "A": {
+            "x": 743.0563451327267,
+            "y": -587.3032019683441
+          },
+          "D": {
+            "x": -34.61028755676494,
+            "y": -555.8096416765679
+          },
+          "crank": 62.26432614271331,
+          "coupler": 339.12494314618203,
+          "rocker": 617.0906094519659,
+          "u": 1257.5404380693858,
+          "v": 17.15881372107525,
+          "theta0": 4.01398432042377,
+          "sweep": 6.283185307179586,
+          "assembly": -1,
+          "direction": "clockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      },
+      "free": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.006000626022647094,
+        "rms": 2.658578111952168,
+        "maximum": 7.966692865123108,
+        "evaluations": 13936,
+        "runtimeMs": 12105.983899999992,
+        "meanObjectiveMs": 0.8634006745122725,
+        "meanCorrespondenceMs": 0.3454585031578782,
+        "maxObjectiveMs": 7.17439999995986,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 360,
+          "maximumDifference": 0.00809035080591997,
+          "tolerance": 0.008861002508466184
+        },
+        "compactness": {
+          "groundRatio": 0.6781217714893127,
+          "maxMovingLinkRatio": 2.700205366382784,
+          "totalMovingLinkRatio": 5.412542866858342,
+          "couplerOffsetRatio": 1.5987329995443784,
+          "characteristicSize": 1196.326326244585
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "monotone-free-timing",
+          "inputStart": -0.22428526804530824,
+          "inputEnd": -6.507470575224895,
+          "minDelta": 0.04238943546564215,
+          "maxDelta": 0.22373201688619934,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09771812306599015,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 513,
+          "iterations": 5,
+          "geometricCost": 3.600751266366948e-5,
+          "regularization": 0,
+          "totalCost": 3.600751266366948e-5
+        },
+        "oracleProgressRms": 0.09472965981803781,
+        "parameters": {
+          "A": {
+            "x": 624.3816885672202,
+            "y": 161.2629807934602
+          },
+          "D": {
+            "x": 406.7627001426601,
+            "y": -45.87787160120928
+          },
+          "crank": 98.85987347891688,
+          "coupler": 1102.841596297124,
+          "rocker": 1196.326326244585,
+          "u": 548.5493484847839,
+          "v": 448.11741094788886,
+          "theta0": -0.22428526804530824,
+          "sweep": 6.283185307179586,
+          "assembly": -1,
+          "direction": "clockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      }
+    },
+    {
+      "id": "large-relative-path",
+      "description": "Long bars driving a comparatively small tracer path",
+      "categories": ["large-relative-path"],
+      "sourceSamples": 361,
+      "requestedSweep": 6.283185307179586,
+      "sourceValidation": {
+        "status": "passed",
+        "samples": 720,
+        "playbackSamples": 361,
+        "maximumDifference": 0.0004994208158177012,
+        "tolerance": 0.032
+      },
+      "oracle": {
+        "dimension": 195.3044017505238,
+        "progress": [
+          -8.834874115176436e-18, 0.015708841869312557, 0.03145165026600981, 0.04722329929240419,
+          0.06301727234580233, 0.07882631016652365, 0.09464273297558627, 0.11045824169002927,
+          0.12626545125204633, 0.1420565430668608, 0.1578249912576671, 0.1735651398352511,
+          0.18927229324206496, 0.20494334014966864, 0.2205762346493643, 0.23617059418176484,
+          0.25172706085981295, 0.2672477918789656, 0.28273627762389414, 0.2981970410644248,
+          0.31363557483880594, 0.32905853837227683, 0.34447279551204224, 0.359886137012221,
+          0.37530642205265896, 0.39074193672861707, 0.4062001161471527, 0.42168849186274093,
+          0.43721298423271515, 0.45277901085439665, 0.4683904822426116, 0.48404888991722866,
+          0.49975458963986796, 0.5155055209587311, 0.5312976489109658, 0.5471248977943669,
+          0.5629803543445612, 0.5788546716209952, 0.5947379147325395, 0.6106203681324425,
+          0.626491838619288, 0.6423429649780922, 0.6581650514793543, 0.673951082570958,
+          0.6896956260741869, 0.705395038512528, 0.7210469552803987, 0.7366521208925819,
+          0.7522119560044087, 0.7677297315479533, 0.783210445196282, 0.7986599627676773,
+          0.8140855470783218, 0.8294944395991267, 0.8448949157933396, 0.8602954168392488,
+          0.87570373316416, 0.8911279639358116, 0.9065749766132103, 0.9220510775434282,
+          0.9375617186745059, 0.953110100999957, 0.9686991623310082, 0.9843294323503791
+        ]
+      },
+      "equal": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.0012626659496636685,
+        "rms": 0.24660421790981976,
+        "maximum": 0.284726190745798,
+        "evaluations": 14280,
+        "runtimeMs": 970.4122999999672,
+        "meanObjectiveMs": 0.06602719187680586,
+        "meanCorrespondenceMs": 0,
+        "maxObjectiveMs": 2.7602000000188127,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 360,
+          "maximumDifference": 0.0008041069400571366,
+          "tolerance": 0.003906088035010476
+        },
+        "compactness": {
+          "groundRatio": 4.4652176951492395,
+          "maxMovingLinkRatio": 4.4434750430964245,
+          "totalMovingLinkRatio": 8.942332463336154,
+          "couplerOffsetRatio": 0.07733398600638984,
+          "characteristicSize": 872.076670636975
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "equal-input-angle",
+          "inputStart": 0.40123251788865244,
+          "inputEnd": 6.6844178250682385,
+          "minDelta": 0.09817477042468103,
+          "maxDelta": 0.09817477042468103,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09817477042468103,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 64,
+          "iterations": 0,
+          "geometricCost": 1.594325300440054e-6,
+          "regularization": 0,
+          "totalCost": 1.594325300440054e-6
+        },
+        "oracleProgressRms": 0.0012425116990263311,
+        "parameters": {
+          "A": {
+            "x": 21.7860700066871,
+            "y": 37.31370287434293
+          },
+          "D": {
+            "x": 110.38964039414412,
+            "y": -830.250200699259
+          },
+          "crank": 69.76613365095798,
+          "coupler": 808.880523369867,
+          "rocker": 867.8302349853301,
+          "u": 14.276246748597167,
+          "v": 4.930472792713317,
+          "theta0": 0.40123251788865244,
+          "sweep": 6.283185307179586,
+          "assembly": -1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      },
+      "free": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.00013339790665483993,
+        "rms": 0.026053198353995728,
+        "maximum": 0.12610348434634527,
+        "evaluations": 14000,
+        "runtimeMs": 11344.20849999995,
+        "meanObjectiveMs": 0.8059497142857415,
+        "meanCorrespondenceMs": 0.31859822857113407,
+        "maxObjectiveMs": 5.940200000011828,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 360,
+          "maximumDifference": 0.00033951271604233706,
+          "tolerance": 0.003906088035010476
+        },
+        "compactness": {
+          "groundRatio": 2.519895034241449,
+          "maxMovingLinkRatio": 1.6939016002777043,
+          "totalMovingLinkRatio": 3.3435578517199875,
+          "couplerOffsetRatio": 0.03998011975179587,
+          "characteristicSize": 492.1465921366418
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "monotone-free-timing",
+          "inputStart": 6.675216539161124,
+          "inputEnd": 12.95840184634071,
+          "minDelta": 0.09649176468259575,
+          "maxDelta": 0.10036788024259885,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09821864759717006,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 513,
+          "iterations": 5,
+          "geometricCost": 1.7795001499893387e-8,
+          "regularization": 0,
+          "totalCost": 1.7795001499893387e-8
+        },
+        "oracleProgressRms": 0.0010151040667403682,
+        "parameters": {
+          "A": {
+            "x": 6.193001466919512,
+            "y": 21.215639579615722
+          },
+          "D": {
+            "x": -355.0411777935499,
+            "y": 355.45826984350816
+          },
+          "crank": 69.61356658496649,
+          "coupler": 330.8264386664919,
+          "rocker": 252.57156069698033,
+          "u": 1.3678722741453397,
+          "v": -7.687546474280088,
+          "theta0": 6.675216539161124,
+          "sweep": 6.283185307179586,
+          "assembly": -1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      }
+    },
+    {
+      "id": "open-half",
+      "description": "Open half-revolution of a crank-rocker",
+      "categories": ["partial", "open", "ccw"],
+      "sourceSamples": 182,
+      "requestedSweep": 3.141592653589793,
+      "sourceValidation": {
+        "status": "passed",
+        "samples": 360,
+        "playbackSamples": 181,
+        "maximumDifference": 0.0002938893255255617,
+        "tolerance": 0.016
+      },
+      "oracle": {
+        "dimension": 405.9715055543216,
+        "progress": [
+          0, 0.017224025020753337, 0.035370996217055875, 0.05449466985747773, 0.07463030190061469,
+          0.09570483968432354, 0.11755527020209436, 0.1398967499265822, 0.1623737378192225,
+          0.184639222560388, 0.20642331206627182, 0.2275582330121579, 0.2479596435266514,
+          0.2676334795749546, 0.2865963084346573, 0.304909087102971, 0.32261779848822564,
+          0.3397790936936148, 0.35645180852610486, 0.37268426726166914, 0.3885188963295209,
+          0.4039937213394686, 0.41914986123338094, 0.4340208371430501, 0.4486277043222788,
+          0.4630015684155973, 0.4771671843917154, 0.49113959423393394, 0.504946273719839,
+          0.5185978677832199, 0.5321165235507318, 0.5455155116484405, 0.5588089253686944,
+          0.572014079853415, 0.5851393279133802, 0.5982015709577637, 0.6112132740061827,
+          0.6241842892312337, 0.6371293688112336, 0.6500601846832587, 0.6629890325024397,
+          0.6759287316132753, 0.6888914635979037, 0.701893057321682, 0.714944879224552,
+          0.7280614610692927, 0.7412617061304714, 0.7545567854295697, 0.7679677154039098,
+          0.7815119060406549, 0.7952070527501203, 0.809079179380999, 0.8231451008758082,
+          0.8374355421493792, 0.8519749214554557, 0.8667879028895338, 0.8819196548034393,
+          0.8973957608270364, 0.9132555580293923, 0.9295436354491019, 0.9463081521018394,
+          0.963601454038371, 0.9814790934828809, 1
+        ]
+      },
+      "equal": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.0023721406575862316,
+        "rms": 0.9630215141469008,
+        "maximum": 2.777965929793643,
+        "evaluations": 16000,
+        "runtimeMs": 921.2704000000376,
+        "meanObjectiveMs": 0.055700125000228584,
+        "meanCorrespondenceMs": 0,
+        "maxObjectiveMs": 3.1146999999764375,
+        "production": {
+          "status": "passed",
+          "samples": 118,
+          "playbackSamples": 92,
+          "maximumDifference": 0.0007415129539897763,
+          "tolerance": 0.008119430111086432
+        },
+        "compactness": {
+          "groundRatio": 0.9884918307393264,
+          "maxMovingLinkRatio": 1.2814578285087306,
+          "totalMovingLinkRatio": 3.262304202489034,
+          "couplerOffsetRatio": 0.38940379852133816,
+          "characteristicSize": 520.235363944061
+        },
+        "fittedSweep": 1.0258995381390763,
+        "correspondence": {
+          "mode": "equal-input-angle",
+          "inputStart": 2.0622818909478706,
+          "inputEnd": 3.088181429086947,
+          "minDelta": 0.016284119653001153,
+          "maxDelta": 0.016284119653001267,
+          "meanDelta": 0.016284119653001212,
+          "medianDelta": 0.016284119653001212,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 64,
+          "iterations": 0,
+          "geometricCost": 5.627051299373639e-6,
+          "regularization": 0,
+          "totalCost": 5.627051299373639e-6
+        },
+        "oracleProgressRms": 0.04186265471106437,
+        "parameters": {
+          "A": {
+            "x": 405.97990583473404,
+            "y": 22.515534362759922
+          },
+          "D": {
+            "x": 262.07212364845316,
+            "y": 397.1244669481053
+          },
+          "crank": 520.235363944061,
+          "coupler": 463.37944726387747,
+          "rocker": 340.78773745272514,
+          "u": 144.5816592997895,
+          "v": -63.93430053078804,
+          "theta0": 2.0622818909478706,
+          "sweep": 1.0258995381390763,
+          "assembly": 1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 3,
+        "rejectedFinalists": ["Normal PMKS animation reverses before the requested sweep ends."],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      },
+      "free": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.0015824881487436493,
+        "rms": 0.6424450962673305,
+        "maximum": 3.241789371046344,
+        "evaluations": 14274,
+        "runtimeMs": 11020.991399999999,
+        "meanObjectiveMs": 0.7659414389801318,
+        "meanCorrespondenceMs": 0.30047605436421226,
+        "maxObjectiveMs": 6.079800000006799,
+        "production": {
+          "status": "passed",
+          "samples": 482,
+          "playbackSamples": 241,
+          "maximumDifference": 0.0009106718076048996,
+          "tolerance": 0.008119430111086432
+        },
+        "compactness": {
+          "groundRatio": 0.8659056902839589,
+          "maxMovingLinkRatio": 3.2705223830041885,
+          "totalMovingLinkRatio": 6.69890501100683,
+          "couplerOffsetRatio": 2.323757240431466,
+          "characteristicSize": 1327.738895777318
+        },
+        "fittedSweep": 4.199837958990079,
+        "correspondence": {
+          "mode": "monotone-free-timing",
+          "inputStart": 5.160841130930576,
+          "inputEnd": 0.9610031719404972,
+          "minDelta": 0.043878004132376774,
+          "maxDelta": 0.09920924055924595,
+          "meanDelta": 0.0666640945871441,
+          "medianDelta": 0.06801857309638099,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 505,
+          "iterations": 5,
+          "geometricCost": 2.5042687409141023e-6,
+          "regularization": 0,
+          "totalCost": 2.5042687409141023e-6
+        },
+        "oracleProgressRms": 0.04240112054520162,
+        "parameters": {
+          "A": {
+            "x": -618.5507104257083,
+            "y": 877.7304127781701
+          },
+          "D": {
+            "x": -288.18637595051166,
+            "y": 757.5851572110512
+          },
+          "crank": 106.23965285997137,
+          "coupler": 1285.5860042465426,
+          "rocker": 1327.738895777318,
+          "u": 303.4488095365238,
+          "v": 893.2430704931305,
+          "theta0": 5.160841130930576,
+          "sweep": 4.199837958990079,
+          "assembly": -1,
+          "direction": "clockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      }
+    },
+    {
+      "id": "open-clockwise",
+      "description": "Clockwise open trajectory",
+      "categories": ["partial", "open", "cw"],
+      "sourceSamples": 139,
+      "requestedSweep": 2.4,
+      "sourceValidation": {
+        "status": "passed",
+        "samples": 276,
+        "playbackSamples": 138,
+        "maximumDifference": 0.00030404527447588296,
+        "tolerance": 0.016
+      },
+      "oracle": {
+        "dimension": 385.0710366167218,
+        "progress": [
+          0, 0.017411216998119115, 0.03418672735705577, 0.050379357148427485, 0.06603243038120687,
+          0.08120628577145453, 0.09595530916694454, 0.11032360511187558, 0.12435171337213946,
+          0.13807580348662, 0.15152036276569675, 0.16472593448436945, 0.1777206936916618,
+          0.19053007079605494, 0.20317400148706144, 0.2156683996228783, 0.22804323223211284,
+          0.24031602767596172, 0.2524960863110925, 0.264607606735627, 0.2766660408673621,
+          0.2886816574602459, 0.30067329142245497, 0.31265354641702764, 0.32463652455673464,
+          0.33663534055662125, 0.3486623411248987, 0.3607347935180315, 0.37286128159173154,
+          0.38505542087898614, 0.3973373897921076, 0.40971371865723777, 0.4221977094165349,
+          0.4348133819959249, 0.44757015432431013, 0.4604815108623318, 0.4735643609066135,
+          0.48684027527992263, 0.5003322084153414, 0.5140532126446055, 0.5280254587189049,
+          0.5422723965322453, 0.5568191965981891, 0.571692804961839, 0.5869219995433114,
+          0.6025373199108346, 0.6185767741665638, 0.6350888396132169, 0.6520974826084265,
+          0.6696491649739132, 0.6878169817136973, 0.7066267491737673, 0.7261557130425416,
+          0.7464685970759827, 0.7676196752239494, 0.789676898423342, 0.8126981832965454,
+          0.8367295831642134, 0.8618109559487724, 0.887898093111114, 0.9149431704579163,
+          0.9427955680489277, 0.9712397046313298, 1
+        ]
+      },
+      "equal": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.0017911855059627728,
+        "rms": 0.6897336595539323,
+        "maximum": 2.867776299112267,
+        "evaluations": 16000,
+        "runtimeMs": 1007.6182999999728,
+        "meanObjectiveMs": 0.060849187500138215,
+        "meanCorrespondenceMs": 0,
+        "maxObjectiveMs": 1.367099999974016,
+        "production": {
+          "status": "passed",
+          "samples": 78,
+          "playbackSamples": 45,
+          "maximumDifference": 0.0018279167029479943,
+          "tolerance": 0.007701420732334437
+        },
+        "compactness": {
+          "groundRatio": 1.387460289241061,
+          "maxMovingLinkRatio": 3.518797245758285,
+          "totalMovingLinkRatio": 8.470176873182966,
+          "couplerOffsetRatio": 0.21082885716510114,
+          "characteristicSize": 1354.9869030682084
+        },
+        "fittedSweep": 0.6752242571309492,
+        "correspondence": {
+          "mode": "equal-input-angle",
+          "inputStart": -0.3145417318599453,
+          "inputEnd": -0.9897659889908945,
+          "minDelta": 0.010717845351284871,
+          "maxDelta": 0.010717845351284946,
+          "meanDelta": 0.01071784535128491,
+          "medianDelta": 0.010717845351284908,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 64,
+          "iterations": 0,
+          "geometricCost": 3.2083455167711144e-6,
+          "regularization": 0,
+          "totalCost": 3.2083455167711144e-6
+        },
+        "oracleProgressRms": 0.07100304546545845,
+        "parameters": {
+          "A": {
+            "x": -261.3002232288263,
+            "y": 623.6963712749425
+          },
+          "D": {
+            "x": 41.552969916749944,
+            "y": 183.55412035280335
+          },
+          "crank": 619.5805205939024,
+          "coupler": 1287.0523652214374,
+          "rocker": 1354.9869030682084,
+          "u": 12.179116678549333,
+          "v": -80.26534140161786,
+          "theta0": -0.3145417318599453,
+          "sweep": 0.6752242571309492,
+          "assembly": 1,
+          "direction": "clockwise"
+        },
+        "rankedCandidates": 3,
+        "rejectedFinalists": ["PMKS and analytic trajectories disagree at sample 68."],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      },
+      "free": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.0007863472210016189,
+        "rms": 0.3027995395317718,
+        "maximum": 0.9882217620666727,
+        "evaluations": 14544,
+        "runtimeMs": 12722.698900000018,
+        "meanObjectiveMs": 0.8672275646314971,
+        "meanCorrespondenceMs": 0.33846316006603977,
+        "maxObjectiveMs": 9.434999999997672,
+        "production": {
+          "status": "passed",
+          "samples": 220,
+          "playbackSamples": 110,
+          "maximumDifference": 0.000980730968397236,
+          "tolerance": 0.007701420732334437
+        },
+        "compactness": {
+          "groundRatio": 2.8652870211429775,
+          "maxMovingLinkRatio": 6.436429145297327,
+          "totalMovingLinkRatio": 10.475478959892293,
+          "couplerOffsetRatio": 3.889019394595933,
+          "characteristicSize": 2478.4824430897224
+        },
+        "fittedSweep": 1.919521716235884,
+        "correspondence": {
+          "mode": "monotone-free-timing",
+          "inputStart": 0.5658120241146316,
+          "inputEnd": 2.485333740350516,
+          "minDelta": 0.0254652849700729,
+          "maxDelta": 0.032948443777854663,
+          "meanDelta": 0.03046859867041086,
+          "medianDelta": 0.030465546936360235,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 505,
+          "iterations": 5,
+          "geometricCost": 6.183419519769689e-7,
+          "regularization": 0,
+          "totalCost": 6.183419519769689e-7
+        },
+        "oracleProgressRms": 0.07014330043308578,
+        "parameters": {
+          "A": {
+            "x": 1584.6964310264161,
+            "y": 452.8962025051699
+          },
+          "D": {
+            "x": 1300.4317511508902,
+            "y": -613.1950865247404
+          },
+          "crank": 207.81024026752493,
+          "coupler": 2478.4824430897224,
+          "rocker": 1347.5108587851366,
+          "u": 256.13621604266285,
+          "v": -1475.4817642574264,
+          "theta0": 0.5658120241146316,
+          "sweep": 1.919521716235884,
+          "assembly": 1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      }
+    },
+    {
+      "id": "non-grashof",
+      "description": "Finite feasible sweep of a non-Grashof linkage",
+      "categories": ["non-grashof", "partial", "ccw"],
+      "sourceSamples": 42,
+      "requestedSweep": 0.7,
+      "sourceValidation": {
+        "status": "passed",
+        "samples": 81,
+        "playbackSamples": 41,
+        "maximumDifference": 0.0005713663432347643,
+        "tolerance": 0.016
+      },
+      "oracle": {
+        "dimension": 264.54541558311513,
+        "progress": [
+          0, 0.01835630411021025, 0.03660886473021666, 0.05476119654755281, 0.07279992723675922,
+          0.09070495920457247, 0.10852108413260247, 0.12625103781737362, 0.14385395760083042,
+          0.16136567626837733, 0.17880101778581214, 0.1961378108505477, 0.2133724496536676,
+          0.23053894143858766, 0.2476271892072464, 0.2646087036202191, 0.2815290408780939,
+          0.29838420907845575, 0.3151330489388031, 0.3318263892731588, 0.3484615087087824,
+          0.3649948216020443, 0.38147722990377847, 0.39790331868281403, 0.41423466352554783,
+          0.4305189399742975, 0.44674460691485984, 0.462885126390506, 0.4789816874174234,
+          0.495013312539431, 0.5109712002837569, 0.5268875904263151, 0.5427286268184534,
+          0.5585097589370153, 0.5742514801658827, 0.5899028585939564, 0.6055104223128892,
+          0.6210659646200974, 0.6365391247709515, 0.6519743661616046, 0.6673346236379846,
+          0.682632778941425, 0.6978925881629597, 0.7130501409573785, 0.7281696891712204,
+          0.7432183741504977, 0.7581904551682863, 0.7731253413551444, 0.7879442113119037,
+          0.8027217611350952, 0.8174156175787519, 0.8320250797956757, 0.8465857518679456,
+          0.8610142132885578, 0.8754013979699297, 0.889662313829347, 0.903847110324624,
+          0.9179364004026977, 0.9318971238169496, 0.9457956217192588, 0.9595057512175373,
+          0.9731760518477204, 0.9866165879898261, 1
+        ]
+      },
+      "equal": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.0002485915263527974,
+        "rms": 0.0657637486494417,
+        "maximum": 0.19189467888460404,
+        "evaluations": 16000,
+        "runtimeMs": 1159.0332000000053,
+        "meanObjectiveMs": 0.07019579374983005,
+        "meanCorrespondenceMs": 0,
+        "maxObjectiveMs": 1.6858999999822117,
+        "production": {
+          "status": "passed",
+          "samples": 102,
+          "playbackSamples": 51,
+          "maximumDifference": 0.0002587705964109833,
+          "tolerance": 0.005290908311662303
+        },
+        "compactness": {
+          "groundRatio": 6.443092695086676,
+          "maxMovingLinkRatio": 6.293992843778766,
+          "totalMovingLinkRatio": 10.147904047737617,
+          "couplerOffsetRatio": 7.0776578443206075,
+          "characteristicSize": 1872.3619357808898
+        },
+        "fittedSweep": 0.8872259438330066,
+        "correspondence": {
+          "mode": "equal-input-angle",
+          "inputStart": 4.3657594437435545,
+          "inputEnd": 3.478533499910548,
+          "minDelta": 0.014082951489412753,
+          "maxDelta": 0.01408295148941285,
+          "meanDelta": 0.014082951489412803,
+          "medianDelta": 0.014082951489412802,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 64,
+          "iterations": 0,
+          "geometricCost": 6.179774697441356e-8,
+          "regularization": 0,
+          "totalCost": 6.179774697441356e-8
+        },
+        "oracleProgressRms": 0.025769890733944187,
+        "parameters": {
+          "A": {
+            "x": 2341.770105750209,
+            "y": -37.25468655872919
+          },
+          "D": {
+            "x": 2498.3077836202037,
+            "y": 1660.0326429934444
+          },
+          "crank": 308.9805868993769,
+          "coupler": 710.5539541723406,
+          "rocker": 1665.0469525346064,
+          "u": 1786.6597815374255,
+          "v": 559.9875387879626,
+          "theta0": 4.3657594437435545,
+          "sweep": 0.8872259438330066,
+          "assembly": 1,
+          "direction": "clockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      },
+      "free": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 9.297420081904634e-5,
+        "rms": 0.024595898594182618,
+        "maximum": 0.08965032304961981,
+        "evaluations": 14814,
+        "runtimeMs": 15199.64439999999,
+        "meanObjectiveMs": 1.017112643445289,
+        "meanCorrespondenceMs": 0.3920557783176349,
+        "maxObjectiveMs": 16.682800000009593,
+        "production": {
+          "status": "passed",
+          "samples": 201,
+          "playbackSamples": 101,
+          "maximumDifference": 0.0008251701217490717,
+          "tolerance": 0.005290908311662303
+        },
+        "compactness": {
+          "groundRatio": 0.44030337283411863,
+          "maxMovingLinkRatio": 0.6236862189113477,
+          "totalMovingLinkRatio": 1.6643910212317892,
+          "couplerOffsetRatio": 0.48782932876157836,
+          "characteristicSize": 164.9933299753642
+        },
+        "fittedSweep": 1.7512793244683067,
+        "correspondence": {
+          "mode": "monotone-free-timing",
+          "inputStart": 0.11868873196033203,
+          "inputEnd": 1.8699680564286387,
+          "minDelta": 0.02768667293666949,
+          "maxDelta": 0.027916662613354522,
+          "meanDelta": 0.02779808451536995,
+          "medianDelta": 0.027795807063850528,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 505,
+          "iterations": 5,
+          "geometricCost": 8.644202017940356e-9,
+          "regularization": 0,
+          "totalCost": 8.644202017940356e-9
+        },
+        "oracleProgressRms": 0.02577679625327854,
+        "parameters": {
+          "A": {
+            "x": 487.2903772939502,
+            "y": 413.4002908293619
+          },
+          "D": {
+            "x": 414.31760315044227,
+            "y": 322.61141346634963
+          },
+          "crank": 137.63589787224112,
+          "coupler": 137.67778655696378,
+          "rocker": 164.9933299753642,
+          "u": 72.54619578560612,
+          "v": -106.73204539952229,
+          "theta0": 0.11868873196033203,
+          "sweep": 1.7512793244683067,
+          "assembly": -1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      }
+    },
+    {
+      "id": "non-grashof-cw",
+      "description": "The finite non-Grashof sweep in reverse",
+      "categories": ["non-grashof", "partial", "cw"],
+      "sourceSamples": 42,
+      "requestedSweep": 0.7,
+      "sourceValidation": {
+        "status": "passed",
+        "samples": 81,
+        "playbackSamples": 41,
+        "maximumDifference": 0.00021865427835348548,
+        "tolerance": 0.016
+      },
+      "oracle": {
+        "dimension": 264.54050498343406,
+        "progress": [
+          0, 0.013411700102519486, 0.026858302629156776, 0.04051767322846797, 0.05424548033375056,
+          0.06812171848271581, 0.0820980198586326, 0.09616715902482209, 0.1103660277098172,
+          0.1246089448990645, 0.13900872559794736, 0.1534474479426028, 0.16799266475485172,
+          0.18261173034215894, 0.19729113293476852, 0.21207770786637414, 0.2269027783056094,
+          0.2418263517101714, 0.25680588090848266, 0.27184203630443304, 0.2869688578057273,
+          0.30213309065296623, 0.3173812183541093, 0.3326856020242446, 0.34803468313992825,
+          0.36347596575382407, 0.37895472251102863, 0.3944993665210249, 0.4101126799594493,
+          0.42576480611267464, 0.4415001144333643, 0.4572864579142528, 0.4731169543601206,
+          0.48903867548043406, 0.5050016761359566, 0.5210221306576243, 0.5371237615161536,
+          0.5532693682323007, 0.5694838202139841, 0.5857730417682294, 0.6021094219867533,
+          0.6185239386294694, 0.6350113410107298, 0.6515497598209321, 0.6681727450974467,
+          0.684871125662197, 0.7016252682268226, 0.7184676384756942, 0.7353929708985677,
+          0.7523797963604786, 0.7694545292874428, 0.7866263098997139, 0.8038663942624439,
+          0.8211885080031991, 0.83862897995528, 0.8561459547645913, 0.8737416003841525,
+          0.8914685485472355, 0.9092902797994427, 0.9272009094356628, 0.9452224919440716,
+          0.9633802544111056, 0.9816382770752228, 1
+        ]
+      },
+      "equal": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.00012292191569217157,
+        "rms": 0.03251782565073817,
+        "maximum": 0.0840925364655691,
+        "evaluations": 16000,
+        "runtimeMs": 1344.5671999999904,
+        "meanObjectiveMs": 0.08071704374992987,
+        "meanCorrespondenceMs": 0,
+        "maxObjectiveMs": 1.247399999992922,
+        "production": {
+          "status": "passed",
+          "samples": 35,
+          "playbackSamples": 72,
+          "maximumDifference": 0.00020028221160363596,
+          "tolerance": 0.005290810099668681
+        },
+        "compactness": {
+          "groundRatio": 7.580002258562303,
+          "maxMovingLinkRatio": 3.6501266772239984,
+          "totalMovingLinkRatio": 8.059180366439715,
+          "couplerOffsetRatio": 3.2849282037613694,
+          "characteristicSize": 2005.2176252556424
+        },
+        "fittedSweep": 0.29840852753536967,
+        "correspondence": {
+          "mode": "equal-input-angle",
+          "inputStart": 3.4537665135971967,
+          "inputEnd": 3.7521750411325665,
+          "minDelta": 0.0047366432942122,
+          "maxDelta": 0.004736643294212233,
+          "meanDelta": 0.004736643294212217,
+          "medianDelta": 0.004736643294212217,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 64,
+          "iterations": 0,
+          "geometricCost": 1.5109797357433335e-8,
+          "regularization": 0,
+          "totalCost": 1.5109797357433335e-8
+        },
+        "oracleProgressRms": 0.025759654809333753,
+        "parameters": {
+          "A": {
+            "x": 2048.5178026819967,
+            "y": 556.4822902161541
+          },
+          "D": {
+            "x": 267.4330919282892,
+            "y": -364.7315708146383
+          },
+          "crank": 965.6063544463408,
+          "coupler": 478.5161289592247,
+          "rocker": 687.8571604849742,
+          "u": 759.1292076795916,
+          "v": -422.93956721928527,
+          "theta0": 3.4537665135971967,
+          "sweep": 0.29840852753536967,
+          "assembly": -1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      },
+      "free": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 8.95901700460365e-5,
+        "rms": 0.023700228825530224,
+        "maximum": 0.06986459306051244,
+        "evaluations": 14664,
+        "runtimeMs": 26198.39850000001,
+        "meanObjectiveMs": 1.7715251363881246,
+        "meanCorrespondenceMs": 0.633381130660196,
+        "maxObjectiveMs": 157.38939999998547,
+        "production": {
+          "status": "passed",
+          "samples": 207,
+          "playbackSamples": 104,
+          "maximumDifference": 0.0004970475368752451,
+          "tolerance": 0.005290810099668681
+        },
+        "compactness": {
+          "groundRatio": 0.4452033842780997,
+          "maxMovingLinkRatio": 0.5869454226074938,
+          "totalMovingLinkRatio": 1.6175025912312098,
+          "couplerOffsetRatio": 0.545489845060227,
+          "characteristicSize": 155.27083849430153
+        },
+        "fittedSweep": 1.8008825986423307,
+        "correspondence": {
+          "mode": "monotone-free-timing",
+          "inputStart": 2.8733095190582834,
+          "inputEnd": 1.0724269204159527,
+          "minDelta": 0.028482990776042404,
+          "maxDelta": 0.02866465225031334,
+          "meanDelta": 0.02858543807368779,
+          "medianDelta": 0.028585120113887908,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 505,
+          "iterations": 5,
+          "geometricCost": 8.026398568877735e-9,
+          "regularization": 0,
+          "totalCost": 8.026398568877735e-9
+        },
+        "oracleProgressRms": 0.025758963114574335,
+        "parameters": {
+          "A": {
+            "x": 378.8496732981505,
+            "y": 431.71285987773354
+          },
+          "D": {
+            "x": 413.5756348804549,
+            "y": 319.17442221776815
+          },
+          "crank": 128.1482989280358,
+          "coupler": 144.47581487398003,
+          "rocker": 155.27083849430153,
+          "u": 77.94715329663572,
+          "v": 121.44106232842958,
+          "theta0": 2.8733095190582834,
+          "sweep": 1.8008825986423307,
+          "assembly": 1,
+          "direction": "clockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      }
+    },
+    {
+      "id": "translated",
+      "description": "Reference crank-rocker: translated",
+      "categories": ["transform"],
+      "transformOf": "crank-rocker",
+      "sourceSamples": 361,
+      "requestedSweep": 6.283185307179586,
+      "sourceValidation": {
+        "status": "passed",
+        "samples": 720,
+        "playbackSamples": 361,
+        "maximumDifference": 0.0002938893255704899,
+        "tolerance": 0.016
+      },
+      "oracle": {
+        "dimension": 464.9904579494078,
+        "progress": [
+          6.184411880623505e-17, 0.017108767823812848, 0.03604055020687202, 0.056729797436615,
+          0.07841248079670157, 0.09987922731934226, 0.12024031085249799, 0.13923994957414335,
+          0.15696508960707958, 0.1736169326850555, 0.18938834687559344, 0.20444018429365776,
+          0.21890978615996845, 0.23290224430255274, 0.24650584648444065, 0.25979494331103997,
+          0.2728329770650521, 0.28567423288251653, 0.29836867445118015, 0.31096433821832464,
+          0.3235052154797277, 0.3360372345915164, 0.34860719955046765, 0.3612632015145419,
+          0.374060708146579, 0.38705741108990865, 0.4003202530608455, 0.41392734374125717,
+          0.42796986586875474, 0.44255429153694326, 0.45780316608509464, 0.4738731983443407,
+          0.49094447401644714, 0.5092417802546235, 0.529023430097059, 0.5505606812028461,
+          0.574048227042339, 0.5993439759829666, 0.625624334771914, 0.6514310808952771,
+          0.6754967902871551, 0.6973364911588661, 0.7170504009954773, 0.73495396574147,
+          0.751376721644305, 0.7666002221395211, 0.7808421155811, 0.7942918698862949,
+          0.8070929396472843, 0.8193761150704003, 0.8312353310109, 0.8427661916091799,
+          0.8540481413726514, 0.8651550983010572, 0.8761578199686464, 0.8871265573621561,
+          0.8981335026398622, 0.9092558254430102, 0.9205792453084768, 0.9322016485765678,
+          0.9442372828681035, 0.956836332467451, 0.9701685542258385, 0.9844653620341784
+        ]
+      },
+      "equal": {
+        "status": "iteration-limit",
+        "success": false,
+        "verified": true,
+        "normalizedRms": 0.025753550137296286,
+        "rms": 11.975155072164434,
+        "maximum": 19.231657181918685,
+        "evaluations": 14368,
+        "runtimeMs": 1737.5126000000164,
+        "meanObjectiveMs": 0.11691312639225833,
+        "meanCorrespondenceMs": 0,
+        "maxObjectiveMs": 2.1670000000158325,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 360,
+          "maximumDifference": 0.0027343382819628986,
+          "tolerance": 0.009299809158988157
+        },
+        "compactness": {
+          "groundRatio": 3.030026026235498,
+          "maxMovingLinkRatio": 3.0722259396512714,
+          "totalMovingLinkRatio": 4.380796915920997,
+          "couplerOffsetRatio": 0.7185613427764846,
+          "characteristicSize": 1428.5557466024945
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "equal-input-angle",
+          "inputStart": 0.3318330753803971,
+          "inputEnd": 6.615018382559983,
+          "minDelta": 0.09817477042468103,
+          "maxDelta": 0.09817477042468103,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09817477042468103,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 64,
+          "iterations": 0,
+          "geometricCost": 0.0006632453446742335,
+          "regularization": 0,
+          "totalCost": 0.0006632453446742335
+        },
+        "oracleProgressRms": 0.03102524717195229,
+        "parameters": {
+          "A": {
+            "x": 2192.485889270383,
+            "y": -1299.277363513702
+          },
+          "D": {
+            "x": 1560.6813403420238,
+            "y": -2558.608830814819
+          },
+          "crank": 112.71465516302948,
+          "coupler": 495.75836235193367,
+          "rocker": 1428.5557466024945,
+          "u": -334.0535383114584,
+          "v": -6.869721825317103,
+          "theta0": 0.3318330753803971,
+          "sweep": 6.283185307179586,
+          "assembly": 1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      },
+      "free": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.003906557613956954,
+        "rms": 1.8165120139195896,
+        "maximum": 6.351397201666188,
+        "evaluations": 13808,
+        "runtimeMs": 15952.857900000003,
+        "meanObjectiveMs": 1.1468159979721353,
+        "meanCorrespondenceMs": 0.4496775926998712,
+        "maxObjectiveMs": 9.417400000034831,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 360,
+          "maximumDifference": 0.0020743281264044853,
+          "tolerance": 0.009299809158988157
+        },
+        "compactness": {
+          "groundRatio": 3.408785951369732,
+          "maxMovingLinkRatio": 7.901504494827845,
+          "totalMovingLinkRatio": 15.521940360498077,
+          "couplerOffsetRatio": 6.8998228354593225,
+          "characteristicSize": 3674.1241935393036
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "monotone-free-timing",
+          "inputStart": 3.0931928537706748,
+          "inputEnd": -3.1899924534089115,
+          "minDelta": 0.06602160139371094,
+          "maxDelta": 0.15759810358300594,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.0874932352627171,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 513,
+          "iterations": 5,
+          "geometricCost": 1.5261192391165047e-5,
+          "regularization": 0,
+          "totalCost": 1.5261192391165047e-5
+        },
+        "oracleProgressRms": 0.02414459289737798,
+        "parameters": {
+          "A": {
+            "x": 2971.7045990629867,
+            "y": -4149.385697642576
+          },
+          "D": {
+            "x": 2358.5041693899348,
+            "y": -2687.750292527243
+          },
+          "crank": 141.7948380890964,
+          "coupler": 3401.6351248629962,
+          "rocker": 3674.1241935393036,
+          "u": 369.4795704664908,
+          "v": 3187.005803482266,
+          "theta0": 3.0931928537706748,
+          "sweep": 6.283185307179586,
+          "assembly": -1,
+          "direction": "clockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      }
+    },
+    {
+      "id": "rotated",
+      "description": "Reference crank-rocker: rotated",
+      "categories": ["transform"],
+      "transformOf": "crank-rocker",
+      "sourceSamples": 361,
+      "requestedSweep": 6.283185307179586,
+      "sourceValidation": {
+        "status": "passed",
+        "samples": 720,
+        "playbackSamples": 361,
+        "maximumDifference": 0.00033149535378040033,
+        "tolerance": 0.016
+      },
+      "oracle": {
+        "dimension": 466.9015491354896,
+        "progress": [
+          0, 0.017108766756914764, 0.03604060536099925, 0.05672971282748793, 0.07841246633175401,
+          0.09987914775511503, 0.12024030139412517, 0.13923995048005133, 0.15696508540648693,
+          0.173616905740599, 0.18938839803670407, 0.20444019750669815, 0.2189097483086823,
+          0.23290224192029652, 0.24650584457539945, 0.2597948940793238, 0.27283297621123026,
+          0.2856742262363808, 0.29836866628686387, 0.3109642875668457, 0.3235052306883714,
+          0.3360372257348276, 0.348607217876332, 0.36126314548929445, 0.3740607262711686,
+          0.38705743672818, 0.4003202423385769, 0.4139273758554937, 0.427969889233066,
+          0.4425542517592397, 0.45780314512273473, 0.4738731877048189, 0.490944494710525,
+          0.5092418184511022, 0.5290234226177251, 0.5505606103874042, 0.5740483342037681,
+          0.599343947032266, 0.6256243220516305, 0.6514310495778145, 0.6754966350918467,
+          0.6973365307684237, 0.7170503866111527, 0.7349540116480664, 0.7513767796901855,
+          0.7666002695287588, 0.7808420620841802, 0.7942918576700854, 0.807092936400341,
+          0.819376136546286, 0.8312353238671674, 0.8427661670409705, 0.8540481297452773,
+          0.8651551054912483, 0.8761578043569397, 0.8871265532656578, 0.8981334599200139,
+          0.9092558508911274, 0.9205792758616057, 0.9322016402985012, 0.9442373275603657,
+          0.9568363310573113, 0.9701685276516493, 0.9844654032443071
+        ]
+      },
+      "equal": {
+        "status": "iteration-limit",
+        "success": false,
+        "verified": true,
+        "normalizedRms": 0.02564813722581177,
+        "rms": 11.975155003171134,
+        "maximum": 19.23164209647571,
+        "evaluations": 14344,
+        "runtimeMs": 1114.210999999952,
+        "meanObjectiveMs": 0.07510895844993225,
+        "meanCorrespondenceMs": 0,
+        "maxObjectiveMs": 1.1603999999933876,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 361,
+          "maximumDifference": 0.0025975445106646592,
+          "tolerance": 0.009338030982709793
+        },
+        "compactness": {
+          "groundRatio": 3.017623786361648,
+          "maxMovingLinkRatio": 3.059650970749913,
+          "totalMovingLinkRatio": 4.362868194561741,
+          "couplerOffsetRatio": 0.7156217363013487,
+          "characteristicSize": 1428.5557780570389
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "equal-input-angle",
+          "inputStart": 1.4318332692179394,
+          "inputEnd": 7.715018576397526,
+          "minDelta": 0.09817477042468103,
+          "maxDelta": 0.09817477042468103,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09817477042468103,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 64,
+          "iterations": 0,
+          "geometricCost": 0.0006578269431540715,
+          "regularization": 0,
+          "totalCost": 0.0006578269431540715
+        },
+        "oracleProgressRms": 0.0310252427207708,
+        "parameters": {
+          "A": {
+            "x": 88.26600918056528,
+            "y": 395.4740021605264
+          },
+          "D": {
+            "x": 924.0089863402854,
+            "y": -738.8215925266705
+          },
+          "crank": 112.71465764482838,
+          "coupler": 495.75948301296614,
+          "rocker": 1428.5557780570389,
+          "u": -334.05427562996556,
+          "v": -6.869345804804522,
+          "theta0": 1.4318332692179394,
+          "sweep": 6.283185307179586,
+          "assembly": 1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      },
+      "free": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.0038919284366798353,
+        "rms": 1.8171474162102792,
+        "maximum": 6.473873004275795,
+        "evaluations": 13928,
+        "runtimeMs": 12033.171000000031,
+        "meanObjectiveMs": 0.8583949023547927,
+        "meanCorrespondenceMs": 0.34403528144717777,
+        "maxObjectiveMs": 6.693099999974947,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 361,
+          "maximumDifference": 0.0006081281068701982,
+          "tolerance": 0.009338030982709793
+        },
+        "compactness": {
+          "groundRatio": 3.4462009076607165,
+          "maxMovingLinkRatio": 7.921712623103795,
+          "totalMovingLinkRatio": 15.668673769793532,
+          "couplerOffsetRatio": 6.983292211635524,
+          "characteristicSize": 3698.6598955333243
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "monotone-free-timing",
+          "inputStart": 4.161343384216137,
+          "inputEnd": -2.1218419229634495,
+          "minDelta": 0.06510915981094852,
+          "maxDelta": 0.1580793841578965,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.08753596005034989,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 513,
+          "iterations": 5,
+          "geometricCost": 1.5147106956237147e-5,
+          "regularization": 0,
+          "totalCost": 1.5147106956237147e-5
+        },
+        "oracleProgressRms": 0.024070909947727398,
+        "parameters": {
+          "A": {
+            "x": 3026.3086896426157,
+            "y": -259.8493673255314
+          },
+          "D": {
+            "x": 1428.9077211362458,
+            "y": -66.6946607964357
+          },
+          "crank": 143.3465076698511,
+          "coupler": 3473.7216528120357,
+          "rocker": 3698.6598955333243,
+          "u": 381.92315321233957,
+          "v": 3238.064213389597,
+          "theta0": 4.161343384216137,
+          "sweep": 6.283185307179586,
+          "assembly": -1,
+          "direction": "clockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      }
+    },
+    {
+      "id": "scaled-small",
+      "description": "Reference crank-rocker: scaled-small",
+      "categories": ["transform"],
+      "transformOf": "crank-rocker",
+      "sourceSamples": 361,
+      "requestedSweep": 6.283185307179586,
+      "sourceValidation": {
+        "status": "passed",
+        "samples": 720,
+        "playbackSamples": 361,
+        "maximumDifference": 0.0006245561453352061,
+        "tolerance": 0.0064
+      },
+      "oracle": {
+        "dimension": 185.9962264128227,
+        "progress": [
+          0, 0.017108924949877365, 0.03604042719159176, 0.05672986271942237, 0.07841254637068434,
+          0.09987911858442194, 0.12024043449814588, 0.13924004832622908, 0.15696485104504498,
+          0.17361684481176887, 0.18938829538404486, 0.20444023251970334, 0.21890963905544186,
+          0.23290219916501367, 0.24650579819253526, 0.2597950063610599, 0.27283284487076664,
+          0.2856741674862853, 0.29836865728327805, 0.31096433188087746, 0.3235051560786394,
+          0.33603719214344685, 0.34860711271518857, 0.361263170501346, 0.3740605931823649,
+          0.3870574554478041, 0.4003201545669323, 0.4139272883759033, 0.4279698445999525,
+          0.4425542111300677, 0.4578031414138001, 0.4738732707739067, 0.4909444827824479,
+          0.5092417281834781, 0.5290235219631771, 0.5505607527232534, 0.5740483525784287,
+          0.5993438625957377, 0.6256242680955346, 0.6514311837069191, 0.6754966490441043,
+          0.6973364438097812, 0.7170503807075538, 0.7349539055033254, 0.751376823068211,
+          0.766600158633165, 0.7808419723455964, 0.7942919808955827, 0.8070929261732019,
+          0.819376137158484, 0.8312353634263886, 0.8427662319604369, 0.8540481212766707,
+          0.8651551258644979, 0.8761577977363114, 0.887126578487687, 0.8981334807644389,
+          0.9092558908835612, 0.9205791645430511, 0.9322015917318498, 0.9442372565877201,
+          0.9568364134231554, 0.9701684599989397, 0.9844652995189739
+        ]
+      },
+      "equal": {
+        "status": "iteration-limit",
+        "success": false,
+        "verified": true,
+        "normalizedRms": 0.025753548710176887,
+        "rms": 4.790062876831718,
+        "maximum": 7.6926883702039275,
+        "evaluations": 14336,
+        "runtimeMs": 1064.4312999999966,
+        "meanObjectiveMs": 0.07184218052466511,
+        "meanCorrespondenceMs": 0,
+        "maxObjectiveMs": 1.1742000000085682,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 361,
+          "maximumDifference": 0.0007567346473193221,
+          "tolerance": 0.003719924528256454
+        },
+        "compactness": {
+          "groundRatio": 5.071901063144177,
+          "maxMovingLinkRatio": 5.142539577829369,
+          "totalMovingLinkRatio": 7.332935979374247,
+          "couplerOffsetRatio": 2.0705749121085533,
+          "characteristicSize": 956.4929556548531
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "equal-input-angle",
+          "inputStart": 0.3401113282950847,
+          "inputEnd": 6.623296635474671,
+          "minDelta": 0.09817477042468103,
+          "maxDelta": 0.09817477042468103,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09817477042468103,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 64,
+          "iterations": 0,
+          "geometricCost": 0.0006632452711674536,
+          "regularization": 0,
+          "totalCost": 0.0006632452711674536
+        },
+        "oracleProgressRms": 0.03102523406947807,
+        "parameters": {
+          "A": {
+            "x": 320.30410136370807,
+            "y": 383.2177388462907
+          },
+          "D": {
+            "x": -95.72725464359985,
+            "y": -463.44367232133925
+          },
+          "crank": 75.46835667872004,
+          "coupler": 956.4929556548531,
+          "rocker": 331.937108356853,
+          "u": 385.0900640801267,
+          "v": 4.730671988257327,
+          "theta0": 0.3401113282950847,
+          "sweep": 6.283185307179586,
+          "assembly": -1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      },
+      "free": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.003906551954243909,
+        "rms": 0.7266039217750051,
+        "maximum": 2.540557293930117,
+        "evaluations": 13856,
+        "runtimeMs": 20706.489299999957,
+        "meanObjectiveMs": 1.4807992927249265,
+        "meanCorrespondenceMs": 0.5669185262701493,
+        "maxObjectiveMs": 83.94210000004387,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 361,
+          "maximumDifference": 0.0020486609736387455,
+          "tolerance": 0.003719924528256454
+        },
+        "compactness": {
+          "groundRatio": 3.4087879692782757,
+          "maxMovingLinkRatio": 7.901509172303536,
+          "totalMovingLinkRatio": 15.52194932152961,
+          "couplerOffsetRatio": 6.89982674943061,
+          "characteristicSize": 1469.6508890147636
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "monotone-free-timing",
+          "inputStart": 3.0931927056882813,
+          "inputEnd": -3.189992601491305,
+          "minDelta": 0.06602160139371067,
+          "maxDelta": 0.15759810358300735,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.08749323526271657,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 513,
+          "iterations": 5,
+          "geometricCost": 1.5261148171206904e-5,
+          "regularization": 0,
+          "totalCost": 1.5261148171206904e-5
+        },
+        "oracleProgressRms": 0.024144578811359528,
+        "parameters": {
+          "A": {
+            "x": 468.6820324236611,
+            "y": -1099.755302705788
+          },
+          "D": {
+            "x": 223.40174491921567,
+            "y": -515.1006223411689
+          },
+          "crank": 56.71793967404363,
+          "coupler": 1360.6551716867734,
+          "rocker": 1469.6508890147636,
+          "u": 147.7919184745804,
+          "v": 1274.8033440837414,
+          "theta0": 3.0931927056882813,
+          "sweep": 6.283185307179586,
+          "assembly": -1,
+          "direction": "clockwise"
+        },
+        "rankedCandidates": 3,
+        "rejectedFinalists": ["PMKS and analytic trajectories disagree at sample 587."],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      }
+    },
+    {
+      "id": "scaled-large",
+      "description": "Reference crank-rocker: scaled-large",
+      "categories": ["transform"],
+      "transformOf": "crank-rocker",
+      "sourceSamples": 361,
+      "requestedSweep": 6.283185307179586,
+      "sourceValidation": {
+        "status": "passed",
+        "samples": 720,
+        "playbackSamples": 361,
+        "maximumDifference": 0.0005231228635184573,
+        "tolerance": 0.048
+      },
+      "oracle": {
+        "dimension": 1388.3155952449033,
+        "progress": [
+          3.533949646070574e-17, 0.017108761797407612, 0.036040540353631585, 0.056729762697489965,
+          0.0784125007103849, 0.09987921780191251, 0.12024027752593185, 0.13924001609393852,
+          0.1569650715320849, 0.17361689953203951, 0.1893884043444045, 0.20444019533418514,
+          0.21890977092017552, 0.2329022357189447, 0.24650585932956248, 0.2597949273235651,
+          0.2728329738584487, 0.2856742121101296, 0.29836869044103304, 0.310964306335956,
+          0.32350522400840004, 0.3360372522971675, 0.348607217856705, 0.36126318410277847,
+          0.3740606817145193, 0.3870574334695769, 0.40032026706258617, 0.4139273372943668,
+          0.427969900687405, 0.44255425063387166, 0.45780319648073875, 0.47387321552261863,
+          0.49094448444685346, 0.5092417936213445, 0.5290234436032416, 0.5505605900166393,
+          0.5740483267585448, 0.5993439384928143, 0.6256243003558057, 0.6514310971909463,
+          0.6754967092641068, 0.6973365767041663, 0.7170504028377517, 0.7349539971498869,
+          0.7513767682360679, 0.7666002486967323, 0.7808420827790313, 0.7942918986255583,
+          0.8070929569985045, 0.8193761373943096, 0.8312353448695594, 0.8427661741828494,
+          0.8540481438092181, 0.865155081814647, 0.8761578184319854, 0.8871265588321123,
+          0.8981334933934204, 0.9092558312185002, 0.9205792574803485, 0.9322016453516935,
+          0.9442373197357485, 0.9568363404801883, 0.9701684938235691, 0.984465389978233
+        ]
+      },
+      "equal": {
+        "status": "iteration-limit",
+        "success": false,
+        "verified": true,
+        "normalizedRms": 0.025877015807370535,
+        "rms": 35.925464603771395,
+        "maximum": 57.69497960966993,
+        "evaluations": 14296,
+        "runtimeMs": 2095.3881999999867,
+        "meanObjectiveMs": 0.14154123531021554,
+        "meanCorrespondenceMs": 0,
+        "maxObjectiveMs": 9.883999999961816,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 361,
+          "maximumDifference": 0.0007024792396369028,
+          "tolerance": 0.027766311904898068
+        },
+        "compactness": {
+          "groundRatio": 3.0445528003224185,
+          "maxMovingLinkRatio": 3.086952728314254,
+          "totalMovingLinkRatio": 4.401798151345665,
+          "couplerOffsetRatio": 0.7220070148599921,
+          "characteristicSize": 4285.6646145024815
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "equal-input-angle",
+          "inputStart": 1.0318328042718534,
+          "inputEnd": 7.315018111451439,
+          "minDelta": 0.09817477042468103,
+          "maxDelta": 0.09817477042468103,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.09817477042468103,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 64,
+          "iterations": 0,
+          "geometricCost": 0.0006696199470949046,
+          "regularization": 0,
+          "totalCost": 0.0006696199470949046
+        },
+        "oracleProgressRms": 0.031025251272788504,
+        "parameters": {
+          "A": {
+            "x": -94.09154092217307,
+            "y": 2589.6503347701
+          },
+          "D": {
+            "x": 890.0659726912643,
+            "y": -1520.9789789368033
+          },
+          "crank": 338.1440106587324,
+          "coupler": 1487.2763954721581,
+          "rocker": 4285.6646145024815,
+          "u": -1002.1616470438229,
+          "v": -20.61223853557925,
+          "theta0": 1.0318328042718534,
+          "sweep": 6.283185307179586,
+          "assembly": 1,
+          "direction": "counterclockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      },
+      "free": {
+        "status": "converged",
+        "success": true,
+        "verified": true,
+        "normalizedRms": 0.003924245253905988,
+        "rms": 5.448090885563479,
+        "maximum": 19.249940333773974,
+        "evaluations": 13968,
+        "runtimeMs": 13755.218899999978,
+        "meanObjectiveMs": 0.9788381156926718,
+        "meanCorrespondenceMs": 0.3884240764602399,
+        "maxObjectiveMs": 8.081000000005588,
+        "production": {
+          "status": "passed",
+          "samples": 720,
+          "playbackSamples": 361,
+          "maximumDifference": 0.0006755755211647915,
+          "tolerance": 0.027766311904898068
+        },
+        "compactness": {
+          "groundRatio": 3.4415640303032253,
+          "maxMovingLinkRatio": 7.935551703788337,
+          "totalMovingLinkRatio": 15.584976936891254,
+          "couplerOffsetRatio": 6.961417615897271,
+          "characteristicSize": 11017.050187241612
+        },
+        "fittedSweep": 6.283185307179586,
+        "correspondence": {
+          "mode": "monotone-free-timing",
+          "inputStart": 3.792925138921441,
+          "inputEnd": -2.4902601682581453,
+          "minDelta": 0.06563593831193437,
+          "maxDelta": 0.15769165254036727,
+          "meanDelta": 0.09817477042468103,
+          "medianDelta": 0.0875451882527628,
+          "monotone": true,
+          "targetSamples": 64,
+          "trajectorySamples": 513,
+          "iterations": 5,
+          "geometricCost": 1.5399700812803673e-5,
+          "regularization": 0,
+          "totalCost": 1.5399700812803673e-5
+        },
+        "oracleProgressRms": 0.024119986615701385,
+        "parameters": {
+          "A": {
+            "x": 7235.438455038593,
+            "y": -2465.409172673163
+          },
+          "D": {
+            "x": 2980.3936031907638,
+            "y": -292.0114484783112
+          },
+          "crank": 425.4178829714064,
+          "coupler": 10194.398462805255,
+          "rocker": 11017.050187241612,
+          "u": 1137.1524005636625,
+          "v": 9597.512201495168,
+          "theta0": 3.792925138921441,
+          "sweep": 6.283185307179586,
+          "assembly": -1,
+          "direction": "clockwise"
+        },
+        "rankedCandidates": 4,
+        "rejectedFinalists": [],
+        "duplicateFinalists": 0,
+        "rejectionReason": null
+      }
+    }
+  ],
+  "runContext": {
+    "date": "2026-09-12",
+    "platform": "Windows",
+    "node": "24.21.0",
+    "baseCommit": "2455c85cce4a4119bc225cc6a6393e46362df3b8",
+    "branch": "feature/path-synthesis-free-timing",
+    "note": "Concurrent test/build load inflated early runtime measurements. Search stops by evaluation/iteration budgets only. Quantiles use the upper empirical order statistic."
+  }
+}

@@ -18,7 +18,9 @@ export class PathSynthesisCanvasComponent implements OnDestroy {
   protected synthesis = inject(PathSynthesisService);
   protected get generatedCurve(): string {
     const result = this.synthesis.result;
-    return result?.best ? pathCurve(result.best.trajectory, !!result.target?.closed, false) : '';
+    return result?.best
+      ? pathCurve(this.synthesis.generatedTrajectory, !!result.target?.closed, false)
+      : '';
   }
   protected get mechanismCurve(): string {
     const p = this.synthesis.candidate?.parameters;
