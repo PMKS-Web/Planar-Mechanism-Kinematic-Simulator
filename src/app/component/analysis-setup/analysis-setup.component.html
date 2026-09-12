@@ -29,9 +29,9 @@
                   <div class="checkTitle">{{ check.title }}</div>
                   <p class="checkText">{{ check.body }}</p>
                   @if (check.action && check.at) {
-                    <button class="actionButton" (click)="goTo(check.at)">
+                    <button-block inline [click]="goToAction(check.at)">
                       {{ check.action }} {{ nameOf(check.at) }}
-                    </button>
+                    </button-block>
                   }
                 </div>
               </div>
@@ -163,7 +163,9 @@
                        above names the way out in either case, so a button that
                        cannot be pressed would add nothing but a dead control. -->
                   @if (requirement.act === 'gravity' && massEditable()) {
-                    <button class="actionButton" (click)="turnGravityOn()">Turn On Gravity</button>
+                    <button-block inline [click]="turnGravityOn.bind(this)"
+                      >Turn On Gravity</button-block
+                    >
                   }
                 </div>
               </div>
@@ -199,9 +201,9 @@
                 <div class="checkTitle">{{ report.title }}</div>
                 <p class="checkText">{{ report.body }}</p>
                 @if (report.at) {
-                  <button class="actionButton" (click)="goTo(report.at)">
+                  <button-block inline [click]="goToAction(report.at)">
                     Go To Joint {{ nameOf(report.at) }}
-                  </button>
+                  </button-block>
                 }
               </div>
             </div>

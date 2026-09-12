@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  booleanAttribute,
+  computed,
+  inject,
+  input,
+  output,
+} from '@angular/core';
 import { MatIcon } from '@angular/material/icon';
 import { KeyboardShortcutsService, ShortcutId } from '../../../services/keyboard-shortcuts.service';
 import { ShortcutTipDirective } from '../shortcut-tip/shortcut-tip.directive';
@@ -38,6 +46,30 @@ export class ViewButtonComponent {
   readonly svg = input<string>();
   readonly tooltip = input<string>();
 
+  /**
+   * A word drawn beside the glyph, for a switch that sits in a panel rather
+   * than in the floating view controls. Not the accessible name -- that is
+   * `label` below, which falls back to this.
+   *
+   * The analysis panel's row of drawing switches is the one of these: four
+   * toggles that say what is drawn on the grid, which is exactly what this
+   * component is for, but which need naming because they sit under a graph
+   * rather than in a cluster a reader already knows.
+   */
+  readonly caption = input<string>();
+  /**
+   * Share the row rather than taking only the glyph's width. A labelled row of
+   * these should end on the panel's own edge; a cluster of square ones should
+   * not stretch.
+   */
+  readonly grow = input<boolean, unknown>(false, { transform: booleanAttribute });
+  /**
+   * The glyph's own ink, where the thing being switched has a color of its
+   * own -- a velocity arrow is drawn in the color its trace uses, and the
+   * switch teaches that color before the reader meets it on the drawing.
+   */
+  readonly ink = input<string>();
+
   /** The shortcut this button doubles, if it has one: its keys go in the tip. */
   readonly shortcut = input<ShortcutId>();
 
@@ -55,7 +87,9 @@ export class ViewButtonComponent {
    * which left a screen reader with no way to tell an on switch from an off
    * one. The plain actions have no state and no such attribute.
    */
-  protected readonly label = computed(() => this.tooltip() ?? `Show ${this.noun()}`);
+  protected readonly label = computed(
+    () => this.caption() ?? this.tooltip() ?? `Show ${this.noun()}`
+  );
 
   /**
    * The tooltip names what pressing it would do, which is the other state.

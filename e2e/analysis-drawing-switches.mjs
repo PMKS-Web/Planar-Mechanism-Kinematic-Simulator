@@ -43,21 +43,28 @@ async function selectIn(selector, index, mode) {
   await page.waitForTimeout(900);
 }
 
-/** What the panel's chips say: their order, which are gray, and why on hover. */
+/**
+ * What the panel's switches say: their order, which are gray, and why on hover.
+ *
+ * These are `app-view-button` at its labelled size now, not a hand-drawn
+ * `.drawingChip` -- so `data-switch` rides the host, the state is the button's
+ * own `disabled`, and the word is `.viewButtonLabel`.
+ */
 const switches = () =>
   page.evaluate(() => {
     const panel = ng.getComponent(document.querySelector('app-analysis-panel'));
     const rows = panel.drawingSwitches;
-    return [...document.querySelectorAll('app-analysis-panel .drawingChip')].map((node) => {
-      const key = node.getAttribute('data-switch');
+    return [...document.querySelectorAll('app-analysis-panel app-view-button')].map((host) => {
+      const key = host.getAttribute('data-switch');
+      const node = host.querySelector('.viewButton');
       const one = rows.find((row) => row.key === key);
       return {
         key,
-        label: node.querySelector('.drawingChipLabel')?.textContent?.trim(),
-        off: node.classList.contains('drawingChip--off'),
+        label: node?.querySelector('.viewButtonLabel')?.textContent?.trim(),
+        off: !!node?.disabled,
         why: one?.row.refusal?.short,
         tip: one ? panel.drawingSwitchTip(one) : undefined,
-        on: node.getAttribute('aria-pressed') === 'true',
+        on: node?.getAttribute('aria-pressed') === 'true',
       };
     });
   });
@@ -107,7 +114,9 @@ const noArrowsYet = await page.evaluate(() => !document.querySelector('#vectorTr
 // Pressed through the element: the chips sit at the bottom of a scrolling
 // panel under a sticky head, where a pointer click can land a row off.
 await page.evaluate(() =>
-  document.querySelector('app-analysis-panel .drawingChip[data-switch="velocity"]').click()
+  document
+    .querySelector('app-analysis-panel app-view-button[data-switch="velocity"] .viewButton')
+    .click()
 );
 await page.waitForTimeout(600);
 const arrows = await page.evaluate(() => ({

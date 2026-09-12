@@ -342,16 +342,12 @@
     }
 
     .settingRow {
-      display: flex;
-      align-items: center;
-      gap: 10px;
+      @include blocks.field-row(10px);
       padding: 2px 15px;
     }
 
     .settingName {
-      font-size: 14px;
-      color: var(--text-secondary);
-      flex: 0 0 auto;
+      @include blocks.field-row-label;
     }
 
     .hint {
@@ -521,10 +517,11 @@
     }
 
     .barRow {
-      display: flex;
+      @include blocks.field-row(10px);
+      // Unlike the rows above, this one may take a second line: its names are
+      // sentences ("Components to export") and the drawer is the view
+      // controls' width.
       flex-wrap: wrap;
-      align-items: center;
-      gap: 10px;
 
       // When the name and the pill do not share a line -- the drawer is the
       // view controls' width now -- the pill takes the next one, on the

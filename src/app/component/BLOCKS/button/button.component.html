@@ -14,6 +14,8 @@
     [color]="this.color()"
     [disabled]="this.disabled()"
     [class]="this.color()"
+    [class.inline]="inline()"
+    [class.filled]="filled()"
     [attr.data-action]="dataAction()"
   >
     @if (icon && !customIcon) {

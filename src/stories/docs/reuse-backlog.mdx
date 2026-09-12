@@ -27,33 +27,6 @@ change alters that it did not mean to alter shows up as a failing scene with a d
 
 Each entry is **where** it is, what it draws, and the block to use instead.
 
-- **`synthesis-panel.component.html`**, two `.switch` buttons (`.switch` / `.switch--on` /
-  `.switch__knob`). The only hand-drawn slide switch left. **Blocker, measured:** `toggle-block`
-  renders a Material `mat-slide-toggle` bound through `[formControlName]`, and neither call site
-  has a form control — one is a `<span>` inside a `.req__line` button that toggles the whole row,
-  the other a real button with its own refusal. So this is two changes: give the panel a form group
-  for the two booleans, and accept that a 34×14 CSS knob becomes Material's switch. The second is
-  a visible redesign of the requirement rows, not a refactor.
-- **`export-panel.component.html`**, eight `.settingRow` / `.barRow` rows of label + help + spacer
-  + control. **Blocker, measured:** the control in seven of the eight is a `segmented-block` and in
-  the eighth a raw `input.nameField`; `input-block` and `radio-block` each draw a control of their
-  own and have no slot to put someone else's in. The honest shape of this item is a *row* the field
-  blocks and these share — either a `field-row` mixin beside `quiet-note` and `section-header` in
-  `blocks.common.scss`, or a slot on the blocks — not "use `input-block`".
-- **`synthesis-panel.component.html`**, five `.row__label` / `.row__help` / `.row__spacer` rows and
-  eight `input[appStandardField]` fields (only one element is both). The BEM rename opts the help
-  mark out of the shared `.label-help` rule. **Blocker, measured:** the shared rule sizes its mark
-  with `transform: scale(0.65)` on a default 24px `mat-icon`, which leaves a **24px box**; the
-  panel's `.row__help` sets a real 15px box. Swapping the class therefore widens every one of those
-  rows by 9px — a layout change, not a restyle. Fixing the drift properly means giving the shared
-  mark a real size rather than a transform, which touches every block at once and wants its own
-  change.
-- **`analysis-setup.component.html`** `.actionButton` (three) and **`synthesis-panel`** `.pill`
-  (two). **Blocker, measured:** `button-block` is `width: 100%` — it is the full-width button a
-  panel section stacks — while `.actionButton` is an inline 32px stroked button inside a check row
-  and `.pill` an inline 28px *filled* one in a header-actions slot. Adopting it is a layout change,
-  not a look change, and it needs `button-block` to grow a width and a fill variant first. Those
-  two inputs are the actual item.
 - **`analysis-setup` and `mechanism-panel` should still adopt `collapsible-subsection`** for their
   foldable sections. The *duplication* between them is gone (see below), but the block remains the
   right home: it already has the `[headerActions]` slot these want. Doing it is a visible redesign
@@ -64,22 +37,13 @@ Each entry is **where** it is, what it draws, and the block to use instead.
   measured:** `segmented-block` takes `options: string[]` and renders `{{ option }}`, but each chip
   here carries a **count in a child span** styled separately, and the control is single-select with
   an `'all'` sentinel rather than the multi-select the entry assumed. It also wraps to a second row
-  on a desktop and scrolls sideways on a phone, which the segmented track does neither of. This
-  wants a real option type on `segmented-block` (label plus badge) before anything can move.
-- **`analysis-panel.component.html`** `.drawingChip` and **`analysis-setup`** `.sectionToggle`.
-  **Blocker, measured:** `app-view-button` is a square icon button; `.drawingChip` is a 34px-high
-  labelled chip that grows to fill its row and colors its glyph with the trace's own ink
-  (`drawingSwitchInk` returns a per-vector hex), and `.sectionToggle` is a bare chevron half of a
-  header row with no `aria-pressed` at all. The three are the same *idea* and three different
-  controls; making one of them serve all three is a design decision about what a toggle looks like
-  here, not a move.
-- **`linkage-table.component.html`**, thirteen raw `<input type=text>` plus a three-way CSS-radio
-  tab strip. Worth knowing before picking it up: this panel is only reachable from the **dev-only
-  Debug drawer** (tab 4), it is the one stylesheet here that is genuinely component-scoped rather
-  than a theme mixin, and the tab strip has **no TypeScript state at all** — visibility is pure
-  `:checked + label + .tab` sibling selectors, so the markup order *is* the mechanism.
-  `segmented-block` needs a `selected` index that does not exist yet. `appStandardField` on the
-  inputs is the part that is genuinely a one-liner.
+  on a desktop and scrolls sideways on a phone, which the segmented track does neither of — and the
+  file's own comment says the wrapping is deliberate, because a category slid off the end is a
+  category nobody finds.
+  **So this entry was wrong, and closing it means correcting it rather than doing it.** The filter
+  bar is not a segmented control; it is deliberately the *mode tab's* shape, which its stylesheet
+  says in as many words. The real duplication left is that shape, written once in `top-bar` as
+  `.tabButton` and once here as `.chip`. That is the item worth picking up, and it is a smaller one.
 - **`edit-panel.component.scss`** still reaches into `#input-block`'s insides in three rules
   (`.massArea #input-block:not(.state-input-host) .spacer`, `.massArea input-block.moiBlock
   .label-help`, and the `.customInputForm` width beside it). The two the survey named are done —
@@ -131,6 +95,24 @@ cycle to appear is a panel reaching another panel's static — register a handle
   `ShortcutTipDirective` / `app-shortcut-tip` (from the app root). Their stories moved from
   `src/stories/shared/` to `src/stories/blocks/` with them, and the shortcut tip — the one of the
   four with no gallery entry at all — has one now, under **Feedback**.
+- The synthesis panel's two hand-drawn `.switch` knobs are `toggle-block`. A control cannot live
+  inside a button, so the requirement row now presses through its own `.req__press` and the switch
+  sits beside it; the panel keeps a small `switchForm` because `toggle-block` binds through a form,
+  and `syncSwitches` keeps that mirror level with the services that are the real state. Both ways
+  of flipping a requirement still work, and `e2e/synthesis-redesign.mjs` passes 114/114.
+- `field-row` and `field-row-label` in `blocks.common.scss` are the label + help + spacer + control
+  row, which the export drawer and the synthesis panel each wrote out — once as `.settingRow`, once
+  in BEM as `.row`. What actually differed was the gap, so the gap is the argument.
+- The synthesis panel's help marks are the shared `.label-help`. Renaming them into BEM had opted
+  them out of it, which cost them their hover; they moved a few pixels taking it back.
+- `.actionButton` and `.pill` are `button-block`, which grew `inline` (sized to its label, not the
+  panel) and `filled` (the one action a panel steers towards) to hold them.
+- The analysis panel's `.drawingChip` row is `app-view-button` at a new labelled size, with `ink`
+  for the glyph's own color. **Pixel-identical**: the labelled variant keeps the outline the square
+  ones do without, because four bare words under a graph do not read as controls.
+- The linkage table's tab strip is `segmented-block` and its thirteen cells wear `appStandardField`.
+  The strip had no TypeScript state at all — `:checked + label + .tab` sibling selectors *were* the
+  mechanism — so the component now holds a `tab` index like any other pick-one.
 - `section-header` in `blocks.common.scss` is the one definition of the band that heads a foldable
   section. `analysis-setup` and `mechanism-panel` wrote it out twice, fourteen identical
   declarations each, differing only in a hover and a `muted` variant that stayed with the caller

@@ -398,21 +398,10 @@
       }
     }
 
-    .actionButton {
+    // The button is `button-block inline`; what stays here is where it sits.
+    button-block {
+      display: block;
       margin-top: 10px;
-      height: 32px;
-      padding: 0 14px;
-      border: 1px solid mat.m2-get-color-from-palette($primary-palette, 500);
-      border-radius: 4px;
-      background: var(--surface);
-      color: mat.m2-get-color-from-palette($primary-palette, 500);
-      font-family: inherit;
-      font-size: 13px;
-      cursor: pointer;
-
-      &:hover {
-        background: mat.m2-get-color-from-palette($primary-palette, 50);
-      }
     }
 
     .checkIcon.blocker {

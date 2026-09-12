@@ -8,16 +8,22 @@ import { MechanismService } from '../../services/mechanism.service';
 import { MODEL_SCALE } from '../../model/render-scale';
 import { NOT_A } from '../../ui-text';
 import { NotificationService } from '../../services/notification.service';
+import { SegmentedComponent } from '../BLOCKS/segmented/segmented.component';
+import { StandardFieldDirective } from '../BLOCKS/standard-field/standard-field.directive';
 
 @Component({
   selector: 'app-linkage-table',
   templateUrl: './linkage-table.component.html',
   styleUrls: ['./linkage-table.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
+  imports: [SegmentedComponent, StandardFieldDirective],
 })
 export class LinkageTableComponent implements OnInit {
   private mechanismService = inject(MechanismService);
   private notify = inject(NotificationService);
+
+  /** Which table is showing. The CSS-radio strip this replaced kept it nowhere. */
+  tab = 0;
 
   private static linkageTable: SVGElement;
   private static showLinkageTableButton: SVGElement;

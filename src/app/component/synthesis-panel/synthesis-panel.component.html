@@ -66,7 +66,7 @@
         <collapsible-subsection class="sect" titleLabel="End-effector link" [expanded]="true">
           <div class="row">
             <span class="row__label">Length</span>
-            <mat-icon class="row__help" [matTooltip]="help.length" [matTooltipShowDelay]="400">
+            <mat-icon class="label-help" [matTooltip]="help.length" [matTooltipShowDelay]="400">
               help_outline
             </mat-icon>
             <span class="row__spacer"></span>
@@ -83,7 +83,7 @@
           </div>
           <div class="row">
             <span class="row__label">Fixed reference</span>
-            <mat-icon class="row__help" [matTooltip]="help.ref" [matTooltipShowDelay]="400">
+            <mat-icon class="label-help" [matTooltip]="help.ref" [matTooltipShowDelay]="400">
               help_outline
             </mat-icon>
             <span class="row__spacer"></span>
@@ -104,27 +104,24 @@
                there was nothing left to put in it. -->
           <ng-container headerActions>
             @if (showAddButton) {
-              <button
-                type="button"
-                class="pill"
-                [class.pill--armed]="design.armed"
-                (click)="toggleArmed()"
+              <!-- Armed reads as a mode the reader is *in*, so it stops being
+                   the filled one: the button is now the way out of it. -->
+              <button-block
+                inline
+                [filled]="!design.armed"
+                [icon]="design.armed ? 'close' : 'ads_click'"
+                [click]="toggleArmed.bind(this)"
+                >{{ addLabel }}</button-block
               >
-                <mat-icon>{{ design.armed ? 'close' : 'ads_click' }}</mat-icon>
-                {{ addLabel }}
-              </button>
             }
             @if (canDuplicate) {
-              <button
-                type="button"
-                class="pill pill--square"
-                [matTooltip]="help.duplicate"
-                [matTooltipShowDelay]="400"
-                (click)="duplicateLast()"
+              <button-block
+                inline
+                icon="content_copy"
+                [tooltip]="help.duplicate"
+                [click]="duplicateLast.bind(this)"
                 aria-label="Duplicate last position"
-              >
-                <mat-icon>content_copy</mat-icon>
-              </button>
+              ></button-block>
             }
           </ng-container>
 
@@ -229,18 +226,28 @@
         <collapsible-subsection class="sect" titleLabel="Requirements" [expanded]="true">
           @for (rq of requirements(); track rq.key) {
             <div class="req" [class.req--on]="rq.on">
-              <button type="button" class="req__line" (click)="rq.toggle()">
-                <mat-icon class="req__icon">
-                  {{ rq.on ? 'check_circle' : 'radio_button_unchecked' }}
-                </mat-icon>
-                <span class="req__text">
-                  <span class="req__label">{{ rq.label }}</span>
-                  <span class="req__detail">{{ rq.detail }}</span>
-                </span>
-                <span class="switch" [class.switch--on]="rq.on"
-                  ><span class="switch__knob"></span
-                ></span>
-              </button>
+              <!-- The switch sits beside the button rather than inside it: a
+                   control nested in a button is neither valid nor operable,
+                   and the hand-drawn knob that used to live there was only a
+                   picture of one. Pressing the row still toggles, for a reader
+                   who aims at the words. -->
+              <div class="req__line">
+                <button type="button" class="req__press" (click)="rq.toggle()">
+                  <mat-icon class="req__icon">
+                    {{ rq.on ? 'check_circle' : 'radio_button_unchecked' }}
+                  </mat-icon>
+                  <span class="req__text">
+                    <span class="req__label">{{ rq.label }}</span>
+                    <span class="req__detail">{{ rq.detail }}</span>
+                  </span>
+                </button>
+                <toggle-block
+                  class="req__switch"
+                  [formGroup]="switchForm"
+                  [_formControl]="rq.key === 'coupler' ? 'coupler' : 'region'"
+                  [attr.aria-label]="rq.label"
+                ></toggle-block>
+              </div>
 
               @if (rq.hasRegion) {
                 <div class="region" [formGroup]="regionForm">
@@ -401,7 +408,7 @@
 
               <div class="row">
                 <span class="row__label">Assembly branch</span>
-                <mat-icon class="row__help" [matTooltip]="help.branch" [matTooltipShowDelay]="400">
+                <mat-icon class="label-help" [matTooltip]="help.branch" [matTooltipShowDelay]="400">
                   help_outline
                 </mat-icon>
                 <span class="row__spacer"></span>
@@ -416,7 +423,7 @@
 
               <div class="row">
                 <span class="row__label">Driven from</span>
-                <mat-icon class="row__help" [matTooltip]="help.pin" [matTooltipShowDelay]="400">
+                <mat-icon class="label-help" [matTooltip]="help.pin" [matTooltipShowDelay]="400">
                   help_outline
                 </mat-icon>
                 <span class="row__spacer"></span>
@@ -437,27 +444,18 @@
                 >
                   Add driver (six-bar)
                 </button>
-                <mat-icon class="row__help" [matTooltip]="help.driver" [matTooltipShowDelay]="400">
+                <mat-icon class="label-help" [matTooltip]="help.driver" [matTooltipShowDelay]="400">
                   help_outline
                 </mat-icon>
                 <span class="row__spacer"></span>
-                <span
-                  [matTooltip]="driverRefusal"
-                  [matTooltipDisabled]="!driverRefusal"
-                  [matTooltipShowDelay]="200"
-                  matTooltipPosition="above"
-                >
-                  <button
-                    type="button"
-                    class="switch"
-                    [class.switch--on]="driverOn"
-                    [disabled]="!!driverRefusal"
-                    (click)="toggleDriver()"
-                    aria-label="Add driver"
-                  >
-                    <span class="switch__knob"></span>
-                  </button>
-                </span>
+                <toggle-block
+                  class="row__switch"
+                  [formGroup]="switchForm"
+                  _formControl="driver"
+                  [disabled]="!!driverRefusal"
+                  [tooltip]="driverRefusal ?? ''"
+                  aria-label="Add driver"
+                ></toggle-block>
               </div>
 
               <div class="dims">

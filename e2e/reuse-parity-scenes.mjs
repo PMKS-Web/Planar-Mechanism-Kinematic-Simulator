@@ -88,6 +88,38 @@ export const SCENES = [
     clip: 'app-left-tabs .panel',
   },
   {
+    // The chooser is what Synthesis opens on; the panel with the fields, the
+    // help marks, the switches and the pills is a click further in, and was
+    // not being photographed at all until a help-mark change passed a green
+    // suite while visibly moving.
+    name: 'synthesis working view',
+    query: '',
+    storage: QUIET,
+    setup: async (page) => {
+      await clickMode(page, 'synthesis');
+      await page.locator('.kindCard--on').click();
+      await page.locator('.work').waitFor({ state: 'visible' });
+    },
+    clip: 'app-left-tabs .panel',
+    settle: 700,
+    expectedChange:
+      'two unifications, both visible here. The help marks moved a few pixels: this panel drew its own 15px mark and now uses the shared one from blocks.common.scss, which also gives it the hover it never had. And Add position is button-block at its new filled inline size, where it was a hand-drawn 28px pill.',
+  },
+  {
+    name: 'synthesis working view, on a mechanism',
+    linkage: '4-Bar',
+    storage: QUIET,
+    setup: async (page) => {
+      await clickMode(page, 'synthesis');
+      await page.locator('.kindCard--on').click();
+      await page.locator('.work').waitFor({ state: 'visible' });
+    },
+    clip: 'app-left-tabs .panel',
+    settle: 700,
+    expectedChange:
+      'two unifications, both visible here. The help marks moved a few pixels: this panel drew its own 15px mark and now uses the shared one from blocks.common.scss, which also gives it the hover it never had. And Add position is button-block at its new filled inline size, where it was a hand-drawn 28px pill.',
+  },
+  {
     name: 'edit panel, nothing selected',
     linkage: '4-Bar',
     setup: (page) => clickMode(page, 'edit'),
@@ -127,6 +159,25 @@ export const SCENES = [
     clip: 'app-left-tabs .panel',
   },
   {
+    // The graphs, and the row of drawing switches under them, only appear once
+    // something is selected -- so the analysis scenes above never photographed
+    // either of them.
+    name: 'kinematic analysis panel, joint selected',
+    linkage: '4-Bar',
+    storage: QUIET,
+    setup: async (page) => {
+      await clickMode(page, 'kinematic');
+      await page.evaluate(() => {
+        const grid = ng.getComponent(document.querySelector('app-new-grid'));
+        const mech = grid.mechanismSrv ?? grid.mechanism;
+        grid.activeObjService.updateSelectedObj(mech.joints[1]);
+        ng.applyChanges(grid);
+      });
+    },
+    clip: 'app-left-tabs .panel',
+    settle: 900,
+  },
+  {
     name: 'force analysis panel',
     linkage: '4-Bar',
     setup: (page) => clickMode(page, 'force'),
@@ -151,6 +202,8 @@ export const SCENES = [
     linkage: '4-Bar',
     setup: (page) => openDrawer(page, 4),
     clip: '#rightPanel',
+    expectedChange:
+      "the linkage table's pick-one is segmented-block now, where it was three bordered boxes of 22px Arial driven entirely by :checked + label + .tab sibling selectors. Its thirteen cells also wear appStandardField, so a click selects the value and Enter commits it.",
   },
   {
     name: 'drawer kinematic setup',

@@ -34,6 +34,7 @@ import {
   ContextMenuBuilderService,
   DrawingSwitch,
 } from '../../services/context-menu-builder.service';
+import { ViewButtonComponent } from '../BLOCKS/view-button/view-button.component';
 
 /** One expandable force graph: the reaction between `linkId` and `jointId`. */
 export interface ForceAnalysisRow {
@@ -76,6 +77,7 @@ const DRAWING_CHIP_LABEL: Record<DrawingSwitch['key'], string> = {
     FormsModule,
     ReactiveFormsModule,
     NgTemplateOutlet,
+    ViewButtonComponent,
   ],
 })
 export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {

@@ -1,5 +1,7 @@
 <button
   class="viewButton"
+  [class.labelled]="!!caption()"
+  [class.grow]="grow()"
   [class.on]="shown()"
   [disabled]="disabled()"
   (click)="pressed.emit()"
@@ -9,10 +11,13 @@
   [attr.aria-pressed]="noun() ? shown() : null"
 >
   @if (icon(); as ligature) {
-    <mat-icon>{{ ligature }}</mat-icon>
+    <mat-icon [style.color]="ink()">{{ ligature }}</mat-icon>
   } @else {
     <!-- A switch draws whichever of its two glyphs the grid is in; a plain
          action drawn from our own set names one and keeps it. -->
-    <mat-icon [svgIcon]="svg() ?? glyph()"></mat-icon>
+    <mat-icon [svgIcon]="svg() ?? glyph()" [style.color]="ink()"></mat-icon>
+  }
+  @if (caption(); as word) {
+    <span class="viewButtonLabel">{{ word }}</span>
   }
 </button>

@@ -14,6 +14,31 @@
   #button-block {
     width: 100%;
 
+    // Sized to its own label: the analysis setup drawer's action inside a
+    // check, the synthesis panel's pill beside a heading. Both drew their own
+    // button before this, at 32px and 28px, and both now read at the height
+    // Material gives every other button in the panels.
+    &.inline {
+      width: auto;
+      min-width: 0;
+    }
+
+    // The one action a panel is steering towards. Stroked is the default and
+    // stays the default: a panel with two filled buttons has told the reader
+    // nothing.
+    &.filled {
+      background: var(--brand);
+      color: var(--text-on-accent);
+
+      &:not([disabled]):not(.warn) {
+        border-color: var(--brand) !important;
+      }
+
+      mat-icon {
+        color: var(--text-on-accent);
+      }
+    }
+
     // Material gives mat-icon a box taller than the glyph it holds (22px
     // against an 18px drawing), and lays that drawing out at the top of it.
     // The button then centers the box, which leaves the icon itself riding a

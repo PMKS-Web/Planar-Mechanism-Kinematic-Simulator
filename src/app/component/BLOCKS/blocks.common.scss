@@ -53,6 +53,31 @@
   text-align: left;
 }
 
+// A settings row: a name, its help mark, a spacer, and the control at the far
+// end. Every field block draws this shape inside itself; two panels draw it
+// around a control the blocks cannot host -- the export drawer around a
+// `segmented-block`, the synthesis panel around its own field -- and so wrote
+// it out by hand, once as `.settingRow` / `.settingName` and once, in BEM, as
+// `.row` / `.row__label`.
+//
+// The gap is the argument because that is what actually differed; the rest was
+// the same twice. Include it inside the row's own selector, and name the label
+// and spacer classes the caller uses.
+@mixin field-row($gap) {
+  display: flex;
+  align-items: center;
+  gap: $gap;
+}
+
+// The quiet name at the left of such a row. A caller includes this in whatever
+// it calls its label: `.settingName` in the export drawer, `.row__label` in the
+// synthesis panel.
+@mixin field-row-label {
+  font-size: 14px;
+  color: var(--text-secondary);
+  flex: 0 0 auto;
+}
+
 // The small stroked button used by the edit panel (Edit Name / Delete) and, so
 // they match, by the left nav rail. Include it *inside a container selector* so
 // the border-color rules keep enough specificity to beat Material's default

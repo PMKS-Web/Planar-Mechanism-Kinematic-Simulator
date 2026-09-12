@@ -6,6 +6,13 @@
     flex: 0 0 auto;
   }
 
+  // A labelled switch shares the row it is in, so the last one in a row of
+  // them ends on the panel's own edge.
+  app-view-button:has(> .viewButton.grow) {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
   .viewButton {
     display: flex;
     align-items: center;
@@ -36,6 +43,59 @@
 
     &:hover:not(:disabled) {
       background: var(--hover-wash);
+    }
+
+    // With a word beside the glyph it is no longer a square: it takes the
+    // height of a panel row and as much width as its label needs. The analysis
+    // panel's drawing switches are these; they drew their own 34px bordered
+    // chip before, which is the shape this replaced.
+    &.labelled {
+      width: auto;
+      height: 34px;
+      gap: 6px;
+      padding: 0 8px;
+      font: inherit;
+      font-size: 11.5px;
+      font-weight: 500;
+      white-space: nowrap;
+      box-sizing: border-box;
+      // Keeps its outline, unlike the square ones. Those sit in a card of
+      // their own and read as controls from that; four bare words in a row
+      // under a graph do not, and the outline is what says they can be
+      // pressed.
+      border: 1px solid var(--border-divider);
+      border-radius: 6px;
+
+      &.on {
+        border-color: var(--selection-border);
+        color: var(--brand-dark);
+
+        &:hover:not(:disabled) {
+          background: var(--selection-hover);
+        }
+      }
+
+      &:disabled {
+        border-color: var(--border-rule);
+      }
+
+      mat-icon {
+        width: 18px;
+        height: 18px;
+        font-size: 18px;
+        line-height: 18px;
+        flex: none;
+      }
+
+      .viewButtonLabel {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+
+    &.grow {
+      flex: 1 1 auto;
+      min-width: 0;
     }
 
     // On means a tint behind the glyph, and nothing else. The glyph itself

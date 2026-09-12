@@ -87,3 +87,33 @@ export const TheStrip: Story = {
     `,
   }),
 };
+
+/**
+ * With a word beside the glyph, for a switch that sits in a panel rather than
+ * in the floating view controls.
+ *
+ * The analysis panel's row of drawing switches is the one of these. It drew
+ * its own 34px bordered chip before; this is the same shape, from the same
+ * component as the square switches, with the glyph in the ink its trace is
+ * drawn in so a reader learns the color here and meets it on the drawing.
+ *
+ * Unlike the square ones it keeps its outline: those sit in a card of their
+ * own and read as controls from that, where four bare words under a graph do
+ * not.
+ */
+export const Labelled: Story = {
+  render: () => ({
+    template: `
+      <div style="display: flex; gap: 6px; width: 400px">
+        <app-view-button grow caption="Path" noun="Path" svg="show_path"
+          [shown]="true" ink="#3f51b5"></app-view-button>
+        <app-view-button grow caption="Velocity" noun="Velocity" svg="vector_velocity"
+          ink="#0b8043"></app-view-button>
+        <app-view-button grow caption="Acceleration" noun="Acceleration" svg="vector_acceleration"
+          ink="#c5221f"></app-view-button>
+        <app-view-button grow caption="Force" noun="Force" svg="vector_force"
+          [disabled]="true" tooltip="Force analysis is not ready"></app-view-button>
+      </div>
+    `,
+  }),
+};
