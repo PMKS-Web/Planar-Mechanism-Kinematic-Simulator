@@ -18,6 +18,7 @@ import {
 export class InstantCenterService {
   private mechanism = inject(MechanismService);
   readonly show = new BehaviorSubject(false);
+  readonly showConstruction = new BehaviorSubject(false);
   private revision = -1;
   private drawing: { machine: string; geometry: CenterGeometry }[] = [];
 

@@ -4,6 +4,8 @@
 
 In Kinematic Analysis, click the active mode tab again to open Analysis setup. Expand **Instant Centers** and turn on **Show Instant Centers**. The section starts collapsed and the overlay starts off. Fixed and permanent centers use crosses; secondary centers use diamonds. Body `0` denotes ground. Each independently animated machine has its own centers and sampled velocity comparison. Coordinates use the drawing's length unit; angular velocities are in rad/s.
 
+**Show Construction Lines** independently toggles dashed Kennedy lines from the solver's recorded construction pairs. Each secondary center lies at the intersection of its two lines. The lines follow the displayed pose and extend to the edges of the view; a known center at infinity supplies a parallel direction. A line entirely at infinity has no visible segment. Both overlay toggles start off and keep their settings when the setup drawer is reopened. These are instant-center constructions, not center-of-mass calculations.
+
 ## Recovered implementation
 
 The implementation was present in PMKSConversion's history, although absent from its current master checkout:

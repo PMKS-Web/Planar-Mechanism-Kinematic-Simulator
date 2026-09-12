@@ -24,10 +24,12 @@ export class InstantCentersComponent {
   protected readonly open = signal(false);
   protected readonly form = new FormGroup({
     show: new FormControl(this.ic.show.value, { nonNullable: true }),
+    construction: new FormControl(this.ic.showConstruction.value, { nonNullable: true }),
   });
-  private readonly subscription: Subscription = this.form.controls.show.valueChanges.subscribe(
-    (show) => this.ic.show.next(show)
-  );
+  private readonly subscription: Subscription = this.form.valueChanges.subscribe(() => {
+    this.ic.show.next(this.form.controls.show.value);
+    this.ic.showConstruction.next(this.form.controls.construction.value);
+  });
   ngOnDestroy() {
     this.subscription.unsubscribe();
   }

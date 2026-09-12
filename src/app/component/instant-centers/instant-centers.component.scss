@@ -1,6 +1,12 @@
 :host {
   display: block;
 }
+.overlayControls toggle-block {
+  display: grid;
+  align-items: center;
+  // Reserve the Material switch's full touch target so adjacent rows cannot overlap.
+  min-height: 48px;
+}
 .content {
   padding: 0 12px 12px;
   color: var(--text-secondary);

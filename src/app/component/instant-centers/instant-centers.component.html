@@ -10,7 +10,15 @@
         Preview instantaneous centers of velocity. Body 0 is ground. Coordinates use the drawing’s
         length unit.
       </p>
-      <toggle-block [formGroup]="form" _formControl="show">Show Instant Centers</toggle-block>
+      <div class="overlayControls">
+        <toggle-block [formGroup]="form" _formControl="show">Show Instant Centers</toggle-block>
+        <toggle-block [formGroup]="form" _formControl="construction">
+          Show Construction Lines
+        </toggle-block>
+      </div>
+      <p>
+        Dashed lines connect known instant centers. Two lines intersect at each secondary center.
+      </p>
       <p>
         The current solver uses closed-loop equations, with position differences where needed. IC
         velocities use Kennedy constructions and velocity ratios independently. Positions and

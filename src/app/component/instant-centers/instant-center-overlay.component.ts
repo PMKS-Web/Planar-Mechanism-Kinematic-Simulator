@@ -3,6 +3,9 @@ import { InstantCenterService } from '../../services/instant-center.service';
 import { SettingsService } from '../../services/settings.service';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { ModelFrameDirective, UprightDirective } from '../../model-frame.directive';
+import { SvgGridService } from '../../services/svg-grid.service';
+import { CenterGeometry } from '../../model/mechanism/instant-center-solver';
+import { instantCenterLines } from './instant-center-lines';
 
 @Component({
   selector: '[appInstantCenterOverlay]',
@@ -10,21 +13,36 @@ import { ModelFrameDirective, UprightDirective } from '../../model-frame.directi
   imports: [ModelFrameDirective, UprightDirective],
   host: { style: 'pointer-events: none' },
   template: `
-    @if (ic.show.value && tabs.getCurrentTab() === analyze) {
+    @if ((ic.show.value || ic.showConstruction.value) && tabs.getCurrentTab() === analyze) {
       <svg:g modelFrame>
         @for (drawing of ic.displayed(); track drawing.machine) {
-          @for (center of drawing.geometry.centers; track center.id) {
-            @if (ic.point(drawing.geometry, center); as point) {
-              <svg:g class="icMarker" [attr.data-center]="center.id" [upright]="point">
-                <svg:path [attr.d]="center.kind === 'secondary' ? diamond : cross" />
-                <svg:text
-                  [attr.x]="size * 1.5"
-                  [attr.y]="-size * 1.5"
-                  [attr.font-size]="size * 1.6"
-                >
-                  {{ ic.displayed().length > 1 ? drawing.machine + ' ' : '' }}{{ ic.label(center) }}
-                </svg:text>
-              </svg:g>
+          @if (ic.showConstruction.value) {
+            @for (line of lines(drawing.geometry); track line.id) {
+              <svg:line
+                class="icConstruction"
+                [attr.data-sources]="line.id"
+                [attr.x1]="line.start.x"
+                [attr.y1]="line.start.y"
+                [attr.x2]="line.end.x"
+                [attr.y2]="line.end.y"
+              />
+            }
+          }
+          @if (ic.show.value) {
+            @for (center of drawing.geometry.centers; track center.id) {
+              @if (ic.point(drawing.geometry, center); as point) {
+                <svg:g class="icMarker" [attr.data-center]="center.id" [upright]="point">
+                  <svg:path [attr.d]="center.kind === 'secondary' ? diamond : cross" />
+                  <svg:text
+                    [attr.x]="size * 1.5"
+                    [attr.y]="-size * 1.5"
+                    [attr.font-size]="size * 1.6"
+                  >
+                    {{ ic.displayed().length > 1 ? drawing.machine + ' ' : ''
+                    }}{{ ic.label(center) }}
+                  </svg:text>
+                </svg:g>
+              }
             }
           }
         }
@@ -32,6 +50,13 @@ import { ModelFrameDirective, UprightDirective } from '../../model-frame.directi
     }
   `,
   styles: `
+    .icConstruction {
+      stroke: var(--canvas-ink);
+      stroke-width: 1.5px;
+      stroke-dasharray: 7 5;
+      vector-effect: non-scaling-stroke;
+      opacity: 0.65;
+    }
     .icMarker {
       stroke: var(--text-primary);
       fill: var(--text-primary);
@@ -54,7 +79,15 @@ export class InstantCenterOverlayComponent {
   protected readonly ic = inject(InstantCenterService);
   protected readonly tabs = inject(SelectedTabService);
   private readonly settings = inject(SettingsService);
+  private readonly grid = inject(SvgGridService);
   protected readonly analyze = TabID.ANALYZE;
+  protected lines(geometry: CenterGeometry) {
+    return instantCenterLines(
+      geometry,
+      this.grid.screenToModelFromXY(0, 0),
+      this.grid.screenToModelFromXY(window.innerWidth, window.innerHeight)
+    );
+  }
   protected get size() {
     return this.settings.objectScale * 0.12;
   }
