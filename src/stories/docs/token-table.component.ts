@@ -8,6 +8,9 @@ import {
   signal,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
+// The token file's own source, at build time: the one way to know which
+// tokens it declares once every stylesheet has been bundled into one.
+import tokensSource from '../../styles/_tokens.scss?raw';
 
 /** What a sample cell can draw for a value. */
 type TokenKind = 'color' | 'shadow' | 'radius' | 'length' | 'other';
@@ -17,10 +20,12 @@ export interface TokenRow {
   name: string;
   /** The value as written in the stylesheet. */
   declared: string;
+  /** Whether `src/styles/_tokens.scss` declares it, which is where an app token belongs. */
+  inTokenFile: boolean;
   /** The value the document actually resolves, after every later declaration. */
   inEffect: string;
   /** The stylesheet it came from. */
-  source: string;
+  /** The `@media` or `@supports` condition the declaring rule sits under, if any. */
   /** Any `@media` or `@supports` it sits inside, or '' at the top level. */
   context: string;
   kind: TokenKind;
@@ -48,14 +53,19 @@ export interface TokenReading {
  * element, and every stylesheet here arrives as one bundle, so the file cannot
  * tell them apart. The rule can: a rule Material generated declares nothing but
  * `--mat-*` properties, while a rule written in this app declares its own names
- * too (which is how `--mat-warning-color`, written in `src/styles.scss` beside
- * `--border-radius`, stays with the app's tokens).
+ * too (which is how `--mat-warning-color`, written in `src/styles/_tokens.scss`
+ * beside `--border-radius`, stays with the app's tokens).
+ *
+ * Which file an app token came from is a different question, and the bundle
+ * cannot answer it either; the token file's own source can, read at build
+ * time. A token on `:root` that the token file does not declare is one that
+ * escaped the one place, and the table says so.
  */
 export function readTokens(doc: Document): TokenReading {
   const reading: TokenReading = { app: [], material: [], sheetsRead: 0, unreadable: [] };
   const computed = getComputedStyle(doc.documentElement);
 
-  const visitRules = (rules: CSSRuleList, source: string, context: string): void => {
+  const visitRules = (rules: CSSRuleList, context: string): void => {
     for (const rule of Array.from(rules)) {
       if (rule instanceof CSSImportRule) {
         if (rule.styleSheet) visitSheet(rule.styleSheet);
@@ -75,7 +85,7 @@ export function readTokens(doc: Document): TokenReading {
               name,
               declared,
               inEffect,
-              source,
+              inTokenFile: declaresToken(tokensSource, name),
               context,
               kind: kindOf(name, inEffect || declared),
             });
@@ -92,7 +102,7 @@ export function readTokens(doc: Document): TokenReading {
             : rule instanceof CSSSupportsRule
               ? `@supports ${rule.conditionText}`
               : '';
-        visitRules(children, source, [context, condition].filter(Boolean).join(' '));
+        visitRules(children, [context, condition].filter(Boolean).join(' '));
       }
     }
   };
@@ -107,13 +117,20 @@ export function readTokens(doc: Document): TokenReading {
       return;
     }
     reading.sheetsRead++;
-    visitRules(rules, source, '');
+    visitRules(rules, '');
   };
 
   for (const sheet of Array.from(doc.styleSheets)) visitSheet(sheet);
   return reading;
 }
 
+/** Whether a stylesheet's source declares the custom property, at the start of a line. */
+export function declaresToken(source: string, name: string): boolean {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`^\\s*${escaped}\\s*:`, 'm').test(source);
+}
+
+/** A stylesheet's name, for the note about one that refused to be read. */
 function sourceOf(sheet: CSSStyleSheet): string {
   if (sheet.href) {
     const url = new URL(sheet.href);
@@ -279,7 +296,7 @@ function kindOf(name: string, value: string): TokenKind {
               <th>Sample</th>
               <th>Name</th>
               <th>In effect</th>
-              <th>Declared in</th>
+              <th>Defined in</th>
             </tr>
           </thead>
           <tbody>
@@ -313,7 +330,13 @@ function kindOf(name: string, value: string): TokenKind {
                   }
                 </td>
                 <td class="where">
-                  {{ row.source }}
+                  @if (row.name.startsWith('--mat-') && !row.inTokenFile) {
+                    Material's theme
+                  } @else if (row.inTokenFile) {
+                    <code>src/styles/_tokens.scss</code>
+                  } @else {
+                    <span class="stray">not in the token file</span>
+                  }
                   @if (row.context) {
                     <div class="declared">{{ row.context }}</div>
                   }
@@ -413,6 +436,9 @@ function kindOf(name: string, value: string): TokenKind {
       background: rgba(0, 0, 0, 0.45);
     }
     .declared,
+    .stray {
+      color: var(--warning-text);
+    }
     .where,
     .note,
     .empty {
