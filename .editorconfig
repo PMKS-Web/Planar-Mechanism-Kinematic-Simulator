@@ -1,0 +1,12 @@
+# Editor defaults that match .prettierrc, so a file is close to formatted before
+# Prettier runs and CI's `git diff --check` never fails on trailing whitespace an
+# editor left behind. Prettier still owns layout (docs/code-style.md).
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2

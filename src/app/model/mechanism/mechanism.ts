@@ -1213,11 +1213,12 @@ export class Mechanism {
    * never moves.
    */
   get reciprocates(): boolean {
+    /* eslint-disable no-restricted-syntax -- a sign change, not a direction */
     return (
       this._inputAngularVelocities.some((speed) => speed > 0) &&
-      // eslint-disable-next-line no-restricted-syntax -- a sign change, not a direction
       this._inputAngularVelocities.some((speed) => speed < 0)
     );
+    /* eslint-enable no-restricted-syntax */
   }
 
   /** Seconds spanned by one full traversal of the precomputed motion. */

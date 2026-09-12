@@ -24,10 +24,21 @@ export default defineConfig([
       'no-restricted-syntax': [
         'error',
         {
+          // Every comparison with zero, in either order: `speed >= 0` asks
+          // the same direction question as `speed < 0` and once slipped past
+          // a rule that only knew the one spelling.
           selector:
-            "BinaryExpression[operator='<'][right.type='Literal'][right.value=0]" +
+            "BinaryExpression[operator=/^[<>]=?$/][right.type='Literal'][right.value=0]" +
             `:matches([left.type='Identifier'][left.name=${SPEED_NAME}],` +
             ` [left.type='MemberExpression'][left.property.name=${SPEED_NAME}])`,
+          message:
+            'Ask turnsClockwise(speed) from model/drive-direction.ts instead of comparing a speed with 0.',
+        },
+        {
+          selector:
+            "BinaryExpression[operator=/^[<>]=?$/][left.type='Literal'][left.value=0]" +
+            `:matches([right.type='Identifier'][right.name=${SPEED_NAME}],` +
+            ` [right.type='MemberExpression'][right.property.name=${SPEED_NAME}])`,
           message:
             'Ask turnsClockwise(speed) from model/drive-direction.ts instead of comparing a speed with 0.',
         },
@@ -41,8 +52,23 @@ export default defineConfig([
     rules: { 'no-restricted-syntax': 'off' },
   },
   {
-    files: ['src/**/*.spec.ts'],
+    // A spec, and the snapshot of what the built-in templates decode to: a
+    // table, not a file that could pick up a second job.
+    files: ['src/**/*.spec.ts', 'src/tests/verification/template-baseline.ts'],
     rules: { 'max-lines': 'off' },
+  },
+  {
+    // The two hubs take no new behavior (docs/code-style.md), and this is the
+    // line that says so: each is capped at the size it had when the cap was
+    // set, counted the way max-lines counts. Lower a number when a move lands;
+    // raise one only in a pull request that says why the code could not live
+    // in a model or a narrower service.
+    files: ['src/app/services/mechanism.service.ts'],
+    rules: { 'max-lines': ['error', { max: 4335, skipBlankLines: true, skipComments: true }] },
+  },
+  {
+    files: ['src/app/component/new-grid/new-grid.component.ts'],
+    rules: { 'max-lines': ['error', { max: 3829, skipBlankLines: true, skipComments: true }] },
   },
   {
     // The import graph runs one way: components import services, never the
