@@ -6,6 +6,7 @@ import { ActiveObjService } from '../../services/active-obj.service';
 import { SettingsService } from '../../services/settings.service';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { AnalysisSetupComponent } from './analysis-setup.component';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
 interface SetupState {
   /** What each mechanism still has in the way. Empty means ready. */
@@ -44,6 +45,7 @@ async function createSetup(mode: 'kinematic' | 'force', tab: TabID, state: Setup
   await TestBed.configureTestingModule({
     imports: [AnalysisSetupComponent],
     providers: [
+      provideNoopAnimations(),
       { provide: MechanismService, useValue: mechanism },
       { provide: ActiveObjService, useValue: new ActiveObjService() },
       { provide: SettingsService, useValue: new SettingsService() },

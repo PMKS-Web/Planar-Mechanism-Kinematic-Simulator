@@ -102,7 +102,7 @@ print(sys.argv[2], sheet.size, len(ims), 'frames')
   // the path lost it when Homebrew's took over, and the frames a suite made
   // are its evidence whether or not they were tiled. A sheet that cannot be
   // made is said, not thrown -- a suite's verdict is its checks.
-  const candidates = ['python3', '/usr/bin/python3', '/opt/homebrew/bin/python3'];
+  const candidates = ['python3', 'python', '/usr/bin/python3', '/opt/homebrew/bin/python3'];
   let failure = '';
   for (const python of candidates) {
     try {

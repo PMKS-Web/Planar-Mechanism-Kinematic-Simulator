@@ -248,6 +248,8 @@ Not suites — import them from one.
 
 ### Analysis modes and machines
 
+- `instant-centers.mjs` — the collapsed IC preview, independent velocity comparison, canvas overlay during playback, centers at infinity, and phone/reduced-motion behavior. Writes screenshots and filmstrips to `artifacts/instant-centers`.
+
 - `analysis-setup.mjs` — pressing an analysis mode that cannot be entered opens a list naming the
   mechanism at fault, the way out, and a button that goes to the part.
 - `analysis-drawing-switches.mjs` — the trace and vector switches under an analysis panel's

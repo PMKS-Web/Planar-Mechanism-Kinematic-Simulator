@@ -158,6 +158,8 @@ traps.
 
 ### Solvers (`src/app/model/mechanism/`)
 
+The optional **Instant Centers** fold in Kinematic Analysis setup previews primary and Kennedy-derived centers and compares independent IC velocities with the current solver. `instant-center-solver.ts` constructs centers; `instant-center-kinematics.ts` computes velocities without calling the closed-loop solver. Positions, accelerations, force analysis and default graphs keep their existing paths. See [`docs/instant-centers.md`](docs/instant-centers.md) for provenance, APIs and limitations.
+
 Pure computation, mostly static classes: `loop-solver` (finds kinematic loops), `position-solver`, `kinematic-solver` (velocity/acceleration), `force-solver`. `app.component.spec.ts` numerically verifies these against MATLAB results (`SixBarVerification.m`) for a sixbar linkage — treat it as the regression test for solver changes.
 
 ### Model classes (`src/app/model/`)

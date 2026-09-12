@@ -1,0 +1,80 @@
+<collapsible-subsection
+  titleLabel="Instant Centers"
+  [expanded]="open()"
+  (opened)="open.set(true)"
+  (closed)="open.set(false)"
+>
+  @if (open()) {
+    <div class="content">
+      <p class="intro">
+        Preview instantaneous centers of velocity. Body 0 is ground. Coordinates use the drawing’s
+        length unit.
+      </p>
+      <toggle-block [formGroup]="form" _formControl="show">Show Instant Centers</toggle-block>
+      <p>
+        The current solver uses closed-loop equations, with position differences where needed. IC
+        velocities use Kennedy constructions and velocity ratios independently. Positions and
+        accelerations still use the current solver.
+      </p>
+      @for (drawing of ic.displayed(); track drawing.machine) {
+        <h3>{{ drawing.machine }} · Centers at the displayed pose</h3>
+        <div class="tableScroll">
+          <table aria-label="Instant center locations">
+            <thead>
+              <tr>
+                <th>Center</th>
+                <th>Kind</th>
+                <th>Location</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (center of drawing.geometry.centers; track center.id) {
+                <tr>
+                  <th>{{ ic.label(center) }}</th>
+                  <td>{{ center.kind }}</td>
+                  <td>{{ location(drawing.geometry, center) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @empty {
+        <p>Draw a mechanism with one input to preview its instant centers.</p>
+      }
+      @for (comparison of comparisons(); track comparison.machine) {
+        <h3>{{ comparison.machine }} · Angular velocity (rad/s)</h3>
+        <p>Sample {{ comparison.step }}. Pause or scrub to compare another pose.</p>
+        @if (comparison.result.reason) {
+          <p role="status">{{ comparison.result.reason }}</p>
+        }
+        <div class="tableScroll">
+          <table aria-label="Velocity method comparison">
+            <thead>
+              <tr>
+                <th>Body</th>
+                <th>Current solver</th>
+                <th>Instant centers</th>
+                <th>Difference</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of comparison.rows; track row.id) {
+                <tr>
+                  <th>{{ row.name }}</th>
+                  <td>{{ number(row.current) }}</td>
+                  <td>{{ number(row.ic) }}</td>
+                  <td>{{ number(row.ic === undefined ? undefined : row.ic - row.current) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+      <p class="legend">
+        Crosses mark fixed or permanent centers; diamonds mark secondary centers. Centers at
+        infinity and unresolved centers are listed here. Distant centers may lie outside the canvas
+        view.
+      </p>
+    </div>
+  }
+</collapsible-subsection>

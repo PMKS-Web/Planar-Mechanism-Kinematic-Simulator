@@ -5,6 +5,7 @@
   </div>
 
   @if (mode() === 'kinematic') {
+    <app-instant-centers />
     @for (item of readiness; track item.id) {
       <div class="mechBlock">
         <button class="sectionHeader" (click)="toggle(item)">

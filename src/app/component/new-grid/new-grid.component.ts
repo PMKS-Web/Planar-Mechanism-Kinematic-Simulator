@@ -55,7 +55,7 @@ import { SaveHistoryService } from 'src/app/services/save-history.service';
 import { SynthesisBuilderService } from 'src/app/services/synthesis/synthesis-builder.service';
 import { SelectedTabService, TabID } from 'src/app/selected-tab.service';
 import { EditPermissionService } from 'src/app/services/edit-permission.service';
-import { StartPoseGhost } from 'src/app/model/mechanism/anchor';
+import { StartPoseGhost, GhostBody } from '../../model/mechanism/anchor';
 import { SynthesisPose } from 'src/app/services/synthesis/synthesis-util';
 import { SynthesisCanvasService } from 'src/app/services/synthesis/synthesis-canvas.service';
 import { SynthesisSolutionService } from 'src/app/services/synthesis/synthesis-solution.service';
@@ -97,7 +97,6 @@ import {
   SlotDropCandidate,
 } from '../../model/drop-target';
 import { mergedChannels, transformRigidPath } from '../../model/compound-link-path';
-import { GhostBody } from '../../model/mechanism/anchor';
 import {
   Cylinder,
   cylinderCreationLayout,
@@ -126,7 +125,7 @@ export interface SlotStackItem {
   /** Set for a plate; the fused rider-and-block outline this item draws. */
   plate?: WeldPlate;
 }
-import { SvgArrowComponent } from '../svg-arrow/svg-arrow.component';
+import { InstantCenterOverlayComponent } from '../instant-centers/instant-center-overlay.component';
 import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
 import { INK_FLIPS_AT, luminanceOf } from '../../model/contrast';
 import { DEFAULT_FORCE_COLOR, SELECTION_RING } from '../../model/joint-colors';
@@ -192,6 +191,7 @@ const SELECTION_RING_PX = 3;
   styleUrls: ['./new-grid.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
+    InstantCenterOverlayComponent,
     CdkContextMenuTrigger,
     ContextMenuComponent,
     LongPressDirective,

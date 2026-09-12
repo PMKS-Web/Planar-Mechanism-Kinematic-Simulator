@@ -404,6 +404,20 @@ describe('AnalysisSampleService keeps each solve', () => {
   const ask = (index: number, prop: string, part: string) =>
     service.sampleAt(fixture.mechanism, index, 'kinematic', 'loop', prop, part);
 
+  it('routes IC requests independently and never labels current accelerations as IC results', () => {
+    const expected = ask(45, 'Linear Joint Vel', 'B');
+    const solve = vi.spyOn(KinematicsSolver, 'determineKinematics');
+    solve.mockClear();
+    const ic = service.sampleAt(fixture.mechanism, 45, 'kinematic', 'ic', 'Linear Joint Vel', 'B');
+    expect(ic.length).toBe(3);
+    ic.forEach((value, i) => expect(value).toBeCloseTo(expected[i], 7));
+    expect(
+      service.sampleAt(fixture.mechanism, 45, 'kinematic', 'ic', 'Linear Joint Acc', 'B')
+    ).toEqual([]);
+    expect(solve).not.toHaveBeenCalled();
+    solve.mockRestore();
+  });
+
   it('solves a sample once however many rows read it', () => {
     const solves = vi.spyOn(KinematicsSolver, 'determineKinematics');
     const velocity = ask(45, 'Linear Joint Vel', 'B');

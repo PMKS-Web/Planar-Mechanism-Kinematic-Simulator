@@ -6,6 +6,7 @@ import { Mechanism } from '../model/mechanism/mechanism';
 import { FORCE_TO_N, siUnitFactorsForLength } from '../model/unit-conversions';
 import { MODEL_SCALE } from '../model/render-scale';
 import { SettingsService } from './settings.service';
+import { instantCenterRatesAt } from '../model/mechanism/instant-center-kinematics';
 
 /**
  * A solved value below anything a mechanism can mean is float noise, not data.
@@ -86,7 +87,7 @@ export class AnalysisSampleService {
    *
    * Returned in the order the graph draws them: X, then Y, then the third
    * series where there is one. An empty array means this service has nothing
-   * to say about that property — an unknown name, an instant-center graph, or
+   * to say about that property — an unknown name, a non-velocity IC request, or
    * a sample index the mechanism does not have.
    */
   sampleAt(
@@ -98,11 +99,35 @@ export class AnalysisSampleService {
     mechPart: string,
     reactionLinkId: string = ''
   ): number[] {
+    if (analysis === 'kinematic' && analysisType === 'ic') {
+      return this.instantCenterSample(mechanism, index, mechProp, mechPart).map(snapNoiseToZero);
+    }
     const values =
       analysis === 'force'
         ? this.forceSample(mechanism, index, analysisType, mechProp, mechPart, reactionLinkId)
         : this.kinematicSample(mechanism, index, mechProp, mechPart);
     return values.map(snapNoiseToZero);
+  }
+
+  /** An explicit IC request never falls through to closed-loop rates or accelerations. */
+  private instantCenterSample(
+    mechanism: Mechanism,
+    index: number,
+    property: string,
+    part: string
+  ): number[] {
+    const at = instantCenterRatesAt(mechanism, index);
+    if (!at) return [];
+    switch (property) {
+      case 'Linear Joint Vel':
+        return this.scaledVector(at.jointVel.get(part), true);
+      case "Linear Link's CoM Vel":
+        return this.scaledVector(at.linkVel.get(part), true);
+      case 'Angular Link Vel':
+        return [at.linkAngVel.get(part) ?? Number.NaN];
+      default:
+        return [];
+    }
   }
 
   private forceSample(

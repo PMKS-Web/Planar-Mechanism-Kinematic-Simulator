@@ -1,7 +1,7 @@
 <div id="toggle-block" [class.toggle-block--disabled]="disabled()">
   <div [formGroup]="this.formGroup()" class="row">
     <!-- <input type="checkbox" id="vehicle1" name="vehicle1" value="Bike" [formControlName]="this._formControl" /> -->
-    <span class="label"><ng-content></ng-content></span>
+    <span class="label" [id]="labelId"><ng-content></ng-content></span>
     @if (!addInput()) {
       <mat-icon matTooltip="{{ this.tooltip() }}" matTooltipShowDelay="400" class="label-help"
         >help_outline
@@ -32,6 +32,7 @@
     }
     <div class="spacer"></div>
     <mat-slide-toggle
+      [aria-labelledby]="labelId"
       color="primary"
       [disabled]="this.disabled()"
       [formControlName]="this._formControl()"

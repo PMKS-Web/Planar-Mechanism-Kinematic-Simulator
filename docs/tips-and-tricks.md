@@ -32,6 +32,8 @@ to work on it without stepping in the same holes.
 
 ## Environment
 
+**Windows checkouts need LF for the existing reference-file checks.** Git's automatic CRLF checkout conversion changes CSV header names (`y` becomes `y\r`), breaks multiline template regexes, and makes generated Markdown differ on every line. Preserve the repository's LF working files before running checks; normalizing checkout line endings does not change Git's stored text. Path inventories should normalize `relative()` results to `/` before comparing with repository-relative exclusions. The filmstrip helper also tries `python`, the usual Windows name for a Pillow-capable interpreter.
+
 **Node** 22.22.3+, 24.15+ or 26+ — the range the Angular 22 toolchain declares. `npm ci` for a
 clean install.
 
@@ -1562,6 +1564,8 @@ the answer should be cannot be invalidated by a palette or a template.
 ---
 
 ## Short notes
+
+- **Instant centers:** the original algorithm is in PMKSConversion's `0bda849`, not its current master. PMKS+ copied it in `229a0816` and later removed it as uncalled code. The replacement is documented in `instant-centers.md`. Ground-center construction does not need loop enumeration; sliders contribute a direction at infinity. Read the live drawing by id for overlay geometry: a partition can retain the original objects. New playback-dependent components explicitly use `ChangeDetectionStrategy.Eager`, like the rest of this Angular 22 app; otherwise a plain service value can change while the overlay remains asleep.
 
 One surprise each, in no particular order. Each heading states the rule; search for the symbol
 you are touching.

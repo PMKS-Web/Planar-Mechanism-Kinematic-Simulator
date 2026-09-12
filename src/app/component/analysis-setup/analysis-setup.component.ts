@@ -17,6 +17,7 @@ import { InputComponent } from '../BLOCKS/input/input.component';
 import { Subscription } from 'rxjs';
 import { NOT_A } from '../../ui-text';
 import { editPanelHandle } from '../../services/edit-panel-handle';
+import { InstantCentersComponent } from '../instant-centers/instant-centers.component';
 
 /** One editable row of the mass table: a body, and what to call it. */
 export interface MassRow {
@@ -43,7 +44,13 @@ export interface MassRow {
   templateUrl: './analysis-setup.component.html',
   styleUrls: ['./analysis-setup.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [MatIcon, ScrollShadowDirective, ReactiveFormsModule, InputComponent],
+  imports: [
+    MatIcon,
+    ScrollShadowDirective,
+    ReactiveFormsModule,
+    InputComponent,
+    InstantCentersComponent,
+  ],
 })
 export class AnalysisSetupComponent {
   mechanism = inject(MechanismService);

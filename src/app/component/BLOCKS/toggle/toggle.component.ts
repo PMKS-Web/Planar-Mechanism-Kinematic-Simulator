@@ -22,6 +22,8 @@ import { MatSlideToggle } from '@angular/material/slide-toggle';
   ],
 })
 export class ToggleComponent {
+  private static nextLabelId = 0;
+  protected readonly labelId = `toggle-label-${ToggleComponent.nextLabelId++}`;
   readonly tooltip = input<string>();
   readonly formGroup = input.required<FormGroup>();
   readonly _formControl = input.required<string>();

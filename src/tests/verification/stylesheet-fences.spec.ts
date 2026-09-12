@@ -23,7 +23,7 @@ function stylesheets(dir = resolve(ROOT, 'src')): string[] {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
     if (statSync(path).isDirectory()) return stylesheets(path);
-    return name.endsWith('.scss') ? [relative(ROOT, path)] : [];
+    return name.endsWith('.scss') ? [relative(ROOT, path).replaceAll('\\', '/')] : [];
   });
 }
 
