@@ -2154,3 +2154,50 @@ Fable budget and reservations are unchanged.
 intended runtime assertion (0.2 instead of 0.7), while the cylinder-mouth test still passes.
 Session 76162 exits 0 only after requiring that failure and restoring the implementation
 byte-for-byte. The full green suite/build above used those same restored production bytes.
+
+## S4 live retry — selected-link readout after rewind (2026-09-12)
+
+Guide-axis checkpoint committed as **b83be9e1**. The maintainer explained the accidental tab
+switch and requested a computer-use retry. Standard Codex computer use opened a separate
+incognito localhost:4307 test tab, selected AB on the grid, enabled Fixed Length in the panel,
+verified the context menu's fixed-length state, played through observed cycle crossings,
+paused and returned to start. The hold badge hid during playback and returned on Pause. The
+authored ghost stayed fixed. The temporary hold was undone and only that test tab was closed.
+This completes the previously interrupted live interaction check on the legacy reference app.
+
+That retry caught a real reference defect: after selecting AB at paused angle 23°, Back to
+Start moved the drawing and transport to 80° but left the selected Angle field at 23°. A later
+screenshot confirmed it was settled, not animation lag; Undo refreshed it. The panel now
+refreshes link/cylinder pose-dependent fields on `poseRevision`, using its existing silent
+patch helpers. Unchanged poses do not overwrite unfinished typing. No selection events,
+history entries or new physics are produced by refreshing the readout. The native UI gate now
+explicitly includes this sequence.
+
+The tracked `e2e/link-pose-readout.mjs` derives angle independently from the rendered link's
+joint coordinates and compares the actual field, preserving the same selected ID. It covers
+seek, full-cycle playback, Pause, two rewinds, Undo releasing the hold, and unfinished typing.
+The first test draft accidentally committed its unfinished text when playback blurred it;
+that check was moved to the end and restores the saved text. A second run reproduced the seek
+failure but pressed Play during the rewind animation, which then stopped it. The final harness
+waits for that existing transition. These draft runs are not counted as complete gate evidence.
+
+Verification in `artifacts/bodies-and-joints/`:
+
+- `S4-link-readout-initial.log`: runtime stale-field failures plus the draft's unintended typed edit.
+- `S4-link-readout-before-fix.log`: stale seek field (**80° versus 51.93666°**), followed by
+  the harness's rewind/play timing failure, session 41603 exit 1.
+- `S4-link-readout-fixed.log`: connection refused before verification, session 41584 exit 1.
+  The previous server PID 13660 was absent and port 4307 had no listener. Restarted only this
+  worktree's server, session **13661**, node **19077**; HTTP 200 then verified.
+- `S4-link-readout-fixed-live.log`: **9/9**, zero page errors, session 17142 exit 0. Its first
+  filmstrip clipped the lower motion; final capture uses Fit Full Motion and observes a wrap.
+- `S4-link-readout-final.log`: **10/10**, zero page errors, session 60787 exit 0.
+  The 35-frame sheet was inspected: complete linkage stays in view, selection and authored
+  ghost remain distinct, panel values follow motion, the hold badge returns on Pause, and
+  rewind shows 80° in panel and transport. These are legacy frames, not native rendering proof.
+- `S4-link-readout-full-unit.log`: **2852 tests / 316 files pass**, session 58495 exit 0.
+- `S4-link-readout-build.log`: production build passes, session 21036 exit 0; existing CommonJS warnings.
+- `S4-link-readout-ui-copy.log`: **17/17**, zero console errors, session 95974 exit 0.
+
+S4's remaining native work and F3 are still pending as listed above. No paid review, push or
+publication. The live browser finding was fixed rather than dismissed because scripts passed.
