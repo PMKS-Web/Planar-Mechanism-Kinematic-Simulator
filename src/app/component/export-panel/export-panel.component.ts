@@ -117,7 +117,7 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
       'SVG stays sharp at any size and can be opened and edited; PNG drops into a document that will not take a vector. Both carry the PMKS+ mark.',
     name: 'The stem every file is named from. Where more than one is written, what tells them apart is added to it.',
     analysis:
-      'Static solves the mechanism held still at each position — the equilibrium a hand calculation gives. In-motion adds the inertia of the moving parts.',
+      'Static omits inertia; In-motion includes it. Moving contacts use kinetic friction in both modes.',
     components:
       'X and Y are the components along the axes. Magnitude is √(X² + Y²) — the size of the vector, without its direction.',
     timeSteps:

@@ -1,0 +1,92 @@
+@if (contacts().length) {
+  <collapsible-subsection
+    titleLabel="Friction"
+    [expanded]="expanded()"
+    (opened)="expanded.set(true)"
+    (closed)="expanded.set(false)"
+  >
+    <p class="note">
+      Friction changes the required input effort. Motion stays at the prescribed speed.
+    </p>
+    @for (contact of contacts(); track contact.joint.id) {
+      <div class="contact" [attr.data-friction-joint]="contact.joint.id">
+        <h4>{{ contact.pin ? 'Pin Bearing' : 'Slider Guide' }}</h4>
+        @if (unsupported(contact.joint); as reason) {
+          <p class="note">{{ reason }}</p>
+          @if (!readOnly() && enabled(contact.joint)) {
+            <button-block [click]="contact.remove" [disabled]="!!permission.refusal('properties')"
+              >Remove Friction</button-block
+            >
+          }
+        }
+        @if (!readOnly() && !unsupported(contact.joint)) {
+          <div [attr.inert]="permission.refusal('properties') || null">
+            <input-block
+              [formGroup]="contact.form"
+              _formControl="static"
+              stacked
+              tooltip="Sets the maximum holding friction for the current normal load. Use a measured or specified coefficient."
+              >Static Coefficient</input-block
+            >
+            <input-block
+              [formGroup]="contact.form"
+              _formControl="kinetic"
+              stacked
+              tooltip="Sets the resistance while the two surfaces move relative to each other. Zero disables sliding resistance."
+              >Kinetic Coefficient</input-block
+            >
+            @if (contact.pin) {
+              <input-block
+                [formGroup]="contact.form"
+                _formControl="radius"
+                [unit]="lengthUnit"
+                stacked
+                tooltip="The physical effective contact radius used to estimate bearing torque."
+                >Effective Radius</input-block
+              >
+            }
+            <button-block [click]="contact.apply" dataAction="apply-friction"
+              >Apply Friction</button-block
+            >
+          </div>
+          @if (permission.refusal('properties'); as refusal) {
+            <p class="note">{{ refusal.long }}</p>
+          }
+        }
+        @if (enabled(contact.joint)) {
+          @if (readOnly()) {
+            <p class="note">
+              Static coefficient {{ contact.joint.friction.staticCoefficient }} · Kinetic
+              coefficient {{ contact.joint.friction.kineticCoefficient }}
+            </p>
+          }
+          @if (service.reading(contact.joint); as reading) {
+            @if (reading.values; as values) {
+              <dl>
+                <dt>Normal Load</dt>
+                <dd>{{ number(values[0]) }} {{ forceUnit }}</dd>
+                <dt>Friction {{ contact.pin ? 'Torque' : 'Force' }}</dt>
+                <dd>{{ number(values[1]) }} {{ effortUnit(contact.pin) }}</dd>
+                <dt>Static Limit</dt>
+                <dd>{{ number(values[2]) }} {{ effortUnit(contact.pin) }}</dd>
+              </dl>
+              <p class="note">{{ reading.sign }}</p>
+              <p class="note">
+                The static limit uses this contact's current load. It is not the input effort needed
+                to start the whole mechanism.
+              </p>
+            }
+            @if (reading.message) {
+              <p class="note" role="status">{{ reading.message }}</p>
+            }
+          }
+        } @else {
+          <p class="note">Frictionless contact.</p>
+        }
+      </div>
+    }
+    @if (error()) {
+      <p class="error" role="alert">{{ error() }}</p>
+    }
+  </collapsible-subsection>
+}

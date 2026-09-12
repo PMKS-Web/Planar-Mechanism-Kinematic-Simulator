@@ -130,6 +130,17 @@ export class AnalysisSampleService {
       return mechProp === 'Joint Forces' ? [Number.NaN, Number.NaN, Number.NaN] : [Number.NaN];
     }
 
+    if (mechProp.startsWith('Friction ')) {
+      const contact = frame.friction?.get(mechPart);
+      if (!contact) return [Number.NaN];
+      if (mechProp === 'Friction Normal') return [contact.normalLoad * forceConversion];
+      const conversion =
+        contact.kind === 'torque' ? torqueConversion / MODEL_SCALE : forceConversion;
+      return [
+        (mechProp === 'Friction Static Limit' ? contact.staticLimit : contact.effort) * conversion,
+      ];
+    }
+
     if (mechProp === 'Input Torque' || mechProp === 'Input Effort') {
       // A torque's moment arms are internal model lengths (MODEL_SCALE times
       // the user's unit), so the solved value divides back down for display. An

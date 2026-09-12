@@ -244,6 +244,7 @@ export class Mechanism {
     if (copy instanceof RealJoint && source instanceof RealJoint) {
       copy.showCurve = source.showCurve;
       copy.isWelded = source.isWelded;
+      copy.friction = { ...source.friction };
     }
     return copy;
   }

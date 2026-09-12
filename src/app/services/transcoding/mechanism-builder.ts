@@ -86,6 +86,7 @@ export class MechanismBuilder {
     joint.isWelded = jointData.isWelded;
     joint.showCurve = jointData.showCurve;
     joint.driveSpeed = jointData.driveSpeed;
+    joint.friction = { ...jointData.friction, radius: jointData.friction.radius * MODEL_SCALE };
     console.log('build joint', jointData.type);
 
     return joint;

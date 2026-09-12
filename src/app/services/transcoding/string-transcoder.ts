@@ -13,6 +13,7 @@ import {
 } from './transcoder-data';
 import { GenericTranscoder } from './transcoder-interface';
 import { JOINT_FAMILIES } from '../../model/joint-colors';
+import { frictionPropertyError, hasFriction } from '../../model/joint-friction';
 
 /*
  StringEncoder class is responsible for encoding various types of data,
@@ -79,8 +80,21 @@ export class StringTranscoder extends GenericTranscoder {
     // It has to land *after* the slot triple, so a joint with a speed and no
     // slot writes the triple empty; without those placeholders the decoder
     // would read the speed as a carrier id.
+    // New optional tail uses decimal text with '~' for the decimal point, preserving small
+    // bearing radii and coefficients exactly without spending the URL's section delimiter.
+    const frictionString =
+      hasFriction(joint.friction) || joint.friction.radius !== 0
+        ? ',' +
+          [
+            joint.friction.staticCoefficient,
+            joint.friction.kineticCoefficient,
+            joint.friction.radius,
+          ]
+            .map((value) => String(value).replace('.', '~'))
+            .join(',')
+        : '';
     let driveString =
-      joint.isInput && joint.driveSpeed !== 0
+      (joint.isInput && joint.driveSpeed !== 0) || frictionString !== ''
         ? ',' + this.encodeDecimalNumber(joint.driveSpeed)
         : '';
     let slotString =
@@ -103,7 +117,8 @@ export class StringTranscoder extends GenericTranscoder {
       ',' +
       angleString +
       slotString +
-      driveString
+      driveString +
+      frictionString
     );
   }
 
@@ -131,6 +146,22 @@ export class StringTranscoder extends GenericTranscoder {
     // Zero past the end, which is how a URL written before per-mechanism speed
     // says "use the document-wide default".
     let driveSpeed = sd.nextDecimalNumber();
+    const frictionTokens = [sd.nextToken(), sd.nextToken(), sd.nextToken()];
+    const values = frictionTokens.map((token) =>
+      token === '' ? 0 : Number(token.replace('~', '.'))
+    );
+    const friction = {
+      staticCoefficient: values[0],
+      kineticCoefficient: values[1],
+      radius: values[2],
+    };
+    if (
+      frictionTokens.some(Boolean) &&
+      (frictionTokens.some((token) => token === '') ||
+        frictionPropertyError(friction, jointType === JOINT_TYPE.REVOLUTE))
+    ) {
+      throw new Error('Invalid joint friction properties in URL');
+    }
 
     return new JointData(
       jointType,
@@ -147,7 +178,8 @@ export class StringTranscoder extends GenericTranscoder {
       slotJointAID,
       slotJointBID,
       isSealed,
-      driveSpeed
+      driveSpeed,
+      friction
     );
   }
 

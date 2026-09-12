@@ -3,6 +3,7 @@
 // model modules in a different order than the app does.
 import type { Link } from './link';
 import { Coord } from './coord';
+import { frictionless } from './joint-friction';
 
 export class Joint extends Coord {
   private _id: string;
@@ -55,6 +56,7 @@ export class Joint extends Coord {
 }
 
 export class RealJoint extends Joint {
+  public friction = frictionless();
   // TODO: Does the r only need to be on RevJoints?
   private _r: number = 0.15; //This seems like the SVG scale factor
   private _input: boolean;

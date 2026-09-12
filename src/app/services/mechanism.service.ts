@@ -673,7 +673,7 @@ export class MechanismService {
       const flags = [real?.ground && 'g', real?.input && 'i', real?.isWelded && 'w']
         .filter(Boolean)
         .join('');
-      return `${joint.id}@${joint.x},${joint.y}:${kind}${flags}${slide}`;
+      return `${joint.id}@${joint.x},${joint.y}:${kind}${flags}${slide}:${JSON.stringify(real?.friction)}`;
     });
     const links = partition.links.map((link) => {
       const body = link instanceof RealLink ? link : undefined;
@@ -1400,15 +1400,14 @@ export class MechanismService {
     this.joints.forEach((joint) => {
       joint.x *= lengthScale;
       joint.y *= lengthScale;
+      if (joint instanceof RealJoint) joint.friction.radius *= lengthScale;
       // A prismatic drive's speed is a length per second in the *user's* unit,
       // so it rescales with the geometry exactly as a coordinate does. An rpm
       // drive is angular and scale-invariant, which is what hid this: only the
       // rams were wrong, and by the whole unit factor -- a ram set to 2 cm/s
       // came out of a switch to meters running at 2 m/s, a hundred times its
       // stroke rate, with the panel still reading 2.
-      if (joint instanceof PrisJoint && joint.driveSpeed !== 0) {
-        joint.driveSpeed *= lengthScale;
-      }
+      if (joint instanceof PrisJoint) joint.driveSpeed *= lengthScale;
     });
     // And the default every drive that has never been given one of its own
     // reads, which is most of them.

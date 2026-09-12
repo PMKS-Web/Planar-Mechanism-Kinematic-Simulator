@@ -8,6 +8,7 @@ import { Mechanism } from '../../app/model/mechanism/mechanism';
 import { ColorService } from '../../app/services/color.service';
 import { SettingsService } from '../../app/services/settings.service';
 import { MODEL_SCALE } from '../../app/model/render-scale';
+import { JointFriction } from '../../app/model/joint-friction';
 
 /**
  * Declarative description of a linkage that mirrors the MATLAB models in
@@ -15,6 +16,7 @@ import { MODEL_SCALE } from '../../app/model/render-scale';
  * MechanismService, which rounds user-entered coordinates to 3 decimals).
  */
 export interface MechanismFixture {
+  friction?: { jointId: string; properties: JointFriction }[];
   /** Joint ids must be the single letters the dataset uses, in creation order. */
   joints: {
     id: string;
@@ -323,6 +325,11 @@ function buildMechanismNow(
   });
 
   const forces: Force[] = [];
+  fixture.friction?.forEach(({ jointId, properties }) => {
+    const joint = joints.find((one) => one.id === jointId) as RevJoint | undefined;
+    if (!joint) throw new Error(`Friction contact ${jointId} does not exist`);
+    joint.friction = { ...properties };
+  });
   // The lone `load` first, so a fixture that has only ever had one still gets
   // F1 and encodes byte for byte as before.
   const loads = [...(fixture.load ? [fixture.load] : []), ...(fixture.loads ?? [])];

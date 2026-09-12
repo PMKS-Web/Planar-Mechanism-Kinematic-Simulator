@@ -1,4 +1,5 @@
 import { SelectedTabService, TabID } from '../../selected-tab.service';
+import { FrictionPanelComponent } from '../friction-panel/friction-panel.component';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -76,6 +77,7 @@ const DRAWING_CHIP_LABEL: Record<DrawingSwitch['key'], string> = {
     FormsModule,
     ReactiveFormsModule,
     NgTemplateOutlet,
+    FrictionPanelComponent,
   ],
 })
 export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {

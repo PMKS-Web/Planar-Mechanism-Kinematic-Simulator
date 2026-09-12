@@ -1,4 +1,5 @@
 import { describeActuatorRefusal } from '../../model/actuator';
+import { FrictionPanelComponent } from '../friction-panel/friction-panel.component';
 import { speedTurning, turnsClockwise } from '../../model/drive-direction';
 import { Subscription } from 'rxjs';
 import {
@@ -113,6 +114,7 @@ const INPUT_SPEED_UNITS = [
     DualButtonComponent,
     RadioComponent,
     MultiEditPanelComponent,
+    FrictionPanelComponent,
   ],
 })
 export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, OnDestroy {

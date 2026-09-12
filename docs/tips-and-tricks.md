@@ -2581,3 +2581,28 @@ the stack and the dev server's HMR socket keep the page busy; wait for `load` an
 every entry in `index.json` and fails on a console error or an empty render; it is the check to run
 after touching a block. `node .storybook/tools/token-usage.mjs` counts where each token is used,
 least-used first, which is how to spot a shade nobody needed.
+
+### Friction reads motion even in Static force analysis
+
+Static versus In-motion selects inertia, not the contact's friction regime. A prescribed moving
+contact uses kinetic friction in either mode; zero relative velocity is a holding-force range,
+not automatically zero friction or maximum static friction. The scope and deferred forward
+dynamics are recorded in [friction-design.md](friction-design.md).
+
+A pin's effective radius follows the same internal length scale as joint coordinates. The
+force solver's torque contains that scale, and `AnalysisSampleService` removes it for display;
+copy, unit conversion and the URL boundary must preserve the radius consistently. The normal
+load must be solved together with the friction, not taken once from the frictionless answer.
+
+**Live numbers need explicit eager change detection.** The first friction panel omitted
+`ChangeDetectionStrategy.Eager`; its inputs kept the same joint object while the mechanism
+moved, so its numbers froze while neighboring reaction rows changed. A filmstrip caught it;
+`e2e/friction.mjs` now compares the displayed effort with the current sample after Play/Pause.
+
+**Windows verification of staging `acba1b77`.** A CRLF checkout makes the Prettier check fail and
+breaks the literal-LF regex in `template-payloads.spec.ts`; normalizing only the worktree's line
+endings fixes both without a content diff. `stylesheet-fences.spec.ts` compares Windows paths
+against forward-slash paths and counts the token file's 12 rgba colors (99 instead of 87).
+Two `motiongen-gripper.spec.ts` assertions also fail on the unchanged staging snapshot: the
+reference starts at a gap of 1.036629 rather than over 2.3, and the captured pose differs by
+1.051501 rather than less than 0.0001. These were reproduced separately from friction changes.

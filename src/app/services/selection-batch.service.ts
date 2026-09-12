@@ -484,6 +484,7 @@ function copyJoint(
   if (copy instanceof RealJoint && source instanceof RealJoint) {
     copy.showCurve = source.showCurve;
     copy.isWelded = source.isWelded;
+    copy.friction = { ...source.friction };
     copy.driveSpeed = source.driveSpeed;
     copy.r = source.r;
     copy.locked = false;

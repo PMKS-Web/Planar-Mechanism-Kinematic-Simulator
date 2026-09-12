@@ -11,6 +11,10 @@ Unit specs stay in `src/` because `tsconfig.spec.json` discovers them via `src/*
 Angular component specs resolve templates relative to their source. Everything browser-driven lives
 here.
 
+`friction.mjs` checks guide and pin friction controls, validation, force-cache invalidation,
+undo/redo, persistence and changing contact readings. Screenshots and a filmstrip go to
+`artifacts/friction/`.
+
 ## What CI runs
 
 `.github/workflows/verification.yml` runs `npm ci`, `npm run lint`, `npm run lint:styles`,

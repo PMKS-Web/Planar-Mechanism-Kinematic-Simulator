@@ -62,7 +62,8 @@ export class UrlGenerationService {
           '',
           '',
           false,
-          joint.driveSpeed
+          joint.driveSpeed,
+          { ...joint.friction, radius: joint.friction.radius / MODEL_SCALE }
         )
       );
     } else if (joint instanceof PrisJoint) {
@@ -82,7 +83,8 @@ export class UrlGenerationService {
           joint.slotJointA?.id ?? '',
           joint.slotJointB?.id ?? '',
           joint.isSealed,
-          joint.driveSpeed
+          joint.driveSpeed,
+          { ...joint.friction, radius: joint.friction.radius / MODEL_SCALE }
         )
       );
     }

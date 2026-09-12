@@ -169,11 +169,12 @@
         </div>
       }
       @if (showForce) {
+        <app-friction-panel [joint]="shownJoint" [readOnly]="true" />
         <!-- Nothing to graph, so nothing to configure: the note stands alone. -->
         @if (jointForceHasGraphs) {
           <div class="forceModeRow">
             <radio-block
-              tooltip="Static holds the mechanism still; In-motion includes the forces of movement."
+              tooltip="Static omits inertia; In-motion includes it. Moving contacts use kinetic friction in both modes."
               option1="Static"
               option2="In-motion"
               [formGroup]="this.forceAnalysisFormGroup"
@@ -315,7 +316,7 @@
         @if (linkForceHasGraphs) {
           <div class="forceModeRow">
             <radio-block
-              tooltip="Static holds the mechanism still; In-motion includes the forces of movement."
+              tooltip="Static omits inertia; In-motion includes it. Moving contacts use kinetic friction in both modes."
               option1="Static"
               option2="In-motion"
               [formGroup]="this.forceAnalysisFormGroup"

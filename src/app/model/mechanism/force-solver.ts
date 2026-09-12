@@ -4,11 +4,24 @@ import { slideAssemblies } from '../slide-assembly';
 import { KinematicsSolver } from './kinematic-solver';
 import { Loop } from './loop-solver';
 import { siUnitFactors, SiUnitFactors } from '../unit-conversions';
+import { hasFriction } from '../joint-friction';
+import { completeFrictionMotion } from './friction-motion';
+import {
+  analyzeWithFriction,
+  FrictionLoad,
+  FrictionMotion,
+  FrictionResult,
+} from './friction-analysis';
 
 export type ForceAnalysisMode = 'static' | 'dynamic';
 
 export type ForceAnalysisStatus =
-  'ok' | 'singular' | 'unsupported-topology' | 'missing-kinematics' | 'invalid-properties';
+  | 'ok'
+  | 'singular'
+  | 'unsupported-topology'
+  | 'missing-kinematics'
+  | 'invalid-properties'
+  | 'friction-unresolved';
 
 export type ForceVector = [number, number];
 
@@ -20,6 +33,7 @@ export interface ForceAnalysisEffort {
 }
 
 export interface ForceAnalysisFrame {
+  friction?: Map<string, FrictionResult>;
   mode: ForceAnalysisMode;
   status: ForceAnalysisStatus;
   timeSeconds: number;
@@ -77,6 +91,7 @@ interface FrameKinematics {
 }
 
 interface MechanismFrames {
+  framesRunBackwards?: boolean;
   joints: Joint[][];
   links: Link[][];
   timeNum: number[];
@@ -301,7 +316,11 @@ export class ForceSolver {
     evenest: boolean
   ): ForceAnalysisFrame {
     let kinematics: FrameKinematics | undefined;
-    if (mode === 'dynamic') {
+    let motion: FrictionMotion | undefined;
+    const friction = mechanism.joints[index].some(
+      (joint) => joint instanceof RealJoint && hasFriction(joint.friction)
+    );
+    if (mode === 'dynamic' || friction) {
       // Clear the solver's shared maps each frame so a mid-solve failure at
       // frame k cannot leave frame k-1's finite values in place — which would
       // read as "current" and hide the failure from the fallback below.
@@ -318,6 +337,11 @@ export class ForceSolver {
         // topology-independent finite-difference fallback.
       }
       kinematics = this.captureCurrentKinematics(mechanism.links[index], fallback[index]);
+      motion = {
+        jointVelocities: new Map(KinematicsSolver.jointVelMap),
+        angularVelocities: new Map(KinematicsSolver.linkAngVelMap),
+      };
+      if (friction) motion = completeFrictionMotion(mechanism, index, motion);
     }
     return this.analyzeFrame(
       mechanism.joints[index],
@@ -327,7 +351,8 @@ export class ForceSolver {
       mechanism.unit,
       mechanism.timeNum[index] ?? index,
       kinematics,
-      evenest
+      evenest,
+      motion
     );
   }
 
@@ -339,8 +364,34 @@ export class ForceSolver {
     unit: string,
     timeSeconds = 0,
     kinematics?: FrameKinematics,
-    evenest = false
+    evenest = false,
+    motion?: FrictionMotion,
+    frictionLoads?: FrictionLoad[]
   ): ForceAnalysisFrame {
+    if (
+      frictionLoads === undefined &&
+      joints.some((joint) => joint instanceof RealJoint && hasFriction(joint.friction))
+    ) {
+      return analyzeWithFriction(
+        joints,
+        links,
+        this.unitFactors(unit).distanceToM,
+        motion,
+        (loads) =>
+          this.analyzeFrame(
+            joints,
+            links,
+            mode,
+            gravity,
+            unit,
+            timeSeconds,
+            kinematics,
+            evenest,
+            motion,
+            loads
+          )
+      );
+    }
     const every = links.filter(
       (link): link is RealLink | SliderBlock =>
         link instanceof RealLink || link instanceof SliderBlock
@@ -552,6 +603,17 @@ export class ForceSolver {
       }
     }
 
+    for (const load of frictionLoads ?? []) {
+      const rows = bodyRows.get(load.bodyId)!;
+      b[rows.start] -= load.force[0];
+      b[rows.start + 1] -= load.force[1];
+      if (rows.link instanceof RealLink) {
+        const rx = (load.joint.x - rows.link.CoM.x) * units.distanceToM;
+        const ry = (load.joint.y - rows.link.CoM.y) * units.distanceToM;
+        b[rows.start + 2] -= load.torque + rx * load.force[1] - ry * load.force[0];
+      }
+    }
+
     // Statics alone cannot split a load between supports that share a line
     // -- two rails holding one jaw at one height, say -- and the elimination
     // finds no pivot. That is not a dead pose; it is one degree of ambiguity
@@ -658,6 +720,8 @@ export class ForceSolver {
 
   static statusMessage(status: ForceAnalysisStatus): string {
     switch (status) {
+      case 'friction-unresolved':
+        return 'Friction has no unique solution at this pose.';
       case 'singular':
         return 'Force equilibrium is singular at this position.';
       case 'unsupported-topology':

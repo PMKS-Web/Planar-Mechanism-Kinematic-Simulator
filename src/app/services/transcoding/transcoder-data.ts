@@ -4,6 +4,8 @@
  * easy to encode and decode.
  */
 
+import { frictionless, JointFriction } from '../../model/joint-friction';
+
 export enum JOINT_TYPE {
   PRISMATIC,
   REVOLUTE,
@@ -61,7 +63,8 @@ export class JointData {
      * document-wide default. Zero is safe to spend that way because a drive
      * that does not move is not a speed anyone chose -- the panel refuses it.
      */
-    public driveSpeed: number = 0
+    public driveSpeed: number = 0,
+    public friction: JointFriction = frictionless()
   ) {}
 }
 

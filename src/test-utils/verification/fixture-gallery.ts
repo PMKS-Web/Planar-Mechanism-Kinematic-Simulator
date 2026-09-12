@@ -82,6 +82,8 @@ import { ColorService } from '../../app/services/color.service';
 import { urlGeneratorFor } from '../url-encoding';
 import { Link, RealLink } from '../../app/model/link';
 import { MODEL_SCALE } from '../../app/model/render-scale';
+import { RealJoint } from '../../app/model/joint';
+import { FRICTION_GALLERY } from './friction-fixtures';
 
 /**
  * Every mechanism the verification suite asserts on, as something a reviewer
@@ -116,6 +118,7 @@ function scaleBuiltToModelUnits(built: BuiltMechanism): void {
   built.joints.forEach((joint) => {
     joint.x *= MODEL_SCALE;
     joint.y *= MODEL_SCALE;
+    if (joint instanceof RealJoint) joint.friction.radius *= MODEL_SCALE;
   });
   const scaleLink = (link: Link): void => {
     if (!(link instanceof RealLink)) return;
@@ -338,6 +341,7 @@ export interface PublishedSpeed {
 const LIBRARY_RPM = 10;
 
 export const FIXTURE_GALLERY: GalleryEntry[] = [
+  ...FRICTION_GALLERY,
   {
     name: 'Punch press',
     purpose:
