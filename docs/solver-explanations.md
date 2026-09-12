@@ -7,6 +7,17 @@ Open **Kinematic Analysis → How it works** or **Force Analysis → How it work
 The mechanism selector and sample slider use the same machine and pose as the canvas.
 **Graphs** keeps the ordinary plots. Escape closes the full worksheet.
 
+Force analysis opens with the balance law and gravity assumption visible. Mechanism notes,
+definitions, individual convention previews, free bodies, cross products, component equations,
+and the final matrix start collapsed. Open one body or calculation at a time. Open sections
+remain open while changing signs, gravity, force mode, or sample.
+
+**Worksheet Gravity** defaults to the document setting and can include or exclude weight
+for comparison. This recomputes the worksheet's forces, arrows, and matrices while the graphs
+continue using **Settings → Gravity**. Returning to **Use Settings** restores agreement.
+The comparison is shared between panel and dialog and resets with the worksheet preferences.
+It is not saved into a shared mechanism URL.
+
 The TeachingLab four-bar and slider-crank examples in the Mechanism Library are good
 starting points. Move the sample slider to see the constructions and answers change.
 
@@ -41,6 +52,14 @@ Both choices describe the same equations and solution.
 current Newton–Euler inertia terms. Ideal slider blocks have two force rows; welded links
 form one rigid root body. Fixed bodies are supports. Shared-support and singular-system
 notices come from the solver. Gravity acts in negative y when enabled.
+The mode is reactive, including a change made while the full worksheet is open.
+**Acceleration Terms at This Sample** shows the actual `m a_CoM` and `I_CoM α` used in
+the solve. Turning gravity off does not turn inertia off. A zero mass, inertia, or acceleration
+can give a zero inertia term; unavailable solves retain their explicit diagnostic.
+
+Free-body diagram frames depend on geometry with equal arrow clearance in every direction.
+Changing an assumed force/couple sign or switching to solved arrows does not recenter or resize
+the body. Changing the mechanism's sample still changes its physical pose.
 
 The notes' second friction pass is **not implemented**. The worksheet identifies that
 limitation and does not add friction forces or torques to the current solution.
@@ -119,6 +138,8 @@ input motion, or the physical solution. Choices survive scrubbing, switching ana
 sections, and closing/reopening the worksheet. They are isolated per solved mechanism,
 reset when that mechanism is rebuilt/reloaded, and are not saved in a shared URL.
 **Reset Worksheet Conventions** restores all of that mechanism's worksheet defaults.
+The gravity comparison described above is the separate choice that changes the worksheet's
+weight loads; it leaves document settings and graph caches intact.
 
 For force or angular signs, a diagonal sign matrix D gives `A′ = A D` and `x′ = D x`,
 so `A′ x′ = b`. For loop paths, signed body/joint incidences express the chosen basis in
@@ -180,6 +201,10 @@ and phone layout. Its evidence is in `artifacts/worksheet-conventions/`.
 `force-reference.spec.ts` re-solves independent component conventions about every available
 point, independently totals physical moments, checks cross-product typesetting, and tests
 application-point names and the loop dropdown catalog.
+`node e2e/force-worksheet-usability.mjs` checks collapsed defaults, immediate mode changes,
+gravity comparisons, inertia retention, graph isolation, unchanged SVG geometry on force/couple
+reversals, and phone layout. Its screenshots and arrow-change filmstrip are under
+`artifacts/force-worksheet-usability/`.
 
 With the dev server running, `node e2e/solver-explanation.mjs` checks TeachingLab worksheets,
 multi-machine selection, the constraint route, scrubbing, dismissal, reduced motion, and

@@ -58,6 +58,7 @@ try {
   const before = await snapshot(dialog);
   await dialog.locator('.conventions > summary').click();
   const joint = dialog.locator('[data-force-choice="Joint B"]');
+  await joint.locator(':scope > summary').click();
   await joint.scrollIntoViewIfNeeded();
   const framesDir = `${out}/sign-change`;
   const film = filmstrip(page, framesDir, await joint.boundingBox());
@@ -81,6 +82,7 @@ try {
   assert.deepEqual((await snapshot(dialog)).force.x, flipped.force.x);
   await dialog.getByRole('button', { name: 'Free Bodies', exact: true }).click();
   const body = dialog.locator('.bodyCard').first();
+  await body.locator(':scope > summary').click();
   const reference = body.getByRole('combobox', { name: 'Moment Reference Point for ABH' });
   await reference.selectOption({ label: 'H' });
   assert.equal((await snapshot(dialog)).references[0].id, 'H');
@@ -104,6 +106,7 @@ try {
   dialog = await open('Rocker with an offset load', true);
   await dialog.getByRole('button', { name: 'Free Bodies', exact: true }).click();
   const loadedBody = dialog.locator('.bodyCard[data-body="CDL"]');
+  await loadedBody.locator(':scope > summary').click();
   await loadedBody.getByRole('combobox').selectOption({ label: 'P1 (Applied Force)' });
   const applied = await snapshot(dialog);
   assert(applied.references.some((p) => p.id === 'P1'));

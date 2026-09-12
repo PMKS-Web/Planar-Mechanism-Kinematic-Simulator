@@ -78,10 +78,47 @@ function displayKinematicSystem(system: LinearSystemExplanation | undefined, len
 
 @Injectable({ providedIn: 'root' })
 export class SolverExplanationService {
-  forceAt(mechanism: Mechanism, step: number, mode: ForceAnalysisMode) {
-    const plotted = mechanism.getForceAnalysis(mode).frames[step];
+  private readonly gravityComparisons = new WeakMap<
+    Mechanism,
+    Map<string, { input: Mechanism; series: ReturnType<typeof ForceSolver.analyzeMechanism> }>
+  >();
+
+  forceAt(
+    mechanism: Mechanism,
+    step: number,
+    mode: ForceAnalysisMode,
+    gravity = mechanism.gravity
+  ) {
     mechanism.prepareSolvers();
-    const frame = ForceSolver.explainAt(mechanism, mode, step, plotted?.sharedSupport ?? false);
+    let input = mechanism;
+    let series;
+    if (gravity === mechanism.gravity) series = mechanism.getForceAnalysis(mode);
+    else {
+      let comparisons = this.gravityComparisons.get(mechanism);
+      if (!comparisons) {
+        comparisons = new Map();
+        this.gravityComparisons.set(mechanism, comparisons);
+      }
+      const key = `${mode}|${gravity}|${mechanism.unit}`;
+      let comparison = comparisons.get(key);
+      if (!comparison) {
+        // Inherit the immutable solved frames; shadow only gravity without invoking its setter.
+        // The production mechanism and its graph caches keep their original assumptions.
+        const alternate: Mechanism = Object.create(mechanism);
+        Object.defineProperty(alternate, 'gravity', { value: gravity });
+        comparison = { input: alternate, series: ForceSolver.analyzeMechanism(alternate, mode) };
+        comparisons.set(key, comparison);
+      }
+      input = comparison.input;
+      series = comparison.series;
+    }
+    mechanism.prepareSolvers();
+    const frame = ForceSolver.explainAt(
+      input,
+      mode,
+      step,
+      series.frames[step]?.sharedSupport ?? false
+    );
     return {
       frame,
       system:

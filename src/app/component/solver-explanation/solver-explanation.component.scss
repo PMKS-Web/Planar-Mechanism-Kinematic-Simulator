@@ -271,6 +271,22 @@ summary {
   padding-block: var(--card-gap);
   border-bottom: 1px solid var(--border-rule);
 }
+.bodyCard > summary {
+  padding-block: 10px;
+  color: var(--text-strong);
+  font-size: 16px;
+  font-weight: 600;
+}
+.forceConvention > summary,
+.bodyCard > summary {
+  cursor: pointer;
+}
+.forceAssumptions {
+  padding-block: var(--card-gap);
+}
+.forceAssumptions strong {
+  color: var(--text-strong);
+}
 .forcePreviewRow {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));

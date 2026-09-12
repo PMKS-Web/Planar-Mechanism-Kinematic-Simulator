@@ -13,6 +13,7 @@ interface Preferences {
   angular: WorksheetSign;
   angularByBody: Record<string, WorksheetSign>;
   momentPoints: Record<string, string>;
+  gravity?: boolean;
   loops: WorksheetLoop[];
 }
 
@@ -51,6 +52,10 @@ export class WorksheetPreferencesService {
   }
   setBodyAngular(mechanism: Mechanism, body: string, sign: WorksheetSign) {
     this.get(mechanism).angularByBody[body] = sign;
+    this.revision.update((n) => n + 1);
+  }
+  setGravity(mechanism: Mechanism, gravity: boolean | undefined) {
+    this.get(mechanism).gravity = gravity;
     this.revision.update((n) => n + 1);
   }
   setLoop(mechanism: Mechanism, index: number, path: string) {

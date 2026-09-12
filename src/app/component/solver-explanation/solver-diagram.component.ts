@@ -25,6 +25,8 @@ export interface DiagramCircle {
   color: string;
 }
 export interface Diagram {
+  /** Fixed geometry keeps arrow sign changes from moving or resizing the body. */
+  framingPoints?: DiagramPoint[];
   momentLabel?: string;
   note?: string;
   points: DiagramPoint[];
@@ -192,7 +194,7 @@ export class SolverDiagramComponent {
     return `M${x - 10} ${y + 12}L${x} ${y}L${x + 10} ${y + 12}Z M${x - 15} ${y + 13}h30 m-25 0l-4 5 m10-5l-4 5 m10-5l-4 5 m10-5l-4 5`;
   }
   get bounds() {
-    const all = [
+    const all = this.diagram().framingPoints ?? [
       ...this.diagram().points,
       ...this.diagram().lines.flatMap((line) => [line.from, line.to]),
       ...(this.diagram().circles ?? []).flatMap((circle) => [

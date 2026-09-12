@@ -89,17 +89,20 @@ try {
     };
   });
   assert.equal(report.force.trace, report.force.graph);
-  for (let i = 0; i < 3; i++)
+  for (let i = 0; i < 3; i++) {
+    await dialog.locator('.bodyCard').nth(i).locator(':scope > summary').click();
     await dialog
       .locator('.bodyCard')
       .nth(i)
       .screenshot({ path: `${out}/free-body-${i + 1}.png` });
+  }
   await dialog.getByRole('button', { name: 'Solved Directions', exact: true }).click();
   await dialog
     .locator('.bodyCard')
     .first()
     .screenshot({ path: `${out}/free-body-solved.png` });
   await dialog.getByRole('button', { name: 'System', exact: true }).click();
+  await dialog.locator('app-solver-matrix > details > summary').click();
   await cleanMath();
   await dialog.locator('app-solver-matrix').screenshot({ path: `${out}/force-system.png` });
   await dialog.getByRole('button', { name: 'Close Worksheet', exact: true }).click();

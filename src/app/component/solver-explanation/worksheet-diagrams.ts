@@ -131,6 +131,17 @@ export function freeBodyDiagram(
   } else points.push(center as (typeof points)[number]);
   return {
     points,
+    // Reserve room in both directions, even when a force is zero or reversed.
+    framingPoints: [
+      ...body.points,
+      center,
+      ...body.loads
+        .filter((l) => l.kind === 'applied')
+        .map((l) => ({ x: l.point[0], y: l.point[1] })),
+    ].flatMap((p) => [
+      { x: p.x - span, y: p.y - span },
+      { x: p.x + span, y: p.y + span },
+    ]),
     momentLabel: showReference && body.rowCount === 3 ? body.reference?.label : undefined,
     lines,
     outlines: outline.length > 2 ? [outline] : [],

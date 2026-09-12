@@ -1,6 +1,7 @@
 import { Component, inject, input, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { SegmentedComponent } from '../BLOCKS/segmented/segmented.component';
 import { ButtonComponent } from '../BLOCKS/button/button.component';
@@ -42,6 +43,7 @@ export class SolverExplanationComponent {
   readonly force = input(false);
   protected readonly mechanism = inject(MechanismService);
   protected readonly settings = inject(SettingsService);
+  protected readonly forceMode = toSignal(this.settings.forceAnalysisMode, { requireSync: true });
   private readonly explain = inject(SolverExplanationService);
   protected readonly preferences = inject(WorksheetPreferencesService);
   private readonly dialogs = inject(MatDialog);
@@ -63,6 +65,8 @@ export class SolverExplanationComponent {
   protected readonly vectorDefinitions = String.raw`\vec F=\begin{bmatrix}F_x\\F_y\\0\end{bmatrix},\quad\vec M=\begin{bmatrix}0\\0\\M_z\end{bmatrix}`;
   protected readonly motionDefinitions = String.raw`\vec\omega=\begin{bmatrix}0\\0\\\omega\end{bmatrix},\quad\vec\alpha=\begin{bmatrix}0\\0\\\alpha\end{bmatrix}`;
   protected readonly crossProduct = String.raw`(\vec r\times\vec F)_z=r_x F_y-r_y F_x`;
+  protected readonly dynamicBalance = String.raw`\sum\vec F=m\vec a_{\mathrm{CoM}},\qquad\sum M_{\mathrm{CoM},z}=I_{\mathrm{CoM}}\alpha`;
+  protected readonly staticBalance = String.raw`\sum\vec F=\vec0,\qquad\sum M_z=0`;
   protected readonly slidingLaw = String.raw`\vec v=\vec\omega\times\vec r+\dot s\,\hat u`;
   protected readonly slidingAcceleration = String.raw`\vec a=\vec\alpha\times\vec r-\omega^2\vec r+2\vec\omega\times(\dot s\,\hat u)+\ddot s\,\hat u`;
   protected readonly constraintLaw = String.raw`F(q,t)=0,\quad J\dot q=-F_t,\quad J\ddot q=-\dot J\dot q-\dot F_t`;
@@ -98,23 +102,24 @@ export class SolverExplanationComponent {
   }
   protected get view() {
     if (!this.valid) return undefined;
-    const key = `${this.mechanism.poseRevision}|${this.step}|${this.isForce()}|${this.settings.forceAnalysisMode.value}|${this.assumed()}|${this.preferences.revision()}`;
+    const key = `${this.mechanism.poseRevision}|${this.step}|${this.isForce()}|${this.forceMode()}|${this.assumed()}|${this.preferences.revision()}`;
     if (this.cache?.mechanism !== this.solved || this.cache.key !== key)
       this.cache = { mechanism: this.solved, key, value: this.build(this.solved, this.step) };
     return this.cache.value;
   }
   private build(mechanism: Mechanism, step: number) {
     const preferences = this.preferences.get(mechanism);
+    const gravity = preferences.gravity ?? mechanism.gravity;
     const joints = mechanism.joints[step];
     const force = this.isForce()
-      ? this.explain.forceAt(mechanism, step, this.settings.forceAnalysisMode.value)
+      ? this.explain.forceAt(mechanism, step, this.forceMode(), gravity)
       : undefined;
     const forceWork =
       force?.frame.explanation && force.system
         ? forceWorksheet(
             force.frame.explanation,
             force.system,
-            this.settings.forceAnalysisMode.value === 'dynamic',
+            this.forceMode() === 'dynamic',
             preferences.forces,
             preferences.momentPoints,
             mechanism.unit
@@ -258,6 +263,13 @@ export class SolverExplanationComponent {
       } as Diagram,
     }));
     return {
+      gravity,
+      gravityChoice: preferences.gravity === undefined ? 0 : preferences.gravity ? 1 : 2,
+      gravityOptions: [
+        `Use Settings (${mechanism.gravity ? 'On' : 'Off'})`,
+        'Include Gravity',
+        'Exclude Gravity',
+      ],
       forceChoices:
         forceWork?.choices.map((choice) => ({
           ...choice,
@@ -316,6 +328,8 @@ export class SolverExplanationComponent {
       bodies:
         forceWork?.bodies.map((body) => ({
           ...body,
+          inertiaForce: `m${vector('a', '\\mathrm{CoM}')}=${column(body.inertia.slice(0, 2))}\\;\\mathrm N`,
+          inertiaMoment: `I_{\\mathrm{CoM}}\\alpha=${texNumber((force!.frame.explanation!.bodies.find((b) => b.id === body.id)!.inertia[2] ?? 0) / MODEL_SCALE)}\\;\\mathrm{N\\,m}`,
           referenceLabels: body.referenceOptions.map((p) =>
             p.id === '@CoM' ? 'CoM (Center of Mass)' : p.label
           ),

@@ -53,7 +53,7 @@
     @if (isForce()) {
       <segmented-block
         [options]="forceOptions"
-        [selected]="settings.forceAnalysisMode.value === 'dynamic' ? 1 : 0"
+        [selected]="forceMode() === 'dynamic' ? 1 : 0"
         (selectedChange)="settings.forceAnalysisMode.next($event === 1 ? 'dynamic' : 'static')"
       ></segmented-block>
     }
@@ -66,53 +66,79 @@
   </div>
   @if (view; as data) {
     <div class="worksheetContent">
-      <div class="overview">
-        <figure>
-          <app-solver-diagram
-            [diagram]="data.diagram"
-            label="Mechanism sketch with joint labels"
-          ></app-solver-diagram>
-          <figcaption>Mechanism sketch · sample {{ step }}</figcaption>
-        </figure>
-        <div class="assumptions">
-          <h3>Knowns & Assumptions</h3>
-          <p>
-            Motion lies in the x–y plane. Positive x points right, positive y points up, and the
-            positive z axis points out of the page. Counterclockwise rotation follows positive z.
+      @if (isForce()) {
+        <div class="forceAssumptions">
+          <strong
+            >{{ forceMode() === 'dynamic' ? 'In-motion balance' : 'Static equilibrium' }} · Gravity
+            {{ data.gravity ? 'on (−y)' : 'off' }}</strong
+          >
+          <app-solver-math
+            [equation]="forceMode() === 'dynamic' ? dynamicBalance : staticBalance"
+          ></app-solver-math>
+          <segmented-block
+            [dropdown]="true"
+            label="Worksheet Gravity"
+            [options]="data.gravityOptions"
+            [selected]="data.gravityChoice"
+            (selectedChange)="
+              preferences.setGravity(solved, $event === 0 ? undefined : $event === 1)
+            "
+          ></segmented-block>
+          <p class="caption">
+            Compare weight assumptions here. Graphs use Settings → Gravity ({{
+              solved.gravity ? 'on' : 'off'
+            }}).
           </p>
-          @if (isForce()) {
-            <p>
-              <strong
-                >{{
-                  settings.forceAnalysisMode.value === 'dynamic'
-                    ? 'In-motion balance'
-                    : 'Static equilibrium'
-                }}.</strong
-              >
-              {{
-                settings.forceAnalysisMode.value === 'dynamic'
-                  ? 'Mass and inertia terms use the motion at this sample.'
-                  : 'Acceleration terms are zero for this force calculation.'
-              }}
-            </p>
-            <p>
-              <strong>Gravity:</strong>
-              {{ solved.gravity ? 'included in the negative y direction' : 'off' }}.
-              <strong>Joint friction:</strong> not modeled.
-            </p>
-          } @else {
-            <p>
-              Grounded joints have known positions and zero velocity and acceleration. Input motion
-              supplies the first moving boundary.
-            </p>
-            @for (ground of data.grounds; track ground.id) {
-              <app-solver-math
-                [equation]="section() === 0 ? ground.equation : ground.zero"
-              ></app-solver-math>
-            }
-          }
         </div>
-      </div>
+      }
+      <details class="numericDetails overviewDetails" [open]="!isForce()">
+        <summary>Mechanism & Assumptions</summary>
+        <div class="overview">
+          <figure>
+            <app-solver-diagram
+              [diagram]="data.diagram"
+              label="Mechanism sketch with joint labels"
+            ></app-solver-diagram>
+            <figcaption>Mechanism sketch · sample {{ step }}</figcaption>
+          </figure>
+          <div class="assumptions">
+            <h3>Knowns & Assumptions</h3>
+            <p>
+              Motion lies in the x–y plane. Positive x points right, positive y points up, and the
+              positive z axis points out of the page. Counterclockwise rotation follows positive z.
+            </p>
+            @if (isForce()) {
+              <p>
+                <strong
+                  >{{
+                    forceMode() === 'dynamic' ? 'In-motion balance' : 'Static equilibrium'
+                  }}.</strong
+                >
+                {{
+                  forceMode() === 'dynamic'
+                    ? 'Mass and inertia terms use the motion at this sample.'
+                    : 'Acceleration terms are zero for this force calculation.'
+                }}
+              </p>
+              <p>
+                <strong>Gravity:</strong>
+                {{ data.gravity ? 'included in the negative y direction' : 'off' }}.
+                <strong>Joint friction:</strong> not modeled.
+              </p>
+            } @else {
+              <p>
+                Grounded joints have known positions and zero velocity and acceleration. Input
+                motion supplies the first moving boundary.
+              </p>
+              @for (ground of data.grounds; track ground.id) {
+                <app-solver-math
+                  [equation]="section() === 0 ? ground.equation : ground.zero"
+                ></app-solver-math>
+              }
+            }
+          </div>
+        </div>
+      </details>
       <details class="numericDetails conventions">
         <summary>Choose Your Equation Conventions</summary>
         <p>
@@ -126,8 +152,8 @@
             reaction on the other body points the opposite way.
           </p>
           @for (choice of data.forceChoices; track choice.key) {
-            <section class="forceConvention" [attr.data-force-choice]="choice.label">
-              <h4>{{ choice.label }}</h4>
+            <details class="forceConvention" [attr.data-force-choice]="choice.label">
+              <summary>{{ choice.label }}</summary>
               <div class="forcePreviewRow">
                 @for (preview of choice.previews; track preview.name) {
                   <figure>
@@ -143,7 +169,7 @@
                 [choices]="choice.axes"
                 (chosen)="preferences.setForce(solved, $event.key, $event.index === 0 ? 1 : -1)"
               ></app-worksheet-choices>
-            </section>
+            </details>
           }
         } @else {
           <app-worksheet-choices
@@ -194,51 +220,55 @@
           </p>
         }
         @if (section() === 0) {
-          <h3 class="chapterTitle">1 · Define the Vectors</h3>
-          <div class="definitionGrid">
-            <div>
-              <h4>Forces & Moments</h4>
-              <app-solver-math [equation]="vectorDefinitions"></app-solver-math>
-              <p>Planar forces have x and y components. A pure couple has only a z component.</p>
-            </div>
-            <div>
-              <h4>Angular Motion</h4>
-              <app-solver-math [equation]="motionDefinitions"></app-solver-math>
-              <p>CoM denotes the center of mass of the body currently isolated.</p>
-            </div>
-          </div>
-          <app-solver-math [equation]="crossProduct"></app-solver-math>
-          <p>
-            A moment arm runs
-            <strong>from the selected moment reference to the force application point</strong>.
-            Weight acts at CoM, so its moment about CoM is zero. Applied forces are labeled P1, P2,
-            and so on at their existing application points.
-          </p>
-          <h3 class="chapterTitle">2 · Name the Unknowns</h3>
-          <p>
-            Aₓ and Aᵧ are the two components of the force at A. The same reaction appears with
-            opposite signs on its two connected bodies.
-          </p>
-          <div class="symbolList">
-            @for (definition of data.forceWork?.definitions; track $index) {
+          <details class="numericDetails definitionSection">
+            <summary>1 · Define the Vectors</summary>
+            <div class="definitionGrid">
               <div>
-                <app-solver-math [equation]="definition.symbol"></app-solver-math
-                ><span>{{ definition.meaning }}</span>
+                <h4>Forces & Moments</h4>
+                <app-solver-math [equation]="vectorDefinitions"></app-solver-math>
+                <p>Planar forces have x and y components. A pure couple has only a z component.</p>
               </div>
-            }
-          </div>
-          <aside class="referenceNote">
-            <h4>About the Friction Pass in the Examples</h4>
+              <div>
+                <h4>Angular Motion</h4>
+                <app-solver-math [equation]="motionDefinitions"></app-solver-math>
+                <p>CoM denotes the center of mass of the body currently isolated.</p>
+              </div>
+            </div>
+            <app-solver-math [equation]="crossProduct"></app-solver-math>
+            <p>
+              A moment arm runs
+              <strong>from the selected moment reference to the force application point</strong>.
+              Weight acts at CoM, so its moment about CoM is zero. Applied forces are labeled P1,
+              P2, and so on at their existing application points.
+            </p>
+          </details>
+          <details class="numericDetails definitionSection">
+            <summary>2 · Name the Unknowns</summary>
+            <p>
+              Aₓ and Aᵧ are the two components of the force at A. The same reaction appears with
+              opposite signs on its two connected bodies.
+            </p>
+            <div class="symbolList">
+              @for (definition of data.forceWork?.definitions; track $index) {
+                <div>
+                  <app-solver-math [equation]="definition.symbol"></app-solver-math
+                  ><span>{{ definition.meaning }}</span>
+                </div>
+              }
+            </div>
+          </details>
+          <details class="numericDetails referenceNote">
+            <summary>About the Friction Pass in the Examples</summary>
             <p>
               The supplied notes first solve without friction, then calculate friction forces and
               joint torques for a second pass. PMKS currently solves the frictionless system. Those
               additional forces and torques are not included in these equations or results.
             </p>
             <p>
-              The gravity assumption comes from this mechanism's settings; an example's out-of-plane
-              gravity assumption is not applied automatically.
+              Worksheet gravity defaults to Settings. Use Worksheet Gravity to compare weight
+              assumptions.
             </p>
-          </aside>
+          </details>
         } @else if (section() === 1) {
           <h3 class="chapterTitle">Free-Body Equations · Without Friction</h3>
           <segmented-block
@@ -255,12 +285,12 @@
             Arrow lengths are schematic.
           </p>
           @for (body of data.bodies; track body.id; let i = $index) {
-            <article class="bodyCard" [attr.data-body]="body.id">
-              <h3>
+            <details class="bodyCard" [attr.data-body]="body.id">
+              <summary>
                 <span class="stepNumber">{{ i + 1 }}</span
                 >{{ body.name }}
                 <small>{{ body.rowCount === 3 ? 'Rigid body' : 'Slider block' }}</small>
-              </h3>
+              </summary>
               @if (body.rowCount === 3) {
                 <segmented-block
                   [dropdown]="true"
@@ -302,20 +332,31 @@
                 <div class="derivation">
                   <h4>Vector Force Balance</h4>
                   <app-solver-math [equation]="body.forceVector"></app-solver-math>
+                  @if (forceMode() === 'dynamic') {
+                    <details class="numericDetails inertiaTerms">
+                      <summary>Acceleration Terms at This Sample</summary>
+                      <app-solver-math [equation]="body.inertiaForce"></app-solver-math>
+                      @if (body.rowCount === 3) {
+                        <app-solver-math [equation]="body.inertiaMoment"></app-solver-math>
+                      }
+                      <p class="caption">
+                        These are the inertia terms used in this solve. A zero term can result from
+                        zero mass, inertia, or acceleration.
+                      </p>
+                    </details>
+                  }
                   @if (body.rowCount === 3) {
                     <h4>Vector Moment Balance About {{ body.reference.label }}</h4>
                     <app-solver-math [equation]="body.momentVector"></app-solver-math>
-                    @if (
-                      body.reference.id !== '@CoM' && settings.forceAnalysisMode.value === 'dynamic'
-                    ) {
+                    @if (body.reference.id !== '@CoM' && forceMode() === 'dynamic') {
                       <p>
                         The reference point may move. The balance includes the moment of m a at CoM
                         as well as I at CoM times angular acceleration.
                       </p>
                     }
                     <h4>Expand the Cross Products</h4>
-                    @for (product of body.crossProducts; track $index; let first = $first) {
-                      <details class="numericDetails crossProduct" [open]="first">
+                    @for (product of body.crossProducts; track $index) {
+                      <details class="numericDetails crossProduct">
                         <summary>Force at {{ product.point }}</summary>
                         <app-solver-math [equation]="product.definition"></app-solver-math>
                         <app-solver-math [equation]="product.determinant"></app-solver-math>
@@ -337,13 +378,15 @@
                       moment row.
                     </p>
                   }
-                  <h4>Resolve Into Components</h4>
-                  @for (equation of body.components; track $index) {
-                    <div class="equationStep">
-                      <span class="axisLabel">{{ equation.label }}</span
-                      ><app-solver-math [equation]="equation.symbolic"></app-solver-math>
-                    </div>
-                  }
+                  <details class="numericDetails componentBalances">
+                    <summary>Resolve Into Components</summary>
+                    @for (equation of body.components; track $index) {
+                      <div class="equationStep">
+                        <span class="axisLabel">{{ equation.label }}</span
+                        ><app-solver-math [equation]="equation.symbolic"></app-solver-math>
+                      </div>
+                    }
+                  </details>
                 </div>
               </div>
               <details class="numericDetails">
@@ -372,7 +415,7 @@
                   ><app-solver-math [equation]="equation.substitution"></app-solver-math>
                 }
               </details>
-            </article>
+            </details>
           }
           @if (data.force?.frame?.explanation?.fixedBodies?.length) {
             <p class="notice">
@@ -383,15 +426,15 @@
         } @else {
           <h3 class="chapterTitle">Assemble the System & Solve</h3>
           <p>
-            Each rigid body contributes three rows: x force, y force, and z moment about G. Each
-            ideal slider block contributes two. Collect the unknown reactions and input effort into
-            x and move known terms to b.
+            Each rigid body contributes three rows: x force, y force, and z moment about its chosen
+            reference. Each ideal slider block contributes two. Collect the unknown reactions and
+            input effort into x and move known terms to b.
           </p>
           @if (data.forceWork?.system; as system) {
             <app-solver-matrix
               [system]="system"
               title="Force matrix and solution"
-              [expanded]="true"
+              [expanded]="false"
             ></app-solver-matrix>
           }
         }

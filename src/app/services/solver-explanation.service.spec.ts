@@ -25,6 +25,35 @@ function balances(system: LinearSystemExplanation) {
 describe('SolverExplanationService: explanations of the actual solve', () => {
   const service = new SolverExplanationService();
 
+  it('compares gravity without changing motion, document settings, or graph caches', () => {
+    const mechanism = buildMechanismFixture(fixturePayload(teachingLabFourBarFixture())).mechanism;
+    const originalGravity = mechanism.gravity;
+    const graph = mechanism.getForceAnalysis('dynamic');
+    const withGravity = service.forceAt(mechanism, 30, 'dynamic', true);
+    const withoutGravity = service.forceAt(mechanism, 30, 'dynamic', false);
+    expect(withGravity.frame.status).toBe('ok');
+    expect(withoutGravity.frame.status).toBe('ok');
+    balances(withoutGravity.system!);
+    const bodies = withoutGravity.frame.explanation!.bodies;
+    expect(bodies.flatMap((b) => b.loads).some((l) => l.kind === 'weight')).toBe(false);
+    expect(bodies.map((b) => b.inertia)).toEqual(
+      withGravity.frame.explanation!.bodies.map((b) => b.inertia)
+    );
+    expect(bodies.some((b) => b.inertia.some((v) => Math.abs(v) > 1e-6))).toBe(true);
+    expect(withoutGravity.system!.x).not.toEqual(withGravity.system!.x);
+    expect(mechanism.gravity).toBe(originalGravity);
+    expect(mechanism.getForceAnalysis('dynamic')).toBe(graph);
+    expect(service.forceAt(mechanism, 30, 'dynamic', true).system!.x).toEqual(
+      withGravity.system!.x
+    );
+    const resting = service.forceAt(mechanism, 30, 'static', false);
+    expect(resting.frame.status).toBe('ok');
+    expect(resting.system!.x.every((v) => Math.abs(v) < 1e-6)).toBe(true);
+    expect(resting.frame.explanation!.bodies.every((b) => b.inertia.every((v) => v === 0))).toBe(
+      true
+    );
+  });
+
   for (const mode of ['static', 'dynamic'] as const) {
     it(`matches the cached ${mode} force solution and balances every drawn load`, () => {
       const mechanism = buildMechanismFixture(
