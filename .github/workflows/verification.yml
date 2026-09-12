@@ -47,5 +47,8 @@ jobs:
       - name: Build production bundle
         run: npm run build
 
+      - name: Build the component gallery
+        run: npm run build-storybook
+
       - name: Check patch whitespace
         run: git diff --check

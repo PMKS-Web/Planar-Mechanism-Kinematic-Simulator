@@ -3,13 +3,19 @@
     "allow": [
       "Bash(npm test *)",
       "Bash(npm run build)",
-      "Bash(npm run format:check)",
+      "Bash(npm run build-storybook)",
+      "Bash(npm run lint)",
+      "Bash(npm run lint:format)",
+      "Bash(npm run lint:styles)",
       "Bash(npm run fixture-urls)",
       "Bash(npm run template-payloads)",
       "Bash(npx prettier --check *)",
       "Bash(npx prettier --list-different *)",
+      "Bash(npx eslint *)",
+      "Bash(npx stylelint *)",
       "Bash(node --check *)",
       "Bash(node e2e/*)",
+      "Bash(node .storybook/tools/*)",
       "Bash(git diff --check *)"
     ]
   }
