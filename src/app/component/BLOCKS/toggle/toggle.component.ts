@@ -5,6 +5,7 @@ import { MatTooltip } from '@angular/material/tooltip';
 import { MatFormField } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
+import { FieldOverlay } from '../field-overlay';
 
 @Component({
   selector: 'toggle-block',
@@ -36,6 +37,15 @@ export class ToggleComponent {
    * optional number field this block can carry, not about the switch.
    */
   readonly disabled = input<boolean>(false);
+  /**
+   * Sized to sit on a subtitle's line rather than on a panel row of its own:
+   * a smaller label, a smaller help mark, and the switch scaled to the line.
+   *
+   * The analysis panel's "compare with before the drag" switch is the one of
+   * these. It used to get this by naming `#toggle-block`'s insides from its
+   * own stylesheet.
+   */
+  readonly compact = input<boolean>(false);
 
   readonly addInput = input<boolean>(false);
   readonly _formControlForInput = input<string | undefined>(undefined);
@@ -55,24 +65,24 @@ export class ToggleComponent {
    */
   readonly fieldEntry = output<boolean>();
 
-  private mouseOver = false;
-  private focused = false;
-  private showing = false;
+  /**
+   * Shared with the other three field blocks. This one used to emit only on a
+   * change, which is the bug `FieldOverlay` describes: after a committed edit
+   * the canvas has dropped the overlay, and pointing at the same field again
+   * said nothing.
+   */
+  private readonly overlay = new FieldOverlay<boolean>(
+    (value) => this.fieldEntry.emit(value),
+    () => true,
+    () => false,
+    () => !this.disabled()
+  );
 
   protected setMouseOver(over: boolean): void {
-    this.mouseOver = over;
-    this.updateOverlay();
+    this.overlay.hover(over);
   }
 
   protected setFocused(focused: boolean): void {
-    this.focused = focused;
-    this.updateOverlay();
-  }
-
-  private updateOverlay(): void {
-    const wants = this.mouseOver || this.focused;
-    if (wants === this.showing) return;
-    this.showing = wants;
-    this.fieldEntry.emit(wants);
+    this.overlay.focus(focused);
   }
 }

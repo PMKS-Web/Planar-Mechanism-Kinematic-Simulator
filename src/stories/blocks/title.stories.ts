@@ -5,7 +5,7 @@ import { inPanel } from '../support/frame';
 /**
  * `title-block`: a card's heading, with an optional description line and an
  * optional icon button on the right. It shares its inputs with
- * `subtitle-block`, which differs only in type size; see the Reuse backlog.
+ * `subtitle-block`, which is this same block at its smaller level.
  */
 const meta: Meta = {
   title: 'Structure/Title',

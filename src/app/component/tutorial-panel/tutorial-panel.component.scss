@@ -42,41 +42,13 @@
     overflow: visible;
   }
 
-  .closeCard {
+  // Only where it goes; what it looks like is `close-button`'s business now.
+  // The `.flush` variant that used to live here -- static, 28px, for the
+  // completion card -- had no call site left and went with the rest.
+  .closeCard .closeButton {
     position: absolute;
     top: 8px;
     right: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    border: none;
-    border-radius: 50%;
-    background: transparent;
-    color: var(--text-secondary);
-    cursor: pointer;
-
-    &:hover {
-      background: var(--hover-wash);
-    }
-
-    // In the completion card it shares a line with the title rather than
-    // floating over it, so it gives up its corner.
-    &.flush {
-      position: static;
-      flex: 0 0 auto;
-      width: 28px;
-      height: 28px;
-    }
-
-    mat-icon {
-      font-size: 20px;
-      width: 20px;
-      height: 20px;
-      line-height: 20px;
-    }
   }
 
   .cardTitle {
@@ -321,31 +293,6 @@
     align-items: flex-start;
     gap: 9px;
     padding: 10px 11px;
-  }
-
-  .chip {
-    display: inline-flex;
-    flex: 0 0 auto;
-    align-items: center;
-    height: 20px;
-    padding: 0 8px;
-    border-radius: 10px;
-    background: var(--surface-chip);
-    color: var(--text-secondary);
-    font-size: 12px;
-    white-space: nowrap;
-
-    // Quoted from the mode chip, color included — same three states as the
-    // top strip and the analysis setup drawers.
-    &.blocker {
-      background: var(--refusal-bg);
-      color: var(--refusal-text);
-    }
-
-    &.ok {
-      background: var(--success-bg);
-      color: var(--success-text);
-    }
   }
 
   .cardRule {

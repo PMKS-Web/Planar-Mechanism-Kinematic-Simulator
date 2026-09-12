@@ -235,7 +235,7 @@
   }
 
   .topStrip.fit0 {
-    .tabButton .chip {
+    .tabButton chip-block {
       display: none;
     }
 
@@ -282,49 +282,11 @@
     margin: 0 8px;
   }
 
-  // A label inside the mode button, not a control: no cursor of its own and no
-  // hover of its own, because the whole tab is one target and a chip that lit
-  // up under the pointer would read as a second thing to press.
-  //
-  // It paints above the sliding highlight by sitting inside `.tabButton`, which
-  // is positioned; the highlight is absolutely positioned, opaque, and drawn
-  // before the tabs, so a static element beside it would go underneath.
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    height: 20px;
-    padding: 0 8px;
-    border-radius: 10px;
-    background: var(--surface-chip);
-    color: var(--text-secondary);
-    font-size: 12px;
-    font-weight: 400;
-    white-space: nowrap;
-
-    // The three states, spelled the same here as in the analysis setup drawers:
-    // red stops the analysis, amber lets it run with something worth reading,
-    // green has nothing to say. Force analysis asks for a fourth -- see
-    // `statusOf` -- and it is the plain chip above, stated but not colored.
-    &.neutral {
-      background: var(--surface-chip);
-      color: var(--text-secondary);
-    }
-
-    &.blocker {
-      background: var(--refusal-bg);
-      color: var(--refusal-text);
-    }
-
-    &.warning {
-      background: var(--warning-bg);
-      color: var(--warning-text);
-    }
-
-    &.ok {
-      background: var(--success-bg);
-      color: var(--success-text);
-    }
-  }
+  // The chip is `chip-block`; what is left here is the one thing that is this
+  // strip's business and not the chip's -- that it paints above the sliding
+  // highlight. The highlight is absolutely positioned, opaque, and drawn
+  // before the tabs, so the chip rides inside `.tabButton`, which is
+  // positioned, rather than sitting beside it and going underneath.
 
   .iconButton {
     display: flex;

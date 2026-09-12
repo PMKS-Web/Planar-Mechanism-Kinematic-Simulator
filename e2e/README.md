@@ -288,6 +288,20 @@ Not suites — import them from one.
   nothing outside the tab card, no sideways scroll, no flicker between label levels.
 - `right-drawer.mjs` — the right drawer's width, left edge and bottom gap against the view
   controls, with the tutorial pinned and on a short window.
+- `reuse-parity.mjs` — the same panel, drawn by two servers, compared pixel for pixel. Written for
+  the reuse backlog, where every edit replaces a hand-rolled copy of a block with the block and is
+  supposed to change nothing a reader can see. Needs **two** dev servers: `PMKS_BASE_URL` serves
+  the change and `PMKS_PARITY_BASE_URL` the branch's base. A mismatch saves the two shots and a
+  red-on-grey diff mask under `artifacts/reuse-parity/`, and is re-shot once before it is believed.
+  `--only <substring>` runs a subset. Its scenes live in `reuse-parity-scenes.mjs`.
+- `reuse-parity-scenes.mjs` — the scene list `reuse-parity.mjs` photographs: which panel, which
+  mode, and the clicks that reach it. Not a check on its own.
+- `field-overlay-reassert.mjs` — pointing at a number in the Edit panel draws it on the grid, and
+  it comes back when you point at the same field again after a committed edit. That is the one rule
+  in `BLOCKS/field-overlay.ts` that is not obvious: the canvas drops its overlays when the selected
+  object announces itself, and a block that reports only its own *changes* has nothing to say while
+  the pointer has not moved. Covers `hold-field-block`; the file says why the other three are not
+  reachable from here.
 - `reduced-motion.mjs` — the app with `prefers-reduced-motion` on, which `src/styles.scss`
   answers for every stylesheet at once: the boot splash still leaves, the phone sheet still opens
   and shuts by its handle, and no page error.

@@ -26,10 +26,10 @@
         class="customInputForm"
         formGroupName="{{ formSubGroup }}"
         (click)="field1.select()"
-        (mouseenter)="isField1MouseOver = true; updateOverlay()"
-        (mouseleave)="isField1MouseOver = false; updateOverlay()"
-        (focusin)="isField1Focused = true; updateOverlay()"
-        (focusout)="isField1Focused = false; updateOverlay()"
+        (mouseenter)="hover(1, true)"
+        (mouseleave)="hover(1, false)"
+        (focusin)="focus(1, true)"
+        (focusout)="focus(1, false)"
       >
         <input
           class="customInput"
@@ -54,10 +54,10 @@
         class="customInputForm"
         formGroupName="{{ formSubGroup }}"
         (click)="field2.select()"
-        (mouseenter)="isField2MouseOver = true; updateOverlay()"
-        (mouseleave)="isField2MouseOver = false; updateOverlay()"
-        (focusin)="isField2Focused = true; updateOverlay()"
-        (focusout)="isField2Focused = false; updateOverlay()"
+        (mouseenter)="hover(2, true)"
+        (mouseleave)="hover(2, false)"
+        (focusin)="focus(2, true)"
+        (focusout)="focus(2, false)"
       >
         <input
           class="customInput"
@@ -78,10 +78,10 @@
       <mat-form-field
         class="customInputForm"
         (click)="field1.select()"
-        (mouseenter)="isField1MouseOver = true; updateOverlay()"
-        (mouseleave)="isField1MouseOver = false; updateOverlay()"
-        (focusin)="isField1Focused = true; updateOverlay()"
-        (focusout)="isField1Focused = false; updateOverlay()"
+        (mouseenter)="hover(1, true)"
+        (mouseleave)="hover(1, false)"
+        (focusin)="focus(1, true)"
+        (focusout)="focus(1, false)"
       >
         <input
           class="customInput"
@@ -105,10 +105,10 @@
       <mat-form-field
         class="customInputForm"
         (click)="field2.select()"
-        (mouseenter)="isField2MouseOver = true; updateOverlay()"
-        (mouseleave)="isField2MouseOver = false; updateOverlay()"
-        (focusin)="isField2Focused = true; updateOverlay()"
-        (focusout)="isField2Focused = false; updateOverlay()"
+        (mouseenter)="hover(2, true)"
+        (mouseleave)="hover(2, false)"
+        (focusin)="focus(2, true)"
+        (focusout)="focus(2, false)"
       >
         <input
           class="customInput"

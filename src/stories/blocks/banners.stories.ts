@@ -1,6 +1,6 @@
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular-vite';
-import { EditBannerComponent } from '../../app/component/edit-panel/edit-banner.component';
-import { LockBannerComponent } from '../../app/component/edit-panel/lock-banner.component';
+import { EditBannerComponent } from '../../app/component/BLOCKS/banner/edit-banner.component';
+import { LockBannerComponent } from '../../app/component/BLOCKS/banner/lock-banner.component';
 import { PanelSectionComponent } from '../../app/component/BLOCKS/panel-section/panel-section.component';
 import { TitleBlock } from '../../app/component/BLOCKS/title/title.component';
 import { EditRefusal, SETTINGS_AT_START_ONLY } from '../../app/model/edit-permission';

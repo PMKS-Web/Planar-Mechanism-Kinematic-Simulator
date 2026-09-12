@@ -1,10 +1,10 @@
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular-vite';
-import { ContextMenuComponent } from '../../app/component/context-menu/context-menu.component';
+import { ContextMenuComponent } from '../../app/component/BLOCKS/context-menu/context-menu.component';
 import {
   ContextMenuModel,
   MenuRefusal,
   MenuRow,
-} from '../../app/component/context-menu/menu-model';
+} from '../../app/component/BLOCKS/context-menu/menu-model';
 import { shortcutsStub } from '../support/stubs';
 
 /**

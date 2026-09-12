@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { ViewButtonComponent } from './component/view-controls/view-button.component';
+import { ViewButtonComponent } from '../view-button/view-button.component';
 import { ShortcutTipDirective } from './shortcut-tip.directive';
 
 @Component({

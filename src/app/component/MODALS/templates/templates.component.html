@@ -4,9 +4,7 @@
   <div class="libraryHeader">
     <div class="titleRow">
       <h1>Mechanism Library</h1>
-      <button mat-icon-button mat-dialog-close aria-label="Close the library">
-        <mat-icon>close</mat-icon>
-      </button>
+      <close-button label="Close the library" (pressed)="close()"></close-button>
     </div>
 
     <div class="filterBar">

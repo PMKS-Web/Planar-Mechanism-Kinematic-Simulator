@@ -1,7 +1,7 @@
 import { SegmentedComponent } from '../../BLOCKS/segmented/segmented.component';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatButton, MatIconButton } from '@angular/material/button';
+import { MatButton } from '@angular/material/button';
 import {
   MatDialog,
   MatDialogActions,
@@ -27,6 +27,7 @@ import {
   DXF_PRESETS,
   unitWord,
 } from '../../../services/export/dxf/dxf-export.service';
+import { CloseButtonComponent } from '../../BLOCKS/close-button/close-button.component';
 
 /** A row in the Layers checklist: what it is called here, and in CAD. */
 interface LayerRow {
@@ -90,9 +91,9 @@ const LAYER_ROWS: LayerRow[] = [
     MatDialogClose,
     MatDialogContent,
     MatIcon,
-    MatIconButton,
     MatTooltip,
     SegmentedComponent,
+    CloseButtonComponent,
   ],
 })
 export class DrawingExportComponent {
@@ -109,6 +110,11 @@ export class DrawingExportComponent {
     MatDialogRef<DrawingExportComponent>,
     { optional: true }
   );
+
+  /** Leave without exporting anything. */
+  close(): void {
+    this.dialogRef?.close();
+  }
 
   options: DxfExportChoices = { ...DEFAULT_DXF_EXPORT_OPTIONS };
   preset: DxfPresetName | 'custom' = 'build';

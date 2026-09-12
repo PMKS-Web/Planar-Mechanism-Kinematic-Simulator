@@ -53,6 +53,7 @@
         @if (hasComparison) {
           <toggle-block
             class="compareToggle"
+            [compact]="true"
             [formGroup]="compareForm"
             _formControl="compare"
             tooltip="Shows the curves from before your last drag, dashed and faded, under the live ones."

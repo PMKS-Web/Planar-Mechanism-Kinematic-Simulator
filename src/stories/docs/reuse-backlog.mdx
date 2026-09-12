@@ -12,74 +12,97 @@ The rule this enforces is on the Introduction: build from the blocks, and do not
 CSS. Every item below is a place where that was not done, and most of them have already drifted
 from the block they copy.
 
+**Each remaining entry now names its blocker, measured in the running app rather than read off the
+source.** That is the difference between a list and a plan: several of these read like a mechanical
+swap and are not one — the block is a different width, or wants a form control the call site has no
+reason to have, or sizes an icon with a transform that leaves the old box behind. Where an item
+turned out to be a design decision rather than a refactor, it says so, because the last thing this
+page should do is make someone redesign a panel by accident while tidying up.
+
+`e2e/reuse-parity.mjs` is how these are checked: it drives two dev servers — one on the change, one
+on the branch's base — through the same panel states and compares the pixels. Anything a reuse
+change alters that it did not mean to alter shows up as a failing scene with a diff mask beside it.
+
 ## Hand-rolled copies of a block
 
 Each entry is **where** it is, what it draws, and the block to use instead.
 
-- **`synthesis-panel.component.html`**, two `.switch` buttons, styled in its `.scss` as
-  `.switch` / `.switch--on` / `.switch__knob`. A slide switch with its own disabled state, and the
-  only one outside the block. Use `toggle-block`.
-- **`export-panel.component.html`**, eight `.settingRow` / `.settingName` / `.spacer` rows. The
-  label + help icon + spacer + control row that every field block already has. Use `radio-block`
-  or `input-block`.
-- **`synthesis-panel.component.html`**, eight `.row__label` / `.row__help` / `.row__spacer` fields
-  on a raw `input[appStandardField]`. The same row renamed into BEM, which also opts it out of the
-  shared help-mark rule in `blocks.common.scss`. Use `input-block`.
-- **`analysis-setup.component.html`** `.actionButton` (three) and **`synthesis-panel`** `.pill`. A
-  stroked primary button with an icon and a label. Use `button-block`.
-- **`analysis-setup.component.html`** `.sectionToggle` and **`mechanism-panel`** `.sectionHeader`.
-  A collapsible section header: 40px, top rule, primary-500 label, a chevron; the two files also
-  duplicate `.factGrid` / `.fact`. Use `collapsible-subsection`, whose `[headerActions]` slot
-  exists for this.
-- **`analysis-setup`, `top-bar`, `tutorial-panel`** `.chip`, three identical rule blocks, plus a
-  smaller fourth in `synthesis-panel`. A status chip with `blocker` / `warning` / `ok` variants.
-  Needs a `chip-block` that does not exist yet.
-- **`MODALS/templates/templates.component.html`** `.chipRow` / `.chip[aria-pressed]`. A filter
-  control drawn as pressable chips. Use `segmented-block` in a multi-select mode.
-- **`analysis-panel.component.html`** `.drawingChip` and **`analysis-setup`** `.sectionToggle`. An
-  icon toggle with `aria-pressed`. Use `app-view-button` (under **Actions**), which is already the
-  de-duplicated form of six of these.
-- **`linkage-table.component.html`**, sixteen raw `<input type=text>` and a CSS-radio tab strip.
-  Fields and a pick-one with none of the blocks' behavior. Put `appStandardField` on the inputs and
-  `segmented-block` on the tabs.
-- **Five close buttons, five ways:** `tutorial-panel` `.closeCard`, `whats-new` `.wnClose`,
-  `drawing-export` `button.close`, `templates` `mat-icon-button[mat-dialog-close]`, `right-panel`
-  `.closeDrawer`. One shared close button.
-- **`export-panel`** `.rowNote` (12px) and **`playback-bar`** `.rowNote` (11px). Truncated
-  secondary text, two sizes, two inks. One shared rule.
-- **`analysis-setup.component.scss`** (`#input-block .row`) and
-  **`analysis-panel.component.scss`** (`#toggle-block .row`, `.label-help`). A panel reaching into
-  a block's private ids from outside to restyle it. Make it an input on the block.
-
-## Components that should move here
-
-These are shared already, or would be with one caller changed, and belong beside the blocks:
-
-- **`app-edit-banner` + `app-lock-banner`** (`component/edit-panel/`) — shown under **Feedback**.
-  They share a stylesheet, and the lock banner is a hardcoded instance of the other; one banner
-  block with a `refusal` input covers both.
-- **`app-view-button`** (`component/view-controls/`) — shown under **Actions**. It is the generic
-  icon toggle the items above keep re-drawing.
-- **`app-context-menu`** (`component/context-menu/`) — shown under **Feedback**. Fully data-driven
-  from `menu-model.ts`, one caller.
-- **`ShortcutTipDirective` / `app-shortcut-tip`** (`src/app/`) — a `matTooltip` re-implemented so
-  it can draw a key cap. It lives at the app root and belongs next to the tooltip conventions the
-  blocks follow.
+- **`synthesis-panel.component.html`**, two `.switch` buttons (`.switch` / `.switch--on` /
+  `.switch__knob`). The only hand-drawn slide switch left. **Blocker, measured:** `toggle-block`
+  renders a Material `mat-slide-toggle` bound through `[formControlName]`, and neither call site
+  has a form control — one is a `<span>` inside a `.req__line` button that toggles the whole row,
+  the other a real button with its own refusal. So this is two changes: give the panel a form group
+  for the two booleans, and accept that a 34×14 CSS knob becomes Material's switch. The second is
+  a visible redesign of the requirement rows, not a refactor.
+- **`export-panel.component.html`**, eight `.settingRow` / `.barRow` rows of label + help + spacer
+  + control. **Blocker, measured:** the control in seven of the eight is a `segmented-block` and in
+  the eighth a raw `input.nameField`; `input-block` and `radio-block` each draw a control of their
+  own and have no slot to put someone else's in. The honest shape of this item is a *row* the field
+  blocks and these share — either a `field-row` mixin beside `quiet-note` and `section-header` in
+  `blocks.common.scss`, or a slot on the blocks — not "use `input-block`".
+- **`synthesis-panel.component.html`**, five `.row__label` / `.row__help` / `.row__spacer` rows and
+  eight `input[appStandardField]` fields (only one element is both). The BEM rename opts the help
+  mark out of the shared `.label-help` rule. **Blocker, measured:** the shared rule sizes its mark
+  with `transform: scale(0.65)` on a default 24px `mat-icon`, which leaves a **24px box**; the
+  panel's `.row__help` sets a real 15px box. Swapping the class therefore widens every one of those
+  rows by 9px — a layout change, not a restyle. Fixing the drift properly means giving the shared
+  mark a real size rather than a transform, which touches every block at once and wants its own
+  change.
+- **`analysis-setup.component.html`** `.actionButton` (three) and **`synthesis-panel`** `.pill`
+  (two). **Blocker, measured:** `button-block` is `width: 100%` — it is the full-width button a
+  panel section stacks — while `.actionButton` is an inline 32px stroked button inside a check row
+  and `.pill` an inline 28px *filled* one in a header-actions slot. Adopting it is a layout change,
+  not a look change, and it needs `button-block` to grow a width and a fill variant first. Those
+  two inputs are the actual item.
+- **`analysis-setup` and `mechanism-panel` should still adopt `collapsible-subsection`** for their
+  foldable sections. The *duplication* between them is gone (see below), but the block remains the
+  right home: it already has the `[headerActions]` slot these want. Doing it is a visible redesign
+  of two panels — the block heads its sections at `subtitle-2` (14px) where these are 15px, draws
+  its chevron by rotating one glyph where these swap two, and animates its content open where these
+  simply appear — so it wants a change that says so rather than being folded into a reuse pass.
+- **`MODALS/templates/templates.component.html`** `.chipRow` / `.chip[aria-pressed]`. **Blocker,
+  measured:** `segmented-block` takes `options: string[]` and renders `{{ option }}`, but each chip
+  here carries a **count in a child span** styled separately, and the control is single-select with
+  an `'all'` sentinel rather than the multi-select the entry assumed. It also wraps to a second row
+  on a desktop and scrolls sideways on a phone, which the segmented track does neither of. This
+  wants a real option type on `segmented-block` (label plus badge) before anything can move.
+- **`analysis-panel.component.html`** `.drawingChip` and **`analysis-setup`** `.sectionToggle`.
+  **Blocker, measured:** `app-view-button` is a square icon button; `.drawingChip` is a 34px-high
+  labelled chip that grows to fill its row and colors its glyph with the trace's own ink
+  (`drawingSwitchInk` returns a per-vector hex), and `.sectionToggle` is a bare chevron half of a
+  header row with no `aria-pressed` at all. The three are the same *idea* and three different
+  controls; making one of them serve all three is a design decision about what a toggle looks like
+  here, not a move.
+- **`linkage-table.component.html`**, thirteen raw `<input type=text>` plus a three-way CSS-radio
+  tab strip. Worth knowing before picking it up: this panel is only reachable from the **dev-only
+  Debug drawer** (tab 4), it is the one stylesheet here that is genuinely component-scoped rather
+  than a theme mixin, and the tab strip has **no TypeScript state at all** — visibility is pure
+  `:checked + label + .tab` sibling selectors, so the markup order *is* the mechanism.
+  `segmented-block` needs a `selected` index that does not exist yet. `appStandardField` on the
+  inputs is the part that is genuinely a one-liner.
+- **`edit-panel.component.scss`** still reaches into `#input-block`'s insides in three rules
+  (`.massArea #input-block:not(.state-input-host) .spacer`, `.massArea input-block.moiBlock
+  .label-help`, and the `.customInputForm` width beside it). The two the survey named are done —
+  see below — and these are the same shape: they want inputs on the block, most likely `hideHelp`
+  and a named width, rather than a fourth caller knowing the block's private markup.
 
 ## Blocks that overlap
 
-- **`title-block` and `subtitle-block`** have the same three inputs (`icon`, `buttonLabel`,
-  `description`) and the same imports; they differ in type size. One block with a `level`.
-- **`dual-input-block` duplicates `input-block`'s** hover-and-focus overlay logic, and has
-  diverged from it: `input-block` re-asserts the overlay every time (the canvas clears it),
-  `dual-input-block` only on a change. `hold-field` and `toggle-block` carry a third and fourth
-  copy. `input-block` with a `count` of two, and one overlay helper.
-- **`state-input`** (two usages) and **`hold-field-block`** (two usages) are single-consumer blocks
-  from the Edit panel; **`dual-button`** (two usages) likewise.
+- **`dual-input-block` is still not `input-block` with a `count` of two.** The overlay half of that
+  item is done — see below — but the two still draw their own markup, and merging them means one
+  block whose field count is an input. `input-accessibility.spec.ts` pins the exact accessible-name
+  list and the `pmks-` id scheme across both, which is the spec to read first.
+- **`state-input`, `hold-field-block` and `dual-button`** have two call sites each, all in
+  `edit-panel.component.html`. Being single-consumer is an observation, not a fault: each has a
+  story and a properties table, and folding one back into its panel trades a documented block for
+  undocumented panel markup. Take this one only with a reason beyond the count.
 - **`appStandardField`** has one consumer, `synthesis-panel`. Once that panel moves onto
   `input-block`, the directive either becomes the behavior `input-block` uses internally or goes.
 - **Names:** the `-block` suffix is carried by some selectors and not others (`dual-button`,
-  `color-picker`, `panel-section`, `state-input`). Settle it in one rename.
+  `color-picker`, `panel-section`, `state-input`). Settle it in one rename — and do it on its own,
+  not inside another change. `panel-section` alone is nine call sites plus four *global* stylesheets
+  that target it as an element selector, and every one of those rules is emitted unscoped, so a
+  missed one fails silently rather than loudly.
 
 ## Import cycles
 
@@ -91,6 +114,60 @@ cycle to appear is a panel reaching another panel's static — register a handle
 
 ## Done
 
+- `BLOCKS/field-overlay.ts` is the one copy of the hover-and-focus rule that tells the canvas to
+  draw a field's dimension. Four blocks held their own — `input-block`, `dual-input-block`,
+  `hold-field-block`, `toggle-block` — with four shapes of state and, between them, four different
+  answers to whether a disabled field counts and whether `focus` or `focusin` is the event.
+  `dual-input-block` mutated its four booleans straight from the template.
+  **One honest note:** only `input-block` re-asserted a wanted overlay every time, and the comment
+  it carried says why (the canvas drops overlays on a committed edit, so emitting only on a change
+  leaves the dimension gone under a pointer that never moved). All four re-assert now. I could not
+  reproduce a user-visible failure in the other three — `hold-field-block` survives the sequence on
+  the base branch too — so this is written up as the divergence it is, not as a bug fix.
+  `e2e/field-overlay-reassert.mjs` guards the rule for the one block it can drive.
+- **The four shared components moved into `BLOCKS/`**, where the rest of the gallery lives:
+  `app-edit-banner` + `app-lock-banner` (from `edit-panel/`, now `BLOCKS/banner/`), `app-view-button`
+  (from `view-controls/`), `app-context-menu` with its `menu-model.ts` (from `context-menu/`), and
+  `ShortcutTipDirective` / `app-shortcut-tip` (from the app root). Their stories moved from
+  `src/stories/shared/` to `src/stories/blocks/` with them, and the shortcut tip — the one of the
+  four with no gallery entry at all — has one now, under **Feedback**.
+- `section-header` in `blocks.common.scss` is the one definition of the band that heads a foldable
+  section. `analysis-setup` and `mechanism-panel` wrote it out twice, fourteen identical
+  declarations each, differing only in a hover and a `muted` variant that stayed with the caller
+  that has them. The duplicated `.factGrid` / `.fact` went the other way: the analysis setup's copy
+  had no call site at all and was deleted.
+- `title-block` and `subtitle-block` are one block. They had the same three inputs, the same
+  imports and the same template down to the `id`s inside it, and differed in type size and
+  padding. **Both tags still select it**, rather than the subtitle becoming
+  `<title-block level="subtitle">`: `panel-section` slots its sticky heading with
+  `<ng-content select="title-block, editable-title-block">`, so a subtitle renamed to that tag
+  would stop landing in the card body and start landing in the sticky title row. The level is read
+  from the tag the caller wrote.
+- `input-block` gained `cell` and `quiet`, and `toggle-block` gained `compact`, replacing the rules
+  in `analysis-setup` and `analysis-panel` that named those blocks' private ids from outside. That
+  is the coupling that made renaming anything inside a block break a panel nobody had edited.
+- `close-button` replaced all five, and **the look was deliberately unified**. They agreed on
+  nothing: 32px round in the tutorial card and the right drawer, 36px with 6px corners in the
+  release notes, Material's 40px icon button in the library and the CAD export dialog — and even
+  the two round ones washed differently on hover, at 4% and 6%. The one look is the 32px round one
+  two of them already shared, at the 4% every other icon button in the app uses. Three call sites
+  therefore changed on purpose, each declared in `e2e/reuse-parity.mjs` with its shots saved.
+  Its host is `display: contents`, so a caller that has to place it positions `.closeButton`.
+- Four dead rules went with them: `.factGrid` / `.fact` / `.factLabel` / `.factValue` and
+  `.sectionHint` in `analysis-setup` (the fact grid is the mechanism panel's, and that panel has
+  its own copy), `.actionButton.slim` in the same file, and `.settingRow.spaced` in `export-panel`.
+  None had a call site.
+- `quiet-note` in `blocks.common.scss` is now the one definition of truncated secondary text, and
+  the playback bar's copy of it is **scoped**. Written bare it was a global `.rowNote` rule, so the
+  export drawer's object notes were inheriting its flex sizing — and, below the phone breakpoint,
+  its `display: none`. On a phone the export drawer had been hiding "grounded, input" and every
+  other note since. Fixing that is the one deliberate visual change in this work; the parity suite
+  declares it rather than hiding it.
+- `chip-block` replaced four hand-rolled status chips: `analysis-setup`, `top-bar` and
+  `tutorial-panel` held three near-identical rule blocks, and `synthesis-panel` a smaller fourth.
+  The chip is the **host element**, not a span inside it — wrapping the old `<span class="chip">`
+  in a component host added an inline box the span never had, which grew the synthesis panel by
+  five pixels and knocked the tutorial's chip off its line. Both were caught by `e2e/reuse-parity.mjs`.
 - `collapsible-subseciton` was renamed `collapsible-subsection`: the folder, the selector and
   every call site, in one commit.
 - `panel-section-collapsible` had no usage in the app and was retired, together with the chevron

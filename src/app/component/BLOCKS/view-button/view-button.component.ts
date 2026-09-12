@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { MatIcon } from '@angular/material/icon';
-import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
-import { ShortcutTipDirective } from '../../shortcut-tip.directive';
+import { KeyboardShortcutsService, ShortcutId } from '../../../services/keyboard-shortcuts.service';
+import { ShortcutTipDirective } from '../shortcut-tip/shortcut-tip.directive';
 
 /**
  * One button in the view controls, in both kinds it comes in: a switch that

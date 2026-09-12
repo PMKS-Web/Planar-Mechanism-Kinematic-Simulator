@@ -1,6 +1,6 @@
 import { Injector } from '@angular/core';
 import { ContextMenuBuilderService, MenuHandlers } from './context-menu-builder.service';
-import { ContextMenuModel, MenuRow } from '../component/context-menu/menu-model';
+import { ContextMenuModel, MenuRow } from '../component/BLOCKS/context-menu/menu-model';
 import { ActiveObjService } from './active-obj.service';
 import { ColorService } from './color.service';
 import { DragStateService } from './drag-state.service';

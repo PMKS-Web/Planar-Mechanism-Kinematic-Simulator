@@ -1,6 +1,58 @@
 @use 'sass:map';
 @use '@angular/material' as mat;
 
+// A quiet line of secondary text that must not wrap and must not push its row
+// wider: an object's note in the export drawer, a row's reading in the
+// playback bar. Both had their own copy, at two sizes and two inks, and the
+// playback bar's was written without a container selector -- so it was a
+// *global* `.rowNote` rule, and the export drawer's notes silently inherited
+// its flex sizing and, below the phone breakpoint, its `display: none`.
+//
+// A mixin rather than a class, so there is one definition of the behavior and
+// still no global selector for the next panel to collide with.
+@mixin quiet-note($size) {
+  font-size: $size;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// The band that heads a foldable section in a panel: a rule above it, the
+// section's name in the brand ink, and a chevron at the far end. Written out
+// twice before this -- once in `analysis-setup`, once in `mechanism-panel` --
+// with fourteen identical declarations and three real differences, which are
+// left to the callers below.
+//
+// Not `collapsible-subsection`, which the reuse backlog suggests and which is
+// the right long-term home for these. That block heads its sections at
+// `subtitle-2` (14px) where these are 15px, draws its chevron by rotating one
+// glyph where these swap two, and animates its content open where these simply
+// appear. Adopting it is a visible redesign of two panels and belongs in a
+// change that says so; this is the part that is only duplication.
+@mixin section-header($theme) {
+  $primary-palette: map.get(mat.m2-get-color-config($theme), 'primary');
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  // Padding inside the 100%, not on top of it: content-box pushed the
+  // right-hand element 15px past the drawer's edge and sliced it off.
+  box-sizing: border-box;
+  min-height: 40px;
+  padding: 0 15px;
+  border: none;
+  border-top: 1px solid var(--border-rule);
+  background: transparent;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  color: mat.m2-get-color-from-palette($primary-palette, 500);
+  cursor: pointer;
+  text-align: left;
+}
+
 // The small stroked button used by the edit panel (Edit Name / Delete) and, so
 // they match, by the left nav rail. Include it *inside a container selector* so
 // the border-color rules keep enough specificity to beat Material's default

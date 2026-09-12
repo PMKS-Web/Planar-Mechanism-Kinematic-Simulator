@@ -1,7 +1,7 @@
 import { Directive, ElementRef, HostListener, OnDestroy, inject, input } from '@angular/core';
 import { Overlay, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
-import { ShortcutId, KeyboardShortcutsService } from './services/keyboard-shortcuts.service';
+import { ShortcutId, KeyboardShortcutsService } from '../../../services/keyboard-shortcuts.service';
 import { ShortcutTipComponent } from './shortcut-tip.component';
 
 /** How long a pointer rests before the tip appears, matching Material's own. */

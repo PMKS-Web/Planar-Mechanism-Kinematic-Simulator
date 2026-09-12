@@ -1,5 +1,5 @@
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular-vite';
-import { ViewButtonComponent } from '../../app/component/view-controls/view-button.component';
+import { ViewButtonComponent } from '../../app/component/BLOCKS/view-button/view-button.component';
 import { shortcutsStub } from '../support/stubs';
 
 /**

@@ -11,6 +11,7 @@ import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
 import { MatFormField } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
+import { FieldOverlay } from '../field-overlay';
 
 let nextInputId = 0;
 
@@ -59,42 +60,34 @@ export class DualInputComponent {
   readonly field2Entry = output<number>();
   readonly emitterOutputID = input<number>(-2);
 
-  protected isField1MouseOver: boolean = false;
-  protected isField1Focused: boolean = false;
-  private showField1Overlay: boolean = false;
-  private lastShowField1Overlay: boolean = false;
+  /**
+   * One per field, shared with the other three field blocks.
+   *
+   * This block used to mutate four booleans straight from the template and
+   * emit only on a change -- the bug `FieldOverlay` describes, where a
+   * dimension the canvas dropped on a committed edit never came back because
+   * pointing at the same field again was a no-change.
+   */
+  private readonly overlays = [
+    new FieldOverlay<number>(
+      (value) => this.field1Entry.emit(value),
+      () => this.emitterOutputID(),
+      () => -2,
+      () => !this.disabled()
+    ),
+    new FieldOverlay<number>(
+      (value) => this.field2Entry.emit(value),
+      () => this.emitterOutputID(),
+      () => -2,
+      () => !this.disabled()
+    ),
+  ];
 
-  protected isField2MouseOver: boolean = false;
-  protected isField2Focused: boolean = false;
-  private showField2Overlay: boolean = false;
-  private lastShowField2Overlay: boolean = false;
+  protected hover(field: 1 | 2, over: boolean): void {
+    this.overlays[field - 1].hover(over);
+  }
 
-  protected updateOverlay() {
-    if (this.disabled()) {
-      this.showField1Overlay = false;
-      this.showField2Overlay = false;
-      return;
-    }
-
-    this.showField1Overlay = this.isField1MouseOver || this.isField1Focused;
-    const emitterOutputID = this.emitterOutputID();
-    if (this.lastShowField1Overlay != this.showField1Overlay) {
-      if (this.showField1Overlay) {
-        this.field1Entry.emit(emitterOutputID);
-      } else {
-        this.field1Entry.emit(-2);
-      }
-    }
-    this.lastShowField1Overlay = this.showField1Overlay;
-
-    this.showField2Overlay = this.isField2MouseOver || this.isField2Focused;
-    if (this.lastShowField2Overlay != this.showField2Overlay) {
-      if (this.showField2Overlay) {
-        this.field2Entry.emit(emitterOutputID);
-      } else {
-        this.field2Entry.emit(-2);
-      }
-    }
-    this.lastShowField2Overlay = this.showField2Overlay;
+  protected focus(field: 1 | 2, focused: boolean): void {
+    this.overlays[field - 1].focus(focused);
   }
 }

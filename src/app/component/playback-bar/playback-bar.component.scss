@@ -1,5 +1,6 @@
 @use 'sass:map';
 @use '@angular/material' as mat;
+@use '../BLOCKS/blocks.common.scss' as blocks;
 
 @use '../left-tabs/left-tabs.vars' as nav;
 
@@ -348,14 +349,12 @@
     background: var(--accent);
   }
 
-  .rowNote {
+  // Scoped, unlike every earlier version of this rule: written bare it was a
+  // global `.rowNote`, and the export drawer's notes were inheriting it.
+  .playbackRow .rowNote {
     flex: 0 1 auto;
     min-width: 0;
-    font-size: 11px;
-    color: var(--text-tertiary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    @include blocks.quiet-note(11px);
   }
 
   .rowEnd {
@@ -871,7 +870,7 @@
     // a name, a chip and two numbers already.
     .rowEnd,
     .rowToggle,
-    .rowNote {
+    .playbackRow .rowNote {
       display: none;
     }
 

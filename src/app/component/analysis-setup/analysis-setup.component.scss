@@ -1,5 +1,6 @@
 @use 'sass:map';
 @use '@angular/material' as mat;
+@use '../BLOCKS/blocks.common.scss' as blocks;
 @use 'src/app/component/left-tabs/left-tabs.vars' as nav;
 
 @mixin css($theme) {
@@ -95,25 +96,11 @@
     }
 
     .sectionHeader {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      width: 100%;
-      /* Padding inside the 100%, not on top of it: content-box pushed the
-         right-hand element 15px past the drawer's edge and sliced it off. */
-      box-sizing: border-box;
-      min-height: 40px;
-      padding: 0 15px;
-      border: none;
-      border-top: 1px solid var(--border-rule);
-      background: transparent;
-      font-family: inherit;
-      font-size: 15px;
-      font-weight: 500;
-      color: mat.m2-get-color-from-palette($primary-palette, 500);
-      cursor: pointer;
-      text-align: left;
+      @include blocks.section-header($theme);
 
+      // This drawer's own two: a section that is not a mechanism says so
+      // quietly, and the whole band answers the pointer because the whole
+      // band folds it.
       &.muted {
         color: var(--text-secondary);
       }
@@ -135,57 +122,6 @@
       text-underline-offset: 3px;
       text-decoration-color: rgba(63, 81, 181, 0.35);
       cursor: pointer;
-    }
-
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      height: 20px;
-      padding: 0 8px;
-      border-radius: 10px;
-      background: var(--surface-chip);
-      color: var(--text-secondary);
-      font-size: 12px;
-      font-weight: 400;
-
-      &.blocker {
-        background: var(--refusal-bg);
-        color: var(--refusal-text);
-      }
-
-      &.warning {
-        background: var(--warning-bg);
-        color: var(--warning-text);
-      }
-
-      &.ok {
-        background: var(--success-bg);
-        color: var(--success-text);
-      }
-    }
-
-    .factGrid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px 12px;
-      padding: 10px 15px 4px;
-    }
-
-    .fact {
-      display: flex;
-      flex-direction: column;
-      gap: 1px;
-      min-width: 0;
-    }
-
-    .factLabel {
-      font-size: 11px;
-      color: var(--text-tertiary);
-    }
-
-    .factValue {
-      font-size: 13px;
-      color: var(--text-primary);
     }
 
     .checkList {
@@ -305,31 +241,22 @@
       color: var(--text-secondary);
     }
 
-    // The table's cells ARE the shared input component; the only difference
-    // is size, so size is the only thing written here. Label and help are the
-    // row's own columns, so the component's header parts hide.
+    // The table's cells ARE the shared input component, told so: `cell` gives
+    // the field the whole column and hides the header parts the table's own
+    // headings already say, and `quiet` grays a value the reader cannot set.
+    // Both used to be written here, as rules naming `#input-block`'s insides
+    // from outside it.
     .cellField {
       min-width: 0;
 
-      .customInput {
-        font-size: 12.5px;
-      }
-
-      #input-block .label,
-      #input-block .label-help,
-      #input-block .spacer {
-        display: none;
-      }
-
-      #input-block .row {
-        gap: 0;
-      }
-
-      #input-block .customInputForm .mat-mdc-text-field-wrapper {
-        width: 100%;
-        padding: 0 7px;
-      }
-
+      // Kept exactly as it was, and deliberately not folded into the block.
+      // Measured in the running app, this loses: a derived value's field is
+      // *disabled*, and Material's disabled ink wins over it, so the rule has
+      // no effect in either state the drawer actually shows. Moving it onto
+      // the block raised its specificity enough to start winning -- which is a
+      // visible change to a panel this work is not meant to be changing.
+      // Whether the value should be this ink is a question for whoever owns
+      // the mass table; it is not a reuse question.
       &.derived .customInput {
         color: var(--text-tertiary);
       }
@@ -403,15 +330,6 @@
       }
     }
 
-    .sectionHeader .actionButton.slim {
-      margin: 0 0 0 auto;
-      height: 24px;
-      padding: 0 8px;
-      font-size: 11.5px;
-      flex: none;
-      white-space: nowrap;
-    }
-
     // The header is a row of controls now, not one button, so the two halves that
     // fold it carry the padding and the hit area the header used to have.
     .sectionHeaderRow {
@@ -443,25 +361,13 @@
       padding-right: 15px;
     }
 
-    // A statement, not a control: where the editing lives, said quietly, and
-    // shrinkable so the drawer's edge never slices it.
-    .sectionHeader .sectionHint {
-      margin-left: auto;
-      font-size: 11.5px;
-      color: var(--text-tertiary);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      min-width: 0;
-      flex: 0 1 auto;
-    }
-
     // Read-only: the mock washes the whole table out — names, values, fills —
     // rather than leaving rows that merely cannot be clicked.
     .massTable.readonly {
       .massName {
         color: var(--text-tertiary);
       }
+      // Same story as `.derived` above: overridden by the disabled ink today.
       .cellField .customInput {
         color: var(--text-tertiary);
       }

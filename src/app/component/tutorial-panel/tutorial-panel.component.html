@@ -2,9 +2,7 @@
      never both true, so the drawer holds one card either way. -->
 @if (!tutorial.done) {
   <div class="tutorialCard" [class.settling]="tutorial.settling">
-    <button class="closeCard" (click)="close()" aria-label="Close tutorial" title="Close">
-      <mat-icon>close</mat-icon>
-    </button>
+    <close-button class="closeCard" label="Close tutorial" (pressed)="close()"></close-button>
     <div class="cardTitle">Tutorial</div>
     <p class="cardLead">{{ lead }}</p>
 
@@ -72,7 +70,7 @@
            so from here on it answers "why can't I?" on its own. -->
       @if (showsChipHint) {
         <div class="hint chipHint">
-          <span class="chip" [class]="chipKind">{{ chipText }}</span>
+          <chip-block [kind]="chipKind">{{ chipText }}</chip-block>
           <span>
             is the Kinematic Analysis chip counting this step. Press the mode whenever it will not
             run and it lists what is missing.
