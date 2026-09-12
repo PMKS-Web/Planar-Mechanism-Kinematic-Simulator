@@ -9,6 +9,18 @@ import { StructuralAnalysisService } from '../structural-analysis.service';
 import { MechanismBuilder } from './mechanism-builder';
 import { StringTranscoder } from './string-transcoder';
 import { Checksum } from './checksum';
+import { createMechanismHarness } from '../../../test-utils/mechanism-harness';
+import { MODEL_SCALE } from '../../model/render-scale';
+import { LengthUnit } from '../../model/unit-enums';
+import { RealLink } from '../../model/link';
+import { snapshotPmksMemberMotion } from '../../model/structural/pmks-dynamic-state';
+import { analyzeDynamic } from '../../model/structural/dynamic-force-solver';
+import { recoverDynamicMemberLoads } from '../../model/structural/member-load-recovery';
+import {
+  memberAB,
+  uniformAB,
+  noMemberLoad,
+} from '../../../test-utils/verification/member-verification';
 import {
   decodeStructuralDocument,
   encodeStructuralDocument,
@@ -54,6 +66,56 @@ function source() {
 }
 
 describe('structural data in PMKS URLs', () => {
+  it('regenerates precise solved samples from legacy authored fields without cache or history churn', () => {
+    // A 3 m variant has I=1.5 exactly representable in the legacy thousandths
+    // format. This separates sample precision from that existing codec limit.
+    const fixture = structuralCrankFixture();
+    fixture.load = undefined;
+    fixture.joints[1].x = 3 * MODEL_SCALE;
+    fixture.links[0] = { joints: 'AB', mass: 2, moi: 1.5, com: [1.5 * MODEL_SCALE, 0] };
+    const built = buildMechanism(fixture);
+    const { service, settings, saveCount } = createMechanismHarness();
+    settings.lengthUnit.next(LengthUnit.METER);
+    service.joints = built.joints;
+    service.links = built.links;
+    service.forces = [];
+    service.updateMechanism();
+    const original = service.mechanisms[0];
+    const encode = () => urlGeneratorFor(service, settings).generateUrlQuery();
+    const url = encode();
+    const saves = saveCount();
+    for (let i = 0; i < original.joints.length; i++) original.snapshotAccelerations(i);
+    service.updateMechanism();
+    expect(service.mechanisms[0]).toBe(original);
+    expect(encode()).toBe(url);
+    expect(saveCount()).toBe(saves);
+
+    const decoder = new StringTranscoder();
+    decoder.decodeURL(url);
+    const target = createMechanismHarness();
+    new MechanismBuilder(target.service, decoder, target.settings, target.active).build(true);
+    target.service.updateMechanism();
+    const restored = target.service.mechanisms[0];
+    expect(urlGeneratorFor(target.service, target.settings).generateUrlQuery()).toBe(url);
+    expect(restored.joints.map((frame) => frame.map((j) => [j.x, j.y]))).toEqual(
+      original.joints.map((frame) => frame.map((j) => [j.x, j.y]))
+    );
+    expect((restored.links[30][0] as RealLink).massMoI).toBe(1.5);
+    const snap = snapshotPmksMemberMotion({
+      mechanism: restored,
+      sampleIndex: 30,
+      lengthUnit: LengthUnit.METER,
+      coordinateSpace: 'model',
+    });
+    if (snap.status !== 'ok') throw new Error(snap.message);
+    const eq = analyzeDynamic(snap.configuration, snap.states, noMemberLoad);
+    expect(
+      recoverDynamicMemberLoads(snap.configuration, memberAB, noMemberLoad, eq, snap.states[0], {
+        massDistribution: uniformAB,
+      }).status
+    ).toBe('ok');
+  });
+
   it('round-trips Unicode names, material/section precision, and complete load cases', () => {
     expect(decodeStructuralDocument(encodeStructuralDocument(document))).toEqual(document);
     expect(encodeStructuralDocument(document)[0]).toMatch(/^T1[A-Za-z0-9_-]+$/);

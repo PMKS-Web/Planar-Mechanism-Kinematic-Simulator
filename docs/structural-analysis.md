@@ -1,6 +1,211 @@
-# Structural analysis: S0 through S4
+# Structural analysis: S0 through S4.5
 
-> **Status:** Built — S0/S1 (`79a8ef0c`), S2 (`f97d275a`), S3 (`04d06680`), and S4 analytical stress on `feature/structural-analysis`, based on staging. Each milestone is a separate commit. S5–S7 remain future work.
+> **Status:** Built — S0/S1 (`79a8ef0c`), S2 (`f97d275a`), S3 (`04d06680`), S4 (`f15696bc`), and S4.5 solved-geometry precision on `feature/structural-analysis`, based on staging. Each milestone is a separate commit. S5–S7 remain future work.
+
+## Precision Hardening Before S5
+
+### Coordinate lifecycle audit (before implementation, `f15696bc`)
+
+| Boundary | Representation and policy |
+| --- | --- |
+| Authored drawing | `Coord` stores JavaScript Numbers. `MechanismService` rounds entered/new joint coordinates to three raw-coordinate decimals; grid/angle snapping is an editing decision. Preserve those behaviors. |
+| Model scale | The app multiplies project lengths by `MODEL_SCALE=200`; verification fixtures can explicitly use project coordinates. This is a unit conversion, not decimal quantization. |
+| Solver input | `Mechanism` deep-copies the drawing. `PositionSolver.setUpInitialJointLocations` rounds the working copy to four decimals. `settleInitialPose` also rounds its computed, private sample-zero pose. |
+| Input stepping | `incrementRevInput` computes `atan2(previous endpoint - pivot) + revoluteSampleStep` with full-precision trigonometry, then rounds both endpoint and pivot to four decimals. There is no rounded angle field, but endpoint quantization feeds the next angle. Prismatic stepping also rounds. |
+| Constraint solutions | `recordJointPosition`, the paired circle/line slider point, and rigid tracer reconstruction round to four decimals. Simultaneous constraint iterations otherwise retain Numbers. Derived force points round to three decimals. |
+| Stored samples | `Mechanism` clones `jointMapPositions` directly into each sample. Thus the solver's quantization becomes authoritative geometry for kinematics and structural snapshots. |
+| Root reconstruction | Each sample's `RealLink`, including compound leaves, references that sample's joints. Mass and `massMoI` are copied unchanged. |
+| CoM transport | `transportPoint` retains the reference point's along/normal coordinates and rotates them using a normalized sampled axis. It correctly preserves its reference offset, whereas rounded endpoints change apparent member length. No mass-property recalculation is appropriate here. |
+| Structural analysis | S2 uses authoritative rigid-body properties. S3 additionally requires uniform-line geometry to reproduce CoM and inertia; its strict refusal is correct. S4 propagates that refusal. Keep all these APIs and tolerances unchanged. |
+| URL/history | `generateUrlQuery` temporarily encodes the start pose through `encodeFromStartPose`, then restores playback. Samples are regenerated, not serialized. Legacy numeric fields (including authored mass, CoM and inertia) use base-N thousandths; S0 structural metadata has its separate precision-preserving extension. No codec change is part of S4.5. Legacy rounding can still make a custom uniform mass model inconsistent after reload. |
+| Cache/equality | `solveFingerprint` reads constructor inputs (authored joints, roots, loads, settings), not derived sample arrays. Pose recall and closure use explicit solver thresholds. `Coord.equals`/`looselyEquals` are interaction tolerances, not storage precision. The canvas's six-decimal edit signature is an interaction boundary. Preserve them. |
+| Display | Analysis/export cells use `roundNumber(...,4).toString()`; fields, labels, cursor and grid format separately. Preserve all visible precision and snapping. |
+
+History: `cf066690` (May 2022) changed solved-coordinate storage from three to
+four decimals as part of UI/emitter cleanup. It documents the decimal policy,
+but supplies no engineering invariant requiring quantized solver state. Existing
+stroke, concentric, tangent, seam, and pose-recall thresholds also encode branch
+and motion policy; removing decimal storage does not authorize changing them.
+Sample spacing/count planning uses integer rounding intentionally and stays intact.
+
+Coordination audit: local `feature/mass-inertia-explanation` at `23bb9687` extracts
+automatic mass calculations into `mass-properties.ts` and explains their geometry.
+Its formulas and custom-property authority are retained; it does not change
+`position-solver.ts`, `mechanism.ts`, or `link.ts`. S4.5 should complement that work:
+compute mass properties from the authored body, then rigidly transport them. Do
+not infer physical mass from rendered rounded outlines or recompute inertia per
+playback frame. Shared documentation may need a textual merge. The combined
+branches have not been integration-tested; after integration, verify automatic
+and custom properties through playback, paused edits, and URL reload.
+The main working checkout on `feature/analysis-results-table` also has uncommitted
+changes in `position-solver.ts` and `mechanism.ts`. That is separate integration
+overlap, not a CoM-branch conflict; those files were read only and left untouched.
+
+### Implementation and measured results
+
+S4.5 removes decimal quantization from the position solver's derived joint and
+force-point writes, including working-map initialization, revolute/prismatic
+stepping, circle/line output, tracers, and its private settled initial pose.
+`Mechanism` reconstruction, CoM transport, mass, inertia, structural APIs and
+all S3 consistency tolerances are unchanged. `mechanism.ts` only changes stale
+precision comments. Display/export formatting and authored snapping are unchanged.
+Input angle commands and sample planning are unchanged; removing rounded endpoint
+feedback removes their artificial phase drift.
+
+Full-suite verification exposed one additional numerical issue: the existing
+coincident-circle branch predictor extrapolated a Cartesian chord and projected
+it onto a circle. At exact coincidence that has cubic phase error even for
+constant angular velocity (0.00531455 raw units in the 1000-unit square test).
+It now continues observed angular motion about a grounded pivot; the existing
+Cartesian fallback remains for moving pivots. This is upstream continuation of
+an already singular solve, with unchanged contact thresholds, not structural
+coordinate repair or a claim of unique equilibrium. Existing assembly-mode tests
+and new square tests at project/model scales pass; the singular structural
+toggle still refuses analysis.
+
+Measurements compare `f15696bc` with S4.5, Node 24.21 on the same Windows host.
+`solved-precision.spec.ts` records raw samples and times when
+`PMKS_PRECISION_PHASE=before` or `after` is set. Ordinary CI runs assert the
+invariants without needing local artifacts. The phase option records the old
+failures without asserting the new precision contract on old production code.
+
+| 2 m, 2 kg rod, project meters | Before | After |
+| --- | --- | --- |
+| Sample-30 midpoint/CoM error (m) | 2.1301023133e-5 | 0 |
+| Sample-30 uniform-inertia error (kg m²) | 2.8401666667e-5 | 0 |
+| Full-cycle maximum length drift (m) | 5.8791635886e-5 | 4.4408920985e-16 |
+| Full-cycle maximum midpoint/CoM error (m) | 2.9395817943e-5 | 2.4825341532e-16 |
+| Full-cycle maximum uniform-inertia error (kg m²) | 3.9195000000e-5 | 3.3306690739e-16 |
+| S3 dynamic recovery accepted | 5/361 (1.385%) | 361/361 (100%) |
+
+The final cycle's maximum analytical endpoint error is 5.03e-14 m. Sample 30's
+zero residual is an observed floating-point result, not a zero-error promise.
+Mass and inertia are checked unchanged on every root and compound leaf, and
+CoM-to-pin distances are checked independently of midpoint agreement.
+
+All unit/space combinations use the same physical 2 kg rod at lengths
+0.02 m, 2 m, and 200 m. Each has 361 samples. After the fix every entry below is
+361/361 at every size (6,498/6,498 altogether).
+
+| Unit / coordinate space | Before: 0.02 m | Before: 2 m | Before: 200 m |
+| --- | --- | --- | --- |
+| Meter / project | 4 | 5 | 13 |
+| Meter / model | 5 | 29 | 361 |
+| Centimeter / project | 5 | 13 | 361 |
+| Centimeter / model | 36 | 361 | 361 |
+| Inch / project | 1 | 1 | 277 |
+| Inch / model | 11 | 361 | 361 |
+
+Across those 18 cases, maximum length drift is 5.69e-14 m, midpoint error
+4.02e-14 m, inertia error 4.55e-12 kg m² (the 200 m rod), analytical position
+error 5.19e-12 m, and normalized S3 section-closure residual 7.11e-17. The
+dimensionless errors stay at floating-point scale; no unit-specific tolerance
+or mass-property adjustment is used. The eccentric dynamic crank and deliberately
+malformed pure mass models still return `mass-distribution-mismatch`.
+
+### Motion and constraint regression
+
+The following distances are in each fixture's raw coordinate units (project
+units except the model-scale MotionGen fixture). Coordinate difference means
+maximum Euclidean displacement between matching before/after joint samples.
+Closure residual means maximum rigid pin-pair distance-constraint violation
+and shared-pin coincidence error, including compound leaves; it does not use
+a trivially telescoping vector sum. Shared-pin coincidence is zero throughout,
+so the measured closure residual equals the length drift in this table.
+
+| Fixture | Samples before = after | Max coordinate difference | Length drift / closure before | Length drift / closure after |
+| --- | --- | --- | --- | --- |
+| Structural crank | 361 | 3.39939e-4 | 5.87916e-5 | 4.44089e-16 |
+| Teaching four-bar, with tracers | 361 | 2.03394e-3 | 2.07203e-3 | 1.53211e-14 |
+| Stephenson III six-bar | 199 | 3.60802e-3 | 7.10891e-5 | 1.06581e-14 |
+| Bell-crank compound | 361 | 3.40349e-4 | 6.86316e-5 | 2.22045e-15 |
+| Eccentric dynamic crank | 361 | 3.39939e-4 | 5.87916e-5 | 4.44089e-16 |
+| Teaching slider-crank | 361 | 2.40307e-3 | 6.95217e-5 | 5.32907e-15 |
+| MotionGen gripper | 1 | 0 | 0 | 0 |
+| Equal-sided four-bar through folds | 361 | 1.12963e-3 | 5.87916e-5 | 8.88178e-16 |
+
+Joint ordering and timestamps are exactly equal before/after for all eight.
+The six-bar's 199 samples are its existing reversing cycle, not a lost full
+revolution. MotionGen remains a solver refusal with only its initial pose;
+its zeros are not evidence of validated motion. The largest CoM-to-pin drift
+afterward is 2.28e-13 raw units in the four-bar with distant CAD-specified CoM.
+Independent analytical crank trajectories and the existing MATLAB, slider,
+assembly, and force suites provide checks beyond the before/after comparison.
+
+### Changed expectations and compatibility
+
+- `member-adapter.spec.ts` and `member-stress.spec.ts`: the specific sample-30
+  refusal was a regression witness for upstream quantization. It now succeeds
+  through unchanged S3/S4 code. Genuine mismatch/refusal cases remain intact.
+- `pmks-dynamic-state.spec.ts`: the fresh baseline exposed an order-dependent
+  assertion that a shared rate map began empty (it contained nine entries).
+  The test now captures its actual contents and asserts they remain unchanged.
+  This strengthens the isolation contract without changing runtime behavior.
+- `welded-force.spec.ts`: historical sample-1/2 torque constants included
+  quantization (sample 1: 3.0096 becomes 3.0098 N m). They are replaced by
+  comparison with the separate S2 equilibrium assembly at the precise pose;
+  four-decimal export formatting and the initial 2.9396 N m check remain.
+- `docs/fixture-urls.md` and `template-linkages.ts`: only the walking pair changes.
+  `ensemble-fixtures.ts:posedAt` intentionally authors its second leg from a
+  solved half-cycle frame. Its precise solution changes joint N's encoded y
+  by 0.001 project units and the NOP CoM y by 0.001, plus checksums. Regenerated
+  through the existing tools, not hand-edited; old URLs still decode. No new
+  mechanism or URL format was introduced.
+- The new legacy URL regression uses a 3 m rod variant whose mass properties
+  fit the existing thousandths format exactly. It regenerates identical precise
+  samples, preserves authoritative inertia, passes S3 at sample 30, re-encodes
+  identical bytes, reuses the solve cache, and adds no history entries.
+
+### Performance
+
+Seven batches of 20 operations after five warmups, median milliseconds per
+operation, isolated Angular runs against identical harnesses. The single position
+step includes restoring its initial working map. Generation includes construction,
+position solving, and sample/root allocation; snapshots are timed separately.
+S3 recovery is benchmarked at sample zero so both versions perform successful work.
+
+| Operation | Before (ms) | After (ms) |
+| --- | --- | --- |
+| Position step | 0.00377 | 0.00133 |
+| Solve + generate crank cycle | 1.7552 | 1.5327 |
+| Solve + generate six-bar cycle | 1.9499 | 1.9421 |
+| Analytical kinematic snapshot | 0.06774 | 0.05166 |
+| S2/S3 motion adapter snapshot | 0.09266 | 0.05573 |
+| S2 dynamic equilibrium | 0.02816 | 0.01413 |
+| S3 member recovery | 0.03234 | 0.01453 |
+
+No measured performance regression. These short timings include host/JIT noise;
+unchanged S2/S3 code also measured faster, so this is not a claimed general
+speedup. Raw batch ranges and measurements are in ignored `artifacts/s45-timing-*.json`.
+
+### Verification and decision point
+
+The fresh full-suite baseline at `f15696bc` had 2,705 passes and four failures:
+two MotionGen reference-data expectations, the raw-RGBA count (99 versus 87),
+and the shared-rate-map assumption corrected above. The final full suite reports
+2,711 passes and three failures (250 passing files, two failing files): only the
+same two MotionGen expectations and the RGBA count remain. This includes all
+S0–S4, MATLAB/kinematics, positions, history, persistence and fixture-gallery tests.
+The four dedicated precision tests also pass in an isolated final run. Production
+and Storybook builds pass; lint/style/format checks pass with the existing 15 lint
+warnings, and `git diff --check` is clean. Browser checks use disposable Playwright profiles
+because Codex computer use reported no enabled browser surfaces. Force panels
+pass 15/15, force units pass 20/20, and the new precision suite passes 8/8.
+Its playback, start-drag, and paused-drag filmstrips were inspected. The first
+playback recording caught a development reload during artifact generation;
+the suite now rejects navigation while filming and its final recording is continuous.
+`posed-editing.mjs` reports 56/58 on both S4.5 and a separately served untouched
+`f15696bc`: the same two existing strict start-marker assertions fail, with
+identical values, and no browser errors.
+
+S5 may build on the validated uniform straight-member stream while continuing
+to fail closed per sample. This does not make every PMKS mechanism structurally
+admissible: singular/toggle conditioning, approximate simultaneous constraints,
+unsupported compound member interpretations, legacy URL property quantization,
+and inconsistent authored mass properties remain explicit limitations. No cycle
+envelopes, cycle FoS, fatigue, or S5 UI are implemented here. The earlier S3/S4
+sections below retain their historical precision findings; S4.5 resolves their
+solved-coordinate limitation for the validated cases above.
 
 ## S4 section audit and implementation contract
 

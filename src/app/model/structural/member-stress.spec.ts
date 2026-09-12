@@ -255,7 +255,7 @@ describe('nominal elementary-beam stress', () => {
       motionSource: 'prescribed',
     });
   });
-  it('retains analytical motion provenance from PMKS and propagates rounded-sample refusal', () => {
+  it('retains analytical motion provenance from PMKS at the formerly rounded sample', () => {
     const mechanism = buildMechanism(structuralCrankFixture()).mechanism;
     for (const sampleIndex of [0, 30]) {
       const snapshot = snapshotPmksMemberMotion({
@@ -275,9 +275,7 @@ describe('nominal elementary-beam stress', () => {
         { massDistribution: uniformAB }
       );
       const stress = evaluateMemberStress(member, circle, { ...station, yM: 0 });
-      if (sampleIndex === 0)
-        expect(stressSuccess(stress).provenance.motionSource).toBe('pmks-analytical');
-      else expect(stress.status).toBe('upstream-analysis-failed');
+      expect(stressSuccess(stress).provenance.motionSource).toBe('pmks-analytical');
     }
   });
   it('refuses invalid sections, coordinates, stations, and malformed upstream data', () => {

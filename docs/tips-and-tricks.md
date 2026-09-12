@@ -14,16 +14,27 @@ so S4 can retain analytical versus prescribed provenance without guessing it.
 **A sampled straight rod is not automatically an exact uniform mass line.**
 S3's `snapshotPmksMemberMotion` reads signed analytical angular velocity in rad/s
 alongside S2 accelerations. Its section recovery additionally validates that the
-explicit uniform line reproduces the root mass, CoM, and inertia. Some position
-paths round solved pins to four raw-coordinate decimals while transporting CoM
-and retaining inertia independently. A 2 m project-coordinate rod at sample 30
-can therefore pass S2 but fail S3's mass-distribution check. That refusal is
-intentional: do not rescale inertia, shift CoM, loosen the check to fit a plot,
-or replace distributed inertia with a hidden CoM lump. Use a consistent explicit
-model, or separately fix and verify kinematic precision before promising exact
-full-cycle diagrams. See `member-adapter.spec.ts` for both the refusal and a
-successful nonzero model-coordinate sample, and
+explicit uniform line reproduces the root mass, CoM, and inertia. Before S4.5,
+four-decimal solved pins disagreed with rigidly transported CoM and unchanged
+inertia. S4.5 retains full Number precision in solver state; the 2 m rod now
+passes all 361 samples. Keep authoring/snapping, display rounding, and URL
+thousandths at their existing boundaries. In particular, an `atan2` step fed
+rounded endpoints accumulates phase error even when the angle itself is unrounded.
+Do not rescale inertia, shift CoM, loosen the structural check to fit a plot,
+or replace distributed inertia with a hidden CoM lump. A legacy URL may still
+round custom mass properties into an inconsistent model; samples are regenerated
+from that authored state and cannot restore digits the URL never stored.
+See `solved-precision.spec.ts` for full-cycle tests, `member-adapter.spec.ts` for
+the repaired sample, and
 [structural-analysis.md](structural-analysis.md#s3-internal-loads) for tolerances.
+
+**A singular continuation is not a unique structural solution.** At coincident
+circle centers, the position solver uses motion history to choose a branch.
+For a grounded circle, continue angular motion: extrapolating a chord then
+projecting onto the circle introduces a cubic phase error. Full-precision
+storage exposed this in the square parallelogram. Keep the existing contact
+thresholds separate from storage precision and retain structural singularity
+diagnostics. A continuous animation does not prove an invertible equilibrium.
 
 **Dynamic snapshots must not borrow the UI's kinematic maps.** Use
 `Mechanism.snapshotAccelerations(index)` or the structural

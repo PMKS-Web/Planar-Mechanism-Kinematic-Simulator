@@ -77,7 +77,7 @@ describe('PMKS member interpretation and section motion', () => {
       }
     }
   }
-  it('refuses a rounded project-space sample whose pins no longer match the transported mass model', () => {
+  it('recovers the formerly rounded project-space sample with unchanged mass validation', () => {
     const fixture = structuralCrankFixture();
     fixture.inputAngVel = 2;
     const mechanism = buildMechanism(fixture).mechanism;
@@ -98,8 +98,7 @@ describe('PMKS member interpretation and section motion', () => {
       snapshot.states[0],
       { massDistribution: uniformAB }
     );
-    expect(result.status).toBe('mass-distribution-mismatch');
-    expect('events' in result).toBe(false);
+    memberSuccess(result);
   });
   it('recovers a nonzero model-space sample when its actual geometry satisfies the same consistency tolerance', () => {
     const fixture = structuralCrankFixture();

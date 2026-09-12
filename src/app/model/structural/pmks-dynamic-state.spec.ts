@@ -82,6 +82,7 @@ describe('PMKS dynamic sample adapter', () => {
     expect(PositionSolver.coupledRoute).toBe(false);
     const before = PositionSolver.captureDriveState();
     const rateMap = KinematicsSolver.jointAccMap;
+    const rateEntries = [...rateMap.entries()].map(([id, values]) => [id, [...values]]);
     const actual = snapshot(coupled);
     const expected = snapshot(sample(offsetLoadFourBarFixture()));
     // Account for the constraint route's numerical derivative tolerance.
@@ -99,7 +100,9 @@ describe('PMKS dynamic sample adapter', () => {
     expect(PositionSolver.captureDriveState()).toEqual(current);
     expect(KinematicsSolver.jointAccMap).toBe(currentMap);
     expect(before.coupledRoute).toBe(false);
-    expect(rateMap.size).toBe(0);
+    // Other specs may have populated the shared map. Isolation means leaving
+    // its actual contents alone, not assuming this worker began empty.
+    expect([...rateMap.entries()]).toEqual(rateEntries);
   });
   for (const unit of [LengthUnit.METER, LengthUnit.CM, LengthUnit.INCH]) {
     for (const space of ['project', 'model'] as const) {

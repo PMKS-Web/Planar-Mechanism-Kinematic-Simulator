@@ -1025,8 +1025,7 @@ export class Mechanism {
       const samples = Math.round(gridSteps);
       const TARGET_SAMPLES = 360;
       // Sixty-four cuts per degree matches the boundary solver's own halving
-      // cap, and keeps every sample's motion far above the four decimals a
-      // solved position is held to.
+      // cap. Keep this sampling policy independent of coordinate precision.
       const FINEST = Math.PI / 180 / 64;
       if (samples > 0 && samples < TARGET_SAMPLES * (2 / 3)) {
         this.refineAttempted = true;
@@ -1171,9 +1170,8 @@ export class Mechanism {
    * A seam wide enough to mean "different pose", not solver noise.
    *
    * Relative to the drawing's own size because coordinates arrive at whatever
-   * scale the caller drew in: solved positions are held to four decimals, so
-   * noise is orders below a thousandth of the drawing while a branch swap is
-   * on the order of a link length.
+   * scale the caller drew in. This is a motion-continuity policy, independent
+   * of stored precision: a branch swap is on the order of a link length.
    *
    * Its *size*, measured across the bounding box, and not its distance from the
    * world origin. `seamGapAt` does not care where the mechanism sits, so a

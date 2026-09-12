@@ -243,6 +243,8 @@ Not suites — import them from one.
   shared Force Analysis Type toggle. Needs installed Chrome (`PMKS_CHROME`).
 - `force-labels-and-legend.mjs` — force graph titles name parts the reader can see, both cylinder
   mounts are listed, and the legend does not shift as values change sign.
+- `solved-precision.mjs` — precise crank samples and authoritative inertia through URL reload
+  and playback; filmstrips of playback and real drags at start and paused poses.
 - `force-units.mjs` — which unit a force is read in: the Force Units row, kilograms-force leaving
   storage alone, conversion at each edge, and a grayed pill not reacting to hover.
 

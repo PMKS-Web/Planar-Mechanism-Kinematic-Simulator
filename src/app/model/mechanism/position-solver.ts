@@ -5,7 +5,6 @@ import {
   circleLineIntersection,
   determineUnknownJointUsingTriangulation,
   euclideanDistance,
-  roundNumber,
 } from '../utils';
 import { Force } from '../force';
 import { Coord } from '../coord';
@@ -66,9 +65,8 @@ export const SAMPLES_PER_STROKE = 180;
 /**
  * How far outside its stroke a solved pin may land before the step is refused.
  *
- * Positions are rounded to four decimals per timestep, so a command that lands
- * exactly on the end of the travel can measure a hair beyond it. Refusing that
- * would cut the stroke a sample short at each end and stop the cycle closing.
+ * Retain the legacy end-contact policy when storing full-precision positions:
+ * changing it would also change which boundary commands count as reachable.
  */
 const STROKE_TOLERANCE = 1e-3;
 
@@ -81,10 +79,9 @@ const STROKE_TOLERANCE = 1e-3;
 const POSE_RECALL_TOLERANCE = 1e-4;
 
 /**
- * How close two solve-circle centers must be to count as coincident. Joint
- * positions are rounded to four decimals each timestep, so the bound is absolute
- * rather than mechanism-scale relative — matching circleCircleIntersection's own
- * tangent tolerance.
+ * How close two solve-circle centers must be to count as coincident. Retain the
+ * absolute contact policy, matching circleCircleIntersection's tangent tolerance;
+ * computational precision and branch-selection tolerances are separate concerns.
  */
 const CONCENTRIC_TOLERANCE = 0.001;
 
@@ -1801,10 +1798,10 @@ export class PositionSolver {
       const settled = this.jointMapPositions.get(id)!;
       const joint = joints.find((candidate) => candidate.id === id);
       if (joint) {
-        joint.x = roundNumber(settled[0], 4);
-        joint.y = roundNumber(settled[1], 4);
+        joint.x = settled[0];
+        joint.y = settled[1];
       }
-      this.jointMapPositions.set(id, [roundNumber(settled[0], 4), roundNumber(settled[1], 4)]);
+      this.jointMapPositions.set(id, [settled[0], settled[1]]);
     }
     // The pose the motion has to come back to, which is the one command a
     // solve approaching from the other side may not manage on its own.
@@ -3272,10 +3269,7 @@ export class PositionSolver {
           f.endCoord.x + (this.forcePositionMap.get(f.id + 'start')!.x - f.startCoord.x);
         const y_calc =
           f.endCoord.y + (this.forcePositionMap.get(f.id + 'start')!.y - f.startCoord.y);
-        this.forcePositionMap.set(
-          f.id + 'end',
-          new Coord(roundNumber(x_calc, 3), roundNumber(y_calc, 3))
-        );
+        this.forcePositionMap.set(f.id + 'end', new Coord(x_calc, y_calc));
       } else {
         this.determineTracerForce(f.link.joints[0], f.link.joints[1], f, 'end');
       }
@@ -3296,11 +3290,10 @@ export class PositionSolver {
     const angle = Math.atan2(unknownJoint.y - inputJoint.y, unknownJoint.x - inputJoint.x);
     const x = Math.cos(angle + increment) * r + inputJoint.x;
     const y = Math.sin(angle + increment) * r + inputJoint.y;
-    this.jointMapPositions.set(inputJoint.id, [
-      roundNumber(inputJoint.x, 4),
-      roundNumber(inputJoint.y, 4),
-    ]);
-    this.jointMapPositions.set(unknownJoint.id, [roundNumber(x, 4), roundNumber(y, 4)]);
+    // The next step derives its angle from this endpoint. Decimal rounding here
+    // changes both the radius and the phase, while CoM and inertia stay rigid.
+    this.jointMapPositions.set(inputJoint.id, [inputJoint.x, inputJoint.y]);
+    this.jointMapPositions.set(unknownJoint.id, [x, y]);
   }
 
   /**
@@ -3385,8 +3378,8 @@ export class PositionSolver {
     const yIncrement = increment * Math.sin(inputJointAngle);
     const x = unknownJoint.x + xIncrement;
     const y = unknownJoint.y + yIncrement;
-    this.jointMapPositions.set(unknownJoint.id, [roundNumber(x, 4), roundNumber(y, 4)]);
-    this.jointMapPositions.set(inputJoint.id, [roundNumber(x, 4), roundNumber(y, 4)]);
+    this.jointMapPositions.set(unknownJoint.id, [x, y]);
+    this.jointMapPositions.set(inputJoint.id, [x, y]);
   }
 
   // https://www.petercollingridge.co.uk/tutorials/computational-geometry/circle-circle-intersections/
@@ -3410,7 +3403,7 @@ export class PositionSolver {
     if (previous) {
       this.priorJointPositions.set(id, previous);
     }
-    this.jointMapPositions.set(id, [roundNumber(x, 4), roundNumber(y, 4)]);
+    this.jointMapPositions.set(id, [x, y]);
   }
 
   /**
@@ -3422,8 +3415,8 @@ export class PositionSolver {
    * link lengths and the intersection is undefined — the solver used to report
    * "no solution", which findFullMovementPos reads as a toggle and answers by
    * reversing the input. A parallelogram has no toggle there; it rotates straight
-   * through. Momentum is what disambiguates, so extrapolate the joint's motion and
-   * project the prediction back onto the circle it has to stay on.
+   * through. Momentum is what disambiguates. About a fixed pivot, extrapolate
+   * angular motion on its circle; otherwise project the Cartesian prediction.
    *
    * Returns undefined when the centers are apart, i.e. the ordinary case.
    */
@@ -3447,6 +3440,26 @@ export class PositionSolver {
     // Constant-velocity guess from the last two solved positions; with no history
     // yet, hold the current heading.
     const prior = this.priorJointPositions.get(unknownJoint.id) ?? current;
+    const fixed = [j1, j2].find((joint) => joint instanceof RealJoint && joint.ground);
+    if (fixed) {
+      // A point constrained to a grounded circle moves by rotation. A linear
+      // predictor followed by radial projection has a cubic angular error even
+      // for constant angular speed, exposed when full precision reaches exact
+      // coincidence. Continue the observed angular step instead. This remains
+      // branch continuation at a singularity, not a unique position solution.
+      const center = this.jointMapPositions.get(fixed.id)!;
+      const fixedRadius = this.jointDistMap.get(unknownJoint.id + ',' + fixed.id)!;
+      const angle = Math.atan2(current[1] - center[1], current[0] - center[0]);
+      const previousAngle = Math.atan2(prior[1] - center[1], prior[0] - center[0]);
+      const increment = Math.atan2(
+        Math.sin(angle - previousAngle),
+        Math.cos(angle - previousAngle)
+      );
+      return [
+        center[0] + fixedRadius * Math.cos(angle + increment),
+        center[1] + fixedRadius * Math.sin(angle + increment),
+      ];
+    }
     const predicted = [2 * current[0] - prior[0], 2 * current[1] - prior[1]];
 
     let towardX = predicted[0] - center1[0];
@@ -3554,7 +3567,7 @@ export class PositionSolver {
     // blindly and threw.
     const [x, y] = this.solutionNearestCurrent(solutions, unknownJoint);
     this.recordJointPosition(unknownJoint.id, x, y);
-    this.jointMapPositions.set(j2.id, [roundNumber(x, 4), roundNumber(y, 4)]);
+    this.jointMapPositions.set(j2.id, [x, y]);
     return true;
   }
 
@@ -3789,8 +3802,8 @@ export class PositionSolver {
     const ux = (x2 - x1) / span;
     const uy = (y2 - y1) / span;
     this.jointMapPositions.set(unknown_joint.id, [
-      roundNumber(x1 + along * ux - across * uy, 4),
-      roundNumber(y1 + along * uy + across * ux, 4),
+      x1 + along * ux - across * uy,
+      y1 + along * uy + across * ux,
     ]);
   }
 
@@ -3823,7 +3836,9 @@ export class PositionSolver {
 
   static setUpInitialJointLocations(joints: Joint[]) {
     joints.forEach((j) => {
-      this.jointMapPositions.set(j.id, [roundNumber(j.x, 4), roundNumber(j.y, 4)]);
+      // A working copy, not an authoring or display boundary. Preserve all
+      // digits, including those of reference pivots used to measure rigidity.
+      this.jointMapPositions.set(j.id, [j.x, j.y]);
     });
   }
 
@@ -3870,9 +3885,6 @@ export class PositionSolver {
       angle,
       internal_angle
     );
-    this.forcePositionMap.set(
-      force.id + startOrEnd,
-      new Coord(roundNumber(x_calc, 3), roundNumber(y_calc, 3))
-    );
+    this.forcePositionMap.set(force.id + startOrEnd, new Coord(x_calc, y_calc));
   }
 }

@@ -2,6 +2,10 @@ import '../../app/model/joint';
 import { Mechanism } from '../../app/model/mechanism/mechanism';
 import { RealLink } from '../../app/model/link';
 import { buildMechanism, MechanismFixture } from '../../test-utils/verification/fixture';
+import { LengthUnit } from '../../app/model/unit-enums';
+import { snapshotPmksMemberMotion } from '../../app/model/structural/pmks-dynamic-state';
+import { loadCaseFromPmksForces } from '../../app/model/structural/pmks-configuration';
+import { analyzeDynamic } from '../../app/model/structural/dynamic-force-solver';
 
 function weldedFiveBarFixture(): MechanismFixture {
   return {
@@ -46,8 +50,30 @@ describe('welded five-bar force regression', () => {
     expect(rows).toHaveLength(mechanism.timeNum.length);
     expect(rows.every((row) => Number.isFinite(Number(row[torqueColumn])))).toBe(true);
     expect(Number(rows[0][torqueColumn])).toBeCloseTo(2.9396, 4);
-    expect(Number(rows[1][torqueColumn])).toBeCloseTo(3.0096, 4);
-    expect(Number(rows[2][torqueColumn])).toBeCloseTo(3.2182, 4);
+    // The old 3.0096/3.2182 snapshots included four-decimal position storage.
+    // Compare the displayed values to the independent S2 equilibrium assembly
+    // at the actual precise pose, while retaining four-place export formatting.
+    for (const sampleIndex of [0, 1, 2]) {
+      const sample = {
+        mechanism,
+        sampleIndex,
+        lengthUnit: LengthUnit.METER,
+        coordinateSpace: 'project' as const,
+      };
+      const snapshot = snapshotPmksMemberMotion(sample);
+      if (snapshot.status !== 'ok') throw new Error(snapshot.message);
+      const load = loadCaseFromPmksForces(
+        { ...sample, joints: mechanism.joints[sampleIndex], links: mechanism.links[sampleIndex] },
+        mechanism.forces[sampleIndex],
+        'Compound load'
+      );
+      const equilibrium = analyzeDynamic(snapshot.configuration, snapshot.states, load);
+      if (equilibrium.status !== 'ok') throw new Error(equilibrium.status);
+      expect(Number(rows[sampleIndex][torqueColumn])).toBeCloseTo(
+        equilibrium.driverReactions[0].momentNm,
+        4
+      );
+    }
 
     for (const mode of ['static', 'dynamic'] as const) {
       const result = mechanism.getForceAnalysis(mode);
