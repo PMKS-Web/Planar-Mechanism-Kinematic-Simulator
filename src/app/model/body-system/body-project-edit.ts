@@ -26,6 +26,7 @@ export function bodyOperationPermission(
   )
     return menuRefusal(state, displayedMapping ? 'attachment' : 'start');
   if (
+    operation.kind === 'move-body' ||
     operation.kind === 'move-point' ||
     operation.kind === 'move-coordinate' ||
     operation.kind === 'guide-axis' ||

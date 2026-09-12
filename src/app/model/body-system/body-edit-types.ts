@@ -1,3 +1,4 @@
+import { BodyDragMove } from './body-drag-edit';
 import { BodyCylinderDimensionEdit } from './body-cylinder-dimension-edit';
 import { BodyGuideAxisEdit } from './body-guide-axis-edit';
 import { BodyCoordinateMove } from './body-coordinate-edit';
@@ -59,6 +60,7 @@ export type BodyEditOperation =
   | BodyPasteOperation
   | BodyPropertyOperation
   | BodyGeometryOperation
+  | BodyDragMove
   | BodyPointMove
   | BodyCoordinateMove
   | BodyGuideAxisEdit

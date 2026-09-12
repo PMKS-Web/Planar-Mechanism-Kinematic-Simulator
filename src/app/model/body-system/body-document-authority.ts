@@ -34,7 +34,7 @@ interface HistoryEntry {
   readonly display?: BodyEditFrame;
 }
 export interface BodyDocumentChange {
-  readonly kind: 'edit' | 'undo' | 'redo';
+  readonly kind: 'edit' | 'undo' | 'redo' | 'load';
   readonly revision: number;
   readonly document: BodyDocument;
   readonly local: BodyLocalState;
@@ -160,6 +160,25 @@ export class BodyDocumentAuthority {
       changed: true,
       revision: this.revision,
       event: snapshotCopy({ kind: 'edit', revision: this.revision, ...this.value, plan }),
+    };
+  }
+  replace(document: BodyDocument, state: EditState): BodyCommitResult {
+    const permission = refusalFor('history', state);
+    if (permission)
+      return { ok: false, code: 'permission', message: permission.long, targets: [], permission };
+    const refused = validateBodyEditDocument(document);
+    if (refused) return refused;
+    // Replacement invalidates every preview, even if the loaded drawing happens to share IDs.
+    const fresh = new BodyDocumentAuthority(document);
+    this.value = fresh.value;
+    this.history = [this.value];
+    this.cursor = 0;
+    this.currentRevision++;
+    return {
+      ok: true,
+      changed: true,
+      revision: this.revision,
+      event: snapshotCopy({ kind: 'load', revision: this.revision, ...this.value }),
     };
   }
   undo(state: EditState): BodyCommitResult {

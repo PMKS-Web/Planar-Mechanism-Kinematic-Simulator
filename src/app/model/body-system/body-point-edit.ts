@@ -1,3 +1,5 @@
+import { bodyPointPathIsClear } from './body-point-path';
+import { projectLimitedBodyEdit } from './body-edit-limit-projection';
 import { projectBodyEdit } from './body-edit-projection';
 import { bodyNullSpace, factorBodyRows } from './body-linear-algebra';
 import { BodyDocument } from './body-document';
@@ -17,6 +19,7 @@ export interface BodyPointMove {
   /** Typed placement is exact; pointer motion may project onto the allowed local motion. */
   readonly target: Point;
   readonly mode?: 'exact' | 'project';
+  readonly rigid?: boolean;
 }
 type PointEditResult =
   | {
@@ -49,7 +52,8 @@ function pointCandidate(document: BodyDocument, operation: BodyPointMove): Point
     document,
     operation.attachmentId,
     compiled.groups,
-    compiled.groupOf
+    compiled.groupOf,
+    { rigid: operation.rigid }
   );
   const distance = Math.hypot(
     operation.target.x - model.origin.x,
@@ -90,7 +94,7 @@ function pointCandidate(document: BodyDocument, operation: BodyPointMove): Point
     pointEditRows(model, candidate, operation.target);
   let values =
     operation.mode === 'project'
-      ? projectBodyEdit(seed, rowsAt, model.angularColumns)
+      ? projectLimitedBodyEdit(model, seed, rowsAt)
       : relaxBodyEdit(seed, rowsAt, model.angularColumns);
   if (!values && operation.mode !== 'project') {
     const projected = projectBodyEdit(seed, rowsAt, model.angularColumns);
@@ -104,5 +108,7 @@ function pointCandidate(document: BodyDocument, operation: BodyPointMove): Point
     if (!result.ok) return result;
     candidate = result.document;
   }
+  if (operation.rigid && !bodyPointPathIsClear(model, values, candidate))
+    return bodyEditRefusal('unsolved-edit');
   return { ok: true, document: candidate, operations };
 }

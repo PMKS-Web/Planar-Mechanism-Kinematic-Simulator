@@ -540,3 +540,68 @@ context-menu placement and the native browser/UI evidence remain S5 work.
 - Do removal and performance evidence cover complete consumers rather than a passing private kernel?
 
 F1 reviews the concrete S1 records/validator/group compiler against this contract. F2 reviews numerical implementation; F3 reviews transactions and ownership; F4 reviews the integrated result and removal evidence. No speculative review has been spent on this document.
+
+
+## S4 gesture, persistence and production-import handoff
+
+`NativeBodyDocumentService.beginGesture` captures one command ID, revision, display and
+clock set. `advance` produces a private `BodyEditPlan`; the grid must render that draft
+without installing it in the authority. `finishGesture` publishes one event and one history
+entry; Cancel publishes neither. A document replacement, edit/history revision, displayed
+pose or clock change invalidates the gesture; selection changes alone do not. A gesture from
+another editor cannot commit here. Replay is bounded to 1,000 accepted subcommands and 256
+substeps per pointer event. Exhaustion is a refusal, not permission to teleport to the cursor.
+S5 should coalesce high-frequency pointer input and measure this replay cost before exposing
+long drags; there is no native DOM wiring in S4.
+
+`move-body` names a body, a captured material-local grab point, and a world target. Its
+transient solver attachment never enters the resulting document. All material in the reached
+component moves through rigid poses; local shape, weld rest, ownership, loads and IDs stay
+intact. `move-coordinate` supplies physical travel/angle and carries the same rigid bodies.
+Exact fields refuse out-of-range values. Pointer goals can project onto hard equations and
+active travel bounds, with inward motion releasing the active constraint on the next solve.
+The active-set projection promises a feasible local answer, not the global closest point on
+an arbitrary nonlinear configuration space. An inconsistent active set is refused.
+
+The gesture splits requests in the grabbed material's scale (WORLD markers use their incident
+material), retains accepted continuation and clips an unsolved segment with bounded bisection.
+Coordinate motion uses the S3 interval/fold/stop kernel. Rigid pointer candidates additionally
+check the most-changed available joint coordinate with that kernel and the edit interval
+validator. Loose sketches use the constrained edit metric; they do not acquire a claim of
+unique physical motion. Shape-edit point commands remain design edits, distinct from rigid
+body gestures. UI acceptance still requires S5's native filmstrips and hit targets.
+
+`save` always returns the checked canonical `pmks2:` payload. `load` dispatches native prefixes
+before production parsing, validates a whole candidate, then replaces the authority in one
+`load` event with a fresh history/local clock set and a monotonically increased revision.
+A refused read, permission or consistency check leaves the prior document/history/selection/
+display/revision and backups intact. Loading a different drawing is not an undoable edit.
+The platform-facing UI must surface returned refusals and `recoveryStatus`.
+
+`NativeBodyRecovery` takes injected session/persistent storage; S5 attaches the browser's
+stores only after choosing the native route. Version-1 envelopes containing native payloads
+use separate `pmks2:tab-drawing:v1` and `pmks2:last-drawing:v1` keys. A valid tab wins; a corrupt,
+unsupported or unavailable tab can fall back to a valid persistent drawing, with rejected
+sources reported. Recovering does not overwrite either backup. Successful edits/history/load
+save authored source data, not selected DOM objects or sampled poses. Storage denial/quota
+failure is reported separately from a successful model transaction; it cannot roll that
+transaction back. Old legacy keys remain untouched and are never fed to native recovery.
+
+The production reader retains only decoded records from `StringTranscoder`, not runtime
+`Joint`, `Link`, `MechanismBuilder` or solver instances. It is bounded to 1 MiB input and 1,000
+records per legacy table. A strict syntax check surrounds the legacy numeric parser, whose
+unknown-digit tolerance must not silently alter geometry. Supported production 2.0.3 syntax
+covers R pins, multiway pin trees, material links, ordinary one-level compounds/welds, loads,
+units/settings and grounded P carriages. A production block's mass and inertia belong to a
+real native material carriage with WORLD–P–carriage and carriage–R–rod; P remains massless.
+Group overrides remain group overrides. A compound load keeps its frozen ambiguous material
+scope until an owner is chosen. Deleting its reference leaf while other scoped material
+survives requires owner resolution or explicit force deletion, even after mass is reset.
+
+Frozen S0 four-bar, three six-bar, slider-crank and authored compound/load bytes are the
+compatibility evidence. Modern slot/Slide/cylinder records and extension tails are refused
+with a rebuild message; this is deliberately not a general staging converter. The old length
+checksum cannot detect all same-length corruption; strict syntax/reference/physics validation
+adds protection but cannot reconstruct a lost content digest. Native saves use their own CRC.
+Old explicit mass/CoM values are retained; native automatic geometry uses the native material
+model. The initial frame has angle zero and its geometry carries the old drawn orientation.

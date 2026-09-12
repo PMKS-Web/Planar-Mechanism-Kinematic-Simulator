@@ -110,12 +110,15 @@ export function deleteBodyRecords(
     if (!assemblies.has(assembly.id) && joints.has(assembly.internalJoint))
       return bodyEditRefusal('assembly-interior', [{ kind: 'joint', id: assembly.internalJoint }]);
   for (const force of document.forces) {
-    if (bodies.has(force.bodyId)) forces.add(force.id);
+    // The reference frame is not ownership: losing it cannot delete a load on surviving material.
+    const scope = force.legacyGroupScope?.members;
     if (
       !forces.has(force.id) &&
-      force.legacyGroupScope?.members.some((member) => bodies.has(member.bodyId))
+      scope?.some((member) => bodies.has(member.bodyId)) &&
+      scope.some((member) => !bodies.has(member.bodyId))
     )
       return bodyEditRefusal('ambiguous-load-owner', [{ kind: 'force', id: force.id }]);
+    if (bodies.has(force.bodyId)) forces.add(force.id);
   }
   const candidate: BodyDocument = {
     ...document,

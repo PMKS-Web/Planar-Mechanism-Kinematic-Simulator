@@ -1,3 +1,4 @@
+import { editBodyDrag } from './body-drag-edit';
 import { editBodyCylinderDimensions } from './body-cylinder-dimension-edit';
 import { editBodyGuideAxis } from './body-guide-axis-edit';
 import { editBodyCoordinate } from './body-coordinate-edit';
@@ -127,6 +128,10 @@ export function planBodyDesignEdit(
       candidate = changed.document;
     } else if (operation.kind === 'move-coordinate') {
       const changed = editBodyCoordinate(candidate, operation);
+      if (!changed.ok) return changed;
+      candidate = changed.document;
+    } else if (operation.kind === 'move-body') {
+      const changed = editBodyDrag(candidate, operation);
       if (!changed.ok) return changed;
       candidate = changed.document;
     } else if (operation.kind === 'move-point') {
