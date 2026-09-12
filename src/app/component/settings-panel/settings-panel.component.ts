@@ -1,4 +1,4 @@
-import { EditBannerComponent } from '../edit-panel/edit-banner.component';
+import { EditBannerComponent } from '../BLOCKS/banner/edit-banner.component';
 import { EditPermissionService } from '../../services/edit-permission.service';
 import { EditRefusal, SETTINGS_AT_START_ONLY } from '../../model/edit-permission';
 import { NotificationService } from '../../services/notification.service';

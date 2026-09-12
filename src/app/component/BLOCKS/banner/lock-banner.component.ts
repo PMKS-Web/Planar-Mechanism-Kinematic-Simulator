@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MatIcon } from '@angular/material/icon';
-import { ActiveObjService } from '../../services/active-obj.service';
-import { GridUtilsService } from '../../services/grid-utils.service';
-import { MechanismService } from '../../services/mechanism.service';
+import { ActiveObjService } from '../../../services/active-obj.service';
+import { GridUtilsService } from '../../../services/grid-utils.service';
+import { MechanismService } from '../../../services/mechanism.service';
 
 /**
  * The link panel's second line while the link is locked in place.

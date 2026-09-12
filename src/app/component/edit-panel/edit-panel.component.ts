@@ -44,7 +44,7 @@ import { canvasHandle } from '../../services/canvas-handle';
 import { registerEditPanel } from '../../services/edit-panel-handle';
 import { MODEL_SCALE } from '../../model/render-scale';
 import { TitleBlock } from '../BLOCKS/title/title.component';
-import { EditBannerComponent } from './edit-banner.component';
+import { EditBannerComponent } from '../BLOCKS/banner/edit-banner.component';
 import { StateInputComponent } from '../BLOCKS/state-input/state-input.component';
 import { uniformBodyOf } from '../../model/uniform-body';
 import {
@@ -66,7 +66,7 @@ import { EditableTitleComponent } from '../BLOCKS/editable-title/editable-title.
 import { CollapsibleSubsectionComponent } from '../BLOCKS/collapsible-subsection/collapsible-subsection.component';
 import { DualInputComponent } from '../BLOCKS/dual-input/dual-input.component';
 import { HoldFieldComponent } from '../BLOCKS/hold-field/hold-field.component';
-import { LockBannerComponent } from './lock-banner.component';
+import { LockBannerComponent } from '../BLOCKS/banner/lock-banner.component';
 import { ToggleComponent } from '../BLOCKS/toggle/toggle.component';
 import { ButtonComponent } from '../BLOCKS/button/button.component';
 import { InputComponent } from '../BLOCKS/input/input.component';

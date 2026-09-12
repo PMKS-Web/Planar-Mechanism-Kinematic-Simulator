@@ -47,21 +47,6 @@ Each entry is **where** it is, what it draws, and the block to use instead.
   see below — and these are the same shape: they want inputs on the block, most likely `hideHelp`
   and a named width, rather than a fourth caller knowing the block's private markup.
 
-## Components that should move here
-
-These are shared already, or would be with one caller changed, and belong beside the blocks:
-
-- **`app-edit-banner` + `app-lock-banner`** (`component/edit-panel/`) — shown under **Feedback**.
-  They share a stylesheet, and the lock banner is a hardcoded instance of the other; one banner
-  block with a `refusal` input covers both.
-- **`app-view-button`** (`component/view-controls/`) — shown under **Actions**. It is the generic
-  icon toggle the items above keep re-drawing.
-- **`app-context-menu`** (`component/context-menu/`) — shown under **Feedback**. Fully data-driven
-  from `menu-model.ts`, one caller.
-- **`ShortcutTipDirective` / `app-shortcut-tip`** (`src/app/`) — a `matTooltip` re-implemented so
-  it can draw a key cap. It lives at the app root and belongs next to the tooltip conventions the
-  blocks follow.
-
 ## Blocks that overlap
 
 - **`dual-input-block` duplicates `input-block`'s** hover-and-focus overlay logic, and has
@@ -85,6 +70,12 @@ cycle to appear is a panel reaching another panel's static — register a handle
 
 ## Done
 
+- **The four shared components moved into `BLOCKS/`**, where the rest of the gallery lives:
+  `app-edit-banner` + `app-lock-banner` (from `edit-panel/`, now `BLOCKS/banner/`), `app-view-button`
+  (from `view-controls/`), `app-context-menu` with its `menu-model.ts` (from `context-menu/`), and
+  `ShortcutTipDirective` / `app-shortcut-tip` (from the app root). Their stories moved from
+  `src/stories/shared/` to `src/stories/blocks/` with them, and the shortcut tip — the one of the
+  four with no gallery entry at all — has one now, under **Feedback**.
 - `section-header` in `blocks.common.scss` is the one definition of the band that heads a foldable
   section. `analysis-setup` and `mechanism-panel` wrote it out twice, fourteen identical
   declarations each, differing only in a hover and a `muted` variant that stayed with the caller

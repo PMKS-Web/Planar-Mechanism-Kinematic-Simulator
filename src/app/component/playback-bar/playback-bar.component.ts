@@ -29,7 +29,7 @@ import { ViewControlsComponent } from '../view-controls/view-controls.component'
 import { MatTooltip } from '@angular/material/tooltip';
 import { NgTemplateOutlet } from '@angular/common';
 import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
-import { ShortcutTipDirective } from '../../shortcut-tip.directive';
+import { ShortcutTipDirective } from '../BLOCKS/shortcut-tip/shortcut-tip.directive';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
 import { SaveHistoryService } from '../../services/save-history.service';
 import { RealJoint } from '../../model/joint';

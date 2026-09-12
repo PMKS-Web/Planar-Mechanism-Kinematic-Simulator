@@ -9,7 +9,7 @@ import {
 import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService, writeStoredFlag } from '../../services/settings.service';
 import { SvgGridService } from '../../services/svg-grid.service';
-import { ViewButtonComponent } from './view-button.component';
+import { ViewButtonComponent } from '../BLOCKS/view-button/view-button.component';
 import { RealLink } from '../../model/link';
 import { MatIcon } from '@angular/material/icon';
 import { CdkConnectedOverlay, CdkOverlayOrigin, ConnectedPosition } from '@angular/cdk/overlay';

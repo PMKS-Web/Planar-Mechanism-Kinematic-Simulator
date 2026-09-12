@@ -31,7 +31,7 @@ import { MatIcon } from '@angular/material/icon';
 import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
 import { GridUtilsService } from '../../services/grid-utils.service';
 import { DrawingExportComponent } from '../MODALS/drawing-export/drawing-export.component';
-import { ShortcutTipDirective } from '../../shortcut-tip.directive';
+import { ShortcutTipDirective } from '../BLOCKS/shortcut-tip/shortcut-tip.directive';
 import { ChipComponent } from '../BLOCKS/chip/chip.component';
 
 /** A mode's chip: whether that analysis can be entered, and what is missing. */

@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { MatIcon } from '@angular/material/icon';
-import { EditRefusal } from '../../model/edit-permission';
-import { EditPermissionService } from '../../services/edit-permission.service';
-import { MechanismService } from '../../services/mechanism.service';
-import { SettingsService } from '../../services/settings.service';
-import { SelectedTabService, TabID } from '../../selected-tab.service';
+import { EditRefusal } from '../../../model/edit-permission';
+import { EditPermissionService } from '../../../services/edit-permission.service';
+import { MechanismService } from '../../../services/mechanism.service';
+import { SettingsService } from '../../../services/settings.service';
+import { SelectedTabService, TabID } from '../../../selected-tab.service';
 
 /**
  * Why the panel below cannot be typed into, attached to the card it is about.

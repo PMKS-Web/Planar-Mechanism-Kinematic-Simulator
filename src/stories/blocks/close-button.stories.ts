@@ -43,24 +43,24 @@ export const WithTooltip: Story = { args: { tooltip: 'Close' } };
 /**
  * In the corner of a card, which is where four of the five callers put it.
  *
- * Note what the placing rule targets: the host is `display: contents` and so
- * cannot be positioned itself — a caller positions `.closeButton`, exactly as
- * the right drawer and the tutorial card do.
+ * Note what is positioned. The host is `display: contents` and so cannot be
+ * placed itself; a caller either positions a wrapper around it, as here, or
+ * writes one rule against `.closeButton`, as the right drawer and the tutorial
+ * card do.
  */
 export const OnACard: Story = {
+  decorators: [atWidth(300)],
   render: () => ({
     template: `
-      <style>
-        .sb-card { position: relative; padding: 16px; border-radius: 8px;
-                   background: var(--surface); box-shadow: var(--card-shadow) }
-        .sb-card .closeButton { position: absolute; top: 8px; right: 8px }
-      </style>
-      <div class="sb-card">
+      <div style="position: relative; padding: 16px; border-radius: 8px;
+                  background: var(--surface); box-shadow: var(--card-shadow)">
         <div style="font-size: 20px; font-weight: 500">A card with a title</div>
         <p style="margin: 6px 0 0; color: var(--text-secondary)">
-          The button takes the corner, clear of the title's own line.
+          The button takes the corner, clear of the title&apos;s own line.
         </p>
-        <close-button label="Close card"></close-button>
+        <div style="position: absolute; top: 8px; right: 8px">
+          <close-button label="Close card"></close-button>
+        </div>
       </div>
     `,
   }),
