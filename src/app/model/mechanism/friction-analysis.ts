@@ -43,11 +43,16 @@ interface Contact {
   kind: 'force' | 'torque';
 }
 
-function refusal(frame: ForceAnalysisFrame, message: string): ForceAnalysisFrame {
+function refusal(
+  frame: ForceAnalysisFrame,
+  message: string,
+  frictionUnavailable?: ForceAnalysisFrame['frictionUnavailable']
+): ForceAnalysisFrame {
   return {
     ...frame,
     status: 'friction-unresolved',
     message,
+    frictionUnavailable,
     jointReactions: new Map(),
     jointReactionsByLink: new Map(),
     guideCouples: new Map(),
@@ -80,7 +85,7 @@ export function analyzeWithFriction(
     (motion?.coordinateScale ?? 1) !== 1 &&
     bodies.some((body) => body.mass !== 0 || (body instanceof RealLink && body.massMoI !== 0))
   ) {
-    return refusal(initial, INERTIA_FRICTION_REFUSAL);
+    return refusal(initial, INERTIA_FRICTION_REFUSAL, { reason: 'inertia' });
   }
   if (initial.sharedSupport) {
     return refusal(initial, 'Friction needs a unique bearing load. Remove the redundant support.');
@@ -185,7 +190,8 @@ export function analyzeWithFriction(
     if (Math.abs(contact.rate) <= contact.rateTolerance) {
       return refusal(
         initial,
-        `Joint ${joint.name} has zero relative motion. Static friction is a range at this pose; the prescribed-motion analysis cannot select a unique holding force.`
+        `Joint ${joint.name} has zero relative motion. Static friction is a range at this pose; the prescribed-motion analysis cannot select a unique holding force.`,
+        { reason: 'stationary', jointId: joint.id }
       );
     }
     contacts.push(contact);

@@ -2619,3 +2619,14 @@ is explicitly bound in its Storybook render template. Build the gallery and exer
 real expanded content; a hidden section or a screenshot of its title does not verify a state.
 Provide each mock service once per story: combining decorators that replace the same token
 can select the earlier provider instead of the intended diagnostic state.
+
+**A clipped field is not an expanded section.** Playwright's `isVisible()` can return true for
+content clipped inside a collapsed subsection. Check the header's `aria-expanded` before
+clicking it; otherwise a browser test may close the section it meant to open. The shared
+collapsible header exposes that state, and the friction visualization suite uses it.
+
+**Friction glyphs must follow force samples, not timeline direction alone.** A fully rotating
+input's Reverse command rebuilds the prescribed drive and friction solution. Reciprocating
+playback also has a timeline-rewind path; negating just the arrow there would disagree with
+the coupled guide normal load and actuator effort. See the presentation limits in
+`friction-design.md` before changing that convention.

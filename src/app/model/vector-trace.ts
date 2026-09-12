@@ -133,6 +133,21 @@ export function arrowPath(arrows: VectorArrow[]): string {
     .join(' ');
 }
 
+/** A signed moment in the model's y-up frame; positive sweep is counterclockwise. */
+export function momentArrowPath(x: number, y: number, radius: number, sweep: number): string {
+  if (!(radius > 0) || !Number.isFinite(sweep) || Math.abs(sweep) < 1e-6) return '';
+  const start = Math.PI / 4;
+  const end = start + sweep;
+  const tip = { x: x + radius * Math.cos(end), y: y + radius * Math.sin(end) };
+  const dx = -Math.sin(end) * Math.sign(sweep) * radius * 0.35;
+  const dy = Math.cos(end) * Math.sign(sweep) * radius * 0.35;
+  return (
+    `M ${x + radius * Math.cos(start)} ${y + radius * Math.sin(start)} ` +
+    `A ${radius} ${radius} 0 ${Math.abs(sweep) > Math.PI ? 1 : 0} ${sweep > 0 ? 1 : 0} ${tip.x} ${tip.y} ` +
+    arrowPath([{ x: tip.x - dx, y: tip.y - dy, dx, dy }])
+  );
+}
+
 /** The head is a fraction of the shaft, so a short arrow still reads as one. */
 const HEAD_LENGTH_FRACTION = 0.26;
 const HEAD_HALF_WIDTH_FRACTION = 0.42;

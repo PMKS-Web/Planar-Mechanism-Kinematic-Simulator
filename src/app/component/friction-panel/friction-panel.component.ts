@@ -9,10 +9,16 @@ import {
 } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { PrisJoint, RealJoint } from '../../model/joint';
-import { frictionContactsOf, guideFrictionRefusal } from '../../model/friction-contacts';
+import {
+  frictionContactsOf,
+  guideFrictionRefusal,
+  frictionContactName,
+} from '../../model/friction-contacts';
 import { hasFriction } from '../../model/joint-friction';
 import { MODEL_SCALE } from '../../model/render-scale';
 import { FrictionService } from '../../services/friction.service';
+import { FrictionOverlayService } from '../../services/friction-overlay.service';
+import { ViewButtonComponent } from '../view-controls/view-button.component';
 import { SettingsService } from '../../services/settings.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { EditPermissionService } from '../../services/edit-permission.service';
@@ -23,26 +29,41 @@ import { CollapsibleSubsectionComponent } from '../BLOCKS/collapsible-subsection
 @Component({
   selector: 'app-friction-panel',
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [ReactiveFormsModule, InputComponent, ButtonComponent, CollapsibleSubsectionComponent],
+  imports: [
+    ReactiveFormsModule,
+    InputComponent,
+    ButtonComponent,
+    CollapsibleSubsectionComponent,
+    ViewButtonComponent,
+  ],
   templateUrl: './friction-panel.component.html',
   styleUrl: './friction-panel.component.scss',
 })
 export class FrictionPanelComponent implements DoCheck {
+  protected readonly contactName = frictionContactName;
   readonly joint = input.required<RealJoint>();
   readonly readOnly = input(false);
   protected readonly service = inject(FrictionService);
+  protected readonly overlay = inject(FrictionOverlayService);
   protected readonly permission = inject(EditPermissionService);
   private settings = inject(SettingsService);
   private parser = inject(NumberUnitParserService);
   protected readonly error = signal('');
+  protected readonly confirmation = signal('');
+  protected readonly feedbackJoint = signal('');
   /** A caller can retain the section's open state when switching property views. */
   readonly expanded = model(false);
   protected readonly contacts = signal<
     { joint: RealJoint; pin: boolean; form: FormGroup; apply: () => void; remove: () => void }[]
   >([]);
   private signature = '';
+  private previousJoint?: RealJoint;
 
   ngDoCheck(): void {
+    if (this.previousJoint !== this.joint()) {
+      this.confirmation.set('');
+      this.previousJoint = this.joint();
+    }
     const joints = frictionContactsOf(this.joint());
     const signature = JSON.stringify([
       joints.map((one) => [one.id, one.friction]),
@@ -75,13 +96,7 @@ export class FrictionPanelComponent implements DoCheck {
           form,
           apply: () => this.apply(joint, form),
           remove: () =>
-            this.error.set(
-              this.service.set(joint, {
-                ...joint.friction,
-                staticCoefficient: 0,
-                kineticCoefficient: 0,
-              }) ?? ''
-            ),
+            this.commit(joint, { ...joint.friction, staticCoefficient: 0, kineticCoefficient: 0 }),
         };
       })
     );
@@ -89,6 +104,19 @@ export class FrictionPanelComponent implements DoCheck {
 
   protected enabled(joint: RealJoint): boolean {
     return hasFriction(joint.friction);
+  }
+  protected anyEnabled(): boolean {
+    return this.contacts().some((contact) => this.enabled(contact.joint));
+  }
+  protected inputReading() {
+    const contact = this.contacts().find((one) => this.enabled(one.joint));
+    return contact ? this.service.reading(contact.joint) : undefined;
+  }
+  protected flipOverlay(): void {
+    this.overlay.visible.update((shown) => !shown);
+  }
+  protected radius(joint: RealJoint): number {
+    return joint.friction.radius / MODEL_SCALE;
   }
   protected unsupported(joint: RealJoint): string | undefined {
     return guideFrictionRefusal(joint);
@@ -115,12 +143,18 @@ export class FrictionPanelComponent implements DoCheck {
       this.settings.lengthUnit.value
     );
     const coefficient = (value: string): number => (value.trim() === '' ? NaN : Number(value));
-    this.error.set(
-      this.service.set(joint, {
-        staticCoefficient: coefficient(typed.static),
-        kineticCoefficient: coefficient(typed.kinetic),
-        radius: validRadius ? radius * MODEL_SCALE : NaN,
-      }) ?? ''
+    this.commit(joint, {
+      staticCoefficient: coefficient(typed.static),
+      kineticCoefficient: coefficient(typed.kinetic),
+      radius: validRadius ? radius * MODEL_SCALE : NaN,
+    });
+  }
+  private commit(joint: RealJoint, value: RealJoint['friction']): void {
+    this.feedbackJoint.set(joint.id);
+    const error = this.service.set(joint, value);
+    this.error.set(error ?? '');
+    this.confirmation.set(
+      error ? '' : hasFriction(value) ? 'Friction settings saved.' : 'Friction disabled.'
     );
   }
 }

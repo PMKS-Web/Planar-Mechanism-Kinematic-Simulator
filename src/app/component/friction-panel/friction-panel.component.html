@@ -5,17 +5,28 @@
     (opened)="expanded.set(true)"
     (closed)="expanded.set(false)"
   >
+    <span
+      headerActions
+      class="state-chip"
+      [class.enabled]="anyEnabled()"
+      role="status"
+      [attr.aria-label]="'Friction ' + (anyEnabled() ? 'Enabled' : 'Off')"
+      >{{ anyEnabled() ? 'Enabled' : 'Off' }}</span
+    >
     <p class="note">
       Friction changes the required input effort. Motion stays at the prescribed speed.
     </p>
     @for (contact of contacts(); track contact.joint.id) {
       <div class="contact" [attr.data-friction-joint]="contact.joint.id">
-        <h4>{{ contact.pin ? 'Pin Bearing' : 'Slider Guide' }}</h4>
+        <h4>
+          {{ contact.pin ? 'Pin Bearing' : 'Slider Guide' }} at {{ contactName(contact.joint) }}
+        </h4>
+        <p class="contact-state">Friction: {{ enabled(contact.joint) ? 'Enabled' : 'Off' }}</p>
         @if (unsupported(contact.joint); as reason) {
           <p class="note">{{ reason }}</p>
           @if (!readOnly() && enabled(contact.joint)) {
             <button-block [click]="contact.remove" [disabled]="!!permission.refusal('properties')"
-              >Remove Friction</button-block
+              >Disable Friction</button-block
             >
           }
         }
@@ -49,8 +60,24 @@
               [click]="contact.apply"
               [disabled]="!!permission.refusal('properties')"
               dataAction="apply-friction"
-              >Apply Friction</button-block
+              >Save Friction Settings</button-block
             >
+            @if (feedbackJoint() === contact.joint.id) {
+              @if (confirmation()) {
+                <p class="confirmation" role="status">{{ confirmation() }}</p>
+              }
+              @if (error()) {
+                <p class="error" role="alert">{{ error() }}</p>
+              }
+            }
+            @if (enabled(contact.joint)) {
+              <button-block
+                [click]="contact.remove"
+                [disabled]="!!permission.refusal('properties')"
+                dataAction="disable-friction"
+                >Disable Friction</button-block
+              >
+            }
           </div>
           @if (permission.refusal('properties'); as refusal) {
             <p class="note">{{ refusal.long }}</p>
@@ -61,34 +88,59 @@
             <p class="note">
               Static coefficient {{ contact.joint.friction.staticCoefficient }} · Kinetic
               coefficient {{ contact.joint.friction.kineticCoefficient }}
+              @if (contact.pin) {
+                · Effective radius {{ number(radius(contact.joint)) }} {{ lengthUnit }}
+              }
             </p>
           }
           @if (service.reading(contact.joint); as reading) {
+            <p class="contact-state" [attr.data-contact-state]="reading.state">
+              Contact State: {{ reading.state }}
+            </p>
             @if (reading.values; as values) {
               <dl>
-                <dt>Normal Load</dt>
+                <dt>{{ contact.pin ? 'Radial Load' : 'Normal Load' }}</dt>
                 <dd>{{ number(values[0]) }} {{ forceUnit }}</dd>
                 <dt>Friction {{ contact.pin ? 'Torque' : 'Force' }}</dt>
                 <dd>{{ number(values[1]) }} {{ effortUnit(contact.pin) }}</dd>
-                <dt>Static Limit</dt>
+                <dt>Static Friction Limit</dt>
                 <dd>{{ number(values[2]) }} {{ effortUnit(contact.pin) }}</dd>
               </dl>
               <p class="note">{{ reading.sign }}</p>
-              @if (reading.additionalEffort !== undefined) {
+              @if (!contact.pin) {
                 <p class="note">
-                  Additional input {{ reading.inputIsTorque ? 'torque' : 'force' }} from all
-                  friction: {{ number(reading.additionalEffort) }}
-                  {{ effortUnit(!!reading.inputIsTorque) }}. This is the change from the
-                  frictionless result at the same pose and motion.
+                  This tangent component is already included in the guide's reported reaction.
                 </p>
               }
+              <details class="calculation">
+                <summary>How Friction Is Calculated</summary>
+                <p class="note">
+                  Magnitude = μk ×
+                  {{ contact.pin ? 'radial load × effective radius' : 'normal load' }}<br />
+                  = {{ number(contact.joint.friction.kineticCoefficient) }} ×
+                  {{ number(values[0]) }} {{ forceUnit }}
+                  @if (contact.pin) {
+                    × {{ number(radius(contact.joint)) }} {{ lengthUnit }}
+                  }
+                  <br />= {{ number(values[1] < 0 ? -values[1] : values[1]) }}
+                  {{ effortUnit(contact.pin) }}.<br />
+                  Direction opposes relative {{ contact.pin ? 'rotation' : 'sliding' }}.
+                </p>
+              </details>
               <p class="note">
                 The static limit uses this contact's current load. It is not the input effort needed
                 to start the whole mechanism.
               </p>
             }
             @if (reading.message) {
-              <p class="note" role="status">{{ reading.message }}</p>
+              <div class="diagnostic" role="status">
+                <strong>{{
+                  reading.state === 'Stationary'
+                    ? 'Indeterminate at Rest'
+                    : 'Friction Results Unavailable'
+                }}</strong>
+                <p>{{ reading.message }}</p>
+              </div>
             }
           }
         } @else {
@@ -96,8 +148,48 @@
         }
       </div>
     }
-    @if (error()) {
-      <p class="error" role="alert">{{ error() }}</p>
+    @if (inputReading(); as reading) {
+      @if (reading.additionalEffort !== undefined) {
+        <section class="input-comparison" aria-label="Input effort comparison">
+          <h4>
+            Input {{ reading.inputIsTorque ? 'Torque' : 'Force' }} at {{ reading.inputJoint }}
+          </h4>
+          <dl>
+            <dt>Without Friction</dt>
+            <dd>
+              {{ number(reading.frictionlessEffort!) }} {{ effortUnit(!!reading.inputIsTorque) }}
+            </dd>
+            <dt>With Friction</dt>
+            <dd>{{ number(reading.totalEffort!) }} {{ effortUnit(!!reading.inputIsTorque) }}</dd>
+            <dt><strong>Additional from All Friction</strong></dt>
+            <dd>
+              <strong
+                >{{ number(reading.additionalEffort) }}
+                {{ effortUnit(!!reading.inputIsTorque) }}</strong
+              >
+            </dd>
+          </dl>
+          <p class="note">
+            Required actuator effort at the same pose and motion. Includes every friction contact in
+            this mechanism.
+          </p>
+        </section>
+      }
+    }
+    @if (readOnly() && anyEnabled()) {
+      <div class="visibility-row">
+        <span>Friction on Drawing</span>
+        <app-view-button
+          noun="Friction on Drawing"
+          [icon]="overlay.visible() ? 'visibility' : 'visibility_off'"
+          [shown]="overlay.visible()"
+          (pressed)="flipOverlay()"
+        />
+      </div>
+      <p class="note">
+        Dashed arrows show calculated contact loads on the named body. The opposite action acts on
+        its contact partner.
+      </p>
     }
   </collapsible-subsection>
 }

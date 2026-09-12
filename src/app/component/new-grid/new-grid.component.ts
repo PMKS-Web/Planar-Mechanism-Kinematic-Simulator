@@ -126,7 +126,7 @@ export interface SlotStackItem {
   /** Set for a plate; the fused rider-and-block outline this item draws. */
   plate?: WeldPlate;
 }
-import { SvgArrowComponent } from '../svg-arrow/svg-arrow.component';
+import { FrictionOverlayComponent } from '../friction-overlay/friction-overlay.component';
 import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
 import { INK_FLIPS_AT, luminanceOf } from '../../model/contrast';
 import { DEFAULT_FORCE_COLOR, SELECTION_RING } from '../../model/joint-colors';
@@ -197,6 +197,7 @@ const SELECTION_RING_PX = 3;
     LongPressDirective,
     ModelFrameDirective,
     UprightDirective,
+    FrictionOverlayComponent,
   ],
 })
 export class NewGridComponent implements OnDestroy {

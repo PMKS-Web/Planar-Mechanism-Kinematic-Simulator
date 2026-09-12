@@ -2,7 +2,10 @@ import { PrisJoint, RealJoint, RevJoint } from '../../app/model/joint';
 import { RealLink, SliderBlock } from '../../app/model/link';
 import { MODEL_SCALE } from '../../app/model/render-scale';
 import { frictionPropertyError, JointFriction } from '../../app/model/joint-friction';
-import { FrictionService } from '../../app/services/friction.service';
+import { FrictionService, FrictionReading } from '../../app/services/friction.service';
+import { FrictionOverlayService } from '../../app/services/friction-overlay.service';
+import { signal } from '@angular/core';
+import { shortcutsStub } from './stubs';
 import { EditPermissionService } from '../../app/services/edit-permission.service';
 import { SettingsService } from '../../app/services/settings.service';
 import { ColorService } from '../../app/services/color.service';
@@ -31,27 +34,34 @@ export function frictionStoryState(
     kineticCoefficient: enabled ? 0.2 : 0,
     radius: pin ? MODEL_SCALE * (unit === LengthUnit.INCH ? 0.5 / 2.54 : 0.5) : 0,
   };
-  const torque = (100 * 0.2 * joint.friction.radius) / MODEL_SCALE;
   const service = {
     set: (contact: RealJoint, value: JointFriction) => {
       const error = frictionPropertyError(value, pin);
       if (!error) contact.friction = { ...value };
       return error;
     },
-    reading: () =>
-      stationary
+    reading: (): FrictionReading => {
+      const factor = pin ? joint.friction.radius / MODEL_SCALE : 1;
+      const effort = 100 * joint.friction.kineticCoefficient * factor;
+      return stationary
         ? {
+            state: 'Stationary',
             message:
               'Joint P has zero relative motion. Static friction is a range at this pose; the prescribed-motion analysis cannot select a unique holding force.',
           }
         : {
-            values: [100, pin ? -torque : -20, pin ? torque * 1.5 : 30],
+            state: pin ? 'Relative Rotation' : 'Sliding',
+            values: [100, -effort, 100 * joint.friction.staticCoefficient * factor],
             sign: pin
               ? 'Torque on Link AB is positive counterclockwise.'
               : 'Force on the block is positive along the guide angle.',
-            additionalEffort: pin ? torque : 20,
+            additionalEffort: effort,
+            frictionlessEffort: pin ? 0 : 100,
+            totalEffort: (pin ? 0 : 100) + effort,
+            inputJoint: pin ? 'A' : 'P',
             inputIsTorque: pin,
-          },
+          };
+    },
   };
   return {
     joint,
@@ -59,6 +69,8 @@ export function frictionStoryState(
     providers: [
       { provide: SettingsService, useValue: settings },
       { provide: FrictionService, useValue: service },
+      { provide: FrictionOverlayService, useValue: { visible: signal(true) } },
+      shortcutsStub(),
       {
         provide: EditPermissionService,
         useValue: {

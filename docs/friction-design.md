@@ -8,6 +8,105 @@ bodies with nonzero mass or inertia because an inherited force-solver drawing-sc
 their bearing loads. Zero-inertia In-motion cases and unscaled domain calculations remain supported.
 See the audit below; this restriction prevents unverified physical results from reaching users.
 
+## How friction is presented
+
+Friction is a **calculated contact load**, not a user-created applied force. It never creates a
+`Force` object or an editable load handle. The solver continues to apply both contact actions;
+the drawing shows just one, on the receiving body named in the panel and SVG description. For a
+slider that is the block at the visible pin. For a bearing it is the solver's positive-body link.
+The equal/opposite action belongs to the contact partner, including ground where applicable.
+Selecting another body does not silently reverse this convention.
+
+### Settings and feedback
+
+The joint's Friction header carries an **Enabled** or **Off** chip, visible even when collapsed.
+Each contact also states whether its saved coefficients enable friction. **Save Friction Settings**
+commits the form; it does not apply an external load or start playback. A confirmation appears
+beside the save control, and **Disable Friction** resets both coefficients to zero in one undo
+step while retaining the effective radius. Unsaved typing does not claim a new enabled state.
+The existing edit-permission gate controls the native fields and buttons. Settings cannot be
+typed during playback or at a posed state where the existing editor requires a return to start.
+
+### Contact results and actuator consequences
+
+For a solved moving contact, the panel shows **Contact State: Sliding** or **Relative Rotation**,
+**Normal Load** for a guide / **Radial Load** for a bearing, the signed **Friction Force/Torque**,
+and **Static Friction Limit**. The expandable calculation shows the coefficient, load, optional
+physical radius, resulting magnitude and the opposition-to-relative-motion rule.
+The guide's existing reaction results include the friction component. The panel explicitly says
+so: the contact arrow is a decomposition of that resultant, not another force to add to it.
+
+A separate **Input Force/Torque at [input]** section shows **Without Friction**, **With Friction**,
+and **Additional from All Friction** in the input's own force or torque units. It appears once in
+the contact panel, outside its per-contact rows. These are mechanism-level quantities at the
+same pose and prescribed motion, not a local contact force. The frictionless value is total minus
+the already-solved additional effort, through `AnalysisSampleService` so display conversions and
+its existing numerical-noise policy also apply. Existing export columns retain the total and
+additional effort and the individual contact results.
+
+### Canvas overlays
+
+In Force Analysis, supported enabled contacts show their current solved loads by default:
+
+- **Guide:** an open arrow along the guide tangent, signed by the solved friction force. A short
+  leader locates the contact while the arrow is offset clear of the guide artwork. The pin's
+  visible name identifies the contact; a hidden prismatic joint ID is not presented as a new pin.
+- **Bearing:** a curved arrow around the joint, with positive torque counterclockwise in the
+  model's y-up frame. Reversing the prescribed input reverses the solved resisting moment.
+- Both reuse the analysis force ink and `vector-trace.ts` arrowhead geometry. A dashed stroke
+  and explicit **Friction at [pin]: [value]** label distinguish them from the solid applied-load
+  arrows. The SVG description names the receiving body and direction convention; the panel's
+  calculation is keyboard accessible through a native disclosure.
+- Magnitude is encoded relative to **that contact's cycle maximum**: force length uses the
+  existing 8.5% of swept-span scale, and torque sweep reaches 270 degrees at its maximum, with
+  radius 5% of the swept span. Read the numeric label for physical magnitude. Arrow lengths must
+  not be compared across contacts, between force and torque, or with user-applied load artwork.
+- The overlay reads each mechanism's own current sample. Scale data is cached by its force-frame
+  array, so edits, unit changes, and reversed-drive solves replace the cache. It does not draw a
+  full-cycle field of friction arrows or create overlapping action/reaction pairs.
+- **Friction on Drawing**, in the read-only friction panel, shows/hides all friction glyphs.
+  It is a session view preference, initially on, not a serialized property or an undo step.
+  It does not turn off physical friction. Other modes and disabled/zero/unavailable contact
+  results draw no glyph. Changing coefficients follows `updateMechanism(true)`, rebuilding
+  force results before either the panel or canvas can show a new result.
+
+### Refused and stationary results
+
+At approximately zero relative velocity the domain's refusal identifies the stationary contact.
+Its panel says **Stationary** and **Indeterminate at Rest**; another contact whose coupled result
+is unavailable says **Unavailable**. Neither invents zero friction, a unique holding force, nor
+a static capacity from an unsolved normal load. Unsupported and failed solves retain their
+diagnostics and suppress numeric contact and actuator results and glyphs.
+
+The In-motion inertia guard is unchanged. Its visible diagnostic reads:
+
+> Friction results are withheld because the existing In-motion inertia calculation has a scaling error for bodies with mass or inertia. Use Static analysis.
+
+The detailed factor-of-200 reproduction remains below and in `friction-inertia.spec.ts`.
+`Bearing friction with inertia safeguard` in the fixture gallery opens this state reproducibly.
+The standalone driven-slider fixture is a domain force benchmark: the current application needs
+a motion range before that isolated block can run. Use the slider-crank for the interactive demo.
+
+### Scope and UI limitations
+
+The Storybook introduction, shared input/button/view-button/section components, and existing
+semantic tokens govern the presentation. The new SVG component owns the overlay; the grid only
+mounts it. Its one additional Angular imports-array entry is the documented one-line exception
+to the grid's lint ceiling, with no rendering logic added to that hub. The shared collapsible
+header now exposes its expanded state to assistive technology and browser checks.
+
+Dense mechanisms can still have overlapping labels; there is no new label-placement or global
+overlay-management system. The visibility switch is reached through a friction contact's panel.
+The input comparison is a current-pose readout, not three new history graphs. This pass does not
+change motion laws, solve stationary holding/startup/stall, or correct the general inertia solver.
+The arrows describe the solver's prescribed sample, not the direction in which a reader scrubs
+the timeline. For a fully rotating input, Reverse replaces the prescribed drive and its force
+cache, and both friction directions are browser-tested. The existing Reverse control on a
+reciprocating machine instead rewinds its cycle (`setPlaybackDirection`); it does not create a
+new prescribed force solution at the same pose. Reconciling that replay behavior with force
+readings is a separate playback/force-analysis follow-up; this UI pass does not infer new loads
+by simply negating a friction arrow.
+
 ## Branch and purpose
 
 Develop on `feature/friction`, created from `origin/staging` at `acba1b77` on September 12,
@@ -337,3 +436,32 @@ effects, wear and forward stick-slip integration are outside this branch.
 - `git diff --check`: passed. Builds, logs, screenshots, and the independent repository checkout
   are in this worktree's ignored `artifacts/`; only source, tests, provenance and notes are
   included in the application commit. No push or merge was performed.
+
+### Friction presentation pass validation
+
+This UI follow-up preserves `75ef54ee` and `6110b2c7` on `feature/friction`. A fresh fetch
+confirmed the branch base remains `origin/staging` at `acba1b770a20551b37a9b2f24b459c224c8ed0fc`.
+The changes above expose the reviewed results; they do not change the Coulomb equations or
+remove the inertia/stationary refusal guards.
+
+- Focused friction, vector geometry, analysis adapters and components: **131/131**, 13 files.
+- Full suite: **2,588 passed, three failed**, 2,591 tests in 247 files. The same two MotionGen
+  gripper assertions and Windows stylesheet path fence were reproduced on unchanged staging
+  during this pass: four passed, three failed. Both baseline spec files matched their staging
+  Git blob hashes. No newly failing test remains.
+- Fixture gallery: **4/4**, including regeneration of the example URL table.
+- Browser checks: `friction-visualization.mjs` **25/25**, `friction.mjs` **15/15**,
+  `friction-stories.mjs` **13/13**, and `ui-copy.mjs` **17/17**. No uncaught browser errors.
+  The visualization suite captures 34 frames across saving, motion, both contact reversals
+  and the In-motion refusal. Static screenshots cover slider, bearing, combined contacts and
+  the diagnostic; the Storybook suite captures all 13 states.
+- `npm run check`: passed, zero errors and the existing 15 permitted warnings.
+- Production and static Storybook builds: passed. Source type checking passed with the same
+  command and dependency-declaration limitation recorded in the prior audit above.
+- `git diff --check`: passed. Screenshots and logs remain in ignored `artifacts/`.
+- The independent PMKS_Verification reference and its local commit are unchanged in this UI
+  pass. The application full suite still includes the 1,120 reference pose comparisons.
+  MATLAB execution remains pending; no new MATLAB verification is claimed.
+
+Nothing was pushed or merged. A future force-analysis pass should address the documented
+inertia scaling and reciprocating playback convention before broadening the supported scope.

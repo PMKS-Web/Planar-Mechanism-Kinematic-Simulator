@@ -15,9 +15,14 @@ here.
 undo/redo, persistence and changing contact readings. Screenshots and a filmstrip go to
 `artifacts/friction/`.
 
-`friction-stories.mjs` checks the nine friction gallery states at `SB_URL`, including
+`friction-stories.mjs` checks the 13 friction gallery states at `SB_URL`, including
 native disabled fields, validation, radius units and panel overflow. Screenshots go to
 `artifacts/friction-stories/`.
+
+`friction-visualization.mjs` follows Save/Disable through Force Analysis, checks current slider
+arrows and bearing moments, direction reversals, visibility, combined contacts, input comparison,
+and the In-motion inertia diagnostic. Screenshots and a filmstrip go to
+`artifacts/friction-visualization/`.
 
 ## What CI runs
 

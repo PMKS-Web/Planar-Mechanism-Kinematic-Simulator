@@ -1,0 +1,12 @@
+:host {
+  pointer-events: none;
+}
+.friction-load {
+  pointer-events: visiblePainted;
+}
+text {
+  stroke: var(--surface);
+  paint-order: stroke;
+  stroke-linejoin: round;
+  font-weight: 500;
+}

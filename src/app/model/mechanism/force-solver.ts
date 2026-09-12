@@ -34,6 +34,8 @@ export interface ForceAnalysisEffort {
 }
 
 export interface ForceAnalysisFrame {
+  /** Presentation metadata for a refused contact result; no inferred holding force. */
+  frictionUnavailable?: { reason: 'stationary' | 'inertia'; jointId?: string };
   /** Total input effort minus the frictionless solve at the identical pose and inertia. */
   additionalFrictionEffort?: ForceAnalysisEffort;
   friction?: Map<string, FrictionResult>;

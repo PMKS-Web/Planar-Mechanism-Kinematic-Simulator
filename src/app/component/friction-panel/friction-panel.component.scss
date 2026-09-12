@@ -24,3 +24,46 @@ dd {
   font-size: 12px;
   color: var(--danger-dark);
 }
+.state-chip {
+  padding: 2px 6px;
+  border-radius: var(--border-radius);
+  font-size: 11px;
+  background: var(--surface-chip);
+  color: var(--text-secondary);
+  &.enabled {
+    background: var(--brand-tint);
+    color: var(--brand-dark);
+  }
+}
+.contact-state,
+.visibility-row,
+.confirmation,
+summary {
+  font-size: 12px;
+}
+.confirmation {
+  color: var(--success-text);
+}
+.visibility-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.input-comparison {
+  border-top: 1px solid var(--border-rule);
+  margin-top: 12px;
+}
+.diagnostic {
+  padding: 10px;
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  font-size: 12px;
+  line-height: 1.5;
+  p {
+    margin: 4px 0 0;
+  }
+}
+summary {
+  color: var(--brand-dark);
+  cursor: pointer;
+}

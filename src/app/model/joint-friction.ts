@@ -10,7 +10,7 @@ export function frictionless(): JointFriction {
 }
 
 export const INERTIA_FRICTION_REFUSAL =
-  'In-motion friction cannot yet give reliable results for bodies with mass or inertia. Use Static analysis.';
+  'Friction results are withheld because the existing In-motion inertia calculation has a scaling error for bodies with mass or inertia. Use Static analysis.';
 
 export function hasFriction(value: JointFriction): boolean {
   return value.staticCoefficient !== 0 || value.kineticCoefficient !== 0;

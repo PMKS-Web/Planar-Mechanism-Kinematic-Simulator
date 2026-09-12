@@ -76,22 +76,22 @@ try {
     .waitFor({ state: 'visible' });
   record(
     'Slider guide controls are available from its visible pin',
-    await panel.getByText('Slider Guide', { exact: true }).isVisible()
+    await panel.getByRole('heading', { name: /^Slider Guide/ }).isVisible()
   );
   record('Known coupled friction is visible', (await panel.innerText()).includes('18.75 N'));
   record(
     'Additional actuator effort is distinguished from the contact force',
-    (await panel.innerText()).includes('Additional input torque from all friction: 50 N·cm')
+    (await panel.locator('.input-comparison').innerText()).includes('50 N·cm')
   );
   await panel.getByRole('textbox', { name: 'Kinetic Coefficient', exact: true }).fill('0.4');
-  await panel.getByRole('button', { name: 'Apply Friction' }).click();
+  await panel.getByRole('button', { name: 'Save Friction Settings' }).click();
   record(
     'Invalid coefficients are explained without changing the model',
     (await panel.getByRole('alert').innerText()).includes('at least') &&
       (await coefficient()) === 0.2
   );
   await panel.getByRole('textbox', { name: 'Kinetic Coefficient', exact: true }).fill('0.1');
-  await panel.getByRole('button', { name: 'Apply Friction' }).click();
+  await panel.getByRole('button', { name: 'Save Friction Settings' }).click();
   await page.waitForFunction(
     () =>
       ng

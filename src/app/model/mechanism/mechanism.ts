@@ -1340,9 +1340,8 @@ export class Mechanism {
    * Rates are not stored per frame. Every velocity and acceleration is derived
    * from the pose and this one signed number, so negating it is the whole of
    * the change: velocities turn round, accelerations do not (they go as the
-   * square of the speed), and the force analysis is untouched at every pose --
-   * which is right, because what a part has to carry at a pose does not depend
-   * on which way it arrived there.
+   * square of the speed). Frictionless reactions are unchanged at each pose;
+   * velocity-dependent contact friction must be solved again for the new direction.
    */
   withReversedDrive(): Mechanism | undefined {
     if (!this.mechanismValid || this._joints.length < 2) return undefined;
@@ -1354,9 +1353,8 @@ export class Mechanism {
     // they have drawn against the mechanism they drew it from, and identity is
     // how they know to look again.
     //
-    // The cache holds the same answers -- reversing changes no force at any
-    // pose -- but it is keyed by nothing else, so it is cleared rather than
-    // carried into an object claiming a different drive.
+    // Recompute velocity-dependent friction, and never carry a force cache into
+    // an object claiming a different drive.
     reversed.forceAnalysisCache = new Map();
     return reversed;
   }

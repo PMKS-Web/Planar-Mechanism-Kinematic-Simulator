@@ -23,14 +23,14 @@ describe('friction panel states', () => {
   it('uses guide coefficients without an irrelevant radius', () => {
     const { root } = mount('guide');
     expect(root.querySelectorAll('input').length).toBe(2);
-    expect(root.textContent).toContain('Additional input force');
+    expect(root.textContent).toContain('Additional from All Friction');
     expect(root.textContent).not.toContain('Effective Radius');
   });
   it('exposes a physical bearing radius and static capacity', () => {
     const { root } = mount('pin');
     expect(root.querySelectorAll('input').length).toBe(3);
     expect(root.textContent).toContain('Effective Radius');
-    expect(root.textContent).toContain('Static Limit');
+    expect(root.textContent).toContain('Static Friction Limit');
   });
   it('identifies frictionless defaults', () => {
     expect(mount('guide', false).root.textContent).toContain('Frictionless contact.');
@@ -58,5 +58,42 @@ describe('friction panel states', () => {
     fixture.componentRef.setInput('joint', frictionStoryState('guide').joint);
     fixture.detectChanges();
     expect(root.querySelector('[role=alert]')).toBeNull();
+  });
+  it('confirms saved settings and keeps enabled status visible in the closed header', () => {
+    const { root, fixture } = mount('guide');
+    root.querySelector<HTMLButtonElement>('[data-action="apply-friction"]')!.click();
+    fixture.detectChanges();
+    expect(root.textContent).toContain('Friction settings saved.');
+    root.querySelector<HTMLButtonElement>('.panel-header__toggle')!.click();
+    fixture.detectChanges();
+    expect(root.querySelector('.panel-header .state-chip')!.textContent).toContain('Enabled');
+  });
+  it('disables friction and removes contact and actuator results', () => {
+    const { root, fixture, state } = mount('pin');
+    root.querySelector<HTMLButtonElement>('[data-action="disable-friction"]')!.click();
+    fixture.detectChanges();
+    expect(state.joint.friction.kineticCoefficient).toBe(0);
+    expect(root.querySelector('.state-chip')!.textContent).toContain('Off');
+    expect(root.querySelector('dl')).toBeNull();
+    expect(root.querySelector('.input-comparison')).toBeNull();
+  });
+  it('presents an indeterminate stationary contact without a numeric capacity or zero force', () => {
+    const { root, fixture, state } = mount('guide');
+    state.service.reading = () => ({
+      state: 'Stationary',
+      message: 'Cannot select a unique holding force.',
+    });
+    fixture.detectChanges();
+    expect(root.textContent).toContain('Contact State: Stationary');
+    expect(root.textContent).toContain('Indeterminate at Rest');
+    expect(root.querySelector('dl')).toBeNull();
+  });
+  it('shows one actuator comparison separately from contact results', () => {
+    const { root } = mount('guide');
+    expect(root.querySelectorAll('.input-comparison').length).toBe(1);
+    expect(root.querySelector('.input-comparison')!.textContent).toContain('With Friction120 N');
+    expect(root.querySelector('.contact')!.textContent).not.toContain(
+      'Additional from All Friction'
+    );
   });
 });

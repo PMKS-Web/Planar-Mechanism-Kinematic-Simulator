@@ -6,6 +6,19 @@ import { MechanismService } from './mechanism.service';
 import { EditPermissionService } from './edit-permission.service';
 import { SettingsService } from './settings.service';
 import { AnalysisSampleService } from './analysis-sample.service';
+import { labelForBody } from '../model/body-label';
+
+export interface FrictionReading {
+  state: 'Off' | 'Sliding' | 'Relative Rotation' | 'Stationary' | 'Unavailable';
+  values?: number[];
+  message?: string;
+  sign?: string;
+  additionalEffort?: number;
+  totalEffort?: number;
+  frictionlessEffort?: number;
+  inputJoint?: string;
+  inputIsTorque?: boolean;
+}
 
 @Injectable({ providedIn: 'root' })
 export class FrictionService {
@@ -28,30 +41,39 @@ export class FrictionService {
     return undefined;
   }
 
-  reading(joint: RealJoint): {
-    values?: number[];
-    message?: string;
-    sign?: string;
-    additionalEffort?: number;
-    inputIsTorque?: boolean;
-  } {
+  reading(joint: RealJoint): FrictionReading {
+    if (!hasFriction(joint.friction)) return { state: 'Off' };
     const machineIndex = this.mechanism.indexOfMechanismSolving(joint);
     const solved = this.mechanism.mechanisms[machineIndex];
     if (!solved?.isMechanismValid())
-      return { message: 'Complete a driven mechanism to calculate friction.' };
+      return {
+        state: 'Unavailable',
+        message: 'Complete a driven mechanism to calculate friction.',
+      };
     const index = this.mechanism.currentSampleOf(machineIndex);
     const mode = this.settings.forceAnalysisMode.value;
     const frame = solved.getForceAnalysis(mode).frames[index];
-    if (frame.status !== 'ok') return { message: frame.message };
+    if (frame.status !== 'ok')
+      return {
+        state:
+          frame.frictionUnavailable?.reason === 'stationary' &&
+          frame.frictionUnavailable.jointId === joint.id
+            ? 'Stationary'
+            : 'Unavailable',
+        message: frame.message,
+      };
+    const result = frame.friction?.get(joint.id);
+    if (!result)
+      return { state: 'Unavailable', message: 'No solved friction contact at this joint.' };
     const values = ['Friction Normal', 'Friction Effort', 'Friction Static Limit'].map(
       (property) => this.samples.sampleAt(solved, index, 'force', mode, property, joint.id)[0]
     );
-    const result = frame.friction?.get(joint.id);
     const body = solved.links[index].find((one) => one.id === result?.positiveBodyId);
+    const bodyName = body ? labelForBody(body, undefined) : result.positiveBodyId;
     const sign =
       joint instanceof PrisJoint
-        ? 'Force on the block is positive along the guide angle.'
-        : `Torque on Link ${body?.name ?? result?.positiveBodyId} is positive counterclockwise.`;
+        ? `Force on ${bodyName} is positive along the guide angle.`
+        : `Torque on ${bodyName} is positive counterclockwise.`;
     const additionalEffort = frame.additionalFrictionEffort
       ? this.samples.sampleAt(
           solved,
@@ -62,10 +84,34 @@ export class FrictionService {
           frame.additionalFrictionEffort.jointId
         )[0]
       : undefined;
+    const totalEffort = frame.inputEffort
+      ? this.samples.sampleAt(
+          solved,
+          index,
+          'force',
+          mode,
+          'Input Effort',
+          frame.inputEffort.jointId
+        )[0]
+      : undefined;
     return {
+      state: joint instanceof PrisJoint ? 'Sliding' : 'Relative Rotation',
       values,
       sign,
       additionalEffort,
+      totalEffort,
+      frictionlessEffort:
+        frame.inputEffort && additionalEffort !== undefined
+          ? this.samples.sampleAt(
+              solved,
+              index,
+              'force',
+              mode,
+              'Frictionless Input Effort',
+              frame.inputEffort.jointId
+            )[0]
+          : undefined,
+      inputJoint: frame.inputEffort?.jointId,
       inputIsTorque: frame.additionalFrictionEffort?.kind === 'torque',
     };
   }

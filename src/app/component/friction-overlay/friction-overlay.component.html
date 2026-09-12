@@ -1,0 +1,47 @@
+@if (tabs.getCurrentTab() === forceTab) {
+  <svg:g modelFrame>
+    @for (load of overlay.overlays(); track load.key) {
+      <svg:g
+        class="friction-load"
+        role="img"
+        [attr.aria-label]="load.detail"
+        [attr.data-friction-contact]="load.jointId"
+        [attr.data-kind]="load.kind"
+        [attr.data-body]="load.bodyId"
+        [attr.data-effort]="load.effort"
+        [attr.data-fx]="load.fx"
+        [attr.data-fy]="load.fy"
+        [attr.data-sweep]="load.sweep"
+      >
+        <svg:title>{{ load.detail }}</svg:title>
+        <svg:path
+          [attr.d]="load.leader"
+          fill="none"
+          [attr.stroke]="ink"
+          [attr.stroke-width]="grid.scaleWithZoom(1)"
+          opacity="0.6"
+        />
+        <svg:path
+          class="friction-vector"
+          [attr.d]="load.d"
+          fill="none"
+          [attr.stroke]="ink"
+          [attr.stroke-width]="grid.scaleWithZoom(3)"
+          [attr.stroke-dasharray]="grid.scaleWithZoom(5) + ' ' + grid.scaleWithZoom(3)"
+          stroke-linecap="round"
+        />
+        <svg:g [upright]="load.label">
+          <svg:text
+            text-anchor="middle"
+            [attr.y]="-grid.scaleWithZoom(12)"
+            [attr.font-size]="grid.scaleWithZoom(12)"
+            [attr.fill]="ink"
+            [attr.stroke-width]="grid.scaleWithZoom(4)"
+          >
+            {{ load.labelText }}
+          </svg:text>
+        </svg:g>
+      </svg:g>
+    }
+  </svg:g>
+}

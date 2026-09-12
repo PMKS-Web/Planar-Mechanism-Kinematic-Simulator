@@ -141,7 +141,14 @@ export class AnalysisSampleService {
       ];
     }
 
-    if (['Input Torque', 'Input Effort', 'Additional Input Effort'].includes(mechProp)) {
+    if (
+      [
+        'Input Torque',
+        'Input Effort',
+        'Additional Input Effort',
+        'Frictionless Input Effort',
+      ].includes(mechProp)
+    ) {
       // A torque's moment arms are internal model lengths (MODEL_SCALE times
       // the user's unit), so the solved value divides back down for display. An
       // input *force* has no length in it and is invariant.
@@ -149,9 +156,12 @@ export class AnalysisSampleService {
         mechProp === 'Additional Input Effort' ? frame.additionalFrictionEffort : frame.inputEffort;
       if (!effort) return [Number.NaN];
       const isForce = effort.kind === 'force';
+      const valueSI =
+        mechProp === 'Frictionless Input Effort'
+          ? effort.valueSI - (frame.additionalFrictionEffort?.valueSI ?? 0)
+          : effort.valueSI;
       return [
-        (effort.valueSI * (isForce ? forceConversion : torqueConversion)) /
-          (isForce ? 1 : MODEL_SCALE),
+        (valueSI * (isForce ? forceConversion : torqueConversion)) / (isForce ? 1 : MODEL_SCALE),
       ];
     }
 

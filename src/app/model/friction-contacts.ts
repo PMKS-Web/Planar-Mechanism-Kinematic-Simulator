@@ -3,6 +3,16 @@ import { RealLink, SliderBlock } from './link';
 import { hasFriction } from './joint-friction';
 import { slideAssemblyAt } from './slide-assembly';
 
+/** Name the visible pin rather than the hidden prismatic joint under its block. */
+export function frictionContactName(joint: RealJoint): string {
+  if (joint instanceof PrisJoint) {
+    const block = joint.links.find((link) => link instanceof SliderBlock);
+    const pin = block?.joints.find((one) => !(one instanceof PrisJoint));
+    if (pin) return pin.name || pin.id;
+  }
+  return joint.name || joint.id;
+}
+
 /** A guide couple needs separated contact loads before Coulomb friction can be inferred. */
 export function guideFrictionRefusal(joint: RealJoint): string | undefined {
   if (!(joint instanceof PrisJoint)) return undefined;

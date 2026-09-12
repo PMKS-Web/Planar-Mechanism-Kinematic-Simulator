@@ -46,9 +46,18 @@ export function frictionBearingFixture(): MechanismFixture {
 
 export const FRICTION_GALLERY: GalleryEntry[] = [
   {
+    name: 'Bearing friction with inertia safeguard',
+    floatingSlot: false,
+    purpose:
+      'Static bearing result; In-motion results withheld for the inherited inertia scaling error',
+    spec: 'friction-inertia.spec.ts',
+    fixture: frictionInertiaFixture(),
+  },
+  {
     name: 'Driven slider with friction',
     floatingSlot: false,
-    purpose: '100 N guide load, 20 N kinetic friction and 30 N static capacity',
+    purpose:
+      'Domain benchmark: 100 N guide load, 20 N friction; standalone travel needs a motion range in the app',
     spec: 'friction-boundary.spec.ts',
     fixture: frictionDrivenSliderFixture(),
   },
@@ -74,6 +83,12 @@ export const FRICTION_GALLERY: GalleryEntry[] = [
     fixture: frictionBearingFixture(),
   },
 ];
+
+export function frictionInertiaFixture(): MechanismFixture {
+  const fixture = frictionBearingFixture();
+  fixture.links[0].mass = 1000;
+  return fixture;
+}
 
 export function frictionDrivenSliderFixture(unit = 'cm'): MechanismFixture {
   return {

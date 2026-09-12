@@ -40,7 +40,7 @@ export const RadiusInInches: Story = state('pin', true, LengthUnit.INCH);
 export const PlaybackDisabled: Story = state('guide', true, LengthUnit.CM, true);
 export const Stationary: Story = state('guide', true, LengthUnit.CM, false, true);
 const inertiaState = frictionStoryState('guide');
-inertiaState.service.reading = () => ({ message: INERTIA_FRICTION_REFUSAL });
+inertiaState.service.reading = () => ({ state: 'Unavailable', message: INERTIA_FRICTION_REFUSAL });
 export const InMotionUnavailable: Story = {
   args: { joint: inertiaState.joint, readOnly: true },
   decorators: [applicationConfig({ providers: inertiaState.providers })],
@@ -53,6 +53,26 @@ export const InvalidCoefficients: Story = {
     const kinetic = canvas.getByRole('textbox', { name: 'Kinetic Coefficient' });
     await userEvent.clear(kinetic);
     await userEvent.type(kinetic, '.4');
-    await userEvent.click(canvas.getByRole('button', { name: 'Apply Friction' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Save Friction Settings' }));
   },
+};
+export const SliderAnalysis: Story = {
+  ...state('guide'),
+  args: { ...state('guide').args, readOnly: true },
+};
+export const BearingAnalysis: Story = {
+  ...state('pin'),
+  args: { ...state('pin').args, readOnly: true },
+};
+export const SavedSettings: Story = {
+  ...state('guide'),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      within(canvasElement).getByRole('button', { name: 'Save Friction Settings' })
+    );
+  },
+};
+export const CollapsedEnabled: Story = {
+  ...state('guide'),
+  args: { ...state('guide').args, expanded: false },
 };
