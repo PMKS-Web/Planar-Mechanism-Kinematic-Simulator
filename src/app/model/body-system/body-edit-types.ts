@@ -1,3 +1,4 @@
+import { BodyGuideAxisEdit } from './body-guide-axis-edit';
 import { BodyCoordinateMove } from './body-coordinate-edit';
 import { BodyPasteOperation } from './body-paste-edit';
 import { BodyCopyOperation } from './body-copy-edit';
@@ -59,6 +60,7 @@ export type BodyEditOperation =
   | BodyGeometryOperation
   | BodyPointMove
   | BodyCoordinateMove
+  | BodyGuideAxisEdit
   | {
       readonly kind: 'project';
       readonly settings?: BodyProjectSettings;

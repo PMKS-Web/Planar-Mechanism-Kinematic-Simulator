@@ -57,7 +57,7 @@ export function editBodyCoordinate(
     joint.bodyB === WORLD ? joint.frameA.attachmentId : joint.frameB.attachmentId,
     frames.groups,
     frames.groupOf,
-    true
+    { rigid: true }
   );
   const factor = operation.coordinate.coordinate === 'travel' ? model.length : 1;
   const distance = (operation.target - initial) / factor;

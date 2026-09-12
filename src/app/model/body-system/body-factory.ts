@@ -136,7 +136,13 @@ export class BodyFactory {
         ? { ...pair, kind, rest: relativePose(poseA, poseB) }
         : kind === 'revolute'
           ? { ...pair, kind, angleZero }
-          : { ...pair, kind, angleZero, travelZero };
+          : {
+              ...pair,
+              kind,
+              angleZero,
+              travelZero,
+              guideDisplay: { bodyId: pair.bodyA, frame: pair.frameA },
+            };
     this.value = { ...this.value, joints: [...this.value.joints, joint] };
     return joint;
   }

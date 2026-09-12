@@ -1,7 +1,7 @@
 import { BodyDocument } from './body-document';
 import { BodyClockState } from './body-document-authority';
 import { BodyEditFrame } from './body-edit-frame';
-import { BodyId } from './body-id';
+import { BodyId, JointId } from './body-id';
 import { Pose } from './body-frame';
 import { BodyAnchorChange } from './body-anchor-change';
 import { CompiledBodySystem, CompiledBodyPartition } from './compiled-body-system';
@@ -29,14 +29,16 @@ export function restoreBodyPartitionAnchor(
   frame: BodyEditFrame,
   system: CompiledBodySystem,
   part: CompiledBodyPartition,
-  length: number
+  length: number,
+  axisEdits: ReadonlySet<JointId> = new Set()
 ): RestoredAnchor {
   const admitted = admitBodyPartition(system, part);
   if (!admitted.ok) return { ok: false, status: 'motion-unavailable' };
   const driver = proposed.drivers.find((item) => item.id === part.drivers[0].id)!;
   const oldDriver = source.drivers.find((item) => item.id === driver.id);
   const clock = frame.clocks.find((item) => item.driverId === driver.id);
-  const sign = oldDriver && bodyAnchorCoordinateSign(source, proposed, oldDriver, driver);
+  const sign =
+    oldDriver && bodyAnchorCoordinateSign(source, proposed, oldDriver, driver, axisEdits);
   if (!clock || !sign) return { ok: false, status: 'coordinate-changed' };
   const factor = driver.coordinate.coordinate === 'angle' ? 1 : length;
   const target = clock.anchor * sign * factor;

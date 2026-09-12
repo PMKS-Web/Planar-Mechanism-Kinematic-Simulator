@@ -28,7 +28,7 @@ describe('native joint records', () => {
       const art = current.guideDisplay!;
       const anchor = document.attachments.find((p) => p.id === art.frame.attachmentId)!;
       const pose = document.bodies.find((b) => b.id === art.bodyId)!.pose;
-      return localToWorld(pose, add(anchor.point, rotate({ x: art[end], y: 0 }, art.frame.angle)));
+      return localToWorld(pose, add(anchor.point, rotate({ x: art[end]!, y: 0 }, art.frame.angle)));
     };
     for (const end of ['from', 'to'] as const) {
       expect(station(after, end).x).toBeCloseTo(station(before, end).x, 12);

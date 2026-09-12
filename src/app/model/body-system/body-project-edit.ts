@@ -28,6 +28,8 @@ export function bodyOperationPermission(
   if (
     operation.kind === 'move-point' ||
     operation.kind === 'move-coordinate' ||
+    operation.kind === 'guide-axis' ||
+    operation.kind === 'guide-axes' ||
     isBodyGeometryOperation(operation)
   )
     return menuRefusal(state, displayedMapping ? 'attachment' : 'start');

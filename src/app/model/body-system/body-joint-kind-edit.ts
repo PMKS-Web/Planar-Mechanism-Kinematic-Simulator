@@ -112,7 +112,8 @@ export function changeBodyJointKind(
             kind: operation.jointKind,
             angleZero,
             travelZero,
-            ...(guided && joint.guideDisplay ? { guideDisplay: joint.guideDisplay } : {}),
+            guideDisplay:
+              guided && joint.guideDisplay ? joint.guideDisplay : { bodyId: a.id, frame: frameA },
           };
   const retained = (ref: {
     readonly jointId: BodyJoint['id'];

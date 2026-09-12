@@ -2,7 +2,7 @@ import { unchangedBodyMotion } from './body-unchanged-motion';
 import { restoreBodyPartitionAnchor } from './body-anchor-partition';
 import { BodyDocument } from './body-document';
 import { BodyEditFrame } from './body-edit-frame';
-import { BodyId, DriverId } from './body-id';
+import { BodyId, DriverId, JointId } from './body-id';
 import { BodyClockState } from './body-document-authority';
 import { bodyEditEffects } from './body-edit-effects';
 import { compileBodyDocument } from './constraint-compiler';
@@ -14,7 +14,8 @@ export function reanchorBodyEdit(
   source: BodyDocument,
   displayed: BodyDocument,
   proposed: BodyDocument,
-  frame: BodyEditFrame
+  frame: BodyEditFrame,
+  axisEdits: ReadonlySet<JointId> = new Set()
 ):
   | {
       readonly document: BodyDocument;
@@ -97,7 +98,8 @@ export function reanchorBodyEdit(
       frame,
       after.system,
       part,
-      length
+      length,
+      axisEdits
     );
     if (!restored.ok) {
       part.drivers.forEach((driver) => reset(driver.id, restored.status));

@@ -82,7 +82,13 @@ export function createBodyCylinder(
     document: {
       ...f.document,
       joints: f.document.joints.map((joint) =>
-        joint.id === internal.id ? { ...joint, travelZero: 0 } : joint
+        joint.id === internal.id
+          ? {
+              ...joint,
+              travelZero: 0,
+              guideDisplay: { bodyId: barrel, frame: joint.frameA, station: rodLength },
+            }
+          : joint
       ),
       assemblies: [...document.assemblies, assembly],
       limits: [...document.limits, limit],

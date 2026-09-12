@@ -87,6 +87,26 @@ state. Native UI precision and coverage-warning checks remain S5 obligations.
 
 Each joint has ordered `bodyA` / `bodyB` and two explicit local frame records. Each frame stores an AttachmentId for its origin and a local angle for its directed axis. Both attachment owners must match the named bodies. Storing the axis as an angle guarantees normalization; derive vectors with sine/cosine and reject non-finite angles. Rendering stations are separate guide-local metadata with their own material owner and frame, never attachment points used to locate bodies. Reversing P equation order cannot hand its visible guide to the other member. A pin-in-slot
 guide must belong to A, since its rider can rotate independently.
+A guide display record retains its material owner even when it has no authored rail extents.
+Its optional `station` and `normalOffset` locate artwork along the frame axis and its left
+normal; both default to zero and scale with document length units. `from`/`to` must either
+both be absent or form a finite increasing pair. These are drawing metadata, never physical
+joint coordinates or travel bounds. An axis edit re-expresses an offset display origin about
+the physical guide origin before turning it, preserving both offset components and leaving
+the referenced attachment (including its trace, lock and other connections) untouched. A
+cylinder's internal P stores a station at the barrel mouth; cylinder dimension edits must
+maintain that station in the assembly's material frame.
+
+`guide-axis` and `guide-axes` author world headings at the captured displayed pose. The carrier
+and its welded material remain fixed; connected bodies follow rigidly at the captured signed
+travel. A batch changes coupled guides together, while independent components retain separate
+numerical origins. Existing travel prescriptions persist; passive coordinates acquire no
+stored driver. Explicit axis edits transport the same signed travel anchor to the new axis,
+including reversed P pairs. This exception does not apply to arbitrary joint-record changes.
+Continuation exhaustion, incompatible locks/holds or a refused settled document cancel the
+whole edit. The intermediate constraint sets describe a design change, not playback of the
+original mechanism; the final pose must satisfy its physical relationships and travel bounds.
+
 
 - R: two local anchors, `angleZero`; two coincidence equations.
 - P: two local directed frames, `angleZero`, `travelZero`; one lateral equation and one continuous relative-angle equation.
