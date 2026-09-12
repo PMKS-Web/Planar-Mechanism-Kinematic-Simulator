@@ -267,7 +267,7 @@ Mechanical type-only touches (this is the "seven files" from §1):
   `:66`, the no-op adapter's parameter `:161`, the fallback-path assignment `:181`.
 - [`analysis-graph.component.ts:860`](../src/app/component/analysis-graph/analysis-graph.component.ts).
 - [`test-utils/verification/solve.ts`](../src/test-utils/verification/solve.ts) — `:57`, `:88`, `:90`.
-- [`ic-solver.ts`](../src/app/model/mechanism/ic-solver.ts) — **untouched.** It is self-contained
+- [`ic-solver.ts`](https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/blob/8384ee39035f5f6b372cfe467982a8fab29a5f6f/src/app/model/mechanism/ic-solver.ts) — **untouched.** It is self-contained
   and uncalled (§6), so it keeps compiling against `string[]`.
 
 Acceptance for step 1: the whole suite green, and the verified numbers byte-identical — the MATLAB
@@ -301,7 +301,7 @@ from Gate 2** (`joint-types-plan.md` records the same). Consequences for this pl
 - If the feature is ever revived, that is its own project: characterization tests first (four-bar
   IC positions are analytic), re-wire the call in `mechanism.ts`, then modernize — noting its loop
   walk is a triple-joint sliding window
-  ([`ic-solver.ts:58-89`](../src/app/model/mechanism/ic-solver.ts)), not pairwise, and the
+  ([`ic-solver.ts:58-89`](https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/blob/8384ee39035f5f6b372cfe467982a8fab29a5f6f/src/app/model/mechanism/ic-solver.ts)), not pairwise, and the
   `(∞, ∞)` TODO at `:116` belongs to that effort.
 
 ---
