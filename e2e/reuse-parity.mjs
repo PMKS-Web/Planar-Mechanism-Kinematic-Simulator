@@ -182,6 +182,16 @@ async function shoot(page, base, scene) {
   const linkage = scene.linkage ?? '4-Bar';
   const query = scene.query ?? (linkage ? `?${payloads[linkage]}` : '');
   await page.goto(`${base}/${query}`, { waitUntil: 'domcontentloaded' });
+  // What greets a reader is decided from localStorage on the way in, so a
+  // scene that wants the release notes -- or wants the tutorial to stay out
+  // of the way -- has to say so before the app boots, and then boot again.
+  if (scene.storage) {
+    await page.evaluate((marks) => {
+      localStorage.clear();
+      for (const [key, value] of Object.entries(marks)) localStorage.setItem(key, value);
+    }, scene.storage);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+  }
   await waitForReady(page).catch(() => undefined);
   // Freeze anything that could still be easing, so a scene is a pose and not
   // a moment. Both sides get the same treatment, but a shot taken mid-slide

@@ -137,33 +137,6 @@
       cursor: pointer;
     }
 
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      height: 20px;
-      padding: 0 8px;
-      border-radius: 10px;
-      background: var(--surface-chip);
-      color: var(--text-secondary);
-      font-size: 12px;
-      font-weight: 400;
-
-      &.blocker {
-        background: var(--refusal-bg);
-        color: var(--refusal-text);
-      }
-
-      &.warning {
-        background: var(--warning-bg);
-        color: var(--warning-text);
-      }
-
-      &.ok {
-        background: var(--success-bg);
-        color: var(--success-text);
-      }
-    }
-
     .factGrid {
       display: grid;
       grid-template-columns: 1fr 1fr;

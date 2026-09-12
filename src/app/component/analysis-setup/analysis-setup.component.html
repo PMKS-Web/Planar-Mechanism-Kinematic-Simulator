@@ -10,7 +10,7 @@
         <button class="sectionHeader" (click)="toggle(item)">
           <span class="sectionName">
             <span class="mechLink" (click)="select($index, $event)">Mechanism {{ item.id }}</span>
-            <span class="chip" [class]="chipFor(item).kind">{{ chipFor(item).text }}</span>
+            <chip-block [kind]="chipFor(item).kind">{{ chipFor(item).text }}</chip-block>
           </span>
           <!-- Only where there is something behind it. A ready mechanism has
                no blockers, and an arrow that opens onto nothing is a promise
@@ -133,9 +133,9 @@
                  so they are red. What is left when none are outstanding is
                  advice, which is amber. -->
             @if (forceOutstanding > 0) {
-              <span class="chip blocker">{{ fixes(forceOutstanding) }}</span>
+              <chip-block kind="blocker">{{ fixes(forceOutstanding) }}</chip-block>
             } @else {
-              <span class="chip warning">{{ toCheck(forceWarnings) }}</span>
+              <chip-block kind="warning">{{ toCheck(forceWarnings) }}</chip-block>
             }
           </span>
           <mat-icon>{{ forceOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
@@ -179,7 +179,7 @@
           Not in any mechanism
           <!-- Amber: the machines that do exist still analyze, but part of
                what has been drawn is not among them. -->
-          <span class="chip warning">{{ unassigned.length }}</span>
+          <chip-block kind="warning">{{ unassigned.length }}</chip-block>
         </span>
         <mat-icon>{{ unassignedOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
       </button>

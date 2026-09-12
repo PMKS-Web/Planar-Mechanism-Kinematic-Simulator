@@ -16,6 +16,7 @@ import {
 } from '@angular/material/dialog';
 import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
+import { ChipComponent } from '../BLOCKS/chip/chip.component';
 import { TutorialService } from '../../services/tutorial.service';
 import { MechanismService } from '../../services/mechanism.service';
 import { UrlGenerationService } from '../../services/url-generation.service';
@@ -50,7 +51,15 @@ import { RightPanelComponent } from '../right-panel/right-panel.component';
       transition(':decrement', arrive(-26)),
     ]),
   ],
-  imports: [MatIcon, MatButton, MatDialogTitle, MatDialogContent, MatDialogActions, MatDialogClose],
+  imports: [
+    MatIcon,
+    MatButton,
+    MatDialogTitle,
+    MatDialogContent,
+    MatDialogActions,
+    MatDialogClose,
+    ChipComponent,
+  ],
 })
 export class TutorialPanelComponent implements DoCheck {
   tutorial = inject(TutorialService);

@@ -31,9 +31,6 @@ Each entry is **where** it is, what it draws, and the block to use instead.
   A collapsible section header: 40px, top rule, primary-500 label, a chevron; the two files also
   duplicate `.factGrid` / `.fact`. Use `collapsible-subsection`, whose `[headerActions]` slot
   exists for this.
-- **`analysis-setup`, `top-bar`, `tutorial-panel`** `.chip`, three identical rule blocks, plus a
-  smaller fourth in `synthesis-panel`. A status chip with `blocker` / `warning` / `ok` variants.
-  Needs a `chip-block` that does not exist yet.
 - **`MODALS/templates/templates.component.html`** `.chipRow` / `.chip[aria-pressed]`. A filter
   control drawn as pressable chips. Use `segmented-block` in a multi-select mode.
 - **`analysis-panel.component.html`** `.drawingChip` and **`analysis-setup`** `.sectionToggle`. An
@@ -91,6 +88,11 @@ cycle to appear is a panel reaching another panel's static — register a handle
 
 ## Done
 
+- `chip-block` replaced four hand-rolled status chips: `analysis-setup`, `top-bar` and
+  `tutorial-panel` held three near-identical rule blocks, and `synthesis-panel` a smaller fourth.
+  The chip is the **host element**, not a span inside it — wrapping the old `<span class="chip">`
+  in a component host added an inline box the span never had, which grew the synthesis panel by
+  five pixels and knocked the tutorial's chip off its line. Both were caught by `e2e/reuse-parity.mjs`.
 - `collapsible-subseciton` was renamed `collapsible-subsection`: the folder, the selector and
   every call site, in one commit.
 - `panel-section-collapsible` had no usage in the app and was retired, together with the chevron

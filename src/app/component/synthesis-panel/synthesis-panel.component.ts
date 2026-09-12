@@ -1,4 +1,5 @@
 import { SegmentedComponent } from '../BLOCKS/segmented/segmented.component';
+import { ChipComponent } from '../BLOCKS/chip/chip.component';
 import { KeyboardShortcutsService } from '../../services/keyboard-shortcuts.service';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import {
@@ -112,6 +113,7 @@ export function niceRound(value: number): number {
     CollapsibleSubsectionComponent,
     StandardFieldDirective,
     SegmentedComponent,
+    ChipComponent,
   ],
 })
 export class SynthesisPanelComponent implements OnInit, OnDestroy {

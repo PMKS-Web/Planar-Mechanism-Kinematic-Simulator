@@ -323,31 +323,6 @@
     padding: 10px 11px;
   }
 
-  .chip {
-    display: inline-flex;
-    flex: 0 0 auto;
-    align-items: center;
-    height: 20px;
-    padding: 0 8px;
-    border-radius: 10px;
-    background: var(--surface-chip);
-    color: var(--text-secondary);
-    font-size: 12px;
-    white-space: nowrap;
-
-    // Quoted from the mode chip, color included — same three states as the
-    // top strip and the analysis setup drawers.
-    &.blocker {
-      background: var(--refusal-bg);
-      color: var(--refusal-text);
-    }
-
-    &.ok {
-      background: var(--success-bg);
-      color: var(--success-text);
-    }
-  }
-
   .cardRule {
     height: 1px;
     margin: 14px 0 10px;

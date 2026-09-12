@@ -11,8 +11,22 @@
  * about what moved.
  */
 
+/**
+ * A window that has been here before and has seen this release, so neither
+ * the tutorial nor the release notes greets the scene uninvited. The same two
+ * marks `quiet-start.mjs` uses.
+ */
+const QUIET = { tutorialSeen: 'true', whatsNewSeen: '2026.09' };
+
 /** The four mode tabs, by the order they sit in the top strip. */
 const MODE = { synthesis: 0, edit: 1, kinematic: 2, force: 3 };
+
+/** Reopen the tutorial from the project menu, where a returning reader finds it. */
+const openTutorial = async (page) => {
+  await page.locator('.brandCard .iconButton').click();
+  await page.locator('#tutorialButton').click();
+  await page.locator('app-tutorial-panel').waitFor({ state: 'visible' });
+};
 
 const clickMode = (page, which) => page.locator('.tabStrip .tabButton').nth(MODE[which]).click();
 
@@ -161,6 +175,64 @@ export const SCENES = [
     query: '',
     setup: (page) => openDrawer(page, 6),
     clip: '#rightPanel',
+  },
+
+  // ---------------------------------------------------- tutorial and dialogs
+  {
+    name: 'tutorial card, first step',
+    query: '',
+    storage: QUIET,
+    setup: openTutorial,
+    clip: 'app-tutorial-panel',
+  },
+  {
+    name: 'tutorial card, chip hint on step four',
+    linkage: '4-Bar',
+    storage: QUIET,
+    setup: async (page) => {
+      await openTutorial(page);
+      // Step four is the one lesson about the app rather than about linkages,
+      // and the only place the tutorial quotes a readiness chip.
+      await page.evaluate(() => {
+        const card = ng.getComponent(document.querySelector('app-tutorial-panel'));
+        card.tutorial.goToStep(4);
+        ng.applyChanges(card);
+      });
+    },
+    clip: 'app-tutorial-panel',
+  },
+  {
+    name: 'mechanism library',
+    linkage: '4-Bar',
+    storage: QUIET,
+    setup: async (page) => {
+      await page.locator('.brandCard .iconButton').click();
+      await page.locator('#templatesButton').click();
+      await page.locator('#templates').waitFor({ state: 'visible' });
+    },
+    clip: '#templates',
+    settle: 900,
+  },
+  {
+    name: 'release notes',
+    linkage: '4-Bar',
+    // A window that has been here before, but not since this release: the one
+    // state that opens the notes.
+    storage: { tutorialSeen: 'true' },
+    clip: '#whatsNew',
+    settle: 900,
+  },
+  {
+    name: 'CAD export dialog',
+    linkage: '4-Bar',
+    storage: QUIET,
+    setup: async (page) => {
+      await page.getByRole('button', { name: 'Project menu' }).click();
+      await page.getByRole('button', { name: 'CAD Export' }).click();
+      await page.locator('app-drawing-export').waitFor({ state: 'visible' });
+    },
+    clip: '.drawingExport',
+    settle: 900,
   },
 
   // -------------------------------------------------------- bottom furniture
