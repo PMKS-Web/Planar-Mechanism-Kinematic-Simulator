@@ -270,6 +270,12 @@ export class MechanismBuilder {
     this.mechanism.joints = joints;
     this.mechanism.links = links;
     this.mechanism.forces = forces;
+    const transmission = this.transcoder.getTransmission();
+    this.mechanism.gears = transmission.gears.map((gear) => ({
+      ...gear,
+      module: gear.module * MODEL_SCALE,
+    }));
+    this.mechanism.gearMeshes = [...transmission.meshes];
 
     this.addAdjacentLinksForJoints();
 

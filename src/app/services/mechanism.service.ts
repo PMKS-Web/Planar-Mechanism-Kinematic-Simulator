@@ -9,6 +9,8 @@ import {
 } from '../model/mechanism/playback-values';
 export { niceSpeed, PausedPlaybackPose } from '../model/mechanism/playback-values';
 import { Injectable, Injector, inject } from '@angular/core';
+import { Gear, GearAssembly, GearMesh } from '../model/gear';
+import { survivingGears, gearHostAt, renamedGearHost } from '../model/gear-lifecycle';
 import { LinkHold } from '../model/link';
 import { cylinderHoldCarrier, holdOf, holdableBar } from '../model/link-holds';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
@@ -158,6 +160,11 @@ export class MechanismService {
   public isPlaying: boolean = false;
   /** Playback rate relative to real time. 1 means one simulated second per second. */
   public animationSpeedMultiplier: number = 1;
+  public gears: Gear[] = [];
+  public gearMeshes: GearMesh[] = [];
+  get transmission(): GearAssembly {
+    return { gears: this.gears, meshes: this.gearMeshes };
+  }
   public joints: Joint[] = [];
   public links: Link[] = [];
   public forces: Force[] = [];
@@ -255,12 +262,21 @@ export class MechanismService {
 
   // delete mechanism and reset
   resetMechanism() {
+    this.gears = [];
+    this.gearMeshes = [];
     this.joints = [];
     this.links = [];
     this.forces = [];
     this.mechanismTimeStep = 0;
     this.updateMechanism();
     this.onMechPositionChange.next(3);
+  }
+
+  /** Drop dependent metadata before a deleted joint/link ID can be reused. */
+  private cleanGearDependencies(): void {
+    const surviving = survivingGears(this.transmission, this.joints, this.links);
+    this.gears = [...surviving.gears];
+    this.gearMeshes = [...surviving.meshes];
   }
 
   // whether there is a valid mechanism
@@ -449,7 +465,13 @@ export class MechanismService {
     // own -- its own mobility, its own input, its own cycle -- so a half-built
     // chain in the corner no longer makes the finished linkage beside it
     // unsolvable.
-    const partitioning = partitionMechanisms(this.joints, this.links, this.forces);
+    this.cleanGearDependencies();
+    const partitioning = partitionMechanisms(
+      this.joints,
+      this.links,
+      this.forces,
+      this.transmission
+    );
     this.partitions = partitioning.mechanisms;
     this.unassigned = partitioning.unassigned;
     this.rebuildOwnerIndex();
@@ -506,7 +528,8 @@ export class MechanismService {
                 unitStr,
                 this.inputVelocityFor(partition),
                 'adaptive',
-                new Set(partition.ownJoints.map((joint) => joint.id))
+                new Set(partition.ownJoints.map((joint) => joint.id)),
+                partition.transmission
               );
         built.set(key, { fingerprint, mechanism });
         return mechanism;
@@ -701,6 +724,8 @@ export class MechanismService {
   private reconcileOneInputPerMechanism(): void {
     const dropped: string[] = [];
     this.partitions.forEach((partition) => {
+      // A geared graph owns its one-input diagnostic; never silently discard an actuator.
+      if (partition.transmission?.gears.length) return;
       let seen = false;
       partition.ownJoints.forEach((candidate) => {
         if (!(candidate instanceof RealJoint) || !candidate.input) return;
@@ -985,6 +1010,8 @@ export class MechanismService {
    * empty charts.
    */
   mechanismForId(id: string): Mechanism | undefined {
+    const gear = this.gears.find((g) => g.id === id);
+    if (gear) return this.mechanisms.find((m) => m.transmission.gears.some((g) => g.id === id));
     const part = this.partById(id);
     return part ? this.mechanismSolving(part) : undefined;
   }
@@ -1304,6 +1331,7 @@ export class MechanismService {
     const from = siUnitFactorsForLength(fromUnits);
     const to = siUnitFactorsForLength(toUnits);
     const lengthScale = this.nup.convertLength(1, fromUnits, toUnits);
+    this.gears = this.gears.map((gear) => ({ ...gear, module: gear.module * lengthScale }));
     const massScale = from.massToKg / to.massToKg;
     const inertiaScale = from.inertiaToKgM2 / to.inertiaToKgM2;
     // Force converts through newtons: (N per fromUnit) / (N per toUnit).
@@ -2860,6 +2888,7 @@ export class MechanismService {
    * broken drag rather than as a rule.
    */
   mergeJoints(source: RealJoint, target: RealJoint): MergeRefusal | undefined {
+    if (gearHostAt(this.transmission, [source, target], this.links)) return 'gear-host';
     // A sealed cylinder's interior joints are not attachment points: a merge
     // into the pin would hang a third joint on the rod (or a second link on
     // the block) and break the part. The two mounts remain legal targets —
@@ -3186,6 +3215,11 @@ export class MechanismService {
           );
           jt.connectedJoints.splice(deleteJointIndex, 1);
         });
+        this.gears = renamedGearHost(
+          this.gears,
+          l.id,
+          l.id.replace(this.activeObjService.selectedJoint.id, '')
+        );
         l.id = l.id.replace(this.activeObjService.selectedJoint.id, '');
         const delJointIndex = l.joints.findIndex(
           (jj) => jj.id === this.activeObjService.selectedJoint.id
@@ -3588,6 +3622,7 @@ export class MechanismService {
     }
     joint.links.push(link);
     link.joints.push(joint);
+    this.gears = renamedGearHost(this.gears, link.id, link.id + joint.id);
     link.id += joint.id;
     link.d = link.getPathString();
   }
@@ -3987,7 +4022,16 @@ export class MechanismService {
   private buildRequirements(): ForceRequirement[] {
     const requirements: ForceRequirement[] = [];
 
-    const runnable = this.mechanisms.filter((mechanism) => mechanism.isMechanismValid());
+    const runnable = this.mechanisms.filter(
+      (mechanism) => mechanism.isMechanismValid() && !mechanism.transmission.gears.length
+    );
+    if (this.gears.length)
+      requirements.push({
+        met: false,
+        warning: true,
+        title: 'Gear force transmission is unavailable',
+        body: 'V1 does not solve forces transmitted through gears. Independent gear-free mechanisms remain eligible for force analysis.',
+      });
     requirements.push({
       met: runnable.length > 0,
       title: 'A mechanism that runs',
@@ -4039,7 +4083,11 @@ export class MechanismService {
     // block force analysis for a perfectly good mechanism.
     const analysable = new Set(
       this.partitions
-        .filter((_, index) => this.mechanisms[index]?.isMechanismValid())
+        .filter(
+          (_, index) =>
+            this.mechanisms[index]?.isMechanismValid() &&
+            !this.mechanisms[index].transmission.gears.length
+        )
         .flatMap((partition) => partition.links.map((link) => link.id))
     );
     // Something has to load the linkage, but weight counts: with gravity on,
@@ -7328,6 +7376,7 @@ export class MechanismService {
    * whether a Slide survives a drag depends on what was dropped onto it.
    */
   private weldTopology(joint: RealJoint): boolean {
+    if (gearHostAt(this.transmission, [joint], this.links)) return false;
     if (!joint.canBeWelded()) return false;
     const realLinksAtJoint = this.links.filter(
       (link): link is RealLink => link instanceof RealLink && link.joints.includes(joint)
@@ -7353,6 +7402,7 @@ export class MechanismService {
 
   /** Undo a weld at this joint, whatever kind of weld it is. Pure topology. */
   private unweldTopology(joint: RealJoint): boolean {
+    if (gearHostAt(this.transmission, [joint], this.links)) return false;
     if (!joint.isWelded) return false;
     // The sealed pin's weld is what makes a cylinder one part; it never comes
     // off (§ cylinder 4). Only the pin resolves here — a welded *mount* has no

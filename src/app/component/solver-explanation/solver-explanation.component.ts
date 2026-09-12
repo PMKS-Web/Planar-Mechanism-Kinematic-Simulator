@@ -126,7 +126,7 @@ export class SolverExplanationComponent {
           mechanism,
           step,
           rates,
-          preferences.loops,
+          mechanism.gearDrive ? [] : preferences.loops,
           preferences.angular,
           preferences.angularByBody
         )
@@ -312,6 +312,7 @@ export class SolverExplanationComponent {
       circles,
       circleLines,
       loops,
+      gears: this.explain.gearsAt(mechanism, step),
       diagram: mechanismDiagram(mechanism, step),
       bodies:
         forceWork?.bodies.map((body) => ({

@@ -1,4 +1,5 @@
 import { describeActuatorRefusal } from '../../model/actuator';
+import { GearPanelComponent } from '../gears/gear-panel.component';
 import { speedTurning, turnsClockwise } from '../../model/drive-direction';
 import { Subscription } from 'rxjs';
 import {
@@ -92,6 +93,7 @@ const INPUT_SPEED_UNITS = [
   styleUrls: ['./edit-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
+    GearPanelComponent,
     EditBannerComponent,
     MatTooltip,
     MatIcon,

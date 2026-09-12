@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { GearEditorService } from './gear-editor.service';
 import { NumberUnitParserService } from './number-unit-parser.service';
 import { AngleUnit } from '../model/utils';
 import { heldBarsAt, holdOf, holdableBar } from '../model/link-holds';
@@ -31,6 +32,7 @@ import { MultiEditService } from './multi-edit.service';
 
 /** What the canvas does when a row asks for a gesture rather than an edit. */
 export interface MenuHandlers {
+  addGear?(): void;
   attachLink(): void;
   attachCylinder(): void;
   attachTracerPoint(): void;
@@ -69,6 +71,7 @@ export interface DrawingSwitch {
 
 @Injectable({ providedIn: 'root' })
 export class ContextMenuBuilderService {
+  private gears = inject(GearEditorService);
   private mechanism = inject(MechanismService);
   private gridUtils = inject(GridUtilsService);
   private multiEdit = inject(MultiEditService);
@@ -317,6 +320,16 @@ export class ContextMenuBuilderService {
       label: 'Add',
       rows: [
         new MenuRow({ label: 'Link', icon: 'new_link', action: () => handlers.attachLink() }),
+        new MenuRow({
+          label: 'Gear',
+          icon: 'settings',
+          material: true,
+          action: () => handlers.addGear?.(),
+          posePolicy: 'preserve',
+          refusal: this.gears.createRefusal()
+            ? { short: 'unavailable', long: this.gears.createRefusal() }
+            : undefined,
+        }),
         new MenuRow({
           label: 'Cylinder',
           icon: 'add_cylinder',
@@ -937,6 +950,16 @@ export class ContextMenuBuilderService {
     // nothing that is held -- the new link, block, tracer or force is built
     // onto the link as it stands. So the lock refuses none of these.
     const rows = [
+      new MenuRow({
+        label: 'Attach Gear',
+        icon: 'settings',
+        material: true,
+        action: () => this.gears.attach(link),
+        posePolicy: 'preserve',
+        refusal: this.gears.attachRefusal(link)
+          ? { short: 'unsupported host', long: this.gears.attachRefusal(link) }
+          : undefined,
+      }),
       new MenuRow({
         label: 'Link',
         icon: 'new_link',

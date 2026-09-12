@@ -43,5 +43,6 @@ export function solveFingerprint(
     unitStr,
     inputVelocity,
     icCount,
+    JSON.stringify(partition.transmission),
   ].join('#');
 }

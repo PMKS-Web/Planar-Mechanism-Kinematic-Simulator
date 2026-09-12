@@ -408,6 +408,7 @@ export class DrawingExportComponent {
 
   /** A hole wider than the part it is cut in, said where the reader is looking. */
   get warning(): string {
+    if (this.gearRefusal) return this.gearRefusal;
     return this.isEmpty ? '' : this.pinDiameterError || this.exportService.pinWarning(this.options);
   }
 
@@ -433,7 +434,12 @@ export class DrawingExportComponent {
       : `Export ${this.formatWord} + ${this.options.dataFile.toUpperCase()}`;
   }
 
+  get gearRefusal(): string | undefined {
+    return this.exportService.gearRefusal;
+  }
+
   download(): void {
+    if (this.gearRefusal) return;
     if (this.isEmpty || this.pinDiameterError) return;
     const file = this.exportService.create(this.options);
     const url = URL.createObjectURL(file.blob);

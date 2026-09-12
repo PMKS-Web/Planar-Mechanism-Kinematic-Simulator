@@ -1,4 +1,5 @@
 import { angleOverlayArc } from '../../model/angle-overlay';
+import { gearHostAt } from '../../model/gear-lifecycle';
 import { SvgGridService } from '../../services/svg-grid.service';
 import { heldBars, heldBarsReaching, heldBySentence, holdList } from '../../model/link-holds';
 import {
@@ -22,6 +23,8 @@ import { SettingsService } from '../../services/settings.service';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { LongPress, LongPressDirective } from '../../long-press.directive';
 import { ModelFrameDirective, ModelPoint, UprightDirective } from '../../model-frame.directive';
+import { GearLayerComponent } from '../gears/gear-layer.component';
+import { GearEditorService } from '../../services/gear-editor.service';
 import { turnsClockwise } from '../../model/drive-direction';
 import { ViewportService } from '../../services/viewport.service';
 import { ContextMenuComponent } from '../context-menu/context-menu.component';
@@ -193,6 +196,7 @@ const SELECTION_RING_PX = 3;
   styleUrls: ['./new-grid.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
+    GearLayerComponent,
     CdkContextMenuTrigger,
     ContextMenuComponent,
     LongPressDirective,
@@ -201,6 +205,7 @@ const SELECTION_RING_PX = 3;
   ],
 })
 export class NewGridComponent implements OnDestroy {
+  private gearEditor = inject(GearEditorService);
   readonly Math = Math;
   svgGrid = inject(SvgGridService);
   mechanismSrv = inject(MechanismService);
@@ -539,6 +544,7 @@ export class NewGridComponent implements OnDestroy {
   private menuHandlers(): MenuHandlers {
     return {
       attachLink: () => this.startCreatingLink(),
+      addGear: () => this.gearEditor.create(this.svgGrid.screenToModel(this.lastRightClickCoord)),
       attachCylinder: () => this.startCreatingCylinder(),
       attachTracerPoint: () => this.addJoint(),
       attachForce: (onLink) => this.createForce(onLink),
@@ -2927,7 +2933,8 @@ export class NewGridComponent implements OnDestroy {
           // The full structural picture rides along separately: the filtered
           // list above cannot answer mount questions (the pins are gone), and
           // this is the cached list, not a per-move derivation.
-          this.mechanismSrv.sealedStructures()
+          this.mechanismSrv.sealedStructures(),
+          (joint) => gearHostAt(this.mechanismSrv.transmission, [joint], this.mechanismSrv.links)
         );
     this.setDropCandidate(candidate);
 
@@ -6159,6 +6166,12 @@ export class NewGridComponent implements OnDestroy {
    */
   private deleteSelection(): void {
     switch (this.activeObjService.objType) {
+      case 'Gear':
+        this.gearEditor.removeGear(this.activeObjService.selectedGearId!);
+        break;
+      case 'GearMesh':
+        this.gearEditor.removeMesh(this.activeObjService.selectedMeshId!);
+        break;
       case 'MultiSelection':
         this.deleteSelectedParts();
         break;

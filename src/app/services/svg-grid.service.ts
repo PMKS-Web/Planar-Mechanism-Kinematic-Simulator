@@ -98,6 +98,7 @@ const DRAWING_LAYERS = [
   'jointBGHolder',
   'motorHolder',
   'linkHolder',
+  'gearHolder',
   'sliderHolder',
   'jointHolder',
   'pathsHolder',
@@ -995,6 +996,15 @@ export class SvgGridService {
           maxY = Math.max(maxY, -point.y);
         }
       }
+    }
+    for (const gear of mechanism.gears ?? []) {
+      const center = mechanism.joints.find((j) => j.id === gear.centerJointId);
+      if (!center) continue;
+      const radius = gear.module * gear.teeth * 0.53;
+      minX = Math.min(minX, center.x - radius);
+      maxX = Math.max(maxX, center.x + radius);
+      minY = Math.min(minY, -center.y - radius);
+      maxY = Math.max(maxY, -center.y + radius);
     }
     if (!Number.isFinite(minX)) return null;
     const pad = Math.max(this.settingsService.objectScale * 0.65, 1);

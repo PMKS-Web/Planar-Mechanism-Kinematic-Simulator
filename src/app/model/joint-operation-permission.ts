@@ -19,6 +19,7 @@
 
 import { Joint, PrisJoint, RealJoint } from './joint';
 import { Cylinder, cylinderInteriorsAt } from './cylinder';
+import { GEAR_HOST_REFUSAL } from './gear-lifecycle';
 
 /** A structural edit, named as the state it is asking for rather than as a toggle. */
 export type JointOperation = 'weld' | 'unweld' | 'add-slider' | 'remove-slider';
@@ -42,6 +43,7 @@ export interface OperationRefusal {
  * `GridUtilsService` has settled.
  */
 export interface JointOperationContext {
+  gearHostAt?: (joint: Joint) => boolean;
   cylinders: Cylinder[];
   isDriven: (joint: RealJoint) => boolean;
   hasSlider: (joint: RealJoint) => boolean;
@@ -59,6 +61,8 @@ export function refuseJointOperation(
   operation: JointOperation,
   context: JointOperationContext
 ): OperationRefusal | undefined {
+  if (joint && context.gearHostAt?.(joint))
+    return { code: 'gear.host-identity', short: 'gear host', long: GEAR_HOST_REFUSAL };
   if (!(joint instanceof RealJoint)) {
     return operation === 'weld' || operation === 'unweld'
       ? { code: 'joint.not-a-joint', short: 'not a joint', long: 'Only a joint can be welded.' }

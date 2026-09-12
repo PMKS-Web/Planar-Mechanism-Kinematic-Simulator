@@ -706,7 +706,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
       // seconds of a window that had stopped answering.
       this.loading
         .during('Opening mechanism…', () =>
-          this.urlProcessor.updateFromURL(reader.result as string)
+          this.urlProcessor.updateFromURL(reader.result as string, true, true, true)
         )
         .then(() => this.afterUpload(input))
         // The cover comes down in `during`'s own `finally`; this is only so a

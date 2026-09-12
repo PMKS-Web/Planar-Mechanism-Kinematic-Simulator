@@ -1,4 +1,5 @@
 import { SelectedTabService, TabID } from '../../selected-tab.service';
+import { GearAnalysisComponent } from '../gears/gear-analysis.component';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -67,6 +68,7 @@ const DRAWING_CHIP_LABEL: Record<DrawingSwitch['key'], string> = {
   styleUrls: ['./analysis-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
+    GearAnalysisComponent,
     TitleBlock,
     MatIcon,
     MechanismPanelComponent,

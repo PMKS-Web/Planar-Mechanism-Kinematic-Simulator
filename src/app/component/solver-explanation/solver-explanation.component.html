@@ -66,6 +66,29 @@
   </div>
   @if (view; as data) {
     <div class="worksheetContent">
+      @if (!isForce() && data.gears.length) {
+        <section class="motionCard">
+          <h3>Analytically Prescribed Gear Motion</h3>
+          <p>
+            External meshes impose ΔθB = −(NA / NB) ΔθA. Exact ratios propagate from the single
+            input. Each body uses θ = θ₀ + multiplier × q, ω = multiplier × q̇, and α = multiplier ×
+            q̈. These values use counterclockwise-positive radians; q is continuous input travel.
+          </p>
+          @for (gear of data.gears; track gear.id) {
+            <p>
+              {{ gear.name }} · Ratio {{ gear.ratio }} = {{ gear.multiplier }} · Input travel
+              {{ gear.q | number: '1.0-6' }} rad · Angle {{ gear.angle | number: '1.0-6' }} rad ·
+              Speed {{ gear.rpm | number: '1.0-6' }} rpm · Acceleration
+              {{ gear.alpha | number: '1.0-6' }} rad/s²
+            </p>
+          }
+          <p>
+            The remaining linkage uses the existing geometric constraint solver with these moving
+            boundary points. Complete position and differentiated constraints are audited before
+            accepting a frame.
+          </p>
+        </section>
+      }
       <div class="overview">
         <figure>
           <app-solver-diagram

@@ -1352,27 +1352,31 @@ export class AnalysisGraphComponent
             seriesData.push({ name: 'Z', type: 'line', data: datum[2] });
             this.numberOfSeries = 3;
             break;
+          case 'Angular Gear Pos':
+          case 'Angular Gear Travel':
           case 'Angular Link Pos':
             yAxisTitle = 'Position ' + posAngUnit;
             [datum] = this.determineAnalysis(analysis, analysisType, mechProp, mechPart);
             var series: number[] = datum[0];
-            this.scaleAngles(series, 'Angular Link Pos');
+            this.scaleAngles(series, mechProp);
             seriesData.push({ name: 'Z', type: 'line', data: series });
             this.numberOfSeries = 1;
             break;
+          case 'Angular Gear Vel':
           case 'Angular Link Vel':
             yAxisTitle = 'Velocity ' + velAngUnit;
             [datum] = this.determineAnalysis(analysis, analysisType, mechProp, mechPart);
             var series: number[] = datum[0];
-            this.scaleAngles(series, 'Angular Link Vel');
+            this.scaleAngles(series, mechProp);
             seriesData.push({ name: 'Z', type: 'line', data: series });
             this.numberOfSeries = 1;
             break;
+          case 'Angular Gear Acc':
           case 'Angular Link Acc':
             yAxisTitle = 'Acceleration ' + accAngUnit;
             [datum] = this.determineAnalysis(analysis, analysisType, mechProp, mechPart);
             var series: number[] = datum[0];
-            this.scaleAngles(series, 'Angular Link Acc');
+            this.scaleAngles(series, mechProp);
             seriesData.push({ name: 'Z', type: 'line', data: series });
             this.numberOfSeries = 1;
             break;

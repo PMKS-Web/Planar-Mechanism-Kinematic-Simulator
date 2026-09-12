@@ -195,6 +195,17 @@ export class UrlProcessorService {
     continuingHistory: boolean = false
   ) {
     const mechanismSrv = this.injector.get(MechanismService);
+    // Decode and preflight before touching the current drawing, clocks, selection or preferences.
+    const decoder = new StringTranscoder();
+    if (url !== null) {
+      try {
+        decoder.decodeURL(url);
+      } catch (error) {
+        if (!looksLikeQueryParameters(url)) this.reportInvalidURL(error);
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return;
+      }
+    }
     // A different mechanism reuses the same joint letters and means something
     // different by them, so nothing remembered per joint may carry across --
     // nor does whether somebody chose a mark size, which was a fact about the
@@ -240,6 +251,14 @@ export class UrlProcessorService {
       continuingHistory && this.activeObj.objType === 'Force'
         ? this.activeObj.selectedForce?.id
         : undefined;
+    const heldGear =
+      continuingHistory && this.activeObj.objType === 'Gear'
+        ? this.activeObj.selectedGearId
+        : undefined;
+    const heldMesh =
+      continuingHistory && this.activeObj.objType === 'GearMesh'
+        ? this.activeObj.selectedMeshId
+        : undefined;
     mechanismSrv.rewindToStart();
     // The unit the drawing is about to be expressed in decides how big it is on
     // screen, and the viewport is compensated for that -- but only where the
@@ -249,13 +268,11 @@ export class UrlProcessorService {
     const unitBefore = this.settingsSrv.lengthUnit.value;
 
     // the transcoder is responsible for decoding the url into a mechanism
-    const decoder = new StringTranscoder();
 
     // if the url exists, decode it and build the mechanism. Otherwise, skip to updating mechanism directly
     if (url !== null) {
       try {
         console.log('decoded url: ' + url);
-        decoder.decodeURL(url);
         const builder = new MechanismBuilder(
           mechanismSrv,
           decoder,
@@ -345,7 +362,11 @@ export class UrlProcessorService {
     // By id *and* kind: ids are letters handed out alphabetically, so the same
     // letter can name a joint in one state and a link in the next, and a
     // lookup that took the first match would change what the panel is about.
-    if (heldPartSelection?.refs.length) {
+    if (heldGear && mechanismSrv.gears.some((g) => g.id === heldGear)) {
+      this.activeObj.selectGear(heldGear);
+    } else if (heldMesh && mechanismSrv.gearMeshes.some((m) => m.id === heldMesh)) {
+      this.activeObj.selectGearMesh(heldMesh);
+    } else if (heldPartSelection?.refs.length) {
       this.activeObj.restorePartSelection(
         heldPartSelection,
         mechanismSrv.joints,

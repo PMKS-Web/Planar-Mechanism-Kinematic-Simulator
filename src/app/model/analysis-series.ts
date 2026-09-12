@@ -57,6 +57,7 @@ export function formatReading(value: number): string {
  * disagree are worse than either being wrong on its own.
  */
 export function angularScale(mechProp: string, unit: AngleUnit): number {
+  if (mechProp.startsWith('Angular Gear ')) return unit === AngleUnit.DEGREE ? 180 / Math.PI : 1;
   if (mechProp === 'Angular Link Pos') {
     return unit === AngleUnit.RADIAN ? Math.PI / 180 : 1;
   }

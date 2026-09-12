@@ -70,7 +70,11 @@ export function readinessOf(
   const checks: ReadinessCheck[] = [];
   const add = (check: ReadinessCheck) => checks.push(check);
 
-  switch (mechanism.failure) {
+  for (const diagnostic of mechanism.gearDiagnostics ?? []) {
+    add({ state: 'blocker', title: 'Gear relationship needs attention', body: diagnostic.message });
+  }
+
+  switch (mechanism.gearDiagnostics?.length ? undefined : mechanism.failure) {
     case 'dangling-slider': {
       const dangling = partition.joints.filter(
         (joint) => joint instanceof PrisJoint && joint.isDangling

@@ -1,8 +1,9 @@
 import { Joint } from '../../model/joint';
 import { Link } from '../../model/link';
+import { Gear } from '../../model/gear';
 
 /** Which of the two things in a drawing a row is about. */
-export type PartKind = 'joint' | 'link';
+export type PartKind = 'joint' | 'link' | 'gear';
 
 /** What the file is written as. */
 export type ExportFormat = 'csv' | 'xlsx' | 'images' | 'report';
@@ -42,7 +43,7 @@ export interface ExportPart {
    * analysis does, because a pinned joint still carries a reaction.
    */
   available: boolean;
-  part: Joint | Link;
+  part: Joint | Link | Gear;
   mechanismIndex: number;
 }
 

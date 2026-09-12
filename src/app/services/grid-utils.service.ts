@@ -1,4 +1,5 @@
 import { Injectable, Injector, inject } from '@angular/core';
+import { gearHostAt } from '../model/gear-lifecycle';
 import { HoldBar, HoldGoal, reachedByHolds, settleHolds } from '../model/hold-solver';
 import { heldBars, heldBarsReaching, holdJoints, holdOf } from '../model/link-holds';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
@@ -274,6 +275,8 @@ export class GridUtilsService {
   operationContext(): JointOperationContext {
     return {
       cylinders: this.mechanismSrv.sealedStructures(),
+      gearHostAt: (joint) =>
+        gearHostAt(this.mechanismSrv.transmission, [joint], this.mechanismSrv.links),
       isDriven: (joint) => this.isVisuallyInput(joint),
       hasSlider: (joint) => this.isAttachedToSlider(joint),
     };

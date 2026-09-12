@@ -52,10 +52,16 @@ export interface DxfExportFile {
 /** Produces a semantic start-pose drawing; the UI owns how the Blob is delivered. */
 @Injectable({ providedIn: 'root' })
 export class DxfExportService {
+  get gearRefusal(): string | undefined {
+    return this.mechanism.gears?.length
+      ? 'Gear fabrication export is not supported. The canvas shows symbolic pitch geometry, not an involute tooth profile. Use image export to share the diagram.'
+      : undefined;
+  }
   private mechanism = inject(MechanismService);
   private settings = inject(SettingsService);
 
   create(options: DxfExportOptions = {}): DxfExportFile {
+    if (this.gearRefusal) throw new Error(this.gearRefusal);
     // Geometry and companion tables must describe the same start pose.
     return this.mechanism.encodeFromStartPose(() => this.createFromStart(options));
   }

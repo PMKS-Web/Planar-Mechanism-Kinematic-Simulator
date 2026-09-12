@@ -1,9 +1,11 @@
 import { Joint, PrisJoint, RealJoint, RevJoint } from './joint';
+import { GEAR_HOST_REFUSAL } from './gear-lifecycle';
 import { Link, RealLink, SliderBlock } from './link';
 import { Cylinder, cylinderJoints } from './cylinder';
 
 /** Why a candidate joint cannot receive the joint being dragged. */
 export type MergeRefusal =
+  | 'gear-host'
   | 'same-joint'
   | 'shares-a-link'
   | 'prismatic'
@@ -29,6 +31,7 @@ export type MergeRefusal =
 
 /** What to tell the user when a merge is refused. */
 export const MERGE_REFUSAL_MESSAGES: Record<MergeRefusal, string> = {
+  'gear-host': GEAR_HOST_REFUSAL,
   'same-joint': 'A joint cannot be merged into itself.',
   'shares-a-link': 'These joints are on the same link, so merging them would collapse it.',
   prismatic: 'Drop onto the pin of a slider, not onto its slot.',
@@ -58,6 +61,7 @@ export const MERGE_REFUSAL_MESSAGES: Record<MergeRefusal, string> = {
  * not to cover the joints on either side of the one being refused.
  */
 export const MERGE_REFUSAL_REASONS: Record<MergeRefusal, string> = {
+  'gear-host': 'remove the gear first',
   'same-joint': 'the same joint',
   'shares-a-link': 'already one bar',
   prismatic: 'that end is a slot',
@@ -412,7 +416,8 @@ export function resolveDropCandidate(
    * appeared only at release, with no ring); and deriving per candidate per
    * pointermove is exactly the kind of quadratic work the stutter came from.
    */
-  cylinders: Cylinder[] = []
+  cylinders: Cylinder[] = [],
+  gearHostAt: (joint: Joint) => boolean = () => false
 ): JointDropCandidate | undefined {
   let best: JointDropCandidate | undefined;
   let bestDistance = radius;
@@ -434,7 +439,13 @@ export function resolveDropCandidate(
     if (sourceCylinders.some((c) => cylinderJoints(c).some((m) => m.id === candidate.id))) {
       return;
     }
-    const refusal = refuseJointMerge(source, candidate, cylinders);
+    const baseRefusal = refuseJointMerge(source, candidate, cylinders);
+    const refusal =
+      baseRefusal === 'shares-a-link'
+        ? baseRefusal
+        : gearHostAt(source) || gearHostAt(candidate)
+          ? 'gear-host'
+          : baseRefusal;
     // Nor is the other end of the link you are holding. Marking that in red
     // would be explaining something the drawing already says — the two have a
     // bar between them — so it is not a target at all, and a legal joint

@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { GEAR_QUANTITIES } from '../../model/gear-analysis';
 import { PrisJoint, RealJoint } from '../../model/joint';
 import { RealLink } from '../../model/link';
 import { MechanismService } from '../mechanism.service';
@@ -46,6 +47,18 @@ export class ExportColumnsService {
     const links = parts.filter((part) => part.kind === 'link' && part.part instanceof RealLink);
     const length = this.catalog.unitStr(this.settings.lengthUnit.value);
     const angle = this.catalog.unitStr(this.settings.angleUnit.value);
+    const gears = parts.filter((part) => part.kind === 'gear');
+    if (gears.length)
+      groups.push({
+        key: 'gears',
+        title: this.titleOf('Gear', gears),
+        tab: 'kinematics',
+        columns: GEAR_QUANTITIES.map((quantity) =>
+          this.kinematic(gears, 'g:' + quantity.property, quantity.label, angle + quantity.suffix, [
+            [quantity.label, quantity.property, angle + quantity.suffix, 1],
+          ])
+        ),
+      });
 
     if (joints.length > 0) {
       groups.push({
@@ -165,6 +178,7 @@ export class ExportColumnsService {
     const taken = new Set<string>();
     const groups: ExportColumnGroup[] = [];
     parts.forEach((part) => {
+      if (part.kind === 'gear') return;
       const solved = this.mechanism.mechanisms[part.mechanismIndex];
       if (!solved?.isMechanismValid()) return;
       const index = solved.getForceAnalysis(mode).reactionIndex;

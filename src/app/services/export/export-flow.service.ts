@@ -104,6 +104,7 @@ export class ExportFlowService {
       this.activeObj.objType,
       this.activeObj.selectedJoint?.id,
       this.activeObj.selectedLink?.id,
+      this.activeObj.selectedGearId,
       // Units ride the column heads, so a change of them is a change of list.
       this.settings.lengthUnit.value,
       this.settings.angleUnit.value,

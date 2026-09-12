@@ -357,7 +357,7 @@
     <button
       mat-flat-button
       color="primary"
-      [disabled]="isEmpty || !!pinDiameterError"
+      [disabled]="isEmpty || !!pinDiameterError || !!gearRefusal"
       (click)="download()"
     >
       <mat-icon>download</mat-icon>

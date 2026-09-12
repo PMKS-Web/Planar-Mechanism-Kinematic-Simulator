@@ -262,7 +262,7 @@ export class ExportWriterService {
     const jointIds = (this.mechanism.partitions[index]?.ownJoints ?? []).map((joint) => joint.id);
     const drawing =
       canvasSnapshot(330, 250, jointIds) ??
-      mechanismSvg(solved.joints[0] ?? [], solved.links[0] ?? [], 330, 230);
+      mechanismSvg(solved.joints[0] ?? [], solved.links[0] ?? [], 330, 230, solved.transmission);
     const decimals = this.flow.decimals;
     return {
       title: `${this.flow.selectedColumns('forces').length > 0 ? 'Analysis' : 'Kinematic analysis'} — ${group.id}`,

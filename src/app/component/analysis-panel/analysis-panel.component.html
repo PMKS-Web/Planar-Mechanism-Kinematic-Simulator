@@ -12,6 +12,9 @@
       <app-solver-explanation [force]="showForce"></app-solver-explanation>
     }
   } @else {
+    @if (activeSrv.objType === 'Gear') {
+      <app-gear-analysis [force]="showForce" />
+    }
     <!--
   //Param 1: analysis: "force","stress","kinematic"
 

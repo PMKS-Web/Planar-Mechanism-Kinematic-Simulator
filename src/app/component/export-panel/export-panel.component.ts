@@ -233,6 +233,7 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
   sectionsIn(group: ExportPartGroup): { title: string; parts: ExportPart[] }[] {
     return [
       { title: 'Joints', parts: group.parts.filter((part) => part.kind === 'joint') },
+      { title: 'Gears', parts: group.parts.filter((part) => part.kind === 'gear') },
       { title: 'Links', parts: group.parts.filter((part) => part.kind === 'link') },
     ].filter((section) => section.parts.length > 0);
   }
@@ -254,7 +255,12 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
    * selected there, so this can never take a reader's own mark away.
    */
   pointAt(part: ExportPart | undefined): void {
-    this.mechanism.hoveredPart = part?.part;
+    this.mechanism.hoveredPart =
+      part?.kind === 'gear'
+        ? this.mechanism.links.find(
+            (link) => link.id === (part.part as { hostLinkId: string }).hostLinkId
+          )
+        : (part?.part as Joint | Link | undefined);
   }
 
   /**
@@ -265,6 +271,7 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
    * and a sealed cylinder has to answer for whichever of its pieces was hit.
    */
   isOnGrid(part: ExportPart): boolean {
+    if (part.kind === 'gear') return part.selected;
     return part.kind === 'joint'
       ? this.mechanism.isSelectedJoint(part.part as Joint)
       : this.mechanism.isSelectedBody(part.part as Link);

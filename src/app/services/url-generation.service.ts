@@ -155,6 +155,13 @@ export class UrlGenerationService {
       ((run: (step: number) => string) => run(this.mechanism.mechanismTimeStep ?? 0));
     return park((cachedAnimationFrame) => {
       let encoder = new StringTranscoder();
+      encoder.setTransmission({
+        gears: (this.mechanism.gears ?? []).map((gear) => ({
+          ...gear,
+          module: gear.module / MODEL_SCALE,
+        })),
+        meshes: this.mechanism.gearMeshes ?? [],
+      });
 
       // add each joint
       this.mechanism.joints.forEach((joint) => {

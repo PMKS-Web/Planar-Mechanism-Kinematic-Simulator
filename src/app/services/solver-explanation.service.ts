@@ -78,6 +78,25 @@ function displayKinematicSystem(system: LinearSystemExplanation | undefined, len
 
 @Injectable({ providedIn: 'root' })
 export class SolverExplanationService {
+  gearsAt(mechanism: Mechanism, step: number) {
+    const plan = mechanism.gearDrive;
+    if (!plan) return [];
+    const motion = mechanism.gearMotionAtSample(step);
+    return plan.bodies.map((body) => {
+      const gear = mechanism.transmission.gears.find((g) => g.id === body.gearId)!;
+      const current = motion?.angles.get(body.gearId);
+      return {
+        id: gear.id,
+        name: gear.name || gear.id,
+        ratio: `${body.ratio.numerator}/${body.ratio.denominator}`,
+        multiplier: body.multiplier,
+        q: mechanism.gearTravel[step],
+        angle: current?.angle,
+        rpm: current ? (current.velocity * 30) / Math.PI : undefined,
+        alpha: current?.acceleration,
+      };
+    });
+  }
   forceAt(mechanism: Mechanism, step: number, mode: ForceAnalysisMode) {
     const plotted = mechanism.getForceAnalysis(mode).frames[step];
     mechanism.prepareSolvers();

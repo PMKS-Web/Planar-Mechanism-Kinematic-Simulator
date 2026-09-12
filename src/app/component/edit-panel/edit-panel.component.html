@@ -13,6 +13,9 @@
        controls themselves. The numbers stay readable either way: watching a
        joint's coordinates tick is the reason the panel stays at all. -->
   <div class="editBody" [class.frozen]="panelIsFrozen()">
+    @if (activeSrv.objType === 'Gear' || activeSrv.objType === 'GearMesh') {
+      <app-gear-panel />
+    }
     @if (this.activeSrv.objType == 'MultiSelection') {
       <app-multi-edit-panel></app-multi-edit-panel>
     }

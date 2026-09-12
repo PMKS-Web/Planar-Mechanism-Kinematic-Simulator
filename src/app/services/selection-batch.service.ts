@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { duplicateGears, renamedGearHost } from '../model/gear-lifecycle';
 import { Cylinder, cylinderJoints } from '../model/cylinder';
 import { Coord } from '../model/coord';
 import { Force } from '../model/force';
@@ -240,6 +241,7 @@ function planDeletion(mechanism: MechanismService, resolved: ResolvedPart[]): De
 }
 
 function applyDeletion(mechanism: MechanismService, plan: DeletePlan): void {
+  const hostIds = new Map(mechanism.links.map((link) => [link, link.id]));
   const removedOwners = new Set<RealLink>();
   plan.removeRoots.forEach((root) => {
     if (root instanceof RealLink) removedOwners.add(root);
@@ -255,6 +257,11 @@ function applyDeletion(mechanism: MechanismService, plan: DeletePlan): void {
     return mechanism.removeCompoundJoints(root, plan.selectedJointIds);
   });
 
+  for (const root of roots) {
+    const before = hostIds.get(root);
+    if (before && before !== root.id)
+      mechanism.gears = renamedGearHost(mechanism.gears, before, root.id);
+  }
   mechanism.links = roots;
   mechanism.forces = mechanism.forces.filter(
     (force) => !removedOwners.has(force.link) && !plan.removeForces.has(force)
@@ -442,6 +449,9 @@ function copyClosure(
   mechanism.joints.push(...jointMap.values());
   mechanism.links.push(...rootCopies);
   mechanism.forces.push(...forceCopies);
+  const copiedGears = duplicateGears(mechanism.transmission, jointMap, linkMap);
+  mechanism.gears.push(...copiedGears.gears);
+  mechanism.gearMeshes.push(...copiedGears.meshes);
 
   // What the copy leaves selected. A force ref is dropped: its copy came with
   // the body, and the reader's next gesture is about the new bodies.

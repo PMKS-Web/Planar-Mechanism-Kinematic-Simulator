@@ -1,3 +1,4 @@
+import { GearAssembly, gearPitchRadius } from '../../model/gear';
 import { Joint, PrisJoint, RealJoint } from '../../model/joint';
 import { Link, RealLink } from '../../model/link';
 import { escapeXml } from './xml';
@@ -15,7 +16,8 @@ export function mechanismSvg(
   joints: Joint[],
   links: Link[],
   width: number,
-  height: number
+  height: number,
+  transmission: GearAssembly = { gears: [], meshes: [] }
 ): string {
   const drawn = joints.filter((joint) => !(joint instanceof PrisJoint));
   if (drawn.length === 0) {
@@ -26,6 +28,13 @@ export function mechanismSvg(
   // draws through `modelFrame`; here the flip is folded into the projection.
   const xs = drawn.map((joint) => joint.x);
   const ys = drawn.map((joint) => -joint.y);
+  for (const gear of transmission.gears) {
+    const center = drawn.find((j) => j.id === gear.centerJointId);
+    if (!center) continue;
+    const radius = gearPitchRadius(gear);
+    xs.push(center.x - radius, center.x + radius);
+    ys.push(-center.y - radius, -center.y + radius);
+  }
   const pad = 26;
   const spanX = Math.max(...xs) - Math.min(...xs) || 1;
   const spanY = Math.max(...ys) - Math.min(...ys) || 1;
@@ -37,6 +46,17 @@ export function mechanismSvg(
     round(height / 2 + (-joint.y - midY) * scale),
   ];
 
+  const gears = transmission.gears
+    .map((gear) => {
+      const center = drawn.find((j) => j.id === gear.centerJointId);
+      const reference = drawn.find((j) => j.id === gear.referenceJointId);
+      if (!center || !reference) return '';
+      const [x, y] = at(center),
+        radius = gearPitchRadius(gear) * scale;
+      const theta = Math.atan2(reference.y - center.y, reference.x - center.x);
+      return `<g data-gear-id="${escapeXml(gear.id)}" stroke="#5c6bc0" fill="none"><circle cx="${x}" cy="${y}" r="${round(radius)}" stroke-dasharray="4 3"/><line x1="${x}" y1="${y}" x2="${round(x + radius * 0.85 * Math.cos(theta))}" y2="${round(y - radius * 0.85 * Math.sin(theta))}"/><text x="${round(x + radius * 0.55)}" y="${round(y - radius * 0.55)}" stroke="none" fill="#2c2c2c" font-size="12">${gear.teeth}T</text></g>`;
+    })
+    .join('');
   const bars = links
     .filter((link): link is RealLink => link instanceof RealLink)
     .map((link) => {
@@ -85,6 +105,7 @@ export function mechanismSvg(
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="Roboto, Helvetica, Arial, sans-serif">` +
     `<rect width="${width}" height="${height}" fill="#ffffff"/>` +
+    gears +
     bars +
     grounds +
     pins +

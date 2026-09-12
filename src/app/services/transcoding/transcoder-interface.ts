@@ -1,5 +1,6 @@
 import { ACTIVE_TYPE, ActiveObjData, ForceData, JointData, LinkData } from './transcoder-data';
 import { EnumSetting, DecimalSetting, IntSetting, BoolSetting } from './stored-settings';
+import { GearAssembly } from '../../model/gear';
 
 /*
  * This file contains the interface for the encoder and decoder,
@@ -10,6 +11,16 @@ import { EnumSetting, DecimalSetting, IntSetting, BoolSetting } from './stored-s
  */
 
 export abstract class GenericTranscoder {
+  protected transmission: GearAssembly = { gears: [], meshes: [] };
+
+  setTransmission(transmission: GearAssembly): void {
+    this.transmission = transmission;
+  }
+
+  getTransmission(): GearAssembly {
+    return this.transmission;
+  }
+
   protected joints: JointData[] = [];
   protected links: LinkData[] = [];
   protected forces: ForceData[] = [];

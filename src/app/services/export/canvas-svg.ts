@@ -25,6 +25,7 @@ const DROPPED = ['backgroundAndGrid', 'backgroundImageHandles'];
  * inline style for a picture three inches wide.
  */
 const COPIED = [
+  'vector-effect',
   'fill',
   'fill-opacity',
   'fill-rule',
@@ -109,9 +110,10 @@ function machineFrame(canvas: SVGSVGElement, jointIds: string[]): DOMRect | unde
   let top = Infinity;
   let right = -Infinity;
   let bottom = -Infinity;
-  jointIds.forEach((id) => {
-    const marker = canvas.querySelector(`#joint_${CSS.escape(id)}`);
-    if (!marker) return;
+  const markers = jointIds.flatMap((id) => [
+    ...canvas.querySelectorAll(`#joint_${CSS.escape(id)}, [data-gear-center="${CSS.escape(id)}"]`),
+  ]);
+  markers.forEach((marker) => {
     const box = marker.getBoundingClientRect();
     if (box.width === 0 && box.height === 0) return;
     left = Math.min(left, box.left);

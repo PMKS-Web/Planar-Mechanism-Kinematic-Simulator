@@ -1,3 +1,4 @@
+import { GearEditorService } from './gear-editor.service';
 import { Injector } from '@angular/core';
 import { ContextMenuBuilderService, MenuHandlers } from './context-menu-builder.service';
 import { ContextMenuModel, MenuRow } from '../component/context-menu/menu-model';
@@ -74,6 +75,7 @@ function createBuilderHarness() {
       { provide: MechanismService, deps: [] },
       { provide: KeyboardShortcutsService, useValue: keysStub },
       { provide: ContextMenuBuilderService, deps: [] },
+      { provide: GearEditorService, deps: [] },
       { provide: SelectionBatchService, deps: [MechanismService] },
       { provide: MultiEditService, deps: [] },
     ],

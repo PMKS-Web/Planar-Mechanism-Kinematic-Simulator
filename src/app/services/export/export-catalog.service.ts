@@ -56,7 +56,20 @@ export class ExportCatalogService {
         // drew and nobody can point at on the canvas.
         .filter((link) => this.standsForCylinder(cylinders, link) !== 'hidden')
         .map((link) => this.linkPart(link, partition.id, index, valid, cylinders));
-      const parts = valid ? [...joints, ...links] : [...joints, ...links].map(this.unsolved);
+      const gears: ExportPart[] = (partition.transmission?.gears ?? []).map((gear) => ({
+        key: `${partition.id}|gear:${gear.id}`,
+        kind: 'gear',
+        id: gear.id,
+        label: gear.name || gear.id,
+        note: 'gear attachment',
+        selected: this.activeObj.objType === 'Gear' && this.activeObj.selectedGearId === gear.id,
+        available: valid,
+        part: gear,
+        mechanismIndex: index,
+      }));
+      const parts = valid
+        ? [...joints, ...links, ...gears]
+        : [...joints, ...links, ...gears].map(this.unsolved);
       return {
         index,
         id: partition.id,

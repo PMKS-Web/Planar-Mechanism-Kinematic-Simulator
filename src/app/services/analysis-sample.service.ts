@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { gearSample } from '../model/gear-analysis';
 import { ForceAnalysisMode } from '../model/mechanism/force-solver';
 import { KinematicsSolver } from '../model/mechanism/kinematic-solver';
 import { fillRatesByDifference } from '../model/mechanism/finite-difference-kinematics';
@@ -159,6 +160,8 @@ export class AnalysisSampleService {
     mechProp: string,
     mechPart: string
   ): number[] {
+    if (mechProp.startsWith('Angular Gear '))
+      return gearSample(mechanism, index, mechPart, mechProp);
     const joints = mechanism.joints[index];
     const links = mechanism.links[index];
     if (!joints || !links) return [];

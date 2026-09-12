@@ -12,6 +12,8 @@ import {
 } from '../model/selection';
 
 export type ActiveObjType =
+  | 'Gear'
+  | 'GearMesh'
   | 'Nothing'
   | 'Joint'
   | 'Force'
@@ -27,6 +29,22 @@ export type ActiveObjType =
   providedIn: 'root',
 })
 export class ActiveObjService {
+  selectedGearId?: string;
+  selectedMeshId?: string;
+
+  selectGear(id: string): void {
+    this.resetPartSelection();
+    this.selectedGearId = id;
+    this.objType = 'Gear';
+    this.onActiveObjChange.emit(this.objType);
+  }
+
+  selectGearMesh(id: string): void {
+    this.resetPartSelection();
+    this.selectedMeshId = id;
+    this.objType = 'GearMesh';
+    this.onActiveObjChange.emit(this.objType);
+  }
   objType: ActiveObjType = 'Nothing';
   selectedJoint!: RealJoint;
   prevSelectedJoint!: RealJoint;
