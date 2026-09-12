@@ -15,7 +15,9 @@ import { forceWorksheet } from '../../model/mechanism/force-worksheet';
 import { kinematicWorksheet } from '../../model/mechanism/kinematic-worksheet';
 import { column, texName, texNumber, vector } from '../../model/mechanism/worksheet-math';
 import { constructionDiagram, freeBodyDiagram, mechanismDiagram } from './worksheet-diagrams';
-import { Diagram, SolverDiagramComponent } from './solver-diagram.component';
+import { SolverDiagramComponent } from './solver-diagram.component';
+import { angularConventionDiagram } from './kinematic-diagrams';
+import { WorksheetLoopVisualComponent } from './worksheet-loop-visual.component';
 import { SolverMatrixComponent } from './solver-matrix.component';
 import { SolverMathComponent } from './solver-math.component';
 import { WorksheetPreferencesService } from '../../services/worksheet-preferences.service';
@@ -37,6 +39,7 @@ import { WorksheetLoopEditorComponent } from './worksheet-loop-editor.component'
     SolverMathComponent,
     WorksheetChoicesComponent,
     WorksheetLoopEditorComponent,
+    WorksheetLoopVisualComponent,
   ],
 })
 export class SolverExplanationComponent {
@@ -126,6 +129,17 @@ export class SolverExplanationComponent {
           )
         : undefined;
     const rates = !this.isForce() ? this.explain.kinematicsAt(mechanism, step) : undefined;
+    const angularSigns = Object.fromEntries(
+      [...(rates?.omega.keys() ?? [])].map((id) => [
+        id,
+        preferences.angularByBody[id] ?? preferences.angular,
+      ])
+    );
+    const angularDiagram = rates
+      ? angularConventionDiagram(mechanism, step, angularSigns)
+      : undefined;
+    const angularValue = (id: string) =>
+      `\\omega_{${texName(id)}}=${texNumber(angularSigns[id] * (rates?.omega.get(id) ?? 0))}\\;\\mathrm{rad/s},\\quad\\alpha_{${texName(id)}}=${texNumber(angularSigns[id] * (rates?.alpha.get(id) ?? 0))}\\;\\mathrm{rad/s^2}`;
     const kine = rates
       ? kinematicWorksheet(
           mechanism,
@@ -228,42 +242,11 @@ export class SolverExplanationComponent {
     const loops = kine?.loops.map((loop) => ({
       ...loop,
       ...worksheetLoopOptions(mechanism, preferences.loops, loop.index),
-      diagram: {
-        points: [
-          ...new Map(
-            loop.edges
-              .flatMap((e) => [e.from, e.to])
-              .map((j) => [j.id, { x: j.x, y: j.y, label: j.id }])
-          ).values(),
-        ],
-        lines: [
-          ...loop.edges.map((e) => ({
-            from: e.from,
-            to: e.to,
-            arrow: true,
-            color: e.kind === 'ground' ? 'var(--text-tertiary)' : 'var(--brand)',
-            dashed: e.kind === 'ground',
-            label: e.kind === 'ground' ? 'ground' : `r${e.to.id}/${e.from.id}`,
-            midpointLabel: true,
-          })),
-          ...(loop.first && loop.last && loop.first.id !== loop.last.id
-            ? [
-                {
-                  from: loop.last,
-                  to: loop.first,
-                  arrow: true,
-                  dashed: true,
-                  color: 'var(--text-tertiary)',
-                  label: 'ground',
-                  midpointLabel: true,
-                },
-              ]
-            : []),
-        ],
-      } as Diagram,
     }));
     return {
       gravity,
+      angularDiagram,
+      mechanismSketch: mechanismDiagram(mechanism, step),
       gravityChoice: preferences.gravity === undefined ? 0 : preferences.gravity ? 1 : 2,
       gravityOptions: [
         `Use Settings (${mechanism.gravity ? 'On' : 'Off'})`,
@@ -300,6 +283,9 @@ export class SolverExplanationComponent {
       bodyAngularChoices: rates
         ? [...rates.omega.keys()].map((id) => ({
             key: id,
+            diagram: angularConventionDiagram(mechanism, step, angularSigns, id),
+            value: angularValue(id),
+            mapping: `${vector('\\omega', texName(id))}=${column([0, 0, `${angularSigns[id] === -1 ? '-' : ''}\\omega_{${texName(id)}}`])},\\quad${vector('\\alpha', texName(id))}=${column([0, 0, `${angularSigns[id] === -1 ? '-' : ''}\\alpha_{${texName(id)}}`])}`,
             label: `Link ${id}`,
             description: 'Positive angular velocity and acceleration for this link.',
             options: ['Counterclockwise', 'Clockwise'],
@@ -324,7 +310,7 @@ export class SolverExplanationComponent {
       circles,
       circleLines,
       loops,
-      diagram: mechanismDiagram(mechanism, step),
+      diagram: angularDiagram ?? mechanismDiagram(mechanism, step),
       bodies:
         forceWork?.bodies.map((body) => ({
           ...body,

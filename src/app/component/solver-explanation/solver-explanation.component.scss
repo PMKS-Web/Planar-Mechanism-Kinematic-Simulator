@@ -295,3 +295,8 @@ summary {
 .forcePreviewRow figure {
   margin: 0;
 }
+.angularOverview,
+.angularLinkChoice > app-solver-diagram {
+  max-width: 580px;
+  margin-inline: auto;
+}

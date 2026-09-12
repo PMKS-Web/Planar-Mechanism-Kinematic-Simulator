@@ -25,6 +25,9 @@ export interface DiagramCircle {
   color: string;
 }
 export interface Diagram {
+  context?: Pick<Diagram, 'lines' | 'outlines'>;
+  rotations?: { x: number; y: number; sign: number; label: string }[];
+  legend?: string;
   /** Fixed geometry keeps arrow sign changes from moving or resizing the body. */
   framingPoints?: DiagramPoint[];
   momentLabel?: string;
@@ -53,6 +56,19 @@ let nextDiagram = 0;
         <path d="M0 0 L10 5 L0 10 Z" fill="context-stroke" />
       </marker>
     </defs>
+    <g class="mechanismContext" fill="none" stroke="var(--text-tertiary)" stroke-width="1.5">
+      @for (outline of diagram().context?.outlines ?? []; track $index) {
+        <polygon [attr.points]="polygon(outline)" />
+      }
+      @for (line of diagram().context?.lines ?? []; track $index) {
+        <line
+          [attr.x1]="sx(line.from.x)"
+          [attr.y1]="sy(line.from.y)"
+          [attr.x2]="sx(line.to.x)"
+          [attr.y2]="sy(line.to.y)"
+        />
+      }
+    </g>
     @for (outline of diagram().outlines ?? []; track $index) {
       <polygon
         [attr.points]="polygon(outline)"
@@ -94,6 +110,29 @@ let nextDiagram = 0;
           {{ line.label }}
         </text>
       }
+    }
+    @for (rotation of diagram().rotations ?? []; track rotation.label) {
+      <g
+        class="angularReference"
+        [attr.data-link]="rotation.label"
+        [attr.data-direction]="rotation.sign === 1 ? 'CCW' : 'CW'"
+      >
+        <path
+          [attr.d]="rotationArc(rotation)"
+          fill="none"
+          stroke="var(--warning)"
+          stroke-width="2.4"
+          [attr.marker-end]="'url(#' + markerId + ')'"
+        />
+        <text
+          [attr.x]="sx(rotation.x)"
+          [attr.y]="sy(rotation.y) + 35"
+          text-anchor="middle"
+          fill="var(--warning)"
+        >
+          {{ rotation.label }}: +ω, +α {{ rotation.sign === 1 ? '↺' : '↻' }}
+        </text>
+      </g>
     }
     @for (point of diagram().points; track $index) {
       @if (point.reference) {
@@ -146,15 +185,19 @@ let nextDiagram = 0;
       fill="none"
       [attr.marker-end]="'url(#' + markerId + ')'"
     />
-    <path
-      class="positiveMoment"
-      d="M104 232 A14 14 0 1 0 83 244"
-      stroke="var(--text-secondary)"
-      stroke-width="1.5"
-      fill="none"
-      [attr.marker-end]="'url(#' + markerId + ')'"
-    />
-    <text x="113" y="237">+Mz (CCW)</text>
+    @if (diagram().legend) {
+      <text x="78" y="237">{{ diagram().legend }}</text>
+    } @else {
+      <path
+        class="positiveMoment"
+        d="M104 232 A14 14 0 1 0 83 244"
+        stroke="var(--text-secondary)"
+        stroke-width="1.5"
+        fill="none"
+        [attr.marker-end]="'url(#' + markerId + ')'"
+      />
+      <text x="113" y="237">+Mz (CCW)</text>
+    }
     <text x="50" y="236">x</text>
     <text x="14" y="202">y</text>
   </svg>`,
@@ -187,6 +230,13 @@ export class SolverDiagramComponent {
   readonly markerId = `solver-arrow-${nextDiagram++}`;
   protected polygon(points: DiagramPoint[]) {
     return points.map((p) => `${this.sx(p.x)},${this.sy(p.y)}`).join(' ');
+  }
+  protected rotationArc(rotation: { x: number; y: number; sign: number }) {
+    const x = this.sx(rotation.x),
+      y = this.sy(rotation.y),
+      s = rotation.sign;
+    // SVG y runs downward: sweep 0 is the positive mathematical (CCW) sense.
+    return `M${x + 22} ${y} A22 22 0 1 ${s === 1 ? 0 : 1} ${x} ${y + s * 22}`;
   }
   protected ground(p: DiagramPoint) {
     const x = this.sx(p.x),

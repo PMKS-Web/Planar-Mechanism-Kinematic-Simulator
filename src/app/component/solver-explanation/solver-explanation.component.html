@@ -172,6 +172,18 @@
             </details>
           }
         } @else {
+          @if (data.angularDiagram; as angularDiagram) {
+            <figure class="angularOverview">
+              <app-solver-diagram
+                [diagram]="angularDiagram"
+                label="Positive angular directions on the mechanism"
+              />
+              <figcaption>
+                ω is angular velocity; α is angular acceleration. Arrows show their positive
+                directions. A negative answer points the other way.
+              </figcaption>
+            </figure>
+          }
           <app-worksheet-choices
             [choices]="data.angularChoices"
             (chosen)="preferences.setAngular(solved, $event.index === 0 ? 1 : -1)"
@@ -182,10 +194,36 @@
           </p>
           <details class="numericDetails">
             <summary>Choose Angular Directions per Link</summary>
-            <app-worksheet-choices
-              [choices]="data.bodyAngularChoices"
-              (chosen)="preferences.setBodyAngular(solved, $event.key, $event.index === 0 ? 1 : -1)"
-            ></app-worksheet-choices>
+            @for (choice of data.bodyAngularChoices; track choice.key) {
+              <details
+                class="numericDetails angularLinkChoice"
+                [attr.data-angular-link]="choice.key"
+              >
+                <summary>
+                  {{ choice.label }} ·
+                  {{ choice.selected === 0 ? 'Counterclockwise' : 'Clockwise' }} Positive
+                </summary>
+                <app-solver-diagram
+                  [diagram]="choice.diagram"
+                  [label]="'Positive angular direction for ' + choice.key"
+                />
+                <app-worksheet-choices
+                  [choices]="[choice]"
+                  (chosen)="
+                    preferences.setBodyAngular(solved, $event.key, $event.index === 0 ? 1 : -1)
+                  "
+                />
+                <p class="caption">
+                  The curved arrow defines a positive rotation sense; its location does not specify
+                  a pivot.
+                </p>
+                <app-solver-math [equation]="choice.mapping" />
+                <p class="caption">
+                  Convert your signed values to the +z direction for cross products.
+                </p>
+                <app-solver-math [equation]="choice.value" />
+              </details>
+            }
           </details>
           <details class="numericDetails">
             <summary>Angular Values in This Convention</summary>
@@ -553,11 +591,11 @@
               ></app-worksheet-loop-editor>
               <div class="bodyLayout">
                 <figure>
-                  <app-solver-diagram
-                    [diagram]="loop.diagram"
-                    label="Closed vector loop"
-                  ></app-solver-diagram>
-                  <figcaption>{{ loop.id }}</figcaption>
+                  <app-worksheet-loop-visual
+                    [mechanism]="data.mechanismSketch"
+                    [edges]="loop.edges"
+                    [unit]="solved.unit"
+                  />
                 </figure>
                 <div class="derivation">
                   <h4>Position Closure</h4>

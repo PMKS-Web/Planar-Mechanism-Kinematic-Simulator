@@ -120,10 +120,24 @@ known input follows its link's choice too. World x/y velocities and acceleration
 their coordinate directions. Clockwise-positive angular values acquire a minus sign when
 converted to the positive-z cross products.
 
+The mechanism sketch and **Choose Your Equation Conventions** show a curved positive-direction
+arrow for every link, labeled with its ID, ω, and α. Global and per-link choices update these
+arrows immediately while the body geometry stays fixed. Expand a link under **Choose Angular
+Directions per Link** for an isolated sketch, the conversion to a +z vector, and the current
+signed angular values. These are reference directions, not animations of the actual motion;
+the arc's location does not identify a pivot. Negative values point opposite the reference.
+
 In **Velocity** or **Acceleration**, **Reverse Loop** reverses a closed path. **Loop Path**
 is a dropdown of closed paths through the mechanism. Choosing one replaces that loop
 immediately; Jansen's second loop can use the internal path `A → B → C → E → D → A`.
 The sketch, closure, differentiated equations, and both matrices update together.
+
+Loop sketches retain the **full mechanism** in gray and number the directed vectors in the
+selected path. **Trace the Loop** and **Follow Next Vector** highlight one vector in orange
+and build the partial vector sum alongside the sketch. The last step returns to the starting
+joint and gives zero closure. The dashed leg is the ground return. Reversing or replacing a
+path restarts the trace; changing the sample keeps the chosen step. The mechanism framing stays
+fixed when changing paths, so an internal loop remains visibly located within the full linkage.
 
 The model checks connectivity, closure, and independence. Dependent paths are labeled
 and disabled. Disconnected paths are not offered. Ground connections may close a path, but an internal closed
@@ -205,6 +219,10 @@ application-point names and the loop dropdown catalog.
 gravity comparisons, inertia retention, graph isolation, unchanged SVG geometry on force/couple
 reversals, and phone layout. Its screenshots and arrow-change filmstrip are under
 `artifacts/force-worksheet-usability/`.
+`node e2e/kinematic-visuals.mjs` checks angular-reference arrows, per-link choices, unchanged
+body geometry, full-mechanism context, each trace step, closure, reversed and internal paths,
+signed equations, and phone layout. Screenshots and an angular-change filmstrip are under
+`artifacts/kinematic-visuals/`. Storybook has **Analysis/Angular Reference** and **Analysis/Trace a Loop**.
 
 With the dev server running, `node e2e/solver-explanation.mjs` checks TeachingLab worksheets,
 multi-machine selection, the constraint route, scrubbing, dismissal, reduced motion, and

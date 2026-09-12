@@ -157,6 +157,7 @@ try {
     clockwiseValues: clockwise.velocity.x,
   };
   await dialog.getByText('Choose Angular Directions per Link', { exact: true }).click();
+  await dialog.locator('[data-angular-link="CDEI"] > summary').click();
   await dialog
     .locator('[data-convention="Link CDEI"]')
     .getByRole('button', { name: 'Counterclockwise', exact: true })
