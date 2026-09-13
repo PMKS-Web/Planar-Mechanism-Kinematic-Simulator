@@ -18,6 +18,11 @@ import { InputComponent } from '../BLOCKS/input/input.component';
       dataField="gear-diameter"
       >Pitch Diameter</input-block
     >
+    @if (form().get('plane')) {
+      <input-block [formGroup]="form()" _formControl="plane" dataField="gear-plane"
+        >Axial Plane</input-block
+      >
+    }
   `,
 })
 export class GearFieldsComponent {

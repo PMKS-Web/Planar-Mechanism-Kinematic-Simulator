@@ -1,5 +1,5 @@
 import { Component, input, output } from '@angular/core';
-import { Gear } from '../../model/gear';
+import { Gear, gearPlane } from '../../model/gear';
 import { ButtonComponent } from '../BLOCKS/button/button.component';
 
 @Component({
@@ -8,6 +8,7 @@ import { ButtonComponent } from '../BLOCKS/button/button.component';
   template: `
     <p>{{ a().name || a().id }} ({{ a().teeth }}T) → {{ b().name || b().id }} ({{ b().teeth }}T)</p>
     <p>Ratio: {{ ratio() }} · Opposite direction</p>
+    <p>Axial plane: {{ plane(a()) + 1 }} → {{ plane(b()) + 1 }}</p>
     <p>
       Center distance: {{ number(actual()) }} {{ unit() }} · Required: {{ number(required()) }}
       {{ unit() }}
@@ -51,6 +52,7 @@ export class GearMeshSummaryComponent {
   protected number(value: number) {
     return Number(value.toPrecision(8));
   }
+  protected plane = gearPlane;
   protected ratio() {
     return Number((-this.a().teeth / this.b().teeth).toPrecision(8));
   }

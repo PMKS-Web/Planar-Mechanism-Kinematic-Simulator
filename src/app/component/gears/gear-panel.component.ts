@@ -3,7 +3,8 @@ import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { validateGearAssembly } from '../../model/mechanism/gear-validation';
 import { gearBodyFor } from '../../model/mechanism/gear-drive';
-import { Gear, gearPitchRadius } from '../../model/gear';
+import { Gear, gearPitchRadius, gearPlane } from '../../model/gear';
+import { RealLink } from '../../model/link';
 import { RealJoint } from '../../model/joint';
 import { MODEL_SCALE } from '../../model/render-scale';
 import { MechanismService } from '../../services/mechanism.service';
@@ -15,6 +16,7 @@ import { InputComponent } from '../BLOCKS/input/input.component';
 import { ButtonComponent } from '../BLOCKS/button/button.component';
 import { EditBannerComponent } from '../edit-panel/edit-banner.component';
 import { GearFieldsComponent } from './gear-fields.component';
+import { GearShaftChoicesComponent } from './gear-shaft-choices.component';
 import { GearMeshSummaryComponent } from './gear-mesh-summary.component';
 import { SettingsService } from '../../services/settings.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
@@ -30,6 +32,7 @@ import { NumberUnitParserService } from '../../services/number-unit-parser.servi
     ButtonComponent,
     EditBannerComponent,
     GearFieldsComponent,
+    GearShaftChoicesComponent,
     GearMeshSummaryComponent,
   ],
   template: `
@@ -42,6 +45,7 @@ import { NumberUnitParserService } from '../../services/number-unit-parser.servi
         @if (gear; as g) {
           <app-gear-fields [form]="form" [unit]="unit" />
           <p>Module: {{ number(g.module / scale) }} · Host: {{ g.hostLinkId }}</p>
+          <p>Gears mesh in the same axial plane. Gears on this shaft share one rotation.</p>
           <p>{{ driveDescription(g) }}</p>
           @if (isInput(g)) {
             <input-block [formGroup]="form" _formControl="speed" unit="rpm" dataField="gear-speed"
@@ -50,6 +54,20 @@ import { NumberUnitParserService } from '../../services/number-unit-parser.servi
           }
           <button-block [click]="selectCenter" icon="my_location">Edit Center</button-block>
           <button-block [click]="selectHost" icon="edit">Select Host Body</button-block>
+          <button-block
+            [click]="attachAnother"
+            icon="add"
+            [disabled]="!!attachRefusal"
+            [tooltip]="attachRefusal"
+            >Attach Another Gear</button-block
+          >
+          @if (siblings.length > 1) {
+            <app-gear-shaft-choices
+              [gears]="siblings"
+              [selectedId]="g.id"
+              (picked)="gearAction($event)()"
+            />
+          }
           @for (issue of issues; track $index) {
             <p role="status">{{ issue }}</p>
           }
@@ -60,8 +78,11 @@ import { NumberUnitParserService } from '../../services/number-unit-parser.servi
           @if (choosing) {
             @for (other of partners; track other.id) {
               <button-block [click]="chooseAction(other.id)" icon="settings"
-                >{{ other.name || other.id }} · {{ other.teeth }}T</button-block
-              >
+                >{{ other.name || other.id }} · {{ other.teeth }}T
+                @if (plane(other) || mechanism.gears.some(isCompoundGear(other))) {
+                  · Plane {{ plane(other) + 1 }}
+                }
+              </button-block>
             }
             <button-block [click]="cancelMesh">Cancel</button-block>
           }
@@ -146,6 +167,7 @@ export class GearPanelComponent implements DoCheck, OnDestroy {
     teeth: new FormControl('', { updateOn: 'blur' }),
     diameter: new FormControl('', { updateOn: 'blur' }),
     speed: new FormControl('', { updateOn: 'blur' }),
+    plane: new FormControl('', { updateOn: 'blur' }),
   });
   protected choosing = false;
   protected partnerId?: string;
@@ -154,7 +176,7 @@ export class GearPanelComponent implements DoCheck, OnDestroy {
   private held = '';
   private subscription = new Subscription();
   constructor() {
-    for (const key of ['name', 'teeth', 'diameter', 'speed'] as const)
+    for (const key of ['name', 'teeth', 'diameter', 'speed', 'plane'] as const)
       this.subscription.add(
         this.form.controls[key].valueChanges.subscribe((value) => {
           const gear = this.gear;
@@ -175,13 +197,17 @@ export class GearPanelComponent implements DoCheck, OnDestroy {
                 ? { name: value ?? '' }
                 : key === 'teeth'
                   ? { teeth: number }
-                  : { module: (number * MODEL_SCALE) / gear.teeth }
+                  : key === 'plane'
+                    ? { plane: number - 1 }
+                    : { module: (number * MODEL_SCALE) / gear.teeth }
             );
           this.error = accepted
             ? ''
             : key === 'speed'
               ? 'Enter a finite nonzero input speed in rpm.'
-              : 'Enter a positive whole tooth count and a positive finite pitch diameter.';
+              : key === 'plane'
+                ? 'Enter an axial plane from 1 to 128.'
+                : 'Enter a positive whole tooth count and a positive finite pitch diameter.';
           this.held = '';
           this.partnerId = undefined;
         })
@@ -205,6 +231,7 @@ export class GearPanelComponent implements DoCheck, OnDestroy {
           teeth: String(gear.teeth),
           diameter: this.number((gear.module * gear.teeth) / MODEL_SCALE),
           speed: String(this.mechanism.driveSpeedOf(this.center(gear) as RealJoint)),
+          plane: String(gearPlane(gear) + 1),
         },
         { emitEvent: false }
       );
@@ -221,8 +248,23 @@ export class GearPanelComponent implements DoCheck, OnDestroy {
     return this.mechanism.gears.find((g) => g.id === id);
   }
   protected get partners() {
-    return this.mechanism.gears.filter((g) => g.id !== this.gear?.id);
+    return this.mechanism.gears.filter((g) => g.hostLinkId !== this.gear?.hostLinkId);
   }
+  protected plane = gearPlane;
+  protected isCompoundGear(gear: Gear) {
+    return (other: Gear) => other.id !== gear.id && other.hostLinkId === gear.hostLinkId;
+  }
+  protected get siblings() {
+    return this.mechanism.gears.filter((g) => g.hostLinkId === this.gear?.hostLinkId);
+  }
+  protected get attachRefusal() {
+    const host = this.mechanism.links.find((l) => l.id === this.gear?.hostLinkId);
+    return host instanceof RealLink ? this.editor.attachRefusal(host) : 'Select a rigid gear host.';
+  }
+  protected attachAnother = () => {
+    const host = this.mechanism.links.find((l) => l.id === this.gear?.hostLinkId);
+    if (host instanceof RealLink) this.editor.attach(host);
+  };
   protected get partner() {
     return this.partnerId ? this.meshGear(this.partnerId) : undefined;
   }

@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { RealJoint, RevJoint } from '../model/joint';
 import { RealLink } from '../model/link';
-import { Gear, GearMesh } from '../model/gear';
+import { Gear, GearMesh, gearPlane, MAX_GEAR_PLANES } from '../model/gear';
 import { MODEL_SCALE } from '../model/render-scale';
 import { MAX_GEARS, MAX_GEAR_MESHES } from '../model/mechanism/gear-validation';
 import { compileGearDrive } from '../model/mechanism/gear-drive';
@@ -29,8 +29,6 @@ export class GearEditorService {
   attachRefusal(host: RealLink): string | undefined {
     if (this.mechanism.gears.length >= MAX_GEARS)
       return 'The document has reached the 128-gear limit.';
-    if (this.mechanism.gears.some((g) => g.hostLinkId === host.id))
-      return 'This body already carries a gear. Compound gears are not supported.';
     const centers = host.joints.filter((j) => j instanceof RevJoint && j.ground);
     if (
       host.subset.length ||
@@ -70,14 +68,22 @@ export class GearEditorService {
   }
 
   private attachNow(host: RealLink): Gear {
+    const siblings = this.mechanism.gears.filter((g) => g.hostLinkId === host.id);
+    const first = siblings[0];
+    const occupied = new Set(siblings.map(gearPlane));
+    let plane = 0;
+    while (occupied.has(plane)) plane++;
     const gear: Gear = {
       id: 'G-' + crypto.randomUUID(),
       name: `Gear ${this.mechanism.gears.length + 1}`,
       hostLinkId: host.id,
-      centerJointId: host.joints.find((j) => j instanceof RevJoint && j.ground)!.id,
-      referenceJointId: host.joints.find((j) => j instanceof RealJoint && !j.ground)!.id,
+      centerJointId:
+        first?.centerJointId ?? host.joints.find((j) => j instanceof RevJoint && j.ground)!.id,
+      referenceJointId:
+        first?.referenceJointId ?? host.joints.find((j) => j instanceof RealJoint && !j.ground)!.id,
       teeth: 20,
-      module: 0.1 * MODEL_SCALE,
+      module: first?.module ?? 0.1 * MODEL_SCALE,
+      ...(plane ? { plane } : {}),
     };
     this.mechanism.gears.push(gear);
     this.mechanism.updateMechanism(true);
@@ -85,7 +91,7 @@ export class GearEditorService {
     return gear;
   }
 
-  edit(id: string, patch: Partial<Pick<Gear, 'teeth' | 'module' | 'name'>>): boolean {
+  edit(id: string, patch: Partial<Pick<Gear, 'teeth' | 'module' | 'name' | 'plane'>>): boolean {
     if (this.refusal()) return false;
     const old = this.mechanism.gears.find((g) => g.id === id);
     if (!old) return false;
@@ -96,6 +102,9 @@ export class GearEditorService {
       !Number.isFinite(next.module) ||
       next.module <= 0 ||
       !Number.isFinite(next.teeth * next.module) ||
+      !Number.isInteger(gearPlane(next)) ||
+      gearPlane(next) < 0 ||
+      gearPlane(next) >= MAX_GEAR_PLANES ||
       (next.name?.length ?? 0) > 200
     )
       return false;

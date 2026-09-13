@@ -951,7 +951,9 @@ export class ContextMenuBuilderService {
     // onto the link as it stands. So the lock refuses none of these.
     const rows = [
       new MenuRow({
-        label: 'Attach Gear',
+        label: this.mechanism.gears.some((g) => g.hostLinkId === link.id)
+          ? 'Attach Another Gear'
+          : 'Attach Gear',
         icon: 'settings',
         material: true,
         action: () => this.gears.attach(link),

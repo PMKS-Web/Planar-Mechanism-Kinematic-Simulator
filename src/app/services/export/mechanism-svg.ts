@@ -1,4 +1,4 @@
-import { GearAssembly, gearPitchRadius } from '../../model/gear';
+import { GearAssembly, gearPitchRadius, gearPlane } from '../../model/gear';
 import { Joint, PrisJoint, RealJoint } from '../../model/joint';
 import { Link, RealLink } from '../../model/link';
 import { escapeXml } from './xml';
@@ -53,8 +53,14 @@ export function mechanismSvg(
       if (!center || !reference) return '';
       const [x, y] = at(center),
         radius = gearPitchRadius(gear) * scale;
+      const siblings = transmission.gears.filter((g) => g.hostLinkId === gear.hostLinkId);
+      const sameRadius = siblings
+        .filter((g) => Math.abs(gearPitchRadius(g) - gearPitchRadius(gear)) < 1e-9)
+        .sort((a, b) => gearPlane(a) - gearPlane(b));
+      const labelOffset = sameRadius.findIndex((g) => g.id === gear.id) * 14;
+      const planeLabel = siblings.length > 1 || gearPlane(gear) ? ` · P${gearPlane(gear) + 1}` : '';
       const theta = Math.atan2(reference.y - center.y, reference.x - center.x);
-      return `<g data-gear-id="${escapeXml(gear.id)}" stroke="#5c6bc0" fill="none"><circle cx="${x}" cy="${y}" r="${round(radius)}" stroke-dasharray="4 3"/><line x1="${x}" y1="${y}" x2="${round(x + radius * 0.85 * Math.cos(theta))}" y2="${round(y - radius * 0.85 * Math.sin(theta))}"/><text x="${round(x + radius * 0.55)}" y="${round(y - radius * 0.55)}" stroke="none" fill="#2c2c2c" font-size="12">${gear.teeth}T</text></g>`;
+      return `<g data-gear-id="${escapeXml(gear.id)}" data-gear-plane="${gearPlane(gear) + 1}" stroke="#5c6bc0" fill="none"><circle cx="${x}" cy="${y}" r="${round(radius)}" stroke-dasharray="4 3"/><line x1="${x}" y1="${y}" x2="${round(x + radius * 0.85 * Math.cos(theta))}" y2="${round(y - radius * 0.85 * Math.sin(theta))}"/><text x="${round(x + radius * 0.55)}" y="${round(y - radius * 0.55 + labelOffset)}" stroke="none" fill="#2c2c2c" font-size="12">${gear.teeth}T${planeLabel}</text></g>`;
     })
     .join('');
   const bars = links

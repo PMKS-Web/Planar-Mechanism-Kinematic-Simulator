@@ -3,14 +3,13 @@ import { MechanismService } from '../../services/mechanism.service';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { SvgGridService } from '../../services/svg-grid.service';
 import { Gear, GearMesh, gearPitchRadius } from '../../model/gear';
-import { GearDrawingComponent } from './gear-drawing.component';
-import { UprightDirective } from '../../model-frame.directive';
+import { GearShaftDrawingComponent } from './gear-shaft-drawing.component';
 import { validateGearAssembly } from '../../model/mechanism/gear-validation';
 
 @Component({
   selector: 'g[appGearLayer]',
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [GearDrawingComponent, UprightDirective],
+  imports: [GearShaftDrawingComponent],
   template: `
     @for (gear of mechanism.gears; track gear.id) {
       @if (center(gear); as c) {
@@ -27,32 +26,21 @@ import { validateGearAssembly } from '../../model/mechanism/gear-validation';
             />
           </svg:g>
         }
-        <svg:g
-          [attr.transform]="transform(gear)"
-          appGearDrawing
-          [gear]="gear"
-          [detail]="radius(gear) > grid.scaleWithZoom(35)"
-          [class.selected]="active.objType === 'Gear' && active.selectedGearId === gear.id"
-          [class.invalid]="invalid(gear.id)"
-          [attr.data-gear-id]="gear.id"
-          [attr.data-gear-center]="gear.centerJointId"
-          role="button"
-          tabindex="0"
-          [attr.aria-label]="'Gear ' + (gear.name || gear.id)"
-          (pointerdown)="$event.stopPropagation()"
-          (click)="select($event, gear.id)"
-          (keydown.enter)="select($event, gear.id)"
-          (contextmenu)="select($event, gear.id); $event.preventDefault()"
-        />
-        <svg:g [upright]="{ x: c.x, y: c.y }" pointer-events="none">
-          <svg:text
-            [attr.x]="radius(gear) * 0.55"
-            [attr.y]="-radius(gear) * 0.55"
-            [attr.font-size]="grid.scaleWithZoom(12)"
-            fill="var(--text-primary)"
-          >
-            {{ gear.teeth }}T
-          </svg:text>
+      }
+    }
+    @for (shaft of shafts; track shaft[0].hostLinkId) {
+      @if (center(shaft[0]); as c) {
+        <svg:g [attr.transform]="'translate(' + c.x + ' ' + c.y + ')'">
+          <svg:g
+            appGearShaftDrawing
+            [gears]="shaft"
+            [headingDegrees]="heading(shaft[0])"
+            [labelSize]="grid.scaleWithZoom(12)"
+            [detailThreshold]="grid.scaleWithZoom(35)"
+            [selectedId]="active.objType === 'Gear' ? active.selectedGearId : undefined"
+            [invalidIds]="invalidFor(shaft)"
+            (picked)="active.selectGear($event)"
+          />
         </svg:g>
       }
     }
@@ -92,10 +80,18 @@ export class GearLayerComponent {
   protected center(gear: Gear) {
     return this.mechanism.joints.find((j) => j.id === gear.centerJointId);
   }
-  protected transform(gear: Gear): string {
+  protected heading(gear: Gear): number {
     const c = this.center(gear)!;
     const r = this.mechanism.joints.find((j) => j.id === gear.referenceJointId)!;
-    return `translate(${c.x} ${c.y}) rotate(${(Math.atan2(r.y - c.y, r.x - c.x) * 180) / Math.PI})`;
+    return (Math.atan2(r.y - c.y, r.x - c.x) * 180) / Math.PI;
+  }
+  protected get shafts() {
+    return [...new Set(this.mechanism.gears.map((g) => g.hostLinkId))].map((id) =>
+      this.mechanism.gears.filter((g) => g.hostLinkId === id)
+    );
+  }
+  protected invalidFor(gears: readonly Gear[]) {
+    return gears.filter((g) => this.invalid(g.id)).map((g) => g.id);
   }
   protected startTransform(gear: Gear): string {
     const solved = this.mechanism.mechanismForId(gear.id);
@@ -128,10 +124,6 @@ export class GearLayerComponent {
     if (!a || !b || !ca || !cb) return undefined;
     const fraction = gearPitchRadius(a) / (gearPitchRadius(a) + gearPitchRadius(b));
     return { x: ca.x + (cb.x - ca.x) * fraction, y: ca.y + (cb.y - ca.y) * fraction };
-  }
-  protected select(event: Event, id: string) {
-    event.stopPropagation();
-    this.active.selectGear(id);
   }
   protected selectMesh(event: Event, id: string) {
     event.stopPropagation();

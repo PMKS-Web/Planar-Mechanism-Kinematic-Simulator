@@ -20,7 +20,7 @@ export function gearHostAt(
 }
 
 export const GEAR_HOST_REFUSAL =
-  'Remove the gear attachment before welding, unwelding, merging, or changing its host type. The host body must keep its identity.';
+  'Remove all gear attachments before welding, unwelding, merging, or changing the host type. The host body must keep its identity.';
 
 /** Copy only internal relationships; no copied rotor can acquire an edge to an original. */
 export function duplicateGears(

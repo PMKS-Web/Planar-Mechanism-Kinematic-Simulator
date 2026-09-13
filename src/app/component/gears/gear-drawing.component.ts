@@ -1,11 +1,12 @@
 import { Component, computed, input } from '@angular/core';
-import { Gear, gearPitchRadius } from '../../model/gear';
+import { Gear, gearPitchRadius, gearPlane } from '../../model/gear';
 
 /** Symbolic pitch artwork. Tick count is bounded independently of physical tooth count. */
 @Component({
   selector: 'g[appGearDrawing]',
   template: `
-    <svg:circle class="pitch" [attr.r]="radius()" />
+    <svg:circle class="hit" [attr.r]="radius()" />
+    <svg:circle class="pitch" [attr.r]="radius()" [style.stroke-dasharray]="planeDashes()" />
     <svg:path class="teeth" [attr.d]="ticks()" />
     <svg:line class="reference" x1="0" y1="0" [attr.x2]="radius() * 0.85" y2="0" />
     <svg:circle class="center" r="3" vector-effect="non-scaling-stroke" />
@@ -25,6 +26,11 @@ import { Gear, gearPitchRadius } from '../../model/gear';
       .pitch {
         stroke-width: 1.5;
         stroke-dasharray: 5 3;
+      }
+      .hit {
+        stroke-width: 12;
+        opacity: 0;
+        pointer-events: stroke;
       }
       .teeth {
         stroke-width: 1.5;
@@ -59,6 +65,9 @@ export class GearDrawingComponent {
   readonly gear = input.required<Gear>();
   readonly detail = input(true);
   protected readonly radius = computed(() => gearPitchRadius(this.gear()));
+  protected readonly planeDashes = computed(
+    () => ['5 3', '2 3', '8 2 2 2'][gearPlane(this.gear()) % 3]
+  );
   protected readonly ticks = computed(() => {
     const count = Math.min(this.gear().teeth, this.detail() ? 96 : 12);
     const r = this.radius();
