@@ -221,6 +221,15 @@ every context-menu row. So do not run the lot to "be safe": run the suites that 
 and any you can name a reason to worry about, and leave the full batch for when the user asks or
 when a change is so broad that no shorter list would be honest.
 
+**CI runs two lanes of them**, and `e2e/suites.mjs` says which lane each suite is in: `gate` on
+every pull request, sharded four ways; `nightly` — everything a runner can drive — against
+`staging` each morning, sharded eight ways and retried once so it can tell a break from a flake.
+`node e2e/run-suites.mjs --lane gate` is what a pull request will run; `--list` says what a lane
+holds without running it. The nightly is where a suite earns its place in the gate, and where one
+that has stopped deserving it gets found out. **This does not change what you should run by hand**:
+the lanes are a backstop for the suites nobody thought to run, not a reason to skip the ones that
+cover your change — the gate is a fraction of the batch, and it reports after you have pushed.
+
 ```bash
 PMKS_BASE_URL=http://localhost:4200 node e2e/playback-bar.mjs
 ```
