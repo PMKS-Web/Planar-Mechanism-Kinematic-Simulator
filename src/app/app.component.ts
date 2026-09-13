@@ -1,3 +1,5 @@
+import { registerAppIcons } from './app-icons';
+import { hideBootSplash } from './boot-splash';
 import {
   Component,
   ChangeDetectionStrategy,
@@ -53,159 +55,7 @@ export class AppComponent implements DoCheck {
   }
 
   constructor() {
-    this.matIconRegistry.addSvgIcon(
-      'com',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/com.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'com_off',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/com_off.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'abc',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/abc.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'abc_off',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/abc_off.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'new_link',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/new_link.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'add_ground',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/add_ground.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'remove_ground',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/remove_ground.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'add_slider',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/add_slider.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'add_cylinder',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/add_cylinder.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'remove_slider',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/remove_slider.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'add_input',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/add_input.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'remove_input',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/remove_input.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'remove',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/trash.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'add_force',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/add_force.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'add_tracer',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/add_tracer.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'show_path',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/show_path.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'hide_path',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/hide_path.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'switch_force_dir',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/switch_force_dir.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'force_global',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/force_global.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'force_local',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/force_local.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'weld_joint',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/weld_joint.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'unweld_joint',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/unweld_joint.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'make_circular',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/make_circular.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'make_bar',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/make_bar.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'github',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/github.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'edit_outline',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/edit.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'background_image',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/background_image.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'synthesis',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/synthesis.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'lock',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/lock.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'unlock',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/unlock.svg')
-    );
-    // The two fit buttons. Material's `crop_free` and `all_out` are a pair of
-    // brackets and a pair of arrows, which said "frame something" and "spread
-    // out" and left which one framed the drawing and which framed its whole
-    // travel to be worked out from the tooltip. These say it: the same
-    // brackets on both, closed on a single point for the pose as it sits, and
-    // opened around the dashed ring that point sweeps through for the cycle.
-    this.matIconRegistry.addSvgIcon(
-      'fit_linkage',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/fit_linkage.svg')
-    );
-    this.matIconRegistry.addSvgIcon(
-      'fit_motion',
-      this.domSanitizer.bypassSecurityTrustResourceUrl('assets/icons/fit_motion.svg')
-    );
-    // The right-click menu's last four glyphs, which were Material ligatures
-    // (call_made, double_arrow, compare_arrows, delete_sweep) in a menu drawn
-    // otherwise entirely in the app's own family. Velocity and acceleration
-    // are a quantity leaving a joint -- one open head, then two on the same
-    // shaft -- and force is a load arriving at one, so its arrow is turned
-    // round. Delete entire mechanism is a ternary body with the trash where
-    // `new_link` and the `add_*` glyphs put their plus.
-    const menuGlyphs = [
-      'vector_velocity',
-      'vector_acceleration',
-      'vector_force',
-      'delete_mechanism',
-    ];
-    for (const name of menuGlyphs) {
-      this.matIconRegistry.addSvgIcon(
-        name,
-        this.domSanitizer.bypassSecurityTrustResourceUrl(`assets/icons/${name}.svg`)
-      );
-    }
+    registerAppIcons(this.matIconRegistry, this.domSanitizer);
 
     // Take down the splash `index.html` painted before any of this existed.
     //
@@ -214,19 +64,6 @@ export class AppComponent implements DoCheck {
     // render and decodes the address while it is, and that is the freeze the
     // splash is covering. Then a frame, so what replaces it is a drawn app
     // rather than a flash of empty grid.
-    afterNextRender(() => requestAnimationFrame(() => this.hideBootSplash()));
-  }
-
-  /** Fade it out, then let it go. Idempotent: it can only be removed once. */
-  private hideBootSplash(): void {
-    const splash = document.getElementById('bootSplash');
-    if (!splash) return;
-    splash.style.transition = 'opacity 180ms ease-out';
-    splash.style.opacity = '0';
-    // Not `transitionend`: a reader with reduced motion, or a browser that
-    // never runs the transition because the tab was in the background for it,
-    // would leave a white sheet over the whole app forever. A timer always
-    // fires.
-    setTimeout(() => splash.remove(), 220);
+    afterNextRender(() => requestAnimationFrame(() => hideBootSplash()));
   }
 }
