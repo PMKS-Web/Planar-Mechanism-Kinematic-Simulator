@@ -22,6 +22,7 @@ In this order, the first time:
 ## Reference
 
 - [matlab-and-measurements.md](matlab-and-measurements.md) — independent MATLAB analysis packages, supported kinematics/dynamics, optional verification, and measured-data RMSE. *Reference*
+- [analysis-matlab-architecture.md](analysis-matlab-architecture.md) — current application/export equation ownership, duplicated mathematics, canonical analysis boundary and staged validation/migration roadmap. *Reference*
 
 - [code-style.md](code-style.md) — what we ask of code: one responsibility per file, the invariants, and what `npm run lint` and `npm run lint:format` enforce. *Reference*
 - [ui-style-guide.md](ui-style-guide.md) — how new UI should look and behave: interaction patterns, layout, motion, canvas grammar, and building from BLOCKS and the design tokens. The Storybook gallery (`npm run storybook`) shows the components. *Reference*

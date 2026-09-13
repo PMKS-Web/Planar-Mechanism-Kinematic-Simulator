@@ -4,6 +4,10 @@
 
 ## MATLAB Analysis Package
 
+The [architecture audit and roadmap](analysis-matlab-architecture.md) distinguishes shared
+mechanism data from equations independently reconstructed by the exporter. The current package
+does not yet derive from one canonical equation assembly shared with the PMKS runtime.
+
 In the actual PMKS application, load a mechanism and enter Kinematic or Force Analysis. Open
 **Export Data**, choose objects and quantities, then select **MATLAB Analysis Package (.zip)**.
 Force selections use the drawer's **Static** or **In-motion** setting. The complete mechanism
