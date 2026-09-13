@@ -566,7 +566,8 @@ export class MechanismService {
                 unitStr,
                 this.inputVelocityFor(partition),
                 'adaptive',
-                new Set(partition.ownJoints.map((joint) => joint.id))
+                new Set(partition.ownJoints.map((joint) => joint.id)),
+                MODEL_SCALE
               );
         built.set(key, { fingerprint, mechanism });
         return mechanism;

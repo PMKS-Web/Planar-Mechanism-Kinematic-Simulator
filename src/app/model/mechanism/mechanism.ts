@@ -10,7 +10,7 @@ import { Coord } from '../coord';
 import { KinematicsSolver } from './kinematic-solver';
 import { ForceAnalysisMode, ForceAnalysisSeries, ForceSolver } from './force-solver';
 import { roundNumber } from '../utils';
-import { LBF_IN_PER_NEWTON_METER, LBF_PER_NEWTON } from '../unit-conversions';
+import { siUnitFactors } from '../unit-conversions';
 import { MODEL_SCALE } from '../render-scale';
 
 /**
@@ -117,7 +117,9 @@ export class Mechanism {
     // driven pin reads as this machine's input: it is handed the foreign
     // speed, skips the "nothing drives this" blocker, and then solves a
     // mechanism nothing actually turns. Omitted means every joint is its own.
-    ownJointIds?: ReadonlySet<string>
+    ownJointIds?: ReadonlySet<string>,
+    /** Geometry/linear-rate units per user length. Direct physical fixtures use 1. */
+    readonly coordinateScale = 1
   ) {
     joints.forEach((j) => {
       const clone = this.cloneJointAt(j, j.x, j.y);
@@ -1463,7 +1465,10 @@ export class Mechanism {
       forceTitleRow.push('Joint ' + joint.id + ' Force ' + ' x ' + '(' + forceUnit + ')');
       forceTitleRow.push('Joint ' + joint.id + ' Force ' + ' y ' + '(' + forceUnit + ')');
     }
-    forceTitleRow.push('Torque ' + torqueUnit);
+    const inputJoint = this.joints[0].find((joint) => joint instanceof RealJoint && joint.input);
+    forceTitleRow.push(
+      inputJoint instanceof PrisJoint ? 'Input force ' + forceUnit : 'Torque ' + torqueUnit
+    );
     forceTitleRow.push(' ');
     this.forces[0].forEach((f) => {
       forceTitleRow.push('Force ' + f.id + ' x ' + '(' + posUnit + ')');
@@ -1583,34 +1588,13 @@ export class Mechanism {
 
   forceAnalysis(analysisType: string) {
     const forceAnalysis = new Array<Array<string>>();
-    let forceUnitConversion: number;
-    let torqueUnitConversion: number;
-    let posUnitConversion: number;
-    let velUnitConversion: number;
-    let accUnitConversion: number;
-    switch (this._unit) {
-      case 'cm':
-        forceUnitConversion = 1; // convert from newtons -> newton
-        torqueUnitConversion = 1; // convert from newton_meter -> newton_centimeter
-        posUnitConversion = 1;
-        velUnitConversion = 1;
-        accUnitConversion = 1; // cm/s^2
-        break;
-      case 'm':
-        forceUnitConversion = 1; // convert from newtons -> newton
-        torqueUnitConversion = 1; // convert from newton_meter -> newton_centimeter
-        posUnitConversion = 1;
-        velUnitConversion = 1;
-        accUnitConversion = 1; // cm/s^2
-        break;
-      case 'in':
-        forceUnitConversion = LBF_PER_NEWTON;
-        torqueUnitConversion = LBF_IN_PER_NEWTON_METER;
-        posUnitConversion = 1;
-        velUnitConversion = 1;
-        accUnitConversion = 1;
-        break;
-    }
+    const units = siUnitFactors(this._unit);
+    const forceUnitConversion = 1 / units.forceToN;
+    // This compatibility table labels metric torque N*m (including cm geometry).
+    const torqueUnitConversion = this._unit === 'in' ? forceUnitConversion / units.distanceToM : 1;
+    const posUnitConversion = 1 / this.coordinateScale;
+    const velUnitConversion = posUnitConversion;
+    const accUnitConversion = posUnitConversion;
     ForceSolver.resetVariables();
     ForceSolver.determineDesiredLoopLettersForce(this.requiredLoops);
     if (analysisType === 'dynamics') {
@@ -1636,7 +1620,8 @@ export class Mechanism {
         this.links[index],
         analysisType,
         this.gravity,
-        this.unit
+        this.unit,
+        this.coordinateScale
       );
       for (const joint of this.joints[index].filter((candidate) =>
         this.isForceAnalysisJoint(candidate)
@@ -1656,25 +1641,31 @@ export class Mechanism {
         );
       }
       force_row.push(
-        roundNumber(ForceSolver.unknownVariableTorque * torqueUnitConversion, 4).toString()
+        roundNumber(
+          ForceSolver.unknownVariableTorque *
+            (ForceSolver.lastResult?.inputEffort?.kind === 'force'
+              ? forceUnitConversion
+              : torqueUnitConversion),
+          4
+        ).toString()
       );
       force_row.push(' ');
       this.forces[index].forEach((f) => {
-        force_row.push(roundNumber(f.startCoord.x, 4).toString());
-        force_row.push(roundNumber(f.startCoord.y, 4).toString());
+        force_row.push(roundNumber(f.startCoord.x * posUnitConversion, 4).toString());
+        force_row.push(roundNumber(f.startCoord.y * posUnitConversion, 4).toString());
       });
       force_row.push(' ');
       switch (analysisType) {
         case 'statics':
           this.joints[index].forEach((j) => {
-            force_row.push(roundNumber(j.x, 4).toString());
-            force_row.push(roundNumber(j.y, 4).toString());
+            force_row.push(roundNumber(j.x * posUnitConversion, 4).toString());
+            force_row.push(roundNumber(j.y * posUnitConversion, 4).toString());
           });
           break;
         case 'dynamics':
           this.joints[index].forEach((j) => {
-            force_row.push(roundNumber(j.x, 4).toString());
-            force_row.push(roundNumber(j.y, 4).toString());
+            force_row.push(roundNumber(j.x * posUnitConversion, 4).toString());
+            force_row.push(roundNumber(j.y * posUnitConversion, 4).toString());
             force_row.push(rateCell(KinematicsSolver.jointVelMap.get(j.id), 0, velUnitConversion));
             force_row.push(rateCell(KinematicsSolver.jointVelMap.get(j.id), 1, velUnitConversion));
             force_row.push(rateCell(KinematicsSolver.jointAccMap.get(j.id), 0, accUnitConversion));

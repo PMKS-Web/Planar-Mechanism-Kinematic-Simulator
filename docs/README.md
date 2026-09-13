@@ -21,6 +21,8 @@ In this order, the first time:
 
 ## Reference
 
+- [force-analysis-units.md](force-analysis-units.md) — physical force/moment boundary, inertia-scaling correction, independent evidence and deferred friction integration. *Reference*
+
 - [code-style.md](code-style.md) — what we ask of code: one responsibility per file, the invariants, and what `npm run lint` and `npm run lint:format` enforce. *Reference*
 - [ui-style-guide.md](ui-style-guide.md) — how new UI should look and behave: interaction patterns, layout, motion, canvas grammar, and building from BLOCKS and the design tokens. The Storybook gallery (`npm run storybook`) shows the components. *Reference*
 - [ui-vocabulary.md](ui-vocabulary.md) — the words the app uses, and how labels, messages and tooltips should read. *Reference*

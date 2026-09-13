@@ -1,0 +1,9 @@
+{
+  "repository": "https://github.com/PMKS-Web/PMKS_Verification",
+  "commit": "d57cb71c230d42f4991a96f587fd9344004a8753",
+  "path": "verification/inertia_scaling/reference.json",
+  "status": "experimental-analytic",
+  "cases": 27,
+  "sha256": "6b5ac7a581ac9e0cb96260ab40d569698a0fde5e25590c84f63b7e7124309ce9",
+  "matlabExecuted": false
+}

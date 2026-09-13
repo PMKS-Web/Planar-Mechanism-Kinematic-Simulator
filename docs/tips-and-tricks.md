@@ -1563,6 +1563,22 @@ the answer should be cannot be invalidated by a palette or a template.
 
 ## Short notes
 
+### Force-unit comparisons must hold the physical pose fixed
+
+Application geometry uses `MODEL_SCALE` coordinates per user length; direct physical fixtures use
+`Mechanism.coordinateScale = 1`. Force assembly converts both moment arms and linear acceleration
+with `distanceToM / coordinateScale`. Never restore the old torque-display division by 200.
+See [force-analysis-units.md](force-analysis-units.md) for the full contract and evidence.
+
+Position solves round to four coordinate decimals, so separately solving the same physical mechanism
+in differently scaled geometry can create slightly different poses. For a force-unit comparison,
+encode identical sampled physical poses before comparing forces; test real unit edits and kinematic
+accuracy separately. Otherwise position quantization can masquerade as an inertia conversion defect.
+
+On Windows, the gallery generator's POSIX environment assignment needs PowerShell's `$env:` syntax.
+Fresh CRLF checkouts can also fail the gallery/template tests' raw LF comparisons without any changed
+payload: compare against staging before changing an expected value. Normalize only the relevant file.
+
 One surprise each, in no particular order. Each heading states the rule; search for the symbol
 you are touching.
 

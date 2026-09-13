@@ -82,6 +82,7 @@ import { ColorService } from '../../app/services/color.service';
 import { urlGeneratorFor } from '../url-encoding';
 import { Link, RealLink } from '../../app/model/link';
 import { MODEL_SCALE } from '../../app/model/render-scale';
+import { centripetalBarDrawingFixture, appliedMomentDrawingFixture } from './inertia-fixtures';
 
 /**
  * Every mechanism the verification suite asserts on, as something a reviewer
@@ -338,6 +339,21 @@ export interface PublishedSpeed {
 const LIBRARY_RPM = 10;
 
 export const FIXTURE_GALLERY: GalleryEntry[] = [
+  {
+    name: 'Centripetal force scaling',
+    purpose: '1 kg at a 2 cm center-of-mass radius and 1 rad/s: 0.02 N without gravity',
+    spec: 'force-scaling.spec.ts',
+    floatingSlot: false,
+    speed: { rpm: 30 / Math.PI },
+    fixture: centripetalBarDrawingFixture(),
+  },
+  {
+    name: 'Physical applied-force moment',
+    purpose: '10 N at a 20 cm perpendicular arm: 2 N*m (200 N*cm)',
+    spec: 'force-scaling.spec.ts',
+    floatingSlot: false,
+    fixture: appliedMomentDrawingFixture(),
+  },
   {
     name: 'Punch press',
     purpose:

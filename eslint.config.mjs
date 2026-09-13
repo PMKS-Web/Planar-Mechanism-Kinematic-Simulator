@@ -64,7 +64,8 @@ export default defineConfig([
     // raise one only in a pull request that says why the code could not live
     // in a model or a narrower service.
     files: ['src/app/services/mechanism.service.ts'],
-    rules: { 'max-lines': ['error', { max: 4335, skipBlankLines: true, skipComments: true }] },
+    // One added constructor argument carries the drawing scale to force analysis.
+    rules: { 'max-lines': ['error', { max: 4336, skipBlankLines: true, skipComments: true }] },
   },
   {
     files: ['src/app/component/new-grid/new-grid.component.ts'],

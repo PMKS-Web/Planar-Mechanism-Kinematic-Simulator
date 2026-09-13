@@ -1,6 +1,7 @@
 import { BehaviorSubject } from 'rxjs';
 import { Mechanism } from '../../app/model/mechanism/mechanism';
 import { LengthUnit } from '../../app/model/unit-enums';
+import { MODEL_SCALE } from '../../app/model/render-scale';
 import { ActiveObjService } from '../../app/services/active-obj.service';
 import { GridUtilsService } from '../../app/services/grid-utils.service';
 import { MechanismService } from '../../app/services/mechanism.service';
@@ -114,7 +115,10 @@ export function buildMechanismFixture(payload: string): MechanismFixture {
     [],
     true,
     mechanismLengthUnit(settings.lengthUnit.value),
-    inputSpeedRadPerSecond
+    inputSpeedRadPerSecond,
+    'adaptive',
+    undefined,
+    MODEL_SCALE
   );
   service.mechanisms = [mechanism];
   // The editable objects each mechanism was built from, in the same order.

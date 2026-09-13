@@ -1,0 +1,1002 @@
+{
+  "status": "experimental-analytic",
+  "units": "SI",
+  "cases": [
+    {
+      "id": "centripetal_0",
+      "kind": "pin",
+      "mass": 1,
+      "end": [
+        0.04,
+        0.0
+      ],
+      "com": [
+        0.02,
+        0.0
+      ],
+      "inertia": 0,
+      "omega": 1,
+      "alpha": 0,
+      "gravity": false,
+      "loads": [],
+      "expected": {
+        "acceleration": [
+          -0.02,
+          0.0
+        ],
+        "velocity": [
+          -0.0,
+          0.02
+        ],
+        "reaction": [
+          -0.02,
+          0.0
+        ],
+        "input": 0.0,
+        "kinetic_rate": 0.0,
+        "external_power": 0.0
+      }
+    },
+    {
+      "id": "centripetal_0.63",
+      "kind": "pin",
+      "mass": 1,
+      "end": [
+        0.03232110033248607,
+        0.02356579031769078
+      ],
+      "com": [
+        0.016160550166243036,
+        0.01178289515884539
+      ],
+      "inertia": 0,
+      "omega": 1,
+      "alpha": 0,
+      "gravity": false,
+      "loads": [],
+      "expected": {
+        "acceleration": [
+          -0.016160550166243036,
+          -0.01178289515884539
+        ],
+        "velocity": [
+          -0.01178289515884539,
+          0.016160550166243036
+        ],
+        "reaction": [
+          -0.016160550166243036,
+          -0.01178289515884539
+        ],
+        "input": 0.0,
+        "kinetic_rate": 0.0,
+        "external_power": 0.0
+      }
+    },
+    {
+      "id": "centripetal_1.4",
+      "kind": "pin",
+      "mass": 1,
+      "end": [
+        0.006798685716009642,
+        0.03941798919953841
+      ],
+      "com": [
+        0.003399342858004821,
+        0.019708994599769204
+      ],
+      "inertia": 0,
+      "omega": 1,
+      "alpha": 0,
+      "gravity": false,
+      "loads": [],
+      "expected": {
+        "acceleration": [
+          -0.003399342858004821,
+          -0.019708994599769204
+        ],
+        "velocity": [
+          -0.019708994599769204,
+          0.003399342858004821
+        ],
+        "reaction": [
+          -0.003399342858004821,
+          -0.019708994599769204
+        ],
+        "input": 0.0,
+        "kinetic_rate": 0.0,
+        "external_power": 0.0
+      }
+    },
+    {
+      "id": "tangential_0",
+      "kind": "pin",
+      "mass": 2,
+      "end": [
+        0.4,
+        0.0
+      ],
+      "com": [
+        0.2,
+        0.0
+      ],
+      "inertia": 0,
+      "omega": 0,
+      "alpha": 3,
+      "gravity": false,
+      "loads": [],
+      "expected": {
+        "acceleration": [
+          0.0,
+          0.6000000000000001
+        ],
+        "velocity": [
+          0.0,
+          0.0
+        ],
+        "reaction": [
+          0.0,
+          1.2000000000000002
+        ],
+        "input": 0.24000000000000005,
+        "kinetic_rate": 0.0,
+        "external_power": 0.0
+      }
+    },
+    {
+      "id": "tangential_0.63",
+      "kind": "pin",
+      "mass": 2,
+      "end": [
+        0.32321100332486075,
+        0.23565790317690782
+      ],
+      "com": [
+        0.16160550166243037,
+        0.11782895158845391
+      ],
+      "inertia": 0,
+      "omega": 0,
+      "alpha": 3,
+      "gravity": false,
+      "loads": [],
+      "expected": {
+        "acceleration": [
+          -0.35348685476536174,
+          0.4848165049872911
+        ],
+        "velocity": [
+          0.0,
+          0.0
+        ],
+        "reaction": [
+          -0.7069737095307235,
+          0.9696330099745822
+        ],
+        "input": 0.24,
+        "kinetic_rate": 0.0,
+        "external_power": 0.0
+      }
+    },
+    {
+      "id": "tangential_1.4",
+      "kind": "pin",
+      "mass": 2,
+      "end": [
+        0.06798685716009642,
+        0.39417989199538406
+      ],
+      "com": [
+        0.03399342858004821,
+        0.19708994599769203
+      ],
+      "inertia": 0,
+      "omega": 0,
+      "alpha": 3,
+      "gravity": false,
+      "loads": [],
+      "expected": {
+        "acceleration": [
+          -0.5912698379930761,
+          0.10198028574014463
+        ],
+        "velocity": [
+          0.0,
+          0.0
+        ],
+        "reaction": [
+          -1.1825396759861522,
+          0.20396057148028926
+        ],
+        "input": 0.23999999999999996,
+        "kinetic_rate": 0.0,
+        "external_power": 0.0
+      }
+    },
+    {
+      "id": "angular_0",
+      "kind": "pin",
+      "mass": 2,
+      "end": [
+        0.4,
+        0.0
+      ],
+      "com": [
+        0.0,
+        0.0
+      ],
+      "inertia": 0.08,
+      "omega": 2,
+      "alpha": 3,
+      "gravity": false,
+      "loads": [],
+      "expected": {
+        "acceleration": [
+          -0.0,
+          0.0
+        ],
+        "velocity": [
+          -0.0,
+          0.0
+        ],
+        "reaction": [
+          -0.0,
+          0.0
+        ],
+        "input": 0.24,
+        "kinetic_rate": 0.48,
+        "external_power": 0.0
+      }
+    },
+    {
+      "id": "angular_0.63",
+      "kind": "pin",
+      "mass": 2,
+      "end": [
+        0.32321100332486075,
+        0.23565790317690782
+      ],
+      "com": [
+        0.0,
+        0.0
+      ],
+      "inertia": 0.08,
+      "omega": 2,
+      "alpha": 3,
+      "gravity": false,
+      "loads": [],
+      "expected": {
+        "acceleration": [
+          -0.0,
+          0.0
+        ],
+        "velocity": [
+          -0.0,
+          0.0
+        ],
+        "reaction": [
+          -0.0,
+          0.0
+        ],
+        "input": 0.24,
+        "kinetic_rate": 0.48,
+        "external_power": 0.0
+      }
+    },
+    {
+      "id": "angular_1.4",
+      "kind": "pin",
+      "mass": 2,
+      "end": [
+        0.06798685716009642,
+        0.39417989199538406
+      ],
+      "com": [
+        0.0,
+        0.0
+      ],
+      "inertia": 0.08,
+      "omega": 2,
+      "alpha": 3,
+      "gravity": false,
+      "loads": [],
+      "expected": {
+        "acceleration": [
+          -0.0,
+          0.0
+        ],
+        "velocity": [
+          -0.0,
+          0.0
+        ],
+        "reaction": [
+          -0.0,
+          0.0
+        ],
+        "input": 0.24,
+        "kinetic_rate": 0.48,
+        "external_power": 0.0
+      }
+    },
+    {
+      "id": "applied_moment_0",
+      "kind": "pin",
+      "mass": 0,
+      "end": [
+        0.2,
+        0.0
+      ],
+      "com": [
+        0.1,
+        0.0
+      ],
+      "inertia": 0,
+      "omega": 0,
+      "alpha": 0,
+      "gravity": false,
+      "loads": [
+        {
+          "point": [
+            0.2,
+            0.0
+          ],
+          "force": [
+            0.0,
+            -10.0
+          ]
+        }
+      ],
+      "expected": {
+        "acceleration": [
+          0.0,
+          0.0
+        ],
+        "velocity": [
+          0.0,
+          0.0
+        ],
+        "reaction": [
+          0.0,
+          10.0
+        ],
+        "input": 2.0,
+        "kinetic_rate": 0.0,
+        "external_power": 0.0
+      }
+    },
+    {
+      "id": "applied_moment_0.63",
+      "kind": "pin",
+      "mass": 0,
+      "end": [
+        0.16160550166243037,
+        0.11782895158845391
+      ],
+      "com": [
+        0.08080275083121519,
+        0.058914475794226956
+      ],
+      "inertia": 0,
+      "omega": 0,
+      "alpha": 0,
+      "gravity": false,
+      "loads": [
+        {
+          "point": [
+            0.16160550166243037,
+            0.11782895158845391
+          ],
+          "force": [
+            5.891447579422695,
+            -8.080275083121519
+          ]
+        }
+      ],
+      "expected": {
+        "acceleration": [
+          0.0,
+          0.0
+        ],
+        "velocity": [
+          0.0,
+          0.0
+        ],
+        "reaction": [
+          -5.891447579422695,
+          8.080275083121519
+        ],
+        "input": 2.0,
+        "kinetic_rate": 0.0,
+        "external_power": 0.0
+      }
+    },
+    {
+      "id": "applied_moment_1.4",
+      "kind": "pin",
+      "mass": 0,
+      "end": [
+        0.03399342858004821,
+        0.19708994599769203
+      ],
+      "com": [
+        0.016996714290024105,
+        0.09854497299884601
+      ],
+      "inertia": 0,
+      "omega": 0,
+      "alpha": 0,
+      "gravity": false,
+      "loads": [
+        {
+          "point": [
+            0.03399342858004821,
+            0.19708994599769203
+          ],
+          "force": [
+            9.854497299884601,
+            -1.6996714290024104
+          ]
+        }
+      ],
+      "expected": {
+        "acceleration": [
+          0.0,
+          0.0
+        ],
+        "velocity": [
+          0.0,
+          0.0
+        ],
+        "reaction": [
+          -9.854497299884601,
+          1.6996714290024104
+        ],
+        "input": 1.9999999999999998,
+        "kinetic_rate": 0.0,
+        "external_power": 0.0
+      }
+    },
+    {
+      "id": "gravity_0",
+      "kind": "pin",
+      "mass": 2,
+      "end": [
+        0.4,
+        0.0
+      ],
+      "com": [
+        0.2,
+        0.0
+      ],
+      "inertia": 0.02666666666666667,
+      "omega": 0,
+      "alpha": 0,
+      "gravity": true,
+      "loads": [],
+      "expected": {
+        "acceleration": [
+          0.0,
+          0.0
+        ],
+        "velocity": [
+          0.0,
+          0.0
+        ],
+        "reaction": [
+          0.0,
+          19.6133
+        ],
+        "input": 3.92266,
+        "kinetic_rate": 0.0,
+        "external_power": 0.0
+      }
+    },
+    {
+      "id": "gravity_0.63",
+      "kind": "pin",
+      "mass": 2,
+      "end": [
+        0.32321100332486075,
+        0.23565790317690782
+      ],
+      "com": [
+        0.16160550166243037,
+        0.11782895158845391
+      ],
+      "inertia": 0.02666666666666667,
+      "omega": 0,
+      "alpha": 0,
+      "gravity": true,
+      "loads": [],
+      "expected": {
+        "acceleration": [
+          0.0,
+          0.0
+        ],
+        "velocity": [
+          0.0,
+          0.0
+        ],
+        "reaction": [
+          0.0,
+          19.6133
+        ],
+        "input": 3.1696171857557456,
+        "kinetic_rate": 0.0,
+        "external_power": 0.0
+      }
+    },
+    {
+      "id": "gravity_1.4",
+      "kind": "pin",
+      "mass": 2,
+      "end": [
+        0.06798685716009642,
+        0.39417989199538406
+      ],
+      "com": [
+        0.03399342858004821,
+        0.19708994599769203
+      ],
+      "inertia": 0.02666666666666667,
+      "omega": 0,
+      "alpha": 0,
+      "gravity": true,
+      "loads": [],
+      "expected": {
+        "acceleration": [
+          0.0,
+          0.0
+        ],
+        "velocity": [
+          0.0,
+          0.0
+        ],
+        "reaction": [
+          0.0,
+          19.6133
+        ],
+        "input": 0.6667233127690595,
+        "kinetic_rate": 0.0,
+        "external_power": 0.0
+      }
+    },
+    {
+      "id": "combined_0",
+      "kind": "pin",
+      "mass": 2,
+      "end": [
+        0.4,
+        0.0
+      ],
+      "com": [
+        0.2,
+        0.0
+      ],
+      "inertia": 0.02666666666666667,
+      "omega": -2,
+      "alpha": 3,
+      "gravity": true,
+      "loads": [
+        {
+          "point": [
+            0.4,
+            0.0
+          ],
+          "force": [
+            0.0,
+            -10.0
+          ]
+        }
+      ],
+      "expected": {
+        "acceleration": [
+          -0.8,
+          0.6000000000000001
+        ],
+        "velocity": [
+          0.0,
+          -0.4
+        ],
+        "reaction": [
+          -1.6,
+          30.813299999999998
+        ],
+        "input": 8.24266,
+        "kinetic_rate": -0.6400000000000001,
+        "external_power": 15.845320000000001
+      }
+    },
+    {
+      "id": "combined_0.63",
+      "kind": "pin",
+      "mass": 2,
+      "end": [
+        0.32321100332486075,
+        0.23565790317690782
+      ],
+      "com": [
+        0.16160550166243037,
+        0.11782895158845391
+      ],
+      "inertia": 0.02666666666666667,
+      "omega": -2,
+      "alpha": 3,
+      "gravity": true,
+      "loads": [
+        {
+          "point": [
+            0.32321100332486075,
+            0.23565790317690782
+          ],
+          "force": [
+            5.891447579422695,
+            -8.080275083121519
+          ]
+        }
+      ],
+      "expected": {
+        "acceleration": [
+          -0.9999088614150833,
+          0.013500698633475472
+        ],
+        "velocity": [
+          0.23565790317690782,
+          -0.32321100332486075
+        ],
+        "reaction": [
+          -7.891265302252862,
+          27.720576480388466
+        ],
+        "input": 7.489617185755746,
+        "kinetic_rate": -0.6400000000000001,
+        "external_power": 14.339234371511491
+      }
+    },
+    {
+      "id": "combined_1.4",
+      "kind": "pin",
+      "mass": 2,
+      "end": [
+        0.06798685716009642,
+        0.39417989199538406
+      ],
+      "com": [
+        0.03399342858004821,
+        0.19708994599769203
+      ],
+      "inertia": 0.02666666666666667,
+      "omega": -2,
+      "alpha": 3,
+      "gravity": true,
+      "loads": [
+        {
+          "point": [
+            0.06798685716009642,
+            0.39417989199538406
+          ],
+          "force": [
+            9.854497299884601,
+            -1.6996714290024104
+          ]
+        }
+      ],
+      "expected": {
+        "acceleration": [
+          -0.727243552313269,
+          -0.6863794982506235
+        ],
+        "velocity": [
+          0.39417989199538406,
+          -0.06798685716009642
+        ],
+        "reaction": [
+          -11.30898440451114,
+          19.940212432501163
+        ],
+        "input": 4.986723312769059,
+        "kinetic_rate": -0.6400000000000001,
+        "external_power": 9.333446625538118
+      }
+    },
+    {
+      "id": "applied_couple_0",
+      "kind": "pin",
+      "mass": 0,
+      "end": [
+        0.4,
+        0.0
+      ],
+      "com": [
+        0.2,
+        0.0
+      ],
+      "inertia": 0,
+      "omega": 0,
+      "alpha": 0,
+      "gravity": false,
+      "loads": [
+        {
+          "point": [
+            0.4,
+            0.0
+          ],
+          "force": [
+            0.0,
+            -5.0
+          ]
+        },
+        {
+          "point": [
+            0.0,
+            0.0
+          ],
+          "force": [
+            0.0,
+            5.0
+          ]
+        }
+      ],
+      "expected": {
+        "acceleration": [
+          0.0,
+          0.0
+        ],
+        "velocity": [
+          0.0,
+          0.0
+        ],
+        "reaction": [
+          0.0,
+          0.0
+        ],
+        "input": 2.0,
+        "kinetic_rate": 0.0,
+        "external_power": 0.0
+      }
+    },
+    {
+      "id": "applied_couple_0.63",
+      "kind": "pin",
+      "mass": 0,
+      "end": [
+        0.32321100332486075,
+        0.23565790317690782
+      ],
+      "com": [
+        0.16160550166243037,
+        0.11782895158845391
+      ],
+      "inertia": 0,
+      "omega": 0,
+      "alpha": 0,
+      "gravity": false,
+      "loads": [
+        {
+          "point": [
+            0.32321100332486075,
+            0.23565790317690782
+          ],
+          "force": [
+            2.9457237897113475,
+            -4.040137541560759
+          ]
+        },
+        {
+          "point": [
+            0.0,
+            0.0
+          ],
+          "force": [
+            -2.9457237897113475,
+            4.040137541560759
+          ]
+        }
+      ],
+      "expected": {
+        "acceleration": [
+          0.0,
+          0.0
+        ],
+        "velocity": [
+          0.0,
+          0.0
+        ],
+        "reaction": [
+          0.0,
+          0.0
+        ],
+        "input": 2.0,
+        "kinetic_rate": 0.0,
+        "external_power": 0.0
+      }
+    },
+    {
+      "id": "applied_couple_1.4",
+      "kind": "pin",
+      "mass": 0,
+      "end": [
+        0.06798685716009642,
+        0.39417989199538406
+      ],
+      "com": [
+        0.03399342858004821,
+        0.19708994599769203
+      ],
+      "inertia": 0,
+      "omega": 0,
+      "alpha": 0,
+      "gravity": false,
+      "loads": [
+        {
+          "point": [
+            0.06798685716009642,
+            0.39417989199538406
+          ],
+          "force": [
+            4.9272486499423005,
+            -0.8498357145012052
+          ]
+        },
+        {
+          "point": [
+            0.0,
+            0.0
+          ],
+          "force": [
+            -4.9272486499423005,
+            0.8498357145012052
+          ]
+        }
+      ],
+      "expected": {
+        "acceleration": [
+          0.0,
+          0.0
+        ],
+        "velocity": [
+          0.0,
+          0.0
+        ],
+        "reaction": [
+          0.0,
+          0.0
+        ],
+        "input": 1.9999999999999998,
+        "kinetic_rate": 0.0,
+        "external_power": 0.0
+      }
+    },
+    {
+      "id": "slider_0_-3",
+      "kind": "slider",
+      "mass": 2,
+      "angle": 0,
+      "acceleration": -3,
+      "speed": 2,
+      "gravity": true,
+      "expected": {
+        "acceleration": [
+          -3.0,
+          -0.0
+        ],
+        "reaction": [
+          -0.0,
+          19.6133
+        ],
+        "input": -6.0,
+        "kinetic_rate": -12,
+        "external_power": -0.0
+      }
+    },
+    {
+      "id": "slider_0_3",
+      "kind": "slider",
+      "mass": 2,
+      "angle": 0,
+      "acceleration": 3,
+      "speed": 2,
+      "gravity": true,
+      "expected": {
+        "acceleration": [
+          3.0,
+          0.0
+        ],
+        "reaction": [
+          -0.0,
+          19.6133
+        ],
+        "input": 6.0,
+        "kinetic_rate": 12,
+        "external_power": -0.0
+      }
+    },
+    {
+      "id": "slider_0.63_-3",
+      "kind": "slider",
+      "mass": 2,
+      "angle": 0.63,
+      "acceleration": -3,
+      "speed": 2,
+      "gravity": true,
+      "expected": {
+        "acceleration": [
+          -2.4240825249364555,
+          -1.7674342738268085
+        ],
+        "reaction": [
+          -9.33681674835863,
+          12.80568938454795
+        ],
+        "input": 5.555072880949114,
+        "kinetic_rate": -12,
+        "external_power": -23.110145761898227
+      }
+    },
+    {
+      "id": "slider_0.63_3",
+      "kind": "slider",
+      "mass": 2,
+      "angle": 0.63,
+      "acceleration": 3,
+      "speed": 2,
+      "gravity": true,
+      "expected": {
+        "acceleration": [
+          2.4240825249364555,
+          1.7674342738268085
+        ],
+        "reaction": [
+          -9.33681674835863,
+          12.80568938454795
+        ],
+        "input": 17.555072880949112,
+        "kinetic_rate": 12,
+        "external_power": -23.110145761898227
+      }
+    },
+    {
+      "id": "slider_1.4_-3",
+      "kind": "slider",
+      "mass": 2,
+      "angle": 1.4,
+      "acceleration": -3,
+      "speed": 2,
+      "gravity": true,
+      "expected": {
+        "acceleration": [
+          -0.5099014287007231,
+          -2.9563491899653807
+        ],
+        "reaction": [
+          -3.2851115427264066,
+          0.5666052828817041
+        ],
+        "input": 13.327921189182664,
+        "kinetic_rate": -12,
+        "external_power": -38.65584237836533
+      }
+    },
+    {
+      "id": "slider_1.4_3",
+      "kind": "slider",
+      "mass": 2,
+      "angle": 1.4,
+      "acceleration": 3,
+      "speed": 2,
+      "gravity": true,
+      "expected": {
+        "acceleration": [
+          0.5099014287007231,
+          2.9563491899653807
+        ],
+        "reaction": [
+          -3.2851115427264066,
+          0.5666052828817041
+        ],
+        "input": 25.327921189182668,
+        "kinetic_rate": 12,
+        "external_power": -38.65584237836533
+      }
+    }
+  ]
+}

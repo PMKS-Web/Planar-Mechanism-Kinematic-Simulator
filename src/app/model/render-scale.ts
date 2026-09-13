@@ -24,7 +24,8 @@
  *    MODEL_SCALE for display and multiply typed values back.
  *  - Constants that mean a physical length (solver step sizes, no-op guards)
  *    are multiplied by MODEL_SCALE at their definition.
- * Everything in between -- solvers, hit-testing, objectScale-derived visual
- * sizes -- works in internal units and needs no knowledge of this number.
+ * Geometry, kinematics and hit-testing retain internal coordinates. Force
+ * analysis crosses into physical units using the mechanism's explicit
+ * coordinateScale; it returns N and N*m without a drawing factor.
  */
 export const MODEL_SCALE = 200;

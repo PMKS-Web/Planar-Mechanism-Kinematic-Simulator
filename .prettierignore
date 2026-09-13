@@ -15,6 +15,9 @@
 # the next regeneration look like a change.
 /src/test-data/verification
 
+# Exact vendored analytical reference; provenance checks its LF-normalized bytes.
+/src/test-data/inertia-scaling/reference.json
+
 # Storybook docs pages. Prettier's MDX printer rewrites the `*` of a JSX comment
 # (`{/* … */}`) as `_`, which breaks the comment.
 *.mdx
