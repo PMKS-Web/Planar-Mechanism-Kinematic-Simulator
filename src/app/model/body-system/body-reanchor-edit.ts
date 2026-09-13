@@ -1,3 +1,4 @@
+import { turnsClockwise } from '../drive-direction';
 import { restoreBodyPartitionAnchor } from './body-anchor-recovery';
 import { BodyDocument } from './body-document';
 import { BodyEditFrame } from './body-edit-frame';
@@ -72,7 +73,7 @@ export function reanchorBodyEdit(
       command: driver.profile.initial,
       time: 0,
       synced: old?.synced ?? true,
-      direction: driver.profile.speed < 0 ? -1 : 1,
+      direction: turnsClockwise(driver.profile.speed) ? -1 : 1,
     });
     anchors.push({ driverId: id, status, previous: old?.anchor, anchor: driver.profile.initial });
   };

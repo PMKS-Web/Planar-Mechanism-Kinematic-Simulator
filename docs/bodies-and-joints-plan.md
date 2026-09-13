@@ -1,10 +1,14 @@
 # Bodies connected by joints
 
+> **Status:** Partly built — S0–S4 implemented; native UI and removal gates remain S5–S8.
+
 Planning baseline: `bodies-and-joints-plan` at `11fbe05070330dd193ac316ea0de7c64f2a6f1ca`,
 September 10, 2026, based on `staging` at `a3cac26a`. This document is the planning deliverable.
-Implementation is to be performed by Codex under one subsequent `/goal`, with Fable 5.1
-reviews at the checkpoints below. This planning change contains no implementation and does not
-authorize publishing. Unless a path starts with `src/`, model/service/component paths are
+The original proposal was one Codex `/goal` with Fable 5.1 reviews. Current authorization
+(September 13): S0–S4 are implemented; rebase and style alignment, a draft PR into staging,
+and a full-PR Fable review are authorized. S5 remains pending and the goal is disabled.
+The execution ledger is authoritative for current status; the milestone descriptions below
+retain the complete migration scope. Unless a path starts with `src/`, model/service/component paths are
 relative to `src/app/`; e2e and docs paths are repository-relative. Named functions are the navigation anchors; older plans' line numbers are historical.
 While planning, the branch advanced to `968a046`, which removed mandatory cross-model review
 instructions from AGENTS.md/CLAUDE.md without changing application code. This plan follows that
@@ -33,10 +37,10 @@ Do not leave these as questions for an unattended agent to discover halfway thro
 | UI continuity | Preserve the current grid-selection → Edit panel/context-menu workflow, BLOCKS form composition, vocabulary, theme/palettes, shadows and motion. The migration changes necessary controls and behavior, not the app's design language. The earlier UX sketch is conceptual, not a style specification. |
 | Removing unused code | Substantial removal of the superseded runtime is a required deliverable, not optional cleanup. New tests and native code may offset the line-count reduction; report the actual removed systems and remaining compatibility surface. |
 | Live UX observation | Use both workflows at S0, S5, S6 and S8: automated Playwright checks and filmstrips, plus standard Codex computer use (`mcp__cua_repl`) in incognito Chrome on the same localhost build. Watch and manipulate the running mechanisms, record observations from each workflow, and fix usability/animation defects even if scripted assertions pass. Neither workflow substitutes for the other. |
-| Fable budget | About $40 remains. Use a $35 working ceiling including follow-ups and CLI-reported auxiliary cost, leaving roughly $5 of headroom. Four planned reviews total at most $28 in assigned caps; reserve $7 for necessary follow-ups. Codex self-reviews the other checkpoints. |
+| Fable budget | The maintainer removed the review budget cap on September 12. Keep actual-cost accounting and purposeful reviews. The September 13 full-PR review is additional to the original checkpoints. |
 | External review authorization | The maintainer explicitly approved sending this repository's content to Anthropic in this task on September 10, 2026. Use that authorization for Fable reviews; do not ask again at each checkpoint. It does not authorize unrelated files, credentials or other projects. |
 | Workflow orchestration | Codex owns implementation and integration. Use Fable 5.1 through the Claude Code CLI for independent reviews. No Workflow tool or implementation-agent fan-out is required. |
-| Publishing | A release candidate can be completed without publishing. Production publishing is manually paused according to this branch's CLAUDE.md; never push `main`, change Netlify settings, or publish as part of this work. |
+| Publishing | The feature branch and a draft PR into `staging` are authorized. Never push `main`, merge the draft, change Netlify settings, or deploy as part of this request. |
 
 These defaults remove routine product ambiguity, not the obligation to stop at an unresolved
 correctness failure. A gate that cannot be repaired is a blocked milestone, never permission to
@@ -90,7 +94,7 @@ carry the intended behavior forward. A historical bug is not automatically still
 | `docs/phase-3-slide-spec.md`, §9; `force-solver.ts` | P-joint guide couples already landed. The older refusal and proposed future force work are historical. ForceSolver already works with bodies, not kinematic loop enumeration; the migration must preserve its force and moment semantics. |
 | `src/app/model/actuator.ts` | Ordered drive information already exists beyond the historical input boolean. Extend this responsibility to a coordinate reference. CLAUDE.md's `mechanism/actuator.ts` path is stale; the file is under `model/`. |
 | `src/app/services/transcoding/string-transcoder.ts`, `decodeJoint` | The PRISMATIC bit and absent floating-carrier tail distinguish old grounded sliders. Those are real production documents and merit a small import path. Unversioned payload prefixes are not reliable app-version identifiers. |
-| `docs/tips-and-tricks.md` | Several sections preserve earlier decisions and later corrections. In particular the finite-difference rate step is superseded by analytic `secondOrderTerms`; the closed mount boundary is superseded by mount release. Use current code and the later correction, not a heading alone. |
+| `docs/short-notes.md` | Several sections preserve earlier decisions and later corrections. In particular the finite-difference rate step is superseded by analytic `secondOrderTerms`; the closed mount boundary is superseded by mount release. Use current code and the later correction, not a heading alone. |
 
 The three known problems are real, with two extensions: (1) property provenance and physical
 ownership matter as much as geometry, and (2) playback mutates the editable drawing today, so
@@ -378,18 +382,21 @@ This is a model migration with necessary UX changes, not a visual redesign. Befo
 this addition, the current selection service, Edit panel/template, context-menu builder and
 renderer, BLOCKS controls, global theme, palette and motion definitions were inspected at
 `51add00`. Use those actual components as the reference, not the earlier schematic mockup's
-simplified colors, layout or wording. A new native entity does not require a new navigation
-system, inspector window or interaction metaphor.
+simplified colors, layout or wording. The September 13 rebase updates this orientation to
+[the current UI guide](ui-style-guide.md), [vocabulary](ui-vocabulary.md),
+[code style](code-style.md) and the Storybook gallery. Their current tokens and shared blocks
+supersede historical path names and copied constants. A new native entity does not require
+a new navigation system, inspector window or interaction metaphor.
 
 | Preserve | Concrete source / implementation rule |
 | --- | --- |
 | Grid-first selection | `services/active-obj.service.ts`, `model/selection.ts`, `component/edit-panel/edit-panel.component.html`, `services/context-menu-builder.service.ts`. Click/tap identifies the object; the Edit panel and right-click/long-press menu offer edits of that same object. Keep their target, highlight, values and permission answers synchronized. Pair selection for a multiway joint extends this flow inside the existing panel/menu. |
 | Click selects, drag tunes | Preserve `ActiveObjService`'s distinction between the gesture target and the object the analysis panel is about. Dragging another point while watching a graph must not replace that graph. Preserve existing multi-selection, deselection, keyboard and touch behavior. |
-| Panel composition | Reuse `component/BLOCKS/panel-section`, `editable-title`, `collapsible-subseciton`, `input`, `dual-input`, `hold-field`, `state-input`, `toggle`, `button`, `segmented` and `radio`. Use the existing title/actions, labeled blocks, brief explanatory text, help marks, units and grouped inputs. Extend shared blocks where needed rather than rebuilding bespoke fields in the native joint panel. Do not fix the legacy subsection directory spelling as part of this work. |
+| Panel composition | Reuse `component/BLOCKS/panel-section`, `editable-title`, `collapsible-subsection`, `input`, `dual-input`, `hold-field`, `state-input`, `toggle`, `button`, `segmented` and `radio`. Use the existing title/actions, labeled blocks, brief explanatory text, help marks, units and grouped inputs. Extend shared blocks where needed rather than rebuilding bespoke fields in the native joint panel. Staging has already corrected the subsection directory spelling. |
 | Stable context menus | The builder's established group order is Attach, State, Machine, then the destructive footer. Within an object kind, unavailable actions stay in their learned location and gray with the model's reason. Preserve the documented multi-selection/synthesis exceptions. A type-specific connection menu may have new rows, but menu and panel must offer the same operation and result. |
 | Readable unavailable states | Preserve `panel-section`'s `panelAttached`, `panelLive` and inert-body behavior: explain the refusal without hiding the selected object's information or disabling unrelated live properties. Retain compact inline reasons and the existing tooltip behavior. |
 | Typography and colors | `src/mytheme.scss` uses Roboto, Material indigo primary and amber accent; ordinary panel copy uses the existing 14px/18px body style. `model/joint-colors.ts` owns the six indigo/teal part colors, warm joint families and amber `SELECTION_RING`. New glyph kinds reuse these identity/hover/selection semantics; do not invent a new color per joint kind, recolor the product, or turn the conceptual mockup's cyan into a new theme. |
-| Surfaces and shadows | Reuse `src/styles.scss`: `--card-surface`, `--card-radius` (10px), `--card-gap` (12px), `--card-shadow`, and the 5px `--border-radius` used by accent-topped panels. `panel-section` already has its 5px primary accent edge. `left-tabs.vars.scss` owns layout gaps and shadow clearance. Context menus deliberately use Material elevation 16 above the cards. Keep these distinctions; no new shadow/radius system or clipping of card shadows. |
+| Surfaces and shadows | Reuse `src/styles/_tokens.scss` through the existing stylesheets: `--card-surface`, `--card-radius` (10px), `--card-gap` (12px), `--card-shadow`, and the 5px `--border-radius` used by accent-topped panels. `panel-section` already has its 5px primary accent edge. `left-tabs.vars.scss` owns layout gaps and shadow clearance. Context menus deliberately use Material elevation 16 above the cards. Keep these distinctions; no new shadow/radius system or clipping of card shadows. |
 | Controls and motion | Inputs already use compact Material fields and unit suffixes; `segmented-block` uses a measured sliding thumb (180ms, `cubic-bezier(0.4,0,0.2,1)`). Subsections and context menus use short 150ms ease-in-out transitions; collapsible panels use 200ms. The phone sheet uses a measured-height 240ms `cubic-bezier(0.2,0,0,1)` slide. Reuse the components and reduced-motion behavior, not independently copied timing constants. No new bounce, spring, flourish or whole-panel replacement animation. |
 | Physical animation | Preserve elapsed-time playback, speed/direction and continuous motion. UI easing must never alter a mechanism's physical timing or make its glyphs lag behind the body pose. Selection must not resize a cylinder or make its skin jump. |
 | Product vocabulary | Keep familiar terms such as Link, Joint, Cylinder, Add Input, Remove Input, Input Settings, Input Speed, Fixed Length and Fixed Angle wherever their meaning survives. `Body`, `Driver`, `JointCoordinateRef`, WORLD and solver partitions are implementation terms, not a mandate to rename every visible label. Introduce Prismatic, Pin-in-slot, connected pairs and explicit deletion scopes only where they explain a real new choice. Use short, concrete American English and the same action names in help, menu and panel. |
@@ -621,7 +628,7 @@ explicitly marked **new**. Paths introduced under `body-system/` below are **new
 Use `npm test -- --watch=false --include=<spec-path>` for focused development, not bare Vitest.
 Run the full unit suite at S3, S6 and S8; do not remove numerical checks
 because a fixture constructor changed. Run browser suites sequentially per server, using
-`PMKS_BASE_URL=http://localhost:<owned-port>` and the Playwright setup in tips-and-tricks.
+`PMKS_BASE_URL=http://localhost:<owned-port>` and the Playwright setup in environment.md.
 Inspect screenshots/filmstrips, not only exit codes. Each UI step includes Codex's own live observation and inspection under the current CLAUDE.md;
 there is no additional mandatory model review beyond F1–F4.
 
@@ -885,7 +892,7 @@ five worked examples, the new object gallery and one tutorial construction/undo 
 Joint/Link/SliderBlock runtime classes and adapters,
 old cylinder recognition/pose repair, compound materialization, old loop consumers not used
 by any retained optimization. Keep the isolated production reader's record schema. Update
-CLAUDE.md, relevant historical-plan status notes and tips-and-tricks so the next agent does
+CLAUDE.md, relevant historical-plan status notes and short-notes so the next agent does
 not restore a deleted representation to fix a stale test.
 
 Delete only after replacement tests name the same behavior. Remove the dead IC path if still
@@ -1191,7 +1198,7 @@ requires a separate cross-model UI review. Do not recreate that requirement in t
 
 ### Browser and integration discipline
 
-Read CLAUDE.md, tips-and-tricks and the UI validation skill. Use American English throughout;
+Read CLAUDE.md, environment.md, code-style.md and the UI validation skill. Use American English throughout;
 comment why; format only touched files. Run the named suites rather than the entire browser
 directory at every step. Verify source paths/test basenames before a scripted batch.
 

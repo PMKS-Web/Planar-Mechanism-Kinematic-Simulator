@@ -1,3 +1,4 @@
+import { turnsClockwise } from '../drive-direction';
 import { nativeLoadedRod } from '../../../test-utils/verification/native-force-fixtures';
 import { nativeAxialCarriage } from '../../../test-utils/verification/native-cylinder-fixtures';
 import { nativeLinearCarriage } from '../../../test-utils/verification/native-linear-carriage-fixture';
@@ -85,7 +86,7 @@ describe('native coordinate drive and limit commands', () => {
       );
       if (!result.ok) throw new Error(result.message);
       expect(a.local.clocks[0].time).toBe(0);
-      expect(a.local.clocks[0].direction).toBe(speed > 0 ? 1 : -1);
+      expect(a.local.clocks[0].direction).toBe(!turnsClockwise(speed) ? 1 : -1);
       expect(a.local.clocks[1]).toEqual(otherClock);
     }
   });
@@ -202,9 +203,9 @@ describe('native coordinate drive and limit commands', () => {
       expect(result.event!.plan!.anchors![0].status).toBe('retained');
       expect(a.local.clocks[0].anchor).toBeCloseTo(0.4, 9);
       expect(a.local.clocks[0].command).toBeCloseTo(1.3, 9);
-      expect(a.local.clocks[0].direction).toBe(speed > 0 ? -1 : 1);
+      expect(a.local.clocks[0].direction).toBe(!turnsClockwise(speed) ? -1 : 1);
       expect(a.local.clocks[0].time).toBeCloseTo(
-        speed > 0 ? (1.5 - 0.4 + 1.5 - 1.3) / 0.4 : (0.4 + 1.3) / 0.4,
+        !turnsClockwise(speed) ? (1.5 - 0.4 + 1.5 - 1.3) / 0.4 : (0.4 + 1.3) / 0.4,
         8
       );
       expect(a.display!.poses).toEqual(display.poses);

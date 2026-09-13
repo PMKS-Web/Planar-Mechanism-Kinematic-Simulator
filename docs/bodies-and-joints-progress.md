@@ -1,12 +1,14 @@
 # Bodies and joints execution ledger
 
+> **Status:** Reference — execution checkpoints, review findings and verification evidence.
+
 ## Authority and status
 
-- Current authorization (2026-09-12): the user disabled the persistent goal. **Finish S4, complete F3 and address its findings, then stop before S5.** Do not reactivate a goal. The full migration plan remains S0–S8; later steps are intentionally not authorized in this continuation. No push or publication.
+- Current authorization (2026-09-13): rebase completed S0–S4 onto staging, align with staging's code/UI style guides, refactor where useful, create a draft PR into staging, and complete a full-PR Fable 5.1 review with findings addressed. Publishing this feature branch and its draft PR is authorized. S5 remains pending; do not reactivate a goal or begin UI cutover.
 - Implementation starting commit: `487d535` on `bodies-and-joints-plan`.
 - Worktree: `.claude/worktrees/funny-swirles-3c6486`.
 - Current checkpoint: **S0–S4 complete; F3 resolved; stopped before S5**. Native editor cutover has not begun. Concrete interface choices are in [the contract](bodies-and-joints-contract.md); frozen catalogs/reference hashes are in [the baseline](bodies-and-joints-baseline.json).
-- Sole implementation owner: Codex. Fable reviews only at the four specified gates.
+- Sole implementation owner: Codex. Fable reviews at the specified gates and at the additional full-PR review requested September 13.
 - Preserve other worktrees and unrelated changes. The starting tracked worktree was clean.
 - Runtime for these commands: Node `v24.18.0`, explicitly prepended to PATH; the login shell otherwise selects unsupported Node 20.
 - Owned dev server: `http://localhost:4307/`, Angular CLI started in this worktree. Recheck process, HTTP readiness and served source on resumption.
@@ -2451,3 +2453,57 @@ Next, only after new authorization: S5 native selection/grid/Edit-panel/context-
 behind the development route, including native notices, clipboard preview identity, and both
 Playwright motion evidence and live incognito computer use. Large obsolete-runtime removal
 remains S7 after consumers are migrated; it has not been silently dropped from the plan.
+
+
+## Rebase and staging style alignment (2026-09-13)
+
+Rebased S0–S4 onto `c090dcc25b0fcf3ae885e265823f8fbc3347e635` (staging PR #10).
+`backup/bodies-and-joints-before-staging-20260913` retains the pre-rebase history at
+`25e87b94`. Staging's documentation reorganization, dependency updates, shared UI blocks,
+source formatting and lint rules are preserved. Migration-only tips were recovered from
+the original append diff and moved to `short-notes.md`; the deleted tips file stays deleted.
+
+The audit applied `docs/code-style.md`, `docs/ui-style-guide.md`, `docs/ui-vocabulary.md`
+and the runner-specific UI skill. Alignment changes:
+
+- Move-only commit `b5675691` consolidates 20 algorithm fragments into five cohesive modules
+  (rates, anchor recovery, re-anchoring, interval certification and folds). Shared math and
+  separate command/codec responsibilities remain separate. An AST comparison of every moved
+  non-import declaration found identical algorithm bodies. The result removes 19 files net;
+  it does not claim the S7 legacy-runtime removal has happened.
+- Native direction decisions and their specs now use `turnsClockwise`; no lint cap or
+  exemption changed. Positive-direction branches already reject a zero-speed drive.
+- The migration docs now have status lines and index entries. The plan points to current
+  shared-block paths and token ownership. Pinned Prettier 3.9.6 required formatting only the
+  baseline JSON and one dimension spec; their data and expectations are unchanged.
+- Native models remain independent of Angular components and services. No new hub behavior,
+  component input API, CSS token, control, or parallel refusal-copy source was introduced.
+  The existing panel revision counter is a private cache invalidation marker, not render
+  state. The panel still uses the shared blocks and staging's permission model.
+- Native fixture builders stay centralized under `src/test-utils/verification/native-*`.
+  They cannot yet be opened by the legacy URL gallery: publishing native fixture URLs and
+  gallery entries requires the S5–S6 reader/consumer cutover and remains an explicit gate.
+  Do not add a throwaway native-to-legacy converter to satisfy the gallery rule at S4.
+
+Artifacts are under `artifacts/bodies-and-joints/rebase-review/`. Fresh `npm ci` used Node
+24.18.0 and staging's lockfile. `npm run check` passes with the same 15 existing warnings;
+all **2938 unit tests / 328 files** pass, including MATLAB references and docs inventory.
+The production build and Storybook build pass. No numerical ceiling was raised.
+
+Live standard Codex computer use opened a new tab in the existing **incognito Chrome**
+window at `http://localhost:4307`, loaded Four-Bar through Mechanism Library, selected BC,
+played and paused it, rewound, and inspected its context menu. The angle changed with the
+pose and returned to 12 degrees; length stayed 5.75 cm. Panel controls and menu fixed-value
+labels agreed. The temporary tab was closed; the user's existing tabs were left intact.
+Playwright's playback and paused-drag contact sheets were inspected: connected geometry,
+selection, start ghosts, panel dimensions and playback controls stayed visually coherent.
+These are rebased legacy-editor checks, not a claim that the native UI is wired.
+
+Rebased browser gates passed: `link-pose-readout` 10/10, `posed-editing` 60/60,
+`locking` 34/34, `ui-copy` 17/17, `two-mechanisms` 13/13, `export-flow` 50/50,
+`mobile` 79/79 and `reduced-motion` 6/6 (exact logs under the directory above). No page errors were reported.
+
+Representative playback frames below are in time order: start, motion across the cycle,
+pause and rewind. The complete 35-frame sheet and paused-drag sheet remain in artifacts.
+
+![Selected-link playback through pause and rewind](images/bodies-and-joints/rebase-playback.png)

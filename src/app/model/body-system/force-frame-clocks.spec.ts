@@ -1,3 +1,4 @@
+import { turnsClockwise } from '../drive-direction';
 import { nativeTwinCranksOnPinnedFrame } from '../../../test-utils/verification/native-fixed-frame-fixtures';
 import { compileBodyDocument } from './constraint-compiler';
 import { admitBodyPartition } from './body-admission';
@@ -51,7 +52,7 @@ describe('force samples on independent clocks sharing a material frame', () => {
               index: i + 3,
               time: command / speed,
               command,
-              direction: speed < 0 ? -1 : 1,
+              direction: turnsClockwise(speed) ? -1 : 1,
             },
             pose: {
               ok: true,

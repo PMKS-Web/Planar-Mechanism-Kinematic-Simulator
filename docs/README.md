@@ -37,6 +37,11 @@ In this order, the first time:
 ## Design records
 
 - [chrome-provider-seam.md](chrome-provider-seam.md) — the separate legacy chrome provider seam, its parity gate, and the blocked S5/native follow-through. *Partly built*
+- [bodies-and-joints-plan.md](bodies-and-joints-plan.md) — S0–S4 implemented; native UI and removal gates remain S5–S8. *Partly built*
+- [bodies-and-joints-progress.md](bodies-and-joints-progress.md) — execution checkpoints, review findings and verification evidence. *Reference*
+- [bodies-and-joints-contract.md](bodies-and-joints-contract.md) — native document, solver and editing contracts implemented through S4. *Reference*
+- [bodies-and-joints-equations.md](bodies-and-joints-equations.md) — native constraint, rate and force derivations and their verification. *Reference*
+- [bodies-and-joints-consumer-audit.md](bodies-and-joints-consumer-audit.md) — inventory of legacy consumers and the remaining S5–S7 cutover work. *Partly built*
 
 - [joint-types-plan.md](joint-types-plan.md) — plan of record for floating slots, slides, driven prismatic joints and cylinders, Phases 0–7a. *Partly built*
 - [floating-slot-kinematics-design.md](floating-slot-kinematics-design.md) — velocity and acceleration through a floating slot (Phase 2, task 2.9). *Built*

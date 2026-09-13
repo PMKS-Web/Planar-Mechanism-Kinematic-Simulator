@@ -1,5 +1,7 @@
 # Native constraint derivation
 
+> **Status:** Reference — native constraint, rate and force derivations and their verification.
+
 Working derivation for S2/S3, before implementation. This is not a claim of solver verification.
 It uses the record conventions in [the contract](bodies-and-joints-contract.md). F1 must settle
 those conventions before the implementation depends on them; F2 reviews the implementation

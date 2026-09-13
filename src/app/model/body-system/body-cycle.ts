@@ -1,3 +1,4 @@
+import { turnsClockwise } from '../drive-direction';
 import {
   AdmittedBodySystem,
   BodyContinuationState,
@@ -62,7 +63,7 @@ export function buildBodyCycle(
   )
     return { ok: false, reason: 'invalid', probes: 0 };
   const initial = initialBodyContinuation(admitted),
-    direction = driver.speed > 0 ? 1 : -1;
+    direction = !turnsClockwise(driver.speed) ? 1 : -1;
   let probes = 0;
   type Trace =
     | {
