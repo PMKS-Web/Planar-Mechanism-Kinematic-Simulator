@@ -58,6 +58,32 @@
           [attr.stroke-width]="markerSize() * 1.6"
         />
       }
+    }
+    @for (mark of marks(); track mark.key) {
+      @if (mark.grounded) {
+        <path
+          class="ground"
+          [attr.data-ground-id]="mark.key"
+          [attr.transform]="
+            'translate(' +
+            (mark.groundPoint || mark.point).x +
+            ' ' +
+            (mark.groundPoint || mark.point).y +
+            ')'
+          "
+          [attr.d]="
+            'M ' +
+            -markerSize() * 1.5 +
+            ' ' +
+            -markerSize() * 1.9 +
+            ' L 0 0 L ' +
+            markerSize() * 1.5 +
+            ' ' +
+            -markerSize() * 1.9 +
+            ' Z'
+          "
+        />
+      }
       <g
         [attr.transform]="markPose(mark)"
         [attr.data-joint-kind]="mark.kind"
@@ -89,22 +115,6 @@
           </g>
         }
         <circle class="hit-target" [attr.r]="markerSize() * 2" />
-        @if (mark.grounded) {
-          <path
-            class="ground"
-            [attr.d]="
-              'M ' +
-              -markerSize() * 1.5 +
-              ' ' +
-              -markerSize() * 1.9 +
-              ' L 0 0 L ' +
-              markerSize() * 1.5 +
-              ' ' +
-              -markerSize() * 1.9 +
-              ' Z'
-            "
-          />
-        }
         @switch (mark.kind) {
           @case ('prismatic') {
             <rect

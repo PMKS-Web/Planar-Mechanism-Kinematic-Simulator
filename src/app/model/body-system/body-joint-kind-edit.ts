@@ -1,3 +1,4 @@
+import { retainPinConnections } from './body-pin-lifecycle';
 import { reverseJoint } from './reverse-joint';
 import { BodyDocument } from './body-document';
 import { BodyEditOperation, BodyEditRefusal } from './body-edit-types';
@@ -140,14 +141,16 @@ export function changeBodyJointKind(
       document.limits.some((limit) => !retained(limit.coordinate)))
   )
     return bodyEditRefusal('coordinate-in-use', [target]);
-  return {
-    ok: true,
-    document: {
-      ...document,
-      attachments: [...document.attachments, ...added],
-      joints: document.joints.map((item) => (item.id === joint.id ? replacement : item)),
-      drivers: document.drivers.filter((driver) => retained(driver.coordinate)),
-      limits: document.limits.filter((limit) => retained(limit.coordinate)),
-    },
+  const candidate = {
+    ...document,
+    attachments: [...document.attachments, ...added],
+    joints: document.joints.map((item) => (item.id === joint.id ? replacement : item)),
+    drivers: document.drivers.filter((driver) => retained(driver.coordinate)),
+    limits: document.limits.filter((limit) => retained(limit.coordinate)),
   };
+  // A sliding pair no longer belongs to one coincident pin. Keep each remaining R/weld island.
+  const connections = document.junctions.some((pin) => pin.joints.includes(joint.id))
+    ? retainPinConnections(document, candidate, new Set(), commandId)
+    : {};
+  return { ok: true, document: { ...candidate, ...connections } };
 }

@@ -64,6 +64,51 @@ try {
         0.5
       );
     }
+  await page.goto(`${process.env.PMKS_BASE_URL || 'http://localhost:4307'}/?editor=native`);
+  await page.locator('#bootSplash').waitFor({ state: 'detached' });
+  await page.getByRole('button', { name: 'Add Link', exact: true }).click();
+  await page.mouse.move(450, 500);
+  await page.mouse.down();
+  await page.mouse.move(850, 300, { steps: 6 });
+  await page.mouse.up();
+  await page.getByRole('button', { name: 'Mass Properties', exact: true }).click();
+  const untouched = await nativeState(page);
+  for (const name of ['Mass', 'Moment of Inertia', 'Center X', 'Center Y']) {
+    const field = page.getByRole('textbox', { name, exact: true });
+    await field.click();
+    await field.press('Tab');
+  }
+  check(
+    'Tabbing through material readouts preserves automatic mass properties and history',
+    JSON.stringify((await nativeState(page)).document) === JSON.stringify(untouched.document) &&
+      (await nativeState(page)).history === untouched.history
+  );
+  await page.getByRole('button', { name: 'Fix length', exact: true }).click();
+  await page.getByRole('button', { name: 'Fix angle', exact: true }).click();
+  const held = await nativeState(page);
+  check(
+    'Both displayed bar dimensions can be held independently',
+    held.document.holds[0].length !== undefined &&
+      held.document.holds[0].angle !== undefined &&
+      held.history === untouched.history + 2
+  );
+  const length = page.getByRole('textbox', { name: 'Length', exact: true });
+  await length.fill('5 cm');
+  await length.press('Enter');
+  check(
+    'Typing a fixed length changes its held value in one edit',
+    Math.abs((await nativeState(page)).document.holds[0].length - 5) < 1e-8 &&
+      (await nativeState(page)).history === held.history + 1
+  );
+  const angle = page.getByRole('textbox', { name: 'Angle', exact: true });
+  await angle.fill('0.5 rad');
+  await angle.press('Enter');
+  check(
+    'Typing a fixed angle preserves the fixed length',
+    Math.abs((await nativeState(page)).document.holds[0].angle - 0.5) < 1e-8 &&
+      Math.abs((await nativeState(page)).document.holds[0].length - 5) < 1e-8
+  );
+
   await openNative(page, 'multiway');
   const before = await nativeState(page),
     members = before.document.bodies.filter((b) => b.kind === 'material').slice(0, 2);

@@ -1,6 +1,5 @@
 import { turnsClockwise } from '../../model/drive-direction';
 import { bodyLockMarks } from '../../model/body-system/body-state-marks';
-import { localToWorld } from '../../model/body-system/body-frame';
 import { bodyDimensionMark } from '../../model/body-system/body-dimension-mark';
 import { bodyMotionBounds, bodyTraceMarks } from '../../model/body-system/body-motion-marks';
 import { NativePlaybackService } from '../../services/native-playback.service';
@@ -221,7 +220,7 @@ export class NativeGridComponent implements AfterViewInit {
     if (this.tool()) {
       this.pointer = {
         id: event.pointerId,
-        start: at,
+        start: mark?.point ?? at,
         screen,
         moved: false,
         creation: { kind: this.tool()!, owner, document: this.editor.drawing() },
@@ -361,7 +360,7 @@ export class NativeGridComponent implements AfterViewInit {
       });
       const preview = this.editor.preview(command);
       if (preview.ok) this.editor.draft.set(preview);
-      else this.editor.message.set(preview.message);
+      else this.editor.report(preview.message);
       return;
     }
     if (p.creation) {
@@ -382,7 +381,7 @@ export class NativeGridComponent implements AfterViewInit {
       );
       const preview = this.editor.preview(command);
       if (preview.ok) this.editor.draft.set(preview);
-      else this.editor.message.set(preview.message);
+      else this.editor.report(preview.message);
       return;
     }
     if (p.gesture) {
@@ -391,14 +390,14 @@ export class NativeGridComponent implements AfterViewInit {
       const result = p.gesture.advance(value, this.editor.state());
       if (result.ok) {
         this.editor.draft.set(result.plan);
-        this.editor.message.set(result.limited ? result.refusal.message : '');
+        this.editor.report(result.limited ? result.refusal.message : '');
         if (p.coordinate !== undefined) {
           const mark = bodyJointMarks(this.editor.drawing()).find(
             (m) => m.coordinate?.jointId === p.coordinateId
           );
           this.travelGhost.set(mark?.rider);
         }
-      } else this.editor.message.set(result.message);
+      } else this.editor.report(result.message);
     }
   }
   protected up(event: PointerEvent) {
@@ -426,7 +425,8 @@ export class NativeGridComponent implements AfterViewInit {
       this.editor.select(p.target, p.additive);
     if (p.gesture && p.moved) {
       const result = this.editor.store.finishGesture(p.gesture, this.editor.state());
-      if (!result.ok) this.editor.message.set(result.message);
+      if (!result.ok) this.editor.report(result.message);
+      else this.editor.report('');
     } else if ((p.creation || p.force) && this.editor.draft()) {
       const plan = this.editor.draft()!;
       if (this.editor.commit(plan) && p.creation) {
@@ -455,7 +455,7 @@ export class NativeGridComponent implements AfterViewInit {
     }
     const element = globalThis.document
       .elementsFromPoint(event.clientX, event.clientY)
-      .find((el) => el.hasAttribute('data-body-id'));
+      .find((el) => document.bodies.some((body) => body.id === el.getAttribute('data-body-id')));
     const body = document.bodies.find((b) => b.id === element?.getAttribute('data-body-id'));
     return body ? { bodyId: body.id, point: at } : undefined;
   }

@@ -214,7 +214,7 @@ select {
     width: 0;
   }
   .view-controls.phone {
-    bottom: calc(var(--native-controls-top, 112px) + #{nav.$card-inset});
+    bottom: calc(var(--native-panel-top, 164px) + #{nav.$card-inset});
     z-index: 2;
   }
   .creation-note {

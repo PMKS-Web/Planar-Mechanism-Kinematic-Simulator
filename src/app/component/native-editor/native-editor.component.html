@@ -131,21 +131,37 @@
           }
         </button>
       } @else {
-        <p>Select an object to inspect it. Return to Edit to change connections.</p>
+        <p>Select an object to inspect it.</p>
       }
     }
   </div>
 </aside>
 <app-notification-stack />
 @if (grid().tool()) {
-  <div class="creation-note">
-    Drag to {{ editor.selection().length ? 'attach' : 'add' }} a {{ grid().tool() }}. Press Esc to
-    cancel.
-  </div>
+  <div class="creation-note">Drag to add a {{ grid().tool() }}. Press Esc to cancel.</div>
 }
 <section #transport class="transport" data-canvas-inset="bottom" aria-label="Animation">
   <div class="transport-controls">
     @if (viewport.isPhone()) {
+      <button
+        mat-icon-button
+        aria-label="Undo"
+        [disabled]="!editor.store.undoDepth || !!refusalFor('history', editor.state())"
+        [title]="refusalFor('history', editor.state())?.long || 'Undo'"
+        (click)="editor.history('undo')"
+      >
+        <mat-icon>undo</mat-icon>
+      </button>
+      <button
+        mat-icon-button
+        aria-label="Redo"
+        [disabled]="!editor.store.redoDepth || !!refusalFor('history', editor.state())"
+        [title]="refusalFor('history', editor.state())?.long || 'Redo'"
+        (click)="editor.history('redo')"
+      >
+        <mat-icon>redo</mat-icon>
+      </button>
+
       <button
         mat-icon-button
         aria-label="View Controls"

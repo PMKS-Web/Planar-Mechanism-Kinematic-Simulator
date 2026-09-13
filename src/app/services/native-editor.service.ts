@@ -1,3 +1,5 @@
+import { bodyEditRefusal } from '../model/body-system/joint-permission';
+import { Subject } from 'rxjs';
 import { bodyNudgeCommand } from '../model/body-system/body-nudge-command';
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -30,6 +32,12 @@ export class NativeEditorService {
   readonly dimension = signal<'length' | 'angle' | undefined>(undefined);
   readonly version = signal(0);
   readonly message = signal('');
+  readonly messages = new Subject<string>();
+
+  report(message: string) {
+    this.message.set(message);
+    this.messages.next(message);
+  }
   readonly selection = signal<readonly BodySelectionRef[]>([]);
   readonly draft = signal<BodyEditPlan | undefined>(undefined);
   readonly document = computed(() => {
@@ -99,12 +107,12 @@ export class NativeEditorService {
   }
   commit(command: BodyEditCommand | BodyEditPlan) {
     const result = this.store.commit(command, this.state());
-    if (!result.ok) this.message.set(result.message);
+    if (!result.ok) this.report(result.message);
     else {
-      this.message.set('');
+      this.report('');
       const recovery = this.store.recoveryStatus;
       if (recovery && !recovery.ok)
-        this.message.set(
+        this.report(
           'This browser could not save a recovery copy. Save the project before closing it.'
         );
     }
@@ -115,7 +123,7 @@ export class NativeEditorService {
   }
   history(direction: 'undo' | 'redo') {
     const result = this.store[direction](this.state());
-    if (!result.ok) this.message.set(result.message);
+    if (!result.ok) this.report(result.message);
   }
   nudge(x: number, y: number) {
     const d = this.drawing(),
@@ -127,6 +135,10 @@ export class NativeEditorService {
     return this.apply({ kind: 'delete', targets });
   }
   rename(name: string) {
+    if (!name.trim()) {
+      this.report(bodyEditRefusal('empty-name').message);
+      return false;
+    }
     const target = this.selection()[0];
     if (!target) return false;
     if (target.kind === 'body')
@@ -212,7 +224,7 @@ export class NativeEditorService {
   load(payload: string, writeRecovery = true) {
     const result = this.store.load(payload, this.state(), writeRecovery);
     if (!result.ok)
-      this.message.set(
+      this.report(
         'message' in result
           ? result.message
           : 'The project could not be opened. Keep the original file and check that this version supports it.'
@@ -222,13 +234,13 @@ export class NativeEditorService {
   recover() {
     const result = this.store.recover(this.state());
     if (!result.ok)
-      this.message.set(
+      this.report(
         'message' in result
           ? result.message
           : 'No valid recovery copy was found. Open a saved project instead.'
       );
     else if (result.rejected.length)
-      this.message.set(
+      this.report(
         'The tab recovery copy could not be read. The last saved browser copy was opened.'
       );
   }
@@ -239,13 +251,13 @@ export class NativeEditorService {
       this.state()
     );
     if (!result.ok) {
-      this.message.set(result.message);
+      this.report(result.message);
       return;
     }
     try {
       await navigator.clipboard.writeText(result.payload);
     } catch {
-      this.message.set(
+      this.report(
         'The browser blocked clipboard access. The selection can still be pasted in this tab.'
       );
     }
@@ -256,12 +268,12 @@ export class NativeEditorService {
       payload = await navigator.clipboard.readText();
     } catch {
       if (!payload) {
-        this.message.set('Allow clipboard access or copy a selection in this tab first.');
+        this.report('Allow clipboard access or copy a selection in this tab first.');
         return;
       }
     }
     const size = this.document().settings.objectScale;
     const result = this.store.paste({ x: size, y: -size }, this.state(), payload);
-    if (!result.ok) this.message.set(result.message);
+    if (!result.ok) this.report(result.message);
   }
 }

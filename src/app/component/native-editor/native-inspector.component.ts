@@ -1,3 +1,4 @@
+import { bodyBarFieldCommand } from '../../model/body-system/body-bar-field-command';
 import { bodyBarHoldPair } from '../../model/body-system/body-bar-hold';
 import { bodyGroupPresentation } from '../../model/body-system/body-group-presentation';
 import { NativeJointLimitsComponent } from './native-joint-limits.component';
@@ -23,7 +24,6 @@ import { jointKindLabel } from '../../model/body-system/body-joint-marks';
 import { jointCoordinate } from '../../model/body-system/joint-coordinate';
 import { nativeEditRefusalCopy } from '../../model/body-system/joint-permission';
 import { nativeNumber, nativeLength, nativeAngle } from '../../model/body-system/body-field-values';
-import { localToWorld, worldToLocal } from '../../model/body-system/body-frame';
 import { MaterialBody } from '../../model/body-system/material-body';
 import { menuRefusal } from '../../model/edit-permission';
 
@@ -54,6 +54,17 @@ export class NativeInspectorComponent {
     'weld',
   ];
   protected readonly kindLabel = jointKindLabel;
+  protected readonly bulkFills = computed(() => [
+    ...new Set(
+      this.editor
+        .bodies()
+        .map((id) => {
+          const body = this.editor.document().bodies.find((b) => b.id === id);
+          return body?.kind === 'material' ? body.presentation.fill : undefined;
+        })
+        .filter((fill): fill is string => !!fill)
+    ),
+  ]);
   protected readonly selected = computed(() => this.editor.selection()[0]);
   protected readonly body = computed(() => {
     const target = this.selected();
@@ -241,10 +252,20 @@ export class NativeInspectorComponent {
     return bodyConnectionCommand(this.editor.drawing(), this.selected(), this.chosenPair(), kind);
   }
 
+  private readonly refusalCache = computed(() => {
+    this.editor.drawing();
+    this.editor.state();
+    return new Map<string, ReturnType<typeof nativeEditRefusalCopy> | undefined>();
+  });
   protected refused(command: BodyEditCommand | undefined) {
     if (!command) return undefined;
-    const result = this.editor.preview(command);
-    return result.ok ? undefined : nativeEditRefusalCopy(result);
+    const cache = this.refusalCache(),
+      key = JSON.stringify(command.operations);
+    if (!cache.has(key)) {
+      const result = this.editor.preview(command);
+      cache.set(key, result.ok ? undefined : nativeEditRefusalCopy(result));
+    }
+    return cache.get(key);
   }
   protected changeKind(kind: BodyJoint['kind']) {
     const command = this.kindCommand(kind);
@@ -267,6 +288,7 @@ export class NativeInspectorComponent {
     if (!this.fields.controls[field]) return;
     const d = this.editor.drawing(),
       text = this.fields.controls[field].value;
+    if (text === this.values()[field]) return;
     const angular = field === 'angle' || field === 'axis';
     const scalar = ['speed', 'mass', 'forceX', 'forceY', 'couple'].includes(field);
     const value = angular
@@ -275,7 +297,7 @@ export class NativeInspectorComponent {
         ? Number(text)
         : nativeLength(text, d.units.length);
     if (value === undefined || !Number.isFinite(value) || !text.trim()) {
-      this.editor.message.set('Type a number, with or without a unit — 2, 2 cm, 0.75 in.');
+      this.editor.report('Type a number, with or without a unit — 2, 2 cm, 0.75 in.');
       return;
     }
     const body = this.body(),
@@ -338,6 +360,7 @@ export class NativeInspectorComponent {
     if (field === 'x' || field === 'y') {
       this.editor.apply({
         kind: 'move-body',
+        mode: 'exact',
         bodyId: body.id,
         grab: { x: 0, y: 0 },
         target: { ...body.pose, [field]: value },
@@ -348,38 +371,9 @@ export class NativeInspectorComponent {
       this.changeBar(body, field, value);
   }
   private changeBar(body: MaterialBody, field: 'length' | 'angle', value: number) {
-    if (body.geometry.kind !== 'bar') return;
-    const [a, b] = body.geometry.vertices,
-      at = localToWorld(body.pose, a);
-    const length = field === 'length' ? value : Math.hypot(b.x - a.x, b.y - a.y);
-    const angle = field === 'angle' ? value : body.pose.angle + Math.atan2(b.y - a.y, b.x - a.x);
-    const endpoint = this.editor
-      .document()
-      .attachments.find((p) => p.bodyId === body.id && p.vertexId === b.id);
-    if (endpoint)
-      this.editor.apply({
-        kind: 'move-point',
-        attachmentId: endpoint.id,
-        target: { x: at.x + length * Math.cos(angle), y: at.y + length * Math.sin(angle) },
-      });
-    else
-      this.editor.apply({
-        kind: 'body-geometry',
-        bodyId: body.id,
-        geometry: {
-          ...body.geometry,
-          vertices: [
-            a,
-            {
-              ...b,
-              ...worldToLocal(body.pose, {
-                x: at.x + length * Math.cos(angle),
-                y: at.y + length * Math.sin(angle),
-              }),
-            },
-          ],
-        },
-      });
+    const command = bodyBarFieldCommand(this.editor.drawing(), body.id, field, value);
+    if ('operations' in command) this.editor.commit(command);
+    else this.editor.report(command.message);
   }
   protected driveCommand() {
     const joint = this.coordinateJoint();
@@ -446,7 +440,7 @@ export class NativeInspectorComponent {
   protected bulkMass() {
     const value = Number(this.fields.controls['mass'].value);
     if (!this.fields.controls['mass'].value.trim() || !Number.isFinite(value)) {
-      this.editor.message.set('Type a number for the mass.');
+      this.editor.report('Type a number for the mass.');
       return;
     }
     this.editor.apply(

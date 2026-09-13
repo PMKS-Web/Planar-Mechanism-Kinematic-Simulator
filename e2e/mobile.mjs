@@ -99,8 +99,10 @@ const tap = async (x, y) => {
   await page.waitForTimeout(300);
 };
 
-const open = (query) =>
-  page.goto(`${BASE}/${query ? '?' + query : ''}`, { waitUntil: 'domcontentloaded' });
+const open = async (query) => {
+  await page.goto(`${BASE}/${query ? '?' + query : ''}`, { waitUntil: 'domcontentloaded' });
+  await waitForReady(page);
+};
 const menuText = () =>
   page
     .locator('#contextMenu')
@@ -1068,6 +1070,7 @@ const screenOf = (id) =>
 // visibility button were each undoing a selection on their way past.
 {
   await open(payloads['4-Bar']);
+  await waitForReady(page);
   const selection = () =>
     page.evaluate(() => {
       const grid = ng.getComponent(document.querySelector('app-new-grid'));

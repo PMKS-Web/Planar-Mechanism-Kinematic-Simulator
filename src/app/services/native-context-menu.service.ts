@@ -126,14 +126,36 @@ export class NativeContextMenuService {
           'vertical_align_bottom'
         )
       );
-    else if (body)
+    else if (body) {
+      const joint = target?.kind === 'joint' ? d.joints.find((j) => j.id === target.id) : undefined;
+      const attachment =
+        target?.kind === 'junction'
+          ? d.junctions
+              .find((p) => p.id === target.id)
+              ?.attachments.find((id) => d.attachments.find((a) => a.id === id)?.bodyId === body)
+          : joint
+            ? joint.bodyA === body
+              ? joint.frameA.attachmentId
+              : joint.frameB.attachmentId
+            : target?.kind === 'attachment'
+              ? target.id
+              : undefined;
       state.push(
         this.commandRow(
           'Add Ground',
-          insertNativeGround(this.editor.drawing(), body, point),
+          insertNativeGround(
+            this.editor.drawing(),
+            body,
+            point,
+            'revolute',
+            0,
+            attachment,
+            joint?.id
+          ),
           'vertical_align_bottom'
         )
       );
+    }
     if (target) {
       const lock = this.commandRow('Locked', this.editor.lockCommand(), 'lock');
       lock.kind = 'toggle';
@@ -157,7 +179,7 @@ export class NativeContextMenuService {
         this.commandRow(label, nativeCommand({ kind: 'delete', targets: [target] }), 'delete', true)
       );
       if (target.kind === 'group')
-        for (const id of target.members)
+        for (const id of target.members.filter((id) => id !== WORLD))
           footer.push(
             this.commandRow(
               `Delete Link ${this.editor.bodyName(id)}`,

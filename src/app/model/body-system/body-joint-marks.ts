@@ -12,6 +12,7 @@ export interface BodyJointMark {
   readonly point: Point;
   readonly angle: number;
   readonly grounded: boolean;
+  readonly groundPoint?: Point;
   readonly driveSpeed?: number;
   readonly label: string;
   readonly attachmentId?: AttachmentId;
@@ -96,6 +97,7 @@ export function bodyJointMarks(document: BodyDocument): readonly BodyJointMark[]
       angle: j.kind === 'prismatic' ? angle : axis,
       coordinate: { jointId: j.id, coordinate: 'travel' },
       rider,
+      groundPoint: j.bodyA === WORLD ? station : j.bodyB === WORLD ? rider : undefined,
       guide: [guideAt(from), guideAt(to)],
     });
   }

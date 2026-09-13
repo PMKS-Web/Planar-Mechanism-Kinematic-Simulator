@@ -394,3 +394,34 @@ Not suites — import them from one.
 - **`#bottomBar` is a read-only strip** with `pointer-events: none`. It shows the mode, a status
   phrase, `Degrees of freedom: N` (omitted when the drawing has no mobility to report), the cursor
   coordinates when there are any, and the units.
+
+### Native editor migration (S5)
+
+These suites explicitly select the development-only `?editor=native` route. Production and
+unflagged development remain on the legacy editor until S6. Run with
+`PMKS_BASE_URL=http://localhost:4307 node e2e/<suite>.mjs`; they use the repo's Playwright.
+Reports and inspected films go to `artifacts/bodies-and-joints/S5/`.
+
+- `body-joint-editing.mjs`: native creation, locks, physical unit conversion/undo, clipboard,
+  pair-specific weld/group deletion, displayed link measurements and a paused analysis drag.
+- `body-joint-render.mjs`: all twelve published native fixtures, every intermediate motion
+  pose in a sampled cycle, material counts and rewind.
+- `body-joint-gestures.mjs`: P dragging at fixed and rotating mouths, both cylinder end welds,
+  overlapping connections through the pair selector, force ownership and direction handles.
+- `body-joint-review.mjs`: off-center pin attachment/grounding, removal, preview-covered body drops, exact coordinate refusal and repeated feedback.
+- `body-joint-properties.mjs`: the six link/cylinder creation paths (grid, material, joint),
+  neighbor-preserving undo, accepted/refused atomic bulk mass changes.
+- `body-joint-playback.mjs`: independent clocks, rewind, real elapsed-time playback through
+  two complete cylinder cycles, immutable authored documents and full-path framing.
+- `body-joint-mobile.mjs`: measured phone sheet motion, real touch long-press and pinch,
+  no accidental topology/history edits, view controls.
+- `ui-copy-native.mjs`: native transport, panels, properties, project and context menus against
+  the same banned-word list as the legacy `ui-copy.mjs`.
+- `native-editor.mjs` is the shared fixture/geometry helper. Its Angular debug inspection is
+  read-only; all state changes go through visible controls and real pointer/keyboard actions.
+- `ui-copy-rules.mjs` holds the shared vocabulary patterns; it is a helper, not a suite.
+
+Fixtures live in `src/test-utils/verification/native-editor-fixtures.ts`. Regenerate the native
+payload file and [reviewer URLs](../docs/native-fixture-urls.md) with
+`PMKS_WRITE_NATIVE_FIXTURES=1 npm test -- --watch=false --include=src/tests/verification/native-editor-gallery.spec.ts`.
+The regular gallery spec checks freshness without writing.

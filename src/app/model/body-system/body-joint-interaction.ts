@@ -2,7 +2,7 @@ import { BodyDocument } from './body-document';
 import { BodyEditCommand, BodyEditOperation, BodySelectionRef } from './body-edit-types';
 import { BodyFactory } from './body-factory';
 import { Point, localToWorld, worldToLocal } from './body-frame';
-import { AttachmentId, BodyId, WORLD, newRecordId } from './body-id';
+import { AttachmentId, JointId, BodyId, WORLD, newRecordId } from './body-id';
 import { BodyJoint } from './joint-record';
 import { compileWeldFrames } from './weld-frames';
 import { createBodyCylinder } from './cylinder-factory';
@@ -62,8 +62,10 @@ export function selectionJoints(
 export function weldedSelection(document: BodyDocument, id: BodyId): BodySelectionRef {
   const frames = compileWeldFrames(document);
   const group = frames.ok ? frames.groupOf.get(id) : undefined;
-  const members = group ? [...group.members.keys()].filter((member) => member !== WORLD) : [id];
-  return members.length > 1 ? { kind: 'group', members } : { kind: 'body', id };
+  const members = group ? [...group.members.keys()] : [id];
+  return members.filter((member) => member !== WORLD).length > 1
+    ? { kind: 'group', members }
+    : { kind: 'body', id };
 }
 
 export function attachmentWorld(document: BodyDocument, id: AttachmentId): Point {
@@ -161,16 +163,41 @@ export function insertNativeGround(
   bodyId: BodyId,
   point: Point,
   kind: BodyJoint['kind'] = 'revolute',
-  axis = 0
+  axis = 0,
+  attachmentId?: AttachmentId,
+  jointId?: JointId
 ): BodyEditCommand {
+  const at = attachmentId ? attachmentWorld(document, attachmentId) : point;
   const factory = new BodyFactory(document);
-  const a = factory.attachment(WORLD, point);
-  const b = factory.attachment(
-    bodyId,
-    worldToLocal(document.bodies.find((b) => b.id === bodyId)!.pose, point)
-  );
-  factory.joint(kind, a, b, axis);
-  return insertedRecords(document, factory.document);
+  const a = factory.attachment(WORLD, at);
+  const b =
+    attachmentId ??
+    factory.attachment(
+      bodyId,
+      worldToLocal(document.bodies.find((body) => body.id === bodyId)!.pose, at)
+    );
+  if (kind !== 'revolute') {
+    factory.joint(kind, a, b, axis);
+    return insertedRecords(document, factory.document);
+  }
+  let prepared = factory.document;
+  const joint = document.joints.find((j) => j.id === jointId);
+  if (joint?.kind === 'revolute' && !document.junctions.some((p) => p.joints.includes(joint.id))) {
+    prepared = {
+      ...prepared,
+      junctions: [
+        ...prepared.junctions,
+        {
+          id: newRecordId<'junction'>(),
+          hub: joint.frameA.attachmentId,
+          attachments: [joint.frameA.attachmentId, joint.frameB.attachmentId],
+          joints: [joint.id],
+        },
+      ],
+    };
+  }
+  const insert = insertedRecords(document, prepared);
+  return { ...insert, operations: [...insert.operations, { kind: 'connect-attachments', a, b }] };
 }
 
 export function insertedRecords(before: BodyDocument, after: BodyDocument): BodyEditCommand {

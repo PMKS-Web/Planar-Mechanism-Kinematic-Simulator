@@ -1548,3 +1548,29 @@ cancels algebraically, so do that cancellation before floating-point evaluation:
 `BodyEditModel.heldVector` rotates the difference of local endpoints. Do not loosen final
 hold validation to accommodate precision the equation never needed to lose. The follow-up
 review spec covers length and angle holds down to side length 0.001.
+
+### Native S5 pointer and presentation boundaries (2026-09-13)
+
+`DOMPoint.x/y` are prototype accessors: spreading a result of `matrixTransform` produces an
+empty point. `NativeGridComponent.point` returns a plain `{x,y}` at the screen boundary. The
+native creation suites assert an authored body and one history entry, not just visible paint.
+
+CDK's context-menu trigger must receive the opening event. Calling only `open(coordinates)`
+loses its trailing-`auxclick` suppression: desktop right-click opens and immediately closes the
+menu, while synthetic touch long-press passes. Native marks build the model, then dispatch the
+opening event to the dedicated trigger. Keep both the real-mouse and real-touch tests.
+
+A decoded native payload canonicalizes record order; compare recovery with the accepted loaded
+document, not an arbitrary fixture's array order. Loading an empty development route must not
+write over the last recovery copy. `load(..., writeRecovery=false)` is for that initialization;
+explicit opens and edits still save recovery.
+
+The native edit frame maps a paused pose back to its authored anchor. Do not put the legacy
+`placement` refusal around its inspector: use the native captured-frame permission, or focused
+fields silently become inert even while the gesture planner accepts the same edit. Length and
+angle readouts use displayed material endpoints. Holds use bound geometry endpoints (or their
+coincident material anchors), never the first two attachments: a tracer can come first.
+
+A cylinder end weld and a guide glyph can overlap. The material/assembly panel lists incident
+pairs so each relationship is reachable without requiring a pixel-perfect click underneath
+another glyph. Choosing a member still edits that member's properties, not the entire weld group.

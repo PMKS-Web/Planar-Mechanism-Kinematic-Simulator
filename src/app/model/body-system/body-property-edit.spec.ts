@@ -133,7 +133,7 @@ describe('native property transactions', () => {
       },
       state
     );
-    expect(result).toMatchObject({ ok: false, code: 'invalid-document' });
+    expect(result).toMatchObject({ ok: false, code: 'invalid-mass' });
     expect(authority.document).toEqual(source);
     expect(authority.undoDepth).toBe(0);
     const change = { label: 'Not a rename', id: newRecordId<'body'>() };

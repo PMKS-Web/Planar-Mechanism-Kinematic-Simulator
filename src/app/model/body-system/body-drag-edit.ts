@@ -10,6 +10,7 @@ export interface BodyDragMove {
   /** The material point grabbed at pointer-down is stable while the body turns. */
   readonly grab: Point;
   readonly target: Point;
+  readonly mode?: 'exact' | 'project';
 }
 export function editBodyDrag(document: BodyDocument, operation: BodyDragMove) {
   if (operation.bodyId === WORLD) return bodyEditRefusal('immutable-world');
@@ -27,7 +28,13 @@ export function editBodyDrag(document: BodyDocument, operation: BodyDragMove) {
         { id, bodyId: operation.bodyId, point: operation.grab, label: '', trace: false },
       ],
     },
-    { kind: 'move-point', attachmentId: id, target: operation.target, mode: 'project', rigid: true }
+    {
+      kind: 'move-point',
+      attachmentId: id,
+      target: operation.target,
+      mode: operation.mode ?? 'project',
+      rigid: true,
+    }
   );
   if (!result.ok) return result;
   return {
