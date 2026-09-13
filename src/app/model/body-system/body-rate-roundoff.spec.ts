@@ -6,7 +6,7 @@ import { solveBodyRates } from './body-rates';
 import { STILL_BODY_MOTION } from './simulation-body-context';
 import { newRecordId } from './body-id';
 import { factorBodyRows } from './body-linear-algebra';
-import { projectedRowRoundoff } from './body-rate-roundoff';
+import { projectedRowRoundoff } from './body-rates';
 
 describe('round-off carried from velocity into redundant acceleration rows', () => {
   it('allows constant-speed translation but still rejects a contradictory acceleration across rate scales', () => {

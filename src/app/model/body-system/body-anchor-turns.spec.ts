@@ -1,7 +1,7 @@
 import { nativeRotatingCylinder } from '../../../test-utils/verification/native-rotating-cylinder-fixture';
 import { compileBodyDocument } from './constraint-compiler';
 import { admitBodyPartition } from './body-admission';
-import { bodyAnchorTurns } from './body-anchor-turns';
+import { bodyAnchorTurns } from './body-anchor-recovery';
 import { bodyAnchorMaterialPoses } from './body-anchor-material-poses';
 import { bodyRowValue } from './body-constraint-rows';
 import { executeNativeEdit } from '../../../test-utils/verification/native-lifecycle-fixtures';

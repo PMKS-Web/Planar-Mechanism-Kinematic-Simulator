@@ -1,7 +1,7 @@
 import { nativeLoadedRod } from '../../../test-utils/verification/native-force-fixtures';
 import { compileBodyDocument } from './constraint-compiler';
 import { admitBodyPartition } from './body-admission';
-import { bodyAnchorClock } from './body-anchor-clock';
+import { bodyAnchorClock } from './body-anchor-recovery';
 import { nativeRotaryCarriage } from '../../../test-utils/verification/native-rotary-carriage-fixture';
 import { BodyDocumentAuthority } from './body-document-authority';
 import { NATIVE_EDIT_CONTEXT } from '../../../test-utils/verification/native-lifecycle-fixtures';
