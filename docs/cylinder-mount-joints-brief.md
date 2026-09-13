@@ -198,7 +198,7 @@ Not exhaustive, and not all necessarily real — deciding which are real is part
 - New mechanisms go in `FIXTURE_GALLERY` (`src/test-utils/verification/fixture-gallery.ts`) and
   `npm run fixture-urls` regenerates `docs/fixture-urls.md`; a spec fails if it is stale.
 - Node ≥ 22.22. `npm test -- --watch=false` runs the suite (Vitest, Jasmine style). `npx vitest`
-  does **not** work — see `docs/short-notes.md`.
+  does **not** work — see `docs/environment.md`.
 - The `§ cylinder N` references in code comments point at a spec that **does not exist as a file**
   in this repo. Do not hunt for it; read the comment that cites it.
 

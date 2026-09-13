@@ -409,15 +409,15 @@ table for its keys, so a hint can never drift from the key that fires it.
 
 **Read [`docs/environment.md`](docs/environment.md) before your first change.** One rule
 from it applies to every line you write, so it is worth knowing up front: this codebase is
-[American English throughout](docs/environment.md#spelling-american-everywhere) — `center`,
-`color`, `gray`, `analyze` — in identifiers as much as in prose. Between them, the four
-reference documents under `docs/` collect the surprises: where Playwright has to be installed and why it disappears, which suites
-rewrite tracked files, why `npx vitest` fails when `npm test` works, which hostname the dev server
-actually answers on, the two `@media (max-width: 600px)` blocks in one stylesheet where the later
-one silently wins, and how to tell a failure you caused from one that was already there.
+[American English throughout](docs/code-style.md#spelling-american-everywhere) — `center`,
+`color`, `gray`, `analyze` — in identifiers as much as in prose, and the rule lives in
+[`docs/code-style.md`](docs/code-style.md#spelling-american-everywhere) with the word list.
+Between them, the four reference documents under `docs/` collect the surprises that have already
+cost somebody an afternoon; each one opens by saying which it covers.
 
 **Add to it as you learn.** A surprise nobody writes down is one the next person pays for again, so
-when something costs you an hour, spend two more minutes putting it there.
+when something costs you an hour, spend two more minutes writing it into
+[`docs/short-notes.md`](docs/short-notes.md).
 
 ---
 
@@ -589,9 +589,8 @@ first: `.nvmrc` pins Node 24.
 **On formatting:** everything Prettier can read is formatted, and CI checks it. Run
 `npm run format` before you push; `.editorconfig` keeps your editor in step.
 
-The rest of what is worth knowing before you start — where Playwright lives, which suites rewrite
-tracked files, which hostname the dev server answers on — is in
-[`docs/short-notes.md`](docs/short-notes.md).
+The rest of what is worth knowing before you start is in
+[`docs/environment.md`](docs/environment.md), linked above.
 
 ### Branches and deploys
 

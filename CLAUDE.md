@@ -12,13 +12,9 @@ Requires Node ≥22.22 (or 24.x). The esbuild `application` builder is used; `ou
 
 ## Read this first
 
-**[`docs/environment.md`](docs/environment.md) is the one to read before your first change.** It is
-how to run the app and its checks, where Playwright is installed and why it vanishes, which e2e
-suites rewrite tracked files, why `npx vitest` fails where `npm test` works, which hostname the dev
-server answers on, how to tell a failure you caused from one that was already there, and the
-[spelling rule](docs/environment.md#spelling-american-everywhere) — this codebase is American
-English throughout, in identifiers as well as prose, and `e2e/ui-copy.mjs` (run by hand, not in CI)
-fails on the British forms in anything a reader can see.
+**[`docs/environment.md`](docs/environment.md) is the one to read before your first change.** How
+to run the app and its checks, how to tell a failure you caused from one that was already there,
+and where it deploys. Its own opening lists what it saves you; this does not repeat the list.
 
 The other three are opened when you are already in the area they cover, not up front:
 

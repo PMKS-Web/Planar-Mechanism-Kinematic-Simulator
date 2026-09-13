@@ -41,8 +41,10 @@ describe('documentation inventories', () => {
       // searched by symbol, and a hand-kept list of them would be stale in a
       // month.
       if (start < 0) continue;
-      const end = lines.findIndex((line, i) => i > start && line.startsWith('## '));
-      const contents = lines.slice(start, end).join('\n');
+      // A Contents that is the last `##` in its file has no following heading;
+      // `slice(start, -1)` would silently drop the final line of the index.
+      const after = lines.findIndex((line, i) => i > start && line.startsWith('## '));
+      const contents = lines.slice(start, after < 0 ? lines.length : after).join('\n');
       const sections = lines
         .filter((line) => line.startsWith('## ') && line.trim() !== '## Contents')
         .map((line) => line.slice(3));

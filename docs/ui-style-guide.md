@@ -204,7 +204,7 @@ noun, Title Case or sentence, what a tooltip is for. Link to it; do not copy fro
 need is not there, add it there first.
 
 Spell American English, in identifiers as well as prose. See [the spelling
-rule](environment.md#spelling-american-everywhere). [`e2e/ui-copy.mjs`](../e2e/ui-copy.mjs)
+rule](code-style.md#spelling-american-everywhere). [`e2e/ui-copy.mjs`](../e2e/ui-copy.mjs)
 reads the running app and fails on banned words.
 
 Messages go through `NotificationService`

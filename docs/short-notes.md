@@ -8,12 +8,10 @@ reading it top to bottom. There is deliberately no index — the headings are th
 hand-kept list of eighty-odd of them would be stale within a month.
 
 Add to it whenever something surprises you. A surprise nobody writes down is one the next person
-pays for again.
+pays for again. A note that outgrows a heading is not a note any more: move it to the document
+whose title covers it, and leave a heading here only if someone would still search for the symbol.
 
 ---
-
-One surprise each, in no particular order. Each heading states the rule; search for the symbol
-you are touching.
 
 ### Analysis graphs: keep annotations in the options, not on the chart
 
@@ -1030,3 +1028,21 @@ the stack and the dev server's HMR socket keep the page busy; wait for `load` an
 every entry in `index.json` and fails on a console error or an empty render; it is the check to run
 after touching a block. `node .storybook/tools/token-usage.mjs` counts where each token is used,
 least-used first, which is how to spot a shade nobody needed.
+
+### A lazy `injector.get(...)` can outlive the injector it resolves from
+
+A predicate or key handler registered
+with a root service keeps running after the component that registered it is torn down, and a
+service that resolves its dependencies on first *use* then reads a destroyed injector —
+`NG0205`, seventy-two times, in a suite whose tests all passed. Two halves to the fix: resolve
+eagerly where the ring allows it, and hand the predicate back on destroy
+(`destroyRef.onDestroy`). `NewGridComponent`'s `whenArrowsNudge` is the example.
+
+### `anyComponentStyle` is 6 kB warning / 10 kB error
+
+Raised from 4/6 for the CAD Export dialog
+— a whole screen of UI in one component, where the cap was written for panels. It is a global
+cap with no per-component override, so the choice is one number for everything; 10 kB still
+catches real bloat. `npm run build` is where you find out, and it fails the build rather than
+warning.
+

@@ -13,9 +13,9 @@ In this order, the first time:
 
 1. [../README.md](../README.md) — what the app is, and the four principles behind it.
 2. [../CLAUDE.md](../CLAUDE.md) — architecture, commands and branch rules. Named for one agent, written for all of them and for people.
-3. [code-style.md](code-style.md) — what we ask of code, how this codebase writes Angular, and what `npm run check` enforces.
-4. [ui-style-guide.md](ui-style-guide.md) and [ui-vocabulary.md](ui-vocabulary.md) — before touching anything a reader sees.
-5. [environment.md](environment.md) — how to run the app and its checks, and how to tell a failure you caused from one that was already there. The other three reference documents below are opened when you are already in the area they cover, not up front. *Reference*
+3. [environment.md](environment.md) — how to run the app and its checks, and how to tell a failure you caused from one that was already there. The other three reference documents below are opened when you are already in the area they cover, not up front.
+4. [code-style.md](code-style.md) — what we ask of code, how this codebase writes Angular, and what `npm run check` enforces.
+5. [ui-style-guide.md](ui-style-guide.md) and [ui-vocabulary.md](ui-vocabulary.md) — before touching anything a reader sees.
 
 `npm run storybook` (hosted at [docs.pmksplus.com](https://docs.pmksplus.com)) is the component gallery, which also renders the three guides above beside the components they govern, plus the design tokens and a reuse backlog.
 

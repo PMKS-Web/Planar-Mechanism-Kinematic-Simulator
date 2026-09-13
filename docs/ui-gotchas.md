@@ -142,6 +142,13 @@ pixels are available; anything you add to the bottom row has to survive that.
 
 ---
 
+**Reduced motion is one rule in `styles.scss`, not one per component.** Under
+`prefers-reduced-motion: reduce` every transition and animation is cut to almost nothing, with
+`!important`, from the one global stylesheet. If something still moves with the preference on it
+is script-driven -- the Web Animations API does not read the stylesheet -- and needs its own
+`matchMedia` check, as `LeftTabsComponent.slide` has. `e2e/reduced-motion.mjs` opens the app with
+the preference on.
+
 ## Editing, playback, and who is allowed to say no
 
 **Context menus share pose-preservation rules across Edit and Analysis.** Their rows come from

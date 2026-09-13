@@ -21,9 +21,7 @@ in the same holes.
 - [Getting inside the running app](#getting-inside-the-running-app)
 - [Working out whether a failure is yours](#working-out-whether-a-failure-is-yours)
 - [Deploys, domains and surrounding services](#deploys-domains-and-surrounding-services)
-- [Formatting and the fences](#formatting-and-the-fences)
-- [Spelling: American, everywhere](#spelling-american-everywhere)
-- [Angular and build gotchas](#angular-and-build-gotchas)
+- [Formatting](#formatting)
 
 ---
 
@@ -413,135 +411,12 @@ the answer should be cannot be invalidated by a palette or a template.
 
 ---
 
-## Formatting and the fences
+## Formatting
 
-**Everything Prettier can read is formatted, and CI keeps it that way.** `npm run lint:format` is
-`prettier --check .`, it fails a pull request whose files are not Prettier-clean, and the ruleset on
-`staging` and `main` will not merge a failing check. `npm run format` fixes all of it before you
-push; `npx prettier --list-different .` shows what it would touch. Markdown, `.mdx` and the
-generated tables are ignored on purpose (`.prettierignore` says why for each).
+The rules are in [`code-style.md`](code-style.md#formatting) — Prettier, stylelint, the warning
+ratchet and the two capped hubs — and are not repeated here. One operational note that belongs with
+the toolchain rather than the rules:
 
 Prettier is pinned in `devDependencies`, so a local run and CI agree. A different Prettier fetched
 by a bare `npx` in a checkout without `node_modules` can disagree about a line or two — run
 `npm ci` first.
-
-**A stylesheet cannot hold a raw hex color, or a named one.** `npm run lint:styles` (stylelint,
-`color-no-hex` and `color-named`) fails CI on `#999` or `white` anywhere but
-`src/styles/_tokens.scss`. Reuse a role, or name a new one there: the set was collapsed from 116
-to about 60 by folding every near-duplicate shade into the role it played, and the gallery's
-Tokens page shows them grouped. A second shade of an existing role is how it got to 116.
-
-**A number is not a color, so stylelint cannot see it.** A width in a media query, an `rgba()`
-and a z-index all pass `lint:styles`. `src/tests/verification/stylesheet-fences.spec.ts` is the
-fence for the first two: a named width (600, 720, 380, 780 or 1340) written as a literal in a media
-query fails it, and so does a rise in the count of raw `rgba()` colors outside the token file.
-Write `nav.$phone-max-width` from `left-tabs.vars.scss`, and a role token: a text tier
-(`--text-secondary`, never `rgba(0, 0, 0, 0.6)`), a wash (`--hover-wash`) or a shadow
-(`--scroll-shadow`); lower the ceiling in the spec when you remove some. The layers (`--layer-*`)
-are held by review: nothing at the app level writes a z-index number of its own.
-
-**Reduced motion is one rule in `styles.scss`, not one per component.** Under
-`prefers-reduced-motion: reduce` every transition and animation is cut to almost nothing, with
-`!important`, from the one global stylesheet. If something still moves with the preference on it
-is script-driven -- the Web Animations API does not read the stylesheet -- and needs its own
-`matchMedia` check, as `LeftTabsComponent.slide` has. `e2e/reduced-motion.mjs` opens the app with
-the preference on.
-
-**The linter's warnings are a ratchet, and the hubs are capped.** `npm run lint` runs with
-`--max-warnings` at today's count, so a new warning fails the script the way an error would; the
-number is in `package.json`, and you lower it when you fix one. `mechanism.service.ts` and
-`new-grid.component.ts` are held by `max-lines` *errors* at their own counts in
-`eslint.config.mjs`, so a fix that adds lines to a hub fails until something moves out of it. That
-is the rule "the two hubs only delegate" with teeth; the number goes down, not up.
-
-`.prettierignore` deliberately excludes Markdown — Prettier pads every table cell and rewrites
-`*emphasis*` as `_emphasis_`, so a one-line doc edit lands as hundreds of lines of realignment.
-
----
-
-## Spelling: American, everywhere
-
-**Comments, user-facing strings, identifiers, docs and test names are all American English.**
-`e2e/ui-copy.mjs` flags `colour`, `centre`, `neighbour` and `analyse` on the surfaces it walks,
-but it is run by hand and not in CI, so nothing fails the build on them; the rest is convention. It is a consistency rule rather than a taste
-one: `centre` and `center` are the same word to a reader and two different symbols to `grep`, so a
-codebase holding both quietly answers half of every search. In identifiers it is worse, where
-`colourOf` and `colorOf` are two functions nobody meant to write.
-
-| Write | Not |
-| --- | --- |
-| center, centered, centering, centerline | centre, centred, centring, centreline |
-| color, colored, coloring | colour, coloured, colouring |
-| gray, grayed | grey, greyed |
-| neighbor, neighboring | neighbour, neighbouring |
-| behavior | behaviour |
-| meter, centimeter, millimeter | metre, centimetre, millimetre |
-| analyze, analyzed, analyzing | analyse, analysed, analysing |
-| normalize, initialize, serialize, recognize, organize | normalise, initialise, serialise, recognise, organise |
-| labeled, modeled, traveled, canceled | labelled, modelled, travelled, cancelled |
-| catalog, program, dialog, license, defense, offense | catalogue, programme, dialogue, licence, defence, offence |
-| favor, honor, artifact, judgment, math, learned | favour, honour, artefact, judgement, maths, learnt |
-| while, among | whilst, amongst |
-
-### Sweeping it, and the three ways that goes wrong
-
-A find-and-replace over stems is the obvious way to do this and it breaks in three separate ways,
-all of which compile and all of which pass every test, because the damage is in prose and in
-identifiers renamed consistently on both sides:
-
-- **A stem is not the whole word.** British drops the `e` that American keeps, so `centre` ->
-  `center` turns `centred` into `centerd`. It did, fifty-five times. And `centring` has no `centre`
-  in it at all, so the same sweep misses every one. Put both in an explicit word list ahead of the
-  stem pass.
-- **A stem can span a camelCase boundary.** Case-insensitively, `modell` is inside `ModelLength`,
-  `labell` is inside `labelLevel`, `travell` is inside `cylinderTravelLabel`, and — the one nobody
-  sees coming — `litre` is inside `unsplitResult`. Renaming those produced `formatModelength`,
-  `labelevel`, `cylinderTravelabel` and `unsplitersult`. Reject any match containing a lowercase
-  letter immediately followed by an uppercase one: that hump means the stem only appeared to be
-  there.
-- **A stem can wreck an American word.** `programme` -> `program` applied as a stem turns
-  `programmed` into `programd`; `cancell` -> `cancel` turns `cancellation`, which is correct
-  American, into `cancelation`. Whole-word list for both.
-
-Two words have to be read rather than swept:
-
-- **`analyses` is correct** as the plural of *analysis* — "the two analyses need it". It is wrong
-  only as a verb, where American writes *analyzes*.
-- **`cancellation` keeps both `l`s**, even though `canceled` and `canceling` drop one.
-
-And do not sweep `e2e/ui-copy.mjs`. It is a list of words that must never appear, so rewriting it
-inverts the lint into a ban on the spellings it exists to enforce. That happened, and the check went
-on passing because it was now banning words the app does not use.
-
-Afterwards, grep for the American stem followed by a suspicious ending — `centerd`, `Modelength`,
-`unsplitersult` — and read the diff. Nothing else catches this class of mistake.
-
----
-
-## Angular and build gotchas
-
-- **Fully standalone.** No `AppModule`, no `NgModule` anywhere. A component spec imports the
-  component itself, never a declaring module.
-- **Default change detection**, not `OnPush`. That is the house style; matching it matters more
-  than the theoretical win.
-- **No runtime `require()`.** The esbuild `application` builder does not support it. ES imports
-  only.
-- **`outputPath.browser` is pinned to `""`** so the build stays flat at `dist/pmksweb`, which is
-  what Netlify publishes.
-- **Circular service dependencies are broken with `injector.get(...)` at call time**, in
-  `MechanismService`, `SaveHistoryService` and `UrlProcessorService`. Adding a constructor injection
-  between those three will bite.
-- **Not everything goes through a service.** Some components still talk through statics —
-  `RightPanelComponent.openTab`, `insistOn`. Grep for the static before assuming a service is the
-  only channel.
-- **A lazy `injector.get(...)` can outlive its injector.** A predicate or key handler registered
-  with a root service keeps running after the component that registered it is torn down, and a
-  service that resolves its dependencies on first *use* then reads a destroyed injector —
-  `NG0205`, seventy-two times, in a suite whose tests all passed. Two halves to the fix: resolve
-  eagerly where the ring allows it, and hand the predicate back on destroy
-  (`destroyRef.onDestroy`). `NewGridComponent`'s `whenArrowsNudge` is the example.
-- **`anyComponentStyle` is 6 kB warning / 10 kB error**, raised from 4/6 for the CAD Export dialog
-  — a whole screen of UI in one component, where the cap was written for panels. It is a global
-  cap with no per-component override, so the choice is one number for everything; 10 kB still
-  catches real bloat. `npm run build` is where you find out, and it fails the build rather than
-  warning.
