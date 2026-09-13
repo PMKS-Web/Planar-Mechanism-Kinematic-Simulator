@@ -1,0 +1,189 @@
+# The whole e2e batch, once a night, against `staging`.
+#
+# The suites are the only thing covering the interaction layer — drags, menus,
+# playback, the phone sheet — and nothing runs them, so a suite can encode a
+# rule the product reversed months ago and stay quiet about it. That is not
+# hypothetical: `locking.mjs` asserted that lock marks stand down outside Edit
+# long after the analysis modes were made editable and the marks were kept.
+#
+# Sharded eight ways it is a quarter of an hour of wall clock and nobody is
+# waiting for it, so it runs everything the gate is too slow or too twitchy to
+# carry, retries once to tell "broken" from "flaky", and files what it found in
+# one issue it keeps updating rather than a new one every morning.
+
+# **This one does not start working when it merges into `staging`.** GitHub reads
+# `schedule` and `workflow_dispatch` off the default branch only, and the default
+# branch here is `main` — so neither the nightly run nor the Run workflow button
+# exists until a release pull request carries this file from `staging` to `main`.
+# The gate in `e2e-gate.yml` has no such problem: `pull_request` is read from the
+# pull request's own branch, so it works the moment it is opened.
+
+name: E2E nightly
+
+on:
+  schedule:
+    # 09:00 UTC — after the evening's merges on either coast, before the morning.
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch to run against.
+        required: false
+        default: staging
+      lane:
+        description: Which lane to run.
+        required: false
+        default: nightly
+        type: choice
+        options: [nightly, gate]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: e2e-nightly
+  cancel-in-progress: false
+
+jobs:
+  shard:
+    name: e2e nightly ${{ matrix.shard }}/8
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+    steps:
+      # A scheduled run checks out the default branch, which is `main` and a
+      # release behind. What wants watching is what is about to be released.
+      - name: Check out staging
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ inputs.ref || 'staging' }}
+          persist-credentials: false
+
+      - name: Set up an e2e runner
+        uses: ./.github/actions/setup-e2e
+        with:
+          browsers: chromium firefox webkit chrome
+
+      - name: Run this shard
+        run: >-
+          node e2e/run-suites.mjs
+          --lane ${{ inputs.lane || 'nightly' }}
+          --shard ${{ matrix.shard }}/8
+          --retries 1
+
+      - name: Keep what happened
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-nightly-${{ matrix.shard }}
+          path: artifacts/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  report:
+    name: Report
+    runs-on: ubuntu-24.04
+    needs: shard
+    if: always()
+    steps:
+      - name: Check out tested source
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ inputs.ref || 'staging' }}
+          persist-credentials: false
+
+      - name: Collect the shard reports
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: e2e-nightly-*
+          path: collected
+        continue-on-error: true
+
+      - name: Say what failed, in one issue rather than a new one each morning
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            // Every shard writes report-i-of-8.json wherever it saved artifacts.
+            const reports = [];
+            const walk = (dir) => {
+              for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+                const at = path.join(dir, entry.name);
+                if (entry.isDirectory()) walk(at);
+                else if (/^report-\d+-of-\d+\.json$/.test(entry.name))
+                  reports.push(JSON.parse(fs.readFileSync(at, 'utf8')));
+              }
+            };
+            if (fs.existsSync('collected')) walk('collected');
+
+            const runs = reports.flatMap((report) => report.results);
+            const failed = runs.filter((run) => run.code !== 0);
+            const flaky = runs.filter((run) => run.flaky);
+            const shardsOk = '${{ needs.shard.result }}' === 'success';
+
+            const title = 'Nightly e2e: suites that are not green';
+            const label = 'nightly-e2e';
+            const { owner, repo } = context.repo;
+            const open = await github.rest.issues.listForRepo({
+              owner, repo, state: 'open', labels: label,
+            });
+            const existing = open.data[0];
+
+            // A run that reported nothing and passed nothing is its own problem:
+            // saying "all green" there would be the wrong thing to remember.
+            if (shardsOk && runs.length > 0 && failed.length === 0) {
+              if (existing) {
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: existing.number,
+                  body: `Green again as of ${context.sha.slice(0, 8)} — closing.`,
+                });
+                await github.rest.issues.update({
+                  owner, repo, issue_number: existing.number, state: 'closed',
+                });
+              }
+              return;
+            }
+
+            const list = (rows) =>
+              rows.length
+                ? rows.map((r) => `- \`${r.name}\` (${r.seconds}s)`).join('\n')
+                : '_none_';
+            const body = [
+              `Run: ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`,
+              `Commit: ${context.sha}`,
+              '',
+              `**Failed (${failed.length})** — failed twice, so not a flake:`,
+              list(failed),
+              '',
+              `**Flaky (${flaky.length})** — failed, then passed on a retry:`,
+              list(flaky),
+              '',
+              runs.length === 0
+                ? '_No shard reported. The run itself broke; read the job logs._'
+                : `${runs.length - failed.length}/${runs.length} suites passed.`,
+              '',
+              'Screenshots and reports are on the run, under `e2e-nightly-*`.',
+              '',
+              'A suite that fails every night is either a real defect or a check that',
+              'has outlived its rule. Both are worth fixing; neither is worth muting.',
+            ].join('\n');
+
+            if (existing) {
+              await github.rest.issues.update({
+                owner, repo, issue_number: existing.number, body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner, repo, title, body, labels: [label],
+              });
+            }
+
+      - name: Fail the run if a shard did
+        if: needs.shard.result != 'success'
+        run: exit 1
