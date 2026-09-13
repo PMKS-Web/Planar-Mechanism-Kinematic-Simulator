@@ -13,6 +13,28 @@ whose title covers it, and leave a heading here only if someone would still sear
 
 ---
 
+### An e2e suite that launches the machine's own Chrome is not portable
+
+Eight suites read `PMKS_CHROME` and hand Playwright an `executablePath` rather than using the
+Chromium it pins. On a laptop that is the Chrome sitting in `/Applications`; on a CI runner it is
+whatever the image installed that morning, and it can be upgraded *during the job*. The first
+Linux run of `phase2-floating-slot` passed both its own checks and then hung the full thirty
+seconds inside a plain `page.screenshot({ path })` — fonts loaded, nothing else. Nothing was wrong
+with the app or the suite.
+
+So `e2e/suites.mjs` keeps all of them out of the `gate` lane: the gate installs Chromium only, and
+anything wanting the machine's own browser runs in the nightly, where a retry tells a break from a
+flake. If you write a suite that needs real Chrome, expect the same and say so in its lane note.
+
+### A scheduled workflow is read off the default branch, which here is a release behind
+
+`on: schedule` and `on: workflow_dispatch` are taken from the default branch's copy of the workflow
+file — and the default branch is `main`, which pull requests never target. So
+`.github/workflows/e2e-nightly.yml` does nothing at all, and its **Run workflow** button does not
+exist, until a release pull request carries it from `staging` to `main`. `on: pull_request` has no
+such rule: it is read from the pull request's own branch, so `e2e-gate.yml` worked the moment it
+was opened. A new scheduled workflow that "never fires" is almost always this and not the cron.
+
 ### Analysis graphs: keep annotations in the options, not on the chart
 
 `ApexCharts.addXaxisAnnotation(…, pushToMemory=false)` draws onto the chart, and *any* later
