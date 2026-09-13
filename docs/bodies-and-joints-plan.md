@@ -6,7 +6,9 @@ Planning baseline: `bodies-and-joints-plan` at `11fbe05070330dd193ac316ea0de7c64
 September 10, 2026, based on `staging` at `a3cac26a`. This document is the planning deliverable.
 The original proposal was one Codex `/goal` with Fable 5.1 reviews. Current authorization
 (September 13): S0–S4 are implemented; rebase and style alignment, a draft PR into staging,
-and a full-PR Fable review are authorized. S5 remains pending and the goal is disabled.
+and a full-PR Fable review are complete. The maintainer has now authorized S5 on draft PR #13,
+including both UI validation workflows and a Fable 5.1 stage review. S6–S8 remain pending;
+the goal stays disabled.
 The execution ledger is authoritative for current status; the milestone descriptions below
 retain the complete migration scope. Unless a path starts with `src/`, model/service/component paths are
 relative to `src/app/`; e2e and docs paths are repository-relative. Named functions are the navigation anchors; older plans' line numbers are historical.

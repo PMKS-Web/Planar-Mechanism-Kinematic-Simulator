@@ -39,6 +39,7 @@ In this order, the first time:
 - [bodies-and-joints-plan.md](bodies-and-joints-plan.md) — S0–S4 implemented; native UI and removal gates remain S5–S8. *Partly built*
 - [bodies-and-joints-progress.md](bodies-and-joints-progress.md) — execution checkpoints, review findings and verification evidence. *Reference*
 - [bodies-and-joints-contract.md](bodies-and-joints-contract.md) — native document, solver and editing contracts implemented through S4. *Reference*
+- [native-fixture-urls.md](native-fixture-urls.md) — native development-route fixtures for S5 visual and interaction checks. *Reference*
 - [bodies-and-joints-equations.md](bodies-and-joints-equations.md) — native constraint, rate and force derivations and their verification. *Reference*
 - [bodies-and-joints-consumer-audit.md](bodies-and-joints-consumer-audit.md) — inventory of legacy consumers and the remaining S5–S7 cutover work. *Partly built*
 

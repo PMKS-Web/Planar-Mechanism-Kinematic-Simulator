@@ -60,4 +60,5 @@ export type BodyPropertyOperation =
       readonly from: AttachmentId;
       readonly to: AttachmentId;
       readonly dimension: 'length' | 'angle' | null;
+      readonly enabled?: boolean;
     };

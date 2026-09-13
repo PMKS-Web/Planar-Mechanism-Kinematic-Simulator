@@ -136,9 +136,9 @@ export class NativeBodyGesture {
           low = mid;
         } else high = mid;
       }
-      return { ok: true as const, plan: this.plan, limited: true };
+      return { ok: true as const, plan: this.plan, limited: true as const, refusal: result.plan };
     }
-    return { ok: true as const, plan: this.plan, limited: false };
+    return { ok: true as const, plan: this.plan, limited: false as const };
   }
   finish(authority: BodyDocumentAuthority, state: EditState) {
     if (authority !== this.authority) return bodyEditRefusal('stale-pose');

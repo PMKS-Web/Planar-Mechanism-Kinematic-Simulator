@@ -1,0 +1,241 @@
+<app-native-grid />
+<header data-canvas-inset="top">
+  <button
+    mat-button
+    class="project-button"
+    aria-label="Project Menu"
+    (click)="projectOpen.set(!projectOpen())"
+  >
+    <mat-icon>menu</mat-icon><img alt="PMKS+" src="assets/PMKS_logo.png" />
+  </button>
+  <nav aria-label="Modes">
+    @for (item of modes; track item) {
+      <button mat-button [class.active]="activeMode() === item" (click)="mode(item)">
+        @switch (item) {
+          @case ('Synthesis') {
+            <mat-icon svgIcon="synthesis" />
+          }
+          @case ('Edit') {
+            <mat-icon svgIcon="edit_outline" />
+          }
+          @case ('Kinematic') {
+            <mat-icon>query_stats</mat-icon>
+          }
+          @default {
+            <mat-icon>balance</mat-icon>
+          }
+        }
+        {{ item }}
+      </button>
+    }
+  </nav>
+  <div class="history">
+    <button
+      mat-icon-button
+      aria-label="Undo"
+      [disabled]="!editor.store.undoDepth || !!refusalFor('history', editor.state())"
+      [title]="refusalFor('history', editor.state())?.long || 'Undo'"
+      (click)="editor.history('undo')"
+    >
+      <mat-icon>undo</mat-icon>
+    </button>
+    <button
+      mat-icon-button
+      aria-label="Redo"
+      [disabled]="!editor.store.redoDepth || !!refusalFor('history', editor.state())"
+      [title]="refusalFor('history', editor.state())?.long || 'Redo'"
+      (click)="editor.history('redo')"
+    >
+      <mat-icon>redo</mat-icon>
+    </button>
+  </div>
+</header>
+<aside
+  #modePanel
+  [class.project-card]="projectOpen()"
+  [class.inspector]="!projectOpen() && editor.selection().length > 0"
+  [class.welcome]="!projectOpen() && !editor.selection().length"
+  [class.collapsed]="viewport.isPhone() && !sheetOpen() && !projectOpen()"
+  [attr.data-canvas-inset]="viewport.isPhone() ? 'bottom' : 'left'"
+  [attr.aria-label]="projectOpen() ? 'Project' : 'Edit Panel'"
+>
+  @if (viewport.isPhone() && !projectOpen()) {
+    <button
+      class="sheet-handle"
+      mat-button
+      [attr.aria-expanded]="sheetOpen()"
+      (click)="toggleSheet()"
+    >
+      {{ sheetOpen() ? 'Close' : 'Open' }} {{ activeMode() }} Panel
+      <mat-icon>{{ sheetOpen() ? 'expand_more' : 'expand_less' }}</mat-icon>
+    </button>
+  }
+  <div
+    class="sheet-content"
+    [attr.inert]="(viewport.isPhone() && !sheetOpen() && !projectOpen()) || null"
+  >
+    @if (projectOpen()) {
+      <button mat-button (click)="file.click()">Open Project</button
+      ><input #file type="file" hidden accept=".pmks,.txt" (change)="open($event)" />
+      <button mat-button (click)="save()">Save Project</button
+      ><button mat-button (click)="share()">Share Project</button>
+      <button mat-button (click)="editor.recover()">Recover Project</button>
+      <button mat-button (click)="editor.copy()">Copy</button
+      ><button mat-button (click)="editor.paste()">Paste</button>
+      <input-block
+        [formGroup]="settingsFields"
+        _formControl="size"
+        dataField="native-object-size"
+        (focusout)="objectSize()"
+        tooltip="Size of the joint marks on the drawing."
+        >Object Size</input-block
+      >
+      <label
+        >Length Unit
+        <select
+          aria-label="Length Unit"
+          [value]="editor.document().units.length"
+          (change)="unit($event)"
+        >
+          <option value="cm">cm</option>
+          <option value="m">m</option>
+          <option value="in">in</option>
+        </select></label
+      >
+    } @else if (editor.selection().length) {
+      <app-native-inspector />
+    } @else {
+      <h2>{{ activeMode() }}</h2>
+      @if (activeMode() === 'Edit') {
+        <p>Select an object to edit it, or right-click the grid to add a link or cylinder.</p>
+        <button
+          mat-button
+          [disabled]="!!refusalFor('build', editor.state())"
+          [title]="refusalFor('build', editor.state())?.long || ''"
+          (click)="grid().tool.set('link')"
+        >
+          Add Link
+          @if (refusalFor('build', editor.state()); as why) {
+            <small>{{ why.short }}</small>
+          }
+        </button>
+        <button
+          mat-button
+          [disabled]="!!refusalFor('build', editor.state())"
+          [title]="refusalFor('build', editor.state())?.long || ''"
+          (click)="grid().tool.set('cylinder')"
+        >
+          Add Cylinder
+          @if (refusalFor('build', editor.state()); as why) {
+            <small>{{ why.short }}</small>
+          }
+        </button>
+      } @else {
+        <p>Select an object to inspect it. Return to Edit to change connections.</p>
+      }
+    }
+  </div>
+</aside>
+<app-notification-stack />
+@if (grid().tool()) {
+  <div class="creation-note">
+    Drag to {{ editor.selection().length ? 'attach' : 'add' }} a {{ grid().tool() }}. Press Esc to
+    cancel.
+  </div>
+}
+<section #transport class="transport" data-canvas-inset="bottom" aria-label="Animation">
+  <div class="transport-controls">
+    @if (viewport.isPhone()) {
+      <button
+        mat-icon-button
+        aria-label="View Controls"
+        [attr.aria-expanded]="viewsOpen()"
+        (click)="viewsOpen.set(!viewsOpen())"
+      >
+        <mat-icon>visibility</mat-icon>
+      </button>
+    }
+    <button
+      mat-icon-button
+      [attr.aria-label]="editor.playing() ? 'Pause' : 'Play'"
+      [disabled]="!!motionRefusal()"
+      [title]="motionRefusal()?.long || ''"
+      (click)="playback.toggle()"
+    >
+      <mat-icon>{{ editor.playing() ? 'pause' : 'play_arrow' }}</mat-icon>
+    </button>
+    <button
+      mat-icon-button
+      aria-label="Rewind"
+      [disabled]="!!motionRefusal()"
+      [title]="motionRefusal()?.long || ''"
+      (click)="playback.rewind()"
+    >
+      <mat-icon>replay</mat-icon>
+    </button>
+    <button
+      mat-button
+      (click)="playback.speed.set(playback.speed() === 1 ? 2 : playback.speed() === 2 ? 0.5 : 1)"
+    >
+      {{ playback.speed() }}×
+    </button>
+  </div>
+  @if (motionRefusal(); as why) {
+    <p class="motion-refusal" [title]="why.long">{{ why.long }}</p>
+  }
+  @for (machine of playback.machines(); track machine.key; let i = $index) {
+    <div class="clock">
+      <span>M{{ i + 1 }}</span
+      ><input
+        type="range"
+        [attr.aria-label]="'M' + (i + 1) + ' Animation Position'"
+        min="0"
+        [max]="machine.path.samples.length - 1"
+        [value]="playback.indices().get(machine.key) || 0"
+        (input)="playback.seek(machine.key, +$any($event.target).value)"
+      />
+      <label
+        ><input
+          type="checkbox"
+          [checked]="playback.isSynced(machine)"
+          [attr.aria-label]="'Sync M' + (i + 1)"
+          (change)="playback.sync(machine, $any($event.target).checked)"
+        />Sync</label
+      >
+      @if (!playback.isSynced(machine)) {
+        <button
+          mat-icon-button
+          [attr.aria-label]="
+            (playback.independent().has(machine.key) ? 'Pause M' : 'Play M') + (i + 1)
+          "
+          (click)="playback.toggleMachine(machine)"
+        >
+          <mat-icon>{{
+            playback.independent().has(machine.key) ? 'pause' : 'play_arrow'
+          }}</mat-icon>
+        </button>
+      }
+    </div>
+  }
+</section>
+@if (!viewport.isPhone() || viewsOpen()) {
+  <div class="view-controls" [class.phone]="viewport.isPhone()" data-canvas-inset="bottom">
+    <button
+      mat-icon-button
+      aria-label="Multiple Selection"
+      [attr.aria-pressed]="grid().multiple()"
+      (click)="grid().multiple.set(!grid().multiple())"
+    >
+      <mat-icon>{{ grid().multiple() ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
+    </button>
+    <button mat-icon-button aria-label="Zoom Out" (click)="grid().zoom(1 / 1.2)">
+      <mat-icon>remove</mat-icon>
+    </button>
+    <button mat-icon-button aria-label="Zoom In" (click)="grid().zoom(1.2)">
+      <mat-icon>add</mat-icon>
+    </button>
+    <button mat-icon-button aria-label="Fit to View" (click)="grid().fit()">
+      <mat-icon>fit_screen</mat-icon>
+    </button>
+  </div>
+}

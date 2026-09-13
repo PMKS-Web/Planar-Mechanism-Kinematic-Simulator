@@ -1,0 +1,28 @@
+{
+  "commit": "6d371c82e8a5270cde36267e61ecbc40d3d44098",
+  "sites": 2865,
+  "files": 153,
+  "patterns": [
+    {
+      "name": "point graph",
+      "pattern": "\\.(?:joints|links|connectedJoints|subset)\\b"
+    },
+    {
+      "name": "legacy record",
+      "pattern": "\\b(?:RealLink|RealJoint|RevJoint|PrisJoint|SliderBlock)\\b"
+    },
+    {
+      "name": "legacy authority",
+      "pattern": "\\b(?:MechanismService|ActiveObjService|GridUtilsService|SvgGridService)\\b"
+    },
+    {
+      "name": "scale boundary",
+      "pattern": "\\b(?:MODEL_SCALE|OBJECT_SCALE)\\b"
+    },
+    {
+      "name": "canvas registration",
+      "pattern": "\\b(?:canvasHandle|registerCanvasHandle|jointDragState|JointDragState|modeChangeHooks|registerModeChangeHooks)\\b"
+    }
+  ],
+  "note": "A mechanical superset, including declarations and comments. Close this scan and the frozen S0 semantic inventory separately; a missing match does not prove removal."
+}

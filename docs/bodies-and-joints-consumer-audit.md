@@ -21,6 +21,19 @@ an unreachable legacy panel from disappearing from the audit merely because it w
 browser test's path. S6/S7 must prove each remaining caller's purpose or delete it; all
 conversion statuses remain pending until then.
 
+## Refresh after staging's service extraction
+
+The [current scan](bodies-and-joints-consumers-current.tsv) is pinned to
+`6d371c82e8a5270cde36267e61ecbc40d3d44098`, after the staging rebase and before S5.
+It records 2,865 matching lines in 153 files, including canvas registrations, point drag state,
+mode hooks, authority imports and scale boundaries. It is intentionally a mechanical superset,
+not a claim of 2,865 defects. The original semantic inventory remains unchanged. S6/S7 must
+close both inventories with a native owner, an explicit retained compatibility purpose, or removal.
+
+Reproduce this scan with `node scripts/body-consumer-inventory.mjs 6d371c82`. Its companion
+[JSON](bodies-and-joints-consumers-current.json) records the exact patterns and commit. Comments
+and declarations count; matching fewer lines alone does not prove a consumer has been migrated.
+
 ## Decisions that follow from reading the consumers
 
 | Existing responsibility | Native replacement and important distinction |

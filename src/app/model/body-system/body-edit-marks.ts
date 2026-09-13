@@ -61,23 +61,35 @@ export function editBodyMarks(
       const pose = document.bodies.find((body) => body.id === operation.bodyId)!.pose;
       const delta = { x: to.point.x - from.point.x, y: to.point.y - from.point.y };
       if (delta.x === 0 && delta.y === 0) return bodyEditRefusal('invalid-command');
+      const samePair = (item: BodyDocument['holds'][number]) =>
+        item.bodyId === operation.bodyId &&
+        ((item.from === from.id && item.to === to.id) ||
+          (item.from === to.id && item.to === from.id));
+      const old = document.holds.find(samePair);
       const hold = {
         bodyId: operation.bodyId,
         from: from.id,
         to: to.id,
-        ...(operation.dimension === 'length'
-          ? { length: Math.hypot(delta.x, delta.y) }
-          : { angle: pose.angle + Math.atan2(delta.y, delta.x) }),
+        ...(old?.length !== undefined ? { length: old.length } : {}),
+        ...(old?.angle !== undefined
+          ? {
+              angle: old.from === from.id ? old.angle : old.angle + Math.PI,
+            }
+          : {}),
       };
-      const holds = document.holds.filter(
-        (item) =>
-          item.bodyId !== operation.bodyId ||
-          !(
-            (item.from === from.id && item.to === to.id) ||
-            (item.from === to.id && item.to === from.id)
-          )
-      );
-      next = { ...document, holds: operation.dimension === null ? holds : [...holds, hold] };
+      if (operation.dimension !== null) {
+        if (operation.enabled === false) delete hold[operation.dimension];
+        else if (operation.dimension === 'length') hold.length = Math.hypot(delta.x, delta.y);
+        else hold.angle = pose.angle + Math.atan2(delta.y, delta.x);
+      }
+      const holds = document.holds.filter((item) => !samePair(item));
+      next = {
+        ...document,
+        holds:
+          operation.dimension !== null && (hold.length !== undefined || hold.angle !== undefined)
+            ? [...holds, hold]
+            : holds,
+      };
       break;
     }
   }

@@ -67,3 +67,14 @@ export const LockedInPlace: Story = { decorators: withHold(undefined, ['A', 'B']
 
 /** A body of three or more joints has no single length or angle. */
 export const Disabled: Story = { decorators: withHold(undefined), args: { disabled: true } };
+
+/** An explicit subject keeps the field independent of either editor's mutable model. */
+export const AuthoredSubject: Story = {
+  render: () => ({
+    props: {
+      subject: { dimensions: ['length'], holdable: true, toggle: () => undefined },
+      form: new FormGroup({ length: new FormControl('5 cm'), angle: new FormControl('36.87 deg') }),
+    },
+    template: `<hold-field-block [subject]="subject" [formGroup]="form"></hold-field-block>`,
+  }),
+};

@@ -1,0 +1,6 @@
+@use './native-fields';
+:host {
+  display: block;
+  min-height: 0;
+  height: 100%;
+}

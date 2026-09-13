@@ -4,10 +4,10 @@
 
 ## Authority and status
 
-- Current authorization (2026-09-13): rebase completed S0–S4 onto staging, align with staging's code/UI style guides, refactor where useful, create a draft PR into staging, and complete a full-PR Fable 5.1 review with findings addressed. Publishing this feature branch and its draft PR is authorized. S5 remains pending; do not reactivate a goal or begin UI cutover.
+- Current authorization (2026-09-13, S5 request): implement S5 on the branch behind draft PR #13, preserve the documented visual language, validate with both browser workflows, and request Fable 5.1 review of the new stage with findings addressed. Add commits to this PR. S6–S8 and merging remain outside this request; do not create or reactivate a goal.
 - Implementation starting commit: `487d535` on `bodies-and-joints-plan`.
 - Worktree: `.claude/worktrees/funny-swirles-3c6486`.
-- Current checkpoint: **S0–S4 complete; F3 resolved; stopped before S5**. Native editor cutover has not begun. Concrete interface choices are in [the contract](bodies-and-joints-contract.md); frozen catalogs/reference hashes are in [the baseline](bodies-and-joints-baseline.json).
+- Current checkpoint: **S0–S4 complete; S5 in progress**. The native development route is the current work; the default cutover remains S6. Concrete interface choices are in [the contract](bodies-and-joints-contract.md); frozen catalogs/reference hashes are in [the baseline](bodies-and-joints-baseline.json).
 - Sole implementation owner: Codex. Fable reviews at the specified gates and at the additional full-PR review requested September 13.
 - Preserve other worktrees and unrelated changes. The starting tracked worktree was clean.
 - Runtime for these commands: Node `v24.18.0`, explicitly prepended to PATH; the login shell otherwise selects unsupported Node 20.
@@ -22,7 +22,7 @@
 | S2 | Complete | Native compiler, analytic Jacobians, mobility/admission, branch continuation, folds, limits and frame conditioning. Seven native/legacy and four native/MATLAB comparisons retain the original ceilings. Geometric redundancy, two slots on a carrier and one-pin/shared-WORLD cases pass. Combined S2/initial-rate gate: 255 tests / 37 files; current-editor browser gate is green. Continuous cycle event publication remains an explicit S3 obligation. |
 | S3 | Complete | Native rates/forces, immutable results, interval/cycle/window publication, all five hand-derived cylinder examples and native/MATLAB positions/rates. F2 reviewed d842ffd and all findings resolved below. Final full gate: 2682 tests / 285 files; host build passes; ui-copy 17/17 with zero console errors. Earlier S3 browser and live-incognito evidence remains recorded. Native UI cutover is S5–S6, not claimed here. |
 | S4 | Complete | Native authority/transactions, structural and property commands, connected gestures, axes/dimensions, drives/units/copy/paste, paused re-anchoring, native codec/history, bounded production import and recovery. F3 completed in two focused passes and findings resolved at `7f1bdbbb`. Final gates: 2893 tests / 323 files, production build, ui-copy 17/17; all named legacy browser gates and live incognito observations recorded below. Native UI and platform clipboard wiring remain S5. |
-| S5 | Pending | Native editor and both browser workflows; existing visual language. |
+| S5 | In progress | Native editor and both browser workflows; existing visual language; additional user-requested Fable review. |
 | S6 | Pending | All consumers, synthesis, tutorial, fixtures/templates and default cutover. |
 | S7 | Pending | Removal manifest closed and performance budget met. |
 | S8 | Pending | Integrated union of gates, live inspection, F4 and release evidence. |
@@ -2623,3 +2623,40 @@ refactor. The temporary owned dev server was stopped after validation.
 The draft remains S0–S4 only. All review findings have a recorded disposition; no S5 work,
 merge, deployment, or push to `staging`/`main` is authorized by this checkpoint. GitHub CI was
 still queued for a runner at publication; local validation is not reported as a remote CI pass.
+
+## S5 execution (starting at `6d371c82`)
+
+The maintainer authorized S5 and an additional Fable review on this same PR. This supersedes
+the older “no paid review at S5” planning line; no further approval is needed.
+
+Implementation checkpoints:
+
+1. Shared controls accept native presentation inputs without instantiating legacy writers;
+   choose the native development route before bootstrapping/loading; refresh the consumer scan.
+2. Native geometry/assembly and joint marks, typed hit targets, selection/pairs/groups, shared
+   panel/menu actions and atomic creation/deletion/property commands.
+3. Coalesced pointer/touch/keyboard gestures, moving-guide travel handles, native clocks/transport,
+   paused edit/history display, clipboard/recovery and unit/framing precision.
+4. Native and legacy browser gates, filmstrips and live incognito inspection; self-review;
+   Fable 5.1 stage review, fixes, final gates, pushed commits and updated draft PR evidence.
+
+Use `artifacts/bodies-and-joints/S5/` for logs/filmstrips/review inputs/results. The owned
+localhost server is 4307. Native payloads select the route before loading; never hydrate a
+legacy drawing into a partially native live editor. Preserve the original S0 inventory and
+reference thresholds. S6 owns analysis/export/synthesis/tutorial/template default cutover,
+and S7 owns final legacy removal.
+
+Initial live orientation: fresh incognito tab on localhost:4307, Four-Bar library load,
+selection of Link BC, length/angle holds, settings sections and right-click menu. Observed
+the existing left panel, accent edge, shadows, field spacing, Attach/State/Traces/footer order
+and amber selection. Existing Storybook/user tabs left intact.
+
+#### S5 implementation observations (in progress)
+
+- `9175e38f` extracts the existing icon registry and boot-splash fade for reuse; no legacy behavior change.
+- Shared authored title/hold inputs pass two focused tests with legacy DI factories that throw if constructed.
+- Native entry is chosen before bootstrap with `?editor=native`, in development only. It uses the sole S4 authority; the public root remains the default.
+- Live incognito Chrome (`localhost:4307`) and the tracked creation probe caught a `DOMPoint` prototype-accessor/spread bug at the pointer boundary. The pointer adapter now returns a plain point; one drag creates one material body.
+- The native fixture gallery publishes eight mechanisms in `docs/native-fixture-urls.md` and its checked payload JSON. All eight opened without console/page errors; seven have complete rotation/retrace paths. Initial cycle filmstrips were captured and inspected, not accepted as final: they exposed initial-fit cropping and an insufficiently recognizable cylinder skin. Both are being corrected before the final visual gate.
+- Ten focused mark/interaction tests pass, including one-command cylinder creation, an attached fourth member at a welded pin, and welding the two non-hub members. `pin-pair-kind` rewires a redundant revolute tree edge only when it has no driver/limit; it never absorbs the hub's material or retargets a driven coordinate.
+- Remaining S5 work is still required: complete native gesture/readout/clipboard/unit/touch regression assertions and films; verify independent clocks, live full cycles, and stop/refusal behavior; finish style/consumer audits; run the specified legacy gates; complete Fable 5.1 review, address findings, and push the S5 commits to PR #13. S5 is not complete yet.

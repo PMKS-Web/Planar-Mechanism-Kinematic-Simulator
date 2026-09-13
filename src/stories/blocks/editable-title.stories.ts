@@ -66,3 +66,12 @@ export const DeleteDisabled: Story = { args: { deleteDisabled: true } };
 export const LongName: Story = {
   args: { kind: 'Link', displayName: 'CouplerExtensionArm' },
 };
+
+/** Native identity uses the same heading without a legacy selection service. */
+export const AuthoredSubject: Story = {
+  args: { displayName: undefined },
+  render: () => ({
+    props: { subject: { name: 'Bracket', rename: () => true }, noop: () => undefined },
+    template: `<editable-title-block [subject]="subject" [deleteAction]="noop">Link</editable-title-block>`,
+  }),
+};

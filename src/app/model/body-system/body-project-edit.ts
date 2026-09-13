@@ -47,7 +47,9 @@ export function bodyOperationPermission(
       return menuRefusal(state, 'view');
     return null;
   }
-  return operation.kind === 'insert' ||
+  return operation.kind === 'pin-pair-kind' ||
+    operation.kind === 'connect-attachments' ||
+    operation.kind === 'insert' ||
     operation.kind === 'joint-kind' ||
     operation.kind === 'copy-bodies' ||
     operation.kind === 'paste-bodies'
