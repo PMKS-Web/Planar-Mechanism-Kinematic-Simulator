@@ -2574,3 +2574,41 @@ was an implementation failure.
 `unit-after-review.log`: **2950 tests / 329 files pass**. `check-after-review.log`,
 `build-after-review.log` and `storybook-after-review.log` pass. Existing MATLAB ceilings
 and the 15-warning lint cap remain unchanged. A focused review of the new fix is next.
+
+### Focused Fable follow-up and final hold correction
+
+Fable 5.1 reviewed `6f282d11..e9e0415f`, session
+`28787990-28a4-4479-96dd-b550caeb5957`, with the same read-only tools. Cost **$7.22080625**
+($7.21871425 Fable plus $0.002092 auxiliary Haiku). Total review cost for this rebase/PR task:
+**$32.11993175**. Artifacts: `rebase-review/Fable-fix-review-{input.txt,launch.json,findings.md}`,
+`Fable-fix-review.json` and `Fable-fix-review.diff`.
+
+It independently confirmed the four fixes, the local arithmetic bound and structural lock-row
+skip, and explicitly withdrew the object-scale finding. Its remaining comments are resolved:
+
+- **Confirmed hold cancellation:** the proposed small held triangle at the far end of a
+  12-bar chain reproduces `held-dimension` at side length 0.01. The row previously subtracted
+  two translated world points, discarding precision that the final local-frame validator
+  correctly demanded. `BodyEditModel.heldVector` now subtracts the local endpoints before
+  rotating the vector. Common translation cancels analytically. This improves conditioning
+  instead of widening the hold or lock validator. Both remain unchanged. The first probe's
+  polygon fixture needed a TypeScript narrowing fix before it could execute; the corrected
+  reproduction is in `followup-probes.log`.
+- **Lock alignment concern not reproduced:** three far-end chain edits with a moving-frame
+  attachment locked at world (0.5, 0.5) pass, retaining the point to 14 decimal places. The
+  existing locked-rod resize still refuses atomically. No global or solver-origin tolerance
+  was granted to final lock validation on the strength of an unconfirmed case.
+- **Singular-start coverage:** the exact change-point four-bar (ground 4, crank 1, coupler 2,
+  rocker 1) and the same drawing with 1e-10 rounding both refuse with `singular-start`.
+  Fable expected `underconstrained`; the probes establish the actual intended boundary.
+  Admission code needs no further change.
+- **Slot-to-R UX coverage:** nonzero travel requires a chosen connection point. With that
+  point supplied, conversion preserves body poses, places both physical anchors there,
+  and undoes exactly; without it, refusal leaves the document and undo depth unchanged.
+
+`body-review-followup.spec.ts` keeps these checks, including held triangles of side 0.1,
+0.01 and 0.001, with and without an angle hold. The fixture stays in the native verification
+builders pending the already-documented public-reader/gallery gate. `followup-fixed.log`
+passes the original review probes and correction; `followup-matrix.log` passes the expanded
+hold matrix and independent edit-Jacobian checks. The small final hold refactor was reviewed
+locally against the rigid-transform identity R(b−a) = Rb−Ra; no third external review was needed.

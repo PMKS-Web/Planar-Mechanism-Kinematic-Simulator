@@ -1540,3 +1540,11 @@ keeps the failures and a contradictory-small-row control.
 Guide artwork can name a disposable witness. Deleting that attachment must relocate the
 artwork reference, not delete the P/slot relationship or its drive/limits.
 `guideDisplayAtPhysicalAnchor` preserves the same material carrier and all drawn offsets.
+
+**Subtract a held vector before placing it in the world.** A 0.01-unit held triangle attached
+to a 12-bar chain can fail a correct local hold validator if the edit equation first places
+both endpoints relative to the distant pointer and then subtracts them. The shared translation
+cancels algebraically, so do that cancellation before floating-point evaluation:
+`BodyEditModel.heldVector` rotates the difference of local endpoints. Do not loosen final
+hold validation to accommodate precision the equation never needed to lose. The follow-up
+review spec covers length and angle holds down to side length 0.001.
