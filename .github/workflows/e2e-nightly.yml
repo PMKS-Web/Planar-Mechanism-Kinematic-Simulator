@@ -46,10 +46,36 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Eight shards each resolving `staging` for themselves is eight chances to
+  # resolve it differently: a merge landing while the batch runs would have some
+  # suites testing one commit, some another, and the report naming a third. So
+  # the branch is turned into a commit once, here, and everything below is given
+  # that commit. No checkout needed to ask.
+  revision:
+    name: Resolve the revision
+    runs-on: ubuntu-24.04
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+    steps:
+      - name: Turn the branch into one commit
+        id: resolve
+        env:
+          REF: ${{ inputs.ref || 'staging' }}
+        run: |
+          sha="$(git ls-remote "${{ github.server_url }}/${{ github.repository }}" \
+            "refs/heads/$REF" | cut -f1)"
+          if [ -z "$sha" ]; then
+            echo "::error::no branch called $REF"
+            exit 1
+          fi
+          echo "Running against $REF at $sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
   shard:
     name: e2e nightly ${{ matrix.shard }}/8
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    needs: revision
     strategy:
       fail-fast: false
       matrix:
@@ -57,10 +83,10 @@ jobs:
     steps:
       # A scheduled run checks out the default branch, which is `main` and a
       # release behind. What wants watching is what is about to be released.
-      - name: Check out staging
+      - name: Check out the revision under test
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
-          ref: ${{ inputs.ref || 'staging' }}
+          ref: ${{ needs.revision.outputs.sha }}
           persist-credentials: false
 
       - name: Set up an e2e runner
@@ -87,23 +113,9 @@ jobs:
   report:
     name: Report
     runs-on: ubuntu-24.04
-    needs: shard
+    needs: [revision, shard]
     if: always()
     steps:
-      - name: Check out tested source
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-        with:
-          ref: ${{ inputs.ref || 'staging' }}
-          persist-credentials: false
-
-      # `context.sha` is the commit the *workflow* was read from, and a scheduled
-      # run reads it off the default branch — `main`, a release behind the
-      # `staging` these jobs check out. `actions/checkout` does not change it, so
-      # the report would name a commit nothing here was run against.
-      - name: Note which commit was actually tested
-        id: tested
-        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
       - name: Collect the shard reports
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -137,11 +149,27 @@ jobs:
 
             const title = 'Nightly e2e: suites that are not green';
             const label = 'nightly-e2e';
-            const tested = '${{ steps.tested.outputs.sha }}' || context.sha;
+            // `context.sha` is the commit the *workflow* was read from, and a
+            // scheduled run reads it off the default branch — `main`, a release
+            // behind the `staging` the shards were given. Never that one.
+            // Empty only when the revision job itself failed, in which case no shard
+            // ran and this reports that. Never falls back to `context.sha`: being
+            // wrong about which commit was tested is the thing being fixed.
+            const tested = '${{ needs.revision.outputs.sha }}' || '(unresolved)';
+            const lane = '${{ inputs.lane || 'nightly' }}';
+            const ref = '${{ inputs.ref || 'staging' }}';
             const { owner, repo } = context.repo;
-            const open = await github.rest.issues.listForRepo({
-              owner, repo, state: 'open', labels: label,
-            });
+
+            // The issue stands for one thing: the whole batch, on staging. A
+            // dispatch of the gate lane, or of any lane against a branch, has not
+            // run the suites the issue is about — so it may not close it, and may
+            // not overwrite what it says. It reports to its own run instead.
+            const ownsTheIssue = lane === 'nightly' && ref === 'staging';
+            const open = ownsTheIssue
+              ? await github.rest.issues.listForRepo({
+                  owner, repo, state: 'open', labels: label,
+                })
+              : { data: [] };
             const existing = open.data[0];
 
             // The repository has no such label until the first time this runs, and
@@ -164,7 +192,8 @@ jobs:
             // closing the issue on it would throw away the only record of a flake.
             // A run that reported nothing and passed nothing is its own problem
             // too: saying "all green" there would be the wrong thing to remember.
-            if (shardsOk && runs.length > 0 && failed.length === 0 && flaky.length === 0) {
+            const clean = shardsOk && runs.length > 0 && failed.length === 0 && flaky.length === 0;
+            if (clean) {
               if (existing) {
                 await github.rest.issues.createComment({
                   owner, repo, issue_number: existing.number,
@@ -174,6 +203,8 @@ jobs:
                   owner, repo, issue_number: existing.number, state: 'closed',
                 });
               }
+              core.summary.addRaw(`Every suite in \`${lane}\` passed on ${ref}.`);
+              await core.summary.write();
               return;
             }
 
@@ -200,6 +231,16 @@ jobs:
               'A suite that fails every night is either a real defect or a check that',
               'has outlived its rule. Both are worth fixing; neither is worth muting.',
             ].join('\n');
+
+            core.summary.addRaw(body.replace(/\n/g, '\n\n'));
+            await core.summary.write();
+
+            // A run that did not test what the issue is about says so on its own
+            // run page and leaves the issue alone.
+            if (!ownsTheIssue) {
+              core.notice(`Lane ${lane} on ${ref} does not write the ${label} issue.`);
+              return;
+            }
 
             if (existing) {
               await github.rest.issues.update({

@@ -41,6 +41,26 @@ function reportScript(): string {
 type Result = { name: string; code: number; seconds: number; flaky: boolean };
 type Call = { what: string; name?: string; body?: string; state?: string };
 
+/**
+ * Fill in the `${{ }}` the runner would. Matched by what is inside rather than
+ * by the exact spelling, so re-wording a default does not silently leave a
+ * literal `${{ ... }}` in the script for the test to pass against.
+ */
+function substitute(
+  source: string,
+  run: { shards: string; sha: string; lane: string; ref: string }
+) {
+  const filled = source.replace(/'\$\{\{([^}]*)\}\}'/g, (whole, inside: string) => {
+    if (inside.includes('needs.shard.result')) return JSON.stringify(run.shards);
+    if (inside.includes('revision.outputs.sha')) return JSON.stringify(run.sha);
+    if (inside.includes('inputs.lane')) return JSON.stringify(run.lane);
+    if (inside.includes('inputs.ref')) return JSON.stringify(run.ref);
+    throw new Error(`nightly-report.spec.ts does not know how to fill in ${whole}`);
+  });
+  expect(filled, 'an unfilled workflow expression was left in the script').not.toContain('${{');
+  return filled;
+}
+
 const passed: Result = { name: 'a', code: 0, seconds: 4, flaky: false };
 const failed: Result = { name: 'b', code: 1, seconds: 9, flaky: false };
 const flaked: Result = { name: 'c', code: 0, seconds: 9, flaky: true };
@@ -53,6 +73,8 @@ async function report(options: {
   results?: Result[];
   issueOpen?: boolean;
   shards?: string;
+  lane?: string;
+  ref?: string;
 }): Promise<Call[]> {
   const dir = resolve(tmpdir(), `nightly-report-${Math.random().toString(36).slice(2)}`);
   mkdirSync(resolve(dir, 'collected/e2e-nightly-1'), { recursive: true });
@@ -91,9 +113,24 @@ async function report(options: {
     serverUrl: 'https://github.com',
   };
 
-  const source = reportScript()
-    .replace("'${{ needs.shard.result }}'", JSON.stringify(options.shards ?? 'success'))
-    .replace("'${{ steps.tested.outputs.sha }}'", JSON.stringify(STAGING_SHA));
+  const summary: string[] = [];
+  const core = {
+    notice: () => undefined,
+    summary: {
+      addRaw: (text: string) => {
+        summary.push(text);
+        return core.summary;
+      },
+      write: async () => undefined,
+    },
+  };
+
+  const source = substitute(reportScript(), {
+    shards: options.shards ?? 'success',
+    sha: STAGING_SHA,
+    lane: options.lane ?? 'nightly',
+    ref: options.ref ?? 'staging',
+  });
 
   const was = process.cwd();
   process.chdir(dir);
@@ -104,11 +141,13 @@ async function report(options: {
     const AsyncFunction = new Function(
       'return Object.getPrototypeOf(async function () {}).constructor'
     )();
-    await new AsyncFunction('github', 'context', 'require', source)(
+    await new AsyncFunction('github', 'context', 'core', 'require', source)(
       github,
       context,
+      core,
       (name: string) => (name === 'fs' ? nodeFs : nodePath)
     );
+    calls.push(...summary.map((text) => ({ what: 'summary', body: text })));
   } finally {
     process.chdir(was);
     rmSync(dir, { recursive: true, force: true });
@@ -120,8 +159,11 @@ const did = (calls: Call[], what: string) => calls.filter((call) => call.what ==
 const bodyOf = (calls: Call[]) => calls.map((call) => call.body ?? '').join('\n');
 
 describe('the nightly e2e report', () => {
-  it('says nothing when every suite passed and nothing was open', async () => {
-    expect(await report({ results: [passed, passed] })).toEqual([]);
+  it('files nothing when every suite passed and nothing was open', async () => {
+    const calls = await report({ results: [passed, passed] });
+    // It still says so on its own run page; what it must not do is raise anything.
+    expect(calls.filter((call) => call.what !== 'summary')).toEqual([]);
+    expect(bodyOf(did(calls, 'summary'))).toContain('passed');
   });
 
   it('closes the open issue when the batch comes back green', async () => {
@@ -162,6 +204,21 @@ describe('the nightly e2e report', () => {
       expect(body).toContain(STAGING_SHA.slice(0, 8));
       expect(body).not.toContain(MAIN_SHA.slice(0, 8));
     }
+  });
+
+  // `workflow_dispatch` takes a lane and a branch. The issue stands for the whole
+  // batch on staging, so a run of something else has not tested what it is about.
+  it('leaves the standing issue alone when dispatched with the gate lane', async () => {
+    const calls = await report({ results: [failed], shards: 'failure', lane: 'gate' });
+    expect(did(calls, 'createIssue')).toEqual([]);
+    expect(did(calls, 'updateIssue')).toEqual([]);
+    expect(bodyOf(did(calls, 'summary'))).toContain('**Failed (1)**');
+  });
+
+  it('does not close the standing issue from a green run of another branch', async () => {
+    const calls = await report({ results: [passed], issueOpen: true, ref: 'some-branch' });
+    expect(did(calls, 'comment')).toEqual([]);
+    expect(did(calls, 'updateIssue')).toEqual([]);
   });
 
   it('says so when no shard reported at all, rather than claiming a clean sweep', async () => {
