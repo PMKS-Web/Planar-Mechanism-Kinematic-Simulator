@@ -52,7 +52,7 @@ export function bodyEditRows(
   }
   for (const hold of document.holds) {
     if (!reached.has(hold.bodyId)) continue;
-    const d = editPointSubtract(view.point(hold.to), view.point(hold.from));
+    const d = view.heldVector(hold.from, hold.to);
     if (hold.length !== undefined) {
       const normalized = hold.length / length;
       rows.push(

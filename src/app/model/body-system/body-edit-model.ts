@@ -13,6 +13,7 @@ import {
   editVariable,
   editRotate,
   editPointAdd,
+  editPointSubtract,
 } from './body-edit-scalar';
 
 export interface BodyEditModel {
@@ -25,6 +26,7 @@ export interface BodyEditModel {
   readonly angularColumns: readonly number[];
   at(values: readonly number[]): {
     point(id: AttachmentId): EditPoint;
+    heldVector(from: AttachmentId, to: AttachmentId): EditPoint;
     materialPoint(body: BodyId, point: Point): EditPoint;
     angle(body: BodyId): EditScalar;
     constant(value: number): EditScalar;
@@ -139,17 +141,24 @@ export function createBodyEditModel(
         editRotate(offset, editAdd(constant(f.pose.angle), variable(f.column + 2)))
       );
     };
+    const localPoint = (id: AttachmentId) => {
+      const p = anchors.get(id)!,
+        column = points.get(id);
+      const local = cp(p.point);
+      return column === undefined
+        ? local
+        : editPointAdd(local, { x: variable(column), y: variable(column + 1) });
+    };
     return {
       constant,
       angle,
       materialPoint: (id: BodyId, p: Point) => place(id, cp(p)),
-      point: (id: AttachmentId) => {
-        const p = anchors.get(id)!,
-          column = points.get(id);
-        let local = cp(p.point);
-        if (column !== undefined)
-          local = editPointAdd(local, { x: variable(column), y: variable(column + 1) });
-        return place(p.bodyId, local);
+      point: (id: AttachmentId) => place(anchors.get(id)!.bodyId, localPoint(id)),
+      heldVector: (from: AttachmentId, to: AttachmentId) => {
+        const bodyId = anchors.get(from)!.bodyId;
+        if (anchors.get(to)!.bodyId !== bodyId) throw new Error('A hold needs one material frame');
+        // Translation cancels analytically; distant gesture origins must not dilute a small hold.
+        return editRotate(editPointSubtract(localPoint(to), localPoint(from)), angle(bodyId));
       },
     };
   };

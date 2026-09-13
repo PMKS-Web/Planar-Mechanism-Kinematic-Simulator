@@ -84,3 +84,38 @@ export function translateNativeDrawing(document: BodyDocument, x: number, y: num
     ),
   };
 }
+
+/** A held polygon keeps editable vertices; unlike a held bar, its frame alone cannot enforce length. */
+export function nativeHeldTriangleChain(size: number, angle?: number) {
+  const chain = nativeLongChain();
+  let f = new BodyFactory(chain.document);
+  const id = f.body('Triangle', { ...chain.at, angle: 0.3 }, [
+    { x: 0, y: 0 },
+    { x: size, y: 0 },
+  ]);
+  const body = f.document.bodies.find((b) => b.id === id)!;
+  if (body.kind !== 'material' || body.geometry.kind !== 'bar') throw new Error('Expected bar');
+  const vertices = body.geometry.vertices;
+  f = new BodyFactory({
+    ...f.document,
+    bodies: f.document.bodies.map((b) =>
+      b.id !== id
+        ? b
+        : {
+            ...body,
+            geometry: {
+              kind: 'polygon',
+              vertices: [...vertices, { id: newRecordId<'vertex'>(), x: 0, y: size }],
+            },
+          }
+    ),
+  });
+  const from = f.vertexAttachment(id, body.geometry.vertices[0].id),
+    to = f.vertexAttachment(id, body.geometry.vertices[1].id);
+  f.joint('revolute', chain.end, from);
+  const document = {
+    ...f.document,
+    holds: [...chain.document.holds, { bodyId: id, from, to, length: size, angle }],
+  };
+  return { document, body: id, from, to };
+}
