@@ -401,3 +401,5 @@ remains a developer-only computational diagnostic; it is not the production gear
 - `force-worksheet-usability.mjs` ? force worksheet reading and diagram usability checks.
 
 - `kinematic-visuals.mjs` - kinematic worksheet loop and angular-convention visual checks.
+
+- `compound-gears.mjs` - native compound attachment, planes, same-shaft selection/cycling, six-turn playback, save/share/file history, full duplication, output four-bar and phone panel. Use `PMKS_BASE_URL=http://localhost:4334`; `--open` leaves the example available in disposable Chrome. Evidence: `artifacts/gears-compound/browser/`. The gear gallery now includes all 24 V1 and compound states.

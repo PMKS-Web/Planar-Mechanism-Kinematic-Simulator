@@ -98,6 +98,14 @@ export interface TemplateCard {
  */
 export const TEMPLATE_CARDS: readonly TemplateCard[] = [
   {
+    id: 'Compound_Gear_Train',
+    name: 'Compound Gear Train',
+    category: 'start',
+    description:
+      '20/40 and 10/30 share a shaft: the output turns at one-sixth input speed and drives a four-bar.',
+    thumbnail: 'assets/gifs/gear-compound.svg',
+  },
+  {
     id: 'Simple_Gear_Pair',
     name: 'Simple Gear Pair',
     category: 'start',

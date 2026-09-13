@@ -1,5 +1,7 @@
 # Gears: production V1 handoff
 
+Current continuation: [compound V1.1 handoff](gears-compound.md), based on the protected V1 checkpoint. This document retains the original V1 implementation record.
+
 > **Status:** Reference — fixed-axis external circular gears implemented in the actual PMKS application, September 12, 2026. Local acceptance build; not published. Verification and release scope are recorded below.
 
 This records the initial shared-checkout handoff. The current branch and acceptance review are

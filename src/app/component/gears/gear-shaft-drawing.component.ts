@@ -26,6 +26,8 @@ import { GearDrawingComponent } from './gear-drawing.component';
         (pointerup)="$event.stopPropagation()"
         (mousedown)="$event.stopPropagation()"
         (mouseup)="$event.stopPropagation()"
+        (touchstart)="$event.stopPropagation()"
+        (touchend)="$event.stopPropagation()"
         (click)="pick($event, gear.id, true)"
         (keydown.enter)="pick($event, gear.id)"
         (contextmenu)="pick($event, gear.id); $event.preventDefault()"

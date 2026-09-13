@@ -29,6 +29,7 @@ In this order, the first time:
 
 ## Design records
 
+- [gears-compound.md](gears-compound.md) - V1 stabilization and compound V1.1 ownership, native workflow, acceptance evidence and local preview. *Reference*
 - [gears-stabilization.md](gears-stabilization.md) — isolated V1 branch, protected source snapshot, engineering review, commit decisions and acceptance evidence. *Reference*
 - [gears-plan.md](gears-plan.md) — gear architecture and implementation specification; fixed-axis V1 implemented locally; later gear families remain planned. *Partly built*
 - [gears-production.md](gears-production.md) ? production V1 workflows, persistence, validation evidence, 30-point handoff and release caveats. *Reference*

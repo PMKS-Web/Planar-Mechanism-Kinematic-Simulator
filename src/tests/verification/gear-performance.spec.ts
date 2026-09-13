@@ -8,9 +8,16 @@ import {
   gearNetworkFixture,
 } from '../../test-utils/verification/gear-fixtures';
 
+import {
+  COMPOUND_GEAR_TRAIN,
+  COMPOUND_GEAR_FOUR_BAR,
+} from '../../test-utils/verification/compound-gear-fixtures';
+
 describe('bounded production gear workloads', () => {
   it('records the cost of representative fixed-axis mechanisms without raising limits', () => {
     const cases = [
+      ['compound train', COMPOUND_GEAR_TRAIN],
+      ['compound four-bar', COMPOUND_GEAR_FOUR_BAR],
       ['20T/40T', GEAR_PAIR],
       ['20T/100T', GEAR_FIVE_TURNS],
       ['closed four-bar', GEAR_FOUR_BAR],

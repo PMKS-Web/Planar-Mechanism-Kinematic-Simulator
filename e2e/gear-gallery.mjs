@@ -8,9 +8,15 @@ const index = JSON.parse(readFileSync('storybook-static/index.json', 'utf8'));
 const stories = Object.values(index.entries).filter(
   (e) =>
     e.type === 'story' &&
-    ['Fields/Gear Properties', 'Feedback/Gear Mesh', 'Canvas/Gear'].includes(e.title)
+    [
+      'Fields/Gear Properties',
+      'Feedback/Gear Mesh',
+      'Canvas/Gear',
+      'Canvas/Gear Shaft',
+      'Fields/Compound Gear Shaft',
+    ].includes(e.title)
 );
-assert(stories.length >= 14);
+assert.equal(stories.length, 24);
 const browser = await chromium.launch({ channel: 'chrome', headless: true }),
   page = await browser.newPage({ viewport: { width: 720, height: 750 } }),
   errors = [],

@@ -40,7 +40,8 @@ import { TitleBlock } from '../BLOCKS/title/title.component';
         white-space: normal;
         overflow-wrap: anywhere;
         font-size: 12px;
-        margin: 12px 15px;
+        margin: 12px 0;
+        padding: 0 15px;
         color: var(--text-secondary);
       }
     `,

@@ -163,7 +163,10 @@ relationships. `GearEditorService` owns the production edits; the canvas/panels 
 `component/gears`. The existing URL codec carries authored metadata and precise coordinates in
 an additive `G1` extension (`transcoding/gear-codec.ts`). Ratios prescribe body points into the
 existing coupled solver, with continuous travel and complete constraint auditing. Dependent
-centers never gain input flags. Gear forces and compounds are unsupported. The production
+centers never gain input flags. Compound gears share an ordinary host and one physical
+rotation; their authored axial planes distinguish concentric attachments and mesh alignment.
+The compound handoff is [gears-compound.md](docs/gears-compound.md). Gear forces remain
+unsupported. The production
 handoff, examples, tests and scope are in [gears-production.md](docs/gears-production.md);
 [gears-implementation.md](docs/gears-implementation.md) retains the Stage 1/2 architecture evidence.
 

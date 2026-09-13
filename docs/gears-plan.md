@@ -1,5 +1,7 @@
 ﻿# Gears in PMKS+: architecture and implementation plan
 
+> **Current continuation:** [Compound V1.1](gears-compound.md) implements shared-host gears, axial plane identity and native editing. The V1 restrictions below remain the historical staging plan; see that handoff for implemented scope and decisions.
+
 > **Status:** Partly built — fixed-axis external V1 now includes the computational foundation, solver, persistence, native UI and lifecycle workflows. Later gear families remain planned. Original architecture review: September 12, 2026, through `4c03c712bc1347ca64d744f26e9d6b8abd0ac8bf`. See the [production handoff](gears-production.md) for current scope, verification and the playable application; the [Stage 1/2 report](gears-implementation.md) records the earlier foundation.
 
 The maintainer's scope is ideal circular planar gears driving existing PMKS mechanisms, with
