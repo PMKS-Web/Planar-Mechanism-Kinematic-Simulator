@@ -142,6 +142,19 @@ jobs:
             };
             if (fs.existsSync('collected')) walk('collected');
 
+            // Collection is `continue-on-error`, so a partial download reaches here
+            // looking exactly like a small, clean run. A shard that exited zero
+            // can still have held a flake, so "the shards passed" does not stand
+            // in for "we read what they said": every shard has to be accounted
+            // for before this is allowed to call anything clean.
+            const of = reports[0]?.shardCount ?? 0;
+            const seen = new Set(reports.map((report) => report.shardIndex));
+            const complete =
+              of > 0 && seen.size === of && reports.every((report) => report.shardCount === of);
+            const missing = complete
+              ? []
+              : Array.from({ length: of }, (_, i) => i + 1).filter((i) => !seen.has(i));
+
             const runs = reports.flatMap((report) => report.results);
             const failed = runs.filter((run) => run.code !== 0);
             const flaky = runs.filter((run) => run.flaky);
@@ -192,7 +205,8 @@ jobs:
             // closing the issue on it would throw away the only record of a flake.
             // A run that reported nothing and passed nothing is its own problem
             // too: saying "all green" there would be the wrong thing to remember.
-            const clean = shardsOk && runs.length > 0 && failed.length === 0 && flaky.length === 0;
+            const clean =
+              shardsOk && complete && runs.length > 0 && failed.length === 0 && flaky.length === 0;
             if (clean) {
               if (existing) {
                 await github.rest.issues.createComment({
@@ -225,6 +239,11 @@ jobs:
               runs.length === 0
                 ? '_No shard reported. The run itself broke; read the job logs._'
                 : `${runs.length - failed.length - flaky.length}/${runs.length} suites passed first time.`,
+              complete
+                ? ''
+                : `\n**This is not the whole batch.** ${seen.size} of ${of || '?'} shards were ` +
+                  `read${missing.length ? ` — nothing from ${missing.join(', ')}` : ''}. ` +
+                  'Whatever they found is not in the counts above.',
               '',
               'Screenshots and reports are on the run, under `e2e-nightly-*`.',
               '',

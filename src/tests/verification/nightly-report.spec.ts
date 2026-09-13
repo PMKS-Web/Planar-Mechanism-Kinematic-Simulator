@@ -75,14 +75,28 @@ async function report(options: {
   shards?: string;
   lane?: string;
   ref?: string;
+  shardsReporting?: number;
 }): Promise<Call[]> {
   const dir = resolve(tmpdir(), `nightly-report-${Math.random().toString(36).slice(2)}`);
-  mkdirSync(resolve(dir, 'collected/e2e-nightly-1'), { recursive: true });
-  if (options.results)
+  // A real run writes one report per shard. `shardsReporting` is how many of the
+  // eight actually made it back, so a partial artifact download can be staged.
+  const of = 8;
+  const reporting = options.shardsReporting ?? of;
+  for (let shard = 1; shard <= reporting && options.results; shard++) {
+    mkdirSync(resolve(dir, `collected/e2e-nightly-${shard}`), { recursive: true });
     writeFileSync(
-      resolve(dir, 'collected/e2e-nightly-1/report-1-of-8.json'),
-      JSON.stringify({ lane: 'nightly', results: options.results })
+      resolve(dir, `collected/e2e-nightly-${shard}/report-${shard}-of-${of}.json`),
+      JSON.stringify({
+        lane: 'nightly',
+        shardIndex: shard,
+        shardCount: of,
+        // Only the first shard carries the scenario; the rest are quietly green,
+        // so what any test is about is the one shard it described.
+        results: shard === 1 ? options.results : [passed],
+      })
     );
+  }
+  mkdirSync(resolve(dir, 'collected'), { recursive: true });
 
   const calls: Call[] = [];
   const record =
@@ -219,6 +233,21 @@ describe('the nightly e2e report', () => {
     const calls = await report({ results: [passed], issueOpen: true, ref: 'some-branch' });
     expect(did(calls, 'comment')).toEqual([]);
     expect(did(calls, 'updateIssue')).toEqual([]);
+  });
+
+  // Collecting the artifacts is `continue-on-error`, so half a batch arrives
+  // looking like a small clean one. A shard exiting zero does not mean it held
+  // no flake, so its silence cannot be read as good news.
+  it('will not call a half-collected batch clean', async () => {
+    const calls = await report({ results: [passed], issueOpen: true, shardsReporting: 3 });
+    expect(did(calls, 'updateIssue')[0]?.state).not.toBe('closed');
+    expect(bodyOf(calls)).toContain('not the whole batch');
+    expect(bodyOf(calls)).toContain('3 of 8');
+  });
+
+  it('names the shards it never heard from', async () => {
+    const calls = await report({ results: [passed], shardsReporting: 6 });
+    expect(bodyOf(calls)).toContain('nothing from 7, 8');
   });
 
   it('says so when no shard reported at all, rather than claiming a clean sweep', async () => {
