@@ -30,8 +30,7 @@ import { HelpPanelComponent } from '../help-panel/help-panel.component';
 import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
 import { ButtonComponent } from '../BLOCKS/button/button.component';
 import { LinkageTableComponent } from '../linkage-table/linkage-table.component';
-import { MatTooltip } from '@angular/material/tooltip';
-import { MatIcon } from '@angular/material/icon';
+import { CloseButtonComponent } from '../BLOCKS/close-button/close-button.component';
 
 @Component({
   selector: 'app-right-panel',
@@ -95,8 +94,7 @@ import { MatIcon } from '@angular/material/icon';
     PanelSectionComponent,
     ButtonComponent,
     LinkageTableComponent,
-    MatTooltip,
-    MatIcon,
+    CloseButtonComponent,
   ],
 })
 export class RightPanelComponent implements DoCheck {

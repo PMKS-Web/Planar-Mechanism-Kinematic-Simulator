@@ -7,6 +7,35 @@
   // value in kg&middot;cm&sup2; wants 239px of a 220px row, and one of the two
   // gets crushed. The panel already reads this way for Joint Position and
   // Center of Mass.
+  // A cell in a table rather than a field in a panel: the analysis setup
+  // drawer's mass table gives each column its own heading, so the block's own
+  // label, help mark and spacer would repeat them. The field takes the cell.
+  //
+  // This was written in `analysis-setup.component.scss` as three rules naming
+  // `#input-block`'s insides from outside it -- which is how a panel comes to
+  // depend on a block's private markup, and why renaming anything in here used
+  // to break a drawer nobody had edited.
+  #input-block.cell {
+    .label,
+    .label-help,
+    .spacer {
+      display: none;
+    }
+
+    .row {
+      gap: 0;
+    }
+
+    .customInput {
+      font-size: 12.5px;
+    }
+
+    .customInputForm .mat-mdc-text-field-wrapper {
+      width: 100%;
+      padding: 0 7px;
+    }
+  }
+
   #input-block.stacked {
     .row {
       flex-wrap: wrap;

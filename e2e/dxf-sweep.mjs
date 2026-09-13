@@ -10,7 +10,7 @@
  * The DXFs land in `artifacts/dxf-sweep/`. To check them against something
  * stricter than a lenient parser -- which is how the old R2000 output went a
  * long time with tables an importer silently repaired -- see the ezdxf audit
- * snippet in `docs/tips-and-tricks.md`.
+ * snippet in `docs/domain-facts.md`.
  *
  *   PMKS_BASE_URL=http://localhost:4200 node e2e/dxf-sweep.mjs
  *   ONLY=Slider_Crank PMKS_BASE_URL=http://localhost:4200 node e2e/dxf-sweep.mjs

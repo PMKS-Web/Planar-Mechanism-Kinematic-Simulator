@@ -39,7 +39,8 @@ const drawerText = () =>
     .catch(() => '');
 const tab = (name) => page.locator('.tabButton', { hasText: name });
 // The chip is a plain label inside the mode button — one control per mode.
-const chipFor = (name) => page.locator('.tabButton', { hasText: name }).locator('.chip');
+// The readiness chip is `chip-block` now, which draws itself on its own host.
+const chipFor = (name) => page.locator('.tabButton', { hasText: name }).locator('chip-block');
 
 async function open(payload) {
   await page.goto(`${BASE}/?${payload}`, { waitUntil: 'domcontentloaded' });
@@ -91,7 +92,7 @@ record(
 // panel standing in the way -- the panel walks it for the reader.
 record('naming the way out rather than only the wall', /Turn On Gravity/.test(text), text);
 await page
-  .locator('app-analysis-setup .actionButton', { hasText: 'Turn On Gravity' })
+  .locator('app-analysis-setup button-block', { hasText: 'Turn On Gravity' })
   .first()
   .click();
 await page.waitForTimeout(600);
@@ -140,7 +141,7 @@ const chip = await chipFor('Kinematic').textContent();
 record('and the mode chip counts it', chip.trim() === '1 fix', { chip });
 
 // --- the button that offers to take you there, does -------------------------
-const goTo = page.locator('.actionButton').first();
+const goTo = page.locator('app-analysis-setup button-block').first();
 record('the check offers to go to the part', (await goTo.count()) === 1);
 const label = await goTo.textContent();
 await goTo.click();

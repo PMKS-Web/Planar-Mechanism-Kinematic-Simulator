@@ -31,6 +31,6 @@
 
 ## Docs
 
-- [ ] `docs/tips-and-tricks.md` has a note for anything that cost me time.
+- [ ] `docs/short-notes.md` has a note for anything that cost me time.
 - [ ] `CLAUDE.md` still describes the app after this change.
 - [ ] `package.json` version raised (release pull requests only).

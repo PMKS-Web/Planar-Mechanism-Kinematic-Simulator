@@ -90,7 +90,7 @@ await page.waitForTimeout(400);
 // --- placing ------------------------------------------------------------
 check(
   "the Positions buttons live in that section's heading, not in a row of their own",
-  (await page.locator('#synthesisPanel .panel-header__actions .pill').count()) === 1
+  (await page.locator('#synthesisPanel .panel-header__actions button-block').count()) === 1
 );
 check(
   'one button at the foot carries whatever the next step is',
@@ -233,7 +233,7 @@ check(
   );
 }
 
-await page.locator('#synthesisPanel .pill', { hasText: 'Add position' }).click();
+await page.locator('#synthesisPanel button-block', { hasText: 'Add position' }).click();
 await page.waitForTimeout(250);
 await page.mouse.move(900, 560);
 await page.waitForTimeout(200);
@@ -443,7 +443,7 @@ check(
 // same three positions.
 await page
   .locator('#synthesisPanel .req', { hasText: "Coupler pinned at the link's ends" })
-  .locator('.req__line')
+  .locator('.req__press')
   .click();
 await page.waitForTimeout(300);
 await page.locator('#synthesisPanel .cta', { hasText: 'Generate solutions' }).click();
@@ -496,7 +496,10 @@ if ((await page.locator('#synthesisPanel .card').count()) > 1) {
 }
 
 // --- the driver -------------------------------------------------------
-await page.locator('#synthesisPanel .row', { hasText: 'Add driver' }).locator('.switch').click();
+await page
+  .locator('#synthesisPanel .row', { hasText: 'Add driver' })
+  .locator('.row__switch button[role="switch"]')
+  .click();
 await page.waitForTimeout(500);
 const withDriver = await panel(
   '(p) => JSON.stringify({ dyad: !!p.solution.dyad(), refusal: p.solution.driverRefusal ?? null, rows: p.dimensionRows().length })'
@@ -696,7 +699,7 @@ check(
         r.textContent.includes('Add driver')
       );
       if (!row) return null;
-      const button = row.querySelector('.switch');
+      const button = row.querySelector('.row__switch button[role="switch"]');
       if (!button) return null;
       const held = panel.solution.driveOnFarPin;
       const out = { agreed: true, enabled: 0, disabled: 0 };
@@ -971,7 +974,7 @@ const beforeUndo = await panel(
   '(p) => JSON.stringify(p.design.getAllPoses().map(q => [Math.round(q.position.x), Math.round(q.position.y)]))'
 );
 await page
-  .locator('#synthesisPanel .pill--square')
+  .locator('#synthesisPanel button-block[aria-label="Duplicate last position"]')
   .count()
   .catch(() => 0);
 await page.locator('#synthesisPanel .poseRow').nth(2).locator('.poseRow__remove').click();
@@ -1517,7 +1520,7 @@ const ask = (p, fn) =>
         const row = [...document.querySelectorAll('#synthesisPanel .row')].find((r) =>
           r.textContent.includes('Add driver')
         );
-        const button = row && row.querySelector('.switch');
+        const button = row && row.querySelector('.row__switch button[role="switch"]');
         return { refused: !!panel.driverRefusal, disabled: !!(button && button.disabled) };
       }`
     );

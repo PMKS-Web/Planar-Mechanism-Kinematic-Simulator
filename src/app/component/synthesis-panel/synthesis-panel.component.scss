@@ -1,5 +1,6 @@
 @use 'sass:map';
 @use '@angular/material' as mat;
+@use '../BLOCKS/blocks.common.scss' as blocks;
 
 /* The panel is the app's indigo throughout; these are the same values
    mytheme.scss resolves to, written out so a rule can be read on its own. */
@@ -166,24 +167,6 @@ $red: var(--danger);
       }
     }
 
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      height: 18px;
-      padding: 0 7px;
-      border-radius: 9px;
-      background: $fill;
-      color: var(--text-tertiary);
-      font-size: 11px;
-      font-weight: 500;
-      white-space: nowrap;
-
-      &--on {
-        background: $indigo-pale;
-        color: $indigo;
-      }
-    }
-
     /* --- the working screen -------------------------------------------------- */
 
     .work {
@@ -317,14 +300,11 @@ $red: var(--danger);
     /* One row: label, help, then the control hard against the right edge, so
      every row's control shares a left edge down the panel. */
     .row {
-      display: flex;
-      align-items: center;
-      gap: 5px;
+      @include blocks.field-row(5px);
       min-height: 30px;
 
       &__label {
-        font-size: 14px;
-        color: var(--text-secondary);
+        @include blocks.field-row-label;
 
         /* A button, so it needs the label's size said again: `font: inherit`
            reaches the row, which sets none, and the three rows in the solution
@@ -345,14 +325,6 @@ $red: var(--danger);
             cursor: default;
           }
         }
-      }
-
-      &__help {
-        font-size: 15px;
-        width: 15px;
-        height: 15px;
-        color: var(--text-disabled);
-        cursor: help;
       }
 
       &__spacer {
@@ -434,6 +406,10 @@ $red: var(--danger);
       }
     }
 
+    .row__switch {
+      flex: 0 0 auto;
+    }
+
     /* The pick-one pills at the end of a row: as wide as the old strip. */
     .seg {
       width: 214px;
@@ -441,43 +417,6 @@ $red: var(--danger);
     }
 
     /* --- positions ----------------------------------------------------------- */
-
-    .pill {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      height: 28px;
-      padding: 0 10px;
-      border: 1px solid $indigo;
-      border-radius: 4px;
-      background: $indigo;
-      color: var(--text-on-accent);
-      font-family: Roboto, sans-serif;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-
-      mat-icon {
-        font-size: 17px;
-        width: 17px;
-        height: 17px;
-      }
-
-      /* Armed reads as a mode the reader is *in*, so it inverts rather than
-       brightening: the button is now the way out of it. */
-      &--armed {
-        background: var(--selection);
-        color: $indigo;
-      }
-
-      &--square {
-        width: 28px;
-        padding: 0;
-        justify-content: center;
-        background: var(--surface);
-        color: $indigo;
-      }
-    }
 
     .poseRow {
       display: flex;
@@ -605,12 +544,29 @@ $red: var(--danger);
         display: flex;
         align-items: center;
         gap: 8px;
+      }
+
+      /* The words, which are the press target. The switch beside them is
+         `toggle-block` and brings its own. */
+      &__press {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1 1 auto;
+        min-width: 0;
         border: 0;
         padding: 0;
         background: none;
         font: inherit;
         text-align: left;
         cursor: pointer;
+      }
+
+      /* Scaled to the row the way the analysis panel scales its own, so a
+         requirement's switch is not taller than the line it belongs to. */
+      /* What it looks like is `toggle-block bare`; this is only where it sits. */
+      &__switch {
+        flex: 0 0 auto;
       }
 
       &__icon {
@@ -645,59 +601,6 @@ $red: var(--danger);
 
       &--on &__label {
         color: var(--text-strong);
-      }
-    }
-
-    .switch {
-      position: relative;
-      flex: 0 0 34px;
-      width: 34px;
-      height: 14px;
-      margin-right: 3px;
-      border: 0;
-      padding: 0;
-      border-radius: 7px;
-      background: rgba(0, 0, 0, 0.22);
-      cursor: pointer;
-
-      /* Offered but not available -- a driver that will not fit these
-         positions. The reason is on the switch itself, on hover; this is the
-         part that says not to bother pressing it. */
-      &:disabled {
-        cursor: default;
-        background: rgba(0, 0, 0, 0.09);
-      }
-
-      &:disabled .switch__knob {
-        background: var(--surface-well);
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
-      }
-
-      &__knob {
-        position: absolute;
-        left: -3px;
-        top: -3px;
-        width: 20px;
-        height: 20px;
-        border-radius: 10px;
-        background: var(--surface-subtle);
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-        transition: left 120ms ease-out;
-      }
-
-      &--on {
-        background: rgba(63, 81, 181, 0.5);
-      }
-
-      &--on .switch__knob {
-        left: 17px;
-        background: $indigo;
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .switch__knob {
-        transition: none;
       }
     }
 

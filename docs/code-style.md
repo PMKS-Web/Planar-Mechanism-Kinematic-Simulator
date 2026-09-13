@@ -122,8 +122,8 @@ are written in model coordinates. Anything that must read the right way up, such
 **American spelling, in identifiers too.** `center`, `color`, `gray`, `neighbor`, `analyze`.
 `colourOf` and `colorOf` are two functions nobody meant to write, and a codebase with both answers
 half of every search. `e2e/ui-copy.mjs` fails on British forms in user-facing text; it is run by
-hand, not in CI, so run it when you change words. The full word list is in
-[tips and tricks](tips-and-tricks.md#spelling-american-everywhere).
+hand, not in CI, so run it when you change words. The word list, and how to sweep for a spelling
+without breaking the check that enforces it, is [below](#spelling-american-everywhere).
 
 ## Comments explain why, not how
 
@@ -192,7 +192,7 @@ choice rather than the tutorial:
   runs in CI. Run the suites that cover your change and name them in the pull request.
   `e2e/README.md` says what each covers and which ones rewrite tracked files.
 - **A list a person keeps is checked by a spec.** `docs-inventory.spec.ts` holds the docs index,
-  the e2e README and the tips contents to the files; `stylesheet-fences.spec.ts` holds the named
+  the e2e README and every Contents to the files they index; `stylesheet-fences.spec.ts` holds the named
   breakpoints and the `rgba()` count; `fixture-gallery.spec.ts` holds the fixture URLs. When you
   add a hand-kept list, add the check.
 
@@ -232,6 +232,63 @@ trailing whitespace that fails `git diff --check`.
   ```
 
   GitHub's blame view reads the file without any setup.
+
+## Spelling: American, everywhere
+
+**Comments, user-facing strings, identifiers, docs and test names are all American English.**
+`e2e/ui-copy.mjs` flags `colour`, `centre`, `neighbour` and `analyse` on the surfaces it walks,
+but it is run by hand and not in CI, so nothing fails the build on them; the rest is convention. It is a consistency rule rather than a taste
+one: `centre` and `center` are the same word to a reader and two different symbols to `grep`, so a
+codebase holding both quietly answers half of every search. In identifiers it is worse, where
+`colourOf` and `colorOf` are two functions nobody meant to write.
+
+| Write | Not |
+| --- | --- |
+| center, centered, centering, centerline | centre, centred, centring, centreline |
+| color, colored, coloring | colour, coloured, colouring |
+| gray, grayed | grey, greyed |
+| neighbor, neighboring | neighbour, neighbouring |
+| behavior | behaviour |
+| meter, centimeter, millimeter | metre, centimetre, millimetre |
+| analyze, analyzed, analyzing | analyse, analysed, analysing |
+| normalize, initialize, serialize, recognize, organize | normalise, initialise, serialise, recognise, organise |
+| labeled, modeled, traveled, canceled | labelled, modelled, travelled, cancelled |
+| catalog, program, dialog, license, defense, offense | catalogue, programme, dialogue, licence, defence, offence |
+| favor, honor, artifact, judgment, math, learned | favour, honour, artefact, judgement, maths, learnt |
+| while, among | whilst, amongst |
+
+### Sweeping it, and the three ways that goes wrong
+
+A find-and-replace over stems is the obvious way to do this and it breaks in three separate ways,
+all of which compile and all of which pass every test, because the damage is in prose and in
+identifiers renamed consistently on both sides:
+
+- **A stem is not the whole word.** British drops the `e` that American keeps, so `centre` ->
+  `center` turns `centred` into `centerd`. It did, fifty-five times. And `centring` has no `centre`
+  in it at all, so the same sweep misses every one. Put both in an explicit word list ahead of the
+  stem pass.
+- **A stem can span a camelCase boundary.** Case-insensitively, `modell` is inside `ModelLength`,
+  `labell` is inside `labelLevel`, `travell` is inside `cylinderTravelLabel`, and — the one nobody
+  sees coming — `litre` is inside `unsplitResult`. Renaming those produced `formatModelength`,
+  `labelevel`, `cylinderTravelabel` and `unsplitersult`. Reject any match containing a lowercase
+  letter immediately followed by an uppercase one: that hump means the stem only appeared to be
+  there.
+- **A stem can wreck an American word.** `programme` -> `program` applied as a stem turns
+  `programmed` into `programd`; `cancell` -> `cancel` turns `cancellation`, which is correct
+  American, into `cancelation`. Whole-word list for both.
+
+Two words have to be read rather than swept:
+
+- **`analyses` is correct** as the plural of *analysis* — "the two analyses need it". It is wrong
+  only as a verb, where American writes *analyzes*.
+- **`cancellation` keeps both `l`s**, even though `canceled` and `canceling` drop one.
+
+And do not sweep `e2e/ui-copy.mjs`. It is a list of words that must never appear, so rewriting it
+inverts the lint into a ban on the spellings it exists to enforce. That happened, and the check went
+on passing because it was now banning words the app does not use.
+
+Afterwards, grep for the American stem followed by a suspicious ending — `centerd`, `Modelength`,
+`unsplitersult` — and read the diff. Nothing else catches this class of mistake.
 
 ## What the linter enforces
 

@@ -1,0 +1,61 @@
+@mixin css($theme) {
+  /* The chip sits inside flex rows -- a section heading, a mode tab, a hint --
+     and is never the thing that should give up room when one is tight: its
+     text is already the shortest statement of the fact. */
+  chip-block {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    height: 20px;
+    padding: 0 8px;
+    border-radius: 10px;
+    background: var(--surface-chip);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 400;
+    white-space: nowrap;
+
+    /* Red stops the analysis, amber lets it run with something worth reading,
+       green has nothing to say. `neutral` is the plain chip above -- stated
+       but not colored, which is what force analysis asks for a fourth time. */
+    &.blocker {
+      background: var(--refusal-bg);
+      color: var(--refusal-text);
+    }
+
+    &.warning {
+      background: var(--warning-bg);
+      color: var(--warning-text);
+    }
+
+    &.ok {
+      background: var(--success-bg);
+      color: var(--success-text);
+    }
+
+    /* Not a verdict: the choice that is in force, tinted the way the rest of
+       the synthesis panel tints what the reader has picked. */
+    &.on {
+      background: var(--brand-tint);
+      color: var(--brand);
+    }
+
+    /* Inside a card rather than beside a heading, where the heading's size
+       would crowd it. Its resting fill is the field's, not the chip's, because
+       the card it sits on is already the chip's color. */
+    &.small {
+      height: 18px;
+      padding: 0 7px;
+      border-radius: 9px;
+      background: var(--surface-field);
+      color: var(--text-tertiary);
+      font-size: 11px;
+      font-weight: 500;
+
+      &.on {
+        background: var(--brand-tint);
+        color: var(--brand);
+      }
+    }
+  }
+}

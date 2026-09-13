@@ -23,7 +23,7 @@
  * percentile frame is the number a reader feels.
  *
  * Where the time goes is `drag-profile.mjs`'s job; the last full account of
- * it is in docs/tips-and-tricks.md under "Where a drag's time goes".
+ * it is in docs/domain-facts.md under "Where a drag's time goes".
  */
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';

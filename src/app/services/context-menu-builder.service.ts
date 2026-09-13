@@ -8,7 +8,7 @@ import {
   MenuGroup,
   MenuRefusal,
   MenuRow,
-} from '../component/context-menu/menu-model';
+} from '../component/BLOCKS/context-menu/menu-model';
 import { Joint, PrisJoint, RealJoint } from '../model/joint';
 import { Link, RealLink, SliderBlock } from '../model/link';
 import { Force } from '../model/force';

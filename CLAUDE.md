@@ -12,18 +12,23 @@ Requires Node ≥22.22 (or 24.x). The esbuild `application` builder is used; `ou
 
 ## Read this first
 
-[`docs/tips-and-tricks.md`](docs/tips-and-tricks.md) collects the things that cost somebody an hour
-to find out — including the
-[spelling rule](docs/tips-and-tricks.md#spelling-american-everywhere): this codebase is American
-English throughout, in identifiers as well as prose, and `e2e/ui-copy.mjs` (run by hand, not in CI)
-fails on the British forms in anything the user can read. Also: where Playwright is installed and why it vanishes, which e2e suites rewrite tracked
-files, why `npx vitest` fails where `npm test` works, which hostname the dev server answers on, the
-two `@media (max-width: 600px)` blocks in one stylesheet where the later silently wins, and how to
-tell a failure you caused from one that was already there. It is long: the sections from
-Environment through SCSS gotchas are the part to read before your first change, and the rest is
-searched by the symbol you are working on, as its Contents says. **Add to it whenever something
-surprises you.** [`docs/README.md`](docs/README.md) gives the reading order and indexes every
-other document, saying which are current and which are history.
+**[`docs/environment.md`](docs/environment.md) is the one to read before your first change.** How
+to run the app and its checks, how to tell a failure you caused from one that was already there,
+and where it deploys. Its own opening lists what it saves you; this does not repeat the list.
+
+The other three are opened when you are already in the area they cover, not up front:
+
+- [`docs/ui-gotchas.md`](docs/ui-gotchas.md) — how these stylesheets actually reach the page (the
+  two `@media (max-width: 600px)` blocks where the later silently wins), and which of the several
+  things that can refuse an edit is refusing this one.
+- [`docs/domain-facts.md`](docs/domain-facts.md) — what a mechanism, a unit and a direction really
+  are here, and how to check an exported file.
+- [`docs/short-notes.md`](docs/short-notes.md) — eighty-odd single surprises, **searched by the
+  symbol you are touching** rather than read. This is where a new one goes: **add to it whenever
+  something surprises you.**
+
+[`docs/README.md`](docs/README.md) gives the reading order and indexes every other document, saying
+which are current and which are history.
 
 Two of those are the rules: [`docs/code-style.md`](docs/code-style.md) is what we ask of code and
 what `npm run check` enforces, and [`docs/ui-style-guide.md`](docs/ui-style-guide.md) is how
@@ -111,7 +116,7 @@ directory live in that site's own settings, like the other two, and `netlify.tom
 `pmksnew` now; `[BRANCH]--pmksprod.netlify.app` still answers 200 and serves a **months-stale
 bundle**, which is worse than a 404 because it looks like a deploy that simply ignored your commit.
 Confirm a build landed by asking for something only the new commit has, not by the page loading.
-See [tips-and-tricks](docs/tips-and-tricks.md#deploys-domains-and-surrounding-services).
+See [environment.md](docs/environment.md#deploys-domains-and-surrounding-services).
 
 `netlify.toml` carries exactly one setting — `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD`, so the deploy's
 `npm ci` does not fetch a browser for the `playwright` devDependency. A `netlify.toml` overrides only
@@ -153,7 +158,7 @@ rather than a caption, so the scrub card is the same shape in every state. Editi
 any *paused* pose, not only at timestep 0; the design is put back on its per-machine **anchor**
 (`model/mechanism/anchor.ts`) at the commit, so the pose the drawing starts in does not ratchet
 forward with every mid-cycle tweak. `docs/edit-mode-playback-plan.md` is the whole argument, and
-[tips-and-tricks](docs/tips-and-tricks.md#editing-playback-and-who-is-allowed-to-say-no) has the
+[ui-gotchas.md](docs/ui-gotchas.md#editing-playback-and-who-is-allowed-to-say-no) has the
 traps.
 
 ### Solvers (`src/app/model/mechanism/`)
@@ -166,7 +171,7 @@ Pure computation, mostly static classes: `loop-solver` (finds kinematic loops), 
 - Links: `Link` → `RealLink` / `SliderBlock` (the block that rides a slot; there is no `Piston` class any more). A **welded** compound link is a `RealLink` whose `subset` holds its constituent sub-links; weld/unweld logic in MechanismService restructures joints' `links`/`connectedJoints` arrays and link IDs (link IDs are the concatenated, sorted joint letters).
 - A driven joint carries its own speed: `Joint.driveSpeed`, signed for direction, in rpm for a pin and length/second for a slider. **Negative is clockwise**, and `model/drive-direction.ts` (`turnsClockwise` / `speedTurning`) is the only place that knows it — route any new direction question through it rather than writing `speed < 0` again. Zero means "use the document-wide default" — which is what every URL written before this existed says. A drawing with several machines needs one speed per machine, so it lives on the joint rather than in settings.
 - `mechanism/readiness.ts` produces the per-machine blocker/warning list the mode chips and setup drawers show; `mechanism/actuator.ts` decides what can be driven.
-- **Mobility is Gruebler's count, rescued by the geometry where the count is wrong.** `mechanism/mobility.ts` takes the rank of the constraint Jacobian, then steps along each freedom it finds and drops the ones that die at second order — a parallelogram with a redundant third crank moves; a tangency does not. Asked only when the count says < 1, and believed only when it says ≥ 1. See [tips-and-tricks](docs/tips-and-tricks.md#grueblers-count-is-one-sided-so-the-geometry-gets-the-last-word).
+- **Mobility is Gruebler's count, rescued by the geometry where the count is wrong.** `mechanism/mobility.ts` takes the rank of the constraint Jacobian, then steps along each freedom it finds and drops the ones that die at second order — a parallelogram with a redundant third crank moves; a tangency does not. Asked only when the count says < 1, and believed only when it says ≥ 1. See [domain-facts.md](docs/domain-facts.md#grueblers-count-is-one-sided-so-the-geometry-gets-the-last-word).
 - Joint IDs are single letters assigned alphabetically (`determineNextLetter`).
 - `utils.ts` is a large grab-bag: interaction state enums (`gridStates`, `jointStates`, `linkStates`, `forceStates`), unit enums (`LengthUnit`, `GlobalUnit`, ...), and geometry helpers.
 
@@ -186,9 +191,9 @@ Pure computation, mostly static classes: `loop-solver` (finds kinematic loops), 
 
 The **modes are tabs in the top strip, not a left rail**, and there are four of them — Synthesis, Edit, Kinematic Analysis, Force Analysis (`TabID`) — not three. The left card is that mode's panel.
 
-- **The canvas draws y-up and the screen is y-down.** A drawing layer wears the `modelFrame` directive and everything inside it is written in the drawing's own coordinates; anything that must read the right way up wears `upright` (both in `model-frame.directive.ts`). `SvgGridService.screenToModel` / `modelToScreen` are the matching pair of conversions, and both carry the flip. See [tips-and-tricks](docs/tips-and-tricks.md#the-drawing-is-y-up-the-screen-is-y-down-and-two-directives-say-so).
+- **The canvas draws y-up and the screen is y-down.** A drawing layer wears the `modelFrame` directive and everything inside it is written in the drawing's own coordinates; anything that must read the right way up wears `upright` (both in `model-frame.directive.ts`). `SvgGridService.screenToModel` / `modelToScreen` are the matching pair of conversions, and both carry the flip. See [domain-facts.md](docs/domain-facts.md#the-drawing-is-y-up-the-screen-is-y-down-and-two-directives-say-so).
 - `AppComponent` is just a shell that registers SVG icons; `component/new-grid/new-grid.component.ts` is the real center — the SVG canvas handling the mouse/touch interaction state machine, with pan/zoom via `SvgGridService` (svg-pan-zoom + hammerjs).
-- The right-click menu is **built in a service, not in the canvas**: `services/context-menu-builder.service.ts` turns whatever was right-clicked, plus the current mode, into a `ContextMenuModel` (`component/context-menu/menu-model.ts`), and `component/context-menu/` renders it. Every grayed row quotes the model that enforces it — `describeActuatorRefusal` in `model/actuator.ts`, `weldRefusal` in `grid-utils`, `locksHolding` in `model/lock-set.ts` — rather than restating the rule, so the menu, the panel and the drag ring cannot disagree. New rows belong in the builder; the canvas only supplies the gesture handlers (`MenuHandlers`).
+- The right-click menu is **built in a service, not in the canvas**: `services/context-menu-builder.service.ts` turns whatever was right-clicked, plus the current mode, into a `ContextMenuModel` (`component/BLOCKS/context-menu/menu-model.ts`), and `component/BLOCKS/context-menu/` renders it. Every grayed row quotes the model that enforces it — `describeActuatorRefusal` in `model/actuator.ts`, `weldRefusal` in `grid-utils`, `locksHolding` in `model/lock-set.ts` — rather than restating the rule, so the menu, the panel and the drag ring cannot disagree. New rows belong in the builder; the canvas only supplies the gesture handlers (`MenuHandlers`).
 - **The analysis modes are editable.** They allow the same context-menu actions as Edit at the start pose. Away from it,
   topology changes stay disabled in both modes. Paused menus allow locks, dimension holds,
   display shape, force properties, and traces. Tracer points and force application points map
@@ -200,10 +205,10 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
   `e2e/analysis-editing.mjs` is the guard. Click selects, drag tunes: a drag does not move what
   the panel is graphing.
 - A **Lock** is about position only: it refuses every gesture that would move what it holds and refuses nothing else, so a locked part deletes like any other and still takes a new link, cylinder or force (`model/lock-set.ts`).
-- A bar can **hold** its length or its angle against edits (`RealLink.hold`, the menu's Fixed Length / Fixed Angle rows, the padlocks in the Link panel's `hold-field-block`). It is a constraint, not a lock: every joint move goes through `GridUtilsService.dragJoint`, which asks `model/hold-solver.ts` for the CAD answer, and the hold rides the URL as an `H` entry beside the locks. `docs/tips-and-tricks.md` has the rules.
+- A bar can **hold** its length or its angle against edits (`RealLink.hold`, the menu's Fixed Length / Fixed Angle rows, the padlocks in the Link panel's `hold-field-block`). It is a constraint, not a lock: every joint move goes through `GridUtilsService.dragJoint`, which asks `model/hold-solver.ts` for the CAD answer, and the hold rides the URL as an `H` entry beside the locks. [`docs/domain-facts.md`](docs/domain-facts.md#a-hold-is-a-constraint-not-a-lock-and-every-move-goes-through-the-solver) has the rules.
 - `SelectedTabService` (`TabID` enum) coordinates the four modes; the Edit and analysis panels operate on whatever `ActiveObjService` says is selected (joint, link, force, mechanism, background image, or synthesis pose).
 - The right drawer is addressed by number through statics on `RightPanelComponent`: 1 Settings, 3 Help, 4 Debug (dev only), 5 `KINEMATIC_SETUP_TAB`, 6 `FORCE_SETUP_TAB`, 7 `EXPORT_TAB`. **Tab 2 (`app-equation-panel`) is unreachable** — nothing calls `tabClicked(2)` and its content is placeholder images. It is unfinished work, not a feature.
-- `SettingsService` exposes document-wide settings as RxJS BehaviorSubjects (units, gravity, grid and snap visibility, object scale). Input **speed and direction are not global** — they belong to the driven joint (`Joint.driveSpeed`), because a drawing can hold several machines; the SettingsService values are only the default a joint falls back to. `forceUnit` is the unit a force is *read* in (lbf under English; N or kgf under metric and SI) and not the one it is stored in — see [tips-and-tricks](docs/tips-and-tricks.md#a-force-is-stored-in-one-unit-and-read-in-another).
+- `SettingsService` exposes document-wide settings as RxJS BehaviorSubjects (units, gravity, grid and snap visibility, object scale). Input **speed and direction are not global** — they belong to the driven joint (`Joint.driveSpeed`), because a drawing can hold several machines; the SettingsService values are only the default a joint falls back to. `forceUnit` is the unit a force is *read* in (lbf under English; N or kgf under metric and SI) and not the one it is stored in — see [domain-facts.md](docs/domain-facts.md#a-force-is-stored-in-one-unit-and-read-in-another).
 - `component/BLOCKS/` holds the reusable form primitives (input, toggle, radio, dual-input, panel-section, ...) that the panels are composed from. **The component gallery (`npm run storybook`) is the one place for UI documentation:** every block and shared component state by state, sectioned as Fields, Choices, Actions, Structure and Feedback; the design tokens grouped by role; the UI style guide, vocabulary and code style rendered from `docs/*.md` at build time (edit the `.md`, never the page); and a Reuse backlog naming where the app still hand-rolls a block. Build new panel UI from the blocks rather than copying a neighbor's CSS. Only `@Input`/`input()` members belong in a block's public surface: everything else is `protected` or `private`, or it shows up in the gallery's properties table. `component/MODALS/` holds the Templates dialog and the release-notes splash.
 - Messages to the user go through `NotificationService`, which replaced the old `NewGridComponent.sendNotification()` static. Some components still talk through statics (e.g. `RightPanelComponent.openTab` / `insistOn`) — grep for the static before assuming a service is the only channel.
 - Four-bar synthesis (generating a linkage from three desired coupler poses) lives in `services/synthesis/`.

@@ -1,8 +1,12 @@
 import { SegmentedComponent } from '../BLOCKS/segmented/segmented.component';
+import { ChipComponent } from '../BLOCKS/chip/chip.component';
+import { ButtonComponent } from '../BLOCKS/button/button.component';
+import { ToggleComponent } from '../BLOCKS/toggle/toggle.component';
 import { KeyboardShortcutsService } from '../../services/keyboard-shortcuts.service';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import {
   Component,
+  DoCheck,
   OnInit,
   OnDestroy,
   ChangeDetectionStrategy,
@@ -112,9 +116,12 @@ export function niceRound(value: number): number {
     CollapsibleSubsectionComponent,
     StandardFieldDirective,
     SegmentedComponent,
+    ChipComponent,
+    ButtonComponent,
+    ToggleComponent,
   ],
 })
-export class SynthesisPanelComponent implements OnInit, OnDestroy {
+export class SynthesisPanelComponent implements OnInit, DoCheck, OnDestroy {
   private shortcuts = inject(KeyboardShortcutsService);
   private tabs = inject(SelectedTabService);
   private fb = inject(FormBuilder);
@@ -154,7 +161,30 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     { updateOn: 'blur' }
   );
 
+  /**
+   * The three switches on this panel, as a form, because `toggle-block` binds
+   * through one. The panel's own state lives in the synthesis services; these
+   * controls mirror it, and `syncSwitches` keeps them level after anything
+   * that changes it.
+   */
+  readonly switchForm = this.fb.group({ coupler: [false], region: [false], driver: [false] });
+
   regionForm = this.fb.group({ rx: [''], ry: [''], rw: [''], rh: [''] }, { updateOn: 'blur' });
+
+  /**
+   * Put the switches back where the model is, every check.
+   *
+   * Not a subscription, for the same reason the tutorial card counts this way:
+   * most of what moves these is announced on nothing. `design.endsOnly` is a
+   * plain field, and `driverOn` is a function of a refusal and a wanted flag
+   * that the solution service changes on its own -- choosing another
+   * candidate, a search finishing, a reset. Mirroring on `valueChanges` left
+   * the coupler switch showing the opposite of the check mark beside it, and
+   * the next press on it looked dead because the model was already there.
+   */
+  ngDoCheck(): void {
+    this.syncSwitches();
+  }
 
   ngOnInit(): void {
     this.sizeCouplerToView();
@@ -168,6 +198,7 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
     this.subs.push(
       this.design.valueChanges.subscribe(() => {
         this.readFromModel();
+        this.syncSwitches();
         this.claimWheel();
         // Deliberately not invalidating here. Moving a position changes the
         // answer, not the question, and the search keeps up with it on its own
@@ -175,6 +206,20 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
         // button the thing the reader spent the session pressing. The sites
         // that really do change the question say so themselves.
         this.solution.changed.next();
+      })
+    );
+
+    this.syncSwitches();
+    this.subs.push(
+      // The switches are the same three toggles the rows already had; what
+      // changed is that they are the app's `toggle-block` rather than three
+      // hand-drawn knobs, so they arrive as one form.
+      this.switchForm.valueChanges.subscribe((value) => {
+        if (this.syncing) return;
+        if (!!value.coupler !== this.design.endsOnly) this.toggleRequirement('endsOnly');
+        else if (!!value.region !== this.design.constrain) this.toggleRequirement('constrain');
+        else if (!!value.driver !== this.driverOn) this.toggleDriver();
+        this.syncSwitches();
       })
     );
 
@@ -651,6 +696,31 @@ export class SynthesisPanelComponent implements OnInit, OnDestroy {
         hasRegion: this.design.constrain,
       },
     ];
+  }
+
+  /**
+   * Put the switches back where the services say they are.
+   *
+   * The controls are a mirror, not the truth: a requirement can be turned off
+   * by something other than its own switch -- arming the region placer, a
+   * solution that will not take a driver -- and a mirror that is not wiped
+   * shows the reader a switch that disagrees with the panel under it.
+   */
+  private syncSwitches(): void {
+    const want = {
+      coupler: this.design.endsOnly,
+      region: this.design.constrain,
+      driver: this.driverOn,
+    };
+    const have = this.switchForm.getRawValue();
+    if (
+      have.coupler === want.coupler &&
+      have.region === want.region &&
+      have.driver === want.driver
+    ) {
+      return;
+    }
+    this.switchForm.setValue(want, { emitEvent: false });
   }
 
   private toggleRequirement(which: 'endsOnly' | 'constrain'): void {

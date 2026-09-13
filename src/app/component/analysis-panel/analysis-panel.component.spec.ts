@@ -383,13 +383,21 @@ const CRANK_LOADED_FOUR_BAR =
   '2v.Fe,1E8.A,5D.1011.6A,A,0mv,0VU,0.GB,B,0e_,E6,0.0C,C,l1,WW,0.4D,D,qD,0Pk,0..MRAB,AB,0,0,0ix,08i,303e9f,A,B,,.MRBC,BC,0,0,32,NJ,26A69A,B,C,,.MRCD,CD,0,0,nd,3P,0d125a,C,D,,..2F1,AB,F1,0iD,04Y,0yP,Hj,Fe..N_.KFF1~26A69AU*2fMxSM';
 
 describe('AnalysisPanelComponent drawing switches', () => {
+  // These are `app-view-button` at its labelled size now, not a hand-drawn
+  // `.drawingChip`: `data-switch` rides the host and the word is
+  // `.viewButtonLabel`. Grayed is `aria-disabled`, not `disabled` -- a
+  // disabled button takes no pointer events, and the reason a switch is gray
+  // is the one tooltip a reader most needs.
   const switches = (fixture: ComponentFixture<AnalysisPanelComponent>) =>
-    [...fixture.nativeElement.querySelectorAll('.drawingChip')].map((node: Element) => ({
-      key: node.getAttribute('data-switch'),
-      label: node.querySelector('.drawingChipLabel')?.textContent?.trim(),
-      off: node.classList.contains('drawingChip--off'),
-      on: node.getAttribute('aria-pressed') === 'true',
-    }));
+    [...fixture.nativeElement.querySelectorAll('app-view-button')].map((host: Element) => {
+      const node = host.querySelector('.viewButton') as HTMLButtonElement | null;
+      return {
+        key: host.getAttribute('data-switch'),
+        label: node?.querySelector('.viewButtonLabel')?.textContent?.trim(),
+        off: node?.getAttribute('aria-disabled') === 'true',
+        on: node?.getAttribute('aria-pressed') === 'true',
+      };
+    });
   const heading = (fixture: ComponentFixture<AnalysisPanelComponent>) =>
     fixture.nativeElement.querySelector('.drawingSwitchesHead')?.textContent?.trim();
 
@@ -441,7 +449,9 @@ describe('AnalysisPanelComponent drawing switches', () => {
     const joint = fixtureData.service.joints.find((one) => one.id === 'B')!;
     expect(fixtureData.service.isVectorTraceOn(joint, 'velocity')).toBe(false);
     (
-      fixture.nativeElement.querySelector('.drawingChip[data-switch="velocity"]') as HTMLElement
+      fixture.nativeElement.querySelector(
+        'app-view-button[data-switch="velocity"] .viewButton'
+      ) as HTMLElement
     ).click();
     fixture.detectChanges();
     expect(fixtureData.service.isVectorTraceOn(joint, 'velocity')).toBe(true);
@@ -471,7 +481,9 @@ describe('AnalysisPanelComponent drawing switches', () => {
     fixture.detectChanges();
     const joint = fixtureData.service.joints.find((one) => one.id === 'A')!;
     (
-      fixture.nativeElement.querySelector('.drawingChip[data-switch="velocity"]') as HTMLElement
+      fixture.nativeElement.querySelector(
+        'app-view-button[data-switch="velocity"] .viewButton'
+      ) as HTMLElement
     ).click();
     fixture.detectChanges();
     expect(fixtureData.service.isVectorTraceOn(joint, 'velocity')).toBe(false);

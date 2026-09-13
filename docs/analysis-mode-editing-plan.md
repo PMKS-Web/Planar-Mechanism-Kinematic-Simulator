@@ -358,7 +358,7 @@ refusals, the anchor-lost snackbar, the ghost tag.
   open graphs holds 30 ms/frame kinematic, 60 ms in force mode, measured by the new e2e suite
   on the standard fixtures. If force mode misses, degrade stated-ly: live force curves refresh
   at half rate while the drag ring is live, never silently.
-- **Docs.** `tips-and-tricks.md` entries for the traps met on the way (the `.next(1)` spinner,
+- **Docs.** `short-notes.md` entries for the traps met on the way (the `.next(1)` spinner,
   the header cache key, the phase rotation); CLAUDE.md's UI-layer sketch updated; the §3
   matrix folded into `edit-mode-playback-plan.md`'s matrix section as its successor.
 

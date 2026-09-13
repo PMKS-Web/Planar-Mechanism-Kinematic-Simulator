@@ -1,10 +1,11 @@
-import { Component, ChangeDetectionStrategy, input, output } from '@angular/core';
+import { booleanAttribute, Component, ChangeDetectionStrategy, input, output } from '@angular/core';
 import { FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
 import { MatFormField } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
+import { FieldOverlay } from '../field-overlay';
 
 @Component({
   selector: 'toggle-block',
@@ -36,6 +37,34 @@ export class ToggleComponent {
    * optional number field this block can carry, not about the switch.
    */
   readonly disabled = input<boolean>(false);
+  /**
+   * Sized to sit on a subtitle's line rather than on a panel row of its own:
+   * a smaller label, a smaller help mark, and the switch scaled to the line.
+   *
+   * The analysis panel's "compare with before the drag" switch is the one of
+   * these. It used to get this by naming `#toggle-block`'s insides from its
+   * own stylesheet.
+   */
+  readonly compact = input<boolean>(false);
+  /**
+   * The switch's accessible name, where the block's own label is hidden or the
+   * row says it some other way.
+   *
+   * It has to be an input rather than an `aria-label` on the tag: the host is
+   * a role-less custom element, so an attribute there names nothing, and the
+   * `mat-slide-toggle` inside is what carries the `switch` role.
+   */
+  readonly ariaLabel = input<string>();
+  /**
+   * The switch alone: no label, no help mark, no spacer, and scaled to sit on
+   * a row that has already said what it is.
+   *
+   * The synthesis panel's requirement rows and its driver row are these. They
+   * were reaching into this block's private ids from their own stylesheets to
+   * get it, which is the coupling `cell` and `compact` were added to remove
+   * elsewhere.
+   */
+  readonly bare = input<boolean, unknown>(false, { transform: booleanAttribute });
 
   readonly addInput = input<boolean>(false);
   readonly _formControlForInput = input<string | undefined>(undefined);
@@ -55,24 +84,24 @@ export class ToggleComponent {
    */
   readonly fieldEntry = output<boolean>();
 
-  private mouseOver = false;
-  private focused = false;
-  private showing = false;
+  /**
+   * Shared with the other three field blocks. This one used to emit only on a
+   * change, which is the bug `FieldOverlay` describes: after a committed edit
+   * the canvas has dropped the overlay, and pointing at the same field again
+   * said nothing.
+   */
+  private readonly overlay = new FieldOverlay<boolean>(
+    (value) => this.fieldEntry.emit(value),
+    () => true,
+    () => false,
+    () => !this.disabled()
+  );
 
   protected setMouseOver(over: boolean): void {
-    this.mouseOver = over;
-    this.updateOverlay();
+    this.overlay.hover(over);
   }
 
   protected setFocused(focused: boolean): void {
-    this.focused = focused;
-    this.updateOverlay();
-  }
-
-  private updateOverlay(): void {
-    const wants = this.mouseOver || this.focused;
-    if (wants === this.showing) return;
-    this.showing = wants;
-    this.fieldEntry.emit(wants);
+    this.overlay.focus(focused);
   }
 }

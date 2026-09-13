@@ -33,7 +33,7 @@ import { InputComponent } from '../BLOCKS/input/input.component';
 import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
 import { RadioComponent } from '../BLOCKS/radio/radio.component';
 import { ToggleComponent } from '../BLOCKS/toggle/toggle.component';
-import { EditBannerComponent } from '../edit-panel/edit-banner.component';
+import { EditBannerComponent } from '../BLOCKS/banner/edit-banner.component';
 
 /** The Edit drawer used when more than one typed mechanism part is selected. */
 @Component({

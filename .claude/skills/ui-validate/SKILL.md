@@ -61,7 +61,7 @@ and never report a live check as passed with a tool you could not call.
    against the project's own copy (`..`, not `.`, because the resolver imports
    relative to the script). The install outside the repo, and what else some
    suites need, is in
-   [`docs/tips-and-tricks.md#environment`](../../../docs/tips-and-tricks.md#environment).
+   [`docs/environment.md#environment`](../../../docs/environment.md#environment).
 
 ## Filmstrips are mandatory for any animated or gestural change
 

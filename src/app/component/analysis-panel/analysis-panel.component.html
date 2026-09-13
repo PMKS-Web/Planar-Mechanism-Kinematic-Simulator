@@ -53,6 +53,7 @@
         @if (hasComparison) {
           <toggle-block
             class="compareToggle"
+            [compact]="true"
             [formGroup]="compareForm"
             _formControl="compare"
             tooltip="Shows the curves from before your last drag, dashed and faded, under the live ones."
@@ -81,25 +82,18 @@
              reason on hover. -->
         <div class="drawingChips">
           @for (one of drawingSwitches; track one.key) {
-            <button
-              type="button"
-              class="drawingChip"
-              [class.drawingChip--on]="drawingSwitchIsOn(one)"
-              [class.drawingChip--off]="!!one.row.refusal"
+            <app-view-button
+              grow
               [attr.data-switch]="one.key"
-              [attr.aria-pressed]="drawingSwitchIsOn(one)"
-              [attr.aria-disabled]="!!one.row.refusal"
-              [matTooltip]="drawingSwitchTip(one)"
-              matTooltipShowDelay="300"
-              (click)="flipDrawingSwitch(one)"
-            >
-              <mat-icon
-                class="drawingChipGlyph"
-                [svgIcon]="drawingSwitchGlyph(one)"
-                [style.color]="drawingSwitchInk(one)"
-              ></mat-icon>
-              <span class="drawingChipLabel">{{ drawingSwitchLabel(one) }}</span>
-            </button>
+              [caption]="drawingSwitchLabel(one)"
+              [noun]="drawingSwitchLabel(one)"
+              [svg]="drawingSwitchGlyph(one)"
+              [ink]="drawingSwitchInk(one)"
+              [shown]="drawingSwitchIsOn(one)"
+              [refused]="!!one.row.refusal"
+              [tooltip]="drawingSwitchTip(one)"
+              (pressed)="flipDrawingSwitch(one)"
+            ></app-view-button>
           }
         </div>
       </div>

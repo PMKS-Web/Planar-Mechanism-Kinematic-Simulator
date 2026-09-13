@@ -30,7 +30,7 @@ server — so a suite that nobody ran can be broken without anything turning red
 - **Run from the repository root.** Suites read `src/` and write `artifacts/` by relative path.
 
 The install commands, the browser cache, why `..` and not `.`, and the localhost rule are in
-[tips-and-tricks: Environment](../docs/tips-and-tricks.md#environment). Some suites need more than
+[environment.md: Environment](../docs/environment.md#environment). Some suites need more than
 Chromium; the catalog below says which.
 
 ## Running
@@ -130,7 +130,7 @@ Not suites — import them from one.
   machine that is not the master.
 - `posed-edit-audit.mjs` — every menu row, panel field, key and transport control at a displaced
   pose, on three mechanisms, judged on what is left behind. Writes
-  `artifacts/posed-edit-audit/matrix.md`. Slow: tips-and-tricks puts it at about a quarter of an
+  `artifacts/posed-edit-audit/matrix.md`. Slow: about a quarter of an
   hour.
 - `posed-drag-fuzz.mjs` — seeded random drags at random poses; the ghost, the design's sample 0
   and the transport's "from start" must agree. `SEED=` replays, `ONLY=` picks trial numbers. Slow:
@@ -288,6 +288,28 @@ Not suites — import them from one.
   nothing outside the tab card, no sideways scroll, no flicker between label levels.
 - `right-drawer.mjs` — the right drawer's width, left edge and bottom gap against the view
   controls, with the tutorial pinned and on a short window.
+- `reuse-parity.mjs` — the same panel, drawn by two servers, compared pixel for pixel. Written for
+  the reuse backlog, where every edit replaces a hand-rolled copy of a block with the block and is
+  supposed to change nothing a reader can see. Needs **two** dev servers: `PMKS_BASE_URL` serves
+  the change and `PMKS_PARITY_BASE_URL` the branch's base. A mismatch saves the two shots and a
+  red-on-grey diff mask under `artifacts/reuse-parity/`, and is re-shot once before it is believed.
+  `--only <substring>` runs a subset. Its scenes live in `reuse-parity-scenes.mjs`.
+- `reuse-parity-scenes.mjs` — the scene list `reuse-parity.mjs` photographs: which panel, which
+  mode, and the clicks that reach it. Not a check on its own.
+- `gallery-parity.mjs` — the other half of `reuse-parity.mjs`: every **story** in the component
+  gallery, drawn by two builds, compared pixel for pixel. The gallery builds its own page and
+  prepends the app's global stylesheets itself, so a change to `mytheme.scss` or a moved stylesheet
+  can leave the app untouched and still strip the background off every card in the docs — which is
+  exactly what the app suite cannot see. Needs **two Storybook servers**, `PMKS_GALLERY_URL` and
+  `PMKS_GALLERY_BASE_URL`; it reads the story list from Storybook's own `index.json`, so a story
+  added tomorrow is compared tomorrow. Docs pages are skipped: their "Show code" block is the
+  story's source, so every source edit would fail them for no visual reason.
+- `field-overlay-reassert.mjs` — pointing at a number in the Edit panel draws it on the grid, and
+  it comes back when you point at the same field again after a committed edit. That is the one rule
+  in `BLOCKS/field-overlay.ts` that is not obvious: the canvas drops its overlays when the selected
+  object announces itself, and a block that reports only its own *changes* has nothing to say while
+  the pointer has not moved. Covers `hold-field-block`; the file says why the other three are not
+  reachable from here.
 - `reduced-motion.mjs` — the app with `prefers-reduced-motion` on, which `src/styles.scss`
   answers for every stylesheet at once: the boot splash still leaves, the phone sheet still opens
   and shuts by its handle, and no page error.

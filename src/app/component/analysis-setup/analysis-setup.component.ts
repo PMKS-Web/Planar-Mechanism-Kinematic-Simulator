@@ -14,6 +14,8 @@ import { ScrollShadowDirective } from '../../scroll-shadow.directive';
 import { NotificationService } from '../../services/notification.service';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { InputComponent } from '../BLOCKS/input/input.component';
+import { ChipComponent } from '../BLOCKS/chip/chip.component';
+import { ButtonComponent } from '../BLOCKS/button/button.component';
 import { Subscription } from 'rxjs';
 import { NOT_A } from '../../ui-text';
 import { editPanelHandle } from '../../services/edit-panel-handle';
@@ -43,7 +45,14 @@ export interface MassRow {
   templateUrl: './analysis-setup.component.html',
   styleUrls: ['./analysis-setup.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [MatIcon, ScrollShadowDirective, ReactiveFormsModule, InputComponent],
+  imports: [
+    MatIcon,
+    ScrollShadowDirective,
+    ReactiveFormsModule,
+    InputComponent,
+    ChipComponent,
+    ButtonComponent,
+  ],
 })
 export class AnalysisSetupComponent {
   mechanism = inject(MechanismService);
@@ -497,6 +506,7 @@ export class AnalysisSetupComponent {
    * changed the mechanism, and pressing Undo afterwards should take back the
    * last edit rather than the last time the reader looked at something.
    */
+
   goTo(part: Joint | Link | undefined): void {
     if (!part) return;
     this.tabs.setTab(TabID.EDIT);
