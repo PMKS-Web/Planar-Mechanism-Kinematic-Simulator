@@ -15,6 +15,7 @@ import { equationPlan, matlabIdentifiers } from './matlab/equation-plan';
 import { forceBalance } from './matlab/force-equations';
 import { matlabPackage } from './matlab/package';
 import { utf8, zipStore } from './zip';
+import { mechanismSvg } from './mechanism-svg';
 
 function fixture(name: string) {
   if (name === 'M1') return buildMechanismFixture(TEMPLATE_LINKAGES['4-Bar']).mechanism;
@@ -121,10 +122,15 @@ function allChannels(m: AnalysisExportModel) {
   }
 }
 
-function saveExample(m: AnalysisExportModel, stem: string) {
+function saveExample(m: AnalysisExportModel, stem: string, mechanism: ReturnType<typeof fixture>) {
   if (!process.env['PMKS_WRITE_MATLAB']) return;
   const directory = join(process.env['PMKS_WRITE_MATLAB'], 'readable-equations');
-  const files = matlabPackage(m);
+  const files = matlabPackage(
+    m,
+    false,
+    undefined,
+    mechanismSvg(mechanism.joints[0], mechanism.links[0], 960, 640, { engineering: true })
+  );
   const entries = Object.entries(files).map(([name, text]) => {
     const path = join(directory, stem, name);
     mkdirSync(join(path, '..'), { recursive: true });
@@ -307,7 +313,7 @@ describe('mechanism-specific MATLAB engineering equations', () => {
     ]);
     expect(original.driver.segments[0][2]).toBeCloseTo(-Math.PI / 3, 12);
     allChannels(original);
-    saveExample(original, 'pmks_M1_kinematics_analysis');
+    saveExample(original, 'pmks_M1_kinematics_analysis', fixture('M1'));
     const files = matlabPackage(original);
     expect(files['solve_forces.m']).toBeUndefined();
     expect(files['force_equations.m']).toBeUndefined();
@@ -323,10 +329,18 @@ describe('mechanism-specific MATLAB engineering equations', () => {
       body.inertia = 0.0001;
     });
     allChannels(dynamic);
-    saveExample(dynamic, 'pmks_M1_dynamic_analysis');
+    dynamic.name = 'M1 dynamic — demonstration masses: 0.2 kg, inertia 0.0001 kg*m^2 per body';
+    saveExample(dynamic, 'pmks_M1_dynamic_analysis', fixture('M1'));
     const stephenson = analysisExportModel(fixture('Stephenson III'), 'dynamic', 'Stephenson III');
     allChannels(stephenson);
-    saveExample(stephenson, 'pmks_Stephenson_III_analysis');
+    saveExample(stephenson, 'pmks_Stephenson_III_analysis', fixture('Stephenson III'));
+    const slider = analysisExportModel(
+      fixture('TeachingLab slider-crank'),
+      'dynamic',
+      'TeachingLab slider-crank'
+    );
+    allChannels(slider);
+    saveExample(slider, 'pmks_slider_crank_analysis', fixture('TeachingLab slider-crank'));
     const incompatible = structuredClone(original);
     incompatible.channels = dynamic.channels;
     expect(() => matlabPackage(incompatible)).toThrow(/Force result channels/);

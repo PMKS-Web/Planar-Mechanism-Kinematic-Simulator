@@ -1,5 +1,14 @@
 /** Base MATLAB numeric solver kernels. Coordinate conventions are the AnalysisExportModel contract. */
 export const KINEMATIC_FILES: Record<string, string> = {
+  '+pmks/time_grid.m': `function time = time_grid(m)
+% Shared requested times for analysis and validation; include drive events exactly.
+step = m.settings.step; duration = m.settings.duration;
+assert(isscalar(step) && isfinite(step) && step>0 && isscalar(duration) && isfinite(duration) && duration>=0, ...
+    'PMKS:TimeGrid','Use a finite positive step and nonnegative duration.');
+events = m.driver.segments(:,1);
+time = unique([0:step:duration, duration, events(events>=0 & events<=duration)']);
+end
+`,
   '+pmks/point.m': `function [p, D, curvature] = point(m, q, v, body, local)
 % Point location, Jacobian, and centripetal acceleration in SI.
 D = zeros(2,numel(q)); curvature = zeros(2,1);

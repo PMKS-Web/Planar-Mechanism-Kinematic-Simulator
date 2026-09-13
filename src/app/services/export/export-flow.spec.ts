@@ -101,6 +101,11 @@ function pick(flow: ExportFlowService, ...labels: string[]): void {
 }
 
 describe('the export drawer', () => {
+  it('defaults both optional MATLAB comparison exports to No', () => {
+    const { flow } = flowFor(TEMPLATE_LINKAGES['4-Bar']);
+    expect(flow.matlabReference).toBe(false);
+    expect(flow.matlabMeasurements).toBe(false);
+  });
   it('accepts a full filename and preserves version dots when formats change', () => {
     const { flow } = flowFor(TEMPLATE_LINKAGES['4-Bar']);
     flow.typedName = '  linkage.v1.2.CSV  ';

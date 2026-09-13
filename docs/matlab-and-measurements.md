@@ -1,6 +1,6 @@
 # MATLAB scripts and measured data
 
-> **Status:** Reference — MATLAB export and experimental comparison in the analysis modes.
+> **Status:** Reference — MATLAB export and experimental comparison in the analysis modes. Feature frozen after the runtime-validator hardening pass, pending execution of the generated packages in an actual MATLAB installation. Add no further capabilities until that validation is reviewed.
 
 ## MATLAB Analysis Package
 
@@ -13,6 +13,9 @@ Export, unzip, and change MATLAB's current folder to the mechanism's folder. Run
 
 ```matlab
 results = run_pmks_analysis;
+report = validate_pmks_package;
+% Optional: rerun validation and save a report to share for debugging.
+report = validate_pmks_package(true,'pmks_validation_report.txt');
 ```
 
 MATLAB independently calculates configurations, joint/tracer and CoM velocities/accelerations,
@@ -20,6 +23,13 @@ link angles/angular rates, and selected static or dynamic joint reactions and dr
 No PMKS result table supplies the theoretical solution. **Delete `pmks_reference.csv` and the
 complete supported analysis still runs.** Each selected mechanism gets its own folder in one ZIP.
 Folder names have a deterministic `pmks_` prefix and safe letters, digits and underscores.
+
+**MATLAB solver units are SI (m, kg, s, rad, N). Current PMKS display units are converted
+automatically: 3 cm becomes 0.03 m.** Named results, raw arrays and plots also use SI. Both
+**Include PMKS reference results** and **Include measurement-comparison template** default to
+**No**; either can be enabled. Optional display-unit plots are deferred because channel labels,
+reference samples and measurement units would need a coordinated output conversion layer.
+The current architecture remains fixed while real MATLAB validation is pending.
 
 ### Generated files
 
@@ -32,6 +42,8 @@ Folder names have a deterministic `pmks_` prefix and safe letters, digits and un
 | `force_equations.m` | Per-body Newton/Euler rows and applied-load assembly, when force quantities are selected |
 | `run_pmks_analysis.m` | One entry point; calculates results before optionally verifying them |
 | `validate_equations.m` | Runtime topology guard and comparison of generated equations with the generic IR interpreter |
+| `validate_pmks_package.m` | Reruns the actual MATLAB solver without figures; returns residuals, frame completion, conditioning and PASS/WARN/FAIL |
+| `mechanism.svg` | Initial configuration from the existing SVG exporter, with joints, bodies, ground, driver and fixed guides |
 | `solve_position.m` | Numerical Newton iteration with backtracking |
 | `solve_velocity.m` | Analytic Jacobian equation `J*q_dot = driver RHS` |
 | `solve_acceleration.m` | `J*q_ddot = -J_dot*q_dot + driver acceleration RHS` |
@@ -53,6 +65,50 @@ These are standard MATLAB `.m` files. Some editors also associate `.m` with Obje
 MATLAB language mode or configure MATLAB language support if the highlighting looks like C.
 Inspection of the user's `pmks_M1_kinematics_analysis.zip` confirmed MATLAB function contents,
 not C/C++ source or a packaging extension problem. The extension remains `.m`.
+
+### Validate and share a MATLAB run
+
+1. Unzip the package and set MATLAB **Current Folder** to the folder containing `mechanism_data.m`.
+2. Run `results = run_pmks_analysis;`. Selected channels open grouped Position, Velocity,
+   Acceleration and (if selected) Force figures. Joint positions also produce a trajectory figure.
+3. Run `report = validate_pmks_package;`. It reruns the **actual generated solver**, without
+   figures, then calls the generated position, velocity, acceleration and optional force equations
+   at every available solved frame. No TypeScript solver or PMKS reference history supplies results.
+4. Inspect `results` and `report` in the Workspace. `report.position`, `.velocity`, `.acceleration`
+   and optional `.force` contain `maxResidual`, `rmsResidual`, `maxToleranceRatio`,
+   `withinTolerance`, and `byRow`. Each row's SI unit is recorded because aggregate summaries mix
+   translation/rotation or force/moment rows. `.force.byBody.<body>` exposes Fx/Fy and, for rigid
+   bodies, moment statistics from the same force rows used to solve equilibrium.
+5. Save with `report = validate_pmks_package(true,'pmks_validation_report.txt');` and return that
+   text file with the exported ZIP when reporting a problem. No file is written by default.
+   `validate_pmks_package(false)` skips the optional PMKS CSV cross-check.
+
+`report.frames` counts requested, completely solved, kinematically solved, failed/incomplete and
+unattempted frames, first failure/time, and NaN/Inf entries in the raw stored arrays (excluding
+duplicate named aliases and reference data). Unsolved remainder entries stay NaN. Residuals use
+solved frames; no missing frame is filled or reported as successful. Force completion is recorded
+only after the force solve succeeds. Conditioning gives minimum raw and row-scaled rcond(J),
+plus the worst raw-conditioned frame and its time.
+
+| Check | Tolerance and outcome |
+| --- | --- |
+| Position closure C | Absolute 1e-8 per scalar SI row, in m or rad |
+| Velocity, acceleration, force equilibrium | Absolute 1e-8 + relative 1e-8 × (abs(A) × abs(x) + abs(b)) per scalar row |
+| Near singularity | Row-scaled rcond(J) below 1e-8 gives WARN; existing solver refuses below 1e-12 |
+| Optional PMKS cross-check | Peak error above 1e-6 for position/angle, 1e-4 otherwise, multiplied by max(1, peak absolute compared theory), gives WARN |
+
+The equation thresholds allow floating-point cancellation while remaining tighter than the
+cross-implementation sample tolerances below. **PASS** requires complete frames and acceptable
+equations. **WARN** covers partial completion, near singularity or optional comparison differences.
+**FAIL** covers no complete frames, a nonfinite frame marked complete, equation-check errors or
+excessive core residuals. Optional comparisons report RMSE/bias/peak and cannot fail core equations.
+The known PMKS dynamic-force display-scale discrepancy is explained when those channels differ;
+MATLAB retains physical SI equations. The PMKS force backend is unchanged by this hardening pass.
+
+The image is a labeled skeleton of `mechanism.joints[0]` / `links[0]`, matching the adapter's
+initial configuration even when playback has advanced. The writer passes SVG text into the plain
+package generator; it does not introduce an Angular dependency into that generator. Standalone
+callers without drawing data may omit the optional image, and the guide then omits its image link.
 
 ### Read the engineering equations
 
@@ -281,9 +337,16 @@ contract, evaluates the rendered scalar Newton/Euler balances under nonzero mass
 both local/world loads in static and dynamic modes, verifies naming and channel mappings, and
 checks coherent kinematics-only content. It covers M1, the tracer four-bar, slider-crank and
 Stephenson III. With `PMKS_WRITE_MATLAB` set, it writes inspectable M1 kinematics, M1 dynamic
-(explicitly configured 0.2 kg / 0.0001 kg*m² bodies), and Stephenson III ZIPs under
+(explicitly configured 0.2 kg / 0.0001 kg*m² demonstration bodies), Stephenson III and fixed-guide
+slider-crank ZIPs under
 `<PMKS_WRITE_MATLAB>/readable-equations/`. M1 geometry and clockwise speed are checked against
 the user's inspected download. Numerical equation tests remain distinct from MATLAB execution.
+
+`matlab-validation.spec.ts` checks validator inclusion/call wiring, force-row mappings, omission
+for kinematics, deterministic optional-data behavior, emitted status/error policies, SI wording,
+SVG labels/escaping and frame-zero selection. The browser suite verifies both No defaults,
+opt-in templates, validator/image downloads and the changed UI. These are generation contracts;
+PASS/WARN/FAIL execution must still be exercised in MATLAB itself.
 
 These are **TypeScript equation-contract versus PMKS comparisons**, not results from executing
 MATLAB. No MATLAB runtime is installed on the development machine. The generated code targets

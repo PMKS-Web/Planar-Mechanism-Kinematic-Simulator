@@ -1,14 +1,16 @@
 export function resultFiles(forces: boolean): Record<string, string> {
   return {
-    'run_pmks_analysis.m': `function results = run_pmks_analysis()
+    'run_pmks_analysis.m': `function results = run_pmks_analysis(make_plots,compare_reference)
 % RUN_PMKS_ANALYSIS Independently solve the exported mechanism in base MATLAB.
 % Unzip, change MATLAB's current folder to this folder, then run:
 %   results = run_pmks_analysis;
 % No reference file or experimental data is needed to solve the mechanism.
+% Optional flags suppress figures/comparison for validate_pmks_package.
+if nargin < 1, make_plots = true; end
+if nargin < 2, compare_reference = true; end
 m = mechanism_data();
 validate_equations(m);
-time = unique([0:m.settings.step:m.settings.duration, m.settings.duration, ...
-    m.driver.segments(m.driver.segments(:,1)<=m.settings.duration,1)']);
+time = pmks.time_grid(m);
 n = numel(m.initial); count = numel(time);
 results.time = time(:); results.model = m; results.solved_frames = 0;
 results.q = NaN(n,count); results.v = results.q; results.a = results.q;
@@ -20,7 +22,8 @@ ${
 results.torque = NaN(count,1); results.lambda = NaN(numel(m.constraints)+1,count);
 `
     : ''
-}results.failure = '';
+}results.failure = ''; results.failure_frame = []; results.failure_identifier = '';
+results.frame_solved = false(count,1);
 q = m.initial;
 for k = 1:count
     try
@@ -37,7 +40,6 @@ for k = 1:count
             results.jointVelocity(j,:,k) = (D*v)';
             results.jointAcceleration(j,:,k) = (D*a+curvature)';
         end
-        results.solved_frames = k;
 ${
   forces
     ? `        if ~strcmp(m.settings.force_mode,'none')
@@ -48,7 +50,9 @@ ${
 `
     : ''
 }
+        results.solved_frames = k; results.frame_solved(k) = true;
     catch failure
+        results.failure_frame = k; results.failure_identifier = failure.identifier;
         results.failure = sprintf('Stopped at t=%.12g s: %s',time(k),failure.message);
         warning('PMKS:Stopped','%s',results.failure); break;
     end
@@ -56,10 +60,10 @@ end
 results.values = NaN(count,numel(m.channels));
 for c = 1:numel(m.channels), results.values(:,c) = pmks.channel(results,m.channels(c)); end
 results = named_results(results);
-plot_results(results);
+if make_plots, plot_results(results); end
 fprintf('Solved %d of %d requested frames. Units: m, s, rad, kg, N, N*m.\\n',results.solved_frames,count);
 % Optional verification is intentionally called after the independent solve.
-if exist(fullfile(fileparts(mfilename('fullpath')),'pmks_reference.csv'),'file')
+if compare_reference && exist(fullfile(fileparts(mfilename('fullpath')),'pmks_reference.csv'),'file')
     try
         results.verification = compare_pmks(results);
     catch comparison_failure
@@ -152,7 +156,7 @@ for k = 1:numel(r.model.channels)
     c = r.model.channels(k); valid = isfinite(data(:,k+1));
     if ~any(valid), continue; end
     stats = pmks.compare(r.time,r.values(:,k),data(valid,[1,k+1]),0,c.period);
-    stats.label = c.label; stats.unit = c.unit; report = [report;stats]; %#ok<AGROW>
+    stats.label = c.label; stats.unit = c.unit; stats.channel = k; report = [report;stats]; %#ok<AGROW>
     fprintf('%s: RMSE %.6g, bias %.6g, peak %.6g %s (%d compared)\\n', ...
         c.label,stats.rmse,stats.bias,stats.peak,c.unit,stats.count);
 end

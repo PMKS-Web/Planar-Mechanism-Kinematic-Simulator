@@ -213,7 +213,12 @@ export class ExportWriterService {
       }
       const folder = matlabFileName(this.flow.name(), `M${index + 1}`).slice(0, -2);
       for (const [name, text] of Object.entries(
-        matlabPackage(m, this.flow.matlabMeasurements, reference)
+        matlabPackage(
+          m,
+          this.flow.matlabMeasurements,
+          reference,
+          mechanismSvg(mechanism.joints[0], mechanism.links[0], 960, 640, { engineering: true })
+        )
       ))
         files.push({ name: `${folder}/${name}`, data: utf8(text) });
     }

@@ -66,7 +66,7 @@ export class ExportFlowService {
   /** Empty until the reader types: the name shown is derived while it is. */
   typedName = '';
   matlabReference = false;
-  matlabMeasurements = true;
+  matlabMeasurements = false;
 
   private pickedParts = new Set<string>();
   private pickedColumns = new Set<string>();

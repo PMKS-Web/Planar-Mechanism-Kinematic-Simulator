@@ -48,12 +48,38 @@ export function mechanismOverview(m: AnalysisExportModel, p: EquationPlan): stri
   return lines;
 }
 
-export function engineeringGuide(m: AnalysisExportModel, p: EquationPlan): string {
+export function engineeringGuide(
+  m: AnalysisExportModel,
+  p: EquationPlan,
+  hasImage = false
+): string {
   const lines = [
     '# Engineering equations for ' + commentText(m.name),
     '',
+    '**MATLAB solver units: SI (m, kg, s, rad, N; inertia kg*m^2 and torque N*m). Current PMKS display units are converted automatically. A 3 cm length becomes 0.03 m. All plots and result arrays also use SI.**',
+    '',
     'These are MATLAB .m files. Some editors identify .m as Objective-C until MATLAB language support is configured.',
-    'Run `results = run_pmks_analysis;` from this folder. No PMKS reference file is required.',
+    'Unzip and set MATLAB Current Folder to this folder. Run `results = run_pmks_analysis;`, then `report = validate_pmks_package;`. No PMKS reference file is required.',
+    'The analysis opens grouped Position, Velocity, Acceleration and Force figures for the selected quantities, plus joint/tracer paths when joint positions are selected. The validator reruns the solver without opening figures.',
+    "Inspect `results` and `report` in the Workspace. Save a shareable report with `report = validate_pmks_package(true,'pmks_validation_report.txt');`. Use `false` as the first argument to skip the optional PMKS cross-check.",
+    ...(hasImage
+      ? [
+          '',
+          '![Exported initial mechanism configuration](mechanism.svg)',
+          '',
+          'The drawing shows the initial configuration used by mechanism_data.m. Joint and body labels match the original names; yellow pins mark the rotary driver. Fixed guides are shown as rails.',
+        ]
+      : []),
+    '',
+    '## Runtime validation',
+    '',
+    '`validate_pmks_package.m` runs the actual generated solver, then re-evaluates its position, velocity, acceleration and (when present) force equations at every solved frame. No separate force derivation or reference history supplies the solution.',
+    '`report.position`, `.velocity`, `.acceleration` and optional `.force` contain `maxResidual`, `rmsResidual`, `maxToleranceRatio`, `withinTolerance` and `byRow`. Row units are recorded separately because aggregate residuals mix translation/rotation or force/moment rows. Force packages also expose `.force.byBody.<body>.Fx`, `.Fy` and `.moment` (rigid bodies only).',
+    'Position closure uses 1e-8 absolute per SI row (m or rad). Rates and force balance use abs(residual) <= 1e-8 + 1e-8*(abs(A)*abs(x)+abs(b)) per scalar row: an absolute roundoff allowance plus a cancellation-aware relative allowance. These are equation tolerances, tighter than cross-implementation sample comparisons.',
+    'PASS means all requested frames completed and all equations met tolerance. WARN means partial completion, row-scaled rcond(J) below 1e-8, or optional PMKS differences. FAIL means no complete frames, an invalid frame marked complete, equation-check errors or a residual outside tolerance. The numerical solver independently refuses row-scaled rcond below 1e-12.',
+    '`report.frames` counts requested, solved, failed/incomplete and unattempted frames, the first failure and NaN/Inf entries in the stored raw arrays (excluding duplicate named aliases). Residual summaries use available solved frames; unsolved remainder entries remain NaN. Conditioning reports minimum raw and row-scaled rcond plus the worst raw-conditioned frame.',
+    'Optional PMKS comparison reports RMSE, bias and peak error through the existing selected channels. A peak error above 1e-6 for position/angle or 1e-4 for other channels, times max(1,peak absolute compared theory), gives WARN without failing the core equations. Known PMKS dynamic-force display scaling can cause discrepancies; MATLAB retains physically consistent SI equations.',
+    'See README.txt for execution and saving instructions. TypeScript generation/equation tests do not verify actual MATLAB runtime execution. Optional display-unit plots are deferred: solver, raw arrays, channels and measurement units remain consistently SI for this validation pass.',
     '',
     '## This mechanism',
     '',

@@ -77,6 +77,13 @@ try {
   await drawer.getByRole('button', { name: /MATLAB Analysis Package/ }).click();
   assert.equal(await drawer.locator('[role="alert"]').count(), 0);
   assert.equal(await drawer.locator('.nextButton').isEnabled(), true);
+  assert.match(await drawer.innerText(), /MATLAB solver units: SI/);
+  assert.match(await drawer.innerText(), /3 cm becomes 0.03 m/);
+  for (const option of await drawer.locator('.matlabOption').all())
+    assert.equal(
+      await option.getByRole('button', { name: 'No', exact: true }).getAttribute('aria-pressed'),
+      'true'
+    );
   await page.screenshot({ path: `${dir}/export-format.png` });
   await drawer.locator('.settingBlock').scrollIntoViewIfNeeded();
   await page.screenshot({ path: `${dir}/export-desktop.png` });
@@ -105,11 +112,21 @@ try {
     'force_equations.m',
     'named_results.m',
     'validate_equations.m',
+    'validate_pmks_package.m',
+    '+pmks/validate_results.m',
+    'mechanism.svg',
     'ANALYSIS_README.md',
     '+pmks/constraints.m',
   ])
     assert.ok(get(name), name);
   assert.ok(!get('pmks_reference.csv'));
+  assert.ok(!get('measurements.csv'));
+  assert.ok(!get('compare_measurements.m'));
+  assert.match(get('validate_pmks_package.m'), /run_pmks_analysis\(false,false\)/);
+  assert.match(get('+pmks/validate_results.m'), /A_force\*r.lambda\(:,k\)-b_force/);
+  assert.match(get('ANALYSIS_README.md'), /\]\(mechanism.svg\)/);
+  assert.match(get('mechanism.svg'), /Initial configuration/);
+  assert.match(get('mechanism.svg'), />AB<\/text>/);
   assert.match(get('position_equations.m'), /c_B_on_AB_x/);
   assert.match(get('force_equations.m'), /A_on_AB_x \+ B_on_AB_x/);
   assert.match(get('named_results.m'), /r\.bodies\.BC\.angularVelocity/);
@@ -135,6 +152,14 @@ try {
   for (const f of files.filter((f) => f.name.endsWith('.m')))
     assert.equal(verified.find((v) => v.name === f.name)?.text, f.text);
   pass('Optional reference data changes no solver file');
+  const measurement = drawer
+    .locator('.matlabOption')
+    .filter({ hasText: 'Include measurement-comparison template' });
+  await measurement.getByRole('button', { name: 'Yes', exact: true }).click();
+  const measured = await download('analysis-with-measurements');
+  assert.ok(measured.some((f) => f.name.endsWith('/compare_measurements.m')));
+  assert.equal(measured.find((f) => f.name.endsWith('/measurements.csv')).text, 'Time,Value\n');
+  pass('Both optional features default to No and measurement comparison remains available');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.waitForTimeout(300);
@@ -181,6 +206,12 @@ try {
   assert.ok(kinematic.some((f) => f.name.endsWith('/position_equations.m')));
   assert.ok(kinematic.some((f) => f.name.endsWith('/ANALYSIS_README.md')));
   assert.ok(!kinematic.some((f) => /\/(solve_forces|force_equations)\.m$/.test(f.name)));
+  assert.ok(kinematic.some((f) => f.name.endsWith('/validate_pmks_package.m')));
+  assert.ok(kinematic.some((f) => f.name.endsWith('/mechanism.svg')));
+  assert.doesNotMatch(
+    kinematic.find((f) => f.name.endsWith('/+pmks/validate_results.m')).text,
+    /force_equations|r\.lambda/
+  );
   assert.ok(
     !kinematic.find((f) => f.name.endsWith('/run_pmks_analysis.m')).text.includes('solve_forces(')
   );

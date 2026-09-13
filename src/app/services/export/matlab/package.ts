@@ -9,6 +9,7 @@ import { forceEquations } from './force-equations';
 import { engineeringGuide, mechanismOverview } from './engineering-guide';
 import { namedResults } from './named-results';
 import { validateEquations } from './validate-equations';
+import { runtimeValidation } from './runtime-validation';
 
 const vector = (v: number[]) => `[${v.join(' ')}]`;
 /** Named structures make the definition readable; locals are derived from the initial geometry. */
@@ -20,6 +21,7 @@ export function mechanismData(
     'function m = mechanism_data()',
     '% Mechanism definition exported from PMKS. Geometry/properties are inputs, not solved histories.',
     '% SI: meters, seconds, radians, kilograms, kg*m^2, newtons, N*m. CCW and +Y upward.',
+    '% Current PMKS display units are converted automatically: a 3 cm length is 0.03 m here.',
     '% Body rotation coordinates are relative to this initial configuration.',
     '% Start with ANALYSIS_README.md; executable equations are in position_equations.m.',
     ...mechanismOverview(m, plan).map((line) => '% ' + line),
@@ -85,8 +87,9 @@ export function mechanismData(
 
 export function matlabPackage(
   m: AnalysisExportModel,
-  measurements = true,
-  reference?: string
+  measurements = false,
+  reference?: string,
+  initialImage?: string
 ): Record<string, string> {
   const plan = equationPlan(m),
     forces = m.settings.forceMode !== 'none';
@@ -94,7 +97,7 @@ export function matlabPackage(
     throw new Error('Force result channels require a static or dynamic MATLAB package.');
   const files: Record<string, string> = {
     'mechanism_data.m': mechanismData(m, plan),
-    'ANALYSIS_README.md': engineeringGuide(m, plan),
+    'ANALYSIS_README.md': engineeringGuide(m, plan, initialImage !== undefined),
     'position_equations.m': positionEquations(m, plan),
     'velocity_equations.m': rateEquations(m, plan, false),
     'acceleration_equations.m': rateEquations(m, plan, true),
@@ -102,7 +105,9 @@ export function matlabPackage(
     'validate_equations.m': validateEquations(m, plan),
     ...KINEMATIC_FILES,
     ...resultFiles(forces),
+    ...runtimeValidation(m, plan),
   };
+  if (initialImage !== undefined) files['mechanism.svg'] = initialImage;
   if (forces) {
     files['solve_forces.m'] = FORCE_FILE;
     files['force_equations.m'] = forceEquations(m, plan);
@@ -111,8 +116,14 @@ export function matlabPackage(
   else files['measurements.csv'] = 'Time,Value\n';
   if (reference !== undefined) files['pmks_reference.csv'] = reference;
   files['README.txt'] = `PMKS MATLAB Analysis Package: ${m.name}
-Unzip and change MATLAB's current folder to this folder. Run:
+1. Unzip. Set MATLAB Current Folder to the folder containing mechanism_data.m.
+2. Run the analysis (opens grouped figures for the selected channels):
   results = run_pmks_analysis;
+3. Rerun the solver without figures and validate every solved frame:
+  report = validate_pmks_package;
+4. Inspect results and report in the Workspace. To save a shareable report:
+  report = validate_pmks_package(true,'pmks_validation_report.txt');
+Use validate_pmks_package(false) to skip optional PMKS comparison.
 MATLAB R2016b or newer. Base MATLAB only: no Symbolic or Optimization Toolbox.
 Actual MATLAB execution must be validated on your installation; generation/equation tests are separate.
 These are MATLAB .m files. Some editors identify .m as Objective-C unless MATLAB language support is configured.
@@ -125,11 +136,22 @@ solve_position/velocity/acceleration.m: independent constraint equations and ana
 ${forces ? 'force_equations.m and solve_forces.m: named Newton/Euler balances and static/dynamic equilibrium.' : 'Kinematics-only export: force_equations.m and solve_forces.m are intentionally omitted.'}
 named_results.m: readable joint/body/driver aliases of the raw solved arrays, with original names preserved.
 validate_equations.m: checks generated assembly against the generic model before running; refuses changed topology.
+validate_pmks_package.m: reruns the actual solver and checks C, J*v-b, J*a-b and force equilibrium when included.
+Returns max/RMS residuals, by-row and by-body balances, frame completion, nonfinite counts and conditioning.
+PASS: completed within equation tolerances. WARN: partial completion, near singularity or optional comparison differences.
+FAIL: no complete frames, invalid completed frames, equation-check errors or excessive core residuals.
+Position tolerance: 1e-8 absolute in each SI row (m or rad).
+Rate/force tolerance: 1e-8 absolute + 1e-8*(abs(A)*abs(x)+abs(b)) per scalar row.
+Warn below row-scaled rcond(J)=1e-8; the solver refuses rcond below 1e-12.
+PMKS cross-check warning: peak error exceeds 1e-6 for position/angle or 1e-4 otherwise,
+multiplied by max(1,peak absolute compared theory). It never fails core equation validation.
 +pmks/: reusable point, constraint, drive, linear solve, continuation and comparison functions.
 plot_results.m: grouped Position, Velocity, Acceleration, Force (if selected) and joint/tracer paths.
 Different units have separate subplots, rather than opening a window for each scalar channel.
 Edit geometry/properties in mechanism_data.m; re-export after changing topology or constraint directions.
 All calculation uses SI (m, s, rad, kg, N, N*m); no PMKS results are used to solve.
+Current PMKS display units are converted automatically: a 3 cm link is 0.03 m in MATLAB.
+Plots and named/raw outputs also use SI. Optional display-unit plots are deferred.
 External load application points rotate with their body. Local vectors also rotate; global vectors do not.
 No independent applied-couple field exists in current PMKS. Driver torque is solved, not prescribed.
 Rigid pins, root rigid bodies (including ternary/compound), tracer points, fixed free-turning slider
