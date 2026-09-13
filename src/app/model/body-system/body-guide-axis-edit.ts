@@ -2,7 +2,7 @@ import { BodyDocument } from './body-document';
 import { BodyEditRefusal } from './body-edit-types';
 import { JointId, WORLD } from './body-id';
 import { jointCoordinate } from './joint-coordinate';
-import { dot, rotate, subtract } from './body-frame';
+import { guideDisplayAtPhysicalAnchor } from './guide-display-frame';
 import { compileWeldFrames } from './weld-frames';
 import { pointEditReach } from './body-point-reach';
 import { editGuideAxisComponent, PreparedGuideAxis } from './body-guide-axis-component';
@@ -40,28 +40,10 @@ export function editBodyGuideAxis(
       !Number.isFinite(request.worldAxis)
     )
       return bodyEditRefusal('invalid-command');
-    const guide = joint.guideDisplay ?? { bodyId: joint.bodyA, frame: joint.frameA };
-    const base = guide.bodyId === joint.bodyA ? joint.frameA : joint.frameB;
-    const distance = subtract(
-      attachments.get(guide.frame.attachmentId)!.point,
-      attachments.get(base.attachmentId)!.point
-    );
-    const offset = dot(rotate({ x: 1, y: 0 }, guide.frame.angle), distance);
-    const normal = dot(rotate({ x: 0, y: 1 }, guide.frame.angle), distance);
-    const display = {
-      ...guide,
-      frame: { ...guide.frame, attachmentId: base.attachmentId },
-      ...(offset !== 0 || guide.station !== undefined
-        ? { station: (guide.station ?? 0) + offset }
-        : {}),
-      ...(normal !== 0 || guide.normalOffset !== undefined
-        ? { normalOffset: (guide.normalOffset ?? 0) + normal }
-        : {}),
-      ...(guide.from === undefined ? {} : { from: guide.from + offset, to: guide.to! + offset }),
-    };
+    const guide = guideDisplayAtPhysicalAnchor(joint, attachments);
     changes.push({
       joint,
-      guide: display,
+      guide,
       delta: request.worldAxis - poses.get(guide.bodyId)!.angle - guide.frame.angle,
       travel: jointCoordinate(joint, 'travel', poses, attachments),
       driven: document.drivers.some(
