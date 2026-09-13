@@ -2612,3 +2612,14 @@ builders pending the already-documented public-reader/gallery gate. `followup-fi
 passes the original review probes and correction; `followup-matrix.log` passes the expanded
 hold matrix and independent edit-Jacobian checks. The small final hold refactor was reviewed
 locally against the rigid-transform identity R(b−a) = Rb−Ra; no third external review was needed.
+
+Final source `f79a7baf`: **2962 tests / 330 files pass**, `npm run check` and Storybook pass.
+Production build passes outside the sandbox (`build-final-unsandboxed.log`). Two sandboxed
+attempts aborted with SIGABRT in the native LMDB `node.napi.node` allocator, including one
+sequential attempt; they emitted no compiler diagnostic. No source or build configuration
+change was needed. The same commit's public UI copy check had already passed 17/17 before
+the final private hold refactor. The temporary owned dev server was stopped after validation.
+
+The draft remains S0–S4 only. All review findings have a recorded disposition; no S5 work,
+merge, deployment, or push to `staging`/`main` is authorized by this checkpoint. GitHub CI was
+still queued for a runner at publication; local validation is not reported as a remote CI pass.
