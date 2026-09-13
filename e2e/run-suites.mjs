@@ -24,10 +24,16 @@
  * Retries are opt-in and default to none. A gate that retries until it is green
  * reports the same thing whether the app works or not; the nightly lane passes
  * `--retries 1` so it can tell "broken" from "flaky" and name which.
+ *
+ * A retry that runs in the same place erases what the failure looked like --
+ * `filmstrip()` empties its directory before it captures, so the frames left
+ * behind after a flake are the frames of the attempt that worked. Whatever the
+ * failing attempt wrote is copied aside first, which is the only version of it
+ * anyone can look at afterwards.
  */
 
 import { spawn } from 'node:child_process';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readdir, stat, writeFile } from 'node:fs/promises';
 import { createWriteStream } from 'node:fs';
 import path from 'node:path';
 import { SUITES, lanesOf } from './suites.mjs';
@@ -106,6 +112,40 @@ function attempt(suite, logPath, append) {
   });
 }
 
+/**
+ * Copy whatever an attempt just wrote under `artifacts/` somewhere the next
+ * attempt will not reach. By modification time, because a suite writes wherever
+ * it likes and there is no list of those places.
+ */
+async function keepWhatFailed(suite, since) {
+  const keep = path.join('artifacts', 'failed-attempts', suite.name);
+  const skip = new Set([path.resolve('artifacts', 'failed-attempts'), path.resolve(outDir)]);
+  let kept = 0;
+  const walk = async (dir, under) => {
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      return; // the suite wrote nothing, or nothing readable
+    }
+    for (const entry of entries) {
+      const at = path.join(dir, entry.name);
+      if (skip.has(path.resolve(at))) continue;
+      if (entry.isDirectory()) {
+        await walk(at, path.join(under, entry.name));
+        continue;
+      }
+      // A second's grace: file timestamps are not as fine as Date.now().
+      if ((await stat(at)).mtimeMs < since - 1000) continue;
+      await mkdir(path.join(keep, under), { recursive: true });
+      await copyFile(at, path.join(keep, under, entry.name));
+      kept++;
+    }
+  };
+  await walk('artifacts', '');
+  if (kept) console.log(`  kept ${kept} files from the failed attempt in ${keep}`);
+}
+
 const results = [];
 for (const suite of mine.suites) {
   const logPath = path.join(outDir, `${suite.name}.log`);
@@ -117,6 +157,7 @@ for (const suite of mine.suites) {
   let code = await attempt(suite, logPath, false);
   let flaky = false;
   for (let left = retries; left > 0 && code !== 0; left--) {
+    await keepWhatFailed(suite, started);
     console.log(`  retrying ${suite.name}`);
     code = await attempt(suite, logPath, true);
     flaky = code === 0;

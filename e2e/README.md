@@ -74,6 +74,11 @@ older suites share `artifacts/screenshots/`, and most of those prefix their file
 `RUN_PREFIX`. Look at what
 they save: an exit code tells you a check failed, not what the page looked like.
 
+`run-suites.mjs --retries` copies whatever a failing attempt wrote into
+`artifacts/failed-attempts/<suite>/` before running it again. Several suites empty their own
+directory before they write — `filmstrip()` does — so without that, the only frames left after a
+flake are the frames of the attempt that worked, which is the one nobody needs to look at.
+
 **Three suites rewrite tracked files**, and running them dirties the working tree:
 
 - `readme-shots.mjs` writes `docs/images/readme/`

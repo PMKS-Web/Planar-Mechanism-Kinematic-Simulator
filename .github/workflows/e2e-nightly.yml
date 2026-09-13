@@ -245,7 +245,9 @@ jobs:
                   `read${missing.length ? ` — nothing from ${missing.join(', ')}` : ''}. ` +
                   'Whatever they found is not in the counts above.',
               '',
-              'Screenshots and reports are on the run, under `e2e-nightly-*`.',
+              'Screenshots and reports are on the run, under `e2e-nightly-*`. What a flake looked ' +
+                'like when it failed is under `artifacts/failed-attempts/`: the retry runs in the ' +
+                'same place and would otherwise have drawn over it.',
               '',
               'A suite that fails every night is either a real defect or a check that',
               'has outlived its rule. Both are worth fixing; neither is worth muting.',
