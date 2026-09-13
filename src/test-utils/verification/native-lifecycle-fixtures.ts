@@ -41,7 +41,7 @@ export function insertNativeFixture(document: BodyDocument): BodyDocument {
     'fixture-insert'
   );
 }
-export function nativeThreeCylinders(order: readonly number[] = [0, 1, 2]) {
+export function nativeThreeCylinders(order: readonly number[] = [0, 1, 2], grounded = false) {
   let document = emptyBodyDocument();
   const cylinders: CylinderAssembly[] = [];
   for (const index of order) {
@@ -57,7 +57,7 @@ export function nativeThreeCylinders(order: readonly number[] = [0, 1, 2]) {
   }
   const f = new BodyFactory(document);
   const pin = f.junction(
-    order.map((index) => cylinders[index].barrel),
+    [...(grounded ? [WORLD] : []), ...order.map((index) => cylinders[index].barrel)],
     { x: 0, y: 0 }
   );
   return { document: insertNativeFixture(f.document), cylinders, pin };

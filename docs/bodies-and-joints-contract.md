@@ -244,8 +244,9 @@ remapping. Shared codecs validate and preserve the vertex references; copy must 
 `body-poses` supplies complete material poses without changing local shape. Final validation
 refuses a partial disconnected proposal, changed weld rest relation, violated hold/lock or
 cylinder travel bound. These are canonical transaction primitives; the `move-point` command
-below plans a connected proposal through them. Displayed-frame re-anchoring is still required;
-these operations temporarily use the shared start-pose permission until that boundary exists.
+below plans a connected proposal through them. Displayed-frame re-anchoring maps these
+operations through the captured frame as described below; a missing frame still quotes
+the shared start-pose refusal.
 Generic shape/attachment edits cannot change a cylinder's intrinsic member geometry, mounts
 or internal P references; cylinder dimension edits must own that complete proposal.
 
@@ -289,8 +290,8 @@ Locks are checked against settled surviving positions at the end of every transa
 A force lock protects its application and direction handles, while magnitude, color, label
 and couple remain editable. Deleting or explicitly unlocking an object is allowed. Point
 locks protect world attachment positions. The canonical geometry and connected point commands
-enforce whole-body locks and held dimensions, including captured paused frames. Live gesture
-continuation and the complete command matrix remain pending.
+enforce whole-body locks and held dimensions, including captured paused frames. The S4
+command and live-gesture service matrix is implemented; native UI wiring remains S5.
 
 All record effects remain available to history/analysis consumers, but `bodyMotionRecord`
 selects only coordinate/geometry/topology data for clock invalidation. Mass, load, annotation,
@@ -325,10 +326,10 @@ correction and projection refuse on exhaustion instead of publishing an unfinish
 
 Projection checks allowed directions when a zero slope could be a maximum (for example, a
 pointer across the diameter of a held circle). This is local projection, not a global nearest
-point guarantee or completed gesture continuation. Travel bounds still validate the settled
-answer rather than actively clamping pointer motion. Dimension/axis commands, paused
-coordinate reparameterization, branch-continuous live gestures and native UI evidence
-remain required S4/S5 work before this capability replaces the public editor.
+point guarantee. The gesture service follows private continuation steps and reports a
+limited proposal when it reaches a boundary. Settled travel, holds and locks are validated
+before commit. Dimension/axis commands and paused coordinate reparameterization are
+implemented; native UI evidence remains required at S5 before replacing the public editor.
 
 ### Displayed properties and local frame history
 
@@ -399,8 +400,8 @@ constraints/limits in both final authored and displayed documents, and transport
 back to the stored material frame. Invalid or overconstrained topology still refuses atomically.
 This supports the tested bound-bar/four-bar edits, welded-carriage geometry, bracket insertion,
 positive/negative and return-leg clocks, and passive-gap examples. Coordinate pose/dimension
-commands, active travel projection, the full lifecycle/service matrix and UI integration remain
-required S4/S5 work; this is not a completed native editing release.
+commands, active travel projection and the lifecycle/service matrix are implemented at S4.
+UI integration remains S5; this is not a completed native editing release.
 
 ### Drive and working-limit commands
 
@@ -624,3 +625,26 @@ paused edit paths. A singleton WORLD annotation is valid; grounded paste merges 
 the destination presentation and the same aggregate-property policy as other fixed groups.
 Partial copying of a legacy load scope refuses for either selected side, regardless of which
 member happens to carry the load's reference frame.
+
+
+### Scale defaults and imported aggregate properties
+
+`objectScale` is a marker length in document units. A new document starts at 0.7 of its
+chosen length unit, just as its empty-grid coordinates use that unit; new centimeter and
+meter projects are not required to start with the same physical viewport or marker size.
+Converting an existing drawing scales both its geometry and marker length, preserving
+their ratio. The production URL's SCALE number is already in those same coordinate units
+(the renderer's internal MODEL_SCALE is removed by its encoder). The native reader copies
+that stored number once; treating it as dimensionless and converting it again is incorrect.
+
+Production compound records do not say whether aggregate mass, inertia or center was
+customized. Import preserves the saved values as an aggregate override, even if they
+happen to equal the sum of the leaves. Membership edits therefore quote the model's
+"Use member mass properties" refusal until the author explicitly resets the aggregate.
+Do not infer that reset from numeric equality.
+
+Each aggregate mass property is an independent override. Without an inertia override,
+inertia remains member-derived: changing only total mass does not rescale every member.
+If the center is overridden too, the parallel-axis shift uses the member-derived mass.
+An explicit inertia overrides that result. This preserves authored independent inputs
+without inventing a new distribution of material mass.

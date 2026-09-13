@@ -1,3 +1,7 @@
+import { Checksum } from './checksum';
+import { DecimalSetting } from './stored-settings';
+import { LengthUnit } from '../../model/unit-enums';
+import { convertBodyUnits } from '../../model/body-system/body-unit-edit';
 import { BodyDocumentAuthority } from '../../model/body-system/body-document-authority';
 import { NATIVE_EDIT_CONTEXT } from '../../../test-utils/verification/native-lifecycle-fixtures';
 import {
@@ -19,6 +23,28 @@ function read(payload: string) {
   return result.document;
 }
 describe('bounded production reader', () => {
+  it('retains stored marker length in each source unit and converts it only with the drawing', () => {
+    for (const [unit, meters] of [
+      [LengthUnit.METER, 1],
+      [LengthUnit.CM, 0.01],
+      [LengthUnit.INCH, 0.0254],
+    ] as const) {
+      const old = new StringTranscoder();
+      old.decodeURL(PRODUCTION_203_PAYLOADS['4-Bar']);
+      old.addDecimalSetting(DecimalSetting.SCALE, 1.25);
+      // The current writer adds development-only fields. Preserve the production record shape.
+      const checksum = new Checksum(),
+        sections = checksum.strip(PRODUCTION_203_PAYLOADS['4-Bar']).split('.');
+      sections[1] = checksum.strip(old.encodeURL()).split('.')[1].split(',')[0];
+      sections[3] = String(unit) + sections[3].slice(1);
+      const payload = sections.join('.');
+      const document = read(payload + checksum.generateChecksum(payload.length));
+      expect(document.settings.objectScale).toBe(1.25);
+      const converted = convertBodyUnits(document, { ...document.units, length: 'm' });
+      if (!converted.ok) throw new Error(JSON.stringify(converted));
+      expect(converted.document.settings.objectScale).toBeCloseTo(1.25 * meters, 12);
+    }
+  });
   for (const [name, payload] of Object.entries(PRODUCTION_203_PAYLOADS))
     it(`imports frozen ${name} and writes native records`, () => {
       const doc = read(payload),

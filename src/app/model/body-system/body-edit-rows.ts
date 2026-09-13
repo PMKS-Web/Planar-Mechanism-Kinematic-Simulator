@@ -71,14 +71,18 @@ export function bodyEditRows(
   const pinInitial = (p: ReturnType<typeof view.point>, old: ReturnType<typeof view.point>) =>
     rows.push(editSubtract(p.x, c(old.x.value)), editSubtract(p.y, c(old.y.value)));
   for (const id of document.locks) {
-    if (!lockReference) pinInitial(view.point(id), initial.point(id));
+    const current = view.point(id);
+    // A fixed or unrelated owner contributes no variable. Its settled lock is still
+    // validated by the transaction; a differently rounded constant is not an equation to solve.
+    if (![...current.x.gradient, ...current.y.gradient].some((value) => value !== 0)) continue;
+    if (!lockReference) pinInitial(current, initial.point(id));
     else {
       const point = lockReference.attachments.find((a) => a.id === id)!;
       const world = localToWorld(
         lockReference.bodies.find((b) => b.id === point.bodyId)!.pose,
         point.point
       );
-      pinInitial(view.point(id), {
+      pinInitial(current, {
         x: c((world.x - model.origin.x) / length),
         y: c((world.y - model.origin.y) / length),
       });
