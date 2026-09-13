@@ -15,6 +15,11 @@ const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
 import { waitForReady } from './app-ready.mjs';
+import { mkdirSync, readFileSync } from 'node:fs';
+import { filmstrip, contactSheet } from './filmstrip.mjs';
+
+const shots = 'artifacts/degrees-of-freedom';
+mkdirSync(shots, { recursive: true });
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
@@ -84,6 +89,38 @@ record(
 );
 record('with a line per link', (await page.locator('.linkRow').count()) >= 3);
 
+// The worked count is the one used by this machine's solver.
+const explanation = page.locator('app-mobility-explanation');
+const substitution = () => explanation.getByTestId('mobility-substitution').innerText();
+record(
+  'four-bar shows its substituted mobility equation',
+  /3\(4 \u2212 1\) \u2212 2 \u00d7 4 \u2212 0 =\s*1/.test(await substitution())
+);
+record(
+  'four-bar reports one DOF without a geometry adjustment',
+  (await explanation.innerText()).includes('Reported DOF: 1') &&
+    (await explanation.getByTestId('mobility-rescue').count()) === 0
+);
+await page.screenshot({ path: `${shots}/four-bar.png` });
+const equations = explanation.getByRole('button', { name: 'Equations and Rules' });
+await equations.focus();
+const film = filmstrip(page, `${shots}/expansion`, { x: 0, y: 50, width: 415, height: 850 });
+await film.during(25, 10, 'open-equations', () => equations.press('Enter'));
+record(
+  'keyboard opens both named equations',
+  (await explanation.innerText()).includes("Kutzbach's planar equation") &&
+    (await explanation.innerText()).includes("Gr\u00fcbler's lower-pair form")
+);
+await equations.press('Enter');
+await explanation.getByRole('button', { name: 'Bodies and Joints' }).click();
+record(
+  'joint contribution table sums four lower pairs',
+  (await explanation.locator('tfoot').innerText()).includes('4')
+);
+await page.screenshot({ path: `${shots}/joint-contributions.png` });
+await explanation.getByRole('button', { name: 'Bodies and Joints' }).click();
+await contactSheet(`${shots}/expansion/*.png`, `${shots}/expansion.png`, 5);
+
 // --- selecting the machine highlights all of it -----------------------------
 const selected = await page.evaluate(() => {
   const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
@@ -134,6 +171,43 @@ record(
   'and the drawer no longer repeats the facts',
   !drawer.includes('Degrees of freedom'),
   drawer
+);
+
+// Use the published fixture URL so this special case remains reviewable.
+const gallery = readFileSync(new URL('../docs/fixture-urls.md', import.meta.url), 'utf8');
+const redundantUrl = gallery.match(/\[Parallelogram with a third parallel crank\]\(([^)]+)\)/)[1];
+await page.goto(`${BASE}/?${redundantUrl.split('?')[1]}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await page.locator('.mechChip').first().click();
+record(
+  'redundant crank retains the zero count',
+  /3\(5 \u2212 1\) \u2212 2 \u00d7 6 \u2212 0 =\s*0/.test(await substitution())
+);
+record(
+  'redundant crank explains the geometry rescue to one DOF',
+  (await explanation.getByTestId('mobility-rescue').innerText()).includes('geometry check finds 1')
+);
+await page.screenshot({ path: `${shots}/geometry-rescue.png` });
+
+// The explanation must fit the narrow Edit card and the phone sheet.
+await tab('Edit').click();
+await page.screenshot({ path: `${shots}/edit.png` });
+record(
+  'Edit card keeps the equation inside its width',
+  await explanation.evaluate((host) => host.scrollWidth <= host.clientWidth + 1)
+);
+await page.setViewportSize({ width: 390, height: 844 });
+await page.emulateMedia({ reducedMotion: 'reduce' });
+await page.locator('.sheetHandle').click();
+await explanation.getByTestId('mobility-substitution').scrollIntoViewIfNeeded();
+await page.screenshot({ path: `${shots}/phone.png` });
+record(
+  'phone shows the worked equation with reduced motion',
+  await explanation.getByTestId('mobility-substitution').isVisible()
+);
+record(
+  'phone has no horizontal equation overflow',
+  await explanation.evaluate((host) => host.scrollWidth <= host.clientWidth + 1)
 );
 
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
