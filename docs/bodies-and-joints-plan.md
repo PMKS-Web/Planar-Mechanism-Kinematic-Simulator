@@ -1,12 +1,12 @@
 # Bodies connected by joints
 
-> **Status:** Partly built — S0–S4 implemented; native UI and removal gates remain S5–S8.
+> **Status:** Partly built — S0–S5 implemented; consumer/default cutover and removal gates remain S6–S8.
 
 Planning baseline: `bodies-and-joints-plan` at `11fbe05070330dd193ac316ea0de7c64f2a6f1ca`,
 September 10, 2026, based on `staging` at `a3cac26a`. This document is the planning deliverable.
 The original proposal was one Codex `/goal` with Fable 5.1 reviews. Current authorization
 (September 13): S0–S4 are implemented; rebase and style alignment, a draft PR into staging,
-and a full-PR Fable review are complete. The maintainer has now authorized S5 on draft PR #13,
+and a full-PR Fable review are complete. S5 on draft PR #13 is now complete under the maintainer’s authorization,
 including both UI validation workflows and a Fable 5.1 stage review. S6–S8 remain pending;
 the goal stays disabled.
 The execution ledger is authoritative for current status; the milestone descriptions below

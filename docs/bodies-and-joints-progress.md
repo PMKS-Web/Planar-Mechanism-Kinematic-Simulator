@@ -2774,3 +2774,36 @@ One full unit run under simultaneous production/gallery/browser load timed out o
 legacy `reversed-cycle` Cylinder_Gripper case (60 seconds). Earlier full runs passed. Final
 verification runs the suite without those competing builds; no timeout or numerical ceiling
 was relaxed.
+
+#### S5 closure — September 13, 2026
+
+**S5 is implemented through `df8a5885`.** Fable reviewed the stage and confirmed the seven
+initial fixes; its two follow-up findings and three related notes are addressed as recorded
+above. The final serial unit run passes **2,996 tests / 338 files** in 38.36 seconds. No test
+limits, numerical tolerances or existing 15-warning lint cap changed.
+
+- `npm run check`, `npm run build`, and `npm run build-storybook` pass on the final source.
+  `git diff --check` is clean. The existing LMDB sandbox limitation was handled by the authorized
+  unsandboxed build command, with no build configuration change.
+- Native final browser gates all pass: `body-joint-review`, `body-joint-editing`,
+  `body-joint-mobile`, `body-joint-gestures`, `body-joint-properties`, `body-joint-render`,
+  `body-joint-playback`, and `ui-copy-native` (20 rendered surfaces). Final reports are in
+  `S5/guide-browser`; `S5/review` keeps the explicit follow-up cases.
+- The required legacy gates pass: `context-menu`, `context-menu-modes`, `disabled-toggles`,
+  `creation-previews`, `phase4-build-from-scratch`, `phase4-gestures`, `cylinder-mount`,
+  `cylinder-mount-render`, `cylinder-drag`, `cylinder-panel`, `cylinder-skin`,
+  `cylinder-end-on-joint`, `keyboard-shortcuts`, `mobile` (79/79), and `ui-copy` (17/17).
+  `multi-select-and-dxf` has the explicitly reproduced S4 baseline failure above. No legacy
+  success is substituted for native coverage.
+- Storybook's shared authored-title/hold states and visible-refusal state were built and swept:
+  **143 entries, zero failing**. Later model-only lifecycle corrections did not alter those
+  states; the final gallery also builds successfully.
+- Live incognito Chrome and tracked films were both used. The final live recovery/guide check
+  confirms the stationary support and visible rail through the moved member. Representative
+  films are tracked beside this ledger and linked above.
+
+The draft remains based on `staging`; these commits belong only to `bodies-and-joints-plan`.
+The native editor still requires the development flag. S6 owns the analysis/export/synthesis,
+fixture/template/tutorial and default switch; S7 owns the large legacy-code removal. Neither
+has been implemented under this S5 authorization. The public solver and legacy editor remain
+available during that staged cutover.
