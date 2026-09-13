@@ -2617,8 +2617,8 @@ Final source `f79a7baf`: **2962 tests / 330 files pass**, `npm run check` and St
 Production build passes outside the sandbox (`build-final-unsandboxed.log`). Two sandboxed
 attempts aborted with SIGABRT in the native LMDB `node.napi.node` allocator, including one
 sequential attempt; they emitted no compiler diagnostic. No source or build configuration
-change was needed. The same commit's public UI copy check had already passed 17/17 before
-the final private hold refactor. The temporary owned dev server was stopped after validation.
+change was needed. Public UI copy passed 17/17 at `e9e0415f`, before the final private hold
+refactor. The temporary owned dev server was stopped after validation.
 
 The draft remains S0–S4 only. All review findings have a recorded disposition; no S5 work,
 merge, deployment, or push to `staging`/`main` is authorized by this checkpoint. GitHub CI was
