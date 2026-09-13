@@ -42,23 +42,18 @@ type Result = { name: string; code: number; seconds: number; flaky: boolean };
 type Call = { what: string; name?: string; body?: string; state?: string };
 
 /**
- * Fill in the `${{ }}` the runner would. Matched by what is inside rather than
- * by the exact spelling, so re-wording a default does not silently leave a
- * literal `${{ ... }}` in the script for the test to pass against.
+ * The script must take everything through the environment and nothing through
+ * `${{ }}`. GitHub pastes an expression in as raw text, so a branch called
+ * `fix/o'hare` — a name whoever opens a pull request chooses — would close the
+ * string it landed in and the step would not parse. A test that filled these in
+ * with `JSON.stringify` would escape that apostrophe and hide exactly the
+ * defect, so this fills nothing in: it refuses a script with an expression in it.
  */
-function substitute(
-  source: string,
-  run: { shards: string; sha: string; lane: string; ref: string }
-) {
-  const filled = source.replace(/'\$\{\{([^}]*)\}\}'/g, (whole, inside: string) => {
-    if (inside.includes('needs.shard.result')) return JSON.stringify(run.shards);
-    if (inside.includes('revision.outputs.sha')) return JSON.stringify(run.sha);
-    if (inside.includes('inputs.lane')) return JSON.stringify(run.lane);
-    if (inside.includes('inputs.ref')) return JSON.stringify(run.ref);
-    throw new Error(`nightly-report.spec.ts does not know how to fill in ${whole}`);
-  });
-  expect(filled, 'an unfilled workflow expression was left in the script').not.toContain('${{');
-  return filled;
+function assertNoInterpolation(source: string) {
+  expect(
+    source.includes('${{'),
+    'this script takes a workflow expression directly; pass it through `env:` instead'
+  ).toBe(false);
 }
 
 const passed: Result = { name: 'a', code: 0, seconds: 4, flaky: false };
@@ -139,14 +134,18 @@ async function report(options: {
     },
   };
 
-  const source = substitute(reportScript(), {
-    shards: options.shards ?? 'success',
-    sha: STAGING_SHA,
-    lane: options.lane ?? 'nightly',
-    ref: options.ref ?? 'staging',
-  });
+  const source = reportScript();
+  assertNoInterpolation(source);
+  const env: Record<string, string> = {
+    SHARD_RESULT: options.shards ?? 'success',
+    TESTED_SHA: STAGING_SHA,
+    LANE: options.lane ?? 'nightly',
+    REF: options.ref ?? 'staging',
+  };
 
   const was = process.cwd();
+  const restore = { ...process.env };
+  Object.assign(process.env, env);
   process.chdir(dir);
   try {
     // Reached through a string, because the test build downlevels a literal
@@ -164,6 +163,8 @@ async function report(options: {
     calls.push(...summary.map((text) => ({ what: 'summary', body: text })));
   } finally {
     process.chdir(was);
+    for (const key of Object.keys(env)) delete process.env[key];
+    Object.assign(process.env, restore);
     rmSync(dir, { recursive: true, force: true });
   }
   return calls;
@@ -173,6 +174,18 @@ const did = (calls: Call[], what: string) => calls.filter((call) => call.what ==
 const bodyOf = (calls: Call[]) => calls.map((call) => call.body ?? '').join('\n');
 
 describe('the nightly e2e report', () => {
+  // A branch name is chosen by whoever opens the pull request, so it may not be
+  // pasted into the script as text. Its own check, because it reads as a style
+  // point and is the one thing here that stops a run parsing at all.
+  it('takes nothing through a workflow expression', () => {
+    assertNoInterpolation(reportScript());
+  });
+
+  it('survives a branch name with an apostrophe in it', async () => {
+    const calls = await report({ results: [failed], shards: 'failure', ref: "fix/o'hare" });
+    expect(bodyOf(did(calls, 'summary'))).toContain('**Failed (1)**');
+  });
+
   it('files nothing when every suite passed and nothing was open', async () => {
     const calls = await report({ results: [passed, passed] });
     // It still says so on its own run page; what it must not do is raise anything.

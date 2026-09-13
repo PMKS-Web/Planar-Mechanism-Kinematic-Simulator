@@ -123,8 +123,19 @@ jobs:
           path: collected
         continue-on-error: true
 
+      # Every one of these reaches the script through the environment, never
+      # through `${{ }}`. GitHub pastes an expression in as raw text, so a branch
+      # called `fix/o'hare` would end the string literal it was pasted into and
+      # the step would not parse -- and a branch name is something anyone opening
+      # a pull request chooses. `nightly-report.spec.ts` fails if an expression
+      # appears in this script at all.
       - name: Say what failed, in one issue rather than a new one each morning
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          SHARD_RESULT: ${{ needs.shard.result }}
+          TESTED_SHA: ${{ needs.revision.outputs.sha }}
+          LANE: ${{ inputs.lane || 'nightly' }}
+          REF: ${{ inputs.ref || 'staging' }}
         with:
           script: |
             const fs = require('fs');
@@ -158,7 +169,7 @@ jobs:
             const runs = reports.flatMap((report) => report.results);
             const failed = runs.filter((run) => run.code !== 0);
             const flaky = runs.filter((run) => run.flaky);
-            const shardsOk = '${{ needs.shard.result }}' === 'success';
+            const shardsOk = process.env.SHARD_RESULT === 'success';
 
             const title = 'Nightly e2e: suites that are not green';
             const label = 'nightly-e2e';
@@ -168,9 +179,9 @@ jobs:
             // Empty only when the revision job itself failed, in which case no shard
             // ran and this reports that. Never falls back to `context.sha`: being
             // wrong about which commit was tested is the thing being fixed.
-            const tested = '${{ needs.revision.outputs.sha }}' || '(unresolved)';
-            const lane = '${{ inputs.lane || 'nightly' }}';
-            const ref = '${{ inputs.ref || 'staging' }}';
+            const tested = process.env.TESTED_SHA || '(unresolved)';
+            const lane = process.env.LANE;
+            const ref = process.env.REF;
             const { owner, repo } = context.repo;
 
             // The issue stands for one thing: the whole batch, on staging. A
