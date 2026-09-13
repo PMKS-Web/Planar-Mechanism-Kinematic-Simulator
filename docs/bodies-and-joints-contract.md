@@ -1,5 +1,7 @@
 # Native implementation contract
 
+> **Status:** Reference — native document, solver and editing contracts implemented through S4.
+
 S0 contract at `487d535`; implements the decisions in [the migration plan](bodies-and-joints-plan.md). This document resolves interface choices for S1–S6. It is not evidence that those interfaces have been implemented.
 
 ## Record and unit boundary

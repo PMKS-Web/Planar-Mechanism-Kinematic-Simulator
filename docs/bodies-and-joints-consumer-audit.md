@@ -1,5 +1,7 @@
 # Consumer classification at the migration baseline
 
+> **Status:** Partly built — inventory of legacy consumers and the remaining S5–S7 cutover work.
+
 The [site inventory](bodies-and-joints-consumers.tsv) freezes the direct graph/property scan
 at `487d535`: 1,592 sites in 85 files, grouped into 590 enclosing operations. It also records
 the exported surfaces of eight transitive geometry/scale helpers found by following the

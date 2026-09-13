@@ -1,3 +1,4 @@
+import { turnsClockwise } from '../drive-direction';
 import { BodyDocument, BodyDriver } from './body-document';
 import { BodyClockState } from './body-document-authority';
 import { BodyEditFrame } from './body-edit-frame';
@@ -58,10 +59,10 @@ export function restoreBodyPartitionAnchor(
   // Changing a coordinate's sign preserves physical direction; changing drive direction reverses the current leg.
   const direction =
     oldSpeed === 0 && driver.profile.speed !== 0
-      ? driver.profile.speed < 0
+      ? turnsClockwise(driver.profile.speed)
         ? -1
         : 1
-      : (((clock.direction ?? (oldDriver!.profile.speed < 0 ? -1 : 1)) *
+      : (((clock.direction ?? (turnsClockwise(oldDriver!.profile.speed) ? -1 : 1)) *
           sign *
           (reversed ? -1 : 1)) as 1 | -1);
   let shown: ReturnType<typeof bodyAnchorClock>;
@@ -238,7 +239,7 @@ export function bodyAnchorClock(
     if (!reached.ok || Math.abs(reached.state.command - command) > tolerance) return undefined;
     const poses = bodyAnchorMaterialPoses(system, admitted.frame, reached.state.poses, length);
     if (bodyAnchorPoseError(admitted, displayed, poses, length) > 1e-7) return undefined;
-    return { time, command, direction: driver.speed < 0 ? -1 : 1, poses };
+    return { time, command, direction: turnsClockwise(driver.speed) ? -1 : 1, poses };
   }
   const cycle = buildBodyCycle(admitted);
   if (!cycle.ok) return undefined;

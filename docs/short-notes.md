@@ -1046,3 +1046,482 @@ cap with no per-component override, so the choice is one number for everything; 
 catches real bloat. `npm run build` is where you find out, and it fails the build rather than
 warning.
 
+
+
+
+### Rotate a ternary input body once, then carry its other points
+
+The native/reference migration test found the teaching four-bar's tracer H drifting 0.00215
+from its body near the end of a revolution. The old grounded-input ordering rotated B and H
+independently, rounded each position to four decimals, and used each rounded angle as the next
+step's start. Each radius stayed right while the angle between them changed. Additional points
+on the driven body now use its rigid-tracer placement from one already-rotated direction.
+The 0.001 reference-agreement ceiling then passes without changing any reference table.
+
+Even the chosen crank direction accumulates a little phase rounding, so a comparison against
+legacy samples must use the input coordinate actually stored in those points. A nominal degree
+counter is a different command. Native/MATLAB comparisons use the published unwrapped input
+angles instead and do not inherit this rounding.
+
+### Native frame feasibility needs arithmetic precision, not a fraction of WORLD
+
+A relative weld comparison at x=1e9 used to accept a 0.01 displacement because its tolerance
+was 1e-10 times the transform's magnitude. Conversely, the factory's fixed absolute 1e-10
+anchor tolerance refused a perfectly assembled million-unit four-bar after a rotation. Both
+checks now account for the floating-point operands that produced the compared coordinates.
+Include those operands when comparing a canceled transform: two large translations can leave
+an almost-zero result whose own magnitude does not describe its rounding error. The native
+frame tests keep distant weld cycles, tiny/large bodies, and rebased oblique mechanisms together
+so fixing one side cannot silently break the other.
+
+
+### A coincident pin has no span, and a zero rate still has arithmetic error
+
+The native moving-boundary rate test put two revolute anchors at the same point, to within
+floating-point rounding. Using that tiny difference as the whole mechanism's length made
+its normalized position residual enormous and refused an assembled pin. Numerical scale
+must account for the precision of the point calculation and the referenced moving-origin
+lever arms; an absolute WORLD coordinate is not a lever arm. The native scale tests cover
+rebased and very small/large mechanisms alongside this one-pin case.
+
+A separate rate check rejected an oblique carriage because its mathematically zero angular
+rate inherited tiny QR elimination error. Checking the residual only relative to that tiny
+computed component is circular. Include a floating-point allowance scaled to the matrix and
+solution, but no absolute one-unit floor: that floor would accept contradictory rates in a
+slow mechanism. The native rate tests pair valid 1e-12 motion with conflicting 1e-12 versus
+1.01e-12 commands so both sides stay covered.
+
+### A one-pin rebasing error cannot supply its own numerical scale
+
+The first native loaded-rod force test failed admission only after a material-frame rebase.
+Both coincident anchors were near zero in the numerical frame, so a tolerance proportional to
+their final coordinates could not recognize the earlier cancellation error. Their tiny gap
+became the mechanism length and normalized itself to order one. Position scaling now uses
+within-group anchor spans, guided axial separation and moving-origin lever arms. A revolute
+anchor mismatch is a constraint error, never a physical length. The one-pin fallback remains
+one SI unit when the equations have no physical length at all. Keep the rebased force fixture
+beside the very small/large and distant-world position tests when changing this scale.
+
+Shared-support force output is also a policy, not proof of uniqueness. The native equilibrium
+result labels the evenest split explicitly and leaves condensed internal reactions unavailable.
+A nullspace pivot answer must never appear as a unique reaction, and a zero column inside a
+weld group must never become a displayed zero because the external supports use that policy.
+
+### A condensed pin can still make a weld reaction indeterminate
+
+A weld group already moves rigidly, so an extra internal R joint may have zero group Jacobian.
+Dropping it from member force recovery nevertheless changes the answer: it can share the
+same reaction force with the weld. The native recovery step restores every internal R/P/slot
+row to its original material pair. A weld cycle stays indeterminate, but a bridge from that
+cycle to a loaded leaf remains recoverable. Moment channels are solved about one common
+origin, then transported to the named material origin; “equal and opposite” moments at two
+different origins is not a valid check.
+
+The two-stage group/member force calculation also needs the scale of the terms before they
+cancel. A loaded four-bar with an unloaded welded leaf left only floating-point error after
+subtracting its known pin reactions; comparing that error to itself refused a zero-force
+weld. Recovery carries the contributing load/reaction magnitudes for an epsilon-sized
+arithmetic allowance. It does not use an absolute load floor: the same test adds 1e-10 N of
+real imbalance and must still refuse.
+
+### A material frame need not be welded to WORLD
+
+The first native two-clock force probe put both cranks on a bar pinned to WORLD at two
+distinct points. Treating only WORLD weld groups as fixed merged the machines and refused
+their two inputs. Derived fixedness now also follows consistent, full-rank passive relations
+to already-fixed neighbors; it propagates without merging material or weld IDs. Exclude
+driver rows, retain all fixed constraints for admission, and do not infer fixedness from a
+zero instantaneous velocity in a moving mechanism. Two coincident pins still allow rotation.
+
+The force consequence is just as important: a moving partition owns its reaction on that
+frame, not all the frame's ground supports. Those need the complete clock context and the
+frame's own loads. A valid force sample from the first crank is not evidence of the total
+support load. Keep different-clock sample identities and `frame-context` availability visible
+until the complete fixed-frame result has actually been assembled.
+
+The native fixed-force producer now accepts every needed clock explicitly. Its gravity and
+mode must match those stamped on the moving samples. Feed reactions into the material load
+calculation as SI wrenches at material origins, not as new persisted loads or already-summed
+group loads: premature summation loses both ownership and cancellation provenance. A fixed
+member's own inertia is zero even in a dynamic context; its attached machines' dynamic
+reactions are not zero. This lets an inertia-only group override coexist with a valid fixed
+support result while retaining genuine gravity/load-distribution refusals.
+
+Fixed **force** components exclude WORLD as an intermediate material connection. Two
+independent WORLD-welded brackets must not require each other's clocks, even if their pins
+share one visible point. A real joint between the brackets does join their force contexts.
+The simulation consumer should call `solveFixedForceComponents`; the all-fixed diagnostic
+wrapper deliberately cannot provide this per-component availability.
+
+Large-coordinate fixed forces exposed two precision losses. Refer the equilibrium matrix to
+nearby material, and reconstruct its CoM from local geometry before applying its override.
+Moving the numerical origin after a small offset was already rounded into a cached WORLD CoM
+cannot restore that offset. The fixed-bracket probe at 1e9 needs both corrections; its local
+hand answer and its tolerance remain the same at the origin and far away.
+
+
+**A body can be still for one instant without being part of the frame.** Native fixed-group
+compilation now recognizes regular rigid sets of several bodies, but a zero component in the
+passive nullspace is only a candidate. Remove moving neighbors and their rows, then require
+consistent full-column-rank constraints on the retained set. Otherwise a four-bar rocker at
+its turning point gets frozen, even when its pins belong to a valid rigid triangle foundation.
+Keep the single-body propagation first so an inconsistent attached branch cannot hide a frame
+that is independently proved fixed. `collective-fixed-groups.spec.ts` covers both traps.
+
+
+**An endpoint pass is not a safe playback interval.** The cosine carriage fixture has two
+safe endpoints with a stop excursion between them. Native playback must use
+`inspectBodyInterval`, not expose `advanceBodyCommand` directly as a cycle step. Keep the
+outside crossing probes private. Near a shallow stop, ordinary pose residuals can create a
+much larger command error; event probes polish more tightly without changing the default
+position tolerance. At a geometric input fold, use the regular passive curve's oriented
+slope for stop detection, never publish it as a velocity at reversal. Reuse accepted poses
+for a retrace so a singular endpoint does not have to pass singular-start admission again.
+
+
+### A moving boundary's material origin can disappear during numerical compilation
+
+For the native rotating-carrier cylinder example, an offset artwork origin was not enough
+to exercise boundary linear acceleration. `solverGroupFrames` centers numerical origins
+on referenced connection anchors; the carrier's pivot and slot originally used the same
+anchor, so its numerical origin became the fixed pivot. The companion fixture now gives
+these two connections distinct points along the same carrier axis. Their mean rotates,
+and the test checks the **linear** acceleration projection into the rows, separately from
+angular acceleration. See `native-cylinder-boundary.spec.ts`. Supply the prescribed hand
+pose as well as its derivatives; retaining a separately rounded solved boundary pose mixes
+two samples. Neither a nonzero material CoM acceleration nor a nonzero angular command
+alone proves the moving-boundary acceleration term is tested.
+
+### A fold's arc correction must be as accurate as the event probes that consume it
+
+Native fold localization uses a regular passive curve when its scalar input reaches an
+extremum. A 1e-11 arc residual could report a span about 5e-12 past the actual minimum;
+the interval's 1e-13 Newton polish then refused a midpoint between two apparently accepted
+commands. Enumeration changed whether it happened. `body-fold-order.spec.ts` permutes
+all six moving-body and 24 joint-row orders on both roots of an oblique cylinder mount.
+Arc correction now uses the event precision. A bound on the driver itself stays affine in
+the command even at a fold; it does not need the tiny geometric enclosure reserved for
+passive coordinates. Neither change turns exhausted computation into a claimed limit.
+
+
+### A small input step can skip two real reversals
+
+The native `x(theta)=cot(theta)+r sin(theta)` carriage has two nearby extrema for r just
+above 3sqrt(3)/2. Newton can accept an endpoint beyond both, and even fixed passive-arc
+steps can miss the small reversed interval. `body-fold-pair.spec.ts` keeps that actual
+mechanism with a scalar hand-derived first stop. Use adaptive curve evidence before
+accepting the endpoint; a Hermite hint requests refinement but does not prove a stop.
+Never let an exhausted arc search mean the interval was clear. Keep the admitted length
+scale as a floor during refinement, or a lone P's halved command also halves its scale,
+leaving the normalized search distance unchanged.
+
+A fold exactly on a requested sample is also a stop. Separately, a passive stop just before
+it can require more refinement after the command bracket looks tiny: coordinate residual,
+not command width alone, decides whether the retained inside pose is accurate. Published
+native cycle/window samples intentionally omit continuation tangents; physical rates must
+come from the availability-aware derivative result, especially at reversals.
+
+
+### Native pin deletion distinguishes lost material from removed connections
+
+`body-pin-lifecycle.ts` preserves a shared pin through a deleted material hub. Remove explicitly
+deleted edges from the original connectivity graph **before** collapsing that hub, or a batch
+that removes a hub and a connection will quietly recreate the connection. Changing a joint
+away from the pin also disconnects that edge. An unweld at the same world point reuses the
+existing attachment IDs; duplicating those anchors loses bundle identity without moving a pixel.
+
+Native group lineage retains source material records. Validate newly supplied annotations even
+if their members do not describe a real group; dropping them is data loss disguised as repair.
+Zero mass does not imply zero contribution when the member has custom nonzero inertia. A
+custom aggregate cannot survive that member's deletion without an explicit reset decision.
+
+Playback/selection changes in `BodyDocumentAuthority` snapshot local state only. Cloning the
+whole document on every clock update would change its identity on every tick and invalidate
+caches despite unchanged authored data. Shared URLs never include those local clocks/selections.
+
+
+### A structurally typed point can carry a pose's extra fields into a strict document
+
+TypeScript accepts a `Pose` wherever a `Point` is required. Spreading it into an attachment
+also copies `angle`, which the native codec correctly rejects as an unknown point field.
+`BodyFactory` now captures the declared point/pose/vertex fields explicitly. The linear-carriage
+save/reopen test exposed this; do not weaken the codec's unknown-field check to accommodate it.
+
+Generated synthesis ownership is authored state, including its partial flag and original
+placement baseline. Deletion can prune IDs that existed and were deleted; it cannot prune
+arbitrary invalid IDs out of a newly supplied design and then claim the batch was valid.
+
+
+### Recomputing a force result does not reset the mechanism's clock
+
+The native edit effect list contains all changed records. Using that list directly to reset
+clocks made a paused mass edit start the machine over. `bodyMotionRecord` retains only data
+that changes the motion's parameterization/geometry. Loads, mass, paint, traces and edit marks
+can invalidate analysis or drawing caches while preserving the exact input command and time.
+`body-property-edit.spec.ts` catches the reset by editing a crank at a nonzero command.
+
+A zero-magnitude force still has an arrow direction. When its vector becomes zero, retain the
+previous heading as presentation metadata in the same reference axes; otherwise making a
+locked force zero silently swings its handle toward +X. Changing axes or material ownership
+must preserve world load direction, not reinterpret the same two vector components.
+
+A deleted CoM editing anchor falls back only if it was the center's existing reference before
+the transaction. Pruning every missing anchor can hide a newly supplied reference to the wrong
+material when that material is deleted in the same batch. The aggregate and member checks
+share the reference policy; neither changes the physical body-local center during simulation.
+
+
+### A custom center's editing frame must survive a change in the longest diagonal
+
+The native geometry editor stores the named vertex pair for a body-relative custom center in
+`editAxis`. Choosing the longest pair afresh after each deformation passes a two-pin bar test
+but changes a polygon's frame halfway through editing it. `body-geometry-properties.spec.ts`
+stretches a triangle until another pair is longer, saves/reopens, then turns the original pair
+and checks the centroid offset by hand. Array order never chooses the reference. Removing its
+vertices rebases the center in place; copy must remap the pair along with vertex identities.
+
+Deleting a CoM's attachment reference and turning its body in one edit is another ordering
+trap. Map the retained world point through the old/new body frames before falling back to the
+body anchor. Falling back first makes the center ride the turn and loses the reference that
+explained why it should have stayed on the grid. This is editing policy only: playback always
+transports the resulting stored body-local center rigidly.
+
+
+### A held bar must carry its off-axis material when its endpoint moves
+
+The native point-edit solver initially satisfied a held endpoint distance by changing local
+vertices while leaving an unbound witness behind. Endpoint-only assertions cannot see that
+distortion. A length hold between a bar's two actual bound vertices makes its material move
+rigidly; a hold between unrelated unbound attachments does not freeze the underlying shape.
+`body-point-edit.spec.ts` checks the witness against hand rotation, and removing the rigid
+classification makes those assertions fail. Keep a separate unbound-point derivative fixture:
+otherwise rigidifying the bar makes its length row identically constant and silently removes
+the intended local-geometry Jacobian coverage.
+
+An antipodal pointer target on a held circle has zero tangent slope at the farthest point.
+A small Newton correction is not sufficient evidence of the nearest allowed pose. Probe for
+an improving feasible direction before accepting a stationary projected point. A typed exact
+coordinate must still pass an exact correction even if projection supplies the starting guess.
+
+Grounding an attachment does not lock its authored grid position. The existing grid editor
+allows an explicitly requested ground pin to move; it holds only the unrequested ground pins.
+The native point command follows that distinction without permitting a mutable WORLD pose.
+
+
+### A displayed frame and an authored frame answer different force questions
+
+At a paused sample, switching a force between body and world axes must preserve what is on
+screen. Converting through the body's authored angle preserves a different load. The native
+posed-property tests use a rod authored at 0.4 radians but displayed at 1 radian, and a second
+independently translating material owner. Both locked arrow ends must stay in place through
+axis/owner changes. The resulting local force record belongs in the authored document; its
+displayed body pose does not. A zero force still carries its direction through the same map.
+
+A free tracer is similar: its world pointer target maps through the displayed body transform,
+but changing that local point does not change the machine's motion clock. Treating every
+attachment edit as a clock reset made a valid posed tracer edit jump from command 0.6 to zero.
+`body-posed-property-edit.spec.ts` checks the local point by hand and keeps both clocks through
+Undo/Redo. `body-edit-frame.spec.ts` adds a ram's return leg, where matching positions alone
+cannot identify the sample: direction and time are local state too.
+
+
+### One blocked route does not make an angular anchor unreachable
+
+After enlarging a crank, a passive carriage stop can lie between its current angle and its old
+starting angle while both poses remain valid. `body-anchor-alternative.spec.ts` uses the hand
+relation y=r sin(theta): radius 0.8 becomes 1, the upper guide stop is y=0.95, and theta=2.8 can
+still reach theta=0.4 around the other side of the rotation. Direct backward continuation stops
+at the forbidden sine peak, so it cannot justify resetting the anchor. A completed rebuilt
+cycle supplies the alternate route. Adding an input limit that also closes the alternate route
+makes the reset justified. Do not substitute a numerical refusal for either physical proof.
+
+When that cycle names the same displayed angle on another turn, the material angles must use
+the same turn as its command. Wrapping each material independently breaks P angle rows and
+newly inserted members without an old angle seed. `body-anchor-turns.spec.ts` includes a floating
+carrier, a welded barrel and its rod. `body-anchor-clock.spec.ts` checks that a nonlooping window
+cannot claim a positive elapsed time across a passive stop merely because both endpoints fit.
+
+
+### Reversing a drive reverses the selected leg, not just the stored speed
+
+A returning cylinder can occupy the same pose twice in a cycle. When speed changes from +0.2
+to -0.4, looking up that pose with its old negative direction produces a plausible time but
+keeps it returning. `body-drive-edit.spec.ts` starts at travel 1.3 on the return from 1.5, with
+anchor 0.4 and lower stop 0. The new negative-speed cycle reaches that pose going outward at
+(0.4+1.3)/0.4 seconds. Carry coordinate-order reversal separately: negating both the coordinate
+and its speed is only a different representation, and must not reverse physical motion.
+
+An input resuming from zero speed has no previous motion leg. Its new signed speed chooses
+the direction, even when another machine keeps the drawing globally away from the start.
+The same spec verifies both new directions and preserves the other machine's clock.
+
+
+### Unit conversion must reach fixed clocks and marker lengths too
+
+A native drive on a fully fixed P can have a clock even though it has no moving partition.
+Scaling only invalidated partitions converted its profile to centimeters but left the clock
+in meters. Convert travel clock values explicitly, then ask whether the batch also changed
+physical motion. Density scales by mass/length²; stored inertia has its own unit factor and
+cannot be inferred from mass×length² (the centimeter convention uses grams and kg·cm²).
+
+Object scale is a marker length in document units. Scale it with camera span so a conversion
+keeps the marks the same size on screen; never use it for cylinder stroke or other physics.
+An incognito legacy-UI check exposed a related display trap: 0.27 cm rounded to 0.00 m in
+Object Size, and a coverage warning appeared despite unchanged screen size. The native S5
+settings checks must use readable nonzero precision and actual settled screen coverage.
+
+
+### Copying changes IDs, not the member that supplies a group's appearance
+
+A copy of eleven materials exposed an ordering trap: IDs ending in body:10 sort before
+body:2. The copied weld group then displayed a different member's name and paint, even
+though every member record had been copied correctly. Capture a complete group's current
+presentation before remapping identities; keep the leaves' own presentation for later
+unwelds. A one-member group can still carry a custom mass/CoM override and must not be filtered
+out as if it had no annotation.
+
+WORLD is another identity boundary. Grounded copies share the same derived WORLD weld group,
+so inserting a second partial group annotation creates an invalid drawing. Let the existing
+presentation lineage govern that shared group, and refuse ambiguous aggregate mass copying.
+The copied ground attachment itself must get a new ID and translated point; recompute a
+WORLD weld's rest transform in either A/B order.
+
+A new fixed member can invalidate an existing machine's analysis without changing its
+motion. Rebuilding its old anchor nevertheless perturbed an otherwise exact return-leg
+clock. The native edit path now compares the machine's actual material, incident connections,
+referenced boundary points, drives and limits before doing that work. A displayed copy starts
+at the captured pose; its untouched source keeps its original authored pose and clock.
+
+
+### Clipboard storage units and paste placement units are different
+
+A native clipboard is a minimal validated drawing with its own units. Convert its stored
+material, mass, inertia and loads into the destination units before adding the pointer's
+placement offset. Copying the source settings as well would silently change the destination
+project. Capture the accepted displayed pose, not the authored anchor, and keep the resulting
+payload immutable so deleting or seeking the source cannot change a later paste.
+
+A complete WORLD-welded aggregate can travel in that isolated clipboard. Joining it to an
+existing zero-mass support is harmless only if the support also has zero inertia and no
+custom aggregate of its own. The first paste gate refused that valid case. Its retained CoM
+must be transformed into the destination group's frame; copying its two local numbers into
+a differently placed frame changes the physical center. Keep the hand world-position test
+beside the nonzero-inertia refusal rather than testing only that a mass field survived.
+
+
+### A paused analysis view still shows edit locks
+
+`locking.mjs` used to expect lock marks to disappear whenever Edit was left. That assertion
+survived the cross-mode editing change in `7ec4721`, even though `lockVisualsOn` and the project
+guidance already said every paused mode shows them. Test the actual state boundary: paused
+Edit/Kinematic/Force Analysis retain the same locks and badges; Play hides their marks while
+simulation still moves; Pause restores the marks without clearing stored locks. The locking
+suite now captures those transitions and a moving cycle. Keep the capture wide enough for
+the entire path: a crop that fits the starting pose can hide the rocker's later motion.
+
+
+### A coordinate edit can change only the paused view
+
+Moving a returning ram from travel 1.3 to 0.8 can recover exactly the original authored start
+at 0.4. Looking only at document effects then calls the operation a no-op and discards its new
+pose and clock. Native posed planning also compares the resulting display and local clocks;
+that change belongs to one Undo entry even when no authored record changed.
+
+A legal endpoint can hide a passive stop: the cosine-carriage fixture starts at angle -0.025
+and ends at +0.075, both below x=0.99999, but passes x=1 in between. Exact coordinate edits need
+interior extrema checks, including loose sketches with an additional freely pinned member.
+Regular mechanisms reuse the motion kernel's fold and interval search rather than treating
+small Newton corrections as proof that a physical interval was clear.
+
+### Rebuilding a rocker changes its sampled track range
+
+The paused-editing browser gate compared the old normalized scrub fraction with the fraction
+after “Move the start here” rebuilt the motion. The isolated reference-app probe retained every
+joint exactly but changed that fraction from 848 to 851. Compare the actual displayed input
+angle and joint positions across the promotion, then compare the anchor and seat against the
+new track. Keep the rendered pixel check; allowing a different sampled fraction is not a reason
+to accept a moved drawing or a marker at the wrong position. `posed-editing.mjs` also captures
+intermediate drag frames instead of asking before/after screenshots to prove the gesture.
+
+### A guide's drawing origin is not an attachment to move
+
+An authored guide can use a material vertex or a traced/locked attachment as the origin of
+its artwork. Turning its axis by moving that attachment would also reshape the body or move
+another connection. Re-express the artwork's offset about the physical guide origin, preserve
+both its axial station and normal offset, and rotate that metadata instead. Discarding the
+normal component silently changes previously valid artwork. Those distances scale with
+units; they are neither physical coordinates nor travel limits. Internal cylinder P artwork
+uses a station at the barrel mouth, independent of extension and symbol size.
+
+Changing a guide's heading also changes its constraint set. Two guides on one carriage may
+need one simultaneous batch: changing either alone can be inconsistent. Keep the physical
+carrier and its welded material fixed during this edit, preserve signed travel, and move the
+connected material rigidly. On a paused drawing, explicitly transport that travel anchor to
+the authored new axis; otherwise one P order can reset its start while the reversed order
+retains it. This mapping is authorized by the typed axis command, not by any arbitrary edit
+that happens to alter a joint frame.
+
+### Rewinding does not reselect a link
+
+A live incognito check selected AB, paused it at 23°, then returned to the 80° start. The
+canvas and transport returned, but the selected Angle field still read 23° until Undo. The
+legacy panel patched link fields on selection and edits only. It now refreshes pose-dependent
+link/cylinder values when `poseRevision` changes; polling every change-detection pass would
+instead erase unfinished typing. `link-pose-readout.mjs` keeps the seek/play/pause/rewind/Undo
+sequence and the typing check, and records a full-cycle filmstrip. Wait for the existing rewind
+animation to settle before starting playback; pressing Play during that transition lets the
+pending rewind stop it again. Fit full motion before filming the full cycle, not just the
+starting pose. Native cutover must keep these same readout and typing invariants.
+
+### Lengthening a free fabrication should not turn it
+
+The first native cylinder dimension solve held the barrel attachment and internal extension,
+but its least-motion answer rotated the whole floating cylinder slightly. A welded bracket's
+off-axis geometry shifted the numerical group center, making that turn cheaper than a purely
+axial move. Prefer the captured heading if it satisfies the new shape's connections; if a
+real connection requires rotation, solve those constraints without that preference. A vertical
+external slot supplies the independent check: its fixed x coordinate and the new span determine
+the positive square-root y coordinate. Keeping heading unconditionally would refuse that valid
+resize. Keeping neither heading nor the attachment would make an ordinary loose cylinder drift.
+
+Resize each member around its outer material attachment. Moving the rod's inner end locally
+preserves a bracket welded to its outer end without changing the weld rest or rebuilding either
+body. The internal P origins and barrel-mouth drawing station change with those dimensions.
+Locks during this solve must compare against the original point locations, not the reshaped
+candidate's zero-correction positions; the latter would quietly move a lock's reference.
+
+
+### Native import and draft gestures (S4)
+
+A compound load's reference BodyId is not a material ownership decision. If partial deletion
+removes that reference leaf, test the complete frozen scope before automatically deleting the
+force. Otherwise choosing a different reference frame changes whether the same load survives.
+The native production-import test reproduces this with the frozen 2.0.3 compound load.
+
+Native codec ordering is canonical. Lifecycle tests should compare retained records by ID
+(or canonical encodings), not compare pre-save array order against post-load arrays. The
+schema also distinguishes a geometry vertex `{id,x,y}` from a point `{x,y}`; reusing the former
+as a circle center is refused, even when the TypeScript structural type permits it.
+
+Native gestures are private drafts until `finishGesture`; do not publish `advance` previews
+through the document service or send each pointer event into Undo. They capture revision,
+displayed pose and clocks, retain a bounded continuation, and reject a foreign editor token.
+S5 must keep its visual draft separate and coalesce pointer events; S4 does not wire a DOM
+pointer handler. Production import deliberately excludes unreleased staging extensions.
+
+### Native commands and final editing references
+
+Native generated IDs derive from the command ID. Allocate a fresh UUID for each new committed
+action, and keep that ID while previewing and committing the same action. To commit a shown
+paste, pass its plan to `NativeBodyDocumentService.commit`; `paste()` deliberately starts a new
+action and allocates new IDs. Reusing a committed command ID fails duplicate-ID validation
+atomically; it is not an idempotent retry protocol.
+
+Resolve both material and group center edit anchors before a delete removes their final
+placement. An attachment anchor contributes its displacement before falling back to the body;
+it must not become grid-fixed merely because its attachment was deleted in the same command.
+An unchanged frame needs no coordinate round trip. Likewise, restore unchanged world-angle
+holds from their authored records when returning from a paused frame: subtracting the display
+rotation numerically can invent an edit to an unrelated machine by one ulp. F3 follow-up probes
+cover both failures. Removing the last input at a paused pose still emits an anchor notice;
+there is no surviving driver over which the ordinary reset loop can iterate.

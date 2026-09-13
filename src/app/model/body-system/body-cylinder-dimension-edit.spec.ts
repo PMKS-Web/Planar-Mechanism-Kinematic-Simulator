@@ -177,19 +177,17 @@ describe('native cylinder dimension transactions', () => {
         );
         source = {
           ...source,
-          bodies: [...source.bodies]
-            .reverse()
-            .map((b) =>
-              b.kind === 'material' && b.geometry.kind === 'bar'
-                ? {
-                    ...b,
-                    geometry: {
-                      ...b.geometry,
-                      vertices: [b.geometry.vertices[1], b.geometry.vertices[0]],
-                    },
-                  }
-                : b
-            ),
+          bodies: [...source.bodies].reverse().map((b) =>
+            b.kind === 'material' && b.geometry.kind === 'bar'
+              ? {
+                  ...b,
+                  geometry: {
+                    ...b.geometry,
+                    vertices: [b.geometry.vertices[1], b.geometry.vertices[0]],
+                  },
+                }
+              : b
+          ),
           attachments: [...source.attachments].reverse(),
         };
       }

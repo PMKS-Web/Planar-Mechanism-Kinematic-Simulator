@@ -1,3 +1,4 @@
+import { turnsClockwise } from '../drive-direction';
 import { nativeTwinCranksOnPinnedFrame } from '../../../test-utils/verification/native-fixed-frame-fixtures';
 import { BodyDocument } from './body-document';
 import { BodyFactory } from './body-factory';
@@ -56,7 +57,7 @@ function prepare(
           index: i + 1,
           time: command / speed,
           command,
-          direction: speed < 0 ? -1 : 1,
+          direction: turnsClockwise(speed) ? -1 : 1,
         },
         pose: { ok: true, poses: advanced.state.poses, commands: new Map([[driver.id, command]]) },
         rates,

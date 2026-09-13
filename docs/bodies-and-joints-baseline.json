@@ -95,11 +95,7 @@
     "Four_Bar_Inversions",
     "Slider_Crank_Inversions"
   ],
-  "devTemplateIds": [
-    "Dev_All_Mechanism_Types",
-    "Dev_Object_Gallery",
-    "Dev_Render_Stress"
-  ],
+  "devTemplateIds": ["Dev_All_Mechanism_Types", "Dev_Object_Gallery", "Dev_Render_Stress"],
   "galleryNames": [
     "Punch press",
     "Derrick crane",
@@ -193,12 +189,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          361
-        ]
+        "valid": [true],
+        "samples": [361]
       },
       {
         "id": "Watt_I",
@@ -211,12 +203,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          361
-        ]
+        "valid": [true],
+        "samples": [361]
       },
       {
         "id": "Watt_II",
@@ -229,12 +217,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          361
-        ]
+        "valid": [true],
+        "samples": [361]
       },
       {
         "id": "Stephenson_III",
@@ -247,12 +231,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          361
-        ]
+        "valid": [true],
+        "samples": [361]
       },
       {
         "id": "Slider_Crank",
@@ -265,12 +245,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          361
-        ]
+        "valid": [true],
+        "samples": [361]
       },
       {
         "id": "Locked_Four_Bar",
@@ -283,12 +259,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          305
-        ]
+        "valid": [true],
+        "samples": [305]
       },
       {
         "id": "Cylinder_Gripper",
@@ -301,12 +273,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          359
-        ]
+        "valid": [true],
+        "samples": [359]
       },
       {
         "id": "Aircraft_Landing_Gear",
@@ -319,12 +287,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          359
-        ]
+        "valid": [true],
+        "samples": [359]
       },
       {
         "id": "Hood_Hinge",
@@ -337,12 +301,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          129
-        ]
+        "valid": [true],
+        "samples": [129]
       },
       {
         "id": "Excavator_Bucket",
@@ -355,12 +315,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          141
-        ]
+        "valid": [true],
+        "samples": [141]
       },
       {
         "id": "Car_Steering",
@@ -373,12 +329,8 @@
           "lengthUnit": 2,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          367
-        ]
+        "valid": [true],
+        "samples": [367]
       },
       {
         "id": "Whitworth_Quick_Return",
@@ -391,12 +343,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          361
-        ]
+        "valid": [true],
+        "samples": [361]
       },
       {
         "id": "Scotch_Yoke",
@@ -409,12 +357,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          361
-        ]
+        "valid": [true],
+        "samples": [361]
       },
       {
         "id": "Cylinder_Boom",
@@ -427,12 +371,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          359
-        ]
+        "valid": [true],
+        "samples": [359]
       },
       {
         "id": "Radial_Engine",
@@ -445,12 +385,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          361
-        ]
+        "valid": [true],
+        "samples": [361]
       },
       {
         "id": "Chebyshev_Straight_Line",
@@ -463,12 +399,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          363
-        ]
+        "valid": [true],
+        "samples": [363]
       },
       {
         "id": "Windshield_Wiper",
@@ -481,12 +413,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          361
-        ]
+        "valid": [true],
+        "samples": [361]
       },
       {
         "id": "Elliptical_Crank",
@@ -499,12 +427,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          361
-        ]
+        "valid": [true],
+        "samples": [361]
       },
       {
         "id": "Jansen_Leg",
@@ -517,12 +441,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          361
-        ]
+        "valid": [true],
+        "samples": [361]
       },
       {
         "id": "Backhoe_Bucket",
@@ -535,12 +455,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          359
-        ]
+        "valid": [true],
+        "samples": [359]
       },
       {
         "id": "Scissor_Lift",
@@ -553,12 +469,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          359
-        ]
+        "valid": [true],
+        "samples": [359]
       },
       {
         "id": "Shaper_Quick_Return",
@@ -571,12 +483,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          361
-        ]
+        "valid": [true],
+        "samples": [361]
       },
       {
         "id": "Pedaling_Leg",
@@ -589,12 +497,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          133
-        ]
+        "valid": [true],
+        "samples": [133]
       },
       {
         "id": "Oscillating_Fan",
@@ -607,12 +511,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          361
-        ]
+        "valid": [true],
+        "samples": [361]
       },
       {
         "id": "Pumpjack",
@@ -625,12 +525,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          121
-        ]
+        "valid": [true],
+        "samples": [121]
       },
       {
         "id": "Punch_Press",
@@ -643,12 +539,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          361
-        ]
+        "valid": [true],
+        "samples": [361]
       },
       {
         "id": "Derrick_Crane",
@@ -661,12 +553,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          361
-        ]
+        "valid": [true],
+        "samples": [361]
       },
       {
         "id": "Toggle_Clamp",
@@ -679,12 +567,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          361
-        ]
+        "valid": [true],
+        "samples": [361]
       },
       {
         "id": "Offset_Load_Rocker",
@@ -697,12 +581,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          619
-        ]
+        "valid": [true],
+        "samples": [619]
       },
       {
         "id": "Bell_Crank",
@@ -715,12 +595,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          361
-        ]
+        "valid": [true],
+        "samples": [361]
       },
       {
         "id": "Flywheel_Engine",
@@ -733,12 +609,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          361
-        ]
+        "valid": [true],
+        "samples": [361]
       },
       {
         "id": "Elliptical_Trammel",
@@ -751,12 +623,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          363
-        ]
+        "valid": [true],
+        "samples": [363]
       },
       {
         "id": "Peaucellier",
@@ -769,12 +637,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          409
-        ]
+        "valid": [true],
+        "samples": [409]
       },
       {
         "id": "Pantograph",
@@ -787,12 +651,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          361
-        ]
+        "valid": [true],
+        "samples": [361]
       },
       {
         "id": "Double_Butterfly",
@@ -805,12 +665,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          361
-        ]
+        "valid": [true],
+        "samples": [361]
       },
       {
         "id": "Crane_Two_Loads",
@@ -823,12 +679,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true
-        ],
-        "samples": [
-          361
-        ]
+        "valid": [true],
+        "samples": [361]
       },
       {
         "id": "Three_Machines",
@@ -841,16 +693,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true,
-          true,
-          true
-        ],
-        "samples": [
-          361,
-          361,
-          361
-        ]
+        "valid": [true, true, true],
+        "samples": [361, 361, 361]
       },
       {
         "id": "Walking_Pair",
@@ -863,14 +707,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true,
-          true
-        ],
-        "samples": [
-          361,
-          361
-        ]
+        "valid": [true, true],
+        "samples": [361, 361]
       },
       {
         "id": "Straight_Line_Pair",
@@ -883,14 +721,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true,
-          true
-        ],
-        "samples": [
-          363,
-          409
-        ]
+        "valid": [true, true],
+        "samples": [363, 409]
       },
       {
         "id": "Pumping_Field",
@@ -903,16 +735,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true,
-          true,
-          true
-        ],
-        "samples": [
-          121,
-          121,
-          121
-        ]
+        "valid": [true, true, true],
+        "samples": [121, 121, 121]
       },
       {
         "id": "Landing_Gear",
@@ -925,14 +749,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true,
-          true
-        ],
-        "samples": [
-          359,
-          359
-        ]
+        "valid": [true, true],
+        "samples": [359, 359]
       },
       {
         "id": "Four_Bar_Inversions",
@@ -945,18 +763,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true,
-          true,
-          true,
-          true
-        ],
-        "samples": [
-          361,
-          361,
-          361,
-          365
-        ]
+        "valid": [true, true, true, true],
+        "samples": [361, 361, 361, 365]
       },
       {
         "id": "Slider_Crank_Inversions",
@@ -969,18 +777,8 @@
           "lengthUnit": 1,
           "gravity": true
         },
-        "valid": [
-          true,
-          true,
-          true,
-          true
-        ],
-        "samples": [
-          361,
-          361,
-          361,
-          365
-        ]
+        "valid": [true, true, true, true],
+        "samples": [361, 361, 361, 365]
       }
     ],
     "drag": {
@@ -1091,41 +889,25 @@
   "consumerFiles": {
     "src/app/component/BLOCKS/editable-title/editable-title.component.ts": {
       "sites": 2,
-      "categories": [
-        "selection"
-      ],
-      "nativeOwners": [
-        "typed stable selection references and native labels"
-      ],
+      "categories": ["selection"],
+      "nativeOwners": ["typed stable selection references and native labels"],
       "conversionStatus": "pending"
     },
     "src/app/component/BLOCKS/hold-field/hold-field.component.ts": {
       "sites": 1,
-      "categories": [
-        "attachment",
-        "material geometry",
-        "topology"
-      ],
-      "nativeOwners": [
-        "native hold/lock planner and attachment ownership"
-      ],
+      "categories": ["attachment", "material geometry", "topology"],
+      "nativeOwners": ["native hold/lock planner and attachment ownership"],
       "conversionStatus": "pending"
     },
     "src/app/component/MODALS/templates/templates.component.ts": {
       "sites": 1,
-      "categories": [
-        "topology"
-      ],
-      "nativeOwners": [
-        "native document presence/readiness; retain shell/layout/permission model"
-      ],
+      "categories": ["topology"],
+      "nativeOwners": ["native document presence/readiness; retain shell/layout/permission model"],
       "conversionStatus": "pending"
     },
     "src/app/component/analysis-graph-section/analysis-graph-section.component.ts": {
       "sites": 1,
-      "categories": [
-        "analysis result"
-      ],
+      "categories": ["analysis result"],
       "nativeOwners": [
         "immutable native sample arrays and availability, not editable joint arrays"
       ],
@@ -1133,9 +915,7 @@
     },
     "src/app/component/analysis-graph/analysis-graph.component.ts": {
       "sites": 2,
-      "categories": [
-        "analysis result"
-      ],
+      "categories": ["analysis result"],
       "nativeOwners": [
         "immutable native sample arrays and availability, not editable joint arrays"
       ],
@@ -1143,35 +923,19 @@
     },
     "src/app/component/analysis-panel/analysis-panel.component.ts": {
       "sites": 8,
-      "categories": [
-        "analysis result",
-        "render mark",
-        "selection"
-      ],
-      "nativeOwners": [
-        "native subject/coordinate selection and drawing switches"
-      ],
+      "categories": ["analysis result", "render mark", "selection"],
+      "nativeOwners": ["native subject/coordinate selection and drawing switches"],
       "conversionStatus": "pending"
     },
     "src/app/component/analysis-setup/analysis-setup.component.ts": {
       "sites": 12,
-      "categories": [
-        "material geometry",
-        "selection"
-      ],
-      "nativeOwners": [
-        "material/group properties and native selected subject"
-      ],
+      "categories": ["material geometry", "selection"],
+      "nativeOwners": ["material/group properties and native selected subject"],
       "conversionStatus": "pending"
     },
     "src/app/component/edit-panel/edit-panel.component.html": {
       "sites": 3,
-      "categories": [
-        "attachment",
-        "material geometry",
-        "selection",
-        "topology"
-      ],
+      "categories": ["attachment", "material geometry", "selection", "topology"],
       "nativeOwners": [
         "native selected record/command; fields use authored dimensions and shared refusal"
       ],
@@ -1179,12 +943,7 @@
     },
     "src/app/component/edit-panel/edit-panel.component.ts": {
       "sites": 39,
-      "categories": [
-        "attachment",
-        "material geometry",
-        "selection",
-        "topology"
-      ],
+      "categories": ["attachment", "material geometry", "selection", "topology"],
       "nativeOwners": [
         "native selected record/command; fields use authored dimensions and shared refusal"
       ],
@@ -1192,23 +951,13 @@
     },
     "src/app/component/edit-panel/lock-banner.component.ts": {
       "sites": 1,
-      "categories": [
-        "attachment",
-        "material geometry",
-        "topology"
-      ],
-      "nativeOwners": [
-        "native hold/lock planner and attachment ownership"
-      ],
+      "categories": ["attachment", "material geometry", "topology"],
+      "nativeOwners": ["native hold/lock planner and attachment ownership"],
       "conversionStatus": "pending"
     },
     "src/app/component/linkage-table/linkage-table.component.html": {
       "sites": 5,
-      "categories": [
-        "attachment",
-        "material geometry",
-        "topology"
-      ],
+      "categories": ["attachment", "material geometry", "topology"],
       "nativeOwners": [
         "native document fields and transaction edits; audit reachability at cutover"
       ],
@@ -1216,11 +965,7 @@
     },
     "src/app/component/linkage-table/linkage-table.component.ts": {
       "sites": 27,
-      "categories": [
-        "attachment",
-        "material geometry",
-        "topology"
-      ],
+      "categories": ["attachment", "material geometry", "topology"],
       "nativeOwners": [
         "native document fields and transaction edits; audit reachability at cutover"
       ],
@@ -1228,38 +973,20 @@
     },
     "src/app/component/mechanism-panel/mechanism-panel.component.ts": {
       "sites": 8,
-      "categories": [
-        "analysis result",
-        "material geometry",
-        "topology"
-      ],
-      "nativeOwners": [
-        "compiled ownership/roles, authored dimensions and sample sweeps"
-      ],
+      "categories": ["analysis result", "material geometry", "topology"],
+      "nativeOwners": ["compiled ownership/roles, authored dimensions and sample sweeps"],
       "conversionStatus": "pending"
     },
     "src/app/component/multi-edit-panel/multi-edit-panel.component.ts": {
       "sites": 14,
-      "categories": [
-        "attachment",
-        "material geometry",
-        "selection",
-        "topology"
-      ],
-      "nativeOwners": [
-        "native bulk command preflight and material/attachment fields"
-      ],
+      "categories": ["attachment", "material geometry", "selection", "topology"],
+      "nativeOwners": ["native bulk command preflight and material/attachment fields"],
       "conversionStatus": "pending"
     },
     "src/app/component/new-grid/new-grid.component.html": {
       "sites": 3,
-      "categories": [
-        "render mark",
-        "topology"
-      ],
-      "nativeOwners": [
-        "native render views and document presence"
-      ],
+      "categories": ["render mark", "topology"],
+      "nativeOwners": ["native render views and document presence"],
       "conversionStatus": "pending"
     },
     "src/app/component/new-grid/new-grid.component.ts": {
@@ -1282,42 +1009,25 @@
     },
     "src/app/component/playback-bar/playback-bar.component.ts": {
       "sites": 2,
-      "categories": [
-        "analysis result",
-        "topology"
-      ],
-      "nativeOwners": [
-        "native per-machine samples, commands and readiness"
-      ],
+      "categories": ["analysis result", "topology"],
+      "nativeOwners": ["native per-machine samples, commands and readiness"],
       "conversionStatus": "pending"
     },
     "src/app/component/right-panel/right-panel.component.ts": {
       "sites": 1,
-      "categories": [
-        "topology"
-      ],
-      "nativeOwners": [
-        "native document presence/readiness; retain shell/layout/permission model"
-      ],
+      "categories": ["topology"],
+      "nativeOwners": ["native document presence/readiness; retain shell/layout/permission model"],
       "conversionStatus": "pending"
     },
     "src/app/component/settings-panel/settings-panel.component.ts": {
       "sites": 1,
-      "categories": [
-        "topology"
-      ],
-      "nativeOwners": [
-        "native document presence/readiness; retain shell/layout/permission model"
-      ],
+      "categories": ["topology"],
+      "nativeOwners": ["native document presence/readiness; retain shell/layout/permission model"],
       "conversionStatus": "pending"
     },
     "src/app/component/synthesis-panel/synthesis-panel.component.ts": {
       "sites": 1,
-      "categories": [
-        "analysis result",
-        "attachment",
-        "topology"
-      ],
+      "categories": ["analysis result", "attachment", "topology"],
       "nativeOwners": [
         "native construction commands, synthesis poses and tutorial progression/sample readers"
       ],
@@ -1325,180 +1035,97 @@
     },
     "src/app/component/top-bar/top-bar.component.ts": {
       "sites": 1,
-      "categories": [
-        "topology"
-      ],
-      "nativeOwners": [
-        "native document presence/readiness; retain shell/layout/permission model"
-      ],
+      "categories": ["topology"],
+      "nativeOwners": ["native document presence/readiness; retain shell/layout/permission model"],
       "conversionStatus": "pending"
     },
     "src/app/component/view-controls/view-controls.component.html": {
       "sites": 1,
-      "categories": [
-        "analysis result",
-        "render mark"
-      ],
-      "nativeOwners": [
-        "native marks, explicit guide/assembly ownership and sampled view bounds"
-      ],
+      "categories": ["analysis result", "render mark"],
+      "nativeOwners": ["native marks, explicit guide/assembly ownership and sampled view bounds"],
       "conversionStatus": "pending"
     },
     "src/app/component/view-controls/view-controls.component.ts": {
       "sites": 4,
-      "categories": [
-        "analysis result",
-        "render mark"
-      ],
-      "nativeOwners": [
-        "native marks, explicit guide/assembly ownership and sampled view bounds"
-      ],
+      "categories": ["analysis result", "render mark"],
+      "nativeOwners": ["native marks, explicit guide/assembly ownership and sampled view bounds"],
       "conversionStatus": "pending"
     },
     "src/app/model/actuator.ts": {
       "sites": 5,
-      "categories": [
-        "attachment",
-        "topology"
-      ],
-      "nativeOwners": [
-        "ordered native joint coordinate and driver references"
-      ],
+      "categories": ["attachment", "topology"],
+      "nativeOwners": ["ordered native joint coordinate and driver references"],
       "conversionStatus": "pending"
     },
     "src/app/model/body-label.ts": {
       "sites": 2,
-      "categories": [
-        "analysis result",
-        "render mark"
-      ],
-      "nativeOwners": [
-        "native marks, explicit guide/assembly ownership and sampled view bounds"
-      ],
+      "categories": ["analysis result", "render mark"],
+      "nativeOwners": ["native marks, explicit guide/assembly ownership and sampled view bounds"],
       "conversionStatus": "pending"
     },
     "src/app/model/cylinder-pose-plan.ts": {
       "sites": 6,
-      "categories": [
-        "attachment",
-        "material geometry",
-        "topology"
-      ],
-      "nativeOwners": [
-        "native transaction closure; delete synthetic interior placement"
-      ],
+      "categories": ["attachment", "material geometry", "topology"],
+      "nativeOwners": ["native transaction closure; delete synthetic interior placement"],
       "conversionStatus": "pending"
     },
     "src/app/model/cylinder.ts": {
       "sites": 22,
-      "categories": [
-        "attachment",
-        "material geometry",
-        "topology"
-      ],
-      "nativeOwners": [
-        "explicit cylinder assembly roles and native two-body factory"
-      ],
+      "categories": ["attachment", "material geometry", "topology"],
+      "nativeOwners": ["explicit cylinder assembly roles and native two-body factory"],
       "conversionStatus": "pending"
     },
     "src/app/model/draw-order.ts": {
       "sites": 5,
-      "categories": [
-        "analysis result",
-        "render mark"
-      ],
-      "nativeOwners": [
-        "native marks, explicit guide/assembly ownership and sampled view bounds"
-      ],
+      "categories": ["analysis result", "render mark"],
+      "nativeOwners": ["native marks, explicit guide/assembly ownership and sampled view bounds"],
       "conversionStatus": "pending"
     },
     "src/app/model/drop-target.ts": {
       "sites": 17,
-      "categories": [
-        "attachment",
-        "topology"
-      ],
-      "nativeOwners": [
-        "native shared command refusal and explicit pair/assembly identity"
-      ],
+      "categories": ["attachment", "topology"],
+      "nativeOwners": ["native shared command refusal and explicit pair/assembly identity"],
       "conversionStatus": "pending"
     },
     "src/app/model/force-anchor.ts": {
       "sites": 3,
-      "categories": [
-        "attachment",
-        "material geometry"
-      ],
-      "nativeOwners": [
-        "explicit material load owner/local point and authored geometry"
-      ],
+      "categories": ["attachment", "material geometry"],
+      "nativeOwners": ["explicit material load owner/local point and authored geometry"],
       "conversionStatus": "pending"
     },
     "src/app/model/force.ts": {
       "sites": 15,
-      "categories": [
-        "attachment",
-        "render mark"
-      ],
-      "nativeOwners": [
-        "native material load/local vector; renderer derives handle"
-      ],
+      "categories": ["attachment", "render mark"],
+      "nativeOwners": ["native material load/local vector; renderer derives handle"],
       "conversionStatus": "pending"
     },
     "src/app/model/hold-solver.ts": {
       "sites": 1,
-      "categories": [
-        "attachment",
-        "material geometry",
-        "topology"
-      ],
-      "nativeOwners": [
-        "native hold/lock planner and attachment ownership"
-      ],
+      "categories": ["attachment", "material geometry", "topology"],
+      "nativeOwners": ["native hold/lock planner and attachment ownership"],
       "conversionStatus": "pending"
     },
     "src/app/model/joint-operation-permission.ts": {
       "sites": 2,
-      "categories": [
-        "attachment",
-        "topology"
-      ],
-      "nativeOwners": [
-        "native shared command refusal and explicit pair/assembly identity"
-      ],
+      "categories": ["attachment", "topology"],
+      "nativeOwners": ["native shared command refusal and explicit pair/assembly identity"],
       "conversionStatus": "pending"
     },
     "src/app/model/joint.ts": {
       "sites": 12,
-      "categories": [
-        "attachment",
-        "topology"
-      ],
-      "nativeOwners": [
-        "body/joint/attachment records; delete coincident block decomposition"
-      ],
+      "categories": ["attachment", "topology"],
+      "nativeOwners": ["body/joint/attachment records; delete coincident block decomposition"],
       "conversionStatus": "pending"
     },
     "src/app/model/link-holds.ts": {
       "sites": 9,
-      "categories": [
-        "attachment",
-        "material geometry",
-        "topology"
-      ],
-      "nativeOwners": [
-        "native hold/lock planner and attachment ownership"
-      ],
+      "categories": ["attachment", "material geometry", "topology"],
+      "nativeOwners": ["native hold/lock planner and attachment ownership"],
       "conversionStatus": "pending"
     },
     "src/app/model/link.ts": {
       "sites": 46,
-      "categories": [
-        "attachment",
-        "material geometry",
-        "render mark",
-        "topology"
-      ],
+      "categories": ["attachment", "material geometry", "render mark", "topology"],
       "nativeOwners": [
         "authored material geometry and native view outline; reuse pure path math",
         "material records/local frames and derived group membership"
@@ -1507,33 +1134,19 @@
     },
     "src/app/model/lock-set.ts": {
       "sites": 5,
-      "categories": [
-        "attachment",
-        "material geometry",
-        "topology"
-      ],
-      "nativeOwners": [
-        "native hold/lock planner and attachment ownership"
-      ],
+      "categories": ["attachment", "material geometry", "topology"],
+      "nativeOwners": ["native hold/lock planner and attachment ownership"],
       "conversionStatus": "pending"
     },
     "src/app/model/mechanism/anchor.ts": {
       "sites": 3,
-      "categories": [
-        "analysis result",
-        "material geometry",
-        "topology"
-      ],
-      "nativeOwners": [
-        "native sample/rate/wrench contracts; topology from compiled ownership"
-      ],
+      "categories": ["analysis result", "material geometry", "topology"],
+      "nativeOwners": ["native sample/rate/wrench contracts; topology from compiled ownership"],
       "conversionStatus": "pending"
     },
     "src/app/model/mechanism/bodies.ts": {
       "sites": 3,
-      "categories": [
-        "topology"
-      ],
+      "categories": ["topology"],
       "nativeOwners": [
         "weld compiler and native partition connectivity; delete inferred compound/slot roles"
       ],
@@ -1541,57 +1154,31 @@
     },
     "src/app/model/mechanism/drive-profile.ts": {
       "sites": 2,
-      "categories": [
-        "analysis result",
-        "material geometry",
-        "topology"
-      ],
-      "nativeOwners": [
-        "native sample/rate/wrench contracts; topology from compiled ownership"
-      ],
+      "categories": ["analysis result", "material geometry", "topology"],
+      "nativeOwners": ["native sample/rate/wrench contracts; topology from compiled ownership"],
       "conversionStatus": "pending"
     },
     "src/app/model/mechanism/finite-difference-kinematics.ts": {
       "sites": 8,
-      "categories": [
-        "analysis result",
-        "material geometry",
-        "topology"
-      ],
-      "nativeOwners": [
-        "native sample/rate/wrench contracts; topology from compiled ownership"
-      ],
+      "categories": ["analysis result", "material geometry", "topology"],
+      "nativeOwners": ["native sample/rate/wrench contracts; topology from compiled ownership"],
       "conversionStatus": "pending"
     },
     "src/app/model/mechanism/force-solver.ts": {
       "sites": 46,
-      "categories": [
-        "analysis result",
-        "material geometry",
-        "topology"
-      ],
-      "nativeOwners": [
-        "native sample/rate/wrench contracts; topology from compiled ownership"
-      ],
+      "categories": ["analysis result", "material geometry", "topology"],
+      "nativeOwners": ["native sample/rate/wrench contracts; topology from compiled ownership"],
       "conversionStatus": "pending"
     },
     "src/app/model/mechanism/kinematic-solver.ts": {
       "sites": 45,
-      "categories": [
-        "analysis result",
-        "material geometry",
-        "topology"
-      ],
-      "nativeOwners": [
-        "native sample/rate/wrench contracts; topology from compiled ownership"
-      ],
+      "categories": ["analysis result", "material geometry", "topology"],
+      "nativeOwners": ["native sample/rate/wrench contracts; topology from compiled ownership"],
       "conversionStatus": "pending"
     },
     "src/app/model/mechanism/loop-solver.ts": {
       "sites": 14,
-      "categories": [
-        "topology"
-      ],
+      "categories": ["topology"],
       "nativeOwners": [
         "weld compiler and native partition connectivity; delete inferred compound/slot roles"
       ],
@@ -1599,9 +1186,7 @@
     },
     "src/app/model/mechanism/mechanism-partition.ts": {
       "sites": 21,
-      "categories": [
-        "topology"
-      ],
+      "categories": ["topology"],
       "nativeOwners": [
         "weld compiler and native partition connectivity; delete inferred compound/slot roles"
       ],
@@ -1609,23 +1194,13 @@
     },
     "src/app/model/mechanism/mechanism.ts": {
       "sites": 85,
-      "categories": [
-        "analysis result",
-        "material geometry",
-        "topology"
-      ],
-      "nativeOwners": [
-        "native sample/rate/wrench contracts; topology from compiled ownership"
-      ],
+      "categories": ["analysis result", "material geometry", "topology"],
+      "nativeOwners": ["native sample/rate/wrench contracts; topology from compiled ownership"],
       "conversionStatus": "pending"
     },
     "src/app/model/mechanism/mobility.ts": {
       "sites": 4,
-      "categories": [
-        "analysis result",
-        "attachment",
-        "topology"
-      ],
+      "categories": ["analysis result", "attachment", "topology"],
       "nativeOwners": [
         "native constraint compiler, rank/continuation and accepted body/attachment samples"
       ],
@@ -1633,11 +1208,7 @@
     },
     "src/app/model/mechanism/position-solver.ts": {
       "sites": 77,
-      "categories": [
-        "analysis result",
-        "attachment",
-        "topology"
-      ],
+      "categories": ["analysis result", "attachment", "topology"],
       "nativeOwners": [
         "native constraint compiler, rank/continuation and accepted body/attachment samples"
       ],
@@ -1645,11 +1216,7 @@
     },
     "src/app/model/mechanism/readiness.ts": {
       "sites": 10,
-      "categories": [
-        "analysis result",
-        "attachment",
-        "topology"
-      ],
+      "categories": ["analysis result", "attachment", "topology"],
       "nativeOwners": [
         "native constraint compiler, rank/continuation and accepted body/attachment samples"
       ],
@@ -1657,9 +1224,7 @@
     },
     "src/app/model/rigid-bodies.ts": {
       "sites": 3,
-      "categories": [
-        "topology"
-      ],
+      "categories": ["topology"],
       "nativeOwners": [
         "weld compiler and native partition connectivity; delete inferred compound/slot roles"
       ],
@@ -1667,44 +1232,25 @@
     },
     "src/app/model/selection-closure.ts": {
       "sites": 11,
-      "categories": [
-        "attachment",
-        "material geometry",
-        "selection",
-        "topology"
-      ],
-      "nativeOwners": [
-        "native transaction closure/remap and material records"
-      ],
+      "categories": ["attachment", "material geometry", "selection", "topology"],
+      "nativeOwners": ["native transaction closure/remap and material records"],
       "conversionStatus": "pending"
     },
     "src/app/model/selection-transform.ts": {
       "sites": 14,
-      "categories": [
-        "attachment",
-        "material geometry",
-        "selection"
-      ],
-      "nativeOwners": [
-        "native pose/design transform transaction; immutable sampled pose"
-      ],
+      "categories": ["attachment", "material geometry", "selection"],
+      "nativeOwners": ["native pose/design transform transaction; immutable sampled pose"],
       "conversionStatus": "pending"
     },
     "src/app/model/selection.ts": {
       "sites": 4,
-      "categories": [
-        "selection"
-      ],
-      "nativeOwners": [
-        "typed stable selection references and native labels"
-      ],
+      "categories": ["selection"],
+      "nativeOwners": ["typed stable selection references and native labels"],
       "conversionStatus": "pending"
     },
     "src/app/model/slide-assembly.ts": {
       "sites": 6,
-      "categories": [
-        "topology"
-      ],
+      "categories": ["topology"],
       "nativeOwners": [
         "weld compiler and native partition connectivity; delete inferred compound/slot roles"
       ],
@@ -1712,11 +1258,7 @@
     },
     "src/app/model/tutorial-steps.ts": {
       "sites": 5,
-      "categories": [
-        "analysis result",
-        "attachment",
-        "topology"
-      ],
+      "categories": ["analysis result", "attachment", "topology"],
       "nativeOwners": [
         "native construction commands, synthesis poses and tutorial progression/sample readers"
       ],
@@ -1724,19 +1266,13 @@
     },
     "src/app/services/active-obj.service.ts": {
       "sites": 6,
-      "categories": [
-        "selection"
-      ],
-      "nativeOwners": [
-        "typed stable selection references and native labels"
-      ],
+      "categories": ["selection"],
+      "nativeOwners": ["typed stable selection references and native labels"],
       "conversionStatus": "pending"
     },
     "src/app/services/analysis-sample.service.ts": {
       "sites": 2,
-      "categories": [
-        "analysis result"
-      ],
+      "categories": ["analysis result"],
       "nativeOwners": [
         "immutable native sample arrays and availability, not editable joint arrays"
       ],
@@ -1744,12 +1280,7 @@
     },
     "src/app/services/context-menu-builder.service.ts": {
       "sites": 23,
-      "categories": [
-        "material geometry",
-        "render mark",
-        "selection",
-        "topology"
-      ],
+      "categories": ["material geometry", "render mark", "selection", "topology"],
       "nativeOwners": [
         "native selected pair/material and shared command refusal; retain menu renderer"
       ],
@@ -1757,22 +1288,13 @@
     },
     "src/app/services/edit-permission.service.ts": {
       "sites": 1,
-      "categories": [
-        "topology"
-      ],
-      "nativeOwners": [
-        "native document presence/readiness; retain shell/layout/permission model"
-      ],
+      "categories": ["topology"],
+      "nativeOwners": ["native document presence/readiness; retain shell/layout/permission model"],
       "conversionStatus": "pending"
     },
     "src/app/services/export/dxf/dxf-export.service.ts": {
       "sites": 27,
-      "categories": [
-        "analysis result",
-        "attachment",
-        "material geometry",
-        "render mark"
-      ],
+      "categories": ["analysis result", "attachment", "material geometry", "render mark"],
       "nativeOwners": [
         "typed native result accessors and authored design geometry; preserve units/export conventions"
       ],
@@ -1780,12 +1302,7 @@
     },
     "src/app/services/export/dxf/link-bodies.ts": {
       "sites": 5,
-      "categories": [
-        "analysis result",
-        "attachment",
-        "material geometry",
-        "render mark"
-      ],
+      "categories": ["analysis result", "attachment", "material geometry", "render mark"],
       "nativeOwners": [
         "typed native result accessors and authored design geometry; preserve units/export conventions"
       ],
@@ -1793,12 +1310,7 @@
     },
     "src/app/services/export/dxf/semantic-dxf.ts": {
       "sites": 39,
-      "categories": [
-        "analysis result",
-        "attachment",
-        "material geometry",
-        "render mark"
-      ],
+      "categories": ["analysis result", "attachment", "material geometry", "render mark"],
       "nativeOwners": [
         "typed native result accessors and authored design geometry; preserve units/export conventions"
       ],
@@ -1806,12 +1318,7 @@
     },
     "src/app/services/export/export-catalog.service.ts": {
       "sites": 9,
-      "categories": [
-        "analysis result",
-        "attachment",
-        "material geometry",
-        "render mark"
-      ],
+      "categories": ["analysis result", "attachment", "material geometry", "render mark"],
       "nativeOwners": [
         "typed native result accessors and authored design geometry; preserve units/export conventions"
       ],
@@ -1819,12 +1326,7 @@
     },
     "src/app/services/export/export-columns.service.ts": {
       "sites": 3,
-      "categories": [
-        "analysis result",
-        "attachment",
-        "material geometry",
-        "render mark"
-      ],
+      "categories": ["analysis result", "attachment", "material geometry", "render mark"],
       "nativeOwners": [
         "typed native result accessors and authored design geometry; preserve units/export conventions"
       ],
@@ -1832,12 +1334,7 @@
     },
     "src/app/services/export/export-flow.service.ts": {
       "sites": 1,
-      "categories": [
-        "analysis result",
-        "attachment",
-        "material geometry",
-        "render mark"
-      ],
+      "categories": ["analysis result", "attachment", "material geometry", "render mark"],
       "nativeOwners": [
         "typed native result accessors and authored design geometry; preserve units/export conventions"
       ],
@@ -1845,12 +1342,7 @@
     },
     "src/app/services/export/export-writer.service.ts": {
       "sites": 3,
-      "categories": [
-        "analysis result",
-        "attachment",
-        "material geometry",
-        "render mark"
-      ],
+      "categories": ["analysis result", "attachment", "material geometry", "render mark"],
       "nativeOwners": [
         "typed native result accessors and authored design geometry; preserve units/export conventions"
       ],
@@ -1858,12 +1350,7 @@
     },
     "src/app/services/export/mechanism-svg.ts": {
       "sites": 5,
-      "categories": [
-        "analysis result",
-        "attachment",
-        "material geometry",
-        "render mark"
-      ],
+      "categories": ["analysis result", "attachment", "material geometry", "render mark"],
       "nativeOwners": [
         "typed native result accessors and authored design geometry; preserve units/export conventions"
       ],
@@ -1871,13 +1358,7 @@
     },
     "src/app/services/grid-utils.service.ts": {
       "sites": 85,
-      "categories": [
-        "attachment",
-        "material geometry",
-        "render mark",
-        "selection",
-        "topology"
-      ],
+      "categories": ["attachment", "material geometry", "render mark", "selection", "topology"],
       "nativeOwners": [
         "explicit relationship/group queries and shared operation refusal",
         "native atomic edit planner; no implicit point-to-body pose repair",
@@ -1887,12 +1368,8 @@
     },
     "src/app/services/keyboard-shortcuts.service.ts": {
       "sites": 2,
-      "categories": [
-        "excluded: encoding or UI key"
-      ],
-      "nativeOwners": [
-        "retain pure encoding/UI key; no mechanical identity is inferred"
-      ],
+      "categories": ["excluded: encoding or UI key"],
+      "nativeOwners": ["retain pure encoding/UI key; no mechanical identity is inferred"],
       "conversionStatus": "pending"
     },
     "src/app/services/mechanism.service.ts": {
@@ -1919,69 +1396,37 @@
     },
     "src/app/services/multi-edit.service.ts": {
       "sites": 17,
-      "categories": [
-        "attachment",
-        "material geometry",
-        "selection",
-        "topology"
-      ],
-      "nativeOwners": [
-        "native bulk command preflight and material/attachment fields"
-      ],
+      "categories": ["attachment", "material geometry", "selection", "topology"],
+      "nativeOwners": ["native bulk command preflight and material/attachment fields"],
       "conversionStatus": "pending"
     },
     "src/app/services/number-unit-parser.service.ts": {
       "sites": 1,
-      "categories": [
-        "material geometry"
-      ],
-      "nativeOwners": [
-        "body-units and existing display-unit formatting"
-      ],
+      "categories": ["material geometry"],
+      "nativeOwners": ["body-units and existing display-unit formatting"],
       "conversionStatus": "pending"
     },
     "src/app/services/selection-batch.service.ts": {
       "sites": 55,
-      "categories": [
-        "attachment",
-        "material geometry",
-        "selection",
-        "topology"
-      ],
-      "nativeOwners": [
-        "native transaction closure/remap and material records"
-      ],
+      "categories": ["attachment", "material geometry", "selection", "topology"],
+      "nativeOwners": ["native transaction closure/remap and material records"],
       "conversionStatus": "pending"
     },
     "src/app/services/slider-mark.service.ts": {
       "sites": 9,
-      "categories": [
-        "analysis result",
-        "render mark"
-      ],
-      "nativeOwners": [
-        "native marks, explicit guide/assembly ownership and sampled view bounds"
-      ],
+      "categories": ["analysis result", "render mark"],
+      "nativeOwners": ["native marks, explicit guide/assembly ownership and sampled view bounds"],
       "conversionStatus": "pending"
     },
     "src/app/services/svg-grid.service.ts": {
       "sites": 2,
-      "categories": [
-        "analysis result",
-        "render mark"
-      ],
-      "nativeOwners": [
-        "native marks, explicit guide/assembly ownership and sampled view bounds"
-      ],
+      "categories": ["analysis result", "render mark"],
+      "nativeOwners": ["native marks, explicit guide/assembly ownership and sampled view bounds"],
       "conversionStatus": "pending"
     },
     "src/app/services/synthesis/synthesis-solution.service.ts": {
       "sites": 14,
-      "categories": [
-        "analysis result",
-        "attachment",
-        "topology"
-      ],
+      "categories": ["analysis result", "attachment", "topology"],
       "nativeOwners": [
         "native construction commands, synthesis poses and tutorial progression/sample readers"
       ],
@@ -1989,21 +1434,13 @@
     },
     "src/app/services/transcoding/base64-converter.ts": {
       "sites": 1,
-      "categories": [
-        "excluded: encoding or UI key"
-      ],
-      "nativeOwners": [
-        "retain pure encoding/UI key; no mechanical identity is inferred"
-      ],
+      "categories": ["excluded: encoding or UI key"],
+      "nativeOwners": ["retain pure encoding/UI key; no mechanical identity is inferred"],
       "conversionStatus": "pending"
     },
     "src/app/services/transcoding/mechanism-builder.ts": {
       "sites": 33,
-      "categories": [
-        "attachment",
-        "material geometry",
-        "topology"
-      ],
+      "categories": ["attachment", "material geometry", "topology"],
       "nativeOwners": [
         "native codec/production decoded-record importer; no reconstructed legacy graph"
       ],
@@ -2011,21 +1448,13 @@
     },
     "src/app/services/transcoding/string-disassembler.ts": {
       "sites": 2,
-      "categories": [
-        "excluded: encoding or UI key"
-      ],
-      "nativeOwners": [
-        "retain pure encoding/UI key; no mechanical identity is inferred"
-      ],
+      "categories": ["excluded: encoding or UI key"],
+      "nativeOwners": ["retain pure encoding/UI key; no mechanical identity is inferred"],
       "conversionStatus": "pending"
     },
     "src/app/services/transcoding/string-transcoder.ts": {
       "sites": 28,
-      "categories": [
-        "attachment",
-        "material geometry",
-        "topology"
-      ],
+      "categories": ["attachment", "material geometry", "topology"],
       "nativeOwners": [
         "native codec/production decoded-record importer; no reconstructed legacy graph"
       ],
@@ -2033,11 +1462,7 @@
     },
     "src/app/services/transcoding/transcoder-data.ts": {
       "sites": 2,
-      "categories": [
-        "attachment",
-        "material geometry",
-        "topology"
-      ],
+      "categories": ["attachment", "material geometry", "topology"],
       "nativeOwners": [
         "native codec/production decoded-record importer; no reconstructed legacy graph"
       ],
@@ -2045,11 +1470,7 @@
     },
     "src/app/services/transcoding/transcoder-interface.ts": {
       "sites": 2,
-      "categories": [
-        "attachment",
-        "material geometry",
-        "topology"
-      ],
+      "categories": ["attachment", "material geometry", "topology"],
       "nativeOwners": [
         "native codec/production decoded-record importer; no reconstructed legacy graph"
       ],
@@ -2057,11 +1478,7 @@
     },
     "src/app/services/tutorial.service.ts": {
       "sites": 11,
-      "categories": [
-        "analysis result",
-        "attachment",
-        "topology"
-      ],
+      "categories": ["analysis result", "attachment", "topology"],
       "nativeOwners": [
         "native construction commands, synthesis poses and tutorial progression/sample readers"
       ],
@@ -2069,11 +1486,7 @@
     },
     "src/app/services/url-generation.service.ts": {
       "sites": 17,
-      "categories": [
-        "attachment",
-        "material geometry",
-        "topology"
-      ],
+      "categories": ["attachment", "material geometry", "topology"],
       "nativeOwners": [
         "native codec/production decoded-record importer; no reconstructed legacy graph"
       ],
@@ -2081,11 +1494,7 @@
     },
     "src/app/services/url-processor.service.ts": {
       "sites": 2,
-      "categories": [
-        "attachment",
-        "material geometry",
-        "topology"
-      ],
+      "categories": ["attachment", "material geometry", "topology"],
       "nativeOwners": [
         "native codec/production decoded-record importer; no reconstructed legacy graph"
       ],
@@ -2093,9 +1502,7 @@
     },
     "src/app/model/compound-link-path.ts": {
       "sites": 5,
-      "categories": [
-        "render mark"
-      ],
+      "categories": ["render mark"],
       "nativeOwners": [
         "retain pure outline/channel union and rigid path transforms for native render views"
       ],
@@ -2103,9 +1510,7 @@
     },
     "src/app/model/joint-marks.ts": {
       "sites": 22,
-      "categories": [
-        "render mark"
-      ],
+      "categories": ["render mark"],
       "nativeOwners": [
         "retain useful primitive glyph/skin math; replace synthetic block/point discovery in callers"
       ],
@@ -2113,10 +1518,7 @@
     },
     "src/app/model/line.ts": {
       "sites": 2,
-      "categories": [
-        "material geometry",
-        "render mark"
-      ],
+      "categories": ["material geometry", "render mark"],
       "nativeOwners": [
         "native outline renderer; extract useful pure line/arc math and remove Joint/RealLink dependencies"
       ],
@@ -2124,19 +1526,13 @@
     },
     "src/app/model/object-scale.ts": {
       "sites": 2,
-      "categories": [
-        "render mark"
-      ],
-      "nativeOwners": [
-        "view-only mark scale; no native physics may depend on it"
-      ],
+      "categories": ["render mark"],
+      "nativeOwners": ["view-only mark scale; no native physics may depend on it"],
       "conversionStatus": "pending"
     },
     "src/app/model/outline-winding.ts": {
       "sites": 2,
-      "categories": [
-        "render mark"
-      ],
+      "categories": ["render mark"],
       "nativeOwners": [
         "retain pure winding/collinear math; remove transitive legacy utils dependency at S7"
       ],
@@ -2144,30 +1540,19 @@
     },
     "src/app/model/pose.ts": {
       "sites": 1,
-      "categories": [
-        "attachment",
-        "material geometry"
-      ],
-      "nativeOwners": [
-        "native synthesis design poses; old two-point Pose is not a body Pose"
-      ],
+      "categories": ["attachment", "material geometry"],
+      "nativeOwners": ["native synthesis design poses; old two-point Pose is not a body Pose"],
       "conversionStatus": "pending"
     },
     "src/app/model/render-scale.ts": {
       "sites": 1,
-      "categories": [
-        "render mark"
-      ],
-      "nativeOwners": [
-        "view-to-SVG coordinate boundary only; document/SI units remain physical"
-      ],
+      "categories": ["render mark"],
+      "nativeOwners": ["view-to-SVG coordinate boundary only; document/SI units remain physical"],
       "conversionStatus": "pending"
     },
     "src/app/model/uniform-body.ts": {
       "sites": 2,
-      "categories": [
-        "material geometry"
-      ],
+      "categories": ["material geometry"],
       "nativeOwners": [
         "native body-properties; preserve slender-bar idealization; delete joint-hull inference"
       ],

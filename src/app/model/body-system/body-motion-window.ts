@@ -1,3 +1,4 @@
+import { turnsClockwise } from '../drive-direction';
 import { AdmittedBodySystem, initialBodyContinuation } from './body-continuation';
 import { BodyCycleSample } from './body-cycle';
 import { inspectBodyInterval } from './body-interval';
@@ -49,7 +50,7 @@ export function buildBodyMotionWindow(
   )
     return { ok: false, reason: 'invalid', probes: 0 };
   const start = initialBodyContinuation(admitted),
-    direction = driver.speed > 0 ? 1 : -1;
+    direction = !turnsClockwise(driver.speed) ? 1 : -1;
   const target = start.command + driver.speed * options.duration;
   if (!Number.isFinite(target)) return { ok: false, reason: 'invalid', probes: 0 };
   const samples: BodyCycleSample[] = [{ time: 0, direction, state: bodyPoseSample(start) }];
