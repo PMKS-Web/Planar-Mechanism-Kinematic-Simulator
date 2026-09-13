@@ -1,15 +1,17 @@
-import { removedBodyDriveAnchors } from './body-removed-drive-anchor';
-import { reanchorBodyHolds } from './body-reanchor-holds';
-import { unchangedBodyMotion } from './body-unchanged-motion';
-import { restoreBodyPartitionAnchor } from './body-anchor-partition';
+import { restoreBodyPartitionAnchor } from './body-anchor-recovery';
 import { BodyDocument } from './body-document';
 import { BodyEditFrame } from './body-edit-frame';
-import { BodyId, DriverId, JointId } from './body-id';
+import { BodyId, DriverId, JointId, compareRecordIds } from './body-id';
 import { BodyClockState } from './body-document-authority';
-import { bodyEditEffects } from './body-edit-effects';
+import { bodyEditEffects, sameBodyRecord } from './body-edit-effects';
 import { compileBodyDocument } from './constraint-compiler';
 import { unitFactors } from './body-units';
 import { BodyAnchorChange } from './body-anchor-change';
+import { CompiledBodyPartition, CompiledBodySystem } from './compiled-body-system';
+import { bodyMotionRecord } from './body-motion-record';
+import { Pose } from './body-frame';
+import { jointCoordinate } from './joint-coordinate';
+import { hasCoordinate } from './joint-record';
 
 /** A valid edit can outlive its old start. Failure to solve is never reported as proof of unreachable travel. */
 export function reanchorBodyEdit(
@@ -145,4 +147,118 @@ export function reanchorBodyEdit(
       paths: new Map([...frame.paths].filter(([id]) => clocks.has(id))),
     },
   };
+}
+
+/** Adding material to a fixed group invalidates analysis, but cannot change an untouched machine's clock. */
+export function unchangedBodyMotion(
+  before: BodyDocument,
+  after: BodyDocument,
+  oldPartition: CompiledBodyPartition | undefined,
+  partition: CompiledBodyPartition
+): boolean {
+  if (
+    !oldPartition ||
+    !sameBodyRecord(
+      [...oldPartition.materialIds].sort(compareRecordIds),
+      [...partition.materialIds].sort(compareRecordIds)
+    )
+  )
+    return false;
+  const members = new Set(partition.materialIds);
+  const records = (document: BodyDocument) => {
+    const joints = document.joints.filter(
+      (joint) => members.has(joint.bodyA) || members.has(joint.bodyB)
+    );
+    const jointIds = new Set(joints.map((joint) => joint.id));
+    const bodies = new Set<BodyId>([
+      ...members,
+      ...joints.flatMap((joint) => [joint.bodyA, joint.bodyB]),
+    ]);
+    const anchors = new Set(
+      joints.flatMap((joint) => [joint.frameA.attachmentId, joint.frameB.attachmentId])
+    );
+    const sorted = <T extends { readonly id: string }>(values: readonly T[]) =>
+      [...values].sort((a, b) => compareRecordIds(a.id, b.id));
+    return {
+      units: document.units,
+      bodies: sorted(document.bodies.filter((body) => bodies.has(body.id))).map((body) =>
+        bodyMotionRecord({ kind: 'body', id: body.id }, body)
+      ),
+      joints: sorted(joints).map((joint) =>
+        bodyMotionRecord({ kind: 'joint', id: joint.id }, joint)
+      ),
+      attachments: sorted(
+        document.attachments.filter((point) => members.has(point.bodyId) || anchors.has(point.id))
+      ).map((point) => bodyMotionRecord({ kind: 'attachment', id: point.id }, point)),
+      drivers: sorted(document.drivers.filter((driver) => jointIds.has(driver.coordinate.jointId))),
+      limits: sorted(document.limits.filter((limit) => jointIds.has(limit.coordinate.jointId))),
+      holds: document.holds.filter((hold) => members.has(hold.bodyId)),
+    };
+  };
+  return sameBodyRecord(records(before), records(after));
+}
+
+/** Undoing display transport must not turn round-off into a change to an untouched machine. */
+export function reanchorBodyHolds(
+  source: BodyDocument,
+  displayed: BodyDocument,
+  proposed: BodyDocument,
+  poses: ReadonlyMap<BodyId, Pose>
+): BodyDocument['holds'] {
+  return proposed.holds.map((hold) => {
+    const old = displayed.holds.find(
+      (item) => item.bodyId === hold.bodyId && item.from === hold.from && item.to === hold.to
+    );
+    const pose = poses.get(hold.bodyId)!;
+    if (
+      old &&
+      sameBodyRecord(old, hold) &&
+      pose.angle === source.bodies.find((body) => body.id === hold.bodyId)!.pose.angle
+    )
+      return source.holds.find(
+        (item) => item.bodyId === hold.bodyId && item.from === hold.from && item.to === hold.to
+      )!;
+    return hold.angle === undefined
+      ? hold
+      : {
+          ...hold,
+          angle:
+            hold.angle +
+            (pose.angle - proposed.bodies.find((body) => body.id === hold.bodyId)!.pose.angle),
+        };
+  });
+}
+
+/** Losing the last input still needs a notice when surviving material adopts the paused pose. */
+export function removedBodyDriveAnchors(
+  source: BodyDocument,
+  proposed: BodyDocument,
+  before: CompiledBodySystem,
+  after: CompiledBodySystem,
+  frame: BodyEditFrame,
+  poses: ReadonlyMap<BodyId, Pose>
+): BodyAnchorChange[] {
+  return source.drivers.flatMap((driver) => {
+    if (proposed.drivers.some((next) => next.id === driver.id)) return [];
+    const oldPart = before.partitions.find((part) => part.drivers.some((d) => d.id === driver.id));
+    const adopted = oldPart?.materialIds.some(
+      (id) =>
+        poses.has(id) &&
+        !sameBodyRecord(poses.get(id), source.bodies.find((body) => body.id === id)?.pose) &&
+        after.partitions.some((part) => part.materialIds.includes(id) && part.drivers.length === 0)
+    );
+    const clock = frame.clocks.find((item) => item.driverId === driver.id);
+    if (!adopted || !clock) return [];
+    const joint = proposed.joints.find((item) => item.id === driver.coordinate.jointId);
+    const anchor =
+      joint && hasCoordinate(joint, driver.coordinate.coordinate)
+        ? jointCoordinate(
+            joint,
+            driver.coordinate.coordinate,
+            poses,
+            new Map(proposed.attachments.map((point) => [point.id, point]))
+          )
+        : clock.command;
+    return [{ driverId: driver.id, status: 'drive-removed', previous: clock.anchor, anchor }];
+  });
 }
