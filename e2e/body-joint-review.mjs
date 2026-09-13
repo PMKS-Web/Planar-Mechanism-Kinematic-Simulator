@@ -61,6 +61,16 @@ try {
       JSON.stringify(after.document.joints) === JSON.stringify(before.document.joints)
   );
 
+  check(
+    'Removing ground deletes the WORLD anchor as well',
+    after.document.attachments.length === before.document.attachments.length
+  );
+  await page.mouse.click(p.x, p.y);
+  check(
+    'The restored pin wins the hit instead of an orphan ground tracer',
+    (await nativeState(page)).selection[0].kind === 'junction'
+  );
+
   await openNative(page, 'multiway');
   before = await nativeState(page);
   const target = before.document.bodies.filter((b) => b.kind === 'material')[1],
@@ -110,6 +120,19 @@ try {
         after.document.joints.filter((j) => j.kind === 'revolute').length === 1 &&
         after.history === before.history + 1
     );
+    const converted = after.document.joints.find((j) => j.kind !== 'revolute');
+    const hit = await bodyCenter(page, converted.bodyB);
+    await page.mouse.click(hit.x, hit.y);
+    await page.getByRole('combobox', { name: 'Connection Pair' }).selectOption(converted.id);
+    await page.getByRole('button', { name: 'Revolute', exact: true }).click();
+    const restored = await nativeState(page);
+    check(
+      `${kind} back to R reunites all three members under one pin`,
+      restored.document.junctions.length === 1 &&
+        restored.document.junctions[0].attachments.length === 3 &&
+        (await page.locator('[data-joint-kind="revolute"]').count()) === 1
+    );
+    await page.getByRole('button', { name: 'Undo', exact: true }).click();
     await page.getByRole('button', { name: 'Undo', exact: true }).click();
     check(
       `${kind} undo restores the original multiway pin`,
@@ -164,6 +187,74 @@ try {
   check(
     'Undo restores the grounded group presentation',
     (await nativeState(page)).document.groups.some((g) => g.label === 'Grounded Bracket')
+  );
+
+  await page.goto(`${process.env.PMKS_BASE_URL || 'http://localhost:4307'}/?editor=native`);
+  await page.locator('#bootSplash').waitFor({ state: 'detached' });
+  await page.getByRole('button', { name: 'Add Link', exact: true }).click();
+  await page.mouse.move(550, 400);
+  await page.mouse.down();
+  await page.mouse.move(850, 500, { steps: 5 });
+  await page.mouse.up();
+  await page.mouse.click(552, 402, { button: 'right' });
+  await page.getByRole('menuitem', { name: 'Add Ground', exact: true }).click();
+  await page.mouse.click(550, 400);
+  await page.getByRole('button', { name: 'Prismatic', exact: true }).click();
+  before = await nativeState(page);
+  const guideFilm = filmstrip(page, `${out}/grounded-guide`);
+  await guideFilm.shot('converted');
+  await page.mouse.move(550, 400);
+  await page.mouse.down();
+  for (let i = 1; i <= 4; i++) {
+    await page.mouse.move(550 + i * 15, 400);
+    await guideFilm.shot(`travel-${i}`);
+  }
+  await page.mouse.up();
+  await guideFilm.shot('released');
+  after = await nativeState(page);
+  check(
+    'A created P joint travels without reshaping its link',
+    after.history === before.history + 1 &&
+      JSON.stringify(after.document.bodies[1].geometry) ===
+        JSON.stringify(before.document.bodies[1].geometry)
+  );
+  check(
+    'The external P guide visibly reaches its moving material attachment',
+    await page.evaluate(() => {
+      const grid = ng.getComponent(document.querySelector('app-native-grid')),
+        m = grid.marks().find((m) => m.kind === 'prismatic');
+      const dot = (p) => p.x * Math.cos(m.angle) + p.y * Math.sin(m.angle),
+        ends = m.guide.map(dot).sort((a, b) => a - b);
+      return (
+        document.querySelectorAll('.slot-channel').length === 1 &&
+        dot(m.rider) >= ends[0] &&
+        dot(m.rider) <= ends[1]
+      );
+    })
+  );
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  await guideFilm.shot('undo');
+  await contactSheet(`${out}/grounded-guide/*.png`, `${out}/grounded-guide-sheet.png`, 3, 0.5);
+
+  await openNative(page, 'mount-slot-floating');
+  before = await nativeState(page);
+  const slot = before.document.joints.find((j) => j.kind === 'pin-in-slot'),
+    rider = await markCenter(page, slot.id);
+  await page.mouse.click(rider.x, rider.y, { button: 'right' });
+  await page.getByRole('menuitem', { name: 'Link', exact: true }).click();
+  await page.mouse.move(rider.x, rider.y);
+  await page.mouse.down();
+  await page.mouse.move(rider.x + 80, rider.y - 90, { steps: 5 });
+  await page.mouse.up();
+  after = await nativeState(page);
+  const attached = after.document.bodies.find(
+    (b) => !before.document.bodies.some((old) => old.id === b.id)
+  );
+  check(
+    'An attachment from a floating slot rider belongs to its rider, not the carrier',
+    after.document.joints.some(
+      (j) => [j.bodyA, j.bodyB].includes(attached.id) && [j.bodyA, j.bodyB].includes(slot.bodyB)
+    )
   );
 
   await openNative(page, 'four-bar');

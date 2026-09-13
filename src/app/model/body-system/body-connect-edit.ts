@@ -1,3 +1,4 @@
+import { bundlePinAt } from './body-pin-bundles';
 import { BodyDocument } from './body-document';
 import { BodyEditRefusal } from './body-edit-types';
 import { AttachmentId, JointId, JunctionId, compareRecordIds } from './body-id';
@@ -36,6 +37,7 @@ export function connectBodyAttachments(
     64 * Number.EPSILON * Math.max(1, Math.hypot(atA.x, atA.y), Math.hypot(atB.x, atB.y));
   if (Math.hypot(atA.x - atB.x, atA.y - atB.y) > tolerance)
     return bodyEditRefusal('connection-point');
+  document = bundlePinAt(bundlePinAt(document, a.id, `${id}:a`), b.id, `${id}:b`);
   const pins = document.junctions
     .filter((pin) => pin.attachments.includes(a.id) || pin.attachments.includes(b.id))
     .sort((a, b) => compareRecordIds(a.id, b.id));

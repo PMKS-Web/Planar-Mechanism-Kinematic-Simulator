@@ -48,7 +48,7 @@
       />
     }
     @for (mark of marks(); track mark.key) {
-      @if (mark.guide && mark.kind === 'pin-in-slot') {
+      @if (mark.guide) {
         <line
           class="slot-channel"
           [attr.x1]="mark.guide[0].x"
@@ -92,7 +92,7 @@
         class="joint-mark"
         [attr.aria-label]="mark.label || mark.kind"
         (pointerdown)="down($event, mark.target, mark)"
-        (contextmenu)="context($event, mark.target)"
+        (contextmenu)="context($event, mark.target, mark.materialOwner)"
       >
         @if (mark.driveSpeed !== undefined) {
           <g

@@ -1,3 +1,6 @@
+import { reverseJoint } from './reverse-joint';
+import { BodyFactory } from './body-factory';
+import { WORLD } from './body-id';
 import { nativeCylinderMountSlot } from '../../../test-utils/verification/native-editor-fixtures';
 import { nativeMaterialSkin } from './body-cylinder-skin';
 import { bodyJointMarks } from './body-joint-marks';
@@ -66,3 +69,34 @@ it('keeps a grounded slot support on its guide when the cylinder-end pin travels
   expect(after.groundPoint).toEqual(before.groundPoint);
   expect(after.point.x).toBeCloseTo(before.point.x + 0.3, 12);
 });
+
+it.each([0, 0.63])(
+  'keeps external P artwork and drag direction invariant under equation reversal at %s',
+  (heading) => {
+    const f = new BodyFactory();
+    const member = f.body(
+      'Carriage',
+      { x: 2 * Math.cos(heading), y: 2 * Math.sin(heading), angle: heading },
+      [
+        { x: 0, y: 0 },
+        { x: 2, y: 0 },
+      ],
+      0.2
+    );
+    const a = f.attachment(WORLD, { x: 0, y: 0 }),
+      b = f.attachment(member, { x: 0, y: 0 });
+    const j = f.joint('prismatic', a, b, heading);
+    const mark = bodyJointMarks(f.document)[0];
+    const reversed = bodyJointMarks({ ...f.document, joints: [reverseJoint(j)] })[0];
+    expect(reversed.point).toEqual(mark.point);
+    expect(reversed.rider).toEqual(mark.rider);
+    expect(reversed.groundPoint).toEqual(mark.groundPoint);
+    expect(reversed.guide).toEqual(mark.guide);
+    expect(reversed.coordinateAxis!.x).toBeCloseTo(-mark.coordinateAxis!.x, 12);
+    expect(reversed.coordinateAxis!.y).toBeCloseTo(-mark.coordinateAxis!.y, 12);
+    expect(mark.guide).toHaveLength(2);
+    expect(
+      mark.guide![1].x * Math.cos(heading) + mark.guide![1].y * Math.sin(heading)
+    ).toBeGreaterThan(2);
+  }
+);

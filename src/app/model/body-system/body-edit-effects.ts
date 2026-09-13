@@ -166,8 +166,9 @@ export function retainBodySelection(
       if (groups.size !== 1) continue;
       const group = [...groups][0],
         members = [...group.members.keys()];
-      if (members.length > 1) result.push({ kind: 'group', members });
-      else if (members[0] !== WORLD) result.push({ kind: 'body', id: members[0] });
+      const material = members.filter((id) => id !== WORLD);
+      if (material.length > 1) result.push({ kind: 'group', members });
+      else if (material.length === 1) result.push({ kind: 'body', id: material[0] });
     }
   }
   return [...new Map(result.map((ref) => [recordText(ref), ref])).values()];

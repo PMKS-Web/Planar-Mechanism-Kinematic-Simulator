@@ -9,6 +9,7 @@ import {
   weldedSelection,
 } from './body-joint-interaction';
 import { nativeMultiwayPin } from '../../../test-utils/verification/native-editor-fixtures';
+import { bodyJointMarks } from './body-joint-marks';
 import { WORLD } from './body-id';
 import { EditState } from '../edit-permission';
 const state: EditState = {
@@ -141,6 +142,7 @@ it('grounds an existing multiway pin at its anchor and removes only the ground c
     new Set(f.junction.attachments)
   );
   expect(new Set(authority.document.joints)).toEqual(new Set(f.document.joints));
+  expect(authority.document.attachments).toHaveLength(f.document.attachments.length);
 });
 it('keeps the complete grounded weld membership for group edits, selection and deletion', () => {
   const f = nativeMultiwayPin(),
@@ -212,3 +214,64 @@ it.each(['prismatic', 'pin-in-slot'] as const)(
     expect(authority.document).toEqual(f.document);
   }
 );
+it.each(['prismatic', 'pin-in-slot'] as const)(
+  'reunites a multiway pin after %s returns to R',
+  (kind) => {
+    const f = nativeMultiwayPin(),
+      authority = new BodyDocumentAuthority(f.document);
+    const edge = f.document.joints[0];
+    expect(
+      authority.commit(
+        nativeCommand({
+          kind: 'pin-pair-kind',
+          junctionId: f.junction.id,
+          a: edge.frameA.attachmentId,
+          b: edge.frameB.attachmentId,
+          jointKind: kind,
+        }),
+        state
+      ).ok
+    ).toBe(true);
+    expect(
+      authority.commit(
+        nativeCommand({
+          kind: 'joint-kind',
+          jointId: edge.id,
+          jointKind: 'revolute',
+          worldPoint: attachmentWorld(authority.document, edge.frameB.attachmentId),
+        }),
+        state
+      ).ok
+    ).toBe(true);
+    const d = authority.document;
+    expect(d.junctions).toHaveLength(1);
+    expect(new Set(d.junctions[0].attachments)).toEqual(new Set(f.junction.attachments));
+    expect(d.junctions[0].joints).toHaveLength(2);
+    expect(d.joints.map((j) => j.id).sort()).toEqual(f.document.joints.map((j) => j.id).sort());
+    expect(bodyJointMarks(d).filter((m) => m.kind === 'revolute')).toHaveLength(1);
+    expect(authority.undo(state).ok).toBe(true);
+    expect(authority.document.joints.find((j) => j.id === edge.id)?.kind).toBe(kind);
+  }
+);
+it('attaches to a bare binary R without leaving it outside the three-member pin', () => {
+  const f = nativeMultiwayPin();
+  const edge = f.document.joints[0];
+  const d = {
+    ...f.document,
+    bodies: f.document.bodies.filter((b) => !f.members.slice(2).includes(b.id)),
+    attachments: f.document.attachments.filter((a) => !f.members.slice(2).includes(a.bodyId)),
+    joints: [edge],
+    junctions: [],
+  };
+  const authority = new BodyDocumentAuthority(d);
+  expect(
+    authority.commit(
+      createNativeMember(d, 'link', { x: 0, y: 0 }, { x: 2, y: -1 }, f.members[0]),
+      state
+    ).ok
+  ).toBe(true);
+  expect(authority.document.junctions).toHaveLength(1);
+  expect(authority.document.junctions[0].attachments).toHaveLength(3);
+  expect(authority.document.junctions[0].joints).toContain(edge.id);
+  expect(bodyJointMarks(authority.document).filter((m) => m.kind === 'revolute')).toHaveLength(1);
+});
