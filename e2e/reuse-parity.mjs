@@ -1,8 +1,10 @@
 /**
  * Pixel parity between two builds of the app.
  *
- * The reuse backlog replaces hand-rolled copies of a block with the block
- * itself. Every one of those edits is supposed to be invisible: the same
+ * Not tied to any one change: it compares whatever two servers it is given, so
+ * it is the tool for any edit that claims to move code without moving pixels.
+ * It was written for the reuse backlog, which replaces hand-rolled copies of a
+ * block with the block itself. Every one of those edits is supposed to be invisible: the same
  * pixels, drawn by shared code instead of copied code. "Supposed to be" is
  * the problem — a 1px border or a 13px label that only the copy had is
  * exactly the kind of drift the copies exist to explain, and it is invisible

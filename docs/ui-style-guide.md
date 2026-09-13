@@ -57,7 +57,7 @@ A condition such as `@if (joint.links.length < 2)` with its own words is a secon
 It will drift from the first copy, and then the menu, the panel and the drag ring disagree. The
 permission model exists because six surfaces used to answer the same question in different ways.
 See [Editing, playback, and who is allowed to say
-no](tips-and-tricks.md#editing-playback-and-who-is-allowed-to-say-no).
+no](ui-gotchas.md#editing-playback-and-who-is-allowed-to-say-no).
 
 A disabled button takes no pointer events, so a tooltip on the button itself never opens.
 `button-block` hangs its tooltip on the row for that reason. Do the same.
@@ -204,7 +204,7 @@ noun, Title Case or sentence, what a tooltip is for. Link to it; do not copy fro
 need is not there, add it there first.
 
 Spell American English, in identifiers as well as prose. See [the spelling
-rule](tips-and-tricks.md#spelling-american-everywhere). [`e2e/ui-copy.mjs`](../e2e/ui-copy.mjs)
+rule](environment.md#spelling-american-everywhere). [`e2e/ui-copy.mjs`](../e2e/ui-copy.mjs)
 reads the running app and fails on banned words.
 
 Messages go through `NotificationService`

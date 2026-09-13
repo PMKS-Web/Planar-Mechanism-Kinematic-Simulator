@@ -12,8 +12,8 @@ describe('linkToRepo', () => {
   });
 
   it('sends a link to any other document to GitHub', () => {
-    expect(linkToRepo('[traps](tips-and-tricks.md#environment)', 'docs/code-style.md')).toBe(
-      `[traps](${blob}/docs/tips-and-tricks.md#environment)`
+    expect(linkToRepo('[traps](environment.md#environment)', 'docs/code-style.md')).toBe(
+      `[traps](${blob}/docs/environment.md#environment)`
     );
   });
 

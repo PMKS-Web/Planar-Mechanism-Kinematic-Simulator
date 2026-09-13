@@ -123,7 +123,7 @@ are written in model coordinates. Anything that must read the right way up, such
 `colourOf` and `colorOf` are two functions nobody meant to write, and a codebase with both answers
 half of every search. `e2e/ui-copy.mjs` fails on British forms in user-facing text; it is run by
 hand, not in CI, so run it when you change words. The full word list is in
-[tips and tricks](tips-and-tricks.md#spelling-american-everywhere).
+[tips and tricks](environment.md#spelling-american-everywhere).
 
 ## Comments explain why, not how
 

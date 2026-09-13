@@ -198,7 +198,7 @@ Not exhaustive, and not all necessarily real — deciding which are real is part
 - New mechanisms go in `FIXTURE_GALLERY` (`src/test-utils/verification/fixture-gallery.ts`) and
   `npm run fixture-urls` regenerates `docs/fixture-urls.md`; a spec fails if it is stale.
 - Node ≥ 22.22. `npm test -- --watch=false` runs the suite (Vitest, Jasmine style). `npx vitest`
-  does **not** work — see `docs/tips-and-tricks.md`.
+  does **not** work — see `docs/short-notes.md`.
 - The `§ cylinder N` references in code comments point at a spec that **does not exist as a file**
   in this repo. Do not hunt for it; read the comment that cites it.
 
@@ -225,7 +225,7 @@ each ~1–5 min; the full batch is about an hour, so do not run it wholesale:
 
 Note: several e2e suites keep a persistent Chrome profile in `/tmp/pmks-chrome-*`. A stale one
 fails a suite for reasons unrelated to the change — delete the directory the suite names before
-trusting a failure. See `docs/tips-and-tricks.md`.
+trusting a failure. See `docs/environment.md`.
 
 ## What "done" looks like for the planning pass
 

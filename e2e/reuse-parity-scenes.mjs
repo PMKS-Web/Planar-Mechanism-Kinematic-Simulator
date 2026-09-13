@@ -9,6 +9,13 @@
  * `clip` is the element photographed. Prefer the smallest box that contains
  * the change: a whole-viewport shot fails on anything, and then says nothing
  * about what moved.
+ *
+ * **`expectedChange` notes expire.** Each one describes a difference against a
+ * particular base, so once that change has merged the base *is* the change and
+ * the note is describing nothing. Clear them when the work they belong to
+ * lands; a scene that declares a change it no longer makes fails, which is the
+ * reminder. The scenes themselves are worth keeping either way -- reaching
+ * thirty-odd panel states is the expensive part of this, not the comparing.
  */
 
 /**

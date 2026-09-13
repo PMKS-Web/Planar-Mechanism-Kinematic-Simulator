@@ -40,7 +40,7 @@ server.
 
 **Working on it**
 
-- [Tips and tricks](#tips-and-tricks)
+- [Before your first change](#before-your-first-change)
 - [Verification](#verification)
 - [Philosophy](#philosophy)
 - [How it works](#how-it-works)
@@ -405,13 +405,13 @@ table for its keys, so a hint can never drift from the key that fires it.
 
 ---
 
-## Tips and tricks
+## Before your first change
 
-**Read [`docs/tips-and-tricks.md`](docs/tips-and-tricks.md) before your first change.** One rule
+**Read [`docs/environment.md`](docs/environment.md) before your first change.** One rule
 from it applies to every line you write, so it is worth knowing up front: this codebase is
-[American English throughout](docs/tips-and-tricks.md#spelling-american-everywhere) — `center`,
-`color`, `gray`, `analyze` — in identifiers as much as in prose. It is the
-collected surprises: where Playwright has to be installed and why it disappears, which suites
+[American English throughout](docs/environment.md#spelling-american-everywhere) — `center`,
+`color`, `gray`, `analyze` — in identifiers as much as in prose. Between them, the four
+reference documents under `docs/` collect the surprises: where Playwright has to be installed and why it disappears, which suites
 rewrite tracked files, why `npx vitest` fails when `npm test` works, which hostname the dev server
 actually answers on, the two `@media (max-width: 600px)` blocks in one stylesheet where the later
 one silently wins, and how to tell a failure you caused from one that was already there.
@@ -591,7 +591,7 @@ first: `.nvmrc` pins Node 24.
 
 The rest of what is worth knowing before you start — where Playwright lives, which suites rewrite
 tracked files, which hostname the dev server answers on — is in
-[`docs/tips-and-tricks.md`](docs/tips-and-tricks.md).
+[`docs/short-notes.md`](docs/short-notes.md).
 
 ### Branches and deploys
 

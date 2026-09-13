@@ -30,7 +30,7 @@ server — so a suite that nobody ran can be broken without anything turning red
 - **Run from the repository root.** Suites read `src/` and write `artifacts/` by relative path.
 
 The install commands, the browser cache, why `..` and not `.`, and the localhost rule are in
-[tips-and-tricks: Environment](../docs/tips-and-tricks.md#environment). Some suites need more than
+[environment.md: Environment](../docs/environment.md#environment). Some suites need more than
 Chromium; the catalog below says which.
 
 ## Running
@@ -130,7 +130,7 @@ Not suites — import them from one.
   machine that is not the master.
 - `posed-edit-audit.mjs` — every menu row, panel field, key and transport control at a displaced
   pose, on three mechanisms, judged on what is left behind. Writes
-  `artifacts/posed-edit-audit/matrix.md`. Slow: tips-and-tricks puts it at about a quarter of an
+  `artifacts/posed-edit-audit/matrix.md`. Slow: `docs/short-notes.md` puts it at about a quarter of an
   hour.
 - `posed-drag-fuzz.mjs` — seeded random drags at random poses; the ghost, the design's sample 0
   and the transport's "from start" must agree. `SEED=` replays, `ONLY=` picks trial numbers. Slow:

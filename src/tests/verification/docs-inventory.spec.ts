@@ -4,7 +4,7 @@ import { anchorOf } from '../../test-utils/markdown-anchors';
 
 /**
  * The three hand-kept lists an agent is told to read first. Each one drifted before this spec
- * existed: the e2e README named a third of the suites, the Contents of tips-and-tricks stopped
+ * existed: the e2e README named a third of the suites, a Contents stopped
  * half way down the file, and nothing listed which documents were current. A list a person
  * maintains goes stale; a list a spec checks does not.
  */
@@ -28,16 +28,30 @@ describe('documentation inventories', () => {
     expect(missing, 'add each of these to docs/README.md, with its status').toEqual([]);
   });
 
-  it('links every section of tips-and-tricks from its Contents', () => {
-    const lines = read('docs/tips-and-tricks.md').split('\n');
-    const start = lines.findIndex((line) => line.trim() === '## Contents');
-    const end = lines.findIndex((line, i) => i > start && line.startsWith('## '));
-    expect(start, 'tips-and-tricks.md needs a "## Contents" section').toBeGreaterThanOrEqual(0);
-    const contents = lines.slice(start, end).join('\n');
-    const sections = lines
-      .filter((line) => line.startsWith('## ') && line.trim() !== '## Contents')
-      .map((line) => line.slice(3));
-    const missing = sections.filter((heading) => !contents.includes(`(#${anchorOf(heading)})`));
-    expect(missing, 'link each of these from the Contents of tips-and-tricks.md').toEqual([]);
+  // Any document may carry a Contents; one that does has to be complete. This
+  // used to name `tips-and-tricks.md` alone, which is how three of the four
+  // documents it was split into could have shipped with a half-written index.
+  it('links every section of a document that carries a Contents', () => {
+    const documents = readdirSync(resolve(ROOT, 'docs')).filter((name) => name.endsWith('.md'));
+    const incomplete: string[] = [];
+    for (const name of documents) {
+      const lines = read(`docs/${name}`).split('\n');
+      const start = lines.findIndex((line) => line.trim() === '## Contents');
+      // A document without one is fine: `short-notes.md` is eighty-odd headings
+      // searched by symbol, and a hand-kept list of them would be stale in a
+      // month.
+      if (start < 0) continue;
+      const end = lines.findIndex((line, i) => i > start && line.startsWith('## '));
+      const contents = lines.slice(start, end).join('\n');
+      const sections = lines
+        .filter((line) => line.startsWith('## ') && line.trim() !== '## Contents')
+        .map((line) => line.slice(3));
+      incomplete.push(
+        ...sections
+          .filter((heading) => !contents.includes(`(#${anchorOf(heading)})`))
+          .map((heading) => `${name}: ${heading}`)
+      );
+    }
+    expect(incomplete, 'link each of these from its own document’s Contents').toEqual([]);
   });
 });
