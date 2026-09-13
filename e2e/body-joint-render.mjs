@@ -33,12 +33,40 @@ try {
     assert.equal(await page.locator('[data-body-id]').count(), state.document.bodies.length - 1);
     const film = filmstrip(page, `${out}/${key}`);
     await film.shot('start');
+    const supports = await page
+      .locator('[data-ground-id]')
+      .evaluateAll((els) =>
+        els.map((el) => [el.getAttribute('data-ground-id'), el.getAttribute('transform')])
+      );
+    assert.ok(
+      await page.locator('.slot-channel').evaluateAll((channels) => {
+        const mark = document.querySelector('.joint-mark');
+        return (
+          !mark ||
+          channels.every(
+            (channel) =>
+              !!(channel.compareDocumentPosition(mark) & Node.DOCUMENT_POSITION_FOLLOWING)
+          )
+        );
+      }),
+      'Guide channels are behind every joint glyph'
+    );
     const first = state.paths[0];
     if (first) {
       const slider = page.getByRole('slider', { name: 'M1 Animation Position' });
       for (let i = 1; i <= 8; i++) {
         await slider.fill(String(Math.round(((first.samples - 1) * i) / 8)));
         await film.shot(`cycle-${i}`);
+        if (key === 'mount-slot-grounded')
+          assert.deepEqual(
+            await page
+              .locator('[data-ground-id]')
+              .evaluateAll((els) =>
+                els.map((el) => [el.getAttribute('data-ground-id'), el.getAttribute('transform')])
+              ),
+            supports,
+            'World-fixed support marks stay fixed through travel'
+          );
       }
       await page.getByRole('button', { name: 'Rewind', exact: true }).click();
       const end = await nativeState(page);

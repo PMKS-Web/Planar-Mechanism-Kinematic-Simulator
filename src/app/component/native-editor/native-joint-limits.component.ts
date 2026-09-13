@@ -87,6 +87,11 @@ export class NativeJointLimitsComponent {
   protected commit(limit: CoordinateLimit) {
     const fields = this.fields.get(limit.id)!,
       d = this.editor.document();
+    if (
+      fields.controls.lower.value === this.format(limit.lower) &&
+      fields.controls.upper.value === this.format(limit.upper)
+    )
+      return;
     const parse = (text: string) =>
       this.joint().kind === 'revolute'
         ? nativeAngle(text, d.settings.angleUnit)
@@ -94,7 +99,7 @@ export class NativeJointLimitsComponent {
     const lower = parse(fields.controls.lower.value),
       upper = parse(fields.controls.upper.value);
     if (lower === undefined || upper === undefined) {
-      this.editor.message.set('Type both limits as numbers.');
+      this.editor.report('Type both limits as numbers.');
       return;
     }
     this.editor.apply({ kind: 'limit-bounds', limitId: limit.id, lower, upper });

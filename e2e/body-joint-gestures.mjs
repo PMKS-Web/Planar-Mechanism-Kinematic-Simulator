@@ -67,6 +67,44 @@ try {
     await film.shot('redo');
     await contactSheet(`${out}/${key}/*.png`, `${out}/${key}-sheet.png`, 3, 0.5);
   }
+  await openNative(page, 'axial');
+  {
+    const before = await nativeState(page),
+      assembly = before.document.assemblies[0];
+    const mouth = await markCenter(page, assembly.internalJoint);
+    const axis = await page.locator(`[data-mark-id="${assembly.internalJoint}"]`).evaluate((el) => {
+      const m = el.getScreenCTM();
+      return { x: m.a / Math.hypot(m.a, m.b), y: m.b / Math.hypot(m.a, m.b) };
+    });
+    const film = filmstrip(page, `${out}/stop-return`);
+    await page.mouse.move(mouth.x, mouth.y);
+    await page.mouse.down();
+    await film.shot('grip');
+    for (const distance of [50, 100, 150, 200, 250, 300]) {
+      await page.mouse.move(mouth.x + axis.x * distance, mouth.y + axis.y * distance);
+      await film.shot(`out-${distance}`);
+    }
+    const stopped = await nativeState(page);
+    check('A P drag names the refused continuation at a travel stop', stopped.message.length > 0);
+    check('A draft at a stop has not written history', stopped.history === before.history);
+    for (const distance of [200, 100, 30]) {
+      await page.mouse.move(mouth.x + axis.x * distance, mouth.y + axis.y * distance);
+      await film.shot(`back-${distance}`);
+    }
+    await page.mouse.up();
+    await film.shot('release');
+    const returned = await nativeState(page);
+    check(
+      'Reentering the travel range resumes the same gesture',
+      returned.history === before.history + 1 && returned.message === ''
+    );
+    await page.getByRole('button', { name: 'Undo', exact: true }).click();
+    check(
+      'A clamped-and-returned gesture undoes completely',
+      JSON.stringify((await nativeState(page)).document) === JSON.stringify(before.document)
+    );
+    await contactSheet(`${out}/stop-return/*.png`, `${out}/stop-return-sheet.png`, 3, 0.5);
+  }
   await openNative(page, 'welded-axial');
   const original = await nativeState(page),
     assembly = original.document.assemblies[0];

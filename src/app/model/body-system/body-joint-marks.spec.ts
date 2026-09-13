@@ -1,3 +1,4 @@
+import { nativeCylinderMountSlot } from '../../../test-utils/verification/native-editor-fixtures';
 import { nativeMaterialSkin } from './body-cylinder-skin';
 import { bodyJointMarks } from './body-joint-marks';
 import { nativeAxialCarriage } from '../../../test-utils/verification/native-cylinder-fixtures';
@@ -49,4 +50,19 @@ it('renders a cylinder bore independently of its connected bracket', () => {
     bodies: f.document.bodies.filter((b) => b.id !== f.carriage),
   };
   expect(nativeMaterialSkin(withoutBracket, barrel)).toBe(before);
+});
+
+it('keeps a grounded slot support on its guide when the cylinder-end pin travels', () => {
+  const f = { document: nativeCylinderMountSlot(false) };
+  const slot = f.document.joints.find((j) => j.kind === 'pin-in-slot')!;
+  const before = bodyJointMarks(f.document).find((m) => m.key === slot.id)!;
+  const moved = {
+    ...f.document,
+    bodies: f.document.bodies.map((b) =>
+      b.id === slot.bodyB ? { ...b, pose: { ...b.pose, x: b.pose.x + 0.3 } } : b
+    ),
+  };
+  const after = bodyJointMarks(moved).find((m) => m.key === slot.id)!;
+  expect(after.groundPoint).toEqual(before.groundPoint);
+  expect(after.point.x).toBeCloseTo(before.point.x + 0.3, 12);
 });

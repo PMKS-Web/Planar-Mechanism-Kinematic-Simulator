@@ -92,6 +92,12 @@
       }
     </button>
   </div>
+  @if (lockRefusal(); as why) {
+    <p class="action-refusal" [title]="why.long">{{ why.short }}</p>
+  }
+  @if (deleteRefusal(); as why) {
+    <p class="action-refusal" [title]="why.long">{{ why.short }}</p>
+  }
 </div>
 
 <ng-template #contentTpl>

@@ -114,6 +114,15 @@ try {
     'Redo preserves the converted marker size',
     Math.abs((await nativeState(page)).document.settings.objectScale - 0.0027) < 1e-12
   );
+  await page.getByRole('combobox', { name: 'Length Unit', exact: true }).selectOption('in');
+  const inches = await nativeState(page),
+    inchPoint = await bodyCenter(page, id);
+  check(
+    'Inches preserve physical marker size and framing',
+    Math.abs(inches.document.settings.objectScale * 0.0254 - 0.0027) < 1e-12 &&
+      Math.hypot(inchPoint.x - before.x, inchPoint.y - before.y) < 0.3
+  );
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
   await page.getByRole('button', { name: 'Copy', exact: true }).click();
   await page.getByRole('button', { name: 'Paste', exact: true }).click();
   await page.locator('[data-body-id]').nth(1).waitFor();

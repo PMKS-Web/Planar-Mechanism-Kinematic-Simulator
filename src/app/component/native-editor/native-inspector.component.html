@@ -14,8 +14,16 @@
   @if (editor.selection().length > 1) {
     <p>Changes apply to every selected link together.</p>
     <label class="choice"
-      >Link Color <input type="color" aria-label="Selected Link Color" (change)="bulkColor($event)"
+      >Link Color
+      <input
+        type="color"
+        aria-label="Selected Link Color"
+        [value]="bulkFills()[0]"
+        (change)="bulkColor($event)"
     /></label>
+    @if (bulkFills().length > 1) {
+      <p>Mixed link colors</p>
+    }
     <input-block
       [wide]="true"
       [formGroup]="fields"

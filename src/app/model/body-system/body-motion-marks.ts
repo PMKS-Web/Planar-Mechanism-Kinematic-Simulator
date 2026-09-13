@@ -1,3 +1,4 @@
+import { bodyForceEnds } from './body-force-edit';
 import { BodyDocument } from './body-document';
 import { BodyId } from './body-id';
 import { add, compose, localToWorld, Point, Pose } from './body-frame';
@@ -47,11 +48,16 @@ export function bodyMotionBounds(
     }
   };
   include(bodyDrawingPoints(document));
+  for (const force of document.forces) include(bodyForceEnds(document, force));
   if (snapshot)
     for (const body of document.bodies) {
       if (body.kind !== 'material') continue;
-      for (const pose of bodyMotionPoses(snapshot, body.id))
-        include(bodyDrawingPoints({ ...document, bodies: [{ ...body, pose }] }));
+      for (const pose of bodyMotionPoses(snapshot, body.id)) {
+        const posed = { ...document, bodies: [{ ...body, pose }] };
+        include(bodyDrawingPoints(posed));
+        for (const force of document.forces.filter((f) => f.bodyId === body.id))
+          include(bodyForceEnds(posed, force));
+      }
     }
   return minX === Infinity
     ? []

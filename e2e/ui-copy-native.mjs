@@ -30,7 +30,9 @@ try {
     await screen(`${key} transport`);
     const body = state.document.bodies.find((b) => b.kind === 'material'),
       at = await bodyCenter(page, body.id);
-    await page.mouse.click(at.x, at.y, { modifiers: ['Alt'] });
+    await page.keyboard.down('Alt');
+    await page.mouse.click(at.x, at.y);
+    await page.keyboard.up('Alt');
     await screen(`${key} member panel`);
     for (const button of await page.locator('app-native-inspector .panel-header__toggle').all()) {
       if (await button.isVisible()) await button.click();

@@ -18,6 +18,8 @@ const MESSAGES: Record<Exclude<BodyEditCode, 'permission'>, string> = {
   'unsolved-edit': 'This move could not preserve the connected geometry. Try a smaller move.',
   'held-dimension': 'Release the fixed length or angle before changing that dimension.',
   'locked-position': 'Unlock the selected position before moving it.',
+  'empty-name': 'Type a name before saving.',
+  'invalid-mass': 'Type a mass of zero or greater.',
   'invalid-command': 'This change is not valid for the selected objects.',
   'indirect-weld':
     'This pair is joined through other welds. Select one of those pairs to release it.',
@@ -61,6 +63,8 @@ export function nativeEditRefusalCopy(refusal: BodyEditRefusal): { short: string
     'held-dimension': 'release fixed dimension',
     'locked-position': 'unlock first',
     'indirect-weld': 'joined through other welds',
+    'empty-name': 'type a name',
+    'invalid-mass': 'mass must be nonnegative',
     'invalid-command': 'choose compatible objects',
     'connection-point': 'choose connection point',
     'drive-in-rigid-group': 'remove input first',

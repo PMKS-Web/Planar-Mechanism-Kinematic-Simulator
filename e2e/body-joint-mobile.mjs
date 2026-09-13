@@ -99,6 +99,47 @@ try {
   await page.getByRole('button', { name: 'View Controls', exact: true }).click();
   await page.getByRole('button', { name: 'Fit to View', exact: true }).click();
   await film.shot('view-controls');
+  check(
+    'The view drawer leaves the sheet handle uncovered',
+    await page.evaluate(() => {
+      const drawer = document.querySelector('.view-controls').getBoundingClientRect(),
+        panel = document.querySelector('aside').getBoundingClientRect();
+      return drawer.bottom <= panel.top - 11;
+    })
+  );
+  await page.getByRole('button', { name: 'View Controls', exact: true }).click();
+  const movedFrom = await nativeState(page);
+  const grip = await page
+    .locator('[data-joint-kind="prismatic"]')
+    .first()
+    .evaluate((el) => {
+      const p = new DOMPoint(0, 0).matrixTransform(el.getScreenCTM());
+      return { x: p.x, y: p.y };
+    });
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ ...grip, id: 1 }],
+  });
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchMove',
+    touchPoints: [{ x: grip.x + 24, y: grip.y, id: 1 }],
+  });
+  await page.waitForTimeout(100);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  check(
+    'A phone drag creates one undoable edit',
+    (await nativeState(page)).history === movedFrom.history + 1
+  );
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  check(
+    'Phone Undo restores the drawing',
+    JSON.stringify((await nativeState(page)).document) === JSON.stringify(movedFrom.document)
+  );
+  await page.getByRole('button', { name: 'Redo', exact: true }).click();
+  check(
+    'Phone Redo reapplies the edit',
+    (await nativeState(page)).history === movedFrom.history + 1
+  );
   await contactSheet(`${out}/sheet/*.png`, `${out}/sheet.png`, 3, 0.7);
   check('No browser errors', errors.length === 0);
 } finally {

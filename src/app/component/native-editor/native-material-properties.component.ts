@@ -33,6 +33,7 @@ export class NativeMaterialPropertiesComponent {
   );
   protected readonly mass = computed(() => resolveMass(this.body(), this.editor.document().units));
   private shown = '';
+  private presented: Record<string, string> = {};
   constructor() {
     effect(() => {
       const body = this.body(),
@@ -48,16 +49,18 @@ export class NativeMaterialPropertiesComponent {
       const key = JSON.stringify([body.id, values]);
       if (key === this.shown) return;
       this.shown = key;
+      this.presented = values;
       this.fields.patchValue(values, { emitEvent: false });
     });
   }
   protected commit(field: string) {
     const text = this.fields.controls[field].value;
+    if (text === this.presented[field]) return;
     const value = ['cx', 'cy', 'width'].includes(field)
       ? nativeLength(text, this.editor.document().units.length)
       : Number(text);
     if (value === undefined || !Number.isFinite(value) || !text.trim()) {
-      this.editor.message.set('Type a finite number.');
+      this.editor.report('Type a finite number.');
       return;
     }
     const body = this.body();

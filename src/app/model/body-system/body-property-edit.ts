@@ -48,6 +48,11 @@ export function editBodyProperties(
       if (!body) return bodyEditRefusal('missing-target');
       if (body.id === WORLD || body.kind === 'world') return bodyEditRefusal('immutable-world');
       const change = operation.change;
+      if (
+        change.mass?.mass &&
+        (!Number.isFinite(change.mass.mass.value) || change.mass.mass.value < 0)
+      )
+        return bodyEditRefusal('invalid-mass');
       next = {
         ...document,
         bodies: document.bodies.map((item) =>

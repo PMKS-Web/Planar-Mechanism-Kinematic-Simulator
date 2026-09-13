@@ -77,9 +77,13 @@ export class NativeEditorComponent {
       );
     });
     const notifications = inject(NotificationService);
-    effect(() => {
-      const message = this.editor.message();
-      if (message) notifications.refusal('native.edit', message);
+    this.editor.messages.pipe(takeUntilDestroyed()).subscribe((message) => {
+      // The same refused action must speak again after its previous toast was dismissed.
+      if (message) notifications.refusal(`native.edit.${message}`, message, { cooldownMs: 0 });
+      else
+        for (const one of [...notifications.live]) {
+          if (one.id.startsWith('native.edit.')) notifications.dismiss(one.key);
+        }
     });
     registerAppIcons(inject(MatIconRegistry), inject(DomSanitizer));
     const destroy = inject(DestroyRef);
@@ -90,8 +94,14 @@ export class NativeEditorComponent {
           '--native-controls-top',
           `${innerHeight - this.transport().nativeElement.getBoundingClientRect().top}px`
         );
+        this.host.nativeElement.style.setProperty(
+          '--native-panel-top',
+          `${innerHeight - (this.modePanel()?.nativeElement.getBoundingClientRect().top ?? this.transport().nativeElement.getBoundingClientRect().top)}px`
+        );
       });
       observer.observe(this.transport().nativeElement);
+      const panel = this.modePanel()?.nativeElement;
+      if (panel) observer.observe(panel);
       destroy.onDestroy(() => observer.disconnect());
     });
     const query = new URLSearchParams(location.search),
@@ -205,8 +215,13 @@ export class NativeEditorComponent {
   protected objectSize() {
     const d = this.editor.document(),
       size = nativeLength(this.settingsFields.controls.size.value, d.units.length);
+    if (
+      this.settingsFields.controls.size.value ===
+      `${nativeNumber(d.settings.objectScale)} ${d.units.length}`
+    )
+      return;
     if (size === undefined || size <= 0) {
-      this.editor.message.set('Type a positive object size, with or without a unit.');
+      this.editor.report('Type a positive object size, with or without a unit.');
       return;
     }
     this.editor.apply({ kind: 'project', settings: { ...d.settings, objectScale: size } });
@@ -249,7 +264,7 @@ export class NativeEditorComponent {
     try {
       await navigator.clipboard.writeText(url.href);
     } catch {
-      this.editor.message.set(
+      this.editor.report(
         'The browser blocked clipboard access. Save the project to share it as a file.'
       );
     }

@@ -75,3 +75,17 @@ export const AuthoredSubject: Story = {
     template: `<editable-title-block [subject]="subject" [deleteAction]="noop">Link</editable-title-block>`,
   }),
 };
+
+export const AuthoredRefusals: Story = {
+  render: () => ({
+    props: {
+      subject: { name: 'Bracket', rename: () => true },
+      noop: () => undefined,
+      refusal: {
+        short: 'pause animation first',
+        long: 'Pause animation before changing this object.',
+      },
+    },
+    template: `<editable-title-block [subject]="subject" [deleteAction]="noop" [toggleLockAction]="noop" [lockState]="false" [deleteRefusal]="refusal" [lockRefusal]="refusal">Link</editable-title-block>`,
+  }),
+};

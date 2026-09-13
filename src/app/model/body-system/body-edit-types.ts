@@ -108,6 +108,8 @@ export type BodyEditCode =
   | 'aggregate-properties'
   | 'ambiguous-load-owner'
   | 'invalid-command'
+  | 'empty-name'
+  | 'invalid-mass'
   | 'indirect-weld'
   | 'connection-point'
   | 'drive-in-rigid-group'

@@ -2,11 +2,14 @@ import { BodyDocumentAuthority } from './body-document-authority';
 import { emptyBodyDocument } from './body-document';
 import {
   createNativeMember,
+  insertNativeGround,
+  attachmentWorld,
   nativeCommand,
   selectionBodies,
   weldedSelection,
 } from './body-joint-interaction';
 import { nativeMultiwayPin } from '../../../test-utils/verification/native-editor-fixtures';
+import { WORLD } from './body-id';
 import { EditState } from '../edit-permission';
 const state: EditState = {
   mode: 'edit',
@@ -101,3 +104,111 @@ it('can weld the two non-hub members without turning the hub into their rigid gr
   expect(authority.undo(state).ok).toBe(true);
   expect(authority.document).toEqual(f.document);
 });
+
+it('grounds an existing multiway pin at its anchor and removes only the ground connection', () => {
+  const f = nativeMultiwayPin(),
+    authority = new BodyDocumentAuthority(f.document);
+  const anchor = f.junction.attachments[0];
+  const result = authority.commit(
+    insertNativeGround(
+      authority.document,
+      f.members[0],
+      { x: 0.02, y: 0.03 },
+      'revolute',
+      0,
+      anchor
+    ),
+    state
+  );
+  expect(result.ok).toBe(true);
+  const d = authority.document,
+    pin = d.junctions[0];
+  expect(d.junctions).toHaveLength(1);
+  expect(pin.attachments).toHaveLength(4);
+  const ground = d.attachments.find((a) => a.bodyId === WORLD)!;
+  expect(ground.point).toEqual(attachmentWorld(f.document, anchor));
+  expect(d.attachments.filter((a) => a.bodyId === f.members[0])).toEqual(
+    f.document.attachments.filter((a) => a.bodyId === f.members[0])
+  );
+  const joint = d.joints.find((j) => j.bodyA === WORLD || j.bodyB === WORLD)!;
+  expect(
+    authority.commit(
+      nativeCommand({ kind: 'delete', targets: [{ kind: 'joint', id: joint.id }] }),
+      state
+    ).ok
+  ).toBe(true);
+  expect(new Set(authority.document.junctions[0].attachments)).toEqual(
+    new Set(f.junction.attachments)
+  );
+  expect(new Set(authority.document.joints)).toEqual(new Set(f.document.joints));
+});
+it('keeps the complete grounded weld membership for group edits, selection and deletion', () => {
+  const f = nativeMultiwayPin(),
+    authority = new BodyDocumentAuthority(f.document);
+  expect(
+    authority.commit(
+      nativeCommand({ kind: 'joint-kind', jointId: f.junction.joints[0], jointKind: 'weld' }),
+      state
+    ).ok
+  ).toBe(true);
+  expect(
+    authority.commit(
+      insertNativeGround(authority.document, f.members[0], { x: 0, y: 0 }, 'weld'),
+      state
+    ).ok
+  ).toBe(true);
+  const target = weldedSelection(authority.document, f.members[0]);
+  expect(target.kind).toBe('group');
+  if (target.kind !== 'group') return;
+  expect(target.members).toContain(WORLD);
+  expect(selectionBodies(authority.document, [target])).toHaveLength(2);
+  authority.setLocalState({ ...authority.local, selection: [target] });
+  expect(
+    authority.commit(
+      nativeCommand({
+        kind: 'group-properties',
+        members: target.members,
+        change: { label: 'Grounded Bracket', presentation: { fill: '#123456' } },
+      }),
+      state
+    ).ok
+  ).toBe(true);
+  expect(authority.document.groups[0].label).toBe('Grounded Bracket');
+  expect(authority.local.selection).toEqual([target]);
+  expect(authority.commit(nativeCommand({ kind: 'delete', targets: [target] }), state).ok).toBe(
+    true
+  );
+  expect(authority.document.bodies.map((b) => b.id)).toEqual([WORLD, f.members[2]]);
+  expect(authority.undo(state).ok).toBe(true);
+  expect(authority.document.groups[0].label).toBe('Grounded Bracket');
+});
+
+it.each(['prismatic', 'pin-in-slot'] as const)(
+  'releases only the selected pin edge when converting to %s',
+  (kind) => {
+    const f = nativeMultiwayPin(),
+      authority = new BodyDocumentAuthority(f.document);
+    const original = f.document.joints[0];
+    expect(
+      authority.commit(
+        nativeCommand({
+          kind: 'pin-pair-kind',
+          junctionId: f.junction.id,
+          a: original.frameA.attachmentId,
+          b: original.frameB.attachmentId,
+          jointKind: kind,
+        }),
+        state
+      ).ok
+    ).toBe(true);
+    const d = authority.document;
+    expect(d.joints.find((j) => j.id === original.id)?.kind).toBe(kind);
+    expect(d.junctions).toHaveLength(1);
+    expect(d.junctions[0].attachments).toHaveLength(2);
+    expect(d.junctions[0].joints).not.toContain(original.id);
+    expect(d.bodies).toEqual(f.document.bodies);
+    expect(authority.undoDepth).toBe(1);
+    expect(authority.undo(state).ok).toBe(true);
+    expect(authority.document).toEqual(f.document);
+  }
+);

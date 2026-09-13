@@ -65,7 +65,8 @@ export function editBodyMarks(
         item.bodyId === operation.bodyId &&
         ((item.from === from.id && item.to === to.id) ||
           (item.from === to.id && item.to === from.id));
-      const old = document.holds.find(samePair);
+      // Existing commands replace the pair's hold; explicit toggles preserve the other dimension.
+      const old = operation.enabled === undefined ? undefined : document.holds.find(samePair);
       const hold = {
         bodyId: operation.bodyId,
         from: from.id,
