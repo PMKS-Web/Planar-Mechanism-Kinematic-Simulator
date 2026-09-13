@@ -19,7 +19,7 @@ const MESSAGES: Record<Exclude<BodyEditCode, 'permission'>, string> = {
   'held-dimension': 'Release the fixed length or angle before changing that dimension.',
   'locked-position': 'Unlock the selected position before moving it.',
   'invalid-command': 'This change is not valid for the selected objects.',
-  'connection-point': 'Choose the connection point before changing this weld.',
+  'connection-point': 'Choose the connection point first.',
   'drive-in-rigid-group': 'This weld would lock a driven coordinate. Remove its drive first.',
 };
 export function bodyEditRefusal(

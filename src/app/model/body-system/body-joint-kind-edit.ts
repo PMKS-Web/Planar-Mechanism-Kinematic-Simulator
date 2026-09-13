@@ -52,6 +52,21 @@ export function changeBodyJointKind(
   if (joint.kind === 'weld' && operation.jointKind !== 'weld' && !operation.worldPoint)
     return bodyEditRefusal('connection-point', [target]);
   const guided = joint.kind === 'prismatic' || joint.kind === 'pin-in-slot';
+  if (guided && operation.jointKind === 'revolute' && !operation.worldPoint) {
+    const atA = localToWorld(a.pose, anchorA.point),
+      atB = localToWorld(b.pose, anchorB.point);
+    const tolerance =
+      64 *
+      Number.EPSILON *
+      Math.max(
+        Math.hypot(a.pose.x, a.pose.y),
+        Math.hypot(b.pose.x, b.pose.y),
+        Math.hypot(anchorA.point.x, anchorA.point.y),
+        Math.hypot(anchorB.point.x, anchorB.point.y)
+      );
+    if (Math.hypot(atB.x - atA.x, atB.y - atA.y) > tolerance)
+      return bodyEditRefusal('connection-point', [target]);
+  }
   const staysGuided =
     guided && (operation.jointKind === 'prismatic' || operation.jointKind === 'pin-in-slot');
   if (staysGuided && (operation.worldPoint !== undefined || operation.worldAxis !== undefined))

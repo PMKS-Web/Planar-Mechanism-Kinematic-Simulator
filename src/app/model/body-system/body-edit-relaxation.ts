@@ -10,9 +10,12 @@ export function relaxBodyEdit(
   let values = [...seed];
   for (let round = 0; round <= 60; round++) {
     const rows = rowsAt(values);
-    if (rows.some((row) => !Number.isFinite(row.value))) return undefined;
+    if (rows.some((row) => !Number.isFinite(row.value) || !Number.isFinite(row.roundoff)))
+      return undefined;
+    const withinRoundoff = () =>
+      rows.every((row) => Math.abs(row.value) <= 4 * Number.EPSILON + row.roundoff);
     if (Math.max(0, ...rows.map((row) => Math.abs(row.value))) <= 4 * Number.EPSILON) return values;
-    if (round === 60) return undefined;
+    if (round === 60) return withinRoundoff() ? values : undefined;
     const delta = evenestBodyRows(
       rows.map((row) => row.gradient),
       rows.map((row) => -row.value),
@@ -35,7 +38,9 @@ export function relaxBodyEdit(
         break;
       }
     }
-    if (!improved) return undefined;
+    // Keep refining small drawings to the original precision; only a stalled correction
+    // may use its own arithmetic bound. A distant row cannot excuse another row's error.
+    if (!improved) return withinRoundoff() ? values : undefined;
   }
   return undefined;
 }

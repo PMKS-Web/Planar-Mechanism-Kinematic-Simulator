@@ -1570,3 +1570,18 @@ holds from their authored records when returning from a paused frame: subtractin
 rotation numerically can invent an edit to an unrelated machine by one ulp. F3 follow-up probes
 cover both failures. Removing the last input at a paused pose still emits an anchor notice;
 there is no surviving driver over which the ordinary reset loop can iterate.
+
+
+### Native edit roundoff is local to the constraint expression
+
+An absolute four-epsilon stopping criterion refused a held 12-bar chain and the same held
+bar after a distant material-frame change. `body-edit-scalar.ts` now carries each expression's
+rounding uncertainty; `relaxBodyEdit` still refines to its original precision when possible,
+then uses that local bound only when refinement stalls or exhausts. A drawing-wide scale
+would let unrelated geometry excuse a bad row. Locks with no edit variables supply no
+equation, but final transaction validation still protects them. `body-pr-review.spec.ts`
+keeps the failures and a contradictory-small-row control.
+
+Guide artwork can name a disposable witness. Deleting that attachment must relocate the
+artwork reference, not delete the P/slot relationship or its drive/limits.
+`guideDisplayAtPhysicalAnchor` preserves the same material carrier and all drawn offsets.

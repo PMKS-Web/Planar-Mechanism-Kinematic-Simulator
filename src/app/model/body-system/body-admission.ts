@@ -50,7 +50,12 @@ export function admitBodyPartition(
   }
   if (local.drivers.length === 0) return { ok: false, reason: 'no-drive' };
   if (local.drivers.length !== 1) return { ok: false, reason: 'multiple-drives' };
-  const corrected = relaxBodyPosition(local, frame.initialPoses, commands, { scale });
+  // Small authored rounding must not turn an underconstrained sketch into a singular-start message.
+  // Mobility and full driven rank below still decide admission after this bounded correction.
+  const corrected = relaxBodyPosition(local, frame.initialPoses, commands, {
+    scale,
+    allowSingularCorrection: true,
+  });
   if (!corrected.ok)
     return { ok: false, reason: corrected.reason === 'rank' ? 'singular-start' : 'inconsistent' };
   const mobility = bodyMobility(local, corrected.poses, commands);

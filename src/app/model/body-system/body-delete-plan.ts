@@ -1,3 +1,4 @@
+import { guideDisplayAtPhysicalAnchor } from './guide-display-frame';
 import { retainSynthesisOwnership } from './body-project-edit';
 import { BodyDocument } from './body-document';
 import { BodyDeleteTarget, BodyEditRefusal } from './body-edit-types';
@@ -100,10 +101,7 @@ export function deleteBodyRecords(
       bodies.has(joint.bodyA) ||
       bodies.has(joint.bodyB) ||
       attachments.has(joint.frameA.attachmentId) ||
-      attachments.has(joint.frameB.attachmentId) ||
-      ('guideDisplay' in joint &&
-        joint.guideDisplay &&
-        attachments.has(joint.guideDisplay.frame.attachmentId))
+      attachments.has(joint.frameB.attachmentId)
     )
       joints.add(joint.id);
   for (const assembly of document.assemblies)
@@ -124,7 +122,21 @@ export function deleteBodyRecords(
     ...document,
     bodies: document.bodies.filter((body) => !bodies.has(body.id)),
     attachments: document.attachments.filter((point) => !attachments.has(point.id)),
-    joints: document.joints.filter((joint) => !joints.has(joint.id)),
+    joints: document.joints
+      .filter((joint) => !joints.has(joint.id))
+      .map((joint) =>
+        (joint.kind === 'prismatic' || joint.kind === 'pin-in-slot') &&
+        joint.guideDisplay &&
+        attachments.has(joint.guideDisplay.frame.attachmentId)
+          ? {
+              ...joint,
+              guideDisplay: guideDisplayAtPhysicalAnchor(
+                joint,
+                new Map(document.attachments.map((a) => [a.id, a]))
+              ),
+            }
+          : joint
+      ),
     forces: document.forces.filter((force) => !forces.has(force.id)),
     assemblies: document.assemblies.filter((assembly) => !assemblies.has(assembly.id)),
     drivers: document.drivers.filter((driver) => !joints.has(driver.coordinate.jointId)),

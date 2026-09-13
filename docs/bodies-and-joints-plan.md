@@ -806,7 +806,7 @@ transaction, ownership and persistence contract before the native UI writes thro
 
 ### S5 — Joint interaction and grid cutover (Codex live UI review)
 
-**Scope:** `component/new-grid/`, `component/edit-panel/`, `component/context-menu/`,
+**Scope:** `component/new-grid/`, `component/edit-panel/`, `component/BLOCKS/context-menu/`,
 `context-menu-builder.service.ts`, `slider-mark.service.ts`, `model/joint-marks.ts`,
 `active-obj.service.ts`, `multi-edit.service.ts`, `selection-batch.service.ts`,
 `model/drop-target.ts`; body/assembly rendering helpers. New glyph helpers should live outside

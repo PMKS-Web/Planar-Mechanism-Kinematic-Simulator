@@ -2466,10 +2466,10 @@ the original append diff and moved to `short-notes.md`; the deleted tips file st
 The audit applied `docs/code-style.md`, `docs/ui-style-guide.md`, `docs/ui-vocabulary.md`
 and the runner-specific UI skill. Alignment changes:
 
-- Move-only commit `b5675691` consolidates 20 algorithm fragments into five cohesive modules
+- Move-only commit `b5675691` consolidates 18 algorithm fragments into five cohesive modules
   (rates, anchor recovery, re-anchoring, interval certification and folds). Shared math and
   separate command/codec responsibilities remain separate. An AST comparison of every moved
-  non-import declaration found identical algorithm bodies. The result removes 19 files net;
+  non-import declaration found identical algorithm bodies. The result removes 17 files net;
   it does not claim the S7 legacy-runtime removal has happened.
 - Native direction decisions and their specs now use `turnsClockwise`; no lint cap or
   exemption changed. Positive-direction branches already reject a zero-speed drive.
@@ -2507,3 +2507,70 @@ Representative playback frames below are in time order: start, motion across the
 pause and rewind. The complete 35-frame sheet and paused-drag sheet remain in artifacts.
 
 ![Selected-link playback through pause and rewind](images/bodies-and-joints/rebase-playback.png)
+
+
+## Full-PR Fable review after staging rebase (2026-09-13)
+
+Draft [PR #13](https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/pull/13)
+targets `staging`. Fable 5.1 reviewed the complete PR scope at `6f282d11`, base `c090dcc2`.
+Session `b81ce334-134e-40d5-886e-91c8e653aa9b`; read-only tools; no dollar cap.
+Actual cost **$24.8991255** includes $0.008045 of auxiliary Haiku usage. It read every new
+production source file, fixture builders, governing documents and existing-file diff; about
+one third of specs were read in full, others by titles or left unread as explicitly listed
+in its report. This is full-PR scope, not a claim of line-by-line test coverage.
+Artifacts: `rebase-review/Fable-full-pr-{input.txt,launch.json,findings.md,stderr.log}`
+and `Fable-full-pr.json`. Fable independently re-derived the constraint/rate/force algebra
+and the five cylinder closed forms without finding a sign or missing-term error.
+
+Disposition of every reported finding:
+
+1. **Confirmed:** the absolute four-epsilon edit residual refused a 12-bar held chain, a
+   held bar rebased by 10,000 units, and a ram translated by (300, 200). The scalar edit
+   algebra now propagates operand-based rounding uncertainty per row. Relaxation still
+   targets the original precision; only a stalled/exhausted refinement can accept its own
+   arithmetic bound. A large row cannot excuse an inconsistent small row. Fixed/unrelated
+   locks add no zero-gradient rows; settled lock validation remains authoritative.
+2. **Confirmed:** deleting guide artwork removed its physical joint, drive and limits.
+   Surviving artwork now moves to a physical attachment on the same carrier, retaining
+   heading, station, transverse offset and extent. Both prismatic carrier orderings and
+   pin-in-slot are covered, including Undo/Redo. Shared artwork relocation was extracted
+   in the separate move commit `3d9f4064` before the lifecycle behavior changed.
+3. **Confirmed:** rounded underconstrained starts reported `singular-start`. Bounded initial
+   correction now permits deficient rank; mobility and full driven rank still decide
+   admission afterward. Inconsistent drawings and truly singular starts remain refused.
+4. **Confirmed:** converting separated P/slot anchors to R without a point returned
+   `invalid-document`. It now quotes the generalized `connection-point` model reason.
+5. **Not a conversion bug:** production `b7ec8d7` explicitly converts object scale with
+   length units (`settings-panel.component.ts:184–185`) and writes the value directly
+   (`url-generation.service.ts:184`). SCALE is already a document-unit length. Added
+   production-shaped cm/m/in payload probes preserve it and convert it exactly once with
+   the drawing. The contract now explains the 0.7-unit new-document default; equal physical
+   marker sizes across unrelated new unit systems are not a requirement. No erroneous
+   second conversion was added.
+6. **Accepted documentation request:** old compound records cannot distinguish customized
+   aggregate mass, so import preserves the saved aggregate as an override. The contract
+   now names the required explicit reset before a massive membership edit. It also explains
+   independent mass/inertia overrides and the member-mass parallel-axis convention.
+
+Stale S4-pending contract passages were replaced with the implemented boundaries. The future
+S5 context-menu path and consumer rescan obligation now reflect staging's reorganization.
+The original consolidation count is corrected: 18 deleted files, one new file, 17 fewer net.
+
+Extra review evidence: a WORLD-hub three-ram junction survives assembly deletion in two
+construction orders while preserving another ram's driven pair; R→P requires explicit
+coordinate removal. An artwork heading distinct from the physical axis rotates by its
+requested display delta. Clock recovery accepts the hand-derived close four-bar assembly
+and rejects the opposite branch. A locked rod mount still refuses resizing atomically.
+Existing F3 and fold/cycle tests remain in the full suite. Accumulated gesture replay cost
+remains the already-planned S5 live performance measurement, not a new unbounded claim.
+
+`Fable-probes-corrected-before.log`: all six defect probes fail against the old code. The
+first draft translated a WORLD weld without its rest pose; that fixture error was corrected
+before counting the ram refusal. `Fable-probes-fixed.log`: 13/13 pass across the new probes
+and existing guide/admission boundaries. Extra probes required a WORLD type guard and
+production-shaped settings sections rather than the current development writer; neither
+was an implementation failure.
+
+`unit-after-review.log`: **2950 tests / 329 files pass**. `check-after-review.log`,
+`build-after-review.log` and `storybook-after-review.log` pass. Existing MATLAB ceilings
+and the 15-warning lint cap remain unchanged. A focused review of the new fix is next.

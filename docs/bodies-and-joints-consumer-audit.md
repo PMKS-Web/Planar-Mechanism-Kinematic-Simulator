@@ -47,3 +47,13 @@ must account for those exact teaching surfaces, not only fixtures convenient for
 solver. The original drag performance test already exceeds several historical thresholds on
 this machine; its exact-source reproduction is retained. This does not waive S7's comparison
 against the measured baseline or authorize changing a threshold.
+
+
+## Staging rebase follow-through
+
+The September 13 rebase onto `c090dcc2` preserves this frozen S0 scan rather than rewriting
+its historical counts. Before S5/S6 converts consumers, refresh the current call-site inventory
+to include staging's `services/canvas-handle.ts`, `services/joint-drag-state.ts`,
+`services/mode-change-hooks.ts`, relocated `component/BLOCKS/context-menu/` and other moved
+blocks. S7 removal must close both the frozen baseline and the refreshed inventory. Keep the
+original numerical answers, compatibility payloads and performance baselines unchanged.

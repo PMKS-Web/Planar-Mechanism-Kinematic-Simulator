@@ -11,13 +11,17 @@ export interface FourBarLengths {
 }
 const FOUR_BAR: FourBarLengths = { ground: 4, crank: 1, coupler: 3, rocker: 2 };
 
-export function nativeFourBarPoint(angle: number, lengths: FourBarLengths = FOUR_BAR): Point {
+export function nativeFourBarPoint(
+  angle: number,
+  lengths: FourBarLengths = FOUR_BAR,
+  branch: 1 | -1 = 1
+): Point {
   const b = { x: lengths.crank * Math.cos(angle), y: lengths.crank * Math.sin(angle) };
   const dx = lengths.ground - b.x,
     dy = -b.y,
     span = Math.hypot(dx, dy);
   const along = (lengths.coupler ** 2 - lengths.rocker ** 2 + span ** 2) / (2 * span);
-  const height = Math.sqrt(lengths.coupler ** 2 - along ** 2);
+  const height = branch * Math.sqrt(lengths.coupler ** 2 - along ** 2);
   return {
     x: b.x + (along * dx) / span - (height * dy) / span,
     y: b.y + (along * dy) / span + (height * dx) / span,
@@ -25,10 +29,10 @@ export function nativeFourBarPoint(angle: number, lengths: FourBarLengths = FOUR
 }
 
 /** Circle intersection is independent of the native residual/Jacobian implementation. */
-export function nativeFourBar(lengths: FourBarLengths = FOUR_BAR, angle = 0.7) {
+export function nativeFourBar(lengths: FourBarLengths = FOUR_BAR, angle = 0.7, branch: 1 | -1 = 1) {
   const f = new BodyFactory();
   const b = { x: lengths.crank * Math.cos(angle), y: lengths.crank * Math.sin(angle) },
-    c = nativeFourBarPoint(angle, lengths);
+    c = nativeFourBarPoint(angle, lengths, branch);
   const crank = f.body('crank', { x: 0, y: 0, angle }, [
     { x: 0, y: 0 },
     { x: lengths.crank, y: 0 },
