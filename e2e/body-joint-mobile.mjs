@@ -1,0 +1,108 @@
+import { chromium } from 'playwright';
+import { mkdir, writeFile } from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import { openNative, nativeState, markCenter } from './native-editor.mjs';
+import { filmstrip, contactSheet } from './filmstrip.mjs';
+const out = 'artifacts/bodies-and-joints/S5/mobile';
+await mkdir(out, { recursive: true });
+const browser = await chromium.launch();
+const context = await browser.newContext({
+  viewport: { width: 390, height: 844 },
+  hasTouch: true,
+  isMobile: true,
+  deviceScaleFactor: 1,
+});
+const page = await context.newPage(),
+  checks = [],
+  errors = [];
+page.on('pageerror', (e) => errors.push(e.message));
+const check = (name, condition) => {
+  assert.ok(condition, name);
+  checks.push(name);
+};
+const cdp = await context.newCDPSession(page);
+try {
+  await openNative(page, 'axial');
+  const film = filmstrip(page, `${out}/sheet`);
+  await film.shot('collapsed');
+  const handle = page.getByRole('button', { name: 'Open Edit Panel', exact: true });
+  check(
+    'The phone panel starts collapsed',
+    (await handle.getAttribute('aria-expanded')) === 'false'
+  );
+  await handle.click();
+  for (let i = 0; i < 4; i++) {
+    await page.waitForTimeout(45);
+    await film.shot(`opening-${i}`);
+  }
+  await page.getByRole('button', { name: 'Close Edit Panel', exact: true }).click();
+  await film.shot('closed');
+  const bounds = await page.evaluate(() => {
+    const panel = document.querySelector('aside').getBoundingClientRect(),
+      controls = document.querySelector('.transport').getBoundingClientRect();
+    return {
+      gap: controls.top - panel.bottom,
+      outside: document.documentElement.scrollWidth > innerWidth,
+    };
+  });
+  check(
+    'Phone cards retain the shared 12-pixel gap without horizontal overflow',
+    Math.abs(bounds.gap - 12) < 1 && !bounds.outside
+  );
+  const source = await nativeState(page);
+  const p = await page
+    .locator('[data-joint-kind="prismatic"]')
+    .first()
+    .evaluate((el) => {
+      const p = new DOMPoint(0, 0).matrixTransform(el.getScreenCTM());
+      return { x: p.x, y: p.y };
+    });
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ x: p.x, y: p.y, id: 1 }],
+  });
+  await page.waitForTimeout(620);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await page.getByRole('menu').waitFor();
+  check(
+    'A held finger opens the cylinder menu without editing the drawing',
+    JSON.stringify((await nativeState(page)).document) === JSON.stringify(source.document)
+  );
+  await film.shot('long-press-menu');
+  await page.keyboard.press('Escape');
+  const before = await nativeState(page);
+  const view = await page.locator('#native-canvas').getAttribute('viewBox');
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [
+      { x: 140, y: 360, id: 1 },
+      { x: 250, y: 360, id: 2 },
+    ],
+  });
+  for (let i = 1; i <= 5; i++) {
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [
+        { x: 140 - i * 6, y: 360, id: 1 },
+        { x: 250 + i * 6, y: 360, id: 2 },
+      ],
+    });
+    await film.shot(`pinch-${i}`);
+  }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  check(
+    'Pinching changes the view without changing material or history',
+    view !== (await page.locator('#native-canvas').getAttribute('viewBox')) &&
+      JSON.stringify((await nativeState(page)).document) === JSON.stringify(before.document) &&
+      (await nativeState(page)).history === before.history
+  );
+  await page.getByRole('button', { name: 'View Controls', exact: true }).click();
+  await page.getByRole('button', { name: 'Fit to View', exact: true }).click();
+  await film.shot('view-controls');
+  await contactSheet(`${out}/sheet/*.png`, `${out}/sheet.png`, 3, 0.7);
+  check('No browser errors', errors.length === 0);
+} finally {
+  await page.screenshot({ path: `${out}/last.png` });
+  await writeFile(`${out}/report.json`, JSON.stringify({ checks, errors }, null, 2));
+  await browser.close();
+}

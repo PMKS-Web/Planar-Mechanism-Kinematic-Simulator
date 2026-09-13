@@ -2,9 +2,7 @@
   @if (!editMode) {
     <div class="editModeRow titleRow">
       <ng-container *ngTemplateOutlet="contentTpl"></ng-container>
-      <span class="objectName">{{
-        ' ' + (displayName() ?? activeObjService.getSelectedObj()?.name ?? '')
-      }}</span>
+      <span class="objectName">{{ ' ' + (displayName() ?? currentName()) }}</span>
       <!--            [matTooltipShowDelay]='1000' matTooltipPosition='above'>-->
     </div>
   }
@@ -62,7 +60,9 @@
         mat-stroked-button
         color="primary"
         (click)="toggleLock()"
-        [appShortcutTip]="isLocked() ? 'Unlock' : 'Lock'"
+        [disabled]="!!lockRefusal()"
+        [title]="lockRefusal()?.long || ''"
+        [appShortcutTip]="lockRefusal()?.long || (isLocked() ? 'Unlock' : 'Lock')"
         shortcutTipFor="edit.lock"
       >
         <mat-icon svgIcon="{{ isLocked() ? 'lock' : 'unlock' }}"></mat-icon>
@@ -78,11 +78,11 @@
     <button
       class="mini-buttons red"
       [class.iconOnly]="!deleteLabel()"
-      [disabled]="deleteDisabled()"
+      [disabled]="deleteDisabled() || !!deleteRefusal()"
       mat-stroked-button
       color="warn"
       [attr.aria-label]="deleteLabel() ?? 'Delete'"
-      [matTooltip]="deleteLabel() ?? 'Delete'"
+      [matTooltip]="deleteRefusal()?.long || deleteLabel() || 'Delete'"
       matTooltipShowDelay="600"
       (click)="deleteAction()()"
     >

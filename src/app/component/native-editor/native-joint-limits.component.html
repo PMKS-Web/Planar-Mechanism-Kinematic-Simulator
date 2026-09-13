@@ -1,0 +1,31 @@
+<collapsible-subsection titleLabel="Motion Limits">
+  @for (limit of limits(); track limit.id) {
+    @if (fields.get(limit.id); as fields) {
+      <input-block [formGroup]="fields" _formControl="lower" (focusout)="commit(limit)"
+        >Lower Limit</input-block
+      >
+      <input-block [formGroup]="fields" _formControl="upper" (focusout)="commit(limit)"
+        >Upper Limit</input-block
+      >
+    }
+    @let why = refused(removeCommand(limit));
+    <button
+      mat-button
+      [disabled]="!!why"
+      [title]="why?.long || ''"
+      (click)="run(removeCommand(limit))"
+    >
+      Remove Limit
+      @if (why) {
+        <small>{{ why.short }}</small>
+      }
+    </button>
+  }
+  @let why = refused(addCommand());
+  <button mat-button [disabled]="!!why" [title]="why?.long || ''" (click)="run(addCommand())">
+    Add Limits
+    @if (why) {
+      <small>{{ why.short }}</small>
+    }
+  </button>
+</collapsible-subsection>

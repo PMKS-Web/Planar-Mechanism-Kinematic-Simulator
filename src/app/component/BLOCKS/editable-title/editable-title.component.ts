@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, input } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, input, Injector } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
 import { MechanismService } from 'src/app/services/mechanism.service';
@@ -14,6 +14,12 @@ import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
 import { ShortcutTipDirective } from '../shortcut-tip/shortcut-tip.directive';
+
+/** An editor supplies identity and commands; this shared heading never translates native records. */
+export interface EditableTitleSubject {
+  readonly name: string;
+  readonly rename: (name: string) => boolean;
+}
 
 @Component({
   selector: 'editable-title-block',
@@ -35,9 +41,20 @@ import { ShortcutTipDirective } from '../shortcut-tip/shortcut-tip.directive';
 })
 export class EditableTitleComponent {
   readonly deleteDisabled = input(false);
+  readonly deleteRefusal = input<{ short: string; long: string }>();
+  readonly lockRefusal = input<{ short: string; long: string }>();
   private fb = inject(FormBuilder);
-  protected activeObjService = inject(ActiveObjService);
-  private mechanismService = inject(MechanismService);
+  private readonly injector = inject(Injector);
+  readonly subject = input<EditableTitleSubject>();
+  protected get activeObjService() {
+    return this.injector.get(ActiveObjService);
+  }
+  private get mechanismService() {
+    return this.injector.get(MechanismService);
+  }
+  protected currentName() {
+    return this.subject()?.name ?? this.activeObjService.getSelectedObj()?.name ?? '';
+  }
   private notify = inject(NotificationService);
 
   /** Shown instead of the object's own name — a cylinder displays its mounts. */
@@ -78,7 +95,7 @@ export class EditableTitleComponent {
   protected newIDForm = this.fb.group({ newID: [''] });
 
   protected gotoEditMode() {
-    this.newIDForm.controls['newID'].setValue(this.activeObjService.getSelectedObj().name);
+    this.newIDForm.controls['newID'].setValue(this.currentName());
     this.editMode = true;
   }
 
@@ -124,6 +141,11 @@ export class EditableTitleComponent {
 
   protected saveNewID() {
     let newID = this.newIDForm.value.newID!.trim();
+    const subject = this.subject();
+    if (subject) {
+      if (subject.rename(newID)) this.editMode = false;
+      return;
+    }
 
     // If the new ID is not valid, send error notif and do not update to new id
     let error = this.validateNewID(newID);
@@ -152,6 +174,7 @@ export class EditableTitleComponent {
    * every panel this block heads is about the selected object anyway.
    */
   private lockTarget(): RealJoint | Link | Force | undefined {
+    if (this.subject()) return undefined;
     const obj = this.activeObjService.getSelectedObj();
     if (obj instanceof RealJoint || obj instanceof Link || obj instanceof Force) return obj;
     return undefined;

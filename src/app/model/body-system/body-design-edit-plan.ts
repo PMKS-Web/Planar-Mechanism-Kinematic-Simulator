@@ -1,3 +1,5 @@
+import { editBodyPinPair } from './body-pin-pair-edit';
+import { connectBodyAttachments } from './body-connect-edit';
 import { editBodyDrag } from './body-drag-edit';
 import { editBodyCylinderDimensions } from './body-cylinder-dimension-edit';
 import { editBodyGuideAxis } from './body-guide-axis-edit';
@@ -110,6 +112,16 @@ export function planBodyDesignEdit(
       copiedProperties.push(...(copied.properties ?? []));
       candidate = insertBodyRecords(candidate, copied.records);
       pinSource = insertBodyRecords(pinSource, copied.records);
+    } else if (operation.kind === 'pin-pair-kind') {
+      const paired = editBodyPinPair(candidate, operation, `${command.id}:${index}`);
+      if (!paired.ok) return paired;
+      candidate = paired.document;
+      pinSource = { ...pinSource, joints: candidate.joints, junctions: candidate.junctions };
+    } else if (operation.kind === 'connect-attachments') {
+      const connected = connectBodyAttachments(candidate, operation, `${command.id}:${index}`);
+      if (!connected.ok) return connected;
+      candidate = connected.document;
+      pinSource = { ...pinSource, joints: candidate.joints, junctions: candidate.junctions };
     } else if (operation.kind === 'joint-kind') {
       const changed = changeBodyJointKind(candidate, operation, `${command.id}:${index}`);
       if (!changed.ok) return changed;

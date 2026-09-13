@@ -23,6 +23,8 @@ export type ShortcutId =
   | 'view.centerOfMass'
   | 'view.jointIds'
   | 'view.paths'
+  | 'edit.copy'
+  | 'edit.paste'
   | 'edit.lock'
   | 'edit.deselect'
   | 'edit.delete'
@@ -266,6 +268,35 @@ export class KeyboardShortcutsService {
       match: ['?'],
     },
   ];
+
+  /** Native clipboard commands are registered only while that editor owns the keyboard. */
+  useNativeClipboardShortcuts(): () => void {
+    const entries: Shortcut[] = [
+      {
+        id: 'edit.copy',
+        section: 'Editing',
+        label: 'Copy',
+        keys: `${this.mod}C`,
+        match: ['c'],
+        meta: true,
+      },
+      {
+        id: 'edit.paste',
+        section: 'Editing',
+        label: 'Paste',
+        keys: `${this.mod}V`,
+        match: ['v'],
+        meta: true,
+      },
+    ];
+    this.shortcuts.push(...entries);
+    return () => {
+      for (const entry of entries) {
+        const index = this.shortcuts.indexOf(entry);
+        if (index >= 0) this.shortcuts.splice(index, 1);
+      }
+    };
+  }
 
   constructor() {
     if (typeof window === 'undefined') return;

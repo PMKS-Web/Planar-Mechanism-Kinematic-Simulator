@@ -49,12 +49,12 @@ export class NativeBodyDocumentService {
   save() {
     return encodeBodyDocument(this.document);
   }
-  load(payload: string, state: EditState) {
+  load(payload: string, state: EditState, writeRecovery = true) {
     const decoded = readBodyDocument(payload);
     if (!decoded.ok) return decoded;
     const result = this.authority.replace(decoded.document, state);
     if (result.ok && result.event) {
-      const recovery = this.saveRecovery();
+      const recovery = writeRecovery ? this.saveRecovery() : undefined;
       this.updates.next(result.event);
       return { ...result, recovery };
     }

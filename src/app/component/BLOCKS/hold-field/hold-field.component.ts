@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output, Injector } from '@angular/core';
 import { FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
@@ -13,6 +13,13 @@ import { FieldOverlay } from '../field-overlay';
 
 /** One of the two values this block shows and can hold. */
 type Which = 'length' | 'angle';
+
+/** Shared fields can describe either editor without acquiring that editor's document service. */
+export interface HoldFieldSubject {
+  readonly dimensions: readonly Which[];
+  readonly holdable: boolean;
+  readonly toggle: (which: Which) => void;
+}
 
 /**
  * A bar's length and angle, each with a padlock.
@@ -43,7 +50,8 @@ type Which = 'length' | 'angle';
 })
 export class HoldFieldComponent {
   readonly formGroup = input.required<FormGroup>();
-  readonly link = input.required<RealLink>();
+  readonly link = input<RealLink>();
+  readonly subject = input<HoldFieldSubject>();
   /** True for a link whose length and angle are not single numbers -- a body of three or more joints. */
   readonly disabled = input<boolean>(false);
   /** Show one value's row rather than both, for a part that only has the one. */
@@ -53,9 +61,15 @@ export class HoldFieldComponent {
   /** -1 while the length field is hovered or focused, -2 when it is left; the canvas draws the dimension. */
   readonly lengthEntry = output<number>();
   readonly angleEntry = output<number>();
+  readonly fieldCommit = output<Which>();
 
-  private mechanism = inject(MechanismService);
-  private gridUtils = inject(GridUtilsService);
+  private readonly injector = inject(Injector);
+  private get mechanism() {
+    return this.injector.get(MechanismService);
+  }
+  private get gridUtils() {
+    return this.injector.get(GridUtilsService);
+  }
 
   /**
    * One per field, shared with the other three field blocks. These used to
@@ -106,13 +120,16 @@ export class HoldFieldComponent {
     // Through the service, which has the drawing: a cylinder is recognized
     // from its joints, and its hold is written on a member the reader may not
     // be the one looking at.
-    return this.mechanism.holdOf(this.link());
+    const subject = this.subject();
+    return subject ? subject.dimensions[0] : this.mechanism.holdOf(this.link()!);
   }
 
   /** Whether this part can hold a value at all, and is not already pinned in place. */
   protected holdable(): boolean {
+    const subject = this.subject();
+    if (subject) return subject.holdable && !this.disabled();
     const shaped =
-      this.mechanism.cylinderOfLink(this.link()) !== undefined || holdableBar(this.link());
+      this.mechanism.cylinderOfLink(this.link()!) !== undefined || holdableBar(this.link()!);
     return shaped && !this.disabled() && !this.lockedInPlace();
   }
 
@@ -137,12 +154,12 @@ export class HoldFieldComponent {
    * so they are not what a reader locked and not what pins the part.
    */
   private pinned(): Joint[] {
-    const sealed = this.mechanism.cylinderOfLink(this.link());
-    return sealed ? [sealed.barrelFar, sealed.rodFar] : this.link().joints;
+    const sealed = this.mechanism.cylinderOfLink(this.link()!);
+    return sealed ? [sealed.barrelFar, sealed.rodFar] : this.link()!.joints;
   }
 
   protected held(which: Which): boolean {
-    return this.hold() === which;
+    return this.subject()?.dimensions.includes(which) ?? this.hold() === which;
   }
 
   protected padlockTitle(which: Which): string {
@@ -156,7 +173,9 @@ export class HoldFieldComponent {
   protected toggle(which: Which, event: Event): void {
     event.stopPropagation();
     if (!this.holdable()) return;
-    this.mechanism.setHold(this.link(), this.held(which) ? undefined : which);
+    const subject = this.subject();
+    if (subject) subject.toggle(which);
+    else this.mechanism.setHold(this.link()!, this.held(which) ? undefined : which);
   }
 
   protected enter(which: Which): void {
@@ -174,5 +193,6 @@ export class HoldFieldComponent {
 
   protected blur(which: Which): void {
     this.overlays[which].focus(false);
+    this.fieldCommit.emit(which);
   }
 }

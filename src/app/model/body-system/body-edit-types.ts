@@ -1,3 +1,5 @@
+import { BodyPinPairOperation } from './body-pin-pair-edit';
+import { BodyConnectOperation } from './body-connect-edit';
 import { BodyDragMove } from './body-drag-edit';
 import { BodyCylinderDimensionEdit } from './body-cylinder-dimension-edit';
 import { BodyGuideAxisEdit } from './body-guide-axis-edit';
@@ -54,6 +56,8 @@ export type BodyInsertRecords = Partial<
   >
 >;
 export type BodyEditOperation =
+  | BodyPinPairOperation
+  | BodyConnectOperation
   | { readonly kind: 'convert-units'; readonly units: BodyUnits }
   | BodyDriveOperation
   | BodyCopyOperation
@@ -104,6 +108,7 @@ export type BodyEditCode =
   | 'aggregate-properties'
   | 'ambiguous-load-owner'
   | 'invalid-command'
+  | 'indirect-weld'
   | 'connection-point'
   | 'drive-in-rigid-group'
   | 'locked-position'

@@ -19,6 +19,8 @@ const MESSAGES: Record<Exclude<BodyEditCode, 'permission'>, string> = {
   'held-dimension': 'Release the fixed length or angle before changing that dimension.',
   'locked-position': 'Unlock the selected position before moving it.',
   'invalid-command': 'This change is not valid for the selected objects.',
+  'indirect-weld':
+    'This pair is joined through other welds. Select one of those pairs to release it.',
   'connection-point': 'Choose the connection point first.',
   'drive-in-rigid-group': 'This weld would lock a driven coordinate. Remove its drive first.',
 };
@@ -40,4 +42,31 @@ export function refuseNativeJointChange(
   if (document.assemblies.some((assembly) => assembly.internalJoint === jointId))
     return bodyEditRefusal('assembly-interior', [target]);
   return undefined;
+}
+
+/** Short and long refusals come from the same model for menus and inspector controls. */
+export function nativeEditRefusalCopy(refusal: BodyEditRefusal): { short: string; long: string } {
+  if (refusal.permission) return refusal.permission;
+  const labels: Record<Exclude<BodyEditCode, 'permission'>, string> = {
+    'stale-pose': 'drawing is updating',
+    'invalid-document': 'invalid connection',
+    'missing-target': 'object was deleted',
+    'immutable-world': 'ground reference',
+    'assembly-member': 'use Delete Cylinder',
+    'assembly-interior': 'cylinder connection',
+    'coordinate-in-use': 'remove input or limit',
+    'aggregate-properties': 'reset group mass first',
+    'ambiguous-load-owner': 'choose force owner',
+    'unsolved-edit': 'geometry cannot follow',
+    'held-dimension': 'release fixed dimension',
+    'locked-position': 'unlock first',
+    'indirect-weld': 'joined through other welds',
+    'invalid-command': 'choose compatible objects',
+    'connection-point': 'choose connection point',
+    'drive-in-rigid-group': 'remove input first',
+  };
+  return {
+    short: labels[refusal.code as Exclude<BodyEditCode, 'permission'>],
+    long: refusal.message,
+  };
 }

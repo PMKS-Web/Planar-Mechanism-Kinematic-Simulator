@@ -1,0 +1,153 @@
+:host {
+  position: absolute;
+  inset: 0;
+}
+svg {
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  user-select: none;
+  background: var(--surface);
+}
+.grid-line {
+  fill: none;
+  stroke: var(--border-divider);
+}
+.material {
+  stroke: var(--text-secondary);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  cursor: grab;
+}
+.material.selected {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+.joint-mark {
+  cursor: grab;
+}
+.hit-target {
+  fill: transparent;
+  stroke: none;
+}
+.pin {
+  fill: var(--surface);
+  stroke: var(--text-black);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+.prismatic {
+  fill: var(--text-black);
+  stroke: var(--surface);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.weld {
+  fill: none;
+  stroke: var(--text-black);
+  stroke-width: 4;
+  vector-effect: non-scaling-stroke;
+}
+.attachment {
+  fill: var(--surface);
+  stroke: var(--text-secondary);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+  vector-effect: non-scaling-stroke;
+}
+.ground {
+  fill: var(--surface-sunken);
+  stroke: var(--text-secondary);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.selected .pin,
+.selected .prismatic,
+.selected .weld,
+.selected .attachment {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+.slot-channel {
+  stroke: var(--surface-well);
+  stroke-linecap: round;
+  pointer-events: none;
+}
+.joint-label {
+  fill: var(--text-primary);
+  pointer-events: none;
+}
+.travel-ghost {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.force line,
+.force path {
+  fill: none;
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+  cursor: grab;
+}
+.force-handle {
+  fill: var(--surface);
+  stroke: var(--text-black);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  cursor: grab;
+}
+.force.selected .force-handle {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+
+.selection-box {
+  fill: var(--accent);
+  fill-opacity: 0.08;
+  stroke: var(--accent);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.trace {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.lock-mark {
+  fill: var(--accent);
+  pointer-events: none;
+}
+.dimension {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+.dimension-label {
+  fill: var(--accent);
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.input-arrow {
+  fill: none;
+  stroke: var(--text-black);
+  pointer-events: none;
+}
+.input-arrow path {
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
