@@ -1619,3 +1619,25 @@ coincident material anchors), never the first two attachments: a tracer can come
 A cylinder end weld and a guide glyph can overlap. The material/assembly panel lists incident
 pairs so each relationship is reachable without requiring a pixel-perfect click underneath
 another glyph. Choosing a member still edits that member's properties, not the entire weld group.
+
+- **Native joint conversion must update the visual pin bundle.** `changeBodyJointKind` can turn
+  an R edge into P or pin-in-slot while retaining its physical attachments. Leaving that edge
+  in `PinJunction` fails `validatePinTrees` and grays every slider conversion on editor-created
+  pins, even though equivalent binary fixtures work. Reuse `retainPinConnections` to keep the
+  remaining R/weld islands. It already distinguishes a removed coincidence from a lost material
+  hub; do not add replacement R constraints across a newly sliding pair.
+- **A prismatic guide is material artwork, not equation ordering.** `reverseJoint` keeps
+  `guideDisplay` on its original owner. Native marks therefore find the rider on the *other*
+  owner, and negate the coordinate drag axis and displayed input direction when that owner is
+  equation body A. Ordinary P joints need a visible guide to their displaced rider; the cylinder
+  bore already supplies its own artwork. Ground marks stay at the physical ground anchor.
+- **Browser navigation is not Angular readiness.** The development bootstrap selects its root
+  asynchronously. `DOMContentLoaded` can precede `window.ng` and `app-new-grid`; the legacy
+  mobile suite's late navigations must use the same `waitForReady` as its opening scene.
+- **Pin restoration has two callers and a final lifecycle pass.** Both conversion back to R
+  and attaching to an unbundled binary R must reunite its incident visual tree. Updating only
+  `changeBodyJointKind` is insufficient: `planBodyDesignEdit` must also advance `pinSource`, or
+  its final `retainPinConnections` overwrites the repaired bundle. No extra joint is needed.
+- **WORLD anchors are not free tracers.** Removing the last connection using one must prune it
+  from the document and locks; otherwise the native attachment layer puts an invisible hit
+  circle over the restored pin. A surviving guideDisplay reference still counts as use.

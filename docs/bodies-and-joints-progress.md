@@ -2651,12 +2651,126 @@ selection of Link BC, length/angle holds, settings sections and right-click menu
 the existing left panel, accent edge, shadows, field spacing, Attach/State/Traces/footer order
 and amber selection. Existing Storybook/user tabs left intact.
 
-#### S5 implementation observations (in progress)
+#### S5 implementation and verification
 
-- `9175e38f` extracts the existing icon registry and boot-splash fade for reuse; no legacy behavior change.
-- Shared authored title/hold inputs pass two focused tests with legacy DI factories that throw if constructed.
-- Native entry is chosen before bootstrap with `?editor=native`, in development only. It uses the sole S4 authority; the public root remains the default.
-- Live incognito Chrome (`localhost:4307`) and the tracked creation probe caught a `DOMPoint` prototype-accessor/spread bug at the pointer boundary. The pointer adapter now returns a plain point; one drag creates one material body.
-- The native fixture gallery publishes eight mechanisms in `docs/native-fixture-urls.md` and its checked payload JSON. All eight opened without console/page errors; seven have complete rotation/retrace paths. Initial cycle filmstrips were captured and inspected, not accepted as final: they exposed initial-fit cropping and an insufficiently recognizable cylinder skin. Both are being corrected before the final visual gate.
-- Ten focused mark/interaction tests pass, including one-command cylinder creation, an attached fourth member at a welded pin, and welding the two non-hub members. `pin-pair-kind` rewires a redundant revolute tree edge only when it has no driver/limit; it never absorbs the hub's material or retargets a driven coordinate.
-- Remaining S5 work is still required: complete native gesture/readout/clipboard/unit/touch regression assertions and films; verify independent clocks, live full cycles, and stop/refusal behavior; finish style/consumer audits; run the specified legacy gates; complete Fable 5.1 review, address findings, and push the S5 commits to PR #13. S5 is not complete yet.
+The native editor is behind `?editor=native` in development. The public/production root remains
+legacy until S6. S5 adds one editor/view adapter around the S4 authority; it does not create a
+second editable mechanism or hydrate the legacy writer. `9175e38f` extracts shared icons and the
+splash fade, `4e615df7` adds the native route and interaction layer, and `11a84878` corrects the
+first external review. Final visual corrections and closure evidence follow below.
+
+The grid keeps PMKS+'s object selection, amber highlights, Edit panel and context menu,
+shared field/title/hold blocks, mode tabs, token colors/shadows, and measured phone-sheet
+animation. Joint kind and material-pair controls replace the ambiguous slider/weld toggles.
+A cylinder owns two material bodies and one internal P. Its open bore is artwork; mounts
+use ordinary external connections. Material-member controls remain reachable within groups
+and assemblies. Force endpoints, tracer attachments, locks, independent dimension holds,
+copy/paste, history, recovery and unit conversion use native commands.
+
+Twelve native fixture documents are published in `docs/native-fixture-urls.md`, with codec
+freshness checked by the gallery spec. They include fixed and rotating P, both external mount
+slot cases, pair welds, independent clocks, witnesses and forces. The mechanical consumer scan
+is now 2,865 sites / 153 production files, separate from the frozen S0 inventory. S6/S7 still
+owe semantic consumer cutover and legacy removal; the new scan is a candidate list, not proof
+that a consumer has been removed.
+
+**First Fable review:** session `6edaec55-0a2a-45d4-ae89-a9ecb0cf706c`, model
+`claude-fable-5-1`, $14.6069555, read-only Read/Grep/Glob tools. Exact input, patch and JSON output
+are in `artifacts/bodies-and-joints/S5/fable-review*`. All seven primary findings were accepted:
+
+| Finding | Correction and evidence |
+| --- | --- |
+| Off-center attachment made another pin | Start at the hit mark's physical point; browser asserts the same junction gains exactly one attachment. |
+| Grounding missed the selected pin | Reuse its material anchor and connect a WORLD anchor through the pin graph. Add/Remove Ground retains original pin members. |
+| Grounded group membership disagreed | Keep WORLD in canonical group refs, as the model already requires; filter it from material controls. Unit and browser tests rename, color, delete and undo a grounded two-member group. |
+| Body drop hit the draft itself | Search hit candidates against the creation snapshot's existing bodies. Browser asserts actual target ownership. |
+| Typed X/Y silently projected | Explicit exact mode for typed body placement; drag/nudge retain projection. Impossible crank X refuses with unchanged document/history. |
+| Refusals disappeared or lingered | Event delivery, per-message notification identity, and clearing on successful gesture/finish; repeat-after-dismiss and stop/return browser checks. |
+| Phone lost history and hid its handle | Undo/Redo in the phone transport; view drawer above the measured panel. Touch drag, history and measured non-overlap checks. |
+
+Further review corrections: untouched formatted fields stay no-ops (including automatic mass
+properties); typing an already-held length/angle temporarily releases and restores that pair's
+holds within one transaction. Bulk color shows the current value/mixed state; negative mass
+and empty rename have model copy; title refusals have visible short reasons and a gallery state.
+Preview refusal results cache against drawing/state/operations rather than a new command UUID.
+Creation copy says what the gesture does. Native labels intentionally permit duplicates and
+spaces: opaque IDs carry identity, and creation itself can name several materials “Link.”
+
+Live CUA inspection, after the original seven fixes, found a newly grounded pin could not
+convert to P/slot. Binary fixture conversion had missed pin-only metadata. The correction reuses
+`retainPinConnections` to split the remaining coincidence islands without inventing constraints.
+Native browser checks convert both kinds at a multiway pin and undo to the complete original.
+A standalone P additionally needs a visible guide when its material travels away from the
+station; the final guide film checks that it reaches the rider. Reversing equation order keeps
+that artwork on its owner and reverses the pointer-to-coordinate axis, not the user's gesture.
+
+**Live observations:** used standard Codex computer use in the owned incognito Chrome tab at
+localhost:4307, leaving the user's other tabs intact. Created links/cylinders, opened/recovered
+native documents, used real right-click menus, grounded an off-center endpoint, converted it to
+P, dragged it, and undid edits. Watched an axial cylinder extend and return across multiple live
+poses at 1×; the mouth stayed on the barrel and the carriage stayed attached. The tracked
+elapsed-time two-clock suite deliberately uses 2× and covers two complete cycles, not just
+matching first/last frames. No claim is made that its speed was 1×.
+
+**Film inspection:** examined intermediate frames for all twelve fixture paths, fixed and
+rotating P drags, stop-and-return, weld/revolute/weld at each mount, accepted/refused bulk mass,
+force-handle edits, paused edits with readouts/Undo/Redo, six creation paths, phone sheet and
+pinch, and standalone guide travel. This caught and corrected the DOMPoint accessor/spread bug,
+initial camera crop, a ground triangle following a slot rider, a later channel painting over a
+P glyph, force arrows outside two-clock framing, stale refusal messages and the phone drawer
+overlap. The new skin keeps the bore recognizable without clipping connected brackets.
+
+**Legacy regression attribution:** `multi-select-and-dxf` fails at Ctrl-additive selection of
+its second force and then times out looking for the bulk field. The exact failure reproduced
+in an isolated `git archive 6d371c82` checkout at localhost:4317. Logs are retained under S5 and
+`/tmp/pmks-s5-baseline-6d371c82`; this is an explicit pre-existing gate failure, not a native pass.
+Its native counterparts test bulk edits and keyboard copy/paste/undo through real UI actions.
+The legacy mobile suite initially raced Angular on two late navigations; its local `open`
+helper now waits for readiness, with all 79 assertions retained and passing.
+
+Remaining at this entry: focused Fable follow-up, final check/build/gallery and browser results,
+final visual commit, push to PR #13 and refreshed PR evidence. Do not infer completion from the
+intermediate counts above.
+
+#### Focused Fable follow-up
+
+Fable 5.1 confirmed all seven original corrections and the R→P/slot metadata split in
+`11a84878`. Session `4ec2b71b-f8e4-41d1-8552-45525d096d7b`, $8.89433125; S5 external review total
+**$23.50128675**. The exact fix patch, prompt and JSON are `fable-fix-review*` in the S5 artifacts.
+Its two additional P2 findings are corrected and retained as regressions:
+
+- **P/slot→R and bare binary R attachment:** `bundlePinAt` reunites the incident R/weld tree
+  into one visual pin without adding, removing or retargeting a joint. The transaction carries
+  this new pin source forward, so its final lifecycle pass cannot overwrite it with the old
+  split bundle. A three-member pin has **two** binary equations; the review suggested three
+  equations in its test recipe, but n−1 is the contract and the tracked tests assert two.
+  Pin→P/slot→R, Undo, and attachment to a bare binary R now retain one visible pin and the
+  complete pair list. A redundant cycle or two separate anchors on one material is not
+  silently rewritten into a tree; this helper changes only representable visual metadata.
+- **Remove Ground ghost:** the deletion transaction prunes unreferenced WORLD anchors (and
+  their lock refs), while retaining physical/guide anchors of surviving joints. The browser
+  now checks total attachment count and clicks the restored pin, which must select the junction
+  rather than an orphan Tracer Point. Unit coverage keeps the same count/ownership assertion.
+
+The three lower-priority notes are also handled: retained one-material-plus-WORLD selection
+collapses to that material body, matching a fresh click; a pin-in-slot mark carries its rider
+owner into Attach and Add Ground rather than defaulting to the carrier; a wholly refused drag
+keeps its message after release, while an accepted gesture clears its transient limit message.
+The floating-slot browser test checks the new link's actual joint owner. No extra paid review
+was requested for these bounded corrections; the specified failing cases were reproduced,
+corrected and reviewed locally against the unchanged equation/identity contracts.
+
+The final visual pass adds ordinary P guide artwork between its station and moving material.
+This does not manufacture a guide body or attachment. Horizontal/oblique equation-reversal tests
+pin the same station, rider, ground and guide with the opposite coordinate drag axis. The
+cylinder bore remains the internal P's own artwork. The following captured filmstrips are also
+tracked so a PR reader can inspect the intermediate frames without local artifacts:
+
+- [Standalone P conversion, travel, release and Undo](images/native-editor-s5-guide.png)
+- [Phone sheet opening/closing, long-press menu, pinch and non-overlapping view drawer](images/native-editor-s5-phone.png)
+- [Paused edit and readouts through release, Undo, Redo and Rewind](images/native-editor-s5-paused.png)
+
+One full unit run under simultaneous production/gallery/browser load timed out on the unchanged
+legacy `reversed-cycle` Cylinder_Gripper case (60 seconds). Earlier full runs passed. Final
+verification runs the suite without those competing builds; no timeout or numerical ceiling
+was relaxed.

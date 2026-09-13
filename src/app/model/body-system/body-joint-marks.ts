@@ -1,7 +1,7 @@
 import { BodyDocument } from './body-document';
 import { BodySelectionRef } from './body-edit-types';
-import { AttachmentId, JointId, WORLD } from './body-id';
-import { Point, add, localToWorld, rotate } from './body-frame';
+import { AttachmentId, BodyId, JointId, WORLD } from './body-id';
+import { Point, add, dot, subtract, localToWorld, rotate } from './body-frame';
 import { BodyJoint, JointCoordinateRef } from './joint-record';
 
 export interface BodyJointMark {
@@ -16,8 +16,10 @@ export interface BodyJointMark {
   readonly driveSpeed?: number;
   readonly label: string;
   readonly attachmentId?: AttachmentId;
+  readonly materialOwner?: BodyId;
   readonly coordinate?: JointCoordinateRef;
   readonly rider?: Point;
+  readonly coordinateAxis?: Point;
   readonly guide?: readonly [Point, Point];
 }
 
@@ -78,7 +80,13 @@ export function bodyJointMarks(document: BodyDocument): readonly BodyJointMark[]
     const station = localToWorld(owner.pose, add(anchor.point, offset));
     const angle = owner.pose.angle + display.frame.angle;
     const axis = bodies.get(j.bodyA)!.pose.angle + j.frameA.angle;
-    const rider = at(j.frameB.attachmentId);
+    const sense = j.kind === 'prismatic' && display.bodyId === j.bodyB ? -1 : 1;
+    const rider = at(sense === 1 ? j.frameB.attachmentId : j.frameA.attachmentId);
+    const coordinateAxis = { x: sense * Math.cos(axis), y: sense * Math.sin(axis) };
+    const riderStation = dot(subtract(rider, at(display.frame.attachmentId)), {
+      x: Math.cos(angle),
+      y: Math.sin(angle),
+    });
     const guideAt = (distance: number) =>
       localToWorld(
         owner.pose,
@@ -88,8 +96,8 @@ export function bodyJointMarks(document: BodyDocument): readonly BodyJointMark[]
         )
       );
     const extent = 1.5 * document.settings.objectScale;
-    const from = display.from ?? (display.station ?? 0) - extent;
-    const to = display.to ?? (display.station ?? 0) + extent;
+    const from = display.from ?? Math.min(display.station ?? 0, riderStation) - extent;
+    const to = display.to ?? Math.max(display.station ?? 0, riderStation) + extent;
     marks.push({
       ...base,
       kind: j.kind,
@@ -97,8 +105,19 @@ export function bodyJointMarks(document: BodyDocument): readonly BodyJointMark[]
       angle: j.kind === 'prismatic' ? angle : axis,
       coordinate: { jointId: j.id, coordinate: 'travel' },
       rider,
-      groundPoint: j.bodyA === WORLD ? station : j.bodyB === WORLD ? rider : undefined,
-      guide: [guideAt(from), guideAt(to)],
+      coordinateAxis,
+      materialOwner: j.kind === 'pin-in-slot' ? j.bodyB : undefined,
+      driveSpeed: base.driveSpeed === undefined ? undefined : base.driveSpeed * sense,
+      groundPoint:
+        display.bodyId === WORLD
+          ? station
+          : j.bodyA === WORLD
+            ? at(j.frameA.attachmentId)
+            : j.bodyB === WORLD
+              ? at(j.frameB.attachmentId)
+              : undefined,
+      // The cylinder skin already draws its bore; other P joints need a visible guide to their moving member.
+      guide: assembly ? undefined : [guideAt(from), guideAt(to)],
     });
   }
   for (const a of document.attachments) {

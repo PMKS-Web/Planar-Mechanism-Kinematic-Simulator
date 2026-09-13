@@ -146,11 +146,29 @@ export function deleteBodyRecords(
     ),
     locks: document.locks.filter((id) => !attachments.has(id)),
   };
+  const settled = {
+    ...candidate,
+    ...retainPinConnections(document, candidate, junctions, commandId, disconnected),
+  };
+  const used = new Set(
+    settled.joints.flatMap((joint) => [
+      joint.frameA.attachmentId,
+      joint.frameB.attachmentId,
+      ...((joint.kind === 'prismatic' || joint.kind === 'pin-in-slot') && joint.guideDisplay
+        ? [joint.guideDisplay.frame.attachmentId]
+        : []),
+    ])
+  );
+  const orphaned = new Set(
+    settled.attachments.filter((a) => a.bodyId === WORLD && !used.has(a.id)).map((a) => a.id)
+  );
+  // Ground anchors are connection records; an orphan must not become a tracer hit target above the pin.
   return {
     ok: true,
     document: retainSynthesisOwnership(document, {
-      ...candidate,
-      ...retainPinConnections(document, candidate, junctions, commandId, disconnected),
+      ...settled,
+      attachments: settled.attachments.filter((a) => !orphaned.has(a.id)),
+      locks: settled.locks.filter((id) => !orphaned.has(id)),
     }),
   };
 }

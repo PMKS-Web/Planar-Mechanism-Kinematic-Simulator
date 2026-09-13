@@ -1,3 +1,4 @@
+import { bundlePinAt } from './body-pin-bundles';
 import { retainPinConnections } from './body-pin-lifecycle';
 import { reverseJoint } from './reverse-joint';
 import { BodyDocument } from './body-document';
@@ -152,5 +153,12 @@ export function changeBodyJointKind(
   const connections = document.junctions.some((pin) => pin.joints.includes(joint.id))
     ? retainPinConnections(document, candidate, new Set(), commandId)
     : {};
-  return { ok: true, document: { ...candidate, ...connections } };
+  const settled = { ...candidate, ...connections };
+  return {
+    ok: true,
+    document:
+      replacement.kind === 'revolute'
+        ? bundlePinAt(settled, replacement.frameA.attachmentId, commandId)
+        : settled,
+  };
 }

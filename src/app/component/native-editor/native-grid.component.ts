@@ -216,7 +216,9 @@ export class NativeGridComponent implements AfterViewInit {
       screen = { x: event.clientX, y: event.clientY };
     this.svg().nativeElement.setPointerCapture(event.pointerId);
     const owner =
-      materialOwner ?? (target ? selectionBodies(this.editor.drawing(), [target])[0] : undefined);
+      materialOwner ??
+      mark?.materialOwner ??
+      (target ? selectionBodies(this.editor.drawing(), [target])[0] : undefined);
     if (this.tool()) {
       this.pointer = {
         id: event.pointerId,
@@ -259,7 +261,7 @@ export class NativeGridComponent implements AfterViewInit {
         ...base,
         coordinate,
         coordinateId: joint.id,
-        axis: { x: Math.cos(angle), y: Math.sin(angle) },
+        axis: mark.coordinateAxis ?? { x: Math.cos(angle), y: Math.sin(angle) },
         gesture: this.editor.store.beginGesture(
           { kind: 'move-coordinate', coordinate: mark.coordinate },
           this.editor.state()
@@ -426,7 +428,7 @@ export class NativeGridComponent implements AfterViewInit {
     if (p.gesture && p.moved) {
       const result = this.editor.store.finishGesture(p.gesture, this.editor.state());
       if (!result.ok) this.editor.report(result.message);
-      else this.editor.report('');
+      else if (result.changed) this.editor.report('');
     } else if ((p.creation || p.force) && this.editor.draft()) {
       const plan = this.editor.draft()!;
       if (this.editor.commit(plan) && p.creation) {

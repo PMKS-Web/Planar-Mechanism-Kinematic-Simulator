@@ -126,6 +126,7 @@ export function planBodyDesignEdit(
       const changed = changeBodyJointKind(candidate, operation, `${command.id}:${index}`);
       if (!changed.ok) return changed;
       candidate = changed.document;
+      pinSource = { ...pinSource, joints: candidate.joints, junctions: candidate.junctions };
     } else if (isBodyDriveOperation(operation)) {
       const changed = editBodyDrive(candidate, operation, `${command.id}:${index}`);
       if (!changed.ok) return changed;
