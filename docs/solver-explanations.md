@@ -186,9 +186,7 @@ multi-machine selection, the constraint route, scrubbing, dismissal, reduced mot
 phone layout. It uses disposable Chrome and writes screenshots, a scrub filmstrip/contact
 sheet, and a JSON report under `artifacts/solver-worksheet/` (gitignored).
 
-From the repository root, `npm start` serves `http://localhost:4200/` with a compatible Node.
-On this Windows setup, use the compatible portable Node directly:
-
-```powershell
-& 'C:\Users\adg66\.cache\pmks-tools\node_modules\node\bin\node.exe' node_modules/@angular/cli/bin/ng.js serve --host localhost --port 4200
-```
+From the repository root, `npm start` serves `http://localhost:4200/` with Node 24
+(or another version supported by this repository). On Windows, use `npm.cmd start`
+if PowerShell execution policy blocks the npm script. A portable Node installation
+can invoke `node_modules/@angular/cli/bin/ng.js` directly.

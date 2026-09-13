@@ -29,6 +29,8 @@ In this order, the first time:
 
 ## Design records
 
+- [gears-integration.md](gears-integration.md) - staging ancestry, preserved checkpoints, complete feature-stack classification and final remote-preservation verification. *Reference*
+
 - [gears-clock.md](gears-clock.md) - solver-driven mechanical clock: concentric hands, twelve-turn compound cycle, production workflow and acceptance evidence. *Reference*
 
 - [gears-compound.md](gears-compound.md) - V1 stabilization and compound V1.1 ownership, native workflow, acceptance evidence and local preview. *Reference*

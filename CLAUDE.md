@@ -165,6 +165,8 @@ an additive `G1` extension (`transcoding/gear-codec.ts`). Ratios prescribe body 
 existing coupled solver, with continuous travel and complete constraint auditing. Dependent
 centers never gain input flags. Compound gears share an ordinary host and one physical
 rotation; their authored axial planes distinguish concentric attachments and mesh alignment.
+The staging-based integration branch is `feature/gears`; its ancestry and final verification
+are recorded in [gears-integration.md](docs/gears-integration.md).
 The compound handoff is [gears-compound.md](docs/gears-compound.md). The Mechanical Clock
 showcase and concentric-host evidence are in [gears-clock.md](docs/gears-clock.md). Gear forces remain
 unsupported. The production
