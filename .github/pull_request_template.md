@@ -11,9 +11,7 @@
 
 ## How it was verified
 
-<!-- CI runs the `gate` lane of the e2e suites on this pull request, and the nightly runs the rest
-     against staging. That is a backstop, not a substitute: it is a fraction of the batch and it
-     reports after you have pushed. Name the suites you ran yourself and what you looked at. -->
+<!-- No e2e suite runs in CI, so name the ones you ran and what you looked at. -->
 
 - `npm run lint`, `npm run lint:styles`, `npm run lint:format`, `npm test -- --watch=false` and `npm run build` pass locally.
 - e2e suites run against a dev server on this branch: `e2e/….mjs`
