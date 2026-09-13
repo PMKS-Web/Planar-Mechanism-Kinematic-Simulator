@@ -46,6 +46,7 @@ one runner to the next.
 
 ## What does not differ
 
-Everything else. Pull requests go to `staging`; `npm run check` before a push; the pull request
-template filled in, with the e2e suites you ran named in it; and a note in
+Everything else. Create and push feature branches from `staging`; open a pull request only when
+explicitly requested. Requested pull requests go to `staging`; `npm run check` before a push;
+the pull request template filled in when applicable, with the e2e suites you ran named in it; and a note in
 `docs/tips-and-tricks.md` for anything that cost you an hour.

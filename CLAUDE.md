@@ -78,15 +78,18 @@ PMKS_FIXTURE_BASE_URL=https://deploy-preview-NNN--pmksnew.netlify.app npm run fi
 
 ## Deployment / branch rules
 
-**Agents and contributors open pull requests against `staging`.** The team manually opens a
-release pull request from `staging` to `main`. Never push directly to `main` — it is the production
+**Create feature branches from `origin/staging` and push the work to those branches. Do not open
+a pull request unless the maintainer explicitly asks for one.** This is the maintainer's preferred
+workflow. Use descriptive names such as `feature/instant-centers`. When requested, feature pull
+requests target `staging`; the team handles release pull requests from `staging` to `main`.
+Never push directly to `main` — it is the production
 branch for app.pmksplus.com — and don't push directly to `staging` either. Every non-main branch
 auto-publishes to `https://[BRANCHNAME]--pmksnew.netlify.app`, and a PR gets
 `https://deploy-preview-NNN--pmksnew.netlify.app`.
 
-**A new worktree starts from `origin/main`**, the repository's default branch, which lags `staging`
-by a whole release. Reset it before writing anything: `git fetch origin && git reset --hard
-origin/staging`.
+**Explicitly base new branches and worktrees on `origin/staging`.** Fetch first, then use
+`git worktree add -b feature/<name> <path> origin/staging`. Tools that default to `origin/main`
+start from an older release; choose the base before writing code and preserve existing work.
 
 **Automatic publishing to production is paused in Netlify**, so nothing reaches app.pmksplus.com
 until someone publishes it by hand. Being on `main` therefore does not mean being live; ask
