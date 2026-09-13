@@ -16,6 +16,7 @@ import {
 } from '@angular/material/dialog';
 import { BackgroundImageService } from 'src/app/services/background-image.service';
 import { BACKDROP_HASH, placeTemplateBackdrop } from './template-catalog';
+import { SvgGridService } from 'src/app/services/svg-grid.service';
 import { LoadingService } from 'src/app/services/loading.service';
 import { MechanismService } from 'src/app/services/mechanism.service';
 import { UrlProcessorService } from 'src/app/services/url-processor.service';
@@ -88,6 +89,7 @@ export class TemplatesComponent {
   private urlProcessor = inject(UrlProcessorService);
   private loading = inject(LoadingService);
   private backdrop = inject(BackgroundImageService);
+  private svgGrid = inject(SvgGridService);
   private design = inject(SynthesisBuilderService);
 
   /** Asks whether to replace the mechanism already on the grid or open a new tab. */
@@ -232,7 +234,9 @@ export class TemplatesComponent {
    * there is a mistake in the catalog rather than in anything a reader did.
    */
   private async placeBackdrop(backdrop: TemplateBackdrop | undefined): Promise<void> {
-    await placeTemplateBackdrop(this.backdrop, backdrop);
+    await placeTemplateBackdrop(this.backdrop, backdrop, () =>
+      this.svgGrid.scaleToFitFullMotion(false)
+    );
   }
 
   /**

@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { gearBodyFor } from '../model/mechanism/gear-drive';
+import { gearDerivation } from '../model/gear-derivation';
 import { Mechanism } from '../model/mechanism/mechanism';
 import { ForceAnalysisMode, ForceSolver } from '../model/mechanism/force-solver';
 import { KinematicsSolver } from '../model/mechanism/kinematic-solver';
@@ -79,6 +80,9 @@ function displayKinematicSystem(system: LinearSystemExplanation | undefined, len
 
 @Injectable({ providedIn: 'root' })
 export class SolverExplanationService {
+  gearDerivation(mechanism: Mechanism) {
+    return gearDerivation(mechanism.transmission, mechanism.gearDrive);
+  }
   gearsAt(mechanism: Mechanism, step: number) {
     const plan = mechanism.gearDrive;
     if (!plan) return [];

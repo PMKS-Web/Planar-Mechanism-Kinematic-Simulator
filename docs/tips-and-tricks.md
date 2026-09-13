@@ -2672,3 +2672,7 @@ Gear integration findings (September 2026):
 - Trim CSV header lines before splitting them into column names. A Windows CRLF checkout
   otherwise leaves the last axis named `y\r`, silently preserving an initialized `y = 0` in
   readers that construct point objects. Check raw coordinates before blaming reference data.
+- Concentric independent shafts need distinct grounded joint IDs and distinct ordinary hosts.
+  Equal coordinates do not imply one body; Mechanical Clock verifies this without a solver
+  exception. A pose fit can clip a rotating hand or its dial, so that template opts into the
+  existing full-motion fit when its backdrop arrives. Backgrounds remain outside G1 and history.

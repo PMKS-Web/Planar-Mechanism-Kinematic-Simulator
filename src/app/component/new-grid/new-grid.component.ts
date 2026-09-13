@@ -418,7 +418,10 @@ export class NewGridComponent implements OnDestroy {
     // this build already ships. The name is read by the URL processor, which
     // sees the address before the decode strips it.
     const wantsBackdrop = backdropOfCard(this.urlParser.wantsBackdropFor);
-    if (wantsBackdrop) void placeTemplateBackdrop(this.bgImage, wantsBackdrop);
+    if (wantsBackdrop)
+      void placeTemplateBackdrop(this.bgImage, wantsBackdrop, () =>
+        this.svgGrid.scaleToFitFullMotion(false)
+      );
 
     // A half-drawn bar belongs to the mode it was started in. Left armed across
     // a mode switch, the ghost went on tracking the cursor over the Synthesis

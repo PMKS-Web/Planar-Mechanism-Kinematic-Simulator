@@ -75,6 +75,8 @@ export interface TemplateParts {
  * colored by the two structural rules alone.
  */
 const TEMPLATE_PARTS: Partial<Record<LibraryTemplateID, TemplateParts>> = {
+  // Independent concentric hands need distinct colors even at their shared 12 o'clock pose.
+  Mechanical_Clock: { fixed: { AB: 1, CD: 0, EF: 5 } },
   // Five identical con-rods on one crankpin. They all meet at the hub, so this
   // is rule 2 overruling rule 3 — and it should: they are one part, made five
   // times, and coloring them apart would invent a difference the engine does

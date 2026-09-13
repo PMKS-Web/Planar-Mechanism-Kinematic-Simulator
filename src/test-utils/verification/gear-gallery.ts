@@ -2,7 +2,18 @@ import type { GalleryEntry } from './fixture-gallery';
 import { GEAR_PAIR, GEAR_FOUR_BAR, gearNetworkFixture } from './gear-fixtures';
 import { COMPOUND_GEAR_TRAIN, COMPOUND_GEAR_FOUR_BAR } from './compound-gear-fixtures';
 
+import { MECHANICAL_CLOCK } from './mechanical-clock-fixture';
+
 export const GEAR_GALLERY: GalleryEntry[] = [
+  {
+    name: 'Mechanical clock',
+    purpose:
+      'Independent concentric minute/hour hands driven by a 12/48 and 15/45 compound train; twelve input turns',
+    spec: 'mechanical-clock.spec.ts',
+    floatingSlot: false,
+    speed: { rpm: 60 },
+    fixture: MECHANICAL_CLOCK,
+  },
   {
     name: 'Compound gear train',
     purpose: '20/40 and 10/30 share one shaft, giving an exact +1/6 output ratio',

@@ -313,6 +313,7 @@ export class SolverExplanationComponent {
       circleLines,
       loops,
       gears: this.explain.gearsAt(mechanism, step),
+      gearDerivation: this.explain.gearDerivation(mechanism),
       diagram: mechanismDiagram(mechanism, step),
       bodies:
         forceWork?.bodies.map((body) => ({

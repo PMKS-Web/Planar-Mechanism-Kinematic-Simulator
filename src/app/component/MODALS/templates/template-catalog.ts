@@ -72,6 +72,8 @@ export interface TemplateBackdrop {
   readonly rotationRad?: number;
   /** 0..1; a tracing underlay wants to be seen through. Defaults to a half. */
   readonly opacity?: number;
+  /** Frame the solved sweep when this teaching backdrop arrives. */
+  readonly fitFullMotion?: boolean;
 }
 
 /** One card: what it is called, where it files, and why it is worth opening. */
@@ -97,6 +99,22 @@ export interface TemplateCard {
  * row here.
  */
 export const TEMPLATE_CARDS: readonly TemplateCard[] = [
+  {
+    id: 'Mechanical_Clock',
+    name: 'Mechanical Clock',
+    category: 'start',
+    description:
+      'A compound train drives concentric minute and hour hands at 12:1. Accelerated: one complete clock cycle in 12 seconds.',
+    thumbnail: 'assets/gifs/mechanical-clock.svg',
+    backdrop: {
+      src: 'assets/backdrops/clock-face.svg',
+      width: 12,
+      centerX: 0,
+      centerY: 0,
+      opacity: 0.65,
+      fitFullMotion: true,
+    },
+  },
   {
     id: 'Compound_Gear_Train',
     name: 'Compound Gear Train',
@@ -630,7 +648,8 @@ export const BACKDROP_ASSETS = 'assets/backdrops/';
  */
 export async function placeTemplateBackdrop(
   images: BackgroundImageService,
-  backdrop: TemplateBackdrop | undefined
+  backdrop: TemplateBackdrop | undefined,
+  fitFullMotion?: () => void
 ): Promise<void> {
   if (!backdrop) {
     if (images.image()?.src.startsWith(BACKDROP_ASSETS)) images.remove();
@@ -651,6 +670,7 @@ export async function placeTemplateBackdrop(
       rotationRad: backdrop.rotationRad,
       opacity: backdrop.opacity,
     });
+    if (backdrop.fitFullMotion) fitFullMotion?.();
   } catch (error) {
     console.error(`Backdrop ${backdrop.src} could not be placed`, error);
   }

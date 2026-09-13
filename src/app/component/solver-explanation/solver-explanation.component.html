@@ -74,6 +74,9 @@
             input. Each body uses θ = θ₀ + multiplier × q, ω = multiplier × q̇, and α = multiplier ×
             q̈. These values use counterclockwise-positive radians; q is continuous input travel.
           </p>
+          @for (relation of data.gearDerivation; track $index) {
+            <p>{{ relation }}</p>
+          }
           @for (gear of data.gears; track gear.id) {
             <p>
               {{ gear.name }} · Ratio {{ gear.ratio }} = {{ gear.multiplier }} · Input travel
