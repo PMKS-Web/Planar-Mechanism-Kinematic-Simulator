@@ -45,7 +45,11 @@ jobs:
       - name: Set up an e2e runner
         uses: ./.github/actions/setup-e2e
         with:
-          browsers: chromium chrome
+          # Chromium only. Five suites launch the system's own Chrome by path, and
+          # what that is on a runner is whatever was installed that morning — on the
+          # first Linux run one of them passed its own checks and then hung thirty
+          # seconds in `page.screenshot`. They run in the nightly, which installs it.
+          browsers: chromium
 
       - name: Run this shard of the gate
         run: node e2e/run-suites.mjs --lane gate --shard ${{ matrix.shard }}/4

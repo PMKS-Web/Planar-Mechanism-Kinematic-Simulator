@@ -23,7 +23,7 @@ is in and why anything is left out of both:
 
 | Lane | When | What | Where |
 | --- | --- | --- | --- |
-| `gate` | every pull request | the fast, steady ones, four shards, about ten minutes | `.github/workflows/e2e-gate.yml` |
+| `gate` | every pull request | the fast, steady ones, four shards, about seven minutes | `.github/workflows/e2e-gate.yml` |
 | `nightly` | 09:00 UTC against `staging`, or on demand | everything a runner can drive, eight shards, retried once | `.github/workflows/e2e-nightly.yml` |
 
 ```bash

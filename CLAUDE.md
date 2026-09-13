@@ -109,7 +109,7 @@ force pushes. Only a repository admin can override, and that is for emergencies.
 `.github/workflows/e2e-gate.yml` runs the `gate` lane on every pull request, sharded four ways;
 `.github/workflows/e2e-nightly.yml` runs everything a runner can drive against `staging` each
 morning, and files what failed in one issue it keeps updating. **Neither replaces running the
-suites your change needs yourself** — the gate is about two thirds of the batch and none of the
+suites your change needs yourself** — the gate is about three fifths of the batch and none of the
 slow audits, and it reports after you have pushed. `node e2e/run-suites.mjs --list --lane gate`
 says what it will run. The nightly is where a suite earns its way into the gate.
 
