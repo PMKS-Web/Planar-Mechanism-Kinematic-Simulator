@@ -259,7 +259,7 @@ describe('solved geometry precision', () => {
         `artifacts/s45-precision-${phase}.json`,
         JSON.stringify({ cycles, motion }, null, 2) + '\n'
       );
-      if (phase === 'after' && existsSync(baselinePath)) {
+    if (phase === 'after' && existsSync(baselinePath)) {
       const baseline = JSON.parse(readFileSync(baselinePath, 'utf8')) as {
         motion: ReturnType<typeof motionReport>;
       };

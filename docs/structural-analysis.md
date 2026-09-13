@@ -1,6 +1,243 @@
-# Structural analysis: S0 through S4.5
+# Structural analysis: S0 through S5
 
-> **Status:** Built — S0/S1 (`79a8ef0c`), S2 (`f97d275a`), S3 (`04d06680`), S4 (`f15696bc`), and S4.5 solved-geometry precision on `feature/structural-analysis`, based on staging. Each milestone is a separate commit. S5–S7 remain future work.
+> **Status:** Built — S0/S1 (`79a8ef0c`), S2 (`f97d275a`), S3 (`04d06680`), S4 (`f15696bc`), S4.5 solved-geometry precision (`f0bbb013`), and S5 sampled-cycle orchestration on `feature/structural-analysis`, based on staging. Each milestone is a separate commit. Stress UI and advanced engineering checks remain future work.
+
+## S5: sampled-cycle stress envelopes
+
+**This is a maximum over explicitly requested solved samples. It is not a continuous-time
+maximum or a bound between samples.** Each sample uses the unchanged S1/S2 equilibrium,
+S3 member recovery, and S4 nominal elementary-beam plane-stress calculations. S4's spatial
+conservative bound applies within that sample; taking its maximum over time samples does not
+bound unexamined times. `coverageKind: 'sampled'` is part of every result.
+
+### Sample and driver audit
+
+The audit at `f0bbb013` established these boundaries before choosing the S5 adapter:
+
+| Existing source | S5 interpretation |
+| --- | --- |
+| `Mechanism.joints`, `links`, `forces` | Matching solved-frame arrays for one explicitly selected mechanism/partition. No UI state and no implicit `mechanisms[0]`. |
+| `timeNum` | Actual sampled times in seconds. Read directly, never derive time from index or presume uniform spacing. Invalid/missing time becomes a snapshot gap with `null` time. |
+| `inputAngularVelocities` | Legacy name also used for linear input rates. Reversals can change its sign within a cycle. It is not a stored absolute input angle. |
+| `driveProfileOf` | Transport coordinates are normalized; angular transport integrates rates with its own display sign. S5 needs a dimensional driver coordinate, not transport fraction or the selected member's orientation. |
+| `resolveActuator` / `angleReference` | Identify the actual input joint's ordered reference/driven body pair and consistent reference pins. S5 reads relative geometric angles using those fixed pin IDs. |
+| Angular samples | Canonical angle is in `[-pi, pi]` radians. Unwrapped angle accumulates adjacent geometric differences in **full solved order**, before selecting/reordering requested indices. Adjacent changes must be less than pi, as in current PMKS sampling. The initial geometric angle is retained. |
+| Prismatic samples | A grounded input reports displacement in meters from its initial position along its slot direction, explicitly labeled as displacement, not cylinder extension. Floating prismatic coordinates are `unavailable` with a reason in S5. Structural snapshot support still refuses sliders. |
+| `withReversedDrive` / `framesRunBackwards` | Reverse playback shares geometry and sampled times while negating rates. S5 geometry labels stay at those same poses. A reversed explicit index sequence retains descending sampled times; it does not create a new playback clock. |
+| Typical cycles | The precision crank has 361 samples, the Stephenson III example has 199 and reverses, and the branch-swapping square-rod slider crank has 721 samples over two turns. No blanket 0–360° assumption is valid. |
+| Endpoint closure | Compare every endpoint joint by ID with relative geometric tolerance `1e-8` of the starting bounding-box diagonal. This is reporting only, not a solver or S3 tolerance. Geometric closure does not prove periodic loading, acceleration, or stress. |
+
+Sequence metadata records forward/reverse/explicit order, whether every solved index is covered,
+endpoint-pose duplication, geometric closure (`closed`, `open`, `unknown`), and detected drive
+reversal. Reversal is unknown for arbitrarily reordered samples or unavailable coordinates.
+Subsets and repeated indices are legal; endpoint duplication is reported and **never removed**.
+An open sequence can still have complete coverage of its requested samples.
+
+### Architecture and request
+
+`cycle-results.ts` defines framework-independent contracts. `cycle-analysis.ts` walks an ordered
+sample list with a lazy `readSample` provider and delegates each stage. `cycle-envelope.ts`
+aggregates compact results and histories. `pmks-cycle-metadata.ts` reads drive/time/closure
+metadata; `pmks-cycle-analysis.ts` adapts explicit PMKS samples. The Angular
+`StructuralAnalysisService.analyzeCycle` is a thin delegation seam. No production UI is added.
+
+The pure provider supplies a configuration, load case, and (for dynamics) one motion state per
+root body. This supports independently prescribed analytical verification without Angular or
+PMKS singleton maps. PMKS dynamics uses `snapshotPmksMemberMotion` and its isolated analytical
+acceleration route. Neither path estimates acceleration by differencing positions.
+
+Example using the published [held structural crank](fixture-urls.md), parameterized at
+2 rad/s with its 2 kg, 2 m uniform rod and authoritative `I = 2/3 kg m²`:
+
+```ts
+const result = analyzePmksCycle({
+  mechanism: selectedMechanism, // Explicit partition supplied by the caller.
+  sampleIndices: selectedMechanism.joints.map((_, i) => i),
+  lengthUnit: LengthUnit.METER,
+  coordinateSpace: 'project', // Use 'model' for app / URL-decoded objects.
+  member: {
+    kind: 'straight-prismatic', id: 'beam-AB', bodyId: 'AB',
+    startJointId: 'A', endJointId: 'B',
+  },
+  mode: 'dynamic',
+  section: { kind: 'rectangle', widthM: 0.01, heightM: 0.02 },
+  material: { name: 'Test steel', yieldStrengthPa: 250e6 },
+  loading: { kind: 'saved-load-case', loadCase: { name: 'No applied load', loads: [] } },
+  recovery: { massDistribution: { kind: 'uniform-line', memberId: 'beam-AB' } },
+  materialPoints: [
+    { id: 'top-middle', xi: 0.5, eta: 1, side: 'right' },
+  ],
+});
+```
+
+All 361 samples succeed. For this no-gravity example, independent integration gives
+`N(x) = 8 - 2x² N`, `V = M = 0`. Every sample has attained maximum von Mises stress
+40,000 Pa at `x = 0` on the member-interior side, conservative FoS approximately 6,250,
+and midpoint normal stress 30,000 Pa. The last sample is retained at approximately
+pi seconds and unwrapped driver angle 2pi radians. Floating roundoff can distinguish
+nominally equal maxima; exact numeric ties choose the first sample in request order.
+Every sample's witnesses remain available for inspecting repeated physical maxima.
+
+### Loads, provenance, and gaps
+
+`loading` is an explicit union:
+
+- `saved-load-case`: resolve the same saved case at each pose. Global points stay in world
+  coordinates; link-relative points travel with their body; global and follower directions
+  use the existing load-coordinate resolver. A world-fixed point can leave the supported
+  member and correctly produce an S3 gap.
+- `pmks-forces`: call `loadCaseFromPmksForces` with the **matching frame's forces**, every
+  sample. Native local forces already carry that frame's transformed point and direction.
+  Converting frame zero once and reusing that global case would freeze both incorrectly.
+  Gravity is optional and explicit on this loading variant.
+
+Mass, CoM and inertia remain authoritative PMKS root properties. Dynamic line inertia and
+uniform-line gravity still require the existing S3 distribution consistency check. S5 does
+not infer material density as new mass, repair quantized custom inertia, change tolerances,
+or decompose compound links. A real URL round trip of custom `I = 2/3` yields legacy `0.667`;
+the cycle then reports S3 `mass-distribution-mismatch` gaps. The codec is unchanged.
+
+Every result includes requested analysis options. Successful samples retain S4 provenance
+(mode, gravity, mass/inertia model, motion source, section and properties, stress model),
+material availability, load-case name/gravity, and S3 closure residual. The aggregator checks
+these provenance values across successes and explicitly marks heterogeneous results; it
+withholds a combined yield criterion in that case. Material and section are explicit request
+values, not silently taken from another body or a UI selection.
+
+Every requested position has a record with `sequenceIndex`, original `sampleIndex`, time,
+and drive metadata. Failure records retain stage (`setup`, `snapshot`, `equilibrium`,
+`member-loads`, `stress`), original code/message, and upstream equilibrium diagnostics when
+available. Adjacent failures in **request order** form gaps containing their individual records.
+No stage fabricates zero stresses. History gaps remain gaps. Provider exceptions are isolated
+to their sample so later requested samples still run.
+
+`complete` means all requested samples succeeded, `incomplete` means some did, and `failed`
+means none did or setup was invalid. Coverage includes counts, fraction and percent. An
+incomplete result can expose an envelope over **successful requested samples only**; neither
+that envelope nor its yield result certifies the missing samples. Empty/all-failed requests
+have a null envelope. Missing yield strength does not turn valid stresses into failures:
+stress coverage can be complete while yield/FoS remains unavailable.
+
+### Envelopes and material histories
+
+The envelope keeps maximum tension, compression, absolute normal, absolute shear, attained
+von Mises, and conservative von Mises separately. Each attained winner contains its sample
+metadata and the full S4 witness: member/body ID, `xM`, side, `yM`, signed stress components,
+principal stresses, internal loads and provenance. Compression magnitude and its signed
+stress are distinct, following S4's existing convention.
+
+The conservative winner carries the S4 upper bound, method, spatial gap, subdivision count,
+and yield criterion. Its `attainedWitness` is explicitly an attained point **at the bounding
+sample**, not a fictitious position where the bound is attained. Conservative yield aggregation
+selects the greatest utilization; with consistent material this also gives the minimum
+conservative FoS. It propagates S4's finite/unbounded-zero-demand/exceeds-numeric-range states
+without inventing a finite number. `envelope.yield.governing.criterion` contains these values.
+
+A material point is `(xi, eta, side)`, where `xi=x/L` is in `[0,1]` and `eta=y/c` is in
+`[-1,1]`. Side is mandatory at concentrated loads/couples. Each history retains signed normal,
+signed transverse shear, both ordered principal stresses, nonnegative von Mises and N/V/M at
+the same material point at every successful sample. A moving critical stress station is a
+different observable and is tested separately.
+
+Statistics report signed minimum, maximum, range, midrange and half-range amplitude over
+successful entries, preserving their original time/index order and gap records. Midrange is
+`(max+min)/2`, **not** a time-weighted mean. These are descriptive histories only: no rainflow
+counting, fatigue allowable, mean-stress correction, endurance prediction or life estimate.
+
+### Validation and performance
+
+S5 tests cover the complete precision-crank pipeline; quarter-cycle analytical checks and
+repeated maxima; static global/follower loading; independently integrated centripetal and
+angular-acceleration stresses; top/center/bottom signed histories; moving critical stations;
+concentrated-couple sides; invalid samples and a singular/toggle gap; missing material;
+heterogeneous provenance; bound/FoS propagation; native local/global forces; manual S2/S3/S4
+comparison; frozen input/result graphs and repeatability; real legacy URL custom-inertia
+rounding; and reversing, two-turn, prismatic and reordered metadata. All geometries reuse
+existing published fixtures; no new geometry or gallery URL is required.
+
+`cycle-performance.spec.ts` measures snapshots, S2, S3, S4, three fixed points, aggregation
+and the entire PMKS cycle separately across three warm batches. Set `PMKS_BENCHMARK_CYCLE=1`
+to write `artifacts/s5-performance.json`. Timing is diagnostic and never a machine-speed gate.
+It retains only S4 summaries/witnesses, fixed points and diagnostics, not configurations,
+equilibrium matrices, full rate maps, or S3 polynomial diagrams. Histories and envelope
+winners reference sample data in memory; ordinary JSON serialization repeats those references.
+Storage grows with samples and requested points. Serialization size is not a heap measurement.
+
+Measured on Windows / Node 24.21, with the benchmark running alone after warm-up (three
+batches, median shown):
+
+| Operation | 361 samples, ms | Per sample, ms |
+| --- | ---: | ---: |
+| Analytical snapshot | 23.767 | 0.06584 |
+| S2 equilibrium | 6.758 | 0.01872 |
+| S3 recovery | 6.232 | 0.01726 |
+| S4 member extrema | 33.117 | 0.09174 |
+| Three fixed points | 7.837 | 0.02171 |
+| S5 aggregation | 2.498 | 0.00692 |
+| End-to-end PMKS cycle, independently timed | 77.128 | 0.21365 |
+
+End-to-end range: 75.476–77.343 ms. Separate timings include their own instrumentation
+and checks, so their sum need not equal the independently timed end-to-end path. During
+concurrent test/build work the same benchmark took approximately 193–215 ms; these are
+measurements, not latency guarantees. Ordinary JSON output with three histories occupies
+4,751,746 bytes (about 4.53 MiB); shared witnesses are repeated in serialized JSON. S5 runs
+sequentially and needs no worker or parallel execution to meet this measured scale.
+
+Fresh baseline and final verification:
+
+| Check | Result |
+| --- | --- |
+| Full suite at unchanged `f0bbb013`, before S5 | 2,711 passed, 3 failed; 252 files |
+| S0–S5 + precision + structural persistence + fixture gallery | 231/231 passed; 21 files |
+| New S5 tests | 20/20 passed across five suites, including the standalone performance run |
+| Final full suite (includes kinematics and position regressions) | 2,731 passed, 3 failed; 257 files |
+| `npm run check` | Passed; 15 allowed lint warnings, styles and formatting passed |
+| Production build | Passed; component-size and CommonJS warnings |
+| Storybook build | Passed; chunk-size/tooling warnings |
+| `force-analysis-panels.mjs` | 15/15 passed |
+| `force-units.mjs` | 20/20 passed |
+| `solved-precision.mjs` | 8/8 passed; playback, start-pose drag and paused-pose drag filmstrips inspected |
+| `git diff --check` | Passed |
+
+The same three full-suite failures occurred before and after S5: MotionGen's reference jaw
+gap is `1.036629237211164` against `>2.3`; its reference joint discrepancy is `1.051501`
+against `<0.0001`; the stylesheet fence counts 99 raw rgba colors against a ceiling of 87.
+These remain unresolved baseline failures. S5 does not change their production code or tests.
+One indentation line in `solved-precision.spec.ts` was formatted; its assertions and behavior
+are unchanged. Reports and images are retained under ignored `artifacts/s5-*`,
+`artifacts/solved-precision`, `artifacts/force-units`, and `artifacts/screenshots/s5-force-panels-*`.
+Codex had no available live browser surface; the tracked suites ran disposable browser
+profiles at `http://localhost:4355`. Their screenshots and filmstrips were inspected directly.
+
+Added production files: `cycle-results.ts`, `cycle-analysis.ts`, `cycle-envelope.ts`,
+`pmks-cycle-metadata.ts`, and `pmks-cycle-analysis.ts`, all under `src/app/model/structural`.
+Added tests: `cycle-analysis.spec.ts`, `pmks-cycle-analysis.spec.ts`,
+`pmks-cycle-metadata.spec.ts`, `cycle-performance.spec.ts`,
+`services/transcoding/url-structural-cycle.spec.ts`; shared setup is in
+`test-utils/verification/cycle-verification.ts`. Modified files are the thin
+`structural-analysis.service.ts`, the one precision-test indentation line, this document,
+`docs/README.md`, and `docs/tips-and-tricks.md`.
+
+### Next milestones and integration boundary
+
+**Stress UI:** assign section/material explicitly; select a partition/member and static or
+dynamic mode; show coverage gaps before presenting FoS; offer signed stress contours with
+clear units/legend; jump to the critical sample and its `x/side/y`; scrub the solved cycle;
+plot attained stress, conservative bounds and FoS separately. Never interpolate a plot through
+a failed sample or label the sampled envelope as continuous-time proof.
+
+**Engineering checks:** add section choices and pin/bearing checks with the required geometry
+and allowables first. Add buckling only with explicit effective length/support assumptions.
+Fatigue can use these fixed-point histories after loading periodicity, cycle counting and
+material/mean-stress models are specified. Compound-link decomposition and beam/frame FEA
+require an explicit structural topology and boundary conditions, not inference from drawn
+polygons. They belong in separate milestones.
+
+S5 leaves the CoM branch and the main checkout's overlapping solver edits unmerged. Its contract
+with that future integration remains: authored automatic/custom mass properties have one
+authority; solved motion rigidly transports CoM and preserves mass/inertia. Changes to those
+properties can intentionally change stress or trigger S3 refusal, so rerun full-cycle tests
+when integrating. No S5 solver, mass-property formula, or CoM UI edit is needed here.
 
 ## Precision Hardening Before S5
 

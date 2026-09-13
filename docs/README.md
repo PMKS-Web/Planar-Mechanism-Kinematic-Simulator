@@ -28,7 +28,7 @@ In this order, the first time:
 
 ## Design records
 
-- [structural-analysis.md](structural-analysis.md) — S0 metadata, S1 static equilibrium, S2 inverse dynamics, S3 internal loads, S4 analytical stress, and S4.5 solved-geometry precision: audits, SI conventions, mass models, stress extrema, diagnostics, and validation. *Built*
+- [structural-analysis.md](structural-analysis.md) — S0 metadata, S1 static equilibrium, S2 inverse dynamics, S3 internal loads, S4 analytical stress, S4.5 solved-geometry precision, and S5 sampled-cycle envelopes: audits, signed histories, coverage gaps, conservative bounds, mass models, and validation. *Built*
 
 - [joint-types-plan.md](joint-types-plan.md) — plan of record for floating slots, slides, driven prismatic joints and cylinders, Phases 0–7a. *Partly built*
 - [floating-slot-kinematics-design.md](floating-slot-kinematics-design.md) — velocity and acceleration through a floating slot (Phase 2, task 2.9). *Built*

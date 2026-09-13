@@ -1,5 +1,15 @@
 # Tips and tricks
 
+**Cycle stress belongs to solved samples and fixed material points.** S5 reads
+the chosen partition's actual `timeNum` and geometric actuator coordinate. Unwrap
+angles through all solved frames before subsetting; neither index/360 nor the
+transport's normalized fraction describes reversing or two-turn machines. Reverse
+playback shares those poses and times. Convert native PMKS Forces at every matching
+sample; converting frame zero once freezes a follower load in world space. Preserve
+S3/S4 refusals as gaps and keep a fixed `(xi, eta, side)` history separate from the
+moving stress maximum. A spatial S4 bound is not a temporal bound between samples.
+See [S5](structural-analysis.md#s5-sampled-cycle-stress-envelopes).
+
 **Stress maxima can occur inside both a member interval and its section.** S4's
 normal stress is N/A-My/I; shear traction on S3's A-side face integrates to -V.
 Checking only the two outer fibers misses shear-dominated von Mises demand.
