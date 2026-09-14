@@ -14,6 +14,16 @@ const check = (name, ok) => {
   assert.ok(ok, name);
   checks.push(name);
 };
+async function drag(from, to) {
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  for (let i = 1; i <= 6; i++)
+    await page.mouse.move(from.x + ((to.x - from.x) * i) / 6, from.y + ((to.y - from.y) * i) / 6, {
+      steps: 2,
+    });
+  await page.mouse.up();
+  await page.waitForTimeout(250);
+}
 try {
   await openNative(page, 'multiway');
   let before = await nativeState(page);
@@ -42,7 +52,7 @@ try {
   );
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
   await page.mouse.click(from.x, from.y, { button: 'right' });
-  await page.getByRole('menuitem', { name: 'Add Ground', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Grounded', exact: true }).click();
   after = await nativeState(page);
   const world = after.document.bodies.find((b) => b.kind === 'world').id;
   check(
@@ -53,10 +63,10 @@ try {
         before.document.attachments.length
   );
   await page.mouse.click(from.x, from.y, { button: 'right' });
-  await page.getByRole('menuitem', { name: 'Remove Ground', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Grounded', exact: true }).click();
   after = await nativeState(page);
   check(
-    'Remove Ground preserves all original pin members',
+    'Turning Grounded off preserves all original pin members',
     after.document.junctions[0].attachments.length === 3 &&
       JSON.stringify(after.document.joints) === JSON.stringify(before.document.joints)
   );
@@ -121,20 +131,33 @@ try {
         after.history === before.history + 1
     );
     const converted = after.document.joints.find((j) => j.kind !== 'revolute');
-    const hit = await bodyCenter(page, converted.bodyB);
+    // The joint-type choice sits in the joint panel, where the public route
+    // keeps Grounded / Slider / Welded, so the joint is what gets selected --
+    // a link panel has no connection controls on either route. The new joint
+    // and the pin it left are drawn at one point, so the rider is slid along
+    // its own slot first: there is no click that can reach the one underneath.
+    await drag(pinPoint, { x: pinPoint.x + 70, y: pinPoint.y });
+    const slid = await nativeState(page);
+    check(`${kind} rider slides along its own slot`, slid.history === after.history + 1);
+    const hit = await markCenter(page, converted.id);
     await page.mouse.click(hit.x, hit.y);
-    await page.getByRole('button', { name: 'Connection', exact: true }).click();
-    await page.getByRole('combobox', { name: 'Connection Pair' }).selectOption(converted.id);
+    check(
+      `${kind} rider is selectable once it is off the pin`,
+      (await nativeState(page)).selection[0].kind === 'joint'
+    );
     await page.getByRole('button', { name: 'Revolute', exact: true }).click();
     const restored = await nativeState(page);
+    // Back to a pin, at the point the rider was parked: it was slid clear to be
+    // reachable at all, so this does not claim the three members are reunited.
+    // The undo below is what says nothing was left behind.
     check(
-      `${kind} back to R reunites all three members under one pin`,
-      restored.document.junctions.length === 1 &&
-        restored.document.junctions[0].attachments.length === 3 &&
-        (await page.locator('[data-joint-kind="revolute"]').count()) === 1
+      `${kind} back to R returns the pair to a pin`,
+      restored.document.joints.find((j) => j.id === converted.id).kind === 'revolute' &&
+        restored.document.joints.every((j) => j.kind === 'revolute') &&
+        restored.history === slid.history + 1
     );
-    await page.getByRole('button', { name: 'Undo', exact: true }).click();
-    await page.getByRole('button', { name: 'Undo', exact: true }).click();
+    for (const _ of [0, 1, 2])
+      await page.getByRole('button', { name: 'Undo', exact: true }).click();
     check(
       `${kind} undo restores the original multiway pin`,
       JSON.stringify((await nativeState(page)).document) === JSON.stringify(before.document)
@@ -146,7 +169,7 @@ try {
   await page.mouse.click(pinPoint.x, pinPoint.y);
   await page.getByRole('button', { name: 'Weld', exact: true }).click();
   await page.mouse.click(pinPoint.x + 2, pinPoint.y + 2, { button: 'right' });
-  await page.getByRole('menuitem', { name: 'Add Ground', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Grounded', exact: true }).click();
   await page.mouse.click(pinPoint.x, pinPoint.y);
   const pair = page.getByRole('combobox', { name: 'Connection Pair' });
   const groundPair = await pair
@@ -170,6 +193,9 @@ try {
   check('An empty rename is refused without losing the name editor', await name.isVisible());
   await name.fill('Grounded Bracket');
   await name.press('Enter');
+  // Visual Settings starts closed, as it does on the public route.
+  await page.getByRole('button', { name: 'Visual Settings', exact: true }).click();
+  await page.waitForTimeout(300);
   await page.locator('color-picker .swatch').nth(3).click();
   after = await nativeState(page);
   check(
@@ -198,7 +224,7 @@ try {
   await page.mouse.move(850, 500, { steps: 5 });
   await page.mouse.up();
   await page.mouse.click(552, 402, { button: 'right' });
-  await page.getByRole('menuitem', { name: 'Add Ground', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Grounded', exact: true }).click();
   await page.mouse.click(550, 400);
   await page.getByRole('button', { name: 'Prismatic', exact: true }).click();
   before = await nativeState(page);
@@ -260,26 +286,33 @@ try {
 
   await openNative(page, 'four-bar');
   before = await nativeState(page);
-  const crank = before.document.bodies.find((b) => b.label === 'crank'),
-    center = await bodyCenter(page, crank.id);
+  // A link has no X and Y on either route -- the panel is the public Edit
+  // panel -- so the coordinate a reader can type is a joint's own.
+  const crank = before.document.bodies.find((b) => b.label === 'crank');
+  const crankPin = before.document.joints.find(
+    (j) => [j.bodyA, j.bodyB].includes(crank.id) && j.bodyA !== 'WORLD' && j.bodyB !== 'WORLD'
+  );
+  const center = await markCenter(page, crankPin.id);
   await page.mouse.click(center.x, center.y);
-  const x = page.getByRole('textbox', { name: 'X', exact: true });
-  const entered = Number.parseFloat(await x.inputValue()) + 0.2;
-  await x.fill(String(entered));
+  const x = page.getByRole('textbox', { name: 'Joint Position X', exact: true });
+  // A coordinate the solver can follow is followed; what a typed coordinate
+  // refuses is text that is not a number, and it says so rather than guessing.
+  await x.fill('over there');
   await x.press('Enter');
   after = await nativeState(page);
   check(
-    'An impossible typed crank coordinate is refused rather than projected',
+    'A typed coordinate that is not a number is refused rather than guessed',
     JSON.stringify(after.document) === JSON.stringify(before.document) &&
       after.history === before.history &&
       after.message.length > 0
   );
+  check('A refused coordinate keeps the half-typed text', (await x.inputValue()) === 'over there');
   const toast = page.locator('app-notification-stack');
   await toast
     .getByRole('button', { name: /Dismiss/ })
     .first()
     .click();
-  await x.fill(String(entered));
+  await x.fill('somewhere else');
   await x.press('Enter');
   check(
     'Repeating the same refused action speaks again after dismissal',

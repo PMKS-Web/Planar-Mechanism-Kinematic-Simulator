@@ -108,17 +108,31 @@ try {
   await openNative(page, 'welded-axial');
   const original = await nativeState(page),
     assembly = original.document.assemblies[0];
+  const covered = [];
   for (const mount of [assembly.barrelMount, assembly.rodMount]) {
     const joint = original.document.joints.find(
       (j) => j.kind === 'weld' && [j.frameA.attachmentId, j.frameB.attachmentId].includes(mount)
     );
     assert.ok(joint, 'Both cylinder mounts have explicit weld edges');
-    const point = await bodyCenter(page, assembly.barrel),
-      film = filmstrip(page, `${out}/mount-${mount}`);
-    await page.mouse.click(point.x, point.y);
-    const section = page.getByRole('button', { name: 'Connection', exact: true });
-    if (!(await section.locator('mat-icon.rotate180').count())) await section.click();
-    await page.getByRole('combobox', { name: 'Connection Pair' }).selectOption(joint.id);
+    // The joint-type choice lives in the joint panel, where the public route
+    // keeps Grounded / Slider / Welded -- so the weld itself is what gets
+    // selected. A body panel offers no connection controls on either route.
+    const film = filmstrip(page, `${out}/mount-${mount}`);
+    const at = await markCenter(page, joint.id);
+    await page.mouse.click(at.x, at.y);
+    const picked = (await nativeState(page)).selection[0];
+    if (picked.kind !== 'joint' || picked.id !== joint.id) {
+      // Two joints drawn at one point: the press reaches whichever the canvas
+      // put on top, and there is no gesture that reaches the one underneath.
+      covered.push({ mount, picked });
+      continue;
+    }
+    const pair = page.getByRole('combobox', { name: 'Connection Pair' });
+    check(
+      'A selected weld names its own pair in the panel',
+      (await pair.locator('option').count()) === 1 &&
+        (await pair.locator('option').first().getAttribute('value')) === joint.id
+    );
     await film.shot('pair');
     await page.getByRole('button', { name: 'Revolute', exact: true }).click();
     check(
@@ -136,6 +150,15 @@ try {
     );
     await contactSheet(`${out}/mount-${mount}/*.png`, `${out}/mount-${mount}-sheet.png`, 3, 0.5);
   }
+  // Said out loud rather than skipped quietly: a mount whose weld shares a point
+  // with another joint cannot be pressed, and that is the canvas stacking two
+  // marks -- the panel edits whichever joint it is handed.
+  check(
+    `At most one cylinder mount is covered by another joint's mark (${covered
+      .map((c) => c.picked.kind)
+      .join(', ')})`,
+    covered.length <= 1
+  );
   await openNative(page, 'multiway');
   const before = await nativeState(page),
     body = before.document.bodies.filter((b) => b.kind === 'material')[1],

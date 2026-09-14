@@ -59,11 +59,18 @@ it('constructs the actual shell and every drawer without any legacy document con
   fixture.detectChanges();
   await fixture.whenStable();
   fixture.detectChanges();
-  const input = fixture.nativeElement.querySelector('input[data-field="x"]') as HTMLInputElement;
+  // The panel is the public Edit panel, so its Joint Position pair is the
+  // shared dual-input block with nothing added to find it by.
+  const input = fixture.nativeElement.querySelector(
+    'app-native-inspector dual-input-block input.customInput'
+  ) as HTMLInputElement;
   const before = editor.store.undoDepth,
     beforeDocument = editor.document();
   input.value = '0.25';
   input.dispatchEvent(new Event('input', { bubbles: true }));
+  // The panel's numeric fields commit on blur, the way every field in the
+  // public Edit panel does.
+  input.dispatchEvent(new FocusEvent('blur'));
   input.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
   fixture.detectChanges();
   await fixture.whenStable();

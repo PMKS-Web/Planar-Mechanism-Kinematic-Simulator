@@ -1,294 +1,612 @@
-@if (!editor.selection().length) {
-  <app-empty-selection [empty]="editor.document().bodies.length === 1" [frozen]="!!refusal()" />
-} @else {
-  <panel-section [frozen]="!!refusal()">
-    <editable-title-block
-      [subject]="title()"
-      [displayName]="heading()"
-      [deleteAction]="deleteAction"
-      [deleteRefusal]="refusal() ? undefined : refused(deleteCommand())"
-      [lockRefusal]="refusal() ? undefined : refused(editor.lockCommand())"
-      [lockState]="lockState()"
-      [toggleLockAction]="lockAction"
-      [renamable]="editor.selection().length === 1 && selected()?.kind !== 'junction'"
-    />
-    @if (refusal(); as why) {
-      <p panelAttached class="refusal">{{ why.long }}</p>
+<div id="editWrapper">
+  <!-- The same two levels the public panel keeps: playing, nothing here may be
+       touched and `inert` takes the whole subtree out of reach; merely paused
+       away from the start, the structural half is live and only the pose-bound
+       fields are frozen. -->
+  <div class="editBody" [class.frozen]="actions.panelIsFrozen()">
+    @if (branch() === 'none') {
+      <app-empty-selection [empty]="gridIsEmpty()" [frozen]="actions.panelIsFrozen()" />
     }
-    @if (editor.selection().length > 1) {
-      <p>Changes apply to every selected link together.</p>
-      <color-picker
-        [colors]="colors"
-        [selectedColor]="bulkFills().length === 1 ? bulkFills()[0] : undefined"
-        (colorSelected)="bulkColor($event)"
-        >Link Color</color-picker
-      >
-      @if (bulkFills().length > 1) {
-        <p>Mixed link colors</p>
-      }
-      <input-block
-        [wide]="true"
-        [formGroup]="fields"
-        _formControl="mass"
-        [unit]="editor.document().units.mass"
-        (focusout)="bulkMass()"
-        >Mass Each</input-block
-      >
-    } @else {
-      @if (selected()?.kind === 'group' || selected()?.kind === 'assembly') {
-        <p>Select a member to edit its material properties.</p>
-        @if (selected()?.kind === 'group') {
+
+    <!--  SEVERAL PARTS AT ONCE: the public panel gives this its own component;
+        this route offers the two settings a selection has in common. -->
+    @if (branch() === 'multi') {
+      <panel-section [frozen]="actions.panelIsFrozen()">
+        <editable-title-block
+          [subject]="actions.titleSubject()"
+          [deleteAction]="actions.deleteAction"
+          [lockState]="actions.lockState()"
+          [toggleLockAction]="actions.lockAction"
+          [renamable]="false"
+          [displayName]="''"
+          >Edit Selection</editable-title-block
+        >
+        <app-edit-banner panelAttached />
+        <collapsible-subsection
+          titleLabel="Visual Settings"
+          [expanded]="sectionExpanded['LVisual']"
+          (opened)="sectionExpanded['LVisual'] = true"
+          (closed)="sectionExpanded['LVisual'] = false"
+        >
           <color-picker
-            [colors]="colors"
-            [selectedColor]="groupFill()"
-            (colorSelected)="groupColor($event)"
-            >Group Color</color-picker
-          >
-          @let why = refused(resetGroupCommand());
-          <button
-            mat-button
-            [disabled]="!!why"
-            [title]="why?.long || ''"
-            (click)="run(resetGroupCommand())"
-          >
-            Use Member Mass Properties
-            @if (why && !refusal()) {
-              <small>{{ why.short }}</small>
-            }
-          </button>
-        }
-        <label class="choice"
-          >Member
-          <select aria-label="Member" (change)="chooseMember($event)">
-            <option value="">Choose a Link</option>
-            @for (id of editor.bodies(); track id) {
-              <option [value]="id">{{ editor.bodyName(id) }}</option>
-            }
-          </select>
-        </label>
-      }
-      @if (body(); as material) {
-        <collapsible-subsection titleLabel="Basic Settings" [expanded]="true">
-          @if (material.geometry.kind === 'bar') {
-            <hold-field-block
-              [subject]="holdSubject()"
-              (lengthEntry)="editor.dimension.set($event === -1 ? 'length' : undefined)"
-              (angleEntry)="editor.dimension.set($event === -1 ? 'angle' : undefined)"
-              [formGroup]="fields"
-              (fieldCommit)="commit($event)"
-            />
-          }
-          <input-block
-            [wide]="true"
-            [formGroup]="fields"
-            _formControl="x"
-            dataField="native-x"
-            (focusout)="commit('x')"
-            tooltip="Horizontal position of the link's material origin."
-            >X</input-block
-          >
-          <input-block
-            [wide]="true"
-            [formGroup]="fields"
-            _formControl="y"
-            dataField="native-y"
-            (focusout)="commit('y')"
-            tooltip="Vertical position of the link's material origin."
-            >Y</input-block
+            type="link"
+            [colors]="linkColors"
+            [selectedColor]="bulkFills().length === 1 ? bulkFills()[0] : undefined"
+            (colorSelected)="bulkColor($event)"
+            >Link Color</color-picker
           >
         </collapsible-subsection>
-        <app-native-material-properties [body]="material" />
-      }
-      @if (pointId()) {
-        <collapsible-subsection titleLabel="Basic Settings" [expanded]="true">
+        <collapsible-subsection
+          panelLive
+          [attr.inert]="actions.playingNow() || null"
+          titleLabel="Mass Settings"
+          [expanded]="sectionExpanded['LMass']"
+          (opened)="sectionExpanded['LMass'] = true"
+          (closed)="sectionExpanded['LMass'] = false"
+        >
+          <div class="massArea">
+            <input-block
+              [formGroup]="bulkForm"
+              _formControl="mass"
+              tooltip="The mass of each selected link. Zero is an idealized massless bar, which gravity and inertia skip."
+              >Mass Each</input-block
+            >
+          </div>
+        </collapsible-subsection>
+      </panel-section>
+    }
+
+    <!--  JOINT PANEL-->
+    @if (branch() === 'joint') {
+      <panel-section [frozen]="actions.panelIsFrozen()">
+        <editable-title-block
+          [subject]="actions.titleSubject()"
+          [deleteAction]="actions.deleteAction"
+          [deleteRefusal]="actions.deleteRefusal()"
+          [lockRefusal]="actions.lockRefusal()"
+          [lockState]="actions.lockState()"
+          [toggleLockAction]="actions.lockAction"
+        >
+          Edit Joint
+        </editable-title-block>
+        <app-edit-banner panelAttached />
+        <collapsible-subsection
+          titleLabel="Basic Settings"
+          [expanded]="sectionExpanded['JBasic']"
+          (opened)="sectionExpanded['JBasic'] = true"
+          (closed)="sectionExpanded['JBasic'] = false"
+        >
           <dual-input-block
             label1="X"
             label2="Y"
-            formControl1="x"
-            formControl2="y"
-            dataField1="x"
-            dataField2="y"
-            [formGroup]="fields"
+            formControl1="xPos"
+            formControl2="yPos"
+            [formGroup]="jointForm"
             tooltip="Where this joint sits on the grid."
-            (focusout)="commitPoint($event)"
-            >Joint Position</dual-input-block
           >
+            Joint Position
+          </dual-input-block>
+          <!-- The one allowed difference: this model keeps one answer, the kind
+               of joint holding a pair of parts together, where the public panel
+               keeps three flags. Grounded is still the context menu's row. -->
+          <app-native-joint-type />
+          <button-block
+            [customIcon]="actions.isDriven() ? 'remove_input' : 'add_input'"
+            [disabled]="!!actions.driveRefusal()"
+            [tooltip]="actions.driveRefusal()?.long"
+            [click]="actions.toggleDrive"
+          >
+            {{ actions.isDriven() ? 'Remove Input' : 'Add Input' }}
+          </button-block>
         </collapsible-subsection>
-      }
-      @if (pairs().length) {
-        <collapsible-subsection titleLabel="Connection" [expanded]="!body() && !assembly()">
-          <label class="choice"
-            >Pair
-            <select
-              aria-label="Connection Pair"
-              [value]="chosenPair()?.key"
-              (change)="setPair($event)"
+        @if (actions.isDriven()) {
+          <div class="inputSettings">
+            <collapsible-subsection
+              titleLabel="Input Settings"
+              [expanded]="sectionExpanded['JInput']"
+              (opened)="sectionExpanded['JInput'] = true"
+              (closed)="sectionExpanded['JInput'] = false"
             >
-              @for (pair of pairs(); track pair.key) {
-                <option [value]="pair.key">{{ pair.label }}</option>
+              <!-- A driven block translates; it has no sense of rotation and no
+                   RPM. Both controls read the drive's kind. -->
+              <button-block
+                [icon]="actions.inputDirectionIcon()"
+                [disabled]="actions.driveIsFrozen()"
+                [click]="actions.flipInputDirection"
+                >{{ actions.inputDirectionLabel() }}
+              </button-block>
+              @if (actions.isSliderInput()) {
+                <input-block
+                  [formGroup]="jointForm"
+                  _formControl="inputSpeed"
+                  [unit]="actions.linearSpeedUnitLabel()"
+                  tooltip="How fast this block slides. Negative reverses it."
+                  >Input Speed
+                </input-block>
+              } @else {
+                <input-block
+                  [formGroup]="jointForm"
+                  _formControl="inputSpeed"
+                  [unitOptions]="speedUnitOptions"
+                  unitFormControl="inputSpeedUnit"
+                  tooltip="How fast this joint turns. Negative reverses it."
+                  >Input Speed
+                </input-block>
               }
-            </select>
-          </label>
-          <div class="kind-options" role="group" aria-label="Joint Kind">
-            @for (kind of kinds; track kind) {
-              @let why = refused(kindCommand(kind));
-              <button
-                mat-button
-                [class.chosen]="selectedKind() === kind"
-                [disabled]="!!why"
-                [title]="why?.long || ''"
-                (click)="changeKind(kind)"
-              >
-                {{ kindLabel(kind) }}
-                @if (why && !refusal()) {
-                  <small>{{ why.short }}</small>
-                }
-              </button>
-            }
+            </collapsible-subsection>
           </div>
-          <p>Changing this pair leaves the other connections at this point in place.</p>
-        </collapsible-subsection>
-      }
-      @if (assembly()) {
-        <collapsible-subsection titleLabel="Cylinder Properties" [expanded]="true">
-          <input-block
-            [wide]="true"
-            [formGroup]="fields"
-            _formControl="barrelLength"
-            (focusout)="commit('barrelLength')"
-            >Barrel Length</input-block
-          >
-          <input-block
-            [wide]="true"
-            [formGroup]="fields"
-            _formControl="rodLength"
-            (focusout)="commit('rodLength')"
-            >Rod Length</input-block
-          >
-          <input-block
-            [wide]="true"
-            [formGroup]="fields"
-            _formControl="bore"
-            (focusout)="commit('bore')"
-            >Bore</input-block
-          >
-          <input-block
-            [wide]="true"
-            [formGroup]="fields"
-            _formControl="rodDiameter"
-            (focusout)="commit('rodDiameter')"
-            >Rod Diameter</input-block
-          >
-          <input-block
-            [wide]="true"
-            [formGroup]="fields"
-            _formControl="stroke"
-            (focusout)="commit('stroke')"
-            >Stroke</input-block
-          >
-        </collapsible-subsection>
-      }
-      @if (coordinateJoint(); as connection) {
-        @if (connection.kind === 'prismatic' || connection.kind === 'pin-in-slot') {
-          <input-block
-            [wide]="true"
-            [formGroup]="fields"
-            _formControl="travel"
-            dataField="native-travel"
-            (focusout)="commit('travel')"
-            >Travel</input-block
-          >
-          @if (!assembly()) {
-            <input-block
-              [wide]="true"
-              [formGroup]="fields"
-              _formControl="axis"
-              (focusout)="commit('axis')"
-              >Guide Angle</input-block
-            >
-          }
         }
-        @if (connection.kind !== 'weld') {
-          @if (!assembly()) {
-            <app-native-joint-limits [joint]="connection" />
-          }
-          <collapsible-subsection titleLabel="Input Settings" [expanded]="true">
-            @let why = refused(driveCommand());
-            <button
-              mat-button
-              [disabled]="!!why"
-              [title]="why?.long || ''"
-              (click)="run(driveCommand())"
-            >
-              {{ isDriven() ? 'Remove Input' : 'Add Input' }}
-              @if (why && !refusal()) {
-                <small>{{ why.short }}</small>
-              }
-            </button>
+        <!-- The sliding body's own mass. A reader can select it on the canvas,
+             but the public panel offers it here and the panel is the same
+             panel. -->
+        @if (slidingBody()) {
+          <collapsible-subsection
+            panelLive
+            [attr.inert]="actions.playingNow() || null"
+            titleLabel="Mass Settings"
+            [expanded]="sectionExpanded['JMass']"
+            (opened)="sectionExpanded['JMass'] = true"
+            (closed)="sectionExpanded['JMass'] = false"
+          >
             <input-block
-              [wide]="true"
-              [formGroup]="fields"
-              _formControl="speed"
-              [unit]="
-                connection.kind === 'revolute' ? 'rpm' : editor.document().units.length + '/s'
-              "
-              (focusout)="commit('speed')"
-              >Speed</input-block
+              [formGroup]="jointForm"
+              _formControl="sliderMass"
+              tooltip="The sliding body's mass, acting at this pin. Zero is an idealized massless slide."
+              >Sliding Body</input-block
             >
           </collapsible-subsection>
         }
-      }
-      @if (traceCommand(); as command) {
-        @let why = refused(command);
-        <button mat-button [disabled]="!!why" [title]="why?.long || ''" (click)="run(command)">
-          {{ isTraced() ? 'Hide Traced Path' : 'Show Traced Path' }}
-          @if (why && !refusal()) {
-            <small>{{ why.short }}</small>
+        <collapsible-subsection
+          titleLabel="Visual Settings"
+          [expanded]="sectionExpanded['JVisual']"
+          (opened)="sectionExpanded['JVisual'] = true"
+          (closed)="sectionExpanded['JVisual'] = false"
+        >
+          <toggle-block
+            [formGroup]="jointForm"
+            _formControl="curve"
+            tooltip="Show / hide the path this joint takes through the cycle."
+            >Trace path
+          </toggle-block>
+          <color-picker
+            type="joint"
+            [colors]="jointColors"
+            [selectedColor]="jointColor()"
+            (colorSelected)="setJointColor($event)"
+            tooltip="The color of this joint."
+            >Joint Color</color-picker
+          >
+        </collapsible-subsection>
+        <collapsible-subsection
+          titleLabel="Distance to Joints"
+          [expanded]="sectionExpanded['JDistToJ']"
+          (opened)="sectionExpanded['JDistToJ'] = true"
+          (closed)="sectionExpanded['JDistToJ'] = false"
+        >
+          @for (joint of listOfOtherJoints(); track joint.id; let i = $index) {
+            <div>
+              <dual-input-block
+                label1="D"
+                label2="⊾"
+                tooltip="How far this joint is from that one, and in what direction. Editing either moves that joint."
+                [formGroup]="jointForm"
+                formSubGroup="otherJoints"
+                [formControl1]="(i * 2).toString()"
+                [formControl2]="(i * 2 + 1).toString()"
+                [emitterOutputID]="i"
+              >
+                Joint {{ joint.label }}</dual-input-block
+              >
+            </div>
           }
-        </button>
-      }
-      @if (force(); as force) {
-        <label class="choice"
-          >Force Axes
-          <select aria-label="Force Axes" [value]="force.frame" (change)="forceFrame($event)">
-            <option value="world">Grid</option>
-            <option value="body">Link</option>
-          </select></label
-        >
-        <label class="choice"
-          >Force Owner
-          <select aria-label="Force Owner" [value]="force.bodyId" (change)="forceOwner($event)">
-            @for (body of editor.document().bodies; track body.id) {
-              @if (body.kind === 'material') {
-                <option [value]="body.id">{{ body.label || 'Link' }}</option>
-              }
-            }
-          </select></label
-        >
-        <input-block
-          [wide]="true"
-          [formGroup]="fields"
-          _formControl="forceX"
-          [unit]="editor.document().units.force"
-          (focusout)="commit('forceX')"
-          >X Force</input-block
-        >
-        <input-block
-          [wide]="true"
-          [formGroup]="fields"
-          _formControl="forceY"
-          [unit]="editor.document().units.force"
-          (focusout)="commit('forceY')"
-          >Y Force</input-block
-        >
-        <input-block
-          [wide]="true"
-          [formGroup]="fields"
-          _formControl="couple"
-          (focusout)="commit('couple')"
-          >Couple</input-block
-        >
-      }
+        </collapsible-subsection>
+      </panel-section>
     }
-  </panel-section>
-}
+
+    <!--  CYLINDER BODY PANEL: selecting any of a cylinder's geometry selects
+        the body, and the body edits as one part. -->
+    @if (branch() === 'cylinder') {
+      <panel-section [frozen]="actions.panelIsFrozen()">
+        <editable-title-block
+          [subject]="actions.titleSubject()"
+          [deleteAction]="actions.deleteAction"
+          [deleteRefusal]="actions.deleteRefusal()"
+          [lockRefusal]="actions.lockRefusal()"
+          [lockState]="actions.lockState()"
+          [toggleLockAction]="actions.lockAction"
+          [displayName]="cylinder.displayName()"
+        >
+          Edit Cylinder
+        </editable-title-block>
+        <app-edit-banner panelAttached />
+        <collapsible-subsection
+          titleLabel="Cylinder"
+          [expanded]="sectionExpanded['LBasic']"
+          (opened)="sectionExpanded['LBasic'] = true"
+          (closed)="sectionExpanded['LBasic'] = false"
+        >
+          <!-- One size number and one position number. Barrel and rod are the same
+               length by construction, so stroke, closed and open are three ways of
+               saying the size; the picker changes which one you are typing, never the
+               part. -->
+          <input-block
+            [formGroup]="cylinder.fields"
+            _formControl="travel"
+            [unitOptions]="cylinder.travelUnitOptions"
+            unitFormControl="travelUnit"
+            [tooltip]="
+              cylinder.travelRefusal()?.long ??
+              'How far the rod moves. The picker reads it as the stroke, or as the closed and open lengths.'
+            "
+            >Travel
+          </input-block>
+          <input-block
+            [formGroup]="cylinder.fields"
+            _formControl="start"
+            [unitOptions]="cylinder.startUnitOptions()"
+            unitFormControl="startUnit"
+            tooltip="Where the rod begins its cycle: a share of the travel, or a length."
+            >Starts at
+          </input-block>
+          <!-- The same padlock a bar's angle carries, for the same reason: a cylinder
+               points somewhere, and a reader who has aimed it wants it to stay aimed
+               while the rest of the drawing moves. It has no Length row -- joint to
+               joint is the stroke, which is what the drive moves. -->
+          <hold-field-block
+            [formGroup]="cylinder.fields"
+            [subject]="cylinder.holdSubject"
+            only="angle"
+            angleHelp="The direction the cylinder points, joint to joint."
+          ></hold-field-block>
+          <button-block
+            [customIcon]="actions.isDriven() ? 'remove_input' : 'add_input'"
+            [disabled]="!!actions.driveRefusal()"
+            [tooltip]="actions.driveRefusal()?.long"
+            [click]="actions.toggleDrive"
+          >
+            {{ actions.isDriven() ? 'Remove Input' : 'Add Input' }}
+          </button-block>
+        </collapsible-subsection>
+        @if (actions.isDriven()) {
+          <div class="inputSettings">
+            <collapsible-subsection
+              titleLabel="Input Settings"
+              [expanded]="sectionExpanded['JInput']"
+              (opened)="sectionExpanded['JInput'] = true"
+              (closed)="sectionExpanded['JInput'] = false"
+            >
+              <button-block
+                [icon]="actions.inputDirectionIcon()"
+                [disabled]="actions.driveIsFrozen()"
+                [click]="actions.flipInputDirection"
+                >{{ actions.inputDirectionLabel() }}
+              </button-block>
+              <input-block
+                [formGroup]="cylinder.fields"
+                _formControl="inputSpeed"
+                [unit]="actions.linearSpeedUnitLabel()"
+                tooltip="How fast the rod travels. Use the direction button to choose opening or closing."
+                >Input Speed
+              </input-block>
+            </collapsible-subsection>
+          </div>
+        }
+        <collapsible-subsection
+          panelLive
+          [attr.inert]="actions.playingNow() || null"
+          titleLabel="Mass Settings"
+          [expanded]="sectionExpanded['LMass']"
+          (opened)="sectionExpanded['LMass'] = true"
+          (closed)="sectionExpanded['LMass'] = false"
+        >
+          <div class="massArea">
+            <!-- Three bodies, not one: the rod and head are welded rigid, but the
+                 rod's mass is spread along its length while the head's rides the
+                 joint -- the number that matters in a reciprocating machine. -->
+            <input-block
+              [formGroup]="cylinder.fields"
+              _formControl="barrelMass"
+              tooltip="The barrel's mass, acting at the barrel's own center."
+              >Barrel</input-block
+            >
+            <input-block
+              [formGroup]="cylinder.fields"
+              _formControl="rodMass"
+              tooltip="The rod's mass, spread along the rod."
+              >Rod</input-block
+            >
+            <input-block
+              [formGroup]="cylinder.fields"
+              _formControl="headMass"
+              [tooltip]="cylinder.slidingBodyRefusal.long"
+              >Sliding Body</input-block
+            >
+            <p class="massNote">
+              Each part's rotational inertia and center of mass are computed from its own shape and
+              the mass you give it.
+            </p>
+            @if (cylinder.cylinderHasCustomInertia()) {
+              <subtitle-block
+                icon="auto_fix_normal"
+                buttonLabel="Derive From Shape"
+                description="This cylinder's parts carry inertia values set by hand (or by an older file). Derive re-computes them from each part's own shape and keeps them current."
+                [click]="cylinder.deriveCylinderInertiaFromShape"
+              ></subtitle-block>
+            }
+          </div>
+        </collapsible-subsection>
+        <collapsible-subsection
+          titleLabel="Visual Settings"
+          [expanded]="sectionExpanded['LVisual']"
+          (opened)="sectionExpanded['LVisual'] = true"
+          (closed)="sectionExpanded['LVisual'] = false"
+        >
+          <color-picker
+            type="link"
+            [colors]="linkColors"
+            [selectedColor]="cylinder.barrel()?.presentation?.fill"
+            (colorSelected)="cylinder.setColor($event)"
+            >Cylinder Color</color-picker
+          >
+        </collapsible-subsection>
+      </panel-section>
+    }
+
+    <!--  LINK PANEL-->
+    @if (branch() === 'link') {
+      <panel-section [frozen]="actions.panelIsFrozen()">
+        <editable-title-block
+          [subject]="actions.titleSubject()"
+          [deleteAction]="actions.deleteAction"
+          [deleteRefusal]="actions.deleteRefusal()"
+          [lockRefusal]="actions.lockRefusal()"
+          [lockState]="actions.lockState()"
+          [toggleLockAction]="actions.lockAction"
+        >
+          Edit Link</editable-title-block
+        >
+        <app-edit-banner panelAttached />
+        <app-lock-banner panelAttached />
+        <collapsible-subsection
+          titleLabel="Basic Settings"
+          [expanded]="sectionExpanded['LBasic']"
+          (opened)="sectionExpanded['LBasic'] = true"
+          (closed)="sectionExpanded['LBasic'] = false"
+        >
+          <!-- Two stacked fields rather than the L / angle pair: each has a
+               padlock of its own, and a held one is read-only rather than
+               disabled. -->
+          <hold-field-block
+            [formGroup]="linkForm"
+            [subject]="holdSubject()"
+            [disabled]="!isBar()"
+          ></hold-field-block>
+          <dual-button
+            but1Text="Add tracer point"
+            but1Icon="add_tracer"
+            but2Text="Add force"
+            but2Icon="add_force"
+            [but1Action]="addTracer"
+            [but2Action]="addForce"
+          >
+          </dual-button>
+        </collapsible-subsection>
+        <collapsible-subsection
+          titleLabel="Visual Settings"
+          [expanded]="sectionExpanded['LVisual']"
+          (opened)="sectionExpanded['LVisual'] = true"
+          (closed)="sectionExpanded['LVisual'] = false"
+        >
+          <color-picker
+            type="link"
+            [colors]="linkColors"
+            [selectedColor]="linkFill()"
+            (colorSelected)="setLinkColor($event)"
+            >Link Color</color-picker
+          >
+          <!-- A switch, like the states above it: the row names the state, the
+               help mark says what it means. Why it cannot be switched rides on
+               the wrapper, because a disabled control gets no hover. -->
+          <div
+            class="shapeToggle"
+            [matTooltip]="discRefusal()?.long || ''"
+            [matTooltipDisabled]="!discRefusal()"
+            [matTooltipShowDelay]="400"
+            matTooltipPosition="above"
+          >
+            <toggle-block
+              [formGroup]="linkForm"
+              _formControl="drawAsDisc"
+              [disabled]="!!discRefusal()"
+              tooltip="Draw this link as the disc it sweeps, centered on its fixed pin. Its mass and rotational inertia are unchanged."
+            >
+              Draw as a Disc
+            </toggle-block>
+          </div>
+        </collapsible-subsection>
+        <collapsible-subsection
+          panelLive
+          [attr.inert]="actions.playingNow() || null"
+          titleLabel="Mass Settings"
+          [expanded]="sectionExpanded['LMass']"
+          (opened)="sectionExpanded['LMass'] = true"
+          (closed)="sectionExpanded['LMass'] = false"
+        >
+          <div class="massArea">
+            <input-block
+              [formGroup]="massFields.fields"
+              _formControl="mass"
+              tooltip="The mass of this link. Zero is an idealized massless bar, which gravity and inertia skip."
+              >Mass</input-block
+            >
+            <!-- Everything below Mass describes how that mass is distributed, so
+                 on a massless bar there is nothing for any of it to describe.
+                 Give it a mass and they come back. -->
+            @if (massFields.hasMass()) {
+              <!-- One legend for the two derived fields below: gray behind a
+                   hollow dot follows the shape, ink behind a filled one was set
+                   by hand and carries a ✕ to hand it back. -->
+              <div class="dotLegend">
+                <span class="dot"></span> from shape <span class="dot filled"></span> set by you
+                <button
+                  type="button"
+                  class="resetAll"
+                  [disabled]="!massFields.moiIsCustom() && !massFields.comIsCustom()"
+                  (click)="massFields.useUniformBody()"
+                >
+                  Reset All
+                </button>
+              </div>
+              <div class="dotRow">
+                <span class="dotRowLabel">Center of mass</span>
+                <!-- Not a form control, so the pose freeze that disables the
+                     fields around it does not reach here on its own. It has to:
+                     the frame decides what the two numbers below mean. -->
+                <select
+                  class="comFrameSelect"
+                  [disabled]="!!massFields.permission.refusal('properties')"
+                  (change)="massFields.setComFrame($any($event.target).value)"
+                  title="What the center of mass is held against while you edit, and the frame the two numbers below are read in. Centroid rides the link; Grid keeps its place on the drawing; a joint follows that pin alone. Once the mechanism runs it rides the link either way."
+                >
+                  <option value="centroid" [selected]="massFields.comFrame() === 'centroid'">
+                    Centroid
+                  </option>
+                  <option value="grid" [selected]="massFields.comFrame() === 'grid'">Grid</option>
+                  @for (anchor of massFields.anchors(); track anchor.id) {
+                    <option
+                      [value]="'joint:' + anchor.id"
+                      [selected]="massFields.comFrame() === 'joint:' + anchor.id"
+                    >
+                      Joint {{ anchor.label || 'Tracer Point' }}
+                    </option>
+                  }
+                </select>
+              </div>
+              <!-- Each field wears the pair's state, as the mock draws it. -->
+              <div class="comPairRow" [class.derived]="!massFields.comIsCustom()">
+                <span class="axisTag">X</span>
+                <state-input
+                  [formGroup]="massFields.fields"
+                  _formControl="comX"
+                  [state]="massFields.comIsCustom() ? 'custom' : 'auto'"
+                  clearTitle="Back to the shape's centroid"
+                  (cleared)="massFields.useUniformBodyCoM()"
+                />
+                <span class="axisTag">Y</span>
+                <state-input
+                  [formGroup]="massFields.fields"
+                  _formControl="comY"
+                  [state]="massFields.comIsCustom() ? 'custom' : 'auto'"
+                  clearTitle="Back to the shape's centroid"
+                  (cleared)="massFields.useUniformBodyCoM()"
+                />
+              </div>
+              <input-block
+                [formGroup]="massFields.fields"
+                _formControl="massMoI"
+                class="moiBlock"
+                tooltip="Moment of inertia about the link's center of mass. Derived from its shape until you type a value."
+                [class.derived]="!massFields.moiIsCustom()"
+                >Moment of inertia
+                <span fieldSuffix class="stateSuffix">
+                  <span class="dot" [class.filled]="massFields.moiIsCustom()"></span>
+                  @if (massFields.moiIsCustom()) {
+                    <button
+                      type="button"
+                      class="clearDot"
+                      title="Back to the shape's own inertia"
+                      (click)="massFields.useUniformBodyMoI()"
+                    >
+                      &#10005;
+                    </button>
+                  }
+                </span>
+              </input-block>
+            }
+          </div>
+        </collapsible-subsection>
+        @if (isCompound()) {
+          <collapsible-subsection
+            titleLabel="Compound Link Settings"
+            [expanded]="sectionExpanded['LCompound']"
+            (opened)="sectionExpanded['LCompound'] = true"
+            (closed)="sectionExpanded['LCompound'] = false"
+          >
+            <dual-button
+              but1Text="Un-weld All"
+              but1Icon="unweld_joint"
+              [but1Action]="unweldAll"
+            ></dual-button>
+          </collapsible-subsection>
+        }
+      </panel-section>
+    }
+
+    <!--  FORCE PANEL-->
+    @if (branch() === 'force') {
+      <panel-section [frozen]="actions.panelIsFrozen()">
+        <editable-title-block
+          [subject]="actions.titleSubject()"
+          [deleteAction]="actions.deleteAction"
+          [deleteRefusal]="actions.deleteRefusal()"
+          [lockRefusal]="actions.lockRefusal()"
+          [lockState]="actions.lockState()"
+          [toggleLockAction]="actions.lockAction"
+          >Edit Force</editable-title-block
+        >
+        <app-edit-banner panelAttached />
+        <collapsible-subsection
+          titleLabel="Basic Settings"
+          [expanded]="sectionExpanded['FBasic']"
+          (opened)="sectionExpanded['FBasic'] = true"
+          (closed)="sectionExpanded['FBasic'] = false"
+        >
+          <dual-input-block
+            label1="M"
+            label2="⊾"
+            formControl1="magnitude"
+            formControl2="angle"
+            [formGroup]="forceForm"
+            tooltip="The magnitude and angle of this force. Counter-clockwise is positive."
+          >
+            Magnitude and Angle
+          </dual-input-block>
+          <dual-input-block
+            label1="X"
+            label2="Y"
+            formControl1="xComp"
+            formControl2="yComp"
+            [formGroup]="forceForm"
+            tooltip="The x and y components of this force, in {{ forceUnitLabel() }}."
+          >
+            Force Components
+          </dual-input-block>
+          <radio-block
+            [formGroup]="forceForm"
+            _formControl="isGlobal"
+            tooltip="Global keeps the force pointing the same way. Local turns it with the link it is on."
+            option1="Link ({{ forceOwnerName() }})"
+            option2="Grid"
+          >
+            Reference frame
+          </radio-block>
+        </collapsible-subsection>
+        <collapsible-subsection
+          titleLabel="Visual Settings"
+          [expanded]="sectionExpanded['FVisual']"
+          (opened)="sectionExpanded['FVisual'] = true"
+          (closed)="sectionExpanded['FVisual'] = false"
+        >
+          <color-picker
+            type="force"
+            [colors]="linkColors"
+            [selectedColor]="forceColor()"
+            (colorSelected)="setForceColor($event)"
+            tooltip="The color of this force."
+            >Force Color</color-picker
+          >
+        </collapsible-subsection>
+      </panel-section>
+    }
+  </div>
+</div>

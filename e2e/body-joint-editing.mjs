@@ -45,12 +45,15 @@ async function measure(id) {
   const angle = Number.parseFloat(
     await page.getByRole('textbox', { name: 'Angle', exact: true }).inputValue()
   );
+  // The panel is the public Edit panel, which prints two decimals and whole
+  // degrees: the readout is checked to the precision it is written in.
   assert.ok(
-    Math.abs(length - Math.hypot(b.x - a.x, b.y - a.y)) < 1e-6,
+    Math.abs(length - Math.hypot(b.x - a.x, b.y - a.y)) <= 0.005,
     'Length reads the displayed material'
   );
+  const shown = ((body.pose.angle + Math.atan2(b.y - a.y, b.x - a.x)) * 180) / Math.PI;
   assert.ok(
-    Math.abs(angle - ((body.pose.angle + Math.atan2(b.y - a.y, b.x - a.x)) * 180) / Math.PI) < 1e-5,
+    Math.abs(((angle - shown + 540) % 360) - 180) <= 0.5,
     'Angle reads the displayed material'
   );
 }

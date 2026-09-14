@@ -72,12 +72,28 @@ try {
   await page.mouse.down();
   await page.mouse.move(850, 300, { steps: 6 });
   await page.mouse.up();
-  await page.getByRole('button', { name: 'Mass Properties', exact: true }).click();
+  // The panel is the public Edit panel: the section is Mass Settings, it is
+  // open on arrival, everything under Mass describes how that mass is spread --
+  // so a massless bar does not draw it -- and the center of mass is the bare
+  // pair under the frame picker rather than two labeled fields.
+  const massField = page.getByRole('textbox', { name: 'Mass', exact: true });
+  await massField.fill('1');
+  await massField.press('Tab');
+  await page.waitForTimeout(300);
   const untouched = await nativeState(page);
-  for (const name of ['Mass', 'Moment of Inertia', 'Center X', 'Center Y']) {
+  for (const name of ['Mass', 'Moment of inertia']) {
     const field = page.getByRole('textbox', { name, exact: true });
     await field.click();
     await field.press('Tab');
+  }
+  const centerFields = page.locator('app-native-inspector state-input input');
+  check(
+    'A link with a mass shows the center of mass as a pair',
+    (await centerFields.count()) === 2
+  );
+  for (const at of [0, 1]) {
+    await centerFields.nth(at).click();
+    await centerFields.nth(at).press('Tab');
   }
   check(
     'Tabbing through material readouts preserves automatic mass properties and history',

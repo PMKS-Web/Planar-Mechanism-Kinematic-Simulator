@@ -1,0 +1,57 @@
+<div id="joint-type-block" data-native-only="joint-type">
+  <!-- Which pair the choice below applies to, on a row the shape every other
+       setting row in the panel has: the name, its help mark, and the control at
+       the far end. -->
+  <div class="row pairRow">
+    <span class="label">Connection</span>
+    <mat-icon
+      matTooltip="Which pair of parts at this joint the choice below applies to."
+      matTooltipShowDelay="400"
+      class="label-help"
+      >help_outline</mat-icon
+    >
+    <div class="spacer"></div>
+    <select
+      class="pairPicker"
+      aria-label="Connection Pair"
+      [value]="chosenPair()?.key"
+      (change)="setPair($event)"
+    >
+      @for (pair of pairs(); track pair.key) {
+        <option [value]="pair.key">{{ pair.label }}</option>
+      }
+    </select>
+  </div>
+  <div class="row">
+    <span class="label">Joint Type</span>
+    <mat-icon
+      matTooltip="How the two parts at this joint move against each other."
+      matTooltipShowDelay="400"
+      class="label-help"
+      >help_outline</mat-icon
+    >
+    <div class="spacer"></div>
+  </div>
+  <!-- The reason a choice is gray rides on this row, not on the button: a
+       disabled button receives no pointer events, so its own tooltip would
+       never open. Entering the row is entering the option, so the row hears
+       the hover either way. -->
+  <div
+    class="row kindRow"
+    [matTooltip]="refusal()?.long || ''"
+    [matTooltipDisabled]="!refusal()"
+    [matTooltipShowDelay]="400"
+    matTooltipPosition="above"
+  >
+    <!-- Each option as wide as its own word: `Pin-in-slot` in a quarter of a
+         250px panel is `Pin-i…`, and an ellipsized choice is not a choice. -->
+    <segmented-block
+      [options]="options"
+      [selected]="selected()"
+      [disabledAt]="disabledAt()"
+      [compact]="true"
+      [fill]="false"
+      (selectedChange)="choose($event)"
+    ></segmented-block>
+  </div>
+</div>
