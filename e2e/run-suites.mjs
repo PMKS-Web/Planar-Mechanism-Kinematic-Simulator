@@ -36,7 +36,9 @@ import { spawn } from 'node:child_process';
 import { copyFile, mkdir, readdir, stat, writeFile } from 'node:fs/promises';
 import { createWriteStream } from 'node:fs';
 import path from 'node:path';
-import { SUITES, lanesOf } from './suites.mjs';
+import { readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { NOT_RUN, SUITES, lanesOf } from './suites.mjs';
 
 const argv = process.argv.slice(2);
 const flag = (name, fallback) => {
@@ -71,9 +73,32 @@ function shard(suites, index, count) {
   return bins[index - 1];
 }
 
-const wanted = SUITES.filter((suite) => suite.lanes.includes(lane)).filter(
-  (suite) => !only || only.split(',').some((part) => suite.name.includes(part.trim()))
-);
+/**
+ * Anything in `e2e/` the list does not name runs in the nightly until it does.
+ *
+ * This used to be a spec in the required check instead, and every open pull
+ * request that added a suite would have gone red on a file its author had no
+ * reason to touch the moment it merged staging. A suite nobody has classified
+ * yet is better run than refused: the nightly names it if it cannot pass, and
+ * nothing waits on the nightly. The seconds are a guess until someone writes
+ * the measured number into `suites.mjs`.
+ */
+const UNLISTED_SECONDS = 60;
+const known = new Set([...SUITES, ...NOT_RUN].map((entry) => entry.name));
+const unlisted = readdirSync(path.dirname(fileURLToPath(import.meta.url)))
+  .filter((file) => file.endsWith('.mjs'))
+  .map((file) => file.replace(/\.mjs$/, ''))
+  .filter((name) => !known.has(name))
+  .map((name) => ({
+    name,
+    seconds: UNLISTED_SECONDS,
+    lanes: ['nightly'],
+    note: 'Not in suites.mjs yet, so it runs in the nightly and nowhere else.',
+  }));
+
+const wanted = [...SUITES, ...unlisted]
+  .filter((suite) => suite.lanes.includes(lane))
+  .filter((suite) => !only || only.split(',').some((part) => suite.name.includes(part.trim())));
 // Nothing to run and a clean exit look the same from outside, and a `--only`
 // that matches nothing is a typo, not a pass.
 if (wanted.length === 0) {
@@ -81,6 +106,7 @@ if (wanted.length === 0) {
   process.exit(2);
 }
 const mine = shard(wanted, shardIndex, shardCount);
+const strangers = mine.suites.filter((suite) => unlisted.includes(suite));
 
 if (has('list')) {
   for (const suite of mine.suites)
@@ -95,6 +121,11 @@ const label = shardCount > 1 ? `shard ${shardIndex}/${shardCount} of ${lane}` : 
 console.log(
   `${label}: ${mine.suites.length} suites, about ${Math.round(mine.load / 60)} minutes\n`
 );
+if (strangers.length)
+  console.log(
+    `${strangers.length} of them not in suites.mjs, so running only here until they are: ` +
+      `${strangers.map((suite) => suite.name).join(', ')}\n`
+  );
 
 /** One attempt. Resolves with the exit code; the log is on disk either way. */
 function attempt(suite, logPath, append) {

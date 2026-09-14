@@ -19,24 +19,22 @@ describe('documentation inventories', () => {
     expect(missing, 'add a line for each of these to e2e/README.md').toEqual([]);
   });
 
-  // The same failure one layer down. `e2e/README.md` describing a suite does not
-  // make anything run it; only `suites.mjs` does, and a suite in neither lane is
-  // a suite nobody will notice has stopped working — which is how `locking.mjs`
-  // came to assert that lock marks stand down outside Edit for months after the
-  // analysis modes were made editable and the marks deliberately kept.
-  it('gives every e2e script a lane or a reason in e2e/suites.mjs', () => {
+  // `suites.mjs` says which lane a suite runs in; it is not what lets a suite
+  // run. Anything in `e2e/` it does not name runs in the nightly until it does
+  // (`run-suites.mjs`). This spec used to fail when a script was missing from
+  // the list, and in the required check that meant every open pull request
+  // adding a suite would go red over a file its author had no reason to touch.
+  // The mistake left to catch is the catalog's own: an entry for a script that
+  // has been deleted sends a shard looking for a file that is not there.
+  it('names no e2e script in e2e/suites.mjs that has been deleted', () => {
     const catalog = read('e2e/suites.mjs');
-    const named = new Set([...catalog.matchAll(/name: '([^']+)'/g)].map((found) => found[1]));
-    const scripts = readdirSync(resolve(ROOT, 'e2e'))
-      .filter((name) => name.endsWith('.mjs'))
-      .map((name) => name.replace(/\.mjs$/, ''));
-
-    const unclassified = scripts.filter((name) => !named.has(name));
-    expect(unclassified, 'add each of these to SUITES or NOT_RUN in e2e/suites.mjs').toEqual([]);
-
-    // And the other direction: a catalog entry for a file that has been deleted
-    // sends a shard looking for a script that is not there.
-    const gone = [...named].filter((name) => !scripts.includes(name));
+    const named = [...catalog.matchAll(/name: '([^']+)'/g)].map((found) => found[1]);
+    const scripts = new Set(
+      readdirSync(resolve(ROOT, 'e2e'))
+        .filter((name) => name.endsWith('.mjs'))
+        .map((name) => name.replace(/\.mjs$/, ''))
+    );
+    const gone = named.filter((name) => !scripts.has(name));
     expect(gone, 'these are named in e2e/suites.mjs but no longer exist').toEqual([]);
   });
 

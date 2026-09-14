@@ -125,8 +125,9 @@ Not suites — import them from one.
   `--retries`, `--list`. Shards are balanced by each suite's recorded seconds, longest first, and a
   run that overshoots its own estimate says so. It starts no browser and knows nothing about the
   app; `suites.mjs` is the list it walks.
-- `suites.mjs` — every script in this folder, its lane, and for anything in no lane, why. A spec
-  fails if a file here is in neither list, so a suite added tomorrow cannot quietly never run.
+- `suites.mjs` — which lane each script runs in, and for anything in no lane, why. A script it does
+  not name runs in the nightly until it does, so a suite added tomorrow is covered the night it lands
+  without failing anyone's required check.
 - `tools/serve-dist.mjs` — serves a built bundle, so eight CI shards can point at one
   `ng build --configuration development` instead of starting eight dev servers. Development, not
   production: `window.ng` is what most of these suites reach through, and optimization removes it.

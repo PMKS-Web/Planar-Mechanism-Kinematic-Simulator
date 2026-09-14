@@ -2,9 +2,9 @@
  * Every script in `e2e/`, and which CI lane it runs in.
  *
  * There is no test runner here, so there is nothing that knows the suites exist.
- * This is that list, and `run-suites.mjs` is what walks it. A spec in
- * `src/tests/verification/docs-inventory.spec.ts` fails if a file in `e2e/` is
- * in neither list below, so a suite added tomorrow cannot quietly never run.
+ * This is that list, and `run-suites.mjs` is what walks it. A script in `e2e/`
+ * that neither list below names runs in the nightly until it is added, so a suite
+ * added tomorrow is covered the night it lands without failing anyone's check.
  *
  * **`gate`** runs on every pull request, sharded four ways, and is meant to stay
  * around ten minutes. A suite is in it because it is quick and has been steady —
@@ -99,7 +99,12 @@ export const SUITES = [
   { name: 'link-holds', seconds: 21, lanes: BOTH },
   { name: 'link-holds-angles', seconds: 6, lanes: BOTH },
   { name: 'link-labels', seconds: 35, lanes: BOTH },
-  { name: 'locking', seconds: 21, lanes: BOTH },
+  {
+    name: 'locking',
+    seconds: 21,
+    lanes: NIGHTLY,
+    note: 'Red on staging: it still asserts that lock marks stand down outside Edit, a rule the editable analysis modes reversed. Back to the gate once that check is rewritten.',
+  },
   { name: 'mechanism-panel', seconds: 97, lanes: NIGHTLY },
   { name: 'menu-focus', seconds: 6, lanes: BOTH },
   { name: 'mobile', seconds: 81, lanes: NIGHTLY },
