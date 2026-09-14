@@ -17,8 +17,29 @@ here.
 `npm run lint:format`, `npm test -- --watch=false`, `npm run build`, `npm run build-storybook` and
 `git diff --check`, and a pull request cannot merge until it passes. `lint:format` covers these
 scripts too, so format an `.mjs` you edit.
-**No e2e suite runs in CI.** They are run by hand, locally, against a dev
-server — so a suite that nobody ran can be broken without anything turning red.
+
+**Some of these suites run in CI now, in two lanes**, and `e2e/suites.mjs` says which lane each one
+is in and why anything is left out of both:
+
+| Lane | When | What | Where |
+| --- | --- | --- | --- |
+| `gate` | every pull request | the fast, steady ones, four shards, about seven minutes | `.github/workflows/e2e-gate.yml` |
+| `nightly` | 09:00 UTC against `staging`, or on demand | everything a runner can drive, eight shards, retried once | `.github/workflows/e2e-nightly.yml` |
+
+```bash
+node e2e/run-suites.mjs --lane gate            # what a pull request will run
+node e2e/run-suites.mjs --list --lane nightly  # what the nightly will run, and how long it takes
+node e2e/run-suites.mjs --only playback        # a slice of a lane, by name
+```
+
+The lanes are not a ranking. A suite is in the gate because it is quick and has been steady, not
+because it matters more: `posed-edit-audit` is a quarter of an hour of the most careful checking
+here and will never gate anything. **The nightly is where a suite earns the gate** — and where one
+that has stopped deserving it gets found out.
+
+Four things no runner can do, listed with their reasons in `suites.mjs`: drive the real system
+cursor (`real-mouse-slots`), hold a performance baseline that is per-machine (`drag-perf`), and
+serve a second build to compare against (`reuse-parity`, `gallery-parity`). Those stay by hand.
 
 ## Prerequisites
 
@@ -52,6 +73,11 @@ gitignored — for example `artifacts/link-holds/` or `artifacts/posed-edit-audi
 older suites share `artifacts/screenshots/`, and most of those prefix their filenames with
 `RUN_PREFIX`. Look at what
 they save: an exit code tells you a check failed, not what the page looked like.
+
+`run-suites.mjs --retries` copies whatever a failing attempt wrote into
+`artifacts/failed-attempts/<suite>/` before running it again. Several suites empty their own
+directory before they write — `filmstrip()` does — so without that, the only frames left after a
+flake are the frames of the attempt that worked, which is the one nobody needs to look at.
 
 **Three suites rewrite tracked files**, and running them dirties the working tree:
 
@@ -95,6 +121,15 @@ Not suites — import them from one.
   them into one image. Anything that animates or responds to a drag needs a filmstrip, not a
   screenshot. The sheet needs Pillow under `python3`; without it the sheet is skipped with a
   warning and the frames are still written.
+- `run-suites.mjs` — runs a lane, in shards, and reports once: `--lane`, `--shard i/N`, `--only`,
+  `--retries`, `--list`. Shards are balanced by each suite's recorded seconds, longest first, and a
+  run that overshoots its own estimate says so. It starts no browser and knows nothing about the
+  app; `suites.mjs` is the list it walks.
+- `suites.mjs` — every script in this folder, its lane, and for anything in no lane, why. A spec
+  fails if a file here is in neither list, so a suite added tomorrow cannot quietly never run.
+- `tools/serve-dist.mjs` — serves a built bundle, so eight CI shards can point at one
+  `ng build --configuration development` instead of starting eight dev servers. Development, not
+  production: `window.ng` is what most of these suites reach through, and optimization removes it.
 - `drag-perf-harness.mjs` — the drag scenarios (`SCENARIOS`) and the machinery `drag-perf.mjs`
   and `drag-profile.mjs` share: `launch()`, `loadScenario`, `plainDrag`, `harnessFloor` (the
   protocol's own cost, to subtract), `profiledDrag`, and call counters that need a dev build.
