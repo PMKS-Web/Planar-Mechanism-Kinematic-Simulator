@@ -228,7 +228,7 @@ await pick('Global Units', 'Metric (cm)');
 await pick('Force Units', 'Kilogram-force (kgf)');
 const beforeSharing = await state();
 const url = await page.evaluate(() =>
-  ng.getComponent(document.querySelector('app-top-bar')).urlGeneration.generateUrlQuery()
+  ng.getComponent(document.querySelector('app-top-bar')).project.serialize()
 );
 await openMechanism(page, `${BASE}/?${url}`);
 const reopened = await state();

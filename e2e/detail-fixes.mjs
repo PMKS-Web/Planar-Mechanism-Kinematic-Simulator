@@ -155,12 +155,7 @@ const wasAnalysing = await page.evaluate(() =>
 );
 // Through the same call the library and the Open dialog both make.
 await page.evaluate((payload) => {
-  ng.getComponent(document.querySelector('app-top-bar')).urlProcessor.updateFromURL(
-    payload,
-    true,
-    true,
-    true
-  );
+  ng.getComponent(document.querySelector('app-top-bar')).project.open(payload, true, true, true);
 }, LONE_BAR);
 await page.waitForTimeout(2000);
 const nowEditing = await page.evaluate(() => {

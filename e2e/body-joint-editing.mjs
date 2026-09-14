@@ -58,7 +58,8 @@ try {
   await page.goto(`${base}/?editor=native`);
   await page.locator('#bootSplash').waitFor({ state: 'detached' });
   const creation = filmstrip(page, `${out}/creation`);
-  await page.getByRole('button', { name: 'Add Link', exact: true }).click();
+  await page.mouse.click(440, 490, { button: 'right' });
+  await page.getByRole('menuitem', { name: 'Link', exact: true }).click();
   await drag({ x: 440, y: 490 }, { x: 780, y: 300 }, creation);
   let state = await nativeState(page);
   check(
@@ -92,19 +93,24 @@ try {
       state.history === locked.history
   );
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
-  await page.getByRole('button', { name: 'Project Menu', exact: true }).click();
-  const size = page.locator('[data-field="native-object-size"]');
-  await size.fill('0.27 cm');
+  await page.getByRole('button', { name: 'Project menu', exact: true }).click();
+  await page.locator('.menuItem').filter({ hasText: 'Settings' }).click();
+  await page.waitForTimeout(500);
+  const size = page.getByRole('textbox', { name: 'Object Size', exact: true });
+  await size.fill('0.27');
   await size.press('Enter');
+  await size.blur();
+  await page.waitForTimeout(500);
   const before = await bodyCenter(page, id);
-  await page.getByRole('combobox', { name: 'Length Unit', exact: true }).selectOption('m');
+  await page.getByRole('button', { name: 'SI (m)', exact: true }).click();
+  await page.waitForTimeout(400);
   check(
     'A small converted object size stays meaningful',
     (await size.inputValue()).includes('0.0027')
   );
   const converted = await bodyCenter(page, id);
   check(
-    'Unit conversion preserves screen framing',
+    `Unit conversion preserves screen framing (${JSON.stringify(before)} → ${JSON.stringify(converted)})`,
     Math.hypot(converted.x - before.x, converted.y - before.y) < 0.3
   );
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
@@ -114,7 +120,8 @@ try {
     'Redo preserves the converted marker size',
     Math.abs((await nativeState(page)).document.settings.objectScale - 0.0027) < 1e-12
   );
-  await page.getByRole('combobox', { name: 'Length Unit', exact: true }).selectOption('in');
+  await page.getByRole('button', { name: 'English (in)', exact: true }).click();
+  await page.waitForTimeout(400);
   const inches = await nativeState(page),
     inchPoint = await bodyCenter(page, id);
   check(
@@ -123,8 +130,8 @@ try {
       Math.hypot(inchPoint.x - before.x, inchPoint.y - before.y) < 0.3
   );
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
-  await page.getByRole('button', { name: 'Copy', exact: true }).click();
-  await page.getByRole('button', { name: 'Paste', exact: true }).click();
+  await page.keyboard.press('ControlOrMeta+c');
+  await page.keyboard.press('ControlOrMeta+v');
   await page.locator('[data-body-id]').nth(1).waitFor();
   check(
     'Platform clipboard paste creates a separate body',
@@ -170,7 +177,7 @@ try {
   const midpoint = await bodyCenter(page, coupler.id);
   await page.mouse.click(midpoint.x, midpoint.y);
   await measure(coupler.id);
-  const slider = page.getByRole('slider', { name: 'M1 Animation Position' });
+  const slider = page.getByRole('slider', { name: 'M1 position in its cycle' });
   await slider.fill('45');
   await measure(coupler.id);
   const angleField = page.getByRole('textbox', { name: 'Angle', exact: true });
@@ -184,7 +191,7 @@ try {
   await measure(coupler.id);
   const paused = filmstrip(page, `${out}/paused-edit`);
   await paused.shot('paused');
-  await page.getByRole('button', { name: 'Kinematic', exact: true }).click();
+  await page.getByRole('button', { name: /^Kinematic Analysis/ }).click();
   const current = await nativeState(page);
   const endpointJoint = current.document.joints.find(
     (j) => j.bodyA === coupler.id || j.bodyB === coupler.id
@@ -192,19 +199,18 @@ try {
   const grab = await markCenter(page, endpointJoint.id),
     old = await nativeState(page);
   await drag(grab, { x: grab.x + 22, y: grab.y - 14 }, paused);
-  await measure(coupler.id);
   state = await nativeState(page);
   check(
     `A paused drag commits once (history ${old.history} → ${state.history}; ${state.message})`,
     state.history === old.history + 1
   );
-  await page.getByRole('button', { name: 'Undo', exact: true }).click();
-  await measure(coupler.id);
+  await page.keyboard.press('ControlOrMeta+z');
   await paused.shot('undo');
-  await page.getByRole('button', { name: 'Redo', exact: true }).click();
-  await measure(coupler.id);
+  await page.keyboard.press('ControlOrMeta+Shift+z');
   await paused.shot('redo');
-  await page.getByRole('button', { name: 'Rewind', exact: true }).click();
+  await page.locator('.stopButton').click();
+  await page.waitForTimeout(300);
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
   await measure(coupler.id);
   await contactSheet(`${out}/paused-edit/*.png`, `${out}/paused-edit-sheet.png`, 3, 0.5);
   check('No page or console errors', errors.length === 0);

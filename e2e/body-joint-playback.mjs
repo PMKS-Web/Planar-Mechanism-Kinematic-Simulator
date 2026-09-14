@@ -19,10 +19,14 @@ try {
   await openNative(page, 'two-clocks');
   check(
     'The fixture exposes two independent machine rows',
+    (await page.getByRole('slider').count()) === 1
+  );
+  await page.getByRole('button', { name: 'Control mechanisms independently', exact: true }).click();
+  check(
+    'Independent control exposes a row for each machine',
     (await page.getByRole('slider').count()) === 2
   );
-  await page.getByRole('checkbox', { name: 'Sync M2', exact: true }).uncheck();
-  await page.getByRole('slider', { name: 'M2 Animation Position', exact: true }).fill('25');
+  await page.getByRole('slider', { name: 'M2 position in its cycle', exact: true }).fill('25');
   const parked = await nativeState(page);
   check(
     'Seeking the second machine leaves the first at its anchor',
@@ -41,22 +45,24 @@ try {
     JSON.stringify(moved.document) === JSON.stringify(parked.document) &&
       moved.history === parked.history
   );
-  await page.getByRole('button', { name: 'Rewind', exact: true }).click();
+  await page.locator('.stopButton').click();
+  await page.waitForTimeout(300);
   check(
     'Rewind resets both clocks',
     (await nativeState(page)).clocks.every((c) => c.time === 0)
   );
 
   await openNative(page, 'axial');
-  await page.getByRole('button', { name: 'Fit to View', exact: true }).click();
+  await page.getByRole('button', { name: 'Fit full motion', exact: true }).click();
+  await page.waitForTimeout(700);
   const source = await nativeState(page),
     film = filmstrip(page, `${out}/two-cycles`);
-  await page.getByRole('button', { name: '1×', exact: true }).click();
+  await page.locator('.speedButton').click();
   await page.getByRole('button', { name: 'Play', exact: true }).click();
   let prior = 0,
     wraps = 0,
     frames = 0;
-  const deadline = Date.now() + 25000;
+  const deadline = Date.now() + source.paths[0].duration * 1100 + 4000;
   while (wraps < 2 && Date.now() < deadline) {
     const state = await nativeState(page),
       time = state.clocks[0].time;

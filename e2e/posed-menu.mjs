@@ -133,7 +133,7 @@ const loadPaused = async () => {
 };
 const roundtrip = async (name, before) => {
   const query = await page.evaluate(() =>
-    ng.getComponent(document.querySelector('app-top-bar')).urlGeneration.generateUrlQuery()
+    ng.getComponent(document.querySelector('app-top-bar')).project.serialize()
   );
   preserves(`${name} URL encoding`, before, await snapshot());
   const reopened = await context.newPage();

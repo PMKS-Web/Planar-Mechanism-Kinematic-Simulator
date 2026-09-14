@@ -205,7 +205,7 @@ const scrubbed = await shapeOf(page);
 record('the second machine can be moved on its own', scrubbed !== asDrawn);
 
 const shared = await page.evaluate(() =>
-  ng.getComponent(document.querySelector('app-top-bar')).urlGeneration.generateUrlQuery()
+  ng.getComponent(document.querySelector('app-top-bar')).project.serialize()
 );
 record('and sharing leaves the drawing exactly where it was', (await shapeOf(page)) === scrubbed, {
   scrubbed,

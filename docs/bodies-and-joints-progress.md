@@ -4,7 +4,7 @@
 
 ## Authority and status
 
-- Current authorization (2026-09-13, S5 request): implement S5 on the branch behind draft PR #13, preserve the documented visual language, validate with both browser workflows, and request Fable 5.1 review of the new stage with findings addressed. Add commits to this PR. S6–S8 and merging remain outside this request; do not create or reactivate a goal.
+- Current authorization (2026-09-14): PR #22 merged; rebase draft PR #13 onto staging and re-implement S5 inside the existing shell. At most three Fable 5.1 reviews are allowed during this correction, with a final review required and findings addressed. No spending cap. S6–S8, default cutover and merging remain outside this request. Do not start a goal.
 - Implementation starting commit: `487d535` on `bodies-and-joints-plan`.
 - Worktree: `.claude/worktrees/funny-swirles-3c6486`.
 - Current checkpoint: **S0–S4 complete; S5 in progress**. The native development route is the current work; the default cutover remains S6. Concrete interface choices are in [the contract](bodies-and-joints-contract.md); frozen catalogs/reference hashes are in [the baseline](bodies-and-joints-baseline.json).
@@ -2807,3 +2807,171 @@ The native editor still requires the development flag. S6 owns the analysis/expo
 fixture/template/tutorial and default switch; S7 owns the large legacy-code removal. Neither
 has been implemented under this S5 authorization. The public solver and legacy editor remain
 available during that staged cutover.
+
+## S5 reopened after the chrome seam merged (September 14)
+
+PR #22 merged at `0c0a4246`. The previous standalone native editor is not accepted S5:
+its copied root/chrome, palette, scale, fill and ruling diverged from the plan. Historical
+S5 evidence below/above proves those operations ran, not shared-shell visual acceptance.
+
+PR #13 is rebased onto that staging commit. The bootstrap conflict retains staging's single
+`AppComponent`; the existing native root is temporarily unreachable while native providers
+are wired. The overlapping locking suite retains the broader fresh-fixture assertions for
+paused analysis, a complete playing cycle, and restored lock marks. Both documentation index
+entries are retained. Backup branch: `backup/pr13-before-seam-20260914`.
+
+The current sequence is provider/indirect-consumer audit, native services and content slots,
+rendering/inspector parity, paired live/browser verification, final Fable review and fixes.
+S5 remains open until all of these are verified. The approved review allowance is at most
+three calls; the first is an architecture second opinion, with the final review reserved.
+
+### S5 rework review checkpoints (in progress)
+
+- **Architecture review — Fable #1/3:** `claude-fable-5-1`, session
+  `ab32da20-39b8-4a5b-be42-0821fcb1112c`, $3.49945175. Kept in
+  `artifacts/bodies-and-joints/S5-rework/reviews/architecture.json`. The native set must replace
+  indirect project, tutorial, settings and grid-document consumers, not merely the seven shell
+  tokens. The implementation uses one viewport and explicit content slots; the copied root
+  and its stylesheet are deleted.
+- **Adapter review — Fable #2/3:** `claude-fable-5-1`, session
+  `fa7f7a54-5c2d-4b1f-8eda-ba4651b4b519`, $10.9869045 total (Fable $10.9855585,
+  auxiliary Haiku $0.001346). Kept in `S5-rework/reviews/adapters.json`. Fixed stale direction
+  and running-clock keys after topology changes; combined scrubbing and synchronization now
+  use the longest leader's elapsed time; rotary direction follows the shared clockwise rule.
+  The startup query is consumed without overwriting recovery. Unit conversion settles the
+  force display unit in the same transaction and rebuilds legacy outlines. Unchanged setting
+  emissions no longer clear cursor state. Joint-name visibility stays outside edit history
+  and is overlaid only when explicitly saving or sharing. Focused adapter regressions cover
+  those cases. Mechanism selection also invalidates when an object selection replaces it.
+- **Final review — #3/3 (blocked before findings):** `claude-fable-5-1`, session
+  `b5864ad9-e4c0-4a88-96b6-a677b9c3f138`, $10.61221525 total (Fable $10.61045725,
+  auxiliary Haiku $0.001758). The read-only review inspected the S5 source but ended with
+  Anthropic's “session limit · resets 3pm (America/New_York)” before returning findings.
+  `S5-rework/reviews/final.json` records `is_error: true`. This is **not** review acceptance.
+  The maintainer chose to leave it pending until the reset. Resume this same review then; do not start a fourth review.
+
+The current paired fixture gallery is [native-shell-fixture-urls.md](native-shell-fixture-urls.md).
+The public Scotch Yoke exposed an incorrect native P glyph: its block must follow the rider,
+while the guide remains on its owner. The rod head follows the same rule. Frame-rebasing tests
+pin the skin and head, and the browser gesture test now asserts movement of the head rather
+than the old prototype's fixed mouth. Ground rails cover the accepted travel. Slot windows
+are cut from their carrier, welded material paints one contour, and the paused starting pose
+uses the established faint ghost treatment. These changes restore the public drawing language
+without adding material or constraint records for artwork.
+
+Intermediate runs found a missing fixture-document inventory entry and a gallery permission
+stub that still exposed `editingBanner` instead of `refusal`. Both are corrected. The controlled
+material-color picker has a gallery story that does not construct a legacy document service.
+
+
+### S5 rework verification notes
+
+The actual native canvas, shell and every drawer construct with all legacy document consumers
+replaced by throwing providers. The startup gate requires all thirteen ports/content slots.
+The shared X/Y block commits only the blurred coordinate, not both; committing the untouched
+coordinate after its neighbor's solve would undo part of the geometry and create a second edit.
+Rotary speed remains rpm in the inspector and converts to radians/second only at the native
+model boundary.
+
+Live standard Codex computer use on `http://localhost:4347` in an incognito Chrome window
+loaded the Scotch Yoke through the actual Project → Open dialog, watched the crank and sliding
+yoke, paused, inspected start ghosts and selected the pin-in-slot in the real Edit panel.
+Earlier rework live checks exercised four-bar pause/return and created a cylinder through the
+context menu. The regular Chrome profile was not used.
+
+The paired films exposed double padding in native full-motion framing and a scrub that chose
+the incoming leg when leaving a stroke stop. Framing now leaves bar thickness padding to the
+shared viewport; the scrub uses the shared track-continuity rule. Native playback also requests
+stroke-relative refinement, at most 1/360 of discovered retracing travel per interval, so a
+short stroke on a long bracket does not jump through coarse frames. Existing analysis callers
+keep their default path settings. The same solver and interval validators accept refined poses.
+
+The public-route baseline is the untouched PR22 tree on port 4327 (`eb46e298`, tree identical
+to `0c0a4246`), compared with port 4347. `chrome-provider-parity` passes all five drawings,
+coordinate edit/undo, context menus and phone/reduced-motion states with identical screenshots.
+Its semantic DOM normalization excludes only framework IDs, empty title attributes and the
+new transparent shared empty-state host. Native/public comparisons retain unmasked full drawing
+films and separately compare the shared shell; per-sample numerical readouts and thumb/anchor
+positions use the measured sample spacing plus display rounding, not a blanket pixel allowance.
+
+One full unit run overlapped browser suites and timed out in four existing Cylinder_Gripper
+checks: `force-solver.fixture`, `frame-joint-graphs`, `reversed-cycle`, and `analysis-graph`.
+All 3,064 other tests passed. The final full run is serial; no timeout was raised.
+
+The settings-drawer comparison exposed two pixels on the edge of the scaled Material switch
+whose compositor rounding differs between the two canvas surfaces. The native/public check
+allows at most four pixels above 12/255 channel difference, with an absolute 32/255 peak; it
+still compares semantic DOM, boxes and styles exactly. The public/PR22 check remains exact
+within its original per-channel threshold. Full drawing screenshots are retained separately
+from the shell-only comparison. This is not permission to mask a changed shell control.
+
+Tracked paired pose films (public above native) retain the actual drawing as well as its shell:
+[4-Bar](images/native-s5-shared-shell/4-Bar.png),
+[Scotch Yoke](images/native-s5-shared-shell/Scotch_Yoke.png),
+[Three Machines](images/native-s5-shared-shell/Three_Machines.png),
+[Slider Crank](images/native-s5-shared-shell/Slider_Crank.png), and
+[Cylinder Boom](images/native-s5-shared-shell/Cylinder_Boom.png).
+The complete unmasked burst films and comparison reports remain in
+`artifacts/bodies-and-joints/S5-rework/parity/`. The earlier standalone-editor images above
+are historical, rejected S5 evidence; they are not the current visual target.
+
+The paired phone flow caught a desktop tap setting the hidden phone sheet to expanded. Native
+pointer release now opens it only for a stationary object tap in the phone layout. It does not
+open on pointer-down, a drag, a long-press menu, or a desktop click. `native-chrome-parity`
+keeps the desktop-selection-to-phone-resize reproduction; `body-joint-mobile` covers touch.
+
+### Local verification before the pending final review
+
+- Shared grid/effects extraction: `6dfafe18`, kept separate from the adapter/rendering changes.
+- `chrome-provider-parity`: public route against the unchanged PR22 tree passes the five
+  drawings, editing/context flows and phone/reduced-motion checks.
+- `native-chrome-parity`: all 50 drawing/pose shell comparisons pass. The final focused
+  continuation passes desktop focus, the settings drawer and the collapsed phone shell,
+  then films phone opening, reduced-motion close/open and the paired joint context menu,
+  with no browser errors. The split runs are recorded as `fixtures-report.json` and
+  `report.json` in the parity artifact directory; this is not a claim of a single final
+  uninterrupted run. Earlier failures supplied the phone-tap regression and the documented
+  screenshot preconditions.
+- Public browser gates pass: `context-menu`, `right-drawer`, `two-mechanisms`, `mobile`
+  (79 checks), `ui-copy` (17 checks), and `force-units`.
+- Native browser gates pass: `body-joint-editing`, `body-joint-playback`,
+  `body-joint-properties`, `body-joint-gestures`, `body-joint-render`, `body-joint-mobile`,
+  `body-joint-review`, and `ui-copy-native`. Editing/playback and phone were rerun after the
+  final affected runtime changes. Tracked fixture loading now uses the shared Project port
+  rather than the removed top-bar private codec member.
+- Storybook builds; the sweep passes **144 entries with zero failures**. It includes the
+  controlled material color picker and both previously broken permission-banner stories.
+
+Additional inspected paired films:
+[coordinate edit](images/native-s5-shared-shell/coordinate-edit.png),
+[joint context menu](images/native-s5-shared-shell/joint-menu.png),
+[phone opening](images/native-s5-shared-shell/phone-opening.png), and
+[reduced-motion opening](images/native-s5-shared-shell/phone-reduced-open.png).
+The shared sheet slides with its normal timing, then the viewport reframes; reduced motion
+removes that travel. The actual phone frames retain readable complete hints and fields.
+
+**Final Fable continuation remains pending by maintainer choice.** In addition to the earlier
+review snapshot, it must assess the final coordinate-field commit boundary, stroke-relative
+sampling refinement/shared scrubbing, phone-tap correction, and real-canvas isolation test.
+No findings from that unfinished review are claimed, and S6/default cutover is not authorized
+by this local verification record.
+
+Final serial unit run: **347 files, 3,070 tests passed**, with no timeout changes.
+The earlier raw-fixture Undo expectation was corrected to compare with the normalized loaded
+document; the actual coordinate commit, one-history-entry assertion and Undo all pass.
+
+**Handoff correction (September 14, Claude Code).** The Codex session ended before these
+changes were committed or pushed; they were brought into a clean worktree and re-verified.
+The full suite there failed `always-on-features.spec` in full-suite order (`ɵcmp` of
+`undefined`), while the spec passed alone: `editor-content.ts` named the seven legacy panels in
+its default factory, and every panel that reaches `RightPanelComponent`'s statics closed a cycle
+through it (`.storybook/tools/cycles.mjs` counted 4 against staging's 2). The token now has no
+default; each shell card falls back to the components it imported on staging, so the public
+route needs no provider and the graph is staging's again. The native set still must provide
+`EDITOR_CONTENT` (`REQUIRED_EDITOR_PORTS`). The rerun of the whole gate is recorded on PR #13.
+
+The final production build, `npm run check` (ESLint, stylelint and Prettier), and
+`git diff --check` pass. The production build used the host environment because the sandbox's
+LMDB build-cache failure exits at `Building` without a diagnostic; the host build completed.
+Only touched files were formatted. The gallery and browser gates above were run on localhost
+servers, not inferred from CI or from a successful build.

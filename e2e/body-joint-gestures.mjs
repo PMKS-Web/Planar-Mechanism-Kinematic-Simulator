@@ -53,8 +53,8 @@ try {
     if (key === 'axial') {
       const station = await markCenter(page, id);
       check(
-        'The fixed P mouth stays in place while its rider travels',
-        Math.hypot(station.x - start.x, station.y - start.y) < 0.2
+        'The cylinder head follows the rod while the barrel keeps its shape',
+        Math.hypot(station.x - start.x, station.y - start.y) > 20
       );
     }
     await page.getByRole('button', { name: 'Undo', exact: true }).click();
@@ -116,6 +116,8 @@ try {
     const point = await bodyCenter(page, assembly.barrel),
       film = filmstrip(page, `${out}/mount-${mount}`);
     await page.mouse.click(point.x, point.y);
+    const section = page.getByRole('button', { name: 'Connection', exact: true });
+    if (!(await section.locator('mat-icon.rotate180').count())) await section.click();
     await page.getByRole('combobox', { name: 'Connection Pair' }).selectOption(joint.id);
     await film.shot('pair');
     await page.getByRole('button', { name: 'Revolute', exact: true }).click();

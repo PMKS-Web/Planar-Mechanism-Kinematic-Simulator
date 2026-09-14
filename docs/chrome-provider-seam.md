@@ -21,6 +21,8 @@ at review request; the remaining layout, icons and rendering defaults are unchan
 | S5: native providers and existing canvas/Edit panel slots | Reopened; not accepted |
 | S6: analysis/export/tutorial/default cutover | Blocked on corrected S5 acceptance |
 
+> PR #22 is merged. The historical seam scope below describes that PR; PR #13 supplies the native follow-through described at the end.
+
 ## What the seam promises
 
 `src/app/services/chrome/chrome-contracts.ts` contains the seven interfaces consumed by
@@ -96,3 +98,27 @@ Run `e2e/chrome-provider-parity.mjs` with `PMKS_BASELINE_URL` pointing to a seco
 untouched staging server; [e2e/README.md](../e2e/README.md#chrome-provider-seam-comparison)
 holds the command requirements. The gate needs independent builds and must not be run in a
 single-server CI lane pretending to compare two builds.
+
+## Native follow-through in PR #13 (S5)
+
+`AppComponent` remains the only root. The development query dynamically imports a complete
+native provider set before bootstrap. Production still chooses the legacy set. The seven
+chrome contracts now declare their own structural signatures. Additional project, status,
+tutorial, settings-command and grid-document ports close the indirect consumers found in
+S5; their legacy defaults preserve the public route. `EDITOR_CONTENT` varies the canvas and
+panel contents inside the existing cards, without copying navigation or layout.
+
+The native canvas uses the same `SvgGridService`, viewport handle, ruling, filters, mark
+geometry, palette and scale. Native settings persist through the document authority; grid
+preferences remain view state. Unit conversion is one edit and viewport compensation also
+covers Undo/Redo. Native project actions consume their own codec and recovery stores.
+Unfinished analysis, synthesis, library and export capabilities name the S6 boundary in the
+real panels/drawer instead of constructing their legacy consumers. S6 replaces those contents
+in place.
+
+`e2e/native-chrome-parity.mjs` publishes paired frames of all S0 mechanisms plus the production
+slider-crank. It compares shared chrome DOM, computed presentation and pixels. It excludes the
+cursor's model coordinates and numerical readout text; sample-position handles are bounded
+by sample spacing before masking their moving pixels. Initial stationary controls remain an
+exact pixel check. The native inspector's new entity fields are filmed separately from the
+shared panel frame. The independent public-route seam comparison remains required too.

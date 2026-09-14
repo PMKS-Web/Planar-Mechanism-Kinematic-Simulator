@@ -1,21 +1,15 @@
 # Bodies connected by joints
 
-> **Status:** Partly built — S0–S5 implemented; consumer/default cutover and removal gates remain S6–S8.
+> **Status:** Partly built — S0–S4 implemented; S5 reopened for shared-shell parity; S6–S8 remain pending.
 
 Planning baseline: `bodies-and-joints-plan` at `11fbe05070330dd193ac316ea0de7c64f2a6f1ca`,
 September 10, 2026, based on `staging` at `a3cac26a`. This document is the planning deliverable.
-The original proposal was one Codex `/goal` with Fable 5.1 reviews. Current authorization
-(September 13): S0–S4 are implemented; rebase and style alignment, a draft PR into staging,
-and a full-PR Fable review are complete. S5 on draft PR #13 is now complete under the maintainer’s authorization,
-including both UI validation workflows and a Fable 5.1 stage review. S6–S8 remain pending;
-the goal stays disabled.
-The execution ledger is authoritative for current status; the milestone descriptions below
-retain the complete migration scope. Unless a path starts with `src/`, model/service/component paths are
-relative to `src/app/`; e2e and docs paths are repository-relative. Named functions are the navigation anchors; older plans' line numbers are historical.
-While planning, the branch advanced to `968a046`, which removed mandatory cross-model review
-instructions from AGENTS.md/CLAUDE.md without changing application code. This plan follows that
-current policy: Codex performs UI validation itself; only the four user-requested Fable reviews
-are mandatory.
+Current authorization (September 14): PR #22 merged as `0c0a4246` on staging. Rebase
+and continue draft PR #13, re-implementing S5 in the existing application shell. The previous
+S5 implementation is not accepted: its second root and duplicated chrome violated the visual
+continuity gate. Use at most three Fable 5.1 reviews during this correction, with a final
+review required and actionable findings addressed. There is no spending cap. S6–S8, a default
+route cutover and merging PR #13 remain outside this request; do not start a goal.
 
 ## Decisions before implementation — recommended defaults
 
@@ -806,34 +800,46 @@ same paused-edit/history sequence without depending on unfinished UI. S5 supplie
 filmstrip. This checkpoint is not evidence that native browser editing is complete. F3 challenges the
 transaction, ownership and persistence contract before the native UI writes through it.
 
-### S5 — Joint interaction and grid cutover (Codex live UI review)
+### S5 — Native providers, shared shell and joint interaction (reopened)
 
-**Scope:** `component/new-grid/`, `component/edit-panel/`, `component/BLOCKS/context-menu/`,
-`context-menu-builder.service.ts`, `slider-mark.service.ts`, `model/joint-marks.ts`,
-`active-obj.service.ts`, `multi-edit.service.ts`, `selection-batch.service.ts`,
-`model/drop-target.ts`; body/assembly rendering helpers. New glyph helpers should live outside
-the grid hub and return typed marks/hit targets from the accepted document/view.
+**Prerequisite:** [PR #22](https://github.com/PMKS-Web/Planar-Mechanism-Kinematic-Simulator/pull/22)
+is merged. Its provider contracts and sole `AppComponent` root are the foundation; the
+[seam record](chrome-provider-seam.md) defines the boundary.
 
-Replace the two-toggle interpretation with joint kind/pair properties. Implement P travel
-dragging and free attachment creation, pair-specific welds, explicit delete scopes and group
-selection. Cylinder creation constructs two bodies/P once; skins cannot create topology.
-All preview/commit paths use S4 permissions. Include keyboard/touch, deselection, force
-handles, locks/holds and editing from analysis modes. No hidden five-point fallback.
+**Scope:** provide all seven native chrome implementations on `?editor=native` before
+bootstrap. Write scalar signatures explicitly rather than importing legacy service types.
+The legacy `MechanismService` must never be constructed on that route, including indirect
+consumers reached by load, selection, playback, history, project actions, settings and drawer
+opening. Extend the seam for a remaining consumer in place; never satisfy it with fake legacy
+Joint/Link objects or a second shell. Leave the default route unchanged.
 
-Unit controls must preserve meaningful precision for nonzero marker lengths across cm/m/in.
-The S4 incognito reference check found that a 0.27 cm Object Size displayed as 0.00 after
-switching to meters, and a size/coverage warning appeared despite unchanged on-screen size.
-Do not inherit these legacy defects. Native acceptance must cover conversion and Undo/Redo
-with unchanged framing, marker proportions and physically equivalent settings; coverage
-advisories must reflect settled screen coverage rather than the unit label or raw magnitude.
-The S4 paused-drag reference filmstrip also shows a distance-angle readout jumping on release
-while the selected joint remains in place. Native panel acceptance must compare distance and
-direction against the displayed attachments before, during and after re-anchoring, including
-Undo/Redo; never populate a displayed measurement from an authored-start transform.
-Also port `link-pose-readout`: a selected link must refresh after seek/play/pause/rewind without
-reselection, while unchanged poses leave unfinished typed input alone. The S4 live retry found
-the legacy Angle field keeping 23° beside an 80° rewound drawing; that reference defect was
-fixed, so it must not return during native cutover.
+Render native grid and inspector inside the existing canvas and Edit-panel slots. Delete
+`native-editor.component.*` and its duplicate shell stylesheet. Preserve the actual top strip,
+left card, transport/view controls, bottom status strip, right drawer and responsive sheet.
+Reuse `joint-colors.ts`, `render-scale.ts`, `SvgGridService`'s grid/view policy, registered SVG
+icons, existing fill treatment and shared blocks. A new entity does not create a new
+navigation system or inspector window. Remaining analysis/export/synthesis/tutorial consumers
+belong to S6 in their real slots; unfinished capabilities must say so truthfully.
+
+Preserve S4-authorized gestures: joint/attachment picking and pair-specific welding; typed
+joint settings; local/world/body transforms; dimensions, locks and holds; native history and
+re-anchoring; structural creation/deletion; groups and force handles; keyboard/touch. Cylinder
+creation constructs two bodies/P once; skins never create topology. Every refusal quotes the
+model. No hidden five-point fallback.
+
+**Acceptance:** a tracked suite opens the same fixture on both routes and checks identical
+chrome regions by DOM and screenshot. Necessary inspector choices for joint kinds/pairs are
+explicitly bounded differences. Capture a paired filmstrip for every S0 baseline flow and
+inspect it. Native-only passing tests are not evidence of parity. Compare shadows, spacing,
+palette, wording, focus, transitions and reduced motion and repair unnecessary drift.
+Use both Playwright and standard Codex computer use in incognito Chrome against localhost.
+
+**Checkpoints:** (1) rebase and audit indirect consumers; (2) native provider completeness and
+whole-route isolation with the real shell; (3) rendering and inspector parity plus native
+interaction coverage; (4) paired visual/integration gate; (5) final Fable 5.1 review, regressions
+for actionable findings, and commits on PR #13. Up to two earlier reviews are optional;
+record every call and its actual cost in the ledger. Do not begin S6 as a substitute for an
+unfinished S5 gate.
 
 **New specs:** `body-joint-marks.spec.ts` and `body-joint-interaction.spec.ts`; new browser
 `body-joint-editing.mjs` and `body-joint-render.mjs`. Existing browser gates:
@@ -852,7 +858,8 @@ P drag on a rotating carrier; mount weld/unweld at either cylinder end; external
 floating mount slots; a multiway R with only two welded members; accepted/refused bulk edit;
 undo/redo and zoom. Show a full cylinder out-and-back cycle rather than comparing only the
 first and last frames, which are the same pose. Codex must inspect the live interactions and
-intermediate frames itself; do not send another paid review request for this checkpoint.
+intermediate frames itself. The September 14 authorization requires a final Fable review
+and permits up to three reviews during this S5 correction.
 
 ### S6 — Analysis, export, tutorial, templates and default cutover (Codex self-review)
 
@@ -863,6 +870,7 @@ intermediate frames itself; do not send another paid review request for this che
 alone changes the two hub files. Complete these consumers against the stable record/result
 contracts, then make the native route the default in one integrated cutover.
 
+Build analysis and export inside the existing right drawer and mode panels, never in copies.
 Finish coordinate and reaction labeling, body/local attachment tables and CAD semantics.
 Route synthesis results through the native body/joint creation commands; preserve target
 poses, selected dyads, drive direction and synthesis-design persistence. Its mathematical

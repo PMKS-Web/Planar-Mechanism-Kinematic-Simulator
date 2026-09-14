@@ -43,7 +43,7 @@ try {
     await page.getByRole('menu').waitFor();
     await screen(`${key} context menu`);
     await page.keyboard.press('Escape');
-    await page.getByRole('button', { name: 'Project Menu', exact: true }).click();
+    await page.getByRole('button', { name: 'Project menu', exact: true }).click();
     await screen(`${key} project`);
   }
   assert.equal(errors.length, 0, errors.join('\n'));

@@ -473,3 +473,5 @@ Fixtures live in `src/test-utils/verification/native-editor-fixtures.ts`. Regene
 payload file and [reviewer URLs](../docs/native-fixture-urls.md) with
 `PMKS_WRITE_NATIVE_FIXTURES=1 npm test -- --watch=false --include=src/tests/verification/native-editor-gallery.spec.ts`.
 The regular gallery spec checks freshness without writing.
+
+`native-chrome-parity.mjs` compares explicitly paired legacy/native drawings in the shared shell for S5; its screenshots and report are in `artifacts/bodies-and-joints/S5-rework/parity/`.

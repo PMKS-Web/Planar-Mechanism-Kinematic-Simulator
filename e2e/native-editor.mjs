@@ -6,18 +6,23 @@ export const nativeFixtures = JSON.parse(
 export async function openNative(
   page,
   key,
-  base = process.env.PMKS_BASE_URL || 'http://localhost:4307'
+  base = process.env.PMKS_BASE_URL || 'http://localhost:4347'
 ) {
   const fixture = nativeFixtures.find((f) => f.key === key);
   assert.ok(fixture, `Native fixture ${key} is published`);
   await page.goto(`${base}/?editor=native&document=${encodeURIComponent(fixture.payload)}`);
-  await page.locator('#native-canvas').waitFor();
+  await page.locator('app-native-grid #canvas').waitFor();
   await page.locator('#bootSplash').waitFor({ state: 'detached' });
+  await page.waitForFunction(
+    () =>
+      !!window.ng?.getComponent(document.querySelector('app-native-grid'))?.svgGrid.panZoomObject
+  );
+  await page.waitForTimeout(400);
 }
 /** Read-only inspection supplements UI gestures; tests never install a document through this handle. */
 export function nativeState(page) {
   return page.evaluate(() => {
-    const root = window.ng.getComponent(document.querySelector('app-root'));
+    const root = window.ng.getComponent(document.querySelector('app-native-grid'));
     return {
       document: root.editor.store.document,
       drawing: root.editor.drawing(),

@@ -1345,7 +1345,7 @@ const ask = (p, fn) =>
     }`
   );
   const link = await p.evaluate(() =>
-    ng.getComponent(document.querySelector('app-top-bar')).urlGeneration.generateUrlQuery()
+    ng.getComponent(document.querySelector('app-top-bar')).project.serialize()
   );
   const reloaded = await browser.newPage({ viewport: { width: 1500, height: 950 } });
   reloaded.on('pageerror', (error) => errors.push(String(error)));
@@ -1569,7 +1569,7 @@ const ask = (p, fn) =>
     }`
   );
   const link = await p.evaluate(() =>
-    ng.getComponent(document.querySelector('app-top-bar')).urlGeneration.generateUrlQuery()
+    ng.getComponent(document.querySelector('app-top-bar')).project.serialize()
   );
   const opened = await browser.newPage({ viewport: { width: 1500, height: 950 } });
   opened.on('pageerror', (error) => errors.push(String(error)));
@@ -1629,7 +1629,7 @@ const ask = (p, fn) =>
   await ask(p, '(panel) => { panel.solution.driverWanted = false; panel.solution.insert(); }');
   await p.waitForTimeout(400);
   const link = await p.evaluate(() =>
-    ng.getComponent(document.querySelector('app-top-bar')).urlGeneration.generateUrlQuery()
+    ng.getComponent(document.querySelector('app-top-bar')).project.serialize()
   );
   await p.close();
   const opened = await browser.newPage({ viewport: { width: 1500, height: 950 } });

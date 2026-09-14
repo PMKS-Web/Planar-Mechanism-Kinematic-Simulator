@@ -25,7 +25,7 @@ try {
   await openNative(page, 'axial');
   const film = filmstrip(page, `${out}/sheet`);
   await film.shot('collapsed');
-  const handle = page.getByRole('button', { name: 'Open Edit Panel', exact: true });
+  const handle = page.getByRole('button', { name: 'Expand the panel', exact: true });
   check(
     'The phone panel starts collapsed',
     (await handle.getAttribute('aria-expanded')) === 'false'
@@ -35,18 +35,20 @@ try {
     await page.waitForTimeout(45);
     await film.shot(`opening-${i}`);
   }
-  await page.getByRole('button', { name: 'Close Edit Panel', exact: true }).click();
+  await page.getByRole('button', { name: 'Collapse the panel', exact: true }).click();
+  await page.waitForTimeout(400);
   await film.shot('closed');
   const bounds = await page.evaluate(() => {
-    const panel = document.querySelector('aside').getBoundingClientRect(),
-      controls = document.querySelector('.transport').getBoundingClientRect();
+    const grip = document.querySelector('.sheetGrip'),
+      panel = grip.getBoundingClientRect(),
+      controls = document.querySelector('app-playback-bar .scrubCard').getBoundingClientRect();
     return {
-      gap: controls.top - panel.bottom,
+      gap: controls.top - panel.bottom + parseFloat(getComputedStyle(grip).paddingBottom),
       outside: document.documentElement.scrollWidth > innerWidth,
     };
   });
   check(
-    'Phone cards retain the shared 12-pixel gap without horizontal overflow',
+    `Phone cards retain the shared 12-pixel gap without horizontal overflow (${JSON.stringify(bounds)})`,
     Math.abs(bounds.gap - 12) < 1 && !bounds.outside
   );
   const source = await nativeState(page);
@@ -71,7 +73,7 @@ try {
   await film.shot('long-press-menu');
   await page.keyboard.press('Escape');
   const before = await nativeState(page);
-  const view = await page.locator('#native-canvas').getAttribute('viewBox');
+  const view = await page.locator('#canvas .svg-pan-zoom_viewport').getAttribute('transform');
   await cdp.send('Input.dispatchTouchEvent', {
     type: 'touchStart',
     touchPoints: [
@@ -92,22 +94,27 @@ try {
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   check(
     'Pinching changes the view without changing material or history',
-    view !== (await page.locator('#native-canvas').getAttribute('viewBox')) &&
+    view !== (await page.locator('#canvas .svg-pan-zoom_viewport').getAttribute('transform')) &&
       JSON.stringify((await nativeState(page)).document) === JSON.stringify(before.document) &&
       (await nativeState(page)).history === before.history
   );
-  await page.getByRole('button', { name: 'View Controls', exact: true }).click();
-  await page.getByRole('button', { name: 'Fit to View', exact: true }).click();
+  await page.getByRole('button', { name: 'Show on the drawing', exact: true }).click();
   await film.shot('view-controls');
   check(
-    'The view drawer leaves the sheet handle uncovered',
+    'The shared view drawer stays inside the phone above its transport button',
     await page.evaluate(() => {
-      const drawer = document.querySelector('.view-controls').getBoundingClientRect(),
-        panel = document.querySelector('aside').getBoundingClientRect();
-      return drawer.bottom <= panel.top - 11;
+      const drawer = document.querySelector('.viewSheet').getBoundingClientRect(),
+        button = document.querySelector('.viewSheetButton').getBoundingClientRect();
+      return (
+        drawer.top >= 0 &&
+        drawer.left >= 0 &&
+        drawer.right <= innerWidth &&
+        drawer.bottom <= button.top
+      );
     })
   );
-  await page.getByRole('button', { name: 'View Controls', exact: true }).click();
+  await page.getByRole('button', { name: 'Fit to view', exact: true }).click();
+  await page.waitForTimeout(400);
   const movedFrom = await nativeState(page);
   const grip = await page
     .locator('[data-joint-kind="prismatic"]')

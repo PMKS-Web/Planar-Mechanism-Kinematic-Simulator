@@ -1641,3 +1641,33 @@ another glyph. Choosing a member still edits that member's properties, not the e
 - **WORLD anchors are not free tracers.** Removing the last connection using one must prune it
   from the document and locks; otherwise the native attachment layer puts an invisible hit
   circle over the restored pin. A surviving guideDisplay reference still counts as use.
+
+
+### Native S5 shared canvas: physical SVG dimensions and unit conversions
+
+A nested physical-unit SVG frame can give an `<image>` a width below one SVG unit even when
+its screen box is tens of pixels. Chromium reported the expected bounding box but did not
+paint the ground asset. Keep shared images in MODEL_SCALE units inside an inverse-scale
+wrapper; the surrounding material frame still uses physical units. Check pixels, not just
+`getBoundingClientRect()`.
+
+The shared Settings panel's usual two decimals can turn a valid meter-scale marker into
+`0.00`. Keep small positive values significant and apply physical bounds in the selected
+length unit. Native unit viewport compensation belongs to the document-change observer,
+so Undo/Redo receives the same compensation as the original command. A browser framing test
+must let the Settings drawer settle before measuring its before point, or it measures the
+camera's response to opening the drawer as a conversion error.
+
+Paired chrome screenshots must distinguish content from presentation. The solvers can land
+one sample apart on a bounded stroke: compare the normalized scrub values within sample
+spacing, then exclude those moving pixels. Never mask a whole transport or accept native-only
+screenshots. The cursor is a model coordinate at a screen point and also changes with an
+independently fitted camera; its text is not a chrome-layout difference.
+
+**A desktop tap must not pre-open the phone sheet.** Hammer reports desktop clicks too. In the
+native canvas, selection and phone-sheet opening belong to pointer release, using `isPhone`,
+the original target and whether the press traveled. Opening from Hammer's tap callback leaves
+an invisible expanded state on desktop that appears the next time the viewport becomes narrow.
+`native-chrome-parity` selects on desktop, then resizes, to retain this case. A resize's fit
+animation can also cross the shared zoom-warning threshold at different intermediate samples;
+dismiss transient notices before comparing the settled shell, without masking shell regions.

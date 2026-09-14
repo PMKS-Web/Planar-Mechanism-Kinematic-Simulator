@@ -39,13 +39,15 @@ try {
         els.map((el) => [el.getAttribute('data-ground-id'), el.getAttribute('transform')])
       );
     assert.ok(
-      await page.locator('.slot-channel').evaluateAll((channels) => {
-        const mark = document.querySelector('.joint-mark');
+      await page.evaluate(() => {
+        const material = document.querySelector('#linkHolder');
+        const joints = document.querySelector('#jointHolder');
         return (
-          !mark ||
-          channels.every(
-            (channel) =>
-              !!(channel.compareDocumentPosition(mark) & Node.DOCUMENT_POSITION_FOLLOWING)
+          !!material &&
+          !!joints &&
+          !!(material.compareDocumentPosition(joints) & Node.DOCUMENT_POSITION_FOLLOWING) &&
+          [...material.querySelectorAll('[data-body-id]')].every(
+            (path) => path.getAttribute('fill-rule') === 'evenodd'
           )
         );
       }),
@@ -53,9 +55,9 @@ try {
     );
     const first = state.paths[0];
     if (first) {
-      const slider = page.getByRole('slider', { name: 'M1 Animation Position' });
+      const slider = page.getByRole('slider').first();
       for (let i = 1; i <= 8; i++) {
-        await slider.fill(String(Math.round(((first.samples - 1) * i) / 8)));
+        await slider.fill(String(Math.round((1000 * i) / 8)));
         await film.shot(`cycle-${i}`);
         if (key === 'mount-slot-grounded')
           assert.deepEqual(
@@ -68,7 +70,8 @@ try {
             'World-fixed support marks stay fixed through travel'
           );
       }
-      await page.getByRole('button', { name: 'Rewind', exact: true }).click();
+      if (await page.locator('.stopButton').isEnabled()) await page.locator('.stopButton').click();
+      await page.waitForTimeout(300);
       const end = await nativeState(page);
       for (const body of state.drawing.bodies) {
         const next = end.drawing.bodies.find((b) => b.id === body.id);

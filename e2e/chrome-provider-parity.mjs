@@ -60,11 +60,14 @@ async function snapshot(name) {
           if (element.nodeType === Node.TEXT_NODE)
             return element.textContent.replace(/\s+/g, ' ').trim();
           if (!(element instanceof Element)) return null;
+          // Extracting the shared empty state adds a transparent host, not a shell region.
+          if (element.matches('app-empty-selection')) return [...element.childNodes].map(tree);
           // Framework-generated IDs vary with compilation; user-facing attributes,
           // text, geometry and computed presentation must not.
           const attrs = [...element.attributes]
             .filter((a) => /^(aria-|role$|title$|disabled$|hidden$|type$)/.test(a.name))
             .filter((a) => !/^(aria-describedby|aria-controls|aria-labelledby)$/.test(a.name))
+            .filter((a) => a.name !== 'title' || a.value !== '')
             .map((a) => [a.name, a.value]);
           const style = getComputedStyle(element),
             box = element.getBoundingClientRect();
@@ -84,6 +87,7 @@ async function snapshot(name) {
             ].map((key) => style[key]),
             children: [...element.childNodes]
               .map(tree)
+              .flat(Infinity)
               .filter((value) => value !== null && value !== ''),
           };
         };

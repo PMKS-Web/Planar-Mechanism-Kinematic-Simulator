@@ -123,6 +123,7 @@ try {
     const converted = after.document.joints.find((j) => j.kind !== 'revolute');
     const hit = await bodyCenter(page, converted.bodyB);
     await page.mouse.click(hit.x, hit.y);
+    await page.getByRole('button', { name: 'Connection', exact: true }).click();
     await page.getByRole('combobox', { name: 'Connection Pair' }).selectOption(converted.id);
     await page.getByRole('button', { name: 'Revolute', exact: true }).click();
     const restored = await nativeState(page);
@@ -169,13 +170,12 @@ try {
   check('An empty rename is refused without losing the name editor', await name.isVisible());
   await name.fill('Grounded Bracket');
   await name.press('Enter');
-  await page.locator('input[aria-label="Group Color"]').fill('#987654');
-  await page.locator('input[aria-label="Group Color"]').dispatchEvent('change');
+  await page.locator('color-picker .swatch').nth(3).click();
   after = await nativeState(page);
   check(
     'Grounded group rename and color use the same material membership',
     after.document.groups.some(
-      (g) => g.label === 'Grounded Bracket' && g.presentation.fill === '#987654'
+      (g) => g.label === 'Grounded Bracket' && g.presentation.fill === '#B2DFDB'
     )
   );
   await page.getByRole('button', { name: 'Delete', exact: true }).click();
@@ -191,7 +191,8 @@ try {
 
   await page.goto(`${process.env.PMKS_BASE_URL || 'http://localhost:4307'}/?editor=native`);
   await page.locator('#bootSplash').waitFor({ state: 'detached' });
-  await page.getByRole('button', { name: 'Add Link', exact: true }).click();
+  await page.mouse.click(550, 400, { button: 'right' });
+  await page.getByRole('menuitem', { name: 'Link', exact: true }).click();
   await page.mouse.move(550, 400);
   await page.mouse.down();
   await page.mouse.move(850, 500, { steps: 5 });
@@ -226,7 +227,7 @@ try {
       const dot = (p) => p.x * Math.cos(m.angle) + p.y * Math.sin(m.angle),
         ends = m.guide.map(dot).sort((a, b) => a - b);
       return (
-        document.querySelectorAll('.slot-channel').length === 1 &&
+        document.querySelectorAll('#railHolder line').length > 2 &&
         dot(m.rider) >= ends[0] &&
         dot(m.rider) <= ends[1]
       );

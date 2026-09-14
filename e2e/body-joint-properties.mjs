@@ -35,7 +35,7 @@ try {
       for (let i = 1; i <= 4; i++) {
         await page.mouse.move(
           from.x + ((1100 - from.x) * i) / 4,
-          from.y + ((650 - from.y) * i) / 4
+          from.y + ((500 - from.y) * i) / 4
         );
         await film.shot(`drag-${i}`);
       }
@@ -66,7 +66,8 @@ try {
     }
   await page.goto(`${process.env.PMKS_BASE_URL || 'http://localhost:4307'}/?editor=native`);
   await page.locator('#bootSplash').waitFor({ state: 'detached' });
-  await page.getByRole('button', { name: 'Add Link', exact: true }).click();
+  await page.mouse.click(450, 500, { button: 'right' });
+  await page.getByRole('menuitem', { name: 'Link', exact: true }).click();
   await page.mouse.move(450, 500);
   await page.mouse.down();
   await page.mouse.move(850, 300, { steps: 6 });
@@ -84,6 +85,8 @@ try {
       (await nativeState(page)).history === untouched.history
   );
   await page.getByRole('button', { name: 'Fix length', exact: true }).click();
+  await page.mouse.move(1100, 550);
+  await page.waitForTimeout(350);
   await page.getByRole('button', { name: 'Fix angle', exact: true }).click();
   const held = await nativeState(page);
   check(

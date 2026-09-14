@@ -193,7 +193,8 @@ The chrome resolves its seven document/history/grid/mode/selection/permission/se
 dependencies through `services/chrome/chrome-tokens.ts`. Their structural contracts
 are in `chrome-contracts.ts`; the default providers alias the existing services rather than
 creating another writer. `main.ts` selects providers before loading and keeps `AppComponent`
-as the sole root. Only legacy providers are installed. See
+as the sole root. The development-only `?editor=native` route installs native providers and
+uses the same shell, grid viewport and panel slots. Production still selects legacy. See
 [`docs/chrome-provider-seam.md`](docs/chrome-provider-seam.md) for the native follow-through
 and paired visual gate.
 
