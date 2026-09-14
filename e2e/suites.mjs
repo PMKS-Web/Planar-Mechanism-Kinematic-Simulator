@@ -99,12 +99,7 @@ export const SUITES = [
   { name: 'link-holds', seconds: 21, lanes: BOTH },
   { name: 'link-holds-angles', seconds: 6, lanes: BOTH },
   { name: 'link-labels', seconds: 35, lanes: BOTH },
-  {
-    name: 'locking',
-    seconds: 21,
-    lanes: NIGHTLY,
-    note: 'Red on staging: it still asserts that lock marks stand down outside Edit, a rule the editable analysis modes reversed. Back to the gate once that check is rewritten.',
-  },
+  { name: 'locking', seconds: 21, lanes: BOTH },
   { name: 'mechanism-panel', seconds: 97, lanes: NIGHTLY },
   { name: 'menu-focus', seconds: 6, lanes: BOTH },
   { name: 'mobile', seconds: 81, lanes: NIGHTLY },
