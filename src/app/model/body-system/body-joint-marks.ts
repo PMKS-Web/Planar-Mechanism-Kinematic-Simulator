@@ -56,7 +56,7 @@ export function bodyJointMarks(document: BodyDocument): readonly BodyJointMark[]
       key: j.id,
       target,
       jointIds: junction?.joints ?? [j.id],
-      label: j.label,
+      label: j.label || (assembly ? '' : (attachments.get(j.frameB.attachmentId)?.label ?? '')),
       grounded:
         j.bodyA === WORLD ||
         j.bodyB === WORLD ||
@@ -101,11 +101,12 @@ export function bodyJointMarks(document: BodyDocument): readonly BodyJointMark[]
     marks.push({
       ...base,
       kind: j.kind,
-      point: j.kind === 'prismatic' ? station : rider,
+      point: rider,
       angle: j.kind === 'prismatic' ? angle : axis,
       coordinate: { jointId: j.id, coordinate: 'travel' },
       rider,
       coordinateAxis,
+      attachmentId: sense === 1 ? j.frameB.attachmentId : j.frameA.attachmentId,
       materialOwner: j.kind === 'pin-in-slot' ? j.bodyB : undefined,
       driveSpeed: base.driveSpeed === undefined ? undefined : base.driveSpeed * sense,
       groundPoint:

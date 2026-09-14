@@ -14,8 +14,7 @@ svg {
   stroke: var(--border-divider);
 }
 .material {
-  stroke: var(--text-secondary);
-  stroke-width: 1;
+  stroke-width: 3;
   vector-effect: non-scaling-stroke;
   cursor: grab;
 }
@@ -31,9 +30,8 @@ svg {
   stroke: none;
 }
 .pin {
-  fill: var(--surface);
-  stroke: var(--text-black);
-  stroke-width: 1.5;
+  filter: url(#elevation-1);
+  stroke: none;
   vector-effect: non-scaling-stroke;
 }
 .prismatic {
@@ -43,33 +41,22 @@ svg {
   vector-effect: non-scaling-stroke;
 }
 .weld {
-  fill: none;
-  stroke: var(--text-black);
-  stroke-width: 4;
-  vector-effect: non-scaling-stroke;
+  fill: var(--text-black);
 }
-.attachment {
-  fill: var(--surface);
-  stroke: var(--text-secondary);
-  stroke-width: 1;
-  stroke-dasharray: 2 2;
+.axis-snap-guide {
+  stroke: var(--accent);
+  opacity: 0.7;
+  stroke-width: 1.5;
+  stroke-dasharray: 6 5;
   vector-effect: non-scaling-stroke;
+  pointer-events: none;
 }
-.ground {
-  fill: var(--surface-sunken);
-  stroke: var(--text-secondary);
-  stroke-width: 1;
-  vector-effect: non-scaling-stroke;
-}
-.selected .pin,
-.selected .prismatic,
-.selected .weld,
-.selected .attachment {
+.selected .prismatic {
   stroke: var(--accent);
   stroke-width: 3;
 }
 .slot-channel {
-  stroke: var(--surface-well);
+  stroke: var(--surface);
   stroke-linecap: round;
   pointer-events: none;
 }
@@ -117,10 +104,7 @@ svg {
 
 .trace {
   fill: none;
-  stroke: var(--accent);
-  stroke-width: 1;
-  stroke-dasharray: 3 3;
-  vector-effect: non-scaling-stroke;
+  stroke: var(--brand-darker);
   pointer-events: none;
 }
 
@@ -142,12 +126,34 @@ svg {
   pointer-events: none;
 }
 
-.input-arrow {
-  fill: none;
-  stroke: var(--text-black);
-  pointer-events: none;
+.animated {
+  transition: transform 0.32s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
-.input-arrow path {
-  stroke-width: 1.5;
-  vector-effect: non-scaling-stroke;
+@media (prefers-reduced-motion: reduce) {
+  .animated {
+    transition: none;
+  }
+}
+
+.selected .weld {
+  fill: var(--accent);
+  stroke: none;
+}
+
+.start-ghost {
+  opacity: 0.22;
+  stroke: none;
+  cursor: pointer;
+  transition: opacity 120ms ease-out;
+}
+.start-ghost:hover {
+  opacity: 0.4;
+}
+.selected-block {
+  fill: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .start-ghost {
+    transition: none;
+  }
 }

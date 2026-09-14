@@ -1,3 +1,4 @@
+import { BodyFactory } from './body-factory';
 import { nativeAxialCarriage } from '../../../test-utils/verification/native-cylinder-fixtures';
 import { nativeRotatingCylinder } from '../../../test-utils/verification/native-rotating-cylinder-fixture';
 import { buildSimulationSnapshot } from './build-simulation-snapshot';
@@ -39,3 +40,20 @@ it.each([nativeAxialCarriage, nativeRotatingCylinder])(
     expect(bodyMotionBounds(document, snapshot)).toHaveLength(2);
   }
 );
+
+it('leaves marker padding to the shared viewport instead of applying it twice', () => {
+  const factory = new BodyFactory();
+  factory.body(
+    'AB',
+    { x: 2, y: 3, angle: 0 },
+    [
+      { x: 0, y: 0 },
+      { x: 4, y: 0 },
+    ],
+    0.8
+  );
+  expect(bodyMotionBounds(factory.document)).toEqual([
+    { x: 2, y: 3 },
+    { x: 6, y: 3 },
+  ]);
+});

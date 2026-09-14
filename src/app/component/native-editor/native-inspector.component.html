@@ -1,285 +1,294 @@
-<panel-section [frozen]="!!refusal()">
-  <editable-title-block
-    [subject]="title()"
-    [deleteAction]="deleteAction"
-    [deleteRefusal]="refused(deleteCommand())"
-    [lockRefusal]="refused(editor.lockCommand())"
-    [lockState]="lockState()"
-    [toggleLockAction]="lockAction"
-    [renamable]="editor.selection().length === 1 && selected()?.kind !== 'junction'"
-  />
-  @if (refusal(); as why) {
-    <p panelAttached class="refusal">{{ why.long }}</p>
-  }
-  @if (editor.selection().length > 1) {
-    <p>Changes apply to every selected link together.</p>
-    <label class="choice"
-      >Link Color
-      <input
-        type="color"
-        aria-label="Selected Link Color"
-        [value]="bulkFills()[0]"
-        (change)="bulkColor($event)"
-    /></label>
-    @if (bulkFills().length > 1) {
-      <p>Mixed link colors</p>
+@if (!editor.selection().length) {
+  <app-empty-selection [empty]="editor.document().bodies.length === 1" [frozen]="!!refusal()" />
+} @else {
+  <panel-section [frozen]="!!refusal()">
+    <editable-title-block
+      [subject]="title()"
+      [displayName]="heading()"
+      [deleteAction]="deleteAction"
+      [deleteRefusal]="refusal() ? undefined : refused(deleteCommand())"
+      [lockRefusal]="refusal() ? undefined : refused(editor.lockCommand())"
+      [lockState]="lockState()"
+      [toggleLockAction]="lockAction"
+      [renamable]="editor.selection().length === 1 && selected()?.kind !== 'junction'"
+    />
+    @if (refusal(); as why) {
+      <p panelAttached class="refusal">{{ why.long }}</p>
     }
-    <input-block
-      [wide]="true"
-      [formGroup]="fields"
-      _formControl="mass"
-      [unit]="editor.document().units.mass"
-      (focusout)="bulkMass()"
-      >Mass Each</input-block
-    >
-  } @else {
-    @if (selected()?.kind === 'group' || selected()?.kind === 'assembly') {
-      <p>Select a member to edit its material properties.</p>
-      @if (selected()?.kind === 'group') {
-        <label class="choice"
-          >Group Color
-          <input
-            type="color"
-            aria-label="Group Color"
-            [value]="groupFill()"
-            (change)="groupColor($event)"
-        /></label>
-        @let why = refused(resetGroupCommand());
-        <button
-          mat-button
-          [disabled]="!!why"
-          [title]="why?.long || ''"
-          (click)="run(resetGroupCommand())"
-        >
-          Use Member Mass Properties
-          @if (why) {
-            <small>{{ why.short }}</small>
-          }
-        </button>
-      }
-      <label class="choice"
-        >Member
-        <select aria-label="Member" (change)="chooseMember($event)">
-          <option value="">Choose a Link</option>
-          @for (id of editor.bodies(); track id) {
-            <option [value]="id">{{ editor.bodyName(id) }}</option>
-          }
-        </select>
-      </label>
-    }
-    @if (pairs().length) {
-      <collapsible-subsection titleLabel="Connection" [expanded]="true">
-        <label class="choice"
-          >Pair
-          <select
-            aria-label="Connection Pair"
-            [value]="chosenPair()?.key"
-            (change)="setPair($event)"
-          >
-            @for (pair of pairs(); track pair.key) {
-              <option [value]="pair.key">{{ pair.label }}</option>
-            }
-          </select>
-        </label>
-        <div class="kind-options" role="group" aria-label="Joint Kind">
-          @for (kind of kinds; track kind) {
-            @let why = refused(kindCommand(kind));
-            <button
-              mat-button
-              [class.chosen]="selectedKind() === kind"
-              [disabled]="!!why"
-              [title]="why?.long || ''"
-              (click)="changeKind(kind)"
-            >
-              {{ kindLabel(kind) }}
-              @if (why) {
-                <small>{{ why.short }}</small>
-              }
-            </button>
-          }
-        </div>
-        <p>Changing this pair leaves the other connections at this point in place.</p>
-      </collapsible-subsection>
-    }
-    @if (body(); as material) {
-      <collapsible-subsection titleLabel="Basic Properties" [expanded]="true">
-        @if (material.geometry.kind === 'bar') {
-          <hold-field-block
-            [subject]="holdSubject()"
-            (lengthEntry)="editor.dimension.set($event === -1 ? 'length' : undefined)"
-            (angleEntry)="editor.dimension.set($event === -1 ? 'angle' : undefined)"
-            [formGroup]="fields"
-            (fieldCommit)="commit($event)"
-          />
-        }
-        <input-block
-          [wide]="true"
-          [formGroup]="fields"
-          _formControl="x"
-          dataField="native-x"
-          (focusout)="commit('x')"
-          tooltip="Horizontal position of the link's material origin."
-          >X</input-block
-        >
-        <input-block
-          [wide]="true"
-          [formGroup]="fields"
-          _formControl="y"
-          dataField="native-y"
-          (focusout)="commit('y')"
-          tooltip="Vertical position of the link's material origin."
-          >Y</input-block
-        >
-      </collapsible-subsection>
-      <app-native-material-properties [body]="material" />
-    }
-    @if (selected()?.kind === 'attachment') {
-      <input-block [wide]="true" [formGroup]="fields" _formControl="x" (focusout)="commit('x')"
-        >X</input-block
+    @if (editor.selection().length > 1) {
+      <p>Changes apply to every selected link together.</p>
+      <color-picker
+        [colors]="colors"
+        [selectedColor]="bulkFills().length === 1 ? bulkFills()[0] : undefined"
+        (colorSelected)="bulkColor($event)"
+        >Link Color</color-picker
       >
-      <input-block [wide]="true" [formGroup]="fields" _formControl="y" (focusout)="commit('y')"
-        >Y</input-block
-      >
-    }
-    @if (assembly()) {
-      <collapsible-subsection titleLabel="Cylinder Properties" [expanded]="true">
-        <input-block
-          [wide]="true"
-          [formGroup]="fields"
-          _formControl="barrelLength"
-          (focusout)="commit('barrelLength')"
-          >Barrel Length</input-block
-        >
-        <input-block
-          [wide]="true"
-          [formGroup]="fields"
-          _formControl="rodLength"
-          (focusout)="commit('rodLength')"
-          >Rod Length</input-block
-        >
-        <input-block
-          [wide]="true"
-          [formGroup]="fields"
-          _formControl="bore"
-          (focusout)="commit('bore')"
-          >Bore</input-block
-        >
-        <input-block
-          [wide]="true"
-          [formGroup]="fields"
-          _formControl="rodDiameter"
-          (focusout)="commit('rodDiameter')"
-          >Rod Diameter</input-block
-        >
-        <input-block
-          [wide]="true"
-          [formGroup]="fields"
-          _formControl="stroke"
-          (focusout)="commit('stroke')"
-          >Stroke</input-block
-        >
-      </collapsible-subsection>
-    }
-    @if (coordinateJoint(); as connection) {
-      @if (connection.kind === 'prismatic' || connection.kind === 'pin-in-slot') {
-        <input-block
-          [wide]="true"
-          [formGroup]="fields"
-          _formControl="travel"
-          dataField="native-travel"
-          (focusout)="commit('travel')"
-          >Travel</input-block
-        >
-        @if (!assembly()) {
-          <input-block
-            [wide]="true"
-            [formGroup]="fields"
-            _formControl="axis"
-            (focusout)="commit('axis')"
-            >Guide Angle</input-block
-          >
-        }
+      @if (bulkFills().length > 1) {
+        <p>Mixed link colors</p>
       }
-      @if (connection.kind !== 'weld') {
-        @if (!assembly()) {
-          <app-native-joint-limits [joint]="connection" />
-        }
-        <collapsible-subsection titleLabel="Input Settings" [expanded]="true">
-          @let why = refused(driveCommand());
+      <input-block
+        [wide]="true"
+        [formGroup]="fields"
+        _formControl="mass"
+        [unit]="editor.document().units.mass"
+        (focusout)="bulkMass()"
+        >Mass Each</input-block
+      >
+    } @else {
+      @if (selected()?.kind === 'group' || selected()?.kind === 'assembly') {
+        <p>Select a member to edit its material properties.</p>
+        @if (selected()?.kind === 'group') {
+          <color-picker
+            [colors]="colors"
+            [selectedColor]="groupFill()"
+            (colorSelected)="groupColor($event)"
+            >Group Color</color-picker
+          >
+          @let why = refused(resetGroupCommand());
           <button
             mat-button
             [disabled]="!!why"
             [title]="why?.long || ''"
-            (click)="run(driveCommand())"
+            (click)="run(resetGroupCommand())"
           >
-            {{ isDriven() ? 'Remove Input' : 'Add Input' }}
-            @if (why) {
+            Use Member Mass Properties
+            @if (why && !refusal()) {
               <small>{{ why.short }}</small>
             }
           </button>
+        }
+        <label class="choice"
+          >Member
+          <select aria-label="Member" (change)="chooseMember($event)">
+            <option value="">Choose a Link</option>
+            @for (id of editor.bodies(); track id) {
+              <option [value]="id">{{ editor.bodyName(id) }}</option>
+            }
+          </select>
+        </label>
+      }
+      @if (body(); as material) {
+        <collapsible-subsection titleLabel="Basic Settings" [expanded]="true">
+          @if (material.geometry.kind === 'bar') {
+            <hold-field-block
+              [subject]="holdSubject()"
+              (lengthEntry)="editor.dimension.set($event === -1 ? 'length' : undefined)"
+              (angleEntry)="editor.dimension.set($event === -1 ? 'angle' : undefined)"
+              [formGroup]="fields"
+              (fieldCommit)="commit($event)"
+            />
+          }
           <input-block
             [wide]="true"
             [formGroup]="fields"
-            _formControl="speed"
-            [unit]="
-              connection.kind === 'revolute' ? 'rad/s' : editor.document().units.length + '/s'
-            "
-            (focusout)="commit('speed')"
-            >Speed</input-block
+            _formControl="x"
+            dataField="native-x"
+            (focusout)="commit('x')"
+            tooltip="Horizontal position of the link's material origin."
+            >X</input-block
+          >
+          <input-block
+            [wide]="true"
+            [formGroup]="fields"
+            _formControl="y"
+            dataField="native-y"
+            (focusout)="commit('y')"
+            tooltip="Vertical position of the link's material origin."
+            >Y</input-block
+          >
+        </collapsible-subsection>
+        <app-native-material-properties [body]="material" />
+      }
+      @if (pointId()) {
+        <collapsible-subsection titleLabel="Basic Settings" [expanded]="true">
+          <dual-input-block
+            label1="X"
+            label2="Y"
+            formControl1="x"
+            formControl2="y"
+            dataField1="x"
+            dataField2="y"
+            [formGroup]="fields"
+            tooltip="Where this joint sits on the grid."
+            (focusout)="commitPoint($event)"
+            >Joint Position</dual-input-block
           >
         </collapsible-subsection>
       }
-    }
-    @if (traceCommand(); as command) {
-      @let why = refused(command);
-      <button mat-button [disabled]="!!why" [title]="why?.long || ''" (click)="run(command)">
-        {{ isTraced() ? 'Hide Traced Path' : 'Show Traced Path' }}
-        @if (why) {
-          <small>{{ why.short }}</small>
-        }
-      </button>
-    }
-    @if (force(); as force) {
-      <label class="choice"
-        >Force Axes
-        <select aria-label="Force Axes" [value]="force.frame" (change)="forceFrame($event)">
-          <option value="world">Grid</option>
-          <option value="body">Link</option>
-        </select></label
-      >
-      <label class="choice"
-        >Force Owner
-        <select aria-label="Force Owner" [value]="force.bodyId" (change)="forceOwner($event)">
-          @for (body of editor.document().bodies; track body.id) {
-            @if (body.kind === 'material') {
-              <option [value]="body.id">{{ body.label || 'Link' }}</option>
+      @if (pairs().length) {
+        <collapsible-subsection titleLabel="Connection" [expanded]="!body() && !assembly()">
+          <label class="choice"
+            >Pair
+            <select
+              aria-label="Connection Pair"
+              [value]="chosenPair()?.key"
+              (change)="setPair($event)"
+            >
+              @for (pair of pairs(); track pair.key) {
+                <option [value]="pair.key">{{ pair.label }}</option>
+              }
+            </select>
+          </label>
+          <div class="kind-options" role="group" aria-label="Joint Kind">
+            @for (kind of kinds; track kind) {
+              @let why = refused(kindCommand(kind));
+              <button
+                mat-button
+                [class.chosen]="selectedKind() === kind"
+                [disabled]="!!why"
+                [title]="why?.long || ''"
+                (click)="changeKind(kind)"
+              >
+                {{ kindLabel(kind) }}
+                @if (why && !refusal()) {
+                  <small>{{ why.short }}</small>
+                }
+              </button>
             }
+          </div>
+          <p>Changing this pair leaves the other connections at this point in place.</p>
+        </collapsible-subsection>
+      }
+      @if (assembly()) {
+        <collapsible-subsection titleLabel="Cylinder Properties" [expanded]="true">
+          <input-block
+            [wide]="true"
+            [formGroup]="fields"
+            _formControl="barrelLength"
+            (focusout)="commit('barrelLength')"
+            >Barrel Length</input-block
+          >
+          <input-block
+            [wide]="true"
+            [formGroup]="fields"
+            _formControl="rodLength"
+            (focusout)="commit('rodLength')"
+            >Rod Length</input-block
+          >
+          <input-block
+            [wide]="true"
+            [formGroup]="fields"
+            _formControl="bore"
+            (focusout)="commit('bore')"
+            >Bore</input-block
+          >
+          <input-block
+            [wide]="true"
+            [formGroup]="fields"
+            _formControl="rodDiameter"
+            (focusout)="commit('rodDiameter')"
+            >Rod Diameter</input-block
+          >
+          <input-block
+            [wide]="true"
+            [formGroup]="fields"
+            _formControl="stroke"
+            (focusout)="commit('stroke')"
+            >Stroke</input-block
+          >
+        </collapsible-subsection>
+      }
+      @if (coordinateJoint(); as connection) {
+        @if (connection.kind === 'prismatic' || connection.kind === 'pin-in-slot') {
+          <input-block
+            [wide]="true"
+            [formGroup]="fields"
+            _formControl="travel"
+            dataField="native-travel"
+            (focusout)="commit('travel')"
+            >Travel</input-block
+          >
+          @if (!assembly()) {
+            <input-block
+              [wide]="true"
+              [formGroup]="fields"
+              _formControl="axis"
+              (focusout)="commit('axis')"
+              >Guide Angle</input-block
+            >
           }
-        </select></label
-      >
-      <input-block
-        [wide]="true"
-        [formGroup]="fields"
-        _formControl="forceX"
-        [unit]="editor.document().units.force"
-        (focusout)="commit('forceX')"
-        >X Force</input-block
-      >
-      <input-block
-        [wide]="true"
-        [formGroup]="fields"
-        _formControl="forceY"
-        [unit]="editor.document().units.force"
-        (focusout)="commit('forceY')"
-        >Y Force</input-block
-      >
-      <input-block
-        [wide]="true"
-        [formGroup]="fields"
-        _formControl="couple"
-        (focusout)="commit('couple')"
-        >Couple</input-block
-      >
+        }
+        @if (connection.kind !== 'weld') {
+          @if (!assembly()) {
+            <app-native-joint-limits [joint]="connection" />
+          }
+          <collapsible-subsection titleLabel="Input Settings" [expanded]="true">
+            @let why = refused(driveCommand());
+            <button
+              mat-button
+              [disabled]="!!why"
+              [title]="why?.long || ''"
+              (click)="run(driveCommand())"
+            >
+              {{ isDriven() ? 'Remove Input' : 'Add Input' }}
+              @if (why && !refusal()) {
+                <small>{{ why.short }}</small>
+              }
+            </button>
+            <input-block
+              [wide]="true"
+              [formGroup]="fields"
+              _formControl="speed"
+              [unit]="
+                connection.kind === 'revolute' ? 'rpm' : editor.document().units.length + '/s'
+              "
+              (focusout)="commit('speed')"
+              >Speed</input-block
+            >
+          </collapsible-subsection>
+        }
+      }
+      @if (traceCommand(); as command) {
+        @let why = refused(command);
+        <button mat-button [disabled]="!!why" [title]="why?.long || ''" (click)="run(command)">
+          {{ isTraced() ? 'Hide Traced Path' : 'Show Traced Path' }}
+          @if (why && !refusal()) {
+            <small>{{ why.short }}</small>
+          }
+        </button>
+      }
+      @if (force(); as force) {
+        <label class="choice"
+          >Force Axes
+          <select aria-label="Force Axes" [value]="force.frame" (change)="forceFrame($event)">
+            <option value="world">Grid</option>
+            <option value="body">Link</option>
+          </select></label
+        >
+        <label class="choice"
+          >Force Owner
+          <select aria-label="Force Owner" [value]="force.bodyId" (change)="forceOwner($event)">
+            @for (body of editor.document().bodies; track body.id) {
+              @if (body.kind === 'material') {
+                <option [value]="body.id">{{ body.label || 'Link' }}</option>
+              }
+            }
+          </select></label
+        >
+        <input-block
+          [wide]="true"
+          [formGroup]="fields"
+          _formControl="forceX"
+          [unit]="editor.document().units.force"
+          (focusout)="commit('forceX')"
+          >X Force</input-block
+        >
+        <input-block
+          [wide]="true"
+          [formGroup]="fields"
+          _formControl="forceY"
+          [unit]="editor.document().units.force"
+          (focusout)="commit('forceY')"
+          >Y Force</input-block
+        >
+        <input-block
+          [wide]="true"
+          [formGroup]="fields"
+          _formControl="couple"
+          (focusout)="commit('couple')"
+          >Couple</input-block
+        >
+      }
     }
-  }
-</panel-section>
+  </panel-section>
+}

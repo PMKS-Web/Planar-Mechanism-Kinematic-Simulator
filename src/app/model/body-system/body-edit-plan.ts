@@ -1,3 +1,4 @@
+import { planBodyStartEdit } from './body-start-edit';
 import { BodyDocument } from './body-document';
 import { BodyEditCommand, BodyEditContext, BodyEditResult } from './body-edit-types';
 import { bodyOperationPermission } from './body-project-edit';
@@ -12,11 +13,15 @@ export function planBodyEdit(
   command: BodyEditCommand,
   context: BodyEditContext
 ): BodyEditResult {
+  if (command.operations.some((operation) => operation.kind === 'set-start'))
+    return planBodyStartEdit(document, revision, command, context);
   const direct =
     !!context.display &&
     command.operations.every((operation) => directBodyFrameOperation(document, operation));
   const permission = command.operations
-    .map((operation) => bodyOperationPermission(operation, context.state, !!context.display))
+    .map((operation) =>
+      bodyOperationPermission(operation, context.state, !!context.display, document)
+    )
     .find(Boolean);
   if (permission)
     return { ok: false, code: 'permission', message: permission.long, targets: [], permission };

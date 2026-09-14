@@ -1,4 +1,4 @@
-<collapsible-subsection titleLabel="Visual Properties">
+<collapsible-subsection titleLabel="Visual Settings">
   @if (body().geometry.kind === 'bar') {
     <input-block
       [formGroup]="fields"
@@ -8,14 +8,12 @@
       >Width</input-block
     >
   }
-  <label class="choice"
-    >Link Color
-    <input
-      type="color"
-      aria-label="Link Color"
-      [value]="body().presentation.fill"
-      (change)="color($event)"
-  /></label>
+  <color-picker
+    [colors]="colors"
+    [selectedColor]="body().presentation.fill"
+    (colorSelected)="color($event)"
+    >Link Color</color-picker
+  >
 </collapsible-subsection>
 <collapsible-subsection titleLabel="Mass Properties">
   <input-block

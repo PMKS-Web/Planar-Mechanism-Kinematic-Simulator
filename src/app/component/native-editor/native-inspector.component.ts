@@ -1,3 +1,7 @@
+import { DualInputComponent } from '../BLOCKS/dual-input/dual-input.component';
+import { ColorPickerComponent } from '../BLOCKS/color-picker/color-picker.component';
+import { PART_COLORS } from '../../model/joint-colors';
+import { EmptySelectionComponent } from '../empty-selection/empty-selection.component';
 import { bodyBarFieldCommand } from '../../model/body-system/body-bar-field-command';
 import { bodyBarHoldPair } from '../../model/body-system/body-bar-hold';
 import { bodyGroupPresentation } from '../../model/body-system/body-group-presentation';
@@ -31,6 +35,9 @@ import { menuRefusal } from '../../model/edit-permission';
   changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-native-inspector',
   imports: [
+    DualInputComponent,
+    ColorPickerComponent,
+    EmptySelectionComponent,
     NativeJointLimitsComponent,
     NativeMaterialPropertiesComponent,
     ReactiveFormsModule,
@@ -45,6 +52,7 @@ import { menuRefusal } from '../../model/edit-permission';
   styleUrl: './native-inspector.component.scss',
 })
 export class NativeInspectorComponent {
+  protected readonly colors = PART_COLORS;
   protected readonly editor = inject(NativeEditorService);
   protected readonly pair = this.editor.connectionPair;
   protected readonly kinds: readonly BodyJoint['kind'][] = [
@@ -66,6 +74,18 @@ export class NativeInspectorComponent {
     ),
   ]);
   protected readonly selected = computed(() => this.editor.selection()[0]);
+  protected readonly pointId = computed(() => {
+    const target = this.selected(),
+      document = this.editor.document();
+    if (target?.kind === 'attachment') return target.id;
+    if (target?.kind === 'junction')
+      return document.junctions.find((pin) => pin.id === target.id)?.hub;
+    if (target?.kind === 'joint') {
+      const joint = document.joints.find((joint) => joint.id === target.id);
+      if (joint?.kind === 'revolute' || joint?.kind === 'weld') return joint.frameB.attachmentId;
+    }
+    return undefined;
+  });
   protected readonly body = computed(() => {
     const target = this.selected();
     const b =
@@ -144,6 +164,22 @@ export class NativeInspectorComponent {
         : this.editor.name(),
     rename: (name: string) => this.editor.rename(name),
   }));
+  protected readonly heading = computed(() => {
+    if (this.editor.selection().length > 1) return 'Edit ' + this.title().name;
+    const target = this.editor.selection()[0],
+      name = this.editor.name();
+    const kind =
+      target?.kind === 'body'
+        ? 'Link'
+        : target?.kind === 'assembly'
+          ? 'Cylinder'
+          : target?.kind === 'group'
+            ? 'Welded Group'
+            : target?.kind === 'force'
+              ? 'Force'
+              : 'Joint';
+    return 'Edit ' + kind + (name === kind ? '' : ' ' + name);
+  });
   protected readonly deleteCommand = computed(() =>
     nativeCommand({ kind: 'delete', targets: this.editor.selection() })
   );
@@ -205,8 +241,8 @@ export class NativeInspectorComponent {
       if (body.mass.mass.mode === 'explicit') values['mass'] = nativeNumber(body.mass.mass.value);
     }
     const target = this.selected();
-    if (target?.kind === 'attachment') {
-      const p = attachmentWorld(d, target.id);
+    if (this.pointId()) {
+      const p = attachmentWorld(d, this.pointId()!);
       values['x'] = length(p.x);
       values['y'] = length(p.y);
     }
@@ -237,10 +273,10 @@ export class NativeInspectorComponent {
       }
       const drive = d.drivers.find((driver) => driver.coordinate.jointId === joint.id);
       values['speed'] = nativeNumber(
-        drive?.profile.speed ??
+        (drive?.profile.speed ??
           (joint.kind === 'revolute'
             ? d.settings.defaultDrive.angular
-            : d.settings.defaultDrive.linear)
+            : d.settings.defaultDrive.linear)) * (joint.kind === 'revolute' ? 30 / Math.PI : 1)
       );
     }
     return values;
@@ -283,6 +319,10 @@ export class NativeInspectorComponent {
       dimension: which,
       enabled: !this.holdSubject().dimensions.includes(which),
     });
+  }
+  protected commitPoint(event: FocusEvent) {
+    const field = (event.target as HTMLInputElement).dataset['field'];
+    if (field === 'x' || field === 'y') this.commit(field);
   }
   protected commit(field: string) {
     if (!this.fields.controls[field]) return;
@@ -333,14 +373,19 @@ export class NativeInspectorComponent {
     }
     if (joint && field === 'speed') {
       const driver = d.drivers.find((driver) => driver.coordinate.jointId === joint.id);
-      if (driver) this.editor.apply({ kind: 'driver-speed', driverId: driver.id, speed: value });
+      if (driver)
+        this.editor.apply({
+          kind: 'driver-speed',
+          driverId: driver.id,
+          speed: value * (joint.kind === 'revolute' ? Math.PI / 30 : 1),
+        });
       return;
     }
-    if (target?.kind === 'attachment' && (field === 'x' || field === 'y')) {
+    if (this.pointId() && (field === 'x' || field === 'y')) {
       this.editor.apply({
         kind: 'move-point',
-        attachmentId: target.id,
-        target: { ...attachmentWorld(d, target.id), [field]: value },
+        attachmentId: this.pointId()!,
+        target: { ...attachmentWorld(d, this.pointId()!), [field]: value },
       });
       return;
     }
@@ -387,7 +432,9 @@ export class NativeInspectorComponent {
             jointId: joint.id,
             coordinate: joint.kind === 'revolute' ? 'angle' : 'travel',
           },
-          speed: Number(this.fields.controls['speed'].value),
+          speed:
+            Number(this.fields.controls['speed'].value) *
+            (joint.kind === 'revolute' ? Math.PI / 30 : 1),
         });
   }
   protected isDriven() {
@@ -451,8 +498,8 @@ export class NativeInspectorComponent {
       }))
     );
   }
-  protected bulkColor(event: Event) {
-    const fill = (event.target as HTMLInputElement).value;
+  protected bulkColor(color: string) {
+    const fill = color;
     this.editor.apply(
       ...this.editor.bodies().map((bodyId) => ({
         kind: 'body-properties' as const,
@@ -468,13 +515,13 @@ export class NativeInspectorComponent {
     const group = frames.ok && frames.groupOf.get(member);
     return group ? bodyGroupPresentation(document, group).presentation?.fill : undefined;
   });
-  protected groupColor(event: Event) {
+  protected groupColor(color: string) {
     const target = this.selected();
     if (target?.kind !== 'group') return;
     this.editor.apply({
       kind: 'group-properties',
       members: target.members,
-      change: { presentation: { fill: (event.target as HTMLInputElement).value } },
+      change: { presentation: { fill: color } },
     });
   }
   protected resetGroupCommand() {

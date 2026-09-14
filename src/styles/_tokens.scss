@@ -133,6 +133,9 @@
 
   /* ---- Canvas: the SVG drawing's own marks ------------------------------- */
 
+  // Transparent ruling stays subdued over both paper and a tracing image.
+  --grid-minor: rgba(0, 0, 0, 0.05);
+  --grid-major: rgba(0, 0, 0, 0.1);
   --canvas-ink: #263238;
   --canvas-ink-faint: #26323855;
   /* The white outline that keeps a label legible over a busy drawing. */

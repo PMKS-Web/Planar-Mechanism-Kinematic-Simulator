@@ -58,6 +58,76 @@ function fixture(units: BodyUnits = SI_UNITS) {
 }
 
 describe('native properties through the displayed body frame', () => {
+  it('promotes only the selected machine to its displayed start and round-trips through history', () => {
+    for (const units of [
+      SI_UNITS,
+      { length: 'in', mass: 'lb', inertia: 'lb*in2', force: 'lbf' } as const,
+    ]) {
+      const f = fixture(units),
+        a = f.authority;
+      const before = a.document,
+        clocks = a.local.clocks,
+        display = a.display!;
+      const result = f.edit({ kind: 'set-start', bodyId: f.rod.body });
+      expect(result.ok).toBe(true);
+      expect(a.document.bodies.find((body) => body.id === f.rod.body)!.pose).toEqual(
+        display.poses.get(f.rod.body)
+      );
+      expect(a.document.bodies.find((body) => body.id === f.carriage.body)).toEqual(
+        before.bodies.find((body) => body.id === f.carriage.body)
+      );
+      expect(a.local.clocks.find((clock) => clock.driverId === f.carriage.driver.id)).toEqual(
+        clocks.find((clock) => clock.driverId === f.carriage.driver.id)
+      );
+      const old = clocks.find((clock) => clock.driverId === f.rod.driver.id)!;
+      expect(a.local.clocks.find((clock) => clock.driverId === old.driverId)).toMatchObject({
+        anchor: old.command,
+        command: old.command,
+        time: 0,
+      });
+      expect(a.display!.poses).toEqual(display.poses);
+      expect(a.undoDepth).toBe(1);
+      const promoted = a.document;
+      expect(a.undo(state).ok).toBe(true);
+      expect(a.document).toEqual(before);
+      expect(a.redo(state).ok).toBe(true);
+      expect(a.document).toEqual(promoted);
+    }
+  });
+
+  it('allows view settings at a playing pose but still refuses physical settings', () => {
+    const f = fixture(),
+      a = f.authority;
+    const before = a.document,
+      display = a.display!;
+    const playing = { ...state, playing: true };
+    const result = a.commit(
+      {
+        id: 'view',
+        operations: [{ kind: 'project', settings: { ...before.settings, showIds: false } }],
+      },
+      playing
+    );
+    expect(result.ok).toBe(true);
+    expect(a.document.settings.showIds).toBe(false);
+    expect(a.document.bodies).toEqual(before.bodies);
+    expect(a.display!.poses).toEqual(display.poses);
+    const refused = a.commit(
+      {
+        id: 'physics',
+        operations: [
+          {
+            kind: 'project',
+            settings: { ...a.document.settings, gravity: !before.settings.gravity },
+          },
+        ],
+      },
+      playing
+    );
+    expect(refused.ok).toBe(false);
+    expect(a.undoDepth).toBe(1);
+  });
+
   it('captures actual independent samples in document units without changing design or history', () => {
     for (const units of [
       SI_UNITS,

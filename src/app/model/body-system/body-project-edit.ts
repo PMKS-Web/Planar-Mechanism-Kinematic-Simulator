@@ -14,7 +14,8 @@ import {
 export function bodyOperationPermission(
   operation: BodyEditOperation,
   state: EditState,
-  displayedMapping = false
+  displayedMapping = false,
+  document?: BodyDocument
 ): EditRefusal | null {
   if (operation.kind === 'convert-units')
     return state.playing || !state.atStart ? SETTINGS_AT_START_ONLY : null;
@@ -42,7 +43,20 @@ export function bodyOperationPermission(
   }
   if (isBodyPropertyOperation(operation)) return menuRefusal(state, 'preserve');
   if (operation.kind === 'project') {
-    if (operation.settings && (state.playing || !state.atStart)) return SETTINGS_AT_START_ONLY;
+    if (operation.settings && (state.playing || !state.atStart)) {
+      const before = document?.settings,
+        after = operation.settings;
+      // View controls remain available during playback; physical settings still require the anchor.
+      if (
+        !before ||
+        before.gravity !== after.gravity ||
+        before.forceAnalysis !== after.forceAnalysis ||
+        before.objectScale !== after.objectScale ||
+        before.defaultDrive.angular !== after.defaultDrive.angular ||
+        before.defaultDrive.linear !== after.defaultDrive.linear
+      )
+        return SETTINGS_AT_START_ONLY;
+    }
     if (operation.synthesis !== undefined || operation.view?.backdrop || operation.view === null)
       return menuRefusal(state, 'view');
     return null;

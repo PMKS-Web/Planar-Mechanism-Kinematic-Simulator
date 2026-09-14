@@ -1,24 +1,53 @@
+import { bodySlotChannels } from '../../model/body-system/body-mounted-skin';
+import { LengthUnit } from '../../model/unit-enums';
+import { bodyCompoundMarks } from '../../model/body-system/body-compound-marks';
+import { INK_FLIPS_AT, luminanceOf } from '../../model/contrast';
+import { Coord } from '../../model/coord';
+import { snapToAxes, SnapGuide } from '../../model/axis-snap';
+import {
+  blockPath,
+  cylinderBlockPath,
+  cylinderArrowPaths,
+  motorBodyPath,
+  plusPath,
+  straightArrowPaths,
+  railGeometry,
+  GROUND_STROKE,
+  MARK,
+  CYLINDER,
+} from '../../model/joint-marks';
+import { bodyCenterMarks } from '../../model/body-system/body-center-marks';
+import { JOINT_FAMILIES } from '../../model/joint-colors';
+import { CanvasEffectsComponent } from '../canvas-effects/canvas-effects.component';
+import { GridRulingComponent } from '../grid-ruling/grid-ruling.component';
+import { MODEL_SCALE } from '../../model/render-scale';
+import { SvgGridService } from '../../services/svg-grid.service';
+import { ViewportService } from '../../services/viewport.service';
+import { CHROME_SETTINGS, CHROME_TABS } from '../../services/chrome/chrome-tokens';
+import { registerViewportCanvas } from '../../services/canvas-handle';
+import { DragStateService } from '../../services/drag-state.service';
+import { KeyboardShortcutsService } from '../../services/keyboard-shortcuts.service';
 import { turnsClockwise } from '../../model/drive-direction';
 import { bodyLockMarks } from '../../model/body-system/body-state-marks';
 import { bodyDimensionMark } from '../../model/body-system/body-dimension-mark';
-import { bodyMotionBounds, bodyTraceMarks } from '../../model/body-system/body-motion-marks';
+import { bodyMotionPoses, bodyTraceMarks } from '../../model/body-system/body-motion-marks';
 import { NativePlaybackService } from '../../services/native-playback.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { bodyGridStep } from '../../model/body-system/body-grid-marks';
 import { compileWeldFrames } from '../../model/body-system/weld-frames';
 import { bodyGroupPresentation } from '../../model/body-system/body-group-presentation';
-import Hammer from 'hammerjs';
 import { LongPress, LongPressDirective } from '../../long-press.directive';
 import { nativeMaterialSkin } from '../../model/body-system/body-cylinder-skin';
+import { bodyLabelMark } from '../../model/body-system/body-label-marks';
 import { BodyLoad } from '../../model/body-system/body-document';
 import { bodyForceMarks } from '../../model/body-system/body-force-marks';
-import { rotate } from '../../model/body-system/body-frame';
+import { localToWorld, rotate } from '../../model/body-system/body-frame';
 import { nativeCommand } from '../../model/body-system/body-joint-interaction';
 import { BodyDocument } from '../../model/body-system/body-document';
 import { refusalFor } from '../../model/edit-permission';
 import {
   ChangeDetectionStrategy,
-  AfterViewInit,
+  afterNextRender,
+  NgZone,
   Component,
   DestroyRef,
   ElementRef,
@@ -45,9 +74,7 @@ import { ModelFrameDirective, UprightDirective } from '../../model-frame.directi
 import { ContextMenuComponent } from '../BLOCKS/context-menu/context-menu.component';
 import { ContextMenuModel, trackContextMenuPointer } from '../BLOCKS/context-menu/menu-model';
 import { NativeContextMenuService } from '../../services/native-context-menu.service';
-import { freeCanvasRect } from '../../services/view-framing';
 import { MaterialBody } from '../../model/body-system/material-body';
-import { unitFactors } from '../../model/body-system/body-units';
 
 interface PointerEdit {
   readonly id: number;
@@ -57,7 +84,7 @@ interface PointerEdit {
   readonly coordinate?: number;
   readonly coordinateId?: string;
   readonly axis?: Point;
-  readonly pan?: Point;
+  readonly pan?: boolean;
   readonly creation?: { kind: 'link' | 'cylinder'; owner?: BodyId; document: BodyDocument };
   readonly force?: { load: BodyLoad; end: boolean; document: BodyDocument };
   readonly target?: BodySelectionRef;
@@ -71,7 +98,9 @@ interface PointerEdit {
   changeDetection: ChangeDetectionStrategy.Eager,
   selector: 'app-native-grid',
   imports: [
+    CanvasEffectsComponent,
     LongPressDirective,
+    GridRulingComponent,
     ModelFrameDirective,
     UprightDirective,
     CdkContextMenuTrigger,
@@ -80,12 +109,13 @@ interface PointerEdit {
   templateUrl: './native-grid.component.html',
   styleUrl: './native-grid.component.scss',
 })
-export class NativeGridComponent implements AfterViewInit {
+export class NativeGridComponent {
   protected readonly editor = inject(NativeEditorService);
   private readonly playback = inject(NativePlaybackService);
   protected readonly traces = computed(() =>
     bodyTraceMarks(this.editor.document(), this.playback.snapshot())
   );
+  private readonly shortcuts = inject(KeyboardShortcutsService);
   private readonly menus = inject(NativeContextMenuService);
   protected readonly longPress = viewChild(LongPressDirective);
   readonly multiple = signal(false);
@@ -94,8 +124,16 @@ export class NativeGridComponent implements AfterViewInit {
   >(undefined);
   protected readonly svg = viewChild.required<ElementRef<SVGSVGElement>>('canvas');
   protected readonly frame = viewChild.required<ElementRef<SVGGElement>>('frame');
-  protected readonly size = signal({ width: 1000, height: 700 });
-  protected readonly camera = signal({ x: 0, y: 0, scale: 80 });
+  protected readonly svgGrid = inject(SvgGridService);
+  protected readonly settings = inject(CHROME_SETTINGS);
+  private readonly tabs = inject(CHROME_TABS);
+  private readonly dragState = inject(DragStateService);
+  protected readonly MODEL_SCALE = MODEL_SCALE;
+  protected viewportReady(): boolean {
+    return this.svgGrid.panZoomObject !== undefined;
+  }
+  protected readonly hasMaterial = (body: BodyDocument['bodies'][number]) =>
+    body.kind === 'material';
   protected readonly marks = computed(() => bodyJointMarks(this.editor.drawing()));
   protected readonly material = computed(() => {
     const document = this.editor.drawing();
@@ -111,76 +149,215 @@ export class NativeGridComponent implements AfterViewInit {
         return presentation ? { ...body, presentation } : body;
       })
       .filter((body) => !body.presentation.hidden)
-      .sort((a, b) => Number(rods.has(b.id)) - Number(rods.has(a.id)));
+      .sort((a, b) => Number(rods.has(a.id)) - Number(rods.has(b.id)));
   });
-  protected readonly path = (body: MaterialBody) => nativeMaterialSkin(this.editor.drawing(), body);
+  protected readonly compounds = computed(() => bodyCompoundMarks(this.editor.drawing()));
+  protected compound(id: BodyId) {
+    return this.compounds().find((group) => group.members.includes(id));
+  }
+  protected readonly ghostPath = (body: MaterialBody) =>
+    nativeMaterialSkin(this.editor.document(), body) +
+    ' ' +
+    bodySlotChannels(this.editor.document(), body);
+  protected readonly path = (body: MaterialBody) =>
+    nativeMaterialSkin(this.editor.drawing(), body) +
+    ' ' +
+    bodySlotChannels(this.editor.drawing(), body);
+  protected label(body: MaterialBody) {
+    const compound = this.compound(body.id);
+    if (compound)
+      return compound.members[0] === body.id
+        ? {
+            point: compound.center,
+            name: compound.label,
+            angle: 0,
+            ink: luminanceOf(compound.fill) > INK_FLIPS_AT ? 'black' : 'white',
+          }
+        : undefined;
+    return bodyLabelMark(
+      this.editor.drawing(),
+      body,
+      this.settings.isShowCOM.value,
+      this.svgGrid.scaleWithZoom(1) / MODEL_SCALE
+    );
+  }
   protected readonly locks = computed(() =>
     this.editor.playing() ? [] : bodyLockMarks(this.editor.drawing())
   );
   protected readonly dimension = computed(() =>
     bodyDimensionMark(this.editor.drawing(), this.editor.selection()[0], this.editor.dimension())
   );
+  protected readonly centers = computed(() => bodyCenterMarks(this.editor.drawing()));
   protected readonly forces = computed(() => bodyForceMarks(this.editor.drawing()));
-  protected readonly gridStep = computed(() => bodyGridStep(this.camera().scale));
   protected readonly turnsClockwise = turnsClockwise;
-  protected readonly markerSize = computed(
-    () => this.editor.document().settings.objectScale * 0.16
-  );
-  protected readonly viewBox = computed(() => {
-    const c = this.camera(),
-      s = this.size();
-    return `${c.x - s.width / c.scale / 2} ${-c.y - s.height / c.scale / 2} ${s.width / c.scale} ${s.height / c.scale}`;
+  protected readonly plus = computed(() => plusPath(this.markerSize()));
+  protected readonly motorCase = computed(() => motorBodyPath(this.markerSize()));
+  protected readonly motorBox = computed(() => {
+    const size = this.editor.document().settings.objectScale * MODEL_SCALE * 1.2;
+    return { size, x: -0.505 * size, y: -0.435 * size };
   });
+  protected driveSpeed(mark: BodyJointMark): number | undefined {
+    if (mark.driveSpeed === undefined) return undefined;
+    const machine = this.playback
+      .machines()
+      .find((machine) =>
+        machine.frame.partition.drivers.some((driver) => mark.jointIds.includes(driver.row.jointId))
+      );
+    if (!machine) return mark.driveSpeed;
+
+    const authored = machine.frame.partition.drivers[0].speed;
+    // Reflected travel and a reader's reverse command both change the arrow, without editing the drive.
+    return mark.driveSpeed * this.playback.travelDirection(machine) * Math.sign(authored || 1);
+  }
+  protected motorAngle(mark: BodyJointMark): number {
+    const joint = this.editor.drawing().joints.find((joint) => joint.id === mark.key);
+    const body = this.editor.drawing().bodies.find((body) => body.id === joint?.bodyA);
+    return (body?.pose.angle ?? 0) + (joint?.frameA.angle ?? 0);
+  }
+
+  protected block(mark: BodyJointMark): string {
+    const ram = this.editor.document().assemblies.find((ram) => ram.internalJoint === mark.key);
+    if (!ram) return blockPath(this.markerSize());
+    const r = ram.dimensions.rodDiameter / (2 * CYLINDER.rodHalf);
+    return cylinderBlockPath(r, Math.min(MARK.blockAlongHalf * r, ram.dimensions.rodLength / 2));
+  }
+  protected arrows(mark: BodyJointMark) {
+    const ram = this.editor.document().assemblies.find((ram) => ram.internalJoint === mark.key);
+    const speed = this.driveSpeed(mark);
+    const leading = speed === undefined ? undefined : turnsClockwise(speed) ? -1 : 1;
+    if (!ram) return straightArrowPaths(this.markerSize(), leading);
+    const r = ram.dimensions.rodDiameter / (2 * CYLINDER.rodHalf);
+    return cylinderArrowPaths(
+      r,
+      Math.min(MARK.blockAlongHalf * r, ram.dimensions.rodLength / 2),
+      leading
+    );
+  }
+  protected rails(mark: BodyJointMark) {
+    if (!mark.guide || !mark.grounded) return undefined;
+    const attachment = this.editor
+      .document()
+      .attachments.find((point) => point.id === mark.attachmentId)!;
+    const snapshot = this.playback.snapshot();
+    const positions = snapshot
+      ? bodyMotionPoses(snapshot, attachment.bodyId).map((pose) =>
+          localToWorld(pose, attachment.point)
+        )
+      : [];
+    const axis = { x: Math.cos(mark.angle), y: Math.sin(mark.angle) };
+    const origin = mark.groundPoint ?? mark.guide[0];
+    const coordinates = positions.length
+      ? positions.map((point) => dot(subtract(point, origin), axis))
+      : mark.guide.map((point) => dot(subtract(point, origin), axis));
+    const min = Math.min(...coordinates),
+      max = Math.max(...coordinates);
+    const half = Math.max(
+      (max - min) / 2 + this.markerSize() * MARK.blockAlongHalf,
+      MARK.railHalfLengthMin * this.markerSize()
+    );
+    const center = {
+      x: origin.x + ((min + max) / 2) * axis.x,
+      y: origin.y + ((min + max) / 2) * axis.y,
+    };
+    return {
+      ...railGeometry(this.markerSize(), half),
+      transform: `translate(${center.x} ${center.y}) rotate(${(mark.angle * 180) / Math.PI})`,
+    };
+  }
+  protected readonly ghosts = computed(() => {
+    if (this.editor.playing()) return [];
+    const snapshot = this.playback.snapshot();
+    return this.editor.document().bodies.flatMap((body) => {
+      if (body.kind !== 'material' || body.presentation.hidden) return [];
+      const key = snapshot?.bodyPartition.get(body.id);
+      return key && (this.playback.indices().get(key) ?? 0) > 0 ? [{ body, key }] : [];
+    });
+  });
+  protected start(key: string, event: MouseEvent) {
+    event.stopPropagation();
+    this.playback.seek(key, 0);
+  }
+  protected readonly GROUND_STROKE = GROUND_STROKE;
+  protected readonly markerSize = computed(
+    () => this.editor.document().settings.objectScale * 0.15
+  );
   private readonly contextTrigger = viewChild.required<ElementRef<HTMLElement>>('contextTrigger');
   protected readonly menu = signal<ContextMenuModel>({ groups: [] });
   readonly tool = signal<'link' | 'cylinder' | undefined>(undefined);
   protected readonly travelGhost = signal<Point | undefined>(undefined);
+  protected readonly snapGuides = signal<readonly SnapGuide[]>([]);
+  private snapPoints: Point[] = [];
   private pointer?: PointerEdit;
   private pending?: PointerEvent;
   private animation = 0;
-  private lastUnit = 1;
-  ngAfterViewInit() {
-    trackContextMenuPointer();
-    const observer = new ResizeObserver((entries) => {
-      const r = entries[0].contentRect;
-      this.size.set({ width: r.width, height: r.height });
-    });
-    observer.observe(this.svg().nativeElement);
-    this.cleanup.onDestroy(() => {
-      observer.disconnect();
-      cancelAnimationFrame(this.animation);
-    });
-    this.lastUnit = unitFactors(this.editor.document().units).length;
-    this.editor.store.changes.pipe(takeUntilDestroyed(this.cleanup)).subscribe(() => {
-      const unit = unitFactors(this.editor.document().units).length,
-        factor = this.lastUnit / unit;
-      if (factor !== 1)
-        this.camera.update((c) => ({ x: c.x * factor, y: c.y * factor, scale: c.scale / factor }));
-      this.lastUnit = unit;
-    });
-    const hammer = new Hammer(this.svg().nativeElement, { inputClass: Hammer.TouchMouseInput });
-    hammer.get('pinch').set({ enable: true });
-    let scale = 1;
-    hammer.on('pinchstart pinchmove', (event: HammerInput) => {
-      this.cancel();
-      if (event.type === 'pinchstart') scale = this.camera().scale;
-      const synthetic = new MouseEvent('mousemove', {
-        clientX: event.center.x,
-        clientY: event.center.y,
+  constructor() {
+    const zone = inject(NgZone);
+    afterNextRender(() => {
+      const frame = requestAnimationFrame(() => {
+        if (!this.cleanup.destroyed) zone.run(() => this.initializeViewport());
       });
-      const before = this.point(synthetic);
-      this.camera.update((c) => ({ ...c, scale: scale * event.scale }));
-      const after = this.point(synthetic);
-      this.camera.update((c) => ({
-        ...c,
-        x: c.x + before.x - after.x,
-        y: c.y + before.y - after.y,
-      }));
+      this.cleanup.onDestroy(() => cancelAnimationFrame(frame));
     });
-    this.cleanup.onDestroy(() => hammer.destroy());
-    requestAnimationFrame(() => this.fit());
+  }
+  private initializeViewport() {
+    trackContextMenuPointer();
+    const lengthUnit = () =>
+      this.editor.document().units.length === 'cm'
+        ? LengthUnit.CM
+        : this.editor.document().units.length === 'm'
+          ? LengthUnit.METER
+          : LengthUnit.INCH;
+    let previousUnit = lengthUnit();
+    this.editor.store.changes.pipe(takeUntilDestroyed(this.cleanup)).subscribe(() => {
+      const nextUnit = lengthUnit();
+      this.svgGrid.compensateForUnitChange(previousUnit, nextUnit);
+      previousUnit = nextUnit;
+    });
+    this.shortcuts.pressedKeys.pipe(takeUntilDestroyed(this.cleanup)).subscribe(({ id }) => {
+      if (id === 'edit.deselect') {
+        this.cancel();
+        this.tool.set(undefined);
+        this.editor.select();
+      }
+    });
+    registerViewportCanvas({
+      // Pointer release owns selection and phone-sheet opening; Hammer also reports desktop clicks.
+      handleTap: () => undefined,
+      releaseCanvasGestures: (event) =>
+        event?.type === 'pointerup' ? this.up(event) : this.cancel(),
+      isGestureLive: () => !!this.pointer && !this.pointer.pan,
+      afterGlide: (run) => this.afterGlide(run),
+      enableGridAnimationForThisAction: () => this.enableGlide(),
+    });
+    this.svgGrid.setNewElement(this.svg().nativeElement as unknown as HTMLElement);
+    this.cleanup.onDestroy(() => {
+      registerViewportCanvas(undefined);
+      this.cancel();
+      clearTimeout(this.glideTimer);
+    });
+  }
+  private glideEndsAt = 0;
+  private glideTimer = 0;
+  private enableGlide() {
+    const viewport = this.svg().nativeElement.querySelector('.svg-pan-zoom_viewport');
+    viewport?.classList.add('animated');
+    clearTimeout(this.glideTimer);
+    this.glideEndsAt = performance.now() + 320;
+    this.glideTimer = window.setTimeout(() => {
+      this.glideEndsAt = 0;
+      viewport?.classList.remove('animated');
+    }, 320);
+  }
+  private afterGlide(run: () => void) {
+    const remaining = this.glideEndsAt - performance.now();
+    if (remaining > 0)
+      window.setTimeout(() => {
+        if (!this.cleanup.destroyed) run();
+      }, remaining + 16);
+    else run();
   }
   private readonly cleanup = inject(DestroyRef);
+  private readonly viewport = inject(ViewportService);
   protected point(event: MouseEvent | PointerEvent): Point {
     const matrix = this.frame().nativeElement.getScreenCTM()!;
     const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse());
@@ -201,6 +378,14 @@ export class NativeGridComponent implements AfterViewInit {
   protected pose(body: MaterialBody) {
     return `translate(${body.pose.x} ${body.pose.y}) rotate(${(body.pose.angle * 180) / Math.PI})`;
   }
+  protected jointFill(mark: BodyJointMark) {
+    const d = this.editor.document();
+    const id =
+      mark.attachmentId ?? d.joints.find((j) => mark.jointIds.includes(j.id))?.frameA.attachmentId;
+    const color = d.attachments.find((a) => a.id === id)?.color;
+    const family = JOINT_FAMILIES.find((f) => f.id === color) ?? JOINT_FAMILIES[0];
+    return this.selected(mark.target) ? family.selected : family.normal;
+  }
   protected markPose(mark: BodyJointMark) {
     return `translate(${mark.point.x} ${mark.point.y}) rotate(${(mark.angle * 180) / Math.PI})`;
   }
@@ -212,9 +397,13 @@ export class NativeGridComponent implements AfterViewInit {
   ) {
     if (event.button !== 0 && event.button !== 1) return;
     event.stopPropagation();
+    this.dragState.press();
     const at = this.point(event),
       screen = { x: event.clientX, y: event.clientY };
     this.svg().nativeElement.setPointerCapture(event.pointerId);
+    this.snapPoints = this.marks()
+      .filter((other) => other.key !== mark?.key)
+      .map((other) => other.point);
     const owner =
       materialOwner ??
       mark?.materialOwner ??
@@ -222,7 +411,7 @@ export class NativeGridComponent implements AfterViewInit {
     if (this.tool()) {
       this.pointer = {
         id: event.pointerId,
-        start: mark?.point ?? at,
+        start: mark?.point ?? this.snapped(at, event.altKey),
         screen,
         moved: false,
         creation: { kind: this.tool()!, owner, document: this.editor.drawing() },
@@ -239,7 +428,7 @@ export class NativeGridComponent implements AfterViewInit {
       return;
     }
     if (!target || event.button === 1) {
-      this.pointer = { ...base, pan: this.camera() };
+      this.pointer = { ...base, pan: true };
       return;
     }
     if (additive || refusalFor('drag', this.editor.state())) {
@@ -292,6 +481,7 @@ export class NativeGridComponent implements AfterViewInit {
     const load = this.editor.drawing().forces.find((f) => f.id === id)!;
     this.editor.select({ kind: 'force', id: load.id }, event.shiftKey);
     if (refusalFor('drag', this.editor.state())) return;
+    this.dragState.press();
     this.svg().nativeElement.setPointerCapture(event.pointerId);
     this.pointer = {
       id: event.pointerId,
@@ -303,6 +493,8 @@ export class NativeGridComponent implements AfterViewInit {
     };
   }
   protected move(event: PointerEvent) {
+    const at = this.point(event);
+    this.svgGrid.cursorAt = { x: at.x * MODEL_SCALE, y: at.y * MODEL_SCALE };
     if (!this.pointer || event.pointerId !== this.pointer.id) return;
     this.pending = event;
     if (!this.animation)
@@ -323,7 +515,7 @@ export class NativeGridComponent implements AfterViewInit {
       return;
     if (this.longPress()?.pressPending) return;
     p.moved = true;
-    const at = this.point(event);
+    let at = this.point(event);
     if (p.marquee) {
       this.selectionBox.set({
         x: Math.min(p.start.x, at.x),
@@ -333,14 +525,8 @@ export class NativeGridComponent implements AfterViewInit {
       });
       return;
     }
-    if (p.pan) {
-      this.camera.update((c) => ({
-        ...c,
-        x: p.pan!.x - (event.clientX - p.screen.x) / c.scale,
-        y: p.pan!.y + (event.clientY - p.screen.y) / c.scale,
-      }));
-      return;
-    }
+    if (p.pan) return;
+    if (p.creation || p.gesture) at = this.snapped(at, event.altKey);
     if (p.force) {
       const { load, end, document } = p.force;
       const body = document.bodies.find((b) => b.id === load.bodyId)!;
@@ -402,6 +588,19 @@ export class NativeGridComponent implements AfterViewInit {
       } else this.editor.report(result.message);
     }
   }
+  private snapped(wanted: Point, suspended: boolean): Point {
+    const grid = this.svgGrid.snapToGrid(
+      new Coord(wanted.x * MODEL_SCALE, wanted.y * MODEL_SCALE),
+      suspended
+    );
+    const at = { x: grid.x / MODEL_SCALE, y: grid.y / MODEL_SCALE };
+    const result =
+      this.settings.isSnapToAlignment.value && !suspended
+        ? snapToAxes(at, this.snapPoints, 8 / (this.svgGrid.getZoom() * MODEL_SCALE))
+        : { point: at, guides: [] };
+    this.snapGuides.set(result.guides);
+    return result.point;
+  }
   protected up(event: PointerEvent) {
     if (!this.pointer || event.pointerId !== this.pointer.id) return;
     this.advance(event);
@@ -439,6 +638,8 @@ export class NativeGridComponent implements AfterViewInit {
           this.editor.select(target);
       }
     } else p.gesture?.cancel();
+    if (!p.moved && p.target && event.button === 0 && this.viewport.isPhone())
+      this.tabs.sheetExpanded.set(true);
     if (p.creation) this.tool.set(undefined);
     this.cancel();
   }
@@ -447,7 +648,7 @@ export class NativeGridComponent implements AfterViewInit {
     document: BodyDocument
   ): { bodyId: BodyId; point: Point } | undefined {
     const at = this.point(event),
-      radius = 12 / this.camera().scale;
+      radius = 12 / (this.svgGrid.getZoom() * MODEL_SCALE);
     const marks = bodyJointMarks(document).filter(
       (mark) => Math.hypot(mark.point.x - at.x, mark.point.y - at.y) <= radius
     );
@@ -462,6 +663,7 @@ export class NativeGridComponent implements AfterViewInit {
     return body ? { bodyId: body.id, point: at } : undefined;
   }
   cancel() {
+    this.dragState.release();
     this.pointer?.gesture?.cancel();
     this.pointer = undefined;
     this.pending = undefined;
@@ -470,6 +672,8 @@ export class NativeGridComponent implements AfterViewInit {
     this.editor.draft.set(undefined);
     this.travelGhost.set(undefined);
     this.selectionBox.set(undefined);
+    this.snapGuides.set([]);
+    this.snapPoints = [];
   }
   protected held(press: LongPress) {
     this.cancel();
@@ -505,35 +709,10 @@ export class NativeGridComponent implements AfterViewInit {
     );
   }
   zoom(factor: number) {
-    this.camera.update((c) => ({ ...c, scale: Math.max(0.0001, Math.min(1e8, c.scale * factor)) }));
-  }
-  protected wheel(event: WheelEvent) {
-    event.preventDefault();
-    const before = this.point(event);
-    this.zoom(Math.exp(-event.deltaY * 0.001));
-    const after = this.point(event);
-    this.camera.update((c) => ({ ...c, x: c.x + before.x - after.x, y: c.y + before.y - after.y }));
+    if (factor > 1) this.svgGrid.zoomIn();
+    else this.svgGrid.zoomOut();
   }
   fit() {
-    const measured = this.svg().nativeElement.getBoundingClientRect();
-    this.size.set({ width: measured.width, height: measured.height });
-    const points = bodyMotionBounds(this.editor.drawing(), this.playback.snapshot()),
-      size = this.size(),
-      rect = freeCanvasRect(this.svg().nativeElement);
-    const minX = points.length ? Math.min(...points.map((p) => p.x)) : -5,
-      maxX = points.length ? Math.max(...points.map((p) => p.x)) : 5;
-    const minY = points.length ? Math.min(...points.map((p) => p.y)) : -4,
-      maxY = points.length ? Math.max(...points.map((p) => p.y)) : 4;
-    const scale =
-      Math.min(
-        rect.width / Math.max(maxX - minX, this.editor.document().settings.objectScale),
-        rect.height / Math.max(maxY - minY, this.editor.document().settings.objectScale)
-      ) * 0.7;
-    const bounds = this.svg().nativeElement.getBoundingClientRect();
-    this.camera.set({
-      x: (minX + maxX) / 2 - (rect.x - bounds.x + rect.width / 2 - size.width / 2) / scale,
-      y: (minY + maxY) / 2 + (rect.y - bounds.y + rect.height / 2 - size.height / 2) / scale,
-      scale,
-    });
+    this.svgGrid.scaleToFitLinkage();
   }
 }

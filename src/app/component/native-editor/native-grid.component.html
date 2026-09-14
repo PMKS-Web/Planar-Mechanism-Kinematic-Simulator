@@ -3,263 +3,424 @@
   (longPress)="held($event)"
   (pinched)="cancel()"
   #canvas
-  id="native-canvas"
+  id="canvas"
   aria-label="Mechanism grid"
-  [attr.viewBox]="viewBox()"
   (contextmenu)="context($event)"
   (pointerdown)="down($event)"
   (pointermove)="move($event)"
   (pointerup)="up($event)"
   (pointercancel)="cancel()"
-  (wheel)="wheel($event)"
 >
-  <defs>
-    <pattern
-      id="native-grid-lines"
-      [attr.width]="gridStep()"
-      [attr.height]="gridStep()"
-      patternUnits="userSpaceOnUse"
-    >
-      <path
-        [attr.d]="'M ' + gridStep() + ' 0 L 0 0 0 ' + gridStep()"
-        [style.stroke-width]="1 / camera().scale"
-        class="grid-line"
-      />
-    </pattern>
-  </defs>
-  <g #frame modelFrame>
-    @if (editor.document().settings.showMajorGrid) {
-      <rect x="-100000" y="-100000" width="200000" height="200000" fill="url(#native-grid-lines)" />
-    }
-    @for (trace of traces(); track trace.id) {
-      <path class="trace" [attr.d]="trace.path" />
-    }
-    @for (body of material(); track body.id) {
-      <path
-        [attr.d]="path(body)"
-        [attr.transform]="pose(body)"
-        [attr.fill]="body.presentation.fill"
-        class="material"
-        [class.selected]="bodySelected(body.id)"
-        [attr.data-body-id]="body.id"
-        [attr.aria-label]="body.label"
-        (pointerdown)="down($event, bodyTarget(body.id, $event.altKey), undefined, body.id)"
-        (contextmenu)="context($event, bodyTarget(body.id, $event.altKey), body.id)"
-      />
-    }
-    @for (mark of marks(); track mark.key) {
-      @if (mark.guide) {
-        <line
-          class="slot-channel"
-          [attr.x1]="mark.guide[0].x"
-          [attr.y1]="mark.guide[0].y"
-          [attr.x2]="mark.guide[1].x"
-          [attr.y2]="mark.guide[1].y"
-          [attr.stroke-width]="markerSize() * 1.6"
-        />
-      }
-    }
-    @for (mark of marks(); track mark.key) {
-      @if (mark.grounded) {
+  <defs appCanvasEffects [objectScale]="editor.document().settings.objectScale" />
+  @if (!editor.document().bodies.some(hasMaterial)) {
+    <rect
+      [attr.x]="-10 * MODEL_SCALE"
+      [attr.y]="-10 * MODEL_SCALE"
+      [attr.width]="20 * MODEL_SCALE"
+      [attr.height]="20 * MODEL_SCALE"
+      fill="none"
+    />
+  }
+  @if (!settings.tempGridDisable) {
+    <g id="backgroundAndGrid"><g appGridRuling /></g>
+  }
+  <g [attr.transform]="'scale(' + MODEL_SCALE + ')'">
+    <g #frame modelFrame>
+      <g id="pathsHolder">
+        @if (settings.isShowTraces.value) {
+          @for (trace of traces(); track trace.id) {
+            <path
+              class="trace"
+              [attr.d]="trace.path"
+              [attr.stroke-width]="editor.document().settings.objectScale * 0.01"
+            />
+          }
+        }
+      </g>
+      <g id="jointBGHolder">
+        @for (mark of marks(); track mark.key) {
+          @if (mark.grounded && !mark.guide) {
+            <g
+              [attr.transform]="
+                'translate(' +
+                (mark.groundPoint || mark.point).x +
+                ' ' +
+                (mark.groundPoint || mark.point).y +
+                ')'
+              "
+              pointer-events="none"
+            >
+              <g [attr.transform]="'scale(' + 1 / MODEL_SCALE + ')'">
+                <image
+                  [attr.href]="
+                    mark.kind === 'revolute' && mark.driveSpeed !== undefined
+                      ? turnsClockwise(driveSpeed(mark)!)
+                        ? 'assets/InputCW.svg'
+                        : 'assets/InputCCW.svg'
+                      : 'assets/Ground.svg'
+                  "
+                  [attr.data-ground-id]="mark.key"
+                  [attr.width]="editor.document().settings.objectScale * MODEL_SCALE * 1.2"
+                  [attr.height]="editor.document().settings.objectScale * MODEL_SCALE * 1.2"
+                  [attr.x]="
+                    -editor.document().settings.objectScale *
+                    MODEL_SCALE *
+                    (mark.kind === 'revolute' && mark.driveSpeed !== undefined ? 0.606 : 0.6)
+                  "
+                  [attr.y]="
+                    -editor.document().settings.objectScale *
+                    MODEL_SCALE *
+                    (mark.kind === 'revolute' && mark.driveSpeed !== undefined ? 0.522 : 0.42)
+                  "
+                  upright
+                />
+              </g>
+            </g>
+          }
+        }
+      </g>
+      <g id="motorHolder">
+        @for (mark of marks(); track mark.key) {
+          @if (mark.kind === 'prismatic' || mark.kind === 'pin-in-slot') {
+            <path
+              [attr.transform]="markPose(mark)"
+              [attr.d]="block(mark)"
+              fill="black"
+              pointer-events="none"
+            />
+          }
+          @if (mark.kind === 'revolute' && !mark.grounded && mark.driveSpeed !== undefined) {
+            <path
+              [attr.transform]="
+                'translate(' +
+                mark.point.x +
+                ' ' +
+                mark.point.y +
+                ') rotate(' +
+                (motorAngle(mark) * 180) / 3.141592653589793 +
+                ')'
+              "
+              [attr.d]="motorCase()"
+              fill="black"
+              pointer-events="none"
+            />
+          }
+        }
+      </g>
+      @for (ghost of ghosts(); track ghost.body.id) {
         <path
-          class="ground"
-          [attr.data-ground-id]="mark.key"
-          [attr.transform]="
-            'translate(' +
-            (mark.groundPoint || mark.point).x +
-            ' ' +
-            (mark.groundPoint || mark.point).y +
-            ')'
-          "
-          [attr.d]="
-            'M ' +
-            -markerSize() * 1.5 +
-            ' ' +
-            -markerSize() * 1.9 +
-            ' L 0 0 L ' +
-            markerSize() * 1.5 +
-            ' ' +
-            -markerSize() * 1.9 +
-            ' Z'
-          "
+          class="start-ghost"
+          [attr.d]="ghostPath(ghost.body)"
+          [attr.transform]="pose(ghost.body)"
+          [attr.fill]="ghost.body.presentation.fill"
+          (click)="start(ghost.key, $event)"
+          aria-label="Back to the start pose"
         />
       }
-      <g
-        [attr.transform]="markPose(mark)"
-        [attr.data-joint-kind]="mark.kind"
-        [attr.data-mark-id]="mark.key"
-        [class.selected]="selected(mark.target)"
-        class="joint-mark"
-        [attr.aria-label]="mark.label || mark.kind"
-        (pointerdown)="down($event, mark.target, mark)"
-        (contextmenu)="context($event, mark.target, mark.materialOwner)"
-      >
-        @if (mark.driveSpeed !== undefined) {
+      <g id="linkHolder">
+        @for (group of compounds(); track group.key) {
+          <path
+            [attr.d]="group.path"
+            [attr.fill]="group.fill"
+            [attr.stroke]="group.fill"
+            fill-opacity="0.7"
+            fill-rule="evenodd"
+            class="material"
+            [class.selected]="bodySelected(group.members[0])"
+            pointer-events="none"
+          />
+        }
+        @for (body of material(); track body.id) {
+          <path
+            [attr.d]="path(body)"
+            [attr.transform]="pose(body)"
+            [attr.fill]="compound(body.id) ? 'transparent' : body.presentation.fill"
+            [attr.stroke]="compound(body.id) ? 'transparent' : body.presentation.fill"
+            fill-opacity="0.7"
+            fill-rule="evenodd"
+            class="material"
+            [class.selected]="!compound(body.id) && bodySelected(body.id)"
+            [attr.data-body-id]="body.id"
+            [attr.aria-label]="body.label"
+            (pointerdown)="down($event, bodyTarget(body.id, $event.altKey), undefined, body.id)"
+            (contextmenu)="context($event, bodyTarget(body.id, $event.altKey), body.id)"
+          />
+        }
+      </g>
+      <g id="railHolder">
+        @for (mark of marks(); track mark.key) {
+          @if (rails(mark); as rails) {
+            <g [attr.transform]="rails.transform" pointer-events="none">
+              @for (rail of rails.rails; track $index) {
+                <line
+                  [attr.x1]="rail.x1"
+                  [attr.y1]="rail.y1"
+                  [attr.x2]="rail.x2"
+                  [attr.y2]="rail.y2"
+                  stroke="black"
+                  stroke-linecap="round"
+                  [attr.stroke-width]="GROUND_STROKE.rail * markerSize()"
+                />
+              }
+              @for (tick of rails.ticks; track $index) {
+                <line
+                  [attr.x1]="tick.x1"
+                  [attr.y1]="tick.y1"
+                  [attr.x2]="tick.x2"
+                  [attr.y2]="tick.y2"
+                  stroke="black"
+                  stroke-linecap="round"
+                  [attr.stroke-width]="GROUND_STROKE.hatch * markerSize()"
+                />
+              }
+            </g>
+          }
+        }
+      </g>
+      <g id="jointHolder">
+        @for (mark of marks(); track mark.key) {
           <g
-            class="input-arrow"
+            [attr.transform]="markPose(mark)"
+            [attr.data-joint-kind]="mark.kind"
+            [attr.data-mark-id]="mark.key"
+            [class.selected]="selected(mark.target)"
+            class="joint-mark"
+            [attr.aria-label]="mark.label || mark.kind"
+            (pointerdown)="down($event, mark.target, mark)"
+            (contextmenu)="context($event, mark.target, mark.materialOwner)"
+          >
+            @if (mark.kind === 'revolute' && !mark.grounded && mark.driveSpeed !== undefined) {
+              <g
+                [attr.transform]="
+                  'rotate(' +
+                  (motorAngle(mark) * 180) / 3.141592653589793 +
+                  ') scale(' +
+                  1 / MODEL_SCALE +
+                  ')'
+                "
+                pointer-events="none"
+              >
+                <image
+                  [attr.href]="
+                    turnsClockwise(driveSpeed(mark)!)
+                      ? 'assets/InputArrowCW.svg'
+                      : 'assets/InputArrowCCW.svg'
+                  "
+                  [attr.width]="motorBox().size"
+                  [attr.height]="motorBox().size"
+                  [attr.x]="motorBox().x"
+                  [attr.y]="motorBox().y"
+                  upright
+                />
+              </g>
+            }
+            <circle class="hit-target" [attr.r]="markerSize() * 2" />
+            @switch (mark.kind) {
+              @case ('prismatic') {
+                @if (selected(mark.target)) {
+                  <path class="prismatic selected-block" [attr.d]="block(mark)" />
+                }
+              }
+              @case ('weld') {
+                <path class="weld" [attr.d]="plus()" />
+              }
+              @default {
+                <circle class="pin" [attr.r]="markerSize()" [style.fill]="jointFill(mark)" />
+              }
+            }
+            @if (
+              mark.driveSpeed !== undefined &&
+              (mark.kind === 'prismatic' || mark.kind === 'pin-in-slot')
+            ) {
+              @for (arrow of arrows(mark); track $index) {
+                <line
+                  [attr.x1]="arrow.line.x1"
+                  [attr.y1]="arrow.line.y1"
+                  [attr.x2]="arrow.line.x2"
+                  [attr.y2]="arrow.line.y2"
+                  stroke="white"
+                  [attr.stroke-width]="markerSize() * 0.25"
+                />
+                <path [attr.d]="arrow.head" fill="white" />
+              }
+            }
+          </g>
+          @if (settings.isShowID.value && mark.label) {
+            <g [upright]="mark.point">
+              <text
+                class="joint-label"
+                [attr.x]="-editor.document().settings.objectScale * 0.3"
+                [attr.y]="-editor.document().settings.objectScale * 0.5"
+                [attr.font-size]="editor.document().settings.objectScale * 0.2"
+                text-anchor="middle"
+              >
+                {{ mark.label }}
+              </text>
+            </g>
+          }
+        }
+      </g>
+      @if (settings.isShowCOM.value && viewportReady()) {
+        @for (center of centers(); track center.key) {
+          <g
             [attr.transform]="
-              'scale(' +
-              markerSize() * (turnsClockwise(mark.driveSpeed) ? -1 : 1) +
+              'translate(' +
+              center.point.x +
               ' ' +
-              markerSize() +
+              center.point.y +
+              ') scale(' +
+              editor.document().settings.objectScale * 0.11 +
               ')'
             "
+            pointer-events="none"
+            data-center-mark
           >
+            @for (quarter of [0, 90, 180, 270]; track quarter) {
+              <path
+                d="M 0 0 L -1 0 A 1 1 0 0 0 0 1 Z"
+                [attr.transform]="'rotate(' + quarter + ')'"
+                [attr.fill]="$index % 2 === 0 ? 'black' : 'white'"
+                fill-opacity="0.45"
+                stroke="black"
+                stroke-opacity="0.45"
+                [attr.stroke-width]="
+                  svgGrid.scaleWithZoom(1) /
+                  MODEL_SCALE /
+                  (editor.document().settings.objectScale * 0.11)
+                "
+              />
+            }
+          </g>
+        }
+      }
+      <g id="forcesHolder">
+        @for (force of forces(); track force.id) {
+          <g
+            class="force"
+            [attr.data-force-id]="force.id"
+            [attr.aria-label]="force.label"
+            [class.selected]="selected({ kind: 'force', id: force.id })"
+            (contextmenu)="context($event, { kind: 'force', id: force.id })"
+          >
+            <line
+              [attr.x1]="force.start.x"
+              [attr.y1]="force.start.y"
+              [attr.x2]="force.end.x"
+              [attr.y2]="force.end.y"
+              [attr.stroke]="force.color"
+              (pointerdown)="forceDown($event, force.id, false)"
+            />
             <path
               [attr.d]="
-                mark.kind === 'revolute'
-                  ? 'M 1.8 0 A 1.8 1.8 0 1 1 0 -1.8 M -.5 -2.2 L 0 -1.8 L -.5 -1.4'
-                  : 'M -1.5 2 H 1.5 M 1 2.5 L 1.5 2 L 1 1.5'
+                'M ' +
+                -markerSize() * 1.7 +
+                ' ' +
+                markerSize() +
+                ' L 0 0 L ' +
+                -markerSize() * 1.7 +
+                ' ' +
+                -markerSize()
               "
+              [attr.transform]="
+                'translate(' +
+                force.end.x +
+                ' ' +
+                force.end.y +
+                ') rotate(' +
+                (force.angle * 180) / 3.141592653589793 +
+                ')'
+              "
+              [attr.stroke]="force.color"
+            />
+            <circle
+              class="force-handle"
+              [attr.cx]="force.start.x"
+              [attr.cy]="force.start.y"
+              [attr.r]="markerSize()"
+              (pointerdown)="forceDown($event, force.id, false)"
+            />
+            <circle
+              class="force-handle"
+              [attr.cx]="force.end.x"
+              [attr.cy]="force.end.y"
+              [attr.r]="markerSize()"
+              (pointerdown)="forceDown($event, force.id, true)"
             />
           </g>
         }
-        <circle class="hit-target" [attr.r]="markerSize() * 2" />
-        @switch (mark.kind) {
-          @case ('prismatic') {
-            <rect
-              class="prismatic"
-              [attr.x]="-markerSize() * 1.1"
-              [attr.y]="-markerSize() * 0.85"
-              [attr.width]="markerSize() * 2.2"
-              [attr.height]="markerSize() * 1.7"
-            />
-          }
-          @case ('weld') {
-            <path
-              class="weld"
-              [attr.d]="
-                'M ' +
-                -markerSize() +
-                ' 0 H ' +
-                markerSize() +
-                ' M 0 ' +
-                -markerSize() +
-                ' V ' +
-                markerSize()
-              "
-            />
-          }
-          @case ('attachment') {
-            <circle class="attachment" [attr.r]="markerSize() * 0.65" />
-          }
-          @default {
-            <circle class="pin" [attr.r]="markerSize()" />
+      </g>
+      @if (viewportReady()) {
+        @for (body of material(); track body.id) {
+          @if (label(body); as tag) {
+            <g [upright]="tag.point" pointer-events="none">
+              <text
+                [attr.fill]="tag.ink"
+                fill-opacity="0.55"
+                [attr.transform]="'rotate(' + tag.angle + ')'"
+                text-anchor="middle"
+                [attr.font-size]="editor.document().settings.objectScale * 0.2"
+              >
+                {{ tag.name }}
+              </text>
+            </g>
           }
         }
-      </g>
-      @if (editor.document().settings.showIds && mark.label) {
-        <g [upright]="mark.point">
+      }
+      @for (lock of locks(); track lock.key) {
+        <g [upright]="lock.point" class="lock-mark">
+          <path
+            [attr.transform]="
+              'translate(' +
+              markerSize() +
+              ' ' +
+              -markerSize() * 3 +
+              ') scale(' +
+              markerSize() / 12 +
+              ')'
+            "
+            d="M7 10V7a5 5 0 0 1 10 0v3h2.5v11h-15V10H7Zm2 0h6V7a3 3 0 0 0-6 0v3ZM6.5 12v7h11v-7h-11Z"
+          />
+        </g>
+      }
+      @if (dimension(); as dimension) {
+        <path class="dimension" [attr.d]="dimension.path" />
+        <g [upright]="dimension.at">
           <text
-            class="joint-label"
-            [attr.x]="markerSize() * 1.7"
-            [attr.y]="-markerSize() * 1.6"
-            [attr.font-size]="markerSize() * 1.6"
+            class="dimension-label"
+            [attr.y]="-markerSize() * 2"
+            [attr.font-size]="markerSize() * 1.8"
           >
-            {{ mark.label }}
+            {{ dimension.label }}
           </text>
         </g>
       }
-    }
-    @for (force of forces(); track force.id) {
-      <g
-        class="force"
-        [attr.data-force-id]="force.id"
-        [attr.aria-label]="force.label"
-        [class.selected]="selected({ kind: 'force', id: force.id })"
-        (contextmenu)="context($event, { kind: 'force', id: force.id })"
-      >
+      @for (guide of snapGuides(); track $index) {
         <line
-          [attr.x1]="force.start.x"
-          [attr.y1]="force.start.y"
-          [attr.x2]="force.end.x"
-          [attr.y2]="force.end.y"
-          [attr.stroke]="force.color"
-          (pointerdown)="forceDown($event, force.id, false)"
+          class="axis-snap-guide"
+          [attr.x1]="guide.x1"
+          [attr.y1]="guide.y1"
+          [attr.x2]="guide.x2"
+          [attr.y2]="guide.y2"
         />
-        <path
-          [attr.d]="
-            'M ' +
-            -markerSize() * 1.7 +
-            ' ' +
-            markerSize() +
-            ' L 0 0 L ' +
-            -markerSize() * 1.7 +
-            ' ' +
-            -markerSize()
-          "
-          [attr.transform]="
-            'translate(' +
-            force.end.x +
-            ' ' +
-            force.end.y +
-            ') rotate(' +
-            (force.angle * 180) / 3.141592653589793 +
-            ')'
-          "
-          [attr.stroke]="force.color"
+      }
+      @if (selectionBox(); as box) {
+        <rect
+          class="selection-box"
+          [attr.x]="box.x"
+          [attr.y]="box.y"
+          [attr.width]="box.width"
+          [attr.height]="box.height"
         />
+      }
+      @if (travelGhost(); as ghost) {
         <circle
-          class="force-handle"
-          [attr.cx]="force.start.x"
-          [attr.cy]="force.start.y"
-          [attr.r]="markerSize()"
-          (pointerdown)="forceDown($event, force.id, false)"
+          class="travel-ghost"
+          [attr.cx]="ghost.x"
+          [attr.cy]="ghost.y"
+          [attr.r]="markerSize() * 1.4"
         />
-        <circle
-          class="force-handle"
-          [attr.cx]="force.end.x"
-          [attr.cy]="force.end.y"
-          [attr.r]="markerSize()"
-          (pointerdown)="forceDown($event, force.id, true)"
-        />
-      </g>
-    }
-    @for (lock of locks(); track lock.key) {
-      <g [upright]="lock.point" class="lock-mark">
-        <path
-          [attr.transform]="
-            'translate(' +
-            markerSize() +
-            ' ' +
-            -markerSize() * 3 +
-            ') scale(' +
-            markerSize() / 12 +
-            ')'
-          "
-          d="M7 10V7a5 5 0 0 1 10 0v3h2.5v11h-15V10H7Zm2 0h6V7a3 3 0 0 0-6 0v3ZM6.5 12v7h11v-7h-11Z"
-        />
-      </g>
-    }
-    @if (dimension(); as dimension) {
-      <path class="dimension" [attr.d]="dimension.path" />
-      <g [upright]="dimension.at">
-        <text
-          class="dimension-label"
-          [attr.y]="-markerSize() * 2"
-          [attr.font-size]="markerSize() * 1.8"
-        >
-          {{ dimension.label }}
-        </text>
-      </g>
-    }
-    @if (selectionBox(); as box) {
-      <rect
-        class="selection-box"
-        [attr.x]="box.x"
-        [attr.y]="box.y"
-        [attr.width]="box.width"
-        [attr.height]="box.height"
-      />
-    }
-    @if (travelGhost(); as ghost) {
-      <circle
-        class="travel-ghost"
-        [attr.cx]="ghost.x"
-        [attr.cy]="ghost.y"
-        [attr.r]="markerSize() * 1.4"
-      />
-    }
+      }
+    </g>
   </g>
 </svg>
 <div #contextTrigger hidden [cdkContextMenuTriggerFor]="contextCard"></div>

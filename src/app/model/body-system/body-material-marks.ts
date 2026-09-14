@@ -8,7 +8,7 @@ export function bodyMaterialPath(body: MaterialBody): string {
   if (g.kind === 'circle') {
     const { x, y } = g.center,
       r = g.radius;
-    return `M ${x - r} ${y} a ${r} ${r} 0 1 0 ${2 * r} 0 a ${r} ${r} 0 1 0 ${-2 * r} 0`;
+    return `M ${x - r} ${y} A ${r} ${r} 0 1 0 ${x + r} ${y} A ${r} ${r} 0 1 0 ${x - r} ${y} Z`;
   }
   if (g.kind === 'polygon')
     return g.vertices.map((v, i) => `${i ? 'L' : 'M'} ${v.x} ${v.y}`).join(' ') + ' Z';
@@ -22,7 +22,10 @@ export function bodyMaterialPath(body: MaterialBody): string {
   return `M ${a.x + nx} ${a.y + ny} L ${b.x + nx} ${b.y + ny} A ${r} ${r} 0 0 0 ${b.x - nx} ${b.y - ny} L ${a.x - nx} ${a.y - ny} A ${r} ${r} 0 0 0 ${a.x + nx} ${a.y + ny} Z`;
 }
 
-export function bodyDrawingPoints(document: BodyDocument): readonly Point[] {
+export function bodyDrawingPoints(
+  document: BodyDocument,
+  includeBarWidth = true
+): readonly Point[] {
   return document.bodies.flatMap((b) => {
     if (b.kind === 'world' || b.presentation.hidden) return [];
     const g = b.geometry;
@@ -34,7 +37,7 @@ export function bodyDrawingPoints(document: BodyDocument): readonly Point[] {
       ];
     }
     const points = g.vertices.map((p) => localToWorld(b.pose, p));
-    if (g.kind === 'bar') {
+    if (g.kind === 'bar' && includeBarWidth) {
       const radius = g.width / 2;
       return points.flatMap((p) => [
         { x: p.x - radius, y: p.y - radius },

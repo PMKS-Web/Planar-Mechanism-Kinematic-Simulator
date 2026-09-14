@@ -5,7 +5,8 @@ import { Point, localToWorld, worldToLocal } from './body-frame';
 import { AttachmentId, JointId, BodyId, WORLD, newRecordId } from './body-id';
 import { BodyJoint } from './joint-record';
 import { compileWeldFrames } from './weld-frames';
-import { createBodyCylinder } from './cylinder-factory';
+import { createNativeCylinder } from './body-cylinder-creation';
+import { bodyCreationPresentation } from './body-creation-presentation';
 
 export function nativeCommand(...operations: readonly BodyEditOperation[]): BodyEditCommand {
   return { id: newRecordId<'edit'>(), operations };
@@ -92,18 +93,7 @@ export function createNativeMember(
     first: BodyId,
     last: BodyId;
   if (kind === 'cylinder') {
-    const result = createBodyCylinder(
-      document,
-      pose,
-      {
-        barrelLength: length / 1.25,
-        rodLength: (length / 1.25) * 0.8,
-        bore: document.settings.objectScale * 0.5,
-        rodDiameter: document.settings.objectScale * 0.24,
-        stroke: (length / 1.25) * 0.65,
-      },
-      length / 5
-    );
+    const result = createNativeCylinder(document, from, to);
     factory = new BodyFactory(result.document);
     first = result.assembly.barrel;
     last = result.assembly.rod;
@@ -115,7 +105,7 @@ export function createNativeMember(
         { x: 0, y: 0 },
         { x: length, y: 0 },
       ],
-      document.settings.objectScale * 0.3
+      document.settings.objectScale * 0.5
     );
     last = first;
     const body = factory.document.bodies.find((b) => b.id === first)!;
@@ -140,7 +130,7 @@ export function createNativeMember(
     });
   if (end && end !== last)
     connections.push({ kind: 'connect-attachments', a: anchor(last, to), b: anchor(end, to) });
-  const insert = insertedRecords(document, factory.document);
+  const insert = insertedRecords(document, bodyCreationPresentation(document, factory.document));
   return { ...insert, operations: [...insert.operations, ...connections] };
 }
 

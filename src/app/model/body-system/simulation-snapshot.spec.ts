@@ -10,7 +10,7 @@ import { nativeAxialCarriage } from '../../../test-utils/verification/native-cyl
 import { buildSimulationSnapshot } from './build-simulation-snapshot';
 import { SimulationSnapshot } from './simulation-snapshot';
 import { BodyDocument } from './body-document';
-import { selectSimulationView } from './simulation-view';
+import { selectSimulationView, reverseSimulationSample } from './simulation-view';
 import {
   simulationBodyPose,
   simulationBodyMotion,
@@ -58,6 +58,36 @@ function view(
 const ENGLISH: BodyUnits = { length: 'in', mass: 'lb', inertia: 'lb*in2', force: 'lbf' };
 
 describe('native simulation snapshots and readers', () => {
+  it('reverses rates and power without changing pose, acceleration, forces or the stored sample', () => {
+    const fixture = nativeLoadedRod();
+    const snapshot = build(fixture.document);
+    const key = snapshot.bodyPartition.get(fixture.body)!;
+    const indices = new Map([[key, 3]]);
+    const forward = value(selectSimulationView(snapshot, { revision: 12, indices }));
+    const backward = value(
+      selectSimulationView(snapshot, { revision: 12, indices, directions: new Map([[key, -1]]) })
+    );
+    const a = value(simulationBodyMotion(forward, fixture.body));
+    const b = value(simulationBodyMotion(backward, fixture.body));
+    for (const axis of ['vx', 'vy', 'omega'] as const)
+      expect(b.velocity[axis]).toBeCloseTo(-a.velocity[axis], 12);
+    expect(Math.abs(a.velocity.omega)).toBeGreaterThan(0);
+    expect(b.acceleration).toEqual(a.acceleration);
+    expect(simulationBodyPose(backward, fixture.body)).toEqual(
+      simulationBodyPose(forward, fixture.body)
+    );
+    expect(simulationDriverEffort(backward, fixture.driver.id)).toEqual(
+      simulationDriverEffort(forward, fixture.driver.id)
+    );
+    const power = value(simulationPower(forward, key));
+    const reversed = value(simulationPower(backward, key));
+    for (const name of ['applied', 'driver', 'boundary', 'kineticEnergyRate', 'residual'] as const)
+      expect(reversed[name]).toBe(-power[name]);
+    const selected = value(forward.samples.get(key)!);
+    expect(reverseSimulationSample(reverseSimulationSample(selected))).toEqual(selected);
+    expect(value(selectSimulationView(snapshot, { revision: 12, indices }))).toEqual(forward);
+  });
+
   it('owns immutable design, compiled frames and samples without freezing or mutating the drawing', () => {
     const fixture = nativeLoadedRod(),
       before = JSON.stringify(fixture.document);

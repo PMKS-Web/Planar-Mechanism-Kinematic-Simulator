@@ -1,3 +1,5 @@
+import { ColorPickerComponent } from '../BLOCKS/color-picker/color-picker.component';
+import { PART_COLORS } from '../../model/joint-colors';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
 import { FormControl, FormGroup } from '@angular/forms';
 import { MatButton } from '@angular/material/button';
@@ -13,12 +15,13 @@ import { CollapsibleSubsectionComponent } from '../BLOCKS/collapsible-subsection
 @Component({
   selector: 'app-native-material-properties',
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [InputComponent, CollapsibleSubsectionComponent, MatButton],
+  imports: [ColorPickerComponent, InputComponent, CollapsibleSubsectionComponent, MatButton],
   templateUrl: './native-material-properties.component.html',
   styleUrl: './native-material-properties.component.scss',
 })
 export class NativeMaterialPropertiesComponent {
   readonly body = input.required<MaterialBody>();
+  protected readonly colors = PART_COLORS;
   protected readonly editor = inject(NativeEditorService);
   protected readonly fields = new FormGroup(
     Object.fromEntries(
@@ -131,11 +134,11 @@ export class NativeMaterialPropertiesComponent {
         ? center.editAnchor
         : center.editAnchor.attachmentId;
   }
-  protected color(event: Event) {
+  protected color(color: string) {
     this.editor.apply({
       kind: 'body-properties',
       bodyId: this.body().id,
-      change: { presentation: { fill: (event.target as HTMLInputElement).value } },
+      change: { presentation: { fill: color } },
     });
   }
 }

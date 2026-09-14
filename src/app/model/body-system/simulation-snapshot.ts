@@ -46,6 +46,8 @@ export type SimulationBuild =
     };
 export interface SimulationPathOptions {
   readonly commandStep?: number;
+  /** Bound visible slider jumps relative to its discovered travel, independent of mechanism size. */
+  readonly maxTravelStepFraction?: number;
   readonly maxSamples?: number;
   readonly maxTurns?: number;
   readonly maxIntervalProbes?: number;

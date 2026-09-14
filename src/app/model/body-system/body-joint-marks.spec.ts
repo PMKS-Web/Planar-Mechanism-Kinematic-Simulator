@@ -19,13 +19,13 @@ const state: EditState = {
   empty: false,
   runnable: true,
 };
-it.each([0, 0.63, 2.4])('keeps a cylinder block at its material mouth at heading %s', (heading) => {
+it.each([0, 0.63, 2.4])('keeps the cylinder head on its moving rod at heading %s', (heading) => {
   const f = nativeAxialCarriage('revolute', heading);
   const mark = bodyJointMarks(f.document).find((m) => m.key === f.assembly.internalJoint)!;
   expect(mark.kind).toBe('prismatic');
-  expect(mark.point.x).toBeCloseTo(f.origin.x + 3 * Math.cos(heading), 12);
-  expect(mark.point.y).toBeCloseTo(f.origin.y + 3 * Math.sin(heading), 12);
-  expect(mark.rider).not.toEqual(mark.point);
+  expect(mark.point.x).toBeCloseTo(f.origin.x + 1.4 * Math.cos(heading), 12);
+  expect(mark.point.y).toBeCloseTo(f.origin.y + 1.4 * Math.sin(heading), 12);
+  expect(mark.rider).toEqual(mark.point);
   expect(mark.target).toEqual({ kind: 'assembly', id: f.assembly.id });
 });
 it('draws one pin and an explicit two-member weld without absorbing the third member', () => {

@@ -1,3 +1,4 @@
+import { PART_COLORS } from '../joint-colors';
 import { BodyDocument, emptyBodyDocument } from './body-document';
 import { AttachmentId, BodyId, VertexId, newRecordId } from './body-id';
 import {
@@ -54,7 +55,13 @@ export class BodyFactory {
         inertia: { mode: 'automatic' },
         center: { mode: 'automatic' },
       },
-      presentation: { fill: '#5c6bc0', hidden: false, showCenter: false },
+      presentation: {
+        fill: PART_COLORS[
+          this.value.bodies.filter((body) => body.kind === 'material').length % PART_COLORS.length
+        ],
+        hidden: false,
+        showCenter: false,
+      },
     };
     this.value = { ...this.value, bodies: [...this.value.bodies, body] };
     return id;

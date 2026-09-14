@@ -58,6 +58,7 @@ export type BodyInsertRecords = Partial<
 export type BodyEditOperation =
   | BodyPinPairOperation
   | BodyConnectOperation
+  | { readonly kind: 'set-start'; readonly bodyId: BodyId }
   | { readonly kind: 'convert-units'; readonly units: BodyUnits }
   | BodyDriveOperation
   | BodyCopyOperation

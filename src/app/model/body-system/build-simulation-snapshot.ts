@@ -53,10 +53,23 @@ export function buildSimulationSnapshot(
       continue;
     }
     const pathOptions = options.paths?.get(partition.key) ?? options.path ?? {};
-    const path =
+    let path =
       pathOptions.duration === undefined
         ? buildBodyCycle(admitted, pathOptions)
         : buildBodyMotionWindow(admitted, { ...pathOptions, duration: pathOptions.duration });
+    if (path.ok && path.kind === 'retrace' && pathOptions.maxTravelStepFraction !== undefined) {
+      const fraction = pathOptions.maxTravelStepFraction;
+      if (!Number.isFinite(fraction) || fraction <= 0 || fraction > 1)
+        return { ok: false, reason: 'invalid' };
+      const commands = path.samples.map((sample) => sample.state.command);
+      const step = (Math.max(...commands) - Math.min(...commands)) * fraction;
+      // A short stroke on a long bracket should be as smooth as the same ram on its own.
+      if (
+        step > 0 &&
+        commands.some((value, i) => i > 0 && Math.abs(value - commands[i - 1]) > step * (1 + 1e-9))
+      )
+        path = buildBodyCycle(admitted, { ...pathOptions, commandStep: step });
+    }
     if (!path.ok) {
       partitions.set(partition.key, {
         ok: false,

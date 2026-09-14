@@ -47,14 +47,15 @@ export function bodyMotionBounds(
       maxY = Math.max(maxY, p.y);
     }
   };
-  include(bodyDrawingPoints(document));
+  // The shared viewport pads for marker thickness once; bar endpoints define the motion envelope.
+  include(bodyDrawingPoints(document, false));
   for (const force of document.forces) include(bodyForceEnds(document, force));
   if (snapshot)
     for (const body of document.bodies) {
       if (body.kind !== 'material') continue;
       for (const pose of bodyMotionPoses(snapshot, body.id)) {
         const posed = { ...document, bodies: [{ ...body, pose }] };
-        include(bodyDrawingPoints(posed));
+        include(bodyDrawingPoints(posed, false));
         for (const force of document.forces.filter((f) => f.bodyId === body.id))
           include(bodyForceEnds(posed, force));
       }
