@@ -179,6 +179,11 @@ Pure computation, mostly static classes: `loop-solver` (finds kinematic loops), 
 - A driven joint carries its own speed: `Joint.driveSpeed`, signed for direction, in rpm for a pin and length/second for a slider. **Negative is clockwise**, and `model/drive-direction.ts` (`turnsClockwise` / `speedTurning`) is the only place that knows it — route any new direction question through it rather than writing `speed < 0` again. Zero means "use the document-wide default" — which is what every URL written before this existed says. A drawing with several machines needs one speed per machine, so it lives on the joint rather than in settings.
 - `mechanism/readiness.ts` produces the per-machine blocker/warning list the mode chips and setup drawers show; `mechanism/actuator.ts` decides what can be driven.
 - **Mobility is Gruebler's count, rescued by the geometry where the count is wrong.** `mechanism/mobility.ts` takes the rank of the constraint Jacobian, then steps along each freedom it finds and drops the ones that die at second order — a parallelogram with a redundant third crank moves; a tangency does not. Asked only when the count says < 1, and believed only when it says ≥ 1. See [domain-facts.md](docs/domain-facts.md#grueblers-count-is-one-sided-so-the-geometry-gets-the-last-word).
+  `mechanism/mobility-count.ts` retains the structural terms used by the solver. Select a mechanism
+  from its transport chip or its name in Analysis setup to see the **Degrees of Freedom** section:
+  the substituted Grübler–Kutzbach equation, body groups, joint contributions, and any geometry
+  adjustment. The explanation reads the solved mechanism's stored count, so animation never
+  recounts a transient pose. Its gallery stories are under **Feedback / Degrees of Freedom**.
 - Joint IDs are single letters assigned alphabetically (`determineNextLetter`).
 - `utils.ts` is a large grab-bag: interaction state enums (`gridStates`, `jointStates`, `linkStates`, `forceStates`), unit enums (`LengthUnit`, `GlobalUnit`, ...), and geometry helpers.
 
