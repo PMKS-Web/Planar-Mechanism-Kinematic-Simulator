@@ -1,0 +1,33 @@
+<svg:filter id="elevation-1" x="-50%" y="-50%" width="200%" height="200%">
+  <svg:feGaussianBlur in="SourceAlpha" [attr.stdDeviation]="0.008 * objectScale()" />
+  <feOffset [attr.dx]="0.004 * objectScale()" [attr.dy]="-0.004 * objectScale()" />
+  <svg:feComponentTransfer>
+    <svg:feFuncA type="linear" slope="0.4" />
+  </svg:feComponentTransfer>
+  <svg:feMerge>
+    <svg:feMergeNode />
+    <svg:feMergeNode in="SourceGraphic" />
+  </svg:feMerge>
+</svg:filter>
+<svg:filter id="elevation-2" x="-50%" y="-50%" width="200%" height="200%">
+  <svg:feGaussianBlur in="SourceAlpha" [attr.stdDeviation]="0.016 * objectScale()" />
+  <feOffset [attr.dx]="0.012 * objectScale()" [attr.dy]="-0.012 * objectScale()" />
+  <svg:feComponentTransfer>
+    <svg:feFuncA type="linear" slope="0.5" />
+  </svg:feComponentTransfer>
+  <svg:feMerge>
+    <svg:feMergeNode />
+    <svg:feMergeNode in="SourceGraphic" />
+  </svg:feMerge>
+</svg:filter>
+<svg:filter id="elevation-3" x="-50%" y="-50%" width="200%" height="200%">
+  <svg:feGaussianBlur in="SourceAlpha" [attr.stdDeviation]="0.024 * objectScale()" />
+  <svg:feOffset [attr.dx]="0.02 * objectScale()" [attr.dy]="-0.02 * objectScale()" />
+  <svg:feComponentTransfer>
+    <svg:feFuncA type="linear" slope="0.6" />
+  </svg:feComponentTransfer>
+  <svg:feMerge>
+    <svg:feMergeNode />
+    <svg:feMergeNode in="SourceGraphic" />
+  </svg:feMerge>
+</svg:filter>

@@ -1,3 +1,5 @@
+import { CanvasEffectsComponent } from '../canvas-effects/canvas-effects.component';
+import { GridRulingComponent } from '../grid-ruling/grid-ruling.component';
 import { SvgGridService } from '../../services/svg-grid.service';
 import { heldBars, heldBarsReaching, heldBySentence, holdList } from '../../model/link-holds';
 import {
@@ -192,6 +194,8 @@ const SELECTION_RING_PX = 3;
   styleUrls: ['./new-grid.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
+    CanvasEffectsComponent,
+    GridRulingComponent,
     CdkContextMenuTrigger,
     ContextMenuComponent,
     LongPressDirective,
@@ -362,17 +366,6 @@ export class NewGridComponent implements OnDestroy {
 
   /** For template bindings that size things in user units. */
   readonly MODEL_SCALE = MODEL_SCALE;
-
-  /**
-   * A grid line's label, in the user's units. Grid lines live at internal
-   * model coordinates (MODEL_SCALE times the user's unit); the label is the
-   * one place that number reaches the screen, so it converts here. Rounded so
-   * a binary-representation artifact of the division never shows up as
-   * 0.6000000001.
-   */
-  axisLabel(line: number): number {
-    return Math.round((line / MODEL_SCALE) * 1e6) / 1e6;
-  }
 
   readonly contextMenu = viewChild.required<CdkContextMenuTrigger>('trigger');
   private readonly backgroundImageInput =
@@ -6454,9 +6447,7 @@ export class NewGridComponent implements OnDestroy {
 
   secondJointIsGrounded(selectedLink: RealLink) {
     //If we are looking at distToJoints, we always move the 2nd joint
-    if (this.activeObjService.objType == 'Joint') {
-      return false;
-    }
+    if (this.activeObjService.objType == 'Joint') return false;
     return (selectedLink.joints[1] as RealJoint).ground;
   }
 

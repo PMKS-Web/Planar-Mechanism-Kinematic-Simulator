@@ -70,7 +70,7 @@ export default defineConfig([
   },
   {
     files: ['src/app/component/new-grid/new-grid.component.ts'],
-    rules: { 'max-lines': ['error', { max: 3817, skipBlankLines: true, skipComments: true }] },
+    rules: { 'max-lines': ['error', { max: 3816, skipBlankLines: true, skipComments: true }] },
   },
   {
     // The import graph runs one way: components import services, never the

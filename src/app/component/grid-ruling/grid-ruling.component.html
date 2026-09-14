@@ -1,0 +1,118 @@
+@if (ready()) {
+  <!--  The Minor Axes-->
+  @if (settings.isShowMajorGrid.getValue() && settings.isShowMinorGrid.getValue()) {
+    <ng-container>
+      @for (line of svgGrid.verticalLinesMinor; track line) {
+        <ng-container>
+          <svg:line
+            [attr.x1]="line"
+            [attr.y1]="svgGrid.viewBoxMinY"
+            [attr.x2]="line"
+            [attr.y2]="svgGrid.viewBoxMaxY"
+            class="gridLineMinor"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+          ></svg:line>
+        </ng-container>
+      }
+      @for (line of svgGrid.horizontalLinesMinor; track line) {
+        <ng-container>
+          <svg:line
+            [attr.x1]="svgGrid.viewBoxMinX"
+            [attr.y1]="line"
+            [attr.x2]="svgGrid.viewBoxMaxX"
+            [attr.y2]="line"
+            class="gridLineMinor"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+          ></svg:line>
+        </ng-container>
+      }
+    </ng-container>
+  }
+  <!--  The Major Axes-->
+  @if (settings.isShowMajorGrid.getValue()) {
+    <ng-container>
+      @for (line of svgGrid.verticalLines; track line) {
+        <ng-container>
+          <svg:line
+            [attr.x1]="line"
+            [attr.y1]="svgGrid.viewBoxMinY"
+            [attr.x2]="line"
+            [attr.y2]="svgGrid.viewBoxMaxY"
+            class="gridLineMajor"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+          ></svg:line>
+        </ng-container>
+      }
+      @for (line of svgGrid.horizontalLines; track line) {
+        <ng-container>
+          <svg:line
+            [attr.x1]="svgGrid.viewBoxMinX"
+            [attr.y1]="line"
+            [attr.x2]="svgGrid.viewBoxMaxX"
+            [attr.y2]="line"
+            class="gridLineMajor"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+          ></svg:line>
+        </ng-container>
+      }
+    </ng-container>
+  }
+  <!--  The X and Y Axis-->
+  <svg:line
+    id="axes"
+    [attr.x1]="svgGrid.viewBoxMinX"
+    y1="0"
+    [attr.x2]="svgGrid.viewBoxMaxX"
+    y2="0"
+    [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+  ></svg:line>
+  <svg:line
+    id="axes"
+    x1="0"
+    [attr.y1]="svgGrid.viewBoxMinY"
+    x2="0"
+    [attr.y2]="svgGrid.viewBoxMaxY"
+    [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
+  ></svg:line>
+  <!-- Axes Labels -->
+  <ng-container>
+    @for (line of svgGrid.verticalLines; track line) {
+      <ng-container>
+        <svg:text
+          id="axes_numbers"
+          text-anchor="middle"
+          [attr.x]="line"
+          [attr.y]="svgGrid.scaleWithZoom(20)"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+          [attr.font-size]="svgGrid.scaleWithZoom(14)"
+        >
+          {{ axisLabel(line) }}
+        </svg:text>
+      </ng-container>
+    }
+    @for (line of svgGrid.horizontalLines; track line) {
+      <ng-container>
+        <svg:text
+          id="axes_numbers"
+          text-anchor="end"
+          [attr.y]="line"
+          [attr.x]="svgGrid.scaleWithZoom(-10)"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+          [attr.font-size]="svgGrid.scaleWithZoom(14)"
+        >
+          {{ axisLabel(-line) }}
+        </svg:text>
+      </ng-container>
+    }
+    <svg:text
+      id="axes_numbers"
+      text-anchor="end"
+      [attr.y]="svgGrid.scaleWithZoom(20)"
+      [attr.x]="svgGrid.scaleWithZoom(-10)"
+      [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+      [attr.font-size]="svgGrid.scaleWithZoom(14)"
+    >
+      0
+    </svg:text>
+  </ng-container>
+}

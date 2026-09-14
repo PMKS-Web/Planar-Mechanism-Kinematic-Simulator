@@ -1,0 +1,19 @@
+@use '@angular/material' as mat;
+
+.gridLineMinor {
+  stroke: var(--grid-minor);
+}
+.gridLineMajor {
+  stroke: var(--grid-major);
+}
+#axes_numbers {
+  fill: var(--text-secondary);
+  paint-order: stroke;
+  stroke: var(--canvas-halo);
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  alignment-baseline: middle;
+}
+#axes {
+  stroke: mat.m2-get-color-from-palette(mat.$m2-indigo-palette, 500);
+}
