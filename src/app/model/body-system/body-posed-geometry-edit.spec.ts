@@ -14,6 +14,7 @@ import { BodyId, newRecordId, WORLD } from './body-id';
 import { compose, localToWorld } from './body-frame';
 import { BodyFactory } from './body-factory';
 import { withBodyEditFrame } from './body-edit-frame';
+import { nativeMotionRefusal } from './native-motion-refusal';
 
 const state = { ...NATIVE_EDIT_CONTEXT.state, atStart: false };
 function parked(document: BodyDocument, body: BodyId) {
@@ -312,11 +313,19 @@ describe('native geometry edits returned to their authored input anchors', () =>
       10
     );
   });
-  it('does not bypass the fixed-drive refusal when a posed weld would immobilize the whole mechanism', () => {
+  /**
+   * A posed weld that stops the machine lands, and readiness says so.
+   *
+   * The public editor welds the pin and shows an unanalyzable mechanism, so a
+   * drawing that cannot move is a drawing all the same — see
+   * `body-edit-validation.spec.ts`. What the posed path still owes the reader is
+   * the anchor: the weld is taken at the start pose it was staged from, and one
+   * Undo puts the drawing back.
+   */
+  it('accepts a posed weld that immobilizes the whole mechanism, and reports it as unrunnable', () => {
     const f = nativeEditableFourBar(),
       a = parked(f.document, f.bJoint.bodyA);
-    const before = a.document,
-      clocks = a.local.clocks;
+    const before = a.document;
     const joint = f.document.joints.find((item) => item.frameA.attachmentId === f.witness)!;
     const result = a.commit(
       {
@@ -325,9 +334,17 @@ describe('native geometry edits returned to their authored input anchors', () =>
       },
       state
     );
-    expect(result).toMatchObject({ ok: false, code: 'invalid-document' });
-    expect(a.document).toBe(before);
-    expect(a.local.clocks).toEqual(clocks);
-    expect(a.undoDepth).toBe(0);
+    expect(result).toMatchObject({ ok: true });
+    expect(a.document.joints.find((item) => item.id === joint.id)!.kind).toBe('weld');
+    const built = buildSimulationSnapshot(a.document, 0, {
+      mode: 'static',
+      gravity: { x: 0, y: 0 },
+    });
+    expect(nativeMotionRefusal(built.ok ? built.snapshot : undefined)?.short).toBe(
+      'input is fixed'
+    );
+    expect(a.undoDepth).toBe(1);
+    expect(a.undo(state).ok).toBe(true);
+    expect(a.document).toEqual(before);
   });
 });

@@ -20,7 +20,7 @@ import {
   selectionJoints,
 } from '../model/body-system/body-joint-interaction';
 import { BodyId, WORLD } from '../model/body-system/body-id';
-import { nativeLockCommand } from '../model/body-system/body-menu-commands';
+import { nativeDeleteCommand, nativeLockCommand } from '../model/body-system/body-menu-commands';
 import { encodeBodyDocument } from './transcoding/body-document-codec';
 
 /** View state is disposable; every authored change belongs to NativeBodyDocumentService. */
@@ -133,7 +133,8 @@ export class NativeEditorService {
   }
 
   delete(targets = this.selection()) {
-    return this.apply({ kind: 'delete', targets });
+    // The reader's Delete, so it takes the links it would strand with it.
+    return this.commit(nativeDeleteCommand(this.drawing(), targets));
   }
   rename(name: string) {
     if (!name.trim()) {

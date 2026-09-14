@@ -3,7 +3,8 @@ import { BodyEditCommand, BodyEditOperation, BodySelectionRef } from './body-edi
 import { AttachmentId, BodyId, ForceId, WORLD, newRecordId } from './body-id';
 import { Point, worldToLocal } from './body-frame';
 import { BodyJoint } from './joint-record';
-import { bodyBarHoldPair } from './body-bar-hold';
+import { bodyBarHoldPair, bodyCylinderHoldPair } from './body-bar-hold';
+import { strandedBodies } from './body-stranded-bodies';
 import { BodyConnectionPair } from './body-connection-controls';
 import {
   nativeCommand,
@@ -97,6 +98,12 @@ export const NATIVE_BARS_ONLY: NativeMenuRefusal = {
 export const NATIVE_HELD_BY_LOCK: NativeMenuRefusal = {
   short: 'locked in place',
   long: 'Locked in place already holds the length and the angle.',
+};
+
+/** A cylinder has only the one number to hold, so the sentence names only it. */
+export const NATIVE_CYLINDER_HELD_BY_LOCK: NativeMenuRefusal = {
+  short: 'locked in place',
+  long: 'Locked in place already holds the angle.',
 };
 
 export const NATIVE_NO_MECHANISM: NativeMenuRefusal = {
@@ -210,6 +217,35 @@ export function nativePairJoint(
   return document.joints.find((joint) => joint.id === pair.key);
 }
 
+/**
+ * A weld fuses the links that meet at a mark, and ground is not one of them.
+ *
+ * The public rule, from `refuseJointOperation`: two links have to meet before
+ * there is anything to fuse, and it is said after the driven check rather than
+ * before it — an input and a weld contradict each other whatever else is true.
+ *
+ * The native model *could* write this weld: a body fixed to the world is an
+ * ordinary rigid connection in it. But a row that is live on one route and gray
+ * on the other is a rule a reader has to learn twice, and the public menu is
+ * what this route copies. Releasing a weld that is already there is untouched.
+ */
+export function nativeWeldRefusal(
+  document: BodyDocument,
+  target: BodySelectionRef | undefined,
+  joint: BodyJoint | undefined
+): NativeMenuRefusal | undefined {
+  if (!target || joint?.kind === 'weld') return undefined;
+  const meeting = selectionBodies(document, [target]).filter((id) => id !== WORLD).length;
+  if (meeting >= 2) return undefined;
+  return {
+    short: 'needs 2 links',
+    long:
+      meeting === 0
+        ? 'A weld fuses the links that meet at a joint, and this joint is on none.'
+        : 'A weld fuses the links that meet at a joint, and only one meets here.',
+  };
+}
+
 // -------------------------------------------------------------------- drive
 
 /** The coordinate a drive would be set on: a cylinder's stroke, or the pin's angle. */
@@ -288,6 +324,58 @@ export function nativeTraceCommand(
     attachmentId: id,
     change: { trace: !nativeIsTraced(document, target) },
   });
+}
+
+// ------------------------------------------------------------------- delete
+
+/**
+ * Delete what the reader pointed at, and what cannot stand without it.
+ *
+ * The named part goes, and so does every link the delete would leave with fewer
+ * than two of its points — `strandedBodies` holds that rule and where it came
+ * from. Naming the casualties as targets rather than discovering them inside the
+ * transaction is what lets the row count them before the click: the menu asks
+ * the same command for a preview, and reads the cascade off its effects.
+ *
+ * Only a reader's Delete asks this. Releasing a relationship — unchecking
+ * Grounded, changing a connection's kind — removes a joint record too, and the
+ * material it was holding stays where it is.
+ */
+export function nativeDeleteCommand(
+  document: BodyDocument,
+  targets: readonly BodySelectionRef[]
+): BodyEditCommand {
+  const joints = new Set(
+    targets.flatMap((target) =>
+      target.kind === 'joint' || target.kind === 'junction'
+        ? selectionJoints(document, target).map((joint) => joint.id)
+        : []
+    )
+  );
+  const attachments = new Set(
+    targets.flatMap((target) => (target.kind === 'attachment' ? [target.id] : []))
+  );
+  const bodies = new Set(selectionBodies(document, targets.filter(namesMaterial)));
+  const stranded: BodySelectionRef[] = [];
+  const seen = new Set<string>();
+  for (const id of strandedBodies(document, { joints, attachments, bodies })) {
+    // A cylinder's barrel and rod refuse to go one at a time: the assembly is
+    // the part, so a stranded member names the whole cylinder — which is what
+    // the public row calls "(and Cylinder)".
+    const assembly = document.assemblies.find((one) => one.barrel === id || one.rod === id);
+    const target: BodySelectionRef = assembly
+      ? { kind: 'assembly', id: assembly.id }
+      : { kind: 'body', id };
+    if (seen.has(`${target.kind}:${target.id}`)) continue;
+    seen.add(`${target.kind}:${target.id}`);
+    stranded.push(target);
+  }
+  return nativeCommand({ kind: 'delete', targets: [...targets, ...stranded] });
+}
+
+/** A target that names material outright, rather than a mark standing on it. */
+function namesMaterial(target: BodySelectionRef): boolean {
+  return target.kind === 'body' || target.kind === 'group' || target.kind === 'assembly';
 }
 
 // --------------------------------------------------------------------- lock
@@ -412,12 +500,33 @@ export function nativeHoldRefusal(
   return state.locked ? NATIVE_HELD_BY_LOCK : undefined;
 }
 
+/**
+ * A cylinder's one hold: the direction it points.
+ *
+ * The public menu offers Fixed Angle on a cylinder and nothing else, refusing
+ * it only when the part is locked — so this answers the same two questions
+ * about the barrel, which is the body that carries the axis.
+ */
+export function nativeCylinderHoldRefusal(
+  document: BodyDocument,
+  barrel: BodyId | undefined
+): NativeMenuRefusal | undefined {
+  if (!barrel || !bodyCylinderHoldPair(document, barrel)) return NATIVE_NO_COMMAND;
+  const body = document.bodies.find((one) => one.id === barrel);
+  return body?.kind === 'material' && body.locked ? NATIVE_CYLINDER_HELD_BY_LOCK : undefined;
+}
+
 export function nativeHoldCommand(
   document: BodyDocument,
   bodyId: BodyId | undefined,
   which: 'length' | 'angle'
 ): BodyEditCommand | undefined {
-  const pair = bodyId && bodyBarHoldPair(document, bodyId);
+  // A bar holds either of its two numbers between its own ends; a cylinder
+  // holds only its heading, and holds it on the barrel's axis.
+  const pair =
+    bodyId &&
+    (bodyBarHoldPair(document, bodyId) ??
+      (which === 'angle' ? bodyCylinderHoldPair(document, bodyId) : undefined));
   if (!bodyId || !pair) return undefined;
   return nativeCommand({
     kind: 'hold',

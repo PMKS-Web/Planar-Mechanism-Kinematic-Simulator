@@ -50,7 +50,13 @@ function compileForEdit(document: BodyDocument): BodyEditRefusal | undefined {
       return bodyEditRefusal('drive-in-rigid-group', [
         { kind: 'joint', id: lockedDrive.row.jointId },
       ]);
-    if (fixedBodyAdmission(system)) return bodyEditRefusal('invalid-document');
+    // A drive with nothing left to move is a mechanism that cannot run, not a
+    // drawing that cannot be written down. The public editor grounds or welds
+    // the pin and lets readiness say the machine is stuck — `nativeMotionRefusal`
+    // reads the same `fixed-drive` back out of admission and says "input is
+    // fixed" — so the document is admitted here and refused where it is played.
+    const fixedIssue = fixedBodyAdmission(system);
+    if (fixedIssue && fixedIssue !== 'fixed-drive') return bodyEditRefusal('invalid-document');
     const poses = new Map([...system.groups].map(([id, group]) => [id, group.pose]));
     for (const partition of system.partitions) {
       const frame = createBodySolveFrame(partition, poses),

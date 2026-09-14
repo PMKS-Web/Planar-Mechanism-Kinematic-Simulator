@@ -5,6 +5,7 @@ import { speedTurning, turnsClockwise } from '../../model/drive-direction';
 import { BodyEditCommand } from '../../model/body-system/body-edit-types';
 import { AttachmentId } from '../../model/body-system/body-id';
 import { nativeCommand } from '../../model/body-system/body-joint-interaction';
+import { nativeDeleteCommand } from '../../model/body-system/body-menu-commands';
 import { nativeEditRefusalCopy } from '../../model/body-system/joint-permission';
 
 /**
@@ -77,7 +78,7 @@ export class NativePanelActions {
   }
 
   readonly deleteCommand = computed(() =>
-    nativeCommand({ kind: 'delete', targets: this.editor.selection() })
+    nativeDeleteCommand(this.editor.drawing(), this.editor.selection())
   );
   readonly deleteAction = () => this.editor.commit(this.deleteCommand());
   readonly lockAction = () => this.editor.commit(this.editor.lockCommand());

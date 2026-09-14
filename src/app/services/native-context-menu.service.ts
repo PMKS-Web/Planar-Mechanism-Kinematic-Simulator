@@ -46,6 +46,8 @@ import {
   NativeMenuRefusal,
   nativeAllLocksCommand,
   nativeBarDimensions,
+  nativeCylinderHoldRefusal,
+  nativeDeleteCommand,
   nativeDiscCommand,
   nativeDriveCommand,
   nativeDriveRefusal,
@@ -69,6 +71,7 @@ import {
   nativePairJoint,
   nativeTraceAttachment,
   nativeTraceCommand,
+  nativeWeldRefusal,
 } from '../model/body-system/body-menu-commands';
 
 /**
@@ -294,6 +297,9 @@ export class NativeContextMenuService {
         checked,
         command: bodyConnectionCommand(document, target, pair, checked ? 'revolute' : kind),
         missing: NATIVE_NO_PAIR,
+        // Said after the command's own answer, because the public menu says
+        // "it is driven" before it counts the links that meet here.
+        otherwise: kind === 'weld' ? nativeWeldRefusal(document, target, joint) : undefined,
       });
     };
     return [
@@ -506,7 +512,7 @@ export class NativeContextMenuService {
               checked: held.includes('angle'),
               hint: held.includes('angle') ? undefined : this.angleText(size?.angle),
               command: nativeHoldCommand(document, barrel, 'angle'),
-              refusal: nativeHoldRefusal(document, barrel),
+              refusal: nativeCylinderHoldRefusal(document, barrel),
               tip: 'Hold this cylinder at the angle it points now. Dragging a mount slides it along that line.',
             }),
             this.lockRow(target),
@@ -682,9 +688,15 @@ export class NativeContextMenuService {
    */
   private deleteRow(label: string, target: BodySelectionRef): MenuRow {
     const document = this.editor.document();
-    const command = nativeCommand({ kind: 'delete', targets: [target] });
+    const command = nativeDeleteCommand(document, [target]);
     const preview = this.preview(command);
-    const named = new Set(selectionBodies(document, [target]));
+    // What the row's own word already covers. A link row names its link, and a
+    // cylinder's two members are part of the word "cylinder" — but a joint row
+    // names a pin, so the bars that pin stood on are casualties like any other,
+    // which is what the public row counts as "(and 2 links)".
+    const named = new Set(
+      target.kind === 'body' || target.kind === 'group' ? selectionBodies(document, [target]) : []
+    );
     const takes: string[] = [];
     if (preview.ok) {
       const ids = (kind: BodyRecordRef['kind']) =>
@@ -747,6 +759,8 @@ export class NativeContextMenuService {
     refusal?: NativeMenuRefusal;
     /** What to say when there is no command to preview. */
     missing?: NativeMenuRefusal;
+    /** A model answer that stands only where nothing above it refused. */
+    otherwise?: NativeMenuRefusal;
     material?: boolean;
     kind?: 'action' | 'toggle';
     checked?: boolean;
@@ -757,7 +771,7 @@ export class NativeContextMenuService {
     alwaysAllowed?: boolean;
     posePolicy?: MenuRow['posePolicy'];
   }): MenuRow {
-    const { command, refusal, missing, ...rest } = init;
+    const { command, refusal, missing, otherwise, ...rest } = init;
     const preview = command ? this.preview(command) : undefined;
     const said: NativeMenuRefusal | undefined =
       refusal ??
@@ -765,7 +779,7 @@ export class NativeContextMenuService {
         ? (missing ?? NATIVE_NO_COMMAND)
         : preview && !preview.ok
           ? nativeEditRefusalCopy(preview)
-          : undefined);
+          : otherwise);
     return new MenuRow({
       ...rest,
       action: () => {

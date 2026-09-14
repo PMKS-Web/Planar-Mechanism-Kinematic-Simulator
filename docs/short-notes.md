@@ -1707,3 +1707,65 @@ by wrapping the grid component's own methods on the live component during a drag
 every template-called helper for every body and every mark. Memoizing the outline, the label
 and the compound lookup made each pass cheap, but the pass count itself is still the native
 route's largest remaining multiplier over the public one.
+
+---
+
+### A native drawing that cannot move is still a valid document
+
+`validateBodyEditDocument` used to refuse anything `fixedBodyAdmission` complained about, and one
+of its complaints is `fixed-drive` — a driver with a nonzero speed sitting in the condensed ground
+group. Grounding or welding a plain pin in a driven four-bar lands there, so the native Grounded
+and Welded rows grayed with "invalid connection" where the public menu simply does the edit and
+lets the mechanism read as unanalyzable.
+
+The split to keep: **malformed** is a document that cannot be written down (bad shape, contradictory
+rows at the authored pose); **cannot move** is readiness's answer. Only `fixed-drive` crossed the
+line, and it is now let through — `nativeMotionRefusal` reports it as "input is fixed", which is
+where the reader meets it. If you add a refusal to `body-edit-validation.ts`, ask which of the two
+it is first.
+
+Related: a drawing whose every body is condensed into ground has **no partition** for
+`nativeMotionRefusal` to quote, so it asks `fixedBodyAdmission(snapshot.system)` before falling
+back to "nothing to play" — which would otherwise be said about a drawing holding a mechanism and
+an input.
+
+### Deleting a joint record and a reader's Delete are two different things
+
+The public editor's Delete Joint takes the joint **and every link it would leave with fewer than
+two joints** ("Delete Joint (and 2 links)"). The native model keeps a point and the relationship
+through it as separate records, so the same sweep inside `deleteBodyRecords` would delete a crank
+for being *ungrounded* — unchecking Grounded is a joint delete too.
+
+So the sweep lives in `nativeDeleteCommand` (`body-menu-commands.ts`), which names the stranded
+bodies as extra targets; `strandedBodies` (`body-stranded-bodies.ts`) holds the rule. Naming them
+as targets rather than discovering them inside the transaction is also what lets the menu row count
+the casualties before the click, off the same command's preview. A stranded cylinder member names
+its **assembly**, because barrel and rod refuse to go one at a time.
+
+One pass only, as the public rule has it: the rocker left one-ended by the two bars that just went
+is nobody's casualty.
+
+### A cylinder's Fixed Angle is held on the barrel
+
+A hold is `{bodyId, from, to}` — a heading between two points of **one** body — and a cylinder's
+heading runs mount to mount across two, so this looks at first like a shape the new model cannot
+say. It can: the rod slides along the barrel's own axis, so the barrel's bearing *is* the direction
+the cylinder points. `bodyCylinderHoldPair` returns the barrel's mount and its bore anchor, the two
+points `createBodyCylinder` lays on that axis in that order, and both routes then read the same
+number (127 deg on the Cylinder_Boom fixture).
+
+There is no Fixed Length to go with it on either route: the distance between a cylinder's mounts is
+its stroke, which is what its drive moves.
+
+### The paired native fixtures spend different numbers of joint records on one slider
+
+`e2e/native-panel-parity.mjs` compares "Lock All — N open" and "Delete entire mechanism — N joints"
+between the routes, and three fixtures disagree: Scotch_Yoke 6 against 4, Three_Machines 12 against
+11, Cylinder_Boom 6 against 4. Both counts follow the same rule — model joints, a multiway pin once,
+plus free tracer points and forces — and 4-Bar and Slider_Crank agree exactly.
+
+The gap is the models, not the counting. The public model writes a slider as a pin **plus** a
+prismatic joint **plus** a block link; the native model writes a pin-in-slot as one joint. A public
+cylinder costs five joints, a native assembly three. The paired fixtures are separately authored
+counterparts, and the native author used the compact form in three of them. No counting rule over
+the native document can produce the public number, because the records are not there to count.

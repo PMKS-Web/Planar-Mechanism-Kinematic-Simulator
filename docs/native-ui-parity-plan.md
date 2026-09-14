@@ -55,6 +55,33 @@ identical in DOM (tags, text, attributes, disabled state) and in pixels. The joi
 is the only masked region, identified by one data attribute, and the mask is the width of
 that block and nothing more. A native-only passing suite is not evidence.
 
+## Named exception: the part counts on three paired fixtures
+
+The gate compares "Lock All — N open" on the grid menu and "Delete entire mechanism — N joints" on
+a part menu. Three fixtures disagree, and the disagreement is not a rule:
+
+| Fixture | Public | Native |
+| --- | --- | --- |
+| 4-Bar | 4 | 4 |
+| Slider_Crank | 4 | 4 |
+| Three_Machines | 12 | 11 |
+| Scotch_Yoke | 6 | 4 |
+| Cylinder_Boom | 6 | 4 |
+
+Both sides count the same thing — model joints, a multiway pin once, plus the free tracer points
+and the forces — and the two fixtures whose documents hold the same number of joint records agree
+exactly. What differs is how many records one slider costs. The public model writes a slider as a
+pin **plus** a prismatic joint **plus** a block link, and a cylinder as five joints; the native
+model writes a pin-in-slot as one joint and a cylinder as two mounts and one interior prismatic.
+The paired fixtures are separately authored counterparts, and the native author used the compact
+form in Scotch_Yoke, Three_Machines and Cylinder_Boom.
+
+So the public number cannot be produced from the native document: the records are not there to
+count, and inventing them would be a count of parts no reader can see. Either the count stays
+different on these three states, or the three native fixtures are re-authored to spend the records
+the public ones spend — which is a change to `src/test-utils/verification/native-shell-fixtures.ts`
+and to the published fixture URLs, not to the model.
+
 ## Work packages
 
 | Package | Owner | Files |

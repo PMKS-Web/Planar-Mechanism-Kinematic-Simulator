@@ -1,4 +1,4 @@
-import { BodyAdmissionRefusal } from './body-admission';
+import { BodyAdmissionRefusal, fixedBodyAdmission } from './body-admission';
 import { SimulationSnapshot } from './simulation-snapshot';
 
 /** The transport and future analysis setup quote the admission result, rather than guessing from joint count. */
@@ -12,7 +12,13 @@ export function nativeMotionRefusal(
     };
   if ([...snapshot.partitions.values()].some((part) => part.ok)) return;
   const first = [...snapshot.partitions.values()].find((part) => !part.ok);
-  if (!first || first.ok)
+  // A drawing whose every body has been condensed into ground leaves no
+  // partition to report on, and "nothing to play" would be a lie about a
+  // drawing that holds a mechanism and an input. Grounding or welding a pin
+  // until nothing can move is an accepted edit — see `body-edit-validation` —
+  // so the fixed part is asked for its own reason before that fallback.
+  const reason = first && !first.ok ? first.reason : fixedBodyAdmission(snapshot.system);
+  if (!reason)
     return { short: 'nothing to play', long: 'Draw a mechanism and add an input to animate it.' };
   const reasons: Record<BodyAdmissionRefusal | 'branch' | 'unsolved', [string, string]> = {
     invalid: [
@@ -45,9 +51,12 @@ export function nativeMotionRefusal(
       'Choose an input that controls the moving links.',
     ],
     travel: ['past a travel stop', 'Move the cylinder or slider inside its travel bounds.'],
+    // Reached by a weld and, since grounding a pin that stops the machine
+    // became an accepted edit, by ground as well — so the sentence names both
+    // ways out, the way the public readiness blocker does.
     'fixed-drive': [
       'input is fixed',
-      'Remove the weld holding this input still, or choose another input.',
+      'This input is held still, so nothing can move. Unweld or unground a joint to give it freedom.',
     ],
     branch: ['cannot follow this branch', 'Move the starting pose away from this branch change.'],
     unsolved: [
@@ -55,6 +64,6 @@ export function nativeMotionRefusal(
       'Check the connections and starting pose before playing this mechanism.',
     ],
   };
-  const [short, long] = reasons[first.reason];
+  const [short, long] = reasons[reason];
   return { short, long };
 }
