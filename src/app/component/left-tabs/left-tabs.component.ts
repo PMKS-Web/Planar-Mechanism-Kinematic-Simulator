@@ -1,3 +1,8 @@
+import { EDITOR_CONTENT, EditorContent } from '../../editor-content';
+import { SynthesisPanelComponent } from '../synthesis-panel/synthesis-panel.component';
+import { EditPanelComponent } from '../edit-panel/edit-panel.component';
+import { AnalysisPanelComponent } from '../analysis-panel/analysis-panel.component';
+import { NgComponentOutlet } from '@angular/common';
 import { CHROME_TABS } from '../../services/chrome/chrome-tokens';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
 import {
@@ -14,10 +19,7 @@ import {
 } from '@angular/core';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { TabID } from '../../selected-tab.service';
-import { SynthesisPanelComponent } from '../synthesis-panel/synthesis-panel.component';
-import { EditPanelComponent } from '../edit-panel/edit-panel.component';
-import { AnalysisPanelComponent } from '../analysis-panel/analysis-panel.component';
-import { TutorialService } from '../../services/tutorial.service';
+import { CHROME_TUTORIAL } from '../../services/chrome/chrome-tutorial';
 import { ViewportService } from '../../services/viewport.service';
 import { CHROME_MOVED } from '../../model/chrome-motion';
 
@@ -71,7 +73,7 @@ const SLIDE_EASING = 'cubic-bezier(0.2, 0, 0, 1)';
     ]),
   ],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [SynthesisPanelComponent, EditPanelComponent, AnalysisPanelComponent],
+  imports: [NgComponentOutlet],
 })
 /**
  * The panel down the left: whatever the current mode has to say about the
@@ -82,9 +84,22 @@ const SLIDE_EASING = 'cubic-bezier(0.2, 0, 0, 1)';
  * is why it is still a component rather than a bare @if in the shell.
  */
 export class LeftTabsComponent implements AfterViewInit, OnDestroy {
+  /** What each mode's page holds; the public route provides no token and gets the legacy panels. */
+  protected readonly content = LeftTabsComponent.contentFrom(
+    inject(EDITOR_CONTENT, { optional: true })
+  );
+  private static contentFrom(provided: EditorContent | null) {
+    return {
+      synthesis: provided?.synthesis ?? SynthesisPanelComponent,
+      synthesisInputs: provided?.synthesisInputs,
+      edit: provided?.edit ?? EditPanelComponent,
+      analysis: provided?.analysis ?? AnalysisPanelComponent,
+      analysisInputs: provided?.analysisInputs,
+    };
+  }
   tabs = inject(CHROME_TABS);
   viewport = inject(ViewportService);
-  private tutorial = inject(TutorialService);
+  private tutorial = inject(CHROME_TUTORIAL);
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
   // `effect` is created in ngAfterViewInit, which is outside the injection
   // context it wants, so it is handed one.

@@ -44,11 +44,28 @@ export interface CanvasHandle {
   setLinkAngleOverlay(index: number, others: readonly RealJoint[]): void;
 }
 
+export type ViewportCanvasHandle = Pick<
+  CanvasHandle,
+  | 'handleTap'
+  | 'releaseCanvasGestures'
+  | 'afterGlide'
+  | 'enableGridAnimationForThisAction'
+  | 'isGestureLive'
+>;
+let viewportCanvas: ViewportCanvasHandle | undefined;
 let canvas: CanvasHandle | undefined;
+
+export function registerViewportCanvas(handle: ViewportCanvasHandle | undefined): void {
+  viewportCanvas = handle;
+}
+export function viewportCanvasHandle(): ViewportCanvasHandle | undefined {
+  return viewportCanvas;
+}
 
 /** The canvas registers on construction and unregisters on destroy. */
 export function registerCanvas(handle: CanvasHandle | undefined): void {
   canvas = handle;
+  registerViewportCanvas(handle);
 }
 
 /** Undefined when no canvas is on screen, and every caller already checks. */

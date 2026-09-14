@@ -16,7 +16,7 @@ import emailjs from '@emailjs/browser';
 import { environment } from '../../../environments/environment';
 import { AnalyticsService } from '../../services/analytics.service';
 import { NotificationService } from '../../services/notification.service';
-import { UrlGenerationService } from '../../services/url-generation.service';
+import { CHROME_PROJECT } from '../../services/chrome/chrome-project';
 import { ButtonComponent } from '../BLOCKS/button/button.component';
 import { CollapsibleSubsectionComponent } from '../BLOCKS/collapsible-subsection/collapsible-subsection.component';
 import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
@@ -62,7 +62,7 @@ export class HelpPanelComponent {
   private fb = inject(FormBuilder);
   private notify = inject(NotificationService);
   private analytics = inject(AnalyticsService);
-  private urlGenerationService = inject(UrlGenerationService);
+  private urlGenerationService = inject(CHROME_PROJECT);
 
   sendingEmail = false;
 
@@ -256,7 +256,7 @@ export class HelpPanelComponent {
 
     let projectURL = 'User did not leave a project URL';
     if (this.commentForm.value.project) {
-      projectURL = this.urlGenerationService.generateFullUrl();
+      projectURL = this.urlGenerationService.shareUrl();
     }
 
     const params = {

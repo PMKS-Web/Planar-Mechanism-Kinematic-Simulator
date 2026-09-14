@@ -1,3 +1,4 @@
+import { PART_COLORS } from '../../app/model/joint-colors';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular-vite';
 import { ColorPickerComponent } from '../../app/component/BLOCKS/color-picker/color-picker.component';
 import { inPanel } from '../support/frame';
@@ -37,3 +38,12 @@ export const ForceColors: Story = {
 };
 
 export const WithoutHelp: Story = { args: { tooltip: undefined } };
+
+/** Native documents own their color transaction; the shared swatches only emit the choice. */
+export const ControlledMaterial: Story = {
+  args: { colors: PART_COLORS, selectedColor: PART_COLORS[1] },
+  render: (args) => ({
+    props: args,
+    template: `<color-picker type="link" [colors]="colors" [selectedColor]="selectedColor" (colorSelected)="selectedColor = $event" [tooltip]="tooltip">{{ label }}</color-picker>`,
+  }),
+};

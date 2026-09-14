@@ -1,3 +1,6 @@
+import { EDITOR_CONTENT } from './editor-content';
+import { NewGridComponent } from './component/new-grid/new-grid.component';
+import { NgComponentOutlet } from '@angular/common';
 import { registerAppIcons } from './app-icons';
 import { hideBootSplash } from './boot-splash';
 import {
@@ -9,7 +12,6 @@ import {
 } from '@angular/core';
 import { MatIconRegistry } from '@angular/material/icon';
 import { DomSanitizer } from '@angular/platform-browser';
-import { NewGridComponent } from './component/new-grid/new-grid.component';
 import { TopBarComponent } from './component/top-bar/top-bar.component';
 import { BottombarComponent } from './component/bottombar/bottombar.component';
 import { LeftTabsComponent } from './component/left-tabs/left-tabs.component';
@@ -17,7 +19,7 @@ import { PlaybackBarComponent } from './component/playback-bar/playback-bar.comp
 import { RightPanelComponent } from './component/right-panel/right-panel.component';
 import { NotificationComponent } from './component/notification/notification.component';
 import { LoadingOverlayComponent } from './component/loading-overlay/loading-overlay.component';
-import { AnalysisCompareService } from './services/analysis-compare.service';
+import { CHROME_STATUS } from './services/chrome/chrome-status';
 
 @Component({
   selector: 'app-root',
@@ -28,7 +30,7 @@ import { AnalysisCompareService } from './services/analysis-compare.service';
   ],
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
-    NewGridComponent,
+    NgComponentOutlet,
     TopBarComponent,
     BottombarComponent,
     LeftTabsComponent,
@@ -39,9 +41,12 @@ import { AnalysisCompareService } from './services/analysis-compare.service';
   ],
 })
 export class AppComponent implements DoCheck {
+  /** The public route provides no content token, so the canvas is the legacy grid. */
+  protected readonly canvas =
+    inject(EDITOR_CONTENT, { optional: true })?.canvas ?? NewGridComponent;
   private matIconRegistry = inject(MatIconRegistry);
   private domSanitizer = inject(DomSanitizer);
-  private comparison = inject(AnalysisCompareService);
+  private comparison = inject(CHROME_STATUS);
 
   /**
    * The tuning gesture is polled, and polled here first: the status strip, the

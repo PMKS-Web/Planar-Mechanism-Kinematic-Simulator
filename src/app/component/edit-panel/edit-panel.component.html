@@ -18,44 +18,7 @@
     }
 
     @if (this.activeSrv.objType == 'Grid' || this.activeSrv.objType == 'Nothing') {
-      <div class="helpPanel" [attr.inert]="panelIsFrozen() || null">
-        <div class="helpTitle">Edit</div>
-        <!-- An empty grid has nothing to click, so it is not told to click. -->
-        <p class="helpLead">
-          @if (gridIsEmpty()) {
-            Draw something to edit.
-          } @else {
-            Select a joint or link on the grid to edit its properties.
-          }
-        </p>
-        <div class="helpRule"></div>
-        <div class="helpHints">
-          @if (!gridIsEmpty()) {
-            <div class="helpHint">
-              <mat-icon>touch_app</mat-icon>
-              <span
-                >{{ viewport.isTouch() ? 'Tap' : 'Click' }} a joint or link to select it. Drag a
-                joint to move it.</span
-              >
-            </div>
-          }
-          <!-- The gesture named is the one this reader has. A phone has no right
-             button, and the panel that teaches the app cannot open by naming a
-             button that is not there. `press` is the word, once, from the
-             viewport service the tutorial uses for the same reason. -->
-          <div class="helpHint">
-            <mat-icon>add_circle_outline</mat-icon>
-            <span>
-              @if (gridIsEmpty()) {
-                {{ press }} the grid to add a link or a cylinder.
-              } @else {
-                {{ press }} the grid to add a link or a cylinder. {{ press }} a link to attach a
-                tracer point or a force to it.
-              }
-            </span>
-          </div>
-        </div>
-
+      <app-empty-selection [empty]="gridIsEmpty()" [frozen]="panelIsFrozen()">
         <!-- The offer hangs off the panel rather than replacing it: a student who
            ignores it has still read the sentence about right-click, and the
            tutorial then uses that same gesture rather than a third of its own. -->
@@ -76,7 +39,7 @@
             </div>
           </div>
         }
-      </div>
+      </app-empty-selection>
     }
 
     <!--  BACKGROUND IMAGE PANEL: the tracing underlay is scenery, not a part, so

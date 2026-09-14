@@ -1,10 +1,13 @@
+import {
+  CHROME_PERMISSION,
+  CHROME_MECHANISM,
+  CHROME_SETTINGS,
+  CHROME_TABS,
+} from '../../../services/chrome/chrome-tokens';
+import { TabID } from '../../../selected-tab.service';
 import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { MatIcon } from '@angular/material/icon';
 import { EditRefusal } from '../../../model/edit-permission';
-import { EditPermissionService } from '../../../services/edit-permission.service';
-import { MechanismService } from '../../../services/mechanism.service';
-import { SettingsService } from '../../../services/settings.service';
-import { SelectedTabService, TabID } from '../../../selected-tab.service';
 
 /**
  * Why the panel below cannot be typed into, attached to the card it is about.
@@ -56,16 +59,16 @@ import { SelectedTabService, TabID } from '../../../selected-tab.service';
   styleUrls: ['./edit-banner.component.scss'],
 })
 export class EditBannerComponent {
-  private permission = inject(EditPermissionService);
-  private mechanism = inject(MechanismService);
-  private settings = inject(SettingsService);
-  private tabs = inject(SelectedTabService);
+  private permission = inject(CHROME_PERMISSION);
+  private mechanism = inject(CHROME_MECHANISM);
+  private settings = inject(CHROME_SETTINGS);
+  private tabs = inject(CHROME_TABS);
 
   /** A refusal to state instead of the one this component would ask for. */
   readonly refusal = input<EditRefusal | null>(null);
 
   protected banner(): EditRefusal | null {
-    return this.refusal() ?? this.permission.editingBanner();
+    return this.refusal() ?? this.permission.refusal('placement');
   }
 
   /**
@@ -94,7 +97,7 @@ export class EditBannerComponent {
     // Stopped, then walked home. `easeToStart` only moves the pose; pressed
     // while the mechanism was running it would be racing the playback still
     // advancing underneath it.
-    this.mechanism.pauseInPlace();
+    this.mechanism.setAllPlaying(false);
     this.settings.animating.next(false);
     this.mechanism.easeToStart();
   }

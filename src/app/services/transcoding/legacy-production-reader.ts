@@ -80,7 +80,7 @@ export function readLegacyProduction(payload: string): ProductionDocumentRead {
       links.some((l) => new Set(l.jointIDs).size !== l.jointIDs.length)
     )
       throw new Error('Orphaned or repeated production material.');
-    const materials = leaves.map((l) => legacyMaterial(l, pins, base.settings.objectScale * 0.15));
+    const materials = leaves.map((l) => legacyMaterial(l, pins, base.settings.objectScale * 0.5));
     const attachments: Attachment[] = [];
     const point = (bodyId: BodyId, pinId: string) => {
       const id =

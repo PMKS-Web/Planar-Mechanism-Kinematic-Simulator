@@ -1,3 +1,4 @@
+import { EmptySelectionComponent } from '../empty-selection/empty-selection.component';
 import { describeActuatorRefusal } from '../../model/actuator';
 import { speedTurning, turnsClockwise } from '../../model/drive-direction';
 import { Subscription } from 'rxjs';
@@ -92,6 +93,7 @@ const INPUT_SPEED_UNITS = [
   styleUrls: ['./edit-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
+    EmptySelectionComponent,
     EditBannerComponent,
     MatTooltip,
     MatIcon,

@@ -1,3 +1,4 @@
+import { CHROME_SETTINGS, CHROME_TABS } from './chrome/chrome-tokens';
 import { Injector } from '@angular/core';
 import { ContextMenuBuilderService, MenuHandlers } from './context-menu-builder.service';
 import { ContextMenuModel, MenuRow } from '../component/BLOCKS/context-menu/menu-model';
@@ -60,6 +61,8 @@ function createBuilderHarness() {
   if (!ColorService.instance) new ColorService();
   const injector = Injector.create({
     providers: [
+      { provide: CHROME_SETTINGS, useExisting: SettingsService },
+      { provide: CHROME_TABS, useExisting: SelectedTabService },
       { provide: SettingsService, deps: [] },
       { provide: NumberUnitParserService, deps: [] },
       { provide: ActiveObjService, deps: [] },

@@ -1,4 +1,12 @@
-import { Component, OnChanges, ChangeDetectionStrategy, inject, input } from '@angular/core';
+import {
+  Component,
+  OnChanges,
+  ChangeDetectionStrategy,
+  inject,
+  input,
+  output,
+  Injector,
+} from '@angular/core';
 import { ColorService } from '../../../services/color.service';
 import { RealLink } from '../../../model/link';
 import { Joint } from '../../../model/joint';
@@ -17,7 +25,10 @@ import { INK_FLIPS_AT, luminanceOf } from '../../../model/contrast';
 })
 export class ColorPickerComponent implements OnChanges {
   private colorService = inject(ColorService);
-  private mechanism = inject(MechanismService);
+  private injector = inject(Injector);
+  readonly colors = input<readonly string[]>();
+  readonly selectedColor = input<string>();
+  readonly colorSelected = output<string>();
 
   readonly link = input<RealLink>();
   readonly joint = input<Joint>();
@@ -77,6 +88,8 @@ export class ColorPickerComponent implements OnChanges {
 
   /** One picker serves whichever part is selected, so the tick is read from it. */
   protected chosenIndex(): number {
+    const colors = this.colors();
+    if (colors) return colors.indexOf(this.selectedColor() ?? '');
     const parts = this.parts();
     if (parts) return parts.length ? this.commonIndex(parts) : -1;
     const joint = this.joint();
@@ -92,13 +105,18 @@ export class ColorPickerComponent implements OnChanges {
 
   // A method that handles the click event on a color swatch
   protected selectColor(index: number) {
+    const colors = this.colors();
+    if (colors) {
+      this.colorSelected.emit(colors[index]);
+      return;
+    }
     this.selectedIndex = index;
     const parts = this.parts();
     if (parts) {
       parts.forEach((part) => this.paint(part, index));
       // Undoable and carried in the URL, the same as painting one part: a
       // color a shared link dropped would not be worth putting on.
-      this.mechanism.updateMechanism(true);
+      this.injector.get(MechanismService).updateMechanism(true);
       return;
     }
     const link = this.link();
@@ -118,17 +136,18 @@ export class ColorPickerComponent implements OnChanges {
         joint.colorFamily = this.colorService.getJointFamilyFromIndex(index);
         // Undoable, and carried in the URL: a color that a shared link dropped,
         // or that one undo wiped, would not be worth putting on.
-        this.mechanism.updateMechanism(true);
+        this.injector.get(MechanismService).updateMechanism(true);
         break;
       case 'force':
         if (!force) break;
         force.color = this.colorService.getForceColorFromIndex(index);
-        this.mechanism.updateMechanism(true);
+        this.injector.get(MechanismService).updateMechanism(true);
         break;
     }
   }
 
-  protected getCorrectColors(): string[] {
+  protected getCorrectColors(): readonly string[] {
+    if (this.colors()) return this.colors()!;
     switch (this.type()) {
       case 'link':
         return this.colorService.getLinkColorOptions();

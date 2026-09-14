@@ -12,17 +12,8 @@ import {
   SelectedPartRef,
 } from '../model/selection';
 
-export type ActiveObjType =
-  | 'Nothing'
-  | 'Joint'
-  | 'Force'
-  | 'Link'
-  | 'Grid'
-  | 'SynthesisPose'
-  | 'Mechanism'
-  | 'MultiSelection'
-  /** The tracing underlay, which is scenery rather than part of the linkage. */
-  | 'BackgroundImage';
+import type { ActiveObjType } from '../model/active-object-type';
+export type { ActiveObjType } from '../model/active-object-type';
 
 @Injectable({
   providedIn: 'root',

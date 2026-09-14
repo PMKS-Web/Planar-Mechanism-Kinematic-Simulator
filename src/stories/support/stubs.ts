@@ -74,7 +74,7 @@ export function linkSelectionStub(link: RealLink): Provider {
 export function editPermissionStub(banner: EditRefusal | null = null): Provider {
   return {
     provide: EditPermissionService,
-    useValue: { editingBanner: () => banner },
+    useValue: { refusal: () => banner },
   };
 }
 

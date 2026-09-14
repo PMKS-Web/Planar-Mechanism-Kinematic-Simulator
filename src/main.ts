@@ -4,6 +4,7 @@ import { provideHttpClient, withInterceptorsFromDi, withXhr } from '@angular/com
 import { bootstrapApplication } from '@angular/platform-browser';
 import { provideAnimations } from '@angular/platform-browser/animations';
 
+import { LEGACY_CHROME_PROVIDERS } from './app/services/chrome/legacy-chrome-providers';
 import { selectEditorProviders } from './app/editor-providers';
 import { AppComponent } from './app/app.component';
 import { environment } from './environments/environment';
@@ -13,11 +14,22 @@ if (environment.production) {
   enableProdMode();
 }
 
-bootstrapApplication(AppComponent, {
-  providers: [
-    ...selectEditorProviders(window.location.search, environment.production),
-    provideZoneChangeDetection(),
-    provideAnimations(),
-    provideHttpClient(withXhr(), withInterceptorsFromDi()),
-  ],
-}).catch((err) => console.error(err));
+async function startEditor(): Promise<void> {
+  const nativeRequested =
+    !environment.production && new URLSearchParams(location.search).get('editor') === 'native';
+  const native = nativeRequested
+    ? (await import('./app/native-editor-providers')).NATIVE_EDITOR_PROVIDERS
+    : undefined;
+  await bootstrapApplication(AppComponent, {
+    providers: [
+      ...selectEditorProviders(location.search, environment.production, {
+        legacy: LEGACY_CHROME_PROVIDERS,
+        native,
+      }),
+      provideZoneChangeDetection(),
+      provideAnimations(),
+      provideHttpClient(withXhr(), withInterceptorsFromDi()),
+    ],
+  });
+}
+void startEditor().catch((err) => console.error(err));

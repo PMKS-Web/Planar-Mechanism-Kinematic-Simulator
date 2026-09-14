@@ -1,3 +1,8 @@
+import { EDITOR_CONTENT, EditorContent } from '../../editor-content';
+import { AnalysisSetupComponent } from '../analysis-setup/analysis-setup.component';
+import { ExportPanelComponent } from '../export-panel/export-panel.component';
+import { TutorialPanelComponent } from '../tutorial-panel/tutorial-panel.component';
+import { NgComponentOutlet } from '@angular/common';
 import { TabID } from '../../selected-tab.service';
 import { CHROME_MOVED } from '../../model/chrome-motion';
 import {
@@ -10,10 +15,7 @@ import {
 } from '@angular/core';
 import { whenModeChanges } from '../../services/mode-change-hooks';
 import { animate, state, style, transition, trigger } from '@angular/animations';
-import { TutorialService } from '../../services/tutorial.service';
-import { AnalysisSetupComponent } from '../analysis-setup/analysis-setup.component';
-import { ExportPanelComponent } from '../export-panel/export-panel.component';
-import { TutorialPanelComponent } from '../tutorial-panel/tutorial-panel.component';
+import { CHROME_TUTORIAL } from '../../services/chrome/chrome-tutorial';
 import { SettingsPanelComponent } from '../settings-panel/settings-panel.component';
 import { EquationPanelComponent } from '../equation-panel/equation-panel.component';
 import { HelpPanelComponent } from '../help-panel/help-panel.component';
@@ -69,9 +71,7 @@ import { CloseButtonComponent } from '../BLOCKS/close-button/close-button.compon
   ],
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
-    AnalysisSetupComponent,
-    ExportPanelComponent,
-    TutorialPanelComponent,
+    NgComponentOutlet,
     SettingsPanelComponent,
     EquationPanelComponent,
     HelpPanelComponent,
@@ -79,6 +79,19 @@ import { CloseButtonComponent } from '../BLOCKS/close-button/close-button.compon
   ],
 })
 export class RightPanelComponent implements DoCheck {
+  /** What the drawer's pages hold; the public route provides no token and gets the legacy pages. */
+  protected readonly content = RightPanelComponent.contentFrom(
+    inject(EDITOR_CONTENT, { optional: true })
+  );
+  private static contentFrom(provided: EditorContent | null) {
+    return {
+      tutorial: provided?.tutorial ?? TutorialPanelComponent,
+      tutorialInputs: provided?.tutorialInputs,
+      analysisSetup: provided?.analysisSetup ?? AnalysisSetupComponent,
+      export: provided?.export ?? ExportPanelComponent,
+      exportInputs: provided?.exportInputs,
+    };
+  }
   /**
    * The tutorial asks to be shown rather than reaching in and setting the tab.
    *
@@ -86,7 +99,7 @@ export class RightPanelComponent implements DoCheck {
    * this component's own page has already opened -- the tutorial page injects
    * the service -- so the request travels the other way.
    */
-  private tutorial = inject(TutorialService);
+  private tutorial = inject(CHROME_TUTORIAL);
 
   /**
    * Whether the tutorial's card is showing above whatever page is open.

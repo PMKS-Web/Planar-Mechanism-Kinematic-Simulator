@@ -15,17 +15,17 @@
 >
   @if (this.tabs.getCurrentTab() === TabID.SYNTHESIZE) {
     <div class="page1">
-      <app-synthesis-panel></app-synthesis-panel>
+      <ng-container *ngComponentOutlet="content.synthesis; inputs: content.synthesisInputs" />
     </div>
   }
   @if (this.tabs.getCurrentTab() === TabID.EDIT) {
     <div class="page2">
-      <app-edit-panel></app-edit-panel>
+      <ng-container *ngComponentOutlet="content.edit" />
     </div>
   }
   @if (this.tabs.isAnalysisMode()) {
     <div class="page3">
-      <app-analysis-panel></app-analysis-panel>
+      <ng-container *ngComponentOutlet="content.analysis; inputs: content.analysisInputs" />
     </div>
   }
 </div>

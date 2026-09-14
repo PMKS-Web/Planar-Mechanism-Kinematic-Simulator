@@ -176,6 +176,11 @@
     </button>
     <input #fileInput hidden type="file" accept="text" (change)="upload($event)" />
     <button class="menuItem" (click)="fileInput.click()"><mat-icon>file_open</mat-icon>Open</button>
+    @if (project.recover) {
+      <button class="menuItem" (click)="project.recover(); closeMenu()">
+        <mat-icon>restore</mat-icon>Recover project
+      </button>
+    }
     <button class="menuItem" id="templatesButton" (click)="openTemplates()">
       <mat-icon>apps</mat-icon>Mechanism Library
     </button>

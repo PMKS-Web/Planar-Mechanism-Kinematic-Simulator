@@ -1,3 +1,5 @@
+import { CHROME_PROJECT } from '../../services/chrome/chrome-project';
+import { CHROME_PERMISSION } from '../../services/chrome/chrome-tokens';
 import { CHROME_MECHANISM, CHROME_HISTORY, CHROME_TABS } from '../../services/chrome/chrome-tokens';
 import {
   AfterViewChecked,
@@ -13,23 +15,16 @@ import {
   viewChild,
 } from '@angular/core';
 import { animate, style, transition, trigger } from '@angular/animations';
-import { MatDialog } from '@angular/material/dialog';
 import { TabID } from '../../selected-tab.service';
 import { AnalyticsService } from '../../services/analytics.service';
-import { UrlGenerationService } from '../../services/url-generation.service';
-import { UrlProcessorService } from '../../services/url-processor.service';
 import { READINESS } from '../../ui-text';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
-import { ExportFlowService } from '../../services/export/export-flow.service';
 import { LoadingService } from 'src/app/services/loading.service';
-import { TemplatesComponent } from '../MODALS/templates/templates.component';
 import { NotificationService } from '../../services/notification.service';
-import { TutorialService } from '../../services/tutorial.service';
+import { CHROME_TUTORIAL } from '../../services/chrome/chrome-tutorial';
 import { MatTooltip } from '@angular/material/tooltip';
 import { MatIcon } from '@angular/material/icon';
 import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
-import { GridUtilsService } from '../../services/grid-utils.service';
-import { DrawingExportComponent } from '../MODALS/drawing-export/drawing-export.component';
 import { ShortcutTipDirective } from '../BLOCKS/shortcut-tip/shortcut-tip.directive';
 import { ChipComponent } from '../BLOCKS/chip/chip.component';
 
@@ -135,22 +130,19 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   tabs = inject(CHROME_TABS);
   mechanism = inject(CHROME_MECHANISM);
   private history = inject(CHROME_HISTORY);
-  private urlGeneration = inject(UrlGenerationService);
-  private urlProcessor = inject(UrlProcessorService);
+  protected readonly project = inject(CHROME_PROJECT);
+  private permission = inject(CHROME_PERMISSION);
   private loading = inject(LoadingService);
-  private dialog = inject(MatDialog);
   private zone = inject(NgZone);
   private changes = inject(ChangeDetectorRef);
-  private exportFlow = inject(ExportFlowService);
   private notify = inject(NotificationService);
-  private tutorial = inject(TutorialService);
+  private tutorial = inject(CHROME_TUTORIAL);
 
   TabID = TabID;
   menuOpen = false;
 
   private analytics: AnalyticsService = inject(AnalyticsService);
   shortcuts = inject(KeyboardShortcutsService);
-  private gridUtils = inject(GridUtilsService);
 
   readonly tabStrip = viewChild<ElementRef<HTMLElement>>('tabStrip');
   readonly strip = viewChild<ElementRef<HTMLElement>>('strip');
@@ -491,11 +483,11 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   // The keyboard shortcut quotes the same predicate, so the buttons and Ctrl+Z
   // cannot answer differently in the window where the ease home is still running.
   canUndo(): boolean {
-    return this.gridUtils.canRestoreHistory() && this.history.canUndo();
+    return !this.permission.refusal('history') && this.history.canUndo();
   }
 
   canRedo(): boolean {
-    return this.gridUtils.canRestoreHistory() && this.history.canRedo();
+    return !this.permission.refusal('history') && this.history.canRedo();
   }
 
   /**
@@ -522,7 +514,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     // opened can be pressed until the reader clicks once to dismiss a menu
     // they thought they had already left.
     this.closeMenu();
-    this.exportFlow.reset();
+    this.project.prepareExport();
     RightPanelComponent.insistOn(RightPanelComponent.EXPORT_TAB);
   }
 
@@ -640,7 +632,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   newProject(): void {
     this.closeMenu();
     this.analytics.logEvent('new_project');
-    window.open(window.location.origin + window.location.pathname, '_blank');
+    window.open(this.project.newProjectUrl(), '_blank');
   }
 
   openTemplates(): void {
@@ -648,12 +640,12 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     // Opening a worked mechanism is the next task, including when the library
     // is reached while the tutorial is still pinned in the drawer.
     this.tutorial.exit();
-    TemplatesComponent.openIn(this.dialog);
+    this.project.openLibrary();
   }
 
   exportDrawing(): void {
     this.closeMenu();
-    DrawingExportComponent.openIn(this.dialog);
+    this.project.exportDrawing();
   }
 
   openSettings(): void {
@@ -700,10 +692,11 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
       // incoming mechanism takes the thread, so an opened file used to be a few
       // seconds of a window that had stopped answering.
       this.loading
-        .during('Opening mechanism…', () =>
-          this.urlProcessor.updateFromURL(reader.result as string)
-        )
-        .then(() => this.afterUpload(input))
+        .during('Opening mechanism…', () => this.project.open(reader.result as string))
+        .then((opened) => {
+          if (opened === false) input.value = '';
+          else this.afterUpload(input);
+        })
         // The cover comes down in `during`'s own `finally`; this is only so a
         // failed open is a console error rather than an unhandled rejection.
         .catch((error) => console.error('Unable to open the file', error));
@@ -731,7 +724,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   downloadLinkage(): void {
     this.closeMenu();
     this.analytics.logEvent('download_linkage');
-    const blob = new Blob([this.urlGeneration.generateUrlQuery()], {
+    const blob = new Blob([this.project.serialize()], {
       type: 'text;charset=utf-8;',
     });
     const link = document.createElement('a');
@@ -743,12 +736,17 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }
 
   copyURL(): void {
     this.closeMenu();
     this.analytics.logEvent('copyURL');
-    this.urlGeneration.copyFullUrl();
-    this.notify.success('share.copied', 'Link copied. Copy again after your next change.');
+    Promise.resolve()
+      .then(() => this.project.copyUrl())
+      .then(() => {
+        this.notify.success('share.copied', 'Link copied. Copy again after your next change.');
+      })
+      .catch(() => this.notify.refusal('share.failed', 'The link could not be copied. Try again.'));
   }
 }

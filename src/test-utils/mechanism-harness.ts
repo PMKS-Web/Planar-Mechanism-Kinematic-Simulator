@@ -1,3 +1,4 @@
+import { CHROME_SETTINGS, CHROME_TABS } from '../app/services/chrome/chrome-tokens';
 import { Injector, runInInjectionContext } from '@angular/core';
 import { PrisJoint, RealJoint, RevJoint } from '../app/model/joint';
 import { ActiveObjService } from '../app/services/active-obj.service';
@@ -55,6 +56,8 @@ export function createMechanismHarness(): MechanismHarness {
   };
   const injector = Injector.create({
     providers: [
+      { provide: CHROME_SETTINGS, useExisting: SettingsService },
+      { provide: CHROME_TABS, useExisting: SelectedTabService },
       { provide: SettingsService, deps: [] },
       { provide: NumberUnitParserService, deps: [] },
       { provide: ActiveObjService, deps: [] },

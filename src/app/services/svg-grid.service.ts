@@ -1,14 +1,13 @@
+import { GRID_DOCUMENT } from './chrome/grid-document';
+import { CHROME_TABS, CHROME_SETTINGS } from './chrome/chrome-tokens';
 import { afterNextRender, DestroyRef, Injectable, Injector, inject } from '@angular/core';
 // TS 6 no longer allows calling/constructing `import * as` namespaces of
 // CommonJS (export =) modules - use default imports for these two.
 import svgPanZoom from 'svg-pan-zoom';
 import { Coord } from '../model/coord';
-import { canvasHandle } from './canvas-handle';
-import { SettingsService } from './settings.service';
+import { viewportCanvasHandle } from './canvas-handle';
 import { DragStateService } from './drag-state.service';
 import { NotificationService } from './notification.service';
-import { MechanismService } from './mechanism.service';
-import { SaveHistoryService } from './save-history.service';
 import Hammer from 'hammerjs';
 import { MODEL_SCALE } from '../model/render-scale';
 import { DEFAULT_OBJECT_SCALE } from '../model/object-scale';
@@ -20,7 +19,6 @@ import {
   freeCanvasRect,
   sameRect,
 } from './view-framing';
-import { SelectedTabService } from '../selected-tab.service';
 import { CHROME_MOVED } from '../model/chrome-motion';
 
 /**
@@ -160,7 +158,7 @@ const SETTLE_MAX_MS = 900;
   providedIn: 'root',
 })
 export class SvgGridService {
-  private settingsService = inject(SettingsService);
+  private settingsService = inject(CHROME_SETTINGS);
   private dragState = inject(DragStateService);
   private injector = inject(Injector);
   private notify = inject(NotificationService);
@@ -233,7 +231,7 @@ export class SvgGridService {
 
         // Handle tap (click) and no drag.
         this.hammer.on('tap', function (ev: HammerInput) {
-          canvasHandle()?.handleTap();
+          viewportCanvasHandle()?.handleTap();
         });
 
         // Handle pan
@@ -331,7 +329,7 @@ export class SvgGridService {
       if (event.type === 'pointerup' && heardByCanvas) {
         return;
       }
-      canvasHandle()?.releaseCanvasGestures(event as PointerEvent);
+      viewportCanvasHandle()?.releaseCanvasGestures(event as PointerEvent);
     };
     window.addEventListener('pointerup', release, true);
     window.addEventListener('pointercancel', release, true);
@@ -343,7 +341,7 @@ export class SvgGridService {
     //
     // Treated as a cancel rather than a release, because that is what it is:
     // nobody finished the gesture, and there is no position to finish it at.
-    const lost = () => canvasHandle()?.releaseCanvasGestures();
+    const lost = () => viewportCanvasHandle()?.releaseCanvasGestures();
     window.addEventListener('blur', lost);
     window.addEventListener('pagehide', lost);
     document.addEventListener('visibilitychange', () => {
@@ -636,7 +634,7 @@ export class SvgGridService {
     // It used to be recognized by what was last clicked, which never stopped
     // being a pose: the canvas could not be panned again until something else
     // was selected.
-    if (this.dragState.isDragging || canvasHandle()?.isGestureLive()) {
+    if (this.dragState.isDragging || viewportCanvasHandle()?.isGestureLive()) {
       return oldPan;
     }
     return newPan;
@@ -718,7 +716,7 @@ export class SvgGridService {
     // every other message in the app, which meant they were silent for the
     // first twenty seconds of a session and for twenty seconds after any
     // unrelated message: the whole of the time somebody is finding their zoom.
-    const drawnAt = this.getZoom() * this.settingsService.objectScale;
+    const drawnAt = this.getZoom() * this.injector.get(GRID_DOCUMENT).objectScale;
     // Both fixes are in this service, and the message used to name neither of
     // the buttons that hold them without offering either. Which one somebody
     // wants depends on which they think is wrong: "Fit to zoom" keeps the view
@@ -895,7 +893,7 @@ export class SvgGridService {
     // Nothing to fit if the canvas has gone. Left unguarded this throws where
     // nothing is waiting to catch it, and the flag below stays stuck on — which
     // disables the grid for the rest of the session.
-    const canvas = canvasHandle();
+    const canvas = viewportCanvasHandle();
     if (!this.panZoomObject || !canvas) {
       this.settingsService.tempGridDisable = false;
       return;
@@ -911,7 +909,7 @@ export class SvgGridService {
   }
 
   private fitToFullMotion(animate: boolean): void {
-    const canvas = canvasHandle();
+    const canvas = viewportCanvasHandle();
     if (!this.panZoomObject || !canvas) {
       this.settingsService.tempGridDisable = false;
       return;
@@ -941,7 +939,7 @@ export class SvgGridService {
       this.moveViewTo(
         { x: 0, y: 0, width: 0, height: 0 },
         centerOf(free),
-        this.clampZoom(MARK_TARGET_PX / this.settingsService.objectScale),
+        this.clampZoom(MARK_TARGET_PX / this.injector.get(GRID_DOCUMENT).objectScale),
         animate
       );
       this.viewIsFitted = true;
@@ -978,32 +976,7 @@ export class SvgGridService {
 
   /** The box swept by every joint over every valid solved cycle. */
   private fullMotionBox(): Rect | null {
-    const mechanism = this.injector.get(MechanismService);
-    let minX = Infinity;
-    let maxX = -Infinity;
-    let minY = Infinity;
-    let maxY = -Infinity;
-    for (const solved of mechanism.mechanisms) {
-      if (!solved.isMechanismValid()) continue;
-      for (const frame of solved.joints) {
-        for (const point of frame) {
-          minX = Math.min(minX, point.x);
-          maxX = Math.max(maxX, point.x);
-          // Drawing layers wear modelFrame, so their coordinates are y-up
-          // inside a y-down viewport. Framing uses the viewport's space.
-          minY = Math.min(minY, -point.y);
-          maxY = Math.max(maxY, -point.y);
-        }
-      }
-    }
-    if (!Number.isFinite(minX)) return null;
-    const pad = Math.max(this.settingsService.objectScale * 0.65, 1);
-    return {
-      x: minX - pad,
-      y: minY - pad,
-      width: Math.max(maxX - minX + 2 * pad, 2 * pad),
-      height: Math.max(maxY - minY + 2 * pad, 2 * pad),
-    };
+    return this.injector.get(GRID_DOCUMENT).fullMotionBox();
   }
 
   /** Put the complete solved motion in the visible canvas. */
@@ -1045,7 +1018,7 @@ export class SvgGridService {
     if (!canvas) return;
     const center = centerOf(drawn);
 
-    if (animate) canvasHandle()?.enableGridAnimationForThisAction();
+    if (animate) viewportCanvasHandle()?.enableGridAnimationForThisAction();
     this.ourOwnMove(() => {
       this.setZoom(targetZoom);
       // A refused zoom locks the next pan out, and the pan is the half of this
@@ -1096,20 +1069,20 @@ export class SvgGridService {
    * Only when nobody has chosen a size. Typing 0.7 into the field is a choice
    * even though 0.7 is what the field already said, so the act of choosing is
    * recorded rather than inferred from the number -- see
-   * SettingsService.objectScaleChosen. For a drawing that arrives from a URL
+   * this.injector.get(GRID_DOCUMENT).objectScaleChosen. For a drawing that arrives from a URL
    * the act is not recoverable, since every URL carries a scale whether or not
    * its author picked one, and the comparison with the default is what is left.
    */
   private scaleSuitedTo(drawn: Rect): number | undefined {
-    if (SettingsService.objectScaleChosen) return undefined;
+    if (this.injector.get(GRID_DOCUMENT).objectScaleChosen) return undefined;
     // Only for a drawing with parts in it. This number is how joints, blocks
     // and arrows are drawn, and a synthesis design has none of those -- its
     // bars are the question rather than an answer. Sizing marks for a mechanism
     // that does not exist yet gets it wrong twice: once now, and again when a
     // solution is inserted and every joint comes out matching a design that was
     // never a linkage.
-    if (this.injector.get(MechanismService).joints.length === 0) return undefined;
-    const scale = this.settingsService.objectScale;
+    if (!this.injector.get(GRID_DOCUMENT).hasParts()) return undefined;
+    const scale = this.injector.get(GRID_DOCUMENT).objectScale;
     if (Math.abs(scale - DEFAULT_OBJECT_SCALE) > 0.5) return undefined;
     const suits = MARK_FRACTION * Math.max(drawn.width, drawn.height);
     if (!(suits > 0) || !Number.isFinite(suits)) return undefined;
@@ -1121,10 +1094,10 @@ export class SvgGridService {
   private adoptScaleForDrawing(drawn: Rect): void {
     const suits = this.scaleSuitedTo(drawn);
     if (suits === undefined) return;
-    SettingsService._objectScale.next(suits);
+    this.injector.get(GRID_DOCUMENT).setObjectScale(suits);
     // A link's outline is computed once and cached, and its width is a fraction
     // of this scale, so a route that changes it has to say so.
-    this.injector.get(MechanismService).applyObjectScaleChange();
+
     // And the state the drawing arrived in has to say so too. This runs on the
     // frame after the load, by which time the arrival is already recorded --
     // with the default mark size, because that is what was set when it was
@@ -1132,7 +1105,7 @@ export class SvgGridService {
     // times too big. The entry is revised rather than added to: sizing the
     // marks to the drawing is part of how it opened, not an edit the reader
     // made and might want back.
-    this.injector.get(SaveHistoryService).restate();
+    this.injector.get(GRID_DOCUMENT).restate();
   }
 
   /** The canvas's own top-left in client pixels, which `pan` is measured from. */
@@ -1211,7 +1184,7 @@ export class SvgGridService {
       this.growChosenView(growth);
       return;
     }
-    if (!this.panZoomObject || !canvasHandle()) return;
+    if (!this.panZoomObject || !viewportCanvasHandle()) return;
     this.settlePending = true;
 
     const startedAt = performance.now();
@@ -1474,7 +1447,7 @@ export class SvgGridService {
     // Late, and through the injector: the tab service reaches the mechanism,
     // which reaches back here.
     const following = this.injector
-      .get(SelectedTabService)
+      .get(CHROME_TABS)
       .tabChanged.subscribe(() => this.notifyChromeChanged());
     // The drawer over the right of the canvas. It used to be left alone as
     // transient furniture, on the argument that a view which jumped away and
@@ -1549,14 +1522,14 @@ export class SvgGridService {
    * their marks were already the right size for a button they never touched.
    */
   updateObjectScale(pressed = false) {
-    SettingsService.objectScaleChosen = true;
+    this.injector.get(GRID_DOCUMENT).chooseObjectScale();
     const wanted = Number((MARK_TARGET_PX / this.getZoom()).toFixed(2));
     // Already there, which happens whenever it is pressed twice or pressed at
     // the zoom it was last used at. Silently doing nothing is the one outcome a
     // button must not have: with no drawing to compare against, a reader cannot
     // tell "there was nothing to change" from "this control is broken", and the
     // usual next move is to press it again.
-    if (pressed && wanted === SettingsService.objectScale) {
+    if (pressed && wanted === this.injector.get(GRID_DOCUMENT).objectScale) {
       // Divided the way the Settings field divides it. What is stored is a
       // model-unit length, about 138 at the default; what the reader typed and
       // can compare against is the 0.7 beside the button. Quoting the stored
@@ -1567,12 +1540,11 @@ export class SvgGridService {
       );
       return;
     }
-    SettingsService._objectScale.next(wanted);
+    this.injector.get(GRID_DOCUMENT).setObjectScale(wanted);
     // A link's outline is computed once and cached, and its width is a fraction
     // of this scale -- so a route that changes the scale has to say so, or the
     // bars stay the width they were while every joint, ground mark and arrow
     // around them changes size. The Settings panel does this from its own
     // field; this is the other way in, from the warning that offers it as a fix.
-    this.injector.get(MechanismService).applyObjectScaleChange();
   }
 }

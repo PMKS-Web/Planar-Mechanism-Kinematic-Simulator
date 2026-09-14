@@ -1,3 +1,4 @@
+import { CHROME_STATUS } from '../../services/chrome/chrome-status';
 import {
   CHROME_MECHANISM,
   CHROME_SETTINGS,
@@ -12,9 +13,6 @@ import { AngleUnit, GlobalUnit } from '../../model/utils';
 import { environment } from '../../../environments/environment';
 import { TabID } from '../../selected-tab.service';
 import { ViewportService } from '../../services/viewport.service';
-import { SynthesisBuilderService } from '../../services/synthesis/synthesis-builder.service';
-import { SynthesisSolutionService } from '../../services/synthesis/synthesis-solution.service';
-import { AnalysisCompareService } from '../../services/analysis-compare.service';
 
 @Component({
   selector: 'app-bottombar',
@@ -30,9 +28,7 @@ export class BottombarComponent {
   private svgGrid = inject(CHROME_GRID);
   private nup = inject(NumberUnitParserService);
   private activeObj = inject(CHROME_SELECTION);
-  private design = inject(SynthesisBuilderService);
-  private solution = inject(SynthesisSolutionService);
-  private comparison = inject(AnalysisCompareService);
+  private comparison = inject(CHROME_STATUS);
 
   /**
    * Which mode the app is in, spelled the way the tabs spell it.
@@ -74,7 +70,7 @@ export class BottombarComponent {
       return 'Drag to tune \u00b7 build in Edit';
     }
     if (this.tabs.getCurrentTab() === TabID.SYNTHESIZE) {
-      return this.synthesisStatus();
+      return this.comparison.synthesisStatus();
     }
     // A selected bar that holds a value says so here: the hold is a rule the
     // canvas is playing by, and the strip is where the canvas states its rules.
@@ -109,42 +105,6 @@ export class BottombarComponent {
    * at all, so "Nothing to analyze yet" was true and useless. This says where
    * in the search they are, and after Insert it says what was left behind.
    */
-  private synthesisStatus(): string {
-    if (this.design.stage === 'chooser') return 'Pick a synthesis type to begin';
-    if (this.design.regionDraw) {
-      return 'Drag on the grid to draw the region the ground pins must sit in';
-    }
-    const placed = this.design.getAllPoses().length;
-    const next = this.design.getFirstUndefinedPose();
-    if (this.design.armed && next !== undefined) {
-      return `Click the grid to place position ${next} of 3 · scroll to turn it`;
-    }
-    if (placed < 3) return `${placed} of 3 positions placed`;
-    if (this.solution.generating) {
-      return 'Searching for four-bars through these three positions…';
-    }
-    if (!this.solution.generated) {
-      return 'Three positions placed · ready to generate solutions';
-    }
-    const kind = this.solution.dyad() ? 'six-bar' : 'four-bar';
-    if (this.solution.inserted && !this.solution.needsReinsert()) {
-      return `Inserted as a ${kind} · positions kept for reference`;
-    }
-    // As driven from the chosen pin, which is the linkage on the grid.
-    const chosen = this.solution.driven();
-    if (!chosen) return 'No solution meets the current requirements';
-    const missed = 3 - chosen.onBranchCount;
-    const reached =
-      missed === 0
-        ? 'all 3 positions reached on one assembly'
-        : `${missed} position${missed === 1 ? ' needs' : 's need'} reassembly`;
-    const how = chosen.binds
-      ? `${reached} · small transmission angle (${chosen.minTransmission}°)`
-      : reached;
-    const count = this.solution.candidates().length;
-    const preview = this.solution.inserted ? 'Preview · ' : '';
-    return `${preview}Solution ${chosen.name} of ${count} · ${how}`;
-  }
 
   /**
    * The mobility, or a dash where there is no such number.

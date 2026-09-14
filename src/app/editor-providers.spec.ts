@@ -1,11 +1,11 @@
 import { InjectionToken } from '@angular/core';
-import { selectEditorProviders } from './editor-providers';
+import { selectEditorProviders, REQUIRED_EDITOR_PORTS } from './editor-providers';
 import { LEGACY_CHROME_PROVIDERS } from './services/chrome/legacy-chrome-providers';
 
 describe('pre-load editor provider selection', () => {
   const marker = new InjectionToken<string>('test editor');
   const legacy = [{ provide: marker, useValue: 'legacy' }];
-  const native = LEGACY_CHROME_PROVIDERS.map(({ provide }) => ({ provide, useValue: {} }));
+  const native = REQUIRED_EDITOR_PORTS.map((provide) => ({ provide, useValue: {} }));
 
   it('keeps every shipped route on the existing providers while native is absent', () => {
     for (const production of [true, false]) {
@@ -15,7 +15,7 @@ describe('pre-load editor provider selection', () => {
     }
   });
 
-  for (const { provide } of LEGACY_CHROME_PROVIDERS) {
+  for (const provide of REQUIRED_EDITOR_PORTS) {
     it(`rejects a selected native set missing ${provide}`, () => {
       const incomplete = native.filter((entry) => entry.provide !== provide);
       expect(() =>

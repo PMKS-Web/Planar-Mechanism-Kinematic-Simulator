@@ -1,18 +1,14 @@
-import type { MechanismService } from '../mechanism.service';
-import type { SettingsService } from '../settings.service';
-import type { SaveHistoryService } from '../save-history.service';
-import type { SvgGridService } from '../svg-grid.service';
-import type { SelectedTabService } from '../../selected-tab.service';
-import type { ActiveObjService } from '../active-obj.service';
-import type { EditPermissionService } from '../edit-permission.service';
-import type { Observable } from 'rxjs';
-import type { LinkHold } from '../../model/link';
+import type { BehaviorSubject, Observable } from 'rxjs';
+import type { WritableSignal } from '@angular/core';
+import type { AngleUnit, ForceUnit, GlobalUnit, LengthUnit } from '../../model/unit-enums';
+import type { EditAction, EditRefusal } from '../../model/edit-permission';
+import type { ActiveObjType } from '../../model/active-object-type';
+import type { TabID } from '../../selected-tab.service';
 
 /**
  * The shell consumes readings and commands, not the editable graph. These structural
  * views preserve live object identity on the legacy route without requiring a future
  * provider to construct Joint, Link or Mechanism instances merely to draw the chrome.
- * Pick keeps scalar command signatures in sync; graph-valued members are narrowed here.
  */
 /** Pass references received from these views back unchanged; do not synthesize a legacy part. */
 export interface ChromePart {
@@ -40,41 +36,39 @@ export interface ChromeReadiness {
   readonly id: string;
   readonly checks: readonly { readonly state: string; readonly title: string }[];
 }
-export interface ChromeMechanism extends Pick<
-  MechanismService,
-  | 'animate'
-  | 'animationSpeedMultiplier'
-  | 'blockerCount'
-  | 'clearStartMoved'
-  | 'cyclePeriod'
-  | 'directionOf'
-  | 'easeToStart'
-  | 'forceAnalysisReady'
-  | 'hoveredMechanismIndex'
-  | 'inputAngleDegrees'
-  | 'isAtStartPose'
-  | 'isMechanismPlaying'
-  | 'isPlaying'
-  | 'mechanismTimeStep'
-  | 'oneValidMechanismExists'
-  | 'reverseDrive'
-  | 'secondsOf'
-  | 'seekAllAlong'
-  | 'seekMechanism'
-  | 'seekMechanismTo'
-  | 'setAllPlaying'
-  | 'setPlaybackDirection'
-  | 'setSyncMechanisms'
-  | 'solveNow'
-  | 'solvingIsDeferred'
-  | 'startMovedOn'
-  | 'syncMechanisms'
-  | 'timeAtStep'
-  | 'toggleMechanismPlaying'
-  | 'travelOf'
-  | 'travelingForward'
-  | 'warningCount'
-> {
+export interface ChromeMechanism {
+  animate(progress: number, animationState?: boolean): void;
+  animationSpeedMultiplier: number;
+  blockerCount(): number;
+  clearStartMoved(): void;
+  cyclePeriod(): number;
+  directionOf(index: number): number;
+  easeToStart(durationMs?: number): void;
+  forceAnalysisReady(): boolean;
+  hoveredMechanismIndex: number;
+  inputAngleDegrees(index: number): number | undefined;
+  isAtStartPose(): boolean;
+  isMechanismPlaying(index: number): boolean;
+  isPlaying: boolean;
+  mechanismTimeStep: number;
+  oneValidMechanismExists(): boolean;
+  reverseDrive(index: number): boolean;
+  secondsOf(index: number): number;
+  seekAllAlong(leader: number, along: number): void;
+  seekMechanism(index: number, seconds: number): void;
+  seekMechanismTo(index: number, along: number): void;
+  setAllPlaying(playing: boolean): void;
+  setPlaybackDirection(index: number, direction: number): void;
+  setSyncMechanisms(sync: boolean): void;
+  solveNow(): void;
+  readonly solvingIsDeferred: boolean;
+  readonly startMovedOn: string | null;
+  syncMechanisms: boolean;
+  timeAtStep(step: number): number;
+  toggleMechanismPlaying(index: number): void;
+  travelOf(index: number): number | undefined;
+  travelingForward(index: number): boolean;
+  warningCount(): number;
   readonly onMechPositionChange: Observable<number>;
   driveProfileOf(index: number):
     | {
@@ -97,37 +91,53 @@ export interface ChromeMechanism extends Pick<
   drivenJointOf(index: number): ChromePart | undefined;
   hasMassiveLink(): boolean;
 }
-export interface ChromeSettings extends Pick<
-  SettingsService,
-  | 'angleUnit'
-  | 'animating'
-  | 'forceUnit'
-  | 'globalUnit'
-  | 'isShowCOM'
-  | 'isShowID'
-  | 'isShowTraces'
-  | 'lengthUnit'
-> {}
-export interface ChromeHistory extends Pick<
-  SaveHistoryService,
-  'canRedo' | 'canUndo' | 'redo' | 'undo'
-> {}
-export interface ChromeTabs extends Pick<
-  SelectedTabService,
-  'getCurrentTab' | 'isAnalysisMode' | 'isTabVisible' | 'isWidePanel' | 'setTab' | 'sheetExpanded'
-> {}
-export interface ChromePermission extends Pick<
-  EditPermissionService,
-  'refusal' | 'transportHint'
-> {}
-export interface ChromeGrid extends Pick<
-  SvgGridService,
-  'cursorAt' | 'zoomIn' | 'zoomOut' | 'scaleToFitLinkage' | 'scaleToFitFullMotion'
-> {}
-export interface ChromeSelection extends Pick<
-  ActiveObjService,
-  'objType' | 'getSelectedObjType' | 'selectMechanism' | 'selectedMechanismIndex'
-> {
+export interface ChromeSettings {
+  readonly angleUnit: BehaviorSubject<AngleUnit>;
+  readonly forceUnit: BehaviorSubject<ForceUnit>;
+  readonly globalUnit: BehaviorSubject<GlobalUnit>;
+  readonly lengthUnit: BehaviorSubject<LengthUnit>;
+  readonly animating: BehaviorSubject<boolean>;
+  readonly isShowCOM: BehaviorSubject<boolean>;
+  readonly isShowID: BehaviorSubject<boolean>;
+  readonly isShowTraces: BehaviorSubject<boolean>;
+  readonly isShowMajorGrid: BehaviorSubject<boolean>;
+  readonly isShowMinorGrid: BehaviorSubject<boolean>;
+  readonly isSnapToGrid: BehaviorSubject<boolean>;
+  readonly isSnapToAlignment: BehaviorSubject<boolean>;
+  readonly isGravity: BehaviorSubject<boolean>;
+  tempGridDisable: boolean;
+}
+export interface ChromeHistory {
+  canRedo(): boolean;
+  canUndo(): boolean;
+  redo(): void;
+  undo(): void;
+}
+export interface ChromeTabs {
+  readonly tabChanged: Observable<TabID>;
+  readonly sheetExpanded: WritableSignal<boolean>;
+  getCurrentTab(): TabID;
+  isAnalysisMode(tab?: TabID): tab is TabID.ANALYZE | TabID.FORCE;
+  isTabVisible(): boolean;
+  isWidePanel(tab?: TabID): tab is TabID.SYNTHESIZE | TabID.ANALYZE | TabID.FORCE;
+  setTab(tab: TabID): void;
+}
+export interface ChromePermission {
+  refusal(action: EditAction): EditRefusal | null;
+  transportHint(): string | null;
+}
+export interface ChromeGrid {
+  readonly cursorAt: { readonly x: number; readonly y: number } | null;
+  zoomIn(): void;
+  zoomOut(): void;
+  scaleToFitLinkage(animate?: boolean): void;
+  scaleToFitFullMotion(animate?: boolean): void;
+}
+export interface ChromeSelection {
+  readonly objType: ActiveObjType;
+  getSelectedObjType(): ActiveObjType;
+  selectMechanism(index: number): void;
+  readonly selectedMechanismIndex: number;
   readonly selectedLink: ChromeLink | undefined;
-  readonly selectedLinkHold: LinkHold;
+  readonly selectedLinkHold: 'length' | 'angle' | undefined;
 }
