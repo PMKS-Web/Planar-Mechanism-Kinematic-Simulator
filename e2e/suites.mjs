@@ -188,6 +188,10 @@ export const NOT_RUN = [
     name: 'chrome-provider-parity',
     why: 'Requires a separate untouched staging server through PMKS_BASELINE_URL; compares paired DOM, screenshots and S0 flow filmstrips.',
   },
+  {
+    name: 'native-panel-parity',
+    why: 'Compares the Edit panel and the context menus on the public and native routes at once, so it wants two origins (PMKS_PUBLIC_BASE_URL and PMKS_NATIVE_BASE_URL) — and the native route is development-only, like `native-chrome-parity`, so a lane against a deployed branch has nothing to point the second one at.',
+  },
   { name: 'app-ready', why: 'A helper the suites import: `waitForReady` and `openMechanism`.' },
   { name: 'filmstrip', why: 'A helper: burst frames and the contact sheet that tiles them.' },
   { name: 'quiet-start', why: 'A helper: seeds `localStorage` so no dialog covers the canvas.' },

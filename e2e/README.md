@@ -475,3 +475,25 @@ payload file and [reviewer URLs](../docs/native-fixture-urls.md) with
 The regular gallery spec checks freshness without writing.
 
 `native-chrome-parity.mjs` compares explicitly paired legacy/native drawings in the shared shell for S5; its screenshots and report are in `artifacts/bodies-and-joints/S5-rework/parity/`.
+
+`native-panel-parity.mjs` is the gate
+[`docs/native-ui-parity-plan.md`](../docs/native-ui-parity-plan.md) asks for: the **Edit panel and
+the context menus**, on the same paired fixture, opened on both routes at once and compared as DOM
+(tags, visible text, aria/role/title/disabled, and the computed color, background, font, letter
+spacing, radius and shadow of every element) and as pixels, at a maximum per-channel delta of 8. It
+selects the same joint, the same link, the cylinder where the pair has one and a force, and opens
+the menu on the grid and on each of them. **The one masked region is the joint-type block** — named
+by `data-native-only="joint-type"` on the native side and by the run of Grounded / Slider / Welded
+`toggle-block`s on the public side — and no menu comparison is masked at all. A native-only suite
+that passes is not evidence, so this one wants two origins:
+
+```bash
+PMKS_PUBLIC_BASE_URL=http://localhost:4200 PMKS_NATIVE_BASE_URL=http://localhost:4311 \
+  PMKS_PLAYWRIGHT_DIR=.. node e2e/native-panel-parity.mjs
+```
+
+One origin serving both routes also works: set `PMKS_BASE_URL` alone. `PMKS_PARITY_FIXTURES`
+narrows it to named pairs and `PMKS_PNG_DIR` says where `pngjs` lives when it is not beside
+Playwright. Reports, per-state DOM dumps and public-native-difference strips land in
+`artifacts/native-parity/`; look at the strips, because a count of changed pixels does not say
+which control moved.
