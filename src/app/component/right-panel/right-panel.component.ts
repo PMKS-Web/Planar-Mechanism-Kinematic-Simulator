@@ -1,3 +1,9 @@
+import {
+  CHROME_MECHANISM,
+  CHROME_SETTINGS,
+  CHROME_GRID,
+  CHROME_SELECTION,
+} from '../../services/chrome/chrome-tokens';
 import { TabID } from '../../selected-tab.service';
 import { CHROME_MOVED } from '../../model/chrome-motion';
 import {
@@ -12,14 +18,10 @@ import { whenModeChanges } from '../../services/mode-change-hooks';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { NewGridComponent } from '../new-grid/new-grid.component';
 import { gridStates, jointStates, linkStates, forceStates } from '../../model/utils';
-import { ActiveObjService } from '../../services/active-obj.service';
-import { MechanismService } from '../../services/mechanism.service';
 import { RealLink } from '../../model/link';
 import { AnalyticsService } from '../../services/analytics.service';
-import { SettingsService } from '../../services/settings.service';
 import { Arc, Line } from '../../model/line';
 import { Coord } from '../../model/coord';
-import { SvgGridService } from '../../services/svg-grid.service';
 import { TutorialService } from '../../services/tutorial.service';
 import { AnalysisSetupComponent } from '../analysis-setup/analysis-setup.component';
 import { ExportPanelComponent } from '../export-panel/export-panel.component';
@@ -98,10 +100,10 @@ import { CloseButtonComponent } from '../BLOCKS/close-button/close-button.compon
   ],
 })
 export class RightPanelComponent implements DoCheck {
-  activeObjService = inject(ActiveObjService);
-  mechanismService = inject(MechanismService);
-  settingsService = inject(SettingsService);
-  svgService = inject(SvgGridService);
+  activeObjService = inject(CHROME_SELECTION);
+  mechanismService = inject(CHROME_MECHANISM);
+  settingsService = inject(CHROME_SETTINGS);
+  svgService = inject(CHROME_GRID);
   /**
    * The tutorial asks to be shown rather than reaching in and setting the tab.
    *
