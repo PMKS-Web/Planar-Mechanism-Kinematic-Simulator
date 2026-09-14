@@ -19,7 +19,7 @@
  */
 
 import { createServer } from 'node:http';
-import { createReadStream } from 'node:fs';
+import { createReadStream, existsSync } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -72,20 +72,38 @@ async function resolve(url) {
 
 const server = createServer(async (request, response) => {
   const file = await resolve(request.url ?? '/');
-  if (!file) {
-    response.writeHead(404, { 'content-type': 'text/plain' });
+  const refuse = () => {
+    if (!response.headersSent) response.writeHead(404, { 'content-type': 'text/plain' });
     response.end('not found');
-    return;
-  }
-  response.writeHead(200, {
-    'content-type': TYPES[path.extname(file).toLowerCase()] ?? 'application/octet-stream',
-    // A shard runs once against one build; a cached answer only hides a change.
-    'cache-control': 'no-store',
+  };
+  if (!file) return refuse();
+  // Headers wait for the file to open. Written first, a file that is not there
+  // leaves a 200 promised and a body never sent, and the browser waits on it
+  // until its own timeout -- which reads as the app hanging, not as a 404.
+  const stream = createReadStream(file);
+  stream.once('error', refuse);
+  stream.once('open', () => {
+    response.writeHead(200, {
+      'content-type': TYPES[path.extname(file).toLowerCase()] ?? 'application/octet-stream',
+      // A shard runs once against one build; a cached answer only hides a change.
+      'cache-control': 'no-store',
+    });
+    stream.pipe(response);
   });
-  createReadStream(file).pipe(response);
 });
 
 // `ng serve` answers on IPv6 loopback only, which is why the suites are told
 // never to say 127.0.0.1. Listening with no host given takes both, so here that
 // rule does not bite — but keep saying `localhost`, for the days it is `ng serve`.
+// `ng build --output-path <dir>` puts the app in `<dir>/browser`: the flat layout
+// is `angular.json`'s, and a path given on the command line replaces it. Pointed
+// at the parent, every page is a 404 -- so say that now rather than serve it.
+if (!existsSync(path.join(root, 'index.html'))) {
+  const nested = existsSync(path.join(root, 'browser', 'index.html'));
+  console.error(
+    `No index.html in ${root}.` + (nested ? ` It is in ${path.join(root, 'browser')}.` : '')
+  );
+  process.exit(1);
+}
+
 server.listen(port, () => console.log(`serving ${root} on http://localhost:${port}`));
