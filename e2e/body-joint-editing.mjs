@@ -58,12 +58,37 @@ try {
   await page.goto(`${base}/?editor=native`);
   await page.locator('#bootSplash').waitFor({ state: 'detached' });
   const creation = filmstrip(page, `${out}/creation`);
+  // The public gesture, not a press-and-drag: the menu starts the bar at the
+  // right-click point, its ghost follows the pointer with no button held, and a
+  // click places the far end. Escape abandons it without spending history.
   await page.mouse.click(440, 490, { button: 'right' });
-  await page.getByRole('menuitem', { name: 'Link', exact: true }).click();
-  await drag({ x: 440, y: 490 }, { x: 780, y: 300 }, creation);
+  await page.getByRole('menuitem', { name: 'Cylinder', exact: true }).click();
+  await page.mouse.move(700, 350, { steps: 6 });
+  await page.waitForTimeout(150);
   let state = await nativeState(page);
   check(
-    'One grid gesture creates one body and one history entry',
+    'A menu-started cylinder previews as the pointer moves',
+    state.drawing.bodies.length > state.document.bodies.length
+  );
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(150);
+  state = await nativeState(page);
+  check(
+    'Escape abandons the preview without a history entry',
+    state.drawing.bodies.length === state.document.bodies.length && state.history === 0
+  );
+  await page.mouse.click(440, 490, { button: 'right' });
+  await page.getByRole('menuitem', { name: 'Link', exact: true }).click();
+  await creation.shot('menu');
+  for (let i = 1; i <= 6; i++) {
+    await page.mouse.move(440 + ((780 - 440) * i) / 6, 490 + ((300 - 490) * i) / 6, { steps: 2 });
+    await creation.shot(`follow-${i}`);
+  }
+  await page.mouse.click(780, 300);
+  await creation.shot('placed');
+  state = await nativeState(page);
+  check(
+    'Choosing Link from the menu, moving and clicking creates one body and one history entry',
     state.document.bodies.length === 2 && state.history === 1
   );
   check(

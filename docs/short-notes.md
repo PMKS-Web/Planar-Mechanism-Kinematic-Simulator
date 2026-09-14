@@ -1671,3 +1671,13 @@ an invisible expanded state on desktop that appears the next time the viewport b
 `native-chrome-parity` selects on desktop, then resizes, to retain this case. A resize's fit
 animation can also cross the shared zoom-warning threshold at different intermediate samples;
 dismiss transient notices before comparing the settled shell, without masking shell regions.
+
+**A menu action that only arms a tool looks like nothing happened.** The first shared-shell
+native canvas answered Attach Link by setting a tool and waiting for a press-and-drag; a
+click without a drag then disarmed it silently, which is what a reader who knows the public
+editor does first. The public gesture is the contract: the bar starts where the menu was
+opened, the ghost follows the pointer with no button held, a click places it, Escape or a
+right-click abandons it. `body-joint-editing` creates through that gesture, not a drag.
+The same canvas also missed the window-resize hook the public canvas has: svg-pan-zoom kept
+the old canvas size, the ruling covered one corner, and screen-to-model conversions answered
+for a canvas that was gone.

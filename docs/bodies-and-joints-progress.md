@@ -2970,6 +2970,16 @@ default; each shell card falls back to the components it imported on staging, so
 route needs no provider and the graph is staging's again. The native set still must provide
 `EDITOR_CONTENT` (`REQUIRED_EDITOR_PORTS`). The rerun of the whole gate is recorded on PR #13.
 
+**Maintainer report, September 14: Attach Link from the native menu did nothing.** The shared
+canvas answered the menu by arming a tool and waiting for a press-and-drag; a click without a
+drag disarmed it silently, and the paired suites had only ever dragged. The menu now starts
+the bar at the right-click point and its ghost follows the pointer until a click places it,
+as on the public canvas; Escape and a right-click abandon it without history. The same canvas
+lacked the public canvas's window-resize hook, so after a resize svg-pan-zoom kept the old
+size, the ruling covered one corner and screen-to-model conversions were wrong. Both fixed in
+`native-grid.component.ts`; `body-joint-editing` now creates through the public gesture and
+checks the Escape path (23 checks, no browser errors); `body-joint-gestures` passes.
+
 The final production build, `npm run check` (ESLint, stylelint and Prettier), and
 `git diff --check` pass. The production build used the host environment because the sandbox's
 LMDB build-cache failure exits at `Building` without a diagnostic; the host build completed.

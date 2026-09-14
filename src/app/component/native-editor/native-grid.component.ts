@@ -33,6 +33,7 @@ import { bodyDimensionMark } from '../../model/body-system/body-dimension-mark';
 import { bodyMotionPoses, bodyTraceMarks } from '../../model/body-system/body-motion-marks';
 import { NativePlaybackService } from '../../services/native-playback.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { fromEvent } from 'rxjs';
 import { compileWeldFrames } from '../../model/body-system/weld-frames';
 import { bodyGroupPresentation } from '../../model/body-system/body-group-presentation';
 import { LongPress, LongPressDirective } from '../../long-press.directive';
@@ -76,8 +77,18 @@ import { ContextMenuModel, trackContextMenuPointer } from '../BLOCKS/context-men
 import { NativeContextMenuService } from '../../services/native-context-menu.service';
 import { MaterialBody } from '../../model/body-system/material-body';
 
+/**
+ * The pointer id of a creation the menu started.
+ *
+ * Attach Link from the menu works as it does on the public canvas: the bar
+ * starts at the right-click point, its ghost follows the pointer with no button
+ * held, and the next click commits it. No button is down when that begins, so
+ * there is no pointer id yet; the first press adopts the gesture and its id.
+ */
+const MENU_POINTER = -1;
+
 interface PointerEdit {
-  readonly id: number;
+  id: number;
   readonly start: Point;
   readonly screen: Point;
   readonly gesture?: NativeBodyGesture;
@@ -330,6 +341,19 @@ export class NativeGridComponent {
       enableGridAnimationForThisAction: () => this.enableGlide(),
     });
     this.svgGrid.setNewElement(this.svg().nativeElement as unknown as HTMLElement);
+    // The same hook the public canvas has: the library is told its viewport
+    // changed size and the ruling is redrawn for it, through `ourOwnMove` so
+    // that keeping up with the window is not mistaken for the reader choosing
+    // a view. Without it the ruling stayed in the corner the old size covered
+    // and every screen-to-model conversion answered for a canvas that was gone.
+    fromEvent(window, 'resize')
+      .pipe(takeUntilDestroyed(this.cleanup))
+      .subscribe(() =>
+        this.svgGrid.ourOwnMove(() => {
+          this.svgGrid.panZoomObject.resize();
+          this.svgGrid.handlePan();
+        })
+      );
     this.cleanup.onDestroy(() => {
       registerViewportCanvas(undefined);
       this.cancel();
@@ -408,6 +432,11 @@ export class NativeGridComponent {
       materialOwner ??
       mark?.materialOwner ??
       (target ? selectionBodies(this.editor.drawing(), [target])[0] : undefined);
+    if (this.pointer?.creation && this.pointer.id === MENU_POINTER) {
+      // The click that ends a menu-started creation: the release commits it.
+      this.pointer.id = event.pointerId;
+      return;
+    }
     if (this.tool()) {
       this.pointer = {
         id: event.pointerId,
@@ -495,7 +524,8 @@ export class NativeGridComponent {
   protected move(event: PointerEvent) {
     const at = this.point(event);
     this.svgGrid.cursorAt = { x: at.x * MODEL_SCALE, y: at.y * MODEL_SCALE };
-    if (!this.pointer || event.pointerId !== this.pointer.id) return;
+    if (!this.pointer) return;
+    if (this.pointer.id !== MENU_POINTER && event.pointerId !== this.pointer.id) return;
     this.pending = event;
     if (!this.animation)
       this.animation = requestAnimationFrame(() => {
@@ -695,7 +725,12 @@ export class NativeGridComponent {
     if (target && !this.selected(target)) this.editor.select(target);
     if (!target) this.editor.select();
     this.menu.set(
-      this.menus.build(target, this.point(event), (kind) => this.tool.set(kind), materialOwner)
+      this.menus.build(
+        target,
+        this.point(event),
+        (kind) => this.beginCreation(kind, event, target, materialOwner),
+        materialOwner
+      )
     );
     // The CDK needs the opening event to ignore that same right-click's trailing auxclick.
     this.contextTrigger().nativeElement.dispatchEvent(
@@ -707,6 +742,42 @@ export class NativeGridComponent {
         cancelable: true,
       })
     );
+  }
+  /**
+   * Start a link or cylinder from the menu, the way the public canvas does.
+   *
+   * The bar begins where the menu was opened -- on the mark that was
+   * right-clicked, or on the grid square under the pointer -- and its ghost
+   * follows the pointer from there. A left click places the far end, a drag
+   * ends the same way at its release, and a right-click or Escape abandons it.
+   * Arming a tool and waiting for a press-and-drag looked like nothing had
+   * happened, because a click without a drag quietly disarmed it.
+   */
+  private beginCreation(
+    kind: 'link' | 'cylinder',
+    event: MouseEvent,
+    target?: BodySelectionRef,
+    materialOwner?: BodyId
+  ) {
+    this.cancel();
+    const mark = target
+      ? this.marks().find((m) => JSON.stringify(m.target) === JSON.stringify(target))
+      : undefined;
+    const owner =
+      materialOwner ??
+      mark?.materialOwner ??
+      (target ? selectionBodies(this.editor.drawing(), [target])[0] : undefined);
+    this.snapPoints = this.marks()
+      .filter((other) => other.key !== mark?.key)
+      .map((other) => other.point);
+    this.tool.set(kind);
+    this.pointer = {
+      id: MENU_POINTER,
+      start: mark?.point ?? this.snapped(this.point(event), event.altKey),
+      screen: { x: event.clientX, y: event.clientY },
+      moved: false,
+      creation: { kind, owner, document: this.editor.drawing() },
+    };
   }
   zoom(factor: number) {
     if (factor > 1) this.svgGrid.zoomIn();
