@@ -63,7 +63,8 @@ import { NativeBodyGesture } from '../../services/native-body-gesture';
 import { BodyJointMark, bodyJointMarks } from '../../model/body-system/body-joint-marks';
 import { bodyDrawingPoints } from '../../model/body-system/body-material-marks';
 import { BodySelectionRef } from '../../model/body-system/body-edit-types';
-import { BodyId } from '../../model/body-system/body-id';
+import { BodyId, newRecordId } from '../../model/body-system/body-id';
+import { nativeForceInsert } from '../../model/body-system/body-menu-commands';
 import { Point, dot, subtract, worldToLocal } from '../../model/body-system/body-frame';
 import { jointCoordinate } from '../../model/body-system/joint-coordinate';
 import {
@@ -96,7 +97,11 @@ interface PointerEdit {
   readonly coordinateId?: string;
   readonly axis?: Point;
   readonly pan?: boolean;
-  readonly creation?: { kind: 'link' | 'cylinder'; owner?: BodyId; document: BodyDocument };
+  readonly creation?: {
+    kind: 'link' | 'cylinder' | 'force';
+    owner?: BodyId;
+    document: BodyDocument;
+  };
   readonly force?: { load: BodyLoad; end: boolean; document: BodyDocument };
   readonly target?: BodySelectionRef;
   readonly additive?: boolean;
@@ -163,18 +168,50 @@ export class NativeGridComponent {
       .sort((a, b) => Number(rods.has(a.id)) - Number(rods.has(b.id)));
   });
   protected readonly compounds = computed(() => bodyCompoundMarks(this.editor.drawing()));
+  private readonly compoundOf = computed(() => {
+    const byBody = new Map<BodyId, ReturnType<typeof bodyCompoundMarks>[number]>();
+    for (const group of this.compounds())
+      for (const id of group.members) if (!byBody.has(id)) byBody.set(id, group);
+    return byBody;
+  });
   protected compound(id: BodyId) {
-    return this.compounds().find((group) => group.members.includes(id));
+    return this.compoundOf().get(id);
   }
-  protected readonly ghostPath = (body: MaterialBody) =>
-    nativeMaterialSkin(this.editor.document(), body) +
-    ' ' +
-    bodySlotChannels(this.editor.document(), body);
-  protected readonly path = (body: MaterialBody) =>
-    nativeMaterialSkin(this.editor.drawing(), body) +
-    ' ' +
-    bodySlotChannels(this.editor.drawing(), body);
+  /**
+   * An outline is asked for by the template on every change-detection pass, and it
+   * cannot change while the drawing it was cut from is the same object. Building it
+   * once per drawing rather than once per pass is what keeps a drag's frames cheap.
+   */
+  private readonly outlines = new WeakMap<BodyDocument, WeakMap<MaterialBody, string>>();
+  private outline(document: BodyDocument, body: MaterialBody): string {
+    let kept = this.outlines.get(document);
+    if (!kept) this.outlines.set(document, (kept = new WeakMap()));
+    const known = kept.get(body);
+    if (known !== undefined) return known;
+    const built = nativeMaterialSkin(document, body) + ' ' + bodySlotChannels(document, body);
+    kept.set(body, built);
+    return built;
+  }
+  protected readonly ghostPath = (body: MaterialBody) => this.outline(this.editor.document(), body);
+  protected readonly path = (body: MaterialBody) => this.outline(this.editor.drawing(), body);
+  /** A label also follows the zoom and the center-of-mass switch, so both join its key. */
+  private labels?: {
+    readonly document: BodyDocument;
+    readonly center: boolean;
+    readonly pixel: number;
+    readonly marks: WeakMap<MaterialBody, ReturnType<typeof bodyLabelMark>>;
+  };
   protected label(body: MaterialBody) {
+    const document = this.editor.drawing(),
+      center = this.settings.isShowCOM.value,
+      pixel = this.svgGrid.scaleWithZoom(1) / MODEL_SCALE;
+    let kept = this.labels;
+    if (!kept || kept.document !== document || kept.center !== center || kept.pixel !== pixel)
+      this.labels = kept = { document, center, pixel, marks: new WeakMap() };
+    if (!kept.marks.has(body)) kept.marks.set(body, this.labelOf(document, body, center, pixel));
+    return kept.marks.get(body);
+  }
+  private labelOf(document: BodyDocument, body: MaterialBody, center: boolean, pixel: number) {
     const compound = this.compound(body.id);
     if (compound)
       return compound.members[0] === body.id
@@ -185,12 +222,7 @@ export class NativeGridComponent {
             ink: luminanceOf(compound.fill) > INK_FLIPS_AT ? 'black' : 'white',
           }
         : undefined;
-    return bodyLabelMark(
-      this.editor.drawing(),
-      body,
-      this.settings.isShowCOM.value,
-      this.svgGrid.scaleWithZoom(1) / MODEL_SCALE
-    );
+    return bodyLabelMark(document, body, center, pixel);
   }
   protected readonly locks = computed(() =>
     this.editor.playing() ? [] : bodyLockMarks(this.editor.drawing())
@@ -556,7 +588,8 @@ export class NativeGridComponent {
       return;
     }
     if (p.pan) return;
-    if (p.creation || p.gesture) at = this.snapped(at, event.altKey);
+    if ((p.creation && p.creation.kind !== 'force') || p.gesture)
+      at = this.snapped(at, event.altKey);
     if (p.force) {
       const { load, end, document } = p.force;
       const body = document.bodies.find((b) => b.id === load.bodyId)!;
@@ -579,6 +612,17 @@ export class NativeGridComponent {
       const preview = this.editor.preview(command);
       if (preview.ok) this.editor.draft.set(preview);
       else this.editor.report(preview.message);
+      return;
+    }
+    if (p.creation?.kind === 'force') {
+      // Nothing exists until the click lands: the arrow is a draft the whole
+      // way, the way a menu-started link is.
+      const command = p.creation.owner
+        ? nativeForceInsert(p.creation.document, p.creation.owner, p.start, at, this.forceDraftId)
+        : undefined;
+      const preview = command ? this.editor.preview(command) : undefined;
+      if (preview?.ok) this.editor.draft.set(preview);
+      else if (preview) this.editor.report(preview.message);
       return;
     }
     if (p.creation) {
@@ -610,9 +654,9 @@ export class NativeGridComponent {
         this.editor.draft.set(result.plan);
         this.editor.report(result.limited ? result.refusal.message : '');
         if (p.coordinate !== undefined) {
-          const mark = bodyJointMarks(this.editor.drawing()).find(
-            (m) => m.coordinate?.jointId === p.coordinateId
-          );
+          // The draft above already moved the marks; reading them again here would
+          // rebuild, inside the pointer move, the list the canvas is about to draw.
+          const mark = this.marks().find((m) => m.coordinate?.jointId === p.coordinateId);
           this.travelGhost.set(mark?.rider);
         }
       } else this.editor.report(result.message);
@@ -663,8 +707,12 @@ export class NativeGridComponent {
       if (this.editor.commit(plan) && p.creation) {
         const target =
           plan.effects.added.find((r) => r.kind === 'assembly') ??
+          plan.effects.added.find((r) => r.kind === 'force') ??
           plan.effects.added.find((r) => r.kind === 'body');
-        if (target && (target.kind === 'body' || target.kind === 'assembly'))
+        if (
+          target &&
+          (target.kind === 'body' || target.kind === 'assembly' || target.kind === 'force')
+        )
           this.editor.select(target);
       }
     } else p.gesture?.cancel();
@@ -744,17 +792,22 @@ export class NativeGridComponent {
     );
   }
   /**
-   * Start a link or cylinder from the menu, the way the public canvas does.
+   * Start a link, a cylinder or a force from the menu, the way the public
+   * canvas does.
    *
-   * The bar begins where the menu was opened -- on the mark that was
+   * The part begins where the menu was opened -- on the mark that was
    * right-clicked, or on the grid square under the pointer -- and its ghost
    * follows the pointer from there. A left click places the far end, a drag
    * ends the same way at its release, and a right-click or Escape abandons it.
    * Arming a tool and waiting for a press-and-drag looked like nothing had
    * happened, because a click without a drag quietly disarmed it.
+   *
+   * A force takes the same route rather than landing on the first click: a
+   * load is a direction as much as a place, and one dropped at a default
+   * heading is one the reader has to go and fix.
    */
   private beginCreation(
-    kind: 'link' | 'cylinder',
+    kind: 'link' | 'cylinder' | 'force',
     event: MouseEvent,
     target?: BodySelectionRef,
     materialOwner?: BodyId
@@ -770,7 +823,11 @@ export class NativeGridComponent {
     this.snapPoints = this.marks()
       .filter((other) => other.key !== mark?.key)
       .map((other) => other.point);
-    this.tool.set(kind);
+    // A load's heading is free, so its arrow does not snap to the marks the
+    // way a bar's far end does.
+    if (kind === 'force') this.snapPoints = [];
+    else this.tool.set(kind);
+    this.forceDraftId = newRecordId<'force'>();
     this.pointer = {
       id: MENU_POINTER,
       start: mark?.point ?? this.snapped(this.point(event), event.altKey),
@@ -779,6 +836,9 @@ export class NativeGridComponent {
       creation: { kind, owner, document: this.editor.drawing() },
     };
   }
+
+  /** One id for the whole draw, so the ghost arrow is the arrow that lands. */
+  private forceDraftId = newRecordId<'force'>();
   zoom(factor: number) {
     if (factor > 1) this.svgGrid.zoomIn();
     else this.svgGrid.zoomOut();

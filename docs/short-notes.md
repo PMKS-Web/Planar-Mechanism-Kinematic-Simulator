@@ -1681,3 +1681,29 @@ right-click abandons it. `body-joint-editing` creates through that gesture, not 
 The same canvas also missed the window-resize hook the public canvas has: svg-pan-zoom kept
 the old canvas size, the ruling covered one corner, and screen-to-model conversions answered
 for a canvas that was gone.
+
+**A native gesture resends its own history, so a long press cost more than a short one.**
+`NativeBodyGesture` keeps every accepted sub-step and previews `[...operations, next]` each
+time, so move *k* replanned *k* operations from the top: dragging joint G on `Cylinder_Boom`
+went from 39 ms a move to 122 ms across ninety moves, and the mouse-up replanned the lot
+again. `body-edit-replay.ts` remembers each accepted prefix — keyed on the source document
+object and the operation objects themselves, so the answer is the one the loop would have
+computed — and `planBodyDesignEdit` continues from it. That only works while the documents
+handed in are identity-stable, which is why `snapshotCopy` now returns a record it already
+made instead of copying it again, and why `preparePosedBodyEdit` keeps the framed document it
+builds. Only `move-point`, `move-body` and `move-coordinate` are replayed: every other
+operation either mints ids from its own position in the command or changes the seed the loop
+starts from.
+
+**`vi.mock` cannot mock a relative import here.** The Angular unit-test system rejects it
+outright — *"not supported for relative imports ... use Angular TestBed"* — so a spec cannot
+count calls into a neighboring module to prove work did not happen. Assert the mechanism
+instead: `body-edit-replay.spec.ts` asks the cache how deep the remembered chain is and
+compares a continued plan against one replayed from fresh operation objects.
+
+**The native canvas runs about thirteen change-detection passes per pointer move.** Counted
+by wrapping the grid component's own methods on the live component during a drag
+(`artifacts/native-drag-perf/render-calls.mjs`): thirty moves produced 402 evaluations of
+every template-called helper for every body and every mark. Memoizing the outline, the label
+and the compound lookup made each pass cheap, but the pass count itself is still the native
+route's largest remaining multiplier over the public one.

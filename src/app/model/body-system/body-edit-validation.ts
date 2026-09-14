@@ -9,9 +9,25 @@ import { compileBodyDocument } from './constraint-compiler';
 import { fixedBodyAdmission } from './body-admission';
 import { checkBodyLimits } from './body-limits';
 import { bodyEditRefusal } from './joint-permission';
+import { isSnapshot } from './sample-results';
+
+/**
+ * A drawing compiles the same way every time it is asked, and a drag asks about the
+ * same unchanged base drawing on every pointer move. Only snapshots are remembered:
+ * they are frozen, so the answer cannot go stale under a caller's later edit.
+ */
+const answers = new WeakMap<object, BodyEditRefusal | undefined>();
 
 /** An underconstrained drawing is editable; a connection with conflicting anchors is not a repair request. */
 export function validateBodyEditDocument(document: BodyDocument): BodyEditRefusal | undefined {
+  if (!isSnapshot(document)) return compileForEdit(document);
+  if (answers.has(document)) return answers.get(document);
+  const answer = compileForEdit(document);
+  answers.set(document, answer);
+  return answer;
+}
+
+function compileForEdit(document: BodyDocument): BodyEditRefusal | undefined {
   try {
     if (!hasBodyDocumentShape(document) || !fitsBodyDocumentBudget(document))
       return bodyEditRefusal('invalid-document');

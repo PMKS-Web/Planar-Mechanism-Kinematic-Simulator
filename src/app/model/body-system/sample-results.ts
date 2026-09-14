@@ -52,30 +52,47 @@ export function freezeResult<T>(value: T): T {
   return value;
 }
 
+/**
+ * Every record this helper has already produced, so a second copy of one can be
+ * skipped. A snapshot is frozen all the way down and therefore cannot be edited
+ * behind a holder's back, which is the only thing copying it again would buy.
+ */
+const owned = new WeakSet<object>();
+
+/** True of a record `snapshotCopy` produced: deeply frozen, and safe to key a memo on. */
+export function isSnapshot(value: unknown): value is object {
+  return typeof value === 'object' && value !== null && owned.has(value);
+}
+
 /** Published snapshots own all records, including nested Maps; freezing must not reach editable input. */
 export function snapshotCopy<T>(value: T): T {
   const copied = new WeakMap<object, unknown>();
+  const keep = <V>(item: V): V => {
+    owned.add(item as object);
+    return item;
+  };
   const copy = (item: unknown): unknown => {
     if (item === null || typeof item !== 'object') return item;
+    if (owned.has(item)) return item;
     if (copied.has(item)) return copied.get(item);
     if (item instanceof Map || item instanceof SnapshotMap) {
       const result = snapshotMap(
         [...item].map(([key, child]) => [copy(key), copy(child)] as const)
       );
       copied.set(item, result);
-      return result;
+      return keep(result);
     }
     if (Array.isArray(item)) {
       const result: unknown[] = [];
       copied.set(item, result);
       result.push(...item.map(copy));
-      return Object.freeze(result);
+      return keep(Object.freeze(result));
     }
     const result: Record<string, unknown> = {};
     copied.set(item, result);
     for (const [key, child] of Object.entries(item))
       Object.defineProperty(result, key, { value: copy(child), enumerable: true });
-    return Object.freeze(result);
+    return keep(Object.freeze(result));
   };
   return copy(value) as T;
 }

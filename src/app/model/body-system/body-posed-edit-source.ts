@@ -4,7 +4,7 @@ import { BodyEditFrame, withBodyEditFrame } from './body-edit-frame';
 import { planBodyDesignEdit } from './body-design-edit-plan';
 import { validateBodyEditDocument } from './body-edit-validation';
 import { bodyEditRefusal } from './joint-permission';
-import { snapshotCopy } from './sample-results';
+import { isSnapshot, snapshotCopy } from './sample-results';
 
 export function preparePosedBodyEdit(
   document: BodyDocument,
@@ -39,8 +39,25 @@ export function preparePosedBodyEdit(
     document.drivers.some((driver) => !frame.clocks.some((clock) => clock.driverId === driver.id))
   )
     return bodyEditRefusal('stale-pose');
-  const displayed = withBodyEditFrame(source, frame);
+  const displayed = framedDocument(source, frame);
   const changed = planBodyDesignEdit(displayed, revision, command, context);
   if (!changed.ok) return changed;
   return { ok: true, source, displayed, changed };
+}
+
+/**
+ * The paused drawing a posed edit is written against depends only on the authored
+ * document and the displayed frame, and a drag asks for the same one on every
+ * pointer move. Keeping it lets the transaction below recognize it too.
+ */
+const framed = new WeakMap<BodyDocument, WeakMap<BodyEditFrame, BodyDocument>>();
+function framedDocument(document: BodyDocument, frame: BodyEditFrame): BodyDocument {
+  if (!isSnapshot(document)) return withBodyEditFrame(document, frame);
+  let byFrame = framed.get(document);
+  if (!byFrame) framed.set(document, (byFrame = new WeakMap()));
+  const kept = byFrame.get(frame);
+  if (kept) return kept;
+  const built = snapshotCopy(withBodyEditFrame(document, frame));
+  byFrame.set(frame, built);
+  return built;
 }

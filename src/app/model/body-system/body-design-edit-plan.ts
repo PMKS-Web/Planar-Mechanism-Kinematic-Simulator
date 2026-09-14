@@ -36,6 +36,7 @@ import { bodyGroupLineage } from './body-group-lineage';
 import { changeBodyJointKind } from './body-joint-kind-edit';
 import { bodyEditEffects, retainBodySelection } from './body-edit-effects';
 import { validateBodyEditDocument } from './body-edit-validation';
+import { bodyEditReplay, replayableBodyEdit } from './body-edit-replay';
 import { snapshotCopy } from './sample-results';
 import { BodyId } from './body-id';
 
@@ -101,7 +102,14 @@ export function planBodyDesignEdit(
   let pinSource = candidate;
   const copiedSelection: BodySelectionRef[] = [];
   const copiedProperties: BodyPropertyOperation[] = [];
+  // A held drag resends its own history; the operations it is made of replay from the
+  // prefix this command already asked about, rather than from the top of the list again.
+  const replay = replayableBodyEdit(source, command.operations)
+    ? bodyEditReplay(source, command.operations)
+    : undefined;
+  if (replay?.candidate) candidate = replay.candidate;
   for (const [index, operation] of command.operations.entries()) {
+    if (replay && index < replay.index) continue;
     if (operation.kind === 'copy-bodies' || operation.kind === 'paste-bodies') {
       const copied =
         operation.kind === 'copy-bodies'
@@ -163,6 +171,7 @@ export function planBodyDesignEdit(
       candidate = changed.document;
     } else if (!['insert', 'delete', 'reset-group-mass', 'convert-units'].includes(operation.kind))
       return bodyEditRefusal('invalid-command');
+    replay?.record(operation, candidate);
   }
   if (command.operations.some((operation) => operation.kind === 'joint-kind'))
     candidate = {

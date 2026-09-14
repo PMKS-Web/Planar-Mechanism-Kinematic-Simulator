@@ -144,7 +144,10 @@ export class NativeBodyGesture {
     if (authority !== this.authority) return bodyEditRefusal('stale-pose');
     if (!this.current()) return bodyEditRefusal('stale-pose');
     this.closed = true;
-    return this.authority.commit(this.plan, state);
+    // The accepted plan's command is this list, copied. Handing over the list itself
+    // lets the commit's replan recognize the steps it just planned, rather than
+    // solving the whole press again at the moment the button comes up.
+    return this.authority.commit({ id: this.id, operations: this.operations }, state);
   }
   cancel() {
     this.closed = true;
