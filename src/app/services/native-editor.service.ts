@@ -20,6 +20,7 @@ import {
   selectionJoints,
 } from '../model/body-system/body-joint-interaction';
 import { BodyId, WORLD } from '../model/body-system/body-id';
+import { nativeLockCommand } from '../model/body-system/body-menu-commands';
 import { encodeBodyDocument } from './transcoding/body-document-codec';
 
 /** View state is disposable; every authored change belongs to NativeBodyDocumentService. */
@@ -187,35 +188,20 @@ export class NativeEditorService {
         return d.assemblies.find((c) => c.id === target.id)?.label || 'Cylinder';
       case 'attachment':
         return d.attachments.find((a) => a.id === target.id)?.label || 'Tracer Point';
-      case 'force':
-        return d.forces.find((f) => f.id === target.id)?.label || 'Force';
+      case 'force': {
+        // F1, F2 ... — the names the public route gives a load. A drawing that
+        // arrives with every load called "Force" carries no name at all, so
+        // the panel and the menu both fall back to its place in the order
+        // rather than each inventing something.
+        const index = d.forces.findIndex((f) => f.id === target.id);
+        const label = d.forces[index]?.label;
+        return label && label !== 'Force' ? label : `F${index + 1}`;
+      }
     }
   }
+  /** The Lock switch, wherever it is drawn: panel, menu and shortcut share one answer. */
   lockCommand() {
-    const d = this.document(),
-      selection = this.selection();
-    const targets = selection.flatMap<
-      Extract<BodyEditOperation, { kind: 'lock' }>['targets'][number]
-    >((s) => {
-      if (s.kind === 'force' || s.kind === 'attachment') return [s];
-      if (s.kind === 'joint' || s.kind === 'junction') {
-        const joints = selectionJoints(d, s);
-        return [
-          ...new Set(joints.flatMap((j) => [j.frameA.attachmentId, j.frameB.attachmentId])),
-        ].map((id) => ({ kind: 'attachment' as const, id }));
-      }
-      return selectionBodies(d, [s]).map((id) => ({ kind: 'body' as const, id }));
-    }) as Extract<BodyEditOperation, { kind: 'lock' }>['targets'];
-    const locked =
-      targets.length > 0 &&
-      targets.every((t) =>
-        t.kind === 'attachment'
-          ? d.locks.includes(t.id)
-          : t.kind === 'force'
-            ? d.forces.find((f) => f.id === t.id)?.locked
-            : d.bodies.some((b) => b.id === t.id && b.kind === 'material' && b.locked)
-      );
-    return nativeCommand({ kind: 'lock', targets, locked: !locked });
+    return nativeLockCommand(this.document(), this.selection());
   }
   loadDocument(document: BodyDocument, writeRecovery = true) {
     const encoded = encodeBodyDocument(document);

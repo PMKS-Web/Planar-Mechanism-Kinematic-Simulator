@@ -13,6 +13,7 @@ import {
   bodyConnectionCommand,
 } from '../model/body-system/body-connection-controls';
 import { localToWorld } from '../model/body-system/body-frame';
+import { nativeForceInsert } from '../model/body-system/body-menu-commands';
 
 function controls() {
   TestBed.configureTestingModule({
@@ -59,12 +60,17 @@ it('a force added through a group menu belongs to the material member actually h
   editor.select(target);
   const body = editor.document().bodies.find((b) => b.id === f.members[1])!;
   const point = localToWorld(body.pose, { x: 1.3, y: 0 });
+  // The row hands the gesture to the canvas, as Link and Cylinder do; the
+  // load is drawn from the clicked point and lands on the click that ends it.
+  const started: string[] = [];
   const row = menu
-    .build(target, point, () => {}, f.members[1])
+    .build(target, point, (kind) => started.push(kind), f.members[1])
     .groups.flatMap((g) => g.rows)
     .find((r) => r.label === 'Force')!;
   expect(row.disabled).toBe(false);
   row.action();
+  expect(started).toEqual(['force']);
+  editor.commit(nativeForceInsert(editor.drawing(), f.members[1], point, { x: 9, y: 9 })!);
   expect(editor.document().forces).toHaveLength(1);
   expect(editor.document().forces[0].bodyId).toBe(f.members[1]);
   expect(editor.document().forces[0].point.x).toBeCloseTo(1.3, 12);
@@ -92,7 +98,7 @@ it('menu and panel kind commands quote the same driven-coordinate refusal', () =
   const row = menu
     .build(target, { x: 0, y: 0 }, () => {})
     .groups.flatMap((g) => g.rows)
-    .find((r) => r.label === 'Weld')!;
+    .find((r) => r.label === 'Welded')!;
   expect(row.disabled).toBe(true);
   if (!result.ok) expect(row.refusal?.long).toBe(result.message);
 });
