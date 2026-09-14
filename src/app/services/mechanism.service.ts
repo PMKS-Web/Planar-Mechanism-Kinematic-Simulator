@@ -3,7 +3,7 @@ import { LinkHold } from '../model/link';
 import { cylinderHoldCarrier, holdOf, holdableBar } from '../model/link-holds';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import { speedTurning, turnsClockwise } from '../model/drive-direction';
-import { Link, SliderBlock, RealLink } from '../model/link';
+import { Link, SliderBlock, RealLink, isMassiveLink } from '../model/link';
 import { isSlideCandidate, slideAssemblyAt } from '../model/slide-assembly';
 import {
   Cylinder,
@@ -732,6 +732,21 @@ export class MechanismService {
         ? this.settingsService.linearInputSpeed.value
         : this.settingsService.inputSpeed.value;
     return speedTurning(this.settingsService.isInputCW.value, magnitude);
+  }
+
+  /** Shell queries stay here so the chrome need not inspect legacy classes. */
+  drivenJointOf(index: number): RealJoint | undefined {
+    return this.partitions[index]?.ownJoints.find(
+      (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
+    );
+  }
+
+  hasMassiveLink(): boolean {
+    return this.links.some(isMassiveLink);
+  }
+
+  hasParts(): boolean {
+    return this.joints.length > 0 || this.links.length > 0;
   }
 
   /**

@@ -144,15 +144,11 @@
     // As wide as the view controls it stands over, which the view controls
     // measure and publish -- so the two edges line up however many buttons that
     // card ends up carrying. The frame is that plus the room its card needs on
-    // either side. Two pages hold a table rather than a panel and say so.
+    // either side.
     // The fallback is what six buttons and the divider between them measure to,
     // and is only used for the first paint before the real measurement lands.
     width: calc(var(--view-controls-width, 301px) + #{nav.$shadow-room} + #{nav.$card-inset});
     transition: width 0.1s ease-in-out;
-
-    &.wide {
-      width: calc(500px + #{nav.$shadow-room} + #{nav.$card-inset});
-    }
   }
 
   // One inset and one gap for every drawer page. The two setup drawers had
@@ -247,28 +243,6 @@
     flex-direction: column;
     flex: 1 1 auto;
     min-height: 0;
-  }
-
-  // This page holds several cards rather than one, so there is no single card
-  // to hand the height to and the page itself has to scroll. It takes the
-  // inset over from the page around it: an overflow box drawn at the cards'
-  // own edge would clip their shadows, and an inset outside the scrolling box
-  // is an inset that scrolls away.
-  #rightPanel > .page4 {
-    padding: 0;
-    overflow: hidden;
-  }
-
-  #debugWrapper {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-    box-sizing: border-box;
-    padding: nav.$shadow-room;
-    padding-right: nav.$card-inset;
   }
 
   .max-width {

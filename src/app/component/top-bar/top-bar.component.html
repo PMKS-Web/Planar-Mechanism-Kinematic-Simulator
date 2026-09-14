@@ -199,8 +199,5 @@
       <mat-icon>help</mat-icon>Help and feedback
       <kbd class="menuKeys">{{ shortcuts.keysFor('app.help') }}</kbd>
     </button>
-    @if (isDevMode()) {
-      <button class="menuItem" (click)="openDebug()"><mat-icon>bug_report</mat-icon>Debug</button>
-    }
   </div>
 }

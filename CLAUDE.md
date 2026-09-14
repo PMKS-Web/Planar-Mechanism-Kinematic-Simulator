@@ -184,6 +184,14 @@ Pure computation, mostly static classes: `loop-solver` (finds kinematic loops), 
 
 ### UI layer
 
+The chrome resolves its seven document/history/grid/mode/selection/permission/settings
+dependencies through `services/chrome/chrome-tokens.ts`. Their structural contracts
+are in `chrome-contracts.ts`; the default providers alias the existing services rather than
+creating another writer. `main.ts` selects providers before loading and keeps `AppComponent`
+as the sole root. Only legacy providers are installed. See
+[`docs/chrome-provider-seam.md`](docs/chrome-provider-seam.md) for the native follow-through
+and paired visual gate.
+
 **Where things are on screen.** `app.component.html` is the whole layout, and it is worth reading before describing the UI — the arrangement below replaced an earlier one with a horizontal file toolbar and a *vertical mode rail down the left*, and stale descriptions of that older layout have outlived it in more than one place.
 
 | Region | Component | Holds |
@@ -214,7 +222,7 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
 - A **Lock** is about position only: it refuses every gesture that would move what it holds and refuses nothing else, so a locked part deletes like any other and still takes a new link, cylinder or force (`model/lock-set.ts`).
 - A bar can **hold** its length or its angle against edits (`RealLink.hold`, the menu's Fixed Length / Fixed Angle rows, the padlocks in the Link panel's `hold-field-block`). It is a constraint, not a lock: every joint move goes through `GridUtilsService.dragJoint`, which asks `model/hold-solver.ts` for the CAD answer, and the hold rides the URL as an `H` entry beside the locks. [`docs/domain-facts.md`](docs/domain-facts.md#a-hold-is-a-constraint-not-a-lock-and-every-move-goes-through-the-solver) has the rules.
 - `SelectedTabService` (`TabID` enum) coordinates the four modes; the Edit and analysis panels operate on whatever `ActiveObjService` says is selected (joint, link, force, mechanism, background image, or synthesis pose).
-- The right drawer is addressed by number through statics on `RightPanelComponent`: 1 Settings, 3 Help, 4 Debug (dev only), 5 `KINEMATIC_SETUP_TAB`, 6 `FORCE_SETUP_TAB`, 7 `EXPORT_TAB`. **Tab 2 (`app-equation-panel`) is unreachable** — nothing calls `tabClicked(2)` and its content is placeholder images. It is unfinished work, not a feature.
+- The right drawer is addressed by number through statics on `RightPanelComponent`: 1 Settings, 3 Help, 5 `KINEMATIC_SETUP_TAB`, 6 `FORCE_SETUP_TAB`, 7 `EXPORT_TAB`. **Tab 2 (`app-equation-panel`) is unreachable** — nothing calls `tabClicked(2)` and its content is placeholder images. It is unfinished work, not a feature.
 - `SettingsService` exposes document-wide settings as RxJS BehaviorSubjects (units, gravity, grid and snap visibility, object scale). Input **speed and direction are not global** — they belong to the driven joint (`Joint.driveSpeed`), because a drawing can hold several machines; the SettingsService values are only the default a joint falls back to. `forceUnit` is the unit a force is *read* in (lbf under English; N or kgf under metric and SI) and not the one it is stored in — see [domain-facts.md](docs/domain-facts.md#a-force-is-stored-in-one-unit-and-read-in-another).
 - `component/BLOCKS/` holds the reusable form primitives (input, toggle, radio, dual-input, panel-section, ...) that the panels are composed from. **The component gallery (`npm run storybook`) is the one place for UI documentation:** every block and shared component state by state, sectioned as Fields, Choices, Actions, Structure and Feedback; the design tokens grouped by role; the UI style guide, vocabulary and code style rendered from `docs/*.md` at build time (edit the `.md`, never the page); and a Reuse backlog naming where the app still hand-rolls a block. Build new panel UI from the blocks rather than copying a neighbor's CSS. Only `@Input`/`input()` members belong in a block's public surface: everything else is `protected` or `private`, or it shows up in the gallery's properties table. `component/MODALS/` holds the Templates dialog and the release-notes splash.
 - Messages to the user go through `NotificationService`, which replaced the old `NewGridComponent.sendNotification()` static. Some components still talk through statics (e.g. `RightPanelComponent.openTab` / `insistOn`) — grep for the static before assuming a service is the only channel.

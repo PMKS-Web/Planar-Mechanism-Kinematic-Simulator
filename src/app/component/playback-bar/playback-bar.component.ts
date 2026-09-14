@@ -1,4 +1,12 @@
 import {
+  CHROME_MECHANISM,
+  CHROME_SETTINGS,
+  CHROME_HISTORY,
+  CHROME_TABS,
+  CHROME_SELECTION,
+  CHROME_PERMISSION,
+} from '../../services/chrome/chrome-tokens';
+import {
   AfterViewChecked,
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -12,15 +20,11 @@ import {
 import { animate, style, transition, trigger } from '@angular/animations';
 import { turnsClockwise } from '../../model/drive-direction';
 import { Subscription } from 'rxjs';
-import { MechanismService } from '../../services/mechanism.service';
-import { SettingsService } from '../../services/settings.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
-import { ActiveObjService } from '../../services/active-obj.service';
 import { CHROME_MOVED } from '../../model/chrome-motion';
 import { READINESS } from '../../ui-text';
-import { SelectedTabService, TabID } from '../../selected-tab.service';
+import { TabID } from '../../selected-tab.service';
 import { ViewportService } from '../../services/viewport.service';
-import { EditPermissionService } from '../../services/edit-permission.service';
 import { LoadingService } from '../../services/loading.service';
 import { AngleUnit, TimeUnit } from '../../model/utils';
 import { MODEL_SCALE } from '../../model/render-scale';
@@ -31,8 +35,6 @@ import { NgTemplateOutlet } from '@angular/common';
 import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
 import { ShortcutTipDirective } from '../BLOCKS/shortcut-tip/shortcut-tip.directive';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
-import { SaveHistoryService } from '../../services/save-history.service';
-import { RealJoint } from '../../model/joint';
 import { CdkConnectedOverlay, CdkOverlayOrigin, ConnectedPosition } from '@angular/cdk/overlay';
 
 /** What the stylesheet is asked for, and what to assume if it has not loaded. */
@@ -216,16 +218,16 @@ export interface RowRefusal {
   ],
 })
 export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChecked, OnDestroy {
-  mechanism = inject(MechanismService);
-  settings = inject(SettingsService);
-  activeObj = inject(ActiveObjService);
-  tabs = inject(SelectedTabService);
+  mechanism = inject(CHROME_MECHANISM);
+  settings = inject(CHROME_SETTINGS);
+  activeObj = inject(CHROME_SELECTION);
+  tabs = inject(CHROME_TABS);
   private nup = inject(NumberUnitParserService);
   shortcuts = inject(KeyboardShortcutsService);
   readonly viewport = inject(ViewportService);
-  private permission = inject(EditPermissionService);
+  private permission = inject(CHROME_PERMISSION);
   private loading = inject(LoadingService);
-  private history = inject(SaveHistoryService);
+  private history = inject(CHROME_HISTORY);
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
   private changeDetector = inject(ChangeDetectorRef);
 
@@ -495,7 +497,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
   /** The scrubber spans the longest cycle in the drawing; shorter ones wrap. */
   get maxStep(): number {
     const master = this.mechanism.masterMechanism();
-    return master ? master.joints.length - 1 : 0;
+    return master ? master.sampleCount - 1 : 0;
   }
 
   get step(): number {
@@ -731,9 +733,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
     // mechanisms, and a deferred drawing has none -- so asking it here returned
     // an empty list, and the card drew nothing at all.
     return this.mechanism.partitions.map((partition, index) => {
-      const driven = partition.ownJoints.find(
-        (joint) => joint instanceof RealJoint && joint.input
-      ) as RealJoint | undefined;
+      const driven = this.mechanism.drivenJointOf(index);
       // Undriven is the one thing that can be said without solving. Everything
       // else -- mobility, a slot with nowhere to go -- is what the solve is for,
       // and guessing at it here would be a refusal the model has not made.

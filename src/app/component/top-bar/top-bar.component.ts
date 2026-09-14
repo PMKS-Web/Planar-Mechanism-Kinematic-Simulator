@@ -1,3 +1,4 @@
+import { CHROME_MECHANISM, CHROME_HISTORY, CHROME_TABS } from '../../services/chrome/chrome-tokens';
 import {
   AfterViewChecked,
   AfterViewInit,
@@ -13,9 +14,7 @@ import {
 } from '@angular/core';
 import { animate, style, transition, trigger } from '@angular/animations';
 import { MatDialog } from '@angular/material/dialog';
-import { SelectedTabService, TabID } from '../../selected-tab.service';
-import { MechanismService } from '../../services/mechanism.service';
-import { SaveHistoryService } from '../../services/save-history.service';
+import { TabID } from '../../selected-tab.service';
 import { AnalyticsService } from '../../services/analytics.service';
 import { UrlGenerationService } from '../../services/url-generation.service';
 import { UrlProcessorService } from '../../services/url-processor.service';
@@ -133,9 +132,9 @@ const MENU_SHORTCUTS: ShortcutId[] = ['app.settings', 'app.help'];
   imports: [ShortcutTipDirective, MatTooltip, MatIcon, ChipComponent],
 })
 export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestroy {
-  tabs = inject(SelectedTabService);
-  mechanism = inject(MechanismService);
-  private history = inject(SaveHistoryService);
+  tabs = inject(CHROME_TABS);
+  mechanism = inject(CHROME_MECHANISM);
+  private history = inject(CHROME_HISTORY);
   private urlGeneration = inject(UrlGenerationService);
   private urlProcessor = inject(UrlProcessorService);
   private loading = inject(LoadingService);
@@ -422,7 +421,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
    * analyze.
    */
   hasStatus(): boolean {
-    return this.mechanism.joints.length > 0 || this.mechanism.links.length > 0;
+    return this.mechanism.hasParts();
   }
 
   statusOf(tab: TabID): TabStatus {
@@ -676,11 +675,6 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   openTutorial(): void {
     this.closeMenu();
     this.tutorial.start();
-  }
-
-  openDebug(): void {
-    this.closeMenu();
-    RightPanelComponent.tabClicked(4);
   }
 
   /** The current mode's setup, for anything outside the strip that wants it. */

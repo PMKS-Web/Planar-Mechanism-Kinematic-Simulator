@@ -10,16 +10,6 @@ import {
 } from '@angular/core';
 import { whenModeChanges } from '../../services/mode-change-hooks';
 import { animate, state, style, transition, trigger } from '@angular/animations';
-import { NewGridComponent } from '../new-grid/new-grid.component';
-import { gridStates, jointStates, linkStates, forceStates } from '../../model/utils';
-import { ActiveObjService } from '../../services/active-obj.service';
-import { MechanismService } from '../../services/mechanism.service';
-import { RealLink } from '../../model/link';
-import { AnalyticsService } from '../../services/analytics.service';
-import { SettingsService } from '../../services/settings.service';
-import { Arc, Line } from '../../model/line';
-import { Coord } from '../../model/coord';
-import { SvgGridService } from '../../services/svg-grid.service';
 import { TutorialService } from '../../services/tutorial.service';
 import { AnalysisSetupComponent } from '../analysis-setup/analysis-setup.component';
 import { ExportPanelComponent } from '../export-panel/export-panel.component';
@@ -27,9 +17,6 @@ import { TutorialPanelComponent } from '../tutorial-panel/tutorial-panel.compone
 import { SettingsPanelComponent } from '../settings-panel/settings-panel.component';
 import { EquationPanelComponent } from '../equation-panel/equation-panel.component';
 import { HelpPanelComponent } from '../help-panel/help-panel.component';
-import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
-import { ButtonComponent } from '../BLOCKS/button/button.component';
-import { LinkageTableComponent } from '../linkage-table/linkage-table.component';
 import { CloseButtonComponent } from '../BLOCKS/close-button/close-button.component';
 
 @Component({
@@ -61,9 +48,6 @@ import { CloseButtonComponent } from '../BLOCKS/close-button/close-button.compon
           visibility: 'hidden',
         })
       ),
-      state('openWide', style({})),
-      transition('open => openWide', [animate('0.1s ease-in-out')]),
-      transition('openWide => open', [animate('0.1s ease-in-out')]),
       transition('* => *', [animate('0.3s ease-in-out')]),
     ]),
     // The page inside the frame, kept for as long as the frame takes to leave.
@@ -91,17 +75,10 @@ import { CloseButtonComponent } from '../BLOCKS/close-button/close-button.compon
     SettingsPanelComponent,
     EquationPanelComponent,
     HelpPanelComponent,
-    PanelSectionComponent,
-    ButtonComponent,
-    LinkageTableComponent,
     CloseButtonComponent,
   ],
 })
 export class RightPanelComponent implements DoCheck {
-  activeObjService = inject(ActiveObjService);
-  mechanismService = inject(MechanismService);
-  settingsService = inject(SettingsService);
-  svgService = inject(SvgGridService);
   /**
    * The tutorial asks to be shown rather than reaching in and setting the tab.
    *
@@ -127,8 +104,6 @@ export class RightPanelComponent implements DoCheck {
   frameOpen(): boolean {
     return RightPanelComponent.isOpen || this.tutorialShowing();
   }
-
-  private analytics: AnalyticsService = inject(AnalyticsService);
 
   constructor() {
     // A setup drawer answers a question about one mode, so it goes when that
@@ -160,10 +135,6 @@ export class RightPanelComponent implements DoCheck {
    * drawing it is a part of.
    */
   static readonly EXPORT_TAB = 7;
-  turnOnDebugger() {
-    this.settingsService.isGridDebugOn = !this.settingsService.isGridDebugOn;
-  }
-
   /**
    * Bumped when a drawer is asked for that is already showing.
    *
@@ -206,30 +177,13 @@ export class RightPanelComponent implements DoCheck {
   attention = false;
   private shownAttention = 0;
 
-  /**
-   * The drawer's shape, as the canvas behind it cares about it: whether it is
-   * there, and how much room it takes when it is.
-   *
-   * Announced from here rather than from each of the five places that open or
-   * close a drawer, because that is five places to remember and this is one --
-   * and the state is a static that any of them may set. Seeded with what is
-   * already true, so the first check announces nothing.
-   */
-  private shownShape = this.drawerShape();
-
-  private drawerShape(): string {
-    // `frameOpen`, not `isOpen`: the tutorial card opens the frame on its own,
-    // so starting or ending it with no page open changes the drawer's shape
-    // without any page changing. And the width class rather than one of the
-    // two width questions -- switching an open drawer from Settings to Export
-    // is 79px the canvas was never told about.
-    return `${this.frameOpen()}:${this.drawerWidthClass()}`;
-  }
+  // The tutorial can hold the frame open without a numbered page.
+  private shownOpen = this.frameOpen();
 
   ngDoCheck(): void {
-    const shape = this.drawerShape();
-    if (shape !== this.shownShape) {
-      this.shownShape = shape;
+    const open = this.frameOpen();
+    if (open !== this.shownOpen) {
+      this.shownOpen = open;
       CHROME_MOVED.next();
     }
     // The Edit panel's resume line is offered only when the card is not up, and
@@ -308,172 +262,7 @@ export class RightPanelComponent implements DoCheck {
     return RightPanelComponent.openTab;
   }
 
-  /**
-   * How much room the open page takes.
-   *
-   * One answer for the template's width class and for the shape the canvas is
-   * told about, so a page cannot change the drawer's width without the canvas
-   * hearing about it.
-   *
-   * Only the debug page, which holds a table rather than a panel, takes more
-   * than the view controls' width. The export page used to as well, for the
-   * note beside each machine's name -- and a drawer that changed width by
-   * page broke the one line its left edge is meant to share with the view
-   * controls under it. The note wraps now instead.
-   */
-  drawerWidthClass(): 'wide' | 'base' {
-    return this.getOpenTab() === 4 ? 'wide' : 'base';
-  }
-
   getIsOpen() {
     return RightPanelComponent.isOpen;
-  }
-
-  debugGetGridState() {
-    return (
-      NewGridComponent.debugGetGridState() +
-      ' (' +
-      gridStates[NewGridComponent.debugGetGridState()] +
-      ')'
-    );
-  }
-
-  debugGetJointState() {
-    return (
-      NewGridComponent.debugGetJointState() +
-      ' (' +
-      jointStates[NewGridComponent.debugGetJointState()] +
-      ')'
-    );
-  }
-
-  debugGetLinkState() {
-    return (
-      NewGridComponent.debugGetLinkState() +
-      ' (' +
-      linkStates[NewGridComponent.debugGetLinkState()] +
-      ')'
-    );
-  }
-
-  debugGetForceState() {
-    return (
-      NewGridComponent.debugGetForceState() +
-      ' (' +
-      forceStates[NewGridComponent.debugGetForceState()] +
-      ')'
-    );
-  }
-
-  getLinkDesiredOrder() {
-    return RealLink.debugDesiredJointsIDs;
-  }
-
-  printMechanism() {
-    this.analytics.logEvent('debug_print_mechanism');
-    console.log(this.mechanismService.mechanisms);
-    console.log(this.mechanismService.links);
-    console.log(this.mechanismService.joints);
-  }
-
-  redrawAllLinks() {
-    console.log('Redrawing all links');
-    this.mechanismService.links.forEach((link) => {
-      (link as RealLink).reComputeDPath();
-    });
-  }
-
-  printActiveObject() {
-    this.analytics.logEvent('debug_print_active_object');
-    switch (this.activeObjService.objType) {
-      case 'Joint':
-        console.log(this.activeObjService.selectedJoint);
-        break;
-      case 'Link':
-        console.log(this.activeObjService.selectedLink);
-        break;
-      case 'Force':
-        console.log(this.activeObjService.selectedForce);
-        break;
-      default:
-        console.log('No active object');
-    }
-  }
-
-  runGeometryUnitTests() {
-    this.svgService.panZoomObject.zoomAtPoint(2, { x: 0, y: 0 });
-    console.log('Running interseciton tests');
-    let arc = new Arc(new Coord(0, 0), new Coord(0, 2), new Coord(0, 1));
-    let arc2 = new Arc(new Coord(-1, 1), new Coord(1, 1), new Coord(0, 1));
-    console.log('Arc intersects with arc2, should be infinite points:');
-    console.log(arc.intersectsWith(arc2));
-
-    let line = new Line(new Coord(1, 0), new Coord(1, 2));
-    console.log('Arc intersects with line, should be one point:');
-    console.log(arc.intersectsWith(line));
-
-    let line2 = new Line(new Coord(0.8, 0), new Coord(0.8, 2));
-    console.log('Arc intersects with line2, should be two points:');
-    console.log(arc.intersectsWith(line2));
-    console.log(line2.intersectsWith(arc));
-
-    let line3 = new Line(new Coord(-1, 0), new Coord(0, 0));
-    console.log('Arc intersects with line 3 but only at the end, no points:');
-    console.log(line3.intersectsWith(arc));
-    console.log(arc.intersectsWith(line3));
-
-    let line4 = new Line(new Coord(0, 2), new Coord(-1, 2));
-    console.log('Arc intersects with line 4 but only at the start, no points:');
-    console.log(line4.intersectsWith(arc));
-    console.log(arc.intersectsWith(line4));
-
-    let arc3 = new Arc(new Coord(-1, 2), new Coord(-1, 0), new Coord(-1, 1));
-    console.log('Arc intersects with arc3 but only at the start, no points:');
-    console.log(arc3.intersectsWith(line3));
-    console.log(line3.intersectsWith(arc3));
-
-    let arcTest = new Arc(
-      new Coord(-0.1926, -7.258),
-      new Coord(1.038, -7.36),
-      new Coord(0.422, -7.31)
-    );
-    let lineTest = new Line(new Coord(1, 9.95), new Coord(0.457, 0.52));
-    console.log('Arc intersects with lineTest, should be undefined:');
-    console.log(arcTest.intersectsWith(lineTest));
-    console.log(lineTest.intersectsWith(arcTest));
-
-    //Two circle intersection test
-    let arc4 = new Arc(new Coord(0, -1), new Coord(0, 1), new Coord(0, 0));
-    let arc5 = new Arc(new Coord(1, 1), new Coord(1, -1), new Coord(1, 0));
-    console.log('Arc intersects with arc5, should be two points:');
-    console.log(arc4.intersectsWith(arc5));
-    console.log(arc5.intersectsWith(arc4));
-
-    let arc6 = new Arc(new Coord(3.94, 3.12), new Coord(3.73, 4.33), new Coord(3.83, 3.73));
-    let arc7 = new Arc(new Coord(3.49, 4.29), new Coord(3.91, 5.45), new Coord(3.67, 4.88));
-    console.log('Arc intersects with arc5, should be two points:');
-    console.log(arc6.intersectsWith(arc7));
-    console.log(arc7.intersectsWith(arc6));
-
-    //Check with lines that touch each other don't count as intersection
-    let line5 = new Line(new Coord(0, 0), new Coord(1, 0));
-    let line6 = new Line(new Coord(0.5, 0), new Coord(0.5, 1));
-    console.log('Line intersects with line6, should be one point:');
-    console.log(line5.intersectsWith(line6));
-    console.log(line6.intersectsWith(line5));
-
-    //These two arcs should not intersect
-    let arc8 = new Arc(new Coord(0, 0.6), new Coord(0, -0.6), new Coord(0, 0));
-    let arc9 = new Arc(new Coord(0.5, 0), new Coord(1.7, 0), new Coord(1.1, 0));
-    console.log('Does not intersect, should be no points:');
-    console.log(arc8.intersectsWith(arc9));
-    console.log(arc9.intersectsWith(arc8));
-
-    //These two arcs should not intersect
-    let arc10 = new Arc(new Coord(1, 0), new Coord(-1, 0), new Coord(0, 0));
-    let arc11 = new Arc(new Coord(1, 0.1), new Coord(-1, 0.1), new Coord(0, 0.1));
-    console.log('Does not intersect, should be no points:');
-    console.log(arc10.intersectsWith(arc11));
-    console.log(arc11.intersectsWith(arc10));
   }
 }

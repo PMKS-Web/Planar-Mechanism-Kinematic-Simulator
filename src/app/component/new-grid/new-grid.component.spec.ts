@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { RevJoint } from '../../model/joint';
-import { RealLink } from '../../model/link';
+import { RealLink, SliderBlock } from '../../model/link';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { DragStateService } from '../../services/drag-state.service';
 import { GridUtilsService } from '../../services/grid-utils.service';
@@ -85,6 +85,33 @@ async function configureGridTestBed() {
 
 describe('NewGridComponent welded SVG presentation', () => {
   beforeEach(configureGridTestBed);
+
+  it('offers CoM for weighted bodies without marking massless neighbors or slider blocks', () => {
+    const mechanism = TestBed.inject(MechanismService);
+    const settings = TestBed.inject(SettingsService);
+    const grid = TestBed.createComponent(NewGridComponent).componentInstance;
+    const a = new RevJoint('A', 0, 0),
+      b = new RevJoint('B', 4, 0);
+    const body = new RealLink('AB', [a, b]);
+    const block = new SliderBlock('block', [a]);
+    body.mass = 0;
+    block.mass = 2;
+    mechanism.links = [body, block];
+    settings.isShowCOM.next(true);
+    expect(mechanism.hasMassiveLink()).toBe(false);
+    expect(grid.showsCoM(body)).toBe(false);
+    expect(grid.showsCoM(block)).toBe(false);
+    const weighted = new RealLink('weighted', [a, b]);
+    weighted.mass = 2;
+    mechanism.links.push(weighted);
+    expect(mechanism.hasMassiveLink()).toBe(true);
+    expect(grid.showsCoM(weighted)).toBe(true);
+    expect(grid.showsCoM(body)).toBe(false);
+    settings.isShowCOM.next(false);
+    expect(grid.showsCoM(weighted)).toBe(false);
+    settings.previewCoMLinkId = body.id;
+    expect(grid.showsCoM(body)).toBe(true);
+  });
 
   it('renders one filleted root path plus dotted constituent paths when selected', () => {
     const mechanism = TestBed.inject(MechanismService);
