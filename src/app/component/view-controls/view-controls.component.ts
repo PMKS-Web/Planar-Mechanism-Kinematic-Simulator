@@ -10,7 +10,6 @@ import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService, writeStoredFlag } from '../../services/settings.service';
 import { SvgGridService } from '../../services/svg-grid.service';
 import { ViewButtonComponent } from '../BLOCKS/view-button/view-button.component';
-import { RealLink } from '../../model/link';
 import { MatIcon } from '@angular/material/icon';
 import { CdkConnectedOverlay, CdkOverlayOrigin, ConnectedPosition } from '@angular/cdk/overlay';
 import { ViewportService } from '../../services/viewport.service';
@@ -171,7 +170,7 @@ export class ViewControlsComponent implements AfterViewInit, OnDestroy {
     // The same test the canvas applies (NewGridComponent.showsCoM): a body with
     // a mass, which a slider block is not -- it has a mass and no mark, so a
     // drawing whose only weight sat on one offered a switch that did nothing.
-    return !this.mechanismService.links.some((link) => link instanceof RealLink && link.mass > 0);
+    return !this.mechanismService.hasMassiveLink();
   }
 
   noTracedJoint(): boolean {

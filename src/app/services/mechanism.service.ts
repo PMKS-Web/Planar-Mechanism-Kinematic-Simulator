@@ -734,6 +734,21 @@ export class MechanismService {
     return speedTurning(this.settingsService.isInputCW.value, magnitude);
   }
 
+  /** Shell queries stay here so the chrome need not inspect legacy classes. */
+  drivenJointOf(index: number): RealJoint | undefined {
+    return this.partitions[index]?.ownJoints.find(
+      (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
+    );
+  }
+
+  hasMassiveLink(): boolean {
+    return this.links.some((link) => link instanceof RealLink && link.mass > 0);
+  }
+
+  redrawLinks(): void {
+    this.links.forEach((link) => (link as RealLink).reComputeDPath());
+  }
+
   /**
    * Set the speed of one mechanism's drive.
    *

@@ -1,7 +1,6 @@
 import { SvgGridService } from '../../services/svg-grid.service';
 import { READINESS } from '../../ui-text';
 import { ActiveObjService } from '../../services/active-obj.service';
-import { holdOf } from '../../model/link-holds';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { AngleUnit, GlobalUnit } from '../../model/utils';
@@ -77,7 +76,7 @@ export class BottombarComponent {
     // A selected bar that holds a value says so here: the hold is a rule the
     // canvas is playing by, and the strip is where the canvas states its rules.
     const selected = this.activeObj.objType === 'Link' ? this.activeObj.selectedLink : undefined;
-    const held = holdOf(selected);
+    const held = selected ? this.activeObj.selectedLinkHold : undefined;
     if (selected && held && !this.mechanismSrv.isLockedTarget(selected)) {
       return `Link ${selected.name || selected.id}: fixed ${held}`;
     }

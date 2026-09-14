@@ -63,8 +63,10 @@ export default defineConfig([
     // set, counted the way max-lines counts. Lower a number when a move lands;
     // raise one only in a pull request that says why the code could not live
     // in a model or a narrower service.
+    // Eleven lines move existing chrome queries behind its provider contract.
+    // PR A keeps this service the sole implementation; no new model rule is added.
     files: ['src/app/services/mechanism.service.ts'],
-    rules: { 'max-lines': ['error', { max: 4335, skipBlankLines: true, skipComments: true }] },
+    rules: { 'max-lines': ['error', { max: 4346, skipBlankLines: true, skipComments: true }] },
   },
   {
     files: ['src/app/component/new-grid/new-grid.component.ts'],

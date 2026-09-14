@@ -378,9 +378,7 @@ export class RightPanelComponent implements DoCheck {
 
   redrawAllLinks() {
     console.log('Redrawing all links');
-    this.mechanismService.links.forEach((link) => {
-      (link as RealLink).reComputeDPath();
-    });
+    this.mechanismService.redrawLinks();
   }
 
   printActiveObject() {

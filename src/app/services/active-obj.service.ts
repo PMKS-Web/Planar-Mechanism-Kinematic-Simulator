@@ -1,4 +1,5 @@
 import { Injectable, EventEmitter } from '@angular/core';
+import { holdOf } from '../model/link-holds';
 import { Force } from '../model/force';
 import { Joint, RealJoint } from '../model/joint';
 import { Link, RealLink } from '../model/link';
@@ -32,6 +33,11 @@ export class ActiveObjService {
   prevSelectedJoint!: RealJoint;
   selectedForce!: Force;
   selectedLink!: RealLink;
+  // The status strip needs the hold's meaning, not the legacy bar test.
+  get selectedLinkHold() {
+    return holdOf(this.selectedLink);
+  }
+
   selectedPose!: SynthesisPose;
   selectedForceEndPoint: string = '';
   /**

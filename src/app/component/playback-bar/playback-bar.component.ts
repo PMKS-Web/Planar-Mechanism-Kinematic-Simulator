@@ -32,7 +32,6 @@ import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-sh
 import { ShortcutTipDirective } from '../BLOCKS/shortcut-tip/shortcut-tip.directive';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
 import { SaveHistoryService } from '../../services/save-history.service';
-import { RealJoint } from '../../model/joint';
 import { CdkConnectedOverlay, CdkOverlayOrigin, ConnectedPosition } from '@angular/cdk/overlay';
 
 /** What the stylesheet is asked for, and what to assume if it has not loaded. */
@@ -731,9 +730,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
     // mechanisms, and a deferred drawing has none -- so asking it here returned
     // an empty list, and the card drew nothing at all.
     return this.mechanism.partitions.map((partition, index) => {
-      const driven = partition.ownJoints.find(
-        (joint) => joint instanceof RealJoint && joint.input
-      ) as RealJoint | undefined;
+      const driven = this.mechanism.drivenJointOf(index);
       // Undriven is the one thing that can be said without solving. Everything
       // else -- mobility, a slot with nowhere to go -- is what the solve is for,
       // and guessing at it here would be a refusal the model has not made.
