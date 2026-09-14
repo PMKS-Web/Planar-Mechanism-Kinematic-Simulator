@@ -214,8 +214,12 @@ export class SynthesisPanelComponent implements OnInit, DoCheck, OnDestroy {
       // The switches are the same three toggles the rows already had; what
       // changed is that they are the app's `toggle-block` rather than three
       // hand-drawn knobs, so they arrive as one form.
-      this.switchForm.valueChanges.subscribe((value) => {
+      this.switchForm.valueChanges.subscribe(() => {
         if (this.syncing) return;
+        // Raw rather than the emitted value, which leaves out a disabled
+        // control -- and the driver switch is disabled while a solution refuses
+        // one. Reading all three keeps this seeing what it always saw.
+        const value = this.switchForm.getRawValue();
         if (!!value.coupler !== this.design.endsOnly) this.toggleRequirement('endsOnly');
         else if (!!value.region !== this.design.constrain) this.toggleRequirement('constrain');
         else if (!!value.driver !== this.driverOn) this.toggleDriver();

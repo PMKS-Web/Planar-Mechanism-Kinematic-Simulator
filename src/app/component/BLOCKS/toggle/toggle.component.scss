@@ -71,13 +71,12 @@
       opacity: 0.5;
     }
 
-    // The switch's own `disabled` input loses to the reactive form directive
-    // driving it, which sets the control's state on top of it, so a caller
-    // that said "disabled" got a switch that looked live and snapped back
-    // when pressed. The block grays itself: the switch and its label at the
-    // Material disabled opacity, and no pointer on the switch, so the
-    // reason -- carried by the wrapper around the block -- is what a hover
-    // reaches.
+    // The switch is disabled through its form control (`holdDisabled` in the
+    // component), so Material draws it disabled; this dims it further and the
+    // label with it, because that is the look a disabled switch here has always
+    // had, and the label is ours rather than Material's. No pointer on the
+    // switch, so a hover reaches the wrapper around the block that carries the
+    // reason.
     &.toggle-block--disabled {
       .label {
         opacity: 0.5;

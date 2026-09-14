@@ -1,5 +1,15 @@
-import { booleanAttribute, Component, ChangeDetectionStrategy, input, output } from '@angular/core';
-import { FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import {
+  booleanAttribute,
+  Component,
+  ChangeDetectionStrategy,
+  DestroyRef,
+  effect,
+  inject,
+  input,
+  output,
+  untracked,
+} from '@angular/core';
+import { AbstractControl, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
 import { MatFormField } from '@angular/material/form-field';
@@ -31,7 +41,9 @@ export class ToggleComponent {
   readonly mixed = input<boolean>(false);
 
   /**
-   * Grays the switch out, like `radio-block`'s input of the same name.
+   * Grays the switch out and refuses it, like `radio-block`'s input of the same
+   * name. It reaches the switch through the form control rather than a
+   * `[disabled]` binding -- see `holdDisabled`.
    *
    * `disableInput` beside it is a different question -- that one is about the
    * optional number field this block can carry, not about the switch.
@@ -97,11 +109,52 @@ export class ToggleComponent {
     () => !this.disabled()
   );
 
+  /** The control this block disabled, so it hands back exactly that and nothing else. */
+  private disabledHere?: AbstractControl;
+
+  constructor() {
+    effect(() => {
+      const control = this.formGroup().get(this._formControl());
+      const wanted = this.disabled();
+      untracked(() => this.holdDisabled(control, wanted));
+    });
+    // The form outlives the block -- the Edit panel keeps one link form whichever
+    // link is selected -- so a control still disabled when the block goes would
+    // come back disabled under the next block drawn for it.
+    inject(DestroyRef).onDestroy(() => this.holdDisabled(null, false));
+  }
+
   protected setMouseOver(over: boolean): void {
     this.overlay.hover(over);
   }
 
   protected setFocused(focused: boolean): void {
     this.overlay.focus(focused);
+  }
+
+  /**
+   * Disable the switch by disabling its control, and undo only that.
+   *
+   * A reactive form owns its controls' disabled state and pushes it onto the
+   * switch whenever it sets a control up, so a `[disabled]` binding beside
+   * `formControlName` lost to it: a switch drawn disabled was only painted
+   * that way by this block's stylesheet, and still turned from the keyboard.
+   * Angular warned once for every switch for asking.
+   *
+   * Handing back only what it took is the rule `freezePoseBoundFields` in the
+   * Edit panel keeps too. The multi-selection panel disables most of its
+   * switches' controls itself, for its own reasons, and passes that on as
+   * `disabled`; those are not the block's to enable again.
+   */
+  private holdDisabled(control: AbstractControl | null, wanted: boolean): void {
+    const held = this.disabledHere;
+    if (held && (held !== control || !wanted)) {
+      this.disabledHere = undefined;
+      if (held.disabled) held.enable({ emitEvent: false });
+    }
+    if (wanted && control?.enabled) {
+      control.disable({ emitEvent: false });
+      this.disabledHere = control;
+    }
   }
 }

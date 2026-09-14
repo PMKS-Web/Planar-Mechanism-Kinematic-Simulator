@@ -1,11 +1,13 @@
 /**
  * A toggle block told it is disabled looks disabled.
  *
- * The switch's own `disabled` input loses to the reactive form directive
- * driving it, so "Draw as a Disc" on a link with no fixed pin looked live and
- * snapped back when pressed. The block grays itself now, switch and label,
- * and the switch takes no pointer. Checked on what a reader sees: the
- * computed opacity of the switch on a coupler, and on a crank.
+ * "Draw as a Disc" on a link with no fixed pin once looked live and snapped
+ * back when pressed: the switch's own `disabled` input lost to the reactive
+ * form directive driving it. The block grayed itself to cover that, and the
+ * switch underneath stayed live -- a Tab and a Space still turned it. It is
+ * disabled through its form control now. Checked on what a reader sees and on
+ * what a keyboard can reach: the computed opacity, and whether the switch's
+ * own button is disabled, on a coupler selected first and on a crank.
  *
  * And the Elliptical Crank card's trace, which sat on D -- a rocker pin that
  * draws a circle -- and belongs on C, the coupler point that draws the
@@ -49,6 +51,8 @@ const discToggle = () =>
       grayed: !!block?.querySelector('.toggle-block--disabled'),
       switchOpacity: toggle ? Number(getComputedStyle(toggle).opacity) : undefined,
       switchPointer: toggle ? getComputedStyle(toggle).pointerEvents : undefined,
+      // Painted disabled is not disabled: the button is what a keyboard reaches.
+      buttonDisabled: toggle?.querySelector('button[role="switch"]')?.disabled,
     };
   });
 
@@ -67,6 +71,13 @@ record(
   coupler.grayed && coupler.switchOpacity < 0.5 && coupler.switchPointer === 'none',
   coupler
 );
+// Selected first, so the switch is drawn disabled rather than turned disabled
+// -- the route where the form used to hand the switch back its live state.
+record(
+  'and is really disabled, so the keyboard cannot turn it',
+  coupler.buttonDisabled === true,
+  coupler
+);
 
 // The crank turns about its ground pin, so it can.
 await page.locator('#linkHolder path').nth(0).click({ force: true });
@@ -75,7 +86,10 @@ const crank = await discToggle();
 record('the crank is selected', crank.link === 'AB' && crank.present, crank);
 record(
   'and its switch is live',
-  !crank.grayed && crank.switchOpacity === 1 && crank.switchPointer !== 'none',
+  !crank.grayed &&
+    crank.switchOpacity === 1 &&
+    crank.switchPointer !== 'none' &&
+    crank.buttonDisabled === false,
   crank
 );
 
