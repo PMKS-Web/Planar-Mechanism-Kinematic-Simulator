@@ -29,7 +29,7 @@ import {
   ContextMenuBuilderService,
   MenuHandlers,
 } from '../../services/context-menu-builder.service';
-import { Link, RealLink, SliderBlock } from '../../model/link';
+import { Link, RealLink, SliderBlock, isMassiveLink } from '../../model/link';
 import { Lockable } from '../../model/lock-set';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../../model/joint';
 import { Coord } from '../../model/coord';
@@ -483,26 +483,6 @@ export class NewGridComponent implements OnDestroy {
     this.svgGridElement = document.getElementsByClassName(
       'svg-pan-zoom_viewport'
     )[0] as HTMLElement;
-  }
-
-  static debugGetGridState() {
-    return this.instance.dragState.grid;
-    //This is for debug purposes, do not make anything else static!
-  }
-
-  static debugGetJointState() {
-    return this.instance.dragState.joint;
-    //This is for debug purposes, do not make anything else static!
-  }
-
-  static debugGetLinkState() {
-    return this.instance.dragState.link;
-    //This is for debug purposes, do not make anything else static!
-  }
-
-  static debugGetForceState() {
-    return this.instance.dragState.force;
-    //This is for debug purposes, do not make anything else static!
   }
 
   /** Whether Synthesis owns the canvas: its handles, ghost and preview. */
@@ -5419,7 +5399,7 @@ export class NewGridComponent implements OnDestroy {
     // getLinkProp declines it -- so asking for one drew four undefined
     // quarters. The rule is a body with a mass, and a block is not one of the
     // bodies this mark is about.
-    return this.settings.isShowCOM.value && link instanceof RealLink && link.mass > 0;
+    return this.settings.isShowCOM.value && isMassiveLink(link);
   }
 
   /**

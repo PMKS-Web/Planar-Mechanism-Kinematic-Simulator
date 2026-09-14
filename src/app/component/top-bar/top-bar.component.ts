@@ -421,7 +421,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
    * analyze.
    */
   hasStatus(): boolean {
-    return this.mechanism.joints.length > 0 || this.mechanism.links.length > 0;
+    return this.mechanism.hasParts();
   }
 
   statusOf(tab: TabID): TabStatus {
@@ -675,11 +675,6 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   openTutorial(): void {
     this.closeMenu();
     this.tutorial.start();
-  }
-
-  openDebug(): void {
-    this.closeMenu();
-    RightPanelComponent.tabClicked(4);
   }
 
   /** The current mode's setup, for anything outside the strip that wants it. */

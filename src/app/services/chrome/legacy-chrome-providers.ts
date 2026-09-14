@@ -1,4 +1,4 @@
-import type { Provider } from '@angular/core';
+import type { ExistingProvider } from '@angular/core';
 import { MechanismService } from '../mechanism.service';
 import { SettingsService } from '../settings.service';
 import { SaveHistoryService } from '../save-history.service';
@@ -17,7 +17,7 @@ import {
 } from './chrome-tokens';
 
 /** Aliases, not replacement instances: the grid and chrome share every write. */
-export const LEGACY_CHROME_PROVIDERS: Provider[] = [
+export const LEGACY_CHROME_PROVIDERS: ExistingProvider[] = [
   { provide: CHROME_MECHANISM, useExisting: MechanismService },
   { provide: CHROME_SETTINGS, useExisting: SettingsService },
   { provide: CHROME_HISTORY, useExisting: SaveHistoryService },

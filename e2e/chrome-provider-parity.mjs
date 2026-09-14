@@ -1,22 +1,21 @@
 /**
- * PR A must preserve staging's shell. Run both builds on the same browser, fixtures,
+ * The provider seam must preserve staging's shell. Run both builds on the same browser, fixtures,
  * viewport and commanded pose; compare the DOM and pixels rather than accepting
  * two independent "it works" checks. S0 flows remain the comparison subjects.
  *
  * PMKS_BASELINE_URL=http://localhost:4337 PMKS_BASE_URL=http://localhost:4327 \
- *   PMKS_PLAYWRIGHT_DIR=.. node e2e/chrome-provider-parity.mjs
+ *   node e2e/chrome-provider-parity.mjs
  */
 import assert from 'node:assert/strict';
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { ALL_LINKAGES } from './template-payloads.mjs';
 import { waitForReady } from './app-ready.mjs';
 import { startQuiet } from './quiet-start.mjs';
 import { filmstrip, contactSheet } from './filmstrip.mjs';
 
-const { chromium } = await import(
-  (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
-);
+const playwrightDir = process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright';
+const { chromium } = await import(playwrightDir + '/node_modules/playwright/index.mjs');
+const { PNG } = await import(playwrightDir + '/node_modules/pngjs/lib/png.js');
 const baseline = process.env.PMKS_BASELINE_URL;
 assert(baseline, 'A separate untouched staging server is required');
 const candidate = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
@@ -98,30 +97,28 @@ async function snapshot(name) {
   }
   writeFileSync(`${out}/${name}-dom.json`, JSON.stringify(trees, null, 2));
   assert.deepEqual(trees[1], trees[0], `${name}: chrome DOM or geometry differs`);
-  const pixels = spawnSync(
-    'python3',
-    [
-      '-c',
-      `
-from PIL import Image, ImageChops
-import sys,json
-left,right=[Image.open(p).convert('RGB') for p in sys.argv[1:3]]
-assert left.size==right.size
-# Small rasterization variation is counted, never masked by excluding a UI region.
-a=ImageChops.difference(left,right)
-changed=sum(max(pixel)>8 for pixel in a.getdata())
-print(json.dumps({'changedPixels':changed,'maxChannelDelta':max(hi for lo,hi in a.getextrema()),'totalPixels':left.width*left.height}))
-a.save(sys.argv[3])
-sys.exit(0 if changed==0 else 1)
-`,
-      `${out}/${name}-staging.png`,
-      `${out}/${name}-seam.png`,
-      `${out}/${name}-diff.png`,
-    ],
-    { encoding: 'utf8' }
+  const [left, right] = ['staging', 'seam'].map((side) =>
+    PNG.sync.read(readFileSync(`${out}/${name}-${side}.png`))
   );
-  assert.equal(pixels.status, 0, `${name}: screenshot differs: ${pixels.stdout} ${pixels.stderr}`);
-  comparisons.push({ name, ...JSON.parse(pixels.stdout) });
+  assert.deepEqual([left.width, left.height], [right.width, right.height]);
+  const diff = new PNG({ width: left.width, height: left.height });
+  let changedPixels = 0,
+    maxChannelDelta = 0;
+  for (let offset = 0; offset < left.data.length; offset += 4) {
+    let delta = 0;
+    for (let channel = 0; channel < 3; channel++) {
+      diff.data[offset + channel] = Math.abs(
+        left.data[offset + channel] - right.data[offset + channel]
+      );
+      delta = Math.max(delta, diff.data[offset + channel]);
+    }
+    diff.data[offset + 3] = 255;
+    if (delta > 8) changedPixels++;
+    maxChannelDelta = Math.max(maxChannelDelta, delta);
+  }
+  writeFileSync(`${out}/${name}-diff.png`, PNG.sync.write(diff));
+  assert.equal(changedPixels, 0, `${name}: screenshot differs (${changedPixels} pixels)`);
+  comparisons.push({ name, changedPixels, maxChannelDelta, totalPixels: left.width * left.height });
   console.log(`PASS ${name}: identical chrome and screenshot`);
 }
 

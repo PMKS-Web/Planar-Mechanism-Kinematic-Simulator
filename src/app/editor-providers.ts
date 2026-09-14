@@ -17,5 +17,21 @@ export function selectEditorProviders(
   sets: EditorProviderSets = { legacy: LEGACY_CHROME_PROVIDERS }
 ): Provider[] {
   const nativeRequested = new URLSearchParams(search).get('editor') === 'native';
-  return !production && nativeRequested && sets.native ? sets.native : sets.legacy;
+  if (production || !nativeRequested || !sets.native) return sets.legacy;
+
+  // Root defaults support isolated component tests, but must never fill a hole
+  // in another editor's set by silently constructing a legacy service.
+  const supplied = new Set(
+    sets.native
+      .flat(Infinity)
+      .filter((provider) => provider && 'provide' in provider)
+      .map((provider) => provider.provide)
+  );
+  const missing = LEGACY_CHROME_PROVIDERS.filter(({ provide }) => !supplied.has(provide));
+  if (missing.length) {
+    throw new Error(
+      `Native editor providers missing: ${missing.map(({ provide }) => String(provide)).join(', ')}`
+    );
+  }
+  return sets.native;
 }

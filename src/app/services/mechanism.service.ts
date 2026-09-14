@@ -3,7 +3,7 @@ import { LinkHold } from '../model/link';
 import { cylinderHoldCarrier, holdOf, holdableBar } from '../model/link-holds';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import { speedTurning, turnsClockwise } from '../model/drive-direction';
-import { Link, SliderBlock, RealLink } from '../model/link';
+import { Link, SliderBlock, RealLink, isMassiveLink } from '../model/link';
 import { isSlideCandidate, slideAssemblyAt } from '../model/slide-assembly';
 import {
   Cylinder,
@@ -742,11 +742,11 @@ export class MechanismService {
   }
 
   hasMassiveLink(): boolean {
-    return this.links.some((link) => link instanceof RealLink && link.mass > 0);
+    return this.links.some(isMassiveLink);
   }
 
-  redrawLinks(): void {
-    this.links.forEach((link) => (link as RealLink).reComputeDPath());
+  hasParts(): boolean {
+    return this.joints.length > 0 || this.links.length > 0;
   }
 
   /**

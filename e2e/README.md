@@ -17,8 +17,10 @@ here.
 `PMKS_BASELINE_URL`, and the seam at `PMKS_BASE_URL`. It compares the six chrome regions'
 DOM, geometry and presentation, and full screenshots, on the same S0 fixture/interaction
 flows. It records paired motion and phone-sheet filmstrips for human inspection. Run with
-`PMKS_PLAYWRIGHT_DIR=..`; reports land in `artifacts/chrome-seam/parity`. Python Pillow is
-required for pixel comparison and contact sheets. It is excluded from the single-server
+`PMKS_PLAYWRIGHT_DIR` pointing to an install containing `playwright` and `pngjs` (the
+[documented temporary install](../docs/environment.md#environment)); reports land in
+`artifacts/chrome-seam/parity`. Pixel comparison runs in JavaScript; Pillow is optional
+for the shared filmstrip helper's contact sheets. It is excluded from the single-server
 CI lanes in `suites.mjs`.
 
 ## What CI runs

@@ -29,7 +29,7 @@ export interface ChromeCycle {
   readonly cyclePeriod: number;
   readonly reciprocates: boolean;
   readonly hasAddedSamples: boolean;
-  readonly joints: readonly unknown[];
+  readonly sampleCount: number;
   isMechanismValid(): boolean;
 }
 export interface ChromePartition {
@@ -85,7 +85,7 @@ export interface ChromeMechanism extends Pick<
       }
     | undefined;
   readonly joints: readonly ChromeJoint[];
-  readonly links: readonly unknown[];
+  hasParts(): boolean;
   readonly mechanisms: readonly ChromeCycle[];
   readonly partitions: readonly ChromePartition[];
   forceAnalysisRequirements(): readonly { readonly met: boolean; readonly warning?: boolean }[];
@@ -96,7 +96,6 @@ export interface ChromeMechanism extends Pick<
   driveSpeedOf(joint: ChromePart | undefined): number;
   drivenJointOf(index: number): ChromePart | undefined;
   hasMassiveLink(): boolean;
-  redrawLinks(): void;
 }
 export interface ChromeSettings extends Pick<
   SettingsService,
@@ -104,7 +103,6 @@ export interface ChromeSettings extends Pick<
   | 'animating'
   | 'forceUnit'
   | 'globalUnit'
-  | 'isGridDebugOn'
   | 'isShowCOM'
   | 'isShowID'
   | 'isShowTraces'
@@ -125,18 +123,11 @@ export interface ChromePermission extends Pick<
 export interface ChromeGrid extends Pick<
   SvgGridService,
   'cursorAt' | 'zoomIn' | 'zoomOut' | 'scaleToFitLinkage' | 'scaleToFitFullMotion'
-> {
-  readonly panZoomObject: Pick<SvgGridService['panZoomObject'], 'zoomAtPoint'>;
-}
+> {}
 export interface ChromeSelection extends Pick<
   ActiveObjService,
   'objType' | 'getSelectedObjType' | 'selectMechanism' | 'selectedMechanismIndex'
 > {
   readonly selectedLink: ChromeLink | undefined;
-  readonly selectedJoint: ChromePart | undefined;
-  readonly prevSelectedJoint: ChromePart | undefined;
-  readonly selectedForce:
-    | (ChromePart & { readonly isStartSelected: boolean; readonly isEndSelected: boolean })
-    | undefined;
   readonly selectedLinkHold: LinkHold;
 }

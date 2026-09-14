@@ -497,7 +497,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
   /** The scrubber spans the longest cycle in the drawing; shorter ones wrap. */
   get maxStep(): number {
     const master = this.mechanism.masterMechanism();
-    return master ? master.joints.length - 1 : 0;
+    return master ? master.sampleCount - 1 : 0;
   }
 
   get step(): number {
