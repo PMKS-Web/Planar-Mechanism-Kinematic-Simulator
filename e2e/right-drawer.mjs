@@ -72,7 +72,11 @@ const geometry = () =>
     const cards = [
       ...document.querySelectorAll('#rightPanel .tutorialSlot > *, #rightPanel .drawerPage > *'),
     ]
-      .filter((el) => el.tagName !== 'BUTTON')
+      // The close control is chrome, not a page, and it is matched by what it is
+      // rather than what element it happens to be: it was a bare `<button>` until
+      // it became a `close-button` block, and a tag-name filter quietly stopped
+      // excluding it, which made a 32px square the widest thing on the page.
+      .filter((el) => el.tagName !== 'BUTTON' && !el.classList.contains('closeDrawer'))
       .map((el) => ({
         tag: el.tagName.toLowerCase(),
         box: box(el),

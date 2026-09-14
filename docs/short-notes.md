@@ -13,6 +13,44 @@ whose title covers it, and leave a heading here only if someone would still sear
 
 ---
 
+### An e2e suite that launches the machine's own Chrome is not portable
+
+Eight suites read `PMKS_CHROME` and hand Playwright an `executablePath` rather than using the
+Chromium it pins. On a laptop that is the Chrome sitting in `/Applications`; on a CI runner it is
+whatever the image installed that morning, and it can be upgraded *during the job*. The first
+Linux run of `phase2-floating-slot` passed both its own checks and then hung the full thirty
+seconds inside a plain `page.screenshot({ path })` — fonts loaded, nothing else. Nothing was wrong
+with the app or the suite.
+
+So `e2e/suites.mjs` keeps all of them out of the `gate` lane: the gate installs Chromium only, and
+anything wanting the machine's own browser runs in the nightly, where a retry tells a break from a
+flake. If you write a suite that needs real Chrome, expect the same and say so in its lane note.
+
+### `[disabled]` beside `formControlName` does not disable anything
+
+A reactive form owns its controls' disabled state and pushes it onto the element whenever it sets a
+control up -- `setDisabledStateDefault` is `'always'` in `@angular/forms` -- and that happens after
+the element's inputs are applied. So `[disabled]="true"` next to `formControlName`, over an enabled
+control, is overwritten on the first pass, and only holds if it changes *after* setup. One switch
+could therefore be two things. A `toggle-block` disabled when it appeared was only grayed by the
+block's stylesheet and still took focus and a Space: Gravity, in Settings opened while a mechanism
+played, switched off with the drawing read-only. The same switch disabled a moment later was
+really disabled. Angular warns once per element for asking (`It looks like you're using the
+disabled attribute with a reactive form directive`).
+
+Disable the control instead. A subscriber that reads the whole group then wants `getRawValue()`,
+because a disabled control is left out of `value`. How `toggle-block` does it is under "A toggle
+block's `disabled` goes through its form control".
+
+### A scheduled workflow is read off the default branch, which here is a release behind
+
+`on: schedule` and `on: workflow_dispatch` are taken from the default branch's copy of the workflow
+file — and the default branch is `main`, which pull requests never target. So
+`.github/workflows/e2e-nightly.yml` does nothing at all, and its **Run workflow** button does not
+exist, until a release pull request carries it from `staging` to `main`. `on: pull_request` has no
+such rule: it is read from the pull request's own branch, so `e2e-gate.yml` worked the moment it
+was opened. A new scheduled workflow that "never fires" is almost always this and not the cron.
+
 ### Analysis graphs: keep annotations in the options, not on the chart
 
 `ApexCharts.addXaxisAnnotation(…, pushToMemory=false)` draws onto the chart, and *any* later
@@ -298,17 +336,24 @@ about two steps apart, well under 5% of the span, and the first cut reinstated t
 `piston-driven-wheels.spec.ts` requires a monotone full turn; `linear-actuator-rocker.spec.ts` is
 the rocker that must still retrace; the template baselines pin every cylinder's out-and-back.
 
-### A toggle block's `disabled` input has to gray the block itself
+### A toggle block's `disabled` goes through its form control, and hands back only what it took
 
-`toggle-block` passes `[disabled]` to its `mat-slide-toggle`, and that loses: the reactive form
-directive driving the switch sets the control's own disabled state on top of the input, so a
-caller that said "disabled" got a switch that looked live and snapped back when pressed --
-"Draw as a Disc" on a coupler was the one a reader noticed. The block now wears
-`.toggle-block--disabled` and grays the label and the switch itself (Material's 0.38, no pointer
-on the switch), so the hover reaches the wrapper that carries the reason. Disabling the form
-*control* instead would drop it from `form.value` for every reader of that form, which is why
-the look is CSS. `e2e/disabled-toggles.mjs` reads the switch's computed opacity on a coupler and
-on a crank.
+`toggle-block` used to pass `[disabled]` to its `mat-slide-toggle`, which lost to the form (see
+"`[disabled]` beside `formControlName` does not disable anything"): "Draw as a Disc" on a coupler
+looked live and snapped back when pressed. The first answer was CSS -- `.toggle-block--disabled`
+grays the label and the switch at Material's 0.38, with no pointer on the switch -- chosen over
+disabling the *control* because a disabled control drops out of `form.value` for every reader of
+that form. The gray fixed the look and left the switch itself live for a keyboard.
+
+`holdDisabled` in the component now disables the control, with `emitEvent: false`, and enables
+only a control it disabled itself -- also when the block is destroyed, because the Edit panel's
+link form outlives any one block. The multi-selection panel disables its own switches' controls
+and passes that on as `disabled`; those stay its business. The `form.value` objection was checked
+rather than kept: the link form and the settings form have no whole-group reader at all, and the
+synthesis switch form's one reader now reads `getRawValue()`. The gray stays on top of Material's
+disabled look, because that is how a disabled switch here has always looked.
+`e2e/disabled-toggles.mjs` checks the opacity and that the switch's own button is disabled, on a
+coupler selected first and on a crank; `toggle.component.spec.ts` holds the hand-back rules.
 
 The same suite holds the Elliptical Crank card's trace on C. It sat on D, whose comment in
 `slot-fixtures.ts` called it the ellipse; D swings on the rocker D-F and draws a circle about F,

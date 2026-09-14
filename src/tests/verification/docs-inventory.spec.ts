@@ -19,6 +19,25 @@ describe('documentation inventories', () => {
     expect(missing, 'add a line for each of these to e2e/README.md').toEqual([]);
   });
 
+  // `suites.mjs` says which lane a suite runs in; it is not what lets a suite
+  // run. Anything in `e2e/` it does not name runs in the nightly until it does
+  // (`run-suites.mjs`). This spec used to fail when a script was missing from
+  // the list, and in the required check that meant every open pull request
+  // adding a suite would go red over a file its author had no reason to touch.
+  // The mistake left to catch is the catalog's own: an entry for a script that
+  // has been deleted sends a shard looking for a file that is not there.
+  it('names no e2e script in e2e/suites.mjs that has been deleted', () => {
+    const catalog = read('e2e/suites.mjs');
+    const named = [...catalog.matchAll(/name: '([^']+)'/g)].map((found) => found[1]);
+    const scripts = new Set(
+      readdirSync(resolve(ROOT, 'e2e'))
+        .filter((name) => name.endsWith('.mjs'))
+        .map((name) => name.replace(/\.mjs$/, ''))
+    );
+    const gone = named.filter((name) => !scripts.has(name));
+    expect(gone, 'these are named in e2e/suites.mjs but no longer exist').toEqual([]);
+  });
+
   it('lists every document in docs/README.md', () => {
     const index = read('docs/README.md');
     const documents = readdirSync(resolve(ROOT, 'docs')).filter(

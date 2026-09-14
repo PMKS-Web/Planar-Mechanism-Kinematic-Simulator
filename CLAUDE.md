@@ -103,8 +103,15 @@ production's own bundle what students have.
 request fills in `.github/pull_request_template.md`: why, what changed, how it was verified, and
 the UI checklist when a reader can see the change. **A repository ruleset makes that check (`test`) required:** a pull
 request into `staging` or `main` cannot merge while it is red, and neither branch accepts direct or
-force pushes. Only a repository admin can override, and that is for emergencies. No e2e suite runs
-in CI, `e2e/ui-copy.mjs` included, so run the ones your change needs yourself.
+force pushes. Only a repository admin can override, and that is for emergencies.
+
+**Two lanes of the e2e suites run in CI too**, and `e2e/suites.mjs` is the list that decides which:
+`.github/workflows/e2e-gate.yml` runs the `gate` lane on every pull request, sharded four ways;
+`.github/workflows/e2e-nightly.yml` runs everything a runner can drive against `staging` each
+morning, and files what failed in one issue it keeps updating. **Neither replaces running the
+suites your change needs yourself** — the gate is about three fifths of the batch and none of the
+slow audits, and it reports after you have pushed. `node e2e/run-suites.mjs --list --lane gate`
+says what it will run. The nightly is where a suite earns its way into the gate.
 
 **The component gallery is hosted at [docs.pmksplus.com](https://docs.pmksplus.com)**, a third
 Netlify site (`pmksdocs`) that builds `npm run build-storybook` from `staging` on every push and
