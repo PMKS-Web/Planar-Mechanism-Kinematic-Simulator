@@ -184,6 +184,14 @@ Pure computation, mostly static classes: `loop-solver` (finds kinematic loops), 
 
 ### UI layer
 
+The six chrome components resolve the seven document/history/grid/mode/selection/permission/
+settings dependencies through `services/chrome/chrome-tokens.ts`. Their structural contracts
+are in `chrome-contracts.ts`; the default providers alias the existing services rather than
+creating another writer. `main.ts` selects providers before loading and keeps `AppComponent`
+as the sole root. Only legacy providers are installed. See
+[`docs/chrome-provider-seam.md`](docs/chrome-provider-seam.md) for the native follow-through
+and paired visual gate; the bodies-and-joints migration's S5 remains incomplete.
+
 **Where things are on screen.** `app.component.html` is the whole layout, and it is worth reading before describing the UI — the arrangement below replaced an earlier one with a horizontal file toolbar and a *vertical mode rail down the left*, and stale descriptions of that older layout have outlived it in more than one place.
 
 | Region | Component | Holds |
