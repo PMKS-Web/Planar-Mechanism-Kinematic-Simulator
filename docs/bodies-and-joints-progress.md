@@ -2980,6 +2980,26 @@ size, the ruling covered one corner and screen-to-model conversions were wrong. 
 `native-grid.component.ts`; `body-joint-editing` now creates through the public gesture and
 checks the Escape path (23 checks, no browser errors); `body-joint-gestures` passes.
 
+**Maintainer decision, September 14: the native UI is a 1:1 copy of the public UI.** After
+reviewing the shared-shell route the maintainer rejected its panel, menus and gestures as
+drifted, laggy and crashing. [native-ui-parity-plan.md](native-ui-parity-plan.md) is the plan
+of record: pixel-identical public UI with the new model underneath, the joint-type block as
+the one allowed difference. Four Opus agents did the work against a new gate,
+`e2e/native-panel-parity.mjs`, which compares the Edit panel and the menus on both routes as
+DOM and pixels with only the joint-type block masked. The Edit panel was rebuilt from the
+public template block for block; the menus from the public builder row for row (vector
+traces, Background Image and the analysis header stay gray until S6); a menu-started force
+is click-then-place. Diagnostics found no crashes (blank screens were the dev server's live
+reload dropping the query string) and one lag cause: a gesture replayed its whole history on
+every move, O(n²), fixed by continuing from the accepted prefix (Cylinder_Boom drag 122 → 23
+ms per move, flat). Still open, in order: the ~300 ms commit at mouse-up; about 13
+change-detection passes per pointer move on the native canvas; model behaviors that differ
+from the public editor (grounding or welding refused when it would immobilize a driven
+mechanism, Delete Joint leaving a one-ended bar, a cylinder's Fixed Angle refused, lock and
+delete counts by mark rather than by joint); a converted-to-prismatic joint unreachable by
+click because its rider mark and the pin coincide; native fixtures losing force labels and
+colors in conversion.
+
 The final production build, `npm run check` (ESLint, stylelint and Prettier), and
 `git diff --check` pass. The production build used the host environment because the sandbox's
 LMDB build-cache failure exits at `Building` without a diagnostic; the host build completed.

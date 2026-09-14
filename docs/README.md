@@ -36,6 +36,7 @@ In this order, the first time:
 
 ## Design records
 
+- [native-ui-parity-plan.md](native-ui-parity-plan.md) — the native route as a 1:1 copy of the public UI, the joint-type block as the one allowed difference, and the paired panel/menu gate. *Partly built*
 - [chrome-provider-seam.md](chrome-provider-seam.md) — the separate legacy chrome provider seam, its parity gate, and the blocked S5/native follow-through. *Partly built*
 - [bodies-and-joints-plan.md](bodies-and-joints-plan.md) — S0–S4 implemented; native UI and removal gates remain S5–S8. *Partly built*
 - [bodies-and-joints-progress.md](bodies-and-joints-progress.md) — execution checkpoints, review findings and verification evidence. *Reference*
