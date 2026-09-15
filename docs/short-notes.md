@@ -1106,6 +1106,18 @@ service that resolves its dependencies on first *use* then reads a destroyed inj
 eagerly where the ring allows it, and hand the predicate back on destroy
 (`destroyRef.onDestroy`). `NewGridComponent`'s `whenArrowsNudge` is the example.
 
+### A key pressed into an open menu is the menu's
+
+`KeyboardShortcutsService` listens on `window` and answered every keystroke that was not typed into
+a field, aimed at a button, or fired under a dialog — the arrows included, which is what a menu
+walks its items with. A right-click *selects* what it opened its card on, so Down on a joint's menu
+nudged that joint behind the card, and `ContextMenuComponent`'s "any shortcut closes the card" rule
+then shut the card on the shortcut it had just fired: the joint moved and the card vanished, in that
+order. The gate is `insideAnOpenMenu`, asked of the focused element (`[role="menu"]`) rather than of
+any open overlay — a card can stand while focus is elsewhere, and those keys are still the canvas's.
+The CDK does move focus into the card as it opens it, for a button-2 `contextmenu`; `menu-focus.mjs`
+is the same rule for the project menu, and `joint-type.mjs` walks the card's choice with the arrows.
+
 ### `anyComponentStyle` is 6 kB warning / 10 kB error
 
 Raised from 4/6 for the CAD Export dialog
