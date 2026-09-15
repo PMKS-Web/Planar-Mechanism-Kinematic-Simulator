@@ -51,6 +51,7 @@ these:
 | May this edit happen right now? | [`model/edit-permission.ts`](../src/app/model/edit-permission.ts), through [`edit-permission.service.ts`](../src/app/services/edit-permission.service.ts) |
 | Can this joint be driven? | `describeActuatorRefusal` in [`model/actuator.ts`](../src/app/model/actuator.ts) |
 | Can this joint be welded? | `weldRefusal` in [`grid-utils.service.ts`](../src/app/services/grid-utils.service.ts) |
+| Can this joint take this type? | `refuseJointType` in [`model/joint-type.ts`](../src/app/model/joint-type.ts), through `JointTypeService` |
 | Is a Lock holding this part? | `locksHolding` in [`model/lock-set.ts`](../src/app/model/lock-set.ts) |
 
 A condition such as `@if (joint.links.length < 2)` with its own words is a second copy of the rule.
@@ -237,7 +238,7 @@ Use the component that does the job:
 | A bare field with a derived-or-typed mark | `state-input` |
 | A hand-written `<input>` | add `appStandardField` |
 | A color | `color-picker` |
-| A choice of one option | `segmented-block`, or `radio-block` when bound to a form |
+| A choice of one option | `segmented-block` (`wrap` it into two columns, with glyphs, for four), or `radio-block` when bound to a form |
 | A switch | `toggle-block` |
 | The panel's stroked button | `button-block` |
 | Two buttons on one row | `dual-button` |

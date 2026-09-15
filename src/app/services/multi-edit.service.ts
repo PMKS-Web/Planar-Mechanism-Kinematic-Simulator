@@ -4,9 +4,11 @@ import { Force } from '../model/force';
 import { RealJoint } from '../model/joint';
 import { Link, LinkHold, RealLink } from '../model/link';
 import { holdableBar } from '../model/link-holds';
-import { SelectedPartRef, resolveSelectedParts } from '../model/selection';
+import { SelectedPartRef, partRefKey, resolveSelectedParts } from '../model/selection';
+import { JOINT_TYPE_LABEL, JointType, JointTypeChoice, jointTypeChoice } from '../model/joint-type';
 import { ActiveObjService } from './active-obj.service';
 import { GridUtilsService } from './grid-utils.service';
+import { JointTypeService } from './joint-type.service';
 import { MechanismService } from './mechanism.service';
 import { SettingsService } from './settings.service';
 
@@ -31,6 +33,7 @@ export class MultiEditService {
   private grid = inject(GridUtilsService);
   private active = inject(ActiveObjService);
   private settings = inject(SettingsService);
+  private jointTypes = inject(JointTypeService);
 
   private refusal(code: string, short: string, message: string): MultiEditResult {
     return { ok: false, refusal: { code, short, message } };
@@ -361,6 +364,76 @@ export class MultiEditService {
     const wanted = joints.filter((joint) => this.grid.isAttachedToSlider(joint) !== slider);
     if (wanted.length === 0) return OK;
     return this.eachJoint(wanted, () => this.mechanism.toggleSlider());
+  }
+
+  /**
+   * Why the selected joints cannot all become `type`, in the words one joint
+   * would be refused in.
+   *
+   * Preflighted whole, as the weld and the slider were: a change of type half
+   * the group refuses is not a half-done change, it is a group the reader has
+   * to unpick. Each joint is asked of `JointTypeService`, the same question the
+   * one-joint panel and menu ask, so the sentence is the one a joint would get.
+   */
+  jointTypeRefusal(
+    refs: readonly SelectedPartRef[],
+    type: JointType
+  ): MultiEditRefusal | undefined {
+    const joints = this.joints(refs);
+    if (!joints) {
+      return {
+        code: 'selection.joints-only',
+        short: 'joints only',
+        message: 'Joint Type can be chosen when every selected item is a joint.',
+      };
+    }
+    for (const joint of joints.filter((one) => this.jointTypes.typeOf(one) !== type)) {
+      const refused = this.jointTypes.refusal(joint, type);
+      if (refused) {
+        return {
+          code: 'selection.joint-type',
+          short: refused.short,
+          message: `${joint.name || joint.id} cannot become ${JOINT_TYPE_LABEL[type]}: ${refused.long}`,
+        };
+      }
+    }
+    return undefined;
+  }
+
+  /** Make every selected joint `type`, as one edit. */
+  setJointType(refs: readonly SelectedPartRef[], type: JointType): MultiEditResult {
+    const refused = this.jointTypeRefusal(refs, type);
+    if (refused) return { ok: false, refusal: refused };
+    const wanted = this.joints(refs)!.filter((joint) => this.jointTypes.typeOf(joint) !== type);
+    if (wanted.length === 0) return OK;
+    return this.eachJoint(wanted, () => this.jointTypes.set(this.active.selectedJoint, type));
+  }
+
+  /** The last group choice worked out, held for the reason `JointTypeService.choiceFor` holds one. */
+  private heldChoice?: { key: string; choice: JointTypeChoice };
+
+  /**
+   * What a group's Joint Type choice draws: the type the joints share, or none
+   * when they disagree; the grounded glyphs only when every one is grounded;
+   * and each type grayed with the group's own refusal.
+   */
+  jointTypeChoice(refs: readonly SelectedPartRef[]): JointTypeChoice | undefined {
+    const joints = this.joints(refs);
+    if (!joints) return undefined;
+    const key = `${refs.map(partRefKey).join(' ')}@${this.mechanism.cylinderRevision}`;
+    if (this.heldChoice?.key !== key) {
+      const types = new Set(joints.map((joint) => this.jointTypes.typeOf(joint)));
+      const choice = jointTypeChoice(
+        types.size === 1 ? [...types][0] : undefined,
+        joints.every((joint) => this.jointTypes.isGrounded(joint)),
+        (type) => {
+          const refused = this.jointTypeRefusal(refs, type);
+          return refused ? { short: refused.short, long: refused.message } : undefined;
+        }
+      );
+      this.heldChoice = { key, choice };
+    }
+    return this.heldChoice.choice;
   }
 
   /**

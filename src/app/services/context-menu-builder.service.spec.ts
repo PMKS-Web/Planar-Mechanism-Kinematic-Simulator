@@ -23,6 +23,7 @@ import { RevJoint } from '../model/joint';
 import { RealLink } from '../model/link';
 import { MODEL_SCALE } from '../model/render-scale';
 import { MultiEditService } from './multi-edit.service';
+import { JointTypeService } from './joint-type.service';
 import { SelectionBatchService } from './selection-batch.service';
 
 /**
@@ -76,6 +77,7 @@ function createBuilderHarness() {
       { provide: ContextMenuBuilderService, deps: [] },
       { provide: SelectionBatchService, deps: [MechanismService] },
       { provide: MultiEditService, deps: [] },
+      { provide: JointTypeService, deps: [] },
     ],
   });
   return {

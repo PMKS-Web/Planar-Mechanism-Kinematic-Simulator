@@ -93,10 +93,33 @@ the options current at the end if more were asked for meanwhile.
 
 Every "choose one of two or three" in the app is `segmented-block`: `radio-block` wraps it for
 form-bound settings, the graph rows use it for Magnitude / X & Y, the export drawers use it
-directly. The pill under the chosen option is positioned by measuring that option
-(`--thumb-left`, `--thumb-width`), so options may be as wide as their labels (`[fill]="false"`
-at the end of a settings row) or share the width equally (the default in a panel). Its buttons
-carry the plain button role and `aria-pressed`, which is what the suites find them by.
+directly, and a joint's type is four of them wrapped into two columns (`wrap`, with `icons`). The
+pill under the chosen option is positioned by measuring that option (`--thumb-left`,
+`--thumb-top`, `--thumb-width`, `--thumb-height`), so options may be as wide as their labels
+(`[fill]="false"` at the end of a settings row), share the width equally (the default in a panel),
+or sit on a second row. A `selected` of -1 chooses nothing, for a group whose parts disagree. Its
+buttons carry the plain button role and `aria-pressed`, which is what the suites find them by, and
+a grayed option's `reasons` hang on its `.cell` wrapper: a disabled button takes no pointer events,
+so a tooltip on the button itself would never open.
+
+### `finishStructuralEdit` puts the selection back on what the reader selected
+
+`toggleSlider()` takes no joint: it reads `activeObjService.selectedJoint`. A service that points
+the selection at a joint to drive it -- `MultiEditService.eachJoint`, `JointTypeService.set` --
+has to point it again before every such edit rather than once, because each structural edit ends
+in `finishStructuralEdit`, whose `reconcilePartSelection` sets `selectedJoint` back to the part
+selection. Welded to Pin-in-slot is an unweld and then a block, and with the selection pointed only
+once, the block landed on whichever joint the reader had selected (`joint-type.service.spec.ts`).
+
+### Once welded, a joint's bars are one link
+
+`weldJointTopology` fuses the bars at a joint into one compound `RealLink` and leaves the sliding
+block out of it, so `joint.links.length` on a welded joint counts the compound once. A rule that
+asks whether a weld has two links to fuse, put to a joint *already* welded, has to count the
+compound's pieces instead: `weldOutlivesBlock` in `model/joint-operation-permission.ts` does, and
+counting links refused Prismatic to Welded on a pin between two bars, whose weld the block's
+leaving keeps. A Slide on one bar has no compound -- its weld is the bar held to the block -- and
+`reconcileAssemblyWelds` strips that weld when the block goes.
 
 ### ApexCharts draws every annotation in front, and has no option about it
 
