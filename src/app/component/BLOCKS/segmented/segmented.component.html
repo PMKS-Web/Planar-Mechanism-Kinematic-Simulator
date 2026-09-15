@@ -1,4 +1,21 @@
-<!-- The pill is one element under all the options, moved by the two custom
+<!-- The name of the choice and its help mark, on the row every field block
+     draws above its control. Only when there is a name: most pick-ones sit at
+     the end of a row their panel has already labeled. -->
+@if (label(); as name) {
+  <div class="row">
+    <span class="label" [id]="idPrefix + '-label'">{{ name }}</span>
+    @if (tooltip(); as help) {
+      <mat-icon class="label-help" [matTooltip]="help" matTooltipShowDelay="400"
+        >help_outline</mat-icon
+      >
+    }
+    <div class="spacer"></div>
+    @if (mixed()) {
+      <span class="mixed-state">Mixed</span>
+    }
+  </div>
+}
+<!-- The pill is one element under all the options, moved by the custom
      properties the component measures from the chosen option, so the slide is
      a transition rather than a relayout. -->
 <!-- Plain buttons that say whether they are pressed, rather than radios: the
@@ -7,21 +24,44 @@
 <div
   class="segmented"
   role="group"
+  [attr.aria-labelledby]="label() ? idPrefix + '-label' : null"
   [class.compact]="compact()"
   [class.fit]="!fill()"
+  [class.wrap]="wrap()"
   [class.disabled]="disabled()"
+  [class.unchosen]="!hasChoice()"
 >
   <span class="thumb" aria-hidden="true"></span>
   @for (option of options(); track $index) {
-    <button
-      #option
-      type="button"
-      [class.chosen]="$index === selected()"
-      [attr.aria-pressed]="$index === selected()"
-      [disabled]="isDisabledAt($index)"
-      (click)="choose($index)"
+    <!-- The cell carries a grayed option's reason, not the button: a disabled
+         button takes no pointer events, so a tooltip on it would never open.
+         The same sentence is the button's description, for a reader who
+         cannot point. -->
+    <span
+      class="cell"
+      [matTooltip]="reasonAt($index) ?? ''"
+      [matTooltipDisabled]="!reasonAt($index)"
+      matTooltipShowDelay="400"
+      matTooltipPosition="above"
     >
-      {{ option }}
-    </button>
+      <button
+        #option
+        type="button"
+        [class.chosen]="isChosen($index)"
+        [class.invalid]="isChosen($index) && invalid()"
+        [attr.aria-pressed]="isChosen($index)"
+        [attr.aria-describedby]="reasonAt($index) ? idPrefix + '-reason-' + $index : null"
+        [disabled]="isDisabledAt($index)"
+        (click)="choose($index)"
+      >
+        @if (icons()[$index]; as icon) {
+          <mat-icon class="glyph" [svgIcon]="icon" aria-hidden="true"></mat-icon>
+        }
+        <span class="text">{{ option }}</span>
+      </button>
+      @if (reasonAt($index); as reason) {
+        <span hidden [id]="idPrefix + '-reason-' + $index">{{ reason }}</span>
+      }
+    </span>
   }
 </div>

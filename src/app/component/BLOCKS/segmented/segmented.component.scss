@@ -15,6 +15,14 @@
     flex: 0 0 auto;
   }
 
+  // The parts selected disagree, so no option is chosen: said at the end of
+  // the label row, in the words and ink toggle-block uses for the same state.
+  segmented-block .mixed-state {
+    color: mat.m2-get-color-from-palette($primary-palette, 700);
+    font-size: 11px;
+    font-weight: 500;
+  }
+
   // A track with a pill. The pill is as wide as one option and slides to the
   // chosen one; the options sit over it, and only their ink changes.
   segmented-block .segmented {
@@ -41,16 +49,33 @@
       width: var(--thumb-width, 0);
       border-radius: 6px;
       background: var(--surface);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+      box-shadow: var(--segment-shadow);
       transition:
         left 0.18s cubic-bezier(0.4, 0, 0.2, 1),
         width 0.18s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
+    // Nothing chosen, so nothing under any option.
+    &.unchosen .thumb {
+      visibility: hidden;
+    }
+
+    // What the pointer lands on: the button, or around a grayed one, the cell
+    // that carries its reason.
+    .cell {
+      display: flex;
+      flex: 1 1 0;
+      min-width: 0;
+    }
+
     button {
       position: relative;
       z-index: 1;
-      flex: 1 1 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      flex: 1 1 auto;
       min-width: 0;
       height: var(--height);
       padding: 0 8px;
@@ -61,9 +86,6 @@
       font-size: 12.5px;
       line-height: 1;
       color: var(--text-secondary);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
       cursor: pointer;
       transition: color 0.18s ease-in-out;
 
@@ -80,10 +102,51 @@
         color: var(--text-primary);
       }
 
+      // Out of the pointer's way as well as grayed, so the hover reaches the
+      // cell and its reason.
       &:disabled {
         color: var(--text-disabled);
         cursor: default;
+        pointer-events: none;
       }
+
+      // Chosen, and not valid as it stands.
+      &.invalid {
+        color: var(--refusal-text);
+      }
+    }
+
+    // The label clips itself rather than the button clipping it, now that a
+    // glyph may share the button. Its own line height, so the clip does not
+    // take the descenders off "Pin-in-slot".
+    .text {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      line-height: 1.4;
+    }
+
+    // A glyph stays out of the way until its option is the chosen one, and
+    // takes the same gray and the same refusal ink as its label.
+    .glyph {
+      flex: none;
+      width: 20px;
+      height: 20px;
+      color: var(--text-muted);
+      transition: color 0.18s ease-in-out;
+    }
+
+    button.chosen .glyph {
+      color: var(--brand);
+    }
+
+    button:disabled .glyph {
+      color: var(--text-disabled);
+    }
+
+    button.invalid .glyph {
+      color: var(--refusal-text);
     }
 
     &.compact button {
@@ -95,8 +158,34 @@
     &.fit {
       display: inline-flex;
 
-      button {
+      .cell {
         flex: 0 0 auto;
+      }
+    }
+
+    // Two columns of taller cells, the glyph and label reading from the left.
+    // The pill now moves down a row as well as across, so it is placed and
+    // slid on both axes.
+    &.wrap {
+      --height: 32px;
+      flex-wrap: wrap;
+
+      .cell {
+        flex: 1 1 calc(50% - var(--gap) / 2);
+      }
+
+      button {
+        justify-content: flex-start;
+      }
+
+      .thumb {
+        top: var(--thumb-top, var(--pad));
+        bottom: auto;
+        height: var(--thumb-height, var(--height));
+        transition:
+          left 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+          top 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+          width 0.18s cubic-bezier(0.4, 0, 0.2, 1);
       }
     }
 
