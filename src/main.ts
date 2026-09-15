@@ -4,7 +4,6 @@ import { provideHttpClient, withInterceptorsFromDi, withXhr } from '@angular/com
 import { bootstrapApplication } from '@angular/platform-browser';
 import { provideAnimations } from '@angular/platform-browser/animations';
 
-import { selectEditorProviders } from './app/editor-providers';
 import { AppComponent } from './app/app.component';
 import { environment } from './environments/environment';
 import 'hammerjs';
@@ -15,7 +14,6 @@ if (environment.production) {
 
 bootstrapApplication(AppComponent, {
   providers: [
-    ...selectEditorProviders(window.location.search, environment.production),
     provideZoneChangeDetection(),
     provideAnimations(),
     provideHttpClient(withXhr(), withInterceptorsFromDi()),

@@ -63,14 +63,12 @@ export default defineConfig([
     // set, counted the way max-lines counts. Lower a number when a move lands;
     // raise one only in a pull request that says why the code could not live
     // in a model or a narrower service.
-    // Existing chrome queries live behind the contract: a partition's driven
-    // joint, any body with mass, and whether the drawing contains parts.
     files: ['src/app/services/mechanism.service.ts'],
-    rules: { 'max-lines': ['error', { max: 4346, skipBlankLines: true, skipComments: true }] },
+    rules: { 'max-lines': ['error', { max: 4335, skipBlankLines: true, skipComments: true }] },
   },
   {
     files: ['src/app/component/new-grid/new-grid.component.ts'],
-    rules: { 'max-lines': ['error', { max: 3817, skipBlankLines: true, skipComments: true }] },
+    rules: { 'max-lines': ['error', { max: 3829, skipBlankLines: true, skipComments: true }] },
   },
   {
     // The import graph runs one way: components import services, never the

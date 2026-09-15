@@ -1,9 +1,20 @@
 <div>
   <div
-    [@openClose]="frameOpen() ? 'open' : 'closed'"
+    [@openClose]="
+      frameOpen()
+        ? getOpenTab() === 1 ||
+          getOpenTab() === 3 ||
+          getOpenTab() === 5 ||
+          getOpenTab() === 6 ||
+          getOpenTab() === 7
+          ? 'open'
+          : 'openWide'
+        : 'closed'
+    "
     id="rightPanel"
     data-canvas-inset="right"
     [class.insisting]="attention"
+    [class.wide]="drawerWidthClass() === 'wide'"
   >
     <!-- Pinned above whatever else the drawer is showing, rather than taking
          the drawer to itself. A student is meant to be able to open Settings or
@@ -22,7 +33,11 @@
          tutorial pinned above, a button anchored to the frame landed on the
          tutorial's own corner. -->
     @if (getIsOpen()) {
-      <div class="drawerPage" [@drawerCard]="tutorialShowing() ? 'held' : 'sole'">
+      <div
+        class="drawerPage"
+        [@drawerCard]="tutorialShowing() ? 'held' : 'sole'"
+        [class.page4]="getOpenTab() === 4"
+      >
         @if (getOpenTab() === 5) {
           <app-analysis-setup mode="kinematic"></app-analysis-setup>
         }
@@ -41,6 +56,54 @@
         @if (getOpenTab() === 3) {
           <app-help-panel></app-help-panel>
         }
+        @if (getOpenTab() === 4) {
+          <div id="debugWrapper">
+            <panel-section>
+              <button-block icon="terminal" [click]="printActiveObject.bind(this)"
+                >Console Log Active Object</button-block
+              >
+              <button-block icon="terminal" [click]="printMechanism.bind(this)"
+                >Console Log Mechanism</button-block
+              >
+              <button-block icon="draw" [click]="redrawAllLinks.bind(this)">Redraw</button-block>
+              <button-block icon="quiz" [click]="runGeometryUnitTests.bind(this)"
+                >Run Intersection Unit Tests
+              </button-block>
+              <button-block icon="report" [click]="turnOnDebugger.bind(this)"
+                >Turn on Grid Debug Information</button-block
+              >
+              <app-linkage-table></app-linkage-table>
+              <li>GridState: {{ debugGetGridState() }}</li>
+              <li>LinkState: {{ debugGetLinkState() }}</li>
+              <li>JointState: {{ debugGetJointState() }}</li>
+              <li>ForceState: {{ debugGetForceState() }}</li>
+              <li>
+                AOS.objType: <b>{{ activeObjService.objType }}</b>
+              </li>
+              <li>
+                AOS.selectedJoint.id: <b>{{ activeObjService.selectedJoint?.id }}</b>
+              </li>
+              <li>
+                AOS.selectedLink.id: <b>{{ activeObjService.selectedLink?.id }}</b>
+              </li>
+              <li>
+                AOS.selectedForce.id: <b>{{ activeObjService.selectedForce?.id }}</b>
+              </li>
+              <li>
+                AOS.prevSelectedJoint.id: <b>{{ activeObjService.prevSelectedJoint?.id }}</b>
+              </li>
+              <li>
+                AOS.selectedForce.isStartSelected:
+                {{ activeObjService.selectedForce?.isStartSelected }}
+              </li>
+              <li>
+                AOS.selectedForce.isEndSelected: {{ activeObjService.selectedForce?.isEndSelected }}
+              </li>
+              <div style="height: 50px"></div>
+            </panel-section>
+          </div>
+        }
+
         <!-- Every drawer closes the same way, from the same corner. Last in the
              page so it paints over the panel it sits on: it shares a line with
              the title, and a title row drawn after it covered it up. -->

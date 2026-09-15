@@ -1,16 +1,14 @@
-import {
-  CHROME_MECHANISM,
-  CHROME_SETTINGS,
-  CHROME_GRID,
-  CHROME_TABS,
-  CHROME_SELECTION,
-} from '../../services/chrome/chrome-tokens';
+import { SvgGridService } from '../../services/svg-grid.service';
 import { READINESS } from '../../ui-text';
+import { ActiveObjService } from '../../services/active-obj.service';
+import { holdOf } from '../../model/link-holds';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { AngleUnit, GlobalUnit } from '../../model/utils';
+import { SettingsService } from '../../services/settings.service';
+import { MechanismService } from '../../services/mechanism.service';
 import { environment } from '../../../environments/environment';
-import { TabID } from '../../selected-tab.service';
+import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { ViewportService } from '../../services/viewport.service';
 import { SynthesisBuilderService } from '../../services/synthesis/synthesis-builder.service';
 import { SynthesisSolutionService } from '../../services/synthesis/synthesis-solution.service';
@@ -23,13 +21,13 @@ import { AnalysisCompareService } from '../../services/analysis-compare.service'
   changeDetection: ChangeDetectionStrategy.Eager,
 })
 export class BottombarComponent {
-  settings = inject(CHROME_SETTINGS);
+  settings = inject(SettingsService);
   readonly viewport = inject(ViewportService);
-  mechanismSrv = inject(CHROME_MECHANISM);
-  private tabs = inject(CHROME_TABS);
-  private svgGrid = inject(CHROME_GRID);
+  mechanismSrv = inject(MechanismService);
+  private tabs = inject(SelectedTabService);
+  private svgGrid = inject(SvgGridService);
   private nup = inject(NumberUnitParserService);
-  private activeObj = inject(CHROME_SELECTION);
+  private activeObj = inject(ActiveObjService);
   private design = inject(SynthesisBuilderService);
   private solution = inject(SynthesisSolutionService);
   private comparison = inject(AnalysisCompareService);
@@ -79,7 +77,7 @@ export class BottombarComponent {
     // A selected bar that holds a value says so here: the hold is a rule the
     // canvas is playing by, and the strip is where the canvas states its rules.
     const selected = this.activeObj.objType === 'Link' ? this.activeObj.selectedLink : undefined;
-    const held = selected ? this.activeObj.selectedLinkHold : undefined;
+    const held = holdOf(selected);
     if (selected && held && !this.mechanismSrv.isLockedTarget(selected)) {
       return `Link ${selected.name || selected.id}: fixed ${held}`;
     }

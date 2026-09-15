@@ -1373,10 +1373,6 @@ export class Mechanism {
     this._requiredLoops = value;
   }
 
-  get sampleCount(): number {
-    return this._joints.length;
-  }
-
   get joints(): Joint[][] {
     return this._joints;
   }
