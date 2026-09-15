@@ -190,8 +190,10 @@ The source is [`joint-types-plan.md` §2.8](joint-types-plan.md#28-visual-gramma
   visible.
 - **The selection ring is interaction state only.** Never use it to show a joint's type.
 
-A gallery of canvas entities is planned for stage S6 of the bodies-and-joints migration, not built
-yet. Its stories will go in [`src/stories/canvas/`](../src/stories/canvas/README.md).
+A gallery of canvas entities is planned, not built. Stages 1 and 2 of
+[`joint-type-and-cylinder-plan.md`](joint-type-and-cylinder-plan.md) change how a slider and a
+cylinder are drawn, so it waits for them. Its stories will go in
+[`src/stories/canvas/`](../src/stories/canvas/README.md).
 
 ---
 
