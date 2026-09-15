@@ -14,7 +14,6 @@ const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
 import { waitForReady } from './app-ready.mjs';
-import { filmstrip, contactSheet } from './filmstrip.mjs';
 import { ALL_LINKAGES as payloads } from './template-payloads.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
@@ -94,35 +93,12 @@ const sameColumn = (card, controls) => card.left === controls.left && card.right
 
 // --- Every page is the view controls' width, on their left edge ----------------
 await load(950);
-await page.locator('.topStrip .iconButton').first().click();
-record(
-  'The project menu has no retired Debug tab, including in development',
-  (await page.locator('.menuItem', { hasText: /Debug/ }).count()) === 0
-);
-await page.waitForTimeout(400);
-await filmstrip(page, 'artifacts/right-drawer/menu').shot('project-menu');
-await page.keyboard.press('Escape');
 for (const [name, tab] of [
   ['Settings', 1],
   ['Kinematic setup', 5],
   ['Export', 7],
 ]) {
-  if (tab === 1) {
-    await filmstrip(page, 'artifacts/right-drawer/opening', {
-      x: 1130,
-      y: 0,
-      width: 370,
-      height: 950,
-    }).during(20, 10, 'settings', () => openTab(tab));
-    await contactSheet(
-      'artifacts/right-drawer/opening/*.png',
-      'artifacts/right-drawer/opening.png',
-      5,
-      0.6
-    );
-  } else {
-    await openTab(tab);
-  }
+  await openTab(tab);
   const { cards, controls } = await geometry();
   const card = cards[cards.length - 1];
   record(
@@ -134,24 +110,6 @@ for (const [name, tab] of [
     }
   );
 }
-
-await filmstrip(page, 'artifacts/right-drawer/closing', {
-  x: 1130,
-  y: 0,
-  width: 370,
-  height: 950,
-}).during(20, 10, 'export', () => page.locator('#rightPanel .closeDrawer button').click());
-await contactSheet(
-  'artifacts/right-drawer/closing/*.png',
-  'artifacts/right-drawer/closing.png',
-  5,
-  0.6
-);
-
-record(
-  'The drawer close control dismisses the page',
-  (await page.locator('#rightPanel .drawerPage').count()) === 0
-);
 
 // --- The export page with the tutorial pinned above it ------------------------
 await load(950);

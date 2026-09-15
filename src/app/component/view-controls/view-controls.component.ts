@@ -1,9 +1,4 @@
 import {
-  CHROME_MECHANISM,
-  CHROME_SETTINGS,
-  CHROME_GRID,
-} from '../../services/chrome/chrome-tokens';
-import {
   AfterViewInit,
   ChangeDetectionStrategy,
   Component,
@@ -11,8 +6,11 @@ import {
   OnDestroy,
   inject,
 } from '@angular/core';
-import { writeStoredFlag } from '../../services/settings.service';
+import { MechanismService } from '../../services/mechanism.service';
+import { SettingsService, writeStoredFlag } from '../../services/settings.service';
+import { SvgGridService } from '../../services/svg-grid.service';
 import { ViewButtonComponent } from '../BLOCKS/view-button/view-button.component';
+import { RealLink } from '../../model/link';
 import { MatIcon } from '@angular/material/icon';
 import { CdkConnectedOverlay, CdkOverlayOrigin, ConnectedPosition } from '@angular/cdk/overlay';
 import { ViewportService } from '../../services/viewport.service';
@@ -33,7 +31,7 @@ const CARD_GAP = 12;
   imports: [ViewButtonComponent, MatIcon, CdkOverlayOrigin, CdkConnectedOverlay],
 })
 export class ViewControlsComponent implements AfterViewInit, OnDestroy {
-  svgGrid = inject(CHROME_GRID);
+  svgGrid = inject(SvgGridService);
   readonly viewport = inject(ViewportService);
 
   /** Whether the phone's drawer of view switches is up. */
@@ -65,8 +63,8 @@ export class ViewControlsComponent implements AfterViewInit, OnDestroy {
     return Math.max(10, button.getBoundingClientRect().top - card.getBoundingClientRect().top + 10);
   }
 
-  mechanismService = inject(CHROME_MECHANISM);
-  settingsService = inject(CHROME_SETTINGS);
+  mechanismService = inject(MechanismService);
+  settingsService = inject(SettingsService);
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
   private shortcuts = inject(KeyboardShortcutsService);
 
@@ -173,7 +171,7 @@ export class ViewControlsComponent implements AfterViewInit, OnDestroy {
     // The same test the canvas applies (NewGridComponent.showsCoM): a body with
     // a mass, which a slider block is not -- it has a mass and no mark, so a
     // drawing whose only weight sat on one offered a switch that did nothing.
-    return !this.mechanismService.hasMassiveLink();
+    return !this.mechanismService.links.some((link) => link instanceof RealLink && link.mass > 0);
   }
 
   noTracedJoint(): boolean {

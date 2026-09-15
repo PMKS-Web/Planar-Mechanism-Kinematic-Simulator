@@ -1,4 +1,3 @@
-import { CHROME_TABS } from '../../services/chrome/chrome-tokens';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
 import {
   AfterViewInit,
@@ -13,7 +12,7 @@ import {
   signal,
 } from '@angular/core';
 import { animate, state, style, transition, trigger } from '@angular/animations';
-import { TabID } from '../../selected-tab.service';
+import { SelectedTabService, TabID } from 'src/app/selected-tab.service';
 import { SynthesisPanelComponent } from '../synthesis-panel/synthesis-panel.component';
 import { EditPanelComponent } from '../edit-panel/edit-panel.component';
 import { AnalysisPanelComponent } from '../analysis-panel/analysis-panel.component';
@@ -82,7 +81,7 @@ const SLIDE_EASING = 'cubic-bezier(0.2, 0, 0, 1)';
  * is why it is still a component rather than a bare @if in the shell.
  */
 export class LeftTabsComponent implements AfterViewInit, OnDestroy {
-  tabs = inject(CHROME_TABS);
+  tabs = inject(SelectedTabService);
   viewport = inject(ViewportService);
   private tutorial = inject(TutorialService);
   private host = inject<ElementRef<HTMLElement>>(ElementRef);

@@ -1255,8 +1255,3 @@ export class SliderBlock extends Link {
 // export class BinaryLink extends RealLink {}
 
 // export class NonBinaryLink extends RealLink {}
-
-/** Slider blocks have mass but no body outline on which to draw a center-of-mass mark. */
-export function isMassiveLink(link: Link): link is RealLink {
-  return link instanceof RealLink && link.mass > 0;
-}

@@ -184,10 +184,6 @@ export const SUITES = [
 
 /** Files in `e2e/` that are not suites, and suites no runner can drive. */
 export const NOT_RUN = [
-  {
-    name: 'chrome-provider-parity',
-    why: 'Requires a separate untouched staging server through PMKS_BASELINE_URL; compares paired DOM, screenshots and S0 flow filmstrips.',
-  },
   { name: 'app-ready', why: 'A helper the suites import: `waitForReady` and `openMechanism`.' },
   { name: 'filmstrip', why: 'A helper: burst frames and the contact sheet that tiles them.' },
   { name: 'quiet-start', why: 'A helper: seeds `localStorage` so no dialog covers the canvas.' },
