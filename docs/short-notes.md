@@ -152,9 +152,15 @@ A row on the right-click menu never comes and goes with the situation. It is the
 (or every bar, every cylinder, every force) and it grays, with the model's own reason in the slot,
 when it cannot apply. The joint menu used to break this: a cylinder's joint lost its Slider row and
 the slider itself lost its Weld row -- two menus under one name, and a reader who had learned where
-a row sits finding it gone. Both rows are permanent now (`jointAttachRows` and `jointStateRows` in
+a row sits finding it gone. Every row is permanent now (`jointAttachRows` and `jointStateRows` in
 `context-menu-builder.service.ts`), and the refusals quote `weldRefusal`,
 `describeActuatorRefusal` and the rest rather than restating them.
+
+Those two rows are a choice at the top of the card now (`MenuChoice` in `menu-model.ts`): a joint's
+four types, each with its own refusal. Its cells are `cdkMenuItemRadio` items rather than the
+`segmented-block` the panel draws, because inside a CDK menu the arrow keys reach nothing but a
+`cdkMenuItem` -- so the two share the look through the mixins in `segmented.look.scss` and nothing
+else.
 
 There was briefly a *Free to Move* row as well, for a joint on a bar holding its length or angle
 (`RealLink.hold`): such a joint still drags, but only along the arc or the line the hold leaves it.

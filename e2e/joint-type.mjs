@@ -294,14 +294,88 @@ record(
 );
 await page.screenshot({ path: `${OUT}/4-group.png` });
 
-// --------------------------------------------------------- 6. the pill moves
+// ------------------------------------------------------------- 6. the menu
+console.log('\nthe same choice at the top of the joint’s card');
+await openFourBar();
+const atB = await page.locator('#joint_B').boundingBox();
+await page.mouse.click(atB.x + atB.width / 2, atB.y + atB.height / 2, { button: 'right' });
+await page.locator('#contextMenu.show').waitFor();
+await page.waitForTimeout(250);
+const card = await page.evaluate(() => {
+  const grid = document.querySelector('#contextMenu .cm-choice');
+  return {
+    label: grid?.getAttribute('aria-label') ?? null,
+    // A menu item, so the arrow keys reach it: a plain button in a CDK menu is
+    // reachable by nothing at all.
+    roles: [...(grid?.querySelectorAll('.cm-choice__cell') ?? [])].map((cell) =>
+      cell.getAttribute('role')
+    ),
+    cells: [...(grid?.querySelectorAll('.cm-choice__cell') ?? [])].map((cell) => ({
+      label: cell.querySelector('.cm-choice__label')?.textContent?.trim(),
+      chosen: cell.classList.contains('cm-choice__cell--chosen'),
+    })),
+    rows: [...document.querySelectorAll('#contextMenu .cm-row__label')].map((one) =>
+      one.textContent.trim()
+    ),
+  };
+});
+record(
+  'the card opens with the choice, as menu items, and State has lost the two rows',
+  card.label === 'Joint Type' &&
+    card.roles.every((role) => role === 'menuitemradio') &&
+    card.cells.find((one) => one.chosen)?.label === 'Revolute' &&
+    !card.rows.some((label) => /^(Slider|Welded)$/.test(label)),
+  card
+);
+
+// The reason the cells are menu items rather than the panel's control: inside
+// a CDK menu the arrow keys reach nothing else, so a grid of plain buttons
+// would be a choice no keyboard could make. The card opens with its first
+// value focused and Down walks to the next -- with the card still standing,
+// which is the half that was broken: a right-click selects what it opened on,
+// so the arrows were a nudge that moved the joint behind the card and closed
+// the card on the shortcut it had just fired.
+await page.keyboard.press('ArrowDown');
+await page.waitForTimeout(300);
+const reached = await page.evaluate(() => {
+  const on = document.activeElement;
+  return {
+    role: on?.getAttribute('role') ?? null,
+    cell: on?.classList.contains('cm-choice__cell') === true,
+    text: on?.textContent?.trim().slice(0, 20) ?? null,
+    standing: !!document.querySelector('#contextMenu.show'),
+  };
+});
+record(
+  'and the arrow keys walk its values, leaving the card standing',
+  reached.cell === true && reached.role === 'menuitemradio' && reached.standing === true,
+  reached
+);
+await page.locator('#contextMenu').screenshot({ path: `${OUT}/5-menu-keyboard.png` });
+
+const beforeMenu = await state('B');
+await page.locator('#contextMenu .cm-choice__cell', { hasText: 'Welded' }).first().click();
+await page.waitForTimeout(700);
+const fromMenu = await state('B');
+record(
+  'and a type chosen there lands, in one entry, like the panel’s',
+  fromMenu.welded === true &&
+    fromMenu.slider === false &&
+    fromMenu.entries - beforeMenu.entries === 1,
+  { beforeMenu, fromMenu }
+);
+await page.screenshot({ path: `${OUT}/5-menu.png` });
+
+// --------------------------------------------------------- 7. the pill moves
 console.log('\nthe pill slides between the rows it is chosen on');
 await openFourBar();
 await select('B');
-const film = filmstrip(page, OUT, { x: 0, y: 60, width: 260, height: 300 });
+// Its own directory: `filmstrip` clears the one it is given, and handed `OUT`
+// it took the five screenshots the sections above had just made with it.
+const film = filmstrip(page, `${OUT}/pill`, { x: 0, y: 60, width: 260, height: 300 });
 await film.shot('pill-before');
 await film.during(30, 8, 'pill', () => pick('Welded'));
-await contactSheet(`${OUT}/*pill*.png`, `${OUT}/sheet-pill.png`, 3);
+await contactSheet(`${OUT}/pill/*pill*.png`, `${OUT}/sheet-pill.png`, 3);
 
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
 

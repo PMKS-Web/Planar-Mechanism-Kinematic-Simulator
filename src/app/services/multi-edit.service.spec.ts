@@ -333,17 +333,17 @@ describe('MultiEditService', () => {
     expect(a.input).toBe(false);
   });
 
-  it('refuses the whole weld when one joint of the selection cannot take it', () => {
+  it('refuses the whole change of type when one joint of the selection cannot take it', () => {
     const { a, b, c } = twoBars();
     const before = mechanism.links.map((link) => link.id);
 
     // A is on one link, so there is nothing at it to fuse -- and a group weld
     // that did the rest anyway would leave the reader unpicking it.
-    const result = service.setWelded(refs('joint:A', 'joint:B', 'joint:C'), true);
+    const result = service.setJointType(refs('joint:A', 'joint:B', 'joint:C'), 'welded');
 
     expect(result.ok).toBe(false);
-    expect(result.ok ? '' : result.refusal.code).toBe('selection.weld');
-    expect(result.ok ? '' : result.refusal.message).toContain('A');
+    expect(result.ok ? '' : result.refusal.code).toBe('selection.joint-type');
+    expect(result.ok ? '' : result.refusal.message).toContain('A cannot become Welded');
     expect(mechanism.links.map((link) => link.id)).toEqual(before);
     expect([a, b, c].some((joint) => joint.isWelded)).toBe(false);
   });

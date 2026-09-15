@@ -1,11 +1,19 @@
 import { Component, ChangeDetectionStrategy, DestroyRef, inject, input } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { KeyboardShortcutsService } from '../../../services/keyboard-shortcuts.service';
-import { CdkMenu, CdkMenuItem, MENU_STACK } from '@angular/cdk/menu';
+import {
+  CdkMenu,
+  CdkMenuGroup,
+  CdkMenuItem,
+  CdkMenuItemRadio,
+  MENU_STACK,
+} from '@angular/cdk/menu';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
 import {
   ContextMenuModel,
+  MenuChoice,
+  MenuChoiceOption,
   MenuCrossing,
   MenuRow,
   lastContextMenuPointer,
@@ -24,7 +32,7 @@ import {
   templateUrl: './context-menu.component.html',
   styleUrls: ['./context-menu.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [CdkMenu, CdkMenuItem, MatIcon, MatTooltip],
+  imports: [CdkMenu, CdkMenuGroup, CdkMenuItem, CdkMenuItemRadio, MatIcon, MatTooltip],
 })
 export class ContextMenuComponent {
   readonly model = input<ContextMenuModel>({ groups: [] });
@@ -92,6 +100,21 @@ export class ContextMenuComponent {
   run(row: MenuRow): void {
     if (row.disabled) return;
     row.action();
+  }
+
+  /** The same rule for a value of the choice at the top of the card. */
+  choose(option: MenuChoiceOption): void {
+    if (option.refusal) return;
+    option.action();
+  }
+
+  /**
+   * What a value says on hover: why it cannot be chosen, or, on the chosen one,
+   * what is wrong with it as it stands. Nothing is printed under the grid.
+   */
+  hoverTextFor(choice: MenuChoice, option: MenuChoiceOption, index: number): string {
+    if (option.refusal) return option.refusal.long ?? option.refusal.short;
+    return index === choice.chosen ? (choice.fault?.long ?? '') : '';
   }
 
   cross(crossing: MenuCrossing): void {

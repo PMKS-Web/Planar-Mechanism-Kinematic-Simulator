@@ -55,7 +55,16 @@ const menuRow = (label) =>
   page
     .locator('.cm-row')
     .filter({ has: page.locator('.cm-row__label', { hasText: new RegExp('^' + label + '$') }) });
+/** The card's Joint Type choice: the same four values in every mode, grayed together. */
+const choice = () =>
+  page.locator('.cm-choice__cell').evaluateAll((nodes) =>
+    nodes.map((node) => ({
+      label: node.querySelector('.cm-choice__label').textContent.trim(),
+      disabled: node.classList.contains('cm-choice__cell--off'),
+    }))
+  );
 let editRows;
+let editChoice;
 for (const mode of ['Edit', 'Kinematic Analysis', 'Force Analysis']) {
   await openMechanism(page, `${BASE}/?${TEMPLATE_LINKAGES['4-Bar']}`);
   // The library four-bar is massless; give it a load so reaction arrows have magnitude.
@@ -83,6 +92,15 @@ for (const mode of ['Edit', 'Kinematic Analysis', 'Force Analysis']) {
     JSON.stringify(startRows.map((r) => r.label)) === JSON.stringify(editRows),
     startRows
   );
+  const startChoice = await choice();
+  if (!editChoice) editChoice = startChoice;
+  check(
+    `${mode}: identical Joint Type choice, and live at the start`,
+    JSON.stringify(startChoice) === JSON.stringify(editChoice) &&
+      startChoice.length === 4 &&
+      startChoice.some((one) => !one.disabled),
+    startChoice
+  );
   check(
     `${mode}: deletion available at start`,
     !startRows.find((r) => r.label.startsWith('Delete Joint')).disabled
@@ -106,6 +124,14 @@ for (const mode of ['Edit', 'Kinematic Analysis', 'Force Analysis']) {
   check(
     `${mode}: trace path enabled at paused pose`,
     !pausedRows.find((r) => r.label === 'Trace path').disabled
+  );
+  // A change of type is a change of topology, so it is refused where the rows
+  // it replaced were -- every value of it, each keeping its own reason.
+  const pausedChoice = await choice();
+  check(
+    `${mode}: the Joint Type choice is refused at a paused pose`,
+    pausedChoice.length === 4 && pausedChoice.every((one) => one.disabled),
+    pausedChoice
   );
   await page.screenshot({ path: `${OUT}/${mode.split(' ')[0]}-paused-menu.png` });
   await menuRow('Trace path').click();
