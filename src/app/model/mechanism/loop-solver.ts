@@ -160,9 +160,15 @@ export class LoopSolver {
         parts.push(`?${joint.id}`);
         continue;
       }
+      // `rotates` belongs in the key as much as the slot's shape does. It is
+      // what tells a Slide from a Pin-in-slot, and a Slide holds its rider's
+      // orientation -- so two drawings alike in every other respect have
+      // different closures, and a cache keyed without it serves one the other's
+      // loops. It used to ride `isWelded` on the coincident pin, which the walk
+      // already recorded below.
       const slot =
         joint instanceof PrisJoint
-          ? `P${joint.isFloating ? 1 : 0}${joint.isSlotWellFormed ? 1 : 0}` +
+          ? `P${joint.isFloating ? 1 : 0}${joint.isSlotWellFormed ? 1 : 0}${joint.rotates ? 1 : 0}` +
             `${joint.slotJointA?.id ?? ''}.${joint.slotJointB?.id ?? ''}.${joint.carrier?.id ?? ''}`
           : 'R';
       const linked = joint.connectedJoints.map((one) => one.id).join('.');
@@ -339,25 +345,32 @@ export class LoopSolver {
    */
   private static deduplicate(loops: Loop[]): Loop[] {
     const bySignature = new Map<string, Loop>();
-    for (const loop of loops) {
-      const signature = loop.edges
+    const signatureOf = (loop: Loop): string =>
+      loop.edges
         .map((edge) => (edge.kind === 'slot' ? edge.sliderId : edge.linkId))
         .sort()
-        .join(',');
+        .join(',') +
+      // Where the chain ends, when it ends on a slider. A grounded guide used to
+      // be crossed along its block's own edge, so the block's id sat in the list
+      // above and told two such closures apart. The walk steps straight onto the
+      // joint now, so two chains over the same bodies ending at two different
+      // guides would sign the same -- and one of them would be dropped as a
+      // repeat of the other, taking its equation with it.
+      `|${this.slidingEnds(loop).join('.')}`;
+    for (const loop of loops) {
+      const signature = signatureOf(loop);
       const existing = bySignature.get(signature);
       if (!existing || loop.id < existing.id) {
         bySignature.set(signature, loop);
       }
     }
-    return loops.filter(
-      (loop) =>
-        bySignature.get(
-          loop.edges
-            .map((edge) => (edge.kind === 'slot' ? edge.sliderId : edge.linkId))
-            .sort()
-            .join(',')
-        ) === loop
-    );
+    return loops.filter((loop) => bySignature.get(signatureOf(loop)) === loop);
+  }
+
+  /** The chain's two ends, kept only where an end is a joint that slides. */
+  private static slidingEnds(loop: Loop): string[] {
+    if (loop.edges.length === 0) return [];
+    return [loop.edges[0].fromId, loop.edges[loop.edges.length - 1].toId];
   }
 
   /**

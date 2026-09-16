@@ -124,8 +124,8 @@ describe('why a mechanism will not run', () => {
   });
 
   it('names the slider when one has nothing to slide along', () => {
-    // The slider sits on a joint of the grounded chain, so its block is part of
-    // that mechanism. A detached slider hanging off nothing else is a different
+    // The slider is a joint of the grounded chain, so it is part of that
+    // mechanism. A detached slider hanging off nothing else is a different
     // situation entirely -- it never reaches ground, so it is unassigned
     // geometry rather than a broken mechanism, and the case below covers it.
     const readiness = checksFor({
@@ -136,8 +136,10 @@ describe('why a mechanism will not run', () => {
         { id: 'D', x: 4, y: 0, ground: true },
       ],
       links: [{ joints: 'AB' }, { joints: 'BC' }, { joints: 'CD' }],
-      sliders: [{ at: 'C', prisId: 'P', on: { carrier: 'AB', a: 'A', b: 'B' } }],
-      detach: ['P'],
+      sliders: [{ at: 'C', on: { carrier: 'AB', a: 'A', b: 'B' } }],
+      // The joint that slides, not a prismatic twin beside it: a slider is one
+      // joint now, and C is the letter it kept.
+      detach: ['C'],
       inputAngVel: 1,
     });
 
@@ -149,8 +151,8 @@ describe('why a mechanism will not run', () => {
 
   it('leaves a good linkage alone when a detached slider floats beside it', () => {
     // Splitting the drawing changed this for the better: the four-bar used to
-    // be dragged down by the slider's dangling block, because both were one
-    // mechanism. Now the block simply never reaches ground.
+    // be dragged down by the dangling slider, because both were one mechanism.
+    // Now the slider simply never reaches ground.
     const built = buildMechanism({
       joints: [
         { id: 'A', x: 0, y: 0, ground: true, input: true },
@@ -160,8 +162,8 @@ describe('why a mechanism will not run', () => {
         { id: 'E', x: 1.5, y: 1.5 },
       ],
       links: [{ joints: 'AB' }, { joints: 'BC' }, { joints: 'CD' }],
-      sliders: [{ at: 'E', prisId: 'P', on: { carrier: 'BC', a: 'B', b: 'C' } }],
-      detach: ['P'],
+      sliders: [{ at: 'E', on: { carrier: 'BC', a: 'B', b: 'C' } }],
+      detach: ['E'],
       inputAngVel: 1,
     });
     const { mechanisms, unassigned } = partitionMechanisms(built.joints, built.links, built.forces);

@@ -3,7 +3,7 @@
 import { Joint, PrisJoint, RevJoint } from '../../app/model/joint';
 import { Coord } from '../../app/model/coord';
 import { Force } from '../../app/model/force';
-import { Link, SliderBlock, RealLink } from '../../app/model/link';
+import { Link, RealLink } from '../../app/model/link';
 import { Mechanism } from '../../app/model/mechanism/mechanism';
 import { ColorService } from '../../app/services/color.service';
 import { SettingsService } from '../../app/services/settings.service';
@@ -107,10 +107,18 @@ export interface FixtureLoad {
 }
 
 export interface SliderSpec {
+  /**
+   * The fixture joint that slides.
+   *
+   * It used to name the *pin* of a three-object slider, which also carried a
+   * `prisId` for the prismatic joint beside it and a block joining the two. A
+   * slider is one joint now (Stage 1 of `docs/joint-type-and-cylinder-plan.md`),
+   * and it keeps this id — the letter the canvas always drew.
+   */
   at: string;
-  prisId: string;
   /** World angle of a grounded guide. Ignored when `on` is given. */
   angleRad?: number;
+  /** The mass of the block that rides the slot, which the joint carries now. */
   pistonMass?: number;
   /**
    * Cuts the slot into a moving link instead of into the world: the line
@@ -266,47 +274,61 @@ function buildMechanismNow(
 
   const sliderSpecs = [...(fixture.slider ? [fixture.slider] : []), ...(fixture.sliders ?? [])];
   sliderSpecs.forEach((spec) => {
-    const revJoint = jointById.get(spec.at)!;
+    // The joint that slides *becomes* the slider rather than gaining one beside
+    // it: same id, same place, same links. A slider was three objects until
+    // Stage 1 — this joint, a prismatic twin, and a zero-length block joining
+    // them — and the block was the only reason the two were ever separate.
+    const pin = jointById.get(spec.at)!;
     // A floating slot is not grounded; that pair of states is exclusive (§2.4a).
-    const prisJoint = new PrisJoint(spec.prisId, revJoint.x, revJoint.y, !!spec.input, !spec.on);
-    prisJoint.isSealed = spec.sealed ?? false;
-    prisJoint.driveSpeed = spec.driveSpeed ?? 0;
+    const slider = new PrisJoint(pin.id, pin.x, pin.y, !!spec.input || pin.input, !spec.on);
+    slider.name = pin.name;
+    slider.showCurve = pin.showCurve;
+    slider.isSealed = spec.sealed ?? false;
+    slider.driveSpeed = spec.driveSpeed ?? pin.driveSpeed;
+    slider.mass = spec.pistonMass ?? 0;
+    // A welded fixture joint that slides is a Slide: its riders keep the slot's
+    // angle. The weld list used to be applied after this loop, when the flag on
+    // the pin was what recorded it; the joint itself records it now, so it has
+    // to be known here.
+    slider.rotates = !(fixture.welds ?? []).includes(spec.at);
     if (spec.on) {
       const carrier = links.find((link) => link.id === spec.on!.carrier)!;
-      prisJoint.slideOn(carrier, jointById.get(spec.on.a)!, jointById.get(spec.on.b)!);
+      slider.slideOn(carrier, jointById.get(spec.on.a)!, jointById.get(spec.on.b)!);
     } else {
-      prisJoint.angle_rad = spec.angleRad ?? 0;
+      slider.angle_rad = spec.angleRad ?? 0;
     }
-    prisJoint.connectedJoints.push(revJoint);
-    revJoint.connectedJoints.push(prisJoint);
-    const piston = new SliderBlock(
-      revJoint.id + prisJoint.id,
-      [revJoint, prisJoint],
-      spec.pistonMass
-    );
-    prisJoint.links.push(piston);
-    revJoint.links.push(piston);
-    joints.push(prisJoint);
-    links.push(piston);
+
+    // Everything that named the pin now names the slider: the links it rides,
+    // the joints that were connected to it, and the map the rest of this
+    // builder looks it up in.
+    slider.links = pin.links;
+    slider.connectedJoints = pin.connectedJoints;
+    pin.links.forEach((link) => {
+      const at = link.joints.indexOf(pin);
+      if (at >= 0) link.joints[at] = slider;
+    });
+    joints.forEach((joint) => {
+      if (!(joint instanceof RevJoint)) return;
+      const at = joint.connectedJoints.indexOf(pin);
+      if (at >= 0) joint.connectedJoints[at] = slider;
+    });
+    joints[joints.indexOf(pin)] = slider;
+    jointById.set(spec.at, slider as unknown as RevJoint);
   });
 
-  // After the sliders, so a welded pin already has its block: that pairing is
-  // what makes the flag mean "Slide" rather than "compound".
+  // Every weld except the ones the sliders above already took: a Slide says so
+  // in `rotates`, and `isWelded` on a slider would mean nothing.
   fixture.welds?.forEach((id) => {
-    jointById.get(id)!.isWelded = true;
+    const joint = jointById.get(id)!;
+    if (!(joint instanceof PrisJoint)) joint.isWelded = true;
   });
 
-  // Found in `joints` rather than `jointById`: a slider's PrisJoint is created
-  // by the slider loop above, so it never enters the map the fixture's own
-  // joint list built.
   fixture.detach?.forEach((id) => {
-    (joints.find((joint) => joint.id === id) as PrisJoint).detach();
+    (jointById.get(id) as unknown as PrisJoint).detach();
   });
 
-  // In `joints`, not `jointById`, for the same reason detach looks there: a
-  // slider's own PrisJoint can carry a mark too.
   fixture.locks?.joints?.forEach((id) => {
-    (joints.find((joint) => joint.id === id) as RevJoint).locked = true;
+    jointById.get(id)!.locked = true;
   });
   // A link entry is the shortcut it is everywhere: marks land on its joints.
   fixture.locks?.links?.forEach((id) => {

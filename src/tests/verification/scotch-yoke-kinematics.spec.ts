@@ -121,7 +121,10 @@ describe('the kinematics of a Scotch yoke', () => {
 
     for (const step of SAMPLES) {
       solveAt(built, step);
-      for (const id of ['B', 'C', 'D', 'E']) {
+      // Every joint the yoke has. B and C are the two sliders -- the crank pin
+      // in the yoke's slot and the yoke on its guide -- and each used to be a
+      // pin with a prismatic twin beside it, so this list once ran to six.
+      for (const id of ['B', 'C', 'D']) {
         const velocity = KinematicsSolver.jointVelMap.get(id);
         expect(velocity?.every(Number.isFinite), `${id} finite at step ${step}`).toBe(true);
       }

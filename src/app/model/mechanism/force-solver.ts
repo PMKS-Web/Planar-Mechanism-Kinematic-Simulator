@@ -1,5 +1,5 @@
 import { Joint, PrisJoint, RealJoint } from '../joint';
-import { Link, SliderBlock, RealLink } from '../link';
+import { Link, RealLink } from '../link';
 import { slideAssemblies } from '../slide-assembly';
 import { KinematicsSolver } from './kinematic-solver';
 import { Loop } from './loop-solver';
@@ -229,7 +229,8 @@ export class ForceSolver {
     unit: string
   ): ForceAnalysisFrame {
     const mode = this.normalizeMode(analysisType);
-    const kinematics = mode === 'dynamic' ? this.captureCurrentKinematics(links) : undefined;
+    const kinematics =
+      mode === 'dynamic' ? this.captureCurrentKinematics(joints, links) : undefined;
     const result = this.analyzeFrame(joints, links, mode, gravity, unit, 0, kinematics);
 
     this.lastResult = result;
@@ -317,7 +318,11 @@ export class ForceSolver {
         // The position sequence is still a valid source for a complete,
         // topology-independent finite-difference fallback.
       }
-      kinematics = this.captureCurrentKinematics(mechanism.links[index], fallback[index]);
+      kinematics = this.captureCurrentKinematics(
+        mechanism.joints[index],
+        mechanism.links[index],
+        fallback[index]
+      );
     }
     return this.analyzeFrame(
       mechanism.joints[index],
@@ -341,14 +346,11 @@ export class ForceSolver {
     kinematics?: FrameKinematics,
     evenest = false
   ): ForceAnalysisFrame {
-    const every = links.filter(
-      (link): link is RealLink | SliderBlock =>
-        link instanceof RealLink || link instanceof SliderBlock
-    );
+    const every = links.filter((link): link is RealLink => link instanceof RealLink);
     // A body pinned to the world at two points is fixed: it is frame, not a
     // link, and gets no equilibrium of its own -- see `frameBodies`.
     const frame = this.frameBodies(every);
-    const bodies = every.filter((body) => !frame.has(body.id));
+    const bodies = [...every.filter((body) => !frame.has(body.id)), ...this.pointBodies(joints)];
     const units = this.unitFactors(unit);
     const empty = (
       status: ForceAnalysisStatus,
@@ -406,8 +408,8 @@ export class ForceSolver {
       ) {
         return empty(
           'unsupported-topology',
-          `Joint ${assembly.weldJoint.id} welds ${assembly.riders[0]?.id ?? 'a link'} rigidly ` +
-            'to its slider, and that shape has no force model.'
+          `Joint ${assembly.slider.id} holds ${assembly.riders[0]?.id ?? 'a link'} rigidly ` +
+            'against its slot, and that shape has no force model.'
         );
       }
       couples.push({
@@ -427,7 +429,7 @@ export class ForceSolver {
     if (inputJoint) {
       const incident = incidentByJoint.get(inputJoint.id) ?? [];
       if (inputJoint instanceof PrisJoint) {
-        inputBody = incident.find((body) => body instanceof SliderBlock);
+        inputBody = bodies.find((body) => body.id === inputJoint.id);
         inputKind = inputBody ? 'force' : undefined;
         // slotAngle, not angle_rad: a slot cut into a moving link points
         // somewhere different at every timestep.
@@ -642,6 +644,30 @@ export class ForceSolver {
   }
 
   /**
+   * A slider's own mass, as the two-row body the block used to be.
+   *
+   * The block was a link, so it was a body with an equilibrium of its own: mass
+   * and gravity, no moment row, no inertia and no applied forces, with its
+   * acceleration read from the pin it carried. A slider is one joint now and
+   * the mass is the joint's, so the body is made here instead of found among
+   * the links.
+   *
+   * A plain `Link` rather than a `RealLink`, deliberately: every place below
+   * that decides how many rows a body gets, whether it carries a moment, or
+   * whether it has inertia and forces, asks `instanceof RealLink` -- so being
+   * one and not the other is what reproduces the block's two rows exactly,
+   * without a second notion of "body" for the assembly to disagree about.
+   *
+   * Keyed by the joint's own id, which is what `pistonAccelerations` and the
+   * finite-difference fallback look it up by.
+   */
+  private static pointBodies(joints: Joint[]): Link[] {
+    return joints
+      .filter((joint): joint is PrisJoint => joint instanceof PrisJoint)
+      .map((joint) => new Link(joint.id, [joint], joint.mass));
+  }
+
+  /**
    * The root body in `bodies` that `leaf` belongs to.
    *
    * A weld fuses links into a compound whose members survive as `subset`
@@ -745,7 +771,7 @@ export class ForceSolver {
       const grounded = candidate.ground || frameJoints.has(candidate.id);
 
       if (candidate instanceof PrisJoint) {
-        const piston = incident.find((body) => body instanceof SliderBlock);
+        const piston = bodies.find((body) => body.id === candidate.id);
         // A grounded slot pushes against the world, which needs no equation of
         // its own. A floating one pushes against the carrier, and that reaction
         // has to appear in the carrier's equilibrium as well or the slot
@@ -764,6 +790,32 @@ export class ForceSolver {
             direction: [-Math.sin(candidate.slotAngle), Math.cos(candidate.slotAngle)],
             column: reactions.length,
           });
+        }
+        // And the pin the slider carries, which used to be a joint of its own.
+        // The block exchanged an ordinary two-component pin reaction with its
+        // rider there; that joint is this one now, so the pair is written here
+        // rather than being reached by the generic branch below -- which would
+        // read a grounded slider as a ground pin and give it two reactions
+        // against the world it does not have.
+        //
+        // The carrier is left out: it sits on the far side of the slot and is
+        // coupled by the normal force alone.
+        if (piston) {
+          for (const other of incident) {
+            if (other.id === piston.id || other.id === carrier?.id) continue;
+            for (const direction of [
+              [1, 0],
+              [0, 1],
+            ] as ForceVector[]) {
+              reactions.push({
+                joint: candidate,
+                positiveBody: piston,
+                negativeBody: other,
+                direction,
+                column: reactions.length,
+              });
+            }
+          }
         }
         continue;
       }
@@ -808,14 +860,11 @@ export class ForceSolver {
 
   /** Joint <-> root-body pairing that both analysis panels enumerate rows from. */
   static buildReactionIndex(joints: Joint[], links: Link[]): ForceReactionIndex {
-    const every = links.filter(
-      (link): link is RealLink | SliderBlock =>
-        link instanceof RealLink || link instanceof SliderBlock
-    );
+    const every = links.filter((link): link is RealLink => link instanceof RealLink);
     // The same cut the frame assembly makes: a frame body has no reactions
     // of its own to list, and its pins are ground to its neighbors.
     const frame = this.frameBodies(every);
-    const bodies = every.filter((body) => !frame.has(body.id));
+    const bodies = [...every.filter((body) => !frame.has(body.id)), ...this.pointBodies(joints)];
     const linksByJoint = new Map<string, string[]>();
     const jointsByLink = new Map<string, string[]>();
     const pair = (jointId: string, bodyId: string): void => {
@@ -905,6 +954,7 @@ export class ForceSolver {
   }
 
   private static captureCurrentKinematics(
+    joints: Joint[],
     links: Link[],
     fallback?: FrameKinematics
   ): FrameKinematics {
@@ -928,16 +978,19 @@ export class ForceSolver {
           link.id,
           Number.isFinite(angular) ? angular! : fallback?.linkAngularAccelerations.get(link.id)!
         );
-      } else if (link instanceof SliderBlock) {
-        const movingJoint = link.joints.find((joint) => !(joint instanceof PrisJoint));
-        const acceleration = movingJoint
-          ? KinematicsSolver.jointAccMap.get(movingJoint.id)
-          : undefined;
-        captured.pistonAccelerations.set(
-          link.id,
-          finiteVector(acceleration) ? acceleration : fallback?.pistonAccelerations.get(link.id)!
-        );
       }
+    }
+    // The sliders' own masses. This used to read the block's coincident pin,
+    // because the block had no coordinate of its own; the slider is that point
+    // now, so its acceleration is simply the joint's -- which for a grounded
+    // guide is what the loop's own sliding end solved for (`guideEnds`).
+    for (const joint of joints) {
+      if (!(joint instanceof PrisJoint)) continue;
+      const acceleration = KinematicsSolver.jointAccMap.get(joint.id);
+      captured.pistonAccelerations.set(
+        joint.id,
+        finiteVector(acceleration) ? acceleration : fallback?.pistonAccelerations.get(joint.id)!
+      );
     }
     return captured;
   }
@@ -963,17 +1016,26 @@ export class ForceSolver {
       times.push(Number.isFinite(time) && time > previous ? time : previous + 1);
     });
     const ids = new Set(mechanism.links.flatMap((links) => links.map((link) => link.id)));
+    // The sliders as well as the links. A slider's mass is a body here and its
+    // id names a joint rather than a link, so a sweep over link ids alone
+    // leaves every point body without a fallback -- which reads downstream as
+    // missing kinematics for a drawing whose positions are perfectly good.
+    const sliderIds = new Set(
+      mechanism.joints.flatMap((frame) =>
+        frame.filter((joint) => joint instanceof PrisJoint).map((joint) => joint.id)
+      )
+    );
 
-    for (const id of ids) {
+    for (const id of new Set([...ids, ...sliderIds])) {
       const bodyAt = (index: number): Link | undefined =>
         mechanism.links[index]?.find((link) => link.id === id);
+      const sliderAt = (index: number): Joint | undefined =>
+        mechanism.joints[index]?.find((joint) => joint.id === id && joint instanceof PrisJoint);
       const positions = Array.from({ length: frameCount }, (_, index): ForceVector => {
         const body = bodyAt(index);
         if (body instanceof RealLink) return [body.CoM.x, body.CoM.y];
-        if (body instanceof SliderBlock) {
-          const moving = body.joints.find((joint) => !(joint instanceof PrisJoint));
-          return [moving?.x ?? 0, moving?.y ?? 0];
-        }
+        const slider = sliderAt(index);
+        if (slider) return [slider.x, slider.y];
         return [0, 0];
       });
       const angles = this.unwrapAngles(
@@ -1005,7 +1067,7 @@ export class ForceSolver {
             id,
             this.secondDerivative(angles, times, index)
           );
-        } else if (body instanceof SliderBlock) {
+        } else if (sliderAt(index)) {
           frames[index].pistonAccelerations.set(id, [ax, ay]);
         }
       }

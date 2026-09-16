@@ -43,7 +43,7 @@ export function punchPressFixture(): MechanismFixture {
       { joints: 'BC', mass: 3, moi: 0.4, name: 'Connecting rod' },
     ],
     // The slide runs straight down, so the ram travels on the y axis.
-    slider: { at: 'C', prisId: 'P', angleRad: Math.PI / 2, pistonMass: 6 },
+    slider: { at: 'C', angleRad: Math.PI / 2, pistonMass: 6 },
     // The work pushing back: straight up the slide, at the ram.
     load: { onLink: 'BC', at: [0, -3.4], vector: [0, 400] },
     inputAngVel: INPUT_SPEED,

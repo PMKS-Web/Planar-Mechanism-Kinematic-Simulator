@@ -5,7 +5,7 @@ import {
   guidedRodOnALinkUnweldedFixture,
 } from '../../test-utils/verification/slot-fixtures';
 import { KinematicsSolver } from '../../app/model/mechanism/kinematic-solver';
-import { Joint } from '../../app/model/joint';
+import { Joint, PrisJoint } from '../../app/model/joint';
 
 /**
  * A welded slide assembly located by a link reaching onto it.
@@ -42,8 +42,10 @@ describe('a guided rod pushed by a link', () => {
     for (const frame of frames) {
       expect(at(frame, 'T').y).toBeCloseTo(0, 9);
       expect(at(frame, 'F').y).toBeCloseTo(0, 9);
-      // And the block stays on top of the pin it carries.
-      expect(span(frame, 'T', 'G')).toBeLessThan(1e-9);
+      // T is the block, not a pin standing on top of one: the rod's far end
+      // *is* the joint that slides. Keeping the two coincident used to be a
+      // constraint of its own, and now there are not two of them to part.
+      expect(at(frame, 'T')).toBeInstanceOf(PrisJoint);
     }
   });
 

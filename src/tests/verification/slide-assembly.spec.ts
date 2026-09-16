@@ -2,7 +2,7 @@
 // cleanly when entered here (see test-utils/verification/fixture.ts).
 import '../../app/model/joint';
 import { PrisJoint, RealJoint, RevJoint } from '../../app/model/joint';
-import { RealLink, SliderBlock } from '../../app/model/link';
+import { RealLink } from '../../app/model/link';
 import {
   assemblyBodyIds,
   hasFixedOrientation,
@@ -16,6 +16,12 @@ import { scotchYokeFixture } from '../../test-utils/verification/slot-fixtures';
 // rigid?" (docs/phase-3-slide-spec.md §3.0). Everything downstream reads it, so
 // the states it must and must not recognize are asserted here rather than
 // rediscovered by each consumer.
+//
+// The states themselves changed shape in Stage 1 of
+// `docs/joint-type-and-cylinder-plan.md`: a Slide was a prismatic joint, a
+// coincident pin carrying the weld, and a zero-length block joining them, and
+// it is one joint carrying `rotates` now. So the assembly is named by the joint
+// that slides, and the riders are the only bodies it holds.
 
 function jointNamed(built: ReturnType<typeof buildMechanism>, id: string): RealJoint {
   return built.joints.find((joint) => joint.id === id) as RealJoint;
@@ -28,20 +34,26 @@ describe('resolving a slide assembly', () => {
     const assembly = slideAssemblyAt(jointNamed(built, 'C'));
 
     expect(assembly).toBeDefined();
-    expect(assembly!.slider.id).toBe('F');
+    // C, the joint that slides. It keeps the pin's letter, which is the letter
+    // the canvas always drew; the prismatic twin this used to name was F.
+    expect(assembly!.slider.id).toBe('C');
     expect(assembly!.grounded).toBe(true);
     expect(assembly!.riders.map((rider) => rider.id)).toEqual(['CD']);
-    expect(assemblyBodyIds(assembly!).sort()).toEqual(['CD', 'CF']);
+    // The riders, and only them: the block was the other body this used to
+    // name, and a slider is a joint rather than a body now.
+    expect(assemblyBodyIds(assembly!).sort()).toEqual(['CD']);
   });
 
   it('finds exactly one assembly in the mechanism', () => {
     const built = buildMechanism(scotchYokeFixture());
 
-    // B carries a block too, but it is not welded -- it is a Slot, not a Slide.
-    expect(slideAssemblies(built.joints).map((a) => a.weldJoint.id)).toEqual(['C']);
+    // B slides too, but its riders may turn against the slot -- it is a Slot,
+    // not a Slide. Named by the joint that slides, which is the joint that
+    // records the Slide now that there is no pin to carry a weld.
+    expect(slideAssemblies(built.joints).map((a) => a.slider.id)).toEqual(['C']);
   });
 
-  it('declines a welded joint that carries no block', () => {
+  it('declines a welded joint that does not slide', () => {
     // An ordinary compound weld. Sharing a resolver with the compound path is
     // exactly the confusion this must not create.
     const a = new RevJoint('A', 0, 0);
@@ -55,97 +67,69 @@ describe('resolving a slide assembly', () => {
     expect(slideAssemblyAt(b)).toBeUndefined();
   });
 
-  it('declines a slider whose pin is not welded', () => {
+  it('declines a slider whose riders may turn in its slot', () => {
     const built = buildMechanism(scotchYokeFixture());
 
     expect(slideAssemblyAt(jointNamed(built, 'B'))).toBeUndefined();
   });
 
-  it('declines a pin carrying two blocks', () => {
-    // Two blocks on one pin is a different joint type, refused at the drag
-    // (§1.2). Resolving it as a Slide would pick one block arbitrarily.
-    const pin = new RevJoint('A', 0, 0);
-    const first = new PrisJoint('P', 0, 0, false, true);
-    const second = new PrisJoint('Q', 0, 0, false, true);
-    const rider = new RealLink('AB', [pin, new RevJoint('B', 1, 0)], 1, 1);
-    pin.links = [
-      rider,
-      new SliderBlock('AP', [pin, first], 1),
-      new SliderBlock('AQ', [pin, second], 1),
-    ];
-    pin.isWelded = true;
-
-    expect(slideAssemblyAt(pin)).toBeUndefined();
-  });
-
-  it('declines a block that does not join exactly two joints', () => {
-    // §2.10 item 1. A block with a third joint is not the zero-length
-    // coincidence the solvers assume, and picking two of the three arbitrarily
-    // would make the answer depend on declaration order.
-    const pin = new RevJoint('A', 0, 0);
-    const slider = new PrisJoint('P', 0, 0, false, true);
-    const stray = new RevJoint('S', 0, 0);
-    const rider = new RealLink('AB', [pin, new RevJoint('B', 1, 0)], 1, 1);
-    pin.links = [rider, new SliderBlock('APS', [pin, slider, stray], 1)];
-    pin.isWelded = true;
-
-    expect(slideAssemblyAt(pin)).toBeUndefined();
-  });
-
-  it('declines a block that holds a different joint of the same id', () => {
-    // Matching by id would accept this and then read `grounded` off a slider
-    // the joint is not actually on.
-    const pin = new RevJoint('A', 0, 0);
-    const impostor = new RevJoint('A', 5, 5);
-    const slider = new PrisJoint('P', 5, 5, false, true);
-    const rider = new RealLink('AB', [pin, new RevJoint('B', 1, 0)], 1, 1);
-    pin.links = [rider, new SliderBlock('AP', [impostor, slider], 1)];
-    pin.isWelded = true;
-
-    expect(slideAssemblyAt(pin)).toBeUndefined();
-  });
-
-  it('declines a block with no sliding joint at all', () => {
-    const pin = new RevJoint('A', 0, 0);
-    const rider = new RealLink('AB', [pin, new RevJoint('B', 1, 0)], 1, 1);
-    pin.links = [rider, new SliderBlock('AC', [pin, new RevJoint('C', 0, 0)], 1)];
-    pin.isWelded = true;
-
-    expect(slideAssemblyAt(pin)).toBeUndefined();
-  });
-
-  it('declines the sliding joint even when it carries the flag', () => {
-    // The weld belongs to the pin. Resolving from the far end would report the
-    // same assembly twice and double-count it in the mobility merge.
-    const built = buildMechanism(scotchYokeFixture());
-    const slider = built.joints.find((joint) => joint.id === 'F') as PrisJoint;
-    slider.isWelded = true;
+  it('is decided by the joint, not by the shape of anything riding it', () => {
+    // Four cases used to stand here and every one of them was about a *block*:
+    // two blocks on one pin, a block carrying a third joint, a block holding a
+    // different joint of the same id, a block with no sliding joint in it. None
+    // of those shapes can be drawn now -- the slider is the joint, so there is
+    // nothing to hold coincident with it and nothing to choose between. What is
+    // left to pin is that the answer comes from the joint's own two facts, and
+    // that the shape of a rider is not one of them: a ternary body rides a
+    // Slide as readily as a bar does.
+    const slider = new PrisJoint('A', 0, 0, false, true);
+    const rider = new RealLink(
+      'ABC',
+      [slider, new RevJoint('B', 1, 0), new RevJoint('C', 0, 1)],
+      1,
+      1
+    );
+    slider.links = [rider];
 
     expect(slideAssemblyAt(slider)).toBeUndefined();
-    expect(slideAssemblies(built.joints).map((a) => a.weldJoint.id)).toEqual(['C']);
+
+    slider.rotates = false;
+    expect(slideAssemblyAt(slider)!.riders.map((one) => one.id)).toEqual(['ABC']);
   });
 
-  it('declines a welded pin with a block but no rider link', () => {
-    const pin = new RevJoint('A', 0, 0);
-    const slider = new PrisJoint('P', 0, 0, false, true);
-    pin.links = [new SliderBlock('AP', [pin, slider], 1)];
-    pin.isWelded = true;
+  it('resolves from the sliding joint, which is the only end there is', () => {
+    // The reverse of what this asked before. The weld used to belong to the
+    // coincident pin, so resolving from the slider would have reported the same
+    // assembly twice and double-counted it in the mobility merge; the slider is
+    // the whole joint now, and `rotates` on it is the record.
+    const built = buildMechanism(scotchYokeFixture());
+    const slider = built.joints.find((joint) => joint.id === 'C') as PrisJoint;
 
-    expect(slideAssemblyAt(pin)).toBeUndefined();
+    expect(slideAssemblyAt(slider)).toBeDefined();
+    expect(slideAssemblyAt(slider)!.slider).toBe(slider);
+    expect(slideAssemblies(built.joints).map((a) => a.slider.id)).toEqual(['C']);
+  });
+
+  it('declines a Slide with nothing riding the slot', () => {
+    // A Slide holds its riders still against the slot, so one with no rider
+    // holds nothing and is not an assembly at all.
+    const slider = new PrisJoint('P', 0, 0, false, true);
+    slider.rotates = false;
+
+    expect(slideAssemblyAt(slider)).toBeUndefined();
   });
 
   it('resolves a rider that is not yet compounded, so a reconcile can repair it', () => {
     // Mid-edit the flag can outrun the compound: mergeJoints takes a weld apart
     // and rebuilds it. Refusing here would make the reconcile read "not a
     // Slide" and destroy a weld the user made.
-    const pin = new RevJoint('A', 0, 0);
-    const slider = new PrisJoint('P', 0, 0, false, true);
-    const first = new RealLink('AB', [pin, new RevJoint('B', 1, 0)], 1, 1);
-    const second = new RealLink('AC', [pin, new RevJoint('C', 0, 1)], 1, 1);
-    pin.links = [first, second, new SliderBlock('AP', [pin, slider], 1)];
-    pin.isWelded = true;
+    const slider = new PrisJoint('A', 0, 0, false, true);
+    const first = new RealLink('AB', [slider, new RevJoint('B', 1, 0)], 1, 1);
+    const second = new RealLink('AC', [slider, new RevJoint('C', 0, 1)], 1, 1);
+    slider.links = [first, second];
+    slider.rotates = false;
 
-    const assembly = slideAssemblyAt(pin);
+    const assembly = slideAssemblyAt(slider);
 
     expect(assembly).toBeDefined();
     expect(assembly!.riders.map((rider) => rider.id)).toEqual(['AB', 'AC']);
@@ -153,22 +137,20 @@ describe('resolving a slide assembly', () => {
 });
 
 describe('which links a weld holds at a fixed orientation', () => {
-  it('names the rider but not its block', () => {
+  it('names the rider, which is the whole of what the slot holds', () => {
     const built = buildMechanism(scotchYokeFixture());
     const assemblies = slideAssemblies(built.joints);
     const linkNamed = (id: string) => built.links.find((link) => link.id === id)!;
 
     expect(hasFixedOrientation(linkNamed('CD'), assemblies)).toBe(true);
-    // The block CF is genuinely held at a fixed orientation too, and it is
-    // still part of the same rigid body for mobility. But the solver never
-    // gives a block an angular unknown -- its column is how fast it slides --
-    // so answering "true" here would delete the assembly's one real freedom and
-    // leave the velocity matrix a row short of its loops.
-    expect(hasFixedOrientation(linkNamed('CF'), assemblies)).toBe(false);
-    expect(assemblyBodyIds(assemblies[0]).sort()).toEqual(['CD', 'CF']);
-    // The crank turns, and the Slot's block is free to turn in its slot.
+    // The block CF used to be named here too -- held at a fixed orientation and
+    // part of the same rigid body for mobility, but answered `false` because the
+    // solver never gives a block an angular unknown. There is no block to
+    // answer for now, so the assembly's bodies are the rider alone.
+    expect(assemblyBodyIds(assemblies[0]).sort()).toEqual(['CD']);
+    expect(built.links.map((link) => link.id).sort()).toEqual(['AB', 'CD']);
+    // The crank turns, and the Slot's rider is free to turn in its slot.
     expect(hasFixedOrientation(linkNamed('AB'), assemblies)).toBe(false);
-    expect(hasFixedOrientation(linkNamed('BE'), assemblies)).toBe(false);
   });
 
   it('does not hold a floating assembly fixed', () => {
@@ -176,7 +158,7 @@ describe('which links a weld holds at a fixed orientation', () => {
     // still, and Phase 3 does not solve it (§4). Claiming zero here would be a
     // wrong number rather than an honest refusal.
     const built = buildMechanism(scotchYokeFixture());
-    const slider = built.joints.find((joint) => joint.id === 'F') as PrisJoint;
+    const slider = built.joints.find((joint) => joint.id === 'C') as PrisJoint;
     const carrier = built.links.find((link) => link.id === 'AB')!;
     slider.slideOn(carrier, built.joints[0], built.joints[1]);
 

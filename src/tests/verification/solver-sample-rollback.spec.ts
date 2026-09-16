@@ -65,15 +65,19 @@ describe('a sample the solver turns away', () => {
     solver.registerSealedCylinders(parts.joints);
 
     const barrel = parts.barrelNear.x;
-    const rod = parts.rodFar.x - parts.pin.x;
+    const rod = parts.rodFar.x - parts.slider.x;
+    // No coincidence row, and one unknown fewer. The seal and the pin the rod
+    // hangs on were two joints held together by a zero-length block, so the
+    // system had to say they were at the same place; they are one joint now
+    // (Stage 1 of `docs/joint-type-and-cylinder-plan.md`), and a constraint
+    // naming the pin would name nothing.
     (solver as Record<string, unknown>)['simultaneousSystem'] = {
-      unknownIds: ['B', 'C', 'P'],
+      unknownIds: ['B', 'C'],
       constraints: [
         { kind: 'distance', a: 'A', b: 'B', length: barrel },
         { kind: 'onFixedLine', point: 'B', at: [0, 0], dir: [1, 0] },
         { kind: 'distance', a: 'C', b: 'D', length: rod },
         { kind: 'onFixedLine', point: 'C', at: [0, 0], dir: [1, 0] },
-        { kind: 'coincident', a: 'C', b: 'P' },
       ],
     };
     (solver as Record<string, unknown>)['boundaryIds'] = ['A', 'D'];
@@ -87,7 +91,7 @@ describe('a sample the solver turns away', () => {
     // can reach.
     solver.jointMapPositions.set('D', [20, 0]);
     (solver as Record<string, unknown>)['stepCount'] = 1;
-    solver.jointNumOrderSolverMap.set(1, ['B', 'C', 'P']);
+    solver.jointNumOrderSolverMap.set(1, ['B', 'C']);
     solver.desiredConnectedJointIndicesMap.set('B', []);
     solver.desiredAnalysisJointMap.set('B', 'simultaneousSystem');
     return { solver, parts };

@@ -1,5 +1,5 @@
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../joint';
-import { Link, SliderBlock, RealLink } from '../link';
+import { Link, RealLink } from '../link';
 import { assignBodies, WORLD } from './bodies';
 import { mobilityFromGeometry } from './mobility';
 import { Force } from '../force';
@@ -131,34 +131,27 @@ export class Mechanism {
     });
     links.forEach((l) => {
       const linkJoints = l.joints.map((joint) => this._joints[0].find((j) => j.id === joint.id)!);
-      switch (l.constructor) {
-        case RealLink:
-          if (!(l instanceof RealLink)) {
-            return;
-          }
-          const realLink = new RealLink(
-            l.id,
-            linkJoints,
-            l.mass,
-            l.massMoI,
-            new Coord(l.CoM.x, l.CoM.y),
-            this.cloneLinkSubset(l.subset, this._joints[0], true),
-            l
-          );
-          realLink.name = l.name;
-          realLink.fill = l.fill;
-          this.restoreLinkSubsetState(l.subset, realLink.subset);
-          this._links[0].push(realLink);
-          break;
-        case SliderBlock:
-          if (!(l instanceof SliderBlock)) {
-            return;
-          }
-          const piston = new SliderBlock(l.id, linkJoints, l.mass);
-          piston.name = l.name;
-          this._links[0].push(piston);
-          break;
+      // `instanceof`, not a switch on the constructor. The switch listed every
+      // class a link could be and silently dropped anything absent from the
+      // list -- so when the block stopped existing, a drawing's links would
+      // have gone missing one class at a time rather than failing where the
+      // class was removed.
+      if (!(l instanceof RealLink)) {
+        return;
       }
+      const realLink = new RealLink(
+        l.id,
+        linkJoints,
+        l.mass,
+        l.massMoI,
+        new Coord(l.CoM.x, l.CoM.y),
+        this.cloneLinkSubset(l.subset, this._joints[0], true),
+        l
+      );
+      realLink.name = l.name;
+      realLink.fill = l.fill;
+      this.restoreLinkSubsetState(l.subset, realLink.subset);
+      this._links[0].push(realLink);
     });
     this.wireJointGraph(0, joints);
     forces.forEach((f) => {
@@ -227,6 +220,14 @@ export class Mechanism {
       const prisJoint = new PrisJoint(source.id, x, y, source.input, source.ground);
       prisJoint.angle_rad = source.angle_rad;
       prisJoint.isSealed = source.isSealed;
+      // The two things a slider used to keep somewhere else: the mass on its
+      // block, and the Slide on the weld of its coincident pin. Both are the
+      // joint's own now, and a copy that dropped them would leave every
+      // timestep after the first holding a massless Pin-in-slot -- which the
+      // force solver reads as a body with no weight and the mobility count as
+      // a freedom the drawing does not have.
+      prisJoint.mass = source.mass;
+      prisJoint.rotates = source.rotates;
       // Points at the editable objects for now; wireJointGraph rebinds it to
       // this timestep's copies once they exist.
       if (source.carrier && source.slotJointA && source.slotJointB) {
@@ -302,11 +303,6 @@ export class Mechanism {
         link.name = source.name;
         link.fill = source.fill;
         return [link];
-      }
-      if (source instanceof SliderBlock) {
-        const piston = new SliderBlock(source.id, joints, source.mass);
-        piston.name = source.name;
-        return [piston];
       }
       return [];
     });
@@ -404,13 +400,32 @@ export class Mechanism {
     const bodies = new Set(this.links[0].map(bodyOf));
     bodies.add(WORLD);
     const N = bodies.size;
+    // Full joints leave one freedom and cost two; half joints leave two and
+    // cost one. Every pin is a full joint, and so is a Slide -- its rider may
+    // slide and may not turn. A Pin-in-slot is the half joint: slide *and*
+    // turn.
+    //
+    // This split is what keeps the count the same as when a slider was three
+    // objects. A Pin-in-slot used to add the block as a body (+3) and two full
+    // joint terms (-4) for a net -1; it now adds no body and one half joint,
+    // which is -1 again. A Slide used to add no body -- the weld merged block
+    // and rider into one (see `assignBodies`) -- and one full joint term, for
+    // -2; it still adds no body and one full joint, which is -2.
     let J1 = 0;
-    const J2 = 0;
+    let J2 = 0;
     this.joints[0].forEach((j) => {
       if (!(j instanceof RealJoint)) {
         return;
       }
-      J1 += Math.max(bodiesAt(j).size - 1, 0);
+      const pairings = Math.max(bodiesAt(j).size - 1, 0);
+      // Exactly one of a slider's pairings is the sliding one; any others are
+      // riders pinned to each other at the same point, and those are pins.
+      if (j instanceof PrisJoint && j.rotates && pairings > 0) {
+        J1 += pairings - 1;
+        J2 += 1;
+        return;
+      }
+      J1 += pairings;
     });
     const counted = 3 * (N - 1) - 2 * J1 - J2;
     this.countedFreedoms = counted;
@@ -849,34 +864,25 @@ export class Mechanism {
           connectedJointIndices.forEach((ji: number) => {
             connectedJoints.push(this._joints[currentTimeStamp + 1][ji]);
           });
-          switch (l.constructor) {
-            case RealLink:
-              if (!(l instanceof RealLink)) {
-                return;
-              }
-              const pushLink = new RealLink(
-                l.id,
-                connectedJoints,
-                l.mass,
-                l.massMoI,
-                this.transportPoint(l.CoM, l.joints, connectedJoints),
-                this.cloneLinkSubset(l.subset, this._joints[currentTimeStamp + 1], true),
-                l
-              );
-              pushLink.name = l.name;
-              pushLink.fill = l.fill;
-              this.restoreLinkSubsetState(l.subset, pushLink.subset);
-              this._links[currentTimeStamp + 1].push(pushLink);
-              break;
-            case SliderBlock:
-              if (!(l instanceof SliderBlock)) {
-                return;
-              }
-              const newLink = new SliderBlock(l.id, connectedJoints, l.mass);
-              newLink.name = l.name;
-              this._links[currentTimeStamp + 1].push(newLink);
-              break;
+          // See the constructor: asked as `instanceof` rather than switched on
+          // the constructor, so a class that is no longer drawn cannot quietly
+          // take a link out of every timestep after the first.
+          if (!(l instanceof RealLink)) {
+            return;
           }
+          const pushLink = new RealLink(
+            l.id,
+            connectedJoints,
+            l.mass,
+            l.massMoI,
+            this.transportPoint(l.CoM, l.joints, connectedJoints),
+            this.cloneLinkSubset(l.subset, this._joints[currentTimeStamp + 1], true),
+            l
+          );
+          pushLink.name = l.name;
+          pushLink.fill = l.fill;
+          this.restoreLinkSubsetState(l.subset, pushLink.subset);
+          this._links[currentTimeStamp + 1].push(pushLink);
         });
         this.wireJointGraph(currentTimeStamp + 1, this.joints[0]);
         // TODO: If forces are a part of links, is all of this info needed? Or just the positions?
@@ -1488,9 +1494,6 @@ export class Mechanism {
         });
         forceTitleRow.push(' ');
         this.links[0].forEach((l) => {
-          if (l instanceof SliderBlock) {
-            return;
-          }
           forceTitleRow.push('Link ' + l.id + ' CoM x ' + posUnit);
           forceTitleRow.push('Link ' + l.id + ' CoM y ' + posUnit);
           forceTitleRow.push('Link ' + l.id + ' CoM Vel x ' + velUnit);
@@ -1500,9 +1503,6 @@ export class Mechanism {
         });
         forceTitleRow.push(' ');
         this.links[0].forEach((l) => {
-          if (l instanceof SliderBlock) {
-            return;
-          }
           forceTitleRow.push('Link ' + l.id + ' angPos ' + angPosUnit);
           forceTitleRow.push('Link ' + l.id + ' angVel ' + angVelUnit);
           forceTitleRow.push('Link ' + l.id + ' angAcc ' + angAccUnit);
@@ -1559,9 +1559,6 @@ export class Mechanism {
     });
     kinematicTitleRow.push(' ');
     this.links[0].forEach((l) => {
-      if (l instanceof SliderBlock) {
-        return;
-      }
       kinematicTitleRow.push('Link ' + l.id + ' CoM ' + 'x ' + posUnit);
       kinematicTitleRow.push('Link ' + l.id + ' CoM ' + 'y ' + posUnit);
       kinematicTitleRow.push('Link ' + l.id + ' CoM ' + 'vx ' + velUnit);
@@ -1571,9 +1568,6 @@ export class Mechanism {
     });
     kinematicTitleRow.push(' ');
     this.links[0].forEach((l) => {
-      if (l instanceof SliderBlock) {
-        return;
-      }
       kinematicTitleRow.push('Link ' + l.id + ' angle ' + angPosUnit);
       kinematicTitleRow.push('Link ' + l.id + ' angVel ' + angVelUnit);
       kinematicTitleRow.push('Link ' + l.id + ' angAcc ' + angAccUnit);
@@ -1682,9 +1676,6 @@ export class Mechanism {
           });
           force_row.push(' ');
           this.links[index].forEach((l) => {
-            if (l instanceof SliderBlock) {
-              return;
-            }
             force_row.push(rateCell(KinematicsSolver.linkCoMMap.get(l.id), 0, posUnitConversion));
             force_row.push(rateCell(KinematicsSolver.linkCoMMap.get(l.id), 1, posUnitConversion));
             force_row.push(rateCell(KinematicsSolver.linkVelMap.get(l.id), 0, velUnitConversion));
@@ -1694,9 +1685,6 @@ export class Mechanism {
           });
           force_row.push(' ');
           this.links[index].forEach((l) => {
-            if (l instanceof SliderBlock) {
-              return;
-            }
             force_row.push(scalarCell(KinematicsSolver.linkAngPosMap.get(l.id)));
             force_row.push(scalarCell(KinematicsSolver.linkAngVelMap.get(l.id)));
             force_row.push(scalarCell(KinematicsSolver.linkAngAccMap.get(l.id)));
@@ -1756,9 +1744,6 @@ export class Mechanism {
       });
       row.push(' ');
       this.links[0].forEach((l) => {
-        if (l instanceof SliderBlock) {
-          return;
-        }
         row.push(rateCell(KinematicsSolver.linkCoMMap.get(l.id), 0, posUnitConversion));
         row.push(rateCell(KinematicsSolver.linkCoMMap.get(l.id), 1, posUnitConversion));
         row.push(rateCell(KinematicsSolver.linkVelMap.get(l.id), 0, velUnitConversion));
@@ -1768,9 +1753,6 @@ export class Mechanism {
       });
       row.push(' ');
       this.links[0].forEach((l) => {
-        if (l instanceof SliderBlock) {
-          return;
-        }
         row.push(scalarCell(KinematicsSolver.linkAngPosMap.get(l.id)));
         row.push(scalarCell(KinematicsSolver.linkAngVelMap.get(l.id)));
         row.push(scalarCell(KinematicsSolver.linkAngAccMap.get(l.id)));

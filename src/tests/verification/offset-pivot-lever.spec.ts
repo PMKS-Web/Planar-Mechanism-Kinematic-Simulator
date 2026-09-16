@@ -107,14 +107,16 @@ describe('a slotted lever pinned off its slot', () => {
     // The closed form: the slot line stays a fixed signed distance from the
     // pivot, and passes through the crank pin. Both at every sample, to the
     // four decimals every solved position is recorded at.
+    // B is the block: the crank pin *is* the joint that rides the slot, rather
+    // than a pin with a prismatic twin on top of it. Keeping those two together
+    // was its own assertion here until Stage 1 of
+    // `docs/joint-type-and-cylinder-plan.md` left one joint to keep.
     for (const frame of frames) {
       const d = at(frame, 'D');
       const e = at(frame, 'E');
       const b = at(frame, 'B');
-      const p = at(frame, 'P');
       const ux = (e.x - d.x) / span(frame, 'D', 'E');
       const uy = (e.y - d.y) / span(frame, 'D', 'E');
-      expect(Math.hypot(p.x - b.x, p.y - b.y)).toBeLessThan(1e-9);
       expect(Math.abs(ux * (b.y - d.y) - uy * (b.x - d.x))).toBeLessThan(2e-4);
       expect(Math.abs(ux * (0 - d.y) - uy * (3 - d.x) - 1)).toBeLessThan(2e-4);
     }
@@ -153,11 +155,12 @@ describe('a slotted lever pinned off its slot', () => {
       const speed = built.mechanism.inputAngularVelocities[t];
       const before = pose(crankAngle(frames[t]) - DELTA);
       const after = pose(crankAngle(frames[t]) + DELTA);
-      for (const id of ['D', 'E', 'F', 'P'] as const) {
+      // B among them: the block is the crank pin itself, so its rate is the
+      // crank pin's, and the closed form is asked about the one point.
+      for (const id of ['D', 'E', 'F', 'B'] as const) {
         const v = KinematicsSolver.jointVelMap.get(id)!;
-        const exact = id === 'P' ? 'B' : id;
-        const vx = (speed * (after[exact][0] - before[exact][0])) / (2 * DELTA);
-        const vy = (speed * (after[exact][1] - before[exact][1])) / (2 * DELTA);
+        const vx = (speed * (after[id][0] - before[id][0])) / (2 * DELTA);
+        const vy = (speed * (after[id][1] - before[id][1])) / (2 * DELTA);
         // The rates are solved on the recorded positions, so they carry the
         // same few ten-thousandths, against speeds of order one.
         expect(Math.hypot(v[0] - vx, v[1] - vy)).toBeLessThan(5e-3);

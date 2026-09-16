@@ -51,13 +51,12 @@ export function axialCarriageFixture(scale: number = 1): MechanismFixture {
       // The ram itself, driving.
       {
         at: 'P',
-        prisId: 'S',
         on: { carrier: 'ON', a: 'O', b: 'N' },
         sealed: true,
         input: true,
       },
       // The carriage the barrel mount rides in.
-      { at: 'O', prisId: 'K', angleRad: 0 },
+      { at: 'O', angleRad: 0 },
     ],
     welds: ['P'],
     inputAngVel: MOUNT_INPUT_SPEED * scale,
@@ -107,8 +106,8 @@ export function obliqueGuideFixture(scale: number = 1): MechanismFixture {
     ],
     links: [{ joints: 'ON' }, { joints: 'PR' }],
     sliders: [
-      { at: 'P', prisId: 'S', on: { carrier: 'ON', a: 'O', b: 'N' }, sealed: true, input: true },
-      { at: 'O', prisId: 'K', angleRad: OBLIQUE.heading },
+      { at: 'P', on: { carrier: 'ON', a: 'O', b: 'N' }, sealed: true, input: true },
+      { at: 'O', angleRad: OBLIQUE.heading },
     ],
     welds: ['P'],
     inputAngVel: MOUNT_INPUT_SPEED * scale,
@@ -157,10 +156,10 @@ export function translatingBracketFixture(scale: number = 1): MechanismFixture {
       // The slot is named on the compound the barrel was welded into: a
       // floating slot follows its carrier up to the top-level body, which is
       // what the app's own rebuild leaves behind.
-      { at: 'P', prisId: 'S', on: { carrier: 'ONW', a: 'O', b: 'N' }, sealed: true },
+      { at: 'P', on: { carrier: 'ONW', a: 'O', b: 'N' }, sealed: true },
       // The drive: a grounded guide the bracket is welded to, so the compound
       // translates along it without turning.
-      { at: 'W', prisId: 'K', angleRad: 0, input: true },
+      { at: 'W', angleRad: 0, input: true },
     ],
     welds: ['P', 'O', 'W'],
     inputAngVel: MOUNT_INPUT_SPEED * scale,
@@ -203,8 +202,8 @@ export function rotatingCarrierFixture(scale: number = 1): MechanismFixture {
     ],
     links: [{ joints: 'AE' }, { joints: 'ON' }, { joints: 'PR' }],
     sliders: [
-      { at: 'P', prisId: 'S', on: { carrier: 'ON', a: 'O', b: 'N' }, sealed: true },
-      { at: 'O', prisId: 'Q', on: { carrier: 'AE', a: 'A', b: 'E' } },
+      { at: 'P', on: { carrier: 'ON', a: 'O', b: 'N' }, sealed: true },
+      { at: 'O', on: { carrier: 'AE', a: 'A', b: 'E' } },
     ],
     welds: ['P', 'O'],
     inputAngVel: MOUNT_INPUT_SPEED,
@@ -260,9 +259,7 @@ export function weldedBoomFixture(scale: number = 1): MechanismFixture {
       // the ram and the boom would be one body pinned to ground at both ends.
       { joints: 'PCW', subset: [{ joints: 'PC' }, { joints: 'CW' }] },
     ],
-    sliders: [
-      { at: 'P', prisId: 'S', on: { carrier: 'GN', a: 'G', b: 'N' }, sealed: true, input: true },
-    ],
+    sliders: [{ at: 'P', on: { carrier: 'GN', a: 'G', b: 'N' }, sealed: true, input: true }],
     welds: ['P', 'C'],
     inputAngVel: MOUNT_INPUT_SPEED * scale,
   };
@@ -291,7 +288,6 @@ export function permuted(fixture: MechanismFixture): MechanismFixture {
     .map((spec) => ({
       ...spec,
       at: rename(spec.at),
-      prisId: rename(spec.prisId),
       on: spec.on
         ? { carrier: rename(spec.on.carrier), a: rename(spec.on.a), b: rename(spec.on.b) }
         : undefined,

@@ -36,7 +36,7 @@ function ramFixture(): MechanismFixture {
       { id: 'D', ...EYE },
     ],
     links: [{ joints: 'AB' }, { joints: 'CD' }],
-    sliders: [{ at: 'C', prisId: 'P', on: { carrier: 'AB', a: 'A', b: 'B' }, sealed: true }],
+    sliders: [{ at: 'C', on: { carrier: 'AB', a: 'A', b: 'B' }, sealed: true }],
     welds: ['C'],
     inputAngVel: 1,
   };

@@ -1,6 +1,6 @@
 import '../../app/model/joint';
 import { PrisJoint, RevJoint } from '../../app/model/joint';
-import { RealLink, SliderBlock } from '../../app/model/link';
+import { RealLink } from '../../app/model/link';
 import { describeCylinder, resolveCylinder } from '../../app/model/cylinder';
 import { MARK } from '../../app/model/joint-marks';
 import { SettingsService } from '../../app/services/settings.service';
@@ -15,10 +15,18 @@ const S = MODEL_SCALE;
 // happen to line up, drawn as the part an engineer would recognize. The test is
 // therefore the shape, not a flag, and everything that is not that shape has to
 // keep the ordinary block-in-a-channel drawing.
+//
+// The shape is four joints now rather than five: the slider and the pin the rod
+// hangs on are one joint, so `resolveCylinder` is asked about the joint that
+// slides rather than about a pin beside it.
 
 /**
- * Barrel M--N along the x axis with a bore, a block welded at P, and a rod
- * reaching out to T on the far side of P from N.
+ * Barrel M--N along the x axis with a bore, a Slide at P, and a rod reaching
+ * out to T on the far side of P from N.
+ *
+ * P is one joint: the seal and the pin the rod hangs on were a prismatic
+ * joint, a coincident `RevJoint` and a zero-length block joining the two until
+ * a slider became one joint, and the weld on that pin is `rotates` on this one.
  *
  * The rod defaults to the barrel's own 7 units, because barrel and rod are the
  * same length in every cylinder that can exist — a hand-built part where they
@@ -30,22 +38,20 @@ function piston(options: { rodAt?: [number, number]; barrelFarAt?: [number, numb
 
   const m = new RevJoint('M', barX, barY);
   const n = new RevJoint('N', -1 * S, 0);
-  const p = new RevJoint('P', 0, 0);
   const t = new RevJoint('T', rodX, rodY);
-  const slider = new PrisJoint('S', 0, 0);
+  const slider = new PrisJoint('P', 0, 0);
 
   const barrel = new RealLink('MN', [m, n], 1, 1);
-  const rod = new RealLink('PT', [p, t], 1, 1);
-  const block = new SliderBlock('PS', [p, slider], 1);
+  const rod = new RealLink('PT', [slider, t], 1, 1);
 
   [m, n].forEach((joint) => joint.links.push(barrel));
-  [p, t].forEach((joint) => joint.links.push(rod));
-  p.links.push(block);
-  slider.links.push(block);
-  p.isWelded = true;
+  [slider, t].forEach((joint) => joint.links.push(rod));
+  // The rod cannot turn against the barrel's slot, which is what makes the
+  // assembly one rigid part and what the weld at the pin used to say.
+  slider.rotates = false;
   slider.slideOn(barrel, m, n);
 
-  return { p, t, m, n, slider, barrel, rod, block };
+  return { p: slider, t, m, n, slider, barrel, rod };
 }
 
 describe('recognizing a cylinder', () => {
@@ -78,9 +84,9 @@ describe('recognizing a cylinder', () => {
     expect(resolveCylinder(piston({ rodAt: [-6 * S, 0] }).p)).toBeUndefined();
   });
 
-  it('declines a Slot — the rider has to be welded to the block', () => {
+  it('declines a Slot — the rod has to be rigid with the slot', () => {
     const scene = piston();
-    scene.p.isWelded = false;
+    scene.slider.rotates = true;
 
     expect(resolveCylinder(scene.p)).toBeUndefined();
   });

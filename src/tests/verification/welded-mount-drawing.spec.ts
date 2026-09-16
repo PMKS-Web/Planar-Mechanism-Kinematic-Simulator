@@ -115,12 +115,20 @@ describe('a compound holding one of a ram’s bars', () => {
   });
 
   it('still cuts a channel for an ordinary block riding that same compound', () => {
-    const { service, compound, tip } = weldedAt('rod');
-    // A block on the bracket's far end, riding the compound: an external slot
-    // in the very root that also holds the ram's rod. It has to be drawn.
-    const [a, b] = compound.subset.find((leaf) => leaf.joints.some((j) => j.id === tip.id))!.joints;
-    const anchor = service.joints.find((joint): joint is RealJoint => joint.id === tip.id)!;
-    service.cutSlotOn(anchor, { carrier: compound, a, b, x: anchor.x, y: anchor.y });
+    const { service, compound, mount, tip } = weldedAt('rod');
+    // A block riding the bracket, on the line between the bracket's own two
+    // joints: an external slot in the very root that also holds the ram's rod.
+    // It has to be drawn.
+    //
+    // The block is a joint of its own rather than the bracket's far end. It
+    // could be that end while a slider was a pin with a prismatic twin beside
+    // it, because the twin rode the slot and the pin went on being a slot
+    // joint; a slider is that joint now (Stage 1 of
+    // `docs/joint-type-and-cylinder-plan.md`), and a slot cannot be drawn
+    // through the joint that rides it.
+    const rider = new RevJoint('Z', (mount.x + tip.x) / 2, (mount.y + tip.y) / 2);
+    service.joints.push(rider);
+    service.cutSlotOn(rider, { carrier: compound, a: mount, b: tip, x: rider.x, y: rider.y });
     service.finishStructuralEdit(true);
 
     const channels = new SliderMarkService().channels(
