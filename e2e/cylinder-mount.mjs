@@ -332,7 +332,7 @@ ring = await ringDuring(ids.barrelFar, ids.mount);
 state = await model();
 check(
   'a ram dragged onto its own mount is offered nothing, and stays a ram',
-  !ring.accepted && !ring.refused && state.rams === 1 && state.joints.length === 6,
+  !ring.accepted && !ring.refused && state.rams === 1 && state.joints.length === 5,
   JSON.stringify({ ring, rams: state.rams, joints: state.joints.length })
 );
 
@@ -345,12 +345,12 @@ await chooseBlock(true);
 ring = await ringDuring(ids.other.near, ids.mount, () => film.shot('refused-live'));
 check(
   'and a second block dragged onto a mount that has one is refused, live, with the reason',
-  ring.refused === ids.mount && ring.why === 'two-sliders' && !ring.accepted,
+  ring.refused === ids.mount && ring.why === 'prismatic' && !ring.accepted,
   JSON.stringify({ refused: ring.refused, why: ring.why, accepted: ring.accepted })
 );
 check(
   'and the drawing says which rule while the drag is still live, not after it',
-  ring.rings === 1 && ring.said === 'one block per pin',
+  ring.rings === 1 && ring.said === 'a slider cannot merge',
   JSON.stringify({ rings: ring.rings, said: ring.said, notifications: ring.notifications })
 );
 
@@ -373,11 +373,9 @@ const slotStates = await page.evaluate(() => {
     carrier: slot().carrier?.id ?? null,
   });
   const fresh = say();
-  grid.activeObjService.updateSelectedObj(
-    m.joints.find(
-      (j) => j.constructor?.name === 'RevJoint' && j.connectedJoints.some((c) => c === slot())
-    )
-  );
+  // The slot itself. It used to be grounded through the coincident `RevJoint`
+  // riding it, and there is no such joint now.
+  grid.activeObjService.updateSelectedObj(slot());
   m.toggleGround();
   return { fresh, grounded: say(), rams: m.sealedStructures().length };
 });

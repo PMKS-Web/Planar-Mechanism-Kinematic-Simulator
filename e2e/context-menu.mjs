@@ -488,7 +488,7 @@ await openMechanism(page, BASE + SLIDER_AND_LOAD);
 const sliderPin = await openOn('#joint_B');
 check(
   'a slider pin says it is one, and the choice shows Pin-in-slot',
-  /^Slider pin · /.test(sliderPin?.subtitle ?? '') &&
+  /^Slider · /.test(sliderPin?.subtitle ?? '') &&
     sliderPin?.choice?.cells.find((one) => one.chosen)?.label === 'Pin-in-slot',
   sliderPin
 );

@@ -120,10 +120,20 @@ async function draw(recipe) {
       weld(one.rodFar);
       // Two external blocks on one welded body: one at the mount, one at the
       // bracket's far end, each with its own plate to draw.
-      block(one.rodFar);
-      ground(one.rodFar);
-      block(tip);
-      ground(tip);
+      //
+      // Re-fetched by letter between the two calls: gaining a slot exchanges
+      // the joint for a `PrisJoint` keeping its id (Stage 1 of
+      // `docs/joint-type-and-cylinder-plan.md`), so the object captured above
+      // is not the one in the drawing any more and grounding it grounds
+      // nothing at all -- which left the whole drawing unanchored and solving
+      // as no machine.
+      const live = (id) => m.joints.find((j) => j.id === id);
+      const mountId = one.rodFar.id;
+      const tipId = tip.id;
+      block(live(mountId));
+      ground(live(mountId));
+      block(live(tipId));
+      ground(live(tipId));
     } else if (which === 'oblique-slot') {
       const one = ram({ x: -1 * S, y: 1 * S }, { x: 5 * S, y: 1 * S });
       const bar = m.addBarFrom(one.rodFar, { x: one.rodFar.x + 1 * S, y: one.rodFar.y + 3 * S });
@@ -148,8 +158,13 @@ async function draw(recipe) {
       note.tip = tip.id;
       weld(one.rodFar);
       ground(one.barrelFar);
-      block(tip);
-      ground(tip);
+      // By letter between the two, for the reason the `two-blocks` recipe
+      // above gives: gaining a slot exchanges the joint for a `PrisJoint`
+      // keeping its id, so grounding the object captured before it grounds
+      // nothing at all.
+      const tipId = tip.id;
+      block(m.joints.find((j) => j.id === tipId));
+      ground(m.joints.find((j) => j.id === tipId));
       m.toggleCylinderInput(m.sealedStructures()[0]);
     }
 

@@ -59,14 +59,14 @@ try {
   await page.locator('.sectionHead[data-section="geometry"]').click();
   await page.getByRole('button', { name: 'Choose a joint…', exact: true }).click();
   const select = page.getByRole('combobox', { name: 'Joint', exact: true });
-  assert.equal(await select.locator('option').count(), 12);
-  await select.selectOption('P');
-  assert.equal(await select.inputValue(), 'P');
+  assert.equal(await select.locator('option').count(), 11);
+  await select.selectOption('G');
+  assert.equal(await select.inputValue(), 'G');
   assert.equal(
     await page
       .locator('app-drawing-export')
       .evaluate((element) => ng.getComponent(element).options.originJointId),
-    'P'
+    'G'
   );
   const overflow = await select.evaluate((element) => {
     const results = [];
@@ -84,7 +84,7 @@ try {
   });
   assert.deepEqual(overflow, []);
   await page.screenshot({ path: `${out}/cad-origin-mobile.png` });
-  checks.push('All 12 CAD origins are available on a 390px screen without horizontal overflow');
+  checks.push('All 11 CAD origins are available on a 390px screen without horizontal overflow');
   assert.deepEqual(crashes, []);
   writeFileSync(`${out}/results.json`, JSON.stringify({ checks, crashes }, null, 2));
   for (const check of checks) console.log(`PASS ${check}`);

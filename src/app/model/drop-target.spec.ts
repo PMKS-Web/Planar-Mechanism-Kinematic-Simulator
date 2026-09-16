@@ -98,7 +98,6 @@ describe('joint merge rules', () => {
       'same-joint',
       'shares-a-link',
       'prismatic',
-      'two-sliders',
       'over-constrained',
       'not-a-real-joint',
     ];

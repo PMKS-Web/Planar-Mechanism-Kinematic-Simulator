@@ -7,7 +7,6 @@ export type MergeRefusal =
   | 'same-joint'
   | 'shares-a-link'
   | 'prismatic'
-  | 'two-sliders'
   | 'over-constrained'
   | 'own-carrier'
   | 'not-a-real-joint'
@@ -33,7 +32,6 @@ export const MERGE_REFUSAL_MESSAGES: Record<MergeRefusal, string> = {
   'shares-a-link': 'These joints are on the same link, so merging them would collapse it.',
   prismatic:
     'A slider cannot be merged into another joint — its slot would have nothing to ride. Drag the other joint onto the slider instead.',
-  'two-sliders': 'Only one of these joints can carry a slider.',
   'over-constrained':
     'Merging here would tie the same two joints together twice, over-constraining the mechanism.',
   'own-carrier': 'A slider cannot ride on a link it is part of.',
@@ -62,7 +60,6 @@ export const MERGE_REFUSAL_REASONS: Record<MergeRefusal, string> = {
   'same-joint': 'the same joint',
   'shares-a-link': 'already one bar',
   prismatic: 'a slider cannot merge',
-  'two-sliders': 'one block per pin',
   'over-constrained': 'already tied together',
   'own-carrier': 'its own carrier',
   'not-a-real-joint': 'not a joint',
