@@ -102,7 +102,7 @@ export const SUITES = [
   { name: 'link-labels', seconds: 35, lanes: BOTH },
   { name: 'locking', seconds: 21, lanes: BOTH },
   { name: 'mechanism-panel', seconds: 97, lanes: NIGHTLY },
-  { name: 'menu-focus', seconds: 6, lanes: BOTH },
+  { name: 'menu-focus', seconds: 16, lanes: BOTH },
   { name: 'mobile', seconds: 81, lanes: NIGHTLY },
   { name: 'multi-mechanism-smoke', seconds: 3, lanes: BOTH },
   {

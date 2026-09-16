@@ -137,9 +137,10 @@
           @include look.glyph;
         }
 
-        &:focus-visible {
-          outline: 2px solid var(--brand);
-          outline-offset: -2px;
+        // Drawn under `.byKeyboard` below, not here: the CDK focuses this cell
+        // as the card opens, and `:focus-visible` calls that keyboard work.
+        &:focus {
+          outline: none;
         }
       }
 
@@ -177,6 +178,32 @@
 
       .cm-choice__label {
         @include look.label-text;
+      }
+    }
+
+    // A ring for the reader who reached for the keys, and none for the one who
+    // right-clicked. Opening the card moves focus into its first item, which is
+    // what lets the arrows walk it at all; `:focus-visible` would be the
+    // obvious way to draw that only for the keyboard and is the one that went
+    // wrong, because the browser reads a script moving focus as keyboard work
+    // unless the reader's last act was a pointer that moved focus itself. So a
+    // right-clicked card came up ringing its first value -- the chosen one,
+    // where a ring reads as a second kind of "selected" -- and the next card
+    // did not, which reads as a bug in whichever value sits first.
+    //
+    // `byKeyboard` is the component's own answer, from the event that opened
+    // the card. `TopBarComponent` says the same thing about the project menu.
+    &.byKeyboard {
+      .cm-choice__cell:focus,
+      .cm-row:focus {
+        outline: 2px solid var(--brand);
+        outline-offset: -2px;
+      }
+
+      // A row is a full-width rung with nothing but the ring to mark it, so it
+      // takes the hover wash as well -- the same mark the pointer leaves.
+      .cm-row:focus {
+        background-color: var(--surface-hover);
       }
     }
 

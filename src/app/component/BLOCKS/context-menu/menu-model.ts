@@ -162,6 +162,7 @@ export function menuIsEmpty(model: ContextMenuModel): boolean {
  * installed once at start-up, is ahead of both.
  */
 let lastPointer = { x: 0, y: 0 };
+let lastWasKeyboard = false;
 let tracking = false;
 
 export function trackContextMenuPointer(): void {
@@ -171,6 +172,11 @@ export function trackContextMenuPointer(): void {
     'contextmenu',
     (event) => {
       lastPointer = { x: (event as MouseEvent).clientX, y: (event as MouseEvent).clientY };
+      // The right button names itself; the context-menu key and Shift-F10 send
+      // the same event with button 0. A held finger is a right-click here too,
+      // because `onLongPress` dispatches one with `button: 2` -- so this is the
+      // one question that separates a reader who pointed from one who typed.
+      lastWasKeyboard = (event as MouseEvent).button !== 2;
     },
     true
   );
@@ -178,4 +184,14 @@ export function trackContextMenuPointer(): void {
 
 export function lastContextMenuPointer(): { x: number; y: number } {
   return lastPointer;
+}
+
+/**
+ * Whether the card standing open was opened from the keyboard.
+ *
+ * Which decides whether the focus the CDK moves into it is *drawn*. See
+ * `ContextMenuComponent.byKeyboard`.
+ */
+export function lastContextMenuWasKeyboard(): boolean {
+  return lastWasKeyboard;
 }

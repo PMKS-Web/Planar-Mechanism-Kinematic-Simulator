@@ -1124,6 +1124,37 @@ any open overlay — a card can stand while focus is elsewhere, and those keys a
 The CDK does move focus into the card as it opens it, for a button-2 `contextmenu`; `menu-focus.mjs`
 is the same rule for the project menu, and `joint-type.mjs` walks the card's choice with the arrows.
 
+### A disabled button cannot take focus, so stepping through a list sticks on it
+
+`focus()` on a `disabled` button does nothing at all -- no error, no move -- so a list that walks
+its items by index stops dead on the row *above* the grayed one and never gets past it, however many
+times the key is pressed. The project menu did this at Export Data, which is grayed until something
+has been solved: with nothing solved, ArrowDown went New Project, Open, Mechanism Library, Save,
+Share project, and then stayed on Share project forever. `menuItems()` in
+`top-bar.component.ts` leaves the disabled rows out now. The right-click card never had it, because
+a `cdkMenuItem` stays focusable and says `aria-disabled` instead.
+
+The other half of that menu's keyboard trouble was the opposite of sticking: opening it focused the
+first row, and Space and Enter press whatever row has focus, so New Project sat under the next press
+of Space -- which is also the play/pause key. Nothing is armed until an arrow says which row.
+
+### `:focus-visible` is wrong for focus the app moved itself
+
+A popover that takes focus as it opens -- the project menu, the right-click card -- cannot use
+`:focus-visible` to decide whether to *draw* that focus. The browser treats a script moving focus as
+keyboard work unless the reader's last act was a pointer that moved focus itself, so a card opened
+by right-click came up with a ring around its first item. It is not only the first menu after a
+load, which is how it was described the first time it happened: pressing Escape is enough to make
+the next card ring too, because the last thing that happened was a key. On the joint's card the
+first item is the *chosen* type, so the ring sat on the value already wearing the chosen pill and
+read as a second kind of selected.
+
+Both menus answer it themselves now, from the event that opened them -- `menuByKeyboard` in
+`top-bar.component.ts`, `byKeyboard` in `context-menu.component.ts`, each turned on by the first key
+the reader presses -- and the ring hangs off that class instead. `menu-focus.mjs` is the guard for
+both, and it uses a fresh browser context per case on purpose: the trap only shows before the page
+has recorded an interaction.
+
 ### A suite that buffers its checks loses them all to a throw
 
 `phase4-stack-and-menu` collects its answers in `out[]` and prints them at the end. When Stage 0

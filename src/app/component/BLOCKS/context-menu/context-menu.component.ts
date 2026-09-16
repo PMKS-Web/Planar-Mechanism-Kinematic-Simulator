@@ -17,6 +17,7 @@ import {
   MenuCrossing,
   MenuRow,
   lastContextMenuPointer,
+  lastContextMenuWasKeyboard,
   menuIsEmpty,
 } from './menu-model';
 
@@ -58,7 +59,34 @@ export class ContextMenuComponent {
   }
   private contextMenu!: HTMLElement;
 
+  /**
+   * Whether to draw the focus the CDK moves into this card as it opens it.
+   *
+   * The focus itself is not optional -- it is what lets the arrow keys reach
+   * the Joint Type values at all. Drawing it is a separate question, and
+   * `:focus-visible` is the wrong instrument for it: the browser reads a script
+   * moving focus as keyboard work unless the reader's last act was a pointer
+   * that moved focus itself, so a card opened by right-click came up with a
+   * ring around its first value -- on the value that is already chosen, where a
+   * ring reads as a second kind of "selected" -- and lost it again on the next
+   * card, which reads as a bug in whichever value happened to be first.
+   *
+   * So the component answers, from the event that opened the card, and turns it
+   * on the moment a reader who right-clicked reaches for the keys. Exactly what
+   * `TopBarComponent.menuByKeyboard` does for the project menu; `menu-focus.mjs`
+   * guards both.
+   */
+  protected byKeyboard = false;
+
+  /** A key pressed in here is a reader who wants to see where they are. */
+  protected onKey(event: KeyboardEvent): void {
+    // Escape only closes the card, so it is not a reason to paint a ring on the
+    // way out.
+    if (event.key !== 'Escape') this.byKeyboard = true;
+  }
+
   ngAfterViewInit() {
+    this.byKeyboard = lastContextMenuWasKeyboard();
     this.contextMenu = document.querySelector('#contextMenu') as HTMLElement;
     // Measured in the same tick the card is revealed, not in ngAfterViewInit:
     // the overlay has not been moved to the pointer yet at that point, so the

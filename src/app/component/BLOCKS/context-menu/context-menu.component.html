@@ -1,4 +1,11 @@
-<div id="contextMenu" class="fade-in-out" [class.cm-empty]="empty()" cdkMenu>
+<div
+  id="contextMenu"
+  class="fade-in-out"
+  [class.cm-empty]="empty()"
+  [class.byKeyboard]="byKeyboard"
+  (keydown)="onKey($event)"
+  cdkMenu
+>
   @if (model().header; as header) {
     <div class="cm-header">
       <div class="cm-header__names">
