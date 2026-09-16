@@ -165,6 +165,9 @@
   --scroll-shadow-hidden: 0 3px 6px -3px rgba(0, 0, 0, 0);
   /* A range slider's thumb. */
   --thumb-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  /* The chosen option of a pick-one: the segmented pill, and the chosen cell
+     of the right-click menu's choice grid, which draws the same pill. */
+  --segment-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
   --border-radius: 5px;
 
   /* ---- Layers: who paints over whom -------------------------------------- */

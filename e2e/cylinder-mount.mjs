@@ -178,6 +178,41 @@ async function menuOnJoint(id) {
   );
 }
 
+/** The Joint Type choice on the open card, read as data. */
+const choiceCells = () =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('#contextMenu .cm-choice__cell')].map((cell) => ({
+      label: cell.querySelector('.cm-choice__label').textContent.trim(),
+      chosen: cell.classList.contains('cm-choice__cell--chosen'),
+      off: cell.classList.contains('cm-choice__cell--off'),
+    }))
+  );
+
+/** Pick a value of that choice. */
+async function clickChoice(label) {
+  const cell = page.locator('#contextMenu .cm-choice__cell', { hasText: label }).first();
+  if ((await cell.count()) === 0) {
+    throw new Error(
+      `no "${label}" in the Joint Type choice; it offers ${JSON.stringify(await choiceCells())}`
+    );
+  }
+  await cell.click();
+  await page.waitForTimeout(600);
+}
+
+/**
+ * Give the joint whose card is open a block, or take it away, through Joint
+ * Type -- which is where Slider and Welded went (Stage 0 of the joint-type
+ * plan). Which value that is depends on the weld the joint already has: a
+ * welded mount with a block is Prismatic, an unwelded one Pin-in-slot.
+ */
+async function chooseBlock(on) {
+  const cells = await choiceCells();
+  const chosen = cells.find((one) => one.chosen)?.label;
+  const welded = chosen === 'Welded' || chosen === 'Prismatic';
+  await clickChoice(on ? (welded ? 'Prismatic' : 'Pin-in-slot') : welded ? 'Welded' : 'Revolute');
+}
+
 async function clickMenuRow(label) {
   const row = page.locator('#contextMenu .cm-row', { hasText: label }).first();
   if ((await row.count()) === 0) {
@@ -229,13 +264,14 @@ async function ringDuring(fromId, toId, shot) {
 console.log('\nthe toggles a mount now offers');
 let ids = await weldedMount();
 let rows = await menuOnJoint(ids.mount);
+const mountChoice = await choiceCells();
 check(
-  'the mount offers Slider, Welded and Cylinder',
-  ['Slider', 'Welded', 'Cylinder'].every((label) => {
-    const row = rows.find((one) => one.label === label);
-    return row && !row.off;
-  }),
-  JSON.stringify(rows.filter((r) => ['Slider', 'Welded', 'Cylinder'].includes(r.label)))
+  'the mount offers a Cylinder, and the types its weld allows',
+  rows.find((one) => one.label === 'Cylinder' && !one.off) !== undefined &&
+    ['Prismatic', 'Welded'].every(
+      (label) => mountChoice.find((one) => one.label === label)?.off === false
+    ),
+  JSON.stringify({ cylinder: rows.find((one) => one.label === 'Cylinder'), mountChoice })
 );
 
 // ------------------------------------------------------------ 2. gray reason
@@ -256,8 +292,8 @@ check(
   JSON.stringify([ids.pin, ids.barrelNear, ids.slider])
 );
 
-// A block, added and taken away again through the menu row.
-await clickMenuRow('Slider');
+// A block, added and taken away again through the card's Joint Type choice.
+await chooseBlock(true);
 let state = await model();
 check(
   'Slider on a mount adds a block',
@@ -266,7 +302,7 @@ check(
 );
 check('and the ram is still a ram', state.rams === 1, `rams=${state.rams}`);
 await menuOnJoint(ids.mount);
-await clickMenuRow('Slider');
+await chooseBlock(false);
 state = await model();
 check(
   'and taking it off again leaves the ram alone',
@@ -303,9 +339,9 @@ check(
 // The red ring itself, on a mount: two blocks cannot share one pin.
 ids = await weldedMount({ otherBar: true });
 await menuOnJoint(ids.mount);
-await clickMenuRow('Slider');
+await chooseBlock(true);
 await menuOnJoint(ids.other.near);
-await clickMenuRow('Slider');
+await chooseBlock(true);
 ring = await ringDuring(ids.other.near, ids.mount, () => film.shot('refused-live'));
 check(
   'and a second block dragged onto a mount that has one is refused, live, with the reason',
@@ -326,7 +362,7 @@ console.log('\nslot drops at a mount');
 // cover: ground it, or drop it on a body.
 ids = await weldedMount();
 await menuOnJoint(ids.mount);
-await clickMenuRow('Slider');
+await chooseBlock(true);
 const slotStates = await page.evaluate(() => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   const m = grid.mechanismSrv;
@@ -606,7 +642,7 @@ check(
 console.log('\nundo and redo across a weld');
 ids = await weldedMount({ weld: false });
 await menuOnJoint(ids.mount);
-await clickMenuRow('Welded');
+await clickChoice('Welded');
 state = await model();
 const weldedNow = state.links.some((l) => l.leaves.length > 1);
 await page.click('text=Undo');

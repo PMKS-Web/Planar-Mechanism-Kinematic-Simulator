@@ -89,6 +89,7 @@ export const SUITES = [
     lanes: NIGHTLY,
     note: 'Red on staging when the lanes were written.',
   },
+  { name: 'joint-type', seconds: 75, lanes: NIGHTLY },
   { name: 'keyboard-shortcuts', seconds: 33, lanes: BOTH },
   {
     name: 'left-nav-modes',

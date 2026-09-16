@@ -127,9 +127,24 @@ await clickJoint('B');
 
 const jointLabels = await page.locator('app-edit-panel toggle-block .row').allInnerTexts();
 const jointText = jointLabels.map((t) => t.trim().split('\n')[0]);
+const jointType = await page
+  .locator('app-edit-panel segmented-block')
+  .first()
+  .evaluate((block) => ({
+    label: block.querySelector('.row .label')?.textContent?.trim(),
+    options: [...block.querySelectorAll('button .text')].map((text) => text.textContent.trim()),
+  }));
+record(
+  "the joint's type is one choice, in the vocabulary's words",
+  jointType.label === 'Joint Type' &&
+    JSON.stringify(jointType.options) ===
+      JSON.stringify(['Revolute', 'Prismatic', 'Pin-in-slot', 'Welded']),
+  jointType
+);
 record(
   'the joint toggles are named after the state, as the right-click menu is',
-  ['Grounded', 'Slider', 'Welded'].every((label) => jointText.some((t) => t.startsWith(label))),
+  jointText.some((t) => t.startsWith('Grounded')) &&
+    !jointText.some((t) => /^(Slider|Welded)\b/.test(t)),
   jointText
 );
 record(

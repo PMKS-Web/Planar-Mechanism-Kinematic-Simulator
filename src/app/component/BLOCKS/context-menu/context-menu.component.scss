@@ -1,5 +1,6 @@
 @use 'sass:map';
 @use '@angular/material' as mat;
+@use '../segmented/segmented.look' as look;
 
 @mixin css($theme) {
   $color-config: mat.m2-get-color-config($theme);
@@ -114,6 +115,68 @@
 
       &:hover {
         background-color: transparent;
+      }
+    }
+
+    // What the part can be, drawn the way the app's pick-one control draws it:
+    // the same track, cells, pill surface and inks, from the mixins
+    // `segmented-block` uses, because two copies of one look drift apart.
+    .cm-choice {
+      @include look.track;
+      @include look.wrapped;
+      margin: 0 12px 10px;
+
+      .cm-choice__cell {
+        @include look.cell;
+        flex: 1 1 calc(50% - var(--gap) / 2);
+        min-width: 0;
+        height: 32px;
+        cursor: pointer;
+
+        mat-icon {
+          @include look.glyph;
+        }
+
+        &:focus-visible {
+          outline: 2px solid var(--brand);
+          outline-offset: -2px;
+        }
+      }
+
+      .cm-choice__cell:not(.cm-choice__cell--chosen):not(.cm-choice__cell--off):hover {
+        color: var(--text-primary);
+      }
+
+      .cm-choice__cell--chosen {
+        @include look.chosen-surface;
+        @include look.chosen-ink($theme);
+
+        mat-icon {
+          color: var(--brand);
+        }
+      }
+
+      // Grayed, with its reason on hover: nothing is printed under the grid.
+      .cm-choice__cell--off {
+        color: var(--text-disabled);
+        cursor: default;
+
+        mat-icon {
+          color: var(--text-disabled);
+        }
+      }
+
+      // Chosen, and not valid as it stands.
+      .cm-choice__cell--fault {
+        color: var(--refusal-text);
+
+        mat-icon {
+          color: var(--refusal-text);
+        }
+      }
+
+      .cm-choice__label {
+        @include look.label-text;
       }
     }
 

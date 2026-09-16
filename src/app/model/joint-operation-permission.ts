@@ -18,6 +18,7 @@
  */
 
 import { Joint, PrisJoint, RealJoint } from './joint';
+import { RealLink } from './link';
 import { Cylinder, cylinderInteriorsAt } from './cylinder';
 
 /** A structural edit, named as the state it is asking for rather than as a toggle. */
@@ -53,11 +54,16 @@ export interface JointOperationContext {
  * A no-op is allowed rather than refused: asking to weld a joint that is
  * already welded is not an error, and the control that would do it is the same
  * control that undoes it.
+ *
+ * `after` judges the edit on the joint as it will stand once that other edit
+ * has run: the second half of a change of joint type, where one press gives a
+ * pin its block and welds it in the same edit (`model/joint-type.ts`).
  */
 export function refuseJointOperation(
   joint: Joint | undefined,
   operation: JointOperation,
-  context: JointOperationContext
+  context: JointOperationContext,
+  after?: JointOperation
 ): OperationRefusal | undefined {
   if (!(joint instanceof RealJoint)) {
     return operation === 'weld' || operation === 'unweld'
@@ -70,7 +76,7 @@ export function refuseJointOperation(
   }
   switch (operation) {
     case 'weld':
-      return refuseWeld(joint, context);
+      return refuseWeld(joint, context, after);
     case 'unweld':
       return refuseUnweld(joint, context);
     case 'add-slider':
@@ -82,7 +88,8 @@ export function refuseJointOperation(
 
 function refuseWeld(
   joint: RealJoint,
-  context: JointOperationContext
+  context: JointOperationContext,
+  after?: JointOperation
 ): OperationRefusal | undefined {
   // The slider itself is the freedom between its block and its guide; a weld
   // would be the claim that there is none. The pin riding it welds.
@@ -121,17 +128,56 @@ function refuseWeld(
     };
   }
 
+  return weldNeedsLinks(joint, after);
+}
+
+/**
+ * A weld fuses the links that meet at a joint, so it needs two.
+ *
+ * Counted on the joint as it will stand once `after` has run. A block is a link
+ * of the pin it rides: gaining one gives a pin on a single bar the second link
+ * a weld needs, and losing one takes that link away again.
+ */
+export function weldNeedsLinks(
+  joint: RealJoint,
+  after?: JointOperation
+): OperationRefusal | undefined {
+  const blocks = after === 'add-slider' ? 1 : after === 'remove-slider' ? -1 : 0;
+  const meeting = joint.links.length + blocks;
+  if (meeting >= 2) return undefined;
   // A loose joint has no links at all, and telling it "only one meets here" is
   // a sentence about a link that is not there.
-  const meeting = joint.links.length;
-  if (meeting >= 2) return undefined;
   return {
     code: 'weld.needs-two-links',
     short: 'needs 2 links',
     long:
-      meeting === 0
+      meeting <= 0
         ? 'A weld fuses the links that meet at a joint, and this joint is on none.'
-        : 'A weld fuses the links that meet at a joint, and only one meets here.',
+        : after === 'remove-slider'
+          ? 'A weld fuses the links that meet at a joint, and without its block only one meets here.'
+          : 'A weld fuses the links that meet at a joint, and only one meets here.',
+  };
+}
+
+/**
+ * Whether a welded joint's weld still holds anything once its block has gone.
+ *
+ * A weld fuses the bars at a joint into one compound link and leaves the block
+ * out of it, so once made, the bars are counted by the compound rather than as
+ * links -- counting links sees one. A Slide on two bars keeps their compound,
+ * and its weld, when the block comes off. A Slide on one bar has no compound:
+ * its weld was the bar held to the block, and without the block
+ * `reconcileAssemblyWelds` finds nothing for it to be rigid about and takes it
+ * away. Asked the way that reconciler looks: a compound at the joint, or two
+ * bars it can still fuse into one.
+ */
+export function weldOutlivesBlock(joint: RealJoint): OperationRefusal | undefined {
+  const bars = joint.links.filter((link): link is RealLink => link instanceof RealLink);
+  if (bars.length >= 2 || bars.some((bar) => bar.subset.length > 0)) return undefined;
+  return {
+    code: 'weld.needs-two-links',
+    short: 'needs 2 links',
+    long: 'A weld fuses the links that meet at a joint, and without its block only one meets here.',
   };
 }
 

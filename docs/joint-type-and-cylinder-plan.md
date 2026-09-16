@@ -1,8 +1,11 @@
 # Joint type as one choice, sliders as one joint, cylinders as a sealed slide
 
-> **Status:** Plan — plan of record from September 15, 2026. It replaces the bodies-and-joints
-> migration (`docs/bodies-and-joints-plan.md`), which Stage R below retires. Everything here is
-> built on `staging` in ordinary pull requests, on the public editor, with the existing solver.
+> **Status:** Partly built — plan of record from September 15, 2026. It replaces the
+> bodies-and-joints migration (`docs/bodies-and-joints-plan.md`), which Stage R retires.
+> **Stage R and Stage 0 are built:** a joint's type is one choice of four in the Edit panel, in the
+> group panel and at the top of the right-click menu. Stages 1 and 2 are not started. Everything
+> here is built on `staging` in ordinary pull requests, on the public editor, with the existing
+> solver.
 
 ## Why
 

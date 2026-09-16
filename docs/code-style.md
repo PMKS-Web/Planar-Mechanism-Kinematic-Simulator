@@ -83,7 +83,8 @@ read.
 **Refusals come from one model, and are quoted, never restated.** Whether an edit is allowed is
 answered by `model/edit-permission.ts` (through `services/edit-permission.service.ts`). The
 specific refusals have one home each: `describeActuatorRefusal` in `model/actuator.ts`,
-`weldRefusal` in `services/grid-utils.service.ts`, and `locksHolding` in `model/lock-set.ts`. A
+`weldRefusal` in `services/grid-utils.service.ts`, `refuseJointType` in `model/joint-type.ts` for a
+change of joint type, and `locksHolding` in `model/lock-set.ts`. A
 menu row, a panel strip and a drag gate all ask these and show what they say. Writing the rule a
 second time is how the menu and the panel came to disagree.
 

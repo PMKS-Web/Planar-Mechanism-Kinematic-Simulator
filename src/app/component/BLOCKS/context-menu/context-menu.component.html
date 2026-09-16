@@ -28,6 +28,34 @@
     </div>
   }
 
+  <!-- What the part can be, above the ladder: one question, so a grid rather
+       than a row each (D8). Every value is a menu item, because inside a CDK
+       menu that is what the arrow keys reach, and a radio item is what says
+       which one is chosen. -->
+  @if (model().choice; as choice) {
+    <div class="cm-choice" cdkMenuGroup [attr.aria-label]="choice.label">
+      @for (option of choice.options; track $index) {
+        <div
+          class="cm-choice__cell"
+          cdkMenuItemRadio
+          [cdkMenuItemChecked]="$index === choice.chosen"
+          [cdkMenuItemDisabled]="!!option.refusal"
+          [class.cm-choice__cell--chosen]="$index === choice.chosen"
+          [class.cm-choice__cell--off]="!!option.refusal"
+          [class.cm-choice__cell--fault]="$index === choice.chosen && !!choice.fault"
+          [matTooltip]="hoverTextFor(choice, option, $index)"
+          [matTooltipDisabled]="!hoverTextFor(choice, option, $index)"
+          matTooltipPosition="right"
+          [matTooltipShowDelay]="500"
+          (cdkMenuItemTriggered)="choose(option)"
+        >
+          <mat-icon [svgIcon]="option.icon" aria-hidden="true"></mat-icon>
+          <span class="cm-choice__label">{{ option.label }}</span>
+        </div>
+      }
+    </div>
+  }
+
   @for (group of model().groups; track $index) {
     @if (group.rows.length > 0) {
       <div class="cm-group">

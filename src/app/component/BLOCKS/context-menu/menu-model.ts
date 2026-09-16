@@ -85,6 +85,37 @@ export class MenuRow {
   }
 }
 
+/** One value of a choice: a glyph, a label, and what choosing it does. */
+export interface MenuChoiceOption {
+  label: string;
+  /** A registered SVG icon name. */
+  icon: string;
+  /** Set when this value cannot be chosen. Its presence *is* the disabled flag. */
+  refusal?: MenuRefusal;
+  action: () => void;
+}
+
+/**
+ * A choice the card offers above its rows, as a grid of values.
+ *
+ * A joint's type is the one of these (D8 of
+ * `docs/joint-type-and-cylinder-plan.md`): four values that were two switches
+ * down in State, where between them they hid what a joint can be. A grid
+ * rather than rows, because the four are one question and a reader picking one
+ * is not reading a list.
+ */
+export interface MenuChoice {
+  /** Names the set, for a reader who cannot see that it is one. */
+  label: string;
+  options: MenuChoiceOption[];
+  /** Which value is chosen, or -1 where a group's parts disagree. */
+  chosen: number;
+  /** The chosen value cannot stand as drawn -- a block with nowhere to slide. */
+  fault?: MenuRefusal;
+  /** What the choice needs of the pose, as a row states it. */
+  posePolicy: MenuPosePolicy;
+}
+
 /** One rung of the ladder. The label is dropped on an unlabeled footer. */
 export interface MenuGroup {
   /** Upper-cased in the stylesheet; written here as a plain word. */
@@ -111,12 +142,14 @@ export interface MenuHeader {
 
 export interface ContextMenuModel {
   header?: MenuHeader;
+  /** Above the ladder: the values the part itself can be. */
+  choice?: MenuChoice;
   groups: MenuGroup[];
 }
 
 /** Whether there is anything at all to show. */
 export function menuIsEmpty(model: ContextMenuModel): boolean {
-  return model.groups.every((group) => group.rows.length === 0);
+  return !model.choice && model.groups.every((group) => group.rows.length === 0);
 }
 
 /**

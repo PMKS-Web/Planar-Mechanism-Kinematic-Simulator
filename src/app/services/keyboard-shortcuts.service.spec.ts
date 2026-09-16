@@ -59,6 +59,25 @@ describe('KeyboardShortcutsService', () => {
     expect(seen).toEqual([true, false]);
   });
 
+  it('leaves the arrows to a menu standing open, and does not swallow them', () => {
+    const { service, heard } = setup();
+    service.whenArrowsNudge(() => true);
+    const menu = document.createElement('div');
+    menu.setAttribute('role', 'menu');
+    const item = document.createElement('div');
+    item.setAttribute('role', 'menuitemradio');
+    menu.appendChild(item);
+    document.body.appendChild(menu);
+    // A right-click selects what it opened its card on, so Down was a nudge:
+    // the joint moved behind the card, and the card closed itself on the way.
+    const event = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true });
+    item.dispatchEvent(event);
+    expect(heard).toEqual([]);
+    // Not answered *and* not prevented: the menu is the one that needs it.
+    expect(event.defaultPrevented).toBe(false);
+    menu.remove();
+  });
+
   it('lists the four arrows as one line for a reader', () => {
     const { service } = setup();
     const editing = service.bySection().find((one) => one.section === 'Editing')!;

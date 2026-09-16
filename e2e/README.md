@@ -176,6 +176,11 @@ Not suites — import them from one.
 - `analysis-editing.mjs` — `docs/analysis-mode-editing-plan.md`: dragging and undo in an analysis
   mode, what is still refused, click selects and drag tunes, the before/after comparison overlay,
   and the force-mode budget.
+- `joint-type.mjs` — a joint's type as one choice of four: every press lands both of the facts it
+  is made of in one history entry, the rows each type carries (Slider Angle, Mass Settings, the
+  grounded glyph set, the block with nowhere to slide), a refused type with the model's reason on
+  hover, the same change parked mid-cycle, and a group taking a type in one press. Leaves a
+  filmstrip of the pill in `artifacts/joint-type/`.
 - `edit-undo.mjs` — one committed edit is one undo step, whether it was dragged or typed.
 - `unit-undo-view.mjs` — undoing a unit change does not move the view.
 

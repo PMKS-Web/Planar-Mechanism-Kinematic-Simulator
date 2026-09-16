@@ -161,17 +161,35 @@
   text-wrap: pretty;
 }
 
-// The one thing under the Slider toggle worth saying in words: a slider with
-// no link to slide on. What the slot is cut into, and what its angle is
-// measured from, are both drawn on the canvas and used to be said here too.
-.sliderWarning {
-  font-size: 12px;
-  background: var(--refusal-bg);
+// A block with nowhere to slide: the one thing about a joint's type the panel
+// says in words (D4), under the choice whose chosen option has taken the same
+// ink. A glyph, a bold lead and a sentence, and no filled box, because it is a
+// note about the value above it rather than a banner over the panel. What a
+// slot is cut into, and what its angle is measured from, are drawn on the
+// canvas, so neither is said here.
+.nowhereToSlide {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 6px 0 2px;
+  font-size: 11.5px;
+  line-height: 16px;
   color: var(--refusal-text);
-  border-radius: 4px;
-  padding: 6px 8px;
-  margin: 0 0 8px;
   text-wrap: pretty;
+
+  mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    margin-top: 1px;
+    font-size: 15px;
+    line-height: 16px;
+    text-align: center;
+  }
+
+  b {
+    font-weight: 500;
+  }
 }
 
 // The cylinder-skin override (§2.7). A view preference rather than mechanism

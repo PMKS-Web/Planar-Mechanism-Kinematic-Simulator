@@ -4,9 +4,11 @@ import { Force } from '../model/force';
 import { RealJoint } from '../model/joint';
 import { Link, LinkHold, RealLink } from '../model/link';
 import { holdableBar } from '../model/link-holds';
-import { SelectedPartRef, resolveSelectedParts } from '../model/selection';
+import { SelectedPartRef, partRefKey, resolveSelectedParts } from '../model/selection';
+import { JOINT_TYPE_LABEL, JointType, JointTypeChoice, jointTypeChoice } from '../model/joint-type';
 import { ActiveObjService } from './active-obj.service';
 import { GridUtilsService } from './grid-utils.service';
+import { JointTypeService } from './joint-type.service';
 import { MechanismService } from './mechanism.service';
 import { SettingsService } from './settings.service';
 
@@ -31,6 +33,7 @@ export class MultiEditService {
   private grid = inject(GridUtilsService);
   private active = inject(ActiveObjService);
   private settings = inject(SettingsService);
+  private jointTypes = inject(JointTypeService);
 
   private refusal(code: string, short: string, message: string): MultiEditResult {
     return { ok: false, refusal: { code, short, message } };
@@ -277,90 +280,73 @@ export class MultiEditService {
   }
 
   /**
-   * Weld or unweld every selected joint.
+   * Why the selected joints cannot all become `type`, in the words one joint
+   * would be refused in.
    *
-   * Preflighted whole: a weld that half the group refuses is not a half-done
-   * weld, it is a group the reader has to unpick. `weldRefusal` is the same
-   * model the one-joint menu grays its row from, so the sentence the group
-   * gets is the sentence one joint would have got.
-   *
-   * Driven through the one-joint path with the selection pointed at each in
-   * turn, because a weld is a restructure -- link ids, subsets, connected
-   * joints -- and a second implementation of it would be a second set of bugs.
+   * Preflighted whole, as the weld and the slider were: a change of type half
+   * the group refuses is not a half-done change, it is a group the reader has
+   * to unpick. Each joint is asked of `JointTypeService`, the same question the
+   * one-joint panel and menu ask, so the sentence is the one a joint would get.
    */
-  weldRefusal(refs: readonly SelectedPartRef[], welded: boolean): MultiEditRefusal | undefined {
+  jointTypeRefusal(
+    refs: readonly SelectedPartRef[],
+    type: JointType
+  ): MultiEditRefusal | undefined {
     const joints = this.joints(refs);
     if (!joints) {
       return {
         code: 'selection.joints-only',
         short: 'joints only',
-        message: 'Welded can be switched when every selected item is a joint.',
+        message: 'Joint Type can be chosen when every selected item is a joint.',
       };
     }
-    // Both directions. Taking a weld off used to be waved through here on the
-    // grounds that anything welded can be unwelded -- which stopped being true
-    // when a cylinder's pin became a weld that never comes off. The row was
-    // offered un-grayed and the mutation then declined it, which reads as a
-    // broken app rather than as a rule. `weldRefusal` asks about whichever way
-    // the joint would actually go, so it answers this on its own.
-    for (const joint of joints.filter((one) => one.isWelded !== welded)) {
-      const refused = this.grid.weldRefusal(joint);
+    for (const joint of joints.filter((one) => this.jointTypes.typeOf(one) !== type)) {
+      const refused = this.jointTypes.refusal(joint, type);
       if (refused) {
         return {
-          code: 'selection.weld',
+          code: 'selection.joint-type',
           short: refused.short,
-          message: `${joint.name || joint.id} cannot be ${welded ? 'welded' : 'unwelded'}: ${refused.long}`,
+          message: `${joint.name || joint.id} cannot become ${JOINT_TYPE_LABEL[type]}: ${refused.long}`,
         };
       }
     }
     return undefined;
   }
 
-  setWelded(refs: readonly SelectedPartRef[], welded: boolean): MultiEditResult {
-    const refused = this.weldRefusal(refs, welded);
+  /** Make every selected joint `type`, as one edit. */
+  setJointType(refs: readonly SelectedPartRef[], type: JointType): MultiEditResult {
+    const refused = this.jointTypeRefusal(refs, type);
     if (refused) return { ok: false, refusal: refused };
-    const joints = this.joints(refs)!;
-    const wanted = joints.filter((joint) => joint.isWelded !== welded);
+    const wanted = this.joints(refs)!.filter((joint) => this.jointTypes.typeOf(joint) !== type);
     if (wanted.length === 0) return OK;
-    return this.eachJoint(wanted, () => this.mechanism.toggleWeldedJoint());
+    return this.eachJoint(wanted, () => this.jointTypes.set(this.active.selectedJoint, type));
   }
+
+  /** The last group choice worked out, held for the reason `JointTypeService.choiceFor` holds one. */
+  private heldChoice?: { key: string; choice: JointTypeChoice };
 
   /**
-   * Give every selected joint a sliding block, or take it away.
-   *
-   * The refusal that matters is the cylinder's -- a ram is one sealed part and
-   * its block is the ram -- and it is asked before anything moves, so a
-   * selection holding one mount does not half-convert the rest.
+   * What a group's Joint Type choice draws: the type the joints share, or none
+   * when they disagree; the grounded glyphs only when every one is grounded;
+   * and each type grayed with the group's own refusal.
    */
-  sliderRefusal(refs: readonly SelectedPartRef[], slider: boolean): MultiEditRefusal | undefined {
+  jointTypeChoice(refs: readonly SelectedPartRef[]): JointTypeChoice | undefined {
     const joints = this.joints(refs);
-    if (!joints) {
-      return {
-        code: 'selection.joints-only',
-        short: 'joints only',
-        message: 'Slider can be switched when every selected item is a joint.',
-      };
+    if (!joints) return undefined;
+    const key = `${refs.map(partRefKey).join(' ')}@${this.mechanism.cylinderRevision}`;
+    if (this.heldChoice?.key !== key) {
+      const types = new Set(joints.map((joint) => this.jointTypes.typeOf(joint)));
+      const choice = jointTypeChoice(
+        types.size === 1 ? [...types][0] : undefined,
+        joints.every((joint) => this.jointTypes.isGrounded(joint)),
+        (type) => {
+          const refused = this.jointTypeRefusal(refs, type);
+          return refused ? { short: refused.short, long: refused.message } : undefined;
+        }
+      );
+      this.heldChoice = { key, choice };
     }
-    for (const joint of joints.filter((one) => this.grid.isAttachedToSlider(one) !== slider)) {
-      const refused = this.grid.sliderRefusal(joint, slider);
-      if (refused) {
-        return {
-          code: 'selection.slider',
-          short: refused.short,
-          message: `${joint.name || joint.id} cannot take that change: ${refused.long}`,
-        };
-      }
-    }
-    return undefined;
-  }
-
-  setSlider(refs: readonly SelectedPartRef[], slider: boolean): MultiEditResult {
-    const refused = this.sliderRefusal(refs, slider);
-    if (refused) return { ok: false, refusal: refused };
-    const joints = this.joints(refs)!;
-    const wanted = joints.filter((joint) => this.grid.isAttachedToSlider(joint) !== slider);
-    if (wanted.length === 0) return OK;
-    return this.eachJoint(wanted, () => this.mechanism.toggleSlider());
+    return this.heldChoice.choice;
   }
 
   /**

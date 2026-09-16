@@ -5,10 +5,12 @@ import { heldBarsAt, holdOf, holdableBar } from '../model/link-holds';
 import { LinkHold } from '../model/link';
 import {
   ContextMenuModel,
+  MenuChoice,
   MenuGroup,
   MenuRefusal,
   MenuRow,
 } from '../component/BLOCKS/context-menu/menu-model';
+import { JOINT_TYPES, JointType, JointTypeChoice, NOWHERE_TO_SLIDE } from '../model/joint-type';
 import { Joint, PrisJoint, RealJoint } from '../model/joint';
 import { Link, RealLink, SliderBlock } from '../model/link';
 import { Force } from '../model/force';
@@ -28,6 +30,7 @@ import { VectorQuantity, VECTOR_ICON, VECTOR_LABEL } from '../model/vector-trace
 import { SelectionBatchService } from './selection-batch.service';
 import { SelectedPart, SelectedPartRef } from '../model/selection';
 import { MultiEditService } from './multi-edit.service';
+import { JointTypeService } from './joint-type.service';
 
 /** What the canvas does when a row asks for a gesture rather than an edit. */
 export interface MenuHandlers {
@@ -80,6 +83,7 @@ export class ContextMenuBuilderService {
   private tabs = inject(SelectedTabService);
   private selectionBatch = inject(SelectionBatchService);
   private permission = inject(EditPermissionService);
+  private jointTypes = inject(JointTypeService);
 
   build(target: MenuTarget, handlers: MenuHandlers): ContextMenuModel {
     const model = this.buildFor(target, handlers);
@@ -126,6 +130,7 @@ export class ContextMenuBuilderService {
         title: `${count} selected objects`,
         subtitle: this.selectionSubtitle(parts),
       },
+      choice: this.selectionJointTypeChoice(refs),
       groups: [
         {
           label: 'State',
@@ -214,8 +219,6 @@ export class ContextMenuBuilderService {
       const ground = state(
         joints.map((joint) => (this.mechanism.sliderFor(joint)?.ground ?? joint.ground) === true)
       );
-      const slider = state(joints.map((joint) => this.gridUtils.isAttachedToSlider(joint)));
-      const weld = state(joints.map((joint) => joint.isWelded === true));
       const trace = state(joints.map((joint) => joint.showCurve === true));
       rows.push(
         new MenuRow({
@@ -239,24 +242,6 @@ export class ContextMenuBuilderService {
             long: 'A machine is driven at one joint, so the input is set on one joint at a time.',
           },
           action: () => undefined,
-        }),
-        new MenuRow({
-          label: 'Slider',
-          icon: 'add_slider',
-          kind: 'toggle',
-          checked: slider.all,
-          hint: slider.mixed ? 'Mixed' : undefined,
-          refusal: said(this.multiEdit.sliderRefusal(refs, !slider.all)),
-          action: () => this.multiEdit.setSlider(refs, !slider.all),
-        }),
-        new MenuRow({
-          label: 'Welded',
-          icon: 'weld_joint',
-          kind: 'toggle',
-          checked: weld.all,
-          hint: weld.mixed ? 'Mixed' : undefined,
-          refusal: said(this.multiEdit.weldRefusal(refs, !weld.all)),
-          action: () => this.multiEdit.setWelded(refs, !weld.all),
         }),
         new MenuRow({
           label: 'Trace Path',
@@ -442,6 +427,7 @@ export class ContextMenuBuilderService {
     const sealed = this.mechanism.cylinderAt(joint);
     return {
       header,
+      choice: this.jointTypeChoice(joint),
       groups: [
         { label: 'Attach', rows: this.jointAttachRows(joint, handlers) },
         {
@@ -567,41 +553,56 @@ export class ContextMenuBuilderService {
         refusal: this.inputRefusal(joint),
       }),
     ];
-    // Every row below is on every joint. A cylinder's joint used to lose the
-    // Slider row and a slider its Weld row -- two menus wearing one name, and
-    // a reader who had learned where a row sits finding it gone. They gray
-    // now, each with its reason, and the menu is the same shape on every
-    // joint. (A joint on a held bar says so in its subtitle, "on fixed AB";
-    // the hold itself is released on the bar.)
-    const isSlider = this.gridUtils.isAttachedToSlider(joint);
-    rows.push(
-      new MenuRow({
-        label: 'Slider',
-        icon: 'add_slider',
-        kind: 'toggle',
-        checked: isSlider,
-        action: () => this.mechanism.toggleSlider(),
-        // The model says whether a block can stand here, in both directions,
-        // the same way the Welded row below asks about a weld.
-        refusal: this.gridUtils.sliderRefusal(joint, !isSlider),
-      })
-    );
-    // The model says whether a weld can stand here -- `weldRefusal` in
-    // grid-utils, which is also what the panel quotes -- so the row is offered
-    // on a cylinder mount and on the slider itself and refused with the reason,
-    // rather than hidden on a rule of the menu's own.
-    rows.push(
-      new MenuRow({
-        label: 'Welded',
-        icon: 'weld_joint',
-        kind: 'toggle',
-        checked: joint.isWelded,
-        action: () => this.mechanism.toggleWeldedJoint(),
-        refusal: this.gridUtils.weldRefusal(joint),
-      })
-    );
+    // Slider and Welded were rows here. They are two facts about one thing --
+    // what kind of joint this is -- so they are the choice at the top of the
+    // card now, where all four values are visible at once and each carries its
+    // own refusal (D8). (A joint on a held bar says so in its subtitle, "on
+    // fixed AB"; the hold itself is released on the bar.)
     rows.push(this.lockRow(joint, joint));
     return rows;
+  }
+
+  /**
+   * The four things a joint can be, as the card's top block.
+   *
+   * Every value, its glyph and its refusal come from `JointTypeService`, which
+   * is what the Edit panel draws from as well -- so a value the panel grays is
+   * one the menu grays, in the same words.
+   */
+  private jointTypeChoice(joint: RealJoint): MenuChoice {
+    return this.choiceFrom(this.jointTypes.choiceFor(joint), (type) =>
+      this.jointTypes.set(joint, type)
+    );
+  }
+
+  /** The same choice for a whole selection of joints, refused as a group. */
+  private selectionJointTypeChoice(refs: readonly SelectedPartRef[]): MenuChoice | undefined {
+    const choice = this.multiEdit.jointTypeChoice(refs);
+    return choice
+      ? this.choiceFrom(choice, (type) => this.multiEdit.setJointType(refs, type))
+      : undefined;
+  }
+
+  private choiceFrom(choice: JointTypeChoice, act: (type: JointType) => void): MenuChoice {
+    return {
+      label: 'Joint Type',
+      chosen: choice.chosen,
+      posePolicy: 'start',
+      // The one thing about a slot the drawing cannot show, said on the chosen
+      // value's hover rather than printed under the grid.
+      fault: choice.invalid
+        ? {
+            short: 'nowhere to slide',
+            long: `${NOWHERE_TO_SLIDE.lead} ${NOWHERE_TO_SLIDE.sentence}`,
+          }
+        : undefined,
+      options: JOINT_TYPES.map((type, index) => ({
+        label: choice.labels[index],
+        icon: choice.icons[index],
+        refusal: choice.refusals[index],
+        action: () => act(type),
+      })),
+    };
   }
 
   /** Whether this joint reads as grounded — a slider's ground lives on its guide. */
@@ -1399,6 +1400,20 @@ export class ContextMenuBuilderService {
 
   /** Apply the same pose-preservation rules in every mode, including at activation. */
   private freezeWhileRunning(model: ContextMenuModel): ContextMenuModel {
+    // The choice is a change of topology, so it is refused wherever a Slider or
+    // a Welded row would have been -- value by value, since each value carries
+    // its own reason, and rechecked when one is pressed.
+    const choice = model.choice;
+    if (choice) {
+      for (const option of choice.options) {
+        const refusal = this.permission.menuRefusal(choice.posePolicy);
+        if (refusal && !option.refusal) option.refusal = refusal;
+        const action = option.action;
+        option.action = () => {
+          if (!this.permission.menuRefusal(choice.posePolicy)) action();
+        };
+      }
+    }
     for (const group of model.groups) {
       for (const row of group.rows) {
         const refusal = this.rowPoseRefusal(row);

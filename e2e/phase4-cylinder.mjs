@@ -385,15 +385,23 @@ const mountMenu = await page.evaluate((mountId) => {
     .flatMap((g) => g.rows)
     .map((r) => ({ label: r.label, disabled: r.disabled }));
 }, barrelFar);
+const mountTypes = await page.evaluate((id) => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  grid.setLastRightClick(grid.mechanismSrv.joints.find((joint) => joint.id === id));
+  return (grid.cMenu.choice?.options ?? []).map((option) => ({
+    label: option.label,
+    disabled: !!option.refusal,
+  }));
+}, barrelFar);
 checkThat(
   // The deletion names what it takes rather than saying only "Delete Joint".
-  // Slider is *offered*: a block on a mount is a carriage, and a mount is an
+  // A block is *offered*: one on a mount is a carriage, and a mount is an
   // ordinary attachment point. What is sealed is the ram's inside, and none of
   // those three joints can be right-clicked at all.
-  'the mount menu names the cylinder in its Delete, and offers Slider',
+  'the mount menu names the cylinder in its Delete, and offers a block',
   mountMenu.some((i) => i.label.startsWith('Delete Joint (and Cylinder')) &&
-    mountMenu.some((i) => i.label === 'Slider' && !i.disabled),
-  JSON.stringify(mountMenu)
+    mountTypes.some((one) => one.label === 'Pin-in-slot' && !one.disabled),
+  JSON.stringify({ mountMenu, mountTypes })
 );
 
 // -------------------------------------- 4. drive it through the body's menu
