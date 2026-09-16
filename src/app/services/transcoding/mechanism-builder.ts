@@ -1,6 +1,6 @@
 import { Joint, PrisJoint, RealJoint, RevJoint } from 'src/app/model/joint';
 import { MechanismService } from '../mechanism.service';
-import { Link, SliderBlock, RealLink } from 'src/app/model/link';
+import { Link, RealLink } from 'src/app/model/link';
 import { Force } from 'src/app/model/force';
 import { Coord } from 'src/app/model/coord';
 import { sealedCylinderStructures } from 'src/app/model/cylinder';
@@ -72,6 +72,12 @@ export class MechanismBuilder {
       // The sealed-cylinder bit rides the prismatic pin; undo/redo replays
       // URLs, so this is the line that makes sealing survive an undo.
       joint.isSealed = jointData.isSealed;
+      // A Slide says so in the weld bit of its own record. On a URL written
+      // while a slider was three objects the bit is on the coincident pin
+      // instead and this reads false; `foldLegacySliders` puts it right once
+      // the block that pairs the two has been built.
+      joint.rotates = !jointData.isWelded;
+      joint.mass = jointData.mass;
     } else {
       joint = new RevJoint(
         jointData.id,
@@ -83,7 +89,10 @@ export class MechanismBuilder {
     }
 
     joint.name = jointData.name;
-    joint.isWelded = jointData.isWelded;
+    // Not on a slider: there the same bit is `rotates` above. A slider welds to
+    // nothing — its only link was the block, and a weld needs two bodies to
+    // fuse — so reading it as a weld here would offer Unweld on a Slide.
+    if (!(joint instanceof PrisJoint)) joint.isWelded = jointData.isWelded;
     joint.showCurve = jointData.showCurve;
     joint.driveSpeed = jointData.driveSpeed;
     console.log('build joint', jointData.type);
@@ -123,7 +132,11 @@ export class MechanismBuilder {
         link.reComputeDPath();
       }
     } else {
-      link = new SliderBlock(linkData.id, jointsOnLink, linkData.mass);
+      // A piston record: the zero-length block a pre-Stage-1 slider was built
+      // from. It comes back as a plain `Link` rather than a class of its own,
+      // because the only thing anything still does with one is read its mass
+      // and its two joints on the way to folding it away.
+      link = new Link(linkData.id, jointsOnLink, linkData.mass);
     }
 
     // for all joints in link, connect to link
@@ -187,6 +200,88 @@ export class MechanismBuilder {
       }
       joint.slideOn(carrier, slotJointA, slotJointB);
     });
+  }
+
+  /**
+   * Fold a slider that arrived as three objects into the one joint it is now.
+   *
+   * Every URL written before Stage 1 of `docs/joint-type-and-cylinder-plan.md`
+   * spells a slider as a prismatic joint, a coincident `RevJoint`, and a
+   * zero-length `SliderBlock` joining them — the block carrying the mass, the
+   * pin carrying the weld that makes it a Slide. One joint carries all of that
+   * now, so the block and the pin are read and then folded away.
+   *
+   * **The pin's id is the one kept.** Link ids are built from their joints'
+   * letters, and the pin is the joint the reader has always seen — a slider's
+   * own letter is never drawn. Keeping it leaves every link id, force, lock,
+   * color and center-of-mass reference pointing at something that still exists,
+   * and leaves the canvas lettered exactly as it was.
+   *
+   * Runs after `resolveSlots`, so a slot binds while the ids it names are still
+   * the ones the URL used, and after `filterSubsetLinks`, which pairs link
+   * records with links by index and would mis-pair them if a block went first.
+   */
+  private foldLegacySliders(joints: Joint[], links: Link[]): void {
+    const withSubsets = (roots: Link[]): Link[] =>
+      roots.flatMap((link) =>
+        link instanceof RealLink && link.subset.length > 0
+          ? [link, ...withSubsets(link.subset)]
+          : [link]
+      );
+
+    // Named by the records rather than by a class: a piston record is what a
+    // legacy slider's block arrives as, and the class it used to become is
+    // gone. A bar is excluded as well, so a hand-edited URL that gave one a
+    // piston type cannot get it folded away as a block.
+    const pistonIds = new Set(
+      this.transcoder
+        .getLinks()
+        .filter((linkData) => linkData.type === LINK_TYPE.PISTON)
+        .map((linkData) => linkData.id)
+    );
+    const blocks = links.filter(
+      (link) => pistonIds.has(link.id) && !(link instanceof RealLink) && link.joints.length === 2
+    );
+    if (blocks.length === 0) return;
+
+    for (const block of blocks) {
+      const slider = block.joints.find((joint): joint is PrisJoint => joint instanceof PrisJoint);
+      const pin = block.joints.find((joint) => !(joint instanceof PrisJoint));
+      if (!slider || !(pin instanceof RealJoint)) continue;
+
+      slider.mass = block.mass;
+      slider.rotates = !pin.isWelded;
+      // Both records carry these, and which one holds the live value depends on
+      // how old the URL is: making a slider moved the pin's ground and input
+      // onto the slot, but a drawing saved before that move kept them on the
+      // pin. Either side saying yes is a yes.
+      slider.ground = slider.ground || pin.ground;
+      slider.input = slider.input || pin.input;
+      slider.showCurve = slider.showCurve || pin.showCurve;
+      if (slider.driveSpeed === 0) slider.driveSpeed = pin.driveSpeed;
+      // The pin's name, always — read before the id changes underneath it.
+      // Copying it only when the pin had been renamed left the surviving joint
+      // wearing the *prismatic* record's name, so an unnamed slider decoded as
+      // "E" while calling itself B. `name` answers with the id when nobody has
+      // set one, so an unnamed pin hands over its id and nothing reads oddly.
+      slider.name = pin.name;
+      slider.id = pin.id;
+
+      for (const link of withSubsets(links)) {
+        const at = link.joints.indexOf(pin);
+        if (at >= 0) link.joints[at] = slider;
+      }
+
+      joints.splice(joints.indexOf(pin), 1);
+      links.splice(links.indexOf(block), 1);
+    }
+
+    // A slot whose line was drawn through a folded pin now names a joint that
+    // has gone. The id it names belongs to the slider that replaced it, so the
+    // slot rebinds by id rather than being repaired case by case.
+    for (const joint of joints) {
+      if (joint instanceof PrisJoint && joint.isFloating) joint.rebindSlot(links, joints);
+    }
   }
 
   // For each joint, add links that are adjacent to the joint
@@ -260,6 +355,9 @@ export class MechanismBuilder {
 
     // Once subsets are added, filter away non-root (subset) links
     links = this.filterSubsetLinks(linkDatas, links);
+
+    // A slider spelled as three objects becomes the one joint it is now.
+    this.foldLegacySliders(joints, links);
 
     // Build Forces from ForceData, and link them to their links
     let forces: Force[] = this.transcoder

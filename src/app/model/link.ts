@@ -576,19 +576,18 @@ export class RealLink extends Link {
     //
     // `drawnByACylinderSkin` is the whole answer when somebody has resolved the
     // structures and said so. The structural test beside it is the fallback for
-    // a link built without a service to ask -- it recognizes a rod through its
-    // pin, the joint that shares a SliderBlock with a sealed slider, and there
-    // is no equivalent for a barrel, which is why the flag exists.
+    // a link built without a service to ask -- it recognizes a rod by the
+    // sealed sliding joint it hangs on, and there is no equivalent for a
+    // barrel, whose two joints are the mount and the buried near end, which is
+    // why the flag exists.
+    //
+    // It used to reach that joint the long way round, through the block a rod's
+    // pin shared with the slider. The pin and the slider are one joint now
+    // (Stage 1 of `docs/joint-type-and-cylinder-plan.md`), so the rod simply
+    // holds it.
     const isSealedRodLeaf = (leaf: RealLink) =>
       leaf.joints.length === 2 &&
-      leaf.joints.some(
-        (joint) =>
-          joint instanceof RealJoint &&
-          joint.links.some(
-            (l) =>
-              l instanceof SliderBlock && l.joints.some((j) => j instanceof PrisJoint && j.isSealed)
-          )
-      );
+      leaf.joints.some((joint) => joint instanceof PrisJoint && joint.isSealed);
     const drawnElsewhere = (leaf: RealLink) => leaf.drawnByACylinderSkin || isSealedRodLeaf(leaf);
     const linkSubset = this.subset.filter(
       (link): link is RealLink =>
@@ -1234,21 +1233,6 @@ export class RealLink extends Link {
   set subset(value: Link[]) {
     this._subset = value;
     this._isVisualGeometryCurrent = false;
-  }
-}
-
-/**
- * The body a slider rides on: a zero-length link joining a PrisJoint to the
- * coincident RevJoint that the sliding link pins to. It is a real body so it can
- * carry mass and take reaction forces, but it has no extent of its own.
- *
- * Named for the block, not the actuator — a hydraulic piston is a different
- * concept built from a prismatic joint, and reusing the word for both would make
- * the codebase ambiguous.
- */
-export class SliderBlock extends Link {
-  constructor(id: string, joints: Joint[], mass?: number) {
-    super(id, joints, mass);
   }
 }
 

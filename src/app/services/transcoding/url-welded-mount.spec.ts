@@ -41,7 +41,10 @@ function weldedMountDrawing() {
   const slider = harness.service.joints.find(
     (joint): joint is PrisJoint => joint instanceof PrisJoint
   )!;
-  const sealed = sealedCylinderAt(slider.connectedJoints[0] ?? slider)!;
+  // Asked of the slider itself. This used to hop to `connectedJoints[0]`,
+  // which was the coincident pin a slider no longer has -- that hop now lands
+  // on whichever link-mate happens to be first, and resolves nothing.
+  const sealed = sealedCylinderAt(slider)!;
   const mount = sealed.rodFar as RealJoint;
   const tip = new RevJoint('W', mount.x + S, mount.y + S);
   const bracket = new RealLink(mount.id + tip.id, [mount, tip]);
@@ -92,7 +95,8 @@ describe('a welded mount through the URL', () => {
     const cylinders = sealedCylinders(target.joints);
     expect(cylinders).toHaveLength(1);
     expect(cylinders[0].slider.isSealed).toBe(true);
-    expect(cylinders[0].pin.isWelded).toBe(true);
+    // What the pin's weld used to record: the rod cannot turn against the slot.
+    expect(cylinders[0].slider.rotates).toBe(false);
     // The rod is a leaf of the compound now, and the resolver follows it there.
     expect(cylinders[0].rod.id).toBe(h.sealed.rod.id);
     expect(cylinders[0].rodFar.id).toBe(h.mount.id);

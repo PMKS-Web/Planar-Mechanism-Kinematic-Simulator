@@ -3,7 +3,7 @@
 import '../../app/model/joint';
 import { Checksum } from '../../app/services/transcoding/checksum';
 import { PrisJoint, RealJoint } from '../../app/model/joint';
-import { RealLink, SliderBlock } from '../../app/model/link';
+import { RealLink } from '../../app/model/link';
 import { slideAssemblyAt } from '../../app/model/slide-assembly';
 import { StringTranscoder } from '../../app/services/transcoding/string-transcoder';
 import { urlGeneratorFor } from '../../test-utils/url-encoding';
@@ -20,10 +20,14 @@ import {
 } from '../../test-utils/verification/slot-fixtures';
 import { teachingLabFourBarFixture } from '../../test-utils/verification/fixtures';
 
-// The 2x2 of docs/joint-types-plan.md §2.1 is a property of an *assembly*, not
-// of one serialized joint: isPrismatic lives on the PrisJoint and isWelded on
-// the RevJoint, and nothing in the model enforces the pairing. So the pair has
-// to be asserted rather than assumed (§3.5).
+// The 2x2 of docs/joint-types-plan.md §2.1 was a property of an *assembly*
+// rather than of one serialized joint: the slot lived on the PrisJoint and the
+// weld on the coincident RevJoint beside it, and nothing in the model enforced
+// the pairing, so the pair had to be asserted rather than assumed (§3.5). Both
+// facts are one joint's now -- it slides, and `rotates` says whether its riders
+// may turn against the slot -- so what these check is that each cell survives
+// the trip out to model objects and back, and that a rebuilt Slide is still one
+// after the reconcile pass has looked at it.
 
 /**
  * The joints, links, forces and selection — everything but the global-settings
@@ -84,42 +88,46 @@ describe('every cell of the 2x2', () => {
     const decoder = new StringTranscoder();
     decoder.decodeURL(fixturePayload(scotchYokeFixture()));
     new MechanismBuilder(service, decoder, new SettingsService(), active).build(true);
-    const welded = service.joints.find((joint) => joint.id === 'C') as RealJoint;
+    // The Slide is the grounded sliding joint C, and it records itself in
+    // `rotates`: the coincident pin whose `isWelded` used to carry that is the
+    // object a slider no longer has.
+    const welded = service.joints.find((joint) => joint.id === 'C') as PrisJoint;
 
-    expect(welded.isWelded).toBe(true);
+    expect(welded.rotates).toBe(false);
     expect(slideAssemblyAt(welded)).toBeDefined();
 
     service.finishStructuralEdit(false);
 
-    expect(welded.isWelded, 'survives a reconcile').toBe(true);
+    expect(welded.rotates, 'survives a reconcile').toBe(false);
     expect(slideAssemblyAt(welded)).toBeDefined();
   });
 });
 
 describe('a Slide across the per-timestep copies', () => {
-  it('keeps the flag and its block at the last timestep, not just the first', () => {
-    // cloneJointAt copies isWelded, but the flag alone does not mean "Slide" --
-    // the pairing with a block does. A copy path that kept one and lost the
-    // other would leave a welded joint the reconcile rules would then strip.
+  it('keeps the Slide at the last timestep, not just the first', () => {
+    // A per-timestep copy rebuilds every joint and link, and `mechanism.ts`
+    // switches on the constructor to do it -- so a flag that copies but a
+    // structure that does not would leave a Slide the reconcile rules then
+    // strip. What used to be copied as a welded pin plus a block is one joint
+    // carrying `rotates` and its own mass now, and both have to survive.
     const built = buildMechanism(scotchYokeFixture());
     const last = built.mechanism.joints.length - 1;
 
     for (const step of [0, 1, Math.floor(last / 2), last]) {
       const joints = built.mechanism.joints[step];
-      const links = built.mechanism.links[step];
-      const c = joints.find((joint) => joint.id === 'C') as RealJoint;
-      expect(c.isWelded, `flag at step ${step}`).toBe(true);
+      const slider = joints.find((joint) => joint.id === 'C') as PrisJoint;
 
-      // Rebind links the way the solvers see them, then resolve.
-      const assembly = slideAssemblyAt(c);
+      expect(slider, `slider at step ${step}`).toBeInstanceOf(PrisJoint);
+      expect(slider.rotates, `Slide at step ${step}`).toBe(false);
+
+      const assembly = slideAssemblyAt(slider);
       expect(assembly, `assembly at step ${step}`).toBeDefined();
-      expect(assembly!.block, `block at step ${step}`).toBeInstanceOf(SliderBlock);
-      expect(links, `block is a body at step ${step}`).toContain(assembly!.block);
       expect(assembly!.riders[0], `rider at step ${step}`).toBeInstanceOf(RealLink);
-      // §2.10 item 2: the pair stays coincident at every timestep.
-      const slider = joints.find((joint) => joint.id === 'F') as PrisJoint;
-      expect(slider.x, `coincident x at step ${step}`).toBeCloseTo(c.x, 9);
-      expect(slider.y, `coincident y at step ${step}`).toBeCloseTo(c.y, 9);
+      // The rider is a body of the mechanism at this step, which is what the
+      // block used to be asked for here.
+      expect(built.mechanism.links[step], `rider is a body at step ${step}`).toContain(
+        assembly!.riders[0]
+      );
     }
   });
 });
