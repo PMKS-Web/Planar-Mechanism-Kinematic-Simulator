@@ -1124,6 +1124,21 @@ any open overlay — a card can stand while focus is elsewhere, and those keys a
 The CDK does move focus into the card as it opens it, for a button-2 `contextmenu`; `menu-focus.mjs`
 is the same rule for the project menu, and `joint-type.mjs` walks the card's choice with the arrows.
 
+### A suite that buffers its checks loses them all to a throw
+
+`phase4-stack-and-menu` collects its answers in `out[]` and prints them at the end. When Stage 0
+removed the Edit panel's `weld` control, `jointForm.get('weld')` returned null inside a
+`page.evaluate`, and the throw took the whole report with it: the run printed no checks at all,
+said `0 FAIL`, and exited 1 -- while three checks in it had been failing for a while. `phase1-drag`
+was quieter still. Its weld section is an `if (enabled) { ... }` guarded by a locator that no longer
+matched anything, so the assertions inside it -- the weld goes through, the mechanism comes back
+over-constrained, the app says so -- stopped running rather than failing, and the suite stayed
+green while proving three things fewer.
+
+So when you remove a control, grep the suites for **the symbol you removed** (`get('weld')`,
+`hasText: 'Weld'`, `toggle-block`), not for the label you expect to read: searching `'Welded'`
+matches neither of these, and the gate found both after the push instead.
+
 ### `anyComponentStyle` is 6 kB warning / 10 kB error
 
 Raised from 4/6 for the CAD Export dialog
