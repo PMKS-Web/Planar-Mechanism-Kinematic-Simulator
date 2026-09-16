@@ -259,10 +259,27 @@ const renderFacts = () =>
 
 /** Click a thing on the canvas and say what got selected. */
 async function selects(selector) {
-  const box = await page.locator(selector).boundingBox();
-  if (!box) return { type: 'missing', id: null };
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  // A point that actually hits the shape, not the middle of its box. A bar
+  // bent round a corner, and every weld plate, has a bounding box whose centre
+  // is outside the fill -- so aiming there clicks whatever lies beneath and
+  // reports the wrong answer, or none.
+  const spot = await page.evaluate((css) => {
+    const el = document.querySelector(css);
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) return null;
+    for (let i = 1; i < 40; i++) {
+      for (let j = 1; j < 40; j++) {
+        const x = r.x + (r.width * i) / 40;
+        const y = r.y + (r.height * j) / 40;
+        if (document.elementFromPoint(x, y) === el) return { x, y };
+      }
+    }
+    return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+  }, selector);
+  if (!spot) return { type: 'missing', id: null };
+  await page.mouse.move(spot.x, spot.y);
+  await page.mouse.click(spot.x, spot.y);
   await page.waitForTimeout(350);
   return page.evaluate(() => {
     const active = ng.getComponent(document.querySelector('app-new-grid')).activeObjService;
@@ -343,9 +360,15 @@ check(
   onMount.type === 'Joint' && onMount.id === ids.mounts[1],
   JSON.stringify(onMount)
 );
-const onSkin = await selects(`#${ids.compound}`);
+// Through the weld plate, which is where this body is drawn. A Slide draws
+// the block and the riders held to it as one outline, so the rider's own
+// outline is suppressed rather than left showing as a seam through the plate
+// -- and the plate carries the rider's selection in its place, which is what
+// this asks about. The body's own path element is still there and still
+// carries its id; it simply has no geometry left to click.
+const onSkin = await selects('.slider-plate path');
 check(
-  'the welded body answers as the body',
+  'the welded body answers as the body, through the plate that draws it',
   onSkin.type === 'Link' && onSkin.id === ids.compound,
   JSON.stringify(onSkin)
 );
