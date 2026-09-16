@@ -1,5 +1,5 @@
 import { Coord } from '../model/coord';
-import { PrisJoint, RevJoint } from '../model/joint';
+import { PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import { RealLink } from '../model/link';
 import { resolveSlotDropTarget } from '../model/drop-target';
 import { createMechanismHarness, wireGraph } from '../../test-utils/mechanism-harness';
@@ -32,6 +32,11 @@ function twoBars() {
   harness.service.links.push(ab, bc);
   wireGraph(harness.service);
   return { ...harness, a, b, c, ab, bc };
+}
+
+/** The joint with this letter as the drawing holds it now. */
+function live(service: { joints: { id: string }[] }, id: string) {
+  return service.joints.find((joint) => joint.id === id) as RealJoint | undefined;
 }
 
 describe('weld on a joint that connects fewer than two links', () => {
@@ -68,17 +73,22 @@ describe('weld on a joint that connects fewer than two links', () => {
     expect(() => s.service.toggleWeldedJoint()).not.toThrow();
   });
 
-  it('still makes a Slide when the second "link" is the slider block itself', () => {
-    // A slider pin counts its block: rider + block is two links, and welding it
-    // is how a Slide is made (§2.1). The guard must not close that door.
+  it('still makes a Slide on a slider carrying a single rider', () => {
+    // A slider counted its block: rider plus block was two links, so the
+    // two-link guard happened to let a Slide through. A slider holds only its
+    // riders now, and one is enough -- the slot is the other half of what is
+    // held. The guard must not close that door by counting.
     const s = linkWithTracer();
     s.active.updateSelectedObj(s.t);
     s.service.toggleSlider();
-    expect(s.t.links.length).toBe(2);
-    expect(s.service.gridUtils.canToggleWeld(s.t)).toBe(true);
 
-    s.service.weldJoint(s.t);
-    expect(s.t.isWelded).toBe(true);
+    const slider = live(s.service, 'T')!;
+    expect(slider instanceof PrisJoint, 'the tracer became the slider').toBe(true);
+    expect(slider.links.length, 'one rider, where there used to be a block as well').toBe(1);
+    expect(s.service.gridUtils.canToggleWeld(slider)).toBe(true);
+
+    s.service.weldJoint(slider);
+    expect((slider as PrisJoint).rotates).toBe(false);
   });
 });
 
@@ -153,8 +163,10 @@ describe('slider on a grounded joint', () => {
     const slider = sliderOf(s)!;
     expect(slider.ground).toBe(true);
     expect(slider.isDangling).toBe(false);
-    // The ground lives on the slider now, not on the pin.
-    expect(s.a.ground).toBe(false);
+    // The joint that was the pin *is* the slider, and it kept its letter -- so
+    // there is no second joint left holding a ground of its own.
+    expect(slider.id).toBe('A');
+    expect(s.service.joints.filter((joint) => joint.id === 'A')).toHaveLength(1);
   });
 
   it('Slider first, then Ground: the same grounded slider', () => {
@@ -166,7 +178,7 @@ describe('slider on a grounded joint', () => {
     const slider = sliderOf(s)!;
     expect(slider.ground).toBe(true);
     expect(slider.isDangling).toBe(false);
-    expect(s.a.ground).toBe(false);
+    expect(slider.id).toBe('A');
   });
 
   it('a grounded slider survives Slider off and on again', () => {
@@ -178,6 +190,9 @@ describe('slider on a grounded joint', () => {
 
     s.service.toggleSlider();
     expect(sliderOf(s)).toBeUndefined();
+    // The letter is still there; it is a pin again.
+    expect(live(s.service, 'A')).toBeDefined();
+    s.active.updateSelectedObj(live(s.service, 'A')!);
     s.service.toggleSlider();
 
     const slider = sliderOf(s)!;
@@ -193,6 +208,19 @@ describe('slider on a grounded joint', () => {
     const slider = sliderOf(s)!;
     expect(slider.ground).toBe(false);
     expect(slider.isDangling).toBe(true);
+  });
+
+  it('spends no new letter on the slider', () => {
+    // A slider used to be three objects, and the prismatic one took a letter of
+    // its own that nothing ever drew. The surviving joint keeps the pin's --
+    // which is what every link id, force and lock already names.
+    const s = loneBar();
+    s.active.updateSelectedObj(s.a);
+
+    s.service.toggleSlider();
+
+    expect(s.service.joints.map((joint) => joint.id).sort()).toEqual(['A', 'B']);
+    expect(s.service.links.map((link) => link.id)).toEqual(['AB']);
   });
 });
 

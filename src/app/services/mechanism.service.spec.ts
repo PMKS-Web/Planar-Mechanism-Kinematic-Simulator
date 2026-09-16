@@ -3,7 +3,7 @@ import { NotificationService } from './notification.service';
 import { Coord } from '../model/coord';
 import { MODEL_SCALE } from '../model/render-scale';
 import { Force } from '../model/force';
-import { SliderBlock, RealLink } from '../model/link';
+import { RealLink } from '../model/link';
 import { PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import { LengthUnit } from '../model/unit-enums';
 import { ActiveObjService } from './active-obj.service';
@@ -173,24 +173,20 @@ describe('MechanismService welded links and force ownership', () => {
     expect(secondLink.forces).toEqual([second]);
   });
 
-  it('preserves piston connectivity when rebuilding after a weld', () => {
+  it('preserves a slider’s connectivity when rebuilding after a weld', () => {
+    // The slider used to be a second joint hanging off C by a block, and the
+    // rebuild had to keep that pair in each other's lists. C *is* the slider
+    // now, so what has to survive is C's own membership of the compound the
+    // weld builds out of the bars it was on.
     const harness = createChain();
-    const slider = new PrisJoint('P', 2, 0, false, true);
-    const piston = new SliderBlock('CP', [harness.joints[2], slider]);
-    harness.joints[2].links.push(piston);
-    harness.joints[2].connectedJoints.push(slider);
-    slider.links.push(piston);
-    slider.connectedJoints.push(harness.joints[2]);
-    harness.service.joints.push(slider);
-    harness.service.links.push(piston);
+    const slider = addSlider(harness, harness.joints[2]);
 
     harness.service.weldJoint(harness.joints[1]);
 
-    const c = harness.joints[2] as RealJoint;
-    expect(c.links.map((link) => link.id).sort()).toEqual(['ABC', 'CP']);
-    expect(c.connectedJoints).toContain(slider);
-    expect(slider.links).toEqual([piston]);
-    expect(slider.connectedJoints).toContain(c);
+    const c = harness.service.joints.find((joint) => joint.id === 'C') as RealJoint;
+    expect(c, 'the letter survived the change of kind').toBe(slider);
+    expect(c.links.map((link) => link.id).sort()).toEqual(['ABC']);
+    expect(slider.ground, 'and its guide is still grounded').toBe(true);
   });
 
   it('converts all physical properties together with one undo checkpoint', () => {
@@ -410,17 +406,29 @@ describe('MechanismService joint merging', () => {
   });
 });
 
-/** Turn `joint` into a slider: a coincident PrisJoint joined by a block. */
-function addSlider(service: MechanismService, joint: RevJoint, prisId: string): PrisJoint {
-  const prismatic = new PrisJoint(prisId, joint.x, joint.y, false, true);
-  joint.connectedJoints.push(prismatic);
-  prismatic.connectedJoints.push(joint);
-  const block = new SliderBlock(joint.id + prisId, [joint, prismatic]);
-  joint.links.push(block);
-  prismatic.links.push(block);
-  service.joints.push(prismatic);
-  service.links.push(block);
-  return prismatic;
+/**
+ * Make `joint` slide, on a grounded guide, and hand back the slider.
+ *
+ * Through the service's own edit rather than assembled here. A slider was a
+ * coincident `PrisJoint` and a zero-length block bolted onto the pin, which a
+ * spec could build by hand; it is the joint itself now (Stage 1 of
+ * `docs/joint-type-and-cylinder-plan.md`), so the joint is *replaced* -- and
+ * only the service can do that and leave every link, force and lock pointing at
+ * the letter the joint already had.
+ *
+ * Which is also why this returns the slider: the caller's own reference to
+ * `joint` is a dead object afterwards.
+ */
+function addSlider(harness: Harness, joint: RealJoint): PrisJoint {
+  harness.active.updateSelectedObj(joint);
+  if (!joint.ground) harness.service.toggleGround();
+  harness.service.toggleSlider();
+  const slider = harness.service.joints.find(
+    (candidate): candidate is PrisJoint =>
+      candidate instanceof PrisJoint && candidate.id === joint.id
+  );
+  expect(slider, `joint ${joint.id} became a slider`).toBeDefined();
+  return slider!;
 }
 
 describe('MechanismService merging onto sliders and welds', () => {
@@ -453,54 +461,48 @@ describe('MechanismService merging onto sliders and welds', () => {
     return { ...harness, a, b, c, x, y, z, w };
   }
 
-  // Dropping a pin onto a slider's pin is how a pin-in-slot gets built.
-  it('pins a dragged joint onto a slider without disturbing the block', () => {
+  // Dropping a pin onto a slider is how a pin-in-slot gets built. It used to be
+  // a drop onto the slider's coincident *pin*, and no letter is spent on a
+  // second joint any more -- so the survivor's own letter is all there is.
+  it('pins a dragged joint onto a slider', () => {
     const s = scene();
-    const prismatic = addSlider(s.service, s.c, 'P');
+    const slider = addSlider(s, s.c);
 
-    expect(s.service.mergeJoints(s.x, s.c)).toBeUndefined();
+    expect(s.service.mergeJoints(s.x, slider)).toBeUndefined();
 
     expect(s.service.joints.map((joint) => joint.id).sort()).toEqual([
       'A',
       'B',
       'C',
-      'P',
       'W',
       'Y',
       'Z',
     ]);
-    expect(s.c.links.map((link) => link.id).sort()).toEqual(['BC', 'CP', 'CY']);
-    expect([prismatic.x, prismatic.y]).toEqual([s.c.x, s.c.y]);
-    expect(s.c.connectedJoints.some((joint) => joint instanceof PrisJoint)).toBe(true);
+    // The arriving bar rides the slider, and the slider keeps the bar it was on.
+    expect(slider.links.map((link) => link.id).sort()).toEqual(['BC', 'CY']);
+    expect(slider.ground).toBe(true);
   });
 
-  it('carries a slider across when the dragged joint is the one riding it', () => {
+  it('refuses to drag a slider onto a plain pin, which would strand its slot', () => {
+    // The survivor of a merge is the target, so merging the slider away takes
+    // the slot with it. While a slider was three objects the joint a reader
+    // dragged was the *pin*, and the slider stayed behind on the survivor --
+    // there is no such spare object now.
     const s = scene();
-    const prismatic = addSlider(s.service, s.x, 'P');
+    const slider = addSlider(s, s.x);
 
-    expect(s.service.mergeJoints(s.x, s.c)).toBeUndefined();
-
-    expect(s.service.joints.map((joint) => joint.id).sort()).toEqual([
-      'A',
-      'B',
-      'C',
-      'P',
-      'W',
-      'Y',
-      'Z',
-    ]);
-    // The block followed its pin, so the slot now rides the survivor.
-    expect([prismatic.x, prismatic.y]).toEqual([s.c.x, s.c.y]);
-    expect(s.c.connectedJoints.some((joint) => joint.id === 'P')).toBe(true);
-    expect(s.c.links.some((link) => link instanceof SliderBlock)).toBe(true);
+    expect(s.service.mergeJoints(slider, s.c)).toBe('prismatic');
+    expect(s.service.joints.some((joint) => joint.id === 'X')).toBe(true);
   });
 
-  it('refuses to put two sliders on one pin', () => {
+  it('refuses one slider merged onto another', () => {
+    // A joint slides along one slot or none, and the source rule above catches
+    // it before the pair is ever considered.
     const s = scene();
-    addSlider(s.service, s.x, 'P');
-    addSlider(s.service, s.c, 'Q');
+    const first = addSlider(s, s.x);
+    const second = addSlider(s, s.c);
 
-    expect(s.service.mergeJoints(s.x, s.c)).toBe('two-sliders');
+    expect(s.service.mergeJoints(first, second)).toBe('prismatic');
     expect(s.service.joints.some((joint) => joint.id === 'X')).toBe(true);
   });
 
@@ -681,9 +683,11 @@ describe('MechanismService un-grounding one slider among several', () => {
     b.connectedJoints.push(a);
     harness.service.joints.push(a, b);
     harness.service.links.push(ab);
-    const first = addSlider(harness.service, a, 'P');
-    const second = addSlider(harness.service, b, 'Q');
-    return { ...harness, a, b, first, second };
+    // Both ends of the bar slide. `a` and `b` are dead objects afterwards: each
+    // was exchanged for a slider carrying its own letter.
+    const first = addSlider(harness, a);
+    const second = addSlider(harness, b);
+    return { ...harness, first, second };
   }
 
   it('keeps the slider it un-grounds, and leaves it dangling', () => {
@@ -695,24 +699,25 @@ describe('MechanismService un-grounding one slider among several', () => {
 
     s.service.toggleGround();
 
-    expect(s.service.joints.map((joint) => joint.id).sort()).toEqual(['A', 'B', 'P', 'Q']);
-    expect(s.service.links.map((link) => link.id).sort()).toEqual(['AB', 'AP', 'BQ']);
+    // Two joints and one bar: a slider spends no letter of its own and builds
+    // no link, where it used to add a joint and a block apiece.
+    expect(s.service.joints.map((joint) => joint.id).sort()).toEqual(['A', 'B']);
+    expect(s.service.links.map((link) => link.id).sort()).toEqual(['AB']);
     expect(s.second.isDangling).toBe(true);
   });
 
   it('leaves the untouched slider exactly as it was', () => {
     // The bug this has always guarded: toggleGround reached for the first
-    // SliderBlock in the mechanism rather than the selected joint's own, so
+    // sliding body in the mechanism rather than the selected joint's own, so
     // acting on the second slider changed the first one.
     const s = twoSliders();
     s.active.updateSelectedObj(s.second);
 
     s.service.toggleGround();
 
-    expect(s.a.links.some((link) => link instanceof SliderBlock)).toBe(true);
-    expect(s.a.connectedJoints.some((joint) => joint.id === 'P')).toBe(true);
     expect(s.first.ground, 'the other slider keeps its ground').toBe(true);
     expect(s.first.isDangling).toBe(false);
+    expect(s.first.rotates, 'and is still a Pin-in-slot').toBe(true);
   });
 
   it('grounds it again on the direction it was pointing', () => {

@@ -102,16 +102,24 @@ export class JointTypeService {
     }
     const grounded = this.isGrounded(joint);
     const selected = this.active.selectedJoint;
+    // By letter, not by object. Gaining or losing a slot exchanges the joint for
+    // one of the other class -- a `PrisJoint` for a `RevJoint` -- keeping its
+    // letter (`MechanismService.sliderTopology`), so every step after the first
+    // has to find the joint that is in the drawing *now*. Held as an object, the
+    // weld that finishes a change of type from Revolute to Prismatic landed on
+    // the pin that had just been replaced and did nothing at all.
+    const id = joint.id;
     try {
       this.mechanism.capturingPose(joint, () =>
         this.mechanism.batched(() => {
-          for (const step of stepsBetween(from, type)) this.run(joint, step);
+          for (const step of stepsBetween(from, type)) this.run(id, step);
           // Grounded is its own switch beside the choice, and while it is on
           // the choice draws every type standing on the frame (D2) -- so a
-          // change of type keeps it. Taking the block away takes the ground its
-          // slot carried with it, and that is given back here.
-          if (grounded && !this.isGrounded(joint)) {
-            this.active.selectedJoint = joint;
+          // change of type keeps it. Taking the slot away takes the ground it
+          // carried with it, and that is given back here.
+          const now = this.live(id);
+          if (now && grounded && !this.isGrounded(now)) {
+            this.active.selectedJoint = now;
             this.mechanism.toggleGround();
           }
         })
@@ -119,10 +127,19 @@ export class JointTypeService {
     } finally {
       this.active.selectedJoint = selected;
     }
-    return this.typeOf(joint) === type;
+    const after = this.live(id);
+    return after !== undefined && this.typeOf(after) === type;
   }
 
-  private run(joint: RealJoint, step: JointOperation): void {
+  /** The joint with this letter as the drawing holds it now. */
+  private live(id: string): RealJoint | undefined {
+    const found = this.mechanism.joints.find((candidate) => candidate.id === id);
+    return found instanceof RealJoint ? found : undefined;
+  }
+
+  private run(id: string, step: JointOperation): void {
+    const joint = this.live(id);
+    if (!joint) return;
     switch (step) {
       case 'add-slider':
       case 'remove-slider':

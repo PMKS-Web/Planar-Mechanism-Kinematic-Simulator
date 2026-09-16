@@ -1,5 +1,5 @@
 import { PrisJoint } from '../../../model/joint';
-import { Link, RealLink, SliderBlock } from '../../../model/link';
+import { Link, RealLink } from '../../../model/link';
 import { MODEL_SCALE } from '../../../model/render-scale';
 import { SettingsService } from '../../settings.service';
 import { DxfEntity, DxfPoint, DxfPolyline, DxfVertex } from './dxf-model';
@@ -391,16 +391,28 @@ function nominalTravel(joint: PrisJoint): {
   };
 }
 
-/** Whether a joint is welded solid rather than free to turn. */
+/**
+ * Whether a joint is welded solid rather than free to turn.
+ *
+ * The two facts `jointTypeAt` reads: a Slide says it in `rotates` on the
+ * sliding joint, every other joint says it in `isWelded`. They were one bit
+ * before Stage 1 of `docs/joint-type-and-cylinder-plan.md`, when the weld sat
+ * on the coincident pin -- and that pin is the object that used to draw this
+ * mark, so asking `isWelded` alone now leaves a Slide exported as a bearing.
+ *
+ * Read off the shape rather than through `instanceof`, like everything else
+ * here: this module is deliberately free of a model import.
+ */
 export function isWelded(joint: unknown): boolean {
-  return (joint as { isWelded?: boolean }).isWelded === true;
+  const one = joint as { isWelded?: boolean; rotates?: boolean };
+  if (one.rotates !== undefined) return one.rotates === false;
+  return one.isWelded === true;
 }
 
-/** The links that are bodies in their own right: leaves, and no slider blocks. */
+/** The links that are bodies in their own right. */
 export function bodyLinks(links: readonly Link[]): RealLink[] {
   const found: RealLink[] = [];
   const visit = (link: Link) => {
-    if (link instanceof SliderBlock) return;
     if (!(link instanceof RealLink)) return;
     // A welded compound is one part, so it is taken whole rather than as the
     // pieces it was welded from.

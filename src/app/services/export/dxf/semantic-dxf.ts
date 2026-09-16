@@ -2,7 +2,7 @@ import { Cylinder, cylinderJoints, sealedCylinderStructures } from '../../../mod
 import { Force } from '../../../model/force';
 import { turnsClockwise } from '../../../model/drive-direction';
 import { Joint, PrisJoint, RealJoint } from '../../../model/joint';
-import { Link, RealLink, SliderBlock } from '../../../model/link';
+import { Link, RealLink } from '../../../model/link';
 import { MODEL_SCALE } from '../../../model/render-scale';
 
 import { DxfDocument, DxfEntity, DxfLayer, DxfLine, DxfPoint } from './dxf-model';
@@ -18,6 +18,7 @@ import {
   defaultPinDiameter,
   weldMark,
   groundPlate,
+  isWelded,
   linkBodies,
   linkBodyWidth,
   SlotTravel,
@@ -112,15 +113,17 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
     y: joint.y * unitScale - shift.y,
   });
   const cylinders = sealedCylinderStructures(input.joints);
+  // The joints between the two mounts: everything a sealed part keeps to
+  // itself. Named rather than sliced out of `cylinderJoints` by index, which is
+  // what this did -- that list lost a joint when the pin and the slider became
+  // one (Stage 1 of `docs/joint-type-and-cylinder-plan.md`), and the old
+  // `slice(1, 4)` went on taking three of four and swept the *rod mount* in
+  // with them.
   const cylinderInterior = new Set(
-    cylinders.flatMap((cylinder) =>
-      cylinderJoints(cylinder)
-        .slice(1, 4)
-        .map((joint) => joint.id)
-    )
+    cylinders.flatMap((cylinder) => [cylinder.barrelNear.id, cylinder.slider.id])
   );
   const cylinderBodies = new Set(
-    cylinders.flatMap((cylinder) => [cylinder.barrel.id, cylinder.rod.id, cylinder.block.id])
+    cylinders.flatMap((cylinder) => [cylinder.barrel.id, cylinder.rod.id])
   );
   const entities: DxfEntity[] = [];
 
@@ -227,7 +230,6 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
       }
     });
 
-  const blockPins = sliderBlockPinIds(input.links);
   input.joints
     .slice()
     .sort((a, b) => a.id.localeCompare(b.id))
@@ -263,8 +265,10 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
           entities.push(...blockMark(joint, point, symbolScale, DXF_LAYER.slots));
         }
       }
-      const pairedPin = blockPins.has(joint.id) && !(joint instanceof PrisJoint);
-      if (!pairedPin && (!(joint instanceof RealJoint) || !joint.isWelded)) {
+      // A slider used to be two coincident joints, so one of them had to be
+      // skipped or two circles landed on one center -- one for a CAD reader to
+      // find and delete. One joint draws one circle now.
+      if (!isWelded(joint)) {
         // A circle and nothing else. A bare POINT is what sketch importers
         // either drop or turn into stray sketch points that have to be cleaned
         // out one at a time, and a circle already gives them a center to snap
@@ -311,7 +315,7 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
       // welded joint has no circle here -- correctly, it is not a bearing --
       // but nothing said so, and a reader could not tell a rigid corner from a
       // missing one.
-      if (joint instanceof RealJoint && joint.isWelded && !cylinderInterior.has(joint.id)) {
+      if (joint instanceof RealJoint && isWelded(joint) && !cylinderInterior.has(joint.id)) {
         entities.push(...weldMark(point(joint), 0.1 * symbolScale, DXF_LAYER.joints));
       }
       if (input.includeKinematicAnnotations !== false && joint instanceof RealJoint) {
@@ -832,11 +836,9 @@ function closedRing(ring: Joint[]): [Joint, Joint][] {
 }
 
 function leavesOf(link: Link): Link[] {
-  return link instanceof SliderBlock
-    ? []
-    : link instanceof RealLink && link.subset.length > 0
-      ? link.subset.flatMap(leavesOf)
-      : [link];
+  return link instanceof RealLink && link.subset.length > 0
+    ? link.subset.flatMap(leavesOf)
+    : [link];
 }
 
 function slotAxis(
@@ -861,16 +863,6 @@ function slotAxis(
     start: { x: center.x - dx, y: center.y - dy },
     end: { x: center.x + dx, y: center.y + dy },
   };
-}
-
-function sliderBlockPinIds(links: Link[]): Set<string> {
-  return new Set(
-    links
-      .filter((link): link is SliderBlock => link instanceof SliderBlock)
-      .flatMap((block) =>
-        block.joints.filter((joint) => !(joint instanceof PrisJoint)).map((joint) => joint.id)
-      )
-  );
 }
 
 function addLabels(

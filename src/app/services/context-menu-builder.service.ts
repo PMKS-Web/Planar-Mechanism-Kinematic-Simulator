@@ -12,7 +12,7 @@ import {
 } from '../component/BLOCKS/context-menu/menu-model';
 import { JOINT_TYPES, JointType, JointTypeChoice, NOWHERE_TO_SLIDE } from '../model/joint-type';
 import { Joint, PrisJoint, RealJoint } from '../model/joint';
-import { Link, RealLink, SliderBlock } from '../model/link';
+import { Link, RealLink } from '../model/link';
 import { Force } from '../model/force';
 import { SynthesisPose } from './synthesis/synthesis-util';
 import { Cylinder } from '../model/cylinder';
@@ -605,21 +605,21 @@ export class ContextMenuBuilderService {
     };
   }
 
-  /** Whether this joint reads as grounded — a slider's ground lives on its guide. */
+  /**
+   * Whether this joint reads as grounded.
+   *
+   * Its own flag. A slider's ground is its guide's, and the guide used to be a
+   * prismatic joint beside the pin this menu was built for -- so this had to hop
+   * to it. One joint is both now.
+   */
   private groundedNow(joint: RealJoint): boolean {
-    if (this.gridUtils.isAttachedToSlider(joint)) {
-      return (this.gridUtils.getSliderJoint(joint) as RealJoint).ground;
-    }
     return joint.ground;
   }
 
   /** Why this joint will not take an input, in the model's own words. */
   private inputRefusal(joint: RealJoint): MenuRefusal | undefined {
     if (this.gridUtils.canToggleInput(joint)) return undefined;
-    const driven = this.gridUtils.isAttachedToSlider(joint)
-      ? (this.gridUtils.getSliderJoint(joint) as RealJoint)
-      : joint;
-    return describeActuatorRefusal(driven);
+    return describeActuatorRefusal(joint);
   }
 
   /**
@@ -765,17 +765,18 @@ export class ContextMenuBuilderService {
   }
 
   private deleteJointLabel(joint: RealJoint, sealed: Cylinder | undefined): string {
-    // A slider's block is not named: it is drawn *on* this joint rather than
-    // beside it, so "and the block at C" describes no second thing the reader
-    // can see going. Nor are a cylinder's own members, which the word
-    // "cylinder" already covers -- what is left is the neighboring bar the
-    // mount was also holding, and that one the reader has to be told about.
-    const inside = new Set<string>(
-      sealed ? [sealed.barrel.id, sealed.rod.id, sealed.block.id] : []
-    );
+    // A cylinder's own members are not named: the word "cylinder" already covers
+    // them, and what is left is the neighboring bar the mount was also holding,
+    // which the reader does have to be told about.
+    //
+    // A slider's block was filtered out here for the same reason -- it was drawn
+    // *on* the joint rather than beside it, so "and the block at C" named no
+    // second thing the reader could see going. A slider is one joint now, and
+    // there is no block among the casualties to hide.
+    const inside = new Set<string>(sealed ? [sealed.barrel.id, sealed.rod.id] : []);
     const doomed = this.mechanism
       .linksRemovedByDeleting(joint)
-      .filter((link) => !(link instanceof SliderBlock) && !inside.has(link.id));
+      .filter((link) => !inside.has(link.id));
     // The thing named goes; what goes with it is in brackets, so the row reads
     // as one action with a consequence rather than a list of three things.
     //
@@ -830,8 +831,10 @@ export class ContextMenuBuilderService {
    * free point on a single body — a ground pivot with one link is not one.
    */
   private jointKind(joint: Joint, bodies: Link[]): string {
+    // "Slider pin" was a kind of its own while a slider was a prismatic joint
+    // and a coincident pin: the pin was what a reader clicked and the slot sat
+    // under it. One joint is both, and it is a slider.
     if (joint instanceof PrisJoint) return 'Slider';
-    if (this.gridUtils.isAttachedToSlider(joint)) return 'Slider pin';
     if (joint instanceof RealJoint && joint.isWelded) return 'Welded';
     if (joint instanceof RealJoint && joint.input) return 'Driven pin';
     if (joint instanceof RealJoint && joint.ground) return 'Ground pin';

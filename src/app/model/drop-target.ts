@@ -1,5 +1,5 @@
 import { Joint, PrisJoint, RealJoint, RevJoint } from './joint';
-import { Link, RealLink, SliderBlock } from './link';
+import { Link, RealLink } from './link';
 import { Cylinder, cylinderJoints } from './cylinder';
 
 /** Why a candidate joint cannot receive the joint being dragged. */
@@ -31,7 +31,8 @@ export type MergeRefusal =
 export const MERGE_REFUSAL_MESSAGES: Record<MergeRefusal, string> = {
   'same-joint': 'A joint cannot be merged into itself.',
   'shares-a-link': 'These joints are on the same link, so merging them would collapse it.',
-  prismatic: 'Drop onto the pin of a slider, not onto its slot.',
+  prismatic:
+    'A slider cannot be merged into another joint — its slot would have nothing to ride. Drag the other joint onto the slider instead.',
   'two-sliders': 'Only one of these joints can carry a slider.',
   'over-constrained':
     'Merging here would tie the same two joints together twice, over-constraining the mechanism.',
@@ -60,7 +61,7 @@ export const MERGE_REFUSAL_MESSAGES: Record<MergeRefusal, string> = {
 export const MERGE_REFUSAL_REASONS: Record<MergeRefusal, string> = {
   'same-joint': 'the same joint',
   'shares-a-link': 'already one bar',
-  prismatic: 'that end is a slot',
+  prismatic: 'a slider cannot merge',
   'two-sliders': 'one block per pin',
   'over-constrained': 'already tied together',
   'own-carrier': 'its own carrier',
@@ -112,14 +113,18 @@ export function refuseJointMerge(
   cylinders: Cylinder[] = []
 ): MergeRefusal | undefined {
   if (source.id === target.id) return 'same-joint';
-  // The prismatic half of a slider is its slot, not a pin anything can attach
-  // to; the coincident RevJoint is the thing a link rides on.
-  if (source instanceof PrisJoint || target instanceof PrisJoint) return 'prismatic';
+  // A slider can be merged *into* and not out of. Dropping a pin onto one is
+  // how a link comes to ride a slot, which is the whole point of the gesture;
+  // dragging the slider onto a pin would leave its slot naming a joint that no
+  // longer exists, because the survivor of a merge is the target.
+  //
+  // The rule read both ways while a slider was three objects: the prismatic
+  // joint had no hitbox, the coincident pin was what a reader could drag, and
+  // merging that pin left the slider behind attached to the survivor. The
+  // slider is the joint a reader drags now (Stage 1 of
+  // `docs/joint-type-and-cylinder-plan.md`), so only the source is refused.
+  if (source instanceof PrisJoint) return 'prismatic';
   if (!(source instanceof RealJoint) || !(target instanceof RealJoint)) return 'not-a-real-joint';
-
-  // Dropping a pin onto a slider's pin is a pin-in-slot, which is the point.
-  // Two blocks on one pin is a different joint type, not a merge.
-  if (carriesASlider(source) && carriesASlider(target)) return 'two-sliders';
 
   // A slider merged into one of its own carrier's joints would ride on a link
   // it is now part of: the slot's direction is measured from two joints, one of
@@ -183,17 +188,18 @@ function wouldOverConstrain(source: RealJoint, target: RealJoint): boolean {
   });
 }
 
-function carriesASlider(joint: RealJoint): boolean {
-  return joint.connectedJoints.some((connected) => connected instanceof PrisJoint);
-}
-
-/** Whether `joint`'s slider slides along a link that `other` is a member of. */
+/**
+ * Whether `joint` slides along a link that `other` is a member of.
+ *
+ * Asked of the joint itself rather than of a coincident partner: a slider used
+ * to be reached from the pin beside it through `connectedJoints`, and only the
+ * block that joined the two put them in each other's lists at all.
+ */
 function ridesOn(joint: RealJoint, other: RealJoint): boolean {
-  return joint.connectedJoints.some(
-    (connected) =>
-      connected instanceof PrisJoint &&
-      connected.isFloating &&
-      connected.carrier!.joints.some((member) => member.id === other.id)
+  return (
+    joint instanceof PrisJoint &&
+    joint.isFloating &&
+    joint.carrier!.joints.some((member) => member.id === other.id)
   );
 }
 
@@ -223,12 +229,18 @@ export function resolveJointDropTarget(
   y: number,
   joints: Joint[],
   radius: number
-): RevJoint | undefined {
-  let best: RevJoint | undefined;
+): RealJoint | undefined {
+  let best: RealJoint | undefined;
   let bestDistance = radius;
 
   joints.forEach((candidate) => {
-    if (!(candidate instanceof RevJoint)) return;
+    // Any real joint, a slider included. Dropping a pin onto one is how a link
+    // comes to ride a slot, and while a slider was a prismatic joint with a
+    // coincident pin it was that *pin* -- a `RevJoint` -- that this caught. The
+    // slider is the joint with the hitbox now, so narrowing to `RevJoint` here
+    // would silently take the pin-in-slot gesture away. Which direction is
+    // legal is `refuseJointMerge`'s answer, not this filter's.
+    if (!(candidate instanceof RealJoint)) return;
     if (refuseJointMerge(source, candidate)) return;
     const distance = Math.hypot(candidate.x - x, candidate.y - y);
     if (distance < bestDistance) {
@@ -355,9 +367,7 @@ export function slotWouldFoldACylinder(
 function slotJointPools(carrier: Link): Joint[][] {
   if (carrier instanceof RealLink && carrier.subset.length > 0) {
     const pools = carrier.subset
-      .filter(
-        (leaf): leaf is RealLink => leaf instanceof RealLink && !(leaf instanceof SliderBlock)
-      )
+      .filter((leaf): leaf is RealLink => leaf instanceof RealLink)
       .map((leaf) => leaf.joints);
     if (pools.length > 0) return pools;
   }
@@ -383,7 +393,8 @@ function closestPointOnSegment(
 
 /** The joint a drag is currently aimed at, and why it would refuse the merge. */
 export interface JointDropCandidate {
-  joint: RevJoint;
+  /** Any real joint, a slider included -- see `resolveJointDropTarget`. */
+  joint: RealJoint;
   /** Absent when the merge is legal. */
   refusal?: MergeRefusal;
 }
@@ -423,7 +434,8 @@ export function resolveDropCandidate(
     cylinderJoints(c).some((member) => member.id === source.id)
   );
   joints.forEach((candidate) => {
-    if (!(candidate instanceof RevJoint)) return;
+    // A slider is an ordinary target -- see `resolveJointDropTarget`.
+    if (!(candidate instanceof RealJoint)) return;
     // The joint under the cursor is the one being dragged; pointing at itself is
     // not a near miss worth reporting.
     if (candidate.id === source.id) return;

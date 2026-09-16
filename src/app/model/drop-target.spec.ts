@@ -1,6 +1,6 @@
 import './joint';
 import { PrisJoint, RealJoint, RevJoint } from './joint';
-import { SliderBlock, RealLink } from './link';
+import { RealLink } from './link';
 import {
   MERGE_REFUSAL_MESSAGES,
   MergeRefusal,
@@ -10,7 +10,7 @@ import {
 } from './drop-target';
 
 /** Wire `joints` into one link, the way MechanismService keeps the graph. */
-function connect(id: string, joints: RevJoint[]): RealLink {
+function connect(id: string, joints: RealJoint[]): RealLink {
   const link = new RealLink(id, joints);
   joints.forEach((joint) => {
     joint.links.push(link);
@@ -77,11 +77,14 @@ describe('joint merge rules', () => {
     expect(refuseJointMerge(f, c)).toBeUndefined();
   });
 
-  it('refuses a prismatic joint, which is the slot rather than the pin', () => {
+  it('refuses a slider dragged onto another joint, whose slot would be left naming nothing', () => {
+    // One direction only. The survivor of a merge is the target, so merging a
+    // slider away takes the slot with it -- while dropping a pin *onto* a
+    // slider is the pin-in-slot gesture and stays legal (below).
     const a = new RevJoint('A', 0, 0);
-    const prismatic = new PrisJoint('B', 1, 0, false, true);
+    const slider = new PrisJoint('B', 1, 0, false, true);
 
-    expect(refuseJointMerge(a, prismatic)).toBe('prismatic');
+    expect(refuseJointMerge(slider, a)).toBe('prismatic');
   });
 
   it('refuses a joint merged into itself', () => {
@@ -104,50 +107,39 @@ describe('joint merge rules', () => {
 });
 
 describe('merging onto sliders and welds', () => {
-  /** Turn `joint` into a slider: a coincident PrisJoint joined by a block. */
-  function addSlider(joint: RevJoint, prisId: string) {
-    const prismatic = new PrisJoint(prisId, joint.x, joint.y, false, true);
-    joint.connectedJoints.push(prismatic);
-    prismatic.connectedJoints.push(joint);
-    const block = new SliderBlock(joint.id + prisId, [joint, prismatic]);
-    joint.links.push(block);
-    prismatic.links.push(block);
-    return prismatic;
-  }
-
-  // Dropping a pin onto a slider's pin is how a pin-in-slot gets built.
-  it('allows a pin to be dropped onto the revolute half of a slider', () => {
+  /** A bar C-D, and a slider B on its own bar A-B, ready to be dropped on. */
+  function pinAndSlider() {
     const a = new RevJoint('A', 0, 0);
-    const b = new RevJoint('B', 1, 0);
+    const b = new PrisJoint('B', 1, 0, false, true);
     const c = new RevJoint('C', 4, 0);
     connect('AB', [a, b]);
     connect('CD', [c, new RevJoint('D', 6, 0)]);
-    addSlider(b, 'E');
+    return { a, b, c };
+  }
+
+  // Dropping a pin onto a slider is how a pin-in-slot gets built. It used to be
+  // a drop onto the slider's coincident *pin*, which is the object Stage 1 of
+  // `docs/joint-type-and-cylinder-plan.md` removed.
+  it('allows a pin to be dropped onto a slider', () => {
+    const { b, c } = pinAndSlider();
 
     expect(refuseJointMerge(c, b)).toBeUndefined();
   });
 
-  it('allows a slider to be dropped onto a plain pin', () => {
-    const a = new RevJoint('A', 0, 0);
-    const b = new RevJoint('B', 1, 0);
-    const c = new RevJoint('C', 4, 0);
-    connect('AB', [a, b]);
-    connect('CD', [c, new RevJoint('D', 6, 0)]);
-    addSlider(b, 'E');
+  it('refuses a slider dropped onto a plain pin', () => {
+    const { b, c } = pinAndSlider();
 
-    expect(refuseJointMerge(b, c)).toBeUndefined();
+    expect(refuseJointMerge(b, c)).toBe('prismatic');
   });
 
-  it('refuses two sliders, which is a different joint type rather than a merge', () => {
-    const a = new RevJoint('A', 0, 0);
-    const b = new RevJoint('B', 1, 0);
-    const c = new RevJoint('C', 4, 0);
-    connect('AB', [a, b]);
-    connect('CD', [c, new RevJoint('D', 6, 0)]);
-    addSlider(b, 'E');
-    addSlider(c, 'F');
+  it('refuses one slider onto another, which is a joint type rather than a merge', () => {
+    // Caught by the source rule: a joint slides along one slot or none, and
+    // there is no longer a shape in which two of them meet at a point.
+    const { b } = pinAndSlider();
+    const other = new PrisJoint('E', 4, 0, false, true);
+    connect('EF', [other, new RevJoint('F', 6, 0)]);
 
-    expect(refuseJointMerge(b, c)).toBe('two-sliders');
+    expect(refuseJointMerge(b, other)).toBe('prismatic');
   });
 
   it('allows a merge onto a welded joint, which the merge re-welds', () => {
@@ -162,15 +154,13 @@ describe('merging onto sliders and welds', () => {
     expect(refuseJointMerge(x, b)).toBeUndefined();
   });
 
-  it('offers a slider pin as a drop target', () => {
-    const a = new RevJoint('A', 0, 0);
-    const b = new RevJoint('B', 3, 0);
-    const c = new RevJoint('C', 9, 0);
-    connect('AB', [a, b]);
-    connect('CD', [c, new RevJoint('D', 12, 0)]);
-    addSlider(b, 'E');
+  it('offers a slider as a drop target', () => {
+    // The slider is the joint with the hitbox now. Narrowing the candidate
+    // filter to `RevJoint`, which is what it read while the pin beside the
+    // slider was the thing a reader could grab, takes the gesture away.
+    const { a, b, c } = pinAndSlider();
 
-    expect(resolveJointDropTarget(c, 3, 0, [a, b, c], 1)).toBe(b);
+    expect(resolveJointDropTarget(c, 1, 0, [a, b, c], 1)).toBe(b);
   });
 });
 
@@ -213,11 +203,13 @@ describe('resolving a joint drop target', () => {
     expect(resolveJointDropTarget(dragged, 0, 0, [dragged], 5)).toBeUndefined();
   });
 
-  it('ignores prismatic joints sitting exactly under the pointer', () => {
+  it('takes a slider under the pointer, which is how a pin-in-slot is made', () => {
+    // This used to ignore one: a slider was an invisible prismatic joint, and
+    // what a reader aimed at was the pin sitting on top of it.
     const dragged = new RevJoint('A', 0, 0);
-    const prismatic = new PrisJoint('B', 3, 0, false, true);
+    const slider = new PrisJoint('B', 3, 0, false, true);
 
-    expect(resolveJointDropTarget(dragged, 3, 0, [dragged, prismatic], 5)).toBeUndefined();
+    expect(resolveJointDropTarget(dragged, 3, 0, [dragged, slider], 5)).toBe(slider);
   });
 });
 
@@ -308,48 +300,45 @@ describe('resolving the joint a drag is aimed at', () => {
     expect(resolveDropCandidate(dragged, 0, 0, [dragged], 5)).toBeUndefined();
   });
 
-  it('ignores the prismatic half of a slider, which is the slot rather than a pin', () => {
+  it('reports a slider it is aimed at, rather than passing over it', () => {
     const dragged = new RevJoint('A', 0, 0);
-    const prismatic = new PrisJoint('B', 3, 0, false, true);
+    const slider = new PrisJoint('B', 3, 0, false, true);
 
-    expect(resolveDropCandidate(dragged, 3, 0, [dragged, prismatic], 5)).toBeUndefined();
+    expect(resolveDropCandidate(dragged, 3, 0, [dragged, slider], 5)?.joint).toBe(slider);
   });
 });
 
 describe('a slider and the link it rides', () => {
-  /** Bar C--D, with a block at P riding a slot cut into it. */
+  /** Bar C--D, with a slider at P riding a slot cut into it. */
   function slottedLever() {
     const c = new RevJoint('C', 0, 0);
     const d = new RevJoint('D', 4, 0);
     const carrier = connect('CD', [c, d]);
-    const p = new RevJoint('P', 2, 0);
+    const p = new PrisJoint('P', 2, 0);
     const e = new RevJoint('E', 2, 3);
     connect('EP', [e, p]);
-    const slider = new PrisJoint('S', 2, 0);
-    const block = new SliderBlock('PS', [p, slider]);
-    p.links.push(block);
-    slider.links.push(block);
-    p.connectedJoints.push(slider);
-    slider.connectedJoints.push(p);
-    slider.slideOn(carrier, c, d);
-    return { c, d, p, e, slider };
+    p.slideOn(carrier, c, d);
+    return { c, d, p, e };
   }
 
-  it('refuses to merge the block into a joint that defines its own slot', () => {
-    // Found by dragging a block 25px: it snapped onto the nearer end of its own
+  it('refuses to merge a joint that defines the slot into the slider riding it', () => {
+    // Found by dragging a slider 25px: it snapped onto the nearer end of its own
     // carrier, and the assembly went on sliding on itself -- non-dangling and
     // unflagged, because the slot's own well-formedness test looks at the
-    // PrisJoint, and the merge happens to its paired pin.
-    const scene = slottedLever();
-
-    expect(refuseJointMerge(scene.p, scene.c)).toBe('own-carrier');
-    expect(refuseJointMerge(scene.p, scene.d)).toBe('own-carrier');
-  });
-
-  it('refuses it from either direction', () => {
+    // slider, and the merge used to happen to its paired pin.
     const scene = slottedLever();
 
     expect(refuseJointMerge(scene.c, scene.p)).toBe('own-carrier');
+    expect(refuseJointMerge(scene.d, scene.p)).toBe('own-carrier');
+  });
+
+  it('refuses the other direction for the blunter reason: a slider cannot merge away', () => {
+    // Both directions are refused; which rule catches it differs, because the
+    // slider is the merge *source* here and a source that slides is turned away
+    // before the carrier is ever considered.
+    const scene = slottedLever();
+
+    expect(refuseJointMerge(scene.p, scene.c)).toBe('prismatic');
   });
 
   it('says which rule it hit', () => {
@@ -358,7 +347,7 @@ describe('a slider and the link it rides', () => {
 
   it('still allows a merge with a joint that has nothing to do with the slot', () => {
     // The refusal must be about the carrier, not about sliders in general --
-    // dropping a pin onto a slider's pin is a pin-in-slot, which is the point.
+    // dropping a pin onto a slider is a pin-in-slot, which is the point.
     const scene = slottedLever();
     const loose = new RevJoint('Z', 9, 9);
     const other = new RevJoint('Y', 9, 8);

@@ -1,5 +1,5 @@
 import { Joint, RealJoint } from './joint';
-import { Link, RealLink, SliderBlock } from './link';
+import { Link } from './link';
 import { Force } from './force';
 import { Cylinder, cylinderJoints, sealedCylinderStructures } from './cylinder';
 
@@ -17,18 +17,23 @@ import { Cylinder, cylinderJoints, sealedCylinderStructures } from './cylinder';
  * joints travel together whatever the drag asked. The closure is a set of
  * one-way implications — "held" spreads along consequence, not membership:
  *
- * - A slider's block joint is coincident with its pin, so holding either
- *   holds both — the one symmetric case.
  * - A sealed cylinder's interior joints only ever move as the whole part
- *   moves, so holding one holds all five. A held *mount* stays a held mount:
- *   dragging the other mount anchors it, and a body drag can still swing the
- *   part about it, so the implication deliberately does not run outward.
+ *   moves, so holding one holds all of them. A held *mount* stays a held
+ *   mount: dragging the other mount anchors it, and a body drag can still
+ *   swing the part about it, so the implication deliberately does not run
+ *   outward.
  *
- * A floating slider is the one mark that is not about a point on the drawing.
- * It has exactly one freedom — where it sits along its slot — and that is what
- * its mark spends: the channel stays free, and the reseat carries the block
- * along at the offset it was locked at. So the mark reaches its own block
- * joint and stops. Holding the pair that cuts the channel, which is what a
+ * There was a symmetric case beside it until Stage 1 of
+ * `docs/joint-type-and-cylinder-plan.md`: a slider was a prismatic joint and a
+ * coincident pin joined by a zero-length block, so holding either had to hold
+ * both. A slider is one joint now, so the pair that rule spoke about does not
+ * exist and the rule went with it.
+ *
+ * A floating slider is still the one mark that is not about a point on the
+ * drawing. It has exactly one freedom — where it sits along its slot — and
+ * that is what its mark spends: the channel stays free, and the reseat carries
+ * the slider along at the offset it was locked at. So the mark reaches itself
+ * and stops. Holding the pair of joints that cuts the channel, which is what a
  * world-position lock would have to do, froze two joints the reader never
  * marked and had no way to predict from the one they did.
  */
@@ -37,15 +42,6 @@ export type Lockable = RealJoint | Force;
 interface Implication {
   ifAnyOf: string[];
   freeze: string[];
-}
-
-/**
- * Every body, welded or free: the roots and the leaves inside each compound.
- * The closure walks them all so a slider block buried by a weld still binds
- * its coincident pair.
- */
-function allBodies(links: Link[]): Link[] {
-  return links.flatMap((link) => [link, ...(link instanceof RealLink ? link.subset : [])]);
 }
 
 /**
@@ -74,8 +70,8 @@ export function frozenJointIds(
 
 /**
  * Grow a held set until every implication is satisfied. Iterated to a fixed
- * point — freezing a block joint can seal a cylinder's interior, which holds
- * its mounts — and it terminates because each pass only adds.
+ * point — a drawing can chain them, two rams sharing a mount being the way —
+ * and it terminates because each pass only adds.
  */
 function closeOverConsequences(
   frozen: Set<string>,
@@ -85,15 +81,9 @@ function closeOverConsequences(
 ): Set<string> {
   const rules: Implication[] = [];
 
-  allBodies(links).forEach((link) => {
-    if (!(link instanceof SliderBlock)) return;
-    const pair = link.joints.map((joint) => joint.id);
-    rules.push({ ifAnyOf: pair, freeze: pair });
-  });
-
   (sealedParts ?? sealedCylinderStructures(joints)).forEach((sealed) => {
     rules.push({
-      ifAnyOf: [sealed.pin.id, sealed.slider.id, sealed.barrelNear.id],
+      ifAnyOf: [sealed.slider.id, sealed.barrelNear.id],
       freeze: cylinderJoints(sealed).map((joint) => joint.id),
     });
   });

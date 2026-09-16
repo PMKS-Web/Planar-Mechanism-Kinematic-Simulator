@@ -3,7 +3,7 @@ import { LinkHold } from '../model/link';
 import { cylinderHoldCarrier, holdOf, holdableBar } from '../model/link-holds';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import { speedTurning, turnsClockwise } from '../model/drive-direction';
-import { Link, SliderBlock, RealLink } from '../model/link';
+import { Link, RealLink } from '../model/link';
 import { isSlideCandidate, slideAssemblyAt } from '../model/slide-assembly';
 import {
   Cylinder,
@@ -632,9 +632,11 @@ export class MechanismService {
    */
   private leaveForceAnalysisWithoutInputs(): void {
     if (this.tabs.getCurrentTab() !== TabID.FORCE) return;
-    const hasMass = this.links.some(
-      (link) => (link instanceof RealLink || link instanceof SliderBlock) && Number(link.mass) > 0
-    );
+    // A slider's mass is the sliding joint's own now, where it used to be its
+    // block's -- so a drawing can be loaded by something that is not a link.
+    const hasMass =
+      this.links.some((link) => link instanceof RealLink && Number(link.mass) > 0) ||
+      this.joints.some((joint) => joint instanceof PrisJoint && Number(joint.mass) > 0);
     if (this.forces.length === 0 && !hasMass) this.tabs.setTab(TabID.EDIT);
   }
 
@@ -667,7 +669,15 @@ export class MechanismService {
   private solveFingerprint(partition: MechanismPartition, unitStr: string): string {
     const joints = partition.joints.map((joint) => {
       const real = joint instanceof RealJoint ? joint : undefined;
-      const slide = joint instanceof PrisJoint ? joint.angle_rad : '';
+      // Everything a slider's own solve reads: the slot's angle, whether its
+      // riders may turn against it, and the mass the force solver hangs at the
+      // joint. The last two belonged to the block and the coincident pin, so
+      // they used to arrive in the *link* half of this fingerprint -- left out
+      // of it, a typed mass or a change of joint type re-solved nothing.
+      const slide =
+        joint instanceof PrisJoint
+          ? `${joint.angle_rad}${joint.rotates ? '' : 's'}m${joint.mass}`
+          : '';
       // Spelled, not read off the class: a production build renames classes.
       const kind = joint instanceof PrisJoint ? 'P' : joint instanceof RevJoint ? 'R' : 'J';
       const flags = [real?.ground && 'g', real?.input && 'i', real?.isWelded && 'w']
@@ -682,7 +692,7 @@ export class MechanismService {
       const shape = `${body?.isCircle ? 'o' : ''}d${body?.d.length ?? ''}`;
       const center = `${body?.CoM.x ?? ''},${body?.CoM.y ?? ''}`;
       const inertia = `m${link.mass}I${body?.massMoI ?? ''}`;
-      const kind = body ? 'L' : link instanceof SliderBlock ? 'S' : 'K';
+      const kind = body ? 'L' : 'K';
       return `${link.id}[${pins}]${kind}${inertia}c${center}${shape}s${subset}`;
     });
     const forces = partition.forces.map((force) => {
@@ -1400,15 +1410,18 @@ export class MechanismService {
     this.joints.forEach((joint) => {
       joint.x *= lengthScale;
       joint.y *= lengthScale;
+      if (!(joint instanceof PrisJoint)) return;
       // A prismatic drive's speed is a length per second in the *user's* unit,
       // so it rescales with the geometry exactly as a coordinate does. An rpm
       // drive is angular and scale-invariant, which is what hid this: only the
       // rams were wrong, and by the whole unit factor -- a ram set to 2 cm/s
       // came out of a switch to meters running at 2 m/s, a hundred times its
       // stroke rate, with the panel still reading 2.
-      if (joint instanceof PrisJoint && joint.driveSpeed !== 0) {
-        joint.driveSpeed *= lengthScale;
-      }
+      if (joint.driveSpeed !== 0) joint.driveSpeed *= lengthScale;
+      // And the sliding body's mass, which every mass in the drawing gets a few
+      // lines below: it was a link's until a slider became one joint, so it was
+      // rescaled along with the links and is now missed by that pass.
+      joint.mass *= massScale;
     });
     // And the default every drive that has never been given one of its own
     // reads, which is most of them.
@@ -1468,10 +1481,10 @@ export class MechanismService {
   }
 
   getLinkProp(l: Link, propType: string) {
-    if (l instanceof SliderBlock) {
+    if (!(l instanceof RealLink)) {
       return;
     }
-    const link = l as RealLink;
+    const link = l;
     switch (propType) {
       case 'mass':
         return link.mass;
@@ -1710,7 +1723,7 @@ export class MechanismService {
     return largest > 0 && atJoint <= largest * 1e-9;
   }
 
-  /** Fixed to the frame, and not the pin of a slider that runs along one. */
+  /** Fixed to the frame, and not a slider whose *guide* is what is fixed. */
   private groundedInPlace(joint: RealJoint): boolean {
     return joint.ground && !this.gridUtils.isAttachedToSlider(joint);
   }
@@ -1989,8 +2002,8 @@ export class MechanismService {
     if (this.joints.length === 0 && this.links.length === 0 && this.forces.length === 0) return;
     [...this.joints].forEach((joint) => {
       // The snapshot is a list of what was there when this started, and
-      // deleting a joint cascades: a sealed cylinder takes its four other
-      // joints with it. Asking for one of those afterwards used to fall into
+      // deleting a joint cascades: a sealed cylinder takes its other joints
+      // with it. Asking for one of those afterwards used to fall into
       // the generic path, look its index up as -1, and throw part-way through
       // -- leaving the drawing half cleared.
       if (!this.joints.some((live) => live.id === joint.id)) return;
@@ -2340,7 +2353,7 @@ export class MechanismService {
       [link, ...(link instanceof RealLink ? link.subset : [])].map((one) => one.id)
     );
     for (const sealed of this.cylindersOfLink(link)) {
-      for (const bar of [sealed.barrel, sealed.rod, sealed.block]) doomed.add(bar.id);
+      for (const bar of [sealed.barrel, sealed.rod]) doomed.add(bar.id);
     }
     const survives = (candidate: Link): boolean => {
       if (doomed.has(candidate.id)) return false;
@@ -2356,15 +2369,11 @@ export class MechanismService {
             (candidate instanceof RealLink &&
               candidate.subset.some((leaf) => !doomed.has(leaf.id) && leaf.joints.includes(joint))))
       );
-    // The ram's own three interior joints are never drawn, named or counted:
-    // saying "and 3 joints" about parts of a cylinder nobody can see would be
-    // a number the reader cannot check against the screen.
+    // The ram's own interior joints are never drawn, named or counted: saying
+    // "and 2 joints" about parts of a cylinder nobody can see would be a number
+    // the reader cannot check against the screen.
     const inside = new Set(
-      this.cylindersOfLink(link).flatMap((sealed) => [
-        sealed.barrelNear.id,
-        sealed.pin.id,
-        sealed.slider.id,
-      ])
+      this.cylindersOfLink(link).flatMap((sealed) => [sealed.barrelNear.id, sealed.slider.id])
     );
     return this.joints.filter(
       (joint): joint is RealJoint =>
@@ -2873,34 +2882,34 @@ export class MechanismService {
    * compound leaves the flag behind, so both states are reachable from ordinary
    * edits.
    *
-   * Stripping is for what cannot be repaired: a joint flagged welded that has
-   * neither a slide assembly nor a compound has nothing left to be rigid about.
-   * Turning the Slider toggle off at a Slide is how that arises.
+   * Stripping is for what cannot be repaired: a joint flagged welded with no
+   * compound behind it has nothing left to be rigid about.
+   *
+   * There is no orphan flag to strip for a *Slide* any more. `isWelded` records
+   * the compound and only the compound; a Slide is `rotates` on the sliding
+   * joint (Stage 1 of `docs/joint-type-and-cylinder-plan.md`), so a slider with
+   * nothing riding it is a Prismatic joint waiting for a rider rather than a
+   * flag describing something that is not there.
    */
   private reconcileAssemblyWelds(): boolean {
     let changed = false;
     this.joints.forEach((joint) => {
-      if (!(joint instanceof RealJoint) || !joint.isWelded) return;
-      const assembly = slideAssemblyAt(joint);
-      if (assembly) {
-        // Several riders means the compound has not been built yet. Build it,
-        // rather than leaving the mechanism in a state every consumer of the
-        // resolver would have to tolerate.
-        //
-        // The flag comes off first because both guards on the weld path refuse
-        // an already-welded joint — they are there to stop a second weld, and
-        // this is the first one finishing rather than a second one starting.
-        if (assembly.riders.length > 1) {
-          joint.isWelded = false;
-          if (this.weldJointTopology(joint)) {
-            this.rebuildJointGraph();
-            changed = true;
-          } else {
-            joint.isWelded = true;
-          }
+      if (!(joint instanceof RealJoint)) return;
+      // A Slide holding more than one rider is one rigid body, and a compound
+      // is how that is represented. The statement can outrun the compound three
+      // ways: `mergeJoints` takes a weld apart and rebuilds it around the
+      // survivor, a deletion can leave a second rider behind, and a decoded URL
+      // arrives with `rotates` set and nothing built at all. Built rather than
+      // refused, which is what this pass has always done for a weld whose
+      // compound had gone missing.
+      if ((slideAssemblyAt(joint)?.riders.length ?? 0) > 1 && !joint.isWelded) {
+        if (this.weldJointTopology(joint)) {
+          this.rebuildJointGraph();
+          changed = true;
         }
         return;
       }
+      if (!joint.isWelded) return;
       if (!this.compoundAt(joint)) {
         joint.isWelded = false;
         return;
@@ -3017,15 +3026,6 @@ export class MechanismService {
     // or joint.connectedJoints, so connectivity has to be re-derived first.
     this.rebuildJointGraph();
 
-    // A slider carried across by the merge has to sit on its new pin: the
-    // prismatic joint and the pin it rides are coincident by construction.
-    this.joints.forEach((joint) => {
-      if (!(joint instanceof PrisJoint)) return;
-      if (!joint.connectedJoints.some((connected) => connected.id === target.id)) return;
-      joint.x = target.x;
-      joint.y = target.y;
-    });
-
     if (this.activeObjService.selectedJoint?.id === source.id) {
       this.activeObjService.updateSelectedObj(target);
     }
@@ -3070,6 +3070,52 @@ export class MechanismService {
       }
       link.reComputeDPath();
     }
+  }
+
+  /**
+   * Exchange one joint for another of a different kind, keeping its letter.
+   *
+   * A slider is a `PrisJoint` and a plain pin is a `RevJoint`, so gaining or
+   * losing a slot is not a flag being flipped: the object has to be replaced.
+   * What must not change is the letter. Link ids are built from their joints'
+   * letters, and forces, locks, colors, slot references, the URL and the
+   * reader's own memory of the drawing all name it -- so the replacement takes
+   * the id and everything else the old joint was carrying, and every link that
+   * held the old one is pointed at the new one.
+   *
+   * Beside `replaceJointInLink` because it is the same surgery seen the other
+   * way round: that one folds two joints into one, this one swaps a joint for
+   * itself. It is also exactly what the codec's own fold does to a slider
+   * arriving as three objects, and for the same reason.
+   */
+  private retypeJoint(from: RealJoint, to: RealJoint): void {
+    // `name` answers with the id when nobody has set one, so a rename is
+    // carried and an unnamed joint is left unnamed rather than being given its
+    // own letter as a name.
+    if (from.name !== from.id) to.name = from.name;
+    to.showCurve = from.showCurve;
+    to.driveSpeed = from.driveSpeed;
+    to.locked = from.locked;
+    to.colorFamily = from.colorFamily;
+    to.r = from.r;
+
+    const swap = (link: Link) => {
+      if (link instanceof RealLink) link.subset.forEach(swap);
+      const at = link.joints.findIndex((joint) => joint.id === from.id);
+      if (at >= 0) link.joints[at] = to;
+    };
+    this.links.forEach(swap);
+
+    const where = this.joints.findIndex((joint) => joint.id === from.id);
+    if (where >= 0) this.joints[where] = to;
+    else this.joints.push(to);
+
+    // A slot whose line was drawn through the joint that has just been replaced
+    // still points at the old object. The id it names belongs to the new joint
+    // too, so it rebinds by id rather than being repaired case by case.
+    this.joints.forEach((joint) => {
+      if (joint instanceof PrisJoint && joint.isFloating) joint.rebindSlot(this.links, this.joints);
+    });
   }
 
   /**
@@ -3211,8 +3257,8 @@ export class MechanismService {
 
     // A gesture in flight targets a joint that is about to stop existing. The
     // pointer keeps sending moves after the delete -- from the keyboard, or a
-    // second pointer -- and the drag then writes through a SliderBlock whose
-    // joint list no longer holds what it is looking for.
+    // second pointer -- and the drag then writes through a link whose joint
+    // list no longer holds what it is looking for.
     this.injector.get(DragStateService).cancel();
     this.slotStashes.delete(this.activeObjService.selectedJoint.id);
     const jointIndex = this.gridUtils.findJointIDIndex(
@@ -3490,15 +3536,6 @@ export class MechanismService {
           removeLink(l.id);
         }
       }
-
-      if (l instanceof SliderBlock) {
-        //Special case, remove the other joint on a pistion
-        l.joints.forEach((j) => {
-          if (j.id !== this.activeObjService.selectedJoint.id) {
-            this.joints.splice(this.gridUtils.findJointIDIndex(j.id, this.joints), 1);
-          }
-        });
-      }
     });
 
     function deleteJointWithinLinkAndSubsets(link: RealLink, joint: Joint) {
@@ -3698,9 +3735,7 @@ export class MechanismService {
     const owned = this.cylindersOfLink(link);
     if (owned.length > 0) {
       const leaves = link instanceof RealLink && link.subset.length > 0 ? link.subset : [link!];
-      const ramParts = new Set(
-        owned.flatMap((sealed) => [sealed.barrel.id, sealed.rod.id, sealed.block.id])
-      );
+      const ramParts = new Set(owned.flatMap((sealed) => [sealed.barrel.id, sealed.rod.id]));
       const rest = leaves.filter((leaf) => !ramParts.has(leaf.id));
       if (rest.length > 0) {
         const doomed = new Set(rest.map((leaf) => leaf.id));
@@ -4135,16 +4170,23 @@ export class MechanismService {
     // Demanding a drawn arrow on top of that refused analyses that meant
     // something.
     const loads = this.forces.filter((force) => analysable.has(force.link?.id));
-    // Any body's mass, not only a RealLink's: the solver hangs a slider block's
-    // weight from gravity too, so a drawing whose only massive body is a block
-    // is genuinely loaded. (The massless *warning* below stays about links --
-    // every block starts massless and naming them all would be noise.)
-    const weighted = this.links.some(
-      (link) =>
-        (link instanceof RealLink || link instanceof SliderBlock) &&
-        analysable.has(link.id) &&
-        link.mass > 0
+    // Any body's mass, and a slider's is the sliding joint's own now: the solver
+    // hangs its weight from gravity exactly as it hung the block's, so a drawing
+    // whose only massive body is a slider is genuinely loaded. (The massless
+    // *warning* below stays about links -- every slider starts massless, and
+    // naming them all would be noise.)
+    const analysableJoints = new Set(
+      this.partitions
+        .filter((_, index) => this.mechanisms[index]?.isMechanismValid())
+        .flatMap((partition) => partition.joints.map((joint) => joint.id))
     );
+    const weighted =
+      this.links.some(
+        (link) => link instanceof RealLink && analysable.has(link.id) && link.mass > 0
+      ) ||
+      this.joints.some(
+        (joint) => joint instanceof PrisJoint && analysableJoints.has(joint.id) && joint.mass > 0
+      );
     const gravityLoads = this.settingsService.isGravity.value && weighted;
     const loaded = loads.length > 0 || gravityLoads;
 
@@ -4387,24 +4429,35 @@ export class MechanismService {
   }
 
   /**
-   * The one reaction a slider's block has that its pin does not.
+   * The one reaction a slider has that an ordinary pin does not.
    *
-   * A block is a zero-length link binding a pin to a slot. It meets the world
-   * twice: at the pin, where the force is exactly the pin's own reaction
-   * negated -- the same number already carried under the name of the bar it
-   * holds -- and at the slot, where it presses on whatever the slot is cut
-   * into. The second is the force that sizes a slide, and it is here or
-   * nowhere: a slot has no marker, no hitbox and no panel.
+   * A slider meets the world twice: at the joint, where the force is the pin
+   * reaction already carried under the name of the bar it holds, and at the
+   * slot, where it presses on whatever the slot is cut into. The second is the
+   * force that sizes a slide, and it is reported here or nowhere -- a slot has
+   * no marker, no hitbox and no panel of its own.
+   *
+   * `againstId` is the body the solver wrote that reaction on, which is what a
+   * caller matches a solved reaction against, and `on` is what to call the
+   * thing being pressed. They are two different bodies, and conflating them is
+   * what broke this: the reaction used to be solved for the block -- a
+   * zero-length link binding the pin to the slot -- so naming the block and
+   * matching it were the same lookup. A slider is one joint now (Stage 1 of
+   * `docs/joint-type-and-cylinder-plan.md`) and the solver gives it a point
+   * body of its own, named by the joint's own letter (`pointBodies` in
+   * `force-solver.ts`), so the reaction is written there whether the guide is
+   * grounded or cut into a moving bar. Matching the carrier instead found
+   * nothing at all on a grounded guide -- there is no body on that side -- and
+   * the slot force came out labeled after the joint's bare letter, which is a
+   * body no reader has been shown.
    */
-  slotReactionOf(pin: Joint | undefined): { slot: PrisJoint; block: Link; on: string } | undefined {
+  slotReactionOf(
+    pin: Joint | undefined
+  ): { slot: PrisJoint; againstId: string; on: string } | undefined {
     const slot = this.sliderFor(pin);
     if (!slot) return undefined;
-    const block = this.links.find(
-      (link) => link instanceof SliderBlock && link.joints.some((joint) => joint.id === slot.id)
-    );
-    if (!block) return undefined;
     const carrier = slot.isFloating && slot.isSlotWellFormed ? slot.carrier : undefined;
-    return { slot, block, on: carrier ? this.bodyLabel(carrier) : 'the ground' };
+    return { slot, againstId: slot.id, on: carrier ? this.bodyLabel(carrier) : 'the ground' };
   }
 
   /**
@@ -4416,9 +4469,10 @@ export class MechanismService {
   slotName(jointId: string): string | undefined {
     const slot = this.joints.find((joint) => joint.id === jointId);
     if (!(slot instanceof PrisJoint)) return undefined;
-    const pin = slot.connectedJoints.find((joint) => !(joint instanceof PrisJoint)) as
-      RealJoint | undefined;
-    return pin ? `the slider at ${pin.name || pin.id}` : 'the slider';
+    // The slider's own letter. It used to be read off the coincident pin,
+    // because that was the joint a reader had ever been shown; the slider keeps
+    // that letter now (Stage 1 of `docs/joint-type-and-cylinder-plan.md`).
+    return `the slider at ${slot.name || slot.id}`;
   }
 
   /** The sealed cylinder a joint or link belongs to, if any. */
@@ -4512,17 +4566,15 @@ export class MechanismService {
     // compound with the barrel as a leaf.
     const creation = cylinderCreationLayout(start, end, this.settingsService.objectScale);
 
-    // A ram is five joints and shows two of them. The mounts are what the
+    // A ram is four joints and shows two of them. The mounts are what the
     // reader points at, names and reads back out of a panel, so they take
-    // letters; the barrel's near end, the pin and the slider are inside the
-    // part and are never drawn, labeled or listed. Spending a letter on each
-    // of those ran a drawing through the alphabet three times faster than the
-    // joints anyone could see, and it was the hidden ones that pushed the
-    // visible ones into punctuation.
+    // letters; the barrel's near end and the slider are inside the part and are
+    // never drawn, labeled or listed. Spending a letter on each of those ran a
+    // drawing through the alphabet faster than the joints anyone could see, and
+    // it was the hidden ones that pushed the visible ones into punctuation.
     const aId = mountAt ? mountAt.id : this.determineNextLetter();
     const dId = this.determineNextLetter([aId]);
-    const insideNames = this.determineInteriorNames(aId, 3);
-    const [bId, cId, pId] = insideNames;
+    const [bId, cId] = this.determineInteriorNames(aId, 2);
 
     const place = (at: { x: number; y: number }): [number, number] => [
       roundNumber(at.x, 3),
@@ -4530,10 +4582,16 @@ export class MechanismService {
     ];
     const barrelFar = mountAt ?? new RevJoint(aId, ...place(creation.barrelFar));
     const barrelNear = new RevJoint(bId, ...place(creation.barrelNear));
-    const pin = new RevJoint(cId, ...place(creation.pin));
     const rodFar = new RevJoint(dId, ...place(creation.rodFar));
-    const slider = new PrisJoint(pId, pin.x, pin.y);
+    // The seal and the pin the rod hangs on are one joint. They were a
+    // prismatic joint, a coincident `RevJoint` and a zero-length block joining
+    // the two until Stage 1 of `docs/joint-type-and-cylinder-plan.md`; the rod
+    // is pinned straight to the slider now.
+    const slider = new PrisJoint(cId, ...place(creation.pin));
     slider.isSealed = true;
+    // What the weld on that coincident pin said: the rod cannot turn against
+    // the barrel's slot, which is what makes the ram one rigid part.
+    slider.rotates = false;
 
     // Link ids are their joints' letters in order, and an existing mount's
     // letter is whatever it already was — not necessarily before the new one.
@@ -4541,16 +4599,13 @@ export class MechanismService {
       barrelFar,
       barrelNear,
     ]);
-    const rod = this.gridUtils.createRealLink(cId + dId, [pin, rodFar]);
-    const block = new SliderBlock(cId + pId, [pin, slider]);
+    const rod = this.gridUtils.createRealLink(cId + dId, [slider, rodFar]);
     slider.slideOn(barrel, barrelFar, barrelNear);
-    pin.isWelded = true;
 
     barrelFar.links.push(barrel);
     barrelNear.links.push(barrel);
-    pin.links.push(rod, block);
     rodFar.links.push(rod);
-    slider.links.push(block);
+    slider.links.push(rod);
 
     // Anchored on a link, when the gesture started from one: the barrel's mount
     // joins that body and the ram swings with it, which is what a ram bolted to
@@ -4562,8 +4617,8 @@ export class MechanismService {
     // Started from a joint, that joint is already in the mechanism and already
     // holds its own links; it has just gained one more.
     if (!mountAt) this.joints.push(barrelFar);
-    this.joints.push(barrelNear, pin, rodFar, slider);
-    this.links.push(barrel, rod, block);
+    this.joints.push(barrelNear, rodFar, slider);
+    this.links.push(barrel, rod);
     // Ended on a joint, the rod's far end is folded into it through the same
     // door a mount dragged onto a joint goes through, so every rule that
     // refuses a merge -- a cylinder's interior, a joint of the same bar --
@@ -4610,7 +4665,7 @@ export class MechanismService {
     // A gesture in flight targets objects about to stop existing.
     this.injector.get(DragStateService).cancel();
 
-    const memberLinkIds = new Set([sealed.barrel.id, sealed.rod.id, sealed.block.id]);
+    const memberLinkIds = new Set([sealed.barrel.id, sealed.rod.id]);
     // A mount welded into a neighboring compound has to give the ram's leaves
     // back before they can be removed. Taking the *weld* apart to do it was
     // the obvious way and is a second, silent edit: a mount holding a bracket
@@ -4624,7 +4679,7 @@ export class MechanismService {
       .forEach((force) => this.detachForce(force));
     this.links = this.links.filter((link) => !memberLinkIds.has(link.id));
 
-    const interior = new Set([sealed.pin.id, sealed.slider.id, sealed.barrelNear.id]);
+    const interior = new Set([sealed.slider.id, sealed.barrelNear.id]);
     [...interior, sealed.barrelFar.id, sealed.rodFar.id].forEach((id) =>
       this.slotStashes.delete(id)
     );
@@ -4676,22 +4731,19 @@ export class MechanismService {
   }
 
   /**
-   * The PrisJoint of whichever slider `joint` belongs to, from either end.
+   * The sliding joint, when this joint is one.
    *
-   * The panel only ever selects the pin, so anything that acts on "the slider"
-   * has to make the hop; the two are coincident by construction, which is what
-   * makes either end a valid handle on the same object.
+   * There were two ends to hop between while a slider was a prismatic joint and
+   * a coincident pin joined by a block: the panel only ever selected the pin,
+   * so everything acting on "the slider" had to find its other half. One joint
+   * is both ends now, and this is kept because every caller asks it this way.
    */
   sliderFor(joint: Joint | undefined): PrisJoint | undefined {
     return this.sliderOf(joint);
   }
 
   private sliderOf(joint: Joint | undefined): PrisJoint | undefined {
-    if (joint instanceof PrisJoint) return joint;
-    if (!(joint instanceof RealJoint)) return undefined;
-    return joint.links
-      .find((link): link is SliderBlock => link instanceof SliderBlock)
-      ?.joints.find((member): member is PrisJoint => member instanceof PrisJoint);
+    return joint instanceof PrisJoint ? joint : undefined;
   }
 
   toggleGround() {
@@ -4725,16 +4777,10 @@ export class MechanismService {
   }
 
   adjustInput() {
-    let jointToToggleInput: RealJoint;
-    if (this.gridUtils.isAttachedToSlider(this.activeObjService.selectedJoint)) {
-      //Find the prismatic joint and toggle ground
-      jointToToggleInput = this.gridUtils.getSliderJoint(
-        this.activeObjService.selectedJoint
-      ) as RealJoint;
-    } else {
-      //Normal joint case
-      jointToToggleInput = this.activeObjService.selectedJoint;
-    }
+    // The joint itself. A slider was driven through the prismatic half of a
+    // coincident pair while the panel and the menu were pointed at the pin, so
+    // this began by finding that half; one joint carries the drive now.
+    const jointToToggleInput: RealJoint = this.activeObjService.selectedJoint;
 
     // Turning a joint *on* has to name the two bodies it drives between
     // (§2.9). Three bodies meet at some joints, and then "driven" says nothing
@@ -4836,14 +4882,6 @@ export class MechanismService {
 
       slider.x = x;
       slider.y = y;
-      // The block is zero-length by construction, so its pin travels with it.
-      const pin = slider.links
-        .find((link): link is SliderBlock => link instanceof SliderBlock)
-        ?.joints.find((joint) => joint.id !== slider.id);
-      if (pin) {
-        pin.x = x;
-        pin.y = y;
-      }
     }
   }
 
@@ -4863,10 +4901,9 @@ export class MechanismService {
    * leave the drag looking refused rather than silently inert.
    */
   cutSlotOn(
-    pin: RealJoint,
+    joint: RealJoint,
     slot: { carrier: Link; a: Joint; b: Joint; x: number; y: number }
   ): boolean {
-    if (pin instanceof PrisJoint) return false;
     // A sealed ram's inside is not somewhere a slot can be cut or moved to.
     // Asked here, before any coordinate is written, because this is the commit:
     // half of it had already run by the time anything downstream could object,
@@ -4876,36 +4913,35 @@ export class MechanismService {
     //
     // A mount is not covered by this and must not be: reassigning the block on
     // a mount is exactly how a carriage is dropped onto a new rail.
-    if (cylinderInteriorsAt(this.sealedStructures(), pin).length > 0) return false;
+    if (cylinderInteriorsAt(this.sealedStructures(), joint).length > 0) return false;
     // Nor is a body that already holds the other end of this joint's own ram:
     // the drop pulls the mount onto that body's line and there is nowhere for
     // the part to go but shorter. The preview does not offer it, and this is
     // the commit, so it is asked here too -- before any coordinate is written,
     // because writing first is how a refusal comes to have half happened.
-    if (slotWouldFoldACylinder(pin, slot.carrier, this.sealedStructures())) return false;
-    // Two blocks on one pin is a different joint type, not a second slot.
-    const existing = pin.links.find((link): link is SliderBlock => link instanceof SliderBlock);
-    const slider = existing?.joints.find((joint): joint is PrisJoint => joint instanceof PrisJoint);
+    if (slotWouldFoldACylinder(joint, slot.carrier, this.sealedStructures())) return false;
+
+    // A joint that already slides keeps its slider and only gains a carrier,
+    // which is how a dangling one is repaired; a plain pin becomes one first.
+    // This used to refuse a `PrisJoint` outright, because the prismatic joint
+    // had no hitbox and the thing a reader could drag was the pin beside it.
+    let slider = joint instanceof PrisJoint ? joint : undefined;
+    if (!slider) {
+      this.activeObjService.updateSelectedObj(joint);
+      this.sliderTopology();
+      // By letter: gaining a slot exchanges the joint for a `PrisJoint` with the
+      // same id, so the object handed in is not the one in the drawing any more.
+      slider = this.joints.find(
+        (candidate): candidate is PrisJoint =>
+          candidate instanceof PrisJoint && candidate.id === joint.id
+      );
+      if (!slider) return false;
+    }
 
     // The joint lands on the slot line, where the preview already put it.
-    pin.x = slot.x;
-    pin.y = slot.y;
-
-    if (slider) {
-      slider.x = slot.x;
-      slider.y = slot.y;
-      slider.slideOn(slot.carrier, slot.a, slot.b);
-    } else {
-      this.activeObjService.updateSelectedObj(pin);
-      this.sliderTopology();
-      const made = pin.links
-        .find((link): link is SliderBlock => link instanceof SliderBlock)
-        ?.joints.find((joint): joint is PrisJoint => joint instanceof PrisJoint);
-      if (!made) return false;
-      made.x = slot.x;
-      made.y = slot.y;
-      made.slideOn(slot.carrier, slot.a, slot.b);
-    }
+    slider.x = slot.x;
+    slider.y = slot.y;
+    slider.slideOn(slot.carrier, slot.a, slot.b);
     this.finishStructuralEdit(false);
     return true;
   }
@@ -4928,24 +4964,21 @@ export class MechanismService {
     // this is the defensive backstop, not the UI rule.
     if (slider.isSealed) return;
     if (!slider.isFloating) return;
-    const block = slider.links.find((link): link is SliderBlock => link instanceof SliderBlock);
-    const pin = block?.joints.find(
-      (joint): joint is RealJoint => joint instanceof RealJoint && !(joint instanceof PrisJoint)
-    );
-    if (pin && block) this.stashSlot(pin, block);
+    this.stashSlot(slider);
     slider.detach();
     this.finishStructuralEdit(false);
   }
 
   /**
-   * Remember a slot on its pin before the block goes away, so turning Slider
+   * Remember a slot before the joint stops being a slider, so turning Slider
    * back on restores the guide the user had rather than building a new one.
+   *
+   * Keyed by the slider's own letter, which is the letter the reader has always
+   * seen: it was the coincident pin's until Stage 1 of
+   * `docs/joint-type-and-cylinder-plan.md`, and the surviving joint keeps it.
    */
-  private stashSlot(pin: RealJoint, block: Link): void {
-    const slider = block.joints.find((joint) => joint instanceof PrisJoint) as
-      PrisJoint | undefined;
-    if (!slider) return;
-    this.slotStashes.set(pin.id, {
+  private stashSlot(slider: PrisJoint): void {
+    this.slotStashes.set(slider.id, {
       ground: slider.ground,
       angleRad: slider.slotAngle,
       carrierId: slider.carrier?.id,
@@ -4959,8 +4992,8 @@ export class MechanismService {
    * in the meantime simply does not resolve, and the slider is left dangling --
    * the same answer `reconcileSlots` gives, rather than a second policy.
    */
-  private restoreStashedSlot(pin: RealJoint, slider: PrisJoint): void {
-    const stash = this.slotStashes.get(pin.id);
+  private restoreStashedSlot(slider: PrisJoint): void {
+    const stash = this.slotStashes.get(slider.id);
     if (!stash) return;
     const carrier = stash.carrierId
       ? this.links.find((link) => link.id === stash.carrierId)
@@ -4995,10 +5028,9 @@ export class MechanismService {
     }
     this.sliderTopology();
     // Through finishStructuralEdit rather than straight to updateMechanism: it
-    // is what runs reconcileAssemblyWelds, and removing a slider from a Slide
-    // leaves the RevJoint behind still flagged welded. Phase 2 never hit this
-    // because removing a slider takes its PrisJoint with it, and reconcileSlots
-    // only walks the ones that survive.
+    // is what runs the reconcile passes, and a change of type can leave a weld
+    // describing a compound that is no longer there -- taking the slot off a
+    // Slide that held two riders is the case.
     this.finishStructuralEdit(true);
   }
 
@@ -5012,32 +5044,32 @@ export class MechanismService {
    * one drag.
    */
   private sliderTopology(): void {
-    if (!this.gridUtils.isAttachedToSlider(this.activeObjService.selectedJoint)) {
-      // Create Prismatic Joint
-      const selectedJointInput = this.activeObjService.selectedJoint.input;
-      // Remembered before it is cleared: a pin cannot stay grounded once it
-      // carries a block, but the grounded-ness the user set moves to the slider
-      // below rather than evaporating.
-      const selectedJointGrounded = this.activeObjService.selectedJoint.ground;
-      this.activeObjService.selectedJoint.input = false;
-      this.activeObjService.selectedJoint.ground = false;
-      const prismaticJointId = this.determineNextLetter();
-      const connectedJoints: Joint[] = [this.activeObjService.selectedJoint];
+    const joint = this.activeObjService.selectedJoint;
+    if (!this.gridUtils.isAttachedToSlider(joint)) {
+      // The pin *becomes* the slider, keeping its letter. A slider used to be
+      // three objects -- a prismatic joint, a coincident pin and a zero-length
+      // block joining them -- and the reader only ever saw one of them, so the
+      // letter they know is the pin's, and it is the letter every link id,
+      // force, lock and color already names. A fresh one for the joint that
+      // replaces it would rename the drawing underneath them.
+      const slider = new PrisJoint(joint.id, joint.x, joint.y, joint.input);
+      // The weld travels with the type. A Slide is `rotates` on the sliding
+      // joint where a compound weld is `isWelded` on a pin, and Welded to
+      // Prismatic is a single step (`stepsBetween`) -- so the bit has to cross
+      // here, or that one press would quietly unweld the joint.
+      slider.rotates = !joint.isWelded;
+      // The compound it fused, if it fused one, stays fused. `isWelded` is the
+      // record that a compound stands at this joint, and that link is still in
+      // the drawing whatever class of joint is holding it now -- so dropping
+      // the flag here would leave a fused link nothing accounts for, which the
+      // reconcile pass would later take apart under the reader.
+      slider.isWelded = joint.isWelded;
+      this.retypeJoint(joint, slider);
       // Born dangling on an ungrounded pin: a floating slot needs a carrier,
       // which is geometry the drop gesture supplies and no toggle can invent.
       // A slider with a stash gets its old slot back instead, which is what
-      // makes Slider off/on a round trip — and a grounded pin hands its ground
-      // to the slider below, so the same click always makes the same thing.
-      const prisJoint = new PrisJoint(
-        prismaticJointId,
-        this.activeObjService.selectedJoint.x,
-        this.activeObjService.selectedJoint.y,
-        selectedJointInput,
-        false,
-        [],
-        connectedJoints
-      );
-      this.restoreStashedSlot(this.activeObjService.selectedJoint, prisJoint);
+      // makes Slider off/on a round trip.
+      this.restoreStashedSlot(slider);
       // Ground carried across from the pin, deterministically: toggling Slider
       // on a grounded joint always yields a grounded slider. Before this it
       // depended on history — a joint whose earlier slider had been grounded
@@ -5046,40 +5078,23 @@ export class MechanismService {
       // mechanisms. The angle kept is whatever the slider already remembers
       // (the stash's, or zero on a first slider), the same angle grounding via
       // the Ground toggle would pin.
-      if (selectedJointGrounded && !prisJoint.isFloating) {
-        prisJoint.groundAt(prisJoint.slotAngle);
+      if (joint.ground && !slider.isFloating) {
+        slider.groundAt(slider.slotAngle);
       }
-      this.activeObjService.selectedJoint.connectedJoints.push(prisJoint);
-      const piston = new SliderBlock(this.activeObjService.selectedJoint.id + prisJoint.id, [
-        this.activeObjService.selectedJoint,
-        prisJoint,
-      ]);
-      prisJoint.links.push(piston);
-      this.activeObjService.selectedJoint.links.push(piston);
-      this.joints.push(prisJoint);
-      this.links.push(piston);
-    } else {
-      // delete Prismatic Joint
-      const piston = this.activeObjService.selectedJoint.links.find(
-        (l) => l instanceof SliderBlock
-      )!;
-      this.stashSlot(this.activeObjService.selectedJoint, piston);
-      const pistonIndex = this.links.findIndex((l) => l.id === piston.id);
-      const prismaticJointID = piston.joints.find((j) => j instanceof PrisJoint)!.id;
-      this.activeObjService.selectedJoint.connectedJoints =
-        this.activeObjService.selectedJoint.connectedJoints.filter(
-          (j) => j.id !== prismaticJointID
-        );
-
-      this.activeObjService.selectedJoint.links = this.activeObjService.selectedJoint.links.filter(
-        (l) => l.id !== piston.id
-      );
-      const prismaticJointIndex = this.joints.findIndex((j) => j.id === prismaticJointID);
-      this.joints.splice(prismaticJointIndex, 1);
-      this.links.splice(pistonIndex, 1);
-
-      this.activeObjService.selectedJoint.ground = false;
+      this.activeObjService.updateSelectedObj(slider);
+      return;
     }
+    // And back: taking the slot away leaves an ordinary pin with the same
+    // letter. The slot is remembered first, so putting it back is a restore
+    // rather than a rebuild.
+    const slider = joint as PrisJoint;
+    this.stashSlot(slider);
+    const pin = new RevJoint(slider.id, slider.x, slider.y, slider.input);
+    // The same bit the other way round: Prismatic to Welded is one step too, so
+    // what `rotates` was saying has to arrive as `isWelded`.
+    pin.isWelded = !slider.rotates;
+    this.retypeJoint(slider, pin);
+    this.activeObjService.updateSelectedObj(pin);
   }
 
   findInputJointIndex() {
@@ -7310,7 +7325,7 @@ export class MechanismService {
     subset: Link[],
     subsetBuilder: Link[]
   ): Link[] {
-    //Recursively find all connected links to a given link, making sure not to include the block link
+    //Recursively find all connected links to a given link
     (link.joints as RealJoint[]).forEach((joint) => {
       joint.links.forEach((l) => {
         if (
@@ -7349,7 +7364,14 @@ export class MechanismService {
     // rules; this guard is the mutation's own front door, so no caller — the
     // panel grays its toggle, but a stray programmatic call cannot be grayed —
     // can reach the restructure with a degenerate joint.
-    if (!(joint instanceof RealJoint) || joint.links.length < 2) return;
+    //
+    // A slider counts one link where it used to count two: what it holds is its
+    // riders, and the block that was the second of them is gone. One rider is
+    // enough for a Slide -- the slot is the other half of what is held, which
+    // is the rule `weldNeedsLinks` states -- so the count is asked of every
+    // other kind of joint.
+    if (!(joint instanceof RealJoint)) return;
+    if (!(joint instanceof PrisJoint) && joint.links.length < 2) return;
 
     // Clicking Weld on a named joint is a deliberate act, so this warns rather
     // than refuses. The linkage still moves and still solves; only its forces
@@ -7416,44 +7438,57 @@ export class MechanismService {
    * whether a Slide survives a drag depends on what was dropped onto it.
    */
   private weldTopology(joint: RealJoint): boolean {
+    // A Slide is `rotates` on the sliding joint: its riders stop turning
+    // against the slot. Asked before `canBeWelded`, which counts the links
+    // meeting here -- a slider had its block among them and has only its riders
+    // now, so a Slide on a single rider would be refused for having nothing to
+    // fuse. `isSlideCandidate` is the same structural test the resolver applies,
+    // so a shape the resolver rejects cannot produce a weld nothing downstream
+    // recognizes and the reconcile would then strip.
+    if (joint instanceof PrisJoint) {
+      if (!isSlideCandidate(joint)) return false;
+      // Two or more riders fuse into a compound exactly as an ordinary weld
+      // does -- every body at the joint becomes rigid, which is what the type
+      // means -- and `isWelded` is the record of that compound. One rider needs
+      // none: the slot is the other half of what is being held.
+      if (this.realLinksAt(joint).length >= 2) this.weldJointTopology(joint);
+      joint.rotates = false;
+      return true;
+    }
     if (!joint.canBeWelded()) return false;
-    const realLinksAtJoint = this.links.filter(
+    return this.weldJointTopology(joint);
+  }
+
+  /** The bodies that meet at a joint, which is what a compound weld fuses. */
+  private realLinksAt(joint: RealJoint): RealLink[] {
+    return this.links.filter(
       (link): link is RealLink => link instanceof RealLink && link.joints.includes(joint)
     );
-    // The same structural test the resolver applies, rather than "has a block".
-    // A shape the resolver rejects -- two blocks on one pin, a block with a
-    // stray third joint -- would otherwise take the assembly path and produce a
-    // weld nothing downstream recognizes, which the reconcile would then strip.
-    if (!isSlideCandidate(joint)) {
-      return this.weldJointTopology(joint);
-    }
-
-    // A Slide. Two or more RealLinks here fuse into a compound exactly as an
-    // ordinary weld does — every body at the joint becomes rigid, which is what
-    // the 2x2 means — and the block is bound by the flag either way, since it
-    // is not a RealLink and cannot enter a compound at all.
-    if (realLinksAtJoint.length >= 2) {
-      this.weldJointTopology(joint);
-    }
-    joint.isWelded = true;
-    return true;
   }
 
   /** Undo a weld at this joint, whatever kind of weld it is. Pure topology. */
   private unweldTopology(joint: RealJoint): boolean {
-    if (!joint.isWelded) return false;
-    // The sealed pin's weld is what makes a cylinder one part; it never comes
-    // off (§ cylinder 4). Only the pin resolves here — a welded *mount* has no
-    // block of its own, so unwelding a mount out of a neighboring compound
-    // stays legal.
+    // The sealed slider's Slide is what makes a cylinder one part; it never
+    // comes off (§ cylinder 4). Only the sealed joint resolves here — a welded
+    // *mount* is an ordinary joint inside a neighboring compound, and taking it
+    // back out stays legal.
     if (structuralCylinderAt(joint)) return false;
-    const compound = this.compoundAt(joint);
-    if (compound) {
+    if (joint instanceof PrisJoint) {
+      if (joint.rotates) return false;
+      // The compound goes first where this weld built one, and then the riders
+      // are free to turn. A Slide on a single rider holds no compound at all,
+      // so there is nothing there to take apart.
+      if (this.compoundAt(joint)) this.unweldJointTopology(joint);
+      joint.rotates = true;
+      return true;
+    }
+    if (!joint.isWelded) return false;
+    if (this.compoundAt(joint)) {
       return this.unweldJointTopology(joint);
     }
-    // A Slide holds no compound, so there is nothing to take apart and
-    // unweldJointTopology would report failure after already clearing the flag
-    // -- leaving the weld dropped with no rebuild and no undo entry.
+    // Nothing to take apart, and `unweldJointTopology` would report failure
+    // after already clearing the flag -- leaving the weld dropped with no
+    // rebuild and no undo entry.
     joint.isWelded = false;
     return true;
   }
@@ -7500,9 +7535,7 @@ export class MechanismService {
   }
 
   private weldJointTopology(joint: RealJoint): boolean {
-    const linksAtJoint = this.links.filter(
-      (link): link is RealLink => link instanceof RealLink && link.joints.includes(joint)
-    );
+    const linksAtJoint = this.realLinksAt(joint);
     if (!joint.canBeWelded() || joint.isWelded || linksAtJoint.length < 2) return false;
 
     const affectedLinkIDs = new Set(
@@ -7544,15 +7577,17 @@ export class MechanismService {
    * caller with nothing selected can only mean.
    */
   public unweldAll(link: Link | undefined = this.activeObjService.selectedLink): void {
+    // A Slide counts as welded here. It says so in `rotates` on the sliding
+    // joint rather than in `isWelded` -- and a Slide on a single rider builds no
+    // compound, so it sets no flag at all and this walk used to pass it by.
+    const welded = (joint: Joint): joint is RealJoint =>
+      joint instanceof PrisJoint ? !joint.rotates : joint instanceof RealJoint && joint.isWelded;
     const scope =
       link instanceof RealLink && link.subset.length > 0
         ? this.joints.filter(
-            (joint): joint is RealJoint =>
-              joint instanceof RealJoint && joint.isWelded && link.joints.includes(joint)
+            (joint): joint is RealJoint => welded(joint) && link.joints.includes(joint)
           )
-        : this.joints.filter(
-            (joint): joint is RealJoint => joint instanceof RealJoint && joint.isWelded
-          );
+        : this.joints.filter(welded);
 
     let changed = false;
     scope.forEach((joint) => {

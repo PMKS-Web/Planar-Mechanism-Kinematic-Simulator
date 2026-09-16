@@ -4,7 +4,7 @@ import { Injector } from '@angular/core';
 import { Coord } from '../model/coord';
 import { Force } from '../model/force';
 import { PrisJoint, RevJoint } from '../model/joint';
-import { SliderBlock, RealLink } from '../model/link';
+import { RealLink } from '../model/link';
 import { ActiveObjService } from './active-obj.service';
 import { ColorService } from './color.service';
 import { GridUtilsService } from './grid-utils.service';
@@ -166,20 +166,47 @@ describe('GridUtilsService.dragLink', () => {
     expect(scene.saveCount()).toBe(0);
   });
 
-  it('keeps a slider block coincident with the pin it rides', () => {
-    const scene = createFourBar();
-    const prismatic = new PrisJoint('E', scene.c.x, scene.c.y, false, true);
-    scene.c.connectedJoints.push(prismatic);
-    prismatic.connectedJoints.push(scene.c);
-    const block = new SliderBlock('CE', [scene.c, prismatic]);
-    scene.c.links.push(block);
-    prismatic.links.push(block);
-    scene.service.joints.push(prismatic);
-    scene.service.links.push(block);
+  it('carries a slider that is a joint of the dragged link, like any other joint', () => {
+    // A slider used to be an invisible prismatic joint beside a pin, joined by
+    // a zero-length block, and a drag had to write the block's other joint back
+    // onto the same point to keep the pair coincident. A slider is a member
+    // joint now (Stage 1 of `docs/joint-type-and-cylinder-plan.md`), so it
+    // simply travels with the body it is on.
+    const scene = createHarness();
+    const slider = new PrisJoint('S', 0, 0, false, true);
+    const far = new RevJoint('F', 2, 0);
+    const bar = new RealLink('FS', [slider, far]);
+    [slider, far].forEach((joint) => joint.links.push(bar));
+    scene.service.joints.push(slider, far);
+    scene.service.links.push(bar);
 
-    scene.grid.dragLink(scene.bc, 1.5, -0.5);
+    scene.grid.dragLink(bar, 1.5, -0.5);
 
-    expect([prismatic.x, prismatic.y]).toEqual([scene.c.x, scene.c.y]);
+    expect([slider.x, slider.y]).toEqual([1.5, -0.5]);
+    expect([far.x, far.y]).toEqual([3.5, -0.5]);
+  });
+});
+
+describe('GridUtilsService.dragJoint on a slider', () => {
+  it('rebuilds the rider it carries, which a pin used to do for it', () => {
+    // `dragJoint` switched on `RevJoint`, because a slider was dragged by the
+    // coincident pin that held the riders. The slider holds them now, so a
+    // switch would leave a dragged slider's bar with a stale outline, center of
+    // mass and length.
+    const scene = createHarness();
+    const slider = new PrisJoint('S', 0, 0, false, true);
+    const far = new RevJoint('F', 2, 0);
+    const bar = new RealLink('FS', [slider, far]);
+    [slider, far].forEach((joint) => joint.links.push(bar));
+    scene.service.joints.push(slider, far);
+    scene.service.links.push(bar);
+
+    scene.grid.dragJoint(slider, new Coord(0, 3));
+
+    expect([slider.x, slider.y]).toEqual([0, 3]);
+    expect(bar.length).toBeCloseTo(Math.hypot(2, 3), 9);
+    expect(bar.CoM.x).toBeCloseTo(1, 9);
+    expect(bar.CoM.y).toBeCloseTo(1.5, 9);
   });
 });
 

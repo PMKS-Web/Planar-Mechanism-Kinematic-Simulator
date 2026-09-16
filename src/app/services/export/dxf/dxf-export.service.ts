@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { Joint, PrisJoint, RealJoint } from '../../../model/joint';
-import { Link, RealLink, SliderBlock } from '../../../model/link';
+import { Link, RealLink } from '../../../model/link';
 import { MODEL_SCALE } from '../../../model/render-scale';
 import { LengthUnit } from '../../../model/unit-enums';
 import { MechanismService } from '../../mechanism.service';
@@ -410,7 +410,7 @@ export class DxfExportService {
         inUnit(lengthOf(link), unit).toFixed(6),
         link.mass.toFixed(6),
         link instanceof RealLink ? link.massMoI.toFixed(6) : '',
-        link instanceof SliderBlock ? 'prismatic' : 'rigid',
+        'rigid',
       ].join(',')
     );
     return ['id,name,joints,length,mass,inertia,type', ...rows].join('\r\n') + '\r\n';
@@ -475,7 +475,7 @@ export class DxfExportService {
           length: inUnit(lengthOf(link), unit),
           mass: link.mass,
           inertia: link instanceof RealLink ? link.massMoI : null,
-          type: link instanceof SliderBlock ? 'prismatic' : 'rigid',
+          type: 'rigid',
         })),
         forces: this.mechanism.forces.map((force) => ({
           id: force.id,

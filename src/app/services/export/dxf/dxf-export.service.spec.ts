@@ -2,8 +2,8 @@ import '../../../model/joint';
 import { TestBed } from '@angular/core/testing';
 import DxfParser from 'dxf-parser';
 import { BehaviorSubject } from 'rxjs';
-import { RevJoint } from '../../../model/joint';
-import { Link, RealLink, SliderBlock } from '../../../model/link';
+import { PrisJoint, RevJoint } from '../../../model/joint';
+import { Link, RealLink } from '../../../model/link';
 import { MODEL_SCALE } from '../../../model/render-scale';
 import { LengthUnit } from '../../../model/unit-enums';
 import { MechanismService } from '../../mechanism.service';
@@ -298,19 +298,28 @@ describe('DxfExportService', () => {
   });
 
   it('keeps companion coordinates on the drawing origin and resolves prismatic references', () => {
+    // Prismatic is a *joint* kind in the export now. It used to be a link
+    // type as well, because a slider was a zero-length `SliderBlock` link
+    // joining a pin to a slot; Stage 1 of
+    // `docs/joint-type-and-cylinder-plan.md` made the slider one joint, so
+    // every link the drawing holds is a rigid body.
     const { service, mechanism } = setup();
     const [a, b] = mechanism.joints;
     a.x = 3 * MODEL_SCALE;
     a.y = -2 * MODEL_SCALE;
     a.ground = true;
-    const slider = new SliderBlock('slide', [a, b]);
-    mechanism.links.push(slider);
-    a.links.push(slider);
+    const slider = new PrisJoint('S', 4 * MODEL_SCALE, 0, false, true);
+    const rail = new RealLink('BS', [b, slider]);
+    [b, slider].forEach((joint) => joint.links.push(rail));
+    mechanism.joints.push(slider);
+    mechanism.links.push(rail);
     const json = JSON.parse(service['dataJson']('cm', { origin: 'ground' }));
     expect(json.joints[0]).toMatchObject({ x: 0, y: 0 });
-    expect(json.links.find((link: { id: string }) => link.id === 'slide')).toMatchObject({
+    expect(json.joints.find((joint: { id: string }) => joint.id === 'S')).toMatchObject({
       type: 'prismatic',
-      inertia: null,
+    });
+    expect(json.links.find((link: { id: string }) => link.id === 'BS')).toMatchObject({
+      type: 'rigid',
     });
     expect(
       json.joints[0].links.every((id: string) =>

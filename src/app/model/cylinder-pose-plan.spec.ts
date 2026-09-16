@@ -1,5 +1,5 @@
 import { PrisJoint, RevJoint } from './joint';
-import { RealLink, SliderBlock } from './link';
+import { RealLink } from './link';
 import { ram, rewire, weldBracketOnto } from '../../test-utils/cylinder-graph';
 import { Cylinder, CylinderPose, sealedCylinderStructures } from './cylinder';
 import { EditContext, Point, planEdit, snapshotOf } from './cylinder-pose-plan';
@@ -9,12 +9,16 @@ import { Joint } from './joint';
  * What moves when an edit touches a ram, once its mounts can be welded and can
  * carry blocks of their own.
  *
- * Writing the cylinder's own five coordinates is right exactly as long as
- * those five are all that is rigid with it. A bracket welded to a mount is
- * rigid with that side of the ram; a block bolted to a mount is coincident
- * with it. Moving the bar without them does not deform the drawing, it tears
- * it, and the rebuild afterwards reads the wreckage as a link that changed
- * shape.
+ * Writing the cylinder's own coordinates is right exactly as long as those are
+ * all that is rigid with it. A bracket welded to a mount is rigid with that
+ * side of the ram. Moving the bar without it does not deform the drawing, it
+ * tears it, and the rebuild afterwards reads the wreckage as a link that
+ * changed shape.
+ *
+ * Four coordinates, where there were five, and one fewer thing to carry: a
+ * block bolted to a mount used to be a separate link holding a joint
+ * coincident with it, and Stage 1 of
+ * `docs/joint-type-and-cylinder-plan.md` made a slider one joint.
  *
  * The claims worth making are about the settled result rather than about the
  * order the walk visited things in: each side carried by its own mount's
@@ -79,7 +83,7 @@ function slidPose(cylinder: Cylinder, by: number): CylinderPose {
 }
 
 describe('planning where a cylinder’s pose puts everything', () => {
-  it('moves only the five joints when nothing is attached to it', () => {
+  it('moves only the four joints the ram is made of, when nothing is attached', () => {
     const parts = ram();
     const [cylinder] = sealedCylinderStructures(parts.joints);
     const result = planEdit(
@@ -89,11 +93,13 @@ describe('planning where a cylinder’s pose puts everything', () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect([...result.plan.movedIds].sort()).toEqual(['A', 'B', 'C', 'D', 'P']);
+    expect([...result.plan.movedIds].sort()).toEqual(['A', 'B', 'C', 'D']);
     expect(result.plan.placements.get('A')).toEqual({ x: 3, y: 0 });
     expect(result.plan.placements.get('D')).toEqual({ x: 13, y: 0 });
-    // The slider rides the pin, always.
-    expect(result.plan.placements.get('P')).toEqual(result.plan.placements.get('C'));
+    // The pin is the slider. There used to be a fifth joint here, coincident
+    // with C, and a rule that the plan had to place the two of them together;
+    // one joint cannot be moved away from itself.
+    expect(result.plan.placements.get('C')).toEqual({ x: cylinder.pin.x + 3, y: cylinder.pin.y });
   });
 
   it('carries a welded bracket with the side it is welded to', () => {
@@ -133,19 +139,18 @@ describe('planning where a cylinder’s pose puts everything', () => {
     expect(far.y).toBeCloseTo(0, 9);
   });
 
-  it('takes a block bolted to a mount along with it', () => {
-    // An external block is a separate link, so nothing in the cylinder's own
-    // bodies reaches it. Left behind it stops being coincident with the pin it
-    // rides -- and a *grounded* one cannot be put back by the reseat that runs
-    // after a commit, because that only repairs floating sliders.
+  it('needs no second pass to keep a sliding mount with the part', () => {
+    // A grounded block bolted to a mount used to be a *separate link* holding a
+    // second joint coincident with that mount, which nothing in the cylinder's
+    // own bodies reached -- so the plan carried a pass of its own (`settleBlocks`)
+    // to move the partner, and a grounded one could not be put back afterwards
+    // by the reseat, which only repairs floating sliders.
+    //
+    // A slider is one joint now (Stage 1 of
+    // `docs/joint-type-and-cylinder-plan.md`). A mount that slides *is* the
+    // mount, so it travels because the mount does, and the pass is gone rather
+    // than fixed.
     const parts = ram();
-    const guide = new PrisJoint('Q', 0, 0);
-    const block = new SliderBlock('AQ', [parts.barrelFar, guide]);
-    guide.ground = true;
-    parts.joints.push(guide);
-    parts.links.push(block);
-    rewire(parts.joints, parts.links);
-
     const [cylinder] = sealedCylinderStructures(parts.joints);
     const result = planEdit(
       { poses: [{ cylinder, pose: slidPose(cylinder, 3) }] },
@@ -154,8 +159,7 @@ describe('planning where a cylinder’s pose puts everything', () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.plan.placements.get('Q')).toEqual({ x: 3, y: 0 });
-    expect(result.plan.placements.get('Q')).toEqual(result.plan.placements.get('A'));
+    expect(result.plan.placements.get('A')).toEqual({ x: 3, y: 0 });
   });
 });
 
@@ -240,13 +244,29 @@ describe('what a lock over a cylinder actually holds', () => {
   });
 });
 
-describe('a ram whose two ends share one body', () => {
-  /** Barrel and rod welded into one compound, still recognized as a ram. */
-  function fusedRam() {
+describe('a ram whose two ends are welded into one body', () => {
+  it('stops being a ram at all, because its slot would be cut into its own body', () => {
+    // Welding both of a ram's mounts into one bracket fuses barrel and rod into
+    // a single compound, and that compound holds the sliding joint. A slot cut
+    // into the very body its own joint sits on has no meaning, and
+    // `isSlotWellFormed` refuses it, so the assembly no longer resolves as a
+    // cylinder and there is no pose for the planner to be asked about.
+    //
+    // A change, recorded rather than dropped. The slider used to be a prismatic
+    // joint of its own that no compound of the two bars could contain, so a
+    // fused ram still resolved: it could be dragged as one piece, and refused
+    // an extension with `cylinder.both-ends-fused` because a rigid body cannot
+    // change shape. One joint per slider (Stage 1 of
+    // `docs/joint-type-and-cylinder-plan.md`) puts the slider inside that
+    // compound, and the model's own rule then rules the slot out. The drawing
+    // agrees rather than merely this fixture: `reconcileSlots` lifts the
+    // carrier to the same root and detaches a slot it cannot keep. Wanting the
+    // old shape back means revisiting that clause of `isSlotWellFormed`, not
+    // this test.
     const parts = ram();
     const fused = new RealLink(
       'ABCD',
-      [parts.barrelFar, parts.barrelNear, parts.pin, parts.rodFar],
+      [parts.barrelFar, parts.barrelNear, parts.slider, parts.rodFar],
       undefined,
       undefined,
       undefined,
@@ -255,41 +275,10 @@ describe('a ram whose two ends share one body', () => {
     parts.links = parts.links.filter((link) => link.id !== 'AB' && link.id !== 'CD');
     parts.links.push(fused);
     rewire(parts.joints, parts.links);
-    const [cylinder] = sealedCylinderStructures(parts.joints);
-    // Asserted, not skipped: a test that quietly returns when its fixture
-    // fails to resolve proves nothing about the behavior it is named for.
-    expect(cylinder).toBeDefined();
-    expect(cylinder.barrelRoot.id).toBe('ABCD');
-    expect(cylinder.rodRoot.id).toBe('ABCD');
-    return { parts, cylinder };
-  }
 
-  it('may still be moved as one piece', () => {
-    // Nothing about sharing a body forbids translating it. Refusing on root
-    // equality alone turned an ordinary drag away.
-    const { parts, cylinder } = fusedRam();
-    const result = planEdit(
-      { poses: [{ cylinder, pose: slidPose(cylinder, 2) }] },
-      contextFor([cylinder], parts.joints)
-    );
-
-    expect(result.ok ? 'ok' : result.refusal.code).toBe('ok');
-    if (!result.ok) return;
-    expect(result.plan.placements.get('A')).toEqual({ x: 2, y: 0 });
-    expect(result.plan.placements.get('D')).toEqual({ x: 12, y: 0 });
-  });
-
-  it('but may not extend, because that is a rigid body changing shape', () => {
-    const { parts, cylinder } = fusedRam();
-    const stretched = keepingLength(cylinder, { x: 0, y: 0 }, { x: 14, y: 0 });
-    const result = planEdit(
-      { poses: [{ cylinder, pose: stretched }] },
-      contextFor([cylinder], parts.joints)
-    );
-
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.refusal.code).toBe('cylinder.both-ends-fused');
+    expect(parts.slider.carrier?.id, 'the slot is lifted to the compound').toBe('ABCD');
+    expect(parts.slider.isSlotWellFormed, 'and is not a slot any more').toBe(false);
+    expect(sealedCylinderStructures(parts.joints)).toEqual([]);
   });
 });
 
