@@ -1,0 +1,94 @@
+:host {
+  display: block;
+  color: var(--text-primary);
+  border-top: 1px solid var(--border-rule);
+}
+
+.explanation {
+  padding: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+p,
+h3,
+ul,
+dl {
+  margin: 0 0 var(--card-gap);
+}
+
+h3,
+.result {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.equationLabel,
+caption {
+  color: var(--text-secondary);
+}
+
+.equationLabel {
+  margin-bottom: 0;
+}
+
+.equation {
+  padding: var(--card-gap);
+  background: var(--surface-sunken);
+  border-radius: var(--border-radius);
+  font-variant-numeric: tabular-nums;
+}
+
+.terms div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--card-gap);
+}
+
+dd {
+  margin: 0;
+  font-weight: 500;
+}
+
+.geometryNote {
+  padding: var(--card-gap);
+  border-left: 3px solid var(--warning-text);
+  background: var(--warning-bg);
+}
+
+ul {
+  padding-left: 18px;
+}
+
+li + li {
+  margin-top: var(--card-gap);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+caption {
+  text-align: left;
+  margin-bottom: var(--card-gap);
+}
+
+th,
+td {
+  padding: 6px 2px;
+  border-bottom: 1px solid var(--border-rule);
+  text-align: left;
+}
+
+a {
+  color: var(--brand);
+  text-decoration: underline;
+}
+
+a:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}

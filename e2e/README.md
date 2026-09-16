@@ -295,7 +295,9 @@ Not suites — import them from one.
   position against solved joints, velocity and acceleration against difference quotients. Slow;
   `PMKS_ONLY=4-Bar,Slider_Crank` narrows it.
 - `mechanism-panel.mjs` — selecting a whole machine from the transport chip or the setup drawer's
-  name.
+  name; the live DOF equation and joint contributions, the geometry rescue for a redundant crank,
+  keyboard disclosure, and narrow Edit/phone layouts. Screenshots and an expansion filmstrip go to
+  `artifacts/degrees-of-freedom/`.
 - `two-mechanisms.mjs` — two machines in one drawing: a row each in the transport, a section each
   in the setup drawer, and a sync toggle that decouples them.
 

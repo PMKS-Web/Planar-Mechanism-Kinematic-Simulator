@@ -30,6 +30,16 @@
       </div>
     }
 
+    @if (solved; as mechanism) {
+      @if (mechanism.mobilityCount; as count) {
+        <app-mobility-explanation
+          [count]="count"
+          [dof]="mechanism.dof"
+          [hiddenFreedoms]="mechanism.hiddenFreedoms"
+        />
+      }
+    }
+
     <button class="sectionHeader" (click)="linksOpen = !linksOpen">
       <span>Links</span>
       <mat-icon>{{ linksOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
