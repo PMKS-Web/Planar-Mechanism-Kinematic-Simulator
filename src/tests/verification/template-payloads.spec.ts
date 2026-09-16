@@ -65,15 +65,23 @@ function replaceBlock(source: string, block: string): string {
 }
 
 /**
- * The five templates that predate the generator, kept to the same color rule.
+ * The six templates that predate the generator, kept to the same color rule.
  *
  * Their geometry is hand-authored and stays that way — there is no fixture to
- * regenerate them from. But color is not geometry, and five cards colored by
+ * regenerate them from. But color is not geometry, and six cards colored by
  * whatever order somebody drew them in, sitting in a dialog beside thirty-four
  * colored from their structure, is the inconsistency this rule exists to
- * remove. So the payload is decoded, repainted and re-encoded: everything but
- * the six color fields comes back byte-identical, which is what makes it safe
- * to do to a string nothing else can regenerate.
+ * remove. So the payload is decoded, repainted and re-encoded.
+ *
+ * That round trip used to come back byte-identical but for the six color
+ * fields, and that was what made it safe to do to a string nothing else can
+ * regenerate. Since Stage 1 it also *normalizes* a slider: a payload spelling
+ * one as three objects is folded on the way in and written back as the single
+ * joint, which is why `Slider_Crank` changed shape here the first time this
+ * ran after the fold landed. That much is wanted — the dialog should hand out
+ * what the app writes today — and `transcoding/url-slider-fold.spec.ts` is
+ * what proves the fold loses nothing. Anything *else* coming back different
+ * is a bug in the codec, not a repaint.
  */
 const HAND_AUTHORED = [
   '4-Bar',
@@ -86,8 +94,9 @@ const HAND_AUTHORED = [
 
 function recolored(id: string, payload: string): string {
   const { service, settings } = buildMechanismFixture(payload);
-  // Only the drawn bodies: a slider's block is a Link but not a RealLink, and
-  // it is drawn black rather than in one of the six.
+  // Only the drawn bodies, which is also what narrows the type. A slider used
+  // to put a `Link` that is not a `RealLink` in here, drawn black rather than
+  // in one of the six; it is one joint now and brings no body of its own.
   const bodies = service.links.filter((link): link is RealLink => link instanceof RealLink);
   const grounds = new Set(
     service.joints

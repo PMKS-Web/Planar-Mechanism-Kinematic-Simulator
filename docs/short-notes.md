@@ -1021,8 +1021,10 @@ than two names for it.
 
 ### The compound path drops a welded *rod* leaf and keeps a welded *barrel* leaf
 
-`RealLink.getCompoundPathString` filters out `isSealedRodLeaf` -- a leaf recognized "through its
-pin: the joint that shares a SliderBlock with a sealed slider". A **barrel** leaf has no such
+`RealLink.getCompoundPathString` filters out `isSealedRodLeaf` -- a leaf recognized by holding a
+sealed `PrisJoint` among its own joints. (It used to be recognized "through its pin: the joint
+that shares a `SliderBlock` with a sealed slider"; Stage 1 made a slider one joint, so the leaf
+carries it directly and there is no twin to hop through.) A **barrel** leaf has no such
 joint (its two joints are the mount and the buried near end), so welding a bracket to a ram's
 *barrel* mount leaves the barrel in the compound's union: it is drawn once by the compound, in the
 bracket's color, and once by the cylinder skin over the top. With a random palette the two are
@@ -1039,6 +1041,28 @@ answer is *told* to the leaf instead: `RealLink.drawnByACylinderSkin`, set by
 one place it exists. It is cleared over the bars marked *last* time rather than over the drawing,
 because deleting a ram takes its bars out of `links` before the next resolve runs, and a bar that
 keeps the flag is a bar that stops drawing itself the moment it is welded into anything else.
+
+### `npm run template-payloads` rewrites the hand-authored templates too, not just the fenced ones
+
+`template-payloads.spec.ts` regenerates the block between its `<generated>` markers *and* runs
+`replaceHandAuthored` over the six templates that predate the generator, because color is assigned
+from structure and those six would otherwise be colored by whatever order somebody drew them in.
+It does that by decoding, repainting and re-encoding -- and its docstring used to promise the
+round trip came back byte-identical but for the six color fields, which was what made it safe to
+do to strings nothing else can regenerate.
+
+Stage 1 broke that promise quietly. The reader folds a three-object slider into one `PrisJoint`
+and the writer cannot emit the old spelling any more, so the first `npm run template-payloads`
+after the fold landed rewrote `Slider_Crank`'s **geometry** -- dropping its `YPCD` piston record
+and merging `C` with `D` -- and moved its rod's color as a consequence, since the fill rule reads
+structure. Nothing announced it. Two tests in `template-url.spec.ts` that pinned the old stored
+form went red, and that is the only reason it was caught.
+
+The normalization is wanted -- the dialog should hand out what the app writes today -- but a
+silent one is not. The docstring says so now, and
+`services/transcoding/url-slider-fold.spec.ts` is what proves the fold loses nothing: it builds
+the legacy trio and encodes it rather than pasting bytes that could drift from what the app used
+to produce.
 
 ### A ram's bore is a channel, and welding its barrel mount gave the channel to the bracket
 
