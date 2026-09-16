@@ -95,6 +95,41 @@ describe('JointTypeService', () => {
     expect(harness.active.selectedJoint).toBe(c);
   });
 
+  it('puts it back on the joint that replaced the one retyped, not on the one dropped', () => {
+    // The test above retypes a joint the reader has *not* selected, which is
+    // the one arrangement where this cannot go wrong. The panel is the other
+    // one: it changes the type of whatever is selected, so the joint put back
+    // is the joint just exchanged. Gaining a slot swaps it for one of the other
+    // class keeping its letter, so restoring the object restores the one the
+    // drawing has dropped.
+    const { harness, types, live } = bentBar();
+    harness.active.updateSelectedObj(live('B'));
+
+    types.set(live('B'), 'pin-in-slot');
+
+    expect(harness.active.selectedJoint).toBe(live('B'));
+    expect(harness.active.selectedJoint).toBeInstanceOf(PrisJoint);
+  });
+
+  it('takes a second press, read off the selection the way the panel reads it', () => {
+    // `EditPanelComponent.setJointType` reads `selectedJoint` on every press.
+    // Handed back a joint the drawing no longer holds, the second press reads
+    // the old flags off it, decides the drawing is already the type being asked
+    // for, and returns having written nothing -- no slot, and no history entry.
+    const { harness, types, live } = bentBar();
+    harness.active.updateSelectedObj(live('B'));
+
+    expect(types.set(harness.active.selectedJoint, 'pin-in-slot')).toBe(true);
+    expect(types.typeOf(harness.active.selectedJoint)).toBe('pin-in-slot');
+
+    const before = harness.saveCount();
+    expect(types.set(harness.active.selectedJoint, 'revolute')).toBe(true);
+
+    expect(types.typeOf(live('B'))).toBe('revolute');
+    expect(live('B') instanceof PrisJoint).toBe(false);
+    expect(harness.saveCount() - before).toBe(1);
+  });
+
   it('puts the slot on the joint it was asked about, not on the joint selected', () => {
     // Every edit ends by putting the selection back on what the reader
     // selected, and the slider edit reads the selection. Welded to Pin-in-slot

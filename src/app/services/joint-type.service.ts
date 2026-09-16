@@ -125,7 +125,18 @@ export class JointTypeService {
         })
       );
     } finally {
-      this.active.selectedJoint = selected;
+      // By letter here too, and for the same reason. The selection is normally
+      // the joint being retyped -- the panel changes the type of whatever is
+      // selected -- and gaining or losing a slot exchanges that joint for one
+      // of the other class. Put back as an object it is the joint the drawing
+      // has just dropped, and the panel reads the selection on every press: the
+      // next one would ask a joint that is no longer there, be told it already
+      // has the type wanted, and quietly do nothing.
+      //
+      // Written to the field rather than through `updateSelectedObj`, which
+      // replaces the whole part selection: a group changing type one joint at a
+      // time would be collapsed to the last one it touched.
+      this.active.selectedJoint = (selected && this.live(selected.id)) ?? selected;
     }
     const after = this.live(id);
     return after !== undefined && this.typeOf(after) === type;
