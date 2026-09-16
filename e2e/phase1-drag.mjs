@@ -590,7 +590,11 @@ await safe('a joint can be dropped onto the pin of a slider', async () => {
   await page.waitForTimeout(400);
 
   const loaded = await jointState(page);
-  record('the slider-crank loaded with a prismatic joint', loaded.length === 4, {
+  // Three, from a payload that spells four. This string was written when a
+  // slider was a prismatic joint, a coincident pin and a block joining them;
+  // the reader folds that trio into the one joint now (Stage 1 of
+  // `docs/joint-type-and-cylinder-plan.md`), and it keeps the pin's letter.
+  record('the slider-crank loaded with a prismatic joint', loaded.length === 3, {
     joints: loaded.map((j) => j.id),
   });
 

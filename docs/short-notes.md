@@ -1042,6 +1042,28 @@ one place it exists. It is cleared over the bars marked *last* time rather than 
 because deleting a ram takes its bars out of `links` before the next resolve runs, and a bar that
 keeps the flag is a bar that stops drawing itself the moment it is welded into anything else.
 
+### A mechanism standing only on guides has no loops, and its rates come from nowhere
+
+`requiredLoops` is empty for an elliptical trammel -- a bar with each end in a grounded guide and
+no pin anywhere. Loops are ground-to-ground chains, and a mechanism with no pinned point has no
+such chain to walk. Everything the velocity solver does with slots hangs off that list:
+`determineArrays` iterates `requiredLoops`, and all three `guideEnds` call sites sit inside it, so
+for this shape none of them runs and neither guide is given a column. The rates that come back
+then satisfy no slot at all -- the joint on the 90-degree guide is handed a velocity with a large
+X component, which is the one thing its own constraint forbids.
+
+Positions are fine, which is what makes it quiet: the mechanism solves, animates and draws
+correctly, and only the graphs are wrong. `e2e/template-graphs.mjs` is the only thing in the suite
+that asks -- it differences every plotted series against the position it derives from -- and it
+runs in the nightly lane, not the gate. `src/tests/verification/slider-rate-agreement.spec.ts`
+carries the reproduction now, skipped, so the next person starts from a second rather than a
+two-minute browser run.
+
+One harness trap comes with it: `ellipticalTrammelFixture(true, 1)` built through
+`buildMechanism` is `dead-position` with a single sample at *every* object scale tried, a quarter
+of `MODEL_SCALE` through four times it. The template payload encoded from that same fixture solves
+to 363 samples. Ask this mechanism anything through `TEMPLATE_LINKAGES`, not through the fixture.
+
 ### `npm run template-payloads` rewrites the hand-authored templates too, not just the fenced ones
 
 `template-payloads.spec.ts` regenerates the block between its `<generated>` markers *and* runs
