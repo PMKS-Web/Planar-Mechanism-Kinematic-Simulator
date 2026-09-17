@@ -20,6 +20,7 @@ import { wireGraph } from '../../test-utils/mechanism-harness';
 import { Force } from '../model/force';
 import { Coord } from '../model/coord';
 import { RevJoint } from '../model/joint';
+import { refuseJointOperation } from '../model/joint-operation-permission';
 import { RealLink } from '../model/link';
 import { MODEL_SCALE } from '../model/render-scale';
 import { MultiEditService } from './multi-edit.service';
@@ -31,7 +32,7 @@ import { SelectionBatchService } from './selection-batch.service';
  *
  * The claim being tested is not "these rows exist" but "the menu says what the
  * model says". Every refusal below is written somewhere else — in
- * `describeActuator`, in `canToggleWeld`, in `deleteLink`'s orphan rule — and
+ * `describeActuator`, in `refuseJointOperation`, in `deleteLink`'s orphan rule — and
  * the menu is only allowed to quote them. So the assertions check the reason
  * as well as the graying: a row grayed for the wrong reason is a row that will
  * send a student to fix the wrong thing.
@@ -213,7 +214,9 @@ describe('the right-click menu', () => {
       // T is a tracer on one link, so there is nothing at it to fuse -- and
       // the sentence is the one the refusal model writes, naming the joint.
       expect(welded.refusal?.long).toContain('T cannot become Welded');
-      expect(welded.refusal?.long).toContain(harness.grid.weldRefusal(parts.t)!.long);
+      expect(welded.refusal?.long).toContain(
+        refuseJointOperation(parts.t, 'weld', harness.grid.operationContext())!.long
+      );
     });
 
     it('carries the two held values for a selection of bars, and nothing else', () => {

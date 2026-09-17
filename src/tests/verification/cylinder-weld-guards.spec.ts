@@ -11,9 +11,20 @@ import { ContextMenuBuilderService } from '../../app/services/context-menu-build
 import { fixturePayload } from '../../test-utils/verification/fixture-gallery';
 import { cylinderBetween } from '../../test-utils/verification/slot-fixtures';
 import { MechanismFixture } from '../../test-utils/verification/fixture';
-import { RealJoint } from '../../app/model/joint';
+import { PrisJoint, RealJoint } from '../../app/model/joint';
+import { refuseJointOperation } from '../../app/model/joint-operation-permission';
 import { RealLink } from '../../app/model/link';
 import { MODEL_SCALE } from '../../app/model/render-scale';
+
+/**
+ * Why a weld toggle is refused at this joint: the permission model's answer in
+ * whichever direction the joint would actually go -- a Slide says it in
+ * `rotates`, every other joint in `isWelded`.
+ */
+function weldToggleRefusal(grid: GridUtilsService, joint: RealJoint) {
+  const welded = joint instanceof PrisJoint ? !joint.rotates : joint.isWelded;
+  return refuseJointOperation(joint, welded ? 'unweld' : 'weld', grid.operationContext());
+}
 
 /**
  * What a cylinder still refuses, now that its mounts refuse nothing.
@@ -126,15 +137,15 @@ describe('a cylinder mount is an ordinary joint now', () => {
     // Two different answers at two joints of the same part, and neither of
     // them is about cylinders: one has two links meeting on it and the other
     // has one.
-    expect(grid.canToggleWeld(jointNamed('W')), 'an ordinary elbow').toBe(true);
-    expect(grid.canToggleWeld(jointNamed('A')), 'a mount with a neighbor bar').toBe(true);
-    expect(grid.canToggleWeld(jointNamed('D')), 'the other mount').toBe(true);
+    expect(weldToggleRefusal(grid, jointNamed('W')), 'an ordinary elbow').toBeUndefined();
+    expect(weldToggleRefusal(grid, jointNamed('A')), 'a mount with a neighbor bar').toBeUndefined();
+    expect(weldToggleRefusal(grid, jointNamed('D')), 'the other mount').toBeUndefined();
 
     // And the same mount with its neighbor taken away has nothing to fuse.
     active.updateSelectedObj(jointNamed('G'));
     mechanism.deleteJoint();
-    expect(grid.canToggleWeld(jointNamed('A')), 'a mount on its own').toBe(false);
-    expect(grid.weldRefusal(jointNamed('A'))?.short).toBe('needs 2 links');
+    expect(weldToggleRefusal(grid, jointNamed('A')), 'a mount on its own').toBeDefined();
+    expect(weldToggleRefusal(grid, jointNamed('A'))?.short).toBe('needs 2 links');
   });
 
   it('welds both mounts into their neighbors, and the ram survives it', () => {
@@ -218,7 +229,10 @@ describe('a cylinder mount is an ordinary joint now', () => {
     mechanism.weldJoint();
     expect(compoundHolding('D')).toBeDefined();
 
-    expect(grid.weldRefusal(jointNamed('D')), 'unwelding a mount is allowed').toBeUndefined();
+    expect(
+      weldToggleRefusal(grid, jointNamed('D')),
+      'unwelding a mount is allowed'
+    ).toBeUndefined();
     mechanism.unWeldJoint(jointNamed('D'));
 
     expect(jointNamed('D').isWelded).toBe(false);
@@ -292,7 +306,7 @@ describe('and the inside of a cylinder is still sealed', () => {
 
   it('refuses a weld at every one of them, and says which kind of joint it is', () => {
     for (const { name, joint } of interiors()) {
-      const refusal = grid.weldRefusal(joint);
+      const refusal = weldToggleRefusal(grid, joint);
       expect(refusal, `a weld at ${name}`).toBeDefined();
       // All three for the same reason now. The slider used to be refused for
       // being the slider — a weld had to land on its coincident pin — and with
@@ -348,7 +362,7 @@ describe('and the inside of a cylinder is still sealed', () => {
 
   it('refuses to unweld the pin, which is what makes the part one thing', () => {
     const pin = ram().slider;
-    expect(grid.weldRefusal(pin)?.short).toBe('part is sealed');
+    expect(weldToggleRefusal(grid, pin)?.short).toBe('part is sealed');
 
     mechanism.unWeldJoint(pin);
 

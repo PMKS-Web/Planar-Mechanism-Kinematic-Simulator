@@ -1,11 +1,32 @@
+import { Injector } from '@angular/core';
 import { Coord } from '../model/coord';
-import { PrisJoint, RealJoint, RevJoint } from '../model/joint';
+import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
+import { JointOperation, refuseJointOperation } from '../model/joint-operation-permission';
 import { RealLink } from '../model/link';
 import { resolveSlotDropTarget } from '../model/drop-target';
+import { JointTypeService } from './joint-type.service';
 import { createMechanismHarness, wireGraph } from '../../test-utils/mechanism-harness';
 
 // Guards around three structural toggles: Weld on a joint with nothing to
 // fuse, slot candidates on a welded compound, and Slider on a grounded joint.
+
+type Harness = ReturnType<typeof createMechanismHarness>;
+
+/** Whether a weld in this direction would be offered: the permission model's answer. */
+function weldOffered(harness: Harness, joint: Joint, operation: JointOperation): boolean {
+  return (
+    refuseJointOperation(joint, operation, harness.service.gridUtils.operationContext()) ===
+    undefined
+  );
+}
+
+/** A `JointTypeService` over this harness's injector, the way its own spec builds one. */
+function jointTypes(harness: Harness): JointTypeService {
+  return Injector.create({
+    providers: [{ provide: JointTypeService, deps: [] }],
+    parent: harness.injector,
+  }).get(JointTypeService);
+}
 
 /** A bare link A-B with a tracer T riding on it. T connects exactly one link. */
 function linkWithTracer() {
@@ -42,17 +63,17 @@ function live(service: { joints: { id: string }[] }, id: string) {
 describe('weld on a joint that connects fewer than two links', () => {
   it('is not offered: the shared predicate declines a one-link joint', () => {
     const s = linkWithTracer();
-    expect(s.service.gridUtils.canToggleWeld(s.t)).toBe(false);
-    expect(s.service.gridUtils.canToggleWeld(s.a)).toBe(false);
+    expect(weldOffered(s, s.t, 'weld')).toBe(false);
+    expect(weldOffered(s, s.a, 'weld')).toBe(false);
   });
 
   it('is offered where there is something to fuse, and on any welded joint', () => {
     const s = twoBars();
-    expect(s.service.gridUtils.canToggleWeld(s.b)).toBe(true);
+    expect(weldOffered(s, s.b, 'weld')).toBe(true);
     s.service.weldJoint(s.b);
     expect(s.b.isWelded).toBe(true);
     // The same control is how the weld comes off again.
-    expect(s.service.gridUtils.canToggleWeld(s.b)).toBe(true);
+    expect(weldOffered(s, s.b, 'unweld')).toBe(true);
   });
 
   it('refuses the mutation outright, changing nothing and saving nothing', () => {
@@ -66,11 +87,12 @@ describe('weld on a joint that connects fewer than two links', () => {
     expect(s.saveCount()).toBe(0);
   });
 
-  it('tolerates a toggle with no resolvable selection', () => {
+  it('tolerates a retype with no resolvable selection', () => {
     const s = linkWithTracer();
-    // A stale selection: the menu can fire after the joint is gone.
-    s.active.updateSelectedObj(new RevJoint('Z', 9, 9));
-    expect(() => s.service.toggleWeldedJoint()).not.toThrow();
+    // A stale joint: the menu can fire after the joint is gone.
+    const stale = new RevJoint('Z', 9, 9);
+    s.active.updateSelectedObj(stale);
+    expect(() => jointTypes(s).set(stale, 'welded')).not.toThrow();
   });
 
   it('still makes a Slide on a slider carrying a single rider', () => {
@@ -85,7 +107,7 @@ describe('weld on a joint that connects fewer than two links', () => {
     const slider = live(s.service, 'T')!;
     expect(slider instanceof PrisJoint, 'the tracer became the slider').toBe(true);
     expect(slider.links.length, 'one rider, where there used to be a block as well').toBe(1);
-    expect(s.service.gridUtils.canToggleWeld(slider)).toBe(true);
+    expect(weldOffered(s, slider, 'weld')).toBe(true);
 
     s.service.weldJoint(slider);
     expect((slider as PrisJoint).rotates).toBe(false);
@@ -233,7 +255,7 @@ describe('weld on a grounded joint', () => {
     const s = twoBars();
     s.b.ground = true;
 
-    expect(s.service.gridUtils.canToggleWeld(s.b)).toBe(true);
+    expect(weldOffered(s, s.b, 'weld')).toBe(true);
     s.service.weldJoint(s.b);
 
     expect(s.b.isWelded).toBe(true);
@@ -267,7 +289,7 @@ describe('weld on a grounded joint', () => {
     // other and an input says they do. That one is grayed, not silent.
     const s = twoBars();
     s.b.input = true;
-    expect(s.service.gridUtils.canToggleWeld(s.b)).toBe(false);
+    expect(weldOffered(s, s.b, 'weld')).toBe(false);
     expect(s.b.canBeWelded()).toBe(false);
   });
 });

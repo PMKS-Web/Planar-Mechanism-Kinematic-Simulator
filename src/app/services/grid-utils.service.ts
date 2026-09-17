@@ -210,40 +210,6 @@ export class GridUtilsService {
     return joint.input || canDrive(joint);
   }
 
-  /**
-   * Whether the Weld control may be used on this joint, shared by the Edit
-   * panel's toggle and the right-click menu so the two cannot drift.
-   *
-   * Structural rule only: a weld fuses what meets at a joint, so a joint with
-   * fewer than two links — a tracer, a bar's free end — has nothing to fuse and
-   * the control is grayed rather than offered-then-refused. A grounded or
-   * driven joint keeps the enabled control and gets the model's refusal with
-   * its reason (§4.1's explained-refusal rule); an already-welded joint stays
-   * enabled because the same control is how it is unwelded.
-   */
-  canToggleWeld(joint: Joint): boolean {
-    return this.weldRefusal(joint) === undefined;
-  }
-
-  /**
-   * Why Weld is grayed on this joint, short and long.
-   *
-   * Both directions through one model: the control that welds is the control
-   * that unwelds, so it asks about whichever way it would actually go. The
-   * rule itself lives in `model/joint-operation-permission.ts`, which the menu,
-   * the panel, the group edit and the mutation all read, so a row cannot be
-   * grayed for a reason nothing enforces or offered against one that is.
-   */
-  weldRefusal(joint: Joint): { short: string; long: string } | undefined {
-    // The same two facts `jointTypeAt` reads: a Slide says it in `rotates` on
-    // the sliding joint, every other joint says it in `isWelded`. They were one
-    // bit before a slider became one joint, when the weld sat on the coincident
-    // pin -- so asking `isWelded` of a slider now offers Weld on a Slide.
-    const welded =
-      joint instanceof PrisJoint ? !joint.rotates : joint instanceof RealJoint && joint.isWelded;
-    return refuseJointOperation(joint, welded ? 'unweld' : 'weld', this.operationContext());
-  }
-
   /** Whether this joint may gain or lose a sliding block, and why not. */
   sliderRefusal(joint: Joint, wanted: boolean): { short: string; long: string } | undefined {
     return refuseJointOperation(

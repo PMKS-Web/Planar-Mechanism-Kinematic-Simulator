@@ -61,6 +61,11 @@
   font-weight: 500;
 }
 
+/** The chosen option's glyph, in the same ink as its label. */
+@mixin chosen-glyph($theme) {
+  color: mat.m2-get-color-from-palette(map.get(mat.m2-get-color-config($theme), 'primary'), 700);
+}
+
 /** The note that says the parts selected disagree. */
 @mixin mixed-ink($theme) {
   color: mat.m2-get-color-from-palette(map.get(mat.m2-get-color-config($theme), 'primary'), 700);

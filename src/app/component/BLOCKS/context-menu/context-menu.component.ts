@@ -75,19 +75,47 @@ export class ContextMenuComponent {
    * on the moment a reader who right-clicked reaches for the keys. Exactly what
    * `TopBarComponent.menuByKeyboard` does for the project menu; `menu-focus.mjs`
    * guards both.
+   *
+   * Read in the initializer, not in `ngAfterViewInit`: the template binds it,
+   * so writing it after the first check mutates an already-checked binding.
    */
-  protected byKeyboard = false;
+  protected byKeyboard = lastContextMenuWasKeyboard();
 
-  /** A key pressed in here is a reader who wants to see where they are. */
+  /**
+   * A key pressed in here is a reader who wants to see where they are -- and
+   * the card's keys are the card's. Stopped here the way `TopBarComponent`
+   * stops the project menu's, so the canvas never answers a key aimed at an
+   * open card; the shortcuts service carries no menu rule of its own.
+   */
   protected onKey(event: KeyboardEvent): void {
+    event.stopPropagation();
     // Escape only closes the card, so it is not a reason to paint a ring on the
     // way out.
     if (event.key !== 'Escape') this.byKeyboard = true;
   }
 
   ngAfterViewInit() {
-    this.byKeyboard = lastContextMenuWasKeyboard();
     this.contextMenu = document.querySelector('#contextMenu') as HTMLElement;
+    // A menu opened with a pointer arms nothing (`docs/ui-style-guide.md`):
+    // the CDK moves focus to the first value as it opens, and without this the
+    // first Space or Enter -- the play/pause reflex -- fires it. Swallowed at
+    // capture, before the item sees it, and the ring comes on instead, so what
+    // the next press fires is always something the reader can see. Opened from
+    // the keyboard the ring is already on and the first press fires, as drawn.
+    // Modified presses are not the CDK item's (it ignores those too) and pass
+    // through to whatever the reader was holding the modifier for.
+    this.contextMenu.addEventListener(
+      'keydown',
+      (event) => {
+        if (this.byKeyboard) return;
+        if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+        if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar') return;
+        event.preventDefault();
+        event.stopPropagation();
+        this.byKeyboard = true;
+      },
+      true
+    );
     // Measured in the same tick the card is revealed, not in ngAfterViewInit:
     // the overlay has not been moved to the pointer yet at that point, so the
     // rect read there is the card sitting at the origin.

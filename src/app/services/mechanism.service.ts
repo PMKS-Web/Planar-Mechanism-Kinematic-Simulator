@@ -2516,18 +2516,6 @@ export class MechanismService {
     );
   }
 
-  toggleWeldedJoint() {
-    const joint = this.joints.find((j) => j.id === this.activeObjService.selectedJoint?.id) as
-      RealJoint | undefined;
-    if (!joint) return;
-
-    if (!joint.isWelded) {
-      this.weldJoint();
-    } else if (joint.isWelded) {
-      this.unweldSelectedJoint();
-    }
-  }
-
   private createNewCompoundLink(linksToWeld: RealLink[]): RealLink {
     const leaves = linksToWeld.flatMap((link) =>
       link.subset.length > 0
@@ -6530,12 +6518,17 @@ export class MechanismService {
     const staged = near !== undefined && this.beginPosedEdit(near);
     if (!staged) return work();
     const key = this.seedFromDisplay!;
+    // Restored, not cleared: a group action stages once for the loop and each
+    // part's edit stages again inside it, and clearing here would drop the
+    // outer gesture's hold mid-loop -- every part after the first minting its
+    // own history entry. A callee must not spend its caller's hold.
+    const outerHeld = this.savesHeld;
     this.savesHeld = true;
     let result: T;
     try {
       result = work();
     } finally {
-      this.savesHeld = false;
+      this.savesHeld = outerHeld;
     }
     this.seedFromDisplay = null;
     // A settle that re-anchors saves on its way through, as the rebuild it runs

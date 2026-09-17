@@ -153,7 +153,7 @@
         @include look.chosen-ink($theme);
 
         mat-icon {
-          color: var(--brand);
+          @include look.chosen-glyph($theme);
         }
       }
 

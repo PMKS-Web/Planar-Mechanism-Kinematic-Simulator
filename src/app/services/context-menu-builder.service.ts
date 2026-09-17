@@ -25,6 +25,7 @@ import { ActiveObjService } from './active-obj.service';
 import { KeyboardShortcutsService } from './keyboard-shortcuts.service';
 import { SynthesisBuilderService } from './synthesis/synthesis-builder.service';
 import { EditPermissionService } from './edit-permission.service';
+import { MenuPosePolicy } from '../model/edit-permission';
 import { SelectedTabService, TabID } from '../selected-tab.service';
 import { VectorQuantity, VECTOR_ICON, VECTOR_LABEL } from '../model/vector-trace';
 import { SelectionBatchService } from './selection-batch.service';
@@ -53,8 +54,9 @@ export type MenuTarget = Joint | Link | Force | SynthesisPose | string;
  *
  * One place, because the menu's whole claim is that it says the same thing the
  * panels and the drag ring say. Every refusal below is fetched from the model
- * that enforces it — `describeActuator` for a driven joint, `weldRefusal` for a
- * weld, `locksHolding` for a lock — rather than written out again here, so the
+ * that enforces it — `describeActuator` for a driven joint,
+ * `refuseJointOperation` for a weld or a slider, `locksHolding` for a lock —
+ * rather than written out again here, so the
  * three surfaces cannot end up disagreeing about what is possible.
  *
  * The shape is a fixed ladder in every case: Attach, State, Machine, and a
@@ -570,24 +572,39 @@ export class ContextMenuBuilderService {
    * one the menu grays, in the same words.
    */
   private jointTypeChoice(joint: RealJoint): MenuChoice {
-    return this.choiceFrom(this.jointTypes.choiceFor(joint), (type) =>
-      this.jointTypes.set(joint, type)
+    // The panel's rule, not the rows': a change of type stages against the
+    // pose on screen and re-anchors (`JointTypeService.set`), so it is live
+    // wherever the panel's `structure` action is -- including a paused Edit
+    // pose -- and refused with it everywhere else.
+    return this.choiceFrom(
+      this.jointTypes.choiceFor(joint),
+      (type) => this.jointTypes.set(joint, type),
+      'preserve',
+      () => this.permission.refusal('structure') ?? undefined
     );
   }
 
   /** The same choice for a whole selection of joints, refused as a group. */
   private selectionJointTypeChoice(refs: readonly SelectedPartRef[]): MenuChoice | undefined {
     const choice = this.multiEdit.jointTypeChoice(refs);
+    // At the start only, matching the group panel's `structureIsFrozen`: a
+    // group retype stages per part, and relaxing this door means relaxing both.
     return choice
-      ? this.choiceFrom(choice, (type) => this.multiEdit.setJointType(refs, type))
+      ? this.choiceFrom(choice, (type) => this.multiEdit.setJointType(refs, type), 'start')
       : undefined;
   }
 
-  private choiceFrom(choice: JointTypeChoice, act: (type: JointType) => void): MenuChoice {
+  private choiceFrom(
+    choice: JointTypeChoice,
+    act: (type: JointType) => void,
+    posePolicy: MenuPosePolicy,
+    poseGuard?: () => MenuRefusal | undefined
+  ): MenuChoice {
     return {
       label: 'Joint Type',
       chosen: choice.chosen,
-      posePolicy: 'start',
+      posePolicy,
+      poseGuard,
       // The one thing about a slot the drawing cannot show, said on the chosen
       // value's hover rather than printed under the grid.
       fault: choice.invalid
@@ -1403,17 +1420,24 @@ export class ContextMenuBuilderService {
 
   /** Apply the same pose-preservation rules in every mode, including at activation. */
   private freezeWhileRunning(model: ContextMenuModel): ContextMenuModel {
-    // The choice is a change of topology, so it is refused wherever a Slider or
-    // a Welded row would have been -- value by value, since each value carries
-    // its own reason, and rechecked when one is pressed.
+    // The choice is stamped value by value, since each value carries its own
+    // reason, and rechecked when one is pressed. The single joint's choice
+    // follows the panel's `structure` rule through its guard; the group's
+    // stays at the start with the group panel.
     const choice = model.choice;
     if (choice) {
-      for (const option of choice.options) {
-        const refusal = this.permission.menuRefusal(choice.posePolicy);
-        if (refusal && !option.refusal) option.refusal = refusal;
+      const poseRefusal = (): MenuRefusal | null =>
+        this.permission.menuRefusal(choice.posePolicy) ??
+        (!this.mechanism.isAtStartPose() ? (choice.poseGuard?.() ?? null) : null);
+      for (const [index, option] of choice.options.entries()) {
+        const refusal = poseRefusal();
+        // Everything but the chosen value: pressing that is a no-op (`set`
+        // returns before staging), and the panel draws it at full ink whatever
+        // the pose -- "the chosen one never is" refused, on both surfaces.
+        if (refusal && !option.refusal && index !== choice.chosen) option.refusal = refusal;
         const action = option.action;
         option.action = () => {
-          if (!this.permission.menuRefusal(choice.posePolicy)) action();
+          if (!poseRefusal()) action();
         };
       }
     }

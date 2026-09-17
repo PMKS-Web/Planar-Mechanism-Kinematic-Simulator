@@ -281,6 +281,70 @@ const ringInCard = (page) =>
   await context.close();
 }
 
+// --- Space right after a right-click arms the value, not fires it ------------
+// The CDK moves focus to the first value as the card opens, and Space is the
+// play/pause key: before the swallow, a reader who right-clicked a joint and
+// reached for the transport retyped it instead. The joint is Prismatic here on
+// purpose -- firing Revolute on a Revolute joint is a no-op, so only a joint
+// the first value would actually change can tell the swallow from the fire.
+{
+  const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+  await startQuiet(context);
+  const page = await context.newPage();
+  page.setDefaultTimeout(15000);
+  await openMechanism(page, `${BASE}/?${TEMPLATE_LINKAGES['4-Bar']}`);
+  await page.waitForTimeout(400);
+  await page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    grid.activeObjService.updateSelectedObj(grid.mechanismSrv.joints.find((j) => j.id === 'B'));
+  });
+  await page.waitForTimeout(400);
+  await page.locator('app-edit-panel segmented-block button', { hasText: 'Prismatic' }).click();
+  await page.waitForTimeout(700);
+
+  const at = await page.locator('#joint_B').boundingBox();
+  await page.mouse.click(at.x + at.width / 2, at.y + at.height / 2, { button: 'right' });
+  await page.locator('#contextMenu.show').waitFor();
+  await page.waitForTimeout(300);
+
+  const jointState = () =>
+    page.evaluate(() => {
+      const grid = ng.getComponent(document.querySelector('app-new-grid'));
+      const joint = grid.mechanismSrv.joints.find((one) => one.id === 'B');
+      return {
+        slider: joint.constructor.name === 'PrisJoint',
+        entries: grid.saveHistoryService.history.length,
+      };
+    });
+  const before = await jointState();
+
+  await page.keyboard.press(' ');
+  await page.waitForTimeout(300);
+  const armed = await ringInCard(page);
+  const afterFirst = await jointState();
+  check(
+    'Space after a right-click rings the focused value and fires nothing',
+    before.slider === true &&
+      armed.on === 'Revolute' &&
+      armed.ring === RING &&
+      afterFirst.slider === true &&
+      afterFirst.entries === before.entries &&
+      (await page.evaluate(() => !!document.querySelector('#contextMenu.show'))),
+    JSON.stringify({ armed, before, afterFirst })
+  );
+
+  // And now that the ring says what Space will hit, the next press fires it.
+  await page.keyboard.press(' ');
+  await page.waitForTimeout(400);
+  const afterSecond = await jointState();
+  check(
+    'the second press fires, and the joint is Revolute',
+    afterSecond.slider === false && afterSecond.entries === before.entries + 1,
+    JSON.stringify({ before, afterSecond })
+  );
+  await context.close();
+}
+
 await browser.close();
 writeFileSync(`${OUT}/report.json`, JSON.stringify({ results }, null, 2));
 const failed = results.filter((r) => !r.pass).length;

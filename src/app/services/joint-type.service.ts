@@ -84,9 +84,9 @@ export class JointTypeService {
    * so they are one entry in the history. Staged once against the pose on
    * screen when the machine is parked away from its start (the inner edits see
    * that staging and do not stage again), and saved once at the end. The batch
-   * runs *inside* the staging: a staging holds saves and lets the hold go when
-   * it settles, so a batch wrapped around one would find its hold already gone
-   * and write a second entry.
+   * runs *inside* the staging by convention; a staging restores an outer hold
+   * rather than dropping it, so a batch wrapped around one (a group retype)
+   * still earns its single entry.
    *
    * The slider edit reads the selection, so the selection is pointed at the
    * joint for it (`run`) and put back afterward. Returns whether the joint is
@@ -117,6 +117,13 @@ export class JointTypeService {
           // the choice draws every type standing on the frame (D2) -- so a
           // change of type keeps it. Taking the slot away takes the ground it
           // carried with it, and that is given back here.
+          //
+          // Grounding wins over a restored carrier on purpose: a pin that is
+          // grounded while its stash names a carrier was grounded *after* the
+          // stash was taken, so the switch states the newer intent, and the
+          // slot is fixed at the carrier's angle rather than invented. Skipping
+          // this when a carrier was restored would flip the switch off from a
+          // press on the choice, and only when a stash happened to exist.
           const now = this.live(id);
           if (now && grounded && !this.isGrounded(now)) {
             this.active.selectedJoint = now;

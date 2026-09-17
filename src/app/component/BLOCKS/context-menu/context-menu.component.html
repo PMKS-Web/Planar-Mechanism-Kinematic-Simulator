@@ -38,7 +38,10 @@
   <!-- What the part can be, above the ladder: one question, so a grid rather
        than a row each (D8). Every value is a menu item, because inside a CDK
        menu that is what the arrow keys reach, and a radio item is what says
-       which one is chosen. -->
+       which one is chosen. Up/Down walk the four cells linearly, not
+       spatially: the CDK key manager is vertical-only, so Down from Revolute
+       lands on Prismatic, the cell to its right. Correct per the APG (a menu
+       is a list), even though the presentation is a grid. -->
   @if (model().choice; as choice) {
     <div class="cm-choice" cdkMenuGroup [attr.aria-label]="choice.label">
       @for (option of choice.options; track $index) {

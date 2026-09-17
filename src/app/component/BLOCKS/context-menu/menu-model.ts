@@ -114,6 +114,8 @@ export interface MenuChoice {
   fault?: MenuRefusal;
   /** What the choice needs of the pose, as a row states it. */
   posePolicy: MenuPosePolicy;
+  /** Per-choice mapping requirements, rechecked when a value is pressed. */
+  poseGuard?: () => MenuRefusal | undefined;
 }
 
 /** One rung of the ladder. The label is dropped on an unlabeled footer. */
@@ -171,12 +173,14 @@ export function trackContextMenuPointer(): void {
   document.addEventListener(
     'contextmenu',
     (event) => {
-      lastPointer = { x: (event as MouseEvent).clientX, y: (event as MouseEvent).clientY };
+      const mouse = event as MouseEvent;
+      lastPointer = { x: mouse.clientX, y: mouse.clientY };
       // The right button names itself; the context-menu key and Shift-F10 send
-      // the same event with button 0. A held finger is a right-click here too,
-      // because `onLongPress` dispatches one with `button: 2` -- so this is the
-      // one question that separates a reader who pointed from one who typed.
-      lastWasKeyboard = (event as MouseEvent).button !== 2;
+      // the same event with button 0. Safari is the exception: a Ctrl+click --
+      // a right-click -- arrives with button 0 and ctrlKey set, so that pair
+      // reads as a pointer too. A held finger is a right-click here as well,
+      // because `onLongPress` dispatches one with `button: 2`.
+      lastWasKeyboard = mouse.button !== 2 && !(mouse.button === 0 && mouse.ctrlKey);
     },
     true
   );

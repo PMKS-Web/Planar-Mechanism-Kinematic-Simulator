@@ -325,9 +325,11 @@ export class KeyboardShortcutsService {
     if (this.typingInAField(event)) return;
     // And Space or Enter on something that answers them itself belongs to it.
     if (this.targetAnswersKey(event)) return;
-    // And a key pressed into an open menu belongs to the menu, which answers
-    // the arrows by being one.
-    if (this.insideAnOpenMenu(event)) return;
+    // An open menu's keys never reach us: the card and the project menu each
+    // stop them (`ContextMenuComponent.onKey`, `TopBarComponent.onMenuKey`),
+    // the way a popover says the canvas is covered. Asked there rather than
+    // here so the phone's view sheet -- `role="menu"` with plain buttons that
+    // keep focus after a tap -- does not take the shortcuts quiet with it.
     // And a key pressed while something stands over the canvas belongs to that
     // thing, or to nothing. These are the canvas's keys: with the Templates
     // dialog open, Delete was removing the selected joint behind it, out of
@@ -403,21 +405,4 @@ export class KeyboardShortcutsService {
     return target.getAttribute('role') === 'button';
   }
 
-  /**
-   * Whether the keystroke was aimed at a menu standing open over the canvas.
-   *
-   * The same rule as a dialog, and for the same reason: what is over the canvas
-   * gets the keys. Walking the items with the arrows is not a shortcut anybody
-   * assigned, it is what a menu is, and the CDK moves focus into one as it
-   * opens. This service answered the arrows wherever they were pressed -- and a
-   * right-click selects what it opened the card on, so Down nudged that joint
-   * behind the card while the card closed itself on the shortcut it had fired.
-   *
-   * Asked of the focused element rather than of any open overlay: a card can
-   * stand while focus is elsewhere, and those keys are still the canvas's.
-   */
-  private insideAnOpenMenu(event: KeyboardEvent): boolean {
-    const target = event.target;
-    return target instanceof Element && !!target.closest('[role="menu"]');
-  }
 }

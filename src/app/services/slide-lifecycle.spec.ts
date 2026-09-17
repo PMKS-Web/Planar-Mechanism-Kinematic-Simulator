@@ -1,6 +1,7 @@
 import '../model/joint';
 import { Coord } from '../model/coord';
 import { PrisJoint, RealJoint, RevJoint } from '../model/joint';
+import { refuseJointOperation } from '../model/joint-operation-permission';
 import { RealLink } from '../model/link';
 import { slideAssemblyAt } from '../model/slide-assembly';
 import { createMechanismHarness, wireGraph } from '../../test-utils/mechanism-harness';
@@ -60,7 +61,9 @@ describe('welding a slider', () => {
     // link of its own -- so a plain length test would refuse this.
     const s = sliderWithRider();
 
-    expect(s.service.gridUtils.canToggleWeld(s.c)).toBe(true);
+    expect(
+      refuseJointOperation(s.c, 'weld', s.service.gridUtils.operationContext())
+    ).toBeUndefined();
   });
 
   it('is refused on a slider with nothing riding it', () => {
@@ -93,7 +96,10 @@ describe('welding a slider', () => {
     s.service.weldJoint();
 
     expect(types.getWelded(s.c)).toBe(true);
-    expect(types.canToggleWeld(s.c), 'the same control takes it off').toBe(true);
+    expect(
+      refuseJointOperation(s.c, 'unweld', s.service.gridUtils.operationContext()),
+      'the same control takes it off'
+    ).toBeUndefined();
   });
 
   it('unwelds again without needing a compound to take apart', () => {
