@@ -264,14 +264,18 @@ export class MechanismBuilder {
       slider.mass = block.mass;
       slider.rotates = !pin.isWelded;
       // The pin's weld is also the slider's weld-point record -- but only
-      // where a compound stands at the joint to be the record of. A legacy
+      // where a compound is fused *at* the joint to be the record of. A legacy
       // Slide on two riders fused them into a compound that round-trips in
-      // the link records; a single rider builds none, and a compound merely
-      // passing through an unwelded pin is not this joint's weld.
-      const compoundStandsHere = links.some(
-        (link) => link instanceof RealLink && link.subset.length > 0 && link.joints.includes(pin)
+      // the link records; a single rider builds none. And belonging to a
+      // compound is not being its weld: the fusion is where two of its leaves
+      // meet, so a joint one leaf merely passes through -- O in MNO={NO,NM},
+      // whose leaves meet at N -- claims no weld of its own.
+      const compoundFusedHere = links.some(
+        (link) =>
+          link instanceof RealLink &&
+          link.subset.filter((leaf) => leaf.joints.includes(pin)).length >= 2
       );
-      slider.isWelded = pin.isWelded && compoundStandsHere;
+      slider.isWelded = pin.isWelded && compoundFusedHere;
       // Both records carry these, and which one holds the live value depends on
       // how old the URL is: making a slider moved the pin's ground and input
       // onto the slot, but a drawing saved before that move kept them on the

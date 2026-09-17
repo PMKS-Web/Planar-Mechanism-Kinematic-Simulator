@@ -278,6 +278,43 @@ describe('folding a three-object slider into one joint', () => {
     ).toBe(true);
   });
 
+  it('claims no weld where a compound merely passes through the pin', () => {
+    // The STRESS drawing's O: a welded pin, so a Slide -- but the compound it
+    // belongs to fuses its leaves at N, and O is touched by one leaf. Belonging
+    // is not being the weld, so the slider reads `rotates` and no flag -- a
+    // Slide, not a compound nothing can split.
+    const a = new RevJoint('A', 0, 0);
+    const pin = new RevJoint('B', 2 * S, 0);
+    const slider = new PrisJoint('P', 2 * S, 0, false, true);
+    slider.angle_rad = 0;
+    const c = new RevJoint('C', 3 * S, 2 * S);
+    const d = new RevJoint('D', 5 * S, 2 * S);
+    pin.isWelded = true;
+
+    const ab = new RealLink('AB', [a, pin], 2, 3, new Coord(1 * S, 0));
+    const bc = new RealLink('BC', [pin, c], 4, 5, new Coord(2.5 * S, 1 * S));
+    const cd = new RealLink('CD', [c, d], 4, 5, new Coord(4 * S, 1 * S));
+    // Fused at C, where its leaves meet; B is on one leaf only.
+    const compound = new RealLink('BCD', [pin, c, d], 6, 8, new Coord(3 * S, 1 * S));
+    compound.subset = [bc, cd];
+    const block = new Link('BP', [pin, slider], 1);
+
+    [a, pin].forEach((joint) => joint.links.push(ab));
+    [pin, c].forEach((joint) => joint.links.push(bc));
+    [c, d].forEach((joint) => joint.links.push(cd));
+    [pin, c, d].forEach((joint) => joint.links.push(compound));
+    pin.links.push(block);
+    slider.links.push(block);
+
+    const target = rebuild(
+      encode({ joints: [a, pin, slider, c, d], links: [ab, compound, block], forces: [] })
+    );
+    const folded = target.joints.find((joint) => joint.id === 'B') as PrisJoint;
+
+    expect(folded.rotates).toBe(false);
+    expect(folded.isWelded).toBe(false);
+  });
+
   it('writes the slider’s weld in the short form and reads it back', () => {
     const once = rebuild(encode(twoRiderSlide()));
     const slider = once.joints.find((joint) => joint.id === 'B') as PrisJoint;
