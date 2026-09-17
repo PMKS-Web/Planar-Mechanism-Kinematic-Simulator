@@ -1,7 +1,8 @@
 # Joint type as one choice, sliders as one joint, cylinders as a sealed slide
 
 > **Status:** Partly built — plan of record from September 15, 2026. It replaces the
-> bodies-and-joints migration (`docs/bodies-and-joints-plan.md`), which Stage R retires.
+> bodies-and-joints migration (planned on the unmerged `bodies-and-joints-plan` branch, never on
+> `staging`), which Stage R retires.
 > **Stages R, 0 and 1 are built:** a joint's type is one choice of four in the Edit panel, in the
 > group panel and at the top of the right-click menu, and a slider is a single `PrisJoint` carrying
 > its own mass and `rotates`. Stage 2 is not started. Everything
@@ -81,8 +82,8 @@ on the migration. Retire it in one PR:
   (the migration is superseded by this plan; the branch and its verified solver stay as reference).
 - `docs/README.md`: move those entries under a "Retired" note; add this plan under Design records.
 - `CLAUDE.md`: remove any sentence about the native route, provider tokens or S5–S8.
-- On GitHub: close PR #13 with a comment naming this plan; keep `bodies-and-joints-plan`,
-  `backup/pr13-before-seam-20260914` and `backup/bodies-and-joints-before-staging-20260913`.
+- On GitHub: close PR #13 with a comment naming this plan; keep `bodies-and-joints-plan` and
+  `backup/pr13-before-seam-20260914`.
 - Memory/agent notes: nothing else.
 
 ## Stage 0 — the choice, on today's model
