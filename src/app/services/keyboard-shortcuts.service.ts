@@ -404,5 +404,4 @@ export class KeyboardShortcutsService {
     if (tag === 'A' && target.hasAttribute('href')) return true;
     return target.getAttribute('role') === 'button';
   }
-
 }
