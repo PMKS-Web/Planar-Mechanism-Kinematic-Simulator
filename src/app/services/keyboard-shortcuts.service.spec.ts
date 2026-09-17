@@ -59,7 +59,14 @@ describe('KeyboardShortcutsService', () => {
     expect(seen).toEqual([true, false]);
   });
 
-  it('leaves the arrows to a menu standing open, and does not swallow them', () => {
+  it('answers a menu key nothing stopped: the card stops its own keys', () => {
+    // This service carries no menu rule. One used to live here, matching
+    // `role="menu"` -- which the phone's view sheet also wears, with plain
+    // buttons that keep focus after a tap, so opening it took the shortcuts
+    // quiet with it. The card and the project menu stop their own keys instead
+    // (`ContextMenuComponent.onKey`, `TopBarComponent.onMenuKey`), and what
+    // reaches this service is answered. `e2e/menu-focus.mjs` guards that half
+    // in the browser; this half is that a bare menu node stops nothing.
     const { service, heard } = setup();
     service.whenArrowsNudge(() => true);
     const menu = document.createElement('div');
@@ -68,13 +75,17 @@ describe('KeyboardShortcutsService', () => {
     item.setAttribute('role', 'menuitemradio');
     menu.appendChild(item);
     document.body.appendChild(menu);
-    // A right-click selects what it opened its card on, so Down was a nudge:
-    // the joint moved behind the card, and the card closed itself on the way.
-    const event = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true });
+    const event = new KeyboardEvent('keydown', {
+      key: 'ArrowDown',
+      bubbles: true,
+      cancelable: true,
+    });
     item.dispatchEvent(event);
-    expect(heard).toEqual([]);
-    // Not answered *and* not prevented: the menu is the one that needs it.
-    expect(event.defaultPrevented).toBe(false);
+    // Answered, because no card stands over this bare node to stop the key on
+    // its way here. In the app the card does, so Down walks the items and the
+    // joint behind the card never moves.
+    expect(heard).toEqual(['edit.nudgeDown']);
+    expect(event.defaultPrevented).toBe(true);
     menu.remove();
   });
 
