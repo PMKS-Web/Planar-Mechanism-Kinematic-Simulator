@@ -2982,8 +2982,15 @@ export class MechanismService {
 
     // Ground and input are things the user set deliberately. A merge that
     // dropped one would quietly change what the mechanism is, so the survivor
-    // inherits both.
-    target.ground = target.ground || source.ground;
+    // inherits both. Through the setter on a slider: a floating slot and a
+    // ground cannot coexist, and the grounded-source case is refused in
+    // `refuseJointMerge` before anything moves, so a floating target here is
+    // only ever joined by an ungrounded source and there is nothing to carry.
+    if (target instanceof PrisJoint) {
+      if (source.ground && !target.isFloating) target.groundAt(target.slotAngle);
+    } else {
+      target.ground = target.ground || source.ground;
+    }
     target.input = target.input || source.input;
 
     this.links.forEach((link) => this.replaceJointInLink(link, source, target));
@@ -3018,9 +3025,11 @@ export class MechanismService {
       this.activeObjService.updateSelectedObj(target);
     }
 
-    // A refusal here is not silent: canBeWelded declines a grounded, driven, or
-    // slider-carrying joint, and the caller reports the survivor's actual weld
-    // state rather than assuming the weld took.
+    // A refusal here is not silent: a driven survivor cannot be welded, and
+    // the caller reports the survivor's actual weld state rather than assuming
+    // the weld took. Fusing a Pin-in-slot slider is refused in
+    // `refuseJointMerge` before anything moves, so a weld carried here only
+    // ever lands on a pin or on a Slide, where it changes no type.
     if (shouldWeld) this.weldTopology(target);
 
     // No save here: a merge is the tail of a drag gesture, and the gesture owns

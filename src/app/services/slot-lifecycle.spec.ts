@@ -125,6 +125,24 @@ describe('a slot losing what defines it', () => {
     expect(s.service.joints.map((joint) => joint.id)).toContain('D');
   });
 
+  it('refuses a grounded joint, which has nowhere to put its ground on a floating slot', () => {
+    // Grounding the slider instead would destroy the slot the reader aimed
+    // at, and dropping the ground would change the machine without saying
+    // so -- so the merge is refused and the ground stays where it was. Onto
+    // a dangling slider there is no slot to destroy and the ground carries
+    // across; see `mechanism.service.spec.ts`.
+    const s = slottedLever();
+    const spare = new RevJoint('Z', 5, 5, false, true);
+    const w = new RevJoint('W', 7, 5);
+    s.service.joints.push(spare, w);
+    s.service.links.push(new RealLink('ZW', [spare, w], 1, 1, new Coord(6, 5)));
+    wireGraph(s.service);
+
+    expect(s.service.mergeJoints(spare, s.slot)).toBe('ground-cannot-survive');
+    expect(s.slot.isFloating, 'the slot is left alone').toBe(true);
+    expect(s.service.joints.map((joint) => joint.id)).toContain('Z');
+  });
+
   it('dangles when a defining joint is deleted outright', () => {
     // Deleting a joint is the one route to a stranded slot that goes through
     // neither mergeJoints nor deleteLink -- it used to end at updateMechanism,

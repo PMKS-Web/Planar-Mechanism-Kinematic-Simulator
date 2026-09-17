@@ -153,6 +153,92 @@ describe('merging onto sliders and welds', () => {
     expect(refuseJointMerge(x, b)).toBeUndefined();
   });
 
+  /** A Pin-in-slot B floating on the lever C-D, and a grounded pin E on its own bar. */
+  function floatingSliderRig() {
+    const a = new RevJoint('A', 0, 0);
+    const b = new PrisJoint('B', 1, 0);
+    const c = new RevJoint('C', 4, 0);
+    const d = new RevJoint('D', 6, 0);
+    const e = new RevJoint('E', 9, 0, false, true);
+    const f = new RevJoint('F', 11, 0);
+    connect('AB', [a, b]);
+    const carrier = connect('CD', [c, d]);
+    connect('EF', [e, f]);
+    b.slideOn(carrier, c, d);
+    return { a, b, c, d, e, f };
+  }
+
+  it('refuses a grounded pin dropped onto a floating slider, whose slot has nowhere to put the ground', () => {
+    // The survivor would ride the slot. Grounding the slider instead would
+    // destroy the slot the reader aimed at, and dropping the ground would
+    // change the machine without saying so -- so the ground stays where it was.
+    const { b, e } = floatingSliderRig();
+
+    expect(refuseJointMerge(e, b)).toBe('ground-cannot-survive');
+  });
+
+  it('allows an ungrounded pin onto a floating slider, where there is no ground to lose', () => {
+    const { b, e } = floatingSliderRig();
+    e.ground = false;
+
+    expect(refuseJointMerge(e, b)).toBeUndefined();
+  });
+
+  it('allows a grounded pin onto a grounded slider, where the ground carries across', () => {
+    const { b, c } = pinAndSlider();
+    c.ground = true;
+
+    expect(refuseJointMerge(c, b)).toBeUndefined();
+  });
+
+  it('allows a grounded pin onto a dangling slider, which the merge grounds in place', () => {
+    const a = new RevJoint('A', 0, 0);
+    const p = new PrisJoint('P', 1, 0);
+    const e = new RevJoint('E', 9, 0, false, true);
+    connect('AP', [a, p]);
+    connect('EF', [e, new RevJoint('F', 11, 0)]);
+    expect(p.isDangling).toBe(true);
+
+    expect(refuseJointMerge(e, p)).toBeUndefined();
+  });
+
+  it('refuses a welded pin onto a Pin-in-slot, which the weld would fuse into a Slide', () => {
+    // The weld has to live somewhere, and on a slider that is `rotates` -- so
+    // carrying it across would rebuild the constraints as a side effect of a
+    // drag that reads as "attach these two". Unwelding first keeps the type.
+    const { b, e } = floatingSliderRig();
+    e.isWelded = true;
+    e.ground = false;
+
+    expect(refuseJointMerge(e, b)).toBe('weld-would-fuse-slider');
+  });
+
+  it('refuses a plain pin onto a welded Pin-in-slot, which would fuse the same way', () => {
+    const { b, e } = floatingSliderRig();
+    b.isWelded = true;
+    e.ground = false;
+
+    expect(refuseJointMerge(e, b)).toBe('weld-would-fuse-slider');
+  });
+
+  it('allows a welded pin onto a Slide, where the weld changes no type', () => {
+    const { b, e } = floatingSliderRig();
+    b.rotates = false;
+    e.isWelded = true;
+    e.ground = false;
+
+    expect(refuseJointMerge(e, b)).toBeUndefined();
+  });
+
+  it('allows a plain pin onto a welded Slide, which re-welds as onto a pin', () => {
+    const { b, e } = floatingSliderRig();
+    b.rotates = false;
+    b.isWelded = true;
+    e.ground = false;
+
+    expect(refuseJointMerge(e, b)).toBeUndefined();
+  });
+
   it('offers a slider as a drop target', () => {
     // The slider is the joint with the hitbox now. Narrowing the candidate
     // filter to `RevJoint`, which is what it read while the pin beside the

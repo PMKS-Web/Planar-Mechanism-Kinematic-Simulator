@@ -483,6 +483,26 @@ describe('MechanismService merging onto sliders and welds', () => {
     expect(slider.ground).toBe(true);
   });
 
+  it('grounds a dangling slider when a grounded joint is merged onto it', () => {
+    // The ground has somewhere to go here: the slot has no direction yet, so
+    // the merge grounds it in place through the setter, which is what keeps a
+    // grounded slot's angle honest. A floating slot refuses instead -- see
+    // `slot-lifecycle.spec.ts` -- because grounding it would destroy the guide.
+    const s = scene();
+    const slider = addSlider(s, s.x);
+    s.active.updateSelectedObj(slider);
+    s.service.toggleGround();
+    expect(slider.isDangling).toBe(true);
+    const wasPointing = slider.slotAngle;
+
+    expect(s.service.mergeJoints(s.z, slider)).toBeUndefined();
+
+    expect(slider.ground).toBe(true);
+    expect(slider.isDangling).toBe(false);
+    expect(slider.slotAngle).toBeCloseTo(wasPointing, 9);
+    expect(s.service.joints.some((joint) => joint.id === 'Z')).toBe(false);
+  });
+
   it('refuses to drag a slider onto a plain pin, which would strand its slot', () => {
     // The survivor of a merge is the target, so merging the slider away takes
     // the slot with it. While a slider was three objects the joint a reader

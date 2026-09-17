@@ -3767,12 +3767,14 @@ export class NewGridComponent implements OnDestroy {
       return false;
     }
 
-    // A merged-into-welded joint re-welds itself, but a grounded, driven, or
-    // slider-carrying survivor cannot be welded at all. Losing the weld
-    // silently would leave the user with a linkage they did not ask for. A
-    // merge that goes exactly as asked says nothing: the pop is the receipt.
-    // A warning, not a refusal: the merge happened, and the linkage the reader
-    // now has is not quite the one they drew. It waits to be dismissed.
+    // A merged-into-welded joint re-welds itself. The cases that would lose
+    // the weld -- a driven survivor, a weld carried onto a Pin-in-slot -- are
+    // refused in `mergeJoints` before anything moves, so reaching here unwelded
+    // means the rebuild declined after the fact. Losing the weld silently
+    // would leave the user with a linkage they did not ask for. A merge that
+    // goes exactly as asked says nothing: the pop is the receipt. A warning,
+    // not a refusal: the merge happened, and the linkage the reader now has is
+    // not quite the one they drew. It waits to be dismissed.
     if (wasWelded && !target.isWelded) {
       this.notify.warning(
         'merge.weld-lost',

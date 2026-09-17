@@ -14,6 +14,8 @@ export type MergeRefusal =
   | 'own-cylinder'
   | 'driven-joint'
   | 'weld-cannot-survive'
+  | 'ground-cannot-survive'
+  | 'weld-would-fuse-slider'
   /**
    * Two different machines, joined at a pose other than the start.
    *
@@ -42,6 +44,10 @@ export const MERGE_REFUSAL_MESSAGES: Record<MergeRefusal, string> = {
   'own-cylinder': 'A cylinder cannot fold onto itself.',
   'weld-cannot-survive':
     'The joint these would make cannot be welded, and one of them is — merging here would take the weld off without saying so.',
+  'ground-cannot-survive':
+    'A grounded joint cannot merge into a floating slider — the survivor would ride the slot, and its ground would be dropped without saying so. Remove the ground first.',
+  'weld-would-fuse-slider':
+    'Merging a weld onto this slider would fuse it into a Slide. Unweld first to attach without fusing.',
   'crosses-machines':
     'Joining two mechanisms needs the start pose. Press Back to the start pose, then try again.',
 };
@@ -67,6 +73,8 @@ export const MERGE_REFUSAL_REASONS: Record<MergeRefusal, string> = {
   'driven-joint': 'a driven pair',
   'own-cylinder': 'the same ram',
   'weld-cannot-survive': 'the weld cannot survive',
+  'ground-cannot-survive': 'the ground cannot survive',
+  'weld-would-fuse-slider': 'would fuse the slider',
   'crosses-machines': 'needs the start pose',
 };
 
@@ -130,6 +138,24 @@ export function refuseJointMerge(
   // merge happens to its paired pin, which that check never sees -- so the
   // assembly stayed non-dangling and unflagged, sliding on itself.
   if (ridesOn(source, target) || ridesOn(target, source)) return 'own-carrier';
+
+  // A grounded pin has nowhere to put its ground on a floating slider: the
+  // survivor rides the slot, and a slot that is both grounded and carried is
+  // not a state the model has. Grounding the slider instead would destroy the
+  // slot the reader aimed at, so the merge is refused and the ground stays
+  // where it was. Onto a grounded or dangling slider there is nothing to
+  // lose, and the ground carries across in `mergeJoints`.
+  if (source.ground && target instanceof PrisJoint && target.isFloating)
+    return 'ground-cannot-survive';
+
+  // A weld carried onto a Pin-in-slot slider fuses it into a Slide -- the
+  // weld has to live somewhere, and on a slider that is `rotates`. A drag
+  // reads as "attach these two", and a type change rebuilds the constraints
+  // the solvers see, so fusing as a side effect is refused and the reader
+  // unwelds first when attaching is all they meant. Onto a Slide there is no
+  // change of type, and the weld carries across as it does onto a pin.
+  if (target instanceof PrisJoint && target.rotates && (source.isWelded || target.isWelded))
+    return 'weld-would-fuse-slider';
 
   // An input prescribes the freedom between *two* bodies (§2.9), so a merge
   // that would leave three meeting at a driven joint takes away the thing the
