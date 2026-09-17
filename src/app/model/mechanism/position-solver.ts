@@ -484,16 +484,30 @@ export class PositionSolver {
    *
    * Only where the drive needs it: a plain crank is differentiated through the
    * loop formulation, which asks nothing of this and is cheaper.
+   *
+   * A set the walk left behind is not this set. The walk builds one to settle
+   * the joints no primitive could order -- two platform joints, in a scissor
+   * lift -- and differentiating *that* answers two joints and zeroes the rest,
+   * because the ram's command row reaches none of its rows. So a set that does
+   * not cover every rate unknown is rebuilt here rather than kept. A coupled
+   * partition keeps its own: its boundary joints are prescribed rather than
+   * unknown, and a set built over all of them would un-prescribe them.
    */
   static ensureSimultaneousSystem(joints: Joint[], links: Link[]): void {
-    if (this.simultaneousSystem || (!this.cylinderDrive && !this.pinDrive)) {
+    if (!this.cylinderDrive && !this.pinDrive) {
       return;
     }
-    this.simultaneousSystem = this.buildSimultaneousSystem(
-      joints,
-      links,
-      joints.filter(isRateUnknown).map((joint) => joint.id)
-    );
+    const wanted = joints.filter(isRateUnknown).map((joint) => joint.id);
+    const kept = this.simultaneousSystem;
+    if (
+      kept &&
+      (this.coupledRoute ||
+        (kept.unknownIds.length === wanted.length &&
+          kept.unknownIds.every((id) => wanted.includes(id))))
+    ) {
+      return;
+    }
+    this.simultaneousSystem = this.buildSimultaneousSystem(joints, links, wanted);
   }
 
   /**

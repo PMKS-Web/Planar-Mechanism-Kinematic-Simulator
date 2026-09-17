@@ -1042,21 +1042,29 @@ one place it exists. It is cleared over the bars marked *last* time rather than 
 because deleting a ram takes its bars out of `links` before the next resolve runs, and a bar that
 keeps the flag is a bar that stops drawing itself the moment it is welded into anything else.
 
-### A mechanism standing only on guides has no loops, and its rates come from nowhere
+### A mechanism standing only on guides used to enumerate no loops, and its rates came from nowhere
 
-`requiredLoops` is empty for an elliptical trammel -- a bar with each end in a grounded guide and
-no pin anywhere. Loops are ground-to-ground chains, and a mechanism with no pinned point has no
-such chain to walk. Everything the velocity solver does with slots hangs off that list:
-`determineArrays` iterates `requiredLoops`, and all three `guideEnds` call sites sit inside it, so
-for this shape none of them runs and neither guide is given a column. The rates that come back
-then satisfy no slot at all -- the joint on the 90-degree guide is handed a velocity with a large
-X component, which is the one thing its own constraint forbids.
+`requiredLoops` was empty for an elliptical trammel -- a bar with each end in a grounded guide and
+no pin anywhere. Not for the reason first written here: the bar *is* a ground-to-ground chain, one
+link long, and the walk stepped over it because `findGround` only asks about the neighbors *of*
+the joint it is given. Everything the velocity solver does with slots hangs off that list, so for
+this shape none of it ran and neither guide was given a column. The rates that came back then
+satisfied no slot at all -- the joint on the 90-degree guide was handed a velocity with a large
+X component, which is the one thing its own constraint forbids. The walk closes a step that lands
+straight on another ground now, and the loopless route is back to meaning a welded root.
 
-Positions are fine, which is what makes it quiet: the mechanism solves, animates and draws
-correctly, and only the graphs are wrong. `e2e/template-graphs.mjs` is the only thing in the suite
-that asks -- it differences every plotted series against the position it derives from -- and it
-runs in the nightly lane, not the gate. `src/tests/verification/slider-rate-agreement.spec.ts`
-carries the reproduction now, skipped, so the next person starts from a second rather than a
+The scissor lift's flat zeros were misdiagnosed alongside it, as a homogeneous loop system -- a
+route that mechanism never reaches. A ram-driven lift is differentiated through the constraint
+set, and the set it was handed was the two-joint one the position walk built to settle the joints
+no primitive could order. The ram's command reaches none of that set's rows, so those two solved
+to zero and every other joint read the zero kept for a joint the set never answered.
+`ensureSimultaneousSystem` rebuilds the set when it does not cover every rate unknown.
+
+Positions are fine in both, which is what makes them quiet: the mechanism solves, animates and
+draws correctly, and only the graphs are wrong. `e2e/template-graphs.mjs` is the only thing in
+the suite that asks -- it differences every plotted series against the position it derives from
+-- and it runs in the nightly lane, not the gate. `src/tests/verification/slider-rate-agreement.spec.ts`
+carries both reproductions now, running, so the next person starts from a second rather than a
 two-minute browser run.
 
 One harness trap comes with it: `ellipticalTrammelFixture(true, 1)` built through

@@ -168,18 +168,17 @@ describe('a scissor lift raised by its ram', () => {
     expect(samples[samples.length - 1].height).toBeCloseTo(drawn.height, 2);
   });
 
-  // Skipped, and not because of Stage 1 -- this is a defect that Stage 1 made
-  // *reachable*. The spec used to crash before this ran: the scissor lift
-  // produced no frames at all, which is now fixed. What it uncovers is older: a
-  // driven *floating* sealed slider's commanded rate never enters the loop
-  // velocity system, because `kinematicsInitializer` seeds it only when the
-  // driven joint is grounded while `registerSlotUnknowns` still gives that
-  // slider a column -- so B is homogeneous and every rate solves to zero. It
-  // reproduces identically with Stage 1's solver changes reverted, and
-  // `slideGripper` is in the same state. Fixing it changes rate numbers, which
-  // is its own change with its own verification, so it is named here rather
-  // than folded into this one.
-  it.skip('moves every joint at the rate its own motion implies', () => {
+  // A defect Stage 1 made *reachable* rather than caused: the spec used to
+  // crash before this ran, because the scissor lift produced no frames at all.
+  // What it uncovered is older, and it was misdiagnosed twice -- first as a
+  // homogeneous loop system, which this mechanism never reaches. A ram-driven
+  // lift is differentiated through the constraint set, and the set it was
+  // handed was the one the position walk built to settle the two joints no
+  // primitive could order: K and U. The ram's command reaches none of that
+  // set's rows, so those two solved to zero and every other joint read the
+  // zero kept for a joint the set never answered. `ensureSimultaneousSystem`
+  // rebuilds the set now when it does not cover every rate unknown.
+  it('moves every joint at the rate its own motion implies', () => {
     // The check no assertion about positions can make. The crossing pin, the
     // foot block and the platform once graphed a flat zero while the lift
     // visibly rose. Positions and rates leave the solver by different routes,

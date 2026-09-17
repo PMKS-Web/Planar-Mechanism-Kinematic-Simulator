@@ -113,6 +113,26 @@ export class LoopSolver {
         continue;
       }
       this.neighborsOf(desiredGround, slotNeighbors, neighborCache).forEach((next) => {
+        // A single connection straight to another ground is already a closure,
+        // and the walk below never sees it: `findGround` only asks about the
+        // neighbors *of* the joint it is given, so starting on one ground and
+        // stepping onto the next finds nothing to close. Pin mechanisms never
+        // hold this shape -- a bar pinned to ground at both ends is a structure
+        // -- but a bar between two grounded guides is an elliptical trammel,
+        // and without this step it enumerates no loops at all.
+        if (next.joint.ground && groundJoints.indexOf(next.joint) !== -1) {
+          const edges = this.edgesAlong(
+            [
+              { jointId: desiredGround.id },
+              { jointId: next.joint.id, viaSliderId: next.viaSliderId },
+            ],
+            links
+          );
+          if (edges) {
+            loops.push({ id: loopId(edges), edges });
+          }
+          return;
+        }
         this.findGround(
           next.joint,
           groundJoints,
