@@ -87,7 +87,11 @@ export class UrlGenerationService {
           joint.slotJointB?.id ?? '',
           joint.isSealed,
           joint.driveSpeed,
-          joint.mass
+          joint.mass,
+          // Beside `rotates` above: whether a compound stands at this joint.
+          // A compound merely passing through a slider is not one, so this is
+          // a fact of its own that no reader could derive.
+          joint.isWelded
         )
       );
     }

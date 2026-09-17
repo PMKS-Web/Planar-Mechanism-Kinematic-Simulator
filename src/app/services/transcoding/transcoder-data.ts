@@ -67,11 +67,21 @@ export class JointData {
      *
      * It used to be a link's, because a slider was three objects and only a
      * link could carry a mass (Stage 1 of
-     * `docs/joint-type-and-cylinder-plan.md`). Written last and only when there
-     * is a mass to write, so every URL of a massless slider — which is every
-     * URL written before this — keeps exactly the tokens it had.
+     * `docs/joint-type-and-cylinder-plan.md`). Written only when there is a
+     * mass to write, so every URL of a massless slider — which is every URL
+     * written before this — keeps exactly the tokens it had.
      */
-    public mass: number = 0
+    public mass: number = 0,
+    /**
+     * Whether a slider is a weld point: a compound stands at it. Beside
+     * `rotates` (which rides the record's weld bit), because a Slide on two
+     * riders is both -- the riders cannot turn against the slot *and* they
+     * are fused to each other -- while a compound merely passing through a
+     * slider is neither claim. Written last and only when set; absent on
+     * every URL written before it, where the fold reads the answer off the
+     * coincident pin instead.
+     */
+    public sliderWelded: boolean = false
   ) {}
 }
 

@@ -127,7 +127,13 @@ export class JointTypeService {
           const now = this.live(id);
           if (now && grounded && !this.isGrounded(now)) {
             this.active.selectedJoint = now;
+            // `toggleGround` drops the drive on a plain joint. The drive
+            // predates the retype -- the exchange carries it -- and a grounded
+            // pin with a drive is the standard crank, so it is held across the
+            // call the way the ground is kept across the change.
+            const input = now.input;
             this.mechanism.toggleGround();
+            now.input = input;
           }
         })
       );

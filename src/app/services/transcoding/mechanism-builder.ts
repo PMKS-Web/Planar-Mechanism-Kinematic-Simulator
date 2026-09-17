@@ -89,10 +89,13 @@ export class MechanismBuilder {
     }
 
     joint.name = jointData.name;
-    // Not on a slider: there the same bit is `rotates` above. A slider welds to
-    // nothing — its only link was the block, and a weld needs two bodies to
-    // fuse — so reading it as a weld here would offer Unweld on a Slide.
-    if (!(joint instanceof PrisJoint)) joint.isWelded = jointData.isWelded;
+    // Not from the flag bit on a slider: there that bit is `rotates` above,
+    // and reading it as a weld here would offer Unweld on every Slide. A
+    // slider's own weld rides the record's last token instead -- set where a
+    // compound stands at the joint, which a compound merely passing through
+    // does not.
+    if (joint instanceof PrisJoint) joint.isWelded = jointData.sliderWelded;
+    else joint.isWelded = jointData.isWelded;
     joint.showCurve = jointData.showCurve;
     joint.driveSpeed = jointData.driveSpeed;
     console.log('build joint', jointData.type);
@@ -213,15 +216,23 @@ export class MechanismBuilder {
    *
    * **The pin's id is the one kept.** Link ids are built from their joints'
    * letters, and the pin is the joint the reader has always seen — a slider's
-   * own letter is never drawn. Keeping it leaves every link id, force, lock,
-   * color and center-of-mass reference pointing at something that still exists,
-   * and leaves the canvas lettered exactly as it was.
+   * own letter is never drawn. Keeping it leaves every link id, force and
+   * center-of-mass reference pointing at something that still exists, and
+   * leaves the canvas lettered exactly as it was. Locks and colors are the
+   * exception: a mark could stand on the prismatic joint itself, whose id goes
+   * away with it, so the fold hands back both renames and the re-arming below
+   * looks references up through them.
    *
    * Runs after `resolveSlots`, so a slot binds while the ids it names are still
    * the ones the URL used, and after `filterSubsetLinks`, which pairs link
    * records with links by index and would mis-pair them if a block went first.
    */
-  private foldLegacySliders(joints: Joint[], links: Link[]): void {
+  private foldLegacySliders(
+    joints: Joint[],
+    links: Link[]
+  ): { joints: Map<string, string>; links: Map<string, string> } {
+    const foldedJoints = new Map<string, string>();
+    const foldedLinks = new Map<string, string>();
     const withSubsets = (roots: Link[]): Link[] =>
       roots.flatMap((link) =>
         link instanceof RealLink && link.subset.length > 0
@@ -242,20 +253,33 @@ export class MechanismBuilder {
     const blocks = links.filter(
       (link) => pistonIds.has(link.id) && !(link instanceof RealLink) && link.joints.length === 2
     );
-    if (blocks.length === 0) return;
+    if (blocks.length === 0) return { joints: foldedJoints, links: foldedLinks };
 
     for (const block of blocks) {
       const slider = block.joints.find((joint): joint is PrisJoint => joint instanceof PrisJoint);
       const pin = block.joints.find((joint) => !(joint instanceof PrisJoint));
       if (!slider || !(pin instanceof RealJoint)) continue;
+      const prismaticId = slider.id;
 
       slider.mass = block.mass;
       slider.rotates = !pin.isWelded;
+      // The pin's weld is also the slider's weld-point record -- but only
+      // where a compound stands at the joint to be the record of. A legacy
+      // Slide on two riders fused them into a compound that round-trips in
+      // the link records; a single rider builds none, and a compound merely
+      // passing through an unwelded pin is not this joint's weld.
+      const compoundStandsHere = links.some(
+        (link) => link instanceof RealLink && link.subset.length > 0 && link.joints.includes(pin)
+      );
+      slider.isWelded = pin.isWelded && compoundStandsHere;
       // Both records carry these, and which one holds the live value depends on
       // how old the URL is: making a slider moved the pin's ground and input
       // onto the slot, but a drawing saved before that move kept them on the
-      // pin. Either side saying yes is a yes.
-      slider.ground = slider.ground || pin.ground;
+      // pin. Either side saying yes is a yes -- except a ground on the pin of
+      // a slot that rides a carrier, which is the stale copy from before the
+      // move: a floating slot is not grounded, and carrying it across would
+      // write a URL the decoder refuses as both grounded and carried.
+      if (!slider.isFloating) slider.ground = slider.ground || pin.ground;
       slider.input = slider.input || pin.input;
       slider.showCurve = slider.showCurve || pin.showCurve;
       if (slider.driveSpeed === 0) slider.driveSpeed = pin.driveSpeed;
@@ -266,6 +290,10 @@ export class MechanismBuilder {
       // set one, so an unnamed pin hands over its id and nothing reads oddly.
       slider.name = pin.name;
       slider.id = pin.id;
+      // Both ids the URL knew that the drawing no longer holds: the lock and
+      // color re-arming below resolves references through these.
+      foldedJoints.set(prismaticId, pin.id);
+      foldedLinks.set(block.id, pin.id);
 
       for (const link of withSubsets(links)) {
         const at = link.joints.indexOf(pin);
@@ -278,10 +306,15 @@ export class MechanismBuilder {
 
     // A slot whose line was drawn through a folded pin now names a joint that
     // has gone. The id it names belongs to the slider that replaced it, so the
-    // slot rebinds by id rather than being repaired case by case.
+    // slot rebinds by id rather than being repaired case by case. Against
+    // every link, not just the roots: a carrier welded into a compound is a
+    // leaf by now, and resolving it against roots alone would leave the slot
+    // pointing at the pin object that was just spliced out.
+    const everyLink = withSubsets(links);
     for (const joint of joints) {
-      if (joint instanceof PrisJoint && joint.isFloating) joint.rebindSlot(links, joints);
+      if (joint instanceof PrisJoint && joint.isFloating) joint.rebindSlot(everyLink, joints);
     }
+    return { joints: foldedJoints, links: foldedLinks };
   }
 
   // For each joint, add links that are adjacent to the joint
@@ -356,8 +389,10 @@ export class MechanismBuilder {
     // Once subsets are added, filter away non-root (subset) links
     links = this.filterSubsetLinks(linkDatas, links);
 
-    // A slider spelled as three objects becomes the one joint it is now.
-    this.foldLegacySliders(joints, links);
+    // A slider spelled as three objects becomes the one joint it is now. The
+    // renames come back because the re-arming below still thinks in the ids
+    // the URL used.
+    const folded = this.foldLegacySliders(joints, links);
 
     // Build Forces from ForceData, and link them to their links
     let forces: Force[] = this.transcoder
@@ -383,7 +418,7 @@ export class MechanismBuilder {
       const tag = lockedId.charAt(0);
       const id = lockedId.substring(1);
       if (tag === 'J') {
-        const joint = this.getJointByID(joints, id);
+        const joint = this.getJointByID(joints, folded.joints.get(id) ?? id);
         if (joint instanceof RealJoint) joint.locked = true;
       } else if (tag === 'L') {
         const link =
@@ -392,9 +427,17 @@ export class MechanismBuilder {
             .filter((candidate): candidate is RealLink => candidate instanceof RealLink)
             .flatMap((candidate) => candidate.subset)
             .find((subset) => subset.id === id);
-        link?.joints.forEach((joint) => {
+        if (link) {
+          link.joints.forEach((joint) => {
+            if (joint instanceof RealJoint) joint.locked = true;
+          });
+        } else {
+          // A folded block: both of its joints are the surviving slider now,
+          // so a link mark on it lands there.
+          const survivor = folded.links.get(id);
+          const joint = survivor ? this.getJointByID(joints, survivor) : undefined;
           if (joint instanceof RealJoint) joint.locked = true;
-        });
+        }
       } else if (tag === 'F') {
         const force = forces.find((candidate) => candidate.id === id);
         if (force) force.locked = true;
@@ -416,7 +459,7 @@ export class MechanismBuilder {
     this.transcoder.getPartColors().forEach((entry: string) => {
       const [id, value] = entry.substring(2).split('~');
       if (entry.charAt(1) === 'J') {
-        const joint = this.getJointByID(joints, id);
+        const joint = this.getJointByID(joints, folded.joints.get(id) ?? id);
         if (joint) joint.colorFamily = value;
       } else {
         const force = forces.find((candidate) => candidate.id === id);

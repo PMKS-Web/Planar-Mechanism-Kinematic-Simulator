@@ -51,6 +51,11 @@ export class StringTranscoder extends GenericTranscoder {
     ...,[carrierID],[slotJointAID],[slotJointBID]
     They are written only when the slot is floating, so grounded sliders and
     every pre-existing URL keep exactly the five tokens they had.
+    A driven joint appends its speed after those, a massive slider its mass
+    after that, and a welded slider a 1 after that -- each only when there is
+    something to write, with empty placeholders behind it, so a URL that
+    predates any of them keeps exactly the tokens it had and reads the missing
+    ones as "off".
     This should on average be 18 characters per joint
     */
   private encodeJoint(joint: JointData): string {
@@ -79,11 +84,15 @@ export class StringTranscoder extends GenericTranscoder {
     // It has to land *after* the slot triple, so a joint with a speed and no
     // slot writes the triple empty; without those placeholders the decoder
     // would read the speed as a carrier id.
-    // A slider's mass rides last, for the same reason the speed rides
-    // second-to-last and with the same placeholders behind it: a massless
-    // slider -- every one in every URL written while the mass belonged to the
-    // block -- keeps exactly the tokens it had.
-    let massString = joint.mass !== 0 ? ',' + this.encodeDecimalNumber(joint.mass) : '';
+    // A slider's mass rides after the speed, for the same reason the speed
+    // rides after the slot triple and with the same placeholders behind it: a
+    // massless slider -- every one in every URL written while the mass
+    // belonged to the block -- keeps exactly the tokens it had. The slider's
+    // weld rides last on the same terms: a 1 where a compound stands at the
+    // joint, nothing anywhere else.
+    let weldString = joint.sliderWelded ? ',' + this.encodeDecimalNumber(1) : '';
+    let massString =
+      joint.mass !== 0 ? ',' + this.encodeDecimalNumber(joint.mass) : weldString !== '' ? ',' : '';
     let speedString =
       joint.isInput && joint.driveSpeed !== 0 ? this.encodeDecimalNumber(joint.driveSpeed) : '';
     let driveString = speedString !== '' ? ',' + speedString : massString !== '' ? ',' : '';
@@ -108,7 +117,8 @@ export class StringTranscoder extends GenericTranscoder {
       angleString +
       slotString +
       driveString +
-      massString
+      massString +
+      weldString
     );
   }
 
@@ -140,6 +150,10 @@ export class StringTranscoder extends GenericTranscoder {
     // mass on its block says: the mass is read off that block instead, and
     // folded onto this joint once the links are built.
     let mass = sd.nextDecimalNumber();
+    // And absent past the end on every URL written before a slider carried
+    // its own weld: those are all three-object spellings, where the fold
+    // reads the answer off the coincident pin.
+    let sliderWelded = sd.nextDecimalNumber() !== 0;
 
     return new JointData(
       jointType,
@@ -157,7 +171,8 @@ export class StringTranscoder extends GenericTranscoder {
       slotJointBID,
       isSealed,
       driveSpeed,
-      mass
+      mass,
+      sliderWelded
     );
   }
 

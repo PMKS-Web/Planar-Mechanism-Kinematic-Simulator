@@ -171,6 +171,24 @@ describe('JointTypeService', () => {
     expect(harness.saveCount() - before).toBe(1);
   });
 
+  it('keeps a grounded drive through a change of type', () => {
+    // The linear-actuator shape: a grounded, driven slider. Taking the slot
+    // off drops the ground it carried, and the fix-up that gives the ground
+    // back must not spend the drive with it: a grounded pin with a drive is
+    // the standard crank.
+    const { harness, types, live } = bentBar();
+    live('A').ground = true;
+    harness.service.updateMechanism(false);
+    types.set(live('A'), 'pin-in-slot');
+    live('A').input = true;
+    harness.service.updateMechanism(false);
+
+    expect(types.set(live('A'), 'revolute')).toBe(true);
+
+    expect(live('A').ground).toBe(true);
+    expect(live('A').input).toBe(true);
+  });
+
   it('reads a grounded slider as grounded, on the joint itself', () => {
     // The ground belongs to the guide, and the guide used to be a prismatic
     // joint beside the pin the panel had selected -- so this asked one object
