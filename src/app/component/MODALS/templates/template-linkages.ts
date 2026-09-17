@@ -168,7 +168,7 @@ export const TEMPLATE_LINKAGES: Record<TemplateID, string> = {
   Pumpjack:
     '2v.Ay,1E8.3,0.1011.4A,A,0gB,0oI,0.0M,M,0QZ,0o1,0.2P,P,0d4,0,0.4S,S,0,0,0.0H,H,o0,0,0.5R,R,r8,0eW,OZ..YRAM,AM,0,0,0YN,0oA,303e9f,A,M,,.YRMP,MP,0,0,0Wq,0P1,26A69A,M,P,,.YRPSH,PSH,0,0,3f,0,0d125a,P,S,H,,.YRHR,HR,0,0,pa,0KG,00695C,H,R,,...N_p*0ZX9WU',
   Punch_Press:
-    '2v.Ay,1E8.A,0.1011.6A,A,0,0,0.0B,B,0,Im,0.5C,C,0,0r8,OZ,,,,,1Tm..ARAB,Crank,mr0,1E8,0,9O,303e9f,A,B,,.MRBC,Connecting rod,19FW,9n0,0,06Q,26A69A,B,C,,..2F1,BC,F1,0,0r8,0,0bW,_W..N_t*4J1F25',
+    '2v.Ay,1E8.A,0.1011.6A,A,0,0,0.0B,B,0,Im,0.5C,C,0,0r8,OZ,,,,,2IV0..ARAB,Crank,mr0,1E8,0,9O,303e9f,A,B,,.MRBC,Connecting rod,19FW,9n0,0,06Q,26A69A,B,C,,..2F1,BC,F1,0,0r8,0,0bW,_W..N_u*2aJGFB',
   Derrick_Crane:
     '2v.Ay,1E8.A,0.1011.4O,O,0,0,0.0C,C,Qv,cP,0.0T,T,rn,1Cp,0.6G,G,YO,09O,0.0K,K,Mp,18,0..ARGK,Luffing crank,mr0,1E8,Sc,048,303e9f,G,K,,.ARCK,Luffing link,19FW,9n0,Os,Jn,26A69A,C,K,,.MROCT,Boom,4a_0,19FW,LX,Uk,0d125a,O,C,T,,..2F1,OCT,F1,rn,1Cp,rn,zB,d4..N_3*2mFLAi',
   Toggle_Clamp:

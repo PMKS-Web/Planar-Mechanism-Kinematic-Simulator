@@ -15,6 +15,7 @@ import {
 } from '../../test-utils/verification/template-fixtures';
 import { libraryTemplateFills, logicalFills } from '../../test-utils/verification/template-colors';
 import { urlGeneratorFor } from '../../test-utils/url-encoding';
+import { PrisJoint } from '../../app/model/joint';
 import { RealLink } from '../../app/model/link';
 import { StringTranscoder } from '../../app/services/transcoding/string-transcoder';
 import { buildMechanismFixture } from '../fixtures/mechanism-fixtures';
@@ -135,6 +136,37 @@ describe('library template payloads', () => {
       return;
     }
     expect(source, 'run `npm run template-payloads`').toBe(regenerated);
+  });
+});
+
+describe('a published force study’s block', () => {
+  it('scales with the bars, and strips to nothing with them', () => {
+    // The punch block's mass moved onto the sliding joint with Stage 1, and
+    // both publish walks still only visited links: Punch_Press published bars
+    // a hundredfold heavier around a block left at its 6 fixture units, and a
+    // 'zeroed' template kept its block's weight outright -- a load nobody set
+    // on a lesson about kinematics.
+    const entry = libraryTemplateEntry('Punch_Press');
+    const published = buildMechanismFixture(
+      fixturePayload(
+        entry.fixture,
+        entry.objectScale,
+        entry.speed,
+        libraryTemplateMasses('Punch_Press')
+      )
+    ).service;
+    const punch = published.joints.find((joint) => joint.id === 'C') as PrisJoint;
+    const rod = published.links.find((link) => link.id === 'BC') as RealLink;
+    // 6 fixture units through the force-study hundredfold, beside the rod's
+    // 3 through the same.
+    expect(punch.mass).toBeCloseTo(600, 6);
+    expect(rod.mass).toBeCloseTo(300, 6);
+
+    const stripped = buildMechanismFixture(
+      fixturePayload(entry.fixture, entry.objectScale, entry.speed, 'zeroed')
+    ).service;
+    expect((stripped.joints.find((joint) => joint.id === 'C') as PrisJoint).mass).toBe(0);
+    expect((stripped.links.find((link) => link.id === 'BC') as RealLink).mass).toBe(0);
   });
 });
 

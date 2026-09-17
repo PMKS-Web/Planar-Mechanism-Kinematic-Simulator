@@ -80,6 +80,7 @@ import { SettingsService } from '../../app/services/settings.service';
 import { ActiveObjService } from '../../app/services/active-obj.service';
 import { ColorService } from '../../app/services/color.service';
 import { urlGeneratorFor } from '../url-encoding';
+import { PrisJoint } from '../../app/model/joint';
 import { Link, RealLink } from '../../app/model/link';
 import { MODEL_SCALE } from '../../app/model/render-scale';
 
@@ -138,7 +139,9 @@ function scaleBuiltToModelUnits(built: BuiltMechanism): void {
  *
  * Every body, not only the bars: the solver hangs a slider block's weight from
  * gravity too, so a drawing whose only massive part is a block is still a
- * loaded one.
+ * loaded one. The block's mass is the sliding joint's now (Stage 1 of
+ * `docs/joint-type-and-cylinder-plan.md`), so it is stripped there rather than
+ * from a link that no longer exists.
  */
 function stripMass(built: BuiltMechanism): void {
   const strip = (link: Link): void => {
@@ -149,6 +152,9 @@ function stripMass(built: BuiltMechanism): void {
     }
   };
   built.links.forEach(strip);
+  built.joints.forEach((joint) => {
+    if (joint instanceof PrisJoint) joint.mass = 0;
+  });
 }
 
 /**
@@ -172,6 +178,12 @@ function scaleLoading(built: BuiltMechanism, by: PublishedLoading): void {
     }
   };
   built.links.forEach(heavier);
+  // The block with them: a punch press scaled its bars a hundredfold and left
+  // its 6-unit punch at 6, because the block's mass moved onto the joint and
+  // this walk still only visits links.
+  built.joints.forEach((joint) => {
+    if (joint instanceof PrisJoint) joint.mass *= by.mass;
+  });
   built.forces.forEach((force) => (force.mag *= by.load));
 
   // Then hand the mass properties back to the app wherever the fixture was not
