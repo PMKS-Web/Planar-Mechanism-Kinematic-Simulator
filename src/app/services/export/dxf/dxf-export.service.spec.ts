@@ -290,11 +290,35 @@ describe('DxfExportService', () => {
     const { service } = setup();
     const table = service['jointCsv']('cm') as string;
     const [heading, ...rows] = table.trim().split('\r\n');
-    expect(heading.endsWith(',links')).toBe(true);
+    expect(heading).toContain(',links,');
     // Two holes in two layers are the same pin only if something says so.
-    expect(rows[0].endsWith(',AB')).toBe(true);
+    expect(rows[0]).toContain(',AB,');
     const json = JSON.parse(service['dataJson']('cm') as string);
     expect(json.joints[0].links).toEqual(['AB']);
+  });
+
+  it('weighs the block on the sliding joint, which is where its mass lives now', () => {
+    // The block used to be a row of its own in the links table, and its mass
+    // rode that row. One joint has no such row: without this column the mass
+    // left the export entirely, and a press arrived at the CAD station with no
+    // punch in its tables.
+    const { service, mechanism } = setup();
+    const b = mechanism.joints[1];
+    const slider = new PrisJoint('S', 4 * MODEL_SCALE, 0, false, true);
+    slider.mass = 6;
+    const rail = new RealLink('BS', [b, slider]);
+    [b, slider].forEach((joint) => joint.links.push(rail));
+    mechanism.joints.push(slider);
+    mechanism.links.push(rail);
+    const table = service['jointCsv']('cm') as string;
+    const [heading, ...rows] = table.trim().split('\r\n');
+    expect(heading.endsWith(',mass')).toBe(true);
+    expect(rows.find((row) => row.startsWith('S,'))!.endsWith(',6.000000')).toBe(true);
+    // And a pin weighs nothing of its own.
+    expect(rows.find((row) => row.startsWith('A,'))!.endsWith(',')).toBe(true);
+    const json = JSON.parse(service['dataJson']('cm') as string);
+    expect(json.joints.find((joint: { id: string }) => joint.id === 'S').mass).toBe(6);
+    expect(json.joints.find((joint: { id: string }) => joint.id === 'A').mass).toBeNull();
   });
 
   it('keeps companion coordinates on the drawing origin and resolves prismatic references', () => {

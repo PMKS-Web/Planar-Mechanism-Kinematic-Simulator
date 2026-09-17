@@ -396,9 +396,14 @@ export class DxfExportService {
         // hole in another are the same pin, and that is exactly what somebody
         // checking an assembly against this table needs to know.
         connectedLinks(joint).join(' '),
+        // The block riding the slot, which used to be a row of its own in the
+        // links table: a slider was a zero-length link and its mass rode that
+        // row. One joint has no such row, so the mass rides here instead --
+        // empty on a pin, which weighs nothing of its own.
+        joint instanceof PrisJoint ? joint.mass.toFixed(6) : '',
       ].join(',')
     );
-    return ['id,name,type,x,y,grounded,input,links', ...rows].join('\r\n') + '\r\n';
+    return ['id,name,type,x,y,grounded,input,links,mass', ...rows].join('\r\n') + '\r\n';
   }
 
   private linkCsv(unit: DxfExportUnit): string {
@@ -467,6 +472,9 @@ export class DxfExportService {
           grounded: joint instanceof RealJoint && joint.ground,
           input: joint instanceof RealJoint && joint.input,
           links: connectedLinks(joint),
+          // The block's mass rides the joint now, as it rides the CSV above;
+          // null on a pin, which weighs nothing of its own.
+          mass: joint instanceof PrisJoint ? joint.mass : null,
         })),
         links: this.mechanism.links.map((link) => ({
           id: link.id,
