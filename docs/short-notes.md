@@ -93,10 +93,33 @@ the options current at the end if more were asked for meanwhile.
 
 Every "choose one of two or three" in the app is `segmented-block`: `radio-block` wraps it for
 form-bound settings, the graph rows use it for Magnitude / X & Y, the export drawers use it
-directly. The pill under the chosen option is positioned by measuring that option
-(`--thumb-left`, `--thumb-width`), so options may be as wide as their labels (`[fill]="false"`
-at the end of a settings row) or share the width equally (the default in a panel). Its buttons
-carry the plain button role and `aria-pressed`, which is what the suites find them by.
+directly, and a joint's type is four of them wrapped into two columns (`wrap`, with `icons`). The
+pill under the chosen option is positioned by measuring that option (`--thumb-left`,
+`--thumb-top`, `--thumb-width`, `--thumb-height`), so options may be as wide as their labels
+(`[fill]="false"` at the end of a settings row), share the width equally (the default in a panel),
+or sit on a second row. A `selected` of -1 chooses nothing, for a group whose parts disagree. Its
+buttons carry the plain button role and `aria-pressed`, which is what the suites find them by, and
+a grayed option's `reasons` hang on its `.cell` wrapper: a disabled button takes no pointer events,
+so a tooltip on the button itself would never open.
+
+### `finishStructuralEdit` puts the selection back on what the reader selected
+
+`toggleSlider()` takes no joint: it reads `activeObjService.selectedJoint`. A service that points
+the selection at a joint to drive it -- `MultiEditService.eachJoint`, `JointTypeService.set` --
+has to point it again before every such edit rather than once, because each structural edit ends
+in `finishStructuralEdit`, whose `reconcilePartSelection` sets `selectedJoint` back to the part
+selection. Welded to Pin-in-slot is an unweld and then a block, and with the selection pointed only
+once, the block landed on whichever joint the reader had selected (`joint-type.service.spec.ts`).
+
+### Once welded, a joint's bars are one link
+
+`weldJointTopology` fuses the bars at a joint into one compound `RealLink` and leaves the sliding
+block out of it, so `joint.links.length` on a welded joint counts the compound once. A rule that
+asks whether a weld has two links to fuse, put to a joint *already* welded, has to count the
+compound's pieces instead: `weldOutlivesBlock` in `model/joint-operation-permission.ts` does, and
+counting links refused Prismatic to Welded on a pin between two bars, whose weld the block's
+leaving keeps. A Slide on one bar has no compound -- its weld is the bar held to the block -- and
+`reconcileAssemblyWelds` strips that weld when the block goes.
 
 ### ApexCharts draws every annotation in front, and has no option about it
 
@@ -129,9 +152,15 @@ A row on the right-click menu never comes and goes with the situation. It is the
 (or every bar, every cylinder, every force) and it grays, with the model's own reason in the slot,
 when it cannot apply. The joint menu used to break this: a cylinder's joint lost its Slider row and
 the slider itself lost its Weld row -- two menus under one name, and a reader who had learned where
-a row sits finding it gone. Both rows are permanent now (`jointAttachRows` and `jointStateRows` in
+a row sits finding it gone. Every row is permanent now (`jointAttachRows` and `jointStateRows` in
 `context-menu-builder.service.ts`), and the refusals quote `weldRefusal`,
 `describeActuatorRefusal` and the rest rather than restating them.
+
+Those two rows are a choice at the top of the card now (`MenuChoice` in `menu-model.ts`): a joint's
+four types, each with its own refusal. Its cells are `cdkMenuItemRadio` items rather than the
+`segmented-block` the panel draws, because inside a CDK menu the arrow keys reach nothing but a
+`cdkMenuItem` -- so the two share the look through the mixins in `segmented.look.scss` and nothing
+else.
 
 There was briefly a *Free to Move* row as well, for a joint on a bar holding its length or angle
 (`RealLink.hold`): such a joint still drags, but only along the arc or the line the hold leaves it.
@@ -1082,6 +1111,64 @@ service that resolves its dependencies on first *use* then reads a destroyed inj
 `NG0205`, seventy-two times, in a suite whose tests all passed. Two halves to the fix: resolve
 eagerly where the ring allows it, and hand the predicate back on destroy
 (`destroyRef.onDestroy`). `NewGridComponent`'s `whenArrowsNudge` is the example.
+
+### A key pressed into an open menu is the menu's
+
+`KeyboardShortcutsService` listens on `window` and answered every keystroke that was not typed into
+a field, aimed at a button, or fired under a dialog — the arrows included, which is what a menu
+walks its items with. A right-click *selects* what it opened its card on, so Down on a joint's menu
+nudged that joint behind the card, and `ContextMenuComponent`'s "any shortcut closes the card" rule
+then shut the card on the shortcut it had just fired: the joint moved and the card vanished, in that
+order. The gate is `insideAnOpenMenu`, asked of the focused element (`[role="menu"]`) rather than of
+any open overlay — a card can stand while focus is elsewhere, and those keys are still the canvas's.
+The CDK does move focus into the card as it opens it, for a button-2 `contextmenu`; `menu-focus.mjs`
+is the same rule for the project menu, and `joint-type.mjs` walks the card's choice with the arrows.
+
+### A disabled button cannot take focus, so stepping through a list sticks on it
+
+`focus()` on a `disabled` button does nothing at all -- no error, no move -- so a list that walks
+its items by index stops dead on the row *above* the grayed one and never gets past it, however many
+times the key is pressed. The project menu did this at Export Data, which is grayed until something
+has been solved: with nothing solved, ArrowDown went New Project, Open, Mechanism Library, Save,
+Share project, and then stayed on Share project forever. `menuItems()` in
+`top-bar.component.ts` leaves the disabled rows out now. The right-click card never had it, because
+a `cdkMenuItem` stays focusable and says `aria-disabled` instead.
+
+The other half of that menu's keyboard trouble was the opposite of sticking: opening it focused the
+first row, and Space and Enter press whatever row has focus, so New Project sat under the next press
+of Space -- which is also the play/pause key. Nothing is armed until an arrow says which row.
+
+### `:focus-visible` is wrong for focus the app moved itself
+
+A popover that takes focus as it opens -- the project menu, the right-click card -- cannot use
+`:focus-visible` to decide whether to *draw* that focus. The browser treats a script moving focus as
+keyboard work unless the reader's last act was a pointer that moved focus itself, so a card opened
+by right-click came up with a ring around its first item. It is not only the first menu after a
+load, which is how it was described the first time it happened: pressing Escape is enough to make
+the next card ring too, because the last thing that happened was a key. On the joint's card the
+first item is the *chosen* type, so the ring sat on the value already wearing the chosen pill and
+read as a second kind of selected.
+
+Both menus answer it themselves now, from the event that opened them -- `menuByKeyboard` in
+`top-bar.component.ts`, `byKeyboard` in `context-menu.component.ts`, each turned on by the first key
+the reader presses -- and the ring hangs off that class instead. `menu-focus.mjs` is the guard for
+both, and it uses a fresh browser context per case on purpose: the trap only shows before the page
+has recorded an interaction.
+
+### A suite that buffers its checks loses them all to a throw
+
+`phase4-stack-and-menu` collects its answers in `out[]` and prints them at the end. When Stage 0
+removed the Edit panel's `weld` control, `jointForm.get('weld')` returned null inside a
+`page.evaluate`, and the throw took the whole report with it: the run printed no checks at all,
+said `0 FAIL`, and exited 1 -- while three checks in it had been failing for a while. `phase1-drag`
+was quieter still. Its weld section is an `if (enabled) { ... }` guarded by a locator that no longer
+matched anything, so the assertions inside it -- the weld goes through, the mechanism comes back
+over-constrained, the app says so -- stopped running rather than failing, and the suite stayed
+green while proving three things fewer.
+
+So when you remove a control, grep the suites for **the symbol you removed** (`get('weld')`,
+`hasText: 'Weld'`, `toggle-block`), not for the label you expect to read: searching `'Welded'`
+matches neither of these, and the gate found both after the push instead.
 
 ### `anyComponentStyle` is 6 kB warning / 10 kB error
 

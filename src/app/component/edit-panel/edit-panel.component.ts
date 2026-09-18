@@ -75,6 +75,9 @@ import { DualButtonComponent } from '../BLOCKS/dual-button/dual-button.component
 import { RadioComponent } from '../BLOCKS/radio/radio.component';
 import { MatTooltip } from '@angular/material/tooltip';
 import { MultiEditPanelComponent } from '../multi-edit-panel/multi-edit-panel.component';
+import { SegmentedComponent } from '../BLOCKS/segmented/segmented.component';
+import { JointTypeService } from '../../services/joint-type.service';
+import { JOINT_TYPES, JointTypeChoice, NOWHERE_TO_SLIDE } from '../../model/joint-type';
 
 /**
  * Input Settings unit choices, in the order the picker shows them. The labels
@@ -113,6 +116,7 @@ const INPUT_SPEED_UNITS = [
     DualButtonComponent,
     RadioComponent,
     MultiEditPanelComponent,
+    SegmentedComponent,
   ],
 })
 export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, OnDestroy {
@@ -138,6 +142,9 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   gridUtils = inject(GridUtilsService);
   bgImage = inject(BackgroundImageService);
   private notify = inject(NotificationService);
+  private jointTypes = inject(JointTypeService);
+  /** What the Joint Type choice says under a block with nowhere to slide. */
+  protected readonly nowhereToSlide = NOWHERE_TO_SLIDE;
   tutorial = inject(TutorialService);
 
   listOfOtherJoints: RealJoint[] = [];
@@ -226,9 +233,9 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
    *
    * Coarser than the banner, and deliberately so. Playing or in an analysis
    * mode, nothing here may be touched. Merely *paused* away from the start,
-   * Phase 2 allows the structural half -- Grounded, Driven Input, Slider,
-   * Weld, Rename, Lock, Delete are addressed by identity and apply to the
-   * design without needing the pose -- while the numbers below stay frozen,
+   * Phase 2 allows the structural half -- Grounded, Driven Input, Joint Type,
+   * Rename, Lock, Delete are addressed by identity and apply to the design
+   * without needing the pose -- while the numbers below stay frozen,
    * because each of those needs a written transform back to t = 0 that does
    * not exist yet.
    */
@@ -504,11 +511,8 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
       prisAngle: [''],
       ground: [false, { updateOn: 'change' }],
       input: [false, { updateOn: 'change' }],
-      slider: [false, { updateOn: 'change' }],
-      // Weld is a toggle rather than the Weld/Unweld button pair it replaces:
-      // it is one axis of the 2x2 (§2.1), and a pair of buttons cannot show
-      // which side of that axis the joint is currently on.
-      weld: [false, { updateOn: 'change' }],
+      // No slider or weld control: the two are the joint's type, which the
+      // Joint Type choice reads and changes through JointTypeService.
       curve: [false, { updateOn: 'change' }],
       // Input Settings. The unit picker commits on change; the speed field commits
       // on blur like every other numeric field. Direction is a button, not a control.
@@ -661,26 +665,9 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     if (this.jointForm.get('ground')?.disabled) {
       this.jointForm.get('ground')?.enable({ emitEvent: true });
     }
-
-    // Weld is grayed when the joint connects fewer than two links — there is
-    // nothing to fuse, so offering the switch only to refuse it reads as a
-    // broken control. Silently (emitEvent: false), because the weld control's
-    // valueChanges runs the weld itself and an enable/disable must never do
-    // that. Same rule as the context menu, through the same predicate.
-    const canWeld = this.gridUtils.canToggleWeld(this.activeSrv.selectedJoint);
-    const weldControl = this.jointForm.get('weld');
-    if (canWeld && weldControl?.disabled) weldControl.enable({ emitEvent: false });
-    if (!canWeld && weldControl?.enabled) weldControl.disable({ emitEvent: false });
-
-    // Whether a block may stand here, from the same model the context menu
-    // grays its row with. Asked in the direction the control would go, and
-    // silently, for the same reason as Weld above.
-    const joint = this.activeSrv.selectedJoint;
-    const hasSlider = this.gridUtils.isAttachedToSlider(joint);
-    const canSlide = !this.gridUtils.sliderRefusal(joint, !hasSlider);
-    const sliderControl = this.jointForm.get('slider');
-    if (canSlide && sliderControl?.disabled) sliderControl.enable({ emitEvent: false });
-    if (!canSlide && sliderControl?.enabled) sliderControl.disable({ emitEvent: false });
+    // Nothing to do for the joint's type: which types it can take is asked of
+    // the refusal model by the Joint Type choice each time it is drawn, not
+    // kept on a control that could go stale.
 
     this.syncLockDisabledFields();
     // Last, so it is the outer authority: a lock and a displaced pose can both
@@ -1191,9 +1178,29 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     return this.drivenClockwise ? 'arrow_back' : 'arrow_forward';
   }
 
-  /** A slider with a block and nowhere to slide: invalid until it gets a carrier. */
-  get isDanglingSlider(): boolean {
-    return this.selectedSlider?.isDangling === true;
+  /**
+   * What the Joint Type choice draws for the selected joint: its type, the
+   * glyph set Grounded picks, each type it cannot take with the model's reason,
+   * and whether the chosen one has nowhere to slide.
+   */
+  get jointTypeChoice(): JointTypeChoice | undefined {
+    const joint = this.activeSrv.selectedJoint;
+    return joint instanceof RealJoint ? this.jointTypes.choiceFor(joint) : undefined;
+  }
+
+  /**
+   * Make the selected joint the type chosen: one press, one edit, whatever the
+   * block and the weld underneath it have to do (`JointTypeService.set`).
+   */
+  setJointType(index: number): void {
+    const joint = this.activeSrv.selectedJoint;
+    const type = JOINT_TYPES[index];
+    if (!(joint instanceof RealJoint) || !type || this.structureRefused()) return;
+    this.jointTypes.set(joint, type);
+    this.mechanismService.onMechUpdateState.next(2);
+    // The type decides which rows the panel has -- Slider Angle, Mass
+    // Settings -- and what they read, so the form is patched again.
+    this.activeSrv.fakeUpdateSelectedObj();
   }
 
   disableAndEnableLinkFields(): void {
@@ -1467,39 +1474,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
         // Changing the unit re-expresses the same speed; it does not alter it.
         this.settingsService.inputSpeedUnit.next(INPUT_SPEED_UNITS[Number(val)].unit);
         this.patchInputSpeedField();
-      })
-    );
-
-    this.onDestroySubscriptions.push(
-      this.jointForm.controls['slider'].valueChanges.subscribe((val) => {
-        if (this.structureRefused()) {
-          return;
-        }
-        this.mechanismService.toggleSlider();
-        this.mechanismService.updateMechanism();
-        this.mechanismService.onMechUpdateState.next(2);
-        this.disableAndEnableJointFields();
-      })
-    );
-
-    this.onDestroySubscriptions.push(
-      this.jointForm.controls['weld'].valueChanges.subscribe((val) => {
-        if (this.structureRefused()) {
-          return;
-        }
-        // One axis, one control. Unwelding a Slide gives a Slot rather than a
-        // pin, because the block is the other axis and this toggle never
-        // touches it (§2.1).
-        if (val) this.mechanismService.weldJoint();
-        else this.mechanismService.unweldSelectedJoint();
-
-        // A weld the model refuses -- a grounded joint, a driven one, a joint
-        // with nothing to fuse -- would otherwise leave the switch sitting on
-        // while the joint is not welded, which is a control lying about state.
-        const actual = this.activeSrv.selectedJoint?.isWelded ?? false;
-        if (actual !== val) {
-          this.jointForm.patchValue({ weld: actual }, { emitEvent: false });
-        }
       })
     );
 
@@ -2040,8 +2014,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
               // as ungrounded.
               ground: this.selectedSlider?.ground ?? this.activeSrv.selectedJoint.ground,
               input: this.activeSrv.selectedJoint.input,
-              slider: this.gridUtils.isAttachedToSlider(this.activeSrv.selectedJoint),
-              weld: this.activeSrv.selectedJoint.isWelded,
               curve: this.activeSrv.selectedJoint.showCurve,
               sliderMass: this.sliderBlock
                 ? this.nup.formatValueAndUnit(this.sliderBlock.mass, this.massUnit())

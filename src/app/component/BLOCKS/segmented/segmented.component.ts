@@ -4,12 +4,18 @@ import {
   Component,
   ElementRef,
   OnDestroy,
+  booleanAttribute,
   effect,
   inject,
   input,
   output,
   viewChildren,
 } from '@angular/core';
+import { MatIcon } from '@angular/material/icon';
+import { MatTooltip } from '@angular/material/tooltip';
+
+/** Makes each block's element ids its own, however many share a page. */
+let blocksMade = 0;
 
 /**
  * One of a few, chosen by pressing it: a track with a pill that slides to the
@@ -17,10 +23,10 @@ import {
  *
  * The one control for every "pick one" in the app -- the Magnitude / X & Y
  * split on a graph, the unit choices in Settings, a force's frame, the
- * export drawer's formats. They used to be three things: a Material button
- * toggle with a checkmark, a bordered strip of buttons in the export drawers,
- * and the graph's own split. One look, and the pill's slide is what tells a
- * reader the press landed.
+ * export drawer's formats, a joint's type. They used to be three things: a
+ * Material button toggle with a checkmark, a bordered strip of buttons in the
+ * export drawers, and the graph's own split. One look, and the pill's slide is
+ * what tells a reader the press landed.
  *
  * Index in, index out. What the index *means* is the caller's business, which
  * keeps this free of forms, enums and string values.
@@ -30,13 +36,17 @@ import {
   templateUrl: './segmented.component.html',
   styleUrls: ['./segmented.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
+  imports: [MatIcon, MatTooltip],
 })
 export class SegmentedComponent implements AfterViewInit, OnDestroy {
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   /** The labels, in order. */
-  readonly options = input.required<string[]>();
-  /** Which one is chosen. */
+  readonly options = input.required<readonly string[]>();
+  /**
+   * Which one is chosen, or -1 for none: a group of parts that disagree has no
+   * one answer, and a pill under any option would claim one.
+   */
   readonly selected = input<number>(0);
   readonly selectedChange = output<number>();
   readonly disabled = input<boolean>(false);
@@ -44,7 +54,12 @@ export class SegmentedComponent implements AfterViewInit, OnDestroy {
    * Options that cannot be chosen right now, by index: grayed in place, so
    * the reader can see the choice exists and is not theirs to make yet.
    */
-  readonly disabledAt = input<number[]>([]);
+  readonly disabledAt = input<readonly number[]>([]);
+  /**
+   * Why each grayed option cannot be chosen, by index, said when the reader
+   * points at it. The caller hands over the model's own sentence.
+   */
+  readonly reasons = input<readonly (string | undefined)[]>([]);
   /** A little shorter and tighter, for a row that has less room. */
   readonly compact = input<boolean>(false);
   /**
@@ -54,6 +69,33 @@ export class SegmentedComponent implements AfterViewInit, OnDestroy {
    * squeezed to a third of the row read "X, Y, Ma…".
    */
   readonly fill = input<boolean>(true);
+  /**
+   * The options in two columns, wrapping onto rows. Four choices with a glyph
+   * each do not fit one row of a 250px panel: shared four ways, every label
+   * was cut to its first few letters.
+   */
+  readonly wrap = input<boolean, unknown>(false, { transform: booleanAttribute });
+  /** A registered SVG icon for each option, drawn before its label. */
+  readonly icons = input<readonly string[]>([]);
+  /**
+   * The chosen option is not valid as it stands -- a slider with nowhere to
+   * slide -- and is drawn in the refusal ink. What is wrong, and the way out,
+   * are the caller's to say beside the control.
+   */
+  readonly invalid = input<boolean>(false);
+  /**
+   * The name of the choice, on a row above the track with its help mark: the
+   * row every field block draws. Without one there is no row, because most
+   * pick-ones sit at the end of a row their panel has already named.
+   */
+  readonly label = input<string>();
+  /** What the help mark says. */
+  readonly tooltip = input<string>();
+  /** Says Mixed on the label row, where the selected parts disagree. */
+  readonly mixed = input<boolean>(false);
+
+  /** The label's id and the hidden reasons' ids start with this. */
+  protected readonly idPrefix = `segmented-${blocksMade++}`;
 
   private readonly buttons = viewChildren<ElementRef<HTMLButtonElement>>('option');
   private watch?: ResizeObserver;
@@ -69,6 +111,8 @@ export class SegmentedComponent implements AfterViewInit, OnDestroy {
       this.options();
       this.fill();
       this.compact();
+      this.wrap();
+      this.icons();
       queueMicrotask(() => this.measure());
     });
   }
@@ -86,25 +130,45 @@ export class SegmentedComponent implements AfterViewInit, OnDestroy {
   }
 
   protected choose(index: number): void {
-    if (this.disabled() || this.disabledAt().includes(index) || index === this.selected()) return;
+    if (this.isDisabledAt(index) || index === this.selected()) return;
     this.selectedChange.emit(index);
+  }
+
+  protected isChosen(index: number): boolean {
+    return index === this.selected();
+  }
+
+  protected hasChoice(): boolean {
+    const at = this.selected();
+    return at >= 0 && at < this.options().length;
   }
 
   protected isDisabledAt(index: number): boolean {
     return this.disabled() || this.disabledAt().includes(index);
   }
 
+  /** Why an option is grayed, when it is grayed and a reason was given. */
+  protected reasonAt(index: number): string | undefined {
+    return this.isDisabledAt(index) ? this.reasons()[index] || undefined : undefined;
+  }
+
   /**
-   * Where the pill goes: the chosen option's own place and width, measured,
-   * so options may be as wide as their labels and the pill still fits the
-   * one under it exactly. Written as custom properties the stylesheet slides
-   * between.
+   * Where the pill goes: the chosen option's own place and size, measured,
+   * so options may be as wide as their labels, or wrap onto a second row, and
+   * the pill still fits the one under it exactly. Written as custom properties
+   * the stylesheet slides between.
    */
   private measure(): void {
     const at = this.selected();
     const chosen = this.buttons()[at]?.nativeElement;
-    if (!chosen) return;
     const host = this.host.nativeElement;
+    if (!chosen) {
+      // Nothing chosen, so no pill -- and whichever option is chosen next is
+      // put in place rather than slid from wherever the last one stood.
+      host.classList.add('settling');
+      this.restingAt = undefined;
+      return;
+    }
     // A slide is a change the reader watched happen: from one option to
     // another while the control was on screen. A control arriving, or coming
     // back with the same value after the panel around it was rebuilt, snaps
@@ -119,7 +183,9 @@ export class SegmentedComponent implements AfterViewInit, OnDestroy {
     if (this.restingAt === undefined) host.classList.add('settling');
     else if (this.restingAt !== at) host.classList.remove('settling');
     host.style.setProperty('--thumb-left', `${chosen.offsetLeft}px`);
+    host.style.setProperty('--thumb-top', `${chosen.offsetTop}px`);
     host.style.setProperty('--thumb-width', `${chosen.offsetWidth}px`);
+    host.style.setProperty('--thumb-height', `${chosen.offsetHeight}px`);
     this.restingAt = at;
   }
 }

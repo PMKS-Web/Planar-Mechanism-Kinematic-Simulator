@@ -206,6 +206,27 @@ export class AppComponent implements DoCheck {
         this.domSanitizer.bypassSecurityTrustResourceUrl(`assets/icons/${name}.svg`)
       );
     }
+    // A joint's four types, each drawn floating and standing on the frame, for
+    // the Joint Type choice in the Edit panel and the right-click menu: the
+    // Grounded switch decides which set the reader sees. `joint_split` waits
+    // for Split Joint, which is not built yet.
+    const jointGlyphs = [
+      'joint_revolute',
+      'joint_prismatic',
+      'joint_pin_in_slot',
+      'joint_welded',
+      'joint_revolute_grounded',
+      'joint_prismatic_grounded',
+      'joint_pin_in_slot_grounded',
+      'joint_welded_grounded',
+      'joint_split',
+    ];
+    for (const name of jointGlyphs) {
+      this.matIconRegistry.addSvgIcon(
+        name,
+        this.domSanitizer.bypassSecurityTrustResourceUrl(`assets/icons/${name}.svg`)
+      );
+    }
 
     // Take down the splash `index.html` painted before any of this existed.
     //

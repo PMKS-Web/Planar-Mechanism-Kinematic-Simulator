@@ -562,7 +562,18 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     this.menuByKeyboard = fromKeyboard;
     this.menuOpen = true;
     // After the pass that renders it. There is nothing to focus until then.
-    setTimeout(() => this.menuItems()[0]?.focus());
+    //
+    // The card itself, never a row. A focused row is an *armed* row -- Space
+    // and Enter press whatever button has focus -- and the first row is New
+    // Project, which opens a fresh document. Space is also the play/pause key,
+    // so a reader who opened this menu and then reached for the transport got a
+    // new project in place of the drawing they were looking at, and a reader who
+    // opened it *with* Space got one from pressing the same key twice.
+    //
+    // So an arrow key is what arms a row, and it draws the ring as it goes:
+    // what Space will press is always something the reader can see. `onMenuKey`
+    // starts at the first row from here, because nothing is focused yet.
+    setTimeout(() => this.projectMenu()?.nativeElement.focus());
   }
 
   /**
@@ -594,9 +605,22 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     this.menuReturn = null;
   }
 
+  /**
+   * The rows the keyboard can actually land on.
+   *
+   * Grayed rows are left out because they are `disabled` buttons, and a
+   * disabled button cannot take focus: `focus()` on one silently does nothing,
+   * focus stayed where it was, and the next press worked out the same
+   * destination again. Walking down the menu with nothing solved yet -- where
+   * Export Data is grayed -- therefore stopped dead at Share project, one row
+   * above it, and no number of presses got past.
+   */
   private menuItems(): HTMLElement[] {
     const menu = this.projectMenu()?.nativeElement;
-    return menu ? [...menu.querySelectorAll<HTMLElement>('.menuItem')] : [];
+    if (!menu) return [];
+    return [...menu.querySelectorAll<HTMLElement>('.menuItem')].filter(
+      (item) => !(item as HTMLButtonElement).disabled
+    );
   }
 
   /**

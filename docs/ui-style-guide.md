@@ -50,7 +50,8 @@ these:
 | --- | --- |
 | May this edit happen right now? | [`model/edit-permission.ts`](../src/app/model/edit-permission.ts), through [`edit-permission.service.ts`](../src/app/services/edit-permission.service.ts) |
 | Can this joint be driven? | `describeActuatorRefusal` in [`model/actuator.ts`](../src/app/model/actuator.ts) |
-| Can this joint be welded? | `weldRefusal` in [`grid-utils.service.ts`](../src/app/services/grid-utils.service.ts) |
+| Can this joint be welded? | `refuseJointOperation` in [`model/joint-operation-permission.ts`](../src/app/model/joint-operation-permission.ts) |
+| Can this joint take this type? | `refuseJointType` in [`model/joint-type.ts`](../src/app/model/joint-type.ts), through `JointTypeService` |
 | Is a Lock holding this part? | `locksHolding` in [`model/lock-set.ts`](../src/app/model/lock-set.ts) |
 
 A condition such as `@if (joint.links.length < 2)` with its own words is a second copy of the rule.
@@ -161,7 +162,19 @@ Accessibility is one of the four principles, and it is checked, not assumed.
   registry: a shortcut gets an id, a section and a label there, and `appShortcutTip` shows its
   keys in the control's tooltip.
 - **Focus is visible.** A focused control shows a ring. Style `:focus-visible`, so a mouse click
-  does not draw one, and never write `outline: none` without putting a ring back.
+  does not draw one, and never write `outline: none` without putting a ring back. **Except where
+  the app moves focus itself** — a popover that takes focus as it opens, like the project menu or
+  the right-click card. The browser reads a script moving focus as keyboard work unless the
+  reader's last act was a pointer that moved focus too, so `:focus-visible` there draws a ring on
+  the first item of a menu somebody clicked open. The component knows how it was opened and says
+  so with a class (`byKeyboard`), which the ring hangs off; it turns on the moment a reader who
+  clicked reaches for the arrow keys. `e2e/menu-focus.mjs` guards both menus.
+- **A menu opened with a pointer arms nothing.** Space and Enter press whatever row has focus, so
+  a popover that focuses its first row on opening puts that row under the reader's next keypress —
+  and the first row is often the most destructive one (New Project). Focus the card itself and let
+  an arrow key say which row, which also draws the ring: what a press will act on is always
+  something the reader can see. Skip rows that cannot take focus, too — `focus()` on a `disabled`
+  button silently does nothing, which strands arrow navigation on the row above it.
 - **An icon-only control has an `aria-label`**, in the vocabulary's words. A control that shows a
   state carries `aria-pressed`, as `app-view-button` does. A grayed control carries its reason
   where a screen reader can reach it, not only in a tooltip.
@@ -237,7 +250,7 @@ Use the component that does the job:
 | A bare field with a derived-or-typed mark | `state-input` |
 | A hand-written `<input>` | add `appStandardField` |
 | A color | `color-picker` |
-| A choice of one option | `segmented-block`, or `radio-block` when bound to a form |
+| A choice of one option | `segmented-block` (`wrap` it into two columns, with glyphs, for four), or `radio-block` when bound to a form |
 | A switch | `toggle-block` |
 | The panel's stroked button | `button-block` |
 | Two buttons on one row | `dual-button` |
