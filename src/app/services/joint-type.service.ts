@@ -134,7 +134,20 @@ export class JointTypeService {
             !this.mechanism.sliderFor(now)?.isFloating
           ) {
             this.active.selectedJoint = now;
+            // `toggleGround`'s plain-joint branch ends `input = false`, which is
+            // its own rule about un-grounding and has nothing to say about
+            // putting a ground back. A grounded pin is the standard crank, and
+            // the exchange carries the drive across, so taking a grounded,
+            // driven slider to Revolute came back grounded and un-driven with
+            // nothing said. Carried around the call rather than written past
+            // it, so the toggle keeps its rule for its own callers.
+            const driven = now.input;
+            const speed = now.driveSpeed;
             this.mechanism.toggleGround();
+            if (driven) {
+              now.input = true;
+              now.driveSpeed = speed;
+            }
           }
         })
       );

@@ -188,4 +188,27 @@ describe('JointTypeService', () => {
     expect(types.isGrounded(slider)).toBe(true);
     expect(types.choiceFor(slider).icons[0]).toBe('joint_revolute_grounded');
   });
+
+  it('keeps the drive when a grounded, driven slider becomes a pin', () => {
+    // The linear-actuator shape: a grounded slot that is also the drive. Taking
+    // it to Revolute carries `input` across in the exchange, and then the
+    // Grounded fix-up put the ground back through `toggleGround`, whose
+    // plain-joint branch ends `input = false`. The joint came back grounded and
+    // un-driven with nothing said -- and a grounded pin is the standard crank,
+    // so there is no reason for the drive not to survive the way the ground
+    // does.
+    const { harness, types, live } = bentBar();
+    live('A').ground = true;
+    harness.service.updateMechanism(false);
+    types.set(live('A'), 'pin-in-slot');
+    live('A').input = true;
+    live('A').driveSpeed = -12;
+    harness.service.updateMechanism(false);
+
+    expect(types.set(live('A'), 'revolute')).toBe(true);
+
+    expect(live('A').ground, 'still standing on the frame').toBe(true);
+    expect(live('A').input, 'still the drive').toBe(true);
+    expect(live('A').driveSpeed, 'at the speed it was turning').toBeCloseTo(-12, 9);
+  });
 });

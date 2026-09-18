@@ -2897,6 +2897,27 @@ export class MechanismService {
         }
         return;
       }
+      // A Slide whose riders are already one compound, arriving from a URL.
+      //
+      // The prismatic record spends its weld bit on `rotates`, so `isWelded` is
+      // not written for a slider at all and comes back false however the
+      // drawing was left -- and every undo and redo is a decode. The compound
+      // still round-trips, so the two bars stay fused while the joint denies
+      // holding them together; choosing Pin-in-slot then returns at once from
+      // `unweldJointTopology` and flips `rotates` back with the bars still
+      // fused and nothing left that can part them. Read off the drawing
+      // instead: a slot that does not rotate, with the bodies meeting at it
+      // already fused, is welded whatever the record was able to say. Asked of
+      // the compound's *members through this joint*, not of the compound: a
+      // slider can sit inside a body some other joint's weld built, and only
+      // what meets at this slot says anything about this slot. Not a topology
+      // change, so it does not ask for another pass.
+      if (joint instanceof PrisJoint && !joint.rotates && !joint.isWelded) {
+        const fused = this.compoundAt(joint)?.subset.filter((member) =>
+          member.joints.includes(joint)
+        );
+        if ((fused?.length ?? 0) > 1) joint.isWelded = true;
+      }
       if (!joint.isWelded) return;
       if (!this.compoundAt(joint)) {
         joint.isWelded = false;

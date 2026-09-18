@@ -167,4 +167,42 @@ describe('folding a three-object slider into one joint', () => {
     const target = rebuild(encode(source));
     expect(target.joints.find((joint) => joint.id === 'C')!.name).toBe('Carriage');
   });
+
+  // The rest of a URL goes on naming the *prismatic* joint, which is the id the
+  // fold spends. A lock put on a sealed part marks `sealed.slider` -- the
+  // prismatic joint -- so every shared URL with a locked ram says `JP` here,
+  // and a color chosen while the prismatic joint happened to be selected says
+  // `KJP`. Both resolved to nothing once the fold renamed P away, and both were
+  // dropped in silence. The fold hands back what it renamed so each of these
+  // falls through it.
+  it('keeps a lock that was written on the prismatic joint', () => {
+    const source = legacySliderCrank({ welded: true, mass: 1.318 });
+    (source.joints[3] as PrisJoint).locked = true;
+
+    const target = rebuild(encode(source));
+    const slider = target.joints.find((joint) => joint.id === 'C') as PrisJoint;
+    expect(slider.locked).toBe(true);
+  });
+
+  it('keeps a color that was chosen on the prismatic joint', () => {
+    const source = legacySliderCrank({ welded: true, mass: 1.318 });
+    (source.joints[3] as PrisJoint).colorFamily = 'b';
+
+    const target = rebuild(encode(source));
+    expect(target.joints.find((joint) => joint.id === 'C')!.colorFamily).toBe('b');
+  });
+
+  it('carries a drive that the pin rather than the slot was holding', () => {
+    // Which side holds the drive depends on how old the URL is, the same way
+    // ground and input do.
+    const source = legacySliderCrank({ welded: true, mass: 0 });
+    const pin = source.joints[2] as RevJoint;
+    pin.input = true;
+    pin.driveSpeed = -7;
+
+    const target = rebuild(encode(source));
+    const slider = target.joints.find((joint) => joint.id === 'C') as PrisJoint;
+    expect(slider.input).toBe(true);
+    expect(slider.driveSpeed).toBeCloseTo(-7, 9);
+  });
 });

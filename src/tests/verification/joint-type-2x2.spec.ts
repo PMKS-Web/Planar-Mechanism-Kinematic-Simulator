@@ -6,6 +6,12 @@ import { RealLink } from '../../app/model/link';
 import { JointOperationContext } from '../../app/model/joint-operation-permission';
 import { jointTypeAt, JointType, refuseJointType } from '../../app/model/joint-type';
 import { createMechanismHarness } from '../../test-utils/mechanism-harness';
+import { MechanismBuilder } from '../../app/services/transcoding/mechanism-builder';
+import { StringTranscoder } from '../../app/services/transcoding/string-transcoder';
+import { SettingsService } from '../../app/services/settings.service';
+import { ActiveObjService } from '../../app/services/active-obj.service';
+import { MechanismService } from '../../app/services/mechanism.service';
+import { urlGeneratorFor } from '../../test-utils/url-encoding';
 
 // Gate 4: every cell of the 2x2 reachable from every other in at most two
 // clicks, and each control change altering exactly one thing.
@@ -263,5 +269,51 @@ describe('welding and the slider', () => {
     expect(refuseJointType(scene.b(), 'pin-in-slot', CONTEXT)).toBeUndefined();
     setWeld(scene, false);
     expect((scene.b() as PrisJoint).rotates).toBe(true);
+  });
+});
+
+describe('a Slide that has been through a URL', () => {
+  /** Encode a live service the way sharing and undo both do, and read it back. */
+  function roundTrip(service: MechanismService): MechanismService {
+    const written = urlGeneratorFor(service, new SettingsService()).generateUrlQuery();
+    const decoder = new StringTranscoder();
+    decoder.decodeURL(written);
+    const target = createMechanismHarness().service;
+    new MechanismBuilder(target, decoder, new SettingsService(), new ActiveObjService()).build(
+      false
+    );
+    target.finishStructuralEdit(false);
+    return target;
+  }
+
+  it('comes back still holding its riders together, and can still be parted', () => {
+    // The prismatic record spends its weld bit on `rotates`, so `isWelded` is
+    // not in the URL for a slider at all -- and every undo and redo is a
+    // decode. The compound round-tripped while the joint came back denying it
+    // held anything, after which choosing Pin-in-slot returned at once from
+    // `unweldJointTopology`: `rotates` flipped back to true with the two bars
+    // still fused and nothing left in the app that could part them.
+    const scene = bentBar();
+    setSlider(scene, true);
+    setWeld(scene, true);
+    const compoundBefore = scene.service.links.filter(
+      (link) => link instanceof RealLink && link.subset.length > 0
+    ).length;
+    expect(compoundBefore).toBe(1);
+
+    const after = roundTrip(scene.service);
+    const slider = after.joints.find((joint) => joint.id === 'B') as PrisJoint;
+    expect(slider.rotates).toBe(false);
+    expect(slider.isWelded, 'the weld it is still holding').toBe(true);
+
+    // And Pin-in-slot takes the compound apart, rather than freeing the slot
+    // and leaving the bodies fused. `unWeldJoint` is the step
+    // `JointTypeService.set` runs for that change, and it is where the early
+    // return on `!joint.isWelded` sat.
+    after.unWeldJoint(slider);
+    expect(slider.rotates).toBe(true);
+    expect(
+      after.links.filter((link) => link instanceof RealLink && link.subset.length > 0)
+    ).toHaveLength(0);
   });
 });
