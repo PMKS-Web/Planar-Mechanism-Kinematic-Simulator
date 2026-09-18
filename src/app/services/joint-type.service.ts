@@ -84,9 +84,10 @@ export class JointTypeService {
    * so they are one entry in the history. Staged once against the pose on
    * screen when the machine is parked away from its start (the inner edits see
    * that staging and do not stage again), and saved once at the end. The batch
-   * runs *inside* the staging: a staging holds saves and lets the hold go when
-   * it settles, so a batch wrapped around one would find its hold already gone
-   * and write a second entry.
+   * runs inside the staging, which is the order that reads: the staging is
+   * about the pose, the batch about the history. (`capturingPose` hands the
+   * hold back to whoever had it, so this also nests the other way round --
+   * which is how the group edit runs one of these per joint.)
    *
    * The slider edit reads the selection, so the selection is pointed at the
    * joint for it (`run`) and put back afterward. Returns whether the joint is
@@ -117,8 +118,21 @@ export class JointTypeService {
           // the choice draws every type standing on the frame (D2) -- so a
           // change of type keeps it. Taking the slot away takes the ground it
           // carried with it, and that is given back here.
+          //
+          // Except to a slot that came back riding a carrier: `toggleGround`
+          // goes through `groundAt`, which clears `_carrier` and both slot
+          // joints, so a pin that once carried a slider on a link, was
+          // grounded, and is now made Pin-in-slot again would have the carrier
+          // `sliderTopology` just restored from the stash taken off it without
+          // a word. A floating slot is already fixed in direction by its
+          // carrier, which is what the ground was standing in for.
           const now = this.live(id);
-          if (now && grounded && !this.isGrounded(now)) {
+          if (
+            now &&
+            grounded &&
+            !this.isGrounded(now) &&
+            !this.mechanism.sliderFor(now)?.isFloating
+          ) {
             this.active.selectedJoint = now;
             this.mechanism.toggleGround();
           }

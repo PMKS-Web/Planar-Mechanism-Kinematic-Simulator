@@ -62,7 +62,10 @@ describe('KeyboardShortcutsService', () => {
   it('leaves the arrows to a menu standing open, and does not swallow them', () => {
     const { service, heard } = setup();
     service.whenArrowsNudge(() => true);
+    // What the CDK builds: `cdk-menu` is its host class, and the guard asks for
+    // that rather than for `[role="menu"]`, which other things wear too.
     const menu = document.createElement('div');
+    menu.className = 'cdk-menu';
     menu.setAttribute('role', 'menu');
     const item = document.createElement('div');
     item.setAttribute('role', 'menuitemradio');
@@ -76,6 +79,25 @@ describe('KeyboardShortcutsService', () => {
     // Not answered *and* not prevented: the menu is the one that needs it.
     expect(event.defaultPrevented).toBe(false);
     menu.remove();
+  });
+
+  it('still answers the keys inside the phone sheet, which is a menu in name only', () => {
+    const { service, heard } = setup();
+    service.whenArrowsNudge(() => true);
+    // `view-controls.component.html` gives the visibility drawer `role="menu"`,
+    // but its rows are plain buttons that keep focus after a tap and the sheet
+    // stays up until its backdrop is clicked. Guarding on the role alone left
+    // every shortcut dead from the moment a row there was tapped, and the sheet
+    // answers no arrow keys itself, so nothing was walking anything.
+    const sheet = document.createElement('div');
+    sheet.className = 'viewSheet';
+    sheet.setAttribute('role', 'menu');
+    const row = document.createElement('button');
+    sheet.appendChild(row);
+    document.body.appendChild(sheet);
+    row.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    expect(heard).toEqual(['edit.nudgeDown']);
+    sheet.remove();
   });
 
   it('lists the four arrows as one line for a reader', () => {

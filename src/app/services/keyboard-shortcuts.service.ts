@@ -415,9 +415,16 @@ export class KeyboardShortcutsService {
    *
    * Asked of the focused element rather than of any open overlay: a card can
    * stand while focus is elsewhere, and those keys are still the canvas's.
+   *
+   * Scoped to a CDK menu rather than to `[role="menu"]`, which also matches the
+   * phone's visibility drawer (`view-controls.component.html`). That sheet's
+   * rows are plain buttons that keep focus after a tap and it stays open until
+   * its backdrop is clicked, so the broader selector left every shortcut dead
+   * from the moment a row there was tapped -- and it answers no arrow keys, so
+   * none of the reasoning above applies to it.
    */
   private insideAnOpenMenu(event: KeyboardEvent): boolean {
     const target = event.target;
-    return target instanceof Element && !!target.closest('[role="menu"]');
+    return target instanceof Element && !!target.closest('.cdk-menu');
   }
 }

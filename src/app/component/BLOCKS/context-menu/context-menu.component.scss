@@ -125,6 +125,15 @@
       @include look.track;
       @include look.wrapped;
       margin: 0 12px 10px;
+      // Wide enough for the longest of the four labels.
+      //
+      // The card's own 224px minimum was set when the top of it was rows, and
+      // a row has the whole width for its label. Two columns give a label a
+      // quarter of it, which came to 52px -- so the card's narrowest form, the
+      // one with no wide row in it, ellipsized "Pin-in-slot" and "Prismatic",
+      // including on the chosen value. Asked for here rather than on the card,
+      // so only the cards that carry a choice pay for it.
+      min-width: 212px;
 
       .cm-choice__cell {
         @include look.cell;
@@ -153,7 +162,7 @@
         @include look.chosen-ink($theme);
 
         mat-icon {
-          color: var(--brand);
+          @include look.chosen-glyph($theme);
         }
       }
 

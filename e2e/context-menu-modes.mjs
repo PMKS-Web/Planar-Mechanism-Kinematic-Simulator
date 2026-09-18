@@ -61,6 +61,7 @@ const choice = () =>
     nodes.map((node) => ({
       label: node.querySelector('.cm-choice__label').textContent.trim(),
       disabled: node.classList.contains('cm-choice__cell--off'),
+      chosen: node.classList.contains('cm-choice__cell--chosen'),
     }))
   );
 let editRows;
@@ -125,12 +126,20 @@ for (const mode of ['Edit', 'Kinematic Analysis', 'Force Analysis']) {
     `${mode}: trace path enabled at paused pose`,
     !pausedRows.find((r) => r.label === 'Trace path').disabled
   );
-  // A change of type is a change of topology, so it is refused where the rows
-  // it replaced were -- every value of it, each keeping its own reason.
+  // Joint Type answers here exactly what it answers in the Edit panel, because
+  // it is the same named control: `JointTypeService.set` stages through
+  // `capturingPose`, so a paused *Edit* pose re-anchors and the choice stays
+  // live. An analysis mode away from the start is where a topology change is
+  // refused, and there every value but the chosen one grays -- the chosen one
+  // never does, since choosing it changes nothing.
   const pausedChoice = await choice();
   check(
-    `${mode}: the Joint Type choice is refused at a paused pose`,
-    pausedChoice.length === 4 && pausedChoice.every((one) => one.disabled),
+    `${mode}: the Joint Type choice answers as the Edit panel does at a paused pose`,
+    pausedChoice.length === 4 &&
+      (mode === 'Edit'
+        ? pausedChoice.every((one) => !one.disabled)
+        : pausedChoice.every((one) => one.chosen || one.disabled) &&
+          pausedChoice.some((one) => one.disabled)),
     pausedChoice
   );
   await page.screenshot({ path: `${OUT}/${mode.split(' ')[0]}-paused-menu.png` });

@@ -1,5 +1,3 @@
-@use 'sass:map';
-@use '@angular/material' as mat;
 @use './segmented.look' as look;
 
 @mixin css($theme) {
@@ -110,7 +108,7 @@
     }
 
     button.chosen .glyph {
-      color: var(--brand);
+      @include look.chosen-glyph($theme);
     }
 
     button:disabled .glyph {

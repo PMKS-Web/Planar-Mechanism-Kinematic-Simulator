@@ -61,6 +61,18 @@
   font-weight: 500;
 }
 
+/**
+ * The chosen option's glyph, which takes the same ink as its label.
+ *
+ * Here rather than at the two call sites, because the glyph was the one color
+ * in the chosen state that lived outside this file -- `var(--brand)`, indigo
+ * 500, beside a label at 700 -- and two blues in one cell is what a shared look
+ * exists to prevent.
+ */
+@mixin chosen-glyph($theme) {
+  color: mat.m2-get-color-from-palette(map.get(mat.m2-get-color-config($theme), 'primary'), 700);
+}
+
 /** The note that says the parts selected disagree. */
 @mixin mixed-ink($theme) {
   color: mat.m2-get-color-from-palette(map.get(mat.m2-get-color-config($theme), 'primary'), 700);

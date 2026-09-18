@@ -1,7 +1,8 @@
 # Joint type as one choice, sliders as one joint, cylinders as a sealed slide
 
 > **Status:** Partly built — plan of record from September 15, 2026. It replaces the
-> bodies-and-joints migration (`docs/bodies-and-joints-plan.md`), which Stage R retires.
+> bodies-and-joints migration, which lives on the unmerged branch `bodies-and-joints-plan` in
+> `docs/bodies-and-joints-plan.md` and was never on `staging`; Stage R retires it.
 > **Stages R, 0 and 1 are built:** a joint's type is one choice of four in the Edit panel, in the
 > group panel and at the top of the right-click menu, and a slider is a single `PrisJoint` carrying
 > its own mass and `rotates`. Stage 2 is not started. Everything

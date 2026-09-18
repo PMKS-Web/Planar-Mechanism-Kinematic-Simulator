@@ -315,6 +315,26 @@ describe('editing at a displaced pose', () => {
     expect(service.posedEditKey).toBeNull();
   });
 
+  it('still mints one entry when several staged edits run inside one batch', () => {
+    // A group edit stages per part -- one `capturingPose` per joint inside one
+    // `batched` -- and a staging that cleared the hold outright dropped the
+    // batch's, so every part after the first wrote an entry of its own. Eight
+    // joints, eight presses of Undo, for one press of the control.
+    const { service, joints, saveCount } = oneBar();
+    displace(service);
+    const before = saveCount();
+
+    service.batched(() => {
+      service.capturingPose(joints[1], () => service.weldJoint(joints[1]));
+      service.capturingPose(joints[2], () => service.weldJoint(joints[2]));
+    });
+
+    expect(joints[1].isWelded).toBe(true);
+    expect(joints[2].isWelded).toBe(true);
+    expect(saveCount() - before).toBe(1);
+    expect(service.posedEditKey).toBeNull();
+  });
+
   it('closes a staging nobody is holding, before the rebuild can use it', () => {
     // The guard that replaced three rounds of hunting for paths that forget to
     // close their staging. A gesture opened with a pointer down and then

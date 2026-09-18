@@ -53,8 +53,8 @@ export type MenuTarget = Joint | Link | Force | SynthesisPose | string;
  *
  * One place, because the menu's whole claim is that it says the same thing the
  * panels and the drag ring say. Every refusal below is fetched from the model
- * that enforces it — `describeActuator` for a driven joint, `weldRefusal` for a
- * weld, `locksHolding` for a lock — rather than written out again here, so the
+ * that enforces it — `describeActuator` for a driven joint, `refuseJointType`
+ * for a type, `locksHolding` for a lock — rather than written out again here, so the
  * three surfaces cannot end up disagreeing about what is possible.
  *
  * The shape is a fixed ladder in every case: Attach, State, Machine, and a
@@ -587,7 +587,12 @@ export class ContextMenuBuilderService {
     return {
       label: 'Joint Type',
       chosen: choice.chosen,
-      posePolicy: 'start',
+      // The Edit panel gates this same named control on `may('structure')`, and
+      // `JointTypeService.set` stages through `capturingPose` the way welding
+      // does, so a paused Edit pose re-anchors correctly (`joint-type.mjs` §4).
+      // Asking anything narrower here would gray on the card what is live in
+      // the panel, for one control with one name.
+      posePolicy: 'structure',
       // The one thing about a slot the drawing cannot show, said on the chosen
       // value's hover rather than printed under the grid.
       fault: choice.invalid
@@ -1408,8 +1413,14 @@ export class ContextMenuBuilderService {
     // its own reason, and rechecked when one is pressed.
     const choice = model.choice;
     if (choice) {
-      for (const option of choice.options) {
-        const refusal = this.permission.menuRefusal(choice.posePolicy);
+      for (const [index, option] of choice.options.entries()) {
+        // Every value but the one already chosen. `jointTypeChoice` in
+        // `model/joint-type.ts` never refuses the chosen value -- there is
+        // nothing to refuse, since choosing it changes nothing -- and graying
+        // it here drew the chosen cell with its pill but in disabled ink,
+        // a state the block has no story for and the panel never shows.
+        const refusal =
+          index === choice.chosen ? null : this.permission.menuRefusal(choice.posePolicy);
         if (refusal && !option.refusal) option.refusal = refusal;
         const action = option.action;
         option.action = () => {

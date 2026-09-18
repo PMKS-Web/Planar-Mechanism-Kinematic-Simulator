@@ -2516,18 +2516,6 @@ export class MechanismService {
     );
   }
 
-  toggleWeldedJoint() {
-    const joint = this.joints.find((j) => j.id === this.activeObjService.selectedJoint?.id) as
-      RealJoint | undefined;
-    if (!joint) return;
-
-    if (!joint.isWelded) {
-      this.weldJoint();
-    } else if (joint.isWelded) {
-      this.unweldSelectedJoint();
-    }
-  }
-
   private createNewCompoundLink(linksToWeld: RealLink[]): RealLink {
     const leaves = linksToWeld.flatMap((link) =>
       link.subset.length > 0
@@ -6530,12 +6518,18 @@ export class MechanismService {
     const staged = near !== undefined && this.beginPosedEdit(near);
     if (!staged) return work();
     const key = this.seedFromDisplay!;
+    // Whoever was holding the saves goes on holding them. Clearing the flag
+    // outright dropped an enclosing `batched`'s hold, so a group edit that
+    // staged per part -- one `capturingPose` per joint inside one batch --
+    // minted an entry for every part after the first. Restoring it makes one
+    // entry per gesture true by construction rather than by nobody nesting.
+    const held = this.savesHeld;
     this.savesHeld = true;
     let result: T;
     try {
       result = work();
     } finally {
-      this.savesHeld = false;
+      this.savesHeld = held;
     }
     this.seedFromDisplay = null;
     // A settle that re-anchors saves on its way through, as the rebuild it runs
@@ -6544,7 +6538,7 @@ export class MechanismService {
     // else, so the old anchor is dropped rather than carried -- runs no rebuild
     // and so no save, and the edit was left out of the history entirely: it had
     // happened, and Undo would not take it back.
-    if (!this.settleToAnchor(key, true).reanchored) this.save();
+    if (!this.settleToAnchor(key, true).reanchored && !held) this.save();
     return result;
   }
 
