@@ -153,6 +153,22 @@ the joint in the force solver. Gate: `app.component.spec.ts` (MATLAB sixbar), th
 tables, `fixture-gallery` and `template-payloads` specs, `e2e/template-graphs.mjs`,
 `playback-timing`, `force-units`, `analysis-editing`: every number identical to before.
 
+> **Met, with one recorded exception.** `e2e/template-graphs.mjs` is 3978/3978, the MATLAB sixbar
+> is byte-identical, and the unit suite runs with nothing skipped. Two rate defects this stage
+> introduced were caught in review and fixed in it rather than deferred: the drive row being
+> dropped from the system the *rates* are solved through (the scissor lift, and every shape whose
+> drive mounts the walk places), and `determineLoops` never recording a ground-to-ground chain one
+> edge long (the elliptical trammel, which is that shape only now that a slider is one joint).
+>
+> The exception is **`Cylinder_Gripper`'s D and Q**, re-pinned in `template-baseline.ts`. That
+> machine's simultaneous system is square but rank-deficient — a 2-D nullspace — so least squares
+> wanders inside it, and a slider being one unknown rather than two coincident ones makes the
+> system a column narrower and the wander land differently. Both old and new values are below the
+> 1/1000-unit the URL can carry and both satisfy the suite's own `toBeCloseTo(_, 3)`; they are now
+> pinned at the mirror symmetry the drawing actually has rather than at whichever number the
+> search settles on, which is what makes them self-enforcing. Nobody owes a further fix: the
+> wander is a property of that mechanism, not of this stage.
+
 **1c. Canvas, panel, menu, deletion (files: `component/new-grid/*`, `services/slider-mark.service.ts`,
 `model/joint-marks.ts`, `services/grid-utils.service.ts`, `services/mechanism.service.ts`
 weld/slider/delete paths, `edit-panel`, `context-menu-builder`).** One mark per slider (the block
