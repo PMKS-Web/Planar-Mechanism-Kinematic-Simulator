@@ -252,6 +252,20 @@ const renderFacts = () =>
           });
         return over;
       })(),
+      // Whether each body's own path has any geometry in it.
+      //
+      // `compoundsOverARam` and `bodiesNotDrawn` both go by id, and a Slide
+      // suppresses the rider's own outline and draws the whole assembly in the
+      // weld plate instead -- so for those shapes the element is present,
+      // carries its id, and has nothing in it. Both of those checks then pass
+      // on a shape they say nothing about, which is worth knowing rather than
+      // assuming: this is what says the element really is the empty one.
+      emptyBodies: bodies
+        .filter((l) => {
+          const el = document.querySelector(`[id="${l.id}"]`);
+          return !!el && !(el.getAttribute('d') ?? '').trim();
+        })
+        .map((l) => l.id),
       rams: rams.length,
       links: bodies.map((l) => l.id),
     };
@@ -260,7 +274,7 @@ const renderFacts = () =>
 /** Click a thing on the canvas and say what got selected. */
 async function selects(selector) {
   // A point that actually hits the shape, not the middle of its box. A bar
-  // bent round a corner, and every weld plate, has a bounding box whose centre
+  // bent round a corner, and every weld plate, has a bounding box whose center
   // is outside the fill -- so aiming there clicks whatever lies beneath and
   // reports the wrong answer, or none.
   const spot = await page.evaluate((css) => {
@@ -275,9 +289,12 @@ async function selects(selector) {
         if (document.elementFromPoint(x, y) === el) return { x, y };
       }
     }
-    return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    // No point on the shape answered. Falling back to the box center is what
+    // the note above says never to do -- it clicks whatever lies beneath and
+    // reports that -- so it fails loudly instead.
+    return null;
   }, selector);
-  if (!spot) return { type: 'missing', id: null };
+  if (!spot) return { type: 'unhittable', id: null };
   await page.mouse.move(spot.x, spot.y);
   await page.mouse.click(spot.x, spot.y);
   await page.waitForTimeout(350);
@@ -335,6 +352,9 @@ for (const shape of shapes) {
       skins: facts.skinsDrawn,
       rams: facts.rams,
       over: facts.compoundsOverARam,
+      // Named beside it, because a body whose path is empty is one the check
+      // above cannot fail on: `isPointInFill` is false everywhere for it.
+      empty: facts.emptyBodies,
     })
   );
   check(
@@ -366,7 +386,10 @@ check(
 // -- and the plate carries the rider's selection in its place, which is what
 // this asks about. The body's own path element is still there and still
 // carries its id; it simply has no geometry left to click.
-const onSkin = await selects('.slider-plate path');
+// Scoped to the mount's own plate: the `two-blocks` recipe draws two of them,
+// and a bare selector takes whichever is first in document order rather than
+// the one this check is about.
+const onSkin = await selects(`[data-slider="${ids.mounts[1]}"] .slider-plate path`);
 check(
   'the welded body answers as the body, through the plate that draws it',
   onSkin.type === 'Link' && onSkin.id === ids.compound,

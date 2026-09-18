@@ -9,18 +9,28 @@
 //
 // Regenerate ONLY when a change to the numbers is intended and reviewed.
 //
-// Trimmed once, in Stage 1 of `docs/joint-type-and-cylinder-plan.md`, when a
+// Changed once, in Stage 1 of `docs/joint-type-and-cylinder-plan.md`, when a
 // slider stopped being a prismatic joint, a coincident pin and a zero-length
-// block joining them and became the one joint the canvas always drew. The
-// sample rows for the joints that fold away were removed and nothing else was
-// touched: every one of them stood at exactly the coordinates of the joint it
-// was coincident with, at every sampled timestep, which is both what made them
-// safe to drop and what `template-url.spec.ts` goes on checking for every joint
-// that is left.
+// block joining them and became the one joint the canvas always drew. Three
+// things moved, and this is the file where saying exactly which matters most.
 //
-// The `joints` and `links` snapshots are untouched, because they pin what the
-// *stored* URL says and these payloads are still the strings they always were:
-// three objects per slider, read and folded on the way in.
+// 1. **Sample rows for the joints that fold away are gone.** Every one of them
+//    stood at exactly the coordinates of the joint it was coincident with, at
+//    every sampled timestep, which is both what made them safe to drop and what
+//    `template-url.spec.ts` goes on checking for every joint that is left.
+//
+// 2. **Seventeen payloads were regenerated, so the `joints` and `links`
+//    snapshots of those moved with them.** They pin what the *stored* URL says,
+//    and the stored URL is the short spelling now. `Slider_Crank` is the one to
+//    look at: its `D` and its `CD` piston entry are gone, and `C` reads
+//    `type: 0, isGrounded: true` where it read `type: 1, isGrounded: false`.
+//    The payloads a release before Stage 1 actually shipped are frozen in
+//    `src/test-data/legacy-payloads.ts`, with a spec decoding each against its
+//    regenerated twin -- that, rather than this file, is what says the old
+//    strings still open as the mechanism they were.
+//
+// 3. **Two solved numbers were re-pinned**, both on Cylinder_Gripper and both
+//    toward the symmetry that drawing has. See the comment on `D` below.
 
 export interface TemplateJointSnapshot {
   id: string;
@@ -1144,17 +1154,29 @@ export const TEMPLATE_BASELINES: Record<string, TemplateBaseline> = {
         ['A', -5, 0],
         ['B', -3.721, 0],
         ['C', -3.515, 0],
-        // Re-pinned once, in Stage 1, and the only solved number that moved.
-        // This drawing is mirror-symmetric about y = 0 -- G/I, H/J, K/L, O/P,
-        // M/T, Q/V and S/X are all ±pairs -- so D's y is exactly 0, which is
-        // what the other three picks pin it at. The -0.001 here was the old
-        // solver's wander: Cylinder_Gripper is the one template no chain of
-        // dyads solves, its simultaneous system is square but rank-deficient
-        // (a 2-D nullspace), and least squares drifts inside it. The partners
-        // in this very sample disagree by ~1e-3 for the same reason. We now
-        // produce -0.00028, about three times closer to the truth, and both
-        // values sit below the 1/1000-unit the URL can even carry.
-        ['D', -2.236, -0.0003],
+        // Re-pinned once, in Stage 1: the two solved numbers that moved, both
+        // here. This drawing is mirror-symmetric about y = 0 -- G/I, H/J, K/L,
+        // O/P, M/T, Q/V and S/X are all ±pairs -- so D's y is exactly 0, and
+        // that is what it is pinned at, rather than at whichever small number
+        // the solver happens to produce. `toBeCloseTo(_, 3)` is the tolerance,
+        // and the old -0.001 and the current -0.00028 both satisfy it against
+        // 0; pinning the truth says what is meant and stops the next drift
+        // being written down as though it were the answer.
+        //
+        // The drift itself is not a defect to chase. Cylinder_Gripper is the
+        // one template no chain of dyads solves: its simultaneous system is
+        // square but rank-deficient, with a 2-D nullspace, and least squares
+        // wanders inside it -- the ± partners in this very sample disagree by
+        // ~1e-3 for the same reason. What changed is which pose the search
+        // settles on: Stage 1's slider is one unknown where it was two
+        // coincident ones, so the system it searches is a column narrower and
+        // the wander lands about three times closer to the truth. Both values
+        // sit below the 1/1000-unit the URL can carry.
+        //
+        // Q is pinned at three decimals like its partner V for the same reason:
+        // one of a ± pair written to four and the other to three is a precision
+        // nobody chose.
+        ['D', -2.236, 0],
         ['G', -0.837, 1],
         ['H', 1.163, 1],
         ['I', -0.836, -1],
@@ -1168,7 +1190,7 @@ export const TEMPLATE_BASELINES: Record<string, TemplateBaseline> = {
         // is pinned at -1.984 in this very sample, and M/T are a clean ±1.984
         // pair, so 1.985 is the odd one out. We produce 1.9844, which is the
         // symmetric answer.
-        ['Q', 0.14, 1.9844],
+        ['Q', 0.14, 1.984],
         ['S', 4.19, 0.725],
         ['T', -1.86, -1.984],
         ['V', 0.14, -1.984],

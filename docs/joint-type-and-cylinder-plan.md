@@ -128,11 +128,22 @@ Prismatic, which is today's Welded bit on the coincident pin). `SliderBlock` and
 `PrisJoint` stay as they are.
 
 **1a. Model and codec (files: `model/joint.ts`, `model/link.ts`, `services/transcoding/*`,
-`model/mechanism/mechanism-partition.ts`).** Payload version bump: a prismatic joint entry gains
-mass; the block link entry and the pin entry are no longer written. The reader accepts the old
-form (PRISMATIC bit + block link + coincident pin) and folds it, and the checked-in production
-fixtures under `src/test-data/verification` and `src/test-utils/verification/fixture-gallery.ts`
-must decode to identical geometry. Undo replays URLs, so the fold must be exact.
+`model/mechanism/mechanism-partition.ts`).** A prismatic joint entry gains mass; the block link
+entry and the pin entry are no longer written. The reader accepts the old form (PRISMATIC bit +
+block link + coincident pin) and folds it, and the checked-in production fixtures under
+`src/test-data/verification` and `src/test-utils/verification/fixture-gallery.ts` must decode to
+identical geometry. Undo replays URLs, so the fold must be exact.
+
+> **Built with no version bump, by structural recognition instead** (decided in the pull request
+> for 1a). The old form is named by what its records *are* — a piston link record joining a
+> prismatic joint to a coincident pin — rather than by a discriminator, so a new payload needs no
+> new version and every old one folds. The cost is one-directional: an **older** build handed a
+> new payload stops reading a joint record after `driveSpeed` with no arity check, the digest
+> still matches, and it drops the mass token — opening a grounded slider with a bar hanging off
+> it and no block. That is a wrong drawing rather than a refusal, and it is why `docs/fixture-urls.md`
+> now says every slider row needs a Stage 1 build. `src/test-data/legacy-payloads.ts` freezes the
+> seventeen payloads the last release before Stage 1 actually emitted, and a spec decodes each
+> against its regenerated twin.
 
 **1b. Solver and forces (files: `model/mechanism/loop-solver.ts`, `position-solver.ts`,
 `kinematic-solver.ts`, `force-solver.ts`, `rigid-bodies.ts`, `bodies.ts`).** Loops now pass

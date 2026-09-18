@@ -387,21 +387,20 @@ export class LoopSolver {
     return loops.filter((loop) => bySignature.get(signatureOf(loop)) === loop);
   }
 
-  /** The chain's two ends, kept only where an end is a joint that slides. */
+  /**
+   * The chain's two ends, which go into the dedup key beside the bodies.
+   *
+   * Both of them, unconditionally. The name and this comment used to promise a
+   * filter -- "kept only where an end slides" -- that the body never applied,
+   * which made the key stricter for every chain and stopped a chain and its
+   * reverse deduping here. Nothing broke, because `independent()` still
+   * eliminates the reverse over GF(2); the promise was simply not true.
+   */
   private static slidingEnds(loop: Loop): string[] {
     if (loop.edges.length === 0) return [];
     return [loop.edges[0].fromId, loop.edges[loop.edges.length - 1].toId];
   }
 
-  /**
-   * Walk outward until another ground joint is reached.
-   *
-   * The walk backtracks in place: `visited` and `path` are one set and one
-   * array pushed and popped as it descends, rather than a fresh copy of each
-   * per branch. On a linkage the size of a running horse this recursion visits
-   * hundreds of thousands of nodes, and copying two growing arrays at every one
-   * of them was most of the cost of opening the drawing at all.
-   */
   /**
    * Whether one body reaching from one ground to another can move at all.
    *
@@ -416,6 +415,15 @@ export class LoopSolver {
     );
   }
 
+  /**
+   * Walk outward until another ground joint is reached.
+   *
+   * The walk backtracks in place: `visited` and `path` are one set and one
+   * array pushed and popped as it descends, rather than a fresh copy of each
+   * per branch. On a linkage the size of a running horse this recursion visits
+   * hundreds of thousands of nodes, and copying two growing arrays at every one
+   * of them was most of the cost of opening the drawing at all.
+   */
   private static findGround(
     joint: Joint,
     groundJoints: Joint[],

@@ -1042,22 +1042,31 @@ one place it exists. It is cleared over the bars marked *last* time rather than 
 because deleting a ram takes its bars out of `links` before the next resolve runs, and a bar that
 keeps the flag is a bar that stops drawing itself the moment it is welded into anything else.
 
-### A mechanism standing only on guides has no loops, and its rates come from nowhere
+### The loop walk misses a chain that was already complete when it started
 
-`requiredLoops` is empty for an elliptical trammel -- a bar with each end in a grounded guide and
-no pin anywhere. Loops are ground-to-ground chains, and a mechanism with no pinned point has no
-such chain to walk. Everything the velocity solver does with slots hangs off that list:
-`determineArrays` iterates `requiredLoops`, and all three `guideEnds` call sites sit inside it, so
-for this shape none of them runs and neither guide is given a column. The rates that come back
-then satisfy no slot at all -- the joint on the 90-degree guide is handed a velocity with a large
-X component, which is the one thing its own constraint forbids.
+`determineLoops` takes each ground joint, and for every neighbor of it calls `findGround` *from
+that neighbor* -- which records a loop only when it finds a ground among the neighbor's own
+neighbors. So a chain that is one edge long, ground to ground, is never written down: the walk
+starts past the end of it.
 
-Positions are fine, which is what makes it quiet: the mechanism solves, animates and draws
-correctly, and only the graphs are wrong. `e2e/template-graphs.mjs` is the only thing in the suite
-that asks -- it differences every plotted series against the position it derives from -- and it
-runs in the nightly lane, not the gate. `src/tests/verification/slider-rate-agreement.spec.ts`
-carries the reproduction now, skipped, so the next person starts from a second rather than a
-two-minute browser run.
+That was invisible for as long as it was only true of pins. A bar pinned to the frame at both ends
+is frame, and a loop for it says nothing. It became reachable when a slider became one joint
+(Stage 1 of `joint-type-and-cylinder-plan.md`): an elliptical trammel is a bar with each end in a
+grounded **guide**, which before the fold was guide, pin, bar, pin, guide -- two non-ground joints
+in the middle for the walk to find -- and afterwards is one edge between two ground joints. With no
+loop, `solveRates` falls to `determineLooplessKinematics`, which models the drive as a rotation
+about the input joint: the joint on the 90-degree guide was handed a velocity with a large X
+component, which is the one thing its own constraint forbids, and the driven end was left at
+exactly zero.
+
+Positions were fine throughout, which is what made it quiet: the mechanism solved, animated and
+drew correctly, and only the graphs were wrong. `e2e/template-graphs.mjs` is the only thing in the
+suite that asks -- it differences every plotted series against the position it derives from -- and
+it runs in the nightly lane, not the gate. `src/tests/verification/slider-rate-agreement.spec.ts`
+asks the same question in a second rather than a two-minute browser run, which is where it belongs.
+The fix is one condition in `determineLoops`: record the chain when the neighbor is itself a
+remaining ground *and* the body between them can move -- a slot at either end, or a step taken
+along one.
 
 One harness trap comes with it: `ellipticalTrammelFixture(true, 1)` built through
 `buildMechanism` is `dead-position` with a single sample at *every* object scale tried, a quarter

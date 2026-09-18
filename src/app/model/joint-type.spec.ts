@@ -94,7 +94,7 @@ describe('joint type', () => {
     );
     // A Prismatic keeps its weld, but nothing is left for it to hold the bar to.
     const slide = pinOn(1, { block: true, welded: true });
-    expect(refuseJointType(slide, 'welded', context)?.long).toContain('without its block');
+    expect(refuseJointType(slide, 'welded', context)?.long).toContain('without its slot');
     // With a second bar the weld still has two links once the block has gone.
     expect(refuseJointType(pinOn(2, { block: true, welded: true }), 'welded', context)).toBe(
       undefined

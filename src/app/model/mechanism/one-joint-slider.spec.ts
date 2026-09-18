@@ -8,6 +8,10 @@ import { SettingsService } from '../../services/settings.service';
 import { KinematicsSolver } from './kinematic-solver';
 import { Mechanism } from './mechanism';
 import { PositionSolver } from './position-solver';
+import {
+  RATE_TOLERANCE,
+  velocityAgreesWithPositions,
+} from '../../../test-utils/verification/rates';
 
 /**
  * A slider is one joint, and these are the mechanisms that says the most about.
@@ -271,9 +275,9 @@ describe('the statics of a slider whose mass is the joint’s', () => {
    * the weight along the slot, where the normal cannot reach it, so the rod has
    * to carry it back to the crank and the mass becomes visible.
    */
-  function weightAlongTheGuide(mass: number): Mechanism {
+  function weightAlongTheGuide(mass: number, crankLength = 1): Mechanism {
     const a = new RevJoint('A', 0, 0, true, true);
-    const b = new RevJoint('B', 1, 0);
+    const b = new RevJoint('B', crankLength, 0);
     const c = new PrisJoint('C', 0, -3, false, true);
     c.angle_rad = Math.PI / 2;
     c.rotates = true;
@@ -304,6 +308,31 @@ describe('the statics of a slider whose mass is the joint’s', () => {
     expect(light.status).toBe('ok');
     expect(heavy.status).toBe('ok');
     expect(heavy.inputEffort!.valueSI).not.toBeCloseTo(light.inputEffort!.valueSI, 6);
+  });
+
+  it('carries exactly the weight a hand calculation says, not merely some', () => {
+    // A number rather than a comparison. The guide at C is vertical, so it can
+    // supply no vertical force at all: every newton of the slider's weight has
+    // to travel up the bar BC, and BC is massless and pinned at both ends, so
+    // the force in it runs along it. Resolving at C gives a bar force of
+    // m·g·√10/3 at the drawn pose, whose reaction at B is (-m·g/3, -m·g) -- and
+    // its moment about A is m·g times the crank's horizontal offset, with
+    // everything BC's geometry contributed cancelling out.
+    //
+    // So the slider's whole contribution to the input torque is m·g·|AB|, and
+    // both halves of that are worth pinning: the mass, which says the point
+    // body is there and counted once, and the arm, which says the free body was
+    // resolved rather than the weight hung somewhere convenient.
+    const G = 9.80665;
+    const contribution = (mass: number, crank: number) =>
+      Math.abs(
+        weightAlongTheGuide(mass, crank).getForceAnalysis('static').frames[0].inputEffort!.valueSI -
+          weightAlongTheGuide(0, crank).getForceAnalysis('static').frames[0].inputEffort!.valueSI
+      );
+
+    expect(contribution(1, 1)).toBeCloseTo(G, 6);
+    expect(contribution(50, 1), 'linear in the mass').toBeCloseTo(50 * G, 6);
+    expect(contribution(50, 2), 'and in the arm it acts on').toBeCloseTo(50 * G * 2, 6);
   });
 
   it('gives a Slide a guide couple and a Pin-in-slot none', () => {
@@ -354,5 +383,21 @@ describe('the rates of a slider whose guide is fixed in the world', () => {
     }
     // And it genuinely moves, so the assertions above cannot pass on zeros.
     expect(moved).toBeGreaterThan(0.1);
+  });
+
+  it('moves it at the rate its own positions imply, not merely in the right direction', () => {
+    // The check the one above cannot make. Lying along the guide and being
+    // non-zero leaves the whole magnitude free, and a rate that is the right
+    // shape and the wrong size satisfies both. This differences the solved
+    // positions and compares, which is an answer arrived at by another route.
+    const { joints, links } = groundedPinInSlot(true);
+    const agreement = velocityAgreesWithPositions({
+      mechanism: build(joints, links),
+    } as never);
+
+    expect(agreement.unsolved).toEqual([]);
+    expect(agreement.stationary).toEqual([]);
+    expect(agreement.compared).toBeGreaterThan(100);
+    expect(agreement.worst).toBeLessThan(RATE_TOLERANCE);
   });
 });

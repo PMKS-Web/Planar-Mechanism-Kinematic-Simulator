@@ -363,8 +363,10 @@ export class AnalysisSetupComponent {
   }
 
   private buildRows(): MassRow[] {
-    // The label logic lives with the mechanism, shared with the massless
-    // warning — the table and the warning must call a body the same thing.
+    // A body's label lives with the mechanism, shared with the massless warning
+    // — the table and the warning must call a body the same thing. A *slider's*
+    // does not, and `sliderLabel` below is local for that reason: the warning is
+    // deliberately about links only, so there is no second reader to agree with.
     const bars: MassRow[] = this.mechanism.links
       .filter((link) => link instanceof RealLink)
       .map((body) => ({ body, label: this.mechanism.bodyLabel(body), isBlock: false }));

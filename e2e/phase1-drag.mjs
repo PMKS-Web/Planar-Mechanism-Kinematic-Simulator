@@ -630,7 +630,7 @@ await safe('a joint can be dropped onto the pin of a slider', async () => {
   const after = await jointState(page);
   await shot(page, 'merged-onto-slider.png');
 
-  record("the slider's pin offered itself as a drop target", ringed === 1, { ringed });
+  record('the slider offered itself as a drop target', ringed === 1, { ringed });
   record('the merge went through', !after.some((j) => j.id === spare.id), {
     spare: spare.id,
     after: after.map((j) => j.id),

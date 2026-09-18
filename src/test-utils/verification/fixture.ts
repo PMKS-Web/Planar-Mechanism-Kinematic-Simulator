@@ -1,6 +1,6 @@
 // joint.ts must be imported before coord.ts/link.ts/force.ts: those modules
 // form an import cycle that only initializes cleanly when entered here.
-import { Joint, PrisJoint, RevJoint } from '../../app/model/joint';
+import { Joint, PrisJoint, RealJoint, RevJoint } from '../../app/model/joint';
 import { Coord } from '../../app/model/coord';
 import { Force } from '../../app/model/force';
 import { Link, RealLink } from '../../app/model/link';
@@ -307,8 +307,13 @@ function buildMechanismNow(
       const at = link.joints.indexOf(pin);
       if (at >= 0) link.joints[at] = slider;
     });
+    // `RealJoint`, not `RevJoint`: `PrisJoint` is its sibling, so a guard on
+    // `RevJoint` skipped every joint an earlier iteration had already turned
+    // into a slider. On a bar carrying two of them the first kept a reference
+    // to the second's discarded pin -- a joint in no array, never animated --
+    // and `LoopSolver.neighborsOf` handed that dead object out as a neighbor.
     joints.forEach((joint) => {
-      if (!(joint instanceof RevJoint)) return;
+      if (!(joint instanceof RealJoint)) return;
       const at = joint.connectedJoints.indexOf(pin);
       if (at >= 0) joint.connectedJoints[at] = slider;
     });
@@ -331,11 +336,13 @@ function buildMechanismNow(
     jointById.get(id)!.locked = true;
   });
   // A link entry is the shortcut it is everywhere: marks land on its joints.
+  // `RealJoint` for the reason above -- a link lists a slider directly now, and
+  // a `RevJoint` guard would leave exactly that joint unlocked.
   fixture.locks?.links?.forEach((id) => {
     links
       .find((link) => link.id === id)!
       .joints.forEach((joint) => {
-        if (joint instanceof RevJoint) joint.locked = true;
+        if (joint instanceof RealJoint) joint.locked = true;
       });
   });
 

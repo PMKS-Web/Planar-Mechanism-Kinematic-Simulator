@@ -3181,6 +3181,8 @@ export class MechanismService {
       carrierId?: string;
       slotJointAId?: string;
       slotJointBId?: string;
+      /** What the reader typed for the ram's weight, which only a slot carries. */
+      mass: number;
     }
   >();
 
@@ -5023,6 +5025,12 @@ export class MechanismService {
       carrierId: slider.carrier?.id,
       slotJointAId: slider.slotJointA?.id,
       slotJointBId: slider.slotJointB?.id,
+      // A pin has no weight to keep this on, so the exchange dropped it and the
+      // slot came back at zero. That was true of the block too, but the block
+      // was not something the reader typed into a field: D6 of the plan moved
+      // the ram's mass into the panel, and the stash is where the rest of what
+      // a slot is already waits to come back.
+      mass: slider.mass,
     });
   }
 
@@ -5044,6 +5052,7 @@ export class MechanismService {
     } else if (stash.ground) {
       slider.groundAt(stash.angleRad);
     }
+    slider.mass = stash.mass;
   }
 
   toggleSlider() {

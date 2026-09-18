@@ -147,7 +147,7 @@ export function weldOutlivesTheSlot(joint: RealJoint): OperationRefusal | undefi
   return {
     code: 'weld.needs-two-links',
     short: 'needs 2 links',
-    long: 'A weld fuses the links that meet at a joint, and without its block only one meets here.',
+    long: 'A weld fuses the links that meet at a joint, and without its slot only one meets here.',
   };
 }
 
@@ -240,13 +240,15 @@ function refuseAddSlider(
     };
   }
 
-  // A block is a body too, so adding one to a driven pin puts a third at the
-  // joint. Taking one away is always allowed.
+  // A drive on a pin turns; a drive on a slot travels. They are measured in
+  // different units and prescribe different freedoms, so a joint cannot change
+  // from one to the other while it is the drive. Taking a slot away is always
+  // allowed.
   if (context.isDriven(joint)) {
     return {
       code: 'slider.is-driven',
       short: 'it is driven',
-      long: 'A block is a body of its own, so adding one to a driven joint would put three there. Remove the input first.',
+      long: 'This joint is the drive, and a drive on a pin turns where a drive on a slot travels. Remove the input first.',
     };
   }
   return undefined;

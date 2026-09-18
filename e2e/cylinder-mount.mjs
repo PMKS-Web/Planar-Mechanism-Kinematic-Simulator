@@ -336,7 +336,7 @@ check(
   JSON.stringify({ ring, rams: state.rams, joints: state.joints.length })
 );
 
-// The red ring itself, on a mount: two blocks cannot share one pin.
+// The red ring itself, on a mount.
 ids = await weldedMount({ otherBar: true });
 await menuOnJoint(ids.mount);
 await chooseBlock(true);

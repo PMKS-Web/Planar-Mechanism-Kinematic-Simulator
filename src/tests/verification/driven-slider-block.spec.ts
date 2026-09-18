@@ -101,11 +101,16 @@ describe('driving the block of a slider-crank', () => {
     expect(service.oneValidMechanismExists()).toBe(true);
     const frames = service.mechanisms[0].joints;
     expect(frames.length).toBeGreaterThan(20);
+    // Measured from the slider's *own* start, not from joint index 0 of frame
+    // 0, which is whichever joint the array happens to list first. And against
+    // a real distance rather than `> 0`, which float noise satisfies on a
+    // mechanism that never moves at all.
+    const start = frames[0].find((joint) => joint.id === block.id)!;
     const along = frames.map((frame) => {
       const at = frame.find((joint) => joint.id === block.id)!;
-      return Math.hypot(at.x - frames[0][0].x, at.y - frames[0][0].y);
+      return Math.hypot(at.x - start.x, at.y - start.y);
     });
-    expect(Math.max(...along) - Math.min(...along)).toBeGreaterThan(0);
+    expect(Math.max(...along) - Math.min(...along)).toBeGreaterThan(0.5);
   });
 
   it('leaves the pin at the other end of the same rod drivable', () => {

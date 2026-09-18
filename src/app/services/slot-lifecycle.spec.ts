@@ -289,6 +289,33 @@ describe('a slot dropped onto a sealed cylinder', () => {
   });
 });
 
+describe('turning Slider off and on again', () => {
+  it('brings the slot back with the weight the reader typed on it', () => {
+    // The stash is what makes Slider off/on a round trip rather than a rebuild:
+    // it remembers the ground, the angle, the carrier and the two joints the
+    // slot is measured from. Mass was not among them, because before Stage 1 of
+    // `docs/joint-type-and-cylinder-plan.md` it lived on a block link that was
+    // deleted outright -- and D6 of that plan made it something the reader
+    // types into the panel, so coming back at zero is losing their number.
+    const s = slottedLever();
+    s.slot.mass = 3.5;
+    s.service.updateMechanism(false);
+
+    s.active.updateSelectedObj(s.slot);
+    s.service.toggleSlider();
+    const pin = s.service.joints.find((joint) => joint.id === 'B') as RealJoint;
+    expect(pin instanceof PrisJoint, 'a plain pin now').toBe(false);
+
+    s.active.updateSelectedObj(pin);
+    s.service.toggleSlider();
+    const again = s.service.joints.find((joint) => joint.id === 'B') as PrisJoint;
+
+    expect(again instanceof PrisJoint).toBe(true);
+    expect(again.carrier, 'the slot it had').toBe(s.cd);
+    expect(again.mass, 'and the weight it had').toBeCloseTo(3.5, 9);
+  });
+});
+
 /**
  * A slot is a legal *target* for a merge now that only the source is refused
  * (Stage 1 of `docs/joint-type-and-cylinder-plan.md`). `mergeJoints` was

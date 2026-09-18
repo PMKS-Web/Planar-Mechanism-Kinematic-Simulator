@@ -330,6 +330,20 @@ describe('DxfExportService', () => {
       'A,A,revolute,0.000000,0.000000'
     );
     expect(json).toMatchObject({ massUnit: 'kg', inertiaUnit: 'kg*m^2', forceUnit: 'N' });
+
+    // A sliding joint's weight has somewhere to be printed. It used to ride the
+    // block's row in the link table, and that row went when the block did --
+    // so the one number a reader needs to size a ram left the export entirely.
+    slider.mass = 4.25;
+    const reread = JSON.parse(service['dataJson']('cm', { origin: 'ground' }));
+    expect(reread.joints.find((joint: { id: string }) => joint.id === 'S').mass).toBeCloseTo(
+      4.25,
+      6
+    );
+    expect(reread.joints[0].mass, 'a pin carries none').toBeNull();
+    const table = service['jointCsv']('cm', { origin: 'ground' });
+    expect(table.split('\r\n')[0]).toContain(',mass,');
+    expect(table).toContain(',4.250000,BS');
   });
 
   it('writes the table before restoring a paused pose', () => {

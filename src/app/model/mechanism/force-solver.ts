@@ -660,6 +660,16 @@ export class ForceSolver {
    *
    * Keyed by the joint's own id, which is what `pistonAccelerations` and the
    * finite-difference fallback look it up by.
+   *
+   * That id shares a namespace with the link ids in `bodyRows`, `rootBody` and
+   * `incidentBodies`, and a joint's id is a single letter. No link can be named
+   * with one -- a link id is the sorted concatenation of at least two joint
+   * letters -- so this is a latent collision rather than a live one. Prefixing
+   * it (`slider:<id>`) would remove the class, but the key is read in more
+   * places than these three, including the reaction pairs and the
+   * finite-difference sweep, so it is a rekeying of the verified force solver
+   * rather than a rename. Worth doing where something else is already moving
+   * through here; not worth doing on its own.
    */
   private static pointBodies(joints: Joint[]): Link[] {
     return joints

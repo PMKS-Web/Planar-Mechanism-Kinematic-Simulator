@@ -143,6 +143,10 @@ function scaleBuiltToModelUnits(built: BuiltMechanism): void {
  * `docs/joint-type-and-cylinder-plan.md` -- it used to be a zero-length block
  * link, which is why walking `links` alone was once enough.
  */
+/** The parts that carry a weight of their own but are not links: the sliders. */
+const weighingJoints = (built: BuiltMechanism): PrisJoint[] =>
+  built.joints.filter((joint): joint is PrisJoint => joint instanceof PrisJoint);
+
 function stripMass(built: BuiltMechanism): void {
   const strip = (link: Link): void => {
     link.mass = 0;
@@ -152,9 +156,7 @@ function stripMass(built: BuiltMechanism): void {
     }
   };
   built.links.forEach(strip);
-  built.joints.forEach((joint) => {
-    if (joint instanceof PrisJoint) joint.mass = 0;
-  });
+  weighingJoints(built).forEach((joint) => (joint.mass = 0));
 }
 
 /**
@@ -182,9 +184,7 @@ function scaleLoading(built: BuiltMechanism, by: PublishedLoading): void {
   // one template whose masses were deliberately scaled so Static and In-motion
   // stop reporting the same number came out with a 6 kg ram beside a 200 kg
   // crank and a 300 kg rod.
-  built.joints.forEach((joint) => {
-    if (joint instanceof PrisJoint) joint.mass *= by.mass;
-  });
+  weighingJoints(built).forEach((joint) => (joint.mass *= by.mass));
   built.forces.forEach((force) => (force.mag *= by.load));
 
   // Then hand the mass properties back to the app wherever the fixture was not
@@ -1016,12 +1016,22 @@ export function galleryMarkdown(baseUrl: string): string {
     'reviewer can open the exact mechanism a test is about instead of rebuilding it',
     'from coordinates in a spec file.',
     '',
-    `Links point at \`${baseUrl}\`. **A mechanism marked "floating slot" only decodes on a`,
-    'build that includes Phase 2** — on an older release the three extra URL tokens',
-    'are refused rather than silently ignored, which is deliberate (§2.4a). A',
-    'mechanism marked "Slide" decodes anywhere, because its weld is an existing',
-    'flag — but it only *solves* on a build that includes Phase 3. For a pull',
-    'request, regenerate against its deploy preview:',
+    `Links point at \`${baseUrl}\`.`,
+    '',
+    '**Every row that holds a slider needs a build with Stage 1 of the joint-type plan in it.**',
+    'A slider is one prismatic joint carrying its own mass, and that mass is a token on the end',
+    'of the joint record. There is no version gate for it: an older build stops reading a joint',
+    'record after `driveSpeed` with no arity check, the digest still matches, so it drops the',
+    'mass and opens a grounded slider with a bar hanging off it and no block. That is a wrong',
+    'drawing rather than a refusal, which is the one failure mode these links exist to avoid —',
+    'so until Stage 1 ships to production, regenerate against a deploy preview before quoting',
+    'one of these.',
+    '',
+    'A mechanism marked "floating slot" is the case that *is* gated: on a release that predates',
+    'Phase 2 the three extra URL tokens are refused rather than silently ignored, which is',
+    'deliberate (§2.4a). A mechanism marked "Slide" decodes wherever a slider decodes at all,',
+    'and only *solves* on a build that includes Phase 3. For a pull request, regenerate against',
+    'its deploy preview:',
     '',
     '```bash',
     // Deliberately a placeholder rather than a real preview number: pinning one
