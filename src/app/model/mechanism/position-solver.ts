@@ -1039,6 +1039,13 @@ export class PositionSolver {
     return traveling;
   }
 
+  /** Whether a system says what the drive commands, which is what rates need. */
+  private static hasCommandRow(system: SimultaneousSystem): boolean {
+    return system.constraints.some(
+      (constraint) => constraint.kind === 'driven' || constraint.kind === 'drivenAngle'
+    );
+  }
+
   /**
    * Write down what the unsolved joints have to satisfy, as constraints.
    *
@@ -1901,13 +1908,28 @@ export class PositionSolver {
     // The constraint set describes the mechanism whatever route the positions
     // took, so a mechanism the *walk* solved still has one to differentiate --
     // it just has not been built yet.
-    const system =
-      this.simultaneousSystem ??
-      this.buildSimultaneousSystem(
-        joints,
-        links,
-        joints.filter(isRateUnknown).map((joint) => joint.id)
-      );
+    //
+    // And a stored set without a command row cannot be differentiated at all.
+    // The command enters `commandDerivative` through that row and nowhere
+    // else, so without it the right-hand side is zero and every rate solves to
+    // zero: a scissor lift whose eight travelling joints graphed flat while it
+    // visibly rose. The row is left out of the *position* system deliberately
+    // -- a drive whose mounts the walk has already placed controls no unknown
+    // there, and its residual would sit in the convergence test for ever -- but
+    // those mounts do move, and what moves them is the command. So the rates
+    // are asked of the whole mechanism instead, which is the same set a
+    // walk-solved drawing is differentiated through. A boundary-driven
+    // partition keeps its own system: it has no command row by design, and its
+    // motion arrives as a moving boundary measured against that very set.
+    const stored = this.simultaneousSystem;
+    const differentiable = stored && (this.coupledRoute || this.hasCommandRow(stored));
+    const system = differentiable
+      ? stored
+      : this.buildSimultaneousSystem(
+          joints,
+          links,
+          joints.filter(isRateUnknown).map((joint) => joint.id)
+        );
     if (!system) {
       return undefined;
     }

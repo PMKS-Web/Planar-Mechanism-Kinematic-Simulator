@@ -113,14 +113,34 @@ export class LoopSolver {
         continue;
       }
       this.neighborsOf(desiredGround, slotNeighbors, neighborCache).forEach((next) => {
+        const path: PathStep[] = [
+          { jointId: desiredGround.id },
+          { jointId: next.joint.id, viaSliderId: next.viaSliderId },
+        ];
+        // Two grounds with one body between them, which the walk below cannot
+        // see: it starts *at* the neighbor and only records a loop when it
+        // finds a ground among that neighbor's own neighbors, so a chain that
+        // is already complete here was never written down.
+        //
+        // That was harmless while both ends were pins. A bar pinned to the
+        // frame at each end is frame, and a loop saying so says nothing. A bar
+        // whose ends *slide* is a mechanism -- the elliptical trammel is
+        // exactly this shape now that a slider is one joint, where before it
+        // was guide, pin, bar, pin, guide and the walk found the chain in the
+        // middle. With no loop, its rates fall to `determineLooplessKinematics`,
+        // which models the drive as a rotation about the input joint and leaves
+        // the sliding end at exactly zero.
+        if (groundJoints.indexOf(next.joint) !== -1 && this.slidesAcross(desiredGround, next)) {
+          const edges = this.edgesAlong(path, links);
+          if (edges) {
+            loops.push({ id: loopId(edges), edges });
+          }
+        }
         this.findGround(
           next.joint,
           groundJoints,
           new Set([next.joint.id]),
-          [
-            { jointId: desiredGround.id },
-            { jointId: next.joint.id, viaSliderId: next.viaSliderId },
-          ],
+          path,
           loops,
           links,
           slotNeighbors,
@@ -382,6 +402,20 @@ export class LoopSolver {
    * hundreds of thousands of nodes, and copying two growing arrays at every one
    * of them was most of the cost of opening the drawing at all.
    */
+  /**
+   * Whether one body reaching from one ground to another can move at all.
+   *
+   * Both ends pinned to the frame is frame. One end that slides, or a step
+   * taken along a slot, is a degree of freedom, and a loop is worth recording.
+   */
+  private static slidesAcross(ground: RealJoint, next: Neighbor): boolean {
+    return (
+      next.viaSliderId !== undefined ||
+      ground instanceof PrisJoint ||
+      next.joint instanceof PrisJoint
+    );
+  }
+
   private static findGround(
     joint: Joint,
     groundJoints: Joint[],

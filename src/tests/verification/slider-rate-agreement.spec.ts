@@ -21,10 +21,8 @@ import { solveKinematics } from '../../test-utils/verification/solve';
  * green unit suite -- so the reproduction lives here now, where it takes a
  * second rather than two minutes.
  *
- * **Both rate checks are skipped, and both reproduce a real defect.** They are
- * written out rather than deleted because the expensive half of fixing this is
- * having a reproduction at all, and because a skip with its diagnosis beside it
- * is what `scissor-lift.spec.ts` already does with the same fault.
+ * Both rate checks below were red when a slider first became one joint, for
+ * two different reasons, and both are fixed here: see the comments on each.
  */
 describe('a mechanism whose ends all slide', () => {
   it('draws an elliptical trammel that solves, whatever its rates say', () => {
@@ -42,23 +40,18 @@ describe('a mechanism whose ends all slide', () => {
     expect(mechanism.joints[0].map((joint) => joint.id).sort()).toEqual(['A', 'B', 'T']);
   });
 
-  // Skipped: a defect this branch exposes and does not fix, because fixing it
-  // moves rate numbers -- which Stage 1 of `docs/joint-type-and-cylinder-plan.md`
-  // is expressly not allowed to do -- and because it is solver work with its own
-  // verification rather than a consequence of a slider becoming one joint.
-  //
-  // What it is. A trammel's bar stands on two grounded guides and no pin, and
-  // `requiredLoops` comes back **empty** for it: there is no ground-to-ground
-  // chain to walk, so `determineArrays` iterates nothing, no column is
-  // registered for either guide, and every `guideEnds` call -- all three sit
-  // inside `requiredLoops.forEach` -- is unreachable. The rates then come from
-  // the other route entirely and do not respect the slots: B rides a guide at
-  // 90 degrees and is handed a velocity with a large X component, which its own
-  // constraint forbids, while driven A is left at exactly zero.
-  //
-  // `e2e/template-graphs.mjs` is where this shows: Elliptical_Trammel/A, B and
-  // T, ten checks, against 3978 that pass.
-  it.skip('moves an elliptical trammel at the rate its positions imply', () => {
+  // The shape a slider becoming one joint creates, and the gap in the loop walk
+  // it walked into. Before the fold this bar ran guide, A, bar, B, guide, with
+  // two non-ground joints in the middle for `findGround` to walk; after it, it
+  // is one edge between two ground joints, and `determineLoops` handed the
+  // first neighbor straight to `findGround` without asking whether that
+  // neighbor was itself a ground. Two ground *pins* joined by one bar are
+  // frame, so the gap never showed; two ground *guides* joined by one bar are
+  // this mechanism. With no loop recorded the rates fell to
+  // `determineLooplessKinematics`, which models the drive as a rotation about
+  // the input joint: B was handed a large velocity across its own slot and
+  // driven A was left at exactly zero.
+  it('moves an elliptical trammel at the rate its positions imply', () => {
     const { mechanism } = buildMechanismFixture(TEMPLATE_LINKAGES['Elliptical_Trammel']);
     const trace = solveKinematics({ mechanism } as never);
     const mid = Math.floor(trace.steps / 2);
@@ -76,13 +69,14 @@ describe('a mechanism whose ends all slide', () => {
     }
   });
 
-  // Skipped, and the same fault seen from the other side -- the one
-  // `scissor-lift.spec.ts` carries the long diagnosis for: a driven *floating*
-  // sealed slider's commanded rate never enters the loop velocity system, so
-  // the system is homogeneous and every rate solves to zero. Eight joints of
-  // this lift travel and graph as standing still. It reproduces with this
-  // branch's solver changes reverted.
-  it.skip('moves a scissor lift at the rate its positions imply', () => {
+  // The other rate fault a slider becoming one joint introduced, and the one
+  // `scissor-lift.spec.ts` asks the same question about. The position system
+  // for this lift has two unknowns and the drive's mounts are not among them,
+  // so the drive row was dropped from it -- correctly, since it controls no
+  // unknown there -- and the rate solve reused that same system. The command
+  // reaches `commandDerivative` through that row and nowhere else, so the
+  // right-hand side was zero and all eight travelling joints graphed flat.
+  it('moves a scissor lift at the rate its positions imply', () => {
     const agreement = velocityAgreesWithPositions(buildMechanism(scissorLiftFixture(MODEL_SCALE)));
 
     expect(agreement.unsolved).toEqual([]);
