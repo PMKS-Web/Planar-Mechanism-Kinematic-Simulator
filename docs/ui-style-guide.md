@@ -50,7 +50,7 @@ these:
 | --- | --- |
 | May this edit happen right now? | [`model/edit-permission.ts`](../src/app/model/edit-permission.ts), through [`edit-permission.service.ts`](../src/app/services/edit-permission.service.ts) |
 | Can this joint be driven? | `describeActuatorRefusal` in [`model/actuator.ts`](../src/app/model/actuator.ts) |
-| Can this joint be welded? | `weldRefusal` in [`grid-utils.service.ts`](../src/app/services/grid-utils.service.ts) |
+| Can this joint be welded? | `refuseJointOperation` in [`model/joint-operation-permission.ts`](../src/app/model/joint-operation-permission.ts) |
 | Can this joint take this type? | `refuseJointType` in [`model/joint-type.ts`](../src/app/model/joint-type.ts), through `JointTypeService` |
 | Is a Lock holding this part? | `locksHolding` in [`model/lock-set.ts`](../src/app/model/lock-set.ts) |
 

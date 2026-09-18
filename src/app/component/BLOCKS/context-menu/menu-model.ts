@@ -174,9 +174,15 @@ export function trackContextMenuPointer(): void {
       lastPointer = { x: (event as MouseEvent).clientX, y: (event as MouseEvent).clientY };
       // The right button names itself; the context-menu key and Shift-F10 send
       // the same event with button 0. A held finger is a right-click here too,
-      // because `onLongPress` dispatches one with `button: 2` -- so this is the
-      // one question that separates a reader who pointed from one who typed.
-      lastWasKeyboard = (event as MouseEvent).button !== 2;
+      // because `onLongPress` dispatches one with `button: 2`.
+      //
+      // `button` alone is not enough: Ctrl+click on a Mac opens this menu as a
+      // *left* click, so button 0 with `ctrlKey` set is a pointer, not a key.
+      // `detail` counts the press behind the event and is 0 only where there
+      // was none -- the same question `TopBarComponent.toggleMenu` asks of the
+      // project menu's trigger.
+      const mouse = event as MouseEvent;
+      lastWasKeyboard = mouse.button !== 2 && !mouse.ctrlKey && mouse.detail === 0;
     },
     true
   );

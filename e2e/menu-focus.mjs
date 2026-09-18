@@ -281,6 +281,69 @@ const ringInCard = (page) =>
   await context.close();
 }
 
+// --- Space on a card opened with the pointer presses nothing -----------------
+// The card's own half of the hazard the project menu has above. The CDK focuses
+// the first value as it opens and a `cdkMenuItem` triggers on Space however it
+// got focus, and the first value is Revolute -- so right-clicking a slider and
+// reaching for the transport (Space is play/pause) took the slider off the
+// joint. Measured on the drawing, not on the card: a radio item keeps the menu
+// open when it triggers, and the card is a snapshot, so its chosen cell goes on
+// reading the old type even after the joint has changed under it.
+{
+  const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+  await startQuiet(context);
+  const page = await context.newPage();
+  page.setDefaultTimeout(15000);
+  await openMechanism(page, `${BASE}/?${TEMPLATE_LINKAGES['Slider_Crank']}`);
+  await page.waitForTimeout(400);
+
+  const jointIds = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('[id^="joint_"]')].map((el) => el.id).join(',')
+    );
+  const before = await jointIds();
+
+  const at = await page.locator('#joint_C').boundingBox();
+  await page.mouse.click(at.x + at.width / 2, at.y + at.height / 2, { button: 'right' });
+  await page.locator('#contextMenu.show').waitFor();
+  await page.waitForTimeout(300);
+  const chosen = await page.evaluate(
+    () => document.querySelector('.cm-choice__cell--chosen')?.textContent?.trim() ?? 'none'
+  );
+  check(
+    'the slider joint opens its card on Pin-in-slot, so Revolute is a real change',
+    chosen === 'Pin-in-slot',
+    chosen
+  );
+
+  await page.keyboard.press(' ');
+  await page.waitForTimeout(900);
+  const after = await jointIds();
+  check(
+    'and Space retypes nothing: the drawing is what it was',
+    after === before,
+    JSON.stringify({ before, after })
+  );
+  // What it did instead: armed the value it would press, where it can be seen.
+  const armed = await ringInCard(page);
+  check(
+    'it rings the value it would have pressed instead',
+    armed.on === 'Revolute' && armed.ring === RING && armed.ringed.length === 1,
+    JSON.stringify(armed)
+  );
+  await page.locator('#contextMenu').screenshot({ path: `${OUT}/card-space-armed.png` });
+
+  // And a second press does act, on something the reader can now see.
+  await page.keyboard.press(' ');
+  await page.waitForTimeout(900);
+  check(
+    'and the second press, on a value that is now ringed, does act',
+    (await jointIds()) !== before,
+    JSON.stringify({ before, then: await jointIds() })
+  );
+  await context.close();
+}
+
 await browser.close();
 writeFileSync(`${OUT}/report.json`, JSON.stringify({ results }, null, 2));
 const failed = results.filter((r) => !r.pass).length;

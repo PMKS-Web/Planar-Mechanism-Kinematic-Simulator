@@ -38,7 +38,14 @@
   <!-- What the part can be, above the ladder: one question, so a grid rather
        than a row each (D8). Every value is a menu item, because inside a CDK
        menu that is what the arrow keys reach, and a radio item is what says
-       which one is chosen. -->
+       which one is chosen.
+
+       The keys walk it as a list, not as a grid: `CdkMenu` builds its key
+       manager with vertical orientation only, so Up and Down step through all
+       four cells in order and Left and Right are swallowed. That is what a
+       `role="menu"` is per the APG, and it is deliberate here -- two columns
+       are a way to fit four values in a card 224px wide, not a claim that the
+       values are arranged in two dimensions. -->
   @if (model().choice; as choice) {
     <div class="cm-choice" cdkMenuGroup [attr.aria-label]="choice.label">
       @for (option of choice.options; track $index) {

@@ -395,6 +395,14 @@ export class MultiEditService {
    * argument, so the selection is pointed at each joint and put back at the
    * end -- and the saves are held, so the group is one entry in the history.
    */
+  /**
+   * One entry for the whole group, whatever each part's edit does inside.
+   *
+   * Some of that work stages against the pose on screen (`JointTypeService.set`
+   * opens a `capturingPose` per joint). That nests: `capturingPose` hands the
+   * hold back to whoever had it rather than clearing it, so the batch below is
+   * still the only thing that writes.
+   */
   private eachJoint(joints: readonly RealJoint[], work: () => void): MultiEditResult {
     const was = this.active.selectedJoint;
     const selection = this.active.snapshotPartSelection();
