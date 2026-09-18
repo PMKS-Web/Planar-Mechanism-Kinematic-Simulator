@@ -25,6 +25,8 @@ import { worksheetLoopOptions } from '../../model/mechanism/worksheet-loop-optio
 import { WorksheetChoicesComponent } from './worksheet-choices.component';
 import { WorksheetLoopEditorComponent } from './worksheet-loop-editor.component';
 import { ForceBalanceComponent } from './force-balance.component';
+import { ForceDefinitionsComponent } from './force-definitions.component';
+import { bodyForceChoices } from './body-force-choices';
 
 @Component({
   selector: 'app-solver-explanation',
@@ -42,6 +44,7 @@ import { ForceBalanceComponent } from './force-balance.component';
     WorksheetLoopEditorComponent,
     WorksheetLoopVisualComponent,
     ForceBalanceComponent,
+    ForceDefinitionsComponent,
   ],
 })
 export class SolverExplanationComponent {
@@ -257,27 +260,6 @@ export class SolverExplanationComponent {
         'Include Gravity',
         'Exclude Gravity',
       ],
-      forceChoices:
-        forceWork?.choices.map((choice) => ({
-          ...choice,
-          previews: forceWork.bodies
-            .filter((b) =>
-              b.loads.some((l) => l.column !== undefined && choice.columns.includes(l.column))
-            )
-            .map((body) => ({
-              name: body.name,
-              diagram: freeBodyDiagram(
-                {
-                  ...body,
-                  loads: body.loads.filter(
-                    (l) => l.column !== undefined && choice.columns.includes(l.column)
-                  ),
-                },
-                true,
-                false
-              ),
-            })),
-        })) ?? [],
       angularValues: rates
         ? [...rates.omega].map(
             ([id, omega]) =>
@@ -318,6 +300,7 @@ export class SolverExplanationComponent {
       bodies:
         forceWork?.bodies.map((body) => ({
           ...body,
+          signChoices: bodyForceChoices(body, forceWork.choices),
           inertiaForce: `m${vector('a', '\\mathrm{CoM}')}=${column(body.inertia.slice(0, 2))}\\;\\mathrm N`,
           inertiaMoment: `I_{\\mathrm{CoM}}\\alpha=${texNumber((force!.frame.explanation!.bodies.find((b) => b.id === body.id)!.inertia[2] ?? 0) / MODEL_SCALE)}\\;\\mathrm{N\\,m}`,
           referenceLabels: body.referenceOptions.map((p) =>

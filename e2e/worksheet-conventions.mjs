@@ -56,9 +56,8 @@ const clean = async () => assert.equal(await page.locator('.katex-error').count(
 try {
   let dialog = await open('TeachingLab four-bar', true);
   const before = await snapshot(dialog);
-  await dialog.locator('.conventions > summary').click();
-  const joint = dialog.locator('[data-force-choice="Joint B"]');
-  await joint.locator(':scope > summary').click();
+  await dialog.locator('.bodyCard').first().locator('.bodyAdjustments > summary').click();
+  const joint = dialog.locator('[data-convention="Bx on ABH"]');
   await joint.scrollIntoViewIfNeeded();
   const framesDir = `${out}/sign-change`;
   const film = filmstrip(page, framesDir, await joint.boundingBox());

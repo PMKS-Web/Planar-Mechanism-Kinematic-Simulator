@@ -1,7 +1,9 @@
 <section class="worksheet" [class.wide]="wide">
   <header class="worksheetHeader">
     <div>
-      <div class="eyebrow">Worked Derivation · {{ machineId }}</div>
+      <div class="eyebrow">
+        Worked Derivation{{ isForce() && section() === 0 ? '' : ' · ' + machineId }}
+      </div>
       <h2>{{ isForce() ? 'Force Analysis' : 'Kinematic Analysis' }}</h2>
       <p>From the mechanism sketch to the equations and solution.</p>
     </div>
@@ -12,50 +14,52 @@
     }
   </header>
   <div class="controls">
-    <div class="controlRow">
-      <label
-        >Mechanism
-        <select
-          aria-label="Explanation mechanism"
-          [ngModel]="machineId"
-          (ngModelChange)="chosenMachine.set($event)"
+    @if (!isForce() || section() !== 0) {
+      <div class="controlRow">
+        <label
+          >Mechanism
+          <select
+            aria-label="Explanation mechanism"
+            [ngModel]="machineId"
+            (ngModelChange)="chosenMachine.set($event)"
+          >
+            @for (partition of mechanism.partitions; track partition.id) {
+              <option [value]="partition.id">{{ partition.id }}</option>
+            }
+          </select></label
         >
-          @for (partition of mechanism.partitions; track partition.id) {
-            <option [value]="partition.id">{{ partition.id }}</option>
-          }
-        </select></label
-      >
-      <label
-        >Sample
-        <input
-          aria-label="Explanation sample number"
-          type="number"
-          min="0"
-          [max]="lastStep"
-          [ngModel]="step"
-          (change)="seek($any($event.target).value)"
-          [disabled]="!valid"
-        />
-        / {{ lastStep }}</label
-      >
-      <span>{{ seconds | number: '1.3-3' }} s</span>
-    </div>
-    <input
-      class="slider"
-      aria-label="Explanation sample"
-      type="range"
-      min="0"
-      [max]="lastStep"
-      [value]="step"
-      (input)="seek($any($event.target).value)"
-      [disabled]="!valid"
-    />
-    @if (isForce()) {
-      <segmented-block
-        [options]="forceOptions"
-        [selected]="forceMode() === 'dynamic' ? 1 : 0"
-        (selectedChange)="settings.forceAnalysisMode.next($event === 1 ? 'dynamic' : 'static')"
-      ></segmented-block>
+        <label
+          >Sample
+          <input
+            aria-label="Explanation sample number"
+            type="number"
+            min="0"
+            [max]="lastStep"
+            [ngModel]="step"
+            (change)="seek($any($event.target).value)"
+            [disabled]="!valid"
+          />
+          / {{ lastStep }}</label
+        >
+        <span>{{ seconds | number: '1.3-3' }} s</span>
+      </div>
+      <input
+        class="slider"
+        aria-label="Explanation sample"
+        type="range"
+        min="0"
+        [max]="lastStep"
+        [value]="step"
+        (input)="seek($any($event.target).value)"
+        [disabled]="!valid"
+      />
+      @if (isForce()) {
+        <segmented-block
+          [options]="forceOptions"
+          [selected]="forceMode() === 'dynamic' ? 1 : 0"
+          (selectedChange)="settings.forceAnalysisMode.next($event === 1 ? 'dynamic' : 'static')"
+        ></segmented-block>
+      }
     }
     <segmented-block
       aria-label="Worksheet section"
@@ -64,9 +68,11 @@
       (selectedChange)="section.set($event)"
     ></segmented-block>
   </div>
-  @if (view; as data) {
+  @if (isForce() && section() === 0) {
+    <app-force-definitions />
+  } @else if (view; as data) {
     <div class="worksheetContent">
-      @if (isForce()) {
+      @if (isForce() && section() === 1) {
         <div class="forceAssumptions">
           <strong
             >{{ forceMode() === 'dynamic' ? 'In-motion balance' : 'Static equilibrium' }} · Gravity
@@ -139,39 +145,15 @@
           </div>
         </div>
       </details>
-      <details class="numericDetails conventions">
-        <summary>Choose Your Equation Conventions</summary>
-        <p>
-          Match the signs and paths in your written solution. These choices update this worksheet's
-          equations and signed answers; the physical motion, loads, and graph axes stay the same.
-          Choices are kept while this mechanism is loaded, including when you close the worksheet.
-        </p>
-        @if (isForce()) {
+      @if (!isForce()) {
+        <details class="numericDetails conventions">
+          <summary>Choose Your Equation Conventions</summary>
           <p>
-            Choose X and Y independently. These sketches show the assumed positive directions; the
-            reaction on the other body points the opposite way.
+            Match the signs and paths in your written solution. These choices update this
+            worksheet's equations and signed answers; the physical motion, loads, and graph axes
+            stay the same. Choices are kept while this mechanism is loaded, including when you close
+            the worksheet.
           </p>
-          @for (choice of data.forceChoices; track choice.key) {
-            <details class="forceConvention" [attr.data-force-choice]="choice.label">
-              <summary>{{ choice.label }}</summary>
-              <div class="forcePreviewRow">
-                @for (preview of choice.previews; track preview.name) {
-                  <figure>
-                    <app-solver-diagram
-                      [diagram]="preview.diagram"
-                      [label]="'Assumed force directions on ' + preview.name"
-                    ></app-solver-diagram>
-                    <figcaption>{{ preview.name }} · assumed directions</figcaption>
-                  </figure>
-                }
-              </div>
-              <app-worksheet-choices
-                [choices]="choice.axes"
-                (chosen)="preferences.setForce(solved, $event.key, $event.index === 0 ? 1 : -1)"
-              ></app-worksheet-choices>
-            </details>
-          }
-        } @else {
           @if (data.angularDiagram; as angularDiagram) {
             <figure class="angularOverview">
               <app-solver-diagram
@@ -242,9 +224,9 @@
               matrix to replace. Angular direction choices still apply.
             </p>
           }
-        }
-        <button-block [click]="resetConventions">Reset Worksheet Conventions</button-block>
-      </details>
+          <button-block [click]="resetConventions">Reset Worksheet Conventions</button-block>
+        </details>
+      }
       @if (isForce()) {
         @if (data.force?.frame?.status !== 'ok') {
           <p class="notice" role="status">
@@ -257,57 +239,7 @@
             split.
           </p>
         }
-        @if (section() === 0) {
-          <details class="numericDetails definitionSection">
-            <summary>1 · Define the Vectors</summary>
-            <div class="definitionGrid">
-              <div>
-                <h4>Forces & Moments</h4>
-                <app-solver-math [equation]="vectorDefinitions"></app-solver-math>
-                <p>Planar forces have x and y components. A pure couple has only a z component.</p>
-              </div>
-              <div>
-                <h4>Angular Motion</h4>
-                <app-solver-math [equation]="motionDefinitions"></app-solver-math>
-                <p>CoM denotes the center of mass of the body currently isolated.</p>
-              </div>
-            </div>
-            <app-solver-math [equation]="crossProduct"></app-solver-math>
-            <p>
-              A moment arm runs
-              <strong>from the selected moment reference to the force application point</strong>.
-              Weight acts at CoM, so its moment about CoM is zero. Applied forces are labeled P1,
-              P2, and so on at their existing application points.
-            </p>
-          </details>
-          <details class="numericDetails definitionSection">
-            <summary>2 · Name the Unknowns</summary>
-            <p>
-              Aₓ and Aᵧ are the two components of the force at A. The same reaction appears with
-              opposite signs on its two connected bodies.
-            </p>
-            <div class="symbolList">
-              @for (definition of data.forceWork?.definitions; track $index) {
-                <div>
-                  <app-solver-math [equation]="definition.symbol"></app-solver-math
-                  ><span>{{ definition.meaning }}</span>
-                </div>
-              }
-            </div>
-          </details>
-          <details class="numericDetails referenceNote">
-            <summary>About the Friction Pass in the Examples</summary>
-            <p>
-              The supplied notes first solve without friction, then calculate friction forces and
-              joint torques for a second pass. PMKS currently solves the frictionless system. Those
-              additional forces and torques are not included in these equations or results.
-            </p>
-            <p>
-              Worksheet gravity defaults to Settings. Use Worksheet Gravity to compare weight
-              assumptions.
-            </p>
-          </details>
-        } @else if (section() === 1) {
+        @if (section() === 1) {
           <h3 class="chapterTitle">Free-Body Equations · Without Friction</h3>
           <p>
             Isolate one body, read its loads, then write its balance equations. Repeat for each body
@@ -337,37 +269,64 @@
                 [diagram]="body.diagram"
                 [name]="body.name"
                 [equations]="body.components"
+                [startRow]="body.startRow"
                 [assumed]="assumed()"
                 [dynamic]="forceMode() === 'dynamic'"
                 [reference]="body.reference.label"
-              />
-              <details class="numericDetails bodyAdjustments">
-                <summary>Adjust Moment Reference & Review Force Points</summary>
-                @if (body.rowCount === 3) {
-                  <segmented-block
-                    [dropdown]="true"
-                    [label]="'Moment Reference Point for ' + body.name"
-                    [options]="body.referenceLabels"
-                    [selected]="body.referenceIndex"
-                    (selectedChange)="
-                      preferences.setMomentPoint(solved, body.id, body.referenceOptions[$event].id)
-                    "
-                  ></segmented-block>
+              >
+                <details class="numericDetails bodyAdjustments">
+                  <summary>Choose Assumptions for {{ body.name }}</summary>
                   <p class="caption">
-                    The blue ring marks {{ body.reference.label }}. Choose any joint, tracer point,
-                    CoM, or labeled force point on this body.
+                    Choose the positive arrows on this isolated body. Shared reactions update the
+                    connected body with opposite directions.
                   </p>
-                }
-                @for (load of body.loads; track $index) {
-                  @if (load.applicationId) {
+                  @for (choice of body.signChoices; track choice.key) {
+                    <app-worksheet-choices
+                      [choices]="[choice]"
+                      (chosen)="
+                        preferences.setForce(
+                          solved,
+                          $event.key,
+                          $event.index === 0
+                            ? choice.positiveSign
+                            : choice.positiveSign === 1
+                              ? -1
+                              : 1
+                        );
+                        assumed.set(true)
+                      "
+                    />
+                  }
+                  @if (body.rowCount === 3) {
+                    <segmented-block
+                      [dropdown]="true"
+                      [label]="'Moment Reference Point for ' + body.name"
+                      [options]="body.referenceLabels"
+                      [selected]="body.referenceIndex"
+                      (selectedChange)="
+                        preferences.setMomentPoint(
+                          solved,
+                          body.id,
+                          body.referenceOptions[$event].id
+                        )
+                      "
+                    ></segmented-block>
                     <p class="caption">
-                      {{ load.applicationId }}: {{ load.label }} is applied at ({{
-                        n(load.point[0] / scale)
-                      }}, {{ n(load.point[1] / scale) }}) {{ solved.unit }}.
+                      The blue ring marks {{ body.reference.label }}. Choose any joint, tracer
+                      point, CoM, or labeled force point on this body.
                     </p>
                   }
-                }
-              </details>
+                  @for (load of body.loads; track $index) {
+                    @if (load.applicationId) {
+                      <p class="caption">
+                        {{ load.applicationId }}: {{ load.label }} is applied at ({{
+                          n(load.point[0] / scale)
+                        }}, {{ n(load.point[1] / scale) }}) {{ solved.unit }}.
+                      </p>
+                    }
+                  }
+                </details>
+              </app-force-balance>
               <details class="numericDetails vectorDerivation">
                 <summary>How the Vectors Become These Equations</summary>
                 <div class="derivation">
@@ -421,32 +380,6 @@
                   }
                 </div>
               </details>
-              <details class="numericDetails">
-                <summary>Substitute This Sample & Check the Balance</summary>
-                <p class="caption">
-                  Signed unknowns follow your convention. The values on the right are the physical
-                  x/y components (or z couple) acting on this body.
-                </p>
-                <div class="loadList">
-                  @for (load of body.loads; track $index) {
-                    <div>
-                      <app-solver-math [equation]="load.valueEquation"></app-solver-math
-                      ><span>
-                        @if (load.couple !== undefined) {
-                          {{ n(load.couple / scale) }} N·m
-                        } @else {
-                          ({{ n(load.vector[0]) }}, {{ n(load.vector[1]) }}) N
-                        }
-                      </span>
-                    </div>
-                  }
-                </div>
-                @for (equation of body.components; track $index) {
-                  <h4>{{ equation.label }} · {{ equation.unit }}</h4>
-                  <app-solver-math [equation]="equation.collected"></app-solver-math
-                  ><app-solver-math [equation]="equation.substitution"></app-solver-math>
-                }
-              </details>
             </details>
           }
           @if (data.force?.frame?.explanation?.fixedBodies?.length) {
@@ -455,6 +388,7 @@
               as supports and have no independent equilibrium rows.
             </p>
           }
+          <button-block [click]="resetConventions">Reset Worksheet Conventions</button-block>
           <div class="systemNext">
             <h4>3 · Assemble All Bodies into One System</h4>
             <p>
@@ -470,11 +404,26 @@
             reference. Each ideal slider block contributes two. Collect the unknown reactions and
             input effort into x and move known terms to b.
           </p>
+          <div class="systemEquations">
+            @for (body of data.bodies; track body.id) {
+              <h4>{{ body.name }}</h4>
+              @for (equation of body.components; track $index) {
+                <div
+                  class="numberedEquation"
+                  [attr.data-equation-number]="body.startRow + $index + 1"
+                >
+                  <strong>({{ body.startRow + $index + 1 }})</strong>
+                  <app-solver-math [equation]="equation.symbolic" />
+                </div>
+              }
+            }
+          </div>
           @if (data.forceWork?.system; as system) {
             <app-solver-matrix
               [system]="system"
-              title="Force matrix and solution"
-              [expanded]="false"
+              title="Force Matrix and Solution"
+              [numbered]="true"
+              [expanded]="true"
             ></app-solver-matrix>
           }
         }

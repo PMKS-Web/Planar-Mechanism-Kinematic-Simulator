@@ -54,6 +54,11 @@ disposable profile and saves evidence in `artifacts/solver-worksheet/`.
 `worksheet-conventions.mjs` checks user-selected reaction and angular signs, reversed and
 alternative independent loops, invalid-path refusals, reset, dialog persistence, and phone
 layout. It saves screenshots and a sign-change filmstrip in `artifacts/worksheet-conventions/`.
+
+`worksheet-layout.mjs` checks the right-side analysis drawer, general FBD definitions, per-body
+force/couple controls, reciprocal signs, equation numbers carried into the system matrix,
+unknown column headings, and phone layout. Evidence is in `artifacts/worksheet-layout/`.
+Set `PMKS_STORYBOOK_URL` to also inspect the definitions and numbered-matrix gallery states.
 Set `PMKS_STORYBOOK_URL` to a running local gallery to also check the nine new convention
 and loop-editor stories, including the interactive choice and refusal states.
 

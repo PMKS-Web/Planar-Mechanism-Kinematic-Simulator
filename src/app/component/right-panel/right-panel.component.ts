@@ -32,6 +32,8 @@ import { ButtonComponent } from '../BLOCKS/button/button.component';
 import { LinkageTableComponent } from '../linkage-table/linkage-table.component';
 import { MatTooltip } from '@angular/material/tooltip';
 import { MatIcon } from '@angular/material/icon';
+import { MatDialog } from '@angular/material/dialog';
+import { SolverExplanationComponent } from '../solver-explanation/solver-explanation.component';
 
 @Component({
   selector: 'app-right-panel',
@@ -97,9 +99,11 @@ import { MatIcon } from '@angular/material/icon';
     LinkageTableComponent,
     MatTooltip,
     MatIcon,
+    SolverExplanationComponent,
   ],
 })
 export class RightPanelComponent implements DoCheck {
+  private readonly dialogs = inject(MatDialog);
   activeObjService = inject(ActiveObjService);
   mechanismService = inject(MechanismService);
   settingsService = inject(SettingsService);
@@ -162,6 +166,8 @@ export class RightPanelComponent implements DoCheck {
    * drawing it is a part of.
    */
   static readonly EXPORT_TAB = 7;
+  static readonly KINEMATIC_WORKSHEET_TAB = 8;
+  static readonly FORCE_WORKSHEET_TAB = 9;
   turnOnDebugger() {
     this.settingsService.isGridDebugOn = !this.settingsService.isGridDebugOn;
   }
@@ -262,6 +268,8 @@ export class RightPanelComponent implements DoCheck {
    */
   @HostListener('document:keydown.escape')
   onEscape(): void {
+    // Escape belongs to the expanded worksheet while it is above this drawer.
+    if (this.dialogs.openDialogs.length) return;
     if (RightPanelComponent.isOpen) RightPanelComponent.dismiss();
   }
 
@@ -277,6 +285,16 @@ export class RightPanelComponent implements DoCheck {
    */
   static closeSetupUnlessFor(tab: TabID): void {
     if (!this.isOpen) {
+      return;
+    }
+    if (
+      this.openTab === this.KINEMATIC_WORKSHEET_TAB ||
+      this.openTab === this.FORCE_WORKSHEET_TAB
+    ) {
+      if (tab === TabID.ANALYZE || tab === TabID.FORCE)
+        this.openTab =
+          tab === TabID.FORCE ? this.FORCE_WORKSHEET_TAB : this.KINEMATIC_WORKSHEET_TAB;
+      else this.isOpen = false;
       return;
     }
     // The force drawer holds the mass table, whose own header offers "Switch
@@ -317,14 +335,11 @@ export class RightPanelComponent implements DoCheck {
    * told about, so a page cannot change the drawer's width without the canvas
    * hearing about it.
    *
-   * Only the debug page, which holds a table rather than a panel, takes more
-   * than the view controls' width. The export page used to as well, for the
-   * note beside each machine's name -- and a drawer that changed width by
-   * page broke the one line its left edge is meant to share with the view
-   * controls under it. The note wraps now instead.
+   * Debug tables and analysis worksheets need room for equations and diagrams.
+   * Other pages share the width of the view controls below them.
    */
   drawerWidthClass(): 'wide' | 'base' {
-    return this.getOpenTab() === 4 ? 'wide' : 'base';
+    return [4, 8, 9].includes(this.getOpenTab()) ? 'wide' : 'base';
   }
 
   getIsOpen() {

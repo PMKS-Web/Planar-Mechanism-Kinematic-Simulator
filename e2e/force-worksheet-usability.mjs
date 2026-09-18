@@ -93,29 +93,28 @@ try {
   await body.locator('.inertiaTerms > summary').click();
   await body.scrollIntoViewIfNeeded();
   await page.screenshot({ path: `${out}/in-motion-body.png` });
-  await d.locator('.conventions > summary').click();
-  const joint = d.locator('[data-force-choice="Joint B"]');
-  await joint.locator(':scope > summary').click();
+  await body.locator('.bodyAdjustments > summary').click();
+  const joint = body.locator('[data-convention="Bx on ABH"]');
   await joint.scrollIntoViewIfNeeded();
-  const initial = await geometry(joint);
+  const initial = await geometry(body);
   const film = filmstrip(page, `${out}/arrow-flip`, await joint.boundingBox());
   await film.shot('before');
   await film.during(30, 8, 'flip', () =>
     joint.getByRole('button', { name: '−X ←', exact: true }).click()
   );
-  assert.deepEqual(await geometry(joint), initial);
+  assert.deepEqual(await geometry(body), initial);
   assert.deepEqual(await geometry(body), fixed);
-  await joint.getByRole('button', { name: '−Y ↓', exact: true }).click();
-  assert.deepEqual(await geometry(joint), initial);
-  const couple = d
-    .locator('.forceConvention')
-    .filter({ has: page.getByRole('button', { name: 'CW ↻', exact: true, includeHidden: true }) });
-  await couple.locator(':scope > summary').click();
-  const coupleGeometry = await geometry(couple);
+  await body
+    .locator('[data-convention="By on ABH"]')
+    .getByRole('button', { name: '−Y ↓', exact: true })
+    .click();
+  assert.deepEqual(await geometry(body), initial);
+  const couple = body.locator('[data-convention="Input Moment on ABH"]');
+  const coupleGeometry = await geometry(body);
   await couple.getByRole('button', { name: 'CW ↻', exact: true }).click();
-  assert.deepEqual(await geometry(couple), coupleGeometry);
+  assert.deepEqual(await geometry(body), coupleGeometry);
   assert.deepEqual(await geometry(body), fixed);
-  await d.locator('.conventions > summary').click();
+  await body.locator('.bodyAdjustments > summary').click();
   await d.getByRole('button', { name: 'Solved Directions', exact: true }).click();
   assert.deepEqual(await geometry(body), fixed);
   await page.setViewportSize({ width: 390, height: 844 });

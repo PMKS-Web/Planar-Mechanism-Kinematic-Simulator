@@ -11,14 +11,14 @@ const meta: Meta<WorksheetChoicesComponent> = {
     choices: [
       {
         key: 'Bx',
-        label: 'X Direction on ABH',
+        label: 'Bx on ABH',
         description: 'The direction on BCFG is opposite.',
         options: ['+X →', '−X ←'],
         selected: 0,
       },
       {
         key: 'By',
-        label: 'Y Direction on ABH',
+        label: 'By on ABH',
         description: 'The direction on BCFG is opposite.',
         options: ['+Y ↑', '−Y ↓'],
         selected: 0,
@@ -62,9 +62,9 @@ export const LongBodyNames: Story = {
     choices: [
       {
         key: 'J',
-        label: 'Joint J · Couple',
+        label: 'Input Moment on ABCDEFGH',
         description: 'The reaction on the connected body has the opposite sign.',
-        options: ['+ on ABCDEFGH', '− on ABCDEFGH'],
+        options: ['CCW ↺', 'CW ↻'],
         selected: 0,
       },
     ],

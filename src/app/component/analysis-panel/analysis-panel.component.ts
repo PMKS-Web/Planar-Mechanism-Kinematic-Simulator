@@ -30,8 +30,6 @@ import { ToggleComponent } from '../BLOCKS/toggle/toggle.component';
 import { AnalysisCompareService } from '../../services/analysis-compare.service';
 import { VECTOR_ICON, VECTOR_INK } from '../../model/vector-trace';
 import { MatTooltip } from '@angular/material/tooltip';
-import { SegmentedComponent } from '../BLOCKS/segmented/segmented.component';
-import { SolverExplanationComponent } from '../solver-explanation/solver-explanation.component';
 import {
   ContextMenuBuilderService,
   DrawingSwitch,
@@ -78,13 +76,9 @@ const DRAWING_CHIP_LABEL: Record<DrawingSwitch['key'], string> = {
     FormsModule,
     ReactiveFormsModule,
     NgTemplateOutlet,
-    SegmentedComponent,
-    SolverExplanationComponent,
   ],
 })
 export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
-  readonly resultViews = ['Graphs', 'How it works'];
-  resultView = 0;
   viewport = inject(ViewportService);
   activeSrv = inject(ActiveObjService);
   private fb = inject(FormBuilder);

@@ -174,6 +174,20 @@
     &.wide {
       width: calc(500px + #{nav.$shadow-room} + #{nav.$card-inset});
     }
+    &.worksheetDrawer {
+      max-width: 100vw;
+      @media (max-width: nav.$phone-max-width) {
+        top: calc(#{nav.$panel-top} + 34px + env(safe-area-inset-top));
+        max-height: calc(
+          100dvh - #{nav.$panel-top} -
+            34px - env(safe-area-inset-top) - var(
+              --playback-clearance,
+              #{nav.$playback-clearance}
+            ) +
+            #{nav.$shadow-room}
+        );
+      }
+    }
   }
 
   // One inset and one gap for every drawer page. The two setup drawers had
@@ -201,6 +215,15 @@
   // The page box is what the close button is measured against.
   #rightPanel > .drawerPage {
     position: relative;
+  }
+  .worksheetPage > app-solver-explanation {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+    overflow-y: auto;
+    background: var(--surface);
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
   }
 
   // The tutorial keeps its own height and the page below gives way when the two

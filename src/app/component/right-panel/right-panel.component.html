@@ -6,7 +6,9 @@
           getOpenTab() === 3 ||
           getOpenTab() === 5 ||
           getOpenTab() === 6 ||
-          getOpenTab() === 7
+          getOpenTab() === 7 ||
+          getOpenTab() === 8 ||
+          getOpenTab() === 9
           ? 'open'
           : 'openWide'
         : 'closed'
@@ -15,6 +17,7 @@
     data-canvas-inset="right"
     [class.insisting]="attention"
     [class.wide]="drawerWidthClass() === 'wide'"
+    [class.worksheetDrawer]="getOpenTab() === 8 || getOpenTab() === 9"
   >
     <!-- Pinned above whatever else the drawer is showing, rather than taking
          the drawer to itself. A student is meant to be able to open Settings or
@@ -37,6 +40,7 @@
         class="drawerPage"
         [@drawerCard]="tutorialShowing() ? 'held' : 'sole'"
         [class.page4]="getOpenTab() === 4"
+        [class.worksheetPage]="getOpenTab() === 8 || getOpenTab() === 9"
       >
         @if (getOpenTab() === 5) {
           <app-analysis-setup mode="kinematic"></app-analysis-setup>
@@ -46,6 +50,11 @@
         }
         @if (getOpenTab() === 7) {
           <app-export-panel></app-export-panel>
+        }
+        @if (getOpenTab() === 8 || getOpenTab() === 9) {
+          @defer (on immediate) {
+            <app-solver-explanation [force]="getOpenTab() === 9" />
+          }
         }
         @if (getOpenTab() === 1) {
           <app-settings-panel></app-settings-panel>

@@ -108,7 +108,7 @@ try {
     .first()
     .screenshot({ path: `${out}/free-body-solved.png` });
   await dialog.getByRole('button', { name: 'System', exact: true }).click();
-  await dialog.locator('app-solver-matrix > details > summary').click();
+  assert(await dialog.locator('app-solver-matrix > details').evaluate((el) => el.open));
   await cleanMath();
   await dialog.locator('app-solver-matrix').screenshot({ path: `${out}/force-system.png` });
   await dialog.getByRole('button', { name: 'Close Worksheet', exact: true }).click();

@@ -2614,6 +2614,18 @@ model coordinates need **both** the unit conversion and division by MODEL_SCALE.
 keep `I_CoM α + r_CoM/P × m a_CoM`; replacing this with `I_P α` is generally incorrect.
 Label existing applied-force points without changing their physical coordinates.
 
+Force convention controls live on isolated bodies. Their selected direction is the signed
+load on that body, while the stored preference describes the globally shared unknown.
+Convert a local choice using `load.originalSign`; applying a local sign directly to the
+global preference reverses the wrong arrow when editing the negative side of a reaction.
+Equation numbers are `body.startRow + componentIndex + 1`, matching the assembled matrix.
+
+The How It Works drawer uses right-panel pages 8 (kinematic) and 9 (force). Its scroll area
+must be inside the drawer, and on phones it must clear the extra 34px mode strip and safe
+area above the toolbar. Keep the How It Works button available at the icon-only toolbar fit.
+Escape belongs to an open dialog before its parent drawer. Compact matrix cells render
+KaTeX inline so display-math margins do not misalign A, X, and B rows.
+
 Keep loop-menu ordering stable when a choice changes. Moving the selected path to index 0
 can leave a native select displaying its previous DOM index if Angular sees an unchanged
 bound index. The browser suite checks the selected label as well as the underlying loop.

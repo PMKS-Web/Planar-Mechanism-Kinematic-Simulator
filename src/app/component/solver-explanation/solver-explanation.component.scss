@@ -5,6 +5,19 @@
   min-width: 0;
   height: 100%;
 }
+.numberedEquation {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  app-solver-math {
+    min-width: 0;
+    flex: 1;
+  }
+  strong {
+    color: var(--brand);
+  }
+}
 .worksheet {
   background: var(--surface);
   color: var(--text-primary);

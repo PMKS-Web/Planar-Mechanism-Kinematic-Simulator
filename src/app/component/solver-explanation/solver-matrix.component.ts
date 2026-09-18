@@ -9,10 +9,88 @@ import { SolverMathComponent } from './solver-math.component';
   imports: [SolverMathComponent],
   template: `<details [open]="expanded()">
     <summary>{{ title() }}</summary>
-    <p>
-      Rows follow the body or loop equations above. The column vector names each unknown in order.
-    </p>
-    <app-solver-math [equation]="matrix()"></app-solver-math>
+    @if (numbered()) {
+      <app-solver-math equation="A X = B" />
+      <p>
+        Each numbered row comes from the matching free-body equation. The headers above A name the
+        unknown multiplied by each column. B contains the known terms.
+      </p>
+      <div
+        class="matrixScroll"
+        tabindex="0"
+        role="region"
+        aria-label="Numbered force matrix AX equals B"
+      >
+        <div class="matrixProduct">
+          <table class="coefficientMatrix">
+            <caption>
+              A · Coefficients
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Equation</th>
+                @for (unknown of system().unknowns; track $index) {
+                  <th scope="col">
+                    <app-solver-math [equation]="symbol($index)" [inline]="true" />
+                  </th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of system().A; track $index; let i = $index) {
+                <tr [attr.data-matrix-equation]="i + 1">
+                  <th scope="row">({{ i + 1 }})</th>
+                  @for (value of row; track $index) {
+                    <td>{{ n(value) }}</td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+          <span class="operator">×</span>
+          <table class="unknownVector">
+            <caption>
+              X · Unknowns
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Variable</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (unknown of system().unknowns; track $index) {
+                <tr>
+                  <td><app-solver-math [equation]="symbol($index)" [inline]="true" /></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          <span class="operator">=</span>
+          <table class="knownVector">
+            <caption>
+              B · Known Terms
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (value of system().b; track $index) {
+                <tr>
+                  <td>{{ n(value) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    } @else {
+      <p>
+        Rows follow the body or loop equations above. The column vector names each unknown in order.
+      </p>
+      <app-solver-math [equation]="matrix()"></app-solver-math>
+    }
     <h4>Solved Unknowns</h4>
     <div class="solutions">
       @for (unknown of system().unknowns; track $index; let i = $index) {
@@ -22,20 +100,73 @@ import { SolverMathComponent } from './solver-math.component';
       }
     </div>
     <p>Maximum |A x − b|: {{ n(residual) }} · evaluated before rounding.</p>
-    <details>
-      <summary>Equation Row Order</summary>
-      <ol>
-        @for (row of system().rows; track $index) {
-          <li>{{ row }}</li>
-        }
-      </ol>
-    </details>
+    @if (!numbered()) {
+      <details>
+        <summary>Equation Row Order</summary>
+        <ol>
+          @for (row of system().rows; track $index) {
+            <li>{{ row }}</li>
+          }
+        </ol>
+      </details>
+    }
   </details>`,
   styles: [
     `
       details {
         padding: 12px 0;
         border-top: 1px solid var(--border-rule);
+      }
+      .matrixScroll {
+        max-width: 100%;
+        overflow-x: auto;
+        border: 1px solid var(--border-rule);
+        padding: 12px;
+        border-radius: var(--border-radius);
+      }
+      .matrixProduct {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        width: max-content;
+      }
+      table {
+        border-collapse: collapse;
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+      }
+      caption {
+        font-weight: 600;
+        color: var(--text-strong);
+        padding-bottom: 8px;
+        white-space: nowrap;
+      }
+      td,
+      th {
+        text-align: center;
+        height: 42px;
+        padding: 0 10px;
+        white-space: nowrap;
+      }
+      thead th {
+        background: var(--surface-subtle);
+      }
+      tbody th {
+        color: var(--brand);
+      }
+      tbody td {
+        border-bottom: 1px solid var(--border-rule);
+      }
+      tbody td:first-of-type {
+        border-left: 2px solid var(--text-secondary);
+      }
+      tbody td:last-child {
+        border-right: 2px solid var(--text-secondary);
+      }
+      .operator {
+        align-self: center;
+        color: var(--text-strong);
+        font-size: 20px;
       }
       summary {
         cursor: pointer;
@@ -75,8 +206,9 @@ export class SolverMatrixComponent {
   readonly system = input.required<LinearSystemExplanation>();
   readonly title = input('Assembled System');
   readonly expanded = input(false);
+  readonly numbered = input(false);
   protected n = numberText;
-  private symbol(index: number) {
+  protected symbol(index: number) {
     return this.system()
       .unknowns[index].label.split(' (')[0]
       .replace('ω', '\\omega')

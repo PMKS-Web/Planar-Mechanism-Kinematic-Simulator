@@ -2,14 +2,14 @@
 
 > **Status:** Reference
 
-Open **Kinematic Analysis → How it works** or **Force Analysis → How it works**, then
-**Open Full Worksheet**. The wide worksheet places sketches beside their equations.
+Enter **Kinematic Analysis** or **Force Analysis**, then use **How It Works** in the
+top-right toolbar. The explanation opens in the right-side drawer; graphs remain on the left.
+**Open Full Worksheet** places sketches beside their equations in a wider dialog.
 The mechanism selector and sample slider use the same machine and pose as the canvas.
-**Graphs** keeps the ordinary plots. Escape closes the full worksheet.
+Escape closes the full worksheet and leaves its drawer available.
 
-Force analysis opens with the balance law and gravity assumption visible. Mechanism notes,
-definitions, individual convention previews, free bodies, cross products, component equations,
-and the final matrix start collapsed. Open one body or calculation at a time. Open sections
+Force analysis opens on Free Bodies, with the first complete FBD and its numbered equations
+visible. Mechanism notes, per-body assumptions, and cross products remain collapsible. Open sections
 remain open while changing signs, gravity, force mode, or sample.
 
 **Worksheet Gravity** defaults to the document setting and can include or exclude weight
@@ -36,12 +36,16 @@ adapts its isolated-body and equation sequence to the current solvers and UI.
 
 ## Force worksheet
 
-- **Definitions:** mechanism sketch, coordinate/gravity assumptions, force and moment
-  vectors, cross-product expansion, and names of the unknowns.
+- **Definitions:** an illustrative FBD independent of the created mechanism, with no sample,
+  settings, or convention controls. Explain two force equations and one planar moment equation,
+  with an optional note about accelerating bodies.
 - **Free Bodies:** every moving root body, orange reaction arrows, vector force balance,
   vector moment balance about a chosen reference (CoM by default), then scalar x, y, and z equations.
-  Expand the numerical details for current loads and actual coefficient rows.
-- **System:** the combined bracketed matrix `A x = b`, ordered unknowns, answers, and residual.
+  Choose force-component/couple directions and the moment reference directly on each isolated
+  body. No separate list of joint convention cards or substitution/check section is shown.
+- **System:** repeat the numbered equations from Free Bodies, then show `A X = B` with equation
+  numbers beside A's rows and unknown names above its columns. Show X, B, solved unknowns, and
+  residual; no separate Equation Row Order list. Mechanism & Assumptions remains available.
 
 Joint-based names such as Aₓ and Bᵧ replace opaque column names. Shared reactions have
 opposite signs on their two bodies. **Assumed Directions** shows the sign convention;
@@ -108,11 +112,13 @@ formulas are shown without substituting a loop matrix that the solver did not us
 
 ### Choosing signs and loop paths
 
-**Choose Your Equation Conventions** appears in both worksheets. For forces, choose
-each pin's **X Direction** and **Y Direction** independently, or reverse a guide reaction
-or input effort. Link previews show the assumed arrows, including the opposite reaction
-on the other body. Assumed arrows, vector/scalar equations, substitutions, and solved unknowns
-all follow the choice. The physical load components listed beside them keep the world axes.
+For forces, expand **Choose Assumptions for [body]** beneath that body's FBD. Choose X/Y
+directions independently or reverse a guide reaction or input couple. The labels describe
+arrows on this body, including when it is the negative side of a shared reaction; the other
+body updates with the opposite sign. Assumed arrows, vector/scalar equations, and solved
+unknowns all follow the choice without changing physical loads.
+
+**Choose Your Equation Conventions** remains in the kinematic worksheet.
 
 Kinematic angular values can be clockwise-positive or counterclockwise-positive, either
 for all links together or separately under **Choose Angular Directions per Link**. The
@@ -133,8 +139,9 @@ X, Y, or moment contributions and the matching equation without changing geometr
 Moment highlighting includes pure couples and forces with a nonzero perpendicular arm to the
 selected reference. A force whose line of action passes through that point is gray. Slanted force arrows
 can contribute to both X and Y. **How the Vectors Become These Equations** keeps vector balances
-and cross-product expansions underneath. Moment references, force points, and numerical checks
-remain collapsible. **Assemble & Solve** continues from these body equations to the shared system.
+and cross-product expansions underneath. Force directions, input moment direction, moment references,
+and force points stay together in each body's collapsible assumptions. **Assemble & Solve** continues
+from these numbered body equations to the shared system.
 
 In **Velocity** or **Acceleration**, **Reverse Loop** reverses a closed path. **Loop Path**
 is a dropdown of closed paths through the mechanism. Choosing one replaces that loop
@@ -235,6 +242,10 @@ signed equations, and phone layout. Screenshots and an angular-change filmstrip 
 `node e2e/force-diagram-equations.mjs` checks the FBD-first entry, visible balance equations,
 axis highlighting, unchanged geometry, sign/reference changes, static and dynamic balances,
 system navigation, slider rows, and phone layout. Storybook has **Analysis/From FBD to Equations**.
+`node e2e/worksheet-layout.mjs` checks the right drawer, independent definitions, reciprocal
+per-body controls, consistent equation numbers, matrix headers, and phone layout. Its drawer
+filmstrip and screenshots are in `artifacts/worksheet-layout/`. Storybook also contains
+**Analysis/Force Definitions** and **Analysis/Numbered Force Matrix**.
 
 With the dev server running, `node e2e/solver-explanation.mjs` checks TeachingLab worksheets,
 multi-machine selection, the constraint route, scrubbing, dismissal, reduced motion, and

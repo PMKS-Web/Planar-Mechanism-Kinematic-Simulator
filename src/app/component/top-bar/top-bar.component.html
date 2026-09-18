@@ -148,6 +148,15 @@
         <span class="historyRule" aria-hidden="true"></span>
         <button
           class="historyButton"
+          (click)="openWorksheet()"
+          aria-label="How it works"
+          matTooltip="How it works"
+        >
+          <mat-icon>menu_book</mat-icon>
+          <span class="historyLabel">How It Works</span>
+        </button>
+        <button
+          class="historyButton exportButton"
           (click)="exportData()"
           [disabled]="!canExport()"
           [matTooltip]="exportTooltip()"

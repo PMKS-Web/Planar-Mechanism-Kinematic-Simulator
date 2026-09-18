@@ -25,6 +25,7 @@ import { SegmentedComponent } from '../BLOCKS/segmented/segmented.component';
           (selectedChange)="selected.set($event)"
         />
         <p aria-live="polite">{{ hint() }}</p>
+        <ng-content />
       </figure>
       <div class="equations">
         <h4>2 · Write the {{ equations().length }} Balance Equations</h4>
@@ -35,7 +36,9 @@ import { SegmentedComponent } from '../BLOCKS/segmented/segmented.component';
             [class.selected]="selected() === $index + 1"
             [attr.data-balance-axis]="$index"
           >
-            <strong>{{ equation.label }}</strong>
+            <strong [attr.data-equation-number]="startRow() + $index + 1"
+              >({{ startRow() + $index + 1 }}) {{ equation.label }}</strong
+            >
             <app-solver-math [equation]="equation.symbolic" />
           </div>
         }
@@ -116,6 +119,7 @@ import { SegmentedComponent } from '../BLOCKS/segmented/segmented.component';
 })
 export class ForceBalanceComponent {
   readonly diagram = input.required<Diagram>();
+  readonly startRow = input(0);
   readonly name = input.required<string>();
   readonly equations = input.required<{ label: string; symbolic: string }[]>();
   readonly assumed = input(true);

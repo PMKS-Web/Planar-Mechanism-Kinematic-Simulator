@@ -87,14 +87,12 @@ try {
   );
   assert(atA.some(([label, color]) => label === 'Bx' && color === 'var(--text-tertiary)'));
   assert(atA.some(([label, color]) => label === 'By' && color === 'var(--warning)'));
-  await d.locator('.conventions > summary').click();
-  const joint = d.locator('[data-force-choice="Joint B"]');
-  await joint.locator(':scope > summary').click();
+  const joint = body.locator('[data-convention="Bx on ABH"]');
   const beforeFlip = await equations(visual);
   await joint.getByRole('button', { name: '−X ←', exact: true }).click();
   assert.notEqual((await equations(visual))[0], beforeFlip[0]);
   assert.equal((await equations(visual))[1], beforeFlip[1]);
-  await d.locator('.conventions > summary').click();
+  await body.locator('.bodyAdjustments > summary').click();
   await page.setViewportSize({ width: 390, height: 844 });
   await visual.scrollIntoViewIfNeeded();
   await visual.screenshot({ path: `${out}/phone.png` });
