@@ -81,6 +81,7 @@ import { ActiveObjService } from '../../app/services/active-obj.service';
 import { ColorService } from '../../app/services/color.service';
 import { urlGeneratorFor } from '../url-encoding';
 import { Link, RealLink } from '../../app/model/link';
+import { PrisJoint } from '../../app/model/joint';
 import { MODEL_SCALE } from '../../app/model/render-scale';
 
 /**
@@ -133,12 +134,14 @@ function scaleBuiltToModelUnits(built: BuiltMechanism): void {
 }
 
 /**
- * Take the mass and inertia off a built copy, blocks and welded members
+ * Take the mass and inertia off a built copy, sliders and welded members
  * included.
  *
- * Every body, not only the bars: the solver hangs a slider block's weight from
- * gravity too, so a drawing whose only massive part is a block is still a
- * loaded one.
+ * Every body, not only the bars: the solver hangs a slider's weight from
+ * gravity too, so a drawing whose only massive part is a ram is still a loaded
+ * one. That weight sits on the *joint* since Stage 1 of
+ * `docs/joint-type-and-cylinder-plan.md` -- it used to be a zero-length block
+ * link, which is why walking `links` alone was once enough.
  */
 function stripMass(built: BuiltMechanism): void {
   const strip = (link: Link): void => {
@@ -149,6 +152,9 @@ function stripMass(built: BuiltMechanism): void {
     }
   };
   built.links.forEach(strip);
+  built.joints.forEach((joint) => {
+    if (joint instanceof PrisJoint) joint.mass = 0;
+  });
 }
 
 /**
@@ -172,6 +178,13 @@ function scaleLoading(built: BuiltMechanism, by: PublishedLoading): void {
     }
   };
   built.links.forEach(heavier);
+  // A slider's weight, on the joint rather than on a block link. Left out, the
+  // one template whose masses were deliberately scaled so Static and In-motion
+  // stop reporting the same number came out with a 6 kg ram beside a 200 kg
+  // crank and a 300 kg rod.
+  built.joints.forEach((joint) => {
+    if (joint instanceof PrisJoint) joint.mass *= by.mass;
+  });
   built.forces.forEach((force) => (force.mag *= by.load));
 
   // Then hand the mass properties back to the app wherever the fixture was not

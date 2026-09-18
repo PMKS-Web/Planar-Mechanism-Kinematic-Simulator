@@ -288,3 +288,72 @@ describe('a slot dropped onto a sealed cylinder', () => {
     expect(still[0].slider.isSealed).toBe(true);
   });
 });
+
+/**
+ * A slot is a legal *target* for a merge now that only the source is refused
+ * (Stage 1 of `docs/joint-type-and-cylinder-plan.md`). `mergeJoints` was
+ * written when it could not be one, and two of the things it does to a
+ * survivor turn out to be things a slot cannot take: writing `ground` straight
+ * onto it, and carrying a weld across as though a weld at a slot meant only one
+ * thing. Both are reachable by dragging a pin onto a slider.
+ */
+describe('dropping a pin onto a slider', () => {
+  /** The slotted lever, plus a loose bar X-Y whose X can be dragged anywhere. */
+  function withALooseBar() {
+    const s = slottedLever();
+    const x = new RevJoint('X', 6, 6);
+    const y = new RevJoint('Y', 7, 7);
+    const xy = new RealLink('XY', [x, y], 1, 1, new Coord(6.5, 6.5));
+    s.service.joints.push(x, y);
+    s.service.links.push(xy);
+    wireGraph(s.service);
+    return { ...s, x, y, xy };
+  }
+
+  it('keeps the carrier rather than grounding a slot that has one', () => {
+    // `ground` written straight leaves the slot both carried and grounded, and
+    // then `slideAssemblyAt` reports it grounded: a rider's world orientation
+    // frozen on a moving bar, ground rails drawn on a slot cut into a link, and
+    // a reload that quietly undoes it because `resolveSlots` calls `slideOn`.
+    const s = withALooseBar();
+    s.x.ground = true;
+
+    expect(s.service.mergeJoints(s.x, s.slot)).toBeUndefined();
+
+    expect(s.slot.isFloating, 'still riding its carrier').toBe(true);
+    expect(s.slot.carrier).toBe(s.cd);
+    expect(s.slot.ground, 'and not also pinned to the world').toBe(false);
+  });
+
+  it('grounds a slot that has nothing to ride, through its own setter', () => {
+    const s = withALooseBar();
+    s.slot.detach();
+    s.x.ground = true;
+
+    expect(s.service.mergeJoints(s.x, s.slot)).toBeUndefined();
+
+    expect(s.slot.ground).toBe(true);
+    expect(s.slot.isFloating).toBe(false);
+    expect(s.slot.isDangling, 'and no longer drawn red').toBe(false);
+  });
+
+  it('does not turn a Pin-in-slot slider into a Slide', () => {
+    // `weldTopology`'s prismatic branch ends `rotates = false`, so carrying a
+    // welded pin's compound across changed the joint's *type* -- from a gesture
+    // that reads as "attach these two". The bodies still fuse; the slot keeps
+    // what it was.
+    const s = withALooseBar();
+    const z = new RevJoint('Z', 8, 8);
+    const yz = new RealLink('YZ', [s.y, z], 1, 1, new Coord(7.5, 7.5));
+    s.service.joints.push(z);
+    s.service.links.push(yz);
+    wireGraph(s.service);
+    s.service.weldJoint(s.y);
+    expect(s.y.isWelded).toBe(true);
+    expect(s.slot.rotates, 'a pin-in-slot to start with').toBe(true);
+
+    expect(s.service.mergeJoints(s.y, s.slot)).toBeUndefined();
+
+    expect(s.slot.rotates, 'still free to turn in its slot').toBe(true);
+  });
+});

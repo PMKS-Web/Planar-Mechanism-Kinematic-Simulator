@@ -3004,7 +3004,24 @@ export class MechanismService {
     // Ground and input are things the user set deliberately. A merge that
     // dropped one would quietly change what the mechanism is, so the survivor
     // inherits both.
-    target.ground = target.ground || source.ground;
+    //
+    // A slot is a legal target now that only the source is refused, and `ground`
+    // written straight onto one leaves it both carried and grounded -- the
+    // state `PrisJoint`'s three setters exist to make unreachable.
+    // `slideAssemblyAt` then reports it grounded, so `hasFixedOrientation`
+    // freezes a rider's world orientation on a moving bar, which is a wrong
+    // number rather than a refusal; the canvas draws ground rails on a slot cut
+    // into a link; and a reload quietly undoes all of it, because
+    // `resolveSlots` calls `slideOn`, which clears `ground`. A carried slot
+    // already takes its direction from its carrier, which is what the ground
+    // would have been standing in for, so it keeps the carrier.
+    if (target instanceof PrisJoint) {
+      if (source.ground && !target.ground && !target.isFloating) {
+        target.groundAt(target.slotAngle);
+      }
+    } else {
+      target.ground = target.ground || source.ground;
+    }
     target.input = target.input || source.input;
 
     this.links.forEach((link) => this.replaceJointInLink(link, source, target));
@@ -3042,7 +3059,20 @@ export class MechanismService {
     // A refusal here is not silent: canBeWelded declines a grounded, driven, or
     // slider-carrying joint, and the caller reports the survivor's actual weld
     // state rather than assuming the weld took.
-    if (shouldWeld) this.weldTopology(target);
+    //
+    // Whether the bodies meeting here are fused is one question; whether they
+    // may turn against a slot is another. `weldTopology`'s prismatic branch
+    // answers both, so carrying a compound onto a slot ended `rotates = false`
+    // and a Pin-in-slot slider came out a Prismatic Slide -- a change of type
+    // from a gesture that reads as "attach these two". A drag attaches; it does
+    // not retype what it lands on, so the compound comes across and the slot
+    // keeps the type it had.
+    if (shouldWeld) {
+      const slot = target instanceof PrisJoint ? target : undefined;
+      const turnedInItsSlot = slot?.rotates;
+      this.weldTopology(target);
+      if (slot) slot.rotates = turnedInItsSlot!;
+    }
 
     // No save here: a merge is the tail of a drag gesture, and the gesture owns
     // the single undo entry it earns (see DragStateService.release).
