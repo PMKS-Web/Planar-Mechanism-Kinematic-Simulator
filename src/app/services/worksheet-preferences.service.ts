@@ -14,6 +14,7 @@ interface Preferences {
   angularByBody: Record<string, WorksheetSign>;
   momentPoints: Record<string, string>;
   gravity?: boolean;
+  axisAngle: number;
   loops: WorksheetLoop[];
 }
 
@@ -31,6 +32,7 @@ export class WorksheetPreferencesService {
         angular: 1,
         angularByBody: {},
         momentPoints: {},
+        axisAngle: 0,
         loops: defaultWorksheetLoops(mechanism.requiredLoops),
       };
       this.records.set(mechanism, state);
@@ -39,6 +41,11 @@ export class WorksheetPreferencesService {
   }
   setForce(mechanism: Mechanism, key: string, sign: WorksheetSign) {
     this.get(mechanism).forces[key] = sign;
+    this.revision.update((n) => n + 1);
+  }
+  setAxisAngle(mechanism: Mechanism, angle: number) {
+    if (!Number.isFinite(angle)) return;
+    this.get(mechanism).axisAngle = ((angle % 360) + 360) % 360;
     this.revision.update((n) => n + 1);
   }
   setAngular(mechanism: Mechanism, sign: WorksheetSign) {

@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import {
+  afterEveryRender,
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  inject,
+  input,
+} from '@angular/core';
+import { separateDiagramLabels } from './diagram-label-layout';
 
 export interface DiagramPoint {
   x: number;
@@ -26,6 +34,7 @@ export interface DiagramCircle {
   color: string;
 }
 export interface Diagram {
+  axisAngle?: number;
   context?: Pick<Diagram, 'lines' | 'outlines'>;
   rotations?: { x: number; y: number; sign: number; label: string }[];
   legend?: string;
@@ -104,11 +113,17 @@ let nextDiagram = 0;
       />
       @if (line.label) {
         <text
+          data-diagram-label
           [attr.x]="sx(line.midpointLabel ? (line.from.x + line.to.x) / 2 : line.to.x) + 5"
           [attr.y]="sy(line.midpointLabel ? (line.from.y + line.to.y) / 2 : line.to.y) - 6"
           [attr.fill]="line.color ?? 'var(--canvas-ink)'"
         >
-          {{ line.label }}
+          {{ line.label.split('_')[0] }}
+          @if (line.label.includes('_')) {
+            <tspan baseline-shift="sub" font-size="9">
+              {{ line.label.split('_').slice(1).join('_') }}
+            </tspan>
+          }
         </text>
       }
     }
@@ -126,6 +141,7 @@ let nextDiagram = 0;
           [attr.marker-end]="'url(#' + markerId + ')'"
         />
         <text
+          data-diagram-label
           [attr.x]="sx(rotation.x)"
           [attr.y]="sy(rotation.y) + 35"
           text-anchor="middle"
@@ -159,6 +175,7 @@ let nextDiagram = 0;
       />
       @if (point.label) {
         <text
+          data-diagram-label
           [attr.x]="sx(point.x) + 7"
           [attr.y]="sy(point.y) + 15"
           [attr.fill]="point.color ?? 'var(--canvas-ink)'"
@@ -172,7 +189,7 @@ let nextDiagram = 0;
     }
     <path
       class="axisX"
-      d="M18 232 h28"
+      [attr.d]="axisPath(0)"
       stroke="var(--text-secondary)"
       stroke-width="1.5"
       fill="none"
@@ -180,7 +197,7 @@ let nextDiagram = 0;
     />
     <path
       class="axisY"
-      d="M18 232 v-26"
+      [attr.d]="axisPath(90)"
       stroke="var(--text-secondary)"
       stroke-width="1.5"
       fill="none"
@@ -199,8 +216,22 @@ let nextDiagram = 0;
       />
       <text x="113" y="237">+Mz (CCW)</text>
     }
-    <text x="50" y="236">x</text>
-    <text x="14" y="202">y</text>
+    <text
+      class="axisLabel"
+      [attr.x]="axisEnd(0, 32).x"
+      [attr.y]="axisEnd(0, 32).y + 4"
+      text-anchor="middle"
+    >
+      x
+    </text>
+    <text
+      class="axisLabel"
+      [attr.x]="axisEnd(90, 32).x"
+      [attr.y]="axisEnd(90, 32).y + 4"
+      text-anchor="middle"
+    >
+      y
+    </text>
   </svg>`,
   styles: [
     `
@@ -226,6 +257,23 @@ let nextDiagram = 0;
   ],
 })
 export class SolverDiagramComponent {
+  private readonly host = inject(ElementRef<HTMLElement>);
+  constructor() {
+    afterEveryRender({
+      mixedReadWrite: () => {
+        const svg = this.host.nativeElement.querySelector('svg');
+        if (svg) separateDiagramLabels(svg);
+      },
+    });
+  }
+  protected axisEnd(offset: number, length = 22) {
+    const a = (((this.diagram().axisAngle ?? 0) + offset) * Math.PI) / 180;
+    return { x: 40 + length * Math.cos(a), y: 210 - length * Math.sin(a) };
+  }
+  protected axisPath(offset: number) {
+    const p = this.axisEnd(offset);
+    return `M40 210 L${p.x} ${p.y}`;
+  }
   readonly diagram = input.required<Diagram>();
   readonly label = input('Solver diagram');
   readonly markerId = `solver-arrow-${nextDiagram++}`;

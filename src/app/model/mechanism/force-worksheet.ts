@@ -3,6 +3,7 @@ import { texName, texNumber } from './worksheet-math';
 import { labelApplicationPoints, referenceSystem } from './force-reference';
 import { forceBodyEquations } from './force-body-equations';
 import { forceConventions, signedSystem, WorksheetSign } from './worksheet-conventions';
+import { forceAxes, forceAxisPairs } from './force-axes';
 
 /** Joint-based symbols make the reaction shared by two free bodies recognizable. */
 export function forceWorksheet(
@@ -11,9 +12,11 @@ export function forceWorksheet(
   dynamic: boolean,
   conventions: Record<string, WorksheetSign> = {},
   momentPoints: Record<string, string> = {},
-  unit = 'm'
+  unit = 'm',
+  axisAngle = 0
 ) {
   trace = labelApplicationPoints(trace);
+  const pairedColumns = new Set(forceAxisPairs(trace).flat());
   const symbols = system.unknowns.map((_, index) => {
     const load = trace.bodies
       .flatMap((b) => b.loads)
@@ -22,11 +25,13 @@ export function forceWorksheet(
       return load.couple === undefined ? 'F_{\\mathrm{in}}' : 'M_{\\mathrm{in}}';
     if (load.couple !== undefined) return `T_{${texName(load.jointId!)}}`;
     const axis =
-      Math.abs(load.direction![0] - 1) < 1e-12
-        ? 'x'
-        : Math.abs(load.direction![1] - 1) < 1e-12
-          ? 'y'
-          : 'n';
+      axisAngle && !pairedColumns.has(index)
+        ? 'n'
+        : Math.abs(load.direction![0] - 1) < 1e-12
+          ? 'x'
+          : Math.abs(load.direction![1] - 1) < 1e-12
+            ? 'y'
+            : 'n';
     const similar = trace.bodies
       .flatMap((b) => b.loads)
       .filter(
@@ -40,6 +45,8 @@ export function forceWorksheet(
     return `${texName(load.jointId!)}_{${axis}${suffix}}`;
   });
   const choices = forceConventions(trace);
+  const conventionTrace = trace;
+  ({ trace, system } = forceAxes(trace, system, axisAngle));
   const signs = system.unknowns.map(() => 1);
   choices.forEach((choice) =>
     choice.columns.forEach(
@@ -82,17 +89,19 @@ export function forceWorksheet(
     choices: choices.map((choice) => ({
       ...choice,
       axes: choice.columns.map((col) => {
-        const load = trace.bodies
+        const load = conventionTrace.bodies
           .flatMap((b) => b.loads)
           .find((l) => l.column === col && l.sign === 1)!;
         const axis =
           load.couple !== undefined
             ? 'Moment'
-            : load.direction?.[0] === 1
-              ? 'X'
-              : load.direction?.[1] === 1
-                ? 'Y'
-                : 'Normal';
+            : axisAngle && !pairedColumns.has(col)
+              ? 'Normal'
+              : load.direction?.[0] === 1
+                ? 'X'
+                : load.direction?.[1] === 1
+                  ? 'Y'
+                  : 'Normal';
         return {
           key: `${choice.key}:${col}`,
           label: `${axis} Direction on ${choice.positiveBody}`,
@@ -101,9 +110,13 @@ export function forceWorksheet(
             : 'Assumed direction before solving.',
           options:
             axis === 'X'
-              ? ['+X →', '−X ←']
+              ? axisAngle
+                ? ['+X', '−X']
+                : ['+X →', '−X ←']
               : axis === 'Y'
-                ? ['+Y ↑', '−Y ↓']
+                ? axisAngle
+                  ? ['+Y', '−Y']
+                  : ['+Y ↑', '−Y ↓']
                 : axis === 'Moment'
                   ? ['CCW ↺', 'CW ↻']
                   : ['+ Normal', '− Normal'],

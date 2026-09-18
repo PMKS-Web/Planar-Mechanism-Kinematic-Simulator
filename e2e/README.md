@@ -1,5 +1,11 @@
 # PMKS+ tests
 
+`force-axes-and-arms.mjs` verifies the centered bar example, shared rotated force axes,
+matrix balance, stable body geometry, reciprocal assumptions, symbolic cross products,
+moment-arm sketches, label separation, and phone layout. Screenshots and the axis-change
+filmstrip are saved in `artifacts/force-axes-and-arms/`. Set `PMKS_STORYBOOK_URL` to also
+check rotated axes, negative moment-arm components, and crowded labels in the local gallery.
+
 Two layers, organized by what they exercise:
 
 | Layer | Where | Runner | What it covers |

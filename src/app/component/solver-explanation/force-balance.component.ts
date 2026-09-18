@@ -149,8 +149,8 @@ export class ForceBalanceComponent {
     () =>
       [
         `Start with the complete free-body diagram, then read its ${this.equations().length === 3 ? 'X, Y, and moment' : 'X and Y'} balances. Arrow lengths are schematic.`,
-        'Orange arrows supply horizontal components: right is +x and left is −x. A slanted force contributes its x component.',
-        'Orange arrows supply vertical components: up is +y and down is −y. A slanted force contributes its y component.',
+        'Orange arrows supply x components along the displayed +x axis. The opposite direction is −x.',
+        'Orange arrows supply y components along the displayed +y axis. The opposite direction is −y.',
         `Take moments about ${this.reference()} (blue ring): use rₓFᵧ − rᵧFₓ and add couples. Gray forces have zero moment here: their line of action passes through the reference.`,
       ][this.selected()]
   );

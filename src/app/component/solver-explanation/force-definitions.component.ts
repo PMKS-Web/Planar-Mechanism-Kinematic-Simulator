@@ -13,7 +13,7 @@ import { SolverMathComponent } from './solver-math.component';
     </p>
     <app-solver-diagram
       [diagram]="example"
-      label="Example isolated link with reactions at A and B, weight at CoM, and an applied force at P"
+      label="Example two-joint bar AB with reactions, weight W_ab at its center, and force F_1 at P"
     />
     <p class="caption">
       Illustrative link · the arrows are assumed directions, not calculated answers.
@@ -24,9 +24,13 @@ import { SolverMathComponent } from './solver-math.component';
     <app-solver-math [equation]="components" />
     <h3>One Moment Equation</h3>
     <app-solver-math [equation]="moment" />
+    <app-solver-math [equation]="momentExpansion" />
+    <app-solver-math [equation]="momentComponents" />
     <p>
-      Choose a point O and sum moments about it. For planar forces, moments always point along the z
-      axis, perpendicular to the diagram. Counterclockwise is positive.
+      Position vectors and forces lie in the x–y plane: r_z = 0 and F_z = 0. Their cross products
+      have zero x and y components, so those moment equations reduce to 0 = 0. Only the z equation
+      supplies a balance to solve. The arrow over M denotes a vector; positive z points out of the
+      page and counterclockwise is positive.
     </p>
     <app-solver-math [equation]="cross" />
     <p>
@@ -86,21 +90,24 @@ import { SolverMathComponent } from './solver-math.component';
 export class ForceDefinitionsComponent {
   protected readonly force = String.raw`\sum\vec F=\vec0`;
   protected readonly components = String.raw`\sum F_x=0,\qquad\sum F_y=0`;
-  protected readonly moment = String.raw`\sum M_O=0`;
+  protected readonly moment = String.raw`\sum\vec M_O=\vec0`;
+  protected readonly momentExpansion = String.raw`\vec r\times\vec F=\begin{bmatrix}r_y\,0-0\,F_y\\0\,F_x-r_x\,0\\r_xF_y-r_yF_x\end{bmatrix}`;
+  protected readonly momentComponents = String.raw`\begin{aligned}\sum M_{O,x}&=0=0\\\sum M_{O,y}&=0=0\\\sum M_{O,z}&=\sum(r_xF_y-r_yF_x)=0\end{aligned}`;
   protected readonly cross = String.raw`(\vec r_{P/O}\times\vec F)_z=r_xF_y-r_yF_x`;
   protected readonly dynamic = String.raw`\sum F_x=ma_{\mathrm{CoM},x},\quad\sum F_y=ma_{\mathrm{CoM},y},\quad\sum M_{\mathrm{CoM}}=I_{\mathrm{CoM}}\alpha`;
   protected readonly example: Diagram = {
     points: [
       { x: 0, y: 0, label: 'A' },
       { x: 200, y: 0, label: 'B' },
-      { x: 100, y: 40, label: 'P' },
+      { x: 150, y: 0, label: 'P' },
       { x: 100, y: 0, label: 'CoM' },
     ],
     outlines: [
       [
-        { x: 0, y: 0 },
-        { x: 200, y: 0 },
-        { x: 100, y: 40 },
+        { x: -10, y: -12 },
+        { x: 210, y: -12 },
+        { x: 210, y: 12 },
+        { x: -10, y: 12 },
       ],
     ],
     framingPoints: [
@@ -112,8 +119,8 @@ export class ForceDefinitionsComponent {
       { from: { x: 0, y: 0 }, to: { x: 0, y: 65 }, label: 'Ay' },
       { from: { x: 200, y: 0 }, to: { x: 255, y: 0 }, label: 'Bx' },
       { from: { x: 200, y: 0 }, to: { x: 200, y: 65 }, label: 'By' },
-      { from: { x: 100, y: 0 }, to: { x: 100, y: -65 }, label: 'W' },
-      { from: { x: 100, y: 40 }, to: { x: 145, y: 100 }, label: 'F' },
+      { from: { x: 100, y: 0 }, to: { x: 100, y: -65 }, label: 'W_ab' },
+      { from: { x: 150, y: 0 }, to: { x: 195, y: 75 }, label: 'F_1' },
     ].map((l) => ({ ...l, arrow: true, color: 'var(--warning)', width: 1.7 })),
   };
 }

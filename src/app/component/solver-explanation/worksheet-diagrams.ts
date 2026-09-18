@@ -2,6 +2,7 @@ import { Diagram, DiagramPoint } from './solver-diagram.component';
 import { BodyExplanation, BodyLoad } from '../../model/mechanism/solver-explanation';
 import { Mechanism } from '../../model/mechanism/mechanism';
 import { PrisJoint, RealJoint } from '../../model/joint';
+import { axisCoordinates } from '../../model/mechanism/force-axes';
 
 const orange = 'var(--warning)';
 
@@ -41,7 +42,8 @@ export function freeBodyDiagram(
     reference?: { id: string; label: string; point: number[] };
   },
   assumed: boolean,
-  showReference = true
+  showReference = true,
+  axisAngle = 0
 ): Diagram {
   const centroid = {
     x: body.points.reduce((s, p) => s + p.x, 0) / body.points.length,
@@ -54,9 +56,10 @@ export function freeBodyDiagram(
   const offset = Math.hypot(body.center[0] - centroid.x, body.center[1] - centroid.y) > radius * 2;
   // Some legacy CAD mass centers are far outside the outline. Keep the body readable,
   // mark CoM*, and retain the specified center in every moment calculation.
+  const centerOffset = axisCoordinates([radius * 1.25, radius * 0.4], axisAngle);
   const center = {
-    x: offset ? centroid.x + radius * 1.25 : body.center[0],
-    y: offset ? centroid.y + radius * 0.4 : body.center[1],
+    x: offset ? centroid.x + centerOffset[0] : body.center[0],
+    y: offset ? centroid.y + centerOffset[1] : body.center[1],
     label: offset ? 'CoM*' : 'CoM',
     reference: showReference && body.reference?.id === '@CoM',
   };
@@ -138,7 +141,10 @@ export function freeBodyDiagram(
         [0.2, -0.13],
         [0.2, 0.13],
         [-0.2, 0.13],
-      ].map(([x, y]) => ({ x: center.x + radius * x, y: center.y + radius * y }))
+      ].map(([x, y]) => {
+        const offset = axisCoordinates([radius * x, radius * y], axisAngle);
+        return { x: center.x + offset[0], y: center.y + offset[1] };
+      })
     );
   } else points.push(center as (typeof points)[number]);
   return {

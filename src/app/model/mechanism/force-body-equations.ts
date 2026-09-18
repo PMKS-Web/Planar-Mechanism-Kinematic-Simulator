@@ -20,7 +20,8 @@ export function forceBodyEquations(
   const component = (load: NamedLoad, axis: number) => {
     if (load.column !== undefined)
       return { coefficient: (load.sign ?? 1) * (load.direction?.[axis] ?? 0), symbol: load.symbol };
-    if (load.kind === 'weight') return { coefficient: axis === 1 ? -1 : 0, symbol: load.symbol };
+    if (load.kind === 'weight')
+      return { coefficient: load.direction?.[axis] ?? (axis === 1 ? -1 : 0), symbol: load.symbol };
     return {
       coefficient: 1,
       symbol: `F_{${texName(load.applicationId ?? load.label)},${axis ? 'y' : 'x'}}`,
@@ -95,8 +96,12 @@ export function forceBodyEquations(
     .map((g) => {
       const arm = arms(g.load);
       const prefix = g.sign < 0 ? '-' : '';
-      const physical = g.items.reduce((v, l) => [v[0] + l.vector[0], v[1] + l.vector[1]], [0, 0]);
       return {
+        from: body.reference.point,
+        to: g.load.point,
+        dx: g.dx,
+        dy: g.dy,
+        distanceComponents: `r_x=${texNumber(g.dx)}\\;\\mathrm m,\\qquad r_y=${texNumber(g.dy)}\\;\\mathrm m`,
         point:
           g.load.kind === 'weight'
             ? 'CoM'
@@ -105,8 +110,19 @@ export function forceBodyEquations(
         definition: `${g.symbol}=${column([g.fx, g.fy, 0])},\\quad${arm.symbol}=${column([g.rx, g.ry, 0])}`,
         determinant: `${prefix}${arm.symbol}\\times${g.symbol}=${prefix}\\begin{vmatrix}\\hat i&\\hat j&\\hat k\\\\${g.rx}&${g.ry}&0\\\\${g.fx}&${g.fy}&0\\end{vmatrix}`,
         expansion: `=${prefix}${column(['0', '0', `(${g.rx})(${g.fy})-(${g.ry})(${g.fx})`])}`,
-        numbers: `${arm.symbol}=${column([g.dx, g.dy, 0])}\\;\\mathrm m,\\quad${g.symbol}=${column([physical[0] / g.sign, physical[1] / g.sign, 0])}\\;\\mathrm N`,
-        evaluation: `M_{${ref},z}=${prefix}\\left[(${texNumber(g.dx)})(${texNumber(physical[1] / g.sign)})-(${texNumber(g.dy)})(${texNumber(physical[0] / g.sign)})\\right]=${texNumber(g.dx * physical[1] - g.dy * physical[0])}\\;\\mathrm{N\\,m}`,
+        numbers: `${arm.symbol}=${column([g.dx, g.dy, 0])}\\;\\mathrm m`,
+        evaluation: `M_{${ref},z}^{(${pointOf(g.load)})}=${signedSum(
+          g.items.flatMap((load) => [
+            {
+              coefficient: g.dx * component(load, 1).coefficient,
+              symbol: component(load, 1).symbol,
+            },
+            {
+              coefficient: -g.dy * component(load, 0).coefficient,
+              symbol: component(load, 0).symbol,
+            },
+          ])
+        )}`,
       };
     });
   const components = Array.from({ length: body.rowCount }, (_, axis) => {
@@ -133,9 +149,11 @@ export function forceBodyEquations(
             : '');
     return {
       label:
-        axis === 2 ? `Moment about ${body.reference.label} · z` : `Force · ${axis ? 'y' : 'x'}`,
+        axis === 2
+          ? `Moment Balance About ${body.reference.label}`
+          : `${axis ? 'Y' : 'X'} Force Balance`,
       unit: axis === 2 ? 'N·m' : 'N',
-      symbolic: `${signedSum(terms)}=${rhs}`,
+      symbolic: `${axis === 2 ? `\\sum M_{${ref},z}` : `\\sum F_${axis ? 'y' : 'x'}`}=${signedSum(terms)}=${rhs}`,
       collected: `${signedSum(system.A[row].map((a, i) => ({ coefficient: a, symbol: system.unknowns[i].label })))}=${texNumber(system.b[row])}`,
       substitution: numericEquation(
         system.A[row],

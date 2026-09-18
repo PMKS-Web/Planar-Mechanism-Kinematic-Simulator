@@ -27,6 +27,7 @@ import { WorksheetLoopEditorComponent } from './worksheet-loop-editor.component'
 import { ForceBalanceComponent } from './force-balance.component';
 import { ForceDefinitionsComponent } from './force-definitions.component';
 import { bodyForceChoices } from './body-force-choices';
+import { momentArmDiagram, worldForceDiagram } from './force-axis-diagrams';
 
 @Component({
   selector: 'app-solver-explanation',
@@ -132,7 +133,8 @@ export class SolverExplanationComponent {
             this.forceMode() === 'dynamic',
             preferences.forces,
             preferences.momentPoints,
-            mechanism.unit
+            mechanism.unit,
+            preferences.axisAngle
           )
         : undefined;
     const rates = !this.isForce() ? this.explain.kinematicsAt(mechanism, step) : undefined;
@@ -251,6 +253,7 @@ export class SolverExplanationComponent {
       ...worksheetLoopOptions(mechanism, preferences.loops, loop.index),
     }));
     return {
+      axisAngle: preferences.axisAngle,
       gravity,
       angularDiagram,
       mechanismSketch: mechanismDiagram(mechanism, step),
@@ -296,10 +299,23 @@ export class SolverExplanationComponent {
       circles,
       circleLines,
       loops,
-      diagram: angularDiagram ?? mechanismDiagram(mechanism, step),
+      diagram: angularDiagram ?? {
+        ...mechanismDiagram(mechanism, step),
+        axisAngle: preferences.axisAngle,
+      },
       bodies:
         forceWork?.bodies.map((body) => ({
           ...body,
+          crossProducts: body.crossProducts.map((product) => ({
+            ...product,
+            diagram: momentArmDiagram(
+              product.from,
+              product.to,
+              body.reference.label,
+              product.point,
+              preferences.axisAngle
+            ),
+          })),
           signChoices: bodyForceChoices(body, forceWork.choices),
           inertiaForce: `m${vector('a', '\\mathrm{CoM}')}=${column(body.inertia.slice(0, 2))}\\;\\mathrm N`,
           inertiaMoment: `I_{\\mathrm{CoM}}\\alpha=${texNumber((force!.frame.explanation!.bodies.find((b) => b.id === body.id)!.inertia[2] ?? 0) / MODEL_SCALE)}\\;\\mathrm{N\\,m}`,
@@ -307,7 +323,10 @@ export class SolverExplanationComponent {
             p.id === '@CoM' ? 'CoM (Center of Mass)' : p.label
           ),
           referenceIndex: body.referenceOptions.findIndex((p) => p.id === body.reference.id),
-          diagram: freeBodyDiagram(body, this.assumed()),
+          diagram: worldForceDiagram(
+            freeBodyDiagram(body, this.assumed(), true, preferences.axisAngle),
+            preferences.axisAngle
+          ),
         })) ?? [],
       grounds: joints
         .filter((j) => j instanceof RealJoint && j.ground && !(j instanceof PrisJoint))

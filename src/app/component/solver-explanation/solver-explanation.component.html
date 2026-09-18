@@ -76,7 +76,7 @@
         <div class="forceAssumptions">
           <strong
             >{{ forceMode() === 'dynamic' ? 'In-motion balance' : 'Static equilibrium' }} · Gravity
-            {{ data.gravity ? 'on (−y)' : 'off' }}</strong
+            {{ data.gravity ? 'on (downward)' : 'off' }}</strong
           >
           <app-solver-math
             [equation]="forceMode() === 'dynamic' ? dynamicBalance : staticBalance"
@@ -109,11 +109,24 @@
           </figure>
           <div class="assumptions">
             <h3>Knowns & Assumptions</h3>
-            <p>
-              Motion lies in the x–y plane. Positive x points right, positive y points up, and the
-              positive z axis points out of the page. Counterclockwise rotation follows positive z.
-            </p>
             @if (isForce()) {
+              @if (section() === 1) {
+                <label class="axisAngleControl"
+                  >X-Axis Angle (° Counterclockwise from Right)
+                  <input
+                    type="number"
+                    step="15"
+                    aria-label="Worksheet X-axis angle"
+                    [ngModel]="data.axisAngle"
+                    (change)="preferences.setAxisAngle(solved, +$any($event.target).value)"
+                  />
+                </label>
+              }
+              <p>
+                +x is {{ data.axisAngle }}° counterclockwise from right. +y is 90° counterclockwise
+                from +x. This same frame applies to every force diagram, moment arm, equation, and
+                matrix below. +z points out of the page; positive moments are counterclockwise.
+              </p>
               <p>
                 <strong
                   >{{
@@ -128,10 +141,17 @@
               </p>
               <p>
                 <strong>Gravity:</strong>
-                {{ data.gravity ? 'included in the negative y direction' : 'off' }}.
-                <strong>Joint friction:</strong> not modeled.
+                {{
+                  data.gravity
+                    ? 'physically downward, resolved along the chosen x and y axes'
+                    : 'off'
+                }}. <strong>Joint friction:</strong> not modeled.
               </p>
             } @else {
+              <p>
+                Motion lies in the x–y plane. Positive x points right, positive y points up, and
+                positive z points out of the page. Counterclockwise rotation follows positive z.
+              </p>
               <p>
                 Grounded joints have known positions and zero velocity and acceleration. Input
                 motion supplies the first moving boundary.
@@ -358,6 +378,18 @@
                     @for (product of body.crossProducts; track $index) {
                       <details class="numericDetails crossProduct">
                         <summary>Force at {{ product.point }}</summary>
+                        <app-solver-diagram
+                          [diagram]="product.diagram"
+                          [label]="
+                            'Moment arm from ' + body.reference.label + ' to ' + product.point
+                          "
+                        />
+                        <p class="caption">
+                          Start at {{ body.reference.label }} (blue ring), then travel to
+                          {{ product.point }}. The dashed steps are the signed r_x and r_y
+                          components in your chosen axes. Distances below are in meters.
+                        </p>
+                        <app-solver-math [equation]="product.distanceComponents" />
                         <app-solver-math [equation]="product.definition"></app-solver-math>
                         <app-solver-math [equation]="product.determinant"></app-solver-math>
                         <app-solver-math [equation]="product.expansion"></app-solver-math>
@@ -365,6 +397,9 @@
                           <p>The force acts at the moment reference, so its moment arm is zero.</p>
                         }
                         <app-solver-math [equation]="product.numbers"></app-solver-math>
+                        <p class="caption">
+                          Substitute the distances; keep the force components as symbols.
+                        </p>
                         <app-solver-math [equation]="product.evaluation"></app-solver-math>
                       </details>
                     }

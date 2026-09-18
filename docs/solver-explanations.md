@@ -37,8 +37,9 @@ adapts its isolated-body and equation sequence to the current solvers and UI.
 ## Force worksheet
 
 - **Definitions:** an illustrative FBD independent of the created mechanism, with no sample,
-  settings, or convention controls. Explain two force equations and one planar moment equation,
-  with an optional note about accelerating bodies.
+  settings, or convention controls. A straight bar AB has a centered CoM, weight W_ab, and
+  applied force F_1. Vector moment expansion shows why the x/y moment equations are 0 = 0,
+  leaving two force equations and one z moment equation, with an optional note about accelerating bodies.
 - **Free Bodies:** every moving root body, orange reaction arrows, vector force balance,
   vector moment balance about a chosen reference (CoM by default), then scalar x, y, and z equations.
   Choose force-component/couple directions and the moment reference directly on each isolated
@@ -55,8 +56,14 @@ Both choices describe the same equations and solution.
 **Static** sets the force calculation's acceleration terms to zero. **In Motion** uses
 current Newton–Euler inertia terms. Ideal slider blocks have two force rows; welded links
 form one rigid root body. Fixed bodies are supports. Shared-support and singular-system
-notices come from the solver. Gravity acts in negative y when enabled.
+notices come from the solver. Gravity remains physically downward when enabled.
 The mode is reactive, including a change made while the full worksheet is open.
+**X-Axis Angle** under **Mechanism & Assumptions** rotates one right-handed frame for the entire
+force worksheet. Zero degrees is right/up; positive angles turn counterclockwise, and +y stays
+90 degrees from +x. Diagrams retain the mechanism's world pose while their axis arrows, force
+components, moment arms, equations, and matrix use the chosen frame. Gravity is resolved into
+those axes. Pin-force pairs change coordinates together; guide normals remain physically constrained.
+This preference is shared by the drawer and dialog, resets with conventions, and does not change graph axes.
 **Acceleration Terms at This Sample** shows the actual `m a_CoM` and `I_CoM α` used in
 the solve. Turning gravity off does not turn inertia off. A zero mass, inertia, or acceleration
 can give a zero inertia term; unavailable solves retain their explicit diagnostic.
@@ -79,9 +86,12 @@ The reference is where moments are summed; it need not be a stationary pivot or 
 instantaneous center of rotation. In motion, the balance about P is
 `ΣM_P = I_CoM α + r_CoM/P × m a_CoM`. The extra term is retained for moving points too.
 
-**Expand the Cross Products** shows each force and arm as columns, the determinant,
-the component expansion, numerical vectors, and the resulting moment. A force through
-the reference has zero arm. Pure couples contribute directly, independent of reference.
+**Expand the Cross Products** shows an arm sketch from the reference to the application point,
+with signed r_x/r_y steps in the chosen frame and their distances in meters. It then shows force
+and arm columns, the determinant, and the component expansion. Only distances are substituted:
+force symbols remain unknown until System solves them. A force applied at the reference has zero
+arm. Pure couples contribute directly, independent of reference.
+SVG labels are measured after rendering and moved to nearby free positions to reduce overlap.
 Existing applied-force locations receive names P1, P2, …, skipping names already used
 by joints or tracers. The worksheet never moves an applied force when naming its point.
 

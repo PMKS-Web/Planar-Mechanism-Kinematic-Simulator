@@ -38,7 +38,7 @@ const snapshot = (d) =>
     };
   });
 const geometry = (part) =>
-  part.locator('app-solver-diagram > svg').evaluateAll((svgs) =>
+  part.locator('app-force-balance app-solver-diagram > svg').evaluateAll((svgs) =>
     svgs.map((svg) => ({
       polygons: [...svg.querySelectorAll('polygon')].map((p) => p.getAttribute('points')),
       points: [...svg.querySelectorAll('circle')].map((p) => [

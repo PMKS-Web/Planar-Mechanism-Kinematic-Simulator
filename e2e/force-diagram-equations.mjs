@@ -76,7 +76,7 @@ try {
   assert((await equations(visual))[0].includes('=m_'));
   await body.locator('.bodyAdjustments > summary').click();
   await body.getByRole('combobox', { name: /Moment Reference Point/ }).selectOption({ label: 'A' });
-  assert((await visual.innerText()).includes('Moment about A'));
+  assert((await visual.innerText()).includes('Moment Balance About A'));
   assert((await equations(visual))[2].includes('CoM}/A'));
   const atA = await visual.locator('app-solver-diagram').evaluate((h) =>
     window.ng

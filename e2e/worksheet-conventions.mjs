@@ -86,8 +86,8 @@ try {
   await reference.selectOption({ label: 'H' });
   assert.equal((await snapshot(dialog)).references[0].id, 'H');
   assert.deepEqual((await snapshot(dialog)).force.x, flipped.force.x);
-  assert(await body.locator('svg .axisX').getAttribute('marker-end'));
-  assert(await body.locator('svg .positiveMoment').getAttribute('marker-end'));
+  assert(await body.locator('app-force-balance svg .axisX').getAttribute('marker-end'));
+  assert(await body.locator('app-force-balance svg .positiveMoment').getAttribute('marker-end'));
   assert((await body.innerText()).includes('Moments about H'));
   assert((await body.innerText()).includes('CoM'));
   assert((await body.locator('.crossProduct').count()) > 0);
