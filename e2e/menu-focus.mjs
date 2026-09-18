@@ -297,11 +297,17 @@ const ringInCard = (page) =>
   await openMechanism(page, `${BASE}/?${TEMPLATE_LINKAGES['Slider_Crank']}`);
   await page.waitForTimeout(400);
 
-  const jointIds = () =>
-    page.evaluate(() =>
-      [...document.querySelectorAll('[id^="joint_"]')].map((el) => el.id).join(',')
+  // The joints *and* the slider marks. Counting joints alone cannot see this:
+  // a change of type exchanges the joint for one of the other class and keeps
+  // its letter, so the id list is identical either way and the check passes
+  // whatever happened. The mark is the thing that goes.
+  const shape = () =>
+    page.evaluate(
+      () =>
+        [...document.querySelectorAll('[id^="joint_"]')].map((el) => el.id).join(',') +
+        ` marks=${document.querySelectorAll('[data-slider]').length}`
     );
-  const before = await jointIds();
+  const before = await shape();
 
   const at = await page.locator('#joint_C').boundingBox();
   await page.mouse.click(at.x + at.width / 2, at.y + at.height / 2, { button: 'right' });
@@ -318,10 +324,10 @@ const ringInCard = (page) =>
 
   await page.keyboard.press(' ');
   await page.waitForTimeout(900);
-  const after = await jointIds();
+  const after = await shape();
   check(
     'and Space retypes nothing: the drawing is what it was',
-    after === before,
+    after === before && /marks=[1-9]/.test(before),
     JSON.stringify({ before, after })
   );
   // What it did instead: armed the value it would press, where it can be seen.
@@ -336,10 +342,11 @@ const ringInCard = (page) =>
   // And a second press does act, on something the reader can now see.
   await page.keyboard.press(' ');
   await page.waitForTimeout(900);
+  const acted = await shape();
   check(
     'and the second press, on a value that is now ringed, does act',
-    (await jointIds()) !== before,
-    JSON.stringify({ before, then: await jointIds() })
+    acted !== before,
+    JSON.stringify({ before, then: acted })
   );
   await context.close();
 }
