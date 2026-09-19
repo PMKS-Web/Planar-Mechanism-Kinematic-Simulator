@@ -4755,11 +4755,17 @@ export class NewGridComponent implements OnDestroy {
     return this.cylinderListCache!.list;
   }
 
-  /** Set while the slide's *Starts at* field is being pointed at, if it is. */
-  cylinderRangeOverlay?: 'start';
+  /**
+   * Set while the slide's *Starts at* field is being pointed at.
+   *
+   * A pair of values until the Edit Cylinder panel was retired, because Travel
+   * was a field of its own and wanted the same line drawn with a length on it.
+   * The travel is the barrel's Length now and the line has one reader left.
+   */
+  startsAtOverlay = false;
 
-  setCylinderRangeOverlay(which: 'start' | undefined): void {
-    this.cylinderRangeOverlay = which;
+  setStartsAtOverlay(showing: boolean): void {
+    this.startsAtOverlay = showing;
   }
 
   /**
@@ -4996,9 +5002,8 @@ export class NewGridComponent implements OnDestroy {
    * Nothing is drawn for a ram with no usable travel: the line would be a point
    * and the number beside it a zero, which says less than the panel already does.
    */
-  get cylinderRange():
-    { from: Coord; to: Coord; at: Coord; showsPosition: boolean; label: string } | undefined {
-    if (!this.cylinderRangeOverlay) return undefined;
+  get cylinderRange(): { from: Coord; to: Coord; at: Coord; label: string } | undefined {
+    if (!this.startsAtOverlay) return undefined;
     // From whichever the reader picked: the field is the slide's own now (D9).
     const picked = this.activeObjService;
     const sealed =
@@ -5017,15 +5022,11 @@ export class NewGridComponent implements OnDestroy {
     const at = (along: number) => new Coord(mountA.x + along * ux, mountA.y + along * uy);
 
     const ends = cylinderSpanRange({ barrel: size.barrelLength, rod: size.rodLength }, r);
-    const showsPosition = this.cylinderRangeOverlay === 'start';
     return {
       from: at(ends.retracted),
       to: at(ends.extended),
       at: at(span),
-      showsPosition,
-      label: showsPosition
-        ? `${Math.round(size.start * 1000) / 10}%`
-        : this.nup.formatModelLength(size.stroke, this.settings.lengthUnit.getValue()),
+      label: `${Math.round(size.start * 1000) / 10}%`,
     };
   }
 

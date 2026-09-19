@@ -14,36 +14,45 @@ import { MechanismFixture } from '../../test-utils/verification/fixture';
 import { RealJoint } from '../../app/model/joint';
 import { RealLink } from '../../app/model/link';
 import { MODEL_SCALE } from '../../app/model/render-scale';
+import { refuseAttach, refuseJointOperation } from '../../app/model/joint-operation-permission';
+import { MERGE_REFUSAL_REASONS, refuseJointMerge } from '../../app/model/drop-target';
+import { jointTypeAt } from '../../app/model/joint-type';
 
 /**
- * What a cylinder still refuses, now that its mounts refuse nothing.
+ * Where a cylinder's boundary is: what its end joints allow, and what its
+ * inside refuses.
  *
- * This file used to pin two bans: no weld at a mount, and no merge that would
- * carry one there. **Both are deliberately gone**, and this is where that says
- * so. They were never rules about cylinders -- they were a fence around an
- * unfinished path, and step 5 of `docs/cylinder-mount-joints-plan.md` is the
- * completion of it. A mount is where a ram attaches to the drawing; welding
- * one into a bracket, or giving one a carriage, is the ordinary thing to want,
- * and the solver, the editor and the codec now all have an answer for it.
+ * The boundary has moved twice. It used to run around the whole part -- no
+ * weld at an end joint, no merge that would carry one there -- and step 5 of
+ * `docs/cylinder-mount-joints-plan.md` took that fence down: an end joint is
+ * where a cylinder attaches to the drawing, and welding one into a bracket or
+ * giving one a carriage is the ordinary thing to want. Then Stage 2 of
+ * `docs/joint-type-and-cylinder-plan.md` split what was left in two
+ * (decision S11). *Hidden* is N alone. *Inside a cylinder* is N and S: placed
+ * by the layout, never welded, merged onto or cut a slot in. S is a joint a
+ * reader can see, select and drive, and it is still inside.
  *
- * What remains sealed is the ram's *inside*: the buried barrel end, the pin
- * and the slider. Those three are the part, not attachments to it, and none of
- * them is drawn or selectable -- so the negative tests below reach them the
- * only ways anything can, and check that every door is shut.
+ * So this file pins the two halves against each other. The refusals below are
+ * read off the model rather than spelled out here -- `refuseJointOperation`
+ * and `refuseAttach` in `model/joint-operation-permission.ts`, the merge rules
+ * in `model/drop-target.ts` -- so a rule that changed its wording at one door
+ * shows up as a door disagreeing with the model instead of as an edit to this
+ * file.
  *
  * The positive tests are written against what the drawing actually becomes,
  * not against a boolean: which body owns which leaf, where the joints a weld
- * carried ended up, and whether the ram is still a ram afterwards. A rule that
- * merely stops saying no is not the same as a feature that works.
+ * carried ended up, and whether the cylinder is still a cylinder afterwards. A
+ * rule that merely stops saying no is not the same as a feature that works.
  */
 
 /**
- * A ram with a neighbor bar on each mount, an elbow to merge, and nothing else.
+ * A cylinder with a neighbor bar on each end joint, an elbow to merge, and
+ * nothing else.
  *
- * Each mount needs a real neighbor: a weld fuses the links that meet at a
- * joint, and a mount with only the ram on it has nothing to fuse -- which is a
- * refusal about arithmetic, not about cylinders, and would make a "the ban is
- * lifted" test pass for the wrong reason.
+ * Each end joint needs a real neighbor: a weld fuses the links that meet at a
+ * joint, and an end joint with only the cylinder on it has nothing to fuse --
+ * which is a refusal about arithmetic, not about cylinders, and would make a
+ * "the ban is lifted" test pass for the wrong reason.
  */
 function ramWithNeighbors(): MechanismFixture {
   const mount = { x: -8, y: 0 };
@@ -280,40 +289,76 @@ describe('and the inside of a cylinder is still sealed', () => {
   });
 
   const ram = () => mechanism.sealedStructures()[0];
-  /** The three joints a reader cannot reach, and must not be able to. */
-  const interiors = () => {
+  const jointNamed = (id: string) => mechanism.joints.find((joint) => joint.id === id) as RealJoint;
+
+  /**
+   * The two joints a cylinder places for itself (decision S11).
+   *
+   * Whether the reader can *see* them is the other half of what "interior"
+   * used to mean, and it is a different question: N is hidden and S is not.
+   * This one is about what may be built on them, and the answer is the same
+   * for both -- every door below is shut to each.
+   */
+  const inside = () => {
     const sealed = ram();
     return [
-      { name: 'the buried barrel end', joint: sealed.inner as RealJoint },
-      { name: 'the pin', joint: sealed.seal as RealJoint },
-      { name: 'the slider', joint: sealed.seal as RealJoint },
+      // `weldWay` is the direction the one Weld control would actually go on
+      // this joint: the slide records its weld in `rotates`, so the control
+      // there is an unweld and the model is asked for that rule.
+      {
+        name: 'the buried barrel end',
+        joint: sealed.inner as RealJoint,
+        weldWay: 'weld' as const,
+      },
+      { name: 'the slide', joint: sealed.seal as RealJoint, weldWay: 'unweld' as const },
     ];
   };
 
-  it('refuses a weld at every one of them, and says which kind of joint it is', () => {
-    for (const { name, joint } of interiors()) {
-      const refusal = grid.weldRefusal(joint);
-      expect(refusal, `a weld at ${name}`).toBeDefined();
-      // All three for the same reason now. The slider used to be refused for
-      // being the slider — a weld had to land on its coincident pin — and with
-      // that pin gone it is refused for what it actually is: a joint inside a
-      // sealed part.
-      expect(refusal!.short, name).toBe('inside a cylinder');
+  /** The two joints a cylinder attaches to the drawing by, which allow everything. */
+  const ends = () => {
+    const sealed = ram();
+    return [
+      { name: 'the barrel’s end joint', joint: sealed.mountA as RealJoint },
+      { name: 'the rod’s end joint', joint: sealed.mountB as RealJoint },
+    ];
+  };
+
+  /**
+   * The phrase the model uses for "this joint is inside a cylinder", read off
+   * the model rather than typed out here.
+   *
+   * One door answers, and every other door is compared against that answer. A
+   * rule reworded at one door and not the rest then shows up as a door
+   * disagreeing with the model, which is the failure worth catching; a rule
+   * reworded everywhere at once is a deliberate edit and stays green.
+   */
+  const insideACylinder = () => refuseAttach(ram().seal, grid.operationContext())!.short;
+
+  it('refuses a weld at N and at the slide, in the model’s own words', () => {
+    for (const { name, joint, weldWay } of inside()) {
+      // Both for the same reason. The slide used to be refused for being the
+      // slider -- a weld had to land on its coincident pin -- and with that
+      // pin gone it is refused for what it is: a joint inside a cylinder.
+      expect(grid.weldRefusal(joint), `a weld at ${name}`).toEqual(
+        refuseJointOperation(joint, weldWay, grid.operationContext())
+      );
+      expect(grid.weldRefusal(joint)?.short, name).toBe(insideACylinder());
     }
   });
 
-  it('refuses a block at every one of them', () => {
+  it('refuses a block at N and at the slide', () => {
     // Asked the way the menu asks it: for the state the joint is *not* in.
     // Requesting the state a joint is already in is a no-op, and a no-op is
     // allowed rather than refused, here as everywhere -- so a test that asked
-    // for one would be asserting the wrong rule and passing on the pin, which
-    // already has the ram's own block.
-    for (const { name, joint } of interiors()) {
+    // for one would be asserting the wrong rule and passing at the slide,
+    // which already slides.
+    for (const { name, joint } of inside()) {
       const wanted = !grid.isAttachedToSlider(joint);
-      expect(
-        grid.sliderRefusal(joint, wanted),
-        `${wanted ? 'adding' : 'removing'} at ${name}`
-      ).toBeDefined();
+      const asked = wanted ? ('add-slider' as const) : ('remove-slider' as const);
+      expect(grid.sliderRefusal(joint, wanted), `${asked} at ${name}`).toEqual(
+        refuseJointOperation(joint, asked, grid.operationContext())
+      );
+      expect(grid.sliderRefusal(joint, wanted)?.short, name).toBe(insideACylinder());
     }
   });
 
@@ -324,20 +369,29 @@ describe('and the inside of a cylinder is still sealed', () => {
     // about, would show here.
     // Asked as the group's Joint Type choice asks it: a weld is the Welded
     // value, and a block is whichever value flips the one the joint has.
-    for (const { name, joint } of interiors()) {
+    for (const { name, joint } of inside()) {
       const refs = [{ kind: 'joint' as const, id: joint.id }];
-      expect(multi.jointTypeRefusal(refs, 'welded'), `welding ${name} in a group`).toBeDefined();
+      expect(multi.jointTypeRefusal(refs, 'welded')?.short, `welding ${name}`).toBe(
+        insideACylinder()
+      );
       expect(
-        multi.jointTypeRefusal(refs, grid.isAttachedToSlider(joint) ? 'revolute' : 'pin-in-slot'),
-        `a block on ${name} in a group`
-      ).toBeDefined();
+        multi.jointTypeRefusal(refs, grid.isAttachedToSlider(joint) ? 'revolute' : 'pin-in-slot')
+          ?.short,
+        `a block on ${name}`
+      ).toBe(insideACylinder());
     }
   });
 
-  it('refuses a merge onto every one of them', () => {
-    for (const { name, joint } of interiors()) {
-      const elbow = mechanism.joints.find((one) => one.id === 'W') as RealJoint;
-      expect(mechanism.mergeJoints(elbow, joint), `merging onto ${name}`).toBe('sealed-cylinder');
+  it('refuses a merge onto N and onto the slide, and the drag says so first', () => {
+    const elbow = jointNamed('W');
+    for (const { name, joint } of inside()) {
+      // The commit and the ring quote one rule: the ring is what the reader
+      // sees while the drag is in flight, and it went green over the square
+      // until the rule was asked before the release as well.
+      const refusal = refuseJointMerge(elbow, joint, mechanism.sealedStructures());
+      expect(refusal, `the ring over ${name}`).toBe('sealed-cylinder');
+      expect(MERGE_REFUSAL_REASONS[refusal!], name).toBe(insideACylinder());
+      expect(mechanism.mergeJoints(elbow, joint), `merging onto ${name}`).toBe(refusal);
       expect(mechanism.mergeJoints(joint, elbow), `merging ${name} away`).toBeDefined();
     }
     // And nothing was taken apart on the way through.
@@ -346,13 +400,62 @@ describe('and the inside of a cylinder is still sealed', () => {
     expect(ram().seal.isSealed).toBe(true);
   });
 
-  it('refuses to unweld the pin, which is what makes the part one thing', () => {
-    const pin = ram().seal;
-    expect(grid.weldRefusal(pin)?.short).toBe('inside a cylinder');
-
-    mechanism.unWeldJoint(pin);
-
-    expect(pin.rotates, 'the rod is still rigid with the slot').toBe(false);
+  it('refuses to cut a slot through N or the slide', () => {
+    // The other drop gesture: a joint dragged onto a bar cuts a slot there.
+    // Pointed at a cylinder's inside it would hand the part's own sliding
+    // joint to a bar somewhere else in the drawing, so the commit says no --
+    // and nothing is written on the way to saying it.
+    const bar = mechanism.links.find((link) => link.id === 'WX')!;
+    const [w, x] = ['W', 'X'].map(jointNamed);
+    for (const { name, joint } of inside()) {
+      const was = { x: joint.x, y: joint.y };
+      expect(
+        mechanism.cutSlotOn(joint, { carrier: bar, a: w, b: x, x: w.x, y: w.y }),
+        `a slot at ${name}`
+      ).toBe(false);
+      expect([joint.x, joint.y], `${name} did not move`).toEqual([was.x, was.y]);
+    }
     expect(mechanism.sealedStructures()).toHaveLength(1);
+  });
+
+  it('refuses to unweld the slide, which is what makes the part one thing', () => {
+    const seal = ram().seal;
+    expect(grid.weldRefusal(seal)).toEqual(
+      refuseJointOperation(seal, 'unweld', grid.operationContext())
+    );
+
+    mechanism.unWeldJoint(seal);
+
+    expect(seal.rotates, 'the rod is still rigid with the slot').toBe(false);
+    expect(mechanism.sealedStructures()).toHaveLength(1);
+  });
+
+  it('refuses nothing on an end joint that it refuses inside', () => {
+    // The boundary, stated from the other side and in one place: every door
+    // shut above is open at both end joints. `refuseAttach` is asked as well,
+    // because that is the rule the Link, Cylinder and Force rows quote and it
+    // is the one that distinguishes the two questions most sharply.
+    for (const { name, joint } of ends()) {
+      expect(refuseAttach(joint, grid.operationContext()), `attaching at ${name}`).toBeUndefined();
+      expect(grid.weldRefusal(joint), `welding ${name}`).toBeUndefined();
+      expect(grid.sliderRefusal(joint, true), `a block at ${name}`).toBeUndefined();
+      expect(grid.groundRefusal(joint), `grounding ${name}`).toBeUndefined();
+      expect(
+        refuseJointMerge(jointNamed('W'), joint, mechanism.sealedStructures())
+      ).toBeUndefined();
+    }
+  });
+
+  it('lets the slide be selected and driven, though it is sealed', () => {
+    // Sealed is about what may be *built* on a joint, not about whether a
+    // reader can reach it. The square is joint S (decision D9): its type is
+    // Prismatic and the drive is its own, through the ordinary input door.
+    const seal = ram().seal;
+    expect(jointTypeAt(seal, grid.operationContext())).toBe('prismatic');
+    expect(refuseAttach(seal, grid.operationContext()), 'but nothing attaches there').toBeDefined();
+
+    active.updateSelectedObj(seal);
+    mechanism.adjustInput();
+    expect(ram().seal.input).toBe(true);
   });
 });

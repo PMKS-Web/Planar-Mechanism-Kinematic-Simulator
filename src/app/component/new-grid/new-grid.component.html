@@ -2423,9 +2423,8 @@
       </g>
     </g>
   }
-  <!-- The ram's travel, as the stretch of ground its rod mount covers. One
-       picture for both size fields: Travel is how long this line is, Starts at
-       is how far along it the ram is standing right now. -->
+  <!-- The cylinder's travel, as the stretch of ground its rod's end joint
+       covers, with the share of it *Starts at* names solid. -->
   @if (cylinderRange; as range) {
     <g modelFrame class="hoverDimension" style="pointer-events: none">
       <g class="hairline">
@@ -2438,18 +2437,16 @@
           [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
           [attr.stroke-dasharray]="svgGrid.scaleWithZoom(6) + ' ' + svgGrid.scaleWithZoom(4)"
         />
-        <!-- Solid as far as the ram has gone, dashed for what is left of the
-             travel: the split *is* the percentage, without a second mark. -->
-        @if (range.showsPosition) {
-          <line
-            [attr.x1]="range.from.x"
-            [attr.y1]="range.from.y"
-            [attr.x2]="range.at.x"
-            [attr.y2]="range.at.y"
-            stroke-linecap="round"
-            [attr.stroke-width]="svgGrid.scaleWithZoom(2)"
-          />
-        }
+        <!-- Solid as far as the cylinder has gone, dashed for what is left of
+             the travel: the split *is* the percentage, without a second mark. -->
+        <line
+          [attr.x1]="range.from.x"
+          [attr.y1]="range.from.y"
+          [attr.x2]="range.at.x"
+          [attr.y2]="range.at.y"
+          stroke-linecap="round"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(2)"
+        />
         @for (cap of cylinderRangeCaps(range); track $index) {
           <line
             [attr.x1]="cap.x1"

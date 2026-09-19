@@ -498,7 +498,10 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
       // part, beside a Travel the barrel's own Length says better.
       cylinderStart: [''],
       ground: [false, { updateOn: 'change' }],
-      input: [false, { updateOn: 'change' }],
+      // No input control: Add Input is a button that presses
+      // `MechanismService.adjustInput`, which is the one door to the drive.
+      // There was a control here as well, bound to nothing, writing the flag
+      // straight onto the joint and rebuilding without an undo entry.
       // No slider or weld control: the two are the joint's type, which the
       // Joint Type choice reads and changes through JointTypeService.
       curve: [false, { updateOn: 'change' }],
@@ -1358,22 +1361,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
       })
     );
 
-    this.onDestroySubscriptions.push(
-      this.jointForm.controls['input'].valueChanges.subscribe((val) => {
-        if (this.structureRefused()) {
-          return;
-        }
-        // The joint's own flag. This used to branch on Grounded: a slider was
-        // driven through the prismatic half of a coincident pair, so an
-        // ungrounded selection wrote the drive out through `connectedJoints`
-        // rather than onto the joint the reader had picked. One joint carries
-        // it now, and there is no pair to search.
-        this.activeSrv.selectedJoint.input = val!;
-        this.mechanismService.updateMechanism();
-        this.mechanismService.onMechUpdateState.next(2);
-      })
-    );
-
     // URL restore and undo rewrite the speed behind the panel's back; mirror it
     // back into the field so an open Input Settings section stays truthful. The
     // direction button reads its state directly, so it needs no subscription.
@@ -1839,7 +1826,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
               // panel selected, so reading the pin shows every grounded guide
               // as ungrounded.
               ground: this.selectedSlider?.ground ?? this.activeSrv.selectedJoint.ground,
-              input: this.activeSrv.selectedJoint.input,
               curve: this.activeSrv.selectedJoint.showCurve,
               sliderMass: this.sliderMassJoint
                 ? this.nup.formatValueAndUnit(this.sliderMassJoint.mass, this.massUnit())
@@ -2405,12 +2391,10 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
    *
    * The stretch of grid the rod's end joint covers, with the share of it the
    * field states marked on it — what a reader typing a percentage wants to see
-   * is a place on the drawing rather than a number in the abstract. The other
-   * half of this overlay belonged to a Travel field the members' own Length
-   * rows replaced.
+   * is a place on the drawing rather than a number in the abstract.
    */
   setCylinderStartOverlay(showing: boolean) {
-    canvasHandle()?.setCylinderRangeOverlay(showing ? 'start' : undefined);
+    canvasHandle()?.setStartsAtOverlay(showing);
   }
 
   getOtherJointsInLink(selectedJoint: RealJoint): RealJoint[] {
@@ -2434,17 +2418,19 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
       return !(joint instanceof PrisJoint);
     });
 
-    // A sealed cylinder's interior joints are not editable from anywhere, so
-    // a mount's Distance To Joints must not offer a field that would drag one.
+    // The barrel's buried end is placed by the part rather than dragged, so a
+    // mount's Distance To Joints must not offer a field that would move it.
+    // The slide is a `PrisJoint` and the filter above has already taken it
+    // out; where it stands is its own panel's *Starts at*.
     otherJoints = otherJoints.filter((joint) => {
       const sealed = this.mechanismService.cylinderAt(joint);
       return !sealed || joint.id === sealed.mountA.id || joint.id === sealed.mountB.id;
     });
 
     // A mount reads like a binary link's endpoint: its far end is the OTHER
-    // mount, which the interior filter above just removed along with the
-    // joints between them. Editing that D drags the far mount, which re-poses
-    // the whole part parametrically.
+    // mount, which the two filters above removed along with the joints between
+    // them. Editing that D drags the far mount, which re-poses the whole part
+    // parametrically.
     const mountOf = this.mechanismService.cylinderAt(selectedJoint);
     if (
       mountOf &&

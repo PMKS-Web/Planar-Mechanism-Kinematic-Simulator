@@ -4,6 +4,7 @@ import { Link, RealLink } from 'src/app/model/link';
 import { Force } from 'src/app/model/force';
 import { Coord } from 'src/app/model/coord';
 import { cylinderAtSeal, cylindersIn } from 'src/app/model/cylinder';
+import { isLetteredId, nextFreeLetter } from 'src/app/model/joint-letters';
 import { GenericTranscoder } from './transcoder-interface';
 import { ForceData, JOINT_TYPE, JointData, LINK_TYPE, LinkData } from './transcoder-data';
 import { SettingsService } from '../settings.service';
@@ -11,42 +12,6 @@ import { AngleUnit, ForceUnit, GlobalUnit, LengthUnit } from 'src/app/model/util
 import { BoolSetting, DecimalSetting, EnumSetting, IntSetting } from './stored-settings';
 import { ActiveObjService } from '../active-obj.service';
 import { MODEL_SCALE } from 'src/app/model/render-scale';
-
-/** The letters a joint id is made of when nothing has hung a number off it. */
-const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-
-/** Whether this id is a name the reader can be shown: letters and nothing else. */
-function isLettered(id: string): boolean {
-  return id.length > 0 && [...id].every((letter) => LETTERS.includes(letter));
-}
-
-/**
- * The next free letter over a set of ids -- `MechanismService.determineNextLetter`'s
- * rule, written where the builder can reach it.
- *
- * Deliberately a copy of the rule rather than a call to the service: the
- * builder is handed a bare object in several specs, and more to the point it is
- * naming joints in a list it holds itself, before that list has become anybody's
- * mechanism. Interior names have no place in the alphabet, which is what keeps
- * them from pushing the next letter along.
- */
-function nextFreeLetter(taken: Set<string>): string {
-  let highest = -1;
-  taken.forEach((id) => {
-    const at = LETTERS.indexOf(id);
-    if (at > highest) highest = at;
-  });
-  const next = LETTERS[highest + 1];
-  if (next !== undefined && !taken.has(next)) return next;
-  const free = [...LETTERS].find((letter) => !taken.has(letter));
-  if (free !== undefined) return free;
-  for (const first of LETTERS) {
-    for (const second of LETTERS) {
-      if (!taken.has(first + second)) return first + second;
-    }
-  }
-  return 'A';
-}
 
 /**
  * Follow one joint's rename through every link that holds it, however deep.
@@ -428,7 +393,7 @@ export class MechanismBuilder {
    *
    * Idempotent, which undo and redo need: after one pass the seal's id is a
    * letter, and a letter is left alone. The buried barrel end is never renamed
-   * — nothing shows it, and its name is what keeps `determineNextLetter` from
+   * — nothing shows it, and its name is what keeps `nextFreeLetter` from
    * counting it.
    */
   private letterSealedSeals(joints: Joint[], links: Link[]): void {
@@ -437,7 +402,7 @@ export class MechanismBuilder {
     // hands out the same two letters every time it is opened.
     for (const cylinder of cylindersIn(joints)) {
       const seal = cylinder.seal;
-      if (isLettered(seal.id)) continue;
+      if (isLetteredId(seal.id)) continue;
       const was = seal.id;
       // `name` falls back to the id when nobody has set one -- but the codec
       // writes the getter's answer, so every decoded joint comes back with its

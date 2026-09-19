@@ -127,7 +127,8 @@ and turning it on swaps the four glyphs for the set that stands on the frame.
 | **Nowhere to slide.** | the bold lead of the one state the choice says in words: a block with no slot and no ground. `dangling` is the code's word for it, never the reader's |
 | **Starts at** | where a cylinder's rod begins its cycle, as a share of the stroke |
 | **Barrel**, **Rod** | a cylinder's two members, once each has a panel of its own (Stage 2 of `joint-type-and-cylinder-plan.md`) |
-| **inside a cylinder** | the short refusal on the joint a cylinder slides on (Stage 2) |
+| **inside a cylinder** | the short refusal on either joint a cylinder places for itself — the square it slides on, and the barrel's buried end (Stage 2) |
+| **ground an end joint instead** | the refusal on Grounded at that square: a cylinder is bolted to the world at its ends, never in the middle |
 | **Split Joint** | taking apart two joints merged by dropping one on the other — not built yet |
 
 The Edit panel's toggles already worked this way; the right-click menu followed

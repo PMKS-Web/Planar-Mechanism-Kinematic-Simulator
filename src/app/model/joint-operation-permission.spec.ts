@@ -126,11 +126,12 @@ describe('whether a weld may be made at a joint', () => {
     expect(refuseJointOperation(elbow, 'weld', context)?.short).toBe('it is driven');
   });
 
-  it('lets a mount weld, and refuses the ram’s inside', () => {
+  it('lets a mount weld, and refuses the cylinder’s inside', () => {
     // The ban that used to be here is gone on purpose: a mount is where a
     // cylinder meets the drawing, so fusing one into a bracket is the ordinary
-    // thing to want. What is sealed is the ram's inside, and welding anything
-    // to one of those three joints would fuse the part to its own workings.
+    // thing to want. What is sealed is the part's inside, and welding anything
+    // to either of the two joints it places would fuse the part to its own
+    // workings.
     const { barrelFar, rodFar, barrelNear, context } = drawing();
 
     // A mount with one link on it is refused for arithmetic, not for being a

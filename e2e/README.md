@@ -271,10 +271,15 @@ Not suites — import them from one.
   shrinks the ram past its stops.
 - `cylinder-members.mjs` — a cylinder as three selectables: the square is joint S, lettered and
   draggable along its own axis; each member selects and outlines itself; a member drag still
-  carries the whole part; an old payload's seal opens with a letter. Also S's own mark — the cream
-  bar on the piston head, along the axis and inside the black at every ram size and angle, through
-  playback, with the states on the bar and never on the head. Screenshots to
-  `artifacts/slide-mark/`.
+  carries the whole part; an old payload's seal opens with a letter. Then the panels each piece
+  opens, the one angle stated in three places, every rung of what gives when *Starts at* is typed,
+  and an end joint as an ordinary pin — all four types live once it has a neighbor to weld to, and
+  a delete row that names the cascade. It ends on a filmstrip of a driven cylinder's full
+  out-and-back cycle, twelve frames clipped to the machine, asserting the slide goes closed, open
+  and closed again and that N is drawn in none of them (`artifacts/cylinder-members/cycle/`, with
+  `sheet-cycle.png` beside it). Also S's own mark — the cream bar on the piston head, along the
+  axis and inside the black at every cylinder size and angle, through playback, with the states on
+  the bar and never on the head. Screenshots to `artifacts/slide-mark/`.
 - `cylinder-mount.mjs` — a mount as an ordinary attachment point: menu rows and reasons, the live
   ring under a dragged joint, slots cut at a mount, welded selection, undo across a weld, a second
   machine left alone, filmstrips of a compound drag.

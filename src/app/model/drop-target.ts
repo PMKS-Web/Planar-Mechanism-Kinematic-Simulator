@@ -313,6 +313,11 @@ export function resolveSlotDropTarget(
     // says the ram and this body are joined, so there is no rule there worth
     // explaining, and a legal bar further out can still win the drop.
     if (slotWouldFoldACylinder(source, carrier, cylinders)) continue;
+    // The pair comes out of the bar in whatever order it holds its joints, so
+    // the slot this cuts has no promised direction. Decision S1's rule — slot
+    // joint A is the mount, slot joint B the buried end — is about a *sealed*
+    // slot, and a slot cut by dropping a joint on a bar is never one: sealing
+    // happens at creation and nothing here can reach a cylinder's inside.
     for (const members of slotJointPools(carrier)) {
       for (let i = 0; i < members.length; i++) {
         for (let j = i + 1; j < members.length; j++) {
@@ -336,11 +341,11 @@ export function resolveSlotDropTarget(
  * The drop pulls the dragged joint onto the carrier's line, and when that line
  * already passes through the ram's other mount there is nowhere for the part to
  * go but shorter. Far enough and it folds inside out — the mount crosses back
- * past its own barrel's near end, at which point the roles are derived the
- * other way round and the drawing puts a letter on an interior joint and hides
- * the mount the reader was dragging. This is the slot half of `own-cylinder`:
- * the merge path has refused folding a ram onto itself all along, and the two
- * ends being one part is just as true when the thing between them is a slot.
+ * past its own barrel's buried end, which is a part drawn in an order it cannot
+ * be assembled in and a pose the solver then refuses. This is the slot half of
+ * `own-cylinder`: the merge path has refused folding a ram onto itself all
+ * along, and the two ends being one part is just as true when the thing between
+ * them is a slot.
  *
  * Asked of every ram the joint is a mount of, not the first — a shared mount is
  * one ram's rod end and the next one's barrel end, and either of the two far
@@ -425,12 +430,16 @@ export function resolveDropCandidate(
   radius: number,
   /**
    * Precomputed sealed-cylinder structures, from the service's per-revision
-   * cache. Passed in rather than derived here for two reasons: the caller's
-   * `joints` list is already filtered (the interior pins the structural
-   * resolution enters through are gone, so deriving from it finds nothing —
-   * which is how the mount rules silently skipped the drag and the refusal
-   * appeared only at release, with no ring); and deriving per candidate per
-   * pointermove is exactly the kind of quadratic work the stutter came from.
+   * cache. Passed in rather than derived here, because deriving per candidate
+   * per pointermove is exactly the kind of quadratic work the drag stutter
+   * came from.
+   *
+   * It was also, for a while, the only way to get an answer at all: the
+   * caller's `joints` list holds what the reader can see, and the resolution
+   * used to enter through a joint that list leaves out — so deriving from it
+   * found nothing, which is how the mount rules silently skipped the drag and
+   * the refusal arrived at the release with no ring before it. The lookup
+   * enters at the seal now, and the seal is a joint the reader can see.
    */
   cylinders: Cylinder[] = []
 ): JointDropCandidate | undefined {

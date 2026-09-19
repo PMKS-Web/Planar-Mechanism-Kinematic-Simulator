@@ -109,7 +109,7 @@ export class HoldFieldComponent {
 
   /** The cylinder this link is a member of, when it is one. */
   private member(): boolean {
-    return this.mechanism.cylinderOfLink(this.link()) !== undefined;
+    return this.mechanism.cylinderOfBar(this.link()) !== undefined;
   }
 
   /** The hold this bar is under, if any. */
@@ -123,7 +123,7 @@ export class HoldFieldComponent {
   /** Whether this part can hold a value at all, and is not already pinned in place. */
   protected holdable(): boolean {
     const shaped =
-      this.mechanism.cylinderOfLink(this.link()) !== undefined || holdableBar(this.link());
+      this.mechanism.cylinderOfBar(this.link()) !== undefined || holdableBar(this.link());
     return shaped && !this.disabled() && !this.lockedInPlace();
   }
 
@@ -148,7 +148,7 @@ export class HoldFieldComponent {
    * so they are not what a reader locked and not what pins the part.
    */
   private pinned(): Joint[] {
-    const sealed = this.mechanism.cylinderOfLink(this.link());
+    const sealed = this.mechanism.cylinderOfBar(this.link());
     return sealed ? [sealed.mountA, sealed.mountB] : this.link().joints;
   }
 

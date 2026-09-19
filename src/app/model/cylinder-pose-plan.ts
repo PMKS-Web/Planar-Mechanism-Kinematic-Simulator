@@ -39,16 +39,16 @@ export interface Point {
 }
 
 /** Where things were before the edit: the plan reads only from here. */
-export type PoseSnapshot = ReadonlyMap<string, Point>;
+type PoseSnapshot = ReadonlyMap<string, Point>;
 
-export interface PosePlanRefusal {
+interface PosePlanRefusal {
   code: string;
   short: string;
   long: string;
 }
 
 /** A rigid motion: rotate about `pivot`, then land the pivot on `to`. */
-export interface Rigid {
+interface Rigid {
   pivot: Point;
   to: Point;
   cos: number;
@@ -56,7 +56,7 @@ export interface Rigid {
 }
 
 /** A bar the edit moved without changing its shape, and what moved it. */
-export interface CarriedLeaf {
+interface CarriedLeaf {
   leaf: Link;
   move: Rigid;
 }
@@ -82,7 +82,7 @@ export interface EditPlan {
   affectedRoots: Link[];
 }
 
-export type EditPlanResult = { ok: true; plan: EditPlan } | { ok: false; refusal: PosePlanRefusal };
+type EditPlanResult = { ok: true; plan: EditPlan } | { ok: false; refusal: PosePlanRefusal };
 
 /** What the gesture itself asks for, before any consequence is worked out. */
 export interface EditRequest {
@@ -108,7 +108,7 @@ export function snapshotOf(joints: Joint[]): PoseSnapshot {
   return new Map(joints.map((joint) => [joint.id, { x: joint.x, y: joint.y }]));
 }
 
-export function rigidBetween(pivot: Point, aim: Point, to: Point, aimTo: Point): Rigid | undefined {
+function rigidBetween(pivot: Point, aim: Point, to: Point, aimTo: Point): Rigid | undefined {
   if (
     Math.hypot(aim.x - pivot.x, aim.y - pivot.y) < 1e-9 ||
     Math.hypot(aimTo.x - to.x, aimTo.y - to.y) < 1e-9
@@ -131,7 +131,7 @@ export function carryPoint(move: Rigid, point: Point): Point {
 }
 
 /** Every joint of a link and of anything nested inside it, each once. */
-export function jointsOfBody(root: Link): Joint[] {
+function jointsOfBody(root: Link): Joint[] {
   const found = new Map<string, Joint>();
   const walk = (node: Link) => {
     node.joints.forEach((joint) => found.set(joint.id, joint));
@@ -142,7 +142,7 @@ export function jointsOfBody(root: Link): Joint[] {
 }
 
 /** The bars inside a body, so a caller can rebuild exactly what it carried. */
-export function leavesOfBody(root: Link): Link[] {
+function leavesOfBody(root: Link): Link[] {
   const found = new Map<string, Link>();
   const walk = (node: Link) => {
     found.set(node.id, node);
@@ -424,8 +424,8 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
  * `rigidBetween` only ever builds a rotation, so a mirrored body fails here
  * rather than passing a check that could not see the difference.
  *
- * A ram whose own bars this edit resized has its interior left out — those
- * three joints are derived from its mounts rather than carried with them.
+ * A cylinder whose own bars this edit resized has its interior left out — both
+ * of those joints are derived from its mounts rather than carried with them.
  */
 function rigidityRefusal(
   root: Link,

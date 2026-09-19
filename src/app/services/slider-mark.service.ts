@@ -168,11 +168,6 @@ export interface CylinderMark {
   /** The links whose ordinary drawing this skin stands in for. */
   barrelId: string;
   rodId: string;
-  /**
-   * N — the barrel's inner joint, buried where rod and barrel overlap. Nothing
-   * draws it: no hitbox, no letter, no hover.
-   */
-  hiddenJointId: string;
   barrel: string;
   barrelFill: string;
   rod: string;
@@ -468,7 +463,6 @@ export class SliderMarkService {
       rotation: toDegrees(angle),
       barrelId: found.barrel.id,
       rodId: found.rod.id,
-      hiddenJointId: inner.id,
       barrel: barrelPath(r, anchor, mouth),
       barrelFill: (found.barrel as RealLink).fill ?? '#000000',
       rod: rodBodyPath(r, rodReach, headHalf),

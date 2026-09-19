@@ -140,7 +140,7 @@ describe('a ram assembled inside out', () => {
     SettingsService._objectScale.next(previousScale);
   });
 
-  /** The ram's own five joints, as the solver holds them. */
+  /** The cylinder's own four joints, as the solver holds them. */
   function seated() {
     solver.resetStaticVariables();
     const parts = ram();

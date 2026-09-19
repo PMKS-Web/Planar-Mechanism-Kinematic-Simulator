@@ -7,10 +7,12 @@
 // selects, what the drawing says about it, where S goes when it is dragged, and
 // what letters a new cylinder and an old payload come up with.
 //
-// Structured as named sections because the panel and menu packages append
-// theirs to this file. The panel's are sections 6 to 10: the Barrel and Rod
-// panels and the slide's own (D12, D9), the one angle stated in three places
-// (D10), and every rung of what gives when *Starts at* is typed (D11).
+// Structured as named sections because each package of Stage 2 appended its
+// own. Sections 6 to 10 are the panel's: the Barrel and Rod panels and the
+// slide's own (D12, D9), the one angle stated in three places (D10), and every
+// rung of what gives when *Starts at* is typed (D11). Section 11 is an end
+// joint as an ordinary pin (D13), and section 12 is a driven cylinder's full
+// out-and-back cycle, frame by frame, with a contact sheet to read it on.
 //
 //   PMKS_PLAYWRIGHT_DIR=<dir> PMKS_BASE_URL=<url> node e2e/cylinder-members.mjs
 
@@ -417,7 +419,9 @@ const drivenRam = await page.evaluate(() => {
   m.toggleSlider();
   pick(m.joints.find((j) => j.id === tipId));
   m.toggleGround();
-  m.toggleCylinderInput(m.sealedStructures()[0]);
+  // The drive is the seal's own, through the ordinary input door.
+  pick(m.sealedStructures()[0].seal);
+  m.adjustInput();
   m.finishStructuralEdit(true);
   pick(null);
   return { samples: m.masterMechanism()?.joints.length ?? 0 };
@@ -597,11 +601,26 @@ await page.mouse.move(sealPoint.x + 200, sealPoint.y, { steps: 16 });
 await page.mouse.up();
 await page.waitForTimeout(350);
 after = await ram();
-const quiet = await page.locator('app-notification .notification').count();
+// The stack's host is `app-notification-stack`; `app-notification` matches
+// nothing, and a count of nothing is indistinguishable from a count of zero.
+// So the selector is proved before it is believed: something definitely
+// refused has to make this number go up.
+const notifications = () => page.locator('app-notification-stack .notification').count();
+const quiet = await notifications();
+// Grounding the slide is refused, says so, and changes nothing -- which makes
+// it the cheapest proof that the selector above can find a message.
+await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const m = grid.mechanismSrv;
+  grid.activeObjService.updateSelectedObj(m.sealedStructures()[0].seal);
+  m.toggleGround();
+});
+await page.waitForTimeout(300);
+const loud = await notifications();
 check(
   'with both ends grounded the seal stays put, silently',
-  Math.abs(after.s.x - part.s.x) < 1e-6 && quiet === 0,
-  JSON.stringify({ s: [part.s.x, after.s.x], notifications: quiet })
+  Math.abs(after.s.x - part.s.x) < 1e-6 && quiet === 0 && loud > 0,
+  JSON.stringify({ s: [part.s.x, after.s.x], quiet, loud })
 );
 
 // --------------------------------------------- 4. dragging a member moves all
@@ -1109,6 +1128,265 @@ check(
   JSON.stringify({ start: [part.start, after.start], refused })
 );
 await page.screenshot({ path: `${OUT}/starts-at-refused.png` });
+
+// ----------------------------------------- 11. D13: an end joint is a pin
+console.log('\nan end joint is a pin like any other');
+
+/** The menu the app builds for whatever is under this model point. */
+async function menuAt(model) {
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(150);
+  const at = await screenAt(model);
+  await page.mouse.click(at.x, at.y, { button: 'right' });
+  await page.waitForTimeout(350);
+  return page.evaluate(() => {
+    const menu = ng.getComponent(document.querySelector('app-new-grid')).cMenu;
+    return {
+      title: menu?.header?.title ?? null,
+      subtitle: menu?.header?.subtitle ?? null,
+      // A value's `refusal` *is* its disabled flag, and `chosen` is an index
+      // on the choice rather than a flag on the value.
+      choice: (menu?.choice?.options ?? []).map((one, at) => ({
+        label: one.label,
+        off: !!one.refusal,
+        why: one.refusal?.short ?? '',
+        on: at === menu.choice.chosen,
+      })),
+      rows: (menu?.groups ?? []).flatMap((group) =>
+        group.rows.map((row) => ({
+          label: row.label,
+          off: !!row.refusal,
+          why: row.refusal?.short ?? '',
+        }))
+      ),
+    };
+  });
+}
+
+ids = await oneCylinder();
+part = await ram();
+const endMenu = await menuAt(part.a);
+const endRow = (label) => endMenu.rows.find((row) => row.label === label);
+check(
+  'the end joint opens a joint card named after itself',
+  endMenu.title === `Joint ${ids.a}`,
+  JSON.stringify({ title: endMenu.title, subtitle: endMenu.subtitle })
+);
+// Nothing about being a cylinder's attachment point closes a value here. The
+// slide's own card refuses three of the four "inside a cylinder" (section 7);
+// this card refuses nothing for that reason, and Welded only because a bare
+// end joint has one link on it and a weld needs two -- arithmetic, not a rule
+// about cylinders.
+check(
+  'and no joint type is refused there for being on a cylinder',
+  endMenu.choice.length === 4 && endMenu.choice.every((one) => !/cylinder/i.test(one.why)),
+  JSON.stringify(endMenu.choice)
+);
+check(
+  'the three that need no neighbor are live, and Welded wants a second link',
+  ['Revolute', 'Prismatic', 'Pin-in-slot'].every(
+    (label) => !endMenu.choice.find((one) => one.label === label)?.off
+  ) && endMenu.choice.find((one) => one.label === 'Welded')?.why === 'needs 2 links',
+  JSON.stringify(endMenu.choice.map((one) => [one.label, one.why]))
+);
+await page.keyboard.press('Escape');
+await page.waitForTimeout(150);
+
+// Give it that second link and all four are live: an end joint is a pin, and
+// welding a cylinder into a bracket is the ordinary thing to want (D13).
+await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const m = grid.mechanismSrv;
+  const end = m.sealedStructures()[0].mountA;
+  m.addBarFrom(end, { x: end.x - 300, y: end.y + 500 });
+  m.finishStructuralEdit(true);
+  grid.activeObjService.updateSelectedObj(null);
+});
+await page.waitForTimeout(350);
+const withNeighbor = await menuAt((await ram()).a);
+check(
+  'with a neighbor bar on it, all four are offered',
+  withNeighbor.choice.length === 4 && withNeighbor.choice.every((one) => !one.off),
+  JSON.stringify(withNeighbor.choice.map((one) => [one.label, one.why]))
+);
+await page.keyboard.press('Escape');
+await page.waitForTimeout(150);
+ids = await oneCylinder();
+part = await ram();
+check(
+  'its delete row names the cascade rather than hiding it',
+  endMenu.rows.some((row) => /^Delete Joint \(and Cylinder/.test(row.label)),
+  JSON.stringify(endMenu.rows.map((row) => row.label))
+);
+// Attaching at an end joint is the whole point of an end joint, and it is the
+// rule the slide refuses with "inside a cylinder" -- so the two cards read as
+// opposites on the same three rows.
+const attachable = ['Link', 'Cylinder', 'Force'].map((label) => endRow(label));
+check(
+  'Link, Cylinder and Force are all offered there',
+  attachable.every((row) => row && !row.off),
+  JSON.stringify(attachable)
+);
+await page.keyboard.press('Escape');
+await page.waitForTimeout(150);
+
+// And it grounds like any pin, which the slide's card refuses outright.
+await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  grid.activeObjService.updateSelectedObj(grid.mechanismSrv.sealedStructures()[0].mountA);
+  grid.mechanismSrv.toggleGround();
+});
+await page.waitForTimeout(300);
+check(
+  'grounding an end joint is allowed and takes',
+  await page.evaluate(
+    () =>
+      ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.sealedStructures()[0]
+        .mountA.ground === true
+  )
+);
+
+// ------------------------------- 12. a full out-and-back cycle, frame by frame
+console.log('\na driven cylinder, out and back');
+
+/**
+ * The machine section 1b drives, rebuilt here because the sections between
+ * have been working on a plain cylinder.
+ *
+ * A cylinder anchored at its barrel end, a bracket welded to its rod end, and
+ * that bracket's far end riding a grounded slot: one freedom, driven by the
+ * slide, so extending the cylinder walks the block along its rail.
+ */
+async function drivenCylinder() {
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await waitForReady(page);
+  await page.waitForTimeout(250);
+  const built = await page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const m = grid.mechanismSrv;
+    const choose = (joint) => grid.activeObjService.updateSelectedObj(joint);
+    m.createCylinderFrom({ x: -800, y: 0 }, { x: 400, y: 0 });
+    const one = m.sealedStructures()[0];
+    const bar = m.addBarFrom(one.mountB, { x: one.mountB.x + 400, y: one.mountB.y + 600 });
+    const tipId = bar.joints.find((joint) => joint.id !== one.mountB.id).id;
+    choose(one.mountB);
+    m.weldJoint();
+    choose(one.mountA);
+    m.toggleGround();
+    // By letter between the two calls: gaining a slot exchanges the joint for
+    // a `PrisJoint` keeping its id, so the object captured before grounds
+    // nothing at all.
+    choose(m.joints.find((joint) => joint.id === tipId));
+    m.toggleSlider();
+    choose(m.joints.find((joint) => joint.id === tipId));
+    m.toggleGround();
+    choose(m.sealedStructures()[0].seal);
+    m.adjustInput();
+    m.finishStructuralEdit(true);
+    grid.settings.isShowID.next(true);
+    choose(null);
+    const live = m.sealedStructures()[0];
+    return { samples: m.masterMechanism()?.joints.length ?? 0, n: live.inner.id, s: live.seal.id };
+  });
+  await page.waitForTimeout(400);
+  return built;
+}
+
+const cycle = await drivenCylinder();
+check(
+  'the driven cylinder solves every sample of its cycle',
+  cycle.samples > 8,
+  `${cycle.samples}`
+);
+
+/**
+ * Where the slide stands, and whether N is drawn, at one sample.
+ *
+ * `start` is the record's own reading -- the seal's place in its travel, 0
+ * shut to 1 open -- which is the number the part is actually posed by. N is
+ * asked for by id in the drawing, because "no hitbox, no letter" is a claim
+ * about the DOM and not about the record.
+ */
+const frameFacts = (n) =>
+  page.evaluate((hidden) => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const one = grid.mechanismSrv.sealedStructures()[0];
+    const labels = [...document.querySelectorAll('#tagHolder text, .jointTag')].map((node) =>
+      (node.textContent ?? '').trim()
+    );
+    return {
+      start: one.start,
+      drawn: !!document.querySelector(`#joint_${hidden}`),
+      labelled: labels.includes(hidden),
+    };
+  }, n);
+
+/**
+ * A box round the whole machine, with room for it to swing.
+ *
+ * Its own filmstrip in a subdirectory of this suite's, because the frames are
+ * worth looking at and a full 1600×1000 window tiled twelve ways is mostly
+ * empty grid. `filmstrip()` empties the directory it is given, so it has to be
+ * a directory of its own or it would throw away every frame taken above.
+ */
+const machineClip = await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const points = grid.mechanismSrv.joints.map((joint) => grid.svgGrid.modelToScreen(joint));
+  const xs = points.map((at) => at.x);
+  const ys = points.map((at) => at.y);
+  const pad = 150;
+  const x = Math.max(0, Math.min(...xs) - pad);
+  const y = Math.max(0, Math.min(...ys) - pad);
+  return {
+    x,
+    y,
+    width: Math.min(window.innerWidth - x, Math.max(...xs) - x + pad),
+    height: Math.min(window.innerHeight - y, Math.max(...ys) - y + pad),
+  };
+});
+const cycleFilm = filmstrip(page, `${OUT}/cycle`, machineClip);
+
+const FRAMES = 12;
+const cycleFrames = [];
+for (let i = 0; i < FRAMES; i++) {
+  // Across the whole cycle rather than through playback: `animate(index)` from
+  // outside is a seek, so the frames land on sample boundaries this can name
+  // instead of wherever a timer happened to fire.
+  const sample = Math.round((i * (cycle.samples - 1)) / (FRAMES - 1));
+  await page.evaluate(
+    (at) => ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.animate(at, false),
+    sample
+  );
+  await page.waitForTimeout(160);
+  cycleFrames.push({ sample, ...(await frameFacts(cycle.n)) });
+  await cycleFilm.shot(`cycle-${String(i).padStart(2, '0')}`);
+}
+const sheet = await contactSheet(`${OUT}/cycle/*cycle-*.png`, `${OUT}/sheet-cycle.png`, 4);
+console.log(`  contact sheet: ${sheet || `${OUT}/sheet-cycle.png`}`);
+
+const starts = cycleFrames.map((frame) => frame.start);
+const peakAt = starts.indexOf(Math.max(...starts));
+check(
+  'the slide goes closed, open and closed again over one cycle',
+  // Out and back: the extreme is somewhere in the middle, both ends are near
+  // the pose it was drawn in, and the last sample is the first again -- which
+  // is what a cylinder's cycle means (a pin's comes back by turning on).
+  peakAt > 0 &&
+    peakAt < FRAMES - 1 &&
+    Math.max(...starts) - Math.min(...starts) > 0.2 &&
+    Math.abs(starts.at(-1) - starts[0]) < 0.02,
+  JSON.stringify(starts.map((one) => Math.round(one * 1000) / 1000))
+);
+check(
+  'and it really travels, one sample to the next',
+  starts.slice(1).some((one, i) => Math.abs(one - starts[i]) > 0.05),
+  JSON.stringify({ peakAt, peak: Math.round(Math.max(...starts) * 1000) / 1000 })
+);
+check(
+  'N is drawn in no frame of it, and lettered in none',
+  cycleFrames.every((frame) => !frame.drawn && !frame.labelled),
+  JSON.stringify({ n: cycle.n, drawn: cycleFrames.filter((frame) => frame.drawn).length })
+);
 
 // ------------------------------------------------------------------ wrap up
 check('nothing threw', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | '));

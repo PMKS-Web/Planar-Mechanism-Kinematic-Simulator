@@ -2,10 +2,10 @@
  * What a force graph is called, and where its legend sits.
  *
  * Two of these are the same complaint. A link's id is the letters of its
- * joints, which is a fine key and a poor name: a cylinder's rod is named after
- * the pin buried inside it, and a slider block after the sliding joint
- * underneath it. Neither joint has a marker, a hitbox, or a row in any panel,
- * so a graph titled after one offered a part the reader had never been shown.
+ * joints, which is a fine key and a poor name: a cylinder's rod was named after
+ * a joint stored under an interior name, and a slider block after the sliding
+ * joint underneath it. Neither had a marker, a hitbox or a row in any panel, so
+ * a graph titled after one offered a part the reader had never been shown.
  *
  * The third: a cylinder is one body to the reader and three links to the
  * solver, and its two mounts sit on different ones -- so asking only the link
@@ -97,13 +97,28 @@ record(
 );
 
 // --- A cylinder's parts are named by the part and the cylinder ---------------
+//
+// The name is asked of the app rather than typed here. It used to be `Rod GC`,
+// after the cylinder's two end joints, because the joint the rod actually runs
+// from had an interior name nothing could show. That joint is the slide now and
+// carries a letter (decisions S9 and S10 of
+// `docs/joint-type-and-cylinder-plan.md`), so the rod is named from the slide
+// and the end joint it reaches -- `Rod PC` in this template. What the check is
+// about is unchanged: the word is *Rod* and the letters are ones a reader can
+// point at, never the link's own id dressed as a link.
 await openForce('Cylinder_Boom');
 await select('C');
 const atRod = await titles();
+const rodName = await page.evaluate(() => {
+  const m = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+  return m.bodyLabel(m.sealedStructures()[0].rod);
+});
 record(
   "a cylinder's rod is named as the rod of its cylinder",
-  atRod.includes('Force on Rod GC') && !atRod.some((one) => /Link PC/.test(one)),
-  atRod
+  /^Rod [A-Za-z]{2,}$/.test(rodName) &&
+    atRod.includes(`Force on ${rodName}`) &&
+    !atRod.some((one) => /Force on Link/.test(one) && !/Link OC/.test(one)),
+  { rodName, atRod }
 );
 
 // --- Both of a cylinder's mounts get a graph --------------------------------
@@ -118,9 +133,11 @@ for (const member of ['GN', 'PC']) {
   );
 }
 
-// --- A ram's own drive is graphed where the ram is ---------------------------
-// The one input whose joint the reader cannot select: it is buried inside the
-// part, with no marker and no hitbox, so its effort belongs on the part.
+// --- A cylinder's own drive is graphed where the cylinder is -----------------
+// This used to be the one input whose joint the reader could not select. The
+// slide has a row of its own now, and the effort is still offered against the
+// part as well, because a reader who picked the cylinder is asking about the
+// cylinder.
 for (const member of ['GN', 'PC']) {
   await select(member);
   const rows = await titles();
@@ -138,8 +155,8 @@ record(
   unrelated
 );
 
-// The graph is the drive's own, not a new number: the joint panel has carried
-// it all along on a joint nobody can click, and the two must agree.
+// The graph is the drive's own, not a new number: the slide's own panel has
+// carried it all along, and the two have to agree.
 const readingOf = async (id, title) => {
   await select(id);
   return page.evaluate((wanted) => {
@@ -158,7 +175,7 @@ const readingOf = async (id, title) => {
 };
 const onThePart = await readingOf('GN', 'Input Force');
 const onTheJoint = await readingOf('P', 'Input Force');
-record('and reads exactly what the buried joint reads', onThePart === onTheJoint && !!onThePart, {
+record('and reads exactly what the slide itself reads', onThePart === onTheJoint && !!onThePart, {
   onThePart,
   onTheJoint,
 });

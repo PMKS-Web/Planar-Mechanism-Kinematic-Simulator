@@ -451,9 +451,10 @@ is.
 
 A cylinder points somewhere the same way a bar does, so it can hold that direction -- and the pair
 the hold is about is its two mounts, which is what the reader sees and what the panel's Angle field
-states. It has no *length* to hold: mount to mount is the stroke, which is what the drive moves, so
-holding it would be holding against the drive. The flag is written on the **barrel** by preference,
-so whichever member was clicked gives one answer and one `H` entry rides the URL.
+states. The part as a whole has no *length* to hold: mount to mount is the span, and the span is
+exactly what the drive changes, so holding it would be holding against the drive. Each member's
+own length is a different question and is held on the member. The flag is written on the **barrel**
+by preference, so whichever member was clicked gives one answer and one `H` entry rides the URL.
 
 **Either member may carry it, and `cylinderAngleCarrier` is who to ask** (Stage 2b, decision S5).
 Each member now has a *length* of its own to hold as well, and a member holds one thing -- so a rod
@@ -472,8 +473,8 @@ Three traps, all of which this walked into:
   question of the form "is this link part of a ram?" has to be asked of the **drawing**
   (`cylinderMembers` in `model/link-holds.ts`). Without that, a barrel answers the plain-bar test --
   it is a two-joint `RealLink`, after all -- and the solver is handed the barrel's own two joints,
-  a pair inside the part that the normalizer re-derives anyway. The hold then holds nothing anybody
-  can see, and it looks exactly like a solver bug.
+  a pair the part re-derives from its mounts after every rebuild anyway. The hold then holds
+  nothing anybody can see, and it looks exactly like a solver bug.
 - **`holdAnchor` counted every cylinder joint as immovable**, mounts included, on the older rule
   that a cylinder's joints live on a line the solver does not know. True of the interior and wrong
   about the mounts, which are ordinary joints a reader drags -- and the failure is silent in the
