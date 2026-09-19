@@ -491,6 +491,37 @@ the solver run, and not against Gruebler's. A crosshead on two slides counts -1 
 to one by the same geometry; comparing against -1 called the solver's every failure on such a
 drawing a hidden freedom, when the rescue was the count agreeing with the drawing.
 
+### The library's gripper counts one freedom and measures three, and runs on the count
+
+`Cylinder_Gripper` -- the card, and `slideGripperFixture` the gallery generates it from -- has
+Gruebler's count at 1 and `mobilityFromGeometry` at **3**. `determineDegreesOfFreedom` returns the
+count wherever the count is at least one and never asks the geometry, so the drawing is admitted
+and solved. Two of those three freedoms are therefore motions nothing in the drawing determines,
+and the solver picks a pose for them.
+
+The 3 is not a numerical artifact, which is the first thing to suspect and the first thing to rule
+out. Perturbing a corner of one of its parallelograms by 1e-9, 1e-6, 1e-4 and 1e-3 -- the last of
+which is the resolution the URL itself carries -- leaves it at 3 every time.
+
+**What is not known is which two motions they are.** Grounding `B`, the barrel's near end, drops
+the measurement to 1, which looks like the barrel's swing about its single mount until you notice
+that `gripperFixture` beside it in the gallery has its barrel equally free on one pin and measures
+1. So the barrel is not a sufficient explanation, and no better one has been written down. Note
+also that grounding `B` is not a drawing a reader could make: `isCylinderInterior` counts the
+barrel's near end as interior to the sealed part, so it is not an attachment point.
+
+Three siblings in the gallery measure 1 and are worth comparing against before concluding
+anything: `gripperFixture` (railed, hand-placed coordinates), `pivotingGripperFixture` ("the same
+gripper, jaws pivoting instead of railed") and `parallelGripperFixture` ("the way a manufacturer
+draws one"). The difference is not exact symmetry: `slideGripperFixture` builds its parallelograms
+from shared constants and is exact, `gripperFixture`'s are hand-typed and only nearly so, but
+breaking the exact ones by hand does not move the number.
+
+One warning for anyone thinking of gating on the measurement. It is robust on this drawing and
+knife-edge on a near neighbor: the same gripper with `B` grounded flips between 1 and 2 on a 1e-9
+nudge to a parallelogram corner. Whether that shape is reachable by a reader is a separate
+question, but a refusal rule reading this number needs to answer it first.
+
 ### The mobility count reads a floating slot's live direction
 
 `constraintsOf` in `mobility.ts` writes a slide constraint from `joint.slotAngle`, never from
