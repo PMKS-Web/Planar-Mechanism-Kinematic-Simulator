@@ -60,12 +60,12 @@ function model() {
 /**
  * Which joint is which, asked of the model rather than assumed.
  *
- * A ram's five joints are not named A, B, C, D in creation order and have not
- * been for some time: the two mounts take ordinary letters and the three
- * hidden ones hang off the barrel mount's letter, numbered, so that the joints
- * nobody can see stop pushing the ones they can into punctuation. A suite that
- * spells the letters out is asserting the naming scheme by accident, and goes
- * red the next time it changes for a good reason.
+ * A cylinder's four joints are not named A, B, C, D in creation order and have
+ * not been for some time: the two ends and the seal take ordinary letters and
+ * the barrel's buried inner end hangs off the barrel mount's letter, numbered,
+ * so that the joint nobody can see stops pushing the ones they can into
+ * punctuation. A suite that spells the letters out is asserting the naming
+ * scheme by accident, and goes red the next time it changes for a good reason.
  */
 function cylinderRoles() {
   return page.evaluate(() => {
@@ -181,7 +181,7 @@ checkThat(
 
 let state = await model();
 const roles = await cylinderRoles();
-checkThat('the model can name the ram’s five joints', !!roles, JSON.stringify(roles));
+checkThat('the model can name the cylinder’s four joints', !!roles, JSON.stringify(roles));
 const { barrelFar, barrelNear, pin, rodFar } = roles ?? {};
 const commitPoint = await page.evaluate(
   ({ start, end }) => {
@@ -217,12 +217,15 @@ checkThat(
 const sealedSlider = state.joints.find((j) => j.kind === 'PrisJoint');
 checkThat('the slider is sealed', !!sealedSlider?.sealed);
 checkThat(
-  'only the two mounts are selectable joints',
+  // Three selectable joints, not two: the square mid-skin is the seal, and it
+  // is what a reader selects and drags (Stage 2c, decision D9). Only the
+  // barrel's buried inner end has no hitbox at all.
+  'the two ends and the seal are selectable joints, and the buried end is not',
   !!(await jointOnScreen(barrelFar)) &&
     !!(await jointOnScreen(rodFar)) &&
-    !(await jointOnScreen(barrelNear)) &&
-    !(await jointOnScreen(pin)),
-  'A,D visible; B,C hidden'
+    !!(await jointOnScreen(pin)) &&
+    !(await jointOnScreen(barrelNear)),
+  'A, D and the seal visible; the buried barrel end hidden'
 );
 await page.screenshot({ path: `${OUT}/01-created.png` });
 

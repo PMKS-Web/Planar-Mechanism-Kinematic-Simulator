@@ -321,10 +321,12 @@ describe('AnalysisPanelComponent with a cylinder selected', () => {
     fixture.destroy();
   });
 
-  it('offers no force row at a joint buried inside the part', async () => {
-    // The buried barrel end and the slider in the bore have no hitbox on the
-    // canvas and no row in the Edit panel; a pin reaction there is internal to
-    // a body the user is being shown as one piece.
+  it('offers no force row at the buried barrel end, and one at the seal', async () => {
+    // The buried barrel end has no hitbox on the canvas and no row in the Edit
+    // panel; a pin reaction there is internal to a body the user is being shown
+    // as one piece. The seal is not in that class (decision S11): it is a square
+    // a reader can point at, and the force between barrel and rod is a number a
+    // cylinder is worth asking about.
     const { fixture, fixtureData } = await createPanel(TEMPLATE_LINKAGES['Cylinder_Boom'], 'GN');
     fixture.detectChanges();
 
@@ -332,10 +334,9 @@ describe('AnalysisPanelComponent with a cylinder selected', () => {
       fixtureData.service.links.find((link) => link.id === 'GN')
     );
     expect(cylinder, 'the fixture really is a cylinder').toBeDefined();
-    const interior = [cylinder!.inner.id, cylinder!.seal.id];
-    for (const row of fixture.componentInstance.linkForceRows()) {
-      expect(interior).not.toContain(row.jointId);
-    }
+    const shown = fixture.componentInstance.linkForceRows().map((row) => row.jointId);
+    expect(shown).not.toContain(cylinder!.inner.id);
+    expect(shown).toContain(cylinder!.seal.id);
     fixture.destroy();
   });
 });

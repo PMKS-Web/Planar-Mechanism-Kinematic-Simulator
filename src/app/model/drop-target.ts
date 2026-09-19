@@ -1,6 +1,6 @@
 import { Joint, PrisJoint, RealJoint, RevJoint } from './joint';
 import { Link, RealLink } from './link';
-import { Cylinder, cylinderJoints } from './cylinder';
+import { Cylinder, cylinderJoints, isInsideCylinder } from './cylinder';
 
 /** Why a candidate joint cannot receive the joint being dragged. */
 export type MergeRefusal =
@@ -36,7 +36,7 @@ export const MERGE_REFUSAL_MESSAGES: Record<MergeRefusal, string> = {
     'Merging here would tie the same two joints together twice, over-constraining the mechanism.',
   'own-carrier': 'A slider cannot ride on a link it is part of.',
   'not-a-real-joint': 'This joint cannot be merged.',
-  'sealed-cylinder': 'A cylinder is one sealed part — attach at one of its two joints instead.',
+  'sealed-cylinder': 'A cylinder is one part — attach at one of the joints at its ends instead.',
   'driven-joint':
     'A driven joint can only join two bodies — remove the input first, or attach somewhere else.',
   'own-cylinder': 'A cylinder cannot fold onto itself.',
@@ -63,9 +63,9 @@ export const MERGE_REFUSAL_REASONS: Record<MergeRefusal, string> = {
   'over-constrained': 'already tied together',
   'own-carrier': 'its own carrier',
   'not-a-real-joint': 'not a joint',
-  'sealed-cylinder': 'sealed inside the ram',
+  'sealed-cylinder': 'inside a cylinder',
   'driven-joint': 'a driven pair',
-  'own-cylinder': 'the same ram',
+  'own-cylinder': 'the same cylinder',
   'weld-cannot-survive': 'the weld cannot survive',
   'crosses-machines': 'needs the start pose',
 };
@@ -110,6 +110,18 @@ export function refuseJointMerge(
   cylinders: Cylinder[] = []
 ): MergeRefusal | undefined {
   if (source.id === target.id) return 'same-joint';
+  // A joint inside a cylinder is not an attachment point: a merge into the seal
+  // would hang a third joint on the rod and break the part. The joints at the
+  // two ends remain legal targets — they are exactly where a cylinder attaches
+  // to the rest of the linkage.
+  //
+  // Asked here rather than only at the commit, which is where it used to live.
+  // The seal has a hitbox now (decision S11), so it is a joint a drag can
+  // plainly be aimed at: left to `mergeJoints` alone, the ring went green over
+  // the square and the refusal arrived on release.
+  if (cylinders.some((c) => isInsideCylinder(c, source) || isInsideCylinder(c, target))) {
+    return 'sealed-cylinder';
+  }
   // A slider can be merged *into* and not out of. Dropping a pin onto one is
   // how a link comes to ride a slot, which is the whole point of the gesture;
   // dragging the slider onto a pin would leave its slot naming a joint that no

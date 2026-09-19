@@ -231,6 +231,36 @@ export function rodBodyPath(r: number, reach: number, headHalf: number): string 
  * the rod. The barrel's flat cut ends underneath it, and a rounded corner there
  * drew a sliver of daylight between two parts that are supposed to be flush.
  */
+/**
+ * Where the seal's letter goes, as an offset from the seal in drawing units.
+ *
+ * Every other joint wears its letter up and a little to the left, at half an
+ * objectScale — a rule that works because a joint has nothing of its own above
+ * it. A seal sits in the middle of its own part, so "up" is along the barrel as
+ * often as it is clear of it, and on a cylinder drawn upright the letter came
+ * out painted on the metal.
+ *
+ * So it goes out along the part's own normal instead, clear of the barrel's
+ * widest edge, on whichever of the two sides reads as up on the screen. `axis`
+ * is the cylinder's own direction and need not be a unit vector; a part with no
+ * axis at all takes plain up, which is as good an answer as any.
+ */
+export function cylinderLabelOffset(
+  axis: { x: number; y: number },
+  r: number
+): { x: number; y: number } {
+  const span = Math.hypot(axis.x, axis.y);
+  const normal = span < 1e-9 ? { x: 0, y: 1 } : { x: -axis.y / span, y: axis.x / span };
+  // Model +y is up on screen, and x breaks a vertical part's tie so the answer
+  // does not flip between two cylinders drawn the same way round.
+  const up = normal.y > 1e-9 || (Math.abs(normal.y) <= 1e-9 && normal.x > 0) ? 1 : -1;
+  const clear = (CYLINDER.barrelHalf + LABEL_CLEAR_R) * r;
+  return { x: up * normal.x * clear, y: up * normal.y * clear };
+}
+
+/** How far past the barrel's edge that letter stands, in R. */
+const LABEL_CLEAR_R = 1.5;
+
 export function cylinderBlockPath(r: number, headHalf: number): string {
   const a = headHalf;
   const c = MARK.blockAcrossHalf * r;

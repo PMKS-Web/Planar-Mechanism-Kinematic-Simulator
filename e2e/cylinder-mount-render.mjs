@@ -198,13 +198,19 @@ const renderFacts = () =>
     const m = grid.mechanismSrv;
     const rams = m.sealedStructures();
     const count = (id) => document.querySelectorAll(`[id="${id}"]`).length;
-    const interiors = rams.flatMap((r) => [r.inner.id, r.seal.id]);
+    // The buried barrel end alone. The seal used to be in this list; it is the
+    // square a reader selects now (Stage 2c, decision S11), so it is checked
+    // below as a joint that IS drawn, exactly once.
+    const interiors = rams.map((r) => r.inner.id);
     // Only a RealLink gets a path carrying its own id; a block is drawn in the
     // block layer with no id of its own, so it is counted separately below.
     const bodies = m.links.filter((l) => grid.gridUtils.typeOfLink(l) === 'R');
     return {
-      // Nothing inside a ram is on the canvas: not as a joint, not as a body.
+      // Nothing hidden inside a ram is on the canvas: not as a joint, not as a
+      // body.
       interiorsDrawn: interiors.filter((id) => count(`joint_${id}`) > 0 || count(id) > 0),
+      // And the seal is, once: its hitbox is the square the skin draws.
+      sealsMissing: rams.map((r) => r.seal.id).filter((id) => count(`joint_${id}`) !== 1),
       // Every root body is painted exactly once. A compound painted beside its
       // own leaves, or a leaf painted beside its compound, is the double-alpha
       // seam this is here to catch.
@@ -222,7 +228,7 @@ const renderFacts = () =>
         .map((leaf) => leaf.id),
       // Every joint a reader can point at has exactly one marker.
       jointsDrawnTwice: m.joints
-        .filter((j) => !j.isSealed && count(`joint_${j.id}`) > 1)
+        .filter((j) => !interiors.includes(j.id) && count(`joint_${j.id}`) > 1)
         .map((j) => j.id),
       mountsDrawn: rams
         .flatMap((r) => [r.mountA.id, r.mountB.id])
@@ -329,9 +335,17 @@ for (const shape of shapes) {
   drawn[shape] = ids;
   const facts = await renderFacts();
   check(
-    `${shape}: nothing from inside a ram is on the canvas`,
-    facts.interiorsDrawn.length === 0 && facts.rams === (shape === 'shared-mount' ? 2 : 1),
-    JSON.stringify({ interiors: facts.interiorsDrawn, rams: facts.rams })
+    `${shape}: the buried barrel end is off the canvas and the seal is on it, once`,
+    facts.interiorsDrawn.length === 0 &&
+      facts.sealsMissing.length === 0 &&
+      facts.jointsDrawnTwice.length === 0 &&
+      facts.rams === (shape === 'shared-mount' ? 2 : 1),
+    JSON.stringify({
+      interiors: facts.interiorsDrawn,
+      seals: facts.sealsMissing,
+      twice: facts.jointsDrawnTwice,
+      rams: facts.rams,
+    })
   );
   check(
     `${shape}: every body is painted once, and no leaf is painted beside its compound`,
@@ -442,6 +456,7 @@ check(
   'the ram is the same drawing at either end of its stroke',
   Math.hypot(extended.x - stroke.retracted.x, extended.y - stroke.retracted.y) > 1 &&
     facts.interiorsDrawn.length === 0 &&
+    facts.sealsMissing.length === 0 &&
     facts.bodiesDrawnTwice.length === 0 &&
     facts.leavesDrawnAsBodies.length === 0,
   JSON.stringify({
@@ -463,9 +478,11 @@ await page.waitForTimeout(400);
 await film.shot('zoom-in');
 facts = await renderFacts();
 check(
-  'zoomed in, nothing has doubled and nothing inside has appeared',
-  facts.interiorsDrawn.length === 0 && facts.bodiesDrawnTwice.length === 0,
-  JSON.stringify(facts.interiorsDrawn.concat(facts.bodiesDrawnTwice))
+  'zoomed in, nothing has doubled and nothing hidden has appeared',
+  facts.interiorsDrawn.length === 0 &&
+    facts.sealsMissing.length === 0 &&
+    facts.bodiesDrawnTwice.length === 0,
+  JSON.stringify(facts.interiorsDrawn.concat(facts.sealsMissing, facts.bodiesDrawnTwice))
 );
 await page.evaluate(() => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
@@ -479,8 +496,10 @@ await film.shot('zoom-out');
 facts = await renderFacts();
 check(
   'zoomed out, the same',
-  facts.interiorsDrawn.length === 0 && facts.bodiesDrawnTwice.length === 0,
-  JSON.stringify(facts.interiorsDrawn.concat(facts.bodiesDrawnTwice))
+  facts.interiorsDrawn.length === 0 &&
+    facts.sealsMissing.length === 0 &&
+    facts.bodiesDrawnTwice.length === 0,
+  JSON.stringify(facts.interiorsDrawn.concat(facts.sealsMissing, facts.bodiesDrawnTwice))
 );
 
 await page.setViewportSize({ width: 420, height: 900 });
@@ -490,6 +509,7 @@ facts = await renderFacts();
 check(
   'and on a narrow window the drawing is still one of everything',
   facts.interiorsDrawn.length === 0 &&
+    facts.sealsMissing.length === 0 &&
     facts.bodiesDrawnTwice.length === 0 &&
     facts.bodiesNotDrawn.length === 0,
   JSON.stringify(facts)

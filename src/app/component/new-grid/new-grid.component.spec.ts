@@ -18,6 +18,8 @@ import { NotificationService } from '../../services/notification.service';
 import { EditPermissionService } from '../../services/edit-permission.service';
 import { Coord } from '../../model/coord';
 import { LONGEST_ARROW_FRACTION, PATH_ARROW_COUNT } from '../../model/vector-trace';
+import { CYLINDER } from '../../model/joint-marks';
+import { ColorService } from '../../services/color.service';
 
 /**
  * NewGridComponent renders through svg-pan-zoom, which needs real SVG layout;
@@ -82,6 +84,109 @@ async function configureGridTestBed() {
     .overrideProvider(SvgGridService, { useValue: svgGridStub })
     .compileComponents();
 }
+
+/**
+ * A cylinder drawn on a bare grid, through the service call the canvas makes.
+ *
+ * The seal is the square mid-skin and the joint a reader selects (decision D9);
+ * the barrel's buried inner end is the one joint nothing draws (decision S11).
+ */
+function drawnCylinder() {
+  // Creation asks the palette for the barrel's color, and the palette is a
+  // static the app builds at startup rather than a provider.
+  if (!ColorService.instance) new ColorService();
+  const mechanism = TestBed.inject(MechanismService);
+  mechanism.createCylinderFrom(new Coord(0, 0), new Coord(4 * MODEL_SCALE, 0));
+  const cylinder = mechanism.sealedStructures()[0];
+  const fixture = TestBed.createComponent(NewGridComponent);
+  fixture.detectChanges();
+  return { mechanism, cylinder, fixture, component: fixture.componentInstance };
+}
+
+describe('NewGridComponent cylinder selectables', () => {
+  beforeEach(configureGridTestBed);
+
+  it('gives the seal a hitbox and a letter, and the buried barrel end neither', () => {
+    const { cylinder, fixture, component } = drawnCylinder();
+
+    expect(component.isCylinderInner(cylinder.inner)).toBe(true);
+    expect(component.isCylinderInner(cylinder.seal)).toBe(false);
+    // The ordinary joint layer draws neither, because the skin draws the
+    // square: a marker painted there as well would be a weld cross over it.
+    expect(component.drawnByCylinderSkin(cylinder.seal)).toBe(true);
+    expect(component.drawnByCylinderSkin(cylinder.mountA)).toBe(false);
+
+    const hit = fixture.nativeElement.querySelector(`#joint_${cylinder.seal.id}`);
+    expect(hit, 'the seal has a hitbox').not.toBeNull();
+    expect(fixture.nativeElement.querySelector(`#joint_${cylinder.inner.id}`)).toBeNull();
+
+    const letters = [...fixture.nativeElement.querySelectorAll('#jointTagHolder text')].map(
+      (node: Element) => node.textContent?.trim()
+    );
+    expect(letters).toContain(cylinder.seal.id);
+    expect(letters).not.toContain(cylinder.inner.id);
+  });
+
+  it('outlines whichever member is picked, and neither when the seal is', () => {
+    const { fixture, component, cylinder } = drawnCylinder();
+    const active = TestBed.inject(ActiveObjService);
+    const outlineOf = (which: 'barrel' | 'rod') =>
+      component.cylinderMemberOutline(component.cylinderList[0], which);
+
+    active.updateSelectedObj(cylinder.barrel as RealLink);
+    fixture.detectChanges();
+    expect(outlineOf('barrel')).toBe('link-selected');
+    expect(outlineOf('rod')).toBeUndefined();
+
+    active.updateSelectedObj(cylinder.rod as RealLink);
+    fixture.detectChanges();
+    expect(outlineOf('barrel')).toBeUndefined();
+    expect(outlineOf('rod')).toBe('link-selected');
+
+    // The seal is a joint, so picking it picks neither body.
+    active.updateSelectedObj(cylinder.seal as RevJoint);
+    fixture.detectChanges();
+    expect(outlineOf('barrel')).toBeUndefined();
+    expect(outlineOf('rod')).toBeUndefined();
+    expect(component.cylinderSealOutline(component.cylinderList[0])).toBe('link-selected');
+  });
+
+  it('keeps the seal off every drop candidate list, and the buried end out of the search', () => {
+    const { component, cylinder, mechanism } = drawnCylinder();
+    const offered = mechanism.joints.filter((joint) => !component.isCylinderInner(joint));
+    // Visible but refused: aiming a drag at the square is marked red and told
+    // why, rather than skipping quietly to the next joint along.
+    expect(offered.map((joint) => joint.id)).toContain(cylinder.seal.id);
+    expect(offered.map((joint) => joint.id)).not.toContain(cylinder.inner.id);
+  });
+
+  it('wears one tag, naming the part rather than either member', () => {
+    const { component, cylinder } = drawnCylinder();
+    expect(component.linkDisplayName(cylinder.barrel)).toBe(
+      `${cylinder.mountA.name}${cylinder.mountB.name}`
+    );
+    expect(component.isSecondaryCylinderTag(cylinder.barrel)).toBe(false);
+    expect(component.isSecondaryCylinderTag(cylinder.rod)).toBe(true);
+  });
+
+  it('puts the seal’s letter clear of the barrel, across the part’s own axis', () => {
+    const { component, cylinder } = drawnCylinder();
+    const anchor = component.jointTagAnchor(cylinder.seal);
+    // The part runs along x, so its normal is y and the letter goes up the
+    // screen -- the tag layer flips y by hand, so "up" is a smaller number.
+    expect(anchor.x).toBeCloseTo(cylinder.seal.x, 6);
+    expect(anchor.y).toBeLessThan(-cylinder.seal.y);
+    // Clear of the barrel's own widest edge rather than at the ordinary
+    // half-objectScale, which lands on the metal for a part drawn upright.
+    const clear = -anchor.y - cylinder.seal.y;
+    expect(clear).toBeGreaterThan(CYLINDER.barrelHalf * 0.15 * SettingsService.objectScale);
+
+    // An ordinary joint keeps the offset every joint has always had.
+    const plain = component.jointTagAnchor(cylinder.mountA);
+    expect(plain.x).toBeCloseTo(cylinder.mountA.x - SettingsService.objectScale * 0.3, 6);
+    expect(plain.y).toBeCloseTo(-cylinder.mountA.y - SettingsService.objectScale * 0.5, 6);
+  });
+});
 
 describe('NewGridComponent welded SVG presentation', () => {
   beforeEach(configureGridTestBed);

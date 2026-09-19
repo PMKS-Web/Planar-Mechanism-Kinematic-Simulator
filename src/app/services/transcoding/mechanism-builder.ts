@@ -12,6 +12,74 @@ import { BoolSetting, DecimalSetting, EnumSetting, IntSetting } from './stored-s
 import { ActiveObjService } from '../active-obj.service';
 import { MODEL_SCALE } from 'src/app/model/render-scale';
 
+/** The letters a joint id is made of when nothing has hung a number off it. */
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+
+/** Whether this id is a name the reader can be shown: letters and nothing else. */
+function isLettered(id: string): boolean {
+  return id.length > 0 && [...id].every((letter) => LETTERS.includes(letter));
+}
+
+/**
+ * The next free letter over a set of ids -- `MechanismService.determineNextLetter`'s
+ * rule, written where the builder can reach it.
+ *
+ * Deliberately a copy of the rule rather than a call to the service: the
+ * builder is handed a bare object in several specs, and more to the point it is
+ * naming joints in a list it holds itself, before that list has become anybody's
+ * mechanism. Interior names have no place in the alphabet, which is what keeps
+ * them from pushing the next letter along.
+ */
+function nextFreeLetter(taken: Set<string>): string {
+  let highest = -1;
+  taken.forEach((id) => {
+    const at = LETTERS.indexOf(id);
+    if (at > highest) highest = at;
+  });
+  const next = LETTERS[highest + 1];
+  if (next !== undefined && !taken.has(next)) return next;
+  const free = [...LETTERS].find((letter) => !taken.has(letter));
+  if (free !== undefined) return free;
+  for (const first of LETTERS) {
+    for (const second of LETTERS) {
+      if (!taken.has(first + second)) return first + second;
+    }
+  }
+  return 'A';
+}
+
+/**
+ * Follow one joint's rename through every link that holds it, however deep.
+ *
+ * A link's id is the sorted concatenation of its joints' letters, so renaming a
+ * joint renames every body it is on -- the two-joint bar itself and any
+ * compound that has swallowed it. The two id-keyed fields beside it move for
+ * the same reason: `fixedLocations` is the list of points a panel offers and
+ * `comAnchor` is the joint a hand-placed center of mass is measured from, and
+ * both name a joint by id.
+ *
+ * The same walk `MechanismService.replaceJointInLink` makes for a merge, which
+ * is the other place a joint's name changes under the links holding it.
+ */
+function renameJointInLinks(links: Link[], was: string, now: string): void {
+  const walk = (link: Link) => {
+    if (link instanceof RealLink) link.subset.forEach(walk);
+    if (!link.joints.some((joint) => joint.id === now)) return;
+    link.id = link.joints
+      .map((joint) => joint.id)
+      .sort()
+      .join('');
+    link.fixedLocations = link.fixedLocations.map((location) =>
+      location.id === was ? { id: now, label: now } : location
+    );
+    if (link.fixedLocation.fixedPoint === was) link.fixedLocation.fixedPoint = now;
+    if (link instanceof RealLink && typeof link.comAnchor === 'object') {
+      if (link.comAnchor.joint === was) link.comAnchor = { joint: now };
+    }
+  };
+  links.forEach(walk);
+}
+
 /*
  * MechanismBuilder is a class that takes in a decoder and mechanism service and
  * builds a mechanism from the decoder
@@ -344,6 +412,46 @@ export class MechanismBuilder {
     }
   }
 
+  /**
+   * Give every seal a letter, and rename the links that hold it (decision S9).
+   *
+   * A cylinder's seal used to be interior: no marker, no hitbox, no letter, so
+   * creation spent an interior name on it (`A2`). It is the square a reader
+   * selects now, and an interior name is not something to show in a panel
+   * title, a canvas label or an export column — so a payload that carries one
+   * is given the next free letter here, by exactly the rule creation follows.
+   *
+   * **The last step of the build, and only after the id-keyed sections above.**
+   * Locks, holds, colors and center-of-mass anchors are looked up by the ids
+   * the URL wrote; renaming before them would leave every one of those
+   * pointing at a joint that no longer answers to that name.
+   *
+   * Idempotent, which undo and redo need: after one pass the seal's id is a
+   * letter, and a letter is left alone. The buried barrel end is never renamed
+   * — nothing shows it, and its name is what keeps `determineNextLetter` from
+   * counting it.
+   */
+  private letterSealedSeals(joints: Joint[], links: Link[]): void {
+    const taken = new Set(joints.map((joint) => joint.id));
+    // In the order the payload wrote its joints, so a drawing with two of them
+    // hands out the same two letters every time it is opened.
+    for (const cylinder of cylindersIn(joints)) {
+      const seal = cylinder.seal;
+      if (isLettered(seal.id)) continue;
+      const was = seal.id;
+      // `name` falls back to the id when nobody has set one -- but the codec
+      // writes the getter's answer, so every decoded joint comes back with its
+      // name spelled out. A seal whose name is only its own old id has not been
+      // renamed by anybody, and letting go of it is what makes the new letter
+      // the name a reader sees. A name someone chose is left exactly as it is.
+      if (seal.name === was) seal.name = '';
+      seal.id = nextFreeLetter(taken);
+      taken.delete(was);
+      taken.add(seal.id);
+      renameJointInLinks(links, was, seal.id);
+    }
+  }
+
   // For each joint, add links that are adjacent to the joint
   public addSubsetLinks(linkDatas: LinkData[], links: Link[]): void {
     linkDatas.forEach((linkData, index) => {
@@ -524,6 +632,10 @@ export class MechanismBuilder {
         }
       }
     }
+
+    // Last, and after every section above that looks a joint or a link up by
+    // the id the URL wrote: a seal carrying an interior name gets a letter.
+    this.letterSealedSeals(joints, links);
 
     // Nothing is selected in a mechanism that has just been built.
     //

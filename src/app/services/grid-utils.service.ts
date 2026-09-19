@@ -10,7 +10,12 @@ import {
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import { roundNumber, point_on_line_segment_closest_to_point } from '../model/utils';
 import { Link, RealLink } from '../model/link';
-import { JointOperationContext, refuseJointOperation } from '../model/joint-operation-permission';
+import {
+  JointOperationContext,
+  OperationRefusal,
+  refuseGround,
+  refuseJointOperation,
+} from '../model/joint-operation-permission';
 import {
   EditPlan,
   EditRequest,
@@ -259,6 +264,16 @@ export class GridUtilsService {
     const welded =
       joint instanceof PrisJoint ? !joint.rotates : joint instanceof RealJoint && joint.isWelded;
     return refuseJointOperation(joint, welded ? 'unweld' : 'weld', this.operationContext());
+  }
+
+  /**
+   * Why Grounded is grayed on this joint, short and long.
+   *
+   * The one place that answers it, so the menu row, the Edit panel's switch and
+   * `MechanismService.toggleGround` cannot disagree about a cylinder's seal.
+   */
+  groundRefusal(joint: Joint | undefined): OperationRefusal | undefined {
+    return refuseGround(joint, this.operationContext());
   }
 
   /** Whether this joint may gain or lose a sliding block, and why not. */

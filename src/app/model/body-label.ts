@@ -23,11 +23,21 @@ export function labelForBody(body: Link, cylinder: Cylinder | undefined): string
     // turn up anywhere a body could; its mass is the sliding joint's own now
     // (Stage 1 of `docs/joint-type-and-cylinder-plan.md`), and a joint is
     // named by its letter rather than by this.
-    const role = body === cylinder.barrel ? 'Barrel' : body === cylinder.rod ? 'Rod' : undefined;
-    if (role) {
-      const name =
-        (cylinder.mountA.name || cylinder.mountA.id) + (cylinder.mountB.name || cylinder.mountB.id);
-      return `${role} ${name}`;
+    // Each member by its own two joints (decision S10). They were both named
+    // after the cylinder's two ends, because the joint between them had no
+    // letter and no marker — so the barrel and the rod, two bodies with two
+    // panels and two sets of numbers, answered to the same name. The seal wears
+    // a letter now, so each member can say which half of the part it is.
+    const named = (joint: { name: string; id: string }) => joint.name || joint.id;
+    const ends =
+      body === cylinder.barrel
+        ? ([cylinder.mountA, cylinder.seal] as const)
+        : body === cylinder.rod
+          ? ([cylinder.seal, cylinder.mountB] as const)
+          : undefined;
+    if (ends) {
+      const role = body === cylinder.barrel ? 'Barrel' : 'Rod';
+      return `${role} ${named(ends[0])}${named(ends[1])}`;
     }
   }
   return `Link ${(body as RealLink).name || body.id}`;

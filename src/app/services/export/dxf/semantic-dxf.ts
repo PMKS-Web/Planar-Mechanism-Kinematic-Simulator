@@ -113,12 +113,18 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
     y: joint.y * unitScale - shift.y,
   });
   const cylinders = cylindersIn(input.joints);
-  // The joints between the two mounts: everything a sealed part keeps to
-  // itself. Named rather than sliced out of `cylinderJoints` by index, which is
-  // what this did -- that list lost a joint when the pin and the slider became
-  // one (Stage 1 of `docs/joint-type-and-cylinder-plan.md`), and the old
-  // `slice(1, 4)` went on taking three of four and swept the *rod mount* in
-  // with them.
+  // The joints between the two mounts. Named rather than sliced out of
+  // `cylinderJoints` by index, which is what this did -- that list lost a joint
+  // when the pin and the slider became one (Stage 1 of
+  // `docs/joint-type-and-cylinder-plan.md`), and the old `slice(1, 4)` went on
+  // taking three of four and swept the *rod mount* in with them.
+  //
+  // **Still both, where the canvas now shows the seal** (decision S11). This is
+  // not the hidden/visible question the canvas asks: the layers below draw a
+  // bearing circle at every joint and a slot profile at every prismatic one,
+  // and a cylinder's seal is neither. Its slot is the bore the skin already
+  // draws, and its weld is internal to a part the drawing exports as one body,
+  // so a circle and a capsule there would describe a machine nobody built.
   const cylinderInterior = new Set(
     cylinders.flatMap((cylinder) => [cylinder.inner.id, cylinder.seal.id])
   );

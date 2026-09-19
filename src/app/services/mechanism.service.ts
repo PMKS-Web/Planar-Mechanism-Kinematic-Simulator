@@ -21,7 +21,6 @@ import {
   cylinderOfBarIn,
   cylinderOfLinkIn,
   cylindersOfLinkIn,
-  isInsideCylinder,
   derivedInterior,
   cylindersIn,
   cylinderAtSeal,
@@ -2126,9 +2125,14 @@ export class MechanismService {
    * place in it, which is exactly the point. They still have to be unique,
    * because two rams can share a mount and would otherwise ask for the same
    * three names.
+   *
+   * `alsoTaken` is for a caller building joints that are not on the grid yet --
+   * a duplicated cylinder's copies, which are named before any of them is
+   * pushed into `joints`.
    */
-  private determineInteriorNames(base: string, count: number): string[] {
+  determineInteriorNames(base: string, count: number, alsoTaken?: Iterable<string>): string[] {
     const taken = new Set(this.joints.map((joint) => joint.id));
+    for (const id of alsoTaken ?? []) taken.add(id);
     const names: string[] = [];
     for (let index = 1; names.length < count; index++) {
       const candidate = `${base}${index}`;
@@ -3006,18 +3010,11 @@ export class MechanismService {
    * broken drag rather than as a rule.
    */
   mergeJoints(source: RealJoint, target: RealJoint): MergeRefusal | undefined {
-    // A sealed cylinder's interior joints are not attachment points: a merge
-    // into the pin would hang a third joint on the rod (or a second link on
-    // the block) and break the part. The two mounts remain legal targets —
-    // they are exactly where a cylinder attaches to the rest of the linkage.
+    // A cylinder's interior joints are not attachment points, which
+    // `refuseJointMerge` now says for itself: this used to carry its own copy
+    // of that rule, and the live drop ring — which asks that function and not
+    // this one — did not know it.
     const cylinders = this.sealedStructures();
-    if (
-      cylinders.some(
-        (sealed) => isInsideCylinder(sealed, source) || isInsideCylinder(sealed, target)
-      )
-    ) {
-      return 'sealed-cylinder';
-    }
     const refusal = refuseJointMerge(source, target, cylinders);
     if (refusal) {
       return refusal;
@@ -4646,15 +4643,15 @@ export class MechanismService {
     // compound with the barrel as a leaf.
     const creation = cylinderCreationLayout(start, end, this.settingsService.objectScale);
 
-    // A ram is four joints and shows two of them. The mounts are what the
-    // reader points at, names and reads back out of a panel, so they take
-    // letters; the barrel's near end and the slider are inside the part and are
-    // never drawn, labeled or listed. Spending a letter on each of those ran a
-    // drawing through the alphabet faster than the joints anyone could see, and
-    // it was the hidden ones that pushed the visible ones into punctuation.
+    // A cylinder is four joints and shows three of them. The two ends and the
+    // seal are what a reader points at, names and reads back out of a panel, so
+    // they take letters, in that order (decision S9); the barrel's near end is
+    // buried under the rod, is never drawn, labeled or listed, and keeps an
+    // interior name so that `determineNextLetter` walks past it.
     const aId = mountAt ? mountAt.id : this.determineNextLetter();
     const dId = this.determineNextLetter([aId]);
-    const [bId, cId] = this.determineInteriorNames(aId, 2);
+    const cId = this.determineNextLetter([aId, dId]);
+    const [bId] = this.determineInteriorNames(aId, 1);
 
     const place = (at: { x: number; y: number }): [number, number] => [
       roundNumber(at.x, 3),
@@ -4679,7 +4676,7 @@ export class MechanismService {
       barrelFar,
       barrelNear,
     ]);
-    const rod = this.gridUtils.createRealLink(cId + dId, [slider, rodFar]);
+    const rod = this.gridUtils.createRealLink([cId, dId].sort().join(''), [slider, rodFar]);
     // Mount first, inner end second: the slot's order is what says which barrel
     // joint is which, and every later reading of this cylinder quotes it (S1).
     slider.slideOn(barrel, barrelFar, barrelNear);
@@ -4828,6 +4825,16 @@ export class MechanismService {
 
   toggleGround() {
     //Should be called toggleGround
+    //
+    // A cylinder is bolted to the world at the joints at its ends, never at the
+    // seal in the middle of it. The model says so and this quotes it, so the
+    // row the menu grays is the row this declines — and a route that reaches
+    // here without passing the menu says why rather than doing nothing.
+    const refusedGround = this.gridUtils.groundRefusal(this.activeObjService.selectedJoint);
+    if (refusedGround) {
+      this.notify.refusal(refusedGround.code, refusedGround.long);
+      return;
+    }
     //
     // Resolved from the selection rather than tested against it: the panel
     // selects a slider by its pin, never by its PrisJoint, so an `instanceof`

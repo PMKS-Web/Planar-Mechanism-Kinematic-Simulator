@@ -45,7 +45,7 @@ export class ExportCatalogService {
         // of `docs/joint-type-and-cylinder-plan.md`): it wears the letter, the
         // marker and the hitbox, so dropping it would take a part the reader
         // can plainly see out of the list.
-        .filter((joint) => !this.isInsideCylinder(cylinders, joint))
+        .filter((joint) => !this.isCylinderInner(cylinders, joint))
         .map((joint) => this.jointPart(joint, partition.id, index, withForces));
       // Bars, and the rods that stand for rams. A reader sees one slider where
       // the solver has two bodies, and what the slider has of its own is the
@@ -88,11 +88,16 @@ export class ExportCatalogService {
     return joint.links.length === 1 && !joint.ground && !joint.input && !joint.isWelded;
   }
 
-  /** The three joints a sealed cylinder keeps to itself: no hitbox, no row. */
-  private isInsideCylinder(cylinders: Cylinder[], joint: Joint): boolean {
-    return cylinders.some(
-      (cylinder) => cylinder.inner.id === joint.id || cylinder.seal.id === joint.id
-    );
+  /**
+   * The one joint a cylinder keeps to itself: the buried barrel end, which has
+   * no hitbox and no row (decision S11).
+   *
+   * It covered the seal as well until the seal became the square a reader
+   * selects. A seal is now a slider like any other in this list: it has a
+   * position, a velocity and a slot reaction, and it wears a letter.
+   */
+  private isCylinderInner(cylinders: Cylinder[], joint: Joint): boolean {
+    return cylinders.some((cylinder) => cylinder.inner.id === joint.id);
   }
 
   /**
@@ -221,11 +226,12 @@ export class ExportCatalogService {
   }
 
   /**
-   * The joint driving a cylinder, which is buried inside it.
+   * The joint driving a cylinder, offered against the part as well as itself.
    *
-   * A ram is driven from a joint with no marker, no hitbox and no row in any
-   * panel, so the effort that drive supplies has to be offered against the
-   * part a reader can actually see.
+   * It used to have no marker, no hitbox and no row in any panel, so the effort
+   * that drive supplies could only be asked for against the body. The seal has
+   * a row of its own now (decision S11), and this stays because a reader who
+   * chose the cylinder is asking about the cylinder.
    */
   drivenJointOf(linkId: string): RealJoint | undefined {
     const body = this.mechanism.links.find((link) => link.id === linkId);
@@ -242,11 +248,9 @@ export class ExportCatalogService {
     return slider?.input ? slider : undefined;
   }
 
-  /** The joints a sealed cylinder keeps to itself, by id. */
+  /** The joint a cylinder keeps to itself, by id: the buried barrel end. */
   hiddenJointIds(): Set<string> {
-    return new Set(
-      this.mechanism.sealedStructures().flatMap((cylinder) => [cylinder.inner.id, cylinder.seal.id])
-    );
+    return new Set(this.mechanism.sealedStructures().map((cylinder) => cylinder.inner.id));
   }
 
   /** What a machine is, in the one line the section heading has room for. */

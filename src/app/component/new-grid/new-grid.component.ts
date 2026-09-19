@@ -77,6 +77,7 @@ import {
 import {
   barrelPath,
   cylinderBlockPath,
+  cylinderLabelOffset,
   GROUND_STROKE,
   MARK,
   orientedCapsulePath,
@@ -105,8 +106,8 @@ import {
   cylinderSizeOf,
   cylinderSpanRange,
   cylinderJoints,
-  isInsideCylinder as isInsideCylinderOf,
 } from '../../model/cylinder';
+import { accentOutlineClass, drawnByCylinder, hiddenByCylinder } from '../../model/cylinder-skin';
 import { SnapGuide, snapToAxes } from '../../model/axis-snap';
 import { drawDepths } from '../../model/draw-order';
 import { MODEL_SCALE } from '../../model/render-scale';
@@ -2080,6 +2081,27 @@ export class NewGridComponent implements OnDestroy {
         // welded targets and the part's own joints out. Slot drops stay off
         // the table: a mount never rides a slot.
         const draggedCylinders = this.mechanismSrv.cylindersAt(this.activeObjService.selectedJoint);
+        // Grabbing the seal is *Starts at* by hand (decision S7): it runs along
+        // its own axis between the stops, and never merges with anything. So no
+        // drop candidate is even looked for — a slide is not an attachment, and
+        // a ring under a square that is only going to slide would promise one.
+        // With both end joints grounded it simply stays put, silently, which is
+        // what `dragCylinderSeal` answers.
+        if (
+          draggedCylinders.some((one) => one.seal.id === this.activeObjService.selectedJoint.id)
+        ) {
+          this.setDropCandidate(undefined);
+          this.slotCandidate = undefined;
+          this.axisSnapGuides = [];
+          // Raw, not snapped to the grid: the seal is projected onto its own
+          // axis, so a grid position would be rounded in a direction the part
+          // cannot move and then thrown away.
+          this.gridUtils.dragJoint(this.activeObjService.selectedJoint, mousePosInSvg);
+          this.dragState.noteMechanismModified();
+          this.activeObjService.updateSelectedObj(this.activeObjService.selectedJoint);
+          this.showPathWhileDragging();
+          break;
+        }
         if (draggedCylinders.length > 0) {
           this.updateDropCandidate(mousePosInSvg, $event.altKey);
           this.slotCandidate = undefined;
@@ -2917,9 +2939,11 @@ export class NewGridComponent implements OnDestroy {
           this.activeObjService.selectedJoint,
           mousePos.x,
           mousePos.y,
-          // A sealed cylinder's interior joints are not attachment points, so
-          // they never capture a drop; the mounts remain ordinary targets.
-          this.mechanismSrv.joints.filter((joint) => !this.isInsideCylinder(joint)),
+          // The buried barrel end is not on the grid at all, so it cannot be
+          // pointed at. The seal can be — it is a square with a hitbox — and it
+          // stays in the list so that aiming at it is marked red and says why,
+          // rather than the drag silently finding the next joint along.
+          this.mechanismSrv.joints.filter((joint) => !this.isCylinderInner(joint)),
           this.snapRadius(),
           // The full structural picture rides along separately: the filtered
           // list above cannot answer mount questions (the pins are gone), and
@@ -5115,39 +5139,22 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * Whether the selection is this cylinder's body, however it was selected.
+   * Whether either member of this cylinder is picked, however it was picked.
    *
    * Including by selecting the whole machine it belongs to: the cylinder is
    * drawn as one part by its own skin rather than through the link classes, so
    * it was the one body a machine-wide selection left unlit.
+   *
+   * What it is *for* is the mass overlay, which is a question about the part
+   * rather than about one member. The outlines ask per member instead.
    */
   isBodySelected(mark: CylinderMark): boolean {
-    if (
-      this.activeObjService.objType === 'Link' &&
-      this.activeObjService.selectedLink?.id === mark.body.id
-    ) {
-      return true;
-    }
-    return this.mechanismSrv.isPartInSelectedMechanism(mark.body);
-  }
-
-  /** The reader is pointing at this cylinder's machine in the transport. */
-  isBodyHovered(mark: CylinderMark): boolean {
-    return this.mechanismSrv.isPartInHoveredMechanism(mark.body) || this.isBodyPointedAt(mark);
-  }
-
-  /** Or at this ram itself, from a list that offers it as one part. */
-  isBodyPointedAt(mark: CylinderMark): boolean {
-    return this.mechanismSrv.isPointedAtBody(mark.body);
-  }
-
-  /**
-   * The selection stroke traces the part's exact silhouette — sharp at every
-   * profile step, curved only at the two end caps. The mark computes it
-   * analytically, so there is no union to pay for or to soften the corners.
-   */
-  cylinderSilhouette(mark: CylinderMark): string {
-    return mark.contour;
+    return [mark.barrelLink, mark.rodLink].some(
+      (link) =>
+        (this.activeObjService.objType === 'Link' &&
+          this.activeObjService.selectedLink?.id === link.id) ||
+        this.mechanismSrv.isPartInSelectedMechanism(link)
+    );
   }
 
   /** A link the cylinder skin is standing in for, so it is not drawn twice. */
@@ -5237,32 +5244,76 @@ export class NewGridComponent implements OnDestroy {
 
   /** A slider the cylinder skin has replaced. */
   isSkinned(mark: SliderMark): boolean {
-    return this.cylinderList.some((cylinder) => cylinder.pin.id === mark.joint.id);
+    return this.cylinderList.some((cylinder) => cylinder.seal.id === mark.joint.id);
+  }
+
+  /** The one joint a cylinder hides: N, the barrel's buried inner end. */
+  isCylinderInner(joint: Joint): boolean {
+    return hiddenByCylinder(this.cylinderList, this.mechanismSrv.cylinderAt(joint), joint);
+  }
+
+  /** A joint the ordinary joint layer does not draw, because the cylinder does. */
+  drawnByCylinderSkin(joint: Joint): boolean {
+    return drawnByCylinder(this.cylinderList, this.mechanismSrv.cylinderAt(joint), joint);
+  }
+
+  /** The cylinder whose seal this joint is, for the drag and the label. */
+  private cylinderSealedAt(joint: Joint): Cylinder | undefined {
+    const sealed = this.mechanismSrv.cylinderAt(joint);
+    return sealed && sealed.seal.id === joint.id ? sealed : undefined;
   }
 
   /**
-   * The joints a cylinder places for itself — the buried barrel end and the
-   * seal — get no hitbox, hover, label or selection at all. Only the two
-   * mounts remain selectable; the skin's own geometry selects the body.
+   * Where a joint's letter goes, in the tag layer's own half-flipped frame.
+   *
+   * Up and a little to the left of the joint, for every joint but one. A seal
+   * sits in the middle of its own part, so "up" is along the barrel as often as
+   * it is clear of it — and the letter came out painted on the metal. Its own
+   * letter goes out along the axis's normal instead, clear of the barrel's
+   * widest edge, on whichever side of the part is nearer the top of the screen.
    */
-  isInsideCylinder(joint: Joint): boolean {
-    // Checked against the structural resolution as well as the drawn marks:
-    // the marks are geometric, and mid-edit (a weld landing, a drag in
-    // flight) they can lag a frame — long enough for an interior label to
-    // blink into view.
-    if (
-      this.cylinderList.some((mark) => mark.hiddenJointId === joint.id || mark.pin.id === joint.id)
-    ) {
-      return true;
-    }
-    const sealed = this.mechanismSrv.cylinderAt(joint);
-    return !!sealed && isInsideCylinderOf(sealed, joint);
+  jointTagAnchor(joint: Joint): { x: number; y: number } {
+    const scale = this.settings.objectScale;
+    const sealed = this.cylinderSealedAt(joint);
+    if (!sealed) return { x: joint.x - scale * 0.3, y: -joint.y - scale * 0.5 };
+    const off = cylinderLabelOffset(
+      { x: sealed.mountB.x - sealed.mountA.x, y: sealed.mountB.y - sealed.mountA.y },
+      0.15 * scale
+    );
+    return { x: joint.x + off.x, y: -(joint.y + off.y) };
   }
 
-  /** One tag per part: the rod defers to the barrel's tag. */
+  /**
+   * One tag per part: the rod defers to the barrel's tag, which names the whole
+   * cylinder. See `linkDisplayName` for why it is one and not two.
+   */
   isSecondaryCylinderTag(link: Link): boolean {
     const sealed = this.mechanismSrv.cylinderOfBar(link);
     return !!sealed && link.id !== sealed.barrel.id;
+  }
+
+  /**
+   * The stroke a cylinder member wears when it is picked or pointed at, or
+   * nothing when it is neither.
+   *
+   * Its own path, not the part's fused silhouette: selecting the rod selects
+   * the rod (decision S12), and an outline round the whole cylinder would say
+   * the reader had picked the whole cylinder. Read off the same state class a
+   * bar's own outline is drawn from, so a member in a selection reads exactly
+   * as the bars beside it do.
+   */
+  cylinderMemberOutline(mark: CylinderMark, which: 'barrel' | 'rod'): string | undefined {
+    const link = which === 'barrel' ? mark.barrelLink : mark.rodLink;
+    const state = accentOutlineClass(this.mechanismSrv.getLinkCSSClass(link));
+    // A list that offers the whole cylinder as one part points at one of its
+    // bars, and means the part: both members answer, as the fused silhouette
+    // used to.
+    return state ?? (this.mechanismSrv.isPointedAtBody(link) ? 'link-pointed' : undefined);
+  }
+
+  /** The same question about the seal, whose square the block draws. */
+  cylinderSealOutline(mark: CylinderMark): string | undefined {
+    return accentOutlineClass(this.mechanismSrv.getJointCSSClass(mark.seal));
   }
 
   /**
@@ -5640,19 +5691,22 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * What a link's canvas tag calls it. A sealed cylinder's interior joints are
-   * an implementation detail, so its letters come from the two mounts alone —
-   * and a compound that swallowed a member keeps only its visible letters too.
+   * What a link's canvas tag calls it.
+   *
+   * A cylinder wears **one** tag, and it names the part rather than either
+   * member: the two ends it runs between, as it always has. Its members have
+   * names of their own now (`model/body-label.ts`, decision S10) — Barrel AC,
+   * Rod CB — and two tags were drawn and looked at before this stayed at one.
+   * They are written along the same axis, a bar-width apart at the widest, and
+   * on a cylinder near its own minimum size they land on top of each other and
+   * on the square between them. A panel title has room for a member's name and
+   * the canvas does not.
    */
   linkDisplayName(link: Link): string {
     const sealed = this.mechanismSrv.cylinderOfBar(link);
     if (!sealed) return link.name;
-    const interior = new Set([sealed.seal.id, sealed.inner.id]);
-    const stripped = [...link.name].filter((letter) => !interior.has(letter)).join('');
-    if (link.id === sealed.barrel.id || link.id === sealed.rod.id) {
-      return `${sealed.mountA.name}${sealed.mountB.name}`;
-    }
-    return stripped || link.name;
+    const named = (joint: Joint) => joint.name || joint.id;
+    return `${named(sealed.mountA)}${named(sealed.mountB)}`;
   }
 
   /** A member link of a sealed cylinder: never a slot-drop target. */

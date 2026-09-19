@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Cylinder, cylinderJoints } from '../model/cylinder';
+import { Cylinder, cylinderJoints, isCylinderInner } from '../model/cylinder';
 import { Coord } from '../model/coord';
 import { Force } from '../model/force';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
@@ -349,8 +349,30 @@ function copyClosure(
     ]),
     ...mechanism.forces.map((force) => force.name),
   ]);
+  // The visible joints first, then the buried barrel ends (decision S9). A
+  // cylinder's inner joint is named after the letter its own barrel mount ends
+  // up with, and that letter is handed out in this same pass -- so the copies
+  // that can be seen are lettered before anything is named after one of them.
+  //
+  // It used to be one pass, which spent a letter on the inner joint too: a
+  // duplicated cylinder came out with a hidden joint holding a letter no marker
+  // on the grid wore, and pushed every later joint further down the alphabet.
+  const innerOf = new Map<Joint, Cylinder>();
   for (const source of closure.joints) {
+    const cylinder = mechanism.cylinderAt(source);
+    if (cylinder && isCylinderInner(cylinder, source)) innerOf.set(source, cylinder);
+  }
+  for (const source of closure.joints) {
+    if (innerOf.has(source)) continue;
     const id = mechanism.determineNextLetter(reserved);
+    reserved.push(id);
+    jointMap.set(source, copyJoint(source, id, delta, usedNames));
+  }
+  for (const [source, cylinder] of innerOf) {
+    // Hung off the copy of the barrel's own mount, so the name reads as
+    // belonging to the cylinder it was copied into.
+    const base = jointMap.get(cylinder.mountA)?.id ?? cylinder.mountA.id;
+    const [id] = mechanism.determineInteriorNames(base, 1, reserved);
     reserved.push(id);
     jointMap.set(source, copyJoint(source, id, delta, usedNames));
   }

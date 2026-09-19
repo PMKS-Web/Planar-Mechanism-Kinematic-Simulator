@@ -1,7 +1,11 @@
 import { Joint, PrisJoint, RealJoint, RevJoint } from './joint';
 import { Link, RealLink } from './link';
 import { cylindersIn } from './cylinder';
-import { JointOperationContext, refuseJointOperation } from './joint-operation-permission';
+import {
+  JointOperationContext,
+  refuseGround,
+  refuseJointOperation,
+} from './joint-operation-permission';
 
 /**
  * The one place that answers whether a structural edit may happen at a joint.
@@ -135,7 +139,7 @@ describe('whether a weld may be made at a joint', () => {
     }
 
     const refused = refuseJointOperation(barrelNear, 'weld', context);
-    expect(refused?.short).toBe('part is sealed');
+    expect(refused?.short).toBe('inside a cylinder');
     expect(refused?.code).toBe('cylinder.sealed-weld');
   });
 });
@@ -198,5 +202,31 @@ describe('whether a block may be added or removed at a joint', () => {
     expect(refuseJointOperation(pin, 'remove-slider', context)?.code).toBe(
       'cylinder.sealed-slider'
     );
+  });
+});
+
+describe('whether a joint may be grounded', () => {
+  it('sends a cylinder’s own joints to the ends of the part', () => {
+    // A cylinder is bolted to the world at the joints at its two ends. The
+    // seal is a square a reader can select and right-click, so this is a row
+    // somebody will press (decision D9) rather than a rule nothing can reach.
+    const { pin, barrelNear, context } = drawing();
+    for (const inside of [pin, barrelNear]) {
+      const refused = refuseGround(inside, context);
+      expect(refused?.short, inside.id).toBe('ground an end joint instead');
+      expect(refused?.code, inside.id).toBe('cylinder.ground-an-end-joint');
+      // The same answer through the operation table, so the menu and the panel
+      // can ask whichever way suits them.
+      expect(refuseJointOperation(inside, 'ground', context)?.code).toBe(
+        'cylinder.ground-an-end-joint'
+      );
+    }
+  });
+
+  it('says nothing about the joints at those ends, or about a plain joint', () => {
+    const { barrelFar, rodFar, elbow, context } = drawing();
+    for (const joint of [barrelFar, rodFar, elbow]) {
+      expect(refuseGround(joint, context), joint.id).toBeUndefined();
+    }
   });
 });

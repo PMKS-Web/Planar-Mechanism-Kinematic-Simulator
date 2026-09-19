@@ -200,21 +200,24 @@ Spell it **center of mass** in prose and **CoM** in a label. Not `COM`, not
 | **cylinder** | the whole part | ~~ram~~ |
 | **barrel** | the fat outer body it slides in | ~~cylinder~~ (that is the whole part here) |
 | **rod** | the thin bar that slides out | — |
-| **joint** | either end, where it attaches | ~~mount~~ |
+| **joint** | either end, where it attaches — and the square between them | ~~mount~~, ~~seal~~ |
 | **stroke** / **travel** | how far the rod moves | — |
 | **closed** / **open** | the two ends of the travel | ~~retracted~~, ~~extended~~ |
 | **closing** / **opening** | which way it is moving right now | ~~retracting~~, ~~extending~~ |
 
-The black block on the rod has **no user-facing name**. Describe what it does —
-"where the rod begins its cycle" — rather than calling it a piston. If it ever
-needs discussing on its own it should get a label on the drawing first, and then
-the word is earned.
+The black block on the rod is **a joint, and is called one**. It is the sliding
+joint the rod hangs on: it wears a letter, it can be selected, dragged and given
+an input, and its panel is headed `Edit Joint C` like any other (Stage 2c,
+decision D9). What it must not be called is a piston, a head or a seal —
+describe what it does, "where the rod begins its cycle", if it needs describing
+at all.
 
 **`mount` is a code word, not a user word.** `barrelFar`, `rodFar`,
 `dragCylinderMount` keep it, because in code it usefully separates the two
-joints a user can reach from the three interior ones that have no hitbox. A user
-never sees those three, so from their side a cylinder has exactly two joints and
-"joint" is unambiguous. Same treatment as `playback` and `actuator`.
+joints at the ends from the ones the part places for itself. A user never sees
+the barrel's buried inner end, and calls all three of the rest "joint", so
+"joint" is unambiguous from their side. Same treatment as `playback` and
+`actuator`.
 
 **`ram` survives in code comments** — 113 of them — and was left there
 deliberately. This guide governs what the app *says*; rewriting a hundred

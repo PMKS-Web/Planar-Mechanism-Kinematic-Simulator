@@ -266,6 +266,9 @@ Not suites — import them from one.
 - `cylinder-end-on-joint.mjs` — ending the cylinder gesture on a joint attaches the rod there.
 - `cylinder-drag.mjs` — dragging a mount slides the piston within its travel, then grows or
   shrinks the ram past its stops.
+- `cylinder-members.mjs` — a cylinder as three selectables: the square is joint S, lettered and
+  draggable along its own axis; each member selects and outlines itself; a member drag still
+  carries the whole part; an old payload's seal opens with a letter.
 - `cylinder-mount.mjs` — a mount as an ordinary attachment point: menu rows and reasons, the live
   ring under a dragged joint, slots cut at a mount, welded selection, undo across a weld, a second
   machine left alone, filmstrips of a compound drag.

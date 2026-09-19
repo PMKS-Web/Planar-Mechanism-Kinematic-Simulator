@@ -21,8 +21,15 @@ import { Joint, PrisJoint, RealJoint } from './joint';
 import { RealLink } from './link';
 import { Cylinder, cylindersEnclosing } from './cylinder';
 
-/** A structural edit, named as the state it is asking for rather than as a toggle. */
-export type JointOperation = 'weld' | 'unweld' | 'add-slider' | 'remove-slider';
+/**
+ * A structural edit, named as the state it is asking for rather than as a toggle.
+ *
+ * `ground` is here although it changes no topology: it is a per-joint edit the
+ * menu, the panel and `MechanismService.toggleGround` all offer, and a cylinder
+ * refuses it at the seal. `stepsBetween` never emits it, so a change of joint
+ * type never asks about it.
+ */
+export type JointOperation = 'weld' | 'unweld' | 'add-slider' | 'remove-slider' | 'ground';
 
 /**
  * Why an edit will not happen, in the two lengths the app needs: `short` for a
@@ -66,13 +73,13 @@ export function refuseJointOperation(
   after?: JointOperation
 ): OperationRefusal | undefined {
   if (!(joint instanceof RealJoint)) {
-    return operation === 'weld' || operation === 'unweld'
-      ? { code: 'joint.not-a-joint', short: 'not a joint', long: 'Only a joint can be welded.' }
-      : {
-          code: 'joint.not-a-joint',
-          short: 'not a joint',
-          long: 'Only a joint can carry a slider.',
-        };
+    const long =
+      operation === 'weld' || operation === 'unweld'
+        ? 'Only a joint can be welded.'
+        : operation === 'ground'
+          ? 'Only a joint can be grounded.'
+          : 'Only a joint can carry a slider.';
+    return { code: 'joint.not-a-joint', short: 'not a joint', long };
   }
   switch (operation) {
     case 'weld':
@@ -83,7 +90,33 @@ export function refuseJointOperation(
       return refuseAddSlider(joint, context);
     case 'remove-slider':
       return refuseRemoveSlider(joint, context);
+    case 'ground':
+      return refuseGround(joint, context);
   }
+}
+
+/**
+ * Why this joint cannot be grounded, or `undefined` when it can.
+ *
+ * A cylinder is held in place at the two joints at its ends, so grounding the
+ * one in the middle of it is asking for a part to be bolted to the world by its
+ * own moving seal. The menu, the Edit panel and `MechanismService.toggleGround`
+ * all quote this, so no surface can offer a row the mutation then declines.
+ *
+ * Exported as well as reachable through `refuseJointOperation`, because the
+ * Grounded row asks about one operation and has no type change to walk.
+ */
+export function refuseGround(
+  joint: Joint | undefined,
+  context: JointOperationContext
+): OperationRefusal | undefined {
+  if (!(joint instanceof RealJoint)) return undefined;
+  if (cylindersEnclosing(context.cylinders, joint).length === 0) return undefined;
+  return {
+    code: 'cylinder.ground-an-end-joint',
+    short: 'ground an end joint instead',
+    long: 'A cylinder is held in place at the joints at its two ends, so this joint cannot be grounded. Ground one of those instead.',
+  };
 }
 
 function refuseWeld(
@@ -99,16 +132,15 @@ function refuseWeld(
 
   // A mount welds like any other joint: it is where a cylinder attaches to the
   // rest of the drawing, so fusing one into a bracket is the ordinary thing to
-  // want. What is sealed is the ram's *inside* -- the buried barrel end, the
-  // pin and the slider -- and welding anything to one of those is fusing a
-  // part to its own workings. None of the three is drawn or selectable, so
-  // nothing offers it; the rule is here so that no path can reach it, and so
-  // that the refusal says which of the two things a cylinder joint can be.
+  // want. What is closed is the ram's *inside* -- the buried barrel end and the
+  // seal -- and welding anything to one of those is fusing a part to its own
+  // workings. The buried end is never drawn and the seal is the square the skin
+  // draws, so the rule is here for every path that can reach either.
   if (cylindersEnclosing(context.cylinders, joint).length > 0) {
     return {
       code: 'cylinder.sealed-weld',
-      short: 'part is sealed',
-      long: 'This joint is inside a sealed cylinder, and fusing anything to it would weld the part to its own workings. Weld one of its two mounts instead.',
+      short: 'inside a cylinder',
+      long: 'This joint is inside a cylinder, and fusing anything to it would weld the part to its own workings. Weld one of the joints at its ends instead.',
     };
   }
 
@@ -206,14 +238,14 @@ function refuseUnweld(
   // the one joint a cylinder is sealed at.
   const welded = joint instanceof PrisJoint ? !joint.rotates : joint.isWelded;
   if (!welded) return undefined;
-  // The sealed pin's weld is what makes a cylinder one part, and it never
-  // comes off. A welded *mount* has no block of its own, so taking one back
-  // out of a neighboring compound is an ordinary unweld and stays legal —
-  // which is why this asks about interiors and not about membership.
+  // The seal's weld is what makes a cylinder one part, and it never comes off.
+  // A welded *mount* has no block of its own, so taking one back out of a
+  // neighboring compound is an ordinary unweld and stays legal — which is why
+  // this asks about interiors and not about membership.
   if (cylindersEnclosing(context.cylinders, joint).length > 0) {
     return {
       code: 'cylinder.sealed-unweld',
-      short: 'part is sealed',
+      short: 'inside a cylinder',
       long: 'This weld is what holds a cylinder together as one part, so it cannot be undone. Delete the cylinder instead.',
     };
   }
@@ -235,8 +267,8 @@ function refuseAddSlider(
   if (cylindersEnclosing(context.cylinders, joint).length > 0) {
     return {
       code: 'cylinder.sealed-slider',
-      short: 'part is sealed',
-      long: 'This joint is inside a sealed cylinder, which has a slider of its own, so it takes no second one. Add one at a mount instead.',
+      short: 'inside a cylinder',
+      long: 'This joint is inside a cylinder, which slides already, so it takes no second slider. Add one at a joint at either end instead.',
     };
   }
 
@@ -265,8 +297,8 @@ function refuseRemoveSlider(
   if (cylindersEnclosing(context.cylinders, joint).length > 0) {
     return {
       code: 'cylinder.sealed-slider',
-      short: 'part is sealed',
-      long: 'This joint is inside a sealed cylinder, and its slider is what makes the part one thing. Delete the cylinder instead.',
+      short: 'inside a cylinder',
+      long: 'This joint is inside a cylinder, and its sliding is what the part is. Delete the cylinder instead.',
     };
   }
   return undefined;
