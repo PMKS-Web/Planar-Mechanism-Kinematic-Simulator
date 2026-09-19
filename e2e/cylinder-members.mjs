@@ -25,6 +25,14 @@ import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const OUT = 'artifacts/cylinder-members';
+/**
+ * Where the seal's own mark is photographed, next to the bare slider's.
+ *
+ * `phase4-marks.mjs` photographs the same mark on a plain slider into the same
+ * directory: one mark, one folder, so the two are reviewed against each other
+ * rather than in two places.
+ */
+const MARK_OUT = 'artifacts/slide-mark';
 
 const results = [];
 const consoleErrors = [];
@@ -41,6 +49,7 @@ page.on('console', (m) => {
 });
 page.on('pageerror', (e) => consoleErrors.push(String(e)));
 mkdirSync(OUT, { recursive: true });
+mkdirSync(MARK_OUT, { recursive: true });
 // One filmstrip for the whole run: `filmstrip()` clears its directory when it
 // is made, so a second one on the same directory throws away the first's frames.
 const film = filmstrip(page, OUT);
@@ -59,7 +68,10 @@ async function oneCylinder(options = {}) {
   return page.evaluate((how) => {
     const grid = ng.getComponent(document.querySelector('app-new-grid'));
     const m = grid.mechanismSrv;
-    m.createCylinderFrom({ x: -600, y: 0 }, { x: 600, y: 0 });
+    // `from` and `to` are for the two shapes the mark has to survive: a ram too
+    // short to carry a full-size piston head, and one at an angle that is
+    // neither of the two the axes hand you for free.
+    m.createCylinderFrom(how.from ?? { x: -600, y: 0 }, how.to ?? { x: 600, y: 0 });
     const ram = m.sealedStructures()[0];
     if (how.groundA || how.groundB) {
       for (const end of [how.groundA && ram.mountA, how.groundB && ram.mountB].filter(Boolean)) {
@@ -138,6 +150,92 @@ async function clickAt(point) {
   await page.waitForTimeout(250);
 }
 
+/**
+ * Which of the three parts is drawn as picked.
+ *
+ * The two members say it with an outline round their own geometry; S says it
+ * the way every other joint does, on its own mark. The head it rides is
+ * furniture and is never outlined -- the `cylinder-seal-selected` path this
+ * used to look for is gone with the weld cross the joint layer used to skip.
+ */
+const litUp = () =>
+  page.evaluate(() => {
+    const seal = ng
+      .getComponent(document.querySelector('app-new-grid'))
+      .mechanismSrv.sealedStructures()[0].seal.id;
+    return {
+      barrel: !!document.querySelector('.cylinder-barrel-selected'),
+      rod: !!document.querySelector('.cylinder-rod-selected'),
+      seal: !!document.querySelector(`#joint_${seal}`)?.classList.contains('joint-selected'),
+      head: document.querySelector('.cylinder-seal')?.getAttribute('fill'),
+    };
+  });
+
+/** The seal's own mark, measured in the frame the head is drawn in. */
+const sealMark = () =>
+  page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const id = grid.mechanismSrv.sealedStructures()[0].seal.id;
+    const mark = document.querySelector(`#joint_${id}`);
+    const head = document.querySelector('.cylinder-seal');
+    const turn = (node) => {
+      const found = /rotate\(\s*(-?[\d.]+)/.exec(node?.getAttribute('transform') ?? '');
+      return found ? Number(found[1]) : null;
+    };
+    const box = mark.getBBox();
+    const rect = mark.getBoundingClientRect();
+    const badge = mark.closest('svg')?.querySelector('.lockBadge');
+    const badgeRect = badge?.getBoundingClientRect();
+    return {
+      id,
+      tag: mark.tagName,
+      classes: mark.getAttribute('class') ?? '',
+      arcs: (mark.getAttribute('d').match(/A /g) ?? []).length,
+      // `getBBox` is the element's own frame, and the turn onto the slot sits
+      // on the group above it -- so "wider than tall, here" is "along the slot".
+      along: box.width,
+      across: box.height,
+      turn: turn(mark.parentElement),
+      // The skin's own frame, which the head is drawn in.
+      headTurn: turn(document.querySelector('.cylinder-mark')),
+      headAlong: head.getBBox().width,
+      headAcross: head.getBBox().height,
+      headFill: head.getAttribute('fill'),
+      ring: !!mark.parentElement?.querySelector('.jointSelectionRing'),
+      badge: !!badge,
+      chip: !!mark.closest('svg')?.querySelector('.lockChip'),
+      badgeOnMark:
+        !!badgeRect &&
+        badgeRect.x + badgeRect.width / 2 > rect.x &&
+        badgeRect.x + badgeRect.width / 2 < rect.x + rect.width &&
+        badgeRect.y + badgeRect.height / 2 > rect.y &&
+        badgeRect.y + badgeRect.height / 2 < rect.y + rect.height,
+      screen: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+    };
+  });
+
+/** A clip round the whole ram, so the mark is read against the part it is on. */
+const clipRam = async () => {
+  const where = (await sealMark()).screen;
+  return {
+    x: Math.max(0, where.x + where.width / 2 - 380),
+    y: Math.max(0, where.y + where.height / 2 - 150),
+    width: 760,
+    height: 300,
+  };
+};
+
+/** And a tight one on the head, where the mark's own proportions are readable. */
+const clipHead = async (half = 90) => {
+  const where = (await sealMark()).screen;
+  return {
+    x: Math.max(0, where.x + where.width / 2 - half),
+    y: Math.max(0, where.y + where.height / 2 - half / 2),
+    width: half * 2,
+    height: half,
+  };
+};
+
 // ------------------------------------------------- 1. the square is joint S
 console.log('\nthe square is joint S');
 let ids = await oneCylinder();
@@ -198,6 +296,176 @@ check(
   JSON.stringify(letterClear)
 );
 
+// ------------------------------------------- 1b. the mark S wears
+//
+// S is a slider whose riders cannot turn, so it wears the cream bar every such
+// slider wears, lying along its own axis on the black piston head. The head is
+// furniture: it takes the gesture and none of the state.
+console.log("\nthe seal's own mark, and the head it rides");
+// Section 1 left S picked and the pointer parked on it, and a picked or
+// pointed-at joint is drawn in amber: the mark at rest is what the reference
+// drawing shows, so this starts from nothing picked and nothing under the mouse.
+await page.evaluate(() =>
+  ng.getComponent(document.querySelector('app-new-grid')).activeObjService.updateSelectedObj(null)
+);
+await page.mouse.move(8, 8);
+await page.waitForTimeout(400);
+let mark = await sealMark();
+check(
+  'S wears a rounded cream bar along its own axis, inside the head',
+  mark.tag === 'path' &&
+    mark.classes.includes('slideMark') &&
+    mark.arcs === 4 &&
+    mark.along > mark.across * 1.6 &&
+    mark.turn === mark.headTurn &&
+    // A visible band of black at each end and along each side, which is what
+    // makes it read as a mark *on* the head rather than as a smaller head.
+    mark.along < mark.headAlong - 8 &&
+    mark.across < mark.headAcross - 8,
+  JSON.stringify(mark)
+);
+await page.screenshot({ path: `${MARK_OUT}/cylinder-idle.png`, clip: await clipRam() });
+await page.screenshot({ path: `${MARK_OUT}/cylinder-idle-detail.png`, clip: await clipHead() });
+
+await page.mouse.move(sealPoint.x, sealPoint.y);
+await page.waitForTimeout(400);
+mark = await sealMark();
+check(
+  'pointing at the head lights the bar and leaves the head black',
+  mark.classes.includes('joint-highlight') && mark.headFill === '#000000',
+  JSON.stringify({ classes: mark.classes, headFill: mark.headFill })
+);
+await page.screenshot({ path: `${MARK_OUT}/cylinder-hovered.png`, clip: await clipRam() });
+
+await clickAt(sealPoint);
+mark = await sealMark();
+check(
+  'and selecting it says so on the bar, with nothing outlined on the head',
+  mark.classes.includes('joint-selected') &&
+    mark.headFill === '#000000' &&
+    !(await page.evaluate(() => !!document.querySelector('.cylinder-seal-selected'))),
+  JSON.stringify({ classes: mark.classes, headFill: mark.headFill })
+);
+await page.screenshot({ path: `${MARK_OUT}/cylinder-selected.png`, clip: await clipRam() });
+
+await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const seal = grid.mechanismSrv.sealedStructures()[0].seal;
+  grid.activeObjService.updateSelectedObj(seal);
+  grid.mechanismSrv.toggleLock(seal);
+});
+await page.waitForTimeout(500);
+mark = await sealMark();
+check(
+  'a locked seal wears its padlock on the bar, with no chip under it',
+  mark.badge && mark.badgeOnMark && !mark.chip,
+  JSON.stringify({ badge: mark.badge, on: mark.badgeOnMark, chip: mark.chip })
+);
+await page.screenshot({ path: `${MARK_OUT}/cylinder-locked.png`, clip: await clipRam() });
+
+// A ram too short to carry a full-size head shrinks the head, and the mark
+// shrinks with it rather than filling the black it is supposed to be marked on.
+// The span clamps to the smallest a creation gesture will draw, which is also
+// the one that puts the head at its own floor: a square.
+await oneCylinder({ from: { x: -70, y: 0 }, to: { x: 70, y: 0 } });
+await page.waitForTimeout(500);
+const small = await sealMark();
+check(
+  'on the shortest ram the head shrinks and the mark shrinks inside it',
+  small.headAlong < mark.headAlong &&
+    small.along < mark.along &&
+    small.along < small.headAlong - 8 &&
+    Math.abs(small.along / small.across - mark.along / mark.across) < 0.01,
+  JSON.stringify({ small, was: { along: mark.along, head: mark.headAlong } })
+);
+await page.screenshot({ path: `${MARK_OUT}/cylinder-min.png`, clip: await clipRam() });
+
+// Neither of the two angles the axes hand you for free.
+await oneCylinder({ from: { x: -300, y: -520 }, to: { x: 300, y: 520 } });
+await page.waitForTimeout(500);
+const steep = await sealMark();
+check(
+  'and at 60 degrees the bar lies along the ram, not along the screen',
+  Math.abs(Math.abs(steep.turn) - 60) < 0.5 &&
+    steep.turn === steep.headTurn &&
+    steep.along > steep.across * 1.6,
+  JSON.stringify({ turn: steep.turn, headTurn: steep.headTurn })
+);
+await page.screenshot({ path: `${MARK_OUT}/cylinder-60deg.png`, clip: await clipRam() });
+
+// ...and it stays on the head while the head moves, which is the one thing a
+// mark drawn in its own layer above the skin could get wrong.
+await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await page.waitForTimeout(250);
+const drivenRam = await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const m = grid.mechanismSrv;
+  const pick = (j) => grid.activeObjService.updateSelectedObj(j);
+  m.createCylinderFrom({ x: -800, y: 0 }, { x: 400, y: 0 });
+  const one = m.sealedStructures()[0];
+  const bar = m.addBarFrom(one.mountB, { x: one.mountB.x + 400, y: one.mountB.y + 600 });
+  const tip = bar.joints.find((j) => j.id !== one.mountB.id);
+  const tipId = tip.id;
+  pick(one.mountB);
+  m.weldJoint();
+  pick(one.mountA);
+  m.toggleGround();
+  // By letter: gaining a slot exchanges the joint for a `PrisJoint` keeping its
+  // id, so the object captured before that grounds nothing at all.
+  pick(m.joints.find((j) => j.id === tipId));
+  m.toggleSlider();
+  pick(m.joints.find((j) => j.id === tipId));
+  m.toggleGround();
+  m.toggleCylinderInput(m.sealedStructures()[0]);
+  m.finishStructuralEdit(true);
+  pick(null);
+  return { samples: m.masterMechanism()?.joints.length ?? 0 };
+});
+await page.waitForTimeout(400);
+const atRest = await sealMark();
+await page.evaluate((samples) => {
+  ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.animate(
+    Math.max(1, Math.round(samples * 0.35)),
+    false
+  );
+}, drivenRam.samples);
+await page.waitForTimeout(400);
+const midCycle = await sealMark();
+check(
+  'the mark follows the head through playback, still turned with it',
+  midCycle.turn === midCycle.headTurn &&
+    midCycle.along === atRest.along &&
+    // It actually went somewhere -- a mark that never moved would pass the
+    // agreement above by standing still with the head.
+    Math.hypot(midCycle.screen.x - atRest.screen.x, midCycle.screen.y - atRest.screen.y) > 4,
+  JSON.stringify({ rest: atRest.screen, mid: midCycle.screen, turn: midCycle.turn })
+);
+await page.screenshot({ path: `${MARK_OUT}/cylinder-playback.png`, clip: await clipRam() });
+
+// Back to the plain ram the sections below are written against -- and one pass
+// over it close up, because the proportions of a mark drawn at 21 model units
+// are not something a picture of the whole ram can be read for.
+ids = await oneCylinder();
+await page.waitForTimeout(500);
+part = await ram();
+sealPoint = await screenAt(part.s);
+await page.evaluate((at) => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  for (let step = 0; step < 3; step += 1) grid.svgGrid.panZoomObject.zoomAtPointBy(1.6, at);
+}, sealPoint);
+await page.waitForTimeout(400);
+await page.screenshot({ path: `${MARK_OUT}/cylinder-detail-idle.png`, clip: await clipHead(240) });
+await clickAt(await screenAt((await ram()).s));
+await page.screenshot({
+  path: `${MARK_OUT}/cylinder-detail-selected.png`,
+  clip: await clipHead(240),
+});
+
+ids = await oneCylinder();
+part = await ram();
+sealPoint = await screenAt(part.s);
+
 // -------------------------------------------- 2. each member selects itself
 console.log('\nclicking a member selects that member');
 const barrelAt = await barrelPoint(part);
@@ -208,11 +476,7 @@ check(
   picked.type === 'Link' && picked.link === ids.barrel,
   JSON.stringify(picked)
 );
-const barrelOutline = await page.evaluate(() => ({
-  barrel: !!document.querySelector('.cylinder-barrel-selected'),
-  rod: !!document.querySelector('.cylinder-rod-selected'),
-  seal: !!document.querySelector('.cylinder-seal-selected'),
-}));
+const barrelOutline = await litUp();
 check(
   'and the barrel alone is outlined',
   barrelOutline.barrel && !barrelOutline.rod && !barrelOutline.seal,
@@ -226,11 +490,7 @@ await page.screenshot({
 const rodAt = await rodPoint(part);
 await clickAt(rodAt);
 picked = await selection();
-const rodOutline = await page.evaluate(() => ({
-  barrel: !!document.querySelector('.cylinder-barrel-selected'),
-  rod: !!document.querySelector('.cylinder-rod-selected'),
-  seal: !!document.querySelector('.cylinder-seal-selected'),
-}));
+const rodOutline = await litUp();
 check(
   'the rod path selects the rod link, and the rod alone is outlined',
   picked.type === 'Link' &&
@@ -246,11 +506,7 @@ await page.screenshot({
 });
 
 await clickAt(sealPoint);
-const sealOutline = await page.evaluate(() => ({
-  barrel: !!document.querySelector('.cylinder-barrel-selected'),
-  rod: !!document.querySelector('.cylinder-rod-selected'),
-  seal: !!document.querySelector('.cylinder-seal-selected'),
-}));
+const sealOutline = await litUp();
 check(
   'and with S picked, neither member is outlined',
   sealOutline.seal && !sealOutline.barrel && !sealOutline.rod,
@@ -273,11 +529,7 @@ const closed = await page.evaluate((where) => {
   return grid.activeObjService.objType;
 }, ids);
 await page.waitForTimeout(250);
-const allThree = await page.evaluate(() => ({
-  barrel: !!document.querySelector('.cylinder-barrel-selected'),
-  rod: !!document.querySelector('.cylinder-rod-selected'),
-  seal: !!document.querySelector('.cylinder-seal-selected'),
-}));
+const allThree = await litUp();
 check(
   'a multi-selection over the whole part lights all three',
   allThree.barrel && allThree.rod && allThree.seal,

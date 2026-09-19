@@ -18,7 +18,7 @@ import { NotificationService } from '../../services/notification.service';
 import { EditPermissionService } from '../../services/edit-permission.service';
 import { Coord } from '../../model/coord';
 import { LONGEST_ARROW_FRACTION, PATH_ARROW_COUNT } from '../../model/vector-trace';
-import { CYLINDER } from '../../model/joint-marks';
+import { CYLINDER, MARK, slideMarkPath } from '../../model/joint-marks';
 import { ColorService } from '../../services/color.service';
 
 /**
@@ -111,13 +111,14 @@ describe('NewGridComponent cylinder selectables', () => {
 
     expect(component.isCylinderInner(cylinder.inner)).toBe(true);
     expect(component.isCylinderInner(cylinder.seal)).toBe(false);
-    // The ordinary joint layer draws neither, because the skin draws the
-    // square: a marker painted there as well would be a weld cross over it.
-    expect(component.drawnByCylinderSkin(cylinder.seal)).toBe(true);
-    expect(component.drawnByCylinderSkin(cylinder.mountA)).toBe(false);
+    // The seal is drawn from the ordinary joint loop like any other Prismatic
+    // slider: its cream bar rides the head the skin draws. Only N is skipped.
+    expect(component.slideMarkOn(cylinder.seal)).toBeDefined();
+    expect(component.isWeldMark(cylinder.seal)).toBe(false);
 
     const hit = fixture.nativeElement.querySelector(`#joint_${cylinder.seal.id}`);
     expect(hit, 'the seal has a hitbox').not.toBeNull();
+    expect(hit.classList, 'and it is the slide mark that carries it').toContain('slideMark');
     expect(fixture.nativeElement.querySelector(`#joint_${cylinder.inner.id}`)).toBeNull();
 
     const letters = [...fixture.nativeElement.querySelectorAll('#jointTagHolder text')].map(
@@ -143,12 +144,37 @@ describe('NewGridComponent cylinder selectables', () => {
     expect(outlineOf('barrel')).toBeUndefined();
     expect(outlineOf('rod')).toBe('link-selected');
 
-    // The seal is a joint, so picking it picks neither body.
+    // The seal is a joint, so picking it picks neither body — and it says so
+    // on its own mark, the way every other joint does, rather than by outlining
+    // the head it rides.
     active.updateSelectedObj(cylinder.seal as RevJoint);
     fixture.detectChanges();
     expect(outlineOf('barrel')).toBeUndefined();
     expect(outlineOf('rod')).toBeUndefined();
-    expect(component.cylinderSealOutline(component.cylinderList[0])).toBe('link-selected');
+    expect(fixture.nativeElement.querySelector('.cylinder-seal-selected')).toBeNull();
+    const mark = fixture.nativeElement.querySelector(`#joint_${cylinder.seal.id}`);
+    expect(mark.classList).toContain('joint-selected');
+    // And the head under it is painted no differently for being picked.
+    const head = fixture.nativeElement.querySelector('.cylinder-seal');
+    expect(head.getAttribute('fill')).toBe('#000000');
+  });
+
+  it('turns the seal mark along its own axis and keeps it inside the head', () => {
+    const { component, cylinder, fixture } = drawnCylinder();
+    const mark = component.cylinderList[0];
+    const bar = component.slideMarkOn(cylinder.seal)!;
+
+    // The frame the head is drawn in, reused rather than measured again.
+    expect(bar.frame).toBe(component.sliderMarks.frame({ x: 0, y: 0, rotation: mark.rotation }));
+    const drawn = fixture.nativeElement.querySelector(`#joint_${cylinder.seal.id}`);
+    expect(drawn.closest('g').getAttribute('transform')).toContain(`rotate(${mark.rotation})`);
+
+    // A full-size ram carries a full-size head, so the mark is undiminished --
+    // and still well inside the black it is marked on.
+    const r = 0.15 * TestBed.inject(SettingsService).objectScale;
+    expect(mark.headAlongHalf).toBeCloseTo(MARK.blockAlongHalf * r, 9);
+    expect(bar.path).toBe(slideMarkPath(r));
+    expect(MARK.slideAlongHalf * r).toBeLessThan(mark.headAlongHalf);
   });
 
   it('keeps the seal off every drop candidate list, and the buried end out of the search', () => {

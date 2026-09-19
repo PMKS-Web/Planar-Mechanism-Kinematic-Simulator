@@ -109,6 +109,39 @@ export const MARK = {
   /** The welded marker, replacing the circle at 1.47R across. */
   plusArm: 0.22,
   plusExtent: 0.735,
+
+  /**
+   * The slide's marker: a 2.8R by 1.4R bar lying along the slot, corner 0.25R.
+   *
+   * A slider whose riders cannot turn used to wear the weld cross, which is
+   * true and says nothing — a `+` on a square reads as "fused here" and leaves
+   * the reader to find the slot before they know which way the thing goes. The
+   * bar is the same fact with a direction in it: its shape says the riders are
+   * rigid with the block, and its *orientation* says what they are rigid
+   * against. A pin-in-slot slider keeps its circle, so the two sliders can be
+   * told apart at a glance rather than by tracing what is attached to them.
+   */
+  slideAlongHalf: 1.4,
+  slideAcrossHalf: 0.7,
+  slideCorner: 0.25,
+
+  /**
+   * The most of the host block's half-length the mark is allowed to take.
+   *
+   * The mark sits on a black block, and on the two it sits on that block is
+   * not always the same size: an ordinary slider's is a full 3.84R half, but a
+   * cylinder's piston head shrinks with the barrel, down to a 1.525R square
+   * (`CYLINDER.headAlongHalfMin`). Drawn at full size on the shortest head the
+   * bar would leave 0.125R of black at each end — a margin thinner than the
+   * mark's own corner radius, which reads as a cream block with a dark rim
+   * rather than as a mark on a block.
+   *
+   * So the whole mark scales, proportions and all, until it fits this share of
+   * the block it is on. At 0.7 the shortest head keeps 0.46R of black at each
+   * end, and a full-size block is untouched: 0.7 × 3.84R is well over the
+   * 1.4R the mark wants, so the clamp never binds where there is room.
+   */
+  slideHostShare: 0.7,
 } as const;
 
 /**
@@ -435,6 +468,37 @@ export function motorBodyPath(r: number): string {
   // and that union fillets the corner where the two meet. A wedge added here as
   // well is a second fillet on the same corner, which draws as a blister.
   return roundedRect(-h, -h, 2 * h, 2 * h, MARK.blockCorner * 2 * r);
+}
+
+/**
+ * How much of its drawn size the slide's mark keeps on the block it sits on.
+ *
+ * 1 wherever there is room, which is every ordinary slider and every cylinder
+ * long enough to carry a full piston head. `hostAlongHalf` is that block's own
+ * half-length along the slot; pass nothing where the caller does not know it
+ * and the mark is drawn at full size.
+ */
+export function slideMarkFit(r: number, hostAlongHalf?: number): number {
+  if (hostAlongHalf === undefined) return 1;
+  return Math.min(1, (MARK.slideHostShare * hostAlongHalf) / (MARK.slideAlongHalf * r));
+}
+
+/**
+ * The slide's marker: the cream bar a slider whose riders cannot turn wears in
+ * place of a pin's circle, drawn along +x so the caller's slot frame aims it.
+ *
+ * `inset` pulls every edge in by that much, which is how the selection ring is
+ * stroked *inside* the mark rather than around it — the same thing a pin's
+ * ring does by shrinking its radius. A weld cross has no inside edge to ring
+ * and wears the accent as an outline instead; this mark has one, so it does
+ * not.
+ */
+export function slideMarkPath(r: number, hostAlongHalf?: number, inset = 0): string {
+  const fit = slideMarkFit(r, hostAlongHalf);
+  const a = Math.max(MARK.slideAlongHalf * r * fit - inset, 0);
+  const c = Math.max(MARK.slideAcrossHalf * r * fit - inset, 0);
+  const k = Math.max(MARK.slideCorner * r * fit - inset, 0);
+  return roundedRect(-a, -c, 2 * a, 2 * c, k);
 }
 
 /** The welded marker: a plus, 1.47R across, in place of the free circle. */

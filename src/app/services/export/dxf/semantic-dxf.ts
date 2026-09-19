@@ -317,10 +317,19 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
           });
         }
       }
-      // The same cross the bodies get, and the same one the canvas draws. A
-      // welded joint has no circle here -- correctly, it is not a bearing --
-      // but nothing said so, and a reader could not tell a rigid corner from a
-      // missing one.
+      // The same cross the bodies get. A welded joint has no circle here --
+      // correctly, it is not a bearing -- but nothing said so, and a reader
+      // could not tell a rigid corner from a missing one.
+      //
+      // It was also the cross the canvas draws, and for a *revolute* it still
+      // is. A slider whose riders cannot turn wears a cream bar on screen now
+      // (decision S13 of `joint-type-and-cylinder-plan.md`), and that mark does
+      // not come here: a DXF has no fills and no colors, the bar's whole job is
+      // to be a filled shape the eye finds, and a rounded rectangle laid on the
+      // slot would land on top of the block mark drawn just above. The line-art
+      // convention already draws the same distinction the bar draws -- circle
+      // for a bearing, cross for rigid -- so a Prismatic slider keeps the cross
+      // and a Pin-in-slot one keeps its circle.
       if (joint instanceof RealJoint && isWelded(joint) && !cylinderInterior.has(joint.id)) {
         entities.push(...weldMark(point(joint), 0.1 * symbolScale, DXF_LAYER.joints));
       }

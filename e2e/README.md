@@ -242,7 +242,10 @@ Not suites — import them from one.
 - `phase3-slide.mjs` — a Scotch yoke from a URL reaches one degree of freedom and translates its
   yoke without rotating it. Needs installed Chrome (`PMKS_CHROME`).
 - `phase4-marks.mjs` — slot channels, slider blocks, weld plates and rails drawn on the four
-  reference linkages.
+  reference linkages, and the cream bar a slider whose riders cannot turn wears in place of the
+  weld cross: a Pin-in-slot slider keeps its circle, a welded revolute keeps its `+`, and every
+  hover, selection, ring and lock is drawn on the bar while the block's paint never moves off
+  #000. Its screenshots go to `artifacts/slide-mark/`, beside the cylinder's.
 - `phase4-animation.mjs` — the marks stay anchored to the right thing while the mechanism plays.
 - `phase4-invariants.mjs` — every slider mark sits on its joint, along its slot, centered in a
   floating channel, with weld plates reaching their joint — at rest, after drags and after a scale
@@ -268,7 +271,10 @@ Not suites — import them from one.
   shrinks the ram past its stops.
 - `cylinder-members.mjs` — a cylinder as three selectables: the square is joint S, lettered and
   draggable along its own axis; each member selects and outlines itself; a member drag still
-  carries the whole part; an old payload's seal opens with a letter.
+  carries the whole part; an old payload's seal opens with a letter. Also S's own mark — the cream
+  bar on the piston head, along the axis and inside the black at every ram size and angle, through
+  playback, with the states on the bar and never on the head. Screenshots to
+  `artifacts/slide-mark/`.
 - `cylinder-mount.mjs` — a mount as an ordinary attachment point: menu rows and reasons, the live
   ring under a dragged joint, slots cut at a mount, welded selection, undo across a weld, a second
   machine left alone, filmstrips of a compound drag.

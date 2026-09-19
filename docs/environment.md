@@ -161,6 +161,21 @@ npm start          # http://localhost:4200
 Open it as `localhost`, never `127.0.0.1`, and give a second server its own port; both rules are
 under [Environment](#environment).
 
+**The dev server does not see a file replaced by rename, and it never recovers.** `sed -i ''`
+writes a new file and renames it over the old one. The running `ng serve` kept serving the copy it
+had cached, went on rebuilding for every other edit, and ignored that one file from then on: a
+`touch`, and an in-place rewrite minutes later, changed nothing. The suites then pass against a
+bundle that is one file behind the tree, which is how a corrected refusal sentence was still
+misspelled in a screenshot two hours after the fix was committed. Edit in place (an editor, or a
+script that opens the file for writing), and when in doubt ask the server what it has:
+
+```bash
+curl -s http://localhost:4200/main.js | grep -c "a string only the new code contains"
+```
+
+A second `ng serve --port 4300` started afterwards reads the tree fresh, and
+`PMKS_BASE_URL=http://localhost:4300` points the suites at it.
+
 **Do not gate a script on the tail of the serve log.** This looks reasonable and hangs forever:
 
 ```bash
