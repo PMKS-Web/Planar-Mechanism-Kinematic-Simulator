@@ -70,6 +70,7 @@ import {
   CylinderMark,
   Guide,
   RiderDraw,
+  SlideMarkDraw,
   SliderMark,
   SliderMarkService,
   WeldPlate,
@@ -107,7 +108,7 @@ import {
   cylinderSpanRange,
   cylinderJoints,
 } from '../../model/cylinder';
-import { accentOutlineClass, drawnByCylinder, hiddenByCylinder } from '../../model/cylinder-skin';
+import { accentOutlineClass, hiddenByCylinder } from '../../model/cylinder-skin';
 import { SnapGuide, snapToAxes } from '../../model/axis-snap';
 import { drawDepths } from '../../model/draw-order';
 import { MODEL_SCALE } from '../../model/render-scale';
@@ -5235,11 +5236,6 @@ export class NewGridComponent implements OnDestroy {
     return hiddenByCylinder(this.cylinderList, this.mechanismSrv.cylinderAt(joint), joint);
   }
 
-  /** A joint the ordinary joint layer does not draw, because the cylinder does. */
-  drawnByCylinderSkin(joint: Joint): boolean {
-    return drawnByCylinder(this.cylinderList, this.mechanismSrv.cylinderAt(joint), joint);
-  }
-
   /** The cylinder whose seal this joint is, for the drag and the label. */
   private cylinderSealedAt(joint: Joint): Cylinder | undefined {
     const sealed = this.mechanismSrv.cylinderAt(joint);
@@ -5292,11 +5288,6 @@ export class NewGridComponent implements OnDestroy {
     // bars, and means the part: both members answer, as the fused silhouette
     // used to.
     return state ?? (this.mechanismSrv.isPointedAtBody(link) ? 'link-pointed' : undefined);
-  }
-
-  /** The same question about the seal, whose square the block draws. */
-  cylinderSealOutline(mark: CylinderMark): string | undefined {
-    return accentOutlineClass(this.mechanismSrv.getJointCSSClass(mark.seal));
   }
 
   /**
@@ -5356,15 +5347,37 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
+   * The cream bar a slider whose riders cannot turn wears in place of a pin's
+   * circle, or nothing for a joint that wears something else.
+   *
+   * It wore the weld cross until now. True, and mute: a `+` says the bodies
+   * meeting here are fused and leaves which way the thing slides to be worked
+   * out from whatever is drawn underneath it.
+   */
+  slideMarkOn(joint: Joint): SlideMarkDraw | undefined {
+    return this.sliderMarks.slideMarkFor(joint, this.sliderMarkList, this.cylinderList, {
+      r: 0.15 * this.settings.objectScale,
+      ring: this.selectionRingWidth(),
+    });
+  }
+
+  /** And which joints keep the weld cross: a welded revolute, and nothing else. */
+  isWeldMark(joint: Joint): boolean {
+    return !(joint instanceof PrisJoint) && this.gridUtils.getWelded(joint);
+  }
+
+  /**
    * The padlock's ink on a given joint.
    *
    * The badge is drawn on the joint rather than beside it, so on a dark one the
    * default near-black glyph disappears into the pin it is sitting on. A welded
-   * joint brings its own white chip and the glyph stands on that instead.
+   * joint brings its own white chip and the glyph stands on that instead; a
+   * slide's bar is chip enough, exactly as a pin's circle is, so it flips its
+   * ink the same way.
    */
   lockInkOn(joint: Joint): string | null {
     const fill = this.jointFillOf(joint);
-    if (!fill || this.gridUtils.getWelded(joint)) return null;
+    if (!fill || this.isWeldMark(joint)) return null;
     return luminanceOf(fill) > INK_FLIPS_AT ? '#263238' : '#eceff1';
   }
 

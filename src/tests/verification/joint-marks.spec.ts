@@ -9,6 +9,8 @@ import {
   MARK,
   railGeometry,
   rodBodyPath,
+  slideMarkFit,
+  slideMarkPath,
   slotHalfLength,
   straightArrowPaths,
   motorBodyAt,
@@ -153,6 +155,95 @@ describe('the mark system, against the delivered SVGs', () => {
     const objectScale = 1;
     const jointRadius = 0.2 * objectScale;
     expect(MARK.slotInset * 0.15 * objectScale).toBeGreaterThan(jointRadius * 1.5);
+  });
+});
+
+describe("the slide's mark", () => {
+  /**
+   * How far the pen reaches each way. `endpoints` above reads M, L and A only,
+   * which is every mark drawn from arcs and lines; a rounded rectangle is drawn
+   * from H and V as well, so its corners would be read as its extremes.
+   */
+  function halves(path: string): { along: number; across: number } {
+    let x = 0;
+    let y = 0;
+    let along = 0;
+    let across = 0;
+    for (const [, command, body] of path.matchAll(/([MLHVAZ])([^MLHVAZ]*)/g)) {
+      const values = numbers(body);
+      if (command === 'M' || command === 'L') [x, y] = values;
+      else if (command === 'H') [x] = values;
+      else if (command === 'V') [y] = values;
+      else if (command === 'A') [x, y] = values.slice(-2);
+      along = Math.max(along, Math.abs(x));
+      across = Math.max(across, Math.abs(y));
+    }
+    return { along, across };
+  }
+
+  it('draws a 2.8R by 1.4R bar along the slot, cornered at 0.25R', () => {
+    const path = slideMarkPath(R);
+
+    expect(halves(path)).toEqual({
+      along: MARK.slideAlongHalf * R,
+      across: MARK.slideAcrossHalf * R,
+    });
+    // Four rounded corners, at the radius the reference drawing shows.
+    expect(path.match(/A /g)).toHaveLength(4);
+    expect(numbers(path)).toContain(MARK.slideCorner * R);
+  });
+
+  it('lies along the slot rather than across it, which is the whole message', () => {
+    expect(MARK.slideAlongHalf).toBeGreaterThan(MARK.slideAcrossHalf);
+  });
+
+  it('stands well clear of a pin, so the two marks cannot be confused', () => {
+    // A pin is a circle of exactly 1R. The bar is wider than that along the
+    // slot and narrower across it, so neither reading is "a squashed circle".
+    expect(MARK.slideAlongHalf).toBeGreaterThan(1);
+    expect(MARK.slideAcrossHalf).toBeLessThan(1);
+  });
+
+  it('is drawn at full size on any block with room for it', () => {
+    expect(slideMarkFit(R, MARK.blockAlongHalf * R)).toBe(1);
+    // A full-size piston head is that same block, so a normal ram is untouched.
+    expect(slideMarkFit(R, cylinderHeadHalf(40 * R, R))).toBe(1);
+    expect(slideMarkPath(R, MARK.blockAlongHalf * R)).toBe(slideMarkPath(R));
+  });
+
+  it('shrinks with a piston head that has, keeping black at both ends', () => {
+    // The shortest head there is: a square of CYLINDER.headAlongHalfMin.
+    const head = cylinderHeadHalf(0.2 * R, R);
+    expect(head).toBeCloseTo(CYLINDER.headAlongHalfMin * R, 9);
+
+    const { along, across } = halves(slideMarkPath(R, head));
+    expect(along).toBeLessThan(head);
+    // The margin the clamp exists to keep: a visible band of block at each end,
+    // wider than the mark's own corner radius rather than a dark rim.
+    expect(head - along).toBeGreaterThan(MARK.slideCorner * R);
+    // Proportions hold: the whole mark scales, so it never turns into a square.
+    expect(along / across).toBeCloseTo(MARK.slideAlongHalf / MARK.slideAcrossHalf, 9);
+    // And it never reaches the head's own half-height either.
+    expect(across).toBeLessThan(MARK.blockAcrossHalf * R);
+  });
+
+  it('never grows past the share of its block the rule allows', () => {
+    for (const barrel of [0.2, 1, 2, 4, 8, 40]) {
+      const head = cylinderHeadHalf(barrel * R, R);
+      expect(halves(slideMarkPath(R, head)).along).toBeLessThanOrEqual(
+        MARK.slideHostShare * head + 1e-9
+      );
+    }
+  });
+
+  it('rings itself inside its own edge, the way a pin does', () => {
+    // A weld cross has no inside edge and wears the accent as an outline; this
+    // mark has one, so the ring is the same shape pulled in by half its width.
+    const width = 3;
+    const { along, across } = halves(slideMarkPath(R, undefined, width / 2));
+
+    expect(along).toBeCloseTo(MARK.slideAlongHalf * R - width / 2, 9);
+    expect(across).toBeCloseTo(MARK.slideAcrossHalf * R - width / 2, 9);
   });
 });
 

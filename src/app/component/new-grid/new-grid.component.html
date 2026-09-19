@@ -636,11 +636,14 @@
             <!-- Grabbing the block starts a drag on its pin (§4.4). The block is
                  a far bigger target than the marker at its center, and the two
                  sit on the same point, so it is the same grab with a better
-                 hitbox. -->
+                 hitbox. Pointing at it lights that marker, and only that
+                 marker: the block is the handle, the mark is the joint. -->
             <g
               class="slider-block"
               [class.link-inert]="mechanismSrv.isPartInert(item.mark.joint)"
               cursor="move"
+              (pointerover)="item.mark.joint.showHighlight = true"
+              (pointerout)="item.mark.joint.showHighlight = false"
               (pointerdown)="setLastLeftClick(item.mark.joint, $event)"
               (contextmenu)="setLastRightClick(item.mark.joint)"
             >
@@ -822,14 +825,17 @@
           [attr.stroke]="cyl.rodFill"
           [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
         />
-        <!-- Joint S's hitbox, over the square it is drawn as: grabbing it
-             starts a drag on the seal, exactly as grabbing an ordinary slider's
-             block starts a drag on that slider (§4.4). Above the rod rather
-             than on the square itself, because the rod's own path covers the
-             square exactly — the band inside the bore is the rod drawn over it
-             — and the piece drawn last is the piece a click reaches. -->
+        <!-- Joint S's hitbox, over the head it rides: grabbing it starts a drag
+             on the seal, and pointing at it lights the seal's own cream bar
+             above, exactly as grabbing an ordinary slider's block starts a drag
+             on that slider (§4.4). Above the rod rather than on the square
+             itself, because the rod's own path covers the square exactly — the
+             band inside the bore is the rod drawn over it — and the piece drawn
+             last is the piece a click reaches.
+             It carried `joint_S` while the block was the seal's marker. The
+             mark in the joint layer is the marker now, and the id goes with
+             it: a hit area is a handle, not a joint. -->
         <path
-          [attr.id]="'joint_' + cyl.seal.id"
           class="cylinder-seal-hit"
           [attr.cursor]="mechanismSrv.isJointLockedVisual(cyl.seal) ? 'not-allowed' : 'move'"
           (pointerover)="cyl.seal.showHighlight = true"
@@ -882,15 +888,10 @@
             [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
           />
         }
-        @if (cylinderSealOutline(cyl); as sealState) {
-          <path
-            [class]="'cylinder-selected cylinder-seal-selected ' + sealState"
-            pointer-events="none"
-            [attr.d]="cyl.block"
-            fill="none"
-            [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
-          />
-        }
+        <!-- There is no third outline for the seal. S is a joint, and a joint
+             says it is picked the way every other joint does — on its own
+             mark, which is the cream bar the joint layer draws over this head.
+             The head is furniture: it takes the gesture and none of the state. -->
       </g>
     }
     <!-- The ghost of the two-point creation gesture: the same paths the
@@ -1047,12 +1048,13 @@
       ></circle>
     }
     @for (joint of mechanismSrv.getJoints(); track joint) {
-      <!-- The two joints a cylinder draws for itself are skipped here. The
-           buried barrel end is drawn by nothing; the seal is drawn by the skin,
-           whose black block is its marker and its hitbox — a second marker
-           painted here would be a weld cross on top of the square, and a second
-           hitbox on the same point. -->
-      @if (!drawnByCylinderSkin(joint)) {
+      <!-- One joint a cylinder hides is skipped here: N, the barrel's buried
+           inner end, which nothing draws. The seal S is drawn from this loop
+           like any other Prismatic slider — its cream bar above the skin's
+           black head, exactly as an ordinary slider's sits on its block. It
+           was skipped too, back when this layer would have painted a weld
+           cross on the square. -->
+      @if (!isCylinderInner(joint)) {
         <svg
           [attr.x]="joint.x"
           [attr.y]="joint.y"
@@ -1109,10 +1111,41 @@
                 />
               }
             }
-            <!--      Welded Joint. A sealed cylinder's pin never reaches here:
-                      interior joints are filtered out above, and the skin
-                      draws its own, larger marker at that point. -->
-            @if (gridUtils.getWelded(joint)) {
+            <!--      A slider whose riders cannot turn: the cream bar, lying
+                      along its own slot. It is the joint — everything a pin's
+                      circle carries is carried here, and the black block or
+                      piston head underneath is furniture that takes no state
+                      of its own. Turned in the frame the block below is drawn
+                      in, so the two cannot disagree. -->
+            @if (slideMarkOn(joint); as bar) {
+              <g [attr.transform]="bar.frame">
+                <path
+                  [attr.id]="'joint_' + joint.id"
+                  class="slideMark"
+                  [class]="mechanismSrv.getJointCSSClass(joint)"
+                  [attr.d]="bar.path"
+                  [style.fill]="jointFillOf(joint)"
+                ></path>
+                <!-- Ringed inside its own edge, like a pin and unlike a weld
+                     cross: this mark has an inside edge to ring, so a picked
+                     slide is exactly the size an unpicked one is. -->
+                @if (selectionRingOn(joint); as ring) {
+                  <path
+                    class="jointSelectionRing"
+                    [attr.d]="bar.ring"
+                    fill="none"
+                    [attr.stroke]="ring"
+                    [attr.stroke-width]="selectionRingWidth()"
+                  ></path>
+                }
+              </g>
+            }
+            <!--      Welded Joint — a welded *revolute*, and only that. A
+                      slider says the same thing about its riders and says it
+                      with the bar above, because a cross centred on a
+                      symmetric block cannot also say which way the thing
+                      slides. -->
+            @if (isWeldMark(joint)) {
               <!-- A weld mark has no inside edge to ring, so it wears the same
                    amber as an outline instead. -->
               <path
@@ -1131,13 +1164,14 @@
               <g
                 class="lockBadge"
                 pointer-events="none"
-                [upright]="gridUtils.getWelded(joint) ? lockBadgeShoulder() : ''"
+                [upright]="isWeldMark(joint) ? lockBadgeShoulder() : ''"
               >
                 <!-- A plain joint's cream circle is chip enough, and the glyph
-                     sits dead center on it. A welded joint's plus-mark is its
-                     own message, so the badge steps aside to the shoulder and
-                     brings a white chip to stand on. -->
-                @if (gridUtils.getWelded(joint)) {
+                     sits dead center on it — and so is a slide's cream bar,
+                     which is wider than the glyph in both directions. A welded
+                     joint's plus-mark is its own message, so the badge steps
+                     aside to the shoulder and brings a white chip to stand on. -->
+                @if (isWeldMark(joint)) {
                   <circle
                     class="lockChip"
                     [attr.r]="0.13 * settings.objectScale"

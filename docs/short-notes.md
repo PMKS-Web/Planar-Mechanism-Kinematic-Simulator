@@ -1337,8 +1337,10 @@ rod, which nobody noticed while both selected the same body.
 
 When the square became joint S (Stage 2c) that mattered: the handlers on the painted block were
 dead code. The square's hitbox is a separate transparent path drawn *after* the rod --
-`.cylinder-seal-hit`, carrying `#joint_<id>` so the canvas's own id convention still finds it --
-and the painted block takes `pointer-events="none"`.
+`.cylinder-seal-hit` -- and the painted block takes `pointer-events="none"`. It carried
+`#joint_<id>` while the block was the seal's marker; the cream bar the joint layer draws above the
+head is the marker now (decision S13) and the id went with it, because a hit area is a handle and
+not a joint.
 
 ### A decoded joint always has an explicit name, even when nobody named it
 
@@ -1357,3 +1359,32 @@ letter is what a reader sees; a name somebody actually chose is left alone.
 actually fires on, which is why the only thing Stage 2c changed in `template-baseline.ts` is one
 sample id in each of those three. The `joints` and `links` snapshots above them are untouched,
 because they pin what the *stored* URL says and the codec did not change.
+
+### A weld plate is the union of its rider and its block, so a Slide's block cannot be clicked
+
+`plateFor` runs `buildCompoundPath([riderOutline, blockPath(r)])`, and a union contains both --
+so the plate drawn over a welded slider covers every pixel of the black block, ends included. The
+block group's own `pointerdown` still exists and still routes to the slider, and on a **Slot** it
+is what makes the block the big handle §4.4 promises; on a **Slide** nothing ever reaches it,
+because the plate above it takes the gesture for the rider instead. A Slide is grabbed through the
+joint's own hitbox at its center (`objectScale / 4`, drawn in `jointHolder`, which is above
+`sliderHolder`). Worth knowing before writing a test that means to point at a Slide's block: it
+will select the rider link and say nothing about the joint.
+
+### The traced-path layer is drawn over every joint marker, slider marks included
+
+`#pathsHolder` sits *after* `#jointHolder` in `new-grid.component.html`, so a joint's own swept
+path is painted across its marker. On a pin the line disappears under the circle's own diameter
+and nobody notices; on a grounded slider, whose path is a straight line along the slot, it runs
+edge to edge through the cream bar and stops dead at the joint's center. It is the layer order, not
+the mark: a `+` and a circle get the same treatment. Do not go looking for an element drawn above
+the mark -- `elementsFromPoint` will not find one, because the trace has `pointer-events: none`.
+
+### A driven slider's arrows start exactly where its mark ends, and only because two numbers agree
+
+`MARK.arrowTail` is 1.4 and `MARK.slideAlongHalf` is 1.4, so the tails of `straightArrowPaths`
+(and of `cylinderArrowPaths`, which scales the pair by the head) begin on the cream bar's end caps
+with no gap and no overlap -- the bar reads as the thing the two arrows are pushing. Nothing
+enforces the equality. Move either number and a driven Slide either grows a sliver of black
+between mark and arrow or paints the mark over the tails, and `joint-marks.spec.ts` will not say
+so, because each is tested against its own reference.

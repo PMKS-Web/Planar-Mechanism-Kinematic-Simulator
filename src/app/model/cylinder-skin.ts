@@ -1,27 +1,24 @@
 /**
  * What a cylinder's skin draws for itself, and in what ink.
  *
- * The canvas draws every other joint the same way — a marker, a hitbox and a
- * letter from one loop — and a cylinder is the exception: its own skin draws
- * the square that is joint S, and nothing at all draws the barrel's buried
- * inner end N. So two questions the canvas asks of every joint have cylinder
- * answers, and they are *different* questions (decision S11): what a reader can
- * see, and which layer is responsible for drawing it.
+ * The canvas draws every joint the same way — a marker, a hitbox and a letter
+ * from one loop — and a cylinder is the one exception: nothing at all draws the
+ * barrel's buried inner end N. That is the question here, and it is asked of
+ * the drawn marks *and* of the structure behind them: the marks are built from
+ * geometry and can lag a frame mid-edit — a weld landing, a drag in flight —
+ * which was long enough for an interior label to blink into view.
  *
- * Kept out of the canvas because neither depends on the canvas. Each is asked
- * of the drawn marks *and* of the structure behind them: the marks are built
- * from geometry and can lag a frame mid-edit — a weld landing, a drag in flight
- * — which was long enough for an interior label to blink into view.
+ * Kept out of the canvas because it does not depend on the canvas.
  */
 
-import { Cylinder, isCylinderInner, isInsideCylinder } from './cylinder';
+import { Cylinder, isCylinderInner } from './cylinder';
 import { Joint } from './joint';
 
-/** As much of a drawn cylinder as these questions need. */
+/** As much of a drawn cylinder as this question needs. */
 export interface SkinnedCylinder {
   /** N — the barrel's buried inner end, which nothing draws. */
   hiddenJointId: string;
-  /** S — the seal, drawn as the square mid-skin. */
+  /** S — the seal, whose mark rides the head the skin draws. */
   seal: { id: string };
 }
 
@@ -38,23 +35,12 @@ export function hiddenByCylinder(
   return !!sealed && isCylinderInner(sealed, joint);
 }
 
-/**
- * Whether the cylinder's own skin is what draws this joint: N and S.
- *
- * The ordinary joint layer stays off both. A marker painted at S as well would
- * be a weld cross over the square — a seal is welded — with a second hitbox on
- * the same point.
- */
-export function drawnByCylinder(
-  marks: readonly SkinnedCylinder[],
-  sealed: Cylinder | undefined,
-  joint: Joint
-): boolean {
-  if (marks.some((mark) => mark.hiddenJointId === joint.id || mark.seal.id === joint.id)) {
-    return true;
-  }
-  return !!sealed && isInsideCylinder(sealed, joint);
-}
+// The skin used to draw joint S as well, and this module answered a second
+// question for the canvas: which layer draws a joint. The ordinary joint layer
+// stayed off S because it would have painted a weld cross over the square.
+// Sliders wear a bar along the slot now instead of that cross, so S is drawn
+// from the joint loop like any other Prismatic slider — above the skin, on the
+// head the skin draws — and only N is still hidden. One question left.
 
 /**
  * The accent stroke a state class asks for, or nothing for a state that wears

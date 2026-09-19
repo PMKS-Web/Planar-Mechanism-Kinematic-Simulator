@@ -15,6 +15,7 @@ import {
   Segment,
   rodBodyPath,
   cylinderContourPath,
+  slideMarkPath,
   slotHalfLength,
   straightArrowPaths,
 } from '../model/joint-marks';
@@ -115,6 +116,19 @@ export interface SliderMark {
 }
 
 /**
+ * The cream bar a slider whose riders cannot turn wears in place of a pin's
+ * circle, ready for the joint layer to draw above the block.
+ */
+export interface SlideMarkDraw {
+  /** The bar itself, in the slot's own frame. */
+  path: string;
+  /** The same bar pulled inside its own edge, for the selection ring. */
+  ring: string;
+  /** The transform that lays both along the slot. */
+  frame: string;
+}
+
+/**
  * A channel window. `path` is in the carrier's own drawing frame so it can be
  * appended to the carrier's path data and subtracted by its even-odd fill --
  * which also makes the carrier's existing stroke trace the new edge in the
@@ -164,6 +178,13 @@ export interface CylinderMark {
   rod: string;
   rodFill: string;
   block: string;
+  /**
+   * Half the piston head's length along the axis, which the block above is
+   * drawn at. Handed out because the seal's own mark has to sit inside it: a
+   * ram too short for a full-size head shrinks the head, and a mark drawn at
+   * full size on a shrunken head fills it corner to corner.
+   */
+  headAlongHalf: number;
   /** The exact silhouette, for the selection stroke. */
   contour: string;
   driven: boolean;
@@ -200,6 +221,41 @@ export class SliderMarkService {
    */
   frame(mark: { x: number; y: number; rotation: number }): string {
     return `translate(${mark.x} ${mark.y}) rotate(${mark.rotation})`;
+  }
+
+  /**
+   * The mark a slider whose riders cannot turn wears -- the Joint Type
+   * "Prismatic", floating or grounded, and every cylinder's seal S -- or
+   * nothing at all for one that can turn. A pin-in-slot slider keeps its
+   * circle, so the mark's shape answers "can this rotate?" and its orientation
+   * says what it slides along.
+   *
+   * Both are read off the mark the black block under it is drawn from rather
+   * than measured a second time. The two can then never disagree about where
+   * the slot points, and the bar turns with the block through a drop preview,
+   * where the block's frame is swung to the slot it is about to enter and the
+   * joint has not moved yet.
+   *
+   * Its size comes from that block too. An ordinary slider's is always the full
+   * §2.8 block; a cylinder's piston head shrinks with a barrel too short to
+   * hold one, and the bar shrinks with it rather than filling the black it is
+   * supposed to be a mark *on*.
+   */
+  slideMarkFor(
+    joint: Joint,
+    marks: readonly SliderMark[],
+    cylinders: readonly CylinderMark[],
+    size: { r: number; ring: number }
+  ): SlideMarkDraw | undefined {
+    if (!(joint instanceof PrisJoint) || joint.rotates) return undefined;
+    const sealed = cylinders.find((mark) => mark.seal.id === joint.id);
+    const host = sealed ? sealed.headAlongHalf : MARK.blockAlongHalf * size.r;
+    const rotation = sealed?.rotation ?? marks.find((mark) => mark.id === joint.id)?.rotation ?? 0;
+    return {
+      path: slideMarkPath(size.r, host),
+      ring: slideMarkPath(size.r, host, size.ring / 2),
+      frame: this.frame({ x: 0, y: 0, rotation }),
+    };
   }
 
   /**
@@ -419,6 +475,7 @@ export class SliderMarkService {
       // One part, one color: the rod wears the barrel's fill, always.
       rodFill: (found.barrel as RealLink).fill ?? '#000000',
       block: cylinderBlockPath(r, headHalf),
+      headAlongHalf: headHalf,
       contour: cylinderContourPath(r, anchor, mouth, rodReach),
       driven,
       arrows: driven ? cylinderArrowPaths(r, headHalf, leading) : [],
