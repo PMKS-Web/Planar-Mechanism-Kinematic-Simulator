@@ -320,7 +320,7 @@ export class LinkageTableComponent implements OnInit {
     // editing one by number would bend a part that cannot bend.
     return this.mechanismService.joints.filter((joint) => {
       const sealed = this.mechanismService.cylinderAt(joint);
-      return !sealed || joint.id === sealed.barrelFar.id || joint.id === sealed.rodFar.id;
+      return !sealed || joint.id === sealed.mountA.id || joint.id === sealed.mountB.id;
     });
   }
 

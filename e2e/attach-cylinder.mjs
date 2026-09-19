@@ -62,11 +62,11 @@ const state = () =>
       ).length,
       ram: cylinder
         ? {
-            barrel: between(cylinder.barrelFar, cylinder.barrelNear),
-            rod: between(cylinder.pin, cylinder.rodFar),
-            span: between(cylinder.barrelFar, cylinder.rodFar),
-            pinAlong: between(cylinder.barrelFar, cylinder.pin),
-            mountLinks: cylinder.barrelFar.links.map((link) => link.id),
+            barrel: between(cylinder.mountA, cylinder.inner),
+            rod: between(cylinder.seal, cylinder.mountB),
+            span: between(cylinder.mountA, cylinder.mountB),
+            pinAlong: between(cylinder.mountA, cylinder.seal),
+            mountLinks: cylinder.mountA.links.map((link) => link.id),
           }
         : undefined,
     };

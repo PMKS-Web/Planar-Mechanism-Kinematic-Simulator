@@ -144,10 +144,7 @@ const atFloor = await page.evaluate(() => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   const sealed = grid.mechanismSrv.sealedStructures()[0];
   if (!sealed) return null;
-  const span = Math.hypot(
-    sealed.barrelFar.x - sealed.rodFar.x,
-    sealed.barrelFar.y - sealed.rodFar.y
-  );
+  const span = Math.hypot(sealed.mountA.x - sealed.mountB.x, sealed.mountA.y - sealed.mountB.y);
   return { span, floor: grid.mechanismSrv.minimumCylinderSpan?.() ?? null };
 });
 

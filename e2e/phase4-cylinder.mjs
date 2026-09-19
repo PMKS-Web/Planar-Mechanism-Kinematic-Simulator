@@ -73,11 +73,11 @@ function cylinderRoles() {
     const [sealed] = c.mechanismSrv.sealedStructures();
     if (!sealed) return null;
     return {
-      barrelFar: sealed.barrelFar.id,
-      barrelNear: sealed.barrelNear.id,
-      pin: sealed.pin.id,
-      slider: sealed.slider.id,
-      rodFar: sealed.rodFar.id,
+      barrelFar: sealed.mountA.id,
+      barrelNear: sealed.inner.id,
+      pin: sealed.seal.id,
+      slider: sealed.seal.id,
+      rodFar: sealed.mountB.id,
     };
   });
 }

@@ -16,7 +16,7 @@ import {
   cylinderStroke,
   cylinderSpanRange,
   cylinderStrokeAlong,
-  sealedCylinders,
+  cylindersIn,
   stretchedCylinderPose,
 } from '../../app/model/cylinder';
 import { CYLINDER, rodBodyPath } from '../../app/model/joint-marks';
@@ -96,7 +96,7 @@ describe('a cylinder with no travel', () => {
     expect(cylinderStrokeAlong(sliver, r).usable).toBe(false);
 
     const built = buildMechanism(cylinderBoomFixture(MODEL_SCALE));
-    const cylinder = sealedCylinders(built.joints)[0];
+    const cylinder = cylindersIn(built.joints)[0];
     if (cylinder) {
       const size = cylinderSizeOf(cylinder, r);
       expect(size.stroke).toBeGreaterThan(0);
@@ -215,7 +215,7 @@ describe('object scale, which changes R under a mechanism nobody touched', () =>
     try {
       urls.updateFromURL(fixturePayload(cylinderBoomFixture()), false, true, false);
       const pin = mechanism.joints.find(
-        (joint) => joint.id === mechanism.sealedStructures()[0].pin.id
+        (joint) => joint.id === mechanism.sealedStructures()[0].seal.id
       )!;
       const before = { x: pin.x, y: pin.y };
 
@@ -248,15 +248,15 @@ describe('a mount two rams share', () => {
     expect(cylinders.length).toBe(2);
     const barrelOf = (index: number) =>
       Math.hypot(
-        cylinders[index].barrelNear.x - cylinders[index].barrelFar.x,
-        cylinders[index].barrelNear.y - cylinders[index].barrelFar.y
+        cylinders[index].inner.x - cylinders[index].mountA.x,
+        cylinders[index].inner.y - cylinders[index].mountA.y
       );
     const acrossOf = (index: number) => {
-      const { barrelFar, rodFar, pin } = cylinders[index];
-      const dx = rodFar.x - barrelFar.x;
-      const dy = rodFar.y - barrelFar.y;
+      const { mountA, mountB, seal } = cylinders[index];
+      const dx = mountB.x - mountA.x;
+      const dy = mountB.y - mountA.y;
       const length = Math.hypot(dx, dy);
-      return Math.abs((pin.x - barrelFar.x) * -dy + (pin.y - barrelFar.y) * dx) / length;
+      return Math.abs((seal.x - mountA.x) * -dy + (seal.y - mountA.y) * dx) / length;
     };
 
     const before = [barrelOf(0), barrelOf(1)];
@@ -289,10 +289,10 @@ describe('two rams a single link carries', () => {
     const measure = () =>
       cylinders.map((cylinder) => ({
         barrel: Math.hypot(
-          cylinder.barrelNear.x - cylinder.barrelFar.x,
-          cylinder.barrelNear.y - cylinder.barrelFar.y
+          cylinder.inner.x - cylinder.mountA.x,
+          cylinder.inner.y - cylinder.mountA.y
         ),
-        rod: Math.hypot(cylinder.rodFar.x - cylinder.pin.x, cylinder.rodFar.y - cylinder.pin.y),
+        rod: Math.hypot(cylinder.mountB.x - cylinder.seal.x, cylinder.mountB.y - cylinder.seal.y),
       }));
     const before = measure();
 
@@ -426,7 +426,7 @@ describe('merging a cylinder mount onto another joint', () => {
 
     expect(mechanism.sealedStructures().length).toBe(1);
     const cylinder = mechanism.sealedStructures()[0];
-    const mount = mechanism.joints.find((joint) => joint.id === cylinder.barrelFar.id)!;
+    const mount = mechanism.joints.find((joint) => joint.id === cylinder.mountA.id)!;
     // The boom's own ground pivot: an ordinary joint on an unrelated link.
     const target = mechanism.joints.find((joint) => joint.id === 'O')!;
 
@@ -435,10 +435,10 @@ describe('merging a cylinder mount onto another joint', () => {
 
     const after = mechanism.sealedStructures();
     expect(after.length, 'the cylinder survives its mount being merged').toBe(1);
-    expect(after[0].slider.isSlotWellFormed).toBe(true);
-    expect(after[0].slider.isFloating).toBe(true);
+    expect(after[0].seal.isSlotWellFormed).toBe(true);
+    expect(after[0].seal.isFloating).toBe(true);
     // And the slot now names the joint that survived.
-    expect([after[0].slider.slotJointA!.id, after[0].slider.slotJointB!.id]).toContain(target.id);
+    expect([after[0].seal.slotJointA!.id, after[0].seal.slotJointB!.id]).toContain(target.id);
   });
 
   it('grows to reach a mount another part carried away, rather than coming apart', () => {

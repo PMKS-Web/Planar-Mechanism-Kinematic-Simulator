@@ -13,7 +13,7 @@ import { ForceAnalysisMode, ForceReactionIndex } from 'src/app/model/mechanism/f
 import { Mechanism } from 'src/app/model/mechanism/mechanism';
 import { PrisJoint, RealJoint } from 'src/app/model/joint';
 import { RealLink } from 'src/app/model/link';
-import { Cylinder, cylinderJoints, isCylinderInterior } from 'src/app/model/cylinder';
+import { Cylinder, cylinderJoints, isInsideCylinder } from 'src/app/model/cylinder';
 import { ActiveObjService, ActiveObjType } from 'src/app/services/active-obj.service';
 import { Force } from 'src/app/model/force';
 import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -610,7 +610,7 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
     // the buried barrel end or the slider inside the bore is not a force
     // anything in the world applies -- it is internal to a part the user is
     // being shown as one body.
-    return rows.filter((row) => !isCylinderInterior(sealed, this.jointById(row.jointId)!));
+    return rows.filter((row) => !isInsideCylinder(sealed, this.jointById(row.jointId)!));
   }
 
   private jointById(id: string) {
@@ -651,8 +651,8 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
   get selectedBodyLabel(): string {
     const sealed = this.selectedCylinder;
     if (!sealed) return `Link ${this.activeSrv.selectedLink.name}`;
-    return `Cylinder ${sealed.barrelFar.name || sealed.barrelFar.id}${
-      sealed.rodFar.name || sealed.rodFar.id
+    return `Cylinder ${sealed.mountA.name || sealed.mountA.id}${
+      sealed.mountB.name || sealed.mountB.id
     }`;
   }
 

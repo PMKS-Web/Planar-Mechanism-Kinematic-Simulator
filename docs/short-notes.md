@@ -1290,3 +1290,15 @@ cap with no per-component override, so the choice is one number for everything; 
 catches real bloat. `npm run build` is where you find out, and it fails the build rather than
 warning.
 
+### A cylinder's derivation cannot tell a moved mount from a stretched rod
+
+`derivedInterior` reads both lengths off the joints it is given: the barrel from A to N, the rod
+from S to B. It writes N and S back onto the axis at exactly those lengths, so it straightens a
+bend and holds the size it finds. Which means it has **no opinion at all** about a mount that has
+moved -- carry B two units further out without touching S and the rod is simply two units longer,
+and the pass that runs on every rebuild agrees with that reading.
+
+That is why a mount drag goes through `layoutCylinder` (which re-lays the part against its stops)
+and a carried mount through `stretchedCylinderPose`, and why neither of them may be replaced by
+"move the mount and let the rebuild sort it out". The derivation is the thing that runs when
+nobody has said what the edit was.

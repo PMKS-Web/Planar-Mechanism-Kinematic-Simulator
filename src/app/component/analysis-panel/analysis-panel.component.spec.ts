@@ -332,7 +332,7 @@ describe('AnalysisPanelComponent with a cylinder selected', () => {
       fixtureData.service.links.find((link) => link.id === 'GN')
     );
     expect(cylinder, 'the fixture really is a cylinder').toBeDefined();
-    const interior = [cylinder!.barrelNear.id, cylinder!.pin.id, cylinder!.slider.id];
+    const interior = [cylinder!.inner.id, cylinder!.seal.id];
     for (const row of fixture.componentInstance.linkForceRows()) {
       expect(interior).not.toContain(row.jointId);
     }

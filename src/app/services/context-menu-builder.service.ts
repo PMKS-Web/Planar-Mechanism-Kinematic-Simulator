@@ -816,7 +816,7 @@ export class ContextMenuBuilderService {
   private jointSubtitle(joint: Joint): string {
     const sealed = this.mechanism.cylinderAt(joint);
     if (sealed) {
-      const end = joint.id === sealed.rodFar.id ? 'Rod joint' : 'Barrel joint';
+      const end = joint.id === sealed.mountB.id ? 'Rod joint' : 'Barrel joint';
       return `${end} · ${this.cylinderName(sealed)}`;
     }
     const bodies = joint instanceof RealJoint ? joint.links : [];
@@ -887,7 +887,7 @@ export class ContextMenuBuilderService {
                 label: 'Driven Input',
                 icon: 'add_input',
                 kind: 'toggle',
-                checked: sealed.slider.input,
+                checked: sealed.seal.input,
                 action: () => this.mechanism.toggleCylinderInput(sealed),
               }),
               ...this.cylinderHoldRows(link as RealLink),
@@ -1059,8 +1059,7 @@ export class ContextMenuBuilderService {
     const sealed = this.mechanism.cylinderOfLink(link);
     if (!sealed) return '';
     const degrees =
-      (Math.atan2(sealed.rodFar.y - sealed.barrelFar.y, sealed.rodFar.x - sealed.barrelFar.x) *
-        180) /
+      (Math.atan2(sealed.mountB.y - sealed.mountA.y, sealed.mountB.x - sealed.mountA.x) * 180) /
       Math.PI;
     return this.nup.formatValueAndUnit(
       this.nup.convertAngle(degrees, AngleUnit.DEGREE, this.settings.angleUnit.getValue()),
@@ -1169,7 +1168,7 @@ export class ContextMenuBuilderService {
     // Not "sealed assembly": to a reader a cylinder is one part, and how it
     // is built out of a slider and a weld underneath is not their business.
     if (sealed) {
-      const ends = [sealed.barrelFar, sealed.rodFar].map((joint) => this.nameOf(joint));
+      const ends = [sealed.mountA, sealed.mountB].map((joint) => this.nameOf(joint));
       return `Barrel and rod · Joints ${ends.join(', ')}`;
     }
     const bar = link as RealLink;
@@ -1448,6 +1447,6 @@ export class ContextMenuBuilderService {
   }
 
   private cylinderName(sealed: Cylinder): string {
-    return `Cylinder ${this.nameOf(sealed.barrelFar)}${this.nameOf(sealed.rodFar)}`;
+    return `Cylinder ${this.nameOf(sealed.mountA)}${this.nameOf(sealed.mountB)}`;
   }
 }

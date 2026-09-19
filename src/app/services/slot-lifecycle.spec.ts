@@ -3,7 +3,7 @@ import { Coord } from '../model/coord';
 import { PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import { RealLink } from '../model/link';
 import { createMechanismHarness, wireGraph } from '../../test-utils/mechanism-harness';
-import { sealedCylinders } from '../model/cylinder';
+import { cylindersIn } from '../model/cylinder';
 import { MODEL_SCALE } from '../model/render-scale';
 
 // Option A (docs/joint-types-plan.md §2.3) keeps a slot's carrier and its two
@@ -229,7 +229,7 @@ describe('a slot dropped onto a sealed cylinder', () => {
   function ramAndABar() {
     const harness = createMechanismHarness();
     harness.service.createCylinderFrom(new Coord(0, 0), new Coord(3 * MODEL_SCALE, 0));
-    const sealed = sealedCylinders(harness.service.joints)[0];
+    const sealed = cylindersIn(harness.service.joints)[0];
     const near = new RevJoint('W', 0, 4 * MODEL_SCALE);
     const far = new RevJoint('X', 4 * MODEL_SCALE, 4 * MODEL_SCALE);
     const rail = new RealLink('WX', [near, far]);
@@ -247,7 +247,7 @@ describe('a slot dropped onto a sealed cylinder', () => {
     // that matters is the sealed one, and half of the commit had run by the
     // time anything downstream could object.
     const h = ramAndABar();
-    const seal = h.sealed.slider;
+    const seal = h.sealed.seal;
     const where = { x: seal.x, y: seal.y + 4 * MODEL_SCALE };
 
     const took = h.service.cutSlotOn(seal, {
@@ -259,9 +259,9 @@ describe('a slot dropped onto a sealed cylinder', () => {
     });
 
     expect(took, 'refused').toBe(false);
-    const still = sealedCylinders(h.service.joints);
+    const still = cylindersIn(h.service.joints);
     expect(still, 'the ram is still a ram').toHaveLength(1);
-    expect(still[0].slider.carrier!.id, 'its bore is still its barrel').toBe(h.sealed.barrel.id);
+    expect(still[0].seal.carrier!.id, 'its bore is still its barrel').toBe(h.sealed.barrel.id);
     expect(seal.y, 'and nothing moved').not.toBe(where.y);
   });
 
@@ -269,7 +269,7 @@ describe('a slot dropped onto a sealed cylinder', () => {
     // The rule is about the inside, not about the part: giving a mount a slot
     // is an ordinary slot drop and must stay one.
     const h = ramAndABar();
-    const mount = h.sealed.barrelFar as RealJoint;
+    const mount = h.sealed.mountA as RealJoint;
 
     const took = h.service.cutSlotOn(mount, {
       carrier: h.rail,
@@ -283,9 +283,9 @@ describe('a slot dropped onto a sealed cylinder', () => {
     // The mount kept its letter through the change of kind, and now slides.
     const now = h.service.joints.find((joint) => joint.id === mount.id);
     expect(now instanceof PrisJoint).toBe(true);
-    const still = sealedCylinders(h.service.joints);
+    const still = cylindersIn(h.service.joints);
     expect(still, 'and the ram survives it').toHaveLength(1);
-    expect(still[0].slider.isSealed).toBe(true);
+    expect(still[0].seal.isSealed).toBe(true);
   });
 });
 

@@ -4,7 +4,7 @@ import '../../app/model/joint';
 import { Coord } from '../../app/model/coord';
 import { RealJoint, RevJoint } from '../../app/model/joint';
 import { RealLink } from '../../app/model/link';
-import { sealedCylinders } from '../../app/model/cylinder';
+import { cylindersIn } from '../../app/model/cylinder';
 import { createMechanismHarness } from '../../test-utils/mechanism-harness';
 import { SettingsService } from '../../app/services/settings.service';
 import { MODEL_SCALE } from '../../app/model/render-scale';
@@ -41,8 +41,8 @@ function boomWithABracket() {
   const service = harness.service;
 
   service.createCylinderFrom(new Coord(-4 * S, 0), new Coord(2 * S, 0));
-  const ram = sealedCylinders(service.joints)[0];
-  const mount = ram.rodFar as RealJoint;
+  const ram = cylindersIn(service.joints)[0];
+  const mount = ram.mountB as RealJoint;
 
   const tip = new RevJoint('W', mount.x + 2 * S, mount.y + 3 * S);
   service.joints.push(tip);
@@ -55,7 +55,7 @@ function boomWithABracket() {
   const compound = service.links.find(
     (link): link is RealLink => link instanceof RealLink && link.subset.length > 0
   )!;
-  return { ...harness, ram: sealedCylinders(service.joints)[0], compound, tip };
+  return { ...harness, ram: cylindersIn(service.joints)[0], compound, tip };
 }
 
 describe('a bracket welded to a cylinder mount', () => {
@@ -107,7 +107,7 @@ describe('a bracket welded to a cylinder mount', () => {
 
     // Deleting the body takes the ram: a ram with no rod is not a ram, and
     // leaving one behind is what the carrying question is there to prevent.
-    expect(sealedCylinders(service.joints).length).toBe(0);
+    expect(cylindersIn(service.joints).length).toBe(0);
     expect(service.links.length).toBe(0);
   });
 
@@ -118,7 +118,7 @@ describe('a bracket welded to a cylinder mount', () => {
 
     // The bracket survives on its own, and it is a plain bar again rather than
     // a compound with a missing leaf.
-    expect(sealedCylinders(service.joints).length).toBe(0);
+    expect(cylindersIn(service.joints).length).toBe(0);
     expect(service.links.length).toBe(1);
     expect(service.links[0].joints.some((joint) => joint.id === tip.id)).toBe(true);
     expect((service.links[0] as RealLink).subset.length).toBe(0);

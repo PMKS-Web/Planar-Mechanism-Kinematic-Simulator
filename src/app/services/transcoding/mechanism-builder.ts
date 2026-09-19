@@ -3,7 +3,7 @@ import { MechanismService } from '../mechanism.service';
 import { Link, RealLink } from 'src/app/model/link';
 import { Force } from 'src/app/model/force';
 import { Coord } from 'src/app/model/coord';
-import { sealedCylinderStructures } from 'src/app/model/cylinder';
+import { cylinderAtSeal, cylindersIn } from 'src/app/model/cylinder';
 import { GenericTranscoder } from './transcoder-interface';
 import { ForceData, JOINT_TYPE, JointData, LINK_TYPE, LinkData } from './transcoder-data';
 import { SettingsService } from '../settings.service';
@@ -309,6 +309,41 @@ export class MechanismBuilder {
     return renamed;
   }
 
+  /**
+   * Put a sealed slot in mount-first order: A the barrel's outer mount, B its
+   * inner end (Stage 2 of `docs/joint-type-and-cylinder-plan.md`, decision S1).
+   *
+   * **The one place the old distance rule survives.** A cylinder's roles used
+   * to be worked out by measuring — the barrel joint further from the rod's
+   * mount is the mount — every time anything asked, because a URL written
+   * before Stage 2 promises nothing about which way round its slot was stored.
+   * Creation has always written it mount-first, so this is a no-op for
+   * everything the app itself has emitted; it is the reader's job to make the
+   * promise true for the rest, once, before anything asks.
+   *
+   * Idempotent, which matters more here than it looks: undo and redo replay
+   * URLs, so this runs again on every step of the history. A swap puts the
+   * further joint in A, where the same test then leaves it. Equal distances
+   * and a rod that will not resolve are both left exactly as they arrived --
+   * there is nothing to learn from measuring either.
+   *
+   * Runs after `foldLegacySliders`, so the seal is the one joint it is now,
+   * and after `addAdjacentLinksForJoints`, which is what lets a cylinder
+   * resolve at all.
+   */
+  private orderSealedSlots(joints: Joint[]): void {
+    for (const joint of joints) {
+      if (!(joint instanceof PrisJoint) || !joint.isSealed) continue;
+      const cylinder = cylinderAtSeal(joint);
+      if (!cylinder) continue;
+      const a = joint.slotJointA!;
+      const b = joint.slotJointB!;
+      const from = cylinder.mountB;
+      const reach = (end: Joint) => Math.hypot(end.x - from.x, end.y - from.y);
+      if (reach(b) > reach(a)) joint.slideOn(joint.carrier!, b, a);
+    }
+  }
+
   // For each joint, add links that are adjacent to the joint
   public addSubsetLinks(linkDatas: LinkData[], links: Link[]): void {
     linkDatas.forEach((linkData, index) => {
@@ -470,6 +505,10 @@ export class MechanismBuilder {
       link.captureComOffset();
     });
 
+    // Which barrel joint is the mount is the slot's order, so an old payload
+    // has to be put in that order before anything reads a cylinder off it.
+    this.orderSealedSlots(joints);
+
     // A sealed cylinder's parts always follow their own shapes. Nothing that
     // shipped ever let anyone choose their inertia or centers — the values in
     // circulating URLs are fixture defaults — so decoding migrates the parts
@@ -477,7 +516,7 @@ export class MechanismBuilder {
     // as stored: mass carries no flag and is always somebody's choice. After
     // addAdjacentLinksForJoints, which is what wires the joints to their
     // links; before it, the structure detector sees no cylinders at all.
-    for (const sealed of sealedCylinderStructures(joints)) {
+    for (const sealed of cylindersIn(joints)) {
       for (const part of [sealed.barrel, sealed.rod]) {
         if (part instanceof RealLink) {
           part.moiIsCustom = false;

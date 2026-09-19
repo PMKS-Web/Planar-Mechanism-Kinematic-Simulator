@@ -19,7 +19,7 @@
 
 import { Joint, PrisJoint, RealJoint } from './joint';
 import { RealLink } from './link';
-import { Cylinder, cylinderInteriorsAt } from './cylinder';
+import { Cylinder, cylindersEnclosing } from './cylinder';
 
 /** A structural edit, named as the state it is asking for rather than as a toggle. */
 export type JointOperation = 'weld' | 'unweld' | 'add-slider' | 'remove-slider';
@@ -104,7 +104,7 @@ function refuseWeld(
   // part to its own workings. None of the three is drawn or selectable, so
   // nothing offers it; the rule is here so that no path can reach it, and so
   // that the refusal says which of the two things a cylinder joint can be.
-  if (cylinderInteriorsAt(context.cylinders, joint).length > 0) {
+  if (cylindersEnclosing(context.cylinders, joint).length > 0) {
     return {
       code: 'cylinder.sealed-weld',
       short: 'part is sealed',
@@ -210,7 +210,7 @@ function refuseUnweld(
   // comes off. A welded *mount* has no block of its own, so taking one back
   // out of a neighboring compound is an ordinary unweld and stays legal —
   // which is why this asks about interiors and not about membership.
-  if (cylinderInteriorsAt(context.cylinders, joint).length > 0) {
+  if (cylindersEnclosing(context.cylinders, joint).length > 0) {
     return {
       code: 'cylinder.sealed-unweld',
       short: 'part is sealed',
@@ -232,7 +232,7 @@ function refuseAddSlider(
   // as giving any other joint one. This asked about membership before, so a
   // mount was turned away for a slider the cylinder keeps somewhere else
   // entirely.
-  if (cylinderInteriorsAt(context.cylinders, joint).length > 0) {
+  if (cylindersEnclosing(context.cylinders, joint).length > 0) {
     return {
       code: 'cylinder.sealed-slider',
       short: 'part is sealed',
@@ -262,7 +262,7 @@ function refuseRemoveSlider(
   // The cylinder's own block is the cylinder. An external block on a mount is
   // an ordinary block and comes off like one, which is why this asks about
   // interiors rather than about membership.
-  if (cylinderInteriorsAt(context.cylinders, joint).length > 0) {
+  if (cylindersEnclosing(context.cylinders, joint).length > 0) {
     return {
       code: 'cylinder.sealed-slider',
       short: 'part is sealed',

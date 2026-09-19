@@ -1,4 +1,4 @@
-import { Cylinder, cylinderJoints, sealedCylinderStructures } from '../../../model/cylinder';
+import { Cylinder, cylinderJoints, cylindersIn } from '../../../model/cylinder';
 import { Force } from '../../../model/force';
 import { turnsClockwise } from '../../../model/drive-direction';
 import { Joint, PrisJoint, RealJoint } from '../../../model/joint';
@@ -112,7 +112,7 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
     x: joint.x * unitScale - shift.x,
     y: joint.y * unitScale - shift.y,
   });
-  const cylinders = sealedCylinderStructures(input.joints);
+  const cylinders = cylindersIn(input.joints);
   // The joints between the two mounts: everything a sealed part keeps to
   // itself. Named rather than sliced out of `cylinderJoints` by index, which is
   // what this did -- that list lost a joint when the pin and the slider became
@@ -120,7 +120,7 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
   // `slice(1, 4)` went on taking three of four and swept the *rod mount* in
   // with them.
   const cylinderInterior = new Set(
-    cylinders.flatMap((cylinder) => [cylinder.barrelNear.id, cylinder.slider.id])
+    cylinders.flatMap((cylinder) => [cylinder.inner.id, cylinder.seal.id])
   );
   const cylinderBodies = new Set(
     cylinders.flatMap((cylinder) => [cylinder.barrel.id, cylinder.rod.id])
@@ -180,8 +180,8 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
     .slice()
     .sort((a, b) => cylinderKey(a).localeCompare(cylinderKey(b)))
     .forEach((cylinder) => {
-      const start = point(cylinder.barrelFar);
-      const end = point(cylinder.rodFar);
+      const start = point(cylinder.mountA);
+      const end = point(cylinder.mountB);
       if (choices.linkBodies === 'outlines') {
         // The sleeve and the rod, rather than a line between the two mounts.
         // That line is neither of the parts and cannot be extruded, which left
@@ -191,8 +191,8 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
           ...cylinderParts(
             {
               barrelFar: start,
-              barrelNear: point(cylinder.barrelNear),
-              pin: point(cylinder.pin),
+              barrelNear: point(cylinder.inner),
+              pin: point(cylinder.seal),
               rodFar: end,
             },
             (linkBodyWidth() * unitScale) / 2,
@@ -207,14 +207,14 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
         // half is the sleeve and which is the rod is the whole point of it, and
         // a plain line between two mounts says neither.
         entities.push(
-          capsule(start, point(cylinder.barrelNear), 0.12 * symbolScale, DXF_LAYER.cylinders)
+          capsule(start, point(cylinder.inner), 0.12 * symbolScale, DXF_LAYER.cylinders)
         );
       }
-      if (input.includeKinematicAnnotations !== false && cylinder.slider.input) {
+      if (input.includeKinematicAnnotations !== false && cylinder.seal.input) {
         const clockwise =
-          cylinder.slider.driveSpeed === 0
+          cylinder.seal.driveSpeed === 0
             ? input.defaultInputClockwise
-            : turnsClockwise(cylinder.slider.driveSpeed);
+            : turnsClockwise(cylinder.seal.driveSpeed);
         entities.push(
           ...inputAnnotation(
             {
@@ -886,20 +886,20 @@ function addLabels(
       })
     );
   cylinders.forEach((cylinder) => {
-    const a = point(cylinder.barrelFar);
-    const b = point(cylinder.rodFar);
+    const a = point(cylinder.mountA);
+    const b = point(cylinder.mountB);
     entities.push({
       type: 'TEXT',
       layer: DXF_LAYER.labels,
       at: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
       height: 0.22 * scale,
-      text: `Cylinder ${cylinder.barrelFar.name}${cylinder.rodFar.name}`,
+      text: `Cylinder ${cylinder.mountA.name}${cylinder.mountB.name}`,
     });
   });
 }
 
 function cylinderKey(cylinder: Cylinder): string {
-  return `${cylinder.barrelFar.id}|${cylinder.rodFar.id}`;
+  return `${cylinder.mountA.id}|${cylinder.mountB.id}`;
 }
 
 /** One centimeter, expressed in `unit`. The whole drawing is sized in these. */

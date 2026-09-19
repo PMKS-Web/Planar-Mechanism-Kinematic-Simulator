@@ -1,6 +1,6 @@
 import { Joint, RealJoint } from './joint';
 import { Link, RealLink, LinkHold } from './link';
-import { Cylinder, sealedCylinderStructures } from './cylinder';
+import { Cylinder, cylindersIn } from './cylinder';
 import { HoldBar, HoldJoint, reachedByHolds } from './hold-solver';
 
 /**
@@ -34,7 +34,7 @@ export function holdableBar(link: Link | undefined): link is RealLink {
  * honest way, and every caller either has it or can reach it.
  */
 export function cylinderMembers(joints: readonly Joint[]): Map<string, Cylinder> {
-  return membersOf(sealedCylinderStructures(joints as Joint[]));
+  return membersOf(cylindersIn(joints as Joint[]));
 }
 
 /**
@@ -155,7 +155,7 @@ export function heldBars(links: readonly Link[], cylinders?: readonly Cylinder[]
     // and the pair its Angle field states -- not the barrel's own two joints,
     // which are inside the part and which the normalizer re-derives anyway. So
     // holding those held nothing a reader could see.
-    const [a, b] = sealed ? [sealed.barrelFar, sealed.rodFar] : link.joints;
+    const [a, b] = sealed ? [sealed.mountA, sealed.mountB] : link.joints;
     if (!a || !b) continue;
     // One entry per part: every member reports the whole assembly's hold.
     const id = sealed ? (cylinderHoldCarrier(sealed)?.id ?? link.id) : link.id;
@@ -203,9 +203,7 @@ export function heldBarsAt(
     const sealed = members.get(link.id);
     const carrier = sealed ? cylinderHoldCarrier(sealed) : undefined;
     if (sealed ? carrier?.hold !== 'angle' : holdOf(link) === undefined) continue;
-    const ends = sealed
-      ? [sealed.barrelFar.id, sealed.rodFar.id]
-      : link.joints.map((end) => end.id);
+    const ends = sealed ? [sealed.mountA.id, sealed.mountB.id] : link.joints.map((end) => end.id);
     if (!ends.includes(joint.id)) continue;
     const bar = sealed ? carrier! : (link as RealLink);
     if (seen.has(bar.id)) continue;
@@ -239,7 +237,7 @@ export function heldBarsReaching(
 export function describeHold(link: RealLink, joints?: readonly Joint[]): string {
   const sealed = joints ? cylinderOf(link, joints) : undefined;
   const name = sealed
-    ? `${sealed.barrelFar.name || sealed.barrelFar.id}${sealed.rodFar.name || sealed.rodFar.id}`
+    ? `${sealed.mountA.name || sealed.mountA.id}${sealed.mountB.name || sealed.mountB.id}`
     : link.name || link.id;
   return `fixed ${holdOf(link) === 'angle' ? 'angle' : 'length'} ${name}`;
 }

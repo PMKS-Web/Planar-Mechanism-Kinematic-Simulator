@@ -1,7 +1,7 @@
 import { PrisJoint, RevJoint } from './joint';
 import { RealLink } from './link';
 import { ram, rewire, weldBracketOnto } from '../../test-utils/cylinder-graph';
-import { Cylinder, CylinderPose, sealedCylinderStructures } from './cylinder';
+import { Cylinder, CylinderPose, cylindersIn } from './cylinder';
 import { EditContext, Point, planEdit, snapshotOf } from './cylinder-pose-plan';
 import { Joint } from './joint';
 
@@ -31,8 +31,8 @@ import { Joint } from './joint';
 function keepingLength(cylinder: Cylinder, barrelFar: Point, rodFar: Point): CylinderPose {
   const span = Math.hypot(rodFar.x - barrelFar.x, rodFar.y - barrelFar.y);
   const barrel = Math.hypot(
-    cylinder.barrelNear.x - cylinder.barrelFar.x,
-    cylinder.barrelNear.y - cylinder.barrelFar.y
+    cylinder.inner.x - cylinder.mountA.x,
+    cylinder.inner.y - cylinder.mountA.y
   );
   const along = (distance: number) => ({
     x: barrelFar.x + ((rodFar.x - barrelFar.x) * distance) / span,
@@ -64,10 +64,10 @@ function turnedPose(cylinder: Cylinder, pivot: Point, theta: number): CylinderPo
     y: pivot.y + (point.x - pivot.x) * sin + (point.y - pivot.y) * cos,
   });
   return {
-    barrelFar: turn(cylinder.barrelFar),
-    barrelNear: turn(cylinder.barrelNear),
-    pin: turn(cylinder.pin),
-    rodFar: turn(cylinder.rodFar),
+    barrelFar: turn(cylinder.mountA),
+    barrelNear: turn(cylinder.inner),
+    pin: turn(cylinder.seal),
+    rodFar: turn(cylinder.mountB),
   };
 }
 
@@ -75,17 +75,17 @@ function turnedPose(cylinder: Cylinder, pivot: Point, theta: number): CylinderPo
 function slidPose(cylinder: Cylinder, by: number): CylinderPose {
   const moved = (point: Point) => ({ x: point.x + by, y: point.y });
   return {
-    barrelFar: moved(cylinder.barrelFar),
-    barrelNear: moved(cylinder.barrelNear),
-    pin: moved(cylinder.pin),
-    rodFar: moved(cylinder.rodFar),
+    barrelFar: moved(cylinder.mountA),
+    barrelNear: moved(cylinder.inner),
+    pin: moved(cylinder.seal),
+    rodFar: moved(cylinder.mountB),
   };
 }
 
 describe('planning where a cylinder’s pose puts everything', () => {
   it('moves only the four joints the ram is made of, when nothing is attached', () => {
     const parts = ram();
-    const [cylinder] = sealedCylinderStructures(parts.joints);
+    const [cylinder] = cylindersIn(parts.joints);
     const result = planEdit(
       { poses: [{ cylinder, pose: slidPose(cylinder, 3) }] },
       contextFor([cylinder], parts.joints)
@@ -99,13 +99,13 @@ describe('planning where a cylinder’s pose puts everything', () => {
     // The pin is the slider. There used to be a fifth joint here, coincident
     // with C, and a rule that the plan had to place the two of them together;
     // one joint cannot be moved away from itself.
-    expect(result.plan.placements.get('C')).toEqual({ x: cylinder.pin.x + 3, y: cylinder.pin.y });
+    expect(result.plan.placements.get('C')).toEqual({ x: cylinder.seal.x + 3, y: cylinder.seal.y });
   });
 
   it('carries a welded bracket with the side it is welded to', () => {
     const parts = ram();
-    weldBracketOnto(parts, parts.barrelFar, parts.barrel, 'AX', { x: -3, y: 4 });
-    const [cylinder] = sealedCylinderStructures(parts.joints);
+    weldBracketOnto(parts, parts.mountA, parts.barrel, 'AX', { x: -3, y: 4 });
+    const [cylinder] = cylindersIn(parts.joints);
 
     const result = planEdit(
       { poses: [{ cylinder, pose: slidPose(cylinder, 3) }] },
@@ -124,8 +124,8 @@ describe('planning where a cylinder’s pose puts everything', () => {
 
   it('turns a bracket about its own mount when that side rotates', () => {
     const parts = ram();
-    weldBracketOnto(parts, parts.barrelFar, parts.barrel, 'AX', { x: 0, y: 2 });
-    const [cylinder] = sealedCylinderStructures(parts.joints);
+    weldBracketOnto(parts, parts.mountA, parts.barrel, 'AX', { x: 0, y: 2 });
+    const [cylinder] = cylindersIn(parts.joints);
 
     const result = planEdit(
       { poses: [{ cylinder, pose: turnedPose(cylinder, { x: 0, y: 0 }, Math.PI / 2) }] },
@@ -151,7 +151,7 @@ describe('planning where a cylinder’s pose puts everything', () => {
     // mount, so it travels because the mount does, and the pass is gone rather
     // than fixed.
     const parts = ram();
-    const [cylinder] = sealedCylinderStructures(parts.joints);
+    const [cylinder] = cylindersIn(parts.joints);
     const result = planEdit(
       { poses: [{ cylinder, pose: slidPose(cylinder, 3) }] },
       contextFor([cylinder], parts.joints)
@@ -169,7 +169,7 @@ describe('what a lock over a cylinder actually holds', () => {
     // Refusing on that alone froze the ram solid: turning it about the locked
     // mount is the one motion a lock there is meant to leave available.
     const parts = ram();
-    const [cylinder] = sealedCylinderStructures(parts.joints);
+    const [cylinder] = cylindersIn(parts.joints);
 
     const result = planEdit(
       { poses: [{ cylinder, pose: turnedPose(cylinder, { x: 0, y: 0 }, Math.PI / 2) }] },
@@ -187,7 +187,7 @@ describe('what a lock over a cylinder actually holds', () => {
 
   it('allows it about the other mount too', () => {
     const parts = ram();
-    const [cylinder] = sealedCylinderStructures(parts.joints);
+    const [cylinder] = cylindersIn(parts.joints);
     const result = planEdit(
       { poses: [{ cylinder, pose: turnedPose(cylinder, { x: 10, y: 0 }, -Math.PI / 2) }] },
       contextFor([cylinder], parts.joints, (id) => id === 'D')
@@ -201,7 +201,7 @@ describe('what a lock over a cylinder actually holds', () => {
 
   it('allows an extension that leaves the locked anchor where it is', () => {
     const parts = ram();
-    const [cylinder] = sealedCylinderStructures(parts.joints);
+    const [cylinder] = cylindersIn(parts.joints);
     const stretched = keepingLength(cylinder, { x: 0, y: 0 }, { x: 12, y: 0 });
 
     const result = planEdit(
@@ -216,7 +216,7 @@ describe('what a lock over a cylinder actually holds', () => {
 
   it('says nothing about a proposal that moves nothing', () => {
     const parts = ram();
-    const [cylinder] = sealedCylinderStructures(parts.joints);
+    const [cylinder] = cylindersIn(parts.joints);
     const result = planEdit(
       { poses: [{ cylinder, pose: slidPose(cylinder, 0) }] },
       contextFor([cylinder], parts.joints, () => true)
@@ -229,8 +229,8 @@ describe('what a lock over a cylinder actually holds', () => {
 
   it('refuses when something carried really is displaced', () => {
     const parts = ram();
-    weldBracketOnto(parts, parts.barrelFar, parts.barrel, 'AX', { x: -3, y: 4 });
-    const [cylinder] = sealedCylinderStructures(parts.joints);
+    weldBracketOnto(parts, parts.mountA, parts.barrel, 'AX', { x: -3, y: 4 });
+    const [cylinder] = cylindersIn(parts.joints);
 
     const result = planEdit(
       { poses: [{ cylinder, pose: slidPose(cylinder, 3) }] },
@@ -266,7 +266,7 @@ describe('a ram whose two ends are welded into one body', () => {
     const parts = ram();
     const fused = new RealLink(
       'ABCD',
-      [parts.barrelFar, parts.barrelNear, parts.slider, parts.rodFar],
+      [parts.mountA, parts.inner, parts.seal, parts.mountB],
       undefined,
       undefined,
       undefined,
@@ -276,9 +276,9 @@ describe('a ram whose two ends are welded into one body', () => {
     parts.links.push(fused);
     rewire(parts.joints, parts.links);
 
-    expect(parts.slider.carrier?.id, 'the slot is lifted to the compound').toBe('ABCD');
-    expect(parts.slider.isSlotWellFormed, 'and is not a slot any more').toBe(false);
-    expect(sealedCylinderStructures(parts.joints)).toEqual([]);
+    expect(parts.seal.carrier?.id, 'the slot is lifted to the compound').toBe('ABCD');
+    expect(parts.seal.isSlotWellFormed, 'and is not a slot any more').toBe(false);
+    expect(cylindersIn(parts.joints)).toEqual([]);
   });
 });
 
@@ -299,10 +299,10 @@ describe('planning what one ram’s motion reaches', () => {
       })
     );
 
-    const spine = new RealLink('spine', [first.barrelFar, second.barrelFar, third.barrelFar]);
+    const spine = new RealLink('spine', [first.mountA, second.mountA, third.mountA]);
     const barrelBody = new RealLink(
       'A1B1spine',
-      [...first.barrel.joints, second.barrelFar, third.barrelFar],
+      [...first.barrel.joints, second.mountA, third.mountA],
       undefined,
       undefined,
       undefined,
@@ -311,17 +311,17 @@ describe('planning what one ram’s motion reaches', () => {
     // The third ram's *other* mount hangs off the first ram's rod body, so its
     // two ends are moved by two different bodies -- which is the case a
     // one-shot layout gets wrong, because it runs on whichever moved first.
-    const tie = new RealLink('tie', [first.rodFar, third.rodFar]);
+    const tie = new RealLink('tie', [first.mountB, third.mountB]);
     const rodBody = new RealLink(
       'C1D1tie',
-      [...first.rod.joints, third.rodFar],
+      [...first.rod.joints, third.mountB],
       undefined,
       undefined,
       undefined,
       [first.rod, tie]
     );
-    first.barrelFar.isWelded = true;
-    first.rodFar.isWelded = true;
+    first.mountA.isWelded = true;
+    first.mountB.isWelded = true;
 
     const joints = [...first.joints, ...second.joints, ...third.joints];
     const links = [
@@ -332,7 +332,7 @@ describe('planning what one ram’s motion reaches', () => {
       rodBody,
     ];
     rewire(joints, links);
-    const cylinders = sealedCylinderStructures(joints);
+    const cylinders = cylindersIn(joints);
     expect(cylinders).toHaveLength(3);
     return { joints, cylinders };
   }
@@ -342,7 +342,7 @@ describe('planning what one ram’s motion reaches', () => {
     // then run unchanged after its second one moved too -- so a compatible
     // translation came out as parts disagreeing.
     const { joints, cylinders } = chain();
-    const target = cylinders.find((one) => one.barrelFar.id === 'A1')!;
+    const target = cylinders.find((one) => one.mountA.id === 'A1')!;
 
     const result = planEdit(
       { poses: [{ cylinder: target, pose: slidPose(target, 2) }] },
@@ -367,7 +367,7 @@ describe('planning what one ram’s motion reaches', () => {
     const forward = chain();
     const backward = chain();
     const pick = (made: ReturnType<typeof chain>) =>
-      made.cylinders.find((one) => one.barrelFar.id === 'A1')!;
+      made.cylinders.find((one) => one.mountA.id === 'A1')!;
 
     const a = planEdit(
       { poses: [{ cylinder: pick(forward), pose: slidPose(pick(forward), 2) }] },
@@ -392,11 +392,11 @@ describe('an edit that starts somewhere else', () => {
   function ramAndArm() {
     const parts = ram();
     const far = new RevJoint('N', -4, 0);
-    const arm = new RealLink('AN', [parts.barrelFar, far]);
+    const arm = new RealLink('AN', [parts.mountA, far]);
     parts.joints.push(far);
     parts.links.push(arm);
     rewire(parts.joints, parts.links);
-    const [cylinder] = sealedCylinderStructures(parts.joints);
+    const [cylinder] = cylindersIn(parts.joints);
     expect(cylinder).toBeDefined();
     return { parts, cylinder };
   }
@@ -404,8 +404,8 @@ describe('an edit that starts somewhere else', () => {
   /** The same, with a bracket welded to the far mount carrying a witness point. */
   function ramArmAndBracket() {
     const { parts } = ramAndArm();
-    weldBracketOnto(parts, parts.rodFar, parts.rod, 'DW', { x: 13, y: 4 });
-    const [cylinder] = sealedCylinderStructures(parts.joints);
+    weldBracketOnto(parts, parts.mountB, parts.rod, 'DW', { x: 13, y: 4 });
+    const [cylinder] = cylindersIn(parts.joints);
     expect(cylinder).toBeDefined();
     return { parts, cylinder };
   }
@@ -452,8 +452,8 @@ describe('what the gesture asked for is a constraint, not a suggestion', () => {
   /** A ram with a bracket welded to its barrel mount, and the bracket's far end. */
   function ramAndBracket() {
     const parts = ram();
-    weldBracketOnto(parts, parts.barrelFar, parts.barrel, 'AX', { x: -3, y: 4 });
-    const [cylinder] = sealedCylinderStructures(parts.joints);
+    weldBracketOnto(parts, parts.mountA, parts.barrel, 'AX', { x: -3, y: 4 });
+    const [cylinder] = cylindersIn(parts.joints);
     expect(cylinder).toBeDefined();
     return { parts, cylinder };
   }
@@ -506,13 +506,13 @@ describe('an asymmetric body carried through a turn', () => {
     // so this is the positive half of that contract: a scalene bracket, turned
     // a quarter, with no two points that could be swapped for each other.
     const parts = ram();
-    const { compound } = weldBracketOnto(parts, parts.barrelFar, parts.barrel, 'AX', {
+    const { compound } = weldBracketOnto(parts, parts.mountA, parts.barrel, 'AX', {
       x: -3,
       y: 4,
     });
     // A third, off-axis point on the same body, so the triangle is scalene.
     const spur = new RevJoint('S', -5, 1);
-    const spurBar = new RealLink('AS', [parts.barrelFar, spur]);
+    const spurBar = new RealLink('AS', [parts.mountA, spur]);
     const wider = new RealLink(
       'ABAXS',
       [...compound.joints, spur],
@@ -526,7 +526,7 @@ describe('an asymmetric body carried through a turn', () => {
     parts.links.push(wider);
     rewire(parts.joints, parts.links);
 
-    const [cylinder] = sealedCylinderStructures(parts.joints);
+    const [cylinder] = cylindersIn(parts.joints);
     expect(cylinder.barrelRoot.id).toBe('ABAXS');
 
     const result = planEdit(
@@ -565,8 +565,8 @@ describe('the order the cylinders happen to be listed in', () => {
     const links = rams.flatMap((one) => one.links);
     for (let index = 0; index + 1 < count; index++) {
       const rod = rams[index].rod;
-      const nextMount = rams[index + 1].barrelFar;
-      const tie = new RealLink(`tie${index}`, [rams[index].rodFar, nextMount]);
+      const nextMount = rams[index + 1].mountA;
+      const tie = new RealLink(`tie${index}`, [rams[index].mountB, nextMount]);
       const body = new RealLink(
         `body${index}`,
         [...rod.joints, nextMount],
@@ -575,13 +575,13 @@ describe('the order the cylinders happen to be listed in', () => {
         undefined,
         [rod, tie]
       );
-      rams[index].rodFar.isWelded = true;
+      rams[index].mountB.isWelded = true;
       // The compound replaces the rod at the top level; the tie lives inside
       // it as a subset leaf, which is what a weld leaves behind.
       links.splice(links.indexOf(rod), 1, body);
     }
     rewire(joints, links);
-    const cylinders = sealedCylinderStructures(joints);
+    const cylinders = cylindersIn(joints);
     expect(cylinders).toHaveLength(count);
     return { joints, cylinders, rams };
   }
@@ -595,7 +595,7 @@ describe('the order the cylinders happen to be listed in', () => {
     const forward = longChain(COUNT);
     const backward = longChain(COUNT);
     const head = (made: ReturnType<typeof longChain>) =>
-      made.cylinders.find((one) => one.barrelFar.id === 'A0')!;
+      made.cylinders.find((one) => one.mountA.id === 'A0')!;
 
     const a = planEdit(
       { poses: [{ cylinder: head(forward), pose: slidPose(head(forward), 2) }] },

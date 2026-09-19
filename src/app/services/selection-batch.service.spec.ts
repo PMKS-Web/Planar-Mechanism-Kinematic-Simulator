@@ -1,7 +1,7 @@
 import '../model/joint';
 import { runInInjectionContext } from '@angular/core';
 import { Coord } from '../model/coord';
-import { sealedCylinderStructures } from '../model/cylinder';
+import { cylindersIn } from '../model/cylinder';
 import { Force } from '../model/force';
 import { Joint, PrisJoint, RevJoint } from '../model/joint';
 import { RealLink } from '../model/link';
@@ -224,8 +224,8 @@ describe('SelectionBatchService duplication', () => {
   it('duplicates a sealed cylinder as one complete unlocked part', () => {
     const h = createMechanismHarness();
     h.service.createCylinderFrom(new Coord(0, 0), new Coord(600, 0));
-    const original = sealedCylinderStructures(h.service.joints)[0];
-    original.slider.locked = true;
+    const original = cylindersIn(h.service.joints)[0];
+    original.seal.locked = true;
     const beforeSaves = h.saveCount();
     const batch = runInInjectionContext(h.injector, () => new SelectionBatchService());
 
@@ -240,16 +240,16 @@ describe('SelectionBatchService duplication', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.selection).toHaveLength(1);
-    const cylinders = sealedCylinderStructures(h.service.joints);
+    const cylinders = cylindersIn(h.service.joints);
     expect(cylinders).toHaveLength(2);
-    const copy = cylinders.find((candidate) => candidate.slider !== original.slider)!;
-    expect(copy.slider.isSealed).toBe(true);
+    const copy = cylinders.find((candidate) => candidate.seal !== original.seal)!;
+    expect(copy.seal.isSealed).toBe(true);
     // The seal is `rotates` on the sliding joint now: it was the weld on the
     // coincident pin the block paired it with.
-    expect(copy.slider.rotates).toBe(false);
-    expect(copy.slider.locked).toBe(false);
-    expect(copy.barrelFar.y).toBeCloseTo(original.barrelFar.y + 100, 6);
-    expect(copy.rodFar.y).toBeCloseTo(original.rodFar.y + 100, 6);
+    expect(copy.seal.rotates).toBe(false);
+    expect(copy.seal.locked).toBe(false);
+    expect(copy.mountA.y).toBeCloseTo(original.mountA.y + 100, 6);
+    expect(copy.mountB.y).toBeCloseTo(original.mountB.y + 100, 6);
     // Four joints and two links per ram, where it was five and three.
     expect(h.service.joints).toHaveLength(8);
     expect(h.service.links).toHaveLength(4);
@@ -399,14 +399,14 @@ describe('SelectionBatchService deletion', () => {
   it('deletes a sealed cylinder without leaving its hidden implementation parts', () => {
     const h = createMechanismHarness();
     h.service.createCylinderFrom(new Coord(0, 0), new Coord(600, 0));
-    const cylinder = sealedCylinderStructures(h.service.joints)[0];
+    const cylinder = cylindersIn(h.service.joints)[0];
     const beforeSaves = h.saveCount();
     const batch = runInInjectionContext(h.injector, () => new SelectionBatchService());
 
     const result = batch.deleteSelected([{ kind: 'link', id: cylinder.rod.id }]);
 
     expect(result.ok).toBe(true);
-    expect(sealedCylinderStructures(h.service.joints)).toHaveLength(0);
+    expect(cylindersIn(h.service.joints)).toHaveLength(0);
     expect(h.service.joints).toHaveLength(0);
     expect(h.service.links).toHaveLength(0);
     expect(h.saveCount() - beforeSaves).toBe(1);
@@ -415,8 +415,8 @@ describe('SelectionBatchService deletion', () => {
   it('deletes a locked cylinder and its whole closure', () => {
     const h = createMechanismHarness();
     h.service.createCylinderFrom(new Coord(0, 0), new Coord(600, 0));
-    const cylinder = sealedCylinderStructures(h.service.joints)[0];
-    cylinder.slider.locked = true;
+    const cylinder = cylindersIn(h.service.joints)[0];
+    cylinder.seal.locked = true;
     const beforeSaves = h.saveCount();
     const batch = runInInjectionContext(h.injector, () => new SelectionBatchService());
 
@@ -425,7 +425,7 @@ describe('SelectionBatchService deletion', () => {
     // All of it, or none: the assembly is one part, and a mark on its slider
     // says where it sits rather than whether it stays.
     expect(result.ok).toBe(true);
-    expect(sealedCylinderStructures(h.service.joints)).toHaveLength(0);
+    expect(cylindersIn(h.service.joints)).toHaveLength(0);
     expect(h.service.joints).toHaveLength(0);
     expect(h.service.links).toHaveLength(0);
     expect(h.saveCount() - beforeSaves).toBe(1);

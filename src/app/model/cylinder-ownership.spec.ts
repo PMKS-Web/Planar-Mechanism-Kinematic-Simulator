@@ -3,15 +3,15 @@ import { RealLink } from './link';
 import { ram, rewire, weldBracketOnto } from '../../test-utils/cylinder-graph';
 import {
   Cylinder,
-  cylinderInteriorsAt,
+  cylindersEnclosing,
   cylinderMounts,
   cylinderMountsAt,
   cylinderOfLinkIn,
   cylindersOfJointIn,
   cylindersOfLinkIn,
-  isCylinderInterior,
+  isInsideCylinder,
   isCylinderMount,
-  sealedCylinderStructures,
+  cylindersIn,
 } from './cylinder';
 
 /**
@@ -41,7 +41,7 @@ describe('which body owns a cylinder’s bars', () => {
   it('reads a plain ram as its own root on both sides', () => {
     const parts = ram();
     const joints = parts.joints;
-    const [cylinder] = sealedCylinderStructures(joints);
+    const [cylinder] = cylindersIn(joints);
 
     expect(cylinder).toBeDefined();
     expect(cylinder.barrel.id).toBe('AB');
@@ -53,12 +53,12 @@ describe('which body owns a cylinder’s bars', () => {
 
   it('keeps the barrel bar as the skin while the compound becomes the body', () => {
     const parts = ram();
-    const { compound } = weldBracketOnto(parts, parts.barrelFar, parts.barrel, 'AX', {
+    const { compound } = weldBracketOnto(parts, parts.mountA, parts.barrel, 'AX', {
       x: -3,
       y: 4,
     });
     const joints = parts.joints;
-    const [cylinder] = sealedCylinderStructures(joints);
+    const [cylinder] = cylindersIn(joints);
 
     expect(cylinder).toBeDefined();
     // The silhouette is still the bar between the two slot joints...
@@ -66,18 +66,18 @@ describe('which body owns a cylinder’s bars', () => {
     // ...and the thing a drag has to carry is the whole compound.
     expect(cylinder.barrelRoot.id).toBe(compound.id);
     expect(cylinder.rodRoot.id).toBe('CD');
-    expect(cylinder.barrelFar.id).toBe('A');
-    expect(cylinder.rodFar.id).toBe('D');
+    expect(cylinder.mountA.id).toBe('A');
+    expect(cylinder.mountB.id).toBe('D');
   });
 
   it('does the same on the rod side', () => {
     const parts = ram();
-    const { compound } = weldBracketOnto(parts, parts.rodFar, parts.rod, 'DY', {
+    const { compound } = weldBracketOnto(parts, parts.mountB, parts.rod, 'DY', {
       x: 13,
       y: 4,
     });
     const joints = parts.joints;
-    const [cylinder] = sealedCylinderStructures(joints);
+    const [cylinder] = cylindersIn(joints);
 
     expect(cylinder.rod.id).toBe('CD');
     expect(cylinder.rodRoot.id).toBe(compound.id);
@@ -89,7 +89,7 @@ describe('which body owns a cylinder’s bars', () => {
     // larger. Searching one level down would lose the barrel at exactly the
     // point the drawing got complicated.
     const parts = ram();
-    const { compound, far } = weldBracketOnto(parts, parts.barrelFar, parts.barrel, 'AX', {
+    const { compound, far } = weldBracketOnto(parts, parts.mountA, parts.barrel, 'AX', {
       x: -3,
       y: 4,
     });
@@ -109,7 +109,7 @@ describe('which body owns a cylinder’s bars', () => {
     parts.links.push(outer);
     rewire(parts.joints, parts.links);
 
-    const [cylinder] = sealedCylinderStructures(parts.joints);
+    const [cylinder] = cylindersIn(parts.joints);
 
     expect(cylinder).toBeDefined();
     expect(cylinder.barrel.id).toBe('AB');
@@ -121,7 +121,7 @@ describe('which body owns a cylinder’s bars', () => {
     // rod is not a question the drawing answers, and guessing would make the
     // skin depend on the order the reader drew them.
     const parts = ram();
-    const decoy = new RealLink('CE', [parts.slider, new RevJoint('E', 6, 5)]);
+    const decoy = new RealLink('CE', [parts.seal, new RevJoint('E', 6, 5)]);
     const compound = new RealLink(
       'CDE',
       [...parts.rod.joints, decoy.joints[1]],
@@ -131,50 +131,50 @@ describe('which body owns a cylinder’s bars', () => {
       [parts.rod, decoy]
     );
     // Only the compound. The slider's other link used to be its own block.
-    parts.slider.links = [compound];
+    parts.seal.links = [compound];
 
     const joints = parts.joints;
-    expect(sealedCylinderStructures(joints)).toHaveLength(0);
+    expect(cylindersIn(joints)).toHaveLength(0);
   });
 
   it('gives the same answer whichever order the joints arrive in', () => {
     const parts = ram();
-    weldBracketOnto(parts, parts.barrelFar, parts.barrel, 'AX', { x: -3, y: 4 });
+    weldBracketOnto(parts, parts.mountA, parts.barrel, 'AX', { x: -3, y: 4 });
     const joints = parts.joints;
 
-    const forward = sealedCylinderStructures(joints)[0];
-    const backward = sealedCylinderStructures([...joints].reverse())[0];
+    const forward = cylindersIn(joints)[0];
+    const backward = cylindersIn([...joints].reverse())[0];
 
     expect(backward.barrel.id).toBe(forward.barrel.id);
     expect(backward.barrelRoot.id).toBe(forward.barrelRoot.id);
-    expect(backward.barrelFar.id).toBe(forward.barrelFar.id);
-    expect(backward.rodFar.id).toBe(forward.rodFar.id);
+    expect(backward.mountA.id).toBe(forward.mountA.id);
+    expect(backward.mountB.id).toBe(forward.mountB.id);
   });
 });
 
 describe('the roles a joint plays on a cylinder', () => {
   const parts = ram();
   const joints = parts.joints;
-  const cylinders = sealedCylinderStructures(joints);
+  const cylinders = cylindersIn(joints);
   const cylinder: Cylinder = cylinders[0];
 
   it('names exactly the two joints the drawing attaches by', () => {
     expect(cylinderMounts(cylinder).map((one) => one.id)).toEqual(['A', 'D']);
-    expect(isCylinderMount(cylinder, parts.barrelFar)).toBe(true);
-    expect(isCylinderMount(cylinder, parts.rodFar)).toBe(true);
-    expect(isCylinderMount(cylinder, parts.pin)).toBe(false);
+    expect(isCylinderMount(cylinder, parts.mountA)).toBe(true);
+    expect(isCylinderMount(cylinder, parts.mountB)).toBe(true);
+    expect(isCylinderMount(cylinder, parts.seal)).toBe(false);
   });
 
   it('keeps mount and interior apart, since they answer opposite questions', () => {
-    expect(cylinderMountsAt(cylinders, parts.barrelFar)).toHaveLength(1);
-    expect(cylinderInteriorsAt(cylinders, parts.barrelFar)).toHaveLength(0);
+    expect(cylinderMountsAt(cylinders, parts.mountA)).toHaveLength(1);
+    expect(cylindersEnclosing(cylinders, parts.mountA)).toHaveLength(0);
 
     // Two interior joints, where there were three: the slider and the pin the
     // rod hangs on are one joint (Stage 1 of
     // `docs/joint-type-and-cylinder-plan.md`).
-    for (const inside of [parts.barrelNear, parts.slider]) {
-      expect(isCylinderInterior(cylinder, inside)).toBe(true);
-      expect(cylinderInteriorsAt(cylinders, inside)).toHaveLength(1);
+    for (const inside of [parts.inner, parts.seal]) {
+      expect(isInsideCylinder(cylinder, inside)).toBe(true);
+      expect(cylindersEnclosing(cylinders, inside)).toHaveLength(1);
       expect(cylinderMountsAt(cylinders, inside)).toHaveLength(0);
     }
   });
@@ -196,26 +196,26 @@ describe('which cylinders a link owns', () => {
     const shared = new RevJoint('S', -3, 4);
     const compound = new RealLink(
       'shared',
-      [first.barrelFar, second.barrelFar, shared],
+      [first.mountA, second.mountA, shared],
       undefined,
       undefined,
       undefined,
       [first.barrel, second.barrel]
     );
-    first.barrelFar.links = [compound];
-    second.barrelFar.links = [compound];
+    first.mountA.links = [compound];
+    second.mountA.links = [compound];
 
     const joints = [
-      first.barrelFar,
-      first.barrelNear,
-      first.rodFar,
-      first.slider,
-      second.barrelFar,
-      second.barrelNear,
-      second.rodFar,
-      second.slider,
+      first.mountA,
+      first.inner,
+      first.mountB,
+      first.seal,
+      second.mountA,
+      second.inner,
+      second.mountB,
+      second.seal,
     ];
-    const cylinders = sealedCylinderStructures(joints);
+    const cylinders = cylindersIn(joints);
     expect(cylinders).toHaveLength(2);
 
     const owned = cylindersOfLinkIn(cylinders, compound);
@@ -228,8 +228,8 @@ describe('which cylinders a link owns', () => {
   it('says nothing about a neighboring bar that merely touches a mount', () => {
     const parts = ram();
     const joints = parts.joints;
-    const cylinders = sealedCylinderStructures(joints);
-    const neighbor = new RealLink('AN', [parts.barrelFar, new RevJoint('N', -4, 0)]);
+    const cylinders = cylindersIn(joints);
+    const neighbor = new RealLink('AN', [parts.mountA, new RevJoint('N', -4, 0)]);
 
     // Pinned to a mount is not membership: the neighbor keeps its own menus
     // and is not swept up by a delete that follows the cylinder.

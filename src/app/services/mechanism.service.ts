@@ -11,14 +11,14 @@ import {
   cylinderJoints,
   cylinderStrokeAlong,
   cylinderOfJointIn,
-  cylinderInteriorsAt,
+  cylindersEnclosing,
   cylinderOfBarIn,
   cylinderOfLinkIn,
   cylindersOfLinkIn,
-  isCylinderInterior,
-  normalizedCylinderPose,
-  sealedCylinderStructures,
-  structuralCylinderAt,
+  isInsideCylinder,
+  derivedInterior,
+  cylindersIn,
+  cylinderAtSeal,
 } from '../model/cylinder';
 import { Force } from '../model/force';
 import {
@@ -103,7 +103,6 @@ import {
   refuseJointMerge,
   slotWouldFoldACylinder,
 } from '../model/drop-target';
-import { CylinderPose } from '../model/cylinder';
 import { constrainForceAnchor } from '../model/force-anchor';
 import { redundantlyHeldJointSets } from '../model/rigid-bodies';
 import { MODEL_SCALE } from '../model/render-scale';
@@ -486,7 +485,7 @@ export class MechanismService {
     // joint — a drag path, a panel or table field, a merge, an undo edge, or
     // a code path nobody found — the assembly is re-derived from its two
     // mounts before the solver, the codec or the canvas can read a bent one.
-    this.normalizeSealedCylinders();
+    this.deriveCylinderInteriors();
 
     // A compound Boolean union is pose-independent. Build it once for the
     // editable pose, then let Mechanism rigidly transform it for solved frames.
@@ -1158,44 +1157,53 @@ export class MechanismService {
   }
 
   /**
-   * Make every sealed cylinder collinear again, whatever wrote its joints.
+   * Put N and S where the cylinder says they are, whatever wrote them.
    *
-   * Structural resolution on purpose — a bent assembly is exactly the state
-   * this exists to repair, so it cannot be found through the geometric test
-   * it currently fails. The mounts are the user's handles and stay put; the
-   * members are re-derived on the mount axis, the pin clamped into the slot.
-   * For a valid assembly the pose is the identity at the same 6-decimal
-   * rounding every drag applies, so the common case writes nothing.
+   * The two joints a seal owns are derived rather than drawn (decision S2), so
+   * this is where the derivation lands: on the axis between the mounts, each at
+   * the length its own bar already has. The mounts are the reader's handles and
+   * are never touched, and a cylinder that is already straight writes nothing,
+   * which is the common case on every rebuild.
+   *
+   * It used to be a *repair*, planned through `planEdit` like any edit -- which
+   * meant it could be refused, could carry a welded bracket round with it, and
+   * had to argue silently with locks on a pass that runs on every keystroke
+   * that rebuilds. Writing only the two joints nothing else may write needs
+   * none of that machinery.
    */
-  private normalizeSealedCylinders(): void {
-    const sealedNow = this.sealedStructures();
-    if (sealedNow.length === 0) return;
+  private deriveCylinderInteriors(): void {
+    const placements = new Map<string, { x: number; y: number }>();
+    const reshaped: Link[] = [];
+    const moved = (joint: Joint, to: { x: number; y: number }) =>
+      roundNumber(to.x, 6) !== roundNumber(joint.x, 6) ||
+      roundNumber(to.y, 6) !== roundNumber(joint.y, 6);
 
-    // Every ram at once, through the same planner and the same commit an edit
-    // uses. One at a time, each from its own fresh snapshot, meant a repair
-    // could walk past a lock, tear a welded bracket off the body it belongs
-    // to, and disturb a neighbor that had already been straightened.
-    const poses: { cylinder: (typeof sealedNow)[number]; pose: CylinderPose }[] = [];
-    for (const sealed of sealedNow) {
-      const barrelLength = getDistance(
-        new Coord(sealed.barrelFar.x, sealed.barrelFar.y),
-        new Coord(sealed.barrelNear.x, sealed.barrelNear.y)
-      );
-      const pose = normalizedCylinderPose(
-        sealed.barrelFar,
-        sealed.rodFar,
-        barrelLength,
-        0.15 * this.settingsService.objectScale
-      );
-      if (pose) poses.push({ cylinder: sealed, pose });
+    for (const sealed of this.sealedStructures()) {
+      const derived = derivedInterior(sealed);
+      if (!derived) continue;
+      // Each bar goes through the rebuild a reshaped bar gets from an edit --
+      // outline, length and angle, an automatic center of mass -- and only the
+      // one whose own length this changed, so straightening a barrel does not
+      // carry a hand-placed center of mass on the rod through a frame that
+      // never moved.
+      if (moved(sealed.inner, derived.inner)) {
+        placements.set(sealed.inner.id, derived.inner);
+        reshaped.push(sealed.barrel);
+      }
+      if (moved(sealed.seal, derived.seal)) {
+        placements.set(sealed.seal.id, derived.seal);
+        reshaped.push(sealed.rod);
+      }
     }
-    if (poses.length === 0) return;
+    if (placements.size === 0) return;
 
-    // Silent on refusal, and deliberately. This runs on every rebuild, decode
-    // included, so it is the wrong place to argue with the reader: a structure
-    // no pose can satisfy is left exactly as it was drawn, and the readiness
-    // rules are what report it.
-    this.gridUtils.runEditQuietly({ poses }, false);
+    this.gridUtils.commitEditPlan({
+      placements,
+      movedIds: new Set(placements.keys()),
+      carried: [],
+      reshaped,
+      affectedRoots: [],
+    });
   }
 
   /**
@@ -2181,7 +2189,7 @@ export class MechanismService {
       // One sealed part, one mark: the prismatic pin, where the assembly's
       // other permanent bit (isSealed) already lives, and whose hold the
       // closure spreads to all five joints.
-      return [sealed.slider];
+      return [sealed.seal];
     }
     if (target instanceof RealJoint) return [target];
     return target.joints.filter((joint): joint is RealJoint => joint instanceof RealJoint);
@@ -2202,7 +2210,7 @@ export class MechanismService {
     if (!sealed) return undefined;
     const isMount =
       target instanceof RealJoint &&
-      (target.id === sealed.barrelFar.id || target.id === sealed.rodFar.id);
+      (target.id === sealed.mountA.id || target.id === sealed.mountB.id);
     return isMount ? undefined : sealed;
   }
 
@@ -2373,7 +2381,7 @@ export class MechanismService {
     // "and 2 joints" about parts of a cylinder nobody can see would be a number
     // the reader cannot check against the screen.
     const inside = new Set(
-      this.cylindersOfLink(link).flatMap((sealed) => [sealed.barrelNear.id, sealed.slider.id])
+      this.cylindersOfLink(link).flatMap((sealed) => [sealed.inner.id, sealed.seal.id])
     );
     return this.joints.filter(
       (joint): joint is RealJoint =>
@@ -2973,7 +2981,7 @@ export class MechanismService {
     const cylinders = this.sealedStructures();
     if (
       cylinders.some(
-        (sealed) => isCylinderInterior(sealed, source) || isCylinderInterior(sealed, target)
+        (sealed) => isInsideCylinder(sealed, source) || isInsideCylinder(sealed, target)
       )
     ) {
       return 'sealed-cylinder';
@@ -3262,7 +3270,7 @@ export class MechanismService {
       const doomed = this.activeObjService.selectedJoint;
       // By pin id, so a set enumerated in either order removes the same parts.
       for (const sealed of [...doomedCylinders].sort((left, right) =>
-        left.pin.id.localeCompare(right.pin.id)
+        left.seal.id.localeCompare(right.seal.id)
       )) {
         this.deleteCylinderTopology(sealed);
       }
@@ -3788,7 +3796,7 @@ export class MechanismService {
       // By pin id, so a body holding two rams loses the same two whichever
       // order they were found in.
       for (const sealed of [...owned].sort((left, right) =>
-        left.pin.id.localeCompare(right.pin.id)
+        left.seal.id.localeCompare(right.seal.id)
       )) {
         this.deleteCylinderTopology(sealed);
       }
@@ -3856,7 +3864,7 @@ export class MechanismService {
    */
   sealedStructures(): Cylinder[] {
     if (this.structuresCache?.revision !== this.cylinderRevision) {
-      const list = sealedCylinderStructures(this.joints);
+      const list = cylindersIn(this.joints);
       this.structuresCache = { revision: this.cylinderRevision, list };
       this.tellEachBarWhoDrawsIt(list);
     }
@@ -3967,7 +3975,7 @@ export class MechanismService {
       if (!mechanism) return [];
       return readinessOf(partition, mechanism, {
         cylinderName: (sliderId) => {
-          const found = this.sealedStructures().find((c) => c.slider.id === sliderId);
+          const found = this.sealedStructures().find((c) => c.seal.id === sliderId);
           return found ? this.cylinderName(found) : sliderId;
         },
         drivenRefusal: (part) => {
@@ -4363,7 +4371,7 @@ export class MechanismService {
     }
     const noTravel = PositionSolver.unusableCylinderDrive;
     if (noTravel) {
-      const cylinder = this.sealedStructures().find((found) => found.slider.id === noTravel);
+      const cylinder = this.sealedStructures().find((found) => found.seal.id === noTravel);
       const name = cylinder ? this.cylinderName(cylinder) : noTravel;
       return `Cylinder ${name} has no travel: its barrel is too short to slide in at all. Lengthen the cylinder, or reduce Object Size — a larger size draws everything on the rod bigger without lengthening the barrel.`;
     }
@@ -4415,26 +4423,26 @@ export class MechanismService {
    */
   private strokeWarningFor(only?: MechanismPartition): string | undefined {
     for (const cylinder of this.sealedStructures()) {
-      if (only && !only.joints.some((joint) => joint.id === cylinder.pin.id)) {
+      if (only && !only.joints.some((joint) => joint.id === cylinder.seal.id)) {
         continue;
       }
       // Each ram is measured against the frames of its own machine. Read from
       // another mechanism's cycle -- a different length, a different motion --
       // the travel below is a measurement of the wrong thing entirely.
-      const solved = this.mechanismContaining(cylinder.pin);
+      const solved = this.mechanismContaining(cylinder.seal);
       if (!solved?.isMechanismValid()) continue;
       const frames = solved.joints.length;
       if (frames < 2) continue;
 
       const r = 0.15 * SettingsService.objectScale;
-      const barrelLength = getDistance(cylinder.barrelFar, cylinder.barrelNear);
+      const barrelLength = getDistance(cylinder.mountA, cylinder.inner);
       const travel = cylinderStrokeAlong(barrelLength, r);
       if (!travel.usable) continue;
       const stroke = travel.max - travel.min;
 
       const indexOf = (id: string) => solved.joints[0].findIndex((joint) => joint.id === id);
-      const anchor = indexOf(cylinder.barrelFar.id);
-      const pin = indexOf(cylinder.pin.id);
+      const anchor = indexOf(cylinder.mountA.id);
+      const pin = indexOf(cylinder.seal.id);
       if (anchor < 0 || pin < 0) continue;
 
       let low = Infinity;
@@ -4464,8 +4472,7 @@ export class MechanismService {
   /** What to call a cylinder in a message: its two mounts, as the panel titles it. */
   private cylinderName(cylinder: Cylinder): string {
     return (
-      (cylinder.barrelFar.name || cylinder.barrelFar.id) +
-      (cylinder.rodFar.name || cylinder.rodFar.id)
+      (cylinder.mountA.name || cylinder.mountA.id) + (cylinder.mountB.name || cylinder.mountB.id)
     );
   }
 
@@ -4641,6 +4648,8 @@ export class MechanismService {
       barrelNear,
     ]);
     const rod = this.gridUtils.createRealLink(cId + dId, [slider, rodFar]);
+    // Mount first, inner end second: the slot's order is what says which barrel
+    // joint is which, and every later reading of this cylinder quotes it (S1).
     slider.slideOn(barrel, barrelFar, barrelNear);
 
     barrelFar.links.push(barrel);
@@ -4720,10 +4729,8 @@ export class MechanismService {
       .forEach((force) => this.detachForce(force));
     this.links = this.links.filter((link) => !memberLinkIds.has(link.id));
 
-    const interior = new Set([sealed.slider.id, sealed.barrelNear.id]);
-    [...interior, sealed.barrelFar.id, sealed.rodFar.id].forEach((id) =>
-      this.slotStashes.delete(id)
-    );
+    const interior = new Set([sealed.seal.id, sealed.inner.id]);
+    [...interior, sealed.mountA.id, sealed.mountB.id].forEach((id) => this.slotStashes.delete(id));
     this.joints = this.joints.filter((joint) => !interior.has(joint.id));
     this.joints = this.joints.filter(
       (joint) =>
@@ -4757,14 +4764,14 @@ export class MechanismService {
   toggleCylinderInput(target?: Cylinder): void {
     const sealed = target ?? this.cylinderOfBar(this.activeObjService.selectedLink);
     if (!sealed) return;
-    if (!sealed.slider.input) {
+    if (!sealed.seal.input) {
       // One input per mechanism, same as adjustInput.
-      this.clearInputsSharingMechanismWith(sealed.slider);
+      this.clearInputsSharingMechanismWith(sealed.seal);
       // And the same first-speed guess: a ram's stroke decides how long its
       // cycle runs, so one number cannot suit every ram anybody draws.
-      this.askForFittedSpeed(sealed.slider);
+      this.askForFittedSpeed(sealed.seal);
     }
-    sealed.slider.input = !sealed.slider.input;
+    sealed.seal.input = !sealed.seal.input;
     // Saved: the row is an edit like the pin's Driven Input, and it used to
     // rebuild without an entry, so Undo could not give the drive back.
     this.updateMechanism(true);
@@ -4954,7 +4961,7 @@ export class MechanismService {
     //
     // A mount is not covered by this and must not be: reassigning the block on
     // a mount is exactly how a carriage is dropped onto a new rail.
-    if (cylinderInteriorsAt(this.sealedStructures(), joint).length > 0) return false;
+    if (cylindersEnclosing(this.sealedStructures(), joint).length > 0) return false;
     // Nor is a body that already holds the other end of this joint's own ram:
     // the drop pulls the mount onto that body's line and there is nowhere for
     // the part to go but shorter. The preview does not offer it, and this is
@@ -6039,7 +6046,7 @@ export class MechanismService {
       // two joints that is between.
       const driven = mechanism.joints[0]?.find((joint) => (joint as RealJoint).input);
       const sealed = driven && this.cylinderAt(this.joints.find((j) => j.id === driven.id));
-      const ram = sealed ? { from: sealed.barrelFar.id, to: sealed.rodFar.id } : undefined;
+      const ram = sealed ? { from: sealed.mountA.id, to: sealed.mountB.id } : undefined;
       this.profiles.set(mechanism, buildDriveProfile(mechanism, ram) ?? null);
     }
     return this.profiles.get(mechanism) ?? undefined;
@@ -7526,7 +7533,7 @@ export class MechanismService {
     // comes off (§ cylinder 4). Only the sealed joint resolves here — a welded
     // *mount* is an ordinary joint inside a neighboring compound, and taking it
     // back out stays legal.
-    if (structuralCylinderAt(joint)) return false;
+    if (cylinderAtSeal(joint)) return false;
     if (joint instanceof PrisJoint) {
       if (joint.rotates) return false;
       // The compound goes first where this weld built one, and then the riders

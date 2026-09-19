@@ -408,7 +408,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
    */
   private get drivenJoint(): RealJoint | undefined {
     const sealed = this.selectedCylinder;
-    if (sealed) return sealed.slider.input ? sealed.slider : undefined;
+    if (sealed) return sealed.seal.input ? sealed.seal : undefined;
     if (this.activeSrv.objType !== 'Joint') return undefined;
     const joint = this.selectedSlider ?? this.activeSrv.selectedJoint;
     return joint && joint.input ? joint : undefined;
@@ -713,7 +713,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
       if (sealed) {
         // Travel, Starts-at and Axis all hold the barrel mount and move the
         // rest of the part, so a held barrel mount alone leaves them live.
-        const movable = [sealed.rodFar, sealed.pin, sealed.slider, sealed.barrelNear].every(
+        const movable = [sealed.mountB, sealed.seal, sealed.inner].every(
           (joint) => !frozenIds.has(joint.id)
         );
         setEnabled(this.cylinderForm.get('travel'), movable);
@@ -828,7 +828,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
    */
   get cylinderDirectionForced(): boolean {
     const sealed = this.selectedCylinder;
-    return !!sealed && !!sealed.slider.input && this.cylinderTravelEnd(sealed) !== undefined;
+    return !!sealed && !!sealed.seal.input && this.cylinderTravelEnd(sealed) !== undefined;
   }
 
   /**
@@ -840,13 +840,13 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
    * the ram cannot take. `setDriveSpeed` mirrors the default along anyway.
    */
   private syncCylinderDirection(sealed: Cylinder): void {
-    if (!sealed.slider.input) return;
+    if (!sealed.seal.input) return;
     const end = this.cylinderTravelEnd(sealed);
     if (end === undefined) return;
     const wantsRetract = end === 1;
-    const signed = this.mechanismService.driveSpeedOf(sealed.slider);
+    const signed = this.mechanismService.driveSpeedOf(sealed.seal);
     if (signed === 0 || turnsClockwise(signed) === wantsRetract) return;
-    this.mechanismService.setDriveSpeed(sealed.slider, speedTurning(wantsRetract, signed));
+    this.mechanismService.setDriveSpeed(sealed.seal, speedTurning(wantsRetract, signed));
     this.mechanismService.updateMechanism(false);
   }
 
@@ -863,10 +863,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
 
   /** Mount-to-mount axis angle, in the user's angle unit. */
   cylinderAngleLabel(sealed: Cylinder): string {
-    const raw = Math.atan2(
-      sealed.rodFar.y - sealed.barrelFar.y,
-      sealed.rodFar.x - sealed.barrelFar.x
-    );
+    const raw = Math.atan2(sealed.mountB.y - sealed.mountA.y, sealed.mountB.x - sealed.mountA.x);
     return this.nup.formatValueAndUnit(
       this.nup.convertAngle(raw, AngleUnit.RADIAN, this.settingsService.angleUnit.getValue()),
       this.settingsService.angleUnit.getValue()
@@ -882,8 +879,8 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   private reposeCylinder(span?: number, angleRad?: number): void {
     const sealed = this.selectedCylinder;
     if (!sealed) return;
-    const a = sealed.barrelFar;
-    const c = sealed.rodFar;
+    const a = sealed.mountA;
+    const c = sealed.mountB;
     const current = Math.atan2(c.y - a.y, c.x - a.x);
     const s = span ?? getDistance(a, c);
     const ang = angleRad ?? current;
@@ -940,7 +937,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
         angle: this.cylinderAngleLabel(sealed),
         barrelMass: this.nup.formatValueAndUnit(sealed.barrel.mass, massUnits),
         rodMass: this.nup.formatValueAndUnit(sealed.rod.mass, massUnits),
-        headMass: this.nup.formatValueAndUnit(sealed.slider.mass, massUnits),
+        headMass: this.nup.formatValueAndUnit(sealed.seal.mass, massUnits),
       },
       { emitEvent: false }
     );
@@ -1592,7 +1589,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     );
     this.onDestroySubscriptions.push(
       this.cylinderForm.controls['headMass'].valueChanges.subscribe((val) =>
-        this.cylinderMassEdit('headMass', (sealed) => sealed.slider, val)
+        this.cylinderMassEdit('headMass', (sealed) => sealed.seal, val)
       )
     );
 
@@ -2567,7 +2564,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     // a mount's Distance To Joints must not offer a field that would drag one.
     otherJoints = otherJoints.filter((joint) => {
       const sealed = this.mechanismService.cylinderAt(joint);
-      return !sealed || joint.id === sealed.barrelFar.id || joint.id === sealed.rodFar.id;
+      return !sealed || joint.id === sealed.mountA.id || joint.id === sealed.mountB.id;
     });
 
     // A mount reads like a binary link's endpoint: its far end is the OTHER
@@ -2577,9 +2574,9 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     const mountOf = this.mechanismService.cylinderAt(selectedJoint);
     if (
       mountOf &&
-      (selectedJoint.id === mountOf.barrelFar.id || selectedJoint.id === mountOf.rodFar.id)
+      (selectedJoint.id === mountOf.mountA.id || selectedJoint.id === mountOf.mountB.id)
     ) {
-      const far = selectedJoint.id === mountOf.barrelFar.id ? mountOf.rodFar : mountOf.barrelFar;
+      const far = selectedJoint.id === mountOf.mountA.id ? mountOf.mountB : mountOf.mountA;
       if (far instanceof RealJoint && !otherJoints.some((joint) => joint.id === far.id)) {
         otherJoints.push(far);
       }

@@ -14,7 +14,7 @@ import {
   unitsPerCentimeter,
 } from './dxf-options';
 import { DxfEntity } from './dxf-model';
-import { sealedCylinderStructures } from '../../../model/cylinder';
+import { cylindersIn } from '../../../model/cylinder';
 import { defaultPinDiameter, linkBodyWidth, SlotTravel } from './link-bodies';
 import { buildSemanticDxf, originShift, TracedPath } from './semantic-dxf';
 import { writeDxf } from './dxf-writer';
@@ -120,7 +120,7 @@ export class DxfExportService {
         unit,
         { ...choices, pinDiameter: this.pinDiameter(options) },
         {
-          cylinders: sealedCylinderStructures(this.mechanism.joints).length > 0,
+          cylinders: cylindersIn(this.mechanism.joints).length > 0,
           slots: this.mechanism.joints.some((joint) => joint instanceof PrisJoint),
         },
         this.tableUnits()

@@ -105,7 +105,7 @@ import {
   cylinderSizeOf,
   cylinderSpanRange,
   cylinderJoints,
-  isCylinderInterior as isCylinderInteriorOf,
+  isInsideCylinder as isInsideCylinderOf,
 } from '../../model/cylinder';
 import { SnapGuide, snapToAxes } from '../../model/axis-snap';
 import { drawDepths } from '../../model/draw-order';
@@ -2179,7 +2179,7 @@ export class NewGridComponent implements OnDestroy {
           // mounts are the handles for re-posing. It follows the cursor freely,
           // the same way a bar does, measured on the mount the ram is named
           // from.
-          const mount = bodyCylinder.barrelFar;
+          const mount = bodyCylinder.mountA;
           const target = this.placeDraggedBody(mount, mousePosInSvg, $event.altKey);
           this.gridUtils.dragCylinder(bodyCylinder, target.x - mount.x, target.y - mount.y);
           this.linkDragAnchor = mousePosInSvg;
@@ -2915,7 +2915,7 @@ export class NewGridComponent implements OnDestroy {
           mousePos.y,
           // A sealed cylinder's interior joints are not attachment points, so
           // they never capture a drop; the mounts remain ordinary targets.
-          this.mechanismSrv.joints.filter((joint) => !this.isCylinderInterior(joint)),
+          this.mechanismSrv.joints.filter((joint) => !this.isInsideCylinder(joint)),
           this.snapRadius(),
           // The full structural picture rides along separately: the filtered
           // list above cannot answer mount questions (the pins are gone), and
@@ -3120,7 +3120,7 @@ export class NewGridComponent implements OnDestroy {
     // 180, which is what a bar has always been able to do against its own far
     // joint. The rest of the assembly travels with the drag, and squaring
     // against those is the drag chasing its own tail.
-    const opposite = dragged?.id === sealed.barrelFar.id ? sealed.rodFar : sealed.barrelFar;
+    const opposite = dragged?.id === sealed.mountA.id ? sealed.mountB : sealed.mountA;
     memberIds.delete(opposite.id);
     const others = this.mechanismSrv
       .getJoints()
@@ -4997,12 +4997,12 @@ export class NewGridComponent implements OnDestroy {
     const size = cylinderSizeOf(sealed, r);
     if (!(size.stroke > 0)) return undefined;
 
-    const { barrelFar, rodFar } = sealed;
-    const span = Math.hypot(rodFar.x - barrelFar.x, rodFar.y - barrelFar.y);
+    const { mountA, mountB } = sealed;
+    const span = Math.hypot(mountB.x - mountA.x, mountB.y - mountA.y);
     if (!(span > 1e-9)) return undefined;
-    const ux = (rodFar.x - barrelFar.x) / span;
-    const uy = (rodFar.y - barrelFar.y) / span;
-    const at = (along: number) => new Coord(barrelFar.x + along * ux, barrelFar.y + along * uy);
+    const ux = (mountB.x - mountA.x) / span;
+    const uy = (mountB.y - mountA.y) / span;
+    const at = (along: number) => new Coord(mountA.x + along * ux, mountA.y + along * uy);
 
     const ends = cylinderSpanRange(size.stroke, r);
     const showsPosition = this.cylinderRangeOverlay === 'start';
@@ -5237,27 +5237,22 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * A cylinder's interior joints — the buried barrel end, the pin, and the
-   * sliding joint — get no hitbox, hover, label or selection at all. Only the
-   * two mounts remain selectable; the skin's own geometry selects the body.
+   * The joints a cylinder places for itself — the buried barrel end and the
+   * seal — get no hitbox, hover, label or selection at all. Only the two
+   * mounts remain selectable; the skin's own geometry selects the body.
    */
-  isCylinderInterior(joint: Joint): boolean {
+  isInsideCylinder(joint: Joint): boolean {
     // Checked against the structural resolution as well as the drawn marks:
     // the marks are geometric, and mid-edit (a weld landing, a drag in
     // flight) they can lag a frame — long enough for an interior label to
     // blink into view.
     if (
-      this.cylinderList.some(
-        (mark) =>
-          mark.hiddenJointId === joint.id ||
-          mark.pin.id === joint.id ||
-          mark.cylinder.slider.id === joint.id
-      )
+      this.cylinderList.some((mark) => mark.hiddenJointId === joint.id || mark.pin.id === joint.id)
     ) {
       return true;
     }
     const sealed = this.mechanismSrv.cylinderAt(joint);
-    return !!sealed && isCylinderInteriorOf(sealed, joint);
+    return !!sealed && isInsideCylinderOf(sealed, joint);
   }
 
   /** One tag per part: the rod defers to the barrel's tag. */
@@ -5648,12 +5643,10 @@ export class NewGridComponent implements OnDestroy {
   linkDisplayName(link: Link): string {
     const sealed = this.mechanismSrv.cylinderOfBar(link);
     if (!sealed) return link.name;
-    const interior = new Set(
-      [sealed.pin.id, sealed.slider.id, sealed.barrelNear.id].map((id) => id)
-    );
+    const interior = new Set([sealed.seal.id, sealed.inner.id]);
     const stripped = [...link.name].filter((letter) => !interior.has(letter)).join('');
     if (link.id === sealed.barrel.id || link.id === sealed.rod.id) {
-      return `${sealed.barrelFar.name}${sealed.rodFar.name}`;
+      return `${sealed.mountA.name}${sealed.mountB.name}`;
     }
     return stripped || link.name;
   }
@@ -6237,7 +6230,7 @@ export class NewGridComponent implements OnDestroy {
           // A cylinder body's span is mount to mount, not the barrel's own
           // two joints (one of which is buried inside the part).
           const sealed = this.mechanismSrv.cylinderOfBar(link);
-          const [from, to] = sealed ? [sealed.barrelFar, sealed.rodFar] : link.joints;
+          const [from, to] = sealed ? [sealed.mountA, sealed.mountB] : link.joints;
           x1 = from.x;
           y1 = from.y;
           x2 = to.x;
@@ -6263,7 +6256,7 @@ export class NewGridComponent implements OnDestroy {
         case -1: {
           const link = this.activeObjService.selectedLink;
           const sealed = this.mechanismSrv.cylinderOfBar(link);
-          const [from, to] = sealed ? [sealed.barrelFar, sealed.rodFar] : link.joints;
+          const [from, to] = sealed ? [sealed.mountA, sealed.mountB] : link.joints;
           x1 = from.x;
           y1 = from.y;
           x2 = to.x;

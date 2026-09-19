@@ -114,11 +114,11 @@ describe('a cylinder mount is an ordinary joint now', () => {
   function stillARam() {
     const sealed = ram();
     expect(sealed, 'the ram still resolves').toBeDefined();
-    expect(sealed.slider.isSealed, 'still sealed').toBe(true);
+    expect(sealed.seal.isSealed, 'still sealed').toBe(true);
     // The seal and the pin the rod hangs on are one joint now, so what used to
     // be the pin's weld is the slider saying its rod cannot turn against the
     // slot.
-    expect(sealed.slider.rotates, 'the rod is still rigid with the slot').toBe(false);
+    expect(sealed.seal.rotates, 'the rod is still rigid with the slot').toBe(false);
     return sealed;
   }
 
@@ -284,9 +284,9 @@ describe('and the inside of a cylinder is still sealed', () => {
   const interiors = () => {
     const sealed = ram();
     return [
-      { name: 'the buried barrel end', joint: sealed.barrelNear as RealJoint },
-      { name: 'the pin', joint: sealed.pin as RealJoint },
-      { name: 'the slider', joint: sealed.slider as RealJoint },
+      { name: 'the buried barrel end', joint: sealed.inner as RealJoint },
+      { name: 'the pin', joint: sealed.seal as RealJoint },
+      { name: 'the slider', joint: sealed.seal as RealJoint },
     ];
   };
 
@@ -342,12 +342,12 @@ describe('and the inside of a cylinder is still sealed', () => {
     }
     // And nothing was taken apart on the way through.
     expect(mechanism.sealedStructures()).toHaveLength(1);
-    expect(ram().slider.rotates).toBe(false);
-    expect(ram().slider.isSealed).toBe(true);
+    expect(ram().seal.rotates).toBe(false);
+    expect(ram().seal.isSealed).toBe(true);
   });
 
   it('refuses to unweld the pin, which is what makes the part one thing', () => {
-    const pin = ram().slider;
+    const pin = ram().seal;
     expect(grid.weldRefusal(pin)?.short).toBe('part is sealed');
 
     mechanism.unWeldJoint(pin);

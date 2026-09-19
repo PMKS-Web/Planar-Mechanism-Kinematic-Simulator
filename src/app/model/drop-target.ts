@@ -154,7 +154,7 @@ export function refuseJointMerge(
   // found *different* rams for the two ends and let the merge through. The
   // question is whether any single ram has both of these as its mounts.
   const isMountOf = (cylinder: Cylinder, joint: Joint) =>
-    cylinder.barrelFar.id === joint.id || cylinder.rodFar.id === joint.id;
+    cylinder.mountA.id === joint.id || cylinder.mountB.id === joint.id;
   if (cylinders.some((c) => isMountOf(c, source) && isMountOf(c, target))) {
     return 'own-cylinder';
   }
@@ -340,8 +340,8 @@ export function slotWouldFoldACylinder(
   cylinders: Cylinder[]
 ): boolean {
   const farEnds = cylinders
-    .filter((c) => c.barrelFar.id === source.id || c.rodFar.id === source.id)
-    .map((c) => (c.barrelFar.id === source.id ? c.rodFar.id : c.barrelFar.id));
+    .filter((c) => c.mountA.id === source.id || c.mountB.id === source.id)
+    .map((c) => (c.mountA.id === source.id ? c.mountB.id : c.mountA.id));
   if (farEnds.length === 0) return false;
   const members = new Set<string>();
   const collect = (link: Link) => link.joints.forEach((joint) => members.add(joint.id));

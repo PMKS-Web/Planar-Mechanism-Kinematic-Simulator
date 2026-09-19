@@ -5,7 +5,7 @@ import { Joint } from '../../app/model/joint';
 import { buildMechanism, buildMechanismAtScale } from '../../test-utils/verification/fixture';
 import { RATE_TOLERANCE, velocityAgreesWithPositions } from '../../test-utils/verification/rates';
 import { TOGGLE, togglePressFixture } from '../../test-utils/verification/library-fixtures';
-import { sealedCylinders } from '../../app/model/cylinder';
+import { cylindersIn } from '../../app/model/cylinder';
 import { MODEL_SCALE } from '../../app/model/render-scale';
 import { SettingsService } from '../../app/services/settings.service';
 
@@ -61,7 +61,7 @@ function sampleMotion(): { samples: Sample[]; cylinders: number; frames: number 
   });
   return {
     samples,
-    cylinders: sealedCylinders(mechanism.joints[0]).length,
+    cylinders: cylindersIn(mechanism.joints[0]).length,
     frames: mechanism.joints.length,
   };
 }

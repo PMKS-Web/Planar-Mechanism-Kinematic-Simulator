@@ -385,7 +385,7 @@ export class AnalysisSetupComponent {
     const sealed = this.mechanism.cylindersAt(slider)[0];
     if (!sealed) return `Slider ${slider.name || slider.id}`;
     const name =
-      (sealed.barrelFar.name || sealed.barrelFar.id) + (sealed.rodFar.name || sealed.rodFar.id);
+      (sealed.mountA.name || sealed.mountA.id) + (sealed.mountB.name || sealed.mountB.id);
     return `Sliding body ${name}`;
   }
 
