@@ -96,7 +96,7 @@ export interface EditContext {
   cylinders: Cylinder[];
   snapshot: PoseSnapshot;
   /** A carried ram's own layout, from where its two mounts have been put. */
-  layoutFor: (cylinder: Cylinder, barrelFar: Point, rodFar: Point) => CylinderPose | undefined;
+  layoutFor: (cylinder: Cylinder, mountA: Point, mountB: Point) => CylinderPose | undefined;
   /** How far two answers for one point may differ and still be one answer. */
   tolerance: number;
   /** Joints a Lock holds still. */
@@ -216,11 +216,11 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
     const changed: string[] = [];
     const askedFor = prescribed.get(cylinder.seal.id);
 
-    const wasBarrelFar = at(cylinder.mountA.id);
-    const wasBarrelNear = at(cylinder.inner.id);
-    const wasRodFar = at(cylinder.mountB.id);
-    const wasPin = at(cylinder.seal.id);
-    if (!wasBarrelFar || !wasBarrelNear || !wasRodFar || !wasPin) return changed;
+    const wasMountA = at(cylinder.mountA.id);
+    const wasInner = at(cylinder.inner.id);
+    const wasMountB = at(cylinder.mountB.id);
+    const wasSeal = at(cylinder.seal.id);
+    if (!wasMountA || !wasInner || !wasMountB || !wasSeal) return changed;
 
     const pose =
       askedFor ?? context.layoutFor(cylinder, now(cylinder.mountA.id)!, now(cylinder.mountB.id)!);
@@ -236,8 +236,8 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
     // and one that has not yet, and that intermediate span means nothing. The
     // final check below is what judges those.
     if (askedFor && cylinder.barrelRoot.id === cylinder.rodRoot.id) {
-      const was = Math.hypot(wasRodFar.x - wasBarrelFar.x, wasRodFar.y - wasBarrelFar.y);
-      const asked = Math.hypot(pose.rodFar.x - pose.barrelFar.x, pose.rodFar.y - pose.barrelFar.y);
+      const was = Math.hypot(wasMountB.x - wasMountA.x, wasMountB.y - wasMountA.y);
+      const asked = Math.hypot(pose.mountB.x - pose.mountA.x, pose.mountB.y - pose.mountA.y);
       if (Math.abs(was - asked) > context.tolerance) {
         fused = cylinder;
         return changed;
@@ -248,15 +248,15 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
     const sides: [Link, Rigid | undefined, Joint, Point][] = [
       [
         cylinder.barrelRoot,
-        rigidBetween(wasBarrelFar, wasBarrelNear, pose.barrelFar, pose.barrelNear),
+        rigidBetween(wasMountA, wasInner, pose.mountA, pose.inner),
         cylinder.mountA,
-        pose.barrelFar,
+        pose.mountA,
       ],
       [
         cylinder.rodRoot,
-        rigidBetween(wasRodFar, wasPin, pose.rodFar, pose.pin),
+        rigidBetween(wasMountB, wasSeal, pose.mountB, pose.seal),
         cylinder.mountB,
-        pose.rodFar,
+        pose.mountB,
       ],
     ];
 
@@ -277,18 +277,17 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
     // The interior is where the extension puts it, not where either body's
     // rigid motion would carry it. The two agree while a ram merely moves and
     // part company the moment it changes length.
-    if (put(cylinder.inner.id, pose.barrelNear)) changed.push(cylinder.inner.id);
-    if (put(cylinder.seal.id, pose.pin)) changed.push(cylinder.seal.id);
+    if (put(cylinder.inner.id, pose.inner)) changed.push(cylinder.inner.id);
+    if (put(cylinder.seal.id, pose.seal)) changed.push(cylinder.seal.id);
 
     // The ram's own two bars are the only ones this edit may reshape, and only
     // when it actually changes one of their lengths. Both are asked, because a
     // repair straightens a bent *rod* while leaving the barrel alone.
     const span = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
     const barrelChanged =
-      Math.abs(span(wasBarrelFar, wasBarrelNear) - span(pose.barrelFar, pose.barrelNear)) >
-      context.tolerance;
+      Math.abs(span(wasMountA, wasInner) - span(pose.mountA, pose.inner)) > context.tolerance;
     const rodChanged =
-      Math.abs(span(wasPin, wasRodFar) - span(pose.pin, pose.rodFar)) > context.tolerance;
+      Math.abs(span(wasSeal, wasMountB) - span(pose.seal, pose.mountB)) > context.tolerance;
     if (barrelChanged || rodChanged) {
       reshaped.set(cylinder.barrel.id, cylinder.barrel);
       reshaped.set(cylinder.rod.id, cylinder.rod);

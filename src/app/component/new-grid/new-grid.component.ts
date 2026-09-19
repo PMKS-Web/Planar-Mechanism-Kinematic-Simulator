@@ -972,12 +972,16 @@ export class NewGridComponent implements OnDestroy {
     );
     const r = 0.15 * this.settings.objectScale;
     return {
-      x: creation.pin.x,
-      y: creation.pin.y,
+      x: creation.seal.x,
+      y: creation.seal.y,
       rotation: (creation.angleRad * 180) / Math.PI,
       // The preview is the part it will become: the barrel at its own length,
       // straddling the piston, with the rod telescoping out of its mouth.
-      barrel: barrelPath(r, -creation.pinFromMount, creation.barrelLength - creation.pinFromMount),
+      barrel: barrelPath(
+        r,
+        -creation.sealFromMount,
+        creation.barrelLength - creation.sealFromMount
+      ),
       rod: rodBodyPath(r, creation.rodLength, cylinderHeadHalf(creation.barrelLength, r)),
       block: cylinderBlockPath(r, cylinderHeadHalf(creation.barrelLength, r)),
       // The color the barrel will be handed when the click builds it, which
@@ -5004,7 +5008,7 @@ export class NewGridComponent implements OnDestroy {
     const uy = (mountB.y - mountA.y) / span;
     const at = (along: number) => new Coord(mountA.x + along * ux, mountA.y + along * uy);
 
-    const ends = cylinderSpanRange(size.stroke, r);
+    const ends = cylinderSpanRange({ barrel: size.barrelLength, rod: size.rodLength }, r);
     const showsPosition = this.cylinderRangeOverlay === 'start';
     return {
       from: at(ends.retracted),

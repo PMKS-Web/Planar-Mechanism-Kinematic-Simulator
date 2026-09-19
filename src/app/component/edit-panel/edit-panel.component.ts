@@ -51,6 +51,7 @@ import {
   cylinderSpanLayoutFrom,
   cylinderSpanRange,
   Cylinder,
+  CylinderSize,
   MIN_STROKE_R,
   cylinderMinimumSpan,
   cylinderSizeOf,
@@ -777,17 +778,20 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     return cylinderSizeOf(sealed, 0.15 * this.settingsService.objectScale);
   }
 
-  /** Mount-to-mount length at each end of a ram of this stroke. */
-  private cylinderEnds(stroke: number): { retracted: number; extended: number } {
-    return cylinderSpanRange(stroke, 0.15 * this.settingsService.objectScale);
+  /** Mount-to-mount length at each end of this cylinder's own travel. */
+  private cylinderEnds(size: CylinderSize): { retracted: number; extended: number } {
+    return cylinderSpanRange(
+      { barrel: size.barrelLength, rod: size.rodLength },
+      0.15 * this.settingsService.objectScale
+    );
   }
 
   /** The Travel field's value, in whichever of its three spellings is selected. */
   cylinderTravelLabel(sealed: Cylinder): string {
-    const { stroke } = this.cylinderSize(sealed);
+    const size = this.cylinderSize(sealed);
     const unit = this.cylinderForm.controls['travelUnit'].value;
-    const ends = this.cylinderEnds(stroke);
-    const shown = unit === 'ret' ? ends.retracted : unit === 'ext' ? ends.extended : stroke;
+    const ends = this.cylinderEnds(size);
+    const shown = unit === 'ret' ? ends.retracted : unit === 'ext' ? ends.extended : size.stroke;
     return this.nup.formatModelLength(shown, this.settingsService.lengthUnit.getValue());
   }
 

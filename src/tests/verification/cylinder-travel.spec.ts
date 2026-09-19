@@ -449,31 +449,32 @@ describe('merging a cylinder mount onto another joint', () => {
     // the part was drawn in two pieces with a gap down the middle.
     const r = 0.15 * MODEL_SCALE;
     const barrelLength = 4 * MODEL_SCALE;
-    const { extended } = cylinderSpanRange(cylinderStroke(barrelLength, r), r);
+    const members = { barrel: barrelLength, rod: barrelLength };
+    const { extended } = cylinderSpanRange(members, r);
     const reach = extended + 3 * MODEL_SCALE;
 
-    const pose = stretchedCylinderPose({ x: 0, y: 0 }, { x: reach, y: 0 }, barrelLength, r)!;
+    const pose = stretchedCylinderPose({ x: 0, y: 0 }, { x: reach, y: 0 }, members, r)!;
     expect(pose).toBeDefined();
 
     // Both mounts are where they were put: they belong to whatever moved them.
-    expect(pose.barrelFar.x).toBeCloseTo(0, 9);
-    expect(pose.rodFar.x).toBeCloseTo(reach, 9);
+    expect(pose.mountA.x).toBeCloseTo(0, 9);
+    expect(pose.mountB.x).toBeCloseTo(reach, 9);
     // Both halves grew together, which is what carries the far end along.
-    const grownBarrel = pose.barrelNear.x - pose.barrelFar.x;
-    const grownRod = pose.rodFar.x - pose.pin.x;
+    const grownBarrel = pose.inner.x - pose.mountA.x;
+    const grownRod = pose.mountB.x - pose.seal.x;
     expect(grownBarrel).toBeGreaterThan(barrelLength);
     expect(grownRod).toBeCloseTo(grownBarrel, 6);
     // And the head's back edge is at the barrel's mouth -- fully extended, and
     // still one object. Past it there is nothing joining the two halves.
-    expect(pose.pin.x - grownBarrel).toBeCloseTo(cylinderHeadHalf(grownBarrel, r), 6);
+    expect(pose.seal.x - grownBarrel).toBeCloseTo(cylinderHeadHalf(grownBarrel, r), 6);
 
     // Inside its own travel nothing is resized: the ram poses, as before.
     const inside = stretchedCylinderPose(
       { x: 0, y: 0 },
-      { x: (cylinderSpanRange(cylinderStroke(barrelLength, r), r).retracted + extended) / 2, y: 0 },
-      barrelLength,
+      { x: (cylinderSpanRange(members, r).retracted + extended) / 2, y: 0 },
+      members,
       r
     )!;
-    expect(inside.barrelNear.x - inside.barrelFar.x).toBeCloseTo(barrelLength, 6);
+    expect(inside.inner.x - inside.mountA.x).toBeCloseTo(barrelLength, 6);
   });
 });

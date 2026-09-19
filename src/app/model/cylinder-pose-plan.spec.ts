@@ -28,17 +28,17 @@ import { Joint } from './joint';
  */
 
 /** Lay a carried ram out along its new axis, keeping the length it was drawn at. */
-function keepingLength(cylinder: Cylinder, barrelFar: Point, rodFar: Point): CylinderPose {
-  const span = Math.hypot(rodFar.x - barrelFar.x, rodFar.y - barrelFar.y);
+function keepingLength(cylinder: Cylinder, mountA: Point, mountB: Point): CylinderPose {
+  const span = Math.hypot(mountB.x - mountA.x, mountB.y - mountA.y);
   const barrel = Math.hypot(
     cylinder.inner.x - cylinder.mountA.x,
     cylinder.inner.y - cylinder.mountA.y
   );
   const along = (distance: number) => ({
-    x: barrelFar.x + ((rodFar.x - barrelFar.x) * distance) / span,
-    y: barrelFar.y + ((rodFar.y - barrelFar.y) * distance) / span,
+    x: mountA.x + ((mountB.x - mountA.x) * distance) / span,
+    y: mountA.y + ((mountB.y - mountA.y) * distance) / span,
   });
-  return { barrelFar, barrelNear: along(barrel), pin: along(span - barrel), rodFar };
+  return { mountA, inner: along(barrel), seal: along(span - barrel), mountB };
 }
 
 function contextFor(
@@ -64,10 +64,10 @@ function turnedPose(cylinder: Cylinder, pivot: Point, theta: number): CylinderPo
     y: pivot.y + (point.x - pivot.x) * sin + (point.y - pivot.y) * cos,
   });
   return {
-    barrelFar: turn(cylinder.mountA),
-    barrelNear: turn(cylinder.inner),
-    pin: turn(cylinder.seal),
-    rodFar: turn(cylinder.mountB),
+    mountA: turn(cylinder.mountA),
+    inner: turn(cylinder.inner),
+    seal: turn(cylinder.seal),
+    mountB: turn(cylinder.mountB),
   };
 }
 
@@ -75,10 +75,10 @@ function turnedPose(cylinder: Cylinder, pivot: Point, theta: number): CylinderPo
 function slidPose(cylinder: Cylinder, by: number): CylinderPose {
   const moved = (point: Point) => ({ x: point.x + by, y: point.y });
   return {
-    barrelFar: moved(cylinder.mountA),
-    barrelNear: moved(cylinder.inner),
-    pin: moved(cylinder.seal),
-    rodFar: moved(cylinder.mountB),
+    mountA: moved(cylinder.mountA),
+    inner: moved(cylinder.inner),
+    seal: moved(cylinder.seal),
+    mountB: moved(cylinder.mountB),
   };
 }
 
