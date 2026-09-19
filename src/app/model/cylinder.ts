@@ -1074,41 +1074,6 @@ export function layoutCylinder(
   return anchor === 'rod' ? { ...pose, mountB: { x: rodMount.x, y: rodMount.y } } : pose;
 }
 
-/**
- * Re-pose a cylinder from the size and position themselves — what the panel
- * writes, and the one thing the span rule above cannot express.
- *
- * Size and pose are two different edits. Asked for a longer stroke at the same
- * start, the resulting span usually still lies *inside* the old stroke's own
- * travel — so the span rule, doing exactly what it is meant to, would hold the
- * old size and slide the piston instead. A field labeled Travel would then
- * quietly change the position and not the travel.
- *
- * The barrel mount is held and the rod mount moves, because the barrel mount is
- * the end a ram is anchored by; `angleRad` keeps the part on the axis the panel
- * shows rather than re-deriving it from mounts that are about to move.
- *
- * It resizes both members to one number, so it can only describe a cylinder
- * whose two are equal — which is the whole of what the Travel field can say.
- * Retired with the Edit Cylinder panel in 2c; the members' own fields
- * (`setBarrelLength`, `setRodLength`) and *Starts at* replace it.
- */
-export function poseFromStrokeAndStart(
-  barrelMount: { x: number; y: number },
-  angleRad: number,
-  stroke: number,
-  start: number,
-  r: number
-): CylinderPose {
-  const members = cylinderMembers(stroke, start, r);
-  return cylinderPoseAlong(
-    barrelMount,
-    { x: Math.cos(angleRad), y: Math.sin(angleRad) },
-    { barrel: members.barrel, rod: members.rod },
-    members.sealAlong
-  );
-}
-
 /** The size and position a built cylinder currently has, read back off its joints. */
 export function cylinderSizeOf(
   cylinder: Cylinder,

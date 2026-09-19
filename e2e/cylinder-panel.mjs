@@ -1,11 +1,13 @@
 /**
- * The cylinder panel, exercised the way it broke.
+ * The panels a cylinder opens, exercised the way they broke.
  *
- * Every case here came from someone driving the app rather than reading it, and
- * each was a real defect: a picker that moved the part it promises never to
- * move, an edit that could not be undone, a value silently held at a limit with
- * nothing said, and a position rounded until the panel disagreed with the
- * drawing.
+ * Every case here came from someone driving the app rather than reading it. The
+ * old Edit Cylinder panel is gone (Stage 2c, D12): a member states its own
+ * Length and the part's Angle, and the slide states *Starts at*. What survives
+ * from that panel's bug list is what those fields can still get wrong — a blank
+ * box read as zero, a position rounded until the panel disagrees with the
+ * drawing, a refusal that leaves the wrong number in the field, and an edit that
+ * takes more than one Undo to take back.
  *
  *   PMKS_PLAYWRIGHT_DIR=<dir> PMKS_BASE_URL=<origin> node e2e/cylinder-panel.mjs
  */
@@ -26,126 +28,135 @@ const ctx = await chromium.launchPersistentContext('/tmp/pmks-chrome-reg', {
 const page = await ctx.newPage();
 const errs = [];
 page.on('pageerror', (e) => errs.push(String(e)));
-const load = async () => {
+
+/** Open the template with one piece of its ram selected. */
+async function load(which) {
   await page.goto(`${BASE}/?${payload}`, { waitUntil: 'domcontentloaded' });
   await waitForReady(page);
-  const b = await page.$('.cylinder-barrel');
-  const box = await b.boundingBox();
-  await page.mouse.click(box.x + box.width * 0.62, box.y + box.height * 0.62);
-  await page.waitForTimeout(700);
-};
-const rows = () =>
-  page.evaluate(() => {
-    const all = [...document.querySelectorAll('#input-block')];
-    const v = (l) =>
-      all.find((r) => r.querySelector('.label')?.textContent?.trim() === l)?.querySelector('input')
-        ?.value ?? null;
-    const sel = (l) =>
-      all.find((r) => r.querySelector('.label')?.textContent?.trim() === l)?.querySelector('select')
-        ?.value ?? null;
-    return {
-      travel: v('Travel'),
-      travelUnit: sel('Travel'),
-      start: v('Starts at'),
-      startUnit: sel('Starts at'),
-      angle: v('Angle'),
-      clamped: document.querySelector('.cylinder-clamped')?.textContent?.trim() ?? null,
-    };
-  });
-const field = async (label) =>
-  (await page.$$('#input-block')).find
-    ? await page.$$eval(
-        '#input-block',
-        (bs, l) => bs.findIndex((b) => b.querySelector('.label')?.textContent?.trim() === l),
-        label
-      )
-    : -1;
-const setField = async (label, text) => {
-  const i = await field(label);
-  const inputs = await page.$$('#input-block input');
-  await inputs[i].click({ clickCount: 3 });
-  if (text !== '') await inputs[i].type(text);
-  else await page.keyboard.press('Backspace');
-};
-const setUnit = async (label, value) => {
-  const i = await field(label);
-  const sels = await page.$$('#input-block select');
-  await sels[i === 0 ? 0 : 1].selectOption(value);
-  await page.waitForTimeout(600);
-};
-const out = {};
-
-// 1 · blank percent then change the picker must not move the part
-await load();
-out.before1 = await rows();
-await setField('Starts at', '');
-await setUnit('Starts at', 'len');
-out.after1 = await rows();
-
-// 4 · a fractional percentage must survive the round trip
-await load();
-await setField('Starts at', '33.7');
-await page.keyboard.press('Enter');
-await page.waitForTimeout(700);
-out.fractional = await rows();
-
-// 3 · a stroke shorter than the barrel allows must say it was held
-//
-// Asked of Travel, not of "Starts at". A start the ram cannot reach used to be
-// refused as well, and is not any more: barrel and rod can no longer disagree
-// with the stroke, so an impossible ram cannot be described and the floor on
-// the stroke is the one failure a cylinder has left (edit-panel,
-// `resizeCylinderTo`). Typing an unreachable start now simply makes a very
-// short ram, with nothing held and nothing to say.
-await load();
-await setField('Travel', '0.01');
-await page.keyboard.press('Enter');
-await page.waitForTimeout(700);
-out.tooShort = await rows();
-
-// 2 · a panel edit must be one undo step
-await load();
-await setField('Travel', '2');
-await page.keyboard.press('Enter');
-await page.waitForTimeout(800);
-out.beforeUndo = await rows();
-await page.click('text=Undo');
-await page.waitForTimeout(900);
-const b2 = await page.$('.cylinder-barrel');
-if (b2) {
-  const bb = await b2.boundingBox();
-  await page.mouse.click(bb.x + bb.width * 0.62, bb.y + bb.height * 0.62);
+  await page.evaluate((what) => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const one = grid.mechanismSrv.sealedStructures()[0];
+    grid.activeObjService.updateSelectedObj(what === 'seal' ? one.seal : one.barrel);
+  }, which);
+  // The line above ran outside Angular's zone; a nudge across the canvas enters
+  // it, so the panel is drawn before anything is read off it.
+  await page.mouse.move(900, 300);
+  await page.mouse.move(905, 305);
   await page.waitForTimeout(600);
 }
-out.afterUndo = { ...(await rows()), stillThere: !!b2 };
+
+/** What the part and the open panel say right now. */
+const reading = () =>
+  page.evaluate(() => {
+    const one = ng
+      .getComponent(document.querySelector('app-new-grid'))
+      .mechanismSrv.sealedStructures()[0];
+    const valueOf = (selector) => document.querySelector(selector)?.value ?? null;
+    return {
+      startsAt: valueOf('[data-field="cylinderStart"]'),
+      length: valueOf('[data-hold-field="length"]'),
+      angle: valueOf('[data-hold-field="angle"]'),
+      start: one ? Math.round(one.start * 1e6) / 1e6 : null,
+      barrel: one
+        ? Math.round(Math.hypot(one.inner.x - one.mountA.x, one.inner.y - one.mountA.y) * 1e3) / 1e3
+        : null,
+      rod: one
+        ? Math.round(Math.hypot(one.mountB.x - one.seal.x, one.mountB.y - one.seal.y) * 1e3) / 1e3
+        : null,
+      alive: !!one,
+    };
+  });
+
+/** Type into a field and let it commit, the way a reader does. */
+async function typeInto(selector, text) {
+  const field = page.locator(selector).first();
+  await field.click({ clickCount: 3 });
+  if (text === '') await page.keyboard.press('Backspace');
+  else await field.fill(text);
+  await field.press('Enter');
+  await page.waitForTimeout(800);
+}
+
+const out = {};
+
+// 1 · a blank percentage is not 0%: emptying the box must not retract the rod.
+await load('seal');
+out.before1 = await reading();
+await typeInto('[data-field="cylinderStart"]', '');
+out.after1 = await reading();
+
+// 2 · a fractional percentage survives the round trip, to the decimal the field
+//     shows. Rounded to a whole number the box said 34 for a rod standing at
+//     33.7%, and on a long ram that gap is a real distance.
+await load('seal');
+await typeInto('[data-field="cylinderStart"]', '33.7');
+out.fractional = await reading();
+
+// 3 · outside its own travel there is nowhere further to go, so the ends are
+//     what an out-of-range number means.
+await load('seal');
+await typeInto('[data-field="cylinderStart"]', '140');
+out.clamped = await reading();
+
+// 4 · a refused Length changes nothing and puts the old number back. A barrel
+//     may not grow past the rod's own floor (decision S3), and 60 cm is well
+//     past it on this ram.
+await load('barrel');
+out.beforeRefusal = await reading();
+await typeInto('[data-hold-field="length"]', '60');
+out.refused = {
+  ...(await reading()),
+  said: await page.locator('.notification').allInnerTexts(),
+};
+
+// 5 · a panel edit is one undo step. It was not: a field that re-poses through
+//     a drag saved nothing, so Undo took back the gesture before it — on a
+//     freshly opened template, the template itself.
+//
+// The number is worked out from this ram rather than written down: how much
+// room a barrel has to grow is the rod's business (decision S3), and this
+// template's two members are not the equal pair a fresh drawing has.
+await load('barrel');
+out.beforeUndo = await reading();
+const room = await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const one = grid.mechanismSrv.sealedStructures()[0];
+  const span = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
+  const barrel = span(one.mountA, one.inner);
+  const ceiling = span(one.seal, one.mountB) + 1.4 * 0.15 * grid.settings.objectScale;
+  // Halfway to the ceiling, so the check is about the undo rather than about
+  // how close to a limit a number may land.
+  return { barrel, wanted: (barrel + Math.min(ceiling, barrel * 1.2)) / 2 };
+});
+const shown = Number(String(out.beforeUndo.length).replace(/[^\d.]/g, ''));
+const grown = ((shown * room.wanted) / room.barrel).toFixed(2);
+await typeInto('[data-hold-field="length"]', grown);
+out.edited = await reading();
+await page.locator('button', { hasText: 'Undo' }).first().click();
+await page.waitForTimeout(900);
+out.afterUndo = await reading();
 
 out.errs = errs;
 console.log(JSON.stringify(out, null, 2));
 
 const checks = [
   [
-    // The picker re-expresses the value, so `start` legitimately changes from a
-    // percentage to a length; the ram's own size and axis are what must not.
-    'emptying the percentage and then changing its unit does not move the ram',
-    out.after1.travel === out.before1.travel && out.after1.angle === out.before1.angle,
+    'emptying the percentage moves nothing',
+    out.after1.start === out.before1.start && out.after1.startsAt === out.before1.startsAt,
   ],
-  ['a fractional percentage survives the round trip', out.fractional.start === '33.7'],
+  ['a fractional percentage survives the round trip', out.fractional.startsAt === '33.7'],
+  ['a percentage past the end stops at the end', out.clamped.startsAt === '100'],
   [
-    'a length the ram cannot reach says it was held',
-    /shortest cylinder/.test(out.tooShort.clamped ?? ''),
+    'a refused Length changes nothing, says why, and puts the old number back',
+    out.refused.barrel === out.beforeRefusal.barrel &&
+      out.refused.length === out.beforeRefusal.length &&
+      out.refused.said.some((text) => /rod|travel|barrel/i.test(text)),
   ],
   [
-    'one panel edit is one undo step',
-    // 2.82 is this ram's travel at the mark size the canvas fits to this
-    // drawing. A cylinder's stroke is measured against that size — the head is
-    // drawn in multiples of a joint radius — so the number here moves whenever
-    // it does. It read 2.73 while undo was restoring the *default* size rather
-    // than the fitted one, which was a bug: the first undo after opening a
-    // template resized every joint and ground mark by two and a half times
-    // (svg-grid.service, `adoptScaleForDrawing`, and `SaveHistoryService.restate`).
-    out.beforeUndo.travel === '2.00 cm' &&
-      out.afterUndo.travel === '2.82 cm' &&
-      out.afterUndo.stillThere,
+    'one panel edit is one undo step, and the cylinder survives it',
+    out.edited.barrel > out.beforeUndo.barrel &&
+      Math.abs(out.afterUndo.barrel - out.beforeUndo.barrel) < 0.5 &&
+      out.afterUndo.alive,
   ],
   ['nothing threw', errs.length === 0],
 ];

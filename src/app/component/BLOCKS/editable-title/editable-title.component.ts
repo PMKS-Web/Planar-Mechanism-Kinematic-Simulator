@@ -66,6 +66,15 @@ export class EditableTitleComponent {
   readonly deleteLabel = input<string>();
 
   /**
+   * What the trash can says on hover, when "Delete" alone would understate it.
+   *
+   * A cylinder member's panel is the case: its trash can takes the whole part,
+   * and an icon cannot say so. The visible word stays `deleteLabel`, because
+   * this row has no space for a third one beside Rename and Lock.
+   */
+  readonly deleteHint = input<string>();
+
+  /**
    * A lock that is not one object's — a group's, where some members may be held
    * and others not. `'mixed'` shows the open padlock, because pressing it locks
    * the rest rather than unlocking the ones that are held.

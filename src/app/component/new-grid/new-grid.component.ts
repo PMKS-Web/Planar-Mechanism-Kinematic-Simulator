@@ -444,7 +444,6 @@ export class NewGridComponent implements OnDestroy {
         // The hover previews die with the selection they described: a panel
         // swap can eat the mouseleave that would have cleared them.
         this.comMeasure = undefined;
-        this.cylinderPartPreview = undefined;
         this.settings.previewCoMLinkId = null;
         //Disable focus on any text input when changing active object
         if (document.activeElement instanceof HTMLElement) {
@@ -4755,13 +4754,10 @@ export class NewGridComponent implements OnDestroy {
     return this.cylinderListCache!.list;
   }
 
-  /**
-   * Which of the cylinder panel's two size fields is being pointed at, if any.
-   * 'travel' is how far the rod goes; 'start' is where in that it sits now.
-   */
-  cylinderRangeOverlay?: 'travel' | 'start';
+  /** Set while the slide's *Starts at* field is being pointed at, if it is. */
+  cylinderRangeOverlay?: 'start';
 
-  setCylinderRangeOverlay(which: 'travel' | 'start' | undefined): void {
+  setCylinderRangeOverlay(which: 'start' | undefined): void {
     this.cylinderRangeOverlay = which;
   }
 
@@ -4940,22 +4936,6 @@ export class NewGridComponent implements OnDestroy {
     return best ?? pos;
   }
 
-  /** Which cylinder part's mass field is being pointed at in the panel. */
-  cylinderPartPreview?: 'barrel' | 'rod' | 'head';
-
-  setCylinderPartPreview(part: NewGridComponent['cylinderPartPreview']): void {
-    this.cylinderPartPreview = part;
-  }
-
-  /** The pointed-at part's own outline, in the hover accent — barrel and rod
-   *  by their skins, the piston head by the block that draws it. */
-  cylinderPartPreviewPath(cyl: CylinderMark): string | null {
-    if (!this.cylinderPartPreview || !this.isBodySelected(cyl)) return null;
-    if (this.cylinderPartPreview === 'barrel') return cyl.barrel;
-    if (this.cylinderPartPreview === 'rod') return cyl.rod;
-    return cyl.block;
-  }
-
   /** The measured stretch: the frame's zero to the CoM's coordinate on one axis. */
   comMeasureLine(m: NonNullable<NewGridComponent['comMeasure']>) {
     if (m.mode === 'axis') {
@@ -5004,14 +4984,13 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * The stretch of ground the rod's mount covers, drawn on the canvas.
+   * The stretch of ground the rod's end joint covers, drawn on the canvas, with
+   * the share of it *Starts at* names marked on it.
    *
-   * One picture for both fields, because they are two readings of one line:
-   * *Travel* is how long it is, and *Starts at* is how far along it the ram is
-   * standing. Drawn as the mount's own path rather than as a bar beside the
-   * barrel — what a user wants to see when typing a stroke is where the end of
-   * the ram will get to, and that is a place on the grid rather than a length
-   * in the abstract.
+   * Drawn as that joint's own path rather than as a bar beside the barrel —
+   * what a reader typing a percentage wants to see is where the end of the part
+   * will get to, and that is a place on the grid rather than a length in the
+   * abstract.
    *
    * Nothing is drawn for a ram with no usable travel: the line would be a point
    * and the number beside it a zero, which says less than the panel already does.
@@ -5019,7 +4998,11 @@ export class NewGridComponent implements OnDestroy {
   get cylinderRange():
     { from: Coord; to: Coord; at: Coord; showsPosition: boolean; label: string } | undefined {
     if (!this.cylinderRangeOverlay) return undefined;
-    const sealed = this.mechanismSrv.cylinderOfBar(this.activeObjService.selectedLink);
+    // From whichever the reader picked: the field is the slide's own now (D9).
+    const picked = this.activeObjService;
+    const sealed =
+      this.mechanismSrv.cylinderAt(picked.objType === 'Joint' ? picked.selectedJoint : undefined) ??
+      this.mechanismSrv.cylinderOfBar(picked.selectedLink);
     if (!sealed) return undefined;
     const r = 0.15 * this.settings.objectScale;
     const size = cylinderSizeOf(sealed, r);

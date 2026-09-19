@@ -4,7 +4,8 @@
  * The three phases the ram is supposed to have — slide the piston inside the
  * travel, grow past the extended stop, shrink past the retracted one — driven
  * through the browser's own input pipeline rather than dispatched events, and
- * read back off the Edit panel so what is checked is what a user would see.
+ * read back off the barrel's own Length field so what is checked is what a user
+ * would see.
  *
  * The mechanism is the Gate 5 boom: its rod mount is the boom tip, pinned to a
  * circle about the boom's pivot, so swinging it round takes the span below the
@@ -40,18 +41,21 @@ page.on('console', (message) => {
 await page.goto(`${BASE}/?${payload}`, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
 
-/** The panel's own numbers, which is the point: this is what a user reads. */
+/**
+ * The panel's own numbers, which is the point: this is what a user reads.
+ *
+ * Two panels now (D12). The size is the barrel's own Length field, read off the
+ * member the re-selecting click lands on; where the rod starts is the slide's,
+ * so it is read from the part rather than opened in a second panel to see it.
+ */
 const readPanel = () =>
   page.evaluate(() => {
-    const rows = [...document.querySelectorAll('#input-block')];
-    const value = (label) =>
-      rows
-        .find((row) => row.querySelector('.label')?.textContent?.trim() === label)
-        ?.querySelector('input')?.value ?? null;
+    const field = document.querySelector('[data-hold-field="length"]');
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const sealed = grid.mechanismSrv.sealedStructures()[0];
     return {
-      travel: value('Travel'),
-      startsAt: value('Starts at'),
-      clamped: document.querySelector('.cylinder-clamped')?.textContent?.trim() ?? null,
+      barrelLength: field ? field.value : null,
+      startsAt: sealed ? Math.round(sealed.start * 1000) / 10 : null,
     };
   });
 
@@ -152,7 +156,9 @@ const report = { resting, posed, shrunk, grown, floored, atFloor, errors };
 writeFileSync('artifacts/cylinder-drag/report.json', JSON.stringify(report, null, 2));
 console.log(JSON.stringify(report, null, 2));
 
-const strokeOf = (panel) => Number(String(panel.travel ?? '').replace(/[^\d.]/g, ''));
+// The barrel's Length is the stroke said the way the panel says it now: the
+// travel is the barrel's alone (decision S3), so a bigger barrel is a bigger ram.
+const strokeOf = (panel) => Number(String(panel.barrelLength ?? '').replace(/[^\d.]/g, ''));
 const checks = [
   ['a drag inside the travel leaves the size alone', strokeOf(posed) === strokeOf(resting)],
   ['pushing past the retracted stop shrinks the ram', strokeOf(shrunk) < strokeOf(resting)],

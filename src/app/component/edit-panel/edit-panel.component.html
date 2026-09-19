@@ -217,25 +217,50 @@
               </div>
             }
           }
-          <toggle-block
-            [formGroup]="jointForm"
-            _formControl="ground"
-            tooltip="Fixes this joint to the frame, so nothing can move it."
-          >
-            Grounded
-          </toggle-block>
-          <!-- Its own row, and only on a grounded slot (D3): a floating slot's
-             direction is the line through two of its carrier's joints, so
-             there is no number to type and no frame to type it in. You change
-             it by dragging those joints. -->
-          @if (isGroundedSlider) {
+          <!-- Absent rather than grayed on a cylinder's slide (D9): a cylinder
+             is bolted to the world at the joints at its two ends, so there is
+             no state of this switch that means anything here. The question is
+             put to the permission model, which is the same model the menu's
+             row and `toggleGround` itself quote. -->
+          @if (!groundRefused) {
+            <toggle-block
+              [formGroup]="jointForm"
+              _formControl="ground"
+              tooltip="Fixes this joint to the frame, so nothing can move it."
+            >
+              Grounded
+            </toggle-block>
+          }
+          <!-- Its own row, on a grounded slot (D3) and on a cylinder's slide
+             (D10). A floating slot's direction is the line through two of its
+             carrier's joints, so there is no number to type and no frame to
+             type it in; you change it by dragging those joints. A cylinder has
+             one bearing, which this states and the two members restate. -->
+          @if (isGroundedSlider || sealCylinder) {
             <input-block
               [formGroup]="jointForm"
               _formControl="prisAngle"
+              dataField="sliderAngle"
               [emitterOutputID]="-1"
               (fieldEntry)="setSlotAngleOverlay($event !== -2)"
               tooltip="The direction the slot runs. Counter-clockwise is positive."
               >Slider Angle
+            </input-block>
+          }
+          <!-- Where the rod begins its cycle (D9, D11). A percentage of the
+             stroke and nothing else: the stroke itself is the barrel's Length,
+             one panel away, so there is no second number for a picker to
+             re-express. -->
+          @if (sealCylinder) {
+            <input-block
+              [formGroup]="jointForm"
+              _formControl="cylinderStart"
+              unit="%"
+              dataField="cylinderStart"
+              [emitterOutputID]="-1"
+              (fieldEntry)="setCylinderStartOverlay($event !== -2)"
+              tooltip="Where the rod begins its cycle, as a share of the stroke."
+              >Starts at
             </input-block>
           }
           <!-- The same block every other button in this panel is built from, so
@@ -269,9 +294,12 @@
                    different time axis, so at a displaced pose it moves what is
                    on screen -- which is the one thing a posed edit must not do
                    behind the reader's back. -->
+              <!-- A cylinder parked at one of its stops has one way left to
+                   go, so its direction stops being a choice and is grayed
+                   rather than left to be pressed and silently undone. -->
               <button-block
                 [icon]="inputDirectionIcon"
-                [disabled]="driveIsFrozen()"
+                [disabled]="cylinderDirectionForced || driveIsFrozen()"
                 [click]="flipInputDirection.bind(this)"
                 >{{ inputDirectionLabel }}
               </button-block>
@@ -280,7 +308,7 @@
                   [formGroup]="jointForm"
                   _formControl="inputSpeed"
                   [unit]="linearSpeedUnitLabel"
-                  tooltip="How fast this block slides. Negative reverses it."
+                  [tooltip]="inputSpeedHelp"
                   >Input Speed
                 </input-block>
               } @else {
@@ -367,167 +395,22 @@
       </panel-section>
     }
 
-    <!--  CYLINDER BODY PANEL: selecting any of a sealed cylinder's geometry
-        (barrel, rod, block or skin) selects the body, and the body edits as
-        one part — mounts, length/angle read-outs, and the drive controls of
-        its hidden prismatic pin. -->
-    @if (this.activeSrv.objType == 'Link' && selectedCylinder; as cyl) {
+    <!--  LINK PANEL, which is also the BARREL and ROD panels (D12): a
+        cylinder's two members are links, so they are this panel with the
+        differences the part makes. Its own noun and name, a Length that moves
+        one end of the assembly rather than a joint, one bearing shared with
+        the slide, and no tracer point and no force -- a member is placed by
+        the layout, so there is nothing on it for either to hang from. -->
+    @if (this.activeSrv.objType == 'Link') {
       <panel-section [frozen]="panelIsFrozen()">
+        <!-- The trash can takes the whole cylinder from a member's panel, which
+             the icon cannot say on its own, so the hover says it. -->
         <editable-title-block
           [deleteAction]="deleteLink.bind(this)"
-          [displayName]="cyl.mountA.name + cyl.mountB.name"
+          [displayName]="bodyName"
+          [deleteHint]="selectedCylinder ? 'Delete Cylinder' : undefined"
         >
-          Edit Cylinder
-        </editable-title-block>
-        <app-edit-banner panelAttached />
-        <collapsible-subsection
-          titleLabel="Cylinder"
-          [expanded]="sectionExpanded['LBasic']"
-          (opened)="sectionExpanded['LBasic'] = true"
-          (closed)="sectionExpanded['LBasic'] = false"
-        >
-          <!-- One size number and one position number. Barrel and rod are the
-             same length by construction, so stroke, closed and open are three
-             ways of saying the size and there is nothing for a second field to
-             disagree with — the picker changes which one you are typing, never
-             the ram. -->
-          <!-- Pointing at either size field draws the stretch of ground the rod's
-             mount covers: Travel is how long that line is, Starts at is how far
-             along it the ram is standing. -->
-          <input-block
-            [formGroup]="cylinderForm"
-            _formControl="travel"
-            [unitOptions]="travelUnitOptions"
-            unitFormControl="travelUnit"
-            (fieldEntry)="setCylinderRangeOverlay($event === -2 ? undefined : 'travel')"
-            [emitterOutputID]="-1"
-            tooltip="How far the rod moves. The picker reads it as the stroke, or as the closed and open lengths."
-            >Travel
-          </input-block>
-          <input-block
-            [formGroup]="cylinderForm"
-            _formControl="start"
-            [unitOptions]="startUnitOptions"
-            unitFormControl="startUnit"
-            (fieldEntry)="setCylinderRangeOverlay($event === -2 ? undefined : 'start')"
-            [emitterOutputID]="-1"
-            tooltip="Where the rod begins its cycle: a share of the travel, or a length. Outside the travel, the cylinder resizes to reach it."
-            >Starts at
-          </input-block>
-          <!-- Same on-canvas overlay a link's angle field draws: the ram's axis is
-             mount to mount, which is exactly what the angle names. And the same
-             padlock a bar's angle carries, for the same reason -- a cylinder
-             points somewhere, and a reader who has aimed it wants it to stay
-             aimed while the rest of the drawing moves. It has no Length row:
-             mount to mount is the stroke, which is what the drive moves. -->
-          <hold-field-block
-            [formGroup]="cylinderForm"
-            [link]="cylinderBodyLink(cyl)"
-            only="angle"
-            angleHelp="The direction the cylinder points, joint to joint."
-            (angleEntry)="setShowLinkAngleOverlay($event)"
-          ></hold-field-block>
-          @if (cylinderClamped) {
-            <div class="cylinder-clamped">{{ cylinderClamped }}</div>
-          }
-          <button-block
-            [customIcon]="cyl.seal.input ? 'remove_input' : 'add_input'"
-            [click]="toggleCylinderInput.bind(this)"
-          >
-            {{ cyl.seal.input ? 'Remove Input' : 'Add Input' }}
-          </button-block>
-        </collapsible-subsection>
-        @if (cyl.seal.input) {
-          <div class="inputSettings">
-            <collapsible-subsection
-              titleLabel="Input Settings"
-              [expanded]="sectionExpanded['JInput']"
-              (opened)="sectionExpanded['JInput'] = true"
-              (closed)="sectionExpanded['JInput'] = false"
-            >
-              <button-block
-                [icon]="inputDirectionIcon"
-                [disabled]="cylinderDirectionForced || driveIsFrozen()"
-                [click]="flipInputDirection.bind(this)"
-                >{{ inputDirectionLabel }}
-              </button-block>
-              <input-block
-                [formGroup]="jointForm"
-                _formControl="inputSpeed"
-                [unit]="linearSpeedUnitLabel"
-                tooltip="How fast the rod travels. Use the direction button to choose opening or closing."
-                >Input Speed
-              </input-block>
-            </collapsible-subsection>
-          </div>
-        }
-        <collapsible-subsection
-          panelLive
-          [attr.inert]="playingNow() || null"
-          titleLabel="Mass Settings"
-          [expanded]="sectionExpanded['LMass']"
-          (opened)="sectionExpanded['LMass'] = true"
-          (closed)="sectionExpanded['LMass'] = false"
-        >
-          <div class="massArea">
-            <!-- Three bodies, not one: the rod and head are welded rigid, but the
-             rod's mass is spread along its length while the head's rides the
-             pin — the number that matters in a reciprocating machine. Inertia
-             and centers stay automatic (uniform body per part). -->
-            <input-block
-              [formGroup]="cylinderForm"
-              _formControl="barrelMass"
-              tooltip="The barrel's mass, acting at the barrel's own center."
-              (mouseenter)="setCylinderPartPreview('barrel')"
-              (mouseleave)="setCylinderPartPreview(undefined)"
-              >Barrel</input-block
-            >
-            <input-block
-              [formGroup]="cylinderForm"
-              _formControl="rodMass"
-              tooltip="The rod's mass, spread along the rod."
-              (mouseenter)="setCylinderPartPreview('rod')"
-              (mouseleave)="setCylinderPartPreview(undefined)"
-              >Rod</input-block
-            >
-            <input-block
-              [formGroup]="cylinderForm"
-              _formControl="headMass"
-              tooltip="The sliding body's mass, acting at the pin."
-              (mouseenter)="setCylinderPartPreview('head')"
-              (mouseleave)="setCylinderPartPreview(undefined)"
-              >Sliding Body</input-block
-            >
-            <p class="massNote">
-              Each part's rotational inertia and center of mass are computed from its own shape and
-              the mass you give it.
-            </p>
-            @if (cylinderHasCustomInertia()) {
-              <subtitle-block
-                icon="auto_fix_normal"
-                buttonLabel="Derive From Shape"
-                description="This cylinder's parts carry inertia values set by hand (or by an older file). Derive re-computes them from each part's own shape and keeps them current."
-                [click]="deriveCylinderInertiaFromShape.bind(this)"
-              ></subtitle-block>
-            }
-          </div>
-        </collapsible-subsection>
-        <collapsible-subsection
-          titleLabel="Visual Settings"
-          [expanded]="sectionExpanded['LVisual']"
-          (opened)="sectionExpanded['LVisual'] = true"
-          (closed)="sectionExpanded['LVisual'] = false"
-        >
-          <color-picker type="link" [link]="cylinderBodyLink(cyl)">Cylinder Color</color-picker>
-        </collapsible-subsection>
-      </panel-section>
-    }
-
-    <!--  LINK PANEL-->
-    @if (this.activeSrv.objType == 'Link' && !selectedCylinder) {
-      <panel-section [frozen]="panelIsFrozen()">
-        <editable-title-block [deleteAction]="deleteLink.bind(this)">
-          Edit Link</editable-title-block
+          Edit {{ bodyNoun }}</editable-title-block
         >
         <app-edit-banner panelAttached />
         <app-lock-banner panelAttached />
@@ -540,23 +423,29 @@
         >
           <!-- Two stacked fields rather than the L / angle pair: each has a
                padlock of its own, and a held one is read-only rather than
-               disabled -- the number is still the link's, only not typeable. -->
+               disabled -- the number is still the link's, only not typeable.
+               On a member the two padlocks hold different things (S5): the
+               length is this half of the part, the angle is the whole of it. -->
           <hold-field-block
             [formGroup]="linkForm"
             [link]="activeSrv.selectedLink"
-            [disabled]="activeSrv.selectedLink.joints.length > 2"
+            [disabled]="!selectedCylinder && activeSrv.selectedLink.joints.length > 2"
+            [lengthHelp]="memberLengthHelp"
+            [angleHelp]="memberAngleHelp"
             (lengthEntry)="setShowLinkLengthOverlay($event)"
             (angleEntry)="setShowLinkAngleOverlay($event)"
           ></hold-field-block>
-          <dual-button
-            but1Text="Add tracer point"
-            but1Icon="add_tracer"
-            but2Text="Add force"
-            but2Icon="add_force"
-            [but1Action]="mechanismService.addJointAtCOM.bind(mechanismService)"
-            [but2Action]="mechanismService.createForceAtCOM.bind(mechanismService)"
-          >
-          </dual-button>
+          @if (!selectedCylinder) {
+            <dual-button
+              but1Text="Add tracer point"
+              but1Icon="add_tracer"
+              but2Text="Add force"
+              but2Icon="add_force"
+              [but1Action]="mechanismService.addJointAtCOM.bind(mechanismService)"
+              [but2Action]="mechanismService.createForceAtCOM.bind(mechanismService)"
+            >
+            </dual-button>
+          }
         </collapsible-subsection>
         <collapsible-subsection
           titleLabel="Visual Settings"
@@ -564,7 +453,14 @@
           (opened)="sectionExpanded['LVisual'] = true"
           (closed)="sectionExpanded['LVisual'] = false"
         >
-          <color-picker type="link" [link]="activeSrv.selectedLink">Link Color</color-picker>
+          <!-- The rod has no color field of its own: one part, one color -- the
+               skin paints the rod from the barrel's fill, so a Rod Color row
+               would either change the barrel too or change nothing. -->
+          @if (bodyColorLabel; as colorLabel) {
+            <color-picker type="link" [link]="activeSrv.selectedLink">{{
+              colorLabel
+            }}</color-picker>
+          }
           <!-- The same choice the right-click menu offers, in the section that
              collects how this link is drawn. Disabled rather than hidden here:
              the panel is describing the link you selected, so the option is
@@ -589,14 +485,14 @@
           <div
             class="shapeToggle"
             [matTooltip]="whyNotCircular()"
-            [matTooltipDisabled]="activeSrv.selectedLink.canBeCircular()"
+            [matTooltipDisabled]="canDrawAsDisc()"
             [matTooltipShowDelay]="400"
             matTooltipPosition="above"
           >
             <toggle-block
               [formGroup]="linkForm"
               _formControl="drawAsDisc"
-              [disabled]="!activeSrv.selectedLink.canBeCircular()"
+              [disabled]="!canDrawAsDisc()"
               tooltip="Draw this link as the disc it sweeps, centered on its fixed pin. Its mass and rotational inertia are unchanged."
             >
               Draw as a Disc

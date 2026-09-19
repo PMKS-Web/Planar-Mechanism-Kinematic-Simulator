@@ -552,9 +552,11 @@ for (const [part, selector] of [
     `clicking the ${part} keeps the skin on (sealed <=> skinned)`,
     (await page.locator('.cylinder-mark').count()) === 1
   );
+  // Each piece opens its own panel now (D12): the barrel and the rod are named
+  // members, and the square between them is joint S.
   checkThat(
-    `and selects the body (Edit Cylinder panel)`,
-    (await page.getByText('Edit Cylinder').count()) >= 1
+    `and selects that piece (its own panel)`,
+    /Edit (Barrel|Rod|Joint) /.test(await page.locator('app-edit-panel').innerText())
   );
 }
 await page.screenshot({ path: `${OUT}/16-sealed-always-skinned.png` });
