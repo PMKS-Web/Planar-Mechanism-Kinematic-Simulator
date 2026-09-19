@@ -413,14 +413,41 @@ export class Mechanism {
     // -2; it still adds no body and one full joint, which is -2.
     let J1 = 0;
     let J2 = 0;
+    // The body pairs some Slide already holds square.
+    //
+    // A Slide is a full joint because it forbids two things at once: leaving
+    // the slot, and turning against it. Where a second Slide joins the *same*
+    // two bodies, only the first of them forbids the turn -- the second says
+    // the same thing over again, and Gruebler charges for it as blindly as it
+    // charges for the second pin between two links, which `assignBodies` above
+    // collapses for exactly this reason. So the rest forbid leaving their slot
+    // and nothing more, which is a half joint.
+    //
+    // A bar on two grounded guides is the shape that needs this: two Slides
+    // between it and the world. Charged twice it counts a freedom lower than
+    // it has, and a drawing that lands on one that way is believed and solved
+    // -- which is how a bar held by a single Pin-in-slot with a free end came
+    // to animate, with the app inventing a pose for a part nothing determines.
+    //
+    // Whether the second slot's *other* half is redundant too, as it is for two
+    // parallel guides, is a question about the geometry rather than the count.
+    // Falling below one is what sends it there.
+    const heldSquare = new Set<string>();
     this.joints[0].forEach((j) => {
       if (!(j instanceof RealJoint)) {
         return;
       }
-      const pairings = Math.max(bodiesAt(j).size - 1, 0);
+      const meeting = bodiesAt(j);
+      const pairings = Math.max(meeting.size - 1, 0);
       // Exactly one of a slider's pairings is the sliding one; any others are
       // riders pinned to each other at the same point, and those are pins.
-      if (j instanceof PrisJoint && j.rotates && pairings > 0) {
+      if (j instanceof PrisJoint && pairings > 0) {
+        const pair = [...meeting].sort().join('\u0000');
+        if (!j.rotates && !heldSquare.has(pair)) {
+          heldSquare.add(pair);
+          J1 += pairings;
+          return;
+        }
         J1 += pairings - 1;
         J2 += 1;
         return;
