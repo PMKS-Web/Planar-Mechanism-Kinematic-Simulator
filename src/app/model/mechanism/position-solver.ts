@@ -9,7 +9,13 @@ import {
 } from '../utils';
 import { Force } from '../force';
 import { Coord } from '../coord';
-import { assemblyBodyIds, SlideAssembly, slideAssemblies, slotOffset } from '../slide-assembly';
+import {
+  assemblyBodyIds,
+  hasFixedOrientation,
+  SlideAssembly,
+  slideAssemblies,
+  slotOffset,
+} from '../slide-assembly';
 import { MODEL_SCALE } from '../render-scale';
 import {
   Cylinder,
@@ -213,6 +219,19 @@ interface SlideAssemblyStep {
         anchorId: string;
         /** Direction of the slot, constant because the assembly cannot turn. */
         slot: [number, number];
+      }
+    | {
+        /**
+         * The mirror of `slot`: a joint of the assembly that itself rides a
+         * slot cut into some body an earlier step has placed. The assembly
+         * only translates, so that joint runs along the guide, and the slot
+         * it rides is a line measured afresh every sample from the placed
+         * body -- so the travel is where a fixed line meets a moving one, and
+         * it has one root or none.
+         */
+        kind: 'guided';
+        /** The assembly's own joint that rides the other body's slot. */
+        memberId: string;
       };
   /** Every joint the step moves: the assembly's, minus anything grounded. */
   targets: string[];
@@ -2705,13 +2724,14 @@ export class PositionSolver {
   /**
    * What locates the assembly along its guide.
    *
-   * Three things can, and the cheapest one wins. If some member of it has
+   * Four things can, and the cheapest one wins. If some member of it has
    * already been placed by an ordinary step, the translation is simply how far
    * that member moved. Failing that, a link reaching one of its joints from a
    * joint already placed fixes it -- a valve rod held level by its guide and
    * pinned to the lever that drives it, which is the case a locomotive's
-   * radius rod presents. Otherwise the assembly must be located by a slot cut
-   * into it, which is the Scotch yoke's case and the one nothing else can do.
+   * radius rod presents. Otherwise the assembly is located by a slot: one cut
+   * into it, which is the Scotch yoke's case, or one cut into a placed body
+   * that a joint of the assembly rides, which is the yoke turned inside out.
    */
   private static slideAssemblySource(
     joints: Joint[],
@@ -2741,30 +2761,74 @@ export class PositionSolver {
         candidate.isSlotWellFormed &&
         assemblyBodyIds(assembly).includes(candidate.carrier!.id)
     );
-    if (!rider || !known.includes(rider.id)) {
-      return undefined;
+    if (rider && known.includes(rider.id)) {
+      // The offset has to be measured from a point actually *on* the slot.
+      // Any other member of the assembly gives a line parallel to it but
+      // displaced, and solving to that line moves the assembly to a plausible
+      // wrong place rather than failing.
+      const anchor = movable.find(
+        (member) => member.id === rider.slotJointA?.id || member.id === rider.slotJointB?.id
+      );
+      if (!anchor) {
+        return undefined;
+      }
+      return {
+        from: {
+          kind: 'slot',
+          blockId: rider.id,
+          anchorId: anchor.id,
+          // Measured now and held: the weld is exactly the statement that this
+          // never changes. A later reader will be tempted to re-measure it per
+          // timestep, which would make the step describe a Slot instead.
+          slot: [Math.cos(rider.slotAngle), Math.sin(rider.slotAngle)],
+        },
+      };
     }
-    // The offset has to be measured from a point actually *on* the slot. Any
-    // other member of the assembly gives a line parallel to it but displaced,
-    // and solving to that line moves the assembly to a plausible wrong place
-    // rather than failing.
-    const anchor = movable.find(
-      (member) => member.id === rider.slotJointA?.id || member.id === rider.slotJointB?.id
-    );
-    if (!anchor) {
-      return undefined;
+
+    return this.slideAssemblyByGuidedMember(assembly, movable, known);
+  }
+
+  /**
+   * A joint of the assembly that rides a slot cut into a body already placed.
+   *
+   * The shape the other three sources miss: a bar welded to its block on a
+   * grounded guide, whose far end is a pin-in-slot on the crank. Nothing
+   * reaches onto the bar by a link, the bar carries no slot of its own, and
+   * no earlier step can place either of its joints -- the crank's slot says
+   * where the far end may be, and the guide says where the block may be, and
+   * only the two together say anything. Left to the generic primitives, the
+   * far end was measured from the block's *seeded* position and the block
+   * then re-derived from the far end: self-consistent every sample, and a
+   * grounded slider that never slid while its bar swung through a weld.
+   *
+   * The slot has to be a placed one: both its joints put down by a step this
+   * sample, or held by the frame. A grounded slider among them is known from
+   * the first moment and placed only by its own step, and a line read through
+   * it before then is last sample's line.
+   */
+  private static slideAssemblyByGuidedMember(
+    assembly: SlideAssembly,
+    movable: RealJoint[],
+    known: string[]
+  ): Pick<SlideAssemblyStep, 'from'> | undefined {
+    const inside = new Set(assemblyBodyIds(assembly));
+    for (const member of movable) {
+      if (!(member instanceof PrisJoint) || !member.isFloating || !member.isSlotWellFormed) {
+        continue;
+      }
+      // Its own slot, cut into the assembly, is the source above -- and a
+      // slot the assembly carries cannot locate the assembly against itself.
+      if (inside.has(member.carrier!.id)) continue;
+      const slotA = member.slotJointA!;
+      const slotB = member.slotJointB!;
+      if (!this.isPlaced(slotA, known) || !this.isPlaced(slotB, known)) continue;
+      // Registered the way every rider on a moving slot is, so the line is
+      // measured from the carrier's current pose at solve time rather than
+      // remembered from the drawn one.
+      this.setSlot(member.id, member, member.x, member.y);
+      return { from: { kind: 'guided', memberId: member.id } };
     }
-    return {
-      from: {
-        kind: 'slot',
-        blockId: rider.id,
-        anchorId: anchor.id,
-        // Measured now and held: the weld is exactly the statement that this
-        // never changes. A later reader will be tempted to re-measure it per
-        // timestep, which would make the step describe a Slot instead.
-        slot: [Math.cos(rider.slotAngle), Math.sin(rider.slotAngle)],
-      },
-    };
+    return undefined;
   }
 
   /**
@@ -2825,7 +2889,9 @@ export class PositionSolver {
         ? this.travelFromPlacedMember(step)
         : step.from.kind === 'link'
           ? this.travelFromLink(step, joints)
-          : this.travelFromSlot(step);
+          : step.from.kind === 'slot'
+            ? this.travelFromSlot(step)
+            : this.travelFromGuide(step);
     if (travel === undefined) {
       return false;
     }
@@ -2926,6 +2992,36 @@ export class PositionSolver {
   }
 
   /**
+   * How far to slide so the assembly's own joint lands on the slot it rides.
+   *
+   * The same line meeting the same line as `travelFromSlot`, with the roles
+   * exchanged: here the *member* `M` runs along the guide from where it was
+   * drawn, `M₀ + t·û`, and the slot is a line through a placed joint `P` along
+   * `v̂` that turns with the body it is cut into, so it is read again every
+   * sample. Requiring `(M₀ + t·û − P) × v̂ = 0` gives `t = ((P − M₀) × v̂) /
+   * (û × v̂)`. A guide parallel to the slot leaves the joint nowhere or
+   * everywhere along it -- no solution either way, reported as one so the
+   * walk reads a limit there. Near it the travel runs long, and the joint
+   * leaves the end of its channel, which `ridersAreInTheirSlots` turns away.
+   */
+  private static travelFromGuide(step: SlideAssemblyStep): number | undefined {
+    if (step.from.kind !== 'guided') {
+      return undefined;
+    }
+    const line = this.resolveSlotLine(step.from.memberId);
+    const start = this.initialJointPosMap.get(step.from.memberId);
+    if (!line || !start) {
+      return undefined;
+    }
+    const [[pointX, pointY], slot] = line;
+    const cross = step.guide[0] * slot[1] - step.guide[1] * slot[0];
+    if (Math.abs(cross) <= DEGENERATE_SLOT_TOLERANCE) {
+      return undefined;
+    }
+    return slotOffset({ x: pointX, y: pointY }, { x: start[0], y: start[1] }, slot) / cross;
+  }
+
+  /**
    * The forward primitive (§2.6): a rider on a slot whose carrier is already
    * placed. Identical to the grounded case except that the line is measured
    * again at every timestep instead of once.
@@ -2944,15 +3040,25 @@ export class PositionSolver {
     if (!(joint instanceof PrisJoint) || !joint.isFloating || known.includes(joint.id)) {
       return undefined;
     }
+    // A circle about a neighbor meeting the slot lets the rider's body tilt to
+    // reach it, which a body a grounded Slide holds square cannot do. Its
+    // joints are placed by the assembly step, all at once and by translation;
+    // this primitive is what placed a Slide's far end as if it could swing.
+    if (this.heldSquare(joint, joints)) {
+      return undefined;
+    }
     const slider = joint;
     const slotA = slider.slotJointA;
     const slotB = slider.slotJointB;
     if (!slotA || !slotB || !known.includes(slotA.id) || !known.includes(slotB.id)) {
       return undefined;
     }
-    // The rider still needs one known neighbor to fix its distance along the
-    // slot; the slot alone leaves it free to slide.
-    const reference = joint.connectedJoints.find((candidate) => known.includes(candidate.id));
+    // The rider still needs one placed neighbor to fix its distance along the
+    // slot; the slot alone leaves it free to slide. Placed, not merely known:
+    // a grounded slider is seeded known before the walk begins, and measuring
+    // the rider from it before its own step has run measures from last
+    // sample's position -- which is where a bar on a guide came to stand still.
+    const reference = joint.connectedJoints.find((candidate) => this.isPlaced(candidate, known));
     if (!reference) {
       return undefined;
     }
@@ -3006,6 +3112,16 @@ export class PositionSolver {
         knownJointArray.includes(cur_joint.id) &&
         (sliderJoint === undefined || alreadyStepped())
       ) {
+        return;
+      }
+      // Every primitive below turns the body it places -- two circles meet
+      // where the dyad folds to reach them, a circle meets a slot where the
+      // link tilts to touch it. A body a grounded Slide holds square does
+      // neither: every joint of it moves by the one vector the guide allows,
+      // so its joints are left for the assembly step, which moves them
+      // together. Placing one of them here was right only where the geometry
+      // happened to agree with the weld, and wrong without a word otherwise.
+      if (this.heldSquare(cur_joint, joints)) {
         return;
       }
       const prev_joint_index = joints.findIndex((j) => j.id === prevJoint.id);
@@ -3142,22 +3258,47 @@ export class PositionSolver {
   }
 
   static findKnownJoint(joint: RealJoint, prev_joint: Joint, knownJointArray: string[]) {
-    // Known is not the same as placed. A grounded slider is seeded into the
-    // known set before the walk begins so later steps can measure from it, but
-    // its *line* is what the world holds -- the joint itself travels along that
-    // line and does not have a position for this timestep until its own step
-    // has run. Used as a dyad's second reference before then, it hands the walk
-    // the pose the drawing was made in and the whole linkage is placed against
-    // a point that never moves: bars drift and the crank does not turn.
-    //
-    // This could not happen while a slider was three objects. The joint the
-    // walk met on a rider was the coincident pin, which carried no ground flag;
-    // only the sliding joint beside it did, and nothing was connected to that.
-    const placed = new Set([...this.jointNumOrderSolverMap.values()].flat());
-    return joint.connectedJoints.find((jt) => {
-      if (!knownJointArray.includes(jt.id) || jt.id === prev_joint.id) return false;
-      return !(jt instanceof PrisJoint) || placed.has(jt.id);
-    });
+    return joint.connectedJoints.find(
+      (jt) => jt.id !== prev_joint.id && this.isPlaced(jt, knownJointArray)
+    );
+  }
+
+  /**
+   * Whether a joint has a position for *this* sample that a step may measure
+   * from.
+   *
+   * Known is not the same as placed. A grounded slider is seeded into the
+   * known set before the walk begins so later steps can measure from it, but
+   * its *line* is what the world holds -- the joint itself travels along that
+   * line and does not have a position for this timestep until its own step
+   * has run. Used as a reference before then, it hands the walk the pose the
+   * drawing was made in and the whole linkage is placed against a point that
+   * never moves: bars drift and the crank does not turn.
+   *
+   * This could not happen while a slider was three objects. The joint the
+   * walk met on a rider was the coincident pin, which carried no ground flag;
+   * only the sliding joint beside it did, and nothing was connected to that.
+   */
+  private static isPlaced(joint: Joint, known: string[]): boolean {
+    if (!known.includes(joint.id)) return false;
+    if (!(joint instanceof PrisJoint)) return true;
+    return [...this.jointNumOrderSolverMap.values()].some((targets) => targets.includes(joint.id));
+  }
+
+  /**
+   * Whether a Slide on a grounded guide holds this joint's body square to the
+   * world, so that no step may place the joint by turning that body.
+   *
+   * Asked of the model's one resolver rather than of `rotates` directly, for
+   * the reason `slide-assembly.ts` gives: the mobility count, the kinematic
+   * solver and this walk all have to agree about which bodies are held rigid.
+   * A floating Slide is deliberately not this -- its rider turns with the
+   * carrier -- and the walk has no primitive for it, so its joints stay with
+   * the generic steps and the shapes they cannot place are refused as before.
+   */
+  private static heldSquare(joint: RealJoint, joints: Joint[]): boolean {
+    const assemblies = slideAssemblies(joints);
+    return joint.links.some((link) => hasFixedOrientation(link, assemblies));
   }
 
   /**
