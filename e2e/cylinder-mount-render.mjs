@@ -80,44 +80,44 @@ async function draw(recipe) {
     if (which === 'rod-welded' || which === 'colors' || which === 'small-ram') {
       const span = which === 'small-ram' ? 1.6 : 6;
       const one = ram({ x: -4 * S, y: 0 }, { x: (-4 + span) * S, y: 0 });
-      const bar = m.addBarFrom(one.rodFar, { x: one.rodFar.x + 2 * S, y: one.rodFar.y + 3 * S });
-      note.tip = far(bar, one.rodFar).id;
-      weld(one.rodFar);
+      const bar = m.addBarFrom(one.mountB, { x: one.mountB.x + 2 * S, y: one.mountB.y + 3 * S });
+      note.tip = far(bar, one.mountB).id;
+      weld(one.mountB);
     } else if (which === 'barrel-welded') {
       const one = ram({ x: -1 * S, y: 0 }, { x: 5 * S, y: 0 });
-      const bar = m.addBarFrom(one.barrelFar, {
-        x: one.barrelFar.x - 2 * S,
-        y: one.barrelFar.y + 3 * S,
+      const bar = m.addBarFrom(one.mountA, {
+        x: one.mountA.x - 2 * S,
+        y: one.mountA.y + 3 * S,
       });
-      note.tip = far(bar, one.barrelFar).id;
-      weld(one.barrelFar);
+      note.tip = far(bar, one.mountA).id;
+      weld(one.mountA);
     } else if (which === 'both-welded') {
       const one = ram({ x: -3 * S, y: 0 }, { x: 3 * S, y: 0 });
-      const left = m.addBarFrom(one.barrelFar, {
-        x: one.barrelFar.x - 2 * S,
-        y: one.barrelFar.y - 3 * S,
+      const left = m.addBarFrom(one.mountA, {
+        x: one.mountA.x - 2 * S,
+        y: one.mountA.y - 3 * S,
       });
-      const right = m.addBarFrom(one.rodFar, { x: one.rodFar.x + 2 * S, y: one.rodFar.y + 3 * S });
-      note.tip = far(right, one.rodFar).id;
-      note.otherTip = far(left, one.barrelFar).id;
-      weld(one.barrelFar);
-      weld(one.rodFar);
+      const right = m.addBarFrom(one.mountB, { x: one.mountB.x + 2 * S, y: one.mountB.y + 3 * S });
+      note.tip = far(right, one.mountB).id;
+      note.otherTip = far(left, one.mountA).id;
+      weld(one.mountA);
+      weld(one.mountB);
     } else if (which === 'shared-mount') {
       // A boom and a stick: one ram's rod mount is the next one's barrel
       // mount, and the weld at it has to hold both.
       const boom = ram({ x: -5 * S, y: -1 * S }, { x: 0, y: 0 });
-      const stick = ram({ x: 0, y: 0 }, { x: 4 * S, y: 3 * S }, boom.rodFar);
-      const bar = m.addBarFrom(boom.rodFar, { x: -1 * S, y: 3 * S });
-      note.tip = far(bar, boom.rodFar).id;
-      note.shared = boom.rodFar.id;
-      note.stickTip = stick.rodFar.id;
-      weld(boom.rodFar);
+      const stick = ram({ x: 0, y: 0 }, { x: 4 * S, y: 3 * S }, boom.mountB);
+      const bar = m.addBarFrom(boom.mountB, { x: -1 * S, y: 3 * S });
+      note.tip = far(bar, boom.mountB).id;
+      note.shared = boom.mountB.id;
+      note.stickTip = stick.mountB.id;
+      weld(boom.mountB);
     } else if (which === 'two-blocks') {
       const one = ram({ x: -4 * S, y: 0 }, { x: 2 * S, y: 0 });
-      const bar = m.addBarFrom(one.rodFar, { x: one.rodFar.x + 2 * S, y: one.rodFar.y + 3 * S });
-      const tip = far(bar, one.rodFar);
+      const bar = m.addBarFrom(one.mountB, { x: one.mountB.x + 2 * S, y: one.mountB.y + 3 * S });
+      const tip = far(bar, one.mountB);
       note.tip = tip.id;
-      weld(one.rodFar);
+      weld(one.mountB);
       // Two external blocks on one welded body: one at the mount, one at the
       // bracket's far end, each with its own plate to draw.
       //
@@ -128,7 +128,7 @@ async function draw(recipe) {
       // nothing at all -- which left the whole drawing unanchored and solving
       // as no machine.
       const live = (id) => m.joints.find((j) => j.id === id);
-      const mountId = one.rodFar.id;
+      const mountId = one.mountB.id;
       const tipId = tip.id;
       block(live(mountId));
       ground(live(mountId));
@@ -136,15 +136,15 @@ async function draw(recipe) {
       ground(live(tipId));
     } else if (which === 'oblique-slot') {
       const one = ram({ x: -1 * S, y: 1 * S }, { x: 5 * S, y: 1 * S });
-      const bar = m.addBarFrom(one.rodFar, { x: one.rodFar.x + 1 * S, y: one.rodFar.y + 3 * S });
-      note.tip = far(bar, one.rodFar).id;
-      weld(one.rodFar);
+      const bar = m.addBarFrom(one.mountB, { x: one.mountB.x + 1 * S, y: one.mountB.y + 3 * S });
+      note.tip = far(bar, one.mountB).id;
+      weld(one.mountB);
       // A rail somewhere else in the drawing, running at 37 degrees to the
       // ram's own axis: an oblique guide rather than an axial one. It cannot
       // be the bracket -- a body the ram is already fixed to would only pull
       // the part shorter, and the drop refuses it.
       const rail = m.addBar({ x: -5 * S, y: -3 * S }, { x: 1 * S, y: 1.5 * S });
-      note.cut = m.cutSlotOn(one.barrelFar, {
+      note.cut = m.cutSlotOn(one.mountA, {
         carrier: rail,
         a: rail.joints[0],
         b: rail.joints[1],
@@ -153,11 +153,11 @@ async function draw(recipe) {
       });
     } else if (which === 'running') {
       const one = ram({ x: -4 * S, y: 0 }, { x: 2 * S, y: 0 });
-      const bar = m.addBarFrom(one.rodFar, { x: one.rodFar.x + 2 * S, y: one.rodFar.y + 3 * S });
-      const tip = far(bar, one.rodFar);
+      const bar = m.addBarFrom(one.mountB, { x: one.mountB.x + 2 * S, y: one.mountB.y + 3 * S });
+      const tip = far(bar, one.mountB);
       note.tip = tip.id;
-      weld(one.rodFar);
-      ground(one.barrelFar);
+      weld(one.mountB);
+      ground(one.mountA);
       // By letter between the two, for the reason the `two-blocks` recipe
       // above gives: gaining a slot exchanges the joint for a `PrisJoint`
       // keeping its id, so grounding the object captured before it grounds
@@ -174,7 +174,7 @@ async function draw(recipe) {
     return {
       ...note,
       rams: rams.length,
-      mounts: rams.flatMap((r) => [r.barrelFar.id, r.rodFar.id]),
+      mounts: rams.flatMap((r) => [r.mountA.id, r.mountB.id]),
       compound: compound?.id,
       samples: m.masterMechanism()?.joints.length ?? 0,
     };
@@ -198,7 +198,7 @@ const renderFacts = () =>
     const m = grid.mechanismSrv;
     const rams = m.sealedStructures();
     const count = (id) => document.querySelectorAll(`[id="${id}"]`).length;
-    const interiors = rams.flatMap((r) => [r.barrelNear.id, r.pin.id, r.slider.id]);
+    const interiors = rams.flatMap((r) => [r.inner.id, r.seal.id]);
     // Only a RealLink gets a path carrying its own id; a block is drawn in the
     // block layer with no id of its own, so it is counted separately below.
     const bodies = m.links.filter((l) => grid.gridUtils.typeOfLink(l) === 'R');
@@ -225,7 +225,7 @@ const renderFacts = () =>
         .filter((j) => !j.isSealed && count(`joint_${j.id}`) > 1)
         .map((j) => j.id),
       mountsDrawn: rams
-        .flatMap((r) => [r.barrelFar.id, r.rodFar.id])
+        .flatMap((r) => [r.mountA.id, r.mountB.id])
         .filter((id) => count(`joint_${id}`) === 1),
       // The skin is still there to draw them: one barrel path per ram.
       skinsDrawn: document.querySelectorAll('.cylinder-mark .cylinder-barrel').length,
@@ -243,8 +243,8 @@ const renderFacts = () =>
             if (!drawn?.isPointInFill) return;
             rams.forEach((ram) => {
               [
-                ['barrel', middle(ram.barrelFar, ram.barrelNear)],
-                ['rod', middle(ram.pin, ram.rodFar)],
+                ['barrel', middle(ram.mountA, ram.inner)],
+                ['rod', middle(ram.seal, ram.mountB)],
               ].forEach(([what, point]) => {
                 if (drawn.isPointInFill(point)) over.push(`${root.id} covers a ${what}`);
               });

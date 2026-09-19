@@ -17,12 +17,7 @@ import {
   slotOffset,
 } from '../slide-assembly';
 import { MODEL_SCALE } from '../render-scale';
-import {
-  Cylinder,
-  cylinderJoints,
-  cylinderStrokeAlong,
-  sealedCylinderStructures,
-} from '../cylinder';
+import { Cylinder, cylinderJoints, cylinderStrokeAlong, cylindersIn } from '../cylinder';
 import {
   BoundaryMotion,
   boundaryJoints,
@@ -248,11 +243,10 @@ interface SlideAssemblyStep {
  * primitive for.
  */
 interface CylinderInterior {
-  barrelFarId: string;
-  rodFarId: string;
-  barrelNearId: string;
-  pinId: string;
-  sliderId: string;
+  mountAId: string;
+  mountBId: string;
+  innerId: string;
+  sealId: string;
   barrelLength: number;
   rodLength: number;
   /** The pin's travel inside the slot: where the stroke begins and ends. */
@@ -766,16 +760,16 @@ export class PositionSolver {
    * route onto mechanisms the walk can also solve so the two can be compared.
    */
   private static mountEnhanced(joints: Joint[]): boolean {
-    for (const cylinder of sealedCylinderStructures(joints)) {
+    for (const cylinder of cylindersIn(joints)) {
       if (cylinder.barrelRoot.id !== cylinder.barrel.id) return true;
       if (cylinder.rodRoot.id !== cylinder.rod.id) return true;
-      for (const mount of [cylinder.barrelFar, cylinder.rodFar]) {
+      for (const mount of [cylinder.mountA, cylinder.mountB]) {
         if (!(mount instanceof RealJoint)) continue;
         // A mount that slides in its own right. It used to be found as a second
         // block hanging off the mount; a slider is a joint now, so the mount
         // itself is the thing that slides -- and the cylinder's own seal does
         // not count, being the one every cylinder already has.
-        if (mount instanceof PrisJoint && mount.id !== cylinder.slider.id) return true;
+        if (mount instanceof PrisJoint && mount.id !== cylinder.seal.id) return true;
       }
     }
     return false;
@@ -1379,13 +1373,13 @@ export class PositionSolver {
     const cylinder = this.drivenCylinder;
     if (cylinder) {
       const drive = this.cylinderDrive ?? {
-        anchorMountId: cylinder.barrelFar.id,
-        drivenMountId: cylinder.rodFar.id,
+        anchorMountId: cylinder.mountA.id,
+        drivenMountId: cylinder.mountB.id,
         span: euclideanDistance(
-          cylinder.barrelFar.x,
-          cylinder.barrelFar.y,
-          cylinder.rodFar.x,
-          cylinder.rodFar.y
+          cylinder.mountA.x,
+          cylinder.mountA.y,
+          cylinder.mountB.x,
+          cylinder.mountB.y
         ),
         step: this.drivenSampleStep ?? PRISMATIC_INPUT_STEP,
       };
@@ -1532,19 +1526,18 @@ export class PositionSolver {
    * left behind, which over a few hundred samples is a visibly longer cylinder.
    */
   private static registerSealedCylinders(joints: Joint[]): Cylinder[] {
-    const cylinders = sealedCylinderStructures(joints);
+    const cylinders = cylindersIn(joints);
     for (const cylinder of cylinders) {
-      const { barrelFar, barrelNear, pin, slider, rodFar } = cylinder;
-      const barrelLength = euclideanDistance(barrelFar.x, barrelFar.y, barrelNear.x, barrelNear.y);
+      const { mountA, inner, seal, mountB } = cylinder;
+      const barrelLength = euclideanDistance(mountA.x, mountA.y, inner.x, inner.y);
       const stroke = cylinderStrokeAlong(barrelLength);
-      this.cylinderInteriorMap.set(barrelNear.id, {
-        barrelFarId: barrelFar.id,
-        rodFarId: rodFar.id,
-        barrelNearId: barrelNear.id,
-        pinId: pin.id,
-        sliderId: slider.id,
+      this.cylinderInteriorMap.set(inner.id, {
+        mountAId: mountA.id,
+        mountBId: mountB.id,
+        innerId: inner.id,
+        sealId: seal.id,
         barrelLength,
-        rodLength: euclideanDistance(pin.x, pin.y, rodFar.x, rodFar.y),
+        rodLength: euclideanDistance(seal.x, seal.y, mountB.x, mountB.y),
         minAlong: stroke.min,
         maxAlong: stroke.max,
       });
@@ -1564,8 +1557,8 @@ export class PositionSolver {
     if (!(inputJoint instanceof PrisJoint) || !inputJoint.isSealed) {
       return false;
     }
-    const cylinder = cylinders.find((candidate) => candidate.slider.id === inputJoint.id);
-    const interior = cylinder && this.cylinderInteriorMap.get(cylinder.barrelNear.id);
+    const cylinder = cylinders.find((candidate) => candidate.seal.id === inputJoint.id);
+    const interior = cylinder && this.cylinderInteriorMap.get(cylinder.inner.id);
     if (!interior) {
       return false;
     }
@@ -1667,7 +1660,7 @@ export class PositionSolver {
     if (!cylinder || known.includes(joint.id)) {
       return undefined;
     }
-    const mounts = [cylinder.barrelFar, cylinder.rodFar];
+    const mounts = [cylinder.mountA, cylinder.mountB];
     if (!mounts.some((mount) => mount.id === joint.id)) {
       return undefined;
     }
@@ -1712,9 +1705,9 @@ export class PositionSolver {
   /**
    * Place a sealed cylinder's interior once both its mounts are known.
    *
-   * One step for three joints, because they are one part: the buried barrel end
-   * at the barrel's length from its mount, the pin wherever the rod's length
-   * leaves it, and the sliding joint on top of the pin (§2.10 item 2).
+   * One step for both joints the seal owns, because they are one part: the
+   * buried barrel end at the barrel's length from its mount, and the seal
+   * wherever the rod's length leaves it (§2.10 item 2).
    */
   private static orderSealedCylinderInterior(
     joints: Joint[],
@@ -1724,18 +1717,18 @@ export class PositionSolver {
     known: string[]
   ): number | undefined {
     const interior = [...this.cylinderInteriorMap.values()].find((candidate) =>
-      [candidate.barrelNearId, candidate.pinId, candidate.sliderId].includes(joint.id)
+      [candidate.innerId, candidate.sealId].includes(joint.id)
     );
-    if (!interior || known.includes(interior.barrelNearId)) {
+    if (!interior || known.includes(interior.innerId)) {
       return undefined;
     }
-    if (!known.includes(interior.barrelFarId) || !known.includes(interior.rodFarId)) {
+    if (!known.includes(interior.mountAId) || !known.includes(interior.mountBId)) {
       return undefined;
     }
 
-    const targets = [interior.barrelNearId, interior.pinId, interior.sliderId];
-    this.desiredConnectedJointIndicesMap.set(interior.barrelNearId, []);
-    this.desiredAnalysisJointMap.set(interior.barrelNearId, 'sealedCylinderInterior');
+    const targets = [interior.innerId, interior.sealId];
+    this.desiredConnectedJointIndicesMap.set(interior.innerId, []);
+    this.desiredAnalysisJointMap.set(interior.innerId, 'sealedCylinderInterior');
     this.jointNumOrderSolverMap.set(orderNum, targets);
     targets.forEach((id) => known.push(id));
 
@@ -1787,8 +1780,8 @@ export class PositionSolver {
     if (!interior) {
       return false;
     }
-    const barrelMount = this.jointMapPositions.get(interior.barrelFarId);
-    const rodMount = this.jointMapPositions.get(interior.rodFarId);
+    const barrelMount = this.jointMapPositions.get(interior.mountAId);
+    const rodMount = this.jointMapPositions.get(interior.mountBId);
     if (!barrelMount || !rodMount) {
       return false;
     }
@@ -1809,14 +1802,15 @@ export class PositionSolver {
     const ux = dx / span;
     const uy = dy / span;
     this.recordJointPosition(
-      interior.barrelNearId,
+      interior.innerId,
       barrelMount[0] + interior.barrelLength * ux,
       barrelMount[1] + interior.barrelLength * uy
     );
-    const pinX = barrelMount[0] + along * ux;
-    const pinY = barrelMount[1] + along * uy;
-    this.recordJointPosition(interior.pinId, pinX, pinY);
-    this.recordJointPosition(interior.sliderId, pinX, pinY);
+    this.recordJointPosition(
+      interior.sealId,
+      barrelMount[0] + along * ux,
+      barrelMount[1] + along * uy
+    );
     return true;
   }
 
@@ -2436,8 +2430,8 @@ export class PositionSolver {
    */
   private static cylindersAreIntact(): boolean {
     for (const interior of this.cylinderInteriorMap.values()) {
-      const barrelMount = this.jointMapPositions.get(interior.barrelFarId);
-      const rodMount = this.jointMapPositions.get(interior.rodFarId);
+      const barrelMount = this.jointMapPositions.get(interior.mountAId);
+      const rodMount = this.jointMapPositions.get(interior.mountBId);
       if (!barrelMount || !rodMount) continue;
       const dx = rodMount[0] - barrelMount[0];
       const dy = rodMount[1] - barrelMount[1];
@@ -2465,8 +2459,8 @@ export class PositionSolver {
           ? (point[0] - barrelMount[0]) * ux + (point[1] - barrelMount[1]) * uy
           : undefined;
       };
-      const near = at(interior.barrelNearId);
-      const pin = at(interior.pinId);
+      const near = at(interior.innerId);
+      const pin = at(interior.sealId);
       if (near === undefined || pin === undefined) continue;
       if (near < -STROKE_TOLERANCE || pin < -STROKE_TOLERANCE) return this.refuseBranch();
       if (pin > span + STROKE_TOLERANCE) return this.refuseBranch();
@@ -2542,7 +2536,7 @@ export class PositionSolver {
 
   private static withinStroke(span: number): boolean {
     const cylinder = this.drivenCylinder;
-    const interior = cylinder && this.cylinderInteriorMap.get(cylinder.barrelNear.id);
+    const interior = cylinder && this.cylinderInteriorMap.get(cylinder.inner.id);
     if (!interior) {
       return true;
     }

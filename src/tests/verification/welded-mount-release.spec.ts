@@ -4,7 +4,7 @@ import '../../app/model/joint';
 import { Coord } from '../../app/model/coord';
 import { PrisJoint, RealJoint, RevJoint } from '../../app/model/joint';
 import { RealLink } from '../../app/model/link';
-import { sealedCylinders } from '../../app/model/cylinder';
+import { cylindersIn } from '../../app/model/cylinder';
 import { assignBodies } from '../../app/model/mechanism/bodies';
 import { createMechanismHarness } from '../../test-utils/mechanism-harness';
 import { encodeUrlOf } from '../../test-utils/url-encoding';
@@ -52,9 +52,9 @@ function drawIt() {
   const service = harness.service;
 
   service.createCylinderFrom(new Coord(-4 * S, 0), new Coord(2 * S, 0));
-  const ram = sealedCylinders(service.joints)[0];
-  const mount = ram.rodFar as RealJoint;
-  (ram.barrelFar as RealJoint).ground = true;
+  const ram = cylindersIn(service.joints)[0];
+  const mount = ram.mountB as RealJoint;
+  (ram.mountA as RealJoint).ground = true;
 
   // A bracket on the rod mount, then the weld that fuses it to the rod.
   const elbow = new RevJoint('W', mount.x + 2 * S, mount.y + 3 * S);
@@ -71,7 +71,7 @@ function drawIt() {
   service.links.push(new RealLink(elbow.id + anchor.id, [elbow, anchor]));
   service.finishStructuralEdit(true);
 
-  service.toggleCylinderInput(sealedCylinders(service.joints)[0]);
+  service.toggleCylinderInput(cylindersIn(service.joints)[0]);
   service.updateMechanism(true);
   return { ...harness, mountId: mount.id, elbowId: elbow.id, anchorId: anchor.id };
 }
@@ -81,7 +81,7 @@ function shapeOf(service: MechanismService) {
   const compound = service.links.find(
     (link): link is RealLink => link instanceof RealLink && link.subset.length > 0
   );
-  const rams = sealedCylinders(service.joints);
+  const rams = cylindersIn(service.joints);
   const bodies = assignBodies(service.joints, service.links);
   return {
     joints: service.joints.map((joint) => joint.id).sort(),
@@ -92,7 +92,7 @@ function shapeOf(service: MechanismService) {
       .map((joint) => joint.id)
       .sort(),
     rams: rams.length,
-    sealed: rams.every((ram) => ram.slider.isSealed && ram.slider.isFloating),
+    sealed: rams.every((ram) => ram.seal.isSealed && ram.seal.isFloating),
     movingBodies: bodies.movingBodies.size,
   };
 }
@@ -164,7 +164,7 @@ describe('the welded-mount mechanism a reader can draw', () => {
       const pose = machine.joints[t];
       const mount = pose.find((joint) => joint.id === h.mountId)!;
       const elbow = pose.find((joint) => joint.id === h.elbowId)!;
-      const pin = pose.find((joint) => joint.id === sealedCylinders(h.service.joints)[0].pin.id)!;
+      const pin = pose.find((joint) => joint.id === cylindersIn(h.service.joints)[0].seal.id)!;
       return {
         arm: Math.hypot(elbow.x - mount.x, elbow.y - mount.y),
         // The angle the bracket stands at, in the rod's own frame: the number

@@ -1,6 +1,6 @@
 import { Joint, PrisJoint, RealJoint, RevJoint } from './joint';
 import { Link, RealLink } from './link';
-import { sealedCylinderStructures } from './cylinder';
+import { cylindersIn } from './cylinder';
 import { JointOperationContext, refuseJointOperation } from './joint-operation-permission';
 
 /**
@@ -55,7 +55,7 @@ function drawing() {
   );
 
   const context: JointOperationContext = {
-    cylinders: sealedCylinderStructures(joints),
+    cylinders: cylindersIn(joints),
     isDriven: (joint) => joint.input,
     hasSlider: (joint) => joint instanceof PrisJoint,
   };

@@ -375,7 +375,7 @@
       <panel-section [frozen]="panelIsFrozen()">
         <editable-title-block
           [deleteAction]="deleteLink.bind(this)"
-          [displayName]="cyl.barrelFar.name + cyl.rodFar.name"
+          [displayName]="cyl.mountA.name + cyl.mountB.name"
         >
           Edit Cylinder
         </editable-title-block>
@@ -431,13 +431,13 @@
             <div class="cylinder-clamped">{{ cylinderClamped }}</div>
           }
           <button-block
-            [customIcon]="cyl.slider.input ? 'remove_input' : 'add_input'"
+            [customIcon]="cyl.seal.input ? 'remove_input' : 'add_input'"
             [click]="toggleCylinderInput.bind(this)"
           >
-            {{ cyl.slider.input ? 'Remove Input' : 'Add Input' }}
+            {{ cyl.seal.input ? 'Remove Input' : 'Add Input' }}
           </button-block>
         </collapsible-subsection>
-        @if (cyl.slider.input) {
+        @if (cyl.seal.input) {
           <div class="inputSettings">
             <collapsible-subsection
               titleLabel="Input Settings"

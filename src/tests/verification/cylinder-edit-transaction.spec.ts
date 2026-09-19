@@ -11,7 +11,7 @@ import { MechanismFixture } from '../../test-utils/verification/fixture';
 import { PrisJoint, RealJoint, RevJoint } from '../../app/model/joint';
 import { RealLink } from '../../app/model/link';
 import { Coord } from '../../app/model/coord';
-import { cylinderSizeOf, sealedCylinderStructures } from '../../app/model/cylinder';
+import { cylinderSizeOf, cylindersIn } from '../../app/model/cylinder';
 
 /**
  * What the drawing actually looks like after an edit that touches a ram.
@@ -144,7 +144,7 @@ describe('a lock on a cylinder mount', () => {
     // meant to leave available.
     const { mechanism, grid, at } = build(ramFixture());
     lock(mechanism, 'A');
-    const [sealed] = sealedCylinderStructures(mechanism.joints);
+    const [sealed] = cylindersIn(mechanism.joints);
     const pivot = { x: at('A').x, y: at('A').y };
     const wanted = turned({ x: at('D').x, y: at('D').y }, pivot, Math.PI / 2);
 
@@ -159,7 +159,7 @@ describe('a lock on a cylinder mount', () => {
   it('and about the other mount, which is the same rule from the far end', () => {
     const { mechanism, grid, at } = build(ramFixture());
     lock(mechanism, 'D');
-    const [sealed] = sealedCylinderStructures(mechanism.joints);
+    const [sealed] = cylindersIn(mechanism.joints);
     const pivot = { x: at('D').x, y: at('D').y };
     const wanted = turned({ x: at('A').x, y: at('A').y }, pivot, Math.PI / 2);
 
@@ -202,7 +202,7 @@ describe('resizing a ram welded to a bracket', () => {
     const { mechanism, grid, at } = build(ramFixture());
     const { compound, bracket } = weldBracketOnto(mechanism, 'A', 'AB', { x: -3, y: 4 });
 
-    const [sealed] = sealedCylinderStructures(mechanism.joints);
+    const [sealed] = cylindersIn(mechanism.joints);
     expect(sealed.barrelRoot.id).toBe(compound.id);
 
     const leaf = compound.subset.find((sub) => sub.id === bracket.id) as RealLink;

@@ -26,8 +26,7 @@ export function labelForBody(body: Link, cylinder: Cylinder | undefined): string
     const role = body === cylinder.barrel ? 'Barrel' : body === cylinder.rod ? 'Rod' : undefined;
     if (role) {
       const name =
-        (cylinder.barrelFar.name || cylinder.barrelFar.id) +
-        (cylinder.rodFar.name || cylinder.rodFar.id);
+        (cylinder.mountA.name || cylinder.mountA.id) + (cylinder.mountB.name || cylinder.mountB.id);
       return `${role} ${name}`;
     }
   }

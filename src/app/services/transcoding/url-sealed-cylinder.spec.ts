@@ -6,9 +6,9 @@ import {
   cylinderHeadHalf,
   cylinderSpanLayoutFrom,
   HEAD_CLEARANCE_R,
-  cylinderCollinearTolerance,
-  sealedCylinderAt,
-  sealedCylinders,
+  cylinderAtSeal,
+  cylindersIn,
+  derivedInterior,
 } from '../../model/cylinder';
 import { ActiveObjService } from '../active-obj.service';
 import { MechanismService } from '../mechanism.service';
@@ -42,7 +42,7 @@ function targetService(): MechanismService {
  * freshly drawn ram is. Typing them instead would build a part the geometric
  * test refuses, and the round-trip below would then be checking nothing.
  */
-function sealedSource(options: { sealed?: boolean; angle?: number } = {}) {
+function sealedSource(options: { sealed?: boolean; angle?: number; reversedSlot?: boolean } = {}) {
   const angle = options.angle ?? 0.31; // radians, deliberately irrational-ish
   const at = (along: number) => new Coord(along * Math.cos(angle) * S, along * Math.sin(angle) * S);
 
@@ -74,7 +74,11 @@ function sealedSource(options: { sealed?: boolean; angle?: number } = {}) {
   c.links.push(block);
   slider.links.push(block);
   c.isWelded = true;
-  slider.slideOn(barrel, a, b);
+  // Mount first, buried end second -- the order creation writes and the order
+  // the roles are read from. Reversed, this is a payload from before that was
+  // promised, which the reader is what puts right.
+  if (options.reversedSlot) slider.slideOn(barrel, b, a);
+  else slider.slideOn(barrel, a, b);
   c.connectedJoints.push(d, slider);
   d.connectedJoints.push(c);
   a.connectedJoints.push(b);
@@ -114,29 +118,61 @@ describe('sealed cylinder URL round-trip', () => {
     expect(slider.isFloating).toBe(true);
   });
 
-  it('still qualifies geometrically after quantization, with room to spare', () => {
+  it('decodes straight: the derivation has nothing to put back', () => {
     const target = rebuild(encode(sealedSource()));
 
     // The seal and the pin the rod hangs on are one joint now, so this is the
     // same lookup the slider gets above.
     const pin = target.joints.find((joint) => joint.id === 'C')!;
-    const found = sealedCylinderAt(pin);
+    const found = cylinderAtSeal(pin);
     expect(found).toBeDefined();
     expect(found!.barrel.id).toBe('AB');
     expect(found!.rod.id).toBe('CD');
 
-    // The codec rounds to 1/1000 of a user unit, so a decoded joint can sit at
-    // most ~5e-4 user units off the slot line. The collinearity tolerance is
-    // ~0.23 user units — three orders of magnitude of headroom, so a cylinder
-    // can never decode into a shape that has stopped qualifying.
-    const slider = found!.slider;
-    const angle = slider.slotAngle;
-    const across = (point: { x: number; y: number }) =>
-      Math.abs(-(point.x - pin.x) * Math.sin(angle) + (point.y - pin.y) * Math.cos(angle));
-    const worst = Math.max(...[found!.rodFar, found!.barrelFar, found!.barrelNear].map(across));
+    // The codec rounds to 1/1000 of a user unit, so a decoded joint can sit a
+    // few ten-thousandths off the axis its mounts define. That used to be
+    // measured against a collinearity tolerance the shape had to stay inside;
+    // there is no such test any more, and what matters instead is that the
+    // derivation run on every rebuild finds the part where it already is --
+    // within the quantization, and never enough to move a joint at the six
+    // decimals a write rounds to.
+    const derived = derivedInterior(found!)!;
+    const off = (was: { x: number; y: number }, to: { x: number; y: number }) =>
+      Math.hypot(to.x - was.x, to.y - was.y);
     const quantizationBound = 0.002 * S; // a few rounding steps, generously
-    expect(worst).toBeLessThanOrEqual(quantizationBound);
-    expect(quantizationBound).toBeLessThan(cylinderCollinearTolerance() / 20);
+    expect(off(found!.inner, derived.inner)).toBeLessThanOrEqual(quantizationBound);
+    expect(off(found!.seal, derived.seal)).toBeLessThanOrEqual(quantizationBound);
+  });
+
+  it('puts an old payload’s slot in mount-first order', () => {
+    // A URL written before Stage 2 promises nothing about which way round its
+    // slot was stored, and the roles are read straight off that order now. The
+    // reader is the one place the old distance rule survives: the barrel joint
+    // further from the rod's mount is the mount.
+    const target = rebuild(encode(sealedSource({ reversedSlot: true })));
+
+    const found = cylinderAtSeal(target.joints.find((joint) => joint.id === 'C')!)!;
+    expect(found.mountA.id).toBe('A');
+    expect(found.inner.id).toBe('B');
+
+    // And it is the same answer the old inference gave, computed here the way
+    // it was computed there.
+    const fromRod = (joint: { x: number; y: number }) =>
+      Math.hypot(joint.x - found.mountB.x, joint.y - found.mountB.y);
+    expect(fromRod(found.mountA)).toBeGreaterThan(fromRod(found.inner));
+  });
+
+  it('leaves a slot that is already in order alone, however often it is replayed', () => {
+    // Undo and redo replay URLs, so the ordering pass runs again on every step
+    // of the history: a second look has to be a no-op.
+    const once = rebuild(encode(sealedSource()));
+    const first = cylinderAtSeal(once.joints.find((joint) => joint.id === 'C')!)!;
+    expect(first.mountA.id).toBe('A');
+
+    const twice = rebuild(encode(sealedSource({ reversedSlot: true })));
+    const again = cylinderAtSeal(twice.joints.find((joint) => joint.id === 'C')!)!;
+    expect(again.mountA.id).toBe('A');
+    expect(again.inner.id).toBe('B');
   });
 
   it('leaves an unsealed welded slide unsealed — and unskinned', () => {
@@ -145,7 +181,7 @@ describe('sealed cylinder URL round-trip', () => {
     const slider = target.joints.find((joint) => joint.id === 'C') as PrisJoint;
     expect(slider.isSealed).toBe(false);
     // A plain slide never skins any more: sealed ⇔ skinned.
-    expect(sealedCylinders(target.joints)).toHaveLength(0);
+    expect(cylindersIn(target.joints)).toHaveLength(0);
   });
 
   it('rejects a URL that seals a joint that is not a floating slider', () => {

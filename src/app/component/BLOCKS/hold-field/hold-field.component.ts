@@ -138,7 +138,7 @@ export class HoldFieldComponent {
    */
   private pinned(): Joint[] {
     const sealed = this.mechanism.cylinderOfLink(this.link());
-    return sealed ? [sealed.barrelFar, sealed.rodFar] : this.link().joints;
+    return sealed ? [sealed.mountA, sealed.mountB] : this.link().joints;
   }
 
   protected held(which: Which): boolean {

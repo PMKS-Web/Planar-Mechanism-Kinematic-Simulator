@@ -91,10 +91,7 @@ export class ExportCatalogService {
   /** The three joints a sealed cylinder keeps to itself: no hitbox, no row. */
   private isInsideCylinder(cylinders: Cylinder[], joint: Joint): boolean {
     return cylinders.some(
-      (cylinder) =>
-        cylinder.barrelNear.id === joint.id ||
-        cylinder.pin.id === joint.id ||
-        cylinder.slider.id === joint.id
+      (cylinder) => cylinder.inner.id === joint.id || cylinder.seal.id === joint.id
     );
   }
 
@@ -187,8 +184,7 @@ export class ExportCatalogService {
   private cylinderLabel(cylinders: Cylinder[], link: Link): string {
     const cylinder = cylinders.find((candidate) => candidate.rod.id === link.id)!;
     const mounts =
-      (cylinder.barrelFar.name || cylinder.barrelFar.id) +
-      (cylinder.rodFar.name || cylinder.rodFar.id);
+      (cylinder.mountA.name || cylinder.mountA.id) + (cylinder.mountB.name || cylinder.mountB.id);
     return `Cylinder ${mounts}`;
   }
 
@@ -249,9 +245,7 @@ export class ExportCatalogService {
   /** The joints a sealed cylinder keeps to itself, by id. */
   hiddenJointIds(): Set<string> {
     return new Set(
-      this.mechanism
-        .sealedStructures()
-        .flatMap((cylinder) => [cylinder.barrelNear.id, cylinder.pin.id, cylinder.slider.id])
+      this.mechanism.sealedStructures().flatMap((cylinder) => [cylinder.inner.id, cylinder.seal.id])
     );
   }
 

@@ -5,7 +5,7 @@ import { Coord } from '../../app/model/coord';
 import { PrisJoint, RealJoint, RevJoint } from '../../app/model/joint';
 import { RealLink } from '../../app/model/link';
 import { buildCompoundPath } from '../../app/model/compound-link-path';
-import { sealedCylinders } from '../../app/model/cylinder';
+import { cylindersIn } from '../../app/model/cylinder';
 import { createMechanismHarness } from '../../test-utils/mechanism-harness';
 import { SliderMarkService } from '../../app/services/slider-mark.service';
 import { SettingsService } from '../../app/services/settings.service';
@@ -40,8 +40,8 @@ function weldedAt(end: 'barrel' | 'rod') {
   const service = harness.service;
 
   service.createCylinderFrom(new Coord(-1 * S, 0), new Coord(5 * S, 0));
-  const ram = sealedCylinders(service.joints)[0];
-  const mount = (end === 'barrel' ? ram.barrelFar : ram.rodFar) as RealJoint;
+  const ram = cylindersIn(service.joints)[0];
+  const mount = (end === 'barrel' ? ram.mountA : ram.mountB) as RealJoint;
 
   const tip = new RevJoint('W', mount.x + (end === 'barrel' ? -2 : 2) * S, mount.y + 3 * S);
   service.joints.push(tip);
@@ -57,7 +57,7 @@ function weldedAt(end: 'barrel' | 'rod') {
   const bracket = compound.subset.find(
     (leaf): leaf is RealLink => leaf instanceof RealLink && leaf.joints.some((j) => j.id === tip.id)
   )!;
-  return { ...harness, ram: sealedCylinders(service.joints)[0], compound, bracket, mount, tip };
+  return { ...harness, ram: cylindersIn(service.joints)[0], compound, bracket, mount, tip };
 }
 
 /** What the compound would draw if the bracket were all it held. */
@@ -91,7 +91,7 @@ describe('a compound holding one of a ram’s bars', () => {
     const wasTheBarrel = ram.barrel as RealLink;
     service.deleteCylinder(ram);
     service.sealedStructures();
-    expect(sealedCylinders(service.joints).length).toBe(0);
+    expect(cylindersIn(service.joints).length).toBe(0);
     expect(wasTheBarrel.drawnByACylinderSkin).toBe(false);
   });
 

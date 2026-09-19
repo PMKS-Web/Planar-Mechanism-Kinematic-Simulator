@@ -60,7 +60,7 @@ async function weldedMount(options = {}) {
 
     m.createCylinderFrom({ x: -4 * S, y: 0 }, { x: 2 * S, y: 0 });
     const ram = m.sealedStructures()[0];
-    const mount = ram.rodFar;
+    const mount = ram.mountB;
 
     const bar = m.addBarFrom(mount, { x: mount.x + 2 * S, y: mount.y + 3 * S });
     const tip = far(bar, mount);
@@ -76,7 +76,7 @@ async function weldedMount(options = {}) {
     // slot -- and both the joint the weld brought in and an external block are
     // on screen the whole time.
     if (how.closed) {
-      grid.activeObjService.updateSelectedObj(ram.barrelFar);
+      grid.activeObjService.updateSelectedObj(ram.mountA);
       m.toggleGround();
       grid.activeObjService.updateSelectedObj(tip);
       m.toggleSlider();
@@ -114,7 +114,7 @@ async function weldedMount(options = {}) {
       // is not a machine yet and is not one of the partitions. Anchoring each
       // chain is what makes them two.
       if (how.groundBoth) {
-        [one.joints[0], ram.barrelFar].forEach((j) => {
+        [one.joints[0], ram.mountA].forEach((j) => {
           grid.activeObjService.updateSelectedObj(j);
           m.toggleGround();
         });
@@ -127,10 +127,10 @@ async function weldedMount(options = {}) {
       samples: m.masterMechanism()?.joints.length ?? 0,
       mount: mount.id,
       tip: tip.id,
-      barrelFar: ram.barrelFar.id,
-      pin: ram.pin.id,
-      barrelNear: ram.barrelNear.id,
-      slider: ram.slider.id,
+      barrelFar: ram.mountA.id,
+      pin: ram.seal.id,
+      barrelNear: ram.inner.id,
+      slider: ram.seal.id,
       barrel: ram.barrel.id,
       compound: compound ? compound.id : undefined,
       loose: loose ? loose.id : undefined,
@@ -470,7 +470,7 @@ const foldRefused = await page.evaluate((where) => {
     moved: barrelFar.x !== before.x || barrelFar.y !== before.y,
     stretched: Math.abs(Math.hypot(mount.x - barrelFar.x, mount.y - barrelFar.y) - was) > 1e-6,
     blocks: m.joints.filter((j) => j.constructor?.name === 'PrisJoint' && !j.isSealed).length,
-    barrelFar: ram?.barrelFar.id,
+    barrelFar: ram?.mountA.id,
     rams: m.sealedStructures().length,
   };
 }, ids);

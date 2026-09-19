@@ -169,7 +169,7 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
   // that followed, so the geometry and the properties disagreed.
   const requested = new Map<string, Point>(request.moves ?? []);
   const prescribed = new Map<string, CylinderPose>(
-    (request.poses ?? []).map(({ cylinder, pose }) => [cylinder.pin.id, pose])
+    (request.poses ?? []).map(({ cylinder, pose }) => [cylinder.seal.id, pose])
   );
   const carried = new Map<string, CarriedLeaf>();
   const reshaped = new Map<string, Link>();
@@ -198,7 +198,7 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
   /** Which rams hang off each mount, so a moved joint knows who to wake. */
   const ramsAtMount = new Map<string, Cylinder[]>();
   for (const cylinder of context.cylinders) {
-    for (const mount of [cylinder.barrelFar, cylinder.rodFar]) {
+    for (const mount of [cylinder.mountA, cylinder.mountB]) {
       const list = ramsAtMount.get(mount.id) ?? [];
       list.push(cylinder);
       ramsAtMount.set(mount.id, list);
@@ -214,17 +214,16 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
   /** Lay out one ram and carry its two bodies. Returns the ids that moved. */
   const settle = (cylinder: Cylinder): string[] => {
     const changed: string[] = [];
-    const askedFor = prescribed.get(cylinder.pin.id);
+    const askedFor = prescribed.get(cylinder.seal.id);
 
-    const wasBarrelFar = at(cylinder.barrelFar.id);
-    const wasBarrelNear = at(cylinder.barrelNear.id);
-    const wasRodFar = at(cylinder.rodFar.id);
-    const wasPin = at(cylinder.pin.id);
+    const wasBarrelFar = at(cylinder.mountA.id);
+    const wasBarrelNear = at(cylinder.inner.id);
+    const wasRodFar = at(cylinder.mountB.id);
+    const wasPin = at(cylinder.seal.id);
     if (!wasBarrelFar || !wasBarrelNear || !wasRodFar || !wasPin) return changed;
 
     const pose =
-      askedFor ??
-      context.layoutFor(cylinder, now(cylinder.barrelFar.id)!, now(cylinder.rodFar.id)!);
+      askedFor ?? context.layoutFor(cylinder, now(cylinder.mountA.id)!, now(cylinder.mountB.id)!);
     if (!pose) {
       unreachable = cylinder;
       return changed;
@@ -245,18 +244,18 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
       }
     }
 
-    const interior = new Set([cylinder.barrelNear.id, cylinder.pin.id, cylinder.slider.id]);
+    const interior = new Set([cylinder.inner.id, cylinder.seal.id]);
     const sides: [Link, Rigid | undefined, Joint, Point][] = [
       [
         cylinder.barrelRoot,
         rigidBetween(wasBarrelFar, wasBarrelNear, pose.barrelFar, pose.barrelNear),
-        cylinder.barrelFar,
+        cylinder.mountA,
         pose.barrelFar,
       ],
       [
         cylinder.rodRoot,
         rigidBetween(wasRodFar, wasPin, pose.rodFar, pose.pin),
-        cylinder.rodFar,
+        cylinder.mountB,
         pose.rodFar,
       ],
     ];
@@ -278,9 +277,8 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
     // The interior is where the extension puts it, not where either body's
     // rigid motion would carry it. The two agree while a ram merely moves and
     // part company the moment it changes length.
-    if (put(cylinder.barrelNear.id, pose.barrelNear)) changed.push(cylinder.barrelNear.id);
-    if (put(cylinder.pin.id, pose.pin)) changed.push(cylinder.pin.id);
-    if (put(cylinder.slider.id, pose.pin)) changed.push(cylinder.slider.id);
+    if (put(cylinder.inner.id, pose.barrelNear)) changed.push(cylinder.inner.id);
+    if (put(cylinder.seal.id, pose.pin)) changed.push(cylinder.seal.id);
 
     // The ram's own two bars are the only ones this edit may reshape, and only
     // when it actually changes one of their lengths. Both are asked, because a
@@ -294,7 +292,7 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
     if (barrelChanged || rodChanged) {
       reshaped.set(cylinder.barrel.id, cylinder.barrel);
       reshaped.set(cylinder.rod.id, cylinder.rod);
-      reshapedRams.add(cylinder.pin.id);
+      reshapedRams.add(cylinder.seal.id);
       carried.delete(cylinder.barrel.id);
       carried.delete(cylinder.rod.id);
     }
@@ -311,8 +309,8 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
   const queue: Cylinder[] = [];
   const waiting = new Set<string>();
   const wake = (cylinder: Cylinder) => {
-    if (waiting.has(cylinder.pin.id)) return;
-    waiting.add(cylinder.pin.id);
+    if (waiting.has(cylinder.seal.id)) return;
+    waiting.add(cylinder.seal.id);
     queue.push(cylinder);
   };
   (request.poses ?? []).forEach(({ cylinder }) => wake(cylinder));
@@ -334,7 +332,7 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
       };
     }
     const cylinder = queue.shift()!;
-    waiting.delete(cylinder.pin.id);
+    waiting.delete(cylinder.seal.id);
     const moved = settle(cylinder);
     if (fused) {
       return {
@@ -396,8 +394,8 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
   // deformation of a ram that merely moved.
   const exempt = new Set(
     context.cylinders
-      .filter((one) => reshapedRams.has(one.pin.id))
-      .flatMap((one) => [one.barrelNear.id, one.pin.id, one.slider.id])
+      .filter((one) => reshapedRams.has(one.seal.id))
+      .flatMap((one) => [one.inner.id, one.seal.id])
   );
   for (const root of affectedRoots.values()) {
     const refusal = rigidityRefusal(root, context, placements, exempt);

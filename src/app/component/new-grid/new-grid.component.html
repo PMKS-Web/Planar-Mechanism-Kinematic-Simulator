@@ -1021,7 +1021,7 @@
       <!-- A sealed cylinder's interior joints — buried barrel end, pin,
            slider — are not selectable at all: the skin's own geometry selects
            the body, and only the two mounts remain individual selectables. -->
-      @if (!isCylinderInterior(joint)) {
+      @if (!isInsideCylinder(joint)) {
         <svg
           [attr.x]="joint.x"
           [attr.y]="joint.y"
@@ -1961,7 +1961,7 @@
           </text>
         } @else if (
           !isMergingAway(joint) &&
-          !isCylinderInterior(joint) &&
+          !isInsideCylinder(joint) &&
           (settings.isShowID.value ||
             joint.showHighlight ||
             (this.activeObjService.selectedJoint == joint &&

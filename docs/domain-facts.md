@@ -471,7 +471,7 @@ Three traps, all of which this walked into:
   about the mounts, which are ordinary joints a reader drags -- and the failure is silent in the
   worst way: the drag is not refused with a message, the mount simply does not move, because the
   goal joint has weight zero and `settleHolds` returns a satisfied solution in which nothing moved.
-  Only the interior is an anchor now (`isCylinderInterior`).
+  Only the two joints inside the part are an anchor now (`isInsideCylinder`).
 - **The mount-drag branch never asked the holds anything afterwards.** `jointStates.dragging` has a
   branch of its own for a cylinder mount (it re-poses the ram parametrically), and it called
   `dragJoint` -- so the constraint was applied -- but not `afterHoldMove`, so no guide line and no

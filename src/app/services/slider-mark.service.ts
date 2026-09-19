@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Joint, PrisJoint, RealJoint } from '../model/joint';
 import { Link, RealLink } from '../model/link';
-import { Cylinder, cylinderHeadHalf, sealedCylinders } from '../model/cylinder';
+import { Cylinder, cylinderHeadHalf, cylindersIn } from '../model/cylinder';
 import {
   barrelPath,
   blockPath,
@@ -317,7 +317,7 @@ export class SliderMarkService {
     r: number,
     driveForward: DriveForward = () => true
   ): CylinderMark[] {
-    return sealedCylinders(joints).map((found) => this.cylinderMark(found, r, driveForward));
+    return cylindersIn(joints).map((found) => this.cylinderMark(found, r, driveForward));
   }
 
   /**
@@ -357,9 +357,9 @@ export class SliderMarkService {
   }
 
   private cylinderMark(found: Cylinder, r: number, driveForward: DriveForward): CylinderMark {
-    const { pin, rodFar, barrelNear } = found;
-    const angle = Math.atan2(rodFar.y - pin.y, rodFar.x - pin.x);
-    const rodReach = Math.hypot(rodFar.x - pin.x, rodFar.y - pin.y);
+    const { seal, mountB, inner } = found;
+    const angle = Math.atan2(mountB.y - seal.y, mountB.x - seal.x);
+    const rodReach = Math.hypot(mountB.x - seal.x, mountB.y - seal.y);
     // Both ends of the barrel, not just the one behind the piston. The barrel
     // is a rigid bar and the piston runs along it: its anchor is behind, its
     // mouth ahead. Measuring only back to the anchor drew the barrel *to* the
@@ -369,39 +369,35 @@ export class SliderMarkService {
     // the mouth is not always ahead of the pin: fully extended the head has
     // come clean out of the barrel, and an unsigned distance then drew the
     // mouth on the wrong side and the barrel through the exposed rod.
-    const ux = rodReach > 1e-9 ? (rodFar.x - pin.x) / rodReach : 1;
-    const uy = rodReach > 1e-9 ? (rodFar.y - pin.y) / rodReach : 0;
+    const ux = rodReach > 1e-9 ? (mountB.x - seal.x) / rodReach : 1;
+    const uy = rodReach > 1e-9 ? (mountB.y - seal.y) / rodReach : 0;
     const along = (point: { x: number; y: number }) =>
-      (point.x - pin.x) * ux + (point.y - pin.y) * uy;
-    const anchor = along(found.barrelFar);
-    const mouth = along(barrelNear);
+      (point.x - seal.x) * ux + (point.y - seal.y) * uy;
+    const anchor = along(found.mountA);
+    const mouth = along(inner);
     // The head is full size on any ram with room for it and shrinks only on one
     // too short to hold it, so it is read off this barrel rather than assumed.
     const headHalf = cylinderHeadHalf(mouth - anchor, r);
-    const driven = found.slider.input || pin.input;
+    const driven = seal.input;
     // The mark's frame runs +x toward the rod; the drive direction is declared
     // along the slot, which may point either way along the same line.
     const leading: 1 | -1 =
-      (driveForward(found.slider.input ? found.slider : pin) ? 1 : -1) *
-        (Math.cos(found.slider.slotAngle - angle) >= 0 ? 1 : -1) >
-      0
-        ? 1
-        : -1;
+      (driveForward(seal) ? 1 : -1) * (Math.cos(seal.slotAngle - angle) >= 0 ? 1 : -1) > 0 ? 1 : -1;
     return {
-      id: pin.id,
-      pin,
+      id: seal.id,
+      pin: seal,
       cylinder: found,
       // A click anywhere on the skin selects the body; the barrel link is the
       // canonical handle for it.
       body: found.barrel,
-      x: pin.x,
-      y: pin.y,
+      x: seal.x,
+      y: seal.y,
       // +x runs toward the rod, so the barrel is the negative side and the
       // geometry reads the same whichever way round the slot was declared.
       rotation: toDegrees(angle),
       barrelId: found.barrel.id,
       rodId: found.rod.id,
-      hiddenJointId: barrelNear.id,
+      hiddenJointId: inner.id,
       barrel: barrelPath(r, anchor, mouth),
       barrelFill: (found.barrel as RealLink).fill ?? '#000000',
       rod: rodBodyPath(r, rodReach, headHalf),

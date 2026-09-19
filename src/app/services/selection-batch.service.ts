@@ -178,7 +178,7 @@ function planDeletion(mechanism: MechanismService, resolved: ResolvedPart[]): De
         root.joints.forEach((joint) => orphanCandidates.add(joint.id));
       }
     }
-    for (const joint of [cylinder.barrelNear, cylinder.slider]) {
+    for (const joint of [cylinder.inner, cylinder.seal]) {
       removeJointIds.add(joint.id);
     }
   };

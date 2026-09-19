@@ -3,7 +3,7 @@ import { Coord } from '../model/coord';
 import { RealJoint, RevJoint } from '../model/joint';
 import { RealLink } from '../model/link';
 import { Force } from '../model/force';
-import { sealedCylinders } from '../model/cylinder';
+import { cylindersIn } from '../model/cylinder';
 import { createMechanismHarness, wireGraph } from '../../test-utils/mechanism-harness';
 import { encodeUrlOf } from '../../test-utils/url-encoding';
 import { MODEL_SCALE as S } from '../model/render-scale';
@@ -42,8 +42,8 @@ afterEach(() => SettingsService._objectScale.next(previousScale));
 function weldedBody(bars = 2, at: 'rod' | 'barrel' = 'rod', weld = true) {
   const h = createMechanismHarness();
   h.service.createCylinderFrom(new Coord(0, 0), new Coord(3 * S, 0));
-  const ram = sealedCylinders(h.service.joints)[0];
-  const mount = (at === 'rod' ? ram.rodFar : ram.barrelFar) as RealJoint;
+  const ram = cylindersIn(h.service.joints)[0];
+  const mount = (at === 'rod' ? ram.mountB : ram.mountA) as RealJoint;
   const leaves: RealLink[] = [];
   for (let i = 0; i < bars; i++) {
     const tip = new RevJoint(String.fromCharCode(87 + i), mount.x + (i + 1) * S, mount.y + S);
@@ -94,7 +94,7 @@ describe('a repair that invalidates what an earlier repair just fixed', () => {
     h.service.finishStructuralEdit(true);
 
     const live = new Set(h.service.links.map((link) => link.id));
-    const bore = sealedCylinders(h.service.joints)[0].slider;
+    const bore = cylindersIn(h.service.joints)[0].seal;
     expect(bore.isFloating, 'the bore is still a bore').toBe(true);
     expect(live.has(bore.carrier!.id), 'and its carrier is a body that exists').toBe(true);
   });
@@ -107,7 +107,7 @@ describe('a repair that invalidates what an earlier repair just fixed', () => {
     h.service.finishStructuralEdit(true);
 
     expect(() => reopen(h.service)).not.toThrow();
-    expect(sealedCylinders(reopen(h.service).joints)).toHaveLength(1);
+    expect(cylindersIn(reopen(h.service).joints)).toHaveLength(1);
   });
 
   it('and settling twice settles no further', () => {
@@ -145,7 +145,7 @@ describe('a body that goes on being the same body', () => {
       h.root.placeCustomCoM(new Coord(4 * S, 0.6 * S));
       const massBefore = h.root.mass;
 
-      h.service.deleteCylinder(sealedCylinders(h.service.joints)[0]);
+      h.service.deleteCylinder(cylindersIn(h.service.joints)[0]);
 
       const survivor = rootOf(h.service)!;
       expect(survivor, 'still one body').toBeDefined();
@@ -190,7 +190,7 @@ describe('a body that goes on being the same body', () => {
     h.service.updateMechanism(false);
     const before = h.root.massMoI;
 
-    h.service.deleteCylinder(sealedCylinders(h.service.joints)[0]);
+    h.service.deleteCylinder(cylindersIn(h.service.joints)[0]);
 
     const survivor = rootOf(h.service)!;
     expect(survivor.moiIsCustom, 'a body of members is derived from them').toBe(false);
@@ -235,7 +235,7 @@ describe('the Delete row on a welded body', () => {
     // takes the ram whole, and the ram's *other* mount is a joint at the far
     // end of the drawing that the reader can see and was not told about.
     const h = weldedBody(2);
-    const farMount = h.ram.barrelFar.id;
+    const farMount = h.ram.mountA.id;
 
     const predicted = h.service.jointsOrphanedByDeleting(h.root).map((joint) => joint.id);
     h.active.updateSelectedObj(h.root);
@@ -248,7 +248,7 @@ describe('the Delete row on a welded body', () => {
     expect(predicted, 'and the row said so').toContain(farMount);
     // And says nothing about the three joints inside the ram, which are never
     // drawn and would be a number the reader cannot check.
-    for (const hidden of [h.ram.barrelNear.id, h.ram.pin.id, h.ram.slider.id]) {
+    for (const hidden of [h.ram.inner.id, h.ram.seal.id, h.ram.seal.id]) {
       expect(predicted).not.toContain(hidden);
     }
   });
