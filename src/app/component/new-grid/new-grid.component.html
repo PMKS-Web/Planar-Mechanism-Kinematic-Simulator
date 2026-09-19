@@ -639,10 +639,10 @@
                  hitbox. -->
             <g
               class="slider-block"
-              [class.link-inert]="mechanismSrv.isPartInert(item.mark.pin)"
+              [class.link-inert]="mechanismSrv.isPartInert(item.mark.joint)"
               cursor="move"
-              (pointerdown)="setLastLeftClick(item.mark.pin, $event)"
-              (contextmenu)="setLastRightClick(item.mark.pin)"
+              (pointerdown)="setLastLeftClick(item.mark.joint, $event)"
+              (contextmenu)="setLastRightClick(item.mark.joint)"
             >
               <!-- The block stays #000 even when the slider has nowhere to
                    slide: the red is a highlight around it, the way the
@@ -1046,10 +1046,10 @@
           }
           <!-- Grouped so a refused or completed drop can animate the whole joint -->
           <g [class]="jointEffectClass(joint)">
-            <!-- Hitbox -->
-            @if (gridUtils.typeOfJoint(joint) == 'R') {
-              <circle [attr.r]="settings.objectScale / 4" cx="0" cy="0" fill="transparent" />
-            }
+            <!-- Hitbox. Every joint, not only a pin: a slider is the joint a
+                 reader grabs now, and it had none of its own because the
+                 coincident pin beside it carried every gesture. -->
+            <circle [attr.r]="settings.objectScale / 4" cx="0" cy="0" fill="transparent" />
             <!--      Normal Joint-->
             @if (!gridUtils.getWelded(joint)) {
               <circle
@@ -1962,11 +1962,14 @@
         } @else if (
           !isMergingAway(joint) &&
           !isCylinderInterior(joint) &&
-          ((gridUtils.typeOfJoint(joint) !== 'P' && settings.isShowID.value) ||
+          (settings.isShowID.value ||
             joint.showHighlight ||
             (this.activeObjService.selectedJoint == joint &&
               this.activeObjService.objType == 'Joint'))
         ) {
+          <!-- A slider wears its own letter. It was the one joint with none,
+               because the coincident pin beside it carried the name a reader
+               saw; that pin is this joint now. -->
           <text
             [attr.stroke-width]="settings.objectScale * 0.035"
             [style.font-size.px]="tagFontSize"
@@ -2111,11 +2114,14 @@
                with room to hold its own name, and the name is how the panels and
                the analysis refer to it. The toggle still governs the labels that
                would otherwise crowd the joints. -->
+          <!-- A block was the one link with no name to draw. There is no such
+               link any more (Stage 1 of
+               `docs/joint-type-and-cylinder-plan.md`), so nothing is excluded
+               here by kind. -->
           @if (
             this.showLinkLengthOverlay < -1 &&
             this.showLinkAngleOverlay < -1 &&
-            !isSecondaryCylinderTag(link) &&
-            gridUtils.typeOfLink(link) !== 'P'
+            !isSecondaryCylinderTag(link)
           ) {
             <!-- The name, the center-of-mass mark and a locked length's chip
                  all belong at the center of the link, so when either of the

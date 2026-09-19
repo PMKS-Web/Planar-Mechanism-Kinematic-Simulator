@@ -3,7 +3,7 @@ import { HoldBar, HoldGoal, reachedByHolds, settleHolds } from '../model/hold-so
 import { heldBars, heldBarsReaching, holdJoints, holdOf } from '../model/link-holds';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import { roundNumber, point_on_line_segment_closest_to_point } from '../model/utils';
-import { Link, SliderBlock, RealLink } from '../model/link';
+import { Link, RealLink } from '../model/link';
 import { JointOperationContext, refuseJointOperation } from '../model/joint-operation-permission';
 import {
   EditPlan,
@@ -126,30 +126,17 @@ export class GridUtilsService {
     return newLink;
   }
 
-  containsSlider(joint: Joint) {
-    switch (joint.constructor) {
-      case RevJoint:
-        if (!(joint instanceof RevJoint)) {
-          return false;
-        }
-        let condition = false;
-        joint.connectedJoints.forEach((j) => {
-          if (j.constructor === PrisJoint) {
-            condition = true;
-          }
-        });
-        return condition;
-      case PrisJoint:
-        return false;
-      case RealJoint:
-        return false;
-      default:
-        return false;
-    }
-  }
-
+  /**
+   * How big this joint's marker is drawn.
+   *
+   * Every joint, not only a pin. A slider was drawn at the coincident
+   * `RevJoint` riding it and the prismatic joint itself was never marked, so
+   * answering zero for one was right; the slider is the joint a reader sees and
+   * grabs now (Stage 1 of `docs/joint-type-and-cylinder-plan.md`), and zero
+   * would leave it with no marker and no hitbox at its own center.
+   */
   getJointR(joint: Joint) {
-    if (!(joint instanceof RevJoint)) {
+    if (!(joint instanceof RealJoint)) {
       return 0;
     }
     return joint.r;
@@ -184,8 +171,6 @@ export class GridUtilsService {
     switch (link.constructor) {
       case RealLink:
         return 'R';
-      case SliderBlock:
-        return 'P';
       default:
         return '?';
     }
@@ -215,15 +200,14 @@ export class GridUtilsService {
     if (!(joint instanceof RealJoint)) {
       return false;
     }
-    // A slider is driven through its prismatic half, so that is the joint the
-    // question is really about.
-    const driven = this.isAttachedToSlider(joint)
-      ? (this.getSliderJoint(joint) as RealJoint)
-      : joint;
     // Always enabled to turn *off*: the same control is how an input is removed,
     // and a joint an edit has since made undrivable is exactly the one a user
     // most needs to be able to un-drive.
-    return driven.input || canDrive(driven);
+    //
+    // Asked of the joint itself. A slider's drive lived on the prismatic half
+    // of a coincident pair while the panel and the menu were pointed at the
+    // pin, so this had to make the hop first; one joint carries both now.
+    return joint.input || canDrive(joint);
   }
 
   /**
@@ -251,7 +235,12 @@ export class GridUtilsService {
    * grayed for a reason nothing enforces or offered against one that is.
    */
   weldRefusal(joint: Joint): { short: string; long: string } | undefined {
-    const welded = joint instanceof RealJoint && joint.isWelded;
+    // The same two facts `jointTypeAt` reads: a Slide says it in `rotates` on
+    // the sliding joint, every other joint says it in `isWelded`. They were one
+    // bit before a slider became one joint, when the weld sat on the coincident
+    // pin -- so asking `isWelded` of a slider now offers Weld on a Slide.
+    const welded =
+      joint instanceof PrisJoint ? !joint.rotates : joint instanceof RealJoint && joint.isWelded;
     return refuseJointOperation(joint, welded ? 'unweld' : 'weld', this.operationContext());
   }
 
@@ -551,7 +540,6 @@ export class GridUtilsService {
       (joint.ground && !moving.has(joint.id)) ||
       frozen.has(joint.id) ||
       joint instanceof PrisJoint ||
-      this.isAttachedToSlider(joint) ||
       this.mechanismSrv.cylindersAt(joint).some((cylinder) => isCylinderInterior(cylinder, joint))
     );
   }
@@ -664,107 +652,97 @@ export class GridUtilsService {
 
     selectedJoint.x = roundNumber(trueCoord.x, 6);
     selectedJoint.y = roundNumber(trueCoord.y, 6);
-    switch (selectedJoint.constructor) {
-      case RevJoint:
-        selectedJoint.links.forEach((l) => {
-          if (l instanceof SliderBlock) {
-            //If the joint is a slider, then the joint is the second joint in the link must follow the first joint
-            // -1 once the block has been taken apart under an in-flight drag.
-            // The gesture is canceled on delete, but a pointer move can still
-            // arrive first, and writing through -1 throws.
-            const jointIndex = l.joints.findIndex((jt) => jt.id !== selectedJoint.id);
-            if (jointIndex >= 0) {
-              l.joints[jointIndex].x = roundNumber(trueCoord.x, 6);
-              l.joints[jointIndex].y = roundNumber(trueCoord.y, 6);
-            }
+    // Every joint, not only a pin. A slider used to be dragged by a coincident
+    // `RevJoint` that carried the riders, so a switch on `RevJoint` reached them
+    // -- and had to write the block's other joint back onto the same point. The
+    // slider is the joint now and the riders are its own, so a switch here would
+    // leave a dragged slider's bars with stale outlines, centers and loads.
+    selectedJoint.links.forEach((l) => {
+      if (!(l instanceof RealLink)) {
+        return;
+      }
+      // TODO: delete this if this is not needed (verify this)
+      const jointIndex = l.joints.findIndex((jt) => jt.id === selectedJoint.id);
+      l.joints[jointIndex].x = roundNumber(trueCoord.x, 6);
+      l.joints[jointIndex].y = roundNumber(trueCoord.y, 6);
+      // A dragged joint deforms the link, so an auto center of mass
+      // follows the geometry. A custom one stays where its author put it:
+      // there is no rigid motion to carry it, and guessing would move a
+      // number somebody chose.
+      if (!l.comIsCustom) {
+        l.CoM = RealLink.determineCenterOfMass(l.joints);
+        l.updateCoMDs();
+      }
+      l.updateLengthAndAngle();
+
+      if (l.subset.length > 0) {
+        l.subset.forEach((slink) => {
+          let subLink = slink as RealLink;
+          // Same rule as the root: a member's hand-placed center survives
+          // for the unweld that will one day restore it.
+          if (!subLink.comIsCustom) {
+            subLink.CoM = RealLink.determineCenterOfMass(subLink.joints);
+            subLink.updateCoMDs();
           }
-          if (!(l instanceof RealLink)) {
-            return;
-          }
-          // TODO: delete this if this is not needed (verify this)
-          const jointIndex = l.joints.findIndex((jt) => jt.id === selectedJoint.id);
-          l.joints[jointIndex].x = roundNumber(trueCoord.x, 6);
-          l.joints[jointIndex].y = roundNumber(trueCoord.y, 6);
-          // A dragged joint deforms the link, so an auto center of mass
-          // follows the geometry. A custom one stays where its author put it:
-          // there is no rigid motion to carry it, and guessing would move a
-          // number somebody chose.
-          if (!l.comIsCustom) {
-            l.CoM = RealLink.determineCenterOfMass(l.joints);
-            l.updateCoMDs();
-          }
-          l.updateLengthAndAngle();
-
-          if (l.subset.length > 0) {
-            l.subset.forEach((slink) => {
-              let subLink = slink as RealLink;
-              // Same rule as the root: a member's hand-placed center survives
-              // for the unweld that will one day restore it.
-              if (!subLink.comIsCustom) {
-                subLink.CoM = RealLink.determineCenterOfMass(subLink.joints);
-                subLink.updateCoMDs();
-              }
-              subLink.updateLengthAndAngle();
-            });
-          }
-
-          // PositionSolver.setUpSolvingForces(GridComponent.selectedLink.forces);
-          PositionSolver.setUpInitialJointLocations(l.joints);
-
-          // move forces only if dragged joint is not inside link
-          let jointInHull: boolean = false;
-          let hull = l.getHullPoints();
-          hull.forEach((point) => {
-            if (selectedJoint.x == point[0] && selectedJoint.y == point[1]) jointInHull = true;
-          });
-
-          // find original joint A and joint B
-          let jointA = [l.joints[0].x, l.joints[0].y];
-          let jointB = [l.joints[1].x, l.joints[1].y];
-          let newJointA = jointA;
-          let newJointB = jointB;
-          if (selectedJoint.x === jointA[0] && selectedJoint.y === jointA[1]) {
-            jointA = [oldX, oldY];
-          } else {
-            jointB = [oldX, oldY];
-          }
-
-          if (l.joints.length == 2) {
-            // special binary link case, maintain ratio
-            let linkDistance = this.getPointDistance(jointA[0], jointA[1], jointB[0], jointB[1]);
-
-            l.forces.forEach((f) => {
-              // calculate ratio to be maintained
-              let forceDistance = this.getPointDistance(
-                jointA[0],
-                jointA[1],
-                f.startCoord.x,
-                f.startCoord.y
-              );
-              let ratio = forceDistance / linkDistance;
-
-              // update force start position with ratio
-              let newX = newJointA[0] + (newJointB[0] - newJointA[0]) * ratio;
-              let newY = newJointA[1] + (newJointB[1] - newJointA[1]) * ratio;
-
-              f.moveForceTo(newX, newY);
-            });
-          } else if (jointInHull) {
-            l.forces.forEach((f) => {
-              // drag offset
-              let offsetX = selectedJoint.x - oldX;
-              let offsetY = selectedJoint.y - oldY;
-
-              // Offset is divided by number of joints to average out change
-              let newX = f.startCoord.x + offsetX / f.link.joints.length;
-              let newY = f.startCoord.y + offsetY / f.link.joints.length;
-
-              f.moveForceTo(newX, newY);
-            });
-          }
+          subLink.updateLengthAndAngle();
         });
-        break;
-    }
+      }
+
+      // PositionSolver.setUpSolvingForces(GridComponent.selectedLink.forces);
+      PositionSolver.setUpInitialJointLocations(l.joints);
+
+      // move forces only if dragged joint is not inside link
+      let jointInHull: boolean = false;
+      let hull = l.getHullPoints();
+      hull.forEach((point) => {
+        if (selectedJoint.x == point[0] && selectedJoint.y == point[1]) jointInHull = true;
+      });
+
+      // find original joint A and joint B
+      let jointA = [l.joints[0].x, l.joints[0].y];
+      let jointB = [l.joints[1].x, l.joints[1].y];
+      let newJointA = jointA;
+      let newJointB = jointB;
+      if (selectedJoint.x === jointA[0] && selectedJoint.y === jointA[1]) {
+        jointA = [oldX, oldY];
+      } else {
+        jointB = [oldX, oldY];
+      }
+
+      if (l.joints.length == 2) {
+        // special binary link case, maintain ratio
+        let linkDistance = this.getPointDistance(jointA[0], jointA[1], jointB[0], jointB[1]);
+
+        l.forces.forEach((f) => {
+          // calculate ratio to be maintained
+          let forceDistance = this.getPointDistance(
+            jointA[0],
+            jointA[1],
+            f.startCoord.x,
+            f.startCoord.y
+          );
+          let ratio = forceDistance / linkDistance;
+
+          // update force start position with ratio
+          let newX = newJointA[0] + (newJointB[0] - newJointA[0]) * ratio;
+          let newY = newJointA[1] + (newJointB[1] - newJointA[1]) * ratio;
+
+          f.moveForceTo(newX, newY);
+        });
+      } else if (jointInHull) {
+        l.forces.forEach((f) => {
+          // drag offset
+          let offsetX = selectedJoint.x - oldX;
+          let offsetY = selectedJoint.y - oldY;
+
+          // Offset is divided by number of joints to average out change
+          let newX = f.startCoord.x + offsetX / f.link.joints.length;
+          let newY = f.startCoord.y + offsetY / f.link.joints.length;
+
+          f.moveForceTo(newX, newY);
+        });
+      }
+    });
     // Before the rebuild, not after. A floating slider is deliberately not a
     // member of its carrier -- that is what makes it a slot rather than a pin --
     // so moving the carrier, or one of the two joints defining the slot, leaves
@@ -847,14 +825,13 @@ export class GridUtilsService {
     // joints, has a say in where the joints go. Then this is not a rigid move
     // at all: every joint is asked for as a goal, the holds answer for the
     // ones they reach, and the rest go where the body would have put them.
-    const carried: Joint[] = [];
-    selectedLink.joints.forEach((joint) => {
-      carried.push(joint);
-      if (!(joint instanceof RealJoint)) return;
-      joint.links.forEach((link) => {
-        if (link instanceof SliderBlock) link.joints.forEach((member) => carried.push(member));
-      });
-    });
+    // The link's own joints, and only those. A slider riding one of them used
+    // to bring its coincident partner along through the block that joined the
+    // two; a slider is one joint now, so one that is a *member* of this body is
+    // already in the list -- and a floating one riding the body deliberately is
+    // not, because its mark holds its place along the slot and the reseat
+    // carries it there.
+    const carried: Joint[] = [...selectedLink.joints];
     const goals: HoldGoal[] = carried
       .filter((joint, index) => carried.indexOf(joint) === index)
       .map((joint) => ({ id: joint.id, ...mapPoint(joint.x, joint.y) }));
@@ -881,15 +858,7 @@ export class GridUtilsService {
       if (moves.has(joint.id)) return;
       moves.set(joint.id, mapPoint(joint.x, joint.y));
     };
-    selectedLink.joints.forEach((joint) => {
-      noteMove(joint);
-      if (!(joint instanceof RealJoint)) return;
-      // A slider's block joint is coincident with its pin by construction, so
-      // it has to travel with it — the same invariant dragJoint maintains.
-      joint.links.forEach((link) => {
-        if (link instanceof SliderBlock) link.joints.forEach(noteMove);
-      });
-    });
+    selectedLink.joints.forEach(noteMove);
 
     // The dragged body's own properties go through the drag's own transform,
     // which turns a load's direction with it; the plan's frame transport moves
@@ -1358,55 +1327,41 @@ export class GridUtilsService {
     return selectedForce;
   }
 
+  /**
+   * Whether this joint slides.
+   *
+   * One question, where there used to be four that could disagree. A slider was
+   * a prismatic joint with a coincident pin joined by a block, so "does this
+   * slide?" was asked of `connectedJoints` here and of `links` in `sliderFor`,
+   * and only the block put the two joints in each other's lists at all. A slider
+   * is one joint now (Stage 1 of `docs/joint-type-and-cylinder-plan.md`), so the
+   * question is what the joint is.
+   */
   isAttachedToSlider(lastRightClick: Joint | Link | Force | String) {
-    if (lastRightClick instanceof Joint && lastRightClick instanceof RevJoint) {
-      return lastRightClick.connectedJoints.some((j) => j instanceof PrisJoint);
-    }
-    return false;
+    return lastRightClick instanceof PrisJoint;
   }
 
   connectedToPrisJoint(joints: Joint[]) {
-    let connectedToPrisJoint = false;
-    joints.forEach((j) => {
-      if (j instanceof PrisJoint) {
-        connectedToPrisJoint = true;
-      }
-    });
-    return connectedToPrisJoint;
+    return joints.some((joint) => joint instanceof PrisJoint);
   }
 
+  /** The joint that slides, which is this joint when it is one. */
   getSliderJoint(joint: Joint): Joint {
-    if (!(joint instanceof RevJoint)) {
-      return joint;
-    }
-    return <Joint>joint.connectedJoints.find((j) => j instanceof PrisJoint);
+    return joint;
   }
 
   /**
    * Turn a joint's traced path on, or off.
    *
-   * A prismatic joint answers for itself. It used to fall through both arms of
-   * this and change nothing at all -- `containsSlider` is false of a prismatic
-   * joint, and it is not a RevJoint -- which mattered the moment the menu
-   * started offering a Trace Path row on one: a switch that flips nothing.
+   * One joint, one flag. A slider kept its path on the prismatic half of a
+   * coincident pair, so this had to find that half and write through it -- and
+   * it fell through every arm for the prismatic joint itself, which is a switch
+   * that flips nothing. There is nothing left to hop to.
    */
   toggleCurve(lastRightClick: Joint | Link | Force | String) {
-    if (lastRightClick instanceof PrisJoint) {
-      lastRightClick.showCurve = !lastRightClick.showCurve;
-      this.saveTrace(lastRightClick.showCurve);
-      return;
-    }
-    // A pin that rides a block draws its path through the block's prismatic
-    // half, so that is the flag the drawing reads.
-    if (this.containsSlider(lastRightClick as RealJoint)) {
-      (this.getSliderJoint(lastRightClick as RealJoint)! as PrisJoint).showCurve = !(
-        lastRightClick as RealJoint
-      ).showCurve;
-    }
-    if (lastRightClick instanceof RevJoint) {
-      lastRightClick.showCurve = !lastRightClick.showCurve;
-    }
-    this.saveTrace(lastRightClick instanceof RealJoint && lastRightClick.showCurve);
+    if (!(lastRightClick instanceof RealJoint)) return;
+    lastRightClick.showCurve = !lastRightClick.showCurve;
+    this.saveTrace(lastRightClick.showCurve);
   }
 
   /**
@@ -1438,7 +1393,16 @@ export class GridUtilsService {
     return (line as Arc).center;
   }
 
+  /**
+   * Whether this joint is drawn as fused rather than as a bearing.
+   *
+   * The two facts `jointTypeAt` reads: a Slide says it in `rotates` on the
+   * sliding joint, every other joint says it in `isWelded`. One bit before a
+   * slider became one joint, when the weld sat on the coincident pin -- which
+   * is the object that used to draw this mark.
+   */
   getWelded(joint: Joint) {
+    if (joint instanceof PrisJoint) return !joint.rotates;
     return (joint as RealJoint).isWelded;
   }
 
@@ -1489,13 +1453,14 @@ export class GridUtilsService {
     return Math.sqrt(x * x + y * y);
   }
 
+  /**
+   * Whether this joint reads as driven.
+   *
+   * Its own flag. A slider's drive lived on the prismatic half of a coincident
+   * pair while every surface was pointed at the pin, so this existed to make
+   * the hop; one joint carries both now, and the hop is the identity.
+   */
   isVisuallyInput(selectedJoint: RealJoint) {
-    //This is used to update the edit and context menu since the selectable prismatic joints are technically not grounded
-    //If it's a slider return the ground of the prismatic joint
-    if (this.isAttachedToSlider(selectedJoint)) {
-      return (this.getSliderJoint(selectedJoint) as RealJoint).input;
-    } else {
-      return selectedJoint.input;
-    }
+    return selectedJoint.input;
   }
 }

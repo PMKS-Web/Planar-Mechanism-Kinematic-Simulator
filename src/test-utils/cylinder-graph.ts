@@ -10,7 +10,7 @@
  */
 
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../app/model/joint';
-import { Link, RealLink, SliderBlock } from '../app/model/link';
+import { Link, RealLink } from '../app/model/link';
 import { cylinderBetween } from './verification/slot-fixtures';
 
 /**
@@ -50,6 +50,11 @@ export function rewire(joints: Joint[], links: Link[]): void {
  * Built through `cylinderBetween` rather than by hand: a ram whose two bodies
  * are different lengths is not a shape the app can produce, and asserting
  * behavior against one proves something about a drawing nobody has.
+ *
+ * Four joints. The seal and the pin the rod hangs on were a prismatic joint, a
+ * coincident `RevJoint` and a zero-length block joining them until Stage 1 of
+ * `docs/joint-type-and-cylinder-plan.md`; they are one joint now, and `pin` is
+ * kept as a second name for it because a cylinder record still has both roles.
  */
 export function ram(suffix: string = '') {
   const mount = { x: 0, y: 0 };
@@ -58,31 +63,30 @@ export function ram(suffix: string = '') {
 
   const barrelFar = new RevJoint(`A${suffix}`, mount.x, mount.y);
   const barrelNear = new RevJoint(`B${suffix}`, laid.barrelEnd.x, laid.barrelEnd.y);
-  const pin = new RevJoint(`C${suffix}`, laid.pin.x, laid.pin.y);
   const rodFar = new RevJoint(`D${suffix}`, eye.x, eye.y);
-  const slider = new PrisJoint(`P${suffix}`, laid.pin.x, laid.pin.y);
+  const slider = new PrisJoint(`C${suffix}`, laid.pin.x, laid.pin.y);
 
   const barrel = new RealLink(`A${suffix}B${suffix}`, [barrelFar, barrelNear]);
-  const rod = new RealLink(`C${suffix}D${suffix}`, [pin, rodFar]);
-  const block = new SliderBlock(`C${suffix}P${suffix}`, [pin, slider]);
+  const rod = new RealLink(`C${suffix}D${suffix}`, [slider, rodFar]);
 
   slider.slideOn(barrel, barrelFar, barrelNear);
   slider.isSealed = true;
-  pin.isWelded = true;
+  // What the weld on the coincident pin used to say: the rod cannot turn
+  // against the barrel's slot, which is what makes the ram one rigid part.
+  slider.rotates = false;
 
-  const joints: Joint[] = [barrelFar, barrelNear, pin, rodFar, slider];
-  const links: Link[] = [barrel, rod, block];
+  const joints: Joint[] = [barrelFar, barrelNear, rodFar, slider];
+  const links: Link[] = [barrel, rod];
   rewire(joints, links);
 
   return {
     barrelFar,
     barrelNear,
-    pin,
+    pin: slider,
     rodFar,
     slider,
     barrel,
     rod,
-    block,
     joints,
     links,
     layout: laid,

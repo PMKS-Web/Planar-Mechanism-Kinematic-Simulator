@@ -120,10 +120,20 @@ async function draw(recipe) {
       weld(one.rodFar);
       // Two external blocks on one welded body: one at the mount, one at the
       // bracket's far end, each with its own plate to draw.
-      block(one.rodFar);
-      ground(one.rodFar);
-      block(tip);
-      ground(tip);
+      //
+      // Re-fetched by letter between the two calls: gaining a slot exchanges
+      // the joint for a `PrisJoint` keeping its id (Stage 1 of
+      // `docs/joint-type-and-cylinder-plan.md`), so the object captured above
+      // is not the one in the drawing any more and grounding it grounds
+      // nothing at all -- which left the whole drawing unanchored and solving
+      // as no machine.
+      const live = (id) => m.joints.find((j) => j.id === id);
+      const mountId = one.rodFar.id;
+      const tipId = tip.id;
+      block(live(mountId));
+      ground(live(mountId));
+      block(live(tipId));
+      ground(live(tipId));
     } else if (which === 'oblique-slot') {
       const one = ram({ x: -1 * S, y: 1 * S }, { x: 5 * S, y: 1 * S });
       const bar = m.addBarFrom(one.rodFar, { x: one.rodFar.x + 1 * S, y: one.rodFar.y + 3 * S });
@@ -148,8 +158,13 @@ async function draw(recipe) {
       note.tip = tip.id;
       weld(one.rodFar);
       ground(one.barrelFar);
-      block(tip);
-      ground(tip);
+      // By letter between the two, for the reason the `two-blocks` recipe
+      // above gives: gaining a slot exchanges the joint for a `PrisJoint`
+      // keeping its id, so grounding the object captured before it grounds
+      // nothing at all.
+      const tipId = tip.id;
+      block(m.joints.find((j) => j.id === tipId));
+      ground(m.joints.find((j) => j.id === tipId));
       m.toggleCylinderInput(m.sealedStructures()[0]);
     }
 
@@ -237,6 +252,20 @@ const renderFacts = () =>
           });
         return over;
       })(),
+      // Whether each body's own path has any geometry in it.
+      //
+      // `compoundsOverARam` and `bodiesNotDrawn` both go by id, and a Slide
+      // suppresses the rider's own outline and draws the whole assembly in the
+      // weld plate instead -- so for those shapes the element is present,
+      // carries its id, and has nothing in it. Both of those checks then pass
+      // on a shape they say nothing about, which is worth knowing rather than
+      // assuming: this is what says the element really is the empty one.
+      emptyBodies: bodies
+        .filter((l) => {
+          const el = document.querySelector(`[id="${l.id}"]`);
+          return !!el && !(el.getAttribute('d') ?? '').trim();
+        })
+        .map((l) => l.id),
       rams: rams.length,
       links: bodies.map((l) => l.id),
     };
@@ -244,10 +273,30 @@ const renderFacts = () =>
 
 /** Click a thing on the canvas and say what got selected. */
 async function selects(selector) {
-  const box = await page.locator(selector).boundingBox();
-  if (!box) return { type: 'missing', id: null };
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  // A point that actually hits the shape, not the middle of its box. A bar
+  // bent round a corner, and every weld plate, has a bounding box whose center
+  // is outside the fill -- so aiming there clicks whatever lies beneath and
+  // reports the wrong answer, or none.
+  const spot = await page.evaluate((css) => {
+    const el = document.querySelector(css);
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) return null;
+    for (let i = 1; i < 40; i++) {
+      for (let j = 1; j < 40; j++) {
+        const x = r.x + (r.width * i) / 40;
+        const y = r.y + (r.height * j) / 40;
+        if (document.elementFromPoint(x, y) === el) return { x, y };
+      }
+    }
+    // No point on the shape answered. Falling back to the box center is what
+    // the note above says never to do -- it clicks whatever lies beneath and
+    // reports that -- so it fails loudly instead.
+    return null;
+  }, selector);
+  if (!spot) return { type: 'unhittable', id: null };
+  await page.mouse.move(spot.x, spot.y);
+  await page.mouse.click(spot.x, spot.y);
   await page.waitForTimeout(350);
   return page.evaluate(() => {
     const active = ng.getComponent(document.querySelector('app-new-grid')).activeObjService;
@@ -303,6 +352,9 @@ for (const shape of shapes) {
       skins: facts.skinsDrawn,
       rams: facts.rams,
       over: facts.compoundsOverARam,
+      // Named beside it, because a body whose path is empty is one the check
+      // above cannot fail on: `isPointInFill` is false everywhere for it.
+      empty: facts.emptyBodies,
     })
   );
   check(
@@ -328,9 +380,18 @@ check(
   onMount.type === 'Joint' && onMount.id === ids.mounts[1],
   JSON.stringify(onMount)
 );
-const onSkin = await selects(`#${ids.compound}`);
+// Through the weld plate, which is where this body is drawn. A Slide draws
+// the block and the riders held to it as one outline, so the rider's own
+// outline is suppressed rather than left showing as a seam through the plate
+// -- and the plate carries the rider's selection in its place, which is what
+// this asks about. The body's own path element is still there and still
+// carries its id; it simply has no geometry left to click.
+// Scoped to the mount's own plate: the `two-blocks` recipe draws two of them,
+// and a bare selector takes whichever is first in document order rather than
+// the one this check is about.
+const onSkin = await selects(`[data-slider="${ids.mounts[1]}"] .slider-plate path`);
 check(
-  'the welded body answers as the body',
+  'the welded body answers as the body, through the plate that draws it',
   onSkin.type === 'Link' && onSkin.id === ids.compound,
   JSON.stringify(onSkin)
 );

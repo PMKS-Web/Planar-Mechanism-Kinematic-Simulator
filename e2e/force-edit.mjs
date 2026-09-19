@@ -253,10 +253,18 @@ await page.goto(`${BASE}/?${payloads['Scotch_Yoke']}`, { waitUntil: 'domcontentl
 await waitForReady(page);
 const welded = await page.evaluate(() => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
-  const joint = grid.mechanismSrv.joints.find((candidate) => candidate.isWelded);
+  // Held rigid, in whichever way the drawing records it. The yoke's weld sat on
+  // the pin coincident with its slider, and those are one joint now: a Slide,
+  // which says in `rotates` what every other joint says in `isWelded` (Stage 1
+  // of `docs/joint-type-and-cylinder-plan.md`).
+  const joint = grid.mechanismSrv.joints.find(
+    (candidate) =>
+      candidate.isWelded ||
+      (candidate.constructor?.name === 'PrisJoint' && candidate.rotates === false)
+  );
   return joint ? { id: joint.id, x: joint.x, y: joint.y } : undefined;
 });
-record('the yoke has a welded joint', !!welded, welded);
+record('the yoke has a joint that holds its bodies rigid', !!welded, welded);
 const onWeld = await toScreen(welded.x, welded.y);
 await page.mouse.move(onWeld.x, onWeld.y);
 await page.mouse.click(onWeld.x, onWeld.y, { button: 'right' });

@@ -1,10 +1,10 @@
 import { Coord } from './coord';
 import { Force } from './force';
-import { PrisJoint, RevJoint } from './joint';
-import { RealLink, SliderBlock } from './link';
+import { PrisJoint, RealJoint, RevJoint } from './joint';
+import { RealLink } from './link';
 import { canonicalSelectionClosure, captureSelectionTransform } from './selection-transform';
 
-function wire(id: string, joints: RevJoint[]): RealLink {
+function wire(id: string, joints: RealJoint[]): RealLink {
   const link = new RealLink(id, joints);
   joints.forEach((joint) => joint.links.push(link));
   return link;
@@ -19,25 +19,27 @@ function twoBars() {
   return { joints: [a, b, c], links: [ab, bc], a, b, c, ab, bc };
 }
 
+/**
+ * A ram: four joints and two links. C is the slider the rod hangs on -- it was
+ * a coincident pin and a prismatic joint joined by a zero-length block until
+ * Stage 1 of `docs/joint-type-and-cylinder-plan.md`.
+ */
 function cylinder() {
   const a = new RevJoint('A', 0, 0);
   const b = new RevJoint('B', 4, 0);
-  const pin = new RevJoint('C', 2, 0);
+  const slider = new PrisJoint('C', 2, 0);
   const d = new RevJoint('D', 6, 0);
-  const slider = new PrisJoint('P', 2, 0);
   slider.isSealed = true;
+  slider.rotates = false;
   const barrel = wire('AB', [a, b]);
-  const rod = wire('CD', [pin, d]);
-  const block = new SliderBlock('CP', [pin, slider]);
-  pin.links.push(block);
-  slider.links.push(block);
-  pin.isWelded = true;
+  const rod = wire('CD', [slider, d]);
   slider.slideOn(barrel, a, b);
   return {
-    joints: [a, b, pin, d, slider],
-    links: [barrel, rod, block],
+    joints: [a, b, slider, d],
+    links: [barrel, rod],
     barrel,
     rod,
+    slider,
   };
 }
 
@@ -62,45 +64,41 @@ describe('canonical selection closure', () => {
     expect(closure.joints.map((joint) => joint.id)).toEqual(['A', 'B', 'C']);
   });
 
-  it('keeps a slider pin and its coincident block joint together', () => {
-    const pin = new RevJoint('A', 1, 1);
+  it('takes a selected slider as the one joint it is', () => {
+    // The closure used to reach from a slider's pin to the coincident prismatic
+    // joint beside it, and to the block that joined the two. There is no pair
+    // to fetch now, so a selected slider is exactly itself.
     const slider = new PrisJoint('P', 1, 1);
-    const block = new SliderBlock('AP', [pin, slider]);
-    pin.links.push(block);
-    slider.links.push(block);
+    const far = new RevJoint('E', 3, 1);
+    const rider = wire('EP', [slider, far]);
 
-    const closure = canonicalSelectionClosure([pin], [pin, slider], [block]);
+    const closure = canonicalSelectionClosure([slider], [slider, far], [rider]);
 
-    expect(closure.joints.map((joint) => joint.id)).toEqual(['A', 'P']);
-    expect(closure.links).toContain(block);
+    expect(closure.joints.map((joint) => joint.id)).toEqual(['P']);
   });
 
   it('carries a floating slider when its slot carrier is selected', () => {
     const scene = twoBars();
-    const pin = new RevJoint('D', 1, 0);
     const slider = new PrisJoint('P', 1, 0);
-    const block = new SliderBlock('DP', [pin, slider]);
-    pin.links.push(block);
-    slider.links.push(block);
+    const far = new RevJoint('E', 1, 3);
+    const rider = wire('EP', [slider, far]);
     slider.slideOn(scene.ab, scene.a, scene.b);
 
     const closure = canonicalSelectionClosure(
       [scene.ab],
-      [...scene.joints, pin, slider],
-      [...scene.links, block]
+      [...scene.joints, slider, far],
+      [...scene.links, rider]
     );
 
-    expect(new Set(closure.joints.map((joint) => joint.id))).toEqual(new Set(['A', 'B', 'D', 'P']));
+    expect(new Set(closure.joints.map((joint) => joint.id))).toEqual(new Set(['A', 'B', 'P']));
   });
 
-  it('treats every cylinder member as one five-joint semantic part', () => {
+  it('treats every cylinder member as one four-joint semantic part', () => {
     const part = cylinder();
 
     const closure = canonicalSelectionClosure([part.rod], part.joints, part.links);
 
-    expect(new Set(closure.joints.map((joint) => joint.id))).toEqual(
-      new Set(['A', 'B', 'C', 'D', 'P'])
-    );
+    expect(new Set(closure.joints.map((joint) => joint.id))).toEqual(new Set(['A', 'B', 'C', 'D']));
     expect(closure.links).toEqual(expect.arrayContaining(part.links));
   });
 });
@@ -184,50 +182,45 @@ describe('selection affine snapshot', () => {
     expect([scene.a.x, scene.a.y, scene.b.x, scene.b.y]).toEqual([0, 0, 2, 0]);
   });
 
-  it('moves slider-block pairs together', () => {
-    const pin = new RevJoint('A', 1, 1);
+  it('moves a selected slider like any other joint', () => {
     const slider = new PrisJoint('P', 1, 1);
-    const block = new SliderBlock('AP', [pin, slider]);
-    pin.links.push(block);
-    slider.links.push(block);
-    const snapshot = captureSelectionTransform([pin], [pin, slider], [block]);
+    const far = new RevJoint('E', 3, 1);
+    const rider = wire('EP', [slider, far]);
+    const snapshot = captureSelectionTransform([slider], [slider, far], [rider]);
 
     snapshot.apply({ translation: { x: 2, y: -1 } });
 
-    expect([pin.x, pin.y]).toEqual([3, 0]);
     expect([slider.x, slider.y]).toEqual([3, 0]);
+    // The rider's far joint is not in the selection, so it stays.
+    expect([far.x, far.y]).toEqual([3, 1]);
   });
 
-  it('refuses through slider lock closure rather than checking only selected marks', () => {
-    const pin = new RevJoint('A', 1, 1);
+  it('refuses when a lock holds the selected slider', () => {
     const slider = new PrisJoint('P', 1, 1);
-    const block = new SliderBlock('AP', [pin, slider]);
-    pin.links.push(block);
-    slider.links.push(block);
+    const far = new RevJoint('E', 3, 1);
+    const rider = wire('EP', [slider, far]);
     slider.locked = true;
-    const snapshot = captureSelectionTransform([pin], [pin, slider], [block]);
+    const snapshot = captureSelectionTransform([slider], [slider, far], [rider]);
 
     expect(snapshot.apply({ translation: { x: 2, y: -1 } })).toEqual({
       applied: false,
-      lockedJointIds: ['A', 'P'],
+      lockedJointIds: ['P'],
     });
-    expect([pin.x, pin.y, slider.x, slider.y]).toEqual([1, 1, 1, 1]);
+    expect([slider.x, slider.y]).toEqual([1, 1]);
   });
 
   it('turns a grounded slot axis from the gesture-start angle without drift', () => {
-    const pin = new RevJoint('A', 2, 0);
     const slider = new PrisJoint('P', 2, 0);
     slider.groundAt(0);
-    const block = new SliderBlock('AP', [pin, slider]);
-    pin.links.push(block);
-    slider.links.push(block);
-    const snapshot = captureSelectionTransform([pin], [pin, slider], [block]);
+    const far = new RevJoint('E', 4, 0);
+    const rider = wire('EP', [slider, far]);
+    const snapshot = captureSelectionTransform([slider], [slider, far], [rider]);
 
     snapshot.apply({ rotation: Math.PI / 4, pivot: { x: 0, y: 0 } });
     snapshot.apply({ rotation: Math.PI / 2, pivot: { x: 0, y: 0 } });
 
-    expect(pin.x).toBeCloseTo(0, 10);
-    expect(pin.y).toBeCloseTo(2, 10);
+    expect(slider.x).toBeCloseTo(0, 10);
+    expect(slider.y).toBeCloseTo(2, 10);
     expect(slider.slotAngle).toBeCloseTo(Math.PI / 2, 10);
   });
 
@@ -266,16 +259,14 @@ describe('selection affine snapshot', () => {
   });
 
   it('carries a grounded slot axis through the whole map, not only the turn', () => {
-    const pin = new RevJoint('A', 2, 0);
     const slider = new PrisJoint('P', 2, 0);
     slider.groundAt(0);
-    const block = new SliderBlock('AP', [pin, slider]);
-    pin.links.push(block);
-    slider.links.push(block);
-    const snapshot = captureSelectionTransform([pin], [pin, slider], [block]);
+    const far = new RevJoint('E', 4, 0);
+    const rider = wire('EP', [slider, far]);
+    const snapshot = captureSelectionTransform([slider], [slider, far], [rider]);
 
     // Mirrored about x = 0: a slot lying along +x now lies along -x. Left at
-    // its old bearing it would send its block off the line its own joints are
+    // its old bearing it would send the slider off the line its own joints are
     // on, which is what a flip made visible.
     snapshot.apply({ scale: { x: -1, y: 1 }, pivot: { x: 0, y: 0 } });
     expect(Math.abs(slider.slotAngle)).toBeCloseTo(Math.PI, 10);
@@ -283,12 +274,12 @@ describe('selection affine snapshot', () => {
     // And a squash turns it too: a 45-degree slot flattened by half in y comes
     // out at atan(0.5).
     slider.angle_rad = Math.PI / 4;
-    const squashed = captureSelectionTransform([pin], [pin, slider], [block]);
+    const squashed = captureSelectionTransform([slider], [slider, far], [rider]);
     squashed.apply({ scale: { x: 1, y: 0.5 }, pivot: { x: 0, y: 0 } });
     expect(slider.slotAngle).toBeCloseTo(Math.atan2(0.5, 1), 10);
   });
 
-  it('keeps all hidden cylinder geometry collinear and the block coincident', () => {
+  it('keeps all hidden cylinder geometry collinear', () => {
     const part = cylinder();
     const snapshot = captureSelectionTransform([part.rod], part.joints, part.links);
 
@@ -300,10 +291,9 @@ describe('selection affine snapshot', () => {
     });
 
     part.joints.forEach((joint) => expect(joint.x).toBeCloseTo(3, 10));
-    expect(part.joints.find((joint) => joint.id === 'C')!.y).toBe(
-      part.joints.find((joint) => joint.id === 'P')!.y
-    );
-    [-2, 4, 1, 7, 1].forEach((expected, index) =>
+    // A, B, C, D at 0, 4, 2, 6 along +x, turned a quarter and scaled by 1.5,
+    // then carried by (3, -2).
+    [-2, 4, 1, 7].forEach((expected, index) =>
       expect(part.joints[index].y).toBeCloseTo(expected, 10)
     );
   });

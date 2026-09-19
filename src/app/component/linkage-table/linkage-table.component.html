@@ -151,62 +151,47 @@
             <td>
               {{ link.id }}
             </td>
+            <!-- Every link gets every cell. A slider's block was the one link
+                 with no mass properties of its own to show, so these four
+                 columns were blanked for it; the block is gone and a slider's
+                 mass is its joint's (Stage 1 of
+                 `docs/joint-type-and-cylinder-plan.md`). -->
             <!-- mass -->
-            @if (typeofLink(link) !== 'P') {
-              <td>
-                <input
-                  appStandardField
-                  type="text"
-                  value="{{ getLinkProp(link, 'mass') }}"
-                  (change)="changeLinkProp($event, link, 'mass')"
-                />
-              </td>
-            }
-            @if (typeofLink(link) === 'P') {
-              <td></td>
-            }
+            <td>
+              <input
+                appStandardField
+                type="text"
+                value="{{ getLinkProp(link, 'mass') }}"
+                (change)="changeLinkProp($event, link, 'mass')"
+              />
+            </td>
             <!-- massMoI -->
-            @if (typeofLink(link) !== 'P') {
-              <td>
-                <input
-                  appStandardField
-                  type="text"
-                  value="{{ getLinkProp(link, 'massMoI') }}"
-                  (change)="changeLinkProp($event, link, 'massMoI')"
-                />
-              </td>
-            }
-            @if (typeofLink(link) === 'P') {
-              <td></td>
-            }
+            <td>
+              <input
+                appStandardField
+                type="text"
+                value="{{ getLinkProp(link, 'massMoI') }}"
+                (change)="changeLinkProp($event, link, 'massMoI')"
+              />
+            </td>
             <!-- CoM_x -->
-            @if (typeofLink(link) !== 'P') {
-              <td>
-                <input
-                  appStandardField
-                  type="text"
-                  value="{{ getLinkProp(link, 'CoMX') }}"
-                  (change)="changeLinkProp($event, link, 'CoMX')"
-                />
-              </td>
-            }
-            @if (typeofLink(link) === 'P') {
-              <td></td>
-            }
+            <td>
+              <input
+                appStandardField
+                type="text"
+                value="{{ getLinkProp(link, 'CoMX') }}"
+                (change)="changeLinkProp($event, link, 'CoMX')"
+              />
+            </td>
             <!-- CoM_y -->
-            @if (typeofLink(link) !== 'P') {
-              <td>
-                <input
-                  appStandardField
-                  type="text"
-                  value="{{ getLinkProp(link, 'CoMY') }}"
-                  (change)="changeLinkProp($event, link, 'CoMY')"
-                />
-              </td>
-            }
-            @if (typeofLink(link) === 'P') {
-              <td></td>
-            }
+            <td>
+              <input
+                appStandardField
+                type="text"
+                value="{{ getLinkProp(link, 'CoMY') }}"
+                (change)="changeLinkProp($event, link, 'CoMY')"
+              />
+            </td>
           </tr>
         }
       </tbody>

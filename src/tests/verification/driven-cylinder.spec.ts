@@ -255,7 +255,6 @@ describe('a boom driven by a cylinder mounted the other way round', () => {
       links: [{ joints: 'OC' }, { joints: 'CN' }, { joints: 'PG' }],
       slider: {
         at: 'P',
-        prisId: 'S',
         on: { carrier: 'CN', a: 'C', b: 'N' },
         sealed: true,
         input: true,

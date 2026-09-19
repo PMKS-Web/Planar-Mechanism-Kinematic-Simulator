@@ -487,15 +487,16 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
   /**
    * One reaction a joint carries, named for what is on the other side of it.
    *
-   * A slider's block is not one of them. It is a zero-length link between the
-   * pin and its slot, so the force between the pin and the block is the force
-   * between the pin and the bar, negated -- already on this panel under the
-   * bar's own name. What the block has of its own is the force in the slot,
-   * which is what sizes a slide and is reachable from nowhere else.
+   * A slider's own point body is not one of them. The solver gives every
+   * sliding joint a body named by its letter, and the force between the joint
+   * and the bar it holds is already on this panel under the bar's own name.
+   * What that body has of its own is the force in the slot, which is what sizes
+   * a slide and is reachable from nowhere else -- so it is shown named after
+   * what the slot presses on rather than after a body nobody has been shown.
    */
   private jointRow(jointId: string, linkId: string): ForceAnalysisRow {
     const slider = this.mechanismService.slotReactionOf(this.jointById(jointId));
-    if (slider && slider.block.id === linkId) {
+    if (slider && slider.againstId === linkId) {
       return {
         jointId: slider.slot.id,
         jointName: this.jointName(slider.slot.id),
@@ -582,18 +583,21 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
   /**
    * The links a selected body is made of.
    *
-   * One for an ordinary bar. A cylinder is one body to the reader and three
+   * One for an ordinary bar. A cylinder is one body to the reader and two
    * links to the solver, and its two mounts sit on different ones -- the
    * barrel carries the far mount, the rod carries the other. Asking only the
    * link the canvas hands over (the barrel) listed the barrel's mount and
    * silently dropped the rod's, so a ram showed a force at one end and nothing
    * at the end it is pushing.
+   *
+   * Two links where there were three: the sliding body was a zero-length block
+   * link of its own until Stage 1 of `docs/joint-type-and-cylinder-plan.md`.
    */
   private bodyMemberIds(partId: string): string[] {
     const body = this.mechanismService.links.find((link) => link.id === partId);
     const sealed = body && this.mechanismService.cylinderOfBar(body);
     if (!sealed) return [partId];
-    return [sealed.barrel.id, sealed.rod.id, sealed.block.id];
+    return [sealed.barrel.id, sealed.rod.id];
   }
 
   /** One row per external joint of the selected link. */

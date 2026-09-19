@@ -1,7 +1,7 @@
 import { Coord } from '../coord';
 import { Force } from '../force';
 import { PrisJoint, RevJoint } from '../joint';
-import { SliderBlock, RealLink } from '../link';
+import { RealLink } from '../link';
 import { ColorService } from '../../services/color.service';
 import { SettingsService } from '../../services/settings.service';
 import { buildMechanism } from '../../../test-utils/verification/fixture';
@@ -188,30 +188,32 @@ describe('ForceSolver physical model', () => {
     initializeModels();
     const a = new RevJoint('A', 0, 0, false, true);
     const b = new RevJoint('B', 1, 1);
-    const c = new RevJoint('C', 2, 0);
+    // The rod's far end and the sliding joint are one joint now, so the rod
+    // reaches the slider directly and the slider's own mass is a point body
+    // the solver makes for itself -- keyed, like the block's rows before it,
+    // by the id the kinematics are handed under.
     const d = new PrisJoint('D', 2, 0, true, true);
     d.angle_rad = 0;
+    d.mass = 1;
     const ab = new RealLink('AB', [a, b], 1, 1);
-    const bc = new RealLink('BC', [b, c], 1, 1);
-    const piston = new SliderBlock('CD', [c, d], 1);
+    const bd = new RealLink('BD', [b, d], 1, 1);
     a.links = [ab];
-    b.links = [ab, bc];
-    c.links = [bc, piston];
-    d.links = [piston];
+    b.links = [ab, bd];
+    d.links = [bd];
     const kinematics = {
       linkAccelerations: new Map([
         ['AB', [0, 0]],
-        ['BC', [0, 0]],
+        ['BD', [0, 0]],
       ]),
       linkAngularAccelerations: new Map([
         ['AB', 0],
-        ['BC', 0],
+        ['BD', 0],
       ]),
-      pistonAccelerations: new Map([['CD', [0, 0]]]),
+      pistonAccelerations: new Map([['D', [0, 0]]]),
     };
     const result = (ForceSolver.analyzeFrame as any)(
-      [a, b, c, d],
-      [ab, bc, piston],
+      [a, b, d],
+      [ab, bd],
       'dynamic',
       true,
       'm',
@@ -221,7 +223,7 @@ describe('ForceSolver physical model', () => {
     expectOk(result);
     expect(result.inputEffort!.kind).toBe('force');
     expect(Number.isFinite(result.inputEffort!.valueSI)).toBe(true);
-    expect(result.jointReactionsByLink.get('D')!.get('CD')!.every(Number.isFinite)).toBe(true);
+    expect(result.jointReactionsByLink.get('D')!.get('D')!.every(Number.isFinite)).toBe(true);
   });
 
   it('returns explicit diagnostics for invalid, underconstrained, and missing data', () => {

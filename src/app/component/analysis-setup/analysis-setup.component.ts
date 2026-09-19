@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
-import { Joint, RealJoint } from '../../model/joint';
-import { Link, RealLink, SliderBlock } from '../../model/link';
+import { Joint, PrisJoint, RealJoint } from '../../model/joint';
+import { Link, RealLink } from '../../model/link';
 import { MechanismService } from '../../services/mechanism.service';
 import { READINESS } from '../../ui-text';
 import { ActiveObjService } from '../../services/active-obj.service';
@@ -22,8 +22,16 @@ import { editPanelHandle } from '../../services/edit-panel-handle';
 
 /** One editable row of the mass table: a body, and what to call it. */
 export interface MassRow {
-  body: Link;
+  /**
+   * What carries the mass: a link, or a sliding joint.
+   *
+   * A slider's mass was its block's -- a zero-length link nobody could select,
+   * which is why this table was the only door to it -- until Stage 1 of
+   * `docs/joint-type-and-cylinder-plan.md` moved it onto the joint itself.
+   */
+  body: Link | PrisJoint;
   label: string;
+  /** A point mass: no inertia of its own, and no shape to derive one from. */
   isBlock: boolean;
 }
 
@@ -355,15 +363,30 @@ export class AnalysisSetupComponent {
   }
 
   private buildRows(): MassRow[] {
-    // The label logic lives with the mechanism, shared with the massless
-    // warning — the table and the warning must call a body the same thing.
-    return this.mechanism.links
-      .filter((link) => link instanceof RealLink || link instanceof SliderBlock)
-      .map((body) => ({
-        body,
-        label: this.mechanism.bodyLabel(body),
-        isBlock: body instanceof SliderBlock,
-      }));
+    // A body's label lives with the mechanism, shared with the massless warning
+    // — the table and the warning must call a body the same thing. A *slider's*
+    // does not, and `sliderLabel` below is local for that reason: the warning is
+    // deliberately about links only, so there is no second reader to agree with.
+    const bars: MassRow[] = this.mechanism.links
+      .filter((link) => link instanceof RealLink)
+      .map((body) => ({ body, label: this.mechanism.bodyLabel(body), isBlock: false }));
+    // And every sliding joint, which weighs. Its mass used to be a block's and
+    // arrived in the list above with the other links; the block is gone and the
+    // joint carries it, so it is fetched from the other array rather than
+    // dropped -- this table is the one place every mass in a drawing is listed.
+    const sliders: MassRow[] = this.mechanism.joints
+      .filter((joint): joint is PrisJoint => joint instanceof PrisJoint)
+      .map((body) => ({ body, label: this.sliderLabel(body), isBlock: true }));
+    return [...bars, ...sliders];
+  }
+
+  /** What the table calls a sliding joint: a ram's part, or the joint's letter. */
+  private sliderLabel(slider: PrisJoint): string {
+    const sealed = this.mechanism.cylindersAt(slider)[0];
+    if (!sealed) return `Slider ${slider.name || slider.id}`;
+    const name =
+      (sealed.barrelFar.name || sealed.barrelFar.id) + (sealed.rodFar.name || sealed.rodFar.id);
+    return `Sliding body ${name}`;
   }
 
   massText(row: MassRow): string {
@@ -478,7 +501,10 @@ export class AnalysisSetupComponent {
       this.notify.refusal('value.mass', success ? NOT_A.nonNegativeMass : NOT_A.mass);
       return;
     }
-    this.mechanism.assignBodyMass(row.body, value);
+    // A joint carries its own mass and belongs to no compound, so there is no
+    // aggregate for `assignBodyMass` to keep true.
+    if (row.body instanceof PrisJoint) row.body.mass = value;
+    else this.mechanism.assignBodyMass(row.body, value);
     this.mechanism.updateMechanism(true);
     this.mechanism.onMechUpdateState.next(2);
   }

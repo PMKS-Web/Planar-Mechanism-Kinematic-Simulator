@@ -96,7 +96,7 @@ const opened = await model();
 console.log('\nphase5-driven-cylinder\n');
 checkThat(
   'the published URL decodes to the boom',
-  opened.jointIds.length === 6,
+  opened.jointIds.length === 5,
   opened.jointIds.join('')
 );
 checkThat(
@@ -106,7 +106,7 @@ checkThat(
 );
 checkThat(
   'the cylinder is the drive',
-  opened.inputIds.join(',') === 'S',
+  opened.inputIds.join(',') === 'P',
   opened.inputIds.join(',')
 );
 checkThat('one degree of freedom', opened.dof === 1, `dof=${opened.dof}`);

@@ -227,6 +227,29 @@ export class PrisJoint extends RealJoint {
    */
   public isSealed: boolean = false;
 
+  /**
+   * The mass of the block riding this slot.
+   *
+   * A slider used to be three objects — this joint, a coincident `RevJoint`,
+   * and a zero-length `SliderBlock` joining them — and the mass lived on the
+   * block because only a link could carry one. The block is gone (Stage 1 of
+   * `docs/joint-type-and-cylinder-plan.md`) and its mass is this, in the unit
+   * the panel was showing when it was typed, exactly as a link's is.
+   */
+  public mass: number = 0;
+
+  /**
+   * Whether what is pinned here may turn against the slot.
+   *
+   * True is Pin-in-slot: the rider pivots on the block while it slides. False
+   * is Prismatic — the Slide — where the rider is rigid with the block, so the
+   * whole assembly keeps the slot's angle. That is what the weld on the old
+   * coincident pin said, and it rides the codec as that same flag bit: a
+   * prismatic record's `isWelded` could never mean anything else, because a
+   * slider's only link was its block and a weld needs two to fuse.
+   */
+  public rotates: boolean = true;
+
   constructor(
     id: string,
     x: number,

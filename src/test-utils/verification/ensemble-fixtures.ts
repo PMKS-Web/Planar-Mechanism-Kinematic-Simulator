@@ -48,7 +48,12 @@ function place(
   turn = 0
 ): MechanismFixture {
   const sliders = source.sliders ?? (source.slider ? [source.slider] : []);
-  const oldIds = [...source.joints.map((joint) => joint.id), ...sliders.map((one) => one.prisId)];
+  // The fixture's own joints, and nothing else. A slider used to bring a second
+  // joint of its own -- the prismatic twin beside its pin -- so it needed a
+  // letter here too; it is one joint now (Stage 1 of
+  // `docs/joint-type-and-cylinder-plan.md`), and padding this list would shift
+  // every letter after it and leave the link strings naming joints that moved.
+  const oldIds = source.joints.map((joint) => joint.id);
   const start = ALPHABET.indexOf(firstLetter);
   if (start < 0 || start + oldIds.length > ALPHABET.length) {
     throw new Error(`place: ${oldIds.length} letters will not fit starting at ${firstLetter}`);
@@ -91,7 +96,6 @@ function place(
           sliders: sliders.map((one) => ({
             ...one,
             at: rename(one.at),
-            prisId: rename(one.prisId),
             ...(one.on
               ? {
                   on: {

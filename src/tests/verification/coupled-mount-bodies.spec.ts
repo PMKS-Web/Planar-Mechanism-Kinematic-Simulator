@@ -17,11 +17,18 @@ import { assignBodies, WORLD } from '../../app/model/mechanism/bodies';
  * Which links are one body, and how many freedoms that leaves.
  *
  * Nothing cylinder-specific is added to either count -- a mount weld makes one
- * RealLink root like any other weld, an external Slide fuses that root with
- * its block, and the internal Slide fuses rod and block. Adding the same
- * bodies again in a cylinder branch would subtract the same constraints twice.
- * So what is asserted is that the general rules land on the answer a reader
- * would get by hand, on drawings the general rules had never been shown.
+ * RealLink root like any other weld, and a Slide holds whatever rides its slot.
+ * Adding the same bodies again in a cylinder branch would subtract the same
+ * constraints twice. So what is asserted is that the general rules land on the
+ * answer a reader would get by hand, on drawings the general rules had never
+ * been shown.
+ *
+ * Every group below used to name a block beside the body it was welded to --
+ * `PS`, `OK`, `OQ`, `WK`. A slider is one joint now (Stage 1 of
+ * `docs/joint-type-and-cylinder-plan.md`), so there is no block body to fuse
+ * and the groups are the bars alone. The freedoms are unchanged, which is the
+ * point: a block that added three freedoms and took four away was worth -1, and
+ * a half joint that adds none and takes one away is worth -1 as well.
  *
  * Every expectation below is written out from the drawing, not read off a run.
  */
@@ -43,34 +50,35 @@ interface Counted {
 
 const CASES: Counted[] = [
   {
-    // Barrel on its own; rod and the ram's own block welded at the pin; the
-    // carriage's block on its own, because its mount is not welded to it.
+    // Barrel on its own, and the rod on its own. The ram's block was the third
+    // body here, welded to the rod at the pin; the carriage's was a fourth.
+    // Both are joints now, so the drawing is two bars.
     name: 'a carriage on the ram’s own axis',
     make: axialCarriageFixture,
-    bodies: [['ON'], ['PR', 'PS'], ['OK']],
+    bodies: [['ON'], ['PR']],
     world: [],
-    moving: 3,
-    // Three moving bodies against four lower pairs -- the mount pin, the ram's
-    // slider, the rod's ground pin and the carriage's guide: 3(3) - 2(4) = 1.
+    moving: 2,
+    // Two moving bodies and the world against three lower pairs: the ram's
+    // Slide and the rod's ground pin cost two apiece, and the carriage's
+    // pin-in-slot guide is the half joint that costs one.
+    // 3(3-1) - 2(2) - 1 = 1.
     dof: 1,
   },
   {
     name: 'a carriage on a guide that runs across the ram',
     make: obliqueGuideFixture,
-    bodies: [['ON'], ['PR', 'PS'], ['OK']],
+    bodies: [['ON'], ['PR']],
     world: [],
-    moving: 3,
+    moving: 2,
     dof: 1,
   },
   {
-    // The bracket is welded to its guide's block, so compound and block are
-    // one body; the rod is welded to the ram's block as always.
+    // The bracket rides a grounded Slide, which holds it at the world's own
+    // heading; the rod rides the ram's. Both Slides used to fuse a block into
+    // the body they hold, and the two blocks are joints now.
     name: 'a bracket that translates, carrying a passive ram',
     make: translatingBracketFixture,
-    bodies: [
-      ['ONW', 'WK'],
-      ['PR', 'PS'],
-    ],
+    bodies: [['ONW'], ['PR']],
     world: [],
     moving: 2,
     // Two moving bodies against three lower pairs -- the drive's guide, the
@@ -81,12 +89,12 @@ const CASES: Counted[] = [
     dof: 1,
   },
   {
-    // The mount is welded to the crank's block, so barrel and that block are
-    // one body -- and the crank bar itself is not part of it: the block rides
+    // The mount is a Slide on the crank's slot, so the barrel is held square to
+    // it -- and the crank bar itself is not part of that body: the barrel rides
     // the crank, it is not fused to it.
     name: 'a mount riding a slot cut into a turning crank',
     make: rotatingCarrierFixture,
-    bodies: [['AE'], ['ON', 'OQ'], ['PR', 'PS']],
+    bodies: [['AE'], ['ON'], ['PR']],
     world: [],
     moving: 3,
     // Three moving bodies against four lower pairs: the crank's ground pin,
@@ -94,11 +102,11 @@ const CASES: Counted[] = [
     dof: 1,
   },
   {
-    // The rod is welded into the bracket, and the ram's own weld fuses that
-    // whole compound with the ram's block.
+    // The rod is welded into the bracket, and the ram's Slide holds that whole
+    // compound against its slot.
     name: 'a boom whose rod mount is welded into a bracket',
     make: weldedBoomFixture,
-    bodies: [['OC'], ['GN'], ['PCW', 'PS']],
+    bodies: [['OC'], ['GN'], ['PCW']],
     world: [],
     moving: 3,
     // Three moving bodies against four lower pairs: the boom's ground pin, the
@@ -111,7 +119,7 @@ const CASES: Counted[] = [
     // against it.
     name: 'the same boom with its tip pinned down',
     make: pinnedBoomFixture,
-    bodies: [['GN'], ['PCW', 'PS']],
+    bodies: [['GN'], ['PCW']],
     world: ['OC'],
     moving: 2,
     // Two moving bodies against four lower pairs -- the barrel's ground pin,

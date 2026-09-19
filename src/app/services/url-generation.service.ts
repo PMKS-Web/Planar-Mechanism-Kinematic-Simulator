@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { MechanismService } from './mechanism.service';
-import { Link, SliderBlock, RealLink } from '../model/link';
+import { Link, RealLink } from '../model/link';
 import { LengthUnit, AngleUnit, ForceUnit, GlobalUnit } from '../model/utils';
 import {
   EnumSetting,
@@ -75,14 +75,19 @@ export class UrlGenerationService {
           joint.y / MODEL_SCALE,
           joint.ground,
           joint.input,
-          joint.isWelded,
+          // The weld bit of a prismatic record says the rider is rigid with the
+          // block -- a Slide. It used to be the coincident pin's, and it could
+          // never mean anything on the slider itself, whose only link was that
+          // block and whose weld would have had nothing to fuse.
+          !joint.rotates,
           joint.angle_rad,
           joint.showCurve,
           joint.carrier?.id ?? '',
           joint.slotJointA?.id ?? '',
           joint.slotJointB?.id ?? '',
           joint.isSealed,
-          joint.driveSpeed
+          joint.driveSpeed,
+          joint.mass
         )
       );
     }
@@ -108,7 +113,13 @@ export class UrlGenerationService {
           link.isCircle
         )
       );
-    } else if (link instanceof SliderBlock) {
+    } else {
+      // A body that is not a bar, which since Stage 1 of
+      // `docs/joint-type-and-cylinder-plan.md` nothing in the app creates: a
+      // slider's block was the only one, and a slider is one joint now. The
+      // branch stays because the record type does — every URL ever shared
+      // carries these, and the specs that prove those URLs still open build
+      // them through here.
       encoder.addLink(
         new LinkData(
           isRoot,

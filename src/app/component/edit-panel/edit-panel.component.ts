@@ -940,7 +940,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
         angle: this.cylinderAngleLabel(sealed),
         barrelMass: this.nup.formatValueAndUnit(sealed.barrel.mass, massUnits),
         rodMass: this.nup.formatValueAndUnit(sealed.rod.mass, massUnits),
-        headMass: this.nup.formatValueAndUnit(sealed.block.mass, massUnits),
+        headMass: this.nup.formatValueAndUnit(sealed.slider.mass, massUnits),
       },
       { emitEvent: false }
     );
@@ -957,7 +957,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
    */
   private cylinderMassEdit(
     control: 'barrelMass' | 'rodMass' | 'headMass',
-    part: (sealed: NonNullable<EditPanelComponent['selectedCylinder']>) => Link,
+    part: (sealed: NonNullable<EditPanelComponent['selectedCylinder']>) => Link | PrisJoint,
     raw: string | null
   ): void {
     const sealed = this.selectedCylinder;
@@ -973,9 +973,13 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
       );
       return;
     }
-    // Through the one door: a mount weld can fold the barrel or rod into a
-    // compound, and the aggregate has to keep telling the same story.
-    this.mechanismService.assignBodyMass(body, value);
+    // Through the one door for a body: a mount weld can fold the barrel or the
+    // rod into a compound, and that aggregate has to keep telling the same
+    // story. The head is the sliding joint's own mass now and belongs to no
+    // compound, so it is written directly -- there is nothing for that door to
+    // keep true.
+    if (body instanceof PrisJoint) body.mass = value;
+    else this.mechanismService.assignBodyMass(body, value);
     this.mechanismService.updateMechanism(true);
     this.mechanismService.onMechUpdateState.next(2);
     this.cylinderForm.patchValue(
@@ -1025,9 +1029,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   /** The selected joint's slider, whichever end of the pair is selected. */
   get selectedSlider(): PrisJoint | undefined {
     const joint = this.activeSrv.selectedJoint;
-    if (joint instanceof PrisJoint) return joint;
-    const slider = this.gridUtils.getSliderJoint(joint);
-    return slider instanceof PrisJoint ? slider : undefined;
+    return joint instanceof PrisJoint ? joint : undefined;
   }
 
   get isGroundedSlider(): boolean {
@@ -1035,14 +1037,20 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   }
 
   /**
-   * The sliding body of the selected joint's slider, where it has one.
+   * The sliding joint whose mass this panel edits, where the selection is one.
    *
-   * Not a cylinder's: a ram's three bodies have their own fields further down
-   * this panel, and its piston head is one of them.
+   * D6: Mass Settings shows for a joint whose type has a slot. Not a
+   * cylinder's: a ram's bodies have their own fields further down this panel,
+   * and its head is one of them.
+   *
+   * This used to answer with the *block* -- a zero-length link nobody could
+   * select, which is the whole reason the field is here. Stage 1 of
+   * `docs/joint-type-and-cylinder-plan.md` moved that mass onto the joint.
    */
-  get sliderBlock(): Link | undefined {
+  get sliderMassJoint(): PrisJoint | undefined {
     if (this.selectedCylinder) return undefined;
-    return this.mechanismService.slotReactionOf(this.activeSrv.selectedJoint)?.block;
+    const joint = this.activeSrv.selectedJoint;
+    return joint instanceof PrisJoint ? joint : undefined;
   }
 
   /**
@@ -1055,8 +1063,8 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
    * bar's does.
    */
   private commitSliderMass(raw: string | null): void {
-    const block = this.sliderBlock;
-    if (!block) return;
+    const slider = this.sliderMassJoint;
+    if (!slider) return;
     const units = this.massUnit();
     const [success, value] = this.nup.parseMassString(raw ?? '', units);
     if (!success || value < 0) {
@@ -1064,7 +1072,11 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
       this.patchSliderMass();
       return;
     }
-    this.mechanismService.assignBodyMass(block, value);
+    // Written straight onto the joint. `assignBodyMass` is the one door for a
+    // *body's* mass because a compound and its members have to keep telling one
+    // story; a joint belongs to no compound, so there is no aggregate to keep
+    // true and nothing for that door to do.
+    slider.mass = value;
     this.mechanismService.updateMechanism(true);
     this.mechanismService.onMechUpdateState.next(2);
     this.patchSliderMass();
@@ -1072,10 +1084,10 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
 
   /** Mirror the sliding body's mass into the field, without re-firing it. */
   patchSliderMass(): void {
-    const block = this.sliderBlock;
-    if (!block) return;
+    const slider = this.sliderMassJoint;
+    if (!slider) return;
     this.jointForm.patchValue(
-      { sliderMass: this.nup.formatValueAndUnit(block.mass, this.massUnit()) },
+      { sliderMass: this.nup.formatValueAndUnit(slider.mass, this.massUnit()) },
       { emitEvent: false }
     );
   }
@@ -1330,7 +1342,8 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
           this.settingsService.angleUnit.getValue()
         );
         if (!this.activeSrv.selectedJoint) return;
-        if (!this.gridUtils.isAttachedToSlider(this.activeSrv.selectedJoint)) return;
+        const slider = this.selectedSlider;
+        if (!slider) return;
         // Nor is the angle it already has, as this panel shows it: the control
         // is patched with the angle rounded for display, and re-parsing that
         // is not the same number as the radians on the joint.
@@ -1365,12 +1378,11 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
             { emitEvent: false }
           );
         } else {
-          (this.gridUtils.getSliderJoint(this.activeSrv.selectedJoint) as PrisJoint).angle_rad =
-            this.nup.convertAngle(
-              value,
-              this.settingsService.angleUnit.getValue(),
-              AngleUnit.RADIAN
-            );
+          slider.angle_rad = this.nup.convertAngle(
+            value,
+            this.settingsService.angleUnit.getValue(),
+            AngleUnit.RADIAN
+          );
           this.jointForm.patchValue(
             {
               prisAngle: this.nup.formatValueAndUnit(
@@ -1409,17 +1421,12 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
         if (this.structureRefused()) {
           return;
         }
-        //  grounded joint is revolute
-        if (this.activeSrv.selectedJoint.ground) {
-          this.activeSrv.selectedJoint.input = val!;
-        } else {
-          // grounded joint is prismatic
-          this.activeSrv.selectedJoint.connectedJoints.forEach((j) => {
-            if (j instanceof PrisJoint) {
-              j.input = val!;
-            }
-          });
-        }
+        // The joint's own flag. This used to branch on Grounded: a slider was
+        // driven through the prismatic half of a coincident pair, so an
+        // ungrounded selection wrote the drive out through `connectedJoints`
+        // rather than onto the joint the reader had picked. One joint carries
+        // it now, and there is no pair to search.
+        this.activeSrv.selectedJoint.input = val!;
         this.mechanismService.updateMechanism();
         this.mechanismService.onMechUpdateState.next(2);
       })
@@ -1585,7 +1592,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     );
     this.onDestroySubscriptions.push(
       this.cylinderForm.controls['headMass'].valueChanges.subscribe((val) =>
-        this.cylinderMassEdit('headMass', (sealed) => sealed.block, val)
+        this.cylinderMassEdit('headMass', (sealed) => sealed.slider, val)
       )
     );
 
@@ -1988,9 +1995,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
           });
           this.currentlyOpenJointID = this.activeSrv.selectedJoint.id;
 
-          const angleTemp_rad = this.gridUtils.isAttachedToSlider(this.activeSrv.selectedJoint)
-            ? (this.gridUtils.getSliderJoint(this.activeSrv.selectedJoint) as PrisJoint).angle_rad
-            : 0;
+          const angleTemp_rad = this.selectedSlider?.angle_rad ?? 0;
           this.jointForm.patchValue(
             {
               xPos: this.nup.formatModelLength(
@@ -2015,8 +2020,8 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
               ground: this.selectedSlider?.ground ?? this.activeSrv.selectedJoint.ground,
               input: this.activeSrv.selectedJoint.input,
               curve: this.activeSrv.selectedJoint.showCurve,
-              sliderMass: this.sliderBlock
-                ? this.nup.formatValueAndUnit(this.sliderBlock.mass, this.massUnit())
+              sliderMass: this.sliderMassJoint
+                ? this.nup.formatValueAndUnit(this.sliderMassJoint.mass, this.massUnit())
                 : '',
             },
             { emitEvent: false }
@@ -2492,10 +2497,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   inputRefusal(): string | undefined {
     const joint = this.activeSrv.selectedJoint;
     if (!joint || this.canToggleInput(joint)) return undefined;
-    const driven = this.gridUtils.isAttachedToSlider(joint)
-      ? this.gridUtils.getSliderJoint(joint)
-      : joint;
-    return describeActuatorRefusal(driven)?.long ?? 'This joint cannot be driven.';
+    return describeActuatorRefusal(joint)?.long ?? 'This joint cannot be driven.';
   }
 
   /** Point at a CoM field, see what it states: the CoM mark, plus the

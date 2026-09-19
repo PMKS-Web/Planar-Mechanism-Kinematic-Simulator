@@ -34,7 +34,9 @@ describe('forces through a moving slot', () => {
 
     const series = mechanism.getForceAnalysis('static');
 
-    expect(series.reactionIndex.linksByJoint.get('P')).toEqual(expect.arrayContaining(['CD']));
+    // At B, the crank pin that rides the lever's slot: it is the sliding joint
+    // itself, where the index used to be asked about the prismatic twin P.
+    expect(series.reactionIndex.linksByJoint.get('B')).toEqual(expect.arrayContaining(['CD']));
   });
 
   it('pushes on the block and the carrier equally and oppositely', () => {
@@ -44,8 +46,10 @@ describe('forces through a moving slot', () => {
     for (let index = 0; index < Math.min(series.frames.length, 90); index++) {
       const frame = series.frames[index];
       if (frame.status !== 'ok') continue;
-      const onBlock = frame.jointReactionsByLink.get('P')?.get('BP');
-      const onCarrier = frame.jointReactionsByLink.get('P')?.get('CD');
+      // The crank AB is what the slot pushes on; the block link BP it pushed
+      // on before is gone with the block.
+      const onBlock = frame.jointReactionsByLink.get('B')?.get('AB');
+      const onCarrier = frame.jointReactionsByLink.get('B')?.get('CD');
       expect(onBlock, `block frame=${index}`).toBeDefined();
       expect(onCarrier, `carrier frame=${index}`).toBeDefined();
       expect(onBlock![0] + onCarrier![0], `x frame=${index}`).toBeCloseTo(0, 9);
@@ -76,7 +80,7 @@ describe('forces through a moving slot', () => {
     for (let index = 0; index < Math.min(series.frames.length, 90); index++) {
       const frame = series.frames[index];
       if (frame.status !== 'ok') continue;
-      const reaction = frame.jointReactionsByLink.get('P')?.get('BP');
+      const reaction = frame.jointReactionsByLink.get('B')?.get('AB');
       if (!reaction) continue;
       const joints = mechanism.joints[index];
       const c = joints.find((joint) => joint.id === 'C')!;

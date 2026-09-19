@@ -222,13 +222,10 @@ export class MultiEditService {
         'A traced path can be switched when every selected item is a joint.'
       );
     }
-    joints.forEach((joint) => {
-      joint.showCurve = traced;
-      // The path of a pin on a slider is drawn by its prismatic half.
-      if (this.grid.containsSlider(joint)) {
-        (this.grid.getSliderJoint(joint) as RealJoint).showCurve = traced;
-      }
-    });
+    // One joint, one flag. A pin on a slider drew its path through the
+    // prismatic half of the pair, so this had to write through it as well; the
+    // slider is the joint now.
+    joints.forEach((joint) => (joint.showCurve = traced));
     if (traced) this.settings.isShowTraces.next(true);
     this.mechanism.save();
     this.mechanism.onMechUpdateState.next(2);

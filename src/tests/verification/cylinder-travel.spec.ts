@@ -357,8 +357,8 @@ function twoRamsOneCarrier(): MechanismFixture {
       { joints: 'GH' },
     ],
     sliders: [
-      { at: 'C', prisId: 'P', on: { carrier: 'AB', a: 'A', b: 'B' }, sealed: true },
-      { at: 'G', prisId: 'Q', on: { carrier: 'EF', a: 'E', b: 'F' }, sealed: true },
+      { at: 'C', on: { carrier: 'AB', a: 'A', b: 'B' }, sealed: true },
+      { at: 'G', on: { carrier: 'EF', a: 'E', b: 'F' }, sealed: true },
     ],
     welds: ['C', 'G'],
     inputAngVel: 1,
@@ -384,8 +384,8 @@ function twoRamsOneMount(): MechanismFixture {
     ],
     links: [{ joints: 'AB' }, { joints: 'CD' }, { joints: 'EF' }, { joints: 'GD' }],
     sliders: [
-      { at: 'C', prisId: 'P', on: { carrier: 'AB', a: 'A', b: 'B' }, sealed: true },
-      { at: 'G', prisId: 'Q', on: { carrier: 'EF', a: 'E', b: 'F' }, sealed: true },
+      { at: 'C', on: { carrier: 'AB', a: 'A', b: 'B' }, sealed: true },
+      { at: 'G', on: { carrier: 'EF', a: 'E', b: 'F' }, sealed: true },
     ],
     welds: ['C', 'G'],
     inputAngVel: 1,

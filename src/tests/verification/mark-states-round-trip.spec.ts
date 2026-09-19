@@ -2,7 +2,7 @@
 // cleanly when entered here.
 import '../../app/model/joint';
 import { PrisJoint, RealJoint, RevJoint } from '../../app/model/joint';
-import { RealLink, SliderBlock } from '../../app/model/link';
+import { RealLink } from '../../app/model/link';
 import { ActiveObjService } from '../../app/services/active-obj.service';
 import { SettingsService } from '../../app/services/settings.service';
 import { MechanismBuilder } from '../../app/services/transcoding/mechanism-builder';
@@ -58,8 +58,11 @@ function scene(state: Partial<MarkState>): ReturnType<typeof createMechanismHarn
     // Through the service, not by setting the flag: a weld says "everything here
     // is rigid", and reconcileAssemblyWelds correctly strips one with nothing
     // behind it. Setting the flag by hand tests the reconciler, not the mark.
+    //
+    // The slider, not `c`: turning Slider on replaces the joint with the one
+    // that slides, and the weld used to go on the pin left standing beside it.
     if (state.welded) {
-      harness.active.updateSelectedObj(c);
+      harness.active.updateSelectedObj(slider);
       harness.service.weldJoint();
     }
   } else {
@@ -80,7 +83,11 @@ function readState(joints: unknown[]): MarkState {
   const slider = all.find((joint): joint is PrisJoint => joint instanceof PrisJoint);
   return {
     slider: !!slider,
-    welded: all.some((joint) => joint.isWelded),
+    // A Slide says so in `rotates` on the joint that slides; every other kind of
+    // weld says so in `isWelded`. One bit became two when a slider stopped being
+    // a pin with a block beside it: the weld then sat on that pin, and a slider
+    // of its own has nothing to fuse.
+    welded: slider ? !slider.rotates : all.some((joint) => joint.isWelded),
     grounded: slider ? slider.ground : all.some((joint) => joint.ground),
     dangling: slider?.isDangling ?? false,
     driven: all.some((joint) => joint.input),

@@ -1,5 +1,5 @@
 import '../../app/model/joint';
-import { Joint } from '../../app/model/joint';
+import { Joint, PrisJoint } from '../../app/model/joint';
 import { PositionSolver } from '../../app/model/mechanism/position-solver';
 import { slotOffset } from '../../app/model/slide-assembly';
 import { buildMechanism, BuiltMechanism } from '../../test-utils/verification/fixture';
@@ -94,20 +94,22 @@ describe('a Scotch yoke', () => {
     }
   });
 
-  it('keeps the sliding joint on its pin and on its guide line', () => {
-    // Two things that pull opposite ways. The sliding joint is drawn at the
-    // block, so it has to stay on top of the pin it carries -- the block is
-    // zero-length by construction (§2.10 item 2), and leaving it behind
-    // stretches it a little further every timestep. But the *guide* is fixed in
-    // the world, so the joint may only ever move along it.
+  it('keeps the sliding joint on its guide line', () => {
+    // Two things used to pull opposite ways here. The block was drawn at a
+    // joint of its own, on top of the pin it carried, and the zero-length link
+    // between them stretched a little further every timestep it was left
+    // behind; meanwhile the guide is fixed in the world, so the block may only
+    // ever move along it.
+    //
+    // The first half is gone by construction: C is the pin and the block, one
+    // joint (Stage 1 of `docs/joint-type-and-cylinder-plan.md`), and a joint
+    // cannot drift from itself. The guide is the claim that is left.
     const built = buildMechanism(scotchYokeFixture());
-    const start = jointAt(built, 0, 'F');
+    const start = jointAt(built, 0, 'C');
+    expect(start, 'the yoke slides at C itself').toBeInstanceOf(PrisJoint);
 
     for (const step of SAMPLES) {
-      const guide = jointAt(built, step, 'F');
-      const pin = jointAt(built, step, 'C');
-      expect(guide.x, `guide on its pin at step ${step}`).toBeCloseTo(pin.x, 6);
-      expect(guide.y, `guide on its pin at step ${step}`).toBeCloseTo(pin.y, 6);
+      const guide = jointAt(built, step, 'C');
       // The guide runs horizontally, so any change in y is the joint leaving it.
       expect(guide.y, `guide stays on its line at step ${step}`).toBeCloseTo(start.y, 6);
     }

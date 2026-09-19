@@ -1,7 +1,7 @@
 // joint.ts first: the model modules form an import cycle that only
 // initializes cleanly when entered here (see test-utils/verification/fixture.ts).
 import '../../app/model/joint';
-import { Joint } from '../../app/model/joint';
+import { Joint, PrisJoint } from '../../app/model/joint';
 import { PositionSolver } from '../../app/model/mechanism/position-solver';
 import { buildMechanism } from '../../test-utils/verification/fixture';
 import { ellipticalCrankFixture } from '../../test-utils/verification/slot-fixtures';
@@ -75,13 +75,24 @@ describe('an ordinary six-bar with a grounded guide', () => {
     }
   });
 
-  it('keeps the block a single point', () => {
-    // The block is zero-length: the pin and the sliding joint it rides in are
-    // one point (§2.10 item 1). Reading the slot's `ground` as "fixed" used to
-    // hold P still while E moved, which stretches the block a little further
-    // every sample.
+  it('keeps the block a single point, which is now the joint itself', () => {
+    // The block used to be zero-length: the pin E and the sliding joint P it
+    // rode in were two coincident joints, and reading the slot's `ground` as
+    // "fixed" held P still while E moved, stretching the block a little
+    // further every sample. E *is* the sliding joint now, so the stretch has
+    // nothing to happen between -- and what has to hold instead is that the
+    // drawing really carries one joint there, not two.
+    const sliders = frames[0].filter((joint) => joint instanceof PrisJoint);
+    expect(sliders.map((joint) => joint.id)).toEqual(['E']);
     for (let step = 0; step < frames.length; step++) {
-      expect(length(step, 'E', 'P'), `block at step ${step}`).toBeLessThan(ROUNDING);
+      const e = at(step, 'E');
+      const alsoHere = frames[step].filter(
+        (joint) => joint.id !== 'E' && Math.hypot(joint.x - e.x, joint.y - e.y) < ROUNDING
+      );
+      expect(
+        alsoHere.map((joint) => joint.id),
+        `at step ${step}`
+      ).toEqual([]);
     }
   });
 
@@ -120,7 +131,7 @@ describe('an ordinary six-bar with a grounded guide', () => {
     // is not free: the solve is seeded from the previous sample, so a branch
     // taken wrongly anywhere in the revolution would land somewhere else here.
     const last = frames.length - 1;
-    for (const id of ['B', 'C', 'D', 'E', 'P']) {
+    for (const id of ['B', 'C', 'D', 'E']) {
       expect(
         Math.hypot(at(last, id).x - at(0, id).x, at(last, id).y - at(0, id).y),
         `${id} back at start`

@@ -7,7 +7,7 @@ import { UrlProcessorService } from '../../app/services/url-processor.service';
 import { ActiveObjService } from '../../app/services/active-obj.service';
 import { SaveHistoryService } from '../../app/services/save-history.service';
 import { Coord } from '../../app/model/coord';
-import { RevJoint, RealJoint } from '../../app/model/joint';
+import { PrisJoint, RevJoint, RealJoint } from '../../app/model/joint';
 import { RealLink } from '../../app/model/link';
 import { createMechanismHarness, wireGraph } from '../../test-utils/mechanism-harness';
 import { LEGACY_FORCE_MECHANISM } from '../fixtures/mechanism-fixtures';
@@ -77,8 +77,31 @@ describe('a joint is welded or it is not', () => {
       .filter((joint) => joint instanceof RealJoint && joint.isWelded)
       .map((joint) => joint.id)
       .sort();
-    expect(welded).toEqual(['B', 'C', 'E', 'J', 'M', 'N', 'O', 'S']);
+    expect(welded).toEqual(['B', 'C', 'E', 'M', 'N']);
     for (const id of welded) expect(bodiesAt(mechanism, id)).toHaveLength(1);
+  });
+
+  it('reads the three welds that were on a slider’s pin as Slides instead', () => {
+    // J, O and S are on this list's other side. Each was a welded pin with a
+    // prismatic twin and a zero-length block beside it, and folding that trio
+    // into one joint moved the weld into `rotates`: the drawing says exactly
+    // what it said before, in the field a slider keeps it in (Stage 1 of
+    // `docs/joint-type-and-cylinder-plan.md`).
+    //
+    // Worth stating rather than letting the shorter list stand alone, because
+    // the two readings of a stale URL that would be wrong -- losing the weld,
+    // or keeping it where nothing reads it -- both leave that list looking
+    // right.
+    const slides = mechanism.joints
+      .filter((joint): joint is PrisJoint => joint instanceof PrisJoint && !joint.rotates)
+      .map((joint) => joint.id)
+      .sort();
+    expect(slides).toEqual(['J', 'O', 'S']);
+    // And none of them claims a compound weld it has nothing to fuse into.
+    for (const id of slides) {
+      const joint = mechanism.joints.find((candidate) => candidate.id === id) as PrisJoint;
+      expect(joint.isWelded, `${id} is a Slide, not a compound`).toBe(false);
+    }
   });
 });
 
@@ -107,9 +130,12 @@ describe('Un-weld All, on a link that has its own Compound Link Settings', () =>
       .filter((joint) => joint instanceof RealJoint && joint.isWelded)
       .map((joint) => joint.id);
     // Only the welds holding *this* body together came apart.
+    // O was on this list too, as the welded pin of a slider; its weld is the
+    // slider's `rotates` now, so a walk over `isWelded` cannot see it either
+    // before or after.
     const released = before.filter((id) => !after.includes(id));
-    expect(released.sort()).toEqual(['M', 'N', 'O']);
-    expect(after.sort()).toEqual(['B', 'C', 'E', 'J', 'S']);
+    expect(released.sort()).toEqual(['M', 'N']);
+    expect(after.sort()).toEqual(['B', 'C', 'E']);
   });
 });
 

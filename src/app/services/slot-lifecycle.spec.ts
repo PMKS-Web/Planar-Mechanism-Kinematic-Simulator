@@ -1,7 +1,7 @@
 import '../model/joint';
 import { Coord } from '../model/coord';
-import { PrisJoint, RevJoint } from '../model/joint';
-import { RealLink, SliderBlock } from '../model/link';
+import { PrisJoint, RealJoint, RevJoint } from '../model/joint';
+import { RealLink } from '../model/link';
 import { createMechanismHarness, wireGraph } from '../../test-utils/mechanism-harness';
 import { sealedCylinders } from '../model/cylinder';
 import { MODEL_SCALE } from '../model/render-scale';
@@ -12,27 +12,29 @@ import { MODEL_SCALE } from '../model/render-scale';
 // regression — §4.2.
 
 /**
- * Crank AB drives a block riding in a slot along the lever CD. The whole point
+ * Crank AB drives a slider riding in a slot along the lever CD. The whole point
  * of this shape is that the slider depends on CD without appearing anywhere in
  * CD's joint list.
+ *
+ * B *is* the slider: it was a pin with a coincident `PrisJoint` and a
+ * zero-length block joining them until Stage 1 of
+ * `docs/joint-type-and-cylinder-plan.md`, and it keeps the pin's letter.
  */
 function slottedLever() {
   const harness = createMechanismHarness();
   const a = new RevJoint('A', 0, 0, true, true);
-  const b = new RevJoint('B', 0, 1);
+  const b = new PrisJoint('B', 0, 1);
   const c = new RevJoint('C', 3, 0, false, true);
   const d = new RevJoint('D', 1, 2);
   const ab = new RealLink('AB', [a, b], 1, 1, new Coord(0, 0.5));
   const cd = new RealLink('CD', [c, d], 1, 1, new Coord(2, 1));
 
-  const slot = new PrisJoint('P', b.x, b.y);
-  slot.slideOn(cd, c, d);
-  const block = new SliderBlock('BP', [b, slot], 1);
+  b.slideOn(cd, c, d);
 
-  harness.service.joints.push(a, b, c, d, slot);
-  harness.service.links.push(ab, cd, block);
+  harness.service.joints.push(a, b, c, d);
+  harness.service.links.push(ab, cd);
   wireGraph(harness.service);
-  return { ...harness, a, b, c, d, slot, ab, cd, block };
+  return { ...harness, a, b, c, d, slot: b, ab, cd };
 }
 
 describe('a slot losing what defines it', () => {
@@ -48,7 +50,7 @@ describe('a slot losing what defines it', () => {
   it('dangles when the carrier is deleted, rather than grounding itself', () => {
     // Phase 2 re-grounded it here, to keep the slider the user drew. That kept
     // the object and quietly invented the one thing nobody had chosen: where it
-    // points. Phase 4 keeps the block, drops the direction, and draws it red --
+    // points. Phase 4 keeps the slider, drops the direction, and draws it red --
     // the fix is to drag it onto a link (§4.1).
     const s = slottedLever();
     const wasPointing = s.slot.slotAngle;
@@ -74,11 +76,6 @@ describe('a slot losing what defines it', () => {
     // a ram is attached to the rest of a linkage, and the mount is one of the
     // two joints its barrel's slot is measured from. Stranding the slot there
     // deleted the cylinder, silently, in the gesture that exists to connect it.
-    //
-    // A merge says the two joints are one. Link membership already follows that
-    // -- `replaceJointInLink` rewrites every link -- and a slot's endpoints are
-    // the same kind of reference, so they follow it too. Where that leaves no
-    // line to measure, the next test shows it still dangles.
     const s = slottedLever();
     const spare = new RevJoint('Z', 5, 5);
     const bar = new RealLink('AZ', [s.a, spare], 1, 1, new Coord(2.5, 2.5));
@@ -99,8 +96,6 @@ describe('a slot losing what defines it', () => {
     // The repair above only ever moves an endpoint to another joint; it cannot
     // put both ends on the same one, because merging one end of a carrier into
     // the other end of that same carrier is refused before any of this runs.
-    // So the case where a slot would be left with no direction to measure is
-    // closed at the gesture rather than repaired after it.
     const s = slottedLever();
     const spare = new RevJoint('Z', 5, 5);
     const bar = new RealLink('AZ', [s.a, spare], 1, 1, new Coord(2.5, 2.5));
@@ -115,14 +110,17 @@ describe('a slot losing what defines it', () => {
     expect(s.slot.isSlotWellFormed, 'left exactly as it was').toBe(true);
   });
 
-  it('refuses to merge a defining joint into the block riding its own slot', () => {
+  it('refuses to merge a defining joint into the slider riding its own slot', () => {
     // The assembly would then slide on a link it is part of: the slot's
-    // direction is measured from two joints, one of which has become the block.
-    // Found by dragging a block 25 px, which snapped it onto the nearer end of
-    // its own carrier and left it non-dangling and unflagged.
+    // direction is measured from two joints, one of which has become the
+    // slider. Found by dragging a slider 25 px, which snapped it onto the
+    // nearer end of its own carrier and left it non-dangling and unflagged.
+    //
+    // Asked of the slider itself now. The merge used to happen to the pin
+    // paired with it, which `isSlotWellFormed` never saw.
     const s = slottedLever();
 
-    expect(s.service.mergeJoints(s.d, s.b)).toBe('own-carrier');
+    expect(s.service.mergeJoints(s.d, s.slot)).toBe('own-carrier');
     expect(s.slot.isFloating, 'the slot is left alone').toBe(true);
     expect(s.service.joints.map((joint) => joint.id)).toContain('D');
   });
@@ -216,8 +214,10 @@ describe('grounding a floating slot', () => {
 
     s.service.toggleGround();
 
-    expect(s.service.joints.map((joint) => joint.id)).toContain('P');
-    expect(s.service.links.map((link) => link.id)).toContain('BP');
+    // The joint stays exactly the joint it was: there is no block to take
+    // apart, and no coincident pin to leave behind.
+    expect(s.service.joints.map((joint) => joint.id)).toContain('B');
+    expect(s.service.joints.find((joint) => joint.id === 'B')).toBe(s.slot);
     expect(s.slot.ground).toBe(true);
     expect(s.slot.isFloating).toBe(false);
     expect(s.slot.slotAngle).toBeCloseTo(wasPointing, 9);
@@ -241,16 +241,16 @@ describe('a slot dropped onto a sealed cylinder', () => {
 
   it('refuses the ram’s own inside, before it writes anything', () => {
     // `cutSlotOn` is the commit half of a slot drop, and it only asked whether
-    // the pin it was handed was prismatic. Handed the ram's interior pin and a
-    // bar from elsewhere, it took the bore's own block and pointed it at that
-    // bar -- the ram's slider riding a link that is not its barrel, which is
-    // not a cylinder any more. Half of it had run by the time anything
-    // downstream could object, so the refusal has to come first.
+    // the joint it was handed was prismatic -- which the ram's own seal is, so
+    // that test happened to cover this. It no longer can: a slider arriving
+    // here is the ordinary case, a dangling one being repaired. The refusal
+    // that matters is the sealed one, and half of the commit had run by the
+    // time anything downstream could object.
     const h = ramAndABar();
-    const pin = h.sealed.pin as RevJoint;
-    const where = { x: pin.x, y: pin.y + 4 * MODEL_SCALE };
+    const seal = h.sealed.slider;
+    const where = { x: seal.x, y: seal.y + 4 * MODEL_SCALE };
 
-    const took = h.service.cutSlotOn(pin, {
+    const took = h.service.cutSlotOn(seal, {
       carrier: h.rail,
       a: h.near,
       b: h.far,
@@ -262,15 +262,14 @@ describe('a slot dropped onto a sealed cylinder', () => {
     const still = sealedCylinders(h.service.joints);
     expect(still, 'the ram is still a ram').toHaveLength(1);
     expect(still[0].slider.carrier!.id, 'its bore is still its barrel').toBe(h.sealed.barrel.id);
-    expect([pin.x, pin.y], 'and nothing moved').toEqual([h.sealed.pin.x, h.sealed.pin.y]);
-    expect(pin.y).not.toBe(where.y);
+    expect(seal.y, 'and nothing moved').not.toBe(where.y);
   });
 
   it('still lets a mount take one, which is how a carriage is dropped on a rail', () => {
-    // The rule is about the inside, not about the part: reassigning the block
-    // on a mount is an ordinary slot drop and must stay one.
+    // The rule is about the inside, not about the part: giving a mount a slot
+    // is an ordinary slot drop and must stay one.
     const h = ramAndABar();
-    const mount = h.sealed.barrelFar as RevJoint;
+    const mount = h.sealed.barrelFar as RealJoint;
 
     const took = h.service.cutSlotOn(mount, {
       carrier: h.rail,
@@ -281,8 +280,107 @@ describe('a slot dropped onto a sealed cylinder', () => {
     });
 
     expect(took, 'allowed').toBe(true);
+    // The mount kept its letter through the change of kind, and now slides.
+    const now = h.service.joints.find((joint) => joint.id === mount.id);
+    expect(now instanceof PrisJoint).toBe(true);
     const still = sealedCylinders(h.service.joints);
     expect(still, 'and the ram survives it').toHaveLength(1);
     expect(still[0].slider.isSealed).toBe(true);
+  });
+});
+
+describe('turning Slider off and on again', () => {
+  it('brings the slot back with the weight the reader typed on it', () => {
+    // The stash is what makes Slider off/on a round trip rather than a rebuild:
+    // it remembers the ground, the angle, the carrier and the two joints the
+    // slot is measured from. Mass was not among them, because before Stage 1 of
+    // `docs/joint-type-and-cylinder-plan.md` it lived on a block link that was
+    // deleted outright -- and D6 of that plan made it something the reader
+    // types into the panel, so coming back at zero is losing their number.
+    const s = slottedLever();
+    s.slot.mass = 3.5;
+    s.service.updateMechanism(false);
+
+    s.active.updateSelectedObj(s.slot);
+    s.service.toggleSlider();
+    const pin = s.service.joints.find((joint) => joint.id === 'B') as RealJoint;
+    expect(pin instanceof PrisJoint, 'a plain pin now').toBe(false);
+
+    s.active.updateSelectedObj(pin);
+    s.service.toggleSlider();
+    const again = s.service.joints.find((joint) => joint.id === 'B') as PrisJoint;
+
+    expect(again instanceof PrisJoint).toBe(true);
+    expect(again.carrier, 'the slot it had').toBe(s.cd);
+    expect(again.mass, 'and the weight it had').toBeCloseTo(3.5, 9);
+  });
+});
+
+/**
+ * A slot is a legal *target* for a merge now that only the source is refused
+ * (Stage 1 of `docs/joint-type-and-cylinder-plan.md`). `mergeJoints` was
+ * written when it could not be one, and two of the things it does to a
+ * survivor turn out to be things a slot cannot take: writing `ground` straight
+ * onto it, and carrying a weld across as though a weld at a slot meant only one
+ * thing. Both are reachable by dragging a pin onto a slider.
+ */
+describe('dropping a pin onto a slider', () => {
+  /** The slotted lever, plus a loose bar X-Y whose X can be dragged anywhere. */
+  function withALooseBar() {
+    const s = slottedLever();
+    const x = new RevJoint('X', 6, 6);
+    const y = new RevJoint('Y', 7, 7);
+    const xy = new RealLink('XY', [x, y], 1, 1, new Coord(6.5, 6.5));
+    s.service.joints.push(x, y);
+    s.service.links.push(xy);
+    wireGraph(s.service);
+    return { ...s, x, y, xy };
+  }
+
+  it('keeps the carrier rather than grounding a slot that has one', () => {
+    // `ground` written straight leaves the slot both carried and grounded, and
+    // then `slideAssemblyAt` reports it grounded: a rider's world orientation
+    // frozen on a moving bar, ground rails drawn on a slot cut into a link, and
+    // a reload that quietly undoes it because `resolveSlots` calls `slideOn`.
+    const s = withALooseBar();
+    s.x.ground = true;
+
+    expect(s.service.mergeJoints(s.x, s.slot)).toBeUndefined();
+
+    expect(s.slot.isFloating, 'still riding its carrier').toBe(true);
+    expect(s.slot.carrier).toBe(s.cd);
+    expect(s.slot.ground, 'and not also pinned to the world').toBe(false);
+  });
+
+  it('grounds a slot that has nothing to ride, through its own setter', () => {
+    const s = withALooseBar();
+    s.slot.detach();
+    s.x.ground = true;
+
+    expect(s.service.mergeJoints(s.x, s.slot)).toBeUndefined();
+
+    expect(s.slot.ground).toBe(true);
+    expect(s.slot.isFloating).toBe(false);
+    expect(s.slot.isDangling, 'and no longer drawn red').toBe(false);
+  });
+
+  it('does not turn a Pin-in-slot slider into a Slide', () => {
+    // `weldTopology`'s prismatic branch ends `rotates = false`, so carrying a
+    // welded pin's compound across changed the joint's *type* -- from a gesture
+    // that reads as "attach these two". The bodies still fuse; the slot keeps
+    // what it was.
+    const s = withALooseBar();
+    const z = new RevJoint('Z', 8, 8);
+    const yz = new RealLink('YZ', [s.y, z], 1, 1, new Coord(7.5, 7.5));
+    s.service.joints.push(z);
+    s.service.links.push(yz);
+    wireGraph(s.service);
+    s.service.weldJoint(s.y);
+    expect(s.y.isWelded).toBe(true);
+    expect(s.slot.rotates, 'a pin-in-slot to start with').toBe(true);
+
+    expect(s.service.mergeJoints(s.y, s.slot)).toBeUndefined();
+
+    expect(s.slot.rotates, 'still free to turn in its slot').toBe(true);
   });
 });

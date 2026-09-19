@@ -1,6 +1,6 @@
 import '../../app/model/joint';
 import { PrisJoint, RealJoint } from '../../app/model/joint';
-import { RealLink, SliderBlock } from '../../app/model/link';
+import { RealLink } from '../../app/model/link';
 import { ForceAnalysisMode } from '../../app/model/mechanism/force-solver';
 import { KinematicsSolver } from '../../app/model/mechanism/kinematic-solver';
 import { siUnitFactors } from '../../app/model/unit-conversions';
@@ -103,11 +103,9 @@ function audit(fixture: MechanismFixture, mode: ForceAnalysisMode) {
       const slider = mechanism.joints[t].find(
         (joint): joint is PrisJoint => joint instanceof PrisJoint && joint.input
       )!;
-      const block = mechanism.links[t].find(
-        (link): link is SliderBlock =>
-          link instanceof SliderBlock && link.joints.some((joint) => joint.id === slider.id)
-      )!;
-      const pin = block.joints.find((joint) => !(joint instanceof PrisJoint))!;
+      // The block and the pin it carried are the sliding joint itself, so the
+      // velocity the drive does work along is read straight off it.
+      const pin = slider;
       const velocity = KinematicsSolver.jointVelMap.get(pin.id);
       let relative = [need(velocity?.[0]), need(velocity?.[1])];
       const carrier = slider.isFloating
@@ -143,10 +141,19 @@ function audit(fixture: MechanismFixture, mode: ForceAnalysisMode) {
             -link.mass * units.massToKg * GRAVITY * need(comVelocity?.[1]) * units.distanceToM
           );
         }
-      } else if (link instanceof SliderBlock && mechanism.gravity) {
-        const pin = link.joints.find((joint) => !(joint instanceof PrisJoint));
-        const velocity = pin && KinematicsSolver.jointVelMap.get(pin.id);
-        terms.push(-link.mass * units.massToKg * GRAVITY * need(velocity?.[1]) * units.distanceToM);
+      }
+    }
+
+    // A block's weight, which is a joint's now. The mass a `SliderBlock` link
+    // carried moved onto the joint that slides when a slider became one joint,
+    // so the bodies to account for are no longer all in `links`.
+    if (mechanism.gravity) {
+      for (const joint of mechanism.joints[t]) {
+        if (!(joint instanceof PrisJoint) || joint.mass === 0) continue;
+        const velocity = KinematicsSolver.jointVelMap.get(joint.id);
+        terms.push(
+          -joint.mass * units.massToKg * GRAVITY * need(velocity?.[1]) * units.distanceToM
+        );
       }
     }
 
@@ -168,17 +175,20 @@ function audit(fixture: MechanismFixture, mode: ForceAnalysisMode) {
             units.inertiaToKgM2 *
             need(KinematicsSolver.linkAngVelMap.get(link.id)) *
             need(KinematicsSolver.linkAngAccMap.get(link.id));
-        } else if (link instanceof SliderBlock) {
-          const pin = link.joints.find((joint) => !(joint instanceof PrisJoint));
-          const velocity = pin && KinematicsSolver.jointVelMap.get(pin.id);
-          const acceleration = pin && KinematicsSolver.jointAccMap.get(pin.id);
-          kineticRate +=
-            link.mass *
-            units.massToKg *
-            (need(velocity?.[0]) * need(acceleration?.[0]) +
-              need(velocity?.[1]) * need(acceleration?.[1])) *
-            units.distanceToM ** 2;
         }
+      }
+      // And the same for the mass a block used to carry, now the joint's: a
+      // point body with no inertia term, because a point has no moment of one.
+      for (const joint of mechanism.joints[t]) {
+        if (!(joint instanceof PrisJoint) || joint.mass === 0) continue;
+        const velocity = KinematicsSolver.jointVelMap.get(joint.id);
+        const acceleration = KinematicsSolver.jointAccMap.get(joint.id);
+        kineticRate +=
+          joint.mass *
+          units.massToKg *
+          (need(velocity?.[0]) * need(acceleration?.[0]) +
+            need(velocity?.[1]) * need(acceleration?.[1])) *
+          units.distanceToM ** 2;
       }
     }
 

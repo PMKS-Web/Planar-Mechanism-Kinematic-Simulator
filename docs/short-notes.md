@@ -491,6 +491,37 @@ the solver run, and not against Gruebler's. A crosshead on two slides counts -1 
 to one by the same geometry; comparing against -1 called the solver's every failure on such a
 drawing a hidden freedom, when the rescue was the count agreeing with the drawing.
 
+### The library's gripper counts one freedom and measures three, and runs on the count
+
+`Cylinder_Gripper` -- the card, and `slideGripperFixture` the gallery generates it from -- has
+Gruebler's count at 1 and `mobilityFromGeometry` at **3**. `determineDegreesOfFreedom` returns the
+count wherever the count is at least one and never asks the geometry, so the drawing is admitted
+and solved. Two of those three freedoms are therefore motions nothing in the drawing determines,
+and the solver picks a pose for them.
+
+The 3 is not a numerical artifact, which is the first thing to suspect and the first thing to rule
+out. Perturbing a corner of one of its parallelograms by 1e-9, 1e-6, 1e-4 and 1e-3 -- the last of
+which is the resolution the URL itself carries -- leaves it at 3 every time.
+
+**What is not known is which two motions they are.** Grounding `B`, the barrel's near end, drops
+the measurement to 1, which looks like the barrel's swing about its single mount until you notice
+that `gripperFixture` beside it in the gallery has its barrel equally free on one pin and measures
+1. So the barrel is not a sufficient explanation, and no better one has been written down. Note
+also that grounding `B` is not a drawing a reader could make: `isCylinderInterior` counts the
+barrel's near end as interior to the sealed part, so it is not an attachment point.
+
+Three siblings in the gallery measure 1 and are worth comparing against before concluding
+anything: `gripperFixture` (railed, hand-placed coordinates), `pivotingGripperFixture` ("the same
+gripper, jaws pivoting instead of railed") and `parallelGripperFixture` ("the way a manufacturer
+draws one"). The difference is not exact symmetry: `slideGripperFixture` builds its parallelograms
+from shared constants and is exact, `gripperFixture`'s are hand-typed and only nearly so, but
+breaking the exact ones by hand does not move the number.
+
+One warning for anyone thinking of gating on the measurement. It is robust on this drawing and
+knife-edge on a near neighbor: the same gripper with `B` grounded flips between 1 and 2 on a 1e-9
+nudge to a parallelogram corner. Whether that shape is reachable by a reader is a separate
+question, but a refusal rule reading this number needs to answer it first.
+
 ### The mobility count reads a floating slot's live direction
 
 `constraintsOf` in `mobility.ts` writes a slide constraint from `joint.slotAngle`, never from
@@ -1021,8 +1052,10 @@ than two names for it.
 
 ### The compound path drops a welded *rod* leaf and keeps a welded *barrel* leaf
 
-`RealLink.getCompoundPathString` filters out `isSealedRodLeaf` -- a leaf recognized "through its
-pin: the joint that shares a SliderBlock with a sealed slider". A **barrel** leaf has no such
+`RealLink.getCompoundPathString` filters out `isSealedRodLeaf` -- a leaf recognized by holding a
+sealed `PrisJoint` among its own joints. (It used to be recognized "through its pin: the joint
+that shares a `SliderBlock` with a sealed slider"; Stage 1 made a slider one joint, so the leaf
+carries it directly and there is no twin to hop through.) A **barrel** leaf has no such
 joint (its two joints are the mount and the buried near end), so welding a bracket to a ram's
 *barrel* mount leaves the barrel in the compound's union: it is drawn once by the compound, in the
 bracket's color, and once by the cylinder skin over the top. With a random palette the two are
@@ -1039,6 +1072,59 @@ answer is *told* to the leaf instead: `RealLink.drawnByACylinderSkin`, set by
 one place it exists. It is cleared over the bars marked *last* time rather than over the drawing,
 because deleting a ram takes its bars out of `links` before the next resolve runs, and a bar that
 keeps the flag is a bar that stops drawing itself the moment it is welded into anything else.
+
+### The loop walk misses a chain that was already complete when it started
+
+`determineLoops` takes each ground joint, and for every neighbor of it calls `findGround` *from
+that neighbor* -- which records a loop only when it finds a ground among the neighbor's own
+neighbors. So a chain that is one edge long, ground to ground, is never written down: the walk
+starts past the end of it.
+
+That was invisible for as long as it was only true of pins. A bar pinned to the frame at both ends
+is frame, and a loop for it says nothing. It became reachable when a slider became one joint
+(Stage 1 of `joint-type-and-cylinder-plan.md`): an elliptical trammel is a bar with each end in a
+grounded **guide**, which before the fold was guide, pin, bar, pin, guide -- two non-ground joints
+in the middle for the walk to find -- and afterwards is one edge between two ground joints. With no
+loop, `solveRates` falls to `determineLooplessKinematics`, which models the drive as a rotation
+about the input joint: the joint on the 90-degree guide was handed a velocity with a large X
+component, which is the one thing its own constraint forbids, and the driven end was left at
+exactly zero.
+
+Positions were fine throughout, which is what made it quiet: the mechanism solved, animated and
+drew correctly, and only the graphs were wrong. `e2e/template-graphs.mjs` is the only thing in the
+suite that asks -- it differences every plotted series against the position it derives from -- and
+it runs in the nightly lane, not the gate. `src/tests/verification/slider-rate-agreement.spec.ts`
+asks the same question in a second rather than a two-minute browser run, which is where it belongs.
+The fix is one condition in `determineLoops`: record the chain when the neighbor is itself a
+remaining ground *and* the body between them can move -- a slot at either end, or a step taken
+along one.
+
+One harness trap comes with it: `ellipticalTrammelFixture(true, 1)` built through
+`buildMechanism` is `dead-position` with a single sample at *every* object scale tried, a quarter
+of `MODEL_SCALE` through four times it. The template payload encoded from that same fixture solves
+to 363 samples. Ask this mechanism anything through `TEMPLATE_LINKAGES`, not through the fixture.
+
+### `npm run template-payloads` rewrites the hand-authored templates too, not just the fenced ones
+
+`template-payloads.spec.ts` regenerates the block between its `<generated>` markers *and* runs
+`replaceHandAuthored` over the six templates that predate the generator, because color is assigned
+from structure and those six would otherwise be colored by whatever order somebody drew them in.
+It does that by decoding, repainting and re-encoding -- and its docstring used to promise the
+round trip came back byte-identical but for the six color fields, which was what made it safe to
+do to strings nothing else can regenerate.
+
+Stage 1 broke that promise quietly. The reader folds a three-object slider into one `PrisJoint`
+and the writer cannot emit the old spelling any more, so the first `npm run template-payloads`
+after the fold landed rewrote `Slider_Crank`'s **geometry** -- dropping its `YPCD` piston record
+and merging `C` with `D` -- and moved its rod's color as a consequence, since the fill rule reads
+structure. Nothing announced it. Two tests in `template-url.spec.ts` that pinned the old stored
+form went red, and that is the only reason it was caught.
+
+The normalization is wanted -- the dialog should hand out what the app writes today -- but a
+silent one is not. The docstring says so now, and
+`services/transcoding/url-slider-fold.spec.ts` is what proves the fold loses nothing: it builds
+the legacy trio and encodes it rather than pasting bytes that could drift from what the app used
+to produce.
 
 ### A ram's bore is a channel, and welding its barrel mount gave the channel to the bracket
 
