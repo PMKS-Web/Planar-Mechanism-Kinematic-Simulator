@@ -24,12 +24,13 @@ import { Cylinder, cylindersEnclosing } from './cylinder';
 /**
  * A structural edit, named as the state it is asking for rather than as a toggle.
  *
- * `ground` is here although it changes no topology: it is a per-joint edit the
- * menu, the panel and `MechanismService.toggleGround` all offer, and a cylinder
- * refuses it at the seal. `stepsBetween` never emits it, so a change of joint
- * type never asks about it.
+ * `ground` and `attach` are here although they change no topology of their own:
+ * both are per-joint edits the menu and the panel offer, and a cylinder refuses
+ * both at the seal. `stepsBetween` never emits either, so a change of joint type
+ * never asks about them.
  */
-export type JointOperation = 'weld' | 'unweld' | 'add-slider' | 'remove-slider' | 'ground';
+export type JointOperation =
+  'weld' | 'unweld' | 'add-slider' | 'remove-slider' | 'ground' | 'attach';
 
 /**
  * Why an edit will not happen, in the two lengths the app needs: `short` for a
@@ -78,7 +79,9 @@ export function refuseJointOperation(
         ? 'Only a joint can be welded.'
         : operation === 'ground'
           ? 'Only a joint can be grounded.'
-          : 'Only a joint can carry a slider.';
+          : operation === 'attach'
+            ? 'Only a joint can have something attached to it.'
+            : 'Only a joint can carry a slider.';
     return { code: 'joint.not-a-joint', short: 'not a joint', long };
   }
   switch (operation) {
@@ -92,7 +95,35 @@ export function refuseJointOperation(
       return refuseRemoveSlider(joint, context);
     case 'ground':
       return refuseGround(joint, context);
+    case 'attach':
+      return refuseAttach(joint, context);
   }
+}
+
+/**
+ * Why nothing new may be built onto this joint, or `undefined` when something
+ * may.
+ *
+ * A cylinder places the joint it slides on rather than solving for it: the seal
+ * stands where the barrel's length and the part's travel put it. A bar, a second
+ * cylinder or a load hung there would be a third body asking to be carried by a
+ * point nothing is free to move. The joints at the two ends are where a cylinder
+ * attaches to the drawing, and they take all three.
+ *
+ * Exported as well as reachable through `refuseJointOperation`, because the
+ * Attach rows ask about one thing and have no type change to walk.
+ */
+export function refuseAttach(
+  joint: Joint | undefined,
+  context: JointOperationContext
+): OperationRefusal | undefined {
+  if (!(joint instanceof RealJoint)) return undefined;
+  if (cylindersEnclosing(context.cylinders, joint).length === 0) return undefined;
+  return {
+    code: 'cylinder.attach-at-an-end-joint',
+    short: 'inside a cylinder',
+    long: 'This joint is inside a cylinder, which places it rather than solving for it, so a third body arriving here would have nothing holding it. Attach at one of the joints at its ends instead.',
+  };
 }
 
 /**
