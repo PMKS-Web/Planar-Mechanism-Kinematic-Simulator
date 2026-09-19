@@ -1445,3 +1445,40 @@ press it, by poking the control directly, which is what found it.
 Worth a `grep '_formControl='` over `edit-panel.component.html` against the control list in the
 form when a control's behavior looks unreachable. A form control nobody binds is not harmless: the
 audit will find it, and so will anything else that drives the panel through its form.
+
+### An unsolvable rebuild inside a posed edit takes the machine's anchor with it
+
+Park a machine away from its start, right-click a **grounded** pin and choose Joint Type →
+Prismatic: the pose you were looking at quietly becomes the start. On `Cylinder_Boom`'s grounded
+end joint `G`, a third of the way round the cycle, the anchor goes from 424.16 to 49.81 — and a
+plain `4-Bar`'s grounded pin `D` does exactly the same thing, so it is nothing to do with
+cylinders. `e2e/posed-edit-audit.mjs` says it as `anchor moved from 424.16 to 49.81 without saying
+so`; it only ever reaches the cylinder's `G` because that table names a grounded pin and the
+four-bar's does not.
+
+The cause is the rebuild in the *middle* of the edit. `JointTypeService.set` runs the change as
+`add-slider` and then puts the ground back (`services/joint-type.service.ts:129`), and between the
+two the joint is an ungrounded slider: the machine counts 2 DOF and `isMechanismValid()` is false.
+`refreshAnchors` (`services/mechanism.service.ts:6256`) collects only the machines it can solve
+into `alive` and then deletes every anchor whose key is missing from it, so the staged machine's
+anchor is dropped for being *momentarily* unsolvable. The next rebuild is valid again and has no
+anchor, so one is taken fresh from `frames.joints[0]` — which, while the machine is staged, is the
+pose under the reader's hand. `carriedAnchorFor` cannot rescue it: that covers a machine arriving
+under a **new** key, and here the map is simply empty. `settleToAnchorNow` then finds the new
+anchor sitting on sample 0, returns `{ reanchored: true }`, and there is nothing left to narrate.
+
+Held across that one invalid rebuild, both drawings do what the plan says: the four-bar re-anchors
+exactly (its start keeps `B` where it was, the display stays where the reader was), and the
+cylinder honestly reports `lost: 'M1'`, because a barrel travel of 424.16 along `G`–`N` no longer
+exists once `G` itself slides.
+
+The second half has a fault of its own, and it is the one the audit's wording is about.
+`capturingPose` reads only `.reanchored` off the settle (`services/mechanism.service.ts:6589`) and
+throws the `lost` half away, so a menu or panel edit that really does move the start says nothing
+at all. Only the canvas's `closePosedEdit` (`component/new-grid/new-grid.component.ts:3706`) calls
+`markStartMoved` and raises `anchor.unreachable` — which is why a drag narrates a moved start and a
+right-click does not.
+
+Both predate the cylinder work: a detached worktree at `477f2f7c`, the parent of
+`feature/cylinder-sealed-slide`, reproduces the same two numbers. The audit row is left failing on
+purpose, so the nightly goes on saying it.
