@@ -1326,3 +1326,34 @@ grounded cylinder accepted a barrel below the floor instead of refusing.
 reading built on it. A *layout* has already put the barrel above its floor and wants the
 arithmetic; a *reader* (the panel, the solver) wants the verdict. When they are both usable the two
 agree to the last bit.
+
+### The rod's path covers the cylinder's black square exactly, so the square takes no clicks
+
+`rodBodyPath` starts at `-headHalf` and is drawn at `CYLINDER.rodHalf`, which is
+`MARK.blockAcrossHalf` -- the same half-height `cylinderBlockPath` uses. The rod is therefore
+*exactly* the square's own rectangle plus everything beyond it, drawn after it so the band inside
+the bore reads darker through its 0.7 alpha. Every pointer event aimed at the square landed on the
+rod, which nobody noticed while both selected the same body.
+
+When the square became joint S (Stage 2c) that mattered: the handlers on the painted block were
+dead code. The square's hitbox is a separate transparent path drawn *after* the rod --
+`.cylinder-seal-hit`, carrying `#joint_<id>` so the canvas's own id convention still finds it --
+and the painted block takes `pointer-events="none"`.
+
+### A decoded joint always has an explicit name, even when nobody named it
+
+`Joint.name` falls back to the id when `_name` is empty, and the encoder writes the *getter's*
+answer -- so every joint in a URL carries a name, and `buildJoint` assigns it unconditionally.
+After a decode nothing is unnamed. That is invisible until something renames an id underneath it:
+re-lettering a cylinder's seal (decision S9) left the joint reading as its old interior name `A2`
+while its id was `E`. The reader clears a name that is only the old id back to empty, so the new
+letter is what a reader sees; a name somebody actually chose is left alone.
+
+### Three shipped templates carry an interior-named seal, and are not regenerated from anything
+
+`Excavator_Bucket`, `Hood_Hinge` and `Aircraft_Landing_Gear` were drawn in the app and pasted into
+`template-linkages.ts` as the URLs it wrote -- there is no fixture behind them, so
+`npm run template-payloads` does not touch them. They are the payloads decision S9's re-lettering
+actually fires on, which is why the only thing Stage 2c changed in `template-baseline.ts` is one
+sample id in each of those three. The `joints` and `links` snapshots above them are untouched,
+because they pin what the *stored* URL says and the codec did not change.

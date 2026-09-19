@@ -80,11 +80,11 @@ describe('a bracket welded to a cylinder mount', () => {
     const { service, compound, ram } = boomWithABracket();
 
     // A compound is a link with its own name. The ram's two bars are named as
-    // what they are, from the ram's mounts -- never as "Link AA1", which names
-    // a joint a reader cannot even click.
+    // what they are, each after its own two visible joints (decision S10) --
+    // never as "Link AA1", which names a joint a reader cannot even click.
     expect(service.bodyLabel(compound)).toBe(`Link ${compound.id}`);
-    expect(service.bodyLabel(ram.barrel)).toBe('Barrel AB');
-    expect(service.bodyLabel(ram.rod)).toBe('Rod AB');
+    expect(service.bodyLabel(ram.barrel)).toBe('Barrel AC');
+    expect(service.bodyLabel(ram.rod)).toBe('Rod CB');
   });
 
   it('does not light up when the ram beside it is chosen, or the other way round', () => {

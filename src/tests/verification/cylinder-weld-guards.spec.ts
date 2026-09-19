@@ -298,7 +298,7 @@ describe('and the inside of a cylinder is still sealed', () => {
       // being the slider — a weld had to land on its coincident pin — and with
       // that pin gone it is refused for what it actually is: a joint inside a
       // sealed part.
-      expect(refusal!.short, name).toBe('part is sealed');
+      expect(refusal!.short, name).toBe('inside a cylinder');
     }
   });
 
@@ -348,7 +348,7 @@ describe('and the inside of a cylinder is still sealed', () => {
 
   it('refuses to unweld the pin, which is what makes the part one thing', () => {
     const pin = ram().seal;
-    expect(grid.weldRefusal(pin)?.short).toBe('part is sealed');
+    expect(grid.weldRefusal(pin)?.short).toBe('inside a cylinder');
 
     mechanism.unWeldJoint(pin);
 

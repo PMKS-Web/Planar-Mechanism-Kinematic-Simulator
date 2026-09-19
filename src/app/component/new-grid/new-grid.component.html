@@ -766,59 +766,80 @@
         </g>
       }
     }
-    <!-- The atomic cylinder: a sealed assembly drawn as the part, always. A
-         click anywhere on its geometry — barrel, block, rod or marker —
-         selects the BODY (one of three selectables, beside the two mounts);
-         the interior pin and the buried barrel joint have no hitboxes at all. -->
+    <!-- The atomic cylinder, drawn as the part, always. Three selectables on the
+         skin and two more at the ends: the barrel path selects the barrel, the
+         rod path the rod, and the black block between them selects joint S —
+         the sliding seal, whose marker and hitbox the block is (decision S12).
+         The buried barrel joint N has no hitbox at all. -->
     @for (cyl of cylinderList; track cyl.id) {
       <g class="cylinder-mark" [attr.transform]="sliderMarks.frame(cyl)">
-        <!-- A ram is a body like any other: in an analysis mode, one the mode
-             cannot analyze is scenery and goes gray with the rest of its
+        <!-- A cylinder is a body like any other: in an analysis mode, one the
+             mode cannot analyze is scenery and goes gray with the rest of its
              machine. Its skin is painted from its own fill rather than through
              the link classes, so it was the one part that stayed in color. -->
         <!-- The same state classes a bar wears (selected, pointed, hovered,
-             inert, locked), so a cylinder that has joined a selection is
-             outlined like the bars beside it. The stroke below is a
+             inert, locked), read off each member rather than off the part, so a
+             picked barrel and a picked rod look different. The stroke below is a
              presentation attribute, and the class's stroke beats it. -->
         <path
-          [class]="'cylinder-barrel ' + mechanismSrv.getLinkCSSClass(cyl.body)"
-          [attr.cursor]="mechanismSrv.isLinkLockedVisual(cyl.body) ? 'not-allowed' : 'move'"
-          (pointerover)="cyl.body.showHighlight = true"
-          (pointerout)="cyl.body.showHighlight = false"
-          (pointerdown)="setLastLeftClick(cyl.body, $event)"
-          (contextmenu)="setLastRightClick(cyl.body, $event)"
+          [class]="'cylinder-barrel ' + mechanismSrv.getLinkCSSClass(cyl.barrelLink)"
+          [attr.cursor]="mechanismSrv.isLinkLockedVisual(cyl.barrelLink) ? 'not-allowed' : 'move'"
+          (pointerover)="cyl.barrelLink.showHighlight = true"
+          (pointerout)="cyl.barrelLink.showHighlight = false"
+          (pointerdown)="setLastLeftClick(cyl.barrelLink, $event)"
+          (contextmenu)="setLastRightClick(cyl.barrelLink, $event)"
           [attr.d]="cyl.barrel"
           [attr.fill]="cyl.barrelFill"
           fill-opacity="0.7"
           [attr.stroke]="cyl.barrelFill"
           [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
         />
-        <!-- No stop notches and no dotted motion line. The bore is the head's
-             own length, so the head bottoms out flush with the barrel's ends
-             and the silhouette says where the travel ends by itself. -->
+        <!-- The seal's own square. It stays #000 in every state — the accent
+             outline below is what says it is picked, the way the orphan mark
+             works (§2.8 rule 3) — and it takes no pointer events here, because
+             the rod is drawn over it at the alpha that makes the band inside
+             the bore read darker. Its hitbox is below, above the rod.
+             No stop notches and no dotted motion line: the bore is the head's
+             own length, so the silhouette says where the travel ends. -->
         <path
-          [class.link-inert]="mechanismSrv.isPartInert(cyl.body)"
-          [attr.cursor]="mechanismSrv.isLinkLockedVisual(cyl.body) ? 'not-allowed' : 'move'"
-          (pointerdown)="setLastLeftClick(cyl.body, $event)"
-          (contextmenu)="setLastRightClick(cyl.body, $event)"
+          class="cylinder-seal"
+          pointer-events="none"
+          [class.link-inert]="mechanismSrv.isPartInert(cyl.barrelLink)"
           [attr.d]="cyl.block"
           fill="#000000"
-          [attr.filter]="mechanismSrv.isPartInert(cyl.body) ? null : 'url(#elevation-1)'"
+          [attr.filter]="mechanismSrv.isPartInert(cyl.barrelLink) ? null : 'url(#elevation-1)'"
         />
         <path
-          [class]="'cylinder-rod ' + mechanismSrv.getLinkCSSClass(cyl.body)"
-          [attr.cursor]="mechanismSrv.isLinkLockedVisual(cyl.body) ? 'not-allowed' : 'move'"
-          (pointerover)="cyl.body.showHighlight = true"
-          (pointerout)="cyl.body.showHighlight = false"
-          (pointerdown)="setLastLeftClick(cyl.body, $event)"
-          (contextmenu)="setLastRightClick(cyl.body, $event)"
+          [class]="'cylinder-rod ' + mechanismSrv.getLinkCSSClass(cyl.rodLink)"
+          [attr.cursor]="mechanismSrv.isLinkLockedVisual(cyl.rodLink) ? 'not-allowed' : 'move'"
+          (pointerover)="cyl.rodLink.showHighlight = true"
+          (pointerout)="cyl.rodLink.showHighlight = false"
+          (pointerdown)="setLastLeftClick(cyl.rodLink, $event)"
+          (contextmenu)="setLastRightClick(cyl.rodLink, $event)"
           [attr.d]="cyl.rod"
           [attr.fill]="cyl.rodFill"
           fill-opacity="0.7"
           [attr.stroke]="cyl.rodFill"
           [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
         />
-        @if (cyl.driven && !mechanismSrv.isPartInert(cyl.body)) {
+        <!-- Joint S's hitbox, over the square it is drawn as: grabbing it
+             starts a drag on the seal, exactly as grabbing an ordinary slider's
+             block starts a drag on that slider (§4.4). Above the rod rather
+             than on the square itself, because the rod's own path covers the
+             square exactly — the band inside the bore is the rod drawn over it
+             — and the piece drawn last is the piece a click reaches. -->
+        <path
+          [attr.id]="'joint_' + cyl.seal.id"
+          class="cylinder-seal-hit"
+          [attr.cursor]="mechanismSrv.isJointLockedVisual(cyl.seal) ? 'not-allowed' : 'move'"
+          (pointerover)="cyl.seal.showHighlight = true"
+          (pointerout)="cyl.seal.showHighlight = false"
+          (pointerdown)="setLastLeftClick(cyl.seal, $event)"
+          (contextmenu)="setLastRightClick(cyl.seal, $event)"
+          [attr.d]="cyl.block"
+          fill="transparent"
+        />
+        @if (cyl.driven && !mechanismSrv.isPartInert(cyl.barrelLink)) {
           <g pointer-events="none">
             <!-- The heavier arrow is the way the block sets off, same as the
                  unskinned driven mark (§4.2b): the skin changes the drawing,
@@ -836,17 +857,36 @@
             }
           </g>
         }
-        <!-- Selecting the body highlights the WHOLE part: one accent outline
-             around the fused barrel + block + rod silhouette, in exactly the
-             stroke a selected link wears — not a per-piece treatment. -->
-        @if (isBodySelected(cyl) || isBodyHovered(cyl)) {
+        <!-- What a click picked, outlined above the whole skin so the edge is
+             not buried under the piece drawn next. One outline per member and
+             one for the seal, each on its own geometry and each in exactly the
+             stroke a selected link wears: a click selects one of the three
+             (decision S12), and an outline round the fused silhouette would say
+             the reader had picked the whole part. A selection that closes over
+             the cylinder lights all three, as bars in a selection do. -->
+        @if (cylinderMemberOutline(cyl, 'barrel'); as barrelState) {
           <path
-            class="cylinder-selected"
-            [class.link-selected]="isBodySelected(cyl)"
-            [class.link-pointed]="!isBodySelected(cyl) && isBodyPointedAt(cyl)"
-            [class.link-hovered]="!isBodySelected(cyl) && !isBodyPointedAt(cyl)"
+            [class]="'cylinder-selected cylinder-barrel-selected ' + barrelState"
             pointer-events="none"
-            [attr.d]="cylinderSilhouette(cyl)"
+            [attr.d]="cyl.barrel"
+            fill="none"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+          />
+        }
+        @if (cylinderMemberOutline(cyl, 'rod'); as rodState) {
+          <path
+            [class]="'cylinder-selected cylinder-rod-selected ' + rodState"
+            pointer-events="none"
+            [attr.d]="cyl.rod"
+            fill="none"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+          />
+        }
+        @if (cylinderSealOutline(cyl); as sealState) {
+          <path
+            [class]="'cylinder-selected cylinder-seal-selected ' + sealState"
+            pointer-events="none"
+            [attr.d]="cyl.block"
             fill="none"
             [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
           />
@@ -1018,10 +1058,12 @@
       ></circle>
     }
     @for (joint of mechanismSrv.getJoints(); track joint) {
-      <!-- A sealed cylinder's interior joints — buried barrel end, pin,
-           slider — are not selectable at all: the skin's own geometry selects
-           the body, and only the two mounts remain individual selectables. -->
-      @if (!isInsideCylinder(joint)) {
+      <!-- The two joints a cylinder draws for itself are skipped here. The
+           buried barrel end is drawn by nothing; the seal is drawn by the skin,
+           whose black block is its marker and its hitbox — a second marker
+           painted here would be a weld cross on top of the square, and a second
+           hitbox on the same point. -->
+      @if (!drawnByCylinderSkin(joint)) {
         <svg
           [attr.x]="joint.x"
           [attr.y]="joint.y"
@@ -1942,8 +1984,8 @@
     }
     @for (joint of mechanismSrv.getJoints(); track joint) {
       <svg
-        [attr.x]="joint.x - settings.objectScale * 0.3"
-        [attr.y]="-1 * joint.y - settings.objectScale * 0.5"
+        [attr.x]="jointTagAnchor(joint).x"
+        [attr.y]="jointTagAnchor(joint).y"
         [attr.height]="10"
         [attr.width]="10"
         style="overflow: visible; text-anchor: middle"
@@ -1961,7 +2003,7 @@
           </text>
         } @else if (
           !isMergingAway(joint) &&
-          !isInsideCylinder(joint) &&
+          !isCylinderInner(joint) &&
           (settings.isShowID.value ||
             joint.showHighlight ||
             (this.activeObjService.selectedJoint == joint &&
@@ -1969,7 +2011,9 @@
         ) {
           <!-- A slider wears its own letter. It was the one joint with none,
                because the coincident pin beside it carried the name a reader
-               saw; that pin is this joint now. -->
+               saw; that pin is this joint now — and a cylinder's seal is such a
+               slider, so it wears one too (decision S11). Only the buried
+               barrel end is still nameless. -->
           <text
             [attr.stroke-width]="settings.objectScale * 0.035"
             [style.font-size.px]="tagFontSize"

@@ -3,6 +3,7 @@ import { Force } from '../../model/force';
 import { Link, RealLink } from '../../model/link';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../../model/joint';
 import { Coord } from '../../model/coord';
+import { isCylinderInner } from '../../model/cylinder';
 import { roundNumber } from '../../model/utils';
 import { MechanismService } from '../../services/mechanism.service';
 import { MODEL_SCALE } from '../../model/render-scale';
@@ -315,12 +316,14 @@ export class LinkageTableComponent implements OnInit {
   }
 
   getJoints() {
-    // A sealed cylinder's interior joints (pin, slider, buried barrel end)
-    // are not editable anywhere, so the table does not list them either —
-    // editing one by number would bend a part that cannot bend.
+    // Every joint the canvas draws a marker for. A cylinder's buried barrel end
+    // is the one that is left out: nothing shows it and editing it by number
+    // would bend a part that cannot bend. Its seal is listed like any other
+    // slider — typing an X or a Y there goes through `dragJoint`, which slides
+    // the seal along its own axis (decision S7).
     return this.mechanismService.joints.filter((joint) => {
       const sealed = this.mechanismService.cylinderAt(joint);
-      return !sealed || joint.id === sealed.mountA.id || joint.id === sealed.mountB.id;
+      return !sealed || !isCylinderInner(sealed, joint);
     });
   }
 

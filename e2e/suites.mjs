@@ -49,6 +49,7 @@ export const SUITES = [
   { name: 'cylinder-attach', seconds: 11, lanes: BOTH },
   { name: 'cylinder-drag', seconds: 12, lanes: BOTH },
   { name: 'cylinder-end-on-joint', seconds: 4, lanes: BOTH },
+  { name: 'cylinder-members', seconds: 14, lanes: BOTH },
   { name: 'cylinder-mount', seconds: 36, lanes: BOTH },
   { name: 'cylinder-mount-render', seconds: 17, lanes: BOTH },
   { name: 'cylinder-panel', seconds: 16, lanes: BOTH },

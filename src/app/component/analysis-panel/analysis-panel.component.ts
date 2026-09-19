@@ -13,7 +13,7 @@ import { ForceAnalysisMode, ForceReactionIndex } from 'src/app/model/mechanism/f
 import { Mechanism } from 'src/app/model/mechanism/mechanism';
 import { PrisJoint, RealJoint } from 'src/app/model/joint';
 import { RealLink } from 'src/app/model/link';
-import { Cylinder, cylinderJoints, isInsideCylinder } from 'src/app/model/cylinder';
+import { Cylinder, cylinderJoints, isCylinderInner } from 'src/app/model/cylinder';
 import { ActiveObjService, ActiveObjType } from 'src/app/services/active-obj.service';
 import { Force } from 'src/app/model/force';
 import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -605,12 +605,12 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
     const rows = this.cachedRows('link', this.activeSrv.selectedLink?.id ?? '');
     const sealed = this.selectedCylinder;
     if (!sealed) return rows;
-    // A cylinder's interior joints are not attachment points. The canvas gives
-    // them no hitbox, the Edit panel does not list them, and a pin reaction at
-    // the buried barrel end or the slider inside the bore is not a force
-    // anything in the world applies -- it is internal to a part the user is
-    // being shown as one body.
-    return rows.filter((row) => !isInsideCylinder(sealed, this.jointById(row.jointId)!));
+    // The buried barrel end alone (decision S11). It has no hitbox and no row
+    // anywhere, and a pin reaction there is internal to a body the reader is
+    // shown as one piece. The seal is not in that class any more: it is a
+    // square a reader can point at, and the force between the barrel and the
+    // rod is a number a cylinder is worth asking about.
+    return rows.filter((row) => !isCylinderInner(sealed, this.jointById(row.jointId)!));
   }
 
   private jointById(id: string) {
@@ -665,15 +665,14 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
   }
 
   /**
-   * The driven joint a selected body carries, for the bodies whose drive the
-   * reader cannot select on its own.
+   * The driven joint a selected body carries, offered against the body too.
    *
-   * A ram is driven by a joint buried inside the part: no marker, no hitbox,
-   * no row in the Edit panel. The graph of the effort that drive has to supply
-   * lived on the joint panel, so for a ram it lived on a panel nobody could
-   * open -- the one input in the app whose own force could not be read. Every
-   * other input sits on a joint a reader can click, and the joint panel
-   * already carries it there.
+   * A cylinder is driven at its seal, which used to be buried: no marker, no
+   * hitbox, no row in the Edit panel, so the graph of the effort that drive has
+   * to supply lived on a panel nobody could open. The seal is selectable now
+   * (decision S11) and carries that graph on its own joint panel like every
+   * other input -- and it stays here as well, because the reader who has picked
+   * the cylinder is asking about the cylinder.
    */
   inputEffortJoint(): RealJoint | undefined {
     const sealed = this.selectedCylinder;

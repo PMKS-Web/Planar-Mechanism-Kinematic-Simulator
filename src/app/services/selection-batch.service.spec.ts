@@ -254,6 +254,18 @@ describe('SelectionBatchService duplication', () => {
     expect(h.service.joints).toHaveLength(8);
     expect(h.service.links).toHaveLength(4);
     expect(h.saveCount() - beforeSaves).toBe(1);
+
+    // And the copy is named the way a freshly drawn one is (decision S9): the
+    // two ends and the seal take letters, the buried barrel end an interior
+    // name hung off its own mount. Every joint used to take a letter here, so
+    // a duplicated cylinder came out with a hidden joint wearing one no marker
+    // on the grid did -- and pushed every later joint down the alphabet.
+    const lettered = /^[A-Za-z]+$/;
+    expect(copy.mountA.id).toMatch(lettered);
+    expect(copy.mountB.id).toMatch(lettered);
+    expect(copy.seal.id).toMatch(lettered);
+    expect(copy.inner.id).toBe(`${copy.mountA.id}1`);
+    expect(h.service.determineNextLetter()).toBe('G');
   });
 });
 

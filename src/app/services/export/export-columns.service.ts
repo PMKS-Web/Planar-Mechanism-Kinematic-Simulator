@@ -157,8 +157,9 @@ export class ExportColumnsService {
    */
   private forceGroups(parts: ExportPart[]): ExportColumnGroup[] {
     const mode = this.settings.forceAnalysisMode.value;
-    // A reaction at a joint buried inside a sealed cylinder is a force between
-    // two halves of one part, named after a pin the drawing never shows.
+    // A reaction at the barrel's buried inner end is a force named after a
+    // joint the drawing never shows. The seal is shown, so its own reaction --
+    // the force between the barrel and the rod -- keeps its column.
     const hidden = this.catalog.hiddenJointIds();
     // Which reactions a row has already claimed. Joints come before bodies in
     // the list, so a pin owns its own force and a body offers only what is left.
@@ -213,9 +214,9 @@ export class ExportColumnsService {
             );
 
       // The effort whatever drives this part has to supply. A joint that is an
-      // input carries its own; a cylinder is driven from a joint buried inside
-      // it, which has no row of its own anywhere in the app -- so the ram's row
-      // is the only place that number can be asked for.
+      // input carries its own; a cylinder is driven at its seal, and the body's
+      // row offers that number as well, for the reader who chose the cylinder
+      // rather than the joint inside it.
       const driven =
         part.kind === 'joint'
           ? // The joint itself, or the slot it rides in: a slot is never on the

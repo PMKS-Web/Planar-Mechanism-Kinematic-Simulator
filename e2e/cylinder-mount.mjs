@@ -284,12 +284,16 @@ check(
   JSON.stringify(driven)
 );
 check(
-  'while the ram’s interior joints are not on the grid to be clicked at all',
+  // The buried barrel end alone. The seal is the square a reader selects now
+  // (Stage 2c, decision S11), so what it has to be is *present* -- once.
+  'while the buried barrel end is not on the grid to be clicked at all, and the seal is',
   await page.evaluate(
-    (inside) => inside.every((id) => !document.querySelector(`#joint_${id}`)),
-    [ids.pin, ids.barrelNear, ids.slider]
+    (where) =>
+      !document.querySelector(`#joint_${where.barrelNear}`) &&
+      document.querySelectorAll(`#joint_${where.pin}`).length === 1,
+    ids
   ),
-  JSON.stringify([ids.pin, ids.barrelNear, ids.slider])
+  JSON.stringify({ buried: ids.barrelNear, seal: ids.pin })
 );
 
 // A block, added and taken away again through the card's Joint Type choice.
@@ -412,12 +416,19 @@ const slotDrop = await page.evaluate((where) => {
     took,
     floating: !!slider?.isFloating,
     carrier: slider?.carrier?.id ?? null,
+    // The bar the drop was aimed at, by identity rather than by letter: which
+    // letters a drawing has spent depends on how many joints the parts before
+    // it took, and a cylinder's seal takes one now (decision S9).
+    aimedAt: bar.id,
     rams: m.sealedStructures().length,
   };
 }, ids);
 check(
   'and dropping one on an unrelated body makes it float on that body instead',
-  slotDrop.took && slotDrop.floating && slotDrop.carrier === 'DE' && slotDrop.rams === 1,
+  slotDrop.took &&
+    slotDrop.floating &&
+    slotDrop.carrier === slotDrop.aimedAt &&
+    slotDrop.rams === 1,
   JSON.stringify(slotDrop)
 );
 

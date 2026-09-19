@@ -128,11 +128,26 @@ export interface Channel {
 /** One sealed cylinder, drawn as the part rather than as a block in a channel. */
 export interface CylinderMark {
   id: string;
-  pin: Joint;
+  /**
+   * S — the sliding seal, which the black block draws.
+   *
+   * It was `pin`, from the years when the seal and the pin the rod hangs on
+   * were two coincident joints. It is the joint a reader selects now: the block
+   * is its marker and its hitbox, exactly as an ordinary slider's block is.
+   */
+  seal: PrisJoint;
   /** The resolved assembly, for selection, menus and drags. */
   cylinder: Cylinder;
-  /** The link a click on any part of the skin selects — the body. */
-  body: Link;
+  /**
+   * The two member bars, each of which a click on its own skin selects
+   * (decision S12).
+   *
+   * One `body` before: both halves of the part selected the barrel, because the
+   * panel behind them was the one Edit Cylinder panel. Each member has its own
+   * panel now, so each has to be reachable.
+   */
+  barrelLink: Link;
+  rodLink: RealLink;
   x: number;
   y: number;
   rotation: number;
@@ -140,9 +155,8 @@ export interface CylinderMark {
   barrelId: string;
   rodId: string;
   /**
-   * The barrel's inner joint, buried where rod and barrel overlap. A sealed
-   * cylinder never reveals, so this joint has no hitbox at all; only the two
-   * outer mounts stay visible.
+   * N — the barrel's inner joint, buried where rod and barrel overlap. Nothing
+   * draws it: no hitbox, no letter, no hover.
    */
   hiddenJointId: string;
   barrel: string;
@@ -385,11 +399,12 @@ export class SliderMarkService {
       (driveForward(seal) ? 1 : -1) * (Math.cos(seal.slotAngle - angle) >= 0 ? 1 : -1) > 0 ? 1 : -1;
     return {
       id: seal.id,
-      pin: seal,
+      seal,
       cylinder: found,
-      // A click anywhere on the skin selects the body; the barrel link is the
-      // canonical handle for it.
-      body: found.barrel,
+      // A click on the barrel selects the barrel and a click on the rod selects
+      // the rod; the block between them selects the seal.
+      barrelLink: found.barrel,
+      rodLink: found.rod,
       x: seal.x,
       y: seal.y,
       // +x runs toward the rod, so the barrel is the negative side and the
