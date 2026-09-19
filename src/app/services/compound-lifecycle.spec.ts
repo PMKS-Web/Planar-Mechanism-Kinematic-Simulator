@@ -246,10 +246,10 @@ describe('the Delete row on a welded body', () => {
       'it goes'
     ).toBe(false);
     expect(predicted, 'and the row said so').toContain(farMount);
-    // And says nothing about the three joints inside the ram, which are never
-    // drawn and would be a number the reader cannot check.
-    for (const hidden of [h.ram.inner.id, h.ram.seal.id, h.ram.seal.id]) {
-      expect(predicted).not.toContain(hidden);
-    }
+    // And says nothing about the one joint the cylinder derives, which is never
+    // drawn and would be a number the reader cannot check (D14). Its seal is
+    // the square on the skin and is counted: it goes, and it is visibly there.
+    expect(predicted).not.toContain(h.ram.inner.id);
+    expect(predicted).toContain(h.ram.seal.id);
   });
 });

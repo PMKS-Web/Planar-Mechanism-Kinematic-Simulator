@@ -4,6 +4,7 @@ import { cylindersIn } from './cylinder';
 import {
   JointOperationContext,
   refuseGround,
+  refuseAttach,
   refuseJointOperation,
 } from './joint-operation-permission';
 
@@ -227,6 +228,30 @@ describe('whether a joint may be grounded', () => {
     const { barrelFar, rodFar, elbow, context } = drawing();
     for (const joint of [barrelFar, rodFar, elbow]) {
       expect(refuseGround(joint, context), joint.id).toBeUndefined();
+    }
+  });
+});
+
+describe('whether a joint may have something attached to it', () => {
+  it('sends a new body to the ends of the part, in the same four words', () => {
+    // The Attach rows on the seal's card (D9). A third body there would be
+    // carried by a joint the cylinder places rather than solves for, so there
+    // is nothing for the solver to honor it with.
+    const { pin, barrelNear, context } = drawing();
+    for (const inside of [pin, barrelNear]) {
+      const refused = refuseAttach(inside, context);
+      expect(refused?.short, inside.id).toBe('inside a cylinder');
+      expect(refused?.code, inside.id).toBe('cylinder.attach-at-an-end-joint');
+      expect(refuseJointOperation(inside, 'attach', context)?.code).toBe(
+        'cylinder.attach-at-an-end-joint'
+      );
+    }
+  });
+
+  it('says nothing about the joints at those ends, or about a plain joint', () => {
+    const { barrelFar, rodFar, elbow, context } = drawing();
+    for (const joint of [barrelFar, rodFar, elbow]) {
+      expect(refuseAttach(joint, context), joint.id).toBeUndefined();
     }
   });
 });

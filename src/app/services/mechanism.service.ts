@@ -2267,18 +2267,41 @@ export class MechanismService {
   }
 
   /**
+   * The joints a reader can see: all of them but the one end a cylinder
+   * derives.
+   *
+   * Every number the app shows about "how many joints" is checked against the
+   * screen, so it has to count what is on the screen (D14). A cylinder's inner
+   * end has no marker, no letter and no hitbox — it is where the barrel's length
+   * puts it, for the solver alone — so a count including it is a count the
+   * reader can only read as wrong. Its seal is a different case and is counted:
+   * the square is drawn, lettered and selectable (decision S11).
+   *
+   * Defaults to the whole drawing; a partition's `ownJoints` is the other
+   * caller.
+   */
+  visibleJoints(joints: readonly Joint[] = this.joints): RealJoint[] {
+    const derived = new Set(this.sealedStructures().map((cylinder) => cylinder.inner.id));
+    return joints.filter(
+      (joint): joint is RealJoint => joint instanceof RealJoint && !derived.has(joint.id)
+    );
+  }
+
+  /**
    * How much of the drawing is held, for the counts beside Lock All and
    * Unlock All.
    *
    * A "part" here is a thing that carries a Lock mark -- every joint and every
    * force -- because that is what Lock All actually sets. Counting links
    * instead would let the menu say "3 locked" while five marks were down.
+   *
+   * Marks the reader can see, though: Lock All still sets the flag on a
+   * cylinder's derived inner end, because unlocking one joint has to free
+   * exactly that joint and no bookkeeping may disagree about the rest. It is
+   * simply not counted, the way it is not drawn.
    */
   lockCounts(): { locked: number; open: number; total: number } {
-    const marks: { locked: boolean }[] = [
-      ...this.joints.filter((joint): joint is RealJoint => joint instanceof RealJoint),
-      ...this.forces,
-    ];
+    const marks: { locked: boolean }[] = [...this.visibleJoints(), ...this.forces];
     const locked = marks.filter((mark) => mark.locked).length;
     return { locked, open: marks.length - locked, total: marks.length };
   }
@@ -2413,16 +2436,12 @@ export class MechanismService {
             (candidate instanceof RealLink &&
               candidate.subset.some((leaf) => !doomed.has(leaf.id) && leaf.joints.includes(joint))))
       );
-    // The ram's own interior joints are never drawn, named or counted: saying
-    // "and 2 joints" about parts of a cylinder nobody can see would be a number
-    // the reader cannot check against the screen.
-    const inside = new Set(
-      this.cylindersOfLink(link).flatMap((sealed) => [sealed.inner.id, sealed.seal.id])
-    );
-    return this.joints.filter(
-      (joint): joint is RealJoint =>
-        joint instanceof RealJoint && !inside.has(joint.id) && !held(joint)
-    );
+    // Only what the reader can see (D14): saying "and 2 joints" about points
+    // nobody is shown would be a number they cannot check against the screen.
+    // That is one joint per cylinder now, its derived inner end -- the seal is
+    // the square on the skin, so a click that takes it is a click that takes
+    // something visible away.
+    return this.visibleJoints().filter((joint) => !held(joint));
   }
 
   /**
