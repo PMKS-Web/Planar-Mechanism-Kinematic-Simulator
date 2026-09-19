@@ -591,6 +591,32 @@ member reports the assembly permanently at rest.
 form and its hand-differentiated derivative; the same spec shows that unwelding the rod leaves two
 freedoms, which is why the weld is what makes the arrangement a mechanism at all.
 
+### A grounded Slide's rider is placed by the assembly step, never by a dyad
+
+A grounded Slide holds its rider square to the world, so every joint of the rider moves by the one
+vector the guide allows, and `orderSlideAssembly` moves them together. Every generic primitive
+turns the body it places to reach its answer -- two circles meet where the dyad folds, a circle
+meets a slot where the link tilts -- so `detJointOrder` and `orderRiderOnMovingSlot` leave a
+rider's joints alone (`heldSquare`, which asks `slideAssemblies` rather than `rotates`, for the
+reason `slide-assembly.ts` gives). Before that, a bar welded to its block on a guide with its far
+end riding a slot cut into the crank was "solved" by placing the far end from the block's *seeded*
+position -- a grounded slider is known before the walk starts and placed only by its own step --
+and the block from the far end: self-consistent every sample, the block never slid, and the bar
+swung through twenty-five degrees at a weld. Nothing refused it, because the count is right: one
+freedom, and the walk had simply drawn a different mechanism with the same count.
+
+`slideAssemblySource` has a fourth kind for that shape, `'guided'`: slide until the member lands on
+the placed slot, `t = ((P − M₀) × v̂) / (û × v̂)`, one root or none, with the slot line read from the
+carrier's pose each sample through `resolveSlotLine` like any rider's. It is the Scotch yoke's
+`'slot'` source with the roles exchanged. `bar-on-a-slide-in-a-crank-slot.spec.ts` is the drawing.
+
+Two things about that spec. The walk never corrects the drawn pose, and a rock passes back through
+it: a hand-drawn far end sits a tenth of a model unit off its slot at frame 0 and at every return
+to the start, and a difference quotient straddling those frames reads the jump as velocity, so they
+are exempt. And the drawing rocks rather than turning through -- as the slot leans toward the
+guide, the far end has to run further along it to stay at its height and reaches the end of the
+channel first, which `ridersAreInTheirSlots` turns away like any other limit.
+
 ### A URL can say a mount is welded, and the decoder drops the flag
 
 Welding a cylinder's mount is refused by the app today, and the natural way to test what the
