@@ -91,13 +91,117 @@ export function cylinderOf(
 }
 
 /**
- * Where a cylinder's hold is written down: on the barrel.
+ * A cylinder's two members, as links a hold can be written on.
  *
- * So the rod and the barrel give the same answer whichever the reader clicked,
- * and a URL carries one entry for one part.
+ * The barrel is typed as a `Link` on the record because a welded compound can
+ * stand where one should be; only a `RealLink` carries a `hold`.
  */
-export function cylinderHoldCarrier(sealed: Cylinder): RealLink | undefined {
-  return sealed.barrel instanceof RealLink ? sealed.barrel : undefined;
+export function cylinderMemberLinks(sealed: Cylinder): { barrel?: RealLink; rod: RealLink } {
+  return { barrel: sealed.barrel instanceof RealLink ? sealed.barrel : undefined, rod: sealed.rod };
+}
+
+/**
+ * Which member is carrying the cylinder's angle, if either is.
+ *
+ * **Either member holds it for the whole part** (decision S5). A member holds
+ * one thing, like any bar, and the URL's `H` entry is still one per link — so a
+ * rod fixed at its length and a barrel fixed at the cylinder's angle is two
+ * ordinary entries rather than a new kind of record. The barrel is preferred
+ * when a hold is being *written*, which is where every drawing made before this
+ * put it, so those keep behaving exactly as they did.
+ *
+ * It replaced `cylinderHoldCarrier`, which named the barrel unconditionally:
+ * true of where a flag is put and wrong about where one may be found, and the
+ * difference is a rod-carried angle that nothing downstream could see.
+ */
+export function cylinderAngleCarrier(sealed: Cylinder): RealLink | undefined {
+  const { barrel, rod } = cylinderMemberLinks(sealed);
+  if (barrel?.hold === 'angle') return barrel;
+  return rod.hold === 'angle' ? rod : undefined;
+}
+
+/** Whether the cylinder is holding the direction it points in. */
+export function cylinderHoldsAngle(sealed: Cylinder): boolean {
+  return cylinderAngleCarrier(sealed) !== undefined;
+}
+
+/**
+ * Whether one of a member's two rows reads as held (decision S5).
+ *
+ * The two answers come from different places, which is the whole reason this
+ * exists: `length` is the member's own flag and `angle` is the *cylinder's*,
+ * carried by whichever member happens to have it written on. So both rows of
+ * one member can read held at once — its own length, and the part's angle from
+ * the other member — and `holdOf`, which answers with one value, cannot say so.
+ */
+export function memberHoldReads(
+  sealed: Cylinder,
+  member: Link,
+  which: 'length' | 'angle'
+): boolean {
+  if (which === 'angle') return cylinderHoldsAngle(sealed);
+  return member instanceof RealLink && member.hold === 'length';
+}
+
+/**
+ * What each member's flag becomes for one press on one member's row.
+ *
+ * The whole transition table, in one place, because the two doors into it —
+ * a member's padlock and the plain `setHold` a bar uses — have to agree. The
+ * rules it encodes (decision S5):
+ *
+ * - **Fix the angle** writes it on a member holding nothing, the barrel first,
+ *   so a rod can keep its length while the part keeps its bearing. With both
+ *   lengths already fixed there is nowhere free, and the pressed member's
+ *   length gives way — which is what a bar's own second padlock does.
+ * - **Release the angle** clears it from both, because it was one hold shown
+ *   on two rows and releasing it from either is the same release.
+ * - **Fix a length** on the member carrying the angle hands the angle to the
+ *   other member first, if that member is free. It is the part's angle, not
+ *   this member's, and there is no reason for it to fall off a row the reader
+ *   was not looking at.
+ *
+ * Returns nothing when the press would change neither flag.
+ */
+export function memberHoldTransition(
+  sealed: Cylinder,
+  pressed: Link,
+  which: 'length' | 'angle',
+  on: boolean
+): { barrel: LinkHold; rod: LinkHold } | undefined {
+  const { barrel, rod } = cylinderMemberLinks(sealed);
+  const was = { barrel: barrel?.hold, rod: rod.hold };
+  const next = { ...was };
+  const isBarrel = !!barrel && pressed.id === barrel.id;
+  const isRod = !isBarrel && pressed.id === rod.id;
+  if (!isBarrel && !isRod) return undefined;
+
+  if (which === 'angle') {
+    if (!on) {
+      if (next.barrel === 'angle') next.barrel = undefined;
+      if (next.rod === 'angle') next.rod = undefined;
+    } else if (cylinderHoldsAngle(sealed)) {
+      return undefined;
+    } else if (barrel && next.barrel === undefined) {
+      next.barrel = 'angle';
+    } else if (next.rod === undefined) {
+      next.rod = 'angle';
+    } else if (isBarrel && barrel) {
+      next.barrel = 'angle';
+    } else {
+      next.rod = 'angle';
+    }
+  } else if (!on) {
+    if (isBarrel && next.barrel === 'length') next.barrel = undefined;
+    if (isRod && next.rod === 'length') next.rod = undefined;
+  } else if (isBarrel) {
+    if (next.barrel === 'angle' && next.rod === undefined) next.rod = 'angle';
+    next.barrel = 'length';
+  } else {
+    if (next.rod === 'angle' && barrel && next.barrel === undefined) next.barrel = 'angle';
+    next.rod = 'length';
+  }
+  return next.barrel === was.barrel && next.rod === was.rod ? undefined : next;
 }
 
 /**
@@ -130,7 +234,11 @@ export function holdOf(
   // the part the reader is looking at.
   const sealed = joints ? cylinderOf(link, joints, cylinders) : undefined;
   if (sealed) {
-    return cylinderHoldCarrier(sealed)?.hold === 'angle' ? 'angle' : undefined;
+    // Its angle, or nothing. A member's own `'length'` is never the *part's*
+    // hold: it constrains a length the layout picks and is honored there
+    // (decision S5), and reporting it here would hand the solver a bar across
+    // two joints inside the part.
+    return cylinderHoldsAngle(sealed) ? 'angle' : undefined;
   }
   return holdableBar(link) ? link.hold : undefined;
 }
@@ -145,11 +253,7 @@ export function heldBars(links: readonly Link[], cylinders?: readonly Cylinder[]
   const members = cylinders ? membersOf(cylinders) : cylinderMembers(jointsOf(links));
   for (const link of links) {
     const sealed = members.get(link.id);
-    const hold = sealed
-      ? cylinderHoldCarrier(sealed)?.hold === 'angle'
-        ? 'angle'
-        : undefined
-      : holdOf(link);
+    const hold = sealed ? (cylinderHoldsAngle(sealed) ? 'angle' : undefined) : holdOf(link);
     if (!hold) continue;
     // A cylinder's angle is measured mount to mount -- the pair the reader sees
     // and the pair its Angle field states -- not the barrel's own two joints,
@@ -158,7 +262,7 @@ export function heldBars(links: readonly Link[], cylinders?: readonly Cylinder[]
     const [a, b] = sealed ? [sealed.mountA, sealed.mountB] : link.joints;
     if (!a || !b) continue;
     // One entry per part: every member reports the whole assembly's hold.
-    const id = sealed ? (cylinderHoldCarrier(sealed)?.id ?? link.id) : link.id;
+    const id = sealed ? (cylinderAngleCarrier(sealed)?.id ?? link.id) : link.id;
     if (seen.has(id)) continue;
     seen.add(id);
     bars.push({
@@ -201,8 +305,8 @@ export function heldBarsAt(
   const seen = new Set<string>();
   for (const link of links) {
     const sealed = members.get(link.id);
-    const carrier = sealed ? cylinderHoldCarrier(sealed) : undefined;
-    if (sealed ? carrier?.hold !== 'angle' : holdOf(link) === undefined) continue;
+    const carrier = sealed ? cylinderAngleCarrier(sealed) : undefined;
+    if (sealed ? carrier === undefined : holdOf(link) === undefined) continue;
     const ends = sealed ? [sealed.mountA.id, sealed.mountB.id] : link.joints.map((end) => end.id);
     if (!ends.includes(joint.id)) continue;
     const bar = sealed ? carrier! : (link as RealLink);

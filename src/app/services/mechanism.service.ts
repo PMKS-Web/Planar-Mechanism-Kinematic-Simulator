@@ -1,6 +1,12 @@
 import { Injectable, Injector, inject } from '@angular/core';
 import { LinkHold } from '../model/link';
-import { cylinderHoldCarrier, holdOf, holdableBar } from '../model/link-holds';
+import {
+  cylinderMemberLinks,
+  holdOf,
+  holdableBar,
+  memberHoldReads,
+  memberHoldTransition,
+} from '../model/link-holds';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import { speedTurning, turnsClockwise } from '../model/drive-direction';
 import { Link, RealLink } from '../model/link';
@@ -2303,17 +2309,17 @@ export class MechanismService {
    * survives undo and travels in a shared link.
    */
   setHold(link: Link, hold: LinkHold): void {
-    // A cylinder holds its angle on its barrel, so whichever member the reader
-    // clicked writes to the same place. It has no length to hold: the distance
-    // between its mounts is the stroke, which is what the drive moves, so a
-    // hold on that would be a hold against the drive.
+    // A cylinder's member has two rows that can read held at once -- its own
+    // length, and the part's angle carried by the other member -- so a bare
+    // `undefined` is ambiguous here in a way it never is on a bar. The angle
+    // wins, because that is the hold both rows show and the one a reader
+    // pressing Release on either member means. `setMemberHold` is the door for
+    // a row that knows which value it is about.
     const sealed = this.cylinderOfLink(link);
     if (sealed) {
-      const carrier = cylinderHoldCarrier(sealed);
-      if (!carrier || hold === 'length' || carrier.hold === hold) return;
-      carrier.hold = hold;
-      this.updateMechanism(true);
-      this.activeObjService.fakeUpdateSelectedObj();
+      const which =
+        hold ?? (memberHoldReads(sealed, link, 'angle') ? 'angle' : ('length' as const));
+      this.setMemberHold(link, which, hold !== undefined);
       return;
     }
     if (!holdableBar(link)) return;
@@ -2332,6 +2338,32 @@ export class MechanismService {
         { actions: [{ label: `Fix ${name(was)} instead`, run: () => this.setHold(link, was) }] }
       );
     }
+  }
+
+  /**
+   * Whether one of a cylinder member's two rows reads as held (decision S5).
+   *
+   * `holdOf` answers with one value and a member can be under two: its own
+   * fixed length, and the cylinder's fixed angle, which is written on whichever
+   * member got it and shown on both. False for anything that is not a member,
+   * so a caller may ask without knowing.
+   */
+  memberHoldOf(link: Link | undefined, which: 'length' | 'angle'): boolean {
+    const sealed = this.cylinderOfLink(link);
+    return !!link && !!sealed && memberHoldReads(sealed, link, which);
+  }
+
+  /** Fix or release one *named* value on a cylinder member. One undo entry. */
+  setMemberHold(link: Link, which: 'length' | 'angle', on: boolean): void {
+    const sealed = this.cylinderOfLink(link);
+    if (!sealed) return;
+    const next = memberHoldTransition(sealed, link, which, on);
+    if (!next) return;
+    const { barrel, rod } = cylinderMemberLinks(sealed);
+    if (barrel) barrel.hold = next.barrel;
+    rod.hold = next.rod;
+    this.updateMechanism(true);
+    this.activeObjService.fakeUpdateSelectedObj();
   }
 
   /** Let these bars go, as one edit: what a refusal's Release button carries. */
@@ -4628,14 +4660,14 @@ export class MechanismService {
       roundNumber(at.x, 3),
       roundNumber(at.y, 3),
     ];
-    const barrelFar = mountAt ?? new RevJoint(aId, ...place(creation.barrelFar));
-    const barrelNear = new RevJoint(bId, ...place(creation.barrelNear));
-    const rodFar = new RevJoint(dId, ...place(creation.rodFar));
+    const barrelFar = mountAt ?? new RevJoint(aId, ...place(creation.mountA));
+    const barrelNear = new RevJoint(bId, ...place(creation.inner));
+    const rodFar = new RevJoint(dId, ...place(creation.mountB));
     // The seal and the pin the rod hangs on are one joint. They were a
     // prismatic joint, a coincident `RevJoint` and a zero-length block joining
     // the two until Stage 1 of `docs/joint-type-and-cylinder-plan.md`; the rod
     // is pinned straight to the slider now.
-    const slider = new PrisJoint(cId, ...place(creation.pin));
+    const slider = new PrisJoint(cId, ...place(creation.seal));
     slider.isSealed = true;
     // What the weld on that coincident pin said: the rod cannot turn against
     // the barrel's slot, which is what makes the ram one rigid part.

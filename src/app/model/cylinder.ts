@@ -162,6 +162,39 @@ export function cylinderLock(stroke: number, r: number): number {
  */
 export const MIN_STROKE_R = 2 * CYLINDER.headAlongHalfMin - HEAD_CLEARANCE_R;
 
+/**
+ * The two members' own lengths: |AN| and |SB| (decision S3).
+ *
+ * They used to be one number. "Equal by construction" was what made a cylinder
+ * one size and one position, and it is what *creation* still draws — but a
+ * typed Barrel Length moves N alone and a typed Rod Length moves B alone, so
+ * the two parted company the moment either had a field of its own. Every
+ * layout below therefore takes the pair; hand it two equal numbers and it
+ * answers exactly what the single-number version answered.
+ *
+ * The travel is still the barrel's alone: a longer rod reaches further, it
+ * does not slide further.
+ */
+export interface CylinderLengths {
+  /** |AN| — the barrel, whose length alone is the stroke. */
+  barrel: number;
+  /** |SB| — the rod. */
+  rod: number;
+}
+
+/**
+ * Which members are keeping their length against this edit (decision S5).
+ *
+ * A member's `'length'` hold is never handed to the hold solver, because the
+ * thing it constrains is a length the layout itself chooses. This is where it
+ * is honored instead: a held member does not resize, and the other one takes
+ * all of the change.
+ */
+export interface CylinderHolds {
+  barrel?: boolean;
+  rod?: boolean;
+}
+
 /** A cylinder member: the bar the skin draws, and the body an edit must move. */
 export interface CylinderMember<T extends Link = Link> {
   /** The two-joint bar itself. */
@@ -259,7 +292,7 @@ export function cylinderAtSeal(joint: Joint): Cylinder | undefined {
     mountB,
     inner,
     get start(): number {
-      return cylinderSizeAt(mountA, inner, mountB).start;
+      return cylinderSizeAt(mountA, inner, seal, mountB).start;
     },
   };
 }
@@ -436,7 +469,7 @@ export interface CylinderCreation extends CylinderPose {
   /** Mount-to-mount distance actually used, after the minimum is applied. */
   span: number;
   barrelLength: number;
-  pinFromMount: number;
+  sealFromMount: number;
   rodLength: number;
 }
 
@@ -463,6 +496,11 @@ export const CYLINDER_MIN_SPAN_SCALE =
  * lock with it. A span below the minimum clamps (a zero-length click cannot
  * make a degenerate part), keeping the drawn direction — or +x when there is
  * none.
+ *
+ * A new cylinder still has barrel = rod (decision S3). The two lengths can
+ * differ now, but nothing has asked them to yet, and drawing them equal is what
+ * keeps every number an existing drawing produces the number it produced
+ * before.
  */
 export function cylinderCreationLayout(
   start: { x: number; y: number },
@@ -475,19 +513,18 @@ export function cylinderCreationLayout(
   const angleRad = drawn < 1e-9 ? 0 : Math.atan2(dy, dx);
   const r = 0.15 * objectScale;
   const flex = cylinderSpanLayoutFrom(drawn, CYLINDER_CREATION_START, r);
-  const ux = Math.cos(angleRad);
-  const uy = Math.sin(angleRad);
-  const at = (along: number) => ({ x: start.x + along * ux, y: start.y + along * uy });
   return {
     angleRad,
     span: flex.span,
     barrelLength: flex.barrel,
-    pinFromMount: flex.pinAlong,
+    sealFromMount: flex.sealAlong,
     rodLength: flex.rod,
-    barrelFar: at(0),
-    barrelNear: at(flex.barrel),
-    pin: at(flex.pinAlong),
-    rodFar: at(flex.span),
+    ...cylinderPoseAlong(
+      start,
+      { x: Math.cos(angleRad), y: Math.sin(angleRad) },
+      { barrel: flex.barrel, rod: flex.rod },
+      flex.sealAlong
+    ),
   };
 }
 
@@ -518,14 +555,30 @@ export function cylinderStrokeAlong(
   barrelLength: number,
   r: number = 0.15 * SettingsService.objectScale
 ): { min: number; max: number; usable: boolean } {
-  const head = cylinderHeadHalf(barrelLength, r);
-  const min = HEAD_CLEARANCE_R * r + head;
-  const max = barrelLength + head;
+  const { min, max } = cylinderHeadTravel(barrelLength, r);
   if (!(max - min >= MIN_STROKE_R * r)) {
-    const collapsed = barrelLength / 2 + head;
+    const collapsed = barrelLength / 2 + cylinderHeadHalf(barrelLength, r);
     return { min: collapsed, max: collapsed, usable: false };
   }
   return { min, max, usable: true };
+}
+
+/**
+ * The same two bounds, as the geometry states them and with no verdict.
+ *
+ * `cylinderStrokeAlong` collapses an unusable interval to a point so that every
+ * caller that clamps or samples against it is handed something it can clamp
+ * against. A *layout* has already put the barrel above its floor and wants the
+ * arithmetic rather than the guard — and asking the guarded version there would
+ * make the answer turn on whether `Lb - c` lands a hair above or below the
+ * floor it was just set to. It does land under it: `cylinderBarrelFloor` is a
+ * product of a sum and the stroke is a difference, so the barrel at the floor
+ * measures a stroke an ulp short of the floor stroke, the guard fires, and a
+ * search that started there was handed a collapsed point for its lower bound.
+ */
+export function cylinderHeadTravel(barrelLength: number, r: number): { min: number; max: number } {
+  const head = cylinderHeadHalf(barrelLength, r);
+  return { min: HEAD_CLEARANCE_R * r + head, max: barrelLength + head };
 }
 
 /** The stroke a barrel of this length has, floored at nothing rather than going negative. */
@@ -536,18 +589,57 @@ export function cylinderStroke(
   return Math.max(0, barrelLength - HEAD_CLEARANCE_R * r);
 }
 
+/**
+ * The shortest barrel worth drawing: the one whose stroke is exactly the floor.
+ *
+ * `MIN_STROKE_R` says the same thing about the stroke; this says it about the
+ * number the layouts actually hold, so nothing has to add the clearance back on
+ * at four call sites and disagree at one of them.
+ */
+export function cylinderBarrelFloor(r: number): number {
+  return (MIN_STROKE_R + HEAD_CLEARANCE_R) * r;
+}
+
+/**
+ * The shortest rod a barrel of this length allows: the barrel's own stroke
+ * (decision S3).
+ *
+ * The rod has to span from the mouth back to mount B at full extension, so a
+ * rod shorter than the stroke would pull B *into* the barrel on the way closed.
+ * A cylinder drawn with the two members equal clears this by the clearance,
+ * which is why it never came up while they had to be equal.
+ */
+export function cylinderRodFloor(barrelLength: number, r: number): number {
+  return cylinderStroke(barrelLength, r);
+}
+
+/** Both members put on their floors, which is the smallest part they describe. */
+function flooredLengths(lengths: CylinderLengths, r: number): CylinderLengths {
+  const barrel = Math.max(lengths.barrel, cylinderBarrelFloor(r));
+  return { barrel, rod: Math.max(lengths.rod, cylinderRodFloor(barrel, r)) };
+}
+
 /** The shortest mount-to-mount span a ram can have: fully retracted, at the floor. */
 export function cylinderMinimumSpan(r: number): number {
   return MIN_STROKE_R * r + cylinderLock(MIN_STROKE_R * r, r);
 }
 
-/** Mount-to-mount span at each end of the travel, for a given stroke. */
+/**
+ * Mount-to-mount span at each end of the travel, for these two members.
+ *
+ * The seal's travel is the barrel's (`cylinderStrokeAlong`) and the rod rides
+ * out beyond it, so each end of the span is one end of that travel plus the
+ * rod. Handed two equal members this is the old `stroke + lock` and
+ * `2 × stroke + lock` to the last decimal — `lock` was never a third constant,
+ * only `c + head + rod` written out under the assumption that the rod was the
+ * barrel.
+ */
 export function cylinderSpanRange(
-  stroke: number,
+  lengths: CylinderLengths,
   r: number
 ): { retracted: number; extended: number } {
-  const lock = cylinderLock(stroke, r);
-  return { retracted: stroke + lock, extended: 2 * stroke + lock };
+  const travel = cylinderHeadTravel(lengths.barrel, r);
+  return { retracted: travel.min + lengths.rod, extended: travel.max + lengths.rod };
 }
 
 /** Where the two joints a cylinder owns belong, given where its mounts are. */
@@ -618,51 +710,88 @@ export function derivedInterior(cylinder: Cylinder): DerivedInterior | undefined
 export function stretchedCylinderPose(
   barrelMount: { x: number; y: number },
   rodMount: { x: number; y: number },
-  barrelLength: number,
-  r: number
+  lengths: CylinderLengths,
+  r: number,
+  holds: CylinderHolds = {}
 ): CylinderPose | undefined {
   const dx = rodMount.x - barrelMount.x;
   const dy = rodMount.y - barrelMount.y;
   const distance = Math.hypot(dx, dy);
-  if (distance < 1e-9 || !(barrelLength > 1e-9)) return undefined;
-  const ux = dx / distance;
-  const uy = dy / distance;
-  const flex = cylinderSpanLayout(distance, cylinderStroke(barrelLength, r), r);
-  const at = (along: number) => ({
-    x: barrelMount.x + along * ux,
-    y: barrelMount.y + along * uy,
-  });
+  if (distance < 1e-9 || !(lengths.barrel > 1e-9)) return undefined;
+  const axis = { x: dx / distance, y: dy / distance };
+  const fit = cylinderSpanLayout(distance, lengths, r, holds);
   return {
-    barrelFar: { x: barrelMount.x, y: barrelMount.y },
-    barrelNear: at(flex.barrel),
-    pin: at(flex.pinAlong),
-    rodFar: { x: rodMount.x, y: rodMount.y },
-    atMinimum: flex.atMinimum,
+    // Both mounts are held: they belong to whatever carried them, and a span
+    // the fit had to clamp is a part that cannot reach rather than a mount
+    // this pass is entitled to move.
+    ...cylinderPoseAlong(barrelMount, axis, fit.lengths, fit.along, fit.atMinimum),
+    mountB: { x: rodMount.x, y: rodMount.y },
   };
 }
 
-/** Where each joint of a re-posed cylinder lands. */
+/** Where each joint of a re-posed cylinder lands: A, N, S, B, in the record's names. */
 export interface CylinderPose {
   /** True when the layout had to hold the ram at its shortest. */
   atMinimum?: boolean;
-  barrelFar: { x: number; y: number };
-  barrelNear: { x: number; y: number };
-  /** Where the slider the rod hangs on goes. */
-  pin: { x: number; y: number };
-  rodFar: { x: number; y: number };
+  /** A — the barrel's outer end. */
+  mountA: { x: number; y: number };
+  /** N — the barrel's inner end, buried under the rod. */
+  inner: { x: number; y: number };
+  /** S — the sliding seal the rod hangs on. */
+  seal: { x: number; y: number };
+  /** B — the rod's outer end. */
+  mountB: { x: number; y: number };
 }
 
-/** Barrel, rod and pin for a given size and position. The one place they are built. */
+/**
+ * The one place a pose is built: A, the axis, both lengths, and where the seal
+ * stands along the barrel.
+ *
+ * Every other function here answers some question in those five terms and then
+ * hands them over, so no caller works out where N goes. It used to, in six
+ * places, each adding the head's half-length back on for itself — which is how
+ * a re-lay came to put the head as far outside the barrel as the stretch.
+ *
+ * `axis` is a unit vector. Every caller either has one or has an angle to take
+ * the cosine and sine of, and normalizing here would hide the one case that
+ * genuinely has no axis (coincident mounts) behind a silent guess.
+ */
+export function cylinderPoseAlong(
+  mountA: { x: number; y: number },
+  axis: { x: number; y: number },
+  lengths: CylinderLengths,
+  along: number,
+  atMinimum?: boolean
+): CylinderPose {
+  const at = (distance: number) => ({
+    x: mountA.x + distance * axis.x,
+    y: mountA.y + distance * axis.y,
+  });
+  return {
+    mountA: { x: mountA.x, y: mountA.y },
+    inner: at(lengths.barrel),
+    seal: at(along),
+    mountB: at(along + lengths.rod),
+    atMinimum,
+  };
+}
+
+/**
+ * Barrel, rod and seal for one size number and one position number.
+ *
+ * The *equal-member* constructor, and deliberately still one: it is what a
+ * creation gesture draws and what the old Travel field means by a size. The
+ * general question — two lengths that may differ — is `cylinderSpanLayout`.
+ */
 export function cylinderMembers(stroke: number, start: number, r: number): CylinderMembers {
   const held = Math.max(stroke, MIN_STROKE_R * r);
   const at = Math.min(Math.max(start, 0), 1);
-  // Equal by construction. Everything below is addition along the axis.
   const barrel = held + HEAD_CLEARANCE_R * r;
-  const pinAlong = HEAD_CLEARANCE_R * r + cylinderHeadHalf(barrel, r) + held * at;
+  const sealAlong = HEAD_CLEARANCE_R * r + cylinderHeadHalf(barrel, r) + held * at;
   return {
-    span: pinAlong + barrel,
+    span: sealAlong + barrel,
     barrel,
-    pinAlong,
+    sealAlong,
     rod: barrel,
     stroke: held,
     start: at,
@@ -676,10 +805,23 @@ export function cylinderMembers(stroke: number, start: number, r: number): Cylin
 export interface CylinderMembers {
   span: number;
   barrel: number;
-  pinAlong: number;
+  sealAlong: number;
   rod: number;
   stroke: number;
   start: number;
+  atMinimum: boolean;
+}
+
+/** What a span asked of a cylinder leaves it: its members, and where the seal stands. */
+export interface CylinderSpanFit {
+  lengths: CylinderLengths;
+  /** |AS| — the seal's place along the barrel. */
+  along: number;
+  /** The span actually reached: the one asked for, or the nearest the part allows. */
+  span: number;
+  /** Where in its own travel that leaves the seal, 0 shut to 1 open. */
+  start: number;
+  /** True when the part had to be held at its shortest, so a gesture can say why. */
   atMinimum: boolean;
 }
 
@@ -698,18 +840,151 @@ export interface CylinderMembers {
  * push through a detent — the ram's own stop — to reach the expensive one. A
  * drag that stays inside the travel is therefore guaranteed non-destructive:
  * the ram you sized cannot be resized by accident.
+ *
+ * Past a stop, who gives is decided by the holds (decision S4). With neither
+ * member holding its length both resize by the same amount, which is the old
+ * rule written out for two numbers instead of one. With one held the other
+ * takes all of it, down to its own floor. With both held there is nothing to
+ * spend and the mount stops at the stop — the returned span is the clamped one,
+ * exactly as it already is at the shortest cylinder there is.
  */
 export function cylinderSpanLayout(
   span: number,
-  currentStroke: number,
-  r: number
-): CylinderMembers {
-  const stroke = Math.max(currentStroke, MIN_STROKE_R * r);
-  const { retracted, extended } = cylinderSpanRange(stroke, r);
-  if (span >= retracted && span <= extended) {
-    return cylinderMembers(stroke, (span - retracted) / stroke, r);
+  lengths: CylinderLengths,
+  r: number,
+  holds: CylinderHolds = {}
+): CylinderSpanFit {
+  const floored = flooredLengths(lengths, r);
+  const { retracted, extended } = cylinderSpanRange(floored, r);
+  const fit =
+    span >= retracted && span <= extended
+      ? fitOf(floored, span - floored.rod, r)
+      : span > extended
+        ? openedPast(span, floored, r, holds)
+        : closedPast(span, floored, r, holds);
+  // The mount has stopped following the cursor exactly when the span it landed
+  // at is not the span it was asked for: because a member is holding its
+  // length, or because the part is already as short as one goes.
+  return { ...fit, atMinimum: Math.abs(fit.span - span) > 1e-9 };
+}
+
+/** A fit, with the span and the start it implies. One place, so they cannot disagree. */
+function fitOf(lengths: CylinderLengths, along: number, r: number): CylinderSpanFit {
+  const { min, max } = cylinderHeadTravel(lengths.barrel, r);
+  return {
+    lengths,
+    along,
+    span: along + lengths.rod,
+    start: max > min ? Math.min(Math.max((along - min) / (max - min), 0), 1) : 0,
+    atMinimum: false,
+  };
+}
+
+/**
+ * Pulled past fully open: the part grows to reach, or stops.
+ *
+ * Both members grow by the same amount when neither holds its length, so the
+ * mount travels twice as fast as the stroke — the ceiling that equality always
+ * bought. A held barrel means the rod alone reaches, which it can always do. A
+ * held rod means the barrel alone grows, and it may only grow until its stroke
+ * equals the rod: past that mount B would retract inside the barrel's mouth on
+ * the way closed, so the mount stops there instead.
+ */
+function openedPast(
+  span: number,
+  lengths: CylinderLengths,
+  r: number,
+  holds: CylinderHolds
+): CylinderSpanFit {
+  const openAt = (grown: CylinderLengths) => cylinderSpanRange(grown, r).extended;
+  const openTo = (grown: CylinderLengths) =>
+    fitOf(grown, cylinderHeadTravel(grown.barrel, r).max, r);
+  if (holds.barrel && holds.rod) return openTo(lengths);
+  if (holds.barrel) {
+    // Only the rod can reach, and reaching further is always something a rod
+    // can do: its floor is a lower bound, and this is growth.
+    return openTo({
+      barrel: lengths.barrel,
+      rod: span - cylinderHeadTravel(lengths.barrel, r).max,
+    });
   }
-  return cylinderSpanLayoutFrom(span, span > extended ? 1 : 0, r);
+  if (holds.rod) {
+    // Only the barrel can grow, and it may grow only until its stroke equals
+    // the rod. Past that, closing would pull mount B inside the mouth.
+    const ceiling = lengths.rod + HEAD_CLEARANCE_R * r;
+    const barrel = solveFor(span, lengths.barrel, ceiling, (candidate) =>
+      openAt({ barrel: candidate, rod: lengths.rod })
+    );
+    return openTo({ barrel, rod: lengths.rod });
+  }
+  // Both grow by the same amount, which is what the equal members did when
+  // they were one number: the mount travels twice as fast as the stroke.
+  const by = solveFor(span, 0, span, (delta) =>
+    openAt({ barrel: lengths.barrel + delta, rod: lengths.rod + delta })
+  );
+  return openTo({ barrel: lengths.barrel + by, rod: lengths.rod + by });
+}
+
+/**
+ * Pushed past fully closed: the part shrinks to fit, or stops.
+ *
+ * The mirror of the one above, with two differences the geometry forces. Only
+ * the barrel has a floor worth naming — shrinking both by the same amount keeps
+ * the rod clear of its own floor by however much it started clear — and a held
+ * rod cannot help at all, because closing further asks the rod to be *shorter*
+ * and it is holding its length. So a held rod stops the mount at the stop, with
+ * or without the barrel holding too.
+ */
+function closedPast(
+  span: number,
+  lengths: CylinderLengths,
+  r: number,
+  holds: CylinderHolds
+): CylinderSpanFit {
+  const closedAt = (shrunk: CylinderLengths) => cylinderSpanRange(shrunk, r).retracted;
+  const closedTo = (shrunk: CylinderLengths) =>
+    fitOf(shrunk, cylinderHeadTravel(shrunk.barrel, r).min, r);
+  // A held rod cannot help whether the barrel holds or not: closing further
+  // asks the rod to be shorter, which is the one thing it is refusing to be.
+  if (holds.rod) return closedTo(lengths);
+  if (holds.barrel) {
+    const min = cylinderHeadTravel(lengths.barrel, r).min;
+    return closedTo({
+      barrel: lengths.barrel,
+      rod: Math.max(span - min, cylinderRodFloor(lengths.barrel, r)),
+    });
+  }
+  // Both shrink by the same amount, so only the barrel's floor binds: a rod
+  // that started clear of its own floor stays clear of it by the same margin.
+  const barrel = solveFor(span, cylinderBarrelFloor(r), lengths.barrel, (candidate) =>
+    closedAt({ barrel: candidate, rod: lengths.rod - (lengths.barrel - candidate) })
+  );
+  return closedTo({ barrel, rod: lengths.rod - (lengths.barrel - barrel) });
+}
+
+/**
+ * The input in `[low, high]` whose `spanAt` is the one asked for, by bisection.
+ *
+ * Rearranged, every one of these needs a case per head regime and a test for
+ * which one lands — the head is a constant only until the barrel is short
+ * enough to follow it down, which is three chances to be subtly wrong at the
+ * seams on a path a drag runs every pointermove. Each `spanAt` here is
+ * strictly increasing in its input throughout, which is all bisection needs,
+ * and sixty halvings land well under the six decimals every coordinate is
+ * rounded to. Out of reach at either end, the bound is the answer, and the
+ * caller sees it as a span it did not ask for.
+ */
+function solveFor(span: number, low: number, high: number, spanAt: (at: number) => number): number {
+  if (!(high > low)) return low;
+  if (spanAt(high) < span) return high;
+  let under = low;
+  let over = high;
+  for (let step = 0; step < 60; step++) {
+    const mid = (under + over) / 2;
+    if (spanAt(mid) > span) over = mid;
+    else under = mid;
+  }
+  return under;
 }
 
 /**
@@ -740,17 +1015,18 @@ export function cylinderSpanLayoutFrom(span: number, start: number, r: number): 
  * Re-pose a cylinder from its two mounts — the parametric drag (§ cylinder 6).
  *
  * The span between the mounts drives the layout: inside the ram's own travel
- * only the pin moves, and past either end of it the ram resizes. The `anchor`
- * mount stays exactly where it is in every case, and collinearity holds by
- * construction: every returned point is on the axis. `barrelLength` is read —
- * it is what the current stroke is measured from, and the whole point of the
- * rule is that a span inside the travel does *not* change it.
+ * only the seal moves, and past either end of it the part resizes as far as the
+ * holds allow. The `anchor` mount stays exactly where it is in every case, and
+ * collinearity holds by construction: every returned point is on the axis.
+ * `lengths` are read — they are what the current travel is measured from, and
+ * the whole point of the rule is that a span inside the travel does *not*
+ * change them.
  */
 export function layoutCylinder(
   barrelMount: { x: number; y: number },
   rodMount: { x: number; y: number },
-  /** The barrel as it stands, which is what the current stroke is read from. */
-  barrelLength: number,
+  /** The members as they stand, which is what the current travel is read from. */
+  lengths: CylinderLengths,
   r: number,
   anchor: 'barrel' | 'rod',
   /**
@@ -759,7 +1035,8 @@ export function layoutCylinder(
    * with the hint, the crossing clamps at the minimum span on the side the
    * part was already on.
    */
-  axisHint?: { x: number; y: number }
+  axisHint?: { x: number; y: number },
+  holds: CylinderHolds = {}
 ): CylinderPose | undefined {
   const dx = rodMount.x - barrelMount.x;
   const dy = rodMount.y - barrelMount.y;
@@ -785,24 +1062,16 @@ export function layoutCylinder(
     }
   }
 
-  const flex = cylinderSpanLayout(distance, cylinderStroke(barrelLength, r), r);
-
-  const a =
+  const fit = cylinderSpanLayout(distance, lengths, r, holds);
+  const from =
     anchor === 'barrel'
       ? { x: barrelMount.x, y: barrelMount.y }
-      : { x: rodMount.x - flex.span * ux, y: rodMount.y - flex.span * uy };
-  const c =
-    anchor === 'barrel'
-      ? { x: barrelMount.x + flex.span * ux, y: barrelMount.y + flex.span * uy }
-      : { x: rodMount.x, y: rodMount.y };
-
-  return {
-    barrelFar: a,
-    barrelNear: { x: a.x + flex.barrel * ux, y: a.y + flex.barrel * uy },
-    pin: { x: a.x + flex.pinAlong * ux, y: a.y + flex.pinAlong * uy },
-    rodFar: c,
-    atMinimum: flex.atMinimum,
-  };
+      : { x: rodMount.x - fit.span * ux, y: rodMount.y - fit.span * uy };
+  const pose = cylinderPoseAlong(from, { x: ux, y: uy }, fit.lengths, fit.along, fit.atMinimum);
+  // The anchor is written back rather than derived. It is the one point this
+  // layout promises not to move, and a promise kept to within a rounding error
+  // is a mount that creeps a little further every pointermove.
+  return anchor === 'rod' ? { ...pose, mountB: { x: rodMount.x, y: rodMount.y } } : pose;
 }
 
 /**
@@ -818,6 +1087,11 @@ export function layoutCylinder(
  * The barrel mount is held and the rod mount moves, because the barrel mount is
  * the end a ram is anchored by; `angleRad` keeps the part on the axis the panel
  * shows rather than re-deriving it from mounts that are about to move.
+ *
+ * It resizes both members to one number, so it can only describe a cylinder
+ * whose two are equal — which is the whole of what the Travel field can say.
+ * Retired with the Edit Cylinder panel in 2c; the members' own fields
+ * (`setBarrelLength`, `setRodLength`) and *Starts at* replace it.
  */
 export function poseFromStrokeAndStart(
   barrelMount: { x: number; y: number },
@@ -827,18 +1101,12 @@ export function poseFromStrokeAndStart(
   r: number
 ): CylinderPose {
   const members = cylinderMembers(stroke, start, r);
-  const ux = Math.cos(angleRad);
-  const uy = Math.sin(angleRad);
-  const at = (along: number) => ({
-    x: barrelMount.x + along * ux,
-    y: barrelMount.y + along * uy,
-  });
-  return {
-    barrelFar: at(0),
-    barrelNear: at(members.barrel),
-    pin: at(members.pinAlong),
-    rodFar: at(members.span),
-  };
+  return cylinderPoseAlong(
+    barrelMount,
+    { x: Math.cos(angleRad), y: Math.sin(angleRad) },
+    { barrel: members.barrel, rod: members.rod },
+    members.sealAlong
+  );
 }
 
 /** The size and position a built cylinder currently has, read back off its joints. */
@@ -846,7 +1114,16 @@ export function cylinderSizeOf(
   cylinder: Cylinder,
   r: number = 0.15 * SettingsService.objectScale
 ): CylinderSize {
-  return cylinderSizeAt(cylinder.mountA, cylinder.inner, cylinder.mountB, r);
+  return cylinderSizeAt(cylinder.mountA, cylinder.inner, cylinder.seal, cylinder.mountB, r);
+}
+
+/** The two members a built cylinder currently has, read back off its joints. */
+export function cylinderLengthsOf(cylinder: Cylinder): CylinderLengths {
+  const { mountA, inner, seal, mountB } = cylinder;
+  return {
+    barrel: Math.hypot(inner.x - mountA.x, inner.y - mountA.y),
+    rod: Math.hypot(mountB.x - seal.x, mountB.y - seal.y),
+  };
 }
 
 export interface CylinderSize {
@@ -854,22 +1131,32 @@ export interface CylinderSize {
   start: number;
   span: number;
   barrelLength: number;
+  rodLength: number;
 }
 
 /**
- * The same reading, from the three points it is actually made of.
+ * The same reading, from the four points it is actually made of.
  *
  * Split out so the record's own `start` getter and the panel's `cylinderSizeOf`
  * cannot drift: a getter that re-derived the clamp and the travel interval for
  * itself would be a second answer to a question with one answer.
+ *
+ * *Starts at* is read from the seal's place along the barrel, not from the span
+ * (decision S3). The two are the same number while the rod is the barrel, and
+ * the span reading is the one that stops being true the moment they differ: it
+ * subtracts the *barrel* where it means to subtract the rod, so lengthening the
+ * rod would have moved the reported position of a seal that had not moved.
  */
 function cylinderSizeAt(
   mountA: { x: number; y: number },
   inner: { x: number; y: number },
+  seal: { x: number; y: number },
   mountB: { x: number; y: number },
   r: number = 0.15 * SettingsService.objectScale
 ): CylinderSize {
   const barrelLength = Math.hypot(inner.x - mountA.x, inner.y - mountA.y);
+  const rodLength = Math.hypot(mountB.x - seal.x, mountB.y - seal.y);
+  const along = Math.hypot(seal.x - mountA.x, seal.y - mountA.y);
   const span = Math.hypot(mountB.x - mountA.x, mountB.y - mountA.y);
   // Through the travel interval, not the raw subtraction: a barrel can be long
   // enough to leave a sliver over the bore and still have no *usable* stroke,
@@ -877,11 +1164,11 @@ function cylinderSizeAt(
   // saying 0.05 cm beside a mechanism saying the ram has no travel at all.
   const travel = cylinderStrokeAlong(barrelLength, r);
   const stroke = travel.usable ? travel.max - travel.min : 0;
-  const { retracted } = cylinderSpanRange(stroke, r);
   return {
     stroke,
-    start: stroke > 0 ? Math.min(Math.max((span - retracted) / stroke, 0), 1) : 0,
+    start: stroke > 0 ? Math.min(Math.max((along - travel.min) / stroke, 0), 1) : 0,
     span,
     barrelLength,
+    rodLength,
   };
 }

@@ -24,6 +24,11 @@ import { CYLINDER } from './joint-marks';
 // up to a ceiling and the rod then grew without bound. Nothing about that
 // survives — under barrel = rod there is no split left to negotiate — so those
 // tests are gone rather than adapted.
+//
+// Every case here hands the layout two *equal* members, which is what every
+// drawing made before decision S3 has, and every number is the number it was
+// before the two lengths could differ. `cylinder-members.spec.ts` is where they
+// differ.
 
 const R = 0.15;
 // barrel = stroke + CLEARANCE, span = stroke(1 + start) + LOCK, and
@@ -45,9 +50,12 @@ const cross = (
   p: { x: number; y: number }
 ) => (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
 
+/** The two members a cylinder of this stroke is drawn with: equal, as one is. */
+const equal = (stroke: number) => ({ barrel: stroke + BORE, rod: stroke + BORE });
+
 /** A cylinder of this stroke, laid along +x from the origin, dragged to `span`. */
 const drag = (stroke: number, span: number) =>
-  layoutCylinder({ x: 0, y: 0 }, { x: span, y: 0 }, stroke + BORE, R, 'barrel')!;
+  layoutCylinder({ x: 0, y: 0 }, { x: span, y: 0 }, equal(stroke), R, 'barrel')!;
 
 describe('the cylinder is one size number and one position number', () => {
   it('makes barrel and rod equal at every size', () => {
@@ -68,7 +76,7 @@ describe('the cylinder is one size number and one position number', () => {
   });
 
   it('reads retracted and extended off the stroke alone', () => {
-    const { retracted, extended } = cylinderSpanRange(4, R);
+    const { retracted, extended } = cylinderSpanRange(equal(4), R);
     expect(retracted).toBeCloseTo(4 + LOCK, 12);
     expect(extended).toBeCloseTo(8 + LOCK, 12);
     // Extension approaches 2x for a long ram and is much less for a short one:
@@ -115,74 +123,70 @@ describe('the stroke interval', () => {
 describe('dragging a mount: pose first, then size', () => {
   it('moves only the piston while the span is inside the travel', () => {
     const stroke = 5;
-    const { retracted, extended } = cylinderSpanRange(stroke, R);
+    const { retracted, extended } = cylinderSpanRange(equal(stroke), R);
     for (const span of [retracted, (retracted + extended) / 2, extended]) {
       const pose = drag(stroke, span);
       // The size the ram was given, untouched.
-      expect(dist(pose.barrelFar, pose.barrelNear)).toBeCloseTo(stroke + BORE, 9);
+      expect(dist(pose.mountA, pose.inner)).toBeCloseTo(stroke + BORE, 9);
       // And the mount exactly where the cursor put it.
-      expect(pose.rodFar.x).toBeCloseTo(span, 9);
+      expect(pose.mountB.x).toBeCloseTo(span, 9);
     }
   });
 
   it('grows the ram past fully extended, at half the speed of the mount', () => {
     const stroke = 5;
-    const { extended } = cylinderSpanRange(stroke, R);
+    const { extended } = cylinderSpanRange(equal(stroke), R);
     const pulled = 3;
     const pose = drag(stroke, extended + pulled);
 
     // Both halves grow, so the mount travels twice as far as the stroke does.
-    expect(cylinderStroke(dist(pose.barrelFar, pose.barrelNear), R)).toBeCloseTo(
-      stroke + pulled / 2,
-      9
-    );
-    expect(pose.rodFar.x).toBeCloseTo(extended + pulled, 9);
+    expect(cylinderStroke(dist(pose.mountA, pose.inner), R)).toBeCloseTo(stroke + pulled / 2, 9);
+    expect(pose.mountB.x).toBeCloseTo(extended + pulled, 9);
   });
 
   it('shrinks the ram past fully retracted, one for one with the mount', () => {
     const stroke = 5;
-    const { retracted } = cylinderSpanRange(stroke, R);
+    const { retracted } = cylinderSpanRange(equal(stroke), R);
     const pushed = 2;
     const pose = drag(stroke, retracted - pushed);
 
-    expect(cylinderStroke(dist(pose.barrelFar, pose.barrelNear), R)).toBeCloseTo(
-      stroke - pushed,
-      9
-    );
-    expect(pose.rodFar.x).toBeCloseTo(retracted - pushed, 9);
+    expect(cylinderStroke(dist(pose.mountA, pose.inner), R)).toBeCloseTo(stroke - pushed, 9);
+    expect(pose.mountB.x).toBeCloseTo(retracted - pushed, 9);
   });
 
   it('stops at the floor rather than making a degenerate part', () => {
     const pose = drag(5, 0.001);
 
-    expect(cylinderStroke(dist(pose.barrelFar, pose.barrelNear), R)).toBeCloseTo(MIN_STROKE, 9);
-    expect(dist(pose.barrelFar, pose.rodFar)).toBeCloseTo(SPAN_MIN, 9);
+    expect(cylinderStroke(dist(pose.mountA, pose.inner), R)).toBeCloseTo(MIN_STROKE, 9);
+    expect(dist(pose.mountA, pose.mountB)).toBeCloseTo(SPAN_MIN, 9);
   });
 
   it('is non-destructive for any drag that stays inside the travel', () => {
     // The whole argument for pose-before-size: a ram you sized cannot be
     // resized by accident, only by deliberately pushing past its own stop.
     const stroke = 7;
-    const { retracted, extended } = cylinderSpanRange(stroke, R);
+    const { retracted, extended } = cylinderSpanRange(equal(stroke), R);
     for (let i = 0; i <= 20; i++) {
       const span = retracted + ((extended - retracted) * i) / 20;
-      expect(cylinderSpanLayout(span, stroke, R).stroke).toBeCloseTo(stroke, 9);
+      expect(
+        cylinderStroke(cylinderSpanLayout(span, equal(stroke), R).lengths.barrel, R)
+      ).toBeCloseTo(stroke, 9);
     }
   });
 
   it('round-trips: the span it reports is the span it was asked for', () => {
     for (const span of [SPAN_MIN, 4, 9, 30]) {
-      expect(cylinderSpanLayout(span, 5, R).span).toBeCloseTo(Math.max(span, SPAN_MIN), 9);
+      expect(cylinderSpanLayout(span, equal(5), R).span).toBeCloseTo(Math.max(span, SPAN_MIN), 9);
     }
   });
 });
 
 describe('layoutCylinder, in the plane', () => {
   it('puts every joint exactly on the mount-to-mount axis', () => {
-    const pose = layoutCylinder({ x: 1, y: 2 }, { x: 5.3, y: 6.1 }, 3 + BORE, R, 'barrel')!;
+    const pose = layoutCylinder({ x: 1, y: 2 }, { x: 5.3, y: 6.1 }, equal(3), R, 'barrel')!;
 
-    for (const point of [pose.barrelNear, pose.pin]) {
-      expect(Math.abs(cross(pose.barrelFar, pose.rodFar, point))).toBeLessThan(1e-9);
+    for (const point of [pose.inner, pose.seal]) {
+      expect(Math.abs(cross(pose.mountA, pose.mountB, point))).toBeLessThan(1e-9);
     }
   });
 
@@ -190,34 +194,34 @@ describe('layoutCylinder, in the plane', () => {
     const barrelMount = { x: 1.25, y: -0.75 };
     const rodMount = { x: 7, y: 3 };
 
-    expect(layoutCylinder(barrelMount, rodMount, 2 + BORE, R, 'barrel')!.barrelFar).toEqual(
+    expect(layoutCylinder(barrelMount, rodMount, equal(2), R, 'barrel')!.mountA).toEqual(
       barrelMount
     );
-    expect(layoutCylinder(barrelMount, rodMount, 2 + BORE, R, 'rod')!.rodFar).toEqual(rodMount);
+    expect(layoutCylinder(barrelMount, rodMount, equal(2), R, 'rod')!.mountB).toEqual(rodMount);
   });
 
   it('rotates rigidly about the anchor as the dragged mount swings', () => {
     const anchor = { x: 2, y: 1 };
-    const flat = layoutCylinder(anchor, { x: 8, y: 1 }, 3 + BORE, R, 'barrel')!;
-    const swung = layoutCylinder(anchor, { x: 2, y: 7 }, 3 + BORE, R, 'barrel')!;
+    const flat = layoutCylinder(anchor, { x: 8, y: 1 }, equal(3), R, 'barrel')!;
+    const swung = layoutCylinder(anchor, { x: 2, y: 7 }, equal(3), R, 'barrel')!;
 
-    expect(dist(swung.barrelFar, swung.rodFar)).toBeCloseTo(dist(flat.barrelFar, flat.rodFar), 9);
-    expect(dist(swung.barrelNear, swung.pin)).toBeCloseTo(dist(flat.barrelNear, flat.pin), 9);
-    expect(swung.barrelFar).toEqual(anchor);
+    expect(dist(swung.mountA, swung.mountB)).toBeCloseTo(dist(flat.mountA, flat.mountB), 9);
+    expect(dist(swung.inner, swung.seal)).toBeCloseTo(dist(flat.inner, flat.seal), 9);
+    expect(swung.mountA).toEqual(anchor);
   });
 
   it('holds the axis instead of flipping when a drag crosses the anchor', () => {
-    const pose = layoutCylinder({ x: 0, y: 0 }, { x: -5, y: 0 }, 3 + BORE, R, 'barrel', {
+    const pose = layoutCylinder({ x: 0, y: 0 }, { x: -5, y: 0 }, equal(3), R, 'barrel', {
       x: 1,
       y: 0,
     })!;
 
-    expect(pose.rodFar.x).toBeCloseTo(SPAN_MIN, 9);
-    expect(pose.rodFar.x).toBeGreaterThan(0);
+    expect(pose.mountB.x).toBeCloseTo(SPAN_MIN, 9);
+    expect(pose.mountB.x).toBeGreaterThan(0);
   });
 
   it('declines coincident mounts with no axis hint', () => {
-    expect(layoutCylinder({ x: 1, y: 1 }, { x: 1, y: 1 }, 3 + BORE, R, 'barrel')).toBeUndefined();
+    expect(layoutCylinder({ x: 1, y: 1 }, { x: 1, y: 1 }, equal(3), R, 'barrel')).toBeUndefined();
   });
 });
 
@@ -228,10 +232,10 @@ describe('poseFromStrokeAndStart: the edit the span rule cannot express', () => 
     // Routed through the span rule, a field labeled Travel would have held the
     // size at 10 and moved the piston to 80% instead.
     const asked = poseFromStrokeAndStart({ x: 0, y: 0 }, 0, 12, 0.5, R);
-    expect(cylinderStroke(dist(asked.barrelFar, asked.barrelNear), R)).toBeCloseTo(12, 9);
+    expect(cylinderStroke(dist(asked.mountA, asked.inner), R)).toBeCloseTo(12, 9);
 
-    const viaSpan = cylinderSpanLayout(dist(asked.barrelFar, asked.rodFar), 10, R);
-    expect(viaSpan.stroke).toBeCloseTo(10, 9);
+    const viaSpan = cylinderSpanLayout(dist(asked.mountA, asked.mountB), equal(10), R);
+    expect(cylinderStroke(viaSpan.lengths.barrel, R)).toBeCloseTo(10, 9);
     expect(viaSpan.start).toBeCloseTo(0.8, 9);
   });
 
@@ -239,15 +243,15 @@ describe('poseFromStrokeAndStart: the edit the span rule cannot express', () => 
     const mount = { x: 3, y: -2 };
     const pose = poseFromStrokeAndStart(mount, Math.PI / 3, 6, 0.25, R);
 
-    expect(pose.barrelFar).toEqual(mount);
-    expect(dist(pose.barrelFar, pose.rodFar)).toBeCloseTo(6 * 1.25 + LOCK, 9);
+    expect(pose.mountA).toEqual(mount);
+    expect(dist(pose.mountA, pose.mountB)).toBeCloseTo(6 * 1.25 + LOCK, 9);
   });
 
   it('clamps a start outside the travel and a stroke under the floor', () => {
     const over = poseFromStrokeAndStart({ x: 0, y: 0 }, 0, 4, 3, R);
-    expect(dist(over.barrelFar, over.rodFar)).toBeCloseTo(cylinderSpanRange(4, R).extended, 9);
+    expect(dist(over.mountA, over.mountB)).toBeCloseTo(cylinderSpanRange(equal(4), R).extended, 9);
 
     const tiny = poseFromStrokeAndStart({ x: 0, y: 0 }, 0, -1, 0.5, R);
-    expect(cylinderStroke(dist(tiny.barrelFar, tiny.barrelNear), R)).toBeCloseTo(MIN_STROKE, 9);
+    expect(cylinderStroke(dist(tiny.mountA, tiny.inner), R)).toBeCloseTo(MIN_STROKE, 9);
   });
 });

@@ -1302,3 +1302,27 @@ That is why a mount drag goes through `layoutCylinder` (which re-lays the part a
 and a carried mount through `stretchedCylinderPose`, and why neither of them may be replaced by
 "move the mount and let the rebuild sort it out". The derivation is the thing that runs when
 nobody has said what the edit was.
+
+### *Starts at* is read from the seal, not from the distance between the joints
+
+`cylinderSizeAt` used to report `start` as `(span - closedSpan) / stroke`, which quietly subtracts
+the **barrel** where it means to subtract the rod. That was exactly right while the two had to be
+equal, and wrong the moment decision S3 gave them their own lengths: carrying mount B further out
+without touching the seal makes the *rod* longer -- which is what `derivedInterior` already
+believes -- and the panel would have said the cylinder had opened. It reads `(|AS| - min) / stroke`
+now, off the seal's own place along the barrel, and `|AS|` is a projection onto the axis so a part
+a rounding error has left a hair off it still reads as standing somewhere on it.
+
+### The barrel at its floor measures a stroke an ulp short of the floor stroke
+
+`cylinderBarrelFloor(r)` is `(MIN_STROKE_R + HEAD_CLEARANCE_R) * r` -- a product of a sum -- and the
+stroke is `barrel - HEAD_CLEARANCE_R * r`, a difference. In floating point the second comes out
+just under `MIN_STROKE_R * r`, so `cylinderStrokeAlong` calls the barrel it was just handed
+*unusable* and collapses its travel to a single point. Anything that searches a barrel length
+starting at the floor was therefore handed a meaningless lower bound: a `Starts at` on a doubly
+grounded cylinder accepted a barrel below the floor instead of refusing.
+
+`cylinderHeadTravel` is the raw interval for exactly this, and `cylinderStrokeAlong` is the guarded
+reading built on it. A *layout* has already put the barrel above its floor and wants the
+arithmetic; a *reader* (the panel, the solver) wants the verdict. When they are both usable the two
+agree to the last bit.

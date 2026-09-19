@@ -152,9 +152,24 @@ describe('reading a cylinder off its seal', () => {
     // a drag moves joints without touching the topology, so a field taken at
     // lookup time would answer for a pose that has gone.
     const before = found.start;
-    found.mountB.x -= 4 * S;
+    found.seal.x -= 2 * S;
     expect(found.start).not.toBeCloseTo(before, 6);
     expect(found.start).toBeCloseTo(cylinderSizeOf(found).start, 12);
+  });
+
+  it('reads the seal’s place along the barrel, not the distance between the joints', () => {
+    // Decision S3: the two members have their own lengths. Carrying the far
+    // joint out without touching the seal makes the *rod* longer -- which is
+    // what the derivation already believes -- and the cylinder has not moved
+    // in its travel at all. Read off the span, it would have said the part had
+    // opened, and the drawing and the number would be describing different
+    // things.
+    const found = cylinderAtSeal(piston().p)!;
+    const before = found.start;
+    found.mountB.x += 4 * S;
+
+    expect(found.start).toBeCloseTo(before, 12);
+    expect(cylinderSizeOf(found).rodLength).toBeCloseTo(11 * S, 9);
   });
 });
 

@@ -1,6 +1,12 @@
 import { Injectable, Injector, inject } from '@angular/core';
 import { HoldBar, HoldGoal, reachedByHolds, settleHolds } from '../model/hold-solver';
-import { heldBars, heldBarsReaching, holdJoints, holdOf } from '../model/link-holds';
+import {
+  heldBars,
+  heldBarsReaching,
+  heldBySentence,
+  holdJoints,
+  holdOf,
+} from '../model/link-holds';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import { roundNumber, point_on_line_segment_closest_to_point } from '../model/utils';
 import { Link, RealLink } from '../model/link';
@@ -16,13 +22,24 @@ import {
 import { NotificationService } from './notification.service';
 import {
   Cylinder,
+  CylinderHolds,
   CylinderPose,
+  cylinderLengthsOf,
   isInsideCylinder,
   layoutCylinder,
   poseFromStrokeAndStart,
   cylindersIn,
   stretchedCylinderPose,
 } from '../model/cylinder';
+import {
+  CylinderEdit,
+  CylinderEditContext,
+  poseForBarrelLength,
+  poseForCylinderAngle,
+  poseForCylinderStart,
+  poseForRodLength,
+  poseForSealAt,
+} from '../model/cylinder-edit';
 import { SettingsService } from './settings.service';
 import { MechanismService } from './mechanism.service';
 import { SelectedTabService } from '../selected-tab.service';
@@ -600,6 +617,14 @@ export class GridUtilsService {
     // the only thing it can -- its interior -- so it quietly changes size.
     const sealedHere = this.mechanismSrv.cylindersAt(selectedJoint);
     if (sealedHere.length > 0) {
+      // The seal is a joint the reader can grab now, and grabbing it is
+      // *Starts at* by hand (decision S7): it runs along its own axis between
+      // the stops, and the same tiebreak as the typed field decides what gives.
+      // Its partner N is still nobody's handle -- nothing selects it, so a call
+      // here is a stray path, and moving it would bend the part.
+      for (const sealed of sealedHere.filter((one) => one.seal.id === selectedJoint.id)) {
+        this.dragCylinderSeal(sealed, trueCoord, false);
+      }
       const mounted = sealedHere.filter(
         (sealed) => selectedJoint.id === sealed.mountA.id || selectedJoint.id === sealed.mountB.id
       );
@@ -636,9 +661,6 @@ export class GridUtilsService {
       for (const sealed of mounted) {
         this.dragCylinderMount(sealed, selectedJoint, agreed, false);
       }
-      // An interior joint (pin, buried barrel end) takes no free move at all:
-      // nothing selects one, so a call here is a stray path, and moving it
-      // would bend the part.
       if (rebuild) {
         this.mechanismSrv.reseatFloatingSliders();
         this.mechanismSrv.updateMechanism(false);
@@ -806,20 +828,6 @@ export class GridUtilsService {
         from: link.joints.slice(0, 2).map((joint) => ({ x: joint.x, y: joint.y })),
       }));
 
-    // Member lengths of every sealed cylinder, captured while the geometry is
-    // still straight: a neighbor drag can carry one mount along, and the
-    // re-pose below has to rebuild from the rigid lengths, not from the bent
-    // intermediate state.
-    const carriedCylinders = cylindersIn(this.mechanismSrv.joints).map((sealed) => ({
-      sealed,
-      barrelLength: this.getPointDistance(
-        sealed.mountA.x,
-        sealed.mountA.y,
-        sealed.inner.x,
-        sealed.inner.y
-      ),
-    }));
-
     // A held bar somewhere on this body, or on a neighbor sharing one of its
     // joints, has a say in where the joints go. Then this is not a rigid move
     // at all: every joint is asked for as a goal, the holds answer for the
@@ -891,7 +899,7 @@ export class GridUtilsService {
   ): Coord | undefined {
     const pose = this.cylinderMountPose(sealed, mount, wanted);
     if (!pose) return undefined;
-    const landed = mount.id === sealed.mountA.id ? pose.barrelFar : pose.rodFar;
+    const landed = mount.id === sealed.mountA.id ? pose.mountA : pose.mountB;
     return new Coord(landed.x, landed.y);
   }
 
@@ -901,16 +909,10 @@ export class GridUtilsService {
     wanted: Coord
   ): CylinderPose | undefined {
     const draggingBarrelMount = mount.id === sealed.mountA.id;
-    const barrelLength = this.getPointDistance(
-      sealed.mountA.x,
-      sealed.mountA.y,
-      sealed.inner.x,
-      sealed.inner.y
-    );
     return layoutCylinder(
       draggingBarrelMount ? wanted : sealed.mountA,
       draggingBarrelMount ? sealed.mountB : wanted,
-      barrelLength,
+      cylinderLengthsOf(sealed),
       0.15 * SettingsService.objectScale,
       // The anchor is the mount NOT being dragged: it stays exactly still,
       // and the dragged mount is what the span floor stops.
@@ -920,8 +922,26 @@ export class GridUtilsService {
       {
         x: sealed.mountB.x - sealed.mountA.x,
         y: sealed.mountB.y - sealed.mountA.y,
-      }
+      },
+      // A member keeping its length does not resize past a stop; the other
+      // takes all of it, and with both held the mount stops at the stop.
+      this.cylinderLengthHolds(sealed)
     );
+  }
+
+  /**
+   * Which of a cylinder's members are keeping their length (decision S5).
+   *
+   * Read straight off the flags rather than through `heldBars`, which is the
+   * solver's list and deliberately never carries a member's `'length'`: the
+   * thing that hold constrains is a length the *layout* picks, so the layout is
+   * where it has to be honored.
+   */
+  private cylinderLengthHolds(sealed: Cylinder): CylinderHolds {
+    return {
+      barrel: sealed.barrel instanceof RealLink && sealed.barrel.hold === 'length',
+      rod: sealed.rod.hold === 'length',
+    };
   }
 
   /**
@@ -947,10 +967,10 @@ export class GridUtilsService {
   dragCylinder(sealed: Cylinder, dx: number, dy: number): void {
     if (dx === 0 && dy === 0) return;
     this.applyCylinderPose(sealed, {
-      barrelFar: { x: sealed.mountA.x + dx, y: sealed.mountA.y + dy },
-      barrelNear: { x: sealed.inner.x + dx, y: sealed.inner.y + dy },
-      pin: { x: sealed.seal.x + dx, y: sealed.seal.y + dy },
-      rodFar: { x: sealed.mountB.x + dx, y: sealed.mountB.y + dy },
+      mountA: { x: sealed.mountA.x + dx, y: sealed.mountA.y + dy },
+      inner: { x: sealed.inner.x + dx, y: sealed.inner.y + dy },
+      seal: { x: sealed.seal.x + dx, y: sealed.seal.y + dy },
+      mountB: { x: sealed.mountB.x + dx, y: sealed.mountB.y + dy },
     });
   }
 
@@ -968,10 +988,10 @@ export class GridUtilsService {
       y: pivot.y + (point.x - pivot.x) * sin + (point.y - pivot.y) * cos,
     });
     this.applyCylinderPose(sealed, {
-      barrelFar: turn(sealed.mountA),
-      barrelNear: turn(sealed.inner),
-      pin: turn(sealed.seal),
-      rodFar: turn(sealed.mountB),
+      mountA: turn(sealed.mountA),
+      inner: turn(sealed.inner),
+      seal: turn(sealed.seal),
+      mountB: turn(sealed.mountB),
     });
   }
 
@@ -986,6 +1006,10 @@ export class GridUtilsService {
    * usually still lies inside the *old* stroke's travel — so the layout would
    * dutifully keep the old size and slide the piston, and a field labeled
    * Travel would change the position and not the travel.
+   *
+   * It writes one size to both members, so it can only describe a cylinder
+   * whose two are equal. Retired with the Edit Cylinder panel in 2c, which
+   * replaces Travel with the members' own Length fields.
    */
   resizeCylinder(sealed: Cylinder, stroke: number, start: number): void {
     const pose = poseFromStrokeAndStart(
@@ -996,6 +1020,93 @@ export class GridUtilsService {
       0.15 * SettingsService.objectScale
     );
     this.applyCylinderPose(sealed, pose);
+  }
+
+  /**
+   * Turn the whole cylinder to a bearing — Barrel Angle, Rod Angle and the
+   * slide's Slider Angle, which are one number (decision D10).
+   */
+  setCylinderAngle(sealed: Cylinder, angleRad: number): boolean {
+    return this.commitCylinderEdit(
+      sealed,
+      poseForCylinderAngle(sealed, angleRad, this.editContext(sealed))
+    );
+  }
+
+  /** Put the seal at a share of its travel — *Starts at* (decision D11). */
+  setCylinderStart(sealed: Cylinder, start: number): boolean {
+    return this.commitCylinderEdit(
+      sealed,
+      poseForCylinderStart(sealed, start, this.editContext(sealed))
+    );
+  }
+
+  /** Give the barrel a length: the buried end moves, and the travel with it. */
+  setBarrelLength(sealed: Cylinder, length: number): boolean {
+    return this.commitCylinderEdit(
+      sealed,
+      poseForBarrelLength(sealed, length, this.editContext(sealed))
+    );
+  }
+
+  /** Give the rod a length: the far joint moves, unless the frame holds it. */
+  setRodLength(sealed: Cylinder, length: number): boolean {
+    return this.commitCylinderEdit(
+      sealed,
+      poseForRodLength(sealed, length, this.editContext(sealed))
+    );
+  }
+
+  /**
+   * Slide the seal to where the pointer is — *Starts at* by hand (decision S7).
+   *
+   * Every refusal on this road is silent: a pointermove asks sixty times a
+   * second, and a cylinder that has run out of room has simply stopped
+   * following the cursor, the way a mount at its shortest always has.
+   */
+  dragCylinderSeal(sealed: Cylinder, wanted: Coord, rebuild: boolean = true): boolean {
+    return this.commitCylinderEdit(
+      sealed,
+      poseForSealAt(sealed, wanted, this.editContext(sealed)),
+      rebuild
+    );
+  }
+
+  /**
+   * What the pure edits cannot work out for themselves: the scale, what is
+   * grounded, which lengths are fixed, and which held bars are in the way.
+   */
+  private editContext(sealed: Cylinder): CylinderEditContext {
+    const links = this.mechanismSrv.links;
+    const cylinders = this.mechanismSrv.sealedStructures();
+    // The part's own angle hold never refuses its own edit: every edit here
+    // either keeps the bearing or is the one that sets it, and a hold on the
+    // number being typed is a hold on the new number.
+    const own = new Set([sealed.barrel.id, sealed.rod.id]);
+    return {
+      r: 0.15 * SettingsService.objectScale,
+      isGrounded: (joint) => joint instanceof RealJoint && joint.ground,
+      holds: this.cylinderLengthHolds(sealed),
+      heldBy: (displaced) => {
+        const bars = displaced
+          .flatMap((joint) => heldBarsReaching(joint, links, cylinders))
+          .filter((bar, index, all) => all.indexOf(bar) === index && !own.has(bar.id));
+        return bars.length > 0 ? heldBySentence(bars, this.mechanismSrv.joints) : undefined;
+      },
+    };
+  }
+
+  /** One planned transaction, or the reason there is none. The caller saves. */
+  private commitCylinderEdit(
+    sealed: Cylinder,
+    edit: CylinderEdit,
+    rebuild: boolean = true
+  ): boolean {
+    if (!edit.ok) {
+      if (!edit.refusal.silent) this.notify.refusal(edit.refusal.code, edit.refusal.long);
+      return false;
+    }
+    return this.applyCylinderPose(sealed, edit.pose, rebuild);
   }
 
   /**
@@ -1041,17 +1152,28 @@ export class GridUtilsService {
     const cylinders = cylindersIn(this.mechanismSrv.joints);
     const snapshot = snapshotOf(this.mechanismSrv.joints);
     const frozen = this.frozenJointIds();
-    // Each ram's rigid barrel length, read while its geometry is still
+    // Each cylinder's rigid member lengths, read while its geometry is still
     // straight -- laying one out from a bent intermediate state is what bakes
     // the split in. From the snapshot, because nothing has moved yet and
-    // nothing may until the whole plan stands up.
-    const barrelLengths = new Map(
+    // nothing may until the whole plan stands up. Both lengths, because they
+    // are two numbers now: taking the barrel's for the rod's would re-lay a
+    // carried part as the part it would have been before either was typed.
+    const members = new Map(
       cylinders.map((one) => {
-        const far = snapshot.get(one.mountA.id);
-        const near = snapshot.get(one.inner.id);
+        const span = (from: string, to: string) => {
+          const at = snapshot.get(from);
+          const other = snapshot.get(to);
+          return at && other ? this.getPointDistance(at.x, at.y, other.x, other.y) : 0;
+        };
         return [
           one.seal.id,
-          far && near ? this.getPointDistance(far.x, far.y, near.x, near.y) : 0,
+          {
+            lengths: {
+              barrel: span(one.mountA.id, one.inner.id),
+              rod: span(one.seal.id, one.mountB.id),
+            },
+            holds: this.cylinderLengthHolds(one),
+          },
         ] as const;
       })
     );
@@ -1060,13 +1182,17 @@ export class GridUtilsService {
       cylinders,
       snapshot,
       tolerance: 1e-6,
-      layoutFor: (cylinder, barrelFar, rodFar) =>
-        stretchedCylinderPose(
-          barrelFar,
-          rodFar,
-          barrelLengths.get(cylinder.seal.id) ?? 0,
-          0.15 * SettingsService.objectScale
-        ),
+      layoutFor: (cylinder, mountA, mountB) => {
+        const carried = members.get(cylinder.seal.id);
+        if (!carried) return undefined;
+        return stretchedCylinderPose(
+          mountA,
+          mountB,
+          carried.lengths,
+          0.15 * SettingsService.objectScale,
+          carried.holds
+        );
+      },
       // Asked of every joint the plan would move, not only a ram's own five: a
       // lock out on a bracket welded to a mount holds that mount just as
       // surely, and the gate at the canvas cannot see that far.

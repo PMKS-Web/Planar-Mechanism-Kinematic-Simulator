@@ -452,8 +452,16 @@ is.
 A cylinder points somewhere the same way a bar does, so it can hold that direction -- and the pair
 the hold is about is its two mounts, which is what the reader sees and what the panel's Angle field
 states. It has no *length* to hold: mount to mount is the stroke, which is what the drive moves, so
-holding it would be holding against the drive. The flag is written on the **barrel**, so whichever
-member was clicked gives one answer and one `H` entry rides the URL.
+holding it would be holding against the drive. The flag is written on the **barrel** by preference,
+so whichever member was clicked gives one answer and one `H` entry rides the URL.
+
+**Either member may carry it, and `cylinderAngleCarrier` is who to ask** (Stage 2b, decision S5).
+Each member now has a *length* of its own to hold as well, and a member holds one thing -- so a rod
+fixed at its length leaves the barrel free for the angle, and a barrel fixed at its length pushes
+the angle onto the rod. The angle reads as held when *either* flag says `'angle'`, and `heldBars`
+still emits exactly one bar, on the two mounts, under the id of whichever member is carrying it.
+A member's `'length'` hold is **never** handed to the hold solver: it constrains a length the
+*layout* chooses, and `model/cylinder.ts` is where it is honored (`CylinderHolds`).
 
 Three traps, all of which this walked into:
 
