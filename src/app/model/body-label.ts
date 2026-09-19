@@ -2,18 +2,17 @@ import { Cylinder } from './cylinder';
 import { Link, RealLink } from './link';
 
 /**
- * What the panels call a body.
+ * A body's label in its two halves: the noun, and the name beside it.
  *
- * A link's id is the letters of its joints, which is a fine key and a poor
- * name: a cylinder's rod is named after the sliding joint buried inside it,
- * which has no marker, no hitbox and no row in any panel — so a label built
- * from the id offered the reader a part they had never been shown and could
- * not find.
- *
- * Always a complete noun phrase, so a caller can drop it into a sentence
- * without knowing which kind of body came back.
+ * The Edit panel's title is the one caller that needs them apart — the block
+ * takes the noun as its content and the name as `displayName`, so that Rename
+ * replaces one of them and not the sentence. Everything else asks for the
+ * phrase, which is built from this, so S10 is written once.
  */
-export function labelForBody(body: Link, cylinder: Cylinder | undefined): string {
+export function bodyLabelParts(
+  body: Link,
+  cylinder: Cylinder | undefined
+): { noun: string; name: string } {
   if (cylinder) {
     // By identity, with no catch-all: a compound that merely *contains* a
     // cylinder part is a welded body of its own, not another cylinder part.
@@ -37,8 +36,25 @@ export function labelForBody(body: Link, cylinder: Cylinder | undefined): string
           : undefined;
     if (ends) {
       const role = body === cylinder.barrel ? 'Barrel' : 'Rod';
-      return `${role} ${named(ends[0])}${named(ends[1])}`;
+      return { noun: role, name: `${named(ends[0])}${named(ends[1])}` };
     }
   }
-  return `Link ${(body as RealLink).name || body.id}`;
+  return { noun: 'Link', name: (body as RealLink).name || body.id };
+}
+
+/**
+ * What the panels call a body.
+ *
+ * A link's id is the letters of its joints, which is a fine key and a poor
+ * name: a cylinder's rod is named after the sliding joint buried inside it,
+ * which has no marker, no hitbox and no row in any panel — so a label built
+ * from the id offered the reader a part they had never been shown and could
+ * not find.
+ *
+ * Always a complete noun phrase, so a caller can drop it into a sentence
+ * without knowing which kind of body came back.
+ */
+export function labelForBody(body: Link, cylinder: Cylinder | undefined): string {
+  const { noun, name } = bodyLabelParts(body, cylinder);
+  return `${noun} ${name}`;
 }

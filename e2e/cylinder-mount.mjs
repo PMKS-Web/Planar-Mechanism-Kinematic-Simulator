@@ -610,8 +610,14 @@ check(
 const ramNames = await namedAt(`#${ids.barrel}`);
 check(
   'and the ram is still named as the ram',
-  /^Edit Cylinder /.test(ramNames.panel) &&
-    /^Cylinder /.test(ramNames.header) &&
+  // The panel is the member's own too (D12), named by the two joints it runs
+  // between, with a trash can that still takes the whole part.
+  /^Edit (Barrel|Rod) /.test(ramNames.panel) &&
+    // A member's card is the member's since Stage 2c: it says which half of the
+    // part it is, and names the part under it. Either half satisfies this --
+    // the two skin paths overlap, so which one the box's centre lands on is
+    // not the claim being made here.
+    /^(Barrel|Rod) /.test(ramNames.header) &&
     ramNames.del === 'Delete Cylinder',
   JSON.stringify(ramNames)
 );

@@ -43,19 +43,11 @@ import { Link, RealLink } from '../../model/link';
 import { canvasHandle } from '../../services/canvas-handle';
 import { registerEditPanel } from '../../services/edit-panel-handle';
 import { MODEL_SCALE } from '../../model/render-scale';
-import { TitleBlock } from '../BLOCKS/title/title.component';
 import { EditBannerComponent } from '../BLOCKS/banner/edit-banner.component';
 import { StateInputComponent } from '../BLOCKS/state-input/state-input.component';
 import { uniformBodyOf } from '../../model/uniform-body';
-import {
-  cylinderSpanLayoutFrom,
-  cylinderSpanRange,
-  Cylinder,
-  CylinderSize,
-  MIN_STROKE_R,
-  cylinderMinimumSpan,
-  cylinderSizeOf,
-} from '../../model/cylinder';
+import { cylinderAtSeal, cylinderLengthsOf, cylinderSizeOf, Cylinder } from '../../model/cylinder';
+import { bodyLabelParts } from '../../model/body-label';
 import { NotificationService } from 'src/app/services/notification.service';
 import { BackgroundImageService, MIN_WIDTH } from 'src/app/services/background-image.service';
 import { NOT_A } from 'src/app/ui-text';
@@ -99,7 +91,6 @@ const INPUT_SPEED_UNITS = [
     EditBannerComponent,
     MatTooltip,
     MatIcon,
-    TitleBlock,
     StateInputComponent,
     MechanismPanelComponent,
     PanelSectionComponent,
@@ -284,7 +275,14 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     // Not the masses. A mass is not read off a pose and needs no transform
     // back to the start, so it is typed at any pose, playing included: the
     // force graphs re-solve under it, which is the point of typing it then.
-    freeze(this.jointForm, ['xPos', 'yPos', 'prisAngle', 'inputSpeed', 'inputSpeedUnit']);
+    freeze(this.jointForm, [
+      'xPos',
+      'yPos',
+      'prisAngle',
+      'cylinderStart',
+      'inputSpeed',
+      'inputSpeedUnit',
+    ]);
     this.otherJoints.controls.forEach((control) => {
       if (control.disabled) return;
       control.disable({ emitEvent: false });
@@ -292,7 +290,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     });
     freeze(this.linkForm, ['length', 'angle', 'comX', 'comY']);
     freeze(this.forceForm, ['magnitude', 'angle', 'xComp', 'yComp', 'isGlobal']);
-    freeze(this.cylinderForm, ['travel', 'travelUnit', 'start', 'startUnit', 'angle']);
   }
 
   /** The controls this freeze disabled, so unfreezing gives back only those. */
@@ -328,7 +325,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
       });
     freeze(this.jointForm, ['sliderMass']);
     freeze(this.linkForm, ['mass', 'massMoI']);
-    freeze(this.cylinderForm, ['barrelMass', 'rodMass', 'headMass']);
   }
 
   private frozenByPlay = new Set<AbstractControl>();
@@ -364,16 +360,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
    * card is: `animate()` mutates the joints in place and publishes on nothing.
    */
   ngDoCheck(): void {
-    if (this.cylinderClamped) {
-      const cylinder = this.selectedCylinder;
-      if (
-        !cylinder ||
-        cylinder.barrel !== this.cylinderClampedAt?.barrel ||
-        JSON.stringify(this.cylinderSize(cylinder)) !== this.cylinderClampedAt?.size
-      ) {
-        this.cylinderClamped = '';
-      }
-    }
     this.freezePoseBoundFields();
     this.freezeMassesWhilePlaying();
     if (!this.editingRefused() || this.activeSrv.objType !== 'Joint') return;
@@ -398,20 +384,16 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   /**
    * The joint whose drive this panel is editing, if it is editing one.
    *
-   * The drive never lives on the joint the reader clicked. A slider is selected
-   * by its pin and a cylinder by one of its bodies, while the flag and the
-   * speed both sit on the PrisJoint underneath -- the same hop `adjustInput`
-   * and `isVisuallyInput` make. Without it the Input Settings section rendered
-   * (its own guard hops) while every handler here missed the machine: the speed
-   * went to the document default, the direction flip turned the *other*
-   * mechanisms round, and a cylinder's speed could land on whatever joint
-   * happened to be selected last.
+   * One hop shorter than it was. A cylinder used to be driven from the panel of
+   * a *body*, so this had to find the pin underneath it; the slide is a joint a
+   * reader can click now (D9), and it is the joint the drive has always been
+   * on. Without the hop the Input Settings section rendered while every handler
+   * here missed the machine: the speed went to the document default, and the
+   * direction flip turned the *other* mechanisms round.
    */
   private get drivenJoint(): RealJoint | undefined {
-    const sealed = this.selectedCylinder;
-    if (sealed) return sealed.seal.input ? sealed.seal : undefined;
     if (this.activeSrv.objType !== 'Joint') return undefined;
-    const joint = this.selectedSlider ?? this.activeSrv.selectedJoint;
+    const joint = this.activeSrv.selectedJoint;
     return joint && joint.input ? joint : undefined;
   }
 
@@ -510,6 +492,11 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
       xPos: [''],
       yPos: [''],
       prisAngle: [''],
+      // A cylinder's slide alone: where along the stroke the rod begins its
+      // cycle, in percent (D9, D11). It belongs to the joint form because the
+      // slide is a joint -- the field used to sit on a panel for the whole
+      // part, beside a Travel the barrel's own Length says better.
+      cylinderStart: [''],
       ground: [false, { updateOn: 'change' }],
       input: [false, { updateOn: 'change' }],
       // No slider or weld control: the two are the joint's type, which the
@@ -542,53 +529,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     },
     { updateOn: 'blur' }
   );
-  /**
-   * A cylinder is one size number and one position number, so the panel offers
-   * exactly those two — plus the axis, which is where the part points rather
-   * than anything about the ram.
-   *
-   * Both carry a unit picker instead of a second field, because stroke, closed
-   * and open are three ways of saying one number and % and a length are two
-   * ways of saying one position. Changing the picker re-expresses the value; it
-   * never alters the part. That is the same contract the repo's Input Speed
-   * field already has, which is why it is the same control.
-   *
-   * The pickers commit on change and the numbers on blur, as everywhere else.
-   */
-  cylinderForm = this.fb.group(
-    {
-      travel: [''],
-      travelUnit: ['stroke', { updateOn: 'change' }],
-      start: [''],
-      startUnit: ['pct', { updateOn: 'change' }],
-      angle: [''],
-      barrelMass: [''],
-      rodMass: [''],
-      headMass: [''],
-    },
-    { updateOn: 'blur' }
-  );
-
-  /**
-   * Stroke, closed and open: one ram said three ways.
-   *
-   * "closed" and "open" rather than "retracted" and "extended" because the
-   * picker shares the field's fill with the number, and the longer words do not
-   * fit beside one.
-   */
-  readonly travelUnitOptions = [
-    { value: 'stroke', label: 'stroke' },
-    { value: 'ret', label: 'closed' },
-    { value: 'ext', label: 'open' },
-  ];
-
-  /** Where in its travel the ram starts: a share of the stroke, or a length. */
-  get startUnitOptions() {
-    return [
-      { value: 'pct', label: '%' },
-      { value: 'len', label: this.nup.unitLabel(this.settingsService.lengthUnit.getValue()) },
-    ];
-  }
   /**
    * Where the tracing underlay sits and how solid it is drawn.
    *
@@ -650,10 +590,12 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
    *
    * The angle field belongs to a grounded guide alone: a floating slot's
    * direction is the line through two of its carrier's joints, so there is no
-   * number to type and no frame to type it in.
+   * number to type and no frame to type it in. A cylinder's slide is the
+   * exception (D10): the part has one bearing, and the slide is one of the
+   * three places it is stated.
    */
   disableAndEnableJointFields(): void {
-    const wantsAngle = this.isGroundedSlider;
+    const wantsAngle = this.isGroundedSlider || this.sealCylinder !== undefined;
     //This is such a werid bug, the only way to update the visual of the input to be enabled is to emit the event
     //But emitting the event causes the update to be called, which calls this function, which causes an infinite loop
     //So we have to only call the enable on change
@@ -697,8 +639,14 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
       setEnabled(this.jointForm.get('yPos'), !held);
       // The guide's direction is part of what a lock on a slider holds; only
       // the held case is written, because the grounded-guide rule above owns
-      // the enabled side.
-      if (held) setEnabled(this.jointForm.get('prisAngle'), false);
+      // the enabled side. *Starts at* moves the part the same way, so it goes
+      // quiet with it.
+      if (held) {
+        setEnabled(this.jointForm.get('prisAngle'), false);
+        setEnabled(this.jointForm.get('cylinderStart'), false);
+      } else {
+        setEnabled(this.jointForm.get('cylinderStart'), true);
+      }
       // Per row, by the joint the row would MOVE. A distance field
       // repositions the *other* joint, so a held selected joint may still
       // edit its distances — and a free selected joint must not be a back
@@ -712,14 +660,16 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
       const frozenIds = this.gridUtils.frozenJointIds();
       const sealed = this.mechanismService.cylinderOfBar(this.activeSrv.selectedLink);
       if (sealed) {
-        // Travel, Starts-at and Axis all hold the barrel mount and move the
-        // rest of the part, so a held barrel mount alone leaves them live.
-        const movable = [sealed.mountB, sealed.seal, sealed.inner].every(
+        // A member's Length and its Angle each move some of the part, and the
+        // part re-lays itself from whatever is still free -- so one held joint
+        // is the ordinary case, exactly as a bar with one pinned end. All four
+        // held is the real refusal: there is nothing left for either to move,
+        // which is also the state `app-lock-banner` puts a sentence under.
+        const movable = [sealed.mountA, sealed.mountB, sealed.seal, sealed.inner].some(
           (joint) => !frozenIds.has(joint.id)
         );
-        setEnabled(this.cylinderForm.get('travel'), movable);
-        setEnabled(this.cylinderForm.get('start'), movable);
-        setEnabled(this.cylinderForm.get('angle'), movable);
+        setEnabled(this.linkForm.get('length'), movable);
+        setEnabled(this.linkForm.get('angle'), movable);
       } else {
         // A bar with one end pinned is the ordinary case, not a refused one:
         // the lock says where that end is, and lengthening the bar swings the
@@ -744,21 +694,11 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     }
   }
 
-  /** Whether the selected joint is a mount of a sealed cylinder. */
-  /**
-   * Whether the selected joint belongs to a cylinder at all — any of its five,
-   * not only its two mounts.
-   *
-   * Named for what it asks. It was `isCylinderMount`, which is a different and
-   * narrower question that `cylinderMountsAt` now answers; the two were the
-   * same only while a mount could do nothing an interior joint could not.
-   */
-  get isOnACylinder(): boolean {
-    return (
-      this.activeSrv.objType === 'Joint' &&
-      !!this.mechanismService.cylinderAt(this.activeSrv.selectedJoint)
-    );
-  }
+  // No "is this joint on a cylinder" question here any more, and that is
+  // decision D13: a mount is a pin like any other, so Joint Type, Grounded and
+  // Add Input are its own rows, and what the *interior* joints may not do is
+  // the permission model's to say (`groundRefused`, `refuseJointType`) rather
+  // than a branch this panel keeps for itself.
 
   /**
    * The sealed cylinder whose own bar is selected.
@@ -773,38 +713,32 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     return this.mechanismService.cylinderOfBar(this.activeSrv.selectedLink);
   }
 
+  /**
+   * The cylinder whose *slide* is the selected joint — S, the square the skin
+   * draws (D9).
+   *
+   * The counterpart of `selectedCylinder`: that one answers for a body, this
+   * one for the joint in the middle of the part. Between them they are every
+   * piece of a cylinder a reader can open a panel on, and the two are never
+   * both answered, because one is a link selection and the other a joint.
+   */
+  get sealCylinder(): Cylinder | undefined {
+    if (this.activeSrv.objType !== 'Joint') return undefined;
+    const joint = this.activeSrv.selectedJoint;
+    return joint ? cylinderAtSeal(joint) : undefined;
+  }
+
   /** The ram's own size and position, read back off its joints. */
   private cylinderSize(sealed: Cylinder) {
     return cylinderSizeOf(sealed, 0.15 * this.settingsService.objectScale);
   }
 
-  /** Mount-to-mount length at each end of this cylinder's own travel. */
-  private cylinderEnds(size: CylinderSize): { retracted: number; extended: number } {
-    return cylinderSpanRange(
-      { barrel: size.barrelLength, rod: size.rodLength },
-      0.15 * this.settingsService.objectScale
-    );
-  }
-
-  /** The Travel field's value, in whichever of its three spellings is selected. */
-  cylinderTravelLabel(sealed: Cylinder): string {
-    const size = this.cylinderSize(sealed);
-    const unit = this.cylinderForm.controls['travelUnit'].value;
-    const ends = this.cylinderEnds(size);
-    const shown = unit === 'ret' ? ends.retracted : unit === 'ext' ? ends.extended : size.stroke;
-    return this.nup.formatModelLength(shown, this.settingsService.lengthUnit.getValue());
-  }
-
-  /** The Starts-at field's value: a percentage of the stroke, or the length it puts the ram at. */
-  cylinderStartLabel(sealed: Cylinder): string {
-    const { start, span } = this.cylinderSize(sealed);
-    if (this.cylinderForm.controls['startUnit'].value === 'pct') {
-      // One decimal, not a whole number. Rounded to an integer the field said
-      // 34 for a ram positioned at 33.7%, and on a long ram that gap is a real
-      // distance -- the panel would be quietly disagreeing with the drawing.
-      return `${Math.round(start * 1000) / 10}`;
-    }
-    return this.nup.formatModelLength(span, this.settingsService.lengthUnit.getValue());
+  /** The Starts-at field's value: where the rod begins, as a share of the stroke. */
+  private cylinderStartLabel(sealed: Cylinder): string {
+    // One decimal, not a whole number. Rounded to an integer the field said
+    // 34 for a ram positioned at 33.7%, and on a long ram that gap is a real
+    // distance -- the panel would be quietly disagreeing with the drawing.
+    return `${Math.round(this.cylinderSize(sealed).start * 1000) / 10}`;
   }
 
   /**
@@ -831,7 +765,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
    * while the label, the arrows and the Analyze text all claimed otherwise.
    */
   get cylinderDirectionForced(): boolean {
-    const sealed = this.selectedCylinder;
+    const sealed = this.sealCylinder;
     return !!sealed && !!sealed.seal.input && this.cylinderTravelEnd(sealed) !== undefined;
   }
 
@@ -854,19 +788,14 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     this.mechanismService.updateMechanism(false);
   }
 
-  /** Set when the last edit had to be held at the ram's minimum, so the panel can say so. */
-  cylinderClamped = '';
-  private cylinderClampedAt?: { barrel: Link; size: string };
-
-  private rememberCylinderClamp(sealed: Cylinder): void {
-    this.cylinderClampedAt = {
-      barrel: sealed.barrel,
-      size: JSON.stringify(this.cylinderSize(sealed)),
-    };
-  }
-
-  /** Mount-to-mount axis angle, in the user's angle unit. */
-  cylinderAngleLabel(sealed: Cylinder): string {
+  /**
+   * Mount-to-mount axis angle, in the user's angle unit.
+   *
+   * The one bearing a cylinder has (D10). The Barrel's Angle, the Rod's Angle
+   * and the slide's Slider Angle are all this number, read here once so the
+   * three fields cannot show three answers.
+   */
+  private cylinderAngleLabel(sealed: Cylinder): string {
     const raw = Math.atan2(sealed.mountB.y - sealed.mountA.y, sealed.mountB.x - sealed.mountA.x);
     return this.nup.formatValueAndUnit(
       this.nup.convertAngle(raw, AngleUnit.RADIAN, this.settingsService.angleUnit.getValue()),
@@ -875,23 +804,17 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   }
 
   /**
-   * Re-pose the selected cylinder to the given mount-to-mount span and axis
-   * angle, anchored on the barrel mount. Routed through the same drag pipeline
-   * as a canvas gesture, so the parametric layout keeps it collinear and every
-   * downstream update fires the same way.
+   * What a committed cylinder edit does after the geometry has landed.
+   *
+   * The grid utils own the transaction and the refusal; what is left is the
+   * panel's own three duties. A refusal has already been said, so nothing here
+   * runs on one -- and in particular nothing is saved, because an edit that
+   * changed nothing must not take an undo step with it.
    */
-  private reposeCylinder(span?: number, angleRad?: number): void {
-    const sealed = this.selectedCylinder;
-    if (!sealed) return;
-    const a = sealed.mountA;
-    const c = sealed.mountB;
-    const current = Math.atan2(c.y - a.y, c.x - a.x);
-    const s = span ?? getDistance(a, c);
-    const ang = angleRad ?? current;
-    this.gridUtils.dragJoint(
-      c as RealJoint,
-      new Coord(a.x + s * Math.cos(ang), a.y + s * Math.sin(ang))
-    );
+  private afterCylinderEdit(sealed: Cylinder, went: boolean): boolean {
+    if (!went) return false;
+    // A ram parked at a stop has one way left to go; its drive is pointed that
+    // way before the save, so the entry holds the pair as the reader sees it.
     this.syncCylinderDirection(sealed);
     this.mechanismService.onMechUpdateState.next(2);
     // One committed edit, one undo step. A canvas drag saves on release and a
@@ -899,132 +822,38 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     // back whatever the *previous* gesture was -- on a freshly opened template,
     // the template itself.
     this.mechanismService.save();
-    this.patchCylinderForm();
-    this.rememberCylinderClamp(sealed);
+    return true;
+  }
+
+  /** The selected member's own length: the barrel's, or the rod's (S3). */
+  private memberLength(sealed: Cylinder): number {
+    const lengths = cylinderLengthsOf(sealed);
+    return this.activeSrv.selectedLink === sealed.barrel ? lengths.barrel : lengths.rod;
   }
 
   /**
-   * Write a size and a position to the ram, saying so when the minimum bit.
+   * Give the selected member the length typed into its own field (S6).
    *
-   * The floor is the one failure a cylinder has left: barrel and rod cannot
-   * disagree with the stroke any more, so an impossible ram can no longer be
-   * described and there is nothing else to refuse.
+   * Which member it is decides which joint moves: the barrel's buried end, or
+   * the joint at the rod's far end. The ladder underneath — what gives when
+   * that joint is grounded, and when the answer is a refusal — is the model's
+   * (`model/cylinder-edit.ts`), so this only says which of the two was typed.
    */
-  private resizeCylinderTo(sealed: Cylinder, stroke: number, start: number): void {
-    const floor = MIN_STROKE_R * 0.15 * this.settingsService.objectScale;
-    const held = Math.max(stroke, floor);
-    this.cylinderClamped =
-      held !== stroke
-        ? `Held at the shortest cylinder there is: any less and the barrel has no room to slide in.`
-        : '';
-    this.gridUtils.resizeCylinder(sealed, held, start);
-    this.syncCylinderDirection(sealed);
-    this.mechanismService.onMechUpdateState.next(2);
-    // One committed edit, one undo step. A canvas drag saves on release and a
-    // panel edit did not, so typing a ram's size and then pressing Undo took
-    // back whatever the *previous* gesture was -- on a freshly opened template,
-    // the template itself.
-    this.mechanismService.save();
-    this.patchCylinderForm();
-    this.rememberCylinderClamp(sealed);
+  private commitMemberLength(sealed: Cylinder, value: number): void {
+    const went =
+      this.activeSrv.selectedLink === sealed.barrel
+        ? this.gridUtils.setBarrelLength(sealed, value)
+        : this.gridUtils.setRodLength(sealed, value);
+    this.afterCylinderEdit(sealed, went);
+    // Either way, from the drawing: a refused edit has to put the old number
+    // back, and an accepted one is reformatted at the length that landed.
+    this.patchLinkSize();
   }
 
-  /** Refresh the cylinder form's fields from the part, without re-firing them. */
-  patchCylinderForm(): void {
-    const sealed = this.selectedCylinder;
-    if (!sealed) return;
-    const massUnits = this.massUnit();
-    this.cylinderForm.patchValue(
-      {
-        travel: this.cylinderTravelLabel(sealed),
-        start: this.cylinderStartLabel(sealed),
-        angle: this.cylinderAngleLabel(sealed),
-        barrelMass: this.nup.formatValueAndUnit(sealed.barrel.mass, massUnits),
-        rodMass: this.nup.formatValueAndUnit(sealed.rod.mass, massUnits),
-        headMass: this.nup.formatValueAndUnit(sealed.seal.mass, massUnits),
-      },
-      { emitEvent: false }
-    );
-  }
-
-  /**
-   * One handler for the three bodies a sealed cylinder weighs in as.
-   *
-   * The rod and head are welded rigid, but rigidity says how they move, not
-   * where their mass sits: the rod's is spread along its length, the head's
-   * is concentrated at the pin — which is the number that matters in a
-   * reciprocating machine. The solver already carries all three bodies, so
-   * these fields are the first door to numbers that were always there.
-   */
-  private cylinderMassEdit(
-    control: 'barrelMass' | 'rodMass' | 'headMass',
-    part: (sealed: NonNullable<EditPanelComponent['selectedCylinder']>) => Link | PrisJoint,
-    raw: string | null
-  ): void {
-    const sealed = this.selectedCylinder;
-    if (!sealed) return;
-    const units = this.massUnit();
-    const body = part(sealed);
-    const [success, value] = this.nup.parseMassString(raw ?? '', units);
-    if (!success || value < 0) {
-      this.notify.refusal('value.mass', success ? NOT_A.nonNegativeMass : NOT_A.mass);
-      this.cylinderForm.patchValue(
-        { [control]: this.nup.formatValueAndUnit(body.mass, units) },
-        { emitEvent: false }
-      );
-      return;
-    }
-    // Through the one door for a body: a mount weld can fold the barrel or the
-    // rod into a compound, and that aggregate has to keep telling the same
-    // story. The head is the sliding joint's own mass now and belongs to no
-    // compound, so it is written directly -- there is nothing for that door to
-    // keep true.
-    if (body instanceof PrisJoint) body.mass = value;
-    else this.mechanismService.assignBodyMass(body, value);
-    this.mechanismService.updateMechanism(true);
-    this.mechanismService.onMechUpdateState.next(2);
-    this.cylinderForm.patchValue(
-      { [control]: this.nup.formatValueAndUnit(value, units) },
-      { emitEvent: false }
-    );
-  }
-
-  /** Whether either visible cylinder body still carries typed inertia values. */
-  cylinderHasCustomInertia(): boolean {
-    const sealed = this.selectedCylinder;
-    if (!sealed) return false;
-    return [sealed.barrel, sealed.rod].some(
-      (part) => part instanceof RealLink && (part.moiIsCustom || part.comIsCustom)
-    );
-  }
-
-  /**
-   * Hand every part of the cylinder back to the uniform body.
-   *
-   * Template cylinders arrive from legacy URLs with frozen custom values and
-   * no other door to them: the cylinder panel replaces the link panel, so the
-   * per-field Derive buttons are unreachable for these bodies.
-   */
-  deriveCylinderInertiaFromShape(): void {
-    const sealed = this.selectedCylinder;
-    if (!sealed) return;
-    for (const part of [sealed.barrel, sealed.rod]) {
-      if (part instanceof RealLink) {
-        part.moiIsCustom = false;
-        part.comIsCustom = false;
-      }
-    }
-    this.mechanismService.updateMechanism(true);
-    this.mechanismService.onMechUpdateState.next(2);
-    this.patchCylinderForm();
-  }
-
-  /** Drive (or stop driving) the selected cylinder's hidden prismatic pin. */
-  toggleCylinderInput(): void {
-    const sealed = this.selectedCylinder;
-    if (!sealed) return;
-    this.mechanismService.toggleCylinderInput(sealed);
-    this.syncInputSettingsFields();
+  /** Turn the whole part to the bearing typed into a member's Angle field (D10). */
+  private commitMemberAngle(sealed: Cylinder, radians: number): void {
+    this.afterCylinderEdit(sealed, this.gridUtils.setCylinderAngle(sealed, radians));
+    this.patchLinkSize();
   }
 
   /** The selected joint's slider, whichever end of the pair is selected. */
@@ -1040,16 +869,16 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   /**
    * The sliding joint whose mass this panel edits, where the selection is one.
    *
-   * D6: Mass Settings shows for a joint whose type has a slot. Not a
-   * cylinder's: a ram's bodies have their own fields further down this panel,
-   * and its head is one of them.
+   * D6: Mass Settings shows for a joint whose type has a slot — a cylinder's
+   * slide included, which is where the sliding body's mass has lived since the
+   * three-body Edit Cylinder panel was retired.
    *
    * This used to answer with the *block* -- a zero-length link nobody could
    * select, which is the whole reason the field is here. Stage 1 of
    * `docs/joint-type-and-cylinder-plan.md` moved that mass onto the joint.
    */
   get sliderMassJoint(): PrisJoint | undefined {
-    if (this.selectedCylinder) return undefined;
+    if (this.activeSrv.objType !== 'Joint') return undefined;
     const joint = this.activeSrv.selectedJoint;
     return joint instanceof PrisJoint ? joint : undefined;
   }
@@ -1102,10 +931,19 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
    * all, so a slider input always ran at one fixed speed however it was set.
    */
   get isSliderInput(): boolean {
-    // A cylinder body's drive is the hidden prismatic pin, so its speed is a
-    // translation too — same unit, same field, same machinery.
-    if (this.selectedCylinder) return true;
+    // A cylinder's slide is one of these: it is a prismatic joint, so its speed
+    // is a translation — same unit, same field, same machinery.
     return this.activeSrv.objType === 'Joint' && this.selectedSlider !== undefined;
+  }
+
+  /** What the Input Speed field's help says, in terms of what is being driven. */
+  get inputSpeedHelp(): string {
+    if (this.sealCylinder) {
+      return 'How fast the rod travels. Use the direction button to choose opening or closing.';
+    }
+    return this.isSliderInput
+      ? 'How fast this block slides. Negative reverses it.'
+      : 'How fast this joint turns. Negative reverses it.';
   }
 
   /** Length per second, in whatever length unit the mechanism is drawn in. */
@@ -1149,11 +987,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     return unit === LengthUnit.INCH ? 'in/s' : unit === LengthUnit.METER ? 'm/s' : 'cm/s';
   }
 
-  /** The barrel as the RealLink the color picker paints; the rod follows it. */
-  cylinderBodyLink(sealed: Cylinder): RealLink {
-    return sealed.barrel as RealLink;
-  }
-
   /**
    * Which way *this* drive is set, read off the joint rather than off
    * `isInputCW` — that setting only mirrors the machine whose speed was set
@@ -1174,8 +1007,8 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
    * way it happens to point.
    */
   get inputDirectionLabel(): string {
-    if (this.selectedCylinder) {
-      // Toward the two ends this panel's own Travel field names: closed and open.
+    if (this.sealCylinder) {
+      // Toward the two ends of the stroke *Starts at* measures along.
       return this.drivenClockwise ? 'Closing' : 'Opening';
     }
     if (!this.isSliderInput) {
@@ -1226,6 +1059,62 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
         this.linkForm.get('length')?.enable({ emitEvent: false });
       }
     }
+  }
+
+  /**
+   * Why the selected joint has no Grounded row, or nothing when it has one.
+   *
+   * Quoted from the permission model rather than asked again here, so the row
+   * the menu grays and the row this panel leaves out are one rule: a cylinder
+   * is bolted to the world at the joints at its two ends, never at the slide
+   * in the middle of it (D9).
+   */
+  get groundRefused(): boolean {
+    return this.gridUtils.groundRefusal(this.activeSrv.selectedJoint) !== undefined;
+  }
+
+  /** The noun the selected body's title is headed with: Barrel, Rod or Link (S10). */
+  get bodyNoun(): string {
+    return bodyLabelParts(this.activeSrv.selectedLink, this.selectedCylinder).noun;
+  }
+
+  /**
+   * The name beside it, for a member: the two joints it runs between.
+   *
+   * Nothing for a plain link, so the title block goes on reading the link's own
+   * name — which is what Rename writes, and what a member has no room for.
+   */
+  get bodyName(): string | undefined {
+    const sealed = this.selectedCylinder;
+    return sealed ? bodyLabelParts(this.activeSrv.selectedLink, sealed).name : undefined;
+  }
+
+  /**
+   * What the Visual Settings color field is called, or nothing where there is
+   * none.
+   *
+   * The rod has none: one part, one color — the skin paints the rod from the
+   * barrel's fill (`slider-mark.service.ts`), so a Rod Color field would be a
+   * control that either changed the barrel too or changed nothing at all.
+   */
+  get bodyColorLabel(): string | undefined {
+    const sealed = this.selectedCylinder;
+    if (!sealed) return 'Link Color';
+    return this.activeSrv.selectedLink === sealed.barrel ? 'Barrel Color' : undefined;
+  }
+
+  /** What the Length row's help says on a member, where "two joints" names one nobody sees. */
+  get memberLengthHelp(): string | undefined {
+    const sealed = this.selectedCylinder;
+    if (!sealed) return undefined;
+    return this.activeSrv.selectedLink === sealed.barrel
+      ? 'How long the barrel is. The stroke, and where the rod starts in it, follow.'
+      : 'How long the rod is. The joint at its far end moves.';
+  }
+
+  /** And the Angle row's: one bearing for the whole part, not this member's own (D10). */
+  get memberAngleHelp(): string | undefined {
+    return this.selectedCylinder ? 'The direction the cylinder points, joint to joint.' : undefined;
   }
 
   onChanges(): void {
@@ -1345,6 +1234,32 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
         if (!this.activeSrv.selectedJoint) return;
         const slider = this.selectedSlider;
         if (!slider) return;
+        // A cylinder's slide states the part's one bearing rather than its own
+        // slot's (D10): typing it turns A–N–S–B about the slide, or about a
+        // grounded end joint, and is refused when both ends are grounded. The
+        // Barrel's and the Rod's Angle fields read the same number after it,
+        // because all three are this one.
+        const sealed = this.sealCylinder;
+        if (sealed) {
+          if (val !== this.cylinderAngleLabel(sealed)) {
+            if (!success) this.notify.refusal('value.angle', NOT_A.angle);
+            else {
+              this.afterCylinderEdit(
+                sealed,
+                this.gridUtils.setCylinderAngle(
+                  sealed,
+                  this.nup.convertAngle(
+                    value,
+                    this.settingsService.angleUnit.getValue(),
+                    AngleUnit.RADIAN
+                  )
+                )
+              );
+            }
+            this.patchSlideFields(sealed);
+          }
+          return;
+        }
         // Nor is the angle it already has, as this panel shows it: the control
         // is patched with the angle rounded for display, and re-parsing that
         // is not the same number as the radians on the joint.
@@ -1400,6 +1315,32 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
           // Undo took back the slot angle *and* whatever was done before it.
           this.mechanismService.save();
         }
+      })
+    );
+
+    // *Starts at*, the slide's own field: where the rod begins its cycle, as a
+    // share of the stroke (D11). Percent alone -- the length it used to offer
+    // beside it was the mount-to-mount span, which the barrel's and the rod's
+    // own Length fields now say between them.
+    this.onDestroySubscriptions.push(
+      this.jointForm.controls['cylinderStart'].valueChanges.subscribe((val) => {
+        if (this.editingRefused()) return;
+        const sealed = this.sealCylinder;
+        if (!sealed) return;
+        // A blank field is not 0%. `Number('')` is zero, so emptying the box
+        // and tabbing away would retract the rod to its stop -- an edit nobody
+        // asked for, made out of an absence.
+        const typed = String(val ?? '')
+          .replace('%', '')
+          .trim();
+        const asked = Number(typed);
+        if (typed !== '' && Number.isFinite(asked)) {
+          // Outside its own travel there is nowhere further to go, so the ends
+          // are what an out-of-range number means.
+          const held = Math.min(Math.max(asked / 100, 0), 1);
+          this.afterCylinderEdit(sealed, this.gridUtils.setCylinderStart(sealed, held));
+        }
+        this.patchSlideFields(sealed);
       })
     );
 
@@ -1506,15 +1447,11 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
         // field went on showing the minus.
         if (!success || value <= 0) {
           this.notify.refusal('value.length', success ? NOT_A.positiveLength : NOT_A.length);
-          this.linkForm.patchValue(
-            {
-              length: this.nup.formatModelLength(
-                this.activeSrv.selectedLink.length,
-                this.settingsService.lengthUnit.getValue()
-              ),
-            },
-            { emitEvent: false }
-          );
+          this.patchLinkSize();
+        } else if (this.selectedCylinder) {
+          // A member's own length (S3): the barrel's moves its buried end and
+          // the stroke with it, the rod's moves the joint at its far end.
+          this.commitMemberLength(this.selectedCylinder, value);
         } else {
           // Near a lock the number is a constraint to solve, not an end to
           // move; the solver says whether it can be true at all.
@@ -1546,142 +1483,26 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     );
 
     this.onDestroySubscriptions.push(
-      this.cylinderForm.controls['travel'].valueChanges.subscribe((val) => {
-        const sealed = this.selectedCylinder;
-        const [success, value] = this.nup.parseModelLengthString(
-          val!,
-          this.settingsService.lengthUnit.getValue()
-        );
-        if (!sealed || !success) return this.patchCylinderForm();
-        // Three spellings, one number. Whichever is typed sets the stroke and
-        // nothing negotiates -- which is the whole of what holding barrel and
-        // rod equal bought, and why there is no resolution table here.
-        // Closed and open are spans, so they are inverted through the same span
-        // rule a mount drag uses rather than by subtracting a constant: the body
-        // length a span carries depends on the stroke it is carrying.
-        const unit = this.cylinderForm.controls['travelUnit'].value;
-        const r = 0.15 * this.settingsService.objectScale;
-        const asked =
-          unit === 'ret'
-            ? cylinderSpanLayoutFrom(value, 0, r).stroke
-            : unit === 'ext'
-              ? cylinderSpanLayoutFrom(value, 1, r).stroke
-              : value;
-        this.resizeCylinderTo(sealed, asked, this.cylinderSize(sealed).start);
-      })
-    );
-
-    // Re-expressing the value, never altering the part: the number in the field
-    // changes because the unit did, and the ram does not move.
-    this.onDestroySubscriptions.push(
-      this.cylinderForm.controls['travelUnit'].valueChanges.subscribe(() =>
-        this.patchCylinderForm()
-      )
-    );
-    this.onDestroySubscriptions.push(
-      this.cylinderForm.controls['startUnit'].valueChanges.subscribe(() => this.patchCylinderForm())
-    );
-    this.onDestroySubscriptions.push(
-      this.cylinderForm.controls['barrelMass'].valueChanges.subscribe((val) =>
-        this.cylinderMassEdit('barrelMass', (sealed) => sealed.barrel, val)
-      )
-    );
-    this.onDestroySubscriptions.push(
-      this.cylinderForm.controls['rodMass'].valueChanges.subscribe((val) =>
-        this.cylinderMassEdit('rodMass', (sealed) => sealed.rod, val)
-      )
-    );
-    this.onDestroySubscriptions.push(
-      this.cylinderForm.controls['headMass'].valueChanges.subscribe((val) =>
-        this.cylinderMassEdit('headMass', (sealed) => sealed.seal, val)
-      )
-    );
-
-    this.onDestroySubscriptions.push(
-      this.cylinderForm.controls['start'].valueChanges.subscribe((val) => {
-        const sealed = this.selectedCylinder;
-        if (!sealed) return this.patchCylinderForm();
-        if (this.cylinderForm.controls['startUnit'].value === 'pct') {
-          // A blank field is not 0%. `Number('')` is zero, and choosing a
-          // different unit blurs and commits the text first -- so emptying the
-          // field and then changing the picker retracted the ram to its stop,
-          // which is the picker moving the part it promises never to move.
-          const typed = String(val ?? '')
-            .replace('%', '')
-            .trim();
-          const asked = Number(typed);
-          if (typed === '' || !Number.isFinite(asked)) return this.patchCylinderForm();
-          const held = Math.min(Math.max(asked / 100, 0), 1);
-          this.resizeCylinderTo(sealed, this.cylinderSize(sealed).stroke, held);
-          if (held !== asked / 100) {
-            this.cylinderClamped = `Start held at ${Math.round(held * 100)}%.`;
-          }
-          return;
-        }
-        // A typed length is the mount-to-mount span, which is exactly what a
-        // drag of that mount asks for -- so it takes the same road, and outside
-        // the ram's own travel it resizes it in the same way.
-        const [success, value] = this.nup.parseModelLengthString(
-          val!,
-          this.settingsService.lengthUnit.getValue()
-        );
-        if (!success || !(value > 0)) return this.patchCylinderForm();
-        // A length the ram cannot reach shrinks it, exactly as dragging there
-        // does -- and has to say so for the same reason the drag does.
-        const floor = cylinderMinimumSpan(0.15 * this.settingsService.objectScale);
-        this.cylinderClamped =
-          value < floor
-            ? 'Held at the shortest cylinder there is: any less and the barrel has no room to slide in.'
-            : '';
-        this.reposeCylinder(value, undefined);
-      })
-    );
-
-    this.onDestroySubscriptions.push(
-      this.cylinderForm.controls['angle'].valueChanges.subscribe((val) => {
-        const [success, value] = this.nup.parseAngleString(
-          val!,
-          this.settingsService.angleUnit.getValue()
-        );
-        if (!success) {
-          this.notify.refusal('value.angle', NOT_A.angle);
-          this.patchCylinderForm();
-        } else
-          this.reposeCylinder(
-            undefined,
-            this.nup.convertAngle(
-              value,
-              this.settingsService.angleUnit.getValue(),
-              AngleUnit.RADIAN
-            )
-          );
-      })
-    );
-
-    this.onDestroySubscriptions.push(
       this.linkForm.controls['angle'].valueChanges.subscribe((val) => {
         const [success, value] = this.nup.parseAngleString(
           val!,
           this.settingsService.angleUnit.getValue()
         );
+        const radians = success
+          ? this.nup.convertAngle(
+              value,
+              this.settingsService.angleUnit.getValue(),
+              AngleUnit.RADIAN
+            )
+          : 0;
         if (!success) {
           this.notify.refusal('value.angle', NOT_A.angle);
-          this.linkForm.patchValue({
-            angle: this.nup
-              .convertAngle(
-                this.activeSrv.selectedLink.angleRad,
-                AngleUnit.RADIAN,
-                this.settingsService.angleUnit.getValue()
-              )
-              .toFixed(0)
-              .toString(),
-          });
+          this.patchLinkSize();
+        } else if (this.selectedCylinder) {
+          // One bearing for the whole part (D10), so the Rod's field and the
+          // slide's Slider Angle read this the moment it lands.
+          this.commitMemberAngle(this.selectedCylinder, radians);
         } else {
-          const radians = this.nup.convertAngle(
-            value,
-            this.settingsService.angleUnit.getValue(),
-            AngleUnit.RADIAN
-          );
           const solved = this.gridUtils.setBarValue(this.activeSrv.selectedLink, 'angle', radians);
           if (solved === 'refused') {
             this.refuseTypedValue('angle');
@@ -1778,8 +1599,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
         // the flip. Pressed to a state the link is already in there is nothing
         // to do, which is what a programmatic sync looks like from here.
         if (wanted === this.drawnAsDisc()) return;
-        const link = this.activeSrv.selectedLink;
-        if (!link?.canBeCircular()) {
+        if (!this.canDrawAsDisc()) {
           this.linkForm.patchValue({ drawAsDisc: this.drawnAsDisc() }, { emitEvent: false });
           return;
         }
@@ -2027,6 +1847,11 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
             },
             { emitEvent: false }
           );
+          // A cylinder's slide overwrites both of those: its Slider Angle is
+          // the part's one bearing rather than its own slot's, and *Starts at*
+          // is the only field on this panel that reads off the whole assembly.
+          const sealed = this.sealCylinder;
+          if (sealed) this.patchSlideFields(sealed);
           this.syncInputSettingsFields();
 
           this.disableAndEnableLinkFields();
@@ -2035,21 +1860,9 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
           });
         } else if (newObjType == 'Link') {
           this.currentlyOpenJointID = '';
-          this.patchCylinderForm();
+          this.patchLinkSize();
           this.linkForm.patchValue(
             {
-              length: this.nup.formatModelLength(
-                this.activeSrv.selectedLink.length,
-                this.settingsService.lengthUnit.getValue()
-              ),
-              angle: this.nup.formatValueAndUnit(
-                this.nup.convertAngle(
-                  this.activeSrv.selectedLink.angleRad,
-                  AngleUnit.RADIAN,
-                  this.settingsService.angleUnit.getValue()
-                ),
-                this.settingsService.angleUnit.getValue()
-              ),
               mass: this.nup.formatValueAndUnit(this.activeSrv.selectedLink.mass, this.massUnit()),
               drawAsDisc: this.drawnAsDisc(),
             },
@@ -2057,9 +1870,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
           );
           this.refreshDerivedMassFields();
           this.syncMassDependents();
-          // A cylinder body reuses the joint form's Input Settings controls
-          // (speed, unit), so they have to be truthful when the body opens.
-          this.syncInputSettingsFields();
         } else if (newObjType == 'Force') {
           this.currentlyOpenJointID = '';
           this.forceForm.patchValue(
@@ -2099,11 +1909,28 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
    */
   drawnAsDisc(): boolean {
     const link = this.activeSrv.selectedLink;
-    return !!link?.isCircle && link.canBeCircular();
+    return !!link?.isCircle && this.canDrawAsDisc();
   }
 
-  /** Why Draw as a Disc is unavailable, in terms of this particular link. */
+  /**
+   * Whether this body may be drawn as a disc at all.
+   *
+   * A cylinder's member never may, whatever its own two joints look like: the
+   * part is drawn by one skin from end to end, and a barrel bolted to the frame
+   * at its mount otherwise passes the link's own test and offers a switch that
+   * the skin would ignore. Shown grayed rather than hidden (D12), with the
+   * reason on the row.
+   */
+  canDrawAsDisc(): boolean {
+    return !this.selectedCylinder && this.activeSrv.selectedLink?.canBeCircular() === true;
+  }
+
+  /** Why Draw as a Disc is unavailable, in terms of this particular body. */
   whyNotCircular(): string {
+    if (this.selectedCylinder) {
+      return `A disc is centered on the pin its link turns about. This is half of a cylinder, which
+        slides along its own axis rather than turning about a pin.`;
+    }
     const link = this.activeSrv.selectedLink;
     const grounded = link.joints.filter(
       (joint) => joint instanceof RealJoint && joint.ground && !(joint instanceof PrisJoint)
@@ -2386,6 +2213,46 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     );
   }
 
+  /**
+   * Length and Angle as the selected body has them.
+   *
+   * A member's two are the part's rather than the link's own: the length is
+   * this half of it (S3), and the angle is the one bearing mount to mount
+   * (D10), which is not the same reading as the barrel's own joints — its far
+   * end is the buried one no reader has ever been shown.
+   */
+  private patchLinkSize(): void {
+    const link = this.activeSrv.selectedLink;
+    if (!link) return;
+    const sealed = this.selectedCylinder;
+    if (!sealed) {
+      this.patchLinkLength();
+      this.patchLinkAngle();
+      return;
+    }
+    this.linkForm.patchValue(
+      {
+        length: this.nup.formatModelLength(
+          this.memberLength(sealed),
+          this.settingsService.lengthUnit.getValue()
+        ),
+        angle: this.cylinderAngleLabel(sealed),
+      },
+      { emitEvent: false }
+    );
+  }
+
+  /** Slider Angle and Starts at, as the cylinder's slide has them (D9, D10). */
+  private patchSlideFields(sealed: Cylinder): void {
+    this.jointForm.patchValue(
+      {
+        prisAngle: this.cylinderAngleLabel(sealed),
+        cylinderStart: this.cylinderStartLabel(sealed),
+      },
+      { emitEvent: false }
+    );
+  }
+
   /** Put the field back on the length the link actually has. */
   private patchLinkLength(): void {
     this.activeSrv.selectedLink.updateLengthAndAngle();
@@ -2520,11 +2387,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     );
   }
 
-  /** Point at a part's mass field, see that part lit on the ram. */
-  setCylinderPartPreview(part: 'barrel' | 'rod' | 'head' | undefined) {
-    canvasHandle()?.setCylinderPartPreview(part);
-  }
-
   setShowLinkLengthOverlay($event: number) {
     canvasHandle()?.setLinkLengthOverlay($event, this.listOfOtherJoints);
   }
@@ -2538,9 +2400,17 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     canvasHandle()?.setSlotAngleOverlay(showing);
   }
 
-  /** Show the ram's travel on the canvas while one of its size fields is pointed at. */
-  setCylinderRangeOverlay(which: 'travel' | 'start' | undefined) {
-    canvasHandle()?.setCylinderRangeOverlay(which);
+  /**
+   * Show where the rod can get to, while *Starts at* is pointed at.
+   *
+   * The stretch of grid the rod's end joint covers, with the share of it the
+   * field states marked on it — what a reader typing a percentage wants to see
+   * is a place on the drawing rather than a number in the abstract. The other
+   * half of this overlay belonged to a Travel field the members' own Length
+   * rows replaced.
+   */
+  setCylinderStartOverlay(showing: boolean) {
+    canvasHandle()?.setCylinderRangeOverlay(showing ? 'start' : undefined);
   }
 
   getOtherJointsInLink(selectedJoint: RealJoint): RealJoint[] {

@@ -32,7 +32,6 @@ import {
   cylinderLengthsOf,
   isInsideCylinder,
   layoutCylinder,
-  poseFromStrokeAndStart,
   cylindersIn,
   stretchedCylinderPose,
 } from '../model/cylinder';
@@ -1008,33 +1007,6 @@ export class GridUtilsService {
       seal: turn(sealed.seal),
       mountB: turn(sealed.mountB),
     });
-  }
-
-  /**
-   * Resize a cylinder to a stroke and a position in it, holding its barrel
-   * mount and its axis — what the panel's Travel and Starts-at fields write.
-   *
-   * Deliberately not routed through the mount drag like the other panel edits.
-   * A drag says "put this mount here" and the layout answers with a size; this
-   * says "be this size" and the mount goes wherever that puts it. Sent through
-   * the drag instead, a longer stroke at the same position asks for a span that
-   * usually still lies inside the *old* stroke's travel — so the layout would
-   * dutifully keep the old size and slide the piston, and a field labeled
-   * Travel would change the position and not the travel.
-   *
-   * It writes one size to both members, so it can only describe a cylinder
-   * whose two are equal. Retired with the Edit Cylinder panel in 2c, which
-   * replaces Travel with the members' own Length fields.
-   */
-  resizeCylinder(sealed: Cylinder, stroke: number, start: number): void {
-    const pose = poseFromStrokeAndStart(
-      { x: sealed.mountA.x, y: sealed.mountA.y },
-      Math.atan2(sealed.mountB.y - sealed.mountA.y, sealed.mountB.x - sealed.mountA.x),
-      stroke,
-      start,
-      0.15 * SettingsService.objectScale
-    );
-    this.applyCylinderPose(sealed, pose);
   }
 
   /**

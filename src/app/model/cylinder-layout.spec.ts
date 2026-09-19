@@ -11,7 +11,6 @@ import {
   cylinderStroke,
   cylinderStrokeAlong,
   layoutCylinder,
-  poseFromStrokeAndStart,
 } from './cylinder';
 import { CYLINDER } from './joint-marks';
 
@@ -222,36 +221,5 @@ describe('layoutCylinder, in the plane', () => {
 
   it('declines coincident mounts with no axis hint', () => {
     expect(layoutCylinder({ x: 1, y: 1 }, { x: 1, y: 1 }, equal(3), R, 'barrel')).toBeUndefined();
-  });
-});
-
-describe('poseFromStrokeAndStart: the edit the span rule cannot express', () => {
-  it('changes the size while holding the position', () => {
-    // The bug this exists to prevent: at start 0.5 a stroke of 12 spans
-    // 18 + LOCK, which lies inside the *old* stroke-10 travel [10, 20] + LOCK.
-    // Routed through the span rule, a field labeled Travel would have held the
-    // size at 10 and moved the piston to 80% instead.
-    const asked = poseFromStrokeAndStart({ x: 0, y: 0 }, 0, 12, 0.5, R);
-    expect(cylinderStroke(dist(asked.mountA, asked.inner), R)).toBeCloseTo(12, 9);
-
-    const viaSpan = cylinderSpanLayout(dist(asked.mountA, asked.mountB), equal(10), R);
-    expect(cylinderStroke(viaSpan.lengths.barrel, R)).toBeCloseTo(10, 9);
-    expect(viaSpan.start).toBeCloseTo(0.8, 9);
-  });
-
-  it('holds the barrel mount and moves the rod mount', () => {
-    const mount = { x: 3, y: -2 };
-    const pose = poseFromStrokeAndStart(mount, Math.PI / 3, 6, 0.25, R);
-
-    expect(pose.mountA).toEqual(mount);
-    expect(dist(pose.mountA, pose.mountB)).toBeCloseTo(6 * 1.25 + LOCK, 9);
-  });
-
-  it('clamps a start outside the travel and a stroke under the floor', () => {
-    const over = poseFromStrokeAndStart({ x: 0, y: 0 }, 0, 4, 3, R);
-    expect(dist(over.mountA, over.mountB)).toBeCloseTo(cylinderSpanRange(equal(4), R).extended, 9);
-
-    const tiny = poseFromStrokeAndStart({ x: 0, y: 0 }, 0, -1, 0.5, R);
-    expect(cylinderStroke(dist(tiny.mountA, tiny.inner), R)).toBeCloseTo(MIN_STROKE, 9);
   });
 });

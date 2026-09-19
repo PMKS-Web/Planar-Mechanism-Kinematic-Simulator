@@ -11,7 +11,7 @@ import { MechanismFixture } from '../../test-utils/verification/fixture';
 import { PrisJoint, RealJoint, RevJoint } from '../../app/model/joint';
 import { RealLink } from '../../app/model/link';
 import { Coord } from '../../app/model/coord';
-import { cylinderSizeOf, cylindersIn } from '../../app/model/cylinder';
+import { cylindersIn } from '../../app/model/cylinder';
 
 /**
  * What the drawing actually looks like after an edit that touches a ram.
@@ -213,10 +213,10 @@ describe('resizing a ram welded to a bracket', () => {
     const witnessBefore = { x: at('W').x, y: at('W').y };
     const spanBefore = Math.hypot(at('D').x - at('A').x, at('D').y - at('A').y);
 
-    // Double the ram's stroke, which is the edit that resizes its two bars.
-    // The bracket welded to the barrel mount does not move at all.
-    const strokeBefore = cylinderSizeOf(sealed).stroke;
-    grid.resizeCylinder(sealed, strokeBefore * 2, 0.5);
+    // Double the rod, which is the panel edit that moves the joint at the far
+    // end of the ram. The bracket welded to the barrel mount does not move.
+    const rodBefore = Math.hypot(at('D').x - at('C').x, at('D').y - at('C').y);
+    expect(grid.setRodLength(sealed, rodBefore * 2)).toBe(true);
     const spanAfter = Math.hypot(at('D').x - at('A').x, at('D').y - at('A').y);
     expect(spanAfter).toBeGreaterThan(spanBefore * 1.2);
 

@@ -4,11 +4,12 @@
  * Pointing at a number in the Edit panel draws that number on the grid, where
  * it is measured. There are ten of them now -- a bar's length and angle, a
  * joint's distance and bearing to a neighbor, a center of mass's two offsets, a
- * ram's travel and where it starts, a cylinder's angle, a slot's angle -- and
- * they arrived at different times. The later ones were drawn in their own ink
- * at their own model-scaled width, with a bare label wearing a halo, so a
- * reader who pointed at a cylinder's Travel got a different-looking thing from
- * the one who pointed at a bar's Length, and the difference said nothing.
+ * cylinder member's length and the part's angle, where the rod starts, a slot's
+ * angle -- and they arrived at different times. The later ones were drawn in
+ * their own ink at their own model-scaled width, with a bare label wearing a
+ * halo, so a reader who pointed at a cylinder's *Starts at* got a
+ * different-looking thing from the one who pointed at a bar's Length, and the
+ * difference said nothing.
  *
  * So this is a style check, not a geometry one: every dimension carries a chip,
  * every chip is the same size in screen pixels, every hairline is the same
@@ -103,11 +104,19 @@ all.push(
     grid.activeObjService.updateSelectedObj(grid.mechanismSrv.joints[1]);
   }))
 );
+// A cylinder answers in two panels now: a member states its own Length and the
+// part's Angle, and the slide states the Slider Angle and where the rod starts.
 all.push(
   ...(await dimensionsOf('Cylinder_Boom', () => {
     const grid = ng.getComponent(document.querySelector('app-new-grid'));
-    const body = grid.mechanismSrv.links.find((link) => grid.mechanismSrv.cylinderAt(link));
+    const body = grid.mechanismSrv.links.find((link) => grid.mechanismSrv.cylinderOfBar(link));
     grid.activeObjService.updateSelectedObj(body);
+  }))
+);
+all.push(
+  ...(await dimensionsOf('Cylinder_Boom', () => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    grid.activeObjService.updateSelectedObj(grid.mechanismSrv.sealedStructures()[0].seal);
   }))
 );
 all.push(

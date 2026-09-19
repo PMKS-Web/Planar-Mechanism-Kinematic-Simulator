@@ -30,9 +30,12 @@ page.on('pageerror', (error) => errors.push(String(error)));
 await page.goto(`${BASE}/?${payloads['Cylinder_Boom']}`, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
 
-const barrel = await page.$('.cylinder-barrel');
-const box = await barrel.boundingBox();
-await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
+// *Starts at* is the slide's own field since Stage 2c (D9), so the square
+// mid-skin is what this selects to reach it.
+await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  grid.activeObjService.updateSelectedObj(grid.mechanismSrv.sealedStructures()[0].seal);
+});
 await page.waitForTimeout(700);
 
 async function setStart(value) {

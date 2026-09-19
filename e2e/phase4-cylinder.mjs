@@ -407,29 +407,40 @@ checkThat(
   JSON.stringify({ mountMenu, mountTypes })
 );
 
-// -------------------------------------- 4. drive it through the body's menu
-console.log('\nmake the cylinder the input from the body menu');
-const bodyMenu = await page.evaluate((mountId) => {
+// ------------------------------------- 4. drive it through the slide's menu
+console.log('\nmake the cylinder the input from the joint it slides on');
+const memberMenu = await page.evaluate((mountId) => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
   const barrel = c.mechanismSrv.links.find((l) => l.joints.some((j) => j.id === mountId));
   c.setLastRightClick(barrel);
+  return c.cMenu.groups.flatMap((g) => g.rows).map((r) => r.label);
+}, barrelFar);
+const slideMenu = await page.evaluate(() => {
+  const c = ng.getComponent(document.querySelector('app-new-grid'));
+  c.setLastRightClick(c.mechanismSrv.sealedStructures()[0].seal);
   const labels = c.cMenu.groups.flatMap((g) => g.rows).map((r) => r.label);
   c.cMenu.groups
     .flatMap((g) => g.rows)
     .find((r) => r.label === 'Driven Input')
     ?.action();
   return labels;
-}, barrelFar);
+});
 await page.waitForTimeout(500);
 checkThat(
-  // No Attach group at all: a sealed assembly takes no third body. What it
-  // does carry has grown since -- a hold on its angle, the vector switches --
-  // so the claim is about what must be there and what must not, rather than
-  // an exact list that goes red every time the menu gains a row.
-  'the body menu offers the part’s own states and no way to attach to it',
-  ['Driven Input', 'Locked', 'Delete Cylinder'].every((row) => bodyMenu.includes(row)) &&
-    ['Link', 'Cylinder', 'Force', 'Tracer Point'].every((row) => !bodyMenu.includes(row)),
-  bodyMenu.join(', ')
+  // The drive belongs to the joint that slides, and Stage 2c puts it on that
+  // joint's card alone (D9). A member's card is the member's: no Attach group,
+  // because a member takes no third body, and no second door to the drive.
+  // The claim is about what must be there and what must not, rather than an
+  // exact list that goes red every time a menu gains a row.
+  'the drive is on the slide’s card, and a member’s card attaches nothing',
+  slideMenu.includes('Driven Input') &&
+    ['Fixed Length', 'Fixed Angle', 'Locked', 'Delete Cylinder'].every((row) =>
+      memberMenu.includes(row)
+    ) &&
+    ['Driven Input', 'Link', 'Cylinder', 'Force', 'Tracer Point'].every(
+      (row) => !memberMenu.includes(row)
+    ),
+  JSON.stringify({ slideMenu, memberMenu })
 );
 state = await model();
 checkThat(
@@ -442,17 +453,19 @@ checkThat(
 );
 
 // ------------------------------------------- 5. set the speed from the panel
-console.log('\nset the expansion speed on the body panel');
-await page.evaluate((mountId) => {
-  // Select the body, as a click on the skin would.
+console.log("\nset the expansion speed on the slide's panel");
+await page.evaluate(() => {
+  // Select the slide, as a click on the square mid-skin would: the drive is
+  // that joint's, and so are the rows that describe it (D9).
   const c = ng.getComponent(document.querySelector('app-new-grid'));
-  const barrel = c.mechanismSrv.links.find((l) => l.joints.some((j) => j.id === mountId));
-  c.setLastLeftClick(barrel);
-}, barrelFar);
+  c.activeObjService.updateSelectedObj(c.mechanismSrv.sealedStructures()[0].seal);
+});
 await page.waitForTimeout(500);
 checkThat(
-  'selecting the body opens the Edit Cylinder panel',
-  (await page.getByText('Edit Cylinder').count()) >= 1
+  'selecting the slide opens its joint panel, with Starts at and no Grounded row',
+  /Edit Joint /.test(await page.locator('app-edit-panel').innerText()) &&
+    /Starts at/.test(await page.locator('app-edit-panel').innerText()) &&
+    !/Grounded/.test(await page.locator('app-edit-panel').innerText())
 );
 const speedInput = page
   .locator('input-block')
