@@ -84,7 +84,9 @@ async function weldedMount(options = {}) {
       // it dangles until one of the two is given to it, and a dangling slot is
       // not solvable. Grounding pins the direction it is already pointing.
       m.toggleGround();
-      m.toggleCylinderInput(m.sealedStructures()[0]);
+      // The drive is the seal's own, through the ordinary input door.
+      grid.activeObjService.updateSelectedObj(m.sealedStructures()[0].seal);
+      m.adjustInput();
     }
 
     // A joint on its own, parked clear, for the drag checks.

@@ -318,15 +318,14 @@ export function cylinderJoints(cylinder: Cylinder): Joint[] {
 
 /**
  * The cylinder this joint is a member of, from any of its four joints.
+ *
  * Membership is what every permanence guard and drag route asks, and the
  * lookup answers it from the seal alone, so protection cannot lapse while a
- * geometry is momentarily wrong.
+ * geometry is momentarily wrong. Asked against a precomputed list, because
+ * every caller holds one: the service caches the records per
+ * `cylinderRevision` and a per-candidate rebuild on every pointermove is
+ * exactly the quadratic work the drag stutter came from.
  */
-export function cylinderOfJoint(joints: Joint[], joint: Joint | undefined): Cylinder | undefined {
-  return cylinderOfJointIn(cylindersIn(joints), joint);
-}
-
-/** Same membership question against a precomputed structure list. */
 export function cylinderOfJointIn(
   cylinders: Cylinder[],
   joint: Joint | undefined
@@ -337,46 +336,19 @@ export function cylinderOfJointIn(
   );
 }
 
-/** Every cylinder this joint is a member of: one mount can carry two rams. */
-export function cylindersOfJointIn(cylinders: Cylinder[], joint: Joint | undefined): Cylinder[] {
-  if (!joint) return [];
-  return cylinders.filter((cylinder) =>
-    cylinderJoints(cylinder).some((member) => member.id === joint.id)
-  );
-}
-
-/** The two joints a cylinder attaches to the rest of the drawing by. */
-export function cylinderMounts(cylinder: Cylinder): Joint[] {
-  return [cylinder.mountA, cylinder.mountB];
-}
-
-/** Whether this joint is one of the cylinder's two mounts. */
-export function isCylinderMount(cylinder: Cylinder, joint: Joint): boolean {
-  return cylinderMounts(cylinder).some((mount) => mount.id === joint.id);
-}
-
 /**
- * The cylinders this joint is a *mount* of, and the ones it is *inside*.
+ * The cylinders this joint is *inside* — placed by the layout rather than an
+ * attachment point (decision S11).
  *
- * Kept apart because they answer opposite questions and one joint can be both
- * — a mount of one ram is an ordinary joint to weld or slide, while any
- * interior membership at all closes the same controls. Every caller that used
- * to ask "is this joint on a cylinder" was really asking one of these two, and
+ * The question apart from membership, and one joint can answer both: a mount
+ * of one cylinder is an ordinary joint to weld or slide, while being inside
+ * any cylinder at all closes the same controls. Every caller that used to ask
+ * "is this joint on a cylinder" was really asking one of the two, and
  * membership alone is the answer to neither.
  */
-export function cylinderMountsAt(cylinders: Cylinder[], joint: Joint | undefined): Cylinder[] {
-  if (!joint) return [];
-  return cylinders.filter((cylinder) => isCylinderMount(cylinder, joint));
-}
-
 export function cylindersEnclosing(cylinders: Cylinder[], joint: Joint | undefined): Cylinder[] {
   if (!joint) return [];
   return cylinders.filter((cylinder) => isInsideCylinder(cylinder, joint));
-}
-
-/** The cylinder this link is a member of — barrel or rod. */
-export function cylinderOfLink(joints: Joint[], link: Link | undefined): Cylinder | undefined {
-  return cylinderOfLinkIn(cylindersIn(joints), link);
 }
 
 /** Whether `link`, or anything nested under it, is one of the cylinder's bars. */
@@ -462,9 +434,9 @@ export function isInsideCylinder(cylinder: Cylinder, joint: Joint): boolean {
 }
 
 /** A freshly drawn cylinder opens at mid-travel, so it has room to go either way. */
-export const CYLINDER_CREATION_START = 0.5;
+const CYLINDER_CREATION_START = 0.5;
 
-export interface CylinderCreation extends CylinderPose {
+interface CylinderCreation extends CylinderPose {
   angleRad: number;
   /** Mount-to-mount distance actually used, after the minimum is applied. */
   span: number;

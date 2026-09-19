@@ -165,7 +165,9 @@ async function draw(recipe) {
       const tipId = tip.id;
       block(m.joints.find((j) => j.id === tipId));
       ground(m.joints.find((j) => j.id === tipId));
-      m.toggleCylinderInput(m.sealedStructures()[0]);
+      // The drive is the seal's own, through the ordinary input door.
+      pick(m.sealedStructures()[0].seal);
+      m.adjustInput();
     }
 
     m.finishStructuralEdit(true);

@@ -38,7 +38,7 @@ export function mechanismStub(hold: LinkHold = undefined): Provider {
       setHold: (_link: unknown, next: LinkHold) => {
         current = next;
       },
-      cylinderOfLink: () => undefined,
+      cylinderOfBar: () => undefined,
       memberHoldOf: () => false,
       setMemberHold: () => undefined,
       pauseInPlace: () => undefined,
@@ -71,7 +71,7 @@ export function cylinderMemberStub(holds: { length?: boolean; angle?: boolean } 
       toggleLock: () => undefined,
       holdOf: () => (current.angle ? 'angle' : undefined),
       setHold: () => undefined,
-      cylinderOfLink: () => sealed,
+      cylinderOfBar: () => sealed,
       memberHoldOf: (_link: unknown, which: 'length' | 'angle') => current[which],
       setMemberHold: (_link: unknown, which: 'length' | 'angle', on: boolean) => {
         current[which] = on;

@@ -3,14 +3,13 @@ import { RealLink } from './link';
 import { ram, rewire, weldBracketOnto } from '../../test-utils/cylinder-graph';
 import {
   Cylinder,
+  cylinderJoints,
   cylindersEnclosing,
-  cylinderMounts,
-  cylinderMountsAt,
+  cylinderOfJointIn,
   cylinderOfLinkIn,
-  cylindersOfJointIn,
   cylindersOfLinkIn,
+  isCylinderInner,
   isInsideCylinder,
-  isCylinderMount,
   cylindersIn,
 } from './cylinder';
 
@@ -158,32 +157,39 @@ describe('the roles a joint plays on a cylinder', () => {
   const cylinders = cylindersIn(joints);
   const cylinder: Cylinder = cylinders[0];
 
-  it('names exactly the two joints the drawing attaches by', () => {
-    expect(cylinderMounts(cylinder).map((one) => one.id)).toEqual(['A', 'D']);
-    expect(isCylinderMount(cylinder, parts.mountA)).toBe(true);
-    expect(isCylinderMount(cylinder, parts.mountB)).toBe(true);
-    expect(isCylinderMount(cylinder, parts.seal)).toBe(false);
+  it('names exactly the four joints it is made of', () => {
+    expect(cylinderJoints(cylinder).map((one) => one.id)).toEqual(['A', 'B', 'C', 'D']);
   });
 
-  it('keeps mount and interior apart, since they answer opposite questions', () => {
-    expect(cylinderMountsAt(cylinders, parts.mountA)).toHaveLength(1);
-    expect(cylindersEnclosing(cylinders, parts.mountA)).toHaveLength(0);
+  it('keeps inside and outside apart, since they answer opposite questions', () => {
+    // An end joint is where the cylinder attaches to the drawing: an ordinary
+    // joint to weld, ground or slide, and outside by this question.
+    for (const end of [parts.mountA, parts.mountB]) {
+      expect(cylindersEnclosing(cylinders, end)).toHaveLength(0);
+      expect(isInsideCylinder(cylinder, end)).toBe(false);
+    }
 
-    // Two interior joints, where there were three: the slider and the pin the
+    // Two joints inside, where there were three: the slider and the pin the
     // rod hangs on are one joint (Stage 1 of
     // `docs/joint-type-and-cylinder-plan.md`).
     for (const inside of [parts.inner, parts.seal]) {
       expect(isInsideCylinder(cylinder, inside)).toBe(true);
       expect(cylindersEnclosing(cylinders, inside)).toHaveLength(1);
-      expect(cylinderMountsAt(cylinders, inside)).toHaveLength(0);
     }
+  });
+
+  it('hides N alone, which is the other half of what “interior” used to mean', () => {
+    // Decision S11: *hidden* is N, *inside* is N and S. The seal is the square
+    // a reader selects, so it is inside without being hidden.
+    expect(isCylinderInner(cylinder, parts.inner)).toBe(true);
+    expect(isCylinderInner(cylinder, parts.seal)).toBe(false);
   });
 
   it('answers membership for every joint, which is the third and different question', () => {
     for (const member of joints) {
-      expect(cylindersOfJointIn(cylinders, member)).toHaveLength(1);
+      expect(cylinderOfJointIn(cylinders, member)).toBeDefined();
     }
-    expect(cylindersOfJointIn(cylinders, new RevJoint('Q', 99, 99))).toHaveLength(0);
+    expect(cylinderOfJointIn(cylinders, new RevJoint('Q', 99, 99))).toBeUndefined();
   });
 });
 

@@ -83,7 +83,7 @@ operations by writing a subset of the five joints.
 | --- | --- | --- |
 | Keep ad hoc inference and add exceptions | Lowest initial diff, but duplicates role, movement, and render ownership decisions again. | Reject; it leaves the known failure pattern in place. |
 | Derived assembly API, five-member graph retained | Explicit two-port editing/rendering with existing URL, analysis, and force compatibility. | Use for this task. This is a structural refactor, not just guard removal. |
-| Persist a Cylinder entity and lower it to solver bodies | Stable intrinsic mount identity, but requires legacy import, URL migration, history, fixtures, exports, selection, and property ownership changes. | Reasonable future direction, not necessary for these mounts. |
+| Persist a Cylinder entity and lower it to solver bodies | Stable intrinsic mount identity, but requires legacy import, URL migration, history, fixtures, exports, selection, and property ownership changes. | Reasonable future direction, not necessary for these mounts. **Built since**, without the migration — see below. |
 
 An eventual persisted entity should describe two bodies connected by a prismatic constraint,
 with two external attachment frames. It must not become one rigid solver body: extension is
@@ -95,6 +95,17 @@ No new persisted ID is needed now: the sealed slider ID identifies the assembly 
 snapshot/history state. The resolver must still reject ambiguous legacy structures; role
 snapshots prevent endpoint guessing mid-edit. A persisted entity could eliminate the remaining
 import-time distance convention later. Do not add an unversioned cylinder record to this codec.
+
+> **That future direction is built, and the row above understated how cheaply.** Stage 2 of
+> [`joint-type-and-cylinder-plan.md`](joint-type-and-cylinder-plan.md) made the cylinder a record
+> looked up from its seal — `seal`, `mountA`, `mountB`, `inner`, `barrel`, `rod` — with the slot's
+> own order carrying the roles, so nothing is measured to find one and role snapshots are gone
+> with the guessing they existed to prevent. The codec is untouched, exactly as the last line here
+> asks: the record is derived rather than stored, so there was no URL migration, no history change
+> and no fixture to rewrite. The import-time distance convention survives in the one place it was
+> ever needed, the reader putting an old payload's slot in order, once, before anything asks.
+> Ambiguity is still refused rather than resolved: a seal with two candidate rods is not a
+> cylinder.
 
 ## One boundary model and the refusal audit
 

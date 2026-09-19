@@ -77,6 +77,7 @@ import { angleReference, describeActuator, resolveActuator } from '../model/actu
 import { NotificationService } from './notification.service';
 import { SettingsService } from './settings.service';
 import { slotHalfLength } from '../model/joint-marks';
+import { interiorNames, nextFreeLetter } from '../model/joint-letters';
 import { uniformBodyOf } from '../model/uniform-body';
 import { siUnitFactors } from '../model/unit-conversions';
 import { DragStateService } from './drag-state.service';
@@ -113,14 +114,6 @@ import { redundantlyHeldJointSets } from '../model/rigid-bodies';
 import { MODEL_SCALE } from '../model/render-scale';
 import { labelForBody } from '../model/body-label';
 import { SynthesisBuilderService } from './synthesis/synthesis-builder.service';
-
-/**
- * The names joints are given, in the order they are handed out.
- *
- * Letters only, and only ones that survive a round trip through the URL codec,
- * where a joint's name is a token in a comma- and period-delimited payload.
- */
-const JOINT_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 
 /** One machine's playback state, carried across a rebuild by `partitionKey`. */
 interface HeldPlayback {
@@ -2078,12 +2071,9 @@ export class MechanismService {
   /**
    * The next name for a joint: A, B, C ... Z, then a, b, c ... z.
    *
-   * It used to be the highest letter in use plus one in character codes, which
-   * walks straight off the end of the alphabet: the joint after Z was called
-   * "[", then "\", then "]" -- names that read as damage, and that the panels
-   * then repeated back as "Edit Cylinder ]`". Past z the gaps left by deleted
-   * joints are filled, and past those a two-letter name is used; a drawing with
-   * fifty-three live joints has run out of single letters honestly.
+   * The rule itself is `model/joint-letters.ts`, because the URL reader hands
+   * out letters too and two copies of it drifted apart once. This is the rule
+   * asked of *the drawing*: which ids the grid is already using.
    *
    * `additionalLetters` are treated as already used, for callers handing out
    * several at once. `freedLetters` are treated as free although the joints
@@ -2095,36 +2085,11 @@ export class MechanismService {
     const taken = new Set<string>(this.joints.map((joint) => joint.id));
     freedLetters?.forEach((letter) => taken.delete(letter));
     additionalLetters?.forEach((letter) => taken.add(letter));
-
-    let highest = -1;
-    taken.forEach((id) => {
-      const at = JOINT_ALPHABET.indexOf(id);
-      if (at > highest) highest = at;
-    });
-
-    const next = JOINT_ALPHABET[highest + 1];
-    if (next !== undefined && !taken.has(next)) return next;
-
-    const free = [...JOINT_ALPHABET].find((letter) => !taken.has(letter));
-    if (free !== undefined) return free;
-
-    for (const first of JOINT_ALPHABET) {
-      for (const second of JOINT_ALPHABET) {
-        if (!taken.has(first + second)) return first + second;
-      }
-    }
-    return 'A';
+    return nextFreeLetter(taken);
   }
 
   /**
    * Names for the joints inside a part, which nothing ever shows.
-   *
-   * Hung off the letter of the part's own mount and numbered -- A1, A2, A3 --
-   * so they read as belonging to it, and so `determineNextLetter` walks past
-   * them: it ranks ids by their place in the alphabet, and one of these has no
-   * place in it, which is exactly the point. They still have to be unique,
-   * because two rams can share a mount and would otherwise ask for the same
-   * three names.
    *
    * `alsoTaken` is for a caller building joints that are not on the grid yet --
    * a duplicated cylinder's copies, which are named before any of them is
@@ -2133,14 +2098,7 @@ export class MechanismService {
   determineInteriorNames(base: string, count: number, alsoTaken?: Iterable<string>): string[] {
     const taken = new Set(this.joints.map((joint) => joint.id));
     for (const id of alsoTaken ?? []) taken.add(id);
-    const names: string[] = [];
-    for (let index = 1; names.length < count; index++) {
-      const candidate = `${base}${index}`;
-      if (taken.has(candidate)) continue;
-      taken.add(candidate);
-      names.push(candidate);
-    }
-    return names;
+    return interiorNames(base, count, taken);
   }
 
   createRevJoint(x: string, y: string, prevID?: string) {
@@ -2196,9 +2154,9 @@ export class MechanismService {
     if (target instanceof Force) return [target];
     const sealed = this.sealedPartOf(target);
     if (sealed) {
-      // One sealed part, one mark: the prismatic pin, where the assembly's
-      // other permanent bit (isSealed) already lives, and whose hold the
-      // closure spreads to all five joints.
+      // One sealed part, one mark: the seal, where the assembly's other
+      // permanent bit (isSealed) already lives, and whose hold the closure
+      // spreads to all four joints (decision S8).
       return [sealed.seal];
     }
     if (target instanceof RealJoint) return [target];
@@ -2315,18 +2273,6 @@ export class MechanismService {
   }
 
   /**
-   * The cylinder this link is a bar of — the same question as `cylinderOfBar`.
-   *
-   * Kept because the hold path has always asked it this way, and asking it this
-   * way is why holds were the one surface a welded bracket never confused. Two
-   * names for one question is a trap, so it delegates rather than answering
-   * again through a second route.
-   */
-  cylinderOfLink(link: Link | undefined): Cylinder | undefined {
-    return this.cylinderOfBar(link);
-  }
-
-  /**
    * Hold one of a bar's two numbers against edits, or let it go.
    *
    * One or the other, never both: a bar holding its length and its angle can
@@ -2342,7 +2288,7 @@ export class MechanismService {
     // wins, because that is the hold both rows show and the one a reader
     // pressing Release on either member means. `setMemberHold` is the door for
     // a row that knows which value it is about.
-    const sealed = this.cylinderOfLink(link);
+    const sealed = this.cylinderOfBar(link);
     if (sealed) {
       const which =
         hold ?? (memberHoldReads(sealed, link, 'angle') ? 'angle' : ('length' as const));
@@ -2376,13 +2322,13 @@ export class MechanismService {
    * so a caller may ask without knowing.
    */
   memberHoldOf(link: Link | undefined, which: 'length' | 'angle'): boolean {
-    const sealed = this.cylinderOfLink(link);
+    const sealed = this.cylinderOfBar(link);
     return !!link && !!sealed && memberHoldReads(sealed, link, which);
   }
 
   /** Fix or release one *named* value on a cylinder member. One undo entry. */
   setMemberHold(link: Link, which: 'length' | 'angle', on: boolean): void {
-    const sealed = this.cylinderOfLink(link);
+    const sealed = this.cylinderOfBar(link);
     if (!sealed) return;
     const next = memberHoldTransition(sealed, link, which, on);
     if (!next) return;
@@ -3311,8 +3257,8 @@ export class MechanismService {
     // removed. A mount is an ordinary attachment point, so two rams can share
     // one -- and asking `cylinderAt` for the first match took one of them
     // away and left the other's mount gone with its interior joints still in
-    // the drawing: three joints belonging to a part that no longer has
-    // anywhere to hang. The whole casualty set, then one rebuild.
+    // the drawing: joints belonging to a part that no longer has anywhere to
+    // hang. The whole casualty set, then one rebuild.
     const doomedCylinders = this.cylindersAt(this.activeObjService.selectedJoint);
     if (doomedCylinders.length > 0) {
       const doomed = this.activeObjService.selectedJoint;
@@ -4635,9 +4581,8 @@ export class MechanismService {
    * (§ cylinder 2): `start` is the barrel-side mount, `end` is where the rod
    * finishes. The drawn span sets the member lengths (fixture-gallery
    * proportions, minimum span clamped in `cylinderCreationLayout` so a
-   * zero-length click cannot make a degenerate part); the assembly — barrel
-   * with its slot, block and welded pin, sealed slider, rod — is exactly
-   * collinear along the drawn axis by construction.
+   * zero-length click cannot make a degenerate part); the four joints — A, N,
+   * S, B — are exactly collinear along the drawn axis by construction.
    *
    * `mountAt` is the joint version of `mountOn`: started from a joint's own
    * menu, the barrel's mount *is* that joint rather than a new one beside it,
@@ -4733,10 +4678,10 @@ export class MechanismService {
   }
 
   /**
-   * Delete a whole cylinder in one undoable step (§ cylinder 5): the three
-   * member links and the three interior joints always go; a mount survives
-   * only while some other link still holds it — the same rule deleteLink
-   * applies to any orphaned joint.
+   * Delete a whole cylinder in one undoable step (§ cylinder 5): both member
+   * links and the two joints the part places itself — N and S — always go; a
+   * mount survives only while some other link still holds it, the same rule
+   * deleteLink applies to any orphaned joint.
    */
   deleteCylinder(target?: Cylinder): void {
     const sealed =
@@ -4802,28 +4747,6 @@ export class MechanismService {
       joint.links = joint.links.filter((link) => liveLinks.has(link.id));
       joint.connectedJoints = joint.connectedJoints.filter((other) => liveJoints.has(other.id));
     });
-  }
-
-  /**
-   * Drive (or stop driving) a cylinder. The hidden prismatic pin is the
-   * underlying input joint; the body's Make Input control lands here because
-   * that pin is deliberately unselectable.
-   */
-  toggleCylinderInput(target?: Cylinder): void {
-    const sealed = target ?? this.cylinderOfBar(this.activeObjService.selectedLink);
-    if (!sealed) return;
-    if (!sealed.seal.input) {
-      // One input per mechanism, same as adjustInput.
-      this.clearInputsSharingMechanismWith(sealed.seal);
-      // And the same first-speed guess: a ram's stroke decides how long its
-      // cycle runs, so one number cannot suit every ram anybody draws.
-      this.askForFittedSpeed(sealed.seal);
-    }
-    sealed.seal.input = !sealed.seal.input;
-    // Saved: the row is an edit like the pin's Driven Input, and it used to
-    // rebuild without an entry, so Undo could not give the drive back.
-    this.updateMechanism(true);
-    this.onMechUpdateState.next(3);
   }
 
   /**
@@ -5010,12 +4933,12 @@ export class MechanismService {
     joint: RealJoint,
     slot: { carrier: Link; a: Joint; b: Joint; x: number; y: number }
   ): boolean {
-    // A sealed ram's inside is not somewhere a slot can be cut or moved to.
-    // Asked here, before any coordinate is written, because this is the commit:
-    // half of it had already run by the time anything downstream could object,
-    // and what it does to an interior pin is take the bore's own block and
-    // point it at a bar somewhere else in the drawing -- the ram's slider now
-    // riding a link that is not its barrel, which is not a cylinder any more.
+    // A cylinder's inside -- N or S -- is not somewhere a slot can be cut or
+    // moved to. Asked here, before any coordinate is written, because this is
+    // the commit: half of it had already run by the time anything downstream
+    // could object, and what it does at the seal is point it at a bar
+    // somewhere else in the drawing -- a seal riding a link that is not its
+    // barrel, which is not a cylinder any more.
     //
     // A mount is not covered by this and must not be: reassigning the block on
     // a mount is exactly how a carriage is dropped onto a new rail.

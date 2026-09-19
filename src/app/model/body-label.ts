@@ -46,10 +46,10 @@ export function bodyLabelParts(
  * What the panels call a body.
  *
  * A link's id is the letters of its joints, which is a fine key and a poor
- * name: a cylinder's rod is named after the sliding joint buried inside it,
- * which has no marker, no hitbox and no row in any panel — so a label built
- * from the id offered the reader a part they had never been shown and could
- * not find.
+ * name: a cylinder's members are named after joints the reader is not thinking
+ * about when they point at the part, and the barrel's is the buried end that
+ * nothing draws — so a label built from the id offered the reader a joint they
+ * had never been shown and could not find.
  *
  * Always a complete noun phrase, so a caller can drop it into a sentence
  * without knowing which kind of body came back.

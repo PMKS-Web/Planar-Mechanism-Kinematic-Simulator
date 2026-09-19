@@ -87,7 +87,13 @@ export const MARK = {
    */
   slotInset: 2.8,
 
-  /** Driven overlay. Always white, which the black block underneath guarantees. */
+  /**
+   * Driven overlay. Always white, which the black block underneath guarantees.
+   *
+   * `arrowTail` is where each arrow leaves the mark, and on a slide that is
+   * the edge of the bar it leaves: equal to `slideAlongHalf` below, which
+   * `joint-marks.spec.ts` pins so the pair cannot drift apart silently.
+   */
   arrowTail: 1.4,
   arrowHeadBase: 2.6,
   arrowTip: 3.0,

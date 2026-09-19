@@ -236,6 +236,15 @@ describe("the slide's mark", () => {
     }
   });
 
+  it('is where a driven slider’s arrows start, so the two meet exactly', () => {
+    // The overlay's arrows run outward from `arrowTail`, and on a slide that
+    // is the edge of the mark they run out of: any less and an arrow starts
+    // buried under the cream bar, any more and it starts in a gap of black.
+    // The two constants have always been equal and nothing said they had to
+    // be, so this is where it is said.
+    expect(MARK.arrowTail).toBe(MARK.slideAlongHalf);
+  });
+
   it('rings itself inside its own edge, the way a pin does', () => {
     // A weld cross has no inside edge and wears the accent as an outline; this
     // mark has one, so the ring is the same shape pulled in by half its width.

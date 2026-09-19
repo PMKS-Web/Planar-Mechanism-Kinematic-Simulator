@@ -507,8 +507,8 @@ which is the resolution the URL itself carries -- leaves it at 3 every time.
 the measurement to 1, which looks like the barrel's swing about its single mount until you notice
 that `gripperFixture` beside it in the gallery has its barrel equally free on one pin and measures
 1. So the barrel is not a sufficient explanation, and no better one has been written down. Note
-also that grounding `B` is not a drawing a reader could make: `isCylinderInterior` counts the
-barrel's near end as interior to the sealed part, so it is not an attachment point.
+also that grounding `B` is not a drawing a reader could make: `isInsideCylinder` counts the
+barrel's near end as inside the part, so it is not an attachment point.
 
 Three siblings in the gallery measure 1 and are worth comparing against before concluding
 anything: `gripperFixture` (railed, hand-placed coordinates), `pivotingGripperFixture` ("the same
@@ -632,13 +632,24 @@ Two consequences. Testing the resolver against a welded mount means building the
 when the weld is opened up, the decode path has to *build* the compound rather than merely keep
 the flag, or a saved drawing will come back with its bracket detached and nothing said.
 
-### A ram's five joints are not named A, B, C, D, and have not been for a while
+### A cylinder's four joints are not named A, B, C, D, and have not been for a while
 
-The two mounts take ordinary letters from `determineNextLetter`; the three the reader never sees
-hang off the barrel mount's letter and are numbered -- `A1`, `A2`, `A3` -- by
-`determineInteriorNames`. That is deliberate twice over: the hidden joints read as belonging to
-the part, and `determineNextLetter` ranks ids by their place in the alphabet, so it walks past
-them instead of letting a cylinder's interior push the *visible* joints into double letters.
+Three of them take ordinary letters from `determineNextLetter` -- the two end joints first and
+then the slide (decision S9) -- and the one the reader never sees, the barrel's buried end, hangs
+off the barrel-side letter and is numbered `A1` by `determineInteriorNames`. That is deliberate
+twice over: the hidden joint reads as belonging to the part, and the letter rule ranks ids by
+their place in the alphabet, so it walks past `A1` instead of letting a cylinder push the
+*visible* joints into double letters.
+
+There were five joints and three hidden names (`A1`, `A2`, `A3`) before Stage 1 made a slider one
+joint and Stage 2 made the slide selectable. **An old payload still carries an interior-named
+seal**, and the reader gives it the next free letter as the last step of the build -- after every
+id-keyed section, because locks, holds, colors and CoM anchors are looked up by the ids the URL
+wrote.
+
+The rule itself is `model/joint-letters.ts` and is asked from two places: the service asks it of
+the drawing, the URL builder asks it of the list it is still assembling. It used to be written out
+twice, once in each.
 
 A suite that names a cylinder's joints should ask the model which joint plays which role
 (`sealedStructures()[0]`, as `e2e/phase4-cylinder.mjs` does) rather than assert the naming scheme
@@ -646,11 +657,11 @@ by accident; a suite that spells out the scheme fails in a way that looks like a
 creation.
 
 Three more things a cylinder suite can assert by accident, all consequences of deliberate
-changes: a cylinder joint's menu **grays** the Slider row
-rather than omitting it (every joint's menu is the same shape now, each refusal explained); a
-cylinder body's menu has gained Fixed Angle and the vector switches, so an exact-list assertion
-goes red whenever the menu legitimately grows; and the panel's speed field is **Input Speed**
-writing `Joint.driveSpeed` on the driven joint, not "Expansion Speed" writing
+changes: a cylinder joint's card carries the four-way **Joint Type** choice and grays the values it
+cannot take (every joint's card is the same shape now, each refusal explained); the whole-part card
+is gone and a click on the barrel, the rod or the slide opens that thing's own card, so an
+exact-list assertion goes red whenever one of them legitimately grows; and the panel's speed field
+is **Input Speed** writing `Joint.driveSpeed` on the driven joint, not "Expansion Speed" writing
 `settingsService.linearInputSpeed` -- a drawing can hold several machines, so a speed belongs to
 the thing being driven rather than to the document.
 
@@ -1047,16 +1058,16 @@ check that seeks to the last sample to see full extension sees the start pose in
 as "the animation does nothing". Full extension is the sample furthest from the start -- scan for
 it. (`animate()` also takes a sample index rather than a fraction; see above.)
 
-### Two questions about a ram, and a body has to be asked the right one
+### Two questions about a cylinder, and a body has to be asked the right one
 
-`ownsMember` is deliberately recursive: "a compound that has itself been welded into something
-larger still owns the member, and a delete or a drag that missed it would tear the ram it was
-carrying." That is the right question for a **cascade**. It is the wrong one for **identity**, and
-until a mount could be welded nothing could tell the two apart, because no compound ever held a
-cylinder leaf.
+`ownsMember` is deliberately recursive: a compound that has itself been welded into something
+larger still owns the member, and a delete or a drag that missed it would tear the part it was
+carrying. That is the right question for a **cascade**. It is the wrong one for **identity**, and
+until an end joint could be welded nothing could tell the two apart, because no compound ever held
+a cylinder leaf.
 
-`MechanismService.cylinderAt` is now the carrying question and `cylinderOfBar` the identity one,
-and a body must be asked whichever it means:
+`MechanismService.cylinderAt` is the carrying question and `cylinderOfBar` the identity one, and a
+body must be asked whichever it means:
 
 - **Carrying** -- a delete, a copy, a body drag or swing, and `frozenCarriedJoints`. Missing a ram
   welded under a body tears it, so these stay recursive, and each of those sites says so.
@@ -1066,15 +1077,18 @@ and a body must be asked whichever it means:
   the label ink, `isSelectedBody` and `isPointedAtBody`.
 
 Asked the carrying question, a bracket welded to a rod mount opened the cylinder's panel, wore
-"Cylinder AB · Barrel and rod" as its menu title, lit up when the ram beside it was chosen, and
-offered a Delete Cylinder that took the ram and left the bracket standing -- while Delete on that
-same selection took the whole body. It now reads "Edit Link A2BC", "Link A2BC · Compound", and
-"Delete Link (and Cylinder, 3 joints)", which is what both routes actually do.
+"Cylinder AB · Barrel and rod" as its menu title, lit up when the part beside it was chosen, and
+offered a Delete Cylinder that took the part and left the bracket standing -- while Delete on that
+same selection took the whole body. It reads as the compound it is now -- "Edit Link ⟨its own
+letters⟩", "Link ⟨the same⟩ · Compound", and "Delete Link (and Cylinder, 3 joints)" -- which is
+what both routes actually do. (The letters themselves moved in Stage 2: a seal that was stored
+under an interior name is given a real one on decode, so a compound holding one is no longer named
+after a joint nothing shows.)
 
-Note `MechanismService.cylinderOfLink` (via `link-holds.ts`) has *always* asked the identity
-question, through a members map keyed by link id -- which is why holds were the one surface a
-welded bracket never confused. It delegates to `cylinderOfBar` now, so there is one answer rather
-than two names for it.
+There was a third name for the identity question for a while: `MechanismService.cylinderOfLink`,
+which the hold path asked through a members map keyed by link id -- which is why holds were the one
+surface a welded bracket never confused. It became a one-line delegation to `cylinderOfBar` and
+then went, so a body has two questions to choose between rather than two questions and a synonym.
 
 ### The compound path drops a welded *rod* leaf and keeps a welded *barrel* leaf
 
@@ -1384,7 +1398,50 @@ the mark -- `elementsFromPoint` will not find one, because the trace has `pointe
 
 `MARK.arrowTail` is 1.4 and `MARK.slideAlongHalf` is 1.4, so the tails of `straightArrowPaths`
 (and of `cylinderArrowPaths`, which scales the pair by the head) begin on the cream bar's end caps
-with no gap and no overlap -- the bar reads as the thing the two arrows are pushing. Nothing
-enforces the equality. Move either number and a driven Slide either grows a sliver of black
-between mark and arrow or paints the mark over the tails, and `joint-marks.spec.ts` will not say
-so, because each is tested against its own reference.
+with no gap and no overlap -- the bar reads as the thing the two arrows are pushing. Move either
+number and a driven Slide either grows a sliver of black between mark and arrow or paints the mark
+over the tails.
+
+Nothing enforced the equality, because each constant was tested against its own reference and
+neither test could see the other. `joint-marks.spec.ts` now asserts the two are equal, and the
+comment on `arrowTail` says which fact it is standing for. It is a pin rather than a derivation:
+neither number is the cause of the other, and writing `arrowTail: MARK.slideAlongHalf` would claim
+a driven *pin's* arrows are about a mark pins do not wear.
+
+### `app-notification` is not a selector, so a suite counting notifications counted nothing
+
+The stack's host element is `app-notification-stack`; there is no `app-notification`. A suite
+asserting "nothing was said" with `page.locator('app-notification .notification').count()` gets
+zero whatever the app did, and passes for the wrong reason forever. `e2e/phase1-drag.mjs` has the
+right form -- `app-notification-stack .notification ... .notificationText` -- and is worth copying
+rather than retyping.
+
+The shape of the trap generalizes: a Playwright locator that matches nothing is indistinguishable
+from an assertion that holds, so a check written as *count is zero* needs a companion that proves
+the selector can be non-zero. The quickest one is to do something that is definitely refused and
+watch the same count go up.
+
+### A cylinder's `hiddenByCylinder` asks one predicate of two lists on purpose
+
+`isCylinderInner` is the whole rule -- N, and nothing else -- and `model/cylinder-skin.ts` asks it
+twice: of the skins the canvas has drawn, and of the record the service resolves. Not redundancy:
+the marks are rebuilt from geometry on a cache key of their own and can lag a frame mid-edit (a
+weld landing, a drag in flight), which was long enough for an interior label to blink into view.
+The marks used to carry their own copy of N's id, which was a second answer to the question rather
+than a second place to ask it, and carrying the record instead is what makes the pair safe.
+
+### The Edit panel's `jointForm` has controls the template does not bind
+
+Its blocks take a control by name -- `_formControl="ground"`, `formControl1="xPos"` -- so a control
+that stops being named in the template goes on existing, goes on being patched by
+`syncJointFields`, and goes on running whatever `valueChanges` was wired to it. Nothing in the
+panel looks wrong, because nothing in the panel can reach it.
+
+That is how a second door to the drive survived Add Input becoming a button: `jointForm`'s `input`
+control wrote the flag straight onto the joint and called `updateMechanism()` with no save, so a
+drive switched off through it could not be undone. Only `e2e/posed-edit-audit.mjs` could still
+press it, by poking the control directly, which is what found it.
+
+Worth a `grep '_formControl='` over `edit-panel.component.html` against the control list in the
+form when a control's behavior looks unreachable. A form control nobody binds is not harmless: the
+audit will find it, and so will anything else that drives the panel through its form.

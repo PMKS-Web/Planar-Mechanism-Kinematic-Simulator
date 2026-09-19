@@ -343,9 +343,10 @@
                 (expandedChange)="graphExpanded['LForce_' + row.jointId] = $event"
               ></app-analysis-graph-section>
             }
-            <!-- A ram's drive sits on a joint inside the part, which has no marker
-                 and no hitbox -- so its effort belongs on the part's own panel, the
-                 way its speed already does. -->
+            <!-- A cylinder's drive sits on the slide inside the part. The slide
+                 has a row of its own now, and this stays because a reader who
+                 picked the cylinder is asking about the cylinder -- the way its
+                 speed already is. -->
             @if (inputEffortJoint(); as driven) {
               <app-analysis-graph-section
                 label="Input {{ inputEffortLabel(driven) }}"

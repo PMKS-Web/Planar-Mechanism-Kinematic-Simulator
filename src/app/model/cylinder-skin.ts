@@ -16,22 +16,25 @@ import { Joint } from './joint';
 
 /** As much of a drawn cylinder as this question needs. */
 export interface SkinnedCylinder {
-  /** N — the barrel's buried inner end, which nothing draws. */
-  hiddenJointId: string;
-  /** S — the seal, whose mark rides the head the skin draws. */
-  seal: { id: string };
+  /** The record the skin was built from, which is what knows where N is. */
+  cylinder: Cylinder;
 }
 
 /**
  * Whether the reader is shown this joint at all: false for N, and for nothing
  * else. No hitbox, no letter, nothing counted.
+ *
+ * `isCylinderInner` is the whole of the rule and is asked twice — of the drawn
+ * marks and of the record behind them — rather than being spelled out a second
+ * time here. The marks used to carry their own copy of N's id, which is one
+ * more thing that can be wrong about the same joint.
  */
 export function hiddenByCylinder(
   marks: readonly SkinnedCylinder[],
   sealed: Cylinder | undefined,
   joint: Joint
 ): boolean {
-  if (marks.some((mark) => mark.hiddenJointId === joint.id)) return true;
+  if (marks.some((mark) => isCylinderInner(mark.cylinder, joint))) return true;
   return !!sealed && isCylinderInner(sealed, joint);
 }
 

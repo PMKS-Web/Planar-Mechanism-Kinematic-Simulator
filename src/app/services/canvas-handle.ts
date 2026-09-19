@@ -37,7 +37,7 @@ export interface CanvasHandle {
   /* The show-me overlays a pointed-at Edit panel field asks for. */
   setComMeasureOverlay(measure: ComMeasure | undefined): void;
   setSlotAngleOverlay(showing: boolean): void;
-  setCylinderRangeOverlay(which: 'start' | undefined): void;
+  setStartsAtOverlay(showing: boolean): void;
   /** -1 for the selected link, an index into `others` for one of the selected joint's neighbors, -2 for none. */
   setLinkLengthOverlay(index: number, others: readonly RealJoint[]): void;
   setLinkAngleOverlay(index: number, others: readonly RealJoint[]): void;

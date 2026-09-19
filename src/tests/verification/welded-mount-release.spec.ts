@@ -71,7 +71,8 @@ function drawIt() {
   service.links.push(new RealLink(elbow.id + anchor.id, [elbow, anchor]));
   service.finishStructuralEdit(true);
 
-  service.toggleCylinderInput(cylindersIn(service.joints)[0]);
+  harness.active.updateSelectedObj(cylindersIn(service.joints)[0].seal);
+  service.adjustInput();
   service.updateMechanism(true);
   return { ...harness, mountId: mount.id, elbowId: elbow.id, anchorId: anchor.id };
 }

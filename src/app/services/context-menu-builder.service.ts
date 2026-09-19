@@ -1120,7 +1120,7 @@ export class ContextMenuBuilderService {
 
   /** A cylinder's bearing, mount to mount -- the number the row would hold. */
   private cylinderAngle(link: RealLink): string {
-    const sealed = this.mechanism.cylinderOfLink(link);
+    const sealed = this.mechanism.cylinderOfBar(link);
     if (!sealed) return '';
     const degrees =
       (Math.atan2(sealed.mountB.y - sealed.mountA.y, sealed.mountB.x - sealed.mountA.x) * 180) /

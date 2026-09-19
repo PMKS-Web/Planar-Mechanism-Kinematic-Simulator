@@ -1,13 +1,14 @@
 # Joint type as one choice, sliders as one joint, cylinders as a sealed slide
 
-> **Status:** Partly built — plan of record from September 15, 2026. It replaces the
+> **Status:** Built — plan of record from September 15, 2026. It replaces the
 > bodies-and-joints migration, which lives on the unmerged branch `bodies-and-joints-plan` in
 > `docs/bodies-and-joints-plan.md` and was never on `staging`; Stage R retires it.
-> **Stages R, 0 and 1 are built:** a joint's type is one choice of four in the Edit panel, in the
-> group panel and at the top of the right-click menu, and a slider is a single `PrisJoint` carrying
-> its own mass and `rotates`. Stage 2 is not started. Everything
-> here is built on `staging` in ordinary pull requests, on the public editor, with the existing
-> solver.
+> **Stages R, 0, 1 and 2 are built:** a joint's type is one choice of four in the Edit panel, in
+> the group panel and at the top of the right-click menu, a slider is a single `PrisJoint` carrying
+> its own mass and `rotates`, and a cylinder is a record looked up from its seal, with a selectable
+> slide and a panel each for its barrel and its rod. Split Joint (D7) is the one deferral and has
+> yet to be scoped. Everything here is built on `staging` in ordinary pull requests, on the public
+> editor, with the existing solver.
 
 ## Why
 
@@ -210,6 +211,13 @@ cylinder is; these are the questions it left open, answered once so the four pac
 | S12 | **Dragging a member drags the cylinder**, as dragging the skin always has. Only the selection, the panel and the menu are the member's own. |
 | S13 | **The slide's mark.** A slider whose riders cannot turn — the Joint Type Prismatic, floating or grounded, and every cylinder's seal S — is drawn as a cream rounded bar lying along its slot (2.8R by 1.4R, corner 0.25R, `MARK.slide*` in `model/joint-marks.ts`), in place of the `+` it used to wear. A Pin-in-slot slider keeps its circle and a welded *revolute* keeps its `+`, so the mark's shape says whether the riders may turn and its orientation says what they slide along. The mark shrinks with a piston head too short to hold it, never past `MARK.slideHostShare` of that head. **The mark is the joint and the black block under it is furniture**: the block and the head carry the gesture — a click on either still grabs the slider — and every state is drawn on the bar, which takes the joint's fill and color family, the hover class, the selection ring *inside* its own edge (it has one; a `+` does not), the lock badge with no chip, the tutorial ring and `id="joint_<id>"`. Nothing paints the block: the seal's outline path is gone, and S is drawn by the ordinary joint layer above the skin rather than by the skin, leaving N the only joint a cylinder hides (S11). |
 
+> **Met.** Stage 2 was built in six packages — 2a, 2b, and 2c in four parts (canvas, menu, panel,
+> mark) — with the removal below as the seventh. No solved number, template payload or fixture URL
+> changed anywhere in it, and the transcoder format was never opened. The only thing that moved in
+> a baseline is a *name*: the three shipped templates whose seal was stored under an interior name
+> have it re-lettered on decode (S9), so `template-baseline.ts` carries one different sample id in
+> each. The paragraph under each package says what it built and what it left behind.
+
 **2a. Record and derivation (files: `model/cylinder.ts`, `model/slide-assembly.ts`,
 `model/cylinder-pose-plan.ts`, `services/transcoding/*`).** Replace role inference
 (`resolveCylinder`, `sealedCylinderAt`, collinearity tolerance) with a lookup from the seal;
@@ -217,6 +225,11 @@ replace pose repair (`normalizeSealedCylinders`, `applyCylinderPose`) with deriv
 A, the barrel length and the angle. The reader keeps accepting old sealed five-point payloads and
 folds them (after 1a's fold there are four joints; N is read and re-derived). Keep
 `cylinderMembers`, the skin geometry and the stops as pure geometry.
+
+> **Met.** `cylinderAtSeal` is the one lookup and reads the roles off the slot's own order;
+> `derivedInterior` replaced the repair pass, and for a cylinder that is already straight it writes
+> nothing. The record's fields are the plan's, and `isCylinderInterior` became the two predicates
+> S11 asks for, every caller keeping the N-or-S one until the square became selectable in 2c.
 
 **2b. Editing semantics (files: `services/grid-utils.service.ts`, `services/mechanism.service.ts`,
 `model/hold-solver.ts`, `edit-panel`).** One angle (D10): editing Barrel Angle, Rod Angle or the
@@ -228,6 +241,14 @@ which case A moves, with the same held-length and refusal rules as D11. A dragge
 today's behavior (extension changes; the skin stretches at the stops). All of this is one
 transaction with one undo entry and the refusal wording from `docs/ui-vocabulary.md`.
 
+> **Met, with one addition the decisions forced.** `model/cylinder-edit.ts` answers each typed or
+> dragged edit with a pose or a refusal, and `runEdit` makes every one of them a single undo entry
+> that changes nothing when refused. "Equal by construction" went with it (S3): the travel is the
+> barrel's alone and the span is the seal's place along it plus the rod, so a new cylinder is still
+> drawn with the two equal and every number an existing drawing produces is the number it produced
+> before. The addition is the four refusal codes the ladder needs — `cylinder.angle-refused`,
+> `cylinder.start-refused`, `cylinder.barrel-length-refused`, `cylinder.rod-length-refused`.
+
 **2c. UI (files: `component/new-grid/*`, `edit-panel`, `context-menu-builder`,
 `services/slider-mark.service.ts`).** The square is selectable and is joint S (D9); Barrel and
 Rod panels (D12); mounts (D13); counts (D14); the cylinder's menus as drawn ("inside a cylinder",
@@ -237,11 +258,58 @@ not the cylinder; the existing "Edit Cylinder" panel is retired. Gate: `e2e/cyli
 `context-menu`, `joint-type`, plus a new `e2e/cylinder-members.mjs` for D10, D11 (every tiebreak
 branch and the refusal), D12 and D13, with filmstrips of a full out-and-back cycle.
 
+> **Met, in four packages rather than one, and with one decision taken along the way.** The
+> *canvas* made the black block joint S's own marker, hitbox and drag, gave the barrel's path and
+> the rod's path a selection each, and lettered a new cylinder's two end joints before its seal —
+> an old payload's interior-named seal being re-lettered as the last step of the build (S9). The
+> *menu* gave the slide, the two end joints and the two members a card each and retired the
+> whole-cylinder card, every refusal quoted from the model that enforces it and every count a
+> reader sees going through `MechanismService.visibleJoints`. The *panel* retired Edit Cylinder for
+> a Barrel panel, a Rod panel and the slide's own, with Travel becoming the barrel's Length and the
+> three masses each their own part's. The fourth is **decision S13**, which the maintainer asked for
+> once the square had become a joint: a slider whose riders cannot
+> turn is drawn as a cream rounded bar lying along its slot, the bar is the joint and the black
+> block under it is furniture.
+>
+> **Two exceptions are recorded rather than fixed.** The library thumbnails (`src/assets/gifs`)
+> and the README shots (`docs/images/readme`) still show the old `+` and bare-head marks; retaking
+> them rewrites tracked binaries and is the maintainer's call. The DXF keeps its cross at a slide
+> deliberately (`semantic-dxf.ts`): line art has no fill for a bar to be.
+
 **2d. Removal.** Delete what no caller needs: role inference, pose repair, the five-point
 construction in creation (creation builds A, N, S, B directly), hidden interior hitboxes, the
 "is ram / carries ram" queries. Rewrite `cylinder-weld-guards.spec.ts` to the new boundary. Update
-`CLAUDE.md` and `docs/tips-and-tricks.md`; note in `docs/cylinder-mount-joints-plan.md` that its
-"future direction" row is now built.
+`CLAUDE.md` and the reference documents the change reaches; note in
+`docs/cylinder-mount-joints-plan.md` that its "future direction" row is now built.
+
+> **Met.** Role inference and pose repair had already gone in 2a and the Edit Cylinder panel's own
+> writers in 2c, so what was left was the vocabulary around them: the model-level membership
+> helpers no caller had left (`cylinderOfJoint`, `cylindersOfJointIn`, `cylinderMounts`,
+> `isCylinderMount`, `cylinderMountsAt`), `MechanismService.cylinderOfLink` — a third name for the
+> identity question — and `toggleCylinderInput`, which the panel and the menu had both stopped
+> using once the drive became the slide's own. `cylinder-pose-plan.ts`'s eight exports with no
+> outside caller are file-private. `cylinderAt` (carrying) and `cylinderOfBar` (identity) both stay:
+> a welded end joint is exactly what makes the two differ.
+>
+> Three things went further than the list. **The letter rule was written twice** — once in
+> `MechanismService.determineNextLetter` and once, deliberately, in the URL builder — and is now
+> `model/joint-letters.ts`, asked by both and unit-tested on its own. **`MARK.arrowTail` and
+> `MARK.slideAlongHalf` were both 1.4 by coincidence**, which is the only reason a driven slide's
+> arrows meet its mark; `joint-marks.spec.ts` pins the pair. And the Edit panel kept **a second
+> door to the drive**: a `jointForm` control named `input`, bound to nothing since Add Input became
+> a button on `adjustInput`, writing the flag straight onto the joint and rebuilding *without* an
+> undo entry. `e2e/posed-edit-audit.mjs` is what found it, on the slide of `Cylinder_Boom`;
+> `input-toggle.spec.ts` now pins both directions of the one door that is left.
+>
+> `cylinder-weld-guards.spec.ts` is rewritten to the boundary S11 draws: what is refused is
+> welding, unwelding, sliding, merging onto and slotting **N or S**, what is allowed is everything
+> on an end joint, and each assertion reads the refusal off the model rather than spelling it out.
+> Documents updated: `CLAUDE.md`, `docs/README.md`, `docs/short-notes.md`, `docs/domain-facts.md`,
+> `docs/ui-vocabulary.md`, `docs/ui-copy-audit.md` and `docs/cylinder-mount-joints-plan.md`. The
+> instruction here used to name `docs/tips-and-tricks.md`, which was split into
+> `environment.md`, `ui-gotchas.md`, `domain-facts.md` and `short-notes.md` long before this stage;
+> `notification-inventory.md` is deliberately untouched, because it is the record of the snackbar
+> as it was and not an inventory of what the app says now.
 
 ## Order and what each stage must not do
 

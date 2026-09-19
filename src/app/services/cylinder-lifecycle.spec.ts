@@ -162,9 +162,13 @@ describe('permanence of a sealed cylinder', () => {
     h.service.toggleGround();
     expect((h.sealed.mountA as RealJoint).ground).toBe(true);
 
-    h.service.toggleCylinderInput(h.sealed);
+    // Through the ordinary input door, on the seal. A cylinder had a toggle of
+    // its own while the joint carrying the drive was unselectable; the seal is
+    // the square a reader picks now (decision D9), so there is one door.
+    h.active.updateSelectedObj(h.sealed.seal);
+    h.service.adjustInput();
     expect(h.sealed.seal.input).toBe(true);
-    h.service.toggleCylinderInput(h.sealed);
+    h.service.adjustInput();
     expect(h.sealed.seal.input).toBe(false);
   });
 });

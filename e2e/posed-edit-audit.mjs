@@ -175,18 +175,24 @@ const MECHANISMS = [
     name: 'Slider_Crank',
     forceOn: 'BC',
     spot: 'B',
+    // C is the slider itself. It used to be a prismatic joint, a coincident
+    // pin `D` and a zero-length block `CD` joining the two, and this table
+    // named all three -- so after Stage 1 of
+    // `docs/joint-type-and-cylinder-plan.md` made a slider one joint, two of
+    // the rows here named parts the drawing does not have. The menu rows
+    // passed for the wrong reason (no part, so the canvas card) and the panel
+    // row failed for one: it selected nothing and then pressed Grounded. B,
+    // the crank pin, and AB, the crank, stand in their place.
     menu: [
       ['joint', 'C'],
-      ['joint', 'D'],
+      ['joint', 'B'],
       ['link', 'BC'],
-      ['link', 'CD'],
+      ['link', 'AB'],
       ['canvas', null],
     ],
-    // The block CD is not a selectable part -- a press on it selects its pin --
-    // so the panel is never showing it and its fields are not on this table.
     panel: [
       ['joint', 'C', 'joint'],
-      ['joint', 'D', 'joint'],
+      ['joint', 'B', 'joint'],
       ['link', 'BC', 'link'],
     ],
     key: 'C',
@@ -195,16 +201,22 @@ const MECHANISMS = [
     name: 'Cylinder_Boom',
     forceOn: 'GN',
     spot: 'N',
+    // The whole cast of a cylinder, as Stage 2 leaves it: P is the slide, G
+    // and C the two end joints, GN the barrel, PC the rod, OC an ordinary bar
+    // beside them. This named a joint `S` and a link `PS` that no longer
+    // exist, and audited the retired Edit Cylinder panel through a
+    // `cylinderForm` the panel no longer has -- all three passing as "no such
+    // part" or "no such control" rather than saying so.
     menu: [
-      ['joint', 'S'],
+      ['joint', 'G'],
       ['joint', 'P'],
       ['joint', 'C'],
       ['link', 'PC'],
-      ['link', 'PS'],
+      ['link', 'GN'],
       ['link', 'OC'],
     ],
     panel: [
-      ['joint', 'S', 'cylinder'],
+      ['link', 'GN', 'link'],
       ['joint', 'P', 'joint'],
       ['link', 'OC', 'link'],
     ],
@@ -537,6 +549,10 @@ for (const mechanism of MECHANISMS) {
 
 // ---- 2. every field of the Edit panel ----------------------------------------
 
+// Every control the panel's forms actually hold. `slider` and `weld` are gone
+// from the panel (Joint Type replaced them) and `input` is a button rather than
+// a control, so those three report "no such control" -- which is the record
+// that they are no longer fields, and is why they are still listed.
 const FORMS = {
   joint: [
     'xPos',
@@ -552,10 +568,12 @@ const FORMS = {
   ],
   link: ['length', 'angle', 'mass', 'massMoI', 'comX', 'comY'],
   force: ['magnitude', 'angle', 'xComp', 'yComp', 'isGlobal'],
-  cylinder: ['travel', 'start', 'angle', 'barrelMass', 'rodMass', 'headMass'],
+  // There was a `cylinder` form here, for the one Edit Cylinder panel. Stage 2
+  // gave the barrel and the rod a link panel each and the slide a joint's, so
+  // a cylinder's parts are audited through the two forms above.
 };
 const POSE_FIELDS =
-  /^(xPos|yPos|prisAngle|length|angle|comX|comY|magnitude|xComp|yComp|isGlobal|inputSpeed|travel|start)$/;
+  /^(xPos|yPos|prisAngle|length|angle|comX|comY|magnitude|xComp|yComp|isGlobal|inputSpeed)$/;
 const CAPTURING_FIELDS = /^(slider|weld)$/;
 
 for (const mechanism of MECHANISMS) {
