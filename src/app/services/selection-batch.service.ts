@@ -511,6 +511,10 @@ function copyRealLinkState(source: RealLink, copy: RealLink, joints: Map<Joint, 
   copy.moiIsCustom = source.moiIsCustom;
   copy.comIsCustom = source.comIsCustom;
   copy.fill = source.fill;
+  // Whether the fill above is a choice or a number nobody has drawn: a copy of
+  // a cylinder whose rod was recolored has to come back recolored, and a copy
+  // of one that was not has to go on wearing its barrel's color.
+  copy.ownColor = source.ownColor;
   copy.isCircle = source.isCircle;
   copy.hold = source.hold;
   const anchor = source.comAnchor;

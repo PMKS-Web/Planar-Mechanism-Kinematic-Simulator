@@ -1,5 +1,7 @@
 import { SvgGridService } from '../../services/svg-grid.service';
 import { heldBars, heldBarsReaching, heldBySentence, holdList } from '../../model/link-holds';
+import { holdChips } from '../../model/hold-chips';
+import { overlayBarEnds } from '../../model/hover-dimension';
 import {
   OnDestroy,
   Component,
@@ -2489,22 +2491,20 @@ export class NewGridComponent implements OnDestroy {
    */
   heldChips(): { id: string; x: number; y: number; text: string; w: number }[] {
     const chips: { id: string; x: number; y: number; text: string; w: number }[] = [];
-    // The solver's own bars, so a cylinder's chip sits in the wedge of the
-    // angle it is actually holding -- mount to mount -- rather than in the
-    // barrel's, which is a pair of joints inside the part.
-    for (const bar of heldBars(this.mechanismSrv.links, this.mechanismSrv.sealedStructures())) {
-      const link = this.mechanismSrv.links.find((one) => one.id === bar.id);
-      if (!(link instanceof RealLink) || this.mechanismSrv.isLockedTarget(link)) continue;
-      const a = this.mechanismSrv.joints.find((joint) => joint.id === bar.a);
-      const b = this.mechanismSrv.joints.find((joint) => joint.id === bar.b);
-      if (!a || !b) continue;
-      const hold = bar.hold;
+    // What reads as held, which is not what the solver is fed: a member's
+    // fixed length is honored by the layout rather than by the solver, and a
+    // list taken from the solver's bars left the reader's own padlock
+    // undrawn (`model/hold-chips.ts`).
+    for (const { id, link, hold, a, b } of holdChips(
+      this.mechanismSrv.links,
+      this.mechanismSrv.sealedStructures()
+    )) {
+      if (this.mechanismSrv.isLockedTarget(link)) continue;
       const dx = b.x - a.x;
       const dy = b.y - a.y;
-      const span = Math.hypot(dx, dy) || 1;
       const text =
         hold === 'length'
-          ? this.nup.formatModelLength(span, this.settings.lengthUnit.getValue())
+          ? this.nup.formatModelLength(Math.hypot(dx, dy) || 1, this.settings.lengthUnit.getValue())
           : // The same reading as the panel's field and the hover pill: atan2's,
             // signed, so a bar pointing down reads -37 deg on all three.
             this.nup.formatValueAndUnit(
@@ -2524,14 +2524,12 @@ export class NewGridComponent implements OnDestroy {
         hold === 'length'
           ? this.lengthLabelAt(a.x, a.y, b.x, b.y)
           : this.angleLabelAt(a.x, a.y, b.x, b.y);
-      if (hold === 'length') {
-        const placed = this.lengthChipPlace(link, w);
-        if (placed) {
-          at.x = placed.x;
-          at.y = placed.y;
-        }
+      const placed = hold === 'length' ? this.lengthChipPlace(link, w) : undefined;
+      if (placed) {
+        at.x = placed.x;
+        at.y = placed.y;
       }
-      chips.push({ id: link.id, x: at.x, y: at.y, text, w });
+      chips.push({ id, x: at.x, y: at.y, text, w });
     }
     return chips;
   }
@@ -2542,8 +2540,7 @@ export class NewGridComponent implements OnDestroy {
    */
   overlayValueLocked(which: 'length' | 'angle'): boolean {
     if (this.activeObjService.objType !== 'Link') return false;
-    const link = this.activeObjService.selectedLink;
-    return this.mechanismSrv.holdOf(link) === which && !this.mechanismSrv.isLockedTarget(link);
+    return this.holdReads(this.activeObjService.selectedLink, which);
   }
 
   /**
@@ -4053,6 +4050,43 @@ export class NewGridComponent implements OnDestroy {
     return a !== -1 && b !== -1 && a !== b;
   }
 
+  /**
+   * Whether this press would build something onto a joint that takes nothing.
+   *
+   * Asked once, above the six branches, because each of them wires the joint
+   * itself before any service sees it — so there is no later place that could
+   * still refuse without also having to undo. The joint it asks about is
+   * whichever end this gesture touches: the one it was started from, and the
+   * one the press has landed on.
+   *
+   * The menu already grays Attach at a cylinder's interior. That was the whole
+   * of the rule, and it only ever covered *starting* a gesture there: a link
+   * begun on bare grid finishes on whatever it is released over, and finishing
+   * is the same attachment seen from the other end.
+   *
+   * Left the way Escape leaves it — nothing built, nothing selected mid-air,
+   * no entry to undo.
+   */
+  private refusesCreationHere(): boolean {
+    const armed =
+      this.dragState.isCreatingLink || this.dragState.grid === gridStates.createCylinder;
+    if (!armed) return false;
+    const landed =
+      this.lastLeftClickType === 'Joint' && this.lastLeftClick instanceof Joint
+        ? this.lastLeftClick
+        : undefined;
+    const ends: (Joint | Link | undefined)[] = [landed, this.linkCreateFrom, this.cylinderCreateAt];
+    const closed = ends
+      .map((part) => this.mechanismSrv.attachRefusal(part))
+      .find((refusal) => refusal !== undefined);
+    if (!closed) return false;
+    this.notify.refusal(closed.code, closed.long);
+    this.abandonGesture();
+    this.cylinderCreateOn = undefined;
+    this.cylinderCreateAt = undefined;
+    return true;
+  }
+
   /** The part a creation gesture is growing from, if it is growing from one. */
   private creationAnchorPart(): Joint | Link | Force | undefined {
     if (this.cylinderCreateOn) return this.cylinderCreateOn;
@@ -4120,6 +4154,8 @@ export class NewGridComponent implements OnDestroy {
       this.beginSelectionGesture('translate', mousePosInSvg, this.pendingPartReplacement);
       return;
     }
+
+    if ($event.button === 0 && this.refusesCreationHere()) return;
 
     switch ($event.button) {
       case 0: // Handle Left-Click on canvas
@@ -4799,7 +4835,9 @@ export class NewGridComponent implements OnDestroy {
       link instanceof RealLink &&
       this.activeObjService.objType === 'Link' &&
       this.activeObjService.selectedLink === link &&
-      !this.mechanismSrv.cylinderOfBar(link) &&
+      // A cylinder member's center follows its shape and nothing else
+      // (decision S14), so its mark is a glyph rather than a handle.
+      !this.mechanismSrv.memberInertiaIsDerived(link) &&
       this.canEditNow()
     );
   }
@@ -5568,11 +5606,20 @@ export class NewGridComponent implements OnDestroy {
 
   /** Whether this bar wears a length chip right now. */
   private lengthChipShown(link: Link): boolean {
-    return (
-      this.holdsVisible() &&
-      this.mechanismSrv.holdOf(link) === 'length' &&
-      !this.mechanismSrv.isLockedTarget(link)
-    );
+    return this.holdsVisible() && this.holdReads(link, 'length');
+  }
+
+  /**
+   * Whether this body reads as holding that value, member or bar.
+   *
+   * Two questions with one answer, because the chip on the drawing and the pill
+   * the panel raises have to agree: `holdOf` is the part's hold, which for a
+   * cylinder is its angle and never a member's length, and `memberHoldOf` is
+   * the member's own row.
+   */
+  private holdReads(link: Link, which: 'length' | 'angle'): boolean {
+    if (this.mechanismSrv.isLockedTarget(link)) return false;
+    return this.mechanismSrv.holdOf(link) === which || this.mechanismSrv.memberHoldOf(link, which);
   }
 
   /** How far from the center anything must sit to clear the center-of-mass mark. */
@@ -6270,65 +6317,33 @@ export class NewGridComponent implements OnDestroy {
     return NewGridComponent.debugLines;
   }
 
+  /**
+   * The two points the hover dimension is drawn between.
+   *
+   * The two overlays are one at a time and an angle wins, which is what the
+   * pair of index fields says: an index of -2 is "off", -1 is the selected
+   * body's own span, and anything above names one of the joints the Edit
+   * panel listed beside the selected one. Which span a *body* has is
+   * `overlayBarEnds`, because a cylinder member's length and its angle are
+   * measured between different pairs.
+   */
   findStartAndEndPoints() {
-    let x1, y1, x2, y2;
-    if (this.showLinkAngleOverlay == -2) {
-      switch (this.showLinkLengthOverlay) {
-        case -2:
-          //Throw an error
-          throw new Error(
-            'showLinkLengthOverlay should not be -2, this means an overlay was requested even though the objects to show the overlay based on was not selected'
-          );
-          break;
-        case -1: {
-          const link = this.activeObjService.selectedLink;
-          // A cylinder body's span is mount to mount, not the barrel's own
-          // two joints (one of which is buried inside the part).
-          const sealed = this.mechanismSrv.cylinderOfBar(link);
-          const [from, to] = sealed ? [sealed.mountA, sealed.mountB] : link.joints;
-          x1 = from.x;
-          y1 = from.y;
-          x2 = to.x;
-          y2 = to.y;
-          break;
-        }
-        default:
-          let thisJoint = this.activeObjService.selectedJoint;
-          let otherJoint = this.overlayOtherJoints[this.showLinkLengthOverlay];
-          x1 = thisJoint.x;
-          y1 = thisJoint.y;
-          x2 = otherJoint.x;
-          y2 = otherJoint.y;
-      }
-    } else {
-      switch (this.showLinkAngleOverlay) {
-        case -2:
-          //Throw an error
-          throw new Error(
-            'showLinkLengthOverlay should not be -2, this means an overlay was requested even though the objects to show the overlay based on was not selected'
-          );
-          break;
-        case -1: {
-          const link = this.activeObjService.selectedLink;
-          const sealed = this.mechanismSrv.cylinderOfBar(link);
-          const [from, to] = sealed ? [sealed.mountA, sealed.mountB] : link.joints;
-          x1 = from.x;
-          y1 = from.y;
-          x2 = to.x;
-          y2 = to.y;
-          break;
-        }
-        default:
-          let thisJoint = this.activeObjService.selectedJoint;
-          let otherJoint = this.overlayOtherJoints[this.showLinkAngleOverlay];
-          x1 = thisJoint.x;
-          y1 = thisJoint.y;
-          x2 = otherJoint.x;
-          y2 = otherJoint.y;
-      }
+    const which = this.showLinkAngleOverlay === -2 ? 'length' : 'angle';
+    const index = which === 'length' ? this.showLinkLengthOverlay : this.showLinkAngleOverlay;
+    if (index === -2) {
+      throw new Error(
+        'showLinkLengthOverlay should not be -2, this means an overlay was requested even though the objects to show the overlay based on was not selected'
+      );
     }
-
-    return { x1, y1, x2, y2 };
+    const [from, to] =
+      index === -1
+        ? overlayBarEnds(
+            this.activeObjService.selectedLink,
+            which,
+            this.mechanismSrv.sealedStructures()
+          )
+        : [this.activeObjService.selectedJoint, this.overlayOtherJoints[index]];
+    return { x1: from.x, y1: from.y, x2: to.x, y2: to.y };
   }
 
   /**

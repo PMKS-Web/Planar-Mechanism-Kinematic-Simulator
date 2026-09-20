@@ -11,6 +11,7 @@ import {
   isCylinderInner,
   isInsideCylinder,
   cylindersIn,
+  memberInertiaIsDerived,
 } from './cylinder';
 
 /**
@@ -240,5 +241,35 @@ describe('which cylinders a link owns', () => {
     // Pinned to a mount is not membership: the neighbor keeps its own menus
     // and is not swept up by a delete that follows the cylinder.
     expect(cylindersOfLinkIn(cylinders, neighbor)).toHaveLength(0);
+  });
+});
+
+describe('whose inertia is derived from its shape', () => {
+  it('says yes to each member bar and no to everything else', () => {
+    const parts = ram();
+    const cylinders = cylindersIn(parts.joints);
+
+    expect(memberInertiaIsDerived(cylinders, parts.barrel)).toBe(true);
+    expect(memberInertiaIsDerived(cylinders, parts.rod)).toBe(true);
+    expect(
+      memberInertiaIsDerived(
+        cylinders,
+        new RealLink('AN', [parts.mountA, new RevJoint('N', -4, 0)])
+      )
+    ).toBe(false);
+    expect(memberInertiaIsDerived(cylinders, undefined)).toBe(false);
+  });
+
+  it('leaves a compound that merely carries a member its own controls', () => {
+    // A bracket welded to a mount is an ordinary rigid body whose shape happens
+    // to include a rod. Its mass properties are its own, and the migration in
+    // the decoder does not touch it -- so the question here is identity, not
+    // the recursive ownership one a delete asks.
+    const parts = ram();
+    const { compound } = weldBracketOnto(parts, parts.mountA, parts.barrel, 'AX', { x: -3, y: 4 });
+    const cylinders = cylindersIn(parts.joints);
+
+    expect(memberInertiaIsDerived(cylinders, compound)).toBe(false);
+    expect(memberInertiaIsDerived(cylinders, parts.barrel)).toBe(true);
   });
 });

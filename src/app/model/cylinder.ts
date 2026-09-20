@@ -393,11 +393,35 @@ export function cylindersOfLinkIn(cylinders: Cylinder[], link: Link | undefined)
  * drawing, which is why the drawing was right about it and the words were not.
  */
 export function cylinderOfBarIn(
-  cylinders: Cylinder[],
+  cylinders: readonly Cylinder[],
   link: Link | undefined
 ): Cylinder | undefined {
   if (!link) return undefined;
   return cylinders.find((cylinder) => [cylinder.barrel.id, cylinder.rod.id].includes(link.id));
+}
+
+/**
+ * Whether this body's rotational inertia and center of mass are derived from
+ * its shape, with no way for anyone to type one (decision S14).
+ *
+ * True of a barrel and of a rod, and of nothing else. Every cylinder URL in
+ * circulation carries the custom flags frozen on both members — the codec kept
+ * them when the fields were the retired Edit Cylinder panel's, which never
+ * offered either number — and there is no marker in the format that could tell
+ * one of those from a value somebody typed yesterday. So the decode clears
+ * them, and this is the other half of that bargain: the Barrel and Rod panels
+ * offer mass alone, and every other door that could set one asks here first.
+ *
+ * The question is about the *member bar*. A compound that has swallowed one is
+ * an ordinary rigid body whose shape happens to include a rod, and it keeps its
+ * own controls — which is why this is `cylinderOfBarIn` and not the recursive
+ * ownership question.
+ */
+export function memberInertiaIsDerived(
+  cylinders: readonly Cylinder[],
+  link: Link | undefined
+): boolean {
+  return cylinderOfBarIn(cylinders, link) !== undefined;
 }
 
 /** The link-membership question against a precomputed structure list. */
@@ -678,6 +702,16 @@ export function derivedInterior(cylinder: Cylinder): DerivedInterior | undefined
  * Only called where a mount is known to have moved. Applied blindly it could
  * not tell that from a barrel some other write had shortened, and would quietly
  * repair a starved ram into a working one.
+ *
+ * **Nothing overwrites a mount here.** Both ends belong to whatever carried
+ * them, so a span the fit had to clamp — because a member is holding its
+ * length, or because the part is already as short as one goes — is a part that
+ * cannot reach, not a mount this pass may put somewhere the layout did not.
+ * Writing the requested point back over the fitted one is exactly how a rod
+ * holding its length came to be lengthened to bridge the difference: the pose
+ * it went out with contradicted the lengths it was built from. `undefined` is
+ * the honest answer, and the planner turns it into a refusal that changes
+ * nothing.
  */
 export function stretchedCylinderPose(
   barrelMount: { x: number; y: number },
@@ -692,17 +726,23 @@ export function stretchedCylinderPose(
   if (distance < 1e-9 || !(lengths.barrel > 1e-9)) return undefined;
   const axis = { x: dx / distance, y: dy / distance };
   const fit = cylinderSpanLayout(distance, lengths, r, holds);
-  return {
-    // Both mounts are held: they belong to whatever carried them, and a span
-    // the fit had to clamp is a part that cannot reach rather than a mount
-    // this pass is entitled to move.
-    ...cylinderPoseAlong(barrelMount, axis, fit.lengths, fit.along, fit.atMinimum),
-    mountB: { x: rodMount.x, y: rodMount.y },
-  };
+  if (fit.atMinimum) return undefined;
+  return cylinderPoseAlong(barrelMount, axis, fit.lengths, fit.along);
 }
 
 /** Where each joint of a re-posed cylinder lands: A, N, S, B, in the record's names. */
 export interface CylinderPose {
+  /**
+   * The two member lengths this pose was built from.
+   *
+   * Carried rather than re-measured so that a caller can hold the pose to its
+   * own arithmetic: |AN| and |SB| of the four points below have to be these
+   * two numbers, and a pose whose points say otherwise is a pose something
+   * edited after the fact. Absent on a pose that is a plain rigid motion of a
+   * part already drawn — a body drag, a rotation — where the four points are
+   * the whole statement and there is nothing to disagree with.
+   */
+  lengths?: CylinderLengths;
   /** True when the layout had to hold the ram at its shortest. */
   atMinimum?: boolean;
   /** A — the barrel's outer end. */
@@ -740,6 +780,7 @@ export function cylinderPoseAlong(
     y: mountA.y + distance * axis.y,
   });
   return {
+    lengths: { barrel: lengths.barrel, rod: lengths.rod },
     mountA: { x: mountA.x, y: mountA.y },
     inner: at(lengths.barrel),
     seal: at(along),

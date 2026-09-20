@@ -17,6 +17,8 @@ import { MODEL_SCALE } from '../../app/model/render-scale';
 import { refuseAttach, refuseJointOperation } from '../../app/model/joint-operation-permission';
 import { MERGE_REFUSAL_REASONS, refuseJointMerge } from '../../app/model/drop-target';
 import { jointTypeAt } from '../../app/model/joint-type';
+import { Coord } from '../../app/model/coord';
+import { NotificationService } from '../../app/services/notification.service';
 
 /**
  * Where a cylinder's boundary is: what its end joints allow, and what its
@@ -457,5 +459,112 @@ describe('and the inside of a cylinder is still sealed', () => {
     active.updateSelectedObj(seal);
     mechanism.adjustInput();
     expect(ram().seal.input).toBe(true);
+  });
+});
+
+/**
+ * The same boundary, asked of the mutations rather than of the menu.
+ *
+ * `refuseAttach` had exactly one caller and it was the context menu deciding
+ * what to gray. That covers *starting* a gesture at the slide and nothing
+ * else: a bar begun on bare grid finishes wherever it is released, and every
+ * other door -- the tutorial's own `addBarFrom`, a cylinder mounted or ended
+ * on a joint -- reached the arrays with no question asked. So the rule is
+ * enforced where the writing happens, and this is where each door is held to
+ * it.
+ */
+describe('nothing is built on a cylinder’s interior, whichever door it comes through', () => {
+  let mechanism: MechanismService;
+  let refusal: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+    mechanism = TestBed.inject(MechanismService);
+    refusal = vi
+      .spyOn(NotificationService.prototype, 'refusal')
+      .mockImplementation(() => {}) as ReturnType<typeof vi.spyOn>;
+    TestBed.inject(UrlProcessorService).updateFromURL(
+      fixturePayload(ramWithNeighbors()),
+      false,
+      true,
+      true,
+      false
+    );
+  });
+
+  const ram = () => mechanism.sealedStructures()[0];
+  /** What the drawing is made of, so a refused door can be shown to add nothing. */
+  const tally = () => ({
+    joints: mechanism.joints.length,
+    links: mechanism.links.length,
+    rams: mechanism.sealedStructures().length,
+  });
+
+  it('answers for the inside and not for the ends, from the service', () => {
+    expect(mechanism.attachRefusal(ram().seal)?.code).toBe('cylinder.attach-at-an-end-joint');
+    expect(mechanism.attachRefusal(ram().inner)?.code).toBe('cylinder.attach-at-an-end-joint');
+    expect(mechanism.attachRefusal(ram().mountA)).toBeUndefined();
+    expect(mechanism.attachRefusal(ram().mountB)).toBeUndefined();
+    // A link is not a joint, and neither is nothing.
+    expect(mechanism.attachRefusal(ram().rod)).toBeUndefined();
+    expect(mechanism.attachRefusal(undefined)).toBeUndefined();
+  });
+
+  it('refuses a bar hung off the slide, and builds nothing', () => {
+    const before = tally();
+    expect(mechanism.addBarFrom(ram().seal as RealJoint, new Coord(0, 9 * MODEL_SCALE))).toBe(
+      undefined
+    );
+    expect(tally()).toEqual(before);
+    expect(refusal).toHaveBeenCalledWith('cylinder.attach-at-an-end-joint', expect.any(String));
+  });
+
+  it('refuses the same bar at the buried end of the barrel', () => {
+    const before = tally();
+    expect(mechanism.addBarFrom(ram().inner as RealJoint, new Coord(0, 9 * MODEL_SCALE))).toBe(
+      undefined
+    );
+    expect(tally()).toEqual(before);
+  });
+
+  it('refuses a cylinder mounted on the slide, before anything is made', () => {
+    const before = tally();
+    mechanism.createCylinderFrom(
+      new Coord(ram().seal.x, ram().seal.y),
+      new Coord(ram().seal.x, ram().seal.y + 6 * MODEL_SCALE),
+      undefined,
+      ram().seal as RealJoint
+    );
+    expect(tally()).toEqual(before);
+    expect(refusal).toHaveBeenCalledWith('cylinder.attach-at-an-end-joint', expect.any(String));
+  });
+
+  it('refuses a cylinder *ended* on the slide, rather than leaving one half-attached', () => {
+    // The merge at the end of creation already refused this in its own words,
+    // but only once the new part existed -- so the reader was left with a ram
+    // standing on top of the slide with a free end. Asked up front, the
+    // gesture simply does not happen.
+    const before = tally();
+    mechanism.createCylinderFrom(
+      new Coord(ram().seal.x, ram().seal.y + 8 * MODEL_SCALE),
+      new Coord(ram().seal.x, ram().seal.y),
+      undefined,
+      undefined,
+      ram().seal as RealJoint
+    );
+    expect(tally()).toEqual(before);
+    expect(refusal).toHaveBeenCalledWith('cylinder.attach-at-an-end-joint', expect.any(String));
+  });
+
+  it('still builds a cylinder mounted on, or ended on, a joint at either end', () => {
+    const before = tally();
+    mechanism.createCylinderFrom(
+      new Coord(ram().mountB.x, ram().mountB.y),
+      new Coord(ram().mountB.x, ram().mountB.y + 8 * MODEL_SCALE),
+      undefined,
+      ram().mountB as RealJoint
+    );
+    expect(mechanism.sealedStructures()).toHaveLength(before.rams + 1);
+    expect(mechanism.links.length).toBeGreaterThan(before.links);
   });
 });

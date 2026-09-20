@@ -453,14 +453,13 @@
           (opened)="sectionExpanded['LVisual'] = true"
           (closed)="sectionExpanded['LVisual'] = false"
         >
-          <!-- The rod has no color field of its own: one part, one color -- the
-               skin paints the rod from the barrel's fill, so a Rod Color row
-               would either change the barrel too or change nothing. -->
-          @if (bodyColorLabel; as colorLabel) {
-            <color-picker type="link" [link]="activeSrv.selectedLink">{{
-              colorLabel
-            }}</color-picker>
-          }
+          <!-- Barrel Color, Rod Color or Link Color: one field, named after
+               whichever body is selected. A cylinder's two members are colored
+               independently in either order (S15), so the rod has a row of its
+               own and pressing the barrel's never moves the rod. -->
+          <color-picker type="link" [link]="activeSrv.selectedLink">{{
+            bodyColorLabel
+          }}</color-picker>
           <!-- The same choice the right-click menu offers, in the section that
              collects how this link is drawn. Disabled rather than hidden here:
              the panel is describing the link you selected, so the option is
@@ -520,7 +519,17 @@
              answer. They used to be shown grayed, which asks the reader to
              work out that a whole section is inert. Give it a mass and they
              come back. -->
-            @if (activeSrv.selectedLink.mass > 0) {
+            <!-- A cylinder member takes mass and nothing else (decision S14):
+             its inertia and its center follow its own shape, and the panel says
+             so where the two fields would otherwise be. The sentence is the one
+             the retired Edit Cylinder panel carried, because it is the same
+             promise. -->
+            @if (memberMassDerived()) {
+              <p class="massNote">
+                Each part's rotational inertia and center of mass are computed from its own shape
+                and the mass you give it.
+              </p>
+            } @else if (activeSrv.selectedLink.mass > 0) {
               <!-- One legend for the two derived fields below. It sits under Mass —
                which is always typed — so it introduces exactly the fields it
                governs: gray behind a hollow dot follows the shape, ink behind a

@@ -1482,3 +1482,49 @@ right-click does not.
 Both predate the cylinder work: a detached worktree at `477f2f7c`, the parent of
 `feature/cylinder-sealed-slide`, reproduces the same two numbers. The audit row is left failing on
 purpose, so the nightly goes on saying it.
+
+### Recoloring a *link* never saved, so the color rode in on the next edit
+
+`ColorPickerComponent.selectColor` called `updateMechanism(true)` for a joint and for a force, and
+for a whole selection through `parts`, but the single-`link` branch set `link.fill` and stopped.
+A link's fill has ridden the URL since the format was written, so nothing was lost — it was simply
+written the next time something else saved. What that cost was Undo: recolor a bar, move a joint,
+press Undo, and the color went back with the joint, because the color had never had an entry of
+its own. Now fixed, which decision S15 needed anyway: a rod's `KR` entry is written at the same
+moment, and a reload from the address bar has to find it there.
+
+### A collapsed `collapsible-subsection` still has its content in the DOM — under the next section
+
+The block animates `[@openClose]` on `.panel-content` rather than removing it, so a collapsed
+section's rows are still queryable and still report a 28×28 bounding box — laid out *over* whatever
+section follows. An e2e suite that opens a section by asking "are the swatches there yet" therefore
+believes it is already open, and the click that follows lands on the next section's sticky header
+(`<button class="panel-header__toggle">… intercepts pointer events`). Read the chevron instead:
+`.panel-header__toggle mat-icon.rotate180` is set only while the section is open. `e2e/cylinder-colors.mjs`
+does it that way, and centers the swatch in the panel before clicking it, because the headers above
+and below are both sticky.
+
+### Clicking a field that already has focus: Chrome sets the caret *after* the click handlers
+
+Every BLOCKS field selects its value on click, and it worked on the first click and failed on every
+one after. On a field that does not yet have focus the browser has settled the caret before the
+handler runs, so `field.select()` sticks. On a field that *already* has focus, Chrome applies the
+caret that click asks for after the handlers — an instrumented run shows `select()` called while
+the selection still reads `0-7`, doing nothing because nothing changed, and the selection reading
+`7-7` a moment later. Asserting the selection again on the next frame is what survives it, and
+`BLOCKS/select-all.ts` is the one place that does: it re-selects only when the value is unchanged,
+the field is still focused, and the selection collapsed to a caret, so a drag across part of the
+value and a keystroke that arrived first are both left alone.
+
+### A pose built from fitted lengths and then handed a requested mount is two different parts
+
+`stretchedCylinderPose` laid a carried cylinder out from the lengths a fit had chosen and then
+wrote the *requested* rod mount back over the fitted one, on the reading that a carried mount
+belongs to whatever moved it. When the fit had to clamp — a member holding its length, or the part
+already at its floor — the two points are not the same point, and the difference lands in the rod:
+a rod holding its length was silently stretched from 1242.6 to 5647.16 model units to bridge it,
+and the planner's rigid-body check could not see it, because a ram it has marked as reshaped has
+its interior exempted. The rule now is that a pose is only ever `cylinderPoseAlong` of the fitted
+lengths and the fitted span, a clamped fit answers `undefined` (which `planEdit` turns into
+`cylinder.carried-too-far`), and `planEdit` measures every cylinder it settled against its own
+pose's lengths before committing.

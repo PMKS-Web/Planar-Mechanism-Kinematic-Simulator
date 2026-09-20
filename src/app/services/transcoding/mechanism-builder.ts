@@ -551,11 +551,22 @@ export class MechanismBuilder {
     // keeps a colored part colored through one -- the same reason the locks
     // above are re-armed. The transcoder has already refused any reference that
     // does not resolve.
+    //
+    // Before `letterSealedSeals` at the foot of this method, like every other
+    // section here: a 'KR' entry names the rod's id as the URL wrote it, and
+    // the re-lettering pass renames the links holding a seal that arrived with
+    // an interior name.
     this.transcoder.getPartColors().forEach((entry: string) => {
       const [id, value] = entry.substring(2).split('~');
-      if (entry.charAt(1) === 'J') {
+      const kind = entry.charAt(1);
+      if (kind === 'J') {
         const joint = jointNamed(id);
         if (joint) joint.colorFamily = value;
+      } else if (kind === 'R') {
+        // Through `getLinkByID`, which reaches inside compounds: a rod welded
+        // at its far end is a subset leaf, and that is where the flag belongs.
+        const link = this.getLinkByID(links, id);
+        if (link instanceof RealLink) link.ownColor = true;
       } else {
         const force = forces.find((candidate) => candidate.id === id);
         if (force) force.color = '#' + value;
@@ -582,11 +593,17 @@ export class MechanismBuilder {
     // has to be put in that order before anything reads a cylinder off it.
     this.orderSealedSlots(joints);
 
-    // A sealed cylinder's parts always follow their own shapes. Nothing that
-    // shipped ever let anyone choose their inertia or centers — the values in
-    // circulating URLs are fixture defaults — so decoding migrates the parts
-    // to auto rather than freezing numbers nobody picked. Masses stay exactly
-    // as stored: mass carries no flag and is always somebody's choice. After
+    // A cylinder member's inertia and center follow its own shape, and nothing
+    // lets anyone choose either: the Barrel and Rod panels offer mass alone
+    // (decision S14), the linkage table and the analysis setup refuse the same
+    // edit, and the center-of-mass mark on a member is a glyph rather than a
+    // handle. So this stays a migration rather than becoming a loss. Every
+    // cylinder URL in circulation carries the flags frozen on both members —
+    // fixture defaults, from a format that kept them while the panel was the
+    // retired Edit Cylinder one — and the codec has no marker that could tell
+    // those from a number somebody typed. Clearing them is therefore the only
+    // reading of the file that is true. Masses stay exactly as stored: mass
+    // carries no flag and is always somebody's choice. After
     // addAdjacentLinksForJoints, which is what wires the joints to their
     // links; before it, the structure detector sees no cylinders at all.
     for (const sealed of cylindersIn(joints)) {

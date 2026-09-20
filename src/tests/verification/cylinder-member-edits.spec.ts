@@ -197,3 +197,67 @@ describe('a member keeping its length', () => {
     expect(after.start).toBeCloseTo(1, 3);
   });
 });
+
+/**
+ * A member's mass is the reader's; its inertia and its center are the shape's
+ * (decision S14).
+ *
+ * The decode clears both custom flags on every cylinder member, because every
+ * URL in circulation carries them frozen and nothing in the format could tell
+ * one of those from a value somebody typed. That is only honest while no
+ * surface offers either number — so this holds the two halves against each
+ * other: the doors stay shut, and what the reader *did* choose survives a
+ * round trip and an undo.
+ */
+describe('a cylinder member takes a mass and nothing else', () => {
+  it('says so of both members, and of neither a plain bar nor a body carrying one', () => {
+    const { mechanism, sealed } = build({
+      ...ramFixture(),
+      joints: [...ramFixture().joints, { id: 'E', x: 14, y: 0 }],
+      links: [...ramFixture().links, { joints: 'DE' }],
+    });
+    expect(mechanism.memberInertiaIsDerived(sealed().barrel)).toBe(true);
+    expect(mechanism.memberInertiaIsDerived(sealed().rod)).toBe(true);
+    const bar = mechanism.links.find((link) => link.id === 'DE')!;
+    expect(mechanism.memberInertiaIsDerived(bar)).toBe(false);
+    expect(mechanism.memberInertiaIsDerived(undefined)).toBe(false);
+  });
+
+  it('keeps the mass through a round trip and hands the other two back to the shape', () => {
+    const { mechanism, urls, sealed } = build(ramFixture());
+    const rod = sealed().rod;
+    rod.mass = 7;
+    // What an old URL carries: flags frozen on values nobody picked.
+    rod.moiIsCustom = true;
+    rod.comIsCustom = true;
+    rod.massMoI = 123;
+
+    const url = urls.generateUrlQuery();
+    TestBed.inject(UrlProcessorService).updateFromURL(url, false, true);
+
+    const back = cylindersIn(mechanism.joints)[0].rod;
+    expect(back.mass).toBeCloseTo(7, 6);
+    expect(back.moiIsCustom).toBe(false);
+    expect(back.comIsCustom).toBe(false);
+  });
+
+  it('and through an undo and a redo, which replay the same URL', () => {
+    const { mechanism, grid, history, sealed } = build(ramFixture());
+    sealed().rod.mass = 4;
+    mechanism.save();
+    expect(grid.setRodLength(sealed(), cylinderSizeOf(sealed()).rodLength * 1.3)).toBe(true);
+    mechanism.save();
+
+    history.undo();
+    const undone = cylindersIn(mechanism.joints)[0].rod;
+    expect(undone.mass).toBeCloseTo(4, 6);
+    expect(undone.moiIsCustom).toBe(false);
+    expect(undone.comIsCustom).toBe(false);
+
+    history.redo();
+    const redone = cylindersIn(mechanism.joints)[0].rod;
+    expect(redone.mass).toBeCloseTo(4, 6);
+    expect(redone.moiIsCustom).toBe(false);
+    expect(redone.comIsCustom).toBe(false);
+  });
+});

@@ -17,6 +17,7 @@ import { SynthesisBuilderService } from '../../services/synthesis/synthesis-buil
 import { NotificationService } from '../../services/notification.service';
 import { EditPermissionService } from '../../services/edit-permission.service';
 import { Coord } from '../../model/coord';
+import { SaveHistoryService } from '../../services/save-history.service';
 import { LONGEST_ARROW_FRACTION, PATH_ARROW_COUNT } from '../../model/vector-trace';
 import { CYLINDER, MARK, slideMarkPath } from '../../model/joint-marks';
 import { ColorService } from '../../services/color.service';
@@ -184,6 +185,24 @@ describe('NewGridComponent cylinder selectables', () => {
     // why, rather than skipping quietly to the next joint along.
     expect(offered.map((joint) => joint.id)).toContain(cylinder.seal.id);
     expect(offered.map((joint) => joint.id)).not.toContain(cylinder.inner.id);
+  });
+
+  it('draws a member’s center-of-mass mark as a glyph, not a handle', () => {
+    // A member's center follows its own shape and no surface offers a field
+    // for it (decision S14), so the mark has nothing to drag it to.
+    const { component, cylinder, mechanism } = drawnCylinder();
+    const active = TestBed.inject(ActiveObjService);
+    const plain = mechanism.addBar(
+      new Coord(0, 6 * MODEL_SCALE),
+      new Coord(4 * MODEL_SCALE, 6 * MODEL_SCALE)
+    )!;
+
+    for (const member of [cylinder.barrel, cylinder.rod]) {
+      active.updateSelectedObj(member as RealLink);
+      expect(component.comDraggable(member)).toBe(false);
+    }
+    active.updateSelectedObj(plain);
+    expect(component.comDraggable(plain)).toBe(true);
   });
 
   it('wears one tag, naming the part rather than either member', () => {
@@ -422,6 +441,65 @@ describe('NewGridComponent link creation at a welded joint', () => {
     expect(compounds[0].subset).toHaveLength(3);
     expect(mechanism.links).toHaveLength(1);
     expect(b.isWelded).toBe(true);
+  });
+});
+
+/**
+ * A link begun on bare grid finishes wherever it is released, and the slide is
+ * a square with a hitbox. So the menu graying Attach at the interior only ever
+ * covered *starting* a gesture there, and the other end was open: the bar
+ * landed, `finishStructuralEdit` welded it into the rod, and one seal was left
+ * with two bars answering to "the rod" -- so the lookup found neither and the
+ * cylinder stopped being a recognized part at all.
+ */
+describe('NewGridComponent link creation on a cylinder’s slide', () => {
+  beforeEach(configureGridTestBed);
+
+  /** Begin a bar on bare grid, then press the left button on `onto`. */
+  function finishALinkOn(component: NewGridComponent, onto: RevJoint) {
+    component['timeMouseDown'] = 0;
+    component['startX'] = 0;
+    component['startY'] = 0;
+    component['linkCreateStart'] = new Coord(0, 6 * MODEL_SCALE);
+    TestBed.inject(DragStateService).beginCreatingLinkFromGrid();
+    component.setLastLeftClick(onto);
+    TestBed.inject(ActiveObjService).updateSelectedObj(onto);
+    component.mouseDown(
+      new MouseEvent('mousedown', { button: 0, clientX: onto.x, clientY: onto.y })
+    );
+  }
+
+  it('refuses the press, and leaves the part and the history as they were', () => {
+    const { mechanism, cylinder, component } = drawnCylinder();
+    const notify = vi.spyOn(NotificationService.prototype, 'refusal').mockImplementation(() => {});
+    const saved = vi.spyOn(SaveHistoryService.prototype, 'save').mockImplementation(() => {});
+    const joints = mechanism.joints.length;
+    const links = mechanism.links.length;
+
+    finishALinkOn(component, cylinder.seal as unknown as RevJoint);
+
+    expect(mechanism.joints).toHaveLength(joints);
+    expect(mechanism.links).toHaveLength(links);
+    expect(mechanism.sealedStructures()).toHaveLength(1);
+    expect(mechanism.links.some((link) => link instanceof RealLink && link.subset.length > 0)).toBe(
+      false
+    );
+    expect(saved).not.toHaveBeenCalled();
+    expect(notify).toHaveBeenCalled();
+    expect(notify.mock.calls[0][0]).toBe('cylinder.attach-at-an-end-joint');
+    expect(notify.mock.calls[0][1]).toContain('inside a cylinder');
+    // And the gesture is put down rather than left armed with a ghost.
+    expect(TestBed.inject(DragStateService).isCreatingLink).toBe(false);
+  });
+
+  it('still lets a bar land on either of the joints at the ends', () => {
+    const { mechanism, cylinder, component } = drawnCylinder();
+    const joints = mechanism.joints.length;
+
+    finishALinkOn(component, cylinder.mountB as RevJoint);
+
+    expect(mechanism.joints.length).toBe(joints + 1);
+    expect(mechanism.sealedStructures()).toHaveLength(1);
   });
 });
 

@@ -167,9 +167,10 @@ export class LinkageTableComponent implements OnInit {
         if (isNaN(Number(($event.target as HTMLInputElement).value))) {
           return this.notify.refusal('value.momentOfInertia', NOT_A.momentOfInertia);
         }
-        // A sealed cylinder's parts always follow their own shapes — the
-        // debug table gets no back door to re-freeze them.
-        if (this.mechanismService.cylinderOfBar(link)) break;
+        // A cylinder member's inertia and center follow its own shape
+        // (decision S14) — the debug table gets no back door to freeze either,
+        // and it asks the same predicate the panels ask.
+        if (this.mechanismService.memberInertiaIsDerived(link)) break;
         link.massMoI = Number(($event.target as HTMLInputElement).value);
         link.moiIsCustom = true;
         break;
@@ -177,6 +178,7 @@ export class LinkageTableComponent implements OnInit {
         if (isNaN(Number(($event.target as HTMLInputElement).value))) {
           return this.notify.refusal('value.length', NOT_A.length);
         }
+        if (this.mechanismService.memberInertiaIsDerived(link)) break;
         link.placeCustomCoM({
           x: Number(($event.target as HTMLInputElement).value) * MODEL_SCALE,
           y: link.CoM.y,
@@ -186,6 +188,7 @@ export class LinkageTableComponent implements OnInit {
         if (isNaN(Number(($event.target as HTMLInputElement).value))) {
           return this.notify.refusal('value.length', NOT_A.length);
         }
+        if (this.mechanismService.memberInertiaIsDerived(link)) break;
         link.placeCustomCoM({
           x: link.CoM.x,
           y: Number(($event.target as HTMLInputElement).value) * MODEL_SCALE,

@@ -1184,6 +1184,16 @@ export class GridUtilsService {
       // lock out on a bracket welded to a mount holds that mount just as
       // surely, and the gate at the canvas cannot see that far.
       frozen: (id) => frozen.has(id),
+      // Named by the member's own two joints rather than by the part, which is
+      // what its panel is headed with: with both lengths fixed the reader has
+      // two padlocks to choose between, and "fixed length AD" twice over names
+      // neither of them.
+      heldBy: (cylinder) => {
+        const holding = [cylinder.barrel, cylinder.rod].filter(
+          (member): member is RealLink => member instanceof RealLink && member.hold === 'length'
+        );
+        return holding.length > 0 ? heldBySentence(holding) : undefined;
+      },
     });
     if (!planned.ok) {
       this.notify.refusal(planned.refusal.code, planned.refusal.long);

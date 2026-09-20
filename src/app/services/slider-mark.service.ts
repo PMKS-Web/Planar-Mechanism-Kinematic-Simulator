@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Joint, PrisJoint, RealJoint } from '../model/joint';
 import { Link, RealLink } from '../model/link';
 import { Cylinder, cylinderHeadHalf, cylindersIn } from '../model/cylinder';
+import { barrelFillOf, rodFillOf } from '../model/cylinder-skin';
 import {
   barrelPath,
   blockPath,
@@ -464,10 +465,11 @@ export class SliderMarkService {
       barrelId: found.barrel.id,
       rodId: found.rod.id,
       barrel: barrelPath(r, anchor, mouth),
-      barrelFill: (found.barrel as RealLink).fill ?? '#000000',
+      barrelFill: barrelFillOf(found),
       rod: rodBodyPath(r, rodReach, headHalf),
-      // One part, one color: the rod wears the barrel's fill, always.
-      rodFill: (found.barrel as RealLink).fill ?? '#000000',
+      // The barrel's color until the rod was given one of its own (S15), which
+      // is a question `cylinder-skin.ts` answers for every painter at once.
+      rodFill: rodFillOf(found),
       block: cylinderBlockPath(r, headHalf),
       headAlongHalf: headHalf,
       contour: cylinderContourPath(r, anchor, mouth, rodReach),

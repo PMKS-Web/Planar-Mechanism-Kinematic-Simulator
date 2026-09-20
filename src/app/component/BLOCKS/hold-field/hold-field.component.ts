@@ -10,6 +10,7 @@ import { holdableBar } from '../../../model/link-holds';
 import { GridUtilsService } from '../../../services/grid-utils.service';
 import { MechanismService } from '../../../services/mechanism.service';
 import { FieldOverlay } from '../field-overlay';
+import { selectAll } from '../select-all';
 
 /** One of the two values this block shows and can hold. */
 type Which = 'length' | 'angle';
@@ -190,8 +191,16 @@ export class HoldFieldComponent {
     this.overlays[which].hover(false);
   }
 
+  /**
+   * A click selects the whole value — including a second click on a field that
+   * already has focus, which `select()` alone loses to the caret the browser
+   * places afterwards (`BLOCKS/select-all.ts`). Bound here as well as in the
+   * template, because focus and click are two halves of the same rule.
+   */
+  protected readonly selectAll = selectAll;
+
   protected focus(which: Which, field: HTMLInputElement): void {
-    field.select();
+    this.selectAll(field);
     this.overlays[which].focus(true);
   }
 

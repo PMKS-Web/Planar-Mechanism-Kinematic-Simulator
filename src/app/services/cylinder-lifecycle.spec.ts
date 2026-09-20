@@ -3,6 +3,7 @@ import { Coord } from '../model/coord';
 import { PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import { RealLink } from '../model/link';
 import { cylinderAtSeal, cylindersIn, CYLINDER_MIN_SPAN_SCALE } from '../model/cylinder';
+import { barrelFillOf, rodFillOf } from '../model/cylinder-skin';
 import { refuseJointMerge } from '../model/drop-target';
 import { createMechanismHarness, wireGraph } from '../../test-utils/mechanism-harness';
 import { SettingsService } from './settings.service';
@@ -96,6 +97,21 @@ describe('creating a cylinder from the two-point gesture', () => {
     const span = Math.hypot(sealed.mountB.x - sealed.mountA.x, sealed.mountB.y - sealed.mountA.y);
     expect(span).toBeCloseTo(CYLINDER_MIN_SPAN_SCALE * MODEL_SCALE, 0);
     expect(sealed.seal.isSlotWellFormed).toBe(true);
+  });
+
+  it('is one color, on file as well as on screen (decision S15)', () => {
+    // Creation hands every new link the next color off the palette, so the rod
+    // arrived with one of its own that the skin then ignored. Written down, the
+    // number on file agrees with what is drawn -- and the flag is off, because
+    // nobody has chosen anything yet.
+    const harness = createMechanismHarness();
+
+    harness.service.createCylinderFrom(new Coord(0, 0), new Coord(3 * MODEL_SCALE, 0));
+
+    const sealed = resolve(harness);
+    expect(sealed.rod.ownColor).toBe(false);
+    expect(sealed.rod.fill).toBe((sealed.barrel as RealLink).fill);
+    expect(rodFillOf(sealed)).toBe(barrelFillOf(sealed));
   });
 });
 

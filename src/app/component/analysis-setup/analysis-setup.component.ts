@@ -440,7 +440,9 @@ export class AnalysisSetupComponent {
   moiEditable(row: MassRow): boolean {
     if (row.isBlock || !(row.body instanceof RealLink)) return false;
     if (!(row.body.mass > 0)) return false;
-    return !this.mechanism.cylinderOfBar(row.body);
+    // A cylinder member's inertia follows its own shape (decision S14), which
+    // is the same answer its panel gives.
+    return !this.mechanism.memberInertiaIsDerived(row.body);
   }
 
   massUnitLabel(): string {

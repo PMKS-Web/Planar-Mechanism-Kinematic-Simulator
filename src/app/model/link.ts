@@ -281,6 +281,28 @@ export class RealLink extends Link {
    */
   public drawnByACylinderSkin = false;
   /**
+   * This cylinder rod is painted in its own `fill` rather than its barrel's.
+   *
+   * A rod starts out drawn in the barrel's color, because a cylinder placed in
+   * one gesture is one part until someone says otherwise — and because every
+   * drawing already in circulation stores a rod fill the skin has never drawn.
+   * Painting those from their own record would have recolored every shared link
+   * and every library card at once; the flag is what separates "the rod's
+   * stored color" from "the rod was asked to wear it".
+   *
+   * Set by `paintCylinderMember` and by nothing else, which is also where the
+   * rule that changing the barrel does not drag the rod along lives. Meaningful
+   * on a rod alone: any other link's fill is already its own, and the flag is
+   * simply never read.
+   *
+   * Behind an accessor for the same reason `fill` is: turning it on changes
+   * what the canvas draws, and the skin is cached on `paintRevision`. Giving a
+   * rod the color it was already storing changes no fill at all, so without
+   * this the one case where the *flag* is the whole of the change repainted
+   * nothing.
+   */
+  private _ownColor = false;
+  /**
    * A hand-placed center of mass, held against the link's own frame: along
    * and across the unit direction joints[0]→joints[1], measured from the
    * uniform-body centroid. "Stored against the centroid" is what lets a
@@ -1092,6 +1114,16 @@ export class RealLink extends Link {
   set fill(value: string) {
     if (value !== this._fill) RealLink.paintRevision++;
     this._fill = value;
+  }
+
+  /** Whether a cylinder rod wears its own `fill` rather than its barrel's. */
+  get ownColor(): boolean {
+    return this._ownColor;
+  }
+
+  set ownColor(value: boolean) {
+    if (value !== this._ownColor) RealLink.paintRevision++;
+    this._ownColor = value;
   }
 
   get massMoI(): number {

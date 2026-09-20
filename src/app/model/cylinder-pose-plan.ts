@@ -101,6 +101,16 @@ export interface EditContext {
   tolerance: number;
   /** Joints a Lock holds still. */
   frozen?: (id: string) => boolean;
+  /**
+   * Why a carried cylinder could not reach, when a fixed length is the reason.
+   *
+   * `layoutFor` answers with a pose or with nothing, which is all a plan needs
+   * to know; the reader needs to know *which* number is in the way, and only
+   * the caller can see the holds. Worded there, in the sentence the rest of the
+   * app words a hold with, so a refusal here and a refusal from a panel field
+   * name the same thing the same way.
+   */
+  heldBy?: (cylinder: Cylinder) => string | undefined;
 }
 
 /** Take the positions a plan will be measured against. */
@@ -182,6 +192,28 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
   const at = (id: string): Point | undefined => context.snapshot.get(id);
   const now = (id: string): Point | undefined => placements.get(id) ?? at(id);
   const near = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y) <= context.tolerance;
+  const spanOf = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
+
+  /**
+   * One refusal for the whole class of "the part cannot be that length".
+   *
+   * Two doors reach it — a carried layout that answered with nothing, and the
+   * settled drawing failing the check below — and they are the same news, so
+   * they say it in the same words and under the same code.
+   */
+  const cannotReach = (one: Cylinder): EditPlanResult => {
+    const held = context.heldBy?.(one);
+    return {
+      ok: false,
+      refusal: {
+        code: 'cylinder.carried-too-far',
+        short: 'a cylinder cannot follow',
+        long: held
+          ? `${held}, so moving this would stretch ${one.barrel.id} past what it can reach. Release it first.`
+          : `Moving this would stretch ${one.barrel.id} past what it can reach.`,
+      },
+    };
+  };
 
   const put = (id: string, to: Point): boolean => {
     const asked = requested.get(id);
@@ -211,6 +243,12 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
   // 1 of `docs/joint-type-and-cylinder-plan.md`), so there is no partner to
   // carry and the plan moves the joint it was asked to move.
 
+  /**
+   * The pose each cylinder was last laid out at, so the settled drawing can be
+   * measured against what the layout actually decided.
+   */
+  const settled = new Map<string, { cylinder: Cylinder; pose: CylinderPose }>();
+
   /** Lay out one ram and carry its two bodies. Returns the ids that moved. */
   const settle = (cylinder: Cylinder): string[] => {
     const changed: string[] = [];
@@ -228,6 +266,7 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
       unreachable = cylinder;
       return changed;
     }
+    settled.set(cylinder.seal.id, { cylinder, pose });
 
     // A ram whose two mounts are on one body can be moved, but it cannot
     // extend: the distance between its mounts is a distance between two points
@@ -343,16 +382,7 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
         },
       };
     }
-    if (unreachable) {
-      return {
-        ok: false,
-        refusal: {
-          code: 'cylinder.carried-too-far',
-          short: 'a ram cannot follow',
-          long: `Moving this would stretch ${unreachable.barrel.id} past what it can reach.`,
-        },
-      };
-    }
+    if (unreachable) return cannotReach(unreachable);
     moved.forEach((id) => (ramsAtMount.get(id) ?? []).forEach(wake));
   }
 
@@ -383,6 +413,32 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
           long: `Moving this would move joint ${id}, which is locked. Unlock it first.`,
         },
       };
+    }
+  }
+
+  // Every cylinder this edit laid out has to have ended up the two lengths its
+  // own layout chose. A pose says what those are (`CylinderPose.lengths`), so
+  // this holds the settled drawing to the arithmetic rather than to the four
+  // points, which is the difference that matters: a pose whose points were
+  // edited after it was built agrees with itself and not with its own numbers.
+  // That is exactly how a rod holding its length came to be stretched — the
+  // requested mount written back over the fitted one, and the difference
+  // absorbed by the one member that was supposed to be fixed. A rigid motion
+  // of a part already drawn declares no lengths and is measured against
+  // itself, which is all there is to check there.
+  for (const { cylinder, pose } of settled.values()) {
+    const a = now(cylinder.mountA.id);
+    const n = now(cylinder.inner.id);
+    const s = now(cylinder.seal.id);
+    const b = now(cylinder.mountB.id);
+    if (!a || !n || !s || !b) continue;
+    const meant = pose.lengths ?? {
+      barrel: spanOf(pose.mountA, pose.inner),
+      rod: spanOf(pose.seal, pose.mountB),
+    };
+    const off = (placed: number, wanted: number) => Math.abs(placed - wanted) > context.tolerance;
+    if (off(spanOf(a, n), meant.barrel) || off(spanOf(s, b), meant.rod)) {
+      return cannotReach(cylinder);
     }
   }
 
