@@ -216,10 +216,17 @@ cylinder is; these are the questions it left open, answered once so the four pac
 
 > **Met.** Stage 2 was built in six packages — 2a, 2b, and 2c in four parts (canvas, menu, panel,
 > mark) — with the removal below as the seventh. No solved number, template payload or fixture URL
-> changed anywhere in it, and the transcoder format was never opened. The only thing that moved in
-> a baseline is a *name*: the three shipped templates whose seal was stored under an interior name
-> have it re-lettered on decode (S9), so `template-baseline.ts` carries one different sample id in
-> each. The paragraph under each package says what it built and what it left behind.
+> changed anywhere in it, and every URL written before it re-encodes byte for byte. The only thing
+> that moved in a baseline is a *name*: the three shipped templates whose seal was stored under an
+> interior name have it re-lettered on decode (S9), so `template-baseline.ts` carries one different
+> sample id in each. The paragraph under each package says what it built and what it left behind.
+>
+> **The review of the pull request added three decisions, and one of them opened the format.**
+> S14 (a member's inertia is derived, so a member offers Mass alone), S15 (the rod's own color)
+> and S16 (a welded end is one body). S15 is the one that writes something new: a `KR<link>` entry
+> in the URL's trailing section, beside the other part colors and only for a rod somebody gave a
+> color of its own — so an older build refuses a drawing that uses it, the way it refuses any part
+> color it does not know, and reads every other drawing exactly as before.
 
 **2a. Record and derivation (files: `model/cylinder.ts`, `model/slide-assembly.ts`,
 `model/cylinder-pose-plan.ts`, `services/transcoding/*`).** Replace role inference
