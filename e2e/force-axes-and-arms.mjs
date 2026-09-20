@@ -62,6 +62,7 @@ try {
   const defs = d.locator('app-force-definitions');
   const example = await defs
     .locator('app-solver-diagram')
+    .first()
     .evaluate((el) => window.ng.getComponent(el).diagram());
   assert.equal(example.outlines[0].length, 4);
   const com = example.points.find((p) => p.label === 'CoM');
@@ -72,20 +73,29 @@ try {
   );
   assert(example.lines.some((l) => l.label === 'W_AB'));
   assert(example.lines.some((l) => l.label === 'F_1'));
-  assert(example.lines.some((l) => l.label === 'r_x'));
-  assert(example.lines.some((l) => l.label === 'r_y'));
-  assert.equal(example.axisMomentLabel, '+M_z');
-  assert.equal(await defs.locator('table').count(), 1);
-  assert.equal(await defs.locator('.definitionStep').count(), 4);
+  assert.equal(example.axisMomentLabel, '+M_z @ A');
+  assert.equal(await defs.locator('table').count(), 2);
+  assert.equal(await defs.locator('.definitionStep').count(), 5);
   assert.equal(
     await defs
       .locator('.definitionStep')
-      .nth(1)
+      .nth(2)
       .evaluate((el) => el.open),
     false
   );
-  assert((await defs.innerText()).includes('Sum of Forces in x'));
-  assert((await defs.innerText()).includes('Sum of Moments about A in z'));
+  assert((await defs.innerText()).includes('Sum of Forces'));
+  assert((await defs.innerText()).includes('Sum of Moments'));
+  const reference = defs.getByRole('combobox', { name: 'Moment reference for definition' });
+  const referenceExample = defs.locator('app-solver-diagram').nth(1);
+  let referenceDiagram = await referenceExample.evaluate((el) =>
+    window.ng.getComponent(el).diagram()
+  );
+  assert(referenceDiagram.lines.some((l) => l.label === 'r_x'));
+  assert(referenceDiagram.lines.some((l) => l.label === 'r_y'));
+  await reference.selectOption('B');
+  referenceDiagram = await referenceExample.evaluate((el) => window.ng.getComponent(el).diagram());
+  assert.equal(referenceDiagram.axisMomentLabel, '+M_z @ B');
+  assert(referenceDiagram.points.find((p) => p.label === 'B').reference);
   await labelsDoNotOverlap(defs);
   await defs.screenshot({ path: `${out}/definitions.png` });
   assert((await defs.innerText()).includes('0 = 0'));
