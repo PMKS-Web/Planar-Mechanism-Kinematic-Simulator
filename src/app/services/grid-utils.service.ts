@@ -1192,7 +1192,9 @@ export class GridUtilsService {
         const holding = [cylinder.barrel, cylinder.rod].filter(
           (member): member is RealLink => member instanceof RealLink && member.hold === 'length'
         );
-        return holding.length > 0 ? heldBySentence(holding) : undefined;
+        return holding.length > 0
+          ? heldBySentence(holding, undefined, (bar) => this.mechanismSrv.visibleBodyName(bar))
+          : undefined;
       },
     });
     if (!planned.ok) {

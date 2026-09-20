@@ -13,7 +13,7 @@ import {
 } from '@angular/core';
 import { ActiveObjService } from 'src/app/services/active-obj.service';
 import { ViewportService } from '../../services/viewport.service';
-import { PrisJoint, RealJoint, RevJoint } from 'src/app/model/joint';
+import { Joint, PrisJoint, RealJoint, RevJoint } from 'src/app/model/joint';
 import {
   AbstractControl,
   FormArray,
@@ -1091,20 +1091,43 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     return this.gridUtils.groundRefusal(this.activeSrv.selectedJoint) !== undefined;
   }
 
+  /**
+   * The joints the center-of-mass frame may be held against: the body's own,
+   * less the one a cylinder derives.
+   *
+   * N has no marker and no hitbox, so it is no more an anchor a reader can
+   * choose than it is a letter they can read (D14, S11).
+   */
+  get comFrameJoints(): Joint[] {
+    return this.mechanismService.visibleJoints(this.activeSrv.selectedLink?.joints ?? []);
+  }
+
   /** The noun the selected body's title is headed with: Barrel, Rod or Link (S10). */
   get bodyNoun(): string {
-    return bodyLabelParts(this.activeSrv.selectedLink, this.selectedCylinder).noun;
+    return bodyLabelParts(
+      this.activeSrv.selectedLink,
+      this.selectedCylinder,
+      this.mechanismService.sealedStructures()
+    ).noun;
   }
 
   /**
-   * The name beside it, for a member: the two joints it runs between.
+   * The name beside it: a member's two ends, and otherwise the body's own
+   * visible name.
    *
-   * Nothing for a plain link, so the title block goes on reading the link's own
-   * name — which is what Rename writes, and what a member has no room for.
+   * It answered for a member alone and left a plain link to the title block's
+   * fallback, which reads the link's stored `name` -- and that is its id, which
+   * holds the cylinder's buried inner end wherever a barrel mount has been
+   * welded. A bracket came out headed `Edit Link AA1D` over a canvas showing
+   * two joints. One answer for every body instead, and the Rename field
+   * pre-fills from it.
    */
-  get bodyName(): string | undefined {
-    const sealed = this.selectedCylinder;
-    return sealed ? bodyLabelParts(this.activeSrv.selectedLink, sealed).name : undefined;
+  get bodyName(): string {
+    return bodyLabelParts(
+      this.activeSrv.selectedLink,
+      this.selectedCylinder,
+      this.mechanismService.sealedStructures()
+    ).name;
   }
 
   /**

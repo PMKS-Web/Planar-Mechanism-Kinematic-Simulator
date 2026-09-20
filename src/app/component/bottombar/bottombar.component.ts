@@ -79,7 +79,11 @@ export class BottombarComponent {
     const selected = this.activeObj.objType === 'Link' ? this.activeObj.selectedLink : undefined;
     const held = holdOf(selected);
     if (selected && held && !this.mechanismSrv.isLockedTarget(selected)) {
-      return `Link ${selected.name || selected.id}: fixed ${held}`;
+      // Through the one label, so the strip calls a body what its own panel and
+      // its own menu call it (decision S10). It said "Link BC" over a rod whose
+      // panel is headed Rod CB and whose id names the buried joint the drawing
+      // never shows.
+      return `${this.mechanismSrv.bodyLabel(selected)}: fixed ${held}`;
     }
     const blockers = this.mechanismSrv.blockerCount();
     if (this.mechanismSrv.mechanisms.length === 0) {

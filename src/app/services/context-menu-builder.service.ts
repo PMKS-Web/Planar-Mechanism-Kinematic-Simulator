@@ -823,7 +823,7 @@ export class ContextMenuBuilderService {
       const one = bodies[0];
       return one instanceof Joint
         ? `Joint ${this.nameOf(one)}`
-        : labelForBody(one, this.mechanism.cylinderOfBar(one));
+        : labelForBody(one, this.mechanism.cylinderOfBar(one), this.mechanism.sealedStructures());
     }
     return `${bodies.length} ${kind}s`;
   }
@@ -890,7 +890,10 @@ export class ContextMenuBuilderService {
    */
   private bodyList(bodies: Link[]): string {
     if (bodies.length === 0) return 'not on a link';
-    const labels = bodies.map((link) => labelForBody(link, this.mechanism.cylinderOfBar(link)));
+    const cylinders = this.mechanism.sealedStructures();
+    const labels = bodies.map((link) =>
+      labelForBody(link, this.mechanism.cylinderOfBar(link), cylinders)
+    );
     const plain = labels.every((label) => label.startsWith('Link '));
     if (!plain) return labels.join(', ');
     const names = labels.map((label) => label.slice('Link '.length));
@@ -908,7 +911,7 @@ export class ContextMenuBuilderService {
     const sealed = this.mechanism.cylinderOfBar(link);
     if (sealed && link instanceof RealLink) return this.forCylinderMember(link, sealed);
     const header = {
-      title: labelForBody(link, undefined),
+      title: labelForBody(link, undefined, this.mechanism.sealedStructures()),
       subtitle: this.linkSubtitle(link),
       crossing: this.crossing(link),
     };
@@ -1241,7 +1244,7 @@ export class ContextMenuBuilderService {
     // subtitled with the part. "Barrel and rod · Joints A, B" stood here while
     // one card served both.
     if (!(link instanceof RealLink)) {
-      const joints = link.joints.map((joint) => this.nameOf(joint)).join(', ');
+      const joints = this.jointsShownOn(link);
       return `Block · Joints ${joints}`;
     }
     const bar = link;
@@ -1249,7 +1252,7 @@ export class ContextMenuBuilderService {
     // shape and behaves as one rigid body carrying three or more pins, so it is
     // called what it is rather than what the two-joint case is called.
     const kind = bar.subset.length > 0 ? 'Compound' : bar.joints.length > 2 ? 'Body' : 'Bar';
-    const joints = bar.joints.map((joint) => this.nameOf(joint)).join(', ');
+    const joints = this.jointsShownOn(bar);
     const locked = this.mechanism.isLockedTarget(bar) ? ' · locked' : '';
     const held = !locked && holdOf(bar) ? ` · fixed ${holdOf(bar)}` : '';
     return `${kind} · Joints ${joints}${locked}${held}`;
@@ -1260,7 +1263,9 @@ export class ContextMenuBuilderService {
   private forForce(force: Force): ContextMenuModel {
     const header = {
       title: `Force ${force.name || force.id}`,
-      subtitle: `On ${labelForBody(force.link, undefined)} · ${force.local ? 'local' : 'global'} frame`,
+      subtitle: `On ${labelForBody(force.link, undefined, this.mechanism.sealedStructures())} · ${
+        force.local ? 'local' : 'global'
+      } frame`,
       crossing: this.crossing(force),
     };
     return {
@@ -1519,6 +1524,21 @@ export class ContextMenuBuilderService {
 
   private nameOf(part: Joint | Force): string {
     return (part as { name?: string }).name || part.id;
+  }
+
+  /**
+   * The joints of a body a reader could point at, named.
+   *
+   * A cylinder's buried inner end is not one of them: it has no marker, no
+   * letter and no hitbox, and is left out of every count the app shows (D14,
+   * S11) -- so a bracket welded to a barrel mount was subtitled "Compound ·
+   * Joints A, A1, D" over a canvas showing two.
+   */
+  private jointsShownOn(body: Link): string {
+    return this.mechanism
+      .visibleJoints(body.joints)
+      .map((joint) => this.nameOf(joint))
+      .join(', ');
   }
 
   /**

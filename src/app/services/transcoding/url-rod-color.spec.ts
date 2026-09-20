@@ -125,7 +125,14 @@ describe('a rod asked for a color of its own', () => {
     expect(body(url)).toContain(`KR${drawn.cylinder.rod.id}`);
     const opened = cylindersIn(decoded(url).joints)[0];
     expect(opened.rodRoot.id).not.toBe(opened.rod.id);
-    expect(rodFillOf(opened)).toBe(PALE);
+    // The choice is on file and comes back on file. What is *drawn* while the
+    // rod is part of a body is the body's color (decision S16) -- a welded
+    // member is not a color of its own any more than an ordinary welded bar is
+    // -- so the stored choice is what the URL has to carry, and it is what
+    // unwelding gives back.
+    expect(opened.rod.ownColor).toBe(true);
+    expect(opened.rod.fill).toBe(PALE);
+    expect(rodFillOf(opened)).toBe((opened.rodRoot as RealLink).fill);
   });
 
   it('round-trips unchanged, twice', () => {

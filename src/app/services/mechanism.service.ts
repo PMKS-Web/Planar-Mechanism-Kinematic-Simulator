@@ -26,6 +26,7 @@ import {
   cylinderAtSeal,
   memberInertiaIsDerived,
 } from '../model/cylinder';
+import { memberSilhouette } from '../model/cylinder-fusion';
 import { Force } from '../model/force';
 import {
   DriveProfile,
@@ -114,7 +115,7 @@ import { constrainForceAnchor } from '../model/force-anchor';
 import { OperationRefusal, refuseAttach } from '../model/joint-operation-permission';
 import { redundantlyHeldJointSets } from '../model/rigid-bodies';
 import { MODEL_SCALE } from '../model/render-scale';
-import { labelForBody } from '../model/body-label';
+import { labelForBody, visibleBodyName as nameOfBody } from '../model/body-label';
 import { SynthesisBuilderService } from './synthesis/synthesis-builder.service';
 
 /** One machine's playback state, carried across a rebuild by `partitionKey`. */
@@ -486,6 +487,8 @@ export class MechanismService {
     // a code path nobody found — the assembly is re-derived from its two
     // mounts before the solver, the codec or the canvas can read a bent one.
     this.deriveCylinderInteriors();
+    // And only then the silhouettes, which the outlines below are built from.
+    this.refreshSkinSilhouettes();
 
     // A compound Boolean union is pose-independent. Build it once for the
     // editable pose, then let Mechanism rigidly transform it for solved frames.
@@ -3891,17 +3894,21 @@ export class MechanismService {
     if (this.structuresCache?.revision !== this.cylinderRevision) {
       const list = cylindersIn(this.joints);
       this.structuresCache = { revision: this.cylinderRevision, list };
-      this.tellEachBarWhoDrawsIt(list);
+      this.tellEachBarHowItIsDrawn(list);
     }
     return this.structuresCache.list;
   }
 
   /**
-   * Mark the bars a cylinder's skin stands in for.
+   * Tell each member bar how it is drawn: that a cylinder's skin stands in for
+   * it, and with which silhouette a body holding it has to draw it.
    *
-   * A compound holding a barrel or a rod must not draw it: the skin does, and
-   * a compound drawing it too puts the bracket's color under the part with a
-   * seam where the copy ends. The leaf cannot answer this itself -- see
+   * A compound holding a barrel or a rod must not draw it as a plain bar: the
+   * skin knows its shape, and a compound repeating the two-joint capsule put
+   * the bracket's color under the part with a seam where the copy ended. Since
+   * decision S16 the answer is not "leave it out" but "draw it the way the skin
+   * does", so the union fillets the join and the two come out one body. The
+   * leaf cannot answer either question itself -- see
    * `RealLink.drawnByACylinderSkin` -- and this is the one place the structures
    * are resolved, so it is the one place that can say.
    *
@@ -3913,12 +3920,35 @@ export class MechanismService {
    */
   private barsDrawnBySkins: RealLink[] = [];
 
-  private tellEachBarWhoDrawsIt(cylinders: Cylinder[]): void {
-    this.barsDrawnBySkins.forEach((bar) => (bar.drawnByACylinderSkin = false));
+  private tellEachBarHowItIsDrawn(cylinders: Cylinder[]): void {
+    this.barsDrawnBySkins.forEach((bar) => {
+      bar.drawnByACylinderSkin = false;
+      bar.skinSilhouette = undefined;
+    });
+    const r = 0.15 * SettingsService.objectScale;
     this.barsDrawnBySkins = cylinders.flatMap((cylinder) =>
-      [cylinder.barrel, cylinder.rod].filter((bar): bar is RealLink => bar instanceof RealLink)
+      (['barrel', 'rod'] as const).flatMap((role) => {
+        const bar = role === 'barrel' ? cylinder.barrel : cylinder.rod;
+        if (!(bar instanceof RealLink)) return [];
+        bar.drawnByACylinderSkin = true;
+        bar.skinSilhouette = memberSilhouette(cylinder, role, r);
+        return [bar];
+      })
     );
-    this.barsDrawnBySkins.forEach((bar) => (bar.drawnByACylinderSkin = true));
+  }
+
+  /**
+   * The same pass again, once the interiors have been derived.
+   *
+   * The two answers above go stale for different reasons. *Which* bars a skin
+   * draws only changes when the structure does, which is what
+   * `sealedStructures` caches on; *where* they are changes whenever a joint
+   * moves, and `deriveCylinderInteriors` runs after that cache was filled and
+   * may have just put N and S somewhere else. A silhouette one rebuild behind
+   * is a body whose outline does not fit the part it fused with.
+   */
+  private refreshSkinSilhouettes(): void {
+    this.tellEachBarHowItIsDrawn(this.sealedStructures());
   }
 
   /**
@@ -4594,7 +4624,19 @@ export class MechanismService {
    * without having to know which kind of body came back.
    */
   bodyLabel(body: Link): string {
-    return labelForBody(body, this.cylinderOfBar(body));
+    return labelForBody(body, this.cylinderOfBar(body), this.sealedStructures());
+  }
+
+  /**
+   * The same name without the noun in front of it, for a surface that has one
+   * of its own -- a canvas tag, a table column, a Rename field.
+   *
+   * Every reader-facing name of a body comes from here or from `bodyLabel`, so
+   * a cylinder's buried inner end is left out of all of them at once (D14,
+   * S11): a bracket welded to a barrel mount reads `AD`, not `AA1D`.
+   */
+  visibleBodyName(body: Link): string {
+    return nameOfBody(body, this.sealedStructures());
   }
 
   /**

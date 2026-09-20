@@ -1,7 +1,7 @@
 import { Component, OnChanges, ChangeDetectionStrategy, inject, input } from '@angular/core';
 import { ColorService } from '../../../services/color.service';
 import { RealLink } from '../../../model/link';
-import { paintCylinderMember } from '../../../model/cylinder-skin';
+import { fillShownOn, paintCylinderMember } from '../../../model/cylinder-skin';
 import { Joint } from '../../../model/joint';
 import { Force } from '../../../model/force';
 import { MechanismService } from '../../../services/mechanism.service';
@@ -42,7 +42,19 @@ export class ColorPickerComponent implements OnChanges {
 
   ngOnChanges(): void {
     const link = this.link();
-    if (link) this.selectedIndex = this.colorService.getIndexFromLinkColor(link.fill);
+    if (link) this.selectedIndex = this.colorService.getIndexFromLinkColor(this.inkOn(link));
+  }
+
+  /**
+   * The ink this body is actually drawn in, which is what the tick points at.
+   *
+   * A rod that has made no choice of its own is drawn in its barrel's color,
+   * and a welded member in the color of the body it is part of (decision S16) --
+   * so reading `fill` straight off the record ticked a swatch that is nowhere
+   * on the canvas.
+   */
+  private inkOn(link: RealLink): string {
+    return fillShownOn(link, this.mechanism.cylinderOfBar(link));
   }
 
   /** The index every selected part is already on, or -1 if they differ. */
@@ -58,7 +70,7 @@ export class ColorPickerComponent implements OnChanges {
       case 'force':
         return this.colorService.getIndexFromForceColor((part as Force).color);
       default:
-        return this.colorService.getIndexFromLinkColor((part as RealLink).fill);
+        return this.colorService.getIndexFromLinkColor(this.inkOn(part as RealLink));
     }
   }
 

@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
 import { Joint, PrisJoint, RealJoint } from '../model/joint';
 import { Link, RealLink } from '../model/link';
-import { Cylinder, cylinderHeadHalf, cylindersIn } from '../model/cylinder';
-import { barrelFillOf, rodFillOf } from '../model/cylinder-skin';
+import { Cylinder, cylindersIn } from '../model/cylinder';
+import { barrelFillOf, CylinderRole, cylinderSkinFrame, rodFillOf } from '../model/cylinder-skin';
+import { FusedBody, fusedBodiesOf } from '../model/cylinder-fusion';
 import {
   barrelPath,
   blockPath,
@@ -220,6 +221,49 @@ export class SliderMarkService {
   }
 
   /**
+   * That frame undone, for a shape already written in the drawing's own
+   * coordinates.
+   *
+   * A body welded to a cylinder mount is painted in that member's place in the
+   * stack (decision S16) — inside the group the frame is on — but its outline
+   * is the body's own, built and animated in world terms like any other link's.
+   * Rewriting that outline into the slot's frame would mean tokenizing a
+   * compound union's path on every animation frame; composing to the identity
+   * with one more transform costs nothing and leaves the path exactly as the
+   * links layer would have drawn it.
+   */
+  unframe(mark: { x: number; y: number; rotation: number }): string {
+    return `rotate(${-mark.rotation}) translate(${-mark.x} ${-mark.y})`;
+  }
+
+  /**
+   * Which welded body each cylinder pass paints, held for as long as the marks
+   * are.
+   *
+   * The marks are rebuilt per pose and this answer is a function of them, so it
+   * is cached on the identity of the list rather than recomputed for each of
+   * the several template bindings that ask it per change-detection pass.
+   */
+  fusedBodies(marks: readonly CylinderMark[]): Map<string, FusedBody<CylinderMark>> {
+    if (this.fusedCache?.marks !== marks) {
+      this.fusedCache = { marks, bodies: fusedBodiesOf(marks) };
+    }
+    return this.fusedCache.bodies;
+  }
+
+  private fusedCache?: {
+    marks: readonly CylinderMark[];
+    bodies: Map<string, FusedBody<CylinderMark>>;
+  };
+
+  /** One member of a skin, as the drawing asks for it: what to hit, and what that selects. */
+  memberOf(mark: CylinderMark, role: CylinderRole): { path: string; link: Link } {
+    return role === 'barrel'
+      ? { path: mark.barrel, link: mark.barrelLink }
+      : { path: mark.rod, link: mark.rodLink };
+  }
+
+  /**
    * The mark a slider whose riders cannot turn wears -- the Joint Type
    * "Prismatic", floating or grounded, and every cylinder's seal S -- or
    * nothing at all for one that can turn. A pin-in-slot slider keeps its
@@ -423,27 +467,22 @@ export class SliderMarkService {
   }
 
   private cylinderMark(found: Cylinder, r: number, driveForward: DriveForward): CylinderMark {
-    const { seal, mountB, inner } = found;
-    const angle = Math.atan2(mountB.y - seal.y, mountB.x - seal.x);
-    const rodReach = Math.hypot(mountB.x - seal.x, mountB.y - seal.y);
+    const { seal } = found;
     // Both ends of the barrel, not just the one behind the piston. The barrel
     // is a rigid bar and the piston runs along it: its anchor is behind, its
     // mouth ahead. Measuring only back to the anchor drew the barrel *to* the
     // piston, so the rigid part visibly changed length every frame.
     //
-    // Projected onto the mark's axis rather than taken as a distance, because
-    // the mouth is not always ahead of the pin: fully extended the head has
-    // come clean out of the barrel, and an unsigned distance then drew the
-    // mouth on the wrong side and the barrel through the exposed rod.
-    const ux = rodReach > 1e-9 ? (mountB.x - seal.x) / rodReach : 1;
-    const uy = rodReach > 1e-9 ? (mountB.y - seal.y) / rodReach : 0;
-    const along = (point: { x: number; y: number }) =>
-      (point.x - seal.x) * ux + (point.y - seal.y) * uy;
-    const anchor = along(found.mountA);
-    const mouth = along(inner);
-    // The head is full size on any ram with room for it and shrinks only on one
-    // too short to hold it, so it is read off this barrel rather than assumed.
-    const headHalf = cylinderHeadHalf(mouth - anchor, r);
+    // Read from `cylinderSkinFrame` rather than measured here, because a member
+    // welded into a bracket hands that bracket's outline the same silhouette
+    // (decision S16) and two measurements of one axis can disagree.
+    const {
+      angleRad: angle,
+      anchor,
+      mouth,
+      reach: rodReach,
+      headHalf,
+    } = cylinderSkinFrame(found, r);
     const driven = seal.input;
     // The mark's frame runs +x toward the rod; the drive direction is declared
     // along the slot, which may point either way along the same line.

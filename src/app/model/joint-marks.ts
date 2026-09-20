@@ -212,6 +212,24 @@ export const CYLINDER = {
    * the two meet.
    */
   rodHalf: MARK.blockAcrossHalf,
+  /**
+   * How much a square cut is eased for a silhouette that is going into a union.
+   *
+   * A Boolean union fillets every corner it finds, and that is exactly what
+   * makes a welded mount read as one body (decision S16) — but it cannot tell
+   * the elbow, where two parts meet, from the barrel's own mouth, where nothing
+   * does. Filleted at the weld's radius the mouth stopped being a cut plane and
+   * came out a capsule, and the rod's square back lifted off the head block it
+   * is flush with, letting the black through at both corners.
+   *
+   * `buildCompoundPath` leaves a corner alone when it turns less than fifteen
+   * degrees, which is why the black block's own rounded corners survive being
+   * welded into a plate. A curve is flattened in steps well under that, so a
+   * cut eased by *any* amount comes back out of the union exactly as drawn.
+   * This is the smallest radius that does it and still reads as no radius at
+   * all: a twentieth of R is a fraction of a pixel at any zoom.
+   */
+  cutEase: 0.05,
   // The skin carries no arrow dimensions of its own any more. It had a larger
   // set, sized for the full 3.84 R block it used to draw; the head is shorter
   // than that now, and the honest answer is the block's own arrows scaled by
@@ -235,12 +253,24 @@ export const CYLINDER = {
  * the *exposed* rod changes, which is what a ram actually does — and how much
  * rod is still inside is the stroke, legible without any annotation.
  */
-export function barrelPath(r: number, anchor: number, mouth: number): string {
+export function barrelPath(r: number, anchor: number, mouth: number, cutEase = 0): string {
   const h = CYLINDER.barrelHalf * r;
+  if (!(cutEase > 0)) {
+    return (
+      `M ${mouth} ${-h} L ${anchor} ${-h} ` +
+      `A ${h} ${h} 0 0 0 ${anchor} ${h} ` +
+      `L ${mouth} ${h} Z`
+    );
+  }
+  // Quadratics rather than arcs, for the reason `motorBodyPath` gives: the same
+  // curve at any size, with none of the sweep-flag arithmetic a mirrored
+  // coordinate system makes so easy to get backwards.
+  const e = Math.min(cutEase, Math.abs(mouth - anchor) / 2, h);
   return (
-    `M ${mouth} ${-h} L ${anchor} ${-h} ` +
+    `M ${mouth - e} ${-h} L ${anchor} ${-h} ` +
     `A ${h} ${h} 0 0 0 ${anchor} ${h} ` +
-    `L ${mouth} ${h} Z`
+    `L ${mouth - e} ${h} Q ${mouth} ${h} ${mouth} ${h - e} ` +
+    `L ${mouth} ${-h + e} Q ${mouth} ${-h} ${mouth - e} ${-h} Z`
   );
 }
 
@@ -252,11 +282,23 @@ export function barrelPath(r: number, anchor: number, mouth: number): string {
  * still inside the bore reads as a darker band. One cue, no callout, and it is
  * the cue that carries the whole structure.
  */
-export function rodBodyPath(r: number, reach: number, headHalf: number): string {
+export function rodBodyPath(r: number, reach: number, headHalf: number, cutEase = 0): string {
   const h = CYLINDER.rodHalf * r;
-  const inner = -headHalf * Math.sign(reach || 1);
+  const out = Math.sign(reach || 1);
+  const inner = -headHalf * out;
   const sweep = reach > 0 ? 1 : 0;
-  return `M ${inner} ${-h} L ${reach} ${-h} A ${h} ${h} 0 0 ${sweep} ${reach} ${h} L ${inner} ${h} Z`;
+  if (!(cutEase > 0)) {
+    return `M ${inner} ${-h} L ${reach} ${-h} A ${h} ${h} 0 0 ${sweep} ${reach} ${h} L ${inner} ${h} Z`;
+  }
+  // The cut plane eased, so a union that fuses this rod into a welded body
+  // does not fillet it off the head block it is flush with (`CYLINDER.cutEase`).
+  const e = Math.min(cutEase, Math.abs(reach - inner) / 2, h);
+  const back = inner + e * out;
+  return (
+    `M ${back} ${-h} L ${reach} ${-h} A ${h} ${h} 0 0 ${sweep} ${reach} ${h} ` +
+    `L ${back} ${h} Q ${inner} ${h} ${inner} ${h - e} ` +
+    `L ${inner} ${-h + e} Q ${inner} ${-h} ${back} ${-h} Z`
+  );
 }
 
 // The skin used to carry two stop notches on the barrel's edges, marking where

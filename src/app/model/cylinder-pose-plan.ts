@@ -203,14 +203,19 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
    */
   const cannotReach = (one: Cylinder): EditPlanResult => {
     const held = context.heldBy?.(one);
+    // The part by its two ends, which is what a cylinder is called everywhere
+    // else (S10). It was the barrel leaf's id -- and that id holds N, the
+    // buried inner end, so the refusal named a joint the drawing never shows.
+    const named = (joint: { name: string; id: string }) => joint.name || joint.id;
+    const part = `${named(one.mountA)}${named(one.mountB)}`;
     return {
       ok: false,
       refusal: {
         code: 'cylinder.carried-too-far',
         short: 'a cylinder cannot follow',
         long: held
-          ? `${held}, so moving this would stretch ${one.barrel.id} past what it can reach. Release it first.`
-          : `Moving this would stretch ${one.barrel.id} past what it can reach.`,
+          ? `${held}, so moving this would stretch ${part} past what it can reach. Release it first.`
+          : `Moving this would stretch ${part} past what it can reach.`,
       },
     };
   };

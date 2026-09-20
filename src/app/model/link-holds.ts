@@ -337,18 +337,34 @@ export function heldBarsReaching(
  * With the drawing, a cylinder is named the way its panel names it -- by its
  * two mounts -- rather than by the barrel the flag happens to be written on,
  * which is a link id no reader has seen.
+ *
+ * `nameOf` is for the one caller that wants a *member* named rather than the
+ * part: with both lengths fixed the reader has two padlocks to choose between,
+ * and naming the part twice over names neither. The fallback below is the
+ * link's own name, and for a barrel that is an id holding the buried inner end
+ * -- so that caller says what it means rather than landing there.
  */
-export function describeHold(link: RealLink, joints?: readonly Joint[]): string {
+export function describeHold(
+  link: RealLink,
+  joints?: readonly Joint[],
+  nameOf?: (bar: RealLink) => string
+): string {
   const sealed = joints ? cylinderOf(link, joints) : undefined;
-  const name = sealed
-    ? `${sealed.mountA.name || sealed.mountA.id}${sealed.mountB.name || sealed.mountB.id}`
-    : link.name || link.id;
+  const name = nameOf
+    ? nameOf(link)
+    : sealed
+      ? `${sealed.mountA.name || sealed.mountA.id}${sealed.mountB.name || sealed.mountB.id}`
+      : link.name || link.id;
   return `fixed ${holdOf(link) === 'angle' ? 'angle' : 'length'} ${name}`;
 }
 
 /** "fixed length AB and fixed angle BC": the holds, as a list. */
-export function holdList(bars: readonly RealLink[], joints?: readonly Joint[]): string {
-  const names = bars.map((bar) => describeHold(bar, joints));
+export function holdList(
+  bars: readonly RealLink[],
+  joints?: readonly Joint[],
+  nameOf?: (bar: RealLink) => string
+): string {
+  const names = bars.map((bar) => describeHold(bar, joints, nameOf));
   return names.length <= 1
     ? names.join('')
     : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
@@ -362,6 +378,10 @@ export function holdList(bars: readonly RealLink[], joints?: readonly Joint[]): 
  * they had not pressed. The padlock inside a field says Fixed, the menu rows
  * say Fixed Length and Fixed Angle, and the way out of one is Release.
  */
-export function heldBySentence(bars: readonly RealLink[], joints?: readonly Joint[]): string {
-  return `Held by ${holdList(bars, joints)}`;
+export function heldBySentence(
+  bars: readonly RealLink[],
+  joints?: readonly Joint[],
+  nameOf?: (bar: RealLink) => string
+): string {
+  return `Held by ${holdList(bars, joints, nameOf)}`;
 }
