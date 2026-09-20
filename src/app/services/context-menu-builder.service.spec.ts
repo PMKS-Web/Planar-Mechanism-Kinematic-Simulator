@@ -1029,6 +1029,55 @@ describe('the right-click menu, on a cylinder', () => {
     });
   });
 
+  /**
+   * A bracket welded to a barrel mount is a body whose *id* holds N, the joint
+   * the drawing never shows. It was headed `Link AA1D`, subtitled "Joints A,
+   * A1, D" and offered as `Link AA1D` in the delete cascade of every joint on
+   * it -- three surfaces naming a letter the reader cannot find anywhere.
+   */
+  describe('a body welded to a barrel mount', () => {
+    /** The cylinder, a bar on its barrel mount, and the weld that fuses them. */
+    function bracket() {
+      const sealed = cylinder();
+      const mount = sealed.mountA as RealJoint;
+      const tip = new RevJoint('W', mount.x - 2 * S, mount.y + 3 * S);
+      harness.mechanism.joints.push(tip);
+      harness.mechanism.links.push(new RealLink(mount.id + tip.id, [mount, tip]));
+      harness.mechanism.finishStructuralEdit(true);
+      harness.active.updateSelectedObj(mount);
+      harness.mechanism.weldJoint();
+      harness.mechanism.finishStructuralEdit(true);
+      const body = harness.mechanism.links.find(
+        (link): link is RealLink => link instanceof RealLink && link.subset.length > 0
+      )!;
+      return { part: harness.mechanism.sealedStructures()[0], body, mount, tip };
+    }
+
+    it('is headed and subtitled with the joints a reader can point at', () => {
+      const { part, body, tip } = bracket();
+      const model = harness.builder.build(body, noHandlers);
+      expect(body.id).toContain(part.inner.id);
+      expect(model.header!.title).toBe(`Link ${[part.mountA.id, tip.id].sort().join('')}`);
+      expect(model.header!.title).not.toContain(part.inner.id);
+      expect(model.header!.subtitle).toBe(`Compound · Joints ${part.mountA.id}, ${tip.id}`);
+    });
+
+    it('is named that way in the cascade of the joint that would take it', () => {
+      const { part, body, tip } = bracket();
+      const model = harness.builder.build(tip, noHandlers);
+      // By prefix: the cascade is written into the label itself, which is the
+      // whole point -- "Delete Joint (and Link AD)".
+      const takes = rows(model).find((one) => one.label.startsWith('Delete Joint'))!;
+      expect(takes.label).not.toContain(part.inner.id);
+      expect(takes.label).toContain(`Link ${[part.mountA.id, tip.id].sort().join('')}`);
+      // And the body's own delete row names it the same way.
+      const own = rows(harness.builder.build(body, noHandlers)).find((one) =>
+        one.label.startsWith('Delete Link')
+      )!;
+      expect(own.label).not.toContain(part.inner.id);
+    });
+  });
+
   describe('the counts a reader can check against the screen (D14)', () => {
     it('counts the square and never the end the part derives', () => {
       const sealed = cylinder();

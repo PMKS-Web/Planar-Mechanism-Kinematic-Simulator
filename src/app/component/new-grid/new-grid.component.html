@@ -544,7 +544,12 @@
   <g id="linkHolder" modelFrame>
     @for (link of mechanismSrv.getLinks(); track link) {
       <ng-container>
-        @if (gridUtils.typeOfLink(link) == 'R') {
+        <!-- A body welded to a cylinder mount is drawn by that cylinder's own
+             pass instead, in the member's place in the stack (decision S16):
+             under the head block for a barrel, over it for a rod. It is left
+             out of this layer entirely rather than emptied, so the body's id
+             belongs to the one element that draws it. -->
+        @if (gridUtils.typeOfLink(link) == 'R' && !bodyDrawnByACylinder(link)) {
           <path
             (pointerover)="link.showHighlight = true"
             (pointerout)="link.showHighlight = false"
@@ -775,7 +780,11 @@
          the sliding seal, whose marker and hitbox the block is (decision S12).
          The buried barrel joint N has no hitbox at all. -->
     @for (cyl of cylinderList; track cyl.id) {
-      <g class="cylinder-mark" [attr.transform]="sliderMarks.frame(cyl)">
+      <g
+        class="cylinder-mark"
+        [attr.data-cylinder]="cyl.id"
+        [attr.transform]="sliderMarks.frame(cyl)"
+      >
         <!-- A cylinder is a body like any other: in an analysis mode, one the
              mode cannot analyze is scenery and goes gray with the rest of its
              machine. Its skin is painted from its own fill rather than through
@@ -784,19 +793,26 @@
              inert, locked), read off each member rather than off the part, so a
              picked barrel and a picked rod look different. The stroke below is a
              presentation attribute, and the class's stroke beats it. -->
-        <path
-          [class]="'cylinder-barrel ' + mechanismSrv.getLinkCSSClass(cyl.barrelLink)"
-          [attr.cursor]="mechanismSrv.isLinkLockedVisual(cyl.barrelLink) ? 'not-allowed' : 'move'"
-          (pointerover)="cyl.barrelLink.showHighlight = true"
-          (pointerout)="cyl.barrelLink.showHighlight = false"
-          (pointerdown)="setLastLeftClick(cyl.barrelLink, $event)"
-          (contextmenu)="setLastRightClick(cyl.barrelLink, $event)"
-          [attr.d]="cyl.barrel"
-          [attr.fill]="cyl.barrelFill"
-          fill-opacity="0.7"
-          [attr.stroke]="cyl.barrelFill"
-          [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
-        />
+        @if (fusedBodyAt(cyl, 'barrel'); as underTheHead) {
+          <ng-container
+            [ngTemplateOutlet]="fusedCylinderBody"
+            [ngTemplateOutletContext]="{ $implicit: underTheHead, cyl: cyl }"
+          />
+        } @else if (!memberIsFused(cyl, 'barrel')) {
+          <path
+            [class]="'cylinder-barrel ' + mechanismSrv.getLinkCSSClass(cyl.barrelLink)"
+            [attr.cursor]="mechanismSrv.isLinkLockedVisual(cyl.barrelLink) ? 'not-allowed' : 'move'"
+            (pointerover)="cyl.barrelLink.showHighlight = true"
+            (pointerout)="cyl.barrelLink.showHighlight = false"
+            (pointerdown)="setLastLeftClick(cyl.barrelLink, $event)"
+            (contextmenu)="setLastRightClick(cyl.barrelLink, $event)"
+            [attr.d]="cyl.barrel"
+            [attr.fill]="cyl.barrelFill"
+            fill-opacity="0.7"
+            [attr.stroke]="cyl.barrelFill"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+          />
+        }
         <!-- The seal's own square. It stays #000 in every state — the accent
              outline below is what says it is picked, the way the orphan mark
              works (§2.8 rule 3) — and it takes no pointer events here, because
@@ -812,19 +828,26 @@
           fill="#000000"
           [attr.filter]="mechanismSrv.isPartInert(cyl.barrelLink) ? null : 'url(#elevation-1)'"
         />
-        <path
-          [class]="'cylinder-rod ' + mechanismSrv.getLinkCSSClass(cyl.rodLink)"
-          [attr.cursor]="mechanismSrv.isLinkLockedVisual(cyl.rodLink) ? 'not-allowed' : 'move'"
-          (pointerover)="cyl.rodLink.showHighlight = true"
-          (pointerout)="cyl.rodLink.showHighlight = false"
-          (pointerdown)="setLastLeftClick(cyl.rodLink, $event)"
-          (contextmenu)="setLastRightClick(cyl.rodLink, $event)"
-          [attr.d]="cyl.rod"
-          [attr.fill]="cyl.rodFill"
-          fill-opacity="0.7"
-          [attr.stroke]="cyl.rodFill"
-          [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
-        />
+        @if (fusedBodyAt(cyl, 'rod'); as overTheHead) {
+          <ng-container
+            [ngTemplateOutlet]="fusedCylinderBody"
+            [ngTemplateOutletContext]="{ $implicit: overTheHead, cyl: cyl }"
+          />
+        } @else if (!memberIsFused(cyl, 'rod')) {
+          <path
+            [class]="'cylinder-rod ' + mechanismSrv.getLinkCSSClass(cyl.rodLink)"
+            [attr.cursor]="mechanismSrv.isLinkLockedVisual(cyl.rodLink) ? 'not-allowed' : 'move'"
+            (pointerover)="cyl.rodLink.showHighlight = true"
+            (pointerout)="cyl.rodLink.showHighlight = false"
+            (pointerdown)="setLastLeftClick(cyl.rodLink, $event)"
+            (contextmenu)="setLastRightClick(cyl.rodLink, $event)"
+            [attr.d]="cyl.rod"
+            [attr.fill]="cyl.rodFill"
+            fill-opacity="0.7"
+            [attr.stroke]="cyl.rodFill"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+          />
+        }
         <!-- Joint S's hitbox, over the head it rides: grabbing it starts a drag
              on the seal, and pointing at it lights the seal's own cream bar
              above, exactly as grabbing an ordinary slider's block starts a drag
@@ -894,6 +917,73 @@
              The head is furniture: it takes the gesture and none of the state. -->
       </g>
     }
+    <!-- A welded cylinder end, drawn as one body with the bracket on it
+         (decision S16). The body's own outline, in the body's own color, at
+         the member's place in this stack -- and the union that built that
+         outline has the member's real silhouette in it, so the elbow is
+         filleted and the whole thing is one continuous stroke, which is the
+         drawing two ordinary welded links already get.
+
+         `unframe` undoes the slot transform this sits inside: the outline is
+         already in the drawing's own coordinates, and rewriting a compound
+         union into the slot's frame would mean tokenizing it on every
+         animation frame to arrive back at the same shape.
+
+         The member's own region still selects the member (decision S12), so a
+         transparent hit path goes over the fill for each member this body
+         holds -- in that member's own slot frame, which is not always this
+         one, because two cylinders can be welded to the same bracket. -->
+    <ng-template #fusedCylinderBody let-fused let-cyl="cyl">
+      <g [attr.transform]="sliderMarks.unframe(cyl)">
+        <path
+          [class]="'cylinder-body ' + mechanismSrv.getLinkCSSClass(fused.body)"
+          [attr.cursor]="mechanismSrv.isLinkLockedVisual(fused.body) ? 'not-allowed' : 'move'"
+          (pointerover)="fused.body.showHighlight = true"
+          (pointerout)="fused.body.showHighlight = false"
+          (pointerdown)="setLastLeftClick(fused.body, $event)"
+          (contextmenu)="setLastRightClick(fused.body, $event)"
+          [attr.d]="bodyPath(fused.body)"
+          [attr.id]="fused.body.id"
+          [attr.data-channels]="channelCountOn(fused.body)"
+          fill-rule="evenodd"
+          [attr.fill]="mechanismSrv.getLinkProp(fused.body, 'fill')"
+          fill-opacity="0.7"
+          [attr.stroke]="mechanismSrv.getLinkProp(fused.body, 'fill')"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+        ></path>
+        <!-- Its own slots handed back, as in the links layer: a hole catches no
+             pointer, and this body is no longer drawn there to hand them back
+             itself. -->
+        @if (channelCountOn(fused.body) > 0) {
+          <path
+            (pointerover)="fused.body.showHighlight = true"
+            (pointerout)="fused.body.showHighlight = false"
+            (pointerdown)="setLastLeftClick(fused.body, $event)"
+            (contextmenu)="setLastRightClick(fused.body, $event)"
+            [attr.d]="channelsCutInto(fused.body)"
+            [attr.id]="fused.body.id + '__slotHit'"
+            fill="none"
+            pointer-events="all"
+          ></path>
+        }
+        @for (member of fused.members; track member.mark.id + member.role) {
+          @let part = sliderMarks.memberOf(member.mark, member.role);
+          <g [attr.transform]="sliderMarks.frame(member.mark)">
+            <path
+              class="cylinder-member-hit"
+              [attr.data-member]="part.link.id"
+              [attr.cursor]="mechanismSrv.isLinkLockedVisual(part.link) ? 'not-allowed' : 'move'"
+              (pointerover)="part.link.showHighlight = true"
+              (pointerout)="part.link.showHighlight = false"
+              (pointerdown)="setLastLeftClick(part.link, $event)"
+              (contextmenu)="setLastRightClick(part.link, $event)"
+              [attr.d]="part.path"
+              fill="transparent"
+            />
+          </g>
+        }
+      </g>
+    </ng-template>
     <!-- The ghost of the two-point creation gesture: the same paths the
          committed skin draws, tracking the cursor, so what is previewed is
          exactly what the left-click will create. -->

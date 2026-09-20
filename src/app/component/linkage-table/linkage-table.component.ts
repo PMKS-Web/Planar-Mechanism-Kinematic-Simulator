@@ -334,6 +334,11 @@ export class LinkageTableComponent implements OnInit {
     return this.mechanismService.links;
   }
 
+  /** What this body is called on screen, which is the one name the app shows. */
+  nameOf(link: Link): string {
+    return this.mechanismService.visibleBodyName(link);
+  }
+
   getForces() {
     return this.mechanismService.forces;
   }

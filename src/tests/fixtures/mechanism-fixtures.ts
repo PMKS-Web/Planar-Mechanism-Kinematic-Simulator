@@ -98,8 +98,10 @@ export function buildMechanismFixture(payload: string): MechanismFixture {
     // Implemented, not stubbed, and from the same function the service calls:
     // the panels put these words on their graphs, so a stub that invented its
     // own would let the labels drift without a spec noticing.
-    bodyLabel: (body: Link) =>
-      labelForBody(body, cylinderOfBarIn(cylindersIn(service.joints), body)),
+    bodyLabel: (body: Link) => {
+      const structures = cylindersIn(service.joints);
+      return labelForBody(body, cylinderOfBarIn(structures, body), structures);
+    },
   } as unknown as MechanismService;
   new MechanismBuilder(service, decoder, settings, active).build(true);
 

@@ -13,6 +13,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NgTemplateOutlet } from '@angular/common';
 import { fromEvent } from 'rxjs';
 import { MechanismService } from '../../services/mechanism.service';
 import { TutorialService } from '../../services/tutorial.service';
@@ -110,7 +111,13 @@ import {
   cylinderSpanRange,
   cylinderJoints,
 } from '../../model/cylinder';
-import { accentOutlineClass, hiddenByCylinder } from '../../model/cylinder-skin';
+import {
+  accentOutlineClass,
+  CylinderRole,
+  hiddenByCylinder,
+  memberIsWelded,
+} from '../../model/cylinder-skin';
+import { FusedBody } from '../../model/cylinder-fusion';
 import { SnapGuide, snapToAxes } from '../../model/axis-snap';
 import { drawDepths } from '../../model/draw-order';
 import { MODEL_SCALE } from '../../model/render-scale';
@@ -200,6 +207,7 @@ const SELECTION_RING_PX = 3;
     ContextMenuComponent,
     LongPressDirective,
     ModelFrameDirective,
+    NgTemplateOutlet,
     UprightDirective,
   ],
 })
@@ -5186,6 +5194,38 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
+   * The welded body this pass of the skin paints, or nothing when it paints
+   * none (decision S16).
+   *
+   * A barrel welded to a bracket is one body with it, and that body has to be
+   * drawn where the barrel would have been -- under the head block -- rather
+   * than down in the links layer where every skin would cover it. The rod's
+   * pass is the same question one layer up.
+   */
+  fusedBodyAt(mark: CylinderMark, role: CylinderRole): FusedBody<CylinderMark> | undefined {
+    return this.sliderMarks.fusedBodies(this.cylinderList).get(`${mark.id}:${role}`);
+  }
+
+  /** Whether a body has swallowed this member, so the skin does not paint it alone. */
+  memberIsFused(mark: CylinderMark, role: CylinderRole): boolean {
+    return memberIsWelded(mark.cylinder, role);
+  }
+
+  /**
+   * A body a cylinder pass paints, which the links layer therefore leaves alone.
+   *
+   * Walked rather than spread: this runs for every link on every
+   * change-detection pass, which is dozens of times per pointer move, and the
+   * map it walks holds one entry per welded mount in the drawing.
+   */
+  bodyDrawnByACylinder(link: Link): boolean {
+    for (const found of this.sliderMarks.fusedBodies(this.cylinderList).values()) {
+      if (found.body.id === link.id) return true;
+    }
+    return false;
+  }
+
+  /**
    * Everything in the slider layer, deepest first.
    *
    * A block is above the carrier it slides in; a link is above the block it is
@@ -5748,7 +5788,7 @@ export class NewGridComponent implements OnDestroy {
    */
   linkDisplayName(link: Link): string {
     const sealed = this.mechanismSrv.cylinderOfBar(link);
-    if (!sealed) return link.name;
+    if (!sealed) return this.mechanismSrv.visibleBodyName(link);
     const named = (joint: Joint) => joint.name || joint.id;
     return `${named(sealed.mountA)}${named(sealed.mountB)}`;
   }
@@ -5857,9 +5897,19 @@ export class NewGridComponent implements OnDestroy {
     // is fused to as one outline, so drawing the rider here as well would put
     // its own edge inside that outline and double the fill's alpha over itself.
     if (this.platedLink(link)) return '';
+    return this.bodyPath(link);
+  }
+
+  /**
+   * A body's own outline, motor and channels and all, wherever it is painted.
+   *
+   * The links layer is no longer the only place: a body welded to a cylinder
+   * mount is painted in that member's place in the skin's stack, and it has to
+   * be the same shape there as it would have been here.
+   */
+  bodyPath(link: Link): string {
     const outline = this.outlineWithMotor(link);
     const channels = this.channelsCutInto(link);
-
     return channels === '' ? outline : `${outline} ${channels}`;
   }
 

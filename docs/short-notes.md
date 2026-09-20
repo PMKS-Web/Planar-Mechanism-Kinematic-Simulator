@@ -1090,28 +1090,82 @@ which the hold path asked through a members map keyed by link id -- which is why
 surface a welded bracket never confused. It became a one-line delegation to `cylinderOfBar` and
 then went, so a body has two questions to choose between rather than two questions and a synonym.
 
-### The compound path drops a welded *rod* leaf and keeps a welded *barrel* leaf
+### A compound has to draw a welded cylinder member, and with the skin's shape
 
-`RealLink.getCompoundPathString` filters out `isSealedRodLeaf` -- a leaf recognized by holding a
-sealed `PrisJoint` among its own joints. (It used to be recognized "through its pin: the joint
-that shares a `SliderBlock` with a sealed slider"; Stage 1 made a slider one joint, so the leaf
-carries it directly and there is no twin to hop through.) A **barrel** leaf has no such
-joint (its two joints are the mount and the buried near end), so welding a bracket to a ram's
-*barrel* mount leaves the barrel in the compound's union: it is drawn once by the compound, in the
-bracket's color, and once by the cylinder skin over the top. With a random palette the two are
-often near enough to hide it; recolor the two bodies and the barrel comes out painted the
-bracket's color with a hard seam partway along the part. The rod case is clean, and the difference
-is only which leaf the filter knows how to name.
+`RealLink.getCompoundPathString` used to *drop* a leaf a cylinder's skin draws, on the reading
+that the skin would paint it anyway. What that produced is a bracket standing beside the part
+rather than one body with it: the bracket its own shape in its own color with its own edge, the skin laid
+over it with a seam and no fillet, and at a barrel mount the bracket's round end showing as a
+circle inside the barrel. A weld means the two are rigid, and two ordinary welded links draw that
+as one fill, one continuous outline and a fillet in the elbow.
 
-The information needed to recognize the barrel is not reachable from the compound: after the weld
-the leaf's joints list only the root in `links`, and the sealed `PrisJoint` -- which is the one
-object that knows (`carrier` is the root, `slotJointA`/`slotJointB` are the leaf's two joints) --
-is reachable only from the rod's pin, which a barrel-welded compound does not contain. So the
-answer is *told* to the leaf instead: `RealLink.drawnByACylinderSkin`, set by
-`MechanismService.tellEachBarWhoDrawsIt` wherever the sealed structures are resolved, which is the
-one place it exists. It is cleared over the bars marked *last* time rather than over the drawing,
-because deleting a ram takes its bars out of `links` before the next resolve runs, and a bar that
-keeps the flag is a bar that stops drawing itself the moment it is welded into anything else.
+So the union takes the member's **silhouette** instead of dropping it (decision S16): the barrel's
+real profile, or the rod's from behind the head to its end joint, built by the skin's own path
+builders and carried on `RealLink.skinSilhouette`. `buildCompoundPath` then does exactly what it
+does for two bars.
+
+Three things that are not obvious about it:
+
+- **A union fillets every corner it finds**, and it cannot tell the elbow, where two parts meet,
+  from the barrel's mouth or the rod's back, where nothing does. Filleted at the weld's radius the
+  mouth came out a capsule and the rod's square back lifted off the black head block it is flush
+  with, letting the black through at both corners. The fix is `CYLINDER.cutEase`: those four
+  corners are eased by a twentieth of R before the union, which puts every turn in them under
+  `buildCompoundPath`'s fifteen-degree corner threshold, so they come back out exactly as drawn.
+  It is the same mechanism that lets a black block keep its own rounded corners through a weld
+  plate.
+- **The body cannot stay in the links layer.** The skin is a stack -- barrel, head block, rod --
+  and a body holding a member has to stand in that member's place in it. A rod drawn under the
+  black head is hidden by it entirely and the band that says how much rod is still in the bore
+  simply goes. `fusedBodiesOf` in `model/cylinder-fusion.ts` assigns each welded body exactly one
+  pass to be painted in, the rod's winning when one body holds both kinds (two cylinders welded to
+  one bracket, or both ends of one cylinder), and `bodyDrawnByACylinder` keeps the links layer off
+  it.
+- **The export is not the picture.** `outlineLoops()` gives the DXF the body *without* the member
+  fused in, by rebuilding the union from the other leaves. A cylinder is already exported as its
+  own barrel and rod on their own layer, so a fused face would lay a second, differently shaped
+  barrel over the first.
+
+The leaf still cannot work any of this out for itself. After a weld its joints list only the
+compound root in `links`, and the sealed `PrisJoint` -- which is the one object that knows the
+pairing (`carrier` is the root, `slotJointA`/`slotJointB` are the barrel's two joints) -- is
+reachable only from the rod's pin, which a barrel-welded compound does not contain. So both
+answers are *told* to it: `drawnByACylinderSkin` and `skinSilhouette`, set by
+`MechanismService.tellEachBarHowItIsDrawn` wherever the sealed structures are resolved. They are
+cleared over the bars marked *last* time rather than over the drawing, because deleting a cylinder
+takes its bars out of `links` before the next resolve runs, and a bar that keeps the flag is a bar that
+stops drawing itself the moment it is welded into anything else. The silhouette is told a second
+time, from `updateMechanism` after `deriveCylinderInteriors`: *which* bars only a structural edit
+changes, but *where* they are is something the derivation may have just moved.
+
+### A link's id is a key, and on a welded barrel mount it is not a name
+
+`mergeLinks` builds a compound's id from the sorted ids of its joints, and a bracket welded to a
+cylinder's barrel mount holds **N**, the buried inner end. N has no marker, no letter and no
+hitbox, and is left out of every count the app shows (D14, S11) -- so the id `AA1D` named a joint
+the drawing has never drawn, and it named it in four places at once: the canvas tag, the panel
+title, the right-click header and the delete cascade of every joint on the body. The menu's
+subtitle said "Joints A, A1, D" over a canvas showing two, and the center-of-mass frame dropdown
+offered "Joint A1" as something to anchor a point to.
+
+`visibleBodyName` in `model/body-label.ts` is the one answer, and `MechanismService.visibleBodyName`
+/ `bodyLabel` are how everything asks it. Three rules in order: a cylinder member is named by its
+own two ends (S10) -- *never* by this rule, which on a barrel would leave the single letter of its
+mount; a name somebody typed wins untouched, "typed" being a name that differs from the id, which
+is what `mergeLinks` already means by it; otherwise the visible joints' ids, sorted the way
+`mergeLinks` sorts. With nothing hidden to drop it returns the id as it stands, so an ordinary body
+is untouched by construction rather than by accident.
+
+The id itself does not move. It is the key the URL, the solver, `mechanismForId`, the export
+columns and the DXF layers are built on, and a display rule that changed it would change all of
+them. Three surfaces keep it on purpose: a graph's `mechPart`, which is a lookup key and only ever
+*shown* in a fallback label no panel reaches; the export's column keys and DXF layer names; and the
+dev-only debug drawer, which is there to show what is stored.
+
+One that is easy to miss: `describeHold` falls back to `link.name || link.id`, and the cylinder
+branch above it names the *part* by its mounts. `GridUtilsService`'s `heldBy` deliberately wants the
+*member* named instead -- with both lengths fixed there are two padlocks to choose between -- and
+landed on that fallback, which for a barrel is the id with N in it. It passes a namer now.
 
 ### The loop walk misses a chain that was already complete when it started
 
@@ -1176,7 +1230,10 @@ the compound's outline as a second subpath -- and since it does not overlap the 
 filled it in rather than subtracting it: a capsule the length of the barrel, in the bracket's
 color, laid over the part it is supposed to be inside. The plan asks for exactly this ("the
 internal bore stays hidden even when its carrier root also contains a neighboring leaf with a
-visible slot"), and the fix is one `if (joint.isSealed) continue;`.
+visible slot"), and the fix is one `if (joint.isSealed) continue;`. Still one `if`, and still the only
+thing holding the bore out: a welded barrel's body is painted by the cylinder's own pass now
+(decision S16) rather than by the links layer, but it is painted from the same `bodyPath`, channels
+and all, so removing the guard would put the capsule straight back.
 
 Worth knowing while chasing this: the compound's `d` and what the canvas *draws* are two different
 strings. `linkPathWithChannels` is `outlineWithMotor(link)` -- which is `link.d` plus any motor

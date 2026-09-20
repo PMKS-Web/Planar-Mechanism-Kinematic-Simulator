@@ -569,7 +569,12 @@
                 >
                   <option value="centroid" [selected]="comFrame === 'centroid'">Centroid</option>
                   <option value="grid" [selected]="comFrame === 'grid'">Grid</option>
-                  @for (joint of activeSrv.selectedLink.joints; track joint.id) {
+                  <!-- The joints a reader can point at. A cylinder's buried
+                       inner end is not one of them (D14, S11), and a body
+                       welded to a barrel mount holds it: it offered "Joint A1"
+                       as something to anchor a center of mass to, over a canvas
+                       that draws no such joint. -->
+                  @for (joint of comFrameJoints; track joint.id) {
                     <option
                       [value]="'joint:' + joint.id"
                       [selected]="comFrame === 'joint:' + joint.id"

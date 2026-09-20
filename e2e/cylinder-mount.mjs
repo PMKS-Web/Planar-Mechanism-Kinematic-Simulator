@@ -532,10 +532,38 @@ check(
 // ------------------------------------------------- 5. skin versus its leaves
 console.log('\nclicking a body that is drawn as one');
 ids = await weldedMount();
+/**
+ * A point that is actually on the shape, not the middle of its box.
+ *
+ * A welded body is an elbow: since decision S16 the bracket and the member it
+ * is welded to are one outline, and the center of that outline's bounding box
+ * is in the crook, where the click falls through to the background.
+ */
+const pointOn = (selector) =>
+  page.evaluate((css) => {
+    const el = document.querySelector(css);
+    const r = el?.getBoundingClientRect();
+    if (!r?.width || !r?.height) return null;
+    // Outward from the middle, not inward from a corner. A point a fortieth in
+    // from the top-left of a rounded bar's box is on its *stroke*, where the
+    // browser's own hit test and the one a dispatched click does can disagree
+    // by a device pixel: the left press landed on the shape and the right press
+    // that followed it went through to the background.
+    const spread = [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8, 0.1, 0.9];
+    for (const fy of spread) {
+      for (const fx of spread) {
+        const x = r.x + r.width * fx;
+        const y = r.y + r.height * fy;
+        if (document.elementFromPoint(x, y) === el) return { x, y };
+      }
+    }
+    return null;
+  }, selector);
 const clickAt = async (selector) => {
-  const box = await page.locator(selector).boundingBox();
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  const spot = await pointOn(selector);
+  if (!spot) return { type: 'unhittable', link: null };
+  await page.mouse.move(spot.x, spot.y);
+  await page.mouse.click(spot.x, spot.y);
   await page.waitForTimeout(400);
   return page.evaluate(() => {
     const active = ng.getComponent(document.querySelector('app-new-grid')).activeObjService;
@@ -570,7 +598,10 @@ check(
     )
   )
 );
-const onBarrel = await clickAt(`#${ids.barrel}`);
+// Through the skin, which is where an *unwelded* member is drawn: its own
+// element in the links layer carries the id and no geometry, exactly as a
+// plated rider's does.
+const onBarrel = await clickAt('.cylinder-barrel');
 check(
   'while the ram beside it is still its own body to click',
   onBarrel.type === 'Link' && onBarrel.link !== ids.compound,
@@ -587,8 +618,8 @@ const namedAt = async (selector) => {
   const panel = await page.evaluate(
     () => document.querySelector('app-edit-panel')?.innerText.split('\n')[0] ?? ''
   );
-  const box = await page.locator(selector).boundingBox();
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });
+  const spot = (await pointOn(selector)) ?? { x: 0, y: 0 };
+  await page.mouse.click(spot.x, spot.y, { button: 'right' });
   await page.locator('#contextMenu .cm-row').first().waitFor({ timeout: 5000 });
   const menu = await page.evaluate(() => ({
     header: document.querySelector('#contextMenu .cm-header')?.innerText.split('\n')[0] ?? '',
@@ -609,7 +640,7 @@ check(
     bodyNames.del.startsWith('Delete Link'),
   JSON.stringify(bodyNames)
 );
-const ramNames = await namedAt(`#${ids.barrel}`);
+const ramNames = await namedAt('.cylinder-barrel');
 check(
   'and the ram is still named as the ram',
   // The panel is the member's own too (D12), named by the two joints it runs
@@ -628,12 +659,12 @@ check(
 // row took the ram, the key took the body.
 const deletedBy = async (route) => {
   const where = await weldedMount();
-  const box = await page.locator(`#${where.compound}`).boundingBox();
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  const box = (await pointOn(`#${where.compound}`)) ?? { x: 0, y: 0 };
+  await page.mouse.move(box.x, box.y);
+  await page.mouse.click(box.x, box.y);
   await page.waitForTimeout(350);
   if (route === 'menu') {
-    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });
+    await page.mouse.click(box.x, box.y, { button: 'right' });
     await page.locator('#contextMenu .cm-row').first().waitFor({ timeout: 5000 });
     await page.locator('#contextMenu .cm-row', { hasText: 'Delete Link' }).first().click();
   } else {

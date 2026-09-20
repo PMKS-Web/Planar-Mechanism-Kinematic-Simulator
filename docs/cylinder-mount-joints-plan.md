@@ -2,6 +2,20 @@
 
 > **Status:** Built — steps 1–6 shipped September 8–10, 2026 (`d8721d3` removed the mount ban; `slotWouldFoldACylinder` in `model/drop-target.ts`). Guarded by `e2e/cylinder-mount.mjs`, `e2e/cylinder-mount-render.mjs` and `src/tests/verification/welded-mount-release.spec.ts`.
 
+> **Its drawing rule is superseded, September 20, 2026.** What this document asks for at a
+> welded mount -- a bracket that "meets the corresponding cylinder-side silhouette", with "a
+> single outside stroke and nonoverlapping clipped fill regions for differently colored
+> members" -- shipped as the compound *leaving the member out of its union altogether*. That is
+> a bracket standing beside the part, not one body with it: its own shape, its own color, its own
+> edge, and at a barrel mount its round end showing as a circle inside the barrel. Decision S16
+> of `joint-type-and-cylinder-plan.md` replaces the rule. The member's silhouette goes **into**
+> the body's union, so the elbow is filleted and the body has one fill and one continuous
+> outline, exactly as two ordinary welded links do; a welded member is painted in its body's
+> color rather than keeping one of its own; and the layering this document describes is honored
+> by painting the body in the member's own place in the skin's stack -- under the head block for
+> a barrel, over it for a rod -- rather than by leaving it in the links layer. Everything else
+> here stands.
+
 Planning baseline: `staging` at `c56f757`, September 8, 2026. It was written before any
 implementation. Read `CLAUDE.md` and `docs/cylinder-mount-joints-brief.md` first. References
 below use paths relative to `src/app/` unless another root is given; function names are the

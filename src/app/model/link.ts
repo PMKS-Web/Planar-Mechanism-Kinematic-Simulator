@@ -267,7 +267,7 @@ export class RealLink extends Link {
   public drawnAsDisc = false;
   /**
    * Whether a cylinder's skin stands in for this bar, so a compound holding it
-   * must not draw it a second time.
+   * must not draw it as a plain bar.
    *
    * A leaf cannot work this out for itself. After a weld its joints list only
    * the compound root in `links`, and the one object that knows the pairing is
@@ -280,6 +280,21 @@ export class RealLink extends Link {
    * place the answer exists.
    */
   public drawnByACylinderSkin = false;
+  /**
+   * The silhouette this bar contributes to the body that has swallowed it.
+   *
+   * A welded member is part of its body (decision S16), so the body's union
+   * takes the skin's real profile — the barrel's, wide and round at the mount;
+   * the rod's, from behind the head to its end joint — in place of the thin bar
+   * its two joints describe. `buildCompoundPath` then fillets the join and
+   * returns one continuous outline, which is what makes a welded mount read the
+   * way any other welded body does.
+   *
+   * Told to the bar for the same reason the flag above is, and by the same
+   * pass: nothing reachable from a compound knows the shape. Empty for a bar no
+   * skin draws, which is every bar but two per cylinder.
+   */
+  public skinSilhouette: string | undefined = undefined;
   /**
    * This cylinder rod is painted in its own `fill` rather than its barrel's.
    *
@@ -588,38 +603,53 @@ export class RealLink extends Link {
     this._angle = getAngle(this.joints[0], this.joints[1]);
   }
 
-  getCompoundPathString(): string {
-    // A compound is drawn from the outlines of its parts, never as a disc.
-    this.drawnAsDisc = false;
-    // A sealed cylinder's barrel or rod welded into this compound is drawn by
-    // the skin; the compound repeating it draws the same bar twice -- the rod
-    // once appeared on the wrong side of the block, and the barrel came out in
-    // the bracket's color with a seam where the compound's copy ended.
-    //
-    // `drawnByACylinderSkin` is the whole answer when somebody has resolved the
-    // structures and said so. The structural test beside it is the fallback for
-    // a link built without a service to ask -- it recognizes a rod by the
-    // sealed sliding joint it hangs on, and there is no equivalent for a
-    // barrel, whose two joints are the mount and the buried near end, which is
-    // why the flag exists.
-    //
-    // It used to reach that joint the long way round, through the block a rod's
-    // pin shared with the slider. The pin and the slider are one joint now
-    // (Stage 1 of `docs/joint-type-and-cylinder-plan.md`), so the rod simply
-    // holds it.
+  /**
+   * The outlines this body's own picture is built from.
+   *
+   * A sealed cylinder's barrel or rod welded into this compound is part of the
+   * body (decision S16), and it contributes the shape the skin draws rather
+   * than the bar its two joints describe: the union then fillets the join and
+   * hands back one continuous outline, the same as for any two welded links.
+   *
+   * `fused` false is the answer for a reader who wants the *parts* rather than
+   * the picture — the DXF, where a cylinder is already exported as its own
+   * symbol on its own layer. There the member is left out entirely, which is
+   * what this whole method did before the silhouettes existed.
+   *
+   * `drawnByACylinderSkin` is the whole answer to "does a skin draw this bar"
+   * when somebody has resolved the structures and said so. The structural test
+   * beside it is the fallback for a link built without a service to ask -- it
+   * recognizes a rod by the sealed sliding joint it hangs on, and there is no
+   * equivalent for a barrel, whose two joints are the mount and the buried near
+   * end, which is why the flag exists.
+   *
+   * It used to reach that joint the long way round, through the block a rod's
+   * pin shared with the slider. The pin and the slider are one joint now
+   * (Stage 1 of `docs/joint-type-and-cylinder-plan.md`), so the rod simply
+   * holds it.
+   */
+  private leafOutlines(fused: boolean): string[] {
     const isSealedRodLeaf = (leaf: RealLink) =>
       leaf.joints.length === 2 &&
       leaf.joints.some((joint) => joint instanceof PrisJoint && joint.isSealed);
     const drawnElsewhere = (leaf: RealLink) => leaf.drawnByACylinderSkin || isSealedRodLeaf(leaf);
-    const linkSubset = this.subset.filter(
-      (link): link is RealLink =>
-        link instanceof RealLink && !(this.subset.length > 1 && drawnElsewhere(link))
-    );
-    linkSubset.forEach((link) => link.reComputeDPath());
-    const geometry = buildCompoundPath(
-      linkSubset.map((link) => link.d),
-      SettingsService.objectScale / 4
-    );
+    const contributed = (leaf: RealLink) => (fused ? leaf.skinSilhouette : undefined);
+    return this.subset
+      .filter(
+        (link): link is RealLink =>
+          link instanceof RealLink &&
+          !(this.subset.length > 1 && drawnElsewhere(link) && !contributed(link))
+      )
+      .map((link) => contributed(link) ?? link.d);
+  }
+
+  getCompoundPathString(): string {
+    // A compound is drawn from the outlines of its parts, never as a disc.
+    this.drawnAsDisc = false;
+    this.subset.forEach((link) => {
+      if (link instanceof RealLink) link.reComputeDPath();
+    });
+    const geometry = buildCompoundPath(this.leafOutlines(true), SettingsService.objectScale / 4);
     this.compoundRings = geometry.rings;
     this.externalLines = geometry.rings.flatMap((ring) =>
       ring.slice(0, -1).map((point, index) => {
@@ -650,10 +680,26 @@ export class RealLink extends Link {
    * Empty when there is no outline to give: a bar whose joints have collapsed
    * onto one point has no shape, and a caller should fall back to the
    * centerline rather than draw nothing.
+   *
+   * One body differs from the picture: a compound that has fused a cylinder
+   * member into its outline (decision S16) gives the export the body *without*
+   * it. This is a parts drawing, and a cylinder is already a part of its own
+   * here -- its own barrel and rod on their own layer, drawn as the symbol a
+   * reader mates rather than as the silhouette the canvas paints. Handing the
+   * bracket's face the barrel as well would lay a second, differently shaped
+   * barrel over the first. The rings are rebuilt rather than kept beside the
+   * drawn ones, because a second union on every rebuild is a real cost paid for
+   * an answer only an export ever reads.
    */
   outlineLoops(): { x: number; y: number; bulge: number }[][] {
     if (this.subset.length > 0) {
-      return this.compoundRings
+      const fusing = this.subset.some(
+        (leaf) => leaf instanceof RealLink && leaf.skinSilhouette !== undefined
+      );
+      const rings: number[][][] = fusing
+        ? buildCompoundPath(this.leafOutlines(false), SettingsService.objectScale / 4).rings
+        : this.compoundRings;
+      return rings
         .filter((ring) => ring.length > 3)
         .map((ring) => ring.slice(0, -1).map((point) => ({ x: point[0], y: point[1], bulge: 0 })));
     }
