@@ -37,13 +37,13 @@ adapts its isolated-body and equation sequence to the current solvers and UI.
 ## Force worksheet
 
 - **Definitions:** a mechanism-independent, collapsible walkthrough with no sample, settings, or
-  convention controls. It begins with static vector balances, their x/y/z components, and the
-  in-motion form that places applied loads on the left and inertia on the right. It then builds a
-  slanted bar AB FBD with centered CoM, weight W_ab, and applied force F_1; defines the variables;
-  and builds the x-force, y-force, and z-moment equations. The moment-reference control updates
-  the selected point, r_x/r_y sketch, and symbolic moment equation for A, CoM, or B. Vector moment
-  expansion shows why the x/y moment equations are 0 = 0, leaving two force equations and one z
-  moment equation.
+  convention controls. It first separates force and moment balances: dynamic equations show the
+  inertia terms on the right, while the static equations follow by setting a and alpha to zero. A
+  two-point sketch introduces a force creating a moment before a slanted bar AB FBD is built with
+  centered CoM, weight W_ab, and applied force F_1. The walkthrough then defines variables and
+  builds separate x-force, y-force, and z-moment equations. The moment-reference control updates
+  the selected point, symbolic equation, and an external component grid for every r vector for A,
+  CoM, or B. The moment expansion appears with that grid, where the required visual context exists.
 - **Free Bodies:** every moving root body, orange reaction arrows, vector force balance,
   vector moment balance about a chosen reference (CoM by default), then scalar x, y, and z equations.
   Choose force-component/couple directions and the moment reference directly on each isolated

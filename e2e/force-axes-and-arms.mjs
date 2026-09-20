@@ -62,7 +62,7 @@ try {
   const defs = d.locator('app-force-definitions');
   const example = await defs
     .locator('app-solver-diagram')
-    .first()
+    .nth(1)
     .evaluate((el) => window.ng.getComponent(el).diagram());
   assert.equal(example.outlines[0].length, 4);
   const com = example.points.find((p) => p.label === 'CoM');
@@ -73,9 +73,9 @@ try {
   );
   assert(example.lines.some((l) => l.label === 'W_AB'));
   assert(example.lines.some((l) => l.label === 'F_1'));
-  assert.equal(example.axisMomentLabel, '+M_z @ A');
-  assert.equal(await defs.locator('table').count(), 2);
-  assert.equal(await defs.locator('.definitionStep').count(), 5);
+  assert.equal(example.axisMomentLabel, '+M');
+  assert.equal(await defs.locator('table').count(), 1);
+  assert.equal(await defs.locator('.definitionStep').count(), 4);
   assert.equal(
     await defs
       .locator('.definitionStep')
@@ -86,18 +86,38 @@ try {
   assert((await defs.innerText()).includes('Sum of Forces'));
   assert((await defs.innerText()).includes('Sum of Moments'));
   const reference = defs.getByRole('combobox', { name: 'Moment reference for definition' });
-  const referenceExample = defs.locator('app-solver-diagram').nth(1);
+  const xDiagram = defs.locator('app-solver-diagram').nth(2);
+  const yDiagram = defs.locator('app-solver-diagram').nth(3);
+  assert(
+    (await xDiagram.evaluate((el) => window.ng.getComponent(el).diagram())).lines
+      .filter((line) => line.label?.endsWith('x'))
+      .every((line) => line.color === 'var(--warning)')
+  );
+  assert(
+    (await yDiagram.evaluate((el) => window.ng.getComponent(el).diagram())).lines
+      .filter((line) => line.label?.endsWith('y'))
+      .every((line) => line.color === 'var(--warning)')
+  );
+  const referenceExample = defs.locator('app-solver-diagram').nth(4);
+  const armGrid = defs.locator('app-solver-diagram').nth(5);
   let referenceDiagram = await referenceExample.evaluate((el) =>
     window.ng.getComponent(el).diagram()
   );
-  assert(referenceDiagram.lines.some((l) => l.label === 'r_x'));
-  assert(referenceDiagram.lines.some((l) => l.label === 'r_y'));
+  let gridDiagram = await armGrid.evaluate((el) => window.ng.getComponent(el).diagram());
+  assert(gridDiagram.lines.some((l) => l.label === 'r_B/A,x'));
+  assert(gridDiagram.lines.some((l) => l.label === 'r_P/A,y'));
   await reference.selectOption('B');
   referenceDiagram = await referenceExample.evaluate((el) => window.ng.getComponent(el).diagram());
-  assert.equal(referenceDiagram.axisMomentLabel, '+M_z @ B');
+  gridDiagram = await armGrid.evaluate((el) => window.ng.getComponent(el).diagram());
+  assert.equal(referenceDiagram.axisMomentLabel, '+M');
   assert(referenceDiagram.points.find((p) => p.label === 'B').reference);
+  assert(gridDiagram.lines.some((l) => l.label === 'r_A/B,x'));
   await labelsDoNotOverlap(defs);
   await defs.screenshot({ path: `${out}/definitions.png` });
+  await defs
+    .locator('.definitionStep')
+    .nth(3)
+    .screenshot({ path: `${out}/definition-equations.png` });
   assert((await defs.innerText()).includes('0 = 0'));
   await d.getByRole('button', { name: 'Free Bodies', exact: true }).click();
   await d.locator('.overviewDetails > summary').click();

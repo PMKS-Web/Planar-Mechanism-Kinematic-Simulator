@@ -16,49 +16,33 @@ type ReferenceId = 'A' | 'CoM' | 'B';
   template: `
     <details class="definitionStep" open>
       <summary>1 · Start with Force and Moment Balances</summary>
-      <h3>Static equilibrium</h3>
-      <app-solver-math [equation]="staticBalance" />
-      <p>For statics, external forces and moments balance to zero.</p>
       <details class="subsection" open>
-        <summary>Separate each balance into x, y, and z</summary>
+        <summary>Force balance</summary>
+        <app-solver-math [equation]="forceBalance" />
         <app-solver-math [equation]="forceComponents" />
+        <p>
+          The left side contains applied reactions, forces, and weight. The right side is the
+          translational inertia of the center of mass. In statics, a = 0, so every right-side term
+          becomes zero.
+        </p>
+      </details>
+      <details class="subsection" open>
+        <summary>Moment balance</summary>
+        <app-solver-math [equation]="momentBalance" />
         <app-solver-math [equation]="momentComponents" />
         <p>
-          Planar forces have F_z = 0 and position vectors have r_z = 0. Therefore ΣM_x and ΣM_y
-          reduce to 0 = 0; ΣF_x, ΣF_y, and ΣM_z provide the three equations for a rigid link.
+          The left side contains applied couples and moments made by forces. The right side is
+          rotational inertia. In statics, α = 0, so it becomes zero. Planar forces give M_x = 0 = 0
+          and M_y = 0 = 0, leaving the z-moment equation.
         </p>
-      </details>
-      <details class="subsection">
-        <summary>Where the terms go in an in-motion balance</summary>
-        <app-solver-math [equation]="dynamicAtCom" />
-        <app-solver-math [equation]="dynamicAtReference" />
-        <table class="sidesTable">
-          <thead>
-            <tr>
-              <th scope="col">Left side: applied loads</th>
-              <th scope="col">Right side: inertia</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Reaction forces, external forces, weight, and applied couples.</td>
-              <td>ΣF = 0 and ΣM = 0 for statics.</td>
-            </tr>
-            <tr>
-              <td>These stay on the left when the mechanism moves.</td>
-              <td>m a at CoM and I_CoM α; add r_CoM/O × m a when moments are about O.</td>
-            </tr>
-          </tbody>
-        </table>
-      </details>
-      <details class="subsection">
-        <summary>Why changing the moment reference changes the written equation</summary>
-        <p>
-          A different reference changes every moment arm r, so it changes the terms on the left. The
-          physical force answer remains the same. In motion, the right side also gains the
-          translation term when the reference is not CoM.
+        <app-solver-diagram
+          [diagram]="momentBalanceDiagram"
+          label="A force at point P creating a moment about point O"
+        />
+        <p class="caption">
+          A force applied at P creates a moment about O. Section 4 resolves this position vector and
+          force into the x and y components used to build the z-moment equation.
         </p>
-        <app-solver-math [equation]="momentExpansion" />
       </details>
     </details>
 
@@ -73,9 +57,7 @@ type ReferenceId = 'A' | 'CoM' | 'B';
         [diagram]="initialDiagram"
         label="Slanted two-joint bar AB with reactions, weight W_ab at its center, and force F_1 at P"
       />
-      <p class="caption">
-        The moment symbol sits beside the x/y axes because positive M_z is defined by that frame.
-      </p>
+      <p class="caption">The curved arrow around the axes marks the positive moment direction.</p>
     </details>
 
     <details class="definitionStep">
@@ -102,9 +84,21 @@ type ReferenceId = 'A' | 'CoM' | 'B';
       <summary>4 · Build the Force and Moment Equations</summary>
       <p>Start with the FBD above, then collect each load component in the matching balance.</p>
       <details class="subsection" open>
-        <summary>Sum of Forces</summary>
-        <p>Right is positive x and up is positive y in this example.</p>
+        <summary>Sum of Forces in x</summary>
+        <p>Highlight each horizontal component from the same FBD. Right is positive x.</p>
+        <app-solver-diagram
+          [diagram]="forceXDiagram"
+          label="Free-body diagram highlighting x-force components"
+        />
         <app-solver-math [equation]="exampleFx" />
+      </details>
+      <details class="subsection" open>
+        <summary>Sum of Forces in y</summary>
+        <p>Highlight each vertical component from the same FBD. Up is positive y.</p>
+        <app-solver-diagram
+          [diagram]="forceYDiagram"
+          label="Free-body diagram highlighting y-force components"
+        />
         <app-solver-math [equation]="exampleFy" />
       </details>
       <details class="subsection" open>
@@ -122,30 +116,26 @@ type ReferenceId = 'A' | 'CoM' | 'B';
           </select>
         </label>
         <p>
-          The blue ring is the selected reference. The dashed steps show r_x and r_y from that point
-          to P, which are the moment-arm components for F_1.
+          The blue ring is the selected reference. The FBD identifies the forces; the component grid
+          below keeps every moment arm away from the link so its x and y parts stay readable.
         </p>
         <app-solver-diagram
-          [diagram]="referenceDiagram()"
+          [diagram]="momentDiagram()"
           [label]="'Free-body diagram with moments about ' + referenceLabel()"
         />
+        <app-solver-diagram
+          [diagram]="momentArmGrid()"
+          [label]="'Moment-arm component grid about ' + referenceLabel()"
+        />
         <app-solver-math [equation]="referenceDistances()" />
-        <app-solver-math [equation]="momentEquation()" />
         <app-solver-math [equation]="crossProduct()" />
+        <app-solver-math [equation]="momentEquation()" />
         <p class="caption">
-          Move the reference to see which force arms become zero and how the symbolic z-moment
-          equation changes. This example is static, so the right side remains zero.
+          Each term uses (r × F)_z = r_xF_y − r_yF_x. Move the reference to see which arms become
+          zero and how the symbolic z-moment equation changes. This example is static, so the right
+          side remains zero.
         </p>
       </details>
-    </details>
-
-    <details class="definitionStep">
-      <summary>Optional: See the Accelerating-Body Form</summary>
-      <app-solver-math [equation]="dynamicAtCom" />
-      <p>
-        When taking moments about a point other than CoM, use the translated moment equation shown
-        in the first section.
-      </p>
     </details>
   `,
   styles: [
@@ -242,26 +232,24 @@ export class ForceDefinitionsComponent {
     { id: 'CoM' as const, label: 'CoM (Center of Mass)' },
     { id: 'B' as const, label: 'B (Joint)' },
   ];
-  protected readonly initialDiagram = this.exampleDiagram('A', false);
-  protected readonly referenceDiagram = computed(() => this.exampleDiagram(this.reference(), true));
+  protected readonly initialDiagram = this.fbdDiagram('all', 'A');
+  protected readonly momentBalanceDiagram = this.genericMomentDiagram();
+  protected readonly forceXDiagram = this.fbdDiagram('x', 'A');
+  protected readonly forceYDiagram = this.fbdDiagram('y', 'A');
+  protected readonly momentDiagram = computed(() => this.fbdDiagram('moment', this.reference()));
   protected readonly referenceLabel = computed(
     () => this.referenceOptions.find((option) => option.id === this.reference())!.label
   );
-  protected readonly referenceDistances = computed(() => {
-    const reference = this.point(this.reference());
-    return String.raw`r_{P/${this.reference()},x}=${this.number(135 - reference.x)},\qquad r_{P/${this.reference()},y}=${this.number(50 - reference.y)}`;
-  });
+  protected readonly referenceDistances = computed(() => this.distanceList(this.reference()));
   protected readonly crossProduct = computed(
     () =>
       String.raw`(\vec r_{P/${this.reference()}}\times\vec F_1)_z=r_{P/${this.reference()},x}F_{1y}-r_{P/${this.reference()},y}F_{1x}`
   );
   protected readonly momentEquation = computed(() => this.momentFor(this.reference()));
-  protected readonly staticBalance = String.raw`\sum\vec F=\vec0,\qquad\sum\vec M_O=\vec0`;
-  protected readonly forceComponents = String.raw`\begin{aligned}\sum F_x&=0\\\sum F_y&=0\\\sum F_z&=0\end{aligned}`;
-  protected readonly momentComponents = String.raw`\begin{aligned}\sum M_{O,x}&=0\\\sum M_{O,y}&=0\\\sum M_{O,z}&=0\end{aligned}`;
-  protected readonly dynamicAtCom = String.raw`\sum\vec F=m\vec a_{\mathrm{CoM}},\qquad\sum\vec M_{\mathrm{CoM}}=I_{\mathrm{CoM}}\vec\alpha`;
-  protected readonly dynamicAtReference = String.raw`\sum\vec M_O=I_{\mathrm{CoM}}\vec\alpha+\vec r_{\mathrm{CoM}/O}\times m\vec a_{\mathrm{CoM}}`;
-  protected readonly momentExpansion = String.raw`(\vec r\times\vec F)_z=r_xF_y-r_yF_x`;
+  protected readonly forceBalance = String.raw`\sum\vec F=m\vec a_{\mathrm{CoM}}\qquad\xrightarrow{\ \mathrm{statics}:\ \vec a=\vec0\ }\qquad\sum\vec F=\vec0`;
+  protected readonly forceComponents = String.raw`\begin{aligned}\sum F_x&=m a_{\mathrm{CoM},x}&&\xrightarrow{\mathrm{statics}}\quad\sum F_x=0\\\sum F_y&=m a_{\mathrm{CoM},y}&&\xrightarrow{\mathrm{statics}}\quad\sum F_y=0\\\sum F_z&=m a_{\mathrm{CoM},z}=0&&\xrightarrow{\mathrm{planar}}\quad\sum F_z=0\end{aligned}`;
+  protected readonly momentBalance = String.raw`\sum\vec M_{\mathrm{CoM}}=I_{\mathrm{CoM}}\vec\alpha\qquad\xrightarrow{\ \mathrm{statics}:\ \vec\alpha=\vec0\ }\qquad\sum\vec M_{\mathrm{CoM}}=\vec0`;
+  protected readonly momentComponents = String.raw`\begin{aligned}\sum M_{\mathrm{CoM},x}&=0=0\\\sum M_{\mathrm{CoM},y}&=0=0\\\sum M_{\mathrm{CoM},z}&=I_{\mathrm{CoM}}\alpha\quad\xrightarrow{\mathrm{statics}}\quad\sum M_{\mathrm{CoM},z}=0\end{aligned}`;
   protected readonly exampleFx = String.raw`\sum F_x=-A_x+B_x+F_{1x}=0`;
   protected readonly exampleFy = String.raw`\sum F_y=A_y+B_y+F_{1y}-W_{AB}=0`;
   protected readonly variables = [
@@ -292,6 +280,99 @@ export class ForceDefinitionsComponent {
     return value < 0 ? `(${value})` : String(value);
   }
 
+  protected momentArmGrid(): Diagram {
+    const reference = this.reference();
+    const targets = (['A', 'B', 'P', 'CoM'] as const).filter((target) => target !== reference);
+    const gridLines: DiagramLine[] = targets.flatMap((target, index) => {
+      const start = { x: -120, y: 105 - index * 75 };
+      const delta = this.delta(target, reference);
+      const endX = start.x + delta.x;
+      return [
+        {
+          from: start,
+          to: { x: endX, y: start.y },
+          label: `r_${target}/${reference},x`,
+          dashed: true,
+          arrow: true,
+          color: 'var(--success)',
+          width: 1.4,
+          midpointLabel: true,
+        },
+        {
+          from: { x: endX, y: start.y },
+          to: { x: endX, y: start.y + delta.y },
+          label: `r_${target}/${reference},y`,
+          dashed: true,
+          arrow: true,
+          color: 'var(--brand)',
+          width: 1.4,
+          midpointLabel: true,
+        },
+      ];
+    });
+    return {
+      axisMomentLabel: '+M',
+      legend: 'Moment-arm component grid',
+      points: [
+        { x: -120, y: 105, label: `O = ${reference}`, reference: true },
+        ...targets.map((target, index) => ({ x: -145, y: 105 - index * 75, label: target })),
+      ],
+      lines: gridLines,
+      framingPoints: [
+        { x: -170, y: -155 },
+        { x: 160, y: 150 },
+      ],
+    };
+  }
+
+  private distanceList(reference: ReferenceId) {
+    const terms = (['A', 'B', 'P', 'CoM'] as const)
+      .filter((target) => target !== reference)
+      .map((target) => {
+        const delta = this.delta(target, reference);
+        return String.raw`\vec r_{${target}/${reference}}=\langle${this.number(delta.x)},${this.number(delta.y)}\rangle`;
+      });
+    return String.raw`\begin{aligned}${terms.map((term) => `${term}\\`).join('')}\vec r_{${reference}/${reference}}&=\langle0,0\rangle\end{aligned}`;
+  }
+
+  private delta(target: ReferenceId | 'P', reference: ReferenceId) {
+    const to = this.point(target);
+    const from = this.point(reference);
+    return { x: to.x - from.x, y: to.y - from.y };
+  }
+
+  private genericMomentDiagram(): Diagram {
+    const origin = { x: 0, y: 0, label: 'O', reference: true };
+    const application = { x: 145, y: 55, label: 'P' };
+    return {
+      axisMomentLabel: '+M',
+      points: [origin, application],
+      lines: [
+        {
+          from: origin,
+          to: application,
+          label: 'r_P/O',
+          dashed: true,
+          color: 'var(--brand)',
+          width: 1.4,
+          midpointLabel: true,
+        },
+        {
+          from: application,
+          to: { x: 190, y: 105 },
+          label: 'F',
+          arrow: true,
+          color: 'var(--warning)',
+          width: 1.9,
+        },
+      ],
+      framingPoints: [
+        { x: -45, y: -45 },
+        { x: 225, y: 125 },
+      ],
+    };
+  }
+
   private momentFor(reference: ReferenceId) {
     const name = reference === 'CoM' ? '\\mathrm{CoM}' : reference;
     const terms: Record<ReferenceId, string> = {
@@ -302,43 +383,33 @@ export class ForceDefinitionsComponent {
     return String.raw`\sum M_{${name},z}=${terms[reference]}=0`;
   }
 
-  private exampleDiagram(reference: ReferenceId, showArms: boolean): Diagram {
-    const from = this.point(reference);
-    const target = this.point('P');
+  private fbdDiagram(highlight: 'all' | 'x' | 'y' | 'moment', reference: ReferenceId): Diagram {
+    const active = (direction: 'x' | 'y' | 'moment') =>
+      highlight === 'all' || highlight === 'moment' || highlight === direction;
+    const component = (line: DiagramLine, direction: 'x' | 'y' | 'moment') => ({
+      ...line,
+      arrow: true,
+      color: active(direction) ? 'var(--warning)' : 'var(--text-tertiary)',
+      width: active(direction) ? 1.9 : 1.1,
+    });
     const loadLines: DiagramLine[] = [
-      { from: this.point('A'), to: { x: -55, y: 0 }, label: 'Ax' },
-      { from: this.point('A'), to: { x: 0, y: 65 }, label: 'Ay' },
-      { from: this.point('B'), to: { x: 245, y: 70 }, label: 'Bx' },
-      { from: this.point('B'), to: { x: 190, y: 135 }, label: 'By' },
-      { from: this.point('CoM'), to: { x: 95, y: -35 }, label: 'W_AB' },
-      { from: this.point('P'), to: { x: 175, y: 105 }, label: 'F_1' },
-    ].map((line) => ({ ...line, arrow: true, color: 'var(--warning)', width: 1.7 }));
-    const armLines: DiagramLine[] = showArms
-      ? [
-          {
-            from,
-            to: { x: target.x, y: from.y },
-            label: 'r_x',
-            dashed: true,
-            arrow: true,
-            color: 'var(--success)',
-            width: 1.4,
-            midpointLabel: true,
-          },
-          {
-            from: { x: target.x, y: from.y },
-            to: target,
-            label: 'r_y',
-            dashed: true,
-            arrow: true,
-            color: 'var(--brand)',
-            width: 1.4,
-            midpointLabel: true,
-          },
-        ].filter((line) => Math.hypot(line.to.x - line.from.x, line.to.y - line.from.y) > 1e-8)
-      : [];
+      component({ from: this.point('A'), to: { x: -55, y: 0 }, label: 'A_x' }, 'x'),
+      component({ from: this.point('A'), to: { x: 0, y: 65 }, label: 'A_y' }, 'y'),
+      component({ from: this.point('B'), to: { x: 245, y: 70 }, label: 'B_x' }, 'x'),
+      component({ from: this.point('B'), to: { x: 190, y: 135 }, label: 'B_y' }, 'y'),
+      component({ from: this.point('CoM'), to: { x: 95, y: -35 }, label: 'W_AB' }, 'y'),
+      component({ from: this.point('P'), to: { x: 175, y: 50 }, label: 'F_1x' }, 'x'),
+      component({ from: this.point('P'), to: { x: 135, y: 105 }, label: 'F_1y' }, 'y'),
+    ];
+    if (highlight === 'all') {
+      loadLines.splice(
+        5,
+        2,
+        component({ from: this.point('P'), to: { x: 175, y: 105 }, label: 'F_1' }, 'moment')
+      );
+    }
     return {
-      axisMomentLabel: `+M_z @ ${reference}`,
+      axisMomentLabel: '+M',
       points: Object.values(this.points).map((point) => ({
         ...point,
         reference: point.label === reference,
@@ -355,7 +426,7 @@ export class ForceDefinitionsComponent {
         { x: -70, y: -75 },
         { x: 265, y: 150 },
       ],
-      lines: [...loadLines, ...armLines],
+      lines: loadLines,
     };
   }
 }

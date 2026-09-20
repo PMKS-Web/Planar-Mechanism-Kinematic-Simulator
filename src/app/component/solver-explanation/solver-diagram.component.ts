@@ -216,7 +216,9 @@ let nextDiagram = 0;
         fill="none"
         [attr.marker-end]="'url(#' + markerId + ')'"
       />
-      <text x="78" y="237">{{ diagram().axisMomentLabel ?? '+Mz (CCW)' }}</text>
+      <text x="98" y="222" text-anchor="middle">
+        {{ diagram().axisMomentLabel ?? '+Mz (CCW)' }}
+      </text>
     }
     <text
       class="axisLabel"
