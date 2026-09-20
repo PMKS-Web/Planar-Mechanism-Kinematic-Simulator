@@ -114,8 +114,8 @@ import-time distance convention later. Do not add an unversioned cylinder record
 > [`joint-type-and-cylinder-plan.md`](joint-type-and-cylinder-plan.md) made the cylinder a record
 > looked up from its seal — `seal`, `mountA`, `mountB`, `inner`, `barrel`, `rod` — with the slot's
 > own order carrying the roles, so nothing is measured to find one and role snapshots are gone
-> with the guessing they existed to prevent. The codec is untouched, exactly as the last line here
-> asks: the record is derived rather than stored, so there was no URL migration, no history change
+> with the guessing they existed to prevent. The codec carries no cylinder record, exactly as the last line
+> here asks: the record is derived rather than stored, so there was no URL migration, no history change
 > and no fixture to rewrite. The import-time distance convention survives in the one place it was
 > ever needed, the reader putting an old payload's slot in order, once, before anything asks.
 > Ambiguity is still refused rather than resolved: a seal with two candidate rods is not a
