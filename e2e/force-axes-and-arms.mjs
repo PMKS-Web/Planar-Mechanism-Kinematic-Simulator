@@ -65,13 +65,27 @@ try {
     .evaluate((el) => window.ng.getComponent(el).diagram());
   assert.equal(example.outlines[0].length, 4);
   const com = example.points.find((p) => p.label === 'CoM');
-  assert.equal(com.x, 100);
-  assert.equal(com.y, 0);
+  assert.equal(com.x, 95);
+  assert.equal(com.y, 35);
   assert(
     example.outlines[0].some((p) => p.y < com.y) && example.outlines[0].some((p) => p.y > com.y)
   );
-  assert(example.lines.some((l) => l.label === 'W_ab'));
+  assert(example.lines.some((l) => l.label === 'W_AB'));
   assert(example.lines.some((l) => l.label === 'F_1'));
+  assert(example.lines.some((l) => l.label === 'r_x'));
+  assert(example.lines.some((l) => l.label === 'r_y'));
+  assert.equal(example.axisMomentLabel, '+M_z');
+  assert.equal(await defs.locator('table').count(), 1);
+  assert.equal(await defs.locator('.definitionStep').count(), 4);
+  assert.equal(
+    await defs
+      .locator('.definitionStep')
+      .nth(1)
+      .evaluate((el) => el.open),
+    false
+  );
+  assert((await defs.innerText()).includes('Sum of Forces in x'));
+  assert((await defs.innerText()).includes('Sum of Moments about A in z'));
   await labelsDoNotOverlap(defs);
   await defs.screenshot({ path: `${out}/definitions.png` });
   assert((await defs.innerText()).includes('0 = 0'));

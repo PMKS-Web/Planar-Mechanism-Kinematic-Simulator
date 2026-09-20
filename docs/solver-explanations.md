@@ -36,10 +36,12 @@ adapts its isolated-body and equation sequence to the current solvers and UI.
 
 ## Force worksheet
 
-- **Definitions:** an illustrative FBD independent of the created mechanism, with no sample,
-  settings, or convention controls. A straight bar AB has a centered CoM, weight W_ab, and
-  applied force F_1. Vector moment expansion shows why the x/y moment equations are 0 = 0,
-  leaving two force equations and one z moment equation, with an optional note about accelerating bodies.
+- **Definitions:** a mechanism-independent, collapsible walkthrough with no sample, settings, or
+  convention controls. It starts with the general vector and scalar balances, then has a variable
+  table and a slanted bar AB with centered CoM, weight W_ab, and applied force F_1. Dashed r_x/r_y
+  steps from A to P make the moment arm visible before the walkthrough fills in the x-force,
+  y-force, and z-moment equations. Vector moment expansion shows why the x/y moment equations are
+  0 = 0, leaving two force equations and one z moment equation.
 - **Free Bodies:** every moving root body, orange reaction arrows, vector force balance,
   vector moment balance about a chosen reference (CoM by default), then scalar x, y, and z equations.
   Choose force-component/couple directions and the moment reference directly on each isolated

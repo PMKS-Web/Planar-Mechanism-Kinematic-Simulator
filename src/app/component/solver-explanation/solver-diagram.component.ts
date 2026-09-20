@@ -35,6 +35,8 @@ export interface DiagramCircle {
 }
 export interface Diagram {
   axisAngle?: number;
+  /** Text beside the positive-moment arc near the coordinate axes. */
+  axisMomentLabel?: string;
   context?: Pick<Diagram, 'lines' | 'outlines'>;
   rotations?: { x: number; y: number; sign: number; label: string }[];
   legend?: string;
@@ -214,7 +216,7 @@ let nextDiagram = 0;
         fill="none"
         [attr.marker-end]="'url(#' + markerId + ')'"
       />
-      <text x="113" y="237">+Mz (CCW)</text>
+      <text x="78" y="237">{{ diagram().axisMomentLabel ?? '+Mz (CCW)' }}</text>
     }
     <text
       class="axisLabel"
