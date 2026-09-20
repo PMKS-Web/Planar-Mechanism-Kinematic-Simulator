@@ -731,6 +731,21 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     return joint ? cylinderAtSeal(joint) : undefined;
   }
 
+  /**
+   * Whether the selected body's inertia and center follow its shape, with no
+   * field to type one into (decision S14).
+   *
+   * The Mass Settings section asks this rather than `selectedCylinder`, so it
+   * is quoting the same predicate the linkage table, the analysis setup and
+   * the center-of-mass drag quote. A control offered here and thrown away by
+   * the next decode is worse than no control: the reader has no way to find
+   * out their number is gone.
+   */
+  protected memberMassDerived(): boolean {
+    if (this.activeSrv.objType !== 'Link') return false;
+    return this.mechanismService.memberInertiaIsDerived(this.activeSrv.selectedLink);
+  }
+
   /** The ram's own size and position, read back off its joints. */
   private cylinderSize(sealed: Cylinder) {
     return cylinderSizeOf(sealed, 0.15 * this.settingsService.objectScale);
@@ -1093,17 +1108,15 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   }
 
   /**
-   * What the Visual Settings color field is called, or nothing where there is
-   * none.
+   * What the Visual Settings color field is called: Barrel Color, Rod Color or
+   * Link Color, which is the title's own noun again.
    *
-   * The rod has none: one part, one color — the skin paints the rod from the
-   * barrel's fill (`slider-mark.service.ts`), so a Rod Color field would be a
-   * control that either changed the barrel too or changed nothing at all.
+   * The rod had no field at all while the skin painted it from the barrel — a
+   * control that would have changed the barrel too or changed nothing. It has
+   * one of its own now (S15), and the two are independent in either order.
    */
-  get bodyColorLabel(): string | undefined {
-    const sealed = this.selectedCylinder;
-    if (!sealed) return 'Link Color';
-    return this.activeSrv.selectedLink === sealed.barrel ? 'Barrel Color' : undefined;
+  get bodyColorLabel(): string {
+    return `${this.bodyNoun} Color`;
   }
 
   /** What the Length row's help says on a member, where "two joints" names one nobody sees. */
@@ -1546,6 +1559,8 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
 
     this.onDestroySubscriptions.push(
       this.linkForm.controls['massMoI'].valueChanges.subscribe((val) => {
+        // A member's inertia follows its shape and has no field (decision S14).
+        if (this.memberMassDerived()) return;
         // Typed in the display unit (g·cm² for metric), stored in the unit the
         // solver and every URL are written against (kg·cm²).
         const length = this.settingsService.lengthUnit.getValue();
@@ -2060,6 +2075,10 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   }
 
   private updateLinkCenterOfMass(axis: 'x' | 'y', rawValue: string | null): void {
+    // A member offers no such field (decision S14). The control still exists on
+    // the form, and a form control nothing renders is exactly the kind of door
+    // a later template change reopens by accident.
+    if (this.memberMassDerived()) return;
     const [success, value] = this.nup.parseModelLengthString(
       rawValue ?? '',
       this.settingsService.lengthUnit.getValue()

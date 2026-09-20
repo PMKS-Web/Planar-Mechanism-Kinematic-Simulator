@@ -172,6 +172,66 @@ record(
   radianAngles.map((one) => one.label)
 );
 
+// A member's Length is the member's own span, and its Angle is the part's one
+// bearing (decision D10). Both used to be drawn end joint to end joint, which
+// is what the whole cylinder measures: the rod's field read 0.89 cm and
+// hovering it drew 1.97 cm across the part. So the chip has to read what the
+// field reads, exactly, character for character.
+async function memberChipVersusField(which) {
+  await openMechanism(page, `${BASE}/?${payloads['Cylinder_Boom']}`);
+  await page.locator('.tabButton', { hasText: 'Edit' }).first().click();
+  await page.waitForTimeout(600);
+  await page.evaluate((part) => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const one = grid.mechanismSrv.sealedStructures()[0];
+    grid.activeObjService.updateSelectedObj(part === 'barrel' ? one.barrel : one.rod);
+  }, which);
+  await page.waitForTimeout(700);
+
+  const seen = {};
+  for (const row of ['length', 'angle']) {
+    const field = page.locator(`[data-hold-field="${row}"]`).first();
+    await field.hover({ force: true });
+    await page.waitForTimeout(450);
+    const [drawnNow] = await drawn();
+    seen[row] = {
+      field: (await field.inputValue()).trim(),
+      chip: drawnNow ? drawnNow.label : null,
+    };
+    await page.mouse.move(1400, 900);
+    await page.waitForTimeout(200);
+  }
+  // What the part measures end to end, for the length to be shown *not* to be.
+  seen.span = await page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const one = grid.mechanismSrv.sealedStructures()[0];
+    return grid.nup.formatModelLength(
+      Math.hypot(one.mountB.x - one.mountA.x, one.mountB.y - one.mountA.y),
+      grid.settings.lengthUnit.getValue()
+    );
+  });
+  return seen;
+}
+
+for (const which of ['barrel', 'rod']) {
+  const seen = await memberChipVersusField(which);
+  record(
+    `the ${which}'s length chip reads exactly what its Length field reads`,
+    seen.length.chip === seen.length.field,
+    seen.length
+  );
+  record(
+    `and measures the ${which} rather than the whole cylinder`,
+    seen.length.chip !== seen.span || seen.length.field === seen.span,
+    { ...seen.length, span: seen.span }
+  );
+  record(
+    `the ${which}'s angle chip reads exactly what its Angle field reads`,
+    seen.angle.chip === seen.angle.field,
+    seen.angle
+  );
+}
+
 await page.screenshot({ path: `${OUT}/last.png` });
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
 

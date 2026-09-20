@@ -24,6 +24,7 @@ import {
   derivedInterior,
   cylindersIn,
   cylinderAtSeal,
+  memberInertiaIsDerived,
 } from '../model/cylinder';
 import { Force } from '../model/force';
 import {
@@ -110,6 +111,7 @@ import {
   slotWouldFoldACylinder,
 } from '../model/drop-target';
 import { constrainForceAnchor } from '../model/force-anchor';
+import { OperationRefusal, refuseAttach } from '../model/joint-operation-permission';
 import { redundantlyHeldJointSets } from '../model/rigid-bodies';
 import { MODEL_SCALE } from '../model/render-scale';
 import { labelForBody } from '../model/body-label';
@@ -1966,7 +1968,7 @@ export class MechanismService {
    * ghost to draw and a drag to end. Anything that wants a bar without a
    * gesture — the tutorial doing a step for the student — asks for one here.
    */
-  addBar(from: Coord, to: Coord): RealLink {
+  addBar(from: Coord, to: Coord): RealLink | undefined {
     const first = this.createRevJoint(from.x.toString(), from.y.toString());
     const second = this.createRevJoint(to.x.toString(), to.y.toString(), first.id);
     return this.joinWithBar(first, second, [first, second]);
@@ -1979,13 +1981,42 @@ export class MechanismService {
    * and pushing it a second time gives it two entries and one very confusing
    * delete.
    */
-  addBarFrom(anchor: RealJoint, to: Coord): RealLink {
+  addBarFrom(anchor: RealJoint, to: Coord): RealLink | undefined {
     const far = this.createRevJoint(to.x.toString(), to.y.toString());
     return this.joinWithBar(anchor, far, [far]);
   }
 
+  /**
+   * Why nothing new may be built onto this joint, or `undefined` when something
+   * may — `model/joint-operation-permission.ts`, asked of the drawing.
+   *
+   * The one door every *mutation* goes through, as against the menu's copy,
+   * which only decides what to gray. A rule enforced where it is drawn is a
+   * rule a gesture walks around: a bar begun on bare grid finishes wherever it
+   * is released, and released on a cylinder's seal it welds itself into the rod
+   * — which leaves two bars answering to "the rod", so the lookup finds neither
+   * and the part stops being a cylinder at all.
+   */
+  attachRefusal(part: Joint | Link | undefined): OperationRefusal | undefined {
+    if (!(part instanceof Joint)) return undefined;
+    return refuseAttach(part, { cylinders: this.sealedStructures() });
+  }
+
+  /** Say what a door refused, in the model's own words rather than its own. */
+  private sayRefused(refusal: OperationRefusal): void {
+    this.notify.refusal(refusal.code, refusal.long);
+  }
+
   /** The wiring both of the above share: connect, name, merge, re-solve. */
-  private joinWithBar(first: RealJoint, second: RealJoint, fresh: Joint[]): RealLink {
+  private joinWithBar(first: RealJoint, second: RealJoint, fresh: Joint[]): RealLink | undefined {
+    // Before a single array is touched. Wiring it *is* the damage: once the
+    // bar is on the joint's `links` the cylinder is already gone, and
+    // `finishStructuralEdit` has nothing left to recognize.
+    const closed = this.attachRefusal(first) ?? this.attachRefusal(second);
+    if (closed) {
+      this.sayRefused(closed);
+      return undefined;
+    }
     first.connectedJoints.push(second);
     second.connectedJoints.push(first);
     const link = this.gridUtils.createRealLink(first.id + second.id, [first, second]);
@@ -4542,6 +4573,19 @@ export class MechanismService {
   }
 
   /**
+   * Whether this body's inertia and center of mass are derived from its shape
+   * and cannot be typed (decision S14) — the one predicate every door quotes.
+   *
+   * The Barrel and Rod panels, the linkage table, the analysis setup's table
+   * and the center-of-mass drag on the canvas each used to decide for
+   * themselves what a body would take, which is four chances to offer a
+   * control the decode is going to throw away.
+   */
+  memberInertiaIsDerived(link: Link | undefined): boolean {
+    return memberInertiaIsDerived(this.sealedStructures(), link);
+  }
+
+  /**
    * What the panels call a body: a cylinder part by its role in the machine,
    * a block by the joint it rides on, an ordinary bar by its name — never the
    * internal concatenated id, which names joints a reader cannot even click.
@@ -4598,6 +4642,16 @@ export class MechanismService {
     mountAt?: RealJoint,
     endAt?: RealJoint
   ): void {
+    // Both ends, before anything is built. `endAt` is folded in through
+    // `mergeJoints` further down, which refuses a cylinder's interior in its
+    // own words -- but by then the new part exists and a refusal leaves it
+    // standing with a free end, which is a half-done gesture rather than a
+    // refused one. Asked here, both ends are one answer and nothing is made.
+    const closed = this.attachRefusal(mountAt) ?? this.attachRefusal(endAt);
+    if (closed) {
+      this.sayRefused(closed);
+      return;
+    }
     // A ram may be mounted on a welded joint. The weld says everything meeting
     // there is one rigid body, and the barrel arriving is one more thing
     // meeting there -- so it joins that body, which is what the repair pass at
@@ -4641,6 +4695,12 @@ export class MechanismService {
       barrelNear,
     ]);
     const rod = this.gridUtils.createRealLink([cId, dId].sort().join(''), [slider, rodFar]);
+    // A cylinder starts as one color (S15). Creation hands every new link the
+    // next palette color, so the rod arrived with one of its own that the skin
+    // then ignored; written down here instead, the number on file agrees with
+    // what is drawn, and the palette's next color is still consumed so two
+    // cylinders drawn in a row are not the same color.
+    rod.fill = barrel.fill;
     // Mount first, inner end second: the slot's order is what says which barrel
     // joint is which, and every later reading of this cylinder quotes it (S1).
     slider.slideOn(barrel, barrelFar, barrelNear);

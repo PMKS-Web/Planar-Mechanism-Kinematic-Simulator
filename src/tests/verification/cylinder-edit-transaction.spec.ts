@@ -12,6 +12,8 @@ import { PrisJoint, RealJoint, RevJoint } from '../../app/model/joint';
 import { RealLink } from '../../app/model/link';
 import { Coord } from '../../app/model/coord';
 import { cylindersIn } from '../../app/model/cylinder';
+import { NotificationService } from '../../app/services/notification.service';
+import { SaveHistoryService } from '../../app/services/save-history.service';
 
 /**
  * What the drawing actually looks like after an edit that touches a ram.
@@ -294,5 +296,124 @@ describe('dragging a bracket that is welded to a ram', () => {
     expect(at('W').y).toBeCloseTo(before.w.y + lift, 4);
     expect(leaf.CoM.x).toBeCloseTo(midpoint().x, 4);
     expect(leaf.CoM.y).toBeCloseTo(midpoint().y, 4);
+  });
+});
+
+/**
+ * A cylinder carried by something else is re-laid from *both* of its mounts,
+ * and both of them belong to whatever moved them. So when the fit cannot reach
+ * the span it was handed -- a member is holding its length, or the part is
+ * already as short as one goes -- there is no end left to give, and the whole
+ * gesture is refused. The pose used to go out with the requested mount written
+ * back over the fitted one, which lengthened a rod that was holding its length
+ * and left the drawing contradicting its own fields.
+ */
+describe('a cylinder carried past what it can reach', () => {
+  /** The ram, plus an ordinary bar pinned to the joint at its rod end. */
+  function ramAndNeighborFixture(): MechanismFixture {
+    const base = ramFixture();
+    return {
+      ...base,
+      joints: [...base.joints, { id: 'E', x: 14, y: 0 }],
+      links: [...base.links, { joints: 'DE' }],
+    };
+  }
+
+  function fixLengths(mechanism: MechanismService, sealed: ReturnType<typeof cylindersIn>[0]) {
+    (sealed.barrel as RealLink).hold = 'length';
+    sealed.rod.hold = 'length';
+    mechanism.updateMechanism(false);
+  }
+
+  function refusals() {
+    return vi.spyOn(NotificationService.prototype, 'refusal').mockImplementation(() => {});
+  }
+
+  it('refuses the drag rather than lengthening a rod that is holding its length', () => {
+    const { mechanism, grid, at } = build(ramAndNeighborFixture());
+    const [sealed] = cylindersIn(mechanism.joints);
+    fixLengths(mechanism, sealed);
+    const notify = refusals();
+    const saved = vi.spyOn(SaveHistoryService.prototype, 'save').mockImplementation(() => {});
+
+    const rodBefore = Math.hypot(at('D').x - at('C').x, at('D').y - at('C').y);
+    const before = { d: at('D').x, e: at('E').x, c: at('C').x };
+    const bar = mechanism.links.find((link) => link.id === 'DE')!;
+
+    grid.dragLink(bar, 4000, 0);
+
+    expect(Math.hypot(at('D').x - at('C').x, at('D').y - at('C').y)).toBeCloseTo(rodBefore, 6);
+    expect(sealed.rod.hold).toBe('length');
+    // Nothing moved: not the bar that started it, and not the part it reaches.
+    expect(at('D').x).toBeCloseTo(before.d, 6);
+    expect(at('E').x).toBeCloseTo(before.e, 6);
+    expect(at('C').x).toBeCloseTo(before.c, 6);
+    expect(saved).not.toHaveBeenCalled();
+    expect(notify).toHaveBeenCalled();
+    const [code, text] = notify.mock.calls[0];
+    expect(code).toBe('cylinder.carried-too-far');
+    // The refusal names which fixed value is in the way, by the member's own
+    // two joints, because that is what the reader has a padlock on.
+    expect(text).toContain('Held by fixed length');
+    expect(text).toContain(sealed.rod.id);
+  });
+
+  it('refuses just the same when the part is pushed under its shortest span', () => {
+    // Nothing held at all: the floor is the wall. The overwrite used to be
+    // "repaired" afterwards by a normalizer that no longer exists, so this is
+    // the same class of bug arriving through the other end of the travel.
+    const { mechanism, grid, at } = build(ramAndNeighborFixture());
+    const notify = refusals();
+    const before = { d: at('D').x, c: at('C').x, b: at('B').x };
+    const bar = mechanism.links.find((link) => link.id === 'DE')!;
+
+    grid.dragLink(bar, -(before.d - 10), 0);
+
+    expect(at('D').x).toBeCloseTo(before.d, 6);
+    expect(at('C').x).toBeCloseTo(before.c, 6);
+    expect(at('B').x).toBeCloseTo(before.b, 6);
+    expect(notify).toHaveBeenCalled();
+    expect(notify.mock.calls[0][0]).toBe('cylinder.carried-too-far');
+  });
+
+  it('refuses through a shared mount, where the far part is the one that cannot give', () => {
+    // Two rams end to end: the first's rod mount is the second's barrel mount,
+    // so dragging the first's free end moves a joint the second was never
+    // asked about. The second is the one holding both of its lengths.
+    const first = cylinderBetween({ x: 0, y: 0 }, { x: 10, y: 0 }, 0.5);
+    const second = cylinderBetween({ x: 10, y: 0 }, { x: 20, y: 0 }, 0.5);
+    const { mechanism, grid, at } = build({
+      joints: [
+        { id: 'A', x: 0, y: 0 },
+        { id: 'B', ...first.barrelEnd },
+        { id: 'C', ...first.pin },
+        { id: 'D', x: 10, y: 0 },
+        { id: 'E', ...second.barrelEnd },
+        { id: 'F', ...second.pin },
+        { id: 'G', x: 20, y: 0 },
+      ],
+      links: [{ joints: 'AB' }, { joints: 'CD' }, { joints: 'DE' }, { joints: 'FG' }],
+      sliders: [
+        { at: 'C', on: { carrier: 'AB', a: 'A', b: 'B' }, sealed: true },
+        { at: 'F', on: { carrier: 'DE', a: 'D', b: 'E' }, sealed: true },
+      ],
+      welds: ['C', 'F'],
+      inputAngVel: 1,
+    });
+    const far = cylindersIn(mechanism.joints).find((one) => one.seal.id === 'F')!;
+    fixLengths(mechanism, far);
+    const notify = refusals();
+
+    const rodBefore = Math.hypot(at('G').x - at('F').x, at('G').y - at('F').y);
+    const barrelBefore = Math.hypot(at('E').x - at('D').x, at('E').y - at('D').y);
+    const near = cylindersIn(mechanism.joints).find((one) => one.seal.id === 'C')!;
+
+    grid.dragCylinderMount(near, at('D') as RealJoint, new Coord(-4000, 0));
+
+    expect(Math.hypot(at('G').x - at('F').x, at('G').y - at('F').y)).toBeCloseTo(rodBefore, 6);
+    expect(Math.hypot(at('E').x - at('D').x, at('E').y - at('D').y)).toBeCloseTo(barrelBefore, 6);
+    expect(at('D').x).toBeCloseTo(2000, 6);
+    expect(notify).toHaveBeenCalled();
+    expect(notify.mock.calls[0][0]).toBe('cylinder.carried-too-far');
   });
 });

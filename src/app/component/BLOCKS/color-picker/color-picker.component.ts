@@ -1,6 +1,7 @@
 import { Component, OnChanges, ChangeDetectionStrategy, inject, input } from '@angular/core';
 import { ColorService } from '../../../services/color.service';
 import { RealLink } from '../../../model/link';
+import { paintCylinderMember } from '../../../model/cylinder-skin';
 import { Joint } from '../../../model/joint';
 import { Force } from '../../../model/force';
 import { MechanismService } from '../../../services/mechanism.service';
@@ -70,9 +71,21 @@ export class ColorPickerComponent implements OnChanges {
         (part as Force).color = this.colorService.getForceColorFromIndex(index);
         break;
       default:
-        (part as RealLink).fill = this.colorService.getLinkColorFromIndex(index);
+        this.paintBody(part as RealLink, this.colorService.getLinkColorFromIndex(index));
         break;
     }
+  }
+
+  /**
+   * One body, through the rule that keeps a cylinder's two members apart
+   * (`paintCylinderMember`).
+   *
+   * Every door that recolors a link comes through here -- this panel's own
+   * picker and a whole selection's -- so the rule is stated once. Asked of any
+   * link: all but a cylinder's two are handed straight on.
+   */
+  private paintBody(link: RealLink, color: string): void {
+    paintCylinderMember(link, color, this.mechanism.cylinderOfBar(link));
   }
 
   /** One picker serves whichever part is selected, so the tick is read from it. */
@@ -106,9 +119,15 @@ export class ColorPickerComponent implements OnChanges {
     const force = this.force();
     switch (this.type()) {
       case 'link':
-        if (link) {
-          link.fill = this.colorService.getLinkColorFromIndex(index);
-        }
+        if (!link) break;
+        this.paintBody(link, this.colorService.getLinkColorFromIndex(index));
+        // Undoable and carried in the URL, like the two below it. A link's own
+        // fill has always ridden the URL, but nothing saved at the moment it
+        // changed -- so the color arrived in the address bar on the back of
+        // whatever edit came next, and Undo took that edit and the color with
+        // it. A rod's choice of color is written the same way and needs the
+        // same save.
+        this.mechanism.updateMechanism(true);
         break;
       case 'joint':
         if (!joint) break;

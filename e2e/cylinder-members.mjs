@@ -823,9 +823,14 @@ check(
   card.title === `Edit Rod ${ids.s}${ids.b}` && !!card.length && !!card.angle,
   JSON.stringify({ title: card.title, length: card.length })
 );
+// A color of its own, since decision S15. It was absent while the skin painted
+// the rod in the barrel's fill whatever anyone chose; `cylinder-colors.mjs` is
+// what checks the two fields really are independent.
 check(
-  'with no color field of its own — one part, one color — and the disc grayed',
-  card.colors.length === 0 && card.disc?.grayed === true,
+  'with a Rod Color of its own, and the disc grayed',
+  card.colors.some((label) => /Rod Color/.test(label)) &&
+    !card.colors.some((label) => /Barrel Color/.test(label)) &&
+    card.disc?.grayed === true,
   JSON.stringify({ colors: card.colors, disc: card.disc })
 );
 await page.screenshot({
@@ -1387,6 +1392,146 @@ check(
   cycleFrames.every((frame) => !frame.drawn && !frame.labelled),
   JSON.stringify({ n: cycle.n, drawn: cycleFrames.filter((frame) => frame.drawn).length })
 );
+
+// ---------------------------------------- 13. a link cannot end on the slide
+console.log('\na link cannot end on the slide');
+
+/**
+ * Draw a bar the way a reader does: right-click the grid, choose Add Link, move
+ * to where it should end, and click there.
+ */
+async function drawLinkFrom(from, to) {
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.click(from.x, from.y, { button: 'right' });
+  await page.waitForTimeout(450);
+  await page.locator('.cdk-overlay-container').getByText('Link', { exact: true }).first().click();
+  await page.waitForTimeout(350);
+  for (let i = 1; i <= 10; i++) {
+    await page.mouse.move(from.x + ((to.x - from.x) * i) / 10, from.y + ((to.y - from.y) * i) / 10);
+    await page.waitForTimeout(15);
+  }
+  await page.mouse.click(to.x, to.y);
+  await page.waitForTimeout(700);
+}
+
+/** What a cylinder is made of, counted the way the damage showed up. */
+const partsNow = () =>
+  page.evaluate(() => {
+    const m = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+    return {
+      joints: m.joints.length,
+      links: m.links.length,
+      rams: m.sealedStructures().length,
+      compounds: m.links.filter((link) => (link.subset?.length ?? 0) > 0).length,
+    };
+  });
+
+ids = await oneCylinder();
+const sealNow = await screenAt((await ram()).s);
+const before13 = await partsNow();
+await drawLinkFrom({ x: 400, y: 760 }, sealNow);
+const after13 = await partsNow();
+check(
+  'a bar begun on bare grid and released on the slide builds nothing',
+  after13.joints === before13.joints && after13.links === before13.links,
+  JSON.stringify({ before: before13, after: after13 })
+);
+check(
+  'and the cylinder is still a cylinder afterwards',
+  after13.rams === 1 && after13.compounds === 0,
+  JSON.stringify(after13)
+);
+const saidNo = await page.evaluate(() =>
+  [...document.querySelectorAll('.mat-mdc-snack-bar-label, simple-snack-bar, .notification')]
+    .map((node) => node.textContent.trim())
+    .join(' | ')
+);
+check(
+  'and the reader is told why, in the words the menu grays that row with',
+  /inside a cylinder/i.test(saidNo),
+  saidNo || '(nothing said)'
+);
+await page.screenshot({ path: `${OUT}/13-link-refused-on-the-slide.png` });
+
+// The same gesture at an end joint is the ordinary thing to want, and still is.
+ids = await oneCylinder();
+const endNow = await screenAt((await ram()).b);
+const before13b = await partsNow();
+await drawLinkFrom({ x: 400, y: 760 }, endNow);
+const after13b = await partsNow();
+check(
+  'the same bar lands on the joint at the end, as it always could',
+  after13b.joints === before13b.joints + 1 && after13b.rams === 1,
+  JSON.stringify({ before: before13b, after: after13b })
+);
+
+// ------------------------------------- 14. a fixed member wears its own chip
+console.log('\na fixed member wears its own chip');
+
+/** Every hold chip on the canvas: what it names, what it reads, where it is. */
+const chipsNow = () =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('[data-hold-chip]')].map((node) => {
+      const box = node.getBoundingClientRect();
+      return {
+        id: node.getAttribute('data-hold-chip'),
+        text: node.textContent.trim(),
+        x: Math.round(box.x + box.width / 2),
+        y: Math.round(box.y + box.height / 2),
+      };
+    })
+  );
+
+ids = await oneCylinder();
+await pick('rod');
+await page.locator('[data-hold-toggle="length"]').click();
+await page.waitForTimeout(600);
+const rodChips = await chipsNow();
+check(
+  'fixing the rod’s length puts one chip on the drawing, naming the rod',
+  rodChips.length === 1 && rodChips[0].id === ids.rod,
+  JSON.stringify({ chips: rodChips, rod: ids.rod })
+);
+check(
+  'and it reads what the rod’s own Length field reads',
+  rodChips[0]?.text ===
+    (await page.locator('[data-hold-field="length"]').first().inputValue()).trim(),
+  JSON.stringify({
+    chip: rodChips[0]?.text,
+    field: await page.locator('[data-hold-field="length"]').first().inputValue(),
+  })
+);
+// On the rod's own span -- S to B -- rather than across the whole part. A
+// length chip steps off its bar's midpoint to leave the middle for the name and
+// the center-of-mass mark, so it is the *segment* it has to be on, not the
+// midpoint.
+const spanNow = await ram();
+const sAt = await screenAt(spanNow.s);
+const bAt = await screenAt(spanNow.b);
+const aAt = await screenAt(spanNow.a);
+const along = (point, from, to) => {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const squared = dx * dx + dy * dy;
+  return squared < 1e-9 ? 0 : ((point.x - from.x) * dx + (point.y - from.y) * dy) / squared;
+};
+const onRod = along(rodChips[0], sAt, bAt);
+check(
+  'and it rides the rod’s own span rather than the whole part',
+  onRod >= -0.02 && onRod <= 1.02 && along(rodChips[0], aAt, bAt) > 0.5,
+  JSON.stringify({ chip: rodChips[0], onRod: Math.round(onRod * 100) / 100, sAt, bAt, aAt })
+);
+
+// The angle is the part's, so it is one chip however many members carry it.
+await page.locator('[data-hold-toggle="angle"]').click();
+await page.waitForTimeout(600);
+const bothChips = await chipsNow();
+check(
+  'fixing the angle too gives two chips, not three',
+  bothChips.length === 2,
+  JSON.stringify(bothChips)
+);
+await page.screenshot({ path: `${OUT}/14-member-hold-chips.png` });
 
 // ------------------------------------------------------------------ wrap up
 check('nothing threw', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | '));

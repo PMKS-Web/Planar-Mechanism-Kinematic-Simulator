@@ -244,6 +244,19 @@ export class UrlGenerationService {
         ...this.mechanism.forces
           .filter((force) => !!force.color && force.color !== DEFAULT_FORCE_COLOR)
           .map((force) => 'KF' + force.id + '~' + force.color.replace('#', '')),
+        // A rod asked to wear its own color rather than the barrel's (S15).
+        // The color itself is the link's own `color` field, which every URL has
+        // always carried, so the entry is the request and nothing more -- and
+        // no rod in circulation has made it, which is what keeps every existing
+        // URL byte-identical. Leaves as well as top-level bodies, the same walk
+        // the holds make: a rod welded at its far end is a subset leaf and is
+        // still the rod the skin paints.
+        ...[
+          ...this.mechanism.links,
+          ...this.mechanism.links.flatMap((link) => (link instanceof RealLink ? link.subset : [])),
+        ]
+          .filter((link): link is RealLink => link instanceof RealLink && link.ownColor)
+          .map((link) => 'KR' + link.id),
       ]);
 
       // The synthesis design, if one is being worked on. It is not part of the

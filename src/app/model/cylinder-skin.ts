@@ -13,6 +13,68 @@
 
 import { Cylinder, isCylinderInner } from './cylinder';
 import { Joint } from './joint';
+import { RealLink } from './link';
+
+/** What a member is painted with when its own record says nothing readable. */
+const NO_FILL = '#000000';
+
+/** The ink the barrel is drawn in: its own, like any other bar. */
+export function barrelFillOf(cylinder: Cylinder): string {
+  return (cylinder.barrel as RealLink).fill ?? NO_FILL;
+}
+
+/**
+ * The ink the rod is drawn in: the barrel's, until somebody gave the rod one
+ * of its own (decision S15).
+ *
+ * The rod has always carried a fill — creation hands every new link the next
+ * palette color — and the skin has always ignored it, painting both members
+ * from the barrel. So every cylinder in circulation stores a rod color that
+ * has never been drawn, and reading it now would repaint every shared link and
+ * every library card. `ownColor` is the difference between a number on file
+ * and a choice somebody made, and this is the one place the two are told
+ * apart: everything that paints, previews or exports a rod asks here.
+ */
+export function rodFillOf(cylinder: Cylinder): string {
+  return cylinder.rod.ownColor ? (cylinder.rod.fill ?? NO_FILL) : barrelFillOf(cylinder);
+}
+
+/**
+ * Paint one body, and leave the other member of its cylinder alone.
+ *
+ * The one rule, so the Edit panel, a multi-selection and anything else that
+ * recolors cannot disagree about it. Two halves:
+ *
+ * - **The rod** takes the color and keeps it: from here on it is drawn from
+ *   its own record whatever the barrel does.
+ * - **The barrel**, on a cylinder whose rod has made no choice, first hands the
+ *   rod the color it is standing in — the barrel's, *before* this change — and
+ *   only then takes the new one. The rod is left looking exactly as it did,
+ *   which is what "changing one never drags the other along" means when one of
+ *   them is being drawn in the other's ink.
+ *
+ * `cylinder` is whichever cylinder this body is a bar of, or nothing for an
+ * ordinary link — which is every link but two, and for which this is a plain
+ * assignment.
+ */
+export function paintCylinderMember(
+  link: RealLink,
+  color: string,
+  cylinder: Cylinder | undefined
+): void {
+  // By id, which is how every other consumer names a member
+  // (`cylinderOfBarIn`): a compound's leaf and a solved sample are copies of
+  // the editable bar, so the record a caller holds need not be that object.
+  if (cylinder) {
+    if (link.id === cylinder.rod.id) {
+      cylinder.rod.ownColor = true;
+    } else if (link.id === cylinder.barrel.id && !cylinder.rod.ownColor) {
+      cylinder.rod.fill = barrelFillOf(cylinder);
+      cylinder.rod.ownColor = true;
+    }
+  }
+  link.fill = color;
+}
 
 /** As much of a drawn cylinder as this question needs. */
 export interface SkinnedCylinder {

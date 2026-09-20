@@ -19,7 +19,7 @@
     @if (addInput()) {
       <mat-form-field
         class="customInputForm"
-        (click)="disableInput() ? null : field.select()"
+        (click)="disableInput() ? null : selectAll(field)"
         (mouseenter)="setMouseOver(true)"
         (mouseleave)="setMouseOver(false)"
       >

@@ -139,6 +139,69 @@ out.afterUndo = await reading();
 out.errs = errs;
 console.log(JSON.stringify(out, null, 2));
 
+// 6 · clicking a field selects what is in it, so the next keystroke replaces
+//     the value. `select()` on the click is not enough on a field that already
+//     has focus: the browser sets the caret that click asks for *after* the
+//     handler runs, so the second click on the Length field read as doing
+//     nothing at all.
+/** Click a field twice, a second apart, and say what was selected each time. */
+async function clickTwice(selector) {
+  const box = await page.locator(selector).first().boundingBox();
+  if (!box) return { first: null, second: null };
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  const state = () =>
+    page.evaluate((one) => {
+      const field = document.querySelector(one);
+      return field ? `${field.selectionStart}-${field.selectionEnd}/${field.value.length}` : null;
+    }, selector);
+  await page.mouse.move(x, y);
+  await page.waitForTimeout(300);
+  await page.mouse.down();
+  await page.waitForTimeout(80);
+  await page.mouse.up();
+  await page.waitForTimeout(350);
+  const first = await state();
+  await page.waitForTimeout(900);
+  await page.mouse.down();
+  await page.waitForTimeout(80);
+  await page.mouse.up();
+  await page.waitForTimeout(350);
+  return { first, second: await state() };
+}
+
+const selects = {};
+await load('barrel');
+selects.barrelLength = await clickTwice('[data-hold-field="length"]');
+await load('barrel');
+selects.barrelAngle = await clickTwice('[data-hold-field="angle"]');
+await load('seal');
+selects.startsAt = await clickTwice('[data-field="cylinderStart"]');
+await load('seal');
+selects.sliderAngle = await clickTwice('[data-field="sliderAngle"]');
+const wholeValue = (seen) => seen.first === seen.second && /^0-(\d+)\/\1$/.test(seen.first ?? '');
+
+// 7 · a member's Mass Settings offers Mass and nothing else (decision S14).
+//     Its inertia and its center follow its own shape, and the decode clears
+//     both custom flags on every cylinder member -- so a field for either would
+//     be promising to keep a number the next reload throws away.
+await load('barrel');
+await page.locator('collapsible-subsection', { hasText: 'Mass Settings' }).first().click();
+await page.waitForTimeout(500);
+const massArea = await page.evaluate(() => {
+  const area = document.querySelector('app-edit-panel .massArea');
+  if (!area) return null;
+  return {
+    fields: [...area.querySelectorAll('input')].map((one) =>
+      (one.closest('input-block, state-input') ?? one).textContent.trim().slice(0, 24)
+    ),
+    note: area.querySelector('.massNote')?.textContent.replace(/\s+/g, ' ').trim() ?? '',
+    legend: !!area.querySelector('.dotLegend'),
+    comRow: !!area.querySelector('.comPairRow'),
+    moi: !!area.querySelector('.moiBlock'),
+  };
+});
+
 const checks = [
   [
     'emptying the percentage moves nothing',
@@ -158,8 +221,26 @@ const checks = [
       Math.abs(out.afterUndo.barrel - out.beforeUndo.barrel) < 0.5 &&
       out.afterUndo.alive,
   ],
+  [
+    'clicking a member’s Length or Angle selects it, twice running',
+    wholeValue(selects.barrelLength) && wholeValue(selects.barrelAngle),
+  ],
+  [
+    'and so do the slide’s Starts at and Slider Angle',
+    wholeValue(selects.startsAt) && wholeValue(selects.sliderAngle),
+  ],
+  [
+    'a member’s Mass Settings offers Mass alone, and says why',
+    !!massArea &&
+      massArea.fields.length === 1 &&
+      !massArea.legend &&
+      !massArea.comRow &&
+      !massArea.moi &&
+      /computed from its own shape/.test(massArea.note),
+  ],
   ['nothing threw', errs.length === 0],
 ];
 for (const [what, ok] of checks) console.log(`${ok ? 'PASS' : 'FAIL'}  ${what}`);
+if (checks.some(([, ok]) => !ok)) console.log(JSON.stringify({ selects, massArea }, null, 2));
 await ctx.close();
 process.exit(checks.every(([, ok]) => ok) ? 0 : 1);

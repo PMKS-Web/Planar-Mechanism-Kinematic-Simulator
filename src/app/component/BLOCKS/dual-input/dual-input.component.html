@@ -25,7 +25,7 @@
       <mat-form-field
         class="customInputForm"
         formGroupName="{{ formSubGroup }}"
-        (click)="field1.select()"
+        (click)="selectAll(field1)"
         (mouseenter)="hover(1, true)"
         (mouseleave)="hover(1, false)"
         (focusin)="focus(1, true)"
@@ -53,7 +53,7 @@
       <mat-form-field
         class="customInputForm"
         formGroupName="{{ formSubGroup }}"
-        (click)="field2.select()"
+        (click)="selectAll(field2)"
         (mouseenter)="hover(2, true)"
         (mouseleave)="hover(2, false)"
         (focusin)="focus(2, true)"
@@ -77,7 +77,7 @@
       <span class="label {{ disabled() ? 'disabled' : '' }}">{{ label1() }}</span>
       <mat-form-field
         class="customInputForm"
-        (click)="field1.select()"
+        (click)="selectAll(field1)"
         (mouseenter)="hover(1, true)"
         (mouseleave)="hover(1, false)"
         (focusin)="focus(1, true)"
@@ -104,7 +104,7 @@
       >
       <mat-form-field
         class="customInputForm"
-        (click)="field2.select()"
+        (click)="selectAll(field2)"
         (mouseenter)="hover(2, true)"
         (mouseleave)="hover(2, false)"
         (focusin)="focus(2, true)"

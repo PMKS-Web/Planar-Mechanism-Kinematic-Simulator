@@ -112,10 +112,15 @@ export function refuseJointOperation(
  *
  * Exported as well as reachable through `refuseJointOperation`, because the
  * Attach rows ask about one thing and have no type change to walk.
+ *
+ * Takes the cylinders alone rather than the whole context: what is driven and
+ * what already carries a block are facts about *other* edits, and asking a
+ * mutation to invent them in order to ask this question is how a rule ends up
+ * enforced only where a menu happens to have a context to hand.
  */
 export function refuseAttach(
   joint: Joint | undefined,
-  context: JointOperationContext
+  context: Pick<JointOperationContext, 'cylinders'>
 ): OperationRefusal | undefined {
   if (!(joint instanceof RealJoint)) return undefined;
   if (cylindersEnclosing(context.cylinders, joint).length === 0) return undefined;

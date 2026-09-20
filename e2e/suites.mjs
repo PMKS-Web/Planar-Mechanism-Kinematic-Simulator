@@ -47,6 +47,7 @@ export const SUITES = [
   },
   { name: 'creation-previews', seconds: 27, lanes: BOTH },
   { name: 'cylinder-attach', seconds: 11, lanes: BOTH },
+  { name: 'cylinder-colors', seconds: 18, lanes: BOTH },
   { name: 'cylinder-drag', seconds: 12, lanes: BOTH },
   { name: 'cylinder-end-on-joint', seconds: 4, lanes: BOTH },
   { name: 'cylinder-members', seconds: 67, lanes: BOTH },

@@ -266,6 +266,11 @@ Not suites — import them from one.
   in one undo step.
 - `cylinder-attach.mjs` — dragging a mount onto a linkage attaches it without deleting the
   cylinder.
+- `cylinder-colors.mjs` — the barrel and the rod are colored independently (S15): a new cylinder
+  is one color, Rod Color moves the rod alone, Barrel Color on a rod that has chosen nothing
+  leaves it in the color it was standing in, each is one undo step, a reload from the URL keeps
+  both, and `Cylinder_Boom` still opens in the one color it always has. Screenshots to
+  `artifacts/cylinder-colors/`.
 - `cylinder-end-on-joint.mjs` — ending the cylinder gesture on a joint attaches the rod there.
 - `cylinder-drag.mjs` — dragging a mount slides the piston within its travel, then grows or
   shrinks the ram past its stops.

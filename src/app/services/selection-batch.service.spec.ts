@@ -2,6 +2,7 @@ import '../model/joint';
 import { runInInjectionContext } from '@angular/core';
 import { Coord } from '../model/coord';
 import { cylindersIn } from '../model/cylinder';
+import { paintCylinderMember, rodFillOf } from '../model/cylinder-skin';
 import { Force } from '../model/force';
 import { Joint, PrisJoint, RevJoint } from '../model/joint';
 import { RealLink } from '../model/link';
@@ -267,6 +268,33 @@ describe('SelectionBatchService duplication', () => {
     expect(copy.inner.id).toBe(`${copy.mountA.id}1`);
     expect(h.service.determineNextLetter()).toBe('G');
   });
+
+  for (const recolored of [false, true]) {
+    it(`copies a cylinder whose rod ${recolored ? 'was' : 'was not'} recolored, as it is drawn`, () => {
+      // Whether the rod's fill is a choice or a number nobody has drawn is
+      // carried by a flag, not by the color (decision S15), so a copy that
+      // took only the color would come back in the wrong one either way.
+      const h = createMechanismHarness();
+      h.service.createCylinderFrom(new Coord(0, 0), new Coord(600, 0));
+      const original = cylindersIn(h.service.joints)[0];
+      paintCylinderMember(original.rod, '#b2dfdb', recolored ? original : undefined);
+      const batch = runInInjectionContext(h.injector, () => new SelectionBatchService());
+
+      batch.duplicateSelected(
+        [
+          { kind: 'link', id: original.barrel.id },
+          { kind: 'link', id: original.rod.id },
+        ],
+        { x: 0, y: 100 }
+      );
+
+      const copy = cylindersIn(h.service.joints).find(
+        (candidate) => candidate.seal !== original.seal
+      )!;
+      expect(copy.rod.ownColor).toBe(recolored);
+      expect(rodFillOf(copy)).toBe(rodFillOf(original));
+    });
+  }
 });
 
 describe('SelectionBatchService deletion', () => {
