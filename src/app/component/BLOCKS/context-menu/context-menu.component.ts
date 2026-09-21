@@ -16,7 +16,8 @@ import {
   MENU_STACK,
 } from '@angular/cdk/menu';
 import { MatIcon } from '@angular/material/icon';
-import { MatTooltip } from '@angular/material/tooltip';
+import { MatTooltip, TooltipPosition } from '@angular/material/tooltip';
+import { TOOLTIPS_ARE_LABELS } from '../tooltips-are-labels';
 import {
   ContextMenuModel,
   MenuChoice,
@@ -27,6 +28,16 @@ import {
   lastContextMenuWasKeyboard,
   menuIsEmpty,
 } from './menu-model';
+
+/**
+ * How many values of the choice share a row.
+ *
+ * The stylesheet is where it happens -- `.cm-choice__cell` takes half the grid
+ * minus a gap -- and this is the same number said where the component can read
+ * it, so that "which column is this value in" is arithmetic rather than a guess
+ * at four.
+ */
+const CHOICE_COLUMNS = 2;
 
 /**
  * The right-click menu.
@@ -41,6 +52,7 @@ import {
   styleUrls: ['./context-menu.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [CdkMenu, CdkMenuGroup, CdkMenuItem, CdkMenuItemRadio, MatIcon, MatTooltip],
+  providers: [TOOLTIPS_ARE_LABELS],
 })
 export class ContextMenuComponent {
   readonly model = input<ContextMenuModel>({ groups: [] });
@@ -179,6 +191,25 @@ export class ContextMenuComponent {
   hoverTextFor(choice: MenuChoice, option: MenuChoiceOption, index: number): string {
     if (option.refusal) return option.refusal.long ?? option.refusal.short;
     return index === choice.chosen ? (choice.fault?.long ?? '') : '';
+  }
+
+  /**
+   * Which side of the card a value's reason opens on: outward, away from the
+   * card, so that it lies over neither the value beside it nor the ladder
+   * below.
+   *
+   * The whole grid used to open to the right, which for the left column is the
+   * right column: pointing at a grayed Pin-in-slot covered Prismatic and
+   * Welded, and the press meant for one of them landed on the reason. The
+   * panel's own card is 212px and a tooltip is 200, so by column is the rule
+   * that fits -- the reason clears the card on whichever side it went out.
+   *
+   * The Edit panel's control answers the same question by row (`sideFor` in
+   * `segmented-block`), because its neighbours are above and below it and a
+   * panel has no room to either side. Same rule, different geometry.
+   */
+  protected reasonSide(index: number): TooltipPosition {
+    return index % CHOICE_COLUMNS === 0 ? 'left' : 'right';
   }
 
   cross(crossing: MenuCrossing): void {
