@@ -147,6 +147,11 @@ Not suites — import them from one.
   click. Slow; `ONLY=4-Bar,Cylinder_Boom` narrows it.
 - `gallery-sweep.mjs` — every mechanism in `docs/fixture-urls.md` opened in the app: it decodes,
   reports the mobility its spec says, precomputes a cycle, and animates. Slow.
+- `hidden-joint-audit.mjs` — a cylinder's buried inner end is never named anywhere a reader can
+  read. Sweeps `innerText`, `aria-label`, `title`, `alt` and SVG `<text>`/`<title>` across all four
+  modes, every selection, every right-click card, the right drawer and the exported CSV, JSON and
+  DXF, and matches against the interior names read off the drawing itself. Harvests land in
+  `artifacts/hidden-joint-audit/`; `ONLY=<fixture words>` narrows it.
 - `multi-mechanism-smoke.mjs` — the app boots, and the running service finds more than one
   machine in drawings that hold several.
 - `force-status-survey.mjs` — investigation script: prints what force analysis says for each

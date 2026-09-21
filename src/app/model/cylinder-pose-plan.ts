@@ -30,7 +30,7 @@
  */
 
 import { Cylinder, CylinderPose } from './cylinder';
-import { Joint } from './joint';
+import { Joint, RealJoint } from './joint';
 import { Link, RealLink } from './link';
 
 export interface Point {
@@ -92,9 +92,31 @@ export interface EditRequest {
   poses?: { cylinder: Cylinder; pose: CylinderPose }[];
 }
 
+/**
+ * What a reader calls the things a refusal has to name.
+ *
+ * Nothing here can work it out for itself. A link's id is the sorted letters of
+ * its joints, and one of those letters may be a cylinder's buried inner end --
+ * so a refusal built from ids offered the reader `CC1F`, a body named after a
+ * joint the drawing never draws and they cannot click. The service knows the
+ * reader's names (`MechanismService.bodyLabel` / `visibleBodyName`, decisions
+ * S10, S11 and S16), so it says them and every id that reaches a sentence here
+ * comes through this.
+ */
+export interface EditNames {
+  /** A body as a complete noun phrase: `Link CF`, `Barrel CE`, `Rod ED`. */
+  body: (body: Link) => string;
+  /** A whole cylinder the same way, by its two end joints: `Cylinder CD`. */
+  cylinder: (cylinder: Cylinder) => string;
+  /** A joint by the letter it wears, or the name somebody typed on it. */
+  joint: (id: string) => string;
+}
+
 export interface EditContext {
   cylinders: Cylinder[];
   snapshot: PoseSnapshot;
+  /** What to call a body, a cylinder and a joint in anything said out loud. */
+  names: EditNames;
   /** A carried ram's own layout, from where its two mounts have been put. */
   layoutFor: (cylinder: Cylinder, mountA: Point, mountB: Point) => CylinderPose | undefined;
   /** How far two answers for one point may differ and still be one answer. */
@@ -186,6 +208,8 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
   const reshapedRams = new Set<string>();
   const affectedRoots = new Map<string, Link>();
   let unreachable: Cylinder | undefined;
+  /** How far apart the layout was asked to put that part's two end joints. */
+  let unreachableSpan: number | undefined;
   let fused: Cylinder | undefined;
   let denied: string | undefined;
 
@@ -193,29 +217,58 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
   const now = (id: string): Point | undefined => placements.get(id) ?? at(id);
   const near = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y) <= context.tolerance;
   const spanOf = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
+  /** A motion that leaves the body it carries exactly where it stands. */
+  const stationary = (move: Rigid) =>
+    near(move.pivot, move.to) &&
+    Math.abs(move.cos - 1) <= context.tolerance &&
+    Math.abs(move.sin) <= context.tolerance;
+  const sameMove = (a: Rigid, b: Rigid) =>
+    near(a.pivot, b.pivot) &&
+    near(a.to, b.to) &&
+    Math.abs(a.cos - b.cos) <= context.tolerance &&
+    Math.abs(a.sin - b.sin) <= context.tolerance;
 
   /**
-   * One refusal for the whole class of "the part cannot be that length".
+   * One code for the class of "the part cannot be where that leaves it", and
+   * four different things to say inside it.
    *
    * Two doors reach it — a carried layout that answered with nothing, and the
-   * settled drawing failing the check below — and they are the same news, so
-   * they say it in the same words and under the same code.
+   * settled drawing failing the check below — and they were one sentence,
+   * "Moving this would stretch AB past what it can reach", which named no
+   * number the reader could release and no move they could make instead. Which
+   * of the four it is *is* knowable here: a member fixed at its length is the
+   * caller's `heldBy`, and the other three are read off the span the layout was
+   * handed.
    */
-  const cannotReach = (one: Cylinder): EditPlanResult => {
+  const cannotReach = (
+    one: Cylinder,
+    because: 'held' | 'closed' | 'nowhere' | 'overruled'
+  ): EditPlanResult => {
     const held = context.heldBy?.(one);
-    // The part by its two ends, which is what a cylinder is called everywhere
-    // else (S10). It was the barrel leaf's id -- and that id holds N, the
-    // buried inner end, so the refusal named a joint the drawing never shows.
-    const named = (joint: { name: string; id: string }) => joint.name || joint.id;
-    const part = `${named(one.mountA)}${named(one.mountB)}`;
+    const part = context.names.cylinder(one);
+    const ends = `joint ${context.names.joint(one.mountA.id)} or joint ${context.names.joint(
+      one.mountB.id
+    )}`;
+    const why = () => {
+      if (held) {
+        // "Held by fixed length Rod BC" — the app's own words for a hold, so a
+        // refusal here and the padlock in the panel name the same number.
+        return `${held}, so ${part} cannot change length to follow this edit. Release what is holding it, or move its other end instead.`;
+      }
+      if (because === 'nowhere') {
+        return `${part} cannot follow this edit: it would put both of its end joints on one point, and a cylinder needs a direction to lie along. Move one of them somewhere else.`;
+      }
+      if (because === 'closed') {
+        return `${part} is already closed as far as it goes, and this edit would bring its two end joints closer still. Move it the other way, or give its barrel a shorter length first.`;
+      }
+      return `${part} cannot follow this edit: another body in the drawing needs one of its joints somewhere the part cannot reach. Unweld ${ends}, or move one part at a time.`;
+    };
     return {
       ok: false,
       refusal: {
         code: 'cylinder.carried-too-far',
         short: 'a cylinder cannot follow',
-        long: held
-          ? `${held}, so moving this would stretch ${part} past what it can reach. Release it first.`
-          : `Moving this would stretch ${part} past what it can reach.`,
+        long: why(),
       },
     };
   };
@@ -232,15 +285,55 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
     return true;
   };
 
+  /**
+   * Every joint some cylinder works out for itself: N and S, of all of them.
+   *
+   * These are derived from their own part's two mounts, whatever body they
+   * happen to sit in, and each is written by that part's own pose below. A
+   * body carrying them rigidly is carrying the *bracket* they are welded into,
+   * and a bracket has no opinion about how long the ram inside it is.
+   *
+   * This used to be each ram's own two, worked out inside `settle` -- which is
+   * the same thing exactly as long as no two rams share a body. Weld two
+   * barrels into one bracket and it stops being the same thing: laying out the
+   * first ram put its N where the new length wanted it, placing the mount they
+   * share woke the second, and the second carried that bracket -- N and all --
+   * back to where it had started. The check below then found the ram the reader
+   * had just resized was not the length they typed and said it could not reach.
+   */
+  const derivedByARam = new Set(context.cylinders.flatMap((one) => [one.inner.id, one.seal.id]));
+
   /** Which rams hang off each mount, so a moved joint knows who to wake. */
   const ramsAtMount = new Map<string, Cylinder[]>();
+  /** And which ram each member bar belongs to, so a carried body knows too. */
+  const ramsOfBar = new Map<string, Cylinder[]>();
   for (const cylinder of context.cylinders) {
     for (const mount of [cylinder.mountA, cylinder.mountB]) {
       const list = ramsAtMount.get(mount.id) ?? [];
       list.push(cylinder);
       ramsAtMount.set(mount.id, list);
     }
+    for (const bar of [cylinder.barrel, cylinder.rod]) {
+      const list = ramsOfBar.get(bar.id) ?? [];
+      list.push(cylinder);
+      ramsOfBar.set(bar.id, list);
+    }
   }
+
+  // --- propagate in dependency order ---------------------------------------
+  //
+  // A worklist rather than repeated sweeps over the whole list. A ram is
+  // revisited exactly when one of its mounts moves, so a chain settles in one
+  // pass however the cylinders happen to be enumerated; sweeping in a fixed
+  // order propagated one link of a reversed chain per round and gave up on a
+  // long one, calling a perfectly ordinary edit a conflict.
+  const queue: Cylinder[] = [];
+  const waiting = new Set<string>();
+  const wake = (cylinder: Cylinder) => {
+    if (waiting.has(cylinder.seal.id)) return;
+    waiting.add(cylinder.seal.id);
+    queue.push(cylinder);
+  };
 
   // A block used to need settling here: it was zero-length, so its two joints
   // were one point, and a block bolted to a *mount* belonged to no cylinder body
@@ -254,6 +347,43 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
    */
   const settled = new Map<string, { cylinder: Cylinder; pose: CylinderPose }>();
 
+  /**
+   * The rigid motion a ram is already riding, when one is.
+   *
+   * A ram whose own barrel is a leaf of a body this edit is carrying has
+   * already been told where to go: the body it is bolted inside decided, and
+   * the rod goes with the barrel it slides in. Re-laying it between its two
+   * mounts instead reads the far end's *old* position as a constraint, which
+   * for two barrels welded into one bracket meant the second ram writing the
+   * bracket back flat over the turn the first one had just been given.
+   *
+   * Only one side, and only a free far end. Carried on both sides, each end has
+   * been placed by a body of its own and the part between them is re-laid, as
+   * it always was; and a far end pinned to something else, or to the world, is
+   * a constraint the ride would quietly tear off.
+   */
+  const ridingOn = (cylinder: Cylinder): Rigid | undefined => {
+    const onBarrel = carried.get(cylinder.barrel.id)?.move;
+    if (!onBarrel || carried.has(cylinder.rod.id)) return undefined;
+    const far = cylinder.mountB;
+    if (far instanceof RealJoint && (far.ground || far.locked)) return undefined;
+    const elsewhere =
+      far instanceof RealJoint && far.links.some((link) => link.id !== cylinder.rodRoot.id);
+    return elsewhere ? undefined : onBarrel;
+  };
+
+  /** That ride as a pose: the part's four points, carried and nothing else. */
+  const carriedPose = (cylinder: Cylinder, move: Rigid): CylinderPose | undefined => {
+    const corners = [cylinder.mountA, cylinder.inner, cylinder.seal, cylinder.mountB].map((joint) =>
+      at(joint.id)
+    );
+    if (corners.some((corner) => !corner)) return undefined;
+    const [mountA, inner, seal, mountB] = corners.map((corner) => carryPoint(move, corner!));
+    // No `lengths`: this is a rigid motion of a part already drawn, which
+    // declares none and is measured against itself.
+    return { mountA, inner, seal, mountB };
+  };
+
   /** Lay out one ram and carry its two bodies. Returns the ids that moved. */
   const settle = (cylinder: Cylinder): string[] => {
     const changed: string[] = [];
@@ -265,10 +395,16 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
     const wasSeal = at(cylinder.seal.id);
     if (!wasMountA || !wasInner || !wasMountB || !wasSeal) return changed;
 
+    const ride = askedFor ? undefined : ridingOn(cylinder);
     const pose =
-      askedFor ?? context.layoutFor(cylinder, now(cylinder.mountA.id)!, now(cylinder.mountB.id)!);
+      askedFor ??
+      (ride && carriedPose(cylinder, ride)) ??
+      context.layoutFor(cylinder, now(cylinder.mountA.id)!, now(cylinder.mountB.id)!);
     if (!pose) {
       unreachable = cylinder;
+      // How far apart the layout was asked to hold the two ends, which is what
+      // tells "on one point" from "shorter than the part closes to".
+      unreachableSpan = spanOf(now(cylinder.mountA.id)!, now(cylinder.mountB.id)!);
       return changed;
     }
     settled.set(cylinder.seal.id, { cylinder, pose });
@@ -288,7 +424,6 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
       }
     }
 
-    const interior = new Set([cylinder.inner.id, cylinder.seal.id]);
     const sides: [Link, Rigid | undefined, Joint, Point][] = [
       [
         cylinder.barrelRoot,
@@ -310,9 +445,23 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
         if (put(mount.id, to)) changed.push(mount.id);
         continue;
       }
-      for (const leaf of leavesOfBody(root)) carried.set(leaf.id, { leaf, move });
+      for (const leaf of leavesOfBody(root)) {
+        const before = carried.get(leaf.id)?.move;
+        carried.set(leaf.id, { leaf, move });
+        // A ram inside this body has just been moved by it, whether or not any
+        // of its own joints did, so it has to be asked where that leaves it --
+        // but only when the motion is news. A body that is standing still, or
+        // that is being carried through the motion it was already being carried
+        // through, has told it nothing, and two rams inside one bracket would
+        // otherwise wake each other over the same rotation until the visit
+        // limit called an ordinary turn a conflict.
+        if (stationary(move) || (before && sameMove(before, move))) continue;
+        for (const rider of ramsOfBar.get(leaf.id) ?? []) {
+          if (rider.seal.id !== cylinder.seal.id) wake(rider);
+        }
+      }
       for (const joint of jointsOfBody(root)) {
-        if (interior.has(joint.id)) continue;
+        if (derivedByARam.has(joint.id)) continue;
         const was = at(joint.id);
         if (was && put(joint.id, carryPoint(move, was))) changed.push(joint.id);
       }
@@ -342,20 +491,6 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
     return changed;
   };
 
-  // --- propagate in dependency order ---------------------------------------
-  //
-  // A worklist rather than repeated sweeps over the whole list. A ram is
-  // revisited exactly when one of its mounts moves, so a chain settles in one
-  // pass however the cylinders happen to be enumerated; sweeping in a fixed
-  // order propagated one link of a reversed chain per round and gave up on a
-  // long one, calling a perfectly ordinary edit a conflict.
-  const queue: Cylinder[] = [];
-  const waiting = new Set<string>();
-  const wake = (cylinder: Cylinder) => {
-    if (waiting.has(cylinder.seal.id)) return;
-    waiting.add(cylinder.seal.id);
-    queue.push(cylinder);
-  };
   (request.poses ?? []).forEach(({ cylinder }) => wake(cylinder));
   for (const id of placements.keys()) (ramsAtMount.get(id) ?? []).forEach(wake);
 
@@ -370,7 +505,7 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
         refusal: {
           code: 'cylinder.pose-conflict',
           short: 'parts disagree',
-          long: 'The parts here cannot all be where this edit would put them.',
+          long: 'The cylinders here each depend on where the others end up, so this edit has no one answer. Move one of them at a time.',
         },
       };
     }
@@ -378,28 +513,29 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
     waiting.delete(cylinder.seal.id);
     const moved = settle(cylinder);
     if (fused) {
-      return {
-        ok: false,
-        refusal: {
-          code: 'cylinder.both-ends-fused',
-          short: 'both ends are fused',
-          long: `Both mounts of ${fused.barrel.id} are welded into one body, so it has nothing to extend against. Unweld one of them, or move the body without stretching the ram.`,
-        },
-      };
+      return { ok: false, refusal: bothEndsFused(fused, fused.barrelRoot, context) };
     }
-    if (unreachable) return cannotReach(unreachable);
+    if (unreachable) {
+      // Coincident ends have no axis to lie along; anything further apart than
+      // that was a span the part could not shrink to.
+      const nowhere = (unreachableSpan ?? 0) <= context.tolerance;
+      return cannotReach(unreachable, nowhere ? 'nowhere' : 'closed');
+    }
     moved.forEach((id) => (ramsAtMount.get(id) ?? []).forEach(wake));
   }
 
   // --- what the settled drawing has to satisfy ------------------------------
 
   if (denied) {
+    const pulling = ramsAtMount.get(denied) ?? [];
+    const by =
+      pulling.length > 0 ? context.names.cylinder(pulling[0]) : 'a cylinder attached to it';
     return {
       ok: false,
       refusal: {
         code: 'cylinder.pose-conflict',
         short: 'parts disagree',
-        long: `This would need joint ${denied} in two places at once: where the drag puts it, and where a cylinder attached to it needs it.`,
+        long: `This edit needs joint ${context.names.joint(denied)} in two places at once: where it is being moved to, and where ${by} has to have it. Move one of them at a time.`,
       },
     };
   }
@@ -415,7 +551,7 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
         refusal: {
           code: 'cylinder.pose-locked',
           short: 'a lock holds it',
-          long: `Moving this would move joint ${id}, which is locked. Unlock it first.`,
+          long: `This edit would move joint ${context.names.joint(id)}, and a Lock is holding it where it is. Unlock that joint, or move something the Lock does not reach.`,
         },
       };
     }
@@ -443,7 +579,7 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
     };
     const off = (placed: number, wanted: number) => Math.abs(placed - wanted) > context.tolerance;
     if (off(spanOf(a, n), meant.barrel) || off(spanOf(s, b), meant.rod)) {
-      return cannotReach(cylinder);
+      return cannotReach(cylinder, 'overruled');
     }
   }
 
@@ -527,18 +663,89 @@ function rigidityRefusal(
   const wrong = (a: Point, b: Point) =>
     Math.hypot(a.x - b.x, a.y - b.y) > Math.max(context.tolerance, widest * 1e-6);
   if (!move || wrong(carryPoint(move, points[second].was), points[second].to)) {
-    return shapeRefusal(root);
+    return shapeRefusal(root, context);
   }
   for (const point of points) {
-    if (wrong(carryPoint(move, point.was), point.to)) return shapeRefusal(root);
+    if (wrong(carryPoint(move, point.was), point.to)) return shapeRefusal(root, context);
   }
   return undefined;
 }
 
-function shapeRefusal(root: Link): PosePlanRefusal {
+/** A joint two bodies both hold, which is the pin tying them to each other. */
+function jointBothHold(one: Link, other: Link, apartFrom: ReadonlySet<string>): string | undefined {
+  const mine = new Set(jointsOfBody(one).map((joint) => joint.id));
+  return jointsOfBody(other).find((joint) => mine.has(joint.id) && !apartFrom.has(joint.id))?.id;
+}
+
+/**
+ * Both end joints of one cylinder inside one rigid body: it can be moved, it
+ * cannot be extended, and the way out is to unweld one of its ends.
+ */
+function bothEndsFused(ram: Cylinder, body: Link, context: EditContext): PosePlanRefusal {
   return {
     code: 'cylinder.both-ends-fused',
+    short: 'both ends are in one body',
+    long: `${context.names.cylinder(ram)} cannot change length: both of its end joints are welded into ${context.names.body(
+      body
+    )}, which is one rigid body, so nothing can move them apart. Unweld joint ${context.names.joint(
+      ram.mountA.id
+    )} or joint ${context.names.joint(ram.mountB.id)} first.`,
+  };
+}
+
+/**
+ * Why a body this edit would pull out of shape cannot be pulled out of shape.
+ *
+ * Three different facts used to share one sentence, and the sentence was only
+ * ever true of the first of them: it told a reader whose cylinder sat between
+ * *two* bodies pinned to each other that both of its ends were welded into one
+ * — and named that one body `CC1F`, after a joint the drawing never draws. What
+ * is in the way is knowable from the drawing, so each case says its own.
+ */
+function shapeRefusal(root: Link, context: EditContext): PosePlanRefusal {
+  const body = context.names.body(root);
+  const ram = context.cylinders.find(
+    (one) => one.barrelRoot.id === root.id || one.rodRoot.id === root.id
+  );
+  if (!ram) {
+    return {
+      code: 'cylinder.pose-conflict',
+      short: 'it cannot change shape',
+      long: `This edit would change the shape of ${body}, which is one rigid body. Move the whole body, or unweld it so its bars can move on their own.`,
+    };
+  }
+  if (ram.barrelRoot.id === ram.rodRoot.id) return bothEndsFused(ram, root, context);
+
+  const part = context.names.cylinder(ram);
+  const ends = `joint ${context.names.joint(ram.mountA.id)} or joint ${context.names.joint(
+    ram.mountB.id
+  )}`;
+  // Its own four joints are not what ties the two bodies together; anything
+  // else they both hold is.
+  const pin = jointBothHold(
+    ram.barrelRoot,
+    ram.rodRoot,
+    new Set([ram.mountA.id, ram.inner.id, ram.seal.id, ram.mountB.id])
+  );
+  if (pin) {
+    return {
+      code: 'cylinder.pose-conflict',
+      short: 'its ends are tied together',
+      long: `${part} cannot change length here: one end is welded into ${context.names.body(
+        ram.barrelRoot
+      )} and the other into ${context.names.body(
+        ram.rodRoot
+      )}, and those two bodies meet again at joint ${context.names.joint(
+        pin
+      )} — so the drawing has nothing to give. Unweld ${ends} first.`,
+    };
+  }
+  const end = root.id === ram.barrelRoot.id ? ram.mountA : ram.mountB;
+  return {
+    code: 'cylinder.pose-conflict',
     short: 'it cannot change shape',
-    long: `This edit would change the shape of ${root.id}, which is one rigid body. A cylinder with both mounts welded into one body has nothing to extend against — unweld one of them.`,
+    long: `This edit would change the shape of ${body}, which is one rigid body: ${part} cannot move the way it is being asked to without taking that body with it. Unweld joint ${context.names.joint(
+      end.id
+    )} to let the cylinder move on its own.`,
   };
 }

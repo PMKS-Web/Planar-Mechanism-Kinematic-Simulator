@@ -145,7 +145,10 @@ export class MechanismPanelComponent {
     return partition.links
       .filter((link): link is RealLink => link instanceof RealLink)
       .map((link) => ({
-        name: link.name || link.id,
+        // The name on the canvas, not the link's id: a body welded to a
+        // barrel mount carries the buried inner end in its id (D14, S11), and
+        // this list had it under `AA1D` while the tag beside it read `AD`.
+        name: this.mechanism.visibleBodyName(link),
         role: this.roleOf(link),
         length: this.lengthOf(link),
       }));

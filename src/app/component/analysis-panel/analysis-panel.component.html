@@ -395,13 +395,13 @@
         <span>
           @if (inForceAnalysis) {
             <button type="button" class="forceRedirectAction" (click)="graphTheLinkUnder()">
-              Graph {{ shownForce.link.name }}</button
+              Graph {{ forceBodyLabel }}</button
             >, which carries it.
           } @else {
             <button type="button" class="forceRedirectAction" (click)="goToForceAnalysis()">
               Switch to Force Analysis
             </button>
-            to read what it does to {{ shownForce.link.name }}.
+            to read what it does to {{ forceBodyLabel }}.
           }
         </span>
       </div>

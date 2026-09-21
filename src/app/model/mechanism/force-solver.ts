@@ -1,5 +1,7 @@
 import { Joint, PrisJoint, RealJoint } from '../joint';
 import { Link, RealLink } from '../link';
+import { Cylinder, cylindersIn } from '../cylinder';
+import { visibleBodyName } from '../body-label';
 import { slideAssemblies } from '../slide-assembly';
 import { KinematicsSolver } from './kinematic-solver';
 import { Loop } from './loop-solver';
@@ -370,7 +372,7 @@ export class ForceSolver {
     });
 
     if (bodies.length === 0) return empty('unsupported-topology');
-    const badProperty = this.invalidProperty(bodies, units);
+    const badProperty = this.invalidProperty(bodies, units, cylindersIn(joints));
     if (badProperty) return empty('invalid-properties', badProperty);
     if (mode === 'dynamic' && !this.kinematicsAreComplete(bodies, kinematics)) {
       return empty('missing-kinematics');
@@ -918,11 +920,19 @@ export class ForceSolver {
    * or undefined when everything is a usable number. The panel shows this
    * sentence verbatim, so it has to say which part to go and fix.
    */
-  private static invalidProperty(bodies: Link[], units: UnitFactors): string | undefined {
+  private static invalidProperty(
+    bodies: Link[],
+    units: UnitFactors,
+    cylinders: readonly Cylinder[] = []
+  ): string | undefined {
     if (!Object.values(units).every(Number.isFinite)) {
       return 'The unit conversion is invalid — reselect the global units.';
     }
-    const nameOf = (body: Link): string => ('name' in body && body.name) || body.id;
+    // The name the canvas tags the body with. It was the body's own, which is
+    // its id -- and a barrel's id holds the buried inner end (D14, S11), so a
+    // sentence telling the reader which part to go and fix named a joint they
+    // have never been shown. A point body has no name of its own at all.
+    const nameOf = (body: Link): string => visibleBodyName(body, cylinders);
     for (const body of bodies) {
       if (!Number.isFinite(body.mass) || body.mass < 0) {
         return `Link ${nameOf(body)} has a mass that is not a usable number. Set Link Mass in Mass Settings.`;

@@ -36,7 +36,10 @@
     </button>
     @if (linksOpen) {
       <div class="linkList">
-        @for (link of links; track link.name) {
+        <!-- By position, not by name: a name here is the one a reader sees,
+             and two bodies can share one once a welded body stops being
+             called after the joint buried inside it. -->
+        @for (link of links; track $index) {
           <div class="linkRow">
             <span class="linkName">{{ link.name }}</span>
             <span class="linkRole">{{ link.role }}</span>

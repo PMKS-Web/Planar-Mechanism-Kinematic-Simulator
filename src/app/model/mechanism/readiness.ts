@@ -1,5 +1,7 @@
 import { Joint, PrisJoint, RealJoint } from '../joint';
 import { Link } from '../link';
+import { cylindersIn } from '../cylinder';
+import { visibleBodyName } from '../body-label';
 import { canDrive } from '../actuator';
 import { Mechanism } from './mechanism';
 import { MechanismPartition, UnassignedGeometry } from './mechanism-partition';
@@ -49,6 +51,19 @@ export interface ReadinessHelpers {
   /** This mechanism's input speed, in the units the panel shows it in. */
   describeSpeed(partition: MechanismPartition): string;
 }
+
+/**
+ * The joints of this list a reader has been shown.
+ *
+ * A cylinder's buried inner end is a joint of its barrel like any other, so it
+ * arrives in `ownJoints` and in a floating chain's own list — and it has no
+ * marker, no hitbox and no letter anyone can read (D14, S11). Naming it, or
+ * counting it, offers a joint the drawing never draws.
+ */
+const shown = (joints: readonly Joint[], from: readonly Joint[] = joints): Joint[] => {
+  const buried = new Set(cylindersIn([...from]).map((cylinder) => cylinder.inner.id));
+  return joints.filter((joint) => !buried.has(joint.id));
+};
 
 const names = (joints: Joint[]): string =>
   joints.map((joint) => (joint as RealJoint).name || joint.id).join(', ');
@@ -198,8 +213,9 @@ export function readinessOf(
     }
 
     case 'nothing-can-move': {
-      const unreachable = partition.ownJoints.filter((joint) =>
-        mechanism.unreachableJoints.includes(joint.id)
+      const unreachable = shown(
+        partition.ownJoints.filter((joint) => mechanism.unreachableJoints.includes(joint.id)),
+        partition.joints
       );
       add({
         state: 'blocker',
@@ -292,7 +308,10 @@ function factsOf(
       value: Number.isFinite(dof) ? String(dof) : '—',
       bad: !Number.isFinite(dof) || dof !== 1,
     },
-    { label: 'Links / joints', value: `${moving} / ${partition.ownJoints.length}` },
+    {
+      label: 'Links / joints',
+      value: `${moving} / ${shown(partition.ownJoints, partition.joints).length}`,
+    },
     { label: 'Driven joint', value: driven ? driven.name || driven.id : 'Not set' },
   ];
   if (mechanism.isMechanismValid()) {
@@ -345,9 +364,19 @@ export interface UnassignedReport {
  */
 export function describeUnassigned(unassigned: UnassignedGeometry): UnassignedReport[] {
   const reports: UnassignedReport[] = [];
+  // Every joint this report can reach, so the cylinders among them can be
+  // resolved: a cylinder is looked up from its seal, and the seal is not
+  // always on the body being named. What that buys is the buried inner end
+  // left out of these sentences, as it is left out of every other (D14, S11).
+  const around = [
+    ...unassigned.floatingChains.flatMap((chain) => chain.joints),
+    ...unassigned.looseJoints,
+    ...unassigned.fixedLinks.flatMap((link) => link.joints),
+  ];
+  const cylinders = cylindersIn(around);
 
   unassigned.floatingChains.forEach((chain) => {
-    const sorted = [...chain.joints].sort((a, b) => a.id.localeCompare(b.id));
+    const sorted = shown(chain.joints, around).sort((a, b) => a.id.localeCompare(b.id));
     reports.push({
       at: sorted[0],
       title: `Joints ${names(sorted)} never reach ground`,
@@ -357,7 +386,7 @@ export function describeUnassigned(unassigned: UnassignedGeometry): UnassignedRe
 
   unassigned.fixedLinks.forEach((link) => {
     reports.push({
-      title: `Link ${link.name || link.id} is fixed at both ends`,
+      title: `Link ${visibleBodyName(link, cylinders)} is fixed at both ends`,
       body: 'Every joint on it is grounded, so it is part of the frame and nothing about it can move. Unground one of its joints to make it a mechanism, or leave it as a fixed reference.',
     });
   });

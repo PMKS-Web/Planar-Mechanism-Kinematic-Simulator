@@ -251,6 +251,18 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
   }
 
   /**
+   * What the body under the selected force is called.
+   *
+   * The hint row names it twice -- "Graph Rod PC", "what it does to Rod PC" --
+   * and named it by the link's own id, which on a bracket welded to a barrel
+   * mount holds the buried inner end (D14, S11).
+   */
+  get forceBodyLabel(): string {
+    const body = this.shownForce?.link;
+    return body ? this.mechanismService.bodyLabel(body) : 'its link';
+  }
+
+  /**
    * Show the reactions on the part this force pushes.
    *
    * The same selection a click on that link would make, so the panel that
@@ -478,10 +490,15 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
    * block's ends in the letter of the sliding joint under it. Both were
    * printed straight into the label, so the panel offered a force on a link
    * the reader had never been shown and could not find.
+   *
+   * A body the drawing no longer holds has no name to give, and the id is not
+   * one: it is where the buried joint would reappear if the lookup ever missed.
+   * "That body" says nothing a reader can act on and nothing they have not been
+   * shown, which is the right answer to a question with no answer.
    */
   private linkName(linkId: string): string {
     const body = this.mechanismService.links.find((link) => link.id === linkId);
-    return body ? this.mechanismService.bodyLabel(body) : linkId;
+    return body ? this.mechanismService.bodyLabel(body) : 'that body';
   }
 
   /**
@@ -519,6 +536,27 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
   }
 
   /**
+   * Whether this row would be the sliding joint's own point body, on a seal
+   * whose slot is cut into a body that has a row of its own.
+   *
+   * The solver gives every prismatic joint a body keyed by the joint's own
+   * letter (`pointBodies` in `force-solver.ts`), and what it reacts against is
+   * the sum of the two forces the joint takes: the normal force in its slot and
+   * the pin force on its rider. Where the slot is cut into a body -- and a
+   * cylinder's always is, into its barrel -- that body carries the slot force
+   * under its own name, so the point body's row repeated the barrel's name over
+   * a different number. The reader saw the slide twice and had no way to tell
+   * which was which.
+   *
+   * A grounded slot has nothing on the far side of it, so its point body is the
+   * only row the slot force has anywhere and stays exactly as it was.
+   */
+  private isOwnPointBody(jointId: string, linkId: string): boolean {
+    if (linkId !== jointId) return false;
+    return this.mechanismService.sealedStructures().some((one) => one.seal.id === jointId);
+  }
+
+  /**
    * Rows are rebuilt only when the selection, the mode, or the mechanism
    * changes; the template reads them on every change-detection pass.
    */
@@ -537,24 +575,22 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
     if (index && partId) {
       rows =
         kind === 'joint'
-          ? (index.linksByJoint.get(partId) ?? []).map((linkId) => this.jointRow(partId, linkId))
-          : this.bodyMemberIds(partId).flatMap((memberId) =>
-              (index.jointsByLink.get(memberId) ?? []).map((jointId) => {
-                // A slot is named after the slider it belongs to: it has no
-                // marker of its own and no name a reader has ever seen.
-                const where =
-                  this.mechanismService.slotName(jointId) ?? `Joint ${this.jointName(jointId)}`;
-                return {
-                  jointId,
-                  jointName: this.jointName(jointId),
-                  // The member that actually meets this joint, not the body the
-                  // reader selected: it is what the reaction is asked of.
-                  linkId: memberId,
-                  linkName: this.linkName(memberId),
-                  label: `Force at ${where}`,
-                };
-              })
-            );
+          ? (index.linksByJoint.get(partId) ?? [])
+              .filter((linkId) => !this.isOwnPointBody(partId, linkId))
+              .map((linkId) => this.jointRow(partId, linkId))
+          : (index.jointsByLink.get(partId) ?? []).map((jointId) => {
+              // A slot is named after the slider it belongs to: it has no
+              // marker of its own and no name a reader has ever seen.
+              const where =
+                this.mechanismService.slotName(jointId) ?? `Joint ${this.jointName(jointId)}`;
+              return {
+                jointId,
+                jointName: this.jointName(jointId),
+                linkId: partId,
+                linkName: this.linkName(partId),
+                label: `Force at ${where}`,
+              };
+            });
       rows.sort((a, b) =>
         kind === 'joint'
           ? a.linkName.localeCompare(b.linkName)
@@ -581,26 +617,17 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
   }
 
   /**
-   * The links a selected body is made of.
+   * One row per joint of the selected body, and of that body alone.
    *
-   * One for an ordinary bar. A cylinder is one body to the reader and two
-   * links to the solver, and its two mounts sit on different ones -- the
-   * barrel carries the far mount, the rod carries the other. Asking only the
-   * link the canvas hands over (the barrel) listed the barrel's mount and
-   * silently dropped the rod's, so a ram showed a force at one end and nothing
-   * at the end it is pushing.
-   *
-   * Two links where there were three: the sliding body was a zero-length block
-   * link of its own until Stage 1 of `docs/joint-type-and-cylinder-plan.md`.
+   * A cylinder used to answer with both of its members here, whichever of them
+   * the reader had picked -- from a time when a cylinder was one body to them
+   * and two links to the solver. Each member has its own panel now (decision
+   * S10), and answering both listed the whole part's joints against either
+   * half: the far mount, the near mount, and the slide **twice**, once for the
+   * barrel and once for the rod, under one name and over two different numbers.
+   * A barrel now carries what pushes on the barrel -- its own end joint, and the
+   * slide pressing in its slot -- and the rod what pushes on the rod.
    */
-  private bodyMemberIds(partId: string): string[] {
-    const body = this.mechanismService.links.find((link) => link.id === partId);
-    const sealed = body && this.mechanismService.cylinderOfBar(body);
-    if (!sealed) return [partId];
-    return [sealed.barrel.id, sealed.rod.id];
-  }
-
-  /** One row per external joint of the selected link. */
   linkForceRows(): ForceAnalysisRow[] {
     const rows = this.cachedRows('link', this.activeSrv.selectedLink?.id ?? '');
     const sealed = this.selectedCylinder;
@@ -641,19 +668,20 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
   }
 
   /**
-   * What to call the selected body.
+   * What to call the selected body: whatever the Edit panel calls it.
    *
-   * A cylinder is drawn, selected and edited as one part, so analyzing it under
-   * the name of its barrel link contradicts everything else the app says about
-   * it -- the canvas outlines the whole ram while the panel headed itself
-   * "Analysis for Link GN".
+   * Through `bodyLabel`, so there is one rule and not a second one here. This
+   * had its own, and the two disagreed twice over. It headed both of a
+   * cylinder's members `Cylinder GC`, after the part's two end joints -- so the
+   * barrel and the rod, two bodies the reader can select apart and whose panels
+   * hold different numbers, answered to one name while Edit was calling them
+   * `Barrel GP` and `Rod PC`. And for everything else it printed the link's own
+   * id, which for a bracket welded to a barrel mount holds the buried inner end
+   * (D14, S11): `Link AA1D`, offering a joint the drawing never shows.
    */
   get selectedBodyLabel(): string {
-    const sealed = this.selectedCylinder;
-    if (!sealed) return `Link ${this.activeSrv.selectedLink.name}`;
-    return `Cylinder ${sealed.mountA.name || sealed.mountA.id}${
-      sealed.mountB.name || sealed.mountB.id
-    }`;
+    const body = this.activeSrv.selectedLink;
+    return body ? this.mechanismService.bodyLabel(body) : '';
   }
 
   inputEffortLabel(driven?: RealJoint): string {
@@ -665,7 +693,7 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
   }
 
   /**
-   * The driven joint a selected body carries, offered against the body too.
+   * The driven joint a selected cylinder carries, offered against the part too.
    *
    * A cylinder is driven at its seal, which used to be buried: no marker, no
    * hitbox, no row in the Edit panel, so the graph of the effort that drive has
@@ -673,10 +701,17 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
    * (decision S11) and carries that graph on its own joint panel like every
    * other input -- and it stays here as well, because the reader who has picked
    * the cylinder is asking about the cylinder.
+   *
+   * **On the rod, which is the member that stands for the part.** The drive
+   * acts between the two members and belongs to neither more than the other, so
+   * it was offered against both -- one number under two headings, in a panel
+   * whose whole point is now that the barrel's readings and the rod's are not
+   * the same readings. The rod is the half the export catalog already lists the
+   * cylinder under (`standsForCylinder`), so it is the half that carries this.
    */
   inputEffortJoint(): RealJoint | undefined {
     const sealed = this.selectedCylinder;
-    if (!sealed) return undefined;
+    if (!sealed || this.activeSrv.selectedLink?.id !== sealed.rod.id) return undefined;
     return cylinderJoints(sealed).find(
       (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
     );

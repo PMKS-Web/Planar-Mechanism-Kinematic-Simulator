@@ -104,6 +104,7 @@ import {
 } from '../../model/drop-target';
 import { mergedChannels, transformRigidPath } from '../../model/compound-link-path';
 import { GhostBody } from '../../model/mechanism/anchor';
+import { ghostInkOf, ghostPathOf } from '../../model/ghost-paint';
 import {
   Cylinder,
   cylinderCreationLayout,
@@ -1876,9 +1877,12 @@ export class NewGridComponent implements OnDestroy {
       at = this.heldOffJoint(link, shared, at, margin);
       at = constrainForceAnchor(link, at, 0);
       this.forceRefusedJoint = shared;
+      // The body by the name the canvas tags it with: a bracket welded to a
+      // barrel mount carries the cylinder's buried inner end in its id (D14,
+      // S11), so this named a joint the drawing never shows.
       this.notify.refusal(
         'force.shared-joint',
-        `A force cannot sit on joint ${shared.id}: several links meet there, so it would not say which body it pushes on. It is held on ${link.name || link.id} short of the pin.`
+        `A force cannot sit on joint ${shared.id}: several links meet there, so it would not say which body it pushes on. It is held on ${this.mechanismSrv.visibleBodyName(link)} short of the pin.`
       );
     } else {
       this.forceRefusedJoint = undefined;
@@ -2387,10 +2391,14 @@ export class NewGridComponent implements OnDestroy {
 
   private refuseHeldLink(link: Link, held: Joint[]): void {
     const holds = this.uniqueLocks(held.flatMap((joint) => this.gridUtils.locksHolding(joint)));
+    // `bodyLabel` rather than `Link ${link.name}`, for two reasons at once: a
+    // body welded to a barrel mount would have been named after the buried
+    // inner end, and a cylinder member reads `Barrel AC` here as it does
+    // everywhere else.
     const text = this.mechanismSrv.isLockedTarget(link)
       ? this.mechanismSrv.cylinderOfBar(link)
         ? 'This cylinder is locked.'
-        : `Link ${link.name} is locked.`
+        : `${this.mechanismSrv.bodyLabel(link)} is locked.`
       : 'Two of the joints this drag would carry are locked. Unlock one to swing the body about the other.';
     this.refuseWithUnlock('lock.link', text, holds);
   }
@@ -2548,14 +2556,9 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * A ghost body with the slots the real one carries cut into it.
-   *
-   * The ghost is the link's outline moved rigidly to the start pose. A slot is
-   * not part of that outline -- the canvas subtracts it when it draws the real
-   * link -- so the ghost of a slotted bar came out solid, and the moment
-   * playback carried the real bar away the slot looked as though it had been
-   * filled in behind it. The channel is rigid with its carrier, so the same
-   * move that carried the outline carries the channel to the same place.
+   * A ghost body, drawn as `model/ghost-paint.ts` says the canvas is drawing
+   * that body: its slots cut into it, and a cylinder member as the skin's
+   * silhouette rather than the bar its two joints describe.
    */
   ghostBodyPath(body: GhostBody): string {
     // Cut once per body and kept. A ghost the anchor can no longer reach is
@@ -2569,16 +2572,16 @@ export class NewGridComponent implements OnDestroy {
     const held = this.ghostCuts.get(body);
     if (held && held.scale === scale) return held.path;
     const link = this.mechanismSrv.links.find((one) => one.id === body.linkId);
-    let path = body.d;
-    if (link) {
-      const channels = this.channelsCutInto(link);
-      if (channels !== '') {
-        const { from, to, there, thereEnd } = body.move;
-        path = `${body.d} ${transformRigidPath(channels, from, to, there, thereEnd)}`;
-      }
-    }
+    const cuts = link ? this.channelsCutInto(link) : '';
+    const path = ghostPathOf(body, link, this.mechanismSrv.sealedStructures(), 0.15 * scale, cuts);
     this.ghostCuts.set(body, { scale, path });
     return path;
+  }
+
+  /** The ink the ghost paints a body in: the one the canvas is painting it in. */
+  ghostBodyFill(body: GhostBody): string {
+    const link = this.mechanismSrv.links.find((one) => one.id === body.linkId);
+    return ghostInkOf(body, link, this.mechanismSrv.sealedStructures());
   }
 
   private ghostCuts = new WeakMap<GhostBody, { scale: number; path: string }>();
@@ -4944,9 +4947,10 @@ export class NewGridComponent implements OnDestroy {
 
   /** Say why a locked link's center of mass will not follow the pointer. */
   private refuseLockedCoM(link: RealLink): void {
+    // The name on the canvas, not the link's id -- see `refuseHeldLink`.
     this.notify.refusal(
       'com.locked',
-      `Link ${link.name || link.id} is locked. Unlock it to move its center of mass.`
+      `${this.mechanismSrv.bodyLabel(link)} is locked. Unlock it to move its center of mass.`
     );
   }
 

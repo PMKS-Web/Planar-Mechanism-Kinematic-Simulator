@@ -17,8 +17,9 @@ import { Link, RealLink } from './link';
  * Three answers in order:
  *
  * - A cylinder member is named by its own two ends (decision S10), never by an
- *   id that holds N — and never by this rule either, which on a barrel would
- *   leave the single letter of its mount.
+ *   id that holds N — and never by the last rule here either, which on a barrel
+ *   would leave the single letter of its mount. A name somebody typed on a
+ *   member still wins, as it does below; `memberEnds` says how.
  * - A name somebody typed is theirs, and is returned untouched. "Typed" is a
  *   name that differs from the id, which is what `mergeLinks` already means by
  *   it when it decides whether a weld carries a name forward.
@@ -93,11 +94,29 @@ function memberEnds(
 ): { role: 'Barrel' | 'Rod'; name: string } | undefined {
   if (!cylinder) return undefined;
   const named = (joint: { name: string; id: string }) => joint.name || joint.id;
+  // A name somebody typed is theirs on a member too: both panels offer Rename,
+  // and a Rename that changed nothing a reader could see was a button that did
+  // not work. "Typed" is a name that differs from the id, as it is for any
+  // body -- with one exception, a name that only repeats the role. A library
+  // drawing calls its two members `Barrel` and `Rod`, which said something
+  // while a cylinder had one panel and says `Barrel Barrel` now that the role
+  // is the noun in front of it.
+  const typed = (role: string): string | undefined => {
+    const written = (body as RealLink).name;
+    if (!written || written === body.id) return undefined;
+    return written.trim().toLowerCase() === role.toLowerCase() ? undefined : written;
+  };
   if (body.id === cylinder.barrel.id) {
-    return { role: 'Barrel', name: `${named(cylinder.mountA)}${named(cylinder.seal)}` };
+    return {
+      role: 'Barrel',
+      name: typed('Barrel') ?? `${named(cylinder.mountA)}${named(cylinder.seal)}`,
+    };
   }
   if (body.id === cylinder.rod.id) {
-    return { role: 'Rod', name: `${named(cylinder.seal)}${named(cylinder.mountB)}` };
+    return {
+      role: 'Rod',
+      name: typed('Rod') ?? `${named(cylinder.seal)}${named(cylinder.mountB)}`,
+    };
   }
   return undefined;
 }

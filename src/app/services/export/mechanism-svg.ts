@@ -1,5 +1,7 @@
 import { Joint, PrisJoint, RealJoint } from '../../model/joint';
 import { Link, RealLink } from '../../model/link';
+import { cylinderOfBarIn, cylindersIn } from '../../model/cylinder';
+import { fillShownOn } from '../../model/cylinder-skin';
 import { escapeXml } from './xml';
 
 /**
@@ -17,7 +19,14 @@ export function mechanismSvg(
   width: number,
   height: number
 ): string {
-  const drawn = joints.filter((joint) => !(joint instanceof PrisJoint));
+  // The joints the canvas draws a marker for. A cylinder's buried inner end is
+  // an ordinary revolute joint to everything below, so the skeleton drew a pin
+  // for it and wrote its interior name beside it (D14, S11) -- a joint on page
+  // one of the report that appears nowhere in the app. A prismatic joint is
+  // left out for a different and older reason: a slot is not a pin.
+  const cylinders = cylindersIn(joints);
+  const buried = new Set(cylinders.map((cylinder) => cylinder.inner.id));
+  const drawn = joints.filter((joint) => !(joint instanceof PrisJoint) && !buried.has(joint.id));
   if (drawn.length === 0) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"></svg>`;
   }
@@ -46,8 +55,14 @@ export function mechanismSvg(
         .join(' ');
       if (!points) return '';
       const shape = link.joints.length > 2 ? 'polygon' : 'polyline';
+      // The ink the canvas shows, not the one on file. A rod that has chosen no
+      // color of its own is drawn in its barrel's (decision S15) while its
+      // record still holds the palette color creation handed it, and a member
+      // welded into a body is drawn in the body's -- so reading `fill` straight
+      // off the link painted page one's rod mint beside a navy barrel, a pair
+      // nobody has ever seen on the drawing. `fillShownOn` is the one rule.
       return `<${shape} points="${points}" fill="none" stroke="${
-        link.fill || '#5c6bc0'
+        fillShownOn(link, cylinderOfBarIn(cylinders, link)) || '#5c6bc0'
       }" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>`;
     })
     .join('');

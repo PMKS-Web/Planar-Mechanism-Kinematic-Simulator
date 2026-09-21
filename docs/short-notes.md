@@ -1651,3 +1651,114 @@ inversion, and the overlay picks the inversion whenever the first does not fit �
 `below` in a short window, over whatever is under it, and no API stops it. Which side a reason opens
 on (`sideFor`, `reasonSide`) is therefore the tidy half of the answer and the inert pane is the
 half that holds when the window is small.
+
+### A body carried rigidly must not write a joint some cylinder places for itself
+
+`planEdit`'s `settle` skipped its *own* cylinder's N and S when carrying a body, which is the same
+rule as "skip every cylinder's" for exactly as long as no two cylinders share a body. Weld two
+barrels into one bracket and it stops being the same rule: laying the edited part out put its N
+where the new length wanted it, placing the joint the two share woke the other part, and the other
+part carried that bracket — N and all — back to where it started. The lengths check added in
+`8e511611` then found the part the reader had just resized was not the length they typed, and
+`cylinder.carried-too-far` came out on every Barrel Length, Rod Length and *Starts at* typed at
+either of them. The set is `derivedByARam`, over `context.cylinders`, and the fixture is
+`src/tests/verification/cylinder-shared-bracket.spec.ts`.
+
+### Two cylinders in one body have to ride its motion, not be re-laid between their own ends
+
+The sequel to the note above, and the reason an Angle typed at one of them was still refused. A
+cylinder whose barrel is a *leaf* of a body this edit is carrying has already been told where to
+go; asking `layoutFor` to re-lay it between its two joints reads the far end's **old** position as
+a constraint, so the second part wrote the bracket back flat over the turn the first had just been
+given and `rigidityRefusal` called it a change of shape. `ridingOn` in `cylinder-pose-plan.ts` is
+that case: one side carried, the other not, and a far end that is free — no ground, no Lock, no
+other body on it — takes the carry whole. Waking is guarded too, by `stationary` and `sameMove`: a
+body standing still, or being carried through the motion it was already being carried through, is
+not news, and without that the two parts wake each other over one rotation until the visit limit
+calls an ordinary turn a conflict.
+
+### The start-pose ghost is a painter of a cylinder, and `GhostBody.fill` is not what is on screen
+
+`buildGhosts` fills each body from `getLinkProp(link, 'fill')` and its shape from `link.d`, and
+both of those are records rather than what the canvas draws. A rod that has chosen no color is
+painted in its barrel's (S15) while its own `fill` still holds the palette color creation handed
+it, and a member's `d` is the two-joint capsule the skin replaces — so the ghost of a navy ram was
+a mint-green rod in a lavender barrel, drawn as two plain bars. `model/ghost-paint.ts` is where the
+canvas asks the two rules instead (`fillShownOn`, `memberSilhouette` with no `cutEase`, since the
+easing exists for a union and the ghost has none), and anything else that paints a body from a
+record has the same bug waiting in it — `services/export/mechanism-svg.ts` still strokes every link
+with `link.fill`.
+
+### A cylinder's slot is cut in its barrel, so ask the barrel whether it holds the slider
+
+`PrisJoint.isSlotWellFormed` refuses a carrier whose joints include the slider itself, and it asked
+the *carrier* — which is a root. Weld a cylinder's two end joints into one body and the rod becomes
+a leaf beside the barrel, so the root holds the seal while the bore in the barrel is as real as it
+ever was. `MechanismService.reconcileSlots` answered by calling `detach()`, which is not
+recoverable: unwelding rebuilds the two bodies but cannot invent a bore, so the ram never came
+back, and the URL the state then wrote was one the decoder refuses (*"URL seals a joint that is not
+a floating slider"*) — a reload or a share opened an empty grid, and undo and redo threw where they
+stood and said *"That shared link could not be opened"*. The question is asked of the **slot's
+host** now, the smallest part of the carrier that still holds both slot ends, and only for a sealed
+seal: an ordinary slider whose rider is welded into its carrier really does have nothing left to
+slide, and is judged exactly as before. The same exception lives in the codec's
+`validateDecodedSlotCarriers`, in the same words, because the two disagreeing means the app writing
+a URL its own decoder refuses. The fused part resolves with `barrelRoot === rodRoot`, which is the
+state `cylinder-pose-plan.ts` already had an answer for (`cylinder.both-ends-fused`): it can be
+moved, it can never extend, and unwelding gives back exactly what was there. The drawing side is
+robust either way: `RealLink.leafOutlines` only treats a rod as drawn elsewhere while its seal is
+still floating, so a body holding a member no skin is drawing draws it itself.
+`e2e/cylinder-mount-render.mjs` and section 16 of `e2e/cylinder-members.mjs` carry the scene.
+
+### `vi.spyOn` over a method that is already spied hands back the mock that is there, calls and all
+
+So a per-test helper that re-spies `NotificationService.prototype.refusal` gives the second test the
+*first* test's `mock.calls`, and `calls[0]` is a message from a drawing that test never built. It
+passes for as long as the check is on the refusal's code, which two tests in a row are likely to
+share, and lies the moment the check is on the sentence. `mock.calls.at(-1)` is what a test that
+provoked one refusal means; `cylinder-edit-transaction.spec.ts` says so where it uses it.
+
+### A sliding joint's own point body carries *both* of its reactions, summed
+
+`ForceSolver.pointBodies` makes one `Link` per `PrisJoint`, keyed by the joint's own letter, and
+two reactions are written on it: the normal force in the slot (against the slot's carrier) and the
+pin force on the rider. `jointReactionsByLink.get(S).get(S)` is therefore their sum, which is not a
+force on anything a reader can name — while `get(S).get(carrier)` and `get(S).get(rider)` each are.
+The panel used to show the point body's row labelled after the *carrier*, on the reading that what
+a block has of its own is the force in its slot; with a grounded slot, where there is no carrier
+body and so no second row, that reading holds. With a floating slot — and a cylinder's always is,
+cut into its barrel — it produced two rows under one name over two different numbers. A cylinder's
+seal drops that row (`isOwnPointBody` in the analysis panel, and the same filter in
+`ExportColumnsService`); a grounded slider keeps it, because there the slot force is reported there
+or nowhere.
+
+### `ForceSolver` solves the moment a welded guide carries and nothing reads it
+
+`guideCouples` — one scalar per welded slide, the couple the slot supplies because the rider cannot
+turn in it (`docs/phase-3-slide-spec.md` §3.8) — is computed, returned on every frame, and consumed
+by two specs. No panel, no graph and no export column asks for it, and `AnalysisSampleService`
+knows no `mechProp` that would reach it. So a cylinder's barrel can report the force in its slot
+and not the moment, which is a real gap rather than an oversight to fix in passing: surfacing it
+means a new series, a torque unit on it, and a column in the drawer.
+
+### A cylinder member is named by its ends even when somebody typed a name for it
+
+`visibleBodyName` asks `memberEnds` *before* it looks at the written name, so the barrel of
+`Cylinder_Gripper` — stored with the name `Barrel` — reads `AC` everywhere, and its rod reads `CD`
+rather than `Rod`. That is decision S10 working as intended (a member is named by its own two
+joints, so the two halves can be told apart), but it means routing a surface through
+`visibleBodyName` can *replace* a name the reader typed. It only happens on the two members of a
+cylinder; every other body keeps a typed name.
+
+### A CAD export's zip is stored, not deflated, so its tables can be read without unpacking
+
+`services/export/zip.ts` is `zipStore`: method 0, no compression. A suite that wants to check what
+went into `mechanism.zip` can read the file as `latin1` and search it for the string it cares
+about, which is what `e2e/hidden-joint-audit.mjs` does rather than carrying a zip library.
+
+### The linkage table renders in exactly one place, and it is the developer drawer
+
+`<app-linkage-table>` appears once in the app — inside `#debugWrapper`, right-panel tab 4, which is
+dev-only and unreachable in production (the copy in `app.component.html` is commented out). So a
+change to it is a change to a developer surface, and anything written about "the linkage table" as
+a thing readers see is describing a door that was closed a while ago.

@@ -857,12 +857,17 @@ export class ContextMenuBuilderService {
    * A cylinder by its two ends, the way its panel and `describeHold` name it: a
    * hold on one is written on whichever member was free, and that member's id is
    * a pair of letters no reader has been shown.
+   *
+   * Everything else by the name the canvas tags it with. It was the link's own
+   * name, which is its id -- and a body welded to a barrel mount carries the
+   * cylinder's buried inner end in that id (D14, S11), so this subtitle named a
+   * joint the drawing never shows.
    */
   private heldName(bar: RealLink): string {
     const sealed = this.mechanism.cylinderOfBar(bar);
     return sealed
       ? `${this.nameOf(sealed.mountA)}${this.nameOf(sealed.mountB)}`
-      : bar.name || bar.id;
+      : this.mechanism.visibleBodyName(bar);
   }
 
   /**

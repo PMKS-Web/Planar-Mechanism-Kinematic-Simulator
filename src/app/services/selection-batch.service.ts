@@ -362,7 +362,24 @@ function copyClosure(
     const cylinder = mechanism.cylinderAt(source);
     if (cylinder && isCylinderInner(cylinder, source)) innerOf.set(source, cylinder);
   }
+  // A cylinder's three visible joints are lettered *along the part* -- the
+  // barrel's mount, the slide, the rod's far end -- whichever of them the
+  // closure happened to reach first. The closure is built from whatever was
+  // clicked, so copying a ram by its seal used to letter the seal A; a copy now
+  // reads down the part the way a newly drawn cylinder does (S9, amended).
+  const inClosure = new Set(closure.joints);
+  const lettered = new Set<Joint>();
+  const letterOrder: Joint[] = [];
   for (const source of closure.joints) {
+    const cylinder = mechanism.cylinderAt(source);
+    const along = cylinder ? [cylinder.mountA, cylinder.seal, cylinder.mountB] : [source];
+    for (const joint of along) {
+      if (lettered.has(joint) || !inClosure.has(joint)) continue;
+      lettered.add(joint);
+      letterOrder.push(joint);
+    }
+  }
+  for (const source of letterOrder) {
     if (innerOf.has(source)) continue;
     const id = mechanism.determineNextLetter(reserved);
     reserved.push(id);

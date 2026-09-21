@@ -2337,7 +2337,11 @@ export class MechanismService {
     this.activeObjService.fakeUpdateSelectedObj();
     if (hold !== undefined && was !== undefined) {
       const name = (which: LinkHold) => (which === 'angle' ? 'angle' : 'length');
-      const who = link.name || link.id;
+      // Through the one name a reader is shown. Only a plain bar reaches here --
+      // a cylinder's member left by the door above -- so no id on this road can
+      // hold a hidden joint today; asking anyway is what keeps that true of the
+      // sentence rather than of the road to it.
+      const who = this.visibleBodyName(link);
       this.notify.news(
         'hold.moved',
         'A link can keep either its length or its angle fixed. ' +
@@ -4705,12 +4709,14 @@ export class MechanismService {
 
     // A cylinder is four joints and shows three of them. The two ends and the
     // seal are what a reader points at, names and reads back out of a panel, so
-    // they take letters, in that order (decision S9); the barrel's near end is
-    // buried under the rod, is never drawn, labeled or listed, and keeps an
-    // interior name so that `determineNextLetter` walks past it.
+    // they take letters -- handed out *along the part* (decision S9, amended):
+    // the mount the gesture started from, then the slide, then the far end, so
+    // the letters run down the cylinder the way a reader's eye does. The
+    // barrel's near end is buried under the rod, is never drawn, labeled or
+    // listed, and keeps an interior name so `determineNextLetter` walks past it.
     const aId = mountAt ? mountAt.id : this.determineNextLetter();
-    const dId = this.determineNextLetter([aId]);
-    const cId = this.determineNextLetter([aId, dId]);
+    const cId = this.determineNextLetter([aId]);
+    const dId = this.determineNextLetter([aId, cId]);
     const [bId] = this.determineInteriorNames(aId, 1);
 
     const place = (at: { x: number; y: number }): [number, number] => [

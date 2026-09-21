@@ -356,6 +356,8 @@ describe('a cylinder carried past what it can reach', () => {
     // two joints, because that is what the reader has a padlock on.
     expect(text).toContain('Held by fixed length');
     expect(text).toContain(sealed.rod.id);
+    // And what to do about it, which is the half the sentence used to leave out.
+    expect(text).toContain('Release what is holding it');
   });
 
   it('refuses just the same when the part is pushed under its shortest span', () => {
@@ -374,6 +376,16 @@ describe('a cylinder carried past what it can reach', () => {
     expect(at('B').x).toBeCloseTo(before.b, 6);
     expect(notify).toHaveBeenCalled();
     expect(notify.mock.calls[0][0]).toBe('cylinder.carried-too-far');
+    // Nothing is holding a length here, so the sentence says the other thing
+    // that can be true -- the part is shut and being pushed shut further --
+    // rather than the one about a hold the reader has not pressed.
+    //
+    // The *last* call: `vi.spyOn` over a method that is already spied hands
+    // back the mock that is there, calls and all, so `calls[0]` here is the
+    // first refusal of the whole describe block rather than this test's.
+    const [, text] = notify.mock.calls.at(-1)!;
+    expect(text).toContain('already closed as far as it goes');
+    expect(text).not.toContain('Held by');
   });
 
   it('refuses through a shared mount, where the far part is the one that cannot give', () => {

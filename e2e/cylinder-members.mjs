@@ -252,8 +252,10 @@ const clipHead = async (half = 90) => {
 console.log('\nthe square is joint S');
 let ids = await oneCylinder();
 check(
-  'a new cylinder letters its two ends and its seal, and only those',
-  ids.a === 'A' && ids.b === 'B' && ids.s === 'C' && ids.n === 'A1',
+  // Along the part (S9): the end the gesture started from, the slide, the far
+  // end. The buried barrel end keeps an interior name and spends no letter.
+  'a new cylinder letters its two ends and its seal along the part, and only those',
+  ids.a === 'A' && ids.s === 'B' && ids.b === 'C' && ids.n === 'A1',
   JSON.stringify(ids)
 );
 
@@ -263,7 +265,9 @@ await clickAt(sealPoint);
 let picked = await selection();
 check(
   'clicking the square selects joint S, and the panel is headed with it',
-  picked.type === 'Joint' && picked.joint === ids.s && /Edit Joint\s+C\b/.test(picked.title),
+  picked.type === 'Joint' &&
+    picked.joint === ids.s &&
+    new RegExp(`Edit Joint\\s+${ids.s}\\b`).test(picked.title),
   JSON.stringify(picked)
 );
 await page.screenshot({
@@ -1738,6 +1742,221 @@ check(
   JSON.stringify(bothChips)
 );
 await page.screenshot({ path: `${OUT}/14-member-hold-chips.png` });
+
+// ----------------------------- 15. two cylinders welded into one bracket
+//
+// The maintainer's drawing: two cylinders hanging off the same joint T, with
+// both barrels leaves of the one welded body TT1T2W. Every length typed at
+// either of them was refused -- "Moving this would stretch TU past what it can
+// reach" -- while the same edit on a single welded cylinder went through. The
+// planner was laying the edited part out, then letting the *other* part carry
+// the bracket, buried joint and all, back to where it had started.
+console.log('\ntwo cylinders whose barrels are welded into one bracket');
+
+const TWO_RAMS_ONE_BRACKET =
+  '2v.4A,Fe.5,0.1011.8T,T,Ec,18D,0.0T1,T1,hw,1I-,0.0U,U,1PA,1Zf,0.fV,V,UW,1E3,0,TT1T2W,T,T1.0W,W,3b,wE,0.0T2,T2,SK,wV,0.0X,X,az,nt,0.fY,Y,NE,-a,0,TT1T2W,T,T2..ARUV,UV,0,0,xr,1Os,26A69A,V,U,,.ARXY,XY,0,0,U5,uj,0d125a,Y,X,,.ARTT1T2W,TT1T2W,0,0,Jx,15O,26A69A,T,T1,W,T2,,TT1,TW,TT2.aRTT1,TT1,0,0,TG,1Dc,26A69A,T,T1,,.aRTW,TW,0,0,95,11D,c5cae9,T,W,,.aRTT2,TT2,0,0,LT,11M,0d125a,T,T2,,...N_9*2JUZvL';
+
+/** Select one member of the cylinder whose barrel runs out to `inner`. */
+async function pickMemberOf(inner, which) {
+  await page.evaluate(
+    ([buried, what]) => {
+      const grid = ng.getComponent(document.querySelector('app-new-grid'));
+      const one = grid.mechanismSrv.sealedStructures().find((sealed) => sealed.inner.id === buried);
+      grid.activeObjService.updateSelectedObj(what === 'barrel' ? one.barrel : one.rod);
+    },
+    [inner, which]
+  );
+  await page.mouse.move(900, 300);
+  await page.mouse.move(905, 305);
+  await page.waitForTimeout(400);
+}
+
+/** Both cylinders' member lengths and the bracket's third leaf, by joint. */
+const bracketShape = () =>
+  page.evaluate(() => {
+    const m = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+    const at = (id) => m.joints.find((one) => one.id === id);
+    const span = (from, to) => Math.hypot(at(from).x - at(to).x, at(from).y - at(to).y);
+    return {
+      firstBarrel: span('T', 'T1'),
+      firstRod: span('V', 'U'),
+      otherBarrel: span('T', 'T2'),
+      otherRod: span('Y', 'X'),
+      thirdLeaf: span('T', 'W'),
+    };
+  });
+
+/** Whatever the app has said out loud and not yet taken away. */
+const saying = () =>
+  page.evaluate(() =>
+    ng
+      .getComponent(document.querySelector('app-new-grid'))
+      .notify.live.map((one) => `${one.id}: ${one.text}`)
+  );
+
+/**
+ * What the open Length field reads, as a number.
+ *
+ * The box shows the value with its unit -- `2.00 cm` -- and typing a bare
+ * number back into it is what a reader does, so the unit is dropped here
+ * rather than repeated.
+ */
+async function lengthNow() {
+  const shown = await page.locator('[data-hold-field="length"]').first().inputValue();
+  return Number(/-?\d+(\.\d+)?/.exec(shown)?.[0]);
+}
+
+for (const [inner, label] of [
+  ['T1', 'the first'],
+  ['T2', 'the other'],
+]) {
+  await page.goto(`${BASE}/?${TWO_RAMS_ONE_BRACKET}`, { waitUntil: 'domcontentloaded' });
+  await waitForReady(page);
+  await page.locator('.tabButton', { hasText: 'Edit' }).click();
+  await page.waitForTimeout(400);
+
+  const before = await bracketShape();
+  await pickMemberOf(inner, 'barrel');
+  const barrelWas = await lengthNow();
+  await typeInto('[data-hold-field="length"]', (barrelWas * 1.2).toFixed(3));
+  const afterBarrel = await bracketShape();
+  const said = await saying();
+  const mine = inner === 'T1' ? 'firstBarrel' : 'otherBarrel';
+  const theirs = inner === 'T1' ? 'otherBarrel' : 'firstBarrel';
+  check(
+    `${label} cylinder takes a new Barrel Length`,
+    afterBarrel[mine] > before[mine] * 1.1 && said.length === 0,
+    JSON.stringify({ before: before[mine], after: afterBarrel[mine], said })
+  );
+  check(
+    `and neither the other cylinder nor the bracket's third bar changes shape`,
+    Math.abs(afterBarrel[theirs] - before[theirs]) < 0.5 &&
+      Math.abs(afterBarrel.thirdLeaf - before.thirdLeaf) < 0.5,
+    JSON.stringify({ before, afterBarrel })
+  );
+
+  await pickMemberOf(inner, 'rod');
+  const rodWas = await lengthNow();
+  await typeInto('[data-hold-field="length"]', (rodWas * 1.15).toFixed(3));
+  const afterRod = await bracketShape();
+  const myRod = inner === 'T1' ? 'firstRod' : 'otherRod';
+  check(
+    `${label} cylinder takes a new Rod Length too`,
+    afterRod[myRod] > afterBarrel[myRod] * 1.1 && (await saying()).length === 0,
+    JSON.stringify({ before: afterBarrel[myRod], after: afterRod[myRod], said: await saying() })
+  );
+}
+await page.screenshot({ path: `${OUT}/15-two-rams-one-bracket.png` });
+
+// ------------------- 16. a cylinder with both end joints in one body
+//
+// The maintainer's triangle, and his word for what it did: *"If you try
+// welding joint F, it breaks it visually... it should still be allowed in the
+// sense that it shouldn't visually break the app, even though it will never
+// simulate."* It broke more than the drawing. The weld put the seal inside its
+// own carrier, the slot was judged malformed and detached, and the URL that
+// went out next was one the decoder refuses -- so a reload, a share or an undo
+// opened an empty grid, and unwelding could not bring the bore back.
+console.log('\na cylinder whose two end joints are welded into one body');
+
+const CYLINDER_IN_A_TRIANGLE =
+  '2v.2_,1E8.5,0.1011.8C,C,0e3,Y4,0.0C1,C1,0W8,ZA,0.8D,D,0N8,aQ,0.fE,E,0UR,ZP,0,CC1F,C,C1.0F,F,0W8,RF,0..ARCC1F,CC1F,0,0,0a6,We,303e9f,C,C1,F,,CC1,CF.ARDEF,DEF,0,0,0RD,Xt,303e9f,E,D,F,,DE,DF.aRCC1,CC1,0,0,0a6,Yd,303e9f,C,C1,,.aRCF,CF,0,0,0a5,Ug,c5cae9,C,F,,.aRDE,DE,0,0,0Qn,Zw,303e9f,E,D,,.aRDF,DF,0,0,0Re,Vr,303e9f,D,F,,...N_D*3spB6m';
+
+/** How many cylinders and bodies the drawing has, and the seal's own bore. */
+const triangleNow = () =>
+  page.evaluate(() => {
+    const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+    const sealed = srv.sealedStructures();
+    return {
+      cylinders: sealed.length,
+      bodies: srv.links.map((one) => one.id).sort(),
+      oneBodyAtBothEnds: sealed.length === 1 && sealed[0].barrelRoot.id === sealed[0].rodRoot.id,
+      boreIsGood: sealed.length === 1 && sealed[0].seal.isSlotWellFormed,
+    };
+  });
+
+/** Set joint F's type from the Edit panel, the way a reader does. */
+async function typeOfF(label) {
+  await page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    grid.activeObjService.updateSelectedObj(grid.mechanismSrv.joints.find((one) => one.id === 'F'));
+  });
+  await page.waitForTimeout(400);
+  await page.locator('app-edit-panel segmented-block button', { hasText: label }).first().click();
+  await page.waitForTimeout(900);
+}
+
+await page.goto(`${BASE}/?${CYLINDER_IN_A_TRIANGLE}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await page.locator('.tabButton', { hasText: 'Edit' }).click();
+await page.waitForTimeout(400);
+const apartBefore = await triangleNow();
+check(
+  'it opens as one cylinder with an end joint in each of two bodies',
+  apartBefore.cylinders === 1 && apartBefore.oneBodyAtBothEnds === false,
+  JSON.stringify(apartBefore)
+);
+
+await typeOfF('Welded');
+const weldedNow = await triangleNow();
+check(
+  'welding the joint the two bodies share leaves it a cylinder',
+  weldedNow.cylinders === 1 && weldedNow.oneBodyAtBothEnds && weldedNow.boreIsGood,
+  JSON.stringify(weldedNow)
+);
+await page.screenshot({ path: `${OUT}/16-both-ends-welded.png` });
+
+const weldedUrl = await page.evaluate(() =>
+  ng.getComponent(document.querySelector('app-top-bar')).urlGeneration.generateUrlQuery()
+);
+const beforeReload = consoleErrors.length;
+await page.goto(`${BASE}/?${weldedUrl}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await page.waitForTimeout(600);
+const reloadedNow = await triangleNow();
+check(
+  'and the URL it writes opens again as the same drawing',
+  reloadedNow.cylinders === 1 &&
+    reloadedNow.oneBodyAtBothEnds &&
+    consoleErrors.length === beforeReload,
+  JSON.stringify({ reloadedNow, threw: consoleErrors.slice(beforeReload, beforeReload + 1) })
+);
+
+// Back to the drawing the weld was made on, so undo has somewhere to go.
+await page.goto(`${BASE}/?${CYLINDER_IN_A_TRIANGLE}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await page.locator('.tabButton', { hasText: 'Edit' }).click();
+await page.waitForTimeout(400);
+await typeOfF('Welded');
+await page.locator('button', { hasText: 'Undo' }).first().click();
+await page.waitForTimeout(1000);
+const undoneNow = await triangleNow();
+check(
+  'one Undo gives the two bodies back, cylinder and all',
+  undoneNow.cylinders === 1 &&
+    !undoneNow.oneBodyAtBothEnds &&
+    undoneNow.bodies.join(',') === apartBefore.bodies.join(','),
+  JSON.stringify(undoneNow)
+);
+await page.locator('button', { hasText: 'Redo' }).first().click();
+await page.waitForTimeout(1000);
+const redoneNow = await triangleNow();
+check(
+  'and Redo welds it again without losing the bore',
+  redoneNow.cylinders === 1 && redoneNow.oneBodyAtBothEnds && redoneNow.boreIsGood,
+  JSON.stringify(redoneNow)
+);
+
+await typeOfF('Revolute');
+const unweldedNow = await triangleNow();
+check(
+  'taking the weld apart by hand gives back exactly what was there',
+  unweldedNow.cylinders === 1 &&
+    !unweldedNow.oneBodyAtBothEnds &&
+    unweldedNow.bodies.join(',') === apartBefore.bodies.join(','),
+  JSON.stringify(unweldedNow)
+);
+await page.screenshot({ path: `${OUT}/16-unwelded-again.png` });
 
 // ------------------------------------------------------------------ wrap up
 check('nothing threw', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | '));

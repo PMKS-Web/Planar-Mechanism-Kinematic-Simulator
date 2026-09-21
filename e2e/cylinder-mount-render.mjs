@@ -46,6 +46,12 @@ const SLIDE_FUSION_PAYLOAD = readFileSync(
 
 const results = [];
 const consoleErrors = [];
+/**
+ * Facts recorded rather than asserted: what the drawing does with a state the
+ * model has not settled yet. Printed and kept in the report, so the evidence is
+ * in the artifact rather than in somebody's memory.
+ */
+const notes = [];
 function check(label, ok, detail = '') {
   results.push({ label, ok, detail });
   console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${label}${detail ? ` — ${detail}` : ''}`);
@@ -1327,9 +1333,203 @@ check(
 );
 await contactSheet(`${SLIDE_OUT}/frames/*floating*.png`, `${SLIDE_OUT}/sheet-floating.png`, 1);
 
+// ------------------------------- one body holding BOTH members of one cylinder
+//
+// The maintainer's drawing: a ram from C to D with a bar at each mount, the two
+// bars pinned at F. Weld F and the triangle becomes one rigid body holding the
+// barrel *and* the rod. "It should still be allowed in the sense that it
+// shouldn't visually break the app, even though it will never simulate."
+//
+// What is asked here is the drawing: every bar of the body painted, once, in
+// the same place before and after, and the same again when the weld is taken
+// back. The two things that are *not* asked are noted at the end -- they are a
+// model decision, made a long way from anything that paints.
+const BOTH_ENDS_OUT = 'artifacts/cylinder-both-ends';
+const bothEnds = filmstrip(page, `${BOTH_ENDS_OUT}/frames`);
+const BOTH_ENDS_PAYLOAD =
+  '2v.2_,1E8.5,0.1011.8C,C,0e3,Y4,0.0C1,C1,0W8,ZA,0.8D,D,0N8,aQ,0.fE,E,0UR,ZP,0,CC1F,C,C1.0F,F,' +
+  '0W8,RF,0..ARCC1F,CC1F,0,0,0a6,We,303e9f,C,C1,F,,CC1,CF.ARDEF,DEF,0,0,0RD,Xt,303e9f,E,D,F,,DE,' +
+  'DF.aRCC1,CC1,0,0,0a6,Yd,303e9f,C,C1,,.aRCF,CF,0,0,0a5,Ug,c5cae9,C,F,,.aRDE,DE,0,0,0Qn,Zw,' +
+  '303e9f,E,D,,.aRDF,DF,0,0,0Re,Vr,303e9f,D,F,,...N_D*3spB6m';
+
+/**
+ * How many painted bodies cover the middle of each bar, and where the seal's
+ * furniture is standing.
+ *
+ * A count rather than a look, because the two ways this breaks are both counts:
+ * a bar nothing draws reads 0 -- which is what the rod did, drawn neither by a
+ * skin that had stopped resolving nor by the body that had swallowed it -- and
+ * a bar two passes draw reads 2, which is the same part over itself at 0.7
+ * alpha. Hit paths are transparent and are not bodies, so they are left out.
+ */
+const bodiesOverEachBar = () =>
+  page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const srv = grid.mechanismSrv;
+    const joint = (id) => srv.joints.find((one) => one.id === id);
+    const middle = (a, b) => {
+      const [from, to] = [joint(a), joint(b)];
+      const at = Object.assign(Object.create(Object.getPrototypeOf(from)), from, {
+        x: (from.x + to.x) / 2,
+        y: (from.y + to.y) / 2,
+      });
+      const on = grid.svgGrid.modelToScreen(at);
+      return { x: on.x, y: on.y };
+    };
+    const painted = (node) => {
+      const fill = node.getAttribute('fill');
+      return node.tagName === 'path' && fill !== null && fill !== 'none' && fill !== 'transparent';
+    };
+    const over = {};
+    for (const [name, a, b] of [
+      ['barrel', 'C', 'C1'],
+      ['barrel-side bar', 'C', 'F'],
+      ['rod-side bar', 'D', 'F'],
+      ['rod', 'D', 'E'],
+    ]) {
+      const at = middle(a, b);
+      over[name] = document.elementsFromPoint(at.x, at.y).filter(painted).length;
+    }
+    const box = (selector) => {
+      const found = document.querySelector(selector)?.getBoundingClientRect();
+      return found ? { x: Math.round(found.x), y: Math.round(found.y) } : null;
+    };
+    return {
+      over,
+      bodies: srv.getLinks().map((one) => one.id),
+      cylinders: srv.sealedStructures().length,
+      // The seal's own furniture: the black head and the cream bar that says
+      // its riders cannot turn against the slot.
+      block: box('.cylinder-seal') ?? box('.slider-block path'),
+      slideBar: box('.slideMark'),
+    };
+  });
+
+await page.goto(`${BASE}/?${BOTH_ENDS_PAYLOAD}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await page.waitForTimeout(600);
+await bothEnds.shot('before-weld');
+const triangle = await bodiesOverEachBar();
+check(
+  'the maintainer’s triangle opens as two bodies with a ram down one side',
+  triangle.cylinders === 1 && triangle.bodies.length === 2,
+  JSON.stringify({ cylinders: triangle.cylinders, bodies: triangle.bodies })
+);
+check(
+  'and every bar of it is painted exactly once',
+  Object.values(triangle.over).every((count) => count === 1),
+  JSON.stringify(triangle.over)
+);
+
+await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  grid.activeObjService.updateSelectedObj(grid.mechanismSrv.joints.find((one) => one.id === 'F'));
+});
+await page.waitForTimeout(400);
+await page.locator('app-edit-panel segmented-block button', { hasText: 'Welded' }).first().click();
+await page.waitForTimeout(900);
+await bothEnds.shot('welded');
+const fused = await bodiesOverEachBar();
+check('welding F leaves one rigid body', fused.bodies.length === 1, JSON.stringify(fused.bodies));
+check(
+  'and it draws every bar it is made of, exactly once — the rod included',
+  Object.values(fused.over).every((count) => count === 1),
+  JSON.stringify(fused.over)
+);
+check(
+  'the seal’s head and its cream bar stay where they were',
+  !!fused.block &&
+    !!fused.slideBar &&
+    Math.abs(fused.block.x - triangle.block.x) <= 2 &&
+    Math.abs(fused.block.y - triangle.block.y) <= 2 &&
+    Math.abs(fused.slideBar.x - triangle.slideBar.x) <= 2,
+  JSON.stringify({ was: triangle.block, now: fused.block })
+);
+
+await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  grid.activeObjService.updateSelectedObj(grid.mechanismSrv.joints.find((one) => one.id === 'F'));
+});
+await page.waitForTimeout(400);
+await page
+  .locator('app-edit-panel segmented-block button', { hasText: 'Revolute' })
+  .first()
+  .click();
+await page.waitForTimeout(900);
+await bothEnds.shot('unwelded');
+const apart = await bodiesOverEachBar();
+check(
+  'taking the weld back gives the two bodies back',
+  apart.bodies.length === 2 && apart.bodies.join(',') === triangle.bodies.join(','),
+  JSON.stringify(apart.bodies)
+);
+check(
+  'and every bar is still painted exactly once',
+  Object.values(apart.over).every((count) => count === 1),
+  JSON.stringify(apart.over)
+);
+
+// The weld, again, and then a reload of the URL it writes.
+//
+// These two were notes rather than checks while the drawing did not come back:
+// welding F put the seal inside its own carrier, `isSlotWellFormed` said no,
+// `reconcileSlots` detached a bore nothing can invent back, and the URL that
+// then went out was one the codec refuses ("URL seals a joint that is not a
+// floating slider"), so a reload, a share or an undo opened an empty grid. The
+// question is asked of the bar the slot is cut in now -- a barrel never holds
+// the seal -- so a welded triangle stays a cylinder and both of these are
+// ordinary checks.
+await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  grid.activeObjService.updateSelectedObj(grid.mechanismSrv.joints.find((one) => one.id === 'F'));
+});
+await page.waitForTimeout(400);
+await page.locator('app-edit-panel segmented-block button', { hasText: 'Welded' }).first().click();
+await page.waitForTimeout(900);
+const weldedUrl = await page.evaluate(() =>
+  ng.getComponent(document.querySelector('app-top-bar')).urlGeneration.generateUrlQuery()
+);
+const before = consoleErrors.length;
+await page.goto(`${BASE}/?${weldedUrl}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await page.waitForTimeout(700);
+await bothEnds.shot('reloaded');
+const reopened = await page.evaluate(() => {
+  const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+  return {
+    joints: srv.joints.length,
+    bodies: srv.getLinks().length,
+    cylinders: srv.sealedStructures().length,
+  };
+});
+const whileReloading = consoleErrors.splice(before);
+check(
+  'the welded drawing’s own URL decodes again, as the cylinder it was',
+  reopened.joints > 0 && reopened.cylinders === 1 && whileReloading.length === 0,
+  JSON.stringify({ reopened, threw: whileReloading.slice(0, 1) })
+);
+check(
+  'unwelding F gives the ram back',
+  apart.cylinders === 1,
+  `cylinders after the unweld: ${apart.cylinders}`
+);
+notes.forEach((one) => console.log(`  ${one.ok ? 'PASS' : 'NOTE'}  ${one.label} — ${one.detail}`));
+// Whatever the URL carries, the app comes up: a drawing or a message about
+// one, never a blank window. The canvas and the strip are asked for in the DOM
+// rather than for visibility -- both are hosts whose own box is empty, because
+// what they hold is positioned -- and the Edit tab is asked for on screen,
+// which is the part a reader would be looking at.
+check(
+  'the app comes up either way, with its canvas and its strip',
+  (await page.evaluate(
+    () => !!document.querySelector('app-new-grid') && !!document.querySelector('app-top-bar')
+  )) && (await page.locator('.tabButton', { hasText: 'Edit' }).first().isVisible())
+);
+await contactSheet(`${BOTH_ENDS_OUT}/frames/*.png`, `${BOTH_ENDS_OUT}/sheet.png`, 2);
+
 // ------------------------------------------------------------------ wrap up
 check('nothing threw', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | '));
-writeFileSync(`${OUT}/report.json`, JSON.stringify({ results, consoleErrors }, null, 2));
+writeFileSync(`${OUT}/report.json`, JSON.stringify({ results, notes, consoleErrors }, null, 2));
 const passed = results.filter((r) => r.ok).length;
 console.log(`\n${passed}/${results.length} checks passed`);
 await browser.close();

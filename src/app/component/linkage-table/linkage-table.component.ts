@@ -311,11 +311,20 @@ export class LinkageTableComponent implements OnInit {
     }
   }
 
+  /**
+   * The joints this one meets, filtered the way the table's own rows are.
+   *
+   * A cylinder's buried barrel end is a joint of the barrel like any other, so
+   * a mount's "Connected joints" cell listed it — `C1`, in a table whose own
+   * rows deliberately leave it out (`getJoints`). A reader could read the name
+   * of a joint here and then fail to find it anywhere else in the app.
+   */
   connectedJoints(joint: Joint) {
     if (!(joint instanceof PrisJoint || joint instanceof RevJoint)) {
       return;
     }
-    return joint.connectedJoints;
+    const shown = new Set(this.getJoints().map((one) => one.id));
+    return joint.connectedJoints.filter((one) => shown.has(one.id));
   }
 
   getJoints() {

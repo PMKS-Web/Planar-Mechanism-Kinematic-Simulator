@@ -11,7 +11,8 @@ import { RealJoint } from '../../app/model/joint';
  * drawn, labeled or listed, so spending a letter on it would run a drawing
  * through the alphabet faster than the joints anyone can see. The seal used to
  * be in that class and is not any more (decision S9): it is the square a reader
- * selects, so it takes the letter after the two ends.
+ * selects, so it takes a letter like the ends — and the three are handed out
+ * *along the part*, so the letters read down the cylinder's own axis.
  */
 function drawCylinder() {
   const harness = createMechanismHarness();
@@ -27,10 +28,10 @@ describe('Naming the joints of a cylinder', () => {
 
     const lettered = ids.filter((id) => /^[A-Za-z]+$/.test(id));
     const inside = ids.filter((id) => !/^[A-Za-z]+$/.test(id));
-    // The two ends first, then the seal, in that order.
+    // Along the part: the end the gesture started from, the slide, the far end.
     expect(lettered.sort()).toEqual(['A', 'B', 'C']);
     const sealed = service.sealedStructures()[0];
-    expect([sealed.mountA.id, sealed.mountB.id, sealed.seal.id]).toEqual(['A', 'B', 'C']);
+    expect([sealed.mountA.id, sealed.seal.id, sealed.mountB.id]).toEqual(['A', 'B', 'C']);
     // And the buried barrel end, hung off the mount's own letter.
     expect(inside.sort()).toEqual(['A1']);
   });
@@ -38,8 +39,8 @@ describe('Naming the joints of a cylinder', () => {
   it('names each member after its own two visible joints', () => {
     const { service } = drawCylinder();
     const sealed = service.sealedStructures()[0];
-    expect(service.bodyLabel(sealed.barrel)).toBe('Barrel AC');
-    expect(service.bodyLabel(sealed.rod)).toBe('Rod CB');
+    expect(service.bodyLabel(sealed.barrel)).toBe('Barrel AB');
+    expect(service.bodyLabel(sealed.rod)).toBe('Rod BC');
   });
 
   it('leaves the next drawn joint the letter after the seal', () => {
