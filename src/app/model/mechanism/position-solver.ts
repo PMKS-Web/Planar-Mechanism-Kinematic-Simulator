@@ -93,6 +93,23 @@ const CONCENTRIC_TOLERANCE = 0.001;
 const DEGENERATE_SLOT_TOLERANCE = 1e-9;
 
 /**
+ * The grain a shared drawing is stored on, in model units.
+ *
+ * The transcoder packs a coordinate onto a step of about a thousandth of a user
+ * unit -- measured, not read off the format: nudging a joint by anything under
+ * that and re-encoding gives the identical number back, and the step is the
+ * same 0.1 to 0.2 model units on a four-unit punch press and on a
+ * two-hundred-unit walking pair, so it is absolute rather than a share of the
+ * drawing. A joint reopened from a URL therefore sits up to half a grain from
+ * wherever it was drawn.
+ *
+ * Anything that judges a *drawn pose* against its own constraints has to be no
+ * tighter than this, or it is judging the format rather than the mechanism.
+ * See `drawnPoseTolerance`.
+ */
+const URL_COORDINATE_GRAIN = 1e-3 * MODEL_SCALE;
+
+/**
  * How far past the end of a slot a block may measure before it counts as out.
  *
  * A fraction of the slot's own length, so it means the same on a long channel
@@ -861,7 +878,17 @@ export class PositionSolver {
       // to place -- but "nothing to place" is not the same as "anything goes".
       // The drawing still has to satisfy its own constraints, so they are
       // collected as if every joint were unknown and checked where they stand.
-      return this.prescribedGeometryHolds(joints, links) ? 'nothing-to-solve' : 'refused';
+      if (!this.prescribedGeometryHolds(joints, links)) return 'refused';
+      // The drive's own steps are then the whole solve, and they have to be
+      // counted. Left at the reset's zero, `attemptPositionAnalysis` ran none of
+      // them, reported success, and handed back a sample in which no joint had a
+      // position -- which is a TypeError one frame later rather than a refusal.
+      // A body driven at a pin with a cylinder frozen inside it is the drawing
+      // that reaches here: every joint it has rides the input's own body, so the
+      // walk places all of them and this solver is left with nothing to add.
+      this.stepCount = orderNum - 1;
+      this.unsolvableJoints = [];
+      return 'nothing-to-solve';
     }
 
     const constraints = this.collectConstraints(joints, links, unknownIds);
@@ -895,8 +922,40 @@ export class PositionSolver {
     );
     const scale = this.mechanismScale(system, positions) || 1;
     return residuals(system, positions, this.commandOf(system, positions)).every(
-      (value) => Number.isFinite(value) && Math.abs(value) <= scale * 1e-6
+      (value) => Number.isFinite(value) && Math.abs(value) <= this.drawnPoseTolerance(scale)
     );
+  }
+
+  /**
+   * How far a drawing may sit off its own constraints and still be the drawing
+   * its author made.
+   *
+   * The two gates that ask it are refusing one thing: a structure somebody has
+   * bent by hand, which must not be silently straightened into a mechanism it
+   * never was. One part in a million of the mechanism's own size is the right
+   * shape for that -- it scales with the drawing -- and it is the wrong *floor*,
+   * because a drawing does not arrive at full precision. It arrives on
+   * `URL_COORDINATE_GRAIN`, which is absolute: a joint comes back up to half a
+   * grain from where it was drawn, and a row assembled from several of them can
+   * be a small multiple of one. A slot-offset row is the worst of them, carrying
+   * the rounding of the riding joint, of the slot's anchor and of the slot's
+   * direction.
+   *
+   * The relative tolerance is hundreds of times *tighter* than that on any
+   * drawing a reader can see -- 5.1e-4 model units against a 0.2 grain on the
+   * maintainer's cylinder riding a slot, whose joint `D` was saved 7.6e-2 off
+   * its own slot line, under half a grain. So a mechanism that ran in the
+   * session it was drawn in refused to run when it was reopened, and every undo
+   * landed on the same refusal, because undo replays a URL.
+   *
+   * Four grains, then, as the floor -- two for the worst a row can carry and two
+   * of margin. That is 0.004 of a user unit, twenty-odd times smaller than the
+   * radius a joint is drawn at, so nothing a reader could see arrives here.
+   * `settleInitialPose` is what puts the admitted pose exactly on its
+   * constraints afterwards, which is the job it has always had.
+   */
+  private static drawnPoseTolerance(scale: number): number {
+    return Math.max(scale * 1e-6, 4 * URL_COORDINATE_GRAIN);
   }
 
   /**
@@ -932,7 +991,7 @@ export class PositionSolver {
     // starting a cycle by silently straightening it is how a mechanism comes
     // back somewhere its author never put it.
     const scale = this.mechanismScale(system, positions) || 1;
-    if (rows.some((value) => Math.abs(value) > scale * 1e-6)) return false;
+    if (rows.some((value) => Math.abs(value) > this.drawnPoseTolerance(scale))) return false;
 
     this.boundaryIds = boundaryJoints(system);
     this.boundaryPose = new Map(

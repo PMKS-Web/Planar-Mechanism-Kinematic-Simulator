@@ -1,8 +1,10 @@
 import { Joint, PrisJoint, RealJoint } from '../joint';
 import { Link, RealLink } from '../link';
 import { Cylinder, cylindersIn } from '../cylinder';
+import { BodyOfLink, frozenCylinderAtSeal } from '../cylinder-frozen';
 import { visibleBodyName } from '../body-label';
 import { slideAssemblies } from '../slide-assembly';
+import { assignBodies } from './bodies';
 import { KinematicsSolver } from './kinematic-solver';
 import { Loop } from './loop-solver';
 import { siUnitFactors, SiUnitFactors } from '../unit-conversions';
@@ -386,7 +388,14 @@ export class ForceSolver {
       rowCount += count;
     }
 
-    const { reactions, incidentByJoint } = this.enumerateReactions(joints, bodies, every, frame);
+    const { bodyOf } = assignBodies(joints, every);
+    const { reactions, incidentByJoint } = this.enumerateReactions(
+      joints,
+      bodies,
+      every,
+      frame,
+      bodyOf
+    );
 
     // One couple unknown per welded slide (docs/phase-3-slide-spec.md §9).
     // Shapes the couple cannot be written for are refused by name rather than
@@ -395,6 +404,17 @@ export class ForceSolver {
     for (const assembly of slideAssemblies(joints)) {
       // A dangling guide exerts nothing, so it owes no couple either.
       if (!assembly.slider.ground && !assembly.slider.isFloating) continue;
+      // A cylinder frozen inside one body is not a sliding pair (decision S25):
+      // the slot and the thing riding in it are the same rigid body, so nothing
+      // crosses the seal that is external to that body. What the barrel and the
+      // rod push on each other with is an internal force, and an internal force
+      // in a rigid body is statically indeterminate -- there are infinitely
+      // many that satisfy equilibrium, and no reason to prefer one. A couple
+      // column for it would be a column no row can pin, which is how a singular
+      // matrix is built on purpose. So the slide is left out and the body's own
+      // reactions at its real joints come out exactly as they would if it were
+      // drawn as plain welded bars, which is what it is.
+      if (frozenCylinderAtSeal(assembly.slider, bodyOf)) continue;
       // A settled weld has fused every rider into one compound. Mid-edit, the
       // riders can still be several distinct bodies, and one couple cannot
       // speak for all of them — refuse rather than pick a favorite.
@@ -765,7 +785,11 @@ export class ForceSolver {
     joints: Joint[],
     bodies: Link[],
     every: Link[] = bodies,
-    frame: ReadonlySet<string> = new Set()
+    frame: ReadonlySet<string> = new Set(),
+    // Which rigid body each link belongs to, so a frozen cylinder can be
+    // recognized. Passed in because the caller has already asked, and this runs
+    // once per sample of the cycle.
+    bodyOf: BodyOfLink = assignBodies(joints, every).bodyOf
   ): { reactions: ReactionUnknown[]; incidentByJoint: Map<string, Link[]> } {
     const reactions: ReactionUnknown[] = [];
     const incidentByJoint = new Map<string, Link[]>();
@@ -784,6 +808,14 @@ export class ForceSolver {
 
       if (candidate instanceof PrisJoint) {
         const piston = bodies.find((body) => body.id === candidate.id);
+        // A cylinder frozen inside one body (decision S25). The seal does not
+        // slide against anything: it is a point of that body, held to it in
+        // both directions rather than pressed against a slot. So it exchanges
+        // an ordinary pin pair with the body instead of a single normal force
+        // -- two unknowns against the two equilibrium rows a point body has,
+        // which is exactly determinate and carries the seal's own mass into
+        // the body's reactions where it belongs.
+        const frozenSeal = frozenCylinderAtSeal(candidate, bodyOf) !== undefined;
         // A grounded slot pushes against the world, which needs no equation of
         // its own. A floating one pushes against the carrier, and that reaction
         // has to appear in the carrier's equilibrium as well or the slot
@@ -793,7 +825,7 @@ export class ForceSolver {
         // grounded case: it pushes against the world.
         const carrier = candidate.isFloating ? this.rootBody(bodies, candidate.carrier) : undefined;
         const cutIntoFrame = candidate.isFloating && onFrame(candidate.carrier);
-        if (piston && (candidate.ground || carrier || cutIntoFrame)) {
+        if (piston && !frozenSeal && (candidate.ground || carrier || cutIntoFrame)) {
           reactions.push({
             joint: candidate,
             positiveBody: piston,
@@ -814,7 +846,12 @@ export class ForceSolver {
         // coupled by the normal force alone.
         if (piston) {
           for (const other of incident) {
-            if (other.id === piston.id || other.id === carrier?.id) continue;
+            if (other.id === piston.id) continue;
+            // The carrier sits on the far side of the slot and is coupled by
+            // the normal force alone -- unless the slide is frozen, where there
+            // is no slot to be on the far side of and the pair above is the
+            // whole of the connection.
+            if (!frozenSeal && other.id === carrier?.id) continue;
             for (const direction of [
               [1, 0],
               [0, 1],

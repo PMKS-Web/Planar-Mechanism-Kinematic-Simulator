@@ -25,7 +25,9 @@ export type MechanismFailure =
   | 'dead-position'
   | 'hidden-freedom'
   | 'cycle-never-closes'
-  | 'cylinder-has-no-travel';
+  | 'cylinder-has-no-travel'
+  /** The solve threw. Nothing is known but that, and readiness says so. */
+  | 'solver-error';
 
 /**
  * One component of a rate, as a cell of an exported table.
@@ -193,23 +195,41 @@ export class Mechanism {
     } else if (!driven) {
       this.setMechanismInvalid('not-driven');
     } else {
-      this._requiredLoops = LoopSolver.determineLoops(this._joints[0], this._links[0]);
-      this.findFullMovementPos(inputAngVel);
-      // The solver's static holds what *this* build found; read it now, before
-      // the next mechanism's build resets and overwrites it.
-      this._unusableCylinder = PositionSolver.unusableCylinderDrive;
-      // For the same reason, and for anything that differentiates this
-      // mechanism after every other one has been solved over the top of it.
-      // Built here rather than on demand: it is derived from a dozen more of
-      // the same statics, and by the time a graph asks they belong elsewhere.
-      PositionSolver.ensureSimultaneousSystem(this._joints[0], this._links[0]);
-      this._driveState = PositionSolver.captureDriveState();
-      // A sealed cylinder with no stroke emits no steps, so the failure above
-      // is already recorded -- as "nothing can move", which is true but says
-      // nothing a student can act on. Name the ram instead.
-      if (this._unusableCylinder !== undefined && !this.mechanismValid) {
-        this._failure = 'cylinder-has-no-travel';
+      try {
+        this.solveFromTheDrawnPose(inputAngVel);
+      } catch (error) {
+        // A solve that throws is a machine that could not be solved, and it has
+        // to come back as one. Left to escape, the throw left
+        // `MechanismService.updateMechanism` before it had stored the machines
+        // it was building, so every panel went on describing the drawing from
+        // the moment *before* the edit -- which is how a body with Driven Input
+        // switched on came to be told that nothing drives it (decision S26).
+        // The cause of that particular throw is fixed where it was; this is for
+        // the next one, whose sentence will at least be true.
+        console.error('This mechanism could not be solved:', error);
+        this.setMechanismInvalid('solver-error');
       }
+    }
+  }
+
+  /** Everything a valid, driven, one-freedom machine is solved for, in order. */
+  private solveFromTheDrawnPose(inputAngVel: number): void {
+    this._requiredLoops = LoopSolver.determineLoops(this._joints[0], this._links[0]);
+    this.findFullMovementPos(inputAngVel);
+    // The solver's static holds what *this* build found; read it now, before
+    // the next mechanism's build resets and overwrites it.
+    this._unusableCylinder = PositionSolver.unusableCylinderDrive;
+    // For the same reason, and for anything that differentiates this
+    // mechanism after every other one has been solved over the top of it.
+    // Built here rather than on demand: it is derived from a dozen more of
+    // the same statics, and by the time a graph asks they belong elsewhere.
+    PositionSolver.ensureSimultaneousSystem(this._joints[0], this._links[0]);
+    this._driveState = PositionSolver.captureDriveState();
+    // A sealed cylinder with no stroke emits no steps, so the failure above
+    // is already recorded -- as "nothing can move", which is true but says
+    // nothing a student can act on. Name the ram instead.
+    if (this._unusableCylinder !== undefined && !this.mechanismValid) {
+      this._failure = 'cylinder-has-no-travel';
     }
   }
 
@@ -439,6 +459,15 @@ export class Mechanism {
       }
       const meeting = bodiesAt(j);
       const pairings = Math.max(meeting.size - 1, 0);
+      // A joint costs one less than the number of bodies it holds together, so
+      // a slide with one body on both sides of it costs nothing -- which is the
+      // right answer and worth saying out loud rather than leaving to arrive by
+      // accident. A cylinder welded into one body at both ends is that joint
+      // (decision S25): it joins the body to itself, constrains nothing, and
+      // the body turns on its own pin as a one-freedom machine. Charged as a
+      // joint it would take two freedoms off a drawing that has one, and the
+      // maintainer's fused body would read as over-constrained.
+      //
       // Exactly one of a slider's pairings is the sliding one; any others are
       // riders pinned to each other at the same point, and those are pins.
       if (j instanceof PrisJoint && pairings > 0) {

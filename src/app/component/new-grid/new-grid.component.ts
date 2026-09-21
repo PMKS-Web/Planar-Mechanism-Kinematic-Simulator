@@ -3721,19 +3721,9 @@ export class NewGridComponent implements OnDestroy {
       // taking the message away must not take the record with it.
       this.mechanismSrv.markStartMoved(outcome.lost);
     }
-    if (outcome.lost && !structuralNews) {
-      // Half the words it used to have, and a verb rather than a report: what
-      // happened is that the machine starts here now. Indigo rather than an
-      // alarm color, because nothing failed -- the edit landed exactly as it
-      // was asked for, and this is the consequence that came with it. Undo
-      // rides the message, per the app's rule that a consequence carries its
-      // own exit.
-      this.notify.news(
-        'anchor.unreachable',
-        `${outcome.lost} starts here now — its old start is out of reach.`,
-        { actions: [{ label: 'Undo', run: () => this.saveHistoryService.undo() }] }
-      );
-    }
+    // In the service's own words, which a menu edit now says too: one sentence
+    // about a moved start, wherever the edit came from.
+    if (outcome.lost && !structuralNews) this.mechanismSrv.sayStartMoved(outcome.lost);
   }
 
   /**

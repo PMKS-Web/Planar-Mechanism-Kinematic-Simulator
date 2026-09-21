@@ -428,6 +428,71 @@ export function findPose(
 }
 
 /**
+ * Read a machine's anchor off the cycle it has just been solved into.
+ *
+ * Sample 0 is the start pose by construction -- it is the editable drawing,
+ * deep-copied -- so an anchor taken here is the drawing saying where it starts
+ * rather than anybody's arithmetic about where it ought to.
+ */
+export function anchorFrom(
+  rule: CoordinateRule,
+  topology: string,
+  frames: Joint[][]
+): MachineAnchor | undefined {
+  const coordinates = coordinatesAcross(rule, frames);
+  const first = coordinates[0];
+  if (first === undefined || !frames[0]) return undefined;
+  const next = coordinates.find((value) => value !== undefined && value !== first);
+  return {
+    jointId: rule.jointId,
+    topology,
+    kind: rule.kind,
+    coordinate: first,
+    heading: next !== undefined && next < first ? -1 : 1,
+    rule,
+    seed: new Map(frames[0].map((joint) => [joint.id, { x: joint.x, y: joint.y }])),
+  };
+}
+
+/**
+ * How far a joint may stand from where the seed records it and still count as
+ * the same pose.
+ *
+ * Nothing legitimately moves a joint by less than this: a start pose that has
+ * not been edited is copied out of the same numbers it was copied into, so the
+ * honest comparison is equality and this is only insulation against arithmetic
+ * that has been through a rigid transform on the way.
+ */
+const SEED_SLACK = 1e-6;
+
+/**
+ * Does this anchor still name the pose the machine now starts in?
+ *
+ * Asked of a machine whose freshly solved sample 0 *is* its start -- one no
+ * gesture has staged -- so the question is only whether the start has moved
+ * out from under the anchor holding it. It has whenever an edit touched the
+ * pose: drag the driven crank's pin, or the ground it turns about, and the
+ * design's t = 0 is the drawing as edited while the stored coordinate still
+ * names the angle the crank used to stand at.
+ *
+ * Against the seed rather than by re-reading the coordinate, because the
+ * coordinate is stored on purpose (see `MachineAnchor`): re-deriving it from
+ * the samples every rebuild would walk the start a fraction of a sample at a
+ * time, and no single edit would look wrong.
+ */
+export function anchorStillNames(
+  anchor: Pick<MachineAnchor, 'seed'>,
+  start: readonly Joint[]
+): boolean {
+  return start.every((joint) => {
+    const was = anchor.seed.get(joint.id);
+    // A joint the seed has never heard of is one this edit drew, which is as
+    // much a change to the start pose as moving one.
+    return !!was && Math.hypot(joint.x - was.x, joint.y - was.y) <= SEED_SLACK;
+  });
+}
+
+/**
  * Where a machine was when a posed edit was committed.
  *
  * The same three things an anchor carries, and for the same reason: putting the

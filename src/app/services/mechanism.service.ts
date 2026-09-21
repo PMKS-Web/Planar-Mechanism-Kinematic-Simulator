@@ -9,7 +9,7 @@ import {
 } from '../model/link-holds';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import { speedTurning, turnsClockwise } from '../model/drive-direction';
-import { Link, RealLink } from '../model/link';
+import { bodiesUnder, Link, RealLink } from '../model/link';
 import { isSlideCandidate, slideAssemblyAt } from '../model/slide-assembly';
 import {
   Cylinder,
@@ -26,6 +26,7 @@ import {
   cylinderAtSeal,
   memberInertiaIsDerived,
 } from '../model/cylinder';
+import { isFrozenCylinder } from '../model/cylinder-frozen';
 import { memberSilhouette } from '../model/cylinder-fusion';
 import { Force } from '../model/force';
 import {
@@ -65,6 +66,8 @@ import {
   MachineAnchor,
   GhostBody,
   StartPoseGhost,
+  anchorFrom,
+  anchorStillNames,
   blendFrame,
   coordinateIn,
   coordinateRuleFor,
@@ -1003,12 +1006,20 @@ export class MechanismService {
     // `ownJoints` arm: every owned joint is in `joints` as well, which is what
     // makes this the wider question rather than a different one.
     const id = part.id;
-    return this.partitions.findIndex(
+    const found = this.partitions.findIndex(
       (partition) =>
         partition.joints.some((joint) => joint.id === id) ||
         partition.links.some((link) => link.id === id) ||
         partition.forces.some((force) => force.id === id)
     );
+    if (found !== -1 || !(part instanceof Link)) return found;
+    // A leaf of a welded compound. A partition holds root bodies, so a
+    // cylinder's barrel or rod that a weld has swallowed is in no partition's
+    // list -- and the analysis panel told the reader that body "is not in a
+    // mechanism that can be solved" about a machine running perfectly well.
+    // The samples that hold it are its root's.
+    const root = this.rootLinkOwning(part);
+    return root && root.id !== id ? this.indexOfMechanismSolving(root) : -1;
   }
 
   /** The partition this part belongs to, if it belongs to one. */
@@ -1073,7 +1084,12 @@ export class MechanismService {
     return (
       this.joints.find((joint) => joint.id === id) ??
       this.links.find((link) => link.id === id) ??
-      this.forces.find((force) => force.id === id)
+      this.forces.find((force) => force.id === id) ??
+      // A member bar a weld swallowed. A cylinder's barrel and rod stay two
+      // bodies a reader selects after an end joint is welded into a bracket,
+      // and every graph names its subject by id and comes here for the samples
+      // behind it -- so a Rod panel drew nothing but dashes.
+      bodiesUnder(this.links).find((link) => link.id === id)
     );
   }
 
@@ -4487,6 +4503,10 @@ export class MechanismService {
       if (only && !only.joints.some((joint) => joint.id === cylinder.seal.id)) {
         continue;
       }
+      // A cylinder frozen inside one body uses none of its travel because it
+      // cannot, which is not the linkage binding on it (decision S25).
+      // `readinessOf` says what is actually true of one instead.
+      if (isFrozenCylinder(cylinder)) continue;
       // Each ram is measured against the frames of its own machine. Read from
       // another mechanism's cycle -- a different length, a different motion --
       // the travel below is a measurement of the wrong thing entirely.
@@ -5656,15 +5676,26 @@ export class MechanismService {
   /**
    * Are the editable objects holding the pose a rebuild may treat as t = 0?
    *
-   * Every clock has to be at zero, not just the shared one: while unsynced a
-   * row can be scrubbed away from the start with the shared step still reading
-   * zero, and that combination used to answer yes.
+   * Every clock has to be at zero, not just the shared one: a row can be
+   * scrubbed away from the start with the shared step still reading zero, and
+   * that combination used to answer yes.
+   *
+   * Synced included, which this used to exempt. `seekMechanism` writes the
+   * shared step only for the *master* machine, so any machine but the longest
+   * one can be parked mid-cycle with the shared step at zero -- which is
+   * exactly where a posed edit's closing re-seek leaves it. The answer here is
+   * what `restoreStartPose` asks before a rebuild, so that drawing's
+   * second-longest machine had its displayed pose written down as t = 0 by
+   * whatever edit came next: its start moved most of a turn, its ghost was not
+   * drawn at all (the canvas hides it at the start pose), and the URL saved
+   * the pose the reader happened to have left it at. `edit-permission.ts` has
+   * said "every machine parked at its own start" all along; this is that.
    */
   private atStartPose(): boolean {
     if (this.isPlaying) {
       return false;
     }
-    if (!this.syncMechanisms && this.ownSeconds.some((seconds) => seconds !== 0)) {
+    if (this.ownSeconds.some((seconds) => seconds !== 0)) {
       return false;
     }
     return this.mechanismTimeStep === 0;
@@ -6400,11 +6431,21 @@ export class MechanismService {
    */
   private refreshAnchors(): void {
     const alive = new Set<string>();
+    const staged = this.stagedMachineIndex();
     this.partitions.forEach((partition, index) => {
+      const key = topologyOf(partition.ownJoints);
+      // Alive means "this machine still exists", not "this machine can be
+      // solved right now". A single edit is several steps -- `JointTypeService`
+      // un-grounds a pin, makes it Prismatic and grounds it again -- and in
+      // between them the machine counts a freedom it will not have a moment
+      // later. Judged by the solve, the anchor was dropped for that one
+      // rebuild and the next valid one took a fresh one from sample 0, which
+      // while the edit is staged is the pose under the reader's hand: a
+      // grounded pin retyped a third of the way round the cycle quietly made
+      // that pose the start.
+      alive.add(key);
       const frames = this.mechanisms[index];
       if (!frames?.isMechanismValid()) return;
-      const key = topologyOf(partition.ownJoints);
-      alive.add(key);
       // The owned set is not the whole identity. Move the drive from one joint
       // to another and the set is unchanged, while the anchor's coordinate now
       // names a joint that is no longer driven -- so it would be read against
@@ -6418,10 +6459,46 @@ export class MechanismService {
         const taken = this.carriedAnchorFor(index) ?? this.anchorFor(index);
         if (taken) this.anchors.set(key, taken);
       }
+      if (index !== staged) this.reanchorIfStartMoved(index, key);
     });
     this.anchors.forEach((_, key) => {
       if (!alive.has(key)) this.anchors.delete(key);
     });
+  }
+
+  /**
+   * Put an anchor back on the start when the start has moved out from under it.
+   *
+   * An anchor is *held* across a rebuild on purpose: that is what carries a
+   * machine's start through an edit made at some other pose. Held
+   * unconditionally, it also outlived the ordinary case -- an edit made at the
+   * start pose, where the pose the reader is looking at and changing simply
+   * *is* the new start. Drag the driven crank's pin, or the ground it turns
+   * about, and the design's t = 0 is the drawing as edited while the anchor
+   * still names the angle the crank used to stand at. Nothing looked wrong
+   * until playback moved: the ghost then drew that old angle, most of a turn
+   * from where stop-to-start actually lands, and every surface that asks where
+   * the start is -- the ghost, its warning, a graph's phase offset -- was
+   * reading a pose the design had left behind.
+   *
+   * Only for a machine this rebuild did not stage. For one of those,
+   * `restoreStartPose` has just put the editable arrays on the machine's own
+   * t = 0, so the sample 0 just solved *is* its start pose, by the same
+   * construction `anchorFor` relies on. `anchorStillNames` is where the
+   * comparison itself lives, and says why it is made against the seed.
+   */
+  private reanchorIfStartMoved(index: number, key: string): void {
+    const anchor = this.anchors.get(key);
+    const start = this.mechanisms[index]?.joints[0];
+    if (!anchor || !start || anchorStillNames(anchor, start)) return;
+    const taken = this.anchorFor(index);
+    if (taken) this.anchors.set(key, taken);
+    else this.anchors.delete(key);
+    // The ghost drawn from the old anchor described the start that has just
+    // been left behind, so neither the cache nor the held warning pose may
+    // survive it.
+    this.ghostCache = undefined;
+    this.lastGoodGhost.delete(key);
   }
 
   /**
@@ -6578,30 +6655,20 @@ export class MechanismService {
     return driven ? coordinateRuleFor(driven) : undefined;
   }
 
-  /** Read one machine's anchor off its solved cycle. */
+  /**
+   * Read one machine's anchor off its solved cycle.
+   *
+   * Through the same `currentRuleFor` every other question about this
+   * machine's input goes through: written out again here, the two answers
+   * could differ, and an anchor taken against one rule and read back against
+   * the other names a quantity the drive does not control.
+   */
   private anchorFor(index: number): MachineAnchor | undefined {
     const partition = this.partitions[index];
     const frames = this.mechanisms[index];
-    if (!partition || !frames?.isMechanismValid()) return undefined;
-    const driven = partition.ownJoints.find(
-      (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
-    );
-    if (!driven) return undefined;
-    const rule = coordinateRuleFor(driven);
-    if (!rule) return undefined;
-    const coordinates = coordinatesAcross(rule, frames.joints);
-    const first = coordinates[0];
-    if (first === undefined) return undefined;
-    const next = coordinates.find((value) => value !== undefined && value !== first);
-    return {
-      jointId: rule.jointId,
-      topology: topologyOf(partition.ownJoints),
-      kind: rule.kind,
-      coordinate: first,
-      heading: next !== undefined && next < first ? -1 : 1,
-      rule,
-      seed: new Map(frames.joints[0].map((joint) => [joint.id, { x: joint.x, y: joint.y }])),
-    };
+    const rule = this.currentRuleFor(index);
+    if (!partition || !rule || !frames?.isMechanismValid()) return undefined;
+    return anchorFrom(rule, topologyOf(partition.ownJoints), frames.joints);
   }
 
   /**
@@ -6723,7 +6790,15 @@ export class MechanismService {
     // else, so the old anchor is dropped rather than carried -- runs no rebuild
     // and so no save, and the edit was left out of the history entirely: it had
     // happened, and Undo would not take it back.
-    if (!this.settleToAnchor(key, true).reanchored && !held) this.save();
+    const outcome = this.settleToAnchor(key, true);
+    // And narrated, exactly as a drag's release narrates it. A menu row or a
+    // panel field can move a start as surely as a hand can -- retype a
+    // grounded pin as Prismatic while the machine is parked mid-cycle and the
+    // travel its anchor measures stops existing -- and this read only
+    // `reanchored`, so the one edit that could not be undone by eye was also
+    // the one nothing said a word about.
+    if (outcome.lost) this.sayStartMoved(outcome.lost);
+    if (!outcome.reanchored && !held) this.save();
     return result;
   }
 
@@ -7085,10 +7160,22 @@ export class MechanismService {
       // the warning on screen and the outcome at the commit agree by
       // construction rather than by two pieces of arithmetic being kept in step.
       const anchor = this.anchorOf(index);
-      const reach = anchor
-        ? reachAnchor(coordinatesAcross(this.ruleFor(anchor), frames.joints), anchor, frames.joints)
-        : null;
       const key = topologyOf(partition.ownJoints);
+      if (!anchor) {
+        // Nothing anchored is not "the start is out of reach"; it is no
+        // question at all, which is what `anchorIsReachable` has always
+        // answered. The held ghost below belongs to the anchor that has just
+        // gone -- switch a machine's drive off and it stood there in amber
+        // over a drawing whose start it no longer described, saying a start
+        // was about to be lost that nothing was holding.
+        this.lastGoodGhost.delete(key);
+        return [];
+      }
+      const reach = reachAnchor(
+        coordinatesAcross(this.ruleFor(anchor), frames.joints),
+        anchor,
+        frames.joints
+      );
       // Out of reach, there is no anchored pose to draw -- and falling back to
       // sample 0 draws the mechanism on top of itself, so the ghost disappears
       // at exactly the moment it is warning about. The last pose it *could*
@@ -7096,18 +7183,7 @@ export class MechanismService {
       // the reader is about to lose and the thing dragging back recovers.
       if (!reach) {
         const held = this.lastGoodGhost.get(key);
-        return held
-          ? [
-              {
-                index,
-                at: held.at,
-                bodies: held.bodies,
-                bars: held.bars,
-                pins: held.pins,
-                reachable: false,
-              },
-            ]
-          : [];
+        return held ? [{ index, ...held, reachable: false }] : [];
       }
       const start = blendFrame(frames.joints, reach.index, reach.blend);
       if (!start?.length) return [];
@@ -7168,6 +7244,26 @@ export class MechanismService {
 
   markStartMoved(id: string): void {
     this.startMovedOn = id;
+  }
+
+  /**
+   * Both halves at once, for an edit nobody is watching a pointer through.
+   *
+   * Half the words it used to have, and a verb rather than a report: what
+   * happened is that the machine starts here now. Indigo rather than an alarm
+   * color, because nothing failed -- the edit landed exactly as it was asked
+   * for, and this is the consequence that came with it. Undo rides the
+   * message, per the app's rule that a consequence carries its own exit.
+   */
+  sayStartMoved(id: string): void {
+    this.markStartMoved(id);
+    this.notify.news(
+      'anchor.unreachable',
+      `${id} starts here now — its old start is out of reach.`,
+      {
+        actions: [{ label: 'Undo', run: () => this.injector.get(SaveHistoryService).undo() }],
+      }
+    );
   }
 
   /** Cleared by the next thing the reader does to the transport. */
