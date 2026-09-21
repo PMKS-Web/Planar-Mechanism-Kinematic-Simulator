@@ -473,7 +473,17 @@ export const JointNowhereToSlide: Story = {
   },
 };
 
-/** A driven pin can be nothing else: every other value is grayed with the model's reason. */
+/**
+ * A driven pin can be nothing else: every other value is grayed with the
+ * model's reason.
+ *
+ * A reason opens on the side its column is on -- the left column to the left of
+ * the card, the right column to its right -- so that it clears the card
+ * entirely and lies over neither the value beside it nor the ladder below.
+ * Opening them all to the right, as they used to, put the left column's reason
+ * squarely over the right column, and a press meant for a value there landed on
+ * the sentence instead.
+ */
 export const JointTypeRefused: Story = {
   args: {
     model: {

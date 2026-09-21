@@ -90,6 +90,12 @@ export const JointType: Story = { args: { ...jointType, selected: 0 } };
 /**
  * Chosen, not chosen, and refused: on a driven pin every other type is grayed,
  * and pointing at one gives the model's reason.
+ *
+ * Which side the reason opens on is the row it belongs to: Prismatic is on the
+ * top row and opens above the control, Pin-in-slot and Welded are on the bottom
+ * row and open below it. That way a reason is never over one of the four, which
+ * is what it was: read why Welded is grayed, and the sentence sat over Revolute
+ * and Prismatic until the pointer left it.
  */
 export const JointTypeRefused: Story = {
   args: {
@@ -101,6 +107,26 @@ export const JointTypeRefused: Story = {
       'A block is a body of its own, so adding one to a driven joint would put three there. Remove the input first.',
       'A block is a body of its own, so adding one to a driven joint would put three there. Remove the input first.',
       'A weld says these bodies do not move relative to each other, and an input says they do. Remove the input first.',
+    ],
+  },
+};
+
+/**
+ * One grayed option on the bottom row, which is the case that was reported: a
+ * grounded slider with one link cannot be welded. Its reason opens *below* the
+ * control, clear of Revolute and Prismatic, so that reading it and then pressing
+ * one of them is one movement rather than a wait.
+ */
+export const JointTypeWeldRefused: Story = {
+  args: {
+    ...jointType,
+    selected: 2,
+    disabledAt: [3],
+    reasons: [
+      undefined,
+      undefined,
+      undefined,
+      'A weld fuses the links that meet at a joint, and without its slot only one meets here.',
     ],
   },
 };

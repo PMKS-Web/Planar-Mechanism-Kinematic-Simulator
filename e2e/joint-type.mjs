@@ -28,6 +28,8 @@ import { filmstrip, contactSheet } from './filmstrip.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const OUT = 'artifacts/joint-type';
+/** Where a refused type's reason opens, which is a report of its own. */
+const TIPS = 'artifacts/joint-type-tooltip';
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
@@ -242,6 +244,184 @@ await page.waitForTimeout(900);
 const tip = await page.locator('.mat-mdc-tooltip').first().textContent();
 record('and pointing at one says the same thing', /Remove the input first/.test(tip ?? ''), tip);
 await page.screenshot({ path: `${OUT}/3-refused.png` });
+
+// ------------------------------------- 3b. where that reason opens, and what
+//                                            it lets through
+//
+// Reported: the reason opened above whichever option was pointed at, so on the
+// bottom row it lay over the top row -- and Material's tooltip panel takes the
+// pointer, so the press meant for Revolute or Prismatic landed on the sentence.
+// The rule now is the option's row: top row above the control, bottom row
+// below it, and the panel lets the pointer through either way.
+console.log('\nwhere a reason opens, and what it lets through');
+
+/**
+ * The two places the choice is drawn, as a selector each. The panel's track
+ * carries the sliding pill as its first child, so its options start one later;
+ * the card's grid has no pill.
+ */
+const PANEL_CHOICE = { cells: 'app-edit-panel segmented-block .cell', label: '.text', first: 2 };
+const CARD_CHOICE = {
+  cells: '#contextMenu .cm-choice__cell',
+  label: '.cm-choice__label',
+  first: 1,
+};
+const TYPE_NAMES = ['Revolute', 'Prismatic', 'Pin-in-slot', 'Welded'];
+
+/** The open reason's box, against the four options' boxes. */
+const tooltipOver = (grid) =>
+  page.evaluate(({ cells: selector, label }) => {
+    const surface = document.querySelector('.mat-mdc-tooltip');
+    const panel = document.querySelector('.mat-mdc-tooltip-panel');
+    if (!surface || !panel) return null;
+    const tip = surface.getBoundingClientRect();
+    const cells = [...document.querySelectorAll(selector)];
+    return {
+      side: (panel.className.match(/tooltip-panel-(above|below|left|right)\b/) ?? [])[1] ?? null,
+      pointerEvents: getComputedStyle(panel).pointerEvents,
+      // Every option the sentence is drawn over, by name: the rule is that
+      // there are none.
+      covered: cells
+        .filter((cell) => {
+          const box = cell.getBoundingClientRect();
+          return (
+            tip.left < box.right &&
+            tip.right > box.left &&
+            tip.top < box.bottom &&
+            tip.bottom > box.top
+          );
+        })
+        .map((cell) => cell.querySelector(label)?.textContent?.trim()),
+      // And that every option still answers a press at its own centre, rather
+      // than the tooltip answering for it.
+      reachable: cells.every((cell) => {
+        const box = cell.getBoundingClientRect();
+        const on = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+        return cell.contains(on);
+      }),
+    };
+  }, grid);
+
+const centreOf = (grid, index) =>
+  page.$eval(`${grid.cells}:nth-child(${index + grid.first})`, (cell) => {
+    const box = cell.getBoundingClientRect();
+    return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+  });
+
+/** Put the pointer on an option and wait for its reason to open. */
+const point = async (grid, index) => {
+  await page.mouse.move(4, 4);
+  await page.waitForTimeout(300);
+  const at = await centreOf(grid, index);
+  await page.mouse.move(at.x, at.y);
+  await page.waitForTimeout(900);
+};
+
+/**
+ * The movement the report describes: read why one option is grayed, then go
+ * straight for another and press it, without waiting for the sentence to fade.
+ * Where the press arrives is what comes back, because "the type changed" cannot
+ * be asked of an option that is itself refused.
+ */
+const pressFrom = async (grid, from, to) => {
+  await point(grid, from);
+  await page.evaluate((selector) => {
+    window.__landedOn = null;
+    document.addEventListener(
+      'mousedown',
+      (event) => {
+        const cell = event.target.closest?.(selector);
+        window.__landedOn = cell
+          ? [...document.querySelectorAll(selector)].indexOf(cell)
+          : String(event.target.className || event.target.tagName).slice(0, 40);
+      },
+      true
+    );
+  }, grid.cells);
+  const at = await centreOf(grid, to);
+  // One hop and a press: the tooltip is still fading when the button goes down,
+  // which is exactly when it used to be the thing under the pointer.
+  await page.mouse.move(at.x, at.y);
+  await page.mouse.down();
+  await page.mouse.up();
+  await page.waitForTimeout(700);
+  return page.evaluate(() => window.__landedOn);
+};
+
+const PANEL_SIDES = ['above', 'above', 'below', 'below'];
+for (const index of [1, 2, 3]) {
+  await point(PANEL_CHOICE, index);
+  const seen = await tooltipOver(PANEL_CHOICE);
+  record(
+    `the panel’s reason for ${TYPE_NAMES[index]} opens ${PANEL_SIDES[index]} the control, over none of the four`,
+    seen?.side === PANEL_SIDES[index] &&
+      seen.covered.length === 0 &&
+      seen.reachable === true &&
+      seen.pointerEvents === 'none',
+    seen
+  );
+  if (index === 1) await page.screenshot({ path: `${TIPS}/1-top-row-opens-above.png` });
+  if (index === 3) await page.screenshot({ path: `${TIPS}/2-bottom-row-opens-below.png` });
+}
+
+// A grounded pin with one link: a weld would have nothing to fuse to, so
+// Welded -- bottom row -- is the one grayed option. This is the reported case.
+await select('D');
+const beforeDiagonal = await state('D');
+const landedTop = await pressFrom(PANEL_CHOICE, 3, 1);
+const afterDiagonal = await state('D');
+record(
+  'with the bottom row’s reason open, a press on the top row lands and the type changes',
+  landedTop === 1 && afterDiagonal.slider === true && afterDiagonal.welded === true,
+  { landedTop, beforeDiagonal, afterDiagonal }
+);
+await page.screenshot({ path: `${TIPS}/3-diagonal-press-landed.png` });
+
+// And the other way: on the driven pin the top row's Prismatic is grayed, and
+// a press on the row below it reaches the option rather than the sentence.
+// Nothing changes there -- every other type on a driven pin is refused -- so
+// where the press arrived is what is asked.
+await select('A');
+const landedBottom = await pressFrom(PANEL_CHOICE, 1, 2);
+record(
+  'and with the top row’s reason open, a press on the bottom row reaches the option',
+  landedBottom === 2,
+  landedBottom
+);
+
+// The card asks the same question with the other geometry: its grid is 212px
+// in a card of its own, so a reason opens outward, on the side its column is
+// on. Opening them all to the right put the left column's reason over the
+// right column, and a press meant for a value there landed on the sentence.
+await openFourBar();
+const cardAt = await page.locator('#joint_A').boundingBox();
+await page.mouse.click(cardAt.x + cardAt.width / 2, cardAt.y + cardAt.height / 2, {
+  button: 'right',
+});
+await page.locator('#contextMenu.show').waitFor();
+await page.waitForTimeout(250);
+
+const CARD_SIDES = ['left', 'right', 'left', 'right'];
+for (const index of [1, 2, 3]) {
+  await point(CARD_CHOICE, index);
+  const seen = await tooltipOver(CARD_CHOICE);
+  record(
+    `the card’s reason for ${TYPE_NAMES[index]} opens ${CARD_SIDES[index]} of the card, over none of the four`,
+    seen?.side === CARD_SIDES[index] &&
+      seen.covered.length === 0 &&
+      seen.reachable === true &&
+      seen.pointerEvents === 'none',
+    seen
+  );
+  if (index === 2) await page.screenshot({ path: `${TIPS}/4-card-left-column.png` });
+}
+
+const landedInCard = await pressFrom(CARD_CHOICE, 2, 1);
+record(
+  'and with the left column’s reason open, a press on the right column reaches the value',
+  landedInCard === 1,
+  landedInCard
+);
 
 // ----------------------------------------------------- 4. parked mid-cycle
 console.log('\nthe same change, parked away from the start');
