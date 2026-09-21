@@ -2348,33 +2348,6 @@ export class NewGridComponent implements OnDestroy {
     return `scale(${scale}) translate(-12, -13.5)`;
   }
 
-  /**
-   * The joints a drag of this link would carry, filtered to the ones the
-   * current Lock marks hold still. Carried means moved *as a body*: the
-   * link's own joints, and a sealed cylinder's.
-   *
-   * A floating slider riding this link is not among them, locked or not. Its
-   * mark holds where it sits along the slot, and moving the link moves the
-   * slot with the block still at that place on it — so a locked block is no
-   * reason to refuse the drag, and pivoting the link about one would be
-   * anchoring a point nothing asked to have held.
-   */
-  private frozenCarriedJoints(link: Link): Joint[] {
-    const carried = new Map<string, Joint>();
-    const add = (joint: Joint) => carried.set(joint.id, joint);
-    const bodyCylinder = this.mechanismSrv.cylinderAt(link);
-    if (bodyCylinder) {
-      cylinderJoints(bodyCylinder).forEach(add);
-    } else {
-      // The link's own joints. A slider riding one of them used to bring the
-      // coincident partner the block paired it with; a slider is one joint now,
-      // so a slider that is a member of this body is already among them.
-      link.joints.forEach(add);
-    }
-    const frozen = this.gridUtils.frozenJointIds();
-    return [...carried.values()].filter((joint) => frozen.has(joint.id));
-  }
-
   /** Refuse a joint drag because the joint is held, naming what holds it. */
   private refuseLockedJoint(joint: RealJoint): boolean {
     if (!this.gridUtils.isJointFrozen(joint)) return false;
@@ -4459,7 +4432,7 @@ export class NewGridComponent implements OnDestroy {
               // exactly one turns the drag into a swing about that joint —
               // the only motion the linkage would allow if the pin were
               // bolted down — and two or more leave the body nowhere to go.
-              const held = this.frozenCarriedJoints(this.activeObjService.selectedLink);
+              const held = this.gridUtils.frozenCarriedJoints(this.activeObjService.selectedLink);
               if (held.length >= 2) {
                 const grabbedLink = this.activeObjService.selectedLink;
                 this.holdNotice(() => this.refuseHeldLink(grabbedLink, held));

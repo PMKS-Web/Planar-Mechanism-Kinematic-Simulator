@@ -1,3 +1,4 @@
+import { cylinderJoints } from '../model/cylinder';
 import { Injectable, Injector, inject } from '@angular/core';
 import { HoldBar, HoldGoal, reachedByHolds, settleHolds } from '../model/hold-solver';
 import {
@@ -823,6 +824,33 @@ export class GridUtilsService {
    * positions. Only the *neighboring* links genuinely change shape, so those
    * are the ones that get recomputed.
    */
+  /**
+   * The joints a drag of this link would carry, filtered to the ones the
+   * current Lock marks hold still. Carried means moved *as a body*: the
+   * link's own joints, and a sealed cylinder's.
+   *
+   * A floating slider riding this link is not among them, locked or not. Its
+   * mark holds where it sits along the slot, and moving the link moves the
+   * slot with the block still at that place on it — so a locked block is no
+   * reason to refuse the drag, and pivoting the link about one would be
+   * anchoring a point nothing asked to have held.
+   */
+  frozenCarriedJoints(link: Link): Joint[] {
+    const carried = new Map<string, Joint>();
+    const add = (joint: Joint) => carried.set(joint.id, joint);
+    const bodyCylinder = this.mechanismSrv.cylinderAt(link);
+    if (bodyCylinder) {
+      cylinderJoints(bodyCylinder).forEach(add);
+    } else {
+      // The link's own joints. A slider riding one of them used to bring the
+      // coincident partner the block paired it with; a slider is one joint now,
+      // so a slider that is a member of this body is already among them.
+      link.joints.forEach(add);
+    }
+    const frozen = this.frozenJointIds();
+    return [...carried.values()].filter((joint) => frozen.has(joint.id));
+  }
+
   dragLink(selectedLink: Link, dx: number, dy: number) {
     if (dx === 0 && dy === 0) {
       return selectedLink;
