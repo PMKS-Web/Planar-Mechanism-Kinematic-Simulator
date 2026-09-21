@@ -193,6 +193,9 @@ Not suites — import them from one.
   grounded glyph set, the block with nowhere to slide), a refused type with the model's reason on
   hover, the same change parked mid-cycle, and a group taking a type in one press. Leaves a
   filmstrip of the pill in `artifacts/joint-type/`.
+- `split-joint.mjs` — the panel action, exact refusal tooltip, one-step undo and redo, dragging one
+  of two overlapping pins free, and the same action from the phone sheet. Its screenshots and drag
+  filmstrip land in `artifacts/split-joint/`.
 - `edit-undo.mjs` — one committed edit is one undo step, whether it was dragged or typed.
 - `unit-undo-view.mjs` — undoing a unit change does not move the view.
 
@@ -485,3 +488,6 @@ Not suites — import them from one.
 - **`#bottomBar` is a read-only strip** with `pointer-events: none`. It shows the mode, a status
   phrase, `Degrees of freedom: N` (omitted when the drawing has no mobility to report), the cursor
   coordinates when there are any, and the units.
+- `dual-button-gallery.mjs` — every shared dual-button story: either half disabled, both disabled,
+  the single-button fallback, long-label proportions, clipping, and accessible refusal text.
+  Screenshots land in `artifacts/dual-button/`.

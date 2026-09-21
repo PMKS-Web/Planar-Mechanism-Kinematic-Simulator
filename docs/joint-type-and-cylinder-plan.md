@@ -6,8 +6,8 @@
 > **Stages R, 0, 1 and 2 are built:** a joint's type is one choice of four in the Edit panel, in
 > the group panel and at the top of the right-click menu, a slider is a single `PrisJoint` carrying
 > its own mass and `rotates`, and a cylinder is a record looked up from its seal, with a selectable
-> slide and a panel each for its barrel and its rod. Split Joint (D7) is the one deferral and has
-> yet to be scoped. Everything here is built on `staging` in ordinary pull requests, on the public
+> slide and a panel each for its barrel and its rod. Split Joint (D7) gives each body at a shared
+> point its own slightly separated revolute pin. Everything here is built in ordinary pull requests, on the public
 > editor, with the existing solver.
 
 ## Why
@@ -44,7 +44,7 @@ The decisions it encodes, with the maintainer's answers of September 15 folded i
 | D4 | The **dangling slider** state is kept as the one inline state: a 15px Material glyph, bold lead "Nowhere to slide.", sentence "Drag it onto a link to cut its slot, or ground it.", the chosen cell in refusal ink. The carrier is still assigned by dropping the joint on a link; there is no carrier picker. |
 | D5 | Every other refusal rides the control's hover tooltip; nothing else pops into the layout. A value the joint cannot take is drawn in `--text-disabled`. |
 | D6 | **Mass Settings** appears on a joint whose type has a block (Prismatic, Pin-in-slot). In Stage 0 it reads and writes the `SliderBlock`'s mass; from Stage 1 the joint's own. |
-| D7 | **Add Input** stays. The spec pairs it with a new **Split Joint** action in a `dual-button` row. Split Joint (the inverse of merging by drop) is **deferred** to its own pull request after Stage 2; until it ships, Add Input renders full-width as today and the menu footer is unchanged. |
+| D7 | **Add Input** stays, paired with **Split Joint** in a `dual-button` row. Split Joint gives every body at the shared point its own ordinary revolute pin and moves unconstrained pins slightly apart; the original pin keeps its letter and authored state, while new pins take the next free letters. For a floating Slider it instead detaches the carrier, retaining the same prismatic joint and all rider links as a dangling slider without adding a carrier pin. Welds, already-dangling slots, and cylinder interiors must be resolved first. The joint menu repeats the action above its delete rows. *Built.* |
 | D8 | **Menu:** the four values are a grid at the top of the card (82px) above the ladder; State keeps Grounded, Driven Input, Locked in that order; Traces and the destructive footer are unchanged; a ticked row keeps its check in the right-hand slot and a refusal takes that slot instead. Subtitles stay the public ones (`Pin · Links AB, BG`, `Slider · Link BC`, `Ground pin · Barrel AS`). |
 | D9 | **A cylinder's slide** is a joint: the square drawn mid-skin. Selecting it shows Joint Type with Prismatic chosen at full ink and the other three refused "inside a cylinder"; **Add Input is live** (the cylinder's drive is this joint's); no Grounded row ("ground an end joint instead" in the menu; the spec drew it as "ground a mount instead", and *mount* is a code word that `docs/ui-vocabulary.md` keeps out of the UI); no Travel field (the stroke is the barrel's length); a **Starts at** field in percent of stroke. |
 | D10 | **A cylinder has one angle.** Barrel Angle, Rod Angle and the slide's Slider Angle are the same value; editing any of them rotates the assembly about the slide joint by default. Standard constraint solver logic applies where if one of the mounts are grounded, it rotates about said joint. |
@@ -53,7 +53,7 @@ The decisions it encodes, with the maintainer's answers of September 15 folded i
 | D13 | **A mount is a pin like any other**: its type is live, it attaches like one, and its delete row names the cascade ("Delete Joint (and Cylinder)"). |
 | D14 | **Every count the reader sees** (Lock All, Delete entire mechanism, "and N links") counts visible joints and links, never the solver's hidden points. |
 | D15 | Freeze banners, the lock banner, Rename/Lock/Delete, Visual Settings, Distance to Joints are unchanged. |
-| D16 | New words, to be added to `docs/ui-vocabulary.md` in Stage 0: Joint Type, Revolute, Prismatic, Pin-in-slot, Welded (as a type), Slider Angle, Starts at, Barrel, Rod, "inside a cylinder", "Nowhere to slide.", Split Joint (deferred). |
+| D16 | New words, added to `docs/ui-vocabulary.md`: Joint Type, Revolute, Prismatic, Pin-in-slot, Welded (as a type), Slider Angle, Starts at, Barrel, Rod, "inside a cylinder", "Nowhere to slide.", Split Joint. |
 
 ## Rules for whoever runs this
 
@@ -334,7 +334,6 @@ construction in creation (creation builds A, N, S, B directly), hidden interior 
 
 ## Order and what each stage must not do
 
-R → 0a → 0b and 0c in parallel → 1a → 1b and 1c in parallel → 1d → 2a → 2b → 2c → 2d. Stage 0
+R → 0a → 0b and 0c in parallel → 1a → 1b and 1c in parallel → 1d → 2a → 2b → 2c → 2d → D7. Stage 0
 must not touch the codec. Stage 1 must not change any solved number. Stage 2 must not keep a
-second cylinder representation alive beside the seal. Split Joint comes after 2d, as its own plan
-section when it is scoped.
+second cylinder representation alive beside the seal. Split Joint follows 2d.

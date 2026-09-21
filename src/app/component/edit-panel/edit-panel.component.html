@@ -268,16 +268,23 @@
              Written out by hand it was the one control here that did not: gray
              label, default border, and a black icon clipped by its own missing
              viewBox. -->
-          <button-block
-            [customIcon]="
+          <dual-button
+            [but1Icon]="
               gridUtils.isVisuallyInput(activeSrv.selectedJoint) ? 'remove_input' : 'add_input'
             "
-            [disabled]="!canToggleInput(activeSrv.selectedJoint)"
-            [tooltip]="inputRefusal()"
-            [click]="mechanismService.adjustInput.bind(mechanismService)"
-          >
-            {{ gridUtils.isVisuallyInput(activeSrv.selectedJoint) ? 'Remove Input' : 'Add Input' }}
-          </button-block>
+            [but1Text]="
+              gridUtils.isVisuallyInput(activeSrv.selectedJoint) ? 'Remove Input' : 'Add Input'
+            "
+            but1WidthText="Remove Input"
+            [btn1Disabled]="!canToggleInput(activeSrv.selectedJoint)"
+            [btn1Tooltip]="inputRefusal()"
+            [but1Action]="mechanismService.adjustInput.bind(mechanismService)"
+            but2Icon="joint_split"
+            but2Text="Split Joint"
+            [btn2Disabled]="!!splitJoints.choiceFor(activeSrv.selectedJoint).refusal"
+            [btn2Tooltip]="splitJoints.choiceFor(activeSrv.selectedJoint).long"
+            [but2Action]="splitJoints.split.bind(splitJoints, activeSrv.selectedJoint)"
+          ></dual-button>
         </collapsible-subsection>
         @if (gridUtils.isVisuallyInput(activeSrv.selectedJoint)) {
           <div class="inputSettings">
