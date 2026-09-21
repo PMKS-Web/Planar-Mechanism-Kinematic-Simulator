@@ -41,13 +41,14 @@ adapts its isolated-body and equation sequence to the current solvers and UI.
   every FBD load on the left: joint reactions, external forces, weight, and motor torque as
   applicable. The right side is inertia for motion or zero for statics. Load-group definitions use
   the same vector notation as their grouped equation. Further disclosures resolve force balance
-  into x/y/z, calculate r as target position minus reference position, and derive a force moment
-  from r cross F. The slanted bar AB FBD includes centered CoM, weight W_ab, applied force F_1,
-  motor torque M_A, and the projection grid for every r vector. The grid orders components from
-  shortest to longest and keeps horizontal labels in the open space to the left. The
-  moment-reference control follows the FBD and updates the general z-moment equation. A final
-  disclosure crosses out terms whose moment arm is zero or whose line of action passes through the
-  selected reference.
+  into x/y/z, with the planar z equation struck through in red; calculate r as target position minus
+  reference position; and derive a force moment from vector r cross vector F. The slanted bar AB
+  FBD includes centered CoM, weight W_ab, applied force F_1, motor torque M_A, and the projection
+  grid for every r vector. The grid orders components from shortest to longest and keeps horizontal
+  labels in the open space to the left. The motor torque stays visible in muted gray for x/y force
+  balances. The moment-reference control follows the FBD and updates a general z-moment equation.
+  A final disclosure crosses out terms whose moment arm is zero or whose line of action passes
+  through the selected reference.
 - **Free Bodies:** every moving root body, orange reaction arrows, vector force balance,
   vector moment balance about a chosen reference (CoM by default), then scalar x, y, and z equations.
   Choose force-component/couple directions and the moment reference directly on each isolated

@@ -40,10 +40,12 @@ type ReferenceId = 'A' | 'CoM' | 'B';
         </details>
         <details class="equationDetail">
           <summary>Resolve force balance into x, y, and z</summary>
+          <app-solver-math [equation]="forceVectorComponents" />
           <app-solver-math [equation]="forceComponents" />
           <p>
-            This is a planar mechanism: no force or acceleration is considered in z. Therefore ΣF_z
-            = ma_z = 0, and only the x and y equations are solved.
+            This is a planar mechanism. Neither the force vector nor the acceleration vector has an
+            out-of-plane component, so the red z equation reduces to 0 = 0 and only x and y are
+            solved.
           </p>
         </details>
       </details>
@@ -79,7 +81,7 @@ type ReferenceId = 'A' | 'CoM' | 'B';
           </p>
         </details>
         <details class="equationDetail">
-          <summary>Resolve one force moment with r × F</summary>
+          <summary>Resolve one force moment with r⃗ × F⃗</summary>
           <app-solver-diagram
             [diagram]="momentBalanceDiagram"
             label="A force at point P creating a moment about point O"
@@ -88,8 +90,8 @@ type ReferenceId = 'A' | 'CoM' | 'B';
           <app-solver-math [equation]="genericCrossProduct" />
           <app-solver-math [equation]="genericMomentComponents" />
           <p>
-            Both vectors lie in the x-y plane. F_z = 0 and r_z = 0 cancel the i and j components,
-            leaving the z component for planar force analysis.
+            Both vectors lie in the x-y plane. Their out-of-plane components are zero, which cancels
+            the i and j components and leaves the z component for planar force analysis.
           </p>
         </details>
       </details>
@@ -339,7 +341,8 @@ export class ForceDefinitionsComponent {
       meaning: "Newton's second-law force from mass and center-of-mass acceleration.",
     },
   ];
-  protected readonly forceComponents = String.raw`\begin{aligned}\sum F_x&=m a_{\mathrm{CoM},x}\\\sum F_y&=m a_{\mathrm{CoM},y}\\\sum F_z&=m a_{\mathrm{CoM},z}\end{aligned}`;
+  protected readonly forceVectorComponents = String.raw`\sum\vec F=\left\langle\sum F_x,\ \sum F_y,\ \color{red}{\cancel{\sum F_z}}\right\rangle`;
+  protected readonly forceComponents = String.raw`\begin{aligned}\sum F_x&=m a_{\mathrm{CoM},x}\\\sum F_y&=m a_{\mathrm{CoM},y}\\\color{red}{\cancel{\sum F_z}}&=\color{red}{\cancel{m a_{\mathrm{CoM},z}}}=0\quad\text{(planar)}\end{aligned}`;
   protected readonly momentBalance = String.raw`\sum\vec M_{\mathrm{CoM}}=I_{\mathrm{CoM}}\vec\alpha\qquad\xrightarrow{\ \mathrm{statics}:\ \vec\alpha=\vec0\ }\qquad\sum\vec M_{\mathrm{CoM}}=\vec0`;
   protected readonly momentLoadGroups = String.raw`\underbrace{\sum(\vec r\times\vec F_{\mathrm{joint}})+\sum(\vec r\times\vec F_{\mathrm{external}})+\sum(\vec r\times\vec W)+\sum M_{\mathrm{motor}}}_{\text{LHS: all moments on the FBD}}=\underbrace{I_{\mathrm{CoM}}\vec\alpha}_{\text{RHS: motion}}\quad\text{or}\quad\underbrace{\vec0}_{\text{RHS: static}}`;
   protected readonly momentTerms = [
@@ -367,7 +370,7 @@ export class ForceDefinitionsComponent {
   protected readonly genericVectors = String.raw`\vec r_{P/O}=\langle r_{P/O,x},r_{P/O,y},0\rangle,\qquad\vec F=\langle F_x,F_y,0\rangle`;
   protected readonly genericCrossProduct = String.raw`\vec r_{P/O}\times\vec F=\begin{vmatrix}\hat i&\hat j&\hat k\\r_{P/O,x}&r_{P/O,y}&0\\F_x&F_y&0\end{vmatrix}`;
   protected readonly genericMomentComponents = String.raw`\vec M_O=\langle\underbrace{0}_{M_x},\underbrace{0}_{M_y},\underbrace{r_{P/O,x}F_y-r_{P/O,y}F_x}_{M_z}\rangle`;
-  protected readonly generalMomentEquation = String.raw`\sum M_{O,z}=\sum(r_xF_y-r_yF_x)+\sum M_{\mathrm{motor}}=I_{\mathrm{CoM}}\alpha\quad\text{or}\quad0\text{ for statics}`;
+  protected readonly generalMomentEquation = String.raw`\sum M_{O,z}=\sum(\vec r_{\mathrm{joint}/O}\times\vec F_{\mathrm{joint}})_z+\sum(\vec r_{\mathrm{external}/O}\times\vec F_{\mathrm{external}})_z+\sum(\vec r_{\mathrm{CoM}/O}\times\vec W)_z+\sum M_{\mathrm{motor}}=0`;
   protected readonly generalPositionVector = String.raw`\vec r_{Q/O}=\vec p_Q-\vec p_O=\langle x_Q-x_O,\ y_Q-y_O,\ 0\rangle`;
   protected readonly exampleFx = String.raw`\sum F_x=-A_x+B_x+F_{1x}=0`;
   protected readonly exampleFy = String.raw`\sum F_y=A_y+B_y+F_{1y}-W_{AB}=0`;
@@ -425,8 +428,8 @@ export class ForceDefinitionsComponent {
     const gridLines: DiagramLine[] = targets.flatMap((target, index) => {
       const from = this.point(reference);
       const to = this.point(target);
-      const xRail = -70 - index * 32;
-      const yRail = 250 + index * 35;
+      const xRail = -55 - index * 28;
+      const yRail = 210 + index * 30;
       return [
         {
           from: { x: from.x, y: xRail },
@@ -495,8 +498,8 @@ export class ForceDefinitionsComponent {
       ],
       lines: gridLines,
       framingPoints: [
-        { x: -95, y: -170 },
-        { x: 350, y: 145 },
+        { x: -90, y: -125 },
+        { x: 300, y: 120 },
       ],
     };
   }
@@ -563,14 +566,14 @@ export class ForceDefinitionsComponent {
   private cancelledTermsFor(reference: ReferenceId) {
     const name = reference === 'CoM' ? '\\mathrm{CoM}' : reference;
     const cancelled: Record<ReferenceId, string> = {
-      A: String.raw`\color{red}{\cancel{r_{A/A,x}A_y-r_{A/A,y}A_x}}`,
-      CoM: String.raw`\color{red}{\cancel{-r_{\mathrm{CoM}/\mathrm{CoM},x}W_{AB}}}`,
-      B: String.raw`\color{red}{\cancel{r_{B/B,x}B_y-r_{B/B,y}B_x}}`,
+      A: String.raw`\color{red}{\cancel{(\vec r_{A/A}\times\vec F_A)_z}}`,
+      CoM: String.raw`\color{red}{\cancel{(\vec r_{\mathrm{CoM}/\mathrm{CoM}}\times\vec W)_z}}`,
+      B: String.raw`\color{red}{\cancel{(\vec r_{B/B}\times\vec F_B)_z}}`,
     };
     const retained: Record<ReferenceId, string> = {
-      A: String.raw`r_{B/A,x}B_y-r_{B/A,y}B_x+r_{P/A,x}F_{1y}-r_{P/A,y}F_{1x}-r_{\mathrm{CoM}/A,x}W_{AB}+M_A`,
-      CoM: String.raw`r_{A/\mathrm{CoM},x}A_y-r_{A/\mathrm{CoM},y}A_x+r_{B/\mathrm{CoM},x}B_y-r_{B/\mathrm{CoM},y}B_x+r_{P/\mathrm{CoM},x}F_{1y}-r_{P/\mathrm{CoM},y}F_{1x}+M_A`,
-      B: String.raw`r_{A/B,x}A_y-r_{A/B,y}A_x+r_{P/B,x}F_{1y}-r_{P/B,y}F_{1x}-r_{\mathrm{CoM}/B,x}W_{AB}+M_A`,
+      A: String.raw`\sum_{J\ne A}(\vec r_{J/A}\times\vec F_J)_z+\sum(\vec r_{\mathrm{external}/A}\times\vec F_{\mathrm{external}})_z+(\vec r_{\mathrm{CoM}/A}\times\vec W)_z+\sum M_{\mathrm{motor}}`,
+      CoM: String.raw`\sum(\vec r_{\mathrm{joint}/\mathrm{CoM}}\times\vec F_{\mathrm{joint}})_z+\sum(\vec r_{\mathrm{external}/\mathrm{CoM}}\times\vec F_{\mathrm{external}})_z+\sum M_{\mathrm{motor}}`,
+      B: String.raw`\sum_{J\ne B}(\vec r_{J/B}\times\vec F_J)_z+\sum(\vec r_{\mathrm{external}/B}\times\vec F_{\mathrm{external}})_z+(\vec r_{\mathrm{CoM}/B}\times\vec W)_z+\sum M_{\mathrm{motor}}`,
     };
     return String.raw`\sum M_{${name},z}=${cancelled[reference]}+${retained[reference]}=0`;
   }
@@ -621,7 +624,7 @@ export class ForceDefinitionsComponent {
       lines: loadLines,
       couples:
         highlight === 'x' || highlight === 'y'
-          ? []
+          ? [{ x: 0, y: 0, sign: 1, label: 'M_A', color: 'var(--text-tertiary)' }]
           : [{ x: 0, y: 0, sign: 1, label: 'M_A', color: 'var(--warning)' }],
     };
   }
