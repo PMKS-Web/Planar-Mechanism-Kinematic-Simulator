@@ -25,11 +25,18 @@ type ReferenceId = 'A' | 'CoM' | 'B';
         <details class="equationDetail">
           <summary>See what belongs on each side</summary>
           <app-solver-math [equation]="forceLoadGroups" />
-          <p>
-            Joint reactions are the internal forces exposed when the body is isolated. External
-            forces and gravity are also on the left. Use ma on the right for motion or zero for a
-            static body.
-          </p>
+          <dl class="termDefinitions">
+            <dt>ΣF_joint</dt>
+            <dd>Internal forces exposed when the body is separated.</dd>
+            <dt>ΣF_external</dt>
+            <dd>External forces applied to the link.</dd>
+            <dt>ΣW</dt>
+            <dd>Gravity acting on the link at its center of mass.</dd>
+            <dt>ma_CoM</dt>
+            <dd>
+              Newton's second-law force from the link mass and its center-of-mass acceleration.
+            </dd>
+          </dl>
         </details>
         <details class="equationDetail">
           <summary>Resolve force balance into x, y, and z</summary>
@@ -38,16 +45,6 @@ type ReferenceId = 'A' | 'CoM' | 'B';
             This is a planar mechanism: no force or acceleration is considered in z. Therefore ΣF_z
             = ma_z = 0, and only the x and y equations are solved.
           </p>
-        </details>
-        <details class="equationDetail">
-          <summary>Assumptions used in this example</summary>
-          <dl class="assumptions">
-            <dt>Gravity is included</dt>
-            <dd>It appears as the downward weight W_AB in the y-force balance.</dd>
-            <dt>Static condition</dt>
-            <dd>Acceleration is zero, so the right side ma becomes zero.</dd>
-          </dl>
-          <app-solver-math [equation]="staticForceComponents" />
         </details>
       </details>
       <details class="subsection">
@@ -60,42 +57,44 @@ type ReferenceId = 'A' | 'CoM' | 'B';
         <details class="equationDetail">
           <summary>See what belongs on each side</summary>
           <app-solver-math [equation]="momentLoadGroups" />
+          <dl class="termDefinitions">
+            <dt>Σ(r × F_joint)</dt>
+            <dd>Moments of the exposed joint reactions about the chosen reference.</dd>
+            <dt>Σ(r × F_external)</dt>
+            <dd>Moments of externally applied forces.</dd>
+            <dt>Σ(r × W)</dt>
+            <dd>Moments made by gravity acting at the center of mass.</dd>
+            <dt>ΣM_motor</dt>
+            <dd>Applied motor torque, which is already a moment and needs no r vector.</dd>
+            <dt>I_CoM α</dt>
+            <dd>Rotational inertia for motion; it becomes zero for statics.</dd>
+          </dl>
+        </details>
+        <details class="equationDetail">
+          <summary>Resolve one force moment with r × F</summary>
+          <app-solver-diagram
+            [diagram]="momentBalanceDiagram"
+            label="A force at point P creating a moment about point O"
+          />
+          <app-solver-math [equation]="genericVectors" />
+          <app-solver-math [equation]="genericCrossProduct" />
+          <app-solver-math [equation]="genericMomentComponents" />
           <p>
-            Add moments from joint reactions, external forces, weight, and motor torque on the left.
-            Use Iα on the right for motion or zero for statics.
+            Both vectors lie in the x-y plane. F_z = 0 and r_z = 0 cancel the i and j components,
+            leaving the z component for planar force analysis.
           </p>
         </details>
         <details class="equationDetail">
           <summary>Resolve moment balance into x, y, and z</summary>
           <app-solver-math [equation]="momentComponents" />
-          <p>
-            The position vectors and forces lie in the x-y plane. Their moments only point in z, so
-            M_x = 0 = 0 and M_y = 0 = 0; only the z-moment equation is solved.
-          </p>
         </details>
         <details class="equationDetail">
-          <summary>See a force create a moment</summary>
-          <app-solver-diagram
-            [diagram]="momentBalanceDiagram"
-            label="A force at point P creating a moment about point O"
-          />
-          <p class="caption">
-            A force applied at P creates a moment about O. Section 4 resolves this position vector
-            and force into the x and y components used to build the z-moment equation.
+          <summary>Calculate a position vector r</summary>
+          <app-solver-math [equation]="generalPositionVector" />
+          <p>
+            When the force is applied at the selected moment reference, its two point coordinates
+            are equal. Therefore r = 0 and that force makes no moment about that point.
           </p>
-          <details class="equationDetail">
-            <summary>Resolve the position and force vectors</summary>
-            <app-solver-math [equation]="genericVectors" />
-          </details>
-          <details class="equationDetail">
-            <summary>Use the cross product to find the moment components</summary>
-            <app-solver-math [equation]="genericCrossProduct" />
-            <app-solver-math [equation]="genericMomentComponents" />
-            <p>
-              Both vectors lie in the x-y plane, so the x and y moment components are zero. The z
-              component is the quantity used in planar force analysis.
-            </p>
-          </details>
         </details>
       </details>
     </details>
@@ -113,6 +112,18 @@ type ReferenceId = 'A' | 'CoM' | 'B';
         label="Slanted two-joint bar AB with reactions, weight W_ab at its center, and force F_1 at P"
       />
       <p class="caption">The curved arrow around the axes marks the positive moment direction.</p>
+      <details class="equationDetail">
+        <summary>Show the position-vector projection grid</summary>
+        <app-solver-diagram
+          [diagram]="momentArmGrid()"
+          [label]="'Moment-arm component grid about ' + referenceLabel()"
+        />
+        <app-solver-math [equation]="generalPositionVector" />
+        <p class="caption">
+          The grid projects each moment arm outside the link. Its current reference is A; choose a
+          different reference in the z-moment section to update it.
+        </p>
+      </details>
     </details>
 
     <details class="definitionStep">
@@ -170,34 +181,21 @@ type ReferenceId = 'A' | 'CoM' | 'B';
             }
           </select>
         </label>
+        <app-solver-math [equation]="generalMomentEquation" />
         <p>
-          The blue ring is the selected reference. The FBD identifies the forces; the component grid
-          below keeps every moment arm away from the link so its x and y parts stay readable.
+          The blue ring is the selected reference. The projection grid in Build the Free-Body
+          Diagram updates with this choice.
         </p>
         <app-solver-diagram
           [diagram]="momentDiagram()"
           [label]="'Free-body diagram with moments about ' + referenceLabel()"
         />
-        <app-solver-math [equation]="generalMomentEquation" />
         <details class="equationDetail">
-          <summary>1 · Calculate every moment arm from its two points</summary>
-          <app-solver-diagram
-            [diagram]="momentArmGrid()"
-            [label]="'Moment-arm component grid about ' + referenceLabel()"
-          />
-          <app-solver-math [equation]="momentArmCalculations()" />
+          <summary>See terms that cancel at this reference</summary>
+          <app-solver-math [equation]="cancelledMomentTerms()" />
           <p class="caption">
-            Each vector is target position minus reference position. The grid projects its x and y
-            components away from the link; r_z is zero for every planar position vector.
-          </p>
-        </details>
-        <details class="equationDetail">
-          <summary>2 · Use those moment arms in the z-moment equation</summary>
-          <app-solver-math [equation]="crossProduct()" />
-          <app-solver-math [equation]="momentEquation()" />
-          <p class="caption">
-            Each term uses (r × F)_z = r_xF_y − r_yF_x. The motor torque M_A is added directly. Move
-            the reference to see which arms become zero and how the symbolic equation changes.
+            Red crossed-out terms have a zero moment arm or a line of action through the selected
+            reference. M_A remains because an applied torque is already a moment.
           </p>
         </details>
       </details>
@@ -245,18 +243,18 @@ type ReferenceId = 'A' | 'CoM' | 'B';
       .equationDetail {
         margin-left: 12px;
       }
-      .assumptions {
+      .termDefinitions {
         display: grid;
         grid-template-columns: max-content 1fr;
         gap: 6px 12px;
         margin: 10px 0;
         font-size: 12px;
       }
-      .assumptions dt {
+      .termDefinitions dt {
         color: var(--text-strong);
         font-weight: 600;
       }
-      .assumptions dd {
+      .termDefinitions dd {
         margin: 0;
         color: var(--text-secondary);
       }
@@ -323,25 +321,20 @@ export class ForceDefinitionsComponent {
   protected readonly referenceLabel = computed(
     () => this.referenceOptions.find((option) => option.id === this.reference())!.label
   );
-  protected readonly momentArmCalculations = computed(() =>
-    this.momentArmCalculationsFor(this.reference())
+  protected readonly cancelledMomentTerms = computed(() =>
+    this.cancelledTermsFor(this.reference())
   );
-  protected readonly crossProduct = computed(
-    () =>
-      String.raw`(\vec r_{P/${this.reference()}}\times\vec F_1)_z=r_{P/${this.reference()},x}F_{1y}-r_{P/${this.reference()},y}F_{1x}`
-  );
-  protected readonly momentEquation = computed(() => this.momentFor(this.reference()));
   protected readonly forceBalance = String.raw`\sum\vec F=m\vec a_{\mathrm{CoM}}\qquad\xrightarrow{\ \mathrm{statics}:\ \vec a=\vec0\ }\qquad\sum\vec F=\vec0`;
   protected readonly forceLoadGroups = String.raw`\underbrace{\sum\vec F_{\mathrm{joint}}+\sum\vec F_{\mathrm{external}}+\sum\vec W}_{\text{LHS: all forces on the FBD}}=\underbrace{m\vec a_{\mathrm{CoM}}}_{\text{RHS: motion}}\quad\text{or}\quad\underbrace{\vec0}_{\text{RHS: static}}`;
-  protected readonly forceComponents = String.raw`\begin{aligned}\sum F_x&=m a_{\mathrm{CoM},x}&&\xrightarrow{\mathrm{statics}}\quad\sum F_x=0\\\sum F_y&=m a_{\mathrm{CoM},y}&&\xrightarrow{\mathrm{statics}}\quad\sum F_y=0\\\sum F_z&=m a_{\mathrm{CoM},z}=0&&\xrightarrow{\mathrm{planar}}\quad\sum F_z=0\end{aligned}`;
-  protected readonly staticForceComponents = String.raw`\begin{aligned}\sum F_x&=0\\\sum F_y&=0\\\sum F_z&=0\end{aligned}`;
+  protected readonly forceComponents = String.raw`\begin{aligned}\sum F_x&=m a_{\mathrm{CoM},x}\\\sum F_y&=m a_{\mathrm{CoM},y}\\\sum F_z&=m a_{\mathrm{CoM},z}\end{aligned}`;
   protected readonly momentBalance = String.raw`\sum\vec M_{\mathrm{CoM}}=I_{\mathrm{CoM}}\vec\alpha\qquad\xrightarrow{\ \mathrm{statics}:\ \vec\alpha=\vec0\ }\qquad\sum\vec M_{\mathrm{CoM}}=\vec0`;
   protected readonly momentLoadGroups = String.raw`\underbrace{\sum(\vec r\times\vec F_{\mathrm{joint}})+\sum(\vec r\times\vec F_{\mathrm{external}})+\sum(\vec r\times\vec W)+\sum M_{\mathrm{motor}}}_{\text{LHS: all moments on the FBD}}=\underbrace{I_{\mathrm{CoM}}\vec\alpha}_{\text{RHS: motion}}\quad\text{or}\quad\underbrace{\vec0}_{\text{RHS: static}}`;
-  protected readonly momentComponents = String.raw`\begin{aligned}\sum M_{\mathrm{CoM},x}&=0=0\\\sum M_{\mathrm{CoM},y}&=0=0\\\sum M_{\mathrm{CoM},z}&=I_{\mathrm{CoM}}\alpha\quad\xrightarrow{\mathrm{statics}}\quad\sum M_{\mathrm{CoM},z}=0\end{aligned}`;
+  protected readonly momentComponents = String.raw`\begin{aligned}\sum M_{O,x}&=\sum(r_yF_z-r_zF_y)=0\\\sum M_{O,y}&=\sum(r_zF_x-r_xF_z)=0\\\sum M_{O,z}&=\sum(r_xF_y-r_yF_x)+\sum M_{\mathrm{motor}}=I_{\mathrm{CoM}}\alpha\end{aligned}`;
   protected readonly genericVectors = String.raw`\vec r_{P/O}=\langle r_{P/O,x},r_{P/O,y},0\rangle,\qquad\vec F=\langle F_x,F_y,0\rangle`;
   protected readonly genericCrossProduct = String.raw`\vec r_{P/O}\times\vec F=\begin{vmatrix}\hat i&\hat j&\hat k\\r_{P/O,x}&r_{P/O,y}&0\\F_x&F_y&0\end{vmatrix}`;
   protected readonly genericMomentComponents = String.raw`\vec M_O=\langle\underbrace{0}_{M_x},\underbrace{0}_{M_y},\underbrace{r_{P/O,x}F_y-r_{P/O,y}F_x}_{M_z}\rangle`;
   protected readonly generalMomentEquation = String.raw`\sum M_{O,z}=\sum(r_xF_y-r_yF_x)+\sum M_{\mathrm{motor}}=I_{\mathrm{CoM}}\alpha\quad\text{or}\quad0\text{ for statics}`;
+  protected readonly generalPositionVector = String.raw`\vec r_{Q/O}=\vec p_Q-\vec p_O=\langle x_Q-x_O,\ y_Q-y_O,\ 0\rangle`;
   protected readonly exampleFx = String.raw`\sum F_x=-A_x+B_x+F_{1x}=0`;
   protected readonly exampleFy = String.raw`\sum F_y=A_y+B_y+F_{1y}-W_{AB}=0`;
   protected readonly variables = [
@@ -382,10 +375,6 @@ export class ForceDefinitionsComponent {
   ];
   private point(id: ReferenceId | 'P') {
     return this.points[id];
-  }
-
-  private number(value: number) {
-    return value < 0 ? `(${value})` : String(value);
   }
 
   protected momentArmGrid(): Diagram {
@@ -470,22 +459,6 @@ export class ForceDefinitionsComponent {
     };
   }
 
-  private momentArmCalculationsFor(reference: ReferenceId) {
-    const terms = (['A', 'B', 'P', 'CoM'] as const).map((target) => {
-      const point = this.point(target);
-      const origin = this.point(reference);
-      const delta = this.delta(target, reference);
-      return String.raw`\vec r_{${target}/${reference}}=\langle${point.x},${point.y},0\rangle-\langle${origin.x},${origin.y},0\rangle=\langle${this.number(delta.x)},${this.number(delta.y)},0\rangle`;
-    });
-    return String.raw`\begin{aligned}${terms.map((term) => `${term}\\`).join('')}\end{aligned}`;
-  }
-
-  private delta(target: ReferenceId | 'P', reference: ReferenceId) {
-    const to = this.point(target);
-    const from = this.point(reference);
-    return { x: to.x - from.x, y: to.y - from.y };
-  }
-
   private genericMomentDiagram(): Diagram {
     const origin = { x: 0, y: 0, label: 'O', reference: true };
     const application = { x: 145, y: 55, label: 'P' };
@@ -545,14 +518,19 @@ export class ForceDefinitionsComponent {
     };
   }
 
-  private momentFor(reference: ReferenceId) {
+  private cancelledTermsFor(reference: ReferenceId) {
     const name = reference === 'CoM' ? '\\mathrm{CoM}' : reference;
-    const terms: Record<ReferenceId, string> = {
+    const cancelled: Record<ReferenceId, string> = {
+      A: String.raw`\color{red}{\cancel{r_{A/A,x}A_y-r_{A/A,y}A_x}}`,
+      CoM: String.raw`\color{red}{\cancel{-r_{\mathrm{CoM}/\mathrm{CoM},x}W_{AB}}}`,
+      B: String.raw`\color{red}{\cancel{r_{B/B,x}B_y-r_{B/B,y}B_x}}`,
+    };
+    const retained: Record<ReferenceId, string> = {
       A: String.raw`r_{B/A,x}B_y-r_{B/A,y}B_x+r_{P/A,x}F_{1y}-r_{P/A,y}F_{1x}-r_{\mathrm{CoM}/A,x}W_{AB}+M_A`,
       CoM: String.raw`r_{A/\mathrm{CoM},x}A_y-r_{A/\mathrm{CoM},y}A_x+r_{B/\mathrm{CoM},x}B_y-r_{B/\mathrm{CoM},y}B_x+r_{P/\mathrm{CoM},x}F_{1y}-r_{P/\mathrm{CoM},y}F_{1x}+M_A`,
       B: String.raw`r_{A/B,x}A_y-r_{A/B,y}A_x+r_{P/B,x}F_{1y}-r_{P/B,y}F_{1x}-r_{\mathrm{CoM}/B,x}W_{AB}+M_A`,
     };
-    return String.raw`\sum M_{${name},z}=${terms[reference]}=0`;
+    return String.raw`\sum M_{${name},z}=${cancelled[reference]}+${retained[reference]}=0`;
   }
 
   private fbdDiagram(highlight: 'all' | 'x' | 'y' | 'moment', reference: ReferenceId): Diagram {

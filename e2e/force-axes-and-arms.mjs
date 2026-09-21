@@ -86,8 +86,9 @@ try {
   assert((await defs.innerText()).includes('Sum of Forces'));
   assert((await defs.innerText()).includes('Sum of Moments'));
   const reference = defs.getByRole('combobox', { name: 'Moment reference for definition' });
-  const xDiagram = defs.locator('app-solver-diagram').nth(2);
-  const yDiagram = defs.locator('app-solver-diagram').nth(3);
+  const armGrid = defs.locator('app-solver-diagram').nth(2);
+  const xDiagram = defs.locator('app-solver-diagram').nth(3);
+  const yDiagram = defs.locator('app-solver-diagram').nth(4);
   assert(
     (await xDiagram.evaluate((el) => window.ng.getComponent(el).diagram())).lines
       .filter((line) => line.label?.endsWith('x'))
@@ -98,8 +99,7 @@ try {
       .filter((line) => line.label?.endsWith('y'))
       .every((line) => line.color === 'var(--warning)')
   );
-  const referenceExample = defs.locator('app-solver-diagram').nth(4);
-  const armGrid = defs.locator('app-solver-diagram').nth(5);
+  const referenceExample = defs.locator('app-solver-diagram').nth(5);
   let referenceDiagram = await referenceExample.evaluate((el) =>
     window.ng.getComponent(el).diagram()
   );
@@ -119,7 +119,7 @@ try {
     .nth(3)
     .screenshot({ path: `${out}/definition-equations.png` });
   await armGrid.screenshot({ path: `${out}/definition-moment-grid.png` });
-  assert((await defs.textContent()).includes('Static condition'));
+  assert((await defs.textContent()).includes('Internal forces exposed'));
   await d.getByRole('button', { name: 'Free Bodies', exact: true }).click();
   await d.locator('.overviewDetails > summary').click();
   const before = await state(d);

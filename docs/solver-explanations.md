@@ -37,16 +37,15 @@ adapts its isolated-body and equation sequence to the current solvers and UI.
 ## Force worksheet
 
 - **Definitions:** a mechanism-independent, collapsible walkthrough with no sample, settings, or
-  convention controls. Every disclosure is closed initially. Force and moment balances each begin
-  with the dynamic equation and classify every FBD load on the left: joint reactions, external
-  forces, weight, and motor torque as applicable. The right side is inertia for motion or zero for
-  statics. Further disclosures show component equations, assumptions, a two-point force/moment
-  sketch, vector resolution, and the cross product. The slanted bar AB FBD includes centered CoM,
-  weight W_ab, applied force F_1, and motor torque M_A. Variables include position vectors to A, B,
-  P, and CoM. The moment-reference control updates the selected point, symbolic equation, and a
-  projection grid for every r vector for A, CoM, or B. The grid sits outside the link and each
-  vector is calculated explicitly as target position minus reference position before it is used in
-  the z-moment equation.
+  convention controls. Every disclosure is closed initially. Force and moment balances classify
+  every FBD load on the left: joint reactions, external forces, weight, and motor torque as
+  applicable. The right side is inertia for motion or zero for statics. Further disclosures explain
+  each load group, resolve force balance into x/y/z, derive a force moment from r cross F, expand
+  each moment component, and calculate r as target position minus reference position. The slanted
+  bar AB FBD includes centered CoM, weight W_ab, applied force F_1, motor torque M_A, and the
+  projection grid for every r vector. The moment-reference control updates that grid and the
+  general z-moment equation. A final disclosure crosses out terms whose moment arm is zero or whose
+  line of action passes through the selected reference.
 - **Free Bodies:** every moving root body, orange reaction arrows, vector force balance,
   vector moment balance about a chosen reference (CoM by default), then scalar x, y, and z equations.
   Choose force-component/couple directions and the moment reference directly on each isolated
