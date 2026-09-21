@@ -81,7 +81,11 @@ type ReferenceId = 'A' | 'CoM' | 'B';
           </p>
         </details>
         <details class="equationDetail">
-          <summary>Resolve one force moment with r⃗ × F⃗</summary>
+          <summary>
+            Resolve one force moment with
+            <span class="vectorSymbol" aria-label="vector r">r</span> ×
+            <span class="vectorSymbol" aria-label="vector F">F</span>
+          </summary>
           <app-solver-diagram
             [diagram]="momentBalanceDiagram"
             label="A force at point P creating a moment about point O"
@@ -187,14 +191,11 @@ type ReferenceId = 'A' | 'CoM' | 'B';
           The blue ring is the selected reference. The projection grid in Build the Free-Body
           Diagram updates with this choice.
         </p>
-        <details class="equationDetail">
-          <summary>See terms that cancel at this reference</summary>
-          <app-solver-math [equation]="cancelledMomentTerms()" />
-          <p class="caption">
-            Red crossed-out terms have a zero moment arm or a line of action through the selected
-            reference. M_A remains because an applied torque is already a moment.
-          </p>
-        </details>
+        <app-solver-math [equation]="cancelledMomentTerms()" />
+        <p class="caption">
+          Red crossed-out terms have a zero moment arm or a line of action through the selected
+          reference. M_A remains because an applied torque is already a moment.
+        </p>
       </details>
     </details>
   `,
@@ -254,6 +255,20 @@ type ReferenceId = 'A' | 'CoM' | 'B';
       .termDefinitions dd {
         margin: 0;
         color: var(--text-secondary);
+      }
+      .vectorSymbol {
+        position: relative;
+        display: inline-block;
+        margin: 0 0.05em;
+      }
+      .vectorSymbol::before {
+        content: '→';
+        position: absolute;
+        top: -0.7em;
+        left: 50%;
+        transform: translateX(-50%) scaleX(0.8);
+        font-size: 0.8em;
+        font-style: normal;
       }
       table {
         width: 100%;
@@ -437,9 +452,10 @@ export class ForceDefinitionsComponent {
           label: `r_${target}/${reference},x`,
           dashed: true,
           arrow: true,
+          arrowStart: true,
           color: 'var(--success)',
           width: 1.4,
-          labelPoint: { x: Math.min(from.x, to.x) - 30, y: xRail },
+          midpointLabel: true,
         },
         {
           from: { x: yRail, y: from.y },
@@ -447,9 +463,10 @@ export class ForceDefinitionsComponent {
           label: `r_${target}/${reference},y`,
           dashed: true,
           arrow: true,
+          arrowStart: true,
           color: 'var(--brand)',
           width: 1.4,
-          midpointLabel: true,
+          labelPoint: { x: yRail - 22, y: (from.y + to.y) / 2 },
         },
         {
           from,
@@ -498,8 +515,8 @@ export class ForceDefinitionsComponent {
       ],
       lines: gridLines,
       framingPoints: [
-        { x: -90, y: -125 },
-        { x: 300, y: 120 },
+        { x: -20, y: -120 },
+        { x: 300, y: 110 },
       ],
     };
   }
@@ -511,6 +528,15 @@ export class ForceDefinitionsComponent {
       axisMomentLabel: 'M',
       points: [origin, application],
       lines: [
+        {
+          from: origin,
+          to: application,
+          label: 'r_P/O',
+          dashed: true,
+          color: 'var(--brand)',
+          width: 1.1,
+          midpointLabel: true,
+        },
         {
           from: origin,
           to: { x: application.x, y: origin.y },
@@ -541,7 +567,6 @@ export class ForceDefinitionsComponent {
           from: application,
           to: { x: 190, y: 55 },
           label: 'F_x',
-          dashed: true,
           arrow: true,
           color: 'var(--success)',
           width: 1.4,
@@ -550,9 +575,8 @@ export class ForceDefinitionsComponent {
           from: application,
           to: { x: 145, y: 105 },
           label: 'F_y',
-          dashed: true,
           arrow: true,
-          color: 'var(--brand)',
+          color: 'var(--warning)',
           width: 1.4,
         },
       ],
@@ -571,9 +595,9 @@ export class ForceDefinitionsComponent {
       B: String.raw`\color{red}{\cancel{(\vec r_{B/B}\times\vec F_B)_z}}`,
     };
     const retained: Record<ReferenceId, string> = {
-      A: String.raw`\sum_{J\ne A}(\vec r_{J/A}\times\vec F_J)_z+\sum(\vec r_{\mathrm{external}/A}\times\vec F_{\mathrm{external}})_z+(\vec r_{\mathrm{CoM}/A}\times\vec W)_z+\sum M_{\mathrm{motor}}`,
-      CoM: String.raw`\sum(\vec r_{\mathrm{joint}/\mathrm{CoM}}\times\vec F_{\mathrm{joint}})_z+\sum(\vec r_{\mathrm{external}/\mathrm{CoM}}\times\vec F_{\mathrm{external}})_z+\sum M_{\mathrm{motor}}`,
-      B: String.raw`\sum_{J\ne B}(\vec r_{J/B}\times\vec F_J)_z+\sum(\vec r_{\mathrm{external}/B}\times\vec F_{\mathrm{external}})_z+(\vec r_{\mathrm{CoM}/B}\times\vec W)_z+\sum M_{\mathrm{motor}}`,
+      A: String.raw`(\vec r_{B/A}\times\vec F_B)_z+(\vec r_{P/A}\times\vec F_1)_z+(\vec r_{\mathrm{CoM}/A}\times\vec W)_z+M_A`,
+      CoM: String.raw`(\vec r_{A/\mathrm{CoM}}\times\vec F_A)_z+(\vec r_{B/\mathrm{CoM}}\times\vec F_B)_z+(\vec r_{P/\mathrm{CoM}}\times\vec F_1)_z+M_A`,
+      B: String.raw`(\vec r_{A/B}\times\vec F_A)_z+(\vec r_{P/B}\times\vec F_1)_z+(\vec r_{\mathrm{CoM}/B}\times\vec W)_z+M_A`,
     };
     return String.raw`\sum M_{${name},z}=${cancelled[reference]}+${retained[reference]}=0`;
   }

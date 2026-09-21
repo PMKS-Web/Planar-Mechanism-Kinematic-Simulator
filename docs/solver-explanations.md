@@ -42,13 +42,14 @@ adapts its isolated-body and equation sequence to the current solvers and UI.
   applicable. The right side is inertia for motion or zero for statics. Load-group definitions use
   the same vector notation as their grouped equation. Further disclosures resolve force balance
   into x/y/z, with the planar z equation struck through in red; calculate r as target position minus
-  reference position; and derive a force moment from vector r cross vector F. The slanted bar AB
-  FBD includes centered CoM, weight W_ab, applied force F_1, motor torque M_A, and the projection
-  grid for every r vector. The grid orders components from shortest to longest and keeps horizontal
-  labels in the open space to the left. The motor torque stays visible in muted gray for x/y force
-  balances. The moment-reference control follows the FBD and updates a general z-moment equation.
-  A final disclosure crosses out terms whose moment arm is zero or whose line of action passes
-  through the selected reference.
+  reference position; and derive a force moment from vector r cross vector F. That visual shows the
+  overall r_P/O vector as well as solid F_x and F_y components. The slanted bar AB FBD includes
+  centered CoM, weight W_ab, applied force F_1, motor torque M_A, and the projection grid for every
+  r vector. The grid orders components from shortest to longest, uses two-ended dimension arrows,
+  places x labels above their dimensions, and places y labels to the left. The motor torque stays
+  visible in muted gray for x/y force balances. The moment-reference control follows the FBD and
+  updates a general z-moment equation plus named joint, external-force, weight, and torque terms;
+  terms with zero moment arms are crossed out in red.
 - **Free Bodies:** every moving root body, orange reaction arrows, vector force balance,
   vector moment balance about a chosen reference (CoM by default), then scalar x, y, and z equations.
   Choose force-component/couple directions and the moment reference directly on each isolated

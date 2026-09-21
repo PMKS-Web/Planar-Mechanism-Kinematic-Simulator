@@ -26,6 +26,7 @@ export interface DiagramLine {
   color?: string;
   dashed?: boolean;
   arrow?: boolean;
+  arrowStart?: boolean;
   width?: number;
   midpointLabel?: boolean;
 }
@@ -121,6 +122,7 @@ let nextDiagram = 0;
         [attr.stroke-width]="line.width ?? (line.arrow ? 2 : 6)"
         stroke-linecap="round"
         [attr.stroke-dasharray]="line.dashed ? '5 4' : null"
+        [attr.marker-start]="line.arrowStart ? 'url(#' + markerId + ')' : null"
         [attr.marker-end]="line.arrow ? 'url(#' + markerId + ')' : null"
       />
       @if (line.label) {

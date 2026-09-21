@@ -119,6 +119,10 @@ try {
     .nth(3)
     .screenshot({ path: `${out}/definition-equations.png` });
   await armGrid.screenshot({ path: `${out}/definition-moment-grid.png` });
+  await defs
+    .locator('app-solver-diagram')
+    .first()
+    .screenshot({ path: `${out}/definition-force-moment.png` });
   assert((await defs.textContent()).includes('Internal forces exposed'));
   await d.getByRole('button', { name: 'Free Bodies', exact: true }).click();
   await d.locator('.overviewDetails > summary').click();
