@@ -36,8 +36,10 @@ adapts its isolated-body and equation sequence to the current solvers and UI.
 
 ## Force worksheet
 
-- **Definitions:** a mechanism-independent, collapsible walkthrough with no sample, settings, or
-  convention controls. Every disclosure is closed initially. Force and moment balances classify
+- **Definitions:** a mechanism-independent, collapsible walkthrough. Every disclosure is closed
+  initially. Its FBD convention controls set the x-axis angle, assumed A/B reaction directions,
+  motor-torque direction, and fixed moment reference; the FBDs, projection grid, and equations
+  use the same selections. Force and moment balances classify
   every FBD load on the left: joint reactions, external forces, weight, and motor torque as
   applicable. The right side is inertia for motion or zero for statics. Load-group definitions use
   the same vector notation as their grouped equation. Further disclosures resolve force balance

@@ -8,6 +8,7 @@ import {
 import { SolverMathComponent } from './solver-math.component';
 
 type ReferenceId = 'A' | 'CoM' | 'B';
+type DirectionKey = 'Ax' | 'Ay' | 'Bx' | 'By' | 'MA';
 
 /** A mechanism-independent, layered introduction to planar free-body diagrams. */
 @Component({
@@ -110,10 +111,56 @@ type ReferenceId = 'A' | 'CoM' | 'B';
         calculated answers.
       </p>
       <app-solver-diagram
-        [diagram]="initialDiagram"
+        [diagram]="initialDiagram()"
         label="Slanted two-joint bar AB with reactions, weight W_ab at its center, and force F_1 at P"
       />
       <p class="caption">The curved arrow around the axes marks the positive moment direction.</p>
+      <details class="equationDetail">
+        <summary>Choose free-body diagram conventions</summary>
+        <label class="axisControl">
+          X-axis angle
+          <input
+            aria-label="Definition x-axis angle"
+            type="number"
+            min="-180"
+            max="180"
+            step="1"
+            [value]="axisAngle()"
+            (change)="axisAngle.set($any($event.target).valueAsNumber || 0)"
+          />
+          degrees
+        </label>
+        <p class="caption">
+          0° means +x right and +y up. All force arrows and axes use this frame.
+        </p>
+        <div class="directionControls">
+          @for (choice of directionChoices; track choice.key) {
+            <label>
+              <app-solver-math [equation]="choice.symbol" [inline]="true" />
+              <select
+                [attr.aria-label]="'Definition direction for ' + choice.key"
+                [value]="direction(choice.key)"
+                (change)="setDirection(choice.key, $any($event.target).value)"
+              >
+                <option value="1">positive</option>
+                <option value="-1">negative</option>
+              </select>
+            </label>
+          }
+        </div>
+        <label class="referenceControl">
+          Fixed Moment Reference
+          <select
+            aria-label="Fixed moment reference for definition"
+            [value]="reference()"
+            (change)="reference.set($any($event.target).value)"
+          >
+            @for (option of referenceOptions; track option.id) {
+              <option [value]="option.id">{{ option.label }}</option>
+            }
+          </select>
+        </label>
+      </details>
       <details class="equationDetail">
         <summary>Show the position-vector projection grid</summary>
         <app-solver-diagram
@@ -121,8 +168,8 @@ type ReferenceId = 'A' | 'CoM' | 'B';
           [label]="'Moment-arm component grid about ' + referenceLabel()"
         />
         <p class="caption">
-          The grid projects each moment arm outside the link. Its current reference is A; choose a
-          different reference in the z-moment section to update it.
+          The grid projects each moment arm outside the link. Choose a different reference here or
+          in the z-moment section to update every related diagram and equation.
         </p>
       </details>
     </details>
@@ -152,21 +199,21 @@ type ReferenceId = 'A' | 'CoM' | 'B';
       <p>Start with the FBD above, then collect each load component in the matching balance.</p>
       <details class="subsection">
         <summary>Sum of Forces in x</summary>
-        <p>Highlight each horizontal component from the same FBD. Right is positive x.</p>
+        <p>Highlight each x component from the same FBD. Positive x follows the chosen frame.</p>
         <app-solver-diagram
-          [diagram]="forceXDiagram"
+          [diagram]="forceXDiagram()"
           label="Free-body diagram highlighting x-force components"
         />
-        <app-solver-math [equation]="exampleFx" />
+        <app-solver-math [equation]="exampleFx()" />
       </details>
       <details class="subsection">
         <summary>Sum of Forces in y</summary>
-        <p>Highlight each vertical component from the same FBD. Up is positive y.</p>
+        <p>Highlight each y component from the same FBD. Positive y follows the chosen frame.</p>
         <app-solver-diagram
-          [diagram]="forceYDiagram"
+          [diagram]="forceYDiagram()"
           label="Free-body diagram highlighting y-force components"
         />
-        <app-solver-math [equation]="exampleFy" />
+        <app-solver-math [equation]="exampleFy()" />
       </details>
       <details class="subsection">
         <summary>Sum of Moments in z</summary>
@@ -186,7 +233,7 @@ type ReferenceId = 'A' | 'CoM' | 'B';
             }
           </select>
         </label>
-        <app-solver-math [equation]="generalMomentEquation" />
+        <app-solver-math [equation]="generalMomentEquation()" />
         <p>
           The blue ring is the selected reference. The projection grid in Build the Free-Body
           Diagram updates with this choice.
@@ -194,7 +241,7 @@ type ReferenceId = 'A' | 'CoM' | 'B';
         <app-solver-math [equation]="cancelledMomentTerms()" />
         <p class="caption">
           Red crossed-out terms have a zero moment arm or a line of action through the selected
-          reference. M_A remains because an applied torque is already a moment.
+          reference. The applied motor torque remains because it is already a moment.
         </p>
       </details>
     </details>
@@ -301,6 +348,30 @@ type ReferenceId = 'A' | 'CoM' | 'B';
         color: var(--text-strong);
         font-size: 12px;
       }
+      .axisControl {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        color: var(--text-strong);
+        font-size: 12px;
+      }
+      .axisControl input {
+        width: 62px;
+      }
+      .directionControls {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+        gap: 8px;
+        margin: 12px 0;
+      }
+      .directionControls label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--text-strong);
+        font-size: 12px;
+      }
       select {
         border: 1px solid var(--border-divider);
         border-radius: var(--border-radius);
@@ -320,15 +391,30 @@ export class ForceDefinitionsComponent {
     CoM: { x: 95, y: 35, label: 'CoM' },
   };
   protected readonly reference = signal<ReferenceId>('A');
+  protected readonly axisAngle = signal(0);
+  private readonly directions = signal<Record<DirectionKey, 1 | -1>>({
+    Ax: -1,
+    Ay: 1,
+    Bx: 1,
+    By: 1,
+    MA: 1,
+  });
   protected readonly referenceOptions = [
     { id: 'A' as const, label: 'A (Joint)' },
     { id: 'CoM' as const, label: 'CoM (Center of Mass)' },
     { id: 'B' as const, label: 'B (Joint)' },
   ];
-  protected readonly initialDiagram = this.fbdDiagram('all', 'A');
+  protected readonly directionChoices = [
+    { key: 'Ax' as const, symbol: String.raw`A_x` },
+    { key: 'Ay' as const, symbol: String.raw`A_y` },
+    { key: 'Bx' as const, symbol: String.raw`B_x` },
+    { key: 'By' as const, symbol: String.raw`B_y` },
+    { key: 'MA' as const, symbol: String.raw`M_A` },
+  ];
+  protected readonly initialDiagram = computed(() => this.fbdDiagram('all', this.reference()));
   protected readonly momentBalanceDiagram = this.genericMomentDiagram();
-  protected readonly forceXDiagram = this.fbdDiagram('x', 'A');
-  protected readonly forceYDiagram = this.fbdDiagram('y', 'A');
+  protected readonly forceXDiagram = computed(() => this.fbdDiagram('x', this.reference()));
+  protected readonly forceYDiagram = computed(() => this.fbdDiagram('y', this.reference()));
   protected readonly momentDiagram = computed(() => this.fbdDiagram('moment', this.reference()));
   protected readonly referenceLabel = computed(
     () => this.referenceOptions.find((option) => option.id === this.reference())!.label
@@ -385,10 +471,19 @@ export class ForceDefinitionsComponent {
   protected readonly genericVectors = String.raw`\vec r_{P/O}=\langle r_{P/O,x},r_{P/O,y},0\rangle,\qquad\vec F=\langle F_x,F_y,0\rangle`;
   protected readonly genericCrossProduct = String.raw`\vec r_{P/O}\times\vec F=\begin{vmatrix}\hat i&\hat j&\hat k\\r_{P/O,x}&r_{P/O,y}&0\\F_x&F_y&0\end{vmatrix}`;
   protected readonly genericMomentComponents = String.raw`\vec M_O=\langle\underbrace{0}_{M_x},\underbrace{0}_{M_y},\underbrace{r_{P/O,x}F_y-r_{P/O,y}F_x}_{M_z}\rangle`;
-  protected readonly generalMomentEquation = String.raw`\sum M_{O,z}=\sum(\vec r_{\mathrm{joint}/O}\times\vec F_{\mathrm{joint}})_z+\sum(\vec r_{\mathrm{external}/O}\times\vec F_{\mathrm{external}})_z+\sum(\vec r_{\mathrm{CoM}/O}\times\vec W)_z+\sum M_{\mathrm{motor}}=0`;
+  protected readonly generalMomentEquation = computed(
+    () =>
+      String.raw`\sum M_{${this.referenceName()},z}=\sum(\vec r_{\mathrm{joint}/${this.referenceName()}}\times\vec F_{\mathrm{joint}})_z+\sum(\vec r_{\mathrm{external}/${this.referenceName()}}\times\vec F_{\mathrm{external}})_z+\sum(\vec r_{\mathrm{CoM}/${this.referenceName()}}\times\vec W)_z${this.motorTerm()}=0`
+  );
   protected readonly generalPositionVector = String.raw`\vec r_{Q/O}=\vec p_Q-\vec p_O=\langle x_Q-x_O,\ y_Q-y_O,\ 0\rangle`;
-  protected readonly exampleFx = String.raw`\sum F_x=-A_x+B_x+F_{1x}=0`;
-  protected readonly exampleFy = String.raw`\sum F_y=A_y+B_y+F_{1y}-W_{AB}=0`;
+  protected readonly exampleFx = computed(
+    () =>
+      String.raw`\sum F_x=${this.signedTerm(this.direction('Ax'), 'A_x')}${this.signedTerm(this.direction('Bx'), 'B_x')}+F_{1x}=0`
+  );
+  protected readonly exampleFy = computed(
+    () =>
+      String.raw`\sum F_y=${this.signedTerm(this.direction('Ay'), 'A_y')}${this.signedTerm(this.direction('By'), 'B_y')}+F_{1y}-W_{AB}=0`
+  );
   protected readonly variables = [
     { symbol: String.raw`A_x,\ A_y`, meaning: 'Reaction-force components applied at joint A.' },
     { symbol: String.raw`B_x,\ B_y`, meaning: 'Reaction-force components applied at joint B.' },
@@ -427,6 +522,29 @@ export class ForceDefinitionsComponent {
   ];
   private point(id: ReferenceId | 'P') {
     return this.points[id];
+  }
+
+  protected direction(key: DirectionKey) {
+    return this.directions()[key];
+  }
+
+  protected setDirection(key: DirectionKey, value: string) {
+    this.directions.update((directions) => ({
+      ...directions,
+      [key]: value === '-1' ? -1 : 1,
+    }));
+  }
+
+  private signedTerm(sign: 1 | -1, symbol: string) {
+    return `${sign === 1 ? '+' : '-'}${symbol}`;
+  }
+
+  private referenceName() {
+    return this.reference() === 'CoM' ? '\\mathrm{CoM}' : this.reference();
+  }
+
+  private motorTerm() {
+    return this.direction('MA') === 1 ? '+M_A' : '-M_A';
   }
 
   private distanceFrom(reference: ReferenceId, target: ReferenceId | 'P') {
@@ -499,6 +617,7 @@ export class ForceDefinitionsComponent {
       ];
     });
     return {
+      axisAngle: this.axisAngle(),
       axisMomentLabel: 'M',
       legend: 'Moment-arm component grid',
       points: Object.values(this.points).map((point) => ({
@@ -525,6 +644,7 @@ export class ForceDefinitionsComponent {
     const origin = { x: 0, y: 0, label: 'O', reference: true };
     const application = { x: 145, y: 55, label: 'P' };
     return {
+      axisAngle: this.axisAngle(),
       axisMomentLabel: 'M',
       points: [origin, application],
       lines: [
@@ -594,10 +714,11 @@ export class ForceDefinitionsComponent {
       CoM: String.raw`\textcolor{red}{\cancel{(\vec r_{\mathrm{CoM}/\mathrm{CoM}}\times\vec W)_z}}`,
       B: String.raw`\textcolor{red}{\cancel{(\vec r_{B/B}\times\vec F_B)_z}}`,
     };
+    const motor = this.motorTerm();
     const retained: Record<ReferenceId, string> = {
-      A: String.raw`(\vec r_{B/A}\times\vec F_B)_z+(\vec r_{P/A}\times\vec F_1)_z+(\vec r_{\mathrm{CoM}/A}\times\vec W)_z+M_A`,
-      CoM: String.raw`(\vec r_{A/\mathrm{CoM}}\times\vec F_A)_z+(\vec r_{B/\mathrm{CoM}}\times\vec F_B)_z+(\vec r_{P/\mathrm{CoM}}\times\vec F_1)_z+M_A`,
-      B: String.raw`(\vec r_{A/B}\times\vec F_A)_z+(\vec r_{P/B}\times\vec F_1)_z+(\vec r_{\mathrm{CoM}/B}\times\vec W)_z+M_A`,
+      A: String.raw`(\vec r_{B/A}\times\vec F_B)_z+(\vec r_{P/A}\times\vec F_1)_z+(\vec r_{\mathrm{CoM}/A}\times\vec W)_z${motor}`,
+      CoM: String.raw`(\vec r_{A/\mathrm{CoM}}\times\vec F_A)_z+(\vec r_{B/\mathrm{CoM}}\times\vec F_B)_z+(\vec r_{P/\mathrm{CoM}}\times\vec F_1)_z${motor}`,
+      B: String.raw`(\vec r_{A/B}\times\vec F_A)_z+(\vec r_{P/B}\times\vec F_1)_z+(\vec r_{\mathrm{CoM}/B}\times\vec W)_z${motor}`,
     };
     return String.raw`\sum M_{${name},z}=${cancelled[reference]}+${retained[reference]}=0`;
   }
@@ -611,23 +732,43 @@ export class ForceDefinitionsComponent {
       color: active(direction) ? 'var(--warning)' : 'var(--text-tertiary)',
       width: active(direction) ? 1.9 : 1.1,
     });
+    const alongAxis = (from: DiagramPoint, axis: 'x' | 'y', sign: 1 | -1, length: number) => {
+      const theta = (this.axisAngle() * Math.PI) / 180;
+      const basis =
+        axis === 'x'
+          ? { x: Math.cos(theta), y: Math.sin(theta) }
+          : { x: -Math.sin(theta), y: Math.cos(theta) };
+      return { x: from.x + sign * length * basis.x, y: from.y + sign * length * basis.y };
+    };
+    const jointComponent = (
+      point: DiagramPoint,
+      key: Extract<DirectionKey, 'Ax' | 'Ay' | 'Bx' | 'By'>,
+      axis: 'x' | 'y',
+      label: string
+    ) =>
+      component({ from: point, to: alongAxis(point, axis, this.direction(key), 60), label }, axis);
+    const pointP = this.point('P');
     const loadLines: DiagramLine[] = [
-      component({ from: this.point('A'), to: { x: -55, y: 0 }, label: 'A_x' }, 'x'),
-      component({ from: this.point('A'), to: { x: 0, y: 65 }, label: 'A_y' }, 'y'),
-      component({ from: this.point('B'), to: { x: 245, y: 70 }, label: 'B_x' }, 'x'),
-      component({ from: this.point('B'), to: { x: 190, y: 135 }, label: 'B_y' }, 'y'),
+      jointComponent(this.point('A'), 'Ax', 'x', 'A_x'),
+      jointComponent(this.point('A'), 'Ay', 'y', 'A_y'),
+      jointComponent(this.point('B'), 'Bx', 'x', 'B_x'),
+      jointComponent(this.point('B'), 'By', 'y', 'B_y'),
       component({ from: this.point('CoM'), to: { x: 95, y: -35 }, label: 'W_AB' }, 'y'),
-      component({ from: this.point('P'), to: { x: 175, y: 50 }, label: 'F_1x' }, 'x'),
-      component({ from: this.point('P'), to: { x: 135, y: 105 }, label: 'F_1y' }, 'y'),
+      component({ from: pointP, to: alongAxis(pointP, 'x', 1, 55), label: 'F_1x' }, 'x'),
+      component({ from: pointP, to: alongAxis(pointP, 'y', 1, 55), label: 'F_1y' }, 'y'),
     ];
     if (highlight === 'all') {
       loadLines.splice(
         5,
         2,
-        component({ from: this.point('P'), to: { x: 175, y: 105 }, label: 'F_1' }, 'moment')
+        component(
+          { from: pointP, to: alongAxis(alongAxis(pointP, 'x', 1, 45), 'y', 1, 55), label: 'F_1' },
+          'moment'
+        )
       );
     }
     return {
+      axisAngle: this.axisAngle(),
       axisMomentLabel: 'M',
       points: Object.values(this.points).map((point) => ({
         ...point,
@@ -648,8 +789,16 @@ export class ForceDefinitionsComponent {
       lines: loadLines,
       couples:
         highlight === 'x' || highlight === 'y'
-          ? [{ x: 0, y: 0, sign: 1, label: 'M_A', color: 'var(--text-tertiary)' }]
-          : [{ x: 0, y: 0, sign: 1, label: 'M_A', color: 'var(--warning)' }],
+          ? [
+              {
+                x: 0,
+                y: 0,
+                sign: this.direction('MA'),
+                label: 'M_A',
+                color: 'var(--text-tertiary)',
+              },
+            ]
+          : [{ x: 0, y: 0, sign: this.direction('MA'), label: 'M_A', color: 'var(--warning)' }],
     };
   }
 }

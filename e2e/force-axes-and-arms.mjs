@@ -85,7 +85,14 @@ try {
     .evaluateAll((details) => details.forEach((detail) => (detail.open = true)));
   assert((await defs.innerText()).includes('Sum of Forces'));
   assert((await defs.innerText()).includes('Sum of Moments'));
-  const reference = defs.getByRole('combobox', { name: 'Moment reference for definition' });
+  const reference = defs.getByRole('combobox', {
+    name: 'Moment reference for definition',
+    exact: true,
+  });
+  const fixedReference = defs.getByRole('combobox', {
+    name: 'Fixed moment reference for definition',
+  });
+  const definitionAxis = defs.getByRole('spinbutton', { name: 'Definition x-axis angle' });
   const armGrid = defs.locator('app-solver-diagram').nth(2);
   const xDiagram = defs.locator('app-solver-diagram').nth(3);
   const yDiagram = defs.locator('app-solver-diagram').nth(4);
@@ -100,13 +107,52 @@ try {
       .every((line) => line.color === 'var(--warning)')
   );
   const referenceExample = defs.locator('app-solver-diagram').nth(5);
+  const diagramBeforeConvention = await defs
+    .locator('app-solver-diagram')
+    .nth(1)
+    .evaluate((el) => window.ng.getComponent(el).diagram());
+  await definitionAxis.fill('30');
+  await definitionAxis.press('Tab');
+  let conventionDiagram = await defs
+    .locator('app-solver-diagram')
+    .nth(1)
+    .evaluate((el) => window.ng.getComponent(el).diagram());
+  assert.equal(conventionDiagram.axisAngle, 30);
+  assert.notDeepEqual(
+    conventionDiagram.lines.find((line) => line.label === 'A_x').to,
+    diagramBeforeConvention.lines.find((line) => line.label === 'A_x').to
+  );
+  await defs.getByRole('combobox', { name: 'Definition direction for Ax' }).selectOption('1');
+  conventionDiagram = await defs
+    .locator('app-solver-diagram')
+    .nth(1)
+    .evaluate((el) => window.ng.getComponent(el).diagram());
+  const positiveAx = conventionDiagram.lines.find((line) => line.label === 'A_x');
+  assert(positiveAx.to.x > positiveAx.from.x);
+  await defs.getByRole('combobox', { name: 'Definition direction for MA' }).selectOption('-1');
+  const conventionMoment = await referenceExample.evaluate((el) =>
+    window.ng.getComponent(el).diagram()
+  );
+  assert.equal(conventionMoment.couples[0].sign, -1);
+  await fixedReference.selectOption('CoM');
+  assert.equal(await reference.inputValue(), 'CoM');
+  assert(
+    (
+      await defs
+        .locator('app-solver-diagram')
+        .nth(1)
+        .evaluate((el) => window.ng.getComponent(el).diagram())
+    ).points.find((point) => point.label === 'CoM').reference
+  );
   let referenceDiagram = await referenceExample.evaluate((el) =>
     window.ng.getComponent(el).diagram()
   );
   let gridDiagram = await armGrid.evaluate((el) => window.ng.getComponent(el).diagram());
-  assert(gridDiagram.lines.some((l) => l.label === 'r_B/A,x'));
-  assert(gridDiagram.lines.some((l) => l.label === 'r_P/A,y'));
+  assert.equal(gridDiagram.axisAngle, 30);
+  assert(gridDiagram.lines.some((l) => l.label === 'r_B/CoM,x'));
+  assert(gridDiagram.lines.some((l) => l.label === 'r_P/CoM,y'));
   await reference.selectOption('B');
+  assert.equal(await fixedReference.inputValue(), 'B');
   referenceDiagram = await referenceExample.evaluate((el) => window.ng.getComponent(el).diagram());
   gridDiagram = await armGrid.evaluate((el) => window.ng.getComponent(el).diagram());
   assert.equal(referenceDiagram.axisMomentLabel, 'M');
