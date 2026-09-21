@@ -2130,3 +2130,7 @@ in no unique way. The drawer says "more supports than equilibrium can determine"
 — about the drawing, not about the holding — and the same shape drawn as plain
 bars says it too. Ask the holding force of a determinate machine (the published
 *Four-bar on a held cylinder*) when you want a number.
+
+### Split Joint treats a floating slot's carrier as a body
+
+A floating `PrisJoint` is absent from its carrier's `joints`: that absence is what makes it a slot rather than a pin. Split Joint counts the carrier so the action is offered, but releases that constraint instead of inserting a carrier pin. The same `PrisJoint`, drive units, and all rider memberships remain; it becomes dangling and moves a small distance normal to its former slot. Ordinary shared pins spread by a small fraction of the drawn joint scale. Both motions use the constrained drag path, so position locks and holds remain authoritative. Counting only `joint.links` makes every ordinary floating pin-in-slot look like a one-link refusal.

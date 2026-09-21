@@ -32,6 +32,7 @@ import { SelectionBatchService } from './selection-batch.service';
 import { SelectedPart, SelectedPartRef } from '../model/selection';
 import { MultiEditService } from './multi-edit.service';
 import { JointTypeService } from './joint-type.service';
+import { SplitJointService } from './split-joint.service';
 
 /** What the canvas does when a row asks for a gesture rather than an edit. */
 export interface MenuHandlers {
@@ -85,6 +86,7 @@ export class ContextMenuBuilderService {
   private selectionBatch = inject(SelectionBatchService);
   private permission = inject(EditPermissionService);
   private jointTypes = inject(JointTypeService);
+  private splitJoints = inject(SplitJointService);
 
   build(target: MenuTarget, handlers: MenuHandlers): ContextMenuModel {
     const model = this.buildFor(target, handlers);
@@ -437,7 +439,14 @@ export class ContextMenuBuilderService {
         },
         { label: 'Traces', rows: [this.traceRow(joint), ...this.vectorRows(joint)] },
         { rows: this.positionRows(handlers, undefined) },
-        { rows: [this.deleteJointRow(joint, sealed), this.deleteMechanismRow(joint)] },
+        {
+          label: 'Actions',
+          rows: [
+            this.splitJointRow(joint),
+            this.deleteJointRow(joint, sealed),
+            this.deleteMechanismRow(joint),
+          ],
+        },
       ],
     };
   }
@@ -781,6 +790,18 @@ export class ContextMenuBuilderService {
       destructive: true,
       shortcut: this.keys.keysFor('edit.delete'),
       action: () => this.mechanism.deleteJoint(),
+    });
+  }
+
+  private splitJointRow(joint: RealJoint): MenuRow {
+    const choice = this.splitJoints.choiceFor(joint);
+    return new MenuRow({
+      label: 'Split Joint',
+      icon: 'joint_split',
+      posePolicy: 'structure',
+      hint: choice.refusal ? choice.short : `${choice.count} links`,
+      refusal: choice.refusal ? { short: choice.short!, long: choice.long! } : undefined,
+      action: () => this.splitJoints.split(joint),
     });
   }
 

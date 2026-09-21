@@ -26,6 +26,7 @@ import { JOINT_TYPES } from '../model/joint-type';
 import { refuseAttach, refuseGround } from '../model/joint-operation-permission';
 import { MultiEditService } from './multi-edit.service';
 import { JointTypeService } from './joint-type.service';
+import { SplitJointService } from './split-joint.service';
 import { SelectionBatchService } from './selection-batch.service';
 
 /**
@@ -80,6 +81,7 @@ function createBuilderHarness() {
       { provide: SelectionBatchService, deps: [MechanismService] },
       { provide: MultiEditService, deps: [] },
       { provide: JointTypeService, deps: [] },
+      { provide: SplitJointService, deps: [] },
     ],
   });
   return {
@@ -247,8 +249,17 @@ describe('the right-click menu', () => {
       const parts = fourBar(harness.mechanism);
       const model = harness.builder.build(parts.a, noHandlers);
       expect(model.groups.filter((group) => group.rows.length).map((group) => group.label)).toEqual(
-        ['Attach', 'State', 'Traces', undefined]
+        ['Attach', 'State', 'Traces', 'Actions']
       );
+    });
+
+    it('puts Split Joint above the delete actions with its link count', () => {
+      const parts = fourBar(harness.mechanism);
+      const split = row(harness.builder.build(parts.a, noHandlers), 'Split Joint')!;
+      expect(split.hint).toBe('2 links');
+      expect(split.disabled).toBe(false);
+      const labels = rows(harness.builder.build(parts.a, noHandlers)).map((one) => one.label);
+      expect(labels.indexOf('Split Joint')).toBeLessThan(labels.indexOf('Delete entire mechanism'));
     });
 
     it('groups every trace directly below Locked', () => {
