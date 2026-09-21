@@ -9,14 +9,13 @@ import {
   fillShownOn,
   rodFillOf,
 } from '../model/cylinder-skin';
+import { drawnOutlineOf, paintedByACylinder } from '../model/cylinder-fusion';
 import {
-  drawnOutlineOf,
-  FusedBody,
-  fusedBodiesOf,
+  cylinderPaintOrder,
   FusingPlate,
   memberIsFused,
-  paintedByACylinder,
-} from '../model/cylinder-fusion';
+  PaintStep,
+} from '../model/cylinder-paint-order';
 import {
   barrelPath,
   blockPath,
@@ -243,24 +242,14 @@ export class SliderMarkService {
     return `translate(${mark.x} ${mark.y}) rotate(${mark.rotation})`;
   }
 
-  /**
-   * That frame undone, for a shape already written in the drawing's own
-   * coordinates.
-   *
-   * A body welded to a cylinder mount is painted in that member's place in the
-   * stack (decision S16) — inside the group the frame is on — but its outline
-   * is the body's own, built and animated in world terms like any other link's.
-   * Rewriting that outline into the slot's frame would mean tokenizing a
-   * compound union's path on every animation frame; composing to the identity
-   * with one more transform costs nothing and leaves the path exactly as the
-   * links layer would have drawn it.
-   */
-  unframe(mark: { x: number; y: number; rotation: number }): string {
-    return `rotate(${-mark.rotation}) translate(${-mark.x} ${-mark.y})`;
-  }
+  // A fused body used to be painted *inside* a cylinder's own group and needed
+  // that frame undone, because its outline is already in the drawing's own
+  // coordinates. It is a paint step of its own now (decision S24), a sibling of
+  // the cylinder groups rather than a child of one, so there is no frame on it
+  // to undo and `unframe` is gone.
 
   /**
-   * Which fused shape each cylinder pass paints, held for as long as the marks
+   * Everything the skin layer paints, in order, held for as long as the marks
    * are.
    *
    * Both lists are asked, because both can hold a member: a bracket welded to a
@@ -269,37 +258,37 @@ export class SliderMarkService {
    * so it is cached on the identity of the two lists rather than recomputed for
    * each of the several template bindings that ask it per change-detection pass.
    */
-  fusedBodies(
+  paintOrder(
     marks: readonly CylinderMark[],
     sliders: readonly SliderMark[] = []
-  ): Map<string, FusedBody<CylinderMark, PlatedSlide>> {
-    if (this.fusedCache?.marks !== marks || this.fusedCache.sliders !== sliders) {
+  ): PaintStep<CylinderMark, PlatedSlide>[] {
+    if (this.paintCache?.marks !== marks || this.paintCache.sliders !== sliders) {
       const plates = sliders.flatMap((mark): PlatedSlide[] =>
         mark.plate ? [{ id: mark.id, links: mark.plate.links, mark, plate: mark.plate }] : []
       );
-      this.fusedCache = { marks, sliders, bodies: fusedBodiesOf(marks, plates) };
+      this.paintCache = { marks, sliders, steps: cylinderPaintOrder(marks, plates) };
     }
-    return this.fusedCache.bodies;
+    return this.paintCache.steps;
   }
 
-  private fusedCache?: {
+  private paintCache?: {
     marks: readonly CylinderMark[];
     sliders: readonly SliderMark[];
-    bodies: Map<string, FusedBody<CylinderMark, PlatedSlide>>;
+    steps: PaintStep<CylinderMark, PlatedSlide>[];
   };
 
-  /** Whether anything bigger stands in for this member, whichever pass paints it. */
+  /** Whether anything bigger stands in for this member, whichever step paints it. */
   memberIsFused(
     mark: CylinderMark,
     role: CylinderRole,
     marks: readonly CylinderMark[],
     sliders: readonly SliderMark[]
   ): boolean {
-    return memberIsFused(this.fusedBodies(marks, sliders), mark, role);
+    return memberIsFused(this.paintOrder(marks, sliders), mark, role);
   }
 
   /**
-   * Whether a cylinder pass paints this Slide's plate, so the slider layer must
+   * Whether a cylinder step paints this Slide's plate, so the slider layer must
    * not paint it a second time one layer down.
    */
   plateIsPainted(
@@ -307,10 +296,7 @@ export class SliderMarkService {
     marks: readonly CylinderMark[],
     sliders: readonly SliderMark[]
   ): boolean {
-    for (const found of this.fusedBodies(marks, sliders).values()) {
-      if (found.plate?.id === mark.id) return true;
-    }
-    return false;
+    return this.paintOrder(marks, sliders).some((step) => step.fused?.plate?.id === mark.id);
   }
 
   /** One member of a skin, as the drawing asks for it: what to hit, and what that selects. */

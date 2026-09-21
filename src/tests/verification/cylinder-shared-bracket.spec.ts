@@ -187,6 +187,8 @@ describe('typing a new size at one of two rams in one bracket', () => {
 
     const otherBarrel = harness.span('T', 'T2');
     const otherRod = harness.span('Y', 'X');
+    const otherEnd = harness.at('X');
+    const bracketCorner = harness.at('W');
 
     expect(harness.grid.setCylinderAngle(ram, wanted)).toBe(true);
 
@@ -194,8 +196,16 @@ describe('typing a new size at one of two rams in one bracket', () => {
     expect(Math.atan2(now.y - harness.at('T').y, now.x - harness.at('T').x)).toBeCloseTo(wanted, 4);
     expect(harness.span('T', 'T1')).toBeCloseTo(barrel, 4);
     expect(harness.span('V', 'U')).toBeCloseTo(rod, 4);
-    // The bracket is one body, so the other cylinder turns with it. What it
-    // must not do is change size doing so.
+    // **The other cylinder does not move at all** (decision S21). A typed Angle
+    // is not a body drag: it writes this cylinder's own joints and turns it
+    // about the shared end joint `T`, which stays where it is -- so the bracket
+    // has nothing to be carried by, and the second cylinder has no end joint
+    // that moved to re-lay from. Until September 21, 2026 the bracket was
+    // carried round rigidly and took the second cylinder with it.
+    expect(harness.at('X').x).toBeCloseTo(otherEnd.x, 6);
+    expect(harness.at('X').y).toBeCloseTo(otherEnd.y, 6);
+    expect(harness.at('W').x).toBeCloseTo(bracketCorner.x, 6);
+    expect(harness.at('W').y).toBeCloseTo(bracketCorner.y, 6);
     expect(harness.span('T', 'T2')).toBeCloseTo(otherBarrel, 4);
     expect(harness.span('Y', 'X')).toBeCloseTo(otherRod, 4);
   });

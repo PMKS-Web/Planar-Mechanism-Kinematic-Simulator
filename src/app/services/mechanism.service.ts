@@ -114,6 +114,7 @@ import {
 import { constrainForceAnchor } from '../model/force-anchor';
 import { OperationRefusal, refuseAttach } from '../model/joint-operation-permission';
 import { redundantlyHeldJointSets } from '../model/rigid-bodies';
+import { reseatEndJoint } from '../model/slot-reseat';
 import { MODEL_SCALE } from '../model/render-scale';
 import { labelForBody, visibleBodyName as nameOfBody } from '../model/body-label';
 import { SynthesisBuilderService } from './synthesis/synthesis-builder.service';
@@ -292,7 +293,8 @@ export class MechanismService {
   /**
    * Recompute every link outline after the object scale changed.
    *
-   * A link's `d` is computed once and cached, but its width is objectScale / 4 --
+   * A link's `d` is computed once and cached, but its width is `barHalfWidth`
+   * of the scale --
    * so changing the scale left every bar at its old size while joints, ground
    * marks and the whole mark system grew around it. Worst on a slotted link,
    * where the R-relative channel kept scaling and outgrew the bar it is meant to
@@ -4977,8 +4979,24 @@ export class MechanismService {
    *
    * Its position along the slot is preserved, measured from the slot's midpoint,
    * so reseating does not also move s0: one drag still changes one quantity.
+   *
+   * A block that is also a cylinder's end joint is the one that cannot simply
+   * be written (decision S22). It is one end of a rigid part, so putting it
+   * back on its channel is an edit to the whole cylinder — the part has to be
+   * re-laid between its two ends, as it is whenever a neighbor moves one of
+   * them. Written straight, the mount went to the channel and the barrel and
+   * rod stayed the lengths they were: `deriveCylinderInteriors` then put N and
+   * S back on the new axis at those lengths and drew a head outside its own
+   * barrel. So those moves are collected, taken as far along the channel as the
+   * part can follow (`reseatEndJoint`), and handed to the planner, which
+   * resizes the members to reach. A Lock is left alone outright: a lock says
+   * the joint does not move, and this is nobody's gesture.
    */
   reseatFloatingSliders(): void {
+    const rams = this.sealedStructures();
+    const mountIds = new Set(rams.flatMap((one) => [one.mountA.id, one.mountB.id]));
+    const frozen = this.frozenJoints();
+    const mountMoves = new Map<string, { x: number; y: number }>();
     for (const slider of this.joints) {
       if (!(slider instanceof PrisJoint) || !slider.isFloating) continue;
       if (!slider.isSlotWellFormed) continue;
@@ -5017,9 +5035,20 @@ export class MechanismService {
       const x = midX + along * ux;
       const y = midY + along * uy;
 
+      if (mountIds.has(slider.id)) {
+        if (!frozen.has(slider.id)) {
+          const end = (at: number) => ({ x: midX + at * ux, y: midY + at * uy });
+          mountMoves.set(slider.id, reseatEndJoint(rams, slider, end(-half), end(half), { x, y }));
+        }
+        continue;
+      }
       slider.x = x;
       slider.y = y;
     }
+    // Planned rather than written, and without a rebuild: every caller of this
+    // runs `updateMechanism` straight afterwards, and asking for one here would
+    // come back through this same pass.
+    if (mountMoves.size > 0) this.gridUtils.runEdit({ moves: mountMoves }, false);
   }
 
   /**

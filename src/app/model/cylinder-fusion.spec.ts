@@ -3,7 +3,7 @@ import { RevJoint } from './joint';
 import { RealLink } from './link';
 import { ram, rewire } from '../../test-utils/cylinder-graph';
 import { Cylinder, cylindersIn } from './cylinder';
-import { fusedBodiesOf, memberIsFused, memberSilhouette } from './cylinder-fusion';
+import { memberSilhouette } from './cylinder-fusion';
 
 /**
  * One body holding **both** members of one cylinder.
@@ -11,9 +11,9 @@ import { fusedBodiesOf, memberIsFused, memberSilhouette } from './cylinder-fusio
  * Weld a ram's barrel mount to a bar, its rod mount to another, and the two
  * bars to each other, and the drawing is a rigid triangle with a ram down one
  * side. It will never move — the maintainer's own example says so — but it has
- * to draw, and drawing it means answering two questions nothing else asks:
- * which pass paints a shape that is holding a barrel *and* a rod, and what
- * draws a member when no skin is drawing one.
+ * to draw, and drawing it means answering a question nothing else asks: what
+ * draws a member when no skin is drawing one. Where such a shape is painted is
+ * `cylinder-paint-order.spec.ts`.
  */
 
 const R = 0.15 * 25;
@@ -82,35 +82,6 @@ function drawnOutlineCovers(link: RealLink, point: { x: number; y: number }): bo
   }
   return crossings % 2 === 1;
 }
-
-describe('which pass paints a body holding both members', () => {
-  it('paints it exactly once, in the rod’s place in the stack', () => {
-    const { body } = triangleAroundTheRam();
-    const mark = { id: 'S', cylinder: bothEndsIn(body) };
-    const painted = fusedBodiesOf([mark]);
-
-    // One shape, one paint. Both passes find the same body, and the rod's wins:
-    // a rod painted under the black head loses the darker band inside the bore.
-    expect([...painted.keys()]).toEqual(['S:rod']);
-    expect(painted.get('S:rod')!.body.id).toBe(body.id);
-    // And it knows it is holding both, so both members' own regions still
-    // select their member.
-    expect(
-      painted
-        .get('S:rod')!
-        .members.map((held) => held.role)
-        .sort()
-    ).toEqual(['barrel', 'rod']);
-  });
-
-  it('and neither member paints itself beside it', () => {
-    const { body } = triangleAroundTheRam();
-    const mark = { id: 'S', cylinder: bothEndsIn(body) };
-    const painted = fusedBodiesOf([mark]);
-    expect(memberIsFused(painted, mark, 'barrel')).toBe(true);
-    expect(memberIsFused(painted, mark, 'rod')).toBe(true);
-  });
-});
 
 describe('a body draws every bar it is made of', () => {
   /** The middle of the rod, which is the bar that went missing. */

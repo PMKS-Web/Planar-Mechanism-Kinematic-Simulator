@@ -785,76 +785,99 @@
          skin and two more at the ends: the barrel path selects the barrel, the
          rod path the rod, and the black block between them selects joint S —
          the sliding seal, whose marker and hitbox the block is (decision S12).
-         The buried barrel joint N has no hitbox at all. -->
+         The buried barrel joint N has no hitbox at all.
+
+         Walked as one paint order for the whole drawing rather than as a stack
+         per cylinder (decision S24). A step is either a cylinder's own pieces —
+         its head, and whichever members nothing bigger has swallowed — or one
+         fused body, and the order puts every body under the heads of the
+         cylinders whose barrel it holds and over the heads of the ones whose
+         rod it holds. Painted per cylinder instead, a body welded to two of
+         them landed inside one cylinder's stack and outside the other's: the
+         second cylinder's head came out bare black, and its own barrel lay over
+         its own rod. -->
+    @for (step of cylinderPaint; track step.key) {
+      @if (step.mark; as cyl) {
+        <g
+          class="cylinder-mark"
+          [attr.data-cylinder]="cyl.id"
+          [attr.transform]="sliderMarks.frame(cyl)"
+        >
+          <!-- A cylinder is a body like any other: in an analysis mode, one the
+               mode cannot analyze is scenery and goes gray with the rest of its
+               machine. Its skin is painted from its own fill rather than through
+               the link classes, so it was the one part that stayed in color. -->
+          <!-- The same state classes a bar wears (selected, pointed, hovered,
+               inert, locked), read off each member rather than off the part, so a
+               picked barrel and a picked rod look different. The stroke below is a
+               presentation attribute, and the class's stroke beats it. -->
+          @if (!memberIsFused(cyl, 'barrel')) {
+            <path
+              [class]="'cylinder-barrel ' + mechanismSrv.getLinkCSSClass(cyl.barrelLink)"
+              [attr.cursor]="
+                mechanismSrv.isLinkLockedVisual(cyl.barrelLink) ? 'not-allowed' : 'move'
+              "
+              (pointerover)="cyl.barrelLink.showHighlight = true"
+              (pointerout)="cyl.barrelLink.showHighlight = false"
+              (pointerdown)="setLastLeftClick(cyl.barrelLink, $event)"
+              (contextmenu)="setLastRightClick(cyl.barrelLink, $event)"
+              [attr.d]="cyl.barrel"
+              [attr.fill]="cyl.barrelFill"
+              fill-opacity="0.7"
+              [attr.stroke]="cyl.barrelFill"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+            />
+          }
+          <!-- The seal's own square. It stays #000 in every state — the accent
+               outline in the pass below is what says it is picked, the way the
+               orphan mark works (§2.8 rule 3) — and it takes no pointer events
+               here, because the rod is drawn over it at the alpha that makes the
+               band inside the bore read darker. Its hitbox is in that pass too.
+               No stop notches and no dotted motion line: the bore is the head's
+               own length, so the silhouette says where the travel ends. -->
+          <path
+            class="cylinder-seal"
+            pointer-events="none"
+            [class.link-inert]="mechanismSrv.isPartInert(cyl.barrelLink)"
+            [attr.d]="cyl.block"
+            fill="#000000"
+            [attr.filter]="mechanismSrv.isPartInert(cyl.barrelLink) ? null : 'url(#elevation-1)'"
+          />
+          @if (!memberIsFused(cyl, 'rod')) {
+            <path
+              [class]="'cylinder-rod ' + mechanismSrv.getLinkCSSClass(cyl.rodLink)"
+              [attr.cursor]="mechanismSrv.isLinkLockedVisual(cyl.rodLink) ? 'not-allowed' : 'move'"
+              (pointerover)="cyl.rodLink.showHighlight = true"
+              (pointerout)="cyl.rodLink.showHighlight = false"
+              (pointerdown)="setLastLeftClick(cyl.rodLink, $event)"
+              (contextmenu)="setLastRightClick(cyl.rodLink, $event)"
+              [attr.d]="cyl.rod"
+              [attr.fill]="cyl.rodFill"
+              fill-opacity="0.7"
+              [attr.stroke]="cyl.rodFill"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+            />
+          }
+        </g>
+      } @else if (step.fused; as fused) {
+        <ng-container
+          [ngTemplateOutlet]="fusedCylinderBody"
+          [ngTemplateOutletContext]="{ $implicit: fused }"
+        />
+      }
+    }
+    <!-- Everything that has to sit above every skin, for every cylinder: the
+         seal's hit area, the driven arrows and the per-member outlines. One
+         pass after all the paint rather than the tail of each cylinder's own
+         group, because a body welded to another cylinder can be painted after
+         this one — and a hit area under the rod that covers it is a handle
+         nobody can grab. -->
     @for (cyl of cylinderList; track cyl.id) {
       <g
-        class="cylinder-mark"
+        class="cylinder-overlay"
         [attr.data-cylinder]="cyl.id"
         [attr.transform]="sliderMarks.frame(cyl)"
       >
-        <!-- A cylinder is a body like any other: in an analysis mode, one the
-             mode cannot analyze is scenery and goes gray with the rest of its
-             machine. Its skin is painted from its own fill rather than through
-             the link classes, so it was the one part that stayed in color. -->
-        <!-- The same state classes a bar wears (selected, pointed, hovered,
-             inert, locked), read off each member rather than off the part, so a
-             picked barrel and a picked rod look different. The stroke below is a
-             presentation attribute, and the class's stroke beats it. -->
-        @if (fusedBodyAt(cyl, 'barrel'); as underTheHead) {
-          <ng-container
-            [ngTemplateOutlet]="fusedCylinderBody"
-            [ngTemplateOutletContext]="{ $implicit: underTheHead, cyl: cyl }"
-          />
-        } @else if (!memberIsFused(cyl, 'barrel')) {
-          <path
-            [class]="'cylinder-barrel ' + mechanismSrv.getLinkCSSClass(cyl.barrelLink)"
-            [attr.cursor]="mechanismSrv.isLinkLockedVisual(cyl.barrelLink) ? 'not-allowed' : 'move'"
-            (pointerover)="cyl.barrelLink.showHighlight = true"
-            (pointerout)="cyl.barrelLink.showHighlight = false"
-            (pointerdown)="setLastLeftClick(cyl.barrelLink, $event)"
-            (contextmenu)="setLastRightClick(cyl.barrelLink, $event)"
-            [attr.d]="cyl.barrel"
-            [attr.fill]="cyl.barrelFill"
-            fill-opacity="0.7"
-            [attr.stroke]="cyl.barrelFill"
-            [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
-          />
-        }
-        <!-- The seal's own square. It stays #000 in every state — the accent
-             outline below is what says it is picked, the way the orphan mark
-             works (§2.8 rule 3) — and it takes no pointer events here, because
-             the rod is drawn over it at the alpha that makes the band inside
-             the bore read darker. Its hitbox is below, above the rod.
-             No stop notches and no dotted motion line: the bore is the head's
-             own length, so the silhouette says where the travel ends. -->
-        <path
-          class="cylinder-seal"
-          pointer-events="none"
-          [class.link-inert]="mechanismSrv.isPartInert(cyl.barrelLink)"
-          [attr.d]="cyl.block"
-          fill="#000000"
-          [attr.filter]="mechanismSrv.isPartInert(cyl.barrelLink) ? null : 'url(#elevation-1)'"
-        />
-        @if (fusedBodyAt(cyl, 'rod'); as overTheHead) {
-          <ng-container
-            [ngTemplateOutlet]="fusedCylinderBody"
-            [ngTemplateOutletContext]="{ $implicit: overTheHead, cyl: cyl }"
-          />
-        } @else if (!memberIsFused(cyl, 'rod')) {
-          <path
-            [class]="'cylinder-rod ' + mechanismSrv.getLinkCSSClass(cyl.rodLink)"
-            [attr.cursor]="mechanismSrv.isLinkLockedVisual(cyl.rodLink) ? 'not-allowed' : 'move'"
-            (pointerover)="cyl.rodLink.showHighlight = true"
-            (pointerout)="cyl.rodLink.showHighlight = false"
-            (pointerdown)="setLastLeftClick(cyl.rodLink, $event)"
-            (contextmenu)="setLastRightClick(cyl.rodLink, $event)"
-            [attr.d]="cyl.rod"
-            [attr.fill]="cyl.rodFill"
-            fill-opacity="0.7"
-            [attr.stroke]="cyl.rodFill"
-            [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
-          />
-        }
         <!-- Joint S's hitbox, over the head it rides: grabbing it starts a drag
              on the seal, and pointing at it lights the seal's own cream bar
              above, exactly as grabbing an ordinary slider's block starts a drag
@@ -938,19 +961,19 @@
          cue the whole drawing rests on. The slider layer is under every skin,
          so a rod plate drawn down there is exactly that loss.
 
-         `unframe` undoes the slot transform this sits inside: a body's outline
-         is already in the drawing's own coordinates, and rewriting a compound
-         union into the slot's frame would mean tokenizing it on every animation
-         frame to arrive back at the same shape. A plate is the other way round
-         -- it is built in its own slider's frame -- so it gets that frame back,
-         which is not this skin's whenever the two are different joints.
+         A step of its own among the cylinder groups rather than a child of one
+         (decision S24), which is what lets a body welded to two cylinders sit
+         under one head and over the other. It therefore needs no transform: a
+         body's outline is already in the drawing's own coordinates. A plate is
+         the other way round -- it is built in its own slider's frame -- so it
+         gets that frame, which belongs to the Slide rather than to any skin.
 
          The member's own region still selects the member (decision S12), so a
          transparent hit path goes over the fill for each member this body
-         holds -- in that member's own slot frame, which is not always this
-         one, because two cylinders can be welded to the same bracket. -->
-    <ng-template #fusedCylinderBody let-fused let-cyl="cyl">
-      <g [attr.transform]="sliderMarks.unframe(cyl)">
+         holds -- in that member's own slot frame, because two cylinders can be
+         welded to the same bracket. -->
+    <ng-template #fusedCylinderBody let-fused>
+      <g class="cylinder-fused" [attr.data-body]="fused.body.id">
         @if (fused.plate; as slide) {
           <g class="slider-plate" [attr.transform]="sliderMarks.frame(slide.mark)">
             <path

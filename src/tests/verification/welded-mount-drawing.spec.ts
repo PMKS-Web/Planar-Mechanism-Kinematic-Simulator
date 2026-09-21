@@ -6,9 +6,10 @@ import { PrisJoint, RealJoint, RevJoint } from '../../app/model/joint';
 import { RealLink } from '../../app/model/link';
 import { buildCompoundPath } from '../../app/model/compound-link-path';
 import { Cylinder, cylindersIn } from '../../app/model/cylinder';
-import { fusedBodiesOf, memberSilhouette } from '../../app/model/cylinder-fusion';
+import { memberSilhouette } from '../../app/model/cylinder-fusion';
+import { cylinderPaintOrder } from '../../app/model/cylinder-paint-order';
 import { barrelFillOf, cylinderSkinFrame, rodFillOf } from '../../app/model/cylinder-skin';
-import { CYLINDER } from '../../app/model/joint-marks';
+import { barHalfWidth, CYLINDER } from '../../app/model/joint-marks';
 import { uniformBodyOf } from '../../app/model/uniform-body';
 import { createMechanismHarness } from '../../test-utils/mechanism-harness';
 import { SliderMarkService } from '../../app/services/slider-mark.service';
@@ -72,7 +73,7 @@ function weldedAt(end: 'barrel' | 'rod') {
 /** What the compound would draw if the bracket were all it held. */
 function bracketAlone(bracket: RealLink): string {
   bracket.reComputeDPath();
-  return buildCompoundPath([bracket.d], SettingsService.objectScale / 4).path;
+  return buildCompoundPath([bracket.d], barHalfWidth(SettingsService.objectScale)).path;
 }
 
 /** How many closed loops a built outline is made of. One ring is one body. */
@@ -120,7 +121,10 @@ describe('a compound holding one of a cylinder’s bars', () => {
       // together, to the character.
       expect(rings(compound.d)).toBe(1);
       expect(compound.d).toBe(
-        buildCompoundPath([bracket.d, member.skinSilhouette!], SettingsService.objectScale / 4).path
+        buildCompoundPath(
+          [bracket.d, member.skinSilhouette!],
+          barHalfWidth(SettingsService.objectScale)
+        ).path
       );
     });
 
@@ -143,7 +147,7 @@ describe('a compound holding one of a cylinder’s bars', () => {
       // through at both corners. `CYLINDER.cutEase` is what stops it.
       const { compound, bracket, ram } = weldedAt(end);
       const r = 0.15 * SettingsService.objectScale;
-      const fillet = SettingsService.objectScale / 4;
+      const fillet = barHalfWidth(SettingsService.objectScale);
       const squared = buildCompoundPath([bracket.d, memberSilhouette(ram, end, r, 0)], fillet).path;
 
       cutCorners(ram, end, r).forEach((corner) => {
@@ -244,7 +248,7 @@ describe('a compound holding one of a cylinder’s bars', () => {
     const { compound, bracket } = weldedAt('barrel');
     const loops = compound.outlineLoops();
     expect(loops.length).toBe(1);
-    const unfused = buildCompoundPath([bracket.d], SettingsService.objectScale / 4);
+    const unfused = buildCompoundPath([bracket.d], barHalfWidth(SettingsService.objectScale));
     expect(loops[0].length).toBe(unfused.rings[0].length - 1);
   });
 
@@ -293,25 +297,31 @@ describe('a compound holding one of a cylinder’s bars', () => {
   });
 });
 
-describe('which pass of the skin paints a welded body', () => {
+describe('where the skin paints a welded body', () => {
   const markFor = (cylinder: Cylinder) => ({ id: cylinder.seal.id, cylinder });
+  const keysOf = (cylinders: Cylinder[]) =>
+    cylinderPaintOrder(cylinders.map(markFor)).map((step) => step.key);
 
   it('paints a barrel’s body under the head and a rod’s body over it', () => {
     const barrelEnd = weldedAt('barrel');
-    const underTheHead = fusedBodiesOf([markFor(barrelEnd.ram)]);
-    expect([...underTheHead.keys()]).toEqual([`${barrelEnd.ram.seal.id}:barrel`]);
+    expect(keysOf([barrelEnd.ram])).toEqual([
+      `body:${barrelEnd.ram.barrelRoot.id}`,
+      `cylinder:${barrelEnd.ram.seal.id}`,
+    ]);
 
     const rodEnd = weldedAt('rod');
-    const overTheHead = fusedBodiesOf([markFor(rodEnd.ram)]);
-    expect([...overTheHead.keys()]).toEqual([`${rodEnd.ram.seal.id}:rod`]);
+    expect(keysOf([rodEnd.ram])).toEqual([
+      `cylinder:${rodEnd.ram.seal.id}`,
+      `body:${rodEnd.ram.rodRoot.id}`,
+    ]);
   });
 
-  it('paints a bracket two cylinders are welded to exactly once, in the rod’s place', () => {
+  it('paints a bracket two cylinders are welded to exactly once, between the two heads', () => {
     // A boom and a stick: one part's rod mount is the next one's barrel mount,
-    // and a bracket welded there belongs to both. Painted once per pass it
-    // would be drawn twice at its own alpha, over itself; painted in the
-    // barrel's place the rod would vanish under the black head it is supposed
-    // to be lying on, which is the cue the whole drawing rests on.
+    // and a bracket welded there belongs to both. Painted once per cylinder it
+    // would be drawn twice at its own alpha, over itself; it belongs after the
+    // boom's head, whose rod it holds, and before the stick's, whose barrel it
+    // holds -- and both cues survive only in that one place.
     const harness = createMechanismHarness();
     const service = harness.service;
     service.createCylinderFrom(new Coord(-5 * S, -1 * S), new Coord(0, 0));
@@ -333,21 +343,29 @@ describe('which pass of the skin paints a welded body', () => {
     const shared = rams.filter((ram) => ram.rodRoot.id !== ram.rod.id);
     expect(shared.length).toBe(1);
 
-    const painted = fusedBodiesOf(rams.map(markFor));
-    expect(painted.size).toBe(1);
-    const [key, only] = [...painted.entries()][0];
-    expect(key).toBe(`${shared[0].seal.id}:rod`);
+    const steps = cylinderPaintOrder(rams.map(markFor));
+    const bodies = steps.filter((step) => step.fused);
+    expect(bodies.length).toBe(1);
+    expect(bodies[0].key).toBe(`body:${shared[0].rodRoot.id}`);
+    // Between the two heads: after the one whose rod it holds, before the one
+    // whose barrel it holds.
+    const other = rams.find((ram) => ram.seal.id !== shared[0].seal.id)!;
+    expect(steps.map((step) => step.key)).toEqual([
+      `cylinder:${shared[0].seal.id}`,
+      `body:${shared[0].rodRoot.id}`,
+      `cylinder:${other.seal.id}`,
+    ]);
     // And both members it holds are listed, so each still has a region of its
     // own to be picked by.
-    expect(only.members.map((member) => member.role).sort()).toEqual(['barrel', 'rod']);
+    expect(bodies[0].fused!.members.map((member) => member.role).sort()).toEqual(['barrel', 'rod']);
   });
 
-  it('answers nothing at all for a part nobody has welded', () => {
+  it('paints nothing but the cylinder itself for a part nobody has welded', () => {
     const harness = createMechanismHarness();
     harness.service.createCylinderFrom(new Coord(0, 0), new Coord(6 * S, 0));
     harness.service.finishStructuralEdit(true);
     const loose = harness.service.sealedStructures()[0];
-    expect(fusedBodiesOf([markFor(loose)]).size).toBe(0);
+    expect(keysOf([loose])).toEqual([`cylinder:${loose.seal.id}`]);
     // The silhouette exists either way -- it is what the skin draws from -- and
     // nothing asks for it while the member is a body of its own.
     expect(memberSilhouette(loose, 'barrel', 0.15 * SettingsService.objectScale)).toContain('M');

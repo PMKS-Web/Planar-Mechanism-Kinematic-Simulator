@@ -1,8 +1,12 @@
 import {
+  BAR_HALF_R,
+  BAR_HALF_SCALE,
+  barHalfWidth,
   blockPath,
   capsulePath,
   channelPath,
   CYLINDER,
+  R_PER_SCALE,
   cylinderArrowPaths,
   cylinderBlockPath,
   GROUND_STROKE,
@@ -139,13 +143,30 @@ describe('the mark system, against the delivered SVGs', () => {
     expect(numbers(backward.head)[0]).toBeCloseTo(-30, 6);
   });
 
-  it('measures a bar half-width as the width links are actually drawn at', () => {
-    // Everything derived from barHalf assumed a bar 10% wider than the one on
-    // screen: the weld plate stood proud of its own rider all the way round,
-    // and the drop radius for cutting a slot reached past the bar's edge.
-    // objectScale / 4 is the link half-width, so barHalf is that in units of R.
-    const objectScale = 4;
-    expect(MARK.barHalf * 0.15 * objectScale).toBeCloseTo(objectScale / 4, 12);
+  it('gives a bar, a slider block and a cylinder rod one half-width', () => {
+    // Decision S23. A rod runs out of a block and into a pin on an ordinary
+    // bar, and the three used to be three numbers: the bar 5/3 R, the block and
+    // the rod 1.525 R. Nine percent is exactly big enough to see where two of
+    // them meet and too small to look deliberate, so the bar came down to the
+    // rod and all three are now this one fact.
+    expect(MARK.barHalf).toBe(BAR_HALF_R);
+    expect(MARK.blockAcrossHalf).toBe(BAR_HALF_R);
+    expect(CYLINDER.rodHalf).toBe(BAR_HALF_R);
+    // The fillet that softens a weld is the same radius, because the corner it
+    // softens is the corner between two bars.
+    expect(MARK.plateFillet).toBe(BAR_HALF_R);
+  });
+
+  it('says that half-width in R and in objectScale, one from the other', () => {
+    // A mark is measured in R and a link outline is built in objectScale, so
+    // the number has to be sayable both ways -- and derived rather than
+    // restated, which is how `objectScale / 4` came to sit beside 1.525 R in
+    // the first place.
+    expect(BAR_HALF_SCALE).toBeCloseTo(BAR_HALF_R * R_PER_SCALE, 12);
+    expect(BAR_HALF_SCALE).toBeCloseTo(0.22875, 12);
+    for (const objectScale of [1, 4, 37.5]) {
+      expect(barHalfWidth(objectScale)).toBeCloseTo(MARK.barHalf * R_PER_SCALE * objectScale, 12);
+    }
   });
 
   it('leaves a margin of bar between a slot and the joint it stops short of', () => {

@@ -45,6 +45,13 @@ constraint solver. Closed-form optimizations for coupled mount arrangements can 
 correct simultaneous placement cannot. Conflicting edit requests may be refused atomically
 with a model reason, rather than silently deforming welded neighbors.
 
+> *September 21, 2026: the last clause is history. Decision **S21** in
+> [`joint-type-and-cylinder-plan.md`](joint-type-and-cylinder-plan.md) makes deforming a welded
+> neighbor the ordinary answer rather than the thing to refuse — only a drag of the body carries
+> what is welded to a cylinder, and every other edit lets that body change shape, the way an
+> ordinary compound link does when one of its joints is dragged. The atomic part stands: an edit
+> that genuinely cannot happen is still refused whole, with nothing written.*
+
 ## Findings that correct or extend the brief
 
 1. `slideAssemblyAt` does **not** require one rider. `model/slide-assembly.ts:44–95` allows
@@ -143,6 +150,13 @@ the test for prohibiting a mount operation.
 | `edit-panel.component.ts:665–676`, `:753` | Remove/rename misnamed `isCylinderMount`; disable from shared operation result and show its reason. | Use `emitEvent: false`; edit permissions and locks remain outer authorities. |
 | `createCylinderFrom:4244`, menu `:503` | Permit welded external start/end joints; absorb new barrel/rod into the intended compounds before normalization/save. | No interior start/end, self-collapse, second block, or ambiguous input. Preview and commit quote the same attachment model. |
 | `new-grid.component.ts:2054`, mount drag route | Enable ordinary slot candidate discovery/commit alongside mount pose handling. | Reject slot on the same resulting rigid body; Alt/snap priorities follow ordinary pin dragging. |
+
+*This last row did not land with the rest of the plan. The branch went on clearing `slotCandidate`
+for a mount drag, under a comment saying a mount never rides a slot, and the floating case stayed
+reachable only by calling `cutSlotOn` on the service — which is how `e2e/cylinder-mount.mjs` proves
+it. **It landed on September 21, 2026**, as decision S22 of
+[`joint-type-and-cylinder-plan.md`](joint-type-and-cylinder-plan.md), with
+`e2e/cylinder-mount-slot.mjs` driving the real gesture.*
 
 Keep broad cylinder membership for lifecycle protection, deletion discovery, cylinder selection,
 and part naming where that is the actual question. Keep `isCylinderInterior` hiding exactly the

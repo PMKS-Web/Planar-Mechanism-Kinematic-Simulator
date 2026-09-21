@@ -1762,3 +1762,106 @@ about, which is what `e2e/hidden-joint-audit.mjs` does rather than carrying a zi
 dev-only and unreachable in production (the copy in `app.component.html` is commented out). So a
 change to it is a change to a developer surface, and anything written about "the linkage table" as
 a thing readers see is describing a door that was closed a while ago.
+
+### `reseatFloatingSliders` cannot just write a block that is a cylinder's end joint
+
+Every other floating block is a point, so the pass projects it back onto its channel and writes the
+two coordinates. An end joint is one end of a rigid part, and writing it leaves the barrel and rod
+the lengths they were; `deriveCylinderInteriors`, which runs next and never clamps, then puts N and
+S back on the *new* axis at those lengths and draws the head as far outside its own barrel as the
+stretch. So the pass collects those moves and hands them to `GridUtilsService.runEdit`, whose
+`layoutFor` re-lays the part from its two ends through `stretchedCylinderPose` and resizes it to
+reach — with `rebuild: false`, because every caller of the reseat runs `updateMechanism` straight
+afterwards and asking for one here comes back through the same pass.
+
+A carrier dragged until the span is under what the part closes to would be refused there, with a
+good sentence — and then the block sits off its rail for good and *every later edit anywhere in the
+drawing* asks the same refused question again. So `model/slot-reseat.ts` asks the layout first and
+takes the channel's answer as far along the channel as the part can follow, which is what a rail
+and a collar do. The answer is always on the channel: a point between where the block was and where
+the hole went is a block in neither. A Lock on the end joint skips the whole branch — a lock says
+the joint does not move, and a reseat is nobody's gesture.
+
+### A cylinder's URL has never re-encoded byte for byte
+
+Create a cylinder, change nothing, reload from the address it wrote, and the two strings differ:
+the two member links' centres of mass come back one encoding unit apart. They are *derived* (S14),
+so they are recomputed from joints that arrived at the URL's own precision rather than from the
+unrounded ones the first encode saw. An ordinary bar dropped on a slot at the same fractional
+coordinates round-trips exactly. So a check on a cylinder drawing compares the *drawing* — roles,
+carrier, lengths, pose — and not the string; `e2e/cylinder-mount-slot.mjs` says so where it does it.
+
+### A rail square to a cylinder's axis is a dead centre, and the solver is right to refuse it
+
+Drop a cylinder's end joint on a fixed rail that crosses the part at a right angle and the mechanism
+reads one degree of freedom and then reports "Nothing moves when the input turns". Both rows that
+touch the end joint — the slot's `onLine` and the drive's commanded span — have the same gradient
+there, so `hasFullColumnRank` refuses the system. That is the geometry: extending the cylinder pushes
+the joint along the part's own axis, and the rail only lets it go across. Slant the rail, or start the
+part off the perpendicular, and it runs. Worth knowing before hunting a solver bug that is not there.
+
+### An end joint that has gained a slot can no longer be merged onto a joint
+
+`refuseJointMerge` refuses a `PrisJoint` *source* outright ("a slider cannot merge"), and a cylinder
+end that has been dropped on a bar is one. So the way back is Joint Type → Revolute on that joint,
+or pulling the block clear of the bar and then dragging it onto the joint — not a second drag at the
+joint, which shows the red ring and the reason. The same has always been true of an ordinary block;
+it is only surprising at a cylinder, where the joint was an ordinary pin a moment earlier.
+
+### `resolveSlotDropTarget` already kept a cylinder's own two members out, for two different reasons
+
+Dragging an end joint, neither the rod nor the barrel is ever offered as a carrier — and not because
+either is a member. The rod is a body the dragged joint *belongs to*, which the first line of the
+loop skips; the barrel is a body holding the part's **other** end, which `slotWouldFoldACylinder`
+skips. The canvas's own `isCylinderMemberLink` filter is about *other* cylinders. Worth knowing
+before adding a rule that is already there twice.
+
+### A welded bracket is rigid in the simulation and not in the editor
+
+`planEdit` / `settle` in `model/cylinder-pose-plan.ts` carries a welded body **only for a body
+drag** — `dragCylinder` and `rotateCylinder`, which say `motion: 'body'` on the pose (S21). Every
+other edit of a cylinder writes its own four joints and lets the bracket welded to a member change
+shape around them, exactly as a compound link does when one of its joints is dragged. The file used
+to argue the opposite, in so many words: that moving a member and not the bracket does not deform
+the body but *tears* it. It reads convincingly and it is wrong for this app — nothing else here
+treats a welded body as rigid at edit time. Three things fall out of it that surprise in their own
+right: a Lock out on a bracket no longer freezes the cylinder welded into it, a cylinder whose two
+end joints are welded into one body now takes a length (the `cylinder.both-ends-fused` sentence is
+gone), and `rigidityRefusal` is asked about carried bodies only, because a body the edit
+deliberately let change shape is not a failed rigid motion.
+
+### A joint's own hitbox is `objectScale / 4` and did **not** follow the bar down
+
+When the bar's half-width became the rod's (`barHalfWidth`, decision S23) every restatement of
+`objectScale / 4` was rewritten to ask for it -- except the transparent circle in `jointHolder`
+that a joint is grabbed by, which is still `settings.objectScale / 4`. It reads the same number by
+coincidence rather than by derivation: it is a grab radius, sized so a pin is easy to hit, and a
+bar's edge is not what it is measuring. Narrowing it with the bar would have made every joint 9%
+harder to grab for no reason anybody could see. The nearby `0.25 * settings.objectScale` on the
+force anchor is the same kind of number.
+
+### `SynthesisCanvasService.barHalfWidth()` existed for months and nothing called it
+
+It returned `0.25 * objectScale`, the bar half-width, while seven `this.settings.objectScale / 4`
+sat beside it in the same file building pose bars, previews and the selection box. `max-lines` and
+`no-unused-vars` both let a private method nothing calls through. It is `barHalf()` now and every
+one of the seven asks it. Worth a glance whenever a file has a well-named helper *and* the number
+it wraps spelled out nearby -- the helper may never have been wired up.
+
+### The middle of a cylinder's head is the seal's cream mark, so a pixel there says nothing
+
+Sampling `#fff8e1` at the centre of every head in every scene is not evidence that the layering is
+right; it is the slide mark (`slideMarkPath`) the joint layer draws over the head. To read the band
+that says how much rod is in the bore, sample **along the head's own axis** -- `headAlongHalf * 0.8`
+through the element's `getScreenCTM()` clears the mark at full size and on a shrunken head alike,
+and stays inside the block's end cap. `e2e/cylinder-mount-render.mjs` does exactly that.
+
+### Two barrels in one bracket were never painted wrong, and two rods always were
+
+`fusedBodiesOf` claimed a shared shape for the *first* mark in list order that held it, rods first.
+A barrel unit was therefore always claimed by the earlier cylinder -- whose group is painted first
+-- so the bracket landed before both heads and the drawing was right by luck. A rod unit was
+claimed by the earlier cylinder too, which painted it *before* the later cylinder's group: the
+later head came out bare `#000`. The chain was right or wrong depending only on which of the two
+cylinders was drawn first. Decision S24's order removes the luck; the asymmetry is worth knowing
+before reading a bug report that says "sometimes".

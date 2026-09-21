@@ -1,4 +1,5 @@
 import { Joint, PrisJoint, RealJoint, RevJoint } from './joint';
+import { slotHalfLength } from './joint-marks';
 import { Link, RealLink } from './link';
 import { Cylinder, cylinderJoints, isInsideCylinder } from './cylinder';
 
@@ -403,6 +404,60 @@ function closestPointOnSegment(
   const px = a.x + t * dx;
   const py = a.y + t * dy;
   return { x: px, y: py, distance: Math.hypot(x - px, y - py) };
+}
+
+/**
+ * Where a drag of a block already riding a channel resolves to (§4.4).
+ *
+ * `'release'` is the block being pulled clear across the bar rather than along
+ * it, which is the one gesture that plainly means "take this off here";
+ * `undefined` is a slot with no direction left to ride, where the only honest
+ * answer is to leave the cursor's own point alone.
+ */
+export type SlotRide = { x: number; y: number } | 'release' | undefined;
+
+/**
+ * Where a block in a channel is allowed to go, and when it comes out (§4.4).
+ *
+ * Dragging the block along its slot sets s₀ and changes nothing else, so the
+ * drag is projected onto the slot line and clamped to the span the channel
+ * actually occupies — the block cannot leave a hole it is inside of, and one
+ * drag stays one quantity.
+ *
+ * Sticky along the line, then it lets go. Sliding is by far the commoner
+ * intent, so the block stays on its line through any amount of sideways
+ * wobble; past `releaseDistance` across it, the answer is `'release'` and the
+ * caller takes the block off the bar.
+ *
+ * A model function rather than canvas code because the same arithmetic is the
+ * answer for every joint that rides a slot, a cylinder's end joint included
+ * (decision S22) — and because the canvas is at its line cap.
+ */
+export function rideAlongSlot(
+  slider: PrisJoint,
+  wanted: { x: number; y: number },
+  /** The drawing's joint radius, which is what a channel's length is measured in. */
+  r: number,
+  releaseDistance: number
+): SlotRide {
+  const a = slider.slotJointA!;
+  const b = slider.slotJointB!;
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const length = Math.hypot(dx, dy);
+  if (length < 1e-9) return undefined;
+
+  const ux = dx / length;
+  const uy = dy / length;
+  const midX = (a.x + b.x) / 2;
+  const midY = (a.y + b.y) / 2;
+  const offset = (wanted.x - midX) * ux + (wanted.y - midY) * uy;
+  const across = -(wanted.x - midX) * uy + (wanted.y - midY) * ux;
+  if (Math.abs(across) > releaseDistance) return 'release';
+
+  const half = slotHalfLength(r, length);
+  const along = Math.max(-half, Math.min(half, offset));
+  return { x: midX + along * ux, y: midY + along * uy };
 }
 
 /** The joint a drag is currently aimed at, and why it would refuse the merge. */

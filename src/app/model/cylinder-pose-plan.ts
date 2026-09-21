@@ -1,32 +1,48 @@
 /**
  * Where every joint ends up when an edit touches a cylinder.
  *
- * Posing a ram used to mean writing its own five coordinates. That is right
- * only while those five are the whole of what moves — which was true exactly
- * as long as a mount could not be welded to anything. Weld a bracket to a
- * mount and the bracket is rigid with the barrel: moving the bar and not the
- * bracket does not deform the body, it *tears* it, and the rebuild that
- * follows reads the wreckage as a link that changed shape.
+ * **Only a body drag carries** (decision S21). The reader taking hold of a
+ * barrel, a rod, or a body welded to either and moving the whole assembly is a
+ * *body motion* — `motion: 'body'` on the pose below, written by
+ * `GridUtilsService.dragCylinder` and `rotateCylinder` and by nothing else.
+ * That carries every bar welded to either member rigidly, the way picking a
+ * part up off the bench does, and a cylinder inside a body being carried rides
+ * along with it.
  *
- * So a whole edit is planned before any of it is written. One snapshot, one
+ * **Every other edit writes the cylinder's own joints and nothing else**:
+ * dragging an end joint, dragging the slide, a typed angle, *Starts at* or a
+ * member length, and a cylinder re-laid because something else moved one of
+ * its end joints. A body welded to a member then **changes shape**, exactly as
+ * a compound link does when one of its joints is dragged: its other joints
+ * stay where the reader put them.
+ *
+ * This file used to argue the opposite — that moving a member and not the
+ * bracket welded to it does not deform the body but *tears* it. Nothing else
+ * in the app believes that. Drag one joint of an ordinary compound and that
+ * joint moves while the compound changes shape; type a Length or an Angle on a
+ * bar and one joint moves. A welded body is rigid in the *simulation*; in the
+ * editor it is a shape somebody is still drawing. The maintainer settled it on
+ * September 21, 2026: a bar welded to a barrel's end joint must not swing round
+ * when the cylinder's far end is dragged, and two cylinders welded into one
+ * bracket must not move each other.
+ *
+ * A whole edit is still planned before any of it is written. One snapshot, one
  * closure, one answer: the gesture's own joint moves and every cylinder
  * consequence are worked out together, and the caller commits all of it or
  * none of it. Nothing here touches a Joint.
  *
- * **Relax, then check.** Each side of a ram is rigid about its own mount, so a
- * carried point goes to `mount' + R(q - mount)`. But a ram bolted to a body
- * this edit moves has to be re-laid from *both* of its ends, and its second
- * end may not have been placed yet when its first one was — so placements are
- * recomputed until they stop changing, and only the settled result is judged.
- * Judging each write as it happens refuses compatible drawings on the strength
- * of an intermediate position that nothing ever commits.
+ * **Relax, then check.** A cylinder bolted to a body this edit moves has to be
+ * re-laid from *both* of its ends, and its second end may not have been placed
+ * yet when its first one was — so placements are recomputed until they stop
+ * changing, and only the settled result is judged. Judging each write as it
+ * happens refuses compatible drawings on the strength of an intermediate
+ * position that nothing ever commits.
  *
- * What is judged is the end state: every rigid body still rigid, every ram
- * still the length it was, nothing locked actually displaced. That is a
- * statement about the drawing rather than about the order the walk happened to
- * visit things in — which is why a ram whose two ends share one body is
- * refused for *extending* rather than for being shared. Translating it is
- * fine, and the old code refused it on sight.
+ * What is judged is the end state: every cylinder the two lengths its own
+ * layout chose, nothing locked actually displaced, and — for a body motion
+ * alone — every body it carried still rigid and still the same handedness. A
+ * body the edit deliberately let change shape is not a failed rigid motion, so
+ * it is never asked.
  */
 
 import { Cylinder, CylinderPose } from './cylinder';
@@ -69,27 +85,56 @@ export interface EditPlan {
   /**
    * Bars carried rigidly, and by what.
    *
+   * A body motion puts every bar of both bodies in here; every other edit puts
+   * in the cylinder's own barrel and rod alone, because a member that turns
+   * about its end joint is still the same bar even when the body welded around
+   * it is changing shape.
+   *
    * A force or a custom center of mass on one of these is a point somebody
-   * fixed to that body, and it follows this transform exactly. That is not the
-   * same as following the body's first two joints: a ram being resized moves
-   * those two relative to each other, and transporting a bracket's properties
-   * through *that* frame stretches them along with a bar they are not on.
+   * fixed to that bar, and it follows this transform exactly. That is not the
+   * same as following the body's first two joints: a cylinder being resized
+   * moves those two relative to each other, and transporting a bracket's
+   * properties through *that* frame stretches them along with a bar they are
+   * not on.
    */
   carried: CarriedLeaf[];
   /** Bars the edit deliberately changed the shape of: a resized barrel or rod. */
   reshaped: Link[];
-  /** Top-level bodies the edit touched, for the rebuild that follows. */
+  /**
+   * The bodies a **body motion** claimed it was carrying rigidly.
+   *
+   * Only those. A body the edit deliberately let change shape — the bracket on
+   * the end joint a reader is dragging — is not a failed rigid motion, and
+   * listing it here would put it in front of a check written to refuse exactly
+   * that (S21).
+   */
   affectedRoots: Link[];
 }
 
 type EditPlanResult = { ok: true; plan: EditPlan } | { ok: false; refusal: PosePlanRefusal };
+
+/** One cylinder the gesture places outright, and what kind of gesture it is. */
+export interface PosedCylinder {
+  cylinder: Cylinder;
+  pose: CylinderPose;
+  /**
+   * `'body'` when the reader has the whole assembly in hand.
+   *
+   * The one thing that makes a welded neighbor move (S21). `dragCylinder` and
+   * `rotateCylinder` set it; every other pose — a dragged end joint, a dragged
+   * slide, a typed angle, *Starts at*, a member length — leaves it off, and
+   * those write the cylinder's own joints and let the bodies around them
+   * change shape.
+   */
+  motion?: 'body';
+}
 
 /** What the gesture itself asks for, before any consequence is worked out. */
 export interface EditRequest {
   /** Joints the gesture moves directly — a link drag's own joints. */
   moves?: ReadonlyMap<string, Point>;
   /** Cylinders whose pose the gesture prescribes outright. */
-  poses?: { cylinder: Cylinder; pose: CylinderPose }[];
+  poses?: PosedCylinder[];
 }
 
 /**
@@ -117,7 +162,7 @@ export interface EditContext {
   snapshot: PoseSnapshot;
   /** What to call a body, a cylinder and a joint in anything said out loud. */
   names: EditNames;
-  /** A carried ram's own layout, from where its two mounts have been put. */
+  /** A carried cylinder's own layout, from where its two end joints have been put. */
   layoutFor: (cylinder: Cylinder, mountA: Point, mountB: Point) => CylinderPose | undefined;
   /** How far two answers for one point may differ and still be one answer. */
   tolerance: number;
@@ -150,6 +195,27 @@ function rigidBetween(pivot: Point, aim: Point, to: Point, aimTo: Point): Rigid 
   const turn =
     Math.atan2(aimTo.y - to.y, aimTo.x - to.x) - Math.atan2(aim.y - pivot.y, aim.x - pivot.x);
   return { pivot, to, cos: Math.cos(turn), sin: Math.sin(turn) };
+}
+
+/**
+ * Whether a pose moves a cylinder without changing its shape.
+ *
+ * Fitted from the two end joints, which are the part's furthest-apart pair, and
+ * every one of the four required to land where that fit puts it. What a body
+ * motion claims, in one line, so the claim can be checked before anything is
+ * written.
+ */
+function isRigidPose(was: Point[], pose: CylinderPose, tolerance: number): boolean {
+  const [wasA, wasB] = was;
+  const move = rigidBetween(wasA, wasB, pose.mountA, pose.mountB);
+  if (!move) return false;
+  const to = [pose.mountA, pose.mountB, pose.inner, pose.seal];
+  const span = Math.hypot(wasB.x - wasA.x, wasB.y - wasA.y);
+  const slack = Math.max(tolerance, span * 1e-6);
+  return was.every((point, index) => {
+    const landed = carryPoint(move, point);
+    return Math.hypot(landed.x - to[index].x, landed.y - to[index].y) <= slack;
+  });
 }
 
 /** Where a point fixed to the moving body ends up. */
@@ -187,30 +253,59 @@ function leavesOfBody(root: Link): Link[] {
 /**
  * Plan a whole edit: the gesture's own moves, and everything they reach.
  *
- * `layoutFor` re-lays a *carried* ram from its two proposed mounts, keeping
- * the length it was drawn at. Only the caller knows how a ram is laid out, so
- * only the caller can answer that.
+ * `layoutFor` re-lays a cylinder from its two proposed end joints, keeping the
+ * lengths it was drawn at. Only the caller knows how one is laid out, so only
+ * the caller can answer that.
  */
 export function planEdit(request: EditRequest, context: EditContext): EditPlanResult {
-  const placements = new Map<string, Point>(request.moves ?? []);
+  /**
+   * Every joint some cylinder works out for itself: N and S, of all of them.
+   *
+   * These are derived from their own part's two end joints, whatever body they
+   * happen to sit in, and each is written by that part's own pose below. A
+   * body carrying them rigidly is carrying the *bracket* they are welded into,
+   * and a bracket has no opinion about how long the cylinder inside it is.
+   *
+   * It is also why a request may not name one. `moveLinkRigidly` lists every
+   * joint of the body it is dragging, and a compound holding a barrel holds N,
+   * so a drag of a welded bracket arrived here asking for N in a place its own
+   * cylinder was about to overrule — and the disagreement came back to the
+   * reader as two parts that could not agree, over a joint the drawing does
+   * not draw. Dropped from the request rather than refused: the joint has an
+   * owner, and it is not the caller.
+   */
+  const derivedByARam = new Set(context.cylinders.flatMap((one) => [one.inner.id, one.seal.id]));
+  const asked = [...(request.moves ?? [])].filter(([id]) => !derivedByARam.has(id));
+  const placements = new Map<string, Point>(asked);
   // What the gesture actually asked for. These are constraints, not opening
   // guesses: a consequence that wants one of them somewhere else has found a
   // drawing that cannot do what was asked, and the honest answer is to refuse
   // rather than to quietly do something adjacent. Overwriting them let a
-  // welded bracket be translated by the request and then rotated by the ram
-  // that followed, so the geometry and the properties disagreed.
-  const requested = new Map<string, Point>(request.moves ?? []);
-  const prescribed = new Map<string, CylinderPose>(
-    (request.poses ?? []).map(({ cylinder, pose }) => [cylinder.seal.id, pose])
+  // welded bracket be translated by the request and then rotated by the
+  // cylinder that followed, so the geometry and the properties disagreed.
+  const requested = new Map<string, Point>(asked);
+  const prescribed = new Map<string, PosedCylinder>(
+    (request.poses ?? []).map((posed) => [posed.cylinder.seal.id, posed])
   );
   const carried = new Map<string, CarriedLeaf>();
-  const reshaped = new Map<string, Link>();
   const reshapedRams = new Set<string>();
-  const affectedRoots = new Map<string, Link>();
+  /**
+   * The bars a **body motion** is carrying, and by what.
+   *
+   * A subset of `carried`, and the one a rider asks: `carried` also holds each
+   * cylinder's own two members, which move rigidly under every edit, and
+   * reading a ride off that would have a part carry its neighbors again the
+   * moment it re-laid itself.
+   */
+  const rigidlyCarried = new Map<string, Rigid>();
+  const reshaped = new Map<string, Link>();
+  /** Each body a body motion carried, with the cylinder that took it along. */
+  const affectedRoots = new Map<string, { root: Link; part: Cylinder }>();
   let unreachable: Cylinder | undefined;
   /** How far apart the layout was asked to put that part's two end joints. */
   let unreachableSpan: number | undefined;
-  let fused: Cylinder | undefined;
+  /** A body motion handed a pose that is not a rigid motion of the part. */
+  let torn: { cylinder: Cylinder; root: Link } | undefined;
   let denied: string | undefined;
 
   const at = (id: string): Point | undefined => context.snapshot.get(id);
@@ -285,27 +380,9 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
     return true;
   };
 
-  /**
-   * Every joint some cylinder works out for itself: N and S, of all of them.
-   *
-   * These are derived from their own part's two mounts, whatever body they
-   * happen to sit in, and each is written by that part's own pose below. A
-   * body carrying them rigidly is carrying the *bracket* they are welded into,
-   * and a bracket has no opinion about how long the ram inside it is.
-   *
-   * This used to be each ram's own two, worked out inside `settle` -- which is
-   * the same thing exactly as long as no two rams share a body. Weld two
-   * barrels into one bracket and it stops being the same thing: laying out the
-   * first ram put its N where the new length wanted it, placing the mount they
-   * share woke the second, and the second carried that bracket -- N and all --
-   * back to where it had started. The check below then found the ram the reader
-   * had just resized was not the length they typed and said it could not reach.
-   */
-  const derivedByARam = new Set(context.cylinders.flatMap((one) => [one.inner.id, one.seal.id]));
-
-  /** Which rams hang off each mount, so a moved joint knows who to wake. */
+  /** Which cylinders hang off each end joint, so a moved joint knows who to wake. */
   const ramsAtMount = new Map<string, Cylinder[]>();
-  /** And which ram each member bar belongs to, so a carried body knows too. */
+  /** And which cylinder each member bar belongs to, so a carried body knows. */
   const ramsOfBar = new Map<string, Cylinder[]>();
   for (const cylinder of context.cylinders) {
     for (const mount of [cylinder.mountA, cylinder.mountB]) {
@@ -348,14 +425,15 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
   const settled = new Map<string, { cylinder: Cylinder; pose: CylinderPose }>();
 
   /**
-   * The rigid motion a ram is already riding, when one is.
+   * The rigid motion a cylinder is already riding, when one is.
    *
-   * A ram whose own barrel is a leaf of a body this edit is carrying has
-   * already been told where to go: the body it is bolted inside decided, and
-   * the rod goes with the barrel it slides in. Re-laying it between its two
-   * mounts instead reads the far end's *old* position as a constraint, which
-   * for two barrels welded into one bracket meant the second ram writing the
-   * bracket back flat over the turn the first one had just been given.
+   * A cylinder whose own barrel is a leaf of a body a **body motion** is
+   * carrying has already been told where to go: the body it is bolted inside
+   * decided, and the rod goes with the barrel it slides in. Re-laying it
+   * between its two end joints instead reads the far end's *old* position as a
+   * constraint, which for two barrels welded into one bracket meant the second
+   * cylinder writing the bracket back flat over the turn the first one had
+   * just been given.
    *
    * Only one side, and only a free far end. Carried on both sides, each end has
    * been placed by a body of its own and the part between them is re-laid, as
@@ -363,8 +441,8 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
    * a constraint the ride would quietly tear off.
    */
   const ridingOn = (cylinder: Cylinder): Rigid | undefined => {
-    const onBarrel = carried.get(cylinder.barrel.id)?.move;
-    if (!onBarrel || carried.has(cylinder.rod.id)) return undefined;
+    const onBarrel = rigidlyCarried.get(cylinder.barrel.id);
+    if (!onBarrel || rigidlyCarried.has(cylinder.rod.id)) return undefined;
     const far = cylinder.mountB;
     if (far instanceof RealJoint && (far.ground || far.locked)) return undefined;
     const elsewhere =
@@ -384,10 +462,23 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
     return { mountA, inner, seal, mountB };
   };
 
-  /** Lay out one ram and carry its two bodies. Returns the ids that moved. */
+  /**
+   * Lay out one cylinder and write what that reaches. Returns the ids that
+   * moved.
+   *
+   * Two kinds of edit, and the difference is the whole of S21. A **body
+   * motion** carries both of the part's bodies rigidly, brackets and all — and
+   * so does a *ride*, which is a body motion inherited: the reader picked up a
+   * body this cylinder is welded inside, so it is being carried whether or not
+   * it was named. Every other pose writes the part's own four joints, leaves
+   * each member rigid about its own end joint, and lets whatever is welded
+   * around it change shape.
+   */
   const settle = (cylinder: Cylinder): string[] => {
     const changed: string[] = [];
-    const askedFor = prescribed.get(cylinder.seal.id);
+    const posed = prescribed.get(cylinder.seal.id);
+    const askedFor = posed?.pose;
+    const asBody = posed?.motion === 'body';
 
     const wasMountA = at(cylinder.mountA.id);
     const wasInner = at(cylinder.inner.id);
@@ -396,6 +487,11 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
     if (!wasMountA || !wasInner || !wasMountB || !wasSeal) return changed;
 
     const ride = askedFor ? undefined : ridingOn(cylinder);
+    // One body motion reaches every part welded into what it picked up: the
+    // second cylinder in a bracket rides the first, and whatever is welded to
+    // *its* far end rides with it. Stopping the carry at the named part broke
+    // the chain one cylinder in.
+    const body = asBody || ride !== undefined;
     const pose =
       askedFor ??
       (ride && carriedPose(cylinder, ride)) ??
@@ -409,52 +505,69 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
     }
     settled.set(cylinder.seal.id, { cylinder, pose });
 
-    // A ram whose two mounts are on one body can be moved, but it cannot
-    // extend: the distance between its mounts is a distance between two points
-    // of something rigid. Only against a pose that was *asked for* -- a ram
-    // reached through the closure may be looking at one mount that has moved
-    // and one that has not yet, and that intermediate span means nothing. The
-    // final check below is what judges those.
-    if (askedFor && cylinder.barrelRoot.id === cylinder.rodRoot.id) {
-      const was = Math.hypot(wasMountB.x - wasMountA.x, wasMountB.y - wasMountA.y);
-      const asked = Math.hypot(pose.mountB.x - pose.mountA.x, pose.mountB.y - pose.mountA.y);
-      if (Math.abs(was - asked) > context.tolerance) {
-        fused = cylinder;
-        return changed;
-      }
+    // A cylinder whose two end joints are welded into one body used to be
+    // refused an extension here, on the reading that the distance between two
+    // points of a rigid body is not a number an edit gets to choose. S21 says
+    // it is: the body changes shape, the way a welded triangle does when a
+    // corner is dragged. What such a drawing cannot do is *simulate*, and
+    // saying so is `mechanism/readiness.ts`'s job rather than the editor's.
+
+    // What is left of that, one level up: a **body motion** promises a rigid
+    // pose, and the carry below hands each of the part's two bodies one motion
+    // on that promise. A pose that is not rigid hands them two different ones,
+    // which pulls a body holding both of a cylinder's ends apart. Refused here,
+    // before a joint is placed, so the sentence is about the shape rather than
+    // about the arithmetic that fell over downstream.
+    if (
+      asBody &&
+      !isRigidPose([wasMountA, wasMountB, wasInner, wasSeal], pose, context.tolerance)
+    ) {
+      torn = { cylinder, root: cylinder.barrelRoot };
+      return changed;
     }
 
-    const sides: [Link, Rigid | undefined, Joint, Point][] = [
-      [
-        cylinder.barrelRoot,
-        rigidBetween(wasMountA, wasInner, pose.mountA, pose.inner),
-        cylinder.mountA,
-        pose.mountA,
-      ],
-      [
-        cylinder.rodRoot,
-        rigidBetween(wasMountB, wasSeal, pose.mountB, pose.seal),
-        cylinder.mountB,
-        pose.mountB,
-      ],
+    const sides = [
+      {
+        root: cylinder.barrelRoot,
+        member: cylinder.barrel,
+        move: rigidBetween(wasMountA, wasInner, pose.mountA, pose.inner),
+        mount: cylinder.mountA,
+        to: pose.mountA,
+      },
+      {
+        root: cylinder.rodRoot,
+        member: cylinder.rod,
+        move: rigidBetween(wasMountB, wasSeal, pose.mountB, pose.seal),
+        mount: cylinder.mountB,
+        to: pose.mountB,
+      },
     ];
 
-    for (const [root, move, mount, to] of sides) {
-      affectedRoots.set(root.id, root);
-      if (!move) {
-        if (put(mount.id, to)) changed.push(mount.id);
+    for (const { root, member, move, mount, to } of sides) {
+      if (put(mount.id, to)) changed.push(mount.id);
+      if (!body) {
+        // The member is still the bar it was -- a barrel that turns about its
+        // own end joint is the same barrel -- so a force or a hand-placed
+        // center of mass on *it* goes through that motion. Nothing else does.
+        // A bracket welded to this end joint holds a joint that moved and two
+        // that did not, which is a body changing shape, and that is what the
+        // rest of the app does to a compound whose joint is dragged (S21).
+        if (move) carried.set(member.id, { leaf: member, move });
         continue;
       }
+      if (!affectedRoots.has(root.id)) affectedRoots.set(root.id, { root, part: cylinder });
+      if (!move) continue;
       for (const leaf of leavesOfBody(root)) {
-        const before = carried.get(leaf.id)?.move;
+        const before = rigidlyCarried.get(leaf.id);
+        rigidlyCarried.set(leaf.id, move);
         carried.set(leaf.id, { leaf, move });
-        // A ram inside this body has just been moved by it, whether or not any
-        // of its own joints did, so it has to be asked where that leaves it --
-        // but only when the motion is news. A body that is standing still, or
-        // that is being carried through the motion it was already being carried
-        // through, has told it nothing, and two rams inside one bracket would
-        // otherwise wake each other over the same rotation until the visit
-        // limit called an ordinary turn a conflict.
+        // A cylinder inside this body has just been moved by it, whether or not
+        // any of its own joints did, so it has to be asked where that leaves it
+        // -- but only when the motion is news. A body that is standing still,
+        // or that is being carried through the motion it was already being
+        // carried through, has told it nothing, and two cylinders inside one
+        // bracket would otherwise wake each other over the same rotation until
+        // the visit limit called an ordinary turn a conflict.
         if (stationary(move) || (before && sameMove(before, move))) continue;
         for (const rider of ramsOfBar.get(leaf.id) ?? []) {
           if (rider.seal.id !== cylinder.seal.id) wake(rider);
@@ -468,14 +581,14 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
     }
 
     // The interior is where the extension puts it, not where either body's
-    // rigid motion would carry it. The two agree while a ram merely moves and
-    // part company the moment it changes length.
+    // rigid motion would carry it. The two agree while a cylinder merely moves
+    // and part company the moment it changes length.
     if (put(cylinder.inner.id, pose.inner)) changed.push(cylinder.inner.id);
     if (put(cylinder.seal.id, pose.seal)) changed.push(cylinder.seal.id);
 
-    // The ram's own two bars are the only ones this edit may reshape, and only
-    // when it actually changes one of their lengths. Both are asked, because a
-    // repair straightens a bent *rod* while leaving the barrel alone.
+    // The cylinder's own two bars are the only ones this edit may reshape, and
+    // only when it actually changes one of their lengths. Both are asked,
+    // because a repair straightens a bent *rod* while leaving the barrel alone.
     const span = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
     const barrelChanged =
       Math.abs(span(wasMountA, wasInner) - span(pose.mountA, pose.inner)) > context.tolerance;
@@ -485,8 +598,12 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
       reshaped.set(cylinder.barrel.id, cylinder.barrel);
       reshaped.set(cylinder.rod.id, cylinder.rod);
       reshapedRams.add(cylinder.seal.id);
+      // A bar this edit resized is not a bar it carried, whichever door put it
+      // in either list -- including a ride it has just re-laid itself out of.
       carried.delete(cylinder.barrel.id);
       carried.delete(cylinder.rod.id);
+      rigidlyCarried.delete(cylinder.barrel.id);
+      rigidlyCarried.delete(cylinder.rod.id);
     }
     return changed;
   };
@@ -494,8 +611,8 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
   (request.poses ?? []).forEach(({ cylinder }) => wake(cylinder));
   for (const id of placements.keys()) (ramsAtMount.get(id) ?? []).forEach(wake);
 
-  // Enough revisits for every ram to answer every other one, and no more: a
-  // drawing whose demands genuinely cycle stops here and is judged below.
+  // Enough revisits for every cylinder to answer every other one, and no more:
+  // a drawing whose demands genuinely cycle stops here and is judged below.
   const VISITS = context.cylinders.length * (context.cylinders.length + 4) + 16;
   let visits = 0;
   while (queue.length > 0) {
@@ -512,8 +629,8 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
     const cylinder = queue.shift()!;
     waiting.delete(cylinder.seal.id);
     const moved = settle(cylinder);
-    if (fused) {
-      return { ok: false, refusal: bothEndsFused(fused, fused.barrelRoot, context) };
+    if (torn) {
+      return { ok: false, refusal: shapeRefusal(torn.root, torn.cylinder, context) };
     }
     if (unreachable) {
       // Coincident ends have no axis to lie along; anything further apart than
@@ -526,6 +643,10 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
 
   // --- what the settled drawing has to satisfy ------------------------------
 
+  // The gesture's own joints really were honored. A layout hands both end
+  // joints back exactly where it was given them, so under S21 the only way in
+  // is a request that both moves joints and prescribes a body motion over one
+  // of them — nothing in the app does that, and the guard is what says so.
   if (denied) {
     const pulling = ramsAtMount.get(denied) ?? [];
     const by =
@@ -583,18 +704,21 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
     }
   }
 
-  // A ram's interior is derived from its mounts every time it is laid out, so
-  // it is exempt from the body check — but only for the rams this edit
+  // A cylinder's interior is derived from its end joints every time it is laid
+  // out, so it is exempt from the body check — but only for the parts this edit
   // actually resized or repaired. Exempting every cylinder's interior always
   // was broader than the rule it stands for, and would have hidden a genuine
-  // deformation of a ram that merely moved.
+  // deformation of a part that merely moved.
   const exempt = new Set(
     context.cylinders
       .filter((one) => reshapedRams.has(one.seal.id))
       .flatMap((one) => [one.inner.id, one.seal.id])
   );
-  for (const root of affectedRoots.values()) {
-    const refusal = rigidityRefusal(root, context, placements, exempt);
+  // Only what a body motion said it was carrying. Under S21 every other edit
+  // lets the bodies around a cylinder change shape on purpose, so `affectedRoots`
+  // holds nothing from them and this loop runs over nothing.
+  for (const { root, part } of affectedRoots.values()) {
+    const refusal = rigidityRefusal(root, part, context, placements, exempt);
     if (refusal) return { ok: false, refusal };
   }
 
@@ -607,13 +731,18 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
       ),
       carried: [...carried.values()],
       reshaped: [...reshaped.values()],
-      affectedRoots: [...affectedRoots.values()],
+      affectedRoots: [...affectedRoots.values()].map(({ root }) => root),
     },
   };
 }
 
 /**
- * Whether a body the edit moved is still the same body, in the same handedness.
+ * Whether a body a **body motion** carried is still the same body, in the same
+ * handedness.
+ *
+ * Asked of nothing else (S21). A bracket on the end joint a reader is dragging
+ * is meant to change shape, and putting it in front of this check is how a
+ * perfectly ordinary drag came to be refused as a tear.
  *
  * Not pairwise distances, which a *reflection* preserves just as well as a
  * rotation: the transform is fitted from the body's two furthest-apart points
@@ -622,10 +751,11 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
  * rather than passing a check that could not see the difference.
  *
  * A cylinder whose own bars this edit resized has its interior left out — both
- * of those joints are derived from its mounts rather than carried with them.
+ * of those joints are derived from its end joints rather than carried with them.
  */
 function rigidityRefusal(
   root: Link,
+  part: Cylinder,
   context: EditContext,
   placements: Map<string, Point>,
   exempt: Set<string>
@@ -663,89 +793,38 @@ function rigidityRefusal(
   const wrong = (a: Point, b: Point) =>
     Math.hypot(a.x - b.x, a.y - b.y) > Math.max(context.tolerance, widest * 1e-6);
   if (!move || wrong(carryPoint(move, points[second].was), points[second].to)) {
-    return shapeRefusal(root, context);
+    return shapeRefusal(root, part, context);
   }
   for (const point of points) {
-    if (wrong(carryPoint(move, point.was), point.to)) return shapeRefusal(root, context);
+    if (wrong(carryPoint(move, point.was), point.to)) return shapeRefusal(root, part, context);
   }
   return undefined;
 }
 
-/** A joint two bodies both hold, which is the pin tying them to each other. */
-function jointBothHold(one: Link, other: Link, apartFrom: ReadonlySet<string>): string | undefined {
-  const mine = new Set(jointsOfBody(one).map((joint) => joint.id));
-  return jointsOfBody(other).find((joint) => mine.has(joint.id) && !apartFrom.has(joint.id))?.id;
-}
-
 /**
- * Both end joints of one cylinder inside one rigid body: it can be moved, it
- * cannot be extended, and the way out is to unweld one of its ends.
- */
-function bothEndsFused(ram: Cylinder, body: Link, context: EditContext): PosePlanRefusal {
-  return {
-    code: 'cylinder.both-ends-fused',
-    short: 'both ends are in one body',
-    long: `${context.names.cylinder(ram)} cannot change length: both of its end joints are welded into ${context.names.body(
-      body
-    )}, which is one rigid body, so nothing can move them apart. Unweld joint ${context.names.joint(
-      ram.mountA.id
-    )} or joint ${context.names.joint(ram.mountB.id)} first.`,
-  };
-}
-
-/**
- * Why a body this edit would pull out of shape cannot be pulled out of shape.
+ * Why a body a body motion was carrying could not go where it was taken.
  *
- * Three different facts used to share one sentence, and the sentence was only
- * ever true of the first of them: it told a reader whose cylinder sat between
- * *two* bodies pinned to each other that both of its ends were welded into one
- * — and named that one body `CC1F`, after a joint the drawing never draws. What
- * is in the way is knowable from the drawing, so each case says its own.
+ * One sentence, where there were four. Three of the four spoke about a
+ * cylinder being *re-laid* pulling a welded body out of shape, and under S21
+ * that is not a refusal at all — it is the edit doing what the reader asked,
+ * so those three were deleted rather than left as branches nothing can enter.
+ * What is left guards the promise `motion: 'body'` makes: a body drag picks the
+ * whole assembly up, and every bar welded into it arrives in the shape it
+ * started in.
+ *
+ * The body is always one of the cylinder's own two, because `affectedRoots`
+ * holds nothing else, so the sentence can name the part and the weld to undo.
  */
-function shapeRefusal(root: Link, context: EditContext): PosePlanRefusal {
+function shapeRefusal(root: Link, part: Cylinder, context: EditContext): PosePlanRefusal {
   const body = context.names.body(root);
-  const ram = context.cylinders.find(
-    (one) => one.barrelRoot.id === root.id || one.rodRoot.id === root.id
-  );
-  if (!ram) {
-    return {
-      code: 'cylinder.pose-conflict',
-      short: 'it cannot change shape',
-      long: `This edit would change the shape of ${body}, which is one rigid body. Move the whole body, or unweld it so its bars can move on their own.`,
-    };
-  }
-  if (ram.barrelRoot.id === ram.rodRoot.id) return bothEndsFused(ram, root, context);
-
-  const part = context.names.cylinder(ram);
-  const ends = `joint ${context.names.joint(ram.mountA.id)} or joint ${context.names.joint(
-    ram.mountB.id
-  )}`;
-  // Its own four joints are not what ties the two bodies together; anything
-  // else they both hold is.
-  const pin = jointBothHold(
-    ram.barrelRoot,
-    ram.rodRoot,
-    new Set([ram.mountA.id, ram.inner.id, ram.seal.id, ram.mountB.id])
-  );
-  if (pin) {
-    return {
-      code: 'cylinder.pose-conflict',
-      short: 'its ends are tied together',
-      long: `${part} cannot change length here: one end is welded into ${context.names.body(
-        ram.barrelRoot
-      )} and the other into ${context.names.body(
-        ram.rodRoot
-      )}, and those two bodies meet again at joint ${context.names.joint(
-        pin
-      )} — so the drawing has nothing to give. Unweld ${ends} first.`,
-    };
-  }
-  const end = root.id === ram.barrelRoot.id ? ram.mountA : ram.mountB;
+  const end = root.id === part.barrelRoot.id ? part.mountA : part.mountB;
   return {
     code: 'cylinder.pose-conflict',
     short: 'it cannot change shape',
-    long: `This edit would change the shape of ${body}, which is one rigid body: ${part} cannot move the way it is being asked to without taking that body with it. Unweld joint ${context.names.joint(
+    long: `Moving ${context.names.cylinder(
+      part
+    )} as one piece would change the shape of ${body}, which is one rigid body: something else in the drawing needs one of its joints somewhere else. Unweld joint ${context.names.joint(
       end.id
-    )} to let the cylinder move on its own.`,
+    )} to let the cylinder move on its own, or move one part at a time.`,
   };
 }
