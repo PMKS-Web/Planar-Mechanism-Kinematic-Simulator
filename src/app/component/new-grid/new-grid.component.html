@@ -918,16 +918,25 @@
       </g>
     }
     <!-- A welded cylinder end, drawn as one body with the bracket on it
-         (decision S16). The body's own outline, in the body's own color, at
-         the member's place in this stack -- and the union that built that
-         outline has the member's real silhouette in it, so the elbow is
-         filleted and the whole thing is one continuous stroke, which is the
+         (decision S16), or fused with a slider's block into that slider's weld
+         plate (decision S18). Either way: one outline, in the color the part is
+         painted in, at the member's place in this stack -- and the union that
+         built that outline has the member's real silhouette in it, so the elbow
+         is filleted and the whole thing is one continuous stroke, which is the
          drawing two ordinary welded links already get.
 
-         `unframe` undoes the slot transform this sits inside: the outline is
-         already in the drawing's own coordinates, and rewriting a compound
-         union into the slot's frame would mean tokenizing it on every
-         animation frame to arrive back at the same shape.
+         The place is what matters and it is why both live here rather than in
+         their own layers. A barrel belongs under the head block and a rod over
+         it: a rod painted under one loses the darker band inside the bore, the
+         cue the whole drawing rests on. The slider layer is under every skin,
+         so a rod plate drawn down there is exactly that loss.
+
+         `unframe` undoes the slot transform this sits inside: a body's outline
+         is already in the drawing's own coordinates, and rewriting a compound
+         union into the slot's frame would mean tokenizing it on every animation
+         frame to arrive back at the same shape. A plate is the other way round
+         -- it is built in its own slider's frame -- so it gets that frame back,
+         which is not this skin's whenever the two are different joints.
 
          The member's own region still selects the member (decision S12), so a
          transparent hit path goes over the fill for each member this body
@@ -935,36 +944,73 @@
          one, because two cylinders can be welded to the same bracket. -->
     <ng-template #fusedCylinderBody let-fused let-cyl="cyl">
       <g [attr.transform]="sliderMarks.unframe(cyl)">
-        <path
-          [class]="'cylinder-body ' + mechanismSrv.getLinkCSSClass(fused.body)"
-          [attr.cursor]="mechanismSrv.isLinkLockedVisual(fused.body) ? 'not-allowed' : 'move'"
-          (pointerover)="fused.body.showHighlight = true"
-          (pointerout)="fused.body.showHighlight = false"
-          (pointerdown)="setLastLeftClick(fused.body, $event)"
-          (contextmenu)="setLastRightClick(fused.body, $event)"
-          [attr.d]="bodyPath(fused.body)"
-          [attr.id]="fused.body.id"
-          [attr.data-channels]="channelCountOn(fused.body)"
-          fill-rule="evenodd"
-          [attr.fill]="mechanismSrv.getLinkProp(fused.body, 'fill')"
-          fill-opacity="0.7"
-          [attr.stroke]="mechanismSrv.getLinkProp(fused.body, 'fill')"
-          [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
-        ></path>
-        <!-- Its own slots handed back, as in the links layer: a hole catches no
-             pointer, and this body is no longer drawn there to hand them back
-             itself. -->
-        @if (channelCountOn(fused.body) > 0) {
+        @if (fused.plate; as slide) {
+          <g class="slider-plate" [attr.transform]="sliderMarks.frame(slide.mark)">
+            <path
+              [class]="'cylinder-body ' + mechanismSrv.getLinkCSSClass(fused.body)"
+              cursor="move"
+              (pointerover)="fused.body.showHighlight = true"
+              (pointerout)="fused.body.showHighlight = false"
+              (pointerdown)="setLastLeftClick(fused.body, $event)"
+              (contextmenu)="setLastRightClick(fused.body, $event)"
+              [attr.d]="markPathWithPreview(slide.mark, slide.plate, fused.body)"
+              [attr.id]="fused.body.id"
+              [attr.data-channels]="channelCountOn(fused.body)"
+              fill-rule="evenodd"
+              [attr.fill]="slide.plate.fill"
+              fill-opacity="0.7"
+              [attr.stroke]="slide.plate.fill"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+            ></path>
+            <!-- The same slot hand-back the slider layer's plate does: this is
+                 the only thing drawing the rider now, so it is the only thing
+                 that can give its holes back. -->
+            @if (slide.plate.cuts.length > 0 || channelCountOn(fused.body) > 0) {
+              <path
+                cursor="move"
+                (pointerover)="fused.body.showHighlight = true"
+                (pointerout)="fused.body.showHighlight = false"
+                (pointerdown)="setLastLeftClick(fused.body, $event)"
+                (contextmenu)="setLastRightClick(fused.body, $event)"
+                [attr.d]="markChannelsCutInto(slide.mark, slide.plate, fused.body)"
+                [attr.id]="fused.body.id + '__slotHit'"
+                fill="none"
+                pointer-events="all"
+              ></path>
+            }
+          </g>
+        } @else {
           <path
+            [class]="'cylinder-body ' + mechanismSrv.getLinkCSSClass(fused.body)"
+            [attr.cursor]="mechanismSrv.isLinkLockedVisual(fused.body) ? 'not-allowed' : 'move'"
             (pointerover)="fused.body.showHighlight = true"
             (pointerout)="fused.body.showHighlight = false"
             (pointerdown)="setLastLeftClick(fused.body, $event)"
             (contextmenu)="setLastRightClick(fused.body, $event)"
-            [attr.d]="channelsCutInto(fused.body)"
-            [attr.id]="fused.body.id + '__slotHit'"
-            fill="none"
-            pointer-events="all"
+            [attr.d]="bodyPath(fused.body)"
+            [attr.id]="fused.body.id"
+            [attr.data-channels]="channelCountOn(fused.body)"
+            fill-rule="evenodd"
+            [attr.fill]="mechanismSrv.getLinkProp(fused.body, 'fill')"
+            fill-opacity="0.7"
+            [attr.stroke]="mechanismSrv.getLinkProp(fused.body, 'fill')"
+            [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
           ></path>
+          <!-- Its own slots handed back, as in the links layer: a hole catches no
+               pointer, and this body is no longer drawn there to hand them back
+               itself. -->
+          @if (channelCountOn(fused.body) > 0) {
+            <path
+              (pointerover)="fused.body.showHighlight = true"
+              (pointerout)="fused.body.showHighlight = false"
+              (pointerdown)="setLastLeftClick(fused.body, $event)"
+              (contextmenu)="setLastRightClick(fused.body, $event)"
+              [attr.d]="channelsCutInto(fused.body)"
+              [attr.id]="fused.body.id + '__slotHit'"
+              fill="none"
+              pointer-events="all"
+            ></path>
+          }
         }
         @for (member of fused.members; track member.mark.id + member.role) {
           @let part = sliderMarks.memberOf(member.mark, member.role);

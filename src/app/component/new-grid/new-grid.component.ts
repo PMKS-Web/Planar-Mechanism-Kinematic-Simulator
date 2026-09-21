@@ -72,6 +72,7 @@ import {
   Channel,
   CylinderMark,
   Guide,
+  PlatedSlide,
   RiderDraw,
   SlideMarkDraw,
   SliderMark,
@@ -111,13 +112,8 @@ import {
   cylinderSpanRange,
   cylinderJoints,
 } from '../../model/cylinder';
-import {
-  accentOutlineClass,
-  CylinderRole,
-  hiddenByCylinder,
-  memberIsWelded,
-} from '../../model/cylinder-skin';
-import { FusedBody } from '../../model/cylinder-fusion';
+import { accentOutlineClass, CylinderRole, hiddenByCylinder } from '../../model/cylinder-skin';
+import { FusedBody, memberIsFused } from '../../model/cylinder-fusion';
 import { SnapGuide, snapToAxes } from '../../model/axis-snap';
 import { drawDepths } from '../../model/draw-order';
 import { MODEL_SCALE } from '../../model/render-scale';
@@ -5194,21 +5190,31 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * The welded body this pass of the skin paints, or nothing when it paints
-   * none (decision S16).
+   * The fused shape this pass of the skin paints, or nothing when it paints
+   * none (decisions S16 and S18).
    *
    * A barrel welded to a bracket is one body with it, and that body has to be
    * drawn where the barrel would have been -- under the head block -- rather
    * than down in the links layer where every skin would cover it. The rod's
-   * pass is the same question one layer up.
+   * pass is the same question one layer up. A member whose end joint is a Slide
+   * is fused into that slider's weld plate the same way, and the plate is
+   * painted in the same place for the same reason.
    */
-  fusedBodyAt(mark: CylinderMark, role: CylinderRole): FusedBody<CylinderMark> | undefined {
-    return this.sliderMarks.fusedBodies(this.cylinderList).get(`${mark.id}:${role}`);
+  fusedBodyAt(
+    mark: CylinderMark,
+    role: CylinderRole
+  ): FusedBody<CylinderMark, PlatedSlide> | undefined {
+    return this.fusedShapes.get(`${mark.id}:${role}`);
   }
 
-  /** Whether a body has swallowed this member, so the skin does not paint it alone. */
+  /** Whether anything bigger has swallowed this member, so the skin does not paint it alone. */
   memberIsFused(mark: CylinderMark, role: CylinderRole): boolean {
-    return memberIsWelded(mark.cylinder, role);
+    return memberIsFused(this.fusedShapes, mark, role);
+  }
+
+  /** Which pass paints which fused shape, asked of the two lists that can hold one. */
+  private get fusedShapes(): Map<string, FusedBody<CylinderMark, PlatedSlide>> {
+    return this.sliderMarks.fusedBodies(this.cylinderList, this.sliderMarkList);
   }
 
   /**
@@ -5219,7 +5225,7 @@ export class NewGridComponent implements OnDestroy {
    * map it walks holds one entry per welded mount in the drawing.
    */
   bodyDrawnByACylinder(link: Link): boolean {
-    for (const found of this.sliderMarks.fusedBodies(this.cylinderList).values()) {
+    for (const found of this.fusedShapes.values()) {
       if (found.body.id === link.id) return true;
     }
     return false;
@@ -5238,12 +5244,17 @@ export class NewGridComponent implements OnDestroy {
    */
   get slotStack(): SlotStackItem[] {
     const depths = drawDepths(this.mechanismSrv.getJoints());
+    const marks = this.sliderMarkList;
     const items: SlotStackItem[] = [];
-    for (const mark of this.sliderMarkList) {
+    for (const mark of marks) {
       if (this.isSkinned(mark)) continue;
       const blockDepth = depths.block.get(mark.id) ?? 1;
       items.push({ key: `${mark.id}:block`, depth: blockDepth, kind: 'block', mark });
-      const plate = mark.plate;
+      // A plate holding a cylinder member is painted in that member's place in
+      // the skin's stack instead (S18), so this layer draws the block alone.
+      const plate = this.sliderMarks.plateIsPainted(mark, this.cylinderList, marks)
+        ? undefined
+        : mark.plate;
       if (plate) {
         items.push({
           key: `${mark.id}:plate`,

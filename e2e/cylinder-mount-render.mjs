@@ -19,7 +19,7 @@
 //
 //   PMKS_PLAYWRIGHT_DIR=<dir> PMKS_BASE_URL=<url> node e2e/cylinder-mount-render.mjs
 
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
@@ -29,6 +29,20 @@ import { filmstrip, contactSheet } from './filmstrip.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const OUT = 'artifacts/cylinder-mount-render';
+/** Where the Slide sheets go, which is what a reader of this fix looks at. */
+const SLIDE_OUT = 'artifacts/slide-fusion';
+
+/**
+ * The reported drawing, read out of the spec's own source rather than copied.
+ *
+ * `src/test-utils/verification/slide-fusion-scene.ts` is the one place that
+ * string lives, and the unit spec decodes the same characters this opens.
+ * Anchored on the name because the comment above it is full of apostrophes.
+ */
+const SLIDE_FUSION_PAYLOAD = readFileSync(
+  'src/test-utils/verification/slide-fusion-scene.ts',
+  'utf8'
+).match(/SLIDE_FUSION_PAYLOAD[^']*'([^']+)'/)[1];
 
 const results = [];
 const consoleErrors = [];
@@ -184,6 +198,41 @@ async function draw(recipe, options = {}) {
           x: (rail.joints[0].x + rail.joints[1].x) / 2,
           y: (rail.joints[0].y + rail.joints[1].y) / 2,
         });
+      } else if (which === 'floating-slide') {
+        // A barrel mount riding another bar's slot, held against it: a
+        // *floating* Slide rather than a grounded one. The plate has the same
+        // work to do there and is built in the same frame, so it is worth
+        // seeing rather than assumed from the grounded case.
+        const one = ram({ x: -1 * S, y: 1 * S }, { x: 5 * S, y: 1 * S });
+        const rail = m.addBar({ x: -5 * S, y: -3 * S }, { x: 1 * S, y: 1.5 * S });
+        note.cut = m.cutSlotOn(one.mountA, {
+          carrier: rail,
+          a: rail.joints[0],
+          b: rail.joints[1],
+          x: (rail.joints[0].x + rail.joints[1].x) / 2,
+          y: (rail.joints[0].y + rail.joints[1].y) / 2,
+        });
+        const mountId = one.mountA.id;
+        weld(m.joints.find((j) => j.id === mountId));
+        note.slide = mountId;
+      } else if (which === 'running-slide') {
+        // A ram whose barrel mount is a grounded Slide, its rod mount a ground
+        // pin on the same line, driven at the seal: the barrel slides out of
+        // its own block as the part extends. The one arrangement of a Slide at
+        // a cylinder end that actually runs -- a Slide fixes the member's
+        // angle, so anything that would turn the part is over-constrained --
+        // and it is what says the plate rides the member rather than being
+        // rebuilt a frame behind it.
+        const one = ram({ x: -4 * S, y: 0 }, { x: 2 * S, y: 0 });
+        ground(one.mountB);
+        const mountId = one.mountA.id;
+        // By letter between the calls, for the reason `two-blocks` gives above.
+        block(m.joints.find((j) => j.id === mountId));
+        ground(m.joints.find((j) => j.id === mountId));
+        weld(m.joints.find((j) => j.id === mountId));
+        note.slide = mountId;
+        pick(m.sealedStructures()[0].seal);
+        m.adjustInput();
       } else if (which === 'running') {
         const one = ram({ x: -4 * S, y: 0 }, { x: 2 * S, y: 0 });
         const bar = m.addBarFrom(one.mountB, { x: one.mountB.x + 2 * S, y: one.mountB.y + 3 * S });
@@ -944,6 +993,339 @@ check(
   JSON.stringify(colored)
 );
 await contactSheet(`${OUT}/*color-*.png`, `${OUT}/sheet-colors.png`, 2);
+
+// ------------------------------- a Slide at a cylinder's end (decision S18)
+//
+// The same question one joint further out. A weld makes a member part of a
+// bracket; a Slide at its end joint makes it part of that slider's weld plate,
+// and the plate was built from the thin bar the member's two joints describe
+// rather than from the part the skin draws. The maintainer's own drawing has
+// all four cases on it left to right, so it is what this opens.
+console.log('\na Slide at a cylinder’s end fuses with what is drawn there');
+const slideFilm = filmstrip(page, `${SLIDE_OUT}/frames`);
+
+/** What is painted at each reported joint, and whether anything is painted twice. */
+const slideFacts = () =>
+  page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    /** Every painted body of the drawing under one screen point, topmost first. */
+    const paintedAt = (x, y) =>
+      document
+        .elementsFromPoint(x, y)
+        .filter((el) => el.tagName === 'path' && el.closest('#linkHolder, #sliderHolder'))
+        .filter((el) => {
+          const fill = el.getAttribute('fill');
+          return !!fill && fill !== 'none' && fill !== 'transparent';
+        })
+        .map((el) => ({
+          id: el.id || null,
+          cls: el.getAttribute('class'),
+          fill: el.getAttribute('fill'),
+        }));
+    /**
+     * A point on `selector` clear of the slider's own block.
+     *
+     * The block is painted black under its plate on purpose, so a point over it
+     * counts two bodies and says nothing. Out along the member instead, at the
+     * first spot where the browser's own hit test names the element asked for.
+     */
+    const spotOn = (selector, blockSelector) => {
+      const el = document.querySelector(selector);
+      if (!el) return null;
+      const box = el.getBoundingClientRect();
+      const block = document.querySelector(blockSelector)?.getBoundingClientRect();
+      const spread = [0.5, 0.35, 0.65, 0.2, 0.8, 0.1, 0.9];
+      for (const fy of spread) {
+        for (const fx of spread) {
+          const x = box.x + box.width * fx;
+          const y = box.y + box.height * fy;
+          if (block && x > block.x && x < block.right && y > block.y && y < block.bottom) continue;
+          if (document.elementFromPoint(x, y) === el) return { x, y };
+        }
+      }
+      return null;
+    };
+    const blockOf = (id) => `g[data-slider="${id}"] .slider-block path`;
+    const shapeOf = (id) => {
+      const el = document.querySelector(`[id="${id}"]`);
+      const d = el?.getAttribute('d') ?? '';
+      return {
+        painted: document.querySelectorAll(`[id="${id}"]`).length,
+        // One closed loop is one body; two is a part beside its block.
+        rings: (d.match(/Z/g) ?? []).length,
+        // A fillet is the one curve `buildCompoundPath` emits.
+        fillets: (d.match(/Q/g) ?? []).length,
+        fill: el?.getAttribute('fill') ?? null,
+        // Which layer drew it: a plate the skin paints sits in both.
+        inPlate: !!el?.closest('.slider-plate'),
+        inCylinderLayer: !!el?.closest('.cylinder-mark'),
+      };
+    };
+    const cylinderOf = (sealId) => grid.cylinderList.find((one) => one.id === sealId);
+    const over = (selector, blockId) => {
+      const spot = spotOn(selector, blockOf(blockId));
+      return spot ? paintedAt(spot.x, spot.y) : null;
+    };
+    return {
+      // D: the barrel's mount is a Prismatic slider. One plate, in the barrel's
+      // own ink, and nothing else painted over the barrel.
+      D: {
+        ...shapeOf('DD1'),
+        drawnInk: cylinderOf('F')?.barrelFill ?? null,
+        over: over('.cylinder-member-hit[data-member="DD1"]', 'D'),
+      },
+      // K: the rod's end joint. Same again one layer up the stack.
+      K: {
+        ...shapeOf('KL'),
+        drawnInk: cylinderOf('L')?.rodFill ?? null,
+        over: over('.cylinder-member-hit[data-member="KL"]', 'K'),
+      },
+      // O: a rod welded into a body, whose end joint is a Slide. The plate is
+      // the body fused with the block, and it is the body's light green.
+      O: {
+        ...shapeOf('NOP'),
+        drawnInk: grid.mechanismSrv.links.find((l) => l.id === 'NOP')?.fill ?? null,
+        over: over('.cylinder-member-hit[data-member="NO"]', 'O'),
+      },
+      // G: a Pin-in-slot fuses nothing. No plate, and no plain bar hoisted
+      // above the block -- the bar that used to show through the barrel.
+      G: {
+        riders: document.querySelectorAll('[id="GG1__rider"]').length,
+        plates: document.querySelectorAll('g[data-slider="G"] .slider-plate').length,
+        barrelPainted: document.querySelectorAll('[data-cylinder="I"] .cylinder-barrel').length,
+        over: over('[data-cylinder="I"] .cylinder-barrel', 'G'),
+      },
+      // Nothing anywhere carries two elements with the same id.
+      idsTwice: grid.mechanismSrv.links
+        .filter((l) => document.querySelectorAll(`[id="${l.id}"]`).length > 1)
+        .map((l) => l.id),
+    };
+  });
+
+/** Every reported joint cropped large, for the sheet a reader compares. */
+async function shotEachJoint(tag) {
+  const boxes = await page.evaluate(() =>
+    ['D', 'G', 'K', 'O'].map((id) => {
+      const el = document.querySelector(`[id="joint_${id}"]`);
+      const box = el?.getBoundingClientRect();
+      return box ? { id, x: box.x + box.width / 2, y: box.y + box.height / 2 } : null;
+    })
+  );
+  for (const at of boxes) {
+    if (!at) continue;
+    await page.screenshot({
+      path: `${SLIDE_OUT}/frames/${tag}-${at.id}.png`,
+      clip: {
+        x: Math.max(0, at.x - 120),
+        y: Math.max(0, at.y - 120),
+        width: 240,
+        height: 240,
+      },
+    });
+  }
+}
+
+await page.goto(`${BASE}/?${SLIDE_FUSION_PAYLOAD}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await page.waitForTimeout(400);
+let slide = await slideFacts();
+await slideFilm.shot('reported');
+await shotEachJoint('case');
+
+for (const id of ['D', 'K', 'O']) {
+  const one = slide[id];
+  check(
+    `${id}: one painted body, one closed outline, filleted onto the block`,
+    one.painted === 1 && one.rings === 1 && one.fillets > 0,
+    JSON.stringify(one)
+  );
+  check(
+    `${id}: painted in the ink that part is drawn in, in the member's place in the stack`,
+    one.fill === one.drawnInk && one.inPlate && one.inCylinderLayer,
+    JSON.stringify({ fill: one.fill, drawn: one.drawnInk, plate: one.inPlate })
+  );
+  check(
+    `${id}: nothing is painted twice over the part`,
+    Array.isArray(one.over) && one.over.length === 1,
+    JSON.stringify(one.over)
+  );
+}
+check(
+  'O’s plate is the body’s own light green, which is the whole of that report',
+  slide.O.fill === '#B2DFDB',
+  JSON.stringify({ fill: slide.O.fill })
+);
+check(
+  'G fuses nothing: no plate, no inner bar, and the barrel drawn once by the skin',
+  slide.G.riders === 0 &&
+    slide.G.plates === 0 &&
+    slide.G.barrelPainted === 1 &&
+    Array.isArray(slide.G.over) &&
+    slide.G.over.length === 1,
+  JSON.stringify(slide.G)
+);
+check(
+  'and no body in the drawing carries two elements with its id',
+  slide.idsTwice.length === 0,
+  JSON.stringify(slide.idsTwice)
+);
+
+// Selected: the member's own region still selects the member, and the joint is
+// still reachable (decision S12, rule 4 of the package).
+let picked = await selects('.cylinder-member-hit[data-member="KL"]');
+check(
+  'a click on the fused rod selects the rod, not the body under it',
+  picked.type === 'Link' && picked.id === 'KL',
+  JSON.stringify(picked)
+);
+await slideFilm.shot('member-selected');
+await shotEachJoint('selected-member');
+// A Slide's block is covered by its own plate and has been since plates
+// existed -- that is what fusing the two means, and the short notes say so. The
+// joint is reached on its own mark instead, which is where every joint is
+// reached. A Pin-in-slot fuses nothing, so there the block is still the handle.
+picked = await selects('[id="joint_K"]');
+check(
+  'the Slide’s own cream bar selects the slider',
+  picked.type === 'Joint' && picked.id === 'K',
+  JSON.stringify(picked)
+);
+picked = await selects('g[data-slider="G"] .slider-block path');
+check(
+  'and a Pin-in-slot’s block still grabs its slider',
+  picked.type === 'Joint' && picked.id === 'G',
+  JSON.stringify(picked)
+);
+await slideFilm.shot('slider-selected');
+
+// Dragged: a plate is rebuilt from where its rider is now, so it has to follow
+// the member through every pose rather than lagging the frame behind it.
+const dragged = await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const joint = grid.mechanismSrv.joints.find((one) => one.id === 'E');
+  const box = document.querySelector('[id="joint_E"]').getBoundingClientRect();
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2, from: { x: joint.x, y: joint.y } };
+});
+await page.mouse.move(dragged.x, dragged.y);
+await page.mouse.down();
+for (let step = 1; step <= 12; step++) {
+  await page.mouse.move(dragged.x + step * 9, dragged.y + step * 5);
+  await page.waitForTimeout(30);
+  await slideFilm.shot('drag');
+}
+await page.mouse.up();
+await page.waitForTimeout(350);
+slide = await slideFacts();
+check(
+  'after a drag the barrel’s plate is still one fused body in the barrel’s ink',
+  slide.D.painted === 1 && slide.D.rings === 1 && slide.D.fill === slide.D.drawnInk,
+  JSON.stringify(slide.D)
+);
+check(
+  'and the drag opened no seam: still one painted body over each part',
+  ['D', 'K', 'O'].every((id) => Array.isArray(slide[id].over) && slide[id].over.length === 1),
+  JSON.stringify(['D', 'K', 'O'].map((id) => slide[id].over?.length ?? null))
+);
+await shotEachJoint('dragged');
+await contactSheet(`${SLIDE_OUT}/frames/case-*.png`, `${SLIDE_OUT}/sheet-cases.png`, 4);
+await contactSheet(`${SLIDE_OUT}/frames/dragged-*.png`, `${SLIDE_OUT}/sheet-dragged.png`, 4);
+await contactSheet(
+  `${SLIDE_OUT}/frames/selected-member-*.png`,
+  `${SLIDE_OUT}/sheet-selected.png`,
+  4
+);
+await contactSheet(`${SLIDE_OUT}/frames/*-drag.png`, `${SLIDE_OUT}/sheet-drag-film.png`, 4, 0.45);
+
+// Running: the one arrangement of a Slide at a cylinder end that solves, taken
+// through a whole cycle. A plate frozen at the design pose slides out from
+// under the part over a revolution, and no still frame would show it.
+const slideRun = await draw('running-slide');
+check(
+  'the running Slide-ended ram solves',
+  slideRun.samples > 100,
+  JSON.stringify({ samples: slideRun.samples, slide: slideRun.slide, members: slideRun.members })
+);
+const slideCycle = [];
+// Cropped to the ram rather than the window: a twelfth of a 1600px frame is
+// too small to see a seam in, which is the one thing this filmstrip is for.
+const ramClip = await page.evaluate(() => {
+  const skin = document.querySelector('.cylinder-mark').getBoundingClientRect();
+  return { x: Math.max(0, skin.x - 130), y: Math.max(0, skin.y - 90), width: 700, height: 220 };
+});
+for (let frame = 0; frame < 12; frame++) {
+  await page.evaluate(
+    (at) => {
+      const m = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+      m.animate(Math.round((at.frame / 12) * at.samples), false);
+    },
+    { frame, samples: slideRun.samples }
+  );
+  await page.waitForTimeout(110);
+  await page.screenshot({
+    path: `${SLIDE_OUT}/frames/cycle-${String(frame).padStart(2, '0')}.png`,
+    clip: ramClip,
+  });
+  slideCycle.push(
+    await page.evaluate(
+      (at) => {
+        const el = document.querySelector(`[id="${at.body}"]`);
+        const d = el?.getAttribute('d') ?? '';
+        const box = el?.getBoundingClientRect();
+        const block = document
+          .querySelector(`g[data-slider="${at.slide}"] .slider-block path`)
+          ?.getBoundingClientRect();
+        return {
+          painted: document.querySelectorAll(`[id="${at.body}"]`).length,
+          rings: (d.match(/Z/g) ?? []).length,
+          // The plate has to stay on the block it is fused to: one left at the
+          // design pose walks away from it as the part travels, and no single
+          // frame would show that.
+          onItsBlock: !!box && !!block && box.x <= block.x + 2 && box.right >= block.right - 2,
+        };
+      },
+      { body: slideRun.members[0], slide: slideRun.slide }
+    )
+  );
+}
+const seamless = (one) => one.painted === 1 && one.rings === 1 && one.onItsBlock;
+check(
+  'through a whole cycle the plate is one body, once, and never leaves its block',
+  slideCycle.every(seamless),
+  JSON.stringify(slideCycle.filter((one) => !seamless(one)))
+);
+await contactSheet(`${SLIDE_OUT}/frames/cycle-*.png`, `${SLIDE_OUT}/sheet-cycle.png`, 3);
+
+// Floating, not grounded: the same plate on a slider riding another bar's slot.
+const floating = await draw('floating-slide');
+await slideFilm.shot('floating');
+const afloat = await page.evaluate(
+  (at) => {
+    const el = document.querySelector(`[id="${at.body}"]`);
+    const d = el?.getAttribute('d') ?? '';
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const joint = grid.mechanismSrv.joints.find((one) => one.id === at.slide);
+    return {
+      painted: document.querySelectorAll(`[id="${at.body}"]`).length,
+      rings: (d.match(/Z/g) ?? []).length,
+      fillets: (d.match(/Q/g) ?? []).length,
+      inPlate: !!el?.closest('.slider-plate'),
+      floating: joint?.isFloating === true && joint?.ground !== true,
+      prismatic: joint?.rotates === false,
+    };
+  },
+  { body: floating.members[0], slide: floating.slide }
+);
+check(
+  'a floating Slide at a barrel mount fuses the same way a grounded one does',
+  afloat.painted === 1 && afloat.rings === 1 && afloat.fillets > 0 && afloat.inPlate,
+  JSON.stringify(afloat)
+);
+check(
+  'and it really is floating and really is Prismatic',
+  afloat.floating && afloat.prismatic,
+  JSON.stringify({ floating: afloat.floating, prismatic: afloat.prismatic })
+);
+await contactSheet(`${SLIDE_OUT}/frames/*floating*.png`, `${SLIDE_OUT}/sheet-floating.png`, 1);
 
 // ------------------------------------------------------------------ wrap up
 check('nothing threw', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | '));

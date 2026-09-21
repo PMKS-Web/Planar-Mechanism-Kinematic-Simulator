@@ -1,9 +1,22 @@
 import { Injectable } from '@angular/core';
 import { Joint, PrisJoint, RealJoint } from '../model/joint';
 import { Link, RealLink } from '../model/link';
-import { Cylinder, cylindersIn } from '../model/cylinder';
-import { barrelFillOf, CylinderRole, cylinderSkinFrame, rodFillOf } from '../model/cylinder-skin';
-import { FusedBody, fusedBodiesOf } from '../model/cylinder-fusion';
+import { Cylinder, cylinderOfBarIn, cylindersIn } from '../model/cylinder';
+import {
+  barrelFillOf,
+  CylinderRole,
+  cylinderSkinFrame,
+  fillShownOn,
+  rodFillOf,
+} from '../model/cylinder-skin';
+import {
+  drawnOutlineOf,
+  FusedBody,
+  fusedBodiesOf,
+  FusingPlate,
+  memberIsFused,
+  paintedByACylinder,
+} from '../model/cylinder-fusion';
 import {
   barrelPath,
   blockPath,
@@ -60,6 +73,16 @@ export interface WeldPlate {
   cuts: string[];
   /** The links this plate stands in for, so it can be selected like one. */
   links: Link[];
+}
+
+/**
+ * A Slide's plate offered to the layering question, carrying the mark that
+ * draws it — because a plate a cylinder pass paints is drawn in the slot's own
+ * frame, which is not the frame of the skin it is painted inside.
+ */
+export interface PlatedSlide extends FusingPlate {
+  mark: SliderMark;
+  plate: WeldPlate;
 }
 
 /** One link pinned to a block, ready to draw in the block's own frame. */
@@ -237,24 +260,58 @@ export class SliderMarkService {
   }
 
   /**
-   * Which welded body each cylinder pass paints, held for as long as the marks
+   * Which fused shape each cylinder pass paints, held for as long as the marks
    * are.
    *
-   * The marks are rebuilt per pose and this answer is a function of them, so it
-   * is cached on the identity of the list rather than recomputed for each of
-   * the several template bindings that ask it per change-detection pass.
+   * Both lists are asked, because both can hold a member: a bracket welded to a
+   * mount, and the weld plate of a Slide the member's end joint is (decision
+   * S18). The marks are rebuilt per pose and this answer is a function of them,
+   * so it is cached on the identity of the two lists rather than recomputed for
+   * each of the several template bindings that ask it per change-detection pass.
    */
-  fusedBodies(marks: readonly CylinderMark[]): Map<string, FusedBody<CylinderMark>> {
-    if (this.fusedCache?.marks !== marks) {
-      this.fusedCache = { marks, bodies: fusedBodiesOf(marks) };
+  fusedBodies(
+    marks: readonly CylinderMark[],
+    sliders: readonly SliderMark[] = []
+  ): Map<string, FusedBody<CylinderMark, PlatedSlide>> {
+    if (this.fusedCache?.marks !== marks || this.fusedCache.sliders !== sliders) {
+      const plates = sliders.flatMap((mark): PlatedSlide[] =>
+        mark.plate ? [{ id: mark.id, links: mark.plate.links, mark, plate: mark.plate }] : []
+      );
+      this.fusedCache = { marks, sliders, bodies: fusedBodiesOf(marks, plates) };
     }
     return this.fusedCache.bodies;
   }
 
   private fusedCache?: {
     marks: readonly CylinderMark[];
-    bodies: Map<string, FusedBody<CylinderMark>>;
+    sliders: readonly SliderMark[];
+    bodies: Map<string, FusedBody<CylinderMark, PlatedSlide>>;
   };
+
+  /** Whether anything bigger stands in for this member, whichever pass paints it. */
+  memberIsFused(
+    mark: CylinderMark,
+    role: CylinderRole,
+    marks: readonly CylinderMark[],
+    sliders: readonly SliderMark[]
+  ): boolean {
+    return memberIsFused(this.fusedBodies(marks, sliders), mark, role);
+  }
+
+  /**
+   * Whether a cylinder pass paints this Slide's plate, so the slider layer must
+   * not paint it a second time one layer down.
+   */
+  plateIsPainted(
+    mark: SliderMark,
+    marks: readonly CylinderMark[],
+    sliders: readonly SliderMark[]
+  ): boolean {
+    for (const found of this.fusedBodies(marks, sliders).values()) {
+      if (found.plate?.id === mark.id) return true;
+    }
+    return false;
+  }
 
   /** One member of a skin, as the drawing asks for it: what to hit, and what that selects. */
   memberOf(mark: CylinderMark, role: CylinderRole): { path: string; link: Link } {
@@ -365,6 +422,10 @@ export class SliderMarkService {
     // the other stayed a bare black block.
     const claimed = new Set<string>();
     const bands = this.bands(joints, r, guides);
+    // Resolved here, once, because a plate has to be the union of the block
+    // with what is *drawn* at the rider — and for a cylinder member that is the
+    // skin's silhouette, not the thin bar its two joints describe (S18).
+    const cylinders = cylindersIn(joints);
     const marks = joints
       .filter((joint): joint is PrisJoint => joint instanceof PrisJoint)
       .map((slider) =>
@@ -375,10 +436,11 @@ export class SliderMarkService {
           joints,
           claimed,
           driveForward,
-          this.crossingsFor(slider.id, bands, r)
+          this.crossingsFor(slider.id, bands, r),
+          cylinders
         )
       );
-    this.fuseSharedPlates(marks, r, joints);
+    this.fuseSharedPlates(marks, r, joints, cylinders);
     return marks;
   }
 
@@ -391,8 +453,16 @@ export class SliderMarkService {
    * once, in the frame of whichever block leads it, and the rest keep their
    * black block underneath with no plate of their own.
    */
-  private fuseSharedPlates(marks: SliderMark[], r: number, joints: Joint[]): void {
-    const welded = marks.filter((mark) => mark.welded);
+  private fuseSharedPlates(
+    marks: SliderMark[],
+    r: number,
+    joints: Joint[],
+    cylinders: readonly Cylinder[]
+  ): void {
+    // A seal is not in any weld group, for the reason `markFor` gives: the skin
+    // draws its whole part, and letting it lead a group handed the plate to a
+    // mark nothing draws and left the other member of the group bare.
+    const welded = marks.filter((mark) => mark.welded && !mark.joint.isSealed);
     const groupOf = new Map<string, SliderMark[]>();
     for (const mark of welded) {
       const riders = this.ridersOn(mark.joint);
@@ -407,7 +477,7 @@ export class SliderMarkService {
     for (const group of new Set(groupOf.values())) {
       if (group.length < 2) continue;
       const [leader, ...rest] = group;
-      leader.plate = this.groupPlate(group, r, joints);
+      leader.plate = this.groupPlate(group, r, joints, cylinders);
       for (const member of rest) member.plate = undefined;
     }
   }
@@ -449,6 +519,12 @@ export class SliderMarkService {
     const cuts: string[] = [];
     for (const joint of joints) {
       if (!(joint instanceof PrisJoint) || !joint.isFloating) continue;
+      // A ram's bore is not an ordinary channel, for the reason `channels`
+      // gives: the skin draws it, mouth and all. The guard was only there and
+      // it only showed once a plate drew the barrel's real silhouette -- the
+      // bore then came out as a slot the length of the part, and the barrel as
+      // a hollow fork.
+      if (joint.isSealed) continue;
       if (!joint.isSlotWellFormed || joint.carrier!.id !== carrier.id) continue;
       const a = joint.slotJointA!;
       const b = joint.slotJointB!;
@@ -554,7 +630,8 @@ export class SliderMarkService {
     joints: Joint[],
     claimed: Set<string>,
     driveForward: DriveForward,
-    otherGuides: GuideBand[]
+    otherGuides: GuideBand[],
+    cylinders: readonly Cylinder[]
   ): SliderMark {
     // Every slider draws a mark. This used to return nothing when the joint had
     // no block beside it or the block had no coincident pin -- two shapes that
@@ -565,9 +642,22 @@ export class SliderMarkService {
     // fused to the block. The bit sat on the coincident pin's `isWelded`.
     const welded = !slider.rotates;
     const driven = slider.input;
-    const riders = slider.links.filter(
-      (link): link is RealLink => link instanceof RealLink && !claimed.has(link.id)
-    );
+    // A seal is a piston head inside its own barrel and the skin draws the
+    // whole part: it plates nothing and it claims nothing. Claiming was how a
+    // rod welded into a bracket lost its plate -- the seal at the other end of
+    // the same rod took the body first, and the Slide at the end joint was left
+    // with no rider to fuse and nothing but a bare black block (S18).
+    const pinned = slider.isSealed
+      ? []
+      : slider.links.filter(
+          (link): link is RealLink => link instanceof RealLink && !claimed.has(link.id)
+        );
+    // A rider a cylinder skin paints is already above the block, in a layer of
+    // its own. Hoisting it into this one as well drew the thin bar its joints
+    // describe a second time, inside the part it is the outline of -- the bar
+    // that shows through a barrel on a Pin-in-slot. Only a *drawn* rider is
+    // claimed, so a plate further down the list still has one to fuse.
+    const riders = welded ? pinned : pinned.filter((link) => !paintedByACylinder(cylinders, link));
     riders.forEach((rider) => claimed.add(rider.id));
 
     return {
@@ -579,8 +669,8 @@ export class SliderMarkService {
       block: blockPath(r),
       welded,
       driven,
-      plate: welded ? this.plateFor(slider, riders, angle, r, joints) : undefined,
-      riders: welded ? [] : this.ridersFor(slider, riders, angle, r, joints),
+      plate: welded ? this.plateFor(slider, riders, angle, r, joints, cylinders) : undefined,
+      riders: welded ? [] : this.ridersFor(slider, riders, angle, r, joints, cylinders),
       arrows: driven ? straightArrowPaths(r, driveForward(slider) ? 1 : -1) : [],
       rails: slider.ground ? this.railsFor(slider, guide, angle, r, otherGuides) : undefined,
       dangling: !slider.ground && !slider.isFloating,
@@ -592,10 +682,11 @@ export class SliderMarkService {
     riders: RealLink[],
     slotAngle: number,
     r: number,
-    joints: Joint[]
+    joints: Joint[],
+    cylinders: readonly Cylinder[]
   ): WeldPlate | undefined {
     const outlines = riders
-      .map((rider) => this.riderOutline(rider, pin, slotAngle))
+      .map((rider) => this.riderOutline(rider, pin, slotAngle, cylinders, r))
       .filter((outline): outline is string => outline !== undefined);
     if (outlines.length === 0) return undefined;
 
@@ -608,12 +699,25 @@ export class SliderMarkService {
       this.channelsInLocalFrame(rider, pin, slotAngle, r, joints)
     );
     return {
-      fill: riders[0].fill ?? '#000000',
+      fill: this.plateInk(riders[0], cylinders),
       path: [fused.path, mergedChannels(cuts)].join(' ').trim(),
       outline: fused.path,
       cuts,
       links: riders,
     };
+  }
+
+  /**
+   * The ink a plate is painted in: the color its rider is *drawn* in.
+   *
+   * `fillShownOn` rather than the bar's own record, for the reason that
+   * function exists — a rod that has made no color choice is drawn in its
+   * barrel's, and a welded member in its body's. Reading `fill` straight off
+   * the bar painted a fused rod in a palette color that is nowhere else in the
+   * drawing. One rule for every painter, not a third one here.
+   */
+  private plateInk(rider: RealLink, cylinders: readonly Cylinder[]): string {
+    return fillShownOn(rider, cylinderOfBarIn(cylinders, rider));
   }
 
   /**
@@ -631,16 +735,17 @@ export class SliderMarkService {
     riders: RealLink[],
     slotAngle: number,
     r: number,
-    joints: Joint[]
+    joints: Joint[],
+    cylinders: readonly Cylinder[]
   ): RiderDraw[] {
     return riders.flatMap((rider) => {
-      const outline = this.riderOutline(rider, pin, slotAngle);
+      const outline = this.riderOutline(rider, pin, slotAngle, cylinders, r);
       if (!outline) return [];
       const cuts = this.channelsInLocalFrame(rider, pin, slotAngle, r, joints);
       return [
         {
           link: rider,
-          fill: rider.fill ?? '#000000',
+          fill: this.plateInk(rider, cylinders),
           path: [outline, mergedChannels(cuts)].join(' ').trim(),
           outline,
           cuts,
@@ -657,7 +762,12 @@ export class SliderMarkService {
    * the members sit at different points on different slot angles and there is
    * no local frame all of them are already in.
    */
-  private groupPlate(group: SliderMark[], r: number, joints: Joint[]): WeldPlate | undefined {
+  private groupPlate(
+    group: SliderMark[],
+    r: number,
+    joints: Joint[],
+    cylinders: readonly Cylinder[]
+  ): WeldPlate | undefined {
     const leader = group[0];
     const links = new Map<string, RealLink>();
     const shapes: string[] = [];
@@ -665,9 +775,10 @@ export class SliderMarkService {
       const angle = (mark.rotation * Math.PI) / 180;
       shapes.push(this.placed(blockPath(r), mark.joint, angle));
       for (const rider of this.ridersOn(mark.joint)) {
-        if (links.has(rider.id) || !rider.d) continue;
+        const outline = drawnOutlineOf(cylinders, rider, r);
+        if (links.has(rider.id) || !outline) continue;
         links.set(rider.id, rider);
-        shapes.push(rider.d);
+        shapes.push(outline);
       }
     }
     if (links.size === 0) return undefined;
@@ -687,7 +798,7 @@ export class SliderMarkService {
     );
     const outline = intoLeader(fused.path);
     return {
-      fill: [...links.values()][0].fill ?? '#000000',
+      fill: this.plateInk([...links.values()][0], cylinders),
       path: [outline, mergedChannels(cuts)].join(' ').trim(),
       outline,
       cuts,
@@ -709,9 +820,20 @@ export class SliderMarkService {
    * The link's real path rather than a capsule fitted to it: a rider can be a
    * ternary body or a welded compound, and a capsule drawn from the pin to its
    * furthest joint is only the same shape when it happens to be a bar.
+   *
+   * "Its real path" is what is *drawn* there, which for a cylinder member is
+   * the skin's silhouette rather than the bar its two joints describe
+   * (`drawnOutlineOf`). A plate built from the bar drew a second, thinner
+   * barrel inside the barrel, and a second rod beside the rod.
    */
-  private riderOutline(rider: RealLink, pin: RealJoint, slotAngle: number): string | undefined {
-    const outline = rider.d;
+  private riderOutline(
+    rider: RealLink,
+    pin: RealJoint,
+    slotAngle: number,
+    cylinders: readonly Cylinder[],
+    r: number
+  ): string | undefined {
+    const outline = drawnOutlineOf(cylinders, rider, r);
     if (!outline) return undefined;
     const along = { x: pin.x + Math.cos(slotAngle), y: pin.y + Math.sin(slotAngle) };
     try {
