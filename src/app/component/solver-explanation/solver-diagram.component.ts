@@ -210,14 +210,14 @@ let nextDiagram = 0;
     } @else {
       <path
         class="positiveMoment"
-        d="M104 232 A14 14 0 1 0 83 244"
+        d="M88 226 A30 30 0 0 0 58 183"
         stroke="var(--text-secondary)"
         stroke-width="1.5"
         fill="none"
         [attr.marker-end]="'url(#' + markerId + ')'"
       />
-      <text x="98" y="222" text-anchor="middle">
-        {{ diagram().axisMomentLabel ?? '+Mz (CCW)' }}
+      <text x="94" y="186" text-anchor="middle">
+        {{ diagram().axisMomentLabel ?? 'M' }}
       </text>
     }
     <text

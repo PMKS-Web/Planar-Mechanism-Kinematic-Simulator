@@ -19,30 +19,49 @@ type ReferenceId = 'A' | 'CoM' | 'B';
       <details class="subsection" open>
         <summary>Force balance</summary>
         <app-solver-math [equation]="forceBalance" />
-        <app-solver-math [equation]="forceComponents" />
-        <p>
-          The left side contains applied reactions, forces, and weight. The right side is the
-          translational inertia of the center of mass. In statics, a = 0, so every right-side term
-          becomes zero.
-        </p>
+        <p>The left side contains applied reactions, forces, and weight.</p>
+        <details class="equationDetail">
+          <summary>Resolve force balance into x, y, and z</summary>
+          <app-solver-math [equation]="forceComponents" />
+          <p>
+            This is a planar mechanism: no force or acceleration is considered in z. Therefore ΣF_z
+            = ma_z = 0, and only the x and y equations are solved.
+          </p>
+        </details>
+        <details class="equationDetail">
+          <summary>Assumptions used in this example</summary>
+          <dl class="assumptions">
+            <dt>Gravity is included</dt>
+            <dd>It appears as the downward weight W_AB in the y-force balance.</dd>
+            <dt>Static condition</dt>
+            <dd>Acceleration is zero, so the right side ma becomes zero.</dd>
+          </dl>
+          <app-solver-math [equation]="staticForceComponents" />
+        </details>
       </details>
       <details class="subsection" open>
         <summary>Moment balance</summary>
         <app-solver-math [equation]="momentBalance" />
-        <app-solver-math [equation]="momentComponents" />
-        <p>
-          The left side contains applied couples and moments made by forces. The right side is
-          rotational inertia. In statics, α = 0, so it becomes zero. Planar forces give M_x = 0 = 0
-          and M_y = 0 = 0, leaving the z-moment equation.
-        </p>
-        <app-solver-diagram
-          [diagram]="momentBalanceDiagram"
-          label="A force at point P creating a moment about point O"
-        />
-        <p class="caption">
-          A force applied at P creates a moment about O. Section 4 resolves this position vector and
-          force into the x and y components used to build the z-moment equation.
-        </p>
+        <p>The left side contains applied couples and moments made by forces.</p>
+        <details class="equationDetail">
+          <summary>Resolve moment balance into x, y, and z</summary>
+          <app-solver-math [equation]="momentComponents" />
+          <p>
+            The position vectors and forces lie in the x-y plane. Their moments only point in z, so
+            M_x = 0 = 0 and M_y = 0 = 0; only the z-moment equation is solved.
+          </p>
+        </details>
+        <details class="equationDetail">
+          <summary>See a force create a moment</summary>
+          <app-solver-diagram
+            [diagram]="momentBalanceDiagram"
+            label="A force at point P creating a moment about point O"
+          />
+          <p class="caption">
+            A force applied at P creates a moment about O. Section 4 resolves this position vector
+            and force into the x and y components used to build the z-moment equation.
+          </p>
+        </details>
       </details>
     </details>
 
@@ -102,7 +121,7 @@ type ReferenceId = 'A' | 'CoM' | 'B';
         <app-solver-math [equation]="exampleFy" />
       </details>
       <details class="subsection" open>
-        <summary>Sum of Moments</summary>
+        <summary>Sum of Moments in z</summary>
         <label class="referenceControl">
           Moment Reference
           <select
@@ -177,6 +196,24 @@ type ReferenceId = 'A' | 'CoM' | 'B';
       .subsection {
         margin-left: 12px;
       }
+      .equationDetail {
+        margin-left: 12px;
+      }
+      .assumptions {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        gap: 6px 12px;
+        margin: 10px 0;
+        font-size: 12px;
+      }
+      .assumptions dt {
+        color: var(--text-strong);
+        font-weight: 600;
+      }
+      .assumptions dd {
+        margin: 0;
+        color: var(--text-secondary);
+      }
       table {
         width: 100%;
         border-collapse: collapse;
@@ -248,6 +285,7 @@ export class ForceDefinitionsComponent {
   protected readonly momentEquation = computed(() => this.momentFor(this.reference()));
   protected readonly forceBalance = String.raw`\sum\vec F=m\vec a_{\mathrm{CoM}}\qquad\xrightarrow{\ \mathrm{statics}:\ \vec a=\vec0\ }\qquad\sum\vec F=\vec0`;
   protected readonly forceComponents = String.raw`\begin{aligned}\sum F_x&=m a_{\mathrm{CoM},x}&&\xrightarrow{\mathrm{statics}}\quad\sum F_x=0\\\sum F_y&=m a_{\mathrm{CoM},y}&&\xrightarrow{\mathrm{statics}}\quad\sum F_y=0\\\sum F_z&=m a_{\mathrm{CoM},z}=0&&\xrightarrow{\mathrm{planar}}\quad\sum F_z=0\end{aligned}`;
+  protected readonly staticForceComponents = String.raw`\begin{aligned}\sum F_x&=0\\\sum F_y&=0\\\sum F_z&=0\end{aligned}`;
   protected readonly momentBalance = String.raw`\sum\vec M_{\mathrm{CoM}}=I_{\mathrm{CoM}}\vec\alpha\qquad\xrightarrow{\ \mathrm{statics}:\ \vec\alpha=\vec0\ }\qquad\sum\vec M_{\mathrm{CoM}}=\vec0`;
   protected readonly momentComponents = String.raw`\begin{aligned}\sum M_{\mathrm{CoM},x}&=0=0\\\sum M_{\mathrm{CoM},y}&=0=0\\\sum M_{\mathrm{CoM},z}&=I_{\mathrm{CoM}}\alpha\quad\xrightarrow{\mathrm{statics}}\quad\sum M_{\mathrm{CoM},z}=0\end{aligned}`;
   protected readonly exampleFx = String.raw`\sum F_x=-A_x+B_x+F_{1x}=0`;
@@ -264,8 +302,20 @@ export class ForceDefinitionsComponent {
       meaning: 'Weight of link AB, applied at its center of mass (CoM).',
     },
     {
+      symbol: String.raw`\vec r_{A/O}`,
+      meaning: 'Position vector from the chosen moment reference O to joint A.',
+    },
+    {
+      symbol: String.raw`\vec r_{B/O}`,
+      meaning: 'Position vector from the chosen moment reference O to joint B.',
+    },
+    {
       symbol: String.raw`\vec r_{P/O}`,
-      meaning: 'Position vector from the chosen moment reference O to P.',
+      meaning: 'Position vector from the chosen moment reference O to the applied force at P.',
+    },
+    {
+      symbol: String.raw`\vec r_{\mathrm{CoM}/O}`,
+      meaning: 'Position vector from the chosen moment reference O to the center of mass.',
     },
     {
       symbol: String.raw`I_{\mathrm{CoM}},\ \vec\alpha`,
@@ -311,7 +361,7 @@ export class ForceDefinitionsComponent {
       ];
     });
     return {
-      axisMomentLabel: '+M',
+      axisMomentLabel: 'M',
       legend: 'Moment-arm component grid',
       points: [
         { x: -120, y: 105, label: `O = ${reference}`, reference: true },
@@ -345,7 +395,7 @@ export class ForceDefinitionsComponent {
     const origin = { x: 0, y: 0, label: 'O', reference: true };
     const application = { x: 145, y: 55, label: 'P' };
     return {
-      axisMomentLabel: '+M',
+      axisMomentLabel: 'M',
       points: [origin, application],
       lines: [
         {
@@ -409,7 +459,7 @@ export class ForceDefinitionsComponent {
       );
     }
     return {
-      axisMomentLabel: '+M',
+      axisMomentLabel: 'M',
       points: Object.values(this.points).map((point) => ({
         ...point,
         reference: point.label === reference,

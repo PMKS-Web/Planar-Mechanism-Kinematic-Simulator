@@ -73,7 +73,7 @@ try {
   );
   assert(example.lines.some((l) => l.label === 'W_AB'));
   assert(example.lines.some((l) => l.label === 'F_1'));
-  assert.equal(example.axisMomentLabel, '+M');
+  assert.equal(example.axisMomentLabel, 'M');
   assert.equal(await defs.locator('table').count(), 1);
   assert.equal(await defs.locator('.definitionStep').count(), 4);
   assert.equal(
@@ -109,7 +109,7 @@ try {
   await reference.selectOption('B');
   referenceDiagram = await referenceExample.evaluate((el) => window.ng.getComponent(el).diagram());
   gridDiagram = await armGrid.evaluate((el) => window.ng.getComponent(el).diagram());
-  assert.equal(referenceDiagram.axisMomentLabel, '+M');
+  assert.equal(referenceDiagram.axisMomentLabel, 'M');
   assert(referenceDiagram.points.find((p) => p.label === 'B').reference);
   assert(gridDiagram.lines.some((l) => l.label === 'r_A/B,x'));
   await labelsDoNotOverlap(defs);
@@ -118,7 +118,7 @@ try {
     .locator('.definitionStep')
     .nth(3)
     .screenshot({ path: `${out}/definition-equations.png` });
-  assert((await defs.innerText()).includes('0 = 0'));
+  assert((await defs.textContent()).includes('Static condition'));
   await d.getByRole('button', { name: 'Free Bodies', exact: true }).click();
   await d.locator('.overviewDetails > summary').click();
   const before = await state(d);
