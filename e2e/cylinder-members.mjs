@@ -81,6 +81,11 @@ async function oneCylinder(options = {}) {
         m.toggleGround();
       }
     }
+    // A Lock on a mount holds that mount (S8), which is the ladder's top
+    // priority: nothing locked ever moves, whatever was typed (S17).
+    for (const end of [how.lockA && ram.mountA, how.lockB && ram.mountB].filter(Boolean)) {
+      m.toggleLock(end);
+    }
     grid.settings.isShowID.next(true);
     grid.activeObjService.updateSelectedObj(null);
     return {
@@ -97,10 +102,15 @@ async function oneCylinder(options = {}) {
 /** What the drawing says about the part right now. */
 const ram = () =>
   page.evaluate(() => {
-    const m = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const m = grid.mechanismSrv;
     const one = m.sealedStructures()[0];
     const at = (joint) => ({ x: joint.x, y: joint.y });
     return {
+      // The head's clearance, which is the whole of the difference between a
+      // barrel and the shortest rod it allows (S3). Read rather than written
+      // down, because it is 1.4 R and R follows Object Scale.
+      clearance: 1.4 * 0.15 * grid.settings.objectScale,
       start: one.start,
       a: at(one.mountA),
       n: at(one.inner),
@@ -590,9 +600,42 @@ check(
   JSON.stringify({ a: [part.a.x, after.a.x], b: [part.b.x, after.b.x] })
 );
 
-// Both ends held: a drag never changes a length, so there is nowhere to go and
-// nothing is said about it (decision S7).
+// Both ends bolted to the frame: a drag is user input like a typed number, and
+// ground yields before a length does (S17), so the part expands under the
+// pointer with both members exactly as the reader sized them.
 ids = await oneCylinder({ groundA: true, groundB: true });
+part = await ram();
+sealPoint = await screenAt(part.s);
+await page.mouse.move(sealPoint.x, sealPoint.y);
+await page.mouse.down();
+await page.mouse.move(sealPoint.x + 200, sealPoint.y, { steps: 16 });
+await page.mouse.up();
+await page.waitForTimeout(350);
+after = await ram();
+check(
+  'with both ends grounded a drag of the head expands the part instead of resizing a member',
+  after.start > part.start + 0.1 &&
+    after.b.x > part.b.x + 1 &&
+    Math.abs(after.a.x - part.a.x) < 1e-6 &&
+    Math.abs(after.barrelLength - part.barrelLength) < 1e-6 &&
+    Math.abs(after.rodLength - part.rodLength) < 1e-6,
+  JSON.stringify({
+    start: [part.start, after.start],
+    b: [part.b.x, after.b.x],
+    barrel: [part.barrelLength, after.barrelLength],
+  })
+);
+
+// Both ends locked, and both members keeping their length: now there really is
+// nothing to give, and a pointermove is not the place to say so (S17 rung 4).
+ids = await oneCylinder({ lockA: true, lockB: true });
+await page.evaluate(() => {
+  const m = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+  const one = m.sealedStructures()[0];
+  one.barrel.hold = 'length';
+  one.rod.hold = 'length';
+  m.updateMechanism(false);
+});
 part = await ram();
 sealPoint = await screenAt(part.s);
 await page.mouse.move(sealPoint.x, sealPoint.y);
@@ -618,8 +661,11 @@ await page.evaluate(() => {
 await page.waitForTimeout(300);
 const loud = await notifications();
 check(
-  'with both ends grounded the seal stays put, silently',
-  Math.abs(after.s.x - part.s.x) < 1e-6 && quiet === 0 && loud > 0,
+  'with both ends locked and both lengths fixed the seal stays put, silently',
+  Math.abs(after.s.x - part.s.x) < 1e-6 &&
+    Math.abs(after.barrelLength - part.barrelLength) < 1e-6 &&
+    quiet === 0 &&
+    loud > 0,
   JSON.stringify({ s: [part.s.x, after.s.x], quiet, loud })
 );
 
@@ -1040,18 +1086,33 @@ check(
   JSON.stringify({ a: [part.a, after.a], b: [part.b, after.b] })
 );
 
-// Grounded at both, the bearing is not the part's to change.
+// Grounded at both: the typed number outranks a grounded joint (S17 rung 3),
+// so the part turns about A and the grounded joint at B swings.
 ids = await oneCylinder({ groundA: true, groundB: true });
+part = await ram();
+await pick('barrel');
+await typeInto('[data-hold-field="angle"]', '40');
+after = await ram();
+check(
+  'with both ends grounded it turns about A and the grounded joint at B swings',
+  Math.abs(after.a.x - part.a.x) < 1e-6 &&
+    Math.abs(after.a.y - part.a.y) < 1e-6 &&
+    Math.abs(after.b.y - part.b.y) > 1,
+  JSON.stringify({ a: [part.a, after.a], b: [part.b, after.b] })
+);
+
+// Locked at both, and there is no bearing left to be had (S17 rung 4).
+ids = await oneCylinder({ lockA: true, lockB: true });
 part = await ram();
 await pick('barrel');
 await typeInto('[data-hold-field="angle"]', '40');
 after = await ram();
 const said = await page.locator('.notification').allInnerTexts();
 check(
-  'with both ends grounded the angle is refused, and something is said',
+  'with both ends locked the angle is refused, and the message names a locked joint',
   Math.abs(after.a.y - part.a.y) < 1e-6 &&
     Math.abs(after.b.y - part.b.y) < 1e-6 &&
-    said.some((text) => /grounded/.test(text)),
+    said.some((text) => /is locked/.test(text)),
   JSON.stringify({ a: [part.a.y, after.a.y], b: [part.b.y, after.b.y], said })
 );
 
@@ -1087,52 +1148,197 @@ check(
   JSON.stringify({ a: [part.a.x, after.a.x], b: [part.b.x, after.b.x] })
 );
 
+// Both grounded: the part expands and contracts rather than resizing a member
+// the reader sized (S17, as the maintainer reversed it). Ground is where the
+// frame happens to be pinned; a length is a number somebody typed.
 ids = await oneCylinder({ groundA: true, groundB: true });
 part = await ram();
-// Toward the barrel's own mount, which lengthens the rod: the other way asks
-// for a rod shorter than the travel, which decision S3's floor refuses.
 await setStart('20');
 after = await ram();
 check(
-  "with both grounded, the rod's length changes instead",
+  'with both grounded, the part expands and contracts and both lengths are untouched',
   Math.abs(after.a.x - part.a.x) < 1e-6 &&
-    Math.abs(after.b.x - part.b.x) < 1e-6 &&
-    Math.abs(after.rodLength - part.rodLength) > 1,
-  JSON.stringify({ rod: [part.rodLength, after.rodLength] })
+    after.b.x < part.b.x - 1 &&
+    Math.abs(after.barrelLength - part.barrelLength) < 1e-6 &&
+    Math.abs(after.rodLength - part.rodLength) < 1e-6 &&
+    Math.abs(after.start - 0.2) < 1e-3,
+  JSON.stringify({ b: [part.b.x, after.b.x], rod: [part.rodLength, after.rodLength] })
 );
 
-// The rod holding its length hands the change to the barrel.
+// Both lengths fixed as well, and it is still the grounded joint that gives.
 ids = await oneCylinder({ groundA: true, groundB: true });
-await pick('rod');
-await page.locator('[data-hold-toggle="length"]').click();
-await page.waitForTimeout(500);
+for (const which of ['rod', 'barrel']) {
+  await pick(which);
+  await page.locator('[data-hold-toggle="length"]').click();
+  await page.waitForTimeout(500);
+}
 part = await ram();
 await setStart('80');
 after = await ram();
 check(
-  "and with the rod's length fixed, the barrel's changes",
-  Math.abs(after.rodLength - part.rodLength) < 1e-6 &&
-    Math.abs(after.barrelLength - part.barrelLength) > 1,
-  JSON.stringify({ barrel: [part.barrelLength, after.barrelLength] })
+  'with both lengths fixed a grounded joint moves rather than the edit being refused',
+  Math.abs(after.barrelLength - part.barrelLength) < 1e-6 &&
+    Math.abs(after.rodLength - part.rodLength) < 1e-6 &&
+    Math.abs(after.start - 0.8) < 1e-3 &&
+    after.b.x > part.b.x + 1,
+  JSON.stringify({ start: [part.start, after.start], b: [part.b.x, after.b.x] })
 );
 
-// Both fixed, and there is nothing left to give.
+// Locked at both ends, with both lengths fixed: the ladder is out of rungs,
+// and the refusal names what is holding it (S17 rung 4). The padlocks go on
+// first, through their own panels: a cylinder with both mounts locked has all
+// four of its joints held, so the member panels hand the reader a lock banner
+// rather than a row to press.
+ids = await oneCylinder();
+await pick('rod');
+await page.locator('[data-hold-toggle="length"]').click();
+await page.waitForTimeout(500);
 await pick('barrel');
 await page.locator('[data-hold-toggle="length"]').click();
 await page.waitForTimeout(500);
+await page.evaluate(() => {
+  const m = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+  const one = m.sealedStructures()[0];
+  m.toggleLock(one.mountA);
+  m.toggleLock(one.mountB);
+});
+await page.waitForTimeout(400);
 part = await ram();
 await setStart('30');
 after = await ram();
 const refused = await page.locator('.notification').allInnerTexts();
 check(
-  'with both lengths fixed the edit is refused and nothing moves',
+  'with both ends locked and both lengths fixed the edit is refused and nothing moves',
   Math.abs(after.start - part.start) < 1e-6 &&
     Math.abs(after.barrelLength - part.barrelLength) < 1e-6 &&
     Math.abs(after.rodLength - part.rodLength) < 1e-6 &&
-    refused.some((text) => /fixed/.test(text)),
+    refused.some((text) => /is locked/.test(text) && /fixed length/.test(text)),
   JSON.stringify({ start: [part.start, after.start], refused })
 );
 await page.screenshot({ path: `${OUT}/starts-at-refused.png` });
+
+// ---------------------------------- 10b. S17: a structural limit is repaired
+console.log('\nthe two the maintainer reported: a limit is repaired, not refused');
+
+/** Open the ram all the way, which is where both reported scenarios start. */
+async function fullyOpen() {
+  await setStart('100');
+  return ram();
+}
+
+// Shorten the rod past its own floor and the barrel follows it down, to
+// exactly `rod + clearance`, with the head still at the open stop.
+ids = await oneCylinder();
+part = await fullyOpen();
+await pick('rod');
+await typeInto('[data-hold-field="length"]', (part.rodLength / 2 / 200).toFixed(3));
+after = await ram();
+check(
+  'shortening the rod past the travel shortens the barrel instead of refusing',
+  Math.abs(after.rodLength - part.rodLength / 2) < 1 &&
+    after.barrelLength < part.barrelLength - 1 &&
+    // The longest barrel this rod allows, which is the smallest change there is.
+    Math.abs(after.barrelLength - (after.rodLength + after.clearance)) < 1 &&
+    after.start > 0.99 &&
+    Math.abs(after.a.x - part.a.x) < 1e-6,
+  JSON.stringify({
+    rod: [part.rodLength, after.rodLength],
+    barrel: [part.barrelLength, after.barrelLength],
+    clearance: after.clearance,
+    start: after.start,
+  })
+);
+
+// Shorten the barrel past where the head is standing and the head goes to the
+// new open stop, with B following the rod in.
+ids = await oneCylinder();
+part = await fullyOpen();
+await pick('barrel');
+await typeInto('[data-hold-field="length"]', (part.barrelLength / 2 / 200).toFixed(3));
+after = await ram();
+check(
+  'shortening the barrel under the head moves the head to the new stop and brings B in',
+  Math.abs(after.barrelLength - part.barrelLength / 2) < 1 &&
+    Math.abs(after.rodLength - part.rodLength) < 1e-6 &&
+    after.start > 0.99 &&
+    after.b.x < part.b.x - 1 &&
+    Math.abs(after.a.x - part.a.x) < 1e-6,
+  JSON.stringify({
+    barrel: [part.barrelLength, after.barrelLength],
+    b: [part.b.x, after.b.x],
+    start: after.start,
+  })
+);
+
+// ------------------------------- 10c. S19: as far as it goes, and what stopped it
+console.log('\na number the constraints cannot fully honor goes as far as it goes');
+
+/** What the open member panel's Length box reads right now. */
+const lengthField = () =>
+  page.evaluate(() => document.querySelector('[data-hold-field="length"]')?.value ?? null);
+
+// The other member keeping its length no longer turns the repair into a
+// refusal: the typed rod goes down to the barrel's own travel and stops there,
+// and the message names the barrel and the length it reached.
+ids = await oneCylinder();
+part = await fullyOpen();
+await pick('barrel');
+await page.locator('[data-hold-toggle="length"]').click();
+await page.waitForTimeout(500);
+await pick('rod');
+part = await ram();
+await typeInto('[data-hold-field="length"]', (part.rodLength / 2 / 200).toFixed(3));
+after = await ram();
+let shown = await lengthField();
+let saidShort = await page.locator('.notification').allInnerTexts();
+check(
+  'a fixed barrel stops the rod at the barrel’s own travel rather than refusing it',
+  Math.abs(after.rodLength - (part.barrelLength - part.clearance)) < 1 &&
+    Math.abs(after.barrelLength - part.barrelLength) < 1e-6 &&
+    saidShort.some((text) => /stopped at/.test(text) && /fixed length/.test(text)) &&
+    shown === `${(after.rodLength / 200).toFixed(2)} cm`,
+  JSON.stringify({ rod: [part.rodLength, after.rodLength], shown, saidShort })
+);
+
+// The maintainer's own case from the other end: a fixed rod, and a barrel typed
+// well past the travel that rod allows. It extends to exactly `rod + clearance`.
+ids = await oneCylinder();
+await pick('rod');
+await page.locator('[data-hold-toggle="length"]').click();
+await page.waitForTimeout(500);
+await pick('barrel');
+part = await ram();
+await typeInto('[data-hold-field="length"]', ((part.barrelLength * 4) / 200).toFixed(2));
+after = await ram();
+shown = await lengthField();
+saidShort = await page.locator('.notification').allInnerTexts();
+check(
+  'a fixed rod stops the barrel at rod + clearance, and the notice names the rod',
+  Math.abs(after.barrelLength - (part.rodLength + part.clearance)) < 1 &&
+    Math.abs(after.rodLength - part.rodLength) < 1e-6 &&
+    saidShort.some((text) => /Barrel .* stopped at/.test(text) && /fixed length Rod/.test(text)) &&
+    shown === `${(after.barrelLength / 200).toFixed(2)} cm`,
+  JSON.stringify({
+    barrel: [part.barrelLength, after.barrelLength],
+    wanted: part.rodLength + part.clearance,
+    shown,
+    saidShort,
+  })
+);
+
+// A Lock on one end takes that end out of the ladder, so the OTHER one gives
+// rather than the whole edit being refused (S17 rung 1).
+ids = await oneCylinder({ lockB: true });
+part = await ram();
+await setStart('80');
+after = await ram();
+check(
+  'a locked end is skipped and the other end gives, with the locked one never moving',
+  Math.abs(after.b.x - part.b.x) < 1e-6 &&
+    Math.abs(after.a.x - part.a.x) > 1 &&
+    Math.abs(after.start - 0.8) < 1e-3,
+  JSON.stringify({ a: [part.a.x, after.a.x], b: [part.b.x, after.b.x], start: after.start })
+);
 
 // ----------------------------------------- 11. D13: an end joint is a pin
 console.log('\nan end joint is a pin like any other');

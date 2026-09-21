@@ -45,6 +45,7 @@ import {
   poseForSealAt,
 } from '../model/cylinder-edit';
 import { SettingsService } from './settings.service';
+import { NumberUnitParserService } from './number-unit-parser.service';
 import { MechanismService } from './mechanism.service';
 import { SelectedTabService } from '../selected-tab.service';
 import { EditPermissionService } from './edit-permission.service';
@@ -95,6 +96,20 @@ function pointThroughFrame(
   return [toStart.x + along * toX - across * toY, toStart.y + along * toY + across * toX];
 }
 
+/**
+ * How an edit that could not be fully honored says so (decision S19).
+ *
+ * The model knows how far it got and what stopped it; only the service knows
+ * what the reader calls the thing that stopped and what its number reads as on
+ * screen. That split is why this is a pair of callbacks rather than a sentence.
+ */
+interface StoppedShort {
+  /** What stopped: `Barrel AC`, `Rod CB`, `Starts at`. */
+  subject: string;
+  /** The value reached, in the reader's own units. */
+  say: (reached: number) => string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -103,6 +118,8 @@ export class GridUtilsService {
   svgGrid = inject(SvgGridService);
   private injector = inject(Injector);
   private notify = inject(NotificationService);
+  private nup = inject(NumberUnitParserService);
+  private settings = inject(SettingsService);
 
   /**
    * MechanismService injects this service, so it can only be resolved at call
@@ -1024,7 +1041,11 @@ export class GridUtilsService {
   setCylinderStart(sealed: Cylinder, start: number): boolean {
     return this.commitCylinderEdit(
       sealed,
-      poseForCylinderStart(sealed, start, this.editContext(sealed))
+      poseForCylinderStart(sealed, start, this.editContext(sealed)),
+      true,
+      // One decimal, which is the resolution the field itself shows: a number
+      // said to more places than the box can hold reads as a disagreement.
+      { subject: 'Starts at', say: (share) => `${Math.round(share * 1000) / 10}%` }
     );
   }
 
@@ -1032,7 +1053,9 @@ export class GridUtilsService {
   setBarrelLength(sealed: Cylinder, length: number): boolean {
     return this.commitCylinderEdit(
       sealed,
-      poseForBarrelLength(sealed, length, this.editContext(sealed))
+      poseForBarrelLength(sealed, length, this.editContext(sealed)),
+      true,
+      this.memberStop(sealed.barrel)
     );
   }
 
@@ -1040,8 +1063,26 @@ export class GridUtilsService {
   setRodLength(sealed: Cylinder, length: number): boolean {
     return this.commitCylinderEdit(
       sealed,
-      poseForRodLength(sealed, length, this.editContext(sealed))
+      poseForRodLength(sealed, length, this.editContext(sealed)),
+      true,
+      this.memberStop(sealed.rod)
     );
+  }
+
+  /**
+   * How a member says it stopped short: its own name, and its length in the
+   * reader's unit.
+   *
+   * Through the panel's own pair (`NumberUnitParserService.formatModelLength`
+   * and `MechanismService.bodyLabel`), because the sentence sits beside a field
+   * the reader is looking at — a second way of rounding a length, or a name
+   * built from the id, would read as the app disagreeing with itself.
+   */
+  private memberStop(member: Link): StoppedShort {
+    return {
+      subject: this.mechanismSrv.bodyLabel(member),
+      say: (length) => this.nup.formatModelLength(length, this.settings.lengthUnit.getValue()),
+    };
   }
 
   /**
@@ -1061,11 +1102,13 @@ export class GridUtilsService {
 
   /**
    * What the pure edits cannot work out for themselves: the scale, what is
-   * grounded, which lengths are fixed, and which held bars are in the way.
+   * grounded, what a Lock holds, which lengths are fixed, and how to name
+   * either of the last two.
    */
   private editContext(sealed: Cylinder): CylinderEditContext {
     const links = this.mechanismSrv.links;
     const cylinders = this.mechanismSrv.sealedStructures();
+    const frozen = this.frozenJointIds();
     // The part's own angle hold never refuses its own edit: every edit here
     // either keeps the bearing or is the one that sets it, and a hold on the
     // number being typed is a hold on the new number.
@@ -1073,12 +1116,25 @@ export class GridUtilsService {
     return {
       r: 0.15 * SettingsService.objectScale,
       isGrounded: (joint) => joint instanceof RealJoint && joint.ground,
+      // The same set `planEdit` judges the finished plan against, asked one
+      // rung earlier so the ladder can try the *other* end instead of walking
+      // into the backstop and refusing.
+      isLocked: (joint) => frozen.has(joint.id),
       holds: this.cylinderLengthHolds(sealed),
       heldBy: (displaced) => {
         const bars = displaced
           .flatMap((joint) => heldBarsReaching(joint, links, cylinders))
           .filter((bar, index, all) => all.indexOf(bar) === index && !own.has(bar.id));
         return bars.length > 0 ? heldBySentence(bars, this.mechanismSrv.joints) : undefined;
+      },
+      // Named by the member's own two joints, which is what its panel is
+      // headed with and what the padlock the reader pressed sits in. The id
+      // will not do: a barrel's holds N, the joint the drawing never shows.
+      fixedBy: (members) => {
+        const bars = members.filter((member): member is RealLink => member instanceof RealLink);
+        return bars.length > 0
+          ? heldBySentence(bars, undefined, (bar) => this.mechanismSrv.bodyLabel(bar))
+          : undefined;
       },
     };
   }
@@ -1087,13 +1143,25 @@ export class GridUtilsService {
   private commitCylinderEdit(
     sealed: Cylinder,
     edit: CylinderEdit,
-    rebuild: boolean = true
+    rebuild: boolean = true,
+    stopped?: StoppedShort
   ): boolean {
     if (!edit.ok) {
       if (!edit.refusal.silent) this.notify.refusal(edit.refusal.code, edit.refusal.long);
       return false;
     }
-    return this.applyCylinderPose(sealed, edit.pose, rebuild);
+    const went = this.applyCylinderPose(sealed, edit.pose, rebuild);
+    // News rather than a refusal (decision S19): the edit landed, and a refusal
+    // is the app's word for nothing having changed. It is the same shape as the
+    // anchor's `starts here now` -- something happened, and the consequence
+    // that came with it is worth one sentence.
+    if (went && edit.stoppedBy && stopped) {
+      this.notify.news(
+        edit.stoppedBy.code,
+        `${stopped.subject} stopped at ${stopped.say(edit.stoppedBy.reached)}: ${edit.stoppedBy.cause}.`
+      );
+    }
+    return went;
   }
 
   /**

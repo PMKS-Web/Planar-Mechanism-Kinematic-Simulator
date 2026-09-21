@@ -98,16 +98,24 @@ await load('seal');
 await typeInto('[data-field="cylinderStart"]', '140');
 out.clamped = await reading();
 
-// 4 · a refused Length changes nothing and puts the old number back. A barrel
-//     may not grow past the rod's own floor (decision S3), and 60 cm is well
-//     past it on this ram.
+// 4 · a Length the part cannot fully have goes as far as it can, says how far,
+//     and leaves the box on the number it reached (S19). It used to refuse and
+//     put the old number back; what "puts the old number back" now guards is
+//     that the field and the drawing agree afterwards, whichever they land on.
 await load('barrel');
-out.beforeRefusal = await reading();
-await typeInto('[data-hold-field="length"]', '60');
-out.refused = {
+out.beforeShort = await reading();
+await typeInto('[data-hold-field="length"]', '0.001');
+out.short = {
   ...(await reading()),
   said: await page.locator('.notification').allInnerTexts(),
 };
+
+// 4b · and the limit that is now repaired instead: a barrel typed well past
+//      the rod's floor takes the rod with it rather than being refused.
+await load('barrel');
+out.beforeRepair = await reading();
+await typeInto('[data-hold-field="length"]', '60');
+out.repaired = await reading();
 
 // 5 · a panel edit is one undo step. It was not: a field that re-poses through
 //     a drag saved nothing, so Undo took back the gesture before it — on a
@@ -210,10 +218,15 @@ const checks = [
   ['a fractional percentage survives the round trip', out.fractional.startsAt === '33.7'],
   ['a percentage past the end stops at the end', out.clamped.startsAt === '100'],
   [
-    'a refused Length changes nothing, says why, and puts the old number back',
-    out.refused.barrel === out.beforeRefusal.barrel &&
-      out.refused.length === out.beforeRefusal.length &&
-      out.refused.said.some((text) => /rod|travel|barrel/i.test(text)),
+    'a Length that cannot be fully had stops short, says so, and the box reads what landed',
+    out.short.barrel < out.beforeShort.barrel &&
+      out.short.barrel > 0.001 &&
+      out.short.length === `${(out.short.barrel / 200).toFixed(2)} cm` &&
+      out.short.said.some((text) => /stopped at/i.test(text) && /no travel left in it/i.test(text)),
+  ],
+  [
+    'a barrel past the rod’s floor takes the rod with it rather than being refused',
+    out.repaired.barrel > out.beforeRepair.barrel && out.repaired.rod > out.beforeRepair.rod,
   ],
   [
     'one panel edit is one undo step, and the cylinder survives it',
@@ -241,6 +254,8 @@ const checks = [
   ['nothing threw', errs.length === 0],
 ];
 for (const [what, ok] of checks) console.log(`${ok ? 'PASS' : 'FAIL'}  ${what}`);
-if (checks.some(([, ok]) => !ok)) console.log(JSON.stringify({ selects, massArea }, null, 2));
+if (checks.some(([, ok]) => !ok)) {
+  console.log(JSON.stringify({ out, selects, massArea }, null, 2));
+}
 await ctx.close();
 process.exit(checks.every(([, ok]) => ok) ? 0 : 1);
