@@ -221,3 +221,24 @@ export function buildVectorTrace(
   }
   return { d: arrowPath(arrows), scale, largest };
 }
+
+  /** How big this machine is on the drawing: the box its cycle sweeps out. */
+export function sweptSpanOf(frames: {x:number; y:number}[][], fallback: number): number {
+    let minX = Number.POSITIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+    frames.forEach((frame) =>
+      frame.forEach((joint) => {
+        minX = Math.min(minX, joint.x);
+        maxX = Math.max(maxX, joint.x);
+        minY = Math.min(minY, joint.y);
+        maxY = Math.max(maxY, joint.y);
+      })
+    );
+    const span = Math.hypot(maxX - minX, maxY - minY);
+    // A machine whose joints all sit on one point sweeps nothing; one user
+    // length keeps the arrows from collapsing to nothing with it.
+    return Number.isFinite(span) && span > 0 ? span : fallback;
+  }
+
