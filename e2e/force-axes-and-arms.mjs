@@ -123,6 +123,10 @@ try {
     .locator('app-solver-diagram')
     .first()
     .screenshot({ path: `${out}/definition-force-moment.png` });
+  await defs
+    .locator('app-solver-math')
+    .last()
+    .screenshot({ path: `${out}/definition-cancelled-moment.png` });
   assert((await defs.textContent()).includes('Internal forces exposed'));
   await d.getByRole('button', { name: 'Free Bodies', exact: true }).click();
   await d.locator('.overviewDetails > summary').click();

@@ -576,7 +576,7 @@ export class ForceDefinitionsComponent {
           to: { x: 145, y: 105 },
           label: 'F_y',
           arrow: true,
-          color: 'var(--warning)',
+          color: 'var(--accent)',
           width: 1.4,
         },
       ],
@@ -590,9 +590,9 @@ export class ForceDefinitionsComponent {
   private cancelledTermsFor(reference: ReferenceId) {
     const name = reference === 'CoM' ? '\\mathrm{CoM}' : reference;
     const cancelled: Record<ReferenceId, string> = {
-      A: String.raw`\color{red}{\cancel{(\vec r_{A/A}\times\vec F_A)_z}}`,
-      CoM: String.raw`\color{red}{\cancel{(\vec r_{\mathrm{CoM}/\mathrm{CoM}}\times\vec W)_z}}`,
-      B: String.raw`\color{red}{\cancel{(\vec r_{B/B}\times\vec F_B)_z}}`,
+      A: String.raw`\textcolor{red}{\cancel{(\vec r_{A/A}\times\vec F_A)_z}}`,
+      CoM: String.raw`\textcolor{red}{\cancel{(\vec r_{\mathrm{CoM}/\mathrm{CoM}}\times\vec W)_z}}`,
+      B: String.raw`\textcolor{red}{\cancel{(\vec r_{B/B}\times\vec F_B)_z}}`,
     };
     const retained: Record<ReferenceId, string> = {
       A: String.raw`(\vec r_{B/A}\times\vec F_B)_z+(\vec r_{P/A}\times\vec F_1)_z+(\vec r_{\mathrm{CoM}/A}\times\vec W)_z+M_A`,
