@@ -654,6 +654,109 @@ check(
   afterBarrel
 );
 
+// -------------------------------------------- 7. it reopens the way it was saved
+console.log('\nreopened from its own URL');
+
+/**
+ * The maintainer's own drawing, from the session it was drawn in (decision S27).
+ *
+ * A cylinder whose barrel end rides a slot cut in a grounded ternary, driven at
+ * its slide, its rod welded into a second grounded ternary. It ran when it was
+ * drawn and would not run when it was reopened: the URL stores a coordinate on
+ * a grain of about a thousandth of a user unit, which left the riding joint
+ * 7.6e-2 model units off its own slot line, and the coupled solver's admission
+ * gate -- a millionth of the mechanism's size -- refused the whole drawing for
+ * it. Worse than a reload, because undo replays a URL: every undo landed on the
+ * same refusal.
+ */
+const REOPENED =
+  '2v.8h,38.5,1.1011.4A,A,0JI,08-,0.0B,B,8V,JR,0.GC,C,0Pt,Pa,0.9D,D,041,6e,0,ABC,A,B.0D1,D1,TQ,62,0.8F,F,pQ,5f,0.hE,E,H-,6F,0,DD1,D,D1,038.4G,G,1WI,0KT,0.GH,H,1Vi,5M,0..ARABC,ABC,0,0,0CE,C0,c5cae9,A,B,C,,.ARDD1,DD1,0,0,Ci,6L,303e9f,D,D1,,.AREFGH,EFGH,0,0,vw,1P,303e9f,E,F,G,H,,EF,FGH.aREF,EF,0,0,Yi,5y,303e9f,E,F,,.aRFGH,FGH,0,0,1H8,03A,00695C,G,F,H,,...N_h*1jPzBJ';
+
+/** How far the riding end joint stands off the slot line it rides. */
+const offItsSlot = () =>
+  page.evaluate(() => {
+    const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+    const ram = srv.sealedStructures()[0];
+    const d = ram.mountA;
+    if (!d.slotJointA || !d.slotJointB) return null;
+    const a = d.slotJointA;
+    const b = d.slotJointB;
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    return Math.abs((d.x - a.x) * (b.y - a.y) - (d.y - a.y) * (b.x - a.x)) / len;
+  });
+
+await page.goto(`${BASE}/?${REOPENED}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await page.waitForTimeout(500);
+const reopened = await drawing();
+await film.shot('15-reopened');
+check(
+  'a drawing saved a hair off its slot line still runs when it is reopened',
+  reopened.valid && reopened.failure === null && reopened.dof === 1,
+  reopened
+);
+
+const chipsRead = await page.evaluate(() =>
+  [...document.querySelectorAll('.tabButton')].map((one) => one.innerText.replace(/\n/g, ' | '))
+);
+check(
+  'and neither analysis chip asks for a fix',
+  !chipsRead.some((one) => /to fix/.test(one)),
+  chipsRead.join(' // ')
+);
+
+const seatedAtLoad = await offItsSlot();
+check(
+  'the riding end joint is seated on its slot at load',
+  seatedAtLoad !== null && seatedAtLoad < 1e-2,
+  { seatedAtLoad }
+);
+
+// It plays, and the end joint stays on its slot all the way round.
+await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
+await page.waitForTimeout(600);
+let worstOff = seatedAtLoad ?? 0;
+await film.during(140, 8, '16-reopened-playing', async () => {
+  await page.locator('button.playButton').click();
+  await page.waitForTimeout(1200);
+});
+for (let i = 0; i < 6; i++) {
+  await page.waitForTimeout(160);
+  worstOff = Math.max(worstOff, (await offItsSlot()) ?? 0);
+}
+await page.locator('button.playButton').click();
+await page.waitForTimeout(300);
+check('and it stays on that slot through the cycle', worstOff < 1e-2, { worstOff });
+
+// Undo and redo replay URLs, which is the path that used to land on the
+// refusal. A drag first, so there is something to undo.
+await page.locator('.tabButton', { hasText: 'Edit' }).click();
+await page.waitForTimeout(500);
+const dragged = await drawing();
+await grab(dragged.mountB);
+await page.mouse.move(onRail ? onRail.x : 700, 420, { steps: 12 });
+await page.waitForTimeout(180);
+await page.mouse.up();
+await page.waitForTimeout(600);
+await page.evaluate(() => {
+  ng.getComponent(document.querySelector('app-new-grid')).saveHistoryService.undo();
+});
+await page.waitForTimeout(700);
+const undoneReopened = await drawing();
+check(
+  'undo replays the URL and the drawing still runs',
+  undoneReopened.valid && undoneReopened.failure === null,
+  undoneReopened
+);
+await page.evaluate(() => {
+  ng.getComponent(document.querySelector('app-new-grid')).saveHistoryService.redo();
+});
+await page.waitForTimeout(700);
+const redoneReopened = await drawing();
+check('and so does redo', redoneReopened.valid && redoneReopened.failure === null, redoneReopened);
+await film.shot('17-after-undo-redo');
+await contactSheet(`${OUT}/*16-reopened-playing*.png`, `${OUT}/sheet-reopened.png`, 4, 0.5);
+
 await contactSheet(`${OUT}/*02-toward*.png`, `${OUT}/sheet-drop.png`, 3, 0.5);
 await contactSheet(`${OUT}/*05-sliding*.png`, `${OUT}/sheet-slide.png`, 3, 0.5);
 await contactSheet(`${OUT}/*08-carrier-drag*.png`, `${OUT}/sheet-carrier.png`, 3, 0.5);

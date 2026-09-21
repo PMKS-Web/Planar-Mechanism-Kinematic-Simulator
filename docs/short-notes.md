@@ -1534,10 +1534,10 @@ Worth a `grep '_formControl='` over `edit-panel.component.html` against the cont
 form when a control's behavior looks unreachable. A form control nobody binds is not harmless: the
 audit will find it, and so will anything else that drives the panel through its form.
 
-### An unsolvable rebuild inside a posed edit takes the machine's anchor with it
+### An unsolvable rebuild inside a posed edit took the machine's anchor with it
 
 Park a machine away from its start, right-click a **grounded** pin and choose Joint Type →
-Prismatic: the pose you were looking at quietly becomes the start. On `Cylinder_Boom`'s grounded
+Prismatic: the pose you were looking at quietly became the start. On `Cylinder_Boom`'s grounded
 end joint `G`, a third of the way round the cycle, the anchor goes from 424.16 to 49.81 — and a
 plain `4-Bar`'s grounded pin `D` does exactly the same thing, so it is nothing to do with
 cylinders. `e2e/posed-edit-audit.mjs` says it as `anchor moved from 424.16 to 49.81 without saying
@@ -1568,8 +1568,15 @@ at all. Only the canvas's `closePosedEdit` (`component/new-grid/new-grid.compone
 right-click does not.
 
 Both predate the cylinder work: a detached worktree at `477f2f7c`, the parent of
-`feature/cylinder-sealed-slide`, reproduces the same two numbers. The audit row is left failing on
-purpose, so the nightly goes on saying it.
+`feature/cylinder-sealed-slide`, reproduces the same two numbers.
+
+**Both are fixed now**, and the row is green. `refreshAnchors` adds a machine's key to `alive`
+before it asks whether the machine can be solved, so "still here" is about the owned-joint set and
+not about the solver: the four-bar re-anchors exactly, and the cylinder honestly reports
+`lost: 'M1'`, both as the paragraph above predicted. `capturingPose` then narrates that `lost`
+through `MechanismService.sayStartMoved`, which is the sentence and the transport chip the
+canvas's `closePosedEdit` used to own alone — so the same words now come out whether the edit
+arrived by hand or through a menu row. `e2e/ghost-is-the-start.mjs` holds the second half by name.
 
 ### Recoloring a *link* never saved, so the color rode in on the next edit
 
@@ -1865,3 +1872,153 @@ claimed by the earlier cylinder too, which painted it *before* the later cylinde
 later head came out bare `#000`. The chain was right or wrong depending only on which of the two
 cylinders was drawn first. Decision S24's order removes the luck; the asymmetry is worth knowing
 before reading a bug report that says "sometimes".
+
+### `refreshAnchors` held an anchor across an edit made *at* the start pose
+
+The anchor is held across a rebuild on purpose — that is what carries a machine's start through an
+edit made at some *other* pose. Held whenever the topology and the rule were unchanged, it also
+outlived the ordinary case. Drag the driven crank's own pin, or the ground it turns about, while
+the drawing is showing its start: the design's t = 0 is the drawing as edited, and the anchor goes
+on naming the angle the crank used to stand at. Nothing looks wrong, because at the start pose the
+canvas draws no ghost (`showStartGhost`). Press play, pause anywhere, and the ghost appears a
+third of a turn from where stop-to-start lands — which is the report this was found from, and it
+reproduces on a plain `4-Bar` with no cylinder anywhere.
+
+`reanchorIfStartMoved` is the guard, and the condition is worth understanding: for a machine this
+rebuild did **not** stage, `restoreStartPose` has just put the editable arrays on that machine's
+own t = 0, so the sample 0 it has just been solved into *is* its start. `anchorStillNames`
+(`model/mechanism/anchor.ts`) compares the anchor's seed against that sample rather than re-reading
+the coordinate, because the coordinate is stored on purpose: re-derived every rebuild it would walk
+the start a fraction of a sample at a time and no single edit would look wrong. Pre-existing —
+`origin/staging` gives the identical numbers.
+
+### `isAtStartPose()` believed a synced drawing whose second machine was mid-cycle
+
+`seekMechanism` writes the shared sample index only for the **master** machine, the one with the
+longest cycle. Any other machine can therefore be parked a third of the way round with
+`mechanismTimeStep` still reading zero — and a posed edit's closing re-seek (`seekToCoordinate`)
+leaves it exactly there. `atStartPose` only consulted the per-machine clocks while *unsynced*, so
+synced it answered yes, and that is the answer `restoreStartPose` asks before every rebuild: the
+next edit anywhere on the drawing wrote that machine's displayed pose down as its t = 0. Its start
+moved 692 model units on `Three_Machines`, the URL saved the new one, and no ghost was drawn over
+it, because at the start pose there is nothing to draw. `model/edit-permission.ts` has described
+this answer as "every machine parked at its own start" the whole time; it is that now. Needs two
+machines to reach — one machine is always its own master.
+
+### An amber ghost outlived the anchor it was warning about
+
+`buildGhosts` falls back to `lastGoodGhost` when the anchored pose is out of reach, which is right
+during a drag: the ghost has to stay on screen at the moment it is warning that the start is about
+to be lost. It also ran when there was no anchor **at all** — switch a machine's drive to a joint
+whose input has no coordinate rule and the anchor goes while the cycle stays — so the amber ghost
+stood there between gestures over a machine that had no start to lose, and disagreed with
+`anchorIsReachable`, which has always answered that a machine with nothing anchored is not a
+machine in trouble. No anchor now means no ghost, and the held pose is dropped with it.
+
+### A machine that cannot be solved *this rebuild* has not stopped existing
+
+`refreshAnchors` collects the machines it can solve into `alive` and drops every anchor whose key
+is missing from it. One edit is often several steps, though, and the drawing between two of them is
+one nobody asked for: `JointTypeService.set` un-grounds a pin, retypes it and grounds it again, and
+in the middle the machine counts a freedom it will not have a moment later. Judged by the solve,
+that one rebuild dropped the anchor — and the next valid rebuild took a fresh one from sample 0,
+which while the edit is staged is the pose under the reader's hand. `alive.add(key)` now happens
+before the validity check, so the set means "this machine still exists" and nothing else. A machine
+that stays unsolvable keeps a stale anchor, which costs nothing: every surface that reads one asks
+about validity first.
+
+### `orderCoupledPartition` can leave nothing to solve, and then has to say so
+
+Its `'nothing-to-solve'` branch is reached when the drive's own walk has already placed every joint
+— which is what a drawing whose every joint rides the input's body looks like, a cylinder welded
+into one body at both ends on a grounded driven pin. The branch checked that the drawn pose
+satisfied its own constraints and returned, without touching `PositionSolver.stepCount`. The reset
+leaves that at zero, so `attemptPositionAnalysis` ran none of the steps the walk had emitted and
+reported success — and `Mechanism.findFullMovementPos` then read `jointMapPositions` for a joint
+nothing had placed and threw a `TypeError`. `stepCount = orderNum - 1` is the whole fix, and the
+number matters: the `'solved'` branch adds one more step at `orderNum` and sets `stepCount` to it.
+
+### A thrown solve leaves `MechanismService.mechanisms` holding the *previous* machine
+
+`updateMechanism` builds into a local and assigns at the end (`this.mechanisms = buildEach()`), so
+an exception inside any `new Mechanism(...)` escapes with the old array still in place. Nothing
+resets it and nothing says so: the panels go on reading a machine solved before the edit, and every
+sentence they draw is about a drawing that no longer exists. That is how "Nothing drives this
+mechanism" came to be shown about a joint that had just been given Driven Input — the machine
+answering was the one built the moment before the toggle. When a readiness sentence contradicts the
+drawing, look for a throw before you look at the sentence.
+
+### `partition.links` holds root bodies, so a welded cylinder member is in none of them
+
+`indexOfMechanismSolving` and `partById` both searched the top level only, and a cylinder's barrel
+or rod that a weld has folded into a compound is a leaf. Both answered "no such part" — so
+`isPartSimulatable` was false and the analysis panel told the reader that a body of a running
+machine "is not in a mechanism that can be solved", and `mechanismForId` returned nothing so every
+graph drew dashes. `bodiesUnder` in `model/link.ts` is the one flatten the three places share; the
+rate solver's `fillRatesByDifference` walks it too, for the same reason.
+
+### A slot constraint between a body and itself is `0 = 0`
+
+Which is harmless in the least-squares position solve — a redundant row, and the gate is on column
+rank — and not harmless in the force solve, where the guide couple it implies is a column no row can
+pin. `ForceSolver.analyzeFrame` skips a frozen cylinder's slide outright (`frozenCylinderAtSeal`),
+and `enumerateReactions` gives its seal an ordinary two-component pin pair with the body instead of
+a normal force, because a point body has two rows and a rigid attachment at a point is two unknowns.
+Getting either half alone gives a matrix one unknown short of its rows, which reports as "a body
+here has nothing to react against".
+
+### `admitCoupledSystem` was judging the URL's rounding, not the mechanism
+
+Its residual gate asks the drawn pose to satisfy its own constraints to
+`scale * 1e-6` — one part in a million of the mechanism's size — before the
+coupled solver will answer for it. That is the right shape for what it is
+refusing (a structure somebody has bent by hand) and far tighter than the
+precision a pose actually arrives at: the transcoder packs a coordinate onto a
+step of about a thousandth of a user unit, absolute, the same on a four-unit
+drawing and a two-hundred-unit one. On the maintainer's cylinder-on-a-slot that
+was 5.1e-4 against a 0.2 grain, and the riding end joint was stored 7.6e-2 off
+its slot line — so a mechanism that ran in the session it was drawn in refused
+to run when it was reopened, with `nothing-can-move` and every non-ground joint
+named unsolvable. The tolerance is floored at `4 * URL_COORDINATE_GRAIN` now
+(`drawnPoseTolerance`, shared with `prescribedGeometryHolds`), and
+`settleInitialPose` — which runs *after* the gate, and is the reason the gate
+could afford to be generous all along — puts the admitted pose exactly on its
+constraints. Nothing is moved at decode.
+
+### Undo replays a URL, so a decode-only bug is an every-undo bug
+
+`SaveHistoryService` stores states as encoded strings and restores by re-running
+the decoder. Anything that only goes wrong on the way back in therefore goes
+wrong on every undo and every redo, not merely on a reload — and the symptom is
+not "undo is broken" but a drawing that has no cycle, no anchor and no ghost
+until the next drag happens to reseat it. When a ghost or anchor report names a
+particular drawing, check that the drawing still solves from its own URL before
+looking at the anchor code.
+
+### A fixture's link string is one character per joint
+
+`buildFixtureLink` spreads `spec.joints`, so a link written `'DD1'` asks for
+joints `D`, `D` and `1`. A cylinder's buried inner end is named `A1` in the app
+and cannot be written in a fixture at all; published cylinder fixtures give it a
+single letter (`N`) instead, and every reader-facing name still drops it because
+`visibleBodyName` finds it by identity rather than by the shape of its id.
+
+### A published cylinder fixture has to carry its colors
+
+`cylinder-rod-color.spec.ts` sweeps `FIXTURE_GALLERY` for S15 — a cylinder is
+one color — and a fixture that says nothing about `fill` gets the palette
+cursor's next color per link, so its barrel and rod come out different and the
+sweep fails. Write the fills the drawing was shared with: the barrel, the rod
+and, where a weld has swallowed the rod, the body holding it.
+
+### A throw inside `new Mechanism(...)` used to leave every panel describing the previous drawing
+
+`MechanismService.updateMechanism` assigns `this.mechanisms` only after every
+partition has been built, so an exception from one solve escaped before the
+assignment and the service went on holding the machines from before the edit —
+readiness, the chips and the playback rows all true of a drawing the reader was
+no longer looking at. That is how a body with Driven Input on was told nothing
+drives it. `Mechanism`'s constructor now catches a throwing solve, logs it with
+`console.error`, and comes back invalid as `'solver-error'`, which readiness
+answers with its fallback. So a red console line plus "This mechanism could not
+be solved" means a solver bug to go and find, not a drawing to fix.

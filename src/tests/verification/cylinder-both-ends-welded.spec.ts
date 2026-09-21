@@ -37,8 +37,14 @@ import { RealLink } from '../../app/model/link';
  * *(September 21, 2026: it used to be refused an extension as well, with the
  * sentence `cylinder.both-ends-fused`. **S21** took that away — a welded body
  * changes shape under an edit like any compound, so the length goes through and
- * the body follows. "It will never simulate" is still true, and is readiness's
- * to say.)*
+ * the body follows. "It will never simulate" was left standing as readiness's
+ * to say; **S25**, later the same day, found that readiness's answer is that it
+ * **does**. A cylinder with one body at both ends is a fixed part of that body
+ * rather than a sliding pair, so a drawing built on one runs like any other
+ * rigid link — see `cylinder-frozen-body.spec.ts`. What it cannot do is stroke.
+ * This drawing is not one of those: its two ends are in two bodies meeting at a
+ * pin, which is a sliding pair still — and one a pin and a Slide together hold
+ * rigid, so the span cannot change either.)*
  */
 
 /**

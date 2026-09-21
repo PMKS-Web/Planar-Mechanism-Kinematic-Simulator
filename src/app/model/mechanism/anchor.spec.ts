@@ -6,6 +6,8 @@ import {
 import { cylinderBoomFixture } from '../../../test-utils/verification/slot-fixtures';
 import { RealJoint } from '../joint';
 import {
+  anchorFrom,
+  anchorStillNames,
   coordinateIn,
   coordinateRuleFor,
   coordinatesAcross,
@@ -235,6 +237,40 @@ describe('the start-pose anchor', () => {
       ])
     );
     expect(coordinateIn(rule, (id) => spun.get(id))!).toBeCloseTo(before, 6);
+  });
+
+  it('reads itself off sample 0, which is the pose the drawing starts in', () => {
+    const { rule, frames, coordinates } = crank();
+    const anchor = anchorFrom(rule, 'A,B,C,D', frames)!;
+    expect(anchor.coordinate).toBe(coordinates[0]);
+    expect(anchor.jointId).toBe(rule.jointId);
+    expect(anchor.topology).toBe('A,B,C,D');
+    // The seed is that same sample, joint for joint.
+    frames[0].forEach((joint) => {
+      expect(anchor.seed.get(joint.id)).toEqual({ x: joint.x, y: joint.y });
+    });
+  });
+
+  it('knows when the start has moved out from under it', () => {
+    // The question `refreshAnchors` asks of every machine no gesture has
+    // staged. Sample 0 is that machine's start by construction, so an anchor
+    // whose seed is not that pose is an anchor naming a start the design has
+    // left behind -- which is what an edit made *at* the start pose does, and
+    // what kept the ghost pointing a third of a turn from where stop-to-start
+    // actually lands.
+    const { frames } = crank();
+    const anchor = { seed: seedAt(frames, 0) };
+    expect(anchorStillNames(anchor, frames[0])).toBe(true);
+
+    // A joint moved by more than arithmetic noise is an edit.
+    const nudged = frames[0].map((joint, index) =>
+      index === 1 ? { ...joint, id: joint.id, x: joint.x + 0.01, y: joint.y } : joint
+    ) as (typeof frames)[0];
+    expect(anchorStillNames(anchor, nudged)).toBe(false);
+
+    // And a joint the seed has never heard of is one the edit drew.
+    expect(anchorStillNames({ seed: seedAt(frames, 0) }, frames[40])).toBe(false);
+    expect(anchorStillNames({ seed: new Map() }, frames[0])).toBe(false);
   });
 
   it('names a machine by everything it owns, not by one joint', () => {

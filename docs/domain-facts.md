@@ -94,6 +94,18 @@ Two rules keep the whole thing conservative, and both matter:
   moves, Gruebler's own number is the more useful: `-2` says how much has to come out, and a flat
   zero from a rank count says only that it is stuck. `e2e/phase1-drag.mjs` pins that.
 
+**A joint costs one less than the number of bodies it holds together**, which is where a cylinder
+welded into one body at both ends comes out right without anything being said about cylinders. Its
+seal has that body on either side of it, so it meets one body, costs nothing, and the assembly is
+one rigid link that turns on whatever pins it (decision S25). `model/cylinder-frozen.ts` is the
+predicate everything else asks — the force solver, the readiness warning, the Add Input refusal —
+and it reads "one body" off `mechanism/bodies.ts` so the count and the sentences cannot disagree.
+Two bodies meeting at a single pin are *not* one body and the slide there is a real sliding pair.
+They are rigid *to each other* all the same, because a pin and a Slide between the same two bodies
+remove all three freedoms between them — and that is a redundancy Gruebler cannot see, so it
+charges for the slot row, counts **0**, and the geometry rescues it to **1**. One is right: the
+pair is rigid to itself and turns as one body about whatever grounds it.
+
 The projection in `outsideRange` orthogonalizes the Jacobian's columns against each other before
 projecting. Subtracting each column in turn without that leaves part of the span behind and reports
 every genuine motion as a tangency — which is the answer exactly inverted, and it passes the whole

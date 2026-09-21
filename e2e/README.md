@@ -178,6 +178,13 @@ Not suites — import them from one.
   about ten minutes.
 - `posed-menu.mjs` — paused context-menu attachments and property edits keep the authored start
   pose. `PMKS_ONLY=<case>` runs one case.
+- `ghost-is-the-start.mjs` — one invariant checked after every gesture: wherever a ghost is drawn,
+  it is the pose stop-to-start produces and the design the URL saves. The named scenes are the
+  shrunk reproductions of the four causes in
+  `docs/edit-mode-playback-plan.md` §7.3 — an edit made *at* the start pose, a machine parked off
+  its own start in a synced drawing, an amber ghost outliving its anchor, and a menu edit that
+  moves a start without saying so — and the seeded fuzz after them is how they were found. A
+  filmstrip lands in `artifacts/ghost-is-the-start/`.
 - `analysis-editing.mjs` — `docs/analysis-mode-editing-plan.md`: dragging and undo in an analysis
   mode, what is still refused, click selects and drag tunes, the before/after comparison overlay,
   and the force-mode budget.
@@ -279,6 +286,15 @@ Not suites — import them from one.
 - `cylinder-end-on-joint.mjs` — ending the cylinder gesture on a joint attaches the rod there.
 - `cylinder-drag.mjs` — dragging a mount slides the piston within its travel, then grows or
   shrinks the ram past its stops.
+- `cylinder-frozen-body.mjs` — the maintainer's drawing from decision S25: a cylinder welded into
+  one body at both ends, on a driven grounded pin. It builds the body, reads the analysis drawer
+  before and after the input is switched on ("Nothing drives…" only while nothing does), checks
+  both chips read ready with no blocker, opens the panels for the body, the barrel, the rod, the
+  slide and an end joint and asserts each shows numbers rather than "not in a mechanism that can
+  be solved", right-clicks the seal for the grayed Add Input row and its reason, and runs the
+  machine. A filmstrip of the running body goes to `artifacts/cylinder-frozen-body/` with
+  `running-sheet.png` beside it; the head must not drift along the bore and the fused outline must
+  stay one body.
 - `cylinder-members.mjs` — a cylinder as three selectables: the square is joint S, lettered and
   draggable along its own axis; each member selects and outlines itself; a member drag still
   carries the whole part; an old payload's seal opens with a letter. Then the panels each piece
@@ -297,8 +313,12 @@ Not suites — import them from one.
   sheets to inspect.
 - `cylinder-mount-slot.mjs` — the drop itself (decision S22): a cylinder's end joint dragged over a
   bar with real mouse gestures, the channel previewing, the release cutting it, riding the slot and
-  coming off it, the carrier moved under the part, and the two machines it makes running. Filmstrips
-  and contact sheets to `artifacts/cylinder-mount-slot/`.
+  coming off it, the carrier moved under the part, and the two machines it makes running. It ends on
+  the maintainer's own drawing loaded **cold from its URL** (decision S27), which used to reopen
+  unsolvable because the riding joint was stored a rounding off its slot line: it has to run, read
+  ready on both chips, keep that joint on its slot through the cycle, and survive an undo and a redo
+  after a drag — the path that matters most, because undo replays a URL. Filmstrips and contact
+  sheets to `artifacts/cylinder-mount-slot/`, `sheet-reopened.png` among them.
 - `cylinder-panel.mjs` — the cylinder panel's past defects: a picker that moved the part, an edit
   that could not be undone, a silent limit, a rounded position.
 - `cylinder-skin.mjs` — the head's stops are drawn by the skin itself, with no annotation on the

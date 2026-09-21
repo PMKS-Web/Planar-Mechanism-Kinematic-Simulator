@@ -18,6 +18,7 @@
 import { Joint, PrisJoint, RealJoint } from './joint';
 import { Link } from './link';
 import { MODEL_SCALE } from './render-scale';
+import { describeFrozenCylinderDrive, frozenCylinderAtSeal } from './cylinder-frozen';
 
 /** The world, as a body an actuator can be measured against. */
 export const GROUND_BODY = 'ground';
@@ -89,6 +90,14 @@ export function describeActuator(joint: Joint): Actuator | string {
   if (joint.isWelded && !(joint instanceof PrisJoint)) {
     return 'This joint is welded, so the bodies it joins cannot move relative to each other. Unweld it, or drive a joint that has a freedom.';
   }
+  // The same statement made about a cylinder, where it is a weld somewhere else
+  // rather than a weld here (decision S25). Both of the part's end joints being
+  // in one body leaves one body on each side of the seal, so the slide holds
+  // nothing apart and there is no travel for a drive to command. Asked before
+  // the count below, which would otherwise answer "a driven joint needs two
+  // bodies" -- true, and no use to a reader looking at a cylinder.
+  const frozen = frozenCylinderAtSeal(joint);
+  if (frozen) return describeFrozenCylinderDrive(frozen);
   const bodies = incidentBodies(joint);
   if (bodies.length < 2) {
     return 'A driven joint needs two bodies to move relative to each other.';
@@ -138,6 +147,9 @@ export function describeActuatorRefusal(joint: Joint): { short: string; long: st
   if (!(joint instanceof RealJoint)) return { short: 'not a joint', long };
   if (joint.isWelded && !(joint instanceof PrisJoint)) {
     return { short: 'welded, no freedom', long };
+  }
+  if (frozenCylinderAtSeal(joint)) {
+    return { short: 'cannot extend', long };
   }
   const bodies = incidentBodies(joint).length;
   if (bodies < 2) return { short: 'needs 2 bodies', long };

@@ -1326,6 +1326,29 @@ export class RealLink extends Link {
   }
 }
 
+/**
+ * Every body at or under these links, once each: the roots, and the member bars
+ * a weld has swallowed into a compound.
+ *
+ * A compound's leaves are not usually bodies in their own right -- click a
+ * welded body and the compound is what gets selected -- but a cylinder's are
+ * (decision S13): the barrel's path selects the barrel and the rod's the rod,
+ * each with its own panel and its own numbers, welded or not. Anything that
+ * answers "which body is this id" or "what are this body's rates" therefore has
+ * to look past the top level, and each of those places walking the subsets for
+ * itself is how two of them came to disagree.
+ */
+export function bodiesUnder(links: readonly Link[] | undefined): RealLink[] {
+  const found = new Map<string, RealLink>();
+  const walk = (link: Link): void => {
+    if (!(link instanceof RealLink)) return;
+    found.set(link.id, link);
+    link.subset.forEach(walk);
+  };
+  (links ?? []).forEach(walk);
+  return [...found.values()];
+}
+
 // export class BinaryLink extends RealLink {}
 
 // export class NonBinaryLink extends RealLink {}
