@@ -70,6 +70,7 @@ import { MatTooltip } from '@angular/material/tooltip';
 import { MultiEditPanelComponent } from '../multi-edit-panel/multi-edit-panel.component';
 import { SegmentedComponent } from '../BLOCKS/segmented/segmented.component';
 import { JointTypeService } from '../../services/joint-type.service';
+import { SplitJointService } from '../../services/split-joint.service';
 import { JOINT_TYPES, JointTypeChoice, NOWHERE_TO_SLIDE } from '../../model/joint-type';
 
 /**
@@ -135,6 +136,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   bgImage = inject(BackgroundImageService);
   private notify = inject(NotificationService);
   private jointTypes = inject(JointTypeService);
+  protected splitJoints = inject(SplitJointService);
   /** What the Joint Type choice says under a block with nowhere to slide. */
   protected readonly nowhereToSlide = NOWHERE_TO_SLIDE;
   tutorial = inject(TutorialService);

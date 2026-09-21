@@ -2022,3 +2022,7 @@ drives it. `Mechanism`'s constructor now catches a throwing solve, logs it with
 `console.error`, and comes back invalid as `'solver-error'`, which readiness
 answers with its fallback. So a red console line plus "This mechanism could not
 be solved" means a solver bug to go and find, not a drawing to fix.
+
+### Split Joint treats a floating slot's carrier as a body
+
+A floating `PrisJoint` is absent from its carrier's `joints`: that absence is what makes it a slot rather than a pin. Split Joint counts the carrier so the action is offered, but releases that constraint instead of inserting a carrier pin. The same `PrisJoint`, drive units, and all rider memberships remain; it becomes dangling and moves a small distance normal to its former slot. Ordinary shared pins spread by a small fraction of the drawn joint scale. Both motions use the constrained drag path, so position locks and holds remain authoritative. Counting only `joint.links` makes every ordinary floating pin-in-slot look like a one-link refusal.

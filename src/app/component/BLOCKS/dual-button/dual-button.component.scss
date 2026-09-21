@@ -13,6 +13,11 @@
 
   .dual-button {
     .buttonDisabled {
+      color: var(--text-disabled) !important;
+      // The tooltip lives on `.button-seat`: a disabled native button emits
+      // no pointer events, so let the wrapper receive the hover.
+      pointer-events: none;
+
       path {
         fill: var(--text-disabled) !important;
       }
@@ -28,7 +33,14 @@
     display: flex;
     gap: 10px;
 
+    .button-seat {
+      display: grid;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
     button {
+      grid-area: 1 / 1;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -37,7 +49,7 @@
       padding: 0 10px;
       margin: 0;
       height: 50px !important;
-      flex: 1 1 auto;
+      flex: 1 1 100%;
       min-width: 0;
       overflow: hidden;
 
@@ -53,6 +65,19 @@
         gap: 2px;
         line-height: 16px;
         white-space: nowrap;
+      }
+
+      .button-copy {
+        display: grid;
+
+        > span {
+          grid-area: 1 / 1;
+          white-space: nowrap;
+        }
+
+        .button-copy-sizer {
+          visibility: hidden;
+        }
       }
 
       .mat-icon {
