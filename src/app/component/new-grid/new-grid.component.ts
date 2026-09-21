@@ -1,3 +1,4 @@
+import { placementBearing } from '../../model/placement-snap';
 import { SvgGridService } from '../../services/svg-grid.service';
 import { heldBars, heldBarsReaching, heldBySentence, holdList } from '../../model/link-holds';
 import { holdChips } from '../../model/hold-chips';
@@ -1938,27 +1939,8 @@ export class NewGridComponent implements OnDestroy {
   creatingForce($event: MouseEvent) {
     const mousePos = this.svgGrid.screenToModelFromXY($event.clientX, $event.clientY);
     const ghost = this.forceGhost;
-    if (ghost) ghost.moveDirectionHandle(this.forceEndSnapped(ghost.startCoord, mousePos, $event));
-  }
-
-  /**
-   * Where a force being placed points: the cursor's bearing from the anchor,
-   * rounded to the nearest fifteen degrees, at the cursor's distance.
-   *
-   * A load in a textbook problem is horizontal, vertical or at a round
-   * angle, and a hand cannot hold a mouse at 30 degrees; it holds it at 29
-   * and the panel then reads 29. Option lets the arrow go anywhere, the same
-   * key that frees a joint from the grid.
-   */
-  private forceEndSnapped(start: Coord, cursor: Coord, event: MouseEvent): Coord {
-    if (event.altKey) return cursor;
-    const dx = cursor.x - start.x;
-    const dy = cursor.y - start.y;
-    const length = Math.hypot(dx, dy);
-    if (length < 1e-9) return cursor;
-    const step = Math.PI / 12;
-    const angle = Math.round(Math.atan2(dy, dx) / step) * step;
-    return new Coord(start.x + length * Math.cos(angle), start.y + length * Math.sin(angle));
+    if (ghost)
+      ghost.moveDirectionHandle(placementBearing(ghost.startCoord, mousePos, $event.altKey));
   }
 
   startCreatingLink() {
@@ -4148,7 +4130,7 @@ export class NewGridComponent implements OnDestroy {
           const start = this.svgGrid.screenToModel(this.lastRightClickCoord);
           // The arrow lands where the preview has been pointing: at the
           // snapped bearing, unless Option is held.
-          const end = this.forceEndSnapped(start, mousePosInSvg, $event);
+          const end = placementBearing(start, mousePosInSvg, $event.altKey);
           this.mechanismSrv.createForce(start, end, this.forceCreateOn);
           this.dragState.finishCreating();
           this.forceGhost = undefined;

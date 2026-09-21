@@ -93,6 +93,7 @@ import { ForceAnalysisSeries, ForceAnalysisMode } from '../model/mechanism/force
 import {
   arrowPath,
   buildVectorTrace,
+  sweptSpanOf,
   DrawnVectorTrace,
   LiveVectorArrow,
   planar,
@@ -1852,7 +1853,7 @@ export class MechanismService {
       solved.joints.length,
       this.positionSamplerFor(solved, part),
       vectorAt,
-      this.sweptSpanOf(solved)
+      sweptSpanOf(solved.joints, MODEL_SCALE)
     );
   }
 
@@ -1893,26 +1894,6 @@ export class MechanismService {
           : "Linear Link's CoM Acc";
     return (index) =>
       planar(this.samples.sampleAt(solved, index, 'kinematic', '', property, part.id));
-  }
-
-  /** How big this machine is on the drawing: the box its cycle sweeps out. */
-  private sweptSpanOf(solved: Mechanism): number {
-    let minX = Number.POSITIVE_INFINITY;
-    let minY = Number.POSITIVE_INFINITY;
-    let maxX = Number.NEGATIVE_INFINITY;
-    let maxY = Number.NEGATIVE_INFINITY;
-    solved.joints.forEach((frame) =>
-      frame.forEach((joint) => {
-        minX = Math.min(minX, joint.x);
-        maxX = Math.max(maxX, joint.x);
-        minY = Math.min(minY, joint.y);
-        maxY = Math.max(maxY, joint.y);
-      })
-    );
-    const span = Math.hypot(maxX - minX, maxY - minY);
-    // A machine whose joints all sit on one point sweeps nothing; one user
-    // length keeps the arrows from collapsing to nothing with it.
-    return Number.isFinite(span) && span > 0 ? span : MODEL_SCALE;
   }
 
   /**
