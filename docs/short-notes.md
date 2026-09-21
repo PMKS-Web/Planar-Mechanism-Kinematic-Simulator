@@ -1442,6 +1442,37 @@ joint's own hitbox at its center (`objectScale / 4`, drawn in `jointHolder`, whi
 `sliderHolder`). Worth knowing before writing a test that means to point at a Slide's block: it
 will select the rider link and say nothing about the joint.
 
+`riderOutline` is no longer the rider's `d`, though: it is **what is drawn** at that rider
+(`drawnOutlineOf`), which for a cylinder member is the skin's silhouette (S18). Two consequences
+for anything looking for a plate in the DOM. A plate holding a member is **not in the slider
+layer** -- it is painted in that member's place in the skin's stack, inside the cylinder group,
+and it carries the body's own `id`, so `[id="DD1"]` finds the plate rather than an empty
+links-layer element. And a **Pin-in-slot** at a cylinder end now draws no rider at all: the skin
+is already above the block, so there is nothing for this layer to hoist.
+
+### `channels` skips a ram's bore and `channelsInLocalFrame` did not, which only a real silhouette showed
+
+Both build the same capsule for the same floating sliders, and only the first carried
+`if (joint.isSealed) continue` -- the bore is drawn by the skin, mouth and all, so it is never an
+ordinary channel. The second is the plate's copy, and the omission was invisible for as long as a
+plate drew the thin bar a member's two joints describe: the capsule is wider than that bar, so the
+subtraction removed a shape that was not there. Give the plate the barrel's real profile and the
+same subtraction hollows the part into a long fork with a rounded slot down the middle of it --
+`fill-rule="evenodd"` doing exactly what it was asked. If a fused shape comes out hollow, look for
+a second subpath before you look at the union.
+
+### `SliderMarkService.marks` maps every `PrisJoint`, and a cylinder's seal is one
+
+Four cylinders put four extra marks in the list nothing ever draws -- `isSkinned` skips them in
+`slotStack` -- and until S18 each of them still ran `plateFor`, a Boolean union per seal per pose,
+and each of them claimed its riders in the `claimed` set the list shares. That set exists so one
+link pinned to two blocks is not drawn twice, and it is walked in joint order. So a rod welded into
+a body lost its plate to the seal at the *other* end of the same rod: N comes before O in the joint
+list, N took the body, and the Slide at O was left with no rider to fuse and a bare black block on
+screen. A seal now plates nothing and claims nothing, which is the honest rule -- the skin draws
+its whole part -- and is also four fewer unions per pose. `fuseSharedPlates` had to learn the same
+thing: a seal is `welded` (`rotates === false`), so it was leading weld groups too.
+
 ### The traced-path layer is drawn over every joint marker, slider marks included
 
 `#pathsHolder` sits *after* `#jointHolder` in `new-grid.component.html`, so a joint's own swept
@@ -1585,3 +1616,38 @@ its interior exempted. The rule now is that a pose is only ever `cylinderPoseAlo
 lengths and the fitted span, a clamped fit answers `undefined` (which `planEdit` turns into
 `cylinder.carried-too-far`), and `planEdit` measures every cylinder it settled against its own
 pose's lengths before committing.
+
+### With both cylinder mounts pinned, the barrel cannot move the seal — only relabel it
+
+The seal's place along the barrel is `span − rod` whenever both end joints are held, and neither
+term mentions the barrel. So the barrel rung of `whatGives` (S17) never moves the head one model
+unit: it changes the *travel*, and therefore what percentage the same point reads as. It is the
+last rung for that reason, and it is reachable only with both ends **locked** — grounded ends move
+instead, which is why a both-grounded ram now expands and contracts under a drag of the head rather
+than appearing to ignore it. Both doors stay on the one ladder so they cannot answer one drawing
+two ways: `poseForSealAt` converts the pointer to a share and hands it to the same function the
+field uses.
+
+### A cylinder with both mounts locked gives its member panels a lock banner, not a padlock row
+
+`frozenJoints` closes a lock on a mount over the part's consequences, so locking A *and* B holds
+all four joints, and the Barrel and Rod panels then show the lock banner in place of their
+`hold-field-block` rows. An e2e that wants a ram both locked and fixed at a length has to press the
+padlocks first and lock afterwards; `e2e/cylinder-members.mjs` does it in that order and says so.
+While there: a `.notification` carries a refusal's **long** sentence, never its `short`, so a check
+that greps for the short string passes only by accident.
+
+### A Material tooltip takes the pointer, and `matTooltipClass` is not where to say otherwise
+
+`.cdk-overlay-pane` is `pointer-events: auto`, so an open tooltip is what a press over it lands on
+— reported on the Joint Type choice, where a grayed option's reason opened over the options beside
+it and ate the press meant for one of them. `matTooltipClass` cannot fix it: that class goes on the
+tooltip's inner element, and turning the pointer off there only hands the press to the pane behind
+it. The switch is `disableTooltipInteractivity` in `MAT_TOOLTIP_DEFAULT_OPTIONS`, which adds
+Material's own `mat-mdc-tooltip-panel-non-interactive` to the *pane*;
+`BLOCKS/tooltips-are-labels.ts` is that provider, given by `segmented-block` and the right-click
+card. Also worth knowing: a tooltip has exactly two positions, the one asked for and its exact
+inversion, and the overlay picks the inversion whenever the first does not fit — so `above` becomes
+`below` in a short window, over whatever is under it, and no API stops it. Which side a reason opens
+on (`sideFor`, `reasonSide`) is therefore the tidy half of the answer and the inert pane is the
+half that holds when the window is small.

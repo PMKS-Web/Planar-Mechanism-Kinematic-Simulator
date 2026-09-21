@@ -10,10 +10,11 @@ import { GridUtilsService } from '../../app/services/grid-utils.service';
 import { fixturePayload } from '../../test-utils/verification/fixture-gallery';
 import { cylinderBetween } from '../../test-utils/verification/slot-fixtures';
 import { MechanismFixture } from '../../test-utils/verification/fixture';
-import { RealJoint } from '../../app/model/joint';
+import { RealJoint, RevJoint } from '../../app/model/joint';
 import { RealLink } from '../../app/model/link';
 import { Coord } from '../../app/model/coord';
 import { cylinderSizeOf, cylindersIn } from '../../app/model/cylinder';
+import { NotificationService } from '../../app/services/notification.service';
 
 /**
  * The cylinder's own edits, driven through the service and read off the
@@ -123,25 +124,48 @@ describe('an edit that goes through is one entry', () => {
   });
 });
 
+/**
+ * Put a Lock on one joint.
+ *
+ * The rebuild matters: the frozen set is cached against the cylinder revision,
+ * so a flag written straight onto a joint is invisible until something bumps
+ * it. In the app the lock toggle rebuilds; here it has to be said out loud.
+ */
+function lock(mechanism: MechanismService, ids: string[]): void {
+  for (const id of ids) {
+    (mechanism.joints.find((one) => one.id === id) as RevJoint).locked = true;
+  }
+  mechanism.updateMechanism(false);
+}
+
+/** Keep a member at the length it has, the way its padlock does. */
+function fixLength(mechanism: MechanismService, id: string): void {
+  (mechanism.links.find((link) => link.id === id) as RealLink).hold = 'length';
+  mechanism.updateMechanism(false);
+}
+
 describe('an edit that is refused changes nothing', () => {
   it('leaves the joints and the URL exactly as they were', () => {
+    // Both ends locked and both members keeping their length, which after S19
+    // is the whole of what a refusal means: not "that number is too big" — the
+    // part goes as far as it can toward one of those — but "none of it can be
+    // had at all".
     const cases: ((
       grid: GridUtilsService,
       sealed: ReturnType<typeof cylindersIn>[0]
     ) => boolean)[] = [
-      // Both joints grounded: the frame settles the direction.
+      // There is nothing left to turn the part about.
       (grid, sealed) => grid.setCylinderAngle(sealed, 1),
-      // A barrel with no travel left in it.
-      (grid, sealed) => grid.setBarrelLength(sealed, 1e-3),
-      // A rod shorter than the travel.
-      (grid, sealed) => grid.setRodLength(sealed, 1e-3),
+      // No share of the travel but the one it is standing at.
+      (grid, sealed) => grid.setCylinderStart(sealed, 0.9),
     ];
     for (const edit of cases) {
-      const { grid, urls, saves, sealed, places } = build(
-        ramFixture({ groundA: true, groundB: true })
-      );
+      const { mechanism, grid, urls, saves, sealed, places } = build(ramFixture());
+      lock(mechanism, ['A', 'D']);
+      for (const id of ['AB', 'CD']) fixLength(mechanism, id);
       const before = places();
       const url = urls.generateUrlQuery();
+      const said = vi.spyOn(NotificationService.prototype, 'refusal').mockImplementation(() => {});
       saves.mockClear();
 
       expect(edit(grid, sealed())).toBe(false);
@@ -149,15 +173,143 @@ describe('an edit that is refused changes nothing', () => {
       expect(places()).toEqual(before);
       expect(urls.generateUrlQuery()).toBe(url);
       expect(saves).not.toHaveBeenCalled();
+      // One refusal said, and no undo step minted for an edit that did nothing.
+      expect(said).toHaveBeenCalledTimes(1);
+      said.mockRestore();
     }
   });
 
   it('says nothing at all when a drag of the seal has nowhere to go', () => {
-    const { grid, sealed, places } = build(ramFixture({ groundA: true, groundB: true }));
+    // Both ends locked and both members keeping their length: the ladder has
+    // no rung left, and a pointermove is not the place to say so.
+    const { mechanism, grid, sealed, places } = build(ramFixture());
+    lock(mechanism, ['A', 'D']);
+    for (const id of ['AB', 'CD']) {
+      (mechanism.links.find((link) => link.id === id) as RealLink).hold = 'length';
+    }
+    mechanism.updateMechanism(false);
     const before = places();
 
     expect(grid.dragCylinderSeal(sealed(), new Coord(4, 0))).toBe(false);
     expect(places()).toEqual(before);
+  });
+});
+
+/**
+ * A number that could not be fully honored (decision S19).
+ *
+ * The arithmetic has its own tests; these are the two promises only the service
+ * can keep — that going as far as it could is still **one** entry in the
+ * history, so Undo takes back the whole of it, and that the reader is told once
+ * how far it got, as news rather than as a refusal.
+ */
+describe('an edit that lands short of the number typed', () => {
+  it('is one entry, says so once, and says how far it got and what stopped it', () => {
+    const { mechanism, grid, history, urls, saves, sealed, places } = build(ramFixture());
+    // The rod keeps its length, so the barrel may only grow until its travel
+    // equals the rod — the maintainer's own case, at this ram's size.
+    fixLength(mechanism, 'CD');
+    // The padlock is itself an edit and rides the URL, so it is the state the
+    // undo below has to land back on.
+    mechanism.save();
+    const before = cylinderSizeOf(sealed());
+    const wasHere = places();
+    const url = urls.generateUrlQuery();
+    const news = vi.spyOn(NotificationService.prototype, 'news').mockImplementation(() => {});
+    const refused = vi.spyOn(NotificationService.prototype, 'refusal').mockImplementation(() => {});
+    saves.mockClear();
+
+    expect(grid.setBarrelLength(sealed(), before.barrelLength * 4)).toBe(true);
+
+    const after = cylinderSizeOf(sealed());
+    expect(after.rodLength).toBeCloseTo(before.rodLength, 3);
+    expect(after.barrelLength).toBeGreaterThan(before.barrelLength);
+    expect(after.barrelLength).toBeLessThan(before.barrelLength * 4);
+    // News, not a refusal: the edit landed. A refusal is the app's word for
+    // nothing having changed.
+    expect(refused).not.toHaveBeenCalled();
+    expect(news).toHaveBeenCalledTimes(1);
+    const [code, text] = news.mock.calls[0];
+    expect(code).toBe('cylinder.barrel-length-stopped-short');
+    expect(text).toContain('stopped at');
+    expect(text).toContain('fixed length');
+    expect(text).toContain(mechanism.bodyLabel(sealed().rod));
+
+    // One entry: the service saves nothing, the caller does, and one Undo puts
+    // the whole thing back.
+    expect(saves).not.toHaveBeenCalled();
+    mechanism.save();
+    history.undo();
+    expect(places()).toEqual(wasHere);
+    expect(urls.generateUrlQuery()).toBe(url);
+    news.mockRestore();
+    refused.mockRestore();
+  });
+
+  it('asking again for exactly the length it reached is an edit with nothing to stop', () => {
+    const { mechanism, grid, sealed } = build(ramFixture());
+    fixLength(mechanism, 'CD');
+    const before = cylinderSizeOf(sealed());
+    const news = vi.spyOn(NotificationService.prototype, 'news').mockImplementation(() => {});
+    grid.setBarrelLength(sealed(), before.barrelLength * 4);
+    const reached = cylinderSizeOf(sealed()).barrelLength;
+    news.mockClear();
+
+    expect(grid.setBarrelLength(sealed(), reached)).toBe(true);
+
+    expect(cylinderSizeOf(sealed()).barrelLength).toBeCloseTo(reached, 6);
+    expect(news).not.toHaveBeenCalled();
+    news.mockRestore();
+  });
+});
+
+/**
+ * The priority ladder, read off the drawing rather than off the arithmetic
+ * (decision S17).
+ *
+ * The pure functions have the whole table; these are the two promises only the
+ * service can keep — that a grounded joint the ladder had to spend really goes
+ * somewhere and is still grounded afterwards, and that a locked one never
+ * moves however an edit arrives.
+ */
+describe('what gives, once the edit has been through a transaction', () => {
+  it('moves a grounded joint rather than refuse a number nothing else can satisfy', () => {
+    const { mechanism, grid, sealed, at } = build(ramFixture({ groundA: true, groundB: true }));
+    const before = cylinderSizeOf(sealed());
+    const wasA = { x: at('A').x, y: at('A').y };
+
+    // Longer than the whole span, so neither sliding the seal nor changing the
+    // barrel can absorb it: the ladder is down to its grounded joints.
+    expect(grid.setRodLength(sealed(), before.span * 1.5)).toBe(true);
+
+    const after = cylinderSizeOf(sealed());
+    expect(after.rodLength).toBeCloseTo(before.span * 1.5, 3);
+    expect(at('A').x).toBeCloseTo(wasA.x, 6);
+    expect(at('D').x).toBeGreaterThan(before.span + 1);
+    // Spent, not unbolted: it is still a grounded joint, in a new place.
+    expect((at('D') as RealJoint).ground).toBe(true);
+  });
+
+  it('never moves a locked joint, whichever field or gesture the edit arrives through', () => {
+    const edits: ((grid: GridUtilsService, sealed: ReturnType<typeof cylindersIn>[0]) => void)[] = [
+      (grid, sealed) => grid.setCylinderAngle(sealed, Math.PI / 3),
+      (grid, sealed) => grid.setCylinderStart(sealed, 0.95),
+      (grid, sealed) => grid.setBarrelLength(sealed, cylinderSizeOf(sealed).barrelLength * 0.4),
+      (grid, sealed) => grid.setRodLength(sealed, cylinderSizeOf(sealed).rodLength * 0.3),
+      (grid, sealed) => grid.dragCylinderSeal(sealed, new Coord(sealed.seal.x + 3, 0)),
+    ];
+    for (const held of ['A', 'D']) {
+      for (const edit of edits) {
+        const { mechanism, grid, sealed, at } = build(ramFixture());
+        lock(mechanism, [held]);
+        const was = { x: at(held).x, y: at(held).y };
+
+        edit(grid, sealed());
+
+        expect(at(held).x).toBeCloseTo(was.x, 6);
+        expect(at(held).y).toBeCloseTo(was.y, 6);
+      }
+    }
   });
 });
 
