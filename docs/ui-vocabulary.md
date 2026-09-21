@@ -220,6 +220,29 @@ the barrel's buried inner end, and calls all three of the rest "joint", so
 "joint" is unambiguous from their side. Same treatment as `playback` and
 `actuator`.
 
+**The barrel's buried inner end is never named, anywhere a reader reads.** Not
+on the canvas, not in a panel, not in a menu, not in a notification, not in an
+`aria-label`, and **not in a file the app writes** — no CSV column, no JSON
+field, no DXF layer name, no report. A link's id is the sorted ids of its
+joints, so the name to avoid is not only `C1` but every id built on one: `CC1`
+for the barrel, `CC1F` for a bracket welded to its mount. `visibleBodyName` in
+`model/body-label.ts` is the one answer, reached through
+`MechanismService.visibleBodyName` / `bodyLabel` on screen and through
+`services/export/export-names.ts` in a file. The **one exception** is the
+developer drawer (right-panel tab 4), which production never reaches and which
+exists to show the model as the model is. `e2e/hidden-joint-audit.mjs` is what
+keeps the rest honest. This used to say the ids were fine in an export because
+the export was keyed on them; the maintainer overruled it on September 21,
+2026 — "a user should not see it under any circumstance" — and a key that has
+to stay unique now says what kind of body it is (`AD welded`) rather than
+falling back to the id.
+
+**Barrel and Rod are the names in every mode, not just Edit.** The two members
+are selected apart and hold different numbers, so `Kinematics for Barrel AC` and
+`Forces for Rod CB` read exactly as `Edit Barrel AC` and `Edit Rod CB` do, and
+the cylinder's own name — `Cylinder AD`, by its two end joints — is for the
+whole part: the export catalog's row for it, and a sentence about the part.
+
 **`ram` survives in code comments** — 113 of them — and was left there
 deliberately. This guide governs what the app *says*; rewriting a hundred
 explanations to change a synonym would churn a lot of carefully-worded prose for

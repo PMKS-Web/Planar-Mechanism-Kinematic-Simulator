@@ -269,6 +269,113 @@ check(
   JSON.stringify(boom.stored)
 );
 
+// ------------------------------- 7. the start-pose ghost wears the same colors
+//
+// The ghost is the real linkage carried back to where the machine starts --
+// "the same shapes in the same colors, at 22%" -- so it is a painter of a
+// cylinder like any other, and it has to ask the same rule. It did not: it
+// took each body's stored `fill`, and every cylinder in circulation stores a
+// rod color that has never been drawn, so the faded part behind a navy ram was
+// a mint-green rod in a lavender barrel.
+console.log('\nthe ghost of the start pose is the same part, earlier');
+const GHOST_OUT = 'artifacts/cylinder-ghost';
+mkdirSync(GHOST_OUT, { recursive: true });
+await page.goto(`${BASE}/?${payloads['Cylinder_Boom']}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await page.waitForTimeout(400);
+await page.screenshot({ path: `${GHOST_OUT}/00-at-the-start.png` });
+// Parked a third of the way through the stroke, which is where the ghost
+// appears at all: at the start pose there is nothing to be a ghost of.
+await page.evaluate(() => {
+  const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+  srv.seekMechanism(0, srv.mechanisms[0].cyclePeriod / 3);
+});
+await page.waitForTimeout(600);
+await page.screenshot({ path: `${GHOST_OUT}/01-displaced.png` });
+
+/** Each ghost body beside the live body it is a picture of. */
+const ghosted = await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const srv = grid.mechanismSrv;
+  const found = srv.sealedStructures()[0];
+  // The paths are in DOM order, which is the order the bodies are listed in.
+  // The command letters alone: the ghost is the same shape somewhere else, so
+  // its numbers differ and its commands cannot.
+  const shape = (d) => (d ?? '').replace(/[^A-Za-z]/g, '');
+  const drawn = [...document.querySelectorAll('.ghostBody')].map((node) => ({
+    fill: node.getAttribute('fill'),
+    shape: shape(node.getAttribute('d')),
+  }));
+  const bodies = srv.startPoseGhosts()[0].bodies;
+  const live = (selector) => ({
+    fill: document.querySelector(selector)?.getAttribute('fill') ?? null,
+    shape: shape(document.querySelector(selector)?.getAttribute('d')),
+  });
+  const at = (id) => drawn[bodies.findIndex((body) => body.linkId === id)] ?? null;
+  return {
+    barrel: { ghost: at(found.barrel.id), live: live('.cylinder-barrel') },
+    rod: { ghost: at(found.rod.id), live: live('.cylinder-rod') },
+    // The stored rod color, which is the one the ghost used to read.
+    stored: found.rod.fill,
+    bars: drawn.length,
+  };
+});
+check(
+  'the fixture is one that could show the bug: its rod stores a color it is not drawn in',
+  ghosted.stored !== ghosted.live?.fill && ghosted.stored !== ghosted.rod.live.fill,
+  JSON.stringify({ stored: ghosted.stored, drawn: ghosted.rod.live.fill })
+);
+check(
+  'the ghost paints both members in the inks the part is wearing',
+  ghosted.barrel.ghost?.fill === ghosted.barrel.live.fill &&
+    ghosted.rod.ghost?.fill === ghosted.rod.live.fill,
+  JSON.stringify(ghosted)
+);
+check(
+  'and draws them as the part rather than as the two bars its joints describe',
+  ghosted.barrel.ghost?.shape === ghosted.barrel.live.shape &&
+    ghosted.rod.ghost?.shape === ghosted.rod.live.shape,
+  JSON.stringify({ barrel: ghosted.barrel, rod: ghosted.rod })
+);
+
+// And a rod given a color of its own: the ghost follows the choice, not the
+// record it was following a moment ago.
+await select('rod');
+await openVisualSettings();
+// A swatch the barrel is not already wearing: this boom is drawn in the navy
+// that swatch 2 hands out, and a rod given the color it is standing in would
+// prove nothing.
+await pressSwatch(5);
+await page.evaluate(() => {
+  const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+  srv.seekMechanism(0, srv.mechanisms[0].cyclePeriod / 3);
+});
+await page.waitForTimeout(600);
+await page.screenshot({ path: `${GHOST_OUT}/02-rod-recolored.png` });
+const afterChoice = await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const srv = grid.mechanismSrv;
+  const found = srv.sealedStructures()[0];
+  const bodies = srv.startPoseGhosts()[0].bodies;
+  const drawn = [...document.querySelectorAll('.ghostBody')].map((node) =>
+    node.getAttribute('fill')
+  );
+  const at = (id) => drawn[bodies.findIndex((body) => body.linkId === id)] ?? null;
+  return {
+    rod: at(found.rod.id),
+    barrel: at(found.barrel.id),
+    liveRod: document.querySelector('.cylinder-rod')?.getAttribute('fill') ?? null,
+    liveBarrel: document.querySelector('.cylinder-barrel')?.getAttribute('fill') ?? null,
+  };
+});
+check(
+  'the rod’s own color reaches the ghost too, and the barrel keeps its own',
+  afterChoice.rod === afterChoice.liveRod &&
+    afterChoice.barrel === afterChoice.liveBarrel &&
+    afterChoice.rod !== afterChoice.barrel,
+  JSON.stringify(afterChoice)
+);
+
 // ------------------------------------------------------------------ wrap up
 check('nothing threw', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | '));
 writeFileSync(`${OUT}/report.json`, JSON.stringify({ results, consoleErrors }, null, 2));

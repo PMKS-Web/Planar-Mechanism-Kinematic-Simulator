@@ -194,17 +194,20 @@ export class ExportCatalogService {
   }
 
   /**
-   * What to call a body anywhere a reader will read it.
+   * What to call a body anywhere a reader will read it: whatever the panels
+   * call it.
    *
-   * A cylinder is one part in this drawer, so its pieces answer to the ram's
-   * name: a reaction headed `Rod GC` names a body the parts list never offered.
+   * A cylinder's two members used to answer to the whole part's name here, on
+   * the reading that a cylinder is one part in this drawer and a reaction
+   * headed `Rod GC` would name a body the parts list never offered. Both halves
+   * of that stopped being true. The barrel and the rod are selected apart and
+   * titled apart on the analysis panels (decision S10), so `Rod PC` is a name
+   * the reader has been shown; and naming them both after the part is what made
+   * a slide's two reactions -- one on the barrel, one on the rod -- into two
+   * identical rows a reader could not tell apart.
    */
   labelFor(link: Link): string {
-    const cylinders = this.mechanism.sealedStructures();
-    const cylinder = cylinders.find(
-      (candidate) => candidate.rod.id === link.id || candidate.barrel.id === link.id
-    );
-    return cylinder ? this.cylinderLabel(cylinders, cylinder.rod) : this.mechanism.bodyLabel(link);
+    return this.mechanism.bodyLabel(link);
   }
 
   /**

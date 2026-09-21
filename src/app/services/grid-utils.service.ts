@@ -96,6 +96,11 @@ function pointThroughFrame(
   return [toStart.x + along * toX - across * toY, toStart.y + along * toY + across * toX];
 }
 
+/** A joint by the letter it wears, or the name somebody typed over it. */
+function nameOfJoint(joint: { name?: string; id: string }): string {
+  return joint.name || joint.id;
+}
+
 /**
  * How an edit that could not be fully honored says so (decision S19).
  *
@@ -104,7 +109,7 @@ function pointThroughFrame(
  * screen. That split is why this is a pair of callbacks rather than a sentence.
  */
 interface StoppedShort {
-  /** What stopped: `Barrel AC`, `Rod CB`, `Starts at`. */
+  /** What stopped: `Barrel AB`, `Rod BC`, `Starts at`. */
   subject: string;
   /** The value reached, in the reader's own units. */
   say: (reached: number) => string;
@@ -1237,6 +1242,21 @@ export class GridUtilsService {
       cylinders,
       snapshot,
       tolerance: 1e-6,
+      // A refusal names bodies and joints, and `planEdit` cannot know what a
+      // reader calls either: a link's id is the sorted letters of its joints,
+      // and one of those may be a cylinder's buried inner end -- which is how a
+      // refusal came to name a body `CC1F`. These are the app's own names
+      // (S10, S11, S16), said once here for every sentence that file can write.
+      names: {
+        body: (body) => this.mechanismSrv.bodyLabel(body),
+        // A cylinder by its two end joints, the way its own panel is headed
+        // (S10) -- never by a member's id, which holds the buried end.
+        cylinder: (one) => `Cylinder ${nameOfJoint(one.mountA)}${nameOfJoint(one.mountB)}`,
+        joint: (id) => {
+          const joint = this.mechanismSrv.joints.find((one) => one.id === id);
+          return joint ? nameOfJoint(joint) : id;
+        },
+      },
       layoutFor: (cylinder, mountA, mountB) => {
         const carried = members.get(cylinder.seal.id);
         if (!carried) return undefined;

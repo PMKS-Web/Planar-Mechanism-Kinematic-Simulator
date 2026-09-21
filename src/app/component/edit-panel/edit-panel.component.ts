@@ -975,6 +975,19 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   }
 
   /**
+   * The body a selected force turns with, for the Reference frame choice.
+   *
+   * By the name the canvas tags it with rather than the link's own, which for a
+   * bracket welded to a barrel mount is an id holding the buried inner end
+   * (D14, S11) -- so the reader was offered a frame named after a joint the
+   * drawing never shows.
+   */
+  get forceFrameOption(): string {
+    const body = this.activeSrv.selectedForce?.link;
+    return `Link (${body ? this.mechanismService.visibleBodyName(body) : ''})`;
+  }
+
+  /**
    * A stored force in the unit the reader picked.
    *
    * Magnitudes are held in the length system's own force unit — lbf under
@@ -2228,7 +2241,12 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   /** No configuration of the locked bars makes the typed number true. */
   private refuseTypedValue(which: 'length' | 'angle'): void {
     const holds = this.gridUtils.lastHoldRefusal?.bars ?? [];
-    const named = holds.map((bar) => `fixed ${bar.hold} ${bar.name || bar.id}`).join(', ');
+    // Each bar by the name the canvas tags it with. The bar's own name is its
+    // id, and a body welded to a barrel mount carries the buried inner end in
+    // its id (D14, S11) -- so this sentence named a joint nothing draws.
+    const named = holds
+      .map((bar) => `fixed ${bar.hold} ${this.mechanismService.visibleBodyName(bar)}`)
+      .join(', ');
     this.notify.refusal(
       'hold.typed',
       `No position of the linkage gives this ${which} while ${named} holds. Release one, or ask for a value they allow.`,

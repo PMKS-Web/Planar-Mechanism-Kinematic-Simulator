@@ -694,7 +694,7 @@
             [formGroup]="forceForm"
             _formControl="isGlobal"
             tooltip="Global keeps the force pointing the same way. Local turns it with the link it is on."
-            option1="Link ({{ this.activeSrv.selectedForce.link.name }})"
+            option1="{{ forceFrameOption }}"
             option2="Grid"
           >
             Reference frame

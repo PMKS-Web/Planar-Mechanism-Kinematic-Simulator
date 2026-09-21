@@ -237,7 +237,7 @@ function cylinderSealMenu(): ContextMenuModel {
     long: 'This joint is inside a cylinder, which places it rather than solving for it, so a third body arriving here would have nothing holding it. Attach at one of the joints at its ends instead.',
   };
   return {
-    header: { title: 'Joint C', subtitle: 'Slider · Cylinder AB', crossing },
+    header: { title: 'Joint B', subtitle: 'Slider · Cylinder AC', crossing },
     // Every value but the chosen one is closed in the same four words, each
     // with the sentence its own step is refused by.
     choice: jointType(1, {
@@ -332,7 +332,7 @@ function cylinderSealMenu(): ContextMenuModel {
 /** One half of a cylinder: its own length, the whole part's angle, and a delete that takes both halves. */
 function cylinderMemberMenu(): ContextMenuModel {
   return {
-    header: { title: 'Barrel AC', subtitle: 'Cylinder AB', crossing },
+    header: { title: 'Barrel AB', subtitle: 'Cylinder AC', crossing },
     groups: [
       {
         label: 'State',
@@ -520,7 +520,7 @@ export const CylinderEndJoint: Story = {
   args: {
     model: (() => {
       const model = jointMenu();
-      model.header = { title: 'Joint A', subtitle: 'Ground pin · Barrel AC', crossing };
+      model.header = { title: 'Joint A', subtitle: 'Ground pin · Barrel AB', crossing };
       model.choice = jointType(0, {
         options: TYPES.map((label, index) => ({
           label,

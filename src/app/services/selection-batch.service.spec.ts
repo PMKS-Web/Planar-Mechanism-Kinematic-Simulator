@@ -267,6 +267,30 @@ describe('SelectionBatchService duplication', () => {
     expect(copy.seal.id).toMatch(lettered);
     expect(copy.inner.id).toBe(`${copy.mountA.id}1`);
     expect(h.service.determineNextLetter()).toBe('G');
+    // Along the part, like a new one: the barrel's mount, the slide, the far
+    // end. The closure is built from whatever was clicked, so before S9 was
+    // amended a copy taken by its seal lettered the seal first.
+    expect([copy.mountA.id, copy.seal.id, copy.mountB.id]).toEqual(['D', 'E', 'F']);
+  });
+
+  it('letters a copy along the part whichever of its joints was clicked', () => {
+    const h = createMechanismHarness();
+    h.service.createCylinderFrom(new Coord(0, 0), new Coord(600, 0));
+    const original = cylindersIn(h.service.joints)[0];
+    const batch = runInInjectionContext(h.injector, () => new SelectionBatchService());
+
+    // Taken by the square in the middle of the part rather than by a member.
+    const result = batch.duplicateSelected([{ kind: 'joint', id: original.seal.id }], {
+      x: 0,
+      y: 100,
+    });
+
+    expect(result.ok).toBe(true);
+    const copy = cylindersIn(h.service.joints).find(
+      (candidate) => candidate.seal !== original.seal
+    )!;
+    expect([copy.mountA.id, copy.seal.id, copy.mountB.id]).toEqual(['D', 'E', 'F']);
+    expect(copy.inner.id).toBe('D1');
   });
 
   for (const recolored of [false, true]) {

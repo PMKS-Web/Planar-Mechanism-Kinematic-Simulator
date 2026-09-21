@@ -627,11 +627,18 @@ export class RealLink extends Link {
    * pin shared with the slider. The pin and the slider are one joint now
    * (Stage 1 of `docs/joint-type-and-cylinder-plan.md`), so the rod simply
    * holds it.
+   *
+   * The seal has to still *have* a bore for any of that to be true. A sealed
+   * slider whose slot has been taken away draws no skin at all — nothing
+   * resolves it as a cylinder — so a rod recognized by the flag alone was left
+   * out of the body and drawn by nobody: weld a ram's two mounts into one body
+   * and the rod simply disappeared, leaving the head block hanging off the end
+   * of the barrel with a gap where the rod had been.
    */
   private leafOutlines(fused: boolean): string[] {
     const isSealedRodLeaf = (leaf: RealLink) =>
       leaf.joints.length === 2 &&
-      leaf.joints.some((joint) => joint instanceof PrisJoint && joint.isSealed);
+      leaf.joints.some((joint) => joint instanceof PrisJoint && joint.isSealed && joint.isFloating);
     const drawnElsewhere = (leaf: RealLink) => leaf.drawnByACylinderSkin || isSealedRodLeaf(leaf);
     const contributed = (leaf: RealLink) => (fused ? leaf.skinSilhouette : undefined);
     return this.subset

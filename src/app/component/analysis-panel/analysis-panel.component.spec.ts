@@ -304,21 +304,33 @@ describe('AnalysisPanelComponent with a cylinder selected', () => {
     TestBed.resetTestingModule();
   });
 
-  it('names the cylinder rather than its barrel link', async () => {
-    // The canvas outlines the whole ram as selected while this panel headed
-    // itself "Analysis for Link GN" -- the two disagreeing about what is
-    // selected, for a part the rest of the app treats as one body.
-    const { fixture } = await createPanel(TEMPLATE_LINKAGES['Cylinder_Boom'], 'GN');
-    fixture.detectChanges();
+  it('names each member the way the Edit panel names it', async () => {
+    // The canvas outlines the member as selected while this panel headed itself
+    // "Analysis for Link GN" -- the two disagreeing about what is selected. It
+    // then headed both members "Cylinder GC", which is the same disagreement
+    // one step on: the barrel and the rod are selected apart and hold different
+    // numbers, and one name for the two of them says the panel has not noticed
+    // which is on screen. Through `bodyLabel`, so there is one rule.
+    for (const [id, expected] of [
+      ['GN', 'Barrel GP'],
+      ['PC', 'Rod PC'],
+      ['OC', 'Link OC'],
+    ]) {
+      // One panel per selection, and the bed is torn down between them: this
+      // is a question about three different selections, not three views of one.
+      TestBed.resetTestingModule();
+      const { fixture, fixtureData } = await createPanel(TEMPLATE_LINKAGES['Cylinder_Boom'], id);
+      fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Kinematics for Cylinder');
-    expect(fixture.nativeElement.textContent).not.toContain('for Link GN');
-    // And no row under the heading contradicts it: the rows name the quantity
-    // alone, so there is no second place for the body's name to go wrong.
-    const labels = sectionLabels(fixture);
-    expect(labels.some((label) => label.includes('Link GN'))).toBe(false);
-    expect(labels).toContain('Angle');
-    fixture.destroy();
+      const body = fixtureData.service.links.find((link) => link.id === id)!;
+      expect(fixtureData.service.bodyLabel(body)).toBe(expected);
+      expect(fixture.nativeElement.textContent).toContain(`Kinematics for ${expected}`);
+      expect(fixture.nativeElement.textContent).not.toContain('for Cylinder');
+      // And no row under the heading contradicts it: the rows name the quantity
+      // alone, so there is no second place for the body's name to go wrong.
+      expect(sectionLabels(fixture).some((label) => label.includes(id))).toBe(false);
+      fixture.destroy();
+    }
   });
 
   it('offers no force row at the buried barrel end, and one at the seal', async () => {
@@ -337,6 +349,75 @@ describe('AnalysisPanelComponent with a cylinder selected', () => {
     const shown = fixture.componentInstance.linkForceRows().map((row) => row.jointId);
     expect(shown).not.toContain(cylinder!.inner.id);
     expect(shown).toContain(cylinder!.seal.id);
+    fixture.destroy();
+  });
+
+  it('gives each member the forces on that member, and not the whole part s', async () => {
+    // Both members answered with every joint of the cylinder, so either of them
+    // listed the far mount, the near mount and the slide **twice** -- once for
+    // the barrel and once for the rod, under one label, over two different
+    // numbers. What pushes on the barrel is its own end joint and the slide in
+    // its slot; what pushes on the rod is the slide and the rod's end joint.
+    TestBed.resetTestingModule();
+    const barrel = await createPanel(TEMPLATE_LINKAGES['Cylinder_Boom'], 'GN', TabID.FORCE);
+    barrel.fixture.detectChanges();
+    expect(barrel.fixture.componentInstance.linkForceRows().map((row) => row.label)).toEqual([
+      'Force at Joint G',
+      'Force at the slider at P',
+    ]);
+    barrel.fixture.destroy();
+
+    TestBed.resetTestingModule();
+    const rod = await createPanel(TEMPLATE_LINKAGES['Cylinder_Boom'], 'PC', TabID.FORCE);
+    rod.fixture.detectChanges();
+    expect(rod.fixture.componentInstance.linkForceRows().map((row) => row.label)).toEqual([
+      'Force at Joint C',
+      'Force at the slider at P',
+    ]);
+    rod.fixture.destroy();
+  });
+
+  it('offers the drive s effort against the member that stands for the part', async () => {
+    // One number under two headings otherwise, in a panel whose whole point is
+    // that the barrel's readings and the rod's are not the same readings. The
+    // seal's own joint panel carries it as well, as it always has.
+    TestBed.resetTestingModule();
+    const barrel = await createPanel(TEMPLATE_LINKAGES['Cylinder_Boom'], 'GN', TabID.FORCE);
+    barrel.fixture.detectChanges();
+    expect(barrel.fixture.componentInstance.inputEffortJoint()).toBeUndefined();
+    barrel.fixture.destroy();
+
+    TestBed.resetTestingModule();
+    const rod = await createPanel(TEMPLATE_LINKAGES['Cylinder_Boom'], 'PC', TabID.FORCE);
+    rod.fixture.detectChanges();
+    expect(rod.fixture.componentInstance.inputEffortJoint()?.id).toBe('P');
+    rod.fixture.destroy();
+  });
+
+  it('says which body each of the slide s own reactions acts on, once each', async () => {
+    // The seal is a body of its own to the solver -- a point carrying the
+    // joint's mass -- and what stands against it is the normal force in its
+    // slot plus the pin force on the rod. The slot's half is already the
+    // barrel's own row, so the point body repeated "Force on Barrel GP" over a
+    // different number and the reader saw the slide twice.
+    const { fixture } = await createPanel(TEMPLATE_LINKAGES['Cylinder_Boom'], 'P', TabID.FORCE);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.jointForceRows().map((row) => row.label)).toEqual([
+      'Force on Barrel GP',
+      'Force on Rod PC',
+    ]);
+    fixture.destroy();
+  });
+
+  it('leaves an end joint of the cylinder naming the member it holds', async () => {
+    const { fixture } = await createPanel(TEMPLATE_LINKAGES['Cylinder_Boom'], 'C', TabID.FORCE);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.jointForceRows().map((row) => row.label)).toEqual([
+      'Force on Link OC',
+      'Force on Rod PC',
+    ]);
     fixture.destroy();
   });
 });

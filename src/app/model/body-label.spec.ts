@@ -147,6 +147,33 @@ describe('the name a reader sees on a body', () => {
     expect(bodyLabelParts(part.rod, part, cylinders).noun).toBe('Rod');
   });
 
+  it('lets a member be renamed, and keeps the role in front of the name', () => {
+    // Both member panels offer Rename. While the ends always won, the button
+    // wrote a name nothing ever showed -- a control that did not work.
+    const { service, part } = weldedAt('rod');
+    const cylinders = service.sealedStructures();
+    const barrel = part.barrel as RealLink;
+    barrel.name = 'Boom lift';
+    expect(bodyLabelParts(barrel, part, cylinders)).toEqual({ noun: 'Barrel', name: 'Boom lift' });
+    expect(labelForBody(barrel, part, cylinders)).toBe('Barrel Boom lift');
+    expect(visibleBodyName(barrel, cylinders)).toBe('Boom lift');
+    // The other member is untouched by it.
+    expect(visibleBodyName(part.rod, cylinders)).toBe(`${part.seal.id}${part.mountB.id}`);
+  });
+
+  it('does not take a name that only repeats the role for a name', () => {
+    // One library drawing calls its members `Barrel` and `Rod`, from when a
+    // cylinder had a single panel. Behind the role that reads `Barrel Barrel`.
+    const { service, part } = weldedAt('rod');
+    const cylinders = service.sealedStructures();
+    (part.barrel as RealLink).name = 'Barrel';
+    part.rod.name = 'rod';
+    expect(labelForBody(part.barrel, part, cylinders)).toBe(
+      `Barrel ${part.mountA.id}${part.seal.id}`
+    );
+    expect(labelForBody(part.rod, part, cylinders)).toBe(`Rod ${part.seal.id}${part.mountB.id}`);
+  });
+
   it('is what the service hands every panel', () => {
     const { service, compound } = weldedAt('barrel');
     expect(service.visibleBodyName(compound)).toBe(

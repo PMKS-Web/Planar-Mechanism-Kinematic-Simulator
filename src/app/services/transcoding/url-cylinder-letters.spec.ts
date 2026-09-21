@@ -132,7 +132,7 @@ describe('a seal that arrives with an interior name', () => {
     expect(ram, 'the cylinder still resolves').toBeDefined();
     expect(ram.seal.id).toMatch(LETTERS);
     // The letter creation would have reached for, over the joints this payload
-    // actually carries: A and B are the ends and D is the bracket's tip, so the
+    // actually carries: A and C are the ends and D is the bracket's tip, so the
     // seal that was demoted to `A2` comes back as E.
     expect(ram.seal.id).toBe('E');
     // Unnamed, a joint reads as its id -- which is the whole point of giving
@@ -143,7 +143,7 @@ describe('a seal that arrives with an interior name', () => {
     expect(ram.inner.id).toBe('A1');
     // A link id is the sorted concatenation of its joints', so the rod's moved
     // with the seal and the barrel's did not.
-    expect(ram.rod.id).toBe('BE');
+    expect(ram.rod.id).toBe('CE');
     expect(ram.barrel.id).toBe('AA1');
   });
 
@@ -234,7 +234,8 @@ describe('a seal that already has a letter', () => {
     const url = reencode(harness.service);
     const target = decoded(url);
     const ram = cylindersIn(target.joints)[0];
-    expect(ram.seal.id).toBe('C');
+    // The slide takes the letter after the end the gesture started from (S9).
+    expect(ram.seal.id).toBe('B');
     expect(reencode(target)).toBe(url);
   });
 });

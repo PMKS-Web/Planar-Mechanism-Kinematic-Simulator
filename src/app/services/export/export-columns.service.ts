@@ -174,10 +174,20 @@ export class ExportColumnsService {
         part.kind === 'joint'
           ? this.mechanism.slotReactionOf(part.part as RealJoint)?.againstId
           : undefined;
+      const members = part.kind === 'link' ? this.catalog.memberIdsOf(part.id) : [];
       const columns: ExportColumn[] =
         part.kind === 'joint'
           ? (index.linksByJoint.get(part.id) ?? [])
               .slice()
+              // A seal's own point body. The solver keys one by the joint's
+              // letter and writes both of the joint's reactions on it -- the
+              // normal force in the slot and the pin force on the rod -- and
+              // the slot's half is already on the row of the body the slot is
+              // cut into, so this repeated the barrel's name over a different
+              // number. The Force panel drops it for the same reason. A
+              // grounded slot has no body on the far side, so its point body
+              // keeps the only row that force has anywhere.
+              .filter((linkId) => linkId !== part.id || !this.isSeal(part.id))
               // The bar the reader can point at first, the force in the slot
               // after it. The solver lists a slider's own point body ahead of
               // the bar, which opened the row with a force named after
@@ -190,7 +200,7 @@ export class ExportColumnsService {
           : // Every link the body is made of: a ram's two mounts sit on
             // different ones, so asking about the rod alone gave the force at
             // one end of it and nothing at the end it is pushing.
-            this.catalog.memberIdsOf(part.id).flatMap((memberId) =>
+            members.flatMap((memberId) =>
               (index.jointsByLink.get(memberId) ?? [])
                 .filter((jointId) => !hidden.has(jointId))
                 // A reaction a chosen joint already carries. At a pin joining
@@ -202,9 +212,19 @@ export class ExportColumnsService {
                   // A slot is named after the slider it belongs to: it has no
                   // marker of its own and no name a reader has ever seen.
                   const where = this.mechanism.slotName(jointId) ?? this.jointName(jointId);
+                  // And which half of the part it presses on, where both halves
+                  // meet the same joint. A cylinder is one row in this drawer
+                  // and two bodies to the solver, and its seal reacts against
+                  // both of them -- so the drawer offered `Force at the slider
+                  // at P` twice, under one heading, over two different numbers.
+                  // The panels tell them apart by which member is selected;
+                  // here there is nothing to select, so the row says it.
+                  const on = this.sharedBy(members, jointId, index)
+                    ? ` on ${this.bodyName(memberId)}`
+                    : '';
                   return this.force(
-                    `Force at ${where}`,
-                    `${this.modeWord()} force on ${part.label} at ${where}`,
+                    `Force at ${where}${on}`,
+                    `${this.modeWord()} force on ${part.label} at ${where}${on}`,
                     part,
                     jointId,
                     memberId,
@@ -353,5 +373,20 @@ export class ExportColumnsService {
     const joint = this.mechanism.joints.find((candidate) => candidate.id === jointId) as
       RealJoint | undefined;
     return `Joint ${joint?.name || jointId}`;
+  }
+
+  /** Whether this joint reacts against more than one of the chosen part's bodies. */
+  private sharedBy(
+    members: string[],
+    jointId: string,
+    index: { jointsByLink: Map<string, string[]> }
+  ): boolean {
+    if (members.length < 2) return false;
+    return members.filter((id) => (index.jointsByLink.get(id) ?? []).includes(jointId)).length > 1;
+  }
+
+  /** Whether this joint is a cylinder's seal, whose point body has no row of its own. */
+  private isSeal(jointId: string): boolean {
+    return this.mechanism.sealedStructures().some((one) => one.seal.id === jointId);
   }
 }

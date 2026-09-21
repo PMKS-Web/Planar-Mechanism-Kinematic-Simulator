@@ -1,6 +1,7 @@
 import { Joint, RealJoint } from './joint';
 import { Link, RealLink, LinkHold } from './link';
 import { Cylinder, cylindersIn } from './cylinder';
+import { visibleBodyName } from './body-label';
 import { HoldBar, HoldJoint, reachedByHolds } from './hold-solver';
 
 /**
@@ -340,21 +341,27 @@ export function heldBarsReaching(
  *
  * `nameOf` is for the one caller that wants a *member* named rather than the
  * part: with both lengths fixed the reader has two padlocks to choose between,
- * and naming the part twice over names neither. The fallback below is the
- * link's own name, and for a barrel that is an id holding the buried inner end
- * -- so that caller says what it means rather than landing there.
+ * and naming the part twice over names neither.
+ *
+ * The last fallback is `visibleBodyName` and not the link's own name, which is
+ * its id: a body welded to a barrel mount carries the cylinder's buried inner
+ * end in that id (D14, S11), so every caller that let this fall through -- a
+ * cylinder edit refused by a hold, a drag refused by one -- named a joint the
+ * drawing never shows. With no joints to hand there are no cylinders to know
+ * about, and the answer is the id again, unchanged.
  */
 export function describeHold(
   link: RealLink,
   joints?: readonly Joint[],
   nameOf?: (bar: RealLink) => string
 ): string {
-  const sealed = joints ? cylinderOf(link, joints) : undefined;
+  const cylinders = joints ? cylindersIn([...joints]) : [];
+  const sealed = joints ? cylinderOf(link, joints, cylinders) : undefined;
   const name = nameOf
     ? nameOf(link)
     : sealed
       ? `${sealed.mountA.name || sealed.mountA.id}${sealed.mountB.name || sealed.mountB.id}`
-      : link.name || link.id;
+      : visibleBodyName(link, cylinders);
   return `fixed ${holdOf(link) === 'angle' ? 'angle' : 'length'} ${name}`;
 }
 

@@ -52,6 +52,14 @@ function contextFor(
     tolerance: 1e-6,
     layoutFor: keepingLength,
     frozen,
+    // The service says the reader's names (`MechanismService.bodyLabel`); these
+    // are the ids, which is all a graph built by hand has and is enough to
+    // check that every sentence went through the namer.
+    names: {
+      body: (body) => `Link ${body.id}`,
+      cylinder: (one) => `Cylinder ${one.mountA.id}${one.mountB.id}`,
+      joint: (id) => id,
+    },
   };
 }
 
@@ -245,24 +253,8 @@ describe('what a lock over a cylinder actually holds', () => {
 });
 
 describe('a ram whose two ends are welded into one body', () => {
-  it('stops being a ram at all, because its slot would be cut into its own body', () => {
-    // Welding both of a ram's mounts into one bracket fuses barrel and rod into
-    // a single compound, and that compound holds the sliding joint. A slot cut
-    // into the very body its own joint sits on has no meaning, and
-    // `isSlotWellFormed` refuses it, so the assembly no longer resolves as a
-    // cylinder and there is no pose for the planner to be asked about.
-    //
-    // A change, recorded rather than dropped. The slider used to be a prismatic
-    // joint of its own that no compound of the two bars could contain, so a
-    // fused ram still resolved: it could be dragged as one piece, and refused
-    // an extension with `cylinder.both-ends-fused` because a rigid body cannot
-    // change shape. One joint per slider (Stage 1 of
-    // `docs/joint-type-and-cylinder-plan.md`) puts the slider inside that
-    // compound, and the model's own rule then rules the slot out. The drawing
-    // agrees rather than merely this fixture: `reconcileSlots` lifts the
-    // carrier to the same root and detaches a slot it cannot keep. Wanting the
-    // old shape back means revisiting that clause of `isSlotWellFormed`, not
-    // this test.
+  /** Barrel and rod as two leaves of one compound, which is what a weld leaves. */
+  function fusedRam() {
     const parts = ram();
     const fused = new RealLink(
       'ABCD',
@@ -275,10 +267,57 @@ describe('a ram whose two ends are welded into one body', () => {
     parts.links = parts.links.filter((link) => link.id !== 'AB' && link.id !== 'CD');
     parts.links.push(fused);
     rewire(parts.joints, parts.links);
+    return parts;
+  }
+
+  it('is still a ram, because its slot is cut in the barrel and not in the body', () => {
+    // The compound holds the sliding joint, and for a while that was enough to
+    // rule the slot out: `isSlotWellFormed` asked the *carrier*, the carrier is
+    // a root, and a rod welded in beside the barrel puts the seal inside it.
+    // `reconcileSlots` answered by detaching a bore nothing can invent back, so
+    // welding a ram's two ends together took the ram away for good and left a
+    // drawing whose own URL the decoder refuses. The question is asked of the
+    // bar the slot is cut in now, and a barrel never holds the seal.
+    const parts = fusedRam();
 
     expect(parts.seal.carrier?.id, 'the slot is lifted to the compound').toBe('ABCD');
-    expect(parts.seal.isSlotWellFormed, 'and is not a slot any more').toBe(false);
-    expect(cylindersIn(parts.joints)).toEqual([]);
+    expect(parts.seal.isSlotWellFormed).toBe(true);
+    const [cylinder] = cylindersIn(parts.joints);
+    expect(cylinder).toBeDefined();
+    expect(cylinder.barrelRoot.id).toBe('ABCD');
+    expect(cylinder.rodRoot.id).toBe('ABCD');
+  });
+
+  it('moves as one piece, and is refused an extension in so many words', () => {
+    const parts = fusedRam();
+    const [cylinder] = cylindersIn(parts.joints);
+    const context = contextFor([cylinder], parts.joints);
+
+    const moved = planEdit({ poses: [{ cylinder, pose: slidPose(cylinder, 3) }] }, context);
+    expect(moved.ok ? 'ok' : moved.refusal.code).toBe('ok');
+
+    // A distance between two points of one rigid body is not a number an edit
+    // gets to choose.
+    const stretched = planEdit(
+      {
+        poses: [
+          {
+            cylinder,
+            pose: {
+              mountA: { x: cylinder.mountA.x, y: cylinder.mountA.y },
+              inner: { x: cylinder.inner.x, y: cylinder.inner.y },
+              seal: { x: cylinder.seal.x, y: cylinder.seal.y },
+              mountB: { x: cylinder.mountB.x + 3, y: cylinder.mountB.y },
+            },
+          },
+        ],
+      },
+      context
+    );
+    expect(stretched.ok).toBe(false);
+    if (stretched.ok) return;
+    expect(stretched.refusal.code).toBe('cylinder.both-ends-fused');
+    expect(stretched.refusal.long).toContain('both of its end joints are welded into');
   });
 });
 

@@ -47,12 +47,12 @@ export const SUITES = [
   },
   { name: 'creation-previews', seconds: 27, lanes: BOTH },
   { name: 'cylinder-attach', seconds: 11, lanes: BOTH },
-  { name: 'cylinder-colors', seconds: 18, lanes: BOTH },
+  { name: 'cylinder-colors', seconds: 21, lanes: BOTH },
   { name: 'cylinder-drag', seconds: 12, lanes: BOTH },
   { name: 'cylinder-end-on-joint', seconds: 4, lanes: BOTH },
-  { name: 'cylinder-members', seconds: 96, lanes: BOTH },
+  { name: 'cylinder-members', seconds: 113, lanes: BOTH },
   { name: 'cylinder-mount', seconds: 36, lanes: BOTH },
-  { name: 'cylinder-mount-render', seconds: 38, lanes: BOTH },
+  { name: 'cylinder-mount-render', seconds: 48, lanes: BOTH },
   { name: 'cylinder-panel', seconds: 45, lanes: BOTH },
   { name: 'cylinder-skin', seconds: 9, lanes: BOTH },
   {
@@ -83,6 +83,12 @@ export const SUITES = [
     note: 'Red on staging when the lanes were written.',
   },
   { name: 'gallery-sweep', seconds: 236, lanes: NIGHTLY },
+  {
+    name: 'hidden-joint-audit',
+    seconds: 321,
+    lanes: NIGHTLY,
+    note: "Walks every surface in all four modes and downloads every export, for three drawings: five minutes, which is half the gate on its own. It is the guard that no reader ever sees a cylinder's hidden joint; it earns the gate by getting quicker, not by mattering.",
+  },
   { name: 'hover-dimensions', seconds: 34, lanes: BOTH },
   { name: 'input-settings-and-playback', seconds: 13, lanes: BOTH },
   {

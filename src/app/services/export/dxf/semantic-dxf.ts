@@ -5,6 +5,7 @@ import { Joint, PrisJoint, RealJoint } from '../../../model/joint';
 import { Link, RealLink } from '../../../model/link';
 import { MODEL_SCALE } from '../../../model/render-scale';
 
+import { ExportNames, exportNames } from '../export-names';
 import { DxfDocument, DxfEntity, DxfLayer, DxfLine, DxfPoint } from './dxf-model';
 import {
   DxfExportOptions,
@@ -113,6 +114,9 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
     y: joint.y * unitScale - shift.y,
   });
   const cylinders = cylindersIn(input.joints);
+  // What a reader may be shown of this drawing: the layers below are named
+  // from it, and so are the bodies a slot is cut into.
+  const names = exportNames(input.joints, input.links);
   // The joints between the two mounts. Named rather than sliced out of
   // `cylinderJoints` by index, which is what this did -- that list lost a joint
   // when the pin and the slider became one (Stage 1 of
@@ -152,7 +156,8 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
       point,
       scale: symbolScale,
       pinRadius,
-      layerFor: (link) => (choices.perLinkLayers ? layerNameFor(link.id) : DXF_LAYER.links),
+      layerFor: (link) =>
+        choices.perLinkLayers ? layerNameFor(names.idOf(link)) : DXF_LAYER.links,
       drawnElsewhere: cylinderBodies,
     });
     entities.push(...bodies.entities);
@@ -254,7 +259,7 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
               point,
               symbolScale,
               pinRadius,
-              slotCarrierLayer(joint, input.links, choices, DXF_LAYER.groundPlate),
+              slotCarrierLayer(joint, input.links, choices, DXF_LAYER.groundPlate, names),
               DXF_LAYER.blocks,
               // A slot cut into a link has to leave material in a body the
               // canvas draws as a thin bar. One cut into the ground plate has
@@ -460,7 +465,8 @@ function slotCarrierLayer(
   joint: PrisJoint,
   links: Link[],
   choices: { perLinkLayers: boolean; includeGroundPlate: boolean },
-  groundLayer: string
+  groundLayer: string,
+  names: ExportNames
 ): string {
   if (joint.isFloating && joint.slotJointA && joint.slotJointB) {
     const carrier = links.find(
@@ -469,16 +475,28 @@ function slotCarrierLayer(
         link.joints.some((one) => one.id === joint.slotJointA!.id) &&
         link.joints.some((one) => one.id === joint.slotJointB!.id)
     );
-    if (carrier) return choices.perLinkLayers ? layerNameFor(carrier.id) : DXF_LAYER.links;
+    if (carrier) {
+      return choices.perLinkLayers ? layerNameFor(names.idOf(carrier)) : DXF_LAYER.links;
+    }
   }
   // A grounded slot with no plate to cut it into has nowhere better to go than
   // the slots layer -- and the reader has said they do not want a base part.
   return choices.includeGroundPlate ? groundLayer : DXF_LAYER.slots;
 }
 
-/** `PMKS_LINK_AB`, from a link id, with anything unusual in it made safe. */
-function layerNameFor(linkId: string): string {
-  return `PMKS_LINK_${linkId.replace(/[^A-Za-z0-9_]+/g, '_').toUpperCase()}`;
+/**
+ * `PMKS_LINK_AB`, from what a file may call that body, with anything unusual
+ * in it made safe.
+ *
+ * A layer name is a reader surface — the CAD layer manager lists them, and
+ * `svg-writer` puts each one in an `inkscape:label` — so it goes through
+ * `ExportNames` like the tables do, and a body welded to a barrel mount is
+ * `PMKS_LINK_AD` rather than `PMKS_LINK_AA1D` (D14, S11). A body that holds
+ * nothing buried keeps its id exactly, so every drawing without a cylinder
+ * exports the layers it always did.
+ */
+function layerNameFor(key: string): string {
+  return `PMKS_LINK_${key.replace(/[^A-Za-z0-9_]+/g, '_').toUpperCase()}`;
 }
 
 function edgeKey(start: DxfPoint, end: DxfPoint): string {

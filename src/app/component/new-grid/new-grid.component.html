@@ -475,12 +475,19 @@
                joints as a line, so a plate drew as its outline plus its
                diagonals -- which reads as a diagram of the linkage rather than
                as the linkage, and left the diagonals to be explained. A plate
-               is a plate. -->
+               is a plate.
+
+               Both answers come from `model/ghost-paint.ts`, which asks the
+               same two rules the canvas asks about the live body -- what is
+               drawn here, and in what ink. Read off the record instead, a
+               cylinder's rod came out in the palette color creation handed it
+               and has never drawn, and both members as the thin bars their
+               joints describe. -->
           @for (body of ghost.bodies; track $index) {
             <path
               class="ghostBody"
               [attr.d]="ghostBodyPath(body)"
-              [attr.fill]="body.fill"
+              [attr.fill]="ghostBodyFill(body)"
               fill-rule="evenodd"
             />
           }

@@ -121,14 +121,25 @@ record(
   { rodName, atRod }
 );
 
-// --- Both of a cylinder's mounts get a graph --------------------------------
-// The mounts sit on different member links, and the reader selected one body.
-for (const member of ['GN', 'PC']) {
+// --- Each member carries the forces on that member --------------------------
+//
+// Both members used to answer with every joint of the whole cylinder, from a
+// time when a cylinder was one body to the reader and two links to the solver.
+// Each member has a panel of its own now (decision S10) and the old answer
+// listed the slide **twice** -- once for the barrel, once for the rod, under
+// one label and over two different numbers. What pushes on the barrel is its
+// own end joint and the slide in its slot; what pushes on the rod is the slide
+// and the rod's end joint.
+for (const [member, mine, theirs] of [
+  ['GN', 'Force at Joint G', 'Force at Joint C'],
+  ['PC', 'Force at Joint C', 'Force at Joint G'],
+]) {
   await select(member);
   const rows = await titles();
+  const slide = rows.filter((one) => /the slider at/.test(one));
   record(
-    `selecting ${member} graphs the force at both of the cylinder's mounts`,
-    rows.includes('Force at Joint C') && rows.includes('Force at Joint G'),
+    `selecting ${member} graphs the forces on ${member} and nothing else`,
+    rows.includes(mine) && !rows.includes(theirs) && slide.length === 1,
     rows
   );
 }
@@ -136,14 +147,18 @@ for (const member of ['GN', 'PC']) {
 // --- A cylinder's own drive is graphed where the cylinder is -----------------
 // This used to be the one input whose joint the reader could not select. The
 // slide has a row of its own now, and the effort is still offered against the
-// part as well, because a reader who picked the cylinder is asking about the
-// cylinder.
-for (const member of ['GN', 'PC']) {
+// part as well -- on the rod, which is the member that stands for the part
+// everywhere else. It was on both, which is one number under two headings in a
+// panel whose whole point is that the two members read differently.
+for (const [member, offered] of [
+  ['PC', true],
+  ['GN', false],
+]) {
   await select(member);
   const rows = await titles();
   record(
-    `selecting ${member} offers the effort its drive has to supply`,
-    rows.includes('Input Force'),
+    `selecting ${member} ${offered ? 'offers' : 'does not offer'} the effort its drive supplies`,
+    rows.includes('Input Force') === offered,
     rows
   );
 }
@@ -173,7 +188,7 @@ const readingOf = async (id, title) => {
     return section ? section.querySelector('.graphValue')?.textContent.trim() : null;
   }, title);
 };
-const onThePart = await readingOf('GN', 'Input Force');
+const onThePart = await readingOf('PC', 'Input Force');
 const onTheJoint = await readingOf('P', 'Input Force');
 record('and reads exactly what the slide itself reads', onThePart === onTheJoint && !!onThePart, {
   onThePart,
