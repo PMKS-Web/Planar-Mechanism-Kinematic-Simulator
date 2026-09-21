@@ -295,10 +295,18 @@ Not suites — import them from one.
   machine left alone, filmstrips of a compound drag.
 - `cylinder-mount-render.mjs` — what welded mounts look like in every planned shape, with contact
   sheets to inspect.
+- `cylinder-mount-slot.mjs` — the drop itself (decision S22): a cylinder's end joint dragged over a
+  bar with real mouse gestures, the channel previewing, the release cutting it, riding the slot and
+  coming off it, the carrier moved under the part, and the two machines it makes running. Filmstrips
+  and contact sheets to `artifacts/cylinder-mount-slot/`.
 - `cylinder-panel.mjs` — the cylinder panel's past defects: a picker that moved the part, an edit
   that could not be undone, a silent limit, a rounded position.
 - `cylinder-skin.mjs` — the head's stops are drawn by the skin itself, with no annotation on the
   barrel.
+- `cylinder-welded-drag.mjs` — decision S21, with a real mouse: only a drag of the *body* carries a
+  welded bar, so dragging an end joint of a cylinder leaves the bracket where it is and two
+  cylinders welded into one bracket stop moving each other. Filmstrips and contact sheets to
+  `artifacts/cylinder-welded-drag/`.
 
 ### Forces
 

@@ -21,33 +21,73 @@
  * how thick its own line is to sit flush against the rail.
  */
 
+/**
+ * R itself, as a share of `objectScale`.
+ *
+ * Every dimension below is a multiple of R, and R is a fixed fraction of the
+ * document's object scale — so this is the one conversion between the two, and
+ * the only reason a caller working in drawing units ever needs to know it.
+ */
+export const R_PER_SCALE = 0.15;
+
+/**
+ * Half the width of a bar, of a slider's block, and of a cylinder's rod.
+ *
+ * One number, because the three meet end to end all over a drawing: a rod runs
+ * out of a block and into a pin on an ordinary link, and a slider's block sits
+ * under the bar it rides. A step where two of them meet reads as a mistake
+ * rather than as a design, and a 9% step is exactly big enough to see and too
+ * small to look deliberate — which is what a bar at `objectScale / 4` (5/3 R)
+ * beside a rod at 1.525 R looked like.
+ *
+ * The rod did not move. The bar came down to it, because the rod's half-width
+ * is the block's, the block is the one piece here whose proportions the mark
+ * system actually specifies, and a bar is the piece with no number of its own.
+ */
+export const BAR_HALF_R = 1.525;
+
+/**
+ * The same half-width as a share of `objectScale`, which is the unit a link
+ * outline is built in. Defined from the number above rather than beside it, so
+ * the two cannot drift: 1.525 R is 0.22875 objectScale and nothing may say one
+ * without the other.
+ */
+export const BAR_HALF_SCALE = BAR_HALF_R * R_PER_SCALE;
+
+/** Half a link bar, in the drawing's own units at the scale in force. */
+export function barHalfWidth(objectScale: number): number {
+  return BAR_HALF_SCALE * objectScale;
+}
+
 /** Every dimension of the mark system, in multiples of R. */
 export const MARK = {
   /** Block: 7.68R along the slot by 3.05R across, corner 0.34R. */
   blockAlongHalf: 3.84,
-  blockAcrossHalf: 1.525,
+  blockAcrossHalf: BAR_HALF_R,
   blockCorner: 0.34,
 
   /** Channel: a 2.3R window subtracted from the carrier, outlined in its color. */
   channelHalfWidth: 1.15,
 
   /**
-   * Half a link bar, which is `objectScale / 4` and therefore exactly 5/3 R.
+   * Half a link bar, said in R for the marks that have to sit on one.
    *
-   * The design package rounded this to 1.84 off a mockup, and 1.84 is 10% wider
-   * than the bars the app actually draws. Everything derived from it inherited
-   * that error: the weld plate, which redraws a rider, stood proud of the rider
-   * all the way round as a pale halo, and it is the one number here that is not
-   * free to be chosen — it belongs to the link drawing, not to this system.
+   * It was 5/3 — `objectScale / 4`, the width the link drawing happened to be
+   * built at — and before that the design package rounded it to 1.84 off a
+   * mockup, which was 10% wider than the bars the app actually draws and showed
+   * as a pale halo round every weld plate. It is `BAR_HALF_R` now: a bar, a
+   * block and a rod are one half-width (decision S23), and this is that number
+   * rather than a second opinion about it.
    */
-  barHalf: 5 / 3,
+  barHalf: BAR_HALF_R,
 
   /**
    * Fillet radius where the weld plate fuses a rider to its block. The same
    * radius `buildCompoundPath` softens a welded compound link with, because it
-   * is the same join being drawn.
+   * is the same join being drawn — and the same number as the bar's half-width,
+   * because the join being drawn is the corner between two bars.
    */
-  plateFillet: 5 / 3,
+  plateFillet: BAR_HALF_R,
 
   /**
    * Grounded rails and their ground ticks.
@@ -210,6 +250,11 @@ export const CYLINDER = {
    * It was 1.84 — the same mockup rounding `barHalf` documents — and the extra
    * 0.315R showed as the rod standing proud of the block above and below where
    * the two meet.
+   *
+   * Which makes it an ordinary bar's half-width too (`BAR_HALF_R`), and that is
+   * the point rather than a coincidence: a rod ends at a pin on an ordinary
+   * link as often as it ends inside its own block, and the drawing should not
+   * step at either meeting.
    */
   rodHalf: MARK.blockAcrossHalf,
   /**

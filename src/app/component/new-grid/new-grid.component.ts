@@ -80,6 +80,7 @@ import {
   WeldPlate,
 } from '../../services/slider-mark.service';
 import {
+  barHalfWidth,
   barrelPath,
   cylinderBlockPath,
   cylinderLabelOffset,
@@ -100,6 +101,7 @@ import {
   MergeRefusal,
   resolveDropCandidate,
   resolveSlotDropTarget,
+  rideAlongSlot,
   SlotDropCandidate,
 } from '../../model/drop-target';
 import { mergedChannels, transformRigidPath } from '../../model/compound-link-path';
@@ -114,7 +116,7 @@ import {
   cylinderJoints,
 } from '../../model/cylinder';
 import { accentOutlineClass, CylinderRole, hiddenByCylinder } from '../../model/cylinder-skin';
-import { FusedBody, memberIsFused } from '../../model/cylinder-fusion';
+import { memberIsFused, PaintStep } from '../../model/cylinder-paint-order';
 import { SnapGuide, snapToAxes } from '../../model/axis-snap';
 import { drawDepths } from '../../model/draw-order';
 import { MODEL_SCALE } from '../../model/render-scale';
@@ -1778,7 +1780,7 @@ export class NewGridComponent implements OnDestroy {
     const from = this.linkCreateStart;
     if (!this.dragState.isCreatingLink || !from) return undefined;
     const to = this.creationLanding();
-    const half = this.settings.objectScale / 4;
+    const half = barHalfWidth(this.settings.objectScale);
     const span = Math.hypot(to.x - from.x, to.y - from.y);
     // Nothing to point along yet: the first pixel of the gesture would spin a
     // zero-length bar through every angle at once.
@@ -2088,8 +2090,11 @@ export class NewGridComponent implements OnDestroy {
         // assembly re-poses about the OTHER mount, collinear by construction
         // (§ cylinder 6). Mounts merge onto other joints like any joint does —
         // that is how a cylinder attaches — with the refusal rules keeping
-        // welded targets and the part's own joints out. Slot drops stay off
-        // the table: a mount never rides a slot.
+        // welded targets and the part's own joints out. And they take a slot
+        // drop like any pin (decision S22): a rod end pushing a collar along a
+        // rail is the textbook case, and the rules that keep a slot off a
+        // member and off the body already holding the other end live in
+        // `resolveSlotDropTarget` rather than here.
         const draggedCylinders = this.mechanismSrv.cylindersAt(this.activeObjService.selectedJoint);
         // Grabbing the seal is *Starts at* by hand (decision S7): it runs along
         // its own axis between the stops, and never merges with anything. So no
@@ -2114,18 +2119,21 @@ export class NewGridComponent implements OnDestroy {
         }
         if (draggedCylinders.length > 0) {
           this.updateDropCandidate(mousePosInSvg, $event.altKey);
-          this.slotCandidate = undefined;
           this.axisSnapGuides = [];
-          // Snap to the axis of the ram the gesture is most obviously about --
-          // the first -- but re-pose all of them, so a mount two rams share
-          // does not drag one and deform the other.
+          // The same three claims on the drop the ordinary branch weighs, in
+          // the same order: a ring on a joint, or a channel in a bar, or the
+          // slot this joint is already riding. Only when none of them speaks
+          // does the drag square itself against the axis of the ram the
+          // gesture is most obviously about -- the first -- and every ram on
+          // the joint is re-posed either way, so a mount two rams share does
+          // not drag one and deform the other.
           const wanted = this.snapTargetJoint
             ? new Coord(this.snapTargetJoint.x, this.snapTargetJoint.y)
-            : this.mountAxisSnap(
-                draggedCylinders[0],
-                this.activeObjService.selectedJoint,
-                mousePosInSvg
-              );
+            : this.slotCandidate
+              ? new Coord(this.slotCandidate.x, this.slotCandidate.y)
+              : this.alongItsSlot(this.activeObjService.selectedJoint, mousePosInSvg, (at) =>
+                  this.mountAxisSnap(draggedCylinders[0], this.activeObjService.selectedJoint, at)
+                );
           // Through dragJoint rather than straight at dragCylinderMount, so a
           // mount two rams share is agreed between them before either moves.
           this.gridUtils.dragJoint(this.activeObjService.selectedJoint, wanted);
@@ -2999,47 +3007,35 @@ export class NewGridComponent implements OnDestroy {
   /**
    * Where a block in a channel is allowed to go (§4.4).
    *
-   * Dragging the block along its slot sets s₀ and changes nothing else, so the
-   * drag is projected onto the slot line and clamped to the span the channel
-   * actually occupies — the block cannot leave a hole it is inside of, and one
-   * drag stays one quantity.
+   * The arithmetic is `rideAlongSlot`; what is here is the part that only the
+   * canvas can answer — which joint is a block at all, what the drawing's
+   * radius is, and what to do with a drag that is not on a slot.
    *
    * Only for a floating slot. A grounded guide's line is fixed in the world
    * rather than cut into a body, so dragging its joint repositions the whole
    * guide; constraining that would leave no way to move a guide at all.
+   *
+   * `free` is where a drag that is not riding a slot goes, and a cylinder's end
+   * joint has its own answer for that (decision S22): the assembly's own joints
+   * travel with the drag, so squaring up against them is the drag chasing its
+   * own tail, which is what `mountAxisSnap` exists to avoid.
    */
-  private alongItsSlot(joint: Joint, wanted: Coord): Coord {
+  private alongItsSlot(joint: Joint, wanted: Coord, free?: (at: Coord) => Coord): Coord {
+    const loose = free ?? ((at: Coord) => this.withAxisSnap(joint, at));
     const slider = this.mechanismSrv.sliderFor(joint);
-    if (!slider?.isFloating || !slider.isSlotWellFormed) return this.withAxisSnap(joint, wanted);
-
-    const a = slider.slotJointA!;
-    const b = slider.slotJointB!;
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    const length = Math.hypot(dx, dy);
-    if (length < 1e-9) return wanted;
-
-    const ux = dx / length;
-    const uy = dy / length;
-    const midX = (a.x + b.x) / 2;
-    const midY = (a.y + b.y) / 2;
-    const half = slotHalfLength(0.15 * this.settings.objectScale, length);
-    const offset = (wanted.x - midX) * ux + (wanted.y - midY) * uy;
-    const across = -(wanted.x - midX) * uy + (wanted.y - midY) * ux;
-
-    // Sticky, then it lets go (§4.4). Sliding along the slot is by far the
-    // commoner intent, so the block stays on its line through any amount of
-    // sideways wobble -- but a slot is not a life sentence, and pulling clear
-    // of the bar is the one gesture that plainly means "take this off here".
-    // What is left behind is the dangling block: a slider with nowhere to
-    // slide, drawn red until it is dropped on a link again.
-    if (Math.abs(across) > this.slotReleaseDistance()) {
+    if (!slider?.isFloating || !slider.isSlotWellFormed) return loose(wanted);
+    const r = 0.15 * this.settings.objectScale;
+    const ride = rideAlongSlot(slider, wanted, r, this.slotReleaseDistance());
+    if (!ride) return wanted;
+    // Pulled clear of the bar. What is left behind is the dangling block: a
+    // slider with nowhere to slide, drawn red until it is dropped on a link
+    // again — a cylinder's end joint included, which then leaves the part
+    // hanging off nothing until it lands somewhere.
+    if (ride === 'release') {
       this.mechanismSrv.detachSlider(slider);
-      return this.withAxisSnap(joint, wanted);
+      return loose(wanted);
     }
-
-    const along = Math.max(-half, Math.min(half, offset));
-    return new Coord(midX + along * ux, midY + along * uy);
+    return new Coord(ride.x, ride.y);
   }
 
   /**
@@ -5194,45 +5190,31 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * The fused shape this pass of the skin paints, or nothing when it paints
-   * none (decisions S16 and S18).
+   * Everything the skin layer paints, in the order it paints them (S24).
    *
-   * A barrel welded to a bracket is one body with it, and that body has to be
-   * drawn where the barrel would have been -- under the head block -- rather
-   * than down in the links layer where every skin would cover it. The rod's
-   * pass is the same question one layer up. A member whose end joint is a Slide
-   * is fused into that slider's weld plate the same way, and the plate is
-   * painted in the same place for the same reason.
+   * One order for the whole drawing rather than a stack per cylinder: a body
+   * welded to two cylinders is painted once, and only an order that knows about
+   * both can put it under one head and over the other. `model/cylinder-paint-
+   * order.ts` is the rule; this is the list the template walks.
    */
-  fusedBodyAt(
-    mark: CylinderMark,
-    role: CylinderRole
-  ): FusedBody<CylinderMark, PlatedSlide> | undefined {
-    return this.fusedShapes.get(`${mark.id}:${role}`);
+  get cylinderPaint(): PaintStep<CylinderMark, PlatedSlide>[] {
+    return this.sliderMarks.paintOrder(this.cylinderList, this.sliderMarkList);
   }
 
   /** Whether anything bigger has swallowed this member, so the skin does not paint it alone. */
   memberIsFused(mark: CylinderMark, role: CylinderRole): boolean {
-    return memberIsFused(this.fusedShapes, mark, role);
-  }
-
-  /** Which pass paints which fused shape, asked of the two lists that can hold one. */
-  private get fusedShapes(): Map<string, FusedBody<CylinderMark, PlatedSlide>> {
-    return this.sliderMarks.fusedBodies(this.cylinderList, this.sliderMarkList);
+    return memberIsFused(this.cylinderPaint, mark, role);
   }
 
   /**
-   * A body a cylinder pass paints, which the links layer therefore leaves alone.
+   * A body a cylinder step paints, which the links layer therefore leaves alone.
    *
    * Walked rather than spread: this runs for every link on every
    * change-detection pass, which is dozens of times per pointer move, and the
-   * map it walks holds one entry per welded mount in the drawing.
+   * list it walks holds one step per cylinder and per welded mount.
    */
   bodyDrawnByACylinder(link: Link): boolean {
-    for (const found of this.fusedShapes.values()) {
-      if (found.body.id === link.id) return true;
-    }
-    return false;
+    return this.cylinderPaint.some((step) => step.fused?.body.id === link.id);
   }
 
   /**

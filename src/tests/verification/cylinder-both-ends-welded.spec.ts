@@ -31,10 +31,14 @@ import { RealLink } from '../../app/model/link';
  *
  * The rule the fix rests on: a sealed seal's slot is cut in the **barrel
  * leaf**, and that leaf never holds the seal. Only the fused root does, because
- * the rod has become another leaf of the same body -- and a cylinder whose two
- * bodies are one is a state the planner already has an answer for
- * (`cylinder.both-ends-fused`). So it stays a cylinder, it cannot extend, and
+ * the rod has become another leaf of the same body. So it stays a cylinder, and
  * unwelding gives back exactly what was there before.
+ *
+ * *(September 21, 2026: it used to be refused an extension as well, with the
+ * sentence `cylinder.both-ends-fused`. **S21** took that away — a welded body
+ * changes shape under an edit like any compound, so the length goes through and
+ * the body follows. "It will never simulate" is still true, and is readiness's
+ * to say.)*
  */
 
 /**
@@ -157,21 +161,27 @@ describe('welding the joint a cylinder’s two brackets share', () => {
     expect(harness.span('E', 'D')).toBeCloseTo(rodWas, 6);
   });
 
-  it('refuses to extend, and says which body has both of its ends', () => {
+  it('takes a new barrel length, and the body changes shape to let it', () => {
+    // It used to be refused in so many words (`cylinder.both-ends-fused`), on
+    // the reading that the distance between two points of a rigid body is not a
+    // number an edit gets to choose. **S21 reversed that on September 21,
+    // 2026**: nothing else in the editor treats a welded body as rigid, and
+    // dragging a corner of a welded triangle changes the triangle. The drawing
+    // still never simulates -- which is readiness's job to say, not the
+    // editor's to forbid.
     const harness = build();
     weldTheirPin(harness);
     const ram = harness.rams()[0];
+    const wanted = harness.span('C', 'C1') * 1.3;
 
-    expect(harness.grid.setBarrelLength(ram, harness.span('C', 'C1') * 1.3)).toBe(false);
+    expect(harness.grid.setBarrelLength(ram, wanted)).toBe(true);
 
-    const [refusal] = harness.said();
-    expect(refusal).toContain('cylinder.both-ends-fused');
-    expect(refusal).toContain('Cylinder CD');
-    expect(refusal).toContain('welded into');
-    expect(refusal).toContain('Unweld joint C or joint D');
-    // And never a joint the drawing does not draw: the fused body's id holds
-    // C1, the buried inner end.
-    expect(refusal.split('|')[1]).not.toMatch(/[A-Za-z]\d/);
+    expect(harness.span('C', 'C1')).toBeCloseTo(wanted, 3);
+    expect(harness.said()).toEqual([]);
+    // And it is still one cylinder afterwards, with one body at both ends.
+    const after = harness.rams();
+    expect(after).toHaveLength(1);
+    expect(after[0].barrelRoot.id).toBe(after[0].rodRoot.id);
   });
 
   it('still moves as one body, which is all a rigid part can do', () => {

@@ -53,8 +53,10 @@ export const SUITES = [
   { name: 'cylinder-members', seconds: 113, lanes: BOTH },
   { name: 'cylinder-mount', seconds: 36, lanes: BOTH },
   { name: 'cylinder-mount-render', seconds: 48, lanes: BOTH },
+  { name: 'cylinder-mount-slot', seconds: 35, lanes: BOTH },
   { name: 'cylinder-panel', seconds: 45, lanes: BOTH },
   { name: 'cylinder-skin', seconds: 9, lanes: BOTH },
+  { name: 'cylinder-welded-drag', seconds: 66, lanes: BOTH },
   {
     name: 'detail-fixes',
     seconds: 69,

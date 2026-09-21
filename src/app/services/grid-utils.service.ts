@@ -854,16 +854,6 @@ export class GridUtilsService {
     selectedLink: Link,
     mapPoint: (x: number, y: number) => { x: number; y: number }
   ) {
-    // A neighbor's forces are placed relative to its own two reference joints,
-    // so where they end up depends on where those joints were before the move.
-    // Captured up front, because the move is about to overwrite them.
-    const neighbors = this.mechanismSrv.links
-      .filter((link): link is RealLink => link !== selectedLink && link instanceof RealLink)
-      .map((link) => ({
-        link,
-        from: link.joints.slice(0, 2).map((joint) => ({ x: joint.x, y: joint.y })),
-      }));
-
     // A held bar somewhere on this body, or on a neighbor sharing one of its
     // joints, has a say in where the joints go. Then this is not a rigid move
     // at all: every joint is asked for as a goal, the holds answer for the
@@ -893,9 +883,16 @@ export class GridUtilsService {
     }
 
     // Planned, not written. The drag's own joints and every cylinder those
-    // joints carry are worked out from one snapshot, so a ram that cannot
+    // joints reach are worked out from one snapshot, so a part that cannot
     // follow refuses the whole gesture rather than leaving the bar moved and
-    // the ram behind with no way back to where it started.
+    // the cylinder behind with no way back to where it started.
+    //
+    // This is a `moves` request and never a body motion, so under S21 a
+    // cylinder it reaches re-lays between its own two end joints rather than
+    // being picked up (the canvas sends a real body drag to `dragCylinder`).
+    // A joint a cylinder derives for itself is dropped by the plan rather than
+    // taken as a constraint: a compound that has swallowed a barrel holds N,
+    // and asking for it here is asking for a joint that has an owner.
     const moves = new Map<string, Point>();
     const noteMove = (joint: Joint) => {
       if (moves.has(joint.id)) return;
@@ -908,12 +905,20 @@ export class GridUtilsService {
     // only the anchor. So it is carried here and named as already handled.
     const ownBodies: Link[] = [selectedLink];
     if (selectedLink instanceof RealLink) ownBodies.push(...selectedLink.subset);
-    const ownIds = new Set(ownBodies.map((link) => link.id));
+    // Except a cylinder's own barrel or rod. That bar is laid out by its part
+    // and not by this gesture -- it turns and resizes to reach an end joint the
+    // drag never touched -- so the plan says what moved it, and carrying it
+    // here as well would put a load on it through a motion it did not make.
+    const members = new Set(
+      this.mechanismSrv.sealedStructures().flatMap((one) => [one.barrel.id, one.rod.id])
+    );
+    const carriedHere = ownBodies.filter((link) => !members.has(link.id));
+    const ownIds = new Set(carriedHere.map((link) => link.id));
 
     if (!this.runEdit({ moves }, false, ownIds)) {
       return selectedLink;
     }
-    ownBodies.forEach((link) => this.transformLinkBody(link, mapPoint));
+    carriedHere.forEach((link) => this.transformLinkBody(link, mapPoint));
 
     // Before the rebuild, not after. A floating slider is deliberately not a
     // member of its carrier -- that is what makes it a slot rather than a pin --
@@ -999,21 +1004,39 @@ export class GridUtilsService {
     return pose.atMinimum === true;
   }
 
-  /** Drag the body: the whole assembly translates rigidly. */
+  /**
+   * Drag the body: the whole assembly translates rigidly.
+   *
+   * One of the two **body motions** (decision S21), and with `rotateCylinder`
+   * the only pair that carries a welded neighbor. The reader has the part
+   * itself in hand — a barrel, a rod, or a bracket welded to either, which the
+   * canvas routes here through `cylinderAt` — so everything welded to it comes
+   * along, the way picking the assembly up off the bench does. Every other
+   * edit of a cylinder writes its own joints and lets the bodies around them
+   * change shape.
+   */
   dragCylinder(sealed: Cylinder, dx: number, dy: number): void {
     if (dx === 0 && dy === 0) return;
-    this.applyCylinderPose(sealed, {
-      mountA: { x: sealed.mountA.x + dx, y: sealed.mountA.y + dy },
-      inner: { x: sealed.inner.x + dx, y: sealed.inner.y + dy },
-      seal: { x: sealed.seal.x + dx, y: sealed.seal.y + dy },
-      mountB: { x: sealed.mountB.x + dx, y: sealed.mountB.y + dy },
-    });
+    this.applyCylinderPose(
+      sealed,
+      {
+        mountA: { x: sealed.mountA.x + dx, y: sealed.mountA.y + dy },
+        inner: { x: sealed.inner.x + dx, y: sealed.inner.y + dy },
+        seal: { x: sealed.seal.x + dx, y: sealed.seal.y + dy },
+        mountB: { x: sealed.mountB.x + dx, y: sealed.mountB.y + dy },
+      },
+      true,
+      'body'
+    );
   }
 
   /**
    * Swing the whole assembly about a point — a rotation is rigid, so
    * collinearity survives and the pose lands as-is. This is a body drag with
-   * one mount locked: the part cannot translate, but it can turn on the mount.
+   * one joint locked: the part cannot translate, but it can turn on that joint.
+   *
+   * The other body motion, so it carries what is welded to either member
+   * (S21).
    */
   rotateCylinder(sealed: Cylinder, pivot: Coord, theta: number): void {
     if (theta === 0) return;
@@ -1023,12 +1046,17 @@ export class GridUtilsService {
       x: pivot.x + (point.x - pivot.x) * cos - (point.y - pivot.y) * sin,
       y: pivot.y + (point.x - pivot.x) * sin + (point.y - pivot.y) * cos,
     });
-    this.applyCylinderPose(sealed, {
-      mountA: turn(sealed.mountA),
-      inner: turn(sealed.inner),
-      seal: turn(sealed.seal),
-      mountB: turn(sealed.mountB),
-    });
+    this.applyCylinderPose(
+      sealed,
+      {
+        mountA: turn(sealed.mountA),
+        inner: turn(sealed.inner),
+        seal: turn(sealed.seal),
+        mountB: turn(sealed.mountB),
+      },
+      true,
+      'body'
+    );
   }
 
   /**
@@ -1170,29 +1198,36 @@ export class GridUtilsService {
   }
 
   /**
-   * Land a pose, and carry any ram bolted to what just moved.
+   * Land a pose, and re-lay any cylinder bolted to what just moved.
    *
-   * Two rams can share a mount: the first's rod end is the second's barrel end.
-   * Moving the first moves that joint without the second being asked, and the
-   * second was then holding a barrel of the wrong length with its head as far
-   * outside it as the stretch -- on screen, a part in two pieces with a gap
-   * down the middle. It re-lays itself between its own two mounts instead,
-   * resizing to reach: both halves together, so both of its ends move, which is
-   * what a drag on a ram's own mount has always done past its stops.
+   * Two cylinders can share an end joint: the first's rod end is the second's
+   * barrel end. Moving the first moves that joint without the second being
+   * asked, and the second was then holding a barrel of the wrong length with
+   * its head as far outside it as the stretch -- on screen, a part in two
+   * pieces with a gap down the middle. It re-lays itself between its own two
+   * end joints instead, resizing to reach: both halves together, so both of its
+   * ends move, which is what a drag on a cylinder's own end joint has always
+   * done past its stops.
    *
    * `dragLink` has always repaired this for a link drag. Every path that poses
-   * a cylinder needs it, which is all of them: dragging the body, dragging a
-   * mount, and the Travel and Starts-at fields in its panel.
+   * a cylinder needs it, which is all of them: dragging the body, dragging an
+   * end joint, and the length and Starts-at fields in its panel.
    *
-   * One level deep, as `dragLink` is: a third ram bolted to the second follows
-   * on the next rebuild rather than in this one.
+   * `motion` is the difference S21 turns on. `'body'` says the reader has the
+   * whole assembly in hand, and only then does a bar welded to either member
+   * come along; left off — which is every other caller here — the part writes
+   * its own four joints and a welded bracket changes shape around them.
+   *
+   * One level deep, as `dragLink` is: a third cylinder bolted to the second
+   * follows on the next rebuild rather than in this one.
    */
   private applyCylinderPose(
     sealed: Cylinder,
     pose: CylinderPose,
-    rebuild: boolean = true
+    rebuild: boolean = true,
+    motion?: 'body'
   ): boolean {
-    return this.runEdit({ poses: [{ cylinder: sealed, pose }] }, rebuild);
+    return this.runEdit({ poses: [{ cylinder: sealed, pose, motion }] }, rebuild);
   }
 
   /**
@@ -1303,32 +1338,41 @@ export class GridUtilsService {
    *
    * Three kinds of body come out of a plan and they are not interchangeable. A
    * bar carried rigidly takes its forces and its center of mass through the
-   * transform that carried it. A bar the edit deliberately resized -- a ram's
-   * own barrel and rod -- goes through its change of reference frame, which is
-   * what stretches a point fixed to it. Anything else holding a moved joint
-   * has been genuinely deformed and follows its own frame too.
+   * transform that carried it. A bar the edit deliberately resized -- a
+   * cylinder's own barrel and rod -- goes through its change of reference
+   * frame, which is what stretches a point fixed to it. Anything else holding a
+   * moved joint has been genuinely deformed and follows its own frame too.
    *
    * Reading one frame off every root's first two joints instead put a resized
-   * ram's stretch onto the bracket welded to it, moving a force anchor and a
-   * center of mass that had not moved at all.
+   * cylinder's stretch onto the bracket welded to it, moving a force anchor and
+   * a center of mass that had not moved at all.
+   *
+   * Under S21 a body welded to a cylinder member is deformed by almost every
+   * edit, so both halves of that have to hold at once: the member goes through
+   * its own rigid motion and is then left alone, and the body around it is
+   * transported through a frame that is **not** the member (`frameJointsOf`).
    */
   commitEditPlan(plan: EditPlan, alreadyCarried: Set<string> = new Set()): void {
     const handled = new Set<string>(alreadyCarried);
     plan.carried.forEach(({ leaf }) => handled.add(leaf.id));
     plan.reshaped.forEach((leaf) => handled.add(leaf.id));
+    const derived = this.derivedJointIds();
 
     const framed = [
-      ...plan.reshaped,
+      // A bar the caller is transporting itself is not transported again. It
+      // could not happen while a link drag over a welded cylinder was refused
+      // outright; it can now, and doing both moves a load twice.
+      ...plan.reshaped.filter((link) => !alreadyCarried.has(link.id)),
       ...this.mechanismSrv.links.filter(
         (link): link is RealLink =>
           link instanceof RealLink &&
           !handled.has(link.id) &&
           link.joints.some((joint) => plan.movedIds.has(joint.id))
       ),
-    ].map((link) => ({
-      link,
-      from: link.joints.slice(0, 2).map((joint) => ({ x: joint.x, y: joint.y })),
-    }));
+    ].map((link) => {
+      const frame = this.frameJointsOf(link as RealLink, derived);
+      return { link, frame, from: frame.map((joint) => ({ x: joint.x, y: joint.y })) };
+    });
 
     this.mechanismSrv.joints.forEach((joint) => {
       const to = plan.placements.get(joint.id);
@@ -1341,7 +1385,37 @@ export class GridUtilsService {
       if (alreadyCarried.has(leaf.id)) return;
       this.transformLinkBody(leaf, (x, y) => carryPoint(move, { x, y }));
     });
-    framed.forEach(({ link, from }) => this.reframeDeformedLink(link as RealLink, from));
+    framed.forEach(({ link, frame, from }) =>
+      this.reframeDeformedLink(link as RealLink, frame, from, handled)
+    );
+  }
+
+  /**
+   * The two joints a deformed body's fixed points are transported through.
+   *
+   * Its first two, skipping any joint a cylinder derives for itself. A body's
+   * id is the sorted ids of its joints and a bracket welded to a barrel's end
+   * joint holds N, so `AA1W` offered its first two as `A` and the buried `A1`
+   * -- the barrel. Reading the frame off *that* pair swings a force or a
+   * hand-placed center of mass sitting out on the bracket round with a bar it
+   * is not on, every time the barrel is given a new length.
+   *
+   * A body with no cylinder in it has nothing to skip, so its frame is the pair
+   * it always was and its numbers do not move.
+   */
+  private frameJointsOf(link: RealLink, derived: ReadonlySet<string>): Joint[] {
+    const own = link.joints.filter((joint) => !derived.has(joint.id));
+    // A member bar is two thirds derived -- a barrel is A and N, a rod S and B
+    // -- and it is transported through its own stretch on purpose, so it falls
+    // back to the pair it has.
+    return (own.length >= 2 ? own : link.joints).slice(0, 2);
+  }
+
+  /** N and S of every cylinder: the joints their own part places (S11). */
+  private derivedJointIds(): Set<string> {
+    return new Set(
+      this.mechanismSrv.sealedStructures().flatMap((one) => [one.inner.id, one.seal.id])
+    );
   }
 
   /**
@@ -1358,11 +1432,21 @@ export class GridUtilsService {
    * each carried their own, identical, and a fix to either would have reached
    * only one kind of drag, surfacing as a discrepancy in force numbers.
    *
-   * @param from where this link's own two reference joints stood before the
-   * move, captured by the caller while the geometry was still the old one.
+   * @param frame the two joints the transport is read off, chosen by
+   * `frameJointsOf` rather than taken as the first two.
+   * @param from where those two stood before the move, captured by the caller
+   * while the geometry was still the old one.
+   * @param handled the bars something else has already moved — a member of a
+   * cylinder this edit carried or resized. Transporting one of those through
+   * the body's frame as well moves its load a second time.
    */
-  private reframeDeformedLink(link: RealLink, from: { x: number; y: number }[]): void {
-    const [start, end] = link.joints;
+  private reframeDeformedLink(
+    link: RealLink,
+    frame: Joint[],
+    from: { x: number; y: number }[],
+    handled: ReadonlySet<string> = new Set()
+  ): void {
+    const [start, end] = frame;
     const transportable = from.length === 2 && !!start && !!end;
     if (transportable) {
       link.forces.forEach((force) => {
@@ -1382,6 +1466,7 @@ export class GridUtilsService {
     link.updateLengthAndAngle();
     link.subset.forEach((sub) => {
       const subLink = sub as RealLink;
+      if (handled.has(subLink.id)) return;
       if (subLink.comIsCustom) {
         if (transportable) {
           const [subX, subY] = pointThroughFrame(subLink.CoM, from[0], from[1], start, end);

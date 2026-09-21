@@ -1,5 +1,6 @@
 import { RealLink } from './link';
 import { PrisJoint, RevJoint } from './joint';
+import { barHalfWidth } from './joint-marks';
 import { SettingsService } from '../services/settings.service';
 
 /**
@@ -68,7 +69,7 @@ describe('a link drawn as a circle', () => {
 
     // Two semicircle arcs of one radius: reach plus the half-width every bar's
     // end cap is already drawn with, so the disc covers what the bar covered.
-    const radius = 5 + SettingsService.objectScale / 4;
+    const radius = 5 + barHalfWidth(SettingsService.objectScale);
     const numbers = numbersIn(link.d);
     expect(numbers[0]).toBeCloseTo(ground.x - radius, 6);
     expect(numbers[1]).toBeCloseTo(ground.y, 6);
@@ -89,7 +90,7 @@ describe('a link drawn as a circle', () => {
     link.joints.push(new RevJoint('C', 0, 9));
     link.reComputeDPath();
 
-    const radius = 9 + SettingsService.objectScale / 4;
+    const radius = 9 + barHalfWidth(SettingsService.objectScale);
     expect(numbersIn(link.d)[0]).toBeCloseTo(ground.x - radius, 6);
   });
 
@@ -139,7 +140,7 @@ describe('a link drawn as a circle', () => {
     // rigidly rotated, so the path now starts at a different point of the same
     // rim. Center and radius are what "the same disc" means.
     const turned = numbersIn(moved.d);
-    const radius = 5 + SettingsService.objectScale / 4;
+    const radius = 5 + barHalfWidth(SettingsService.objectScale);
     expect(turned[2]).toBeCloseTo(radius, 6);
     expect(Math.hypot(turned[0], turned[1])).toBeCloseTo(radius, 6);
   });

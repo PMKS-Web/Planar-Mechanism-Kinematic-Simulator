@@ -49,8 +49,10 @@ export interface Cylinder {
    * The pair is the whole of the difference between what the skin draws and
    * what an edit has to move. `barrel` and `rod` are the two-joint bars the
    * silhouette is composed from and the panel reports lengths for; the roots
-   * are the rigid bodies a pose has to carry, so that welding a mount into a
-   * bracket does not leave the bracket standing where the cylinder used to be.
+   * are the bodies a **body drag** has to carry, so that grabbing a cylinder
+   * welded into a bracket does not leave the bracket standing where the part
+   * used to be. Only a body drag: every other edit writes the part's own four
+   * joints and lets the root change shape around them (decision S21).
    */
   barrelRoot: Link;
   rodRoot: RealLink;

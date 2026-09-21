@@ -8,6 +8,7 @@ import { SettingsService } from '../services/settings.service';
 import { Arc, Line } from './line';
 import { buildCompoundPath, transformRigidCoord, transformRigidPath } from './compound-link-path';
 import { outlineSweepFlag, withoutCollinearVertices } from './outline-winding';
+import { barHalfWidth } from './joint-marks';
 
 export enum Shape {
   line = 'line',
@@ -656,7 +657,10 @@ export class RealLink extends Link {
     this.subset.forEach((link) => {
       if (link instanceof RealLink) link.reComputeDPath();
     });
-    const geometry = buildCompoundPath(this.leafOutlines(true), SettingsService.objectScale / 4);
+    const geometry = buildCompoundPath(
+      this.leafOutlines(true),
+      barHalfWidth(SettingsService.objectScale)
+    );
     this.compoundRings = geometry.rings;
     this.externalLines = geometry.rings.flatMap((ring) =>
       ring.slice(0, -1).map((point, index) => {
@@ -704,7 +708,8 @@ export class RealLink extends Link {
         (leaf) => leaf instanceof RealLink && leaf.skinSilhouette !== undefined
       );
       const rings: number[][][] = fusing
-        ? buildCompoundPath(this.leafOutlines(false), SettingsService.objectScale / 4).rings
+        ? buildCompoundPath(this.leafOutlines(false), barHalfWidth(SettingsService.objectScale))
+            .rings
         : this.compoundRings;
       return rings
         .filter((ring) => ring.length > 3)
@@ -717,7 +722,7 @@ export class RealLink extends Link {
         (far, joint) => Math.max(far, getDistance(center, joint)),
         0
       );
-      const radius = reach + SettingsService.objectScale / 4;
+      const radius = reach + barHalfWidth(SettingsService.objectScale);
       // A circle, as a polyline: two semicircles, which is how DXF says a
       // round closed profile without leaving the one entity type.
       return [
@@ -813,7 +818,7 @@ export class RealLink extends Link {
     const ys = points.map((point) => point[1]);
     const spread = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
     if (spread > 1e-9) return undefined;
-    const radius = SettingsService.objectScale / 4;
+    const radius = barHalfWidth(SettingsService.objectScale);
     const [x, y] = points[0];
     return (
       `M ${x - radius} ${y} A ${radius} ${radius} 0 0 1 ${x + radius} ${y} ` +
@@ -854,7 +859,7 @@ export class RealLink extends Link {
     const center = this.groundPivot();
     if (center === undefined) return undefined;
     const reach = this.joints.reduce((far, joint) => Math.max(far, getDistance(center, joint)), 0);
-    const radius = reach + SettingsService.objectScale / 4;
+    const radius = reach + barHalfWidth(SettingsService.objectScale);
     const { x, y } = center;
     return (
       `M ${x - radius} ${y} A ${radius} ${radius} 0 0 1 ${x + radius} ${y} ` +
@@ -914,7 +919,7 @@ export class RealLink extends Link {
       jointIDtoIndex.set(j.id, ind);
     });
 
-    let width: number = SettingsService.objectScale / 4;
+    let width: number = barHalfWidth(SettingsService.objectScale);
     // A joint sitting on the line between two others is not a corner of the
     // outline, however defensible it is as a hull vertex: the offset edge would
     // arrive, turn through a semicircle it does not need, and leave along the

@@ -176,11 +176,17 @@ describe('a lock on a cylinder mount', () => {
 
 describe('an edit refused partway through', () => {
   it('leaves the bar that started it exactly where it was', () => {
-    // The drag used to be written first and the ram's refusal discovered
+    // The drag used to be written first and the cylinder's refusal discovered
     // afterwards, so the arm stayed moved with no way back to where it began.
+    //
+    // The lock is on the cylinder's own end joint `A`, which the arm is pinned
+    // to. It was on `W`, out on the bracket welded to the barrel, until S21
+    // stopped a re-pose carrying that bracket — with nothing left to displace,
+    // that lock has nothing to refuse and the drag goes through (the test below
+    // is where it does).
     const { mechanism, grid, at } = build(ramAndArmFixture());
     weldBracketOnto(mechanism, 'A', 'AB', { x: -3, y: 4 });
-    lock(mechanism, 'W');
+    lock(mechanism, 'A');
 
     const armBefore = { x: at('N').x, y: at('N').y };
     const rodBefore = { x: at('D').x, y: at('D').y };
@@ -192,6 +198,27 @@ describe('an edit refused partway through', () => {
     expect(at('N').y).toBeCloseTo(armBefore.y, 6);
     expect(at('D').x).toBeCloseTo(rodBefore.x, 6);
     expect(at('D').y).toBeCloseTo(rodBefore.y, 6);
+  });
+
+  it('is not refused by a Lock the edit no longer reaches', () => {
+    // The other half of S21, from the reader's side: a mark out on a bracket
+    // welded to a barrel's end joint used to freeze every bar pinned to that
+    // cylinder. Now the bracket is not carried, so the mark holds only the
+    // joint it is on and the neighbor drags.
+    const { mechanism, grid, at } = build(ramAndArmFixture());
+    weldBracketOnto(mechanism, 'A', 'AB', { x: -3, y: 4 });
+    lock(mechanism, 'W');
+
+    const witness = { x: at('W').x, y: at('W').y };
+    const armBefore = { x: at('N').x, y: at('N').y };
+
+    const arm = mechanism.links.find((link) => link.id === 'AN')!;
+    grid.dragLink(arm, 0, 2);
+
+    expect(at('N').y).toBeCloseTo(armBefore.y + 2, 4);
+    // And the locked joint is exactly where the Lock says it is.
+    expect(at('W').x).toBeCloseTo(witness.x, 6);
+    expect(at('W').y).toBeCloseTo(witness.y, 6);
   });
 });
 
@@ -226,6 +253,122 @@ describe('resizing a ram welded to a bracket', () => {
     expect(at('W').y).toBeCloseTo(witnessBefore.y, 4);
     expect(leaf.CoM.x).toBeCloseTo(comBefore.x, 4);
     expect(leaf.CoM.y).toBeCloseTo(comBefore.y, 4);
+  });
+
+  it('leaves them alone when it is the barrel, whose own joint is in that body', () => {
+    // The other member, and the one that is harder. A body welded to the barrel
+    // holds N, so giving the barrel a length moves one of the body's own joints
+    // -- and the body's id sorts as `A, A1, W`, so reading its frame off its
+    // first two joints reads it off the *barrel*, and carries a point out on the
+    // bracket along the barrel's stretch. The frame is the first two joints no
+    // cylinder derives for itself (`frameJointsOf`), which here is A and W.
+    const { mechanism, grid, at } = build(ramFixture());
+    const { compound, bracket } = weldBracketOnto(mechanism, 'A', 'AB', { x: -3, y: 4 });
+    const [sealed] = cylindersIn(mechanism.joints);
+
+    const leaf = compound.subset.find((sub) => sub.id === bracket.id) as RealLink;
+    leaf.comIsCustom = true;
+    leaf.CoM = new Coord((at('A').x + at('W').x) / 2, (at('A').y + at('W').y) / 2);
+    const comBefore = { x: leaf.CoM.x, y: leaf.CoM.y };
+    const anchorBefore = { x: at('A').x, y: at('A').y };
+    const witnessBefore = { x: at('W').x, y: at('W').y };
+    const barrelBefore = Math.hypot(at('B').x - at('A').x, at('B').y - at('A').y);
+
+    expect(grid.setBarrelLength(sealed, barrelBefore * 1.4)).toBe(true);
+
+    // The barrel really did change, and the bracket's own two joints did not.
+    expect(Math.hypot(at('B').x - at('A').x, at('B').y - at('A').y)).toBeCloseTo(
+      barrelBefore * 1.4,
+      3
+    );
+    expect(at('A').x).toBeCloseTo(anchorBefore.x, 4);
+    expect(at('W').x).toBeCloseTo(witnessBefore.x, 4);
+    expect(at('W').y).toBeCloseTo(witnessBefore.y, 4);
+    expect(leaf.CoM.x).toBeCloseTo(comBefore.x, 4);
+    expect(leaf.CoM.y).toBeCloseTo(comBefore.y, 4);
+  });
+
+  it('carries the barrel’s own center of mass exactly once', () => {
+    // The member moves rigidly even when the body around it is changing shape
+    // (S21), so a point fixed to the barrel goes through that one motion. It is
+    // in `plan.carried`, and the reframe of the body it is a leaf of has to
+    // leave it alone -- doing both moves the point twice.
+    const { mechanism, grid, at } = build(ramFixture());
+    const { compound } = weldBracketOnto(mechanism, 'A', 'AB', { x: -3, y: 4 });
+    const [sealed] = cylindersIn(mechanism.joints);
+
+    const barrel = compound.subset.find((sub) => sub.id === 'AB') as RealLink;
+    barrel.comIsCustom = true;
+    // Off the axis, so a turn about A is visible in both coordinates.
+    const anchor = { x: at('A').x, y: at('A').y };
+    const offset = { x: (at('B').x - anchor.x) / 2, y: Math.abs(at('B').x - anchor.x) / 4 };
+    barrel.CoM = new Coord(anchor.x + offset.x, anchor.y + offset.y);
+
+    const bearing = Math.atan2(at('D').y - anchor.y, at('D').x - anchor.x);
+    const turn = 0.3;
+    expect(grid.setCylinderAngle(sealed, bearing + turn)).toBe(true);
+
+    // Whatever the ladder turned the part about, the barrel is rigid: its
+    // center is the same point *of the barrel* it was, which is the distance
+    // from A and the angle off the barrel's own axis.
+    const nowA = { x: at('A').x, y: at('A').y };
+    const axis = Math.atan2(at('B').y - nowA.y, at('B').x - nowA.x);
+    const arm = Math.hypot(barrel.CoM.x - nowA.x, barrel.CoM.y - nowA.y);
+    const off = Math.atan2(barrel.CoM.y - nowA.y, barrel.CoM.x - nowA.x) - axis;
+    expect(arm).toBeCloseTo(Math.hypot(offset.x, offset.y), 3);
+    expect(Math.atan2(Math.sin(off), Math.cos(off))).toBeCloseTo(Math.atan2(offset.y, offset.x), 3);
+  });
+});
+
+describe('an ordinary compound with no cylinder in it', () => {
+  /** A four-bar with one compound coupler and a bar pinned to its corner. */
+  function compoundNeighborFixture(): MechanismFixture {
+    return {
+      joints: [
+        { id: 'A', x: 0, y: 0, ground: true },
+        { id: 'B', x: 0, y: 3 },
+        { id: 'C', x: 4, y: 3 },
+        { id: 'D', x: 5, y: 0 },
+      ],
+      links: [{ joints: 'AB' }, { joints: 'BCD', subset: [{ joints: 'BC' }, { joints: 'CD' }] }],
+      inputAngVel: 1,
+    };
+  }
+
+  it('is reframed exactly as it always was', () => {
+    // The frame skips a joint a cylinder derives, and there is no cylinder here
+    // — so it is the body's first two joints, as it has always been, and every
+    // number a load and a hand-placed center land on is the one they landed on
+    // before S21. Computed here rather than recorded, so it says the rule.
+    const { mechanism, grid, at } = build(compoundNeighborFixture());
+    const body = mechanism.links.find((link) => link.id === 'BCD') as RealLink;
+    const leaf = body.subset.find((sub) => sub.id === 'CD') as RealLink;
+    const from = body.joints.slice(0, 2).map((joint) => ({ x: joint.x, y: joint.y }));
+    leaf.comIsCustom = true;
+    leaf.CoM = new Coord((at('C').x + at('D').x) / 2, (at('C').y + at('D').y) / 2);
+    const was = { x: leaf.CoM.x, y: leaf.CoM.y };
+
+    // Through a link drag, which is the path that reframes a deformed
+    // neighbor. A plain joint drag leaves a hand-placed center alone by its own
+    // older rule, and would say nothing about this one.
+    grid.dragLink(
+      mechanism.links.find((link) => link.id === 'AB')!,
+      0.4,
+      0.6
+    );
+
+    // The body's own first two joints, before and after: the point keeps its
+    // place in that frame, along the axis and across it.
+    const to = body.joints.slice(0, 2).map((joint) => ({ x: joint.x, y: joint.y }));
+    const spanX = from[1].x - from[0].x;
+    const spanY = from[1].y - from[0].y;
+    const square = spanX * spanX + spanY * spanY;
+    const along = ((was.x - from[0].x) * spanX + (was.y - from[0].y) * spanY) / square;
+    const across = ((was.y - from[0].y) * spanX - (was.x - from[0].x) * spanY) / square;
+    const toX = to[1].x - to[0].x;
+    const toY = to[1].y - to[0].y;
+    expect(leaf.CoM.x).toBeCloseTo(to[0].x + along * toX - across * toY, 6);
+    expect(leaf.CoM.y).toBeCloseTo(to[0].y + along * toY + across * toX, 6);
   });
 });
 

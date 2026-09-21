@@ -63,33 +63,22 @@ function build(payload: string) {
 }
 
 describe('a cylinder whose two ends sit in two bodies pinned to each other', () => {
-  it('is refused for the reason that is actually in the way', () => {
+  it('takes the length, because the editor lets a welded body change shape', () => {
+    // Three sentences used to come out of here, all of them about a re-pose
+    // pulling a welded body out of shape. **S21** (September 21, 2026) says
+    // that is not a refusal at all: the reader is drawing, and a welded body
+    // changes shape under an edit exactly as a compound link does when one of
+    // its joints is dragged. So the length goes through and the two bodies
+    // follow the end joint the ladder moved.
     const harness = build(CYLINDER_IN_A_TRIANGLE);
     const ram = harness.rams()[0];
     expect(ram.barrelRoot.id, 'the fixture really is two bodies').not.toBe(ram.rodRoot.id);
+    const wanted = harness.span('C', 'C1') * 1.2;
 
-    expect(harness.grid.setBarrelLength(ram, harness.span('C', 'C1') * 1.2)).toBe(false);
+    expect(harness.grid.setBarrelLength(ram, wanted)).toBe(true);
 
-    const [refusal] = harness.said();
-    expect(refusal.code).toBe('cylinder.pose-conflict');
-    // What is in the way: both bodies, and the joint that ties them together.
-    expect(refusal.text).toContain('Cylinder CD');
-    expect(refusal.text).toContain('Link CF');
-    expect(refusal.text).toContain('Link DEF');
-    expect(refusal.text).toContain('joint F');
-    // And what to do about it, in the app's own verb.
-    expect(refusal.text).toContain('Unweld joint C or joint D');
-    // Never the old sentence, which was true of a different drawing.
-    expect(refusal.text).not.toContain('both mounts');
-  });
-
-  it('names no joint the drawing does not draw', () => {
-    const harness = build(CYLINDER_IN_A_TRIANGLE);
-    const ram = harness.rams()[0];
-    harness.grid.setBarrelLength(ram, harness.span('C', 'C1') * 1.2);
-
-    // `CC1F` is the body's id and holds C1, the buried inner end.
-    expect(harness.said()[0].text).not.toMatch(INTERIOR_NAME);
+    expect(harness.span('C', 'C1')).toBeCloseTo(wanted, 3);
+    expect(harness.said()).toEqual([]);
   });
 });
 
@@ -105,25 +94,18 @@ describe('every refusal a cylinder edit can raise, over welded barrels', () => {
   function everySaying(): { code: string; text: string }[] {
     const collected: { code: string; text: string }[] = [];
 
-    // 1 · two bodies tied together at a pin.
-    const triangle = build(CYLINDER_IN_A_TRIANGLE);
-    triangle.grid.setBarrelLength(triangle.rams()[0], triangle.span('C', 'C1') * 1.2);
-    collected.push(...triangle.said());
-
-    // 2 · a Lock on a joint the edit would carry: the bracket turns with the
-    //     cylinder welded into it, and the Lock is out on its far corner.
+    // 1 · a Lock on a joint a **body drag** carries: the reader has the whole
+    //     assembly in hand, the bracket comes with it, and the Lock is out on
+    //     the bracket's far corner. A *re-pose* no longer carries that bracket
+    //     (S21), so this is the gesture the mark still holds against.
     const locked = build(TWO_RAMS_ONE_BRACKET);
     (locked.joint('W') as RealJoint).locked = true;
     locked.mechanism.updateMechanism(false);
-    const turning = locked.rams().find((one) => one.inner.id === 'T1')!;
-    const bearing = Math.atan2(
-      locked.joint('U').y - locked.joint('T').y,
-      locked.joint('U').x - locked.joint('T').x
-    );
-    locked.grid.setCylinderAngle(turning, bearing + 0.2);
+    const dragged = locked.rams().find((one) => one.inner.id === 'T1')!;
+    locked.grid.dragCylinder(dragged, 3, 2);
     collected.push(...locked.said());
 
-    // 3 · a cylinder carried past what it can reach, with both of its members
+    // 2 · a cylinder carried past what it can reach, with both of its members
     //     fixed at their lengths so neither can take up the difference.
     const held = build(TWO_RAMS_ONE_BRACKET);
     const carried = held.rams().find((one) => one.inner.id === 'T2')!;
@@ -135,7 +117,39 @@ describe('every refusal a cylinder edit can raise, over welded barrels', () => {
     held.grid.dragJoint(far, new Coord(held.joint('T').x, held.joint('T').y));
     collected.push(...held.said());
 
+    // 3 · a body drag handed a pose that is not a rigid motion, which is the
+    //     one shape refusal S21 left standing. Nothing a reader can gesture --
+    //     `dragCylinder` translates and `rotateCylinder` turns -- so it is
+    //     provoked through the planner, with the service's own namer.
+    collected.push(...tornByABodyDrag());
+
     return collected;
+  }
+
+  /** The shape refusal, provoked by a body motion that is not rigid. */
+  function tornByABodyDrag(): { code: string; text: string }[] {
+    const harness = build(CYLINDER_IN_A_TRIANGLE);
+    const ram = harness.rams()[0];
+    // A "body drag" that stretches the part: every other pose in the app is a
+    // translation or a turn, so this one has to be written by hand.
+    harness.grid.runEdit(
+      {
+        poses: [
+          {
+            cylinder: ram,
+            pose: {
+              mountA: { x: ram.mountA.x, y: ram.mountA.y },
+              inner: { x: ram.inner.x, y: ram.inner.y },
+              seal: { x: ram.seal.x, y: ram.seal.y },
+              mountB: { x: ram.mountB.x + 3, y: ram.mountB.y },
+            },
+            motion: 'body',
+          },
+        ],
+      },
+      false
+    );
+    return harness.said();
   }
 
   it('says something, and says nothing about a joint nobody can see', () => {
@@ -161,22 +175,44 @@ describe('every refusal a cylinder edit can raise, over welded barrels', () => {
   });
 });
 
-describe('a Lock on something a cylinder edit would carry', () => {
+describe('a Lock on something a body drag would carry', () => {
   it('names the locked joint and the way out of it', () => {
     const harness = build(TWO_RAMS_ONE_BRACKET);
     (harness.joint('W') as RealJoint).locked = true;
     harness.mechanism.updateMechanism(false);
     const ram: Cylinder = harness.rams().find((one) => one.inner.id === 'T1')!;
-    const bearing = Math.atan2(
-      harness.joint('U').y - harness.joint('T').y,
-      harness.joint('U').x - harness.joint('T').x
-    );
+    const wasT = { x: harness.joint('T').x, y: harness.joint('T').y };
 
-    expect(harness.grid.setCylinderAngle(ram, bearing + 0.2)).toBe(false);
+    harness.grid.dragCylinder(ram, 3, 2);
 
     const [refusal] = harness.said();
     expect(refusal.code).toBe('cylinder.pose-locked');
     expect(refusal.text).toContain('joint W');
     expect(refusal.text).toContain('Unlock');
+    // And nothing moved: a refusal is the app's word for nothing having
+    // happened.
+    expect(harness.joint('T').x).toBeCloseTo(wasT.x, 6);
+    expect(harness.joint('T').y).toBeCloseTo(wasT.y, 6);
+  });
+
+  it('says nothing about that Lock when the same part is only re-posed', () => {
+    // S21: a typed Angle writes the cylinder's own joints, so the bracket
+    // changes shape around them and the locked corner never moves. This whole
+    // drawing used to be frozen by that one mark.
+    const harness = build(TWO_RAMS_ONE_BRACKET);
+    (harness.joint('W') as RealJoint).locked = true;
+    harness.mechanism.updateMechanism(false);
+    const ram: Cylinder = harness.rams().find((one) => one.inner.id === 'T1')!;
+    const witness = { x: harness.joint('W').x, y: harness.joint('W').y };
+    const bearing = Math.atan2(
+      harness.joint('U').y - harness.joint('T').y,
+      harness.joint('U').x - harness.joint('T').x
+    );
+
+    expect(harness.grid.setCylinderAngle(ram, bearing + 0.2)).toBe(true);
+
+    expect(harness.said()).toEqual([]);
+    expect(harness.joint('W').x).toBeCloseTo(witness.x, 6);
+    expect(harness.joint('W').y).toBeCloseTo(witness.y, 6);
   });
 });

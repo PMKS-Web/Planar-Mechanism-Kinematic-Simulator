@@ -448,8 +448,11 @@ checkThat(
   !!state.joints.find((j) => j.kind === 'PrisJoint')?.input
 );
 checkThat(
+  // In the pass above every skin rather than at the tail of the cylinder's own
+  // group (decision S24): a body welded to another cylinder can be painted
+  // after this one, and white arrows under it say nothing.
   'the skin shows the driven arrows',
-  (await page.locator('.cylinder-mark line').count()) >= 2
+  (await page.locator('.cylinder-overlay line').count()) >= 2
 );
 
 // ------------------------------------------- 5. set the speed from the panel

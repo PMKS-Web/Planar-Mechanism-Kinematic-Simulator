@@ -256,6 +256,66 @@ async function draw(recipe, options = {}) {
         // The drive is the seal's own, through the ordinary input door.
         pick(m.sealedStructures()[0].seal);
         m.adjustInput();
+      } else if (
+        which === 'two-rods' ||
+        which === 'two-barrels' ||
+        which === 'chain-forward' ||
+        which === 'chain-back'
+      ) {
+        // The four shapes a shared body can take, each with an unwelded
+        // cylinder and a plain bar beside it to be read against (decision S24).
+        // Every head in the scene has to come out the same color as the lone
+        // one's, whichever cylinders are sharing which body.
+        const live = (id) => m.joints.find((j) => j.id === id);
+        const joinUp = (from, to) => {
+          const bar = m.addBarFrom(from, { x: to.x + 0.4 * S, y: to.y + 0.4 * S });
+          m.mergeJoints(far(bar, from), to);
+        };
+        if (which === 'two-rods') {
+          // Two rod ends welded to one bar: the body holds two rods, so it
+          // belongs after both heads.
+          const one = ram({ x: -6 * S, y: 2 * S }, { x: -2 * S, y: 2 * S });
+          const two = ram({ x: -6 * S, y: -2 * S }, { x: -2 * S, y: -2 * S });
+          joinUp(one.mountB, two.mountB);
+          weld(live(one.mountB.id));
+          weld(live(two.mountB.id));
+        } else if (which === 'two-barrels') {
+          // The mirror: one bracket holding two barrels, before both heads.
+          const one = ram({ x: -2 * S, y: 2 * S }, { x: 2 * S, y: 2 * S });
+          const two = ram({ x: -2 * S, y: -2 * S }, { x: 2 * S, y: -2 * S });
+          joinUp(one.mountA, two.mountA);
+          weld(live(one.mountA.id));
+          weld(live(two.mountA.id));
+        } else {
+          // A chain: one cylinder's rod mount is the next one's barrel mount.
+          // Drawn both ways round, because which of the two the canvas builds
+          // first is exactly what used to decide whether the drawing was right
+          // -- `chain-back` is the order that came out wrong.
+          const first = ram({ x: -6 * S, y: 0 }, { x: -2 * S, y: 0 });
+          const shared =
+            which === 'chain-forward'
+              ? ram({ x: -2 * S, y: 0 }, { x: 2 * S, y: 2 * S }, first.mountB)
+              : undefined;
+          if (!shared) {
+            const second = ram({ x: -1.6 * S, y: 0.3 * S }, { x: 2 * S, y: 2 * S });
+            m.mergeJoints(live(second.mountA.id), live(first.mountB.id));
+          }
+          m.addBarFrom(live(first.mountB.id), { x: -3 * S, y: 3 * S });
+          weld(live(first.mountB.id));
+        }
+        // The control, clear of the welded pair and of the cards along the
+        // bottom of the window: one cylinder nothing is welded to, and one
+        // plain bar pinned to its rod end. Horizontal, so the plain bar's
+        // drawn height is its own width and nothing else.
+        const lone = ram({ x: 1 * S, y: 3.2 * S }, { x: 5 * S, y: 3.2 * S });
+        const plain = m.addBarFrom(lone.mountB, {
+          x: lone.mountB.x + 2 * S,
+          y: lone.mountB.y,
+        });
+        note.control = lone.seal.id;
+        // By its far joint rather than by the link's id, which is built from
+        // the letters and so is not a name to hold on to across a rebuild.
+        note.plainTip = far(plain, lone.mountB).id;
       }
 
       m.finishStructuralEdit(true);
@@ -280,7 +340,7 @@ async function draw(recipe, options = {}) {
   // and a shape comes back with nothing on it at all.
   await page.waitForFunction(
     (many) => document.querySelectorAll('.cylinder-mark').length >= many,
-    recipe === 'shared-mount' ? 2 : 1
+    recipe === 'shared-mount' ? 2 : /^(two-rods|two-barrels|chain-)/.test(recipe) ? 3 : 1
   );
   await page.waitForTimeout(150);
   return drawn;
@@ -436,8 +496,10 @@ const fusionFacts = () =>
         fillets: (d.match(/Q/g) ?? []).length,
         fill: el?.getAttribute('fill') ?? null,
         stored: link?.fill ?? null,
-        // Which layer drew it: the links layer, or a cylinder's own pass.
-        inCylinderLayer: !!el?.closest('.cylinder-mark'),
+        // Which layer drew it: the links layer, or the skin's own paint order,
+        // where a fused body is a step of its own (decision S24) rather than a
+        // child of one cylinder's group.
+        inCylinderLayer: !!el?.closest('.cylinder-fused'),
       };
     };
     // An ordinary welded pair in the same drawing, for the fused body to be
@@ -1064,7 +1126,7 @@ const slideFacts = () =>
         fill: el?.getAttribute('fill') ?? null,
         // Which layer drew it: a plate the skin paints sits in both.
         inPlate: !!el?.closest('.slider-plate'),
-        inCylinderLayer: !!el?.closest('.cylinder-mark'),
+        inCylinderLayer: !!el?.closest('.cylinder-fused'),
       };
     };
     const cylinderOf = (sealId) => grid.cylinderList.find((one) => one.id === sealId);
@@ -1526,6 +1588,198 @@ check(
   )) && (await page.locator('.tabButton', { hasText: 'Edit' }).first().isVisible())
 );
 await contactSheet(`${BOTH_ENDS_OUT}/frames/*.png`, `${BOTH_ENDS_OUT}/sheet.png`, 2);
+
+// ------------------------------ one paint order for the whole drawing (S24)
+//
+// The stack is barrel, black head, rod, and the rod over the head at 0.7 alpha
+// is what makes the head read as the darker band that says how much rod is
+// still in the bore. Painted per cylinder, a body two cylinders share landed
+// inside one of their stacks and outside the other's: the reported scene came
+// out with one head bare `#000`. So the order is asked of the whole drawing,
+// and every head in a scene has to read exactly as the lone cylinder's does.
+
+/**
+ * Where each piece of each cylinder is painted, as an index into the skin
+ * layer's own document order, plus a point on each head that is black rather
+ * than cream.
+ *
+ * A member's paint is its own path when nothing has swallowed it, and the
+ * fused body's otherwise -- found through the member's hit path, which is the
+ * one thing inside a fused group that names the member it stands in for.
+ */
+const skinLayout = () =>
+  page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const painted = [
+      ...document.querySelectorAll(
+        '#sliderHolder .cylinder-barrel, #sliderHolder .cylinder-seal,' +
+          ' #sliderHolder .cylinder-rod, #sliderHolder .cylinder-body'
+      ),
+    ];
+    const bodyHolding = (memberId) =>
+      document
+        .querySelector(`.cylinder-member-hit[data-member="${memberId}"]`)
+        ?.closest('.cylinder-fused')
+        ?.querySelector('.cylinder-body');
+    return grid.cylinderList.map((cyl) => {
+      const group = document.querySelector(`.cylinder-mark[data-cylinder="${cyl.id}"]`);
+      const own = (selector) => group?.querySelector(selector);
+      const head = own('.cylinder-seal');
+      const rodPaint = own('.cylinder-rod') ?? bodyHolding(cyl.rodId);
+      // Past the seal's own cream mark and short of the end cap: the middle of
+      // a head is the mark in every scene and says nothing.
+      const at = head
+        ? new DOMPoint(cyl.headAlongHalf * 0.8, 0).matrixTransform(head.getScreenCTM())
+        : null;
+      return {
+        id: cyl.id,
+        barrel: painted.indexOf(own('.cylinder-barrel') ?? bodyHolding(cyl.barrelId)),
+        head: painted.indexOf(head),
+        rod: painted.indexOf(rodPaint),
+        // The ink whatever paints this rod is painted in, which is what the
+        // head underneath has to read as once the skin's alpha is applied.
+        rodInk: rodPaint?.getAttribute('fill') ?? null,
+        x: at ? at.x : null,
+        y: at ? at.y : null,
+      };
+    });
+  });
+
+/** The pixel actually on the glass at each point, as `#rrggbb`. */
+async function pixelsAt(spots) {
+  const shot = (await page.screenshot()).toString('base64');
+  return page.evaluate(
+    async ([data, points]) => {
+      const img = await createImageBitmap(
+        await (await fetch(`data:image/png;base64,${data}`)).blob()
+      );
+      const ctx = new OffscreenCanvas(img.width, img.height).getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      return points.map((point) => {
+        if (point.x === null) return null;
+        const [r, g, b] = ctx.getImageData(Math.round(point.x), Math.round(point.y), 1, 1).data;
+        return `#${[r, g, b].map((one) => one.toString(16).padStart(2, '0')).join('')}`;
+      });
+    },
+    [shot, spots]
+  );
+}
+
+/** A `#rrggbb` ink at the skin's own 0.7 fill alpha, laid on the black head. */
+function overBlack(ink) {
+  const channels = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(ink ?? '');
+  if (!channels) return null;
+  return (
+    '#' +
+    channels
+      .slice(1)
+      .map((one) =>
+        Math.round(parseInt(one, 16) * 0.7)
+          .toString(16)
+          .padStart(2, '0')
+      )
+      .join('')
+  );
+}
+
+/** The largest per-channel difference between two `#rrggbb` inks. */
+function channelGap(saw, want) {
+  if (!saw || !want) return 255;
+  const of = (ink) => [1, 3, 5].map((at) => parseInt(ink.slice(at, at + 2), 16));
+  return Math.max(...of(saw).map((one, at) => Math.abs(one - of(want)[at])));
+}
+
+const ORDER_OUT = 'artifacts/cylinder-paint-order';
+mkdirSync(`${ORDER_OUT}/frames`, { recursive: true });
+let lastScene;
+for (const scene of ['two-rods', 'two-barrels', 'chain-forward', 'chain-back']) {
+  const drawn = await draw(scene);
+  lastScene = drawn;
+  await page.screenshot({ path: `${ORDER_OUT}/frames/${scene}.png` });
+  const layout = await skinLayout();
+  const inks = await pixelsAt(layout);
+  const wrongWay = layout.filter((one) => !(one.barrel < one.head && one.head < one.rod));
+  check(
+    `${scene}: every cylinder paints barrel, then head, then rod`,
+    layout.length === 3 && wrongWay.length === 0,
+    JSON.stringify(layout.map(({ id, barrel, head, rod }) => ({ id, barrel, head, rod })))
+  );
+  // Exactly one 0.7 layer of that rod's own ink over the black head -- which
+  // is the band, and is what the lone cylinder beside them reads as. A head
+  // nothing covers comes out `#000`, and one covered twice comes out pale.
+  const reading = layout.map((one, at) => ({
+    id: one.id,
+    saw: inks[at],
+    want: overBlack(one.rodInk),
+  }));
+  const off = reading.filter((one) => channelGap(one.saw, one.want) > 4);
+  check(
+    `${scene}: every head is its own rod's ink at the skin's alpha`,
+    layout.length === 3 && off.length === 0,
+    JSON.stringify(reading)
+  );
+
+  // And a click still reaches what it visibly lands on. Reordering the layer
+  // moved the seal's hit area and the member hits into a pass of their own,
+  // so the four things a reader can pick are asked for by name.
+  const targets = await page.evaluate(() => {
+    const withBarrel = [...document.querySelectorAll('.cylinder-mark')].find((group) =>
+      group.querySelector('.cylinder-barrel')
+    );
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const seal = withBarrel?.getAttribute('data-cylinder') ?? null;
+    return {
+      seal,
+      barrel: grid.cylinderList.find((one) => one.id === seal)?.barrelId ?? null,
+      body: document.querySelector('.cylinder-fused')?.getAttribute('data-body') ?? null,
+      member: document.querySelector('.cylinder-member-hit')?.getAttribute('data-member') ?? null,
+    };
+  });
+  const picked = {
+    barrel: await selects(`.cylinder-mark[data-cylinder="${targets.seal}"] .cylinder-barrel`),
+    seal: await selects(`.cylinder-overlay[data-cylinder="${targets.seal}"] .cylinder-seal-hit`),
+    body: await selects(`.cylinder-fused[data-body="${targets.body}"] .cylinder-body`),
+    member: await selects(`.cylinder-member-hit[data-member="${targets.member}"]`),
+  };
+  check(
+    `${scene}: a click still selects what it lands on`,
+    picked.barrel.id === targets.barrel &&
+      picked.seal.type === 'Joint' &&
+      picked.seal.id === targets.seal &&
+      picked.body.id === targets.body &&
+      picked.member.id === targets.member,
+    JSON.stringify({ targets, picked })
+  );
+}
+
+// And the one width, measured where the maintainer sees it: an ordinary bar
+// pinned to a rod's end joint, both horizontal, both drawn with the same
+// stroke -- so the two screen heights are the two half-widths and nothing else
+// (decision S23).
+const widths = await page.evaluate(
+  ([tip, control]) => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const bar = grid.mechanismSrv.links.find(
+      (link) => link.joints.length === 2 && link.joints.some((joint) => joint.id === tip)
+    );
+    const height = (el) => (el ? +el.getBoundingClientRect().height.toFixed(2) : null);
+    return {
+      bar: height(document.querySelector(`#linkHolder [id="${bar?.id}"]`)),
+      rod: height(
+        document.querySelector(`.cylinder-mark[data-cylinder="${control}"] .cylinder-rod`)
+      ),
+    };
+  },
+  [lastScene.plainTip, lastScene.control]
+);
+check(
+  'a bar is drawn exactly as thick as a cylinder’s rod',
+  widths.bar !== null && widths.rod !== null && Math.abs(widths.bar - widths.rod) <= 0.1,
+  JSON.stringify(widths)
+);
+// The frames sit in their own directory, as the Slide section's do: the sheet
+// lands beside them, and a second run would otherwise tile the first's sheet.
+await contactSheet(`${ORDER_OUT}/frames/*.png`, `${ORDER_OUT}/sheet.png`, 2, 0.6);
 
 // ------------------------------------------------------------------ wrap up
 check('nothing threw', consoleErrors.length === 0, consoleErrors.slice(0, 3).join(' | '));
