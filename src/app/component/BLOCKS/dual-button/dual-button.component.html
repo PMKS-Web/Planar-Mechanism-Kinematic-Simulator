@@ -1,18 +1,49 @@
 <div class="row dual-button">
-  <button mat-stroked-button color="primary" (click)="but1Action()()">
-    <mat-icon svgIcon="{{ but1Icon() }}"></mat-icon>
-    {{ but1Text() }}
-  </button>
-  @if (but2Text) {
+  <div
+    class="button-seat"
+    [matTooltip]="btn1Tooltip() ?? ''"
+    [matTooltipDisabled]="!btn1Tooltip()"
+    [matTooltipShowDelay]="btn1Disabled() ? 400 : 1000"
+  >
     <button
       mat-stroked-button
       color="primary"
-      (click)="but2Action()?.()"
-      [disabled]="btn2Disabled()"
-      class="{{ btn2Disabled() ? 'buttonDisabled' : '' }}"
+      (click)="but1Action()()"
+      [disabled]="btn1Disabled()"
+      [class.buttonDisabled]="btn1Disabled()"
+      [attr.aria-label]="but1Text()"
+      [attr.aria-description]="btn1Tooltip()"
     >
-      <mat-icon svgIcon="{{ but2Icon() }}"></mat-icon>
-      {{ but2Text }}
+      <mat-icon svgIcon="{{ but1Icon() }}"></mat-icon>
+      <span class="button-copy">
+        <span>{{ but1Text() }}</span>
+        @if (but1WidthText()) {
+          <span class="button-copy-sizer" aria-hidden="true">{{ but1WidthText() }}</span>
+        }
+      </span>
     </button>
+  </div>
+  @if (but2Text()) {
+    <div
+      class="button-seat"
+      [matTooltip]="btn2Tooltip() ?? ''"
+      [matTooltipDisabled]="!btn2Tooltip()"
+      [matTooltipShowDelay]="btn2Disabled() ? 400 : 1000"
+    >
+      <button
+        mat-stroked-button
+        color="primary"
+        (click)="but2Action()?.()"
+        [disabled]="btn2Disabled()"
+        [class.buttonDisabled]="btn2Disabled()"
+        [attr.aria-label]="but2Text()"
+        [attr.aria-description]="btn2Tooltip()"
+      >
+        <mat-icon svgIcon="{{ but2Icon() }}"></mat-icon>
+        <span class="button-copy">
+          <span>{{ but2Text() }}</span>
+        </span>
+      </button>
+    </div>
   }
 </div>
