@@ -21,6 +21,8 @@ export interface DiagramLine {
   from: DiagramPoint;
   to: DiagramPoint;
   label?: string;
+  /** Optional label anchor for dimensions whose text belongs away from the measured segment. */
+  labelPoint?: DiagramPoint;
   color?: string;
   dashed?: boolean;
   arrow?: boolean;
@@ -124,8 +126,16 @@ let nextDiagram = 0;
       @if (line.label) {
         <text
           data-diagram-label
-          [attr.x]="sx(line.midpointLabel ? (line.from.x + line.to.x) / 2 : line.to.x) + 5"
-          [attr.y]="sy(line.midpointLabel ? (line.from.y + line.to.y) / 2 : line.to.y) - 6"
+          [attr.x]="
+            sx(
+              line.labelPoint?.x ?? (line.midpointLabel ? (line.from.x + line.to.x) / 2 : line.to.x)
+            ) + 5
+          "
+          [attr.y]="
+            sy(
+              line.labelPoint?.y ?? (line.midpointLabel ? (line.from.y + line.to.y) / 2 : line.to.y)
+            ) - 6
+          "
           [attr.fill]="line.color ?? 'var(--canvas-ink)'"
         >
           {{ line.label.split('_')[0] }}

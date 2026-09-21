@@ -219,8 +219,10 @@
   .worksheetPage > app-solver-explanation {
     flex: 1 1 auto;
     min-height: 0;
+    max-height: 100%;
     height: auto;
-    overflow-y: auto;
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
     background: var(--surface);
     border-radius: var(--card-radius);
     box-shadow: var(--card-shadow);
