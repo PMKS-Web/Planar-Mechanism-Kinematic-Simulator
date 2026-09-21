@@ -14,12 +14,23 @@ type ReferenceId = 'A' | 'CoM' | 'B';
   selector: 'app-force-definitions',
   imports: [SolverDiagramComponent, SolverMathComponent],
   template: `
-    <details class="definitionStep" open>
+    <details class="definitionStep">
       <summary>1 · Start with Force and Moment Balances</summary>
-      <details class="subsection" open>
+      <details class="subsection">
         <summary>Force balance</summary>
         <app-solver-math [equation]="forceBalance" />
-        <p>The left side contains applied reactions, forces, and weight.</p>
+        <p>
+          The left side is every force drawn on the free-body diagram. The right side is inertia.
+        </p>
+        <details class="equationDetail">
+          <summary>See what belongs on each side</summary>
+          <app-solver-math [equation]="forceLoadGroups" />
+          <p>
+            Joint reactions are the internal forces exposed when the body is isolated. External
+            forces and gravity are also on the left. Use ma on the right for motion or zero for a
+            static body.
+          </p>
+        </details>
         <details class="equationDetail">
           <summary>Resolve force balance into x, y, and z</summary>
           <app-solver-math [equation]="forceComponents" />
@@ -39,10 +50,21 @@ type ReferenceId = 'A' | 'CoM' | 'B';
           <app-solver-math [equation]="staticForceComponents" />
         </details>
       </details>
-      <details class="subsection" open>
+      <details class="subsection">
         <summary>Moment balance</summary>
         <app-solver-math [equation]="momentBalance" />
-        <p>The left side contains applied couples and moments made by forces.</p>
+        <p>
+          The left side adds the moments of every load in the free-body diagram about the chosen
+          point.
+        </p>
+        <details class="equationDetail">
+          <summary>See what belongs on each side</summary>
+          <app-solver-math [equation]="momentLoadGroups" />
+          <p>
+            Add moments from joint reactions, external forces, weight, and motor torque on the left.
+            Use Iα on the right for motion or zero for statics.
+          </p>
+        </details>
         <details class="equationDetail">
           <summary>Resolve moment balance into x, y, and z</summary>
           <app-solver-math [equation]="momentComponents" />
@@ -61,16 +83,30 @@ type ReferenceId = 'A' | 'CoM' | 'B';
             A force applied at P creates a moment about O. Section 4 resolves this position vector
             and force into the x and y components used to build the z-moment equation.
           </p>
+          <details class="equationDetail">
+            <summary>Resolve the position and force vectors</summary>
+            <app-solver-math [equation]="genericVectors" />
+          </details>
+          <details class="equationDetail">
+            <summary>Use the cross product to find the moment components</summary>
+            <app-solver-math [equation]="genericCrossProduct" />
+            <app-solver-math [equation]="genericMomentComponents" />
+            <p>
+              Both vectors lie in the x-y plane, so the x and y moment components are zero. The z
+              component is the quantity used in planar force analysis.
+            </p>
+          </details>
         </details>
       </details>
     </details>
 
-    <details class="definitionStep" open>
+    <details class="definitionStep">
       <summary>2 · Build the Free-Body Diagram</summary>
       <h3>Isolate the slanted link AB</h3>
       <p>
-        Replace the two connections with reactions, keep the weight at CoM, and show the applied
-        force at P. Orange arrows are assumed directions, not calculated answers.
+        Replace the two connections with reactions, keep the weight at CoM, show the applied force
+        at P, and include the motor torque M_A at A. Orange arrows are assumed directions, not
+        calculated answers.
       </p>
       <app-solver-diagram
         [diagram]="initialDiagram"
@@ -99,10 +135,10 @@ type ReferenceId = 'A' | 'CoM' | 'B';
       </table>
     </details>
 
-    <details class="definitionStep" open>
+    <details class="definitionStep">
       <summary>4 · Build the Force and Moment Equations</summary>
       <p>Start with the FBD above, then collect each load component in the matching balance.</p>
-      <details class="subsection" open>
+      <details class="subsection">
         <summary>Sum of Forces in x</summary>
         <p>Highlight each horizontal component from the same FBD. Right is positive x.</p>
         <app-solver-diagram
@@ -111,7 +147,7 @@ type ReferenceId = 'A' | 'CoM' | 'B';
         />
         <app-solver-math [equation]="exampleFx" />
       </details>
-      <details class="subsection" open>
+      <details class="subsection">
         <summary>Sum of Forces in y</summary>
         <p>Highlight each vertical component from the same FBD. Up is positive y.</p>
         <app-solver-diagram
@@ -120,7 +156,7 @@ type ReferenceId = 'A' | 'CoM' | 'B';
         />
         <app-solver-math [equation]="exampleFy" />
       </details>
-      <details class="subsection" open>
+      <details class="subsection">
         <summary>Sum of Moments in z</summary>
         <label class="referenceControl">
           Moment Reference
@@ -142,18 +178,28 @@ type ReferenceId = 'A' | 'CoM' | 'B';
           [diagram]="momentDiagram()"
           [label]="'Free-body diagram with moments about ' + referenceLabel()"
         />
-        <app-solver-diagram
-          [diagram]="momentArmGrid()"
-          [label]="'Moment-arm component grid about ' + referenceLabel()"
-        />
-        <app-solver-math [equation]="referenceDistances()" />
-        <app-solver-math [equation]="crossProduct()" />
-        <app-solver-math [equation]="momentEquation()" />
-        <p class="caption">
-          Each term uses (r × F)_z = r_xF_y − r_yF_x. Move the reference to see which arms become
-          zero and how the symbolic z-moment equation changes. This example is static, so the right
-          side remains zero.
-        </p>
+        <app-solver-math [equation]="generalMomentEquation" />
+        <details class="equationDetail">
+          <summary>1 · Calculate every moment arm from its two points</summary>
+          <app-solver-diagram
+            [diagram]="momentArmGrid()"
+            [label]="'Moment-arm component grid about ' + referenceLabel()"
+          />
+          <app-solver-math [equation]="momentArmCalculations()" />
+          <p class="caption">
+            Each vector is target position minus reference position. The grid projects its x and y
+            components away from the link; r_z is zero for every planar position vector.
+          </p>
+        </details>
+        <details class="equationDetail">
+          <summary>2 · Use those moment arms in the z-moment equation</summary>
+          <app-solver-math [equation]="crossProduct()" />
+          <app-solver-math [equation]="momentEquation()" />
+          <p class="caption">
+            Each term uses (r × F)_z = r_xF_y − r_yF_x. The motor torque M_A is added directly. Move
+            the reference to see which arms become zero and how the symbolic equation changes.
+          </p>
+        </details>
       </details>
     </details>
   `,
@@ -277,17 +323,25 @@ export class ForceDefinitionsComponent {
   protected readonly referenceLabel = computed(
     () => this.referenceOptions.find((option) => option.id === this.reference())!.label
   );
-  protected readonly referenceDistances = computed(() => this.distanceList(this.reference()));
+  protected readonly momentArmCalculations = computed(() =>
+    this.momentArmCalculationsFor(this.reference())
+  );
   protected readonly crossProduct = computed(
     () =>
       String.raw`(\vec r_{P/${this.reference()}}\times\vec F_1)_z=r_{P/${this.reference()},x}F_{1y}-r_{P/${this.reference()},y}F_{1x}`
   );
   protected readonly momentEquation = computed(() => this.momentFor(this.reference()));
   protected readonly forceBalance = String.raw`\sum\vec F=m\vec a_{\mathrm{CoM}}\qquad\xrightarrow{\ \mathrm{statics}:\ \vec a=\vec0\ }\qquad\sum\vec F=\vec0`;
+  protected readonly forceLoadGroups = String.raw`\underbrace{\sum\vec F_{\mathrm{joint}}+\sum\vec F_{\mathrm{external}}+\sum\vec W}_{\text{LHS: all forces on the FBD}}=\underbrace{m\vec a_{\mathrm{CoM}}}_{\text{RHS: motion}}\quad\text{or}\quad\underbrace{\vec0}_{\text{RHS: static}}`;
   protected readonly forceComponents = String.raw`\begin{aligned}\sum F_x&=m a_{\mathrm{CoM},x}&&\xrightarrow{\mathrm{statics}}\quad\sum F_x=0\\\sum F_y&=m a_{\mathrm{CoM},y}&&\xrightarrow{\mathrm{statics}}\quad\sum F_y=0\\\sum F_z&=m a_{\mathrm{CoM},z}=0&&\xrightarrow{\mathrm{planar}}\quad\sum F_z=0\end{aligned}`;
   protected readonly staticForceComponents = String.raw`\begin{aligned}\sum F_x&=0\\\sum F_y&=0\\\sum F_z&=0\end{aligned}`;
   protected readonly momentBalance = String.raw`\sum\vec M_{\mathrm{CoM}}=I_{\mathrm{CoM}}\vec\alpha\qquad\xrightarrow{\ \mathrm{statics}:\ \vec\alpha=\vec0\ }\qquad\sum\vec M_{\mathrm{CoM}}=\vec0`;
+  protected readonly momentLoadGroups = String.raw`\underbrace{\sum(\vec r\times\vec F_{\mathrm{joint}})+\sum(\vec r\times\vec F_{\mathrm{external}})+\sum(\vec r\times\vec W)+\sum M_{\mathrm{motor}}}_{\text{LHS: all moments on the FBD}}=\underbrace{I_{\mathrm{CoM}}\vec\alpha}_{\text{RHS: motion}}\quad\text{or}\quad\underbrace{\vec0}_{\text{RHS: static}}`;
   protected readonly momentComponents = String.raw`\begin{aligned}\sum M_{\mathrm{CoM},x}&=0=0\\\sum M_{\mathrm{CoM},y}&=0=0\\\sum M_{\mathrm{CoM},z}&=I_{\mathrm{CoM}}\alpha\quad\xrightarrow{\mathrm{statics}}\quad\sum M_{\mathrm{CoM},z}=0\end{aligned}`;
+  protected readonly genericVectors = String.raw`\vec r_{P/O}=\langle r_{P/O,x},r_{P/O,y},0\rangle,\qquad\vec F=\langle F_x,F_y,0\rangle`;
+  protected readonly genericCrossProduct = String.raw`\vec r_{P/O}\times\vec F=\begin{vmatrix}\hat i&\hat j&\hat k\\r_{P/O,x}&r_{P/O,y}&0\\F_x&F_y&0\end{vmatrix}`;
+  protected readonly genericMomentComponents = String.raw`\vec M_O=\langle\underbrace{0}_{M_x},\underbrace{0}_{M_y},\underbrace{r_{P/O,x}F_y-r_{P/O,y}F_x}_{M_z}\rangle`;
+  protected readonly generalMomentEquation = String.raw`\sum M_{O,z}=\sum(r_xF_y-r_yF_x)+\sum M_{\mathrm{motor}}=I_{\mathrm{CoM}}\alpha\quad\text{or}\quad0\text{ for statics}`;
   protected readonly exampleFx = String.raw`\sum F_x=-A_x+B_x+F_{1x}=0`;
   protected readonly exampleFy = String.raw`\sum F_y=A_y+B_y+F_{1y}-W_{AB}=0`;
   protected readonly variables = [
@@ -300,6 +354,10 @@ export class ForceDefinitionsComponent {
     {
       symbol: String.raw`W_{AB}`,
       meaning: 'Weight of link AB, applied at its center of mass (CoM).',
+    },
+    {
+      symbol: String.raw`M_A`,
+      meaning: 'Motor torque applied directly at joint A.',
     },
     {
       symbol: String.raw`\vec r_{A/O}`,
@@ -334,13 +392,14 @@ export class ForceDefinitionsComponent {
     const reference = this.reference();
     const targets = (['A', 'B', 'P', 'CoM'] as const).filter((target) => target !== reference);
     const gridLines: DiagramLine[] = targets.flatMap((target, index) => {
-      const start = { x: -120, y: 105 - index * 75 };
-      const delta = this.delta(target, reference);
-      const endX = start.x + delta.x;
+      const from = this.point(reference);
+      const to = this.point(target);
+      const xRail = -70 - index * 32;
+      const yRail = 250 + index * 35;
       return [
         {
-          from: start,
-          to: { x: endX, y: start.y },
+          from: { x: from.x, y: xRail },
+          to: { x: to.x, y: xRail },
           label: `r_${target}/${reference},x`,
           dashed: true,
           arrow: true,
@@ -349,8 +408,8 @@ export class ForceDefinitionsComponent {
           midpointLabel: true,
         },
         {
-          from: { x: endX, y: start.y },
-          to: { x: endX, y: start.y + delta.y },
+          from: { x: yRail, y: from.y },
+          to: { x: yRail, y: to.y },
           label: `r_${target}/${reference},y`,
           dashed: true,
           arrow: true,
@@ -358,31 +417,67 @@ export class ForceDefinitionsComponent {
           width: 1.4,
           midpointLabel: true,
         },
+        {
+          from,
+          to: { x: from.x, y: xRail },
+          dashed: true,
+          color: 'var(--text-tertiary)',
+          width: 0.9,
+        },
+        {
+          from: to,
+          to: { x: to.x, y: xRail },
+          dashed: true,
+          color: 'var(--text-tertiary)',
+          width: 0.9,
+        },
+        {
+          from,
+          to: { x: yRail, y: from.y },
+          dashed: true,
+          color: 'var(--text-tertiary)',
+          width: 0.9,
+        },
+        {
+          from: to,
+          to: { x: yRail, y: to.y },
+          dashed: true,
+          color: 'var(--text-tertiary)',
+          width: 0.9,
+        },
       ];
     });
     return {
       axisMomentLabel: 'M',
       legend: 'Moment-arm component grid',
-      points: [
-        { x: -120, y: 105, label: `O = ${reference}`, reference: true },
-        ...targets.map((target, index) => ({ x: -145, y: 105 - index * 75, label: target })),
+      points: Object.values(this.points).map((point) => ({
+        ...point,
+        reference: point.label === reference,
+      })),
+      outlines: [
+        [
+          { x: -7, y: 12 },
+          { x: 184, y: 82 },
+          { x: 197, y: 58 },
+          { x: 6, y: -12 },
+        ],
       ],
       lines: gridLines,
       framingPoints: [
-        { x: -170, y: -155 },
-        { x: 160, y: 150 },
+        { x: -95, y: -170 },
+        { x: 350, y: 145 },
       ],
     };
   }
 
-  private distanceList(reference: ReferenceId) {
-    const terms = (['A', 'B', 'P', 'CoM'] as const)
-      .filter((target) => target !== reference)
-      .map((target) => {
-        const delta = this.delta(target, reference);
-        return String.raw`\vec r_{${target}/${reference}}=\langle${this.number(delta.x)},${this.number(delta.y)}\rangle`;
-      });
-    return String.raw`\begin{aligned}${terms.map((term) => `${term}\\`).join('')}\vec r_{${reference}/${reference}}&=\langle0,0\rangle\end{aligned}`;
+  private momentArmCalculationsFor(reference: ReferenceId) {
+    const terms = (['A', 'B', 'P', 'CoM'] as const).map((target) => {
+      const point = this.point(target);
+      const origin = this.point(reference);
+      const delta = this.delta(target, reference);
+      return String.raw`\vec r_{${target}/${reference}}=\langle${point.x},${point.y},0\rangle-\langle${origin.x},${origin.y},0\rangle=\langle${this.number(delta.x)},${this.number(delta.y)},0\rangle`;
+    });
+    return String.raw`\begin{aligned}${terms.map((term) => `${term}\\`).join('')}\end{aligned}`;
   }
 
   private delta(target: ReferenceId | 'P', reference: ReferenceId) {
@@ -400,8 +495,17 @@ export class ForceDefinitionsComponent {
       lines: [
         {
           from: origin,
+          to: { x: application.x, y: origin.y },
+          label: 'r_P/O,x',
+          dashed: true,
+          color: 'var(--brand)',
+          width: 1.4,
+          midpointLabel: true,
+        },
+        {
+          from: { x: application.x, y: origin.y },
           to: application,
-          label: 'r_P/O',
+          label: 'r_P/O,y',
           dashed: true,
           color: 'var(--brand)',
           width: 1.4,
@@ -415,6 +519,24 @@ export class ForceDefinitionsComponent {
           color: 'var(--warning)',
           width: 1.9,
         },
+        {
+          from: application,
+          to: { x: 190, y: 55 },
+          label: 'F_x',
+          dashed: true,
+          arrow: true,
+          color: 'var(--success)',
+          width: 1.4,
+        },
+        {
+          from: application,
+          to: { x: 145, y: 105 },
+          label: 'F_y',
+          dashed: true,
+          arrow: true,
+          color: 'var(--brand)',
+          width: 1.4,
+        },
       ],
       framingPoints: [
         { x: -45, y: -45 },
@@ -426,9 +548,9 @@ export class ForceDefinitionsComponent {
   private momentFor(reference: ReferenceId) {
     const name = reference === 'CoM' ? '\\mathrm{CoM}' : reference;
     const terms: Record<ReferenceId, string> = {
-      A: String.raw`r_{B/A,x}B_y-r_{B/A,y}B_x+r_{P/A,x}F_{1y}-r_{P/A,y}F_{1x}-r_{\mathrm{CoM}/A,x}W_{AB}`,
-      CoM: String.raw`r_{A/\mathrm{CoM},x}A_y-r_{A/\mathrm{CoM},y}A_x+r_{B/\mathrm{CoM},x}B_y-r_{B/\mathrm{CoM},y}B_x+r_{P/\mathrm{CoM},x}F_{1y}-r_{P/\mathrm{CoM},y}F_{1x}`,
-      B: String.raw`r_{A/B,x}A_y-r_{A/B,y}A_x+r_{P/B,x}F_{1y}-r_{P/B,y}F_{1x}-r_{\mathrm{CoM}/B,x}W_{AB}`,
+      A: String.raw`r_{B/A,x}B_y-r_{B/A,y}B_x+r_{P/A,x}F_{1y}-r_{P/A,y}F_{1x}-r_{\mathrm{CoM}/A,x}W_{AB}+M_A`,
+      CoM: String.raw`r_{A/\mathrm{CoM},x}A_y-r_{A/\mathrm{CoM},y}A_x+r_{B/\mathrm{CoM},x}B_y-r_{B/\mathrm{CoM},y}B_x+r_{P/\mathrm{CoM},x}F_{1y}-r_{P/\mathrm{CoM},y}F_{1x}+M_A`,
+      B: String.raw`r_{A/B,x}A_y-r_{A/B,y}A_x+r_{P/B,x}F_{1y}-r_{P/B,y}F_{1x}-r_{\mathrm{CoM}/B,x}W_{AB}+M_A`,
     };
     return String.raw`\sum M_{${name},z}=${terms[reference]}=0`;
   }
@@ -477,6 +599,7 @@ export class ForceDefinitionsComponent {
         { x: 265, y: 150 },
       ],
       lines: loadLines,
+      couples: [{ x: 0, y: 0, sign: 1, label: 'M_A', color: 'var(--warning)' }],
     };
   }
 }

@@ -33,6 +33,13 @@ export interface DiagramCircle {
   r: number;
   color: string;
 }
+export interface DiagramCouple {
+  x: number;
+  y: number;
+  sign: number;
+  label: string;
+  color?: string;
+}
 export interface Diagram {
   axisAngle?: number;
   /** Text beside the positive-moment arc near the coordinate axes. */
@@ -47,6 +54,7 @@ export interface Diagram {
   points: DiagramPoint[];
   lines: DiagramLine[];
   circles?: DiagramCircle[];
+  couples?: DiagramCouple[];
   outlines?: DiagramPoint[][];
 }
 
@@ -128,6 +136,28 @@ let nextDiagram = 0;
           }
         </text>
       }
+    }
+    @for (couple of diagram().couples ?? []; track couple.label) {
+      <path
+        [attr.d]="coupleArc(couple)"
+        fill="none"
+        [attr.stroke]="couple.color ?? 'var(--warning)'"
+        stroke-width="2"
+        [attr.marker-end]="'url(#' + markerId + ')'"
+      />
+      <text
+        data-diagram-label
+        [attr.x]="sx(couple.x) - 22"
+        [attr.y]="sy(couple.y) - 24"
+        [attr.fill]="couple.color ?? 'var(--warning)'"
+      >
+        {{ couple.label.split('_')[0] }}
+        @if (couple.label.includes('_')) {
+          <tspan baseline-shift="sub" font-size="9">
+            {{ couple.label.split('_').slice(1).join('_') }}
+          </tspan>
+        }
+      </text>
     }
     @for (rotation of diagram().rotations ?? []; track rotation.label) {
       <g
@@ -290,6 +320,12 @@ export class SolverDiagramComponent {
       s = rotation.sign;
     // SVG y runs downward: sweep 0 is the positive mathematical (CCW) sense.
     return `M${x + 22} ${y} A22 22 0 1 ${s === 1 ? 0 : 1} ${x} ${y + s * 22}`;
+  }
+  protected coupleArc(couple: DiagramCouple) {
+    const x = this.sx(couple.x),
+      y = this.sy(couple.y),
+      s = couple.sign;
+    return `M${x + 18} ${y} A18 18 0 1 ${s === 1 ? 0 : 1} ${x} ${y + s * 18}`;
   }
   protected ground(p: DiagramPoint) {
     const x = this.sx(p.x),

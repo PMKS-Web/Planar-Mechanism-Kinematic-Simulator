@@ -73,16 +73,16 @@ try {
   );
   assert(example.lines.some((l) => l.label === 'W_AB'));
   assert(example.lines.some((l) => l.label === 'F_1'));
+  assert(example.couples.some((couple) => couple.label === 'M_A'));
   assert.equal(example.axisMomentLabel, 'M');
   assert.equal(await defs.locator('table').count(), 1);
   assert.equal(await defs.locator('.definitionStep').count(), 4);
-  assert.equal(
-    await defs
-      .locator('.definitionStep')
-      .nth(2)
-      .evaluate((el) => el.open),
-    false
+  assert(
+    await defs.locator('details').evaluateAll((details) => details.every((detail) => !detail.open))
   );
+  await defs
+    .locator('details')
+    .evaluateAll((details) => details.forEach((detail) => (detail.open = true)));
   assert((await defs.innerText()).includes('Sum of Forces'));
   assert((await defs.innerText()).includes('Sum of Moments'));
   const reference = defs.getByRole('combobox', { name: 'Moment reference for definition' });
@@ -118,6 +118,7 @@ try {
     .locator('.definitionStep')
     .nth(3)
     .screenshot({ path: `${out}/definition-equations.png` });
+  await armGrid.screenshot({ path: `${out}/definition-moment-grid.png` });
   assert((await defs.textContent()).includes('Static condition'));
   await d.getByRole('button', { name: 'Free Bodies', exact: true }).click();
   await d.locator('.overviewDetails > summary').click();
