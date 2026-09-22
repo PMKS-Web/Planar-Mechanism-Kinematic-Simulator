@@ -77,6 +77,7 @@ const readMenu = () =>
       ),
       rows: [...card.querySelectorAll('.cm-row')].map((one) => ({
         label: one.querySelector('.cm-row__label')?.textContent?.trim() ?? '',
+        detail: one.querySelector('.cm-row__detail')?.textContent?.trim() ?? '',
         slot: slot(one),
         on: one.classList.contains('cm-row--on'),
         off: one.classList.contains('cm-row--off'),
@@ -141,6 +142,7 @@ async function openOnForce(id) {
     const rows = grid.cMenu.groups.flatMap((group) =>
       group.rows.map((row) => ({
         label: row.label,
+        detail: row.detail,
         slot: row.refusal?.short ?? (row.checked ? 'check' : (row.hint ?? row.shortcut ?? '')),
         on: row.checked && !row.disabled,
         off: row.disabled,
@@ -227,7 +229,8 @@ check(
 );
 check(
   'the destructive row names what goes with it',
-  ownDelete(jointA)?.label === 'Delete Joint (and Link OA)',
+  ownDelete(jointA)?.label === 'Delete Joint' &&
+    ownDelete(jointA)?.detail === 'Also removes Link OA',
   ownDelete(jointA)?.label
 );
 check(
@@ -270,7 +273,7 @@ check(
 );
 check(
   'and counts the joints its deletion would sweep up',
-  ownDelete(link)?.label === 'Delete Link (and Joint O)',
+  ownDelete(link)?.label === 'Delete Link' && ownDelete(link)?.detail === 'Also removes Joint O',
   ownDelete(link)?.label
 );
 
@@ -394,7 +397,8 @@ check(
 );
 check(
   'and the deletion says it takes the whole part',
-  ownDelete(cylinderJoint)?.label === 'Delete Joint (and Cylinder)',
+  ownDelete(cylinderJoint)?.label === 'Delete Joint' &&
+    ownDelete(cylinderJoint)?.detail === 'Also removes Cylinder',
   ownDelete(cylinderJoint)?.label
 );
 // The row is offered rather than grayed: a block on a mount is a carriage, and
@@ -461,7 +465,8 @@ check(
 );
 check(
   'and its deletion takes the cylinder with it',
-  ownDelete(sealMenu)?.label === 'Delete Joint (and Cylinder)',
+  ownDelete(sealMenu)?.label === 'Delete Joint' &&
+    ownDelete(sealMenu)?.detail === 'Also removes Cylinder',
   ownDelete(sealMenu)?.label
 );
 // One fewer than the drawing holds: the buried end a cylinder derives is never

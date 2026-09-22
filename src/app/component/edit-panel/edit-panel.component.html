@@ -602,8 +602,9 @@
               </div>
               <!-- Each field wears the pair's state, as the mock draws it. -->
               <div class="comPairRow" [class.derived]="!activeSrv.selectedLink.comIsCustom">
-                <span class="axisTag">X</span>
+                <span class="axisTag" [numberDrag]="comX.field()?.nativeElement">X</span>
                 <state-input
+                  #comX
                   [formGroup]="linkForm"
                   _formControl="comX"
                   [state]="activeSrv.selectedLink.comIsCustom ? 'custom' : 'auto'"
@@ -611,8 +612,9 @@
                   (cleared)="useUniformBodyCoM()"
                   (hovered)="setComPreview('x', $event)"
                 />
-                <span class="axisTag">Y</span>
+                <span class="axisTag" [numberDrag]="comY.field()?.nativeElement">Y</span>
                 <state-input
+                  #comY
                   [formGroup]="linkForm"
                   _formControl="comY"
                   [state]="activeSrv.selectedLink.comIsCustom ? 'custom' : 'auto'"

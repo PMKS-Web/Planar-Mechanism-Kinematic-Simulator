@@ -44,6 +44,7 @@ describe('what is allowed when', () => {
       'inspect',
       'drag',
       'build',
+      'create',
       'structure',
       'transport',
       'history',
@@ -93,7 +94,10 @@ describe('what is allowed when', () => {
   });
 
   it('allows the same edits in analysis at the start, with posed restructuring refused', () => {
-    expect(allowed(at({ mode: 'analysis' }))).toEqual([...EDIT_ACTIONS]);
+    expect(allowed(at({ mode: 'analysis' }))).toEqual(
+      EDIT_ACTIONS.filter((action) => action !== 'create')
+    );
+    expect(menuRefusal(at({ mode: 'analysis' }), 'create')?.actionKind).toBe('toEdit');
     for (const action of ['build', 'structure'] as const) {
       expect(refusalFor(action, at({ mode: 'analysis', atStart: false }))!.backToStartHelps).toBe(
         true

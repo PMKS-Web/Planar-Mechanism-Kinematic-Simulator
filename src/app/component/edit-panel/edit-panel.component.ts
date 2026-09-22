@@ -1,3 +1,4 @@
+import { NumberDragDirective } from '../../directives/number-drag.directive';
 import { distanceNeighbors } from '../../model/joint-distances';
 import { describeActuatorRefusal } from '../../model/actuator';
 import {
@@ -104,6 +105,7 @@ const INPUT_SPEED_UNITS = [
   styleUrls: ['./edit-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
+    NumberDragDirective,
     EditBannerComponent,
     MatTooltip,
     MatIcon,

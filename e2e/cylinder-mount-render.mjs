@@ -707,20 +707,32 @@ console.log('\nwhat each part of the fused drawing answers to');
 const barrelBody = await page.evaluate(() => {
   const m = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
   const ram = m.sealedStructures()[0];
-  return { barrel: ram.barrel.id, rod: ram.rod.id, root: ram.barrelRoot.id, seal: ram.seal.id };
+  return {
+    barrel: ram.barrel.id,
+    rod: ram.rod.id,
+    root: ram.barrelRoot.id,
+    seal: ram.seal.id,
+    bracket: ram.barrelRoot.subset.find((leaf) => leaf.id !== ram.barrel.id).id,
+  };
 });
 const onMember = await selects(`.cylinder-member-hit[data-member="${barrelBody.barrel}"]`);
 check(
-  'a click on the barrel still selects the barrel, not the body holding it',
-  onMember.type === 'Link' && onMember.id === barrelBody.barrel,
+  'the first click on a welded barrel selects its compound',
+  onMember.type === 'Link' && onMember.id === barrelBody.root,
   JSON.stringify({ got: onMember, wanted: barrelBody.barrel })
+);
+const primitive = await selects(`.cylinder-member-hit[data-member="${barrelBody.barrel}"]`);
+check(
+  'the second click selects the barrel primitive',
+  primitive.type === 'Link' && primitive.id === barrelBody.barrel,
+  JSON.stringify(primitive)
 );
 await film.shot('reference-member-selected');
 const onBody = await selects(`[id="${barrelBody.root}"]`);
 check(
-  'and a click on the bracket selects the body it is part of',
-  onBody.type === 'Link' && onBody.id === barrelBody.root,
-  JSON.stringify({ got: onBody, wanted: barrelBody.root })
+  'a subsequent click on the bracket selects that primitive',
+  onBody.type === 'Link' && onBody.id === barrelBody.bracket,
+  JSON.stringify({ got: onBody, wanted: barrelBody.bracket })
 );
 await film.shot('reference-body-selected');
 const onSeal = await selects('.cylinder-seal-hit');
