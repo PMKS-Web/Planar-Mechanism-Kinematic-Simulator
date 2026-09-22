@@ -3,9 +3,15 @@
      and the table of what each curve reaches. A card per quantity, each with
      its own legend of switches, was what the rows replaced. -->
 <div class="graphSection" [class.open]="expanded()" [class.closed]="!expanded()">
-  <button class="graphHeader" type="button" (click)="toggle()" [attr.aria-expanded]="expanded()">
+  <button
+    class="graphHeader"
+    type="button"
+    (click)="toggle()"
+    [attr.aria-expanded]="expanded()"
+    [attr.aria-label]="rowLabel() ? label() + (readout ? ' ' + readout + ' ' + unit : '') : null"
+  >
     <span class="graphTitle">
-      {{ label() }}
+      {{ rowLabel() || label() }}
       <!-- A question about the quantity, on its own mark beside the name, as
            every other block's help is. On the whole row it fired on the way
            to the chevron and hung over whatever was above. -->

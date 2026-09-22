@@ -265,9 +265,8 @@
             (expandedChange)="graphExpanded['LAngAcc'] = $event"
           ></app-analysis-graph-section>
         </div>
-        <!-- Spelled out, because this is the first place the abbreviation
-             appears: the rows under it are labeled "CoM", so the heading is
-             where a reader finds out what that stands for. -->
+        <!-- The heading supplies the subject; the rows below can use short
+             quantity names without losing their full graph and screen-reader labels. -->
         <div
           class="graphGroupHeading"
           (mouseenter)="highlightCoM(true)"
@@ -278,6 +277,7 @@
         <div class="rowList rowList--com">
           <app-analysis-graph-section
             label="Center of mass position"
+            rowLabel="Position"
             help="Where this link’s center of mass is"
             analysis="kinematic"
             analysisType="loop"
@@ -288,6 +288,7 @@
           ></app-analysis-graph-section>
           <app-analysis-graph-section
             label="Center of mass velocity"
+            rowLabel="Velocity"
             help="How fast this link’s center of mass moves"
             analysis="kinematic"
             analysisType="loop"
@@ -298,6 +299,7 @@
           ></app-analysis-graph-section>
           <app-analysis-graph-section
             label="Center of mass acceleration"
+            rowLabel="Acceleration"
             help="How this link’s center of mass changes speed"
             analysis="kinematic"
             analysisType="loop"
