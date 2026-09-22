@@ -644,13 +644,15 @@
     }
   }
 
-  .forceEndpointHandle {
-    fill: var(--canvas-selection);
-    stroke: var(--accent);
+  .forceLabel {
+    fill: var(--text-primary);
+    stroke: var(--canvas-halo);
+    paint-order: stroke;
+  }
 
-    &:hover {
-      fill: mat.m2-get-color-from-palette($accent-palette, 100);
-    }
+  .forceEndpointHandle {
+    fill: var(--accent-tint);
+    stroke: var(--accent);
   }
 
   .forceLine {

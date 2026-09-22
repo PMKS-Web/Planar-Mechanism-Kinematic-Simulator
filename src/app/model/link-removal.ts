@@ -31,14 +31,17 @@ export function orphanedByLinkRemoval(
     links.some(
       (candidate) =>
         survives(candidate) &&
-        (candidate.joints.includes(joint) ||
-          (candidate instanceof RealLink &&
-            candidate.subset.some((leaf) => !doomed.has(leaf.id) && leaf.joints.includes(joint))))
+        (candidate instanceof RealLink && candidate.subset.length > 0
+          ? candidate.subset.some((leaf) => !doomed.has(leaf.id) && leaf.joints.includes(joint))
+          : candidate.joints.includes(joint))
     );
   // Only what the reader can see (D14): saying "and 2 joints" about points
   // nobody is shown would be a number they cannot check against the screen.
   // That is one joint per cylinder now, its derived inner end -- the seal is
   // the square on the skin, so a click that takes it is a click that takes
   // something visible away.
-  return visible.filter((joint) => !held(joint));
+  const affected = new Set(
+    [link, ...cylinders.flatMap((c) => [c.barrel, c.rod])].flatMap((part) => part.joints)
+  );
+  return visible.filter((joint) => affected.has(joint) && !held(joint));
 }

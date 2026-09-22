@@ -131,6 +131,28 @@ describe('MechanismService welded links and force ownership', () => {
     expect(harness.saveCount()).toBe(4);
   });
 
+  it('deletes a selected primitive while preserving the remaining weld and its forces', () => {
+    const h = createChain(4);
+    const doomed = attachForce(h.service, h.links[0], 'F1', 0.25);
+    const kept = attachForce(h.service, h.links[2], 'F2', 2.25);
+    doomed.anchoredTo = h.links[0].id;
+    kept.anchoredTo = h.links[2].id;
+    h.service.weldJoint(h.joints[1]);
+    h.service.weldJoint(h.joints[2]);
+    h.active.updateSelectedObj(h.links[0]);
+    expect(h.service.jointsOrphanedByDeleting(h.links[0]).map((j) => j.id)).toEqual(['A']);
+    const before = h.saveCount();
+    h.service.deleteLink();
+    expect(h.service.joints.map((j) => j.id)).toEqual(['B', 'C', 'D']);
+    const remaining = h.service.links[0] as RealLink;
+    expect(remaining.subset.map((l) => l.id).sort()).toEqual(['BC', 'CD']);
+    expect(h.joints[2].isWelded).toBe(true);
+    expect(h.service.forces).not.toContain(doomed);
+    expect(h.service.forces).toContain(kept);
+    expect(kept.link).toBe(remaining);
+    expect(h.saveCount()).toBe(before + 1);
+  });
+
   it('unwelds all joints as a single undoable edit', () => {
     const harness = createChain(4);
     harness.service.weldJoint(harness.joints[1]);
