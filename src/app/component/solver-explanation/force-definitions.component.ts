@@ -73,19 +73,10 @@ type DirectionKey = 'Ax' | 'Ay' | 'Bx' | 'By' | 'MA';
             <dt><app-solver-math [equation]="momentTerms[4].symbol" [inline]="true" /></dt>
             <dd>Rotational inertia for motion; it becomes zero for statics.</dd>
           </dl>
-          <app-solver-math [equation]="momentLoadExpansion" />
-        </details>
-        <details class="equationDetail">
-          <summary>Calculate a position vector r</summary>
-          <app-solver-math [equation]="generalPositionVector" />
-          <p>
-            When the force is applied at the selected moment reference, its two point coordinates
-            are equal. Therefore r = 0 and that force makes no moment about that point.
-          </p>
         </details>
         <details class="equationDetail">
           <summary>
-            Resolve one force moment with
+            Expand <span class="vectorSymbol" aria-label="vector M">M</span> =
             <span class="vectorSymbol" aria-label="vector r">r</span> ×
             <span class="vectorSymbol" aria-label="vector F">F</span>
           </summary>
@@ -93,6 +84,11 @@ type DirectionKey = 'Ax' | 'Ay' | 'Bx' | 'By' | 'MA';
             [diagram]="momentBalanceDiagram"
             label="A force at point P creating a moment about point O"
           />
+          <app-solver-math [equation]="generalPositionVector" />
+          <p>
+            Subtract the moment-reference position from the force-application position. When the two
+            points are the same, r = 0 and that force makes no moment about the reference.
+          </p>
           <app-solver-math [equation]="genericVectors" />
           <app-solver-math [equation]="genericMomentDeterminant" />
           <app-solver-math [equation]="genericMomentExpansion" />
@@ -240,6 +236,7 @@ type DirectionKey = 'Ax' | 'Ay' | 'Bx' | 'By' | 'MA';
           </select>
         </label>
         <app-solver-math [equation]="momentSummaryEquation()" />
+        <app-solver-math [equation]="expandedMomentTerms()" />
         <p>
           The blue ring is the selected reference. The projection grid in Build the Free-Body
           Diagram updates with this choice.
@@ -444,7 +441,6 @@ export class ForceDefinitionsComponent {
   protected readonly forceComponents = String.raw`\begin{aligned}\sum F_x&=m a_{\mathrm{CoM},x}\\\sum F_y&=m a_{\mathrm{CoM},y}\\\color{red}{\cancel{\sum F_z}}&=\color{red}{\cancel{m a_{\mathrm{CoM},z}}}=0\quad\text{(planar)}\end{aligned}`;
   protected readonly momentBalance = String.raw`\sum\vec M_{\mathrm{CoM}}=I_{\mathrm{CoM}}\vec\alpha\qquad\xrightarrow{\ \mathrm{statics}:\ \vec\alpha=\vec0\ }\qquad\sum\vec M_{\mathrm{CoM}}=\vec0`;
   protected readonly momentLoadGroups = String.raw`\underbrace{\sum M_{\mathrm{joint}}+\sum M_{\mathrm{external}}+\sum M_{\mathrm{weight}}+\sum M_{\mathrm{motor}}}_{\text{LHS: all moments on the FBD}}=\underbrace{I_{\mathrm{CoM}}\vec\alpha}_{\text{RHS: motion}}\quad\text{or}\quad\underbrace{\vec0}_{\text{RHS: static}}`;
-  protected readonly momentLoadExpansion = String.raw`\sum M_{\mathrm{joint}}=\sum(\vec r_{\mathrm{joint}/O}\times\vec F_{\mathrm{joint}}),\quad\sum M_{\mathrm{external}}=\sum(\vec r_{\mathrm{external}/O}\times\vec F_{\mathrm{external}}),\quad\sum M_{\mathrm{weight}}=\sum(\vec r_{\mathrm{CoM}/O}\times\vec W)`;
   protected readonly momentTerms = [
     {
       symbol: String.raw`\sum M_{\mathrm{joint}}`,
@@ -474,16 +470,29 @@ export class ForceDefinitionsComponent {
   protected readonly genericMz = String.raw`M_z=r_{P/O,x}F_y-r_{P/O,y}F_x`;
   protected readonly momentSummaryEquation = computed(
     () =>
-      String.raw`\sum M_{${this.referenceName()},z}=\sum M_{\mathrm{joint}}+\sum M_{\mathrm{external}}+\sum M_{\mathrm{weight}}+\sum M_{\mathrm{motor}}=0`
+      String.raw`\sum M_{${this.referenceName()},z}=\sum M_{\mathrm{joint},z}+\sum M_{\mathrm{external},z}+\sum M_{\mathrm{weight},z}+\sum M_{\mathrm{motor},z}=0`
   );
+  protected readonly expandedMomentTerms = computed(() => {
+    const zeroTerm: Record<ReferenceId, string> = {
+      A: String.raw`\textcolor{red}{\cancel{M_{A,z}^{\mathrm{joint}}}}`,
+      CoM: String.raw`\textcolor{red}{\cancel{M_{\mathrm{weight},z}}}`,
+      B: String.raw`\textcolor{red}{\cancel{M_{B,z}^{\mathrm{joint}}}}`,
+    };
+    const remaining: Record<ReferenceId, string> = {
+      A: String.raw`M_{B,z}^{\mathrm{joint}}+M_{\mathrm{external},z}+M_{\mathrm{weight},z}+M_{\mathrm{motor},z}`,
+      CoM: String.raw`M_{A,z}^{\mathrm{joint}}+M_{B,z}^{\mathrm{joint}}+M_{\mathrm{external},z}+M_{\mathrm{motor},z}`,
+      B: String.raw`M_{A,z}^{\mathrm{joint}}+M_{\mathrm{external},z}+M_{\mathrm{weight},z}+M_{\mathrm{motor},z}`,
+    };
+    return String.raw`\sum M_{${this.referenceName()},z}=${zeroTerm[this.reference()]}+${remaining[this.reference()]}=0`;
+  });
   protected readonly generalPositionVector = String.raw`\vec r_{Q/O}=\vec p_Q-\vec p_O=\langle x_Q-x_O,\ y_Q-y_O,\ 0\rangle`;
   protected readonly exampleFx = computed(
     () =>
-      String.raw`\sum F_x=${this.signedTerm(this.direction('Ax'), 'A_x')}${this.signedTerm(this.direction('Bx'), 'B_x')}+F_{1x}${this.gravityTerm('x')}=0`
+      String.raw`\sum F_x=${this.leadingTerm(this.direction('Ax'), 'A_x')}${this.signedTerm(this.direction('Bx'), 'B_x')}+F_{1x}${this.gravityTerm('x')}=0`
   );
   protected readonly exampleFy = computed(
     () =>
-      String.raw`\sum F_y=${this.signedTerm(this.direction('Ay'), 'A_y')}${this.signedTerm(this.direction('By'), 'B_y')}+F_{1y}${this.gravityTerm('y')}=0`
+      String.raw`\sum F_y=${this.leadingTerm(this.direction('Ay'), 'A_y')}${this.signedTerm(this.direction('By'), 'B_y')}+F_{1y}${this.gravityTerm('y')}=0`
   );
   protected readonly variables = computed(() => {
     const reference = this.referenceName();
@@ -495,7 +504,7 @@ export class ForceDefinitionsComponent {
         meaning: 'x and y components of the external force F_1 at P.',
       },
       {
-        symbol: String.raw`W_{AB}`,
+        symbol: String.raw`\vec W_{AB}`,
         meaning: 'Weight of link AB, applied at its center of mass (CoM).',
       },
       {
@@ -541,6 +550,10 @@ export class ForceDefinitionsComponent {
 
   private signedTerm(sign: 1 | -1, symbol: string) {
     return `${sign === 1 ? '+' : '-'}${symbol}`;
+  }
+
+  private leadingTerm(sign: 1 | -1, symbol: string) {
+    return sign === 1 ? symbol : `-${symbol}`;
   }
 
   private referenceName() {
