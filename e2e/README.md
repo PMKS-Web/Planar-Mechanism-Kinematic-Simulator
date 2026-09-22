@@ -295,6 +295,17 @@ Not suites — import them from one.
   machine. A filmstrip of the running body goes to `artifacts/cylinder-frozen-body/` with
   `running-sheet.png` beside it; the head must not drift along the bore and the fused outline must
   stay one body.
+- `cylinder-held.mjs` — the maintainer's drawing from decision S28: three cylinders in a triangle
+  with one corner on a bar out to a driven grounded pin. Nothing drives the rams, so each holds the
+  length it was drawn at and the count a reader is shown is the machine's **1** rather than the
+  drawing's 3. It opens the published fixture cold, checks the kinematic chip reads ready, reads
+  the drawer's note (which cylinders, at what length, and how to make one extend), plays the cycle
+  and samples it — the triangle has to stay a triangle and every head stay where it is along its
+  own bore — opens the panels for a barrel, a rod and a slide, checks the drawer says *why* the
+  triangle's forces cannot be split (the same thing its bars would say), finds the **Holding
+  Force** row and a number for it on the determinate *Four-bar on a held cylinder*, switches the
+  input off (the blocker must become "Nothing drives this mechanism", never a count of freedoms)
+  and then switches one on at a ram instead. Filmstrip in `artifacts/cylinder-held/`.
 - `cylinder-members.mjs` — a cylinder as three selectables: the square is joint S, lettered and
   draggable along its own axis; each member selects and outlines itself; a member drag still
   carries the whole part; an old payload's seal opens with a letter. Then the panels each piece
@@ -319,6 +330,16 @@ Not suites — import them from one.
   ready on both chips, keep that joint on its slot through the cycle, and survive an undo and a redo
   after a drag — the path that matters most, because undo replays a URL. Filmstrips and contact
   sheets to `artifacts/cylinder-mount-slot/`, `sheet-reopened.png` among them.
+- `cylinder-object-size.mjs` — decision S29: Object Size is how a drawing is drawn, so it never
+  moves a joint a reader can see and never leaves a cylinder in two pieces. The size is changed
+  through the three doors a reader has — the Settings field, the Auto-size Objects button, and a
+  drawing that adopts a size as it opens — and after each one every cylinder is asked whether its
+  head is inside its travel, whether the silhouette is one piece (**measured off the drawn paths**,
+  because "two pieces" is a fact about the picture), whether any visible joint moved, and whether
+  *Starts at* is still a percentage. It also holds the undo story — a size the reader chose is one
+  entry with the repair inside it, a size the app adopted is none — and the two things the same
+  reader is looking at: the driven arrows keep their proportions at every zoom, and the transport
+  says *Forward* of a bare slider and *Opening* of a cylinder.
 - `cylinder-panel.mjs` — the cylinder panel's past defects: a picker that moved the part, an edit
   that could not be undone, a silent limit, a rounded position.
 - `cylinder-skin.mjs` — the head's stops are drawn by the skin itself, with no annotation on the
@@ -361,7 +382,11 @@ Not suites — import them from one.
 - `playback-bar.mjs` — the transport over the grid: a way to press play, a transport in Edit, a
   row per runnable mechanism, and the mode highlight landing on the chosen mode.
 - `playback-direction.mjs` — reversing a machine keeps its place and keeps it running; the master
-  and per-machine play buttons agree.
+  and per-machine play buttons agree. It carries a **linear** drive as well as the rotary one now:
+  a driven block runs *Forward* and *Backward* along its slot rather than opening and closing, the
+  word matches the way the block is actually going at every sample of the cycle (measured here off
+  the live joints and the carrier's own direction, not asked of the thing under test), reversing
+  the drive reverses the word, and the glyph is a straight arrow while a crank's keeps its turn.
 - `playback-loop-indicator.mjs` — the transport row's two lines, the end-of-cycle reading, the
   full-width handle, and the row's selection surface, compared across engines. Needs Firefox and
   WebKit installed.

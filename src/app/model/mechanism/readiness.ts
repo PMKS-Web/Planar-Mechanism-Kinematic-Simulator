@@ -4,15 +4,19 @@ import { cylindersIn } from '../cylinder';
 import { describeFrozenCylinderStroke, isFrozenCylinder } from '../cylinder-frozen';
 import { visibleBodyName } from '../body-label';
 import { canDrive } from '../actuator';
+import { MODEL_SCALE } from '../render-scale';
 import { Mechanism, MechanismFailure } from './mechanism';
 import { MechanismPartition, UnassignedGeometry } from './mechanism-partition';
 import { assignBodies } from './bodies';
+import { cylinderHoldOrder, describeHeldCylinders } from './cylinder-hold';
 
 /**
  * A blocker stops the mechanism running at all. A warning means it runs, and
- * there is something about the result worth knowing before trusting it.
+ * there is something about the result worth knowing before trusting it. A note
+ * means it runs and the app did something worth saying out loud -- nothing is
+ * wrong, so it is drawn plainly and counted by neither chip.
  */
-export type CheckState = 'blocker' | 'warning';
+export type CheckState = 'blocker' | 'warning' | 'note';
 
 export interface ReadinessCheck {
   state: CheckState;
@@ -160,19 +164,41 @@ function blockerForFailure(
         // no ground is a freedom the reader can see. Only on a *binary* link,
         // though — a third joint riding a link that already has two is a tracer
         // point, and a tracer adds no freedom worth sending anyone to.
-        const freeEnds = partition.ownJoints.filter(
-          (joint) =>
-            joint instanceof RealJoint &&
-            !(joint instanceof PrisJoint) &&
-            !joint.ground &&
-            joint.links.length === 1 &&
-            joint.links[0].joints.length <= 2
+        //
+        // Through `shown`, because a barrel's buried end is a joint of one
+        // binary bar and nothing else: it matched this filter on every drawing
+        // with a cylinder, and the sentence offered a letter the drawing never
+        // draws (S20). It is also the wrong advice about one, which is what the
+        // cylinder clause below says instead.
+        const freeEnds = shown(
+          partition.ownJoints.filter(
+            (joint) =>
+              joint instanceof RealJoint &&
+              !(joint instanceof PrisJoint) &&
+              !joint.ground &&
+              joint.links.length === 1 &&
+              joint.links[0].joints.length <= 2
+          ),
+          partition.joints
+        );
+        // A cylinder whose length nothing decides is a freedom too, and a more
+        // useful one to be told about: the way out is to drive it, not to
+        // ground something (decision S28).
+        const loose = cylindersIn(partition.joints).filter((cylinder) =>
+          mechanism.looseCylinderSeals.has(cylinder.seal.id)
         );
         return {
           state: 'blocker',
           title: `This mechanism has ${dof} degrees of freedom`,
           body:
             `One input can drive only one degree of freedom. Ground another joint, or connect a free joint to a second link, until this reads 1.` +
+            (loose.length > 0
+              ? ` ${loose.length === 1 ? 'Cylinder' : 'Cylinders'} ${loose
+                  .map((cylinder) => cylinderHoldOrder(cylinder))
+                  .join(', ')} ${
+                  loose.length === 1 ? 'is' : 'are'
+                } free to change length, which is one of those freedoms — switch on Driven Input at the joint inside ${loose.length === 1 ? 'it' : 'one of them'} to drive it.`
+              : '') +
             (freeEnds.length > 0
               ? ` ${freeEnds.length === 1 ? 'Joint' : 'Joints'} ${names(freeEnds)} ${
                   freeEnds.length === 1 ? 'hangs' : 'hang'
@@ -204,8 +230,10 @@ function blockerForFailure(
       const alreadyDriven = drivenOwnJoint(partition);
       if (alreadyDriven) return unexplainedBlocker(partition, mechanism);
       // Point at a joint that could actually take the job, so the button is an
-      // answer rather than a place to start looking.
-      const candidate = partition.ownJoints.find(
+      // answer rather than a place to start looking. Through `shown`, like
+      // every other list here: a joint the reader has never been offered is no
+      // answer at all, whatever the actuator model makes of it (S20).
+      const candidate = shown(partition.ownJoints, partition.joints).find(
         (joint) => joint instanceof RealJoint && canDrive(joint)
       );
       return {
@@ -357,7 +385,8 @@ export function readinessOf(
   // linkage binding on it (decision S25). It is not binding on anything; it is
   // the shape the reader welded.
   const { bodyOf } = assignBodies(partition.joints, partition.links);
-  cylindersIn(partition.joints)
+  const cylinders = cylindersIn(partition.joints);
+  cylinders
     .filter((cylinder) => isFrozenCylinder(cylinder, bodyOf))
     .forEach((cylinder) =>
       add({
@@ -367,7 +396,24 @@ export function readinessOf(
       })
     );
 
-  const stroke = helpers.strokeWarning(partition);
+  // And the other reason a cylinder does not stroke: nothing drives it and the
+  // machine does not move it, so it is holding the length it was drawn at and
+  // the mobility above is the machine's rather than the drawing's (decision
+  // S28). A note, because nothing is wrong -- but said, because a reader who
+  // expected a cylinder to telescope would otherwise think the solver is
+  // broken. Before the stroke warning for the same reason as the one above:
+  // a ram holding its length uses none of its travel because it is not being
+  // asked to.
+  // Named in the order a reader would read the list in, which is the order the
+  // rule itself decides them in -- not the order the drawing stores its joints.
+  const holding = cylinders
+    .filter((cylinder) => mechanism.heldCylinderSeals.has(cylinder.seal.id))
+    .sort((a, b) => cylinderHoldOrder(a).localeCompare(cylinderHoldOrder(b)));
+  if (holding.length > 0) {
+    add({ state: 'note', ...describeHeldCylinders(holding, mechanism.unit, MODEL_SCALE) });
+  }
+
+  const stroke = holding.length > 0 ? undefined : helpers.strokeWarning(partition);
   if (stroke) {
     add({ state: 'warning', title: 'A cylinder cannot use its whole stroke', body: stroke });
   }

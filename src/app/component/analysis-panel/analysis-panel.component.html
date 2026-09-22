@@ -213,6 +213,22 @@
                 (expandedChange)="graphExpanded['JInputForce'] = $event"
               ></app-analysis-graph-section>
             }
+            <!-- Where a driven cylinder shows what its drive has to supply, one
+                 holding its length shows what it has to hold: the same axial
+                 unknown under the name it has when nothing is driving it
+                 (decision S28), and the number somebody sizing a ram wants. -->
+            @if (holdsItsLength()) {
+              <app-analysis-graph-section
+                label="Holding Force"
+                help="The axial force this cylinder has to hold to keep its length"
+                analysis="force"
+                [analysisType]="forceAnalysisMode()"
+                mechProp="Holding Force"
+                mechPart="{{ shownJoint.id }}"
+                [expanded]="isExpanded('JHoldingForce')"
+                (expandedChange)="graphExpanded['JHoldingForce'] = $event"
+              ></app-analysis-graph-section>
+            }
           </div>
         }
       }

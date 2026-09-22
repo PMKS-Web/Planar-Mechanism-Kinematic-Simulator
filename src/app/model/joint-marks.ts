@@ -142,6 +142,26 @@ export const MARK = {
   /** How much larger the arrow the block sets off along is drawn. */
   arrowEmphasis: 1.25,
 
+  /**
+   * The arrow's shaft, in R like the rest of the mark.
+   *
+   * It was the one dimension of a driven mark measured in *screen* pixels --
+   * 2.5 of them, 4.5 on the emphasised arrow, divided by the zoom in the
+   * template. So the shaft alone stayed put while the block, the head and the
+   * arrowhead all grew and shrank with the zoom: zoomed in the shafts were
+   * hairlines under big heads, and zoomed out they were fat bars swallowing
+   * them. The one part of the mark whose proportions depended on how close the
+   * reader was standing.
+   *
+   * The numbers are those two widths measured at the zoom the marks are sized
+   * for, which is the app's own pairing rather than a taste: `updateObjectScale`
+   * sets the object scale to `MARK_TARGET_PX` (60) pixels per scale, and R is
+   * 0.15 of a scale, so one R is nine pixels there. 2.5/9 and 4.5/9, and the
+   * emphasis ratio between the two arrows is what it always was.
+   */
+  arrowShaft: 2.5 / 9,
+  arrowShaftEmphasised: 4.5 / 9,
+
   /** A driven floating pin has no block, so the overlay brings its own backing. */
   pinBackingHalf: 2.2,
   /**
@@ -449,11 +469,7 @@ export function cylinderContourPath(
  * arrow is the obvious move and it inverts the emphasis: clamped to the head it
  * came out *smaller* than the arrow it is supposed to be shouting over.
  */
-export function cylinderArrowPaths(
-  r: number,
-  headHalf: number,
-  leading?: 1 | -1
-): { line: Segment; head: string; emphasised: boolean }[] {
+export function cylinderArrowPaths(r: number, headHalf: number, leading?: 1 | -1): DriveArrow[] {
   const fit = headHalf / (MARK.blockAlongHalf * r);
   return [1, -1].map((side) => {
     const emphasised = side === leading;
@@ -472,9 +488,27 @@ export function cylinderArrowPaths(
         MARK.arrowHeadLength * r * grow,
         MARK.arrowHeadHalf * r * grow
       ),
+      // By `fit` and not by `grow`: the pair is scaled together on a shrunken
+      // head, and the emphasis between the two arrows is already in the choice
+      // of constant.
+      width: arrowShaftWidth(r * fit, emphasised),
       emphasised,
     };
   });
+}
+
+/** One of a driven mark's two arrows, in the mark's own frame. */
+export interface DriveArrow {
+  line: Segment;
+  head: string;
+  /** The shaft's stroke, in drawing units — never in screen pixels (§4.2b). */
+  width: number;
+  emphasised: boolean;
+}
+
+/** The shaft of one arrow, in the drawing's own units. */
+function arrowShaftWidth(r: number, emphasised: boolean): number {
+  return (emphasised ? MARK.arrowShaftEmphasised : MARK.arrowShaft) * r;
 }
 
 /** A line segment, in the frame the caller asked for. */
@@ -871,10 +905,7 @@ function sliceSegment(segment: Segment, from: number, to: number): Segment {
  * — they cannot say which way, which is the one thing a driven mark exists to
  * tell you. Pass nothing where the direction is not known and both are equal.
  */
-export function straightArrowPaths(
-  r: number,
-  leading?: 1 | -1
-): { line: Segment; head: string; emphasised: boolean }[] {
+export function straightArrowPaths(r: number, leading?: 1 | -1): DriveArrow[] {
   return [1, -1].map((side) => {
     const emphasised = side === leading;
     // Bounded by the block: at the emphasis factor the tip still lands inside
@@ -894,6 +925,7 @@ export function straightArrowPaths(
         MARK.arrowHeadLength * r * grow,
         MARK.arrowHeadHalf * r * grow
       ),
+      width: arrowShaftWidth(r, emphasised),
       emphasised,
     };
   });

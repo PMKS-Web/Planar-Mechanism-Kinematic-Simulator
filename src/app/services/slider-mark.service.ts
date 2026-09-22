@@ -22,6 +22,7 @@ import {
   cylinderArrowPaths,
   cylinderBlockPath,
   collinearGuides,
+  DriveArrow,
   MARK,
   orientedCapsulePath,
   GuideBand,
@@ -117,7 +118,7 @@ export interface SliderMark {
   plate?: WeldPlate;
   /** Links pinned to this block, redrawn above it. Empty when it is welded. */
   riders: RiderDraw[];
-  arrows: { line: Segment; head: string; emphasised: boolean }[];
+  arrows: DriveArrow[];
   /**
    * A grounded guide, carrying its own frame.
    *
@@ -207,7 +208,7 @@ export interface CylinderMark {
   /** The exact silhouette, for the selection stroke. */
   contour: string;
   driven: boolean;
-  arrows: { line: Segment; head: string; emphasised: boolean }[];
+  arrows: DriveArrow[];
 }
 
 /**

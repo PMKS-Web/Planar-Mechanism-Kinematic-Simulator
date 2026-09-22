@@ -29,8 +29,10 @@ import {
   residuals,
   SimultaneousSystem,
   solveSimultaneous,
+  heldPoseTolerance,
 } from './simultaneous-solver';
 import { angleReference, resolveActuator } from '../actuator';
+import { heldCylinderSeals } from './cylinder-hold';
 import { MARK } from '../joint-marks';
 import { SettingsService } from '../../services/settings.service';
 
@@ -592,9 +594,42 @@ export class PositionSolver {
     this.stepCount = 0;
     this.unsolvableJoints = [];
     this.unusableCylinderDrive = undefined;
+    this.heldSeals = new Set<string>();
   }
 
-  static determineJointOrder(joints: Joint[], links: Link[]) {
+  /**
+   * The seals of the cylinders holding their length (decision S28).
+   *
+   * Set once per ordering, from the machine's own answer where the caller has
+   * one, and read in two places below: a drawing with a held ram has to be
+   * solved as one system rather than walked, and each held ram writes one more
+   * row saying its seal does not move along its own barrel.
+   */
+  static heldSeals: ReadonlySet<string> = new Set<string>();
+
+  /**
+   * How near a simultaneous solve has to come before this drawing accepts it.
+   *
+   * The ordinary precision for everything, and `heldPoseTolerance` for a
+   * drawing holding a cylinder's length -- whose rows pin two unknowns rigidly
+   * to two boundary joints that are each stored rounded, so a grain of the
+   * rounding is a disagreement nothing can close. Measured against this
+   * system's own size, which `admitCoupledSystem` has already taken. Read where
+   * the coupled route solves, and nowhere else.
+   */
+  private static get poseTolerance(): number | undefined {
+    return this.heldSeals.size > 0 ? heldPoseTolerance(this.boundaryScale) : undefined;
+  }
+
+  static determineJointOrder(
+    joints: Joint[],
+    links: Link[],
+    // The machine has already decided this at its start pose; asking again
+    // here would be a second opinion about one question. Computed where a
+    // caller has no answer to hand, which is every spec and nothing else.
+    held: ReadonlySet<string> = heldCylinderSeals(joints, links)
+  ) {
+    this.heldSeals = held;
     const knownJointsIds: string[] = [];
     let orderNum = 1;
     // pre-condition: Save all the joints as initial Values
@@ -661,7 +696,12 @@ export class PositionSolver {
     // only after the drive branch below had already walked the deferred joints
     // meant a ram-driven carriage -- the commonest arrangement this route
     // exists for -- never reached it.
-    const coupled = this.forceCoupledRoute || this.mountEnhanced(joints);
+    // A ram holding its length is a shape the walk has no primitive for: its
+    // two mounts stay a fixed distance apart, and nothing the walk knows says
+    // so -- the rigidity is a row in the constraint set and nowhere else
+    // (decision S28). So a drawing with one is solved whole, exactly as a
+    // welded mount already is.
+    const coupled = this.forceCoupledRoute || this.mountEnhanced(joints) || this.heldSeals.size > 0;
 
     if (
       this.registerCylinderDrive(cylinders, inputJoint) ||
@@ -1179,18 +1219,40 @@ export class PositionSolver {
     const touches = (...ids: string[]) => ids.some((id) => unknown.has(id));
     const constraints: Constraint[] = [];
     const at = (joint: Joint): [number, number] => [joint.x, joint.y];
+    // The parts whose rigidity the rows below write themselves, and the three
+    // ordinary rows each of them therefore replaces (decision S28).
+    const heldParts = cylindersIn(joints).filter((one) => this.heldSeals.has(one.seal.id));
+    const heldSeals = new Set(heldParts.map((one) => one.seal.id));
+    // Only a member that is a link in its own right. One welded into a
+    // neighbor is a leaf of a compound this loop never reaches, and the
+    // compound's own rows are nobody's to suppress.
+    const heldMembers = new Set(
+      heldParts.flatMap((one) => [
+        ...(one.barrel.id === one.barrelRoot.id ? [one.barrel.id] : []),
+        ...(one.rod.id === one.rodRoot.id ? [one.rod.id] : []),
+      ])
+    );
 
-    for (const link of links) {
-      const members = link.joints;
+    /**
+     * A rigid body of n joints, pinned by 2n-3 rows: the first pair, then
+     * every other joint tied to both of them. Every pair would say the same
+     * thing several times over and leave the system redundant.
+     *
+     * The order of `members` decides which two are the frame, and it matters:
+     * a row for a *known* point against a *known* pair says nothing about any
+     * unknown at all. It is a promise about the boundary instead -- and the
+     * boundary arrives on a grid of rounded coordinates, so a body placed joint
+     * by joint on it is very slightly not a rigid body and the promise is one
+     * no pose can keep. So the caller puts whatever is already known first, and
+     * every row is then about something the solve can still move.
+     */
+    const bodyRows = (members: Joint[]): void => {
       // No coincidence row any more. It existed because a slider was two joints
       // that had to be held on top of each other, and the pair cost two
       // unknowns and two rows together. One joint costs two unknowns and is
       // tied by the rider's own distances plus its slot row, so the rows and
       // the unknowns drop together and the system stays square.
-      if (members.length < 2) continue;
-      // A rigid body of n joints is pinned by 2n-3 distances: the first pair,
-      // then every other joint tied to both of them. Every pair would say the
-      // same thing several times over and leave the system redundant.
+      if (members.length < 2) return;
       const [first, second, ...rest] = members;
       if (touches(first.id, second.id)) {
         constraints.push({
@@ -1232,10 +1294,20 @@ export class PositionSolver {
           });
         }
       }
+    };
+
+    for (const link of links) {
+      // A held part's own members: the four joints are one body, written once
+      // below, and the barrel's length and the rod's are two of its rows.
+      if (heldMembers.has(link.id)) continue;
+      bodyRows(link.joints);
     }
 
     for (const joint of joints) {
       if (!(joint instanceof PrisJoint)) continue;
+      // A held seal does not slide, so "it is somewhere on this line" is the
+      // weaker half of what the body row below already says exactly.
+      if (heldSeals.has(joint.id)) continue;
       if (joint.isFloating && joint.slotJointA && joint.slotJointB) {
         if (touches(joint.id, joint.slotJointA.id, joint.slotJointB.id)) {
           constraints.push({
@@ -1260,9 +1332,36 @@ export class PositionSolver {
       }
     }
 
+    // A cylinder holding its length is one rigid body of four joints (decision
+    // S28) and is written here as one, by the same rule every other body
+    // follows. The rows it replaces -- the two members' lengths, the slot row
+    // and the weld's angle -- are each something this body already says.
+    //
+    // **Its joints are collinear, which is why this is a body and not a
+    // distance.** Written as "the seal stands |AS| from the mount", the seal
+    // carried two distance rows to two anchors *on a line through it*, both
+    // gradients along the axis: precisely the degenerate pair `rigidOffset`
+    // exists to replace. The maintainer's triangle is the drawing that showed
+    // it -- every row satisfied to 5e-7 at the drawn pose, and a least-squares
+    // answer that could get no nearer than 1.3e-5 of one.
+    //
+    // **Known joints first.** A body row between two joints the walk has
+    // already placed constrains no unknown and is a promise about the boundary
+    // instead -- which the boundary, stored on a grid of rounded coordinates,
+    // is not quite able to keep. Ordering the frame onto what is known leaves
+    // every row about something the solve can still move.
+    for (const cylinder of heldParts) {
+      const members = [cylinder.mountA, cylinder.inner, cylinder.seal, cylinder.mountB];
+      bodyRows([
+        ...members.filter((joint) => !unknown.has(joint.id)),
+        ...members.filter((joint) => unknown.has(joint.id)),
+      ]);
+    }
+
     // A weld at a block is what stops the rider turning inside its slot, and
     // nothing above says so — the rider's distances leave it free to rotate.
     for (const assembly of slideAssemblies(joints)) {
+      if (heldSeals.has(assembly.slider.id)) continue;
       const slider = assembly.slider;
       const rider = assembly.riders[0];
       if (!rider) continue;
@@ -1921,13 +2020,18 @@ export class PositionSolver {
     // that *can* be reached instead. The offsets below are thousandths of a
     // sample, and the pose moves by a few thousandths of a unit with them.
     let settledSpan = drive.span;
-    let settled = solveSimultaneous(system, this.jointMapPositions, settledSpan);
+    let settled = solveSimultaneous(
+      system,
+      this.jointMapPositions,
+      settledSpan,
+      this.poseTolerance
+    );
     if (!settled) {
       const nudges = [1e-3, 1e-2, 1e-1, 1].flatMap((size) => [size, -size]);
       for (const nudge of nudges) {
         drawn.forEach((position, id) => this.jointMapPositions.set(id, [...position]));
         settledSpan = drive.span + nudge * drive.step;
-        if (solveSimultaneous(system, this.jointMapPositions, settledSpan)) {
+        if (solveSimultaneous(system, this.jointMapPositions, settledSpan, this.poseTolerance)) {
           settled = true;
           break;
         }
@@ -2279,13 +2383,7 @@ export class PositionSolver {
         return false;
       }
       before.forEach((position, id) => this.jointMapPositions.set(id, [...position]));
-      const middle = new Map(
-        this.boundaryIds.map((id) => {
-          const start = from.get(id)!;
-          const end = to.get(id)!;
-          return [id, [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2]];
-        })
-      );
+      const middle = this.halfwayBoundary(from, to);
       return (
         this.advanceBoundary(system, from, middle, depth + 1) &&
         this.advanceBoundary(system, middle, to, depth + 1)
@@ -2314,7 +2412,7 @@ export class PositionSolver {
 
     to.forEach((position, id) => this.jointMapPositions.set(id, [...position]));
     // No driven row exists, so the command is read by nothing.
-    if (!solveSimultaneous(system, this.jointMapPositions, 0)) {
+    if (!solveSimultaneous(system, this.jointMapPositions, 0, this.poseTolerance)) {
       return halve();
     }
     if (
@@ -2326,6 +2424,118 @@ export class PositionSolver {
       return halve();
     }
     return true;
+  }
+
+  /**
+   * The boundary halfway between two of its poses, as a *motion* rather than
+   * as a set of points.
+   *
+   * Halfway used to be the midpoint of each point's own chord, and a body
+   * turning through an angle does not pass through the midpoints of its
+   * chords: it passes through the arc, and the chord midpoints describe the
+   * same body very slightly **shrunk**. For most drawings that is a rounding
+   * nobody notices, because the mechanism simply assembles to whatever the
+   * boundary is doing. It is not a rounding where two unknowns are held rigid
+   * to *two different* boundary joints: their separation is fixed and the
+   * shrunk boundary's is not, so no pose satisfies the rows at all and the
+   * halving refuses a sample it was subdividing in order to reach. A cylinder
+   * holding its length ties its mounts together exactly that way (decision
+   * S28), and the maintainer's triangle of three of them could not take a
+   * single step until this was the arc.
+   *
+   * So the moving part of the boundary is fitted with the rigid motion that
+   * carries `from` to `to`, and the half step is that motion's own square
+   * root: `R(θ/2)` with the translation that, applied twice, lands exactly on
+   * `to`. Joints that did not move are left where they are, which is what the
+   * grounds want. A boundary the fit cannot reproduce -- two bodies moving
+   * differently -- keeps the chord midpoints it always had.
+   */
+  private static halfwayBoundary(
+    from: Map<string, number[]>,
+    to: Map<string, number[]>
+  ): Map<string, number[]> {
+    const chords = () =>
+      new Map(
+        this.boundaryIds.map((id) => {
+          const start = from.get(id)!;
+          const end = to.get(id)!;
+          return [id, [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2]];
+        })
+      );
+
+    const moved = this.boundaryIds.filter((id) => {
+      const start = from.get(id);
+      const end = to.get(id);
+      return start && end && Math.hypot(end[0] - start[0], end[1] - start[1]) > 0;
+    });
+    if (moved.length < 2) return chords();
+
+    const mean = (pose: Map<string, number[]>) =>
+      moved.reduce(
+        (total, id) => [
+          total[0] + pose.get(id)![0] / moved.length,
+          total[1] + pose.get(id)![1] / moved.length,
+        ],
+        [0, 0]
+      );
+    const centerFrom = mean(from);
+    const centerTo = mean(to);
+    let cross = 0;
+    let dot = 0;
+    let spread = 0;
+    for (const id of moved) {
+      const p = from.get(id)!;
+      const q = to.get(id)!;
+      const px = p[0] - centerFrom[0];
+      const py = p[1] - centerFrom[1];
+      const qx = q[0] - centerTo[0];
+      const qy = q[1] - centerTo[1];
+      cross += px * qy - py * qx;
+      dot += px * qx + py * qy;
+      spread = Math.max(spread, Math.hypot(px, py));
+    }
+    const turn = Math.atan2(cross, dot);
+    const cos = Math.cos(turn);
+    const sin = Math.sin(turn);
+    // Whether the fit is the motion, rather than the nearest one to a boundary
+    // that changed shape. A thousandth of the boundary's own size, which is far
+    // under anything a step could mean and far over the arithmetic's noise.
+    const slack = Math.max(spread, 1) * 1e-3;
+    for (const id of moved) {
+      const p = from.get(id)!;
+      const q = to.get(id)!;
+      const px = p[0] - centerFrom[0];
+      const py = p[1] - centerFrom[1];
+      const fitted = [centerTo[0] + px * cos - py * sin, centerTo[1] + px * sin + py * cos];
+      if (Math.hypot(fitted[0] - q[0], fitted[1] - q[1]) > slack) return chords();
+    }
+
+    // The square root of `(R, t)`: `R(θ/2)` with `t_half = (I + R(θ/2))⁻¹ t`,
+    // which applied twice is exactly the whole motion.
+    const halfCos = Math.cos(turn / 2);
+    const halfSin = Math.sin(turn / 2);
+    const shiftX = centerTo[0] - (centerFrom[0] * cos - centerFrom[1] * sin);
+    const shiftY = centerTo[1] - (centerFrom[0] * sin + centerFrom[1] * cos);
+    // I + R(θ/2) = [[1+c, -s], [s, 1+c]], whose determinant is (1+c)² + s².
+    const det = (1 + halfCos) * (1 + halfCos) + halfSin * halfSin;
+    if (!(Math.abs(det) > 1e-12)) return chords();
+    const halfShiftX = ((1 + halfCos) * shiftX + halfSin * shiftY) / det;
+    const halfShiftY = (-halfSin * shiftX + (1 + halfCos) * shiftY) / det;
+
+    const movedIds = new Set(moved);
+    return new Map(
+      this.boundaryIds.map((id) => {
+        const p = from.get(id)!;
+        if (!movedIds.has(id)) return [id, [...p]];
+        return [
+          id,
+          [
+            p[0] * halfCos - p[1] * halfSin + halfShiftX,
+            p[0] * halfSin + p[1] * halfCos + halfShiftY,
+          ],
+        ];
+      })
+    );
   }
 
   /** The furthest any one unknown moves, which is what a step is measured by. */
@@ -2430,7 +2640,7 @@ export class PositionSolver {
    * as before.
    */
   private static settledOnItsBranch(system: SimultaneousSystem, command: number): boolean {
-    if (!solveSimultaneous(system, this.jointMapPositions, command)) {
+    if (!solveSimultaneous(system, this.jointMapPositions, command, this.poseTolerance)) {
       return false;
     }
     this.refusalKind = 'none';

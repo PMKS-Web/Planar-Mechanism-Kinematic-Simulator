@@ -203,6 +203,48 @@ describe('the fallback when nothing here has a sentence', () => {
   });
 });
 
+/**
+ * The two states a cylinder holding its length adds (decision S28).
+ *
+ * Both are said by `readinessOf` rather than by any failure, so the sweep above
+ * cannot reach them -- and both are sentences about a machine that *works*,
+ * which is exactly the kind this file exists to keep honest. A note must never
+ * read as a fault, and the surplus-freedom blocker must never send the reader
+ * to ground something when what it has is a ram nothing drives.
+ */
+describe('a machine whose cylinders are holding their length', () => {
+  const holdingPartition = () => {
+    const partition = drivenPartition();
+    return partition;
+  };
+
+  it('says nothing false when it has nothing to hold', () => {
+    const readiness = readinessOf(holdingPartition(), failing(undefined, 1), helpers);
+    expect(readiness.checks.some((check) => check.state === 'note')).toBe(false);
+  });
+
+  it('counts a note as neither a blocker nor a warning', () => {
+    const valid = failing(undefined);
+    Object.assign(valid, { mechanismValid: true });
+    const readiness = readinessOf(holdingPartition(), valid, helpers);
+    expect(readiness.ready).toBe(true);
+    expect(readiness.checks.filter((check) => check.state === 'warning')).toEqual([]);
+  });
+
+  it('uses no internal word for holding a length', () => {
+    const said = ['frozen', 'locked', 'seal', 'piston', 'mount']
+      .map((word) => word)
+      .filter((word) =>
+        readinessOf(holdingPartition(), failing('mobility', 3), helpers)
+          .checks.map((check) => `${check.title} ${check.body}`)
+          .join(' ')
+          .toLowerCase()
+          .includes(word)
+      );
+    expect(said).toEqual([]);
+  });
+});
+
 describe('a solve that throws', () => {
   // The report this file exists for was, underneath, a thrown exception: it left
   // `updateMechanism` before the machines it was building were stored, so the

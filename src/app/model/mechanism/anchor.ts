@@ -139,16 +139,41 @@ export function coordinateRuleFor(joint: Joint): CoordinateRule | undefined {
         : angleReference(actuator.referenceBody, driven);
     return { jointId: driven.id, kind: 'angle', referenceId: reference.id, againstId: against?.id };
   }
-  if (!(driven instanceof PrisJoint)) return undefined;
-  const carrier = driven.carrier;
+  return slotCoordinateRuleFor(driven);
+}
+
+/**
+ * How a block's place along its own slot is measured, from the block alone.
+ *
+ * The prismatic half of the rule above, split out because two callers want it
+ * and only one of them is asking about an *actuator*. `coordinateRuleFor` is
+ * gated on `resolveActuator`, which refuses to describe a drive it cannot name
+ * two bodies for -- and rightly, because an anchor is about the quantity a
+ * drive controls. Which way "forward along this slot" points is a smaller
+ * question with an answer in every case the slot is drawn at all, and the
+ * transport's coordinate needs it (`drive-profile.ts`): the gripper's slider
+ * `M` has a perfectly good carrier and no describable actuator, and asking the
+ * gated version there left its coordinate with no direction and the transport
+ * saying *Backward* of a block going forward.
+ *
+ * **A floating slot's direction is its carrier's**, so it is stored as the two
+ * carrier joints and re-read in every pose rather than frozen as a world
+ * vector: measured this way the number is how far along the carrier the block
+ * has slid, which a carrier swinging underneath cannot change. A grounded
+ * guide has no carrier and takes its own stored axis, which is fixed in the
+ * world because the guide is.
+ */
+export function slotCoordinateRuleFor(joint: Joint): CoordinateRule | undefined {
+  if (!(joint instanceof PrisJoint)) return undefined;
+  const carrier = joint.carrier;
   if (carrier) {
-    const ends = carrier.joints.filter((member) => member.id !== driven.id);
+    const ends = carrier.joints.filter((member) => member.id !== joint.id);
     if (ends.length >= 2) {
-      return { jointId: driven.id, kind: 'length', carrierIds: [ends[0].id, ends[1].id] };
+      return { jointId: joint.id, kind: 'length', carrierIds: [ends[0].id, ends[1].id] };
     }
   }
-  const axis = slotAxis(driven);
-  return axis ? { jointId: driven.id, kind: 'length', axis } : undefined;
+  const axis = slotAxis(joint);
+  return axis ? { jointId: joint.id, kind: 'length', axis } : undefined;
 }
 
 /** The unit vector a prismatic joint slides along, from its own stored angle. */

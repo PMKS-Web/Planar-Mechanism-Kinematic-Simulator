@@ -54,11 +54,26 @@ const TWO_IN_ONE_BRACKET =
   'aRTT1,TT1,0,0,TG,1Dc,26A69A,T,T1,,.aRTW,TW,0,0,95,11D,c5cae9,T,W,,.' +
   'aRTT2,TT2,0,0,LT,11M,0d125a,T,T2,,...N_9*2JUZvL';
 
+/**
+ * A cylinder grounded at one mount with a bar hanging free off the other.
+ *
+ * Two freedoms even after the ram holds its length, so it is the one drawing
+ * here that reaches readiness's *surplus freedom* sentence -- which points at
+ * "joints that hang on only one link", and a barrel's buried end is exactly
+ * such a joint. It named it, on every drawing with a cylinder in it, until
+ * that list was filtered through `shown` (decision S20).
+ */
+const FREE_END_WITH_A_RAM =
+  '2v.Ay,1E8.5,0.1011.4A,A,0ku,0,0.0A1,A1,Ag,0,0.0C,C,ku,0,0.fB,B,0Ag,0,0,AA1,A,A1.0D,D,1E8,ku,0..' +
+  'ARAA1,AA1,0,0,0I7,0,c5cae9,A,A1,,.ARBC,BC,0,0,I7,0,c5cae9,B,C,,.' +
+  'ARCD,CD,0,0,_W,NS,0d125a,C,D,,...N_8*43odcc';
+
 const FIXTURES = [
   { name: 'a plain cylinder', payload: TEMPLATE_LINKAGES['Excavator_Bucket'] },
   { name: 'two barrels welded into one bracket', payload: TWO_IN_ONE_BRACKET },
   { name: 'a rod welded into a bracket', payload: TWO_IN_ONE_BRACKET, weld: 'U' },
   { name: 'a driven cylinder with a load', payload: TEMPLATE_LINKAGES['Cylinder_Gripper'] },
+  { name: 'a surplus freedom beside a ram', payload: FREE_END_WITH_A_RAM },
 ];
 
 const results = [];

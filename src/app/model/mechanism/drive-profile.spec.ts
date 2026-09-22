@@ -1,4 +1,5 @@
 import { Injector } from '@angular/core';
+import { Joint, PrisJoint, RealJoint } from '../joint';
 import { createMechanismHarness } from '../../../test-utils/mechanism-harness';
 import { DriveProfile, driveProfileOf, fractionalSampleAlong, sampleAlong } from './drive-profile';
 import { ActiveObjService } from '../../services/active-obj.service';
@@ -220,3 +221,159 @@ function turnaroundsOf(track: number[]): number[] {
   }
   return turns;
 }
+
+/*
+  A bare slider's coordinate has a *direction*, and it is the slot's.
+
+  It did not. `strokeOf` took its axis from the two ends of the path the block
+  actually travels -- a direction the drawing chose, not one the slot has -- so
+  reversing the drive left every sample of `along` identical and the transport
+  reported the same heading either way. Measured on `Scotch_Yoke` and
+  `Punch_Press`; `Slider_Crank` happened to reverse its sample order and so
+  happened to flip, which is what made it look fine.
+
+  The coordinate is the anchor's rule now (`slotCoordinateRuleFor`), so which
+  way the handle runs, which way the word says, which way the heavier drive
+  arrow points and the sign of `Joint.driveSpeed` are one fact. What this pins
+  is that one fact, in the only form that cannot be written twice: `along`
+  rises exactly when the block advances along its own slot, sample by sample,
+  whichever way the drive is set.
+*/
+
+/** The block's place along its own slot in one solved frame, measured here. */
+function slotPlaceIn(frame: Joint[], blockId: string, endIds: string[], floating: boolean): number {
+  const at = frame.find((joint) => joint.id === blockId)!;
+  if (floating) {
+    // A floating slot's direction is its carrier's, so it is re-read in every
+    // pose -- the whole question this is about.
+    const from = frame.find((joint) => joint.id === endIds[0])!;
+    const to = frame.find((joint) => joint.id === endIds[1])!;
+    const length = Math.hypot(to.x - from.x, to.y - from.y);
+    return ((at.x - from.x) * (to.x - from.x) + (at.y - from.y) * (to.y - from.y)) / length;
+  }
+  // A grounded guide is fixed in the world, so the caller hands its unit axis
+  // as two numbers rather than two joints.
+  return at.x * Number(endIds[0]) + at.y * Number(endIds[1]);
+}
+
+/** Drive the first block that is not a cylinder's slide, at the sign given. */
+function slidingDrive(template: TemplateID, sign: 1 | -1) {
+  const { service, settings, active } = createMechanismHarness();
+  const decoder = new StringTranscoder();
+  decoder.decodeURL(TEMPLATE_LINKAGES[template]);
+  new MechanismBuilder(service, decoder, settings, active).build(true);
+  service.updateMechanism();
+
+  const sealed = new Set(service.sealedStructures().map((one) => one.seal.id));
+  const block = service.joints.find(
+    (joint): joint is PrisJoint => joint instanceof PrisJoint && !sealed.has(joint.id)
+  );
+  expect(block, `${template} has a block that is not a cylinder's slide`).toBeDefined();
+  service.joints.forEach((joint) => ((joint as RealJoint).input = false));
+  block!.input = true;
+  service.updateMechanism();
+  service.setDriveSpeed(block!, sign * Math.abs(service.driveSpeedOf(block!) || 1));
+  service.updateMechanism();
+
+  const index = service.indexOfMechanismContaining(block!);
+  const solved = service.mechanisms[index];
+  expect(solved?.isMechanismValid(), `${template} solves when its block is driven`).toBe(true);
+  const profile = service.driveProfileOf(index)!;
+  expect(profile, `${template} has a profile`).toBeDefined();
+  const carried = block!.carrier
+    ? block!.carrier.joints.filter((joint) => joint.id !== block!.id).map((joint) => joint.id)
+    : [];
+  // Two joint ids for a floating slot; the guide's own unit axis, as two
+  // numbers, for a grounded one.
+  const ends =
+    carried.length >= 2
+      ? carried.slice(0, 2)
+      : [String(Math.cos(block!.angle_rad)), String(Math.sin(block!.angle_rad))];
+  return { service, block: block!, solved, profile, ends, floating: carried.length >= 2, index };
+}
+
+/** Every template whose block can be driven, with a slot angle worth naming. */
+const SLIDING: { template: TemplateID; slot: string }[] = [
+  { template: 'Slider_Crank', slot: 'a grounded guide along x' },
+  { template: 'Radial_Engine', slot: 'a grounded guide at 90 degrees' },
+  { template: 'Elliptical_Crank', slot: 'a grounded guide a fraction off x' },
+  { template: 'Pumpjack', slot: 'a grounded guide at 90 degrees' },
+  { template: 'Scotch_Yoke', slot: 'a floating slot' },
+  { template: 'Whitworth_Quick_Return', slot: 'a floating slot on a crank that goes round' },
+  { template: 'Shaper_Quick_Return', slot: 'a floating slot handing off to a grounded one' },
+  { template: 'Cylinder_Gripper', slot: 'a floating slot whose drive has no describable actuator' },
+  { template: 'Scissor_Lift', slot: 'a floating slot in a moving platform' },
+];
+
+describe('which way a bare slider’s coordinate runs', () => {
+  beforeEach(() => vi.spyOn(console, 'log').mockImplementation(() => undefined));
+  afterEach(() => vi.restoreAllMocks());
+
+  for (const { template, slot } of SLIDING) {
+    for (const sign of [1, -1] as const) {
+      it(`rises when the block advances along ${slot} — ${template}, speed ${sign > 0 ? '+' : '-'}`, () => {
+        const { solved, profile, block, ends, floating } = slidingDrive(template, sign);
+        const place = solved.joints.map((frame) => slotPlaceIn(frame, block.id, ends, floating));
+        expect(profile.linear).toBe(true);
+
+        let compared = 0;
+        for (let i = 1; i < profile.along.length; i++) {
+          const moved = place[i] - place[i - 1];
+          // Only where the block actually moved: a sample pair it stood still
+          // through says nothing about direction, and the coordinate is flat
+          // there too.
+          if (Math.abs(moved) < 1e-9) continue;
+          compared++;
+          expect(
+            Math.sign(profile.along[i] - profile.along[i - 1]),
+            `${template} sample ${i}: the block moved ${moved > 0 ? 'forward' : 'backward'} along its slot`
+          ).toBe(Math.sign(moved));
+        }
+        expect(compared, `${template} moves somewhere`).toBeGreaterThan(4);
+      });
+    }
+  }
+
+  it('is the same coordinate whichever way the drive is set', () => {
+    // The bug, stated: reversing the drive used to leave every sample of the
+    // old coordinate byte-identical, because its axis was taken from the path
+    // rather than from the slot. The slot does not move when the drive is
+    // reversed, so the same *pose* must read the same place on the track --
+    // and the two runs visit the poses in opposite order, so the two tracks
+    // are each other reversed rather than each other.
+    const forward = slidingDrive('Scotch_Yoke', 1);
+    const backward = slidingDrive('Scotch_Yoke', -1);
+    const last = forward.profile.along.length - 1;
+    expect(backward.profile.along.length).toBe(last + 1);
+    expect(forward.profile.along[0]).toBeCloseTo(backward.profile.along[0], 6);
+    // Reversed, not repeated: the old coordinate gave the identical array.
+    expect(forward.profile.along[1]).toBeCloseTo(backward.profile.along[last - 1], 3);
+    expect(forward.profile.along[1]).not.toBeCloseTo(backward.profile.along[1], 3);
+  });
+
+  it('leaves a cylinder measured by its own extension', () => {
+    // A ram's coordinate is how far its rod is out, which is direction-
+    // meaningful already and is the number *Starts at* is a share of. The slot
+    // rule must not reach it.
+    const { service, settings, active } = createMechanismHarness();
+    const decoder = new StringTranscoder();
+    decoder.decodeURL(TEMPLATE_LINKAGES['Cylinder_Boom']);
+    new MechanismBuilder(service, decoder, settings, active).build(true);
+    service.updateMechanism();
+    const one = service.sealedStructures()[0];
+    const profile = service.driveProfileOf(0)!;
+    const span = (frame: Joint[]) => {
+      const a = frame.find((joint) => joint.id === one.mountA.id)!;
+      const b = frame.find((joint) => joint.id === one.mountB.id)!;
+      return Math.hypot(b.x - a.x, b.y - a.y);
+    };
+    const solved = service.mechanisms[0];
+    const reach = solved.joints.map(span);
+    for (let i = 1; i < profile.along.length; i++) {
+      if (Math.abs(reach[i] - reach[i - 1]) < 1e-9) continue;
+      expect(Math.sign(profile.along[i] - profile.along[i - 1])).toBe(
+        Math.sign(reach[i] - reach[i - 1])
+      );
+    }
+  });
+});

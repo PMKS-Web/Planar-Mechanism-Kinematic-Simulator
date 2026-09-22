@@ -106,6 +106,18 @@ remove all three freedoms between them — and that is a redundancy Gruebler can
 charges for the slot row, counts **0**, and the geometry rescues it to **1**. One is right: the
 pair is rigid to itself and turns as one body about whatever grounds it.
 
+**And the third way the count is not the answer: it counts the drawing, and a reader means the
+machine.** A cylinder nothing drives and nothing moves is a strut — a ram with its valves shut — so
+a triangle of three of them turns as one rigid body even though Gruebler counts three freedoms and
+is right to. `model/mechanism/cylinder-hold.ts` decides which passive rams are *held* by asking the
+**same Jacobian** one more question: hold the driven coordinate still, and can this slide still
+move? A ram that can is a length nothing is deciding and it holds; a ram that cannot is a follower
+the machine itself moves, and it is left alone (decision S28). A held ram is then merged into one
+body by the same `assignBodies` call a frozen one is, and the count is taken of what results — so
+`Degrees of freedom` is the machine's mobility, and the drawer's note is what explains the
+difference. It fires **only where the count is above one**, which is a drawing that refuses to run,
+so nothing that animates today is touched.
+
 The projection in `outsideRange` orthogonalizes the Jacobian's columns against each other before
 projecting. Subtracting each column in turn without that leaves part of the span behind and reports
 every genuine motion as a tangency — which is the answer exactly inverted, and it passes the whole

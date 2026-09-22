@@ -766,7 +766,11 @@
         <g class="slider-arrows" pointer-events="none" [attr.transform]="sliderMarks.frame(mark)">
           <!-- The heavier arrow is the way the block sets off. Two matched
                arrows only say "this translates"; they cannot say which way it
-               goes first, which is the question a driven mark answers. -->
+               goes first, which is the question a driven mark answers.
+               The shaft comes in drawing units from the mark, like every other
+               dimension of it: stroked at a fixed number of screen pixels it
+               was the one part of the mark whose proportions changed with the
+               zoom (MARK.arrowShaft). -->
           @for (arrow of mark.arrows; track $index) {
             <line
               [attr.x1]="arrow.line.x1"
@@ -774,7 +778,7 @@
               [attr.x2]="arrow.line.x2"
               [attr.y2]="arrow.line.y2"
               stroke="#ffffff"
-              [attr.stroke-width]="svgGrid.scaleWithZoom(arrow.emphasised ? 4.5 : 2.5)"
+              [attr.stroke-width]="arrow.width"
             />
             <path [attr.d]="arrow.head" fill="#ffffff" />
           }
@@ -910,7 +914,7 @@
                 [attr.x2]="arrow.line.x2"
                 [attr.y2]="arrow.line.y2"
                 stroke="#ffffff"
-                [attr.stroke-width]="svgGrid.scaleWithZoom(arrow.emphasised ? 4.5 : 2.5)"
+                [attr.stroke-width]="arrow.width"
               />
               <path [attr.d]="arrow.head" fill="#ffffff" />
             }

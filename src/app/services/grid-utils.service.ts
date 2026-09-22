@@ -44,6 +44,7 @@ import {
   poseForRodLength,
   poseForSealAt,
 } from '../model/cylinder-edit';
+import { CylinderPlacements } from '../model/cylinder-interiors';
 import { SettingsService } from './settings.service';
 import { NumberUnitParserService } from './number-unit-parser.service';
 import { MechanismService } from './mechanism.service';
@@ -1138,7 +1139,34 @@ export class GridUtilsService {
    * grounded, what a Lock holds, which lengths are fixed, and how to name
    * either of the last two.
    */
-  private editContext(sealed: Cylinder): CylinderEditContext {
+  /**
+   * Write the joints a cylinder owns, and nothing else.
+   *
+   * The one commit both of `model/cylinder-interiors.ts`'s answers go through
+   * -- the derivation that runs on every rebuild and the repair a change of
+   * Object Size runs (decision S29) -- so neither can quietly grow a second
+   * idea of what a cylinder is allowed to move. Nothing is carried, nothing is
+   * judged and nothing can be refused: N and S are the seal's own, and no lock
+   * and no hold has anything to say about a joint the drawing never shows.
+   */
+  commitCylinderPlacements(plan: CylinderPlacements): void {
+    if (plan.placements.size === 0) return;
+    this.commitEditPlan({
+      placements: plan.placements,
+      movedIds: new Set(plan.placements.keys()),
+      carried: [],
+      reshaped: plan.reshaped,
+      affectedRoots: [],
+    });
+  }
+
+  /**
+   * Public because a change of Object Size asks the same question from outside
+   * a gesture (decision S29): `MechanismService.applyObjectScaleChange` has a
+   * repair to plan and needs exactly this -- the new R, and which lengths are
+   * fixed.
+   */
+  editContext(sealed: Cylinder): CylinderEditContext {
     const links = this.mechanismSrv.links;
     const cylinders = this.mechanismSrv.sealedStructures();
     const frozen = this.frozenJointIds();
