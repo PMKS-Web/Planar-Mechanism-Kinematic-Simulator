@@ -2,7 +2,11 @@ import { Force } from './force';
 
 /** The datum follows the owning body only for a local force. */
 export function forceFrameAngle(force: Force): number {
-  return force.local ? force.link.angleRad : 0;
+  if (!force.local) return 0;
+  // Joint positions are the displayed body. Cached link angles can lag a drag
+  // or retain an imported value; the frame mark must stay on the actual bar.
+  const [from, to] = force.link.joints;
+  return from && to ? Math.atan2(to.y - from.y, to.x - from.x) : 0;
 }
 
 /** Match the signed angle edited in the force's own reference frame. */

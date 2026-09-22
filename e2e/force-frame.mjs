@@ -96,6 +96,36 @@ try {
     added
   );
   await page.screenshot({ path: `${OUT}/tracer.png` });
+  // Selecting a leaf must make Delete address that leaf, not silently look
+  // for it among roots. Exercise the keyboard and the panel separately.
+  for (const command of ['keyboard', 'panel']) {
+    await load(compound);
+    const at = await grid((g) => {
+      const p = g.svgGrid.modelToScreen(g.mechanismSrv.links[0].subset[0].CoM);
+      return { x: p.x, y: p.y };
+    });
+    await page.mouse.click(at.x, at.y);
+    await page.mouse.click(at.x, at.y);
+    if (command === 'keyboard') await page.keyboard.press('Delete');
+    else await page.getByRole('button', { name: 'Delete', exact: true }).click();
+    const remaining = await grid((g) => ({
+      links: g.mechanismSrv.links.map((l) => l.id),
+      joints: g.mechanismSrv.joints.map((j) => j.id),
+      welded: g.mechanismSrv.joints.some((j) => j.isWelded),
+    }));
+    check(
+      `${command} Delete removes only the selected primitive`,
+      remaining.links.join() === 'IJ' && remaining.joints.join() === 'I,J' && !remaining.welded,
+      remaining
+    );
+    await page.getByRole('button', { name: 'Undo', exact: true }).click();
+    check(
+      `${command} primitive deletion is one undo`,
+      await grid(
+        (g) => g.mechanismSrv.links[0].subset.length === 2 && g.mechanismSrv.joints.length === 3
+      )
+    );
+  }
   await load(TEMPLATE_LINKAGES['4-Bar']);
   await grid((g) => {
     g.activeObjService.updateSelectedObj(g.mechanismSrv.links.find((l) => l.id === 'BC'));
