@@ -21,7 +21,9 @@
   <span hidden [id]="labelId + '-field2'">{{ fieldName(label2()) }}</span>
   <div class="row" [formGroup]="formGroup()" style="gap: 5px">
     @if (formSubGroup) {
-      <span class="label {{ disabled() ? 'disabled' : '' }}">{{ label1() }}</span>
+      <span class="label {{ disabled() ? 'disabled' : '' }}" [numberDrag]="field1">{{
+        label1()
+      }}</span>
       <mat-form-field
         class="customInputForm"
         formGroupName="{{ formSubGroup }}"
@@ -32,7 +34,6 @@
         (focusout)="focus(1, false)"
       >
         <input
-          numberDrag
           class="customInput"
           spellcheck="false"
           matInput
@@ -49,6 +50,7 @@
       <span
         class="label {{ disabled() ? 'disabled' : '' }}"
         [class.angle-label]="label2() === '⊾'"
+        [numberDrag]="field2"
         >{{ label2() }}</span
       >
       <mat-form-field
@@ -61,7 +63,6 @@
         (focusout)="focus(2, false)"
       >
         <input
-          numberDrag
           class="customInput"
           spellcheck="false"
           matInput
@@ -76,7 +77,9 @@
       </mat-form-field>
     }
     @if (!formSubGroup) {
-      <span class="label {{ disabled() ? 'disabled' : '' }}">{{ label1() }}</span>
+      <span class="label {{ disabled() ? 'disabled' : '' }}" [numberDrag]="field1">{{
+        label1()
+      }}</span>
       <mat-form-field
         class="customInputForm"
         (click)="selectAll(field1)"
@@ -86,7 +89,6 @@
         (focusout)="focus(1, false)"
       >
         <input
-          numberDrag
           class="customInput"
           spellcheck="false"
           matInput
@@ -103,6 +105,7 @@
       <span
         class="label {{ disabled() ? 'disabled' : '' }}"
         [class.angle-label]="label2() === '⊾'"
+        [numberDrag]="field2"
         >{{ label2() }}</span
       >
       <mat-form-field
@@ -114,7 +117,6 @@
         (focusout)="focus(2, false)"
       >
         <input
-          numberDrag
           class="customInput"
           spellcheck="false"
           matInput

@@ -34,6 +34,8 @@ export type EditAction =
   | 'drag'
   /** Adding a link, welding: geometry that captures the pose it is made at. */
   | 'build'
+  /** New links or cylinders belong to Edit mode. */
+  | 'create'
   /** Delete, ground, set-input: addressed by identity, not by pose. */
   | 'structure'
   /** Joint X/Y and link angle typed as numbers -- pose coordinates. */
@@ -52,6 +54,7 @@ export const EDIT_ACTIONS: readonly EditAction[] = [
   'inspect',
   'drag',
   'build',
+  'create',
   'structure',
   'placement',
   'properties',
@@ -153,6 +156,15 @@ const IN_SYNTHESIS: EditRefusal = refusal({
   lead: 'Synthesis describes a mechanism that does not exist yet.',
   action: 'Switch to Edit',
   tail: 'to change one.',
+  actionKind: 'toEdit',
+});
+
+const CREATE_IN_EDIT: EditRefusal = refusal({
+  short: 'Edit mode only',
+  glyph: 'edit',
+  lead: '',
+  action: 'Switch to Edit',
+  tail: 'to add links or cylinders.',
   actionKind: 'toEdit',
 });
 
@@ -275,6 +287,7 @@ export function refusalFor(action: EditAction, state: EditState): EditRefusal | 
   // Playing is read-only whatever the action. A reader reaching for a joint
   // that is moving is a fight nothing here can win.
   if (state.playing) return PLAYING;
+  if (action === 'create' && state.mode === 'analysis') return CREATE_IN_EDIT;
   if (state.atStart) return null;
 
   // Analysis can change the drawing at its start. Posed drags and undo have
@@ -288,6 +301,7 @@ export function refusalFor(action: EditAction, state: EditState): EditRefusal | 
   // way.
   switch (action) {
     case 'drag':
+    case 'create':
     case 'build':
     case 'structure':
     case 'history':
@@ -346,7 +360,7 @@ export function displacementRefusal(state: EditState): EditRefusal | null {
 }
 
 /** What an action needs in order to preserve the authored start. */
-export type MenuPosePolicy = 'start' | 'structure' | 'preserve' | 'attachment' | 'view';
+export type MenuPosePolicy = 'start' | 'structure' | 'preserve' | 'attachment' | 'create' | 'view';
 
 /** A paused pose allows edits with a defined mapping back to the authored drawing. */
 export function menuRefusal(
@@ -355,6 +369,7 @@ export function menuRefusal(
 ): EditRefusal | null {
   if (state.playing) return PLAYING;
   if (policy === 'view') return null;
+  if (policy === 'create') return refusalFor('create', state) ?? displacementRefusal(state);
   if (state.mode === 'synthesis') return IN_SYNTHESIS;
   if (state.atStart || policy === 'preserve') return null;
   // A control the Edit panel offers under the same name asks the panel's own
