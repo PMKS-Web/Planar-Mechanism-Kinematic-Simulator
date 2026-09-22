@@ -1,4 +1,5 @@
 import { Component, computed, signal } from '@angular/core';
+/* eslint-disable max-lines -- This instructional sequence and its diagram model remain together. */
 import {
   SolverDiagramComponent,
   Diagram,
@@ -72,6 +73,7 @@ type DirectionKey = 'Ax' | 'Ay' | 'Bx' | 'By' | 'MA';
             <dt><app-solver-math [equation]="momentTerms[4].symbol" [inline]="true" /></dt>
             <dd>Rotational inertia for motion; it becomes zero for statics.</dd>
           </dl>
+          <app-solver-math [equation]="momentLoadExpansion" />
         </details>
         <details class="equationDetail">
           <summary>Calculate a position vector r</summary>
@@ -92,11 +94,14 @@ type DirectionKey = 'Ax' | 'Ay' | 'Bx' | 'By' | 'MA';
             label="A force at point P creating a moment about point O"
           />
           <app-solver-math [equation]="genericVectors" />
-          <app-solver-math [equation]="genericCrossProduct" />
-          <app-solver-math [equation]="genericMomentComponents" />
+          <app-solver-math [equation]="genericMomentDeterminant" />
+          <app-solver-math [equation]="genericMomentExpansion" />
+          <app-solver-math [equation]="genericPlanarMoment" />
           <p>
-            Both vectors lie in the x-y plane. Their out-of-plane components are zero, which cancels
-            the i and j components and leaves the z component for planar force analysis.
+            Both vectors lie in the x-y plane. Their out-of-plane components are zero, so the red i
+            and j terms cancel and only the z component remains. The right-hand rule gives the same
+            sign: curl your fingers from r toward F; your thumb points along positive z for a
+            positive moment and negative z for a negative moment.
           </p>
         </details>
       </details>
@@ -184,7 +189,7 @@ type DirectionKey = 'Ax' | 'Ay' | 'Bx' | 'By' | 'MA';
           </tr>
         </thead>
         <tbody>
-          @for (variable of variables; track variable.symbol) {
+          @for (variable of variables(); track variable.symbol) {
             <tr>
               <td><app-solver-math [equation]="variable.symbol" [inline]="true" /></td>
               <td>{{ variable.meaning }}</td>
@@ -445,18 +450,19 @@ export class ForceDefinitionsComponent {
   protected readonly forceVectorComponents = String.raw`\sum\vec F=\left\langle\sum F_x,\ \sum F_y,\ \color{red}{\cancel{\sum F_z}}\right\rangle`;
   protected readonly forceComponents = String.raw`\begin{aligned}\sum F_x&=m a_{\mathrm{CoM},x}\\\sum F_y&=m a_{\mathrm{CoM},y}\\\color{red}{\cancel{\sum F_z}}&=\color{red}{\cancel{m a_{\mathrm{CoM},z}}}=0\quad\text{(planar)}\end{aligned}`;
   protected readonly momentBalance = String.raw`\sum\vec M_{\mathrm{CoM}}=I_{\mathrm{CoM}}\vec\alpha\qquad\xrightarrow{\ \mathrm{statics}:\ \vec\alpha=\vec0\ }\qquad\sum\vec M_{\mathrm{CoM}}=\vec0`;
-  protected readonly momentLoadGroups = String.raw`\underbrace{\sum(\vec r\times\vec F_{\mathrm{joint}})+\sum(\vec r\times\vec F_{\mathrm{external}})+\sum(\vec r\times\vec W)+\sum M_{\mathrm{motor}}}_{\text{LHS: all moments on the FBD}}=\underbrace{I_{\mathrm{CoM}}\vec\alpha}_{\text{RHS: motion}}\quad\text{or}\quad\underbrace{\vec0}_{\text{RHS: static}}`;
+  protected readonly momentLoadGroups = String.raw`\underbrace{\sum M_{\mathrm{joint}}+\sum M_{\mathrm{external}}+\sum M_{\mathrm{weight}}+\sum M_{\mathrm{motor}}}_{\text{LHS: all moments on the FBD}}=\underbrace{I_{\mathrm{CoM}}\vec\alpha}_{\text{RHS: motion}}\quad\text{or}\quad\underbrace{\vec0}_{\text{RHS: static}}`;
+  protected readonly momentLoadExpansion = String.raw`\sum M_{\mathrm{joint}}=\sum(\vec r_{\mathrm{joint}/O}\times\vec F_{\mathrm{joint}}),\quad\sum M_{\mathrm{external}}=\sum(\vec r_{\mathrm{external}/O}\times\vec F_{\mathrm{external}}),\quad\sum M_{\mathrm{weight}}=\sum(\vec r_{\mathrm{CoM}/O}\times\vec W)`;
   protected readonly momentTerms = [
     {
-      symbol: String.raw`\sum(\vec r\times\vec F_{\mathrm{joint}})`,
+      symbol: String.raw`\sum M_{\mathrm{joint}}`,
       meaning: 'Moments of exposed joint reactions about the selected reference.',
     },
     {
-      symbol: String.raw`\sum(\vec r\times\vec F_{\mathrm{external}})`,
+      symbol: String.raw`\sum M_{\mathrm{external}}`,
       meaning: 'Moments of externally applied forces.',
     },
     {
-      symbol: String.raw`\sum(\vec r\times\vec W)`,
+      symbol: String.raw`\sum M_{\mathrm{weight}}`,
       meaning: 'Moments made by gravity at the center of mass.',
     },
     {
@@ -469,8 +475,9 @@ export class ForceDefinitionsComponent {
     },
   ];
   protected readonly genericVectors = String.raw`\vec r_{P/O}=\langle r_{P/O,x},r_{P/O,y},0\rangle,\qquad\vec F=\langle F_x,F_y,0\rangle`;
-  protected readonly genericCrossProduct = String.raw`\vec r_{P/O}\times\vec F=\begin{vmatrix}\hat i&\hat j&\hat k\\r_{P/O,x}&r_{P/O,y}&0\\F_x&F_y&0\end{vmatrix}`;
-  protected readonly genericMomentComponents = String.raw`\vec M_O=\langle\underbrace{0}_{M_x},\underbrace{0}_{M_y},\underbrace{r_{P/O,x}F_y-r_{P/O,y}F_x}_{M_z}\rangle`;
+  protected readonly genericMomentDeterminant = String.raw`\vec M_O=\vec r_{P/O}\times\vec F=\begin{vmatrix}\hat i&\hat j&\hat k\\r_{P/O,x}&r_{P/O,y}&0\\F_x&F_y&0\end{vmatrix}`;
+  protected readonly genericMomentExpansion = String.raw`\vec M_O=(r_{P/O,y}F_z-r_{P/O,z}F_y)\hat i+(r_{P/O,z}F_x-r_{P/O,x}F_z)\hat j+(r_{P/O,x}F_y-r_{P/O,y}F_x)\hat k`;
+  protected readonly genericPlanarMoment = String.raw`\vec M_O=\textcolor{red}{\cancel{(r_{P/O,y}\underbrace{F_z}_{0}-\underbrace{r_{P/O,z}}_{0}F_y)\hat i}}+\textcolor{red}{\cancel{(\underbrace{r_{P/O,z}}_{0}F_x-r_{P/O,x}\underbrace{F_z}_{0})\hat j}}+(r_{P/O,x}F_y-r_{P/O,y}F_x)\hat k`;
   protected readonly generalMomentEquation = computed(
     () =>
       String.raw`\sum M_{${this.referenceName()},z}=\sum(\vec r_{\mathrm{joint}/${this.referenceName()}}\times\vec F_{\mathrm{joint}})_z+\sum(\vec r_{\mathrm{external}/${this.referenceName()}}\times\vec F_{\mathrm{external}})_z+\sum(\vec r_{\mathrm{CoM}/${this.referenceName()}}\times\vec W)_z${this.motorTerm()}=0`
@@ -478,48 +485,55 @@ export class ForceDefinitionsComponent {
   protected readonly generalPositionVector = String.raw`\vec r_{Q/O}=\vec p_Q-\vec p_O=\langle x_Q-x_O,\ y_Q-y_O,\ 0\rangle`;
   protected readonly exampleFx = computed(
     () =>
-      String.raw`\sum F_x=${this.signedTerm(this.direction('Ax'), 'A_x')}${this.signedTerm(this.direction('Bx'), 'B_x')}+F_{1x}=0`
+      String.raw`\sum F_x=${this.signedTerm(this.direction('Ax'), 'A_x')}${this.signedTerm(this.direction('Bx'), 'B_x')}+F_{1x}${this.gravityTerm('x')}=0`
   );
   protected readonly exampleFy = computed(
     () =>
-      String.raw`\sum F_y=${this.signedTerm(this.direction('Ay'), 'A_y')}${this.signedTerm(this.direction('By'), 'B_y')}+F_{1y}-W_{AB}=0`
+      String.raw`\sum F_y=${this.signedTerm(this.direction('Ay'), 'A_y')}${this.signedTerm(this.direction('By'), 'B_y')}+F_{1y}${this.gravityTerm('y')}=0`
   );
-  protected readonly variables = [
-    { symbol: String.raw`A_x,\ A_y`, meaning: 'Reaction-force components applied at joint A.' },
-    { symbol: String.raw`B_x,\ B_y`, meaning: 'Reaction-force components applied at joint B.' },
-    {
-      symbol: String.raw`F_{1x},\ F_{1y}`,
-      meaning: 'x and y components of the external force F_1 at P.',
-    },
-    {
-      symbol: String.raw`W_{AB}`,
-      meaning: 'Weight of link AB, applied at its center of mass (CoM).',
-    },
-    {
-      symbol: String.raw`M_A`,
-      meaning: 'Motor torque applied directly at joint A.',
-    },
-    {
-      symbol: String.raw`\vec r_{A/O}`,
-      meaning: 'Position vector from the chosen moment reference O to joint A.',
-    },
-    {
-      symbol: String.raw`\vec r_{B/O}`,
-      meaning: 'Position vector from the chosen moment reference O to joint B.',
-    },
-    {
-      symbol: String.raw`\vec r_{P/O}`,
-      meaning: 'Position vector from the chosen moment reference O to the applied force at P.',
-    },
-    {
-      symbol: String.raw`\vec r_{\mathrm{CoM}/O}`,
-      meaning: 'Position vector from the chosen moment reference O to the center of mass.',
-    },
-    {
-      symbol: String.raw`I_{\mathrm{CoM}},\ \vec\alpha`,
-      meaning: 'Mass moment of inertia and angular acceleration for in-motion analysis.',
-    },
-  ];
+  protected readonly variables = computed(() => {
+    const reference = this.referenceName();
+    return [
+      { symbol: String.raw`A_x,\ A_y`, meaning: 'Reaction-force components applied at joint A.' },
+      { symbol: String.raw`B_x,\ B_y`, meaning: 'Reaction-force components applied at joint B.' },
+      {
+        symbol: String.raw`F_{1x},\ F_{1y}`,
+        meaning: 'x and y components of the external force F_1 at P.',
+      },
+      {
+        symbol: String.raw`W_{AB}`,
+        meaning: 'Weight of link AB, applied at its center of mass (CoM).',
+      },
+      {
+        symbol: String.raw`W_{AB,x}=-W_{AB}\sin(\theta),\quad W_{AB,y}=-W_{AB}\cos(\theta)`,
+        meaning: 'Weight components in the selected x-y axes; θ is the selected x-axis angle.',
+      },
+      {
+        symbol: String.raw`M_A`,
+        meaning: 'Motor torque applied directly at joint A.',
+      },
+      {
+        symbol: String.raw`\vec r_{A/${reference}}`,
+        meaning: `Position vector from the selected moment reference ${this.referenceLabel()} to joint A.`,
+      },
+      {
+        symbol: String.raw`\vec r_{B/${reference}}`,
+        meaning: `Position vector from the selected moment reference ${this.referenceLabel()} to joint B.`,
+      },
+      {
+        symbol: String.raw`\vec r_{P/${reference}}`,
+        meaning: `Position vector from the selected moment reference ${this.referenceLabel()} to the applied force at P.`,
+      },
+      {
+        symbol: String.raw`\vec r_{\mathrm{CoM}/${reference}}`,
+        meaning: `Position vector from the selected moment reference ${this.referenceLabel()} to the center of mass.`,
+      },
+      {
+        symbol: String.raw`I_{\mathrm{CoM}},\ \vec\alpha`,
+        meaning: 'Mass moment of inertia and angular acceleration for in-motion analysis.',
+      },
+    ];
+  });
   private point(id: ReferenceId | 'P') {
     return this.points[id];
   }
@@ -545,6 +559,16 @@ export class ForceDefinitionsComponent {
 
   private motorTerm() {
     return this.direction('MA') === 1 ? '+M_A' : '-M_A';
+  }
+
+  private gravityTerm(axis: 'x' | 'y') {
+    const angle = this.axisAngle();
+    return axis === 'x' ? `-W_{AB}\\sin(${angle}^{\\circ})` : `-W_{AB}\\cos(${angle}^{\\circ})`;
+  }
+
+  private gravityComponent(axis: 'x' | 'y') {
+    const theta = (this.axisAngle() * Math.PI) / 180;
+    return axis === 'x' ? -Math.sin(theta) : -Math.cos(theta);
   }
 
   private distanceFrom(reference: ReferenceId, target: ReferenceId | 'P') {
@@ -748,18 +772,41 @@ export class ForceDefinitionsComponent {
     ) =>
       component({ from: point, to: alongAxis(point, axis, this.direction(key), 60), label }, axis);
     const pointP = this.point('P');
+    const gravityLines = (): DiagramLine[] => {
+      if (highlight !== 'x' && highlight !== 'y') {
+        return [component({ from: this.point('CoM'), to: { x: 95, y: -35 }, label: 'W_AB' }, 'y')];
+      }
+      const componentAxis = highlight;
+      const gravity = this.gravityComponent(componentAxis);
+      if (Math.abs(gravity) < 1e-6) return [];
+      return [
+        component(
+          {
+            from: this.point('CoM'),
+            to: alongAxis(
+              this.point('CoM'),
+              componentAxis,
+              gravity >= 0 ? 1 : -1,
+              55 * Math.abs(gravity)
+            ),
+            label: `W_AB,${componentAxis}`,
+          },
+          componentAxis
+        ),
+      ];
+    };
     const loadLines: DiagramLine[] = [
       jointComponent(this.point('A'), 'Ax', 'x', 'A_x'),
       jointComponent(this.point('A'), 'Ay', 'y', 'A_y'),
       jointComponent(this.point('B'), 'Bx', 'x', 'B_x'),
       jointComponent(this.point('B'), 'By', 'y', 'B_y'),
-      component({ from: this.point('CoM'), to: { x: 95, y: -35 }, label: 'W_AB' }, 'y'),
+      ...gravityLines(),
       component({ from: pointP, to: alongAxis(pointP, 'x', 1, 55), label: 'F_1x' }, 'x'),
       component({ from: pointP, to: alongAxis(pointP, 'y', 1, 55), label: 'F_1y' }, 'y'),
     ];
     if (highlight === 'all') {
       loadLines.splice(
-        5,
+        loadLines.length - 2,
         2,
         component(
           { from: pointP, to: alongAxis(alongAxis(pointP, 'x', 1, 45), 'y', 1, 55), label: 'F_1' },

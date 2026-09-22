@@ -136,6 +136,11 @@ try {
   assert.equal(conventionMoment.couples[0].sign, -1);
   await fixedReference.selectOption('CoM');
   assert.equal(await reference.inputValue(), 'CoM');
+  const variableEquations = await defs
+    .locator('table app-solver-math')
+    .evaluateAll((els) => els.map((el) => window.ng.getComponent(el).equation()));
+  assert(variableEquations.includes(String.raw`\vec r_{A/\mathrm{CoM}}`));
+  assert(variableEquations.includes(String.raw`\vec r_{P/\mathrm{CoM}}`));
   assert(
     (
       await defs
@@ -158,6 +163,20 @@ try {
   assert.equal(referenceDiagram.axisMomentLabel, 'M');
   assert(referenceDiagram.points.find((p) => p.label === 'B').reference);
   assert(gridDiagram.lines.some((l) => l.label === 'r_A/B,x'));
+  await definitionAxis.fill('90');
+  await definitionAxis.press('Tab');
+  const xEquation = await defs
+    .locator('.definitionStep')
+    .nth(3)
+    .locator('app-solver-math')
+    .first()
+    .evaluate((el) => window.ng.getComponent(el).equation());
+  assert(xEquation.includes(String.raw`-W_{AB}\sin(90^{\circ})`));
+  assert(
+    (await xDiagram.evaluate((el) => window.ng.getComponent(el).diagram())).lines.some(
+      (line) => line.label === 'W_AB,x'
+    )
+  );
   await labelsDoNotOverlap(defs);
   await defs.screenshot({ path: `${out}/definitions.png` });
   await defs
