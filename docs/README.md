@@ -51,3 +51,5 @@ In this order, the first time:
 
 - [notification-inventory.md](notification-inventory.md) — every snackbar message before `NotificationService` replaced them. *History*
 - [ui-copy-audit.md](ui-copy-audit.md) — survey of the app's wording, with proposals that were mostly applied; its rules now live in `ui-vocabulary.md`. *Built*
+
+- [Object sizing](object-sizing.md) — current display presets, line view, and cylinder geometry invariants.

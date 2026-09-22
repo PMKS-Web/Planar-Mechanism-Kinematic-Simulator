@@ -200,7 +200,7 @@ const ringInCard = (page) =>
 // --- the arrows walk past a row they cannot land on --------------------------
 // Export Data is a `disabled` button until something has been solved, and a
 // disabled button cannot take focus: walking down an empty document's menu used
-// to stop dead at Share project, the row above it, however many times the key
+// to stop dead at Share Project, the row above it, however many times the key
 // was pressed.
 {
   const { context, page } = await arrive();

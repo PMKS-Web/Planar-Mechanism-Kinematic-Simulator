@@ -24,6 +24,7 @@ export enum DecimalSetting {
    * panel refuses it.
    */
   LINEAR_INPUT_SPEED,
+  CYLINDER_SCALE,
 }
 
 export enum BoolSetting {

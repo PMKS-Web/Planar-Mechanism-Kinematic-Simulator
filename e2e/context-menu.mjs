@@ -209,7 +209,7 @@ check(
 );
 check(
   'states are states, not verbs that rewrite themselves',
-  ['Grounded', 'Driven Input', 'Trace path', 'Locked'].every((label) => rowNamed(jointA, label)) &&
+  ['Grounded', 'Driven Input', 'Trace Path', 'Locked'].every((label) => rowNamed(jointA, label)) &&
     !jointA?.rows.some((one) => /^(Add|Remove) /.test(one.label)),
   jointA?.rows.map((one) => one.label)
 );
@@ -354,8 +354,8 @@ check(
 );
 check(
   'while the trace stays live: it is a view, not geometry',
-  rowNamed(forceJoint, 'Trace path')?.off === false,
-  rowNamed(forceJoint, 'Trace path')
+  rowNamed(forceJoint, 'Trace Path')?.off === false,
+  rowNamed(forceJoint, 'Trace Path')
 );
 
 // ---------------------------------------------------------------- cylinder

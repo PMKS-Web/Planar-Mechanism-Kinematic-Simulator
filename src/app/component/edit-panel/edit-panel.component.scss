@@ -78,6 +78,7 @@
     // And the controls Angular has not disabled itself: a switch, a color, a
     // button. Dimmed rather than recolored, because each is a different shape
     // of control and there is no one ink they share.
+    [inert] editable-title-block .row,
     [inert] toggle-block,
     [inert] button-block,
     [inert] dual-button,
