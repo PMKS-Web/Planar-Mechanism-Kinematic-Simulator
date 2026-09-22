@@ -153,14 +153,45 @@
 // Keep the drawing switches in the Center of Mass group on a link. The
 // ordinary section rule made the switches look like a new topic.
 #analysisWrapper .linkAnalysisPanel.linkKinematics {
+  // The heading supplies the subject; the three rows only need the quantity.
+  // One 15px gutter joins the heading, row names, and drawing controls.
+  .graphGroupHeading {
+    margin-top: 16px;
+    padding: 0 0 7px;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 22px;
+    color: var(--text-strong);
+  }
+
+  .rowList--com {
+    .graphSection:first-child {
+      border-top: 0;
+    }
+
+    .graphHeader {
+      min-height: 38px;
+      padding: 8px 4px 8px 0;
+      font-size: 13px;
+      line-height: 20px;
+    }
+  }
+
   .rowList--com::after {
     display: none;
   }
 
   .drawingSwitches {
-    margin-top: 0;
-    padding-top: 2px;
+    margin-top: 4px;
+    padding-top: 8px;
     border-top: 0;
+
+    .drawingSwitchesHead {
+      margin-bottom: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
   }
 }
 

@@ -105,11 +105,22 @@ const analysis = await page.locator('app-analysis-panel').evaluate((host) => {
   const heading = host.querySelector('.graphGroupHeading');
   const comRows = host.querySelector('.rowList--com');
   const switches = host.querySelector('.drawingSwitches');
+  const rowNames = [...comRows.querySelectorAll('.graphTitle')];
+  const rowButtons = [...comRows.querySelectorAll('.graphHeader')];
+  const controlsHead = switches.querySelector('.drawingSwitchesHead');
+  const leftEdges = [heading, ...rowNames, controlsHead, switches.querySelector('.viewButton')].map(
+    (node) => node.getBoundingClientRect().left
+  );
   return {
     rows: new Set(chips.map((node) => Math.round(node.getBoundingClientRect().top))).size,
     labelsFit: labels.every((node) => node.clientWidth >= node.scrollWidth),
     heading: heading?.textContent.trim(),
     headingSize: heading && parseFloat(getComputedStyle(heading).fontSize),
+    rowNames: rowNames.map((node) => node.textContent.replace('help_outline', '').trim()),
+    fullNames: rowButtons.map((node) => node.getAttribute('aria-label')),
+    leftSpread: Math.max(...leftEdges) - Math.min(...leftEdges),
+    rowSize: parseFloat(getComputedStyle(rowNames[0]).fontSize),
+    controlsSize: parseFloat(getComputedStyle(controlsHead).fontSize),
     comRule: comRows && getComputedStyle(comRows, '::after').display,
     switchRule: switches && getComputedStyle(switches).borderTopWidth,
   };
@@ -122,7 +133,12 @@ check(
 check(
   'CoM heading groups the graphs and drawing switches without a divider',
   analysis.heading === 'Center of Mass' &&
-    analysis.headingSize >= 14 &&
+    analysis.headingSize >= 16 &&
+    analysis.rowNames.join('|') === 'Position|Velocity|Acceleration' &&
+    analysis.fullNames.every((name) => name.startsWith('Center of mass ')) &&
+    analysis.leftSpread < 1.5 &&
+    analysis.rowSize < analysis.headingSize &&
+    analysis.controlsSize < analysis.rowSize &&
     analysis.comRule === 'none' &&
     analysis.switchRule === '0px',
   analysis
