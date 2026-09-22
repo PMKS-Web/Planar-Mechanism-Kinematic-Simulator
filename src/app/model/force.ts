@@ -161,7 +161,7 @@ export class Force {
     );
   }
 
-  /** The circle is opposite the arrowhead, independent of the body anchor. */
+  /** Arrow tail, opposite the arrowhead; the application mark stays at startCoord. */
   get tailCoord(): Coord {
     return this.arrowOutward ? this.startCoord : this.endCoord;
   }
