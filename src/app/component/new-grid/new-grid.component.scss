@@ -902,14 +902,15 @@
   }
 
   .joint_circles,
-  #jointHolder path[id^='joint_'] {
+  #jointHolder .slideMark {
     stroke: var(--canvas-ink);
     stroke-width: 1px;
     vector-effect: non-scaling-stroke;
     filter: none;
   }
 
-  .slideMark {
+  .slideMark,
+  .weldMark {
     fill: var(--canvas-ink) !important;
   }
 

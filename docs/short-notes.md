@@ -2089,3 +2089,6 @@ snapshots of them. Cache display copies by shape and size and rigidly place them
 `cylinderSkinFrame` must use the physical clearance even when `preservedCylinderScale` is zero;
 falling back to the requested display radius makes old cylinder heads change length during zoom.
 A held start-pose ghost also needs a geometry snapshot before rebuilding it at another display size.
+Do not add `non-scaling-stroke` to a weld whose inline selection stroke is already inverse-zoom
+scaled: at extreme zoom-out it turns into a huge solid block. Check the rendered ink, not just
+the path bounds or pin radius, in the zoom filmstrip.

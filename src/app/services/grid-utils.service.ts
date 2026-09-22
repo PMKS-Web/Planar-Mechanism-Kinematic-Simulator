@@ -1,4 +1,4 @@
-import { linkArtwork } from '../model/link-artwork';
+import { linkArtwork, schematicLink } from '../model/link-artwork';
 import { cylinderJoints } from '../model/cylinder';
 import { pickLink } from '../model/link-pick';
 import { Injectable, Injector, inject } from '@angular/core';
@@ -1680,14 +1680,28 @@ export class GridUtilsService {
 
   pickLinkAt(link: RealLink, selected: RealLink | undefined, event: MouseEvent): RealLink {
     const point = this.svgGrid.screenToModelFromXY(event.clientX, event.clientY);
+    const defs = document.querySelector('#canvas defs');
+    if (!defs) return link;
     const hit = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    return pickLink(this.mechanismSrv.links, link, selected, (leaf) => {
-      hit.setAttribute(
-        'd',
-        linkArtwork(leaf, this.settings.drawingScale, this.mechanismSrv.sealedStructures())
-      );
-      return hit.isPointInFill(new DOMPoint(point.x, point.y));
-    });
+    // Chromium needs a connected SVG tree to resolve stroke geometry. A defs
+    // child is measurable without painting anything or intercepting the pointer.
+    defs.appendChild(hit);
+    const cylinders = this.mechanismSrv.sealedStructures();
+    try {
+      return pickLink(this.mechanismSrv.links, link, selected, (leaf) => {
+        const skeleton = this.settings.isSchematic ? schematicLink(leaf, cylinders) : '';
+        if (skeleton) {
+          hit.setAttribute('d', skeleton);
+          hit.setAttribute('stroke', 'transparent');
+          hit.setAttribute('stroke-width', String(this.svgGrid.scaleWithZoom(12)));
+          return hit.isPointInStroke(new DOMPoint(point.x, point.y));
+        }
+        hit.setAttribute('d', linkArtwork(leaf, this.settings.drawingScale, cylinders));
+        return hit.isPointInFill(new DOMPoint(point.x, point.y));
+      });
+    } finally {
+      hit.remove();
+    }
   }
 
   updateLastSelectedSublink(mouseEvent: MouseEvent, clickedObj: RealLink) {

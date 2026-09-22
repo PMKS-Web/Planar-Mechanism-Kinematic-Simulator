@@ -917,7 +917,7 @@
           fill="transparent"
         />
         @if (cyl.driven && !mechanismSrv.isPartInert(cyl.barrelLink)) {
-          <g pointer-events="none">
+          <g class="cylinder-arrows" pointer-events="none">
             <!-- The heavier arrow is the way the block sets off, same as the
                  unskinned driven mark (§4.2b): the skin changes the drawing,
                  not what the mark has to say. -->
@@ -1390,6 +1390,7 @@
               <path
                 [attr.id]="'joint_' + joint.id"
                 [class]="mechanismSrv.getJointCSSClass(joint)"
+                class="weldMark"
                 [attr.d]="weldMarkerPath"
                 [style.fill]="jointFillOf(joint)"
                 [style.stroke]="selectionRingOn(joint)"
