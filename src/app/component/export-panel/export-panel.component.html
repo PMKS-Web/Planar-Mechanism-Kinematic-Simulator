@@ -314,8 +314,8 @@
         </div>
       }
       @if (hasMagnitude()) {
-        <div class="barRow">
-          <span class="settingName">Components to export</span>
+        <div class="barRow barRow--components">
+          <span class="settingName">Components</span>
           <mat-icon
             class="label-help"
             [matTooltip]="help['components']"
@@ -362,7 +362,10 @@
 
   @if (!canGoOn() && flow.step !== 'parts') {
     <p class="quantityHint" role="status">
-      Select at least one quantity to export. You can go back to choose kinematic quantities.
+      Select at least one quantity to export.
+      @if (flow.step === 'forces') {
+        You can go back to choose kinematic quantities.
+      }
     </p>
   }
   <div class="exportFoot">

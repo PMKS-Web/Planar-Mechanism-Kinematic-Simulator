@@ -76,7 +76,7 @@
             >help_outline</mat-icon
           >
         </div>
-        <!-- One row of four outlined chips. On, the glyph takes the arrow's own
+        <!-- One row of four outlined chips when they fit. On, the glyph takes the arrow's own
              ink -- the color the trace is drawn in -- so a reader learns the
              color here and meets it on the drawing. Gray carries the menu's
              reason on hover. -->
@@ -226,7 +226,11 @@
 
   <!-- Link Kinematics-->
   @if (selectionIsSimulatable && shownType == 'Link') {
-    <panel-section id="analysis-panel">
+    <panel-section
+      id="analysis-panel"
+      class="linkAnalysisPanel"
+      [class.linkKinematics]="showKinematic"
+    >
       <ng-container [ngTemplateOutlet]="head" ngProjectAs="title-block"></ng-container>
       @if (showKinematic) {
         <div class="rowList">
@@ -269,9 +273,9 @@
           (mouseenter)="highlightCoM(true)"
           (mouseleave)="highlightCoM(false)"
         >
-          Center of mass
+          Center of Mass
         </div>
-        <div class="rowList">
+        <div class="rowList rowList--com">
           <app-analysis-graph-section
             label="Center of mass position"
             help="Where this link’s center of mass is"

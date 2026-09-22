@@ -2074,3 +2074,7 @@ After a second click, `selectedLink` is a primitive absent from the root link ar
 - **Synthesis length conversion must finish before recomputing pose endpoints.** Moving centers
   before converting the shared length leaves endpoint caches in the old unit even though fields
   look right. Recompute after both are converted.
+- **Scale synthesis chip outlines with the SVG viewport.** Chip circles and text already use
+  `scaleWithZoom`, but a CSS `stroke-width: 1` stays in model units. Switching from centimeters to
+  meters then magnifies each white outline into a large halo. Bind the stroke width through
+  `scaleWithZoom(1)` on the SVG circle so it stays about one screen pixel in every unit.

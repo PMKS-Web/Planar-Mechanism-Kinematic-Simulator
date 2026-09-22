@@ -133,7 +133,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
    * Sentence-initial, because that is the only place the panel uses it.
    */
   get press(): string {
-    return this.viewport.isTouch() ? 'Press and hold on' : 'Right-click (or press and hold on)';
+    return this.viewport.isTouch() ? 'Press and hold on' : 'Right-click';
   }
 
   protected settingsService = inject(SettingsService);
