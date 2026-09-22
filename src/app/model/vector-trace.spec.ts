@@ -31,6 +31,21 @@ describe('vector traces', () => {
     });
   });
 
+  it('thins short strokes by distance while retaining the opposing return vectors', () => {
+    const count = (span: number, reverse = false) => {
+      const trace = buildVectorTrace(
+        360,
+        (i) => ({ x: Math.sin((i * Math.PI) / 180) * span, y: 0 }),
+        (i) => ({ x: reverse ? Math.cos((i * Math.PI) / 180) : 1, y: 0 }),
+        100
+      )!;
+      return (trace.d.match(/M /g) ?? []).length / 3;
+    };
+    expect(count(0.5)).toBe(1);
+    expect(count(0.5, true)).toBe(2);
+    expect(count(50)).toBeGreaterThan(count(5));
+  });
+
   describe('scale', () => {
     // The whole reason this module exists: the same drawing has to carry a
     // velocity of 12 in/s and an acceleration of 900 in/s^2 without one of
@@ -63,7 +78,7 @@ describe('vector traces', () => {
         4,
         straight,
         (index) => (index === 2 ? undefined : { x: index + 1, y: 0 }),
-        100
+        1
       )!;
       // Three of the four samples carry an arrow, and each is a shaft and two
       // barbs -- three subpaths, so three moves.

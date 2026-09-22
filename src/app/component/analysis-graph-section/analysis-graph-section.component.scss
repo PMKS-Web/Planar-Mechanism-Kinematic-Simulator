@@ -92,11 +92,7 @@
     height: 18px;
     font-size: 18px;
     line-height: 18px;
-    color: var(--text-disabled);
-
-    .graphSection.open & {
-      color: mat.m2-get-color-from-palette($primary-palette, 500);
-    }
+    color: var(--brand);
   }
 
   // The split above the plot: the app's pill, on the row's own gutter.

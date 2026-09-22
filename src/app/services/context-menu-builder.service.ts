@@ -1,3 +1,4 @@
+import { LinkTraceService } from './link-trace.service';
 import { Injectable, inject } from '@angular/core';
 import { NumberUnitParserService } from './number-unit-parser.service';
 import { AngleUnit } from '../model/utils';
@@ -75,6 +76,7 @@ export interface DrawingSwitch {
 @Injectable({ providedIn: 'root' })
 export class ContextMenuBuilderService {
   private mechanism = inject(MechanismService);
+  private linkTraces = inject(LinkTraceService);
   private gridUtils = inject(GridUtilsService);
   private multiEdit = inject(MultiEditService);
   private settings = inject(SettingsService);
@@ -658,15 +660,19 @@ export class ContextMenuBuilderService {
    * Turning one on turns the global switch on with it. A per-joint trace that
    * draws nothing because the view control is off is a switch that lies.
    */
-  private traceRow(joint: RealJoint): MenuRow {
+  private traceRow(joint: RealJoint | RealLink): MenuRow {
     return new MenuRow({
       label: 'Trace path',
       icon: 'show_path',
       kind: 'toggle',
-      checked: this.gridUtils.getJointShowCurve(joint),
+      checked:
+        joint instanceof RealLink
+          ? this.linkTraces.isOn(joint)
+          : this.gridUtils.getJointShowCurve(joint),
       alwaysAllowed: true,
       action: () => {
-        this.gridUtils.toggleCurve(joint);
+        if (joint instanceof RealLink) this.linkTraces.toggle(joint);
+        else this.gridUtils.toggleCurve(joint);
         if (!this.settings.isShowTraces.value) this.settings.isShowTraces.next(true);
       },
     });
@@ -728,16 +734,7 @@ export class ContextMenuBuilderService {
       short: 'joints only',
       long: `${what} Pick one of this link’s joints.`,
     });
-    const trace =
-      part instanceof RealJoint
-        ? this.traceRow(part)
-        : new MenuRow({
-            label: 'Trace path',
-            icon: 'show_path',
-            kind: 'toggle',
-            action: () => undefined,
-            refusal: jointsOnly('A path is traced by a joint.'),
-          });
+    const trace = this.traceRow(part);
     const vector = (quantity: VectorQuantity): MenuRow =>
       part instanceof RealJoint || quantity !== 'force'
         ? this.vectorRow(part, quantity)
@@ -749,7 +746,11 @@ export class ContextMenuBuilderService {
             refusal: jointsOnly('A reaction is carried at a joint.'),
           });
     return [
-      { key: 'traces', row: trace, help: 'Draws the path this joint follows through the cycle.' },
+      {
+        key: 'traces',
+        row: trace,
+        help: 'Draws the path of the joint or link center of mass through the cycle.',
+      },
       {
         key: 'velocity',
         row: vector('velocity'),
@@ -956,7 +957,7 @@ export class ContextMenuBuilderService {
       groups: [
         { label: 'Attach', rows: this.linkAttachRows(bar, handlers) },
         { label: 'State', rows: this.linkStateRows(bar) },
-        { label: 'Traces', rows: this.vectorRows(bar) },
+        { label: 'Traces', rows: [this.traceRow(bar), ...this.vectorRows(bar)] },
         { rows: this.positionRows(handlers, undefined) },
         { rows: [this.deleteLinkRow(bar), this.deleteMechanismRow(bar)] },
       ],
@@ -992,7 +993,7 @@ export class ContextMenuBuilderService {
           label: 'State',
           rows: [...this.memberHoldRows(member), this.lockRow(member, undefined)],
         },
-        { label: 'Traces', rows: this.vectorRows(member) },
+        { label: 'Traces', rows: [this.traceRow(member), ...this.vectorRows(member)] },
         {
           rows: [
             new MenuRow({
@@ -1301,7 +1302,7 @@ export class ContextMenuBuilderService {
           label: 'Set',
           rows: [
             new MenuRow({
-              label: 'Reverse Direction',
+              label: 'Flip Force',
               posePolicy: 'attachment',
               poseGuard: () => this.attachmentRefusal(force.link),
               refusal: force.locked

@@ -1,3 +1,4 @@
+import { LinkTraceService } from './link-trace.service';
 import { Injector } from '@angular/core';
 import { ContextMenuBuilderService, MenuHandlers } from './context-menu-builder.service';
 import { ContextMenuModel, MenuRow } from '../component/BLOCKS/context-menu/menu-model';
@@ -64,6 +65,7 @@ function createBuilderHarness() {
   if (!ColorService.instance) new ColorService();
   const injector = Injector.create({
     providers: [
+      { provide: LinkTraceService, deps: [] },
       { provide: SettingsService, deps: [] },
       { provide: NumberUnitParserService, deps: [] },
       { provide: ActiveObjService, deps: [] },
@@ -333,7 +335,7 @@ describe('the right-click menu', () => {
       const model = harness.builder.build(parts.a, noHandlers);
       // Welded grays on a driven joint...
       expect(model.choice!.options.find((one) => one.label === 'Welded')!.refusal!.short).toBe(
-        'it is driven'
+        'it is an input'
       );
       // ...and the switch that resolves it stays live.
       expect(row(model, 'Driven Input')!.disabled).toBe(false);
@@ -687,10 +689,10 @@ describe('the right-click menu', () => {
     harness.mechanism.forces = [force];
     harness.active.updateSelectedObj(force);
     const model = harness.builder.build(force, noHandlers);
-    expect(row(model, 'Reverse Direction')!.disabled).toBe(true);
+    expect(row(model, 'Flip Force')!.disabled).toBe(true);
     expect(row(model, 'Global Frame')!.disabled).toBe(false);
     const before = force.angleRad;
-    row(model, 'Reverse Direction')!.action();
+    row(model, 'Flip Force')!.action();
     expect(force.angleRad).toBe(before);
   });
 
@@ -700,7 +702,7 @@ describe('the right-click menu', () => {
       const parts = fourBar(harness.mechanism);
       harness.mechanism.mechanismTimeStep = 12;
       const paused = harness.builder.build(parts.t, noHandlers);
-      expect(row(paused, 'Grounded')!.refusal!.short).toBe('not at the start');
+      expect(row(paused, 'Grounded')!.refusal!.short).toBe('return to start');
       expect(row(paused, 'Trace path')!.disabled).toBe(false);
       expect(row(paused, 'Locked')!.disabled).toBe(false);
       expect(rows(paused).find((r) => r.label.startsWith('Delete Joint'))!.disabled).toBe(false);

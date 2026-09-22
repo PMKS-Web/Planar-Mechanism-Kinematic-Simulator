@@ -174,7 +174,7 @@ export class RealJoint extends Joint {
    * one layer down without a word.
    */
   canBeWelded(): boolean {
-    return !this.input && !this.isWelded && this.links.length >= 2;
+    return (!this.input || this.ground) && !this.isWelded && this.links.length >= 2;
   }
 
   canBeUnwelded(): boolean {

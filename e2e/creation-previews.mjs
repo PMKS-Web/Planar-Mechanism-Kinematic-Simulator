@@ -24,6 +24,7 @@ import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
+await page.addInitScript(() => localStorage.setItem('whatsNewSeen', '2026.09'));
 const errors = [];
 page.on('pageerror', (error) => errors.push(String(error)));
 page.on('console', (message) => {
@@ -197,10 +198,17 @@ const drawBar = async ({ option, snap }) => {
   });
 };
 
+function onBearing(joints) {
+  if (joints.length !== 2) return false;
+  const [a, b] = joints.map((joint) => joint.at);
+  const degrees = (Math.atan2(b[1] - a[1], b[0] - a[0]) * 180) / Math.PI;
+  return Math.abs(degrees / 15 - Math.round(degrees / 15)) < 1e-4;
+}
+
 const snapped = await drawBar({ option: false, snap: true });
 record(
-  'both ends of a new bar land on the grid',
-  snapped.length === 2 && snapped.every((joint) => joint.onGrid),
+  'the start lands on the grid and the end on a 15-degree bearing',
+  snapped.length === 2 && snapped[0].onGrid && onBearing(snapped),
   snapped
 );
 
@@ -213,9 +221,8 @@ record(
 
 const free = await drawBar({ option: false, snap: false });
 record(
-  'while with the switch off Option changes nothing, because nothing was snapping',
-  free.length === 2 &&
-    JSON.stringify(free.map((j) => j.at)) === JSON.stringify(held.map((j) => j.at)),
+  'bearing snapping works with grid snapping off, and Option releases it',
+  free.length === 2 && onBearing(free) && !onBearing(held),
   { free, held }
 );
 

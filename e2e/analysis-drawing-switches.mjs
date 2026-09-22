@@ -170,8 +170,8 @@ record(
 await selectIn('#linkHolder path', 1, 'Kinematic');
 const onLink = await switches();
 record(
-  'a link keeps its trace switch in place, grayed as joints-only',
-  onLink.find((one) => one.key === 'traces')?.why === 'joints only',
+  'a link offers a trace of its center of mass',
+  onLink.find((one) => one.key === 'traces')?.off === false,
   { selected: await selectedId(), onLink }
 );
 record(

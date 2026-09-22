@@ -6,6 +6,7 @@ import { RealLink } from './link';
 import { cylindersIn } from './cylinder';
 import { JointOperation, JointOperationContext } from './joint-operation-permission';
 import {
+  isOrphanedJoint,
   JOINT_TYPES,
   JointType,
   JointTypeBits,
@@ -170,5 +171,12 @@ describe('joint type', () => {
     const mixed = jointTypeChoice(undefined as JointType | undefined, false, () => undefined, true);
     expect(mixed.chosen).toBe(-1);
     expect(mixed.invalid).toBe(false);
+  });
+});
+
+describe('orphaned joints', () => {
+  it('identifies a pin with no body and clears when attached', () => {
+    expect(isOrphanedJoint(pinOn(0))).toBe(true);
+    expect(isOrphanedJoint(pinOn(1))).toBe(false);
   });
 });

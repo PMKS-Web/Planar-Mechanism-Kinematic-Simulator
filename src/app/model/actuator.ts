@@ -72,7 +72,7 @@ export function incidentBodies(joint: RealJoint): (Link | typeof GROUND_BODY)[] 
  */
 export function describeActuator(joint: Joint): Actuator | string {
   if (!(joint instanceof RealJoint)) {
-    return 'Only a joint can be driven.';
+    return 'Only a joint can be an input.';
   }
   // A weld is the statement that these bodies do *not* move relative to each
   // other, so there is no freedom at this joint for an input to prescribe.
@@ -87,8 +87,8 @@ export function describeActuator(joint: Joint): Actuator | string {
   // prescribes there is the travel along it -- which is how every cylinder in
   // the app is driven. The bit used to sit on a coincident pin that was not the
   // joint a drive was ever set on, so this never had to say so out loud.
-  if (joint.isWelded && !(joint instanceof PrisJoint)) {
-    return 'This joint is welded, so the bodies it joins cannot move relative to each other. Unweld it, or drive a joint that has a freedom.';
+  if (joint.isWelded && !joint.ground && !(joint instanceof PrisJoint)) {
+    return 'This joint is welded, so the bodies it joins cannot move relative to each other. Unweld it, or set a joint with a freedom as the input.';
   }
   // The same statement made about a cylinder, where it is a weld somewhere else
   // rather than a weld here (decision S25). Both of the part's end joints being
@@ -100,10 +100,10 @@ export function describeActuator(joint: Joint): Actuator | string {
   if (frozen) return describeFrozenCylinderDrive(frozen);
   const bodies = incidentBodies(joint);
   if (bodies.length < 2) {
-    return 'A driven joint needs two bodies to move relative to each other.';
+    return 'An input joint needs two bodies to move relative to each other.';
   }
   if (bodies.length > 2) {
-    return `This joint joins ${bodies.length} bodies, so "driven" would not say which pair moves. Drive a joint where exactly two meet.`;
+    return `This joint joins ${bodies.length} bodies, so the input would not say which pair moves. Set a joint where exactly two meet as the input.`;
   }
 
   // Ground first when it is there: a crank's angle is read from the world, not
@@ -125,7 +125,7 @@ export function describeActuator(joint: Joint): Actuator | string {
       (body) => body !== GROUND_BODY && !angleReference(body, joint)
     );
     if (missing) {
-      return "A slider's block is a single point, so there is no angle to turn it through. Drive the joint at the other end of the link instead.";
+      return "A slider's block is a single point, so there is no angle to turn it through. Set the joint at the other end of the link as the input instead.";
     }
   }
   return actuator;
@@ -145,7 +145,7 @@ export function describeActuatorRefusal(joint: Joint): { short: string; long: st
   if (typeof found !== 'string') return undefined;
   const long = found;
   if (!(joint instanceof RealJoint)) return { short: 'not a joint', long };
-  if (joint.isWelded && !(joint instanceof PrisJoint)) {
+  if (joint.isWelded && !joint.ground && !(joint instanceof PrisJoint)) {
     return { short: 'welded, no freedom', long };
   }
   if (frozenCylinderAtSeal(joint)) {
