@@ -5504,7 +5504,7 @@ export class NewGridComponent implements OnDestroy {
    * The view toggle governs it, but a massless link is excused: mass starts at
    * zero until someone chooses one, and a center-of-mass mark on a link with no
    * mass points at a property the link does not have. The preview (hovering
-   * the analysis panel's center-of-mass heading) still shows it, because there
+   * the analysis panel's Center of mass tab) still shows it, because there
    * the reader is asking about exactly that property.
    */
   showsCoM(link: Link): boolean {
