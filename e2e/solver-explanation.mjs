@@ -31,7 +31,15 @@ const cleanMath = async () =>
 const open = async (name, force = false) => {
   await openMechanism(page, `${base}?${payload(name)}`);
   await page.getByRole('button', { name: force ? /Force Analysis/ : /Kinematic Analysis/ }).click();
+  await page.waitForTimeout(1100);
+  const canvasTransform = await page.locator('#canvas > g').first().getAttribute('transform');
   await page.getByRole('button', { name: 'How it works', exact: true }).click();
+  await page.waitForTimeout(500);
+  assert.equal(
+    await page.locator('#canvas > g').first().getAttribute('transform'),
+    canvasTransform,
+    'Opening How it works must preserve the canvas viewport transform'
+  );
   await page.getByRole('button', { name: 'Open Full Worksheet', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.waitFor();

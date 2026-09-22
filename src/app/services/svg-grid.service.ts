@@ -901,6 +901,7 @@ export class SvgGridService {
       return;
     }
     this.settingsService.tempGridDisable = false;
+    if (this.preserveViewportUntil > performance.now()) return;
     if (this.settlePending) {
       // Framed against a panel that is still sliding, this would land in the
       // wrong place and be corrected a moment later.
@@ -917,6 +918,7 @@ export class SvgGridService {
       return;
     }
     this.settingsService.tempGridDisable = false;
+    if (this.preserveViewportUntil > performance.now()) return;
     if (this.settlePending) {
       this.queuedFit = { animate, target: 'motion' };
       return;
@@ -932,6 +934,7 @@ export class SvgGridService {
    * any other.
    */
   private frameDrawing(animate: boolean): void {
+    if (this.preserveViewportUntil > performance.now()) return;
     const free = this.freeRect();
     const drawn = this.measureDrawing();
     if (!free) return;
@@ -1008,6 +1011,7 @@ export class SvgGridService {
 
   /** Put the complete solved motion in the visible canvas. */
   private frameFullMotion(animate: boolean): void {
+    if (this.preserveViewportUntil > performance.now()) return;
     const free = this.freeRect();
     const drawn = this.fullMotionBox();
     if (!free || !drawn) {
@@ -1213,6 +1217,7 @@ export class SvgGridService {
     }
     if (!this.panZoomObject || !canvasHandle()) return;
     this.settlePending = true;
+    const freezeToken = this.chromeFreezeToken;
 
     const startedAt = performance.now();
     const drawn = this.viewIsFittedToMotion
@@ -1265,6 +1270,7 @@ export class SvgGridService {
     let everMoved = alreadyMoved;
 
     const step = () => {
+      if (freezeToken !== this.chromeFreezeToken) return;
       const now = this.freeRect();
       const held = sameRect(previous, now);
       stable = held ? stable + 1 : 0;
@@ -1323,7 +1329,37 @@ export class SvgGridService {
   }
 
   private settlePending = false;
+  /** Advances when an explanatory drawer must leave the reader's viewport alone. */
+  private chromeFreezeToken = 0;
+  private preserveViewportUntil = 0;
   private lastWindowSize = { width: 0, height: 0 };
+
+  /** Stop an in-flight chrome settle before it can reframe the current canvas view. */
+  preserveViewportAcrossChrome(): void {
+    if (!this.panZoomObject) return;
+    this.chromeFreezeToken++;
+    const freezeToken = this.chromeFreezeToken;
+    const zoom = this.panZoomObject.getZoom();
+    const pan = this.panZoomObject.getPan();
+    this.settlePending = false;
+    this.queuedFit = null;
+    this.preserveViewportUntil = performance.now() + 1000;
+    this.settledFree = this.freeRect();
+    const holdViewport = () => {
+      if (
+        freezeToken !== this.chromeFreezeToken ||
+        performance.now() >= this.preserveViewportUntil
+      ) {
+        return;
+      }
+      this.ourOwnMove(() => {
+        this.panZoomObject.zoom(zoom);
+        this.panZoomObject.pan(pan);
+      });
+      requestAnimationFrame(holdViewport);
+    };
+    requestAnimationFrame(holdViewport);
+  }
   /** Where the chrome stood the last time the view was put somewhere. */
   private settledFree: Rect | null = null;
   /** A fit asked for while the chrome was still moving, run once it stops. */
@@ -1482,7 +1518,10 @@ export class SvgGridService {
     // that covers the mechanism is not something a reader can read around, and
     // the move is small: the drawing slides left ahead of it, and only zooms
     // out if sliding would take it under the panel on the other side.
-    const chrome = CHROME_MOVED.subscribe(() => this.notifyChromeChanged());
+    const chrome = CHROME_MOVED.subscribe((move) => {
+      if (move.preserveCanvas) this.preserveViewportAcrossChrome();
+      else this.notifyChromeChanged();
+    });
     // A root service outlives everything in an ordinary session, but not a test
     // harness or a hot reload -- and a listener that outlives its service goes
     // on measuring a canvas that has gone.

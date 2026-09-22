@@ -689,7 +689,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     );
   }
   openWorksheet(): void {
-    RightPanelComponent.tabClicked(
+    RightPanelComponent.openWorksheet(
       this.tabs.getCurrentTab() === TabID.FORCE
         ? RightPanelComponent.FORCE_WORKSHEET_TAB
         : RightPanelComponent.KINEMATIC_WORKSHEET_TAB

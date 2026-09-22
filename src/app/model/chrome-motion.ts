@@ -12,4 +12,9 @@ import { Subject } from 'rxjs';
  * Not needed for the panel beside the canvas, whose mode the canvas already
  * follows, nor for the window, which has an event of its own.
  */
-export const CHROME_MOVED = new Subject<void>();
+export interface ChromeMove {
+  /** The drawer changes, but the reader's canvas framing must stay fixed. */
+  preserveCanvas?: boolean;
+}
+
+export const CHROME_MOVED = new Subject<ChromeMove>();
