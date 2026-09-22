@@ -243,7 +243,10 @@ export class AnalysisSetupComponent {
     if (blockers > 0) {
       return { text: READINESS.fixes(blockers), kind: 'blocker' };
     }
-    const warnings = readiness.checks.length;
+    // Warnings only. A note says the app did something worth knowing, not that
+    // anything wants checking, so a machine carrying one alone is Ready and its
+    // chip says so (decision S28).
+    const warnings = readiness.checks.filter((c) => c.state === 'warning').length;
     if (warnings > 0) {
       return { text: READINESS.toCheck(warnings), kind: 'warning' };
     }
@@ -262,7 +265,10 @@ export class AnalysisSetupComponent {
   }
 
   iconFor(check: ReadinessCheck): string {
-    return check.state === 'blocker' ? 'error_outline' : 'warning_amber';
+    if (check.state === 'blocker') return 'error_outline';
+    // A note is not a fault and must not be drawn as one: an outline `i` in the
+    // muted ink, against the amber triangle a warning wears.
+    return check.state === 'note' ? 'info_outline' : 'warning_amber';
   }
 
   /**

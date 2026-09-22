@@ -1,5 +1,13 @@
 import { describeActuatorRefusal } from '../../model/actuator';
-import { speedTurning, turnsClockwise } from '../../model/drive-direction';
+import {
+  DriveKind,
+  driveDirectionIcon,
+  driveDirectionLabel,
+  driveDirectionPair,
+  driveKindOf,
+  speedTurning,
+  turnsClockwise,
+} from '../../model/drive-direction';
 import { Subscription } from 'rxjs';
 import {
   AfterContentInit,
@@ -954,14 +962,21 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     return this.activeSrv.objType === 'Joint' && this.selectedSlider !== undefined;
   }
 
-  /** What the Input Speed field's help says, in terms of what is being driven. */
+  /**
+   * What the Input Speed field's help says, in terms of what is being driven.
+   *
+   * The pair of directions is the table's, not a fourth spelling of it: a block
+   * on a rail was told its speed could be made "negative" without ever being
+   * told what the two directions are called, while the button underneath names
+   * them.
+   */
   get inputSpeedHelp(): string {
-    if (this.sealCylinder) {
-      return 'How fast the rod travels. Use the direction button to choose opening or closing.';
-    }
-    return this.isSliderInput
-      ? 'How fast this block slides. Negative reverses it.'
-      : 'How fast this joint turns. Negative reverses it.';
+    const kind = this.inputDriveKind;
+    if (kind === 'pin') return 'How fast this joint turns. Negative reverses it.';
+    const choose = `Use the direction button to choose ${driveDirectionPair(kind)}.`;
+    return kind === 'cylinder'
+      ? `How fast the rod travels. ${choose}`
+      : `How fast this block slides. ${choose}`;
   }
 
   /** Length per second, in whatever length unit the mechanism is drawn in. */
@@ -1031,28 +1046,27 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   /**
    * Which way the drive sets off, said in the terms that drive has (§5.5).
    *
-   * A cylinder extends or retracts — it is the one part whose two directions
-   * have names an engineer already uses. A bare block on a slot has no such
-   * pair, so it is named for the slot rather than for the screen: the slot's
-   * own angle is shown right above this, and "forward" means along it whichever
-   * way it happens to point.
+   * The words themselves are `drive-direction.ts`'s, so this button, the
+   * transport's note and every readiness fact cannot drift apart again. What is
+   * decided here is only *which kind of drive this is*; the table says what its
+   * two directions are called, and the label form adds "along slot" where the
+   * slot is the only thing "forward" could be measured against.
    */
   get inputDirectionLabel(): string {
-    if (this.sealCylinder) {
-      // Toward the two ends of the stroke *Starts at* measures along.
-      return this.drivenClockwise ? 'Closing' : 'Opening';
-    }
-    if (!this.isSliderInput) {
-      return this.drivenClockwise ? 'Clockwise' : 'Counter-clockwise';
-    }
-    return this.drivenClockwise ? 'Backward along slot' : 'Forward along slot';
+    // Toward the two ends of the stroke *Starts at* measures along, for a
+    // cylinder; along the slot whose angle is shown right above this, for a
+    // bare block.
+    return driveDirectionLabel(this.inputDriveKind, this.drivenClockwise);
   }
 
+  /** A pin, a cylinder or a bare slider — the three that have different words. */
+  private get inputDriveKind(): DriveKind {
+    return driveKindOf(this.isSliderInput, this.sealCylinder !== undefined);
+  }
+
+  /** The glyph beside the word, from the same table so the two agree. */
   get inputDirectionIcon(): string {
-    if (!this.isSliderInput) {
-      return this.drivenClockwise ? 'rotate_right' : 'rotate_left';
-    }
-    return this.drivenClockwise ? 'arrow_back' : 'arrow_forward';
+    return driveDirectionIcon(this.inputDriveKind, this.drivenClockwise);
   }
 
   /**

@@ -339,6 +339,61 @@ describe('the cylinder skin (§2.7)', () => {
   });
 });
 
+/*
+  The shaft was the one dimension of a driven mark measured in screen pixels,
+  so the arrowheads grew and shrank with the zoom while the shafts did not:
+  zoomed in, hairlines under big heads; zoomed out, fat bars swallowing them.
+  It is in R now like everything else here, and these are what say so -- a
+  width that comes out of the mark rather than out of the template is a width
+  the zoom cannot touch.
+*/
+describe('the driven arrows’ shaft', () => {
+  it('comes out of the mark in R, not out of the template in pixels', () => {
+    const [forward, backward] = straightArrowPaths(R, 1);
+    expect(forward.width).toBeCloseTo(MARK.arrowShaftEmphasised * R, 9);
+    expect(backward.width).toBeCloseTo(MARK.arrowShaft * R, 9);
+  });
+
+  it('scales with R exactly, so the proportions hold at any size', () => {
+    const small = straightArrowPaths(R / 4, 1);
+    const large = straightArrowPaths(R * 4, 1);
+    for (let i = 0; i < small.length; i++) {
+      expect(large[i].width / small[i].width).toBeCloseTo(16, 9);
+      // Against the arrowhead it sits under, which is the proportion that was
+      // drifting: one ratio, at every size.
+      const ratio = (arrow: { width: number; head: string }) =>
+        arrow.width / Math.abs(numbers(arrow.head)[0]);
+      expect(ratio(large[i])).toBeCloseTo(ratio(small[i]), 9);
+    }
+  });
+
+  it('keeps the emphasis the template used to hand it', () => {
+    // 4.5 screen pixels against 2.5, which is the ratio the two arrows are
+    // told apart by.
+    expect(MARK.arrowShaftEmphasised / MARK.arrowShaft).toBeCloseTo(4.5 / 2.5, 9);
+  });
+
+  it('matches the old widths at the zoom the marks are sized for', () => {
+    // `updateObjectScale` pairs the scale with the zoom at MARK_TARGET_PX (60)
+    // pixels per object scale, and R is 0.15 of a scale -- nine pixels to one
+    // R. The shaft at that pairing is exactly what the template drew.
+    const pixelsPerR = 60 * R_PER_SCALE;
+    expect(MARK.arrowShaft * pixelsPerR).toBeCloseTo(2.5, 9);
+    expect(MARK.arrowShaftEmphasised * pixelsPerR).toBeCloseTo(4.5, 9);
+  });
+
+  it('shrinks with a head that has shrunk, as a pair', () => {
+    // A ram too short for a full-size head scales both arrows by the same
+    // ratio; the shaft is part of the arrow and goes with it.
+    const short = cylinderHeadHalf(4 * R, R);
+    const [loud, quiet] = cylinderArrowPaths(R, short, 1);
+    const fit = short / (MARK.blockAlongHalf * R);
+    expect(loud.width).toBeCloseTo(MARK.arrowShaftEmphasised * R * fit, 9);
+    expect(quiet.width).toBeCloseTo(MARK.arrowShaft * R * fit, 9);
+    expect(fit).toBeLessThan(1);
+  });
+});
+
 describe('the motor case in world coordinates', () => {
   it('places the same shape, turned and moved', () => {
     // Unrotated at the origin it is the local path, expanded but congruent:

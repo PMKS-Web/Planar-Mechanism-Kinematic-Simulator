@@ -8,7 +8,12 @@ import {
   memberHoldTransition,
 } from '../model/link-holds';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
-import { speedTurning, turnsClockwise } from '../model/drive-direction';
+import {
+  driveDirectionWord,
+  driveKindOf,
+  speedTurning,
+  turnsClockwise,
+} from '../model/drive-direction';
 import { bodiesUnder, Link, RealLink } from '../model/link';
 import { isSlideCandidate, slideAssemblyAt } from '../model/slide-assembly';
 import {
@@ -21,13 +26,13 @@ import {
   cylinderOfBarIn,
   cylinderOfLinkIn,
   cylindersOfLinkIn,
-  derivedInterior,
   cylindersIn,
   cylinderAtSeal,
   memberInertiaIsDerived,
 } from '../model/cylinder';
 import { isFrozenCylinder } from '../model/cylinder-frozen';
 import { memberSilhouette } from '../model/cylinder-fusion';
+import { planCylinderRescale, planDerivedInteriors } from '../model/cylinder-interiors';
 import { Force } from '../model/force';
 import {
   DriveProfile,
@@ -310,12 +315,51 @@ export class MechanismService {
    * recompute per accumulated service, and a spec asserting the contour is
    * built once saw fifteen. Every other route that changes the scale rebuilds
    * the links from scratch anyway; the settings panel is the one that does not.
+   *
+   * **And it puts every cylinder back together** (decision S29). A bar only
+   * has to be redrawn; a cylinder's head has a *travel* measured in R, so a
+   * size change can leave the head outside it and the part drawn in two
+   * pieces. `model/cylinder-interiors.ts` says what each one needs and this
+   * commits it -- one placement per part, for the buried end nothing shows.
+   * The whole gesture is one undo entry, because the repair is part of the
+   * size change rather than an edit the reader made: a size the *app* adopted
+   * on load writes none at all and folds the repair into the state the drawing
+   * arrived in (`SvgGridService.adoptScaleForDrawing`).
    */
   applyObjectScaleChange(): void {
+    this.repairCylindersForScale();
     this.links.forEach((link) => {
       if (link instanceof RealLink) link.reComputeDPath();
     });
     this.updateMechanism();
+    if (this.rescaleNeedsSaving && !SettingsService.objectScaleAdopting) {
+      this.rescaleNeedsSaving = false;
+      this.save();
+    }
+  }
+
+  /**
+   * True once a size change has repaired something and no entry has been
+   * written for it yet.
+   *
+   * A scale change reaches this service twice while the Settings panel is open
+   * -- once from the panel's own subscription to the value, once from whatever
+   * set it -- so the second pass finds a drawing already put right and cannot
+   * tell that anything happened. Remembered across the pair, and cleared by the
+   * save that answers it.
+   */
+  private rescaleNeedsSaving = false;
+
+  /** Put every cylinder back inside its own barrel at the new R (decision S29). */
+  private repairCylindersForScale(): void {
+    const plan = planCylinderRescale(
+      this.sealedStructures(),
+      (one) => this.gridUtils.editContext(one),
+      (one) => this.cylinderName(one)
+    );
+    plan.refusals.forEach((said) => this.notify.refusal(said.code, said.text));
+    this.rescaleNeedsSaving ||= plan.placements.size > 0;
+    this.gridUtils.commitCylinderPlacements(plan);
   }
 
   // delete mechanism and reset
@@ -1178,53 +1222,12 @@ export class MechanismService {
   }
 
   /**
-   * Put N and S where the cylinder says they are, whatever wrote them.
-   *
-   * The two joints a seal owns are derived rather than drawn (decision S2), so
-   * this is where the derivation lands: on the axis between the mounts, each at
-   * the length its own bar already has. The mounts are the reader's handles and
-   * are never touched, and a cylinder that is already straight writes nothing,
-   * which is the common case on every rebuild.
-   *
-   * It used to be a *repair*, planned through `planEdit` like any edit -- which
-   * meant it could be refused, could carry a welded bracket round with it, and
-   * had to argue silently with locks on a pass that runs on every keystroke
-   * that rebuilds. Writing only the two joints nothing else may write needs
-   * none of that machinery.
+   * Put N and S where the cylinder says they are, whatever wrote them
+   * (decision S2). The arithmetic is `model/cylinder-interiors.ts`; this is
+   * where its answer lands.
    */
   private deriveCylinderInteriors(): void {
-    const placements = new Map<string, { x: number; y: number }>();
-    const reshaped: Link[] = [];
-    const moved = (joint: Joint, to: { x: number; y: number }) =>
-      roundNumber(to.x, 6) !== roundNumber(joint.x, 6) ||
-      roundNumber(to.y, 6) !== roundNumber(joint.y, 6);
-
-    for (const sealed of this.sealedStructures()) {
-      const derived = derivedInterior(sealed);
-      if (!derived) continue;
-      // Each bar goes through the rebuild a reshaped bar gets from an edit --
-      // outline, length and angle, an automatic center of mass -- and only the
-      // one whose own length this changed, so straightening a barrel does not
-      // carry a hand-placed center of mass on the rod through a frame that
-      // never moved.
-      if (moved(sealed.inner, derived.inner)) {
-        placements.set(sealed.inner.id, derived.inner);
-        reshaped.push(sealed.barrel);
-      }
-      if (moved(sealed.seal, derived.seal)) {
-        placements.set(sealed.seal.id, derived.seal);
-        reshaped.push(sealed.rod);
-      }
-    }
-    if (placements.size === 0) return;
-
-    this.gridUtils.commitEditPlan({
-      placements,
-      movedIds: new Set(placements.keys()),
-      carried: [],
-      reshaped,
-      affectedRoots: [],
-    });
+    this.gridUtils.commitCylinderPlacements(planDerivedInteriors(this.sealedStructures()));
   }
 
   /**
@@ -4074,9 +4077,16 @@ export class MechanismService {
           }
           const signed = this.driveSpeedOf(driven);
           const magnitude = Math.abs(signed).toFixed(2);
-          const way = turnsClockwise(signed) ? 'Clockwise' : 'Counter-clockwise';
+          // The same table the transport's note and the Edit panel's button
+          // read. A linear drive used to state no direction at all here, so the
+          // one fact a reader checks before pressing play said which way a
+          // crank turned and nothing about which way a ram went.
+          const way = driveDirectionWord(
+            driveKindOf(driven instanceof PrisJoint, !!this.cylinderAt(driven)),
+            turnsClockwise(signed)
+          );
           return driven instanceof PrisJoint
-            ? `${magnitude} ${this.nup.unitLabel(this.settingsService.lengthUnit.value)}/s`
+            ? `${magnitude} ${this.nup.unitLabel(this.settingsService.lengthUnit.value)}/s ${way}`
             : `${magnitude} RPM ${way}`;
         },
       });
@@ -4405,7 +4415,7 @@ export class MechanismService {
   warningCount(): number {
     return this.readinessOfEachMechanism().reduce(
       (total, readiness) =>
-        total + readiness.checks.filter((check) => check.state !== 'blocker').length,
+        total + readiness.checks.filter((check) => check.state === 'warning').length,
       0
     );
   }
@@ -6192,11 +6202,19 @@ export class MechanismService {
     if (!mechanism) return undefined;
     if (!this.profiles.has(mechanism)) {
       // A ram is measured by its own extension, so the profile is told which
-      // two joints that is between.
+      // two joints that is between. Everything else linear is measured along
+      // its own slot, in the slot's own forward sense -- which is a question
+      // about the *drawing*, so the profile is handed the same coordinate rule
+      // the anchor is taken against rather than re-deriving it from frames
+      // that are copies.
+      // The joint as the drawing holds it: a solved frame's copy has positions
+      // and no carrier, and which way a floating slot points is its carrier's
+      // to say.
       const driven = mechanism.joints[0]?.find((joint) => (joint as RealJoint).input);
-      const sealed = driven && this.cylinderAt(this.joints.find((j) => j.id === driven.id));
+      const block = driven && this.joints.find((joint) => joint.id === driven.id);
+      const sealed = block && this.cylinderAt(block);
       const ram = sealed ? { from: sealed.mountA.id, to: sealed.mountB.id } : undefined;
-      this.profiles.set(mechanism, buildDriveProfile(mechanism, ram) ?? null);
+      this.profiles.set(mechanism, buildDriveProfile(mechanism, ram, block) ?? null);
     }
     return this.profiles.get(mechanism) ?? undefined;
   }

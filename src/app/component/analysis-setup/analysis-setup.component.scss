@@ -149,6 +149,9 @@
         color: var(--warning-text);
       }
 
+      // A note says what the app did, not what is wrong with the drawing, so it
+      // wears the same muted ink as a row nothing is asked of (decision S28).
+      &.note,
       &.muted {
         color: var(--text-muted);
       }

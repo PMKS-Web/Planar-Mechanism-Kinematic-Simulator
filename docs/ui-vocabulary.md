@@ -203,8 +203,36 @@ Spell it **center of mass** in prose and **CoM** in a label. Not `COM`, not
 | **rod** | the thin bar that slides out | — |
 | **joint** | either end, where it attaches — and the square between them | ~~mount~~, ~~seal~~ |
 | **stroke** / **travel** | how far the rod moves | — |
+| **holds its length** | what a cylinder nothing drives does, when the machine does not move it either | ~~locked~~ (a Lock is about position), ~~frozen~~, ~~rigid~~ |
+| **Holding Force** | the axial force such a cylinder has to hold, on the slide's own panel | ~~reaction~~, ~~strut force~~ |
 | **closed** / **open** | the two ends of the travel | ~~retracted~~, ~~extended~~ |
 | **closing** / **opening** | which way it is moving right now | ~~retracting~~, ~~extending~~ |
+
+**Those two words are a cylinder's and nobody else's.** A bare block on a slot
+has nothing to be open or shut, so its two directions are **forward** and
+**backward** — along the slot, whichever way that happens to point. The
+maintainer said it plainly: *"for a driven slider, closing and opening doesn't
+seem right since there is no concept of open or close. Maybe backwards, and
+forwards?"* Where there is room to say what forward is measured along, say it:
+
+| Use | For | Not |
+| --- | --- | --- |
+| **Forward** / **Backward** | which way a driven **slider** is going | ~~opening~~, ~~closing~~, ~~clockwise~~ |
+| **Forward along slot** / **Backward along slot** | the same, on a control with room to name the slot | ~~forward~~ alone, where the slot is not stated nearby |
+
+One table decides all three pairs — `driveDirectionWord` in
+`model/drive-direction.ts` — because the transport, the Edit panel's direction
+button, the readiness fact and the field help each used to spell their own and
+two of the four disagreed. A drive is a **pin**, a **cylinder** or a **slider**,
+and nothing else picks the words.
+
+**The glyph beside the word comes from the same table** (`driveDirectionIcon`):
+a turn is drawn as a turn and a translation as a straight arrow. The transport
+drew `rotate_right` for every drive, so a cylinder read *Opening* beside an icon
+of something spinning — and on a phone, where the word is hidden, the icon was
+the only thing said. Both are read from one pair of facts, so neither can drift
+from the other again, and the button's label carries the word for a reader who
+cannot see either.
 
 The black block on the rod is **a joint, and is called one**. It is the sliding
 joint the rod hangs on: it wears a letter, it can be selected, dragged and given

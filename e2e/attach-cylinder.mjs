@@ -139,8 +139,13 @@ record(
   !!grew && !!after.ram && after.ram.mountLinks.includes(grew),
   { grew, mountLinks: after.ram?.mountLinks, before: before.links, after: after.links }
 );
-// Two freedoms, because the rod's far end is deliberately left unattached.
-record('the free rod end shows as two added freedoms', after.dof === '3', {
+// One freedom, because the rod's far end is deliberately left unattached: the
+// part can swing about its end joint. Its length is not a second one -- a
+// cylinder nothing drives holds its length (decision S28), so the count the
+// reader is shown is the machine's, with the part counted as the rigid link
+// it is. It used to read two, back when a passive cylinder counted as free
+// to telescope.
+record('the free rod end shows as one added freedom', after.dof === '2', {
   before: before.dof,
   after: after.dof,
 });

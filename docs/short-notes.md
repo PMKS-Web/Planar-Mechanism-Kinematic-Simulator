@@ -2022,3 +2022,111 @@ drives it. `Mechanism`'s constructor now catches a throwing solve, logs it with
 `console.error`, and comes back invalid as `'solver-error'`, which readiness
 answers with its fallback. So a red console line plus "This mechanism could not
 be solved" means a solver bug to go and find, not a drawing to fix.
+
+### `applyObjectScaleChange` is not only about link outlines any more
+
+It is the one funnel every route that changes Object Size ends in — the Settings
+field, the "size for this zoom" button, and `SvgGridService.adoptScaleForDrawing`
+on load — and it now repairs cylinders as well as recomputing bars
+(decision S29). Anything new that changes the scale has to go through it, and
+anything that measures a cylinder in R has to be refreshed by it.
+
+### A scale change reaches `MechanismService` twice while Settings is open
+
+`SettingsService._objectScale.next(...)` runs the panel's own subscription,
+which calls `applyObjectScaleChange`, and then the caller that set the value
+calls it again. Both passes are idempotent, so nothing looked wrong until
+something wanted to know whether *this* change had done anything: the second
+pass finds a drawing already put right and would answer no. `rescaleNeedsSaving`
+is remembered across the pair for that reason, and `SettingsService.objectScaleAdopting`
+is what stops the first pass writing an undo entry for a size the app chose.
+
+### `cylinderRodFloor` has a whole head of margin over the geometry it protects
+
+It reads `rod ≥ barrel − clearance`, while B only actually reaches the mouth at
+full retraction when `rod < barrel − clearance − head`. The margin is why S29's
+repair may pass the floor without drawing anything wrong, and why a size
+reduction past about 73% of the original needs to.
+
+### `frameOf` in `cylinder-edit.ts` refuses a part with no usable travel
+
+Every `poseFor…` therefore reports "the cylinder is not built" for a barrel that
+Object Size has walked under `cylinderBarrelFloor`. That is right for an edit and
+wrong for a repair, which is asked exactly when the part has stopped being
+drawable — hence its third argument. Do not remove the guard; pass the flag.
+
+### `travelingForward` means "the transport's own coordinate is rising", not "forward"
+
+And which way that coordinate runs is not the same for the two kinds of drive: a
+crank's is negated so a **clockwise** drive runs the handle left to right, while
+a ram's is its own extension so a **positive** speed does. That inversion lives
+in `driveTurnsClockwiseWhileRising` (`model/drive-direction.ts`); anything
+reading `travelingForward` and reaching for a word must go through it.
+
+### `strokeOf` in `drive-profile.ts` is a fallback now, and is direction-blind
+
+It takes its axis from the two ends of the path the block actually travels, so
+`along` always rose away from the drawn pose — a direction the *drawing* chose
+rather than one the slot has. Reversing a bare slider's drive therefore left
+every sample of `along` identical and the transport reported the same heading
+either way (measured on `Scotch_Yoke` and `Punch_Press`; `Slider_Crank` happened
+to reverse its sample order and so happened to flip). A linear drive is measured
+by `slotwiseOf` now — the anchor's own `slotCoordinateRuleFor` — and this is
+reached only where the drawing cannot say which way the slot points at all.
+
+### The transport's coordinate and the anchor's are the same rule, asked two ways
+
+`coordinateRuleFor` is gated on `resolveActuator`, which is right for an anchor
+— that is about the quantity a *drive* controls — and wrong for the transport,
+which only wants to know which way the slot points. `Cylinder_Gripper`'s slider
+`M` has a perfectly good carrier and no describable actuator, and the gated
+version left its coordinate directionless. `slotCoordinateRuleFor` is the
+ungated half, and `coordinateRuleFor` calls it, so there is still one answer.
+
+### Only one shipped drawing's scrub track moved when that was fixed
+
+`Elliptical_Trammel` is the whole library's only bare-slider input, and its
+block runs against its slot's stored direction, so its handle now starts at
+0.856 of the track where it started at 0.144. Nothing stored moved: the anchor
+has its own coordinate rule and never read `DriveProfile.along`.
+
+### `advanceBoundary` used to interpolate its boundary along *chords*
+
+Halving a step took the midpoint of each boundary joint's own chord, and a body
+turning through an angle does not pass through its chords' midpoints — it
+arrives very slightly **shrunk**. Most drawings absorb that in their own slack
+and never notice. A held cylinder (S28) has none to absorb it with: it pins two
+unknowns rigidly to two *different* boundary joints, their separation is fixed
+and the shrunk boundary's is not, so no pose satisfies the rows and the halving
+refuses the very sample it was subdividing to reach. `halfwayBoundary` takes the
+square root of the fitted rigid motion instead — `R(θ/2)` with the translation
+that, applied twice, lands exactly on the far end — and falls back to chords for
+a boundary the fit cannot reproduce.
+
+### A solved position is stored rounded to four decimals, which is why `heldPoseTolerance` exists
+
+`recordJointPosition` and `incrementRevInput` both round, so a driven body
+placed joint by joint is not quite a rigid body, and the error wanders a little
+further with every sample of the walk. `solveSimultaneous` aims at `1e-6` and
+that is unreachable for a system holding a cylinder's length. Its *acceptance*
+is therefore a parameter, asked for by name: loosening it for everything costs
+the guard that refuses a six-bar converging at full rank onto the wrong assembly
+mode (`boundary-driven-branch.spec.ts`), which fails the moment the gate moves.
+
+### The rows for a held cylinder are a *body*, not a distance to its mount
+
+Written as "the seal stands |AS| from the mount", the seal carried two distance
+rows to two anchors on a line through it — both gradients along the axis, which
+is exactly the degenerate pair `rigidOffset` exists to replace. Every row of the
+maintainer's triangle was satisfied to 5e-7 at the drawn pose and least squares
+could get no nearer than 1.3e-5 of one. `collectConstraints` writes the four
+joints as one body instead, **known joints first**, so no row is a promise about
+two boundary joints that the walk can break on its way.
+
+### A triangle of held cylinders is force-*indeterminate*, and so are its bars
+
+Welding one corner makes two bodies pinned at two points, which share their load
+in no unique way. The drawer says "more supports than equilibrium can determine"
+— about the drawing, not about the holding — and the same shape drawn as plain
+bars says it too. Ask the holding force of a determinate machine (the published
+*Four-bar on a held cylinder*) when you want a number.

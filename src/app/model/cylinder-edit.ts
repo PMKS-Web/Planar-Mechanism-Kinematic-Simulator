@@ -269,7 +269,15 @@ interface CylinderFrame {
   travel: { min: number; max: number };
 }
 
-function frameOf(cylinder: Cylinder, r: number): CylinderFrame | undefined {
+/**
+ * @param withoutTravel Read the part even where its barrel has no room to
+ * slide in. Every *edit* refuses there, because a share of a stroke that does
+ * not exist is not a number anything can honor — but a **repair** is asked
+ * exactly when the part has stopped being drawable, and a barrel walked under
+ * its floor by a change of Object Size is one of the two ways that happens
+ * (decision S29). It is the repair's job to give the barrel its travel back.
+ */
+function frameOf(cylinder: Cylinder, r: number, withoutTravel = false): CylinderFrame | undefined {
   const { mountA, mountB, seal } = cylinder;
   const dx = mountB.x - mountA.x;
   const dy = mountB.y - mountA.y;
@@ -278,7 +286,7 @@ function frameOf(cylinder: Cylinder, r: number): CylinderFrame | undefined {
   const axis = { x: dx / span, y: dy / span };
   const lengths = cylinderLengthsOf(cylinder);
   const travel = cylinderStrokeAlong(lengths.barrel, r);
-  if (!travel.usable) return undefined;
+  if (!travel.usable && !withoutTravel) return undefined;
   return {
     axis,
     lengths,
@@ -949,10 +957,24 @@ function rodAt(
  * window is the barrel's own floor up to `rod + clearance`, which is the rod
  * floor read the other way round.
  */
-function barrelHolding(frame: CylinderFrame, rod: number, r: number): Landing | undefined {
+function barrelHolding(
+  frame: CylinderFrame,
+  rod: number,
+  r: number,
+  /**
+   * A ceiling other than the rod's own floor read backwards.
+   *
+   * Only decision S29's repair passes one. Every edit here stops at
+   * `rod + clearance`, because past it the barrel's travel outruns the rod and
+   * an edit that wants to go there grows the rod instead — which moves mount
+   * B. A repair may not move a joint the reader can see, so where the two
+   * disagree it raises this instead and says so.
+   */
+  ceiling?: number
+): Landing | undefined {
   const along = frame.span - rod;
   const low = cylinderBarrelFloor(r);
-  const high = rod + HEAD_CLEARANCE_R * r;
+  const high = ceiling ?? rod + HEAD_CLEARANCE_R * r;
   if (!(high >= low)) return undefined;
   const least = shortestReaching(along, low, high, r);
   const most = longestClearing(along, low, high, r);
@@ -974,6 +996,105 @@ function shortestReaching(along: number, low: number, high: number, r: number): 
     else under = mid;
   }
   return over;
+}
+
+// --------------------------------------------- a change of Object Size (S29)
+
+/** What a change of Object Size leaves a cylinder needing. */
+export type CylinderRescale =
+  /** Drawable as it stands at this R: nothing to do, and nothing to say. */
+  | { whole: true }
+  /** The barrel that makes it whole again, with every visible joint kept. */
+  | { whole: false; pose: CylinderPose; barrel: number; pastRodFloor: boolean }
+  /** Nothing may give, so the part is left exactly as it is and said so. */
+  | { whole: false; blocked: 'fixed-length' | 'no-barrel-reaches' };
+
+/**
+ * Make a cylinder drawable again after Object Size moved the head under it
+ * (decision S29).
+ *
+ * **Object Size is how a drawing is drawn. It never moves a joint a reader can
+ * see, and it never leaves a cylinder in two pieces.** The head's own size and
+ * the clearance behind it are measured in R, so changing R moves the *travel*
+ * while the four joints and both member lengths stay exactly where they were:
+ * a part standing at the end of its travel is outside it at a smaller size —
+ * the mouth and the head come apart, and the drawing shows two pieces with a
+ * gap down the middle — and one standing near the shut end is outside it at a
+ * larger size, the head through the closed end of its own barrel.
+ *
+ * With mounts A and B and the seal S all held, **the barrel is the only thing
+ * left that can give**: N is derived and hidden, so moving it is the one change
+ * nothing a reader can point at feels. The rod cannot help — its length is the
+ * distance between two joints that are both staying — so the whole repair is
+ * one number, and it is the same `barrelHolding` every typed Rod Length
+ * already climbs to.
+ *
+ * **Where the reach and the rod's floor disagree, the reach wins**, and the
+ * answer says so. `rod + clearance` is the longest barrel whose travel the rod
+ * is long enough for, and an *edit* that wants a longer one grows the rod —
+ * which moves mount B. This may not, and a barrel that stops short of the head
+ * is the thing the reader is looking at, while the rod's floor is a rule about
+ * a pose the part is not in. A fully open cylinder drawn with equal members
+ * hits this at any size reduction past about three quarters, which is most of
+ * them.
+ *
+ * Refuses in two cases, and in both the part is left **exactly** as it is: a
+ * barrel holding its length (decision S5) has said out loud that it is not the
+ * thing that gives, and a head standing closer to the mount than the shortest
+ * barrel's own clearance cannot be reached by any barrel at all. What the
+ * *reader* is told about either is `model/cylinder-interiors.ts`'s to word, and
+ * it says both in the reader's nouns -- joint C, joint A -- because a mount, a
+ * head and a seal are code words and only the caller knows the letters.
+ */
+export function rescaleCylinder(cylinder: Cylinder, context: CylinderEditContext): CylinderRescale {
+  const { r } = context;
+  const frame = frameOf(cylinder, r, true);
+  // No axis to read: a part whose mounts are coincident is better left as
+  // drawn than folded onto a direction picked at random (`derivedInterior`).
+  if (!frame) return { whole: true };
+  const { barrel, rod } = frame.lengths;
+  if (drawableAt(frame, r)) return { whole: true };
+  const wanted = barrelHolding(frame, rod, r) ?? barrelHolding(frame, rod, r, reachCeiling(frame));
+  if (wanted && Math.abs(wanted.lengths.barrel - barrel) < SLACK) return { whole: true };
+  if (context.holds.barrel) return { whole: false, blocked: 'fixed-length' };
+  if (!wanted) return { whole: false, blocked: 'no-barrel-reaches' };
+  return {
+    whole: false,
+    pose: poseOf(cylinder, frame, wanted),
+    barrel: wanted.lengths.barrel,
+    pastRodFloor: wanted.lengths.barrel > rod + HEAD_CLEARANCE_R * r + SLACK,
+  };
+}
+
+/**
+ * A ceiling high enough for any barrel that could reach the head.
+ *
+ * `along` itself: the mouth of a barrel that long is already past the seal,
+ * because the head's own half-length is on top of it. Finite, because the
+ * search inside wants two ends.
+ */
+function reachCeiling(frame: CylinderFrame): number {
+  return Math.max(frame.span, frame.along);
+}
+
+/**
+ * Whether this part can be drawn as it stands at this R — which is the only
+ * question a change of Object Size gets to ask.
+ *
+ * Two facts, and both are about the picture: the barrel has somewhere to slide
+ * in, and the head is inside it. **The rod's floor is deliberately not one of
+ * them.** It is a rule about a pose the part is not in — what would happen to
+ * mount B at full retraction — and the only way to satisfy it is to shorten the
+ * barrel, which shortens the stroke. Asked here it would undo the repair above
+ * the moment the reader put the size back: the barrel that came out to meet the
+ * head at the smaller size is past the floor at the larger one, nothing is
+ * wrong with the picture, and pulling it back would be a second silent edit
+ * arguing with the first. It stays what it has always been, a ceiling a repair
+ * prefers not to cross.
+ */
+function drawableAt(frame: CylinderFrame, r: number): boolean {
+  const travel = cylinderStrokeAlong(frame.lengths.barrel, r);
+  return travel.usable && frame.along >= travel.min - SLACK && frame.along <= travel.max + SLACK;
 }
 
 /** The longest barrel in the window that has not already swallowed `along`. */

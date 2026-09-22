@@ -608,7 +608,21 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
 
   /** In Force mode, does the selected joint have any graph to offer? */
   get jointForceHasGraphs(): boolean {
-    return this.jointForceRows().length > 0 || !!this.shownJoint?.input;
+    return this.jointForceRows().length > 0 || !!this.shownJoint?.input || this.holdsItsLength();
+  }
+
+  /**
+   * Whether the selected joint is the slide of a cylinder holding its length
+   * (decision S28), which is the one joint that carries a holding force.
+   *
+   * Asked of the solved machine rather than of the drawing: holding is derived
+   * on every build, and the machine that did the deriving is the one whose
+   * numbers this panel is showing.
+   */
+  holdsItsLength(): boolean {
+    const joint = this.shownJoint;
+    if (!joint) return false;
+    return !!this.mechanismService.mechanismSolving(joint)?.heldCylinderSeals.has(joint.id);
   }
 
   /** In Force mode, does the selected link have any graph to offer? */
