@@ -9,7 +9,8 @@ import {
   fillShownOn,
   rodFillOf,
 } from '../model/cylinder-skin';
-import { drawnOutlineOf, paintedByACylinder } from '../model/cylinder-fusion';
+import { paintedByACylinder } from '../model/cylinder-fusion';
+import { linkArtwork } from '../model/link-artwork';
 import {
   cylinderPaintOrder,
   FusingPlate,
@@ -761,7 +762,7 @@ export class SliderMarkService {
       const angle = (mark.rotation * Math.PI) / 180;
       shapes.push(this.placed(blockPath(r), mark.joint, angle));
       for (const rider of this.ridersOn(mark.joint)) {
-        const outline = drawnOutlineOf(cylinders, rider, r);
+        const outline = linkArtwork(rider, r / 0.15, cylinders);
         if (links.has(rider.id) || !outline) continue;
         links.set(rider.id, rider);
         shapes.push(outline);
@@ -819,7 +820,7 @@ export class SliderMarkService {
     cylinders: readonly Cylinder[],
     r: number
   ): string | undefined {
-    const outline = drawnOutlineOf(cylinders, rider, r);
+    const outline = linkArtwork(rider, r / 0.15, cylinders);
     if (!outline) return undefined;
     const along = { x: pin.x + Math.cos(slotAngle), y: pin.y + Math.sin(slotAngle) };
     try {

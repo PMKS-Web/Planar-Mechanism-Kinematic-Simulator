@@ -262,7 +262,7 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
 
 ### Editor interaction rules
 
-- **Object Size is presentation.** Proportional Compact / Normal / Large presets and Lines view live in Settings. Zoom never changes member lengths. Cylinder clearance is preserved separately from visual thickness and travels in URLs/history; see [object sizing](docs/object-sizing.md).
+- **Drawing Style is presentation.** Settings offers Standard / Fine / Schematic as one local preference. Symbols scale with the drawing between readable screen limits; Schematic simplifies cylinders and sliders as well as links. Style, zoom and Fit change no geometry, solver inputs, history, or CAD outlines. `drawingScale` is display-only; `objectScale` and `cylinderObjectScale` remain physical compatibility inputs. See [object sizing](docs/object-sizing.md).
 
 - `NumberDragDirective` lets a reader drag the numeric field’s text label vertically; the value itself retains ordinary text selection and editing. Five pixels changes one step (default 0.1; Shift is ten times finer). Escape cancels, and release commits through the existing field validation as one undo entry.
 - A compound selects as a whole on its first click, then selects the primitive under the next click, including cylinder members. `model/link-pick.ts` owns that choice. Distance to Joints stays in the joint panel: `model/joint-distances.ts` offers only neighbors in the same primitive with three or more joints, excluding cylinder members.
