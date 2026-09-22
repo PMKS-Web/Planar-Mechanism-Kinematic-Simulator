@@ -3789,7 +3789,7 @@ export class MechanismService {
    * its own.
    */
   private graftJointOnto(joint: RealJoint, link: RealLink): void {
-    graftJoint(joint, link);
+    graftJoint(joint, link, (this.rootLinkOwning(link) as RealLink) ?? link);
   }
 
   deleteLink() {
