@@ -168,6 +168,8 @@ record(
 
 // --- a link: trace and force belong to joints ------------------------------
 await selectIn('#linkHolder path', 1, 'Kinematic');
+record('Rotation has no drawing switches', (await switches()).length === 0);
+await page.getByRole('tab', { name: 'Center of mass', exact: true }).click();
 const onLink = await switches();
 record(
   'a link offers a trace of its center of mass',
@@ -175,8 +177,9 @@ record(
   { selected: await selectedId(), onLink }
 );
 record(
-  'and its force switch the same, with velocity and acceleration available',
-  onLink.find((one) => one.key === 'force')?.off === true &&
+  'CoM offers three chips, with velocity and acceleration available',
+  onLink.length === 3 &&
+    !onLink.some((one) => one.key === 'force') &&
     onLink.find((one) => one.key === 'velocity')?.off === false &&
     onLink.find((one) => one.key === 'acceleration')?.off === false,
   onLink

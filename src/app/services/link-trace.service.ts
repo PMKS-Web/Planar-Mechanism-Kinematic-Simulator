@@ -1,4 +1,5 @@
-import { Injectable } from '@angular/core';
+import { AnalysisPanelStateService } from './analysis-panel-state.service';
+import { Injectable, inject } from '@angular/core';
 import { Link, RealLink } from '../model/link';
 import type { SettingsService } from './settings.service';
 import { selectableLinks } from '../model/selection';
@@ -7,6 +8,7 @@ import type { MechanismService } from './mechanism.service';
 /** Transient view choices, like vector traces: kept across undo, cleared for a new document. */
 @Injectable({ providedIn: 'root' })
 export class LinkTraceService {
+  private readonly panelState = inject(AnalysisPanelStateService);
   private readonly enabled = new Set<string>();
   private revision = -1;
   private cached: { id: string; d: string }[] = [];
@@ -32,6 +34,7 @@ export class LinkTraceService {
   showsMark(link: Link, mechanism: MechanismService, settings: SettingsService): boolean {
     return (
       settings.previewCoMLinkId === link.id ||
+      this.panelState.previewCoM() === link.id ||
       (settings.isShowCOM.value &&
         link instanceof RealLink &&
         link.mass > 0 &&

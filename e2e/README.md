@@ -507,3 +507,8 @@ Not suites — import them from one.
   filmstrip to `artifacts/pr33-followups/`.
 
 `template-animations.mjs` also refreshes each selected card's still from its first frame, keeping hover framing identical. Use `ONLY` to regenerate just the intended examples.
+
+- `analysis-tabs.mjs` — Rotation/Center of mass and Static/In-motion navigation, keyboard focus
+  without canvas nudges, independent expansion choices, session tab memory, CoM preview, shared
+  gutters and typography, sticky headers and narrow layouts. Screenshots and a tab-switching
+  filmstrip in `artifacts/analysis-tabs/`.

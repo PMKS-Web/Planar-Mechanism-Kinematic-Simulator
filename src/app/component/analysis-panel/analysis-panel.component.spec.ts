@@ -13,6 +13,7 @@ import {
   LOOPLESS_WELDED_MECHANISM,
 } from '../../../tests/fixtures/mechanism-fixtures';
 import { TEMPLATE_LINKAGES } from '../MODALS/templates/template-linkages';
+import { AnalysisPanelStateService } from '../../services/analysis-panel-state.service';
 import { AnalysisPanelComponent } from './analysis-panel.component';
 
 async function createPanel(payload: string, selectedId: string, mode: TabID = TabID.ANALYZE) {
@@ -215,22 +216,68 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
     fixture.destroy();
   });
 
-  it('renders all six link kinematics graphs with valid expansion headers', async () => {
-    const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'AB');
-    Object.assign(fixture.componentInstance.graphExpanded, {
-      LAng: true,
-      LAngVel: true,
-      LAngAcc: true,
-      LPos: true,
-      LVel: true,
-      LAcc: true,
-    });
+  it('separates rotation from CoM, retaining expansion and session tab choices', async () => {
+    const { fixture, fixtureData } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'AB');
     fixture.detectChanges();
+    const panel = fixture.componentInstance;
+    const state = TestBed.inject(AnalysisPanelStateService);
+    expect(sectionLabels(fixture)).toEqual(['Angle', 'Angular velocity', 'Angular acceleration']);
+    expect(panel.isExpanded('LAng', true)).toBe(true);
+    expect(fixture.nativeElement.querySelector('.drawingSwitches')).toBeNull();
+    expect(state.previewCoM?.()).toBeNull();
+    panel.highlightCoM(true);
+    expect(state.previewCoM?.()).toBe('AB');
+    panel.highlightCoM(false);
+    expect(state.previewCoM?.()).toBeNull();
+    panel.setExpanded('LAng', false);
+    panel.selectPanelTab(1);
+    fixture.detectChanges();
+    expect(sectionLabels(fixture)).toEqual([
+      'Center of mass position',
+      'Center of mass velocity',
+      'Center of mass acceleration',
+    ]);
+    expect(panel.isExpanded('LPos', true)).toBe(true);
+    expect(state.previewCoM?.()).toBe('AB');
+    panel.setExpanded('LVel', true);
+    panel.selectPanelTab(0);
+    expect(panel.isExpanded('LAng', true)).toBe(false);
+    panel.selectPanelTab(1);
+    expect(panel.isExpanded('LVel')).toBe(true);
+    fixtureData.active.updateSelectedObj(
+      fixtureData.service.links.find((link) => link.id === 'BC')!
+    );
+    fixture.detectChanges();
+    expect(state.previewCoM?.()).toBe('BC');
+    fixture.destroy();
+    TestBed.inject(SelectedTabService).getCurrentTab = () => TabID.EDIT;
+    expect(state.previewCoM()).toBeNull();
+    TestBed.inject(SelectedTabService).getCurrentTab = () => TabID.ANALYZE;
+    const replacement = TestBed.createComponent(AnalysisPanelComponent);
+    replacement.detectChanges();
+    expect(replacement.componentInstance.panelTabIndex).toBe(1);
+    replacement.destroy();
+  });
 
-    expect(fixture.nativeElement.querySelectorAll('app-analysis-graph-section')).toHaveLength(6);
-    // One heading each, and no accordion wrapping the six of them.
-    expect(sectionLabels(fixture)).toHaveLength(6);
-    expect(fixture.nativeElement.querySelector('collapsible-subsection')).toBeNull();
+  it('remembers force graph expansion separately for Static and In-motion', async () => {
+    const { fixture, fixtureData } = await createPanel(
+      TEMPLATE_LINKAGES['4-Bar'],
+      'B',
+      TabID.FORCE
+    );
+    fixture.detectChanges();
+    const panel = fixture.componentInstance;
+    panel.setExpanded('JForce_AB', false);
+    panel.selectPanelTab(1);
+    fixture.detectChanges();
+    expect(fixtureData.settings.forceAnalysisMode.value).toBe('dynamic');
+    expect(panel.isExpanded('JForce_AB', true)).toBe(true);
+    panel.setExpanded('JForce_BC', true);
+    panel.selectPanelTab(0);
+    expect(panel.isExpanded('JForce_AB', true)).toBe(false);
+    expect(panel.isExpanded('JForce_BC')).toBe(false);
+    panel.selectPanelTab(1);
+    expect(panel.isExpanded('JForce_BC')).toBe(true);
     fixture.destroy();
   });
 
@@ -271,6 +318,7 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
 
   it('spells out center of mass consistently in labels and prose', async () => {
     const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'AB');
+    fixture.componentInstance.selectPanelTab(1);
     fixture.detectChanges();
 
     const text = fixture.nativeElement.textContent;
@@ -512,12 +560,13 @@ describe('AnalysisPanelComponent drawing switches', () => {
     fixture.destroy();
   });
 
-  it('offers a link center-of-mass path while keeping reactions joints-only', async () => {
+  it('offers only CoM drawing chips on the CoM tab', async () => {
     const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'BC');
+    fixture.componentInstance.selectPanelTab(1);
     fixture.detectChanges();
     const byKey = Object.fromEntries(switches(fixture).map((one) => [one.key, one]));
     expect(byKey['traces'].off).toBe(false);
-    expect(byKey['force'].off).toBe(true);
+    expect(byKey['force']).toBeUndefined();
     expect(byKey['velocity'].off).toBe(false);
     expect(byKey['acceleration'].off).toBe(false);
     const traces = fixture.componentInstance.drawingSwitches.find((one) => one.key === 'traces')!;

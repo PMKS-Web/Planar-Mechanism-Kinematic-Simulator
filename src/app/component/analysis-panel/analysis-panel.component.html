@@ -32,46 +32,69 @@
     whose numbers are all correct.
   -->
 
-  <!-- The head of a panel of graphs: what is graphed, and the moment the rows
-       read at. While a part is under the hand a chip names it -- which need
-       not be the part being graphed, since a click selects and a drag tunes --
-       and once a drag has been made the switch that shows or hides the curves
-       from before it sits on the subtitle's line. Sticky, so the switch is at
-       hand however far the rows have scrolled. -->
+  <!-- Title and navigation stay together when the graph list scrolls. -->
+  <ng-template #compareControl let-short="short">
+    @if (hasComparison) {
+      <toggle-block
+        class="compareToggle"
+        [compact]="true"
+        [formGroup]="compareForm"
+        _formControl="compare"
+        ariaLabel="Compare with before drag"
+        tooltip="Shows the curves from before your last drag, dashed and faded, under the live ones."
+        >{{ short ? 'Compare' : 'Compare with before drag' }}</toggle-block
+      >
+    }
+  </ng-template>
   <ng-template #head>
-    <div class="panelHead">
+    <div class="panelHead" [class.tabbedHead]="usesTabs">
       <div class="panelTitle">
         <span class="panelTitleText">{{ panelTitle }}</span>
         @if (tuning) {
           <span class="tuningChip"><mat-icon>pan_tool</mat-icon>Tuning {{ heldLabel }}</span>
         }
-      </div>
-      <div class="panelSub">
-        <span class="panelSubText">{{ subtitle }}</span>
-        <!-- The app's own switch, a size down: the same block Settings and the
-             Edit panel flip, so a reader knows it on sight. -->
-        @if (hasComparison) {
-          <toggle-block
-            class="compareToggle"
-            [compact]="true"
-            [formGroup]="compareForm"
-            _formControl="compare"
-            tooltip="Shows the curves from before your last drag, dashed and faded, under the live ones."
-            >Compare with before drag</toggle-block
-          >
+        @if (usesTabs) {
+          <ng-container
+            [ngTemplateOutlet]="compareControl"
+            [ngTemplateOutletContext]="{ short: true }"
+          ></ng-container>
         }
       </div>
+      @if (showKinematic && shownType === 'Joint') {
+        <div class="panelSub">
+          <span class="panelSubText">{{ subtitle }}</span>
+          <ng-container [ngTemplateOutlet]="compareControl"></ng-container>
+        </div>
+      }
+      @if (usesTabs) {
+        <app-tabs-block
+          [options]="showKinematic ? ['Rotation', 'Center of mass'] : ['Static', 'In-motion']"
+          [selected]="panelTabIndex"
+          [tooltips]="
+            showKinematic ? [] : ['Holds the mechanism still', 'Includes the forces of movement']
+          "
+          [label]="showKinematic ? 'Link kinematics' : 'Force analysis type'"
+          idPrefix="analysis"
+          [panelIds]="['analysis-tabpanel-0', 'analysis-tabpanel-1']"
+          (selectedChange)="selectPanelTab($event)"
+          (hoveredChange)="highlightCoM(showKinematic && $event === 1)"
+        ></app-tabs-block>
+      }
     </div>
   </ng-template>
 
   <ng-template #drawingSwitchBlock>
-    @if (drawingSwitches.length > 0) {
+    @if (visibleDrawingSwitches.length > 0) {
       <div class="drawingSwitches">
         <div class="drawingSwitchesHead">
           Show Vectors on Drawing
           <mat-icon
             class="drawingSwitchesHelp"
-            matTooltip="Draws the part’s path, and which way its velocity, acceleration or the force it carries points, on the mechanism itself."
+            [matTooltip]="
+              showKinematic && shownType === 'Link'
+                ? 'Draws the path, velocity and acceleration of this link’s center of mass on the mechanism.'
+                : 'Draws the part’s path, and which way its velocity, acceleration or the force it carries points, on the mechanism itself.'
+            "
             matTooltipShowDelay="400"
             >help_outline</mat-icon
           >
@@ -80,8 +103,8 @@
              ink -- the color the trace is drawn in -- so a reader learns the
              color here and meets it on the drawing. Gray carries the menu's
              reason on hover. -->
-        <div class="drawingChips">
-          @for (one of drawingSwitches; track one.key) {
+        <div class="drawingChips" [class.threeChips]="visibleDrawingSwitches.length === 3">
+          @for (one of visibleDrawingSwitches; track one.key) {
             <app-view-button
               grow
               [attr.data-switch]="one.key"
@@ -124,9 +147,101 @@
     <app-mechanism-panel></app-mechanism-panel>
   }
 
-  <!-- Joint Kinematics-->
-  @if (selectionIsSimulatable && shownType == 'Joint') {
-    <panel-section id="analysis-panel">
+  <ng-template #forceContent>
+    @if (!usesTabs) {
+      <p class="noReaction" role="status">{{ subtitle }}</p>
+      <div class="helpRule"></div>
+      <div class="helpHint">
+        <mat-icon>touch_app</mat-icon>
+        <span
+          >{{ viewport.isTouch() ? 'Tap' : 'Click' }}
+          {{
+            shownType === 'Joint'
+              ? 'a joint where separate parts meet, or a grounded one.'
+              : 'a part that touches another, or a grounded joint.'
+          }}</span
+        >
+      </div>
+    } @else {
+      @for (index of [0, 1]; track index) {
+        <div
+          class="analysisTabPanel"
+          [id]="'analysis-tabpanel-' + index"
+          role="tabpanel"
+          [attr.aria-labelledby]="'analysis-tab-' + index"
+          [hidden]="panelTabIndex !== index"
+        >
+          @if (panelTabIndex === index) {
+            @if (shownType === 'Joint') {
+              <div class="rowList">
+                @for (row of jointForceRows(); track row.linkId) {
+                  <app-analysis-graph-section
+                    [label]="row.label"
+                    help="The reaction that link carries at this joint"
+                    analysis="force"
+                    [analysisType]="forceAnalysisMode()"
+                    mechProp="Joint Forces"
+                    mechPart="{{ row.jointId }}"
+                    [reactionLinkId]="row.linkId"
+                    [expanded]="isExpanded('JForce_' + row.linkId, $first)"
+                    (expandedChange)="setExpanded('JForce_' + row.linkId, $event)"
+                  ></app-analysis-graph-section>
+                }
+                @if (shownJoint.input) {
+                  <app-analysis-graph-section
+                    label="Input {{ inputEffortLabel() }}"
+                    help="The effort the input has to supply to drive the mechanism"
+                    analysis="force"
+                    [analysisType]="forceAnalysisMode()"
+                    mechProp="Input Effort"
+                    mechPart="{{ shownJoint.id }}"
+                    [expanded]="isExpanded('JInputForce', jointForceRows().length === 0)"
+                    (expandedChange)="setExpanded('JInputForce', $event)"
+                  ></app-analysis-graph-section>
+                }
+              </div>
+            } @else {
+              <div class="rowList">
+                @for (row of linkForceRows(); track row.jointId) {
+                  <app-analysis-graph-section
+                    [label]="row.label"
+                    help="The reaction this link carries at that joint"
+                    analysis="force"
+                    [analysisType]="forceAnalysisMode()"
+                    mechProp="Joint Forces"
+                    mechPart="{{ row.jointId }}"
+                    [reactionLinkId]="row.linkId"
+                    [expanded]="isExpanded('LForce_' + row.jointId, $first)"
+                    (expandedChange)="setExpanded('LForce_' + row.jointId, $event)"
+                  ></app-analysis-graph-section>
+                }
+                <!-- A cylinder's drive sits on the slide inside the part. The slide
+                 has a row of its own now, and this stays because a reader who
+                 picked the cylinder is asking about the cylinder -- the way its
+                 speed already is. -->
+                @if (inputEffortJoint(); as driven) {
+                  <app-analysis-graph-section
+                    label="Input {{ inputEffortLabel(driven) }}"
+                    help="The effort the input has to supply to drive the mechanism"
+                    analysis="force"
+                    [analysisType]="forceAnalysisMode()"
+                    mechProp="Input Effort"
+                    mechPart="{{ driven.id }}"
+                    [expanded]="isExpanded('LInputForce', linkForceRows().length === 0)"
+                    (expandedChange)="setExpanded('LInputForce', $event)"
+                  ></app-analysis-graph-section>
+                }
+              </div>
+            }
+            <ng-container [ngTemplateOutlet]="drawingSwitchBlock"></ng-container>
+          }
+        </div>
+      }
+    }
+  </ng-template>
+
+  @if (selectionIsSimulatable && shownType === 'Joint') {
+    <panel-section id="analysis-panel" [class.tabbedAnalysis]="usesTabs">
       <ng-container [ngTemplateOutlet]="head" ngProjectAs="title-block"></ng-container>
       @if (showKinematic) {
         <div class="rowList">
@@ -138,7 +253,7 @@
             mechProp="Linear Joint Pos"
             mechPart="{{ shownJoint.id }}"
             [expanded]="isExpanded('JPos', true)"
-            (expandedChange)="graphExpanded['JPos'] = $event"
+            (expandedChange)="setExpanded('JPos', $event)"
           ></app-analysis-graph-section>
           <app-analysis-graph-section
             label="Velocity"
@@ -148,7 +263,7 @@
             mechProp="Linear Joint Vel"
             mechPart="{{ shownJoint.id }}"
             [expanded]="isExpanded('JVel')"
-            (expandedChange)="graphExpanded['JVel'] = $event"
+            (expandedChange)="setExpanded('JVel', $event)"
           ></app-analysis-graph-section>
           <app-analysis-graph-section
             label="Acceleration"
@@ -158,221 +273,113 @@
             mechProp="Linear Joint Acc"
             mechPart="{{ shownJoint.id }}"
             [expanded]="isExpanded('JAcc')"
-            (expandedChange)="graphExpanded['JAcc'] = $event"
+            (expandedChange)="setExpanded('JAcc', $event)"
           ></app-analysis-graph-section>
         </div>
-      }
-      @if (showForce) {
-        <!-- Nothing to graph, so nothing to configure: the note stands alone. -->
-        @if (jointForceHasGraphs) {
-          <div class="forceModeRow">
-            <radio-block
-              tooltip="Static holds the mechanism still; In-motion includes the forces of movement."
-              option1="Static"
-              option2="In-motion"
-              [formGroup]="this.forceAnalysisFormGroup"
-              _formControl="mode"
-              >Force analysis type
-            </radio-block>
-          </div>
-        }
-        @if (jointForceRows().length === 0) {
-          <div class="helpRule"></div>
-          <div class="helpHint" role="status">
-            <mat-icon>touch_app</mat-icon>
-            <span
-              >{{ viewport.isTouch() ? 'Tap' : 'Click' }} a joint where separate parts meet, or a
-              grounded one.</span
-            >
-          </div>
-        }
-        @if (jointForceHasGraphs) {
-          <div class="rowList">
-            @for (row of jointForceRows(); track row.linkId) {
-              <app-analysis-graph-section
-                [label]="row.label"
-                help="The reaction that link carries at this joint"
-                analysis="force"
-                [analysisType]="forceAnalysisMode()"
-                mechProp="Joint Forces"
-                mechPart="{{ row.jointId }}"
-                [reactionLinkId]="row.linkId"
-                [expanded]="isExpanded('JForce_' + row.linkId, $first)"
-                (expandedChange)="graphExpanded['JForce_' + row.linkId] = $event"
-              ></app-analysis-graph-section>
-            }
-            @if (shownJoint.input) {
-              <app-analysis-graph-section
-                label="Input {{ inputEffortLabel() }}"
-                help="The effort the input has to supply to drive the mechanism"
-                analysis="force"
-                [analysisType]="forceAnalysisMode()"
-                mechProp="Input Effort"
-                mechPart="{{ shownJoint.id }}"
-                [expanded]="isExpanded('JInputForce', jointForceRows().length === 0)"
-                (expandedChange)="graphExpanded['JInputForce'] = $event"
-              ></app-analysis-graph-section>
-            }
-          </div>
-        }
-      }
 
-      <!-- The part's Traces rows, as switches, under everything graphed about
-           it: what is drawn on the mechanism itself, reachable without the
-           right-click that used to be the only way to it. -->
-      <ng-container [ngTemplateOutlet]="drawingSwitchBlock"></ng-container>
+        <ng-container [ngTemplateOutlet]="drawingSwitchBlock"></ng-container>
+      } @else {
+        <ng-container [ngTemplateOutlet]="forceContent"></ng-container>
+      }
     </panel-section>
   }
 
-  <!-- Link Kinematics-->
-  @if (selectionIsSimulatable && shownType == 'Link') {
-    <panel-section
-      id="analysis-panel"
-      class="linkAnalysisPanel"
-      [class.linkKinematics]="showKinematic"
-    >
+  @if (selectionIsSimulatable && shownType === 'Link') {
+    <panel-section id="analysis-panel" class="linkAnalysisPanel" [class.tabbedAnalysis]="usesTabs">
       <ng-container [ngTemplateOutlet]="head" ngProjectAs="title-block"></ng-container>
       @if (showKinematic) {
-        <div class="rowList">
-          <app-analysis-graph-section
-            label="Angle"
-            help="The angle of this link above the horizontal"
-            analysis="kinematic"
-            analysisType="loop"
-            mechProp="Angular Link Pos"
-            mechPart="{{ shownLink.id }}"
-            [expanded]="isExpanded('LAng', true)"
-            (expandedChange)="graphExpanded['LAng'] = $event"
-          ></app-analysis-graph-section>
-          <app-analysis-graph-section
-            label="Angular velocity"
-            help="How fast this link turns, and which way"
-            analysis="kinematic"
-            analysisType="loop"
-            mechProp="Angular Link Vel"
-            mechPart="{{ shownLink.id }}"
-            [expanded]="isExpanded('LAngVel')"
-            (expandedChange)="graphExpanded['LAngVel'] = $event"
-          ></app-analysis-graph-section>
-          <app-analysis-graph-section
-            label="Angular acceleration"
-            help="How this link’s turning rate changes"
-            analysis="kinematic"
-            analysisType="loop"
-            mechProp="Angular Link Acc"
-            mechPart="{{ shownLink.id }}"
-            [expanded]="isExpanded('LAngAcc')"
-            (expandedChange)="graphExpanded['LAngAcc'] = $event"
-          ></app-analysis-graph-section>
-        </div>
-        <!-- The heading supplies the subject; the rows below can use short
-             quantity names without losing their full graph and screen-reader labels. -->
         <div
-          class="graphGroupHeading"
-          (mouseenter)="highlightCoM(true)"
-          (mouseleave)="highlightCoM(false)"
+          id="analysis-tabpanel-0"
+          class="analysisTabPanel"
+          role="tabpanel"
+          aria-labelledby="analysis-tab-0"
+          [hidden]="panelTabIndex !== 0"
         >
-          Center of Mass
-        </div>
-        <div class="rowList rowList--com">
-          <app-analysis-graph-section
-            label="Center of mass position"
-            rowLabel="Position"
-            help="Where this link’s center of mass is"
-            analysis="kinematic"
-            analysisType="loop"
-            mechProp="Linear Link's CoM Pos"
-            mechPart="{{ shownLink.id }}"
-            [expanded]="isExpanded('LPos')"
-            (expandedChange)="graphExpanded['LPos'] = $event"
-          ></app-analysis-graph-section>
-          <app-analysis-graph-section
-            label="Center of mass velocity"
-            rowLabel="Velocity"
-            help="How fast this link’s center of mass moves"
-            analysis="kinematic"
-            analysisType="loop"
-            mechProp="Linear Link's CoM Vel"
-            mechPart="{{ shownLink.id }}"
-            [expanded]="isExpanded('LVel')"
-            (expandedChange)="graphExpanded['LVel'] = $event"
-          ></app-analysis-graph-section>
-          <app-analysis-graph-section
-            label="Center of mass acceleration"
-            rowLabel="Acceleration"
-            help="How this link’s center of mass changes speed"
-            analysis="kinematic"
-            analysisType="loop"
-            mechProp="Linear Link's CoM Acc"
-            mechPart="{{ shownLink.id }}"
-            [expanded]="isExpanded('LAcc')"
-            (expandedChange)="graphExpanded['LAcc'] = $event"
-          ></app-analysis-graph-section>
-        </div>
-      }
-      @if (showForce) {
-        <!-- Nothing to graph, so nothing to configure: the note stands alone. -->
-        @if (linkForceHasGraphs) {
-          <div class="forceModeRow">
-            <radio-block
-              tooltip="Static holds the mechanism still; In-motion includes the forces of movement."
-              option1="Static"
-              option2="In-motion"
-              [formGroup]="this.forceAnalysisFormGroup"
-              _formControl="mode"
-              >Force analysis type
-            </radio-block>
-          </div>
-        }
-        @if (!linkForceHasGraphs) {
-          <div class="helpRule"></div>
-          <div class="helpHint" role="status">
-            <mat-icon>touch_app</mat-icon>
-            <span
-              >{{ viewport.isTouch() ? 'Tap' : 'Click' }} a part that touches another, or a grounded
-              joint.</span
-            >
-          </div>
-        }
-        @if (linkForceHasGraphs) {
-          <div class="rowList">
-            @for (row of linkForceRows(); track row.jointId) {
+          @if (panelTabIndex === 0) {
+            <div class="rowList">
               <app-analysis-graph-section
-                [label]="row.label"
-                help="The reaction this link carries at that joint"
-                analysis="force"
-                [analysisType]="forceAnalysisMode()"
-                mechProp="Joint Forces"
-                mechPart="{{ row.jointId }}"
-                [reactionLinkId]="row.linkId"
-                [expanded]="isExpanded('LForce_' + row.jointId, $first)"
-                (expandedChange)="graphExpanded['LForce_' + row.jointId] = $event"
+                label="Angle"
+                help="The angle of this link above the horizontal"
+                analysis="kinematic"
+                analysisType="loop"
+                mechProp="Angular Link Pos"
+                mechPart="{{ shownLink.id }}"
+                [expanded]="isExpanded('LAng', true)"
+                (expandedChange)="setExpanded('LAng', $event)"
               ></app-analysis-graph-section>
-            }
-            <!-- A cylinder's drive sits on the slide inside the part. The slide
-                 has a row of its own now, and this stays because a reader who
-                 picked the cylinder is asking about the cylinder -- the way its
-                 speed already is. -->
-            @if (inputEffortJoint(); as driven) {
               <app-analysis-graph-section
-                label="Input {{ inputEffortLabel(driven) }}"
-                help="The effort the input has to supply to drive the mechanism"
-                analysis="force"
-                [analysisType]="forceAnalysisMode()"
-                mechProp="Input Effort"
-                mechPart="{{ driven.id }}"
-                [expanded]="isExpanded('LInputForce', linkForceRows().length === 0)"
-                (expandedChange)="graphExpanded['LInputForce'] = $event"
+                label="Angular velocity"
+                help="How fast this link turns, and which way"
+                analysis="kinematic"
+                analysisType="loop"
+                mechProp="Angular Link Vel"
+                mechPart="{{ shownLink.id }}"
+                [expanded]="isExpanded('LAngVel')"
+                (expandedChange)="setExpanded('LAngVel', $event)"
               ></app-analysis-graph-section>
-            }
-          </div>
-        }
-      }
+              <app-analysis-graph-section
+                label="Angular acceleration"
+                help="How this link’s turning rate changes"
+                analysis="kinematic"
+                analysisType="loop"
+                mechProp="Angular Link Acc"
+                mechPart="{{ shownLink.id }}"
+                [expanded]="isExpanded('LAngAcc')"
+                (expandedChange)="setExpanded('LAngAcc', $event)"
+              ></app-analysis-graph-section>
+            </div>
+          }
+        </div>
+        <div
+          id="analysis-tabpanel-1"
+          class="analysisTabPanel"
+          role="tabpanel"
+          aria-labelledby="analysis-tab-1"
+          [hidden]="panelTabIndex !== 1"
+        >
+          @if (panelTabIndex === 1) {
+            <div class="rowList rowList--com">
+              <app-analysis-graph-section
+                label="Center of mass position"
+                rowLabel="Position"
+                help="Where this link’s center of mass is"
+                analysis="kinematic"
+                analysisType="loop"
+                mechProp="Linear Link's CoM Pos"
+                mechPart="{{ shownLink.id }}"
+                [expanded]="isExpanded('LPos', true)"
+                (expandedChange)="setExpanded('LPos', $event)"
+              ></app-analysis-graph-section>
+              <app-analysis-graph-section
+                label="Center of mass velocity"
+                rowLabel="Velocity"
+                help="How fast this link’s center of mass moves"
+                analysis="kinematic"
+                analysisType="loop"
+                mechProp="Linear Link's CoM Vel"
+                mechPart="{{ shownLink.id }}"
+                [expanded]="isExpanded('LVel')"
+                (expandedChange)="setExpanded('LVel', $event)"
+              ></app-analysis-graph-section>
+              <app-analysis-graph-section
+                label="Center of mass acceleration"
+                rowLabel="Acceleration"
+                help="How this link’s center of mass changes speed"
+                analysis="kinematic"
+                analysisType="loop"
+                mechProp="Linear Link's CoM Acc"
+                mechPart="{{ shownLink.id }}"
+                [expanded]="isExpanded('LAcc')"
+                (expandedChange)="setExpanded('LAcc', $event)"
+              ></app-analysis-graph-section>
+            </div>
 
-      <!-- The part's Traces rows, as switches, under everything graphed about
-           it: what is drawn on the mechanism itself, reachable without the
-           right-click that used to be the only way to it. -->
-      <ng-container [ngTemplateOutlet]="drawingSwitchBlock"></ng-container>
+            <ng-container [ngTemplateOutlet]="drawingSwitchBlock"></ng-container>
+          }
+        </div>
+      } @else {
+        <ng-container [ngTemplateOutlet]="forceContent"></ng-container>
+      }
     </panel-section>
   }
 

@@ -188,6 +188,7 @@ export const SUITES = [
   { name: 'posed-editing-adversarial', seconds: 22, lanes: BOTH },
   { name: 'posed-menu', seconds: 17, lanes: BOTH },
   { name: 'pr33-followups', seconds: 30, lanes: NIGHTLY },
+  { name: 'analysis-tabs', seconds: 35, lanes: NIGHTLY },
   { name: 'reduced-motion', seconds: 3, lanes: BOTH },
   { name: 'release-export-ui', seconds: 6, lanes: BOTH },
   { name: 'right-drawer', seconds: 10, lanes: BOTH },

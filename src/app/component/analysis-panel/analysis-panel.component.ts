@@ -26,7 +26,8 @@ import { MatIcon } from '@angular/material/icon';
 import { MechanismPanelComponent } from '../mechanism-panel/mechanism-panel.component';
 import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
 import { AnalysisGraphSectionComponent } from '../analysis-graph-section/analysis-graph-section.component';
-import { RadioComponent } from '../BLOCKS/radio/radio.component';
+import { TabsComponent } from '../BLOCKS/tabs/tabs.component';
+import { AnalysisPanelStateService } from '../../services/analysis-panel-state.service';
 import { ToggleComponent } from '../BLOCKS/toggle/toggle.component';
 import { AnalysisCompareService } from '../../services/analysis-compare.service';
 import { VECTOR_ICON, VECTOR_INK } from '../../model/vector-trace';
@@ -72,7 +73,7 @@ const DRAWING_CHIP_LABEL: Record<DrawingSwitch['key'], string> = {
     MechanismPanelComponent,
     PanelSectionComponent,
     AnalysisGraphSectionComponent,
-    RadioComponent,
+    TabsComponent,
     ToggleComponent,
     MatTooltip,
     FormsModule,
@@ -90,6 +91,36 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
   private tabs = inject(SelectedTabService);
   private comparison = inject(AnalysisCompareService);
   private menuRules = inject(ContextMenuBuilderService);
+  private readonly panelState = inject(AnalysisPanelStateService);
+  readonly kinematicsTab = this.panelState.linkKinematicsTab;
+  get usesTabs(): boolean {
+    return this.showKinematic
+      ? this.shownType === 'Link'
+      : this.shownType === 'Link'
+        ? this.linkForceHasGraphs
+        : this.jointForceHasGraphs;
+  }
+
+  get panelTabIndex(): number {
+    return this.showKinematic
+      ? this.kinematicsTab() === 'com'
+        ? 1
+        : 0
+      : this.forceAnalysisMode() === 'dynamic'
+        ? 1
+        : 0;
+  }
+
+  selectPanelTab(index: number): void {
+    if (this.showKinematic) this.kinematicsTab.set(index === 1 ? 'com' : 'rot');
+    else this.forceAnalysisFormGroup.patchValue({ mode: String(index) });
+  }
+
+  get visibleDrawingSwitches(): DrawingSwitch[] {
+    return this.showKinematic && this.shownType === 'Link'
+      ? this.drawingSwitches.filter((one) => one.key !== 'force')
+      : this.drawingSwitches;
+  }
 
   /**
    * The four switches under the graphs: trace, velocity, force and
@@ -343,7 +374,15 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
    * one kind of row whose state it could not otherwise guess.
    */
   isExpanded(key: string, first = false): boolean {
-    return this.graphExpanded[key] ?? first;
+    return this.graphExpanded[this.expansionKey(key)] ?? first;
+  }
+
+  setExpanded(key: string, expanded: boolean): void {
+    this.graphExpanded[this.expansionKey(key)] = expanded;
+  }
+
+  private expansionKey(key: string): string {
+    return key.includes('Force') ? `${this.forceAnalysisMode()}:${key}` : key;
   }
 
   // Only explicit choices are remembered; the first graph starts open.
@@ -398,6 +437,7 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
   }
 
   ngOnDestroy() {
+    this.panelState.hoveredCoMLinkId = null;
     this.mechStateSub?.unsubscribe();
     this.subscriptions.unsubscribe();
   }
@@ -644,7 +684,7 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
 
   /** Point at the thing on the grid these numbers describe, while asked to. */
   highlightCoM(on: boolean): void {
-    this.settingsService.previewCoMLinkId = on ? (this.activeSrv.selectedLink?.id ?? null) : null;
+    this.panelState.hoveredCoMLinkId = on && this.shownType === 'Link' ? this.shownLink.id : null;
   }
 
   /**
@@ -672,7 +712,7 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
    * (D14, S11): `Link AA1D`, offering a joint the drawing never shows.
    */
   get selectedBodyLabel(): string {
-    const body = this.activeSrv.selectedLink;
+    const body = this.shownLink;
     return body ? this.mechanismService.bodyLabel(body) : '';
   }
 

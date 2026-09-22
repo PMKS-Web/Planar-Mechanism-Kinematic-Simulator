@@ -1,0 +1,24 @@
+<div class="panelTabs" role="tablist" [attr.aria-label]="label()">
+  @for (option of options(); track $index) {
+    <button
+      #tab
+      type="button"
+      role="tab"
+      class="panelTab"
+      [id]="idPrefix() + '-tab-' + $index"
+      [class.selected]="selected() === $index"
+      [attr.aria-selected]="selected() === $index"
+      [attr.aria-controls]="panelIds()[$index]"
+      [attr.tabindex]="selected() === $index ? 0 : -1"
+      [matTooltip]="tooltips()[$index] || ''"
+      matTooltipShowDelay="400"
+      (click)="select($index)"
+      (keydown)="navigate($event, $index)"
+      (mouseenter)="hoveredChange.emit($index)"
+      (mouseleave)="hoveredChange.emit(null)"
+    >
+      <span class="panelTabLabel">{{ option }}</span>
+      <span class="panelTabIndicator" aria-hidden="true"></span>
+    </button>
+  }
+</div>

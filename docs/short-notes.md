@@ -2078,3 +2078,13 @@ After a second click, `selectedLink` is a primitive absent from the root link ar
   `scaleWithZoom`, but a CSS `stroke-width: 1` stays in model units. Switching from centimeters to
   meters then magnifies each white outline into a large halo. Bind the stroke width through
   `scaleWithZoom(1)` on the SVG circle so it stays about one screen pixel in every unit.
+
+### Panel tabs and the canvas CoM mark (2026-09-22)
+
+`AnalysisPanelStateService` keeps Rotation/Center of mass as session view state. Its CoM
+preview reads the current mode and held graph subject at draw time, through lazy service
+lookups. Registering/removing a panel-owned preview callback in `ngOnInit`/`ngOnDestroy`
+changes `NewGridComponent.showsCoM` after the grid can already be checked, producing NG0100
+when leaving analysis. Keep that predicate independent of panel creation/destruction.
+Tabs also consume their navigation keys before the global canvas nudge shortcuts; otherwise
+Left/Right changes the tab and moves the selected mechanism in the same keypress.

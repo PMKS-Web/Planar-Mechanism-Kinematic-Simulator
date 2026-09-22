@@ -64,7 +64,7 @@ const shot = (name) =>
 async function forceRowTitles() {
   return page.evaluate(() => {
     const panel = document.querySelector('app-analysis-panel');
-    if (!panel || !/Force analysis type/i.test(panel.innerText)) return null;
+    if (!panel?.querySelector('[role=tablist][aria-label="Force analysis type"]')) return null;
     return (
       [...panel.querySelectorAll('app-analysis-graph-section .graphTitle')]
         .map((el) => el.innerText.replace(/help_outline/g, '').trim())
@@ -76,12 +76,11 @@ async function forceRowTitles() {
 
 async function toggleLabels() {
   return page.evaluate(() => {
-    const row = document.querySelector('.forceModeRow');
-    const group = row?.querySelector('segmented-block');
+    const group = document.querySelector('app-analysis-panel app-tabs-block');
     if (!group) return null;
     return [...group.querySelectorAll('button')].map((el) => ({
       text: el.innerText.trim(),
-      checked: el.classList.contains('chosen'),
+      checked: el.getAttribute('aria-selected') === 'true',
     }));
   });
 }
@@ -164,7 +163,7 @@ async function selectAndAnalyze(selector, index) {
 async function expandRow(text) {
   const row = page.locator('app-analysis-graph-section .graphHeader', { hasText: text }).first();
   await row.scrollIntoViewIfNeeded();
-  await row.click();
+  if ((await row.getAttribute('aria-expanded')) !== 'true') await row.click();
   await page.waitForTimeout(1500);
 }
 
@@ -235,10 +234,7 @@ try {
   );
 
   // Flip the shared setting to dynamic from the joint side.
-  await page
-    .locator('.forceModeRow segmented-block button', { hasText: 'In-motion' })
-    .first()
-    .click();
+  await page.getByRole('tab', { name: 'In-motion', exact: true }).first().click();
   await page.waitForTimeout(1500);
   await shot('03-joint-dynamic.png');
   const afterFlip = await toggleLabels();
@@ -280,7 +276,7 @@ try {
   );
 
   // Flip back from the link side and confirm the joint side follows.
-  await page.locator('.forceModeRow segmented-block button', { hasText: 'Static' }).first().click();
+  await page.getByRole('tab', { name: 'Static', exact: true }).first().click();
   await page.waitForTimeout(1200);
   await selectAndAnalyze('#jointHolder svg', 1);
   const backOnJoint = await toggleLabels();
@@ -303,4 +299,4 @@ try {
 const failed = checks.filter((c) => !c.ok);
 for (const c of checks) console.log(`${c.ok ? 'PASS' : 'FAIL'}  ${c.name}`);
 console.log(JSON.stringify({ passed: checks.length - failed.length, failed, issues }, null, 2));
-process.exit(failed.length ? 1 : 0);
+process.exit(failed.length || issues.length ? 1 : 0);
