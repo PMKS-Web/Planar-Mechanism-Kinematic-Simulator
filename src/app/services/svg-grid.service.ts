@@ -1,3 +1,4 @@
+import { proportionalObjectScale } from '../model/proportional-object-scale';
 import { afterNextRender, DestroyRef, Injectable, Injector, inject } from '@angular/core';
 // TS 6 no longer allows calling/constructing `import * as` namespaces of
 // CommonJS (export =) modules - use default imports for these two.
@@ -100,6 +101,8 @@ const DRAWING_LAYERS = [
   'linkHolder',
   'sliderHolder',
   'jointHolder',
+  'jointTagHolder',
+  'linkTagHolder',
   'pathsHolder',
   'forcesHolder',
   // Synthesis is drawing too: in that mode the positions being designed for are
@@ -197,13 +200,15 @@ export class SvgGridService {
 
   private panLockOut: boolean = false;
 
-  // The same visual range as the old 3300/0.04, divided by MODEL_SCALE: model
-  // coordinates are 200x larger, so the matrix is 200x smaller for the same
-  // picture. Keeping MAX_ZOOM at ~16.5 is the guarantee that the compositor's
-  // white-streak failure regime (matrix scale ≳450; verified clean at ≤11.3)
-  // can never be zoomed into again.
-  private MAX_ZOOM: number = 16.5;
-  private MIN_ZOOM: number = 0.0002;
+  // Unit conversion changes model coordinates, so it must change the allowed
+  // zoom by the reciprocal factor too. Otherwise Fit clamps an SI drawing to
+  // one hundredth of its intended screen size.
+  private get MAX_ZOOM(): number {
+    return 16.5 * LENGTH_IN_CM[this.settingsService.lengthUnit.value];
+  }
+  private get MIN_ZOOM(): number {
+    return 0.0002 * LENGTH_IN_CM[this.settingsService.lengthUnit.value];
+  }
 
   setNewElement(root: HTMLElement) {
     var eventsHandler;
@@ -718,6 +723,7 @@ export class SvgGridService {
     // every other message in the app, which meant they were silent for the
     // first twenty seconds of a session and for twenty seconds after any
     // unrelated message: the whole of the time somebody is finding their zoom.
+    if (this.movingTheViewOurselves) return;
     const drawnAt = this.getZoom() * this.settingsService.objectScale;
     // Both fixes are in this service, and the message used to name neither of
     // the buttons that hold them without offering either. Which one somebody
@@ -725,7 +731,7 @@ export class SvgGridService {
     // and resizes the drawing to suit it; "Reset view" keeps the drawing and
     // moves the view back to it.
     const fixes = [
-      { label: 'Auto-size objects', run: () => this.updateObjectScale(true) },
+      { label: 'Auto-size Objects', run: () => this.updateObjectScale(true) },
       { label: 'Fit to view', run: () => this.scaleToFitLinkage() },
     ];
     if (drawnAt < 5) {
@@ -1111,16 +1117,19 @@ export class SvgGridService {
     if (this.injector.get(MechanismService).joints.length === 0) return undefined;
     const scale = this.settingsService.objectScale;
     if (Math.abs(scale - DEFAULT_OBJECT_SCALE) > 0.5) return undefined;
-    const suits = MARK_FRACTION * Math.max(drawn.width, drawn.height);
+    const suits =
+      proportionalObjectScale(this.injector.get(MechanismService).links) ??
+      MARK_FRACTION * Math.max(drawn.width, drawn.height);
     if (!(suits > 0) || !Number.isFinite(suits)) return undefined;
     const ratio = suits / scale;
     if (ratio < SCALE_SLACK && ratio > 1 / SCALE_SLACK) return undefined;
-    return Number(suits.toFixed(2));
+    return suits;
   }
 
   private adoptScaleForDrawing(drawn: Rect): void {
     const suits = this.scaleSuitedTo(drawn);
     if (suits === undefined) return;
+    SettingsService.preserveCylinderGeometry();
     SettingsService._objectScale.next(suits);
     // A link's outline is computed once and cached, and its width is a fraction
     // of this scale, so a route that changes it has to say so.
@@ -1550,7 +1559,8 @@ export class SvgGridService {
    */
   updateObjectScale(pressed = false) {
     SettingsService.objectScaleChosen = true;
-    const wanted = Number((MARK_TARGET_PX / this.getZoom()).toFixed(2));
+    const mechanism = this.injector.get(MechanismService);
+    const wanted = proportionalObjectScale(mechanism.links) ?? MARK_TARGET_PX / this.getZoom();
     // Already there, which happens whenever it is pressed twice or pressed at
     // the zoom it was last used at. Silently doing nothing is the one outcome a
     // button must not have: with no drawing to compare against, a reader cannot
@@ -1563,10 +1573,11 @@ export class SvgGridService {
       // number would be quoting a number they have never seen.
       this.notify.success(
         'scale.already',
-        `Joints and blocks are already sized for this zoom (${(wanted / MODEL_SCALE).toFixed(2)}).`
+        `Joints and blocks are already sized for this drawing (${(wanted / MODEL_SCALE).toFixed(2)}).`
       );
       return;
     }
+    SettingsService.preserveCylinderGeometry();
     SettingsService._objectScale.next(wanted);
     // A link's outline is computed once and cached, and its width is a fraction
     // of this scale -- so a route that changes the scale has to say so, or the
@@ -1574,5 +1585,7 @@ export class SvgGridService {
     // around them changes size. The Settings panel does this from its own
     // field; this is the other way in, from the warning that offers it as a fix.
     this.injector.get(MechanismService).applyObjectScaleChange();
+    if (pressed) this.injector.get(SaveHistoryService).save();
+    else this.injector.get(SaveHistoryService).restate();
   }
 }

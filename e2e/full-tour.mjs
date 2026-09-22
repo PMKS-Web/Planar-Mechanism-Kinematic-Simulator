@@ -311,7 +311,7 @@ await safeStep('left panels edit analysis synthesis', async () => {
 });
 
 await safeStep('settings and equations panels', async () => {
-  for (const name of ['Settings', 'Help and feedback']) {
+  for (const name of ['Settings', 'Help and Feedback']) {
     await clickProjectMenu(page, name);
     await page.waitForTimeout(700);
     await shot(page, `05-right-${name.toLowerCase().replace(/[^a-z]+/g, '-')}.png`);

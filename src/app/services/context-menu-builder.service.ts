@@ -671,7 +671,7 @@ export class ContextMenuBuilderService {
    */
   private traceRow(joint: RealJoint | RealLink): MenuRow {
     return new MenuRow({
-      label: 'Trace path',
+      label: 'Trace Path',
       icon: 'show_path',
       kind: 'toggle',
       checked:

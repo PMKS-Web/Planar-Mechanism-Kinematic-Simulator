@@ -1,3 +1,4 @@
+import { linkSkeletonPath } from '../../model/proportional-object-scale';
 import { forceInk } from '../../model/force-ink';
 import { ForceMarkComponent } from '../force-mark/force-mark.component';
 import { barLabelAxis } from '../../model/bar-label-axis';
@@ -218,6 +219,7 @@ const SELECTION_RING_PX = 3;
 })
 export class NewGridComponent implements OnDestroy {
   readonly Math = Math;
+  readonly linkSkeletonPath = linkSkeletonPath;
   svgGrid = inject(SvgGridService);
   mechanismSrv = inject(MechanismService);
   protected linkTraces = inject(LinkTraceService);
@@ -987,7 +989,7 @@ export class NewGridComponent implements OnDestroy {
       // Where the click will put it, not where the pointer is: the rod's far
       // end is a joint, and it lands on the grid like every other.
       this.creationLanding(),
-      this.settings.objectScale
+      SettingsService.cylinderObjectScale
     );
     const r = 0.15 * this.settings.objectScale;
     return {
@@ -1001,8 +1003,8 @@ export class NewGridComponent implements OnDestroy {
         -creation.sealFromMount,
         creation.barrelLength - creation.sealFromMount
       ),
-      rod: rodBodyPath(r, creation.rodLength, cylinderHeadHalf(creation.barrelLength, r)),
-      block: cylinderBlockPath(r, cylinderHeadHalf(creation.barrelLength, r)),
+      rod: rodBodyPath(r, creation.rodLength, cylinderHeadHalf(creation.barrelLength)),
+      block: cylinderBlockPath(r, cylinderHeadHalf(creation.barrelLength)),
       // The color the barrel will be handed when the click builds it, which
       // the rod then wears too.
       fill: this.nextLinkColor,
@@ -2778,7 +2780,7 @@ export class NewGridComponent implements OnDestroy {
   dragArcs(): string[] {
     const dragging =
       this.dragState.joint === jointStates.dragging || this.dragState.link === linkStates.dragging;
-    if (!dragging) return [];
+    if (!dragging || !this.dragState.travelled) return [];
     const joints =
       this.dragState.link === linkStates.dragging
         ? (this.activeObjService.selectedLink?.joints ?? [])
@@ -5019,7 +5021,7 @@ export class NewGridComponent implements OnDestroy {
       this.mechanismSrv.cylinderAt(picked.objType === 'Joint' ? picked.selectedJoint : undefined) ??
       this.mechanismSrv.cylinderOfBar(picked.selectedLink);
     if (!sealed) return undefined;
-    const r = 0.15 * this.settings.objectScale;
+    const r = 0.15 * SettingsService.cylinderObjectScale;
     const size = cylinderSizeOf(sealed, r);
     if (!(size.stroke > 0)) return undefined;
 
@@ -5295,7 +5297,7 @@ export class NewGridComponent implements OnDestroy {
    * widest edge, on whichever side of the part is nearer the top of the screen.
    */
   jointTagAnchor(joint: Joint): { x: number; y: number } {
-    const scale = this.settings.objectScale;
+    const scale = Math.max(this.settings.objectScale, this.svgGrid.scaleWithZoom(22));
     const sealed = this.cylinderSealedAt(joint);
     if (!sealed) return { x: joint.x - scale * 0.3, y: -joint.y - scale * 0.5 };
     const off = cylinderLabelOffset(
@@ -5467,11 +5469,11 @@ export class NewGridComponent implements OnDestroy {
   /**
    * How big a name on the canvas is drawn, for joints, links and forces alike.
    *
-   * A fraction of the object scale rather than a pixel size, so a name keeps
-   * its proportion to the part it names at every zoom level.
+   * A fraction of Object Size with an 11px readability floor. Compact drawings
+   * keep legible labels rather than shrinking names into specks.
    */
   get tagFontSize(): number {
-    return this.settings.objectScale * 0.2;
+    return Math.max(this.settings.objectScale * 0.2, this.svgGrid.scaleWithZoom(11));
   }
 
   /**

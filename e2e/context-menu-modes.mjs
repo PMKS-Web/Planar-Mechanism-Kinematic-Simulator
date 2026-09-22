@@ -134,13 +134,13 @@ for (const mode of ['Edit', 'Kinematic Analysis', 'Force Analysis']) {
   check(
     `${mode}: start-only edits disabled at paused pose`,
     pausedRows
-      .filter((r) => !/Vectors$|^Trace path$|^Locked$|^Split Joint$/.test(r.label))
+      .filter((r) => !/Vectors$|^Trace Path$|^Locked$|^Split Joint$/.test(r.label))
       .every((r) => r.disabled),
     pausedRows
   );
   check(
     `${mode}: trace path enabled at paused pose`,
-    !pausedRows.find((r) => r.label === 'Trace path').disabled
+    !pausedRows.find((r) => r.label === 'Trace Path').disabled
   );
   // Joint Type answers here exactly what it answers in the Edit panel, because
   // it is the same named control: `JointTypeService.set` stages through
@@ -159,7 +159,7 @@ for (const mode of ['Edit', 'Kinematic Analysis', 'Force Analysis']) {
     pausedChoice
   );
   await page.screenshot({ path: `${OUT}/${mode.split(' ')[0]}-paused-menu.png` });
-  await menuRow('Trace path').click();
+  await menuRow('Trace Path').click();
   const after = await snapshot();
   check(
     `${mode}: trace toggle preserves paused pose, clock, and original start`,
@@ -200,7 +200,7 @@ for (const mode of ['Edit', 'Kinematic Analysis', 'Force Analysis']) {
   check(
     `${mode}: start-only edits stay disabled after grab-to-pause`,
     playingRows
-      .filter((r) => !/Vectors$|^Trace path$|^Locked$|^Split Joint$/.test(r.label))
+      .filter((r) => !/Vectors$|^Trace Path$|^Locked$|^Split Joint$/.test(r.label))
       .every((r) => r.disabled),
     playingRows
   );

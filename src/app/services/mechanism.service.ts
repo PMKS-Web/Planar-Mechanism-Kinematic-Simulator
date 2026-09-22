@@ -318,10 +318,15 @@ export class MechanismService {
    * the links from scratch anyway; the settings panel is the one that does not.
    */
   applyObjectScaleChange(): void {
+    this.refreshSkinSilhouettes();
     this.links.forEach((link) => {
-      if (link instanceof RealLink) link.reComputeDPath();
+      if (link instanceof RealLink) {
+        link.subset.forEach((part) => {
+          if (part instanceof RealLink) part.reComputeDPath();
+        });
+        link.reComputeDPath();
+      }
     });
-    this.updateMechanism();
   }
 
   // delete mechanism and reset
@@ -1628,7 +1633,7 @@ export class MechanismService {
 
   /** True where anything at all is switched on, for the canvas's own guard. */
   get anyVectorTrace(): boolean {
-    return this.vectorTraceKeys.size > 0;
+    return this.vectorTraceKeys.size > 0 && this.vectorTracePaths().length > 0;
   }
 
   private vectorKey(part: Joint | Link, quantity: VectorQuantity): string {
@@ -4366,7 +4371,7 @@ export class MechanismService {
       return `Slider ${names} has nothing to slide along. Drag it onto a link to cut a slot, or ground it to fix its direction.`;
     }
     if (!this.joints.some((joint) => joint instanceof RealJoint && joint.input)) {
-      return 'No joint is driven. Right-click a joint and switch on Driven Input to say what moves the mechanism.';
+      return 'Set one joint as an input to say what moves the mechanism.';
     }
     // A driven joint the actuator record cannot describe -- most often because
     // an edit added a third body to it long after Driven was switched on. The
@@ -4393,11 +4398,11 @@ export class MechanismService {
     if (noTravel) {
       const cylinder = this.sealedStructures().find((found) => found.seal.id === noTravel);
       const name = cylinder ? this.cylinderName(cylinder) : noTravel;
-      return `Cylinder ${name} has no travel: its barrel is too short to slide in at all. Lengthen the cylinder, or reduce Object Size — a larger size draws everything on the rod bigger without lengthening the barrel.`;
+      return `Cylinder ${name} has no travel: its barrel is too short to slide in at all. Increase Barrel Length to provide room for the piston to travel.`;
     }
     const stuck = PositionSolver.unsolvableJoints;
     if (stuck.length > 0) {
-      return `These joints cannot be placed from the ones around them: ${stuck.join(', ')}. They may need another link, or a driven joint nearer to them.`;
+      return `These joints cannot be placed from the ones around them: ${stuck.join(', ')}. They may need another link, or an input joint nearer to them.`;
     }
     return 'This mechanism reached a position it could not solve from the one before it \u2014 usually a toggle, where the mechanism locks.';
   }
@@ -4458,7 +4463,7 @@ export class MechanismService {
       const frames = solved.joints.length;
       if (frames < 2) continue;
 
-      const r = 0.15 * SettingsService.objectScale;
+      const r = 0.15 * SettingsService.cylinderObjectScale;
       const barrelLength = getDistance(cylinder.mountA, cylinder.inner);
       const travel = cylinderStrokeAlong(barrelLength, r);
       if (!travel.usable) continue;
@@ -4670,7 +4675,7 @@ export class MechanismService {
     // the grounds that a third body inside one rigid statement is not a state
     // the model has an answer for; it has one now, and the answer is a
     // compound with the barrel as a leaf.
-    const creation = cylinderCreationLayout(start, end, this.settingsService.objectScale);
+    const creation = cylinderCreationLayout(start, end, SettingsService.cylinderObjectScale);
 
     // A cylinder is four joints and shows three of them. The two ends and the
     // seal are what a reader points at, names and reads back out of a panel, so

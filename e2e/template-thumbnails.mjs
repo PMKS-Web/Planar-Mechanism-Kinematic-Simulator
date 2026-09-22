@@ -39,6 +39,10 @@ const HEIGHT = 520;
 
 /** Template id -> asset basename, matching template-catalog.ts. */
 const FILENAMES = {
+  Hydraulic_Crosshead: 'hydraulic-crosshead',
+  Offset_Mount_Hatch: 'offset-mount-hatch',
+  Reciprocating_Saw: 'reciprocating-saw',
+  Slotted_Tool_Drive: 'slotted-tool-drive',
   '4-Bar': 'four-bar',
   Slider_Crank: 'slider-crank',
   Watt_I: 'watt-i',

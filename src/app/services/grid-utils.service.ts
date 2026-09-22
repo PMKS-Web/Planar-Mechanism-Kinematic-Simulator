@@ -985,7 +985,7 @@ export class GridUtilsService {
       draggingBarrelMount ? wanted : sealed.mountA,
       draggingBarrelMount ? sealed.mountB : wanted,
       cylinderLengthsOf(sealed),
-      0.15 * SettingsService.objectScale,
+      0.15 * SettingsService.cylinderObjectScale,
       // The anchor is the mount NOT being dragged: it stays exactly still,
       // and the dragged mount is what the span floor stops.
       draggingBarrelMount ? 'rod' : 'barrel',
@@ -1178,7 +1178,7 @@ export class GridUtilsService {
     // number being typed is a hold on the new number.
     const own = new Set([sealed.barrel.id, sealed.rod.id]);
     return {
-      r: 0.15 * SettingsService.objectScale,
+      r: 0.15 * SettingsService.cylinderObjectScale,
       isGrounded: (joint) => joint instanceof RealJoint && joint.ground,
       // The same set `planEdit` judges the finished plan against, asked one
       // rung earlier so the ladder can try the *other* end instead of walking
@@ -1330,7 +1330,7 @@ export class GridUtilsService {
           mountA,
           mountB,
           carried.lengths,
-          0.15 * SettingsService.objectScale,
+          0.15 * SettingsService.cylinderObjectScale,
           carried.holds
         );
       },

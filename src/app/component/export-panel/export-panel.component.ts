@@ -366,7 +366,7 @@ export class ExportPanelComponent implements OnInit, OnDestroy {
    */
   canGoOn(): boolean {
     if (this.flow.step === 'parts') return this.flow.selectedParts().length > 0;
-    if (this.flow.step === 'file') return this.flow.canExport();
+    if (this.flow.step === 'file' || this.flow.nextStep() === 'file') return this.flow.canExport();
     return true;
   }
 
