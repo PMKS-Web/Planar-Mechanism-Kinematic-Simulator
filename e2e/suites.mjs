@@ -30,6 +30,7 @@ const BOTH = ['gate', 'nightly'];
 const NIGHTLY = ['nightly'];
 
 export const SUITES = [
+  { name: 'bug-fixes-2', seconds: 90, lanes: NIGHTLY },
   { name: 'analysis-audit', seconds: 224, lanes: NIGHTLY },
   { name: 'analysis-drawing-switches', seconds: 11, lanes: BOTH },
   { name: 'analysis-editing', seconds: 42, lanes: NIGHTLY },

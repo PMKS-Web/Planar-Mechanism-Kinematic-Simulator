@@ -38,7 +38,7 @@ export type ShortcutId =
 export interface Shortcut {
   id: ShortcutId;
   /** The heading this falls under wherever the whole set is listed. */
-  section: 'Modes' | 'Playback' | 'View' | 'Editing' | 'General';
+  section: 'Modes' | 'Animation' | 'View' | 'Editing' | 'General';
   /** What pressing it does, in the same words the control it doubles uses. */
   label: string;
   /** The keys as a reader should see them, already in this platform's signs. */
@@ -149,36 +149,36 @@ export class KeyboardShortcutsService {
 
     {
       id: 'playback.toggle',
-      section: 'Playback',
+      section: 'Animation',
       label: 'Play / Pause',
       keys: 'Space',
       match: [' ', 'spacebar'],
     },
     {
       id: 'playback.stop',
-      section: 'Playback',
+      section: 'Animation',
       label: 'Stop and go back to the start',
       keys: 'R',
       match: ['r'],
     },
     {
       id: 'playback.back',
-      section: 'Playback',
+      section: 'Animation',
       label: 'Step back one frame',
       keys: '←',
       match: ['arrowleft'],
     },
     {
       id: 'playback.forward',
-      section: 'Playback',
+      section: 'Animation',
       label: 'Step forward one frame',
       keys: '→',
       match: ['arrowright'],
     },
     {
       id: 'playback.speed',
-      section: 'Playback',
-      label: 'Cycle playback speed',
+      section: 'Animation',
+      label: 'Cycle Animation Speed',
       keys: 'S',
       match: ['s'],
     },

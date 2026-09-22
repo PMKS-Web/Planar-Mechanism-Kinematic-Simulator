@@ -39,7 +39,7 @@ describe('why a mechanism will not run', () => {
     expect(reason).toContain('one input');
   });
 
-  it('says so when nothing is driven', () => {
+  it('explains how to assign the missing input', () => {
     const a = new RevJoint('A', 0, 0, false, true);
     const b = new RevJoint('B', 1, 0);
     const service = serviceWith([a, b], [bar('AB', [a, b])]);
@@ -47,7 +47,7 @@ describe('why a mechanism will not run', () => {
       { dof: 1, isMechanismValid: () => false } as never,
     ];
 
-    expect(service.invalidReason()).toContain('No joint is driven');
+    expect(service.invalidReason()).toContain('Set one joint as an input');
   });
 
   it('names the slider that has nowhere to slide', () => {

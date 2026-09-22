@@ -49,9 +49,9 @@ const ctx = await chromium.launchPersistentContext('/tmp/pmks-chrome-sweep-int',
 });
 const page = await ctx.newPage();
 let errors = [];
-page.on('pageerror', (error) => errors.push(String(error).split('\n')[0]));
+page.on('pageerror', (error) => errors.push(error.stack ?? String(error)));
 page.on('console', (message) => {
-  if (message.type() === 'error') errors.push(message.text().split('\n')[0]);
+  if (message.type() === 'error') errors.push(message.text());
 });
 
 /**

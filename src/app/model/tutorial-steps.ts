@@ -285,7 +285,7 @@ export function copyFor(progress: TutorialProgress, chrome: TutorialChrome = {})
     }
     case 4:
       return {
-        title: 'Drive one of the joints',
+        title: 'Set a joint as the input',
         body: `${g.Open} joint ${target}, the ringed one, and switch on Driven Input. The input is the joint that drives the mechanism. A mechanism needs exactly one.`,
       };
     default:

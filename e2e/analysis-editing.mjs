@@ -159,12 +159,12 @@ await page.screenshot({ path: `${SHOTS}/1-analysis.png` });
 const corner = await page.locator('.historyCard').innerText();
 record(
   'the corner card holds Undo, Redo and Export together',
-  /Undo/.test(corner) && /Redo/.test(corner) && /Export data/.test(corner),
+  /Undo/.test(corner) && /Redo/.test(corner) && /Export Data/.test(corner),
   corner.replace(/\s+/g, ' ')
 );
 record(
   'in that order',
-  corner.replace(/\s+/g, ' ').indexOf('Undo') < corner.replace(/\s+/g, ' ').indexOf('Export data')
+  corner.replace(/\s+/g, ' ').indexOf('Undo') < corner.replace(/\s+/g, ' ').indexOf('Export Data')
 );
 await mode('Edit');
 record(

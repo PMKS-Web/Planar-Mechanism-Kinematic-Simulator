@@ -262,6 +262,8 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
 
 ### Editor interaction rules
 
+- **Object Size is presentation.** Proportional Compact / Normal / Large presets and Lines view live in Settings. Zoom never changes member lengths. Cylinder clearance is preserved separately from visual thickness and travels in URLs/history; see [object sizing](docs/object-sizing.md).
+
 - `NumberDragDirective` lets a reader drag the numeric field’s text label vertically; the value itself retains ordinary text selection and editing. Five pixels changes one step (default 0.1; Shift is ten times finer). Escape cancels, and release commits through the existing field validation as one undo entry.
 - A compound selects as a whole on its first click, then selects the primitive under the next click, including cylinder members. `model/link-pick.ts` owns that choice. Distance to Joints stays in the joint panel: `model/joint-distances.ts` offers only neighbors in the same primitive with three or more joints, excluding cylinder members.
 - New links and cylinders snap their bearing to 15-degree increments unless Option/Alt is held. `placementBearing` serves preview and commit; an eligible existing joint takes precedence and gets the yellow merge ring and merge pulse.

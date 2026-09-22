@@ -1,3 +1,4 @@
+import { LinkTraceService } from '../../services/link-trace.service';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import {
   ChangeDetectionStrategy,
@@ -445,10 +446,14 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
   }
 
   /** Whether the chip is lit: read from the drawing, so a flip made from the menu shows here. */
+  private linkTraces = inject(LinkTraceService);
+
   drawingSwitchIsOn(one: DrawingSwitch): boolean {
     const part = this.selectedPart;
     if (!part) return false;
-    if (one.key === 'traces') return part instanceof RealJoint && part.showCurve === true;
+    if (one.key === 'traces') {
+      return part instanceof RealJoint ? part.showCurve === true : this.linkTraces.isOn(part);
+    }
     return this.mechanismService.isVectorTraceOn(part, one.key);
   }
 

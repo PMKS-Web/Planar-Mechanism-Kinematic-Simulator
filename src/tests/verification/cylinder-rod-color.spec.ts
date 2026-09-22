@@ -9,6 +9,9 @@ import { FIXTURE_GALLERY, fixturePayload } from '../../test-utils/verification/f
 import { buildMechanismFixture } from '../fixtures/mechanism-fixtures';
 
 /**
+ * A rod welded into a larger body uses that body's chosen color. Standalone
+ * rods retain the barrel-color compatibility rule below.
+ *
  * Every cylinder anyone can already open still paints its rod in its barrel's
  * color (decision S15).
  *
@@ -39,7 +42,12 @@ function reading(payload: string): Reading {
   return {
     cylinders: found.length,
     repainted: found
-      .filter((cylinder) => cylinder.rod.ownColor || rodFillOf(cylinder) !== barrelFillOf(cylinder))
+      .filter(
+        (cylinder) =>
+          cylinder.rod.ownColor ||
+          rodFillOf(cylinder) !==
+            (cylinder.rodRoot.subset.length ? cylinder.rodRoot.fill : barrelFillOf(cylinder))
+      )
       .map(
         (cylinder) => `${cylinder.rod.id}: ${rodFillOf(cylinder)} beside ${barrelFillOf(cylinder)}`
       ),
@@ -47,7 +55,7 @@ function reading(payload: string): Reading {
   };
 }
 
-describe("every cylinder in circulation keeps its barrel's color on its rod", () => {
+describe('cylinders keep the authored barrel or welded-body color on their rods', () => {
   for (const [name, payload] of Object.entries(LEGACY_TEMPLATE_PAYLOADS)) {
     it(`${name}, as a release before Stage 1 emitted it`, () => {
       expect(reading(payload).repainted).toEqual([]);

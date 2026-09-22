@@ -280,7 +280,7 @@ try {
   await page.getByRole('button', { name: 'Project menu' }).click();
   check(
     'Export Data is disabled in the narrow hamburger menu without analysis',
-    await page.getByRole('button', { name: /Export data/i, exact: true }).isDisabled()
+    await page.getByRole('button', { name: /Export Data/i, exact: true }).isDisabled()
   );
   await page.screenshot({ path: `${OUT}/narrow-export.png` });
   await page.keyboard.press('Escape');

@@ -63,7 +63,7 @@
              when it happens to be pinned at its ends. That is precisely what
              the first requirement decides, and the two readings of the word
              made the requirement read like a contradiction. -->
-        <collapsible-subsection class="sect" titleLabel="End-effector link" [expanded]="true">
+        <collapsible-subsection class="sect" titleLabel="End-effector Link" [expanded]="true">
           <div class="row">
             <span class="row__label" [numberDrag]="lengthField">Length</span>
             <mat-icon class="label-help" [matTooltip]="help.length" [matTooltipShowDelay]="400">
@@ -78,12 +78,12 @@
                 formControlName="length"
                 #lengthField
                 spellcheck="false"
-                aria-label="End-effector link length"
+                aria-label="End-effector Link length"
               />
             </label>
           </div>
           <div class="row">
-            <span class="row__label">Fixed reference</span>
+            <span class="row__label">Fixed Reference</span>
             <mat-icon class="label-help" [matTooltip]="help.ref" [matTooltipShowDelay]="400">
               help_outline
             </mat-icon>
@@ -121,7 +121,7 @@
                 icon="content_copy"
                 [tooltip]="help.duplicate"
                 [click]="duplicateLast.bind(this)"
-                ariaLabel="Duplicate last position"
+                ariaLabel="Duplicate Last Position"
               ></button-block>
             }
           </ng-container>
@@ -418,7 +418,7 @@
               }
 
               <div class="row">
-                <span class="row__label">Assembly branch</span>
+                <span class="row__label">Assembly Branch</span>
                 <mat-icon class="label-help" [matTooltip]="help.branch" [matTooltipShowDelay]="400">
                   help_outline
                 </mat-icon>
@@ -433,7 +433,7 @@
               </div>
 
               <div class="row">
-                <span class="row__label">Driven from</span>
+                <span class="row__label">Input Joint</span>
                 <mat-icon class="label-help" [matTooltip]="help.pin" [matTooltipShowDelay]="400">
                   help_outline
                 </mat-icon>
@@ -453,7 +453,7 @@
                   [disabled]="!!driverRefusal"
                   (click)="toggleDriver()"
                 >
-                  Add driver (six-bar)
+                  Add Input Link (Six-Bar)
                 </button>
                 <mat-icon class="label-help" [matTooltip]="help.driver" [matTooltipShowDelay]="400">
                   help_outline
@@ -475,7 +475,7 @@
                     [formGroup]="switchForm"
                     _formControl="driver"
                     [disabled]="!!driverRefusal"
-                    ariaLabel="Add driver"
+                    ariaLabel="Add Input Link"
                   ></toggle-block>
                 </span>
               </div>
@@ -516,7 +516,7 @@
                 type="button"
                 class="iconBtn iconBtn--sm"
                 (click)="togglePlay()"
-                [attr.aria-label]="solution.playing ? 'Pause preview' : 'Play preview'"
+                [attr.aria-label]="solution.playing ? 'Pause Preview' : 'Play Preview'"
               >
                 <mat-icon>{{ solution.playing ? 'pause' : 'play_arrow' }}</mat-icon>
               </button>
@@ -524,7 +524,7 @@
                 type="button"
                 class="iconBtn iconBtn--sm"
                 (click)="flipDirection()"
-                aria-label="Reverse direction"
+                aria-label="Reverse Direction"
               >
                 <mat-icon>{{ solution.clockwise ? 'rotate_right' : 'rotate_left' }}</mat-icon>
               </button>
@@ -547,7 +547,7 @@
                 [max]="scrubMax()"
                 [value]="scrubValue()"
                 (input)="setScrub($event)"
-                aria-label="Scrub preview"
+                aria-label="Scrub Preview"
               />
             </div>
           </div>
@@ -574,7 +574,7 @@
             {{ primaryLabel }}
           </button>
           <button type="button" class="danger" (click)="deleteAll()">
-            <mat-icon>delete_outline</mat-icon>Delete all positions
+            <mat-icon>delete_outline</mat-icon>Delete All Positions
           </button>
         </div>
         @if (solution.inserted) {

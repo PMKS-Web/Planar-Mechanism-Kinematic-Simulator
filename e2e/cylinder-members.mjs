@@ -827,8 +827,8 @@ const panelSays = () =>
         off: button.disabled,
         why: document.getElementById(button.getAttribute('aria-describedby') ?? '')?.textContent,
       })),
-      tracer: /Add tracer point/.test(text),
-      force: /Add force/.test(text),
+      tracer: /Add Tracer Point/.test(text),
+      force: /Add Force/.test(text),
       grounded: /Grounded/.test(text),
       travel: /Travel/.test(text),
       input: /Add Input|Remove Input/.test(text),
@@ -852,7 +852,7 @@ check(
   JSON.stringify({ colors: card.colors, disc: card.disc })
 );
 check(
-  'and there is no Add tracer point and no Add force on it at all',
+  'and there is no Add Tracer Point and no Add Force on it at all',
   !card.tracer && !card.force,
   JSON.stringify({ tracer: card.tracer, force: card.force })
 );

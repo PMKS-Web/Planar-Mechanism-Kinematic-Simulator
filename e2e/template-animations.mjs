@@ -1,4 +1,4 @@
-// Hover animations for the mechanism library, taken from the running app.
+// Hover animations and matching first-frame stills for the library, taken from the running app.
 //
 // A card shows a still at rest and fades a loop in under the pointer. The five
 // original templates always had that pair; every mechanism added since had only
@@ -97,7 +97,8 @@ for (const { id, name } of wanted()) {
   // As elements rather than through `tempGridDisable`, which takes the paper
   // group -- and a card's backdrop with it -- down; see template-thumbnails.
   await page.addStyleTag({
-    content: '.gridLineMinor, .gridLineMajor, #axes, #axes_numbers { display: none !important }',
+    content:
+      '.gridLineMinor, .gridLineMajor, #axes, #axes_numbers, #startGhostHolder, #startGhostTags { display: none !important }',
   });
   // Two real pointer events: the first schedules the change detection a value
   // set from outside Angular would not, the second parks the cursor somewhere
@@ -110,6 +111,18 @@ for (const { id, name } of wanted()) {
       ' app-view-controls { display: none !important }',
   });
   await page.waitForTimeout(700);
+
+  // Frame the entire cycle before clipping: a translating cylinder can leave the initial viewport.
+  await page.evaluate(() =>
+    ng.getComponent(document.querySelector('app-new-grid')).svgGrid.scaleToFitFullMotion(false)
+  );
+  await page.mouse.move(5, 5);
+  await page.waitForTimeout(400);
+  // Force endpoints can extend beyond joint-motion bounds. Leave canvas room before clipping.
+  await page.evaluate(() =>
+    ng.getComponent(document.querySelector('app-new-grid')).svgGrid.panZoomObject.zoomBy(0.7)
+  );
+  await page.waitForTimeout(150);
 
   const samples = await page.evaluate(() => {
     const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
@@ -142,8 +155,13 @@ for (const { id, name } of wanted()) {
         '#motorHolder',
         '#motorArrowHolder',
         '#pathsHolder',
+        '#forcesHolder',
+        '#jointTagHolder',
+        '#linkTagHolder',
       ]
-        .map((selector) => document.querySelector(selector)?.getBoundingClientRect())
+        .flatMap((selector) =>
+          [...document.querySelectorAll(selector)].map((node) => node.getBoundingClientRect())
+        )
         .filter((rect) => rect && rect.width > 0 && rect.height > 0);
       return {
         left: Math.min(...rects.map((r) => r.left)),
@@ -214,7 +232,7 @@ for (const { id, name } of wanted()) {
   }
   encoder.finish();
   await new Promise((resolve) => out.on('close', resolve));
-  written.push({ name, from: join(scratch, `${name}.gif`) });
+  written.push({ name, from: join(scratch, `${name}.gif`), still: shots[0] });
   console.log(`${id}: ${FRAMES} frames over ${samples} samples`);
 }
 
@@ -222,7 +240,9 @@ await browser.close();
 
 // Only now: anything written under src/ makes the dev server reload the page
 // mid-run, which lands on the query-stripped URL and decodes an empty grid.
-for (const { name, from } of written) {
+for (const { name, from, still } of written) {
+  // The resting card and the first animation frame share exactly one crop.
+  writeFileSync(join(ASSETS, `${name}.png`), readFileSync(still));
   writeFileSync(join(ASSETS, `${name}.gif`), readFileSync(from));
   console.log(`wrote ${ASSETS}/${name}.gif`);
 }
