@@ -77,6 +77,8 @@ export class AnalysisGraphSectionComponent {
   private samples = inject(AnalysisSampleService);
 
   readonly label = input('');
+  /** Short text in a row whose surrounding heading already names the subject. */
+  readonly rowLabel = input<string>();
   @Input() help = '';
   readonly analysis = input('');
   readonly analysisType = input('');
