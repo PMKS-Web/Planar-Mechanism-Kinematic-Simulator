@@ -17,6 +17,23 @@ describe('Force', () => {
     return new Force('F1', new RealLink('AB', [a, b]), start, end, local, outward, magnitude);
   }
 
+  it('joins the shaft to the triangle base for both arrow senses and rotated forces', () => {
+    for (const angle of [0, Math.PI / 3, -2.3]) {
+      for (const outward of [true, false]) {
+        const force = makeForce(
+          new Coord(0, 0),
+          new Coord(500 * Math.cos(angle), 500 * Math.sin(angle)),
+          false,
+          outward
+        );
+        const points = force.forceArrow.match(/-?\d+(?:\.\d+)?(?:e[+-]?\d+)?/g)!.map(Number);
+        const shaft = force.forceLine.match(/-?\d+(?:\.\d+)?(?:e[+-]?\d+)?/g)!.map(Number);
+        expect(shaft[2]).toBeCloseTo((points[2] + points[4]) / 2);
+        expect(shaft[3]).toBeCloseTo((points[3] + points[5]) / 2);
+      }
+    }
+  });
+
   it('keeps magnitude and direction as the canonical physical vector', () => {
     const force = makeForce();
     expect(force.xComp).toBeCloseTo(10, 12);
@@ -73,9 +90,9 @@ describe('Force', () => {
   });
 
   it('preserves inward arrows, their physical vector and local styling', () => {
-    const force = makeForce(new Coord(0, 0), new Coord(1, 0), true, false, 2);
+    const force = makeForce(new Coord(0, 0), new Coord(100, 0), true, false, 2);
     expect(force.arrowOutward).toBe(false);
-    expect(force.endCoord).toEqual(new Coord(1, 0));
+    expect(force.endCoord).toEqual(new Coord(100, 0));
     expect(Math.abs(force.angleRad)).toBeCloseTo(Math.PI, 12);
     expect(force.xComp).toBeCloseTo(-2, 12);
     expect(force.stroke).toBe('blue');
