@@ -1,3 +1,4 @@
+import { linkArtwork } from '../model/link-artwork';
 import { cylinderJoints } from '../model/cylinder';
 import { pickLink } from '../model/link-pick';
 import { Injectable, Injector, inject } from '@angular/core';
@@ -1679,9 +1680,14 @@ export class GridUtilsService {
 
   pickLinkAt(link: RealLink, selected: RealLink | undefined, event: MouseEvent): RealLink {
     const point = this.svgGrid.screenToModelFromXY(event.clientX, event.clientY);
-    return pickLink(this.mechanismSrv.links, link, selected, (leaf) =>
-      this.isPointInsideLink(point, leaf)
-    );
+    const hit = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    return pickLink(this.mechanismSrv.links, link, selected, (leaf) => {
+      hit.setAttribute(
+        'd',
+        linkArtwork(leaf, this.settings.drawingScale, this.mechanismSrv.sealedStructures())
+      );
+      return hit.isPointInFill(new DOMPoint(point.x, point.y));
+    });
   }
 
   updateLastSelectedSublink(mouseEvent: MouseEvent, clickedObj: RealLink) {

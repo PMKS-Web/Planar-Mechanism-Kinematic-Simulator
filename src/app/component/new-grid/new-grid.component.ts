@@ -1,4 +1,4 @@
-import { linkSkeletonPath } from '../../model/proportional-object-scale';
+import { ObjectDisplayService } from '../../services/object-display.service';
 import { forceInk } from '../../model/force-ink';
 import { ForceMarkComponent } from '../force-mark/force-mark.component';
 import { barLabelAxis } from '../../model/bar-label-axis';
@@ -112,7 +112,8 @@ import {
 } from '../../model/drop-target';
 import { mergedChannels, transformRigidPath } from '../../model/compound-link-path';
 import { GhostBody } from '../../model/mechanism/anchor';
-import { ghostInkOf, ghostPathOf } from '../../model/ghost-paint';
+import { ghostInkOf } from '../../model/ghost-paint';
+import { ghostArtwork } from '../../model/ghost-artwork';
 import {
   Cylinder,
   cylinderCreationLayout,
@@ -219,7 +220,7 @@ const SELECTION_RING_PX = 3;
 })
 export class NewGridComponent implements OnDestroy {
   readonly Math = Math;
-  readonly linkSkeletonPath = linkSkeletonPath;
+  readonly objectDisplay = inject(ObjectDisplayService);
   svgGrid = inject(SvgGridService);
   mechanismSrv = inject(MechanismService);
   protected linkTraces = inject(LinkTraceService);
@@ -991,7 +992,7 @@ export class NewGridComponent implements OnDestroy {
       this.creationLanding(),
       SettingsService.cylinderObjectScale
     );
-    const r = 0.15 * this.settings.objectScale;
+    const r = 0.15 * this.settings.drawingScale;
     return {
       x: creation.seal.x,
       y: creation.seal.y,
@@ -1109,7 +1110,7 @@ export class NewGridComponent implements OnDestroy {
    */
   private jointUnderForceBase(force: Force): RealJoint | undefined {
     if (!this.tabService.isAnalysisMode()) return undefined;
-    const reach = 0.3 * this.settings.objectScale;
+    const reach = 0.3 * this.settings.drawingScale;
     return force.link.joints.find(
       (joint): joint is RealJoint =>
         joint instanceof RealJoint &&
@@ -1830,18 +1831,20 @@ export class NewGridComponent implements OnDestroy {
     const from = this.linkCreateStart;
     if (!this.dragState.isCreatingLink || !from) return undefined;
     const to = this.creationLanding();
-    const half = barHalfWidth(this.settings.objectScale);
+    const half = barHalfWidth(this.settings.drawingScale);
     const span = Math.hypot(to.x - from.x, to.y - from.y);
     // Nothing to point along yet: the first pixel of the gesture would spin a
     // zero-length bar through every angle at once.
     if (span < 1e-6) return undefined;
     return {
-      bar: orientedCapsulePath(
-        { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 },
-        Math.atan2(to.y - from.y, to.x - from.x),
-        span / 2,
-        half
-      ),
+      bar: this.settings.isSchematic
+        ? `M ${from.x} ${from.y} L ${to.x} ${to.y}`
+        : orientedCapsulePath(
+            { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 },
+            Math.atan2(to.y - from.y, to.x - from.x),
+            span / 2,
+            half
+          ),
       from,
       fill: this.nextLinkColor,
     };
@@ -1884,17 +1887,17 @@ export class NewGridComponent implements OnDestroy {
     // The force's own link, not whatever the panel last selected: a force knows
     // what it acts on, and the two can disagree after a click on the body.
     const link = force.link;
-    const anchor = this.gridUtils.forceAnchorAt(link, wanted, this.settings.objectScale);
+    const anchor = this.gridUtils.forceAnchorAt(link, wanted, this.settings.drawingScale);
     let at = anchor.at;
     if (!anchor.snappedTo) {
-      const snapWithin = this.snapSuspended ? 0 : 0.2 * this.settings.objectScale;
+      const snapWithin = this.snapSuspended ? 0 : 0.2 * this.settings.drawingScale;
       at = constrainForceAnchor(link, wanted, snapWithin);
     }
     // A pin several links meet at, if the anchor has come to rest within a
     // margin of one -- whether the hand is over the pin or has pushed past
     // it, where the link's region ends at the pin and the anchor was left
     // standing exactly on it.
-    const margin = 0.3 * this.settings.objectScale;
+    const margin = 0.3 * this.settings.drawingScale;
     const shared =
       anchor.shared ??
       link.joints.find(
@@ -2353,13 +2356,13 @@ export class NewGridComponent implements OnDestroy {
    * alone -- the joint's own cream circle is chip enough behind it.
    */
   lockBadgeShoulder(): ModelPoint {
-    const offset = 0.19 * this.settings.objectScale;
+    const offset = 0.19 * this.settings.drawingScale;
     return { x: offset, y: offset };
   }
 
   /** Center the 24-unit glyph on the badge point, sized to the drawing. */
   lockGlyphTransform(): string {
-    const scale = (0.17 * this.settings.objectScale) / 24;
+    const scale = (0.17 * this.settings.drawingScale) / 24;
     return `scale(${scale}) translate(-12, -13.5)`;
   }
 
@@ -2454,7 +2457,7 @@ export class NewGridComponent implements OnDestroy {
         r: Math.hypot(joint.x - other.x, joint.y - other.y),
       };
     }
-    const reach = 50 * this.settings.objectScale;
+    const reach = 50 * this.settings.drawingScale;
     const dx = Math.cos(bar.angle) * reach;
     const dy = Math.sin(bar.angle) * reach;
     return {
@@ -2557,21 +2560,15 @@ export class NewGridComponent implements OnDestroy {
    * silhouette rather than the bar its two joints describe.
    */
   ghostBodyPath(body: GhostBody): string {
-    // Cut once per body and kept. A ghost the anchor can no longer reach is
-    // *held* -- the same body objects, moved from the pose they were built
-    // at -- while the channels are read from the drawing as it is now, so
-    // cutting them fresh moved the slot by however far the bar had turned
-    // since: a slot drawn across its own ghost. The body's own move is only
-    // right for the channels of the pose it was built at, which is the first
-    // read; that answer is the one that stays with the body.
-    const scale = this.settings.objectScale;
-    const held = this.ghostCuts.get(body);
-    if (held && held.scale === scale) return held.path;
     const link = this.mechanismSrv.links.find((one) => one.id === body.linkId);
-    const cuts = link ? this.channelsCutInto(link) : '';
-    const path = ghostPathOf(body, link, this.mechanismSrv.sealedStructures(), 0.15 * scale, cuts);
-    this.ghostCuts.set(body, { scale, path });
-    return path;
+    return ghostArtwork(
+      body,
+      link,
+      this.mechanismSrv.sealedStructures(),
+      this.settings.drawingScale,
+      this.settings.isSchematic,
+      link ? this.channelsCutInto(link) : ''
+    );
   }
 
   /** The ink the ghost paints a body in: the one the canvas is painting it in. */
@@ -2579,8 +2576,6 @@ export class NewGridComponent implements OnDestroy {
     const link = this.mechanismSrv.links.find((one) => one.id === body.linkId);
     return ghostInkOf(body, link, this.mechanismSrv.sealedStructures());
   }
-
-  private ghostCuts = new WeakMap<GhostBody, { scale: number; path: string }>();
 
   /**
    * Where a force's name goes: beside the arrow, off its centerline.
@@ -2612,7 +2607,7 @@ export class NewGridComponent implements OnDestroy {
     // so the name is planted beside the arrow and stays there through a zoom.
     // Measured in screen pixels it walked along the normal as the zoom
     // changed, which read as the label drifting away from its arrow.
-    const clear = 0.45 * this.settings.objectScale;
+    const clear = 0.45 * this.settings.drawingScale;
     return { x: mx + nx * clear, y: my + ny * clear };
   }
 
@@ -2623,7 +2618,7 @@ export class NewGridComponent implements OnDestroy {
 
   /** Where an angle's label goes: out along the half angle from the first joint. */
   private angleLabelAt(x1: number, y1: number, x2: number, y2: number): { x: number; y: number } {
-    const offSetRadius = SettingsService.objectScale * 2;
+    const offSetRadius = this.settings.drawingScale * 2;
     const midAngle = Math.atan2(y2 - y1, x2 - x1) / 2;
     return { x: x1 + offSetRadius * Math.cos(midAngle), y: y1 + offSetRadius * Math.sin(midAngle) };
   }
@@ -2636,7 +2631,7 @@ export class NewGridComponent implements OnDestroy {
   linkLabelLift(link: Link): number {
     // A bar's name has already moved along the bar; only a body steps up.
     if (this.barAxis(link)) return 0;
-    return this.showsCoM(link) ? -this.settings.objectScale * 0.13 : 0;
+    return this.showsCoM(link) ? -this.settings.drawingScale * 0.13 : 0;
   }
 
   /** The label of the length hover dimension, as the panel spells it. */
@@ -2916,7 +2911,7 @@ export class NewGridComponent implements OnDestroy {
 
   /** How close a dragged joint has to get to another before it will merge. */
   private snapRadius(): number {
-    return this.settings.objectScale * 0.4;
+    return this.settings.drawingScale * 0.4;
   }
 
   /**
@@ -3034,7 +3029,7 @@ export class NewGridComponent implements OnDestroy {
    * does it on the first try.
    */
   private slotReleaseDistance(): number {
-    return 4 * MARK.barHalf * 0.15 * this.settings.objectScale;
+    return 4 * MARK.barHalf * 0.15 * this.settings.drawingScale;
   }
 
   /**
@@ -3154,7 +3149,7 @@ export class NewGridComponent implements OnDestroy {
    * one while the cursor is off in open canvas reads as the bar grabbing at it.
    */
   private slotDropRadius(): number {
-    return MARK.barHalf * 0.15 * this.settings.objectScale;
+    return MARK.barHalf * 0.15 * this.settings.drawingScale;
   }
 
   /**
@@ -4736,7 +4731,7 @@ export class NewGridComponent implements OnDestroy {
   get cylinderList(): CylinderMark[] {
     const revision = this.mechanismSrv.cylinderRevision;
     const pose = this.mechanismSrv.poseRevision;
-    const scale = this.settings.objectScale;
+    const scale = this.settings.drawingScale;
     const { forward, paint } = this.drawingDigest();
     const cache = this.cylinderListCache;
     if (
@@ -4967,7 +4962,7 @@ export class NewGridComponent implements OnDestroy {
   /** End caps like the length overlay's: short bars across the line. */
   comMeasureCaps(m: NonNullable<NewGridComponent['comMeasure']>): string {
     const { from, to } = this.comMeasureLine(m);
-    const t = SettingsService.objectScale / 7;
+    const t = this.settings.drawingScale / 7;
     return m.axis === 'x'
       ? `M${from.x} ${from.y - t} L${from.x} ${from.y + t} M${to.x} ${to.y - t} L${to.x} ${to.y + t}`
       : `M${from.x - t} ${from.y} L${from.x + t} ${from.y} M${to.x - t} ${to.y} L${to.x + t} ${to.y}`;
@@ -5067,7 +5062,7 @@ export class NewGridComponent implements OnDestroy {
     // Clear of the block, which is itself about 0.58 object scales across the
     // joint: drawn any smaller the whole guide hides underneath the part it is
     // describing, which is how the first cut of it looked.
-    const radius = 1.8 * this.settings.objectScale;
+    const radius = 1.8 * this.settings.drawingScale;
     const angle = slider.slotAngle;
     const at = new Coord(slider.x, slider.y);
     const axis = new Coord(at.x + radius, at.y);
@@ -5087,7 +5082,7 @@ export class NewGridComponent implements OnDestroy {
       `A ${arcRadius} ${arcRadius} 0 0 ${sweepFlag} ${arcEnd.x} ${arcEnd.y}`;
 
     const halfway = swept / 2;
-    const labelRadius = arcRadius + 0.16 * this.settings.objectScale;
+    const labelRadius = arcRadius + 0.16 * this.settings.drawingScale;
     return {
       at,
       axis,
@@ -5117,7 +5112,7 @@ export class NewGridComponent implements OnDestroy {
     const dx = range.to.x - range.from.x;
     const dy = range.to.y - range.from.y;
     const length = Math.hypot(dx, dy) || 1;
-    const half = 0.12 * this.settings.objectScale;
+    const half = 0.12 * this.settings.drawingScale;
     const nx = (-dy / length) * half;
     const ny = (dx / length) * half;
     return [range.from, range.to].map((end) => ({
@@ -5250,12 +5245,12 @@ export class NewGridComponent implements OnDestroy {
    * can disagree about.
    */
   get groundLineWidth(): number {
-    return GROUND_STROKE.rail * 0.15 * this.settings.objectScale;
+    return GROUND_STROKE.rail * 0.15 * this.settings.drawingScale;
   }
 
   /** The hatch bars of that same symbol, drawn at 5/157 of its width. */
   get groundHatchWidth(): number {
-    return GROUND_STROKE.hatch * 0.15 * this.settings.objectScale;
+    return GROUND_STROKE.hatch * 0.15 * this.settings.drawingScale;
   }
 
   /**
@@ -5297,7 +5292,7 @@ export class NewGridComponent implements OnDestroy {
    * widest edge, on whichever side of the part is nearer the top of the screen.
    */
   jointTagAnchor(joint: Joint): { x: number; y: number } {
-    const scale = Math.max(this.settings.objectScale, this.svgGrid.scaleWithZoom(22));
+    const scale = Math.max(this.settings.drawingScale, this.svgGrid.scaleWithZoom(22));
     const sealed = this.cylinderSealedAt(joint);
     if (!sealed) return { x: joint.x - scale * 0.3, y: -joint.y - scale * 0.5 };
     const off = cylinderLabelOffset(
@@ -5401,7 +5396,7 @@ export class NewGridComponent implements OnDestroy {
    */
   slideMarkOn(joint: Joint): SlideMarkDraw | undefined {
     return this.sliderMarks.slideMarkFor(joint, this.sliderMarkList, this.cylinderList, {
-      r: 0.15 * this.settings.objectScale,
+      r: 0.15 * this.settings.drawingScale,
       ring: this.selectionRingWidth(),
     });
   }
@@ -5473,7 +5468,7 @@ export class NewGridComponent implements OnDestroy {
    * keep legible labels rather than shrinking names into specks.
    */
   get tagFontSize(): number {
-    return Math.max(this.settings.objectScale * 0.2, this.svgGrid.scaleWithZoom(11));
+    return Math.max(this.settings.drawingScale * 0.2, this.svgGrid.scaleWithZoom(11));
   }
 
   /**
@@ -5620,7 +5615,7 @@ export class NewGridComponent implements OnDestroy {
 
   /** How far from the center anything must sit to clear the center-of-mass mark. */
   private centerClearance(): number {
-    return 0.16 * this.settings.objectScale + this.svgGrid.scaleWithZoom(4);
+    return 0.16 * this.settings.drawingScale + this.svgGrid.scaleWithZoom(4);
   }
 
   /**
@@ -5725,7 +5720,7 @@ export class NewGridComponent implements OnDestroy {
     // gray whatever color it was given, so its name is read against that gray
     // rather than against the color it no longer wears. A dark link's white
     // name went invisible the moment the body went gray under it.
-    if (this.mechanismSrv.isPartInert(link)) return 'black';
+    if (this.settings.isSchematic || this.mechanismSrv.isPartInert(link)) return 'black';
     const fill = (link as { fill?: string }).fill ?? '#ffffff';
     return luminanceOf(fill) > INK_FLIPS_AT ? 'black' : 'white';
   }
@@ -5783,13 +5778,13 @@ export class NewGridComponent implements OnDestroy {
    * so the two stay the same weight and the same placement.
    */
   get motorArrowBox(): { size: number; x: number; y: number } {
-    const box = this.settings.objectScale * 1.2;
+    const box = this.settings.drawingScale * 1.2;
     return { size: box, x: -0.505 * box, y: -0.435 * box };
   }
 
   /** The motor's case in its own frame, for the black layer beneath the links. */
   get drivenPinCase(): string {
-    return motorBodyPath(0.15 * this.settings.objectScale);
+    return motorBodyPath(0.15 * this.settings.drawingScale);
   }
 
   /** The unioned outline, per pose, so the clipping is not redone every frame. */
@@ -5812,7 +5807,7 @@ export class NewGridComponent implements OnDestroy {
    */
   private outlineWithMotor(link: Link): string {
     const pose = this.mechanismSrv.poseRevision;
-    const scale = this.settings.objectScale;
+    const scale = this.settings.drawingScale;
     if (this.motorUnionCache?.pose !== pose || this.motorUnionCache.scale !== scale) {
       // The motors are re-derived once per rebuild rather than per link: the
       // getter walks every joint and resolves an actuator for each driven one,
@@ -5823,7 +5818,7 @@ export class NewGridComponent implements OnDestroy {
     if (cached !== undefined) return cached;
 
     // Read on the miss only: on a hit the fused path already holds it.
-    const outline = String(this.mechanismSrv.getLinkProp(link, 'd') ?? '');
+    const outline = this.objectDisplay.path(link);
     const r = 0.15 * scale;
     const cases = this.motorUnionCache.motors
       .filter((motor) => motor.bodyId === link.id)
@@ -5965,7 +5960,7 @@ export class NewGridComponent implements OnDestroy {
   private previewChannelOn(link: Link): string | undefined {
     const slot = this.slotCandidate;
     if (!slot || slot.carrier.id !== link.id) return undefined;
-    const r = 0.15 * this.settings.objectScale;
+    const r = 0.15 * this.settings.drawingScale;
     const separation = Math.hypot(slot.b.x - slot.a.x, slot.b.y - slot.a.y);
     return orientedCapsulePath(
       { x: (slot.a.x + slot.b.x) / 2, y: (slot.a.y + slot.b.y) / 2 },
@@ -5983,7 +5978,7 @@ export class NewGridComponent implements OnDestroy {
    * that a weld removes a freedom. One marker, one size, everywhere.
    */
   get weldMarkerPath(): string {
-    return plusPath(0.15 * this.settings.objectScale);
+    return plusPath(0.15 * this.settings.drawingScale);
   }
 
   /**
@@ -6035,7 +6030,7 @@ export class NewGridComponent implements OnDestroy {
     const pose = m.poseRevision;
     const solve = m.solveRevision;
     const cylinders = m.cylinderRevision;
-    const scale = this.settings.objectScale;
+    const scale = this.settings.drawingScale;
     // A recolor bumps none of the mechanism's revisions -- nothing moved and
     // nothing needs solving -- so a memo checked on those alone answered
     // with the old paint, and a cylinder kept its old color until a drag or
@@ -6084,7 +6079,7 @@ export class NewGridComponent implements OnDestroy {
     const key = this.drawingDigest().marksKey;
     if (this.markCache?.key !== key) {
       const joints = this.mechanismSrv.getJoints();
-      const r = 0.15 * this.settings.objectScale;
+      const r = 0.15 * this.settings.drawingScale;
       this.markCache = {
         key,
         marks: this.sliderMarks.marks(joints, r, this.guides(), this.driveForward),
@@ -6372,7 +6367,7 @@ export class NewGridComponent implements OnDestroy {
     //Return the SVG path of the line that is perpendicular to the first line and intersects the first line at the first joint
     //The line will be 1 unit long and will be centered at the first joint
     //It will act was an end cap for the line to represnet the lenght of the line
-    let length = SettingsService.objectScale / 7;
+    let length = this.settings.drawingScale / 7;
 
     let { x1, y1, x2, y2 } = this.findStartAndEndPoints();
 
@@ -6397,7 +6392,7 @@ export class NewGridComponent implements OnDestroy {
 
   getSVGPerpendicularLine2() {
     //Same as getSVGPerpendicularLine1 but for the second joint
-    let length = SettingsService.objectScale / 7;
+    let length = this.settings.drawingScale / 7;
     let { x1, y1, x2, y2 } = this.findStartAndEndPoints();
 
     let m1 = (y2 - y1) / (x2 - x1);
@@ -6439,7 +6434,7 @@ export class NewGridComponent implements OnDestroy {
     //Is has one line that goes along the primary axis of the link starting at the first joint
     //The 2nd line starts at the first joint and is parallel to the x axis
     //The third arc connects the endpoint of the first line to the endpoint of the second line
-    const lengthOfIndicator = SettingsService.objectScale * 2;
+    const lengthOfIndicator = this.settings.drawingScale * 2;
     let { x1, y1, x2, y2 } = this.findStartAndEndPoints();
 
     //Find the slope and the angle of the original line
@@ -6465,7 +6460,7 @@ export class NewGridComponent implements OnDestroy {
     //Is has one line that goes along the primary axis of the link starting at the first joint
     //The 2nd line starts at the first joint and is parallel to the x axis
     //The third arc connects the endpoint of the first line to the endpoint of the second line
-    const lengthOfIndicator = SettingsService.objectScale * 1.8;
+    const lengthOfIndicator = this.settings.drawingScale * 1.8;
     let { x1, y1, x2, y2 } = this.findStartAndEndPoints();
 
     //Find the slope and the angle of the original line
@@ -6523,7 +6518,7 @@ export class NewGridComponent implements OnDestroy {
     //It needs to be at the midpoint of the arc which goes from x axis to the primary axis
     //But with an offset so it's farther from the radius
     //Make sure to use atan2
-    const offSetRadius = SettingsService.objectScale * 2;
+    const offSetRadius = this.settings.drawingScale * 2;
     let { x1, y1, x2, y2 } = this.findStartAndEndPoints();
 
     //Calculate the angle between the x-axis and the primary axis

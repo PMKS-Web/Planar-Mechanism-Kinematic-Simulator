@@ -2078,3 +2078,14 @@ After a second click, `selectedLink` is a primitive absent from the root link ar
   `scaleWithZoom`, but a CSS `stroke-width: 1` stays in model units. Switching from centimeters to
   meters then magnifies each white outline into a large halo. Bind the stroke width through
   `scaleWithZoom(1)` on the SVG circle so it stays about one screen pixel in every unit.
+
+
+### Drawing scale cannot publish into OBJECT_SCALE
+
+`Coord` closeness tests, slot travel and solver fingerprints still read the legacy object scale.
+Automatic zoom limits must use an independent presentation scale. Keep display copies out of
+`RealLink.d`/`outlineLoops()` as well: those paths are CAD data, and solved frames carry deferred
+snapshots of them. Cache display copies by shape and size and rigidly place them for playback.
+`cylinderSkinFrame` must use the physical clearance even when `preservedCylinderScale` is zero;
+falling back to the requested display radius makes old cylinder heads change length during zoom.
+A held start-pose ghost also needs a geometry snapshot before rebuilding it at another display size.

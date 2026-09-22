@@ -149,6 +149,11 @@ export class RealLink extends Link {
   private _subset: Link[] = []; // this is not connectedLinks but links that make up this link
   private _isVisualGeometryCurrent = false;
 
+  /** Display copies use their own width; document geometry retains its authored size. */
+  private get artworkScale(): number {
+    return this.drawingScaleOverride ?? SettingsService.objectScale;
+  }
+
   /**
    * The link this one's artwork is a rigid move of, until someone asks for it.
    *
@@ -475,7 +480,8 @@ export class RealLink extends Link {
     massMoI?: number,
     CoM?: Coord,
     subSet?: Link[],
-    visualSource?: RealLink
+    visualSource?: RealLink,
+    private readonly drawingScaleOverride?: number
   ) {
     super(id, joints, mass);
 
@@ -500,6 +506,7 @@ export class RealLink extends Link {
       this.isCircle = visualSource.isCircle;
     }
     if (
+      this.drawingScaleOverride === undefined &&
       visualSource?.isVisualGeometryCurrent &&
       visualSource.joints.length >= 2 &&
       this.joints.length >= 2
@@ -657,10 +664,7 @@ export class RealLink extends Link {
     this.subset.forEach((link) => {
       if (link instanceof RealLink) link.reComputeDPath();
     });
-    const geometry = buildCompoundPath(
-      this.leafOutlines(true),
-      barHalfWidth(SettingsService.objectScale)
-    );
+    const geometry = buildCompoundPath(this.leafOutlines(true), barHalfWidth(this.artworkScale));
     this.compoundRings = geometry.rings;
     this.externalLines = geometry.rings.flatMap((ring) =>
       ring.slice(0, -1).map((point, index) => {
@@ -708,8 +712,7 @@ export class RealLink extends Link {
         (leaf) => leaf instanceof RealLink && leaf.skinSilhouette !== undefined
       );
       const rings: number[][][] = fusing
-        ? buildCompoundPath(this.leafOutlines(false), barHalfWidth(SettingsService.objectScale))
-            .rings
+        ? buildCompoundPath(this.leafOutlines(false), barHalfWidth(this.artworkScale)).rings
         : this.compoundRings;
       return rings
         .filter((ring) => ring.length > 3)
@@ -722,7 +725,7 @@ export class RealLink extends Link {
         (far, joint) => Math.max(far, getDistance(center, joint)),
         0
       );
-      const radius = reach + barHalfWidth(SettingsService.objectScale);
+      const radius = reach + barHalfWidth(this.artworkScale);
       // A circle, as a polyline: two semicircles, which is how DXF says a
       // round closed profile without leaving the one entity type.
       return [
@@ -813,12 +816,12 @@ export class RealLink extends Link {
    * link is degenerate either way — this is about not making it unreadable as
    * well.
    */
-  private static collapsedOutline(points: number[][]): string | undefined {
+  private collapsedOutline(points: number[][]): string | undefined {
     const xs = points.map((point) => point[0]);
     const ys = points.map((point) => point[1]);
     const spread = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
     if (spread > 1e-9) return undefined;
-    const radius = barHalfWidth(SettingsService.objectScale);
+    const radius = barHalfWidth(this.artworkScale);
     const [x, y] = points[0];
     return (
       `M ${x - radius} ${y} A ${radius} ${radius} 0 0 1 ${x + radius} ${y} ` +
@@ -859,7 +862,7 @@ export class RealLink extends Link {
     const center = this.groundPivot();
     if (center === undefined) return undefined;
     const reach = this.joints.reduce((far, joint) => Math.max(far, getDistance(center, joint)), 0);
-    const radius = reach + barHalfWidth(SettingsService.objectScale);
+    const radius = reach + barHalfWidth(this.artworkScale);
     const { x, y } = center;
     return (
       `M ${x - radius} ${y} A ${radius} ${radius} 0 0 1 ${x + radius} ${y} ` +
@@ -876,7 +879,7 @@ export class RealLink extends Link {
 
     //Convert joints to simple x, y array
     const points = allJoints.map((j) => [j.x, j.y]);
-    const collapsed = RealLink.collapsedOutline(points);
+    const collapsed = this.collapsedOutline(points);
     if (collapsed) {
       this.externalLines = [];
       this.initialExternalLines = [];
@@ -919,7 +922,7 @@ export class RealLink extends Link {
       jointIDtoIndex.set(j.id, ind);
     });
 
-    let width: number = barHalfWidth(SettingsService.objectScale);
+    let width: number = barHalfWidth(this.artworkScale);
     // A joint sitting on the line between two others is not a corner of the
     // outline, however defensible it is as a hull vertex: the offset edge would
     // arrive, turn through a semicircle it does not need, and leave along the
@@ -1249,7 +1252,7 @@ export class RealLink extends Link {
     //This is such a bad way of doing this. Just import the SVG file from the assets folder and use that instead of constructing the exact same thing every time.
     // Small. The mark says where the center of mass is; at the size it was, on
     // a drawing with several links, it was the loudest thing on the canvas.
-    const radius = SettingsService.objectScale * 0.11;
+    const radius = this.artworkScale * 0.11;
     this._CoM_d1 =
       'M' +
       this.CoM.x +

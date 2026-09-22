@@ -1,54 +1,23 @@
-import { SaveHistoryService } from '../../services/save-history.service';
-import { SegmentedComponent } from '../BLOCKS/segmented/segmented.component';
 import { ObjectDisplayService } from '../../services/object-display.service';
 import { EditBannerComponent } from '../BLOCKS/banner/edit-banner.component';
 import { EditPermissionService } from '../../services/edit-permission.service';
 import { EditRefusal, SETTINGS_AT_START_ONLY } from '../../model/edit-permission';
-import { NotificationService } from '../../services/notification.service';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { environment } from '../../../environments/environment';
 import { Component, ChangeDetectionStrategy, OnDestroy, inject } from '@angular/core';
 import { SettingsService, writeStoredFlag } from 'src/app/services/settings.service';
 import { LengthUnit, AngleUnit, ForceUnit, GlobalUnit } from 'src/app/model/utils';
-import { FormBuilder, Validators, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MechanismService } from '../../services/mechanism.service';
 import { SvgGridService } from '../../services/svg-grid.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { Coord } from '../../model/coord';
-import { combineLatest, skip, Subscription } from 'rxjs';
-import { MODEL_SCALE } from '../../model/render-scale';
+import { combineLatest, Subscription } from 'rxjs';
 import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
 import { TitleBlock } from '../BLOCKS/title/title.component';
 import { CollapsibleSubsectionComponent } from '../BLOCKS/collapsible-subsection/collapsible-subsection.component';
 import { RadioComponent } from '../BLOCKS/radio/radio.component';
 import { ToggleComponent } from '../BLOCKS/toggle/toggle.component';
-import { InputComponent } from '../BLOCKS/input/input.component';
-import { ButtonComponent } from '../BLOCKS/button/button.component';
-
-/**
- * The scale as the field shows it.
- *
- * Two decimals, like every other number in the app. It arrives here as a ratio
- * of two lengths -- the drawing's object scale over the internal one -- so
- * without this the field read "2.2327500" wherever a URL had set a scale of its
- * own, which is every shared mechanism.
- */
-function scaleText(scale: number): string {
-  return Number(scale.toPrecision(3)).toString();
-}
-
-/**
- * How small and how large a drawn joint may be, as a multiple of the internal
- * scale.
- *
- * The floor is the field's own resolution: it shows two decimals, so anything
- * under a hundredth reads back as "0.00" and stops being a number this panel
- * can restore. The ceiling is generous -- fifty times is already a drawing made
- * entirely of one joint -- and exists so a mistyped row of digits is refused
- * rather than spending a second re-deriving every outline.
- */
-const MIN_SCALE = 0.000001;
-const MAX_SCALE = 50;
 
 @Component({
   selector: 'app-settings-panel',
@@ -56,7 +25,6 @@ const MAX_SCALE = 50;
   styleUrls: ['./settings-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
-    SegmentedComponent,
     PanelSectionComponent,
     TitleBlock,
     CollapsibleSubsectionComponent,
@@ -64,8 +32,6 @@ const MAX_SCALE = 50;
     FormsModule,
     ReactiveFormsModule,
     ToggleComponent,
-    InputComponent,
-    ButtonComponent,
     EditBannerComponent,
   ],
 })
@@ -73,13 +39,11 @@ export class SettingsPanelComponent implements OnDestroy {
   settingsService = inject(SettingsService);
   readonly objectDisplay = inject(ObjectDisplayService);
   private fb = inject(FormBuilder);
-  private history = inject(SaveHistoryService);
   mechanismSrv = inject(MechanismService);
   private svgGrid = inject(SvgGridService);
   private nup = inject(NumberUnitParserService);
   private tabs = inject(SelectedTabService);
   private permission = inject(EditPermissionService);
-  private notify = inject(NotificationService);
 
   readonly appVersion = environment.appVersion;
 
@@ -88,7 +52,6 @@ export class SettingsPanelComponent implements OnDestroy {
   currentAngleUnit!: AngleUnit;
   // currentTorqueUnit!: TorqueUnit;
   currentGlobalUnit!: GlobalUnit;
-  currentObjectScaleSetting!: number;
   private readonly settingsSubscriptions = new Subscription();
 
   ngOnInit(): void {
@@ -96,12 +59,8 @@ export class SettingsPanelComponent implements OnDestroy {
     this.currentForceUnit = this.settingsService.forceUnit.value;
     this.currentAngleUnit = this.settingsService.angleUnit.value;
     this.currentGlobalUnit = this.settingsService.globalUnit.value;
-    // The form shows the scale in the user's frame; internally it is
-    // MODEL_SCALE times larger (render-scale.ts), like every other length.
-    this.currentObjectScaleSetting = SettingsService.objectScale / MODEL_SCALE;
-
     this.settingsForm.patchValue({
-      objectScale: scaleText(this.currentObjectScaleSetting),
+      drawingStyle: this.objectDisplay.selectedStyle(),
       lengthunit: this.currentLengthUnit.toString(),
       angleunit: (this.currentAngleUnit - 10).toString(),
       forceunit: forceUnitIndex(this.currentForceUnit),
@@ -113,25 +72,6 @@ export class SettingsPanelComponent implements OnDestroy {
       snapToAlignment: this.settingsService.isSnapToAlignment.value,
       gravity: this.settingsService.isGravity.value,
     });
-
-    this.settingsSubscriptions.add(
-      // `skip(1)`, because this is a BehaviorSubject: subscribing to it hands
-      // back the value the drawing is *already* drawn at, and acting on that
-      // re-derived every link's outline and re-solved every mechanism from
-      // scratch. On a forty-five joint linkage that is seven seconds of work to
-      // arrive at the picture already on screen -- which is why opening
-      // Settings, which changes nothing, was the slowest thing in the app.
-      SettingsService._objectScale.pipe(skip(1)).subscribe((val) => {
-        this.currentObjectScaleSetting = val / MODEL_SCALE;
-        this.settingsForm.patchValue(
-          { objectScale: scaleText(this.currentObjectScaleSetting) },
-          { emitEvent: false }
-        );
-
-        // Rebuilds belong to the caller after all geometry/settings are ready.
-        // Rebuilding here observes half of a unit conversion or URL restore.
-      })
-    );
 
     this.onChanges();
     this.bindSerializedSettings();
@@ -174,44 +114,11 @@ export class SettingsPanelComponent implements OnDestroy {
   }
 
   onChanges(): void {
-    this.settingsForm.controls['objectScale'].valueChanges.subscribe((val) => {
-      const parsed = Number(val);
-      // The pattern is the gate the user sees; this is the one that protects the
-      // canvas. Every dimension in the mark system is a multiple of this number,
-      // so a NaN or a zero does not degrade the drawing -- it erases it, behind
-      // dozens of invalid-SVG errors.
-      //
-      // The bounds are a range and not just a sign. A scale of 0.0001 passed
-      // the old "greater than zero" test, drew the mechanism as bare hairlines
-      // with no joints or ground marks, and -- because the field shows two
-      // decimals -- came *back* as the text "0.00". The next refusal then
-      // restored "0.00" into the field, which failed the test, which restored
-      // it again: a recursion that ended in "Maximum call stack size exceeded"
-      // and a settings panel that had stopped working.
-      const outOfRange = !Number.isFinite(parsed) || parsed < MIN_SCALE || parsed > MAX_SCALE;
-      if (this.settingsForm.controls['objectScale'].invalid || outOfRange) {
-        // Restore the last good scale into its own field, not the speed field
-        // -- and quietly, because a restore that emits runs this handler over
-        // its own answer.
-        this.settingsForm.patchValue(
-          { objectScale: scaleText(this.currentObjectScaleSetting) },
-          { emitEvent: false }
-        );
-        // Said, not swallowed. This was the one field in the app that refused
-        // an entry and gave the reader nothing to read.
-        this.notify.refusal(
-          'value.object-scale',
-          `Custom Object Size has to be a number from ${MIN_SCALE} to ${MAX_SCALE}.`
-        );
-        return;
-      }
-      SettingsService.preserveCylinderGeometry();
-      SettingsService.objectScaleChosen = true;
-      this.currentObjectScaleSetting = parsed;
-      SettingsService._objectScale.next(this.currentObjectScaleSetting * MODEL_SCALE);
-      this.mechanismSrv.applyObjectScaleChange();
-      this.history.save();
-    });
+    this.settingsSubscriptions.add(
+      this.settingsForm.controls.drawingStyle.valueChanges.subscribe((value) =>
+        this.objectDisplay.chooseStyle(value)
+      )
+    );
     this.settingsForm.controls['angleunit'].valueChanges.subscribe((val) => {
       this.currentAngleUnit = ParseAngleUnit(String(val));
       this.settingsService.angleUnit.next(this.currentAngleUnit);
@@ -446,15 +353,9 @@ export class SettingsPanelComponent implements OnDestroy {
     return this.nup.unitLabel(unit);
   }
 
-  // The dot is escaped, and the scale has to be positive. Unescaped, `.` matched
-  // any character, so "1x2" validated, Number() turned it into NaN, and the NaN
-  // reached every mark on the canvas -- the mechanism vanished behind dozens of
-  // invalid-SVG errors. A zero or negative scale is just as unusable: every
-  // dimension in the mark system is a multiple of it.
-  numRegex = '^[0-9]*\\.?[0-9]+$';
   settingsForm = this.fb.group(
     {
-      objectScale: ['', [Validators.required, Validators.pattern(this.numRegex)]],
+      drawingStyle: ['0', { updateOn: 'change' }],
       lengthunit: ['', { updateOn: 'change' }],
       angleunit: ['', { updateOn: 'change' }],
       forceunit: ['', { updateOn: 'change' }],
@@ -468,12 +369,6 @@ export class SettingsPanelComponent implements OnDestroy {
     },
     { updateOn: 'blur' }
   );
-
-  updateObjectScale() {
-    // Pressed: this is the button, so it is the one caller that owes the reader
-    // an answer when there turns out to be nothing to change.
-    this.svgGrid.updateObjectScale(true);
-  }
 }
 
 /** Which option of the Force Units pill stands for this unit. */

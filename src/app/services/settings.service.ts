@@ -10,6 +10,7 @@ import {
 import type { ForceAnalysisMode } from '../model/mechanism/force-solver';
 import { MODEL_SCALE } from '../model/render-scale';
 import { OBJECT_SCALE } from '../model/object-scale';
+import { DrawingStyle, drawingScale, readDrawingStyle } from '../model/drawing-style';
 import { local_storage_available } from '../model/utils';
 
 /**
@@ -137,28 +138,20 @@ export class SettingsService {
   // service and closing a module cycle. This static is its public face.
   static _objectScale = OBJECT_SCALE;
 
-  /**
-   * Whether anybody has said what size the drawn marks should be.
-   *
-   * A fit will otherwise choose one to suit the zoom, which a huge mechanism
-   * needs and a scale somebody picked must not be overruled by. Comparing the
-   * value against the default cannot answer this -- 0.7 is a perfectly ordinary
-   * thing to type -- so the act of choosing is recorded instead. It is not in
-   * the URL: every URL carries a scale whether or not its author chose it, so
-   * a drawing that arrives is exactly the case this cannot tell apart, and the
-   * value comparison is all that is left to go on there.
-   */
-  static objectScaleChosen = false;
   /** Legacy cylinder clearance, retained independently of visual sizing. Zero follows old URLs. */
   static preservedCylinderScale = 0;
   static get cylinderObjectScale(): number {
     return this.preservedCylinderScale || this.objectScale;
   }
-  /** Freeze the authored stroke before changing display thickness. */
-  static preserveCylinderGeometry(): void {
-    this.preservedCylinderScale = this.cylinderObjectScale;
+  readonly drawingStyle = new BehaviorSubject<DrawingStyle>(readDrawingStyle());
+  /** Set by the viewport, read only by artwork. Neither value is serialized. */
+  drawingZoom = 0;
+  get drawingScale(): number {
+    return drawingScale(this.objectScale, this.drawingZoom, this.drawingStyle.value);
   }
-  isLineDrawing = new BehaviorSubject(readStoredFlag('lineDrawing', false));
+  get isSchematic(): boolean {
+    return this.drawingStyle.value === 'schematic';
+  }
 
   static get objectScale(): number {
     return SettingsService._objectScale.value;

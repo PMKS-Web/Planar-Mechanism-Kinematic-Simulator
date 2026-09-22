@@ -1,4 +1,3 @@
-import { proportionalObjectScale } from '../model/proportional-object-scale';
 import { afterNextRender, DestroyRef, Injectable, Injector, inject } from '@angular/core';
 // TS 6 no longer allows calling/constructing `import * as` namespaces of
 // CommonJS (export =) modules - use default imports for these two.
@@ -7,12 +6,10 @@ import { Coord } from '../model/coord';
 import { canvasHandle } from './canvas-handle';
 import { SettingsService } from './settings.service';
 import { DragStateService } from './drag-state.service';
-import { NotificationService } from './notification.service';
 import { MechanismService } from './mechanism.service';
 import { SaveHistoryService } from './save-history.service';
 import Hammer from 'hammerjs';
 import { MODEL_SCALE } from '../model/render-scale';
-import { DEFAULT_OBJECT_SCALE } from '../model/object-scale';
 import {
   Rect,
   centerOf,
@@ -111,29 +108,6 @@ const DRAWING_LAYERS = [
   'synthesis',
 ] as const;
 
-/**
- * How big a drawn mark is, as a fraction of the mechanism's larger dimension.
- *
- * Read off the drawings rather than picked: the wiper is 12.8 units across and
- * the scale a new project starts at draws its joints at 0.7, and the Jansen leg
- * is 126 units across and its author chose 7 -- both a twentieth of the
- * mechanism, from two people who never discussed it. Anything derived from the
- * zoom instead would make the size of a joint depend on the size of the window,
- * which is a property of the drawing depending on a property of the reader.
- */
-const MARK_FRACTION = 0.055;
-
-/**
- * How far off that a scale has to be before it is worth overriding.
- *
- * Wide, because the point is to fix the drawings the default is obviously
- * wrong for rather than to have an opinion about every one. An ordinary
- * mechanism lands within a few per cent of the default and must keep it
- * exactly -- both because it is right, and because a scale that drifted on
- * every load would churn the URL.
- */
-const SCALE_SLACK = 2.5;
-
 /** How many pixels a mark is drawn at when only the view is being fitted to. */
 const MARK_TARGET_PX = 60;
 
@@ -166,7 +140,6 @@ export class SvgGridService {
   private settingsService = inject(SettingsService);
   private dragState = inject(DragStateService);
   private injector = inject(Injector);
-  private notify = inject(NotificationService);
   private destroyRef = inject(DestroyRef);
 
   /**
@@ -716,37 +689,9 @@ export class SvgGridService {
 
   handleZoom(zoomLevel: number) {
     if (!this.movingTheViewOurselves) this.forgetChosenView();
+    this.settingsService.drawingZoom = this.getZoom();
     this.cellSize = this.cellSizeFor(this.getZoom());
     this.handlePan();
-    // Zooming is continuous, so these have a much longer quiet period than
-    // anything else -- but their own, now. They used to share one timer with
-    // every other message in the app, which meant they were silent for the
-    // first twenty seconds of a session and for twenty seconds after any
-    // unrelated message: the whole of the time somebody is finding their zoom.
-    if (this.movingTheViewOurselves) return;
-    const drawnAt = this.getZoom() * this.settingsService.objectScale;
-    // Both fixes are in this service, and the message used to name neither of
-    // the buttons that hold them without offering either. Which one somebody
-    // wants depends on which they think is wrong: "Fit to zoom" keeps the view
-    // and resizes the drawing to suit it; "Reset view" keeps the drawing and
-    // moves the view back to it.
-    const fixes = [
-      { label: 'Auto-size Objects', run: () => this.updateObjectScale(true) },
-      { label: 'Fit to view', run: () => this.scaleToFitLinkage() },
-    ];
-    if (drawnAt < 5) {
-      this.notify.news('zoom.links-tiny', 'Objects may be difficult to see at this zoom.', {
-        cooldownMs: 60000,
-        actions: fixes,
-      });
-    }
-    if (drawnAt > 200) {
-      this.notify.news(
-        'zoom.links-huge',
-        'Objects may cover too much of the drawing at this zoom.',
-        { cooldownMs: 60000, actions: fixes }
-      );
-    }
   }
 
   /**
@@ -959,19 +904,6 @@ export class SvgGridService {
     const target = this.clampZoom(
       Math.min((free.width * FIT_FILL) / drawn.width, (free.height * FIT_FILL) / drawn.height)
     );
-    if (this.scaleSuitedTo(drawn) !== undefined) {
-      // In a task of its own. The mark size is read by bindings that whatever
-      // led here has already checked -- a fit can be asked for from inside a
-      // form's own value change -- and writing it during that render is a value
-      // changing after it was checked. The marks are a different size
-      // afterwards, so what was just measured is not what will be on screen;
-      // the frame follows once Angular has drawn them.
-      setTimeout(() => {
-        this.adoptScaleForDrawing(drawn);
-        this.scaleToFitLinkage(animate);
-      });
-      return;
-    }
     this.moveViewTo(drawn, centerOf(free), target, animate);
     this.viewIsFitted = true;
     this.viewIsFittedToMotion = false;
@@ -1090,59 +1022,6 @@ export class SvgGridService {
    * which is a new choice and supersedes it.
    */
   private chosenView: { zoom: number; offset: { x: number; y: number } } | null = null;
-
-  /**
-   * Give the drawn marks a size to suit the mechanism, if nobody has chosen one.
-   * Returns whether anything changed.
-   *
-   * A Jansen leg is nearly two meters across and its joints at the size a new
-   * project starts with come out as specks -- which is what the "links are
-   * drawn far smaller than the grid" warning was firing on load to say.
-   *
-   * Only when nobody has chosen a size. Typing 0.7 into the field is a choice
-   * even though 0.7 is what the field already said, so the act of choosing is
-   * recorded rather than inferred from the number -- see
-   * SettingsService.objectScaleChosen. For a drawing that arrives from a URL
-   * the act is not recoverable, since every URL carries a scale whether or not
-   * its author picked one, and the comparison with the default is what is left.
-   */
-  private scaleSuitedTo(drawn: Rect): number | undefined {
-    if (SettingsService.objectScaleChosen) return undefined;
-    // Only for a drawing with parts in it. This number is how joints, blocks
-    // and arrows are drawn, and a synthesis design has none of those -- its
-    // bars are the question rather than an answer. Sizing marks for a mechanism
-    // that does not exist yet gets it wrong twice: once now, and again when a
-    // solution is inserted and every joint comes out matching a design that was
-    // never a linkage.
-    if (this.injector.get(MechanismService).joints.length === 0) return undefined;
-    const scale = this.settingsService.objectScale;
-    if (Math.abs(scale - DEFAULT_OBJECT_SCALE) > 0.5) return undefined;
-    const suits =
-      proportionalObjectScale(this.injector.get(MechanismService).links) ??
-      MARK_FRACTION * Math.max(drawn.width, drawn.height);
-    if (!(suits > 0) || !Number.isFinite(suits)) return undefined;
-    const ratio = suits / scale;
-    if (ratio < SCALE_SLACK && ratio > 1 / SCALE_SLACK) return undefined;
-    return suits;
-  }
-
-  private adoptScaleForDrawing(drawn: Rect): void {
-    const suits = this.scaleSuitedTo(drawn);
-    if (suits === undefined) return;
-    SettingsService.preserveCylinderGeometry();
-    SettingsService._objectScale.next(suits);
-    // A link's outline is computed once and cached, and its width is a fraction
-    // of this scale, so a route that changes it has to say so.
-    this.injector.get(MechanismService).applyObjectScaleChange();
-    // And the state the drawing arrived in has to say so too. This runs on the
-    // frame after the load, by which time the arrival is already recorded --
-    // with the default mark size, because that is what was set when it was
-    // written. Undo then restored a drawing whose joints were two and a half
-    // times too big. The entry is revised rather than added to: sizing the
-    // marks to the drawing is part of how it opened, not an edit the reader
-    // made and might want back.
-    this.injector.get(SaveHistoryService).restate();
-  }
 
   /** The canvas's own top-left in client pixels, which `pan` is measured from. */
   private canvasBounds(): Rect | null {
@@ -1541,51 +1420,11 @@ export class SvgGridService {
     return () => layers.forEach((node, index) => (node.style.display = was[index]));
   }
 
-  /**
-   * Size the marks for the current zoom.
-   *
-   * `pressed` says a person asked for this, which only the two controls that
-   * offer it can know: Settings' own button, and the action on the zoom
-   * warning. The canvas calls this too -- settling the scale before the first
-   * part is drawn on an empty grid -- and the tutorial and the synthesis panel
-   * do the same. Those are the app tidying up, not an answer to anybody, and
-   * they say nothing.
-   *
-   * The distinction was missing when the message below was added, on the
-   * strength of a comment here claiming this was only ever pressed by hand. It
-   * was not, and had not been for some time: the first right-click on an empty
-   * grid opens the menu, Add Link settles the scale, and the reader was told
-   * their marks were already the right size for a button they never touched.
-   */
-  updateObjectScale(pressed = false) {
-    SettingsService.objectScaleChosen = true;
+  /** Set the legacy geometry scale once, before the first part is created. */
+  updateObjectScale(): void {
     const mechanism = this.injector.get(MechanismService);
-    const wanted = proportionalObjectScale(mechanism.links) ?? MARK_TARGET_PX / this.getZoom();
-    // Already there, which happens whenever it is pressed twice or pressed at
-    // the zoom it was last used at. Silently doing nothing is the one outcome a
-    // button must not have: with no drawing to compare against, a reader cannot
-    // tell "there was nothing to change" from "this control is broken", and the
-    // usual next move is to press it again.
-    if (pressed && wanted === SettingsService.objectScale) {
-      // Divided the way the Settings field divides it. What is stored is a
-      // model-unit length, about 138 at the default; what the reader typed and
-      // can compare against is the 0.7 beside the button. Quoting the stored
-      // number would be quoting a number they have never seen.
-      this.notify.success(
-        'scale.already',
-        `Joints and blocks are already sized for this drawing (${(wanted / MODEL_SCALE).toFixed(2)}).`
-      );
-      return;
-    }
-    SettingsService.preserveCylinderGeometry();
-    SettingsService._objectScale.next(wanted);
-    // A link's outline is computed once and cached, and its width is a fraction
-    // of this scale -- so a route that changes the scale has to say so, or the
-    // bars stay the width they were while every joint, ground mark and arrow
-    // around them changes size. The Settings panel does this from its own
-    // field; this is the other way in, from the warning that offers it as a fix.
-    this.injector.get(MechanismService).applyObjectScaleChange();
-    if (pressed) this.injector.get(SaveHistoryService).save();
-    else this.injector.get(SaveHistoryService).restate();
+    if (mechanism.joints.length || mechanism.links.length) return;
+    SettingsService._objectScale.next(MARK_TARGET_PX / this.getZoom());
+    this.injector.get(SaveHistoryService).restate();
   }
 }

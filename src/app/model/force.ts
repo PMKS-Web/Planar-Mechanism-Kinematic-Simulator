@@ -256,7 +256,7 @@ export class Force {
     this.refreshVisuals();
   }
 
-  createForceLine(startCoord: Coord, endCoord: Coord) {
+  createForceLine(startCoord: Coord, endCoord: Coord, scale = SettingsService.objectScale) {
     // Stop at the triangle's base, not its tip: a wide shaft reaching the tip
     // sticks out through the taper, especially when the inward head is inset.
     const tail = this.arrowOutward ? startCoord : endCoord;
@@ -264,14 +264,13 @@ export class Force {
     const direction = head.clone().subtract(tail);
     const distance = Math.hypot(direction.x, direction.y);
     const setback =
-      (this.arrowOutward ? 2 * this.visualWidth - 0.06 : 3 * this.visualWidth) *
-      SettingsService.objectScale;
+      (this.arrowOutward ? 2 * this.visualWidth - 0.06 : 3 * this.visualWidth) * scale;
     if (distance <= setback) return '';
     const end = head.clone().subtract(direction.normalize().scale(setback));
     return `M ${tail.x} ${tail.y} L ${end.x} ${end.y}`;
   }
 
-  createForceArrow(startCoord: Coord, endCoord: Coord) {
+  createForceArrow(startCoord: Coord, endCoord: Coord, scale = SettingsService.objectScale) {
     if (!this.arrowOutward) [startCoord, endCoord] = [endCoord, startCoord];
     if (startCoord.x === endCoord.x && startCoord.y === endCoord.y) return '';
 
@@ -280,11 +279,11 @@ export class Force {
       .clone()
       .subtract(startCoord)
       .normalize()
-      .scale((this.arrowOutward ? 0.06 : -this.visualWidth) * SettingsService.objectScale);
+      .scale((this.arrowOutward ? 0.06 : -this.visualWidth) * scale);
     let tipOfTriangle = endCoord.clone().add(arrowVector);
 
-    const length = this.visualWidth * 2 * SettingsService.objectScale;
-    const width = this.visualWidth * 2 * SettingsService.objectScale;
+    const length = this.visualWidth * 2 * scale;
+    const width = this.visualWidth * 2 * scale;
     const angle = getAngle(startCoord, endCoord);
 
     const point1 = tipOfTriangle

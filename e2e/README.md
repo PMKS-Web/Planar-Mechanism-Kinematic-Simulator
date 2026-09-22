@@ -501,6 +501,7 @@ Not suites — import them from one.
 
 `force-precision.mjs` compares the actual rendered force against the designer’s selected and entering SVGs, checks resting/hover/selected/entering states for all six force colors, and records a real hover/selection filmstrip. Comparison images and the palette matrix go to `artifacts/force-precision/`; original reference drawings live in `e2e/reference/force/`.
 
+- `drawing-styles.mjs` — whole-drawing styles, bounded zoom symbols, geometry/CAD invariants, cylinder playback filmstrips, and responsive Settings.
 - `bug-fixes-2.mjs` — audit regressions, synthesis units/Undo, and display-size cylinder invariants.
 - `pr33-followups.mjs` — pointer-specific help, compact synthesis actions, meter-scaled pose chips,
   responsive analysis switches, and context-aware export copy. Writes screenshots and a unit-change
