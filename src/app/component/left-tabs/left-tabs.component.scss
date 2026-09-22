@@ -244,6 +244,10 @@
     display: flex;
     z-index: var(--layer-panel);
 
+    &.edit {
+      --panel-clearance: var(--edit-panel-clearance, #{nav.$panel-bottom-clearance});
+    }
+
     &.analysis {
       // Measured by the playback bar, which is the only thing that knows how
       // tall it is: unsynced it carries a row per machine. The fallback is the

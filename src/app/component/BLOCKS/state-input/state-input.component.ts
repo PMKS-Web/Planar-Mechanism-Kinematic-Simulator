@@ -1,5 +1,4 @@
-import { NumberDragDirective } from '../../../directives/number-drag.directive';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, ElementRef, EventEmitter, Input, Output, viewChild } from '@angular/core';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatFormField, MatSuffix } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
@@ -21,7 +20,7 @@ import { selectAll } from '../select-all';
 @Component({
   selector: 'state-input',
   standalone: true,
-  imports: [NumberDragDirective, ReactiveFormsModule, MatFormField, MatInput, MatSuffix],
+  imports: [ReactiveFormsModule, MatFormField, MatInput, MatSuffix],
   template: `
     <div id="input-block" class="state-input-host">
       <div class="row" [formGroup]="formGroup">
@@ -32,7 +31,6 @@ import { selectAll } from '../select-all';
           (mouseleave)="hovered.emit(false)"
         >
           <input
-            numberDrag
             matInput
             class="customInput"
             spellcheck="false"
@@ -63,6 +61,7 @@ import { selectAll } from '../select-all';
   styleUrl: './state-input.component.scss',
 })
 export class StateInputComponent {
+  readonly field = viewChild<ElementRef<HTMLInputElement>>('field');
   /**
    * A click selects the whole value — including a second click on a field
    * that already has focus, which `select()` alone loses to the caret the

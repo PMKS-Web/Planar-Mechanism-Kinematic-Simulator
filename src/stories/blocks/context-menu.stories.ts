@@ -310,7 +310,8 @@ function cylinderSealMenu(): ContextMenuModel {
       {
         rows: [
           new MenuRow({
-            label: 'Delete Joint (and Cylinder)',
+            label: 'Delete Joint',
+            detail: 'Also removes Cylinder',
             icon: 'remove',
             destructive: true,
             action: noop,
@@ -531,7 +532,8 @@ export const CylinderEndJoint: Story = {
       // The only thing a cylinder changes about this card: the delete names
       // what the click takes with the joint.
       const footer = model.groups[model.groups.length - 1].rows[0];
-      footer.label = 'Delete Joint (and Cylinder)';
+      footer.label = 'Delete Joint';
+      footer.detail = 'Also removes Cylinder';
       return model;
     })(),
   },

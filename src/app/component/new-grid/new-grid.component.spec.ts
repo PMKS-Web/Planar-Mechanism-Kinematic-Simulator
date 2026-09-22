@@ -1081,6 +1081,22 @@ describe('NewGridComponent vector traces', () => {
     expect(live.d.split('M').length - 1).toBe(3);
   });
 
+  it('retains sampled paths during dragging, updates the live arrow, and refreshes on release', () => {
+    const { mechanism, b } = analyzing();
+    const drag = TestBed.inject(DragStateService);
+    mechanism.toggleVectorTrace(b, 'velocity');
+    const before = mechanism.vectorTracePaths();
+    drag.press();
+    drag.beginDraggingJoint();
+    b.x += 1;
+    mechanism.updateMechanism();
+    expect(mechanism.vectorTracePaths()).toBe(before);
+    expect(mechanism.liveVectorArrows()[0].x).toBe(b.x);
+    drag.cancel();
+    expect(mechanism.vectorTracePaths()).not.toBe(before);
+    expect(mechanism.vectorTracePaths()[0].d).not.toBe(before[0].d);
+  });
+
   it('scales the biggest arrow of a cycle against the size of the machine', () => {
     const { mechanism, b } = analyzing();
     mechanism.toggleVectorTrace(b, 'velocity');

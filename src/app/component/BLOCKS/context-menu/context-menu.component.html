@@ -100,7 +100,12 @@
             } @else {
               <mat-icon [svgIcon]="row.icon"></mat-icon>
             }
-            <span class="cm-row__label">{{ row.label }}</span>
+            <span class="cm-row__text"
+              ><span class="cm-row__label">{{ row.label }}</span>
+              @if (row.detail) {
+                <span class="cm-row__detail">{{ row.detail }}</span>
+              }
+            </span>
             <!-- One slot on the right, and one thing in it: the reason when the
                  row is grayed, a count where one says something, the key
                  otherwise. -->

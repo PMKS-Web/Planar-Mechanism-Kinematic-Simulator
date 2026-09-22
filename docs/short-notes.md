@@ -2034,3 +2034,14 @@ A floating `PrisJoint` is absent from its carrier's `joints`: that absence is wh
 ### Numeric drags should commit once, through the field
 
 Previewing each pointer move through Angular's input event made a gesture produce several undo states. `NumberDragDirective` previews the text locally and dispatches input/change/blur only on release; Escape and pointer cancellation restore the original text. The browser regression checks that one Undo restores the value before the whole drag.
+
+
+### PR32 follow-ups: animation anchors, orphan cleanup, and vector drag cost
+
+A bar label's offset must choose an end from the authored pose, then follow that end during playback. Choosing the currently higher end flips the label across its CoM every horizontal crossing (`bar-label-axis.ts`). Deleting a link or cylinder must prune only its own newly unlinked joints: sweeping every orphan also deleted unrelated standalone inputs.
+
+Number adjustment now starts on the field label, preserving the value's native text selection. Tables without an individual label keep ordinary text editing. Deletion consequences occupy a second menu line, keeping the 320px cap and Delete shortcut. The Edit panel measures horizontal overlap with playback cards before reserving their height.
+
+Vector paths were rebuilding all cycle samples on every drag move. In a four-bar drag with velocity and acceleration on B and C, this cost 30 rebuilds / 254ms and 143,144 sample reads. Reusing the cycle paths during the gesture and refreshing on release reduced this to one rebuild / 7ms and 20,032 reads; the current-pose arrows continue updating. The measured frame p90 fell from 17ms to 9ms on this machine (`e2e/vector-drag-profile.mjs`). Ask `DragStateService.isDragging`, not `onMechUpdateState`: a solve emits state 2 during the drag, so that observable alone cannot guard the expensive work.
+
+Shared reproductions: [Luffing crank label](https://deploy-preview-32--pmksnew.netlify.app/?2v.Ay,1E8.A,1V.1011.4O,O,0,0,0.0C,C,Qv,cP,0.0T,T,rn,1Co,0.6G,G,YO,09O,0.1K,K,Fs,Me,0,OCT,O,T..ARGK,Luffing%20crank,mr0,1T,P7,6e,303e9f,G,K,,.MROCT,Boom,4a_0,S7,LX,Uk,0d125a,O,C,T,,..1F1,OCT,F1,rn,1Co,sg,1X7,d4..N_P*2IoWB5), [HI beside orphan G](https://deploy-preview-32--pmksnew.netlify.app/?2v.EK,1E8.A,0.1011.6G,G,YO,09O,0.9H,H,1C4,0F2,0.0I,I,1TR,051,0..ARHI,HI,0,0,1Km,0A2,303e9f,H,I,,...N_d*1yshxG), [Standalone input A](https://deploy-preview-32--pmksnew.netlify.app/?2v.Ay,1E8.A,0.1011.6A,A,0d1,8J,0,,,,02SG....N_k*418cfy).

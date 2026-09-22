@@ -156,6 +156,16 @@ describe('MechanismService welded links and force ownership', () => {
     expect((harness.service.links.find((link) => link.id === 'BC') as RealLink).forces).toEqual([]);
   });
 
+  it('keeps unrelated orphan joints when deleting a link', () => {
+    const harness = createChain(2);
+    const orphan = new RevJoint('G', 4, 3);
+    harness.service.joints.push(orphan);
+    harness.active.updateSelectedObj(harness.links[0]);
+    harness.service.deleteLink();
+    expect(harness.service.joints).toEqual([orphan]);
+    expect(harness.service.links).toEqual([]);
+  });
+
   it('removes both force references and does not delete unrelated forces with a link', () => {
     const harness = createChain();
     const first = attachForce(harness.service, harness.links[0], 'F1', 0.25);

@@ -27,6 +27,8 @@ export type MenuRowKind = 'action' | 'toggle';
 export class MenuRow {
   /** Title Case, because it labels a control (`docs/ui-vocabulary.md`). */
   label!: string;
+  /** Consequences on a second line, leaving the keyboard shortcut visible. */
+  detail?: string;
   /** A registered SVG icon name, or a Material Icons ligature. */
   icon!: string;
   /** Whether `icon` is a Material Icons ligature rather than a registered SVG. */

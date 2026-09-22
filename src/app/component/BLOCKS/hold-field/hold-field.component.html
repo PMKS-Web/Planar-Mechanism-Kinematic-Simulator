@@ -5,7 +5,9 @@
   @for (which of rows(); track which) {
     <div class="row field">
       <span class="caption">
-        <span class="label" [class.dim]="disabled()">{{ labelFor(which) }}</span>
+        <span class="label" [class.dim]="disabled()" [numberDrag]="field">{{
+          labelFor(which)
+        }}</span>
         <mat-icon
           class="label-help"
           [matTooltip]="helpFor(which)"
@@ -28,7 +30,6 @@
       >
         <mat-form-field class="customInputForm" (click)="selectAll(field)">
           <input
-            numberDrag
             class="customInput"
             spellcheck="false"
             matInput

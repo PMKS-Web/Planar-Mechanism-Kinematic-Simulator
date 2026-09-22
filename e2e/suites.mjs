@@ -67,6 +67,7 @@ export const SUITES = [
   { name: 'dxf-sweep', seconds: 122, lanes: NIGHTLY },
   { name: 'edit-playback', seconds: 46, lanes: NIGHTLY },
   { name: 'editor-bug-fixes', seconds: 25, lanes: BOTH },
+  { name: 'editor-followups', seconds: 25, lanes: BOTH },
   { name: 'edit-undo', seconds: 40, lanes: BOTH },
   { name: 'export-flow', seconds: 47, lanes: NIGHTLY },
   { name: 'field-overlay-reassert', seconds: 5, lanes: BOTH },
@@ -218,6 +219,10 @@ export const NOT_RUN = [
   {
     name: 'force-status-survey',
     why: 'A tool: prints what force analysis says for each template.',
+  },
+  {
+    name: 'vector-drag-profile',
+    why: 'A profiling tool: prints the vector-enabled drag cost for comparison.',
   },
   { name: 'drag-profile', why: 'A tool: where one scenario’s drag time goes. Read, not judged.' },
   {

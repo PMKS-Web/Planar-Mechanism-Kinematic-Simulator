@@ -254,6 +254,8 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
     this.publishHeight(row);
     this.heightWatch = new ResizeObserver(() => this.publishHeight(row));
     this.heightWatch.observe(row);
+    const panel = document.querySelector('app-left-tabs .panel');
+    if (panel) this.heightWatch.observe(panel);
   }
 
   private heightWatch?: ResizeObserver;
@@ -270,6 +272,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
       Math.round(row.getBoundingClientRect().height) +
       cssPixels(style, BOTTOM_OFFSET_VAR, BOTTOM_OFFSET_FALLBACK) +
       cssPixels(style, CARD_GAP_VAR, CARD_GAP_FALLBACK);
+    this.publishEditClearance(row, clearance);
     if (clearance === this.lastClearance) return;
     this.lastClearance = clearance;
     document.documentElement.style.setProperty('--playback-clearance', `${clearance}px`);
@@ -307,6 +310,19 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
     CHROME_MOVED.next();
   }
 
+  /** Only shorten the Edit card when a playback card actually overlaps its width. */
+  private publishEditClearance(row: HTMLElement, clearance: number): void {
+    const panel = document.querySelector('app-left-tabs .panel.edit:not(.sheet)');
+    const right = panel?.getBoundingClientRect().right ?? 0;
+    const collides = Array.from(row.querySelectorAll('.transportCard, .scrubCard')).some((card) => {
+      const box = card.getBoundingClientRect();
+      return box.width > 0 && box.left < right;
+    });
+    const root = document.documentElement.style;
+    if (collides) root.setProperty('--edit-panel-clearance', `${clearance}px`);
+    else root.removeProperty('--edit-panel-clearance');
+  }
+
   /**
    * The transport's own keys. Each goes through the button's own method -- and
    * only where that button is: the transport belongs to the analysis modes, so
@@ -340,6 +356,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
     this.keySub.unsubscribe();
     this.positionSub?.unsubscribe();
     this.heightWatch?.disconnect();
+    document.documentElement.style.removeProperty('--edit-panel-clearance');
     document.documentElement.style.removeProperty('--playback-clearance');
   }
 

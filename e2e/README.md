@@ -444,8 +444,8 @@ Not suites — import them from one.
 
 - `drag-perf.mjs` — is dragging as smooth as it was? Measures each scenario in
   `drag-perf-harness.mjs` (that file is the list) and compares the cost per pointer move and the
-  90th-percentile frame to `drag-perf-baseline.json`. A scenario fails more than 35% above its
-  baseline (`PMKS_PERF_TOLERANCE`, default `1.35`). Name scenario ids to run only those:
+  90th-percentile frame to `drag-perf-baseline.json`. A scenario warns more than 35% above its
+  baseline (`PMKS_PERF_TOLERANCE`, default `1.35`); it fails only at ten times the baseline. Name scenario ids to run only those:
   `node e2e/drag-perf.mjs edit-joint kin-3rows`. The baseline is per machine; `--baseline`
   rewrites it, and the rewrite belongs in the commit that earned it.
 - `drag-profile.mjs` — where one scenario's drag time goes, from the DevTools profiler and tracer:
@@ -492,4 +492,7 @@ Not suites — import them from one.
   the single-button fallback, long-label proportions, clipping, and accessible refusal text.
   Screenshots land in `artifacts/dual-button/`.
 
-- `editor-bug-fixes.mjs` — number-field dragging and undo, in-place force flips, compound selection, CoM traces, welded inputs, inert analysis joints, placement merge preview, and narrow-screen export gating.
+- `editor-bug-fixes.mjs` — number-label dragging and undo, in-place force flips, compound selection, CoM traces, welded inputs, inert analysis joints, placement merge preview, and narrow-screen export gating.
+
+- `editor-followups.mjs` — shared-URL regressions for orphan deletion/attachment, stable animation labels, primitive outlines, compact delete menus and collision-aware Edit panel clearance.
+- `vector-drag-profile.mjs` — profiles a repeatable four-bar analysis drag with velocity and acceleration arrows, reporting cycle rebuilds, sample reads and frame timing.

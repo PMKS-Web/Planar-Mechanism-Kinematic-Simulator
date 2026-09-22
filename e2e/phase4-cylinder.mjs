@@ -386,7 +386,7 @@ const mountMenu = await page.evaluate((mountId) => {
   c.setLastRightClick(c.mechanismSrv.joints.find((j) => j.id === mountId));
   return c.cMenu.groups
     .flatMap((g) => g.rows)
-    .map((r) => ({ label: r.label, disabled: r.disabled }));
+    .map((r) => ({ label: r.label, detail: r.detail, disabled: r.disabled }));
 }, barrelFar);
 const mountTypes = await page.evaluate((id) => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
@@ -402,7 +402,7 @@ checkThat(
   // ordinary attachment point. What is sealed is the ram's inside, and none of
   // those three joints can be right-clicked at all.
   'the mount menu names the cylinder in its Delete, and offers a block',
-  mountMenu.some((i) => i.label.startsWith('Delete Joint (and Cylinder')) &&
+  mountMenu.some((i) => i.label === 'Delete Joint' && i.detail?.includes('Cylinder')) &&
     mountTypes.some((one) => one.label === 'Pin-in-slot' && !one.disabled),
   JSON.stringify({ mountMenu, mountTypes })
 );

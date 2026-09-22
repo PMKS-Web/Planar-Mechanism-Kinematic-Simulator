@@ -1785,8 +1785,8 @@ export class MechanismService {
    * Cached on `solveRevision`, like the readiness list beside it: every input
    * is written by an edit, and a cycle of arrows costs one solve per sample.
    * The mode and the force-analysis kind are in the key because they change
-   * which traces are drawn and what a force one reads, and neither moves the
-   * revision.
+   * which traces are drawn and what a force one reads. While dragging, keep
+   * the sampled paths until release; live arrows still follow the current pose.
    */
   vectorTracePaths(): DrawnVectorTrace[] {
     const tab = this.tabs.getCurrentTab();
@@ -1794,7 +1794,7 @@ export class MechanismService {
     const held = this.vectorTraceCache;
     if (
       !held ||
-      held.revision !== this.solveRevision ||
+      (held.revision !== this.solveRevision && !this.injector.get(DragStateService).isDragging) ||
       held.switches !== this.vectorTraceRevision ||
       held.tab !== tab ||
       held.mode !== mode
@@ -3837,7 +3837,7 @@ export class MechanismService {
       )) {
         this.deleteCylinderTopology(sealed);
       }
-      this.joints = pruneUnlinkedJoints(this.joints, this.links);
+      this.joints = pruneUnlinkedJoints(this.joints, this.links, link.joints);
       this.activeObjService.updateSelectedObj(undefined);
       this.finishStructuralEdit(true);
       return;
@@ -3853,7 +3853,7 @@ export class MechanismService {
       .filter((force) => ownedLinkIDs.has(force.link.id))
       .forEach((force) => this.detachForce(force));
     this.links.splice(linkIndex, 1);
-    this.joints = pruneUnlinkedJoints(this.joints, this.links);
+    this.joints = pruneUnlinkedJoints(this.joints, this.links, link.joints);
     this.activeObjService.updateSelectedObj(undefined);
     this.finishStructuralEdit(true);
   }
@@ -4834,7 +4834,7 @@ export class MechanismService {
     const interior = new Set([sealed.seal.id, sealed.inner.id]);
     [...interior, sealed.mountA.id, sealed.mountB.id].forEach((id) => this.slotStashes.delete(id));
     this.joints = this.joints.filter((joint) => !interior.has(joint.id));
-    this.joints = pruneUnlinkedJoints(this.joints, this.links);
+    this.joints = pruneUnlinkedJoints(this.joints, this.links, [sealed.mountA, sealed.mountB]);
 
     // Scrub what survived of what did not.
     //

@@ -355,9 +355,16 @@ check(
   JSON.stringify({ refused: ring.refused, why: ring.why, accepted: ring.accepted })
 );
 check(
-  'and the drawing says which rule while the drag is still live, not after it',
-  ring.rings === 1 && ring.said === 'a slider cannot merge',
+  'the live refusal has only a red ring, with the explanation deferred until drop',
+  ring.rings === 1 && ring.said === '' && ring.notifications.length === 0,
   JSON.stringify({ rings: ring.rings, said: ring.said, notifications: ring.notifications })
+);
+
+check(
+  'dropping onto the refused joint shows the explanation',
+  (await page.locator('.notificationText').allTextContents()).some((text) =>
+    /slider.*merge|merge.*slider/i.test(text)
+  )
 );
 
 // ------------------------------------------------------------ 4. slot drops

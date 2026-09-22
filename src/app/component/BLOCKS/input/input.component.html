@@ -1,6 +1,6 @@
 <div id="input-block" [class.stacked]="stacked()" [class.cell]="cell()">
   <div class="row" [formGroup]="formGroup">
-    <span class="label" [id]="labelId"><ng-content></ng-content></span>
+    <span class="label" [id]="labelId" [numberDrag]="field"><ng-content></ng-content></span>
     <span hidden [id]="labelId + '-unit'">Unit</span>
     <mat-icon matTooltip="{{ this.tooltip() }}" matTooltipShowDelay="400" class="label-help">
       help_outline
@@ -18,7 +18,6 @@
       (focusout)="setFocused(false)"
     >
       <input
-        numberDrag
         matInput
         class="customInput"
         spellcheck="false"

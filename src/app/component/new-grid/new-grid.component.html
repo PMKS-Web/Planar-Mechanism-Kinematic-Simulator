@@ -1117,6 +1117,36 @@
       </g>
     }
   </g>
+  <!-- A primitive picked inside a compound needs its own edge above the fused
+       body. Cylinder members use their actual skin, not their model bar hull. -->
+  @let primitive = activeObjService.selectedLink;
+  @if (
+    activeObjService.objType === 'Link' && primitive && !mechanismSrv.getLinks().includes(primitive)
+  ) {
+    <g id="primitiveSelection" modelFrame pointer-events="none">
+      @if (mechanismSrv.cylinderOfBar(primitive)) {
+        @for (cyl of cylinderList; track cyl.id) {
+          @if (cyl.barrelLink === primitive || cyl.rodLink === primitive) {
+            <g [attr.transform]="sliderMarks.frame(cyl)">
+              <path
+                class="link-selected"
+                fill="none"
+                [attr.d]="cyl.barrelLink === primitive ? cyl.barrel : cyl.rod"
+                [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+              />
+            </g>
+          }
+        }
+      } @else {
+        <path
+          class="link-selected"
+          fill="none"
+          [attr.d]="mechanismSrv.getLinkProp(primitive, 'd')"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+        />
+      }
+    </g>
+  }
   <g id="jointHolder" modelFrame>
     @for (joint of mechanismSrv.getJoints(); track joint) {
       <ng-container>

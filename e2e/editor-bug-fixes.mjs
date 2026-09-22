@@ -61,7 +61,12 @@ try {
   );
   const input = page.getByRole('textbox', { name: 'Joint Position X', exact: true });
   const before = await grid((g) => g.mechanismSrv.joints.find((j) => j.id === 'B').x);
-  const box = await input.boundingBox();
+  const box = await page
+    .locator('dual-input-block')
+    .filter({ has: input })
+    .locator('.number-drag-label')
+    .first()
+    .boundingBox();
   const film = filmstrip(page, `${OUT}/number-drag`, { x: 0, y: 65, width: 700, height: 520 });
   await film.shot('before');
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
@@ -75,7 +80,7 @@ try {
   });
   await film.shot('released');
   const after = await grid((g) => g.mechanismSrv.joints.find((j) => j.id === 'B').x);
-  check('dragging a field changes the model on release', after > before, {
+  check('dragging a label changes the model on release', after > before, {
     before,
     after,
     text: await input.inputValue(),
@@ -207,6 +212,14 @@ try {
     'a welded cylinder second selects its barrel primitive',
     await grid((g, id) => g.activeObjService.selectedLink.id === id, member.leaf)
   );
+
+  check(
+    'selected cylinder primitive uses its skin for the yellow outline',
+    await page
+      .locator('#primitiveSelection path')
+      .evaluate((el) => el.getAttribute('d').length > 10 && getComputedStyle(el).stroke !== 'none')
+  );
+  await page.screenshot({ path: `${OUT}/cylinder-primitive-selection.png` });
 
   await load(fixture('Two four-bars'));
   await grid((g) => {

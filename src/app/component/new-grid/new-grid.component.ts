@@ -941,6 +941,7 @@ export class NewGridComponent implements OnDestroy {
    * Link, and the reason both live on both menus.
    */
   startCreatingCylinder() {
+    if (!this.permission.may('create')) return;
     this.fitObjectScaleToFirstPart();
     this.cylinderCreateOn =
       this.lastRightClick instanceof RealLink ? this.lastRightClick : undefined;
@@ -1987,6 +1988,7 @@ export class NewGridComponent implements OnDestroy {
   }
 
   startCreatingLink() {
+    if (!this.permission.may('create')) return;
     // The first part on an empty grid sets the object scale from the zoom, and
     // everything is sized from it — so it has to be settled before anything is
     // drawn at it. It used to be settled at the *commit*, which meant the ghost
@@ -5599,12 +5601,11 @@ export class NewGridComponent implements OnDestroy {
 
   /**
    * The direction along a two-joint bar the name moves in, or nothing for a
-   * body that has no direction. Toward the bar's higher end, so the name is
-   * above the center and the chip below it whichever way the bar was drawn;
-   * a flat bar sends it toward the right-hand end.
+   * body that has no direction. Choose the higher end at the authored start,
+   * then stay attached to that end throughout animation.
    */
   private barAxis(link: Link): { x: number; y: number } | undefined {
-    return barLabelAxis(link);
+    return barLabelAxis(link, this.mechanismSrv.mechanismContaining(link)?.joints[0]);
   }
 
   /** Whether this bar wears a length chip right now. */
