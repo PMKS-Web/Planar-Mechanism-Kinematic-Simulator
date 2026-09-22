@@ -312,6 +312,10 @@ export class UrlGenerationService {
       // live value would churn every generated URL for a bit nobody consumes.
       encoder.addBoolSetting(BoolSetting.IS_SHOW_COM, false);
       encoder.addDecimalSetting(DecimalSetting.SCALE, this.settings.objectScale / MODEL_SCALE);
+      encoder.addDecimalSetting(
+        DecimalSetting.CYLINDER_SCALE,
+        SettingsService.preservedCylinderScale / MODEL_SCALE
+      );
 
       encoder.addIntSetting(IntSetting.TIMESTEP, cachedAnimationFrame);
 

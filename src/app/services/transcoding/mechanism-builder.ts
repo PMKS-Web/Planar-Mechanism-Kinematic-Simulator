@@ -695,6 +695,8 @@ export class MechanismBuilder {
       this.settings.isGravity.next(!this.transcoder.getBoolSetting(BoolSetting.GRAVITY_OFF));
       // The URL stores the user-unit object scale; the internal one is
       // MODEL_SCALE times larger, like every other length.
+      SettingsService.preservedCylinderScale =
+        this.transcoder.getDecimalSetting(DecimalSetting.CYLINDER_SCALE) * MODEL_SCALE;
       SettingsService._objectScale.next(
         this.transcoder.getDecimalSetting(DecimalSetting.SCALE) * MODEL_SCALE
       );

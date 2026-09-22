@@ -222,8 +222,8 @@
       &.weightless .massName {
         color: var(--text-muted);
       }
-      &.weightless .cellField .customInput {
-        color: var(--text-disabled);
+      &.weightless .cellField .customInput:not(:disabled) {
+        color: var(--text-primary);
       }
     }
 

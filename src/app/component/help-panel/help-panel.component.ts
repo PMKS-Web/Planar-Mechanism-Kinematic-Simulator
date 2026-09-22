@@ -80,7 +80,10 @@ export class HelpPanelComponent {
     { term: 'Joint', meaning: 'A connection where links rotate or slide relative to one another.' },
     { term: 'Grounded', meaning: 'Fixed to the stationary reference frame.' },
     { term: 'Driven input', meaning: 'The joint or slider whose motion advances the mechanism.' },
-    { term: 'Start pose', meaning: 'The position treated as time zero for playback and analysis.' },
+    {
+      term: 'Start pose',
+      meaning: 'The position treated as time zero for animation and analysis.',
+    },
     {
       term: 'Degrees of freedom',
       meaning:

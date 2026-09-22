@@ -1,3 +1,6 @@
+import { SaveHistoryService } from '../../services/save-history.service';
+import { SegmentedComponent } from '../BLOCKS/segmented/segmented.component';
+import { ObjectDisplayService } from '../../services/object-display.service';
 import { EditBannerComponent } from '../BLOCKS/banner/edit-banner.component';
 import { EditPermissionService } from '../../services/edit-permission.service';
 import { EditRefusal, SETTINGS_AT_START_ONLY } from '../../model/edit-permission';
@@ -31,7 +34,7 @@ import { ButtonComponent } from '../BLOCKS/button/button.component';
  * own, which is every shared mechanism.
  */
 function scaleText(scale: number): string {
-  return scale.toFixed(2);
+  return Number(scale.toPrecision(3)).toString();
 }
 
 /**
@@ -44,7 +47,7 @@ function scaleText(scale: number): string {
  * entirely of one joint -- and exists so a mistyped row of digits is refused
  * rather than spending a second re-deriving every outline.
  */
-const MIN_SCALE = 0.01;
+const MIN_SCALE = 0.000001;
 const MAX_SCALE = 50;
 
 @Component({
@@ -53,6 +56,7 @@ const MAX_SCALE = 50;
   styleUrls: ['./settings-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
+    SegmentedComponent,
     PanelSectionComponent,
     TitleBlock,
     CollapsibleSubsectionComponent,
@@ -67,7 +71,9 @@ const MAX_SCALE = 50;
 })
 export class SettingsPanelComponent implements OnDestroy {
   settingsService = inject(SettingsService);
+  readonly objectDisplay = inject(ObjectDisplayService);
   private fb = inject(FormBuilder);
+  private history = inject(SaveHistoryService);
   mechanismSrv = inject(MechanismService);
   private svgGrid = inject(SvgGridService);
   private nup = inject(NumberUnitParserService);
@@ -122,12 +128,8 @@ export class SettingsPanelComponent implements OnDestroy {
           { emitEvent: false }
         );
 
-        // This used to cast every Link to RealLink and call reComputeDPath,
-        // which threw on the first link that was not one -- a slider's block --
-        // and abandoned every link after it, so any mechanism with a slider
-        // logged a TypeError the moment Settings opened. The service does it
-        // now, guarded by type.
-        this.mechanismSrv.applyObjectScaleChange();
+        // Rebuilds belong to the caller after all geometry/settings are ready.
+        // Rebuilding here observes half of a unit conversion or URL restore.
       })
     );
 
@@ -199,13 +201,16 @@ export class SettingsPanelComponent implements OnDestroy {
         // an entry and gave the reader nothing to read.
         this.notify.refusal(
           'value.object-scale',
-          `Object scale has to be a number from ${MIN_SCALE} to ${MAX_SCALE}.`
+          `Custom Object Size has to be a number from ${MIN_SCALE} to ${MAX_SCALE}.`
         );
         return;
       }
+      SettingsService.preserveCylinderGeometry();
+      SettingsService.objectScaleChosen = true;
       this.currentObjectScaleSetting = parsed;
       SettingsService._objectScale.next(this.currentObjectScaleSetting * MODEL_SCALE);
-      this.mechanismSrv.updateMechanism();
+      this.mechanismSrv.applyObjectScaleChange();
+      this.history.save();
     });
     this.settingsForm.controls['angleunit'].valueChanges.subscribe((val) => {
       this.currentAngleUnit = ParseAngleUnit(String(val));
@@ -399,6 +404,14 @@ export class SettingsPanelComponent implements OnDestroy {
     this.settingsForm.controls['lengthunit'].patchValue(String(toUnit), { emitEvent: false });
     if (fromUnit === toUnit) return;
 
+    SettingsService.preservedCylinderScale = this.nup.convertLength(
+      SettingsService.preservedCylinderScale,
+      fromUnit,
+      toUnit
+    );
+    SettingsService._objectScale.next(
+      this.nup.convertLength(SettingsService.objectScale, fromUnit, toUnit)
+    );
     this.mechanismSrv.updateLinkageUnits(fromUnit, toUnit);
 
     // Nothing drawn, nothing to hold still: the compensation below exists to
@@ -406,9 +419,6 @@ export class SettingsPanelComponent implements OnDestroy {
     // zoomed the view a hundredfold and raised the far-too-large warning over
     // a drawing that did not exist. The view starts over instead.
     if (this.mechanismSrv.joints.length === 0 && this.mechanismSrv.links.length === 0) {
-      SettingsService._objectScale.next(
-        this.nup.convertLength(SettingsService.objectScale, fromUnit, toUnit)
-      );
       this.svgGrid.scaleToFitLinkage();
       this.mechanismSrv.onMechUpdateState.next(2);
       return;
@@ -425,9 +435,6 @@ export class SettingsPanelComponent implements OnDestroy {
         x: tempOriginInScreen.x,
         y: tempOriginInScreen.y,
       })
-    );
-    SettingsService._objectScale.next(
-      this.nup.convertLength(SettingsService.objectScale, fromUnit, toUnit)
     );
 
     // Update graphs with the new units.

@@ -563,10 +563,14 @@
             (pointerdown)="setLastLeftClick(link, $event)"
             (contextmenu)="setLastRightClick(link, $event)"
             [attr.cursor]="mechanismSrv.isLinkLockedVisual(link) ? 'not-allowed' : null"
-            [attr.d]="linkPathWithChannels(link)"
+            [attr.d]="
+              settings.isLineDrawing.value ? linkSkeletonPath(link) : linkPathWithChannels(link)
+            "
             [attr.id]="link.id"
             [attr.data-channels]="channelCountOn(link)"
-            [attr.fill]="mechanismSrv.getLinkProp(link, 'fill')"
+            [attr.fill]="
+              settings.isLineDrawing.value ? 'none' : mechanismSrv.getLinkProp(link, 'fill')
+            "
             fill-rule="evenodd"
             [attr.fill-opacity]="0.7"
             [attr.stroke]="mechanismSrv.getLinkProp(link, 'fill')"
@@ -580,14 +584,18 @@
                shape hands the holes back — unpainted, so the slot still reads as
                a slot, and under the block, so grabbing the block still grabs the
                block. -->
-          @if (hasChannelHit(link)) {
+          @if (settings.isLineDrawing.value || hasChannelHit(link)) {
             <path
               (pointerover)="link.showHighlight = true"
               (pointerout)="link.showHighlight = false"
               (pointerdown)="setLastLeftClick(link, $event)"
               (contextmenu)="setLastRightClick(link, $event)"
               [attr.cursor]="mechanismSrv.isLinkLockedVisual(link) ? 'not-allowed' : null"
-              [attr.d]="channelsCutInto(link)"
+              [attr.d]="
+                settings.isLineDrawing.value ? linkSkeletonPath(link) : channelsCutInto(link)
+              "
+              stroke="transparent"
+              [attr.stroke-width]="settings.isLineDrawing.value ? svgGrid.scaleWithZoom(12) : 0"
               [attr.id]="link.id + '__slotHit'"
               fill="none"
               pointer-events="all"
@@ -1598,7 +1606,7 @@
               }
               <!-- The pin that turns wears the motor's mark, from the same two
                  assets the drawing uses. It is the whole visible answer to
-                 "Driven from": without it, swapping the drive pin rearranged
+                 "Input Joint": without it, swapping the drive pin rearranged
                  nothing a reader could see. -->
               @if (gd.input) {
                 <image
@@ -1625,7 +1633,7 @@
               [attr.stroke-width]="svgGrid.scaleWithZoom(1.4)"
             />
           }
-          <!-- Named, because the panel names them. "Driven from Pin A", "Ground
+          <!-- Named, because the panel names them. "Input Joint Pin A", "Ground
              A–D", "Coupler B–C" -- every one of those letters was a reference
              to something the drawing never wrote down, so the reader had no way
              to tell which pin or which bar was meant. Drawn whatever the

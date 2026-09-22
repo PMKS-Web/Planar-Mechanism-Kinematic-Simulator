@@ -283,7 +283,7 @@ export function refusalFor(action: EditAction, state: EditState): EditRefusal | 
 
   // Synthesis owns the grid entirely: it describes a mechanism that does not
   // exist yet, so there is nothing here to refuse *about*.
-  if (state.mode === 'synthesis') return IN_SYNTHESIS;
+  if (state.mode === 'synthesis' && action !== 'history') return IN_SYNTHESIS;
   // Playing is read-only whatever the action. A reader reaching for a joint
   // that is moving is a fight nothing here can win.
   if (state.playing) return PLAYING;

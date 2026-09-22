@@ -23,7 +23,8 @@ export const LIBRARY_TEMPLATE_SOURCES: Record<LibraryTemplateID, string> = {
   Windshield_Wiper: 'Windshield wiper',
   Elliptical_Crank: 'Elliptical crank',
   Jansen_Leg: 'Jansen leg',
-  Backhoe_Bucket: 'Backhoe bucket',
+  Hydraulic_Crosshead: 'Hydraulic crosshead',
+  Offset_Mount_Hatch: 'Offset-mount hatch',
   Scissor_Lift: 'Scissor lift',
   Shaper_Quick_Return: "Shaper's quick-return drive",
   Pedaling_Leg: 'Leg on a bicycle crank',
@@ -44,7 +45,8 @@ export const LIBRARY_TEMPLATE_SOURCES: Record<LibraryTemplateID, string> = {
   Walking_Pair: 'Walking pair',
   Straight_Line_Pair: 'Approximate and exact',
   Pumping_Field: 'Pumping field',
-  Landing_Gear: 'Aircraft landing gear',
+  Reciprocating_Saw: 'Reciprocating saw',
+  Slotted_Tool_Drive: 'Slotted tool drive',
   Four_Bar_Inversions: 'Four-bar inversions',
   Slider_Crank_Inversions: 'Slider-crank inversions',
 };
@@ -65,6 +67,8 @@ export const LIBRARY_TEMPLATE_SOURCES: Record<LibraryTemplateID, string> = {
  * list exists to prevent.
  */
 export const FORCE_STUDY_TEMPLATES: readonly LibraryTemplateID[] = [
+  'Reciprocating_Saw',
+  'Slotted_Tool_Drive',
   'Punch_Press',
   'Derrick_Crane',
   'Toggle_Clamp',

@@ -370,8 +370,8 @@ export class PositionSolver {
    *
    * Its own failure rather than a generic one, because the fix is specific and
    * nothing else in the mechanism is wrong: the barrel is shorter than the bore
-   * its own piston needs, so there is no stroke to command. Object Scale can
-   * put a part here without anyone touching it.
+   * its own piston needs, so there is no stroke to command. Legacy imported
+   * parts may already carry an unusable clearance.
    */
   static unusableCylinderDrive: string | undefined;
 

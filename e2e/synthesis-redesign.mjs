@@ -234,7 +234,7 @@ check(
   );
 }
 
-await page.locator('#synthesisPanel button-block', { hasText: 'Add position' }).click();
+await page.locator('#synthesisPanel button-block', { hasText: 'Add Position' }).click();
 await page.waitForTimeout(250);
 await page.mouse.move(900, 560);
 await page.waitForTimeout(200);
@@ -376,7 +376,7 @@ await page.waitForTimeout(200);
 const scrollBefore = await page.evaluate(() =>
   Math.round(document.querySelector('#synthesisPanel .work__scroll').scrollTop)
 );
-await page.locator('#synthesisPanel .cta', { hasText: 'Generate solutions' }).click();
+await page.locator('#synthesisPanel .cta', { hasText: 'Generate Solutions' }).click();
 await page.waitForTimeout(400);
 check(
   'a search in progress is a bar, with no prose nobody has time to read',
@@ -447,7 +447,7 @@ await page
   .locator('.req__press')
   .click();
 await page.waitForTimeout(300);
-await page.locator('#synthesisPanel .cta', { hasText: 'Generate solutions' }).click();
+await page.locator('#synthesisPanel .cta', { hasText: 'Generate Solutions' }).click();
 await settled();
 const loose = await panel('(p) => p.solution.candidates().length');
 check('letting the pins slide finds more of them', loose > strict, { strict, loose });
@@ -472,7 +472,7 @@ check(
   (await panel('(p) => p.solution.candidates().length')) > 0
 );
 
-// --- "Driven from" has to change something the reader can see -------------
+// --- "Input Joint" has to change something the reader can see -------------
 const onPinA = await grid('(g) => JSON.stringify(g.synthCanvas.previewGrounds())');
 await page.locator('#synthesisPanel .seg button', { hasText: 'Pin D' }).click();
 await page.waitForTimeout(600);
@@ -498,7 +498,7 @@ if ((await page.locator('#synthesisPanel .card').count()) > 1) {
 
 // --- the driver -------------------------------------------------------
 await page
-  .locator('#synthesisPanel .row', { hasText: 'Add driver' })
+  .locator('#synthesisPanel .row', { hasText: 'Add Input Link' })
   .locator('.row__switch button[role="switch"]')
   .click();
 await page.waitForTimeout(500);
@@ -703,7 +703,7 @@ check(
     const seen = await page.evaluate(() => {
       const panel = ng.getComponent(document.querySelector('app-synthesis-panel'));
       const row = [...document.querySelectorAll('#synthesisPanel .row')].find((r) =>
-        r.textContent.includes('Add driver')
+        r.textContent.includes('Add Input Link')
       );
       if (!row) return null;
       const button = row.querySelector('.row__switch button[role="switch"]');
@@ -857,7 +857,7 @@ if ((await page.locator('#synthesisPanel .card').count()) > 1) {
   await page.waitForTimeout(400);
   check(
     'a different solution offers to replace what is there, not to add to it',
-    (await panel('(p) => p.insertLabel')) === 'Replace on grid',
+    (await panel('(p) => p.insertLabel')) === 'Replace on Grid',
     await panel('(p) => p.insertLabel')
   );
   await page.locator('#synthesisPanel .cta--insert').click();
@@ -967,6 +967,8 @@ check(
     const afterOneUndo = await grid('(g) => g.mechanismSrv.joints.length');
     await panel('(p) => { p.solution.releaseOwnership(); }');
     await page.waitForTimeout(300);
+    if (!(committed === 1 && joints > 0 && afterOneUndo === 0))
+      console.log('Insert history diagnostic', { committed, joints, afterOneUndo });
     return committed === 1 && joints > 0 && afterOneUndo === 0;
   })()
 );
@@ -981,7 +983,7 @@ const beforeUndo = await panel(
   '(p) => JSON.stringify(p.design.getAllPoses().map(q => [Math.round(q.position.x), Math.round(q.position.y)]))'
 );
 await page
-  .locator('#synthesisPanel button-block[aria-label="Duplicate last position"]')
+  .locator('#synthesisPanel button-block[aria-label="Duplicate Last Position"]')
   .count()
   .catch(() => 0);
 await page.locator('#synthesisPanel .poseRow').nth(2).locator('.poseRow__remove').click();
@@ -1038,7 +1040,7 @@ async function solvedPage() {
   // it there either. The tour's overlay eats the click if it is still up.
   await p.locator('.tabButton', { hasText: 'Synthesis' }).click();
   await p.waitForTimeout(700);
-  await p.locator('#synthesisPanel .cta', { hasText: 'Generate solutions' }).click();
+  await p.locator('#synthesisPanel .cta', { hasText: 'Generate Solutions' }).click();
   await p.waitForFunction(
     () => !ng.getComponent(document.querySelector('app-synthesis-panel')).solution.generating,
     null,
@@ -1121,7 +1123,7 @@ const ask = (p, fn) =>
         few: 0,
         afterInsert,
         afterChoosingAnother: grid.synthCanvas.previewLinks().length,
-        offersToReplace: panel.primaryLabel === 'Replace on grid',
+        offersToReplace: panel.primaryLabel === 'Replace on Grid',
       };
     }`
   );
@@ -1307,7 +1309,7 @@ const ask = (p, fn) =>
       outcome.withDriver.dyad === true &&
       outcome.withDriver.stale === true &&
       outcome.withDriver.preview > 0 &&
-      outcome.withDriver.label === 'Replace on grid',
+      outcome.withDriver.label === 'Replace on Grid',
     outcome
   );
   await p.close();
@@ -1502,7 +1504,7 @@ const ask = (p, fn) =>
     }`
   );
   await p.waitForTimeout(300);
-  await p.locator('#synthesisPanel .cta', { hasText: 'Generate solutions' }).click();
+  await p.locator('#synthesisPanel .cta', { hasText: 'Generate Solutions' }).click();
   await p.waitForFunction(
     () => !ng.getComponent(document.querySelector('app-synthesis-panel')).solution.generating,
     null,
@@ -1525,7 +1527,7 @@ const ask = (p, fn) =>
       p,
       `(panel) => {
         const row = [...document.querySelectorAll('#synthesisPanel .row')].find((r) =>
-          r.textContent.includes('Add driver')
+          r.textContent.includes('Add Input Link')
         );
         const button = row && row.querySelector('.row__switch button[role="switch"]');
         return { refused: !!panel.driverRefusal, disabled: !!(button && button.disabled) };
@@ -1586,7 +1588,7 @@ const ask = (p, fn) =>
   await opened.waitForTimeout(700);
   // A reopened link has the design but not the search, and Insert with nothing
   // chosen refuses for that reason rather than the one being tested.
-  await opened.locator('#synthesisPanel .cta', { hasText: 'Generate solutions' }).click();
+  await opened.locator('#synthesisPanel .cta', { hasText: 'Generate Solutions' }).click();
   await opened.waitForFunction(
     () => !ng.getComponent(document.querySelector('app-synthesis-panel')).solution.generating,
     null,
@@ -1645,7 +1647,7 @@ const ask = (p, fn) =>
   await waitForReady(opened);
   await opened.locator('.tabButton', { hasText: 'Synthesis' }).click();
   await opened.waitForTimeout(700);
-  await opened.locator('#synthesisPanel .cta', { hasText: 'Generate solutions' }).click();
+  await opened.locator('#synthesisPanel .cta', { hasText: 'Generate Solutions' }).click();
   await opened.waitForFunction(
     () => !ng.getComponent(document.querySelector('app-synthesis-panel')).solution.generating,
     null,
@@ -1724,7 +1726,7 @@ const ask = (p, fn) =>
   );
   await p.waitForTimeout(400);
   const row = p
-    .locator('#synthesisPanel .row', { hasText: 'Assembly branch' })
+    .locator('#synthesisPanel .row', { hasText: 'Assembly Branch' })
     .locator('.seg button');
   const labels = () =>
     ask(p, '(panel) => JSON.stringify(panel.branchOptions().map((o) => [o.label, o.active]))');

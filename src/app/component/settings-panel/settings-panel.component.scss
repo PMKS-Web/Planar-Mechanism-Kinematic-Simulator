@@ -69,3 +69,16 @@
     color: var(--text-secondary);
   }
 }
+
+#settingsWrapper .displayChoice {
+  margin: 16px 15px;
+  color: var(--text-secondary);
+  segmented-block {
+    display: block;
+    margin-top: 6px;
+  }
+  p {
+    margin: 6px 0 0;
+    font-size: 12px;
+  }
+}

@@ -1,3 +1,4 @@
+import { AngleUnit } from '../../model/unit-enums';
 import { NumberDragDirective } from '../../directives/number-drag.directive';
 import { SegmentedComponent } from '../BLOCKS/segmented/segmented.component';
 import { ChipComponent } from '../BLOCKS/chip/chip.component';
@@ -232,6 +233,16 @@ export class SynthesisPanelComponent implements OnInit, DoCheck, OnDestroy {
     this.subs.push(
       this.poseForm.valueChanges.subscribe((value) => {
         if (this.syncing) return;
+        const [validLength, length] = this.nup.parseLengthString(
+          String(value.length ?? ''),
+          this.settings.lengthUnit.value
+        );
+        if (!validLength || !Number.isFinite(length) || length <= 0) {
+          this.notify.refusal(
+            'synthesis.length',
+            'End-effector link length must be greater than zero.'
+          );
+        }
         this.syncing = true;
         const before = new Set(this.design.getAllPoses().map((pose) => pose.id));
         const applied = this.design.updatePosesFromForm({ ...value, cor: this.corIndex() });
@@ -385,7 +396,11 @@ export class SynthesisPanelComponent implements OnInit, DoCheck, OnDestroy {
   }
 
   private angleText(degrees: number): string {
-    return this.nup.formatValueAndUnit(degrees, this.settings.angleUnit.getValue());
+    const unit = this.settings.angleUnit.value;
+    return this.nup.formatValueAndUnit(
+      this.nup.convertAngle(degrees, AngleUnit.DEGREE, unit),
+      unit
+    );
   }
 
   /** A model length in the reader's own unit, to two places, without a unit. */
@@ -455,15 +470,23 @@ export class SynthesisPanelComponent implements OnInit, DoCheck, OnDestroy {
         unit
       );
     });
-    if (parsed.some(([ok]) => !ok)) {
+    if (
+      parsed.some(([ok, value]) => !ok || !Number.isFinite(value)) ||
+      parsed[2][1] <= 0 ||
+      parsed[3][1] <= 0
+    ) {
+      this.notify.refusal(
+        'synthesis.region',
+        'Type a valid position and a width and height greater than zero.'
+      );
       this.readFromModel();
       return;
     }
     this.design.region = {
       x: parsed[0][1],
       y: parsed[1][1],
-      w: Math.max(MODEL_SCALE, parsed[2][1]),
-      h: Math.max(MODEL_SCALE, parsed[3][1]),
+      w: parsed[2][1],
+      h: parsed[3][1],
     };
     this.readFromModel();
     this.record();
@@ -540,7 +563,7 @@ export class SynthesisPanelComponent implements OnInit, DoCheck, OnDestroy {
   }
 
   get addLabel(): string {
-    return this.design.armed ? 'Cancel' : 'Add position ' + this.nextPositionNumber;
+    return this.design.armed ? 'Cancel' : 'Add Position ' + this.nextPositionNumber;
   }
 
   /**
@@ -852,7 +875,7 @@ export class SynthesisPanelComponent implements OnInit, DoCheck, OnDestroy {
 
   get primaryLabel(): string {
     if (this.primaryIsGenerate) {
-      return this.solution.generating ? 'Searching…' : 'Generate solutions';
+      return this.solution.generating ? 'Searching…' : 'Generate Solutions';
     }
     return this.insertLabel;
   }
@@ -1308,7 +1331,7 @@ export class SynthesisPanelComponent implements OnInit, DoCheck, OnDestroy {
     // Which crank is turning, because with a driver fitted it is not the
     // four-bar's: naming it "crank rotation" beside a six-bar left the reader
     // to guess which of the two the transport was scrubbing.
-    const crank = this.solution.dyad() ? 'driver crank' : 'crank';
+    const crank = this.solution.dyad() ? 'input crank' : 'crank';
     return range.full
       ? `full ${crank} rotation`
       : `${crank} rocks through ${Math.round(range.to - range.from)}°`;
@@ -1329,8 +1352,8 @@ export class SynthesisPanelComponent implements OnInit, DoCheck, OnDestroy {
   }
 
   get insertLabel(): string {
-    if (!this.solution.inserted) return 'Insert into grid';
-    return this.solutionIsOnGrid ? 'Inserted into grid' : 'Replace on grid';
+    if (!this.solution.inserted) return 'Insert into Grid';
+    return this.solutionIsOnGrid ? 'Inserted into Grid' : 'Replace on Grid';
   }
 
   /** Whether what is on the grid is the solution now being looked at. */
@@ -1432,7 +1455,7 @@ export class SynthesisPanelComponent implements OnInit, DoCheck, OnDestroy {
     // One commit per press. Each press used to start its own wind-back, so a
     // double-press committed twice -- rebuilding the linkage, and writing two
     // entries into the history for one intention.
-    if (this.windingBack) return;
+    if (this.windingBack || (!force && this.solutionIsOnGrid)) return;
     // Only the first press winds back; the retries from the warning below are
     // already home.
     if (!force && this.solution.phase !== null) {
@@ -1488,7 +1511,7 @@ export class SynthesisPanelComponent implements OnInit, DoCheck, OnDestroy {
 
   insertedNote(): string {
     if (this.solution.needsReinsert()) {
-      return 'Changes are in the preview. Choose Replace on grid to update the inserted mechanism.';
+      return 'Changes are in the preview. Choose Replace on Grid to update the inserted mechanism.';
     }
     const kind = this.solution.dyad() ? 'six-bar' : 'four-bar';
     return `Left on the grid as a ${kind}. Change a position and insert again to revise it.`;

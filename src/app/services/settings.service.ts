@@ -149,6 +149,16 @@ export class SettingsService {
    * value comparison is all that is left to go on there.
    */
   static objectScaleChosen = false;
+  /** Legacy cylinder clearance, retained independently of visual sizing. Zero follows old URLs. */
+  static preservedCylinderScale = 0;
+  static get cylinderObjectScale(): number {
+    return this.preservedCylinderScale || this.objectScale;
+  }
+  /** Freeze the authored stroke before changing display thickness. */
+  static preserveCylinderGeometry(): void {
+    this.preservedCylinderScale = this.cylinderObjectScale;
+  }
+  isLineDrawing = new BehaviorSubject(readStoredFlag('lineDrawing', false));
 
   static get objectScale(): number {
     return SettingsService._objectScale.value;
