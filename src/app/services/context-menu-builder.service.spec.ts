@@ -1,3 +1,4 @@
+import { AnalysisPanelStateService } from './analysis-panel-state.service';
 import { LinkTraceService } from './link-trace.service';
 import { Injector } from '@angular/core';
 import { ContextMenuBuilderService, MenuHandlers } from './context-menu-builder.service';
@@ -66,6 +67,7 @@ function createBuilderHarness() {
   const injector = Injector.create({
     providers: [
       { provide: LinkTraceService, deps: [] },
+      { provide: AnalysisPanelStateService, deps: [] },
       { provide: SettingsService, deps: [] },
       { provide: NumberUnitParserService, deps: [] },
       { provide: ActiveObjService, deps: [] },

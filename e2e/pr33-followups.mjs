@@ -99,10 +99,11 @@ await contactSheet(`${OUT}/meter-film/*-switch.png`, `${OUT}/meter-film.png`, 4)
 await openMechanism(page, `${BASE}/?${payloads['4-Bar']}`);
 await page.locator('#linkHolder path').nth(1).click({ force: true });
 await page.getByRole('button', { name: /Kinematic Analysis/ }).click();
+await page.getByRole('tab', { name: 'Center of mass', exact: true }).click();
 const analysis = await page.locator('app-analysis-panel').evaluate((host) => {
   const chips = [...host.querySelectorAll('.drawingChips .viewButton')];
   const labels = [...host.querySelectorAll('.drawingChips .viewButtonLabel')];
-  const heading = host.querySelector('.graphGroupHeading');
+  const heading = host.querySelector('.panelTitleText');
   const comRows = host.querySelector('.rowList--com');
   const switches = host.querySelector('.drawingSwitches');
   const rowNames = [...comRows.querySelectorAll('.graphTitle')];
@@ -126,20 +127,20 @@ const analysis = await page.locator('app-analysis-panel').evaluate((host) => {
   };
 });
 check(
-  'wide analysis panel places four fully named switches in one row',
+  'CoM panel places three fully named switches in one row',
   analysis.rows === 1 && analysis.labelsFit,
   analysis
 );
 check(
-  'CoM heading groups the graphs and drawing switches without a divider',
-  analysis.heading === 'Center of Mass' &&
-    analysis.headingSize >= 16 &&
+  'CoM tab uses the same aligned graph rows and drawing controls',
+  analysis.heading.startsWith('Kinematics for Link') &&
+    analysis.headingSize === 20 &&
     analysis.rowNames.join('|') === 'Position|Velocity|Acceleration' &&
     analysis.fullNames.every((name) => name.startsWith('Center of mass ')) &&
     analysis.leftSpread < 1.5 &&
-    analysis.rowSize < analysis.headingSize &&
+    analysis.rowSize === 13.5 &&
     analysis.controlsSize < analysis.rowSize &&
-    analysis.comRule === 'none' &&
+    analysis.comRule === 'block' &&
     analysis.switchRule === '0px',
   analysis
 );
@@ -161,8 +162,8 @@ const narrow = await page.locator('.drawingChips').evaluate((host) => ({
   ),
 }));
 check(
-  'narrow analysis panel switches to legible two-by-two',
-  narrow.rows === 2 && narrow.labelsFit,
+  'three CoM switches remain legible on a narrow panel',
+  narrow.rows === 1 && narrow.labelsFit,
   narrow
 );
 await page.screenshot({ path: `${OUT}/analysis-narrow.png` });
