@@ -2026,3 +2026,11 @@ be solved" means a solver bug to go and find, not a drawing to fix.
 ### Split Joint treats a floating slot's carrier as a body
 
 A floating `PrisJoint` is absent from its carrier's `joints`: that absence is what makes it a slot rather than a pin. Split Joint counts the carrier so the action is offered, but releases that constraint instead of inserting a carrier pin. The same `PrisJoint`, drive units, and all rider memberships remain; it becomes dangling and moves a small distance normal to its former slot. Ordinary shared pins spread by a small fraction of the drawn joint scale. Both motions use the constrained drag path, so position locks and holds remain authoritative. Counting only `joint.links` makes every ordinary floating pin-in-slot look like a one-link refusal.
+
+### A force flip needs a solve-cache key even when no point moves
+
+`Flip Force` keeps `startCoord`/`endCoord` fixed and toggles `arrowOutward`. Omitting that bit from the solve fingerprint reused the old solution, which overwrote the new orientation when the paused pose was restored. Include the bit, carry it through posed edits and pose interpolation, and test both the endpoints and the sign of the physical components. Numeric exports use `directionCoord` because their endpoint-only representation cannot encode an inward arrow.
+
+### Numeric drags should commit once, through the field
+
+Previewing each pointer move through Angular's input event made a gesture produce several undo states. `NumberDragDirective` previews the text locally and dispatches input/change/blur only on release; Escape and pointer cancellation restore the original text. The browser regression checks that one Undo restores the value before the whole drag.

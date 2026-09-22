@@ -53,6 +53,15 @@ export const NOWHERE_TO_SLIDE = {
   sentence: 'Drag it onto a link to cut its slot, or ground it.',
 } as const;
 
+export const ORPHANED_JOINT = {
+  lead: 'Joint is Orphaned.',
+  sentence: 'Drag another joint to merge it or create a new link.',
+} as const;
+
+export function isOrphanedJoint(joint: RealJoint): boolean {
+  return joint.links.length === 0 && !(joint instanceof PrisJoint && joint.isFloating);
+}
+
 /** The two facts a type is made of. */
 export interface JointTypeBits {
   slider: boolean;

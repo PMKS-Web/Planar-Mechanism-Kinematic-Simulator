@@ -218,7 +218,7 @@ record('every gate agrees, parked mid-cycle', agreeing(parked), parked);
 // in the model's words rather than graying the row in silence.
 record(
   'and the menu refuses restructuring there, saying it is not at the start',
-  parked.grounded === 'not at the start',
+  parked.grounded === 'return to start',
   parked
 );
 

@@ -137,7 +137,7 @@
             analysisType="loop"
             mechProp="Linear Joint Pos"
             mechPart="{{ shownJoint.id }}"
-            [expanded]="isExpanded('JPos')"
+            [expanded]="isExpanded('JPos', true)"
             (expandedChange)="graphExpanded['JPos'] = $event"
           ></app-analysis-graph-section>
           <app-analysis-graph-section
@@ -197,7 +197,7 @@
                 mechProp="Joint Forces"
                 mechPart="{{ row.jointId }}"
                 [reactionLinkId]="row.linkId"
-                [expanded]="isExpanded('JForce_' + row.linkId)"
+                [expanded]="isExpanded('JForce_' + row.linkId, $first)"
                 (expandedChange)="graphExpanded['JForce_' + row.linkId] = $event"
               ></app-analysis-graph-section>
             }
@@ -209,7 +209,7 @@
                 [analysisType]="forceAnalysisMode()"
                 mechProp="Input Effort"
                 mechPart="{{ shownJoint.id }}"
-                [expanded]="isExpanded('JInputForce')"
+                [expanded]="isExpanded('JInputForce', jointForceRows().length === 0)"
                 (expandedChange)="graphExpanded['JInputForce'] = $event"
               ></app-analysis-graph-section>
             }
@@ -237,7 +237,7 @@
             analysisType="loop"
             mechProp="Angular Link Pos"
             mechPart="{{ shownLink.id }}"
-            [expanded]="isExpanded('LAng')"
+            [expanded]="isExpanded('LAng', true)"
             (expandedChange)="graphExpanded['LAng'] = $event"
           ></app-analysis-graph-section>
           <app-analysis-graph-section
@@ -339,7 +339,7 @@
                 mechProp="Joint Forces"
                 mechPart="{{ row.jointId }}"
                 [reactionLinkId]="row.linkId"
-                [expanded]="isExpanded('LForce_' + row.jointId)"
+                [expanded]="isExpanded('LForce_' + row.jointId, $first)"
                 (expandedChange)="graphExpanded['LForce_' + row.jointId] = $event"
               ></app-analysis-graph-section>
             }
@@ -355,7 +355,7 @@
                 [analysisType]="forceAnalysisMode()"
                 mechProp="Input Effort"
                 mechPart="{{ driven.id }}"
-                [expanded]="isExpanded('LInputForce')"
+                [expanded]="isExpanded('LInputForce', linkForceRows().length === 0)"
                 (expandedChange)="graphExpanded['LInputForce'] = $event"
               ></app-analysis-graph-section>
             }

@@ -1,3 +1,4 @@
+import { NumberDragDirective } from '../../../directives/number-drag.directive';
 import { SegmentedComponent } from '../../BLOCKS/segmented/segmented.component';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -85,6 +86,7 @@ const LAYER_ROWS: LayerRow[] = [
   styleUrls: ['./drawing-export.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
+    NumberDragDirective,
     FormsModule,
     MatButton,
     MatDialogActions,

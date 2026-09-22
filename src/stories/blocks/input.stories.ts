@@ -104,3 +104,8 @@ export const UnitPicker: Story = {
     `,
   }),
 };
+
+/** Drag the value vertically; Shift adjusts at one tenth the normal rate. */
+export const DragToAdjust: Story = {
+  args: { tooltip: 'Drag the number up or down. Shift makes a finer adjustment.', value: '1.50' },
+};

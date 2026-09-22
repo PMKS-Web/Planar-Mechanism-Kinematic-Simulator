@@ -22,9 +22,8 @@
  * out the first week it is not.
  *
  * `seconds` is roughly what the suite took on the machine that last measured it.
- * It is only used to balance the shards, so a stale number costs balance and
- * never correctness — and a run that overshoots its own estimate says so, which
- * is the cue to correct it.
+ * It balances the shards; ordinary overruns warn. Only an extreme tenfold
+ * overrun fails, measured per attempt so a retry is not charged twice.
  */
 
 const BOTH = ['gate', 'nightly'];
@@ -67,6 +66,7 @@ export const SUITES = [
   { name: 'disabled-toggles', seconds: 5, lanes: BOTH },
   { name: 'dxf-sweep', seconds: 122, lanes: NIGHTLY },
   { name: 'edit-playback', seconds: 46, lanes: NIGHTLY },
+  { name: 'editor-bug-fixes', seconds: 25, lanes: BOTH },
   { name: 'edit-undo', seconds: 40, lanes: BOTH },
   { name: 'export-flow', seconds: 47, lanes: NIGHTLY },
   { name: 'field-overlay-reassert', seconds: 5, lanes: BOTH },

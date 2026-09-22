@@ -1,3 +1,4 @@
+import { NumberDragDirective } from '../../directives/number-drag.directive';
 import { SegmentedComponent } from '../BLOCKS/segmented/segmented.component';
 import { ChipComponent } from '../BLOCKS/chip/chip.component';
 import { ButtonComponent } from '../BLOCKS/button/button.component';
@@ -109,6 +110,7 @@ export function niceRound(value: number): number {
   styleUrls: ['./synthesis-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
+    NumberDragDirective,
     FormsModule,
     ReactiveFormsModule,
     MatIcon,

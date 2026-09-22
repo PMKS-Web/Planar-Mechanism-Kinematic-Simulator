@@ -1,3 +1,6 @@
+import { PlacementTargetService } from '../../services/placement-target.service';
+import { placementBearing } from '../../model/placement-snap';
+import { LinkTraceService } from '../../services/link-trace.service';
 import { SvgGridService } from '../../services/svg-grid.service';
 import { heldBars, heldBarsReaching, heldBySentence, holdList } from '../../model/link-holds';
 import { holdChips } from '../../model/hold-chips';
@@ -97,7 +100,6 @@ import {
 import {
   JointDropCandidate,
   MERGE_REFUSAL_MESSAGES,
-  MERGE_REFUSAL_REASONS,
   MergeRefusal,
   resolveDropCandidate,
   resolveSlotDropTarget,
@@ -214,6 +216,8 @@ export class NewGridComponent implements OnDestroy {
   readonly Math = Math;
   svgGrid = inject(SvgGridService);
   mechanismSrv = inject(MechanismService);
+  protected linkTraces = inject(LinkTraceService);
+  private placementTargets = inject(PlacementTargetService);
   private tutorial = inject(TutorialService);
   private whatsNew = inject(WhatsNewService);
   private urlParser = inject(UrlProcessorService);
@@ -1019,7 +1023,9 @@ export class NewGridComponent implements OnDestroy {
     this.cylinderCreateAt = undefined;
     this.dragState.finishCreating();
     if (!start) return;
+    const count = this.mechanismSrv.links.length;
     this.mechanismSrv.createCylinderFrom(start, end, mountOn, mountAt, endAt);
+    if (endAt && this.mechanismSrv.links.length > count) this.popJoint(endAt.id);
   }
 
   setLastRightClick(clickedObj: Joint | Link | string | Force | SynthesisPose, event?: MouseEvent) {
@@ -1059,7 +1065,7 @@ export class NewGridComponent implements OnDestroy {
     switch (this.objectKind(clickedObj)) {
       case 'RealLink':
         this.lastLeftClickType = 'Link';
-        if ((clickedObj as RealLink).subset.length > 1) {
+        if (event && (clickedObj as RealLink).subset.length > 1) {
           this.gridUtils.updateLastSelectedSublink(event!, clickedObj as RealLink);
         }
         break;
@@ -1105,13 +1111,35 @@ export class NewGridComponent implements OnDestroy {
   }
 
   setLastLeftClick(clickedObj: Joint | Link | string | Force | SynthesisPose, event?: MouseEvent) {
+    if (
+      event &&
+      (this.dragState.isCreatingLink || this.dragState.grid === gridStates.createCylinder)
+    ) {
+      this.mouseLocation = this.svgGrid.screenToModelFromXY(event.clientX, event.clientY);
+      clickedObj = this.creationMergeTarget ?? clickedObj;
+    }
     // Scenery in the analysis modes takes no clicks: every panel behind a
     // selection is about a machine that runs, and this geometry is not in one.
     if (
       (clickedObj instanceof Joint || clickedObj instanceof Link) &&
       this.mechanismSrv.isPartInert(clickedObj)
     ) {
+      this.lastLeftClick = clickedObj;
+      this.lastLeftClickType = 'Unknown';
       return;
+    }
+    if (
+      clickedObj instanceof RealLink &&
+      event?.button === 0 &&
+      this.dragState.grid === gridStates.waiting &&
+      !event.ctrlKey &&
+      !event.metaKey
+    ) {
+      clickedObj = this.gridUtils.pickLinkAt(
+        clickedObj,
+        this.activeObjService.objType === 'Link' ? this.activeObjService.selectedLink : undefined,
+        event
+      );
     }
     this.grabToPause(clickedObj);
     this.lastLeftClick = clickedObj;
@@ -1752,8 +1780,23 @@ export class NewGridComponent implements OnDestroy {
    *
    * Option suspends it, the way it suspends every other snap on the canvas.
    */
+  get creationMergeTarget(): RealJoint | undefined {
+    if (!this.dragState.isCreatingLink && this.dragState.grid !== gridStates.createCylinder)
+      return undefined;
+    return this.placementTargets.target(
+      this.mouseLocation,
+      this.cylinderCreateAt ?? this.linkCreateFrom
+    );
+  }
+
   private creationLanding(): Coord {
-    return this.svgGrid.snapToGrid(this.mouseLocation, this.snapSuspended);
+    const target = this.creationMergeTarget;
+    if (target) return new Coord(target.x, target.y);
+    return placementBearing(
+      this.linkCreateStart ?? this.cylinderCreateStart,
+      this.svgGrid.snapToGrid(this.mouseLocation, this.snapSuspended),
+      this.snapSuspended
+    );
   }
 
   /**
@@ -1938,27 +1981,8 @@ export class NewGridComponent implements OnDestroy {
   creatingForce($event: MouseEvent) {
     const mousePos = this.svgGrid.screenToModelFromXY($event.clientX, $event.clientY);
     const ghost = this.forceGhost;
-    if (ghost) ghost.moveDirectionHandle(this.forceEndSnapped(ghost.startCoord, mousePos, $event));
-  }
-
-  /**
-   * Where a force being placed points: the cursor's bearing from the anchor,
-   * rounded to the nearest fifteen degrees, at the cursor's distance.
-   *
-   * A load in a textbook problem is horizontal, vertical or at a round
-   * angle, and a hand cannot hold a mouse at 30 degrees; it holds it at 29
-   * and the panel then reads 29. Option lets the arrow go anywhere, the same
-   * key that frees a joint from the grid.
-   */
-  private forceEndSnapped(start: Coord, cursor: Coord, event: MouseEvent): Coord {
-    if (event.altKey) return cursor;
-    const dx = cursor.x - start.x;
-    const dy = cursor.y - start.y;
-    const length = Math.hypot(dx, dy);
-    if (length < 1e-9) return cursor;
-    const step = Math.PI / 12;
-    const angle = Math.round(Math.atan2(dy, dx) / step) * step;
-    return new Coord(start.x + length * Math.cos(angle), start.y + length * Math.sin(angle));
+    if (ghost)
+      ghost.moveDirectionHandle(placementBearing(ghost.startCoord, mousePos, $event.altKey));
   }
 
   startCreatingLink() {
@@ -2346,33 +2370,6 @@ export class NewGridComponent implements OnDestroy {
   lockGlyphTransform(): string {
     const scale = (0.17 * this.settings.objectScale) / 24;
     return `scale(${scale}) translate(-12, -13.5)`;
-  }
-
-  /**
-   * The joints a drag of this link would carry, filtered to the ones the
-   * current Lock marks hold still. Carried means moved *as a body*: the
-   * link's own joints, and a sealed cylinder's.
-   *
-   * A floating slider riding this link is not among them, locked or not. Its
-   * mark holds where it sits along the slot, and moving the link moves the
-   * slot with the block still at that place on it — so a locked block is no
-   * reason to refuse the drag, and pivoting the link about one would be
-   * anchoring a point nothing asked to have held.
-   */
-  private frozenCarriedJoints(link: Link): Joint[] {
-    const carried = new Map<string, Joint>();
-    const add = (joint: Joint) => carried.set(joint.id, joint);
-    const bodyCylinder = this.mechanismSrv.cylinderAt(link);
-    if (bodyCylinder) {
-      cylinderJoints(bodyCylinder).forEach(add);
-    } else {
-      // The link's own joints. A slider riding one of them used to bring the
-      // coincident partner the block paired it with; a slider is one joint now,
-      // so a slider that is a member of this body is already among them.
-      link.joints.forEach(add);
-    }
-    const frozen = this.gridUtils.frozenJointIds();
-    return [...carried.values()].filter((joint) => frozen.has(joint.id));
   }
 
   /** Refuse a joint drag because the joint is held, naming what holds it. */
@@ -3214,18 +3211,6 @@ export class NewGridComponent implements OnDestroy {
     return this.mergeArrowReversed
       ? `${joint.name} \u2190 ${source.name}`
       : `${source.name} \u2192 ${joint.name}`;
-  }
-
-  /**
-   * Why the joint under the cursor will not take this merge, said now.
-   *
-   * The ring says no; this says which rule. Without it the reader has to let
-   * go to find out, and the notification that then appears is about a gesture
-   * they have already finished.
-   */
-  get refusalReason(): string {
-    const refusal = this.refusedTarget?.refusal;
-    return refusal ? MERGE_REFUSAL_REASONS[refusal] : '';
   }
 
   /** Whether this joint is the one being dragged into another. */
@@ -4175,7 +4160,7 @@ export class NewGridComponent implements OnDestroy {
           const start = this.svgGrid.screenToModel(this.lastRightClickCoord);
           // The arrow lands where the preview has been pointing: at the
           // snapped bearing, unless Option is held.
-          const end = this.forceEndSnapped(start, mousePosInSvg, $event);
+          const end = placementBearing(start, mousePosInSvg, $event.altKey);
           this.mechanismSrv.createForce(start, end, this.forceCreateOn);
           this.dragState.finishCreating();
           this.forceGhost = undefined;
@@ -4317,6 +4302,7 @@ export class NewGridComponent implements OnDestroy {
                 this.mechanismSrv.mergeToJoints([joint1]);
                 this.mechanismSrv.mergeToLinks([link]);
                 this.mechanismSrv.finishStructuralEdit(true);
+                this.popJoint(joint2.id);
                 // PositionSolver.setUpSolvingForces(link.forces); // needed to determine force location when dragging a joint
                 this.dragState.finishCreating();
                 this.linkCreateStart = undefined;
@@ -4369,6 +4355,7 @@ export class NewGridComponent implements OnDestroy {
                 joint2.links.push(link);
                 this.mechanismSrv.mergeToLinks([link]);
                 this.mechanismSrv.finishStructuralEdit(true);
+                this.popJoint(joint2.id);
                 this.dragState.finishCreating();
                 this.linkCreateStart = undefined;
                 this.linkCreateFrom = undefined;
@@ -4413,6 +4400,7 @@ export class NewGridComponent implements OnDestroy {
                 this.mechanismSrv.mergeToJoints([joint1]);
                 this.mechanismSrv.mergeToLinks([link]);
                 this.mechanismSrv.finishStructuralEdit(true);
+                this.popJoint(joint2.id);
                 this.dragState.finishCreating();
                 this.linkCreateStart = undefined;
                 this.linkCreateFrom = undefined;
@@ -4459,7 +4447,7 @@ export class NewGridComponent implements OnDestroy {
               // exactly one turns the drag into a swing about that joint —
               // the only motion the linkage would allow if the pin were
               // bolted down — and two or more leave the body nowhere to go.
-              const held = this.frozenCarriedJoints(this.activeObjService.selectedLink);
+              const held = this.gridUtils.frozenCarriedJoints(this.activeObjService.selectedLink);
               if (held.length >= 2) {
                 const grabbedLink = this.activeObjService.selectedLink;
                 this.holdNotice(() => this.refuseHeldLink(grabbedLink, held));
@@ -5525,12 +5513,7 @@ export class NewGridComponent implements OnDestroy {
    * the reader is asking about exactly that property.
    */
   showsCoM(link: Link): boolean {
-    if (this.settings.previewCoMLinkId === link.id) return true;
-    // A slider block carries mass but has no center-of-mass mark to draw --
-    // getLinkProp declines it -- so asking for one drew four undefined
-    // quarters. The rule is a body with a mass, and a block is not one of the
-    // bodies this mark is about.
-    return this.settings.isShowCOM.value && link instanceof RealLink && link.mass > 0;
+    return this.linkTraces.showsMark(link, this.mechanismSrv, this.settings);
   }
 
   /**

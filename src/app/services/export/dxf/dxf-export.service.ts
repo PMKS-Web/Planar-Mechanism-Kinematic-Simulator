@@ -463,8 +463,8 @@ export class DxfExportService {
         force.link ? names.idOf(force.link) : '',
         (inUnit(force.startCoord.x, unit) - shift.x).toFixed(6),
         (inUnit(force.startCoord.y, unit) - shift.y).toFixed(6),
-        (inUnit(force.endCoord.x, unit) - shift.x).toFixed(6),
-        (inUnit(force.endCoord.y, unit) - shift.y).toFixed(6),
+        (inUnit(force.directionCoord.x, unit) - shift.x).toFixed(6),
+        (inUnit(force.directionCoord.y, unit) - shift.y).toFixed(6),
         String(force.mag),
         force.local ? 'link' : 'global',
       ].join(',')
@@ -521,8 +521,8 @@ export class DxfExportService {
             y: inUnit(force.startCoord.y, unit) - shift.y,
           },
           to: {
-            x: inUnit(force.endCoord.x, unit) - shift.x,
-            y: inUnit(force.endCoord.y, unit) - shift.y,
+            x: inUnit(force.directionCoord.x, unit) - shift.x,
+            y: inUnit(force.directionCoord.y, unit) - shift.y,
           },
           magnitude: force.mag,
           frame: force.local ? 'link' : 'global',

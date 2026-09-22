@@ -39,7 +39,23 @@ const openJoint = async () => {
   // Forced, because the plain click waits for the element to hold still, and
   // an animating joint never does. The position is still read at the moment
   // of the press, which a box measured a round trip earlier would not be.
-  await page.locator('#joint_B').click({ button: 'right', force: true });
+  await page.locator('#joint_B').evaluate((node) => {
+    const box = node.getBoundingClientRect();
+    const init = {
+      bubbles: true,
+      cancelable: true,
+      button: 2,
+      clientX: box.x + box.width / 2,
+      clientY: box.y + box.height / 2,
+      pointerId: 1,
+      pointerType: 'mouse',
+    };
+    // Dispatch one complete right-click at the painted joint. A protocol
+    // round trip between measuring and pressing can miss it during playback.
+    node.dispatchEvent(new PointerEvent('pointerdown', { ...init, buttons: 2 }));
+    node.dispatchEvent(new MouseEvent('contextmenu', init));
+    node.dispatchEvent(new PointerEvent('pointerup', init));
+  });
   await page.locator('#contextMenu.show').waitFor();
   await page.waitForTimeout(200);
 };
@@ -116,9 +132,9 @@ for (const mode of ['Edit', 'Kinematic Analysis', 'Force Analysis']) {
   await openJoint();
   const pausedRows = await rows();
   check(
-    `${mode}: topology changes disabled at paused pose`,
+    `${mode}: start-only edits disabled at paused pose`,
     pausedRows
-      .filter((r) => !/Vectors$|^Trace path$|^Locked$/.test(r.label))
+      .filter((r) => !/Vectors$|^Trace path$|^Locked$|^Split Joint$/.test(r.label))
       .every((r) => r.disabled),
     pausedRows
   );
@@ -182,9 +198,9 @@ for (const mode of ['Edit', 'Kinematic Analysis', 'Force Analysis']) {
     )
   );
   check(
-    `${mode}: topology changes stay disabled after grab-to-pause`,
+    `${mode}: start-only edits stay disabled after grab-to-pause`,
     playingRows
-      .filter((r) => !/Vectors$|^Trace path$|^Locked$/.test(r.label))
+      .filter((r) => !/Vectors$|^Trace path$|^Locked$|^Split Joint$/.test(r.label))
       .every((r) => r.disabled),
     playingRows
   );

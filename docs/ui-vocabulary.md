@@ -247,3 +247,7 @@ whole part: the export catalog's row for it, and a sentence about the part.
 deliberately. This guide governs what the app *says*; rewriting a hundred
 explanations to change a synonym would churn a lot of carefully-worded prose for
 no reader's benefit. Do not use it in new comments, and never in the UI.
+
+### Editor bug-fix wording
+
+Use **Flip Force** for exchanging the arrowhead and circle without moving the endpoints; this reverses the physical force. **Input** is the noun for a joint that supplies motion; the generic setup hint is “Ground a joint and set one joint as an input.” Keep specific failure explanations when setup is already complete. A context-menu refusal that needs the initial pose says “return to start.” Restarting the tutorial offers **Cancel**. A disconnected joint says “Joint is Orphaned. Drag another joint to merge it or create a new link.”
