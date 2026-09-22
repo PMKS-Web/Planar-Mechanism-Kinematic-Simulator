@@ -1,4 +1,5 @@
 import { cylinderJoints } from '../model/cylinder';
+import { pickLink } from '../model/link-pick';
 import { Injectable, Injector, inject } from '@angular/core';
 import { HoldBar, HoldGoal, reachedByHolds, settleHolds } from '../model/hold-solver';
 import {
@@ -836,6 +837,7 @@ export class GridUtilsService {
    * anchoring a point nothing asked to have held.
    */
   frozenCarriedJoints(link: Link): Joint[] {
+    link = this.mechanismSrv.rootLinkOwning(link) ?? link;
     const carried = new Map<string, Joint>();
     const add = (joint: Joint) => carried.set(joint.id, joint);
     const bodyCylinder = this.mechanismSrv.cylinderAt(link);
@@ -892,6 +894,7 @@ export class GridUtilsService {
     // already in the list -- and a floating one riding the body deliberately is
     // not, because its mark holds its place along the slot and the reseat
     // carries it there.
+    selectedLink = this.mechanismSrv.rootLinkOwning(selectedLink) ?? selectedLink;
     const carried: Joint[] = [...selectedLink.joints];
     const goals: HoldGoal[] = carried
       .filter((joint, index) => carried.indexOf(joint) === index)
@@ -1674,11 +1677,18 @@ export class GridUtilsService {
     return (joint as RealJoint).isWelded;
   }
 
+  pickLinkAt(link: RealLink, selected: RealLink | undefined, event: MouseEvent): RealLink {
+    const point = this.svgGrid.screenToModelFromXY(event.clientX, event.clientY);
+    return pickLink(this.mechanismSrv.links, link, selected, (leaf) =>
+      this.isPointInsideLink(point, leaf)
+    );
+  }
+
   updateLastSelectedSublink(mouseEvent: MouseEvent, clickedObj: RealLink) {
     //Seach each link in the subset to see if the mouse is over it
     // use isPointInsideLink()
     //First convert the screen coordinates to true coordinates
-    let trueCoords = this.svgGrid.screenToModel(new Coord(mouseEvent.offsetX, mouseEvent.offsetY));
+    let trueCoords = this.svgGrid.screenToModel(new Coord(mouseEvent.clientX, mouseEvent.clientY));
 
     clickedObj.lastSelectedSublink = null;
 

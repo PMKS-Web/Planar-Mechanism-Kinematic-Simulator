@@ -183,10 +183,10 @@ function refuseWeld(
   // A weld is the statement that the bodies at this joint do not move relative
   // to each other, and an input is the statement that they do. Both at once is
   // not a state the model can honor.
-  if (joint.input) {
+  if (joint.input && (!joint.ground || joint instanceof PrisJoint)) {
     return {
       code: 'weld.is-driven',
-      short: 'it is driven',
+      short: 'it is an input',
       long: 'A weld says these bodies do not move relative to each other, and an input says they do. Remove the input first.',
     };
   }
@@ -315,7 +315,7 @@ function refuseAddSlider(
   if (context.isDriven(joint)) {
     return {
       code: 'slider.is-driven',
-      short: 'it is driven',
+      short: 'it is an input',
       long: 'This joint is the drive, and a drive on a pin turns where a drive on a slot travels. Remove the input first.',
     };
   }

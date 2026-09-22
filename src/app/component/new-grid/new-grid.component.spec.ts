@@ -18,7 +18,7 @@ import { NotificationService } from '../../services/notification.service';
 import { EditPermissionService } from '../../services/edit-permission.service';
 import { Coord } from '../../model/coord';
 import { SaveHistoryService } from '../../services/save-history.service';
-import { LONGEST_ARROW_FRACTION, PATH_ARROW_COUNT } from '../../model/vector-trace';
+import { LONGEST_ARROW_FRACTION } from '../../model/vector-trace';
 import { CYLINDER, MARK, slideMarkPath } from '../../model/joint-marks';
 import { ColorService } from '../../services/color.service';
 
@@ -1071,7 +1071,9 @@ describe('NewGridComponent vector traces', () => {
     expect(trace.key).toBe('velocity:B');
     // A shaft and two barbs per arrow, and two dozen arrows for the cycle --
     // not one per solved sample, which is 361 of them.
-    expect(trace.d.split('M').length - 1).toBe(3 * PATH_ARROW_COUNT);
+    const count = (trace.d.split('M').length - 1) / 3;
+    expect(count).toBeGreaterThan(10);
+    expect(count).toBeLessThan(mechanism.mechanisms[0].joints.length / 2);
 
     const [live] = mechanism.liveVectorArrows();
     // Attached to the part: the tail is where the joint is drawn right now.

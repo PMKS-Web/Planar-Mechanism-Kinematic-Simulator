@@ -1148,12 +1148,12 @@
       ></line>
     }
     <!-- Where the joint being dragged will land if it is released now -->
-    @if (snapTargetJoint) {
+    @if (snapTargetJoint || creationMergeTarget; as target) {
       <circle
         class="snapTarget"
         [attr.r]="0.4 * settings.objectScale"
-        [attr.cx]="snapTargetJoint.x"
-        [attr.cy]="snapTargetJoint.y"
+        [attr.cx]="target.x"
+        [attr.cy]="target.y"
         [attr.stroke-width]="svgGrid.scaleWithZoom(4)"
       ></circle>
     }
@@ -1231,7 +1231,13 @@
           width="20"
           height="20"
           style="overflow: visible"
-          [attr.cursor]="mechanismSrv.isJointLockedVisual(joint) ? 'not-allowed' : 'move'"
+          [attr.cursor]="
+            mechanismSrv.isPartInert(joint)
+              ? 'default'
+              : mechanismSrv.isJointLockedVisual(joint)
+                ? 'not-allowed'
+                : 'move'
+          "
         >
           <!-- The tutorial's ring: two amber circles round the joint the card is
                naming, so "the ringed one" is unambiguous even on a drawing with
@@ -1923,6 +1929,17 @@
 
   @if (tracesVisible()) {
     <g id="pathsHolder">
+      @for (trace of linkTraces.paths(mechanismSrv); track trace.id) {
+        <path
+          [attr.data-link-trace]="trace.id"
+          [attr.d]="trace.d"
+          fill="none"
+          [attr.stroke-width]="0.01 * settings.objectScale"
+          modelFrame
+          style="pointer-events: none"
+        ></path>
+      }
+
       @for (joint of mechanismSrv.getJoints(); track joint) {
         <ng-container>
           @if (gridUtils.getJointShowCurve(joint)) {
@@ -1993,8 +2010,8 @@
     >
       <g [attr.id]="force.id">
         <svg
-          [attr.x]="force.startCoord.x"
-          [attr.y]="force.startCoord.y"
+          [attr.x]="force.tailCoord.x"
+          [attr.y]="force.tailCoord.y"
           style="pointer-events: none; overflow: visible"
         >
           <!-- Global: a disc, small enough that a joint it is sitting on still
@@ -2154,23 +2171,6 @@
   }
 
   <g id="jointTagHolder" style="pointer-events: none">
-    <!-- A refused merge says which rule it hit while the drag is still live.
-         The ring alone leaves the reader to guess, and the notification that
-         spells it out arrives on release -- after the gesture they would have
-         changed. Below the joint, so it never covers the joint's own name. -->
-    @if (refusedTarget; as refused) {
-      <svg
-        [attr.x]="refused.joint.x"
-        [attr.y]="-1 * refused.joint.y + settings.objectScale * 0.62"
-        [attr.height]="10"
-        [attr.width]="10"
-        style="overflow: visible; text-anchor: middle"
-      >
-        <text class="snapRefusedReason" [style.font-size.px]="tagFontSize">
-          {{ refusalReason }}
-        </text>
-      </svg>
-    }
     @for (joint of mechanismSrv.getJoints(); track joint) {
       <svg
         [attr.x]="jointTagAnchor(joint).x"
@@ -2214,9 +2214,9 @@
       </svg>
     }
   </g>
-  @if (settings.isShowCOM.value || settings.previewCoMLinkId) {
+  @if (!showSynthesis()) {
     <g id="comTagHolder" modelFrame style="pointer-events: none">
-      @for (link of mechanismSrv.getLinks(); track link) {
+      @for (link of linkTraces.parts(mechanismSrv); track link) {
         @if (showsCoM(link)) {
           <svg style="overflow: visible">
             <!-- The standard mark: four quarters, two black and two white, the

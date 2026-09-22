@@ -26,15 +26,7 @@ export interface VectorArrow {
   dy: number;
 }
 
-/**
- * How many arrows a whole cycle gets.
- *
- * Not one per solved sample: a cycle is 360 of them and 360 arrows on a path
- * is a black thicket with a curve somewhere inside it. Two dozen is enough for
- * the field to read as a field — the turn of the arrows around the path is
- * visible, and every one of them is far enough from its neighbors to be read
- * on its own.
- */
+/** Spatial spacing is one swept span divided by this count; short paths get fewer arrows. */
 export const PATH_ARROW_COUNT = 24;
 
 /**
@@ -212,33 +204,46 @@ export function buildVectorTrace(
   if (largest <= 0) return undefined;
   const scale = (span * LONGEST_ARROW_FRACTION) / largest;
   const arrows: VectorArrow[] = [];
-  for (const index of arrowSampleIndices(samples)) {
+  for (let index = 0; index < samples; index++) {
     const tail = at(index);
     const value = vectorAt(index);
     if (!tail || !value) continue;
     if (!Number.isFinite(value.x) || !Number.isFinite(value.y)) continue;
+    if (!Number.isFinite(tail.x) || !Number.isFinite(tail.y)) continue;
+    const magnitude = Math.hypot(value.x, value.y);
+    if (magnitude * scale < 1e-6) continue;
+    // Space tails in the drawing, not in time. A short reciprocating stroke
+    // should not receive the same dense two dozen arrows as a full revolution.
+    // Keep a return pass when its vectors point the other way, but suppress
+    // overlapping arrows that tell the same story at the same place.
+    const crowded = arrows.some(
+      (arrow) =>
+        Math.hypot(arrow.x - tail.x, arrow.y - tail.y) < span / PATH_ARROW_COUNT &&
+        (arrow.dx * value.x + arrow.dy * value.y) / (Math.hypot(arrow.dx, arrow.dy) * magnitude) >
+          0.5
+    );
+    if (crowded) continue;
     arrows.push({ x: tail.x, y: tail.y, dx: value.x * scale, dy: value.y * scale });
   }
   return { d: arrowPath(arrows), scale, largest };
 }
 
-  /** How big this machine is on the drawing: the box its cycle sweeps out. */
-export function sweptSpanOf(frames: {x:number; y:number}[][], fallback: number): number {
-    let minX = Number.POSITIVE_INFINITY;
-    let minY = Number.POSITIVE_INFINITY;
-    let maxX = Number.NEGATIVE_INFINITY;
-    let maxY = Number.NEGATIVE_INFINITY;
-    frames.forEach((frame) =>
-      frame.forEach((joint) => {
-        minX = Math.min(minX, joint.x);
-        maxX = Math.max(maxX, joint.x);
-        minY = Math.min(minY, joint.y);
-        maxY = Math.max(maxY, joint.y);
-      })
-    );
-    const span = Math.hypot(maxX - minX, maxY - minY);
-    // A machine whose joints all sit on one point sweeps nothing; one user
-    // length keeps the arrows from collapsing to nothing with it.
-    return Number.isFinite(span) && span > 0 ? span : fallback;
-  }
-
+/** How big this machine is on the drawing: the box its cycle sweeps out. */
+export function sweptSpanOf(frames: { x: number; y: number }[][], fallback: number): number {
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  frames.forEach((frame) =>
+    frame.forEach((joint) => {
+      minX = Math.min(minX, joint.x);
+      maxX = Math.max(maxX, joint.x);
+      minY = Math.min(minY, joint.y);
+      maxY = Math.max(maxY, joint.y);
+    })
+  );
+  const span = Math.hypot(maxX - minX, maxY - minY);
+  // A machine whose joints all sit on one point sweeps nothing; one user
+  // length keeps the arrows from collapsing to nothing with it.
+  return Number.isFinite(span) && span > 0 ? span : fallback;
+}

@@ -1,5 +1,7 @@
 import '../../../model/joint';
 import { TestBed } from '@angular/core/testing';
+import { Force } from '../../../model/force';
+import { Coord } from '../../../model/coord';
 import DxfParser from 'dxf-parser';
 import { BehaviorSubject } from 'rxjs';
 import { PrisJoint, RevJoint } from '../../../model/joint';
@@ -25,7 +27,7 @@ describe('DxfExportService', () => {
     const mechanism = {
       joints: [a, b],
       links: [link] as Link[],
-      forces: [],
+      forces: [] as Force[],
       encodeFromStartPose: vi.fn(<T>(run: (heldStep: number) => T): T => run(27)),
     };
     const settings = {
@@ -41,6 +43,25 @@ describe('DxfExportService', () => {
     });
     return { service: TestBed.inject(DxfExportService), mechanism };
   }
+
+  it('exports an inward force with its physical vector and unchanged application point', () => {
+    const { service, mechanism } = setup();
+    const force = new Force(
+      'F1',
+      mechanism.links[0] as RealLink,
+      new Coord(MODEL_SCALE, 0),
+      new Coord(MODEL_SCALE, MODEL_SCALE),
+      false,
+      true,
+      10
+    );
+    mechanism.forces.push(force);
+    force.flipForce();
+    const data = JSON.parse(service['dataJson']('cm', { origin: 'model' }));
+    expect(data.forces[0].at).toEqual({ x: 1, y: 0 });
+    expect(data.forces[0].to).toEqual({ x: 1, y: -1 });
+    expect(force.endCoord.y).toBe(MODEL_SCALE);
+  });
 
   it('exports the entire editable drawing through the start-pose boundary', () => {
     const { service, mechanism } = setup();

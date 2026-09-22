@@ -1,3 +1,4 @@
+import { LinkTraceService } from '../../services/link-trace.service';
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -65,6 +66,7 @@ export class ViewControlsComponent implements AfterViewInit, OnDestroy {
 
   mechanismService = inject(MechanismService);
   settingsService = inject(SettingsService);
+  private linkTraces = inject(LinkTraceService);
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
   private shortcuts = inject(KeyboardShortcutsService);
 
@@ -175,8 +177,9 @@ export class ViewControlsComponent implements AfterViewInit, OnDestroy {
   }
 
   noTracedJoint(): boolean {
-    return !this.mechanismService.joints.some(
-      (joint) => (joint as { showCurve?: boolean }).showCurve
+    return (
+      !this.linkTraces.parts(this.mechanismService).some((link) => this.linkTraces.isOn(link)) &&
+      !this.mechanismService.joints.some((joint) => (joint as { showCurve?: boolean }).showCurve)
     );
   }
 

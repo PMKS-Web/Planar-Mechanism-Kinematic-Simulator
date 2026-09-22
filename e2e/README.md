@@ -491,3 +491,5 @@ Not suites — import them from one.
 - `dual-button-gallery.mjs` — every shared dual-button story: either half disabled, both disabled,
   the single-button fallback, long-label proportions, clipping, and accessible refusal text.
   Screenshots land in `artifacts/dual-button/`.
+
+- `editor-bug-fixes.mjs` — number-field dragging and undo, in-place force flips, compound selection, CoM traces, welded inputs, inert analysis joints, placement merge preview, and narrow-screen export gating.

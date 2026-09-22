@@ -1,3 +1,4 @@
+import { distanceNeighbors } from '../../model/joint-distances';
 import { describeActuatorRefusal } from '../../model/actuator';
 import { speedTurning, turnsClockwise } from '../../model/drive-direction';
 import { Subscription } from 'rxjs';
@@ -71,7 +72,13 @@ import { MultiEditPanelComponent } from '../multi-edit-panel/multi-edit-panel.co
 import { SegmentedComponent } from '../BLOCKS/segmented/segmented.component';
 import { JointTypeService } from '../../services/joint-type.service';
 import { SplitJointService } from '../../services/split-joint.service';
-import { JOINT_TYPES, JointTypeChoice, NOWHERE_TO_SLIDE } from '../../model/joint-type';
+import {
+  JOINT_TYPES,
+  JointTypeChoice,
+  NOWHERE_TO_SLIDE,
+  ORPHANED_JOINT,
+  isOrphanedJoint,
+} from '../../model/joint-type';
 
 /**
  * Input Settings unit choices, in the order the picker shows them. The labels
@@ -139,6 +146,10 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   protected splitJoints = inject(SplitJointService);
   /** What the Joint Type choice says under a block with nowhere to slide. */
   protected readonly nowhereToSlide = NOWHERE_TO_SLIDE;
+  protected readonly orphanedJoint = ORPHANED_JOINT;
+  protected jointIsOrphaned(): boolean {
+    return isOrphanedJoint(this.activeSrv.selectedJoint);
+  }
   tutorial = inject(TutorialService);
 
   listOfOtherJoints: RealJoint[] = [];
@@ -157,7 +168,6 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
     LBasic: true,
     LVisual: false,
     LMass: true,
-    LCompound: true,
     FBasic: true,
     FVisual: false,
     BGPlace: true,
@@ -2460,55 +2470,11 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
   }
 
   getOtherJointsInLink(selectedJoint: RealJoint): RealJoint[] {
-    //Get the other joint in the link, don't include the selected joint
-    //First find all the links that contain this joint
-
-    let links = this.mechanismService.links.filter((link) => {
-      return link.joints.includes(selectedJoint);
-    });
-    //Make a list off all joints in these links that are not the selected joint
-    let otherJoints = links
-      .map((link) => {
-        return (link.joints as RealJoint[]).filter((joint) => {
-          return joint != selectedJoint;
-        });
-      })
-      .flat();
-
-    // Remove joints that are prismatic
-    otherJoints = otherJoints.filter((joint) => {
-      return !(joint instanceof PrisJoint);
-    });
-
-    // The barrel's buried end is placed by the part rather than dragged, so a
-    // mount's Distance To Joints must not offer a field that would move it.
-    // The slide is a `PrisJoint` and the filter above has already taken it
-    // out; where it stands is its own panel's *Starts at*.
-    otherJoints = otherJoints.filter((joint) => {
-      const sealed = this.mechanismService.cylinderAt(joint);
-      return !sealed || joint.id === sealed.mountA.id || joint.id === sealed.mountB.id;
-    });
-
-    // A mount reads like a binary link's endpoint: its far end is the OTHER
-    // mount, which the two filters above removed along with the joints between
-    // them. Editing that D drags the far mount, which re-poses the whole part
-    // parametrically.
-    const mountOf = this.mechanismService.cylinderAt(selectedJoint);
-    if (
-      mountOf &&
-      (selectedJoint.id === mountOf.mountA.id || selectedJoint.id === mountOf.mountB.id)
-    ) {
-      const far = selectedJoint.id === mountOf.mountA.id ? mountOf.mountB : mountOf.mountA;
-      if (far instanceof RealJoint && !otherJoints.some((joint) => joint.id === far.id)) {
-        otherJoints.push(far);
-      }
-    }
-
-    if (otherJoints == undefined) {
-      return [];
-    }
-
-    return otherJoints as RealJoint[];
+    return distanceNeighbors(
+      selectedJoint,
+      this.mechanismService.links,
+      (link) => !!this.mechanismService.cylinderAt(link)
+    );
   }
 
   private reloadOtherJointForm() {

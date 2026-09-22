@@ -1,3 +1,4 @@
+import { LinkTraceService } from '../app/services/link-trace.service';
 import { Injector, runInInjectionContext } from '@angular/core';
 import { PrisJoint, RealJoint, RevJoint } from '../app/model/joint';
 import { ActiveObjService } from '../app/services/active-obj.service';
@@ -55,6 +56,7 @@ export function createMechanismHarness(): MechanismHarness {
   };
   const injector = Injector.create({
     providers: [
+      { provide: LinkTraceService, deps: [] },
       { provide: SettingsService, deps: [] },
       { provide: NumberUnitParserService, deps: [] },
       { provide: ActiveObjService, deps: [] },

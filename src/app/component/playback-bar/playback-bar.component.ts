@@ -696,12 +696,15 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
     const readiness = this.mechanism.readinessOfEachMechanism();
     const rows = readiness.map((one, index) => {
       const blockers = one.checks.filter((check) => check.state === 'blocker');
+      const setupNeeded = !this.mechanism.partitions[index]?.ownJoints.some(
+        (joint) => joint instanceof RealJoint && joint.input
+      );
       return this.inertRow(one.id, index, {
         // The count is drawn as a chip and the sentence reads through it:
         // "M1 [1 fix] before it will run". One word for this everywhere -- see
         // READINESS in ui-text.
-        count: blockers.length ? READINESS.fixes(blockers.length) : undefined,
-        text: 'before it will run.',
+        count: !setupNeeded && blockers.length ? READINESS.fixes(blockers.length) : undefined,
+        text: setupNeeded ? 'Ground a joint and set one joint as an input.' : 'before it will run.',
         action: 'Analysis setup',
       });
     });
@@ -739,7 +742,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
       // and guessing at it here would be a refusal the model has not made.
       if (!driven) {
         return this.inertRow(partition.id, index, {
-          text: 'needs a drive before it will run.',
+          text: 'Ground a joint and set one joint as an input.',
           action: 'Analysis setup',
         });
       }

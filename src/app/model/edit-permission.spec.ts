@@ -165,7 +165,7 @@ describe('what is allowed when', () => {
     // the wrong control, so that case gets its own words.
     const shared = displacementRefusal(at({ atStart: false, sharedStepZero: false }));
     const unsynced = displacementRefusal(at({ atStart: false, sharedStepZero: true }));
-    expect(shared!.short).toBe('not at the start');
+    expect(shared!.short).toBe('return to start');
     expect(unsynced!.short).toBe('a mechanism is mid-cycle');
     // Both are cleared by the same button, and both say so.
     expect(shared!.backToStartHelps).toBe(true);

@@ -19,7 +19,7 @@ import { MODEL_SCALE } from '../../app/model/render-scale';
  * > not driven. There should be a fallback error when you can't find a good
  * > message for it instead of defaulting if that's the current behavior."*
  *
- * So: **"Nothing drives this mechanism" may be said only when no joint of that
+ * So: **"No input is set" may be said only when no joint of that
  * machine has Driven Input on in the drawing the reader is looking at**, and a
  * machine that will not run for a reason nothing here has a sentence for gets
  * an honest fallback rather than a red chip with nothing under it.
@@ -102,7 +102,7 @@ describe('readiness never says a driven mechanism is not driven', () => {
       const readiness = readinessOf(partition, failing(failure), helpers);
       const said = readiness.checks.map((check) => `${check.title} ${check.body}`).join(' ');
       expect(said).not.toContain('Nothing drives');
-      expect(said).not.toContain('switch on Driven Input');
+      expect(said).not.toContain('set it as the input');
       expect(said).not.toContain('Driven Input');
       // And it still says *something*: a red chip with nothing under it is the
       // other half of what this file is about.
@@ -117,14 +117,14 @@ describe('readiness never says a driven mechanism is not driven', () => {
     const readiness = readinessOf(drivenPartition(), failing('not-driven'), helpers);
     const blocker = readiness.checks[0];
     expect(blocker.title).toBe('This mechanism could not be solved');
-    expect(blocker.body).toContain('is driven at joint E');
+    expect(blocker.body).toContain('has its input at joint E');
     expect(blocker.at?.id).toBe('E');
   });
 
-  it('still says it for a machine that really has no driven joint', () => {
+  it('still says it for a machine that really has no input joint', () => {
     const readiness = readinessOf(undrivenPartition(), failing('not-driven'), helpers);
-    expect(readiness.checks[0].title).toBe('Nothing drives this mechanism');
-    expect(readiness.checks[0].body).toContain('switch on Driven Input');
+    expect(readiness.checks[0].title).toBe('No input is set');
+    expect(readiness.checks[0].body).toContain('set it as the input');
   });
 });
 
@@ -134,7 +134,7 @@ describe('a drive that cannot be driven is the cause, not a symptom', () => {
     ...helpers,
     drivenRefusal: () =>
       "Both of this cylinder's end joints are welded into Link ABCDE, so it cannot extend. " +
-      'Unweld joint A or joint C, or drive a different joint.',
+      'Unweld joint A or joint C, or set a different joint as the input.',
   };
 
   it('states the refusal and leaves the solver\u2019s downstream complaint out', () => {
@@ -142,9 +142,7 @@ describe('a drive that cannot be driven is the cause, not a symptom', () => {
     // the solve as "nothing moves when the input turns" -- which is true, and
     // sends the reader to check connections that are perfectly sound.
     const readiness = readinessOf(drivenPartition(), failing('nothing-can-move'), refusing);
-    expect(readiness.checks.map((check) => check.title)).toEqual([
-      'The driven joint cannot be driven',
-    ]);
+    expect(readiness.checks.map((check) => check.title)).toEqual(['This joint cannot be an input']);
     expect(readiness.checks[0].body).toContain('so it cannot extend');
     expect(readiness.ready).toBe(false);
   });
@@ -153,7 +151,7 @@ describe('a drive that cannot be driven is the cause, not a symptom', () => {
     const valid = failing(undefined);
     Object.assign(valid, { mechanismValid: true });
     const readiness = readinessOf(drivenPartition(), valid, refusing);
-    expect(readiness.checks[0].title).toBe('The driven joint cannot be driven');
+    expect(readiness.checks[0].title).toBe('This joint cannot be an input');
     expect(readiness.ready).toBe(false);
   });
 });
@@ -171,7 +169,7 @@ describe('the fallback when nothing here has a sentence', () => {
       })
     );
     expect(readiness.checks[0].body).toBe(
-      'It has 1 degree of freedom and is driven at joint E, and no motion came out of the pose ' +
+      'It has 1 degree of freedom and has its input at joint E, and no motion came out of the pose ' +
         'it starts in. Drag a joint to start it somewhere else, or undo the last change and make ' +
         'it a step at a time.'
     );
@@ -180,7 +178,7 @@ describe('the fallback when nothing here has a sentence', () => {
   it('says what it knows when there is no ground and no drive either', () => {
     const readiness = readinessOf(undrivenPartition(), failing(undefined, NaN), helpers);
     expect(readiness.checks[0].body).toContain('It has no ground to move against');
-    expect(readiness.checks[0].body).toContain('has no driven joint');
+    expect(readiness.checks[0].body).toContain('has no input joint');
     expect(readiness.checks[0].action).toBeUndefined();
   });
 
@@ -228,7 +226,7 @@ describe('a solve that throws', () => {
     const readiness = readinessOf(partition, mechanism, helpers);
     expect(readiness.ready).toBe(false);
     expect(readiness.checks[0].title).toBe('This mechanism could not be solved');
-    expect(readiness.checks[0].body).toContain('is driven at joint E');
+    expect(readiness.checks[0].body).toContain('has its input at joint E');
     expect(readiness.checks[0].body).not.toContain('Driven Input');
   });
 });

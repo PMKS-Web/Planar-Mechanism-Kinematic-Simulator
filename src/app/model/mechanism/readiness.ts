@@ -105,7 +105,9 @@ function unexplainedBlocker(partition: MechanismPartition, mechanism: Mechanism)
   const freedoms = Number.isFinite(dof)
     ? `${dof} ${Math.abs(dof) === 1 ? 'degree' : 'degrees'} of freedom`
     : 'no ground to move against';
-  const drive = driven ? `is driven at joint ${driven.name || driven.id}` : 'has no driven joint';
+  const drive = driven
+    ? `has its input at joint ${driven.name || driven.id}`
+    : 'has no input joint';
   return {
     state: 'blocker',
     title: 'This mechanism could not be solved',
@@ -172,7 +174,7 @@ function blockerForFailure(
           state: 'blocker',
           title: `This mechanism has ${dof} degrees of freedom`,
           body:
-            `One input can drive only one degree of freedom. Ground another joint, or connect a free joint to a second link, until this reads 1.` +
+            `One input controls only one degree of freedom. Ground another joint, or connect a free joint to a second link, until this reads 1.` +
             (freeEnds.length > 0
               ? ` ${freeEnds.length === 1 ? 'Joint' : 'Joints'} ${names(freeEnds)} ${
                   freeEnds.length === 1 ? 'hangs' : 'hang'
@@ -210,10 +212,10 @@ function blockerForFailure(
       );
       return {
         state: 'blocker',
-        title: 'Nothing drives this mechanism',
+        title: 'No input is set',
         body: candidate
-          ? `There is no time to solve against until one joint is driven. Right-click joint ${(candidate as RealJoint).name || candidate.id} and switch on Driven Input.`
-          : 'There is no time to solve against until one joint is driven. Right-click a grounded joint and switch on Driven Input.',
+          ? `There is no time to solve against until one joint is set as the input. Right-click joint ${(candidate as RealJoint).name || candidate.id} and set it as the input.`
+          : 'There is no time to solve against until one joint is set as the input. Right-click a grounded joint and set it as the input.',
         at: candidate,
         action: candidate ? 'Go To Joint' : undefined,
       };
@@ -233,7 +235,7 @@ function blockerForFailure(
       return {
         state: 'blocker',
         title: 'This mechanism starts at a dead position',
-        body: 'The driven joint is at a limit of its travel and cannot turn away from it in either direction. Drag a joint to move the mechanism off the limit.',
+        body: 'The input joint is at a limit of its travel and cannot turn away from it in either direction. Drag a joint to move the mechanism off the limit.',
       };
 
     case 'hidden-freedom': {
@@ -272,12 +274,12 @@ function blockerForFailure(
           unreachable.length > 0
             ? `The solver never finds a position for ${
                 unreachable.length === 1 ? 'joint' : 'joints'
-              } ${names(unreachable)} — the driven joint cannot reach ${
+              } ${names(unreachable)} — the input joint cannot reach ${
                 unreachable.length === 1 ? 'it' : 'them'
               } through the links. Check the connections between the input and ${
                 unreachable.length === 1 ? 'that joint' : 'those joints'
               }.`
-            : 'The driven joint cannot reach the rest of the mechanism, so no other joint has a position to solve for. Check that it is connected through links to the parts you expect it to move.',
+            : 'The input joint cannot reach the rest of the mechanism, so no other joint has a position to solve for. Check that it is connected through links to the parts you expect it to move.',
         at: unreachable[0],
         action: unreachable.length > 0 ? 'Go To Joint' : undefined,
       };
@@ -332,7 +334,7 @@ export function readinessOf(
   if (refusal) {
     add({
       state: 'blocker',
-      title: 'The driven joint cannot be driven',
+      title: 'This joint cannot be an input',
       body: refusal,
       at: driven,
       action: driven ? 'Go To Joint' : undefined,
@@ -427,7 +429,7 @@ function factsOf(
       label: 'Links / joints',
       value: `${moving} / ${shown(partition.ownJoints, partition.joints).length}`,
     },
-    { label: 'Driven joint', value: driven ? driven.name || driven.id : 'Not set' },
+    { label: 'Input joint', value: driven ? driven.name || driven.id : 'Not set' },
   ];
   if (mechanism.isMechanismValid()) {
     facts.push({ label: 'Input speed', value: helpers.describeSpeed(partition) });

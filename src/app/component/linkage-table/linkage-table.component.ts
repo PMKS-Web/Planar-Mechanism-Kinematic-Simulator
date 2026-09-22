@@ -1,3 +1,4 @@
+import { NumberDragDirective } from '../../directives/number-drag.directive';
 import { Component, OnInit, ChangeDetectionStrategy, inject } from '@angular/core';
 import { Force } from '../../model/force';
 import { Link, RealLink } from '../../model/link';
@@ -17,7 +18,7 @@ import { StandardFieldDirective } from '../BLOCKS/standard-field/standard-field.
   templateUrl: './linkage-table.component.html',
   styleUrls: ['./linkage-table.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [SegmentedComponent, StandardFieldDirective],
+  imports: [NumberDragDirective, SegmentedComponent, StandardFieldDirective],
 })
 export class LinkageTableComponent implements OnInit {
   private mechanismService = inject(MechanismService);

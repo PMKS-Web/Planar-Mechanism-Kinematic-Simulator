@@ -187,13 +187,21 @@ for (const suite of mine.suites) {
   console.log(`      ${suite.name} (about ${suite.seconds}s)`);
   let code = await attempt(suite, logPath, false);
   let flaky = false;
+  let lastAttemptStarted = started;
   for (let left = retries; left > 0 && code !== 0; left--) {
     await keepWhatFailed(suite, started);
     console.log(`  retrying ${suite.name}`);
+    lastAttemptStarted = Date.now();
     code = await attempt(suite, logPath, true);
     flaky = code === 0;
   }
   const seconds = Math.round((Date.now() - started) / 1000);
+  const severeOverrun =
+    (Date.now() - lastAttemptStarted) / 1000 >= Math.max(60, suite.seconds * 10);
+  if (severeOverrun) {
+    code = 1;
+    console.error(`Severe runtime overrun (10x): ${suite.name}`);
+  }
   results.push({ name: suite.name, code, seconds, flaky, expected: suite.seconds });
   const verdict = code === 0 ? (flaky ? 'FLAKY' : 'ok   ') : 'FAILED';
   console.log(`${verdict}  ${suite.name}  ${seconds}s`);
