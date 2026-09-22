@@ -688,6 +688,13 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
       this.setupTabFor(this.tabs.getCurrentTab()) ?? RightPanelComponent.KINEMATIC_SETUP_TAB
     );
   }
+  openWorksheet(): void {
+    RightPanelComponent.openWorksheet(
+      this.tabs.getCurrentTab() === TabID.FORCE
+        ? RightPanelComponent.FORCE_WORKSHEET_TAB
+        : RightPanelComponent.KINEMATIC_WORKSHEET_TAB
+    );
+  }
 
   upload($event: Event): void {
     this.analytics.logEvent('upload_file');

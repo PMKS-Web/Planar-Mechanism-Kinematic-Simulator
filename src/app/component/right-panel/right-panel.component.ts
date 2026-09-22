@@ -199,6 +199,14 @@ export class RightPanelComponent implements DoCheck {
     }
   }
 
+  /** Open the explanatory worksheet without reframing the reader's drawing. */
+  static openWorksheet(tabID: number): void {
+    this.preserveCanvasForNextShape = true;
+    this.tabClicked(tabID);
+  }
+
+  private static preserveCanvasForNextShape = false;
+
   /**
    * Whether the drawer is currently being pointed at.
    *
@@ -230,9 +238,11 @@ export class RightPanelComponent implements DoCheck {
 
   ngDoCheck(): void {
     const shape = this.drawerShape();
+    const preserveCanvas = RightPanelComponent.preserveCanvasForNextShape;
+    RightPanelComponent.preserveCanvasForNextShape = false;
     if (shape !== this.shownShape) {
       this.shownShape = shape;
-      CHROME_MOVED.next();
+      CHROME_MOVED.next({ preserveCanvas });
     }
     // The Edit panel's resume line is offered only when the card is not up, and
     // a closed drawer still *renders* the page it was last showing -- it parks
