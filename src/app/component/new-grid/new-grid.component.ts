@@ -1,3 +1,4 @@
+import { ForceMarkComponent } from '../force-mark/force-mark.component';
 import { barLabelAxis } from '../../model/bar-label-axis';
 import { PlacementTargetService } from '../../services/placement-target.service';
 import { placementBearing } from '../../model/placement-snap';
@@ -205,6 +206,7 @@ const SELECTION_RING_PX = 3;
   styleUrls: ['./new-grid.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
+    ForceMarkComponent,
     CdkContextMenuTrigger,
     ContextMenuComponent,
     LongPressDirective,
@@ -1840,23 +1842,6 @@ export class NewGridComponent implements OnDestroy {
       from,
       fill: this.nextLinkColor,
     };
-  }
-
-  /**
-   * How big a force's anchor mark is drawn.
-   *
-   * Tied to the arrow's own thickness, which is how a force shows its
-   * magnitude: a heavy load draws a thick arrow, and a mark at a fixed size
-   * beside it reads as belonging to something else. Both constants are set so
-   * that a force at the default width keeps the size it had.
-   */
-  forceAnchorRadius(force: Force): number {
-    return 0.75 * force.visualWidth * this.settings.objectScale;
-  }
-
-  /** The plus a *local* force wears, at the same thickness as its arrow. */
-  forceWeldMark(force: Force): string {
-    return plusPath(1.5 * force.visualWidth * this.settings.objectScale);
   }
 
   /** Where inside the arrow a body drag picked it up, so it does not jump. */
@@ -5453,7 +5438,7 @@ export class NewGridComponent implements OnDestroy {
 
   forceInkOf(force: Force): string | null {
     if (this.mechanismSrv.isPartInert(force.link)) return null;
-    return force.color || DEFAULT_FORCE_COLOR;
+    return force.showHighlight ? 'var(--canvas-force-hover)' : force.color || DEFAULT_FORCE_COLOR;
   }
 
   /**

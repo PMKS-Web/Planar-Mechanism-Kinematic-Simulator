@@ -680,10 +680,22 @@
             formControl1="magnitude"
             formControl2="angle"
             [formGroup]="forceForm"
-            tooltip="The magnitude and angle of this force. Counter-clockwise is positive."
+            tooltip="The magnitude and angle in this force’s reference frame. Counter-clockwise is positive."
+            [emitterOutputID]="0"
+            (field2Entry)="setForceAngleGuide($event !== -2)"
           >
             Magnitude and Angle
           </dual-input-block>
+          <button-block
+            customIcon="switch_force_dir"
+            [disabled]="
+              activeSrv.selectedForce.locked ||
+              !mechanismService.canAttachAtPose(activeSrv.selectedForce.link)
+            "
+            (pressed)="flipForce()"
+            tooltip="Reverse the force at the same endpoints, keeping its application point in place."
+            >Flip Force</button-block
+          >
           <dual-input-block
             label1="X"
             label2="Y"
