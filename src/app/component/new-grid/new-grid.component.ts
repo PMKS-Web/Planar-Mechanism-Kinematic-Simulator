@@ -5323,7 +5323,13 @@ export class NewGridComponent implements OnDestroy {
    */
   cylinderMemberOutline(mark: CylinderMark, which: 'barrel' | 'rod'): string | undefined {
     const link = which === 'barrel' ? mark.barrelLink : mark.rodLink;
-    const state = accentOutlineClass(this.mechanismSrv.getLinkCSSClass(link));
+    const body = which === 'barrel' ? mark.cylinder.barrelRoot : mark.cylinder.rodRoot;
+    const state =
+      accentOutlineClass(this.mechanismSrv.getLinkCSSClass(link)) ??
+      (this.settings.isSchematic
+        ? accentOutlineClass(this.mechanismSrv.getLinkCSSClass(body))
+        : undefined);
+    // Schematic draws members separately, so they also carry their compound's accent.
     // A list that offers the whole cylinder as one part points at one of its
     // bars, and means the part: both members answer, as the fused silhouette
     // used to.
