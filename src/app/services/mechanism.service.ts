@@ -37,7 +37,7 @@ import {
 } from '../model/cylinder';
 import { isFrozenCylinder } from '../model/cylinder-frozen';
 import { memberSilhouette } from '../model/cylinder-fusion';
-import { planCylinderRescale, planDerivedInteriors } from '../model/cylinder-interiors';
+import { planDerivedInteriors } from '../model/cylinder-interiors';
 import { Force } from '../model/force';
 import {
   DriveProfile,
@@ -322,50 +322,19 @@ export class MechanismService {
    * built once saw fifteen. Every other route that changes the scale rebuilds
    * the links from scratch anyway; the settings panel is the one that does not.
    *
-   * **And it puts every cylinder back together** (decision S29). A bar only
-   * has to be redrawn; a cylinder's head has a *travel* measured in R, so a
-   * size change can leave the head outside it and the part drawn in two
-   * pieces. `model/cylinder-interiors.ts` says what each one needs and this
-   * commits it -- one placement per part, for the buried end nothing shows.
-   * The whole gesture is one undo entry, because the repair is part of the
-   * size change rather than an edit the reader made: a size the *app* adopted
-   * on load writes none at all and folds the repair into the state the drawing
-   * arrived in (`SvgGridService.adoptScaleForDrawing`).
+   * Cylinder geometry is retained independently of visual sizing (PR #33),
+   * so changing display thickness only refreshes silhouettes and outlines.
    */
   applyObjectScaleChange(): void {
-    this.repairCylindersForScale();
+    this.refreshSkinSilhouettes();
     this.links.forEach((link) => {
-      if (link instanceof RealLink) link.reComputeDPath();
+      if (link instanceof RealLink) {
+        link.subset.forEach((part) => {
+          if (part instanceof RealLink) part.reComputeDPath();
+        });
+        link.reComputeDPath();
+      }
     });
-    this.updateMechanism();
-    if (this.rescaleNeedsSaving && !SettingsService.objectScaleAdopting) {
-      this.rescaleNeedsSaving = false;
-      this.save();
-    }
-  }
-
-  /**
-   * True once a size change has repaired something and no entry has been
-   * written for it yet.
-   *
-   * A scale change reaches this service twice while the Settings panel is open
-   * -- once from the panel's own subscription to the value, once from whatever
-   * set it -- so the second pass finds a drawing already put right and cannot
-   * tell that anything happened. Remembered across the pair, and cleared by the
-   * save that answers it.
-   */
-  private rescaleNeedsSaving = false;
-
-  /** Put every cylinder back inside its own barrel at the new R (decision S29). */
-  private repairCylindersForScale(): void {
-    const plan = planCylinderRescale(
-      this.sealedStructures(),
-      (one) => this.gridUtils.editContext(one),
-      (one) => this.cylinderName(one)
-    );
-    plan.refusals.forEach((said) => this.notify.refusal(said.code, said.text));
-    this.rescaleNeedsSaving ||= plan.placements.size > 0;
-    this.gridUtils.commitCylinderPlacements(plan);
   }
 
   // delete mechanism and reset
@@ -1631,7 +1600,7 @@ export class MechanismService {
 
   /** True where anything at all is switched on, for the canvas's own guard. */
   get anyVectorTrace(): boolean {
-    return this.vectorTraceKeys.size > 0;
+    return this.vectorTraceKeys.size > 0 && this.vectorTracePaths().length > 0;
   }
 
   private vectorKey(part: Joint | Link, quantity: VectorQuantity): string {
@@ -4376,7 +4345,7 @@ export class MechanismService {
       return `Slider ${names} has nothing to slide along. Drag it onto a link to cut a slot, or ground it to fix its direction.`;
     }
     if (!this.joints.some((joint) => joint instanceof RealJoint && joint.input)) {
-      return 'No joint is driven. Right-click a joint and switch on Driven Input to say what moves the mechanism.';
+      return 'Set one joint as an input to say what moves the mechanism.';
     }
     // A driven joint the actuator record cannot describe -- most often because
     // an edit added a third body to it long after Driven was switched on. The
@@ -4403,11 +4372,11 @@ export class MechanismService {
     if (noTravel) {
       const cylinder = this.sealedStructures().find((found) => found.seal.id === noTravel);
       const name = cylinder ? this.cylinderName(cylinder) : noTravel;
-      return `Cylinder ${name} has no travel: its barrel is too short to slide in at all. Lengthen the cylinder, or reduce Object Size — a larger size draws everything on the rod bigger without lengthening the barrel.`;
+      return `Cylinder ${name} has no travel: its barrel is too short to slide in at all. Increase Barrel Length to provide room for the piston to travel.`;
     }
     const stuck = PositionSolver.unsolvableJoints;
     if (stuck.length > 0) {
-      return `These joints cannot be placed from the ones around them: ${stuck.join(', ')}. They may need another link, or a driven joint nearer to them.`;
+      return `These joints cannot be placed from the ones around them: ${stuck.join(', ')}. They may need another link, or an input joint nearer to them.`;
     }
     return 'This mechanism reached a position it could not solve from the one before it \u2014 usually a toggle, where the mechanism locks.';
   }
@@ -4468,7 +4437,7 @@ export class MechanismService {
       const frames = solved.joints.length;
       if (frames < 2) continue;
 
-      const r = 0.15 * SettingsService.objectScale;
+      const r = 0.15 * SettingsService.cylinderObjectScale;
       const barrelLength = getDistance(cylinder.mountA, cylinder.inner);
       const travel = cylinderStrokeAlong(barrelLength, r);
       if (!travel.usable) continue;
@@ -4680,7 +4649,7 @@ export class MechanismService {
     // the grounds that a third body inside one rigid statement is not a state
     // the model has an answer for; it has one now, and the answer is a
     // compound with the barrel as a leaf.
-    const creation = cylinderCreationLayout(start, end, this.settingsService.objectScale);
+    const creation = cylinderCreationLayout(start, end, SettingsService.cylinderObjectScale);
 
     // A cylinder is four joints and shows three of them. The two ends and the
     // seal are what a reader points at, names and reads back out of a panel, so

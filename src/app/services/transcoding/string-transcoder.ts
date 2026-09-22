@@ -393,6 +393,8 @@ export class StringTranscoder extends GenericTranscoder {
 
     // Encode global decimal settings
     const decimalSettings = Object.values(this.decimalData);
+    // Keep legacy payloads byte-identical unless display and cylinder sizes differ.
+    while (decimalSettings.length > 2 && decimalSettings.at(-1) === 0) decimalSettings.pop();
     let decimalString = '';
     for (let i = 0; i < decimalSettings.length; i++) {
       decimalString += this.encodeDecimalNumber(decimalSettings[i]) + ',';

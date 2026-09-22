@@ -217,7 +217,7 @@ check(
 // away. The primary door is checked after these, because that one does close it.
 await page.locator('.door.secondaryDoor').first().click();
 await page.waitForTimeout(900);
-check('Export data opens', await page.locator('.exportCard').isVisible());
+check('Export Data opens', await page.locator('.exportCard').isVisible());
 check('the tutorial stays with it', await page.locator('.tutorialCard').isVisible());
 const tutorialBox = await page.locator('.tutorialCard').boundingBox();
 const exportBox = await page.locator('.exportCard').boundingBox();

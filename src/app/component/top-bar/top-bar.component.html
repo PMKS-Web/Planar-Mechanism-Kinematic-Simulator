@@ -151,10 +151,10 @@
           (click)="exportData()"
           [disabled]="!canExport()"
           [matTooltip]="exportTooltip()"
-          aria-label="Export data"
+          aria-label="Export Data"
         >
           <mat-icon>download</mat-icon>
-          <span class="historyLabel">Export data</span>
+          <span class="historyLabel">Export Data</span>
         </button>
       </span>
     }
@@ -175,7 +175,7 @@
     @menuOpen
   >
     <button class="menuItem" (click)="newProject()">
-      <mat-icon>note_add</mat-icon>New project
+      <mat-icon>note_add</mat-icon>New Project
     </button>
     <input #fileInput hidden type="file" accept="text" (change)="upload($event)" />
     <button class="menuItem" (click)="fileInput.click()"><mat-icon>file_open</mat-icon>Open</button>
@@ -183,12 +183,12 @@
       <mat-icon>apps</mat-icon>Mechanism Library
     </button>
     <button class="menuItem" (click)="downloadLinkage()"><mat-icon>save</mat-icon>Save</button>
-    <button class="menuItem" (click)="copyURL()"><mat-icon>link</mat-icon>Share project</button>
+    <button class="menuItem" (click)="copyURL()"><mat-icon>link</mat-icon>Share Project</button>
     <button class="menuItem" (click)="exportData()" [disabled]="!canExport()">
-      <mat-icon>download</mat-icon>Export data
+      <mat-icon>download</mat-icon>Export Data
     </button>
     <button class="menuItem" (click)="exportDrawing()">
-      <mat-icon>architecture</mat-icon>CAD export
+      <mat-icon>architecture</mat-icon>CAD Export
     </button>
     <div class="menuDivider"></div>
     <button class="menuItem" (click)="openSettings()">
@@ -199,7 +199,7 @@
       <mat-icon>school</mat-icon>Tutorial
     </button>
     <button class="menuItem" id="helpButton" (click)="openHelp()">
-      <mat-icon>help</mat-icon>Help and feedback
+      <mat-icon>help</mat-icon>Help and Feedback
       <kbd class="menuKeys">{{ shortcuts.keysFor('app.help') }}</kbd>
     </button>
     @if (isDevMode()) {

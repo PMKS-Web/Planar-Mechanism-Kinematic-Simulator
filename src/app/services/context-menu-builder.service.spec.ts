@@ -287,7 +287,7 @@ describe('the right-click menu', () => {
       const parts = fourBar(harness.mechanism);
       const labels = rows(harness.builder.build(parts.a, noHandlers)).map((r) => r.label);
       expect(labels.slice(labels.indexOf('Locked') + 1, labels.indexOf('Locked') + 5)).toEqual([
-        'Trace path',
+        'Trace Path',
         'Velocity Vectors',
         'Acceleration Vectors',
         'Force Vectors',
@@ -725,7 +725,7 @@ describe('the right-click menu', () => {
       harness.mechanism.mechanismTimeStep = 12;
       const paused = harness.builder.build(parts.t, noHandlers);
       expect(row(paused, 'Grounded')!.refusal!.short).toBe('return to start');
-      expect(row(paused, 'Trace path')!.disabled).toBe(false);
+      expect(row(paused, 'Trace Path')!.disabled).toBe(false);
       expect(row(paused, 'Locked')!.disabled).toBe(false);
       expect(rows(paused).find((r) => r.label.startsWith('Delete Joint'))!.disabled).toBe(false);
       const body = harness.builder.build(parts.crank, noHandlers);
@@ -744,14 +744,14 @@ describe('the right-click menu', () => {
 
       // A trace is a view of the mechanism, not a change to it -- so parking
       // mid-cycle, which is exactly when a reader wants one, leaves it live.
-      expect(row(paused, 'Trace path')!.refusal).toBeUndefined();
+      expect(row(paused, 'Trace Path')!.refusal).toBeUndefined();
 
       harness.mechanism.isPlaying = true;
       const running = harness.builder.build(parts.t, noHandlers);
       expect(row(running, 'Grounded')!.refusal!.short).toBe('animation running');
       // Including the trace, while it runs. `showCurve` is serialized, and
       // undo is blocked here -- so a toggle made now could not be taken back.
-      expect(row(running, 'Trace path')!.refusal!.short).toBe('animation running');
+      expect(row(running, 'Trace Path')!.refusal!.short).toBe('animation running');
       harness.mechanism.isPlaying = false;
     });
 
@@ -799,7 +799,7 @@ describe('the right-click menu', () => {
       // own pose-preserving restore path, so remains available.
       expect(row(model, 'Grounded')!.refusal!.short).toBe('a mechanism is mid-cycle');
       expect(harness.grid.canRestoreHistory()).toBe(true);
-      expect(row(model, 'Trace path')!.disabled).toBe(false);
+      expect(row(model, 'Trace Path')!.disabled).toBe(false);
 
       // And while it runs, both refuse, with the words that name the machine
       // rather than the shared clock the reader can see reading zero.
