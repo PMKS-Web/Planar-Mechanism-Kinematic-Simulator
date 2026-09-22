@@ -1,3 +1,4 @@
+import { pruneUnlinkedJoints } from '../model/prune-unlinked-joints';
 import { selectableLinks } from '../model/selection';
 import { LinkTraceService } from './link-trace.service';
 import { Injectable, Injector, inject } from '@angular/core';
@@ -3836,11 +3837,7 @@ export class MechanismService {
       )) {
         this.deleteCylinderTopology(sealed);
       }
-      this.joints = this.joints.filter(
-        (joint) =>
-          !(joint instanceof RealJoint) ||
-          this.links.some((candidate) => candidate.joints.includes(joint))
-      );
+      this.joints = pruneUnlinkedJoints(this.joints, this.links);
       this.activeObjService.updateSelectedObj(undefined);
       this.finishStructuralEdit(true);
       return;
@@ -3856,11 +3853,7 @@ export class MechanismService {
       .filter((force) => ownedLinkIDs.has(force.link.id))
       .forEach((force) => this.detachForce(force));
     this.links.splice(linkIndex, 1);
-    this.joints = this.joints.filter(
-      (joint) =>
-        !(joint instanceof RealJoint) ||
-        this.links.some((candidate) => candidate.joints.includes(joint))
-    );
+    this.joints = pruneUnlinkedJoints(this.joints, this.links);
     this.activeObjService.updateSelectedObj(undefined);
     this.finishStructuralEdit(true);
   }
@@ -4841,11 +4834,7 @@ export class MechanismService {
     const interior = new Set([sealed.seal.id, sealed.inner.id]);
     [...interior, sealed.mountA.id, sealed.mountB.id].forEach((id) => this.slotStashes.delete(id));
     this.joints = this.joints.filter((joint) => !interior.has(joint.id));
-    this.joints = this.joints.filter(
-      (joint) =>
-        !(joint instanceof RealJoint) ||
-        this.links.some((candidate) => candidate.joints.includes(joint))
-    );
+    this.joints = pruneUnlinkedJoints(this.joints, this.links);
 
     // Scrub what survived of what did not.
     //

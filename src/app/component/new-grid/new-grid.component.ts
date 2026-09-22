@@ -1,3 +1,4 @@
+import { barLabelAxis } from '../../model/bar-label-axis';
 import { PlacementTargetService } from '../../services/placement-target.service';
 import { placementBearing } from '../../model/placement-snap';
 import { LinkTraceService } from '../../services/link-trace.service';
@@ -5603,15 +5604,7 @@ export class NewGridComponent implements OnDestroy {
    * a flat bar sends it toward the right-hand end.
    */
   private barAxis(link: Link): { x: number; y: number } | undefined {
-    if ((link.joints?.length ?? 0) !== 2) return undefined;
-    if (link instanceof RealLink && link.subset.length > 0) return undefined;
-    const [from, to] = link.joints;
-    const dx = to.x - from.x;
-    const dy = to.y - from.y;
-    const span = Math.hypot(dx, dy);
-    if (span < 1e-9) return undefined;
-    const up = dy > 1e-9 || (Math.abs(dy) <= 1e-9 && dx > 0) ? 1 : -1;
-    return { x: (up * dx) / span, y: (up * dy) / span };
+    return barLabelAxis(link);
   }
 
   /** Whether this bar wears a length chip right now. */
