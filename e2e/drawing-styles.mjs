@@ -138,7 +138,18 @@ try {
       const g = ng.getComponent(document.querySelector('app-new-grid'));
       const pin = document.querySelector('#jointHolder circle[id^="joint_"]');
       const m = pin.getScreenCTM();
+      const welds = [...document.querySelectorAll('#jointHolder .weldMark')].map((weld) => {
+        const ctm = weld.getScreenCTM();
+        const zoom = Math.hypot(ctm.a, ctm.b);
+        const style = getComputedStyle(weld);
+        const stroke = style.stroke === 'none' ? 0 : parseFloat(style.strokeWidth);
+        return (
+          weld.getBBox().width * zoom +
+          stroke * (style.vectorEffect === 'non-scaling-stroke' ? 1 : zoom)
+        );
+      });
       return {
+        welds,
         pixels: g.settings.drawingScale * g.svgGrid.getZoom(),
         diameter: 2 * Number(pin.getAttribute('r')) * Math.hypot(m.a, m.b),
       };
@@ -148,7 +159,9 @@ try {
       dims.pixels >= 19.99 &&
         dims.pixels <= 32.01 &&
         dims.diameter >= 5.99 &&
-        dims.diameter <= 9.61,
+        dims.diameter <= 9.61 &&
+        dims.welds.length > 0 &&
+        dims.welds.every((width) => width >= 4.4 && width <= 18),
       dims
     );
     check(
@@ -186,6 +199,88 @@ try {
       await page.screenshot({ path: `${OUT}/${id}-${name}.png` });
     }
     await choose('Close');
+    await page.waitForTimeout(400);
+    if (id === 'Hydraulic_Crosshead') {
+      const clickBarrel = async () => {
+        const p = await grid((g) => {
+          const c = g.mechanismSrv.sealedStructures()[0];
+          const at = g.svgGrid.modelToScreen({
+            x: c.mountA.x + (c.seal.x - c.mountA.x) * 0.35,
+            y: c.mountA.y + (c.seal.y - c.mountA.y) * 0.35,
+          });
+          return { x: at.x, y: at.y };
+        });
+        await page.mouse.click(p.x, p.y);
+      };
+      await clickBarrel();
+      check(
+        'Schematic first click selects and outlines the whole welded barrel body',
+        (await grid(
+          (g) => g.activeObjService.selectedLink === g.mechanismSrv.sealedStructures()[0].barrelRoot
+        )) &&
+          (await page.locator('.cylinder-barrel-selected.link-selected').count()) === 1 &&
+          (await page.locator('.cylinder-rod-selected.link-selected').count()) === 0
+      );
+      await clickBarrel();
+      check(
+        'Schematic second click selects and outlines just the barrel primitive',
+        (await grid(
+          (g) => g.activeObjService.selectedLink === g.mechanismSrv.sealedStructures()[0].barrel
+        )) && (await page.locator('.cylinder-barrel-selected.link-selected').count()) === 1
+      );
+      const leaf = await grid((g) => {
+        const c = g.mechanismSrv.sealedStructures()[0];
+        const l = c.barrelRoot.subset.find((l) => l.id !== c.barrel.id);
+        const a = l.joints[0],
+          b = l.joints[1];
+        const at = g.svgGrid.modelToScreen({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+        return { id: l.id, p: { x: at.x, y: at.y } };
+      });
+      // Five pixels beside the line is still inside its 12px pointer target.
+      await page.mouse.click(leaf.p.x + 5, leaf.p.y);
+      check(
+        'the thin connection still selects its ordinary primitive inside a compound',
+        (await grid((g) => g.activeObjService.selectedLink?.id)) === leaf.id &&
+          (await page.locator('.cylinder-barrel-selected.link-selected').count()) === 0
+      );
+      check(
+        'cylinder input arrows contrast against the outlined head',
+        await page
+          .locator('.cylinder-arrows line')
+          .evaluateAll(
+            (lines) =>
+              lines.length > 0 &&
+              lines.every((l) => getComputedStyle(l).stroke !== 'rgb(255, 255, 255)')
+          )
+      );
+      await page.screenshot({ path: `${OUT}/schematic-selection.png` });
+      for (const style of ['Standard', 'Fine']) {
+        await settings();
+        await choose(style);
+        await choose('Close');
+        await page.waitForTimeout(400);
+        await grid((g) => g.activeObjService.updateSelectedObj(null));
+        const p = await grid((g) => {
+          const c = g.mechanismSrv.sealedStructures()[0];
+          const l = c.barrelRoot.subset.find((l) => l.id !== c.barrel.id);
+          const a = l.joints[0],
+            b = l.joints[1];
+          const at = g.svgGrid.modelToScreen({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+          return { x: at.x, y: at.y };
+        });
+        await page.mouse.click(p.x, p.y);
+        await page.mouse.click(p.x, p.y);
+        check(
+          `${style} also picks the ordinary primitive from its displayed body`,
+          (await grid((g) => g.activeObjService.selectedLink?.id)) === leaf.id
+        );
+      }
+      await settings();
+      await choose('Schematic');
+      await choose('Close');
+      await page.waitForTimeout(400);
+      await grid((g) => g.activeObjService.updateSelectedObj(null));
+    }
     const playback = filmstrip(page, `${OUT}/${id}-play`);
     await playback.during(90, 10, 'play', () =>
       page.getByRole('button', { name: 'Play', exact: true }).click()
@@ -212,6 +307,30 @@ try {
     check(`Drawing Style fits at ${width}px without extra gutters or clipped choices`, fit);
     await page.screenshot({ path: `${OUT}/settings-${width}.png` });
   }
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const beforeKeyboard = await physical();
+  const schematicButton = panel.getByRole('button', { name: 'Schematic', exact: true });
+  await schematicButton.focus();
+  await page.keyboard.press('Space');
+  check(
+    'keyboard activation with reduced motion changes only the view',
+    (await schematicButton.getAttribute('aria-pressed')) === 'true' &&
+      (await schematicButton.evaluate((b) => b === document.activeElement)) &&
+      (await physical()) === beforeKeyboard
+  );
+  const transitions = await panel
+    .locator('radio-block')
+    .last()
+    .evaluate((block) =>
+      [...block.querySelectorAll('*')].map((el) =>
+        parseFloat(getComputedStyle(el).transitionDuration)
+      )
+    );
+  check(
+    'reduced motion suppresses the style control transition',
+    transitions.every((duration) => duration <= 0.00001)
+  );
+  await page.screenshot({ path: `${OUT}/settings-keyboard-reduced-motion.png` });
   check('no browser errors', errors.length === 0, errors);
   await contactSheet(`${OUT}/style-switch/*.png`, `${OUT}/styles-film.png`, 7, 0.3);
   await contactSheet(`${OUT}/zoom/*.png`, `${OUT}/zoom-film.png`, 8, 0.25);
