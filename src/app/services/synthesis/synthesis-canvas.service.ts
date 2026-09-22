@@ -205,8 +205,14 @@ export class SynthesisCanvasService {
    * about to insert, so a pose bar drawn at a width of its own would promise
    * one part and deliver a thinner one.
    */
+  private barPath(x1: number, y1: number, x2: number, y2: number, r: number): string {
+    return this.settings.isSchematic
+      ? `M ${x1} ${y1} L ${x2} ${y2}`
+      : capsulePath(x1, y1, x2, y2, r);
+  }
+
   private barHalf(): number {
-    return barHalfWidth(this.settings.objectScale);
+    return barHalfWidth(this.settings.drawingScale);
   }
 
   poseBars(): PoseBar[] {
@@ -216,7 +222,7 @@ export class SynthesisCanvasService {
       const reached = cand ? cand.onBranch[pose.id - 1] : undefined;
       return {
         id: pose.id,
-        d: capsulePath(
+        d: this.barPath(
           pose.posBack.x,
           pose.posBack.y,
           pose.posFront.x,
@@ -251,8 +257,8 @@ export class SynthesisCanvasService {
         reached === undefined ? 'position ' + pose.id : reached ? 'reached' : 'needs reassembly';
       return {
         id: pose.id,
-        x: far.x + 0.5 * this.settings.objectScale,
-        y: Math.max(pose.posBack.y, pose.posFront.y) + 0.75 * this.settings.objectScale,
+        x: far.x + 0.5 * this.settings.drawingScale,
+        y: Math.max(pose.posBack.y, pose.posFront.y) + 0.75 * this.settings.drawingScale,
         text,
         dot: reached === undefined ? '#8a90a0' : reached ? '#43a047' : '#f5a623',
         selected: this.design.selectedPose === pose.id,
@@ -350,7 +356,7 @@ export class SynthesisCanvasService {
           ? { x: this.cursor.x - dx, y: this.cursor.y - dy }
           : { x: this.cursor.x - dx / 2, y: this.cursor.y - dy / 2 };
     return {
-      d: capsulePath(anchor.x, anchor.y, anchor.x + dx, anchor.y + dy, this.barHalf()),
+      d: this.barPath(anchor.x, anchor.y, anchor.x + dx, anchor.y + dy, this.barHalf()),
       arrow: directionMark(anchor.x, anchor.y, anchor.x + dx, anchor.y + dy, this.barHalf()),
     };
   }
@@ -381,7 +387,7 @@ export class SynthesisCanvasService {
     if (!solved) return [];
     const r = this.barHalf();
     const bar = (a: Coord, b: Coord, colorIndex: number): PreviewLink => ({
-      d: capsulePath(a.x, a.y, b.x, b.y, r),
+      d: this.barPath(a.x, a.y, b.x, b.y, r),
       // The colors the linkage will actually be built in, asked of the same
       // service `insert` asks, so the preview cannot promise one thing and the
       // drawing deliver another.
@@ -513,7 +519,7 @@ export class SynthesisCanvasService {
     if (!solved) return [];
     const r = this.barHalf();
     const ghost = (a: Coord, b: Coord): PreviewLink => ({
-      d: capsulePath(a.x, a.y, b.x, b.y, r),
+      d: this.barPath(a.x, a.y, b.x, b.y, r),
       color: '#9aa0ac',
     });
     return [ghost(solved.A, solved.B), ghost(solved.B, solved.C), ghost(solved.C, solved.D)];
