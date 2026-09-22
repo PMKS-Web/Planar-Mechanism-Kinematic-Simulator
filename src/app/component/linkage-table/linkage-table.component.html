@@ -78,7 +78,6 @@
             </td>
             <td>
               <input
-                numberDrag
                 appStandardField
                 type="text"
                 width="37px"
@@ -88,7 +87,6 @@
             </td>
             <td>
               <input
-                numberDrag
                 appStandardField
                 type="text"
                 width="37px"
@@ -99,7 +97,6 @@
             @if (typeOfJoint(joint) === 'P') {
               <td>
                 <input
-                  numberDrag
                   appStandardField
                   type="text"
                   value="{{ getJointAngle(joint) }}"
@@ -166,7 +163,6 @@
             <!-- mass -->
             <td>
               <input
-                numberDrag
                 appStandardField
                 type="text"
                 value="{{ getLinkProp(link, 'mass') }}"
@@ -176,7 +172,6 @@
             <!-- massMoI -->
             <td>
               <input
-                numberDrag
                 appStandardField
                 type="text"
                 value="{{ getLinkProp(link, 'massMoI') }}"
@@ -186,7 +181,6 @@
             <!-- CoM_x -->
             <td>
               <input
-                numberDrag
                 appStandardField
                 type="text"
                 value="{{ getLinkProp(link, 'CoMX') }}"
@@ -196,7 +190,6 @@
             <!-- CoM_y -->
             <td>
               <input
-                numberDrag
                 appStandardField
                 type="text"
                 value="{{ getLinkProp(link, 'CoMY') }}"
@@ -248,7 +241,6 @@
             </td>
             <td>
               <input
-                numberDrag
                 appStandardField
                 type="text"
                 value="{{ showForceAngle(force) }}"
@@ -257,7 +249,6 @@
             </td>
             <td>
               <input
-                numberDrag
                 appStandardField
                 type="text"
                 value="{{ force.mag }}"
@@ -266,7 +257,6 @@
             </td>
             <td>
               <input
-                numberDrag
                 appStandardField
                 type="text"
                 value="{{ toUserUnits(force.startCoord.x) }}"
@@ -275,7 +265,6 @@
             </td>
             <td>
               <input
-                numberDrag
                 appStandardField
                 type="text"
                 value="{{ toUserUnits(force.startCoord.y) }}"

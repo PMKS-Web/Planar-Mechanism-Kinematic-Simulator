@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { TEMPLATE_LINKAGES } from './template-payloads.mjs';
 import { openMechanism } from './app-ready.mjs';
 import { startQuiet } from './quiet-start.mjs';
@@ -44,6 +44,13 @@ try {
     await page.getByRole('textbox', { name: 'Joint Position Y', exact: true }).count(),
     1
   );
+  assert.equal(await page.getByRole('textbox', { name: /Joint .+ Distance/ }).count(), 0);
+  const tracer = readFileSync('docs/fixture-urls.md', 'utf8')
+    .split('\n')
+    .find((line) => line.includes('[Slider-crank with a tracer]('))
+    .match(/\]\(https?:\/\/[^?]+\?([^)]*)/)[1];
+  await openMechanism(page, `${base}/?${tracer}`);
+  await page.locator('#joint_B').click();
   assert.ok((await page.getByRole('textbox', { name: /Joint .+ Distance/ }).count()) > 0);
   assert.ok((await page.getByRole('textbox', { name: /Joint .+ Angle/ }).count()) > 0);
   writeFileSync(

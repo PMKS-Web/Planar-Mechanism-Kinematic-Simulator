@@ -1,17 +1,23 @@
-import { Directive, ElementRef, HostListener, inject } from '@angular/core';
+import { Directive, ElementRef, HostListener, Input, inject } from '@angular/core';
 
-/** A click still edits text; a vertical drag adjusts the displayed number.
+/** Drag the label vertically to adjust its field; the value keeps normal text editing.
  * Commit through the field's normal input/blur path once, so one drag is one undo.
  */
 @Directive({
-  selector: 'input[numberDrag]',
+  selector: '[numberDrag]',
   host: {
+    class: 'number-drag-label',
     '[style.touch-action]': "'none'",
-    '[style.cursor]': "field.disabled || field.readOnly ? 'default' : 'ns-resize'",
+    '[style.cursor]': "!field || field.disabled || field.readOnly ? 'default' : 'ns-resize'",
+    '[style.user-select]': "'none'",
   },
 })
 export class NumberDragDirective {
-  protected readonly field = inject<ElementRef<HTMLInputElement>>(ElementRef).nativeElement;
+  @Input({ required: true }) numberDrag?: HTMLInputElement;
+  protected get field(): HTMLInputElement {
+    return this.numberDrag!;
+  }
+  private readonly handle = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private gesture?: { id: number; y: number; text: string; value: number; suffix: string };
   private dragging = false;
   private suppressClick = false;
@@ -19,9 +25,12 @@ export class NumberDragDirective {
   @HostListener('pointerdown', ['$event'])
   protected down(event: PointerEvent): void {
     const field = this.field;
-    if (event.button !== 0 || field.disabled || field.readOnly) return;
+    if (!field || event.button !== 0 || field.disabled || field.readOnly) return;
     const parsed = field.value.trim().match(/^([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(.*)$/i);
     if (!parsed || !Number.isFinite(Number(parsed[1]))) return;
+    event.preventDefault();
+    event.stopPropagation();
+    field.focus();
     this.suppressClick = false;
     this.dragging = false;
     this.gesture = {
@@ -31,7 +40,7 @@ export class NumberDragDirective {
       value: Number(parsed[1]),
       suffix: parsed[2],
     };
-    field.setPointerCapture?.(event.pointerId);
+    this.handle.setPointerCapture?.(event.pointerId);
   }
 
   @HostListener('pointermove', ['$event'])
@@ -82,7 +91,7 @@ export class NumberDragDirective {
     this.dragging = false;
   }
 
-  @HostListener('keydown.escape', ['$event'])
+  @HostListener('window:keydown.escape', ['$event'])
   protected escape(event: Event): void {
     if (!this.gesture) return;
     event.stopPropagation();

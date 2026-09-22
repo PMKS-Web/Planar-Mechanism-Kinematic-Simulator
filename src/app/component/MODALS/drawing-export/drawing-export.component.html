@@ -174,9 +174,8 @@
             }
             @if (options.jointCircles === 'holes') {
               <div class="subField">
-                <span class="fieldName">Pin diameter</span>
+                <span class="fieldName" [numberDrag]="diameterField">Pin diameter</span>
                 <input
-                  numberDrag
                   class="textInput narrow"
                   type="number"
                   min="0"
@@ -184,6 +183,7 @@
                   [ngModel]="effectivePinDiameter"
                   (ngModelChange)="touch({ pinDiameter: +$event })"
                   aria-label="Pin diameter"
+                  #diameterField
                   [attr.aria-invalid]="!!pinDiameterError"
                   [attr.aria-describedby]="pinDiameterError ? 'pin-diameter-error' : null"
                 />
