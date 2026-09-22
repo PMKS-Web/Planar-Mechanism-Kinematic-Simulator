@@ -307,7 +307,10 @@ await open(payloads['4-Bar']);
 await tab('Edit').click();
 for (const id of ['A', 'B', 'C', 'D']) {
   await clickJoint(id);
-  const button = page.getByRole('button', { name: 'Remove Input', exact: true });
+  const button = page
+    .locator('app-edit-panel')
+    .getByRole('button', { name: 'Remove Input', exact: true })
+    .first();
   if (await button.count()) {
     await button.click();
     break;
