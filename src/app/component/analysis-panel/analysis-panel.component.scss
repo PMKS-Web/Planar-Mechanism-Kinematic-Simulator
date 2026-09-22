@@ -144,10 +144,24 @@
   // a row's name so it reads as their heading rather than as one more of them.
   margin: 10px 15px 0;
   padding: 10px 4px 2px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--text-primary);
   cursor: default;
+}
+
+// Keep the drawing switches in the Center of Mass group on a link. The
+// ordinary section rule made the switches look like a new topic.
+#analysisWrapper .linkAnalysisPanel.linkKinematics {
+  .rowList--com::after {
+    display: none;
+  }
+
+  .drawingSwitches {
+    margin-top: 0;
+    padding-top: 2px;
+    border-top: 0;
+  }
 }
 
 // The mode the reactions below are computed for, set off from them the same way
@@ -207,6 +221,7 @@
 // chip's glyph takes the arrow's own ink -- the color the trace is drawn in.
 // Gray carries the menu's reason on hover.
 #analysisWrapper .drawingSwitches {
+  container-type: inline-size;
   margin: 12px 0 4px;
   padding: 8px 15px 12px;
   border-top: 1px solid var(--border-rule);
@@ -233,7 +248,13 @@
   // here is the row they sit in.
   .drawingChips {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 0.75fr 1fr 1.4fr 0.85fr;
     gap: 6px;
+  }
+
+  @container (max-width: 360px) {
+    .drawingChips {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 }
