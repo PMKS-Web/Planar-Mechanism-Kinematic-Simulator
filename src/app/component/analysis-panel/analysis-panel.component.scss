@@ -136,72 +136,50 @@
   padding-bottom: 14px;
 }
 
-// Names the group of graphs under it. It used to be a subtitle-block nudged
-// down 20px, which read as a stray line of text between two cards rather than
-// as a heading for the ones below it.
-#analysisWrapper .graphGroupHeading {
-  // Under the rows above it and over the ones below, weighted a little above
-  // a row's name so it reads as their heading rather than as one more of them.
-  margin: 10px 15px 0;
-  padding: 10px 4px 2px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-primary);
-  cursor: default;
+// The title and strip share the sticky head; the body has the spec's 6px rhythm.
+#analysisWrapper .tabbedAnalysis #normalPanel {
+  gap: 6px;
+  padding-bottom: 14px;
 }
 
-// Keep the drawing switches in the Center of Mass group on a link. The
-// ordinary section rule made the switches look like a new topic.
-#analysisWrapper .linkAnalysisPanel.linkKinematics {
-  // The heading supplies the subject; the three rows only need the quantity.
-  // One 15px gutter joins the heading, row names, and drawing controls.
-  .graphGroupHeading {
-    margin-top: 16px;
-    padding: 0 0 7px;
-    font-size: 16px;
-    font-weight: 600;
-    line-height: 22px;
-    color: var(--text-strong);
+#analysisWrapper .panelHead.tabbedHead {
+  padding: 10px 0 0;
+  margin-bottom: -3px;
+
+  .panelTitle {
+    padding: 0 15px;
+    flex-wrap: wrap;
   }
 
-  .rowList--com {
-    .graphSection:first-child {
-      border-top: 0;
-    }
-
-    .graphHeader {
-      min-height: 38px;
-      padding: 8px 4px 8px 0;
-      font-size: 13px;
-      line-height: 20px;
-    }
+  app-tabs-block {
+    display: block;
+    margin-top: 6px;
   }
+}
 
-  .rowList--com::after {
+#analysisWrapper .analysisTabPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  &[hidden] {
     display: none;
   }
+}
 
-  .drawingSwitches {
-    margin-top: 4px;
-    padding-top: 8px;
+#analysisWrapper .tabbedAnalysis .rowList {
+  padding-bottom: 0;
+
+  > app-analysis-graph-section:first-child .graphSection {
     border-top: 0;
-
-    .drawingSwitchesHead {
-      margin-bottom: 8px;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text-secondary);
-    }
   }
 }
 
-// The mode the reactions below are computed for, set off from them the same way
-// the center-of-mass heading is set off from its graphs. It used to sit flush
-// against the first reaction card, so the two read as one control.
-#analysisWrapper .forceModeRow {
-  margin: 0 0 12px;
-  padding: 0 15px 12px;
-  border-bottom: 1px solid var(--border-rule);
+#analysisWrapper .noReaction {
+  margin: 4px 15px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
 }
 
 // The help card's hint pattern, worn inside a panel section: the card brings
@@ -253,9 +231,8 @@
 // Gray carries the menu's reason on hover.
 #analysisWrapper .drawingSwitches {
   container-type: inline-size;
-  margin: 12px 0 4px;
-  padding: 8px 15px 12px;
-  border-top: 1px solid var(--border-rule);
+  margin: 0;
+  padding: 8px 15px 14px;
 
   .drawingSwitchesHead {
     display: flex;
@@ -283,9 +260,17 @@
     gap: 6px;
   }
 
+  .drawingChips.threeChips {
+    grid-template-columns: 0.75fr 1fr 1.4fr;
+  }
+
   @container (max-width: 360px) {
-    .drawingChips {
+    .drawingChips:not(.threeChips) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
+}
+
+#analysisWrapper .tabbedAnalysis .drawingSwitches {
+  padding-bottom: 0;
 }
