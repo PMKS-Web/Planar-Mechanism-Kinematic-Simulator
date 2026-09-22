@@ -186,7 +186,7 @@ describe('what is allowed when', () => {
 
   it('has no transport at all in Synthesis', () => {
     expect(refusalFor('transport', at({ mode: 'synthesis' }))!.short).toBe('synthesis mode');
-    expect(allowed(at({ mode: 'synthesis' }))).toEqual(['inspect']);
+    expect(allowed(at({ mode: 'synthesis' }))).toEqual(['inspect', 'history']);
   });
 
   it('says what is missing rather than nothing, over a drawing that cannot run', () => {

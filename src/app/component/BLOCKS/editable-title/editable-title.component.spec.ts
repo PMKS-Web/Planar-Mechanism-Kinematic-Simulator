@@ -68,9 +68,10 @@ describe('EditableTitleComponent names', () => {
     expect(selected.name).toBe('Crank');
   });
 
-  it('requires one word made from English letters and numbers', () => {
-    expect(rename('output link')).toContain('one word');
-    expect(rename('output-link')).toContain('one word');
+  it('accepts descriptive names and rejects unsupported punctuation', () => {
+    expect(rename('Luffing crank')).toBe('');
+    expect(rename('output-link')).toBe('');
+    expect(rename('<link>')).toContain('letters');
     expect(field()).not.toBeNull();
   });
 
