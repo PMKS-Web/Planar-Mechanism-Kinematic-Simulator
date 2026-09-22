@@ -443,7 +443,8 @@
       opacity: 0.4;
     }
 
-    .ghostBody {
+    .ghostBody,
+    .synthBar {
       stroke: none;
     }
 
@@ -466,7 +467,8 @@
     &.unreachable {
       opacity: 0.5;
 
-      .ghostBody {
+      .ghostBody,
+      .synthBar {
         fill: none;
       }
 
@@ -882,5 +884,68 @@
   .jointShake,
   .jointPop {
     animation: none;
+  }
+}
+
+// Schematic is a whole-drawing view: the structural symbols remain recognizable,
+// but no body retains its filled silhouette or shadow among the connections.
+#canvas.schematic {
+  #linkHolder > path:not([stroke='transparent']),
+  .cylinder-barrel,
+  .cylinder-rod,
+  .ghostBody,
+  .synthBar {
+    fill: none !important;
+    stroke-width: 1.5px;
+    vector-effect: non-scaling-stroke;
+    filter: none;
+  }
+
+  .joint_circles,
+  #jointHolder path[id^='joint_'] {
+    stroke: var(--canvas-ink);
+    stroke-width: 1px;
+    vector-effect: non-scaling-stroke;
+    filter: none;
+  }
+
+  .slideMark {
+    fill: var(--canvas-ink) !important;
+  }
+
+  .slider-block > path,
+  .cylinder-seal {
+    fill: var(--canvas-halo) !important;
+    stroke: var(--canvas-ink);
+    stroke-width: 1.5px;
+    vector-effect: non-scaling-stroke;
+    filter: none;
+  }
+
+  .slider-arrows,
+  .cylinder-arrows {
+    line {
+      stroke: var(--canvas-ink);
+    }
+    path {
+      fill: var(--canvas-ink);
+    }
+  }
+}
+
+#canvas[data-drawing-style='fine'] {
+  #linkHolder > path:not([stroke='transparent']),
+  .cylinder-barrel,
+  .cylinder-rod {
+    stroke-width: 2px;
+    vector-effect: non-scaling-stroke;
+  }
+}
+
+#canvas:is(.schematic, [data-drawing-style='fine']) {
+  path.link-selected,
+  path.link-pointed {
+    stroke-width: 3px;
+    vector-effect: non-scaling-stroke;
   }
 }
