@@ -286,7 +286,7 @@ export class Force {
       .clone()
       .subtract(startCoord)
       .normalize()
-      .scale(0.06 * SettingsService.objectScale);
+      .scale((this.arrowOutward ? 0.06 : -this.visualWidth) * SettingsService.objectScale);
     let tipOfTriangle = endCoord.clone().add(arrowVector);
 
     const length = this.visualWidth * 2 * SettingsService.objectScale;

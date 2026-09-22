@@ -1,3 +1,5 @@
+import { forceFrameAngle, forceFrameDirection } from '../../model/force-frame';
+import { ForceGuideService } from '../../services/force-guide.service';
 import { NumberDragDirective } from '../../directives/number-drag.directive';
 import { distanceNeighbors } from '../../model/joint-distances';
 import { describeActuatorRefusal } from '../../model/actuator';
@@ -490,7 +492,22 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
    */
   private pendingFieldSync?: ReturnType<typeof setTimeout>;
 
+  private readonly forceGuide = inject(ForceGuideService);
+
+  setForceAngleGuide(show: boolean): void {
+    this.forceGuide.force.set(show ? this.activeSrv.selectedForce : undefined);
+  }
+
+  flipForce(): void {
+    const force = this.activeSrv.selectedForce;
+    if (this.panelIsFrozen() || force.locked || !this.mechanismService.canAttachAtPose(force.link))
+      return;
+    this.mechanismService.changeForceDirection();
+    this.activeSrv.fakeUpdateSelectedObj();
+  }
+
   ngOnDestroy() {
+    this.forceGuide.force.set(undefined);
     this.onDestroySubscriptions.forEach((subscription) => subscription.unsubscribe());
     this.otherJoitnsSubscriptions.forEach((subscription) => subscription.unsubscribe());
     if (this.pendingFieldSync !== undefined) clearTimeout(this.pendingFieldSync);
@@ -1708,7 +1725,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
             {
               angle: this.nup.formatValueAndUnit(
                 this.nup.convertAngle(
-                  this.activeSrv.selectedForce.angleRad,
+                  forceFrameDirection(this.activeSrv.selectedForce),
                   AngleUnit.RADIAN,
                   this.settingsService.angleUnit.getValue()
                 ),
@@ -1724,7 +1741,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
               value,
               this.settingsService.angleUnit.getValue(),
               AngleUnit.RADIAN
-            )
+            ) + forceFrameAngle(this.activeSrv.selectedForce)
           );
           this.mechanismService.updateMechanism(true);
           this.mechanismService.onMechUpdateState.next(2);
@@ -1795,6 +1812,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
           return;
         }
         this.mechanismService.changeForceLocal();
+        this.activeSrv.fakeUpdateSelectedObj();
       })
     );
 
@@ -1928,7 +1946,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
               magnitude: this.forceText(this.activeSrv.selectedForce.mag),
               angle: this.nup.formatValueAndUnit(
                 this.nup.convertAngle(
-                  this.activeSrv.selectedForce.angleRad,
+                  forceFrameDirection(this.activeSrv.selectedForce),
                   AngleUnit.RADIAN,
                   this.settingsService.angleUnit.getValue()
                 ),

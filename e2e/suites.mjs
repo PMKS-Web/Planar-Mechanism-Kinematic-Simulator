@@ -77,6 +77,7 @@ export const SUITES = [
     lanes: NIGHTLY,
     note: 'Launches whatever Chrome the machine has, by path, rather than the Chromium Playwright pins — so on a runner it drives whatever was installed that morning. On the first Linux run its own checks passed and `page.screenshot` then hung for thirty seconds. The gate installs Chromium only; this is why.',
   },
+  { name: 'force-frame', seconds: 30, lanes: BOTH },
   { name: 'force-edit', seconds: 39, lanes: BOTH },
   { name: 'force-labels-and-legend', seconds: 20, lanes: BOTH },
   { name: 'force-units', seconds: 21, lanes: BOTH },

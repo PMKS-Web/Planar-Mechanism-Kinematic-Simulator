@@ -2039,49 +2039,6 @@
       (pointerout)="force.showHighlight = false"
     >
       <g [attr.id]="force.id">
-        <svg
-          [attr.x]="force.tailCoord.x"
-          [attr.y]="force.tailCoord.y"
-          style="pointer-events: none; overflow: visible"
-        >
-          <!-- Global: a disc, small enough that a joint it is sitting on still
-               reads around it. At the old 0.15 object scales it was the same
-               size as the joint and covered it exactly. -->
-          @if (!force.local) {
-            <circle
-              [attr.r]="forceAnchorRadius(force)"
-              class="forceAnchor"
-              [style.fill]="forceInkOf(force)"
-            ></circle>
-          }
-          <!-- Local: the welded joint's own plus. A local force is carried by
-               the body rather than fixed in the world, which is the statement a
-               weld makes about a joint — so it is that mark, from that geometry,
-               and the two cannot drift apart. -->
-          @if (force.local) {
-            <path
-              [attr.d]="forceWeldMark(force)"
-              class="forceAnchor"
-              [style.fill]="forceInkOf(force)"
-              style="transform: rotateZ({{ force.angleRad }}rad)"
-            ></path>
-          }
-          <!-- Same badge the joints wear, at the anchor: a force has no joint
-               to carry it, so the mark rides where the load is applied. -->
-          @if (force.locked && mechanismSrv.lockVisualsOn()) {
-            <g class="lockBadge" pointer-events="none" [upright]="lockBadgeShoulder()">
-              <circle
-                [attr.r]="0.13 * settings.objectScale"
-                fill="#ffffff"
-                stroke="#26323855"
-                [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
-              />
-              <g [attr.transform]="lockGlyphTransform()">
-                <path [attr.d]="lockGlyphPath" fill="#263238" fill-rule="evenodd" />
-              </g>
-            </g>
-          }
-        </svg>
         <!-- Transpent thicker force to increase hitbox for the group for highliting-->
         <path
           [attr.d]="force.forceLine"
@@ -2099,19 +2056,46 @@
           class="forceArrow"
           [style.fill]="forceInkOf(force)"
         ></path>
-      </g>
-      @if (activeObjService.selectedForce == force && activeObjService.objType == 'Force') {
-        <ng-container>
-          <line
-            [attr.x1]="force.startCoord.x"
-            [attr.y1]="force.startCoord.y"
-            [attr.x2]="force.endCoord.x"
-            [attr.y2]="force.endCoord.y"
-            class="forceSelectedLine"
-            [attr.stroke-width]="0.03 * settings.objectScale"
-          >
+        <g
+          appForceMark
+          [force]="force"
+          [selected]="
+            activeObjService.selectedForce === force && activeObjService.objType === 'Force'
+          "
+          [paused]="!mechanismSrv.isPlaying"
+          [ink]="forceInkOf(force)"
+          pointer-events="none"
+        />
+        <svg
+          [attr.x]="force.startCoord.x"
+          [attr.y]="force.startCoord.y"
+          style="pointer-events: none; overflow: visible"
+        >
+          @if (force.locked && mechanismSrv.lockVisualsOn()) {
+            <g
+              class="lockBadge"
+              pointer-events="none"
+              [upright]="{ x: 0.24 * settings.objectScale, y: 0.24 * settings.objectScale }"
             >
-          </line>
+              <circle
+                [attr.r]="0.13 * settings.objectScale"
+                fill="#ffffff"
+                stroke="#26323855"
+                [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
+              />
+              <g [attr.transform]="lockGlyphTransform()">
+                <path [attr.d]="lockGlyphPath" fill="#263238" fill-rule="evenodd" />
+              </g>
+            </g>
+          }
+        </svg>
+      </g>
+      @if (
+        activeObjService.selectedForce == force &&
+        activeObjService.objType == 'Force' &&
+        !mechanismSrv.isPlaying
+      ) {
+        <ng-container>
           <!-- Through its own handler: in an analysis mode a base standing on a
                joint is that joint, and the press has to be filed as one. -->
           <svg
@@ -2125,7 +2109,11 @@
             cursor="move"
             style="overflow: visible"
           >
-            <circle [attr.r]="0.075 * settings.objectScale" class="forceEndpointHandle"></circle>
+            <circle
+              [attr.r]="0.09 * settings.objectScale"
+              fill="transparent"
+              stroke="none"
+            ></circle>
           </svg>
           <svg
             id="endForceEndpoint"
@@ -2143,7 +2131,15 @@
             cursor="move"
             style="overflow: visible"
           >
-            <circle [attr.r]="0.075 * settings.objectScale" class="forceEndpointHandle"></circle>
+            <rect
+              [attr.x]="-0.075 * settings.objectScale"
+              [attr.y]="-0.075 * settings.objectScale"
+              [attr.width]="0.15 * settings.objectScale"
+              [attr.height]="0.15 * settings.objectScale"
+              [attr.transform]="'rotate(' + force.angleRad * 57.29577951308232 + ')'"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(2.7)"
+              class="forceEndpointHandle"
+            />
           </svg>
         </ng-container>
       }
@@ -2421,10 +2417,10 @@
           style="overflow: visible; text-anchor: middle"
         >
           @if (
-            settings.isShowID.value ||
-            force.showHighlight ||
-            (this.activeObjService.selectedForce == force &&
-              this.activeObjService.objType == 'Force')
+            !mechanismSrv.isPlaying &&
+            (force.showHighlight ||
+              (this.activeObjService.selectedForce == force &&
+                this.activeObjService.objType == 'Force'))
           ) {
             <text
               [style.font-size.px]="tagFontSize"
@@ -2457,13 +2453,6 @@
       <!-- Inked the way a placed force is, through `forceInkOf`, so the
            preview is the color the click will leave behind rather than the
            model's default black. -->
-      <circle
-        [attr.cx]="ghost.startCoord.x"
-        [attr.cy]="ghost.startCoord.y"
-        [attr.r]="forceAnchorRadius(ghost)"
-        class="forceAnchor"
-        [style.fill]="ghost.color || null"
-      ></circle>
       <path
         [attr.d]="ghost.forceLine"
         class="forceLine"
@@ -2475,6 +2464,7 @@
         class="forceArrow"
         [style.fill]="ghost.color || null"
       ></path>
+      <g appForceMark [force]="ghost" [ink]="forceInkOf(ghost)" pointer-events="none" />
     </g>
   }
 

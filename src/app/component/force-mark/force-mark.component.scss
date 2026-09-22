@@ -1,0 +1,27 @@
+.forceDisc {
+  fill: var(--primary);
+  stroke: var(--canvas-halo);
+  paint-order: stroke;
+  &.picked {
+    fill: var(--canvas-selection);
+    stroke: var(--accent);
+  }
+}
+.forceKeyway {
+  stroke: var(--canvas-halo);
+}
+.forceFrameRing {
+  fill: var(--canvas-halo);
+}
+.forceDatum {
+  stroke: var(--accent);
+}
+.forceAngleGuide {
+  fill: none;
+  stroke: var(--accent);
+  text {
+    fill: var(--text-strong);
+    stroke: var(--canvas-halo);
+    paint-order: stroke;
+  }
+}

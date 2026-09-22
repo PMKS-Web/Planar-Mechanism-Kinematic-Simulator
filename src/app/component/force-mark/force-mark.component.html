@@ -1,0 +1,75 @@
+@let f = force();
+@let scale = settings.objectScale;
+@let picked = selected() && paused();
+<svg:g
+  class="forceApplicationMark"
+  [attr.transform]="
+    'translate(' +
+    f.startCoord.x +
+    ' ' +
+    f.startCoord.y +
+    ') rotate(' +
+    (frameAngle(f) * 180) / Math.PI +
+    ')'
+  "
+>
+  @if (picked) {
+    <svg:line
+      class="forceDatum"
+      [attr.x1]="-0.5 * scale"
+      [attr.x2]="0.5 * scale"
+      [attr.stroke-width]="grid.scaleWithZoom(2)"
+      [attr.stroke-dasharray]="grid.scaleWithZoom(7) + ' ' + grid.scaleWithZoom(5)"
+    />
+  }
+  <svg:circle
+    class="forceDisc"
+    [class.picked]="picked"
+    [attr.r]="0.75 * f.visualWidth * scale"
+    [style.fill]="picked ? null : (ink() ?? 'var(--canvas-inert)')"
+    [attr.stroke-width]="grid.scaleWithZoom(picked ? 2.7 : 3)"
+  />
+  @if (f.local) {
+    <svg:line
+      class="forceKeyway"
+      [attr.x1]="-0.075 * scale"
+      [attr.x2]="0.075 * scale"
+      [attr.stroke-width]="grid.scaleWithZoom(3.2)"
+    />
+  } @else {
+    <svg:circle class="forceFrameRing" [attr.r]="0.026 * scale" />
+  }
+</svg:g>
+@if (picked && guide.force() === f) {
+  @let shape = angleGuide(f, scale);
+  <svg:g class="forceAngleGuide" [attr.stroke-width]="grid.scaleWithZoom(1.5)">
+    <svg:path
+      [attr.d]="
+        'M ' +
+        shape.axis.x +
+        ' ' +
+        shape.axis.y +
+        ' L ' +
+        shape.at.x +
+        ' ' +
+        shape.at.y +
+        ' L ' +
+        shape.along.x +
+        ' ' +
+        shape.along.y
+      "
+      [attr.stroke-dasharray]="grid.scaleWithZoom(5) + ' ' + grid.scaleWithZoom(4)"
+    />
+    <svg:path [attr.d]="shape.arc" />
+    <svg:g [upright]="shape.labelAt">
+      <svg:text
+        text-anchor="middle"
+        dominant-baseline="central"
+        [attr.font-size]="grid.scaleWithZoom(12)"
+        [attr.stroke-width]="grid.scaleWithZoom(4)"
+      >
+        {{ angleLabel(shape.angle) }}
+      </svg:text>
+    </svg:g>
+  </svg:g>
+}

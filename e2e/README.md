@@ -496,3 +496,5 @@ Not suites — import them from one.
 
 - `editor-followups.mjs` — shared-URL regressions for orphan deletion/attachment, stable animation labels, primitive outlines, compact delete menus and collision-aware Edit panel clearance.
 - `vector-drag-profile.mjs` — profiles a repeatable four-bar analysis drag with velocity and acceleration arrows, reporting cycle rebuilds, sample reads and frame timing.
+
+`force-frame.mjs` checks compound-primitive tracer ownership through undo/redo, the force-panel Flip Force action, fixed application marks, local frame angle editing and hover guides, playback suppression, and locked force behavior. It writes tracer, flip, and playback filmstrips to `artifacts/force-frame/`.
