@@ -97,6 +97,7 @@ type DirectionKey = 'Ax' | 'Ay' | 'Bx' | 'By' | 'MA';
           <app-solver-math [equation]="genericMomentDeterminant" />
           <app-solver-math [equation]="genericMomentExpansion" />
           <app-solver-math [equation]="genericPlanarMoment" />
+          <app-solver-math [equation]="genericMz" />
           <p>
             Both vectors lie in the x-y plane. Their out-of-plane components are zero, so the red i
             and j terms cancel and only the z component remains. The right-hand rule gives the same
@@ -238,15 +239,10 @@ type DirectionKey = 'Ax' | 'Ay' | 'Bx' | 'By' | 'MA';
             }
           </select>
         </label>
-        <app-solver-math [equation]="generalMomentEquation()" />
+        <app-solver-math [equation]="momentSummaryEquation()" />
         <p>
           The blue ring is the selected reference. The projection grid in Build the Free-Body
           Diagram updates with this choice.
-        </p>
-        <app-solver-math [equation]="cancelledMomentTerms()" />
-        <p class="caption">
-          Red crossed-out terms have a zero moment arm or a line of action through the selected
-          reference. The applied motor torque remains because it is already a moment.
         </p>
       </details>
     </details>
@@ -424,9 +420,6 @@ export class ForceDefinitionsComponent {
   protected readonly referenceLabel = computed(
     () => this.referenceOptions.find((option) => option.id === this.reference())!.label
   );
-  protected readonly cancelledMomentTerms = computed(() =>
-    this.cancelledTermsFor(this.reference())
-  );
   protected readonly forceBalance = String.raw`\sum\vec F=m\vec a_{\mathrm{CoM}}\qquad\xrightarrow{\ \mathrm{statics}:\ \vec a=\vec0\ }\qquad\sum\vec F=\vec0`;
   protected readonly forceLoadGroups = String.raw`\underbrace{\sum\vec F_{\mathrm{joint}}+\sum\vec F_{\mathrm{external}}+\sum\vec W}_{\text{LHS: all forces on the FBD}}=\underbrace{m\vec a_{\mathrm{CoM}}}_{\text{RHS: motion}}\quad\text{or}\quad\underbrace{\vec0}_{\text{RHS: static}}`;
   protected readonly forceTerms = [
@@ -476,11 +469,12 @@ export class ForceDefinitionsComponent {
   ];
   protected readonly genericVectors = String.raw`\vec r_{P/O}=\langle r_{P/O,x},r_{P/O,y},0\rangle,\qquad\vec F=\langle F_x,F_y,0\rangle`;
   protected readonly genericMomentDeterminant = String.raw`\vec M_O=\vec r_{P/O}\times\vec F=\begin{vmatrix}\hat i&\hat j&\hat k\\r_{P/O,x}&r_{P/O,y}&0\\F_x&F_y&0\end{vmatrix}`;
-  protected readonly genericMomentExpansion = String.raw`\vec M_O=(r_{P/O,y}F_z-r_{P/O,z}F_y)\hat i+(r_{P/O,z}F_x-r_{P/O,x}F_z)\hat j+(r_{P/O,x}F_y-r_{P/O,y}F_x)\hat k`;
-  protected readonly genericPlanarMoment = String.raw`\vec M_O=\textcolor{red}{\cancel{(r_{P/O,y}\underbrace{F_z}_{0}-\underbrace{r_{P/O,z}}_{0}F_y)\hat i}}+\textcolor{red}{\cancel{(\underbrace{r_{P/O,z}}_{0}F_x-r_{P/O,x}\underbrace{F_z}_{0})\hat j}}+(r_{P/O,x}F_y-r_{P/O,y}F_x)\hat k`;
-  protected readonly generalMomentEquation = computed(
+  protected readonly genericMomentExpansion = String.raw`\begin{aligned}\vec M_O={}&(r_{P/O,y}F_z-r_{P/O,z}F_y)\hat i\\&+(r_{P/O,z}F_x-r_{P/O,x}F_z)\hat j\\&+(r_{P/O,x}F_y-r_{P/O,y}F_x)\hat k\end{aligned}`;
+  protected readonly genericPlanarMoment = String.raw`\begin{aligned}\vec M_O={}&\textcolor{red}{\cancel{(r_{P/O,y}\underbrace{F_z}_{0}-\underbrace{r_{P/O,z}}_{0}F_y)\hat i}}\\&+\textcolor{red}{\cancel{(\underbrace{r_{P/O,z}}_{0}F_x-r_{P/O,x}\underbrace{F_z}_{0})\hat j}}\\&+(r_{P/O,x}F_y-r_{P/O,y}F_x)\hat k\end{aligned}`;
+  protected readonly genericMz = String.raw`M_z=r_{P/O,x}F_y-r_{P/O,y}F_x`;
+  protected readonly momentSummaryEquation = computed(
     () =>
-      String.raw`\sum M_{${this.referenceName()},z}=\sum(\vec r_{\mathrm{joint}/${this.referenceName()}}\times\vec F_{\mathrm{joint}})_z+\sum(\vec r_{\mathrm{external}/${this.referenceName()}}\times\vec F_{\mathrm{external}})_z+\sum(\vec r_{\mathrm{CoM}/${this.referenceName()}}\times\vec W)_z${this.motorTerm()}=0`
+      String.raw`\sum M_{${this.referenceName()},z}=\sum M_{\mathrm{joint}}+\sum M_{\mathrm{external}}+\sum M_{\mathrm{weight}}+\sum M_{\mathrm{motor}}=0`
   );
   protected readonly generalPositionVector = String.raw`\vec r_{Q/O}=\vec p_Q-\vec p_O=\langle x_Q-x_O,\ y_Q-y_O,\ 0\rangle`;
   protected readonly exampleFx = computed(
@@ -503,10 +497,6 @@ export class ForceDefinitionsComponent {
       {
         symbol: String.raw`W_{AB}`,
         meaning: 'Weight of link AB, applied at its center of mass (CoM).',
-      },
-      {
-        symbol: String.raw`W_{AB,x}=-W_{AB}\sin(\theta),\quad W_{AB,y}=-W_{AB}\cos(\theta)`,
-        meaning: 'Weight components in the selected x-y axes; θ is the selected x-axis angle.',
       },
       {
         symbol: String.raw`M_A`,
@@ -555,10 +545,6 @@ export class ForceDefinitionsComponent {
 
   private referenceName() {
     return this.reference() === 'CoM' ? '\\mathrm{CoM}' : this.reference();
-  }
-
-  private motorTerm() {
-    return this.direction('MA') === 1 ? '+M_A' : '-M_A';
   }
 
   private gravityTerm(axis: 'x' | 'y') {
@@ -731,22 +717,6 @@ export class ForceDefinitionsComponent {
     };
   }
 
-  private cancelledTermsFor(reference: ReferenceId) {
-    const name = reference === 'CoM' ? '\\mathrm{CoM}' : reference;
-    const cancelled: Record<ReferenceId, string> = {
-      A: String.raw`\textcolor{red}{\cancel{(\vec r_{A/A}\times\vec F_A)_z}}`,
-      CoM: String.raw`\textcolor{red}{\cancel{(\vec r_{\mathrm{CoM}/\mathrm{CoM}}\times\vec W)_z}}`,
-      B: String.raw`\textcolor{red}{\cancel{(\vec r_{B/B}\times\vec F_B)_z}}`,
-    };
-    const motor = this.motorTerm();
-    const retained: Record<ReferenceId, string> = {
-      A: String.raw`(\vec r_{B/A}\times\vec F_B)_z+(\vec r_{P/A}\times\vec F_1)_z+(\vec r_{\mathrm{CoM}/A}\times\vec W)_z${motor}`,
-      CoM: String.raw`(\vec r_{A/\mathrm{CoM}}\times\vec F_A)_z+(\vec r_{B/\mathrm{CoM}}\times\vec F_B)_z+(\vec r_{P/\mathrm{CoM}}\times\vec F_1)_z${motor}`,
-      B: String.raw`(\vec r_{A/B}\times\vec F_A)_z+(\vec r_{P/B}\times\vec F_1)_z+(\vec r_{\mathrm{CoM}/B}\times\vec W)_z${motor}`,
-    };
-    return String.raw`\sum M_{${name},z}=${cancelled[reference]}+${retained[reference]}=0`;
-  }
-
   private fbdDiagram(highlight: 'all' | 'x' | 'y' | 'moment', reference: ReferenceId): Diagram {
     const active = (direction: 'x' | 'y' | 'moment') =>
       highlight === 'all' || highlight === 'moment' || highlight === direction;
@@ -778,8 +748,17 @@ export class ForceDefinitionsComponent {
       }
       const componentAxis = highlight;
       const gravity = this.gravityComponent(componentAxis);
-      if (Math.abs(gravity) < 1e-6) return [];
+      const totalWeight: DiagramLine = {
+        from: this.point('CoM'),
+        to: { x: 95, y: -35 },
+        arrow: true,
+        label: 'W_AB',
+        color: 'var(--text-tertiary)',
+        width: 1.1,
+      };
+      if (Math.abs(gravity) < 1e-6) return [totalWeight];
       return [
+        totalWeight,
         component(
           {
             from: this.point('CoM'),
@@ -789,7 +768,7 @@ export class ForceDefinitionsComponent {
               gravity >= 0 ? 1 : -1,
               55 * Math.abs(gravity)
             ),
-            label: `W_AB,${componentAxis}`,
+            label: componentAxis === 'x' ? 'W_AB sin θ' : 'W_AB cos θ',
           },
           componentAxis
         ),

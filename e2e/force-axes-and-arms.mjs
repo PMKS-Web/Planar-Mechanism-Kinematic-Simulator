@@ -83,6 +83,19 @@ try {
   await defs
     .locator('details')
     .evaluateAll((details) => details.forEach((detail) => (detail.open = true)));
+  const worksheetScroller = d.locator('app-solver-explanation');
+  const momentDerivation = defs.locator('.equationDetail').filter({
+    has: page.getByText('Resolve one force moment with', { exact: false }),
+  });
+  await momentDerivation.hover();
+  await page.mouse.wheel(0, 900);
+  const scrollWorked = await worksheetScroller.evaluate((element) => {
+    for (let current = element; current; current = current.parentElement) {
+      if (current.scrollHeight > current.clientHeight) return current.scrollTop > 0;
+    }
+    return false;
+  });
+  assert(scrollWorked);
   assert((await defs.innerText()).includes('Sum of Forces'));
   assert((await defs.innerText()).includes('Sum of Moments'));
   const reference = defs.getByRole('combobox', {
@@ -174,7 +187,7 @@ try {
   assert(xEquation.includes(String.raw`-W_{AB}\sin(90^{\circ})`));
   assert(
     (await xDiagram.evaluate((el) => window.ng.getComponent(el).diagram())).lines.some(
-      (line) => line.label === 'W_AB,x'
+      (line) => line.label === 'W_AB sin θ'
     )
   );
   await labelsDoNotOverlap(defs);
