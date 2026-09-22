@@ -147,6 +147,11 @@ Not suites — import them from one.
   click. Slow; `ONLY=4-Bar,Cylinder_Boom` narrows it.
 - `gallery-sweep.mjs` — every mechanism in `docs/fixture-urls.md` opened in the app: it decodes,
   reports the mobility its spec says, precomputes a cycle, and animates. Slow.
+- `hidden-joint-audit.mjs` — a cylinder's buried inner end is never named anywhere a reader can
+  read. Sweeps `innerText`, `aria-label`, `title`, `alt` and SVG `<text>`/`<title>` across all four
+  modes, every selection, every right-click card, the right drawer and the exported CSV, JSON and
+  DXF, and matches against the interior names read off the drawing itself. Harvests land in
+  `artifacts/hidden-joint-audit/`; `ONLY=<fixture words>` narrows it.
 - `multi-mechanism-smoke.mjs` — the app boots, and the running service finds more than one
   machine in drawings that hold several.
 - `force-status-survey.mjs` — investigation script: prints what force analysis says for each
@@ -173,6 +178,13 @@ Not suites — import them from one.
   about ten minutes.
 - `posed-menu.mjs` — paused context-menu attachments and property edits keep the authored start
   pose. `PMKS_ONLY=<case>` runs one case.
+- `ghost-is-the-start.mjs` — one invariant checked after every gesture: wherever a ghost is drawn,
+  it is the pose stop-to-start produces and the design the URL saves. The named scenes are the
+  shrunk reproductions of the four causes in
+  `docs/edit-mode-playback-plan.md` §7.3 — an edit made *at* the start pose, a machine parked off
+  its own start in a synced drawing, an amber ghost outliving its anchor, and a menu edit that
+  moves a start without saying so — and the seeded fuzz after them is how they were found. A
+  filmstrip lands in `artifacts/ghost-is-the-start/`.
 - `analysis-editing.mjs` — `docs/analysis-mode-editing-plan.md`: dragging and undo in an analysis
   mode, what is still refused, click selects and drag tunes, the before/after comparison overlay,
   and the force-mode budget.
@@ -242,7 +254,10 @@ Not suites — import them from one.
 - `phase3-slide.mjs` — a Scotch yoke from a URL reaches one degree of freedom and translates its
   yoke without rotating it. Needs installed Chrome (`PMKS_CHROME`).
 - `phase4-marks.mjs` — slot channels, slider blocks, weld plates and rails drawn on the four
-  reference linkages.
+  reference linkages, and the cream bar a slider whose riders cannot turn wears in place of the
+  weld cross: a Pin-in-slot slider keeps its circle, a welded revolute keeps its `+`, and every
+  hover, selection, ring and lock is drawn on the bar while the block's paint never moves off
+  #000. Its screenshots go to `artifacts/slide-mark/`, beside the cylinder's.
 - `phase4-animation.mjs` — the marks stay anchored to the right thing while the mechanism plays.
 - `phase4-invariants.mjs` — every slider mark sits on its joint, along its slot, centered in a
   floating channel, with weld plates reaching their joint — at rest, after drags and after a scale
@@ -263,18 +278,76 @@ Not suites — import them from one.
   in one undo step.
 - `cylinder-attach.mjs` — dragging a mount onto a linkage attaches it without deleting the
   cylinder.
+- `cylinder-colors.mjs` — the barrel and the rod are colored independently (S15): a new cylinder
+  is one color, Rod Color moves the rod alone, Barrel Color on a rod that has chosen nothing
+  leaves it in the color it was standing in, each is one undo step, a reload from the URL keeps
+  both, and `Cylinder_Boom` still opens in the one color it always has. Screenshots to
+  `artifacts/cylinder-colors/`.
 - `cylinder-end-on-joint.mjs` — ending the cylinder gesture on a joint attaches the rod there.
 - `cylinder-drag.mjs` — dragging a mount slides the piston within its travel, then grows or
   shrinks the ram past its stops.
+- `cylinder-frozen-body.mjs` — the maintainer's drawing from decision S25: a cylinder welded into
+  one body at both ends, on a driven grounded pin. It builds the body, reads the analysis drawer
+  before and after the input is switched on ("Nothing drives…" only while nothing does), checks
+  both chips read ready with no blocker, opens the panels for the body, the barrel, the rod, the
+  slide and an end joint and asserts each shows numbers rather than "not in a mechanism that can
+  be solved", right-clicks the seal for the grayed Add Input row and its reason, and runs the
+  machine. A filmstrip of the running body goes to `artifacts/cylinder-frozen-body/` with
+  `running-sheet.png` beside it; the head must not drift along the bore and the fused outline must
+  stay one body.
+- `cylinder-held.mjs` — the maintainer's drawing from decision S28: three cylinders in a triangle
+  with one corner on a bar out to a driven grounded pin. Nothing drives the rams, so each holds the
+  length it was drawn at and the count a reader is shown is the machine's **1** rather than the
+  drawing's 3. It opens the published fixture cold, checks the kinematic chip reads ready, reads
+  the drawer's note (which cylinders, at what length, and how to make one extend), plays the cycle
+  and samples it — the triangle has to stay a triangle and every head stay where it is along its
+  own bore — opens the panels for a barrel, a rod and a slide, checks the drawer says *why* the
+  triangle's forces cannot be split (the same thing its bars would say), finds the **Holding
+  Force** row and a number for it on the determinate *Four-bar on a held cylinder*, switches the
+  input off (the blocker must become "Nothing drives this mechanism", never a count of freedoms)
+  and then switches one on at a ram instead. Filmstrip in `artifacts/cylinder-held/`.
+- `cylinder-members.mjs` — a cylinder as three selectables: the square is joint S, lettered and
+  draggable along its own axis; each member selects and outlines itself; a member drag still
+  carries the whole part; an old payload's seal opens with a letter. Then the panels each piece
+  opens, the one angle stated in three places, every rung of what gives when *Starts at* is typed,
+  and an end joint as an ordinary pin — all four types live once it has a neighbor to weld to, and
+  a delete row that names the cascade. It ends on a filmstrip of a driven cylinder's full
+  out-and-back cycle, twelve frames clipped to the machine, asserting the slide goes closed, open
+  and closed again and that N is drawn in none of them (`artifacts/cylinder-members/cycle/`, with
+  `sheet-cycle.png` beside it). Also S's own mark — the cream bar on the piston head, along the
+  axis and inside the black at every cylinder size and angle, through playback, with the states on
+  the bar and never on the head. Screenshots to `artifacts/slide-mark/`.
 - `cylinder-mount.mjs` — a mount as an ordinary attachment point: menu rows and reasons, the live
   ring under a dragged joint, slots cut at a mount, welded selection, undo across a weld, a second
   machine left alone, filmstrips of a compound drag.
 - `cylinder-mount-render.mjs` — what welded mounts look like in every planned shape, with contact
   sheets to inspect.
+- `cylinder-mount-slot.mjs` — the drop itself (decision S22): a cylinder's end joint dragged over a
+  bar with real mouse gestures, the channel previewing, the release cutting it, riding the slot and
+  coming off it, the carrier moved under the part, and the two machines it makes running. It ends on
+  the maintainer's own drawing loaded **cold from its URL** (decision S27), which used to reopen
+  unsolvable because the riding joint was stored a rounding off its slot line: it has to run, read
+  ready on both chips, keep that joint on its slot through the cycle, and survive an undo and a redo
+  after a drag — the path that matters most, because undo replays a URL. Filmstrips and contact
+  sheets to `artifacts/cylinder-mount-slot/`, `sheet-reopened.png` among them.
+- `cylinder-object-size.mjs` — decision S29: Object Size is how a drawing is drawn, so it never
+  moves a joint a reader can see and never leaves a cylinder in two pieces. The size is changed
+  through the three doors a reader has — the Settings field, the Auto-size Objects button, and a
+  drawing that adopts a size as it opens — and after each one every cylinder is asked whether its
+  head is inside its travel, whether the silhouette is one piece (**measured off the drawn paths**,
+  because "two pieces" is a fact about the picture), whether any visible joint moved, and whether
+  *Starts at* is still a percentage. It also holds the undo story — a size the reader chose is one
+  entry with the repair inside it, a size the app adopted is none — and the two things the same
+  reader is looking at: the driven arrows keep their proportions at every zoom, and the transport
+  says *Forward* of a bare slider and *Opening* of a cylinder.
 - `cylinder-panel.mjs` — the cylinder panel's past defects: a picker that moved the part, an edit
   that could not be undone, a silent limit, a rounded position.
 - `cylinder-skin.mjs` — the head's stops are drawn by the skin itself, with no annotation on the
   barrel.
+- `cylinder-welded-drag.mjs` — decision S21, with a real mouse: only a drag of the *body* carries a
+  welded bar, so dragging an end joint of a cylinder leaves the bracket where it is and two
+  cylinders welded into one bracket stop moving each other. Filmstrips and contact sheets to
+  `artifacts/cylinder-welded-drag/`.
 
 ### Forces
 
@@ -309,7 +382,11 @@ Not suites — import them from one.
 - `playback-bar.mjs` — the transport over the grid: a way to press play, a transport in Edit, a
   row per runnable mechanism, and the mode highlight landing on the chosen mode.
 - `playback-direction.mjs` — reversing a machine keeps its place and keeps it running; the master
-  and per-machine play buttons agree.
+  and per-machine play buttons agree. It carries a **linear** drive as well as the rotary one now:
+  a driven block runs *Forward* and *Backward* along its slot rather than opening and closing, the
+  word matches the way the block is actually going at every sample of the cycle (measured here off
+  the live joints and the carrier's own direction, not asked of the thing under test), reversing
+  the drive reverses the word, and the glyph is a straight arrow while a crank's keeps its turn.
 - `playback-loop-indicator.mjs` — the transport row's two lines, the end-of-cycle reading, the
   full-width handle, and the row's selection surface, compared across engines. Needs Firefox and
   WebKit installed.

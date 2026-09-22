@@ -470,6 +470,12 @@ export class StringTranscoder extends GenericTranscoder {
     // color of its own: 'KJ<joint>~<family>' and 'KF<force>~<rrggbb>'. Only
     // the parts that were asked, so a drawing where nobody chose a color says
     // nothing about color.
+    // A third member of that family, 'KR<link>', names a cylinder rod asked to
+    // wear its own color instead of its barrel's. It carries no value: the
+    // color is in the link's own record, as it always has been, and what the
+    // entry adds is that somebody chose it. Every rod already stores a color
+    // the skin has never drawn, so without the entry a build would repaint
+    // every drawing ever shared.
     // A fifth, 'H', for a bar that holds its length or its angle against
     // edits: 'Hl<link>' and 'Ha<link>'. A bar with no hold says nothing, so a
     // drawing with no holds is the URL it always was.
@@ -649,7 +655,7 @@ export class StringTranscoder extends GenericTranscoder {
     });
     this.validateDecodedSlotCarriers();
     this.validateDecodedLocks(jointIDs, linkIDs);
-    this.validateDecodedPartColors(jointIDs);
+    this.validateDecodedPartColors(jointIDs, linkIDs);
     this.forces.forEach((force) => {
       if (
         !force.id ||
@@ -710,8 +716,20 @@ export class StringTranscoder extends GenericTranscoder {
     open as a different drawing than the one that was shared. A joint family the
     reader does not have is exactly that -- and the default family's id is empty
     and never written, so an entry naming it is a URL saying nothing twice.
+
+    'KR' is the exception to the second half of that, and only the second half:
+    the link must be one this URL carries, but whether it is a *rod* is not
+    asked. This validator reads records, and rod-ness is a structure -- a
+    sealed slot, its rider, the bar at its far end -- that only exists once the
+    builder has assembled one. More to the point, the app writes such an entry
+    itself: unseal a cylinder and the bar that was its rod keeps the color it
+    was given, so the URL goes on naming a link that is no longer a rod.
+    Refusing would make the codec unable to read what it had just written, and
+    honoring the entry on a plain bar changes nothing that is drawn -- the flag
+    is read by the cylinder skin and by nobody else. So it is accepted and
+    ignored, which is not the same drawing arriving silently altered.
     */
-  private validateDecodedPartColors(jointIDs: Set<string>): void {
+  private validateDecodedPartColors(jointIDs: Set<string>, linkIDs: Set<string>): void {
     const families = new Set(JOINT_FAMILIES.map((family) => family.id).filter((id) => id !== ''));
     const forceIDs = new Set(this.forces.map((force) => force.id));
     this.partColors.forEach((entry) => {
@@ -722,7 +740,10 @@ export class StringTranscoder extends GenericTranscoder {
           ? jointIDs.has(id) && families.has(value ?? '')
           : kind === 'F'
             ? forceIDs.has(id) && /^[0-9a-fA-F]{6}$/.test(value ?? '')
-            : false;
+            : // No value: the color is the link's own field. A '~' here is a
+              // reader and a writer that disagree about that, which is worth
+              // saying rather than skipping past.
+              kind === 'R' && linkIDs.has(id) && value === undefined;
       if (!known) throw new Error('URL colors a part it does not carry');
     });
   }
@@ -852,7 +873,17 @@ export class StringTranscoder extends GenericTranscoder {
     });
   }
 
-  /* Both slot joints must be members of the carrier, and the slider must not. */
+  /*
+    Both slot joints must be members of the carrier, and the slider must not --
+    asked, for a cylinder's seal, of the bar the slot is cut into rather than of
+    everything welded to it. Weld a cylinder's two end joints into one body and
+    the rod becomes a leaf beside the barrel, so the *root* holds the seal while
+    the bore in the barrel is as real as it ever was. The same exception, in the
+    same words, as `PrisJoint.isSlotWellFormed`: the two have to agree, or the
+    app writes a URL its own decoder refuses.
+
+    The format is untouched. This reads the records a URL already carries.
+    */
   private validateDecodedSlotCarriers(): void {
     this.joints.forEach((joint) => {
       if (joint.carrierID === '') return;
@@ -866,9 +897,33 @@ export class StringTranscoder extends GenericTranscoder {
       ) {
         throw new Error('URL contains a slot whose joints are not on its carrier');
       }
-      if (carrier.jointIDs.includes(joint.id)) {
+      if (this.decodedSlotHost(joint, carrier).jointIDs.includes(joint.id)) {
         throw new Error('URL contains a slot that is a member of its own carrier');
       }
     });
+  }
+
+  /** The smallest part of a decoded carrier that still holds both slot ends. */
+  private decodedSlotHost(joint: JointData, carrier: LinkData): LinkData {
+    if (!joint.isSealed) return carrier;
+    const seen = new Set<string>([carrier.id]);
+    let host = carrier;
+    for (;;) {
+      const inside = host.subsetLinkIDs
+        .map((id) => this.links.find((link) => link.id === id))
+        .find(
+          (link): link is LinkData =>
+            link !== undefined &&
+            !seen.has(link.id) &&
+            link.jointIDs.includes(joint.slotJointAID) &&
+            link.jointIDs.includes(joint.slotJointBID)
+        );
+      // `seen` because a hand-edited URL may name a subset that contains its
+      // own parent, and a validator that loops forever is a worse answer than
+      // any refusal.
+      if (!inside) return host;
+      seen.add(inside.id);
+      host = inside;
+    }
   }
 }

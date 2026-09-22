@@ -224,6 +224,179 @@ function linkMenu(): ContextMenuModel {
   };
 }
 
+/**
+ * The joint a cylinder slides on: the square drawn mid-skin.
+ *
+ * Prismatic at full ink and the other three closed in the model's four words;
+ * nothing attaches; the ground goes on one of the joints at the ends instead.
+ * The drive is live, because the cylinder's drive is this joint's.
+ */
+function cylinderSealMenu(): ContextMenuModel {
+  const inside: MenuRefusal = {
+    short: 'inside a cylinder',
+    long: 'This joint is inside a cylinder, which places it rather than solving for it, so a third body arriving here would have nothing holding it. Attach at one of the joints at its ends instead.',
+  };
+  return {
+    header: { title: 'Joint B', subtitle: 'Slider · Cylinder AC', crossing },
+    // Every value but the chosen one is closed in the same four words, each
+    // with the sentence its own step is refused by.
+    choice: jointType(1, {
+      options: TYPES.map((label, index) => ({
+        label,
+        icon: GLYPHS[index],
+        action: noop,
+        refusal:
+          index === 1
+            ? undefined
+            : {
+                short: inside.short,
+                long:
+                  index === 3
+                    ? 'This joint is inside a cylinder, and its sliding is what the part is. Delete the cylinder instead.'
+                    : 'This weld is what holds a cylinder together as one part, so it cannot be undone. Delete the cylinder instead.',
+              },
+      })),
+    }),
+    groups: [
+      {
+        label: 'Attach',
+        rows: [
+          new MenuRow({ label: 'Link', icon: 'new_link', action: noop, refusal: inside }),
+          new MenuRow({ label: 'Cylinder', icon: 'add_cylinder', action: noop, refusal: inside }),
+          new MenuRow({ label: 'Force', icon: 'add_force', action: noop, refusal: inside }),
+        ],
+      },
+      {
+        label: 'State',
+        rows: [
+          new MenuRow({
+            label: 'Grounded',
+            icon: 'add_ground',
+            kind: 'toggle',
+            action: noop,
+            refusal: {
+              short: 'ground an end joint instead',
+              long: 'A cylinder is held in place at the joints at its two ends, so this joint cannot be grounded. Ground one of those instead.',
+            },
+          }),
+          new MenuRow({
+            label: 'Driven Input',
+            icon: 'add_input',
+            kind: 'toggle',
+            checked: true,
+            action: noop,
+          }),
+          new MenuRow({
+            label: 'Locked',
+            icon: 'lock',
+            kind: 'toggle',
+            action: noop,
+            shortcut: 'K',
+          }),
+        ],
+      },
+      {
+        label: 'Traces',
+        rows: [
+          new MenuRow({ label: 'Trace path', icon: 'show_path', kind: 'toggle', action: noop }),
+          new MenuRow({
+            label: 'Velocity Vectors',
+            icon: 'vector_velocity',
+            kind: 'toggle',
+            action: noop,
+          }),
+        ],
+      },
+      {
+        rows: [
+          new MenuRow({
+            label: 'Delete Joint (and Cylinder)',
+            icon: 'remove',
+            destructive: true,
+            action: noop,
+            shortcut: '⌫',
+          }),
+          new MenuRow({
+            label: 'Delete entire mechanism',
+            icon: 'delete_mechanism',
+            destructive: true,
+            action: noop,
+            hint: '3 joints',
+          }),
+        ],
+      },
+    ],
+  };
+}
+
+/** One half of a cylinder: its own length, the whole part's angle, and a delete that takes both halves. */
+function cylinderMemberMenu(): ContextMenuModel {
+  return {
+    header: { title: 'Barrel AB', subtitle: 'Cylinder AC', crossing },
+    groups: [
+      {
+        label: 'State',
+        rows: [
+          new MenuRow({
+            label: 'Fixed Length',
+            icon: 'straighten',
+            material: true,
+            kind: 'toggle',
+            action: noop,
+            hint: '6.00 cm',
+            tip: 'Fix this half of the cylinder at its current length. A mount dragged past a stop then takes it all out of the other half.',
+          }),
+          new MenuRow({
+            label: 'Fixed Angle',
+            icon: 'architecture',
+            material: true,
+            kind: 'toggle',
+            checked: true,
+            action: noop,
+            tip: 'Hold this cylinder at the angle it points now. Dragging a mount slides it along that line.',
+          }),
+          new MenuRow({
+            label: 'Locked',
+            icon: 'lock',
+            kind: 'toggle',
+            action: noop,
+            shortcut: 'K',
+          }),
+        ],
+      },
+      {
+        label: 'Traces',
+        rows: [
+          new MenuRow({
+            label: 'Velocity Vectors',
+            icon: 'vector_velocity',
+            kind: 'toggle',
+            action: noop,
+          }),
+        ],
+      },
+      {
+        rows: [
+          new MenuRow({
+            label: 'Delete Cylinder',
+            icon: 'remove',
+            destructive: true,
+            action: noop,
+            shortcut: '⌫',
+          }),
+          new MenuRow({
+            label: 'Delete entire mechanism',
+            icon: 'delete_mechanism',
+            destructive: true,
+            action: noop,
+            hint: '3 joints',
+          }),
+        ],
+      },
+    ],
+  };
+}
+
 /** Parked mid-cycle: every row and value that would write a pose carries the same reason, and the traces stay live. */
 function paused(model: ContextMenuModel): ContextMenuModel {
   const reason: MenuRefusal = {
@@ -300,7 +473,17 @@ export const JointNowhereToSlide: Story = {
   },
 };
 
-/** A driven pin can be nothing else: every other value is grayed with the model's reason. */
+/**
+ * A driven pin can be nothing else: every other value is grayed with the
+ * model's reason.
+ *
+ * A reason opens on the side its column is on -- the left column to the left of
+ * the card, the right column to its right -- so that it clears the card
+ * entirely and lies over neither the value beside it nor the ladder below.
+ * Opening them all to the right, as they used to, put the left column's reason
+ * squarely over the right column, and a press meant for a value there landed on
+ * the sentence instead.
+ */
 export const JointTypeRefused: Story = {
   args: {
     model: {
@@ -328,6 +511,34 @@ export const JointTypeRefused: Story = {
 
 /** A bar's menu, with its length held: the two hold rows carry the value each would fix. */
 export const Link: Story = { args: { model: linkMenu() } };
+
+/** The joint a cylinder slides on: Prismatic at full ink, nothing attaches, and the drive lives here. */
+export const CylinderSeal: Story = { args: { model: cylinderSealMenu() } };
+
+/** One of a cylinder's two end joints: a pin like any other, named by the member it is on. */
+export const CylinderEndJoint: Story = {
+  args: {
+    model: (() => {
+      const model = jointMenu();
+      model.header = { title: 'Joint A', subtitle: 'Ground pin · Barrel AB', crossing };
+      model.choice = jointType(0, {
+        options: TYPES.map((label, index) => ({
+          label,
+          icon: `${GLYPHS[index]}_grounded`,
+          action: noop,
+        })),
+      });
+      // The only thing a cylinder changes about this card: the delete names
+      // what the click takes with the joint.
+      const footer = model.groups[model.groups.length - 1].rows[0];
+      footer.label = 'Delete Joint (and Cylinder)';
+      return model;
+    })(),
+  },
+};
+
+/** A cylinder's barrel: one half of the part, with its own length and the part's angle. */
+export const CylinderMember: Story = { args: { model: cylinderMemberMenu() } };
 
 /** The joint's menu with the mechanism parked mid-cycle. */
 export const JointPausedMidCycle: Story = { args: { model: paused(jointMenu()) } };

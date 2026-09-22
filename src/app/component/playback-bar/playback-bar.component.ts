@@ -10,7 +10,14 @@ import {
   inject,
 } from '@angular/core';
 import { animate, style, transition, trigger } from '@angular/animations';
-import { turnsClockwise } from '../../model/drive-direction';
+import {
+  DriveKind,
+  driveDirectionIcon,
+  driveDirectionWord,
+  driveKindOf,
+  driveTurnsClockwiseWhileRising,
+  turnsClockwise,
+} from '../../model/drive-direction';
 import { Subscription } from 'rxjs';
 import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService } from '../../services/settings.service';
@@ -32,7 +39,7 @@ import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-sh
 import { ShortcutTipDirective } from '../BLOCKS/shortcut-tip/shortcut-tip.directive';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
 import { SaveHistoryService } from '../../services/save-history.service';
-import { RealJoint } from '../../model/joint';
+import { PrisJoint, RealJoint } from '../../model/joint';
 import { CdkConnectedOverlay, CdkOverlayOrigin, ConnectedPosition } from '@angular/cdk/overlay';
 
 /** What the stylesheet is asked for, and what to assume if it has not loaded. */
@@ -85,7 +92,18 @@ export interface PlaybackRow {
    * input does: it is the drive's position, not an index into the samples.
    */
   scrub: number;
-  clockwise: boolean;
+  /**
+   * The glyph on the direction button: a turn for a pin, a straight arrow for
+   * anything that translates.
+   *
+   * It used to be `clockwise: boolean`, drawn as `rotate_right` or
+   * `rotate_left` whatever the drive was -- so a cylinder read *Opening* beside
+   * an icon of something spinning, and the boolean meant two different things
+   * depending on the kind of drive it had been read off. The glyph comes from
+   * `driveDirectionIcon` now, told the same pair of facts the word is, so the
+   * two cannot disagree.
+   */
+  directionIcon: string;
   /**
    * Where along the track this machine's cycle starts, 0-1000, or nothing.
    *
@@ -607,7 +625,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
       // the word can never disagree. Read off the drive alone, the glyph never
       // changed on a machine whose input reverses on its own: turning one of
       // those round writes `playbackDirection` and leaves the drive as it was.
-      clockwise: this.mechanism.travelingForward(index),
+      directionIcon: combined ? '' : this.iconFor(index),
       togglePoint: mechanism?.hasAddedSamples ?? false,
       note: combined ? '' : this.noteFor(index),
       playing: this.mechanism.isMechanismPlaying(index),
@@ -755,7 +773,15 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
         // Where it will start, which is where it is standing: the handle is in
         // its seat, so no seat is drawn.
         anchorAt: 0,
-        clockwise: driven ? turnsClockwise(this.mechanism.driveSpeedOf(driven)) : true,
+        // Off the drive's own sign, because there is no motion yet to read a
+        // heading from -- and its kind off the joint, because there is no
+        // profile either. Which is the whole difference between the two: a
+        // solved machine's glyph says which way it is going *now*, and this one
+        // says which way it will set off.
+        directionIcon: driveDirectionIcon(
+          driveKindOf(driven instanceof PrisJoint, !!this.mechanism.cylinderAt(driven)),
+          turnsClockwise(this.mechanism.driveSpeedOf(driven))
+        ),
         togglePoint: false,
         note: '',
         playing: false,
@@ -780,7 +806,9 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
       time: '',
       position: '',
       scrub: 0,
-      clockwise: true,
+      // Nothing draws it: an inert row is not a machine, so it carries no
+      // direction button.
+      directionIcon: '',
       anchorAt: undefined,
       togglePoint: false,
       note: '',
@@ -840,17 +868,49 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
   /**
    * Which way the input is traveling at this moment, in words.
    *
-   * A linear drive extends and retracts; a rotary one turns one way or the
-   * other. "Reciprocating" said only that the machine was of a kind that turns
-   * around, which is not something the reader needs told twice a cycle.
+   * Through `drive-direction.ts`, which is the one place that knows what a
+   * drive's two directions are called. This card used to carry a pair of its
+   * own and say *Opening* / *Closing* of **any** linear drive, so a block on a
+   * rail -- which has nothing to open -- was reported as opening it. A cylinder
+   * opens and closes; every other slider runs forward and backward along its
+   * slot, which is the sense the Edit panel's button and the heavier of the two
+   * drive arrows already use.
+   *
+   * "Reciprocating" said only that the machine was of a kind that turns around,
+   * which is not something the reader needs told twice a cycle.
    */
   private noteFor(index: number): string {
-    const profile = this.mechanism.driveProfileOf(index);
-    const outward = this.mechanism.travelingForward(index);
-    if (profile?.linear) {
-      return outward ? 'Opening' : 'Closing';
-    }
-    return outward ? 'Clockwise' : 'Counter-clockwise';
+    const { kind, clockwise } = this.headingOf(index);
+    return driveDirectionWord(kind, clockwise);
+  }
+
+  /** The glyph for the same heading, so the button and the word cannot differ. */
+  private iconFor(index: number): string {
+    const { kind, clockwise } = this.headingOf(index);
+    return driveDirectionIcon(kind, clockwise);
+  }
+
+  /**
+   * Which way this machine's input is going right now, as the pair the word
+   * and the glyph are both written from.
+   *
+   * `travelingForward` answers "is the transport's own coordinate rising", and
+   * which way that coordinate runs differs between a turn and a translation --
+   * `driveTurnsClockwiseWhileRising` is the one place that inversion lives.
+   */
+  private headingOf(index: number): { kind: DriveKind; clockwise: boolean } {
+    const kind = this.driveKindOf(index);
+    const rising = this.mechanism.travelingForward(index);
+    return { kind, clockwise: driveTurnsClockwiseWhileRising(kind, rising) };
+  }
+
+  /** Which kind of drive this machine has: a pin, a cylinder, or a bare slider. */
+  private driveKindOf(index: number): DriveKind {
+    const driven = this.mechanism.partitions[index]?.ownJoints.find(
+      (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
+    );
+    const linear = this.mechanism.driveProfileOf(index)?.linear === true;
+    return driveKindOf(linear, driven !== undefined && !!this.mechanism.cylinderAt(driven));
   }
 
   /**
@@ -864,6 +924,13 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
    * the line too short for the word, and without this the note and the loop
    * indicator were both dropped -- the reader lost the direction entirely
    * rather than reading it in three letters.
+   *
+   * **Only the two turning words have a short form, and that is deliberate.**
+   * *Forward*, *Backward*, *Opening* and *Closing* are seven and eight
+   * characters -- shorter than *Clockwise*, which fits everywhere the phone
+   * layout puts this line -- so an abbreviation for them would be a second
+   * spelling of a word that never needed one. Measured on the phone sheet at
+   * 320px with three machines: they fit; "Counter-clockwise" does not.
    */
   noteText(row: PlaybackRow): string {
     if (!this.shortNotes.has(row.index)) return row.note;

@@ -163,10 +163,10 @@ const squareTheRam = async ({ holdOption, alreadyLoaded } = {}) => {
     const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
     const ram = srv.cylinderAt(srv.links.find((link) => srv.cylinderAt(link)));
     return {
-      dragged: ram.barrelFar.id,
-      fixed: ram.rodFar.id,
-      draggedAt: { x: ram.barrelFar.x, y: ram.barrelFar.y },
-      fixedAt: { x: ram.rodFar.x, y: ram.rodFar.y },
+      dragged: ram.mountA.id,
+      fixed: ram.mountB.id,
+      draggedAt: { x: ram.mountA.x, y: ram.mountA.y },
+      fixedAt: { x: ram.mountB.x, y: ram.mountB.y },
     };
   });
   const scale = await perUnit();

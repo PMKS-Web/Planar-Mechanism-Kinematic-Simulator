@@ -139,16 +139,41 @@ export function coordinateRuleFor(joint: Joint): CoordinateRule | undefined {
         : angleReference(actuator.referenceBody, driven);
     return { jointId: driven.id, kind: 'angle', referenceId: reference.id, againstId: against?.id };
   }
-  if (!(driven instanceof PrisJoint)) return undefined;
-  const carrier = driven.carrier;
+  return slotCoordinateRuleFor(driven);
+}
+
+/**
+ * How a block's place along its own slot is measured, from the block alone.
+ *
+ * The prismatic half of the rule above, split out because two callers want it
+ * and only one of them is asking about an *actuator*. `coordinateRuleFor` is
+ * gated on `resolveActuator`, which refuses to describe a drive it cannot name
+ * two bodies for -- and rightly, because an anchor is about the quantity a
+ * drive controls. Which way "forward along this slot" points is a smaller
+ * question with an answer in every case the slot is drawn at all, and the
+ * transport's coordinate needs it (`drive-profile.ts`): the gripper's slider
+ * `M` has a perfectly good carrier and no describable actuator, and asking the
+ * gated version there left its coordinate with no direction and the transport
+ * saying *Backward* of a block going forward.
+ *
+ * **A floating slot's direction is its carrier's**, so it is stored as the two
+ * carrier joints and re-read in every pose rather than frozen as a world
+ * vector: measured this way the number is how far along the carrier the block
+ * has slid, which a carrier swinging underneath cannot change. A grounded
+ * guide has no carrier and takes its own stored axis, which is fixed in the
+ * world because the guide is.
+ */
+export function slotCoordinateRuleFor(joint: Joint): CoordinateRule | undefined {
+  if (!(joint instanceof PrisJoint)) return undefined;
+  const carrier = joint.carrier;
   if (carrier) {
-    const ends = carrier.joints.filter((member) => member.id !== driven.id);
+    const ends = carrier.joints.filter((member) => member.id !== joint.id);
     if (ends.length >= 2) {
-      return { jointId: driven.id, kind: 'length', carrierIds: [ends[0].id, ends[1].id] };
+      return { jointId: joint.id, kind: 'length', carrierIds: [ends[0].id, ends[1].id] };
     }
   }
-  const axis = slotAxis(driven);
-  return axis ? { jointId: driven.id, kind: 'length', axis } : undefined;
+  const axis = slotAxis(joint);
+  return axis ? { jointId: joint.id, kind: 'length', axis } : undefined;
 }
 
 /** The unit vector a prismatic joint slides along, from its own stored angle. */
@@ -425,6 +450,71 @@ export function findPose(
   return found.reduce((best, one) =>
     seedDistance(one, frames, where.seed) < seedDistance(best, frames, where.seed) ? one : best
   );
+}
+
+/**
+ * Read a machine's anchor off the cycle it has just been solved into.
+ *
+ * Sample 0 is the start pose by construction -- it is the editable drawing,
+ * deep-copied -- so an anchor taken here is the drawing saying where it starts
+ * rather than anybody's arithmetic about where it ought to.
+ */
+export function anchorFrom(
+  rule: CoordinateRule,
+  topology: string,
+  frames: Joint[][]
+): MachineAnchor | undefined {
+  const coordinates = coordinatesAcross(rule, frames);
+  const first = coordinates[0];
+  if (first === undefined || !frames[0]) return undefined;
+  const next = coordinates.find((value) => value !== undefined && value !== first);
+  return {
+    jointId: rule.jointId,
+    topology,
+    kind: rule.kind,
+    coordinate: first,
+    heading: next !== undefined && next < first ? -1 : 1,
+    rule,
+    seed: new Map(frames[0].map((joint) => [joint.id, { x: joint.x, y: joint.y }])),
+  };
+}
+
+/**
+ * How far a joint may stand from where the seed records it and still count as
+ * the same pose.
+ *
+ * Nothing legitimately moves a joint by less than this: a start pose that has
+ * not been edited is copied out of the same numbers it was copied into, so the
+ * honest comparison is equality and this is only insulation against arithmetic
+ * that has been through a rigid transform on the way.
+ */
+const SEED_SLACK = 1e-6;
+
+/**
+ * Does this anchor still name the pose the machine now starts in?
+ *
+ * Asked of a machine whose freshly solved sample 0 *is* its start -- one no
+ * gesture has staged -- so the question is only whether the start has moved
+ * out from under the anchor holding it. It has whenever an edit touched the
+ * pose: drag the driven crank's pin, or the ground it turns about, and the
+ * design's t = 0 is the drawing as edited while the stored coordinate still
+ * names the angle the crank used to stand at.
+ *
+ * Against the seed rather than by re-reading the coordinate, because the
+ * coordinate is stored on purpose (see `MachineAnchor`): re-deriving it from
+ * the samples every rebuild would walk the start a fraction of a sample at a
+ * time, and no single edit would look wrong.
+ */
+export function anchorStillNames(
+  anchor: Pick<MachineAnchor, 'seed'>,
+  start: readonly Joint[]
+): boolean {
+  return start.every((joint) => {
+    const was = anchor.seed.get(joint.id);
+    // A joint the seed has never heard of is one this edit drew, which is as
+    // much a change to the start pose as moving one.
+    return !!was && Math.hypot(joint.x - was.x, joint.y - was.y) <= SEED_SLACK;
+  });
 }
 
 /**

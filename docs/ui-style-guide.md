@@ -63,6 +63,13 @@ no](ui-gotchas.md#editing-playback-and-who-is-allowed-to-say-no).
 A disabled button takes no pointer events, so a tooltip on the button itself never opens.
 `button-block` hangs its tooltip on the row for that reason. Do the same.
 
+And a reason opens away from the choices, never over them. In a grid of options a tooltip that
+covers a neighbor blocks the press meant for it, because Material's tooltip pane takes the pointer:
+the Joint Type control opens a top-row reason above the control and a bottom-row one below it
+(`sideFor`), the right-click card opens each reason on the side its column is on (`reasonSide`), and
+both give [`BLOCKS/tooltips-are-labels.ts`](../src/app/component/BLOCKS/tooltips-are-labels.ts) so
+the pane lets the pointer through when a small window flips a tooltip back over the grid anyway.
+
 ### One undo per gesture
 
 Undo is a stack of URL strings
@@ -94,6 +101,15 @@ quietly changes what the reader typed or sized. Two examples in the source:
 - A block that would run past the end of its own slot is refused, not clamped
   ([`position-solver.ts`](../src/app/model/mechanism/position-solver.ts)). The mechanism runs to the
   limit and reverses there, the way a cylinder does at the end of its stroke.
+
+**Accepting as much of a number as the constraints allow is the second branch, not a third.** A
+cylinder's typed Barrel Length, Rod Length or *Starts at* goes as far toward what was asked as the
+locks and the fixed lengths permit and then says how far it got and what stopped it (`asCloseAs` in
+[`model/cylinder-edit.ts`](../src/app/model/cylinder-edit.ts), decision S19). That is "accepts and
+warns" — the reader is told, once, in a sentence naming the number reached and the thing in the
+way. It is a silent clamp only if nobody says so, which is why the notice is not optional. A
+**drag** is the exception the rule already makes: a gesture that stops following the cursor has
+said it on screen, sixty times a second, and a snackbar per pointermove would be noise.
 
 ---
 

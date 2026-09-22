@@ -1,14 +1,20 @@
 import {
+  BAR_HALF_R,
+  BAR_HALF_SCALE,
+  barHalfWidth,
   blockPath,
   capsulePath,
   channelPath,
   CYLINDER,
+  R_PER_SCALE,
   cylinderArrowPaths,
   cylinderBlockPath,
   GROUND_STROKE,
   MARK,
   railGeometry,
   rodBodyPath,
+  slideMarkFit,
+  slideMarkPath,
   slotHalfLength,
   straightArrowPaths,
   motorBodyAt,
@@ -137,13 +143,30 @@ describe('the mark system, against the delivered SVGs', () => {
     expect(numbers(backward.head)[0]).toBeCloseTo(-30, 6);
   });
 
-  it('measures a bar half-width as the width links are actually drawn at', () => {
-    // Everything derived from barHalf assumed a bar 10% wider than the one on
-    // screen: the weld plate stood proud of its own rider all the way round,
-    // and the drop radius for cutting a slot reached past the bar's edge.
-    // objectScale / 4 is the link half-width, so barHalf is that in units of R.
-    const objectScale = 4;
-    expect(MARK.barHalf * 0.15 * objectScale).toBeCloseTo(objectScale / 4, 12);
+  it('gives a bar, a slider block and a cylinder rod one half-width', () => {
+    // Decision S23. A rod runs out of a block and into a pin on an ordinary
+    // bar, and the three used to be three numbers: the bar 5/3 R, the block and
+    // the rod 1.525 R. Nine percent is exactly big enough to see where two of
+    // them meet and too small to look deliberate, so the bar came down to the
+    // rod and all three are now this one fact.
+    expect(MARK.barHalf).toBe(BAR_HALF_R);
+    expect(MARK.blockAcrossHalf).toBe(BAR_HALF_R);
+    expect(CYLINDER.rodHalf).toBe(BAR_HALF_R);
+    // The fillet that softens a weld is the same radius, because the corner it
+    // softens is the corner between two bars.
+    expect(MARK.plateFillet).toBe(BAR_HALF_R);
+  });
+
+  it('says that half-width in R and in objectScale, one from the other', () => {
+    // A mark is measured in R and a link outline is built in objectScale, so
+    // the number has to be sayable both ways -- and derived rather than
+    // restated, which is how `objectScale / 4` came to sit beside 1.525 R in
+    // the first place.
+    expect(BAR_HALF_SCALE).toBeCloseTo(BAR_HALF_R * R_PER_SCALE, 12);
+    expect(BAR_HALF_SCALE).toBeCloseTo(0.22875, 12);
+    for (const objectScale of [1, 4, 37.5]) {
+      expect(barHalfWidth(objectScale)).toBeCloseTo(MARK.barHalf * R_PER_SCALE * objectScale, 12);
+    }
   });
 
   it('leaves a margin of bar between a slot and the joint it stops short of', () => {
@@ -153,6 +176,104 @@ describe('the mark system, against the delivered SVGs', () => {
     const objectScale = 1;
     const jointRadius = 0.2 * objectScale;
     expect(MARK.slotInset * 0.15 * objectScale).toBeGreaterThan(jointRadius * 1.5);
+  });
+});
+
+describe("the slide's mark", () => {
+  /**
+   * How far the pen reaches each way. `endpoints` above reads M, L and A only,
+   * which is every mark drawn from arcs and lines; a rounded rectangle is drawn
+   * from H and V as well, so its corners would be read as its extremes.
+   */
+  function halves(path: string): { along: number; across: number } {
+    let x = 0;
+    let y = 0;
+    let along = 0;
+    let across = 0;
+    for (const [, command, body] of path.matchAll(/([MLHVAZ])([^MLHVAZ]*)/g)) {
+      const values = numbers(body);
+      if (command === 'M' || command === 'L') [x, y] = values;
+      else if (command === 'H') [x] = values;
+      else if (command === 'V') [y] = values;
+      else if (command === 'A') [x, y] = values.slice(-2);
+      along = Math.max(along, Math.abs(x));
+      across = Math.max(across, Math.abs(y));
+    }
+    return { along, across };
+  }
+
+  it('draws a 2.8R by 1.4R bar along the slot, cornered at 0.25R', () => {
+    const path = slideMarkPath(R);
+
+    expect(halves(path)).toEqual({
+      along: MARK.slideAlongHalf * R,
+      across: MARK.slideAcrossHalf * R,
+    });
+    // Four rounded corners, at the radius the reference drawing shows.
+    expect(path.match(/A /g)).toHaveLength(4);
+    expect(numbers(path)).toContain(MARK.slideCorner * R);
+  });
+
+  it('lies along the slot rather than across it, which is the whole message', () => {
+    expect(MARK.slideAlongHalf).toBeGreaterThan(MARK.slideAcrossHalf);
+  });
+
+  it('stands well clear of a pin, so the two marks cannot be confused', () => {
+    // A pin is a circle of exactly 1R. The bar is wider than that along the
+    // slot and narrower across it, so neither reading is "a squashed circle".
+    expect(MARK.slideAlongHalf).toBeGreaterThan(1);
+    expect(MARK.slideAcrossHalf).toBeLessThan(1);
+  });
+
+  it('is drawn at full size on any block with room for it', () => {
+    expect(slideMarkFit(R, MARK.blockAlongHalf * R)).toBe(1);
+    // A full-size piston head is that same block, so a normal ram is untouched.
+    expect(slideMarkFit(R, cylinderHeadHalf(40 * R, R))).toBe(1);
+    expect(slideMarkPath(R, MARK.blockAlongHalf * R)).toBe(slideMarkPath(R));
+  });
+
+  it('shrinks with a piston head that has, keeping black at both ends', () => {
+    // The shortest head there is: a square of CYLINDER.headAlongHalfMin.
+    const head = cylinderHeadHalf(0.2 * R, R);
+    expect(head).toBeCloseTo(CYLINDER.headAlongHalfMin * R, 9);
+
+    const { along, across } = halves(slideMarkPath(R, head));
+    expect(along).toBeLessThan(head);
+    // The margin the clamp exists to keep: a visible band of block at each end,
+    // wider than the mark's own corner radius rather than a dark rim.
+    expect(head - along).toBeGreaterThan(MARK.slideCorner * R);
+    // Proportions hold: the whole mark scales, so it never turns into a square.
+    expect(along / across).toBeCloseTo(MARK.slideAlongHalf / MARK.slideAcrossHalf, 9);
+    // And it never reaches the head's own half-height either.
+    expect(across).toBeLessThan(MARK.blockAcrossHalf * R);
+  });
+
+  it('never grows past the share of its block the rule allows', () => {
+    for (const barrel of [0.2, 1, 2, 4, 8, 40]) {
+      const head = cylinderHeadHalf(barrel * R, R);
+      expect(halves(slideMarkPath(R, head)).along).toBeLessThanOrEqual(
+        MARK.slideHostShare * head + 1e-9
+      );
+    }
+  });
+
+  it('is where a driven slider’s arrows start, so the two meet exactly', () => {
+    // The overlay's arrows run outward from `arrowTail`, and on a slide that
+    // is the edge of the mark they run out of: any less and an arrow starts
+    // buried under the cream bar, any more and it starts in a gap of black.
+    // The two constants have always been equal and nothing said they had to
+    // be, so this is where it is said.
+    expect(MARK.arrowTail).toBe(MARK.slideAlongHalf);
+  });
+
+  it('rings itself inside its own edge, the way a pin does', () => {
+    // A weld cross has no inside edge and wears the accent as an outline; this
+    // mark has one, so the ring is the same shape pulled in by half its width.
+    const width = 3;
+    const { along, across } = halves(slideMarkPath(R, undefined, width / 2));
+
+    expect(along).toBeCloseTo(MARK.slideAlongHalf * R - width / 2, 9);
+    expect(across).toBeCloseTo(MARK.slideAcrossHalf * R - width / 2, 9);
   });
 });
 
@@ -215,6 +336,61 @@ describe('the cylinder skin (§2.7)', () => {
     const neutral = cylinderArrowPaths(R, FULL_HEAD);
     expect(neutral.every((arrow) => !arrow.emphasised)).toBe(true);
     expect(neutral[0].line.x2).toBeCloseTo(-neutral[1].line.x2, 9);
+  });
+});
+
+/*
+  The shaft was the one dimension of a driven mark measured in screen pixels,
+  so the arrowheads grew and shrank with the zoom while the shafts did not:
+  zoomed in, hairlines under big heads; zoomed out, fat bars swallowing them.
+  It is in R now like everything else here, and these are what say so -- a
+  width that comes out of the mark rather than out of the template is a width
+  the zoom cannot touch.
+*/
+describe('the driven arrows’ shaft', () => {
+  it('comes out of the mark in R, not out of the template in pixels', () => {
+    const [forward, backward] = straightArrowPaths(R, 1);
+    expect(forward.width).toBeCloseTo(MARK.arrowShaftEmphasised * R, 9);
+    expect(backward.width).toBeCloseTo(MARK.arrowShaft * R, 9);
+  });
+
+  it('scales with R exactly, so the proportions hold at any size', () => {
+    const small = straightArrowPaths(R / 4, 1);
+    const large = straightArrowPaths(R * 4, 1);
+    for (let i = 0; i < small.length; i++) {
+      expect(large[i].width / small[i].width).toBeCloseTo(16, 9);
+      // Against the arrowhead it sits under, which is the proportion that was
+      // drifting: one ratio, at every size.
+      const ratio = (arrow: { width: number; head: string }) =>
+        arrow.width / Math.abs(numbers(arrow.head)[0]);
+      expect(ratio(large[i])).toBeCloseTo(ratio(small[i]), 9);
+    }
+  });
+
+  it('keeps the emphasis the template used to hand it', () => {
+    // 4.5 screen pixels against 2.5, which is the ratio the two arrows are
+    // told apart by.
+    expect(MARK.arrowShaftEmphasised / MARK.arrowShaft).toBeCloseTo(4.5 / 2.5, 9);
+  });
+
+  it('matches the old widths at the zoom the marks are sized for', () => {
+    // `updateObjectScale` pairs the scale with the zoom at MARK_TARGET_PX (60)
+    // pixels per object scale, and R is 0.15 of a scale -- nine pixels to one
+    // R. The shaft at that pairing is exactly what the template drew.
+    const pixelsPerR = 60 * R_PER_SCALE;
+    expect(MARK.arrowShaft * pixelsPerR).toBeCloseTo(2.5, 9);
+    expect(MARK.arrowShaftEmphasised * pixelsPerR).toBeCloseTo(4.5, 9);
+  });
+
+  it('shrinks with a head that has shrunk, as a pair', () => {
+    // A ram too short for a full-size head scales both arrows by the same
+    // ratio; the shaft is part of the arrow and goes with it.
+    const short = cylinderHeadHalf(4 * R, R);
+    const [loud, quiet] = cylinderArrowPaths(R, short, 1);
+    const fit = short / (MARK.blockAlongHalf * R);
+    expect(loud.width).toBeCloseTo(MARK.arrowShaftEmphasised * R * fit, 9);
+    expect(quiet.width).toBeCloseTo(MARK.arrowShaft * R * fit, 9);
+    expect(fit).toBeLessThan(1);
   });
 });
 

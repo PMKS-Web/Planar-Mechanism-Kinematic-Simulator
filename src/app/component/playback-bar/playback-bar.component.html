@@ -262,13 +262,23 @@
             }
 
             @if (row.isMechanism) {
+              <!-- The glyph says what the note beside it says, from the same
+                   function (`driveDirectionIcon`): a turn for a pin, a straight
+                   arrow for anything that translates. It drew a rotate glyph
+                   for every drive, so a cylinder read "Opening" beside an icon
+                   of something spinning. The note is hidden at phone width, so
+                   the direction it carries goes in the label as well — the one
+                   place a reader who cannot see the glyph would otherwise be
+                   told nothing. -->
               <button
                 class="dirButton"
                 (click)="flipDirection(row); $event.stopPropagation()"
-                title="Input direction"
-                [attr.aria-label]="'Reverse ' + row.id"
+                [title]="row.note ? 'Input direction: ' + row.note : 'Input direction'"
+                [attr.aria-label]="
+                  row.note ? 'Reverse ' + row.id + ', now ' + row.note : 'Reverse ' + row.id
+                "
               >
-                <mat-icon>{{ row.clockwise ? 'rotate_right' : 'rotate_left' }}</mat-icon>
+                <mat-icon>{{ row.directionIcon }}</mat-icon>
               </button>
             }
           </div>

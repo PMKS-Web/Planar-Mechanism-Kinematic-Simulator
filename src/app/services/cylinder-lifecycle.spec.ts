@@ -2,7 +2,8 @@ import '../model/joint';
 import { Coord } from '../model/coord';
 import { PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import { RealLink } from '../model/link';
-import { sealedCylinderAt, sealedCylinders, CYLINDER_MIN_SPAN_SCALE } from '../model/cylinder';
+import { cylinderAtSeal, cylindersIn, CYLINDER_MIN_SPAN_SCALE } from '../model/cylinder';
+import { barrelFillOf, rodFillOf } from '../model/cylinder-skin';
 import { refuseJointMerge } from '../model/drop-target';
 import { createMechanismHarness, wireGraph } from '../../test-utils/mechanism-harness';
 import { SettingsService } from './settings.service';
@@ -35,13 +36,13 @@ function harnessWithCylinder() {
   // Asked of the slider itself. This used to ask the coincident pin beside it
   // -- `connectedJoints[0]` -- which is the joint Stage 1 of
   // `docs/joint-type-and-cylinder-plan.md` folded into the slider.
-  const sealed = sealedCylinderAt(slider)!;
+  const sealed = cylinderAtSeal(slider)!;
   return { ...harness, sealed };
 }
 
 /** Resolve the assembly fresh, from its welded pin. */
 function resolve(harness: ReturnType<typeof createMechanismHarness>) {
-  return sealedCylinders(harness.service.joints)[0];
+  return cylindersIn(harness.service.joints)[0];
 }
 
 describe('creating a cylinder from the two-point gesture', () => {
@@ -60,19 +61,17 @@ describe('creating a cylinder from the two-point gesture', () => {
     expect(harness.service.links).toHaveLength(2);
     const sealed = resolve(harness);
     expect(sealed).toBeDefined();
-    expect(sealed.slider.isSealed).toBe(true);
+    expect(sealed.seal.isSealed).toBe(true);
     // The seal says its rod cannot turn against the bore in `rotates`; it was
     // the weld on that coincident pin.
-    expect(sealed.slider.rotates).toBe(false);
+    expect(sealed.seal.rotates).toBe(false);
     // The start point is the barrel-side mount; the rod finishes at the cursor.
-    expect(Math.hypot(sealed.barrelFar.x - start.x, sealed.barrelFar.y - start.y)).toBeLessThan(
-      0.01
-    );
-    expect(Math.hypot(sealed.rodFar.x - end.x, sealed.rodFar.y - end.y)).toBeLessThan(0.01);
+    expect(Math.hypot(sealed.mountA.x - start.x, sealed.mountA.y - start.y)).toBeLessThan(0.01);
+    expect(Math.hypot(sealed.mountB.x - end.x, sealed.mountB.y - end.y)).toBeLessThan(0.01);
     // Collinear along the drawn axis (within the codec-grade rounding the
     // creation applies to each coordinate).
     const axis = Math.hypot(end.x - start.x, end.y - start.y);
-    for (const joint of [sealed.barrelNear, sealed.pin]) {
+    for (const joint of [sealed.inner, sealed.seal]) {
       const cross =
         (end.x - start.x) * (joint.y - start.y) - (end.y - start.y) * (joint.x - start.x);
       expect(Math.abs(cross / axis)).toBeLessThan(0.01);
@@ -95,12 +94,24 @@ describe('creating a cylinder from the two-point gesture', () => {
     // stroke of span on top of a fully-retracted one to reach the minimum
     // stroke. That is what CYLINDER_MIN_SPAN_SCALE now means. Along +x, since
     // a zero-length gesture names no direction.
-    const span = Math.hypot(
-      sealed.rodFar.x - sealed.barrelFar.x,
-      sealed.rodFar.y - sealed.barrelFar.y
-    );
+    const span = Math.hypot(sealed.mountB.x - sealed.mountA.x, sealed.mountB.y - sealed.mountA.y);
     expect(span).toBeCloseTo(CYLINDER_MIN_SPAN_SCALE * MODEL_SCALE, 0);
-    expect(sealed.slider.isSlotWellFormed).toBe(true);
+    expect(sealed.seal.isSlotWellFormed).toBe(true);
+  });
+
+  it('is one color, on file as well as on screen (decision S15)', () => {
+    // Creation hands every new link the next color off the palette, so the rod
+    // arrived with one of its own that the skin then ignored. Written down, the
+    // number on file agrees with what is drawn -- and the flag is off, because
+    // nobody has chosen anything yet.
+    const harness = createMechanismHarness();
+
+    harness.service.createCylinderFrom(new Coord(0, 0), new Coord(3 * MODEL_SCALE, 0));
+
+    const sealed = resolve(harness);
+    expect(sealed.rod.ownColor).toBe(false);
+    expect(sealed.rod.fill).toBe((sealed.barrel as RealLink).fill);
+    expect(rodFillOf(sealed)).toBe(barrelFillOf(sealed));
   });
 });
 
@@ -111,8 +122,8 @@ describe('permanence of a sealed cylinder', () => {
     // keeps in its bore, which is nothing to do with the mount -- and a
     // carriage on a mount is how an excavator's boom is drawn.
     const h = harnessWithCylinder();
-    const mountId = h.sealed.rodFar.id;
-    h.active.updateSelectedObj(h.sealed.rodFar);
+    const mountId = h.sealed.mountB.id;
+    h.active.updateSelectedObj(h.sealed.mountB);
     const before = h.service.links.length;
 
     h.service.toggleSlider();
@@ -124,53 +135,57 @@ describe('permanence of a sealed cylinder', () => {
     expect(now instanceof PrisJoint, 'the mount slides now').toBe(true);
     const still = resolve(h);
     expect(still, 'and the ram is still a ram').toBeDefined();
-    expect(still.slider.isSealed).toBe(true);
-    expect(still.slider.rotates).toBe(false);
+    expect(still.seal.isSealed).toBe(true);
+    expect(still.seal.rotates).toBe(false);
   });
 
   it('refuses detaching the sealed block from its bore', () => {
     const h = harnessWithCylinder();
 
-    h.service.detachSlider(h.sealed.slider);
+    h.service.detachSlider(h.sealed.seal);
 
-    expect(h.sealed.slider.isFloating).toBe(true);
+    expect(h.sealed.seal.isFloating).toBe(true);
     expect(resolve(h)).toBeDefined();
   });
 
   it('refuses unwelding the seal', () => {
     const h = harnessWithCylinder();
-    h.active.updateSelectedObj(h.sealed.slider);
+    h.active.updateSelectedObj(h.sealed.seal);
 
     h.service.unweldSelectedJoint();
 
     // The Slide is what holds the rod rigid with the bore, and it never comes
     // off. It was a weld on the coincident pin; it is `rotates` on the slider.
-    expect(h.sealed.slider.rotates).toBe(false);
+    expect(h.sealed.seal.rotates).toBe(false);
     expect(resolve(h)).toBeDefined();
   });
 
   it('refuses merges into the interior joints', () => {
     const h = harnessWithCylinder();
-    const stray = new RevJoint('Z', h.sealed.slider.x, h.sealed.slider.y);
-    const bar = new RealLink('Z' + h.sealed.rodFar.id, [stray, h.sealed.rodFar]);
+    const stray = new RevJoint('Z', h.sealed.seal.x, h.sealed.seal.y);
+    const bar = new RealLink('Z' + h.sealed.mountB.id, [stray, h.sealed.mountB]);
     h.service.joints.push(stray);
     h.service.links.push(bar);
     wireGraph(h.service);
 
-    expect(h.service.mergeJoints(stray, h.sealed.slider)).toBe('sealed-cylinder');
+    expect(h.service.mergeJoints(stray, h.sealed.seal)).toBe('sealed-cylinder');
     expect(resolve(h)).toBeDefined();
   });
 
   it('still grounds and drives through the sanctioned surfaces', () => {
     const h = harnessWithCylinder();
-    h.active.updateSelectedObj(h.sealed.barrelFar);
+    h.active.updateSelectedObj(h.sealed.mountA);
     h.service.toggleGround();
-    expect((h.sealed.barrelFar as RealJoint).ground).toBe(true);
+    expect((h.sealed.mountA as RealJoint).ground).toBe(true);
 
-    h.service.toggleCylinderInput(h.sealed);
-    expect(h.sealed.slider.input).toBe(true);
-    h.service.toggleCylinderInput(h.sealed);
-    expect(h.sealed.slider.input).toBe(false);
+    // Through the ordinary input door, on the seal. A cylinder had a toggle of
+    // its own while the joint carrying the drive was unselectable; the seal is
+    // the square a reader picks now (decision D9), so there is one door.
+    h.active.updateSelectedObj(h.sealed.seal);
+    h.service.adjustInput();
+    expect(h.sealed.seal.input).toBe(true);
+    h.service.adjustInput();
+    expect(h.sealed.seal.input).toBe(false);
   });
 });
 
@@ -178,8 +193,8 @@ describe('deleting a cylinder cascades to the whole assembly', () => {
   /** The ram, plus a bar hanging off its rod mount. */
   function cylinderWithNeighbor() {
     const h = harnessWithCylinder();
-    const e = new RevJoint('Z', h.sealed.rodFar.x + 100, h.sealed.rodFar.y);
-    const neighbor = new RealLink(h.sealed.rodFar.id + 'Z', [h.sealed.rodFar, e]);
+    const e = new RevJoint('Z', h.sealed.mountB.x + 100, h.sealed.mountB.y);
+    const neighbor = new RealLink(h.sealed.mountB.id + 'Z', [h.sealed.mountB, e]);
     h.service.joints.push(e);
     h.service.links.push(neighbor);
     wireGraph(h.service);
@@ -193,14 +208,14 @@ describe('deleting a cylinder cascades to the whole assembly', () => {
     const h = cylinderWithNeighbor();
     const savesBefore = h.saveCount();
 
-    h.active.updateSelectedObj(h.sealed.rodFar);
+    h.active.updateSelectedObj(h.sealed.mountB);
     h.service.deleteCylinder();
 
-    expect(sealedCylinders(h.service.joints)).toHaveLength(0);
+    expect(cylindersIn(h.service.joints)).toHaveLength(0);
     expect(h.service.links.map((link) => link.id)).toEqual([h.neighbor.id]);
     // The rod mount survives on the neighbor; every other member is gone.
     const ids = h.service.joints.map((joint) => joint.id).sort();
-    expect(ids).toEqual([h.sealed.rodFar.id, 'Z'].sort());
+    expect(ids).toEqual([h.sealed.mountB.id, 'Z'].sort());
     expect(h.saveCount()).toBe(savesBefore + 1);
   });
 
@@ -210,12 +225,12 @@ describe('deleting a cylinder cascades to the whole assembly', () => {
     // was the one thing still there afterwards.
     const h = cylinderWithNeighbor();
 
-    h.active.updateSelectedObj(h.sealed.rodFar);
+    h.active.updateSelectedObj(h.sealed.mountB);
     h.service.deleteJoint();
 
-    expect(sealedCylinders(h.service.joints)).toHaveLength(0);
+    expect(cylindersIn(h.service.joints)).toHaveLength(0);
     // The joint itself goes, and so does the bar that lost an end to it.
-    expect(h.service.joints.map((joint) => joint.id)).not.toContain(h.sealed.rodFar.id);
+    expect(h.service.joints.map((joint) => joint.id)).not.toContain(h.sealed.mountB.id);
     expect(h.service.links).toHaveLength(0);
     // Z is left behind holding nothing. That is what deleting a joint does
     // everywhere in this app — only `deleteLink` sweeps up orphans — so it is
@@ -258,69 +273,79 @@ describe('the invariant: no write can leave a sealed cylinder bent', () => {
     const h = harnessWithCylinder();
     // A write that bypassed every gesture: the seal flung far off the axis.
     // One joint to fling, where it used to take two kept coincident by hand.
-    h.sealed.slider.x += 137;
-    h.sealed.slider.y -= 89;
+    h.sealed.seal.x += 137;
+    h.sealed.seal.y -= 89;
 
     h.service.updateMechanism();
 
     // Geometric resolution — the strict test — succeeds again.
     const restored = resolve(h);
     expect(restored).toBeDefined();
-    expect(offAxis(restored.barrelFar, restored.rodFar, restored.pin)).toBeLessThan(1e-3);
-    expect(offAxis(restored.barrelFar, restored.rodFar, restored.barrelNear)).toBeLessThan(1e-3);
+    expect(offAxis(restored.mountA, restored.mountB, restored.seal)).toBeLessThan(1e-3);
+    expect(offAxis(restored.mountA, restored.mountB, restored.inner)).toBeLessThan(1e-3);
   });
 
   it('straightens a garbage buried barrel end without moving the mounts', () => {
     const h = harnessWithCylinder();
-    const mountA = { x: h.sealed.barrelFar.x, y: h.sealed.barrelFar.y };
-    const mountC = { x: h.sealed.rodFar.x, y: h.sealed.rodFar.y };
+    const mountA = { x: h.sealed.mountA.x, y: h.sealed.mountA.y };
+    const mountC = { x: h.sealed.mountB.x, y: h.sealed.mountB.y };
     // A write that bypassed every gesture: the buried end swung 45 degrees off
     // the axis about its own mount. It keeps the barrel's *length*, because
-    // that length is now the part's size — barrel and rod are equal by
-    // construction, so a write that changed it is asking for a different ram
-    // rather than a bent one, which is the case below. Swung much further it
-    // would also end up further from the rod's mount than the barrel's own
-    // mount is, and the resolver would name the two barrel ends the other way
-    // round: a different failure, and not the one this is about.
-    const offset = { x: h.sealed.barrelNear.x - mountA.x, y: h.sealed.barrelNear.y - mountA.y };
+    // that length is what the derivation lays back along the axis; a write
+    // that changed it is asking for a different cylinder rather than a bent
+    // one, which is the case below.
+    const offset = { x: h.sealed.inner.x - mountA.x, y: h.sealed.inner.y - mountA.y };
     const swing = Math.PI / 4;
     const barrelLength = Math.hypot(offset.x, offset.y);
-    h.sealed.barrelNear.x = mountA.x + offset.x * Math.cos(swing) - offset.y * Math.sin(swing);
-    h.sealed.barrelNear.y = mountA.y + offset.x * Math.sin(swing) + offset.y * Math.cos(swing);
+    h.sealed.inner.x = mountA.x + offset.x * Math.cos(swing) - offset.y * Math.sin(swing);
+    h.sealed.inner.y = mountA.y + offset.x * Math.sin(swing) + offset.y * Math.cos(swing);
 
     h.service.updateMechanism();
 
     const restored = resolve(h);
     expect(restored).toBeDefined();
-    expect(offAxis(restored.barrelFar, restored.rodFar, restored.barrelNear)).toBeLessThan(1e-3);
-    expect(
-      Math.hypot(restored.barrelNear.x - mountA.x, restored.barrelNear.y - mountA.y)
-    ).toBeCloseTo(barrelLength, 3);
+    expect(offAxis(restored.mountA, restored.mountB, restored.inner)).toBeLessThan(1e-3);
+    expect(Math.hypot(restored.inner.x - mountA.x, restored.inner.y - mountA.y)).toBeCloseTo(
+      barrelLength,
+      3
+    );
     // The mounts are the user's handles; normalization never moves them.
-    expect(restored.barrelFar.x).toBeCloseTo(mountA.x, 6);
-    expect(restored.barrelFar.y).toBeCloseTo(mountA.y, 6);
-    expect(restored.rodFar.x).toBeCloseTo(mountC.x, 6);
-    expect(restored.rodFar.y).toBeCloseTo(mountC.y, 6);
+    expect(restored.mountA.x).toBeCloseTo(mountA.x, 6);
+    expect(restored.mountA.y).toBeCloseTo(mountA.y, 6);
+    expect(restored.mountB.x).toBeCloseTo(mountC.x, 6);
+    expect(restored.mountB.y).toBeCloseTo(mountC.y, 6);
   });
 
-  it('refuses to draw a part whose barrel a stray write lengthened', () => {
-    // The normalizer is a straightener, not a resizer: it holds the mounts and
-    // the barrel it finds, so a write that changed the barrel's length asks for
-    // a ram whose rod no longer matches it. The invariant is enforced where
-    // cylinders are *built* — creation, drag, panel — and the geometric test is
-    // the tripwire for everything else, so what has to happen here is that the
-    // part stops being recognized rather than being drawn as a cylinder it is
-    // not. It stays a cylinder structurally, which is what keeps the guards on
-    // it while it is wrong.
+  it('keeps a part whose barrel a stray write lengthened, and holds the length', () => {
+    // The derivation is a straightener, not a resizer: it holds the mounts and
+    // the barrel it finds. A write that changed the barrel's length is asking
+    // for a different cylinder, and it gets one.
+    //
+    // This used to assert that the part stopped being *recognized* — the
+    // geometric test refused a barrel and a rod of different lengths, so an
+    // unequal assembly lost its skin while staying a cylinder structurally, and
+    // the two answers had to be kept apart everywhere. Sealed is the whole test
+    // now (Stage 2, decision S1): it is a cylinder, its barrel is as long as
+    // the stray write made it, and a part with no usable travel is the
+    // readiness rules' business rather than the resolver's.
     const h = harnessWithCylinder();
-    const mountA = { x: h.sealed.barrelFar.x, y: h.sealed.barrelFar.y };
-    h.sealed.barrelNear.x = mountA.x + 2 * (h.sealed.barrelNear.x - mountA.x);
-    h.sealed.barrelNear.y = mountA.y + 2 * (h.sealed.barrelNear.y - mountA.y);
+    const mountA = { x: h.sealed.mountA.x, y: h.sealed.mountA.y };
+    const was = Math.hypot(h.sealed.inner.x - mountA.x, h.sealed.inner.y - mountA.y);
+    h.sealed.inner.x = mountA.x + 2 * (h.sealed.inner.x - mountA.x);
+    h.sealed.inner.y = mountA.y + 2 * (h.sealed.inner.y - mountA.y);
 
     h.service.updateMechanism();
 
-    expect(resolve(h)).toBeUndefined();
-    expect(h.service.cylinderAt(h.sealed.rodFar)).toBeDefined();
+    const restored = resolve(h);
+    expect(restored).toBeDefined();
+    expect(h.service.cylinderAt(h.sealed.mountB)).toBeDefined();
+    expect(offAxis(restored.mountA, restored.mountB, restored.inner)).toBeLessThan(1e-3);
+    expect(Math.hypot(restored.inner.x - mountA.x, restored.inner.y - mountA.y)).toBeCloseTo(
+      2 * was,
+      3
+    );
+    expect(restored.mountA.x).toBeCloseTo(mountA.x, 6);
+    expect(restored.mountA.y).toBeCloseTo(mountA.y, 6);
   });
 
   it('is the identity for an assembly that is already valid', () => {
@@ -339,9 +364,9 @@ describe('the invariant: no write can leave a sealed cylinder bent', () => {
     // The guards and drag routing must not fail open mid-repair — that lapse
     // is exactly how a fast drag used to tear a cylinder for good.
     const h = harnessWithCylinder();
-    h.sealed.slider.y += 300;
+    h.sealed.seal.y += 300;
 
-    expect(h.service.cylinderAt(h.sealed.rodFar)).toBeDefined();
+    expect(h.service.cylinderAt(h.sealed.mountB)).toBeDefined();
     expect(h.service.cylinderAt(h.sealed.barrel)).toBeDefined();
   });
 });
@@ -349,12 +374,12 @@ describe('the invariant: no write can leave a sealed cylinder bent', () => {
 describe('a mount welded into a neighboring link', () => {
   function weldedMount() {
     const h = harnessWithCylinder();
-    const e = new RevJoint('Z', h.sealed.rodFar.x + 100, h.sealed.rodFar.y);
-    const neighbor = new RealLink(h.sealed.rodFar.id + 'Z', [h.sealed.rodFar, e]);
+    const e = new RevJoint('Z', h.sealed.mountB.x + 100, h.sealed.mountB.y);
+    const neighbor = new RealLink(h.sealed.mountB.id + 'Z', [h.sealed.mountB, e]);
     h.service.joints.push(e);
     h.service.links.push(neighbor);
     wireGraph(h.service);
-    h.active.updateSelectedObj(h.sealed.rodFar);
+    h.active.updateSelectedObj(h.sealed.mountB);
     h.service.weldJoint();
     return { ...h, e };
   }
@@ -362,12 +387,12 @@ describe('a mount welded into a neighboring link', () => {
   it('keeps the weld functional and the skin resolvable through the compound', () => {
     const h = weldedMount();
 
-    expect((h.sealed.rodFar as RealJoint).isWelded).toBe(true);
+    expect((h.sealed.mountB as RealJoint).isWelded).toBe(true);
     // The rod is now a subset leaf of a compound; the resolver follows it.
     const still = resolve(h);
     expect(still).toBeDefined();
     expect(still.rod.id).toBe(h.sealed.rod.id);
-    expect(still.rodFar.id).toBe(h.sealed.rodFar.id);
+    expect(still.mountB.id).toBe(h.sealed.mountB.id);
   });
 
   it('is deleted while locked, by either door', () => {
@@ -382,17 +407,17 @@ describe('a mount welded into a neighboring link', () => {
 
     // Straight at the part: the menu calls this with the cylinder it found.
     h.service.deleteCylinder(resolve(h));
-    expect(sealedCylinders(h.service.joints)).toHaveLength(0);
+    expect(cylindersIn(h.service.joints)).toHaveLength(0);
   });
 
   it('takes the whole part when a mount of a locked cylinder goes', () => {
     const h = weldedMount();
     h.service.toggleLock(resolve(h)!.barrel as never);
-    const mount = h.service.joints.find((joint) => joint.id === h.sealed.barrelFar.id)!;
+    const mount = h.service.joints.find((joint) => joint.id === h.sealed.mountA.id)!;
     expect(h.service.isLockedTarget(mount as never)).toBe(false);
     h.active.updateSelectedObj(mount);
     h.service.deleteJoint();
-    expect(sealedCylinders(h.service.joints)).toHaveLength(0);
+    expect(cylindersIn(h.service.joints)).toHaveLength(0);
   });
 
   it('still cascades a delete, unwelding the mount so the neighbor survives', () => {
@@ -400,11 +425,11 @@ describe('a mount welded into a neighboring link', () => {
 
     h.service.deleteCylinder(resolve(h));
 
-    expect(sealedCylinders(h.service.joints)).toHaveLength(0);
+    expect(cylindersIn(h.service.joints)).toHaveLength(0);
     // The neighbor bar came back out of the compound intact.
-    expect(h.service.links.map((link) => link.id)).toEqual([h.sealed.rodFar.id + 'Z']);
+    expect(h.service.links.map((link) => link.id)).toEqual([h.sealed.mountB.id + 'Z']);
     expect(h.service.joints.map((joint) => joint.id).sort()).toEqual(
-      [h.sealed.rodFar.id, 'Z'].sort()
+      [h.sealed.mountB.id, 'Z'].sort()
     );
   });
 });
@@ -422,18 +447,18 @@ describe('mount merge rules', () => {
     const stray = new RevJoint('Z', 999, 999);
     stray.isWelded = true;
     h.service.joints.push(stray);
-    const cylinders = sealedCylinders(h.service.joints);
+    const cylinders = cylindersIn(h.service.joints);
 
-    expect(refuseJointMerge(stray, h.sealed.rodFar, cylinders)).toBeUndefined();
-    expect(refuseJointMerge(h.sealed.rodFar, stray, cylinders)).toBeUndefined();
+    expect(refuseJointMerge(stray, h.sealed.mountB, cylinders)).toBeUndefined();
+    expect(refuseJointMerge(h.sealed.mountB, stray, cylinders)).toBeUndefined();
   });
 
   it('refuses folding a cylinder onto itself', () => {
     const h = harnessWithCylinder();
 
-    expect(
-      refuseJointMerge(h.sealed.barrelFar, h.sealed.rodFar, sealedCylinders(h.service.joints))
-    ).toBe('own-cylinder');
+    expect(refuseJointMerge(h.sealed.mountA, h.sealed.mountB, cylindersIn(h.service.joints))).toBe(
+      'own-cylinder'
+    );
   });
 
   it('allows a mount onto a plain joint', () => {
@@ -441,8 +466,6 @@ describe('mount merge rules', () => {
     const plain = new RevJoint('Z', 999, 999);
     h.service.joints.push(plain);
 
-    expect(
-      refuseJointMerge(h.sealed.rodFar, plain, sealedCylinders(h.service.joints))
-    ).toBeUndefined();
+    expect(refuseJointMerge(h.sealed.mountB, plain, cylindersIn(h.service.joints))).toBeUndefined();
   });
 });

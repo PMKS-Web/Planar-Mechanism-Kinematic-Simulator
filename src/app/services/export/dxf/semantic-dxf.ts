@@ -1,10 +1,11 @@
-import { Cylinder, cylinderJoints, sealedCylinderStructures } from '../../../model/cylinder';
+import { Cylinder, cylinderJoints, cylindersIn } from '../../../model/cylinder';
 import { Force } from '../../../model/force';
 import { turnsClockwise } from '../../../model/drive-direction';
 import { Joint, PrisJoint, RealJoint } from '../../../model/joint';
 import { Link, RealLink } from '../../../model/link';
 import { MODEL_SCALE } from '../../../model/render-scale';
 
+import { ExportNames, exportNames } from '../export-names';
 import { DxfDocument, DxfEntity, DxfLayer, DxfLine, DxfPoint } from './dxf-model';
 import {
   DxfExportOptions,
@@ -112,15 +113,24 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
     x: joint.x * unitScale - shift.x,
     y: joint.y * unitScale - shift.y,
   });
-  const cylinders = sealedCylinderStructures(input.joints);
-  // The joints between the two mounts: everything a sealed part keeps to
-  // itself. Named rather than sliced out of `cylinderJoints` by index, which is
-  // what this did -- that list lost a joint when the pin and the slider became
-  // one (Stage 1 of `docs/joint-type-and-cylinder-plan.md`), and the old
-  // `slice(1, 4)` went on taking three of four and swept the *rod mount* in
-  // with them.
+  const cylinders = cylindersIn(input.joints);
+  // What a reader may be shown of this drawing: the layers below are named
+  // from it, and so are the bodies a slot is cut into.
+  const names = exportNames(input.joints, input.links);
+  // The joints between the two mounts. Named rather than sliced out of
+  // `cylinderJoints` by index, which is what this did -- that list lost a joint
+  // when the pin and the slider became one (Stage 1 of
+  // `docs/joint-type-and-cylinder-plan.md`), and the old `slice(1, 4)` went on
+  // taking three of four and swept the *rod mount* in with them.
+  //
+  // **Still both, where the canvas now shows the seal** (decision S11). This is
+  // not the hidden/visible question the canvas asks: the layers below draw a
+  // bearing circle at every joint and a slot profile at every prismatic one,
+  // and a cylinder's seal is neither. Its slot is the bore the skin already
+  // draws, and its weld is internal to a part the drawing exports as one body,
+  // so a circle and a capsule there would describe a machine nobody built.
   const cylinderInterior = new Set(
-    cylinders.flatMap((cylinder) => [cylinder.barrelNear.id, cylinder.slider.id])
+    cylinders.flatMap((cylinder) => [cylinder.inner.id, cylinder.seal.id])
   );
   const cylinderBodies = new Set(
     cylinders.flatMap((cylinder) => [cylinder.barrel.id, cylinder.rod.id])
@@ -146,7 +156,8 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
       point,
       scale: symbolScale,
       pinRadius,
-      layerFor: (link) => (choices.perLinkLayers ? layerNameFor(link.id) : DXF_LAYER.links),
+      layerFor: (link) =>
+        choices.perLinkLayers ? layerNameFor(names.idOf(link)) : DXF_LAYER.links,
       drawnElsewhere: cylinderBodies,
     });
     entities.push(...bodies.entities);
@@ -180,8 +191,8 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
     .slice()
     .sort((a, b) => cylinderKey(a).localeCompare(cylinderKey(b)))
     .forEach((cylinder) => {
-      const start = point(cylinder.barrelFar);
-      const end = point(cylinder.rodFar);
+      const start = point(cylinder.mountA);
+      const end = point(cylinder.mountB);
       if (choices.linkBodies === 'outlines') {
         // The sleeve and the rod, rather than a line between the two mounts.
         // That line is neither of the parts and cannot be extruded, which left
@@ -191,8 +202,8 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
           ...cylinderParts(
             {
               barrelFar: start,
-              barrelNear: point(cylinder.barrelNear),
-              pin: point(cylinder.pin),
+              barrelNear: point(cylinder.inner),
+              pin: point(cylinder.seal),
               rodFar: end,
             },
             (linkBodyWidth() * unitScale) / 2,
@@ -207,14 +218,14 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
         // half is the sleeve and which is the rod is the whole point of it, and
         // a plain line between two mounts says neither.
         entities.push(
-          capsule(start, point(cylinder.barrelNear), 0.12 * symbolScale, DXF_LAYER.cylinders)
+          capsule(start, point(cylinder.inner), 0.12 * symbolScale, DXF_LAYER.cylinders)
         );
       }
-      if (input.includeKinematicAnnotations !== false && cylinder.slider.input) {
+      if (input.includeKinematicAnnotations !== false && cylinder.seal.input) {
         const clockwise =
-          cylinder.slider.driveSpeed === 0
+          cylinder.seal.driveSpeed === 0
             ? input.defaultInputClockwise
-            : turnsClockwise(cylinder.slider.driveSpeed);
+            : turnsClockwise(cylinder.seal.driveSpeed);
         entities.push(
           ...inputAnnotation(
             {
@@ -248,7 +259,7 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
               point,
               symbolScale,
               pinRadius,
-              slotCarrierLayer(joint, input.links, choices, DXF_LAYER.groundPlate),
+              slotCarrierLayer(joint, input.links, choices, DXF_LAYER.groundPlate, names),
               DXF_LAYER.blocks,
               // A slot cut into a link has to leave material in a body the
               // canvas draws as a thin bar. One cut into the ground plate has
@@ -311,10 +322,19 @@ export function buildSemanticDxf(input: SemanticDxfInput): DxfDocument {
           });
         }
       }
-      // The same cross the bodies get, and the same one the canvas draws. A
-      // welded joint has no circle here -- correctly, it is not a bearing --
-      // but nothing said so, and a reader could not tell a rigid corner from a
-      // missing one.
+      // The same cross the bodies get. A welded joint has no circle here --
+      // correctly, it is not a bearing -- but nothing said so, and a reader
+      // could not tell a rigid corner from a missing one.
+      //
+      // It was also the cross the canvas draws, and for a *revolute* it still
+      // is. A slider whose riders cannot turn wears a cream bar on screen now
+      // (decision S13 of `joint-type-and-cylinder-plan.md`), and that mark does
+      // not come here: a DXF has no fills and no colors, the bar's whole job is
+      // to be a filled shape the eye finds, and a rounded rectangle laid on the
+      // slot would land on top of the block mark drawn just above. The line-art
+      // convention already draws the same distinction the bar draws -- circle
+      // for a bearing, cross for rigid -- so a Prismatic slider keeps the cross
+      // and a Pin-in-slot one keeps its circle.
       if (joint instanceof RealJoint && isWelded(joint) && !cylinderInterior.has(joint.id)) {
         entities.push(...weldMark(point(joint), 0.1 * symbolScale, DXF_LAYER.joints));
       }
@@ -445,7 +465,8 @@ function slotCarrierLayer(
   joint: PrisJoint,
   links: Link[],
   choices: { perLinkLayers: boolean; includeGroundPlate: boolean },
-  groundLayer: string
+  groundLayer: string,
+  names: ExportNames
 ): string {
   if (joint.isFloating && joint.slotJointA && joint.slotJointB) {
     const carrier = links.find(
@@ -454,16 +475,28 @@ function slotCarrierLayer(
         link.joints.some((one) => one.id === joint.slotJointA!.id) &&
         link.joints.some((one) => one.id === joint.slotJointB!.id)
     );
-    if (carrier) return choices.perLinkLayers ? layerNameFor(carrier.id) : DXF_LAYER.links;
+    if (carrier) {
+      return choices.perLinkLayers ? layerNameFor(names.idOf(carrier)) : DXF_LAYER.links;
+    }
   }
   // A grounded slot with no plate to cut it into has nowhere better to go than
   // the slots layer -- and the reader has said they do not want a base part.
   return choices.includeGroundPlate ? groundLayer : DXF_LAYER.slots;
 }
 
-/** `PMKS_LINK_AB`, from a link id, with anything unusual in it made safe. */
-function layerNameFor(linkId: string): string {
-  return `PMKS_LINK_${linkId.replace(/[^A-Za-z0-9_]+/g, '_').toUpperCase()}`;
+/**
+ * `PMKS_LINK_AB`, from what a file may call that body, with anything unusual
+ * in it made safe.
+ *
+ * A layer name is a reader surface — the CAD layer manager lists them, and
+ * `svg-writer` puts each one in an `inkscape:label` — so it goes through
+ * `ExportNames` like the tables do, and a body welded to a barrel mount is
+ * `PMKS_LINK_AD` rather than `PMKS_LINK_AA1D` (D14, S11). A body that holds
+ * nothing buried keeps its id exactly, so every drawing without a cylinder
+ * exports the layers it always did.
+ */
+function layerNameFor(key: string): string {
+  return `PMKS_LINK_${key.replace(/[^A-Za-z0-9_]+/g, '_').toUpperCase()}`;
 }
 
 function edgeKey(start: DxfPoint, end: DxfPoint): string {
@@ -886,20 +919,20 @@ function addLabels(
       })
     );
   cylinders.forEach((cylinder) => {
-    const a = point(cylinder.barrelFar);
-    const b = point(cylinder.rodFar);
+    const a = point(cylinder.mountA);
+    const b = point(cylinder.mountB);
     entities.push({
       type: 'TEXT',
       layer: DXF_LAYER.labels,
       at: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
       height: 0.22 * scale,
-      text: `Cylinder ${cylinder.barrelFar.name}${cylinder.rodFar.name}`,
+      text: `Cylinder ${cylinder.mountA.name}${cylinder.mountB.name}`,
     });
   });
 }
 
 function cylinderKey(cylinder: Cylinder): string {
-  return `${cylinder.barrelFar.id}|${cylinder.rodFar.id}`;
+  return `${cylinder.mountA.id}|${cylinder.mountB.id}`;
 }
 
 /** One centimeter, expressed in `unit`. The whole drawing is sized in these. */

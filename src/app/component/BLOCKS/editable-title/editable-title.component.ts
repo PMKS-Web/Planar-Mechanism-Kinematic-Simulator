@@ -66,6 +66,15 @@ export class EditableTitleComponent {
   readonly deleteLabel = input<string>();
 
   /**
+   * What the trash can says on hover, when "Delete" alone would understate it.
+   *
+   * A cylinder member's panel is the case: its trash can takes the whole part,
+   * and an icon cannot say so. The visible word stays `deleteLabel`, because
+   * this row has no space for a third one beside Rename and Lock.
+   */
+  readonly deleteHint = input<string>();
+
+  /**
    * A lock that is not one object's — a group's, where some members may be held
    * and others not. `'mixed'` shows the open padlock, because pressing it locks
    * the rest rather than unlocking the ones that are held.
@@ -77,8 +86,18 @@ export class EditableTitleComponent {
 
   protected newIDForm = this.fb.group({ newID: [''] });
 
+  /**
+   * Open the field on the name that is on screen, not the one on file.
+   *
+   * They are the same for almost every object, and not for a body whose id
+   * holds a joint no reader can see: a bracket welded to a cylinder's barrel
+   * mount is headed `Edit Link AD` and the field opened on `AA1D`, offering a
+   * letter the drawing never shows as the name to edit. What is *stored* is
+   * still whatever is typed here.
+   */
   protected gotoEditMode() {
-    this.newIDForm.controls['newID'].setValue(this.activeObjService.getSelectedObj().name);
+    const shown = this.displayName() ?? this.activeObjService.getSelectedObj().name;
+    this.newIDForm.controls['newID'].setValue(shown);
     this.editMode = true;
   }
 
@@ -134,7 +153,12 @@ export class EditableTitleComponent {
 
     let activeObj = this.activeObjService.getSelectedObj();
     this.editMode = false;
-    if (activeObj.name === newID) return;
+    // Against what is on screen as well as what is on file. The field opens on
+    // the visible name, which for a body whose id holds a joint no reader can
+    // see is not the stored one -- so Rename followed by Save with nothing
+    // typed would have written that visible name down as a real name, turning
+    // a no-op into an edit with an undo entry behind it.
+    if (activeObj.name === newID || (this.displayName() ?? activeObj.name) === newID) return;
     activeObj.name = newID;
     // A name is carried in the URL like everything else, so a rename is an edit
     // and belongs in the history. Without this it was the one change to the

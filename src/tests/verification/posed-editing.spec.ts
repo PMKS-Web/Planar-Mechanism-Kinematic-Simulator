@@ -639,6 +639,80 @@ describe('editing at a displaced pose', () => {
     service.finishPosedEdit();
   });
 
+  it('moves the anchor with an edit made at the start pose', () => {
+    // The other half of the ratchet, and the one nothing was watching. An edit
+    // made *at* the start pose is the reader changing the start, so the design's
+    // t = 0 is the drawing as edited -- but the anchor was held across every
+    // rebuild whose topology and rule were unchanged, so it went on naming the
+    // angle the crank used to stand at. Nothing looked wrong until playback
+    // moved: the ghost then drew that old angle, most of a turn from where
+    // stop-to-start lands, which is what the reader reported.
+    const { service, joints } = oneBar();
+    expect(service.isAtStartPose()).toBe(true);
+
+    // The driven crank's far pin, which is the one that changes the value the
+    // anchor stores. A coupler pin would leave it alone and prove nothing.
+    joints[1].x += 0.3;
+    joints[1].y -= 0.2;
+    service.updateMechanism(true);
+
+    expect(service.anchorOf(0)!.coordinate).toBeCloseTo(startCoordinate(service, 0), 9);
+    // And the ghost is the drawing's own start, which is where stop-to-start
+    // goes and what the URL saves.
+    const ghost = service.startPoseGhosts()[0];
+    expect(ghost.reachable).toBe(true);
+    expect(ghost.at).toBe(0);
+    const start = service.mechanisms[0].joints[0];
+    ghost.pins.forEach((pin, index) => {
+      expect(Math.hypot(pin.x - start[index].x, pin.y - start[index].y)).toBeLessThan(1e-6);
+    });
+  });
+
+  it('keeps the stored coordinate when an edit did not move the start', () => {
+    // The guard above must not turn into "re-read the anchor every rebuild",
+    // which is the drift `MachineAnchor` stores a coordinate to avoid. An edit
+    // that leaves t = 0 where it was leaves the stored number untouched, to
+    // the bit.
+    const { service, joints } = oneBar();
+    const held = service.anchorOf(0)!;
+    service.updateMechanism();
+    expect(service.anchorOf(0)!.coordinate).toBe(held.coordinate);
+    // Even one that re-solves the cycle, as long as it does not move t = 0:
+    // the coupler pin is not on the driven body.
+    joints[2].x += 0.2;
+    service.updateMechanism();
+    expect(service.anchorOf(0)!.coordinate).toBe(held.coordinate);
+  });
+
+  it('is not at the start while any machine is parked away from its own', () => {
+    // `seekMechanism` writes the shared sample index only for the *master*
+    // machine -- the one with the longest cycle -- so any other machine can be
+    // parked mid-cycle with that index still reading zero. Synced, this used
+    // to answer "at the start", which is the answer `restoreStartPose` asks
+    // before a rebuild: the second machine's displayed pose was written down
+    // as its t = 0 by whatever edit came next, and the canvas drew no ghost
+    // over it, because at the start pose there is nothing to draw.
+    const harness = createMechanismHarness();
+    fourBar(harness.service, 'A', 0);
+    const second = fourBar(harness.service, 'E', 10);
+    const service = harness.service;
+    // A second machine that turns faster, so the first one is the master.
+    second.joints[0].driveSpeed = 20;
+    service.updateMechanism();
+    expect(service.mechanisms).toHaveLength(2);
+    const master = service.masterMechanismIndex();
+    const other = master === 0 ? 1 : 0;
+
+    const before = startPoses(service);
+    service.seekMechanism(other, service.mechanisms[other].cyclePeriod / 3);
+    expect(service.mechanismTimeStep).toBe(0);
+    expect(service.isAtStartPose()).toBe(false);
+
+    // And so an ambient rebuild does not take that pose for the design.
+    service.updateMechanism();
+    expect(startPoses(service)).toBe(before);
+  });
+
   it('gives up an anchor whose joint stopped being the driven one', () => {
     // The owned-joint set is unchanged when the drive moves from one joint to
     // another, so a key built from it alone kept an anchor naming a joint that
@@ -652,6 +726,86 @@ describe('editing at a displaced pose', () => {
     joints[3].input = true;
     service.updateMechanism();
     expect(service.anchorOf(0)?.jointId).toBe(joints[3].id);
+  });
+
+  it('holds an anchor through a rebuild the edit itself made unsolvable', () => {
+    // One edit is often several steps, and the drawing between two of them is
+    // a drawing nobody asked for: `JointTypeService` un-grounds a pin, retypes
+    // it and grounds it again, and in the middle the machine counts a freedom
+    // it will not have a moment later. The anchor sweep judged "still here" by
+    // the solve, so that one rebuild dropped the anchor -- and the next valid
+    // one took a fresh one from sample 0, which while the edit is staged is
+    // the pose under the reader's hand. A grounded pin retyped a third of the
+    // way round the cycle quietly made that pose the start.
+    const { service, joints } = oneBar();
+    const anchored = startCoordinate(service, 0);
+    displace(service);
+    const before = service.mechanisms[0].joints[0].map((joint) => ({ x: joint.x, y: joint.y }));
+
+    expect(service.beginPosedEdit(joints[3])).toBe(true);
+    joints[3].ground = false;
+    service.updateMechanism();
+    expect(service.mechanisms[0].isMechanismValid()).toBe(false);
+    joints[3].ground = true;
+    service.updateMechanism();
+
+    expect(service.finishPosedEdit().reanchored).toBe(true);
+    expect(startCoordinate(service, 0)).toBeCloseTo(anchored, 6);
+    // To within the sample the re-anchor interpolates between -- not to the
+    // digit, which is what a commit has never promised. Held by the old code,
+    // `B` was most of a turn away rather than 4e-8.
+    service.mechanisms[0].joints[0].forEach((joint, index) => {
+      expect(Math.hypot(joint.x - before[index].x, joint.y - before[index].y)).toBeLessThan(1e-3);
+    });
+  });
+
+  it('says so when a capturing edit moves a start, not only when a drag does', () => {
+    // `capturingPose` read `reanchored` off the settle and threw the other
+    // half away, so a menu row or a panel field that really did move a start
+    // said nothing at all -- while the identical outcome reached by dragging
+    // raised a message and marked the transport row. The one edit that cannot
+    // be undone by eye was the one nothing narrated.
+    const { service, joints } = oneBar();
+    displace(service);
+    expect(service.startMovedOn).toBeNull();
+
+    // Somewhere the old start cannot exist any more: the crank is now longer
+    // than the frame it turns inside.
+    service.capturingPose(joints[1], () => {
+      joints[1].x += 40;
+      service.updateMechanism();
+    });
+    expect(service.startMovedOn).toBe(service.partitions[0].id);
+  });
+
+  it('draws no ghost at all for a machine with nothing anchored', () => {
+    // The amber ghost is the last pose the start *could* be reached at, held
+    // so that a drag past the edge of Grashof still has something to warn
+    // over. Held past the anchor itself, it went on standing there in amber
+    // after the machine's drive was switched off -- pointing at a start
+    // nothing was holding, over a machine that has no start to lose, and
+    // disagreeing with `anchorIsReachable`, which has always answered that a
+    // machine with nothing anchored is not a machine in trouble.
+    const { service } = oneBar();
+    displace(service);
+    // Drawing one fills the held pose the amber ghost is made of.
+    expect(service.startPoseGhosts()).toHaveLength(1);
+
+    // A machine that keeps its cycle and loses its anchor: retype its driven
+    // joint into something whose input has no coordinate rule, and the anchor
+    // goes while the frames stay. Reached here by taking it away directly,
+    // because every route through the service either takes a fresh anchor or
+    // stops the machine solving; `e2e/ghost-is-the-start.mjs` gets there by
+    // the gesture the fuzz found.
+    const inside = service as unknown as { anchors: Map<string, unknown>; ghostCache?: unknown };
+    inside.anchors.clear();
+    inside.ghostCache = undefined;
+    expect(service.anchorOf(0)).toBeUndefined();
+    expect(service.startPoseGhosts()).toEqual([]);
+
+    // And an anchor taken again puts the ghost back, on the machine's start.
+    service.updateMechanism();
+    expect(service.startPoseGhosts()[0]?.reachable).toBe(true);
   });
 
   it('drops an anchor when the machine it named stops existing', () => {

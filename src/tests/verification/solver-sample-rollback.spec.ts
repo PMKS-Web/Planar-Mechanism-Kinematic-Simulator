@@ -64,8 +64,8 @@ describe('a sample the solver turns away', () => {
     const parts = ram();
     solver.registerSealedCylinders(parts.joints);
 
-    const barrel = parts.barrelNear.x;
-    const rod = parts.rodFar.x - parts.slider.x;
+    const barrel = parts.inner.x;
+    const rod = parts.mountB.x - parts.seal.x;
     // No coincidence row, and one unknown fewer. The seal and the pin the rod
     // hangs on were two joints held together by a zero-length block, so the
     // system had to say they were at the same place; they are one joint now

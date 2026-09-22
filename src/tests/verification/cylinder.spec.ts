@@ -1,101 +1,116 @@
 import '../../app/model/joint';
 import { PrisJoint, RevJoint } from '../../app/model/joint';
 import { RealLink } from '../../app/model/link';
-import { describeCylinder, resolveCylinder } from '../../app/model/cylinder';
-import { MARK } from '../../app/model/joint-marks';
-import { SettingsService } from '../../app/services/settings.service';
+import {
+  cylinderAtSeal,
+  cylinderSizeOf,
+  cylinderStrokeAlong,
+  derivedInterior,
+} from '../../app/model/cylinder';
 import { MODEL_SCALE } from '../../app/model/render-scale';
 
 // Geometry is built in internal model units (user units x MODEL_SCALE) so the
-// shape-to-mark proportions match what the app actually renders. Options that
-// are already model-unit quantities (derived from objectScale) pass through.
+// shape-to-mark proportions match what the app actually renders.
 const S = MODEL_SCALE;
 
-// §2.7. A piston is not a new joint type -- it is a Slide whose rod and barrel
-// happen to line up, drawn as the part an engineer would recognize. The test is
-// therefore the shape, not a flag, and everything that is not that shape has to
-// keep the ordinary block-in-a-channel drawing.
-//
-// The shape is four joints now rather than five: the slider and the pin the rod
-// hangs on are one joint, so `resolveCylinder` is asked about the joint that
-// slides rather than about a pin beside it.
+// Stage 2 of `docs/joint-type-and-cylinder-plan.md`. A cylinder used to be a
+// *shape* -- a Slide whose rod and barrel happened to line up -- so the test
+// was geometric and every caller had to be told how much bend to forgive. It
+// is a sealed slide now, and the record is read off the seal: the slot's own
+// order says which barrel joint is the mount, and the two joints the seal owns
+// are derived rather than checked.
 
 /**
- * Barrel M--N along the x axis with a bore, a Slide at P, and a rod reaching
- * out to T on the far side of P from N.
+ * Barrel M--N along the x axis, a sealed Slide at P, and a rod reaching out to
+ * T on the far side of P from N.
  *
  * P is one joint: the seal and the pin the rod hangs on were a prismatic
  * joint, a coincident `RevJoint` and a zero-length block joining the two until
  * a slider became one joint, and the weld on that pin is `rotates` on this one.
  *
- * The rod defaults to the barrel's own 7 units, because barrel and rod are the
- * same length in every cylinder that can exist — a hand-built part where they
- * differ is what the invariant tripwire is for, and it has its own case below.
+ * The slot is declared mount-first, as creation declares it. `reversed` writes
+ * it the other way round, which is the only thing that decides the roles.
  */
-function piston(options: { rodAt?: [number, number]; barrelFarAt?: [number, number] } = {}) {
+function piston(options: { rodAt?: [number, number]; reversed?: boolean; sealed?: boolean } = {}) {
   const [rodX, rodY] = options.rodAt ?? [7 * S, 0];
-  const [barX, barY] = options.barrelFarAt ?? [-8 * S, 0];
 
-  const m = new RevJoint('M', barX, barY);
+  const m = new RevJoint('M', -8 * S, 0);
   const n = new RevJoint('N', -1 * S, 0);
   const t = new RevJoint('T', rodX, rodY);
-  const slider = new PrisJoint('P', 0, 0);
+  const seal = new PrisJoint('P', 0, 0);
 
   const barrel = new RealLink('MN', [m, n], 1, 1);
-  const rod = new RealLink('PT', [slider, t], 1, 1);
+  const rod = new RealLink('PT', [seal, t], 1, 1);
 
   [m, n].forEach((joint) => joint.links.push(barrel));
-  [slider, t].forEach((joint) => joint.links.push(rod));
+  [seal, t].forEach((joint) => joint.links.push(rod));
   // The rod cannot turn against the barrel's slot, which is what makes the
   // assembly one rigid part and what the weld at the pin used to say.
-  slider.rotates = false;
-  slider.slideOn(barrel, m, n);
+  seal.rotates = false;
+  seal.isSealed = options.sealed ?? true;
+  if (options.reversed) seal.slideOn(barrel, n, m);
+  else seal.slideOn(barrel, m, n);
 
-  return { p: slider, t, m, n, slider, barrel, rod };
+  return { p: seal, t, m, n, seal, barrel, rod };
 }
 
-describe('recognizing a cylinder', () => {
-  it('sees a Slide whose rod and barrel line up', () => {
-    const scene = piston();
-
-    const found = resolveCylinder(scene.p);
+describe('reading a cylinder off its seal', () => {
+  it('answers for a sealed slide, and names its members', () => {
+    const found = cylinderAtSeal(piston().p);
 
     expect(found).toBeDefined();
     expect(found!.barrel.id).toBe('MN');
     expect(found!.rod.id).toBe('PT');
-    expect(found!.rodFar.id).toBe('T');
-    // The barrel's far end is the one further from the block, and it has to be
-    // on the other side, or the rod would run out into thin air.
-    expect(found!.barrelFar.id).toBe('M');
-    // The inner end is the one the skin hides: it is buried where rod and
-    // barrel overlap, while M and T are the mounts and have to stay visible.
-    expect(found!.barrelNear.id).toBe('N');
+    expect(found!.seal.id).toBe('P');
+    // The rod's other end is mount B; nothing is measured to find it.
+    expect(found!.mountB.id).toBe('T');
   });
 
-  it('declines a rod that is not on the slot line', () => {
-    // A bent assembly drawn as a straight part would claim geometry the
-    // mechanism does not have.
-    expect(resolveCylinder(piston({ rodAt: [6 * S, 2 * S] }).p)).toBeUndefined();
+  it('takes the roles from the slot’s order, and measures nothing', () => {
+    // Declared mount-first, the mount is A and the buried end is B -- which is
+    // also what the distance rule would have said, so the interesting case is
+    // the next one.
+    const straight = cylinderAtSeal(piston().p)!;
+    expect(straight.mountA.id).toBe('M');
+    expect(straight.inner.id).toBe('N');
+
+    // Declared the other way round, the record says the other way round. The
+    // old rule looked at which barrel joint sat further from the rod's mount
+    // and would have answered M either way; the reader is the one place that
+    // question is still asked, once, on decode.
+    const reversed = cylinderAtSeal(piston({ reversed: true }).p)!;
+    expect(reversed.mountA.id).toBe('N');
+    expect(reversed.inner.id).toBe('M');
   });
 
-  it('declines a rod on the same side as the barrel', () => {
-    // Both ends pointing the same way is not a piston; the ordinary channel
-    // drawing is the honest one.
-    expect(resolveCylinder(piston({ rodAt: [-6 * S, 0] }).p)).toBeUndefined();
+  it('answers for a bent assembly, because sealed is the whole test', () => {
+    // A rod off the slot line used to stop being a cylinder, which meant every
+    // guard, drag route and delete cascade lost sight of the part at exactly
+    // the moment something had written a member joint wrongly. It is a
+    // cylinder; the derivation below is what straightens it.
+    expect(cylinderAtSeal(piston({ rodAt: [6 * S, 2 * S] }).p)).toBeDefined();
+    // Including a rod and a barrel of different lengths, which used to be a
+    // tripwire and is now just a cylinder the reader has not been given a way
+    // to draw.
+    expect(cylinderAtSeal(piston({ rodAt: [4 * S, 0] }).p)).toBeDefined();
+  });
+
+  it('declines a slide that is not sealed', () => {
+    expect(cylinderAtSeal(piston({ sealed: false }).p)).toBeUndefined();
   });
 
   it('declines a Slot — the rod has to be rigid with the slot', () => {
     const scene = piston();
-    scene.slider.rotates = true;
+    scene.seal.rotates = true;
 
-    expect(resolveCylinder(scene.p)).toBeUndefined();
+    expect(cylinderAtSeal(scene.p)).toBeUndefined();
   });
 
   it('declines a grounded slider, which has no barrel to be', () => {
     const scene = piston();
-    scene.slider.groundAt(0);
+    scene.seal.groundAt(0);
 
-    expect(resolveCylinder(scene.p)).toBeUndefined();
+    expect(cylinderAtSeal(scene.p)).toBeUndefined();
   });
 
   it('declines a rod carrying more than one other joint', () => {
@@ -106,7 +121,7 @@ describe('recognizing a cylinder', () => {
     scene.rod.joints.push(extra);
     extra.links.push(scene.rod);
 
-    expect(resolveCylinder(scene.p)).toBeUndefined();
+    expect(cylinderAtSeal(scene.p)).toBeUndefined();
   });
 
   it('declines a barrel carrying more than two joints', () => {
@@ -115,48 +130,136 @@ describe('recognizing a cylinder', () => {
     scene.barrel.joints.push(extra);
     extra.links.push(scene.barrel);
 
-    expect(resolveCylinder(scene.p)).toBeUndefined();
+    expect(cylinderAtSeal(scene.p)).toBeUndefined();
   });
 
-  it('tolerates a rod drawn by hand, not only one placed by arithmetic', () => {
-    // At 1e-6 a piston could be opened from a URL and never built: nothing
-    // placed with a mouse lands within a millionth of a unit of a line. Half a
-    // block's width across is the bound, because anything inside that is behind
-    // the block the skin draws over it.
-    const inside = MARK.blockAcrossHalf * 0.15 * SettingsService.objectScale * 0.9;
-    const outside = MARK.blockAcrossHalf * 0.15 * SettingsService.objectScale * 1.1;
+  it('declines a seal with two rods on it', () => {
+    // Which of them is the rod is not a question with an answer, and guessing
+    // would make the drawing depend on the order the reader drew things in.
+    const scene = piston();
+    const other = new RevJoint('W', 4 * S, 4 * S);
+    const second = new RealLink('PW', [scene.seal, other], 1, 1);
+    [scene.seal, other].forEach((joint) => joint.links.push(second));
 
-    // `inside`/`outside` are objectScale-derived and so already model units.
-    expect(resolveCylinder(piston({ rodAt: [7 * S, inside] }).p)).toBeDefined();
-    expect(resolveCylinder(piston({ rodAt: [7 * S, outside] }).p)).toBeUndefined();
+    expect(cylinderAtSeal(scene.p)).toBeUndefined();
   });
 
-  it('declines a barrel and a rod that are not the same length', () => {
-    // The invariant, as a tripwire. Nothing in the app can build such a part —
-    // every constructive path lays barrel and rod out equal — so this is here
-    // for the assembly nobody went through: a fixture, or a hand-written URL,
-    // which would otherwise be drawn and solved as a ram it is not.
-    const stubby = describeCylinder(piston({ rodAt: [4 * S, 0] }).p);
+  it('reports where in its travel the seal stands, on every read', () => {
+    const found = cylinderAtSeal(piston().p)!;
+    expect(found.start).toBeCloseTo(cylinderSizeOf(found).start, 12);
 
-    expect(typeof stubby).toBe('string');
-    expect(stubby).toContain('the same length');
+    // Read rather than stored: the record is cached per topology revision and
+    // a drag moves joints without touching the topology, so a field taken at
+    // lookup time would answer for a pose that has gone.
+    const before = found.start;
+    found.seal.x -= 2 * S;
+    expect(found.start).not.toBeCloseTo(before, 6);
+    expect(found.start).toBeCloseTo(cylinderSizeOf(found).start, 12);
   });
 
-  it('says what is missing when the shape does not qualify', () => {
-    // The panel offers the picker to any Slide now, so the reason has to be
-    // readable by someone who does not yet have a cylinder.
-    const bent = describeCylinder(piston({ rodAt: [6 * S, 2 * S] }).p);
+  it('reads the seal’s place along the barrel, not the distance between the joints', () => {
+    // Decision S3: the two members have their own lengths. Carrying the far
+    // joint out without touching the seal makes the *rod* longer -- which is
+    // what the derivation already believes -- and the cylinder has not moved
+    // in its travel at all. Read off the span, it would have said the part had
+    // opened, and the drawing and the number would be describing different
+    // things.
+    const found = cylinderAtSeal(piston().p)!;
+    const before = found.start;
+    found.mountB.x += 4 * S;
 
-    expect(typeof bent).toBe('string');
-    expect(bent).toContain('line up');
+    expect(found.start).toBeCloseTo(before, 12);
+    expect(cylinderSizeOf(found).rodLength).toBeCloseTo(11 * S, 9);
+  });
+});
+
+describe('deriving the two joints a seal owns', () => {
+  it('writes nothing for a cylinder that is already straight', () => {
+    const found = cylinderAtSeal(piston().p)!;
+
+    const derived = derivedInterior(found)!;
+    expect(derived.inner.x).toBeCloseTo(found.inner.x, 9);
+    expect(derived.inner.y).toBeCloseTo(found.inner.y, 9);
+    expect(derived.seal.x).toBeCloseTo(found.seal.x, 9);
+    expect(derived.seal.y).toBeCloseTo(found.seal.y, 9);
   });
 
-  it('tolerates the float error a solved position carries', () => {
-    // Positions come out of a numeric solve, so exact collinearity never
-    // survives to the renderer. A test at machine epsilon would make the skin
-    // flicker on and off between timesteps.
-    const scene = piston({ rodAt: [7 * S, 1e-9] });
+  it('puts a bent inner end back on the axis, at the barrel’s own length', () => {
+    const scene = piston();
+    const found = cylinderAtSeal(scene.p)!;
+    const barrel = Math.hypot(scene.n.x - scene.m.x, scene.n.y - scene.m.y);
+    scene.n.y += 3 * S;
 
-    expect(resolveCylinder(scene.p, 1e-6)).toBeDefined();
+    const derived = derivedInterior(found)!;
+    // Back on the line M--T, one barrel along it. The bend is gone and the
+    // length it was drawn with is kept.
+    expect(derived.inner.y).toBeCloseTo(0, 9);
+    expect(derived.inner.x).toBeCloseTo(scene.m.x + Math.hypot(scene.n.x - scene.m.x, 3 * S), 9);
+    expect(barrel).toBeCloseTo(7 * S, 9);
+  });
+
+  it('brings a flung seal back to one rod’s length short of its mount', () => {
+    const scene = piston();
+    const found = cylinderAtSeal(scene.p)!;
+    const rod = Math.hypot(scene.t.x - scene.p.x, scene.t.y - scene.p.y);
+    scene.p.x += 4 * S;
+    scene.p.y -= 5 * S;
+
+    const derived = derivedInterior(found)!;
+    const flung = Math.hypot(scene.t.x - scene.p.x, scene.t.y - scene.p.y);
+    expect(Math.hypot(scene.t.x - derived.seal.x, scene.t.y - derived.seal.y)).toBeCloseTo(
+      flung,
+      9
+    );
+    expect(derived.seal.y).toBeCloseTo(0, 9);
+    // The rod's length as drawn, not the barrel's: the two are equal in
+    // everything the app can draw, and it is the rod's that this reads.
+    expect(rod).toBeCloseTo(7 * S, 9);
+  });
+
+  it('never moves a mount', () => {
+    const scene = piston({ rodAt: [6 * S, 2 * S] });
+    const found = cylinderAtSeal(scene.p)!;
+    const mounts = [
+      { x: scene.m.x, y: scene.m.y },
+      { x: scene.t.x, y: scene.t.y },
+    ];
+
+    expect(Object.keys(derivedInterior(found)!).sort()).toEqual(['inner', 'seal']);
+    expect([
+      { x: scene.m.x, y: scene.m.y },
+      { x: scene.t.x, y: scene.t.y },
+    ]).toEqual(mounts);
+  });
+
+  it('does not clamp the seal into the travel', () => {
+    // Raising Object Size grows the head under a part nobody touched and can
+    // leave the seal outside its own stops. Snapping it in would move a joint
+    // with no undo entry and destroy the geometry that scaling back down would
+    // restore; the solver refuses to run the part instead, which is what the
+    // panel already says.
+    const scene = piston();
+    const found = cylinderAtSeal(scene.p)!;
+    // A barrel far too short to hold a seal standing 8 units out from its
+    // mount -- the shape an Object Size change leaves behind.
+    scene.n.x = -7 * S;
+
+    const derived = derivedInterior(found)!;
+    const along = derived.seal.x - scene.m.x;
+    expect(along).toBeCloseTo(8 * S, 9);
+    expect(along).toBeGreaterThan(cylinderStrokeAlong(1 * S).max);
+    // And the part is left exactly as drawn rather than folded up.
+    expect(derived.seal.y).toBeCloseTo(0, 9);
+  });
+
+  it('declines a cylinder whose mounts are in the same place', () => {
+    // Coincident mounts give no axis to lay anything along, and a direction
+    // picked at random is worse than the drawing as it stands.
+    const scene = piston();
+    const found = cylinderAtSeal(scene.p)!;
+    scene.t.x = scene.m.x;
+    scene.t.y = scene.m.y;
+
+    expect(derivedInterior(found)).toBeUndefined();
   });
 });

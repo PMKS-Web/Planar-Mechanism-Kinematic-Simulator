@@ -2,6 +2,20 @@
 
 > **Status:** Built — steps 1–6 shipped September 8–10, 2026 (`d8721d3` removed the mount ban; `slotWouldFoldACylinder` in `model/drop-target.ts`). Guarded by `e2e/cylinder-mount.mjs`, `e2e/cylinder-mount-render.mjs` and `src/tests/verification/welded-mount-release.spec.ts`.
 
+> **Its drawing rule is superseded, September 20, 2026.** What this document asks for at a
+> welded mount -- a bracket that "meets the corresponding cylinder-side silhouette", with "a
+> single outside stroke and nonoverlapping clipped fill regions for differently colored
+> members" -- shipped as the compound *leaving the member out of its union altogether*. That is
+> a bracket standing beside the part, not one body with it: its own shape, its own color, its own
+> edge, and at a barrel mount its round end showing as a circle inside the barrel. Decision S16
+> of `joint-type-and-cylinder-plan.md` replaces the rule. The member's silhouette goes **into**
+> the body's union, so the elbow is filleted and the body has one fill and one continuous
+> outline, exactly as two ordinary welded links do; a welded member is painted in its body's
+> color rather than keeping one of its own; and the layering this document describes is honored
+> by painting the body in the member's own place in the skin's stack -- under the head block for
+> a barrel, over it for a rod -- rather than by leaving it in the links layer. Everything else
+> here stands.
+
 Planning baseline: `staging` at `c56f757`, September 8, 2026. It was written before any
 implementation. Read `CLAUDE.md` and `docs/cylinder-mount-joints-brief.md` first. References
 below use paths relative to `src/app/` unless another root is given; function names are the
@@ -30,6 +44,13 @@ blocks on one pin, new cylinder dimensions, new URL flags, and a general interac
 constraint solver. Closed-form optimizations for coupled mount arrangements can also wait;
 correct simultaneous placement cannot. Conflicting edit requests may be refused atomically
 with a model reason, rather than silently deforming welded neighbors.
+
+> *September 21, 2026: the last clause is history. Decision **S21** in
+> [`joint-type-and-cylinder-plan.md`](joint-type-and-cylinder-plan.md) makes deforming a welded
+> neighbor the ordinary answer rather than the thing to refuse — only a drag of the body carries
+> what is welded to a cylinder, and every other edit lets that body change shape, the way an
+> ordinary compound link does when one of its joints is dragged. The atomic part stands: an edit
+> that genuinely cannot happen is still refused whole, with nothing written.*
 
 ## Findings that correct or extend the brief
 
@@ -83,7 +104,7 @@ operations by writing a subset of the five joints.
 | --- | --- | --- |
 | Keep ad hoc inference and add exceptions | Lowest initial diff, but duplicates role, movement, and render ownership decisions again. | Reject; it leaves the known failure pattern in place. |
 | Derived assembly API, five-member graph retained | Explicit two-port editing/rendering with existing URL, analysis, and force compatibility. | Use for this task. This is a structural refactor, not just guard removal. |
-| Persist a Cylinder entity and lower it to solver bodies | Stable intrinsic mount identity, but requires legacy import, URL migration, history, fixtures, exports, selection, and property ownership changes. | Reasonable future direction, not necessary for these mounts. |
+| Persist a Cylinder entity and lower it to solver bodies | Stable intrinsic mount identity, but requires legacy import, URL migration, history, fixtures, exports, selection, and property ownership changes. | Reasonable future direction, not necessary for these mounts. **Built since**, without the migration — see below. |
 
 An eventual persisted entity should describe two bodies connected by a prismatic constraint,
 with two external attachment frames. It must not become one rigid solver body: extension is
@@ -95,6 +116,17 @@ No new persisted ID is needed now: the sealed slider ID identifies the assembly 
 snapshot/history state. The resolver must still reject ambiguous legacy structures; role
 snapshots prevent endpoint guessing mid-edit. A persisted entity could eliminate the remaining
 import-time distance convention later. Do not add an unversioned cylinder record to this codec.
+
+> **That future direction is built, and the row above understated how cheaply.** Stage 2 of
+> [`joint-type-and-cylinder-plan.md`](joint-type-and-cylinder-plan.md) made the cylinder a record
+> looked up from its seal — `seal`, `mountA`, `mountB`, `inner`, `barrel`, `rod` — with the slot's
+> own order carrying the roles, so nothing is measured to find one and role snapshots are gone
+> with the guessing they existed to prevent. The codec carries no cylinder record, exactly as the last line
+> here asks: the record is derived rather than stored, so there was no URL migration, no history change
+> and no fixture to rewrite. The import-time distance convention survives in the one place it was
+> ever needed, the reader putting an old payload's slot in order, once, before anything asks.
+> Ambiguity is still refused rather than resolved: a seal with two candidate rods is not a
+> cylinder.
 
 ## One boundary model and the refusal audit
 
@@ -118,6 +150,13 @@ the test for prohibiting a mount operation.
 | `edit-panel.component.ts:665–676`, `:753` | Remove/rename misnamed `isCylinderMount`; disable from shared operation result and show its reason. | Use `emitEvent: false`; edit permissions and locks remain outer authorities. |
 | `createCylinderFrom:4244`, menu `:503` | Permit welded external start/end joints; absorb new barrel/rod into the intended compounds before normalization/save. | No interior start/end, self-collapse, second block, or ambiguous input. Preview and commit quote the same attachment model. |
 | `new-grid.component.ts:2054`, mount drag route | Enable ordinary slot candidate discovery/commit alongside mount pose handling. | Reject slot on the same resulting rigid body; Alt/snap priorities follow ordinary pin dragging. |
+
+*This last row did not land with the rest of the plan. The branch went on clearing `slotCandidate`
+for a mount drag, under a comment saying a mount never rides a slot, and the floating case stayed
+reachable only by calling `cutSlotOn` on the service — which is how `e2e/cylinder-mount.mjs` proves
+it. **It landed on September 21, 2026**, as decision S22 of
+[`joint-type-and-cylinder-plan.md`](joint-type-and-cylinder-plan.md), with
+`e2e/cylinder-mount-slot.mjs` driving the real gesture.*
 
 Keep broad cylinder membership for lifecycle protection, deletion discovery, cylinder selection,
 and part naming where that is the actual question. Keep `isCylinderInterior` hiding exactly the

@@ -38,7 +38,44 @@ export function mechanismStub(hold: LinkHold = undefined): Provider {
       setHold: (_link: unknown, next: LinkHold) => {
         current = next;
       },
-      cylinderOfLink: () => undefined,
+      cylinderOfBar: () => undefined,
+      memberHoldOf: () => false,
+      setMemberHold: () => undefined,
+      pauseInPlace: () => undefined,
+      easeToStart: () => undefined,
+    },
+  };
+}
+
+/**
+ * The same stub for a link the drawing says is a cylinder's barrel or rod.
+ *
+ * A member's two rows answer from two places (decision S5): the length is the
+ * member's own flag and the angle is the whole part's, so the block asks
+ * `memberHoldOf` rather than `holdOf`. The stub keeps the pair here, as the
+ * real service keeps it across two members.
+ */
+export function cylinderMemberStub(holds: { length?: boolean; angle?: boolean } = {}): Provider {
+  const current = { length: holds.length === true, angle: holds.angle === true };
+  // The two joints the block asks a cylinder for: what a Lock would have to
+  // hold for the part to count as pinned in place.
+  const sealed = { mountA: { id: 'A' }, mountB: { id: 'B' } };
+  return {
+    provide: MechanismService,
+    useValue: {
+      joints: [],
+      links: [],
+      forces: [],
+      updateMechanism: () => undefined,
+      isLockedTarget: () => false,
+      toggleLock: () => undefined,
+      holdOf: () => (current.angle ? 'angle' : undefined),
+      setHold: () => undefined,
+      cylinderOfBar: () => sealed,
+      memberHoldOf: (_link: unknown, which: 'length' | 'angle') => current[which],
+      setMemberHold: (_link: unknown, which: 'length' | 'angle', on: boolean) => {
+        current[which] = on;
+      },
       pauseInPlace: () => undefined,
       easeToStart: () => undefined,
     },

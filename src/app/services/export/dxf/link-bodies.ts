@@ -1,4 +1,5 @@
 import { PrisJoint } from '../../../model/joint';
+import { barHalfWidth } from '../../../model/joint-marks';
 import { Link, RealLink } from '../../../model/link';
 import { MODEL_SCALE } from '../../../model/render-scale';
 import { SettingsService } from '../../settings.service';
@@ -45,8 +46,10 @@ const PIN_SHARE = 0.5;
 /** How wide the drawn link bodies are, in model units. */
 export function linkBodyWidth(): number {
   // The same number the outline's corner radius is built from -- the bodies are
-  // drawn as a bar of this width with a semicircular cap at each end.
-  return (SettingsService.objectScale / 4) * 2;
+  // drawn as a bar of this width with a semicircular cap at each end. A parts
+  // drawing is the canvas's parts, so when the bar came down to the rod's
+  // half-width (decision S23) the exported body came down with it.
+  return barHalfWidth(SettingsService.objectScale) * 2;
 }
 
 /**

@@ -733,6 +733,24 @@ refused with words. Writing their canonicalization transforms (§5.5) is still t
 them; nothing in the sweep changes when one is written except that its row moves from *refused* to
 *ok*.
 
+### 7.3 Where this argument was incomplete (21 September 2026)
+
+A maintainer reported that "a combination of undo, redo, drag, and play pause, especially when it's
+at a non-zero position, causes the ghost to not be synced with the actual start position of the
+mechanism." Four causes, all of them pre-existing — `origin/staging` reproduces every one — and
+none of them about cylinders, though a cylinder drawing is what they were noticed on. They are
+recorded here because each is a place this document argued one half of a question and left the
+other half unsaid. `e2e/ghost-is-the-start.mjs` is the guard, and the invariant it holds is one
+sentence: **at every moment a ghost is drawn for a machine, it is the pose that machine takes when
+stop-to-start is pressed, and that pose is the design the URL saves.**
+
+| Where the argument stopped | What followed from it | What was written |
+| --- | --- | --- |
+| §3 and §6 argue at length for holding an anchor across an edit made at some *other* pose, and never say what an edit made **at** the start pose does to it. The answer is obvious once asked — the reader is looking at the start and changing it, so the anchor moves with it — and the code did the opposite, holding the anchor whenever the topology and the rule were unchanged | Drag the driven crank's pin at the start pose and the design's t = 0 is the drawing as edited while the anchor still names the old crank angle. Invisible until playback moves, because the canvas draws no ghost at the start pose — then the ghost appears a third of a turn from where stop-to-start lands. This is the reported defect | `reanchorIfStartMoved` re-reads an anchor whose seed is no longer the machine's sample 0, for every machine the rebuild did not stage. The stored coordinate is kept where it still names that pose, so the drift §3 stores a coordinate to avoid does not come back |
+| §5.3's invariant is stated per machine — "no machine's canonical pose is ever seeded from its displayed one" — but "displaced" is asked of the drawing, and `seekMechanism` writes the shared sample index only for the **master** machine | Synced, any other machine can be parked mid-cycle with the shared step at zero, which is exactly where a posed edit's closing re-seek leaves it. `isAtStartPose()` answered yes, `restoreStartPose` skipped, and the next edit anywhere wrote that machine's displayed pose down as its t = 0: 692 model units on `Three_Machines`, saved to the URL, with no ghost drawn over it | `atStartPose` consults every machine's own clock in both modes. `model/edit-permission.ts` has described the answer as "every machine parked at its own start" all along |
+| §6.1 designs the amber ghost as the warning a drag gets while the start is momentarily out of reach, and does not say what it means when there is no anchor at all | Switch a machine's drive to a joint whose input has no coordinate rule and the anchor goes while the cycle stays. The held ghost stood there in amber between gestures, over a machine with no start to lose, disagreeing with `anchorIsReachable` — which has always answered that nothing anchored is not a machine in trouble | No anchor now means no ghost, and the held pose is dropped with it |
+| §6.2 reasons about what an operation *means* and never about the drawings an operation passes **through**. One edit is several steps, and the drawing between two of them is one nobody asked for | `refreshAnchors` judged "this machine still exists" by whether it could be solved, so a grounded pin retyped at a paused pose — un-grounded, retyped, grounded again — lost its anchor to the middle step and took a fresh one from the pose under the reader's hand. The 🔴 row in `e2e/posed-edit-audit.mjs` was this | The `alive` set is about the owned-joint set and nothing else. `capturingPose` also narrates a start it could not keep, through `MechanismService.sayStartMoved` — the same sentence and the same transport chip a drag's release raises, which §6.1 specifies without saying it applies to a menu row too |
+
 ## 8. Risks, named
 
 1. **The ratchet returns.** The design stands on the §5.3 invariant — no machine's canonical

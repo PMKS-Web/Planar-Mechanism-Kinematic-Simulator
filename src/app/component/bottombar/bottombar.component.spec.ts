@@ -1,8 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { BottombarComponent } from './bottombar.component';
+import { ActiveObjService } from '../../services/active-obj.service';
 import { MechanismService } from '../../services/mechanism.service';
 import { SettingsService } from '../../services/settings.service';
 import { SvgGridService } from '../../services/svg-grid.service';
+import { Coord } from '../../model/coord';
+import { RealLink } from '../../model/link';
+import { MODEL_SCALE } from '../../model/render-scale';
 import { LengthUnit } from '../../model/utils';
 
 // Found by building a linkage with a real mouse rather than with dispatched
@@ -78,5 +82,47 @@ describe('the mobility readout', () => {
     // before the rigid-body grouping gets to it.
     withDof(-1);
     expect(component.degreesOfFreedom).toBe('-1');
+  });
+});
+
+// The strip names a held body, and it named it by its link id -- which is the
+// letters of its joints. That is a fine key and a poor name for a cylinder
+// member: the barrel's id holds the buried end nothing draws, and both members
+// have panels and menus that call them Barrel AC and Rod CB (decision S10). One
+// label, so the three cannot disagree.
+describe('what the strip calls a body holding a value', () => {
+  let component: BottombarComponent;
+  let mechanism: MechanismService;
+  let active: ActiveObjService;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ imports: [BottombarComponent] });
+    component = TestBed.createComponent(BottombarComponent).componentInstance;
+    mechanism = TestBed.inject(MechanismService);
+    active = TestBed.inject(ActiveObjService);
+    mechanism.resetMechanism();
+  });
+  afterEach(() => mechanism.resetMechanism());
+
+  it('calls an ordinary bar a Link, exactly as it always has', () => {
+    const bar = mechanism.addBar(new Coord(0, 0), new Coord(2 * MODEL_SCALE, 0))!;
+    bar.hold = 'length';
+    active.updateSelectedObj(bar);
+    expect(component.status).toBe(`Link ${bar.id}: fixed length`);
+  });
+
+  it('calls a cylinder member by its own name', () => {
+    mechanism.createCylinderFrom(new Coord(0, 0), new Coord(6 * MODEL_SCALE, 0));
+    mechanism.finishStructuralEdit(true);
+    const ram = mechanism.sealedStructures()[0];
+    const rod = ram.rod as RealLink;
+    rod.hold = 'length';
+    active.updateSelectedObj(rod);
+
+    expect(component.status).toBe(
+      `Rod ${ram.seal.name || ram.seal.id}${ram.mountB.name || ram.mountB.id}: fixed length`
+    );
+    // And not the id, which names a joint the reader was never shown.
+    expect(component.status).not.toContain(`Link ${rod.id}`);
   });
 });

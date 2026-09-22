@@ -41,7 +41,7 @@ export function cylinderBetween(
   const span = Math.hypot(driven.x - mount.x, driven.y - mount.y);
   // Inverted through the model's own span rule: the body length a span carries
   // is not a constant, because the head shrinks on a ram too short to hold it.
-  const { stroke, barrel, pinAlong } = cylinderSpanLayoutFrom(span, start, 0.15);
+  const { stroke, barrel, sealAlong: pinAlong } = cylinderSpanLayoutFrom(span, start, 0.15);
   const at = (distance: number) => ({
     x: mount.x + ((driven.x - mount.x) * distance) / span,
     y: mount.y + ((driven.y - mount.y) * distance) / span,

@@ -36,13 +36,16 @@
     <!-- The cell carries a grayed option's reason, not the button: a disabled
          button takes no pointer events, so a tooltip on it would never open.
          The same sentence is the button's description, for a reader who
-         cannot point. -->
+         cannot point.
+
+         The side it opens on is the option's row, so that the reason is never
+         over another option: see `sideFor`. -->
     <span
       class="cell"
       [matTooltip]="reasonAt($index) ?? ''"
       [matTooltipDisabled]="!reasonAt($index)"
       matTooltipShowDelay="400"
-      matTooltipPosition="above"
+      [matTooltipPosition]="sideFor($index)"
     >
       <button
         #option

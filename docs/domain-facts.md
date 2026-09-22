@@ -94,6 +94,30 @@ Two rules keep the whole thing conservative, and both matter:
   moves, Gruebler's own number is the more useful: `-2` says how much has to come out, and a flat
   zero from a rank count says only that it is stuck. `e2e/phase1-drag.mjs` pins that.
 
+**A joint costs one less than the number of bodies it holds together**, which is where a cylinder
+welded into one body at both ends comes out right without anything being said about cylinders. Its
+seal has that body on either side of it, so it meets one body, costs nothing, and the assembly is
+one rigid link that turns on whatever pins it (decision S25). `model/cylinder-frozen.ts` is the
+predicate everything else asks — the force solver, the readiness warning, the Add Input refusal —
+and it reads "one body" off `mechanism/bodies.ts` so the count and the sentences cannot disagree.
+Two bodies meeting at a single pin are *not* one body and the slide there is a real sliding pair.
+They are rigid *to each other* all the same, because a pin and a Slide between the same two bodies
+remove all three freedoms between them — and that is a redundancy Gruebler cannot see, so it
+charges for the slot row, counts **0**, and the geometry rescues it to **1**. One is right: the
+pair is rigid to itself and turns as one body about whatever grounds it.
+
+**And the third way the count is not the answer: it counts the drawing, and a reader means the
+machine.** A cylinder nothing drives and nothing moves is a strut — a ram with its valves shut — so
+a triangle of three of them turns as one rigid body even though Gruebler counts three freedoms and
+is right to. `model/mechanism/cylinder-hold.ts` decides which passive rams are *held* by asking the
+**same Jacobian** one more question: hold the driven coordinate still, and can this slide still
+move? A ram that can is a length nothing is deciding and it holds; a ram that cannot is a follower
+the machine itself moves, and it is left alone (decision S28). A held ram is then merged into one
+body by the same `assignBodies` call a frozen one is, and the count is taken of what results — so
+`Degrees of freedom` is the machine's mobility, and the drawer's note is what explains the
+difference. It fires **only where the count is above one**, which is a drawing that refuses to run,
+so nothing that animates today is touched.
+
 The projection in `outsideRange` orthogonalizes the Jacobian's columns against each other before
 projecting. Subtracting each column in turn without that leaves part of the span behind and reports
 every genuine motion as a tangency — which is the answer exactly inverted, and it passes the whole
@@ -451,9 +475,18 @@ is.
 
 A cylinder points somewhere the same way a bar does, so it can hold that direction -- and the pair
 the hold is about is its two mounts, which is what the reader sees and what the panel's Angle field
-states. It has no *length* to hold: mount to mount is the stroke, which is what the drive moves, so
-holding it would be holding against the drive. The flag is written on the **barrel**, so whichever
-member was clicked gives one answer and one `H` entry rides the URL.
+states. The part as a whole has no *length* to hold: mount to mount is the span, and the span is
+exactly what the drive changes, so holding it would be holding against the drive. Each member's
+own length is a different question and is held on the member. The flag is written on the **barrel**
+by preference, so whichever member was clicked gives one answer and one `H` entry rides the URL.
+
+**Either member may carry it, and `cylinderAngleCarrier` is who to ask** (Stage 2b, decision S5).
+Each member now has a *length* of its own to hold as well, and a member holds one thing -- so a rod
+fixed at its length leaves the barrel free for the angle, and a barrel fixed at its length pushes
+the angle onto the rod. The angle reads as held when *either* flag says `'angle'`, and `heldBars`
+still emits exactly one bar, on the two mounts, under the id of whichever member is carrying it.
+A member's `'length'` hold is **never** handed to the hold solver: it constrains a length the
+*layout* chooses, and `model/cylinder.ts` is where it is honored (`CylinderHolds`).
 
 Three traps, all of which this walked into:
 
@@ -464,14 +497,14 @@ Three traps, all of which this walked into:
   question of the form "is this link part of a ram?" has to be asked of the **drawing**
   (`cylinderMembers` in `model/link-holds.ts`). Without that, a barrel answers the plain-bar test --
   it is a two-joint `RealLink`, after all -- and the solver is handed the barrel's own two joints,
-  a pair inside the part that the normalizer re-derives anyway. The hold then holds nothing anybody
-  can see, and it looks exactly like a solver bug.
+  a pair the part re-derives from its mounts after every rebuild anyway. The hold then holds
+  nothing anybody can see, and it looks exactly like a solver bug.
 - **`holdAnchor` counted every cylinder joint as immovable**, mounts included, on the older rule
   that a cylinder's joints live on a line the solver does not know. True of the interior and wrong
   about the mounts, which are ordinary joints a reader drags -- and the failure is silent in the
   worst way: the drag is not refused with a message, the mount simply does not move, because the
   goal joint has weight zero and `settleHolds` returns a satisfied solution in which nothing moved.
-  Only the interior is an anchor now (`isCylinderInterior`).
+  Only the two joints inside the part are an anchor now (`isInsideCylinder`).
 - **The mount-drag branch never asked the holds anything afterwards.** `jointStates.dragging` has a
   branch of its own for a cylinder mount (it re-poses the ram parametrically), and it called
   `dragJoint` -- so the constraint was applied -- but not `afterHoldMove`, so no guide line and no
