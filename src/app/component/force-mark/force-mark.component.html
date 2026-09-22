@@ -1,6 +1,16 @@
 @let f = force();
 @let scale = settings.objectScale;
 @let picked = selected() && paused();
+@if (picked) {
+  <svg:line
+    class="forceSelectedLine"
+    [attr.x1]="f.startCoord.x"
+    [attr.y1]="f.startCoord.y"
+    [attr.x2]="f.endCoord.x"
+    [attr.y2]="f.endCoord.y"
+    [attr.stroke-width]="0.03 * scale"
+  />
+}
 <svg:g
   class="forceApplicationMark"
   [attr.transform]="
@@ -16,10 +26,11 @@
   @if (picked) {
     <svg:line
       class="forceDatum"
+      [style.stroke]="ink() ?? 'var(--canvas-inert)'"
       [attr.x1]="-0.5 * scale"
       [attr.x2]="0.5 * scale"
-      [attr.stroke-width]="grid.scaleWithZoom(2)"
-      [attr.stroke-dasharray]="grid.scaleWithZoom(7) + ' ' + grid.scaleWithZoom(5)"
+      [attr.stroke-width]="(2 / 90) * scale"
+      [attr.stroke-dasharray]="(7 / 90) * scale + ' ' + (5 / 90) * scale"
     />
   }
   <svg:circle
@@ -27,14 +38,14 @@
     [class.picked]="picked"
     [attr.r]="0.75 * f.visualWidth * scale"
     [style.fill]="picked ? null : (ink() ?? 'var(--canvas-inert)')"
-    [attr.stroke-width]="grid.scaleWithZoom(picked ? 2.7 : 3)"
+    [attr.stroke-width]="(picked ? 0.03 : 1 / 30) * scale"
   />
   @if (f.local) {
     <svg:line
       class="forceKeyway"
       [attr.x1]="-0.075 * scale"
       [attr.x2]="0.075 * scale"
-      [attr.stroke-width]="grid.scaleWithZoom(3.2)"
+      [attr.stroke-width]="(3.2 / 90) * scale"
     />
   } @else {
     <svg:circle class="forceFrameRing" [attr.r]="0.026 * scale" />

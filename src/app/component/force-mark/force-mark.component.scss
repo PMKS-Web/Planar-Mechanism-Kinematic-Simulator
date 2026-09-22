@@ -1,7 +1,6 @@
 .forceDisc {
   fill: var(--primary);
   stroke: var(--canvas-halo);
-  paint-order: stroke;
   &.picked {
     fill: var(--canvas-selection);
     stroke: var(--accent);
@@ -14,6 +13,9 @@
   fill: var(--canvas-halo);
 }
 .forceDatum {
+  stroke-opacity: 0.8;
+}
+.forceSelectedLine {
   stroke: var(--accent);
 }
 .forceAngleGuide {

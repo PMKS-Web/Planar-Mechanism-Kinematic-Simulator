@@ -2137,7 +2137,7 @@
               [attr.width]="0.15 * settings.objectScale"
               [attr.height]="0.15 * settings.objectScale"
               [attr.transform]="'rotate(' + force.angleRad * 57.29577951308232 + ')'"
-              [attr.stroke-width]="svgGrid.scaleWithZoom(2.7)"
+              [attr.stroke-width]="0.03 * settings.objectScale"
               class="forceEndpointHandle"
             />
           </svg>
@@ -2423,7 +2423,10 @@
                 this.activeObjService.objType == 'Force'))
           ) {
             <text
-              [style.font-size.px]="tagFontSize"
+              class="forceLabel"
+              [style.font-size.px]="settings.objectScale / 6"
+              [attr.y]="0.1 * settings.objectScale"
+              [attr.stroke-width]="(3.5 / 90) * settings.objectScale"
               style="text-anchor: middle; dominant-baseline: middle"
             >
               {{ force.name }}

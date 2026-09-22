@@ -1,3 +1,4 @@
+import { forceInk } from '../../model/force-ink';
 import { ForceMarkComponent } from '../force-mark/force-mark.component';
 import { barLabelAxis } from '../../model/bar-label-axis';
 import { PlacementTargetService } from '../../services/placement-target.service';
@@ -143,7 +144,7 @@ export interface SlotStackItem {
 import { SvgArrowComponent } from '../svg-arrow/svg-arrow.component';
 import { KeyboardShortcutsService, ShortcutId } from '../../services/keyboard-shortcuts.service';
 import { INK_FLIPS_AT, luminanceOf } from '../../model/contrast';
-import { DEFAULT_FORCE_COLOR, SELECTION_RING } from '../../model/joint-colors';
+import { SELECTION_RING } from '../../model/joint-colors';
 import { isAdditiveSelectionGesture, SelectedPart } from '../../model/selection';
 import {
   captureSelectionTransform,
@@ -5438,7 +5439,11 @@ export class NewGridComponent implements OnDestroy {
 
   forceInkOf(force: Force): string | null {
     if (this.mechanismSrv.isPartInert(force.link)) return null;
-    return force.showHighlight ? 'var(--canvas-force-hover)' : force.color || DEFAULT_FORCE_COLOR;
+    return forceInk(
+      force,
+      this.activeObjService.objType === 'Force' && this.activeObjService.selectedForce === force,
+      this.mechanismSrv.isPlaying
+    );
   }
 
   /**

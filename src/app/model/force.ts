@@ -257,24 +257,18 @@ export class Force {
   }
 
   createForceLine(startCoord: Coord, endCoord: Coord) {
-    //Shorten the end of the line the height of the arrow
-    const angle = Math.atan2(endCoord.y - startCoord.y, endCoord.x - startCoord.x);
-    const dx = Math.cos(angle) * this.visualWidth * SettingsService.objectScale;
-    const dy = Math.sin(angle) * this.visualWidth * SettingsService.objectScale;
-    let startX = startCoord.x + dx;
-    let startY = startCoord.y + dy;
-    let endX = endCoord.x - dx;
-    let endY = endCoord.y - dy;
-
-    if (this._arrowOutward) {
-      startX = startCoord.x;
-      startY = startCoord.y;
-    } else {
-      endX = endCoord.x;
-      endY = endCoord.y;
-    }
-
-    return `M ${startX} ${startY} L ${endX} ${endY}`;
+    // Stop at the triangle's base, not its tip: a wide shaft reaching the tip
+    // sticks out through the taper, especially when the inward head is inset.
+    const tail = this.arrowOutward ? startCoord : endCoord;
+    const head = this.arrowOutward ? endCoord : startCoord;
+    const direction = head.clone().subtract(tail);
+    const distance = Math.hypot(direction.x, direction.y);
+    const setback =
+      (this.arrowOutward ? 2 * this.visualWidth - 0.06 : 3 * this.visualWidth) *
+      SettingsService.objectScale;
+    if (distance <= setback) return '';
+    const end = head.clone().subtract(direction.normalize().scale(setback));
+    return `M ${tail.x} ${tail.y} L ${end.x} ${end.y}`;
   }
 
   createForceArrow(startCoord: Coord, endCoord: Coord) {

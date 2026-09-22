@@ -3804,16 +3804,19 @@ export class MechanismService {
       return;
     }
     const linkIndex = this.links.findIndex((candidate) => candidate === link);
-    if (linkIndex === -1) return;
+    if (linkIndex === -1 && !this.rootLinkOwning(link)) return;
 
     const ownedLinkIDs = new Set([
       link.id,
       ...(link instanceof RealLink ? link.subset.map((subset) => subset.id) : []),
     ]);
     this.forces
-      .filter((force) => ownedLinkIDs.has(force.link.id))
+      .filter(
+        (force) => ownedLinkIDs.has(force.link.id) || ownedLinkIDs.has(force.anchoredTo ?? '')
+      )
       .forEach((force) => this.detachForce(force));
-    this.links.splice(linkIndex, 1);
+    if (linkIndex === -1) this.releaseFromCompounds(ownedLinkIDs);
+    else this.links.splice(linkIndex, 1);
     this.joints = pruneUnlinkedJoints(this.joints, this.links, link.joints);
     this.activeObjService.updateSelectedObj(undefined);
     this.finishStructuralEdit(true);

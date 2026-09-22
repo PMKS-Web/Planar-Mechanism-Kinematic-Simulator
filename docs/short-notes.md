@@ -2054,3 +2054,12 @@ The second click on a compound now selects a primitive object, not the root with
 The designer’s “Force rendering and frame visualization-2.zip” final card 2a replaces the older force weld-plus grammar: a disc and ring/keyway stay at the application point, independent of arrow sense. The inward tip stops one shaft width before the anchor. The lock badge is offset beside the disc so the frame stays legible. The panel Angle and its hover/focus guide both measure from the owning body for Local, and from +x for Grid; stored `angleRad` continues to be the physical world direction.
 
 [Compound tracer reproduction on PR32](https://deploy-preview-32--pmksnew.netlify.app/?2v.9x,1E8.A,0.1011.0H,H,ve,0Cg,0.8I,I,11m,He,0.0J,J,1YS,01G,0..ARHIJ,HIJ,0,0,17v,5L,303e9f,H,I,J,,HI,IJ.aRHI,HI,0,0,zi,2V,303e9f,H,I,,.aRIJ,IJ,0,0,1I6,8C,0d125a,I,J,,...N_l*2yNYpD).
+
+
+### Force marks need one geometry scale, and inward shafts end at the head’s base
+
+The final force designer SVG uses the same proportions at every zoom: a 9-unit shaft, 2.7-unit selection stroke and handle outline, 3-unit white disc outline, and 3.2-unit keyway at object scale 90. Mixing screen-sized strokes with model-sized discs made the mark lose its proportions. Keep those marks in model scale, with the angle assistance remaining screen-scaled. The selected centerline is amber, the datum follows the force ink, and the square is cream. Hover lightens the chosen color rather than replacing the whole palette with one blue. An inward triangle’s tip is inset from the application disc, so its shaft must stop three shaft widths before the anchor, at the triangle base. `e2e/force-precision.mjs` compares actual Angular-rendered glyphs against the designer’s final card 2a, isolates them on identical scenery, and exercises all six colors.
+
+### Delete must address a selected primitive through its owning compound
+
+After a second click, `selectedLink` is a primitive absent from the root link array. A root-only index lookup made Delete silently return. Release that primitive through the existing compound split operation, remove forces anchored to it, and prune only its newly unlinked joints. Deletion previews must check surviving primitive membership rather than the compound’s old joint union. The HI/IJ reproduction is covered through keyboard Delete, panel Delete, and Undo in `e2e/force-frame.mjs`; a unit test preserves the remaining multi-member weld and its force.
