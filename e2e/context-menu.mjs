@@ -650,7 +650,7 @@ check(
 );
 check(
   'and reversing it is a verb, under Set',
-  rowNamed(forceTarget, 'Reverse Direction')?.off === false,
+  rowNamed(forceTarget, 'Flip Force')?.off === false,
   forceTarget?.groups
 );
 

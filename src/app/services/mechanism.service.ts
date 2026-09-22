@@ -1,3 +1,5 @@
+import { selectableLinks } from '../model/selection';
+import { LinkTraceService } from './link-trace.service';
 import { Injectable, Injector, inject } from '@angular/core';
 import { LinkHold } from '../model/link';
 import {
@@ -751,7 +753,7 @@ export class MechanismService {
       const from = `${force.startCoord.x},${force.startCoord.y}`;
       const to = `${force.endCoord.x},${force.endCoord.y}`;
       const at = `${from}-${to}`;
-      return `${force.id}>${force.link.id}@${at}m${force.mag}${force.local ? 'l' : ''}`;
+      return `${force.id}>${force.link.id}@${at}m${force.mag}${force.local ? 'l' : ''}${force.arrowOutward ? 'out' : 'in'}`;
     });
     return [
       joints.join('|'),
@@ -1402,10 +1404,12 @@ export class MechanismService {
       force,
       local: force.local,
       magnitude: force.mag,
+      outward: force.arrowOutward,
       angle: force.angleRad + (force.local ? frames[index]!.angle : 0),
     }));
     this.editingAtStartPose(() => {
-      requested.forEach(({ force, local, magnitude, angle }) => {
+      requested.forEach(({ force, local, magnitude, angle, outward }) => {
+        force.arrowOutward = outward;
         force.setLocal(local);
         force.setMagnitude(magnitude);
         force.setDirectionRadians(angle);
@@ -1653,6 +1657,7 @@ export class MechanismService {
    * different drawing that happens to spell its joints with the same letters.
    */
   clearVectorTraces(): void {
+    this.injector.get(LinkTraceService).clear();
     if (this.vectorTraceKeys.size === 0) return;
     this.vectorTraceKeys.clear();
     this.vectorTraceRevision++;
@@ -1866,7 +1871,7 @@ export class MechanismService {
       return (index: number) => solved.joints[index]?.find((one) => one.id === part.id);
     }
     return (index: number) => {
-      const link = solved.links[index]?.find((one) => one.id === part.id);
+      const link = selectableLinks(solved.links[index] ?? []).find((one) => one.id === part.id);
       return link instanceof RealLink ? link.CoM : undefined;
     };
   }
@@ -3699,7 +3704,7 @@ export class MechanismService {
 
   changeForceDirection() {
     const force = this.activeObjService.selectedForce;
-    this.editForcesAtPose([force], () => force.reverseDirection());
+    this.editForcesAtPose([force], () => force.flipForce());
   }
 
   changeForceLocal() {
@@ -5620,6 +5625,7 @@ export class MechanismService {
       f.startCoord.y = from.startCoord.y + (to.startCoord.y - from.startCoord.y) * blend;
       f.endCoord.x = from.endCoord.x + (to.endCoord.x - from.endCoord.x) * blend;
       f.endCoord.y = from.endCoord.y + (to.endCoord.y - from.endCoord.y) * blend;
+      f.arrowOutward = from.arrowOutward;
       f.local = from.local;
       f.mag = from.mag + (to.mag - from.mag) * blend;
       f.angleRad = blendAngle(from.angleRad, to.angleRad, blend);

@@ -389,7 +389,7 @@ describe('a cylinder held by two bodies that meet at a pin', () => {
     const seal = joints.find((joint) => joint.id === 'B') as RealJoint;
     expect(describeActuator(seal)).toBe(
       "Both of this cylinder's end joints are welded into Link ABCDE, so it cannot extend. " +
-        'Unweld joint A or joint C, or drive a different joint.'
+        'Unweld joint A or joint C, or set a different joint as the input.'
     );
     expect(describeActuatorRefusal(seal)?.short).toBe('cannot extend');
   });

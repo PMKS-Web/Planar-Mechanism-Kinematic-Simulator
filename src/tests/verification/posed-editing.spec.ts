@@ -1027,7 +1027,11 @@ describe('editing at a displaced pose', () => {
       Math.cos(originalAngle + startTurn - beforeTurn),
       6
     );
+    const tip = { x: force.endCoord.x, y: force.endCoord.y };
     service.changeForceDirection();
+    expect(force.arrowOutward).toBe(false);
+    expect(force.endCoord.x).toBeCloseTo(tip.x, 6);
+    expect(force.endCoord.y).toBeCloseTo(tip.y, 6);
     expect(Math.cos(force.angleRad)).toBeCloseTo(-Math.cos(originalAngle), 6);
     expect(Math.sin(force.angleRad)).toBeCloseTo(-Math.sin(originalAngle), 6);
     service.changeForceLocal();

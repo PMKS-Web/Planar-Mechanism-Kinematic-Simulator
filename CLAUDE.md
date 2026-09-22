@@ -260,6 +260,16 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
 - Onboarding is the **tutorial**: `services/tutorial.service.ts` with `model/tutorial-steps.ts`, shown by `component/tutorial-panel/` as a card *pinned* in the right drawer above whatever page is open (it is not one of the numbered pages). Its step is derived from the drawing by `progressFor`, never counted, which is what lets it start on a half-built mechanism and follow an undo backwards. It is offered from the Edit panel's empty state, reopened from the project menu, and remembers in `localStorage` (`tutorialSeen`) that it has been finished, dismissed or walked out of. The `intro.js` overlay tour it replaced is gone, dependency and all.
 - The tutorial card asks the drawing for its step from `ngDoCheck`, not a subscription: every edit ends in `updateMechanism`, which publishes on nothing that could be listened to — `onMechUpdateState` carries the *analysis* state, which is why caches elsewhere key on `poseRevision` instead.
 
+### Editor interaction rules
+
+- `NumberDragDirective` lets a reader drag the numeric field itself vertically. Five pixels changes one step (default 0.1; Shift is ten times finer). A click still edits text, Escape cancels, and release commits through the existing field validation as one undo entry.
+- A compound selects as a whole on its first click, then selects the primitive under the next click, including cylinder members. `model/link-pick.ts` owns that choice. Distance to Joints stays in the joint panel: `model/joint-distances.ts` offers only neighbors in the same primitive with three or more joints, excluding cylinder members.
+- New links and cylinders snap their bearing to 15-degree increments unless Option/Alt is held. `placementBearing` serves preview and commit; an eligible existing joint takes precedence and gets the yellow merge ring and merge pulse.
+- **Flip Force** exchanges the arrowhead and circle at fixed endpoints and reverses the physical load. `startCoord` remains the application point, `arrowOutward` selects which way the arrow faces, and `angleRad` always describes physical direction. The solve fingerprint must include `arrowOutward`. Changing the angle instead rotates the free handle around the application point.
+- `LinkTraceService` keeps transient CoM path choices for roots and primitive links. A path or vector trace shows the CoM mark even at zero mass. Vector traces thin samples by spatial separation and direction, so short travel does not accumulate a full cycle's arrows at one point.
+- A grounded welded revolute joint can be an input: welding fixes the bars to each other, not to the ground. A detached joint's panel explains that it is orphaned. Inert analysis geometry cannot begin a drag or reuse the previous drag target.
+- Notifications derive their default reading time from message length; callers can set `durationMs` or use `null` to keep one until dismissed. Warnings and failures remain persistent by default.
+
 ### Misc
 
 - `netlify/functions/getEmailJSKey.ts` is a Netlify serverless function supplying the EmailJS key for the feedback form.

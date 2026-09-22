@@ -34,7 +34,7 @@
     display: inline-flex;
     flex-direction: column;
     min-width: 224px;
-    max-width: min(320px, calc(100vw - 16px));
+    max-width: min(640px, calc(100vw - 16px));
     max-height: calc(100dvh - 16px);
     // The cap is the card's outer edge: with every joint row permanent the
     // menu reaches it on a short phone, and content-box put the bottom padding

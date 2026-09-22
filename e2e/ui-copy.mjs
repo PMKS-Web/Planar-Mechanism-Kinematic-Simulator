@@ -334,7 +334,7 @@ const drawer = await page
   .catch(() => '');
 record(
   'and the drawer names the blocker for the mechanism at fault',
-  /Nothing drives this mechanism/.test(drawer),
+  /No input is set/.test(drawer),
   drawer.slice(0, 240)
 );
 screen('the setup drawer', [drawer]);

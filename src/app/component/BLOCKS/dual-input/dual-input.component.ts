@@ -1,3 +1,4 @@
+import { NumberDragDirective } from '../../../directives/number-drag.directive';
 import {
   booleanAttribute,
   Component,
@@ -21,7 +22,15 @@ let nextInputId = 0;
   templateUrl: './dual-input.component.html',
   styleUrls: ['./dual-input.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [MatIcon, MatTooltip, FormsModule, ReactiveFormsModule, MatFormField, MatInput],
+  imports: [
+    NumberDragDirective,
+    MatIcon,
+    MatTooltip,
+    FormsModule,
+    ReactiveFormsModule,
+    MatFormField,
+    MatInput,
+  ],
 })
 export class DualInputComponent {
   /**

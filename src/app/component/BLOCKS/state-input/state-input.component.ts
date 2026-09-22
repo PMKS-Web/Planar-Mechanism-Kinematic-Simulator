@@ -1,3 +1,4 @@
+import { NumberDragDirective } from '../../../directives/number-drag.directive';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatFormField, MatSuffix } from '@angular/material/form-field';
@@ -20,7 +21,7 @@ import { selectAll } from '../select-all';
 @Component({
   selector: 'state-input',
   standalone: true,
-  imports: [ReactiveFormsModule, MatFormField, MatInput, MatSuffix],
+  imports: [NumberDragDirective, ReactiveFormsModule, MatFormField, MatInput, MatSuffix],
   template: `
     <div id="input-block" class="state-input-host">
       <div class="row" [formGroup]="formGroup">
@@ -31,6 +32,7 @@ import { selectAll } from '../select-all';
           (mouseleave)="hovered.emit(false)"
         >
           <input
+            numberDrag
             matInput
             class="customInput"
             spellcheck="false"

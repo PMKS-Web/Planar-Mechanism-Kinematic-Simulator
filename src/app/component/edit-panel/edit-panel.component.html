@@ -208,7 +208,14 @@
                that takes a line of the panel (D4); every other refusal rides the
                control's tooltip. Which link a slot is cut into is drawn on that
                link, so it is not repeated here. -->
-            @if (choice.invalid) {
+            @if (jointIsOrphaned()) {
+              <div class="nowhereToSlide" role="status">
+                <mat-icon>error_outline</mat-icon>
+                <span
+                  ><b>{{ orphanedJoint.lead }}</b> {{ orphanedJoint.sentence }}</span
+                >
+              </div>
+            } @else if (choice.invalid) {
               <div class="nowhereToSlide" role="status">
                 <mat-icon>error_outline</mat-icon>
                 <span
@@ -373,32 +380,34 @@
             >Joint Color</color-picker
           >
         </collapsible-subsection>
-        <collapsible-subsection
-          titleLabel="Distance to Joints"
-          [expanded]="sectionExpanded['JDistToJ']"
-          (opened)="sectionExpanded['JDistToJ'] = true"
-          (closed)="sectionExpanded['JDistToJ'] = false"
-        >
-          @for (joint of listOfOtherJoints; track joint; let i = $index) {
-            <div>
-              <!-- The repeated alias template -->
-              <dual-input-block
-                label1="D"
-                label2="⊾"
-                tooltip="How far this joint is from that one, and in what direction. Editing either moves that joint."
-                [formGroup]="jointForm"
-                formSubGroup="otherJoints"
-                [formControl1]="(i * 2).toString()"
-                [formControl2]="(i * 2 + 1).toString()"
-                (field1Entry)="setShowLinkLengthOverlay($event)"
-                (field2Entry)="setShowLinkAngleOverlay($event)"
-                [emitterOutputID]="i"
-              >
-                Joint {{ joint!.name }}</dual-input-block
-              >
-            </div>
-          }
-        </collapsible-subsection>
+        @if (listOfOtherJoints.length) {
+          <collapsible-subsection
+            titleLabel="Distance to Joints"
+            [expanded]="sectionExpanded['JDistToJ']"
+            (opened)="sectionExpanded['JDistToJ'] = true"
+            (closed)="sectionExpanded['JDistToJ'] = false"
+          >
+            @for (joint of listOfOtherJoints; track joint; let i = $index) {
+              <div>
+                <!-- The repeated alias template -->
+                <dual-input-block
+                  label1="D"
+                  label2="⊾"
+                  tooltip="How far this joint is from that one, and in what direction. Editing either moves that joint."
+                  [formGroup]="jointForm"
+                  formSubGroup="otherJoints"
+                  [formControl1]="(i * 2).toString()"
+                  [formControl2]="(i * 2 + 1).toString()"
+                  (field1Entry)="setShowLinkLengthOverlay($event)"
+                  (field2Entry)="setShowLinkAngleOverlay($event)"
+                  [emitterOutputID]="i"
+                >
+                  Joint {{ joint!.name }}</dual-input-block
+                >
+              </div>
+            }
+          </collapsible-subsection>
+        }
       </panel-section>
     }
 
@@ -646,20 +655,6 @@
             }
           </div>
         </collapsible-subsection>
-        @if (activeSrv.selectedLink.isCompound) {
-          <collapsible-subsection
-            [expanded]="sectionExpanded['LCompound']"
-            (opened)="sectionExpanded['LCompound'] = true"
-            (closed)="sectionExpanded['LCompound'] = false"
-            titleLabel="Compound Link Settings"
-          >
-            <dual-button
-              but1Text="Un-weld All"
-              but1Icon="unweld_joint"
-              [but1Action]="mechanismService.unweldAll.bind(mechanismService)"
-            ></dual-button>
-          </collapsible-subsection>
-        }
       </panel-section>
     }
 
