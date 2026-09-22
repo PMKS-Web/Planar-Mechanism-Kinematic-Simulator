@@ -80,7 +80,7 @@ record('and the load reads as snapped to the hook', start?.snapped === 'T', star
 // The anchor mark has to leave the joint it sits on visible, which is why it
 // is drawn at half a joint's radius rather than at the same size.
 const anchorMark = await page.evaluate(() => {
-  const disc = document.querySelector('circle.forceAnchor');
+  const disc = document.querySelector('circle.forceDisc');
   const joint = document.querySelector('#joint_T');
   if (!disc || !joint) return undefined;
   return {
@@ -424,7 +424,7 @@ const anchorAt = async (width) => {
   await page.mouse.move(701, 501);
   await page.waitForTimeout(400);
   return page.evaluate(() => {
-    const disc = document.querySelector('circle.forceAnchor');
+    const disc = document.querySelector('circle.forceDisc');
     return disc ? Number(disc.getAttribute('r')) : null;
   });
 };
@@ -437,7 +437,7 @@ record(
   { thinMark, thickMark }
 );
 
-// Selection handles are round, like everything else that marks a point here.
+// The round anchor and square direction handle distinguish the two jobs.
 const held = await force();
 const arrowMid = await toScreen(
   (held.start[0] + held.end[0]) / 2,
@@ -449,7 +449,11 @@ const handles = await page.evaluate(() => ({
   circles: document.querySelectorAll('#startForceEndpoint circle, #endForceEndpoint circle').length,
   rects: document.querySelectorAll('#startForceEndpoint rect, #endForceEndpoint rect').length,
 }));
-record('the selector ends are circles', handles.circles === 2 && handles.rects === 0, handles);
+record(
+  'anchor is round and direction handle is square',
+  handles.circles === 1 && handles.rects === 1,
+  handles
+);
 
 // ---------------------------------------------------------------------------
 // A drag that moves nothing is not an edit.
