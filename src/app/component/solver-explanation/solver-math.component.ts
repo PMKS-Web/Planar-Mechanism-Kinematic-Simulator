@@ -1,4 +1,4 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, computed, HostListener, inject, input } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
 import katex from 'katex';
 
@@ -13,6 +13,18 @@ export class SolverMathComponent {
   readonly equation = input.required<string>();
   readonly inline = input(false);
   private sanitizer = inject(DomSanitizer);
+
+  @HostListener('wheel', ['$event'])
+  protected forwardVerticalWheel(event: WheelEvent) {
+    if (!event.deltaY || event.shiftKey) return;
+    const dialogSurface = (event.currentTarget as HTMLElement | null)?.closest(
+      '.mat-mdc-dialog-surface'
+    ) as HTMLElement | null;
+    if (!dialogSurface || dialogSurface.scrollHeight <= dialogSurface.clientHeight) return;
+    dialogSurface.scrollBy({ top: event.deltaY });
+    event.preventDefault();
+  }
+
   protected readonly rendered = computed(() =>
     this.sanitizer.bypassSecurityTrustHtml(
       // Only KaTeX output reaches this binding. Resource loading and HTML commands stay disabled.

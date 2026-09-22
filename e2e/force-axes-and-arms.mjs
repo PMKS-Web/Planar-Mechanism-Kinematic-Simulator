@@ -87,7 +87,7 @@ try {
   const momentDerivation = defs.locator('.equationDetail').filter({
     has: page.getByText('Resolve one force moment with', { exact: false }),
   });
-  await momentDerivation.hover();
+  await momentDerivation.locator('app-solver-math').last().hover();
   await page.mouse.wheel(0, 900);
   const scrollWorked = await worksheetScroller.evaluate((element) => {
     for (let current = element; current; current = current.parentElement) {
