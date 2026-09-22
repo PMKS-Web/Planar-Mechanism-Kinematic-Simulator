@@ -68,18 +68,12 @@ export class Force {
     this._local = local;
     this._stroke = local ? 'blue' : 'black';
     this._fill = local ? 'blue' : 'black';
-    this._arrowOutward = true;
+    this._arrowOutward = arrowOutward;
     this._mag = this.sanitizeMagnitude(mag);
 
-    // Older URLs could store the arrow at the application point. Normalize those forces so
-    // startCoord is always the application point and endCoord always indicates physical direction.
-    if (!arrowOutward) {
-      this._endCoord = new Coord(
-        this._startCoord.x - (this._endCoord.x - this._startCoord.x),
-        this._startCoord.y - (this._endCoord.y - this._startCoord.y)
-      );
-    }
-    this._angleRad = this.updateAngle(this.startCoord, this.endCoord);
+    // The anchor stays on the body. An inward arrow points from the free
+    // handle toward it; old URLs already store this same outward flag.
+    this._angleRad = this.physicalAngle();
     this._forceLine = '';
     this._forceArrow = '';
     this.refreshVisuals();
@@ -113,7 +107,7 @@ export class Force {
     this.startCoord.x = coord.x;
     this.startCoord.y = coord.y;
     if (this.handleLength() > 0) {
-      this._angleRad = this.updateAngle(this.startCoord, this.endCoord);
+      this._angleRad = this.physicalAngle();
     }
     this.refreshVisuals();
   }
@@ -123,7 +117,7 @@ export class Force {
     this.endCoord.x = coord.x;
     this.endCoord.y = coord.y;
     if (this.handleLength() > 0) {
-      this._angleRad = this.updateAngle(this.startCoord, this.endCoord);
+      this._angleRad = this.physicalAngle();
     }
     this.refreshVisuals();
   }
@@ -152,6 +146,31 @@ export class Force {
 
   reverseDirection() {
     this.setDirectionRadians(this._angleRad + Math.PI);
+  }
+
+  /** Reverse the load without moving either handle or its application point. */
+  flipForce() {
+    this._arrowOutward = !this._arrowOutward;
+    this._angleRad = this.normalizeAngle(this._angleRad + Math.PI);
+    this.refreshVisuals();
+  }
+
+  private physicalAngle(): number {
+    return this.normalizeAngle(
+      this.updateAngle(this.startCoord, this.endCoord) + (this.arrowOutward ? 0 : Math.PI)
+    );
+  }
+
+  /** The circle is opposite the arrowhead, independent of the body anchor. */
+  get tailCoord(): Coord {
+    return this.arrowOutward ? this.startCoord : this.endCoord;
+  }
+
+  /** Point along the physical vector, for numeric exports that have no arrowhead flag. */
+  get directionCoord(): Coord {
+    return this.arrowOutward
+      ? this.endCoord
+      : new Coord(2 * this.startCoord.x - this.endCoord.x, 2 * this.startCoord.y - this.endCoord.y);
   }
 
   setLocal(value: boolean) {
@@ -204,7 +223,7 @@ export class Force {
 
   updateInternalValues() {
     if (this.handleLength() > 0) {
-      this._angleRad = this.updateAngle(this.startCoord, this.endCoord);
+      this._angleRad = this.physicalAngle();
     }
     this.refreshVisuals();
   }
@@ -222,7 +241,7 @@ export class Force {
   }
 
   private alignHandleWithDirection() {
-    const length = this.handleLength() || 1;
+    const length = (this.handleLength() || 1) * (this.arrowOutward ? 1 : -1);
     this.endCoord.x = this.startCoord.x + Math.cos(this._angleRad) * length;
     this.endCoord.y = this.startCoord.y + Math.sin(this._angleRad) * length;
   }
@@ -259,6 +278,7 @@ export class Force {
   }
 
   createForceArrow(startCoord: Coord, endCoord: Coord) {
+    if (!this.arrowOutward) [startCoord, endCoord] = [endCoord, startCoord];
     if (startCoord.x === endCoord.x && startCoord.y === endCoord.y) return '';
 
     //Get the tip of the triangle
@@ -387,8 +407,7 @@ export class Force {
   }
 
   set arrowOutward(value: boolean) {
-    if (!value) this.reverseDirection();
-    this._arrowOutward = true;
+    if (value !== this._arrowOutward) this.flipForce();
   }
 
   get local(): boolean {

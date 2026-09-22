@@ -42,6 +42,8 @@ export interface NotificationAction {
 export interface NotificationOptions {
   /** How long this message stays quiet after saying itself, in ms. */
   cooldownMs?: number;
+  /** Override reading time; null keeps the message until dismissed. */
+  durationMs?: number | null;
   actions?: NotificationAction[];
 }
 
@@ -53,6 +55,7 @@ export interface LiveNotification {
   kind: NotificationKind;
   text: string;
   actions: NotificationAction[];
+  persistent: boolean;
 }
 
 /** How long each kind stays, in ms. `undefined` means until it is dismissed. */
@@ -156,7 +159,7 @@ export class NotificationService {
     kind: NotificationKind,
     id: string,
     text: string,
-    { cooldownMs = DEFAULT_COOLDOWN, actions = [] }: NotificationOptions = {}
+    { cooldownMs = DEFAULT_COOLDOWN, actions = [], durationMs }: NotificationOptions = {}
   ): void {
     // Already on screen. Saying it again would stack the same sentence twice --
     // which is exactly what a reader holding a key down or dragging against a
@@ -166,7 +169,21 @@ export class NotificationService {
     const last = this.lastSaid.get(id);
     if (last !== undefined && last + cooldownMs > Date.now()) return;
 
-    const one: LiveNotification = { key: this.nextKey++, id, kind, text, actions };
+    const minimum = DURATION[kind];
+    // Allow time to notice the message, then read about four words a second.
+    const readingTime = 1500 + text.trim().split(/\s+/).length * 250;
+    const duration =
+      durationMs === null
+        ? undefined
+        : (durationMs ?? (minimum === undefined ? undefined : Math.max(minimum, readingTime)));
+    const one: LiveNotification = {
+      key: this.nextKey++,
+      id,
+      kind,
+      text,
+      actions,
+      persistent: duration === undefined,
+    };
     this.live.push(one);
     this.makeRoom(one);
     // A message the stack could not fit was never read: it goes on no cooldown
@@ -176,7 +193,6 @@ export class NotificationService {
     if (!this.live.includes(one)) return;
     this.lastSaid.set(id, Date.now());
 
-    const duration = DURATION[kind];
     if (duration !== undefined) {
       this.timers.set(
         one.key,
@@ -199,7 +215,7 @@ export class NotificationService {
       const others = this.live.filter((one) => one !== newcomer);
       // Nothing but messages waiting to be dismissed. The oldest still goes --
       // but it has at least been on screen the longest.
-      const leaving = others.find((one) => DURATION[one.kind] !== undefined) ?? others[0];
+      const leaving = others.find((one) => !one.persistent) ?? others[0];
       if (leaving === undefined) return;
       this.dismiss(leaving.key);
     }

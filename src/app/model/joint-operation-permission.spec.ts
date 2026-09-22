@@ -123,7 +123,15 @@ describe('whether a weld may be made at a joint', () => {
   it('refuses a driven joint, because a weld says the opposite of an input', () => {
     const { elbow, context } = drawing();
     elbow.input = true;
-    expect(refuseJointOperation(elbow, 'weld', context)?.short).toBe('it is driven');
+    expect(refuseJointOperation(elbow, 'weld', context)?.short).toBe('it is an input');
+  });
+
+  it('allows welding an input grounded pin: the fused bars turn together against ground', () => {
+    const { elbow, context } = drawing();
+    elbow.ground = true;
+    elbow.input = true;
+    expect(refuseJointOperation(elbow, 'weld', context)).toBeUndefined();
+    expect(elbow.canBeWelded()).toBe(true);
   });
 
   it('lets a mount weld, and refuses the cylinder’s inside', () => {
@@ -176,7 +184,7 @@ describe('whether a block may be added or removed at a joint', () => {
   it('refuses a driven joint, which would then hold three bodies', () => {
     const { elbow, context } = drawing();
     elbow.input = true;
-    expect(refuseJointOperation(elbow, 'add-slider', context)?.short).toBe('it is driven');
+    expect(refuseJointOperation(elbow, 'add-slider', context)?.short).toBe('it is an input');
   });
 
   it('refuses a block inside the ram, and allows one at a mount', () => {

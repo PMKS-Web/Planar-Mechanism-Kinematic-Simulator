@@ -167,7 +167,7 @@ const PLAYING: EditRefusal = refusal({
 
 /** Displaced, and the transport agrees it is displaced. */
 const DISPLACED: EditRefusal = refusal({
-  short: 'not at the start',
+  short: 'return to start',
   glyph: 'motion_photos_paused',
   lead: 'The mechanism is parked mid-cycle.',
   action: 'Return it to the start',
@@ -325,7 +325,7 @@ function transportRefusal(state: EditState): EditRefusal | null {
     return refusal({
       short: 'nothing to run',
       glyph: 'link_off',
-      lead: 'Nothing here can run yet. Ground a joint and give one joint a drive.',
+      lead: 'Ground a joint and set one joint as an input.',
     });
   }
   return null;

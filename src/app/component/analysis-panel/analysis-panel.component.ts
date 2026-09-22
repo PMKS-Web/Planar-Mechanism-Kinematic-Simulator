@@ -341,25 +341,12 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
    * than reporting it collapsed. A screen reader was told nothing about the
    * one kind of row whose state it could not otherwise guess.
    */
-  isExpanded(key: string): boolean {
-    return this.graphExpanded[key] ?? false;
+  isExpanded(key: string, first = false): boolean {
+    return this.graphExpanded[key] ?? first;
   }
 
-  //A dictionary for wether each graph is expanded or not
-  graphExpanded: { [key: string]: boolean } = {
-    LAng: false,
-    LAngVel: false,
-    LAngAcc: false,
-    LPos: false,
-    LVel: false,
-    LAcc: false,
-    LStress: false,
-    JPos: false,
-    JVel: false,
-    JAcc: false,
-    JInputForce: false,
-    LInputForce: false,
-  };
+  // Only explicit choices are remembered; the first graph starts open.
+  graphExpanded: { [key: string]: boolean } = {};
 
   mechStateSub?: Subscription;
   private subscriptions = new Subscription();

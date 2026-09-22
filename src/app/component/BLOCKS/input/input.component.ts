@@ -1,3 +1,4 @@
+import { NumberDragDirective } from '../../../directives/number-drag.directive';
 import {
   booleanAttribute,
   Component,
@@ -22,6 +23,7 @@ let nextInputId = 0;
   styleUrls: ['./input.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
+    NumberDragDirective,
     FormsModule,
     ReactiveFormsModule,
     MatIcon,

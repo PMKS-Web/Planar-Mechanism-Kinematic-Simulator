@@ -1,3 +1,4 @@
+import { performanceBudget } from './tools/performance-budget.mjs';
 /**
  * Synthesis, end to end: place, generate, browse, preview, insert.
  *
@@ -592,33 +593,39 @@ check(
     return after !== before && restored === before;
   })()
 );
+const drawTiming = await page.evaluate(() => {
+  const panel = ng.getComponent(document.querySelector('app-synthesis-panel'));
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const held = panel.solution.driveOnFarPin;
+  const timeIt = () => {
+    const range = panel.solution.drivenRange();
+    const started = performance.now();
+    for (let k = 0; k < 20; k++) {
+      panel.solution.phase = range.from + ((range.to - range.from) * k) / 20;
+      grid.synthCanvas.previewLinks();
+      grid.synthCanvas.couplerTrace();
+    }
+    panel.solution.phase = null;
+    return performance.now() - started;
+  };
+  panel.solution.setDriveOnFarPin(false);
+  const near = timeIt();
+  panel.solution.setDriveOnFarPin(true);
+  const far = timeIt();
+  panel.solution.setDriveOnFarPin(held);
+  // Reading the linkage from the far pin re-assesses it, which walks a whole
+  // revolution. Done per call, that was hundreds of thousands of solves a
+  // frame and the preview crawled.
+  return { near, far };
+});
 check(
-  'driving from the far pin is no slower to draw than driving from the near one',
-  await page.evaluate(() => {
-    const panel = ng.getComponent(document.querySelector('app-synthesis-panel'));
-    const grid = ng.getComponent(document.querySelector('app-new-grid'));
-    const held = panel.solution.driveOnFarPin;
-    const timeIt = () => {
-      const range = panel.solution.drivenRange();
-      const started = performance.now();
-      for (let k = 0; k < 20; k++) {
-        panel.solution.phase = range.from + ((range.to - range.from) * k) / 20;
-        grid.synthCanvas.previewLinks();
-        grid.synthCanvas.couplerTrace();
-      }
-      panel.solution.phase = null;
-      return performance.now() - started;
-    };
-    panel.solution.setDriveOnFarPin(false);
-    const near = timeIt();
-    panel.solution.setDriveOnFarPin(true);
-    const far = timeIt();
-    panel.solution.setDriveOnFarPin(held);
-    // Reading the linkage from the far pin re-assesses it, which walks a whole
-    // revolution. Done per call, that was hundreds of thousands of solves a
-    // frame and the preview crawled.
-    return far < Math.max(60, near * 4);
-  })
+  'drawing from the far pin stays within the performance budget',
+  performanceBudget(
+    'far-pin preview',
+    drawTiming.far,
+    Math.max(15, drawTiming.near),
+    Math.max(60, drawTiming.near * 4)
+  )
 );
 check(
   'a driver is only offered when it can turn a whole revolution',
