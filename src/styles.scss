@@ -51,6 +51,16 @@ body {
   user-select: none; /* Standard */
 }
 
+// The worksheet is a Material dialog whose content grows as disclosures open.
+// Keep one explicit vertical scrollport on the dialog surface so a wheel or
+// touch gesture always reaches the remaining content.
+.solverWorksheetDialog .mat-mdc-dialog-surface {
+  height: 100%;
+  overflow-y: scroll;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Remove all default margins and padding */
 p {
   margin: 0;

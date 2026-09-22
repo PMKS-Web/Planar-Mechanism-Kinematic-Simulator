@@ -440,22 +440,22 @@ export class ForceDefinitionsComponent {
   protected readonly forceVectorComponents = String.raw`\sum\vec F=\left\langle\sum F_x,\ \sum F_y,\ \color{red}{\cancel{\sum F_z}}\right\rangle`;
   protected readonly forceComponents = String.raw`\begin{aligned}\sum F_x&=m a_{\mathrm{CoM},x}\\\sum F_y&=m a_{\mathrm{CoM},y}\\\color{red}{\cancel{\sum F_z}}&=\color{red}{\cancel{m a_{\mathrm{CoM},z}}}=0\quad\text{(planar)}\end{aligned}`;
   protected readonly momentBalance = String.raw`\sum\vec M_{\mathrm{CoM}}=I_{\mathrm{CoM}}\vec\alpha\qquad\xrightarrow{\ \mathrm{statics}:\ \vec\alpha=\vec0\ }\qquad\sum\vec M_{\mathrm{CoM}}=\vec0`;
-  protected readonly momentLoadGroups = String.raw`\underbrace{\sum M_{\mathrm{joint}}+\sum M_{\mathrm{external}}+\sum M_{\mathrm{weight}}+\sum M_{\mathrm{motor}}}_{\text{LHS: all moments on the FBD}}=\underbrace{I_{\mathrm{CoM}}\vec\alpha}_{\text{RHS: motion}}\quad\text{or}\quad\underbrace{\vec0}_{\text{RHS: static}}`;
+  protected readonly momentLoadGroups = String.raw`\underbrace{\sum\vec M_{\mathrm{joint}}+\sum\vec M_{\mathrm{external}}+\sum\vec M_{\mathrm{weight}}+\sum\vec M_{\mathrm{motor}}}_{\text{LHS: all moments on the FBD}}=\underbrace{I_{\mathrm{CoM}}\vec\alpha}_{\text{RHS: motion}}\quad\text{or}\quad\underbrace{\vec0}_{\text{RHS: static}}`;
   protected readonly momentTerms = [
     {
-      symbol: String.raw`\sum M_{\mathrm{joint}}`,
+      symbol: String.raw`\sum\vec M_{\mathrm{joint}}`,
       meaning: 'Moments of exposed joint reactions about the selected reference.',
     },
     {
-      symbol: String.raw`\sum M_{\mathrm{external}}`,
+      symbol: String.raw`\sum\vec M_{\mathrm{external}}`,
       meaning: 'Moments of externally applied forces.',
     },
     {
-      symbol: String.raw`\sum M_{\mathrm{weight}}`,
+      symbol: String.raw`\sum\vec M_{\mathrm{weight}}`,
       meaning: 'Moments made by gravity at the center of mass.',
     },
     {
-      symbol: String.raw`\sum M_{\mathrm{motor}}`,
+      symbol: String.raw`\sum\vec M_{\mathrm{motor}}`,
       meaning: 'Applied motor torque, which needs no r vector.',
     },
     {
@@ -474,14 +474,14 @@ export class ForceDefinitionsComponent {
   );
   protected readonly expandedMomentTerms = computed(() => {
     const zeroTerm: Record<ReferenceId, string> = {
-      A: String.raw`\textcolor{red}{\cancel{M_{A,z}^{\mathrm{joint}}}}`,
+      A: String.raw`\textcolor{red}{\cancel{M_{A,z}}}`,
       CoM: String.raw`\textcolor{red}{\cancel{M_{\mathrm{weight},z}}}`,
-      B: String.raw`\textcolor{red}{\cancel{M_{B,z}^{\mathrm{joint}}}}`,
+      B: String.raw`\textcolor{red}{\cancel{M_{B,z}}}`,
     };
     const remaining: Record<ReferenceId, string> = {
-      A: String.raw`M_{B,z}^{\mathrm{joint}}+M_{\mathrm{external},z}+M_{\mathrm{weight},z}+M_{\mathrm{motor},z}`,
-      CoM: String.raw`M_{A,z}^{\mathrm{joint}}+M_{B,z}^{\mathrm{joint}}+M_{\mathrm{external},z}+M_{\mathrm{motor},z}`,
-      B: String.raw`M_{A,z}^{\mathrm{joint}}+M_{\mathrm{external},z}+M_{\mathrm{weight},z}+M_{\mathrm{motor},z}`,
+      A: String.raw`M_{B,z}+M_{1,z}+M_{W,z}+M_{\mathrm{motor},z}`,
+      CoM: String.raw`M_{A,z}+M_{B,z}+M_{1,z}+M_{\mathrm{motor},z}`,
+      B: String.raw`M_{A,z}+M_{1,z}+M_{W,z}+M_{\mathrm{motor},z}`,
     };
     return String.raw`\sum M_{${this.referenceName()},z}=${zeroTerm[this.reference()]}+${remaining[this.reference()]}=0`;
   });

@@ -343,6 +343,7 @@ export class SolverExplanationComponent {
       width: '1120px',
       maxWidth: '96vw',
       height: '92vh',
+      panelClass: 'solverWorksheetDialog',
       ariaLabel: this.isForce() ? 'Force analysis worksheet' : 'Kinematic analysis worksheet',
       autoFocus: 'dialog',
     });
