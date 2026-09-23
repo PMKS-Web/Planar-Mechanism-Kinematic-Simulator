@@ -220,8 +220,11 @@ export interface CylinderMark {
   driven: boolean;
   arrows: DriveArrow[];
   schematicArrows: { head: string; emphasised: boolean }[];
-  /** Schematic's driver: an ordinary slider block at the seal, drawn black. */
-  driveBlock: string;
+  /**
+   * An ordinary slider block at the seal: Schematic's driver when it is drawn
+   * black, and the seal's grab in Schematic, which draws no head to grab.
+   */
+  sealBlock: string;
 }
 
 /**
@@ -595,7 +598,7 @@ export class SliderMarkService {
       driven,
       arrows: driven ? cylinderArrowPaths(r, headHalf, leading) : [],
       schematicArrows: driven ? schematicDriveHeads(r, leading) : [],
-      driveBlock: driven ? blockPath(r) : '',
+      sealBlock: blockPath(r),
     };
   }
 
