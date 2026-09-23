@@ -7,14 +7,29 @@ import { Link, RealLink } from '../../model/link';
 import { Mechanism } from '../../model/mechanism/mechanism';
 import { MechanismPartition, partitionMechanisms } from '../../model/mechanism/mechanism-partition';
 import { MODEL_SCALE } from '../../model/render-scale';
+import { drawingSvg } from './drawing-svg';
+import {
+  bodyAngles,
+  countSelfCrossings,
+  deg,
+  dist,
+  fitLine,
+  fmt,
+  isGroundPin,
+  longestStraightRun,
+  Samples,
+  unwrap,
+} from './fact-math';
+import { describeRelations } from './relations';
 
 /**
  * PROTOTYPE -- "What is this?" fact sheet.
  *
  * Turns a drawing into the plain-text measurements an LLM is given in place of
  * the drawing itself: structure, the input, how every body and point actually
- * moves over one solved cycle, and the start geometry. Everything here is read
- * from the solver's samples; nothing is inferred from a template's name.
+ * moves over one solved cycle, and the start geometry -- and, optionally, how
+ * the parts relate and a picture. Everything is read from the solver's
+ * samples; nothing is inferred from a template's name.
  *
  * Not wired into the app. See `docs/llm-features-plan.md` for what a real
  * version would have to add (fact IDs, a family catalog, verified wording).
@@ -32,29 +47,26 @@ export interface DrawingToDescribe {
   defaultClockwise: boolean;
   /** Author-given joint and link names are hints, and can leak the answer. */
   includeNames?: boolean;
+  /** Add the "How the parts relate" section. */
+  relations?: boolean;
 }
 
-const deg = (rad: number) => (rad * 180) / Math.PI;
-const fmt = (value: number, digits = 2) => {
-  const rounded = Number(value.toFixed(digits));
-  return Object.is(rounded, -0) ? '0' : String(rounded);
-};
-
-interface Samples {
-  mechanism: Mechanism;
-  /** Joint id -> [x, y] per sample, in the reader's length unit, y up. */
-  paths: Map<string, [number, number][]>;
-  time: number[];
-  /** Seconds for one full input revolution, when the input turns fully. */
-  period?: number;
+export interface DrawingDescription {
+  text: string;
+  /** Start pose and traced paths of each solvable machine, one SVG per machine. */
+  svgs: string[];
 }
 
 /** The whole fact sheet for every machine in the drawing. */
-export function describeDrawing(drawing: DrawingToDescribe): string {
+export function describeDrawing(drawing: DrawingToDescribe): DrawingDescription {
   const partitioning = partitionMechanisms(drawing.joints, drawing.links, drawing.forces);
   const lines: string[] = [];
+  const svgs: string[] = [];
   lines.push(
     `Length unit: ${drawing.lengthUnit}. Angles in degrees, counterclockwise from +x; y points up.`
+  );
+  lines.push(
+    'Joints are single letters; a link is named by its joints’ letters, as in the app’s Links table (e.g. link AB).'
   );
   lines.push(`Gravity: ${drawing.gravity ? 'on' : 'off'}.`);
   lines.push(`Separate mechanisms in the drawing: ${partitioning.mechanisms.length}.`);
@@ -68,12 +80,17 @@ export function describeDrawing(drawing: DrawingToDescribe): string {
   partitioning.mechanisms.forEach((partition, index) => {
     lines.push('');
     lines.push(`## Mechanism M${index + 1}`);
-    lines.push(...describePartition(partition, drawing));
+    const described = describePartition(partition, drawing);
+    lines.push(...described.lines);
+    if (described.svg) svgs.push(described.svg);
   });
-  return lines.join('\n');
+  return { text: lines.join('\n'), svgs };
 }
 
-function describePartition(partition: MechanismPartition, drawing: DrawingToDescribe): string[] {
+function describePartition(
+  partition: MechanismPartition,
+  drawing: DrawingToDescribe
+): { lines: string[]; svg?: string } {
   const own = new Set(partition.ownJoints.map((joint) => joint.id));
   const cylinders = cylindersIn(partition.joints).filter((c) => own.has(c.seal.id));
   // A cylinder's seal and buried inner end are internal; a reader only ever
@@ -90,7 +107,7 @@ function describePartition(partition: MechanismPartition, drawing: DrawingToDesc
   const bodyLabel = (link: Link) => {
     const ids = link.joints.filter((joint) => !hidden.has(joint.id)).map((joint) => joint.id);
     const named = drawing.includeNames && link.name !== link.id ? ` ("${link.name}")` : '';
-    return `body ${ids.join('-')}${named}`;
+    return `link ${ids.join('')}${named}`;
   };
 
   const lines: string[] = [];
@@ -149,7 +166,7 @@ function describePartition(partition: MechanismPartition, drawing: DrawingToDesc
       `- The simulator could NOT solve a motion (degrees of freedom ${mechanism.dof}; ` +
         `reason: ${mechanism.failure ?? 'unknown'}). Do not describe how it moves.`
     );
-    return lines;
+    return { lines };
   }
   const samples = collectSamples(mechanism, driven, signedSpeed);
   lines.push(
@@ -177,7 +194,13 @@ function describePartition(partition: MechanismPartition, drawing: DrawingToDesc
     if (isGroundPin(joint)) continue;
     lines.push(describePath(joint, samples, grounds, label, mechanism.reciprocates));
   }
-  return lines;
+  if (drawing.relations) {
+    lines.push(
+      ...describeRelations({ bodies, visible, hidden, samples, cylinders, label, bodyLabel })
+    );
+  }
+  const svg = drawingSvg({ bodies, visible, hidden, cylinders, samples });
+  return { lines, svg };
 }
 
 function describeStructure(
@@ -296,13 +319,8 @@ function describeBodyMotion(
   label: (joint: Joint) => string
 ): string | undefined {
   const joints = body.joints.filter((j) => !hidden.has(j.id) && samples.paths.has(j.id));
-  if (joints.length < 2) return undefined;
-  // The two joints farthest apart give the steadiest reading of orientation.
-  let pair: [Joint, Joint] = [joints[0], joints[1]];
-  for (const a of joints) for (const b of joints) if (dist(a, b) > dist(...pair)) pair = [a, b];
-  const pa = samples.paths.get(pair[0].id)!;
-  const pb = samples.paths.get(pair[1].id)!;
-  const angles = unwrap(pa.map((p, i) => Math.atan2(pb[i][1] - p[1], pb[i][0] - p[0])));
+  const angles = bodyAngles(joints, samples);
+  if (!angles) return undefined;
   const low = Math.min(...angles);
   const high = Math.max(...angles);
   const sweep = deg(high - low);
@@ -319,11 +337,10 @@ function describeBodyMotion(
   if (fullTurn) {
     return `- ${name} turns full revolutions ${around}${angularSpeedSpread(angles, samples)}.`;
   }
-  const timing = strokeTiming(angles, samples);
   return (
     `- ${name} rocks ${around} through ${fmt(sweep, 1)} deg` +
     ` (from ${fmt(deg(low), 1)} to ${fmt(deg(high), 1)} deg)` +
-    `${timing}.`
+    `${strokeTiming(angles, samples)}.`
   );
 }
 
@@ -458,120 +475,4 @@ function describePath(
       ` (at ${fmt(straight.angle, 1)} deg, deviation within ${fmt(straight.maxOffPercent, 2)}% of that length)`;
   }
   return text + '.';
-}
-
-function fitLine(points: [number, number][]) {
-  const n = points.length;
-  const cx = points.reduce((s, p) => s + p[0], 0) / n;
-  const cy = points.reduce((s, p) => s + p[1], 0) / n;
-  let sxx = 0;
-  let sxy = 0;
-  let syy = 0;
-  for (const [x, y] of points) {
-    sxx += (x - cx) ** 2;
-    sxy += (x - cx) * (y - cy);
-    syy += (y - cy) ** 2;
-  }
-  const theta = 0.5 * Math.atan2(2 * sxy, sxx - syy);
-  const ux = Math.cos(theta);
-  const uy = Math.sin(theta);
-  const along = points.map(([x, y]) => (x - cx) * ux + (y - cy) * uy);
-  const off = points.map(([x, y]) => Math.abs(-(x - cx) * uy + (y - cy) * ux));
-  const angle = ((deg(theta) % 180) + 180) % 180;
-  return { angle, length: Math.max(...along) - Math.min(...along), maxOff: Math.max(...off) };
-}
-
-/**
- * The longest stretch of consecutive samples that stays within 0.5% of its own
- * chord length from that chord -- the "straight-line" part of a coupler curve.
- */
-function longestStraightRun(path: [number, number][], closed: boolean) {
-  const n = path.length;
-  const at = (i: number) => path[closed ? i % n : Math.min(i, n - 1)];
-  const limit = closed ? n : n - 1;
-  let best: { start: number; end: number; length: number } | undefined;
-  for (let start = 0; start < limit; start++) {
-    let end = start + 2;
-    while (end - start < limit) {
-      const a = at(start);
-      const b = at(end);
-      const chord = Math.hypot(b[0] - a[0], b[1] - a[1]);
-      if (chord < 1e-9) break;
-      let worst = 0;
-      for (let k = start + 1; k < end; k++) {
-        const p = at(k);
-        worst = Math.max(
-          worst,
-          Math.abs((b[0] - a[0]) * (a[1] - p[1]) - (a[0] - p[0]) * (b[1] - a[1])) / chord
-        );
-      }
-      if (worst / chord > 0.005) break;
-      if (!best || chord > best.length) best = { start, end, length: chord };
-      end++;
-    }
-  }
-  if (!best) return undefined;
-  const a = at(best.start);
-  const b = at(best.end);
-  let worst = 0;
-  for (let k = best.start + 1; k < best.end; k++) {
-    const p = at(k);
-    worst = Math.max(
-      worst,
-      Math.abs((b[0] - a[0]) * (a[1] - p[1]) - (a[0] - p[0]) * (b[1] - a[1])) / best.length
-    );
-  }
-  return {
-    length: best.length,
-    fraction: (best.end - best.start) / n,
-    angle: ((deg(Math.atan2(b[1] - a[1], b[0] - a[0])) % 180) + 180) % 180,
-    maxOffPercent: (worst / best.length) * 100,
-  };
-}
-
-/** Crossings between non-neighbouring segments of a closed path. */
-function countSelfCrossings(path: [number, number][]): number {
-  const n = path.length;
-  let count = 0;
-  for (let i = 0; i < n; i++) {
-    const a = path[i];
-    const b = path[(i + 1) % n];
-    for (let j = i + 2; j < n; j++) {
-      if (i === 0 && j === n - 1) continue;
-      const c = path[j];
-      const d = path[(j + 1) % n];
-      if (segmentsCross(a, b, c, d)) count++;
-    }
-  }
-  return count;
-}
-
-function segmentsCross(a: number[], b: number[], c: number[], d: number[]): boolean {
-  const cross = (o: number[], p: number[], q: number[]) =>
-    (p[0] - o[0]) * (q[1] - o[1]) - (p[1] - o[1]) * (q[0] - o[0]);
-  const d1 = cross(c, d, a);
-  const d2 = cross(c, d, b);
-  const d3 = cross(a, b, c);
-  const d4 = cross(a, b, d);
-  return d1 * d2 < 0 && d3 * d4 < 0;
-}
-
-function unwrap(angles: number[]): number[] {
-  const out = [angles[0]];
-  for (let i = 1; i < angles.length; i++) {
-    let delta = angles[i] - angles[i - 1];
-    while (delta > Math.PI) delta -= 2 * Math.PI;
-    while (delta < -Math.PI) delta += 2 * Math.PI;
-    out.push(out[i - 1] + delta);
-  }
-  return out;
-}
-
-/** A fixed pin of the frame; a slider on a fixed guide is flagged ground too, and is not one. */
-function isGroundPin(joint: Joint): boolean {
-  return joint instanceof RealJoint && joint.ground && !(joint instanceof PrisJoint);
-}
-
-function dist(a: { x: number; y: number }, b: { x: number; y: number }): number {
-  return Math.hypot(a.x - b.x, a.y - b.y);
 }
