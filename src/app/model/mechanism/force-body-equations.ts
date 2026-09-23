@@ -79,9 +79,23 @@ export function forceBodyEquations(
       })
     );
     const arm = arms(load);
-    return { ...arm, load, items, sign, symbol, fx, fy };
+    const actingSymbol = load.column === undefined ? symbol : `${symbol}^{(${id})}`;
+    const actualFx = signedSum(items.map((item) => component(item, 0)));
+    const actualFy = signedSum(items.map((item) => component(item, 1)));
+    return { ...arm, load, items, sign, symbol, actingSymbol, fx, fy, actualFx, actualFy };
   });
-  const forceVector = `${signedSum(groups.filter((g) => g.load.couple === undefined).map((g) => ({ coefficient: g.sign, symbol: g.symbol })))}=${dynamic ? `m_{${id}}${vector('a', COM_TEX)}` : '\\vec0'}`;
+  const forceDefinitions = groups
+    .filter((group) => group.load.couple === undefined)
+    .map(
+      (group) =>
+        `${group.actingSymbol}=${column([group.actualFx, group.actualFy, 0])}`
+    );
+  const momentDefinitions = groups
+    .filter((group) => group.load.couple !== undefined)
+    .map(
+      (group) => `${group.actingSymbol}=${group.sign < 0 ? '-' : ''}${group.symbol}`
+    );
+  const forceVector = `${signedSum(groups.filter((g) => g.load.couple === undefined).map((g) => ({ coefficient: 1, symbol: g.actingSymbol })))}=${dynamic ? `m_{${id}}${vector('a', COM_TEX)}` : '\\vec0'}`;
   const inertiaMoment = `I_{${COM_TEX},${id}}${vector('\\alpha', id)}`;
   const translated = body.reference.id !== COM_REFERENCE;
   const momentRight = dynamic
@@ -90,12 +104,11 @@ export function forceBodyEquations(
         ? `+${vector('r', `${COM_TEX}/${ref}`)}\\times m_{${id}}${vector('a', COM_TEX)}`
         : '')
     : '\\vec0';
-  const momentVector = `${signedSum(groups.filter((g) => g.load.couple !== undefined || !g.zero).map((g) => ({ coefficient: g.sign, symbol: g.load.couple !== undefined ? g.symbol : `\\left[${arms(g.load).symbol}\\times${g.symbol}\\right]` })))}=${momentRight}`;
+  const momentVector = `${signedSum(groups.filter((g) => g.load.couple !== undefined || !g.zero).map((g) => ({ coefficient: 1, symbol: g.load.couple !== undefined ? g.actingSymbol : `\\left[${arms(g.load).symbol}\\times${g.actingSymbol}\\right]` })))}=${momentRight}`;
   const crossProducts = groups
     .filter((g) => g.load.couple === undefined)
     .map((g) => {
       const arm = arms(g.load);
-      const prefix = g.sign < 0 ? '-' : '';
       return {
         from: body.reference.point,
         to: g.load.point,
@@ -107,9 +120,9 @@ export function forceBodyEquations(
             ? 'CoM'
             : (g.load.jointId ?? g.load.applicationId ?? g.load.label),
         zero: g.zero,
-        definition: `${g.symbol}=${column([g.fx, g.fy, 0])},\\quad${arm.symbol}=${column([g.rx, g.ry, 0])}`,
-        determinant: `${prefix}${arm.symbol}\\times${g.symbol}=${prefix}\\begin{vmatrix}\\hat i&\\hat j&\\hat k\\\\${g.rx}&${g.ry}&0\\\\${g.fx}&${g.fy}&0\\end{vmatrix}`,
-        expansion: `=${prefix}${column(['0', '0', `(${g.rx})(${g.fy})-(${g.ry})(${g.fx})`])}`,
+        definition: `${g.actingSymbol}=${column([g.actualFx, g.actualFy, 0])},\\quad${arm.symbol}=${column([g.rx, g.ry, 0])}`,
+        determinant: `${arm.symbol}\\times${g.actingSymbol}=\\begin{vmatrix}\\hat i&\\hat j&\\hat k\\\\${g.rx}&${g.ry}&0\\\\${g.actualFx}&${g.actualFy}&0\\end{vmatrix}`,
+        expansion: `=${column(['0', '0', `(${g.rx})(${g.actualFy})-(${g.ry})(${g.actualFx})`])}`,
         numbers: `${arm.symbol}=${column([g.dx, g.dy, 0])}\\;\\mathrm m`,
         evaluation: `M_{${ref},z}^{(${pointOf(g.load)})}=${signedSum(
           g.items.flatMap((load) => [
@@ -174,9 +187,10 @@ export function forceBodyEquations(
             : group.load.kind === 'drive'
               ? 'Applied input force at ' + pointOf(group.load) + '.'
               : 'Reaction force exposed at ' + pointOf(group.load) + ' when the link is isolated.';
-    if (group.load.couple !== undefined) return [{ symbol: group.symbol, meaning: forceMeaning }];
+    if (group.load.couple !== undefined)
+      return [{ symbol: group.actingSymbol, meaning: forceMeaning }];
     return [
-      { symbol: group.symbol, meaning: forceMeaning },
+      { symbol: group.actingSymbol, meaning: forceMeaning },
       {
         symbol: arms(group.load).symbol,
         meaning:
@@ -184,5 +198,13 @@ export function forceBodyEquations(
       },
     ];
   });
-  return { forceVector, momentVector, crossProducts, components, variables };
+  return {
+    forceDefinitions,
+    momentDefinitions,
+    forceVector,
+    momentVector,
+    crossProducts,
+    components,
+    variables,
+  };
 }

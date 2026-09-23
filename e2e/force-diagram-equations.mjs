@@ -36,7 +36,7 @@ try {
   assert.deepEqual(await body.locator('.bodyStep > summary').allTextContents(), [
     '1 · Build the Free-Body Diagram',
     '2 · Variables in This Example',
-    '3 · Build the Force and Moment Equations',
+    '3 · Build the Sum of Forces and Sum of Moments',
   ]);
   assert.equal(await worksheet.getByText('Solved Directions', { exact: true }).count(), 0);
 
@@ -53,6 +53,8 @@ try {
   assert((await body.locator('.bodyStep').nth(1).locator('tbody tr').count()) > 2);
 
   await body.locator('.bodyStep').nth(2).locator(':scope > summary').click();
+  assert.equal(await body.getByText('Sum of Forces', { exact: true }).count(), 1);
+  await body.getByText('Sum of Forces', { exact: true }).click();
   assert.equal(await body.getByText('Sum of Forces in x', { exact: true }).count(), 1);
   assert.equal(await body.getByText('Sum of Forces in y', { exact: true }).count(), 1);
   assert.equal(await body.getByText('Sum of Moments in z', { exact: true }).count(), 1);

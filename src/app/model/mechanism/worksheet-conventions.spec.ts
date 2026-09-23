@@ -54,14 +54,24 @@ describe('Worksheet equation conventions', () => {
       base.system.x.forEach((x, i) =>
         expect(flipped.system.x[i]).toBe(choice.columns.includes(i) ? -x : x)
       );
-      expect(flipped.bodies[0].forceVector).toContain('-\\vec{F}_{B}');
-      expect(flipped.bodies[1].forceVector).toContain('\\vec{F}_{B}');
+      expect(
+        flipped.bodies[0].forceDefinitions.find((equation) =>
+          equation.includes('\\vec{F}_{B}')
+        )
+      ).toContain('-B_{x}');
+      expect(
+        flipped.bodies[1].forceDefinitions.find((equation) =>
+          equation.includes('\\vec{F}_{B}')
+        )
+      ).not.toContain('-B_{x}');
       flipped.bodies.forEach((body, i) => {
         body.loads.forEach((load, j) => {
           expect(load.vector).toEqual(base.bodies[i].loads[j].vector);
           expect(load.couple).toEqual(base.bodies[i].loads[j].couple);
         });
         typesets([
+          ...body.forceDefinitions,
+          ...body.momentDefinitions,
           body.forceVector,
           body.momentVector,
           ...body.components.flatMap((c) => [c.symbolic, c.collected, c.substitution]),

@@ -21,11 +21,19 @@ describe('Worked derivations', () => {
     expect(work.system.unknowns[0].label).toBe('A_{x}');
     const first = work.bodies.find((b) => b.id.includes('A'))!;
     const middle = work.bodies.find((b) => b.id.startsWith('BC'))!;
-    expect(first.forceVector).toContain('\\vec{F}_{B}');
-    expect(middle.forceVector).toContain('-\\vec{F}_{B}');
+    expect(first.forceDefinitions.find((equation) => equation.includes('\\vec{F}_{B}'))).toContain(
+      'B_{x}'
+    );
+    expect(middle.forceDefinitions.find((equation) => equation.includes('\\vec{F}_{B}'))).toContain(
+      '-B_{x}'
+    );
+    expect(middle.momentVector).not.toContain('-\\left[');
     for (const body of work.bodies) {
+      expect(body.momentVector).not.toContain('-\\left[');
       typesets(body.forceVector);
       typesets(body.momentVector);
+      body.forceDefinitions.forEach(typesets);
+      body.momentDefinitions.forEach(typesets);
       for (const row of body.components) {
         typesets(row.symbolic);
         typesets(row.collected);
