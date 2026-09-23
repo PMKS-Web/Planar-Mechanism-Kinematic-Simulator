@@ -205,13 +205,20 @@ describe('NewGridComponent cylinder selectables', () => {
     expect(component.comDraggable(plain)).toBe(true);
   });
 
-  it('wears one tag, naming the part rather than either member', () => {
+  it('tags each member with its own name, on its own half of the part', () => {
     const { component, cylinder } = drawnCylinder();
-    expect(component.linkDisplayName(cylinder.barrel)).toBe(
-      `${cylinder.mountA.name}${cylinder.mountB.name}`
-    );
-    expect(component.isSecondaryCylinderTag(cylinder.barrel)).toBe(false);
-    expect(component.isSecondaryCylinderTag(cylinder.rod)).toBe(true);
+    const { mountA, seal, mountB } = cylinder;
+    const n = (joint: { name: string; id: string }) => joint.name || joint.id;
+    expect(component.linkDisplayName(cylinder.barrel)).toBe(`${n(mountA)}${n(seal)}`);
+    expect(component.linkDisplayName(cylinder.rod)).toBe(`${n(seal)}${n(mountB)}`);
+    (cylinder.barrel as RealLink).name = 'Boom ram';
+    (cylinder.rod as RealLink).name = 'Ram rod';
+    expect(component.linkDisplayName(cylinder.barrel)).toBe('Boom ram');
+    expect(component.linkDisplayName(cylinder.rod)).toBe('Ram rod');
+    const barrelTag = component.linkLabelStyle(cylinder.barrel);
+    const rodTag = component.linkLabelStyle(cylinder.rod);
+    expect(barrelTag.x).toBeCloseTo((mountA.x + seal.x) / 2, 6);
+    expect(rodTag.x).toBeCloseTo((seal.x + mountB.x) / 2, 6);
   });
 
   it('puts the seal’s letter clear of the barrel, across the part’s own axis', () => {

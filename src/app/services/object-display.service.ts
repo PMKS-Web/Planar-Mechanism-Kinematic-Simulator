@@ -30,10 +30,29 @@ export class ObjectDisplayService {
     return schematicLink(link, this.mechanism.sealedStructures());
   }
 
+  /**
+   * The center-of-mass mark's radius: the style's size, but never under 6px,
+   * because it is a handle as well as a glyph and a thin style made it one
+   * nobody could hit.
+   */
+  comRadius(): number {
+    return Math.max(0.11 * this.settings.drawingScale, this.pixels(6));
+  }
+
+  /** Where a grab on that mark lands: a 12px radius at the least. */
+  comHitRadius(): number {
+    return Math.max(0.16 * this.settings.drawingScale, this.pixels(12));
+  }
+
+  private pixels(px: number): number {
+    const zoom = this.settings.drawingZoom;
+    return zoom > 0 ? px / zoom : 0;
+  }
+
   comPaths(link: Link): string[] {
     if (!(link instanceof RealLink)) return [];
     const { x, y } = link.CoM;
-    const r = 0.11 * this.settings.drawingScale;
+    const r = this.comRadius();
     const points = [
       [x - r, y],
       [x, y + r],
