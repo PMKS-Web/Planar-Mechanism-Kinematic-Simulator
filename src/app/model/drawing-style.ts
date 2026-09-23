@@ -8,7 +8,7 @@ export const DRAWING_STYLES: readonly DrawingStyle[] = ['standard', 'fine', 'sch
 const STYLES = {
   standard: { factor: 1, min: 40, max: 90 },
   fine: { factor: 0.6, min: 25, max: 50 },
-  schematic: { factor: 0.4, min: 20, max: 32 },
+  schematic: { factor: 0.48, min: 24, max: 38 },
 } as const;
 
 export function drawingScale(base: number, zoom: number, style: DrawingStyle): number {

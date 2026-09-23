@@ -145,13 +145,14 @@ export const MARK = {
   /**
    * Schematic's driven cue: two solid heads on the slot line, flanking the
    * joint's own mark, with no shafts. The gap clears the slide bar (1.4R) by
-   * 0.3R, and at the emphasis factor the leading tip lands at 3.1R, inside an
+   * 0.3R, and at the emphasis factor the leading tip lands at 3.6R, inside an
    * ordinary block's 3.84R half. Sized to the joint rather than to a cylinder's
-   * head, which is what made a long ram's arrows several joints long.
+   * head, which is what made a long ram's arrows several joints long, and 2.1R
+   * across, so a head stands well proud of the 3px line it sits on.
    */
   schematicHeadGap: 1.7,
-  schematicHeadLength: 1.1,
-  schematicHeadHalf: 0.75,
+  schematicHeadLength: 1.5,
+  schematicHeadHalf: 1.05,
 
   /** A driven floating pin has no block, so the overlay brings its own backing. */
   pinBackingHalf: 2.2,

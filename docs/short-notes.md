@@ -2107,3 +2107,18 @@ Schematic) and keep `non-scaling-stroke` off it, for the reason in the note abov
 to. In Schematic the slot stack draws each rider's and weld plate's line at its depth, and the link
 layer skips every link `drawnBySlotStack` names. Selectors that count schematic bars must include
 `.schematicRider` as well as `#linkHolder > path`.
+
+### A cylinder member's tag is its own name, on its own half
+
+The barrel and the rod each have a Rename, so each wears its own tag: `linkDisplayName` is
+`visibleBodyName` for a member as for any body, and `linkLabelStyle` puts the barrel's between A
+and S and the rod's between S and B. The one tag that named the part by its two mounts is gone,
+along with `isSecondaryCylinderTag`: renaming a member changed nothing on the grid. A member welded
+into a compound is still named by the compound's tag, as every primitive in a compound is.
+
+### A cylinder member's center of mass takes the grab only to refuse it
+
+A member's center of mass follows its shape (decision S14), so its mark is not a handle. It still
+takes the pointer while its member is selected (`comGrabbable`), and `startComDrag` answers with a
+refusal rather than a drag. Left transparent to the pointer, the grab fell through to the member
+and dragged the whole cylinder.

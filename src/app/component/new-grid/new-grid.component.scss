@@ -906,6 +906,12 @@
     filter: none;
   }
 
+  // The barrel a little heavier than the rod, so the two members of a
+  // cylinder read as two bodies even when both wear one color.
+  .cylinder-barrel {
+    stroke-width: 4.5px;
+  }
+
   // Every joint wears the pin's language: the cream fill it has in every
   // style, inside a hairline of ink.
   .joint_circles,
@@ -963,5 +969,9 @@
   path.link-pointed {
     stroke-width: 5px;
     vector-effect: non-scaling-stroke;
+  }
+
+  .cylinder-barrel-selected:is(.link-selected, .link-pointed) {
+    stroke-width: 6.5px;
   }
 }

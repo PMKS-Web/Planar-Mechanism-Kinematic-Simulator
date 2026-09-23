@@ -82,20 +82,36 @@ try {
   );
   const original = await physical();
   const styleFilm = filmstrip(page, `${OUT}/style-switch`);
+  const forceMarks = [];
   for (const style of ['Standard', 'Fine', 'Schematic']) {
     await styleFilm.during(80, 7, style, () => choose(style));
     check(
       `${style} changes no coordinates, dimensions, force, mass, CAD outlines or solve`,
       (await physical()) === original
     );
+    forceMarks.push(
+      await page.evaluate(() =>
+        [...document.querySelectorAll('.forceDisc, .forceLine')].map((el) => {
+          const b = el.getBoundingClientRect();
+          return `${b.width.toFixed(1)}x${b.height.toFixed(1)}`;
+        })
+      )
+    );
     await page.screenshot({ path: `${OUT}/gallery-${style}.png` });
   }
+  check(
+    'every style draws a force, its arrow and its application point at one size',
+    forceMarks[0].length > 0 &&
+      forceMarks.every((marks) => JSON.stringify(marks) === JSON.stringify(forceMarks[0])),
+    forceMarks
+  );
   const schematic = await page.evaluate(() => {
     const ink = [
       ...document.querySelectorAll(
-        '#linkHolder > path:not([stroke="transparent"]), .schematicRider, .cylinder-barrel, .cylinder-rod'
+        '#linkHolder > path:not([stroke="transparent"]), .schematicRider, .cylinder-rod'
       ),
     ];
+    const barrels = [...document.querySelectorAll('.cylinder-barrel')];
     const blocks = [...document.querySelectorAll('.slider-block > path')];
     const joints = [
       ...document.querySelectorAll(
@@ -124,10 +140,33 @@ try {
           holder.indexOf(rider) > holder.indexOf(block)
         );
       });
+    // A plate traced in joint order crosses itself; its outside never does.
+    const crosses = (d) => {
+      const at = [...d.matchAll(/(-?[\d.e]+) (-?[\d.e]+)/g)].map(([, x, y]) => [+x, +y]);
+      if (at.length < 4) return false;
+      const side = (a, b, c) =>
+        Math.sign((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]));
+      const edges = at.map((p, i) => [p, at[(i + 1) % at.length]]);
+      return edges.some(([a, b], i) =>
+        edges.some(
+          ([c, e], j) =>
+            j > i + 1 &&
+            (i > 0 || j < edges.length - 1) &&
+            side(a, b, c) * side(a, b, e) < 0 &&
+            side(c, e, a) * side(c, e, b) < 0
+        )
+      );
+    };
+    const plates = g.mechanismSrv.links.filter((l) => !l.subset?.length && l.joints.length >= 4);
     return {
       bodies: ink.length,
-      outlined: ink.every((p) => getComputedStyle(p).fill === 'none'),
+      outlined: [...ink, ...barrels].every((p) => getComputedStyle(p).fill === 'none'),
       lineWidths: [...new Set(ink.map(px))],
+      barrelWidths: [...new Set(barrels.map(px))],
+      plates: plates.length,
+      platesCross: plates.filter((l) => crosses(g.objectDisplay.skeleton(l))).map((l) => l.id),
+      comRadius: g.objectDisplay.comRadius() * g.svgGrid.getZoom(),
+      comHit: g.objectDisplay.comHitRadius() * g.svgGrid.getZoom(),
       gridWidth: gridLine ? px(gridLine) : null,
       blocks: blocks.length,
       heads: document.querySelectorAll('.cylinder-seal').length,
@@ -164,6 +203,21 @@ try {
       schematic.lineWidths[0] >= 2.99 &&
       schematic.gridWidth !== null &&
       schematic.lineWidths[0] >= 2 * schematic.gridWidth,
+    schematic
+  );
+  check(
+    'Schematic draws a barrel heavier than the rod that slides in it',
+    schematic.barrelWidths.length === 1 && schematic.barrelWidths[0] >= 4.49,
+    schematic
+  );
+  check(
+    'Schematic traces a four-joint plate round its outside, never as a bow tie',
+    schematic.plates > 0 && schematic.platesCross.length === 0,
+    schematic
+  );
+  check(
+    'Schematic keeps the center-of-mass mark at least 6px, with a 12px target',
+    schematic.comRadius >= 5.99 && schematic.comHit >= 11.99,
     schematic
   );
   check(
@@ -210,10 +264,10 @@ try {
     });
     check(
       `Zoom ${direction} ${count} keeps actual rendered symbols within readable limits`,
-      dims.pixels >= 19.99 &&
-        dims.pixels <= 32.01 &&
-        dims.diameter >= 5.99 &&
-        dims.diameter <= 9.61 &&
+      dims.pixels >= 23.99 &&
+        dims.pixels <= 38.01 &&
+        dims.diameter >= 7.19 &&
+        dims.diameter <= 11.41 &&
         dims.welds.length > 0 &&
         dims.welds.every((width) => width >= 4.4 && width <= 18),
       dims
@@ -371,6 +425,48 @@ try {
     check(`${id}: playback draws finite geometry`, invalid === 0, invalid);
     await contactSheet(`${OUT}/${id}-play/*.png`, `${OUT}/${id}-play-film.png`, 5, 0.3);
   }
+
+  await load('Cylinder_Boom');
+  const tagsOf = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('#linkTagHolder text')].map((t) => t.textContent.trim())
+    );
+  const renamed = await grid((g) => {
+    const c = g.mechanismSrv.sealedStructures()[0];
+    c.barrel.name = 'Ram barrel';
+    c.rod.name = 'Ram rod';
+    c.rod.mass = 5;
+    g.settings.isShowCOM.next(true);
+    g.mechanismSrv.updateMechanism();
+    g.activeObjService.updateSelectedObj(c.rod);
+    return true;
+  });
+  await page.waitForTimeout(300);
+  const tags = await tagsOf();
+  check(
+    'a renamed barrel and rod each show their own name on the grid',
+    renamed && tags.includes('Ram barrel') && tags.includes('Ram rod'),
+    tags
+  );
+  const rodCoM = await grid((g) => {
+    const c = g.mechanismSrv.sealedStructures()[0];
+    const at = g.svgGrid.modelToScreen({ x: c.rod.CoM.x, y: c.rod.CoM.y });
+    return { x: at.x, y: at.y, pose: JSON.stringify(c.rod.joints.map((j) => [j.x, j.y])) };
+  });
+  await page.mouse.move(rodCoM.x, rodCoM.y);
+  await page.mouse.down();
+  await page.mouse.move(rodCoM.x + 40, rodCoM.y + 30, { steps: 5 });
+  await page.mouse.up();
+  const refusal = page.getByText(
+    'center of mass is computed from its shape, so it cannot be moved'
+  );
+  check(
+    "dragging a rod's center of mass says why it cannot move, and moves nothing",
+    (await refusal.count()) > 0 &&
+      (await grid((g) =>
+        JSON.stringify(g.mechanismSrv.sealedStructures()[0].rod.joints.map((j) => [j.x, j.y]))
+      )) === rodCoM.pose
+  );
 
   await load('4-Bar');
   await settings();
