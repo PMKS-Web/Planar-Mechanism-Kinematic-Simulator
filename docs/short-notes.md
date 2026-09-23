@@ -2092,3 +2092,18 @@ A held start-pose ghost also needs a geometry snapshot before rebuilding it at a
 Do not add `non-scaling-stroke` to a weld whose inline selection stroke is already inverse-zoom
 scaled: at extreme zoom-out it turns into a huge solid block. Check the rendered ink, not just
 the path bounds or pin radius, in the zoom filmstrip.
+
+### A weld's inline stroke width beats any stylesheet width
+
+The weld cross binds `[style.stroke-width]`, because a picked weld's selection ring is that same
+stroke. An inline style beats a class rule that is not `!important`, so a Schematic hairline set in
+`new-grid.component.scss` was drawn at the ring's width instead: the welds came out as solid ink
+squares. Give the weld's unselected width through the same binding (`scaleWithZoom(1)` in
+Schematic) and keep `non-scaling-stroke` off it, for the reason in the note above.
+
+### Schematic riders are drawn by the slider layer, not the link layer
+
+`#linkHolder` is under every block, so a rider drawn there disappears under the block it is pinned
+to. In Schematic the slot stack draws each rider's and weld plate's line at its depth, and the link
+layer skips every link `drawnBySlotStack` names. Selectors that count schematic bars must include
+`.schematicRider` as well as `#linkHolder > path`.

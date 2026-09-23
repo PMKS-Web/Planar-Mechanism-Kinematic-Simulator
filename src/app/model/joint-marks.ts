@@ -142,6 +142,17 @@ export const MARK = {
   /** How much larger the arrow the block sets off along is drawn. */
   arrowEmphasis: 1.25,
 
+  /**
+   * Schematic's driven cue: two solid heads on the slot line, flanking the
+   * joint's own mark, with no shafts. The gap clears the slide bar (1.4R) by
+   * 0.3R, and at the emphasis factor the leading tip lands at 3.1R, inside an
+   * ordinary block's 3.84R half. Sized to the joint rather than to a cylinder's
+   * head, which is what made a long ram's arrows several joints long.
+   */
+  schematicHeadGap: 1.7,
+  schematicHeadLength: 1.1,
+  schematicHeadHalf: 0.75,
+
   /** A driven floating pin has no block, so the overlay brings its own backing. */
   pinBackingHalf: 2.2,
   /**
@@ -155,6 +166,13 @@ export const MARK = {
   /** The welded marker, replacing the circle at 1.47R across. */
   plusArm: 0.22,
   plusExtent: 0.735,
+  /**
+   * Schematic's welded marker, in multiples of the pin's own radius: a little
+   * wider than the pin it stands opposite, with arms broad enough to show the
+   * cream fill inside a hairline outline, the way a pin's circle does.
+   */
+  schematicPlusExtent: 1.15,
+  schematicPlusArm: 0.46,
 
   /**
    * The slide's marker: a 2.8R by 1.4R bar lying along the slot, corner 0.25R.
@@ -596,8 +614,15 @@ export function slideMarkPath(r: number, hostAlongHalf?: number, inset = 0): str
 
 /** The welded marker: a plus, 1.47R across, in place of the free circle. */
 export function plusPath(r: number): string {
-  const a = MARK.plusArm * r;
-  const e = MARK.plusExtent * r;
+  return plusOf(MARK.plusArm * r, MARK.plusExtent * r);
+}
+
+/** Schematic's weld cross, sized from the radius of the pins drawn beside it. */
+export function schematicPlusPath(pinR: number): string {
+  return plusOf(MARK.schematicPlusArm * pinR, MARK.schematicPlusExtent * pinR);
+}
+
+function plusOf(a: number, e: number): string {
   return (
     `M ${-a} ${-e} H ${a} V ${-a} H ${e} V ${a} H ${a} V ${e} ` +
     `H ${-a} V ${a} H ${-e} V ${-a} H ${-a} Z`
@@ -893,6 +918,33 @@ export function straightArrowPaths(
         side > 0 ? 0 : Math.PI,
         MARK.arrowHeadLength * r * grow,
         MARK.arrowHeadHalf * r * grow
+      ),
+      emphasised,
+    };
+  });
+}
+
+/**
+ * Schematic's driven slider or cylinder: a solid head each way along the slot,
+ * just clear of the joint's mark, the leading one larger. On a schematic line
+ * a head says "moves along this line" without a shaft, and without shafts the
+ * cue stays the size of the joint it belongs to.
+ */
+export function schematicDriveHeads(
+  r: number,
+  leading?: 1 | -1
+): { head: string; emphasised: boolean }[] {
+  return [1, -1].map((side) => {
+    const emphasised = side === leading;
+    const grow = emphasised ? MARK.arrowEmphasis : 1;
+    const back = MARK.schematicHeadLength * r * grow;
+    return {
+      head: arrowHeadAt(
+        side * (MARK.schematicHeadGap * r + back),
+        0,
+        side > 0 ? 0 : Math.PI,
+        back,
+        MARK.schematicHeadHalf * r * grow
       ),
       emphasised,
     };

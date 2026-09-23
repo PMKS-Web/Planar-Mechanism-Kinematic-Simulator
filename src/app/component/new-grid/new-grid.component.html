@@ -563,7 +563,8 @@
              out of this layer entirely rather than emptied, so the body's id
              belongs to the one element that draws it. -->
         @if (
-          gridUtils.typeOfLink(link) == 'R' && (settings.isSchematic || !bodyDrawnByACylinder(link))
+          gridUtils.typeOfLink(link) == 'R' &&
+          (settings.isSchematic ? !drawnBySlotStack(link) : !bodyDrawnByACylinder(link))
         ) {
           <path
             (pointerover)="link.showHighlight = true"
@@ -650,113 +651,154 @@
          the two shared a link -- which is what a pair of dangling blocks on one
          bar looks like. -->
     @for (item of slotStack; track item.key) {
-      <!-- The positioned group carries the mark identity: it is the one with
+      <!-- Schematic draws a rider as its own line at the rider's depth, above
+           the block it is pinned to, exactly as the filled rider sits above it.
+           In the drawing's own frame rather than the slot's, because the line
+           is the link's joints and nothing else. -->
+      @if (settings.isSchematic && item.kind !== 'block') {
+        @for (rider of item.rider ? [item.rider.link] : (item.plate?.links ?? []); track rider.id) {
+          <ng-container
+            [ngTemplateOutlet]="schematicRider"
+            [ngTemplateOutletContext]="{ $implicit: rider }"
+          />
+        }
+      } @else {
+        <!-- The positioned group carries the mark identity: it is the one with
            the slot's transform on it, and the one anything measuring an
            assembly has to find. Ordering by depth means DOM order no longer
            follows joint order, so it is named rather than counted. -->
-      <g
-        [attr.transform]="sliderMarks.frame(item.mark)"
-        [attr.class]="item.kind === 'block' ? 'slider-mark' : null"
-        [attr.data-slider]="item.mark.id"
-      >
-        @switch (item.kind) {
-          @case ('block') {
-            <!-- Grabbing the block starts a drag on its pin (§4.4). The block is
+        <g
+          [attr.transform]="sliderMarks.frame(item.mark)"
+          [attr.class]="item.kind === 'block' ? 'slider-mark' : null"
+          [attr.data-slider]="item.mark.id"
+        >
+          @switch (item.kind) {
+            @case ('block') {
+              <!-- Grabbing the block starts a drag on its pin (§4.4). The block is
                  a far bigger target than the marker at its center, and the two
                  sit on the same point, so it is the same grab with a better
                  hitbox. Pointing at it lights that marker, and only that
                  marker: the block is the handle, the mark is the joint. -->
-            <g
-              class="slider-block"
-              [class.link-inert]="mechanismSrv.isPartInert(item.mark.joint)"
-              cursor="move"
-              (pointerover)="item.mark.joint.showHighlight = true"
-              (pointerout)="item.mark.joint.showHighlight = false"
-              (pointerdown)="setLastLeftClick(item.mark.joint, $event)"
-              (contextmenu)="setLastRightClick(item.mark.joint)"
-            >
-              <!-- The block stays #000 even when the slider has nowhere to
+              <g
+                class="slider-block"
+                [class.link-inert]="mechanismSrv.isPartInert(item.mark.joint)"
+                cursor="move"
+                (pointerover)="item.mark.joint.showHighlight = true"
+                (pointerout)="item.mark.joint.showHighlight = false"
+                (pointerdown)="setLastLeftClick(item.mark.joint, $event)"
+                (contextmenu)="setLastRightClick(item.mark.joint)"
+              >
+                <!-- The block stays #000 even when the slider has nowhere to
                    slide: the red is a highlight around it, the way the
                    orphan-joint mark works, not a different block. §2.8 rule 3
                    has no exceptions. -->
-              <path [attr.d]="item.mark.block" fill="#000000" filter="url(#elevation-1)" />
-            </g>
-          }
-          @case ('rider') {
-            @if (item.rider && !settings.isSchematic) {
-              <path
-                (pointerover)="item.rider.link.showHighlight = true"
-                (pointerout)="item.rider.link.showHighlight = false"
-                (pointerdown)="setLastLeftClick(item.rider.link, $event)"
-                (contextmenu)="setLastRightClick(item.rider.link, $event)"
-                [attr.d]="markPathWithPreview(item.mark, item.rider, item.rider.link)"
-                [attr.id]="item.rider.link.id + '__rider'"
-                fill-rule="evenodd"
-                [attr.fill]="item.rider.fill"
-                fill-opacity="0.7"
-                [attr.stroke]="item.rider.fill"
-                [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
-                [class]="mechanismSrv.getLinkCSSClass(item.rider.link)"
-              ></path>
-              <!-- Its own slot handed back, as in the link layer: a link can be
-                   a rider of one block and the carrier of another. -->
-              @if (item.rider.cuts.length > 0 || channelCountOn(item.rider.link) > 0) {
+                <path [attr.d]="item.mark.block" fill="#000000" filter="url(#elevation-1)" />
+              </g>
+            }
+            @case ('rider') {
+              @if (item.rider && !settings.isSchematic) {
                 <path
                   (pointerover)="item.rider.link.showHighlight = true"
                   (pointerout)="item.rider.link.showHighlight = false"
                   (pointerdown)="setLastLeftClick(item.rider.link, $event)"
                   (contextmenu)="setLastRightClick(item.rider.link, $event)"
-                  [attr.d]="markChannelsCutInto(item.mark, item.rider, item.rider.link)"
-                  fill="none"
-                  pointer-events="all"
+                  [attr.d]="markPathWithPreview(item.mark, item.rider, item.rider.link)"
+                  [attr.id]="item.rider.link.id + '__rider'"
+                  fill-rule="evenodd"
+                  [attr.fill]="item.rider.fill"
+                  fill-opacity="0.7"
+                  [attr.stroke]="item.rider.fill"
+                  [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+                  [class]="mechanismSrv.getLinkCSSClass(item.rider.link)"
                 ></path>
+                <!-- Its own slot handed back, as in the link layer: a link can be
+                   a rider of one block and the carrier of another. -->
+                @if (item.rider.cuts.length > 0 || channelCountOn(item.rider.link) > 0) {
+                  <path
+                    (pointerover)="item.rider.link.showHighlight = true"
+                    (pointerout)="item.rider.link.showHighlight = false"
+                    (pointerdown)="setLastLeftClick(item.rider.link, $event)"
+                    (contextmenu)="setLastRightClick(item.rider.link, $event)"
+                    [attr.d]="markChannelsCutInto(item.mark, item.rider, item.rider.link)"
+                    fill="none"
+                    pointer-events="all"
+                  ></path>
+                }
               }
             }
-          }
-          @case ('plate') {
-            <!-- The rider's ordinary drawing is suppressed while this stands in
+            @case ('plate') {
+              <!-- The rider's ordinary drawing is suppressed while this stands in
                  for it, so the two cannot double their alpha over each other or
                  leave the rider's own outline showing as a seam through the
                  plate. That makes the plate the only thing left to click, so it
                  carries the rider's selection the way the link body would. -->
-            @if (item.plate && !settings.isSchematic) {
-              <g class="slider-plate">
-                <path
-                  cursor="move"
-                  (pointerover)="item.plate.links[0].showHighlight = true"
-                  (pointerout)="item.plate.links[0].showHighlight = false"
-                  (pointerdown)="setLastLeftClick(item.plate.links[0], $event)"
-                  (contextmenu)="setLastRightClick(item.plate.links[0], $event)"
-                  [attr.d]="markPathWithPreview(item.mark, item.plate, item.plate.links[0])"
-                  fill-rule="evenodd"
-                  [attr.fill]="item.plate.fill"
-                  fill-opacity="0.7"
-                  [attr.stroke]="item.plate.fill"
-                  [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
-                  [class]="mechanismSrv.getLinkCSSClass(item.plate.links[0])"
-                />
-                <!-- The plate is the only thing left to click for the rider it
-                     stands in for, so it is also the only thing that can hand
-                     back the slot cut through it — the Scotch yoke's yoke is
-                     both a carrier and a welded rider. -->
-                @if (item.plate.cuts.length > 0 || channelCountOn(item.plate.links[0]) > 0) {
+              @if (item.plate && !settings.isSchematic) {
+                <g class="slider-plate">
                   <path
                     cursor="move"
                     (pointerover)="item.plate.links[0].showHighlight = true"
                     (pointerout)="item.plate.links[0].showHighlight = false"
                     (pointerdown)="setLastLeftClick(item.plate.links[0], $event)"
                     (contextmenu)="setLastRightClick(item.plate.links[0], $event)"
-                    [attr.d]="markChannelsCutInto(item.mark, item.plate, item.plate.links[0])"
-                    fill="none"
-                    pointer-events="all"
+                    [attr.d]="markPathWithPreview(item.mark, item.plate, item.plate.links[0])"
+                    fill-rule="evenodd"
+                    [attr.fill]="item.plate.fill"
+                    fill-opacity="0.7"
+                    [attr.stroke]="item.plate.fill"
+                    [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+                    [class]="mechanismSrv.getLinkCSSClass(item.plate.links[0])"
                   />
-                }
-              </g>
+                  <!-- The plate is the only thing left to click for the rider it
+                     stands in for, so it is also the only thing that can hand
+                     back the slot cut through it — the Scotch yoke's yoke is
+                     both a carrier and a welded rider. -->
+                  @if (item.plate.cuts.length > 0 || channelCountOn(item.plate.links[0]) > 0) {
+                    <path
+                      cursor="move"
+                      (pointerover)="item.plate.links[0].showHighlight = true"
+                      (pointerout)="item.plate.links[0].showHighlight = false"
+                      (pointerdown)="setLastLeftClick(item.plate.links[0], $event)"
+                      (contextmenu)="setLastRightClick(item.plate.links[0], $event)"
+                      [attr.d]="markChannelsCutInto(item.mark, item.plate, item.plate.links[0])"
+                      fill="none"
+                      pointer-events="all"
+                    />
+                  }
+                </g>
+              }
             }
           }
-        }
-      </g>
+        </g>
+      }
     }
+    <ng-template #schematicRider let-link>
+      <path
+        (pointerover)="link.showHighlight = true"
+        (pointerout)="link.showHighlight = false"
+        (pointerdown)="setLastLeftClick(link, $event)"
+        (contextmenu)="setLastRightClick(link, $event)"
+        [attr.cursor]="mechanismSrv.isLinkLockedVisual(link) ? 'not-allowed' : null"
+        [attr.d]="objectDisplay.skeleton(link)"
+        [attr.id]="link.id"
+        class="schematicRider"
+        fill="none"
+        [attr.stroke]="mechanismSrv.getLinkProp(link, 'fill')"
+        [class]="mechanismSrv.getLinkCSSClass(link)"
+      ></path>
+      <path
+        (pointerover)="link.showHighlight = true"
+        (pointerout)="link.showHighlight = false"
+        (pointerdown)="setLastLeftClick(link, $event)"
+        (contextmenu)="setLastRightClick(link, $event)"
+        [attr.cursor]="mechanismSrv.isLinkLockedVisual(link) ? 'not-allowed' : null"
+        [attr.d]="objectDisplay.skeleton(link)"
+        [attr.id]="link.id + '__slotHit'"
+        stroke="transparent"
+        [attr.stroke-width]="svgGrid.scaleWithZoom(12)"
+        fill="none"
+        pointer-events="all"
+      ></path>
+    </ng-template>
     <!-- A slider with nowhere to slide, marked the way an orphan joint is. Drawn
          after every body rather than on the block itself: a welded block is
          covered by its own weld plate, so a highlight painted under it was the
@@ -778,7 +820,17 @@
          are always white, and that is only safe because what is underneath is
          always the black block. -->
     @for (mark of sliderMarkList; track mark.id) {
-      @if (mark.driven && !isSkinned(mark)) {
+      @if (mark.driven && !isSkinned(mark) && settings.isSchematic) {
+        <g
+          class="slider-arrows schematic-heads"
+          pointer-events="none"
+          [attr.transform]="sliderMarks.frame(mark)"
+        >
+          @for (arrow of mark.schematicArrows; track $index) {
+            <path [attr.d]="arrow.head" [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)" />
+          }
+        </g>
+      } @else if (mark.driven && !isSkinned(mark)) {
         <g class="slider-arrows" pointer-events="none" [attr.transform]="sliderMarks.frame(mark)">
           <!-- The heavier arrow is the way the block sets off. Two matched
                arrows only say "this translates"; they cannot say which way it
@@ -838,11 +890,30 @@
               (pointerout)="cyl.barrelLink.showHighlight = false"
               (pointerdown)="setLastLeftClick(cyl.barrelLink, $event)"
               (contextmenu)="setLastRightClick(cyl.barrelLink, $event)"
-              [attr.d]="cyl.barrel"
+              [attr.d]="settings.isSchematic ? cyl.barrelLine : cyl.barrel"
               [attr.fill]="cyl.barrelFill"
               fill-opacity="0.7"
               [attr.stroke]="cyl.barrelFill"
               [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+            />
+          }
+          <!-- Schematic's members are bare lines, so each gets the wide
+               invisible target a schematic bar has. -->
+          @if (settings.isSchematic) {
+            <path
+              class="cylinder-member-hit"
+              [attr.cursor]="
+                mechanismSrv.isLinkLockedVisual(cyl.barrelLink) ? 'not-allowed' : 'move'
+              "
+              (pointerover)="cyl.barrelLink.showHighlight = true"
+              (pointerout)="cyl.barrelLink.showHighlight = false"
+              (pointerdown)="setLastLeftClick(cyl.barrelLink, $event)"
+              (contextmenu)="setLastRightClick(cyl.barrelLink, $event)"
+              [attr.d]="cyl.barrelLine"
+              stroke="transparent"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(12)"
+              fill="none"
+              pointer-events="all"
             />
           }
           <!-- The seal's own square. It stays #000 in every state — the accent
@@ -852,14 +923,18 @@
                band inside the bore read darker. Its hitbox is in that pass too.
                No stop notches and no dotted motion line: the bore is the head's
                own length, so the silhouette says where the travel ends. -->
-          <path
-            class="cylinder-seal"
-            pointer-events="none"
-            [class.link-inert]="mechanismSrv.isPartInert(cyl.barrelLink)"
-            [attr.d]="cyl.block"
-            fill="#000000"
-            [attr.filter]="mechanismSrv.isPartInert(cyl.barrelLink) ? null : 'url(#elevation-1)'"
-          />
+          <!-- Schematic has no head: the seal's own mark, drawn in the joint
+               layer, is where the two lines meet and slide. -->
+          @if (!settings.isSchematic) {
+            <path
+              class="cylinder-seal"
+              pointer-events="none"
+              [class.link-inert]="mechanismSrv.isPartInert(cyl.barrelLink)"
+              [attr.d]="cyl.block"
+              fill="#000000"
+              [attr.filter]="mechanismSrv.isPartInert(cyl.barrelLink) ? null : 'url(#elevation-1)'"
+            />
+          }
           @if (settings.isSchematic || !memberIsFused(cyl, 'rod')) {
             <path
               pointer-events="all"
@@ -869,11 +944,26 @@
               (pointerout)="cyl.rodLink.showHighlight = false"
               (pointerdown)="setLastLeftClick(cyl.rodLink, $event)"
               (contextmenu)="setLastRightClick(cyl.rodLink, $event)"
-              [attr.d]="cyl.rod"
+              [attr.d]="settings.isSchematic ? cyl.rodLine : cyl.rod"
               [attr.fill]="cyl.rodFill"
               fill-opacity="0.7"
               [attr.stroke]="cyl.rodFill"
               [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+            />
+          }
+          @if (settings.isSchematic) {
+            <path
+              class="cylinder-member-hit"
+              [attr.cursor]="mechanismSrv.isLinkLockedVisual(cyl.rodLink) ? 'not-allowed' : 'move'"
+              (pointerover)="cyl.rodLink.showHighlight = true"
+              (pointerout)="cyl.rodLink.showHighlight = false"
+              (pointerdown)="setLastLeftClick(cyl.rodLink, $event)"
+              (contextmenu)="setLastRightClick(cyl.rodLink, $event)"
+              [attr.d]="cyl.rodLine"
+              stroke="transparent"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(12)"
+              fill="none"
+              pointer-events="all"
             />
           }
         </g>
@@ -916,7 +1006,13 @@
           [attr.d]="cyl.block"
           fill="transparent"
         />
-        @if (cyl.driven && !mechanismSrv.isPartInert(cyl.barrelLink)) {
+        @if (cyl.driven && !mechanismSrv.isPartInert(cyl.barrelLink) && settings.isSchematic) {
+          <g class="cylinder-arrows schematic-heads" pointer-events="none">
+            @for (arrow of cyl.schematicArrows; track $index) {
+              <path [attr.d]="arrow.head" [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)" />
+            }
+          </g>
+        } @else if (cyl.driven && !mechanismSrv.isPartInert(cyl.barrelLink)) {
           <g class="cylinder-arrows" pointer-events="none">
             <!-- The heavier arrow is the way the block sets off, same as the
                  unskinned driven mark (§4.2b): the skin changes the drawing,
@@ -945,7 +1041,7 @@
           <path
             [class]="'cylinder-selected cylinder-barrel-selected ' + barrelState"
             pointer-events="none"
-            [attr.d]="cyl.barrel"
+            [attr.d]="settings.isSchematic ? cyl.barrelLine : cyl.barrel"
             fill="none"
             [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
           />
@@ -954,7 +1050,7 @@
           <path
             [class]="'cylinder-selected cylinder-rod-selected ' + rodState"
             pointer-events="none"
-            [attr.d]="cyl.rod"
+            [attr.d]="settings.isSchematic ? cyl.rodLine : cyl.rod"
             fill="none"
             [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
           />
@@ -1394,7 +1490,13 @@
                 [attr.d]="weldMarkerPath"
                 [style.fill]="jointFillOf(joint)"
                 [style.stroke]="selectionRingOn(joint)"
-                [style.stroke-width]="selectionRingWidth()"
+                [style.stroke-width]="
+                  selectionRingOn(joint)
+                    ? selectionRingWidth()
+                    : settings.isSchematic
+                      ? svgGrid.scaleWithZoom(1)
+                      : null
+                "
               ></path>
             }
             <!-- The lock cue: a small padlock riding the joint's shoulder.

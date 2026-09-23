@@ -32,6 +32,7 @@ import {
   cylinderContourPath,
   slideMarkPath,
   slotHalfLength,
+  schematicDriveHeads,
   straightArrowPaths,
 } from '../model/joint-marks';
 import { buildCompoundPath, mergedChannels, transformRigidPath } from '../model/compound-link-path';
@@ -119,6 +120,8 @@ export interface SliderMark {
   /** Links pinned to this block, redrawn above it. Empty when it is welded. */
   riders: RiderDraw[];
   arrows: { line: Segment; head: string; emphasised: boolean }[];
+  /** Schematic's compact drive cue, in place of `arrows`. */
+  schematicArrows: { head: string; emphasised: boolean }[];
   /**
    * A grounded guide, carrying its own frame.
    *
@@ -207,8 +210,15 @@ export interface CylinderMark {
   headAlongHalf: number;
   /** The exact silhouette, for the selection stroke. */
   contour: string;
+  /**
+   * Schematic draws the part as the two bodies that slide on each other: a line
+   * from mount A to the seal, and one from the seal to mount B.
+   */
+  barrelLine: string;
+  rodLine: string;
   driven: boolean;
   arrows: { line: Segment; head: string; emphasised: boolean }[];
+  schematicArrows: { head: string; emphasised: boolean }[];
 }
 
 /**
@@ -551,6 +561,8 @@ export class SliderMarkService {
     // along the slot, which may point either way along the same line.
     const leading: 1 | -1 =
       (driveForward(seal) ? 1 : -1) * (Math.cos(seal.slotAngle - angle) >= 0 ? 1 : -1) > 0 ? 1 : -1;
+    const along = (joint: Joint): number =>
+      (joint.x - seal.x) * Math.cos(angle) + (joint.y - seal.y) * Math.sin(angle);
     return {
       id: seal.id,
       seal,
@@ -575,8 +587,11 @@ export class SliderMarkService {
       block: cylinderBlockPath(r, headHalf),
       headAlongHalf: headHalf,
       contour: cylinderContourPath(r, anchor, mouth, rodReach),
+      barrelLine: `M ${along(found.mountA)} 0 H 0`,
+      rodLine: `M 0 0 H ${along(found.mountB)}`,
       driven,
       arrows: driven ? cylinderArrowPaths(r, headHalf, leading) : [],
+      schematicArrows: driven ? schematicDriveHeads(r, leading) : [],
     };
   }
 
@@ -659,6 +674,7 @@ export class SliderMarkService {
       plate: welded ? this.plateFor(slider, riders, angle, r, joints, cylinders) : undefined,
       riders: welded ? [] : this.ridersFor(slider, riders, angle, r, joints, cylinders),
       arrows: driven ? straightArrowPaths(r, driveForward(slider) ? 1 : -1) : [],
+      schematicArrows: driven ? schematicDriveHeads(r, driveForward(slider) ? 1 : -1) : [],
       rails: slider.ground ? this.railsFor(slider, guide, angle, r, otherGuides) : undefined,
       dangling: !slider.ground && !slider.isFloating,
     };

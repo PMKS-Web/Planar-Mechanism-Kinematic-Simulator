@@ -14,6 +14,8 @@ import {
   railGeometry,
   rodBodyPath,
   slideMarkFit,
+  schematicDriveHeads,
+  schematicPlusPath,
   slideMarkPath,
   slotHalfLength,
   straightArrowPaths,
@@ -372,5 +374,36 @@ describe('the motor case in world coordinates', () => {
       .map(Number);
     expect(values[0]).toBeCloseTo(origin[0] + 100, 6);
     expect(values[1]).toBeCloseTo(origin[1] - 40, 6);
+  });
+});
+
+describe('the schematic marks', () => {
+  const xs = (path: string): number[] => numbers(path).filter((_, i) => i % 2 === 0);
+
+  it('draws the weld cross a little wider than the pin beside it', () => {
+    const pinR = 3;
+    const x = xs(schematicPlusPath(pinR));
+    expect(Math.max(...x)).toBeCloseTo(MARK.schematicPlusExtent * pinR, 9);
+    expect(Math.max(...x)).toBeGreaterThan(pinR);
+    expect(Math.max(...x)).toBeLessThan(1.25 * pinR);
+  });
+
+  it('flanks the joint with two heads that stay clear of its mark and inside its block', () => {
+    const [forward, backward] = schematicDriveHeads(R, 1);
+    const f = xs(forward.head);
+    const b = xs(backward.head);
+    expect(Math.min(...f)).toBeGreaterThanOrEqual(MARK.slideAlongHalf * R);
+    expect(Math.max(...b)).toBeLessThanOrEqual(-MARK.slideAlongHalf * R);
+    expect(Math.max(...f)).toBeLessThan(MARK.blockAlongHalf * R);
+    expect(Math.min(...b)).toBeGreaterThan(-MARK.blockAlongHalf * R);
+  });
+
+  it('draws the way it sets off larger, and both alike when that is unknown', () => {
+    const length = (head: string) => Math.max(...xs(head)) - Math.min(...xs(head));
+    const [forward, backward] = schematicDriveHeads(R, -1);
+    expect(backward.emphasised).toBe(true);
+    expect(length(backward.head)).toBeCloseTo(MARK.arrowEmphasis * length(forward.head), 9);
+    const [a, b] = schematicDriveHeads(R);
+    expect(length(a.head)).toBeCloseTo(length(b.head), 9);
   });
 });
