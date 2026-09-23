@@ -898,12 +898,26 @@
   .cylinder-rod,
   .ghostBody,
   .synthBar {
-    fill: none !important;
     stroke-width: 3px;
     stroke-linecap: round;
     stroke-linejoin: round;
     vector-effect: non-scaling-stroke;
     filter: none;
+  }
+
+  .cylinder-barrel,
+  .cylinder-rod,
+  .ghostBody,
+  .synthBar {
+    fill: none !important;
+  }
+
+  // A plate of three or more joints is a closed outline whose inside takes a
+  // click, so it is shaded, faintly, in its own color to say so. A bar is an
+  // open line with no inside, so the same fill paints nothing on it.
+  #linkHolder > path:not([stroke='transparent']),
+  .schematicRider {
+    fill-opacity: 0.12 !important;
   }
 
   // The barrel a little heavier than the rod, so the two members of a

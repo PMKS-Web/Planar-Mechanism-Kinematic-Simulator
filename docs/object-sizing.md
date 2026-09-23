@@ -14,7 +14,8 @@ Settings has one **Drawing Style** choice, using the same radio block as Global 
   members read as two bodies even in one color.
 - **A plate of three or more joints is traced round its outside**, the same convex hull its filled
   body is drawn around in the other styles (`linkSkeletonPath`). Joined in joint order, a rectangle
-  came out as a bow tie.
+  came out as a bow tie. Its inside takes a click, so it is shaded at 12% in its own color; a bar
+  is an open line with no inside, so the same fill paints nothing on it.
 - **Every joint is cream inside a 1px ink hairline**: pins, slides (the bar a Prismatic joint
   wears) and welds alike. The weld cross is drawn a little wider than a pin (1.15 pin radii, by
   `schematicPlusPath`), with arms broad enough to show the cream.
