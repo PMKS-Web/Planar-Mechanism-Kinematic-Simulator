@@ -2608,7 +2608,7 @@ export class NewGridComponent implements OnDestroy {
     // so the name is planted beside the arrow and stays there through a zoom.
     // Measured in screen pixels it walked along the normal as the zoom
     // changed, which read as the label drifting away from its arrow.
-    const clear = 0.45 * this.settings.drawingScale;
+    const clear = 0.45 * this.settings.forceScale;
     return { x: mx + nx * clear, y: my + ny * clear };
   }
 
@@ -4799,15 +4799,13 @@ export class NewGridComponent implements OnDestroy {
    * marks would fight the links they sit on for every click.
    */
   comDraggable(link: Link): boolean {
-    return (
-      link instanceof RealLink &&
-      this.activeObjService.objType === 'Link' &&
-      this.activeObjService.selectedLink === link &&
-      // A cylinder member's center follows its shape and nothing else
-      // (decision S14), so its mark is a glyph rather than a handle.
-      !this.mechanismSrv.memberInertiaIsDerived(link) &&
-      this.canEditNow()
-    );
+    // A cylinder member's center follows its shape and nothing else (S14).
+    return this.comGrabbable(link) && !this.mechanismSrv.memberInertiaIsDerived(link);
+  }
+
+  comGrabbable(link: Link): boolean {
+    const picked = this.activeObjService.objType === 'Link' && link instanceof RealLink;
+    return picked && this.activeObjService.selectedLink === link && this.canEditNow();
   }
 
   /**
@@ -4834,6 +4832,11 @@ export class NewGridComponent implements OnDestroy {
     // rather than wherever a drag is. It asked for `drag`, which Phase 2 allows
     // at a paused pose, and so stayed live beside its own frozen fields.
     if (!this.permission.may('properties')) return;
+    if (this.mechanismSrv.memberInertiaIsDerived(link)) {
+      const why = "'s center of mass is computed from its shape, so it cannot be moved.";
+      this.notify.refusal('com.derived', this.mechanismSrv.bodyLabel(link) + why);
+      return;
+    }
     // And a Lock holds it, as it holds every other way of moving this link.
     if (this.mechanismSrv.isLockedTarget(link)) {
       this.refuseLockedCoM(link);
@@ -5306,15 +5309,6 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * One tag per part: the rod defers to the barrel's tag, which names the whole
-   * cylinder. See `linkDisplayName` for why it is one and not two.
-   */
-  isSecondaryCylinderTag(link: Link): boolean {
-    const sealed = this.mechanismSrv.cylinderOfBar(link);
-    return !!sealed && link.id !== sealed.barrel.id;
-  }
-
-  /**
    * The stroke a cylinder member wears when it is picked or pointed at, or
    * nothing when it is neither.
    *
@@ -5541,9 +5535,15 @@ export class NewGridComponent implements OnDestroy {
   } {
     const name = this.linkDisplayName(link);
     const angle = this.linkLabelAngle(link, name);
+    // A member's tag sits on its own visible half: A to S, or S to B.
+    const sealed = this.mechanismSrv.cylinderOfBar(link);
     const slot = this.slotCarriedBy(link);
-    if (slot) {
-      const [from, to] = [slot.slotJointA!, slot.slotJointB!];
+    const barrel = sealed?.barrel.id === link.id;
+    const ends = sealed
+      ? [barrel ? sealed.mountA : sealed.seal, barrel ? sealed.seal : sealed.mountB]
+      : slot && [slot.slotJointA!, slot.slotJointB!];
+    if (ends) {
+      const [from, to] = ends;
       return {
         x: (from.x + to.x) / 2,
         y: (from.y + to.y) / 2,
@@ -5553,12 +5553,12 @@ export class NewGridComponent implements OnDestroy {
         // against its own color like every other body's. Left on black, a
         // cylinder given one of the dark navies disappeared while the bar
         // beside it in the same color turned its name white.
-        ink: this.mechanismSrv.cylinderOfBar(link) ? this.linkLabelInk(link) : 'black',
+        ink: sealed ? this.linkLabelInk(link) : 'black',
         // A name in a channel is black on nothing, so it needs its full weight.
         // A cylinder's name is on painted metal like every bar's, and at full
         // weight it sat a shade darker than the bar beside it in the same
         // color -- the one label in the row that did not match.
-        opacity: this.mechanismSrv.cylinderOfBar(link) ? 0.55 : 1,
+        opacity: sealed ? 0.55 : 1,
         name,
         angle,
       };
@@ -5735,22 +5735,13 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * What a link's canvas tag calls it.
-   *
-   * A cylinder wears **one** tag, and it names the part rather than either
-   * member: the two ends it runs between, as it always has. Its members have
-   * names of their own now (`model/body-label.ts`, decision S10) — Barrel AC,
-   * Rod CB — and two tags were drawn and looked at before this stayed at one.
-   * They are written along the same axis, a bar-width apart at the widest, and
-   * on a cylinder near its own minimum size they land on top of each other and
-   * on the square between them. A panel title has room for a member's name and
-   * the canvas does not.
+   * What a link's canvas tag calls it: the name a reader typed, or the letters
+   * of the joints it runs between. A cylinder's barrel and rod each have a
+   * Rename of their own, so each wears its own tag, on its own half of the
+   * part (`linkLabelStyle`).
    */
   linkDisplayName(link: Link): string {
-    const sealed = this.mechanismSrv.cylinderOfBar(link);
-    if (!sealed) return this.mechanismSrv.visibleBodyName(link);
-    const named = (joint: Joint) => joint.name || joint.id;
-    return `${named(sealed.mountA)}${named(sealed.mountB)}`;
+    return this.mechanismSrv.visibleBodyName(link);
   }
 
   /** A member link of a sealed cylinder: never a slot-drop target. */

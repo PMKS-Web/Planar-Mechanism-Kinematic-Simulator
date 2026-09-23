@@ -149,6 +149,10 @@ export class SettingsService {
   get drawingScale(): number {
     return drawingScale(this.objectScale, this.drawingZoom, this.drawingStyle.value);
   }
+  /** A force is a load, not structure, so every style draws it at Standard's size. */
+  get forceScale(): number {
+    return drawingScale(this.objectScale, this.drawingZoom, 'standard');
+  }
   get isSchematic(): boolean {
     return this.drawingStyle.value === 'schematic';
   }

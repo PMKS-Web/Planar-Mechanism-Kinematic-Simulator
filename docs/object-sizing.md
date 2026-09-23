@@ -10,7 +10,11 @@ Settings has one **Drawing Style** choice, using the same radio block as Global 
 ## Schematic symbols
 
 - **Lines are 3px** (5px when picked or pointed at): twice the axes and three times the grid, so a
-  bar lying along a grid line is never mistaken for it.
+  bar lying along a grid line is never mistaken for it. A cylinder's barrel is 4.5px, so its two
+  members read as two bodies even in one color.
+- **A plate of three or more joints is traced round its outside**, the same convex hull its filled
+  body is drawn around in the other styles (`linkSkeletonPath`). Joined in joint order, a rectangle
+  came out as a bow tie.
 - **Every joint is cream inside a 1px ink hairline**: pins, slides (the bar a Prismatic joint
   wears) and welds alike. The weld cross is drawn a little wider than a pin (1.15 pin radii, by
   `schematicPlusPath`), with arms broad enough to show the cream.
@@ -22,7 +26,8 @@ Settings has one **Drawing Style** choice, using the same radio block as Global 
   keeps its member's color, selection and 12px invisible pointer target.
 - **A driven slider or cylinder wears two solid heads** flanking the joint's mark on the slot
   line, the way it sets off drawn larger (`schematicDriveHeads`). They are sized to the joint, not
-  to a cylinder's head, and cased in the canvas color so they read where they sit on a line.
+  to a cylinder's head, stand well proud of the line, and are cased in 2.5px of the canvas color so
+  they read even on the darkest navy.
 
 There is no manual size field, size preset row, separate Lines switch, or Auto-size button.
 The style is a local view preference, remembered between visits. Existing Lines preferences migrate
@@ -34,8 +39,13 @@ adds no undo entry and runs no analysis.
 Marks scale with geometry through the ordinary zoom range, then stop becoming smaller or larger
 at readable screen limits. This is deliberately not a fixed-pixel drawing at every zoom. The style
 never switches itself. The normal pin diameter ranges are 12–27px for Standard, 7.5–15px for Fine,
-and 6–9.6px for Schematic. Bodies, force heads, welds, ground marks and sliders use the same bounded
-scale; labels retain readable minimum sizes and invisible pointer targets remain generous.
+and 7.2–11.4px for Schematic. Bodies, welds, ground marks and sliders use the same bounded scale;
+labels retain readable minimum sizes and invisible pointer targets remain generous.
+
+**Forces are drawn at Standard's size in every style** (`SettingsService.forceScale`): a force is a
+load laid on the drawing, not a piece of it, so a thinner style has no reason to shrink it. The
+**center-of-mass mark** never draws under a 6px radius and takes a grab within 12px
+(`ObjectDisplayService.comRadius` and `comHitRadius`), because it is a handle as well as a glyph.
 
 `SettingsService.drawingScale` is presentation only. It combines the document's legacy scale,
 current zoom and the selected style, without publishing to `OBJECT_SCALE`. No view operation
