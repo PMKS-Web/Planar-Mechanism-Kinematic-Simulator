@@ -2122,3 +2122,10 @@ A member's center of mass follows its shape (decision S14), so its mark is not a
 takes the pointer while its member is selected (`comGrabbable`), and `startComDrag` answers with a
 refusal rather than a drag. Left transparent to the pointer, the grab fell through to the member
 and dragged the whole cylinder.
+
+### The start ghost's own rule takes the stroke off every body
+
+`.startGhost .ghostBody { stroke: none }` is right for a filled ghost and fatal for a schematic one,
+whose bodies are nothing but their stroke: Schematic also sets `fill: none`, so the ghost drew
+nothing while its transparent grab lines still took the click and jumped the drawing to its start.
+The schematic ghost's stroke is bound as an inline style, which the class cannot override.

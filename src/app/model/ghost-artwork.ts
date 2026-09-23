@@ -1,5 +1,4 @@
 import { Cylinder, cylinderOfBarIn } from './cylinder';
-import { memberSilhouette } from './cylinder-fusion';
 import { transformRigidPath } from './compound-link-path';
 import { Joint } from './joint';
 import { Link, RealLink } from './link';
@@ -71,7 +70,11 @@ export function ghostArtwork(
   const drawing = snapshot;
   const schematicPath = (part: Link): string => {
     const c = cylinderOfBarIn(drawing.cylinders, part);
-    if (c) return memberSilhouette(c, c.barrel.id === part.id ? 'barrel' : 'rod', 0.15 * scale);
+    // The live schematic's two lines, A to S and S to B.
+    if (c) {
+      const [a, b] = c.barrel.id === part.id ? [c.mountA, c.seal] : [c.seal, c.mountB];
+      return `M ${a.x} ${a.y} L ${b.x} ${b.y}`;
+    }
     return part instanceof RealLink && part.subset.length
       ? part.subset.map(schematicPath).join(' ')
       : linkSkeletonPath(part);

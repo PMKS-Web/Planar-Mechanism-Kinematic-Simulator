@@ -493,7 +493,7 @@
               class="ghostBody"
               [attr.d]="ghostBodyPath(body)"
               [attr.fill]="ghostBodyFill(body)"
-              [attr.stroke]="settings.isSchematic ? ghostBodyFill(body) : null"
+              [style.stroke]="settings.isSchematic ? ghostBodyFill(body) : null"
               fill-rule="evenodd"
             />
           }
@@ -528,11 +528,14 @@
             }
           }
           @for (pin of ghost.pins; track $index) {
+            <!-- Schematic draws the ghost's pins as the schematic's own pins. -->
             <circle
               class="ghostPin"
               [attr.cx]="pin.x"
               [attr.cy]="pin.y"
-              [attr.r]="svgGrid.scaleWithZoom(4)"
+              [attr.r]="
+                settings.isSchematic ? 0.15 * settings.drawingScale : svgGrid.scaleWithZoom(4)
+              "
               [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
             />
           }
@@ -581,6 +584,7 @@
             fill-rule="evenodd"
             [attr.fill-opacity]="0.7"
             [attr.stroke]="mechanismSrv.getLinkProp(link, 'fill')"
+            [style.stroke]="settings.isSchematic ? mechanismSrv.getLinkProp(link, 'fill') : null"
             [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
             [class]="mechanismSrv.getLinkCSSClass(link)"
           ></path>
@@ -681,6 +685,7 @@
                  marker: the block is the handle, the mark is the joint. -->
               <g
                 class="slider-block"
+                [class.driven]="item.mark.driven"
                 [class.link-inert]="mechanismSrv.isPartInert(item.mark.joint)"
                 cursor="move"
                 (pointerover)="item.mark.joint.showHighlight = true"
@@ -782,7 +787,7 @@
         [attr.id]="link.id"
         class="schematicRider"
         fill="none"
-        [attr.stroke]="mechanismSrv.getLinkProp(link, 'fill')"
+        [style.stroke]="mechanismSrv.getLinkProp(link, 'fill')"
         [class]="mechanismSrv.getLinkCSSClass(link)"
       ></path>
       <path
@@ -827,7 +832,7 @@
           [attr.transform]="sliderMarks.frame(mark)"
         >
           @for (arrow of mark.schematicArrows; track $index) {
-            <path [attr.d]="arrow.head" [attr.stroke-width]="svgGrid.scaleWithZoom(2.5)" />
+            <path [attr.d]="arrow.head" />
           }
         </g>
       } @else if (mark.driven && !isSkinned(mark)) {
@@ -894,6 +899,7 @@
               [attr.fill]="cyl.barrelFill"
               fill-opacity="0.7"
               [attr.stroke]="cyl.barrelFill"
+              [style.stroke]="settings.isSchematic ? cyl.barrelFill : null"
               [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
             />
           }
@@ -948,6 +954,7 @@
               [attr.fill]="cyl.rodFill"
               fill-opacity="0.7"
               [attr.stroke]="cyl.rodFill"
+              [style.stroke]="settings.isSchematic ? cyl.rodFill : null"
               [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
             />
           }
@@ -1008,8 +1015,10 @@
         />
         @if (cyl.driven && !mechanismSrv.isPartInert(cyl.barrelLink) && settings.isSchematic) {
           <g class="cylinder-arrows schematic-heads" pointer-events="none">
+            <!-- A driver is black in Schematic, as a driven pin's motor is. -->
+            <path class="schematic-drive-block" [attr.d]="cyl.driveBlock" />
             @for (arrow of cyl.schematicArrows; track $index) {
-              <path [attr.d]="arrow.head" [attr.stroke-width]="svgGrid.scaleWithZoom(2.5)" />
+              <path [attr.d]="arrow.head" />
             }
           </g>
         } @else if (cyl.driven && !mechanismSrv.isPartInert(cyl.barrelLink)) {
@@ -1042,6 +1051,7 @@
             [class]="'cylinder-selected cylinder-barrel-selected ' + barrelState"
             pointer-events="none"
             [attr.d]="settings.isSchematic ? cyl.barrelLine : cyl.barrel"
+            [style.stroke]="settings.isSchematic ? cyl.barrelFill : null"
             fill="none"
             [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
           />
@@ -1051,6 +1061,7 @@
             [class]="'cylinder-selected cylinder-rod-selected ' + rodState"
             pointer-events="none"
             [attr.d]="settings.isSchematic ? cyl.rodLine : cyl.rod"
+            [style.stroke]="settings.isSchematic ? cyl.rodFill : null"
             fill="none"
             [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
           />
@@ -2216,10 +2227,10 @@
             <g
               class="lockBadge"
               pointer-events="none"
-              [upright]="{ x: 0.24 * settings.drawingScale, y: 0.24 * settings.drawingScale }"
+              [upright]="{ x: 0.24 * settings.forceScale, y: 0.24 * settings.forceScale }"
             >
               <circle
-                [attr.r]="0.13 * settings.drawingScale"
+                [attr.r]="0.13 * settings.forceScale"
                 fill="#ffffff"
                 stroke="#26323855"
                 [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
@@ -2243,7 +2254,7 @@
             id="startForceEndpoint"
             [attr.x]="force.startCoord.x"
             [attr.y]="force.startCoord.y"
-            [attr.stroke-width]="0.03 * settings.drawingScale"
+            [attr.stroke-width]="0.03 * settings.forceScale"
             (pointerdown)="pressForceBase(force, $event)"
             height="10"
             width="10"
@@ -2251,7 +2262,7 @@
             style="overflow: visible"
           >
             <circle
-              [attr.r]="0.09 * settings.drawingScale"
+              [attr.r]="Math.max(0.09 * settings.forceScale, svgGrid.scaleWithZoom(10))"
               fill="transparent"
               stroke="none"
             ></circle>
@@ -2260,7 +2271,7 @@
             id="endForceEndpoint"
             [attr.x]="force.endCoord.x"
             [attr.y]="force.endCoord.y"
-            [attr.stroke-width]="0.03 * settings.drawingScale"
+            [attr.stroke-width]="0.03 * settings.forceScale"
             (pointerdown)="
               setLastLeftClick(force);
               activeObjService.updateSelectedObj(force.endCoord, force);
@@ -2272,13 +2283,18 @@
             cursor="move"
             style="overflow: visible"
           >
+            <!-- A target wider than the square, in every style. -->
+            <circle
+              [attr.r]="Math.max(0.12 * settings.forceScale, svgGrid.scaleWithZoom(10))"
+              fill="transparent"
+            />
             <rect
-              [attr.x]="-0.075 * settings.drawingScale"
-              [attr.y]="-0.075 * settings.drawingScale"
-              [attr.width]="0.15 * settings.drawingScale"
-              [attr.height]="0.15 * settings.drawingScale"
+              [attr.x]="-0.075 * settings.forceScale"
+              [attr.y]="-0.075 * settings.forceScale"
+              [attr.width]="0.15 * settings.forceScale"
+              [attr.height]="0.15 * settings.forceScale"
               [attr.transform]="'rotate(' + force.angleRad * 57.29577951308232 + ')'"
-              [attr.stroke-width]="0.03 * settings.drawingScale"
+              [attr.stroke-width]="0.03 * settings.forceScale"
               class="forceEndpointHandle"
             />
           </svg>
