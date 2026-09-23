@@ -300,6 +300,39 @@ summary {
   font-size: 16px;
   font-weight: 600;
 }
+.bodyStep {
+  margin-inline: 4px;
+  padding-inline: 12px;
+  border-inline-start: 2px solid var(--warning);
+}
+.bodyStep > summary {
+  color: var(--text-strong);
+  font-size: 14px;
+}
+.projectionGrid app-solver-diagram,
+.equationBuild app-force-balance {
+  max-width: 460px;
+  margin-inline: auto;
+}
+.bodyCard table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.bodyCard th,
+.bodyCard td {
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border-divider);
+}
+.bodyCard th {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+.bodyCard td:first-child {
+  min-width: 180px;
+}
 .forceConvention > summary,
 .bodyCard > summary {
   cursor: pointer;

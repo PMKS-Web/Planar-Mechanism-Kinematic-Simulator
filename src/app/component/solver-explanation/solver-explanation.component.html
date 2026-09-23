@@ -310,18 +310,9 @@
             Isolate one body, read its loads, then write its balance equations. Repeat for each body
             to build the system.
           </p>
-          <segmented-block
-            [options]="arrowOptions"
-            [selected]="assumed() ? 0 : 1"
-            (selectedChange)="assumed.set($event === 0)"
-          ></segmented-block>
           <p class="caption">
-            {{
-              assumed()
-                ? 'Orange arrows define the positive unknown directions, before solving. A negative answer reverses that direction.'
-                : 'Orange arrows follow the signed solution at this sample.'
-            }}
-            Arrow lengths are schematic.
+            Orange arrows define the positive unknown directions. A negative solution means the
+            actual force points opposite its assumed arrow. Arrow lengths are schematic.
           </p>
           @for (body of data.bodies; track body.id; let i = $index) {
             <details class="bodyCard" [attr.data-body]="body.id" [open]="i === 0">
@@ -330,135 +321,111 @@
                 >{{ body.name }}
                 <small>{{ body.rowCount === 3 ? 'Rigid body' : 'Slider block' }}</small>
               </summary>
-              <app-force-balance
-                [diagram]="body.diagram"
-                [name]="body.name"
-                [equations]="body.components"
-                [startRow]="body.startRow"
-                [assumed]="assumed()"
-                [dynamic]="forceMode() === 'dynamic'"
-                [reference]="body.reference.label"
-              >
-                <details class="numericDetails bodyAdjustments">
-                  <summary>Choose Assumptions for {{ body.name }}</summary>
-                  <p class="caption">
-                    Choose the positive arrows on this isolated body. Shared reactions update the
-                    connected body with opposite directions.
-                  </p>
-                  @for (choice of body.signChoices; track choice.key) {
-                    <app-worksheet-choices
-                      [choices]="[choice]"
-                      (chosen)="
-                        preferences.setForce(
-                          solved,
-                          $event.key,
-                          $event.index === 0
-                            ? choice.positiveSign
-                            : choice.positiveSign === 1
-                              ? -1
-                              : 1
-                        );
-                        assumed.set(true)
-                      "
-                    />
-                  }
-                  @if (body.rowCount === 3) {
-                    <segmented-block
-                      [dropdown]="true"
-                      [label]="'Moment Reference Point for ' + body.name"
-                      [options]="body.referenceLabels"
-                      [selected]="body.referenceIndex"
-                      (selectedChange)="
-                        preferences.setMomentPoint(
-                          solved,
-                          body.id,
-                          body.referenceOptions[$event].id
-                        )
-                      "
-                    ></segmented-block>
-                    <p class="caption">
-                      The blue ring marks {{ body.reference.label }}. Choose any joint, tracer
-                      point, CoM, or labeled force point on this body.
-                    </p>
-                  }
-                  @for (load of body.loads; track $index) {
-                    @if (load.applicationId) {
-                      <p class="caption">
-                        {{ load.applicationId }}: {{ load.label }} is applied at ({{
-                          n(load.point[0] / scale)
-                        }}, {{ n(load.point[1] / scale) }}) {{ solved.unit }}.
-                      </p>
+              <details class="numericDetails bodyStep">
+                <summary>1 · Build the Free-Body Diagram</summary>
+                <details class="numericDetails">
+                  <summary>Isolate {{ body.name }}</summary>
+                  <p>Keep only this link, replace each connection with its reaction, and retain every applied load. The arrows below are the assumed positive directions.</p>
+                  <app-force-balance [diagram]="body.diagram" [name]="body.name" />
+                  <details class="numericDetails bodyAdjustments">
+                    <summary>Choose Free-Body Diagram Conventions</summary>
+                    <p class="caption">Choose the positive arrows on this isolated body. A shared reaction updates the connected body with the opposite direction.</p>
+                    @for (choice of body.signChoices; track choice.key) {
+                      <app-worksheet-choices
+                        [choices]="[choice]"
+                        (chosen)="
+                          preferences.setForce(
+                            solved,
+                            $event.key,
+                            $event.index === 0
+                              ? choice.positiveSign
+                              : choice.positiveSign === 1
+                                ? -1
+                                : 1
+                          )
+                        "
+                      />
                     }
-                  }
+                    @if (body.rowCount === 3) {
+                      <segmented-block
+                        [dropdown]="true"
+                        [label]="'Moment Reference Point for ' + body.name"
+                        [options]="body.referenceLabels"
+                        [selected]="body.referenceIndex"
+                        (selectedChange)="preferences.setMomentPoint(solved, body.id, body.referenceOptions[$event].id)"
+                      ></segmented-block>
+                      <p class="caption">The blue ring marks {{ body.reference.label }}. Choose any joint, tracer point, CoM, or labeled force point on this body.</p>
+                    }
+                  </details>
+                  <details class="numericDetails projectionGrid">
+                    <summary>Show the Position-Vector Projection Grid</summary>
+                    <p class="caption">Each grid starts at {{ body.reference.label }} and projects a force point onto the chosen x and y axes. These signed distances are the moment arms.</p>
+                    @for (product of body.crossProducts; track product.point) {
+                      <app-solver-diagram
+                        [diagram]="product.diagram"
+                        [label]="'Position-vector projection from ' + body.reference.label + ' to ' + product.point"
+                      />
+                    }
+                  </details>
                 </details>
-              </app-force-balance>
-              <details class="numericDetails vectorDerivation">
-                <summary>How the Vectors Become These Equations</summary>
-                <div class="derivation">
-                  <h4>Vector Force Balance</h4>
-                  <app-solver-math [equation]="body.forceVector"></app-solver-math>
-                  @if (forceMode() === 'dynamic') {
-                    <details class="numericDetails inertiaTerms">
-                      <summary>Acceleration Terms at This Sample</summary>
-                      <app-solver-math [equation]="body.inertiaForce"></app-solver-math>
-                      @if (body.rowCount === 3) {
-                        <app-solver-math [equation]="body.inertiaMoment"></app-solver-math>
+              </details>
+
+              <details class="numericDetails bodyStep">
+                <summary>2 · Variables in This Example</summary>
+                <table>
+                  <thead><tr><th scope="col">Variable</th><th scope="col">Meaning</th></tr></thead>
+                  <tbody>
+                    @for (product of body.crossProducts; track product.point) {
+                      <tr>
+                        <td><app-solver-math [equation]="product.definition" /></td>
+                        <td>Force at {{ product.point }} and its position vector from {{ body.reference.label }}.</td>
+                      </tr>
+                    }
+                    @for (load of body.loads; track $index) {
+                      @if (load.couple !== undefined) {
+                        <tr><td>{{ load.displayLabel }}</td><td>Applied pure moment on {{ body.name }}.</td></tr>
                       }
-                      <p class="caption">
-                        These are the inertia terms used in this solve. A zero term can result from
-                        zero mass, inertia, or acceleration.
-                      </p>
+                    }
+                  </tbody>
+                </table>
+              </details>
+
+              <details class="numericDetails bodyStep">
+                <summary>3 · Build the Force and Moment Equations</summary>
+                <details class="numericDetails equationBuild">
+                  <summary>Sum of Forces in x</summary>
+                  <app-force-balance [diagram]="body.diagram" [name]="body.name" [balanceAxis]="0" />
+                  <app-solver-math [equation]="body.components[0].symbolic" />
+                </details>
+                <details class="numericDetails equationBuild">
+                  <summary>Sum of Forces in y</summary>
+                  <app-force-balance [diagram]="body.diagram" [name]="body.name" [balanceAxis]="1" />
+                  <app-solver-math [equation]="body.components[1].symbolic" />
+                </details>
+                @if (body.rowCount === 3) {
+                  <details class="numericDetails equationBuild">
+                    <summary>Sum of Moments in z</summary>
+                    <app-force-balance [diagram]="body.diagram" [name]="body.name" [balanceAxis]="2" />
+                    <app-solver-math [equation]="body.momentVector" />
+                    <app-solver-math [equation]="body.components[2].symbolic" />
+                    <details class="numericDetails">
+                      <summary>Show Moment-Arm Calculations</summary>
+                      @for (product of body.crossProducts; track product.point) {
+                        <details class="numericDetails crossProduct">
+                          <summary>Force at {{ product.point }}</summary>
+                          <app-solver-diagram [diagram]="product.diagram" [label]="'Moment arm from ' + body.reference.label + ' to ' + product.point" />
+                          <app-solver-math [equation]="product.distanceComponents" />
+                          <app-solver-math [equation]="product.determinant" />
+                          <app-solver-math [equation]="product.expansion" />
+                          @if (product.zero) { <p>The force acts at the moment reference, so its moment arm is zero.</p> }
+                          <app-solver-math [equation]="product.evaluation" />
+                        </details>
+                      }
                     </details>
-                  }
-                  @if (body.rowCount === 3) {
-                    <h4>Vector Moment Balance About {{ body.reference.label }}</h4>
-                    <app-solver-math [equation]="body.momentVector"></app-solver-math>
-                    @if (body.reference.id !== '@CoM' && forceMode() === 'dynamic') {
-                      <p>
-                        The reference point may move. The balance includes the moment of m a at CoM
-                        as well as I at CoM times angular acceleration.
-                      </p>
-                    }
-                    <h4>Expand the Cross Products</h4>
-                    @for (product of body.crossProducts; track $index) {
-                      <details class="numericDetails crossProduct">
-                        <summary>Force at {{ product.point }}</summary>
-                        <app-solver-diagram
-                          [diagram]="product.diagram"
-                          [label]="
-                            'Moment arm from ' + body.reference.label + ' to ' + product.point
-                          "
-                        />
-                        <p class="caption">
-                          Start at {{ body.reference.label }} (blue ring), then travel to
-                          {{ product.point }}. The dashed steps are the signed r_x and r_y
-                          components in your chosen axes. Distances below are in meters.
-                        </p>
-                        <app-solver-math [equation]="product.distanceComponents" />
-                        <app-solver-math [equation]="product.definition"></app-solver-math>
-                        <app-solver-math [equation]="product.determinant"></app-solver-math>
-                        <app-solver-math [equation]="product.expansion"></app-solver-math>
-                        @if (product.zero) {
-                          <p>The force acts at the moment reference, so its moment arm is zero.</p>
-                        }
-                        <app-solver-math [equation]="product.numbers"></app-solver-math>
-                        <p class="caption">
-                          Substitute the distances; keep the force components as symbols.
-                        </p>
-                        <app-solver-math [equation]="product.evaluation"></app-solver-math>
-                      </details>
-                    }
-                    <p class="caption">
-                      A pure couple contributes directly to the moment balance and is the same about
-                      every reference point.
-                    </p>
-                  } @else {
-                    <p>
-                      The ideal slider block contributes two force equations. It has no independent
-                      moment row.
-                    </p>
-                  }
-                </div>
+                  </details>
+                } @else {
+                  <p>The ideal slider block has no independent moment equation.</p>
+                }
               </details>
             </details>
           }

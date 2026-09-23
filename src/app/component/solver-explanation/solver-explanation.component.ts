@@ -66,11 +66,9 @@ export class SolverExplanationComponent {
     () => this.dialogData?.section ?? (this.isForce() ? 1 : 0)
   );
   protected readonly chosenMachine = signal(this.dialogData?.machine ?? '');
-  protected readonly assumed = signal(true);
   protected readonly forceOptions = ['Static', 'In-motion'];
   protected readonly forceSections = ['Definitions', 'Free Bodies', 'System'];
   protected readonly kinematicSections = ['Position', 'Velocity', 'Acceleration'];
-  protected readonly arrowOptions = ['Assumed Directions', 'Solved Directions'];
   protected n = numberText;
   protected readonly scale = MODEL_SCALE;
   protected readonly vectorDefinitions = String.raw`\vec F=\begin{bmatrix}F_x\\F_y\\0\end{bmatrix},\quad\vec M=\begin{bmatrix}0\\0\\M_z\end{bmatrix}`;
@@ -113,7 +111,7 @@ export class SolverExplanationComponent {
   }
   protected get view() {
     if (!this.valid) return undefined;
-    const key = `${this.mechanism.poseRevision}|${this.step}|${this.isForce()}|${this.forceMode()}|${this.assumed()}|${this.preferences.revision()}`;
+    const key = `${this.mechanism.poseRevision}|${this.step}|${this.isForce()}|${this.forceMode()}|${this.preferences.revision()}`;
     if (this.cache?.mechanism !== this.solved || this.cache.key !== key)
       this.cache = { mechanism: this.solved, key, value: this.build(this.solved, this.step) };
     return this.cache.value;
@@ -324,7 +322,7 @@ export class SolverExplanationComponent {
           ),
           referenceIndex: body.referenceOptions.findIndex((p) => p.id === body.reference.id),
           diagram: worldForceDiagram(
-            freeBodyDiagram(body, this.assumed(), true, preferences.axisAngle),
+            freeBodyDiagram(body, true, true, preferences.axisAngle),
             preferences.axisAngle
           ),
         })) ?? [],
