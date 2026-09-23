@@ -182,7 +182,18 @@ try {
     );
     return {
       bodies: ink.length,
-      outlined: [...ink, ...barrels].every((p) => getComputedStyle(p).fill === 'none'),
+      outlined:
+        barrels.every((p) => getComputedStyle(p).fill === 'none') &&
+        ink.every(
+          (p) =>
+            getComputedStyle(p).fill === 'none' ||
+            parseFloat(getComputedStyle(p).fillOpacity) <= 0.121
+        ),
+      // A plate's inside takes a click, so it is shaded faintly in its own color.
+      shadedPlates: plates.map((l) => {
+        const style = getComputedStyle(document.getElementById(l.id));
+        return style.fill !== 'none' && Math.abs(parseFloat(style.fillOpacity) - 0.12) < 1e-3;
+      }),
       lineWidths: [...new Set(ink.map(px))],
       barrelWidths: [...new Set(barrels.map(px))],
       plates: plates.length,
@@ -236,6 +247,11 @@ try {
   check(
     'Schematic traces a four-joint plate round its outside, never as a bow tie',
     schematic.plates > 0 && schematic.platesCross.length === 0,
+    schematic
+  );
+  check(
+    'Schematic shades the clickable inside of a plate, faintly, in its own color',
+    schematic.shadedPlates.length > 0 && schematic.shadedPlates.every(Boolean),
     schematic
   );
   check(
