@@ -30,8 +30,21 @@ Settings has one **Drawing Style** choice, using the same radio block as Global 
   like every other block, a driven slider was far quieter than a driven pin, when both are what
   make the machine move.
 - **A picked bar keeps its own color**, so a new color shows the moment it is chosen. The amber of
-  a selection is a glow round the line instead (`drop-shadow`), and the color is bound as an inline
-  style so the state classes cannot replace it. An inert part's gray is `!important` and still wins.
+  a selection is a band drawn under the line (`#selectionHaloHolder`, `model/selection-halo.ts`),
+  and the line's color is bound as an inline style so the state classes cannot replace it. An inert
+  part's gray is `!important` and still wins.
+- **A cylinder being drawn is the part it will become:** its two lines, the seal's mark and a pin at
+  each end, where the click will put them (`model/cylinder-preview.ts`).
+
+## Picking a whole body or a part of one
+
+A welded compound selects as a whole on its first click and as the part under the pointer on the
+next. The two never look alike:
+
+| | Whole body | One part of it |
+| --- | --- | --- |
+| Standard, Fine | Amber edge round the body; its parts' seams dashed inside it | Amber edge round the part, over a dashed amber edge round the whole body |
+| Schematic | Solid amber band under every line of the body | Solid band under the part, over a dotted band along the rest of the body |
 - **The start ghost is the schematic too:** each body's line in its own color, a cylinder as its two
   lines, and pins drawn as pins, at 40% (60% under the pointer).
 

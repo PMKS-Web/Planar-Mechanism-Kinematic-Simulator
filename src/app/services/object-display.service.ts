@@ -2,6 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { DRAWING_STYLES, storeDrawingStyle } from '../model/drawing-style';
 import { linkArtwork, schematicLink } from '../model/link-artwork';
 import { Link, RealLink } from '../model/link';
+import { Halo, holds, selectionHalos } from '../model/selection-halo';
+import { ActiveObjService } from './active-obj.service';
 import { MechanismService } from './mechanism.service';
 import { SettingsService } from './settings.service';
 
@@ -9,6 +11,7 @@ import { SettingsService } from './settings.service';
 @Injectable({ providedIn: 'root' })
 export class ObjectDisplayService {
   private mechanism = inject(MechanismService);
+  private active = inject(ActiveObjService);
   readonly settings = inject(SettingsService);
 
   selectedStyle(): string {
@@ -28,6 +31,29 @@ export class ObjectDisplayService {
 
   skeleton(link: Link): string {
     return schematicLink(link, this.mechanism.sealedStructures());
+  }
+
+  /** Schematic's selection bands, under the lines they mark. */
+  halos(): Halo[] {
+    if (!this.settings.isSchematic) return [];
+    return selectionHalos(
+      this.mechanism.getLinks(),
+      (link) => this.mechanism.getLinkCSSClass(link),
+      this.pickedPart(),
+      this.mechanism.sealedStructures()
+    );
+  }
+
+  /** A part picked inside a compound, rather than a whole body. */
+  pickedPart(): Link | undefined {
+    const link = this.active.selectedLink;
+    const whole = link && this.mechanism.getLinks().includes(link);
+    return this.active.objType === 'Link' && link && !whole ? link : undefined;
+  }
+
+  /** The body a picked part was welded into. */
+  compoundOf(part: Link): Link | undefined {
+    return this.mechanism.getLinks().find((root) => root.id !== part.id && holds(root, part));
   }
 
   /**

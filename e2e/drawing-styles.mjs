@@ -261,15 +261,18 @@ try {
     await page.waitForTimeout(150);
     return page.evaluate((id) => {
       const el = document.getElementById(id);
-      return { stroke: getComputedStyle(el).stroke, glow: getComputedStyle(el).filter };
+      return {
+        stroke: getComputedStyle(el).stroke,
+        bands: document.querySelectorAll('.selection-halo.picked').length,
+      };
     }, picked);
   };
   const recolored = [await recolor('#0d125a'), await recolor('#26A69A')];
   check(
-    'a picked schematic bar shows its new color at once, picked by an amber glow',
+    'a picked schematic bar shows its new color at once, over its amber band',
     recolored[0].stroke === 'rgb(13, 18, 90)' &&
       recolored[1].stroke === 'rgb(38, 166, 154)' &&
-      recolored.every((r) => r.glow.includes('drop-shadow')),
+      recolored.every((r) => r.bands === 1),
     recolored
   );
   await grid((g) => g.activeObjService.updateSelectedObj(null));
@@ -389,15 +392,22 @@ try {
         (await grid(
           (g) => g.activeObjService.selectedLink === g.mechanismSrv.sealedStructures()[0].barrelRoot
         )) &&
-          (await page.locator('.cylinder-barrel-selected.link-selected').count()) === 1 &&
-          (await page.locator('.cylinder-rod-selected.link-selected').count()) === 0
+          (await page.locator('.selection-halo.picked').count()) === 1 &&
+          (await page.locator('.selection-halo.context').count()) === 0
       );
       await clickBarrel();
       check(
-        'Schematic second click selects and outlines just the barrel primitive',
+        'Schematic second click bands just the barrel, over a dotted band along its body',
         (await grid(
           (g) => g.activeObjService.selectedLink === g.mechanismSrv.sealedStructures()[0].barrel
-        )) && (await page.locator('.cylinder-barrel-selected.link-selected').count()) === 1
+        )) &&
+          (await page.locator('.selection-halo.picked').count()) === 1 &&
+          (await page.locator('.selection-halo.context').count()) === 1 &&
+          (await grid((g) => {
+            const c = g.mechanismSrv.sealedStructures()[0];
+            const d = document.querySelector('.selection-halo.picked').getAttribute('d');
+            return d === `M ${c.mountA.x} ${c.mountA.y} L ${c.seal.x} ${c.seal.y}`;
+          }))
       );
       const leaf = await grid((g) => {
         const c = g.mechanismSrv.sealedStructures()[0];
@@ -413,6 +423,22 @@ try {
         'the thin connection still selects its ordinary primitive inside a compound',
         (await grid((g) => g.activeObjService.selectedLink?.id)) === leaf.id &&
           (await page.locator('.cylinder-barrel-selected.link-selected').count()) === 0
+      );
+      check(
+        'a picked schematic bar keeps its own color, over an amber band a halo draws',
+        await grid((g) => {
+          const band = document.querySelector('.selection-halo.picked');
+          // The part is drawn as one of its compound's lines.
+          const line = document.getElementById(g.mechanismSrv.sealedStructures()[0].barrelRoot.id);
+          const width = band && parseFloat(band.getAttribute('stroke-width')) * g.svgGrid.getZoom();
+          return (
+            !!band &&
+            !!line &&
+            getComputedStyle(band).stroke === 'rgb(255, 202, 40)' &&
+            getComputedStyle(line).stroke !== 'rgb(255, 202, 40)' &&
+            width > 10
+          );
+        })
       );
       const members = await grid((g) => {
         const mark = g.cylinderList[0];
@@ -471,6 +497,13 @@ try {
         check(
           `${style} also picks the ordinary primitive from its displayed body`,
           (await grid((g) => g.activeObjService.selectedLink?.id)) === leaf.id
+        );
+        check(
+          `${style} outlines the part solid and its whole body dashed`,
+          (await page.locator('#primitiveSelection .link-selected').count()) === 1 &&
+            (await page
+              .locator('#primitiveSelection .compound-context[stroke-dasharray]')
+              .count()) === 1
         );
       }
       await settings();
@@ -543,6 +576,51 @@ try {
       )) === rodCoM.pose
   );
 
+  await load('4-Bar');
+  // A cylinder being drawn in Schematic is what the click will place.
+  const mount = await page.evaluate(() => {
+    const b = document.querySelector('#joint_D').getBoundingClientRect();
+    return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+  });
+  await page.mouse.move(mount.x, mount.y);
+  await page.mouse.click(mount.x, mount.y, { button: 'right' });
+  await page.waitForTimeout(600);
+  await page.evaluate(() =>
+    [...document.querySelectorAll('#contextMenu .cm-row')]
+      .find((row) => row.querySelector('.cm-row__label')?.textContent?.trim() === 'Cylinder')
+      ?.click()
+  );
+  await page.waitForTimeout(300);
+  await page.mouse.move(mount.x - 260, mount.y - 120, { steps: 10 });
+  await page.waitForTimeout(250);
+  const preview = await grid((g) => ({
+    ...g.cylinderPreview,
+    heads: document.querySelectorAll('.cylinder-preview .cylinder-seal').length,
+    joints: document.querySelectorAll('.cylinder-preview .preview-joint').length,
+  }));
+  await page.mouse.click(mount.x - 260, mount.y - 120);
+  await page.waitForTimeout(1200);
+  const placed = await grid((g) => {
+    const c = g.mechanismSrv.sealedStructures().at(-1);
+    return {
+      x: c.seal.x,
+      y: c.seal.y,
+      back: Math.hypot(c.mountA.x - c.seal.x, c.mountA.y - c.seal.y),
+      out: Math.hypot(c.mountB.x - c.seal.x, c.mountB.y - c.seal.y),
+    };
+  });
+  // A placed joint is rounded to six decimals, as the URL stores it.
+  const near = (a, b) => Math.abs(a - b) < 1e-3;
+  check(
+    'a cylinder previewed in Schematic is two lines, a seal and two pins, where it lands',
+    preview.heads === 0 &&
+      preview.joints === 3 &&
+      near(preview.x, placed.x) &&
+      near(preview.y, placed.y) &&
+      near(-preview.anchor, placed.back) &&
+      near(preview.reach, placed.out),
+    { preview, placed }
+  );
   await load('4-Bar');
   await settings();
   for (const width of [1280, 850, 390]) {
