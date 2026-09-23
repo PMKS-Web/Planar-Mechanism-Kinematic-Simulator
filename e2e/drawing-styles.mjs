@@ -93,18 +93,54 @@ try {
   const schematic = await page.evaluate(() => {
     const ink = [
       ...document.querySelectorAll(
-        '#linkHolder > path:not([stroke="transparent"]), .cylinder-barrel, .cylinder-rod'
+        '#linkHolder > path:not([stroke="transparent"]), .schematicRider, .cylinder-barrel, .cylinder-rod'
       ),
     ];
-    const blocks = [...document.querySelectorAll('.slider-block > path,.cylinder-seal')];
-    const joints = [...document.querySelectorAll('#jointHolder circle[id^="joint_"]')];
+    const blocks = [...document.querySelectorAll('.slider-block > path')];
+    const joints = [
+      ...document.querySelectorAll(
+        '#jointHolder circle[id^="joint_"], #jointHolder .slideMark, #jointHolder .weldMark'
+      ),
+    ];
+    const gridLine = document.querySelector('.gridLineMajor, .gridLineMinor');
+    const px = (el) =>
+      parseFloat(getComputedStyle(el).strokeWidth) *
+      (getComputedStyle(el).vectorEffect === 'non-scaling-stroke'
+        ? 1
+        : Math.hypot(el.getScreenCTM().a, el.getScreenCTM().b));
+    // A rider's line is painted after the block it is pinned to.
+    const holder = [...document.querySelectorAll('#sliderHolder > *')];
+    const g = ng.getComponent(document.querySelector('app-new-grid'));
+    const riderAbove = g.slotStack
+      .filter((item) => item.kind === 'rider')
+      .map((item) => {
+        const block = document.querySelector(
+          `#sliderHolder > .slider-mark[data-slider="${item.mark.id}"]`
+        );
+        const rider = document.getElementById(item.rider.link.id);
+        return (
+          !!block &&
+          rider?.parentElement?.id === 'sliderHolder' &&
+          holder.indexOf(rider) > holder.indexOf(block)
+        );
+      });
     return {
       bodies: ink.length,
       outlined: ink.every((p) => getComputedStyle(p).fill === 'none'),
+      lineWidths: [...new Set(ink.map(px))],
+      gridWidth: gridLine ? px(gridLine) : null,
       blocks: blocks.length,
+      heads: document.querySelectorAll('.cylinder-seal').length,
       hollow: blocks.every((p) => getComputedStyle(p).fill === 'rgb(255, 255, 255)'),
-      jointOutlines: joints.every((p) => getComputedStyle(p).stroke !== 'none'),
-      invisibleHits: [...document.querySelectorAll('#linkHolder path[stroke="transparent"]')].every(
+      jointOutlines: joints.every((p) => getComputedStyle(p).stroke !== 'none' && px(p) <= 1.01),
+      creamJoints: joints.every((p) => getComputedStyle(p).fill === 'rgb(255, 248, 225)'),
+      riders: riderAbove.length,
+      ridersAbove: riderAbove.every(Boolean),
+      invisibleHits: [
+        ...document.querySelectorAll(
+          '#linkHolder path[stroke="transparent"], #sliderHolder path[stroke="transparent"]'
+        ),
+      ].every(
         (p) =>
           parseFloat(p.getAttribute('stroke-width')) *
             Math.hypot(p.getScreenCTM().a, p.getScreenCTM().b) >=
@@ -116,10 +152,28 @@ try {
     'Schematic simplifies every body, cylinder and slider while preserving wide hit targets',
     schematic.bodies > 10 &&
       schematic.blocks > 0 &&
+      schematic.heads === 0 &&
       schematic.outlined &&
       schematic.hollow &&
-      schematic.jointOutlines &&
       schematic.invisibleHits,
+    schematic
+  );
+  check(
+    'Schematic lines are 3px, well clear of the grid lines under them',
+    schematic.lineWidths.length === 1 &&
+      schematic.lineWidths[0] >= 2.99 &&
+      schematic.gridWidth !== null &&
+      schematic.lineWidths[0] >= 2 * schematic.gridWidth,
+    schematic
+  );
+  check(
+    'Schematic draws pins, slides and welds alike: cream inside a hairline outline',
+    schematic.jointOutlines && schematic.creamJoints,
+    schematic
+  );
+  check(
+    'Schematic paints each rider line above the block it is pinned to',
+    schematic.riders > 0 && schematic.ridersAbove,
     schematic
   );
   await choose('Close');
@@ -187,13 +241,18 @@ try {
       page
         .locator('.cylinder-seal')
         .evaluateAll((ps) => ps.map((p) => ({ x: p.getBBox().x, width: p.getBBox().width })));
-    const initialHead = await head();
+    let initialHead;
     for (const name of ['Standard', 'Fine', 'Schematic']) {
       await choose(name);
+      // Schematic draws no head at all: the part is two lines meeting at S.
+      const drawn = await head();
+      initialHead ??= drawn;
       check(
         `${id}: ${name} keeps piston head length and document data unchanged`,
         (await physical()) === before &&
-          JSON.stringify(await head()) === JSON.stringify(initialHead)
+          (name === 'Schematic'
+            ? drawn.length === 0
+            : JSON.stringify(drawn) === JSON.stringify(initialHead))
       );
       await page.waitForTimeout(240); // The shared segmented pill is animated.
       await page.screenshot({ path: `${OUT}/${id}-${name}.png` });
@@ -243,15 +302,35 @@ try {
         (await grid((g) => g.activeObjService.selectedLink?.id)) === leaf.id &&
           (await page.locator('.cylinder-barrel-selected.link-selected').count()) === 0
       );
+      const members = await grid((g) => {
+        const mark = g.cylinderList[0];
+        const zoom = g.svgGrid.getZoom();
+        const r = 0.15 * g.settings.drawingScale;
+        return {
+          barrel: mark.barrelLine,
+          rod: mark.rodLine,
+          heads: [...document.querySelectorAll('.cylinder-arrows.schematic-heads path')].map(
+            (p) => ({
+              fill: getComputedStyle(p).fill,
+              // Screen length along the slot, against the pin's diameter.
+              along: p.getBBox().width * zoom,
+              pin: 2 * r * zoom,
+            })
+          ),
+        };
+      });
       check(
-        'cylinder input arrows contrast against the outlined head',
-        await page
-          .locator('.cylinder-arrows line')
-          .evaluateAll(
-            (lines) =>
-              lines.length > 0 &&
-              lines.every((l) => getComputedStyle(l).stroke !== 'rgb(255, 255, 255)')
-          )
+        'Schematic draws the cylinder as a line A to S and a line S to B',
+        /^M -[\d.e-]+ 0 H 0$/.test(members.barrel) && /^M 0 0 H [\d.e-]+$/.test(members.rod),
+        members
+      );
+      check(
+        'a driven cylinder wears two small ink heads, each shorter than a pin is wide',
+        members.heads.length === 2 &&
+          members.heads.every(
+            (h) => h.fill !== 'rgb(255, 255, 255)' && h.along > 2 && h.along <= h.pin * 1.1
+          ),
+        members
       );
       await page.screenshot({ path: `${OUT}/schematic-selection.png` });
       for (const style of ['Standard', 'Fine']) {

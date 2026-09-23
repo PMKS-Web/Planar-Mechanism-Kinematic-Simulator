@@ -95,6 +95,7 @@ import {
   MARK,
   orientedCapsulePath,
   plusPath,
+  schematicPlusPath,
   rodBodyPath,
   slotHalfLength,
   motorBodyPath,
@@ -5202,9 +5203,9 @@ export class NewGridComponent implements OnDestroy {
       items.push({ key: `${mark.id}:block`, depth: blockDepth, kind: 'block', mark });
       // A plate holding a cylinder member is painted in that member's place in
       // the skin's stack instead (S18), so this layer draws the block alone.
-      const plate = this.sliderMarks.plateIsPainted(mark, this.cylinderList, marks)
-        ? undefined
-        : mark.plate;
+      // Schematic paints no fused bodies, so a painted plate's riders stay here.
+      const painted = this.sliderMarks.plateIsPainted(mark, this.cylinderList, marks);
+      const plate = painted && !this.settings.isSchematic ? undefined : mark.plate;
       if (plate) {
         items.push({
           key: `${mark.id}:plate`,
@@ -5256,9 +5257,11 @@ export class NewGridComponent implements OnDestroy {
   /**
    * A link its own slider assembly is drawing: either fused into a weld plate,
    * or hoisted above the block it is pinned to. Either way the link layer has
-   * to leave it alone, or it is drawn twice at 0.7 alpha over itself.
+   * to leave it alone, or it is drawn twice at 0.7 alpha over itself. In
+   * Schematic too: a rider's line belongs above the block it is pinned to, and
+   * the link layer is under every block.
    */
-  private platedLink(link: Link): boolean {
+  drawnBySlotStack(link: Link): boolean {
     return this.sliderMarkList.some((mark) => {
       if (this.isSkinned(mark)) return false;
       if (mark.plate?.links.some((rider) => rider.id === link.id)) return true;
@@ -5763,7 +5766,7 @@ export class NewGridComponent implements OnDestroy {
    * plated link is drawn somewhere else, and its holes are handed back there.
    */
   hasChannelHit(link: Link): boolean {
-    return this.channelCountOn(link) > 0 && !this.skinnedLink(link) && !this.platedLink(link);
+    return this.channelCountOn(link) > 0 && !this.skinnedLink(link) && !this.drawnBySlotStack(link);
   }
 
   /**
@@ -5853,7 +5856,7 @@ export class NewGridComponent implements OnDestroy {
     // Likewise a welded rider: its weld plate draws the rider and the block it
     // is fused to as one outline, so drawing the rider here as well would put
     // its own edge inside that outline and double the fill's alpha over itself.
-    if (this.platedLink(link)) return '';
+    if (this.drawnBySlotStack(link)) return '';
     return this.bodyPath(link);
   }
 
@@ -5984,7 +5987,8 @@ export class NewGridComponent implements OnDestroy {
    * that a weld removes a freedom. One marker, one size, everywhere.
    */
   get weldMarkerPath(): string {
-    return plusPath(0.15 * this.settings.drawingScale);
+    const r = 0.15 * this.settings.drawingScale;
+    return this.settings.isSchematic ? schematicPlusPath(r) : plusPath(r);
   }
 
   /**
