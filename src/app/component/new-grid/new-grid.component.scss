@@ -1003,7 +1003,7 @@
 // A schematic bar keeps its own color while it is picked, so a new color shows
 // the moment it is chosen: the amber is a band drawn under the line instead
 // (`#selectionHaloHolder`). A part picked inside a compound is a solid band
-// over a dotted one along the rest of the body.
+// over a dashed one along the rest of the body.
 #canvas.schematic {
   path.link-selected,
   path.link-pointed {
@@ -1018,6 +1018,12 @@
     &.picked,
     &.context {
       stroke: var(--canvas-selection);
+    }
+
+    // Square ends, so the dashes stay dashes: round caps on a band this wide
+    // grew each one into its neighbor and the band read as a string of beads.
+    &.context {
+      stroke-linecap: butt;
     }
 
     &.hovered {
