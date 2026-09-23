@@ -951,6 +951,14 @@
     stroke: none;
   }
 
+  // A cylinder being placed wears the joints it will have.
+  .cylinder-preview .preview-joint {
+    fill: var(--accent-tint);
+    stroke: var(--canvas-ink);
+    stroke-width: 1px;
+    vector-effect: non-scaling-stroke;
+  }
+
   // The ghost is the schematic too: the lines, in their colors, and pins as
   // pins. Stroked from the template, because the ghost's own rule takes the
   // stroke off every body -- and a schematic body is nothing but its stroke,
@@ -993,22 +1001,33 @@
 }
 
 // A schematic bar keeps its own color while it is picked, so a new color shows
-// the moment it is chosen; the amber is a glow round the line instead.
+// the moment it is chosen: the amber is a band drawn under the line instead
+// (`#selectionHaloHolder`). A part picked inside a compound is a solid band
+// over a dotted one along the rest of the body.
 #canvas.schematic {
   path.link-selected,
   path.link-pointed {
-    stroke-width: 5px;
-    vector-effect: non-scaling-stroke;
-    filter: drop-shadow(0 0 2px var(--canvas-selection))
-      drop-shadow(0 0 2px var(--canvas-selection)) drop-shadow(0 0 1.5px var(--canvas-selection))
-      drop-shadow(0 0 1px var(--canvas-selection)) !important;
+    filter: none;
   }
 
-  path.link-hovered {
-    filter: drop-shadow(0 0 1.5px var(--accent-pale)) !important;
-  }
+  .selection-halo {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 
-  .cylinder-barrel-selected:is(.link-selected, .link-pointed) {
-    stroke-width: 6.5px;
+    &.picked,
+    &.context {
+      stroke: var(--canvas-selection);
+    }
+
+    &.hovered {
+      stroke: var(--accent-pale);
+    }
   }
+}
+
+// The body a picked part belongs to, in the other styles: a dashed amber edge
+// round the whole compound under the part's solid one.
+#canvas .compound-context {
+  stroke: var(--canvas-selection);
 }

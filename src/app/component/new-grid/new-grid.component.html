@@ -557,6 +557,27 @@
     </g>
   }
 
+  <!-- Schematic says "picked" with a band of amber under the line, so the line
+       keeps its own color and a new color shows while it is still picked. A
+       drawn band rather than a CSS glow: a filter's blur is measured in the
+       drawing's own units, so it vanished at some scales, and Safari does not
+       filter SVG shapes at all. -->
+  @if (settings.isSchematic) {
+    <g id="selectionHaloHolder" modelFrame pointer-events="none">
+      @for (halo of objectDisplay.halos(); track halo.key) {
+        <path
+          [class]="'selection-halo ' + halo.kind"
+          [attr.d]="halo.d"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(halo.kind === 'picked' ? 11 : 9)"
+          [attr.stroke-dasharray]="
+            halo.kind === 'context'
+              ? svgGrid.scaleWithZoom(2) + ' ' + svgGrid.scaleWithZoom(8)
+              : null
+          "
+        />
+      }
+    </g>
+  }
   <g id="linkHolder" modelFrame>
     @for (link of mechanismSrv.getLinks(); track link) {
       <ng-container>
@@ -612,6 +633,7 @@
           }
         }
         @if (
+          !settings.isSchematic &&
           gridUtils.typeOfLink(link) == 'R' &&
           gridUtils.getLinkSubset(link).length > 0 &&
           activeObjService.objType == 'Link' &&
@@ -626,7 +648,7 @@
                     : objectDisplay.path(subLink)
                 "
                 [attr.id]="link.id + '__' + subLink.id + '__component'"
-                [attr.fill]="settings.isSchematic ? 'none' : 'rgba(0,0,0,0.3)'"
+                fill="none"
                 stroke="black"
                 [attr.stroke-width]="0.01 * settings.drawingScale"
                 [attr.stroke-dasharray]="0.1 * settings.drawingScale"
@@ -1046,7 +1068,7 @@
              (decision S12), and an outline round the fused silhouette would say
              the reader had picked the whole part. A selection that closes over
              the cylinder lights all three, as bars in a selection do. -->
-        @if (cylinderMemberOutline(cyl, 'barrel'); as barrelState) {
+        @if (!settings.isSchematic && cylinderMemberOutline(cyl, 'barrel'); as barrelState) {
           <path
             [class]="'cylinder-selected cylinder-barrel-selected ' + barrelState"
             pointer-events="none"
@@ -1056,7 +1078,7 @@
             [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
           />
         }
-        @if (cylinderMemberOutline(cyl, 'rod'); as rodState) {
+        @if (!settings.isSchematic && cylinderMemberOutline(cyl, 'rod'); as rodState) {
           <path
             [class]="'cylinder-selected cylinder-rod-selected ' + rodState"
             pointer-events="none"
@@ -1195,25 +1217,50 @@
         opacity="0.5"
         [attr.transform]="sliderMarks.frame(ghost)"
       >
-        <!-- Same per-path alphas as the committed skin, so the black block
-             reads through the rod exactly as it will once built — and the same
-             color, which is the one the barrel is about to be handed rather
-             than a stand-in that changes at the moment of the click. -->
-        <path
-          class="cylinder-barrel"
-          [attr.d]="ghost.barrel"
-          [attr.fill]="ghost.fill"
-          [attr.stroke]="settings.isSchematic ? ghost.fill : null"
-          fill-opacity="0.7"
-        />
-        <path class="cylinder-seal" [attr.d]="ghost.block" fill="#000000" />
-        <path
-          class="cylinder-rod"
-          [attr.d]="ghost.rod"
-          [attr.fill]="ghost.fill"
-          [attr.stroke]="settings.isSchematic ? ghost.fill : null"
-          fill-opacity="0.7"
-        />
+        @if (settings.isSchematic) {
+          <!-- What Schematic will draw once it is built: a line from mount A
+               to the seal and one on to the rod's end, the seal's mark where
+               they meet, and a pin at each end. -->
+          <path
+            class="cylinder-barrel"
+            fill="none"
+            [attr.d]="'M ' + ghost.anchor + ' 0 H 0'"
+            [style.stroke]="ghost.fill"
+          />
+          <path
+            class="cylinder-rod"
+            fill="none"
+            [attr.d]="'M 0 0 H ' + ghost.reach"
+            [style.stroke]="ghost.fill"
+          />
+          <path class="preview-joint" [attr.d]="ghost.seal" />
+          @for (at of [ghost.anchor, ghost.reach]; track $index) {
+            <circle
+              class="preview-joint"
+              [attr.cx]="at"
+              cy="0"
+              [attr.r]="0.15 * settings.drawingScale"
+            />
+          }
+        } @else {
+          <!-- Same per-path alphas as the committed skin, so the black block
+               reads through the rod exactly as it will once built — and the same
+               color, which is the one the barrel is about to be handed rather
+               than a stand-in that changes at the moment of the click. -->
+          <path
+            class="cylinder-barrel"
+            [attr.d]="ghost.barrel"
+            [attr.fill]="ghost.fill"
+            fill-opacity="0.7"
+          />
+          <path class="cylinder-seal" [attr.d]="ghost.block" fill="#000000" />
+          <path
+            class="cylinder-rod"
+            [attr.d]="ghost.rod"
+            [attr.fill]="ghost.fill"
+            fill-opacity="0.7"
+          />
+        }
       </g>
     }
   </g>
@@ -1256,11 +1303,20 @@
   </g>
   <!-- A primitive picked inside a compound needs its own edge above the fused
        body. Cylinder members use their actual skin, not their model bar hull. -->
-  @let primitive = activeObjService.selectedLink;
-  @if (
-    activeObjService.objType === 'Link' && primitive && !mechanismSrv.getLinks().includes(primitive)
-  ) {
+  @let primitive = objectDisplay.pickedPart();
+  @if (primitive && !settings.isSchematic) {
     <g id="primitiveSelection" modelFrame pointer-events="none">
+      <!-- The body it belongs to, dashed, so a picked part never reads as a
+           picked whole. -->
+      @if (objectDisplay.compoundOf(primitive); as body) {
+        <path
+          class="compound-context"
+          fill="none"
+          [attr.d]="objectDisplay.path(body)"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(2)"
+          [attr.stroke-dasharray]="svgGrid.scaleWithZoom(6) + ' ' + svgGrid.scaleWithZoom(4)"
+        />
+      }
       @if (mechanismSrv.cylinderOfBar(primitive)) {
         @for (cyl of cylinderList; track cyl.id) {
           @if (cyl.barrelLink === primitive || cyl.rodLink === primitive) {

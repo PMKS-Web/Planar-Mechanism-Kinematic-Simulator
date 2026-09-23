@@ -2129,3 +2129,10 @@ and dragged the whole cylinder.
 whose bodies are nothing but their stroke: Schematic also sets `fill: none`, so the ghost drew
 nothing while its transparent grab lines still took the click and jumped the drawing to its start.
 The schematic ghost's stroke is bound as an inline style, which the class cannot override.
+
+### A CSS `drop-shadow` on an SVG shape is measured in the drawing's units
+
+A `filter: drop-shadow(0 0 2px …)` on a path inside the canvas blurs by two *user units* of that
+path, not two screen pixels, so a selection glow that looked right on a four-bar vanished on a
+drawing at another scale. Safari applies no CSS filter functions to SVG shapes at all. Schematic's
+selection is a band of its own, drawn under the line with a `scaleWithZoom` width.

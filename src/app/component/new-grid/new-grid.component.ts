@@ -88,15 +88,12 @@ import {
 } from '../../services/slider-mark.service';
 import {
   barHalfWidth,
-  barrelPath,
-  cylinderBlockPath,
   cylinderLabelOffset,
   GROUND_STROKE,
   MARK,
   orientedCapsulePath,
   plusPath,
   schematicPlusPath,
-  rodBodyPath,
   slotHalfLength,
   motorBodyPath,
   motorBodyAt,
@@ -115,14 +112,8 @@ import { mergedChannels, transformRigidPath } from '../../model/compound-link-pa
 import { GhostBody } from '../../model/mechanism/anchor';
 import { ghostInkOf } from '../../model/ghost-paint';
 import { ghostArtwork } from '../../model/ghost-artwork';
-import {
-  Cylinder,
-  cylinderCreationLayout,
-  cylinderHeadHalf,
-  cylinderSizeOf,
-  cylinderSpanRange,
-  cylinderJoints,
-} from '../../model/cylinder';
+import { CylinderPreview, cylinderPreviewOf } from '../../model/cylinder-preview';
+import { Cylinder, cylinderSizeOf, cylinderSpanRange, cylinderJoints } from '../../model/cylinder';
 import { accentOutlineClass, CylinderRole, hiddenByCylinder } from '../../model/cylinder-skin';
 import { memberIsFused, PaintStep } from '../../model/cylinder-paint-order';
 import { SnapGuide, snapToAxes } from '../../model/axis-snap';
@@ -972,45 +963,21 @@ export class NewGridComponent implements OnDestroy {
    * paths, same proportions and same frame as the committed skin, so what is
    * previewed is exactly what the left-click will create.
    */
-  get cylinderPreview():
-    | {
-        x: number;
-        y: number;
-        rotation: number;
-        barrel: string;
-        rod: string;
-        block: string;
-        fill: string;
-      }
-    | undefined {
+  get cylinderPreview(): CylinderPreview | undefined {
     if (this.dragState.grid !== gridStates.createCylinder || !this.cylinderCreateStart) {
       return undefined;
     }
-    const creation = cylinderCreationLayout(
+    return cylinderPreviewOf(
       this.cylinderCreateStart,
       // Where the click will put it, not where the pointer is: the rod's far
       // end is a joint, and it lands on the grid like every other.
       this.creationLanding(),
-      SettingsService.cylinderObjectScale
-    );
-    const r = 0.15 * this.settings.drawingScale;
-    return {
-      x: creation.seal.x,
-      y: creation.seal.y,
-      rotation: (creation.angleRad * 180) / Math.PI,
-      // The preview is the part it will become: the barrel at its own length,
-      // straddling the piston, with the rod telescoping out of its mouth.
-      barrel: barrelPath(
-        r,
-        -creation.sealFromMount,
-        creation.barrelLength - creation.sealFromMount
-      ),
-      rod: rodBodyPath(r, creation.rodLength, cylinderHeadHalf(creation.barrelLength)),
-      block: cylinderBlockPath(r, cylinderHeadHalf(creation.barrelLength)),
+      SettingsService.cylinderObjectScale,
+      this.settings.drawingScale,
       // The color the barrel will be handed when the click builds it, which
       // the rod then wears too.
-      fill: this.nextLinkColor,
-    };
+      this.nextLinkColor
+    );
   }
 
   /** The left-click that ends the gesture: build the part, one undo entry. */
@@ -5320,13 +5287,7 @@ export class NewGridComponent implements OnDestroy {
    */
   cylinderMemberOutline(mark: CylinderMark, which: 'barrel' | 'rod'): string | undefined {
     const link = which === 'barrel' ? mark.barrelLink : mark.rodLink;
-    const body = which === 'barrel' ? mark.cylinder.barrelRoot : mark.cylinder.rodRoot;
-    const state =
-      accentOutlineClass(this.mechanismSrv.getLinkCSSClass(link)) ??
-      (this.settings.isSchematic
-        ? accentOutlineClass(this.mechanismSrv.getLinkCSSClass(body))
-        : undefined);
-    // Schematic draws members separately, so they also carry their compound's accent.
+    const state = accentOutlineClass(this.mechanismSrv.getLinkCSSClass(link));
     // A list that offers the whole cylinder as one part points at one of its
     // bars, and means the part: both members answer, as the fused silhouette
     // used to.
