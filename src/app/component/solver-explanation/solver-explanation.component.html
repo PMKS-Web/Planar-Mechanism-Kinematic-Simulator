@@ -132,7 +132,9 @@
               <segmented-block
                 [options]="forceOptions"
                 [selected]="forceMode() === 'dynamic' ? 1 : 0"
-                (selectedChange)="settings.forceAnalysisMode.next($event === 1 ? 'dynamic' : 'static')"
+                (selectedChange)="
+                  settings.forceAnalysisMode.next($event === 1 ? 'dynamic' : 'static')
+                "
               ></segmented-block>
               <strong
                 >{{ forceMode() === 'dynamic' ? 'In-motion balance' : 'Static equilibrium' }} ·
@@ -401,7 +403,12 @@
               <details class="numericDetails bodyStep">
                 <summary>2 · Variables in This Example</summary>
                 <table>
-                  <thead><tr><th scope="col">Variable</th><th scope="col">Meaning</th></tr></thead>
+                  <thead>
+                    <tr>
+                      <th scope="col">Variable</th>
+                      <th scope="col">Meaning</th>
+                    </tr>
+                  </thead>
                   <tbody>
                     @for (variable of body.variables; track variable.symbol) {
                       <tr>
@@ -416,39 +423,75 @@
               </details>
 
               <details class="numericDetails bodyStep">
-                <summary>3 · Build the Sum of Forces and Sum of Moments</summary>
+                <summary>3 · Vector Equations</summary>
+                <p>
+                  Define each signed vector before assembling a balance. These definitions come
+                  directly from the arrows on this isolated free-body diagram.
+                </p>
                 <details class="numericDetails equationBuild">
-                  <summary>Sum of Forces</summary>
-                  <p>
-                    First define every force acting on this isolated link. A minus sign belongs
-                    inside the vector definition when its arrow points along a negative axis.
-                  </p>
+                  <summary>Force vectors</summary>
                   @for (definition of body.forceDefinitions; track definition) {
                     <app-solver-math [equation]="definition" />
                   }
+                </details>
+                <details class="numericDetails equationBuild">
+                  <summary>Position vectors about {{ body.reference.label }}</summary>
+                  @for (definition of body.positionDefinitions; track definition) {
+                    <app-solver-math [equation]="definition" />
+                  }
+                </details>
+                @if (body.momentDefinitions.length) {
+                  <details class="numericDetails equationBuild">
+                    <summary>Applied moment vectors</summary>
+                    @for (definition of body.momentDefinitions; track definition) {
+                      <app-solver-math [equation]="definition" />
+                    }
+                  </details>
+                }
+              </details>
+
+              <details class="numericDetails bodyStep">
+                <summary>4 · Build the Sum of Forces and Sum of Moments</summary>
+                <details class="numericDetails equationBuild">
+                  <summary>Sum of Forces</summary>
+                  <p>
+                    Add the vectors defined above. Their assumed component signs stay inside each
+                    force vector.
+                  </p>
                   <app-solver-math [equation]="body.forceVector" />
                   <details class="numericDetails">
                     <summary>Sum of Forces in x</summary>
-                    <app-force-balance [diagram]="body.diagram" [name]="body.name" [balanceAxis]="0" />
-                    <app-solver-math [equation]="body.components[0].symbolic" />
+                    <app-force-balance
+                      [diagram]="body.diagram"
+                      [name]="body.name"
+                      [balanceAxis]="0"
+                    />
+                    <app-solver-math [equation]="body.forceComponentEquations[0]" />
                   </details>
                   <details class="numericDetails">
                     <summary>Sum of Forces in y</summary>
-                    <app-force-balance [diagram]="body.diagram" [name]="body.name" [balanceAxis]="1" />
-                    <app-solver-math [equation]="body.components[1].symbolic" />
+                    <app-force-balance
+                      [diagram]="body.diagram"
+                      [name]="body.name"
+                      [balanceAxis]="1"
+                    />
+                    <app-solver-math [equation]="body.forceComponentEquations[1]" />
                   </details>
                 </details>
                 @if (body.rowCount === 3) {
                   <details class="numericDetails equationBuild">
                     <summary>Sum of Moments in z</summary>
                     <p>
-                      Every term is added. The direction is already carried by the signed force
-                      vector defined in Sum of Forces.
+                      Begin with the general force balance so each cross product uses the same
+                      signed force vector defined above. The cross product determines the resulting
+                      moment sign.
                     </p>
-                    @for (definition of body.momentDefinitions; track definition) {
-                      <app-solver-math [equation]="definition" />
-                    }
-                    <app-force-balance [diagram]="body.diagram" [name]="body.name" [balanceAxis]="2" />
+                    <app-solver-math [equation]="body.forceVector" />
+                    <app-force-balance
+                      [diagram]="body.diagram"
+                      [name]="body.name"
+                      [balanceAxis]="2"
+                    />
                     <app-solver-math [equation]="body.momentVector" />
                     <app-solver-math [equation]="body.components[2].symbolic" />
                   </details>

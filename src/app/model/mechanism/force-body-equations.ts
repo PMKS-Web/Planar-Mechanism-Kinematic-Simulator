@@ -86,16 +86,19 @@ export function forceBodyEquations(
   });
   const forceDefinitions = groups
     .filter((group) => group.load.couple === undefined)
-    .map(
-      (group) =>
-        `${group.actingSymbol}=${column([group.actualFx, group.actualFy, 0])}`
-    );
+    .map((group) => `${group.actingSymbol}=${column([group.actualFx, group.actualFy, 0])}`);
   const momentDefinitions = groups
     .filter((group) => group.load.couple !== undefined)
-    .map(
-      (group) => `${group.actingSymbol}=${group.sign < 0 ? '-' : ''}${group.symbol}`
-    );
-  const forceVector = `${signedSum(groups.filter((g) => g.load.couple === undefined).map((g) => ({ coefficient: 1, symbol: g.actingSymbol })))}=${dynamic ? `m_{${id}}${vector('a', COM_TEX)}` : '\\vec0'}`;
+    .map((group) => `${group.actingSymbol}=${group.sign < 0 ? '-' : ''}${group.symbol}`);
+  const forceGroups = groups.filter((group) => group.load.couple === undefined);
+  const positionDefinitions = forceGroups.map((group) => {
+    const arm = arms(group.load);
+    return `${arm.symbol}=${column([arm.rx, arm.ry, 0])}`;
+  });
+  const forceVectorLeft = signedSum(
+    forceGroups.map((group) => ({ coefficient: 1, symbol: group.actingSymbol }))
+  );
+  const forceVector = `${forceVectorLeft}=${dynamic ? `m_{${id}}${vector('a', COM_TEX)}` : '\\vec0'}`;
   const inertiaMoment = `I_{${COM_TEX},${id}}${vector('\\alpha', id)}`;
   const translated = body.reference.id !== COM_REFERENCE;
   const momentRight = dynamic
@@ -138,6 +141,20 @@ export function forceBodyEquations(
         )}`,
       };
     });
+  const forceComponentEquations = [0, 1].map((axis) => {
+    const componentName = axis ? 'y' : 'x';
+    const vectorComponents = signedSum(
+      forceGroups.map((group) => ({
+        coefficient: 1,
+        symbol: `\\left(${group.actingSymbol}\\right)_{${componentName}}`,
+      }))
+    );
+    const scalarComponents = signedSum(
+      loads.flatMap((load) => (load.couple === undefined ? [component(load, axis)] : []))
+    );
+    const right = dynamic ? `m_{${id}}a_{${COM_TEX},${componentName}}` : '0';
+    return `\\sum F_${componentName}=${vectorComponents}=${scalarComponents}=${right}`;
+  });
   const components = Array.from({ length: body.rowCount }, (_, axis) => {
     const row = body.startRow + axis;
     const terms = loads.flatMap((load) => {
@@ -201,7 +218,9 @@ export function forceBodyEquations(
   return {
     forceDefinitions,
     momentDefinitions,
+    positionDefinitions,
     forceVector,
+    forceComponentEquations,
     momentVector,
     crossProducts,
     components,

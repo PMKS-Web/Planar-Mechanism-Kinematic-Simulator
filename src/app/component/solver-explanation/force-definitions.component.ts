@@ -197,21 +197,45 @@ type DirectionKey = 'Ax' | 'Ay' | 'Bx' | 'By' | 'MA';
     </details>
 
     <details class="definitionStep">
-      <summary>4 · Build the Sum of Forces and Sum of Moments</summary>
-      <p>Start with the FBD above, define each signed vector, and then assemble the balances.</p>
+      <summary>4 · Vector Equations</summary>
+      <p>
+        Define every vector before assembling a balance. Each component sign comes from the arrow
+        selected on the free-body diagram and stays with that vector in every later equation.
+      </p>
       <details class="subsection">
-        <summary>Sum of Forces</summary>
-        <p>
-          These definitions place each selected direction inside its force vector. The same vectors
-          are then used unchanged in the moment cross products.
-        </p>
+        <summary>Force vectors</summary>
         @for (definition of exampleForceDefinitions(); track definition) {
           <app-solver-math [equation]="definition" />
         }
+      </details>
+      <details class="subsection">
+        <summary>Position vectors about {{ referenceLabel() }}</summary>
+        @for (definition of examplePositionDefinitions(); track definition) {
+          <app-solver-math [equation]="definition" />
+        }
+      </details>
+      <details class="subsection">
+        <summary>Applied moment vector</summary>
+        <app-solver-math [equation]="exampleMomentDefinition()" />
+      </details>
+    </details>
+
+    <details class="definitionStep">
+      <summary>5 · Build the Sum of Forces and Sum of Moments</summary>
+      <p>Use the vector equations above to assemble the balances for link AB.</p>
+      <details class="subsection">
+        <summary>Sum of Forces</summary>
+        <p>
+          Add the force vectors exactly as they were defined. Their component signs are already
+          contained inside the vectors.
+        </p>
         <app-solver-math [equation]="exampleForceSum()" />
         <details class="equationDetail">
           <summary>Sum of Forces in x</summary>
-          <p>Highlight each x component from the same FBD. Positive x follows the chosen frame.</p>
+          <p>
+            Take the x component of each force vector, then substitute the signed component defined
+            in Vector Equations.
+          </p>
           <app-solver-diagram
             [diagram]="forceXDiagram()"
             label="Free-body diagram highlighting x-force components"
@@ -220,7 +244,10 @@ type DirectionKey = 'Ax' | 'Ay' | 'Bx' | 'By' | 'MA';
         </details>
         <details class="equationDetail">
           <summary>Sum of Forces in y</summary>
-          <p>Highlight each y component from the same FBD. Positive y follows the chosen frame.</p>
+          <p>
+            Take the y component of each force vector, then substitute the signed component defined
+            in Vector Equations.
+          </p>
           <app-solver-diagram
             [diagram]="forceYDiagram()"
             label="Free-body diagram highlighting y-force components"
@@ -231,9 +258,10 @@ type DirectionKey = 'Ax' | 'Ay' | 'Bx' | 'By' | 'MA';
       <details class="subsection">
         <summary>Sum of Moments in z</summary>
         <p>
-          Add every moment contribution. A force direction is not placed outside the cross product;
-          it is already part of the signed vector defined in Sum of Forces.
+          Start from the same general force balance. It identifies the signed force vector used in
+          every cross product; the cross product then determines the moment sign.
         </p>
+        <app-solver-math [equation]="exampleForceSum()" />
         <app-solver-diagram
           [diagram]="momentDiagram()"
           [label]="'Free-body diagram with moments about ' + referenceLabel()"
@@ -250,7 +278,6 @@ type DirectionKey = 'Ax' | 'Ay' | 'Bx' | 'By' | 'MA';
             }
           </select>
         </label>
-        <app-solver-math [equation]="exampleMomentDefinition()" />
         <app-solver-math [equation]="momentSummaryEquation()" />
         <app-solver-math [equation]="expandedMomentTerms()" />
         <p>
@@ -498,6 +525,17 @@ export class ForceDefinitionsComponent {
     () =>
       String.raw`\sum\vec F=\vec F_A+\vec F_B+\vec F_1+\vec W_{AB}=m_{AB}\vec a_{\mathrm{CoM}}\quad\text{(motion)}\qquad\text{or}\qquad\vec0\quad\text{(statics)}`
   );
+  protected readonly examplePositionDefinitions = computed(() => {
+    const reference = this.referenceName();
+    return (['A', 'B', 'P', 'CoM'] as const).map((point) => {
+      const pointName = point === 'CoM' ? '\\mathrm{CoM}' : point;
+      const components =
+        point === this.reference()
+          ? '0,\\ 0,\\ 0'
+          : `r_{${pointName}/${reference},x},\\ r_{${pointName}/${reference},y},\\ 0`;
+      return String.raw`\vec r_{${pointName}/${reference}}=\left\langle ${components}\right\rangle`;
+    });
+  });
   protected readonly momentSummaryEquation = computed(
     () =>
       String.raw`\sum M_{${this.referenceName()},z}=\left[\vec r_{A/${this.referenceName()}}\times\vec F_A\right]_z+\left[\vec r_{B/${this.referenceName()}}\times\vec F_B\right]_z+\left[\vec r_{P/${this.referenceName()}}\times\vec F_1\right]_z+\left[\vec r_{\mathrm{CoM}/${this.referenceName()}}\times\vec W_{AB}\right]_z+M_{A,z}=0`
@@ -518,11 +556,11 @@ export class ForceDefinitionsComponent {
   protected readonly generalPositionVector = String.raw`\vec r_{Q/O}=\vec p_Q-\vec p_O=\langle x_Q-x_O,\ y_Q-y_O,\ 0\rangle`;
   protected readonly exampleFx = computed(
     () =>
-      String.raw`\sum F_x=${this.leadingTerm(this.direction('Ax'), 'A_x')}${this.signedTerm(this.direction('Bx'), 'B_x')}+F_{1x}${this.gravityTerm('x')}=0`
+      String.raw`\sum F_x=\left(\vec F_A\right)_x+\left(\vec F_B\right)_x+\left(\vec F_1\right)_x+\left(\vec W_{AB}\right)_x=${this.leadingTerm(this.direction('Ax'), 'A_x')}${this.signedTerm(this.direction('Bx'), 'B_x')}+F_{1x}${this.gravityTerm('x')}=m_{AB}a_{\mathrm{CoM},x}\ \text{(motion)}\quad\text{or}\quad0\ \text{(statics)}`
   );
   protected readonly exampleFy = computed(
     () =>
-      String.raw`\sum F_y=${this.leadingTerm(this.direction('Ay'), 'A_y')}${this.signedTerm(this.direction('By'), 'B_y')}+F_{1y}${this.gravityTerm('y')}=0`
+      String.raw`\sum F_y=\left(\vec F_A\right)_y+\left(\vec F_B\right)_y+\left(\vec F_1\right)_y+\left(\vec W_{AB}\right)_y=${this.leadingTerm(this.direction('Ay'), 'A_y')}${this.signedTerm(this.direction('By'), 'B_y')}+F_{1y}${this.gravityTerm('y')}=m_{AB}a_{\mathrm{CoM},y}\ \text{(motion)}\quad\text{or}\quad0\ \text{(statics)}`
   );
   protected readonly variables = computed(() => {
     const reference = this.referenceName();

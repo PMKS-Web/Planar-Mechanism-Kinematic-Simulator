@@ -32,8 +32,10 @@ describe('Worked derivations', () => {
       expect(body.momentVector).not.toContain('-\\left[');
       typesets(body.forceVector);
       typesets(body.momentVector);
+      body.forceComponentEquations.forEach(typesets);
       body.forceDefinitions.forEach(typesets);
       body.momentDefinitions.forEach(typesets);
+      body.positionDefinitions.forEach(typesets);
       for (const row of body.components) {
         typesets(row.symbolic);
         typesets(row.collected);

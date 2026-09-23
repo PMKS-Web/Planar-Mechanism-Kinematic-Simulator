@@ -32,18 +32,25 @@ try {
 
   await worksheet.getByRole('button', { name: 'Free Bodies', exact: true }).click();
   const body = worksheet.locator('.bodyCard').first();
-  assert.equal(await body.locator('.bodyStep').count(), 3);
+  assert.equal(await body.locator('.bodyStep').count(), 4);
   assert.deepEqual(await body.locator('.bodyStep > summary').allTextContents(), [
     '1 · Build the Free-Body Diagram',
     '2 · Variables in This Example',
-    '3 · Build the Sum of Forces and Sum of Moments',
+    '3 · Vector Equations',
+    '4 · Build the Sum of Forces and Sum of Moments',
   ]);
   assert.equal(await worksheet.getByText('Solved Directions', { exact: true }).count(), 0);
 
   await body.locator('.bodyStep').nth(0).locator(':scope > summary').click();
   assert(await body.locator('app-force-balance').first().isVisible());
-  assert.equal(await body.getByText('Choose Free-Body Diagram Conventions', { exact: true }).count(), 1);
-  assert.equal(await body.getByText('Show the Position-Vector Projection Grid', { exact: true }).count(), 1);
+  assert.equal(
+    await body.getByText('Choose Free-Body Diagram Conventions', { exact: true }).count(),
+    1
+  );
+  assert.equal(
+    await body.getByText('Show the Position-Vector Projection Grid', { exact: true }).count(),
+    1
+  );
   assert.equal(await body.getByText(/Isolate/).count(), 1);
   assert.equal(await body.locator('.bodyAdjustments app-worksheet-choices').count(), 0);
   await body.locator('.projectionGrid > summary').click();
@@ -53,6 +60,10 @@ try {
   assert((await body.locator('.bodyStep').nth(1).locator('tbody tr').count()) > 2);
 
   await body.locator('.bodyStep').nth(2).locator(':scope > summary').click();
+  assert.equal(await body.getByText('Force vectors', { exact: true }).count(), 1);
+  assert.equal(await body.getByText(/Position vectors about/).count(), 1);
+
+  await body.locator('.bodyStep').nth(3).locator(':scope > summary').click();
   assert.equal(await body.getByText('Sum of Forces', { exact: true }).count(), 1);
   await body.getByText('Sum of Forces', { exact: true }).click();
   assert.equal(await body.getByText('Sum of Forces in x', { exact: true }).count(), 1);
@@ -60,7 +71,10 @@ try {
   assert.equal(await body.getByText('Sum of Moments in z', { exact: true }).count(), 1);
   assert.equal(await body.getByText('Show Moment-Arm Calculations', { exact: true }).count(), 0);
   await body.getByText('Sum of Forces in x', { exact: true }).click();
-  const xDiagram = body.locator('.equationBuild').first().locator('app-force-balance');
+  const xDiagram = body
+    .getByText('Sum of Forces in x', { exact: true })
+    .locator('..')
+    .locator('app-force-balance');
   const highlighted = await xDiagram.locator('app-solver-diagram').evaluate((element) =>
     window.ng
       .getComponent(element)
