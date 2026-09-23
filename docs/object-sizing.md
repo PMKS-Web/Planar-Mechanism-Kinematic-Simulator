@@ -4,8 +4,25 @@ Settings has one **Drawing Style** choice, using the same radio block as Global 
 
 - **Standard:** filled colored bodies and prominent joint symbols.
 - **Fine:** slimmer filled bodies and smaller coordinated symbols.
-- **Schematic:** joint connections and outlined cylinder/slider symbols. Welded compounds,
+- **Schematic:** joint connections and outlined slider symbols. Welded compounds,
   cylinder members, forces, synthesis previews, and start-pose ghosts use the same presentation.
+
+## Schematic symbols
+
+- **Lines are 3px** (5px when picked or pointed at): twice the axes and three times the grid, so a
+  bar lying along a grid line is never mistaken for it.
+- **Every joint is cream inside a 1px ink hairline**: pins, slides (the bar a Prismatic joint
+  wears) and welds alike. The weld cross is drawn a little wider than a pin (1.15 pin radii, by
+  `schematicPlusPath`), with arms broad enough to show the cream.
+- **A rider is drawn above its block**, as the filled rider is in the other styles. The slider
+  layer draws a rider's line at the rider's depth in `slotStack`, and the link layer leaves it out
+  (`drawnBySlotStack`). A carrier stays under the block that slides on it.
+- **A cylinder is two lines that slide on each other**: mount A to the seal S (the barrel) and S
+  to mount B (the rod), meeting at S's slide mark. There is no head, bore or rod outline. Each line
+  keeps its member's color, selection and 12px invisible pointer target.
+- **A driven slider or cylinder wears two solid heads** flanking the joint's mark on the slot
+  line, the way it sets off drawn larger (`schematicDriveHeads`). They are sized to the joint, not
+  to a cylinder's head, and cased in the canvas color so they read where they sit on a line.
 
 There is no manual size field, size preset row, separate Lines switch, or Auto-size button.
 The style is a local view preference, remembered between visits. Existing Lines preferences migrate

@@ -889,18 +889,25 @@
 
 // Schematic is a whole-drawing view: the structural symbols remain recognizable,
 // but no body retains its filled silhouette or shadow among the connections.
+// A body is a 3px line: twice the axes and three times the grid, so a bar
+// lying along a grid line is never mistaken for it.
 #canvas.schematic {
   #linkHolder > path:not([stroke='transparent']),
+  .schematicRider,
   .cylinder-barrel,
   .cylinder-rod,
   .ghostBody,
   .synthBar {
     fill: none !important;
-    stroke-width: 1.5px;
+    stroke-width: 3px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
     vector-effect: non-scaling-stroke;
     filter: none;
   }
 
+  // Every joint wears the pin's language: the cream fill it has in every
+  // style, inside a hairline of ink.
   .joint_circles,
   #jointHolder .slideMark {
     stroke: var(--canvas-ink);
@@ -909,13 +916,14 @@
     filter: none;
   }
 
-  .slideMark,
-  .weldMark {
-    fill: var(--canvas-ink) !important;
+  // Its width is bound in model units, because a picked weld's ring is that
+  // same stroke and a non-scaling one would read its model width as pixels.
+  #jointHolder .weldMark {
+    stroke: var(--canvas-ink);
+    filter: none;
   }
 
-  .slider-block > path,
-  .cylinder-seal {
+  .slider-block > path {
     fill: var(--canvas-halo) !important;
     stroke: var(--canvas-ink);
     stroke-width: 1.5px;
@@ -923,14 +931,13 @@
     filter: none;
   }
 
-  .slider-arrows,
-  .cylinder-arrows {
-    line {
-      stroke: var(--canvas-ink);
-    }
-    path {
-      fill: var(--canvas-ink);
-    }
+  // Heads only, cased in the canvas color so they read where they sit on a
+  // line of the drawing.
+  .schematic-heads path {
+    fill: var(--canvas-ink);
+    stroke: var(--canvas-halo);
+    paint-order: stroke;
+    stroke-linejoin: round;
   }
 }
 
@@ -943,10 +950,18 @@
   }
 }
 
-#canvas:is(.schematic, [data-drawing-style='fine']) {
+#canvas[data-drawing-style='fine'] {
   path.link-selected,
   path.link-pointed {
     stroke-width: 3px;
+    vector-effect: non-scaling-stroke;
+  }
+}
+
+#canvas.schematic {
+  path.link-selected,
+  path.link-pointed {
+    stroke-width: 5px;
     vector-effect: non-scaling-stroke;
   }
 }
