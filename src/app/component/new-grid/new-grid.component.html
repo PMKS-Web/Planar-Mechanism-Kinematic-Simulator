@@ -568,10 +568,10 @@
         <path
           [class]="'selection-halo ' + halo.kind"
           [attr.d]="halo.d"
-          [attr.stroke-width]="svgGrid.scaleWithZoom(halo.kind === 'picked' ? 11 : 9)"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(halo.kind === 'picked' ? 11 : 7)"
           [attr.stroke-dasharray]="
             halo.kind === 'context'
-              ? svgGrid.scaleWithZoom(2) + ' ' + svgGrid.scaleWithZoom(8)
+              ? svgGrid.scaleWithZoom(10) + ' ' + svgGrid.scaleWithZoom(12)
               : null
           "
         />
@@ -1032,13 +1032,13 @@
           (pointerout)="cyl.seal.showHighlight = false"
           (pointerdown)="setLastLeftClick(cyl.seal, $event)"
           (contextmenu)="setLastRightClick(cyl.seal, $event)"
-          [attr.d]="cyl.block"
+          [attr.d]="settings.isSchematic ? cyl.sealBlock : cyl.block"
           fill="transparent"
         />
         @if (cyl.driven && !mechanismSrv.isPartInert(cyl.barrelLink) && settings.isSchematic) {
           <g class="cylinder-arrows schematic-heads" pointer-events="none">
             <!-- A driver is black in Schematic, as a driven pin's motor is. -->
-            <path class="schematic-drive-block" [attr.d]="cyl.driveBlock" />
+            <path class="schematic-drive-block" [attr.d]="cyl.sealBlock" />
             @for (arrow of cyl.schematicArrows; track $index) {
               <path [attr.d]="arrow.head" />
             }

@@ -397,7 +397,7 @@ try {
       );
       await clickBarrel();
       check(
-        'Schematic second click bands just the barrel, over a dotted band along its body',
+        'Schematic second click bands just the barrel, over a dashed band along its body',
         (await grid(
           (g) => g.activeObjService.selectedLink === g.mechanismSrv.sealedStructures()[0].barrel
         )) &&
@@ -438,6 +438,25 @@ try {
             getComputedStyle(line).stroke !== 'rgb(255, 202, 40)' &&
             width > 10
           );
+        })
+      );
+      // Schematic draws no head, so the seal is grabbed only near its own mark:
+      // a click on the barrel's line just past it picks the barrel.
+      await grid((g) => g.activeObjService.updateSelectedObj(null));
+      const nearSeal = await grid((g) => {
+        const c = g.mechanismSrv.sealedStructures()[0];
+        const s = g.svgGrid.modelToScreen({ x: c.seal.x, y: c.seal.y });
+        const a = g.svgGrid.modelToScreen({ x: c.mountA.x, y: c.mountA.y });
+        const d = Math.hypot(a.x - s.x, a.y - s.y);
+        return { x: s.x + ((a.x - s.x) * 30) / d, y: s.y + ((a.y - s.y) * 30) / d };
+      });
+      await page.mouse.click(nearSeal.x, nearSeal.y);
+      check(
+        'a click on the barrel 30px from the seal picks the barrel, not the seal',
+        await grid((g) => {
+          const c = g.mechanismSrv.sealedStructures()[0];
+          const picked = g.activeObjService.selectedLink;
+          return g.activeObjService.objType === 'Link' && [c.barrel, c.barrelRoot].includes(picked);
         })
       );
       const members = await grid((g) => {

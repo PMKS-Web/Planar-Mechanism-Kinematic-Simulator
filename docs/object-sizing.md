@@ -23,7 +23,9 @@ Settings has one **Drawing Style** choice, using the same radio block as Global 
   (`drawnBySlotStack`). A carrier stays under the block that slides on it.
 - **A cylinder is two lines that slide on each other**: mount A to the seal S (the barrel) and S
   to mount B (the rod), meeting at S's slide mark. There is no head, bore or rod outline. Each line
-  keeps its member's color, selection and 12px invisible pointer target.
+  keeps its member's color, selection and 12px invisible pointer target. The seal is grabbed within
+  an ordinary slider block of its mark (`sealBlock`), not along the whole head it has in Standard,
+  which reached far down a long barrel's line.
 - **What drives the machine is black.** A driven slider's block is filled with ink, as a driven
   pin's motor is, and a driven cylinder gets an ordinary slider block at its seal. Two white heads
   on the block (`schematicDriveHeads`) say which way it sets off, the leading one larger. Outlined
@@ -44,7 +46,7 @@ next. The two never look alike:
 | | Whole body | One part of it |
 | --- | --- | --- |
 | Standard, Fine | Amber edge round the body; its parts' seams dashed inside it | Amber edge round the part, over a dashed amber edge round the whole body |
-| Schematic | Solid amber band under every line of the body | Solid band under the part, over a dotted band along the rest of the body |
+| Schematic | Solid amber band under every line of the body | Solid band under the part, over a dashed band along the rest of the body |
 - **The start ghost is the schematic too:** each body's line in its own color, a cylinder as its two
   lines, and pins drawn as pins, at 40% (60% under the pointer).
 
