@@ -937,13 +937,41 @@
     filter: none;
   }
 
-  // Heads only, cased in the canvas color so they read where they sit on a
-  // line of the drawing.
-  .schematic-heads path {
-    fill: var(--canvas-ink);
-    stroke: var(--canvas-halo);
-    paint-order: stroke;
-    stroke-linejoin: round;
+  // What drives the machine is black, a driven slider's block as a driven
+  // pin's motor is, with white heads on it saying which way it goes first.
+  // Outlined like every other block, a driver was the quietest thing on the
+  // drawing when it is the one thing that says what makes it move.
+  .slider-block.driven > path,
+  .schematic-drive-block {
+    fill: var(--canvas-ink) !important;
+  }
+
+  .schematic-heads path:not(.schematic-drive-block) {
+    fill: var(--canvas-halo);
+    stroke: none;
+  }
+
+  // The ghost is the schematic too: the lines, in their colors, and pins as
+  // pins. Stroked from the template, because the ghost's own rule takes the
+  // stroke off every body -- and a schematic body is nothing but its stroke,
+  // so the ghost was an invisible target that jumped the drawing to its start.
+  .startGhost {
+    opacity: 0.4;
+
+    &:hover {
+      opacity: 0.6;
+    }
+
+    &.unreachable {
+      opacity: 0.55;
+    }
+
+    .ghostPin {
+      fill: var(--accent-tint);
+      stroke: var(--canvas-ink);
+      stroke-width: 1px;
+      vector-effect: non-scaling-stroke;
+    }
   }
 }
 
@@ -964,11 +992,20 @@
   }
 }
 
+// A schematic bar keeps its own color while it is picked, so a new color shows
+// the moment it is chosen; the amber is a glow round the line instead.
 #canvas.schematic {
   path.link-selected,
   path.link-pointed {
     stroke-width: 5px;
     vector-effect: non-scaling-stroke;
+    filter: drop-shadow(0 0 2px var(--canvas-selection))
+      drop-shadow(0 0 2px var(--canvas-selection)) drop-shadow(0 0 1.5px var(--canvas-selection))
+      drop-shadow(0 0 1px var(--canvas-selection)) !important;
+  }
+
+  path.link-hovered {
+    filter: drop-shadow(0 0 1.5px var(--accent-pale)) !important;
   }
 
   .cylinder-barrel-selected:is(.link-selected, .link-pointed) {
