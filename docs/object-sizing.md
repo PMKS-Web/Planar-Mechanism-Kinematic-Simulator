@@ -24,10 +24,16 @@ Settings has one **Drawing Style** choice, using the same radio block as Global 
 - **A cylinder is two lines that slide on each other**: mount A to the seal S (the barrel) and S
   to mount B (the rod), meeting at S's slide mark. There is no head, bore or rod outline. Each line
   keeps its member's color, selection and 12px invisible pointer target.
-- **A driven slider or cylinder wears two solid heads** flanking the joint's mark on the slot
-  line, the way it sets off drawn larger (`schematicDriveHeads`). They are sized to the joint, not
-  to a cylinder's head, stand well proud of the line, and are cased in 2.5px of the canvas color so
-  they read even on the darkest navy.
+- **What drives the machine is black.** A driven slider's block is filled with ink, as a driven
+  pin's motor is, and a driven cylinder gets an ordinary slider block at its seal. Two white heads
+  on the block (`schematicDriveHeads`) say which way it sets off, the leading one larger. Outlined
+  like every other block, a driven slider was far quieter than a driven pin, when both are what
+  make the machine move.
+- **A picked bar keeps its own color**, so a new color shows the moment it is chosen. The amber of
+  a selection is a glow round the line instead (`drop-shadow`), and the color is bound as an inline
+  style so the state classes cannot replace it. An inert part's gray is `!important` and still wins.
+- **The start ghost is the schematic too:** each body's line in its own color, a cylinder as its two
+  lines, and pins drawn as pins, at 40% (60% under the pointer).
 
 There is no manual size field, size preset row, separate Lines switch, or Auto-size button.
 The style is a local view preference, remembered between visits. Existing Lines preferences migrate
@@ -43,7 +49,9 @@ and 7.2–11.4px for Schematic. Bodies, welds, ground marks and sliders use the 
 labels retain readable minimum sizes and invisible pointer targets remain generous.
 
 **Forces are drawn at Standard's size in every style** (`SettingsService.forceScale`): a force is a
-load laid on the drawing, not a piece of it, so a thinner style has no reason to shrink it. The
+load laid on the drawing, not a piece of it, so a thinner style has no reason to shrink it. Only its
+application point narrows in Schematic, to 0.8 of its width. A picked force's handles, the square at
+the tip and the grab at the base, are the same size in every style, each with a 20px target. The
 **center-of-mass mark** never draws under a 6px radius and takes a grab within 12px
 (`ObjectDisplayService.comRadius` and `comHitRadius`), because it is a handle as well as a glyph.
 

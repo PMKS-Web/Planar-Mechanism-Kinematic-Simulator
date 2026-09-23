@@ -1,5 +1,7 @@
 @let f = force();
 @let scale = settings.forceScale;
+<!-- Schematic narrows the application point a little; its handles do not change. -->
+@let disc = settings.isSchematic ? 0.8 : 1;
 @let picked = selected() && paused();
 @if (picked) {
   <svg:line
@@ -36,19 +38,19 @@
   <svg:circle
     class="forceDisc"
     [class.picked]="picked"
-    [attr.r]="0.75 * f.visualWidth * scale"
+    [attr.r]="0.75 * f.visualWidth * scale * disc"
     [style.fill]="picked ? null : (ink() ?? 'var(--canvas-inert)')"
-    [attr.stroke-width]="(picked ? 0.03 : 1 / 30) * scale"
+    [attr.stroke-width]="(picked ? 0.03 : 1 / 30) * scale * disc"
   />
   @if (f.local) {
     <svg:line
       class="forceKeyway"
-      [attr.x1]="-0.075 * scale"
-      [attr.x2]="0.075 * scale"
-      [attr.stroke-width]="(3.2 / 90) * scale"
+      [attr.x1]="-0.075 * scale * disc"
+      [attr.x2]="0.075 * scale * disc"
+      [attr.stroke-width]="(3.2 / 90) * scale * disc"
     />
   } @else {
-    <svg:circle class="forceFrameRing" [attr.r]="0.026 * scale" />
+    <svg:circle class="forceFrameRing" [attr.r]="0.026 * scale * disc" />
   }
 </svg:g>
 @if (picked && guide.force() === f) {

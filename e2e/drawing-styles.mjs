@@ -83,27 +83,45 @@ try {
   const original = await physical();
   const styleFilm = filmstrip(page, `${OUT}/style-switch`);
   const forceMarks = [];
+  const forceHandles = [];
+  await grid((g) => g.activeObjService.updateSelectedObj(g.mechanismSrv.forces[1]));
   for (const style of ['Standard', 'Fine', 'Schematic']) {
     await styleFilm.during(80, 7, style, () => choose(style));
     check(
       `${style} changes no coordinates, dimensions, force, mass, CAD outlines or solve`,
       (await physical()) === original
     );
-    forceMarks.push(
-      await page.evaluate(() =>
-        [...document.querySelectorAll('.forceDisc, .forceLine')].map((el) => {
-          const b = el.getBoundingClientRect();
-          return `${b.width.toFixed(1)}x${b.height.toFixed(1)}`;
-        })
-      )
+    const size = (selector) =>
+      page.evaluate(
+        (selector) =>
+          [...document.querySelectorAll(selector)].map((el) => {
+            const b = el.getBoundingClientRect();
+            return +Math.max(b.width, b.height).toFixed(1);
+          }),
+        selector
+      );
+    forceMarks.push({ lines: await size('.forceLine'), discs: await size('.forceDisc') });
+    forceHandles.push(
+      await size('.forceEndpointHandle, #endForceEndpoint circle, #startForceEndpoint circle')
     );
     await page.screenshot({ path: `${OUT}/gallery-${style}.png` });
   }
+  await grid((g) => g.activeObjService.updateSelectedObj(null));
+  const same = (list) => list.every((one) => JSON.stringify(one) === JSON.stringify(list[0]));
   check(
-    'every style draws a force, its arrow and its application point at one size',
-    forceMarks[0].length > 0 &&
-      forceMarks.every((marks) => JSON.stringify(marks) === JSON.stringify(forceMarks[0])),
+    'every style draws a force at one size, Schematic narrowing only its application point',
+    forceMarks[0].lines.length > 0 &&
+      same(forceMarks.map((m) => m.lines)) &&
+      same(forceMarks.slice(0, 2).map((m) => m.discs)) &&
+      forceMarks[2].discs.every((d, i) => d < forceMarks[0].discs[i]),
     forceMarks
+  );
+  check(
+    "a picked force's handles are the same size in every style, each a 20px target",
+    forceHandles[0].length === 3 &&
+      same(forceHandles) &&
+      forceHandles[0].filter((w) => w >= 19.9).length === 2,
+    forceHandles
   );
   const schematic = await page.evaluate(() => {
     const ink = [
@@ -112,7 +130,8 @@ try {
       ),
     ];
     const barrels = [...document.querySelectorAll('.cylinder-barrel')];
-    const blocks = [...document.querySelectorAll('.slider-block > path')];
+    // Hollow unless driven: a driver is black (checked below).
+    const blocks = [...document.querySelectorAll('.slider-block:not(.driven) > path')];
     const joints = [
       ...document.querySelectorAll(
         '#jointHolder circle[id^="joint_"], #jointHolder .slideMark, #jointHolder .weldMark'
@@ -158,6 +177,9 @@ try {
       );
     };
     const plates = g.mechanismSrv.links.filter((l) => !l.subset?.length && l.joints.length >= 4);
+    const drivers = [...document.querySelectorAll('.slider-block.driven > path')].map(
+      (p) => getComputedStyle(p).fill
+    );
     return {
       bodies: ink.length,
       outlined: [...ink, ...barrels].every((p) => getComputedStyle(p).fill === 'none'),
@@ -165,6 +187,7 @@ try {
       barrelWidths: [...new Set(barrels.map(px))],
       plates: plates.length,
       platesCross: plates.filter((l) => crosses(g.objectDisplay.skeleton(l))).map((l) => l.id),
+      drivers,
       comRadius: g.objectDisplay.comRadius() * g.svgGrid.getZoom(),
       comHit: g.objectDisplay.comHitRadius() * g.svgGrid.getZoom(),
       gridWidth: gridLine ? px(gridLine) : null,
@@ -215,6 +238,41 @@ try {
     schematic.plates > 0 && schematic.platesCross.length === 0,
     schematic
   );
+  check(
+    'Schematic draws a driven slider black, like a driven pin',
+    schematic.drivers.length > 0 && schematic.drivers.every((fill) => fill === 'rgb(38, 50, 56)'),
+    schematic
+  );
+  // A picked bar keeps its own color, so a recolor shows while it is picked.
+  const picked = await grid((g) => {
+    const link = g.mechanismSrv.links.find((l) => !l.subset?.length && l.joints.length === 2);
+    g.activeObjService.updateSelectedObj(link);
+    return link.id;
+  });
+  await page.waitForTimeout(200);
+  const recolor = async (fill) => {
+    await grid(
+      (g, [id, fill]) => {
+        g.mechanismSrv.links.find((l) => l.id === id).fill = fill;
+        ng.applyChanges(document.querySelector('app-new-grid'));
+      },
+      [picked, fill]
+    );
+    await page.waitForTimeout(150);
+    return page.evaluate((id) => {
+      const el = document.getElementById(id);
+      return { stroke: getComputedStyle(el).stroke, glow: getComputedStyle(el).filter };
+    }, picked);
+  };
+  const recolored = [await recolor('#0d125a'), await recolor('#26A69A')];
+  check(
+    'a picked schematic bar shows its new color at once, picked by an amber glow',
+    recolored[0].stroke === 'rgb(13, 18, 90)' &&
+      recolored[1].stroke === 'rgb(38, 166, 154)' &&
+      recolored.every((r) => r.glow.includes('drop-shadow')),
+    recolored
+  );
+  await grid((g) => g.activeObjService.updateSelectedObj(null));
   check(
     'Schematic keeps the center-of-mass mark at least 6px, with a 12px target',
     schematic.comRadius >= 5.99 && schematic.comHit >= 11.99,
@@ -363,14 +421,19 @@ try {
         return {
           barrel: mark.barrelLine,
           rod: mark.rodLine,
-          heads: [...document.querySelectorAll('.cylinder-arrows.schematic-heads path')].map(
-            (p) => ({
-              fill: getComputedStyle(p).fill,
-              // Screen length along the slot, against the pin's diameter.
-              along: p.getBBox().width * zoom,
-              pin: 2 * r * zoom,
-            })
+          block: [...document.querySelectorAll('.schematic-drive-block')].map(
+            (p) => getComputedStyle(p).fill
           ),
+          heads: [
+            ...document.querySelectorAll(
+              '.cylinder-arrows.schematic-heads path:not(.schematic-drive-block)'
+            ),
+          ].map((p) => ({
+            fill: getComputedStyle(p).fill,
+            // Screen length along the slot, against the pin's diameter.
+            along: p.getBBox().width * zoom,
+            pin: 2 * r * zoom,
+          })),
         };
       });
       check(
@@ -379,10 +442,12 @@ try {
         members
       );
       check(
-        'a driven cylinder wears two small ink heads, each shorter than a pin is wide',
-        members.heads.length === 2 &&
+        'a driven cylinder is a black block with two white heads, each shorter than a pin is wide',
+        members.block.length === 1 &&
+          members.block[0] === 'rgb(38, 50, 56)' &&
+          members.heads.length === 2 &&
           members.heads.every(
-            (h) => h.fill !== 'rgb(255, 255, 255)' && h.along > 2 && h.along <= h.pin * 1.1
+            (h) => h.fill === 'rgb(255, 255, 255)' && h.along > 2 && h.along <= h.pin * 1.1
           ),
         members
       );
@@ -419,6 +484,16 @@ try {
       page.getByRole('button', { name: 'Play', exact: true }).click()
     );
     await page.getByRole('button', { name: 'Pause', exact: true }).click();
+    const ghost = await page.evaluate(() =>
+      [...document.querySelectorAll('.startGhost .ghostBody')].map(
+        (p) => getComputedStyle(p).stroke
+      )
+    );
+    check(
+      `${id}: the paused start ghost is drawn, lines and all, in Schematic`,
+      ghost.length > 0 && ghost.every((stroke) => stroke !== 'none'),
+      ghost
+    );
     const invalid = await page
       .locator('#canvas path')
       .evaluateAll((ps) => ps.filter((p) => /NaN|Infinity/.test(p.getAttribute('d') ?? '')).length);
