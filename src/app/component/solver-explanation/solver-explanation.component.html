@@ -9,12 +9,63 @@
     </div>
     @if (wide) {
       <button-block [click]="closeWorksheet">Close Worksheet</button-block>
-    } @else {
+    } @else if (!isForce()) {
       <button-block [click]="openWorksheet">Open Full Worksheet</button-block>
     }
   </header>
-  <div class="controls">
-    @if (!isForce() || section() !== 0) {
+  @if (isForce()) {
+    <div class="controls sectionTabs">
+      <segmented-block
+        aria-label="Worksheet section"
+        [options]="forceSections"
+        [selected]="section()"
+        (selectedChange)="section.set($event)"
+      ></segmented-block>
+    </div>
+    @if (section() !== 0) {
+      <div class="controls forceSampleControls">
+        <div class="controlRow">
+          <label
+            >Mechanism
+            <select
+              aria-label="Explanation mechanism"
+              [ngModel]="machineId"
+              (ngModelChange)="chosenMachine.set($event)"
+            >
+              @for (partition of mechanism.partitions; track partition.id) {
+                <option [value]="partition.id">{{ partition.id }}</option>
+              }
+            </select></label
+          >
+          <label
+            >Sample
+            <input
+              aria-label="Explanation sample number"
+              type="number"
+              min="0"
+              [max]="lastStep"
+              [ngModel]="step"
+              (change)="seek($any($event.target).value)"
+              [disabled]="!valid"
+            />
+            / {{ lastStep }}</label
+          >
+          <span>{{ seconds | number: '1.3-3' }} s</span>
+        </div>
+        <input
+          class="slider"
+          aria-label="Explanation sample"
+          type="range"
+          min="0"
+          [max]="lastStep"
+          [value]="step"
+          (input)="seek($any($event.target).value)"
+          [disabled]="!valid"
+        />
+      </div>
+    }
+  } @else {
+    <div class="controls">
       <div class="controlRow">
         <label
           >Mechanism
@@ -53,50 +104,18 @@
         (input)="seek($any($event.target).value)"
         [disabled]="!valid"
       />
-      @if (isForce()) {
-        <segmented-block
-          [options]="forceOptions"
-          [selected]="forceMode() === 'dynamic' ? 1 : 0"
-          (selectedChange)="settings.forceAnalysisMode.next($event === 1 ? 'dynamic' : 'static')"
-        ></segmented-block>
-      }
-    }
-    <segmented-block
-      aria-label="Worksheet section"
-      [options]="isForce() ? forceSections : kinematicSections"
-      [selected]="section()"
-      (selectedChange)="section.set($event)"
-    ></segmented-block>
-  </div>
+      <segmented-block
+        aria-label="Worksheet section"
+        [options]="kinematicSections"
+        [selected]="section()"
+        (selectedChange)="section.set($event)"
+      ></segmented-block>
+    </div>
+  }
   @if (isForce() && section() === 0) {
     <app-force-definitions />
   } @else if (view; as data) {
     <div class="worksheetContent">
-      @if (isForce() && section() === 1) {
-        <div class="forceAssumptions">
-          <strong
-            >{{ forceMode() === 'dynamic' ? 'In-motion balance' : 'Static equilibrium' }} · Gravity
-            {{ data.gravity ? 'on (downward)' : 'off' }}</strong
-          >
-          <app-solver-math
-            [equation]="forceMode() === 'dynamic' ? dynamicBalance : staticBalance"
-          ></app-solver-math>
-          <segmented-block
-            [dropdown]="true"
-            label="Worksheet Gravity"
-            [options]="data.gravityOptions"
-            [selected]="data.gravityChoice"
-            (selectedChange)="
-              preferences.setGravity(solved, $event === 0 ? undefined : $event === 1)
-            "
-          ></segmented-block>
-          <p class="caption">
-            Compare weight assumptions here. Graphs use Settings → Gravity ({{
-              solved.gravity ? 'on' : 'off'
-            }}).
-          </p>
-        </div>
-      }
       <details class="numericDetails overviewDetails" [open]="!isForce()">
         <summary>Mechanism & Assumptions</summary>
         <div class="overview">
@@ -110,6 +129,32 @@
           <div class="assumptions">
             <h3>Knowns & Assumptions</h3>
             @if (isForce()) {
+              <segmented-block
+                [options]="forceOptions"
+                [selected]="forceMode() === 'dynamic' ? 1 : 0"
+                (selectedChange)="settings.forceAnalysisMode.next($event === 1 ? 'dynamic' : 'static')"
+              ></segmented-block>
+              <strong
+                >{{ forceMode() === 'dynamic' ? 'In-motion balance' : 'Static equilibrium' }} ·
+                Gravity {{ data.gravity ? 'on (downward)' : 'off' }}</strong
+              >
+              <app-solver-math
+                [equation]="forceMode() === 'dynamic' ? dynamicBalance : staticBalance"
+              ></app-solver-math>
+              <segmented-block
+                [dropdown]="true"
+                label="Worksheet Gravity"
+                [options]="data.gravityOptions"
+                [selected]="data.gravityChoice"
+                (selectedChange)="
+                  preferences.setGravity(solved, $event === 0 ? undefined : $event === 1)
+                "
+              ></segmented-block>
+              <p class="caption">
+                Compare weight assumptions here. Graphs use Settings → Gravity ({{
+                  solved.gravity ? 'on' : 'off'
+                }}).
+              </p>
               @if (section() === 1) {
                 <label class="axisAngleControl"
                   >X-Axis Angle (° Counterclockwise from Right)

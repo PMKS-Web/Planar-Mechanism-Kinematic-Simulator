@@ -56,8 +56,9 @@ try {
   await openMechanism(page, `${process.env.PMKS_BASE_URL || 'http://localhost:4318/'}?${payload}`);
   await page.getByRole('button', { name: /Force Analysis/ }).click();
   await page.getByRole('button', { name: 'How it works', exact: true }).click();
-  await page.getByRole('button', { name: 'Open Full Worksheet', exact: true }).click();
-  const d = page.getByRole('dialog');
+  const d = page.locator('app-right-panel app-solver-explanation').first();
+  await d.waitFor();
+  assert.equal(await d.getByRole('button', { name: 'Open Full Worksheet', exact: true }).count(), 0);
   await d.getByRole('button', { name: 'Definitions', exact: true }).click();
   const defs = d.locator('app-force-definitions');
   const example = await defs
@@ -207,7 +208,14 @@ try {
     .screenshot({ path: `${out}/definition-cancelled-moment.png` });
   assert((await defs.textContent()).includes('Internal forces exposed'));
   await d.getByRole('button', { name: 'Free Bodies', exact: true }).click();
+  const forceTabs = d.locator('.sectionTabs');
+  const sampleControls = d.locator('.forceSampleControls');
+  const [tabsBox, sampleBox] = await Promise.all([forceTabs.boundingBox(), sampleControls.boundingBox()]);
+  assert(tabsBox && sampleBox && sampleBox.y >= tabsBox.y + tabsBox.height);
+  assert.equal(await d.locator('.overviewDetails').evaluate((detail) => detail.open), false);
+  assert.equal(await d.getByRole('button', { name: 'In-motion', exact: true }).isVisible(), false);
   await d.locator('.overviewDetails > summary').click();
+  assert.equal(await d.getByRole('button', { name: 'In-motion', exact: true }).isVisible(), true);
   const before = await state(d);
   const angleInput = d.getByRole('spinbutton', { name: 'Worksheet X-axis angle' });
   const film = filmstrip(page, `${out}/axis-change`);
@@ -297,6 +305,8 @@ try {
   await angleInput.fill('30');
   await angleInput.press('Tab');
   await d.getByRole('button', { name: 'System', exact: true }).click();
+  assert.equal(await d.locator('.forceSampleControls').count(), 1);
+  assert.equal(await d.locator('.overviewDetails').evaluate((detail) => detail.open), false);
   assert.equal((await state(d)).angle, 30);
   assert.equal(await d.locator('.katex-error').count(), 0);
   if (process.env.PMKS_STORYBOOK_URL) {
