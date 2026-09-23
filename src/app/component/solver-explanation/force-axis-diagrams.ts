@@ -83,3 +83,107 @@ export function momentArmDiagram(
     angle
   );
 }
+
+/** Place every position vector for one free body on one separated projection grid. */
+export function positionVectorGridDiagram(
+  body: Diagram,
+  products: { point: string; diagram: Diagram }[]
+): Diagram {
+  const targets = products
+    .map((product) => {
+      const reference = product.diagram.points.find((point) => point.reference);
+      const target =
+        product.diagram.points.find((point) => !point.reference) ??
+        (reference ? { ...reference, label: product.point } : undefined);
+      return reference && target ? { label: product.point, reference, target } : undefined;
+    })
+    .filter((value): value is NonNullable<typeof value> => !!value)
+    .sort(
+      (a, b) =>
+        Math.hypot(a.target.x - a.reference.x, a.target.y - a.reference.y) -
+        Math.hypot(b.target.x - b.reference.x, b.target.y - b.reference.y)
+    );
+  const geometry = [
+    ...body.points,
+    ...(body.outlines ?? []).flat(),
+    ...targets.flatMap(({ reference, target }) => [reference, target]),
+  ];
+  const minX = Math.min(...geometry.map((point) => point.x));
+  const maxX = Math.max(...geometry.map((point) => point.x));
+  const minY = Math.min(...geometry.map((point) => point.y));
+  const maxY = Math.max(...geometry.map((point) => point.y));
+  const span = Math.max(maxX - minX, maxY - minY, 1);
+  const lines: Diagram['lines'] = targets.flatMap(({ label, reference, target }, index) => {
+    if (
+      Math.abs(target.x - reference.x) < 1e-12 &&
+      Math.abs(target.y - reference.y) < 1e-12
+    )
+      return [];
+    const xRail = minY - span * (0.22 + index * 0.16);
+    const yRail = maxX + span * (0.22 + index * 0.16);
+    return [
+      {
+        from: { x: reference.x, y: xRail },
+        to: { x: target.x, y: xRail },
+        label: 'r_' + label + '/' + (reference.label ?? 'ref') + ',x',
+        dashed: true,
+        arrow: true,
+        arrowStart: true,
+        color: 'var(--success)',
+        width: 1.4,
+        midpointLabel: true,
+      },
+      {
+        from: { x: yRail, y: reference.y },
+        to: { x: yRail, y: target.y },
+        label: 'r_' + label + '/' + (reference.label ?? 'ref') + ',y',
+        dashed: true,
+        arrow: true,
+        arrowStart: true,
+        color: 'var(--brand)',
+        width: 1.4,
+        labelPoint: { x: yRail - span * 0.08, y: (reference.y + target.y) / 2 },
+      },
+      {
+        from: reference,
+        to: { x: reference.x, y: xRail },
+        dashed: true,
+        color: 'var(--text-tertiary)',
+        width: 0.9,
+      },
+      {
+        from: target,
+        to: { x: target.x, y: xRail },
+        dashed: true,
+        color: 'var(--text-tertiary)',
+        width: 0.9,
+      },
+      {
+        from: reference,
+        to: { x: yRail, y: reference.y },
+        dashed: true,
+        color: 'var(--text-tertiary)',
+        width: 0.9,
+      },
+      {
+        from: target,
+        to: { x: yRail, y: target.y },
+        dashed: true,
+        color: 'var(--text-tertiary)',
+        width: 0.9,
+      },
+    ];
+  });
+  return {
+    axisAngle: body.axisAngle,
+    axisMomentLabel: body.axisMomentLabel,
+    legend: 'Moment-arm component grid',
+    points: body.points,
+    outlines: body.outlines,
+    lines,
+    framingPoints: [
+      { x: minX - span * 0.08, y: minY - span * (0.35 + targets.length * 0.16) },
+      { x: maxX + span * (0.35 + targets.length * 0.16), y: maxY + span * 0.08 },
+    ],
+  };
+}

@@ -163,5 +163,26 @@ export function forceBodyEquations(
       ),
     };
   });
-  return { forceVector, momentVector, crossProducts, components };
+  const variables = groups.flatMap((group) => {
+    const forceMeaning =
+      group.load.couple !== undefined
+        ? 'Applied pure moment on link ' + body.id + '.'
+        : group.load.kind === 'weight'
+          ? 'Weight of link ' + body.id + ', applied at its center of mass.'
+          : group.load.kind === 'applied'
+            ? 'External force applied at ' + pointOf(group.load) + '.'
+            : group.load.kind === 'drive'
+              ? 'Applied input force at ' + pointOf(group.load) + '.'
+              : 'Reaction force exposed at ' + pointOf(group.load) + ' when the link is isolated.';
+    if (group.load.couple !== undefined) return [{ symbol: group.symbol, meaning: forceMeaning }];
+    return [
+      { symbol: group.symbol, meaning: forceMeaning },
+      {
+        symbol: arms(group.load).symbol,
+        meaning:
+          'Position vector from ' + body.reference.label + ' to ' + pointOf(group.load) + '.',
+      },
+    ];
+  });
+  return { forceVector, momentVector, crossProducts, components, variables };
 }

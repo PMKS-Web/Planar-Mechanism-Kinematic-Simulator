@@ -327,11 +327,30 @@ summary {
   border-bottom: 1px solid var(--border-divider);
 }
 .bodyCard th {
-  color: var(--text-secondary);
+  color: var(--text-strong);
   font-weight: 600;
 }
 .bodyCard td:first-child {
-  min-width: 180px;
+  width: 36%;
+  color: var(--text-strong);
+}
+.directionControls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+.directionControls label,
+.referenceControl {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--text-strong);
+  font-size: 12px;
+}
+.referenceControl {
+  margin-top: 12px;
 }
 .forceConvention > summary,
 .bodyCard > summary {

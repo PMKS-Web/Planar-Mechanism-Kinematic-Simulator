@@ -27,7 +27,11 @@ import { WorksheetLoopEditorComponent } from './worksheet-loop-editor.component'
 import { ForceBalanceComponent } from './force-balance.component';
 import { ForceDefinitionsComponent } from './force-definitions.component';
 import { bodyForceChoices } from './body-force-choices';
-import { momentArmDiagram, worldForceDiagram } from './force-axis-diagrams';
+import {
+  momentArmDiagram,
+  positionVectorGridDiagram,
+  worldForceDiagram,
+} from './force-axis-diagrams';
 
 @Component({
   selector: 'app-solver-explanation',
@@ -314,6 +318,22 @@ export class SolverExplanationComponent {
               preferences.axisAngle
             ),
           })),
+          projectionGrid: positionVectorGridDiagram(
+            worldForceDiagram(
+              freeBodyDiagram(body, true, true, preferences.axisAngle),
+              preferences.axisAngle
+            ),
+            body.crossProducts.map((product) => ({
+              point: product.point,
+              diagram: momentArmDiagram(
+                product.from,
+                product.to,
+                body.reference.label,
+                product.point,
+                preferences.axisAngle
+              ),
+            }))
+          ),
           signChoices: bodyForceChoices(body, forceWork.choices),
           inertiaForce: `m${vector('a', '\\mathrm{CoM}')}=${column(body.inertia.slice(0, 2))}\\;\\mathrm N`,
           inertiaMoment: `I_{\\mathrm{CoM}}\\alpha=${texNumber((force!.frame.explanation!.bodies.find((b) => b.id === body.id)!.inertia[2] ?? 0) / MODEL_SCALE)}\\;\\mathrm{N\\,m}`,

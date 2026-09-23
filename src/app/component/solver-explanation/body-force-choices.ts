@@ -13,6 +13,7 @@ export function bodyForceChoices(body: Worksheet['bodies'][number], choices: Wor
     return [
       {
         ...axis,
+        symbol: load.symbol,
         label: `${load.kind === 'drive' && load.couple !== undefined ? 'Input Moment' : load.displayLabel} on ${body.name}`,
         description: other
           ? `Changing this assumption also changes the ${load.jointId ? 'joint ' + load.jointId + ' ' : ''}assumption on link ${other}. Its reaction acts in the opposite direction.`
