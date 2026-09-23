@@ -1,0 +1,98 @@
+// Planning experiment. Temporarily copy into src/tests/verification to run.
+import '../../app/model/joint';
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { buildMechanism, type MechanismFixture } from '../../test-utils/verification/fixture';
+import { fixturePayload } from '../../test-utils/verification/fixture-payload';
+import { TEMPLATE_IDS, TEMPLATE_LINKAGES } from '../../app/component/MODALS/templates/template-linkages';
+import { StringTranscoder } from '../../app/services/transcoding/string-transcoder';
+import { MechanismBuilder } from '../../app/services/transcoding/mechanism-builder';
+import { SettingsService } from '../../app/services/settings.service';
+import { ActiveObjService } from '../../app/services/active-obj.service';
+import { MechanismService } from '../../app/services/mechanism.service';
+import { Mechanism } from '../../app/model/mechanism/mechanism';
+import { partitionMechanisms } from '../../app/model/mechanism/mechanism-partition';
+import { describeActuator } from '../../app/model/actuator';
+import { PrisJoint, RealJoint } from '../../app/model/joint';
+import { cylinderBoomFixture } from '../../test-utils/verification/slot-fixtures';
+import { MODEL_SCALE } from '../../app/model/render-scale';
+
+function decoded(payload: string) {
+  const decoder = new StringTranscoder();
+  decoder.decodeURL(payload);
+  const settings = new SettingsService();
+  const target = { joints: [], links: [], forces: [], mechanismTimeStep: 0 } as unknown as MechanismService;
+  new MechanismBuilder(target, decoder, settings, new ActiveObjService()).build(true, false);
+  const partitioning = partitionMechanisms(target.joints, target.links, target.forces);
+  const machines = partitioning.mechanisms.map((p) => {
+    const drives = p.ownJoints.filter((j): j is RealJoint => j instanceof RealJoint && j.input);
+    const drive = drives[0];
+    const speed = drive?.driveSpeed || (drive instanceof PrisJoint
+      ? settings.linearInputSpeed.value
+      : settings.inputSpeed.value * (settings.isInputCW.value ? -1 : 1));
+    const m = new Mechanism(p.joints, p.links, p.forces, [], settings.isGravity.value,
+      'cm', drive instanceof PrisJoint ? speed * MODEL_SCALE : speed * Math.PI / 30,
+      'adaptive', new Set(p.ownJoints.map((j) => j.id)));
+    const finite = m.joints.every((f) => f.every((j) => Number.isFinite(j.x) && Number.isFinite(j.y)));
+    const driveDescription = drive ? describeActuator(drive) : 'No input';
+    const usableDrive = drives.length === 1 && typeof driveDescription !== 'string';
+    return { dof: m.dof, valid: m.isMechanismValid(), failure: m.failure ?? null,
+      samples: m.joints.length, reciprocates: m.reciprocates, finite, usableDrive,
+      driveRefusal: typeof driveDescription === 'string' ? driveDescription : null,
+      accepted: m.isMechanismValid() && m.dof === 1 && m.joints.length > 1 && finite && usableDrive };
+  });
+  const loose = partitioning.unassigned.looseJoints.length;
+  const floating = partitioning.unassigned.floatingChains.length;
+  return { accepted: machines.length > 0 && machines.every((m) => m.accepted) && !loose && !floating,
+    machines, loose, floating, joints: target.joints.length, links: target.links.length };
+}
+
+function direct(fixture: MechanismFixture) {
+  const built = buildMechanism(fixture);
+  const m = built.mechanism;
+  return { accepted: m.isMechanismValid() && m.dof === 1 && m.joints.length >= 50,
+    valid: m.isMechanismValid(), dof: m.dof, failure: m.failure ?? null,
+    samples: m.joints.length, joints: built.joints.length, links: built.links.length };
+}
+
+function attempt(fn: () => unknown): any {
+  try { return fn(); } catch (error) { return { accepted: false, error: String(error).slice(0, 250) }; }
+}
+
+describe('saved generation replay for the feature plan', () => {
+  it('records every candidate and the current library without model calls', () => {
+    const dir = process.env['PMKS_LLM_ARCHIVE']!;
+    const results: any[] = [];
+    for (const file of readdirSync(dir).filter((f) => f.endsWith('.json')).sort()) {
+      const raw = JSON.parse(readFileSync(`${dir}/${file}`, 'utf8'));
+      if (!raw.candidates) {
+        results.push({ file, index: -1, delivery: raw.__parseError ?? 'no candidates' });
+        continue;
+      }
+      raw.candidates.forEach((c: any, index: number) => {
+        // Preserve welds, loads, and link decoration omitted by the first historical verifier.
+        // The new fixture adapter ignores obsolete prisId. This is mechanical migration,
+        // not a new schema acceptance benchmark or a repair of generated geometry.
+        const fixture: MechanismFixture = { joints: c.joints, links: c.links,
+          sliders: c.sliders, welds: c.welds, loads: c.loads, load: c.load,
+          inputAngVel: c.inputAngVel ?? 1 };
+        const row: any = { file, index, name: c.name,
+          direct: attempt(() => direct(fixture)),
+          decoded: attempt(() => decoded(fixturePayload(fixture, undefined,
+            { rpm: fixture.inputAngVel * 30 / Math.PI, unitsPerSecond: fixture.inputAngVel }))) };
+        results.push(row);
+      });
+    }
+    const library = TEMPLATE_IDS.map((id) => ({ id, ...attempt(() => decoded(TEMPLATE_LINKAGES[id])) }));
+    const cylinder = {
+      fixtureUnits: attempt(() => direct(cylinderBoomFixture())),
+      modelUnits: attempt(() => direct(cylinderBoomFixture(MODEL_SCALE))),
+      decoded: attempt(() => decoded(fixturePayload(cylinderBoomFixture(), undefined, { unitsPerSecond: 1 }))),
+    };
+    writeFileSync(process.env['PMKS_LLM_REPLAY_OUT']!, JSON.stringify({
+      revision: process.env['PMKS_LLM_REVISION'],
+      method: 'Mechanical replay, not prompt-fit or UI validation. Direct uses historical 50-sample gate; decoded uses all partitions, finite frames and usable inputs. No residual or intent certification.',
+      results, library, cylinder,
+    }, null, 2));
+    expect(results.length).toBeGreaterThan(200);
+  }, 120000);
+});
