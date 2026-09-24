@@ -3,7 +3,7 @@ import { Link } from '../link';
 import { cylindersIn } from '../cylinder';
 import { describeFrozenCylinderStroke, isFrozenCylinder } from '../cylinder-frozen';
 import { visibleBodyName } from '../body-label';
-import { canDrive } from '../actuator';
+import { canDrive, describeActuator, framePieceAt, groundPinsElsewhere } from '../actuator';
 import { Mechanism, MechanismFailure } from './mechanism';
 import { MechanismPartition, UnassignedGeometry } from './mechanism-partition';
 import { assignBodies } from './bodies';
@@ -141,6 +141,18 @@ function looseSubject(diagnosis: MobilityDiagnosis, partition: MechanismPartitio
 function drivenOwnJoint(partition: MechanismPartition): RealJoint | undefined {
   return partition.ownJoints.find((joint) => joint instanceof RealJoint && joint.input) as
     RealJoint | undefined;
+}
+
+/**
+ * The joint the reader set as this machine's input: its own, or one on a frame
+ * bar it hangs from, which is set even though it cannot turn anything.
+ *
+ * Asked by every surface that would otherwise say "set an input" -- the
+ * playback row, the facts under the list -- because the one thing those
+ * sentences must never do is ask for an input the reader can see.
+ */
+export function inputSetFor(partition: MechanismPartition): RealJoint | undefined {
+  return drivenOwnJoint(partition) ?? inputOnTheFrame(partition)?.joint;
 }
 
 /**
@@ -408,6 +420,30 @@ function blockerForFailure(
 }
 
 /**
+ * An input set on a link that has since been grounded at its other end too.
+ *
+ * The link is then part of the frame, so the partition gives the joint to no
+ * mechanism, and the machine it hangs off solved as if nothing drove it: "No
+ * input is set", said beside the input's own arrow. The joint is still in this
+ * mechanism's `joints` -- a frame piece is handed to the machine it touches --
+ * so it is found there, and the refusal is the actuator model's own sentence.
+ */
+function inputOnTheFrame(
+  partition: MechanismPartition
+): { joint: RealJoint; refusal: string; unground?: RealJoint } | undefined {
+  const own = new Set(partition.ownJoints.map((joint) => joint.id));
+  for (const joint of partition.joints) {
+    if (!(joint instanceof RealJoint) || !joint.input || own.has(joint.id)) continue;
+    if (!framePieceAt(joint)) continue;
+    const refusal = describeActuator(joint);
+    if (typeof refusal !== 'string') continue;
+    const link = joint.links[0];
+    return { joint, refusal, unground: link ? groundPinsElsewhere(link, joint)[0] : undefined };
+  }
+  return undefined;
+}
+
+/**
  * Everything standing between one mechanism and its animation, worst first.
  *
  * Ordered the way the fixes depend on one another rather than by severity,
@@ -436,9 +472,18 @@ export function readinessOf(
   // connections that are perfectly sound. So where the drive itself is refused,
   // that refusal is the whole of the answer and the failure's own sentence is
   // left out rather than stacked on top of it.
-  const refusal = helpers.drivenRefusal(partition);
   const driven = drivenOwnJoint(partition);
-  if (refusal) {
+  const onFrame = driven ? undefined : inputOnTheFrame(partition);
+  const refusal = helpers.drivenRefusal(partition) ?? onFrame?.refusal;
+  if (onFrame) {
+    add({
+      state: 'blocker',
+      title: `The input at joint ${nameOf(onFrame.joint)} cannot turn`,
+      body: onFrame.refusal,
+      at: onFrame.unground,
+      action: onFrame.unground ? 'Go To Joint' : undefined,
+    });
+  } else if (refusal) {
     add({
       state: 'blocker',
       title: 'This joint cannot be an input',
@@ -519,9 +564,10 @@ function factsOf(
 ): MechanismFact[] {
   // Its own, not everything it is handed: a shared frame piece carries the
   // neighbor's driven pin along with it, and naming that as this machine's
-  // "Driven joint" pointed the reader at a joint in another mechanism.
-  const driven = partition.ownJoints.find((joint) => joint instanceof RealJoint && joint.input) as
-    RealJoint | undefined;
+  // "Driven joint" pointed the reader at a joint in another mechanism. An
+  // input on a frame bar that belongs to nobody is this machine's, though, and
+  // "Not set" beside its arrow is the sentence the blocker above replaced.
+  const driven = inputSetFor(partition);
   const moving = partition.links.length;
   const dof = mechanism.dof;
   const facts: MechanismFact[] = [

@@ -30,13 +30,18 @@ import {
  * The hand-built drawings in `mobility-diagnosis.spec.ts` each have one right
  * answer; this asks the questions that have to hold for *every* drawing, on the
  * shapes a student actually makes out of a working one: a joint grounded that
- * should not be, a ground taken away, a link deleted. Each machine is built the
+ * should not be, a ground taken away, a link deleted, the input set on the
+ * wrong joint. Each machine is built the
  * way `MechanismService` builds it -- one `Mechanism` per partition, handed the
  * joints it owns -- because that, not a single mechanism over the whole drawing,
- * is what a reader is shown.
+ * is where "No input is set" was once said beside an input's own arrow.
  *
  * What must hold:
  * - nothing throws;
+ * - "No input is set" is never said while an input joint sits in this machine
+ *   and no other machine owns it -- an input on a link grounded at both ends is
+ *   the drawing that was reported. An input a frame bar brings in from the
+ *   machine next door is that machine's, and the sentence is true;
  * - every fix the diagnosis offers, made for real on a fresh copy, leaves the
  *   parts it was about as one machine at one degree of freedom -- not the right
  *   count split across a machine that runs and a rigid piece that cannot;
@@ -115,6 +120,20 @@ describe('readiness across every library drawing, broken one way at a time', () 
       if (!(link instanceof RealLink)) continue;
       edits.push({ label: `delete ${link.id}`, apply: (d) => deleteLink(d, link.id) });
     }
+    // Set straight on the model, past the menu that would refuse most of these:
+    // a joint that was a fine input can be made a poor one by any later edit.
+    // Not on a cylinder's buried inner end, which no reader can see to choose.
+    const buried = new Set(cylindersIn(drawing.joints).map((cylinder) => cylinder.inner.id));
+    for (const joint of drawing.joints) {
+      if (!(joint instanceof RealJoint) || joint.input || buried.has(joint.id)) continue;
+      edits.push({
+        label: `input at ${joint.id}`,
+        apply: (d) =>
+          d.joints.forEach((one) => {
+            if (one instanceof RealJoint) one.input = one.id === joint.id;
+          }),
+      });
+    }
     return edits;
   }
 
@@ -173,6 +192,9 @@ describe('readiness across every library drawing, broken one way at a time', () 
         edit.apply(drawing);
         drawings++;
         const built = machines(drawing);
+        const owned = new Set(
+          built.flatMap(({ partition }) => partition.ownJoints.map((j) => j.id))
+        );
         const hidden = new Set(
           cylindersIn(drawing.joints).flatMap((cylinder) => [cylinder.inner.id])
         );
@@ -185,6 +207,14 @@ describe('readiness across every library drawing, broken one way at a time', () 
         for (const { partition, readiness } of built) {
           for (const check of readiness.checks) {
             const said = `${check.title} ${check.body}`;
+            if (check.title === 'No input is set') {
+              const orphan = partition.joints.find(
+                (joint) => joint instanceof RealJoint && joint.input && !owned.has(joint.id)
+              );
+              if (orphan) {
+                problems.push(`${where}: "No input is set" beside input ${orphan.id}`);
+              }
+            }
             for (const buried of hidden) {
               if (new RegExp(`[Jj]oints? (?:[A-Z0-9]+, )*${buried}\\b`).test(said)) {
                 problems.push(`${where}: names the cylinder's buried joint ${buried}: ${said}`);
@@ -229,7 +259,7 @@ describe('readiness across every library drawing, broken one way at a time', () 
   }
 
   it('holds for every drawing and every edit', () => {
-    expect(drawings).toBeGreaterThan(500);
+    expect(drawings).toBeGreaterThan(800);
     expect(problems).toEqual([]);
   });
 

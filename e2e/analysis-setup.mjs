@@ -250,6 +250,50 @@ record(
   text
 );
 
+// --- an input on a link that is grounded at both ends ------------------------
+// The crank is frame, so the machine hanging off it was solved as if nothing
+// drove it, and the drawer said "No input is set" beside the input's own arrow.
+// The refusal is the actuator's: which ground pins the link down, and which to
+// take away. Taking it away then leaves a crank with a link dangling off it,
+// and the drawer moves on to that.
+await open(galleryQuery('Crank grounded at both ends'));
+await tab('Kinematic').click();
+await page.waitForTimeout(600);
+text = await drawerText();
+record(
+  'an input on a grounded link says it cannot turn, not that there is none',
+  text.includes('The input at joint A cannot turn') &&
+    text.includes('Its link is also grounded at joint B') &&
+    !text.includes('No input is set'),
+  text
+);
+// The playback row said it too, from its own reading of the same drawing.
+const row = await page.locator('app-playback-bar').innerText();
+record(
+  'and the playback row counts the fix rather than asking for an input',
+  !row.includes('set one joint as an input') && /1 fix/.test(row),
+  row
+);
+const toB = page.getByRole('button', { name: 'Go To Joint B', exact: true });
+record('and offers to go to the ground that pins it', (await toB.count()) === 1);
+await toB.click();
+await page.waitForTimeout(600);
+await page
+  .locator('app-edit-panel toggle-block', { hasText: 'Grounded' })
+  .getByRole('switch')
+  .click();
+await page.waitForTimeout(600);
+await tab('Kinematic').click();
+await page.waitForTimeout(600);
+text = await drawerText();
+record(
+  'and ungrounding it lets the input turn, leaving the next thing to fix',
+  !text.includes('cannot turn') &&
+    text.includes('This mechanism has 2 degrees of freedom') &&
+    text.includes('Attach a link from joint C to a new grounded joint'),
+  text
+);
+
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
 
 await browser.close();
