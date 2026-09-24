@@ -3,7 +3,7 @@
 import '../../app/model/joint';
 import { describeActuator } from '../../app/model/actuator';
 import { cylindersIn } from '../../app/model/cylinder';
-import { Joint, PrisJoint, RealJoint } from '../../app/model/joint';
+import { Joint, PrisJoint, RealJoint, RevJoint } from '../../app/model/joint';
 import { Link, RealLink } from '../../app/model/link';
 import { diagnoseMobility, MobilityFix } from '../../app/model/mechanism/free-motion';
 import { assignBodies, WORLD } from '../../app/model/mechanism/bodies';
@@ -31,7 +31,8 @@ import {
  * answer; this asks the questions that have to hold for *every* drawing, on the
  * shapes a student actually makes out of a working one: a joint grounded that
  * should not be, a ground taken away, a link deleted, the input set on the
- * wrong joint. Each machine is built the
+ * wrong joint, a bar drawn across the linkage with a link left hanging off it.
+ * Each machine is built the
  * way `MechanismService` builds it -- one `Mechanism` per partition, handed the
  * joints it owns -- because that, not a single mechanism over the whole drawing,
  * is where "No input is set" was once said beside an input's own arrow.
@@ -45,6 +46,7 @@ import {
  * - every fix the diagnosis offers, made for real on a fresh copy, leaves the
  *   parts it was about as one machine at one degree of freedom -- not the right
  *   count split across a machine that runs and a rigid piece that cannot;
+ * - every fix offered for an input that cannot move, made for real, lets it;
  * - no sentence names, and no button goes to, a joint a cylinder places for
  *   itself, and every button goes to something that is in the drawing.
  */
@@ -134,7 +136,55 @@ describe('readiness across every library drawing, broken one way at a time', () 
           }),
       });
     }
+    // A bar drawn across the linkage from the crank's moving end, with a link
+    // left hanging off its far end: the shape that was reported. The brace
+    // takes the input's freedom away and the hanging link gives one back, so
+    // the count reads right and the input cannot turn.
+    const input = drawing.joints.find((joint) => joint instanceof RealJoint && joint.input);
+    const crankEnds = (input instanceof RealJoint ? input.links : [])
+      .flatMap((link) => link.joints)
+      .filter((joint) => joint instanceof RealJoint && !joint.ground && !buried.has(joint.id));
+    const braces = crankEnds.flatMap((from) =>
+      drawing.joints
+        .filter(
+          (to) =>
+            to instanceof RealJoint &&
+            !(to instanceof PrisJoint) &&
+            to !== from &&
+            !buried.has(to.id) &&
+            !(from as RealJoint).links.some((link) => link.joints.includes(to))
+        )
+        .map((to) => [from.id, to.id])
+    );
+    for (const [from, to] of braces.slice(0, MAX_BRACES)) {
+      edits.push({
+        label: `brace ${from}${to}, hang a link off ${to}`,
+        apply: (d) => brace(d, from, to),
+      });
+    }
     return edits;
+  }
+
+  /** How many braces each drawing is tried with: enough to reach every shape, few enough to stay quick. */
+  const MAX_BRACES = 6;
+
+  function brace(drawing: Drawing, fromId: string, toId: string): void {
+    const find = (id: string) => drawing.joints.find((one) => one.id === id) as RealJoint;
+    const from = find(fromId);
+    const to = find(toId);
+    const hanging = new RevJoint('Z9', to.x + 0.7, to.y - 0.4);
+    drawing.joints.push(hanging);
+    for (const [a, b] of [
+      [from, to],
+      [to, hanging],
+    ]) {
+      const link = new RealLink([a.id, b.id].sort().join(''), [a, b]);
+      drawing.links.push(link);
+      a.links.push(link);
+      b.links.push(link);
+      a.connectedJoints.push(b);
+      b.connectedJoints.push(a);
+    }
   }
 
   /** What `deleteLink` does to the model: the link goes, and so do joints nothing else holds. */
@@ -178,6 +228,7 @@ describe('readiness across every library drawing, broken one way at a time', () 
   const problems: string[] = [];
   let drawings = 0;
   let fixesChecked = 0;
+  let stuckSeen = 0;
 
   for (const id of TEMPLATE_IDS) {
     const base = decode(id);
@@ -229,13 +280,34 @@ describe('readiness across every library drawing, broken one way at a time', () 
           }
           if (
             !readiness.checks.some((check) =>
-              /degrees of freedom|tied to nothing/.test(check.title)
+              /degrees of freedom|tied to nothing|cannot (turn|slide)|dead position/.test(
+                check.title
+              )
             )
           ) {
             continue;
           }
           const before = new Set(movingLinks(partition));
-          for (const fix of diagnoseMobility(partition).fixes) {
+          const diagnosis = diagnoseMobility(partition);
+          const drivenId = partition.ownJoints.find(
+            (joint) => joint instanceof RealJoint && joint.input
+          )?.id;
+          if (diagnosis.stuck) stuckSeen++;
+          for (const fix of diagnosis.stuck?.fixes ?? []) {
+            fixesChecked++;
+            const fixed = decode(id);
+            edit.apply(fixed);
+            applyFix(fixed, fix);
+            const after = machines(fixed).find(({ partition: part }) =>
+              part.ownJoints.some((joint) => joint.id === drivenId)
+            );
+            if (!after || diagnoseMobility(after.partition).stuck) {
+              problems.push(
+                `${where}: offered ${describeFix(fix)}, and the input still cannot move`
+              );
+            }
+          }
+          for (const fix of diagnosis.fixes) {
             fixesChecked++;
             const fixed = decode(id);
             edit.apply(fixed);
@@ -259,11 +331,15 @@ describe('readiness across every library drawing, broken one way at a time', () 
   }
 
   it('holds for every drawing and every edit', () => {
-    expect(drawings).toBeGreaterThan(800);
+    expect(drawings).toBeGreaterThan(1000);
     expect(problems).toEqual([]);
   });
 
+  it('reached the reported shape, an input that cannot move', () => {
+    expect(stuckSeen).toBeGreaterThan(30);
+  });
+
   it('actually checked some fixes', () => {
-    expect(fixesChecked).toBeGreaterThan(300);
+    expect(fixesChecked).toBeGreaterThan(500);
   });
 });
