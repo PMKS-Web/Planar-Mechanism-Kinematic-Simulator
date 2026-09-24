@@ -2145,3 +2145,12 @@ path until the dashed edge arrived, then failed Playwright's strict mode in `edi
 `editor-followups`. Aim at `.link-selected` for the part and `.compound-context` for its body.
 Both are in the selection yellow, so compare the path's `d` against the part's own shape, such as
 a cylinder mark's `barrel` or `objectDisplay.path(part)`, to tell the two apart.
+
+### The left panel's `.panel` is the frame; measure `#normalPanel` for the card
+
+`app-left-tabs .panel` keeps `$shadow-room` (16px) of padding under the card for its shadow, and
+since ac24921a the Edit and analysis clearances subtract that padding so the *card* stops one
+`$card-inset` (12px) above the playback cards. The frame therefore reaches 4px into the controls
+by design, and the controls, on `--layer-cluster` above `--layer-panel`, still take the press there.
+`editor-followups` measured the frame and failed at 506 against 502 for as long as the rule had been
+right; measure the card, as `bug-fixes-2` does, and hit-test the strip if the press matters.

@@ -204,23 +204,30 @@ try {
   await page.locator('#joint_C').click();
   await page.getByRole('button', { name: 'Visual Settings', exact: true }).click();
   await page.waitForTimeout(400);
+  // The card, not the frame round it. The frame keeps $shadow-room under the
+  // card for its shadow, so where the card stops one gap above the controls the
+  // frame reaches into them by design; what must hold there is that the
+  // controls, which sit above it, still take the press.
   const panelGeometry = () =>
     page.evaluate(() => {
-      const p = document.querySelector('app-left-tabs .panel').getBoundingClientRect(),
+      const p = document.querySelector('app-left-tabs .panel #normalPanel').getBoundingClientRect(),
         cards = [...document.querySelectorAll('.transportCard,.scrubCard')].map((e) =>
           e.getBoundingClientRect()
         );
+      const top = Math.min(...cards.map((c) => c.top));
+      const pressed = document.elementFromPoint(p.left + 20, top + 2);
       return {
         bottom: p.bottom,
         right: p.right,
-        top: Math.min(...cards.map((c) => c.top)),
+        top,
         left: Math.min(...cards.map((c) => c.left)),
+        controlsTakePress: !!pressed?.closest('.transportCard,.scrubCard'),
       };
     });
   const narrow = await panelGeometry();
   check(
     'narrow edit panel clears the playback controls',
-    narrow.right > narrow.left && narrow.bottom <= narrow.top,
+    narrow.right > narrow.left && narrow.bottom <= narrow.top && narrow.controlsTakePress,
     narrow
   );
   await page.screenshot({ path: `${OUT}/narrow-panel.png` });
