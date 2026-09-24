@@ -1707,7 +1707,32 @@
       );
     });
     const bodies = svgEl('g', {}, svg);
-    const bodyEls = m.bodies.map((ids) => {
+    // A link its author drew as a disc (a wheel, a flywheel) is a circle about
+    // its pivot with spokes to its other joints, the spokes turning with it.
+    const discOf = new Map((m.discs || []).map((d) => [d.body, d]));
+    const bodyEls = m.bodies.map((ids, b) => {
+      const disc = discOf.get(b);
+      if (disc) {
+        const circle = svgEl(
+          'circle',
+          {
+            r: disc.radius * k,
+            fill: 'var(--link-fill)',
+            stroke: 'var(--link)',
+            'stroke-width': 2.5,
+          },
+          bodies
+        );
+        const spokes = svgEl(
+          'path',
+          { fill: 'none', stroke: 'var(--link)', 'stroke-width': 3, 'stroke-linecap': 'round' },
+          bodies
+        );
+        const key = ids.map((i) => m.joints[i].id).join('');
+        addPart(key, circle);
+        addPart(key, spokes);
+        return { disc, circle, spokes };
+      }
       const el =
         ids.length === 2
           ? svgEl(
@@ -1797,7 +1822,18 @@
     const { bodyEls, cylEls, jointEls, px, py } = anim.els;
     m.bodies.forEach((ids, b) => {
       const el = bodyEls[b];
-      if (ids.length === 2) {
+      if (el.disc) {
+        const c = frame[el.disc.center];
+        el.circle.setAttribute('cx', px(c[0]));
+        el.circle.setAttribute('cy', py(c[1]));
+        el.spokes.setAttribute(
+          'd',
+          ids
+            .filter((i) => i !== el.disc.center)
+            .map((i) => `M ${px(c[0])} ${py(c[1])} L ${px(frame[i][0])} ${py(frame[i][1])}`)
+            .join(' ')
+        );
+      } else if (ids.length === 2) {
         const [p, q] = [frame[ids[0]], frame[ids[1]]];
         el.setAttribute('x1', px(p[0]));
         el.setAttribute('y1', py(p[1]));

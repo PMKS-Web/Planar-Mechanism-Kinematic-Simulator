@@ -197,6 +197,12 @@ function sliderCranks(ctx: RelationContext): string[] {
         const ux = Math.cos(slider.angle_rad);
         const uy = Math.sin(slider.angle_rad);
         const offset = Math.abs(-(g[0] - s[0]) * uy + (g[1] - s[1]) * ux);
+        if (!turnsFully(ctx, crank) && sweepOf(ctx, crank) > 300) {
+          lines.push(
+            `- Slider-crank: ${ctx.bodyLabel(crank)} (radius ${fmt(r)} about ${pivot.id}) and slider ${ctx.label(slider)} are joined by rod ${ctx.bodyLabel(rod)} (length ${fmt(rodLength)}); ${ctx.bodyLabel(crank)} goes most of a turn and back again, because the input reverses.`
+          );
+          continue;
+        }
         if (!turnsFully(ctx, crank)) {
           lines.push(
             `- Slider-crank arrangement driven by a rocking lever: ${ctx.bodyLabel(crank)} (arm ${fmt(r)} from its pivot ${pivot.id}, swinging ${fmt(sweepOf(ctx, crank), 1)} deg) pushes slider ${ctx.label(slider)} along its guide through rod ${ctx.bodyLabel(rod)} (length ${fmt(rodLength)}).`

@@ -80,6 +80,35 @@ function wattsLinkage(): MechanismFixture {
   };
 }
 
+/**
+ * A steam locomotive's driving wheels: two wheels drawn as discs, coupled by a
+ * rod between their crank pins, with the main rod running back to a crosshead
+ * on its guide. Turned by the wheel, so it runs through full turns, where a
+ * student's version driven from the piston stalls at the ends of the stroke.
+ */
+function locomotiveWheels(): MechanismFixture {
+  const crank = 0.8;
+  return {
+    joints: [
+      { id: 'O', x: 0, y: 0, ground: true, input: true, driveSpeed: 10 },
+      { id: 'A', x: 0, y: crank },
+      { id: 'R', x: 0, y: -1.6 },
+      { id: 'P', x: 4, y: 0, ground: true },
+      { id: 'B', x: 4, y: crank },
+      { id: 'S', x: 4, y: -1.6 },
+      { id: 'C', x: -5, y: 0 },
+    ],
+    links: [
+      { joints: 'OAR', circle: true },
+      { joints: 'AB' },
+      { joints: 'PBS', circle: true },
+      { joints: 'AC' },
+    ],
+    slider: { at: 'C', angleRad: 0 },
+    inputAngVel: (10 * Math.PI) / 30,
+  };
+}
+
 export const MADE_CASES: MadeCase[] = [
   {
     id: 'made-chebyshev-near-miss',
@@ -104,5 +133,13 @@ export const MADE_CASES: MadeCase[] = [
       "Watt's linkage as it locates a car's rear axle: the family check knows the linkage, only world knowledge knows the car.",
     intent: "Watt's linkage (car rear-axle location)",
     fixture: wattsLinkage(),
+  },
+  {
+    id: 'made-locomotive-wheels',
+    name: 'Locomotive driving wheels',
+    blurb:
+      "A steam locomotive's two driving wheels, drawn as discs and coupled by a rod, with the main rod running back to a crosshead on its guide.",
+    intent: 'steam locomotive driving wheels',
+    fixture: locomotiveWheels(),
   },
 ];

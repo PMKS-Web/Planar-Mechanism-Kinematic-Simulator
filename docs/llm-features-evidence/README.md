@@ -207,3 +207,22 @@ Across the 16 round 3 cases with a known real machine or stated goal, v5 names i
 Neither version recognized any student's goal (the locomotive, the Scott Russell, the Strider, the
 door opener), and v5 confidently calls the car steering "paired windshield-wiper linkages" in both
 askings, background photograph notwithstanding. Claude decided 13 pairs and left 8 close calls.
+
+### Round 4: v6's picture
+
+v6 changes only the picture: six moments instead of four, the author's background image once (tile
+0) instead of behind every moment, and links drawn as discs shown as discs, with the fact sheet
+saying so. The Schematic style on `feature/drawing-styles` draws a disc as the outline of its
+joints; the captures used a local fix, and the real one is a task of its own. The set repeats the
+four templates with background images and the student's locomotive, and adds nine library
+templates, nine student mechanisms and a test case (a locomotive's driving wheels).
+
+v6 recognizes 11 of the 15 cases with a known machine, v5 on the same cases 7. The gains are the
+car steering (the first time any version saw it), the pantograph, the gripper, and the locomotive
+wheels once they were drawn as discs; the loss is the landing gear, which v6 took for a helicopter
+part. The student's own locomotive, now drawn with three wheels, reads as "three linked spinning
+wheels" but not yet as a locomotive.
+
+Three answers in this round, and none earlier, came back with web citations: the Codex CLI gives
+the model web search and other tools unless they are disabled. `run/ask.mjs` now disables them, and
+the three were asked again (the originals are kept aside). The rubric flags any answer with a link.

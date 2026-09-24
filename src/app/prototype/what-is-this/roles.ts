@@ -1,6 +1,6 @@
 import { describeActuator, GROUND_BODY } from '../../model/actuator';
 import { Joint, PrisJoint, RealJoint } from '../../model/joint';
-import { Link } from '../../model/link';
+import { Link, RealLink } from '../../model/link';
 import {
   angularSpeedSpread,
   bodyAngles,
@@ -157,7 +157,8 @@ export function linkJobs(
   ctx: RelationContext,
   drivenBody: Link | undefined,
   driven: RealJoint | undefined,
-  input: InputSeries | undefined
+  input: InputSeries | undefined,
+  discs = false
 ): LinkJob[] {
   const jobs: LinkJob[] = [];
   const tracedJoints = traced(ctx);
@@ -201,6 +202,11 @@ export function linkJobs(
       if (full) {
         job = isInput ? 'input crank' : slotted ? 'slotted link' : 'crank';
         motion = `turns full revolutions about ground ${pivot.id}${angularSpeedSpread(angles, ctx.samples)}`;
+      } else if (sweep > 300) {
+        // Most of a turn and back: a wheel whose input reverses. "Rocks, with
+        // its ends at the same input position" was true and said nothing.
+        job = isInput ? 'input crank' : slotted ? 'slotted link' : 'crank';
+        motion = `turns about ground ${pivot.id} through ${fmt(sweep, 0)} deg and then back the same way, because the input reverses`;
       } else {
         job = isInput
           ? 'input rocker (driven back and forth)'
@@ -244,6 +250,10 @@ export function linkJobs(
       return holders.find((b) => jointsOf(ctx, b).some(isGroundPin)) ?? holders[0];
     };
     const carried = tracedJoints.filter((j) => owner(j) === body);
+    // Its author chose to draw it as a disc about its pivot: the app's way of
+    // saying wheel or flywheel, and a strong hint of what the mechanism is.
+    if (discs && body instanceof RealLink && body.isCircle && pivot)
+      job += ', drawn by its author as a disc (a wheel or flywheel)';
     if (carried.length) job += `, carries traced point ${carried.map((j) => j.id).join(', ')}`;
     jobs.push({ name, job, motion });
   }
