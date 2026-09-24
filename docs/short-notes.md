@@ -592,15 +592,28 @@ through pins *and slots*, with the frame bars each half is solved against), and 
 (a free end and the pivot its deleted link left behind). A local unground of a pin another
 machine also hangs from is not offered at all: it counts right for the half it can see.
 
-### When two fixes both count, the history is the tie-breaker, not an LLM
+### When two fixes both count, list them all rather than guess
 
-The student-mistakes sweep knows which edit was the mistake. Where the drawer offered more than
-one counted fix (44 steps in 600 drawings), the mistake's own undo was listed first in 27, first
-in 30 when ranked by the newest joint letter a fix touches (letters are handed out in drawing
-order), and among the offered fixes in 39 -- which is what a ranking by "undo the last edit" from
-`SaveHistoryService` would reach. That is deterministic and local; a language model has nothing
-the history does not, except a stated goal ("I am building a windshield wiper"), which the app
-does not ask for.
+The student-mistakes sweep knows which edit was the mistake. Where the drawer had more than one
+counted fix, putting the first-counted one first matched the mistake's undo in 22 of 38 steps, and
+ranking by the newest joint letter in 25. Ranking by "undo the last edit" from the history would
+match more often, and would be the wrong design: a reader who wants the drawing back as it was
+presses Undo. What they want from the drawer is the way forward they meant, and the drawing cannot
+say which that is. So a check with more than one way out carries `ways` -- each an instruction and
+its own Go To -- and the drawer lists them (`resolution` in `mobility-sentences.ts`). The meant fix
+is on the list in 34 of 38. A link left hanging gets "Delete link BC" and "Attach a link from joint
+C to a new grounded joint" side by side, because it is as often the first bar of more linkage as a
+mistake. `follow-advice.ts` picks the way that matches the mistake when it is offered, which is the
+reader who knows what they meant.
+
+### Reset left a clock a few tenths of a microsecond short of zero
+
+`easeToStart` eases each machine's clock back to its start, and skips drawing a frame that moves it
+less than a microsecond. The eased curve is flat at its end, so on a short cycle -- a slider's can be
+a tenth of a second -- the last few frames were all under that and were never written, and the clock
+stopped at about 1.6e-7 s. `atStartPose` asks for exactly zero, so the edit gate called the machine
+parked away from its start, and with the shared step at zero it said so in the unsynced wording:
+"Return every mechanism to edit." The last frame now lands on zero and is always drawn.
 
 ### An input on a bar grounded at both ends belongs to no machine
 

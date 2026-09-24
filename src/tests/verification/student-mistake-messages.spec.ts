@@ -114,9 +114,15 @@ describe('what the drawer says about a mistake it has learned to name', () => {
     const [check] = said(deletedRockerFixture()).checks;
     expect(check.body).toBe(
       'With the input held still, link BC can still move, so the input alone cannot say where ' +
-        'it goes. Attaching a link from joint C to joint D or deleting link BC would each leave ' +
-        'one degree of freedom.'
+        'it goes. Any one of these would leave one degree of freedom:'
     );
+    // Joining C to the pivot left behind first: it is the drawing that was
+    // there. Deleting BC is listed too; a new pivot is not, with an old one
+    // standing right there to join.
+    expect(check.ways?.map((way) => [way.text, way.action])).toEqual([
+      ['Attach a link from joint C to joint D', 'Go To Joint'],
+      ['Delete link BC', 'Go To Link'],
+    ]);
   });
 
   it('runs with the frame drawn as a bar between its pivots', () => {

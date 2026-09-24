@@ -163,8 +163,12 @@ const fromFix = (fix: MobilityFix): Action =>
 function actionFor(
   check: ReadinessCheck,
   partition: MechanismPartition | undefined,
-  drawing: Drawing
+  drawing: Drawing,
+  undos: Undo[]
 ): { action?: Action; offered: MobilityFix[] } {
+  // Offered several, a reader who knows what they meant picks that one: the
+  // drawer lists every counted way out rather than guessing between them.
+  const chosen = (offered: MobilityFix[]) => offered[rankOf(offered, undos) ?? 0];
   const at = check.at?.id;
   if (
     partition &&
@@ -175,7 +179,7 @@ function actionFor(
       return { action: { kind: 'unground', joint: at }, offered: [] };
     }
     const offered = diagnosis.stuck?.fixes ?? diagnosis.fixes;
-    if (offered[0]) return { action: fromFix(offered[0]), offered };
+    if (offered[0]) return { action: fromFix(chosen(offered)), offered };
     if (diagnosis.attachAt) {
       return { action: { kind: 'attach', joint: diagnosis.attachAt.id }, offered };
     }
@@ -187,7 +191,7 @@ function actionFor(
       /has more than one link to turn$/.test(check.title))
   ) {
     const offered = diagnoseMobility(partition, drawing).untangle ?? [];
-    if (offered[0]) return { action: fromFix(offered[0]), offered };
+    if (offered[0]) return { action: fromFix(chosen(offered)), offered };
     const instead = check.body.match(/Set the input on joint (\S+) instead\./);
     return { action: instead ? { kind: 'move-input', joint: instead[1] } : undefined, offered };
   }
@@ -253,7 +257,8 @@ export function followAdvice(scenario: Scenario): Walk {
         };
       }
       if (step === MAX_STEPS) return { outcome: 'still broken', steps };
-      const { action, offered } = actionFor(check, partition, drawing);
+      const undos = scenario.mistakes.map((mistake) => mistake.undo);
+      const { action, offered } = actionFor(check, partition, drawing, undos);
       steps.push({
         title: check.title,
         body: check.body,

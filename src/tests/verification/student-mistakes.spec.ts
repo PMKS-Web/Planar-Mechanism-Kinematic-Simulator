@@ -151,11 +151,11 @@ function summarize(walks: { scenario: Scenario; walk: Walk }[]): string {
     '',
     `${choices.length} steps offered more than one counted fix. The mistake's own undo was among them in ${first + later}, and not at all in ${choices.length - first - later}.`,
     '',
-    '| Which fix is put first | Undo first |',
+    '| How the ways out are shown | The undo is |',
     '| --- | --- |',
-    `| As listed now | ${first} |`,
-    `| Newest joint letter first | ${newest} |`,
-    `| The edit the history says was last (an upper bound) | ${first + later} |`
+    `| One, the first counted | first in ${first} |`,
+    `| One, the newest joint letter first | first in ${newest} |`,
+    `| All of them, for the reader to choose | on the list in ${first + later} |`
   );
   return lines.join('\n') + '\n';
 }
