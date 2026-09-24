@@ -131,15 +131,11 @@ export class AnalysisSampleService {
     }
 
     if (mechProp === 'Input Torque' || mechProp === 'Input Effort') {
-      // A torque's moment arms are internal model lengths (MODEL_SCALE times
-      // the user's unit), so the solved value divides back down for display. An
-      // input *force* has no length in it and is invariant.
+      // Already real N·m: the solver takes MODEL_SCALE out of its moment arms
+      // itself, so nothing here divides it back down.
       if (!frame.inputEffort) return [Number.NaN];
       const isForce = frame.inputEffort.kind === 'force';
-      return [
-        (frame.inputEffort.valueSI * (isForce ? forceConversion : torqueConversion)) /
-          (isForce ? 1 : MODEL_SCALE),
-      ];
+      return [frame.inputEffort.valueSI * (isForce ? forceConversion : torqueConversion)];
     }
 
     const byLink = frame.jointReactionsByLink.get(mechPart);

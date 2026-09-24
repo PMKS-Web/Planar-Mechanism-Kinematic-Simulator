@@ -5,7 +5,11 @@ import { ForceAnalysisMode } from '../../app/model/mechanism/force-solver';
 import { KinematicsSolver } from '../../app/model/mechanism/kinematic-solver';
 import { siUnitFactors } from '../../app/model/unit-conversions';
 import { MODEL_SCALE } from '../../app/model/render-scale';
-import { buildMechanismAtScale, MechanismFixture } from '../../test-utils/verification/fixture';
+import {
+  buildMechanismAtScale,
+  inModelUnits,
+  MechanismFixture,
+} from '../../test-utils/verification/fixture';
 import {
   offsetLoadFourBarFixture,
   punchPressFixture,
@@ -51,11 +55,19 @@ const loadedCylinderBoom = (): MechanismFixture => {
   return fixture;
 };
 
+// Every specimen is drawn in model units, as the app draws it. The cylinder
+// boom already is; the rest are written in meters and lifted.
 const AUDITS: Audit[] = [
-  { name: 'pin-jointed four-bar with an offset load', fixture: offsetLoadFourBarFixture },
-  { name: 'slider-crank punch press', fixture: punchPressFixture },
-  { name: 'inverted slider-crank with a floating slot', fixture: loadedInvertedSliderCrankFixture },
-  { name: 'welded Scotch yoke', fixture: loadedScotchYoke },
+  {
+    name: 'pin-jointed four-bar with an offset load',
+    fixture: () => inModelUnits(offsetLoadFourBarFixture()),
+  },
+  { name: 'slider-crank punch press', fixture: () => inModelUnits(punchPressFixture()) },
+  {
+    name: 'inverted slider-crank with a floating slot',
+    fixture: () => inModelUnits(loadedInvertedSliderCrankFixture()),
+  },
+  { name: 'welded Scotch yoke', fixture: () => inModelUnits(loadedScotchYoke()) },
   { name: 'sealed cylinder boom', fixture: loadedCylinderBoom },
 ];
 
@@ -67,7 +79,13 @@ const AUDITS: Audit[] = [
 function audit(fixture: MechanismFixture, mode: ForceAnalysisMode) {
   const { mechanism } = buildMechanismAtScale(fixture, 1 * MODEL_SCALE);
   const series = mechanism.getForceAnalysis(mode);
-  const units = siUnitFactors(mechanism.unit);
+  // Meters per model unit, not per user unit: the rates below are read
+  // straight off the kinematic solver, which works in model units. Measured
+  // this way the audit is no longer blind to the length unit -- a force
+  // solver that took model units for meters would supply MODEL_SCALE times
+  // the power its loads draw.
+  const siUnits = siUnitFactors(mechanism.unit);
+  const units = { ...siUnits, distanceToM: siUnits.distanceToM / MODEL_SCALE };
   KinematicsSolver.resetVariables();
   KinematicsSolver.requiredLoops = mechanism.requiredLoops;
 

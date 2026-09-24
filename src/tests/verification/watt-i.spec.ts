@@ -38,7 +38,7 @@ describe('Watt I @ 10 RPM vs MATLAB', () => {
       'Watt_I Newton/Grav',
       wattI10Rpm.dynamics!.grav,
       wattI10Rpm,
-      () => buildMechanism(wattIFixture(true)),
+      () => wattIFixture(true),
       { toggleExclusions: TOGGLE_EXCLUSIONS }
     );
   });
@@ -48,7 +48,7 @@ describe('Watt I @ 10 RPM vs MATLAB', () => {
       'Watt_I Newton/NoGrav',
       wattI10Rpm.dynamics!.noGrav!,
       wattI10Rpm,
-      () => buildMechanism(wattIFixture(false)),
+      () => wattIFixture(false),
       { toggleExclusions: TOGGLE_EXCLUSIONS }
     );
   });

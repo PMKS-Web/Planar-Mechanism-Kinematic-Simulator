@@ -35,7 +35,7 @@ describe('Stephenson III Example 2 @ 10 RPM vs MATLAB', () => {
       'Stephenson_III Example_2 Newton/Grav',
       stephensonIiiEx210Rpm.dynamics!.grav,
       stephensonIiiEx210Rpm,
-      () => buildMechanism(stephensonIiiEx2Fixture(true)),
+      () => stephensonIiiEx2Fixture(true),
       { toggleExclusions: TOGGLE_EXCLUSIONS }
     );
   });
@@ -45,7 +45,7 @@ describe('Stephenson III Example 2 @ 10 RPM vs MATLAB', () => {
       'Stephenson_III Example_2 Newton/NoGrav',
       stephensonIiiEx210Rpm.dynamics!.noGrav!,
       stephensonIiiEx210Rpm,
-      () => buildMechanism(stephensonIiiEx2Fixture(false)),
+      () => stephensonIiiEx2Fixture(false),
       { toggleExclusions: TOGGLE_EXCLUSIONS }
     );
   });
