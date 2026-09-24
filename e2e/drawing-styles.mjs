@@ -70,6 +70,40 @@ const physical = () =>
       solve: g.mechanismSrv.solveRevision,
     })
   );
+/**
+ * The drawn disc of the one link that is one, read back from its path against
+ * where its joints are now: a rim about the ground pin through the outermost
+ * joint, and a spoke from the pin to every other joint.
+ */
+const discDrawing = () =>
+  grid((g) => {
+    const wheel = g.mechanismSrv.links.find((l) => l.isCircle);
+    const el = document.getElementById(wheel.id);
+    const d = el.getAttribute('d');
+    // The pin it turns on, found the way a reader would: the grounded one.
+    const pivot = wheel.joints.find((j) => j.ground);
+    const others = wheel.joints.filter((j) => j !== pivot);
+    const reach = Math.max(...others.map((j) => Math.hypot(j.x - pivot.x, j.y - pivot.y)));
+    const near = (a, b) => Math.abs(a - b) < 1e-6 * Math.max(1, reach);
+    const rim = /^M (\S+) (\S+) A (\S+) \S+ 0 0 1 (\S+) \S+ A /.exec(d)?.slice(1).map(Number);
+    const spokes = [...d.matchAll(/M (\S+) (\S+) L (\S+) (\S+)/g)].map((m) =>
+      m.slice(1).map(Number)
+    );
+    const style = getComputedStyle(el);
+    return {
+      d,
+      rimAboutPivot: !!rim && near((rim[0] + rim[3]) / 2, pivot.x) && near(rim[1], pivot.y),
+      rimThroughOutermost: !!rim && near(rim[2], reach),
+      spokesFromPivot:
+        spokes.length === others.length &&
+        spokes.every(([x, y]) => near(x, pivot.x) && near(y, pivot.y)),
+      spokeOnEveryJoint: others.every((j) =>
+        spokes.some(([, , x, y]) => near(x, j.x) && near(y, j.y))
+      ),
+      shaded: style.fill !== 'none' && Math.abs(parseFloat(style.fillOpacity) - 0.12) < 1e-3,
+      turned: others.some((j) => Math.abs(j.y - pivot.y) > 0.05 * reach),
+    };
+  });
 
 try {
   await load('Dev_Object_Gallery');
@@ -372,24 +406,107 @@ try {
       page
         .locator('.cylinder-seal')
         .evaluateAll((ps) => ps.map((p) => ({ x: p.getBBox().x, width: p.getBBox().width })));
+    // getBBox answers in single precision and bounds the head's rounded end
+    // through its arcs, so one head length measured 161.27999 under most
+    // corner radii and 161.28001 under a few. Each style rounds the corner
+    // differently, and the radius follows the zoom a load fits to, so an exact
+    // comparison failed now and then with nothing changed. A head that really
+    // changed length would move by a part of that radius, far past this.
+    const sameHead = (a, b) =>
+      a.length === b.length &&
+      a.every((one, i) =>
+        ['x', 'width'].every(
+          (key) => Math.abs(one[key] - b[i][key]) <= 1e-6 * Math.max(1, Math.abs(b[i][key]))
+        )
+      );
     let initialHead;
     for (const name of ['Standard', 'Fine', 'Schematic']) {
       await choose(name);
       // Schematic draws no head at all: the part is two lines meeting at S.
       const drawn = await head();
       initialHead ??= drawn;
+      const documentUnchanged = (await physical()) === before;
       check(
         `${id}: ${name} keeps piston head length and document data unchanged`,
-        (await physical()) === before &&
-          (name === 'Schematic'
-            ? drawn.length === 0
-            : JSON.stringify(drawn) === JSON.stringify(initialHead))
+        documentUnchanged &&
+          (name === 'Schematic' ? drawn.length === 0 : sameHead(drawn, initialHead)),
+        { documentUnchanged, drawn, initialHead }
       );
       await page.waitForTimeout(240); // The shared segmented pill is animated.
       await page.screenshot({ path: `${OUT}/${id}-${name}.png` });
     }
     await choose('Close');
     await page.waitForTimeout(400);
+    if (id === 'Flywheel_Engine') {
+      const disc = await discDrawing();
+      check(
+        'Schematic draws a disc as its rim about the ground pin, through its outermost joint',
+        disc.rimAboutPivot && disc.rimThroughOutermost,
+        disc
+      );
+      check(
+        'Schematic runs a spoke from the pivot of a disc to each of its other joints',
+        disc.spokesFromPivot && disc.spokeOnEveryJoint,
+        disc
+      );
+      check(
+        'Schematic shades a disc faintly in its own color, as it does a plate',
+        disc.shaded,
+        disc
+      );
+      const inside = await grid((g) => {
+        const wheel = g.mechanismSrv.links.find((l) => l.isCircle);
+        const c = wheel.joints.find((j) => j.ground);
+        const r = Math.max(...wheel.joints.map((j) => Math.hypot(j.x - c.x, j.y - c.y)));
+        const at = g.svgGrid.modelToScreen({ x: c.x + 0.45 * r, y: c.y - 0.55 * r });
+        return { x: at.x, y: at.y };
+      });
+      await page.mouse.click(inside.x, inside.y);
+      await page.waitForTimeout(200);
+      check(
+        'a click inside a schematic disc, away from its lines, picks it; its band runs round the rim',
+        await grid((g) => {
+          const wheel = g.mechanismSrv.links.find((l) => l.isCircle);
+          const band = document.querySelector('.selection-halo.picked');
+          return (
+            g.activeObjService.selectedLink === wheel &&
+            band?.getAttribute('d') === g.objectDisplay.skeleton(wheel)
+          );
+        })
+      );
+      // Welded to its rod, the disc is a part of one body: the first click
+      // inside it takes the body, the second the disc, by its shaded inside
+      // rather than only its lines.
+      const wheelId = await grid((g) => {
+        g.activeObjService.updateSelectedObj(null);
+        const wheel = g.mechanismSrv.links.find((l) => l.isCircle);
+        const crankPin = wheel.joints.find((j) => !j.ground && j.links.length > 1);
+        g.mechanismSrv.weldJoint(crankPin);
+        return wheel.id;
+      });
+      await page.waitForTimeout(300);
+      const clickInside = async () => {
+        await page.mouse.click(inside.x, inside.y);
+        await page.waitForTimeout(200);
+        return grid((g, wheelId) => {
+          const picked = g.activeObjService.selectedLink;
+          return {
+            id: picked?.id,
+            holdsWheel: !!picked?.subset?.some((part) => part.id === wheelId),
+          };
+        }, wheelId);
+      };
+      const firstPick = await clickInside();
+      const secondPick = await clickInside();
+      check(
+        'inside a disc welded into a body, the first click picks the body and the second the disc',
+        firstPick.holdsWheel &&
+          secondPick.id === wheelId &&
+          (await page.locator('.selection-halo.context').count()) === 1,
+        { wheelId, firstPick, secondPick }
+      );
+      await load(id);
+    }
     if (id === 'Hydraulic_Crosshead') {
       const clickBarrel = async () => {
         const p = await grid((g) => {
@@ -562,6 +679,18 @@ try {
       ghost.length > 0 && ghost.every((stroke) => stroke !== 'none'),
       ghost
     );
+    if (id === 'Flywheel_Engine') {
+      const disc = await discDrawing();
+      check(
+        'a schematic disc paused mid-turn keeps its rim, and its spokes follow its pins round',
+        disc.turned &&
+          disc.rimAboutPivot &&
+          disc.rimThroughOutermost &&
+          disc.spokesFromPivot &&
+          disc.spokeOnEveryJoint,
+        disc
+      );
+    }
     const invalid = await page
       .locator('#canvas path')
       .evaluateAll((ps) => ps.filter((p) => /NaN|Infinity/.test(p.getAttribute('d') ?? '')).length);

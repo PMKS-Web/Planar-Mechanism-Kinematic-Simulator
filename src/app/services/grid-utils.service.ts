@@ -1686,19 +1686,29 @@ export class GridUtilsService {
     // Chromium needs a connected SVG tree to resolve stroke geometry. A defs
     // child is measurable without painting anything or intercepting the pointer.
     defs.appendChild(hit);
+    hit.setAttribute('stroke', 'transparent');
+    hit.setAttribute('stroke-width', String(this.svgGrid.scaleWithZoom(12)));
     const cylinders = this.mechanismSrv.sealedStructures();
+    // Built only once a part is tested: a click on a plain body never needs one,
+    // and the specs drive that click where there is no DOMPoint.
+    const at = () => new DOMPoint(point.x, point.y);
+    /** Loads the leaf's drawn shape into `hit`, and says whether it is lines. */
+    const drawn = (leaf: RealLink): boolean => {
+      const skeleton = this.settings.isSchematic ? schematicLink(leaf, cylinders) : '';
+      hit.setAttribute('d', skeleton || linkArtwork(leaf, this.settings.drawingScale, cylinders));
+      return skeleton !== '';
+    };
+    const pick = (inside: (leaf: RealLink) => boolean) =>
+      pickLink(this.mechanismSrv.links, link, selected, inside);
     try {
-      return pickLink(this.mechanismSrv.links, link, selected, (leaf) => {
-        const skeleton = this.settings.isSchematic ? schematicLink(leaf, cylinders) : '';
-        if (skeleton) {
-          hit.setAttribute('d', skeleton);
-          hit.setAttribute('stroke', 'transparent');
-          hit.setAttribute('stroke-width', String(this.svgGrid.scaleWithZoom(12)));
-          return hit.isPointInStroke(new DOMPoint(point.x, point.y));
-        }
-        hit.setAttribute('d', linkArtwork(leaf, this.settings.drawingScale, cylinders));
-        return hit.isPointInFill(new DOMPoint(point.x, point.y));
-      });
+      const picked = pick((leaf) =>
+        drawn(leaf) ? hit.isPointInStroke(at()) : hit.isPointInFill(at())
+      );
+      if (!this.settings.isSchematic || !picked.isCompound) return picked;
+      // Nothing's line was hit, so the shaded inside of a part -- a plate, or a
+      // disc -- picks it: Schematic shades it because it takes a click. Asked
+      // second, so a bar lying across a plate is still picked by its line.
+      return pick((leaf) => drawn(leaf) && hit.isPointInFill(at()));
     } finally {
       hit.remove();
     }

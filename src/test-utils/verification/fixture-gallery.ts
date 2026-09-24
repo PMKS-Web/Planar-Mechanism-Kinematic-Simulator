@@ -65,6 +65,7 @@ import {
 } from './library-fixtures';
 import {
   flywheelSliderCrankFixture,
+  coupledDriveWheelsFixture,
   craneWithTwoLoadsFixture,
   threeMachinesFixture,
 } from './feature-fixtures';
@@ -649,6 +650,14 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     spec: 'flywheel-slider-crank.spec.ts',
     floatingSlot: false,
     fixture: flywheelSliderCrankFixture(),
+  },
+  {
+    name: 'Locomotive drive wheels',
+    purpose:
+      'Three discs in one machine, coupled by a rod: each wheel drawn round its own axle, turning',
+    spec: 'link-skeleton.spec.ts',
+    floatingSlot: false,
+    fixture: coupledDriveWheelsFixture(),
   },
   {
     name: 'Crane carrying two loads',

@@ -88,6 +88,48 @@ export function flywheelSliderCrankFixture(): MechanismFixture {
   };
 }
 
+/** A locomotive's coupled drive wheels: rim, crank throw and wheel spacing. */
+const WHEELS = { rim: 1.2, throw: 0.7, spacing: 3 };
+
+/**
+ * A locomotive's three drive wheels, coupled by one rod: several discs in one
+ * machine, each turning about its own axle.
+ *
+ * Each wheel carries its crank pin on top and, opposite it, the pin that gives
+ * the disc its size, where a real wheel carries its counterweight. The middle
+ * wheel is the one driven, as the main rod drives a locomotive's main driver,
+ * and the rod joins the three crank pins so the other two turn with it.
+ *
+ * Gruebler counts it as rigid, as it counts the parallelogram with a third
+ * crank: the third wheel only repeats what the other two say.
+ *
+ * Kinematics only, so every mass is zero.
+ */
+export function coupledDriveWheelsFixture(): MechanismFixture {
+  const RPM = 10;
+  const at = (n: number) => n * WHEELS.spacing;
+  return {
+    joints: [
+      { id: 'A', x: at(0), y: 0, ground: true },
+      { id: 'B', x: at(0), y: WHEELS.throw },
+      { id: 'C', x: at(0), y: -WHEELS.rim },
+      { id: 'D', x: at(1), y: 0, ground: true, input: true, driveSpeed: RPM },
+      { id: 'E', x: at(1), y: WHEELS.throw },
+      { id: 'F', x: at(1), y: -WHEELS.rim },
+      { id: 'G', x: at(2), y: 0, ground: true },
+      { id: 'H', x: at(2), y: WHEELS.throw },
+      { id: 'I', x: at(2), y: -WHEELS.rim },
+    ],
+    links: [
+      { joints: 'ABC', mass: 0, moi: 0, name: 'Front driver', circle: true },
+      { joints: 'DEF', mass: 0, moi: 0, name: 'Main driver', circle: true },
+      { joints: 'GHI', mass: 0, moi: 0, name: 'Rear driver', circle: true },
+      { joints: 'BEH', mass: 0, moi: 0, name: 'Coupling rod' },
+    ],
+    inputAngVel: radPerSecond(RPM),
+  };
+}
+
 /** The jib, and the crank and link that luff it. */
 const CRANE = {
   reach: 7,
