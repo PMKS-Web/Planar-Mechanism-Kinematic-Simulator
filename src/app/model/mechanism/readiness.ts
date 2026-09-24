@@ -227,7 +227,7 @@ function blockerForFailure(
       );
       return {
         state: 'blocker',
-        title: 'No input is set',
+        title: NO_INPUT_SET,
         body: candidate
           ? `There is no time to solve against until one joint is set as the input. Right-click joint ${(candidate as RealJoint).name || candidate.id} and set it as the input.`
           : 'There is no time to solve against until one joint is set as the input. Right-click a grounded joint and set it as the input.',
@@ -362,6 +362,13 @@ function blockerForFailure(
     }
   }
 }
+
+/**
+ * The title of the one blocker that is about setup rather than about the
+ * drawing: a machine nobody has set an input on. The playback row says the
+ * generic setup hint for it and a count of fixes for everything else.
+ */
+export const NO_INPUT_SET = 'No input is set';
 
 /**
  * A machine that is one link on one grounded pin another machine also uses,
