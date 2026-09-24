@@ -26,8 +26,13 @@ const root = new URL(
 ).pathname;
 const base = process.env.PMKS_SCHEMATIC_URL ?? 'http://localhost:4311';
 const { cases, prompt } = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
-const v5 = prompt === 'v5';
-const wanted = cases.filter((c) => c.image && c.film?.length);
+// v5 on: no axes. v6: the background image in a tile of its own, not behind every frame.
+const noAxes = prompt === 'v5' || prompt === 'v6';
+const v6 = prompt === 'v6';
+// ONLY=Hood_Hinge re-captures one case.
+const wanted = cases.filter(
+  (c) => c.image && c.film?.length && (!process.env.ONLY || c.template.includes(process.env.ONLY))
+);
 const templates = [...new Map(wanted.map((c) => [c.template, c])).values()];
 const run = promisify(execFile);
 // A small window, so the app's fixed-size letters and symbols come out large
@@ -53,7 +58,7 @@ const CHROME = [
   '#linkTagHolder',
   // The faint start pose drawn away from the start reads as a second mechanism.
   '#startGhostHolder',
-  ...(v5 ? ['[id="axes"]', '[id="axes_numbers"]'] : []),
+  ...(noAxes ? ['[id="axes"]', '[id="axes_numbers"]'] : []),
 ];
 
 const browser = await chromium.launch();
@@ -100,9 +105,43 @@ for (const entry of templates) {
   await page.waitForTimeout(900);
 
   // The app frames the start pose; a part that swings further leaves the view.
-  // So the whole cycle's extent is measured, zoomed to fill the window and
-  // centred, and measured again for one crop that all four frames share.
-  let box = await cycleBox(page, still, !!backdrop);
+  // So the extent to keep is measured, zoomed to fill the window and centred,
+  // and measured again for one crop that every motion frame shares.
+  const tiles = [];
+  if (backdrop && v6) {
+    // Tile 0: the author's picture once, with the mechanism at its start.
+    await fitTo(page, await cycleBox(page, still, true));
+    const clip = clipOf(await cycleBox(page, still, true));
+    if (!still) await seek(page, 0);
+    await page.waitForTimeout(250);
+    const path = join(root, 'cases', `${entry.template}.film-0.png`);
+    await page.screenshot({ path, clip });
+    tiles.push({ path, label: '0   background image, mechanism at its start' });
+    await page.addStyleTag({
+      content: '#backgroundImageHolder { visibility: hidden !important; }',
+    });
+  }
+  // Before v6 the image sat behind every frame, so the crop kept it.
+  const imageInFrames = !!backdrop && !v6;
+  await fitTo(page, await cycleBox(page, still, imageInFrames));
+  const clip = clipOf(await cycleBox(page, still, imageInFrames));
+  for (const [i, frame] of entry.film.entries()) {
+    if (!still) await seek(page, frame.time);
+    await page.waitForTimeout(250);
+    const path = join(root, 'cases', `${entry.template}.film-${i + 1}.png`);
+    await page.screenshot({ path, clip });
+    tiles.push({ path, label: `${i + 1}   ${frame.label}` });
+  }
+  await context.close();
+
+  const out = join(root, entry.image);
+  await tile(tiles, out);
+  console.log(`${entry.template}: ${out}`);
+}
+await browser.close();
+
+/** Zoom and pan so the box fills the window. */
+async function fitTo(page, box) {
   const fit = Math.min(
     (W - 2 * PAD) / Math.max(box.x1 - box.x0, 1),
     (H - 2 * PAD) / Math.max(box.y1 - box.y0, 1)
@@ -121,38 +160,29 @@ for (const entry of templates) {
     { fit, box, W, H }
   );
   await page.waitForTimeout(500);
-  box = await cycleBox(page, still, !!backdrop);
-  const clip = {
+}
+
+function clipOf(box) {
+  return {
     x: Math.max(0, box.x0 - PAD),
     y: Math.max(0, box.y0 - PAD),
     width: Math.min(W, box.x1 + PAD) - Math.max(0, box.x0 - PAD),
     height: Math.min(H, box.y1 + PAD) - Math.max(0, box.y0 - PAD),
   };
-
-  const tiles = [];
-  for (const [i, frame] of entry.film.entries()) {
-    if (!still)
-      await page.evaluate((time) => {
-        const g = window.ng.getComponent(document.querySelector('app-new-grid'));
-        const times = g.mechanismSrv.masterMechanism().timeNum;
-        let best = 0;
-        times.forEach((t, k) => {
-          if (Math.abs(t - time) < Math.abs(times[best] - time)) best = k;
-        });
-        g.mechanismSrv.animate(best, false);
-      }, frame.time);
-    await page.waitForTimeout(250);
-    const path = join(root, 'cases', `${entry.template}.film-${i + 1}.png`);
-    await page.screenshot({ path, clip });
-    tiles.push({ path, label: `${i + 1}   ${frame.label}` });
-  }
-  await context.close();
-
-  const out = join(root, entry.image);
-  await tile(tiles, out);
-  console.log(`${entry.template}: ${out}`);
 }
-await browser.close();
+
+/** Put the mechanism at the solved sample nearest a time. */
+function seek(page, time) {
+  return page.evaluate((time) => {
+    const g = window.ng.getComponent(document.querySelector('app-new-grid'));
+    const times = g.mechanismSrv.masterMechanism().timeNum;
+    let best = 0;
+    times.forEach((t, k) => {
+      if (Math.abs(t - time) < Math.abs(times[best] - time)) best = k;
+    });
+    g.mechanismSrv.animate(best, false);
+  }, time);
+}
 
 /**
  * Where every joint goes over the whole cycle, in window pixels -- or where it
@@ -196,16 +226,15 @@ import json, sys
 from PIL import Image, ImageDraw, ImageFont
 tiles = json.loads(sys.argv[1])
 ims = [Image.open(t['path']).convert('RGB') for t in tiles]
-w = max(im.width for im in ims); h = max(im.height for im in ims)
-scale = min(1.0, (640 if len(ims) > 1 else 960) / w)
-w, h = int(w * scale), int(h * scale)
+cols = 3 if len(ims) >= 5 else min(2, len(ims))
+w = {1: 960, 2: 640, 3: 520}[cols]
+h = int(max(im.height * min(1.0, w / im.width) for im in ims))
 head, gap = 34, 10
-cols = min(2, len(ims))
 rows = (len(ims) + cols - 1) // cols
 sheet = Image.new('RGB', (cols * w + (cols + 1) * gap, rows * (h + head) + (rows + 1) * gap), (214, 217, 225))
 draw = ImageDraw.Draw(sheet)
 try:
-    font = ImageFont.truetype('/System/Library/Fonts/Supplemental/Arial Bold.ttf', 20)
+    font = ImageFont.truetype('/System/Library/Fonts/Supplemental/Arial Bold.ttf', 17 if cols == 3 else 20)
 except Exception:
     font = ImageFont.load_default()
 for i, (t, im) in enumerate(zip(tiles, ims)):
@@ -213,7 +242,10 @@ for i, (t, im) in enumerate(zip(tiles, ims)):
     x, y = gap + c * (w + gap), gap + r * (h + head + gap)
     draw.rectangle([x, y, x + w - 1, y + head - 1], fill=(255, 255, 255))
     draw.text((x + 10, y + 6), t['label'], fill=(30, 30, 30), font=font)
-    sheet.paste(im.resize((w, h)), (x, y + head))
+    s = min(w / im.width, h / im.height)
+    fitted = im.resize((max(1, int(im.width * s)), max(1, int(im.height * s))))
+    draw.rectangle([x, y + head, x + w - 1, y + head + h - 1], fill=(255, 255, 255))
+    sheet.paste(fitted, (x + (w - fitted.width) // 2, y + head + (h - fitted.height) // 2))
 sheet.save(sys.argv[2])
 `;
   for (const python of ['python3', '/usr/bin/python3', '/opt/homebrew/bin/python3']) {

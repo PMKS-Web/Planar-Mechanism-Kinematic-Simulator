@@ -61,6 +61,12 @@ export interface DrawingToDescribe {
    * not part of the mechanism.
    */
   backdrop?: boolean;
+  /**
+   * How the picture is laid out. v5: four moments, the background image behind
+   * each. v6: six moments without it, and the background image once, in a
+   * tile of its own before them; links drawn as discs are said to be.
+   */
+  picture?: 'v5' | 'v6';
 }
 
 /** One of the picture's moments: when it is, and what the input reads then. */
@@ -187,7 +193,7 @@ function describePartition(
     );
     lines.push(`- Links: ${bodies.map(bodyLabel).join(', ')}.`);
     lines.push(`- Ground pivots: ${visible.filter(isGroundPin).map(label).join(', ') || 'none'}.`);
-    if (drawing.backdrop) lines.push(BACKDROP_LINE);
+    if (drawing.backdrop) lines.push(backdropLine(drawing));
     // Still a picture, of the mechanism as it stands: a stuck drawing is the
     // one a student most wants explained.
     const still = stillSamples(visible);
@@ -211,7 +217,7 @@ function describePartition(
         : `The motion repeats every ${fmt(period)} s, once per input revolution.`)
   );
   const ctx: RelationContext = { bodies, visible, hidden, samples, cylinders, label, bodyLabel };
-  if (drawing.backdrop) lines.push(BACKDROP_LINE);
+  if (drawing.backdrop) lines.push(backdropLine(drawing));
   const tracedHere = visible.filter(
     (j) => j instanceof RealJoint && j.showCurve && !isGroundPin(j)
   );
@@ -229,7 +235,8 @@ function describePartition(
   lines.push(...family.lines);
 
   const input = inputSeries(ctx, driven);
-  const jobs = linkJobs(ctx, drivenBody, driven, input);
+  const v6 = drawing.picture === 'v6';
+  const jobs = linkJobs(ctx, drivenBody, driven, input, v6);
   lines.push('### Links and their jobs');
   for (const job of jobs) lines.push(`- ${job.name} — ${job.job}: ${job.motion}.`);
 
@@ -242,11 +249,16 @@ function describePartition(
     lines.push(describePath(joint, samples, grounds, label, mechanism.reciprocates));
   }
 
-  const frames = filmFrames(samples, mechanism.reciprocates, input);
+  const count = v6 ? 6 : 4;
+  const frames = filmFrames(samples, mechanism.reciprocates, input, count);
+  const backdropTile = v6 && drawing.backdrop;
   lines.push(
-    '### The picture: this mechanism at four moments, numbered in time order' +
-      (mechanism.reciprocates ? ' (1 and 4 are the two ends of its travel)' : '')
+    (backdropTile
+      ? `### The picture: tile 0 is the author's background image with this mechanism at its start; tiles 1 to ${count} are this mechanism at ${count} moments, in time order`
+      : `### The picture: this mechanism at ${count === 6 ? 'six' : 'four'} moments, numbered in time order`) +
+      (mechanism.reciprocates ? ` (1 and ${count} are the two ends of its travel)` : '')
   );
+  if (backdropTile) lines.push('- 0: the background image, with this mechanism at its start.');
   frames.forEach((frame, i) => lines.push(`- ${i + 1}: ${frame.label}.`));
 
   lines.push(...describeStartGeometry(visible, bodies, label, bodyLabel, hidden, cylinders));
@@ -284,8 +296,11 @@ function describePartition(
   }
 }
 
-const BACKDROP_LINE =
-  '- A background image sits behind this mechanism in the picture: the author placed it there as a reference, often a photograph or drawing of the real machine. It is not part of the mechanism.';
+function backdropLine(drawing: DrawingToDescribe): string {
+  return drawing.picture === 'v6'
+    ? "- The author placed a background image behind this mechanism as a reference, often a photograph or drawing of the real machine. It is shown once, in the picture's tile 0; it is not part of the mechanism."
+    : '- A background image sits behind this mechanism in the picture: the author placed it there as a reference, often a photograph or drawing of the real machine. It is not part of the mechanism.';
+}
 
 /** One frame of the joints where they are drawn, for a mechanism PMKS+ could not move. */
 function stillSamples(visible: Joint[]): Samples {
@@ -296,11 +311,16 @@ function stillSamples(visible: Joint[]): Samples {
 }
 
 /**
- * When the picture's four frames are. A full turn is shown at its quarters. A
- * back-and-forth motion is shown from one end of its travel to the other, which
- * is the part of its cycle a still picture otherwise hides.
+ * When the picture's frames are. A full turn is shown at equal fractions of
+ * it. A back-and-forth motion is shown from one end of its travel to the other,
+ * which is the part of its cycle a still picture otherwise hides.
  */
-function filmFrames(samples: Samples, reciprocates: boolean, input?: InputSeries): FilmFrame[] {
+function filmFrames(
+  samples: Samples,
+  reciprocates: boolean,
+  input: InputSeries | undefined,
+  count: number
+): FilmFrame[] {
   const time = samples.time;
   const n = time.length;
   const at = (t: number) => {
@@ -313,7 +333,7 @@ function filmFrames(samples: Samples, reciprocates: boolean, input?: InputSeries
   let picks: number[];
   if (!reciprocates || !input) {
     const period = time[n - 1] - time[0];
-    picks = [0, 0.25, 0.5, 0.75].map((f) => at(time[0] + f * period));
+    picks = Array.from({ length: count }, (_, k) => at(time[0] + (k / count) * period));
   } else {
     let lo = 0;
     let hi = 0;
@@ -323,7 +343,9 @@ function filmFrames(samples: Samples, reciprocates: boolean, input?: InputSeries
     });
     const [first, last] = lo < hi ? [lo, hi] : [hi, lo];
     const span = time[last] - time[first];
-    picks = [first, at(time[first] + span / 3), at(time[first] + (2 * span) / 3), last];
+    picks = Array.from({ length: count }, (_, k) =>
+      k === 0 ? first : k === count - 1 ? last : at(time[first] + (k / (count - 1)) * span)
+    );
   }
   return picks.map((i) => ({
     time: time[i],

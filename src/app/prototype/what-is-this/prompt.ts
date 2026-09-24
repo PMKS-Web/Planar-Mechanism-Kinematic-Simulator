@@ -94,6 +94,22 @@ Rules for everything else: the fact sheet is the only evidence of how this mecha
 FACT SHEET
 `;
 
-export function buildPrompt(factSheet: string, version: 'v4' | 'v5' = 'v5'): string {
-  return (version === 'v4' ? WHAT_IS_THIS_PROMPT_V4 : WHAT_IS_THIS_PROMPT_V5) + factSheet;
+/**
+ * v6: v5 with a different picture. Six moments instead of four; the background
+ * image once, in a tile of its own, rather than behind every moment; links
+ * drawn as discs shown as discs. Only the paragraph describing the picture
+ * changes, so the two versions cannot drift apart anywhere else.
+ */
+export const WHAT_IS_THIS_PROMPT_V6 = WHAT_IS_THIS_PROMPT_V5.replace(
+  `You get a fact sheet PMKS+ computed from its own solution of this mechanism, and a picture: this mechanism as PMKS+ draws it in its Schematic style, at up to four moments of one cycle numbered in time order, with the paths of any traced points drawn in. If the fact sheet says a background image sits behind the mechanism, it is in the picture too: the author's own reference picture, often of the real machine. The fact sheet's section "The picture" says when each moment is. Letters in the picture are the joints in the fact sheet.`,
+  `You get a fact sheet PMKS+ computed from its own solution of this mechanism, and a picture: this mechanism as PMKS+ draws it in its Schematic style, at up to six moments of one cycle numbered in time order, with the paths of any traced points drawn in. A link its author drew as a disc (a wheel or flywheel) is drawn as a disc. If the fact sheet says there is a background image, it is shown once, in a tile numbered 0 before the moments, with the mechanism at its start: the author's own reference picture, often of the real machine. The fact sheet's section "The picture" says what each tile is. Letters in the picture are the joints in the fact sheet.`
+);
+
+export function buildPrompt(factSheet: string, version: 'v4' | 'v5' | 'v6' = 'v6'): string {
+  const prompts = {
+    v4: WHAT_IS_THIS_PROMPT_V4,
+    v5: WHAT_IS_THIS_PROMPT_V5,
+    v6: WHAT_IS_THIS_PROMPT_V6,
+  };
+  return prompts[version] + factSheet;
 }

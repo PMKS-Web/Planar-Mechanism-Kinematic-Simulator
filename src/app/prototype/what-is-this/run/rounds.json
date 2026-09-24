@@ -87,6 +87,87 @@
           "why": "The same content in different words; neither names a use."
         }
       }
+    },
+    {
+      "id": "r4",
+      "title": "Round 4 · v6: six frames, the image once, discs",
+      "a": "v5n",
+      "b": "v6",
+      "note": "Same prompt apart from the paragraph describing the picture. Repeats the four templates with background images and the student's locomotive (the cases the changes are for) and adds nine library templates, nine student mechanisms and one test case not used before. Both sides are each version's first asking; v6 was also asked a second time.",
+      "decided": {
+        "Car_Steering": {
+          "pick": "b",
+          "why": "v6 says a car steering linkage in both askings; v5n (the image behind every frame) says paired windshield wipers, as v5 did in round 3."
+        },
+        "Pantograph": {
+          "pick": "b",
+          "why": "v6 recognizes a pantograph drawing mechanism in both askings and names enlargers; v5n says \"a coordinated pair of path tracing linkages\". (Both first answers were re-asked with tools off: the first tries had searched the web.)"
+        },
+        "Cylinder_Gripper": {
+          "pick": "b",
+          "why": "v6 recognizes a parallel-jaw gripper in both askings; v5n calls it a synchronized twin vertical lift and names no use."
+        },
+        "made-locomotive-wheels": {
+          "pick": "b",
+          "why": "v6 says a locomotive wheel drive and a locomotive side-rod drive, now that the wheels are drawn as discs; v5n, with the wheels drawn as outlines, says a reciprocating pump. (v6's second asking said a synchronized twin-crank drive.)"
+        },
+        "student-194c3d7423a5": {
+          "pick": "b",
+          "why": "v5n says this student's triple-rocker looks like a windshield wiper linkage, which nothing supports; v6 claims no resemblance."
+        },
+        "Aircraft_Landing_Gear": {
+          "pick": "a",
+          "why": "v5n says aircraft landing gear; v6 says a helicopter main rotor head (its second asking: helicopter landing gear). The one case where the image behind every frame did better than the image once."
+        },
+        "Scissor_Lift": {
+          "pick": "both-poor",
+          "why": "Neither sees a scissor lift: v5n says a two-axis positioning mechanism, v6 a vertically sliding yoke drive, and v6 also says \"the fact sheet shows\"."
+        },
+        "Hood_Hinge": {
+          "pick": "same",
+          "why": "Both recognize a car hood hinge (with tools off)."
+        },
+        "Excavator_Bucket": {
+          "pick": "same",
+          "why": "Both recognize an excavator bucket linkage."
+        },
+        "Punch_Press": {
+          "pick": "same",
+          "why": "Both read it as an engine or pump piston; neither sees a press."
+        },
+        "Shaper_Quick_Return": {
+          "pick": "same",
+          "why": "Both recognize a shaper quick-return drive."
+        },
+        "Reciprocating_Saw": {
+          "pick": "same",
+          "why": "Both recognize a reciprocating saw drive."
+        },
+        "student-194ec874c92d": {
+          "pick": "same",
+          "why": "Both read a press feed with a rocking lever."
+        },
+        "student-195c83613e3d": {
+          "pick": "same",
+          "why": "Both read a rocking lever driving a slider, with pump and press uses."
+        },
+        "student-1963530d1a41": {
+          "pick": "same",
+          "why": "Word for word the same recognition: a rocking lever driving a slider."
+        },
+        "student-18d9e70368b7": {
+          "pick": "same",
+          "why": "Both say a windshield wiper drive for this crank-rocker."
+        },
+        "student-196b99409ef8": {
+          "pick": "same",
+          "why": "The stuck drawing gets a structural description from both."
+        },
+        "student-196c708f280b": {
+          "pick": "same",
+          "why": "The stuck drawing gets a structural description from both."
+        }
+      }
     }
   ]
 }

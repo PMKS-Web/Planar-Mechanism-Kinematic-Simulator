@@ -60,6 +60,17 @@ const REAL_MACHINE = {
   'student-19afdedcc1a4': /strider/i,
   'student-19716c16710b': /\bdoor\b/i,
   'student-19124f492aa1': /scissor/i,
+  Hood_Hinge: /hood/i,
+  Flywheel_Engine: /engine/i,
+  Punch_Press: /press|punch/i,
+  Scissor_Lift: /scissor|lift/i,
+  Pantograph: /pantograph|copying|enlarg/i,
+  Derrick_Crane: /crane|derrick/i,
+  Shaper_Quick_Return: /shaper/i,
+  Pedaling_Leg: /pedal|bicycl|cycling/i,
+  Reciprocating_Saw: /\bsaw\b/i,
+  Cylinder_Gripper: /gripper|grip|claw/i,
+  'made-locomotive-wheels': /locomotive|steam|train|railway/i,
 };
 
 export function recognitionMatch(template, answer) {
@@ -169,6 +180,7 @@ function wordingFlags(answer, sheet) {
   // "A straight-line drawing machine" is drafting, not the mechanism.
   if (/\b(this|the) drawing\b/i.test(all)) flags.push('says "drawing" instead of "mechanism"');
   if (/fact sheet/i.test(all)) flags.push('mentions "the fact sheet", which a student never sees');
+  if (/https?:\/\//.test(all)) flags.push('cites a web page: the model used a search tool');
   if (!/\*\*[^*]+\*\*/.test(text))
     flags.push('no part names in bold, so the panel cannot point at any');
   if (/(^|\s)a (?!one\b|u)(?=[aeiou])/.test(text.replace(/\*\*/g, '')))

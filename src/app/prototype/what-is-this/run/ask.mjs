@@ -210,6 +210,19 @@ async function askCodex(entry) {
     '--skip-git-repo-check',
     '--ephemeral',
     '--json',
+    // No tools: the answer must come from the fact sheet, the picture and what
+    // the model knows. Left on, it searched the web for the Pantograph and the
+    // Hood Hinge in round 4 and cited what it found.
+    '-c',
+    'web_search="disabled"',
+    ...[
+      'browser_use',
+      'browser_use_external',
+      'in_app_browser',
+      'apps',
+      'plugins',
+      'computer_use',
+    ].flatMap((feature) => ['--disable', feature]),
   ];
   if (entry.image) args.push('-i', join(root, entry.image));
   const prompt = `${readFileSync(join(root, entry.prompt), 'utf8')}\n\nThe student asks: ${QUESTION}\n`;

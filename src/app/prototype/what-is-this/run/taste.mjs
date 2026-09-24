@@ -6,6 +6,7 @@
 // and the motion under artifacts/what-is-this/motion/, and writes
 // artifacts/what-is-this/taste/taste.html from ./taste.html. The votes are not
 // here: the published page keeps them in its own database.
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -85,11 +86,27 @@ function overviewOf(facts) {
 }
 
 const images = {};
+/**
+ * The pictures ride the page as JPEG, at most 1400 px wide: four rounds of
+ * seven-tile PNGs came to 19 MB, over what a published page may hold.
+ */
+const JPEG = `
+import base64, io, sys
+from PIL import Image
+im = Image.open(sys.argv[1]).convert('RGB')
+if im.width > 1400:
+    im = im.resize((1400, round(im.height * 1400 / im.width)))
+out = io.BytesIO()
+im.save(out, 'JPEG', quality=75)
+sys.stdout.write(base64.b64encode(out.getvalue()).decode())
+`;
+
 function imageId(file) {
   if (!existsSync(file)) return undefined;
   const bytes = readFileSync(file);
   const id = createHash('sha1').update(bytes).digest('hex').slice(0, 12);
-  images[id] ??= `data:image/png;base64,${bytes.toString('base64')}`;
+  images[id] ??=
+    `data:image/jpeg;base64,${execFileSync('python3', ['-c', JPEG, file], { maxBuffer: 64 * 1024 * 1024 }).toString()}`;
   return id;
 }
 

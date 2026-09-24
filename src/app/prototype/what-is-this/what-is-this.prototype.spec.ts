@@ -9,7 +9,7 @@
 // PMKS_CASES names a case set in run/case-sets/ (library templates, students'
 // mechanisms by feedback message id, test cases from made-cases.ts); without it
 // the first ten library templates are used. PMKS_PROMPT picks the instructions
-// (v4 or v5, default v5). The model calls are made by the scripts in ./run,
+// (v4, v5 or v6, default v6). The model calls are made by the scripts in ./run,
 // which read the manifest this writes.
 import '../../model/joint';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -128,7 +128,7 @@ function casesFrom(setName: string | undefined, root: string): Case[] {
   return [...set.library.map(libraryCase), ...students, ...made];
 }
 
-function describe_(entry: Case, withBackdrop: boolean) {
+function describe_(entry: Case, withBackdrop: boolean, picture: 'v5' | 'v6') {
   const decoder = new StringTranscoder();
   decoder.decodeURL(entry.payload);
   const settings = new SettingsService();
@@ -151,6 +151,7 @@ function describe_(entry: Case, withBackdrop: boolean) {
     defaultClockwise: settings.isInputCW.value,
     relations: true,
     backdrop: withBackdrop && !!entry.backdrop,
+    picture,
   });
 }
 
@@ -160,7 +161,8 @@ describe('"What is this?" prototype', () => {
   run('writes one prompt per case', () => {
     const root = process.cwd();
     const sheet = process.env['PMKS_SHEET'] ?? 'dev';
-    const version = process.env['PMKS_PROMPT'] === 'v4' ? 'v4' : 'v5';
+    const asked = process.env['PMKS_PROMPT'];
+    const version = asked === 'v4' || asked === 'v5' ? asked : 'v6';
     const out = `${root}/artifacts/what-is-this/${sheet}`;
     const motionDir = `${root}/artifacts/what-is-this/motion`;
     mkdirSync(`${out}/cases`, { recursive: true });
@@ -168,7 +170,7 @@ describe('"What is this?" prototype', () => {
     const cases = [];
     for (const entry of casesFrom(process.env['PMKS_CASES'], root)) {
       // v4's pictures carried no background image, so its sheets do not mention one.
-      const described = describe_(entry, version === 'v5');
+      const described = describe_(entry, version !== 'v4', version === 'v6' ? 'v6' : 'v5');
       const key = `${entry.id}.${VARIANT}`;
       const machine = described.machines[0];
       if (machine?.motion) {
@@ -183,7 +185,7 @@ describe('"What is this?" prototype', () => {
         intent: entry.intent,
         libraryBlurb: entry.blurb,
         appUrl: `${APP_URL}?${entry.payload}`,
-        backdrop: version === 'v5' ? entry.backdrop : undefined,
+        backdrop: version !== 'v4' ? entry.backdrop : undefined,
         variant: VARIANT,
         prompt: `cases/${key}.prompt.txt`,
         image: `cases/${entry.id}.filmstrip.png`,

@@ -46,5 +46,20 @@
       "The picture carries the author's background image when there is one, and no axes; the fact sheet says when an image is there and that it is not part of the mechanism.",
       "A mechanism PMKS+ cannot solve still gets a picture: one frame, as drawn."
     ]
+  },
+  "v5n": {
+    "title": "v5 · on round 4",
+    "summary": "v5 exactly, on round 4's mechanisms: four moments, the background image behind each, links drawn as discs shown as outlines.",
+    "changes": []
+  },
+  "v6": {
+    "title": "v6 · six moments, the image once, discs as discs",
+    "summary": "v5 with a different picture: six moments instead of four; the background image once, in a tile of its own; links drawn as discs shown as discs, and said to be in the fact sheet.",
+    "changes": [
+      "Six moments of the cycle instead of four (a full turn in sixths; a back-and-forth from one end of its travel to the other).",
+      "The background image appears once, as tile 0, with the mechanism at its start; the six moments are drawn without it and cropped to the mechanism, so it is larger.",
+      "A link its author drew as a disc (a wheel or flywheel) is drawn as a disc with spokes in the picture, and its job in the fact sheet says so. (The Schematic style on feature/drawing-styles draws discs as outlines of their joints; the capture used a local fix.)",
+      "A link that turns most of a turn and back because the input reverses is called a crank that goes round and back, not a rocker with two ends at the same input position."
+    ]
   }
 }
