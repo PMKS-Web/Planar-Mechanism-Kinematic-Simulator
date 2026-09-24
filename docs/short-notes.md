@@ -2136,3 +2136,12 @@ A `filter: drop-shadow(0 0 2px …)` on a path inside the canvas blurs by two *u
 path, not two screen pixels, so a selection glow that looked right on a four-bar vanished on a
 drawing at another scale. Safari applies no CSS filter functions to SVG shapes at all. Schematic's
 selection is a band of its own, drawn under the line with a `scaleWithZoom` width.
+
+### `#primitiveSelection` holds two paths when the part belongs to a body
+
+A part picked inside a compound draws its own solid edge, `.link-selected`, over a dashed edge
+round the whole body, `.compound-context`. A check aimed at `#primitiveSelection path` found one
+path until the dashed edge arrived, then failed Playwright's strict mode in `editor-bug-fixes` and
+`editor-followups`. Aim at `.link-selected` for the part and `.compound-context` for its body.
+Both are in the selection yellow, so compare the path's `d` against the part's own shape, such as
+a cylinder mark's `barrel` or `objectDisplay.path(part)`, to tell the two apart.

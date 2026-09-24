@@ -213,11 +213,27 @@ try {
     await grid((g, id) => g.activeObjService.selectedLink.id === id, member.leaf)
   );
 
+  // The part's own solid edge, not the dashed one round the body it belongs to.
+  const outline = await page.locator('#primitiveSelection .link-selected').evaluate((el) => {
+    const g = ng.getComponent(document.querySelector('app-new-grid'));
+    const picked = g.activeObjService.selectedLink;
+    const hex = getComputedStyle(el).getPropertyValue('--canvas-selection').trim();
+    const [r, gr, b] = hex.match(/[\da-f]{2}/gi).map((h) => parseInt(h, 16));
+    return {
+      d: el.getAttribute('d'),
+      skin: g.cylinderList.find((c) => c.barrelLink === picked)?.barrel,
+      hull: g.objectDisplay.path(picked),
+      stroke: getComputedStyle(el).stroke,
+      selection: `rgb(${r}, ${gr}, ${b})`,
+    };
+  });
   check(
     'selected cylinder primitive uses its skin for the yellow outline',
-    await page
-      .locator('#primitiveSelection path')
-      .evaluate((el) => el.getAttribute('d').length > 10 && getComputedStyle(el).stroke !== 'none')
+    !!outline.skin &&
+      outline.d === outline.skin &&
+      outline.d !== outline.hull &&
+      outline.stroke === outline.selection,
+    outline
   );
   await page.screenshot({ path: `${OUT}/cylinder-primitive-selection.png` });
 

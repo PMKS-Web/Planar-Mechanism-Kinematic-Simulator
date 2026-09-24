@@ -128,11 +128,22 @@ try {
   });
   await page.mouse.click(at.x, at.y);
   await page.mouse.click(at.x, at.y);
+  // The part's own solid edge, not the dashed one round the body it belongs to.
+  const outline = await page.locator('#primitiveSelection .link-selected').evaluate((el) => {
+    const g = ng.getComponent(document.querySelector('app-new-grid'));
+    const hex = getComputedStyle(el).getPropertyValue('--canvas-selection').trim();
+    const [r, gr, b] = hex.match(/[\da-f]{2}/gi).map((h) => parseInt(h, 16));
+    return {
+      d: el.getAttribute('d'),
+      part: g.objectDisplay.path(g.activeObjService.selectedLink),
+      stroke: getComputedStyle(el).stroke,
+      selection: `rgb(${r}, ${gr}, ${b})`,
+    };
+  });
   check(
     'selected primitive has a visible yellow outline',
-    await page
-      .locator('#primitiveSelection path')
-      .evaluate((el) => getComputedStyle(el).stroke !== 'none' && el.getAttribute('d').length > 10)
+    outline.d.length > 10 && outline.d === outline.part && outline.stroke === outline.selection,
+    outline
   );
   await page.screenshot({ path: `${OUT}/primitive-selection.png` });
   await page.locator('#joint_C').click({ button: 'right' });
