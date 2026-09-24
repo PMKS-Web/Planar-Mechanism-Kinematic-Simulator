@@ -497,28 +497,70 @@ machinesNow = await readinessNow();
 record('and deleting it makes the four-bar run', allReady(machinesNow), machinesNow);
 
 // --- several ways out, each for the reader to choose -------------------------
-// A link left hanging is either a mistake or the first bar of more linkage,
-// and nothing in the drawing says which: both are listed, each with a button.
+// A link left hanging is a mistake, an arm meant to turn with the crank, or the
+// first bar of more linkage, and nothing in the drawing says which: all three
+// are listed, each with a button.
 await open(galleryQuery('Crank with a dangling link'));
 await tab('Kinematic').click();
 await page.waitForTimeout(600);
 const ways = await page.locator('app-analysis-setup .way').allInnerTexts();
 record(
-  'two ways out are listed, each with its own button',
-  ways.length === 2 &&
+  'three ways out are listed, each with its own button',
+  ways.length === 3 &&
     ways[0].includes('Delete link BC') &&
     ways[0].includes('Go To Link BC') &&
-    ways[1].includes('Attach a link from joint C to a new grounded joint') &&
-    ways[1].includes('Go To Joint C'),
+    ways[1].includes('Weld joint B') &&
+    ways[1].includes('Go To Joint B') &&
+    ways[2].includes('Attach a link from joint C to a new grounded joint') &&
+    ways[2].includes('Go To Joint C'),
   ways
 );
-await page.locator('app-analysis-setup .way').nth(1).locator('button-block').click();
+await page.locator('app-analysis-setup .way').nth(2).locator('button-block').click();
 await page.waitForTimeout(600);
 const wentTo = await page.evaluate(() => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   return grid.activeObjService.objType === 'Joint' ? grid.activeObjService.selectedJoint.id : null;
 });
-record('and the second button goes to its own part', wentTo === 'C', { wentTo });
+record('and the last button goes to its own part', wentTo === 'C', { wentTo });
+
+// A bent coupler drawn as two links, the weld at its knee left off: welding the
+// knee is listed first, and the joint's own type is where a reader welds it.
+await open(galleryQuery('Four-bar with the weld at its knee left off'));
+await tab('Kinematic').click();
+await page.waitForTimeout(600);
+const kneeWays = await page.locator('app-analysis-setup .way').allInnerTexts();
+record(
+  'a weld left off is offered first, before the fixes that change another link',
+  kneeWays.length === 4 && kneeWays[0].includes('Weld joint C'),
+  kneeWays
+);
+await page.locator('app-analysis-setup .way').first().locator('button-block').click();
+await page.waitForTimeout(600);
+await page.locator('app-edit-panel segmented-block button', { hasText: 'Welded' }).first().click();
+await page.waitForTimeout(700);
+machinesNow = await readinessNow();
+record('and welding C makes the four-bar run', allReady(machinesNow), machinesNow);
+
+// A Scotch yoke whose guide was left a Pin-in-slot: the yoke turns as well as
+// slides, and Prismatic is one choice away in the same control.
+await open(galleryQuery('Scotch yoke on a Pin-in-slot guide'));
+await tab('Kinematic').click();
+await page.waitForTimeout(600);
+const yokeWays = await page.locator('app-analysis-setup .way').allInnerTexts();
+record(
+  "a yoke's guide left free to turn is offered Prismatic first",
+  yokeWays.length === 2 && yokeWays[0].includes('Make joint C Prismatic'),
+  yokeWays
+);
+await page.locator('app-analysis-setup .way').first().locator('button-block').click();
+await page.waitForTimeout(600);
+await page
+  .locator('app-edit-panel segmented-block button', { hasText: 'Prismatic' })
+  .first()
+  .click();
+await page.waitForTimeout(700);
+machinesNow = await readinessNow();
+record('and making C Prismatic makes the yoke run', allReady(machinesNow), machinesNow);
 
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
 

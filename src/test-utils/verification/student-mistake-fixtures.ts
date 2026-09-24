@@ -5,11 +5,12 @@ import type { GalleryEntry } from './fixture-gallery';
  * One drawing for each thing the setup drawer learned to say from following
  * its own advice on broken student drawings (`student-mistakes.spec.ts`).
  *
- * Each is a four-bar -- or once, a Watt six-bar -- with one mistake a student
- * makes with a click: a pin welded, a joint dropped beside another, a link
- * hung off a pivot, a bar from the input's pivot, two inputs, a stray link, a
- * moving joint grounded, a link deleted, the input on a coupler point. Two are
- * not mistakes at all and must still run: the frame drawn as a bar, and a
+ * Each is a four-bar -- or once a Watt six-bar, once a Scotch yoke -- with one
+ * mistake a student makes with a click: a pin welded, a joint dropped beside
+ * another, a link hung off a pivot, a bar from the input's pivot, two inputs, a
+ * stray link, a moving joint grounded, a link deleted, the input on a coupler
+ * point, a weld left off a bent coupler, a yoke's guide left free to turn. Two
+ * are not mistakes at all and must still run: the frame drawn as a bar, and a
  * second input the drawer only warns about. `student-mistake-messages.spec.ts`
  * holds the exact sentence each one earns.
  */
@@ -127,6 +128,39 @@ export function inputOnCouplerPointFixture(): MechanismFixture {
   return fixture;
 }
 
+/**
+ * A four-bar whose coupler is bent at C, drawn as two links with the weld at
+ * the knee left off: a five-bar, one freedom too many, and welding C is the fix.
+ */
+export function unweldedKneeFixture(): MechanismFixture {
+  return {
+    joints: [{ ...A }, { ...B }, { id: 'C', x: 1.6, y: 2.6 }, { ...D }, { id: 'E', x: 3.4, y: 2 }],
+    links: [{ joints: 'AB' }, { joints: 'BC' }, { joints: 'CE' }, { joints: 'DE' }],
+    inputAngVel: 1,
+  };
+}
+
+/**
+ * A Scotch yoke whose yoke rides its guide C as a Pin-in-slot, so the yoke can
+ * turn as well as slide: one freedom too many, and making C Prismatic is the fix.
+ */
+export function yokeOnPinInSlotFixture(): MechanismFixture {
+  return {
+    joints: [
+      { ...A },
+      { id: 'B', x: 0.4, y: 0.8 },
+      { id: 'C', x: 0.4, y: -1.6 },
+      { id: 'D', x: 0.4, y: 2 },
+    ],
+    links: [{ joints: 'AB' }, { joints: 'CD' }],
+    sliders: [
+      { at: 'B', on: { carrier: 'CD', a: 'C', b: 'D' } },
+      { at: 'C', angleRad: 0 },
+    ],
+    inputAngVel: 1,
+  };
+}
+
 const entry = (
   name: string,
   purpose: string,
@@ -136,7 +170,7 @@ const entry = (
   name,
   purpose,
   spec: 'student-mistake-messages.spec.ts',
-  floatingSlot: false,
+  floatingSlot: (fixture.sliders ?? []).some((slider) => slider.on !== undefined),
   fixture,
   runs,
 });
@@ -196,5 +230,15 @@ export const STUDENT_MISTAKE_GALLERY = [
     'Four-bar driven from its coupler point',
     'Does not run on purpose: E is on one body, and A can take the input',
     inputOnCouplerPointFixture()
+  ),
+  entry(
+    'Four-bar with the weld at its knee left off',
+    'Does not run on purpose: welding C makes the bent coupler one link',
+    unweldedKneeFixture()
+  ),
+  entry(
+    'Scotch yoke on a Pin-in-slot guide',
+    'Does not run on purpose: the yoke turns on C; making C Prismatic is the fix',
+    yokeOnPinInSlotFixture()
   ),
 ];

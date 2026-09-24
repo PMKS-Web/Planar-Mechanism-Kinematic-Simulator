@@ -14,7 +14,9 @@ import {
   STUDENT_MISTAKE_GALLERY,
   strayLinkFixture,
   twoInputsFixture,
+  unweldedKneeFixture,
   weldedCouplerPinFixture,
+  yokeOnPinInSlotFixture,
 } from '../../test-utils/verification/student-mistake-fixtures';
 
 /**
@@ -117,11 +119,12 @@ describe('what the drawer says about a mistake it has learned to name', () => {
         'it goes. Any one of these would leave one degree of freedom:'
     );
     // Joining C to the pivot left behind first: it is the drawing that was
-    // there. Deleting BC is listed too; a new pivot is not, with an old one
-    // standing right there to join.
+    // there. Deleting BC is listed too, and welding it to the crank as an arm;
+    // a new pivot is not, with an old one standing right there to join.
     expect(check.ways?.map((way) => [way.text, way.action])).toEqual([
       ['Attach a link from joint C to joint D', 'Go To Joint'],
       ['Delete link BC', 'Go To Link'],
+      ['Weld joint B', 'Go To Joint'],
     ]);
   });
 
@@ -137,6 +140,33 @@ describe('what the drawer says about a mistake it has learned to name', () => {
       'An input joint needs two bodies to move relative to each other. Set the input on joint ' +
         'A instead.'
     );
+  });
+
+  it('welds a bent coupler at its knee, before anything that changes another link', () => {
+    const [check] = said(unweldedKneeFixture()).checks;
+    expect(check.title).toBe('This mechanism has 2 degrees of freedom');
+    // Welding B or E counts too, and so does grounding E, but each changes a
+    // link the reader drew to turn about a pivot: they are listed after C.
+    expect(check.ways?.map((way) => [way.text, way.at.id])).toEqual([
+      ['Weld joint C', 'C'],
+      ['Weld joint E', 'E'],
+      ['Ground joint E', 'E'],
+      ['Weld joint B', 'B'],
+    ]);
+    expect(check.at?.id).toBe('C');
+  });
+
+  it("makes a Scotch yoke's guide Prismatic, so the yoke slides without turning", () => {
+    const [check] = said(yokeOnPinInSlotFixture()).checks;
+    expect(check.body).toBe(
+      'With the input held still, link CD can still move, so the input alone cannot say where ' +
+        'it goes. Any one of these would leave one degree of freedom:'
+    );
+    // B Prismatic counts as well, and locks the crank to the yoke's angle.
+    expect(check.ways?.map((way) => [way.text, way.action])).toEqual([
+      ['Make joint C Prismatic', 'Go To Joint'],
+      ['Make joint B Prismatic', 'Go To Joint'],
+    ]);
   });
 
   it('runs once the drawer is done with it, every one', () => {

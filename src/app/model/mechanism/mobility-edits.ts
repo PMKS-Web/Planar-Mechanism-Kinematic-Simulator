@@ -2,7 +2,7 @@ import { describeActuator, GROUND_BODY } from '../actuator';
 import { cylindersIn, isInsideCylinder } from '../cylinder';
 import { Joint, PrisJoint, RealJoint } from '../joint';
 import { Link, RealLink } from '../link';
-import { BodyAssignment, WORLD } from './bodies';
+import { assignBodies, BodyAssignment, WORLD } from './bodies';
 import { MechanismPartition } from './mechanism-partition';
 import {
   Constraint,
@@ -28,7 +28,11 @@ export type MobilityFix =
   | { kind: 'ground'; joint: RealJoint }
   | { kind: 'unground'; joint: RealJoint }
   | { kind: 'pin-in-slot'; joint: PrisJoint }
+  /** A Pin-in-slot made Prismatic: its riders may no longer turn against the slot. */
+  | { kind: 'prismatic'; joint: PrisJoint }
   | { kind: 'unweld'; joint: RealJoint }
+  /** A pin welded: the links meeting at it become one body. */
+  | { kind: 'weld'; joint: RealJoint }
   | { kind: 'delete-link'; link: RealLink }
   /** Drag `joint` onto `onto`: two joints drawn beside each other that were meant as one. */
   | { kind: 'merge'; joint: RealJoint; onto: RealJoint }
@@ -44,8 +48,11 @@ export type MobilityFix =
  */
 export const MAX_CANDIDATES = 40;
 
-/** How many fixes a sentence can list before it stops reading as a sentence. */
-export const MAX_FIXES = 3;
+/**
+ * How many ways out the drawer lists. Each is a line with a button of its own,
+ * and past four a list stops being a choice and becomes a search.
+ */
+export const MAX_FIXES = 4;
 
 /**
  * A point is still when it moves less than this share of the fastest point in
@@ -193,14 +200,57 @@ export function withoutBody(assignment: BodyAssignment, body: string): BodyAssig
 }
 
 /**
+ * The drawing with one link deleted where its body stays: a brace riding a
+ * Prismatic slider is one body with the slider's other riders, and striking
+ * that body out would take the yoke with it. The bodies are assigned again
+ * without the link, and each joint is asked about the links it has left -- its
+ * own list still names the deleted one.
+ */
+export function withoutLink(joints: Joint[], links: Link[], deleted: Link): BodyAssignment {
+  const assignment = assignBodies(
+    joints,
+    links.filter((one) => one !== deleted)
+  );
+  const gone = assignment.bodyOf(deleted);
+  const stillMeets = (at: RealJoint) =>
+    gone === WORLD ||
+    at.links.some((one) => one !== deleted && assignment.bodyOf(one) === gone) ||
+    (at instanceof PrisJoint && at.carrier !== undefined && assignment.bodyOf(at.carrier) === gone);
+  return {
+    ...assignment,
+    bodiesAt: (at) => {
+      const bodies = assignment.bodiesAt(at);
+      if (!stillMeets(at)) bodies.delete(gone);
+      return bodies;
+    },
+  };
+}
+
+/**
  * Whether a joint is still held by the drawing once one of its links is deleted:
  * two links left, or one and the ground, or one that is a plate -- a corner of a
  * three-joint link left on its own is a point on that link, not a loose end.
+ *
+ * A slot counts the same way, from either side: a slider pin's slot holds it as
+ * a second link would, and the end of a slot is a point on the link the slot is
+ * cut in. A brace across a Scotch yoke, from its pin to the yoke's end, leaves
+ * both as they were drawn.
  */
-export function staysHeld(joint: Joint, deleted: Link): boolean {
+export function staysHeld(joint: Joint, deleted: Link, joints: Joint[]): boolean {
   if (!(joint instanceof RealJoint)) return false;
   const kept = joint.links.filter((link) => link !== deleted);
-  return kept.length >= 2 || (kept.length === 1 && (joint.ground || kept[0].joints.length >= 3));
+  const slot = joint instanceof PrisJoint && joint.carrier && joint.carrier !== deleted ? 1 : 0;
+  const slotEnd = (link: Link) =>
+    joints.some(
+      (one) =>
+        one instanceof PrisJoint &&
+        one.carrier === link &&
+        (one.slotJointA === joint || one.slotJointB === joint)
+    );
+  return (
+    kept.length + slot >= 2 ||
+    (kept.length === 1 && (joint.ground || kept[0].joints.length >= 3 || slotEnd(kept[0])))
+  );
 }
 
 /**
@@ -398,4 +448,24 @@ export function isFreeEnd(joint: Joint, link: Link, joints: Joint[]): boolean {
       (one) => one instanceof PrisJoint && (one.slotJointA === joint || one.slotJointB === joint)
     )
   );
+}
+
+/**
+ * The drawing with the pin at `joint` welded, as Welded leaves it: the moving
+ * bodies meeting there become one. The world is not among them -- a grounded
+ * joint welded fixes its bars to each other, not to the ground.
+ */
+export function weldedAt(assignment: BodyAssignment, joint: RealJoint): Edit | undefined {
+  const fused = [...assignment.bodiesAt(joint)].filter((body) => body !== WORLD);
+  if (fused.length < 2) return undefined;
+  const into = fused.join('+');
+  const merged = (body: string) => (fused.includes(body) ? into : body);
+  return {
+    groundedAt: (one) => one.ground,
+    assignment: {
+      bodyOf: (link) => merged(assignment.bodyOf(link)),
+      movingBodies: new Set([...assignment.movingBodies].map(merged)),
+      bodiesAt: (at) => new Set([...assignment.bodiesAt(at)].map(merged)),
+    },
+  };
 }

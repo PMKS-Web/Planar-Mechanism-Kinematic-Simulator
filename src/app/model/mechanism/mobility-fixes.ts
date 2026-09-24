@@ -1,4 +1,6 @@
 import { isFrameBar } from '../actuator';
+import { cylindersIn } from '../cylinder';
+import { refuseJointType } from '../joint-type';
 import { Joint, PrisJoint, RealJoint } from '../joint';
 import { Link, RealLink } from '../link';
 import { assignBodies, BodyAssignment, WORLD } from './bodies';
@@ -14,7 +16,9 @@ import {
   staysHeld,
   Trial,
   unweldedAt,
+  weldedAt,
   withoutBody,
+  withoutLink,
 } from './mobility-edits';
 
 /**
@@ -129,7 +133,7 @@ export function rigidFixes(
     // one freedom -- the crank's -- by stranding the slider, and deleting a
     // coupler leaves a crank turning on its own; that is taking the mechanism
     // apart, not fixing it.
-    if (!link.joints.every((joint) => staysHeld(joint, link))) continue;
+    if (!link.joints.every((joint) => staysHeld(joint, link, joints))) continue;
     const kept = links.filter((one) => one !== link);
     if (counts({ groundedAt: asDrawn, assignment: withoutBody(assignment, body), links: kept })) {
       fixes.push({ kind: 'delete-link', link });
@@ -244,25 +248,28 @@ export function untangleFixes(
       continue;
     }
     const body = assignment.bodyOf(link);
-    if (body === WORLD || links.some((one) => one !== link && assignment.bodyOf(one) === body)) {
-      continue;
-    }
+    if (body === WORLD) continue;
     if (link.joints.some((joint) => hidden.has(joint.id) || !own.has(joint.id))) continue;
     if (
       !link.joints.every(
-        (joint) => joint === driven || freeEnd(joint, link) || staysHeld(joint, link)
+        (joint) => joint === driven || freeEnd(joint, link) || staysHeld(joint, link, joints)
       )
     ) {
       continue;
     }
+    const keptLinks = links.filter((one) => one !== link);
+    const keptJoints = trial.partition.joints.filter(
+      (joint) => !(link.joints.includes(joint) && freeEnd(joint, link))
+    );
+    // A brace riding a Prismatic slider shares its body with the yoke.
+    const shared = links.some((one) => one !== link && assignment.bodyOf(one) === body);
+    const after = shared ? withoutLink(keptJoints, links, link) : withoutBody(assignment, body);
     const edit: Edit = {
       groundedAt: (one) => one.ground,
-      assignment: withoutBody(assignment, body),
-      links: links.filter((one) => one !== link),
-      joints: trial.partition.joints.filter(
-        (joint) => !(link.joints.includes(joint) && freeEnd(joint, link))
-      ),
-      hold: holdOn(kept),
+      assignment: after,
+      links: keptLinks,
+      joints: keptJoints,
+      hold: (system) => holdTurn(system.bodyAt(after.bodyOf(kept)), system.bodyAt(WORLD)),
     };
     if (leavesOneMachine(trial, edit)) fixes.push({ kind: 'delete-link', link });
   }
@@ -417,6 +424,47 @@ export function reconnectFixes(
       },
     };
     if (leavesOneMachine(trial, edit)) fixes.push({ kind: 'connect', joint: end, to: pivot });
+  }
+  return fixes;
+}
+
+/**
+ * A joint one type away from the one drawn, where the drawing has a freedom too
+ * many: a pin welded, whose links then turn as one, or a Pin-in-slot made
+ * Prismatic, whose riders then no longer turn in the slot. Both are one choice
+ * in the joint's type, and nothing on the canvas says which a joint was meant
+ * to be until it moves the wrong way. Offered only where the joint's type
+ * choice would allow it (`refuseJointType`), so the drawer never suggests what
+ * the menu greys out.
+ */
+export function typeFixes(
+  trial: Trial,
+  assignment: BodyAssignment,
+  own: Set<string>,
+  hidden: Set<string>
+): MobilityFix[] {
+  const { joints } = trial.partition;
+  const context = {
+    cylinders: cylindersIn(joints),
+    isDriven: (joint: RealJoint) => joint.input,
+    hasSlider: (joint: RealJoint) => joint instanceof PrisJoint,
+  };
+  const fixes: MobilityFix[] = [];
+  for (const joint of joints.slice(0, MAX_CANDIDATES)) {
+    if (!(joint instanceof RealJoint) || !own.has(joint.id) || hidden.has(joint.id)) continue;
+    if (joint instanceof PrisJoint) {
+      if (!joint.rotates || joint.isSealed) continue;
+      if (refuseJointType(joint, 'prismatic', context)) continue;
+      const rotates = (one: PrisJoint) => (one === joint ? false : one.rotates);
+      const edit: Edit = { groundedAt: (one) => one.ground, assignment, rotates };
+      if (leavesOneMachine(trial, edit)) fixes.push({ kind: 'prismatic', joint });
+      continue;
+    }
+    // The input's own pin welded is the input with nothing left to turn.
+    if (joint.isWelded || joint === trial.driven) continue;
+    if (refuseJointType(joint, 'welded', context)) continue;
+    const edit = weldedAt(assignment, joint);
+    if (edit && leavesOneMachine(trial, edit)) fixes.push({ kind: 'weld', joint });
   }
   return fixes;
 }

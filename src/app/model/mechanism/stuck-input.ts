@@ -294,7 +294,7 @@ export function stuckFixes(
     if (link.joints.some((joint) => hidden.has(joint.id) || !own.has(joint.id))) continue;
     // The input's own link is what it drives; taking it away is not a fix.
     if (driven?.links.includes(link)) continue;
-    if (!link.joints.every((joint) => staysHeld(joint, link))) continue;
+    if (!link.joints.every((joint) => staysHeld(joint, link, joints))) continue;
     const edit: Edit = {
       groundedAt: (one) => one.ground,
       assignment: withoutBody(assignment, body),
