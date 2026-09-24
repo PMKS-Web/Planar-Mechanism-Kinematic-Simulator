@@ -5713,7 +5713,15 @@ export class MechanismService {
       const t = Math.min(1, (now - startedAt) / durationMs);
       // Ease out: quick off the pose being left, gentle into the start.
       const eased = 1 - (1 - t) ** 3;
+      // The last frame lands on the start exactly. Eased and wrapped, it came
+      // to rest a few tenths of a microsecond short -- the eased curve is flat
+      // there, so the final steps were each under the threshold below and
+      // never drawn -- and a clock that is not exactly zero is a machine the
+      // edit gate calls parked away from its start, which is how a Reset came
+      // to be followed by "Return every mechanism to edit."
+      const arrived = t >= 1;
       const next = from.map((seconds, index) => {
+        if (arrived) return deltas[index] === 0 ? seconds : 0;
         const period = periods[index];
         const ahead = seconds + eased * deltas[index];
         return period > 0 ? ((ahead % period) + period) % period : ahead;
@@ -5721,7 +5729,7 @@ export class MechanismService {
       // The first frame is the pose already on screen; drawing it again is a
       // frame's worth of nothing. A microsecond, not exact equality: wrapping
       // into the period puts float noise on a value that has not moved.
-      if (next.some((seconds, index) => Math.abs(seconds - lastDrawn[index]) > 1e-6)) {
+      if (arrived || next.some((seconds, index) => Math.abs(seconds - lastDrawn[index]) > 1e-6)) {
         lastDrawn = next;
         lastDrawn.forEach((seconds, index) => (this.ownSeconds[index] = seconds));
         this.drawOwnClocks();

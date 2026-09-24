@@ -71,6 +71,18 @@ describe('MechanismService easing every machine back to its own start', () => {
     expect(track.every((seconds, i) => i === 0 || seconds <= track[i - 1])).toBe(true);
   });
 
+  it('lands exactly on zero from a short cycle, where the last steps are tiny', () => {
+    // A driven slider's cycle can be a tenth of a second. Eased back from its
+    // first half, the final frames each moved the clock by less than the
+    // redraw threshold and were skipped, leaving 1.6e-7 s on it -- which the
+    // edit gate read as a machine parked away from its start, right after
+    // Reset.
+    for (const at of [0.012, 0.024, 0.036]) {
+      const { stub } = drive([at], [0.098]);
+      expect(stub.ownSeconds[0], `from ${at} s`).toBe(0);
+    }
+  });
+
   it('goes forward to the start when forward is the shorter way round', () => {
     // The cycle is closed, so from near its end the start is just ahead. Going
     // backwards through the whole of it reads as the machine bolting.
