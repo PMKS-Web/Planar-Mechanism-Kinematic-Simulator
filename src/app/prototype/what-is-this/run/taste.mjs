@@ -18,9 +18,14 @@ const { provider, variant, rounds } = JSON.parse(readFileSync(join(here, 'rounds
 const sheets = JSON.parse(readFileSync(join(here, 'sheets.json'), 'utf8'));
 
 /** "v3" is the first asking of sheet v3; "v3~2" the second. */
+/**
+ * An arm is `<sheet>[@<model>][~<asking>]`: "v8~2" is v8's second asking, and
+ * "v8@astra" v8 answered by GPT-6 Astra rather than the rounds' own model.
+ */
 function parseArm(arm) {
-  const [sheet, sample = '1'] = arm.split('~');
-  return { sheet, sample };
+  const [sheetAndModel, sample = '1'] = arm.split('~');
+  const [sheet, model] = sheetAndModel.split('@');
+  return { sheet, sample, model: model ? `codex__gpt-6-${model}` : provider };
 }
 
 function factsOf(prompt) {
@@ -87,17 +92,18 @@ function overviewOf(facts) {
 
 const images = {};
 /**
- * The pictures ride the page as JPEG, at most 1400 px wide: four rounds of
- * seven-tile PNGs came to 19 MB, over what a published page may hold.
+ * The pictures ride the page as JPEG, at most 1200 px wide and quality 65:
+ * four rounds of seven-tile PNGs came to 19 MB, and six rounds at 1400 px and
+ * quality 75 to more than the 16 MB a published page may hold.
  */
 const JPEG = `
 import base64, io, sys
 from PIL import Image
 im = Image.open(sys.argv[1]).convert('RGB')
-if im.width > 1400:
-    im = im.resize((1400, round(im.height * 1400 / im.width)))
+if im.width > 1200:
+    im = im.resize((1200, round(im.height * 1200 / im.width)), Image.LANCZOS)
 out = io.BytesIO()
-im.save(out, 'JPEG', quality=75)
+im.save(out, 'JPEG', quality=65)
 sys.stdout.write(base64.b64encode(out.getvalue()).decode())
 `;
 
@@ -118,7 +124,7 @@ function aOnLeft(roundId, template) {
 const round3 = (value) => Math.round(value * 1000) / 1000;
 
 function loadArm(arm, template) {
-  const { sheet, sample } = parseArm(arm);
+  const { sheet, sample, model } = parseArm(arm);
   const root = join(base, sheet);
   const manifest = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
   const entry = manifest.cases.find((c) => c.template === template && c.variant === variant);
@@ -129,7 +135,7 @@ function loadArm(arm, template) {
   const file = join(
     root,
     'answers',
-    provider,
+    model,
     sample === '1' ? `${entry.key}.json` : `${entry.key}~${sample}.json`
   );
   const saved = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : undefined;
@@ -141,6 +147,7 @@ function loadArm(arm, template) {
       id: arm,
       sheet,
       sample: Number(sample),
+      model,
       answer: saved?.parsed,
       error: saved ? (saved.error ?? saved.parseError) : 'not asked yet',
       latencyMs: saved?.latencyMs,
@@ -195,7 +202,9 @@ const builtRounds = rounds.map((round) => {
       // picture over sheets that are mostly the same.
       // A round may declare its instructions the same where they differ only in a
       // sentence none of its mechanisms reaches (round 1's unsolvable-drawing rule).
+      // Two models reading one sheet are not the model varying on its own.
       identical:
+        a.arm.model === b.arm.model &&
         a.facts === b.facts &&
         a.arm.image === b.arm.image &&
         (a.instructions === b.instructions || !!round.sameInstructions),

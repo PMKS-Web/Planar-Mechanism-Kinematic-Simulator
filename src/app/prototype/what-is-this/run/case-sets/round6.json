@@ -1,0 +1,35 @@
+{
+  "note": "Round 6 tests v8 (the image at full strength, the v8 catalog, only mechanisms PMKS+ can solve) against v7, blind. It keeps round 5's twelve templates, adds the ten library templates never used (textbook chains with no real machine behind most of them, which measure how often a machine is claimed where there is none), and every student mechanism that solves: the two from round 5 and the three not yet used. The two wheel cases test the side-rod rule; the coupled wheels were written for it, the locomotive before it.",
+  "library": [
+    "Hood_Hinge",
+    "Aircraft_Landing_Gear",
+    "Excavator_Bucket",
+    "Car_Steering",
+    "Offset_Mount_Hatch",
+    "Crane_Two_Loads",
+    "Walking_Pair",
+    "Pumping_Field",
+    "Bell_Crank",
+    "Straight_Line_Pair",
+    "Hydraulic_Crosshead",
+    "Slotted_Tool_Drive",
+    "Watt_I",
+    "Watt_II",
+    "Stephenson_III",
+    "Locked_Four_Bar",
+    "Elliptical_Crank",
+    "Offset_Load_Rocker",
+    "Double_Butterfly",
+    "Three_Machines",
+    "Four_Bar_Inversions",
+    "Slider_Crank_Inversions"
+  ],
+  "user": [
+    { "id": "added-steam-locomotive", "intent": "steam locomotive" },
+    { "id": "192954d7b47995ab" },
+    { "id": "18b209757f54bf95" },
+    { "id": "192957a6eb4698e9" },
+    { "id": "19a3120907fbd40e" }
+  ],
+  "made": ["made-locomotive-wheels", "made-coupled-wheels"]
+}

@@ -109,6 +109,34 @@ function locomotiveWheels(): MechanismFixture {
   };
 }
 
+/**
+ * Three wheels coupled by one side rod and driven at the first, with no piston:
+ * the side-rod drive without the main rod that makes it a steam locomotive.
+ */
+function coupledWheels(): MechanismFixture {
+  const crank = 0.7;
+  return {
+    joints: [
+      { id: 'O', x: 0, y: 0, ground: true, input: true, driveSpeed: 10 },
+      { id: 'A', x: 0, y: crank },
+      { id: 'R', x: 0, y: -1.4 },
+      { id: 'P', x: 3, y: 0, ground: true },
+      { id: 'B', x: 3, y: crank },
+      { id: 'S', x: 3, y: -1.4 },
+      { id: 'Q', x: 6, y: 0, ground: true },
+      { id: 'D', x: 6, y: crank },
+      { id: 'T', x: 6, y: -1.4 },
+    ],
+    links: [
+      { joints: 'OAR', circle: true },
+      { joints: 'PBS', circle: true },
+      { joints: 'QDT', circle: true },
+      { joints: 'ABD' },
+    ],
+    inputAngVel: (10 * Math.PI) / 30,
+  };
+}
+
 export const MADE_CASES: MadeCase[] = [
   {
     id: 'made-chebyshev-near-miss',
@@ -141,5 +169,13 @@ export const MADE_CASES: MadeCase[] = [
       "A steam locomotive's two driving wheels, drawn as discs and coupled by a rod, with the main rod running back to a crosshead on its guide.",
     intent: 'steam locomotive driving wheels',
     fixture: locomotiveWheels(),
+  },
+  {
+    id: 'made-coupled-wheels',
+    name: 'Coupled wheels',
+    blurb:
+      'Three wheels drawn as discs, coupled by one side rod and driven at the first, with no piston, as on a diesel shunter or a toy train: the side-rod rule without the main rod.',
+    intent: 'coupled locomotive wheels',
+    fixture: coupledWheels(),
   },
 ];

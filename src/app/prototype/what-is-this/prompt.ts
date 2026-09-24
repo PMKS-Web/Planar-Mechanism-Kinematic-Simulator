@@ -119,12 +119,29 @@ export const WHAT_IS_THIS_PROMPT_V7 = WHAT_IS_THIS_PROMPT_V6.replace(
   `Nothing else goes in double asterisks. Where the author named a part, the fact sheet gives the name in quotes after its letters (link AB ("Crank")) and the picture writes it on the link: the names are the author's own and often say what the part, and the mechanism, are for. You may use a name in plainEnglish after the part's letters.`
 );
 
-export function buildPrompt(factSheet: string, version: 'v4' | 'v5' | 'v6' | 'v7' = 'v7'): string {
+/**
+ * v8: v7 with the background image at full strength (faded, it lost the
+ * propeller that told the model it was looking at an aircraft), and without the
+ * rule for mechanisms PMKS+ cannot solve, which are no longer sent: the panel
+ * shows something else for them.
+ */
+export const WHAT_IS_THIS_PROMPT_V8 = WHAT_IS_THIS_PROMPT_V7.replace(
+  'it is shown once, faded, in a tile numbered 0',
+  'it is shown once, in a tile numbered 0'
+).replace(
+  ' If PMKS+ could not solve the motion, describe the structure only and say PMKS+ could not solve its motion as it stands; do not claim the mechanism cannot move.',
+  ''
+);
+
+export type PromptVersion = 'v4' | 'v5' | 'v6' | 'v7' | 'v8';
+
+export function buildPrompt(factSheet: string, version: PromptVersion = 'v8'): string {
   const prompts = {
     v4: WHAT_IS_THIS_PROMPT_V4,
     v5: WHAT_IS_THIS_PROMPT_V5,
     v6: WHAT_IS_THIS_PROMPT_V6,
     v7: WHAT_IS_THIS_PROMPT_V7,
+    v8: WHAT_IS_THIS_PROMPT_V8,
   };
   return prompts[version] + factSheet;
 }

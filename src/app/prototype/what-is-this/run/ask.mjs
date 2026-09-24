@@ -33,7 +33,12 @@ const model = modelArg ?? DEFAULT_MODEL[provider];
 const effort = effortArg ?? 'medium';
 const QUESTION = 'What is this?';
 const { cases } = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
-const outDir = join(root, 'answers', `${provider}__${model}`);
+// Medium is the effort every round has used; another effort keeps its own answers.
+const outDir = join(
+  root,
+  'answers',
+  `${provider}__${model}${effort === 'medium' ? '' : `__${effort}`}`
+);
 mkdirSync(outDir, { recursive: true });
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 

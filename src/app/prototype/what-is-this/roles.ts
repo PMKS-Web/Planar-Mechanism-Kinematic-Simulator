@@ -129,6 +129,64 @@ export function beamArms(ctx: RelationContext, body: Link): [Joint, Joint] | und
   return best && [best.a, best.b];
 }
 
+/**
+ * The pivoted bodies a rod ties together: each shares a moving joint with the
+ * rod and goes round its ground pivot (a full turn, or most of one and back
+ * when the input reverses). Two or more, with a rod that keeps its angle, are
+ * cranks coupled by a side rod, as a locomotive's wheels are.
+ */
+export function cranksCoupledBy(ctx: RelationContext, rod: Link): Link[] {
+  if (jointsOf(ctx, rod).some(isGroundPin) || sweepOf(ctx, rod) >= 0.5) return [];
+  const pins = jointsOf(ctx, rod).filter((j) => !isGroundPin(j));
+  return ctx.bodies.filter(
+    (b) =>
+      b !== rod &&
+      jointsOf(ctx, b).some(isGroundPin) &&
+      jointsOf(ctx, b).some((j) => pins.includes(j)) &&
+      (turnsFully(ctx, b) || sweepOf(ctx, b) > 300)
+  );
+}
+
+/**
+ * Two arms of a pivoted body that meet at an angle at its pivot, each joined to
+ * another part: a bell crank, which turns a push one way into a push another.
+ * Arms nearly opposite each other make a beam instead (`beamArms`).
+ */
+export function bellCrankArms(
+  ctx: RelationContext,
+  body: Link
+): { arms: [Joint, Joint]; between: number } | undefined {
+  const joints = jointsOf(ctx, body);
+  const pivot = joints.find(isGroundPin);
+  if (!pivot) return undefined;
+  const g = ctx.samples.paths.get(pivot.id)![0];
+  const joined = (j: Joint) =>
+    ctx.bodies.some((b) => b !== body && jointsOf(ctx, b).includes(j)) ||
+    ctx.cylinders.some((c) => c.mountA === j || c.mountB === j);
+  const arms = joints.filter((j) => j !== pivot && joined(j));
+  let best: { arms: [Joint, Joint]; between: number } | undefined;
+  for (let i = 0; i < arms.length; i++)
+    for (let k = i + 1; k < arms.length; k++) {
+      const p = ctx.samples.paths.get(arms[i].id)![0];
+      const q = ctx.samples.paths.get(arms[k].id)![0];
+      let between =
+        Math.abs(deg(Math.atan2(p[1] - g[1], p[0] - g[0]) - Math.atan2(q[1] - g[1], q[0] - g[0]))) %
+        360;
+      if (between > 180) between = 360 - between;
+      if (between >= 45 && between <= 135)
+        if (!best || Math.abs(between - 90) < Math.abs(best.between - 90))
+          best = { arms: [arms[i], arms[k]], between };
+    }
+  return best;
+}
+
+/** "A and B", "A, B and C". */
+export function listOf(items: string[]): string {
+  return items.length < 2
+    ? (items[0] ?? '')
+    : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
+
 /** How a body that keeps its orientation moves: in a straight line, or along an arc. */
 function translation(ctx: RelationContext, body: Link): string {
   const joints = jointsOf(ctx, body);
@@ -208,25 +266,37 @@ export function linkJobs(
         job = isInput ? 'input crank' : slotted ? 'slotted link' : 'crank';
         motion = `turns about ground ${pivot.id} through ${fmt(sweep, 0)} deg and then back the same way, because the input reverses`;
       } else {
+        const bell = !beam && ctx.catalogV8 ? bellCrankArms(ctx, body) : undefined;
         job = isInput
           ? 'input rocker (driven back and forth)'
           : slotted
             ? 'slotted rocker'
             : beam
               ? 'beam (a rocker with arms on both sides of its pivot)'
-              : 'rocker';
+              : bell
+                ? 'bell crank (a rocker whose two arms meet at an angle at its pivot)'
+                : 'rocker';
         motion =
           `rocks about ground ${pivot.id} through ${fmt(sweep, 1)} deg` +
           (isInput ? '' : endsAt(angles.map(deg), input)) +
-          strokeTiming(angles, ctx.samples);
+          strokeTiming(angles, ctx.samples) +
+          (bell && !isInput && !slotted
+            ? `; its arms to ${bell.arms[0].id} and ${bell.arms[1].id} meet at ${fmt(bell.between, 0)} deg at the pivot, so a push on one comes out of the other at that angle`
+            : '');
       }
     } else if (sweep < 0.5) {
+      const coupled = ctx.catalogV8 && !slotted && !onFixedGuide ? cranksCoupledBy(ctx, body) : [];
       job = slotted
         ? 'yoke (carries the slot)'
         : onFixedGuide
           ? 'sliding link'
-          : 'translating link';
-      motion = translation(ctx, body);
+          : coupled.length >= 2
+            ? 'side rod (a coupling rod)'
+            : 'translating link';
+      motion =
+        (coupled.length >= 2
+          ? `ties ${listOf(coupled.map(ctx.bodyLabel))} to turn together; `
+          : '') + translation(ctx, body);
     } else {
       const toMovingPivot = joints.some(
         (j) =>

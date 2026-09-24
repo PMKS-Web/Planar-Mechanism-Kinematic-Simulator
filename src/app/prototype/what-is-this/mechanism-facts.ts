@@ -22,7 +22,7 @@ import {
 import { FamilyMatch, familyCheck } from './family-check';
 import { MachineMotion, machineMotion } from './motion-export';
 import { describeRelations, RelationContext } from './relations';
-import { inputAt, InputSeries, inputSeries, LinkJob, linkJobs } from './roles';
+import { inputAt, InputSeries, inputSeries, LinkJob, linkJobs, listOf } from './roles';
 
 /**
  * PROTOTYPE -- "What is this?" fact sheet, v4.
@@ -64,9 +64,12 @@ export interface DrawingToDescribe {
   /**
    * How the picture is laid out. v5: four moments, the background image behind
    * each. v6: six moments without it, and the background image once, in a
-   * tile of its own before them; links drawn as discs are said to be.
+   * tile of its own before them; links drawn as discs are said to be. v7: the
+   * image faded, boxed, and counted among six tiles. v8: v7 without the fade,
+   * the v8 catalog, and only the mechanisms PMKS+ can solve (the panel shows
+   * something else for one it cannot).
    */
-  picture?: 'v5' | 'v6' | 'v7';
+  picture?: 'v5' | 'v6' | 'v7' | 'v8';
 }
 
 /** One of the picture's moments: when it is, and what the input reads then. */
@@ -76,6 +79,8 @@ export interface FilmFrame {
 }
 
 export interface MachineDescription {
+  /** Whether PMKS+ solved its motion; the rest is a still picture when not. */
+  solved: boolean;
   svg?: string;
   motion?: MachineMotion;
   jobs: LinkJob[];
@@ -104,8 +109,22 @@ export function describeDrawing(drawing: DrawingToDescribe): DrawingDescription 
   lines.push(
     'Links are named by their joints’ letters, as in the app’s Links table: link AB joins joints A and B.'
   );
+  const every = partitioning.mechanisms.map((partition, index) => ({
+    index,
+    described: describePartition(partition, drawing),
+  }));
+  // v8 leaves out what PMKS+ cannot solve, and keeps the app's own numbers for
+  // the rest, so M3 in the sheet is M3 in the panel.
+  const shown = drawing.picture === 'v8' ? every.filter((m) => m.described.solved) : every;
   const count = partitioning.mechanisms.length;
-  if (count > 1) lines.push(`There are ${count} separate mechanisms on the grid, M1 to M${count}.`);
+  if (drawing.picture === 'v8') {
+    if (shown.length > 1)
+      lines.push(
+        `There are ${shown.length} separate mechanisms on the grid: ${listOf(shown.map((m) => `M${m.index + 1}`))}.`
+      );
+  } else if (count > 1) {
+    lines.push(`There are ${count} separate mechanisms on the grid, M1 to M${count}.`);
+  }
   const loose = partitioning.unassigned.looseJoints.length;
   const floating = partitioning.unassigned.floatingChains.length;
   if (loose || floating) {
@@ -113,13 +132,12 @@ export function describeDrawing(drawing: DrawingToDescribe): DrawingDescription 
       `Unconnected pieces: ${loose} loose joints, ${floating} floating chains (not part of any mechanism).`
     );
   }
-  partitioning.mechanisms.forEach((partition, index) => {
+  for (const { index, described } of shown) {
     lines.push('');
     lines.push(`## Mechanism M${index + 1}`);
-    const described = describePartition(partition, drawing);
     lines.push(...described.lines);
     machines.push(described);
-  });
+  }
   return {
     text: lines.join('\n'),
     svgs: machines.flatMap((m) => (m.svg ? [m.svg] : [])),
@@ -202,6 +220,7 @@ function describePartition(
     lines.push('### The picture: this mechanism as drawn (PMKS+ could not move it)');
     lines.push(...describeStartGeometry(visible, bodies, label, bodyLabel, hidden, cylinders));
     return {
+      solved: false,
       lines,
       jobs: [],
       family: [],
@@ -218,7 +237,16 @@ function describePartition(
         ? `The input runs to a limit and reverses, so every part moves back and forth; one full back-and-forth takes ${fmt(period)} s.`
         : `The motion repeats every ${fmt(period)} s, once per input revolution.`)
   );
-  const ctx: RelationContext = { bodies, visible, hidden, samples, cylinders, label, bodyLabel };
+  const ctx: RelationContext = {
+    bodies,
+    visible,
+    hidden,
+    samples,
+    cylinders,
+    label,
+    bodyLabel,
+    catalogV8: drawing.picture === 'v8',
+  };
   if (drawing.backdrop) lines.push(backdropLine(drawing));
   const tracedHere = visible.filter(
     (j) => j instanceof RealJoint && j.showCurve && !isGroundPin(j)
@@ -237,9 +265,11 @@ function describePartition(
   lines.push(...family.lines);
 
   const input = inputSeries(ctx, driven);
-  // v6 and v7 share the disc facts; v7 also counts the background tile among six.
-  const v6 = drawing.picture === 'v6' || drawing.picture === 'v7';
-  const v7 = drawing.picture === 'v7';
+  // v6 on share the disc facts; v7 on count the background tile among six and
+  // box the mechanism in it; only v7 faded the image.
+  const v6 = drawing.picture === 'v6' || drawing.picture === 'v7' || drawing.picture === 'v8';
+  const v7 = drawing.picture === 'v7' || drawing.picture === 'v8';
+  const faded = drawing.picture === 'v7';
   const jobs = linkJobs(ctx, drivenBody, driven, input, v6);
   lines.push('### Links and their jobs');
   for (const job of jobs) lines.push(`- ${job.name} — ${job.job}: ${job.motion}.`);
@@ -260,14 +290,14 @@ function describePartition(
   const words = { 4: 'four', 5: 'five', 6: 'six' }[count];
   lines.push(
     (backdropTile
-      ? `### The picture: tile 0 is the author's background image${v7 ? ', faded,' : ''} with this mechanism at its start${v7 ? ' and a dashed box marking the area the other tiles show' : ''}; tiles 1 to ${count} are this mechanism at ${words} moments, in time order`
+      ? `### The picture: tile 0 is the author's background image${faded ? ', faded,' : ''} with this mechanism at its start${v7 ? ' and a dashed box marking the area the other tiles show' : ''}; tiles 1 to ${count} are this mechanism at ${words} moments, in time order`
       : `### The picture: this mechanism at ${words} moments, numbered in time order`) +
       (mechanism.reciprocates ? ` (1 and ${count} are the two ends of its travel)` : '')
   );
   if (backdropTile)
     lines.push(
       v7
-        ? '- 0: the background image, faded, with this mechanism at its start; the dashed box is the area tiles 1 onward show, larger.'
+        ? `- 0: the background image, ${faded ? 'faded, ' : ''}with this mechanism at its start; the dashed box is the area tiles 1 onward show, larger.`
         : '- 0: the background image, with this mechanism at its start.'
     );
   frames.forEach((frame, i) => lines.push(`- ${i + 1}: ${frame.label}.`));
@@ -277,6 +307,7 @@ function describePartition(
 
   const picture = { bodies, visible, hidden, cylinders, samples };
   return {
+    solved: true,
     lines,
     svg: drawingSvg(picture),
     motion: machineMotion(picture),
@@ -309,8 +340,8 @@ function describePartition(
 }
 
 function backdropLine(drawing: DrawingToDescribe): string {
-  if (drawing.picture === 'v7')
-    return "- The author placed a background image behind this mechanism as a reference, often a photograph or drawing of the real machine. It is shown once, faded, in the picture's tile 0, where a dashed box marks the part of the image the other tiles show; it is not part of the mechanism.";
+  if (drawing.picture === 'v7' || drawing.picture === 'v8')
+    return `- The author placed a background image behind this mechanism as a reference, often a photograph or drawing of the real machine. It is shown once, ${drawing.picture === 'v7' ? 'faded, ' : ''}in the picture's tile 0, where a dashed box marks the part of the image the other tiles show; it is not part of the mechanism.`;
   return drawing.picture === 'v6'
     ? "- The author placed a background image behind this mechanism as a reference, often a photograph or drawing of the real machine. It is shown once, in the picture's tile 0; it is not part of the mechanism."
     : '- A background image sits behind this mechanism in the picture: the author placed it there as a reference, often a photograph or drawing of the real machine. It is not part of the mechanism.';

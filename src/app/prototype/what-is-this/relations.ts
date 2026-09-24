@@ -1,6 +1,6 @@
 import { Cylinder } from '../../model/cylinder';
 import { Joint, PrisJoint, RealJoint } from '../../model/joint';
-import { Link } from '../../model/link';
+import { Link, RealLink } from '../../model/link';
 import {
   bodyAngles,
   deg,
@@ -29,7 +29,16 @@ export interface RelationContext {
   cylinders: Cylinder[];
   label: (joint: Joint) => string;
   bodyLabel: (link: Link) => string;
+  /**
+   * v8's catalog: side rods, bell cranks and exact straight-line linkages named,
+   * and a disc no longer called a lever. Earlier sheets are rebuilt without it,
+   * so their saved answers still match what the model was sent.
+   */
+  catalogV8?: boolean;
 }
+
+/** A link its author drew as a disc: a wheel or a flywheel. */
+export const isDisc = (link: Link) => link instanceof RealLink && link.isCircle;
 
 export function describeRelations(ctx: RelationContext): string[] {
   const lines = [
@@ -294,6 +303,9 @@ function parallelLines(ctx: RelationContext, a: Link, b: Link): string {
 function levers(ctx: RelationContext): string[] {
   const lines: string[] = [];
   for (const body of ctx.bodies) {
+    // A wheel carrying a crank pin and a spoke point is not a seesaw, and the
+    // word sent the model looking for levers.
+    if (ctx.catalogV8 && isDisc(body)) continue;
     const joints = jointsOf(ctx, body);
     const pivot = joints.find(isGroundPin);
     if (!pivot) continue;
