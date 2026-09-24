@@ -19,6 +19,8 @@ const meta: Meta = {
     disabledAt: [],
     compact: false,
     fill: true,
+    dropdown: false,
+    label: 'Choose an Option',
   },
   render: (args) => ({
     props: args,
@@ -31,6 +33,8 @@ const meta: Meta = {
         [disabledAt]="disabledAt"
         [compact]="compact"
         [fill]="fill"
+        [dropdown]="dropdown"
+        [label]="label"
       ></segmented-block>
     `,
   }),
@@ -55,4 +59,17 @@ export const OneUnavailable: Story = {
 
 export const LongLabels: Story = {
   args: { options: ['Position', 'Velocity', 'Acceleration'], selected: 2 },
+};
+
+export const Dropdown: Story = {
+  args: { dropdown: true, label: 'Moment Reference Point', options: ['CoM', 'A', 'B', 'H'] },
+};
+
+export const DropdownUnavailable: Story = {
+  args: {
+    dropdown: true,
+    label: 'Loop Path',
+    options: ['A → B → C → D → A', 'A → B → E → A (dependent)'],
+    disabledAt: [1],
+  },
 };

@@ -1,0 +1,849 @@
+<section class="worksheet" [class.wide]="wide">
+  <header class="worksheetHeader">
+    <div>
+      <div class="eyebrow">
+        Worked Derivation{{ isForce() && section() === 0 ? '' : ' · ' + machineId }}
+      </div>
+      <h2>{{ isForce() ? 'Force Analysis' : 'Kinematic Analysis' }}</h2>
+      <p>From the mechanism sketch to the equations and solution.</p>
+    </div>
+    @if (wide) {
+      <button-block [click]="closeWorksheet">Close Worksheet</button-block>
+    } @else if (!isForce()) {
+      <button-block [click]="openWorksheet">Open Full Worksheet</button-block>
+    }
+  </header>
+  @if (isForce()) {
+    <div class="controls sectionTabs">
+      <segmented-block
+        aria-label="Worksheet section"
+        [options]="forceSections"
+        [selected]="section()"
+        (selectedChange)="selectForceSection($event)"
+      ></segmented-block>
+    </div>
+    @if (section() !== 0) {
+      <div class="controls forceSampleControls">
+        <div class="controlRow">
+          <label
+            >Mechanism
+            <select
+              aria-label="Explanation mechanism"
+              [ngModel]="machineId"
+              (ngModelChange)="chosenMachine.set($event)"
+            >
+              @for (partition of mechanism.partitions; track partition.id) {
+                <option [value]="partition.id">{{ partition.id }}</option>
+              }
+            </select></label
+          >
+          <label
+            >Sample
+            <input
+              aria-label="Explanation sample number"
+              type="number"
+              min="0"
+              [max]="lastStep"
+              [ngModel]="step"
+              (change)="seek($any($event.target).value)"
+              [disabled]="!valid"
+            />
+            / {{ lastStep }}</label
+          >
+          <span>{{ seconds | number: '1.3-3' }} s</span>
+        </div>
+        <input
+          class="slider"
+          aria-label="Explanation sample"
+          type="range"
+          min="0"
+          [max]="lastStep"
+          [value]="step"
+          (input)="seek($any($event.target).value)"
+          [disabled]="!valid"
+        />
+      </div>
+    }
+  } @else {
+    <div class="controls">
+      <div class="controlRow">
+        <label
+          >Mechanism
+          <select
+            aria-label="Explanation mechanism"
+            [ngModel]="machineId"
+            (ngModelChange)="chosenMachine.set($event)"
+          >
+            @for (partition of mechanism.partitions; track partition.id) {
+              <option [value]="partition.id">{{ partition.id }}</option>
+            }
+          </select></label
+        >
+        <label
+          >Sample
+          <input
+            aria-label="Explanation sample number"
+            type="number"
+            min="0"
+            [max]="lastStep"
+            [ngModel]="step"
+            (change)="seek($any($event.target).value)"
+            [disabled]="!valid"
+          />
+          / {{ lastStep }}</label
+        >
+        <span>{{ seconds | number: '1.3-3' }} s</span>
+      </div>
+      <input
+        class="slider"
+        aria-label="Explanation sample"
+        type="range"
+        min="0"
+        [max]="lastStep"
+        [value]="step"
+        (input)="seek($any($event.target).value)"
+        [disabled]="!valid"
+      />
+      <segmented-block
+        aria-label="Worksheet section"
+        [options]="kinematicSections"
+        [selected]="section()"
+        (selectedChange)="section.set($event)"
+      ></segmented-block>
+    </div>
+  }
+  @if (isForce() && section() === 0) {
+    <app-force-definitions />
+  } @else if (view; as data) {
+    <div class="worksheetContent">
+      <details class="numericDetails overviewDetails" [open]="!isForce()">
+        <summary>Mechanism & Assumptions</summary>
+        <div class="overview">
+          <figure>
+            <app-solver-diagram
+              [diagram]="data.diagram"
+              label="Mechanism sketch with joint labels"
+            ></app-solver-diagram>
+            <figcaption>Mechanism sketch · sample {{ step }}</figcaption>
+          </figure>
+          <div class="assumptions">
+            <h3>Knowns & Assumptions</h3>
+            @if (isForce()) {
+              <segmented-block
+                [options]="forceOptions"
+                [selected]="forceMode() === 'dynamic' ? 1 : 0"
+                (selectedChange)="
+                  settings.forceAnalysisMode.next($event === 1 ? 'dynamic' : 'static')
+                "
+              ></segmented-block>
+              <strong
+                >{{ forceMode() === 'dynamic' ? 'In-motion balance' : 'Static equilibrium' }} ·
+                Gravity {{ data.gravity ? 'on (downward)' : 'off' }}</strong
+              >
+              <app-solver-math
+                [equation]="forceMode() === 'dynamic' ? dynamicBalance : staticBalance"
+              ></app-solver-math>
+              <segmented-block
+                [dropdown]="true"
+                label="Worksheet Gravity"
+                [options]="data.gravityOptions"
+                [selected]="data.gravityChoice"
+                (selectedChange)="
+                  preferences.setGravity(solved, $event === 0 ? undefined : $event === 1)
+                "
+              ></segmented-block>
+              <p class="caption">
+                Compare weight assumptions here. Graphs use Settings → Gravity ({{
+                  solved.gravity ? 'on' : 'off'
+                }}).
+              </p>
+              @if (section() === 1) {
+                <label class="axisAngleControl"
+                  >X-Axis Angle (° Counterclockwise from Right)
+                  <input
+                    type="number"
+                    step="15"
+                    aria-label="Worksheet X-axis angle"
+                    [ngModel]="data.axisAngle"
+                    (change)="preferences.setAxisAngle(solved, +$any($event.target).value)"
+                  />
+                </label>
+              }
+              <p>
+                +x is {{ data.axisAngle }}° counterclockwise from right. +y is 90° counterclockwise
+                from +x. This same frame applies to every force diagram, moment arm, equation, and
+                matrix below. +z points out of the page; positive moments are counterclockwise.
+              </p>
+              <p>
+                <strong
+                  >{{
+                    forceMode() === 'dynamic' ? 'In-motion balance' : 'Static equilibrium'
+                  }}.</strong
+                >
+                {{
+                  forceMode() === 'dynamic'
+                    ? 'Mass and inertia terms use the motion at this sample.'
+                    : 'Acceleration terms are zero for this force calculation.'
+                }}
+              </p>
+              <p>
+                <strong>Gravity:</strong>
+                {{
+                  data.gravity
+                    ? 'physically downward, resolved along the chosen x and y axes'
+                    : 'off'
+                }}. <strong>Joint friction:</strong> not modeled.
+              </p>
+            } @else {
+              <p>
+                Motion lies in the x–y plane. Positive x points right, positive y points up, and
+                positive z points out of the page. Counterclockwise rotation follows positive z.
+              </p>
+              <p>
+                Grounded joints have known positions and zero velocity and acceleration. Input
+                motion supplies the first moving boundary.
+              </p>
+              @for (ground of data.grounds; track ground.id) {
+                <app-solver-math
+                  [equation]="section() === 0 ? ground.equation : ground.zero"
+                ></app-solver-math>
+              }
+            }
+          </div>
+        </div>
+      </details>
+      @if (!isForce()) {
+        <details class="numericDetails conventions">
+          <summary>Choose Your Equation Conventions</summary>
+          <p>
+            Match the signs and paths in your written solution. These choices update this
+            worksheet's equations and signed answers; the physical motion, loads, and graph axes
+            stay the same. Choices are kept while this mechanism is loaded, including when you close
+            the worksheet.
+          </p>
+          @if (data.angularDiagram; as angularDiagram) {
+            <figure class="angularOverview">
+              <app-solver-diagram
+                [diagram]="angularDiagram"
+                label="Positive angular directions on the mechanism"
+              />
+              <figcaption>
+                ω is angular velocity; α is angular acceleration. Arrows show their positive
+                directions. A negative answer points the other way.
+              </figcaption>
+            </figure>
+          }
+          <app-worksheet-choices
+            [choices]="data.angularChoices"
+            (chosen)="preferences.setAngular(solved, $event.index === 0 ? 1 : -1)"
+          ></app-worksheet-choices>
+          <p>
+            Clockwise-positive angular values enter the cross products with a minus sign to convert
+            to the positive z axis.
+          </p>
+          <details class="numericDetails">
+            <summary>Choose Angular Directions per Link</summary>
+            @for (choice of data.bodyAngularChoices; track choice.key) {
+              <details
+                class="numericDetails angularLinkChoice"
+                [attr.data-angular-link]="choice.key"
+              >
+                <summary>
+                  {{ choice.label }} ·
+                  {{ choice.selected === 0 ? 'Counterclockwise' : 'Clockwise' }} Positive
+                </summary>
+                <app-solver-diagram
+                  [diagram]="choice.diagram"
+                  [label]="'Positive angular direction for ' + choice.key"
+                />
+                <app-worksheet-choices
+                  [choices]="[choice]"
+                  (chosen)="
+                    preferences.setBodyAngular(solved, $event.key, $event.index === 0 ? 1 : -1)
+                  "
+                />
+                <p class="caption">
+                  The curved arrow defines a positive rotation sense; its location does not specify
+                  a pivot.
+                </p>
+                <app-solver-math [equation]="choice.mapping" />
+                <p class="caption">
+                  Convert your signed values to the +z direction for cross products.
+                </p>
+                <app-solver-math [equation]="choice.value" />
+              </details>
+            }
+          </details>
+          <details class="numericDetails">
+            <summary>Angular Values in This Convention</summary>
+            @for (value of data.angularValues; track $index) {
+              <app-solver-math [equation]="value"></app-solver-math>
+            }
+          </details>
+          @if (data.rates?.route === 'loops') {
+            <p>
+              Choose a closed path or reverse its direction in the Velocity and Acceleration loop
+              cards below.
+            </p>
+          } @else {
+            <p>
+              This mechanism uses constraints or direct rigid-body motion, so there is no loop
+              matrix to replace. Angular direction choices still apply.
+            </p>
+          }
+          <button-block [click]="resetConventions">Reset Worksheet Conventions</button-block>
+        </details>
+      }
+      @if (isForce()) {
+        @if (data.force?.frame?.status !== 'ok') {
+          <p class="notice" role="status">
+            {{ data.force?.frame?.message }} No valid force solution is available at this sample.
+          </p>
+        }
+        @if (data.force?.frame?.sharedSupport) {
+          <p class="notice">
+            The supports allow multiple load splits. This solution uses the solver's most even
+            split.
+          </p>
+        }
+        @if (section() === 1) {
+          <h3 class="chapterTitle">Free-Body Equations · Without Friction</h3>
+          <p>
+            Isolate one body, read its loads, then write its balance equations. Repeat for each body
+            to build the system.
+          </p>
+          <p class="caption">
+            Orange arrows define the positive unknown directions. A negative solution means the
+            actual force points opposite its assumed arrow. Arrow lengths are schematic.
+          </p>
+          @for (body of data.bodies; track body.id; let i = $index) {
+            <details class="bodyCard" [attr.data-body]="body.id">
+              <summary>
+                <span class="stepNumber">{{ i + 1 }}</span
+                >{{ body.name }}
+                <small>{{ body.rowCount === 3 ? 'Rigid body' : 'Slider block' }}</small>
+              </summary>
+              <details class="numericDetails bodyStep">
+                <summary>1 · Build the Free-Body Diagram</summary>
+                <h3>Isolate {{ body.name }}</h3>
+                <p>
+                  Keep only this link, replace each connection with its reaction, and retain every
+                  applied load. The arrows below are the assumed positive directions.
+                </p>
+                <app-force-balance [diagram]="body.diagram" [name]="body.name" />
+                <details class="numericDetails bodyAdjustments">
+                  <summary>Choose Free-Body Diagram Conventions</summary>
+                  <p class="caption">
+                    Choose the positive arrows on this isolated body. A shared reaction updates the
+                    connected body with the opposite direction.
+                  </p>
+                  <div class="directionControls">
+                    @for (choice of body.signChoices; track choice.key) {
+                      <label>
+                        <app-solver-math [equation]="choice.symbol" [inline]="true" />
+                        <select
+                          [attr.aria-label]="'Direction for ' + choice.label"
+                          [value]="choice.selected"
+                          (change)="
+                            preferences.setForce(
+                              solved,
+                              choice.key,
+                              +$any($event.target).value === 0
+                                ? choice.positiveSign
+                                : choice.positiveSign === 1
+                                  ? -1
+                                  : 1
+                            )
+                          "
+                        >
+                          <option value="0">positive</option>
+                          <option value="1">negative</option>
+                        </select>
+                      </label>
+                    }
+                  </div>
+                  @if (body.rowCount === 3) {
+                    <label class="referenceControl">
+                      Fixed Moment Reference
+                      <select
+                        [attr.aria-label]="'Fixed moment reference for ' + body.name"
+                        [value]="body.referenceIndex"
+                        (change)="
+                          preferences.setMomentPoint(
+                            solved,
+                            body.id,
+                            body.referenceOptions[+$any($event.target).value].id
+                          )
+                        "
+                      >
+                        @for (option of body.referenceLabels; track $index) {
+                          <option [value]="$index">{{ option }}</option>
+                        }
+                      </select>
+                    </label>
+                    <p class="caption">
+                      The blue ring marks {{ body.reference.label }}. This reference updates the
+                      projection grid and the z-moment equation.
+                    </p>
+                  }
+                </details>
+                <details class="numericDetails projectionGrid">
+                  <summary>Show the Position-Vector Projection Grid</summary>
+                  <app-solver-diagram
+                    [diagram]="body.projectionGrid"
+                    [label]="'Position-vector projection grid for ' + body.name"
+                  />
+                  <p class="caption">
+                    One grid collects every r_x and r_y distance on this free-body diagram about
+                    {{ body.reference.label }}.
+                  </p>
+                </details>
+              </details>
+
+              <details class="numericDetails bodyStep">
+                <summary>2 · Variables in This Example</summary>
+                <table>
+                  <thead>
+                    <tr>
+                      <th scope="col">Variable</th>
+                      <th scope="col">Meaning</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (variable of body.variables; track variable.symbol) {
+                      <tr>
+                        <td>
+                          <app-solver-math [equation]="variable.symbol" [inline]="true" />
+                        </td>
+                        <td>{{ variable.meaning }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </details>
+
+              <details class="numericDetails bodyStep">
+                <summary>3 · Vector Equations</summary>
+                <p>
+                  Define each signed vector before assembling a balance. These definitions come
+                  directly from the arrows on this isolated free-body diagram.
+                </p>
+                <details class="numericDetails equationBuild">
+                  <summary>Force vectors</summary>
+                  @for (definition of body.forceDefinitions; track definition) {
+                    <app-solver-math [equation]="definition" />
+                  }
+                </details>
+                <details class="numericDetails equationBuild">
+                  <summary>Position vectors about {{ body.reference.label }}</summary>
+                  @for (definition of body.positionDefinitions; track definition) {
+                    <app-solver-math [equation]="definition" />
+                  }
+                </details>
+                @if (body.momentDefinitions.length) {
+                  <details class="numericDetails equationBuild">
+                    <summary>Applied moment vectors</summary>
+                    @for (definition of body.momentDefinitions; track definition) {
+                      <app-solver-math [equation]="definition" />
+                    }
+                  </details>
+                }
+              </details>
+
+              <details class="numericDetails bodyStep">
+                <summary>4 · Build the Sum of Forces and Sum of Moments</summary>
+                <details class="numericDetails equationBuild">
+                  <summary>Sum of Forces</summary>
+                  <p>
+                    Add the vectors defined above. Their assumed component signs stay inside each
+                    force vector.
+                  </p>
+                  <app-solver-math [equation]="body.forceVector" />
+                  <details class="numericDetails">
+                    <summary>Sum of Forces in x</summary>
+                    <app-force-balance
+                      [diagram]="body.diagram"
+                      [name]="body.name"
+                      [balanceAxis]="0"
+                    />
+                    <app-solver-math [equation]="body.forceComponentEquations[0].vector" />
+                    <app-solver-math [equation]="body.forceComponentEquations[0].scalar" />
+                  </details>
+                  <details class="numericDetails">
+                    <summary>Sum of Forces in y</summary>
+                    <app-force-balance
+                      [diagram]="body.diagram"
+                      [name]="body.name"
+                      [balanceAxis]="1"
+                    />
+                    <app-solver-math [equation]="body.forceComponentEquations[1].vector" />
+                    <app-solver-math [equation]="body.forceComponentEquations[1].scalar" />
+                  </details>
+                </details>
+                @if (body.rowCount === 3) {
+                  <details class="numericDetails equationBuild">
+                    <summary>Sum of Moments in z</summary>
+                    <p>
+                      Begin with the general force balance so each cross product uses the same
+                      signed force vector defined above. The cross product determines the resulting
+                      moment sign.
+                    </p>
+                    <app-solver-math [equation]="body.forceVector" />
+                    <app-force-balance
+                      [diagram]="body.diagram"
+                      [name]="body.name"
+                      [balanceAxis]="2"
+                    />
+                    <app-solver-math [equation]="body.momentVector" />
+                    <app-solver-math [equation]="body.components[2].symbolic" />
+                  </details>
+                } @else {
+                  <p>The ideal slider block has no independent moment equation.</p>
+                }
+              </details>
+            </details>
+          }
+          @if (data.force?.frame?.explanation?.fixedBodies?.length) {
+            <p class="notice">
+              Fixed frame bodies {{ data.force?.frame?.explanation?.fixedBodies?.join(', ') }} act
+              as supports and have no independent equilibrium rows.
+            </p>
+          }
+        } @else {
+          <details class="numericDetails systemKnownValues">
+            <summary>Known Values in This System</summary>
+            <p>
+              These are the specified loads and body properties, plus the moment arms and motion
+              values used to build the equations below. Joint reactions and input effort remain
+              unknown until the system is solved. Values use SI units.
+            </p>
+            @for (body of data.bodies; track body.id) {
+              <details class="numericDetails knownValuesBody" [attr.data-known-body]="body.id">
+                <summary>{{ body.name }}</summary>
+                <div
+                  class="knownValuesScroll"
+                  role="region"
+                  [attr.aria-label]="'Known values for ' + body.name"
+                  tabindex="0"
+                >
+                  <table>
+                    <thead>
+                      <tr>
+                        <th scope="col">Variable</th>
+                        <th scope="col">Value</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (known of body.knownValues; track $index) {
+                        <tr>
+                          <td><app-solver-math [equation]="known.symbol" [inline]="true" /></td>
+                          <td><app-solver-math [equation]="known.value" [inline]="true" /></td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            }
+          </details>
+          <details class="numericDetails systemAssembly">
+            <summary>Assemble the System &amp; Solve</summary>
+            <p>
+              Each rigid body contributes three rows: x force, y force, and z moment about its
+              chosen reference. Each ideal slider block contributes two. Collect the unknown
+              reactions and input effort into X and move known terms to B.
+            </p>
+            <label class="systemDisplayChoice">
+              Show equations
+              <select
+                aria-label="System equation display"
+                [value]="assemblyDisplay()"
+                (change)="assemblyDisplay.set($any($event.target).value)"
+              >
+                <option value="coefficients">Coefficients</option>
+                <option value="values">Values</option>
+                <option value="both">Both</option>
+              </select>
+            </label>
+            <div class="systemEquations">
+              @for (body of data.bodies; track body.id) {
+                <h4>{{ body.name }}</h4>
+                @for (equation of body.components; track $index) {
+                  @if (assemblyDisplay() !== 'values') {
+                    <div
+                      class="numberedEquation"
+                      [attr.data-equation-number]="body.startRow + $index + 1"
+                      data-display="coefficients"
+                    >
+                      <strong>({{ body.startRow + $index + 1 }})</strong>
+                      @if (assemblyDisplay() === 'both') {
+                        <span class="equationKind">Coefficients</span>
+                      }
+                      <app-solver-math [equation]="equation.symbolic" />
+                    </div>
+                  }
+                  @if (assemblyDisplay() !== 'coefficients') {
+                    <div
+                      class="numberedEquation"
+                      [attr.data-equation-number]="body.startRow + $index + 1"
+                      data-display="values"
+                    >
+                      <strong>({{ body.startRow + $index + 1 }})</strong>
+                      @if (assemblyDisplay() === 'both') {
+                        <span class="equationKind">Values</span>
+                      }
+                      <app-solver-math [equation]="equation.values" />
+                    </div>
+                  }
+                }
+              }
+            </div>
+          </details>
+          @if (data.forceWork?.system; as system) {
+            <app-solver-matrix
+              [system]="system"
+              [coefficientRows]="data.forceWork!.coefficientMatrix"
+              [knownRows]="data.forceWork!.knownTerms"
+              title="Force Matrix and Solution"
+              [numbered]="true"
+            ></app-solver-matrix>
+          }
+        }
+      } @else if (section() === 0) {
+        <h3 class="chapterTitle">Position Solving · Joint by Joint</h3>
+        @if (solved.usesCoupledPositionSolve) {
+          <p class="notice">
+            This mechanism's unknown positions are solved together through simultaneous constraints.
+          </p>
+        }
+        @for (position of data.positions; track $index; let i = $index) {
+          <article
+            class="positionCard"
+            [class.circleCard]="position.circleMethod"
+            [class.circleLineCard]="position.guide"
+          >
+            <h3>
+              <span class="stepNumber">{{ i + 1 }}</span
+              >Joint {{ position.jointId }} <small>{{ position.method }}</small>
+            </h3>
+            <div class="bodyLayout">
+              <figure>
+                <app-solver-diagram
+                  [diagram]="position.diagram"
+                  [label]="position.method + ' for joint ' + position.jointId"
+                ></app-solver-diagram>
+                <figcaption>
+                  {{
+                    position.refs.length
+                      ? 'Known references: ' + position.knownIds.join(', ')
+                      : position.method
+                  }}
+                </figcaption>
+              </figure>
+              <div class="derivation">
+                @if (position.equations.length) {
+                  <h4>Rigid-Length Constraints</h4>
+                }
+                @for (equation of position.equations; track $index) {
+                  <app-solver-math [equation]="equation.symbolic"></app-solver-math>
+                }
+                @if (position.prescribed) {
+                  <p>The known input angle selects a point on the crank's circle.</p>
+                }
+                @if (position.rigid) {
+                  <p>
+                    Both distances stay constant. The current solver carries this point with the
+                    rigid body, preserving its shape, rather than recomputing a circle intersection.
+                  </p>
+                }
+                @if (position.guide) {
+                  <h4>Guide-Line Constraint</h4>
+                  <p>
+                    Intersect the rigid-length circle with the guide. The parametric line also works
+                    for a vertical guide.
+                  </p>
+                }
+                @for (equation of position.extra; track $index) {
+                  <app-solver-math [equation]="equation"></app-solver-math>
+                }
+                @if (position.circleMethod) {
+                  <p>
+                    Solve the two circle equations together. Each intersection is a possible
+                    assembly position.
+                  </p>
+                }
+                @if (position.candidates.length) {
+                  <details class="numericDetails">
+                    <summary>Substitute Coordinates & Find the Candidates</summary>
+                    @for (equation of position.equations; track $index) {
+                      <app-solver-math [equation]="equation.numbers"></app-solver-math>
+                    }
+                    @for (candidate of position.candidates; track $index) {
+                      <app-solver-math [equation]="candidate"></app-solver-math>
+                    }
+                  </details>
+                  <p class="caption">
+                    Keep the branch consistent with the preceding motion. The solver predicts from
+                    recent positions; sample 0 is the initial drawing.
+                  </p>
+                }
+                <div class="answer">
+                  <app-solver-math [equation]="position.answer"></app-solver-math>
+                </div>
+                @if (position.residual !== undefined) {
+                  <p class="caption">
+                    Maximum constraint error: {{ n(position.residual) }} {{ solved.unit }}
+                  </p>
+                }
+              </div>
+            </div>
+          </article>
+        }
+      } @else {
+        <h3 class="chapterTitle">
+          {{ section() === 1 ? 'Velocity Solving' : 'Acceleration Solving' }}
+        </h3>
+        @if (data.rates?.route === 'loops') {
+          <p>
+            {{ data.loops?.length }} independent loop(s). A replacement must keep the full set
+            independent; reversing a loop changes its equation signs without changing the angular
+            answers.
+          </p>
+          @for (loop of data.loops; track loop.index) {
+            <article class="loopCard">
+              <h3>
+                <span class="stepNumber">{{ loop.index + 1 }}</span
+                >Closed Vector Loop
+              </h3>
+              <app-worksheet-loop-editor
+                [path]="loop.id"
+                [options]="loop.options"
+                [limited]="loop.limited"
+                (applied)="preferences.setLoop(solved, loop.index, $event)"
+                (reversed)="preferences.reverseLoop(solved, loop.index)"
+              ></app-worksheet-loop-editor>
+              <div class="bodyLayout">
+                <figure>
+                  <app-worksheet-loop-visual
+                    [mechanism]="data.mechanismSketch"
+                    [edges]="loop.edges"
+                    [unit]="solved.unit"
+                  />
+                </figure>
+                <div class="derivation">
+                  <h4>Position Closure</h4>
+                  <app-solver-math [equation]="loop.position"></app-solver-math>
+                  <h4>{{ section() === 1 ? 'Differentiate Once' : 'Differentiate Twice' }}</h4>
+                  <app-solver-math
+                    [equation]="section() === 1 ? loop.velocity : loop.acceleration"
+                  ></app-solver-math>
+                  <h4>
+                    {{
+                      section() === 1
+                        ? 'Expand Relative Velocities'
+                        : 'Tangential & Normal Acceleration'
+                    }}
+                  </h4>
+                  <app-solver-math
+                    [equation]="section() === 1 ? loop.velocityExpanded : loop.accelerationExpanded"
+                  ></app-solver-math>
+                </div>
+              </div>
+              <details class="numericDetails">
+                <summary>Substitute the Vectors & Collect Unknowns</summary>
+                @for (row of loop.vectorRows; track $index) {
+                  <app-solver-math [equation]="row.symbol + '=' + row.value"></app-solver-math>
+                }
+                @for (
+                  row of section() === 1 ? loop.velocityRows : loop.accelerationRows;
+                  track $index
+                ) {
+                  <app-solver-math [equation]="row"></app-solver-math>
+                }
+              </details>
+            </article>
+          }
+          <details class="numericDetails">
+            <summary>Relative Motion in a Moving Guide</summary>
+            <app-solver-math
+              [equation]="section() === 1 ? slidingLaw : slidingAcceleration"
+            ></app-solver-math>
+            <p>
+              For a slot edge, relative motion includes guide travel. Acceleration includes the
+              Coriolis term when the guide rotates.
+            </p>
+          </details>
+          @if (section() === 1 && data.kine?.velocity; as system) {
+            <app-solver-matrix
+              [system]="system"
+              title="Velocity matrix and solution"
+            ></app-solver-matrix>
+          }
+          @if (section() === 2 && data.kine?.acceleration; as system) {
+            <app-solver-matrix
+              [system]="system"
+              title="Acceleration matrix and solution"
+            ></app-solver-matrix>
+          }
+        } @else if (data.rates?.route === 'constraints') {
+          <h3>Differentiated Constraints</h3>
+          <app-solver-math [equation]="constraintLaw"></app-solver-math>
+          <p>
+            This mechanism's rates come from differentiating its geometric constraints. q contains
+            the unknown coordinates; J is their Jacobian. A numerical Jacobian derivation is not yet
+            shown here.
+          </p>
+        } @else if (data.rates?.route === 'rigid-body') {
+          <p>
+            This mechanism uses direct rigid-body motion; it does not need a closed-loop rate
+            system.
+          </p>
+        } @else {
+          <p class="notice">The analytic solver has no usable rate solution at this sample.</p>
+        }
+        <h3 class="chapterTitle">
+          Find Each Joint's {{ section() === 1 ? 'Velocity' : 'Acceleration' }}
+        </h3>
+        @for (motion of data.kine?.points; track motion.id) {
+          <article class="motionCard">
+            <h4>{{ motion.title }} · on {{ motion.bodyId }}</h4>
+            <p>Use {{ motion.source }} as the reference point on this rigid body.</p>
+            <app-solver-math
+              [equation]="section() === 1 ? motion.velocity : motion.acceleration"
+            ></app-solver-math>
+            <details class="numericDetails">
+              <summary>Substitute This Sample</summary>
+              <app-solver-math [equation]="motion.radius"></app-solver-math
+              ><app-solver-math
+                [equation]="section() === 1 ? motion.velocityNumbers : motion.accelerationNumbers"
+              ></app-solver-math>
+            </details>
+            <div class="answer">
+              <app-solver-math
+                [equation]="section() === 1 ? motion.velocityValue : motion.accelerationValue"
+              ></app-solver-math
+              ><span>{{ solved.unit }}/{{ section() === 1 ? 's' : 's²' }}</span>
+            </div>
+          </article>
+        }
+        <h3 class="chapterTitle">Centers of Mass</h3>
+        @for (motion of data.kine?.centers; track motion.id) {
+          <article class="motionCard">
+            <h4>{{ motion.title }}</h4>
+            <app-solver-math
+              [equation]="section() === 1 ? motion.velocity : motion.acceleration"
+            ></app-solver-math>
+            <div class="answer">
+              <app-solver-math
+                [equation]="section() === 1 ? motion.velocityValue : motion.accelerationValue"
+              ></app-solver-math
+              ><span>{{ solved.unit }}/{{ section() === 1 ? 's' : 's²' }}</span>
+            </div>
+          </article>
+        }
+      }
+    </div>
+  } @else {
+    <p class="notice">Finish this mechanism's analysis setup to inspect its solution.</p>
+  }
+</section>

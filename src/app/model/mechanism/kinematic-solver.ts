@@ -4,6 +4,7 @@ import { matLeastSquares } from '../utils';
 import { Loop, LoopEdge } from './loop-solver';
 import { hasFixedOrientation, SlideAssembly, slideAssemblies } from '../slide-assembly';
 import { PositionSolver } from './position-solver';
+import { LinearSystemExplanation } from './solver-explanation';
 
 /** A slot edge's geometry in the frame being solved. */
 interface SlotFrame {
@@ -21,6 +22,10 @@ interface SlotFrame {
 }
 
 export class KinematicsSolver {
+  static captureExplanation = false;
+  static explanationRoute: 'loops' | 'constraints' | 'rigid-body' | 'unavailable' = 'unavailable';
+  static velocityExplanation?: LinearSystemExplanation;
+  static accelerationExplanation?: LinearSystemExplanation;
   static jointIndexMap = new Map<string, number>();
   static jointVelMap = new Map<string, [number, number]>();
   static jointAccMap = new Map<string, [number, number]>();
@@ -103,6 +108,9 @@ export class KinematicsSolver {
   }
 
   static determineKinematics(simJoints: Joint[], simLinks: Link[], initialAngularVelocity: number) {
+    this.explanationRoute = 'unavailable';
+    this.velocityExplanation = undefined;
+    this.accelerationExplanation = undefined;
     this.kinematicsInitializer(simJoints, simLinks, initialAngularVelocity);
     if (!this.solveRates(simJoints, simLinks, initialAngularVelocity)) {
       this.forgetRates(simJoints, simLinks);
@@ -193,6 +201,7 @@ export class KinematicsSolver {
     // path below and came away with no velocities at all -- the graphs plotted
     // NaN and said nothing about why.
     if (this.applyConstraintKinematics(simJoints, simLinks, initialAngularVelocity)) {
+      this.explanationRoute = 'constraints';
       return true;
     }
     // A coupled partition has no second opinion to fall back on. Its shape is
@@ -209,10 +218,12 @@ export class KinematicsSolver {
     // A single welded root rotating about its input is a valid one-DOF
     // mechanism even though it has no closed kinematic loop to solve.
     if (this.requiredLoops.length === 0) {
+      this.explanationRoute = 'rigid-body';
       this.determineLooplessKinematics(simJoints, simLinks, initialAngularVelocity);
       return true;
     }
 
+    this.explanationRoute = 'loops';
     this.determineAng(simJoints, simLinks, 'Velocity');
     this.determineAng(simJoints, simLinks, 'Acceleration');
     this.determineLin(simJoints, simLinks);
@@ -756,6 +767,30 @@ export class KinematicsSolver {
       case 'Acceleration':
         X = matLeastSquares(this.A_matrix_AngAcc, this.B_matrix_AngAcc);
         break;
+    }
+    if (this.captureExplanation) {
+      const velocity = analysisType === 'Velocity';
+      const system: LinearSystemExplanation = {
+        A: (velocity ? this.A_matrix_AngVel : this.A_matrix_AngAcc).map((row) => [...row]),
+        b: (velocity ? this.B_matrix_AngVel : this.B_matrix_AngAcc).map((row) => row[0]),
+        x: X.map((row) => row[0]),
+        unknowns: unknownLinks.map((part) => ({
+          label: `${part instanceof RealLink ? (velocity ? 'ω' : 'α') : velocity ? 'v' : 'a'}_${part.id}`,
+          unit:
+            part instanceof RealLink
+              ? velocity
+                ? 'rad/s'
+                : 'rad/s²'
+              : velocity
+                ? 'model/s'
+                : 'model/s²',
+        })),
+        rows: (velocity ? this.A_matrix_AngVel : this.A_matrix_AngAcc).map(
+          (_, i) => `Loop ${Math.floor(i / 2) + 1} ${i % 2 ? 'y' : 'x'}`
+        ),
+      };
+      if (velocity) this.velocityExplanation = system;
+      else this.accelerationExplanation = system;
     }
     // 3rd, store unknown values to respected links
     for (let i = 0; i < X.length; i++) {

@@ -1,5 +1,11 @@
 # PMKS+ tests
 
+`force-axes-and-arms.mjs` verifies the centered bar example, shared rotated force axes,
+matrix balance, stable body geometry, reciprocal assumptions, symbolic cross products,
+moment-arm sketches, label separation, and phone layout. Screenshots and the axis-change
+filmstrip are saved in `artifacts/force-axes-and-arms/`. Set `PMKS_STORYBOOK_URL` to also
+check rotated axes, negative moment-arm components, and crowded labels in the local gallery.
+
 Two layers, organized by what they exercise:
 
 | Layer | Where | Runner | What it covers |
@@ -67,6 +73,29 @@ asset generators and `shot.mjs` are not checks.
 a reason to worry about.
 
 ## Outputs
+
+`solver-explanation.mjs` checks worked analysis equations, free-body diagrams, construction
+steps, multiple machines, scrubbing, and phone layout. It uses installed Chrome with a
+disposable profile and saves evidence in `artifacts/solver-worksheet/`.
+
+`worksheet-conventions.mjs` checks user-selected reaction and angular signs, reversed and
+alternative independent loops, invalid-path refusals, reset, dialog persistence, and phone
+layout. It saves screenshots and a sign-change filmstrip in `artifacts/worksheet-conventions/`.
+
+`worksheet-layout.mjs` checks the right-side analysis drawer, general FBD definitions, per-body
+force/couple controls, reciprocal signs, equation numbers carried into the system matrix,
+unknown column headings, and phone layout. Evidence is in `artifacts/worksheet-layout/`.
+`force-definition-scroll.mjs` checks that expanded force definitions remain scrollable.
+`force-diagram-equations.mjs` checks the FBD teaching sequence, collapsed sections, known values,
+and symbolic and numerical System views.
+`force-projection-grid.mjs` checks the isolated-link grids and System views for a saved mechanism.
+`force-worksheet-usability.mjs` checks gravity, in-motion balances, collapsible content, stable
+link geometry, and phone layout.
+`kinematic-visuals.mjs` checks angular arrows, loop tracing, closure, alternate paths, equations,
+and phone layout.
+Set `PMKS_STORYBOOK_URL` to also inspect the definitions and numbered-matrix gallery states.
+Set `PMKS_STORYBOOK_URL` to a running local gallery to also check the nine new convention
+and loop-editor stories, including the interactive choice and refusal states.
 
 Each suite that saves anything writes it to its own directory under `artifacts/`, which is
 gitignored — for example `artifacts/link-holds/` or `artifacts/posed-edit-audit/matrix.md`. A few

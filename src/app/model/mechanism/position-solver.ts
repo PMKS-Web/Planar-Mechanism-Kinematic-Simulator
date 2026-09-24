@@ -318,6 +318,23 @@ export interface SolverPose {
 }
 
 export class PositionSolver {
+  /** Preserve the actual construction plan before another mechanism overwrites the statics. */
+  static explanationPlan(joints: Joint[]) {
+    return [...this.jointNumOrderSolverMap].flatMap(([order, ids]) =>
+      ids.map((jointId) => {
+        const knownIds = (this.desiredConnectedJointIndicesMap.get(jointId) ?? [])
+          .map((index) => joints[index]?.id)
+          .filter((id): id is string => !!id);
+        return {
+          order,
+          jointId,
+          method: this.desiredAnalysisJointMap.get(ids[0]) ?? 'prescribed',
+          knownIds,
+          radii: knownIds.map((id) => this.jointDistMap.get(`${jointId},${id}`) ?? Number.NaN),
+        };
+      })
+    );
+  }
   static jointMapPositions = new Map<string, Array<number>>();
   /** One step behind jointMapPositions; see concentricSolution. */
   private static priorJointPositions = new Map<string, Array<number>>();

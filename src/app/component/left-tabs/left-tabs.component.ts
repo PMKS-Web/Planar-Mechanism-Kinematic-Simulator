@@ -174,7 +174,7 @@ export class LeftTabsComponent implements AfterViewInit, OnDestroy {
       // amount of it, which is what `CHROME_MOVED` is for. Without it the inset
       // is correct and nothing acts on it: opening the sheet left the linkage
       // where it was and the sheet came up over it.
-      CHROME_MOVED.next();
+      CHROME_MOVED.next({});
     }, SETTLE_MS);
   }
 

@@ -122,3 +122,19 @@
     }
   }
 }
+:host .dropdownChoice {
+  display: grid;
+  gap: var(--card-gap);
+  font: inherit;
+  color: var(--text-secondary);
+  select {
+    width: 100%;
+    min-width: 0;
+    padding: 8px;
+    font: inherit;
+    color: var(--text-primary);
+    background: var(--surface-field);
+    border: 1px solid var(--border-divider);
+    border-radius: var(--border-radius);
+  }
+}

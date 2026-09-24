@@ -304,7 +304,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
     // they take has to reach the canvas. The cluster grows on its own account
     // -- unsyncing gives every machine a row of its own -- and the drawing used
     // to stay where it was while the scrub card came up over it.
-    CHROME_MOVED.next();
+    CHROME_MOVED.next({});
   }
 
   /**

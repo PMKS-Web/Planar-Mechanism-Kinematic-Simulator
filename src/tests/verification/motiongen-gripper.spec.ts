@@ -51,7 +51,7 @@ function motionGenPoses(): Pose[] {
   const lines = readFileSync('src/test-data/motiongen/gripper-curves.csv', 'utf8')
     .trim()
     .split('\n');
-  const header = lines[0].split(',');
+  const header = lines[0].trim().split(',');
   return lines.slice(1).map((line) => {
     const cells = line.split(',').map(Number);
     const pose: Pose = {};

@@ -1091,3 +1091,72 @@ cap with no per-component override, so the choice is one number for everything; 
 catches real bloat. `npm run build` is where you find out, and it fails the build rather than
 warning.
 
+---
+
+### Educational analysis snapshots and Windows preview setup
+
+PMKSConversion's free-body/equation walkthrough lives on `origin/restructureBackend`,
+in the toolbar's `changeTabs()` cases; it is easy to miss when reading only `master`.
+The current adaptation is documented in [solver-explanations.md](solver-explanations.md).
+Capture equation coefficients and their ordered unknowns together, from the same solve.
+The old public force matrix fields are compatibility remnants, not the current assembler.
+
+The worked worksheet renders escaped symbols with KaTeX and loads through `@defer` so its
+renderer stays out of the initial application bundle. Keep the force column/sign metadata
+with each body load: the two sides of a pin share a symbol but have opposite signs.
+Circle-line explanations use a parametric guide instead of a slope, including vertical guides.
+
+Worksheet sign choices are coordinate changes: reverse both the relevant matrix column and
+its solved unknown, and reverse assumed arrows on both bodies of a reaction. The physical
+load vectors do not change. A custom loop is a signed combination of the original loop rows;
+apply that combination to both A and b for velocity and acceleration. Check independence
+using signed body/joint incidences so a path through a tracer point on a rigid body telescopes
+correctly. An internal loop need not visit ground. Keep the production solver's cached
+loops and rates untouched; `WorksheetPreferencesService` shares only the presentation choices.
+
+Pin-force X and Y signs are independent. When they differ, put the component signs inside
+the force vector's column definition and keep the action/reaction sign outside it. Group
+components by physical joint/pair, never by the chosen sign, or one force becomes two vectors.
+
+A worksheet moment reference is a summation point, not necessarily a fixed pivot.
+Translate the displayed moment row with `rowMz += dx * rowFy - dy * rowFx`, and apply the
+same operation to b, known loads, and inertia. Here dx/dy are CoM minus reference in meters:
+model coordinates need **both** the unit conversion and division by MODEL_SCALE. In motion,
+keep `I_CoM α + r_CoM/P × m a_CoM`; replacing this with `I_P α` is generally incorrect.
+Label existing applied-force points without changing their physical coordinates.
+
+Force convention controls live on isolated bodies. Their selected direction is the signed
+load on that body, while the stored preference describes the globally shared unknown.
+Convert a local choice using `load.originalSign`; applying a local sign directly to the
+global preference reverses the wrong arrow when editing the negative side of a reaction.
+Equation numbers are `body.startRow + componentIndex + 1`, matching the assembled matrix.
+
+The How It Works drawer uses right-panel pages 8 (kinematic) and 9 (force). Its scroll area
+must be inside the drawer, and on phones it must clear the extra 34px mode strip and safe
+area above the toolbar. Keep the How It Works button available at the icon-only toolbar fit.
+Escape belongs to an open dialog before its parent drawer. Compact matrix cells render
+KaTeX inline so display-math margins do not misalign A, X, and B rows.
+
+Keep loop-menu ordering stable when a choice changes. Moving the selected path to index 0
+can leave a native select displaying its previous DOM index if Angular sees an unchanged
+bound index. The browser suite checks the selected label as well as the underlying loop.
+
+On Windows, normalize `path.relative()` separators before comparing them with repository
+paths such as `src/styles/_tokens.scss`. Otherwise the stylesheet fence counts the token
+file it was meant to exclude. Prettier also expects LF: CRLF-only checkout changes can be
+normalized without changing Git's stored content.
+
+Copy joint coordinates explicitly into diagram data: `Joint.x` and `Joint.y` are getters,
+so spreading a joint into a plain object does not copy them. The result compiles but
+produces `NaN` SVG coordinates. The browser regression checks console errors as well as
+the numeric construction residuals for this reason.
+
+Position steps can target multiple joints. Their method is registered on the **first**
+joint of the step; looking it up individually mislabels the remaining joints as prescribed.
+A simultaneous position step also does not necessarily mean the *rates* took the fully
+coupled route. Inspect each solver's actual route instead of inferring it from the mechanism name.
+
+On Windows, `npm.ps1` may be blocked by execution policy; `npm.cmd` is usable. However,
+putting a portable Node first in PATH need not change the Node that `npm.cmd` runs:
+it can prefer the executable next to itself. Invoke the compatible portable Node with
+`node_modules/@angular/cli/bin/ng.js` directly when the system Node is too old.
