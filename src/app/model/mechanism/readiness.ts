@@ -7,7 +7,7 @@ import { canDrive, describeActuator, framePieceAt, groundPinsElsewhere } from '.
 import { Mechanism, MechanismFailure } from './mechanism';
 import { MechanismPartition, UnassignedGeometry } from './mechanism-partition';
 import { assignBodies } from './bodies';
-import { diagnoseMobility, MobilityDiagnosis, MobilityFix } from './free-motion';
+import { diagnoseMobility, MobilityDiagnosis, MobilityFix, StuckInput } from './free-motion';
 
 /**
  * A blocker stops the mechanism running at all. A warning means it runs, and
@@ -77,10 +77,14 @@ const nameOf = (joint: Joint): string => (joint as RealJoint).name || joint.id;
 const either = (items: string[]): string =>
   items.length <= 2 ? items.join(' or ') : `${items.slice(0, -1).join(', ')}, or ${items.at(-1)}`;
 
-/** "A", "A and B", "A, B and 2 more" -- the way a sentence lists what it found. */
+/**
+ * "A", "A and B", "A, B, C and D", "A, B, C and 3 more" -- the way a sentence
+ * lists what it found. Never "and 1 more": the one it would stand for is as
+ * short as the phrase.
+ */
 const both = (items: string[], most = 3): string => {
   const shownItems =
-    items.length > most ? [...items.slice(0, most), `${items.length - most} more`] : items;
+    items.length > most + 1 ? [...items.slice(0, most), `${items.length - most} more`] : items;
   return shownItems.length <= 1
     ? (shownItems[0] ?? '')
     : `${shownItems.slice(0, -1).join(', ')} and ${shownItems.at(-1)}`;
@@ -102,14 +106,18 @@ function fixPhrase(fix: MobilityFix, partition: MechanismPartition): string {
 
 /**
  * The fixes, as one sentence that says they were counted: "Grounding joint D, or
- * ungrounding joint A, would leave one degree of freedom."
+ * ungrounding joint A, would each leave one degree of freedom."
  */
-function fixSentence(diagnosis: MobilityDiagnosis, partition: MechanismPartition): string {
-  const phrases = diagnosis.fixes.map((fix) => fixPhrase(fix, partition));
+function fixSentence(
+  fixes: MobilityFix[],
+  partition: MechanismPartition,
+  outcome = 'leave one degree of freedom'
+): string {
+  const phrases = fixes.map((fix) => fixPhrase(fix, partition));
   if (phrases.length === 0) return '';
   const sentence = either(phrases);
   const each = phrases.length > 1 ? ' each' : '';
-  return `${sentence[0].toUpperCase()}${sentence.slice(1)} would${each} leave one degree of freedom.`;
+  return `${sentence[0].toUpperCase()}${sentence.slice(1)} would${each} ${outcome}.`;
 }
 
 /** Where the Go To button should land: the fix first, then the loose part. */
@@ -201,8 +209,9 @@ function unexplainedBlocker(partition: MechanismPartition, mechanism: Mechanism)
 function tooFree(dof: number, partition: MechanismPartition): ReadinessCheck {
   const title = `This mechanism has ${dof} degrees of freedom`;
   const diagnosis = diagnoseMobility(partition);
+  if (diagnosis.stuck) return stuckCheck(diagnosis.stuck, diagnosis, partition, dof);
   const driven = drivenOwnJoint(partition);
-  const fixes = fixSentence(diagnosis, partition);
+  const fixes = fixSentence(diagnosis.fixes, partition);
   const wayOut =
     fixes ||
     wayOutOf(
@@ -227,6 +236,57 @@ function tooFree(dof: number, partition: MechanismPartition): ReadinessCheck {
   };
 }
 
+/**
+ * The input's own part cannot move, whatever the count says (`stuckInput` in
+ * `free-motion.ts`): said instead of "a dead position", whose advice -- drag a
+ * joint off the limit -- no drag can follow, and instead of a count that reads
+ * one only because a link hangs loose somewhere else.
+ */
+function stuckCheck(
+  stuck: StuckInput,
+  diagnosis: MobilityDiagnosis,
+  partition: MechanismPartition,
+  /** The count a reader is shown, where it is the drawing's; undefined where it is not. */
+  dof?: number
+): ReadinessCheck {
+  const driven = drivenOwnJoint(partition);
+  const verb = driven instanceof PrisJoint ? 'slide' : 'turn';
+  const cylinders = cylindersIn(partition.joints);
+  const linkNames = stuck.links.map((link) => visibleBodyName(link, cylinders));
+  const one = linkNames.length === 1;
+  const rigid = one
+    ? `Link ${linkNames[0]} is held fixed by the ground, so it cannot move.`
+    : `Links ${both(linkNames)} form a rigid structure with the ground, so none of them can move.`;
+  // The count a reader can see is the one thing this has to explain: it reads
+  // right, and it is not the input's. Where the count is not what the drawing
+  // measures, no number is said at all.
+  const loose = diagnosis.looseLinks;
+  const their = loose.length === 1 ? 'its' : 'their';
+  const counted =
+    loose.length === 0
+      ? ''
+      : dof !== undefined && Number.isFinite(dof) && dof >= 1
+        ? ` The ${dof === 1 ? 'one degree' : `${dof} degrees`} of freedom it counts ${dof === 1 ? 'is' : 'are'} ${looseSubject(diagnosis, partition)}, moving on ${their} own.`
+        : ` Only ${looseSubject(diagnosis, partition)} can move, on ${their} own.`;
+  const wayOut =
+    fixSentence(stuck.fixes, partition, `let the input move ${one ? 'it' : 'them'}`) ||
+    `Delete one of ${one ? 'its' : 'their'} links or unground one of ${one ? 'its' : 'their'} joints, so the input has something that can move.`;
+  const fix = stuck.fixes[0];
+  const focus: Pick<ReadinessCheck, 'at' | 'action'> = fix
+    ? fix.kind === 'delete-link'
+      ? { at: fix.link, action: 'Go To Link' }
+      : { at: fix.joint, action: 'Go To Joint' }
+    : stuck.links[0]
+      ? { at: stuck.links[0], action: 'Go To Link' }
+      : {};
+  return {
+    state: 'blocker',
+    title: `The input at joint ${driven ? nameOf(driven) : ''} cannot ${verb}`,
+    body: `${rigid}${counted} ${wayOut}`,
+    ...focus,
+  };
+}
+
 /** Advice for the case no single counted edit fixes: a link to ground at a free end. */
 function wayOutOf(diagnosis: MobilityDiagnosis, otherwise: string): string {
   const at = diagnosis.attachAt;
@@ -244,7 +304,7 @@ function wayOutOf(diagnosis: MobilityDiagnosis, otherwise: string): string {
  */
 function overConstrained(dof: number, partition: MechanismPartition): ReadinessCheck {
   const diagnosis = diagnoseMobility(partition);
-  const fixes = fixSentence(diagnosis, partition);
+  const fixes = fixSentence(diagnosis.fixes, partition);
   const welded = partition.ownJoints.some((joint) => joint instanceof RealJoint && joint.isWelded);
   return {
     state: 'blocker',
@@ -337,16 +397,26 @@ function blockerForFailure(
       };
     }
 
-    case 'dead-position':
+    case 'dead-position': {
+      // An input whose part cannot move at all reads to the solver exactly
+      // like one at a limit, and no drag frees it; the geometry can tell the
+      // two apart. (The walk failing to start from an awkward input reads the
+      // same way too, and nothing here can yet tell that one apart.)
+      const diagnosis = diagnoseMobility(partition);
+      if (diagnosis.stuck) {
+        return stuckCheck(diagnosis.stuck, diagnosis, partition, mechanism.dof);
+      }
       return {
         state: 'blocker',
         title: 'This mechanism starts at a dead position',
         body: 'The input joint is at a limit of its travel and cannot turn away from it in either direction. Drag a joint to move the mechanism off the limit.',
       };
+    }
 
     case 'hidden-freedom': {
       const ways = mechanism.hiddenFreedoms ?? 2;
       const diagnosis = diagnoseMobility(partition);
+      if (diagnosis.stuck) return stuckCheck(diagnosis.stuck, diagnosis, partition);
       if (diagnosis.looseLinks.length === 0) {
         return {
           state: 'blocker',
@@ -360,7 +430,7 @@ function blockerForFailure(
         title: 'A part of this mechanism is tied to nothing',
         body:
           `It counts as one degree of freedom, but with the input held still ${looseSubject(diagnosis, partition)} can still move: ${one ? 'it is' : 'they are'} held by nothing but ${one ? 'its' : 'their'} own joints. ` +
-          (fixSentence(diagnosis, partition) ||
+          (fixSentence(diagnosis.fixes, partition) ||
             wayOutOf(diagnosis, 'Attach its free end, ground it, or remove it.')),
         ...focusOf(diagnosis),
       };

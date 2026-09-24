@@ -523,6 +523,25 @@ counts cannot drift apart; the drawings are in the fixture gallery (`MOBILITY_GA
 `mobility-diagnosis-sweep.spec.ts` does it to every library template broken one edit at a time --
 about 900 drawings and 430 offered fixes -- and is where the split above was found.
 
+### "A dead position" was also said of an input that cannot move at all
+
+A four-bar with a bar across it counts zero; a link left hanging off it counts one. The total reads
+one, Gruebler and the geometry agree, and the solver cannot take a step -- so `Mechanism` called it
+a dead position and the drawer said to drag a joint off the limit. No drag frees it. `stuckInput`
+in `free-motion.ts` tells the two apart: take the bodies that do not move in any freedom the drawing
+has, find the group the input's body is in, and count that group's freedoms with nothing else
+attached. Zero is a stuck input; a rocker at the end of its swing is still for an instant too, but
+on its own it turns. The fixes are counted on that group alone (deleting a link that is not the
+input's own, ungrounding, Pin-in-slot), since the freedom that dangles elsewhere is the next
+problem, not this one.
+
+Not every other "dead position" is one either. Moved onto a different joint, several library
+templates' inputs get "dead-position" because the joint-by-joint walk cannot start from there,
+while `PositionSolver.forceCoupledRoute` solves them (Scissor_Lift at A, Hood_Hinge at A,
+Cylinder_Boom at G, among others). Naming a joint to drag was tried and taken back: on the Scotch
+yoke driven from its yoke, a drag that moved it clear of its dead center still did not start. The
+sentence for those stays the old one until the solver falls back to the other route.
+
 ### An input on a bar grounded at both ends belongs to no machine
 
 Set a crank's input, then ground its far end: the bar is folded into the frame, the partition hands

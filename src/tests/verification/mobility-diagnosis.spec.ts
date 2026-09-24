@@ -15,6 +15,8 @@ import {
   inputOnTheFrameFixture,
   lockedSliderCrankFixture,
   overGroundedFourBarFixture,
+  rockerAtItsLimitFixture,
+  stuckInputFixture,
   ungroundedPivotFourBarFixture,
 } from '../../test-utils/verification/mobility-fixtures';
 
@@ -169,6 +171,39 @@ describe('which part is loose, and what would fix it', () => {
     });
   });
 
+  describe('a count that reads one only because a link dangles', () => {
+    it('says the input cannot turn, what does move, and the brace to delete', () => {
+      const { partition, mechanism } = built(stuckInputFixture());
+      // Gruebler and the geometry both say one, and it is HK's.
+      expect(mechanism.dof).toBe(1);
+      expect(mechanism.failure).toBe('dead-position');
+
+      const diagnosis = diagnoseMobility(partition);
+      expect(diagnosis.stuck?.links.map((link) => link.id)).toEqual(['ACD', 'CE', 'DHI', 'BEI']);
+      // Deleting DHI also frees the four-bar, and leaves HK floating.
+      expect(diagnosis.stuck?.fixes.map(describeFix)).toEqual(['delete-link CE']);
+
+      const check = checkFor(stuckInputFixture());
+      expect(check.title).toBe('The input at joint A cannot turn');
+      expect(check.body).toBe(
+        'Links ACD, CE, DHI and BEI form a rigid structure with the ground, so none of them can ' +
+          'move. The one degree of freedom it counts is link HK, moving on its own. Deleting ' +
+          'link CE would let the input move them.'
+      );
+      expect(check.at?.id).toBe('CE');
+      expect(check.action).toBe('Go To Link');
+    });
+
+    it('does not call a rocker that is still for an instant stuck', () => {
+      // At the end of its swing the rocker does not move to first order, so it
+      // is among the still bodies -- and on its own, pinned to the ground, it
+      // turns. That is the difference between a limit and a stuck input.
+      const { partition, mechanism } = built(rockerAtItsLimitFixture());
+      expect(mechanism.isMechanismValid()).toBe(true);
+      expect(diagnoseMobility(partition).stuck).toBeUndefined();
+    });
+  });
+
   it('checks every fix it offers by counting the edited drawing', () => {
     // The fixes are counted inside the diagnosis; this makes each edit for real
     // and asks the solver's own count, so the two can never quietly disagree.
@@ -204,5 +239,16 @@ describe('which part is loose, and what would fix it', () => {
       expect(fixed.dof).toBe(1);
       expect(fixed.isMechanismValid()).toBe(true);
     }
+
+    // Deleting the bar that is not needed frees the input. It does not make
+    // the drawing run -- the link left hanging is the next thing the drawer
+    // names -- and the sentence promised only the first.
+    const unbraced = stuckInputFixture();
+    unbraced.links = unbraced.links.filter((link) => link.joints !== 'CE');
+    const { partition, mechanism } = built(unbraced);
+    expect(mechanism.dof).toBe(2);
+    const next = diagnoseMobility(partition);
+    expect(next.stuck).toBeUndefined();
+    expect(next.looseLinks.map((link) => link.id)).toEqual(['HK']);
   });
 });

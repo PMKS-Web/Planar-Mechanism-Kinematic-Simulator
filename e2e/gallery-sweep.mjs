@@ -47,6 +47,7 @@ const EXPECTED_INVALID = new Set([
   'Braced four-bar',
   'Four-bar with a grounded coupler pin',
   'Crank grounded at both ends',
+  'Braced four-bar with a dangling link',
   'Slider-crank with a Prismatic slider',
 ]);
 

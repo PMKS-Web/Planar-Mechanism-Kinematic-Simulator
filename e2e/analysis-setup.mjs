@@ -294,6 +294,39 @@ record(
   text
 );
 
+// --- a count that reads one only because a link dangles ---------------------
+// The four-bar with a bar across it counts zero and the link hanging off it
+// counts one, so the total reads right and the solver cannot take a step. It
+// used to be called a dead position, with advice to drag a joint off a limit;
+// no drag frees it. The drawer names the rigid links, says what the one
+// counted freedom really is, and offers the one deletion that frees the input.
+await open(galleryQuery('Braced four-bar with a dangling link'));
+await tab('Kinematic').click();
+await page.waitForTimeout(600);
+text = await drawerText();
+record(
+  'an input that cannot move is not called a dead position',
+  text.includes('The input at joint A cannot turn') &&
+    text.includes('The one degree of freedom it counts is link HK') &&
+    text.includes('Deleting link CE would let the input move them.') &&
+    !text.includes('dead position'),
+  text
+);
+await page.getByRole('button', { name: 'Go To Link CE', exact: true }).click();
+await page.waitForTimeout(600);
+await page.keyboard.press('Delete');
+await page.waitForTimeout(700);
+await tab('Kinematic').click();
+await page.waitForTimeout(600);
+text = await drawerText();
+record(
+  'and deleting that link frees it, leaving the dangling link to fix next',
+  !text.includes('cannot turn') &&
+    text.includes('link HK can still move') &&
+    text.includes('Attach a link from joint K'),
+  text
+);
+
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
 
 await browser.close();
