@@ -13,6 +13,7 @@
 const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
+import { readFileSync } from 'node:fs';
 import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
@@ -193,6 +194,59 @@ text = await drawerText();
 record(
   'geometry in no mechanism gets its own section',
   text.includes('Not in any mechanism'),
+  text
+);
+
+// --- the wrong number of degrees of freedom: which part, and what fixes it ---
+// The count alone ("This mechanism has 3 degrees of freedom") is where the app
+// used to stop. The drawer names the parts that move with the input held and
+// the one edit it has counted, and following that advice has to make the
+// mechanism run. The drawings are the fixture gallery's, published for exactly
+// this; see `mobility-diagnosis.spec.ts`.
+const galleryQuery = (name) => {
+  const row = readFileSync('docs/fixture-urls.md', 'utf8')
+    .split('\n')
+    .find((line) => line.startsWith(`| [${name}](`));
+  return row?.match(/\]\(https:\/\/[^)?]+\?([^)]*)\)/)?.[1];
+};
+
+await open(galleryQuery('Four-bar with an ungrounded pivot'));
+await tab('Kinematic').click();
+await page.waitForTimeout(600);
+text = await drawerText();
+record(
+  'too many freedoms names the loose links and the counted fix',
+  text.includes('links BC and CD can still move') &&
+    text.includes('Grounding joint D would leave one degree of freedom.'),
+  text
+);
+const toD = page.getByRole('button', { name: 'Go To Joint D', exact: true });
+record('and offers to go to the joint the fix is about', (await toD.count()) === 1);
+await toD.click();
+await page.waitForTimeout(600);
+await page
+  .locator('app-edit-panel toggle-block', { hasText: 'Grounded' })
+  .getByRole('switch')
+  .click();
+await page.waitForTimeout(600);
+const afterFix = await page.evaluate(() => {
+  const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+  return { dof: srv.mechanisms.map((m) => m.dof), ready: srv.readinessOfEachMechanism()[0]?.ready };
+});
+record(
+  'and grounding that joint in the Edit panel makes it run',
+  afterFix.dof[0] === 1 && afterFix.ready === true,
+  afterFix
+);
+
+await open(galleryQuery('Braced four-bar'));
+await tab('Kinematic').click();
+await page.waitForTimeout(600);
+text = await drawerText();
+record(
+  'too few freedoms finds the brace, and goes to the link',
+  text.includes('Deleting link BD would leave one degree of freedom.') &&
+    (await page.getByRole('button', { name: 'Go To Link BD', exact: true }).count()) === 1,
   text
 );
 

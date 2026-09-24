@@ -24,7 +24,17 @@ export interface BodyAssignment {
  * by another would report a degree of freedom for a machine that is not the one
  * on the screen. So both read this, and there is one definition to be wrong.
  */
-export function assignBodies(joints: Joint[], links: Link[]): BodyAssignment {
+export function assignBodies(
+  joints: Joint[],
+  links: Link[],
+  /**
+   * Whether a joint counts as grounded. The drawing's own answer unless a
+   * caller is asking about an edit before making it -- `free-motion.ts` asks
+   * what ungrounding one joint would do, and a bar pinned down at both ends
+   * stops being frame the moment one of them is not.
+   */
+  groundedAt: (joint: RealJoint) => boolean = (joint) => joint.ground
+): BodyAssignment {
   /**
    * Whether this joint holds its point still.
    *
@@ -37,7 +47,7 @@ export function assignBodies(joints: Joint[], links: Link[]): BodyAssignment {
    * line; this is the same line, in the one place that decides what a body is.
    */
   const pinnedDown = (joint: Joint): boolean =>
-    joint instanceof RealJoint && joint.ground && !(joint instanceof PrisJoint);
+    joint instanceof RealJoint && groundedAt(joint) && !(joint instanceof PrisJoint);
 
   // A Slide's riders are held rigid by something no joint count can see, so the
   // caller names them. Links pinned to ground at every joint are merged for the
@@ -72,7 +82,7 @@ export function assignBodies(joints: Joint[], links: Link[]): BodyAssignment {
    */
   const bodiesAt = (joint: RealJoint): Set<string> => {
     const bodies = new Set(joint.links.map(bodyOf));
-    if (joint.ground) {
+    if (groundedAt(joint)) {
       bodies.add(WORLD);
     }
     if (joint instanceof PrisJoint && !joint.ground) {

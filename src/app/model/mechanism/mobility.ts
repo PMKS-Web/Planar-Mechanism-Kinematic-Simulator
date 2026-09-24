@@ -48,8 +48,9 @@ export function mobilityFromGeometry(
  *
  * `mobilityFromGeometry` asks one question of this; `free-motion.ts` asks
  * several -- which parts still move with the input held, and whether grounding
- * or ungrounding one joint would leave exactly one freedom -- by adding or
- * leaving out constraints and counting again, never by touching a joint.
+ * or ungrounding one joint would leave exactly one freedom -- by adding a hold,
+ * or building the system again for the drawing an edit would leave, and counting
+ * again, never by touching a joint.
  */
 export interface ConstraintSystem {
   /** Three coordinates for every moving body. */
@@ -158,11 +159,6 @@ export function holdSlide(
   angle: number
 ): Constraint {
   return { kind: 'along', at, rider, carrier, angle };
-}
-
-/** Pins a body's copy of a point to the world: that joint, grounded. */
-export function pinToWorld(body: Body, at: { x: number; y: number }): Constraint {
-  return { kind: 'pin', at, a: body, b: { at: undefined, pivot: { x: 0, y: 0 } } };
 }
 
 /**
