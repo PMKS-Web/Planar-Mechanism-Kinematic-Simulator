@@ -221,7 +221,7 @@
     min-height: 0;
     max-height: 100%;
     height: auto;
-    overflow-y: scroll;
+    overflow-y: auto;
     scrollbar-gutter: stable;
     background: var(--surface);
     border-radius: var(--card-radius);

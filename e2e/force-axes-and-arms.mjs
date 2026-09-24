@@ -58,7 +58,10 @@ try {
   await page.getByRole('button', { name: 'How it works', exact: true }).click();
   const d = page.locator('app-right-panel app-solver-explanation').first();
   await d.waitFor();
-  assert.equal(await d.getByRole('button', { name: 'Open Full Worksheet', exact: true }).count(), 0);
+  assert.equal(
+    await d.getByRole('button', { name: 'Open Full Worksheet', exact: true }).count(),
+    0
+  );
   await d.getByRole('button', { name: 'Definitions', exact: true }).click();
   const defs = d.locator('app-force-definitions');
   const example = await defs
@@ -210,7 +213,10 @@ try {
   await d.getByRole('button', { name: 'Free Bodies', exact: true }).click();
   const forceTabs = d.locator('.sectionTabs');
   const sampleControls = d.locator('.forceSampleControls');
-  const [tabsBox, sampleBox] = await Promise.all([forceTabs.boundingBox(), sampleControls.boundingBox()]);
+  const [tabsBox, sampleBox] = await Promise.all([
+    forceTabs.boundingBox(),
+    sampleControls.boundingBox(),
+  ]);
   assert(tabsBox && sampleBox && sampleBox.y >= tabsBox.y + tabsBox.height);
   assert.equal(await d.locator('.overviewDetails').evaluate((detail) => detail.open), false);
   assert.equal(await d.getByRole('button', { name: 'In-motion', exact: true }).isVisible(), false);

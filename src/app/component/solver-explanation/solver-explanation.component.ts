@@ -1,4 +1,4 @@
-import { Component, inject, input, linkedSignal, signal } from '@angular/core';
+import { Component, ElementRef, inject, input, linkedSignal, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -58,6 +58,7 @@ export class SolverExplanationComponent {
   protected readonly settings = inject(SettingsService);
   protected readonly forceMode = toSignal(this.settings.forceAnalysisMode, { requireSync: true });
   private readonly explain = inject(SolverExplanationService);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   protected readonly preferences = inject(WorksheetPreferencesService);
   private readonly dialogs = inject(MatDialog);
   private readonly dialog = inject(MatDialogRef<SolverExplanationComponent>, { optional: true });
@@ -72,6 +73,7 @@ export class SolverExplanationComponent {
   protected readonly chosenMachine = signal(this.dialogData?.machine ?? '');
   protected readonly forceOptions = ['Static', 'In-motion'];
   protected readonly forceSections = ['Definitions', 'Free Bodies', 'System'];
+  protected readonly assemblyDisplay = signal<'coefficients' | 'values' | 'both'>('coefficients');
   protected readonly kinematicSections = ['Position', 'Velocity', 'Acceleration'];
   protected n = numberText;
   protected readonly scale = MODEL_SCALE;
@@ -90,6 +92,15 @@ export class SolverExplanationComponent {
   };
   protected isForce() {
     return this.dialogData?.force ?? this.force();
+  }
+  protected selectForceSection(section: number) {
+    if (section === this.section()) return;
+    this.host.nativeElement
+      .querySelectorAll<HTMLDetailsElement>('details[open]')
+      .forEach((details) => {
+        details.open = false;
+      });
+    this.section.set(section);
   }
   protected get index() {
     const i = this.mechanism.partitions.findIndex((p) => p.id === this.chosenMachine());
@@ -367,7 +378,6 @@ export class SolverExplanationComponent {
     });
   };
   protected readonly closeWorksheet = () => this.dialog?.close();
-  protected readonly showForceSystem = () => this.section.set(2);
   protected readonly resetConventions = () => this.preferences.reset(this.solved);
   protected seek(value: string | number) {
     const sample = Number(value);

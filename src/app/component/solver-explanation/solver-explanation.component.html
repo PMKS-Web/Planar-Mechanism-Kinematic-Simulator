@@ -19,7 +19,7 @@
         aria-label="Worksheet section"
         [options]="forceSections"
         [selected]="section()"
-        (selectedChange)="section.set($event)"
+        (selectedChange)="selectForceSection($event)"
       ></segmented-block>
     </div>
     @if (section() !== 0) {
@@ -317,7 +317,7 @@
             actual force points opposite its assumed arrow. Arrow lengths are schematic.
           </p>
           @for (body of data.bodies; track body.id; let i = $index) {
-            <details class="bodyCard" [attr.data-body]="body.id" [open]="i === 0">
+            <details class="bodyCard" [attr.data-body]="body.id">
               <summary>
                 <span class="stepNumber">{{ i + 1 }}</span
                 >{{ body.name }}
@@ -466,7 +466,8 @@
                       [name]="body.name"
                       [balanceAxis]="0"
                     />
-                    <app-solver-math [equation]="body.forceComponentEquations[0]" />
+                    <app-solver-math [equation]="body.forceComponentEquations[0].vector" />
+                    <app-solver-math [equation]="body.forceComponentEquations[0].scalar" />
                   </details>
                   <details class="numericDetails">
                     <summary>Sum of Forces in y</summary>
@@ -475,7 +476,8 @@
                       [name]="body.name"
                       [balanceAxis]="1"
                     />
-                    <app-solver-math [equation]="body.forceComponentEquations[1]" />
+                    <app-solver-math [equation]="body.forceComponentEquations[1].vector" />
+                    <app-solver-math [equation]="body.forceComponentEquations[1].scalar" />
                   </details>
                 </details>
                 @if (body.rowCount === 3) {
@@ -507,42 +509,103 @@
               as supports and have no independent equilibrium rows.
             </p>
           }
-          <button-block [click]="resetConventions">Reset Worksheet Conventions</button-block>
-          <div class="systemNext">
-            <h4>3 · Assemble All Bodies into One System</h4>
-            <p>
-              Each equation above becomes one matrix row. A shared reaction uses the same unknown on
-              both bodies, with opposite action–reaction signs.
-            </p>
-            <button-block [click]="showForceSystem">Assemble & Solve</button-block>
-          </div>
         } @else {
-          <h3 class="chapterTitle">Assemble the System & Solve</h3>
-          <p>
-            Each rigid body contributes three rows: x force, y force, and z moment about its chosen
-            reference. Each ideal slider block contributes two. Collect the unknown reactions and
-            input effort into x and move known terms to b.
-          </p>
-          <div class="systemEquations">
+          <details class="numericDetails systemKnownValues">
+            <summary>Known Values in This System</summary>
+            <p>
+              These are the specified loads and body properties, plus the moment arms and motion
+              values used to build the equations below. Joint reactions and input effort remain
+              unknown until the system is solved. Values use SI units.
+            </p>
             @for (body of data.bodies; track body.id) {
-              <h4>{{ body.name }}</h4>
-              @for (equation of body.components; track $index) {
+              <details class="numericDetails knownValuesBody" [attr.data-known-body]="body.id">
+                <summary>{{ body.name }}</summary>
                 <div
-                  class="numberedEquation"
-                  [attr.data-equation-number]="body.startRow + $index + 1"
+                  class="knownValuesScroll"
+                  role="region"
+                  [attr.aria-label]="'Known values for ' + body.name"
+                  tabindex="0"
                 >
-                  <strong>({{ body.startRow + $index + 1 }})</strong>
-                  <app-solver-math [equation]="equation.symbolic" />
+                  <table>
+                    <thead>
+                      <tr>
+                        <th scope="col">Variable</th>
+                        <th scope="col">Value</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (known of body.knownValues; track $index) {
+                        <tr>
+                          <td><app-solver-math [equation]="known.symbol" [inline]="true" /></td>
+                          <td><app-solver-math [equation]="known.value" [inline]="true" /></td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
                 </div>
-              }
+              </details>
             }
-          </div>
+          </details>
+          <details class="numericDetails systemAssembly">
+            <summary>Assemble the System &amp; Solve</summary>
+            <p>
+              Each rigid body contributes three rows: x force, y force, and z moment about its
+              chosen reference. Each ideal slider block contributes two. Collect the unknown
+              reactions and input effort into X and move known terms to B.
+            </p>
+            <label class="systemDisplayChoice">
+              Show equations
+              <select
+                aria-label="System equation display"
+                [value]="assemblyDisplay()"
+                (change)="assemblyDisplay.set($any($event.target).value)"
+              >
+                <option value="coefficients">Coefficients</option>
+                <option value="values">Values</option>
+                <option value="both">Both</option>
+              </select>
+            </label>
+            <div class="systemEquations">
+              @for (body of data.bodies; track body.id) {
+                <h4>{{ body.name }}</h4>
+                @for (equation of body.components; track $index) {
+                  @if (assemblyDisplay() !== 'values') {
+                    <div
+                      class="numberedEquation"
+                      [attr.data-equation-number]="body.startRow + $index + 1"
+                      data-display="coefficients"
+                    >
+                      <strong>({{ body.startRow + $index + 1 }})</strong>
+                      @if (assemblyDisplay() === 'both') {
+                        <span class="equationKind">Coefficients</span>
+                      }
+                      <app-solver-math [equation]="equation.symbolic" />
+                    </div>
+                  }
+                  @if (assemblyDisplay() !== 'coefficients') {
+                    <div
+                      class="numberedEquation"
+                      [attr.data-equation-number]="body.startRow + $index + 1"
+                      data-display="values"
+                    >
+                      <strong>({{ body.startRow + $index + 1 }})</strong>
+                      @if (assemblyDisplay() === 'both') {
+                        <span class="equationKind">Values</span>
+                      }
+                      <app-solver-math [equation]="equation.values" />
+                    </div>
+                  }
+                }
+              }
+            </div>
+          </details>
           @if (data.forceWork?.system; as system) {
             <app-solver-matrix
               [system]="system"
+              [coefficientRows]="data.forceWork!.coefficientMatrix"
+              [knownRows]="data.forceWork!.knownTerms"
               title="Force Matrix and Solution"
               [numbered]="true"
-              [expanded]="true"
             ></app-solver-matrix>
           }
         }

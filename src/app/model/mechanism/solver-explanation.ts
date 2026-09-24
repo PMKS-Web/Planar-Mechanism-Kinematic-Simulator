@@ -34,6 +34,11 @@ export interface BodyExplanation {
   /** External applied loads and inertia terms, in the original solver scale. */
   known: number[];
   inertia: number[];
+  /** Physical inputs in SI units for the worksheet's known-values table. */
+  massKg?: number;
+  inertiaKgM2?: number;
+  acceleration?: [number, number];
+  angularAcceleration?: number;
 }
 
 export interface ForceExplanation {

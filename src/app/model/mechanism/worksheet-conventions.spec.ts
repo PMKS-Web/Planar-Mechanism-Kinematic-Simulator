@@ -69,7 +69,7 @@ describe('Worksheet equation conventions', () => {
           ...body.forceDefinitions,
           ...body.momentDefinitions,
           ...body.positionDefinitions,
-          ...body.forceComponentEquations,
+          ...body.forceComponentEquations.flatMap((row) => [row.vector, row.scalar]),
           body.forceVector,
           body.momentVector,
           ...body.components.flatMap((c) => [c.symbolic, c.collected, c.substitution]),

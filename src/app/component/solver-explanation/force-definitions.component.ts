@@ -240,7 +240,8 @@ type DirectionKey = 'Ax' | 'Ay' | 'Bx' | 'By' | 'MA';
             [diagram]="forceXDiagram()"
             label="Free-body diagram highlighting x-force components"
           />
-          <app-solver-math [equation]="exampleFx()" />
+          <app-solver-math [equation]="exampleFx().vector" />
+          <app-solver-math [equation]="exampleFx().scalar" />
         </details>
         <details class="equationDetail">
           <summary>Sum of Forces in y</summary>
@@ -252,7 +253,8 @@ type DirectionKey = 'Ax' | 'Ay' | 'Bx' | 'By' | 'MA';
             [diagram]="forceYDiagram()"
             label="Free-body diagram highlighting y-force components"
           />
-          <app-solver-math [equation]="exampleFy()" />
+          <app-solver-math [equation]="exampleFy().vector" />
+          <app-solver-math [equation]="exampleFy().scalar" />
         </details>
       </details>
       <details class="subsection">
@@ -306,6 +308,7 @@ type DirectionKey = 'Ax' | 'Ay' | 'Bx' | 'By' | 'MA';
       app-solver-diagram {
         max-width: 520px;
         margin: auto;
+        display: block;
       }
       .caption {
         font-size: 11px;
@@ -480,7 +483,7 @@ export class ForceDefinitionsComponent {
       meaning: "Newton's second-law force from mass and center-of-mass acceleration.",
     },
   ];
-  protected readonly forceVectorComponents = String.raw`\sum\vec F=\left\langle\sum F_x,\ \sum F_y,\ \color{red}{\cancel{\sum F_z}}\right\rangle`;
+  protected readonly forceVectorComponents = String.raw`\sum\vec F=\begin{bmatrix}\sum F_x\\\sum F_y\\\color{red}{\cancel{\sum F_z}}\end{bmatrix}`;
   protected readonly forceComponents = String.raw`\begin{aligned}\sum F_x&=m a_{\mathrm{CoM},x}\\\sum F_y&=m a_{\mathrm{CoM},y}\\\color{red}{\cancel{\sum F_z}}&=\color{red}{\cancel{m a_{\mathrm{CoM},z}}}=0\quad\text{(planar)}\end{aligned}`;
   protected readonly momentBalance = String.raw`\sum\vec M_{\mathrm{CoM}}=I_{\mathrm{CoM}}\vec\alpha\qquad\xrightarrow{\ \mathrm{statics}:\ \vec\alpha=\vec0\ }\qquad\sum\vec M_{\mathrm{CoM}}=\vec0`;
   protected readonly momentLoadGroups = String.raw`\underbrace{\sum\vec M_{\mathrm{joint}}+\sum\vec M_{\mathrm{external}}+\sum\vec M_{\mathrm{weight}}+\sum\vec M_{\mathrm{motor}}}_{\text{LHS: all moments on the FBD}}=\underbrace{I_{\mathrm{CoM}}\vec\alpha}_{\text{RHS: motion}}\quad\text{or}\quad\underbrace{\vec0}_{\text{RHS: static}}`;
@@ -506,24 +509,24 @@ export class ForceDefinitionsComponent {
       meaning: 'Rotational inertia for motion; zero for statics.',
     },
   ];
-  protected readonly genericVectors = String.raw`\vec r_{P/O}=\langle r_{P/O,x},r_{P/O,y},0\rangle,\qquad\vec F=\langle F_x,F_y,0\rangle`;
+  protected readonly genericVectors = String.raw`\vec r_{P/O}=\begin{bmatrix}r_{P/O,x}\\r_{P/O,y}\\0\end{bmatrix},\qquad\vec F=\begin{bmatrix}F_x\\F_y\\0\end{bmatrix}`;
   protected readonly genericMomentDeterminant = String.raw`\vec M_O=\vec r_{P/O}\times\vec F=\begin{vmatrix}\hat i&\hat j&\hat k\\r_{P/O,x}&r_{P/O,y}&0\\F_x&F_y&0\end{vmatrix}`;
-  protected readonly genericMomentExpansion = String.raw`\begin{aligned}\vec M_O={}&(r_{P/O,y}F_z-r_{P/O,z}F_y)\hat i\\&+(r_{P/O,z}F_x-r_{P/O,x}F_z)\hat j\\&+(r_{P/O,x}F_y-r_{P/O,y}F_x)\hat k\end{aligned}`;
-  protected readonly genericPlanarMoment = String.raw`\begin{aligned}\vec M_O={}&\textcolor{red}{\cancel{(r_{P/O,y}\underbrace{F_z}_{0}-\underbrace{r_{P/O,z}}_{0}F_y)\hat i}}\\&+\textcolor{red}{\cancel{(\underbrace{r_{P/O,z}}_{0}F_x-r_{P/O,x}\underbrace{F_z}_{0})\hat j}}\\&+(r_{P/O,x}F_y-r_{P/O,y}F_x)\hat k\end{aligned}`;
+  protected readonly genericMomentExpansion = String.raw`\begin{aligned}\vec M_O={}&(r_{P/O,y}F_z-r_{P/O,z}F_y)\hat i\\&-(r_{P/O,x}F_z-r_{P/O,z}F_x)\hat j\\&+(r_{P/O,x}F_y-r_{P/O,y}F_x)\hat k\end{aligned}`;
+  protected readonly genericPlanarMoment = String.raw`\begin{aligned}\vec M_O={}&\textcolor{red}{\cancel{(r_{P/O,y}\underbrace{F_z}_{0}-\underbrace{r_{P/O,z}}_{0}F_y)\hat i}}\\&-\textcolor{red}{\cancel{(r_{P/O,x}\underbrace{F_z}_{0}-\underbrace{r_{P/O,z}}_{0}F_x)\hat j}}\\&+(r_{P/O,x}F_y-r_{P/O,y}F_x)\hat k\end{aligned}`;
   protected readonly genericMz = String.raw`M_z=r_{P/O,x}F_y-r_{P/O,y}F_x`;
   protected readonly exampleForceDefinitions = computed(() => [
-    String.raw`\vec F_A=\left\langle ${this.componentTerm(this.direction('Ax'), 'A_x')},\ ${this.componentTerm(this.direction('Ay'), 'A_y')},\ 0\right\rangle`,
-    String.raw`\vec F_B=\left\langle ${this.componentTerm(this.direction('Bx'), 'B_x')},\ ${this.componentTerm(this.direction('By'), 'B_y')},\ 0\right\rangle`,
-    String.raw`\vec F_1=\left\langle F_{1x},\ F_{1y},\ 0\right\rangle`,
-    String.raw`\vec W_{AB}=\left\langle -W_{AB}\sin(${this.axisAngle()}^{\circ}),\ -W_{AB}\cos(${this.axisAngle()}^{\circ}),\ 0\right\rangle`,
+    String.raw`\vec F_A^{(AB)}=\begin{bmatrix}${this.componentTerm(this.direction('Ax'), 'A_x')}\\${this.componentTerm(this.direction('Ay'), 'A_y')}\\0\end{bmatrix}`,
+    String.raw`\vec F_B^{(AB)}=\begin{bmatrix}${this.componentTerm(this.direction('Bx'), 'B_x')}\\${this.componentTerm(this.direction('By'), 'B_y')}\\0\end{bmatrix}`,
+    String.raw`\vec F_1^{(AB)}=\begin{bmatrix}F_{1x}\\F_{1y}\\0\end{bmatrix}`,
+    String.raw`\vec W_{AB}=\begin{bmatrix}-W_{AB}\sin(${this.axisAngle()}^{\circ})\\-W_{AB}\cos(${this.axisAngle()}^{\circ})\\0\end{bmatrix}`,
   ]);
   protected readonly exampleMomentDefinition = computed(
     () =>
-      String.raw`\vec M_A=\left\langle 0,\ 0,\ ${this.componentTerm(this.direction('MA'), 'M_A')}\right\rangle`
+      String.raw`\vec M_A=\begin{bmatrix}0\\0\\${this.componentTerm(this.direction('MA'), 'M_{A,z}')}\end{bmatrix}`
   );
   protected readonly exampleForceSum = computed(
     () =>
-      String.raw`\sum\vec F=\vec F_A+\vec F_B+\vec F_1+\vec W_{AB}=m_{AB}\vec a_{\mathrm{CoM}}\quad\text{(motion)}\qquad\text{or}\qquad\vec0\quad\text{(statics)}`
+      String.raw`\sum\vec F=\vec F_A^{(AB)}+\vec F_B^{(AB)}+\vec F_1^{(AB)}+\vec W_{AB}=m_{AB}\vec a_{\mathrm{CoM}}\quad\text{(motion)}\qquad\text{or}\qquad\vec0\quad\text{(statics)}`
   );
   protected readonly examplePositionDefinitions = computed(() => {
     const reference = this.referenceName();
@@ -531,37 +534,37 @@ export class ForceDefinitionsComponent {
       const pointName = point === 'CoM' ? '\\mathrm{CoM}' : point;
       const components =
         point === this.reference()
-          ? '0,\\ 0,\\ 0'
-          : `r_{${pointName}/${reference},x},\\ r_{${pointName}/${reference},y},\\ 0`;
-      return String.raw`\vec r_{${pointName}/${reference}}=\left\langle ${components}\right\rangle`;
+          ? String.raw`0\\0\\0`
+          : String.raw`r_{${pointName}/${reference},x}\\r_{${pointName}/${reference},y}\\0`;
+      return String.raw`\vec r_{${pointName}/${reference}}=\begin{bmatrix}${components}\end{bmatrix}`;
     });
   });
   protected readonly momentSummaryEquation = computed(
     () =>
-      String.raw`\sum M_{${this.referenceName()},z}=\left[\vec r_{A/${this.referenceName()}}\times\vec F_A\right]_z+\left[\vec r_{B/${this.referenceName()}}\times\vec F_B\right]_z+\left[\vec r_{P/${this.referenceName()}}\times\vec F_1\right]_z+\left[\vec r_{\mathrm{CoM}/${this.referenceName()}}\times\vec W_{AB}\right]_z+M_{A,z}=0`
+      String.raw`\sum M_{${this.referenceName()},z}=\left[\vec r_{A/${this.referenceName()}}\times\vec F_A^{(AB)}\right]_z+\left[\vec r_{B/${this.referenceName()}}\times\vec F_B^{(AB)}\right]_z+\left[\vec r_{P/${this.referenceName()}}\times\vec F_1^{(AB)}\right]_z+\left[\vec r_{\mathrm{CoM}/${this.referenceName()}}\times\vec W_{AB}\right]_z+M_{A,z}=0`
   );
   protected readonly expandedMomentTerms = computed(() => {
     const zeroTerm: Record<ReferenceId, string> = {
-      A: String.raw`\textcolor{red}{\cancel{\left[\vec r_{A/A}\times\vec F_A\right]_z}}`,
+      A: String.raw`\textcolor{red}{\cancel{\left[\vec r_{A/A}\times\vec F_A^{(AB)}\right]_z}}`,
       CoM: String.raw`\textcolor{red}{\cancel{\left[\vec r_{\mathrm{CoM}/\mathrm{CoM}}\times\vec W_{AB}\right]_z}}`,
-      B: String.raw`\textcolor{red}{\cancel{\left[\vec r_{B/B}\times\vec F_B\right]_z}}`,
+      B: String.raw`\textcolor{red}{\cancel{\left[\vec r_{B/B}\times\vec F_B^{(AB)}\right]_z}}`,
     };
     const remaining: Record<ReferenceId, string> = {
-      A: String.raw`\left[\vec r_{B/A}\times\vec F_B\right]_z+\left[\vec r_{P/A}\times\vec F_1\right]_z+\left[\vec r_{\mathrm{CoM}/A}\times\vec W_{AB}\right]_z+M_{A,z}`,
-      CoM: String.raw`\left[\vec r_{A/\mathrm{CoM}}\times\vec F_A\right]_z+\left[\vec r_{B/\mathrm{CoM}}\times\vec F_B\right]_z+\left[\vec r_{P/\mathrm{CoM}}\times\vec F_1\right]_z+M_{A,z}`,
-      B: String.raw`\left[\vec r_{A/B}\times\vec F_A\right]_z+\left[\vec r_{P/B}\times\vec F_1\right]_z+\left[\vec r_{\mathrm{CoM}/B}\times\vec W_{AB}\right]_z+M_{A,z}`,
+      A: String.raw`\left[\vec r_{B/A}\times\vec F_B^{(AB)}\right]_z+\left[\vec r_{P/A}\times\vec F_1^{(AB)}\right]_z+\left[\vec r_{\mathrm{CoM}/A}\times\vec W_{AB}\right]_z+M_{A,z}`,
+      CoM: String.raw`\left[\vec r_{A/\mathrm{CoM}}\times\vec F_A^{(AB)}\right]_z+\left[\vec r_{B/\mathrm{CoM}}\times\vec F_B^{(AB)}\right]_z+\left[\vec r_{P/\mathrm{CoM}}\times\vec F_1^{(AB)}\right]_z+M_{A,z}`,
+      B: String.raw`\left[\vec r_{A/B}\times\vec F_A^{(AB)}\right]_z+\left[\vec r_{P/B}\times\vec F_1^{(AB)}\right]_z+\left[\vec r_{\mathrm{CoM}/B}\times\vec W_{AB}\right]_z+M_{A,z}`,
     };
     return String.raw`\sum M_{${this.referenceName()},z}=${zeroTerm[this.reference()]}+${remaining[this.reference()]}=0`;
   });
-  protected readonly generalPositionVector = String.raw`\vec r_{Q/O}=\vec p_Q-\vec p_O=\langle x_Q-x_O,\ y_Q-y_O,\ 0\rangle`;
-  protected readonly exampleFx = computed(
-    () =>
-      String.raw`\sum F_x=\left(\vec F_A\right)_x+\left(\vec F_B\right)_x+\left(\vec F_1\right)_x+\left(\vec W_{AB}\right)_x=${this.leadingTerm(this.direction('Ax'), 'A_x')}${this.signedTerm(this.direction('Bx'), 'B_x')}+F_{1x}${this.gravityTerm('x')}=m_{AB}a_{\mathrm{CoM},x}\ \text{(motion)}\quad\text{or}\quad0\ \text{(statics)}`
-  );
-  protected readonly exampleFy = computed(
-    () =>
-      String.raw`\sum F_y=\left(\vec F_A\right)_y+\left(\vec F_B\right)_y+\left(\vec F_1\right)_y+\left(\vec W_{AB}\right)_y=${this.leadingTerm(this.direction('Ay'), 'A_y')}${this.signedTerm(this.direction('By'), 'B_y')}+F_{1y}${this.gravityTerm('y')}=m_{AB}a_{\mathrm{CoM},y}\ \text{(motion)}\quad\text{or}\quad0\ \text{(statics)}`
-  );
+  protected readonly generalPositionVector = String.raw`\vec r_{Q/O}=\vec p_Q-\vec p_O=\begin{bmatrix}x_Q-x_O\\y_Q-y_O\\0\end{bmatrix}`;
+  protected readonly exampleFx = computed(() => ({
+    vector: String.raw`\sum F_x=\left(\vec F_A^{(AB)}\right)_x+\left(\vec F_B^{(AB)}\right)_x+\left(\vec F_1^{(AB)}\right)_x+\left(\vec W_{AB}\right)_x=${this.forceRhs('x')}`,
+    scalar: String.raw`\sum F_x=${this.leadingTerm(this.direction('Ax'), 'A_x')}${this.signedTerm(this.direction('Bx'), 'B_x')}+F_{1x}${this.gravityTerm('x')}=${this.forceRhs('x')}`,
+  }));
+  protected readonly exampleFy = computed(() => ({
+    vector: String.raw`\sum F_y=\left(\vec F_A^{(AB)}\right)_y+\left(\vec F_B^{(AB)}\right)_y+\left(\vec F_1^{(AB)}\right)_y+\left(\vec W_{AB}\right)_y=${this.forceRhs('y')}`,
+    scalar: String.raw`\sum F_y=${this.leadingTerm(this.direction('Ay'), 'A_y')}${this.signedTerm(this.direction('By'), 'B_y')}+F_{1y}${this.gravityTerm('y')}=${this.forceRhs('y')}`,
+  }));
   protected readonly variables = computed(() => {
     const reference = this.referenceName();
     return [
@@ -626,6 +629,10 @@ export class ForceDefinitionsComponent {
 
   private leadingTerm(sign: 1 | -1, symbol: string) {
     return sign === 1 ? symbol : `-${symbol}`;
+  }
+
+  private forceRhs(axis: 'x' | 'y') {
+    return `m_{AB}a_{\\mathrm{CoM},${axis}}\\;\\text{(motion)}\\quad\\text{or}\\quad0\\;\\text{(statics)}`;
   }
 
   private referenceName() {

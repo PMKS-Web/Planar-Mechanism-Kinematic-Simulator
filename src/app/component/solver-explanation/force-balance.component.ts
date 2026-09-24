@@ -17,10 +17,23 @@ import { Diagram, SolverDiagramComponent } from './solver-diagram.component';
   `,
   styles: [
     `
-      :host { display: block; min-width: 0; }
-      figure { margin: 0; min-width: 0; }
-      p, figcaption { font-size: 12px; color: var(--text-secondary); margin: 8px 0; }
-      figcaption { text-align: center; }
+      :host {
+        display: block;
+        min-width: 0;
+      }
+      figure {
+        margin: 0;
+        min-width: 0;
+      }
+      p,
+      figcaption {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin: 8px 0;
+      }
+      figcaption {
+        text-align: center;
+      }
     `,
   ],
 })

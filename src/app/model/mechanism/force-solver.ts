@@ -595,6 +595,16 @@ export class ForceSolver {
       }
       if (capture) {
         const trace = bodyTrace.find((one) => one.id === body.id)!;
+        trace.massKg = massKg;
+        trace.acceleration = [
+          acceleration[0] * units.distanceToM,
+          acceleration[1] * units.distanceToM,
+        ];
+        if (body instanceof RealLink) {
+          trace.inertiaKgM2 = body.massMoI * units.inertiaToKgM2;
+          trace.angularAcceleration =
+            mode === 'dynamic' ? kinematics!.linkAngularAccelerations.get(body.id)! : 0;
+        }
         trace.inertia = [
           massKg * acceleration[0] * units.distanceToM,
           massKg * acceleration[1] * units.distanceToM,

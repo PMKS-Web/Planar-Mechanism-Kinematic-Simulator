@@ -17,11 +17,11 @@ export class SolverMathComponent {
   @HostListener('wheel', ['$event'])
   protected forwardVerticalWheel(event: WheelEvent) {
     if (!event.deltaY || event.shiftKey) return;
-    const dialogSurface = (event.currentTarget as HTMLElement | null)?.closest(
-      '.mat-mdc-dialog-surface'
+    const scrollSurface = (event.currentTarget as HTMLElement | null)?.closest(
+      '.mat-mdc-dialog-surface, .worksheetPage > app-solver-explanation'
     ) as HTMLElement | null;
-    if (!dialogSurface || dialogSurface.scrollHeight <= dialogSurface.clientHeight) return;
-    dialogSurface.scrollBy({ top: event.deltaY });
+    if (!scrollSurface || scrollSurface.scrollHeight <= scrollSurface.clientHeight) return;
+    scrollSurface.scrollBy({ top: event.deltaY });
     event.preventDefault();
   }
 

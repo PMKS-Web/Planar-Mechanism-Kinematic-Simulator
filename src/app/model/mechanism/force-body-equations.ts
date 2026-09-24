@@ -79,17 +79,21 @@ export function forceBodyEquations(
       })
     );
     const arm = arms(load);
-    const actingSymbol = load.column === undefined ? symbol : `${symbol}^{(${id})}`;
+    const actingSymbol = load.kind === 'weight' ? symbol : `${symbol}^{(${id})}`;
     const actualFx = signedSum(items.map((item) => component(item, 0)));
     const actualFy = signedSum(items.map((item) => component(item, 1)));
-    return { ...arm, load, items, sign, symbol, actingSymbol, fx, fy, actualFx, actualFy };
+    const momentZ = `M_{${subscript},z}`;
+    return { ...arm, load, items, sign, symbol, actingSymbol, momentZ, fx, fy, actualFx, actualFy };
   });
   const forceDefinitions = groups
     .filter((group) => group.load.couple === undefined)
     .map((group) => `${group.actingSymbol}=${column([group.actualFx, group.actualFy, 0])}`);
   const momentDefinitions = groups
     .filter((group) => group.load.couple !== undefined)
-    .map((group) => `${group.actingSymbol}=${group.sign < 0 ? '-' : ''}${group.symbol}`);
+    .map(
+      (group) =>
+        `${group.actingSymbol}=${column(['0', '0', `${group.sign < 0 ? '-' : ''}${group.momentZ}`])}`
+    );
   const forceGroups = groups.filter((group) => group.load.couple === undefined);
   const positionDefinitions = forceGroups.map((group) => {
     const arm = arms(group.load);
@@ -98,7 +102,7 @@ export function forceBodyEquations(
   const forceVectorLeft = signedSum(
     forceGroups.map((group) => ({ coefficient: 1, symbol: group.actingSymbol }))
   );
-  const forceVector = `${forceVectorLeft}=${dynamic ? `m_{${id}}${vector('a', COM_TEX)}` : '\\vec0'}`;
+  const forceVector = `\\sum\\vec F=${forceVectorLeft}=${dynamic ? `m_{${id}}${vector('a', COM_TEX)}` : '\\vec0'}`;
   const inertiaMoment = `I_{${COM_TEX},${id}}${vector('\\alpha', id)}`;
   const translated = body.reference.id !== COM_REFERENCE;
   const momentRight = dynamic
@@ -107,7 +111,7 @@ export function forceBodyEquations(
         ? `+${vector('r', `${COM_TEX}/${ref}`)}\\times m_{${id}}${vector('a', COM_TEX)}`
         : '')
     : '\\vec0';
-  const momentVector = `${signedSum(groups.filter((g) => g.load.couple !== undefined || !g.zero).map((g) => ({ coefficient: 1, symbol: g.load.couple !== undefined ? g.actingSymbol : `\\left[${arms(g.load).symbol}\\times${g.actingSymbol}\\right]` })))}=${momentRight}`;
+  const momentVector = `\\sum\\vec M_{${ref}}=${signedSum(groups.filter((g) => g.load.couple !== undefined || !g.zero).map((g) => ({ coefficient: 1, symbol: g.load.couple !== undefined ? g.actingSymbol : `\\left[${arms(g.load).symbol}\\times${g.actingSymbol}\\right]` })))}=${momentRight}`;
   const crossProducts = groups
     .filter((g) => g.load.couple === undefined)
     .map((g) => {
@@ -153,22 +157,26 @@ export function forceBodyEquations(
       loads.flatMap((load) => (load.couple === undefined ? [component(load, axis)] : []))
     );
     const right = dynamic ? `m_{${id}}a_{${COM_TEX},${componentName}}` : '0';
-    return `\\sum F_${componentName}=${vectorComponents}=${scalarComponents}=${right}`;
+    return {
+      vector: `\\sum F_${componentName}=${vectorComponents}=${right}`,
+      scalar: `\\sum F_${componentName}=${scalarComponents}=${right}`,
+    };
   });
+  const balanceTerms = (load: NamedLoad, axis: number) => {
+    if (axis < 2) return load.couple === undefined ? [component(load, axis)] : [];
+    if (load.couple !== undefined) return [{ coefficient: load.sign ?? 1, symbol: load.symbol }];
+    const arm = arms(load);
+    if (arm.zero) return [];
+    const x = component(load, 0),
+      y = component(load, 1);
+    return [
+      { coefficient: y.coefficient, symbol: `${arm.rx}${y.symbol}` },
+      { coefficient: -x.coefficient, symbol: `${arm.ry}${x.symbol}` },
+    ];
+  };
   const components = Array.from({ length: body.rowCount }, (_, axis) => {
     const row = body.startRow + axis;
-    const terms = loads.flatMap((load) => {
-      if (axis < 2) return load.couple === undefined ? [component(load, axis)] : [];
-      if (load.couple !== undefined) return [{ coefficient: load.sign ?? 1, symbol: load.symbol }];
-      const arm = arms(load);
-      if (arm.zero) return [];
-      const x = component(load, 0),
-        y = component(load, 1);
-      return [
-        { coefficient: y.coefficient, symbol: `${arm.rx}${y.symbol}` },
-        { coefficient: -x.coefficient, symbol: `${arm.ry}${x.symbol}` },
-      ];
-    });
+    const terms = loads.flatMap((load) => balanceTerms(load, axis));
     const rhs = !dynamic
       ? '0'
       : axis < 2
@@ -177,13 +185,34 @@ export function forceBodyEquations(
           (translated
             ? `+r_{${COM_TEX}/${ref},x}m_{${id}}a_{${COM_TEX},y}-r_{${COM_TEX}/${ref},y}m_{${id}}a_{${COM_TEX},x}`
             : '');
+    const balance = axis === 2 ? `\\sum M_{${ref},z}` : `\\sum F_${axis ? 'y' : 'x'}`;
+    const knownTerms = loads
+      .filter((load) => load.column === undefined)
+      .flatMap((load) => balanceTerms(load, axis));
+    const knownSymbolic = signedSum([
+      ...(dynamic ? [{ coefficient: 1, symbol: `\\left(${rhs}\\right)` }] : []),
+      ...knownTerms.map((term) => ({ ...term, coefficient: -term.coefficient })),
+    ]);
+    const numericUnknowns = signedSum(
+      system.A[row].map((coefficient, i) => ({
+        coefficient,
+        symbol: system.unknowns[i].label,
+      }))
+    );
+    const known = body.known[axis] / (axis === 2 ? MODEL_SCALE : 1);
+    const numericLeft =
+      Math.abs(known) < 1e-10
+        ? numericUnknowns
+        : `${numericUnknowns === '0' ? '' : numericUnknowns}${numericUnknowns !== '0' && known > 0 ? '+' : ''}${texNumber(known)}`;
     return {
       label:
         axis === 2
           ? `Moment Balance About ${body.reference.label}`
           : `${axis ? 'Y' : 'X'} Force Balance`,
       unit: axis === 2 ? 'N·m' : 'N',
-      symbolic: `${axis === 2 ? `\\sum M_{${ref},z}` : `\\sum F_${axis ? 'y' : 'x'}`}=${signedSum(terms)}=${rhs}`,
+      symbolic: `${balance}=${signedSum(terms)}=${rhs}`,
+      values: `${balance}=${numericLeft}=${texNumber(body.inertia[axis] / (axis === 2 ? MODEL_SCALE : 1))}`,
+      knownSymbolic,
       collected: `${signedSum(system.A[row].map((a, i) => ({ coefficient: a, symbol: system.unknowns[i].label })))}=${texNumber(system.b[row])}`,
       substitution: numericEquation(
         system.A[row],
@@ -192,6 +221,25 @@ export function forceBodyEquations(
         body.inertia[axis] / (axis === 2 ? MODEL_SCALE : 1)
       ),
     };
+  });
+  const coefficientRows = Array.from({ length: body.rowCount }, (_, axis) => {
+    const row = body.startRow + axis;
+    return system.unknowns.map((_, columnIndex) => {
+      if (axis < 2) return texNumber(system.A[row][columnIndex]);
+      const terms = loads
+        .filter((load) => load.column === columnIndex)
+        .flatMap((load) => {
+          const sign = load.sign ?? 1;
+          if (load.couple !== undefined) return [{ coefficient: sign, symbol: '1' }];
+          const arm = arms(load);
+          if (arm.zero) return [];
+          return [
+            { coefficient: sign * (load.direction?.[1] ?? 0), symbol: arm.rx },
+            { coefficient: -sign * (load.direction?.[0] ?? 0), symbol: arm.ry },
+          ];
+        });
+      return signedSum(terms);
+    });
   });
   const variables = groups.flatMap((group) => {
     const forceMeaning =
@@ -224,6 +272,7 @@ export function forceBodyEquations(
     momentVector,
     crossProducts,
     components,
+    coefficientRows,
     variables,
   };
 }

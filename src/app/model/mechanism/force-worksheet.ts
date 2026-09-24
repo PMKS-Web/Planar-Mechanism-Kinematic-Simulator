@@ -2,6 +2,7 @@ import { BodyLoad, ForceExplanation, LinearSystemExplanation } from './solver-ex
 import { texName, texNumber } from './worksheet-math';
 import { labelApplicationPoints, referenceSystem } from './force-reference';
 import { forceBodyEquations } from './force-body-equations';
+import { forceKnownValues } from './force-known-values';
 import { forceConventions, signedSystem, WorksheetSign } from './worksheet-conventions';
 import { forceAxes, forceAxisPairs } from './force-axes';
 
@@ -83,7 +84,13 @@ export function forceWorksheet(
           .replace(/[{}\\]/g, '')
           .replace('_', ''),
       }));
-    return { ...body, loads, ...forceBodyEquations(body, loads, namedSystem, dynamic) };
+    const equations = forceBodyEquations(body, loads, namedSystem, dynamic);
+    return {
+      ...body,
+      loads,
+      ...equations,
+      knownValues: forceKnownValues(body, loads, equations.crossProducts, dynamic),
+    };
   });
   return {
     choices: choices.map((choice) => ({
@@ -129,6 +136,8 @@ export function forceWorksheet(
         : 'Choose the reference direction on this body.',
     })),
     bodies,
+    coefficientMatrix: bodies.flatMap((body) => body.coefficientRows),
+    knownTerms: bodies.flatMap((body) => body.components.map((equation) => equation.knownSymbolic)),
     system: namedSystem,
     definitions: system.unknowns.map((unknown, i) => ({
       symbol: symbols[i],

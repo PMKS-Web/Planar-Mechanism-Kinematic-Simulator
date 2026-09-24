@@ -18,6 +18,18 @@
     color: var(--brand);
   }
 }
+.equationKind {
+  color: var(--text-secondary);
+  font-size: 11px;
+  min-width: 68px;
+}
+.systemDisplayChoice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0;
+}
 .worksheet {
   background: var(--surface);
   color: var(--text-primary);
@@ -314,25 +326,40 @@ summary {
   max-width: 460px;
   margin-inline: auto;
 }
-.bodyCard table {
+.bodyCard table,
+.systemKnownValues table {
   width: 100%;
   border-collapse: collapse;
   font-size: 12px;
 }
 .bodyCard th,
-.bodyCard td {
+.bodyCard td,
+.systemKnownValues th,
+.systemKnownValues td {
   padding: 8px;
   text-align: left;
   vertical-align: top;
   border-bottom: 1px solid var(--border-divider);
 }
-.bodyCard th {
+.bodyCard th,
+.systemKnownValues th {
   color: var(--text-strong);
   font-weight: 600;
 }
 .bodyCard td:first-child {
   width: 36%;
   color: var(--text-strong);
+}
+.knownValuesScroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.systemKnownValues table {
+  min-width: 100%;
+}
+.systemKnownValues td:first-child,
+.systemKnownValues td:last-child {
+  white-space: nowrap;
 }
 .directionControls {
   display: grid;

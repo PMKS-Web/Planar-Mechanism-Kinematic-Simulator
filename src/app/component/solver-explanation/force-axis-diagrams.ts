@@ -106,6 +106,7 @@ export function positionVectorGridDiagram(
   const geometry = [
     ...body.points,
     ...(body.outlines ?? []).flat(),
+    ...body.lines.flatMap((line) => [line.from, line.to]),
     ...targets.flatMap(({ reference, target }) => [reference, target]),
   ];
   const minX = Math.min(...geometry.map((point) => point.x));
@@ -114,10 +115,7 @@ export function positionVectorGridDiagram(
   const maxY = Math.max(...geometry.map((point) => point.y));
   const span = Math.max(maxX - minX, maxY - minY, 1);
   const lines: Diagram['lines'] = targets.flatMap(({ label, reference, target }, index) => {
-    if (
-      Math.abs(target.x - reference.x) < 1e-12 &&
-      Math.abs(target.y - reference.y) < 1e-12
-    )
+    if (Math.abs(target.x - reference.x) < 1e-12 && Math.abs(target.y - reference.y) < 1e-12)
       return [];
     const xRail = minY - span * (0.22 + index * 0.16);
     const yRail = maxX + span * (0.22 + index * 0.16);
@@ -180,7 +178,14 @@ export function positionVectorGridDiagram(
     legend: 'Moment-arm component grid',
     points: body.points,
     outlines: body.outlines,
-    lines,
+    // Retain the isolated free body; thicken the two-joint link so it stays
+    // distinguishable from the projection guides and force arrows.
+    lines: [
+      ...body.lines.map((line) => (!line.arrow && line.width === 3 ? { ...line, width: 5 } : line)),
+      ...lines,
+    ],
+    momentLabel: body.momentLabel,
+    note: body.note,
     framingPoints: [
       { x: minX - span * 0.08, y: minY - span * (0.35 + targets.length * 0.16) },
       { x: maxX + span * (0.35 + targets.length * 0.16), y: maxY + span * 0.08 },
