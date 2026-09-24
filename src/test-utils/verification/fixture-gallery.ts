@@ -93,6 +93,7 @@ import {
   drivenFrozenCylinderBodyFixture,
   frozenCylinderCouplerFixture,
 } from './frozen-cylinder-fixtures';
+import { MOBILITY_GALLERY } from './mobility-fixtures';
 import { ActiveObjService } from '../../app/services/active-obj.service';
 import { MODEL_SCALE } from '../../app/model/render-scale';
 
@@ -858,6 +859,8 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     speed: { unitsPerSecond: 0.2 },
     fixture: cylinderOnASlotFixture(),
   },
+  // Drawings that do not run on purpose, kept beside their fixtures.
+  ...MOBILITY_GALLERY,
 ];
 
 /**

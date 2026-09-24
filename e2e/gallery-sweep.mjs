@@ -36,7 +36,18 @@ const OUT = 'artifacts/gallery-sweep';
  * came to be reported as a failure for as long as it has been published. A
  * fixture that is meant not to solve should say so where it is defined.
  */
-const EXPECTED_INVALID = new Set(['Elliptical trammel', 'MotionGen gripper']);
+const EXPECTED_INVALID = new Set([
+  'Elliptical trammel',
+  'MotionGen gripper',
+  // The mobility-diagnosis drawings, each with the wrong number of degrees of
+  // freedom and a readiness row that says which part and what fixes it.
+  'Four-bar with an ungrounded pivot',
+  'Crank with a dangling link',
+  'Cylinder boom with a dangling link',
+  'Braced four-bar',
+  'Four-bar with a grounded coupler pin',
+  'Slider-crank with a Prismatic slider',
+]);
 
 function galleryRows() {
   return readFileSync('docs/fixture-urls.md', 'utf8')
