@@ -31,7 +31,7 @@ import {
   solveSimultaneous,
   heldPoseTolerance,
 } from './simultaneous-solver';
-import { angleReference, resolveActuator } from '../actuator';
+import { angleReference, GROUND_BODY, resolveActuator } from '../actuator';
 import { heldCylinderSeals } from './cylinder-hold';
 import { MARK } from '../joint-marks';
 import { SettingsService } from '../../services/settings.service';
@@ -1739,11 +1739,17 @@ export class PositionSolver {
    * it picked a neighbor to measure the crank radius from.
    */
   private static drivenBody(inputJoint: RealJoint): Set<string> {
-    // The first link, simply. This used to skip any link holding a prismatic
-    // joint, which was how it stepped over the zero-length block; with the
-    // block gone that test would instead skip the *rider* of a slider, which
-    // is exactly the body a drive turns.
-    const members = inputJoint.links[0]?.joints ?? [];
+    // The body the actuator record says it drives, and otherwise the first
+    // link, simply. The first link used to be the whole answer, and a crank
+    // pivot whose frame bar was drawn before its crank drove the frame. It
+    // also used to skip any link holding a prismatic joint, which was how it
+    // stepped over the zero-length block; with the block gone that test would
+    // instead skip the *rider* of a slider, which is exactly the body a drive
+    // turns.
+    const actuator = resolveActuator(inputJoint);
+    const driven =
+      actuator && actuator.drivenBody !== GROUND_BODY ? actuator.drivenBody : inputJoint.links[0];
+    const members = driven?.joints ?? [];
     return new Set(members.filter((joint) => joint.id !== inputJoint.id).map((joint) => joint.id));
   }
 

@@ -50,6 +50,11 @@ export function incidentBodies(joint: RealJoint): (Link | typeof GROUND_BODY)[] 
     seen.add(GROUND_BODY);
   }
   for (const link of joint.links) {
+    // A bar pinned down at every joint is the frame, which a grounded joint
+    // has already counted. Counted again, the frame bar a student draws
+    // between two pivots made the crank's pivot "join 3 bodies" and refused
+    // its input.
+    if (joint.ground && isFrameBar(link)) continue;
     if (!seen.has(link.id)) {
       bodies.push(link);
       seen.add(link.id);
@@ -98,6 +103,22 @@ export function describeActuator(joint: Joint): Actuator | string {
   // bodies" -- true, and no use to a reader looking at a cylinder.
   const frozen = frozenCylinderAtSeal(joint);
   if (frozen) return describeFrozenCylinderDrive(frozen);
+  // Asked before the count, which folds a frame bar into the ground and would
+  // otherwise answer "needs two bodies" -- true, and no help. The drawing
+  // arrives here easily: set a crank's input, then ground its far end, and
+  // the partition folds the crank into the frame, so the joint belongs to no
+  // mechanism and the reader was told "No input is set" beside its arrow.
+  //
+  // "Its link" rather than the link's name: a link's id can carry a
+  // cylinder's buried joint, which only `visibleBodyName` knows to leave out,
+  // and it needs the drawing's cylinders, which a joint cannot see from here.
+  if (framePieceAt(joint)) {
+    const pinned = joint.links.flatMap((link) => groundPinsElsewhere(link, joint));
+    const which = [...new Set(pinned.map((one) => one.name || one.id))].join(' and ');
+    return joint.links.length === 1
+      ? `Its link is also grounded at joint ${which}, so it cannot turn. Unground joint ${which} so the input has something to drive.`
+      : `Every link on it is also grounded at joint ${which}, so none of them can turn. Unground joint ${which} so the input has something to drive.`;
+  }
   const bodies = incidentBodies(joint);
   if (bodies.length < 2) {
     return 'An input joint needs two bodies to move relative to each other.';
@@ -114,25 +135,6 @@ export function describeActuator(joint: Joint): Actuator | string {
     drivenBody: bodies[1],
     kind: joint instanceof PrisJoint ? 'length' : 'angle',
   };
-
-  // A link pinned to the frame at another joint as well is part of the frame:
-  // it cannot turn about this one, so there is nothing for the input to drive.
-  // The drawing arrives here easily -- set a crank's input, then ground its
-  // far end -- and the partition then folds the link into the frame, so the
-  // joint belongs to no mechanism and the reader was told "No input is set"
-  // about a joint wearing the input's arrow.
-  //
-  // "Its link" rather than the link's name: a joint with ground on one side
-  // has exactly one link on the other, and a link's id can carry a cylinder's
-  // buried joint, which only `visibleBodyName` knows to leave out -- and it
-  // needs the drawing's cylinders, which a joint cannot see from here.
-  if (actuator.kind === 'angle' && actuator.referenceBody === GROUND_BODY) {
-    const pinnedElsewhere = groundPinsElsewhere(actuator.drivenBody as Link, joint);
-    if (pinnedElsewhere.length > 0) {
-      const which = pinnedElsewhere.map((one) => one.name || one.id).join(' and ');
-      return `Its link is also grounded at joint ${which}, so it cannot turn. Unground joint ${which} so the input has something to drive.`;
-    }
-  }
 
   // An angle needs a direction to measure from on each side. Ground supplies
   // one without a joint; a body with no second point of its own does not, and
@@ -170,10 +172,10 @@ export function describeActuatorRefusal(joint: Joint): { short: string; long: st
   if (frozenCylinderAtSeal(joint)) {
     return { short: 'cannot extend', long };
   }
+  if (framePieceAt(joint)) return { short: 'link is grounded', long };
   const bodies = incidentBodies(joint).length;
   if (bodies < 2) return { short: 'needs 2 bodies', long };
   if (bodies > 2) return { short: `${bodies} bodies meet`, long };
-  if (framePieceAt(joint)) return { short: 'link is grounded', long };
   return { short: 'no angle here', long };
 }
 
@@ -193,17 +195,28 @@ export function groundPinsElsewhere(link: Link, joint: RealJoint): RealJoint[] {
 }
 
 /**
- * Whether this joint's only link is pinned to the frame somewhere else, which
- * is what makes it part of the frame rather than a crank.
+ * Whether a link is part of the frame: pinned to the ground at every joint, so
+ * it cannot move and is the ground to anything that meets it. `assignBodies`
+ * folds such a bar into the world for the same reason. A grounded slider does
+ * not pin its point, so a link riding one is not frame.
+ */
+export function isFrameBar(link: Link): boolean {
+  return (
+    link.joints.length > 0 &&
+    link.joints.every(
+      (joint) => joint instanceof RealJoint && joint.ground && !(joint instanceof PrisJoint)
+    )
+  );
+}
+
+/**
+ * Whether every link on this grounded pin is pinned to the frame somewhere
+ * else too, which leaves it nothing that can turn: a crank grounded at both
+ * ends is part of the frame, not a crank.
  */
 export function framePieceAt(joint: Joint): boolean {
   if (!(joint instanceof RealJoint) || !joint.ground || joint instanceof PrisJoint) return false;
-  const bodies = incidentBodies(joint);
-  return (
-    bodies.length === 2 &&
-    bodies[1] !== GROUND_BODY &&
-    groundPinsElsewhere(bodies[1] as Link, joint).length > 0
-  );
+  return joint.links.length > 0 && joint.links.every(isFrameBar);
 }
 
 /** The actuator this joint would be, or nothing. */
