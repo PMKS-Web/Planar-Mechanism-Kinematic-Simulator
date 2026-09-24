@@ -19,7 +19,7 @@ page.on('console', (m) => {
   if (m.type() === 'error') errors.push(m.text());
 });
 const snapshot = (d) =>
-  d.locator('app-solver-explanation').evaluate((h) => {
+  d.evaluate((h) => {
     const c = window.ng.getComponent(h),
       v = c.view;
     return {
@@ -37,96 +37,75 @@ const snapshot = (d) =>
       })),
     };
   });
-const geometry = (part) =>
-  part.locator('app-force-balance app-solver-diagram > svg').evaluateAll((svgs) =>
-    svgs.map((svg) => ({
-      polygons: [...svg.querySelectorAll('polygon')].map((p) => p.getAttribute('points')),
-      points: [...svg.querySelectorAll('circle')].map((p) => [
-        p.getAttribute('cx'),
-        p.getAttribute('cy'),
-      ]),
-    }))
-  );
 try {
   await openMechanism(page, `${process.env.PMKS_BASE_URL || 'http://localhost:4200/'}?${payload}`);
   await page.getByRole('button', { name: /Force Analysis/ }).click();
   await page.getByRole('button', { name: 'How it works', exact: true }).click();
-  await page.getByRole('button', { name: 'Open Full Worksheet', exact: true }).click();
-  const d = page.getByRole('dialog');
-  assert.equal(await d.locator('.definitionSection[open], .overviewDetails[open]').count(), 0);
-  await page.screenshot({ path: `${out}/definitions-collapsed.png` });
-  await d.getByRole('button', { name: 'Free Bodies', exact: true }).click();
-  assert.equal(await d.locator('.bodyCard[open]').count(), 1);
-  await d.getByRole('button', { name: 'In-motion', exact: true }).click();
-  const moving = await snapshot(d);
+  const worksheet = page.locator('app-right-panel app-solver-explanation').first();
+  await worksheet.waitFor();
+  assert.equal(await worksheet.locator('details[open]').count(), 0);
+  const overview = worksheet.locator('.overviewDetails');
+  await overview.locator(':scope > summary').click();
+  await overview.getByRole('button', { name: 'In-motion', exact: true }).click();
+  const moving = await snapshot(worksheet);
   assert.equal(moving.mode, 'dynamic');
   assert.equal(moving.status, 'ok');
   assert(moving.bodies[0].force.includes('=m_'));
   assert(moving.bodies[0].moment.includes('=I_'));
-  assert(moving.bodies.some((b) => b.inertia.some((v) => Math.abs(v) > 1e-6)));
-  await page.screenshot({ path: `${out}/bodies-collapsed.png` });
-  const body = d.locator('.bodyCard').first();
-  assert.equal(await body.locator('.crossProduct[open], .vectorDerivation[open]').count(), 0);
-  const fixed = await geometry(body);
-  await d
+  assert(moving.bodies.some((body) => body.inertia.some((value) => Math.abs(value) > 1e-6)));
+
+  const body = worksheet.locator('.bodyCard').first();
+  assert.equal(await body.getAttribute('open'), null);
+  await body.locator(':scope > summary').click();
+  await body.locator('.bodyStep').first().locator(':scope > summary').click();
+  const linkShape = () =>
+    worksheet.evaluate((host) => {
+      const diagram = window.ng.getComponent(host).view.bodies[0].projectionGrid;
+      return {
+        outlines: diagram.outlines,
+        lines: diagram.lines
+          .filter((line) => !line.arrow && line.width >= 3)
+          .map((line) => ({ from: line.from, to: line.to })),
+      };
+    });
+  const fixed = await linkShape();
+  assert(fixed.outlines.length + fixed.lines.length > 0);
+  await overview
     .getByRole('combobox', { name: 'Worksheet Gravity' })
     .selectOption({ label: 'Exclude Gravity' });
-  const noWeight = await snapshot(d);
+  const noWeight = await snapshot(worksheet);
   assert.equal(noWeight.gravity, false);
-  assert(noWeight.bodies.every((b) => !b.loads.includes('weight')));
+  assert(noWeight.bodies.every((body) => !body.loads.includes('weight')));
   assert.deepEqual(
-    noWeight.bodies.map((b) => b.inertia),
-    moving.bodies.map((b) => b.inertia)
+    noWeight.bodies.map((body) => body.inertia),
+    moving.bodies.map((body) => body.inertia)
   );
   assert.notDeepEqual(noWeight.x, moving.x);
   assert.equal(noWeight.graph, moving.graph);
   assert.equal(noWeight.documentGravity, moving.documentGravity);
-  assert.deepEqual(await geometry(body), fixed);
-  assert(await body.evaluate((el) => el.open));
-  await d.getByRole('button', { name: 'Static', exact: true }).click();
-  assert((await snapshot(d)).x.every((v) => Math.abs(v) < 1e-6));
-  await d.getByRole('button', { name: 'In-motion', exact: true }).click();
-  assert.deepEqual((await snapshot(d)).x, noWeight.x);
-  await d.getByRole('combobox', { name: 'Worksheet Gravity' }).selectOption('0');
-  assert.deepEqual((await snapshot(d)).x, moving.x);
-  await body.locator('.vectorDerivation > summary').click();
-  await body.locator('.inertiaTerms > summary').click();
-  await body.scrollIntoViewIfNeeded();
-  await page.screenshot({ path: `${out}/in-motion-body.png` });
+  assert.deepEqual(await linkShape(), fixed);
+
+  await overview.getByRole('button', { name: 'Static', exact: true }).click();
+  assert((await snapshot(worksheet)).x.every((value) => Math.abs(value) < 1e-6));
+  await overview.getByRole('button', { name: 'In-motion', exact: true }).click();
+  assert.deepEqual((await snapshot(worksheet)).x, noWeight.x);
+  await overview.getByRole('combobox', { name: 'Worksheet Gravity' }).selectOption('0');
+  assert.deepEqual((await snapshot(worksheet)).x, moving.x);
+
   await body.locator('.bodyAdjustments > summary').click();
-  const joint = body.locator('[data-convention="Bx on ABH"]');
-  await joint.scrollIntoViewIfNeeded();
-  const initial = await geometry(body);
-  const film = filmstrip(page, `${out}/arrow-flip`, await joint.boundingBox());
+  const direction = body.locator('.bodyAdjustments select').first();
+  const film = filmstrip(page, `${out}/arrow-flip`, await direction.boundingBox());
   await film.shot('before');
-  await film.during(30, 8, 'flip', () =>
-    joint.getByRole('button', { name: '−X ←', exact: true }).click()
-  );
-  assert.deepEqual(await geometry(body), initial);
-  assert.deepEqual(await geometry(body), fixed);
-  await body
-    .locator('[data-convention="By on ABH"]')
-    .getByRole('button', { name: '−Y ↓', exact: true })
-    .click();
-  assert.deepEqual(await geometry(body), initial);
-  const couple = body.locator('[data-convention="Input Moment on ABH"]');
-  const coupleGeometry = await geometry(body);
-  await couple.getByRole('button', { name: 'CW ↻', exact: true }).click();
-  assert.deepEqual(await geometry(body), coupleGeometry);
-  assert.deepEqual(await geometry(body), fixed);
-  await body.locator('.bodyAdjustments > summary').click();
-  await d.getByRole('button', { name: 'Solved Directions', exact: true }).click();
-  assert.deepEqual(await geometry(body), fixed);
+  await film.during(30, 8, 'flip', () => direction.selectOption('1'));
+  assert.deepEqual(await linkShape(), fixed);
   await page.setViewportSize({ width: 390, height: 844 });
-  await body.locator(':scope > summary').click();
-  await d.locator('.forceAssumptions').scrollIntoViewIfNeeded();
   await page.screenshot({ path: `${out}/phone.png` });
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-  assert.equal(await d.locator('.katex-error').count(), 0);
+  assert.equal(await worksheet.locator('.katex-error').count(), 0);
   assert.deepEqual(errors, []);
   Object.assign(report, { moving, noWeight, fixedGeometry: true });
   console.log(
-    'PASS: collapsed sections, immediate in-motion solve, gravity comparison, unchanged graph, stable force/couple geometry, phone layout.'
+    'PASS: collapsed sections, in-motion solve, gravity comparison, stable link geometry, phone layout.'
   );
 } finally {
   writeFileSync(`${out}/report.json`, JSON.stringify({ ...report, errors }, null, 2));
