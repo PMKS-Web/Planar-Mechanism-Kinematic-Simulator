@@ -161,6 +161,29 @@ export function yokeOnPinInSlotFixture(): MechanismFixture {
   };
 }
 
+/**
+ * Two things wrong at once, neither waiting on the other: a link hung off the
+ * coupler pin, one freedom too many, and no input set.
+ */
+export function hangingLinkNoInputFixture(): MechanismFixture {
+  const fixture = fourBar();
+  fixture.joints[0].input = false;
+  fixture.joints.push({ id: 'E', x: 2, y: 3 });
+  fixture.links.push({ joints: 'CE' });
+  return fixture;
+}
+
+/**
+ * The input on a coupler point, and a link hung off the coupler pin: a joint
+ * that cannot be the input, and one freedom too many, said together.
+ */
+export function couplerInputAndHangingLinkFixture(): MechanismFixture {
+  const fixture = inputOnCouplerPointFixture();
+  fixture.joints.push({ id: 'F', x: 4, y: 3 });
+  fixture.links.push({ joints: 'CF' });
+  return fixture;
+}
+
 const entry = (
   name: string,
   purpose: string,
@@ -235,6 +258,16 @@ export const STUDENT_MISTAKE_GALLERY = [
     'Four-bar with the weld at its knee left off',
     'Does not run on purpose: welding C makes the bent coupler one link',
     unweldedKneeFixture()
+  ),
+  entry(
+    'Four-bar with a hanging link and no input',
+    'Does not run on purpose: one freedom too many and no input, both said at once',
+    hangingLinkNoInputFixture()
+  ),
+  entry(
+    'Four-bar driven from its coupler point, with a hanging link',
+    'Does not run on purpose: the input is on a coupler point and CF hangs loose, both said at once',
+    couplerInputAndHangingLinkFixture()
   ),
   entry(
     'Scotch yoke on a Pin-in-slot guide',

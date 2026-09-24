@@ -118,10 +118,43 @@ export function leavesOneMachine({ partition, driven, needsHold }: Trial, edit: 
   // left the input unable to say which to turn -- ungrounding the far end of a
   // frame bar drawn from it does -- whatever the count.
   if (driven && !edit.touchesInput && edit.assignment.bodiesAt(driven).size > 2) return false;
-  if (!driven || edit.touchesInput) return freedomsOf(system) === 1;
+  if (!driven || edit.touchesInput)
+    return freedomsOf(system) === 1 && someInputHolds(system, joints, edit);
   const hold = holdFor(driven, system, edit.assignment);
-  if (!hold) return !needsHold && freedomsOf(system) === 1;
+  if (!hold) return !needsHold && freedomsOf(system) === 1 && someInputHolds(system, joints, edit);
   return leavesOne(system, system.constraints, hold);
+}
+
+/**
+ * Whether some joint of the edited drawing could take the input and hold the
+ * one freedom left: a joint between exactly two bodies, the way the input
+ * toggle asks, whose motion held leaves nothing free.
+ *
+ * Asked where there is no input to hold, or none that can be held. One freedom
+ * is not enough there: grounding the crank of a four-bar with a link hanging
+ * off its coupler leaves one, and it is the hanging link's, turning on a pin
+ * that joins three bodies -- nothing anywhere could drive it.
+ */
+function someInputHolds(system: ConstraintSystem, joints: Joint[], edit: Edit): boolean {
+  const hidden = hiddenJoints(joints);
+  const holdAt = (joint: RealJoint, bodies: string[]): Constraint | undefined => {
+    if (!(joint instanceof PrisJoint)) {
+      return holdTurn(system.bodyAt(bodies[0]), system.bodyAt(bodies[1]));
+    }
+    const carrier = edit.groundedAt(joint)
+      ? WORLD
+      : joint.carrier && edit.assignment.bodyOf(joint.carrier);
+    const rider = bodies.find((body) => body !== carrier);
+    if (!carrier || rider === undefined) return undefined;
+    const at = { x: joint.x, y: joint.y };
+    return holdSlide(at, system.bodyAt(rider), system.bodyAt(carrier), joint.slotAngle);
+  };
+  return joints.some((joint) => {
+    if (!(joint instanceof RealJoint) || hidden.has(joint.id)) return false;
+    const bodies = [...edit.assignment.bodiesAt(joint)];
+    const hold = bodies.length === 2 ? holdAt(joint, bodies) : undefined;
+    return hold !== undefined && freedomsOf(system, [...system.constraints, hold]) === 0;
+  });
 }
 
 /** Whether the moving bodies an edit leaves are joined into one machine. */
