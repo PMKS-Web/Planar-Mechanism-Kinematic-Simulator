@@ -2101,6 +2101,21 @@ stroke. An inline style beats a class rule that is not `!important`, so a Schema
 squares. Give the weld's unselected width through the same binding (`scaleWithZoom(1)` in
 Schematic) and keep `non-scaling-stroke` off it, for the reason in the note above.
 
+### A schematic part inside a welded body was picked by its line alone
+
+`pickLinkAt` tested a part's schematic skeleton with `isPointInStroke` only, so the shaded inside
+of a plate or disc welded into a body never picked that part: the second click in the middle of a
+welded flywheel went on selecting the whole body. It now asks the lines first and the shaded
+insides second. Asking both at once would let a plate listed later in the body take a click aimed
+at a bar lying across it.
+
+### A disc's schematic comes from `RealLink.discCenter`, not from `isCircle`
+
+`isCircle` is what was asked for, and it survives a link losing the ground pin its disc is centered
+on; `drawnAsDisc` is only as fresh as the last rebuild of `d`. `discCenter()` is the answer both
+Standard's outline and `linkSkeletonPath` use, so the Schematic cannot draw as a bar what Standard
+draws as a disc. Anything else that has to know whether a link is shown as a disc should ask it too.
+
 ### Schematic riders are drawn by the slider layer, not the link layer
 
 `#linkHolder` is under every block, so a rider drawn there disappears under the block it is pinned
