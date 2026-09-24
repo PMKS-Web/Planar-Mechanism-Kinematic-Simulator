@@ -249,6 +249,224 @@
           "why": "The stuck drawing gets a structural description from both."
         }
       }
+    },
+    {
+      "id": "r6",
+      "title": "Round 6 · v8: a wider catalog, the image at full strength",
+      "a": "v7r6",
+      "b": "v8",
+      "note": "Blind, like round 5. v8 has the app name more: side rods and locomotive running gear, bell cranks, exact straight lines. It shows the background image at full strength and sends only mechanisms PMKS+ can solve. Round 5's twelve templates, the ten library templates never used (teaching chains with no machine behind most of them), every student mechanism that solves, and two wheel cases. Both sides are each version's first asking; both were asked five times.",
+      "decided": {
+        "student-added-steam-": {
+          "pick": "b",
+          "why": "v8 says steam locomotive driving wheels, in all five askings; v7 says a synchronized three-wheel drive, in none. The app now names the side rod and the main rod. (v8's first answer puts no part in bold.)"
+        },
+        "made-locomotive-wheels": {
+          "pick": "b",
+          "why": "v8 says steam locomotive driving wheels, five times out of five; v7 a paired-crank slider mechanism, and never a locomotive."
+        },
+        "made-coupled-wheels": {
+          "pick": "b",
+          "why": "v8 says a locomotive side-rod drive, five of five; v7 synchronized rotating cranks with no use."
+        },
+        "Excavator_Bucket": {
+          "pick": "b",
+          "why": "v8 says a hydraulic excavator bucket linkage; v7 a windshield wiper linkage. (Over five askings each they are level, two to two.)"
+        },
+        "Bell_Crank": {
+          "pick": "b",
+          "why": "v8 calls CDE the bell crank, from its Links table; v7 names nothing and gives no use."
+        },
+        "Straight_Line_Pair": {
+          "pick": "b",
+          "why": "v8 names Peaucellier's mechanism, which the app now matches in the second machine; v7 names only a straight-line drawing linkage."
+        },
+        "Locked_Four_Bar": {
+          "pick": "b",
+          "why": "A teaching chain with no machine behind it: v8 claims none; v7 calls it a triple-rocker four-bar and suggests a press and a wiper."
+        },
+        "Car_Steering": {
+          "pick": "both-poor",
+          "why": "Both say paired reciprocating pump levers; neither sees steering in any of ten askings."
+        },
+        "Aircraft_Landing_Gear": {
+          "pick": "both-poor",
+          "why": "v8 sees an aircraft in the unfaded photograph but says a propeller pitch linkage (two of its five askings say landing gear); v7 a powered lever for a press."
+        },
+        "Hood_Hinge": {
+          "pick": "both-poor",
+          "why": "Neither says a car hood: v7 a lifting machine hood (the author's name \"Hood\" echoed), v8 a vehicle tailgate."
+        },
+        "Watt_II": {
+          "pick": "both-poor",
+          "why": "A teaching chain: v7 invents a pump jack, v8 synchronized wipers and an indexing machine."
+        },
+        "Three_Machines": {
+          "pick": "both-poor",
+          "why": "Three teaching mechanisms: v7 invents rotary indexing tables, v8 three unrelated uses."
+        },
+        "Watt_I": {
+          "pick": "same",
+          "why": "A teaching chain with an uneven stroke: both reach for a quick-return drive and a shaper."
+        },
+        "Four_Bar_Inversions": {
+          "pick": "same",
+          "why": "Teaching inversions: v7 suggests a wiper and a pump, v8 a shaper."
+        },
+        "Stephenson_III": {
+          "pick": "same",
+          "why": "A teaching chain; both describe it and invent a vague use."
+        },
+        "Elliptical_Crank": {
+          "pick": "same",
+          "why": "Both read an offset slider-crank and name pumps and engines."
+        },
+        "Offset_Load_Rocker": {
+          "pick": "same",
+          "why": "Both read a hand-operated rocking lever."
+        },
+        "Double_Butterfly": {
+          "pick": "same",
+          "why": "Both describe the eight-bar and claim nothing."
+        },
+        "Slider_Crank_Inversions": {
+          "pick": "same",
+          "why": "Both name the engine inversion, which is one of the four drawn."
+        },
+        "Offset_Mount_Hatch": {
+          "pick": "same",
+          "why": "Both say a hydraulic hatch opener, from the authors' names."
+        },
+        "Crane_Two_Loads": {
+          "pick": "same",
+          "why": "Both say a crane's luffing jib, from the authors' names."
+        },
+        "Walking_Pair": {
+          "pick": "same",
+          "why": "Both say a Strandbeest or walking-robot leg."
+        },
+        "Hydraulic_Crosshead": {
+          "pick": "same",
+          "why": "Both say a press ram, from the author's \"Press crosshead\"."
+        },
+        "student-18b209757f54": {
+          "pick": "same",
+          "why": "Both read a walking-beam pump linkage."
+        },
+        "student-192957a6eb46": {
+          "pick": "same",
+          "why": "Both reach for a windshield wiper drive."
+        },
+        "student-19a3120907fb": {
+          "pick": "same",
+          "why": "A single crank: both describe it; neither use is better grounded."
+        }
+      }
+    },
+    {
+      "id": "r7",
+      "title": "Round 7 · the same v8 sheets, GPT-6 Luna against GPT-6 Astra",
+      "a": "v8",
+      "b": "v8@astra",
+      "note": "Nothing changes but the model: round 6's v8 fact sheets and pictures, answered by GPT-6 Luna (medium effort, the model of every round so far) and by GPT-6 Astra (medium effort), blind. Asked twice each, Astra names the real machine in 18 of 22 library askings against Luna's 15, and wrong in 2 of 20 against 6 of 21; it takes about 15 s to Luna's 9. Luna at high effort took 40 s and did no better. Both sides are each model's first asking.",
+      "decided": {
+        "Hood_Hinge": {
+          "pick": "b",
+          "why": "Astra says a car hood hinge, in both askings; Luna a vehicle tailgate lift."
+        },
+        "Aircraft_Landing_Gear": {
+          "pick": "b",
+          "why": "Astra says retractable aircraft landing gear, in both askings; Luna an aircraft propeller pitch linkage."
+        },
+        "Car_Steering": {
+          "pick": "b",
+          "why": "Astra says a go-kart steering mechanism (its second asking: car steering), the first answer in any round to see steering without the file name; Luna paired pump levers."
+        },
+        "Pumping_Field": {
+          "pick": "b",
+          "why": "Astra says oil-well pumpjacks; Luna gives no resemblance."
+        },
+        "Watt_I": {
+          "pick": "b",
+          "why": "A teaching chain: Astra claims no machine; Luna invents an indexing mechanism and a press."
+        },
+        "Watt_II": {
+          "pick": "b",
+          "why": "A teaching chain: Astra claims no machine; Luna invents synchronized wipers and an indexing machine."
+        },
+        "Stephenson_III": {
+          "pick": "b",
+          "why": "A teaching chain: Astra claims no use; Luna invents a packaging-machine drive."
+        },
+        "Elliptical_Crank": {
+          "pick": "b",
+          "why": "Astra says a crank-driven ellipse tracer, which is what the template draws; Luna a pump or engine."
+        },
+        "Four_Bar_Inversions": {
+          "pick": "b",
+          "why": "Astra says a four-bar teaching demonstrator, which it is; Luna suggests a quick-return shaper."
+        },
+        "student-added-steam-": {
+          "pick": "b",
+          "why": "Both say a steam locomotive; Astra's names the six-coupled drive, and Luna's puts no part in bold, so its panel cannot point at any."
+        },
+        "Excavator_Bucket": {
+          "pick": "same",
+          "why": "Both say an excavator bucket linkage."
+        },
+        "Offset_Mount_Hatch": {
+          "pick": "same",
+          "why": "Both say a powered hatch opener."
+        },
+        "Crane_Two_Loads": {
+          "pick": "same",
+          "why": "Both say a luffing jib crane."
+        },
+        "Walking_Pair": {
+          "pick": "same",
+          "why": "Both say walking legs."
+        },
+        "Hydraulic_Crosshead": {
+          "pick": "same",
+          "why": "Both say a hydraulic press."
+        },
+        "Locked_Four_Bar": {
+          "pick": "same",
+          "why": "Both describe it and claim nothing."
+        },
+        "Double_Butterfly": {
+          "pick": "same",
+          "why": "Both describe it and claim nothing."
+        },
+        "Offset_Load_Rocker": {
+          "pick": "same",
+          "why": "Both describe the rocker; neither names a real use."
+        },
+        "Slider_Crank_Inversions": {
+          "pick": "same",
+          "why": "Both name the engine inversion."
+        },
+        "made-locomotive-wheels": {
+          "pick": "same",
+          "why": "Both say steam locomotive driving wheels."
+        },
+        "made-coupled-wheels": {
+          "pick": "same",
+          "why": "Both say steam locomotive driving wheels."
+        },
+        "student-192954d7b479": {
+          "pick": "same",
+          "why": "Both reach for a windshield wiper drive."
+        },
+        "student-192957a6eb46": {
+          "pick": "same",
+          "why": "Both reach for a windshield wiper drive."
+        },
+        "student-19a3120907fb": {
+          "pick": "same",
+          "why": "A single crank; both describe it and reach for a motor-driven use."
+        }
+      }
     }
   ]
 }

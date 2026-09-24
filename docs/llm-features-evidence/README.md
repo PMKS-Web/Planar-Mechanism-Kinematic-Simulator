@@ -289,3 +289,68 @@ The page now points from an author's name in bold (**Hood**) to its part, and an
 of a drawing that has several; before, it showed only the first. Claude decided 18 of the 21 pairs,
 most of them as both poor or alike. The close calls are Bell Crank, Approximate and Exact, and
 Slotted Tool Drive.
+
+### Round 6: v8, the app names more
+
+v8 moves more of the recognizing into the app's catalog:
+
+- **Side rods.** A rod that keeps its angle while tying two or more cranks to turn together is a
+  side rod. When the cranks are drawn as wheels, the family is "coupled wheels (side-rod drive)".
+  When a rod also joins one of those wheels to a block on a fixed guide, it is "steam-locomotive
+  running gear (driving wheels, side rod and main rod)".
+- **Bell cranks.** A pivoted rocker whose two arms meet at 45 to 135 degrees is a bell crank.
+- **Exact straight lines.** A point that moves along an exactly straight line without a guide makes
+  an exact straight-line linkage, and a Peaucellier-Lipkin linkage when four equal links form a
+  rhombus through it.
+- **No lever wording for discs.** A disc is no longer described as a lever.
+
+Round 5's photo fade is undone; the box stays. A mechanism PMKS+ cannot solve is left out of the
+sheet, and a drawing with none that solves is not asked about, because the panel shows something
+else for it. The pictures now come from `feature/drawing-styles` as merged, with its own disc
+drawing. The round keeps round 5's twelve templates and adds:
+
+- the ten library templates never used, teaching chains that measure how often a machine is
+  claimed where there is none;
+- every student mechanism that solves (only 4 of the 31 unused ones do);
+- a second wheel case, coupled wheels without a piston.
+
+Luna answered five times per case, blind:
+
+| Five blind askings per case | v7 | v8 |
+| --- | --- | --- |
+| Library (11 cases with a machine): names it | 58% | 65% |
+| Library: "Looks like" wrong, of those given | 38% | 31% |
+| The three wheel cases (student's locomotive, made locomotive, coupled wheels) | 0 of 15 | 15 of 15 |
+| Bell crank / Peaucellier cell / landing gear | 0, 0, 0 of 5 | 3, 2, 2 of 5 |
+| Teaching chains: a "Looks like" given | 62% | 44% |
+
+Most of the teaching-chain "Looks like" lines name the kind of chain ("offset slider-crank drive",
+"drag-link drive") rather than a product. The wheels are the clearest case of where recognition
+comes from: nothing about the drawings changed, only that the app now says "side rod" and "main
+rod". The landing gear's two hits came back with the photograph at full strength.
+
+`run/reliability.mjs` also simulates the panel showing "Looks like" only when the author named parts
+or PMKS+ matched a specific family (not just a Grashof class or a chain type). On v8 that shows 59
+answers, 43 of them right, 11 on teaching chains and 5 wrong; it hides 29, of which 7 were right.
+
+### Round 7: the same sheets on GPT-6 Astra
+
+Round 7 keeps round 6's v8 sheets and pictures and changes only the model. The Codex account
+reached its usage limit during the third asking, so the comparison uses each model's first two:
+
+| v8, two blind askings per case | Luna, medium | Luna, high effort | Astra, medium |
+| --- | --- | --- | --- |
+| Library: names it | 68% | 64% | 82% |
+| Library: "Looks like" wrong, of those given | 29% | 36% | 10% |
+| Teaching chains: a "Looks like" given | 55% | 75% | 30% |
+| Median time per answer | 9 s | 40 s | 15 s |
+
+Astra names these in both askings:
+
+- the photo-backed cases: the car hood, the landing gear, the excavator bucket and the car steering
+  (the first answer in any round to see steering without the file name);
+- the crane, the pump jacks and the press.
+
+Where there is no machine it mostly says so, or names what the template is: "a four-bar teaching
+demonstrator", "a crank-driven ellipse tracer". More reasoning effort on Luna took four times as long
+and recognized no more. The same simulated gate on Astra shows 21 answers, 18 of them right.

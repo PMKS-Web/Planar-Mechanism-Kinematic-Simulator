@@ -27,11 +27,13 @@ const root = new URL(
 const base = process.env.PMKS_SCHEMATIC_URL ?? 'http://localhost:4311';
 const { cases, prompt } = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
 // v5 on: no axes. v6: the background image in a tile of its own, not behind every frame.
-const noAxes = prompt === 'v5' || prompt === 'v6' || prompt === 'v7';
-const v6 = prompt === 'v6' || prompt === 'v7';
-// v7: the author's link names stay in the picture, the background image is faded,
-// and tile 0 boxes the area the motion tiles show.
-const v7 = prompt === 'v7';
+const noAxes = ['v5', 'v6', 'v7', 'v8'].includes(prompt);
+const v6 = ['v6', 'v7', 'v8'].includes(prompt);
+// v7 on: the author's link names stay in the picture, and tile 0 boxes the
+// area the motion tiles show. Only v7 faded the image: faded, the landing gear's
+// propeller no longer told the model it was looking at an aircraft.
+const v7 = prompt === 'v7' || prompt === 'v8';
+const faded = prompt === 'v7';
 // ONLY=Hood_Hinge re-captures one case.
 const wanted = cases.filter(
   (c) => c.image && c.film?.length && (!process.env.ONLY || c.template.includes(process.env.ONLY))
@@ -105,7 +107,7 @@ for (const entry of templates) {
     content:
       `${CHROME.join(', ')} { visibility: hidden !important; }` +
       // Faded, so the mechanism reads over a large or busy picture.
-      (v7 ? ' #backgroundImageHolder image { opacity: 0.35 !important; }' : ''),
+      (faded ? ' #backgroundImageHolder image { opacity: 0.35 !important; }' : ''),
   });
   // The canvas re-frames itself once what it is fitting has been drawn.
   await page.waitForTimeout(900);

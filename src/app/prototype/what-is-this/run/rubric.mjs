@@ -81,7 +81,26 @@ const REAL_MACHINE = {
   Bell_Crank: /bell ?crank/i,
   Straight_Line_Pair: /peaucellier/i,
   Hydraulic_Crosshead: /crosshead|\bpress\b/i,
+  'made-coupled-wheels': /locomotive|train|railway|shunter/i,
 };
+
+/**
+ * Library templates that teach a chain or a load case and were never a machine:
+ * a "Looks like" naming a machine for one of these is invented. Round 6 counts
+ * how often the model claims one anyway.
+ */
+export const NO_MACHINE = new Set([
+  'Watt_I',
+  'Watt_II',
+  'Stephenson_III',
+  'Locked_Four_Bar',
+  'Elliptical_Crank',
+  'Offset_Load_Rocker',
+  'Double_Butterfly',
+  'Three_Machines',
+  'Four_Bar_Inversions',
+  'Slider_Crank_Inversions',
+]);
 
 export function recognitionMatch(template, answer) {
   const expected = REAL_MACHINE[template];

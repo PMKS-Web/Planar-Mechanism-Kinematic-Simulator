@@ -1,16 +1,17 @@
 import { Joint, PrisJoint } from '../../model/joint';
 import { Link } from '../../model/link';
-import { distAt, fmt, isGroundPin } from './fact-math';
+import { distAt, fitLine, fmt, isGroundPin } from './fact-math';
 import {
   FourBar,
   findFourBars,
+  isDisc,
   jointsOf,
   RelationContext,
   sweepOf,
   traced,
   turnsFully,
 } from './relations';
-import { beamArms } from './roles';
+import { beamArms, cranksCoupledBy, listOf } from './roles';
 
 /**
  * PROTOTYPE -- the family, decided by the app rather than guessed by the model.
@@ -300,6 +301,93 @@ function crankRockerIntoParallelogram(
   return undefined;
 }
 
+/**
+ * Cranks tied to turn together by a rod that keeps its angle. With the cranks
+ * drawn as wheels and one of them joined by a rod to a block on a fixed guide,
+ * it is a steam locomotive's running gear: side rods coupling the driving
+ * wheels, and the main rod from the piston's crosshead.
+ */
+function sideRods(ctx: RelationContext): FamilyMatch | undefined {
+  for (const rod of ctx.bodies) {
+    const cranks = cranksCoupledBy(ctx, rod);
+    if (cranks.length < 2) continue;
+    const names = listOf(cranks.map(ctx.bodyLabel));
+    const wheels = cranks.every(isDisc);
+    const coupling = `${names} ${wheels ? 'are wheels (drawn as discs)' : 'are cranks'} tied by side rod ${ctx.bodyLabel(rod)}, which keeps its angle, so they turn together`;
+    for (const slider of ctx.visible) {
+      if (!(slider instanceof PrisJoint) || !slider.ground) continue;
+      const main = ctx.bodies.find(
+        (b) =>
+          b !== rod &&
+          jointsOf(ctx, b).includes(slider) &&
+          cranks.some((c) =>
+            jointsOf(ctx, b).some((j) => j !== slider && jointsOf(ctx, c).includes(j))
+          )
+      );
+      if (!main || !wheels) continue;
+      return {
+        family: 'steam-locomotive running gear (driving wheels, side rod and main rod)',
+        basis: `${coupling}; ${ctx.bodyLabel(main)} joins them to slider ${slider.id} on a fixed guide, as a main rod joins a piston's crosshead to a driving wheel`,
+      };
+    }
+    return {
+      family: wheels ? 'coupled wheels (side-rod drive)' : 'coupled cranks (side-rod drive)',
+      basis: coupling,
+    };
+  }
+  return undefined;
+}
+
+/**
+ * A point that moves along an exactly straight line without riding a guide.
+ * Four equal links in a loop through it, two of them meeting at it, make it
+ * a Peaucellier-Lipkin cell: the first linkage to draw a true straight line.
+ */
+function exactStraightLine(ctx: RelationContext): FamilyMatch | undefined {
+  // A body that slides (on a guide, carrying a slot, or on a cylinder's hidden
+  // seal, hence its own joints rather than the visible ones) moves straight
+  // because it is guided; the linkage has to make the line itself.
+  const slides = (b: Link) =>
+    b.joints.some((j) => j instanceof PrisJoint) ||
+    ctx.visible.some((j) => j instanceof PrisJoint && j.carrier === b);
+  for (const point of ctx.visible) {
+    if (point instanceof PrisJoint || isGroundPin(point)) continue;
+    if (ctx.bodies.some((b) => jointsOf(ctx, b).includes(point) && slides(b))) continue;
+    const path = ctx.samples.paths.get(point.id);
+    if (!path) continue;
+    const line = fitLine(path);
+    // Within 0.1% of its length: a drawn Peaucellier cell rounded to two decimals
+    // strays about 0.05%, Chebyshev's approximate line about 4%.
+    if (line.length < 1e-6 || line.maxOff / line.length > 1e-3) continue;
+    const binary = (j: Joint) =>
+      ctx.bodies.filter((b) => jointsOf(ctx, b).length === 2 && jointsOf(ctx, b).includes(j));
+    const other = (b: Link, j: Joint) => jointsOf(ctx, b).find((x) => x !== j)!;
+    const len = (b: Link) => distAt(ctx.samples, jointsOf(ctx, b)[0], jointsOf(ctx, b)[1]);
+    const arms = binary(point);
+    let cell = false;
+    for (let i = 0; i < arms.length && !cell; i++)
+      for (let k = i + 1; k < arms.length && !cell; k++) {
+        const side = len(arms[i]);
+        if (!near(side, len(arms[k]), 0.005)) continue;
+        const a = other(arms[i], point);
+        const b = other(arms[k], point);
+        cell = binary(a).some((ab) => {
+          const q = other(ab, a);
+          return (
+            q !== point &&
+            near(len(ab), side, 0.005) &&
+            binary(b).some((bb) => other(bb, b) === q && near(len(bb), side, 0.005))
+          );
+        });
+      }
+    return {
+      family: cell ? 'Peaucellier-Lipkin straight-line linkage' : 'exact straight-line linkage',
+      basis: `point ${point.id} moves along a straight line ${fmt(line.length)} long without riding a guide${cell ? ', and four equal links form a rhombus through it: an inversor cell' : ''}`,
+    };
+  }
+  return undefined;
+}
+
 function cylinderLever(ctx: RelationContext): FamilyMatch | undefined {
   for (const cylinder of ctx.cylinders) {
     for (const mount of [cylinder.mountA, cylinder.mountB]) {
@@ -348,6 +436,10 @@ export function familyCheck(ctx: RelationContext): FamilyCheck {
     if (m && !matches.some((x) => x.family === m.family)) matches.push(m);
   };
   add(jansen(ctx));
+  if (ctx.catalogV8) {
+    add(sideRods(ctx));
+    add(exactStraightLine(ctx));
+  }
   loops.forEach((loop) => add(straightLine(ctx, loop)));
   sliders(ctx).forEach(add);
   add(crankRockerIntoParallelogram(ctx, loops));

@@ -1312,7 +1312,14 @@
   const pair = () => ordered()[state.index];
   const voteId = (r, p) => `${r.id}~${p.template}`;
   const voteFor = (p) => votes.get(voteId(round(), p));
-  const sheetTitle = (armId) => DATA.sheets[armId.split('~')[0]]?.title ?? armId;
+  /** An arm is `<sheet>[@<model>][~<asking>]`: "v8@astra" is v8 answered by GPT-6 Astra. */
+  const armSheet = (armId) => armId.split('~')[0].split('@')[0];
+  const armModel = (armId) => armId.split('~')[0].split('@')[1];
+  const sheetTitle = (armId) => {
+    const model = armModel(armId);
+    const title = DATA.sheets[armSheet(armId)]?.title ?? armId;
+    return model ? `${title} · GPT-6 ${model.charAt(0).toUpperCase()}${model.slice(1)}` : title;
+  };
   const armLabel = (arm) =>
     `${sheetTitle(arm.id)}${arm.sample > 1 ? ` (asking ${arm.sample})` : ''}`;
   /** Claude's call on a decided pair, said as a side of this pair: 'left', 'right', 'same' or 'both-poor'. */
@@ -1506,15 +1513,8 @@
    * the student the paragraph and nothing else.
    */
   function panel(p, arm) {
-    const family =
-      'appFamily' in p
-        ? [
-            [
-              'Family',
-              p.appFamily ? `${p.appFamily} (matched by PMKS+)` : 'No match in PMKS+’s catalog',
-            ],
-          ]
-        : [];
+    // With no match there is simply no Family row.
+    const family = p.appFamily ? [['Family', p.appFamily]] : [];
     const rows = [...family, ...p.overview]
       .map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`)
       .join('');
@@ -1944,7 +1944,9 @@
       (decided
         ? `Claude decided ${decided} of ${r.pairs.length} pairs where one answer was clearly better or they were plainly alike; ${close.length} close call${close.length === 1 ? ' is' : 's are'} left for you (${done} judged). You can still open any of Claude's and vote. `
         : `${done} of ${r.pairs.length} judged. `) +
-      'Each mechanism has two answers from GPT-6 Luna, one per fact-sheet version, on randomly chosen sides; which is which shows after you save. ' +
+      (armModel(r.a) || armModel(r.b)
+        ? 'Each mechanism has two answers to the same fact sheet, one from each model, on randomly chosen sides; which is which shows after you save. '
+        : 'Each mechanism has two answers from GPT-6 Luna, one per fact-sheet version, on randomly chosen sides; which is which shows after you save. ') +
       (r.note || '');
   }
   function renderStrip() {
@@ -2135,7 +2137,7 @@
         0
       );
     const useTotal = r.pairs.filter((p) => p.left.rubric.application !== 'n/a').length;
-    const sheetB = DATA.sheets[r.b.split('~')[0]];
+    const sheetB = DATA.sheets[armSheet(r.b)];
     const pill = (o) => {
       if (!o) return '<span class="pill">not yet</span>';
       const who = o.by === 'claude' ? ' (Claude)' : '';

@@ -77,5 +77,22 @@
       "The background image is faded to about a third, so the mechanism reads over a large or busy picture, and a dashed box in tile 0 marks the area the other tiles show, so the model can see where the mechanism sits in the image.",
       "The prompt says the names are the author's own and often say what the part and the mechanism are for, and that the note may use a name after the part's letters."
     ]
+  },
+  "v7r6": {
+    "title": "v7 · on round 6",
+    "summary": "v7 exactly, on round 6's mechanisms, asked blind. The pictures come from feature/drawing-styles as merged (its own disc drawing, not the local fix).",
+    "changes": []
+  },
+  "v8": {
+    "title": "v8 · a wider catalog, the image at full strength, solvable only",
+    "summary": "v7 with more of the recognizing done by the app: side rods, locomotive running gear, bell cranks and exact straight lines named; a disc no longer called a lever; the background image at full strength; and mechanisms PMKS+ cannot solve no longer sent.",
+    "changes": [
+      "Cranks tied to turn together by a rod that keeps its angle are coupled by a side rod; the rod's job says so (\"side rod (a coupling rod): ties link OAR and link PBS to turn together\"). Drawn as wheels, they match \"coupled wheels (side-rod drive)\"; with one of them joined by a rod to a block on a fixed guide, \"steam-locomotive running gear (driving wheels, side rod and main rod)\".",
+      "A pivoted rocker whose two arms meet at 45 to 135 deg, each joined to another part, is a bell crank, with the angle between its arms.",
+      "A point that moves along an exactly straight line (within 0.1% of its length) without riding a guide is an exact straight-line linkage; with four equal links in a rhombus through it, a Peaucellier-Lipkin linkage.",
+      "A link drawn as a disc is no longer described as a lever (beam) pivoted between its crank pin and a spoke point.",
+      "The background image is at full strength again, still boxed in tile 0: faded, the landing gear's propeller no longer told the model it was looking at an aircraft.",
+      "A mechanism PMKS+ cannot solve is left out of the sheet, and a drawing with none it can solve is not asked about: the panel shows something else for them. The rule about describing an unsolved mechanism leaves the prompt."
+    ]
   }
 }

@@ -25,7 +25,7 @@ import { fixturePayload } from '../../../test-utils/verification/fixture-payload
 import { describeDrawing } from './mechanism-facts';
 import { MADE_CASES } from './made-cases';
 import { mergeMotions } from './motion-export';
-import { buildPrompt } from './prompt';
+import { buildPrompt, PromptVersion } from './prompt';
 
 const FIRST_TEN: TemplateID[] = [
   '4-Bar',
@@ -129,7 +129,7 @@ function casesFrom(setName: string | undefined, root: string): Case[] {
   return [...set.library.map(libraryCase), ...students, ...made];
 }
 
-function describe_(entry: Case, withBackdrop: boolean, picture: 'v5' | 'v6' | 'v7') {
+function describe_(entry: Case, withBackdrop: boolean, picture: 'v5' | 'v6' | 'v7' | 'v8') {
   const decoder = new StringTranscoder();
   decoder.decodeURL(entry.payload);
   const settings = new SettingsService();
@@ -154,7 +154,7 @@ function describe_(entry: Case, withBackdrop: boolean, picture: 'v5' | 'v6' | 'v
     backdrop: withBackdrop && !!entry.backdrop,
     picture,
     // From v7 the author's own names go too: the best chance for a real drawing.
-    includeNames: picture === 'v7',
+    includeNames: picture === 'v7' || picture === 'v8',
   });
 }
 
@@ -165,19 +165,26 @@ describe('"What is this?" prototype', () => {
     const root = process.cwd();
     const sheet = process.env['PMKS_SHEET'] ?? 'dev';
     const asked = process.env['PMKS_PROMPT'];
-    const version = asked === 'v4' || asked === 'v5' || asked === 'v6' ? asked : 'v7';
+    const version: PromptVersion =
+      asked === 'v4' || asked === 'v5' || asked === 'v6' || asked === 'v7' ? asked : 'v8';
     const out = `${root}/artifacts/what-is-this/${sheet}`;
     const motionDir = `${root}/artifacts/what-is-this/motion`;
     mkdirSync(`${out}/cases`, { recursive: true });
     mkdirSync(motionDir, { recursive: true });
     const cases = [];
+    const skipped: string[] = [];
     for (const entry of casesFrom(process.env['PMKS_CASES'], root)) {
       // v4's pictures carried no background image, so its sheets do not mention one.
       const described = describe_(
         entry,
         version !== 'v4',
-        version === 'v7' ? 'v7' : version === 'v6' ? 'v6' : 'v5'
+        version === 'v8' || version === 'v7' || version === 'v6' ? version : 'v5'
       );
+      // From v8 a drawing PMKS+ cannot solve is not asked about at all.
+      if (version === 'v8' && !described.machines.length) {
+        skipped.push(entry.id);
+        continue;
+      }
       const key = `${entry.id}.${VARIANT}`;
       // The filmstrip and the family are the first machine's; the page's
       // animation and Links table show them all.
@@ -207,7 +214,7 @@ describe('"What is this?" prototype', () => {
     }
     writeFileSync(
       `${out}/manifest.json`,
-      JSON.stringify({ sheet, prompt: version, cases }, null, 2)
+      JSON.stringify({ sheet, prompt: version, cases, unsolvedSkipped: skipped }, null, 2)
     );
     expect(cases.length).toBeGreaterThan(0);
   });
