@@ -9,13 +9,22 @@ Settings has one **Drawing Style** choice, using the same radio block as Global 
 
 ## Schematic symbols
 
-- **Lines are 3px** (5px when picked or pointed at): twice the axes and three times the grid, so a
-  bar lying along a grid line is never mistaken for it. A cylinder's barrel is 4.5px, so its two
-  members read as two bodies even in one color.
+- **Lines are 3px**, picked or not (a pick is the band below): twice the axes and three times the
+  grid, so a bar lying along a grid line is never mistaken for it. A cylinder's barrel is 4.5px, so
+  its two members read as two bodies even in one color.
 - **A plate of three or more joints is traced round its outside**, the same convex hull its filled
   body is drawn around in the other styles (`linkSkeletonPath`). Joined in joint order, a rectangle
   came out as a bow tie. Its inside takes a click, so it is shaded at 12% in its own color; a bar
   is an open line with no inside, so the same fill paints nothing on it.
+- **A link drawn as a disc is its rim and its spokes**: the circle about its ground pin through its
+  outermost joint, and a line from the pin to each other joint. Whether it is a disc at all is
+  `RealLink.discCenter`, the one question Standard's filled disc asks too, so the two styles cannot
+  disagree. The rim runs through the pin centers, as a plate's outline does, rather than past them
+  as Standard's does. Without the spokes the pivot was a loose pin in a ring, and a ring looks the
+  same at every angle. It is shaded like a plate, and its band runs round the rim and the spokes.
+- **A part inside a welded body is picked by its line first, then by its shaded inside**
+  (`GridUtilsService.pickLinkAt`), so a bar lying across a plate or a disc is still picked by its
+  line, and a click in the middle of a disc picks the disc rather than the whole body.
 - **Every joint is cream inside a 1px ink hairline**: pins, slides (the bar a Prismatic joint
   wears) and welds alike. The weld cross is drawn a little wider than a pin (1.15 pin radii, by
   `schematicPlusPath`), with arms broad enough to show the cream.

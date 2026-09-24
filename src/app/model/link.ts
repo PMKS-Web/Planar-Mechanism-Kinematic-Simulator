@@ -851,6 +851,15 @@ export class RealLink extends Link {
   }
 
   /**
+   * The pin this link's disc is drawn about, or nothing while it is drawn as a
+   * bar: asked for, and able to be honored. Every style asks this one question,
+   * so the Schematic cannot draw as a bar a link that Standard draws as a disc.
+   */
+  discCenter(): Joint | undefined {
+    return this.isCircle && this.subset.length === 0 ? this.groundPivot() : undefined;
+  }
+
+  /**
    * The disc a circular link is drawn as, or nothing when it is not one.
    *
    * Centered on the ground pin, and wide enough to reach the outermost joint's
@@ -858,8 +867,7 @@ export class RealLink extends Link {
    * exactly the ground the bar covered and no pin ends up outside its own link.
    */
   private circularOutline(): string | undefined {
-    if (!this.isCircle) return undefined;
-    const center = this.groundPivot();
+    const center = this.discCenter();
     if (center === undefined) return undefined;
     const reach = this.joints.reduce((far, joint) => Math.max(far, getDistance(center, joint)), 0);
     const radius = reach + barHalfWidth(this.artworkScale);
