@@ -13,6 +13,7 @@
 const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
+import { readFileSync } from 'node:fs';
 import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
@@ -193,6 +194,103 @@ text = await drawerText();
 record(
   'geometry in no mechanism gets its own section',
   text.includes('Not in any mechanism'),
+  text
+);
+
+// --- the wrong number of degrees of freedom: which part, and what fixes it ---
+// The count alone ("This mechanism has 3 degrees of freedom") is where the app
+// used to stop. The drawer names the parts that move with the input held and
+// the one edit it has counted, and following that advice has to make the
+// mechanism run. The drawings are the fixture gallery's, published for exactly
+// this; see `mobility-diagnosis.spec.ts`.
+const galleryQuery = (name) => {
+  const row = readFileSync('docs/fixture-urls.md', 'utf8')
+    .split('\n')
+    .find((line) => line.startsWith(`| [${name}](`));
+  return row?.match(/\]\(https:\/\/[^)?]+\?([^)]*)\)/)?.[1];
+};
+
+await open(galleryQuery('Four-bar with an ungrounded pivot'));
+await tab('Kinematic').click();
+await page.waitForTimeout(600);
+text = await drawerText();
+record(
+  'too many freedoms names the loose links and the counted fix',
+  text.includes('links BC and CD can still move') &&
+    text.includes('Grounding joint D would leave one degree of freedom.'),
+  text
+);
+const toD = page.getByRole('button', { name: 'Go To Joint D', exact: true });
+record('and offers to go to the joint the fix is about', (await toD.count()) === 1);
+await toD.click();
+await page.waitForTimeout(600);
+await page
+  .locator('app-edit-panel toggle-block', { hasText: 'Grounded' })
+  .getByRole('switch')
+  .click();
+await page.waitForTimeout(600);
+const afterFix = await page.evaluate(() => {
+  const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+  return { dof: srv.mechanisms.map((m) => m.dof), ready: srv.readinessOfEachMechanism()[0]?.ready };
+});
+record(
+  'and grounding that joint in the Edit panel makes it run',
+  afterFix.dof[0] === 1 && afterFix.ready === true,
+  afterFix
+);
+
+await open(galleryQuery('Braced four-bar'));
+await tab('Kinematic').click();
+await page.waitForTimeout(600);
+text = await drawerText();
+record(
+  'too few freedoms finds the brace, and goes to the link',
+  text.includes('Deleting link BD would leave one degree of freedom.') &&
+    (await page.getByRole('button', { name: 'Go To Link BD', exact: true }).count()) === 1,
+  text
+);
+
+// --- an input on a link that is grounded at both ends ------------------------
+// The crank is frame, so the machine hanging off it was solved as if nothing
+// drove it, and the drawer said "No input is set" beside the input's own arrow.
+// The refusal is the actuator's: which ground pins the link down, and which to
+// take away. Taking it away then leaves a crank with a link dangling off it,
+// and the drawer moves on to that.
+await open(galleryQuery('Crank grounded at both ends'));
+await tab('Kinematic').click();
+await page.waitForTimeout(600);
+text = await drawerText();
+record(
+  'an input on a grounded link says it cannot turn, not that there is none',
+  text.includes('The input at joint A cannot turn') &&
+    text.includes('Its link is also grounded at joint B') &&
+    !text.includes('No input is set'),
+  text
+);
+// The playback row said it too, from its own reading of the same drawing.
+const row = await page.locator('app-playback-bar').innerText();
+record(
+  'and the playback row counts the fix rather than asking for an input',
+  !row.includes('set one joint as an input') && /1 fix/.test(row),
+  row
+);
+const toB = page.getByRole('button', { name: 'Go To Joint B', exact: true });
+record('and offers to go to the ground that pins it', (await toB.count()) === 1);
+await toB.click();
+await page.waitForTimeout(600);
+await page
+  .locator('app-edit-panel toggle-block', { hasText: 'Grounded' })
+  .getByRole('switch')
+  .click();
+await page.waitForTimeout(600);
+await tab('Kinematic').click();
+await page.waitForTimeout(600);
+text = await drawerText();
+record(
+  'and ungrounding it lets the input turn, leaving the next thing to fix',
+  !text.includes('cannot turn') &&
+    text.includes('This mechanism has 2 degrees of freedom') &&
+    text.includes('Attach a link from joint C to a new grounded joint'),
   text
 );
 

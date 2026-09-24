@@ -491,6 +491,49 @@ the solver run, and not against Gruebler's. A crosshead on two slides counts -1 
 to one by the same geometry; comparing against -1 called the solver's every failure on such a
 drawing a hidden freedom, when the rescue was the count agreeing with the drawing.
 
+### `diagnoseMobility` counts every fix it offers, and a fix can still be wrong
+
+`free-motion.ts` names what is loose by holding the input still (`holdTurn` / `holdSlide` in
+`mobility.ts`) and looking for motion that is left, and offers an edit only when counting the
+edited drawing comes back at one freedom as drawn and none with the input held. Four things
+about that surprised the first version:
+
+- **The advice it replaced was wrong on its own spec's drawing.** "Ground another joint" on the
+  open chain A-B-C grounded at A grounds C and leaves a rigid pair, not a mechanism. No single
+  ground fixes a dangling link; a link from its free end to a new ground does, and that is the one
+  piece of advice that cannot be counted (the link does not exist yet), so it is said as advice.
+- **Ungrounding has to assign the bodies again.** A bar pinned down at both ends is folded into
+  the frame by `assignBodies`, and removing the world from one joint's `bodiesAt` leaves it
+  frame. `assignBodies` takes a `groundedAt` override for exactly this. And when the *driven*
+  joint is on such a bar, the partition does not count it as the machine's own joint at all, so
+  there is no input to hold -- which is how "delete the coupler" once passed as a fix.
+- **"Leaves one freedom" is not "fixes the mechanism".** Deleting a slider-crank's rod leaves the
+  crank turning on its own; deleting a four-bar's coupler does the same. A deletion is offered only
+  for a brace: every joint it meets keeps two links, or one and the ground (`staysHeld`). The
+  driven joint is never ungrounded, and an edit that leaves the input nothing to drive is refused.
+- **One freedom in total can be two machines.** Ground anchors without joining, so grounding a
+  joint in the middle of a chain cuts it in two, and the partition then builds a machine that runs
+  and a rigid piece that is a machine of its own at 0 degrees of freedom. The sum is one; the app
+  shows two rows, one of them broken. So every edit is checked with `staysOnePiece`, which unions
+  bodies the way `partitionMechanisms` does, before it is counted. Pinning each body to the world
+  where it stood (the first version) got the count right and missed the split.
+
+`mobility-diagnosis.spec.ts` builds each fix for real and asks the solver's count too, so the two
+counts cannot drift apart; the drawings are in the fixture gallery (`MOBILITY_GALLERY`).
+`mobility-diagnosis-sweep.spec.ts` does it to every library template broken one edit at a time --
+about 900 drawings and 430 offered fixes -- and is where the split above was found.
+
+### An input on a bar grounded at both ends belongs to no machine
+
+Set a crank's input, then ground its far end: the bar is folded into the frame, the partition hands
+the pivot to no machine, and `Mechanism` clears `input` on every joint it does not own. The machine
+hanging off the bar was then told "No input is set" in the drawer, "Input joint: Not set" in its
+facts, and "Ground a joint and set one joint as an input." in the playback row -- all beside the
+input's arrow. `describeActuator` now refuses that joint (`framePieceAt`, "link is grounded" in the
+menu), `readinessOf` finds the input among the frame joints it is handed (`inputOnTheFrame`), and
+`inputSetFor` is the one question the other surfaces ask. A new surface that decides "no input" by
+looking only at `ownJoints` reintroduces the bug; ask `inputSetFor`.
+
 ### The library's gripper counts one freedom and measures three, and runs on the count
 
 `Cylinder_Gripper` -- the card, and `slideGripperFixture` the gallery generates it from -- has

@@ -3,10 +3,11 @@ import { Link } from '../link';
 import { cylindersIn } from '../cylinder';
 import { describeFrozenCylinderStroke, isFrozenCylinder } from '../cylinder-frozen';
 import { visibleBodyName } from '../body-label';
-import { canDrive } from '../actuator';
+import { canDrive, describeActuator, framePieceAt, groundPinsElsewhere } from '../actuator';
 import { Mechanism, MechanismFailure } from './mechanism';
 import { MechanismPartition, UnassignedGeometry } from './mechanism-partition';
 import { assignBodies } from './bodies';
+import { diagnoseMobility, MobilityDiagnosis, MobilityFix } from './free-motion';
 
 /**
  * A blocker stops the mechanism running at all. A warning means it runs, and
@@ -70,6 +71,62 @@ const shown = (joints: readonly Joint[], from: readonly Joint[] = joints): Joint
 const names = (joints: Joint[]): string =>
   joints.map((joint) => (joint as RealJoint).name || joint.id).join(', ');
 
+const nameOf = (joint: Joint): string => (joint as RealJoint).name || joint.id;
+
+/** "A", "A or B", "A, B, or C" -- the way a sentence offers alternatives. */
+const either = (items: string[]): string =>
+  items.length <= 2 ? items.join(' or ') : `${items.slice(0, -1).join(', ')}, or ${items.at(-1)}`;
+
+/** "A", "A and B", "A, B and 2 more" -- the way a sentence lists what it found. */
+const both = (items: string[], most = 3): string => {
+  const shownItems =
+    items.length > most ? [...items.slice(0, most), `${items.length - most} more`] : items;
+  return shownItems.length <= 1
+    ? (shownItems[0] ?? '')
+    : `${shownItems.slice(0, -1).join(', ')} and ${shownItems.at(-1)}`;
+};
+
+/** One fix as the reader would do it: "grounding joint D". */
+function fixPhrase(fix: MobilityFix, partition: MechanismPartition): string {
+  switch (fix.kind) {
+    case 'ground':
+      return `grounding joint ${nameOf(fix.joint)}`;
+    case 'unground':
+      return `ungrounding joint ${nameOf(fix.joint)}`;
+    case 'pin-in-slot':
+      return `making joint ${nameOf(fix.joint)} a Pin-in-slot`;
+    case 'delete-link':
+      return `deleting link ${visibleBodyName(fix.link, cylindersIn(partition.joints))}`;
+  }
+}
+
+/**
+ * The fixes, as one sentence that says they were counted: "Grounding joint D, or
+ * ungrounding joint A, would leave one degree of freedom."
+ */
+function fixSentence(diagnosis: MobilityDiagnosis, partition: MechanismPartition): string {
+  const phrases = diagnosis.fixes.map((fix) => fixPhrase(fix, partition));
+  if (phrases.length === 0) return '';
+  const sentence = either(phrases);
+  const each = phrases.length > 1 ? ' each' : '';
+  return `${sentence[0].toUpperCase()}${sentence.slice(1)} would${each} leave one degree of freedom.`;
+}
+
+/** Where the Go To button should land: the fix first, then the loose part. */
+function focusOf(diagnosis: MobilityDiagnosis): Pick<ReadinessCheck, 'at' | 'action'> {
+  const fix = diagnosis.fixes[0];
+  if (fix?.kind === 'delete-link') return { at: fix.link, action: 'Go To Link' };
+  const joint = fix?.joint ?? diagnosis.attachAt ?? diagnosis.looseJoints[0];
+  return joint ? { at: joint, action: 'Go To Joint' } : {};
+}
+
+/** "link BC can" / "links BC and CD can": what is loose, as the subject of a sentence. */
+function looseSubject(diagnosis: MobilityDiagnosis, partition: MechanismPartition): string {
+  const cylinders = cylindersIn(partition.joints);
+  const linkNames = diagnosis.looseLinks.map((link) => visibleBodyName(link, cylinders));
+  return `${linkNames.length === 1 ? 'link' : 'links'} ${both(linkNames)}`;
+}
+
 /**
  * The joint of *this machine* the reader has switched Driven Input on for.
  *
@@ -84,6 +141,18 @@ const names = (joints: Joint[]): string =>
 function drivenOwnJoint(partition: MechanismPartition): RealJoint | undefined {
   return partition.ownJoints.find((joint) => joint instanceof RealJoint && joint.input) as
     RealJoint | undefined;
+}
+
+/**
+ * The joint the reader set as this machine's input: its own, or one on a frame
+ * bar it hangs from, which is set even though it cannot turn anything.
+ *
+ * Asked by every surface that would otherwise say "set an input" -- the
+ * playback row, the facts under the list -- because the one thing those
+ * sentences must never do is ask for an input the reader can see.
+ */
+export function inputSetFor(partition: MechanismPartition): RealJoint | undefined {
+  return drivenOwnJoint(partition) ?? inputOnTheFrame(partition)?.joint;
 }
 
 /**
@@ -116,6 +185,76 @@ function unexplainedBlocker(partition: MechanismPartition, mechanism: Mechanism)
       'Drag a joint to start it somewhere else, or undo the last change and make it a step at a time.',
     at: driven,
     action: driven ? 'Go To Joint' : undefined,
+  };
+}
+
+/**
+ * More than one degree of freedom: say which parts are loose and what would fix
+ * it, from the drawing itself (`free-motion.ts`).
+ *
+ * "Ground another joint, or connect a free joint to a second link" was advice
+ * for no drawing in particular, and on the simplest loose chain -- A-B-C
+ * grounded at A -- grounding C leaves it rigid. Every fix named here has been
+ * counted; where none of the simple edits works, the one piece of advice left
+ * is the link a four-bar is finished with, and it is said as advice.
+ */
+function tooFree(dof: number, partition: MechanismPartition): ReadinessCheck {
+  const title = `This mechanism has ${dof} degrees of freedom`;
+  const diagnosis = diagnoseMobility(partition);
+  const driven = drivenOwnJoint(partition);
+  const fixes = fixSentence(diagnosis, partition);
+  const wayOut =
+    fixes ||
+    wayOutOf(
+      diagnosis,
+      'Ground another joint, or connect a free joint to a second link, until this reads 1.'
+    );
+
+  if (driven && diagnosis.looseLinks.length > 0) {
+    const one = diagnosis.looseLinks.length === 1;
+    return {
+      state: 'blocker',
+      title,
+      body: `With the input held still, ${looseSubject(diagnosis, partition)} can still move, so the input alone cannot say where ${one ? 'it goes' : 'they go'}. ${wayOut}`,
+      ...focusOf(diagnosis),
+    };
+  }
+  return {
+    state: 'blocker',
+    title,
+    body: `One input controls only one degree of freedom, and this mechanism can move in ${dof} independent ways. ${wayOut}`,
+    ...focusOf(diagnosis),
+  };
+}
+
+/** Advice for the case no single counted edit fixes: a link to ground at a free end. */
+function wayOutOf(diagnosis: MobilityDiagnosis, otherwise: string): string {
+  const at = diagnosis.attachAt;
+  return at
+    ? `Attach a link from joint ${nameOf(at)} to a new grounded joint, so it has something to move against.`
+    : otherwise;
+}
+
+/**
+ * None, or fewer: say which one edit would let it move, counted the same way.
+ *
+ * The weld sentence stays for the drawing no single edit frees -- a weld takes
+ * freedom away, and unwelding is not an edit the count can make without
+ * rebuilding the bodies, so it is said as a possibility rather than a result.
+ */
+function overConstrained(dof: number, partition: MechanismPartition): ReadinessCheck {
+  const diagnosis = diagnoseMobility(partition);
+  const fixes = fixSentence(diagnosis, partition);
+  const welded = partition.ownJoints.some((joint) => joint instanceof RealJoint && joint.isWelded);
+  return {
+    state: 'blocker',
+    title: `This mechanism has ${dof} degrees of freedom`,
+    body:
+      'It is over-constrained, so nothing can move at all. ' +
+      (fixes ||
+        'Remove a link, or unground a joint, until this reads 1.' +
+          (welded ? ' A weld also removes freedom — unwelding a joint is another way out.' : '')),
+    ...focusOf(diagnosis),
   };
 }
 
@@ -158,42 +297,9 @@ function blockerForFailure(
         };
       }
       if (dof > 1) {
-        // Point at the loose ends when there are any: a joint on one link with
-        // no ground is a freedom the reader can see. Only on a *binary* link,
-        // though — a third joint riding a link that already has two is a tracer
-        // point, and a tracer adds no freedom worth sending anyone to.
-        const freeEnds = partition.ownJoints.filter(
-          (joint) =>
-            joint instanceof RealJoint &&
-            !(joint instanceof PrisJoint) &&
-            !joint.ground &&
-            joint.links.length === 1 &&
-            joint.links[0].joints.length <= 2
-        );
-        return {
-          state: 'blocker',
-          title: `This mechanism has ${dof} degrees of freedom`,
-          body:
-            `One input controls only one degree of freedom. Ground another joint, or connect a free joint to a second link, until this reads 1.` +
-            (freeEnds.length > 0
-              ? ` ${freeEnds.length === 1 ? 'Joint' : 'Joints'} ${names(freeEnds)} ${
-                  freeEnds.length === 1 ? 'hangs' : 'hang'
-                } on only one link — free ends like that are where extra freedom usually lives.`
-              : ''),
-          at: freeEnds[0],
-          action: freeEnds.length > 0 ? 'Go To Joint' : undefined,
-        };
+        return tooFree(dof, partition);
       }
-      const welded = partition.ownJoints.some(
-        (joint) => joint instanceof RealJoint && joint.isWelded
-      );
-      return {
-        state: 'blocker',
-        title: `This mechanism has ${dof} degrees of freedom`,
-        body:
-          'It is over-constrained, so nothing can move at all. Remove a link, or unground a joint, until this reads 1.' +
-          (welded ? ' A weld also removes freedom — unwelding a joint is another way out.' : ''),
-      };
+      return overConstrained(dof, partition);
     }
 
     case 'not-driven': {
@@ -240,10 +346,23 @@ function blockerForFailure(
 
     case 'hidden-freedom': {
       const ways = mechanism.hiddenFreedoms ?? 2;
+      const diagnosis = diagnoseMobility(partition);
+      if (diagnosis.looseLinks.length === 0) {
+        return {
+          state: 'blocker',
+          title: 'A part of this mechanism is tied to nothing',
+          body: `It counts as one degree of freedom, but the drawing can move in ${ways} independent ways: some part is held by nothing but its own joints, so the input alone cannot say where it goes. Attach its free end, ground it, or remove it.`,
+        };
+      }
+      const one = diagnosis.looseLinks.length === 1;
       return {
         state: 'blocker',
         title: 'A part of this mechanism is tied to nothing',
-        body: `It counts as one degree of freedom, but the drawing can move in ${ways} independent ways: some part is held by nothing but its own joints, so the input alone cannot say where it goes. Attach its free end, ground it, or remove it.`,
+        body:
+          `It counts as one degree of freedom, but with the input held still ${looseSubject(diagnosis, partition)} can still move: ${one ? 'it is' : 'they are'} held by nothing but ${one ? 'its' : 'their'} own joints. ` +
+          (fixSentence(diagnosis, partition) ||
+            wayOutOf(diagnosis, 'Attach its free end, ground it, or remove it.')),
+        ...focusOf(diagnosis),
       };
     }
 
@@ -301,6 +420,30 @@ function blockerForFailure(
 }
 
 /**
+ * An input set on a link that has since been grounded at its other end too.
+ *
+ * The link is then part of the frame, so the partition gives the joint to no
+ * mechanism, and the machine it hangs off solved as if nothing drove it: "No
+ * input is set", said beside the input's own arrow. The joint is still in this
+ * mechanism's `joints` -- a frame piece is handed to the machine it touches --
+ * so it is found there, and the refusal is the actuator model's own sentence.
+ */
+function inputOnTheFrame(
+  partition: MechanismPartition
+): { joint: RealJoint; refusal: string; unground?: RealJoint } | undefined {
+  const own = new Set(partition.ownJoints.map((joint) => joint.id));
+  for (const joint of partition.joints) {
+    if (!(joint instanceof RealJoint) || !joint.input || own.has(joint.id)) continue;
+    if (!framePieceAt(joint)) continue;
+    const refusal = describeActuator(joint);
+    if (typeof refusal !== 'string') continue;
+    const link = joint.links[0];
+    return { joint, refusal, unground: link ? groundPinsElsewhere(link, joint)[0] : undefined };
+  }
+  return undefined;
+}
+
+/**
  * Everything standing between one mechanism and its animation, worst first.
  *
  * Ordered the way the fixes depend on one another rather than by severity,
@@ -329,9 +472,18 @@ export function readinessOf(
   // connections that are perfectly sound. So where the drive itself is refused,
   // that refusal is the whole of the answer and the failure's own sentence is
   // left out rather than stacked on top of it.
-  const refusal = helpers.drivenRefusal(partition);
   const driven = drivenOwnJoint(partition);
-  if (refusal) {
+  const onFrame = driven ? undefined : inputOnTheFrame(partition);
+  const refusal = helpers.drivenRefusal(partition) ?? onFrame?.refusal;
+  if (onFrame) {
+    add({
+      state: 'blocker',
+      title: `The input at joint ${nameOf(onFrame.joint)} cannot turn`,
+      body: onFrame.refusal,
+      at: onFrame.unground,
+      action: onFrame.unground ? 'Go To Joint' : undefined,
+    });
+  } else if (refusal) {
     add({
       state: 'blocker',
       title: 'This joint cannot be an input',
@@ -412,9 +564,10 @@ function factsOf(
 ): MechanismFact[] {
   // Its own, not everything it is handed: a shared frame piece carries the
   // neighbor's driven pin along with it, and naming that as this machine's
-  // "Driven joint" pointed the reader at a joint in another mechanism.
-  const driven = partition.ownJoints.find((joint) => joint instanceof RealJoint && joint.input) as
-    RealJoint | undefined;
+  // "Driven joint" pointed the reader at a joint in another mechanism. An
+  // input on a frame bar that belongs to nobody is this machine's, though, and
+  // "Not set" beside its arrow is the sentence the blocker above replaced.
+  const driven = inputSetFor(partition);
   const moving = partition.links.length;
   const dof = mechanism.dof;
   const facts: MechanismFact[] = [
