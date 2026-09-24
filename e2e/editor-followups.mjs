@@ -128,11 +128,22 @@ try {
   });
   await page.mouse.click(at.x, at.y);
   await page.mouse.click(at.x, at.y);
+  // The part's own solid edge, not the dashed one round the body it belongs to.
+  const outline = await page.locator('#primitiveSelection .link-selected').evaluate((el) => {
+    const g = ng.getComponent(document.querySelector('app-new-grid'));
+    const hex = getComputedStyle(el).getPropertyValue('--canvas-selection').trim();
+    const [r, gr, b] = hex.match(/[\da-f]{2}/gi).map((h) => parseInt(h, 16));
+    return {
+      d: el.getAttribute('d'),
+      part: g.objectDisplay.path(g.activeObjService.selectedLink),
+      stroke: getComputedStyle(el).stroke,
+      selection: `rgb(${r}, ${gr}, ${b})`,
+    };
+  });
   check(
     'selected primitive has a visible yellow outline',
-    await page
-      .locator('#primitiveSelection path')
-      .evaluate((el) => getComputedStyle(el).stroke !== 'none' && el.getAttribute('d').length > 10)
+    outline.d.length > 10 && outline.d === outline.part && outline.stroke === outline.selection,
+    outline
   );
   await page.screenshot({ path: `${OUT}/primitive-selection.png` });
   await page.locator('#joint_C').click({ button: 'right' });
@@ -193,23 +204,30 @@ try {
   await page.locator('#joint_C').click();
   await page.getByRole('button', { name: 'Visual Settings', exact: true }).click();
   await page.waitForTimeout(400);
+  // The card, not the frame round it. The frame keeps $shadow-room under the
+  // card for its shadow, so where the card stops one gap above the controls the
+  // frame reaches into them by design; what must hold there is that the
+  // controls, which sit above it, still take the press.
   const panelGeometry = () =>
     page.evaluate(() => {
-      const p = document.querySelector('app-left-tabs .panel').getBoundingClientRect(),
+      const p = document.querySelector('app-left-tabs .panel #normalPanel').getBoundingClientRect(),
         cards = [...document.querySelectorAll('.transportCard,.scrubCard')].map((e) =>
           e.getBoundingClientRect()
         );
+      const top = Math.min(...cards.map((c) => c.top));
+      const pressed = document.elementFromPoint(p.left + 20, top + 2);
       return {
         bottom: p.bottom,
         right: p.right,
-        top: Math.min(...cards.map((c) => c.top)),
+        top,
         left: Math.min(...cards.map((c) => c.left)),
+        controlsTakePress: !!pressed?.closest('.transportCard,.scrubCard'),
       };
     });
   const narrow = await panelGeometry();
   check(
     'narrow edit panel clears the playback controls',
-    narrow.right > narrow.left && narrow.bottom <= narrow.top,
+    narrow.right > narrow.left && narrow.bottom <= narrow.top && narrow.controlsTakePress,
     narrow
   );
   await page.screenshot({ path: `${OUT}/narrow-panel.png` });
