@@ -1449,6 +1449,8 @@
   /** A part name as the fact sheet writes it, reduced to what the animation knows it by. */
   const partKey = (name) =>
     name
+      // An author's name after the letters, raw or escaped: link KILMNO ("Hood").
+      .replace(/\s*\((?:"|&quot;).*?(?:"|&quot;)\)$/, '')
       .replace(/^(link|joint|slider|pin|cylinder|point)\s+/i, '')
       .replace(/\s/g, '')
       .replace('–', '-');
@@ -1457,10 +1459,20 @@
    * listed become glossary words with their meaning behind them. v3 answers
    * gave bare terms, which get the underline and a note that nothing is behind it.
    */
-  function renderParagraph(text, terms) {
+  /** The names authors gave parts ("hood"), from the Links table, each to its part's key. */
+  function namesOf(jobs) {
+    const names = {};
+    for (const j of jobs || []) {
+      const named = /\("([^"]+)"\)$/.exec(j.name);
+      if (named) names[named[1].toLowerCase()] = partKey(j.name);
+    }
+    return names;
+  }
+  function renderParagraph(text, terms, names = {}) {
     let html = esc(text).replace(
       /\*\*(.+?)\*\*/g,
-      (_, name) => `<strong data-part="${esc(partKey(name))}" tabindex="0">${name}</strong>`
+      (_, name) =>
+        `<strong data-part="${esc(names[name.toLowerCase()] ?? partKey(name))}" tabindex="0">${name}</strong>`
     );
     const list = (terms || [])
       .map((t) => (typeof t === 'string' ? { term: t } : t))
@@ -1523,10 +1535,11 @@
       </article>`;
     }
     const a = arm.answer;
+    const names = namesOf(p.jobs);
     const uses = (a.useCases || [])
       .map(
         (u) =>
-          `<li><span class="use">${renderParagraph(u.use)}</span><span class="why">${renderParagraph(u.why)}</span></li>`
+          `<li><span class="use">${renderParagraph(u.use, [], names)}</span><span class="why">${renderParagraph(u.why, [], names)}</span></li>`
       )
       .join('');
     const looks = a.resembles
@@ -1539,7 +1552,7 @@
           <div class="written">
             <div class="by">✎ Written from the facts above, not measured</div>
             ${looks}
-            <p>${renderParagraph(a.plainEnglish, a.terms)}</p>
+            <p>${renderParagraph(a.plainEnglish, a.terms, names)}</p>
             <div class="how">Point at a <strong>bold part</strong> to find it in the mechanism, or a <span class="term">dotted word</span> for its meaning.</div>
           </div>
         </div>

@@ -62,7 +62,7 @@ const REAL_MACHINE = {
   'student-19124f492aa1': /scissor/i,
   Hood_Hinge: /hood/i,
   Flywheel_Engine: /engine/i,
-  Punch_Press: /press|punch/i,
+  Punch_Press: /\bpress\b|punch/i,
   Scissor_Lift: /scissor|lift/i,
   Pantograph: /pantograph|copying|enlarg/i,
   Derrick_Crane: /crane|derrick/i,
@@ -71,6 +71,16 @@ const REAL_MACHINE = {
   Reciprocating_Saw: /\bsaw\b/i,
   Cylinder_Gripper: /gripper|grip|claw/i,
   'made-locomotive-wheels': /locomotive|steam|train|railway/i,
+  // Round 5's held-out templates. Slotted_Tool_Drive is a demonstration of load
+  // frames with no real machine behind it, so it has no entry. The app already
+  // names Chebyshev in Straight_Line_Pair; the other machine is the test.
+  Offset_Mount_Hatch: /hatch|\blid\b|tailgate|trunk|liftgate/i,
+  Crane_Two_Loads: /crane|\bjib\b|luffing/i,
+  Walking_Pair: /jansen|strandbeest|walk|gait/i,
+  Pumping_Field: /pump ?jack|oil well|nodding|beam pump/i,
+  Bell_Crank: /bell ?crank/i,
+  Straight_Line_Pair: /peaucellier/i,
+  Hydraulic_Crosshead: /crosshead|\bpress\b/i,
 };
 
 export function recognitionMatch(template, answer) {
@@ -79,7 +89,9 @@ export function recognitionMatch(template, answer) {
   const text = [
     answer.resembles ?? '',
     answer.family ?? '',
-    answer.plainEnglish ?? '',
+    // Bold is a part's name, and from v7 that can be its author's ("**Hood**"):
+    // repeating it is not recognizing anything.
+    (answer.plainEnglish ?? '').replace(/\*\*[^*]+\*\*/g, ' '),
     ...(answer.useCases ?? []).map((u) => `${u.use} ${u.why}`),
   ].join(' ');
   return expected.test(text) ? 'named' : 'missed';
@@ -103,18 +115,28 @@ export function familyMatch(template, answer) {
 
 function sheetNames(sheet) {
   const joints = new Set();
-  const jointLine = /^- Joints: (.*)$/m.exec(sheet)?.[1] ?? '';
-  for (const m of jointLine.matchAll(/(?:^|; )([A-Z])(?: \("[^"]*"\))? \(/g)) joints.add(m[1]);
+  // One Joints line per machine: a drawing of several has several.
+  for (const [, jointLine] of sheet.matchAll(/^- Joints: (.*)$/gm))
+    for (const m of jointLine.matchAll(/(?:^|; )([A-Z])(?: \("[^"]*"\))? \(/g)) joints.add(m[1]);
   const links = new Set([...sheet.matchAll(/\blink ([A-Z]{2,})\b/g)].map((m) => m[1]));
-  return { joints, links };
+  // v7: the authors' own names, which the panel points from as it does from letters.
+  const named = new Set(
+    [...sheet.matchAll(/\b(?:link|joint|slider|pin|Force) [A-Z0-9-]+ \("([^"]+)"\)/g)].map((m) =>
+      m[1].toLowerCase()
+    )
+  );
+  return { joints, links, named };
 }
 
 /** A bold span or "link XY" that names no joint or link of the sheet. */
 function unknownParts(text, sheet) {
-  const { joints, links } = sheetNames(sheet);
+  const { joints, links, named } = sheetNames(sheet);
   const known = (token) => {
-    const t = token.replace(/^(link|joint|pin|slider|cylinder|ground|point)\s+/i, '').trim();
-    if (joints.has(t) || links.has(t)) return true;
+    const t = token
+      .replace(/\s*\("[^"]*"\)$/, '')
+      .replace(/^(link|joint|pin|slider|cylinder|ground|point)\s+/i, '')
+      .trim();
+    if (joints.has(t) || links.has(t) || named.has(t.toLowerCase())) return true;
     const pair = /^([A-Z])\s*[-–]\s*([A-Z])$/.exec(t);
     return !!pair && joints.has(pair[1]) && joints.has(pair[2]);
   };
@@ -155,10 +177,13 @@ function unsupportedClaims(text, sheet) {
   if (says(/quick(er)?[- ]return|fast(er)? return/i) && !quickInSheet) claims.push('quick return');
   if (says(/\bno (faster|quick(er)?) return|\bequal times|same time in both/i) && quickInSheet)
     claims.push('denies the quick return the sheet shows');
+  // A landing gear or valve gear is a machine, not a gear wheel, and once an
+  // answer has said so, "the gear" later on means the same machine.
+  const gearIsMachine = says(/\b(landing|valve) gear/i);
   for (const part of ['gear', 'cam', 'spring', 'belt', 'motor'])
-    // A landing gear or valve gear is a machine, not a gear wheel.
     if (
-      says(new RegExp(`(?<!landing |valve )\\b${part}s?\\b`, 'i')) &&
+      !(part === 'gear' && gearIsMachine) &&
+      says(new RegExp(`\\b${part}s?\\b`, 'i')) &&
       !sheetSays(new RegExp(`\\b${part}`, 'i'))
     )
       claims.push(`a ${part}`);

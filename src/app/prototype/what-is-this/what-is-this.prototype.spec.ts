@@ -9,7 +9,7 @@
 // PMKS_CASES names a case set in run/case-sets/ (library templates, students'
 // mechanisms by feedback message id, test cases from made-cases.ts); without it
 // the first ten library templates are used. PMKS_PROMPT picks the instructions
-// (v4, v5 or v6, default v6). The model calls are made by the scripts in ./run,
+// (v4 to v7, default v7). The model calls are made by the scripts in ./run,
 // which read the manifest this writes.
 import '../../model/joint';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -24,6 +24,7 @@ import { LengthUnit } from '../../model/unit-enums';
 import { fixturePayload } from '../../../test-utils/verification/fixture-payload';
 import { describeDrawing } from './mechanism-facts';
 import { MADE_CASES } from './made-cases';
+import { mergeMotions } from './motion-export';
 import { buildPrompt } from './prompt';
 
 const FIRST_TEN: TemplateID[] = [
@@ -128,7 +129,7 @@ function casesFrom(setName: string | undefined, root: string): Case[] {
   return [...set.library.map(libraryCase), ...students, ...made];
 }
 
-function describe_(entry: Case, withBackdrop: boolean, picture: 'v5' | 'v6') {
+function describe_(entry: Case, withBackdrop: boolean, picture: 'v5' | 'v6' | 'v7') {
   const decoder = new StringTranscoder();
   decoder.decodeURL(entry.payload);
   const settings = new SettingsService();
@@ -152,6 +153,8 @@ function describe_(entry: Case, withBackdrop: boolean, picture: 'v5' | 'v6') {
     relations: true,
     backdrop: withBackdrop && !!entry.backdrop,
     picture,
+    // From v7 the author's own names go too: the best chance for a real drawing.
+    includeNames: picture === 'v7',
   });
 }
 
@@ -162,7 +165,7 @@ describe('"What is this?" prototype', () => {
     const root = process.cwd();
     const sheet = process.env['PMKS_SHEET'] ?? 'dev';
     const asked = process.env['PMKS_PROMPT'];
-    const version = asked === 'v4' || asked === 'v5' ? asked : 'v6';
+    const version = asked === 'v4' || asked === 'v5' || asked === 'v6' ? asked : 'v7';
     const out = `${root}/artifacts/what-is-this/${sheet}`;
     const motionDir = `${root}/artifacts/what-is-this/motion`;
     mkdirSync(`${out}/cases`, { recursive: true });
@@ -170,12 +173,20 @@ describe('"What is this?" prototype', () => {
     const cases = [];
     for (const entry of casesFrom(process.env['PMKS_CASES'], root)) {
       // v4's pictures carried no background image, so its sheets do not mention one.
-      const described = describe_(entry, version !== 'v4', version === 'v6' ? 'v6' : 'v5');
+      const described = describe_(
+        entry,
+        version !== 'v4',
+        version === 'v7' ? 'v7' : version === 'v6' ? 'v6' : 'v5'
+      );
       const key = `${entry.id}.${VARIANT}`;
+      // The filmstrip and the family are the first machine's; the page's
+      // animation and Links table show them all.
       const machine = described.machines[0];
-      if (machine?.motion) {
-        writeFileSync(`${motionDir}/${entry.id}.json`, JSON.stringify(machine.motion));
-      }
+      const motion = mergeMotions(described.motions);
+      if (motion) writeFileSync(`${motionDir}/${entry.id}.json`, JSON.stringify(motion));
+      const jobs = described.machines
+        .flatMap((m) => m.jobs)
+        .filter((job, i, all) => all.findIndex((j) => j.name === job.name) === i);
       writeFileSync(`${out}/cases/${key}.prompt.txt`, buildPrompt(described.text, version));
       cases.push({
         key,
@@ -190,7 +201,7 @@ describe('"What is this?" prototype', () => {
         prompt: `cases/${key}.prompt.txt`,
         image: `cases/${entry.id}.filmstrip.png`,
         film: machine?.frames ?? [],
-        jobs: machine?.jobs ?? [],
+        jobs,
         family: machine?.family ?? [],
       });
     }

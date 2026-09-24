@@ -6,8 +6,17 @@
 // keeps the answer beside the first, to see how much two askings differ.
 // Resumable: a case already answered without an error is skipped.
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const root = new URL(
@@ -27,6 +36,20 @@ const { cases } = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
 const outDir = join(root, 'answers', `${provider}__${model}`);
 mkdirSync(outDir, { recursive: true });
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * The picture, copied under a name that says nothing. The Codex and Muse CLIs
+ * show the model the attached file's path, and the case builder names each
+ * picture after its template ("cases/Bell_Crank.filmstrip.png"): until round 5
+ * every library and test case told the model its own name.
+ */
+function blindPicture(entry) {
+  if (!entry.image) return undefined;
+  const dir = mkdtempSync(join(tmpdir(), 'picture-'));
+  const path = join(dir, 'picture.png');
+  copyFileSync(join(root, entry.image), path);
+  return { path, remove: () => rmSync(dir, { recursive: true, force: true }) };
+}
 
 /** The JSON object inside a reply, tolerating a code fence or a sentence around it. */
 function parseReply(text) {
@@ -168,9 +191,12 @@ async function askMuse(entry) {
     '--prompt-file',
     promptFile,
   ];
-  if (entry.image) args.push('--image', join(root, entry.image));
+  const picture = blindPicture(entry);
+  if (picture) args.push('--image', picture.path);
   const started = Date.now();
-  const { stdout, stderr, code } = await run('muse', args, museCwd);
+  const { stdout, stderr, code } = await run('muse', args, museCwd).finally(() =>
+    picture?.remove()
+  );
   const latencyMs = Date.now() - started;
   let text;
   let failure;
@@ -224,7 +250,8 @@ async function askCodex(entry) {
       'computer_use',
     ].flatMap((feature) => ['--disable', feature]),
   ];
-  if (entry.image) args.push('-i', join(root, entry.image));
+  const picture = blindPicture(entry);
+  if (picture) args.push('-i', picture.path);
   const prompt = `${readFileSync(join(root, entry.prompt), 'utf8')}\n\nThe student asks: ${QUESTION}\n`;
   const started = Date.now();
   const { stdout, stderr, code } = await new Promise((resolve) => {
@@ -235,7 +262,7 @@ async function askCodex(entry) {
     child.stderr.on('data', (d) => (err += d));
     child.on('close', (exit) => resolve({ stdout: out, stderr: err, code: exit }));
     child.stdin.end(prompt);
-  });
+  }).finally(() => picture?.remove());
   const latencyMs = Date.now() - started;
   let text;
   let usage;

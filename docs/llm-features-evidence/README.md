@@ -140,7 +140,10 @@ browser) of the prototype in `src/app/prototype/what-is-this/`: ten library temp
 fact-sheet variants (base, plus relations, plus relations and a rendered drawing), answered by
 Gemini 3.5 Flash-Lite and Muse Spark 1.3 on 22–23 September 2026. Each answer is shown as the
 Analysis panel could show it, with tokens, latency and one reviewer's grade. Template names were
-never sent. The grades are a single reviewer's judgment on ten famous mechanisms, not a benchmark.
+never written into a prompt, but the Muse CLI, like Codex (see [Round 5](#round-5-blind-and-the-authors-names)),
+shows the model the attached picture's path, and the picture was named after its template: Muse's
+picture variant was not blind. Gemini received the picture inline, without a name. The grades are a
+single reviewer's judgment on ten famous mechanisms, not a benchmark.
 
 ## Taste test: one model, fact-sheet versions compared blind
 
@@ -226,3 +229,63 @@ wheels" but not yet as a locomotive.
 Three answers in this round, and none earlier, came back with web citations: the Codex CLI gives
 the model web search and other tools unless they are disabled. `run/ask.mjs` now disables them, and
 the three were asked again (the originals are kept aside). The rubric flags any answer with a link.
+
+### Round 5: blind, and the authors' names
+
+v7 sends the names authors typed for links, joints and forces: in the fact sheet, in quotes after
+the letters, and written on the links in the picture. It also fades the background image in tile 0
+and draws a dashed box on it marking the area tiles 1 to 5 show, six tiles in all. The cases are
+twelve library templates (eight never used, three of them drawings of several machines), eight
+student mechanisms and a test case, listed in `run/case-sets/round5.json`.
+
+This round found that no earlier round was blind. The Codex CLI shows the model the full path of an
+attached image, and the case builder names each picture after its case
+(`cases/Bell_Crank.filmstrip.png`); asked to quote everything it received, Luna quotes the path.
+From round 1 on, every library template and test case therefore carried its own name, and the
+students' mechanisms (`student-<id>`) did not. `run/ask.mjs` now sends a copy named `picture.png`
+from a fresh temporary directory, and the answers asked the old way are kept as
+`answers-named-file`. Both versions were asked five times each way. `run/reliability.mjs` counts
+only what an answer claims the machine is, its "Looks like" and its uses, because the paragraph may
+simply repeat an author's name.
+
+| Library: 11 cases, 5 askings each | File named after the template | Picture as `picture.png` |
+| --- | --- | --- |
+| v6 names the real machine | 65% | 24% |
+| v7 names the real machine | 73% | 55% |
+| v6 gives a "Looks like" that is wrong | 34% of those given | 75% of those given |
+| v7 gives a "Looks like" that is wrong | 22% of those given | 40% of those given |
+
+Asked blind, v7's recognitions come from two places:
+
+- **The authors' names.** The four templates whose authors named parts (Hood Hinge, Bracketed Hatch,
+  Crane with Two Loads, Hydraulic Crosshead) are named in 19 of 20 askings. v6, which does not send
+  the names, manages 2 of 20.
+- **The app's own family check.** The two templates it already names (Jansen legs, walking-beam
+  pumps) are named in 9 of 10 askings, by both versions.
+
+Everything else is rarely named:
+
+- The other five templates (landing gear, excavator bucket, car steering, bell crank, Peaucellier's
+  cell) are named in 2 of 25 askings, though three have a photograph of the real machine behind
+  them.
+- The two students with a known goal and the test locomotive are named in none of 15.
+
+The landing gear shows what fading can cost. With the photograph at full strength, v6 says a
+helicopter rotor linkage in all five askings: it sees the propeller. With the photograph faded, v7
+wanders among windshield wipers, a mower deck and a window shade.
+
+Round 4's gains were partly the file name. v6 recognized the car steering and the locomotive wheels
+there, and it recognizes neither in any of ten blind askings here, with the same picture and the
+same sheet (the locomotive's is byte for byte the same). Comparisons between two versions in one
+round stay fair, since both sides carried the name. The recognition rates in rounds 1 to 4 are not
+blind rates, though, and neither is the Muse result above.
+
+What stands up blind is what PMKS+ computes: the family, the link jobs and the overview. The
+paragraph that explains them in plain English also holds up, accurate and honest when a drawing
+cannot be solved. A "Looks like" line that the author's names or the app's family do not support is
+wrong more often than right.
+
+The page now points from an author's name in bold (**Hood**) to its part, and animates every machine
+of a drawing that has several; before, it showed only the first. Claude decided 18 of the 21 pairs,
+most of them as both poor or alike. The close calls are Bell Crank, Approximate and Exact, and
+Slotted Tool Drive.
