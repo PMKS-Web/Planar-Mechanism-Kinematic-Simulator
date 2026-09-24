@@ -86,7 +86,9 @@ describe('why a mechanism will not run', () => {
     });
 
     const [check] = readiness.checks;
-    expect(check.body).toContain('attach a link from joint C to a new grounded joint');
+    expect(check.ways?.map((way) => way.text)).toContain(
+      'Attach a link from joint C to a new grounded joint'
+    );
     expect(check.body).not.toContain('Grounding joint C');
     // The counted fix is deleting BC, so that is where the button goes; the
     // free end is named in the sentence for the reader who meant to finish it.
