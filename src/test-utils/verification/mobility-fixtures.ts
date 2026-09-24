@@ -9,8 +9,8 @@ import { cylinderBoomFixture } from './slot-fixtures';
  * They are the shapes the in-app feedback form kept receiving with the question
  * "why won't this animate?": a four-bar whose far pivot was never grounded, a
  * chain that hangs off its input with nothing on its end, a linkage with a
- * brace across it, a pin grounded once too often, and a slider that is not
- * allowed to turn. `free-motion.ts` names the loose parts and counts the fixes;
+ * brace across it, a pin grounded once too often, an input on a link pinned
+ * down at both ends, and a slider that is not allowed to turn. `free-motion.ts` names the loose parts and counts the fixes;
  * `mobility-diagnosis.spec.ts` asserts on these. None of them solves, on
  * purpose, and `e2e/gallery-sweep.mjs` lists them as expected not to.
  */
@@ -121,6 +121,24 @@ export function boomWithDanglingLinkFixture(): MechanismFixture {
 }
 
 /**
+ * A crank grounded at both ends, with the input on its pivot: the drawing that
+ * was reported. The crank is frame, so no mechanism owns the input, and the
+ * link hanging off it was told "No input is set" beside the input's own arrow.
+ * The input cannot turn a link that is pinned down twice; ungrounding B lets it.
+ */
+export function inputOnTheFrameFixture(): MechanismFixture {
+  return {
+    joints: [
+      { id: 'A', x: 0, y: 0, ground: true, input: true },
+      { id: 'B', x: 1, y: 1, ground: true },
+      { id: 'C', x: 3, y: 1.5 },
+    ],
+    links: [{ joints: 'AB' }, { joints: 'BC' }],
+    inputAngVel: 1,
+  };
+}
+
+/**
  * These drawings as the fixture gallery publishes them, so a reviewer can open
  * each one and read the readiness row it earns. Kept here rather than in
  * `fixture-gallery.ts`, which is a table long enough already.
@@ -163,6 +181,14 @@ export const MOBILITY_GALLERY: GalleryEntry[] = [
     spec: 'mobility-diagnosis.spec.ts',
     floatingSlot: false,
     fixture: overGroundedFourBarFixture(),
+  },
+  {
+    name: 'Crank grounded at both ends',
+    purpose:
+      'Does not run on purpose: the input is on a link that is frame, and ungrounding B frees it',
+    spec: 'mobility-diagnosis.spec.ts',
+    floatingSlot: false,
+    fixture: inputOnTheFrameFixture(),
   },
   {
     name: 'Slider-crank with a Prismatic slider',

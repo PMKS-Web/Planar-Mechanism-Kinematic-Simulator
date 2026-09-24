@@ -523,6 +523,17 @@ counts cannot drift apart; the drawings are in the fixture gallery (`MOBILITY_GA
 `mobility-diagnosis-sweep.spec.ts` does it to every library template broken one edit at a time --
 about 900 drawings and 430 offered fixes -- and is where the split above was found.
 
+### An input on a bar grounded at both ends belongs to no machine
+
+Set a crank's input, then ground its far end: the bar is folded into the frame, the partition hands
+the pivot to no machine, and `Mechanism` clears `input` on every joint it does not own. The machine
+hanging off the bar was then told "No input is set" in the drawer, "Input joint: Not set" in its
+facts, and "Ground a joint and set one joint as an input." in the playback row -- all beside the
+input's arrow. `describeActuator` now refuses that joint (`framePieceAt`, "link is grounded" in the
+menu), `readinessOf` finds the input among the frame joints it is handed (`inputOnTheFrame`), and
+`inputSetFor` is the one question the other surfaces ask. A new surface that decides "no input" by
+looking only at `ownJoints` reintroduces the bug; ask `inputSetFor`.
+
 ### The library's gripper counts one freedom and measures three, and runs on the count
 
 `Cylinder_Gripper` -- the card, and `slideGripperFixture` the gallery generates it from -- has

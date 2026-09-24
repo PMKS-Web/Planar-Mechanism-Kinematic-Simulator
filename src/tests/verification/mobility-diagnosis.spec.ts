@@ -2,6 +2,9 @@
 // initializes cleanly when entered here (see test-utils/verification/fixture.ts).
 import '../../app/model/joint';
 import { diagnoseMobility, MobilityFix } from '../../app/model/mechanism/free-motion';
+import { describeActuatorRefusal } from '../../app/model/actuator';
+import { RealJoint } from '../../app/model/joint';
+import { Mechanism } from '../../app/model/mechanism/mechanism';
 import { partitionMechanisms } from '../../app/model/mechanism/mechanism-partition';
 import { ReadinessHelpers, readinessOf } from '../../app/model/mechanism/readiness';
 import { buildMechanism, MechanismFixture } from '../../test-utils/verification/fixture';
@@ -9,6 +12,7 @@ import {
   boomWithDanglingLinkFixture,
   bracedFourBarFixture,
   danglingLinkFixture,
+  inputOnTheFrameFixture,
   lockedSliderCrankFixture,
   overGroundedFourBarFixture,
   ungroundedPivotFourBarFixture,
@@ -124,6 +128,44 @@ describe('which part is loose, and what would fix it', () => {
       expect(checkFor(lockedSliderCrankFixture()).body).toContain(
         'Making joint C a Pin-in-slot would leave one degree of freedom.'
       );
+    });
+  });
+
+  describe('an input on a link grounded at both ends', () => {
+    it('says the input cannot turn, and why, rather than that there is none', () => {
+      const drawing = buildMechanism(inputOnTheFrameFixture());
+      const { mechanisms } = partitionMechanisms(drawing.joints, drawing.links, drawing.forces);
+      expect(mechanisms.length).toBe(1);
+      const partition = mechanisms[0];
+      // AB is frame, so the machine is BC alone and the input is nobody's.
+      expect(partition.ownJoints.map((joint) => joint.id).sort()).toEqual(['B', 'C']);
+      // Built the way the service builds it: handed only the joints it owns,
+      // which is what cleared the input and produced "No input is set".
+      const mechanism = new Mechanism(
+        partition.joints,
+        partition.links,
+        partition.forces,
+        [],
+        false,
+        'm',
+        1,
+        'degree',
+        new Set(partition.ownJoints.map((joint) => joint.id))
+      );
+      const checks = readinessOf(partition, mechanism, helpers).checks;
+      expect(checks.map((check) => check.title)).toEqual(['The input at joint A cannot turn']);
+      expect(checks[0].body).toBe(
+        'Its link is also grounded at joint B, so it cannot turn. Unground joint B so the ' +
+          'input has something to drive.'
+      );
+      expect(checks[0].at?.id).toBe('B');
+      expect(checks[0].action).toBe('Go To Joint');
+    });
+
+    it('grays the input row with the same reason', () => {
+      const drawing = buildMechanism(inputOnTheFrameFixture());
+      const a = drawing.joints.find((joint) => joint.id === 'A') as RealJoint;
+      expect(describeActuatorRefusal(a)?.short).toBe('link is grounded');
     });
   });
 
