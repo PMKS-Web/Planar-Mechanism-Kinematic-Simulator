@@ -48,6 +48,15 @@ const EXPECTED_INVALID = new Set([
   'Four-bar with a grounded coupler pin',
   'Crank grounded at both ends',
   'Braced four-bar with a dangling link',
+  // The drawings the student-mistakes sweep taught the drawer to name; the
+  // ones that run anyway (a stray link, two inputs, a frame bar, a link hung
+  // off a pivot beside a four-bar that works) are not listed.
+  'Four-bar with a welded coupler pin',
+  'Rocker dropped beside the coupler pin',
+  'Four-bar braced from its input pivot',
+  'Watt six-bar with a grounded rocker joint',
+  'Four-bar with its rocker deleted',
+  'Four-bar driven from its coupler point',
   'Slider-crank with a Prismatic slider',
 ]);
 

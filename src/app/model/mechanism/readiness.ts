@@ -3,11 +3,31 @@ import { Link } from '../link';
 import { cylindersIn } from '../cylinder';
 import { describeFrozenCylinderStroke, isFrozenCylinder } from '../cylinder-frozen';
 import { visibleBodyName } from '../body-label';
-import { canDrive, describeActuator, framePieceAt, groundPinsElsewhere } from '../actuator';
+import {
+  canDrive,
+  describeActuator,
+  framePieceAt,
+  groundPinsElsewhere,
+  isFrameBar,
+} from '../actuator';
 import { Mechanism, MechanismFailure } from './mechanism';
 import { MechanismPartition, UnassignedGeometry } from './mechanism-partition';
 import { assignBodies } from './bodies';
-import { diagnoseMobility, MobilityDiagnosis, MobilityFix, StuckInput } from './free-motion';
+import { diagnoseMobility, Drawing } from './free-motion';
+import { hiddenJoints, jointsBeside } from './mobility-edits';
+import {
+  besideAdvice,
+  besideCheck,
+  drivenOwnJoint,
+  nameOf,
+  overConstrained,
+  stuckCheck,
+  tooFree,
+  focusOf,
+  fixSentence,
+  looseSubject,
+  wayOutOf,
+} from './mobility-sentences';
 
 /**
  * A blocker stops the mechanism running at all. A warning means it runs, and
@@ -53,6 +73,13 @@ export interface ReadinessHelpers {
   strokeWarning(partition: MechanismPartition): string | undefined;
   /** This mechanism's input speed, in the units the panel shows it in. */
   describeSpeed(partition: MechanismPartition): string;
+  /**
+   * The whole drawing, where the caller has it. A machine sees only its own
+   * joints and links, and the commonest mistakes -- two joints dropped beside
+   * each other, a moving joint grounded, a link deleted -- are exactly the ones
+   * that split one linkage into several machines.
+   */
+  drawing?(): Drawing;
 }
 
 /**
@@ -70,86 +97,6 @@ const shown = (joints: readonly Joint[], from: readonly Joint[] = joints): Joint
 
 const names = (joints: Joint[]): string =>
   joints.map((joint) => (joint as RealJoint).name || joint.id).join(', ');
-
-const nameOf = (joint: Joint): string => (joint as RealJoint).name || joint.id;
-
-/** "A", "A or B", "A, B, or C" -- the way a sentence offers alternatives. */
-const either = (items: string[]): string =>
-  items.length <= 2 ? items.join(' or ') : `${items.slice(0, -1).join(', ')}, or ${items.at(-1)}`;
-
-/**
- * "A", "A and B", "A, B, C and D", "A, B, C and 3 more" -- the way a sentence
- * lists what it found. Never "and 1 more": the one it would stand for is as
- * short as the phrase.
- */
-const both = (items: string[], most = 3): string => {
-  const shownItems =
-    items.length > most + 1 ? [...items.slice(0, most), `${items.length - most} more`] : items;
-  return shownItems.length <= 1
-    ? (shownItems[0] ?? '')
-    : `${shownItems.slice(0, -1).join(', ')} and ${shownItems.at(-1)}`;
-};
-
-/** One fix as the reader would do it: "grounding joint D". */
-function fixPhrase(fix: MobilityFix, partition: MechanismPartition): string {
-  switch (fix.kind) {
-    case 'ground':
-      return `grounding joint ${nameOf(fix.joint)}`;
-    case 'unground':
-      return `ungrounding joint ${nameOf(fix.joint)}`;
-    case 'pin-in-slot':
-      return `making joint ${nameOf(fix.joint)} a Pin-in-slot`;
-    case 'delete-link':
-      return `deleting link ${visibleBodyName(fix.link, cylindersIn(partition.joints))}`;
-  }
-}
-
-/**
- * The fixes, as one sentence that says they were counted: "Grounding joint D, or
- * ungrounding joint A, would each leave one degree of freedom."
- */
-function fixSentence(
-  fixes: MobilityFix[],
-  partition: MechanismPartition,
-  outcome = 'leave one degree of freedom'
-): string {
-  const phrases = fixes.map((fix) => fixPhrase(fix, partition));
-  if (phrases.length === 0) return '';
-  const sentence = either(phrases);
-  const each = phrases.length > 1 ? ' each' : '';
-  return `${sentence[0].toUpperCase()}${sentence.slice(1)} would${each} ${outcome}.`;
-}
-
-/** Where the Go To button should land: the fix first, then the loose part. */
-function focusOf(diagnosis: MobilityDiagnosis): Pick<ReadinessCheck, 'at' | 'action'> {
-  const fix = diagnosis.fixes[0];
-  if (fix?.kind === 'delete-link') return { at: fix.link, action: 'Go To Link' };
-  const joint = fix?.joint ?? diagnosis.attachAt ?? diagnosis.looseJoints[0];
-  return joint ? { at: joint, action: 'Go To Joint' } : {};
-}
-
-/** "link BC can" / "links BC and CD can": what is loose, as the subject of a sentence. */
-function looseSubject(diagnosis: MobilityDiagnosis, partition: MechanismPartition): string {
-  const cylinders = cylindersIn(partition.joints);
-  const linkNames = diagnosis.looseLinks.map((link) => visibleBodyName(link, cylinders));
-  return `${linkNames.length === 1 ? 'link' : 'links'} ${both(linkNames)}`;
-}
-
-/**
- * The joint of *this machine* the reader has switched Driven Input on for.
- *
- * `ownJoints` rather than everything the partition was handed, and the reason
- * is that `ownJoints` is exactly the set `Mechanism` was given as
- * `ownJointIds`: it clears `input` on every copy outside that set, so this list
- * and the solver's answer are two readings of one fact. A machine solved
- * against a frame piece it shares with a neighbor is handed that neighbor's
- * driven pin in `joints`, and reading *that* would make "nothing drives this
- * mechanism" unsayable for a machine which genuinely has no drive of its own.
- */
-function drivenOwnJoint(partition: MechanismPartition): RealJoint | undefined {
-  return partition.ownJoints.find((joint) => joint instanceof RealJoint && joint.input) as
-    RealJoint | undefined;
-}
 
 /**
  * The joint the reader set as this machine's input: its own, or one on a frame
@@ -197,128 +144,6 @@ function unexplainedBlocker(partition: MechanismPartition, mechanism: Mechanism)
 }
 
 /**
- * More than one degree of freedom: say which parts are loose and what would fix
- * it, from the drawing itself (`free-motion.ts`).
- *
- * "Ground another joint, or connect a free joint to a second link" was advice
- * for no drawing in particular, and on the simplest loose chain -- A-B-C
- * grounded at A -- grounding C leaves it rigid. Every fix named here has been
- * counted; where none of the simple edits works, the one piece of advice left
- * is the link a four-bar is finished with, and it is said as advice.
- */
-function tooFree(dof: number, partition: MechanismPartition): ReadinessCheck {
-  const title = `This mechanism has ${dof} degrees of freedom`;
-  const diagnosis = diagnoseMobility(partition);
-  if (diagnosis.stuck) return stuckCheck(diagnosis.stuck, diagnosis, partition, dof);
-  const driven = drivenOwnJoint(partition);
-  const fixes = fixSentence(diagnosis.fixes, partition);
-  const wayOut =
-    fixes ||
-    wayOutOf(
-      diagnosis,
-      'Ground another joint, or connect a free joint to a second link, until this reads 1.'
-    );
-
-  if (driven && diagnosis.looseLinks.length > 0) {
-    const one = diagnosis.looseLinks.length === 1;
-    return {
-      state: 'blocker',
-      title,
-      body: `With the input held still, ${looseSubject(diagnosis, partition)} can still move, so the input alone cannot say where ${one ? 'it goes' : 'they go'}. ${wayOut}`,
-      ...focusOf(diagnosis),
-    };
-  }
-  return {
-    state: 'blocker',
-    title,
-    body: `One input controls only one degree of freedom, and this mechanism can move in ${dof} independent ways. ${wayOut}`,
-    ...focusOf(diagnosis),
-  };
-}
-
-/**
- * The input's own part cannot move, whatever the count says (`stuckInput` in
- * `free-motion.ts`): said instead of "a dead position", whose advice -- drag a
- * joint off the limit -- no drag can follow, and instead of a count that reads
- * one only because a link hangs loose somewhere else.
- */
-function stuckCheck(
-  stuck: StuckInput,
-  diagnosis: MobilityDiagnosis,
-  partition: MechanismPartition,
-  /** The count a reader is shown, where it is the drawing's; undefined where it is not. */
-  dof?: number
-): ReadinessCheck {
-  const driven = drivenOwnJoint(partition);
-  const verb = driven instanceof PrisJoint ? 'slide' : 'turn';
-  const cylinders = cylindersIn(partition.joints);
-  const linkNames = stuck.links.map((link) => visibleBodyName(link, cylinders));
-  const one = linkNames.length === 1;
-  const rigid = one
-    ? `Link ${linkNames[0]} is held fixed by the ground, so it cannot move.`
-    : `Links ${both(linkNames)} form a rigid structure with the ground, so none of them can move.`;
-  // The count a reader can see is the one thing this has to explain: it reads
-  // right, and it is not the input's. Where the count is not what the drawing
-  // measures, no number is said at all.
-  const loose = diagnosis.looseLinks;
-  const their = loose.length === 1 ? 'its' : 'their';
-  const counted =
-    loose.length === 0
-      ? ''
-      : dof !== undefined && Number.isFinite(dof) && dof >= 1
-        ? ` The ${dof === 1 ? 'one degree' : `${dof} degrees`} of freedom it counts ${dof === 1 ? 'is' : 'are'} ${looseSubject(diagnosis, partition)}, moving on ${their} own.`
-        : ` Only ${looseSubject(diagnosis, partition)} can move, on ${their} own.`;
-  const wayOut =
-    fixSentence(stuck.fixes, partition, `let the input move ${one ? 'it' : 'them'}`) ||
-    `Delete one of ${one ? 'its' : 'their'} links or unground one of ${one ? 'its' : 'their'} joints, so the input has something that can move.`;
-  const fix = stuck.fixes[0];
-  const focus: Pick<ReadinessCheck, 'at' | 'action'> = fix
-    ? fix.kind === 'delete-link'
-      ? { at: fix.link, action: 'Go To Link' }
-      : { at: fix.joint, action: 'Go To Joint' }
-    : stuck.links[0]
-      ? { at: stuck.links[0], action: 'Go To Link' }
-      : {};
-  return {
-    state: 'blocker',
-    title: `The input at joint ${driven ? nameOf(driven) : ''} cannot ${verb}`,
-    body: `${rigid}${counted} ${wayOut}`,
-    ...focus,
-  };
-}
-
-/** Advice for the case no single counted edit fixes: a link to ground at a free end. */
-function wayOutOf(diagnosis: MobilityDiagnosis, otherwise: string): string {
-  const at = diagnosis.attachAt;
-  return at
-    ? `Attach a link from joint ${nameOf(at)} to a new grounded joint, so it has something to move against.`
-    : otherwise;
-}
-
-/**
- * None, or fewer: say which one edit would let it move, counted the same way.
- *
- * The weld sentence stays for the drawing no single edit frees -- a weld takes
- * freedom away, and unwelding is not an edit the count can make without
- * rebuilding the bodies, so it is said as a possibility rather than a result.
- */
-function overConstrained(dof: number, partition: MechanismPartition): ReadinessCheck {
-  const diagnosis = diagnoseMobility(partition);
-  const fixes = fixSentence(diagnosis.fixes, partition);
-  const welded = partition.ownJoints.some((joint) => joint instanceof RealJoint && joint.isWelded);
-  return {
-    state: 'blocker',
-    title: `This mechanism has ${dof} degrees of freedom`,
-    body:
-      'It is over-constrained, so nothing can move at all. ' +
-      (fixes ||
-        'Remove a link, or unground a joint, until this reads 1.' +
-          (welded ? ' A weld also removes freedom — unwelding a joint is another way out.' : '')),
-    ...focusOf(diagnosis),
-  };
-}
-
-/**
  * The one blocker a named failure earns, worst first.
  *
  * **The switch is exhaustive on purpose.** `default` narrows `failure` to
@@ -333,6 +158,15 @@ function blockerForFailure(
   mechanism: Mechanism,
   helpers: ReadinessHelpers
 ): ReadinessCheck {
+  // One of this machine's joints dropped beside a joint of another part of the
+  // drawing instead of on it. That is the mistake whatever the count, the
+  // solver or the missing input make of it: it splits one linkage into two
+  // machines, and every other fix would make one of them run as something
+  // nobody drew.
+  if (['mobility', 'dead-position', 'hidden-freedom', 'not-driven'].includes(failure)) {
+    const beside = besideAnother(partition, helpers.drawing?.().joints ?? []);
+    if (beside) return besideAdvice(beside[0], beside[1], 'would join the two into one.');
+  }
   switch (failure) {
     case 'dangling-slider': {
       const dangling = partition.joints.filter(
@@ -357,9 +191,9 @@ function blockerForFailure(
         };
       }
       if (dof > 1) {
-        return tooFree(dof, partition);
+        return tooFree(dof, partition, helpers.drawing?.());
       }
-      return overConstrained(dof, partition);
+      return overConstrained(dof, partition, helpers.drawing?.());
     }
 
     case 'not-driven': {
@@ -371,6 +205,21 @@ function blockerForFailure(
       // input they have already switched on is how this was reported.
       const alreadyDriven = drivenOwnJoint(partition);
       if (alreadyDriven) return unexplainedBlocker(partition, mechanism);
+      // A single link hanging from a grounded joint and nothing else: drawn
+      // off a pivot the rest of the linkage uses, it turns on its own, so the
+      // partition made it a machine of its own. Asking for its input would
+      // set a crank turning that nobody drew as one.
+      const hanging = hangingLink(partition);
+      if (hanging) {
+        const name = visibleBodyName(hanging.link, cylindersIn(partition.joints));
+        return {
+          state: 'blocker',
+          title: `Link ${name} hangs from joint ${nameOf(hanging.pivot)} and nothing else`,
+          body: `It turns freely about joint ${nameOf(hanging.pivot)}, joined to nothing that moves, so it is a mechanism of its own with nothing to drive it. Delete it, or attach its free end to the rest of the linkage.`,
+          at: hanging.link,
+          action: 'Go To Link',
+        };
+      }
       // Point at a joint that could actually take the job, so the button is an
       // answer rather than a place to start looking.
       const candidate = partition.ownJoints.find(
@@ -401,10 +250,12 @@ function blockerForFailure(
       // An input whose part cannot move at all reads to the solver exactly
       // like one at a limit, and no drag frees it; the geometry tells the two
       // apart, and says whether there is a limit here at all.
-      const diagnosis = diagnoseMobility(partition);
+      const diagnosis = diagnoseMobility(partition, helpers.drawing?.());
       if (diagnosis.stuck) {
         return stuckCheck(diagnosis.stuck, diagnosis, partition, mechanism.dof);
       }
+      const beside = besideCheck(diagnosis);
+      if (beside) return beside;
       const driven = drivenOwnJoint(partition);
       if (driven && diagnosis.inputStart === 'limit') {
         const mover = diagnosis.mover;
@@ -436,8 +287,10 @@ function blockerForFailure(
 
     case 'hidden-freedom': {
       const ways = mechanism.hiddenFreedoms ?? 2;
-      const diagnosis = diagnoseMobility(partition);
+      const diagnosis = diagnoseMobility(partition, helpers.drawing?.());
       if (diagnosis.stuck) return stuckCheck(diagnosis.stuck, diagnosis, partition);
+      const beside = besideCheck(diagnosis);
+      if (beside) return beside;
       if (diagnosis.looseLinks.length === 0) {
         return {
           state: 'blocker',
@@ -511,6 +364,48 @@ function blockerForFailure(
 }
 
 /**
+ * A machine that is one link on one grounded pin another machine also uses,
+ * and the pin it hangs from.
+ */
+function hangingLink(partition: MechanismPartition): { link: Link; pivot: RealJoint } | undefined {
+  const moving = partition.links.filter((link) =>
+    link.joints.some((joint) => !(joint instanceof RealJoint && joint.ground))
+  );
+  if (moving.length !== 1) return undefined;
+  const [link] = moving;
+  const pivots = link.joints.filter(
+    (joint): joint is RealJoint => joint instanceof RealJoint && joint.ground
+  );
+  const free = link.joints.filter(
+    (joint) => joint instanceof RealJoint && !joint.ground && joint.links.length === 1
+  );
+  // Drawn off a pivot the rest of the linkage uses. A lone crank on a pivot of
+  // its own is a crank nobody has driven yet, and "No input is set" is true of it.
+  const shared = pivots[0]?.links.some((other) => !partition.links.includes(other));
+  return pivots.length === 1 && free.length === link.joints.length - 1 && shared
+    ? { link, pivot: pivots[0] }
+    : undefined;
+}
+
+/**
+ * A joint of this machine drawn beside a joint of some other part of the
+ * drawing, with no link between them: the stray one first, then the one it was
+ * surely meant to land on, whichever of them is this machine's.
+ */
+function besideAnother(
+  partition: MechanismPartition,
+  drawing: Joint[]
+): [RealJoint, RealJoint] | undefined {
+  const own = new Set(partition.ownJoints);
+  const mine = new Set(partition.joints);
+  // In the order `jointsBeside` puts them -- the one that was dropped, then
+  // the one it was meant for -- whichever of the two is this machine's.
+  return jointsBeside(drawing, hiddenJoints(drawing)).find(
+    ([a, b]) => (own.has(a) && !mine.has(b)) || (own.has(b) && !mine.has(a))
+  );
+}
+
+/**
  * An input set on a link that has since been grounded at its other end too.
  *
  * The link is then part of the frame, so the partition gives the joint to no
@@ -575,12 +470,37 @@ export function readinessOf(
       action: onFrame.unground ? 'Go To Joint' : undefined,
     });
   } else if (refusal) {
+    // A third body on the input's pivot is usually one link too many, drawn
+    // from it: say which, counted, rather than only that there are three.
+    const untangle = driven
+      ? (diagnoseMobility(partition, helpers.drawing?.()).untangle ?? [])
+      : [];
+    const fix = untangle[0];
+    // Otherwise a joint that could take the input instead, where one can: an
+    // input on a coupler point or a lone slider is the input on the wrong
+    // joint, and the reader should not have to find the right one.
+    const instead = untangle.length
+      ? undefined
+      : partition.ownJoints.find(
+          (joint): joint is RealJoint =>
+            joint !== driven && joint instanceof RealJoint && joint.ground && canDrive(joint)
+        );
+    const onPivot = driven?.links.filter((link) => !isFrameBar(link)) ?? [];
+    const cylinders = cylindersIn(partition.joints);
     add({
       state: 'blocker',
-      title: 'This joint cannot be an input',
-      body: refusal,
-      at: driven,
-      action: driven ? 'Go To Joint' : undefined,
+      title:
+        untangle.length && driven
+          ? `The input at joint ${nameOf(driven)} has more than one link to turn`
+          : 'This joint cannot be an input',
+      body:
+        untangle.length && driven
+          ? `Joint ${nameOf(driven)} holds links ${onPivot.map((link) => visibleBodyName(link, cylinders)).join(' and ')} to the ground, so the input would not say which one to turn. ${fixSentence(untangle, partition)}`
+          : instead
+            ? `${refusal} Set the input on joint ${nameOf(instead)} instead.`
+            : refusal,
+      at: fix?.kind === 'delete-link' ? fix.link : driven,
+      action: fix?.kind === 'delete-link' ? 'Go To Link' : driven ? 'Go To Joint' : undefined,
     });
   }
 
@@ -611,6 +531,28 @@ export function readinessOf(
         body: describeFrozenCylinderStroke(cylinder),
       })
     );
+
+  // One input drives one freedom, and the solver takes the first it finds.
+  // A second is ignored without a word, which reads as the app choosing for
+  // the reader; saying which one runs is what makes the choice theirs.
+  const inputs = partition.joints.filter(
+    (joint): joint is RealJoint =>
+      joint instanceof RealJoint && joint.input && partition.ownJoints.includes(joint)
+  );
+  if (inputs.length > 1) {
+    const [used, ...ignored] = inputs;
+    const others = ignored.map(nameOf);
+    add({
+      state: 'warning',
+      title:
+        others.length === 1
+          ? `Joints ${nameOf(used)} and ${others[0]} are both set as the input`
+          : `Joints ${[nameOf(used), ...others.slice(0, -1)].join(', ')} and ${others.at(-1)} are all set as the input`,
+      body: `One input drives one degree of freedom, so this mechanism runs from joint ${nameOf(used)} and ignores ${others.length === 1 ? 'the other' : 'the others'}. Remove the input from joint ${others.join(' and ')} so the drawing says what runs.`,
+      at: ignored[0],
+      action: 'Go To Joint',
+    });
+  }
 
   const stroke = helpers.strokeWarning(partition);
   if (stroke) {
@@ -723,7 +665,10 @@ export interface UnassignedReport {
  * Split by cause, because the two have different ways out: a floating chain
  * needs grounding, a joint on its own needs connecting.
  */
-export function describeUnassigned(unassigned: UnassignedGeometry): UnassignedReport[] {
+export function describeUnassigned(
+  unassigned: UnassignedGeometry,
+  drawing: Joint[] = []
+): UnassignedReport[] {
   const reports: UnassignedReport[] = [];
   // Every joint this report can reach, so the cylinders among them can be
   // resolved: a cylinder is looked up from its seal, and the seal is not
@@ -736,8 +681,35 @@ export function describeUnassigned(unassigned: UnassignedGeometry): UnassignedRe
   ];
   const cylinders = cylindersIn(around);
 
+  const beside = jointsBeside(drawing, hiddenJoints(drawing));
   unassigned.floatingChains.forEach((chain) => {
     const sorted = shown(chain.joints, around).sort((a, b) => a.id.localeCompare(b.id));
+    // Dropped beside a joint it was meant to land on: joining it is the fix,
+    // and grounding it would make a mechanism nobody drew.
+    const inChain = new Set(chain.joints);
+    const landing = beside
+      .map(([a, b]) =>
+        inChain.has(a) && !inChain.has(b)
+          ? [a, b]
+          : inChain.has(b) && !inChain.has(a)
+            ? [b, a]
+            : undefined
+      )
+      .find((pair): pair is [RealJoint, RealJoint] => pair !== undefined);
+    if (landing) {
+      const { title, body } = besideAdvice(landing[0], landing[1], 'would join it to the rest.');
+      reports.push({ at: landing[0], title, body });
+      return;
+    }
+    const links = chain.links.map((link) => visibleBodyName(link, cylinders));
+    if (links.length === 1) {
+      reports.push({
+        at: sorted[0],
+        title: `Link ${links[0]} is attached to nothing`,
+        body: 'Neither of its ends reaches ground or the rest of the drawing, so it is part of no mechanism and has no position to solve for. Delete it, or ground one of its joints to make it a mechanism of its own.',
+      });
+      return;
+    }
     reports.push({
       at: sorted[0],
       title: `Joints ${names(sorted)} never reach ground`,

@@ -68,19 +68,23 @@ describe('which part is loose, and what would fix it', () => {
       expect(check.action).toBe('Go To Joint');
     });
 
-    it('offers no ground that does not work, and says where a link would finish it', () => {
+    it('offers no ground that does not work, and both ways a hanging link goes', () => {
       // Grounding C is the old advice ("ground another joint"), and it leaves
-      // the pair rigid rather than mobile.
+      // the pair rigid rather than mobile. BC is either a mistake or the first
+      // bar of a four-bar, and nothing in the drawing says which: both are said.
       const { partition } = built(danglingLinkFixture());
       const diagnosis = diagnoseMobility(partition);
-      expect(diagnosis.fixes).toEqual([]);
+      expect(diagnosis.fixes.map(describeFix)).toEqual(['delete-link BC']);
       expect(diagnosis.attachAt?.id).toBe('C');
 
       const check = checkFor(danglingLinkFixture());
       expect(check.body).toContain('link BC can still move');
-      expect(check.body).toContain('Attach a link from joint C to a new grounded joint');
+      expect(check.body).toContain(
+        'Deleting link BC would leave one degree of freedom. If it is the start of more ' +
+          'linkage, attach a link from joint C to a new grounded joint instead.'
+      );
       expect(check.body).not.toContain('Grounding');
-      expect(check.at?.id).toBe('C');
+      expect(check.at?.id).toBe('BC');
     });
 
     it('holds a cylinder input along its own axis, and never names a joint the cylinder places', () => {
@@ -91,9 +95,10 @@ describe('which part is loose, and what would fix it', () => {
 
       const check = checkFor(boomWithDanglingLinkFixture());
       expect(check.body).toContain('link CE can still move');
+      expect(check.body).toContain('Deleting link CE would leave one degree of freedom.');
       // N is the barrel's buried inner end and P the square the rod slides on.
       expect(check.body).not.toMatch(/\b[NP]\b/);
-      expect(check.at?.id).toBe('E');
+      expect(check.at?.id).toBe('CE');
     });
   });
 

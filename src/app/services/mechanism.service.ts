@@ -4012,6 +4012,7 @@ export class MechanismService {
           return typeof refusal === 'string' ? refusal : undefined;
         },
         strokeWarning: (part) => this.strokeWarningFor(part),
+        drawing: () => ({ joints: this.joints, links: this.links }),
         describeSpeed: (part) => {
           // Its own drive, not one borrowed along with a shared frame piece.
           const driven = part.ownJoints.find(
@@ -4322,7 +4323,7 @@ export class MechanismService {
 
   /** What to say about geometry that is in no mechanism. */
   unassignedReports(): UnassignedReport[] {
-    return describeUnassigned(this.unassigned);
+    return describeUnassigned(this.unassigned, this.joints);
   }
 
   /**

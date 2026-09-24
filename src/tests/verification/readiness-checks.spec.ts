@@ -86,10 +86,12 @@ describe('why a mechanism will not run', () => {
     });
 
     const [check] = readiness.checks;
-    expect(check.body).toContain('Attach a link from joint C to a new grounded joint');
+    expect(check.body).toContain('attach a link from joint C to a new grounded joint');
     expect(check.body).not.toContain('Grounding joint C');
-    expect(check.at?.id).toBe('C');
-    expect(check.action).toBe('Go To Joint');
+    // The counted fix is deleting BC, so that is where the button goes; the
+    // free end is named in the sentence for the reader who meant to finish it.
+    expect(check.at?.id).toBe('BC');
+    expect(check.action).toBe('Go To Link');
   });
 
   it('reports the mobility first when a linkage is both loose and undriven', () => {
@@ -221,8 +223,11 @@ describe('why a mechanism will not run', () => {
     const reports = describeUnassigned(unassigned);
 
     expect(reports).toHaveLength(2);
-    expect(reports[0].title).toBe('Joints E, F never reach ground');
-    expect(reports[0].body).toMatch(/Ground one of its joints to make it a mechanism/);
+    // One link on its own is named as one, with the two ways out a reader has.
+    expect(reports[0].title).toBe('Link EF is attached to nothing');
+    expect(reports[0].body).toMatch(
+      /Delete it, or ground one of its joints to make it a mechanism of its own/
+    );
     expect(reports[1].title).toBe('Joint G has no link');
     expect(reports[1].body).toMatch(/Attach a link to it, or delete it/);
   });
