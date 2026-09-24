@@ -523,6 +523,40 @@ const wentTo = await page.evaluate(() => {
 });
 record('and the last button goes to its own part', wentTo === 'C', { wentTo });
 
+// --- more than one thing wrong, said at once ---------------------------------
+// The solver stops at the count; a missing input does not wait on it, so the
+// drawer says both, and every count of fixes says two.
+await open(galleryQuery('Four-bar with a hanging link and no input'));
+await tab('Kinematic').click();
+await page.waitForTimeout(600);
+text = await drawerText();
+record(
+  'a count that is wrong and a missing input are said together',
+  text.includes('This mechanism has 2 degrees of freedom') && text.includes('No input is set'),
+  text
+);
+const bothChip = (
+  await chipFor('Kinematic')
+    .innerText()
+    .catch(() => '')
+).trim();
+const bothRow = await page.locator('app-playback-bar').innerText();
+record(
+  'and the mode chip and the playback row both count two fixes',
+  /2 fixes/.test(bothChip) && /2 fixes/.test(bothRow) && !bothRow.includes('set one joint'),
+  { bothChip, bothRow }
+);
+await page.locator('app-analysis-setup .way').first().locator('button-block').click();
+await page.waitForTimeout(400);
+await page.keyboard.press('Delete');
+await page.waitForTimeout(700);
+text = await drawerText();
+record(
+  'and deleting the hanging link leaves only the input to set',
+  !text.includes('degrees of freedom') && text.includes('No input is set'),
+  text
+);
+
 // A bent coupler drawn as two links, the weld at its knee left off: welding the
 // knee is listed first, and the joint's own type is where a reader welds it.
 await open(galleryQuery('Four-bar with the weld at its knee left off'));
