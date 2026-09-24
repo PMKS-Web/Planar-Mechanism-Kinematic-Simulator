@@ -62,6 +62,16 @@ export interface MobilityDiagnosis {
    * reader to drag a linkage that no drag will free.
    */
   stuck?: StuckInput;
+  /**
+   * How the input stands at the drawn pose, where its part can move. At a
+   * `'limit'`, held still it keeps a freedom to first order that dies at the
+   * second, which is what the end of a stroke is. `'clear'` of one, holding it
+   * leaves nothing to move at all: it drives the drawing outright, and a solve
+   * that cannot start there has no pose to blame. Undefined otherwise.
+   */
+  inputStart?: 'limit' | 'clear';
+  /** The joint to drag off a limit: the one that moves furthest in the drawing's freedom. */
+  mover?: RealJoint;
 }
 
 /** Links around the input that are rigid with the ground, and what would free them. */
@@ -136,13 +146,27 @@ function diagnose(partition: MechanismPartition): MobilityDiagnosis {
     directions.length > 0
       ? stuckInput(trial, system, assignment, directions, own, hidden)
       : undefined;
+  const inputStart = directions.length > 0 && !stuck && hold ? startOf(system, held) : undefined;
+  const mover =
+    inputStart === 'limit'
+      ? fastestJoint(partition, system, assignment, directions, own, hidden)
+      : undefined;
 
   return {
     ...loose,
     fixes: fixes.slice(0, MAX_FIXES),
     attachAt: fixes.length === 0 ? freeEndOf(loose.looseJoints) : undefined,
     stuck,
+    inputStart,
+    mover,
   };
+}
+
+/** Where the input starts, from how much of the drawing's freedom holding it takes. */
+function startOf(system: ConstraintSystem, held: Constraint[]): 'limit' | 'clear' | undefined {
+  const firstOrder = freeDirectionsOf(system, held).length;
+  if (firstOrder === 0) return 'clear';
+  return freedomsOf(system, held) === 0 ? 'limit' : undefined;
 }
 
 /**
@@ -230,6 +254,45 @@ function movingBodiesOf(
     });
   }
   return moving;
+}
+
+/**
+ * The visible joint of this machine that moves furthest in the drawing's
+ * freedom, other than the input's own. Dragging it is what takes a linkage off
+ * a limit, and naming it is the difference between advice and a pointer.
+ */
+function fastestJoint(
+  partition: MechanismPartition,
+  system: ConstraintSystem,
+  assignment: BodyAssignment,
+  directions: number[][],
+  own: Set<string>,
+  hidden: Set<string>
+): RealJoint | undefined {
+  const candidates = partition.joints.filter(
+    (joint): joint is RealJoint =>
+      joint instanceof RealJoint &&
+      !joint.input &&
+      own.has(joint.id) &&
+      !hidden.has(joint.id) &&
+      !(joint.ground && !(joint instanceof PrisJoint))
+  );
+  let best: RealJoint | undefined;
+  let fastest = 0;
+  for (const direction of directions) {
+    for (const joint of candidates) {
+      for (const body of assignment.bodiesAt(joint)) {
+        if (body === WORLD) continue;
+        const motion = pointMotion(system.bodyAt(body), joint, direction);
+        const speed = Math.hypot(motion.x, motion.y);
+        if (speed > fastest) {
+          fastest = speed;
+          best = joint;
+        }
+      }
+    }
+  }
+  return best;
 }
 
 /** The bodies among `among` joined to `start` by joints that are not pinned to the ground. */

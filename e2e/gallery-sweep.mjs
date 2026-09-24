@@ -26,11 +26,12 @@ const OUT = 'artifacts/gallery-sweep';
 /**
  * Mechanisms the gallery publishes that are *meant* not to solve. The trammel
  * is published in its undriven form, which is a mobility case: nothing drives
- * it, so there is nothing to animate. The MotionGen gripper is published
- * over-constrained on purpose — its whole point is that PMKS+ reports DOF 0 and
- * refuses it, which its own spec asserts. The hydraulic cylinder used to belong
- * here too -- a Slide on a moving carrier was out of scope until Phase 5 --
- * and now solves like the rest.
+ * it, so there is nothing to animate. The MotionGen gripper used to belong here
+ * too, over-constrained by count and refused because the joint-by-joint walk
+ * could not start it; a build now hands such a drawing to the simultaneous
+ * route, which runs it along MotionGen's own paths. So did the hydraulic
+ * cylinder -- a Slide on a moving carrier was out of scope until Phase 5 --
+ * and it now solves like the rest.
  *
  * This list is kept by hand and the gallery is not, which is how the gripper
  * came to be reported as a failure for as long as it has been published. A
@@ -38,7 +39,6 @@ const OUT = 'artifacts/gallery-sweep';
  */
 const EXPECTED_INVALID = new Set([
   'Elliptical trammel',
-  'MotionGen gripper',
   // The mobility-diagnosis drawings, each with the wrong number of degrees of
   // freedom and a readiness row that says which part and what fixes it.
   'Four-bar with an ungrounded pivot',

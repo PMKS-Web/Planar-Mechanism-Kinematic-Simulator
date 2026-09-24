@@ -339,6 +339,27 @@ describe('readiness across every library drawing, broken one way at a time', () 
     expect(stuckSeen).toBeGreaterThan(30);
   });
 
+  it('says which joint to drag only at a real limit', () => {
+    const drivenFrom = (id: string, at: string) => {
+      const drawing = decode(id);
+      drawing.joints.forEach((joint) => {
+        if (joint instanceof RealJoint) joint.input = joint.id === at;
+      });
+      return machines(drawing).flatMap(({ readiness }) => readiness.checks);
+    };
+    // The Scotch yoke driven from its yoke, drawn at the end of the stroke:
+    // a dead center, and dragging the crank pin takes it off one.
+    const yoke = drivenFrom('Scotch_Yoke', 'C');
+    expect(yoke.map((check) => check.title)).toEqual(['This mechanism starts at a dead position']);
+    expect(yoke[0].body).toContain('Drag joint B a little');
+    expect(yoke[0].at?.id).toBe('B');
+    // Not at a limit, and neither of the solver's routes can start it: said
+    // as the solver's failure, with no limit to drag off.
+    const gear = drivenFrom('Aircraft_Landing_Gear', 'A');
+    expect(gear.map((check) => check.title)).toEqual(['The solver cannot start this mechanism']);
+    expect(gear[0].body).not.toContain('Drag');
+  });
+
   it('actually checked some fixes', () => {
     expect(fixesChecked).toBeGreaterThan(500);
   });

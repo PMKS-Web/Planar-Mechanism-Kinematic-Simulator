@@ -378,11 +378,10 @@ export class PositionSolver {
   /**
    * Send every drawing through the coupled route, whatever its shape.
    *
-   * For tests only, and deliberately not cleared by `resetStaticVariables`: a
-   * spec sets it, builds, and clears it. The route it forces is unreachable
-   * from the app until a mount can be welded, and the whole point of being
-   * able to force it is to compare a mechanism solved both ways *before* that
-   * happens.
+   * Deliberately not cleared by `resetStaticVariables`: a spec sets it,
+   * builds, and clears it, to compare a mechanism solved both ways. The app
+   * sets it for exactly one re-solve too -- `Mechanism.solveWholeInstead`,
+   * when the walk cannot take a first step -- and puts it back straight after.
    */
   static forceCoupledRoute = false;
   /**
@@ -773,8 +772,9 @@ export class PositionSolver {
    * A mount welded into a neighboring body, or carrying a block of its own.
    * Both are things a reader can now draw, so this is a live question about a
    * live drawing rather than a shape only a fixture could reach.
-   * `forceCoupledRoute` remains for the agreement suite, which forces the
-   * route onto mechanisms the walk can also solve so the two can be compared.
+   * `forceCoupledRoute` forces the route everywhere else: the agreement suite
+   * sets it on mechanisms the walk can also solve so the two can be compared,
+   * and a build sets it once when the walk cannot start at all.
    */
   private static mountEnhanced(joints: Joint[]): boolean {
     for (const cylinder of cylindersIn(joints)) {

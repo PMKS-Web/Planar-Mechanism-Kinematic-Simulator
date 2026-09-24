@@ -327,6 +327,74 @@ record(
   text
 );
 
+// --- a real dead center names the joint to drag, and dragging it works -------
+// The Scotch yoke driven from its yoke starts at the end of the stroke. Off
+// it, the walk still cannot start from a slider there, and the build hands the
+// drawing to the simultaneous route -- so the advice is only true because both
+// halves are in place, which is why it is followed here rather than read.
+await open(payloads['Scotch_Yoke']);
+await page.evaluate(() => {
+  const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+  srv.joints.forEach((joint) => (joint.input = joint.id === 'C'));
+  srv.updateMechanism(true);
+});
+await page.waitForTimeout(400);
+await tab('Kinematic').click();
+await page.waitForTimeout(600);
+text = await drawerText();
+record(
+  'a real dead center says which joint to drag',
+  text.includes('starts at a dead position') && text.includes('Drag joint B a little'),
+  text
+);
+await page.getByRole('button', { name: 'Go To Joint B', exact: true }).click();
+await page.waitForTimeout(600);
+const pinB = await page.evaluate(() => {
+  for (const el of document.querySelectorAll('#jointHolder > svg')) {
+    if (el.querySelector('[id^="joint_"]')?.id !== 'joint_B') continue;
+    const rect = el.getBoundingClientRect();
+    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+  }
+  return null;
+});
+await page.mouse.move(pinB.x, pinB.y);
+await page.mouse.down();
+for (let i = 1; i <= 8; i++) {
+  await page.mouse.move(pinB.x - i * 2, pinB.y - i * 6);
+  await page.waitForTimeout(60);
+}
+await page.mouse.up();
+await page.waitForTimeout(800);
+const offTheCenter = await page.evaluate(() =>
+  ng
+    .getComponent(document.querySelector('app-new-grid'))
+    .mechanismSrv.readinessOfEachMechanism()
+    .map((one) => ({ ready: one.ready, titles: one.checks.map((check) => check.title) }))
+);
+record(
+  'and dragging that joint a little takes it off the dead center, so it runs',
+  offTheCenter.length > 0 && offTheCenter.every((one) => one.ready),
+  offTheCenter
+);
+
+// --- an input the walk cannot start from, which the build solves anyway ------
+// The scissor lift driven from its floor pivot was a "dead position" once.
+await open(payloads['Scissor_Lift']);
+const fromTheFloor = await page.evaluate(() => {
+  const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+  srv.joints.forEach((joint) => (joint.input = joint.id === 'A'));
+  srv.updateMechanism(true);
+  return srv.readinessOfEachMechanism().map((one) => ({
+    ready: one.ready,
+    titles: one.checks.map((check) => check.title),
+  }));
+});
+record(
+  'a scissor lift driven from its floor pivot runs',
+  fromTheFloor.length > 0 && fromTheFloor.every((one) => one.ready),
+  fromTheFloor
+);
+
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
 
 await browser.close();

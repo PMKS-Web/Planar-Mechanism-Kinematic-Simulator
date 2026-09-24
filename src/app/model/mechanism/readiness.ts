@@ -399,12 +399,33 @@ function blockerForFailure(
 
     case 'dead-position': {
       // An input whose part cannot move at all reads to the solver exactly
-      // like one at a limit, and no drag frees it; the geometry can tell the
-      // two apart. (The walk failing to start from an awkward input reads the
-      // same way too, and nothing here can yet tell that one apart.)
+      // like one at a limit, and no drag frees it; the geometry tells the two
+      // apart, and says whether there is a limit here at all.
       const diagnosis = diagnoseMobility(partition);
       if (diagnosis.stuck) {
         return stuckCheck(diagnosis.stuck, diagnosis, partition, mechanism.dof);
+      }
+      const driven = drivenOwnJoint(partition);
+      if (driven && diagnosis.inputStart === 'limit') {
+        const mover = diagnosis.mover;
+        return {
+          state: 'blocker',
+          title: 'This mechanism starts at a dead position',
+          body: `The input at joint ${nameOf(driven)} starts exactly at a limit of its travel, where the solver cannot take a first step. Drag ${mover ? `joint ${nameOf(mover)}` : 'a joint'} a little, so the input starts short of the limit.`,
+          at: mover,
+          action: mover ? 'Go To Joint' : undefined,
+        };
+      }
+      if (driven && diagnosis.inputStart === 'clear') {
+        // Not a limit, and both of the solver's routes have been asked: the
+        // drawing moves and the input drives it, and the failure is the
+        // solver's. Said so, rather than sending anyone to drag off a limit
+        // that is not there.
+        return {
+          state: 'blocker',
+          title: 'The solver cannot start this mechanism',
+          body: `The drawing can move and the input at joint ${nameOf(driven)} drives it, but the solver cannot take a first step from here. Setting the input at a different joint can get around this.`,
+        };
       }
       return {
         state: 'blocker',

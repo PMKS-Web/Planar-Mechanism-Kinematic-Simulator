@@ -535,12 +535,22 @@ on its own it turns. The fixes are counted on that group alone (deleting a link 
 input's own, ungrounding, Pin-in-slot), since the freedom that dangles elsewhere is the next
 problem, not this one.
 
-Not every other "dead position" is one either. Moved onto a different joint, several library
-templates' inputs get "dead-position" because the joint-by-joint walk cannot start from there,
-while `PositionSolver.forceCoupledRoute` solves them (Scissor_Lift at A, Hood_Hinge at A,
-Cylinder_Boom at G, among others). Naming a joint to drag was tried and taken back: on the Scotch
-yoke driven from its yoke, a drag that moved it clear of its dead center still did not start. The
-sentence for those stays the old one until the solver falls back to the other route.
+Not every other "dead position" was one either. With the input moved to a different joint,
+several library templates could not be started by the joint-by-joint walk, and that failure looked
+exactly like a dead position. The simultaneous route solves them (Scissor_Lift at A and S,
+Hood_Hinge at A, Slotted_Tool_Drive at E, Cylinder_Boom at G, Aircraft_Landing_Gear at I). So
+`Mechanism.solveWholeInstead` asks it once, by setting `PositionSolver.forceCoupledRoute` for
+one re-solve, when the walk cannot take a first step. If that fails too, the walk runs again, so
+the failure and the solver's statics (`unsolvableJoints` among them) stay the walk's own.
+`scotch-yoke.spec.ts` checks exactly that on the swinging block.
+
+The two halves depend on each other. "Drag joint B a little" is said only where the geometry calls
+it a limit: held still, the input keeps a freedom to first order that dies at the second
+(`inputStart` in the diagnosis). Even then it only became true once the fallback existed. On the
+Scotch yoke driven from its yoke, a drag that clears the dead center leaves the walk still unable
+to start from a slider there, and the simultaneous route is what runs it. Where the input is clear
+of any limit and neither route starts, the drawer says the solver cannot start it rather than
+sending anyone to drag.
 
 ### An input on a bar grounded at both ends belongs to no machine
 

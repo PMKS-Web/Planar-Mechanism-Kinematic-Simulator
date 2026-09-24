@@ -355,7 +355,7 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
   {
     name: 'MotionGen gripper',
     purpose:
-      "A second engine's mechanism, rebuilt: over-constrained, so PMKS+ reports DOF 0 and refuses it",
+      "A second engine's mechanism, rebuilt: over-constrained by count, and runs along MotionGen's own paths",
     spec: 'motiongen-gripper.spec.ts',
     floatingSlot: false,
     slide: false,

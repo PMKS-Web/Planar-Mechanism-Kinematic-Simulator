@@ -200,7 +200,12 @@ describe('which part is loose, and what would fix it', () => {
       // turns. That is the difference between a limit and a stuck input.
       const { partition, mechanism } = built(rockerAtItsLimitFixture());
       expect(mechanism.isMechanismValid()).toBe(true);
-      expect(diagnoseMobility(partition).stuck).toBeUndefined();
+      const diagnosis = diagnoseMobility(partition);
+      expect(diagnosis.stuck).toBeUndefined();
+      // Held there, the rocker keeps a freedom to first order that dies at the
+      // second: a limit, and the joint to drag off it is the crank pin.
+      expect(diagnosis.inputStart).toBe('limit');
+      expect(diagnosis.mover?.id).toBe('B');
     });
   });
 

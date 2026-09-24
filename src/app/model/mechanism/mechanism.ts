@@ -558,6 +558,73 @@ export class Mechanism {
   /** One refinement per build, and never again after its fallback re-solve. */
   private refineAttempted = false;
 
+  /** Whether this build has already been asked of the simultaneous route. */
+  private wholeAttempted = false;
+
+  /**
+   * Solve the drawing as one system when the joint-by-joint walk cannot take a
+   * first step from where it was drawn.
+   *
+   * The walk places joints outward from the input one at a time, and some
+   * drawings cannot be put in that order from where their input is: set the
+   * input on a scissor lift's floor pivot, or on a hood hinge's grounded arm,
+   * and it finds no first step in either direction. That was reported as a dead
+   * position, with advice to drag a joint off a limit the drawing was not at --
+   * and the simultaneous route, which a welded mount has used all along, solves
+   * them. So it is asked once, from the same start, before anything is called
+   * a dead position. Returns whether it was asked, since its answer then
+   * stands, valid or not.
+   */
+  private solveWholeInstead(
+    inputAngVel: number,
+    revoluteStep: number,
+    prismaticStep: number | undefined
+  ): boolean {
+    if (this.wholeAttempted || PositionSolver.coupledRoute) return false;
+    this.wholeAttempted = true;
+    // Nothing past the start pose was kept, and the start is what the walk
+    // was given. Held rather than trusted to survive: a failed attempt clears
+    // the frames, and the walk may need them again.
+    const start = {
+      joints: this._joints[0],
+      links: this._links[0],
+      forces: this._forces[0],
+      loops: this._requiredLoops.slice(),
+      speed: this._inputAngularVelocities[0],
+    };
+    const rewind = () => {
+      this._joints = [start.joints];
+      this._links = [start.links];
+      this._forces = [start.forces];
+      this._timeNum = [];
+      this._addedSamples = [];
+      this._inputAngularVelocities = [start.speed];
+      this._requiredLoops = start.loops.slice();
+      this.mechanismValid = true;
+      this._failure = undefined;
+      this._cycleGap = undefined;
+      this._hiddenFreedoms = undefined;
+      this._unreachableJoints = [];
+    };
+    rewind();
+    const forced = PositionSolver.forceCoupledRoute;
+    PositionSolver.forceCoupledRoute = true;
+    try {
+      this.findFullMovementPos(inputAngVel, revoluteStep, prismaticStep);
+    } finally {
+      PositionSolver.forceCoupledRoute = forced;
+    }
+    if (!this.mechanismValid) {
+      // As the refinement does when its fine pass fails: walk it again, so the
+      // failure reported, and the solver's statics everything after a build
+      // reads -- what the walk could not place, among them -- are the walk's
+      // own rather than a route this drawing was only tried on.
+      rewind();
+      this.findFullMovementPos(inputAngVel, revoluteStep, prismaticStep);
+    }
+    return true;
+  }
+
   /**
    * How far a joint may move between two samples before the step is cut finer.
    *
@@ -988,7 +1055,14 @@ export class Mechanism {
         // any other. Falling back to the one-turn cycle instead left it
         // labeled as looping, with the drawing teleporting at every wrap.
         if ((!simForward && currentTimeStamp === 0) || falseTwice === 2) {
-          //If we are here, the mechnism is in a toggle point
+          // No first step either way is a walk that could not start before it
+          // is a dead position; see `solveWholeInstead`.
+          if (
+            currentTimeStamp === 0 &&
+            this.solveWholeInstead(requestedAngVel, revoluteStep, prismaticStep)
+          ) {
+            return;
+          }
           this.explainDeadPosition();
           return;
         }
