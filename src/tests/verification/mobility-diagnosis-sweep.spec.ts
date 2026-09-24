@@ -213,6 +213,8 @@ describe('readiness across every library drawing, broken one way at a time', () 
     if (fix.kind === 'ground') joint.ground = true;
     if (fix.kind === 'unground') joint.ground = false;
     if (fix.kind === 'pin-in-slot') (joint as PrisJoint).rotates = true;
+    if (fix.kind === 'prismatic') (joint as PrisJoint).rotates = false;
+    if (fix.kind === 'weld') weld(drawing, joint);
     if (fix.kind === 'unweld') unweld(drawing, joint, byId);
     if (fix.kind === 'merge') merge(drawing, joint, byId(fix.onto.id));
     if (fix.kind === 'connect') connect(drawing, joint, byId(fix.to.id));
@@ -261,6 +263,33 @@ describe('readiness across every library drawing, broken one way at a time', () 
         link === compound ? replacements.filter((piece) => piece.joints.includes(one)) : [link]
       );
     }
+  }
+
+  /** What Welded does to the model: the links at the pin become one compound. */
+  function weld(drawing: Drawing, joint: RealJoint): void {
+    const meeting = joint.links.filter((link): link is RealLink => link instanceof RealLink);
+    if (meeting.length < 2) return;
+    const members = meeting.flatMap((link) => (link.subset.length ? link.subset : [link]));
+    const joints = [...new Set(meeting.flatMap((link) => link.joints))];
+    const id = joints
+      .map((one) => one.id)
+      .sort()
+      .join('');
+    const compound = new RealLink(id, joints, 0, 0, undefined, members);
+    drawing.links = drawing.links.filter((link) => !meeting.includes(link as RealLink));
+    drawing.links.push(compound);
+    for (const one of joints) {
+      if (!(one instanceof RealJoint)) continue;
+      one.links = [...one.links.filter((link) => !meeting.includes(link as RealLink)), compound];
+    }
+    // A slot cut in a link that was welded rides the compound now, as
+    // `reconcileSlots` remaps it in the app.
+    for (const one of drawing.joints) {
+      if (!(one instanceof PrisJoint) || !one.isFloating) continue;
+      if (!meeting.includes(one.carrier as RealLink)) continue;
+      one.slideOn(compound, one.slotJointA!, one.slotJointB!);
+    }
+    joint.isWelded = true;
   }
 
   /** What dropping one joint onto another does: one joint, holding what both held. */

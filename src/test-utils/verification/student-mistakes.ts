@@ -20,7 +20,10 @@ import { MechanismFixture } from './fixture';
 
 /** What undoes a mistake, in the terms the diagnosis offers fixes in. */
 export type Undo =
-  | { kind: 'ground' | 'unground' | 'unweld' | 'pin-in-slot' | 'set-input'; joint: string }
+  | {
+      kind: 'ground' | 'unground' | 'unweld' | 'weld' | 'pin-in-slot' | 'prismatic' | 'set-input';
+      joint: string;
+    }
   | { kind: 'delete-link'; link: string }
   | { kind: 'merge'; joint: string; onto: string }
   | { kind: 'add-link'; joints: string }
@@ -136,12 +139,68 @@ function sixBar(random: Random, kind: 'watt' | 'stephenson'): MechanismFixture {
   return fixture;
 }
 
+/** A four-bar whose coupler is bent at a knee: two bars welded at C, the rocker at E. */
+function bentCouplerFourBar(random: Random): MechanismFixture {
+  const d = between(random, 2.5, 4.5);
+  const crank = between(random, 0.6, 1.2);
+  const angle = between(random, 0.35, 2.8);
+  const b = { x: crank * Math.cos(angle), y: crank * Math.sin(angle) };
+  const e = { x: d * between(random, 0.55, 1.1), y: between(random, 1.4, 3) };
+  const knee = between(random, 0.5, 1.2);
+  const mid = { x: (b.x + e.x) / 2, y: (b.y + e.y) / 2 };
+  const length = Math.hypot(e.x - b.x, e.y - b.y);
+  return {
+    joints: [
+      { id: 'A', x: 0, y: 0, ground: true, input: true },
+      { id: 'B', x: round(b.x), y: round(b.y) },
+      {
+        id: 'C',
+        x: round(mid.x - ((e.y - b.y) / length) * knee),
+        y: round(mid.y + ((e.x - b.x) / length) * knee),
+      },
+      { id: 'D', x: round(d), y: 0, ground: true },
+      { id: 'E', x: round(e.x), y: round(e.y) },
+    ],
+    links: [
+      { joints: 'AB' },
+      { joints: 'BCE', subset: [{ joints: 'BC' }, { joints: 'CE' }] },
+      { joints: 'DE' },
+    ],
+    welds: ['C'],
+    inputAngVel: 1,
+  };
+}
+
+/** A Scotch yoke: the crank pin B rides a slot in the yoke CD, which slides on a Prismatic guide at C. */
+function scotchYoke(random: Random): MechanismFixture {
+  const crank = between(random, 0.6, 1.2);
+  const angle = between(random, 0.35, 2.8);
+  const b = { x: crank * Math.cos(angle), y: crank * Math.sin(angle) };
+  return {
+    joints: [
+      { id: 'A', x: 0, y: 0, ground: true, input: true },
+      { id: 'B', x: round(b.x), y: round(b.y) },
+      { id: 'C', x: round(b.x), y: round(-between(random, 1.2, 2)) },
+      { id: 'D', x: round(b.x), y: round(b.y + between(random, 0.8, 1.6)) },
+    ],
+    links: [{ joints: 'AB' }, { joints: 'CD' }],
+    sliders: [
+      { at: 'B', on: { carrier: 'CD', a: 'C', b: 'D' } },
+      { at: 'C', angleRad: 0 },
+    ],
+    welds: ['C'],
+    inputAngVel: 1,
+  };
+}
+
 const BASES: Record<string, (random: Random) => MechanismFixture> = {
   'four-bar': (random) => fourBar(random, false),
   'four-bar with a coupler point': (random) => fourBar(random, true),
   'slider-crank': sliderCrank,
   'Watt six-bar': (random) => sixBar(random, 'watt'),
   'Stephenson six-bar': (random) => sixBar(random, 'stephenson'),
+  'four-bar with a bent coupler': bentCouplerFourBar,
+  'Scotch yoke': scotchYoke,
 };
 
 // --- the mistakes -----------------------------------------------------------
@@ -291,10 +350,36 @@ const MISTAKES: Mistake[] = [
     },
   },
   {
+    name: 'a weld left off',
+    make(fixture, random) {
+      const compounds = fixture.links.filter((link) => link.subset && link.subset.length > 1);
+      const welded = (fixture.welds ?? []).filter(
+        (id) => !sliderAt(fixture, id) && compounds.some((link) => link.joints.includes(id))
+      );
+      if (welded.length === 0) return undefined;
+      const joint = pick(random, welded);
+      const compound = compounds.find((link) => link.joints.includes(joint))!;
+      fixture.links.splice(fixture.links.indexOf(compound), 1, ...compound.subset!);
+      fixture.welds = fixture.welds!.filter((id) => id !== joint);
+      return { kind: 'weld', joint };
+    },
+  },
+  {
+    name: 'a Prismatic slider left as a Pin-in-slot',
+    make(fixture) {
+      const slide = (fixture.sliders ?? []).find(
+        (slider) => !slider.on && (fixture.welds ?? []).includes(slider.at)
+      );
+      if (!slide) return undefined;
+      fixture.welds = fixture.welds!.filter((id) => id !== slide.at);
+      return { kind: 'prismatic', joint: slide.at };
+    },
+  },
+  {
     name: 'a slider that may not turn',
     make(fixture) {
       const slider = (fixture.sliders ?? [])[0];
-      if (!slider || slider.on) return undefined;
+      if (!slider || slider.on || (fixture.welds ?? []).includes(slider.at)) return undefined;
       fixture.welds = [...(fixture.welds ?? []), slider.at];
       return { kind: 'pin-in-slot', joint: slider.at };
     },
