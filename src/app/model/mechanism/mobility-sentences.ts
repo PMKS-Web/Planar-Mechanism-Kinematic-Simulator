@@ -1,3 +1,4 @@
+import { describeActuator } from '../actuator';
 import { visibleBodyName } from '../body-label';
 import { cylindersIn } from '../cylinder';
 import { Joint, PrisJoint, RealJoint } from '../joint';
@@ -175,7 +176,10 @@ export function tooFree(
   if (diagnosis.stuck) return stuckCheck(diagnosis.stuck, diagnosis, partition, dof);
   const beside = besideCheck(diagnosis);
   if (beside) return beside;
+  // An input the actuator model refuses cannot be held still, so nothing is
+  // said about what moves while it is.
   const driven = drivenOwnJoint(partition);
+  const held = driven && typeof describeActuator(driven) !== 'string';
   // A link left hanging is as likely the first bar of more linkage as a
   // mistake, so finishing it is offered beside deleting it.
   const attach = diagnosis.attachAt;
@@ -199,7 +203,7 @@ export function tooFree(
     );
   const pointer = sentence ? focus : focusOf(diagnosis);
 
-  if (driven && diagnosis.looseLinks.length > 0) {
+  if (held && diagnosis.looseLinks.length > 0) {
     const one = diagnosis.looseLinks.length === 1;
     return {
       state: 'blocker',

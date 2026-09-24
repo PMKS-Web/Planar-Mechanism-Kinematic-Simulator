@@ -3,18 +3,18 @@ import { Link } from '../link';
 import { cylindersIn } from '../cylinder';
 import { describeFrozenCylinderStroke, isFrozenCylinder } from '../cylinder-frozen';
 import { visibleBodyName } from '../body-label';
-import {
-  canDrive,
-  describeActuator,
-  framePieceAt,
-  groundPinsElsewhere,
-  isFrameBar,
-} from '../actuator';
+import { canDrive, isFrameBar } from '../actuator';
 import { Mechanism, MechanismFailure } from './mechanism';
 import { MechanismPartition, UnassignedGeometry } from './mechanism-partition';
 import { assignBodies } from './bodies';
 import { diagnoseMobility, Drawing } from './free-motion';
 import { hiddenJoints, jointsBeside } from './mobility-edits';
+import {
+  besideAnother,
+  hangingLink,
+  inputOnTheFrame,
+  splitFromADrivenOne,
+} from './readiness-situations';
 import {
   besideAdvice,
   besideCheck,
@@ -386,70 +386,13 @@ function blockerForFailure(
 export const NO_INPUT_SET = 'No input is set';
 
 /**
- * A machine that is one link on one grounded pin another machine also uses,
- * and the pin it hangs from.
+ * What the solver asks before it solves anything, in this order, stopping at
+ * the first that fails: a slot for every slider, one degree of freedom, an
+ * input. Each can be read off the drawing, so more than one can be said at
+ * once -- except the count beside a slider with nothing to slide along, which
+ * the slot is part of.
  */
-function hangingLink(partition: MechanismPartition): { link: Link; pivot: RealJoint } | undefined {
-  const moving = partition.links.filter((link) =>
-    link.joints.some((joint) => !(joint instanceof RealJoint && joint.ground))
-  );
-  if (moving.length !== 1) return undefined;
-  const [link] = moving;
-  const pivots = link.joints.filter(
-    (joint): joint is RealJoint => joint instanceof RealJoint && joint.ground
-  );
-  const free = link.joints.filter(
-    (joint) => joint instanceof RealJoint && !joint.ground && joint.links.length === 1
-  );
-  // Drawn off a pivot the rest of the linkage uses. A lone crank on a pivot of
-  // its own is a crank nobody has driven yet, and "No input is set" is true of it.
-  const shared = pivots[0]?.links.some((other) => !partition.links.includes(other));
-  return pivots.length === 1 && free.length === link.joints.length - 1 && shared
-    ? { link, pivot: pivots[0] }
-    : undefined;
-}
-
-/**
- * A joint of this machine drawn beside a joint of some other part of the
- * drawing, with no link between them: the stray one first, then the one it was
- * surely meant to land on, whichever of them is this machine's.
- */
-function besideAnother(
-  partition: MechanismPartition,
-  drawing: Joint[]
-): [RealJoint, RealJoint] | undefined {
-  const own = new Set(partition.ownJoints);
-  const mine = new Set(partition.joints);
-  // In the order `jointsBeside` puts them -- the one that was dropped, then
-  // the one it was meant for -- whichever of the two is this machine's.
-  return jointsBeside(drawing, hiddenJoints(drawing)).find(
-    ([a, b]) => (own.has(a) && !mine.has(b)) || (own.has(b) && !mine.has(a))
-  );
-}
-
-/**
- * An input set on a link that has since been grounded at its other end too.
- *
- * The link is then part of the frame, so the partition gives the joint to no
- * mechanism, and the machine it hangs off solved as if nothing drove it: "No
- * input is set", said beside the input's own arrow. The joint is still in this
- * mechanism's `joints` -- a frame piece is handed to the machine it touches --
- * so it is found there, and the refusal is the actuator model's own sentence.
- */
-function inputOnTheFrame(
-  partition: MechanismPartition
-): { joint: RealJoint; refusal: string; unground?: RealJoint } | undefined {
-  const own = new Set(partition.ownJoints.map((joint) => joint.id));
-  for (const joint of partition.joints) {
-    if (!(joint instanceof RealJoint) || !joint.input || own.has(joint.id)) continue;
-    if (!framePieceAt(joint)) continue;
-    const refusal = describeActuator(joint);
-    if (typeof refusal !== 'string') continue;
-    const link = joint.links[0];
-    return { joint, refusal, unground: link ? groundPinsElsewhere(link, joint)[0] : undefined };
-  }
-  return undefined;
-}
+const BEFORE_THE_SOLVE = new Set<MechanismFailure>(['dangling-slider', 'mobility']);
 
 /**
  * Everything standing between one mechanism and its animation, worst first.
@@ -467,6 +410,7 @@ export function readinessOf(
 ): MechanismReadiness {
   const checks: ReadinessCheck[] = [];
   const add = (check: ReadinessCheck) => checks.push(check);
+  const drawingJoints = helpers.drawing?.().joints ?? [];
 
   // Asked first, and asked even of a mechanism the solver accepted: the toggle
   // refuses a joint it cannot describe, but nothing stops a later edit taking
@@ -478,8 +422,8 @@ export function readinessOf(
   // move, fails somewhere downstream and reports that: "Nothing moves when the
   // input turns" is true of such a drawing and tells the reader to go and check
   // connections that are perfectly sound. So where the drive itself is refused,
-  // that refusal is the whole of the answer and the failure's own sentence is
-  // left out rather than stacked on top of it.
+  // what the solve found downstream of it is left out rather than stacked on
+  // top of the refusal.
   const driven = drivenOwnJoint(partition);
   const onFrame = driven ? undefined : inputOnTheFrame(partition);
   const refusal = helpers.drivenRefusal(partition) ?? onFrame?.refusal;
@@ -491,12 +435,14 @@ export function readinessOf(
       at: onFrame.unground,
       action: onFrame.unground ? 'Go To Joint' : undefined,
     });
-  } else if (refusal) {
-    // A third body on the input's pivot is usually one link too many, drawn
-    // from it: say which, counted, rather than only that there are three.
-    const untangle = driven
+  }
+  // A third body on the input's pivot is usually one link too many, drawn from
+  // it: say which, counted, rather than only that there are three.
+  const untangle =
+    refusal && driven && !onFrame
       ? (diagnoseMobility(partition, helpers.drawing?.()).untangle ?? [])
       : [];
+  if (refusal && !onFrame) {
     // Otherwise a joint that could take the input instead, where one can: an
     // input on a coupler point or a lone slider is the input on the wrong
     // joint, and the reader should not have to find the right one.
@@ -527,9 +473,25 @@ export function readinessOf(
 
   const failure = mechanism.failure;
   if (refusal) {
-    // The cause is already stated.
+    // The cause is already stated, of anything the solve found after it. A
+    // slot with nothing to slide along, or a count that is wrong, is not the
+    // input's doing, and is said beside it -- unless the refusal's own fix is
+    // counted, and so already mends the count, or the input is on the frame.
+    if (!onFrame && !untangle.length && failure && BEFORE_THE_SOLVE.has(failure)) {
+      add(blockerForFailure(failure, partition, mechanism, helpers));
+    }
   } else if (failure !== undefined) {
     add(blockerForFailure(failure, partition, mechanism, helpers));
+    // The solver stops at the first of these it finds, and a missing input does
+    // not wait on the other two: said together, not one after another.
+    if (
+      BEFORE_THE_SOLVE.has(failure) &&
+      !driven &&
+      !besideAnother(partition, drawingJoints) &&
+      !splitFromADrivenOne(partition, drawingJoints)
+    ) {
+      add(blockerForFailure('not-driven', partition, mechanism, helpers));
+    }
   } else if (!mechanism.isMechanismValid()) {
     // Invalid and carrying no reason. Nothing produces this today, and `ready`
     // read it as "not ready" with an empty list underneath -- a red chip with

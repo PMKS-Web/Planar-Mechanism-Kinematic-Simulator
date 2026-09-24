@@ -5,9 +5,11 @@ import { MechanismFixture } from '../../test-utils/verification/fixture';
 import { followAdvice, readDrawing } from '../../test-utils/verification/follow-advice';
 import {
   braceAtInputFixture,
+  couplerInputAndHangingLinkFixture,
   deletedRockerFixture,
   frameBarFixture,
   groundedWattJointFixture,
+  hangingLinkNoInputFixture,
   inputOnCouplerPointFixture,
   linkHangingFromPivotFixture,
   rockerBesideCouplerFixture,
@@ -166,6 +168,40 @@ describe('what the drawer says about a mistake it has learned to name', () => {
     expect(check.ways?.map((way) => [way.text, way.action])).toEqual([
       ['Make joint C Prismatic', 'Go To Joint'],
       ['Make joint B Prismatic', 'Go To Joint'],
+    ]);
+  });
+
+  it('says a count that is wrong and an input that is missing together', () => {
+    // The solver stops at the count, and used to say only that; the input was
+    // asked for once the count was fixed.
+    const { checks } = said(hangingLinkNoInputFixture());
+    expect(checks.map((check) => check.title)).toEqual([
+      'This mechanism has 2 degrees of freedom',
+      'No input is set',
+    ]);
+    // With no input to hold, a fix has to leave a freedom some joint could
+    // drive: grounding B, or welding it, leaves one -- the hanging link's.
+    expect(checks[0].ways?.map((way) => way.text)).toEqual([
+      'Delete link CE',
+      'Attach a link from joint E to a new grounded joint',
+    ]);
+    expect(checks[1].at?.id).toBe('A');
+  });
+
+  it('says an input that cannot be one beside the count, which is not its doing', () => {
+    const { checks } = said(couplerInputAndHangingLinkFixture());
+    expect(checks.map((check) => check.title)).toEqual([
+      'This joint cannot be an input',
+      'This mechanism has 2 degrees of freedom',
+    ]);
+    // Not "with the input held still": this one cannot be held.
+    expect(checks[1].body).toBe(
+      'One input controls only one degree of freedom, and this mechanism can move in 2 ' +
+        'independent ways. Any one of these would leave one degree of freedom:'
+    );
+    expect(checks[1].ways?.map((way) => way.text)).toEqual([
+      'Delete link CF',
+      'Attach a link from joint F to a new grounded joint',
     ]);
   });
 

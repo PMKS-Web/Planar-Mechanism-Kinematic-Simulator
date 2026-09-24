@@ -631,6 +631,25 @@ is one body with the yoke; `withoutLink` assigns the bodies again without it rat
 the shared body out, and asks each joint about the links it has left, because its own `links`
 still names the deleted one.
 
+### The solver stops at the first thing wrong; the drawer does not
+
+`Mechanism` asks for a slot on every slider, then one degree of freedom, then an input, and sets
+one `failure` at the first that fails. A drawing with a wrong count and no input was told about the
+count, fixed it, and only then heard about the input. All three can be read off the drawing, so
+`readinessOf` says the missing input beside the other two (`BEFORE_THE_SOLVE`), and says a slot or
+a count beside an input the actuator refuses. What stays alone: the count beside a slider with
+nothing to slide along (the slot is part of what it counts), anything beside a joint dropped next
+to another (joining them is the whole answer), a count beside an input whose own fix is counted
+(deleting the brace mends both), and an input asked of half a linkage split at a grounded joint
+whose input is on the other half (`splitFromADrivenOne`). What the solve finds -- a dead position,
+a cycle that never closes -- still waits for these, because nothing is solved until they are fixed.
+
+Saying the count without an input exposed a hole in counting a fix: with no input to hold, "one
+freedom left" was enough, and grounding the crank of a four-bar with a link hanging off its coupler
+leaves one -- the hanging link's, turning on a pin that joins three bodies. `leavesOneMachine` now
+asks there that some joint between exactly two bodies, held, leaves nothing free
+(`someInputHolds`), which is the input toggle's own rule.
+
 ### Reset left a clock a few tenths of a microsecond short of zero
 
 `easeToStart` eases each machine's clock back to its start, and skips drawing a frame that moves it
