@@ -403,6 +403,35 @@
       margin-top: 10px;
     }
 
+    // One line per way out: what to do, then the button that goes there.
+    .ways {
+      list-style: none;
+      margin: 8px 0 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .way {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+
+      button-block {
+        margin-top: 0;
+        flex: 0 0 auto;
+      }
+    }
+
+    .wayText {
+      font-size: 12px;
+      line-height: 18px;
+      color: var(--text-primary);
+      min-width: 0;
+    }
+
     .checkIcon.blocker {
       color: var(--refusal-text);
     }

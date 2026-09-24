@@ -24,7 +24,7 @@ import {
   stuckCheck,
   tooFree,
   focusOf,
-  fixSentence,
+  resolution,
   looseSubject,
   wayOutOf,
 } from './mobility-sentences';
@@ -45,6 +45,21 @@ export interface ReadinessCheck {
   at?: Joint | Link;
   /** Title Case, because it labels a button. */
   action?: string;
+  /**
+   * The ways out, where there is more than one and nothing in the drawing says
+   * which was meant: each an instruction and the part it is about, for the
+   * reader to choose from. `at` and `action` are the first of them.
+   */
+  ways?: ReadinessWay[];
+}
+
+/** One of several ways out of a blocker. */
+export interface ReadinessWay {
+  /** An instruction, as a reader would do it: "Delete link BC". */
+  text: string;
+  at: Joint | Link;
+  /** Title Case, because it labels a button. */
+  action: string;
 }
 
 /** A named number about a mechanism, for the overview grid. */
@@ -299,14 +314,14 @@ function blockerForFailure(
         };
       }
       const one = diagnosis.looseLinks.length === 1;
+      const { sentence, ...choices } = resolution(diagnosis.fixes, partition);
       return {
         state: 'blocker',
         title: 'A part of this mechanism is tied to nothing',
         body:
           `It counts as one degree of freedom, but with the input held still ${looseSubject(diagnosis, partition)} can still move: ${one ? 'it is' : 'they are'} held by nothing but ${one ? 'its' : 'their'} own joints. ` +
-          (fixSentence(diagnosis.fixes, partition) ||
-            wayOutOf(diagnosis, 'Attach its free end, ground it, or remove it.')),
-        ...focusOf(diagnosis),
+          (sentence || wayOutOf(diagnosis, 'Attach its free end, ground it, or remove it.')),
+        ...(sentence ? choices : focusOf(diagnosis)),
       };
     }
 
@@ -482,7 +497,6 @@ export function readinessOf(
     const untangle = driven
       ? (diagnoseMobility(partition, helpers.drawing?.()).untangle ?? [])
       : [];
-    const fix = untangle[0];
     // Otherwise a joint that could take the input instead, where one can: an
     // input on a coupler point or a lone slider is the input on the wrong
     // joint, and the reader should not have to find the right one.
@@ -494,6 +508,7 @@ export function readinessOf(
         );
     const onPivot = driven?.links.filter((link) => !isFrameBar(link)) ?? [];
     const cylinders = cylindersIn(partition.joints);
+    const { sentence, ...ways } = resolution(untangle, partition);
     add({
       state: 'blocker',
       title:
@@ -502,12 +517,11 @@ export function readinessOf(
           : 'This joint cannot be an input',
       body:
         untangle.length && driven
-          ? `Joint ${nameOf(driven)} holds links ${onPivot.map((link) => visibleBodyName(link, cylinders)).join(' and ')} to the ground, so the input would not say which one to turn. ${fixSentence(untangle, partition)}`
+          ? `Joint ${nameOf(driven)} holds links ${onPivot.map((link) => visibleBodyName(link, cylinders)).join(' and ')} to the ground, so the input would not say which one to turn. ${sentence}`
           : instead
             ? `${refusal} Set the input on joint ${nameOf(instead)} instead.`
             : refusal,
-      at: fix?.kind === 'delete-link' ? fix.link : driven,
-      action: fix?.kind === 'delete-link' ? 'Go To Link' : driven ? 'Go To Joint' : undefined,
+      ...(untangle.length ? ways : { at: driven, action: driven ? 'Go To Joint' : undefined }),
     });
   }
 

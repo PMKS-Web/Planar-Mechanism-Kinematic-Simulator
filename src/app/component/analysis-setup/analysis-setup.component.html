@@ -28,7 +28,20 @@
                 <div class="checkBody">
                   <div class="checkTitle">{{ check.title }}</div>
                   <p class="checkText">{{ check.body }}</p>
-                  @if (check.action && check.at) {
+                  <!-- Several ways out, each with its own button: every one of
+                       them runs, and which is right is what the reader meant. -->
+                  @if (check.ways?.length) {
+                    <ul class="ways">
+                      @for (way of check.ways; track way.text) {
+                        <li class="way">
+                          <span class="wayText">{{ way.text }}</span>
+                          <button-block inline (pressed)="goTo(way.at)">
+                            {{ way.action }} {{ nameOf(way.at) }}
+                          </button-block>
+                        </li>
+                      }
+                    </ul>
+                  } @else if (check.action && check.at) {
                     <button-block inline (pressed)="goTo(check.at)">
                       {{ check.action }} {{ nameOf(check.at) }}
                     </button-block>

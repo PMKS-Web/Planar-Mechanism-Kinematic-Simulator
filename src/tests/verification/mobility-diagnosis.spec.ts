@@ -79,10 +79,12 @@ describe('which part is loose, and what would fix it', () => {
 
       const check = checkFor(danglingLinkFixture());
       expect(check.body).toContain('link BC can still move');
-      expect(check.body).toContain(
-        'Deleting link BC would leave one degree of freedom. If it is the start of more ' +
-          'linkage, attach a link from joint C to a new grounded joint instead.'
-      );
+      // Both ways, each with its own button, for the reader to choose.
+      expect(check.body).toContain('Any one of these would leave one degree of freedom:');
+      expect(check.ways?.map((way) => [way.text, way.action, way.at.id])).toEqual([
+        ['Delete link BC', 'Go To Link', 'BC'],
+        ['Attach a link from joint C to a new grounded joint', 'Go To Joint', 'C'],
+      ]);
       expect(check.body).not.toContain('Grounding');
       expect(check.at?.id).toBe('BC');
     });
@@ -95,7 +97,10 @@ describe('which part is loose, and what would fix it', () => {
 
       const check = checkFor(boomWithDanglingLinkFixture());
       expect(check.body).toContain('link CE can still move');
-      expect(check.body).toContain('Deleting link CE would leave one degree of freedom.');
+      expect(check.ways?.map((way) => way.text)).toEqual([
+        'Delete link CE',
+        'Attach a link from joint E to a new grounded joint',
+      ]);
       // N is the barrel's buried inner end and P the square the rod slides on.
       expect(check.body).not.toMatch(/\b[NP]\b/);
       expect(check.at?.id).toBe('CE');

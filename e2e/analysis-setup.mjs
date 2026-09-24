@@ -290,8 +290,9 @@ record(
   'and ungrounding it lets the input turn, leaving the next thing to fix',
   !text.includes('cannot turn') &&
     text.includes('This mechanism has 2 degrees of freedom') &&
-    text.includes('Deleting link BC would leave one degree of freedom.') &&
-    text.includes('attach a link from joint C to a new grounded joint'),
+    text.includes('Any one of these would leave one degree of freedom:') &&
+    text.includes('Delete link BC') &&
+    text.includes('Attach a link from joint C to a new grounded joint'),
   text
 );
 
@@ -324,8 +325,8 @@ record(
   'and deleting that link frees it, leaving the dangling link to fix next',
   !text.includes('cannot turn') &&
     text.includes('link HK can still move') &&
-    text.includes('Deleting link HK would leave one degree of freedom.') &&
-    text.includes('attach a link from joint K'),
+    text.includes('Delete link HK') &&
+    text.includes('Attach a link from joint K'),
   text
 );
 
@@ -494,6 +495,30 @@ await page.keyboard.press('Delete');
 await page.waitForTimeout(700);
 machinesNow = await readinessNow();
 record('and deleting it makes the four-bar run', allReady(machinesNow), machinesNow);
+
+// --- several ways out, each for the reader to choose -------------------------
+// A link left hanging is either a mistake or the first bar of more linkage,
+// and nothing in the drawing says which: both are listed, each with a button.
+await open(galleryQuery('Crank with a dangling link'));
+await tab('Kinematic').click();
+await page.waitForTimeout(600);
+const ways = await page.locator('app-analysis-setup .way').allInnerTexts();
+record(
+  'two ways out are listed, each with its own button',
+  ways.length === 2 &&
+    ways[0].includes('Delete link BC') &&
+    ways[0].includes('Go To Link BC') &&
+    ways[1].includes('Attach a link from joint C to a new grounded joint') &&
+    ways[1].includes('Go To Joint C'),
+  ways
+);
+await page.locator('app-analysis-setup .way').nth(1).locator('button-block').click();
+await page.waitForTimeout(600);
+const wentTo = await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  return grid.activeObjService.objType === 'Joint' ? grid.activeObjService.selectedJoint.id : null;
+});
+record('and the second button goes to its own part', wentTo === 'C', { wentTo });
 
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
 

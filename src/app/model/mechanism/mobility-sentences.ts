@@ -9,7 +9,7 @@ import {
   StuckInput,
 } from './free-motion';
 import { MechanismPartition } from './mechanism-partition';
-import type { ReadinessCheck } from './readiness';
+import type { ReadinessCheck, ReadinessWay } from './readiness';
 
 /**
  * What the setup drawer says about a mechanism with the wrong number of
@@ -72,6 +72,53 @@ export function fixSentence(
   return `${sentence[0].toUpperCase()}${sentence.slice(1)} would${each} ${outcome}.`;
 }
 
+/** One fix as an instruction, the way it heads a line of its own: "Ground joint D". */
+function instruction(fix: MobilityFix, partition: MechanismPartition): string {
+  const phrase = fixPhrase(fix, partition)
+    .replace(/^grounding/, 'ground')
+    .replace(/^ungrounding/, 'unground')
+    .replace(/^making/, 'make')
+    .replace(/^unwelding/, 'unweld')
+    .replace(/^dragging/, 'drag')
+    .replace(/^attaching/, 'attach')
+    .replace(/^deleting/, 'delete');
+  return `${phrase[0].toUpperCase()}${phrase.slice(1)}`;
+}
+
+/** The part a fix is about, and the button that goes to it. */
+function wayTo(fix: MobilityFix): Pick<ReadinessWay, 'at' | 'action'> {
+  return fix.kind === 'delete-link'
+    ? { at: fix.link, action: 'Go To Link' }
+    : { at: fix.joint, action: 'Go To Joint' };
+}
+
+/**
+ * The counted fixes -- and a piece of advice beside them, where there is one --
+ * said the way a reader can choose between them.
+ *
+ * One is a sentence and a button. Several are a list, each with a button of
+ * its own: every one of them runs, and which is right depends on what the
+ * reader meant, which the drawing cannot say. Ranking them by a guess -- the
+ * edit made last, say -- would put back the drawing the reader already had,
+ * which is what Undo is for.
+ */
+export function resolution(
+  fixes: MobilityFix[],
+  partition: MechanismPartition,
+  outcome = 'leave one degree of freedom',
+  advice?: ReadinessWay
+): Pick<ReadinessCheck, 'at' | 'action' | 'ways'> & { sentence: string } {
+  if (fixes.length === 0) return { sentence: '' };
+  if (fixes.length === 1 && !advice) {
+    return { sentence: fixSentence(fixes, partition, outcome), ...wayTo(fixes[0]) };
+  }
+  const ways: ReadinessWay[] = [
+    ...fixes.map((fix) => ({ text: instruction(fix, partition), ...wayTo(fix) })),
+    ...(advice ? [advice] : []),
+  ];
+  return { sentence: `Any one of these would ${outcome}:`, ways, ...wayTo(fixes[0]) };
+}
+
 /** Where the Go To button should land: the fix first, then the loose part. */
 export function focusOf(diagnosis: MobilityDiagnosis): Pick<ReadinessCheck, 'at' | 'action'> {
   const fix = diagnosis.fixes[0];
@@ -124,15 +171,28 @@ export function tooFree(
   const beside = besideCheck(diagnosis);
   if (beside) return beside;
   const driven = drivenOwnJoint(partition);
-  const fixes = fixSentence(diagnosis.fixes, partition);
+  // A link left hanging is as likely the first bar of more linkage as a
+  // mistake, so finishing it is offered beside deleting it.
+  const attach = diagnosis.attachAt;
+  const { sentence, ...focus } = resolution(
+    diagnosis.fixes,
+    partition,
+    undefined,
+    attach
+      ? {
+          text: `Attach a link from joint ${nameOf(attach)} to a new grounded joint`,
+          at: attach,
+          action: 'Go To Joint',
+        }
+      : undefined
+  );
   const wayOut =
-    fixes && diagnosis.attachAt
-      ? `${fixes} If it is the start of more linkage, attach a link from joint ${nameOf(diagnosis.attachAt)} to a new grounded joint instead.`
-      : fixes ||
-        wayOutOf(
-          diagnosis,
-          'Ground another joint, or connect a free joint to a second link, until this reads 1.'
-        );
+    sentence ||
+    wayOutOf(
+      diagnosis,
+      'Ground another joint, or connect a free joint to a second link, until this reads 1.'
+    );
+  const pointer = sentence ? focus : focusOf(diagnosis);
 
   if (driven && diagnosis.looseLinks.length > 0) {
     const one = diagnosis.looseLinks.length === 1;
@@ -140,14 +200,14 @@ export function tooFree(
       state: 'blocker',
       title,
       body: `With the input held still, ${looseSubject(diagnosis, partition)} can still move, so the input alone cannot say where ${one ? 'it goes' : 'they go'}. ${wayOut}`,
-      ...focusOf(diagnosis),
+      ...pointer,
     };
   }
   return {
     state: 'blocker',
     title,
     body: `One input controls only one degree of freedom, and this mechanism can move in ${dof} independent ways. ${wayOut}`,
-    ...focusOf(diagnosis),
+    ...pointer,
   };
 }
 
@@ -183,14 +243,16 @@ export function stuckCheck(
       : dof !== undefined && Number.isFinite(dof) && dof >= 1
         ? ` The ${dof === 1 ? 'one degree' : `${dof} degrees`} of freedom it counts ${dof === 1 ? 'is' : 'are'} ${looseSubject(diagnosis, partition)}, moving on ${their} own.`
         : ` Only ${looseSubject(diagnosis, partition)} can move, on ${their} own.`;
+  const { sentence, ...ways } = resolution(
+    stuck.fixes,
+    partition,
+    `let the input move ${one ? 'it' : 'them'}`
+  );
   const wayOut =
-    fixSentence(stuck.fixes, partition, `let the input move ${one ? 'it' : 'them'}`) ||
+    sentence ||
     `Delete one of ${one ? 'its' : 'their'} links or unground one of ${one ? 'its' : 'their'} joints, so the input has something that can move.`;
-  const fix = stuck.fixes[0];
-  const focus: Pick<ReadinessCheck, 'at' | 'action'> = fix
-    ? fix.kind === 'delete-link'
-      ? { at: fix.link, action: 'Go To Link' }
-      : { at: fix.joint, action: 'Go To Joint' }
+  const focus: Pick<ReadinessCheck, 'at' | 'action' | 'ways'> = sentence
+    ? ways
     : stuck.links[0]
       ? { at: stuck.links[0], action: 'Go To Link' }
       : {};
@@ -225,17 +287,17 @@ export function overConstrained(
   const diagnosis = diagnoseMobility(partition, drawing);
   const beside = besideCheck(diagnosis);
   if (beside) return beside;
-  const fixes = fixSentence(diagnosis.fixes, partition);
+  const { sentence, ...ways } = resolution(diagnosis.fixes, partition);
   const welded = partition.ownJoints.some((joint) => joint instanceof RealJoint && joint.isWelded);
   return {
     state: 'blocker',
     title: `This mechanism has ${dof} degrees of freedom`,
     body:
       'It is over-constrained, so nothing can move at all. ' +
-      (fixes ||
+      (sentence ||
         'Remove a link, or unground a joint, until this reads 1.' +
           (welded ? ' A weld also removes freedom — unwelding a joint is another way out.' : '')),
-    ...focusOf(diagnosis),
+    ...(sentence ? ways : focusOf(diagnosis)),
   };
 }
 
