@@ -2101,6 +2101,15 @@ stroke. An inline style beats a class rule that is not `!important`, so a Schema
 squares. Give the weld's unselected width through the same binding (`scaleWithZoom(1)` in
 Schematic) and keep `non-scaling-stroke` off it, for the reason in the note above.
 
+### `getBBox` is single precision, so compare what it measures with a tolerance
+
+It answers in float32, and it bounds a curve through the curve, not only its end points. A
+cylinder head reaching exactly from -80.64 to 80.64 measured 161.27999 under most corner radii
+and 161.28001 under a few. The radius differs by drawing style and follows the zoom a load fits
+to, so an exact `JSON.stringify` comparison of head lengths across styles in
+`e2e/drawing-styles.mjs` failed now and then with nothing changed. Compare with a tolerance
+well under any change you mean to catch.
+
 ### A schematic part inside a welded body was picked by its line alone
 
 `pickLinkAt` tested a part's schematic skeleton with `isPointInStroke` only, so the shaded inside

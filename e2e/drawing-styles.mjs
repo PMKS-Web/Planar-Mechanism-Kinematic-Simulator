@@ -406,18 +406,31 @@ try {
       page
         .locator('.cylinder-seal')
         .evaluateAll((ps) => ps.map((p) => ({ x: p.getBBox().x, width: p.getBBox().width })));
+    // getBBox answers in single precision and bounds the head's rounded end
+    // through its arcs, so one head length measured 161.27999 under most
+    // corner radii and 161.28001 under a few. Each style rounds the corner
+    // differently, and the radius follows the zoom a load fits to, so an exact
+    // comparison failed now and then with nothing changed. A head that really
+    // changed length would move by a part of that radius, far past this.
+    const sameHead = (a, b) =>
+      a.length === b.length &&
+      a.every((one, i) =>
+        ['x', 'width'].every(
+          (key) => Math.abs(one[key] - b[i][key]) <= 1e-6 * Math.max(1, Math.abs(b[i][key]))
+        )
+      );
     let initialHead;
     for (const name of ['Standard', 'Fine', 'Schematic']) {
       await choose(name);
       // Schematic draws no head at all: the part is two lines meeting at S.
       const drawn = await head();
       initialHead ??= drawn;
+      const documentUnchanged = (await physical()) === before;
       check(
         `${id}: ${name} keeps piston head length and document data unchanged`,
-        (await physical()) === before &&
-          (name === 'Schematic'
-            ? drawn.length === 0
-            : JSON.stringify(drawn) === JSON.stringify(initialHead))
+        documentUnchanged &&
+          (name === 'Schematic' ? drawn.length === 0 : sameHead(drawn, initialHead)),
+        { documentUnchanged, drawn, initialHead }
       );
       await page.waitForTimeout(240); // The shared segmented pill is animated.
       await page.screenshot({ path: `${OUT}/${id}-${name}.png` });
