@@ -86,6 +86,20 @@ describe('linear input speed in the URL', () => {
     expect(read.linearInputSpeed.value).toBe(3.5);
   });
 
+  it("drives a new drawing's slider at one unit a second", () => {
+    // It was five: a classroom slider's stroke is a couple of centimeters, and
+    // at 5 cm/s its whole cycle was over in a tenth of a second.
+    expect(new SettingsService().linearInputSpeed.value).toBe(1);
+  });
+
+  it('keeps the speed a shared URL was written with', () => {
+    const written = new SettingsService();
+    written.linearInputSpeed.next(5);
+    const read = new SettingsService();
+    decodeInto(encodeWith(written), read);
+    expect(read.linearInputSpeed.value).toBe(5);
+  });
+
   it('opens a URL written before the setting existed, at the default', () => {
     const written = new SettingsService();
     written.linearInputSpeed.next(3.5);

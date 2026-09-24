@@ -62,8 +62,15 @@ export class SettingsService {
    * at 0.105 of the speed the panel says. There is no unit *picker* to go with
    * it — length per second has one honest spelling, and which one it is follows
    * `lengthUnit` (cm/s, m/s, in/s).
+   *
+   * One unit a second by default, which is 1 cm/s in a new drawing. It was
+   * five, and a classroom slider's stroke is a couple of centimeters: a cycle
+   * of a tenth of a second, over before it could be watched. A drive switched
+   * on with a press gets a speed fitted to its own stroke instead
+   * (`fitAskedDriveSpeeds`); this is the speed of every other one. A shared
+   * URL carries its own and is not changed by this.
    */
-  linearInputSpeed = new BehaviorSubject(5);
+  linearInputSpeed = new BehaviorSubject(1);
   // One mechanism-wide choice, shown by every force-analysis panel.
   forceAnalysisMode = new BehaviorSubject<ForceAnalysisMode>('static');
   animating = new BehaviorSubject(false);
