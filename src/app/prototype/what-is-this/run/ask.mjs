@@ -1,6 +1,7 @@
 // PROTOTYPE: send every case in the manifest to one provider and keep the answers.
 //   node src/app/prototype/what-is-this/run/ask.mjs gemini [model]
 //   node src/app/prototype/what-is-this/run/ask.mjs muse [model] [effort]
+//   node src/app/prototype/what-is-this/run/ask.mjs codex [model] [effort]
 // Resumable: a case already answered without an error is skipped.
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
@@ -9,8 +10,12 @@ import { join } from 'node:path';
 
 const root = new URL('../../../../../artifacts/what-is-this/v2/', import.meta.url).pathname;
 const [provider, modelArg, effortArg] = process.argv.slice(2);
-const model =
-  modelArg ?? (provider === 'gemini' ? 'gemini-3.5-flash-lite' : 'muse-spark-1.3-contributor');
+const DEFAULT_MODEL = {
+  gemini: 'gemini-3.5-flash-lite',
+  muse: 'muse-spark-1.3-contributor',
+  codex: 'gpt-6-luna',
+};
+const model = modelArg ?? DEFAULT_MODEL[provider];
 const effort = effortArg ?? 'medium';
 const QUESTION = 'What is this?';
 const { cases } = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
@@ -42,6 +47,9 @@ async function askGemini(entry) {
       },
     });
   }
+  // latencyMs: the successful attempt, body included. waitMs: everything a
+  // student would have waited, retries and back-off included.
+  const firstStarted = Date.now();
   for (let attempt = 1; ; attempt++) {
     const started = Date.now();
     const response = await fetch(
@@ -60,8 +68,8 @@ async function askGemini(entry) {
         }),
       }
     );
-    const latencyMs = Date.now() - started;
     const bodyText = await response.text();
+    const latencyMs = Date.now() - started;
     if ((response.status === 429 || response.status >= 500) && attempt < 5) {
       const hinted = /retry in ([\d.]+)s/i.exec(bodyText)?.[1];
       await sleep(hinted ? parseFloat(hinted) * 1000 + 1000 : 5000 * attempt);
@@ -78,6 +86,7 @@ async function askGemini(entry) {
     return {
       text,
       latencyMs,
+      waitMs: Date.now() - firstStarted,
       attempts: attempt,
       finishReason: candidate?.finishReason,
       usage: {
@@ -179,6 +188,64 @@ async function askMuse(entry) {
   return { text: text.trim(), latencyMs, attempts: 1, usage, sessionId };
 }
 
+// Outside the repository: Codex reads AGENTS.md from the directory it runs in
+// and every parent, which would fold this project's instructions into the prompt.
+const codexCwd = join(process.env.TMPDIR ?? '/tmp', 'pmks-what-is-this-codex');
+mkdirSync(codexCwd, { recursive: true });
+
+async function askCodex(entry) {
+  const args = [
+    'exec',
+    '-m',
+    model,
+    '-c',
+    `model_reasoning_effort="${effort}"`,
+    '-s',
+    'read-only',
+    '--skip-git-repo-check',
+    '--ephemeral',
+    '--json',
+  ];
+  if (entry.image) args.push('-i', join(root, entry.image));
+  const prompt = `${readFileSync(join(root, entry.prompt), 'utf8')}\n\nThe student asks: ${QUESTION}\n`;
+  const started = Date.now();
+  const { stdout, stderr, code } = await new Promise((resolve) => {
+    const child = spawn('codex', args, { cwd: codexCwd });
+    let out = '';
+    let err = '';
+    child.stdout.on('data', (d) => (out += d));
+    child.stderr.on('data', (d) => (err += d));
+    child.on('close', (exit) => resolve({ stdout: out, stderr: err, code: exit }));
+    child.stdin.end(prompt);
+  });
+  const latencyMs = Date.now() - started;
+  let text;
+  let usage;
+  let failure;
+  for (const line of stdout.split('\n')) {
+    let event;
+    try {
+      event = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (event.type === 'item.completed' && event.item?.type === 'agent_message')
+      text = event.item.text;
+    if (event.type === 'turn.completed') {
+      const u = event.usage;
+      usage = {
+        input: u.input_tokens,
+        cached: u.cached_input_tokens,
+        output: u.output_tokens,
+        reasoning: u.reasoning_output_tokens ?? 0,
+      };
+    }
+    if (event.type === 'turn.failed') failure = event.error?.message;
+  }
+  if (text === undefined) throw new Error(failure ?? `codex exited ${code}: ${stderr.slice(-400)}`);
+  return { text: text.trim(), latencyMs, attempts: 1, usage };
+}
+
 const todo = cases.filter((entry) => {
   if (process.env.ONLY && !entry.key.includes(process.env.ONLY)) return false;
   const file = join(outDir, `${entry.key}.json`);
@@ -191,10 +258,11 @@ async function handle(entry) {
     key: entry.key,
     provider,
     model,
-    effort: provider === 'muse' ? effort : undefined,
+    effort: provider === 'gemini' ? undefined : effort,
   };
   try {
-    Object.assign(result, await (provider === 'gemini' ? askGemini(entry) : askMuse(entry)));
+    const ask = { gemini: askGemini, muse: askMuse, codex: askCodex }[provider];
+    Object.assign(result, await ask(entry));
     Object.assign(result, parseReply(result.text));
   } catch (error) {
     result.error = String(error).slice(0, 600);
@@ -208,7 +276,8 @@ async function handle(entry) {
 if (provider === 'gemini') {
   for (const entry of todo) {
     await handle(entry);
-    await sleep(4500); // 15 requests a minute on the free tier
+    // 15 requests a minute on Flash-Lite's free tier; PACE_MS=13000 for 5 a minute.
+    await sleep(Number(process.env.PACE_MS ?? 4500));
   }
 } else {
   const queue = [...todo];
