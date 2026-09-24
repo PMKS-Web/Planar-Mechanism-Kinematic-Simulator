@@ -45,6 +45,10 @@ function fixPhrase(fix: MobilityFix, partition: MechanismPartition): string {
       return `ungrounding joint ${nameOf(fix.joint)}`;
     case 'pin-in-slot':
       return `making joint ${nameOf(fix.joint)} a Pin-in-slot`;
+    case 'prismatic':
+      return `making joint ${nameOf(fix.joint)} Prismatic`;
+    case 'weld':
+      return `welding joint ${nameOf(fix.joint)}`;
     case 'unweld':
       return `unwelding joint ${nameOf(fix.joint)}`;
     case 'merge':
@@ -79,6 +83,7 @@ function instruction(fix: MobilityFix, partition: MechanismPartition): string {
     .replace(/^ungrounding/, 'unground')
     .replace(/^making/, 'make')
     .replace(/^unwelding/, 'unweld')
+    .replace(/^welding/, 'weld')
     .replace(/^dragging/, 'drag')
     .replace(/^attaching/, 'attach')
     .replace(/^deleting/, 'delete');

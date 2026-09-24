@@ -33,6 +33,8 @@ export type Action =
         | 'ground'
         | 'unground'
         | 'pin-in-slot'
+        | 'prismatic'
+        | 'weld'
         | 'unweld'
         | 'set-input'
         | 'move-input'
@@ -313,6 +315,23 @@ export function applied(fixture: MechanismFixture, action: Action): MechanismFix
     case 'pin-in-slot':
       next.welds = next.welds?.filter((id) => id !== action.joint);
       return next;
+    case 'prismatic':
+      // A slider's pin in the welds list is a Slide: Prismatic, in the choice.
+      next.welds = [...(next.welds ?? []), action.joint];
+      return next;
+    case 'weld': {
+      // As Welded does: the links meeting at the pin become one compound,
+      // keeping what they were as its members.
+      const meeting = next.links.filter((link) => link.joints.includes(action.joint));
+      const members = meeting.flatMap((link) => link.subset ?? [{ joints: link.joints }]);
+      next.links = next.links.filter((link) => !meeting.includes(link));
+      next.links.push({
+        joints: sortedIds(meeting.map((link) => link.joints).join('')),
+        subset: members,
+      });
+      next.welds = [...(next.welds ?? []), action.joint];
+      return next;
+    }
     case 'unweld': {
       // The compound goes back to the members it was made of.
       next.welds = next.welds?.filter((id) => id !== action.joint);
@@ -345,12 +364,16 @@ export function applied(fixture: MechanismFixture, action: Action): MechanismFix
     case 'add-link':
       next.links.push({ joints: sortedIds(action.joints) });
       return next;
-    case 'merge':
-      next.links.forEach(
-        (link) => (link.joints = sortedIds(link.joints.replace(action.joint, action.onto)))
-      );
+    case 'merge': {
+      // Members of a compound name the joint too, and would name one that is gone.
+      const rename = (link: { joints: string; subset?: { joints: string }[] }) => {
+        link.joints = sortedIds(link.joints.replace(action.joint, action.onto));
+        link.subset?.forEach(rename);
+      };
+      next.links.forEach(rename);
       next.joints = next.joints.filter((one) => one.id !== action.joint);
       return withoutOrphans(next);
+    }
   }
 }
 

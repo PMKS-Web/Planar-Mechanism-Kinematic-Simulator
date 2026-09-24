@@ -563,8 +563,8 @@ frame bar if it was drawn first; it asks the actuator record now.
 
 ### `student-mistakes.spec.ts` follows the drawer's own advice, and its report is the point
 
-It draws a few hundred small mechanisms (four-bar, one with a coupler point, slider-crank, Watt
-and Stephenson six-bars; ten links at most), makes one or two mistakes a student makes with a
+It draws a few hundred small mechanisms (four-bar, one with a coupler point, one with a bent
+coupler, slider-crank, Scotch yoke, Watt and Stephenson six-bars; ten links at most), makes one or two mistakes a student makes with a
 click, and follows the first blocker's advice (`follow-advice.ts`) until the drawing runs or the
 sentence names no edit. `artifacts/student-mistakes/summary.md` says, per mistake, how often the
 advice ends in a drawing that runs and in the one that was meant, and quotes every sentence that
@@ -581,6 +581,11 @@ Three things the harness had to get right before its numbers meant anything:
   pair and a single, not three singles.
 - **A member can hold a stale joint.** Leaves of a compound can keep the joint object a slider
   replaced; `unweldedAt` matches a leaf's joints by letter.
+- **So could a slot.** `buildMechanism` binds a slot's two ends when its own slider is made, so a
+  slot whose end became a slider later in the list named the discarded pin: a Scotch yoke whose
+  yoke rides a rail, with the crank pin's slot cut from the rail's joint, solved against a slot end
+  that never moved, and "the motion never repeats ... 0.00 units away" came from that. The builder
+  rebinds every slot once all joints exist now, as the app's reader always did.
 
 ### A fix that joins two machines has to be counted on both
 
@@ -605,6 +610,26 @@ is on the list in 34 of 38. A link left hanging gets "Delete link BC" and "Attac
 C to a new grounded joint" side by side, because it is as often the first bar of more linkage as a
 mistake. `follow-advice.ts` picks the way that matches the mistake when it is offered, which is the
 reader who knows what they meant.
+
+### A weld and a Prismatic slot are fixes too, and they are listed after what keeps the drawing
+
+A drawing one freedom too loose can often be closed by fusing two bodies: welding a pin
+(`weldedAt`) or making a Pin-in-slot Prismatic. Both are counted like every other fix (`typeFixes`
+in `mobility-fixes.ts`), each refused where the joint's own type menu would refuse it
+(`refuseJointType`). They multiply the ways out -- a bent coupler with its knee left unwelded counts
+"Weld joint C", "Weld joint E", "Weld joint B" and "Ground joint E" -- so `keepingWhatWasDrawn` in
+`free-motion.ts` lists last the ones that give part of the drawing up: a ground that pins a link
+down at both ends, so a link drawn to move becomes frame, and a weld or a Prismatic slot on the
+input's own link. The knee comes first, and on a Scotch yoke the guide comes before the crank pin.
+A weld on a dangling link (an arm welded to what it hangs from) goes after deleting the link, and
+"attach its end to a new grounded joint" is still offered beside both.
+
+Two things the brace rule (`staysHeld`) did not know until a Scotch yoke asked: a slider pin's slot
+holds it as a second link would, and the end of a slot is a point on the link it is cut in -- so a
+brace from the yoke's pin to the yoke's end can be deleted. And a brace riding a Prismatic slider
+is one body with the yoke; `withoutLink` assigns the bodies again without it rather than striking
+the shared body out, and asks each joint about the links it has left, because its own `links`
+still names the deleted one.
 
 ### Reset left a clock a few tenths of a microsecond short of zero
 

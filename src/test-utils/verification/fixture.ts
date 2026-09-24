@@ -324,6 +324,17 @@ function buildMechanismNow(
     jointById.set(spec.at, slider as unknown as RevJoint);
   });
 
+  // A slot names its two ends by reference, bound when its own slider was made
+  // -- so a slot whose end became a slider later in the list still named the
+  // discarded pin: a Scotch yoke whose yoke rides a rail, with the pin's slot
+  // cut from the rail's joint, was solved against a slot end that never moved.
+  // The app's reader binds every slot once all joints exist; so does this.
+  joints.forEach((joint) => {
+    if (!(joint instanceof PrisJoint) || !joint.isFloating) return;
+    const end = (one: Joint) => (jointById.get(one.id) as unknown as Joint | undefined) ?? one;
+    joint.slideOn(joint.carrier!, end(joint.slotJointA!), end(joint.slotJointB!));
+  });
+
   // Every weld except the ones the sliders above already took: a Slide says so
   // in `rotates`, and `isWelded` on a slider would mean nothing.
   fixture.welds?.forEach((id) => {

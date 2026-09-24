@@ -68,21 +68,23 @@ describe('which part is loose, and what would fix it', () => {
       expect(check.action).toBe('Go To Joint');
     });
 
-    it('offers no ground that does not work, and both ways a hanging link goes', () => {
+    it('offers no ground that does not work, and every way a hanging link goes', () => {
       // Grounding C is the old advice ("ground another joint"), and it leaves
-      // the pair rigid rather than mobile. BC is either a mistake or the first
-      // bar of a four-bar, and nothing in the drawing says which: both are said.
+      // the pair rigid rather than mobile. BC is a mistake, the first bar of a
+      // four-bar, or an arm meant to turn with the crank, and nothing in the
+      // drawing says which: all three are said.
       const { partition } = built(danglingLinkFixture());
       const diagnosis = diagnoseMobility(partition);
-      expect(diagnosis.fixes.map(describeFix)).toEqual(['delete-link BC']);
+      expect(diagnosis.fixes.map(describeFix)).toEqual(['delete-link BC', 'weld B']);
       expect(diagnosis.attachAt?.id).toBe('C');
 
       const check = checkFor(danglingLinkFixture());
       expect(check.body).toContain('link BC can still move');
-      // Both ways, each with its own button, for the reader to choose.
+      // Each with its own button, for the reader to choose.
       expect(check.body).toContain('Any one of these would leave one degree of freedom:');
       expect(check.ways?.map((way) => [way.text, way.action, way.at.id])).toEqual([
         ['Delete link BC', 'Go To Link', 'BC'],
+        ['Weld joint B', 'Go To Joint', 'B'],
         ['Attach a link from joint C to a new grounded joint', 'Go To Joint', 'C'],
       ]);
       expect(check.body).not.toContain('Grounding');

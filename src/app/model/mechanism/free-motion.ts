@@ -18,6 +18,7 @@ import {
   mergeFixes,
   reconnectFixes,
   rigidFixes,
+  typeFixes,
   ungroundAcross,
   untangleFixes,
 } from './mobility-fixes';
@@ -139,12 +140,20 @@ function diagnose(partition: MechanismPartition, drawing?: Drawing): MobilityDia
   const merges = mergeFixes(trial, assignment, own, hidden);
   const fixes =
     free > 1 || loose.looseLinks.length > 0
-      ? [
-          ...merges,
-          ...(drawing ? reconnectFixes(trial, assignment, drawing, loose.looseJoints, hidden) : []),
-          ...groundingFixes(trial, loose.looseJoints, hidden),
-          ...danglingDeletes(trial, assignment, own, hidden),
-        ]
+      ? keepingWhatWasDrawn(
+          [
+            ...merges,
+            ...(drawing
+              ? reconnectFixes(trial, assignment, drawing, loose.looseJoints, hidden)
+              : []),
+            ...groundingFixes(trial, loose.looseJoints, hidden),
+            ...danglingDeletes(trial, assignment, own, hidden),
+            // After the delete: a link welded on where it hangs is an arm of
+            // what it hangs from, which someone might mean, and seldom does.
+            ...typeFixes(trial, assignment, own, hidden),
+          ],
+          driven
+        )
       : free === 0
         ? [...merges, ...rigidOnes(trial, assignment, drawing, own, hidden)]
         : merges;
@@ -165,7 +174,8 @@ function diagnose(partition: MechanismPartition, drawing?: Drawing): MobilityDia
     fixes: fixes.slice(0, MAX_FIXES),
     // Beside a deleted dangling link as well as instead of every other fix:
     // the link may be the first bar of more linkage rather than a mistake.
-    attachAt: fixes.every((fix) => fix.kind === 'delete-link')
+    // Welding it on where it hangs is a third reading, not a reason to drop it.
+    attachAt: fixes.every((fix) => fix.kind === 'delete-link' || fix.kind === 'weld')
       ? freeEndOf(loose.looseJoints)
       : undefined,
     stuck,
@@ -244,6 +254,32 @@ function looseParts(
  * single bar, the way the fourth pin of a four-bar is. A joint on a link that
  * already has two others is a tracer point, and a tracer takes no link.
  */
+/**
+ * The fixes that keep every link doing what it was drawn to do, then the ones
+ * that give part of it up: a joint grounded that pins a link down at both ends,
+ * so a link drawn to move is frame, and a weld or a Prismatic slot on the
+ * input's own link, so the input no longer turns the link it was set on. Each
+ * still counts, and each is still listed; a bent coupler with its knee left
+ * unwelded counts four ways out, and the knee is the one that changes nothing
+ * else.
+ */
+function keepingWhatWasDrawn(fixes: MobilityFix[], driven: RealJoint | undefined): MobilityFix[] {
+  const pinnedDown = (joint: Joint) =>
+    joint instanceof RealJoint && joint.ground && !(joint instanceof PrisJoint);
+  const givesUp = (fix: MobilityFix): boolean => {
+    if (fix.kind === 'ground') {
+      return fix.joint.links.some((link) =>
+        link.joints.every((joint) => joint === fix.joint || pinnedDown(joint))
+      );
+    }
+    if (fix.kind === 'weld' || fix.kind === 'prismatic') {
+      return !!driven && fix.joint.links.some((link) => driven.links.includes(link));
+    }
+    return false;
+  };
+  return [...fixes.filter((fix) => !givesUp(fix)), ...fixes.filter(givesUp)];
+}
+
 function freeEndOf(looseJoints: RealJoint[]): RealJoint | undefined {
   return looseJoints.find(
     (joint) =>
