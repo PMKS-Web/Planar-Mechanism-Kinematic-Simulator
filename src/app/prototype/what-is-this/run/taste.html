@@ -656,6 +656,49 @@
     font-size: 12px;
     color: var(--text-tertiary);
   }
+  .looks {
+    font-size: 14px;
+    color: var(--text-strong);
+    font-weight: 500;
+  }
+  .looks-label {
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--brand);
+    margin-right: 4px;
+  }
+  .written.unavailable {
+    background: var(--surface-sunken);
+  }
+  .source {
+    display: inline-block;
+    font-size: 11.5px;
+    font-weight: 500;
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: var(--surface-chip);
+    color: var(--text-secondary);
+    margin-right: 6px;
+    vertical-align: 1px;
+  }
+  .intent {
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--text-strong);
+  }
+  .intent b {
+    font-weight: 500;
+  }
+  .said {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-style: italic;
+    max-height: 7.5em;
+    overflow: auto;
+  }
   .error {
     color: var(--refusal-text);
     background: var(--refusal-bg);
@@ -1102,6 +1145,7 @@
         <div class="mech-head">
           <span class="eyebrow" id="m-count"></span>
           <h2 id="m-name"></h2>
+          <p class="intent" id="m-intent" hidden></p>
           <p class="blurb" id="m-blurb"></p>
         </div>
         <svg
@@ -1444,39 +1488,60 @@
       .join('');
     return `<div class="section"><h4>Links</h4><table class="links"><thead><tr><th>Part</th><th>Job</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
-  function familyLine(arm, a) {
-    if (a.certainty) {
-      const cert = ['is', 'resembles', 'unsure'].includes(a.certainty) ? a.certainty : 'unsure';
-      return `Family: <strong>${esc(a.family)}</strong><span class="cert cert-${cert}">${esc(cert)}</span>`;
-    }
-    return arm.familyCheck
-      ? `Family: <strong>${esc(a.family)}</strong><span class="cert cert-checked" title="PMKS+ matched ${esc(arm.familyCheck)} from lengths, joints and motion">checked by PMKS+</span>`
-      : `Family: <strong>${esc(a.family)}</strong><span class="cert cert-reading" title="PMKS+ found no match in its catalog; this is the model's reading">model’s reading</span>`;
-  }
+  /**
+   * The Analysis card. What PMKS+ computed (the family it matched, the overview,
+   * the Links table) is drawn whatever the model did, so a failed note costs
+   * the student the paragraph and nothing else.
+   */
   function panel(p, arm) {
-    if (!arm.answer)
-      return `<div class="error">No answer: ${esc(arm.error || 'the reply was not JSON')}</div>`;
+    const family =
+      'appFamily' in p
+        ? [
+            [
+              'Family',
+              p.appFamily ? `${p.appFamily} (matched by PMKS+)` : 'No match in PMKS+’s catalog',
+            ],
+          ]
+        : [];
+    const rows = [...family, ...p.overview]
+      .map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`)
+      .join('');
+    const head = `
+        <div class="panel-title"><h3>Mechanism M1</h3><span class="status">Ready</span></div>
+        <div class="section"><h4>Overview</h4><dl class="rows">${rows}</dl></div>
+        ${linksTable(p)}`;
+    if (!arm.answer) {
+      return `
+      <article class="panel">${head}
+        <div class="section">
+          <h4>In plain English</h4>
+          <div class="written unavailable">
+            <p>The plain-English note could not be written this time. Everything above is computed by PMKS+ and is unaffected.</p>
+            <div class="by">${esc(arm.error || 'the reply was not JSON')}</div>
+          </div>
+        </div>
+      </article>`;
+    }
     const a = arm.answer;
-    const rows = p.overview.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
     const uses = (a.useCases || [])
       .map(
         (u) =>
           `<li><span class="use">${renderParagraph(u.use)}</span><span class="why">${renderParagraph(u.why)}</span></li>`
       )
       .join('');
+    const looks = a.resembles
+      ? `<div class="looks"><span class="looks-label">Looks like</span> ${esc(a.resembles)}</div>`
+      : '';
     return `
-      <article class="panel">
-        <div class="panel-title"><h3>Mechanism M1</h3><span class="status">Ready</span></div>
-        <div class="section"><h4>Overview</h4><dl class="rows">${rows}</dl></div>
-        ${linksTable(p)}
+      <article class="panel">${head}
         <div class="section">
           <h4>In plain English</h4>
           <div class="written">
             <div class="by">✎ Written from the facts above, not measured</div>
+            ${looks}
             <p>${renderParagraph(a.plainEnglish, a.terms)}</p>
             <div class="how">Point at a <strong>bold part</strong> to find it in the mechanism, or a <span class="term">dotted word</span> for its meaning.</div>
           </div>
-          <div class="family-line">${familyLine(arm, a)}</div>
         </div>
         <div class="section">
           <h4>Where you’d find it</h4>
@@ -1853,8 +1918,17 @@
     const list = ordered();
     $('m-count').textContent =
       `Mechanism ${state.index + 1} of ${list.length}${p.decided ? ' · Claude decided' : ' · close call'}`;
-    $('m-name').textContent = p.name;
-    $('m-blurb').textContent = p.blurb || '';
+    const source = { library: 'Library', student: 'Student’s mechanism', test: 'Test case' }[
+      p.source || 'library'
+    ];
+    $('m-name').innerHTML = `<span class="source">${esc(source)}</span>${esc(p.name)}`;
+    $('m-intent').hidden = !p.intent;
+    $('m-intent').innerHTML = p.intent
+      ? `<b>Really:</b> ${esc(p.intent)} <span class="hint">(never sent to the model)</span>`
+      : '';
+    // A student's own words: what they wrote when they sent it, never sent to the model.
+    $('m-blurb').className = p.source === 'student' ? 'said' : 'blurb';
+    $('m-blurb').textContent = p.source === 'student' ? `They wrote: “${p.blurb}”` : p.blurb || '';
     $('open-app').href = p.appUrl;
     if (shownPair !== p) {
       setupAnimation(p);
@@ -1908,6 +1982,25 @@
     $('save-hint').className =
       'hint' + (state.hint && !state.hint.startsWith('Saved') ? ' warn' : '');
   }
+  /** The automatic checks as chips; a check that has no key for this case says nothing. */
+  function chips(arm, famWord, app) {
+    const out = [];
+    const known = arm.rubric.family !== 'unknown' || !arm.answer;
+    if (known)
+      out.push(
+        `<span class="fam ${esc(arm.rubric.family)}">${esc(famWord[arm.rubric.family] || arm.rubric.family)}</span>`
+      );
+    if (app && app !== 'n/a')
+      out.push(
+        `<span class="fam ${app === 'named' ? 'named' : 'missed'}">${app === 'named' ? 'uses name the real machine' : 'uses miss the real machine'}</span>`
+      );
+    const rec = arm.rubric.recognition;
+    if (rec && rec !== 'n/a')
+      out.push(
+        `<span class="fam ${rec === 'named' ? 'named' : 'missed'}">${rec === 'named' ? 'recognizes what it really is' : 'misses what it really is'}</span>`
+      );
+    return out.join(' ');
+  }
   function renderReveal() {
     const p = pair();
     const v = voteFor(p);
@@ -1929,7 +2022,7 @@
       const img = arm.image && DATA.images[arm.image];
       return `<div>
         <span class="sheet-name">${tag} was ${esc(armLabel(arm))}</span>
-        <span><span class="fam ${esc(arm.rubric.family)}">${esc(famWord[arm.rubric.family] || arm.rubric.family)}</span> ${app === 'n/a' ? '' : `<span class="fam ${app === 'named' ? 'named' : 'missed'}">${app === 'named' ? 'uses name the real machine' : 'uses miss the real machine'}</span>`}</span>
+        <span>${chips(arm, famWord, app)}</span>
         <ul class="flags">${flags}</ul>
         <span class="hint">${arm.latencyMs ? `${(arm.latencyMs / 1000).toFixed(1)} s · ` : ''}${u.input ?? '–'} in · ${u.output ?? '–'} out${u.reasoning ? ` (${u.reasoning} reasoning)` : ''}</span>
         ${img ? `<details class="saw"><summary>Picture ${tag} was sent</summary><img src="${img}" alt="The picture sent with ${esc(armLabel(arm))}"></details>` : ''}
@@ -1938,7 +2031,9 @@
     };
     const change = p.identical
       ? `<div class="same-sheet">The two fact sheets were word for word the same for this mechanism, so any difference here is Luna answering differently on its own.</div>`
-      : `<details><summary class="hint">What changed in the fact sheet for this mechanism (${esc(sheetTitle(round().a))} → ${esc(sheetTitle(round().b))})</summary><pre class="diff">${p.diff.map((d) => `<span class="${d.op === '+' ? 'add' : 'del'}">${d.op} ${esc(d.line)}</span>`).join('\n')}</pre></details>`;
+      : p.sameFacts
+        ? `<div class="same-sheet">The fact sheets were the same for this mechanism; the instructions (and, from v5, the picture) differ. What changed is listed on the Results tab.</div>`
+        : `<details><summary class="hint">What changed in the fact sheet for this mechanism (${esc(sheetTitle(round().a))} → ${esc(sheetTitle(round().b))})</summary><pre class="diff">${p.diff.map((d) => `<span class="${d.op === '+' ? 'add' : 'del'}">${d.op} ${esc(d.line)}</span>`).join('\n')}</pre></details>`;
     el.innerHTML = `<h3 id="reveal-h">${v ? 'Revealed' : 'Revealed with Claude’s call'}</h3><div class="who-was">${side(p.left, 'A')}${side(p.right, 'B')}</div>${change}`;
   }
 
@@ -2007,7 +2102,7 @@
           : p.decided
             ? p.decided.why
             : '';
-        return `<tr><td>${esc(p.name)}</td><td>${p.identical ? 'identical' : 'changed'}</td><td>${pill(outcome(p))}</td><td>${v && v.wrong.length ? v.wrong.map((w) => `<span class="pill bad">${esc(sheetTitle(w))}</span>`).join(' ') : ''}</td><td class="note">${esc(why)}</td></tr>`;
+        return `<tr><td>${esc(p.name)}</td><td>${p.identical ? 'identical' : p.sameFacts ? 'same sheet, new prompt' : 'changed'}</td><td>${pill(outcome(p))}</td><td>${v && v.wrong.length ? v.wrong.map((w) => `<span class="pill bad">${esc(sheetTitle(w))}</span>`).join(' ') : ''}</td><td class="note">${esc(why)}</td></tr>`;
       })
       .join('');
     $('results').innerHTML = `
@@ -2023,6 +2118,7 @@
         <div class="stats">
           <div class="stat"><span class="v">${count(r.a, 'family', 'named')} · ${count(r.b, 'family', 'named')}</span><span class="k">Name the family, of ${r.pairs.length}: ${esc(sheetTitle(r.a))} · ${esc(sheetTitle(r.b))}</span></div>
           <div class="stat"><span class="v">${count(r.a, 'application', 'named')} · ${count(r.b, 'application', 'named')}</span><span class="k">Uses name the real machine, of ${useTotal}</span></div>
+          <div class="stat"><span class="v">${count(r.a, 'recognition', 'named')} · ${count(r.b, 'recognition', 'named')}</span><span class="k">Recognize what it really is, of ${r.pairs.filter((p) => p.left.rubric.recognition !== 'n/a' || p.right.rubric.recognition !== 'n/a').length}</span></div>
           <div class="stat"><span class="v">${flagCount(r.a)} · ${flagCount(r.b)}</span><span class="k">Automatic flags (each version checked by its own rules)</span></div>
         </div>
       </section>

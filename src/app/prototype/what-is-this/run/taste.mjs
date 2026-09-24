@@ -55,7 +55,7 @@ function overviewOf(facts) {
   // v4 says "Driven input: ..." and "repeats every 6 s"; v3 and before had an Input section.
   const input =
     /^- Driven input: (.*)$/m.exec(facts)?.[1] ?? /^### Input\n- (.*)$/m.exec(facts)?.[1] ?? '';
-  const drive = /joint ([A-Z])/.exec(input)?.[1];
+  const drive = /(joint|slider) ([A-Z])/.exec(input);
   const cylinder = /cylinder between ([A-Z]) and ([A-Z])/.exec(input);
   const speed =
     / at ([\d.]+ (?:rpm (?:counter)?clockwise|\w+\/s))/.exec(input)?.[1] ??
@@ -65,10 +65,20 @@ function overviewOf(facts) {
     /repeats every ([\d.]+) s/.exec(facts)?.[1] ??
     /back-and-forth takes ([\d.]+) s/.exec(facts)?.[1] ??
     /Solved \d+ samples over ([\d.]+) s/.exec(facts)?.[1];
-  const dof = /Degrees of freedom: (\d+)/.exec(facts)?.[1];
+  const stuck = /Gruebler count (-?\d+) degrees of freedom/.exec(facts)?.[1];
+  const dof =
+    /Degrees of freedom: (\d+)/.exec(facts)?.[1] ??
+    (stuck && `${stuck} (PMKS+ could not solve it)`);
   return [
     ['Degrees of freedom', dof ?? '–'],
-    ['Input', cylinder ? `Cylinder ${cylinder[1]}–${cylinder[2]}` : drive ? `Joint ${drive}` : '–'],
+    [
+      'Input',
+      cylinder
+        ? `Cylinder ${cylinder[1]}–${cylinder[2]}`
+        : drive
+          ? `${drive[1] === 'slider' ? 'Slider' : 'Joint'} ${drive[2]}`
+          : '–',
+    ],
     ['Input speed', speed || '–'],
     ['Cycle time', cycle ? `${cycle} s` : '–'],
   ];
@@ -96,7 +106,9 @@ function loadArm(arm, template) {
   const manifest = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
   const entry = manifest.cases.find((c) => c.template === template && c.variant === variant);
   if (!entry) return undefined;
-  const facts = factsOf(readFileSync(join(root, entry.prompt), 'utf8'));
+  const prompt = readFileSync(join(root, entry.prompt), 'utf8');
+  const facts = factsOf(prompt);
+  const instructions = prompt.slice(0, prompt.indexOf('FACT SHEET'));
   const file = join(
     root,
     'answers',
@@ -107,6 +119,7 @@ function loadArm(arm, template) {
   return {
     entry,
     facts,
+    instructions,
     arm: {
       id: arm,
       sheet,
@@ -147,13 +160,29 @@ const builtRounds = rounds.map((round) => {
       template,
       name: b.entry.name,
       blurb: b.entry.libraryBlurb,
+      source: b.entry.source ?? 'library',
+      intent: b.entry.intent,
+      // The family is the app's, shown in the panel's Overview for both sides.
+      // Undefined for sheets older than v4, which had no family check; null for no match.
+      appFamily:
+        (b.entry.family ?? a.entry.family)?.map((m) => m.family)[0] ??
+        ((b.entry.family ?? a.entry.family) ? null : undefined),
       appUrl: b.entry.appUrl,
       overview: overviewOf(b.facts),
       // The Links table is the app's, not the model's: the newer sheet's jobs, shown on both sides.
       jobs: b.entry.jobs?.length ? b.entry.jobs : (a.entry.jobs ?? []),
       decided: round.decided?.[template],
       motion,
-      identical: a.facts === b.facts,
+      // Identical only when the model was sent the same thing: the same sheet
+      // under the same instructions. Round 3 changes the instructions and the
+      // picture over sheets that are mostly the same.
+      // A round may declare its instructions the same where they differ only in a
+      // sentence none of its mechanisms reaches (round 1's unsolvable-drawing rule).
+      identical:
+        a.facts === b.facts &&
+        a.arm.image === b.arm.image &&
+        (a.instructions === b.instructions || !!round.sameInstructions),
+      sameFacts: a.facts === b.facts,
       diff: a.facts === b.facts ? [] : diffLines(a.facts, b.facts),
       left: left ? a.arm : b.arm,
       right: left ? b.arm : a.arm,
@@ -178,13 +207,23 @@ const page = readFileSync(join(here, 'taste.html'), 'utf8').replace(/\/\*DATA\*\
 );
 writeFileSync(join(outDir, 'taste.html'), page);
 // The same rounds without pictures or motion: small enough to keep in the repository as evidence.
+// A student's mechanism is theirs: its link, fact sheets, message and the sheet
+// diff stay out of the repository; the answers and checks are kept.
 const lite = builtRounds.map((round) => ({
   ...round,
-  pairs: round.pairs.map(({ motion, overview, ...pair }) => ({
-    ...pair,
-    left: { ...pair.left, image: undefined },
-    right: { ...pair.right, image: undefined },
-  })),
+  pairs: round.pairs.map(({ motion, overview, ...pair }) => {
+    const student = pair.source === 'student';
+    const arm = (side) => ({ ...side, image: undefined, facts: student ? undefined : side.facts });
+    return {
+      ...pair,
+      appUrl: student ? undefined : pair.appUrl,
+      blurb: student ? undefined : pair.blurb,
+      diff: student ? undefined : pair.diff,
+      jobs: student ? undefined : pair.jobs,
+      left: arm(pair.left),
+      right: arm(pair.right),
+    };
+  }),
 }));
 writeFileSync(
   join(outDir, 'rounds.json'),

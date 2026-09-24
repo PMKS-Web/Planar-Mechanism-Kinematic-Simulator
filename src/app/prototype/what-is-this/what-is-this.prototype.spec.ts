@@ -1,14 +1,18 @@
 // PROTOTYPE case builder, not a test. Skipped unless PMKS_WHAT_IS_THIS=1:
-//   PMKS_WHAT_IS_THIS=1 PMKS_SHEET=v3 npx ng test --watch=false \
+//   PMKS_WHAT_IS_THIS=1 PMKS_SHEET=v5 PMKS_PROMPT=v5 PMKS_CASES=fresh npx ng test --watch=false \
 //     --include=src/app/prototype/what-is-this/what-is-this.prototype.spec.ts
-// Writes one prompt per template and fact-sheet variant, plus each machine's
-// SVG drawing and the moments its filmstrip shows (run/schematic.mjs captures the
-// filmstrip from the app), to artifacts/what-is-this/<PMKS_SHEET>/, and each template's motion
-// to artifacts/what-is-this/motion/. PMKS_VARIANTS is a comma list of variant
-// ids; the default is the one the taste test runs. The model calls are made
-// by the scripts in ./run, which read the manifest this writes.
+// Writes one prompt per case, plus the moments its filmstrip shows (the
+// filmstrip itself is captured from the app by run/schematic.mjs), to
+// artifacts/what-is-this/<PMKS_SHEET>/, and each case's motion to
+// artifacts/what-is-this/motion/.
+//
+// PMKS_CASES names a case set in run/case-sets/ (library templates, students'
+// mechanisms by feedback message id, test cases from made-cases.ts); without it
+// the first ten library templates are used. PMKS_PROMPT picks the instructions
+// (v4 or v5, default v5). The model calls are made by the scripts in ./run,
+// which read the manifest this writes.
 import '../../model/joint';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { TEMPLATE_LINKAGES, TemplateID } from '../../component/MODALS/templates/template-linkages';
 import { TEMPLATE_CARDS } from '../../component/MODALS/templates/template-catalog';
 import { StringTranscoder } from '../../services/transcoding/string-transcoder';
@@ -17,10 +21,12 @@ import { SettingsService } from '../../services/settings.service';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { MechanismService } from '../../services/mechanism.service';
 import { LengthUnit } from '../../model/unit-enums';
+import { fixturePayload } from '../../../test-utils/verification/fixture-payload';
 import { describeDrawing } from './mechanism-facts';
+import { MADE_CASES } from './made-cases';
 import { buildPrompt } from './prompt';
 
-const TEMPLATES: TemplateID[] = [
+const FIRST_TEN: TemplateID[] = [
   '4-Bar',
   'Slider_Crank',
   'Whitworth_Quick_Return',
@@ -33,21 +39,98 @@ const TEMPLATES: TemplateID[] = [
   'Pumpjack',
 ];
 
-/** What each variant sends: the fact sheet with or without relations, with or without a picture. */
-const ALL_VARIANTS = [
-  { id: 'base', relations: false, picture: false },
-  { id: 'relations', relations: true, picture: false },
-  { id: 'relations+picture', relations: true, picture: true },
-] as const;
-const WANTED = (process.env['PMKS_VARIANTS'] ?? 'relations+picture').split(',');
-const VARIANTS = ALL_VARIANTS.filter((variant) => WANTED.includes(variant.id));
-
 /** Where "Open in PMKS+" goes: staging decodes every template the library ships. */
 const APP_URL = 'https://staging--pmksnew.netlify.app/';
+const VARIANT = 'relations+picture';
 
-function describe_(id: TemplateID, relations: boolean) {
+interface Case {
+  id: string;
+  name: string;
+  source: 'library' | 'student' | 'test';
+  blurb: string;
+  payload: string;
+  /** What it really is, when known; never sent to the model. */
+  intent?: string;
+  /** A library card whose background image the picture carries. */
+  backdrop?: string;
+}
+
+interface CaseSet {
+  library: TemplateID[];
+  user: { id: string; intent?: string }[];
+  made: string[];
+}
+
+function payloadOf(url: string): string {
+  const query = url.slice(url.indexOf('?') + 1).split('#')[0];
+  try {
+    return decodeURIComponent(query);
+  } catch {
+    return query;
+  }
+}
+
+function libraryCase(id: TemplateID): Case {
+  const card = TEMPLATE_CARDS.find((c) => c.id === id)!;
+  return {
+    id,
+    name: card.name,
+    source: 'library',
+    blurb: card.description,
+    payload: TEMPLATE_LINKAGES[id],
+    backdrop: card.backdrop ? id : undefined,
+  };
+}
+
+/** Students' links stay in the gitignored feedback file; the case set names them by message id. */
+function casesFrom(setName: string | undefined, root: string): Case[] {
+  if (!setName) return FIRST_TEN.map(libraryCase);
+  const set: CaseSet = JSON.parse(
+    readFileSync(`${root}/src/app/prototype/what-is-this/run/case-sets/${setName}.json`, 'utf8')
+  );
+  const feedbackFile = `${root}/artifacts/what-is-this/feedback/feedback.jsonl`;
+  const feedback: {
+    id: string;
+    date: string;
+    message: string;
+    project_url: string | null;
+    intent?: string;
+  }[] = existsSync(feedbackFile)
+    ? readFileSync(feedbackFile, 'utf8')
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => JSON.parse(line))
+    : [];
+  const students = set.user.map((pick): Case => {
+    const row = feedback.find((r) => r.id.startsWith(pick.id));
+    if (!row?.project_url) throw new Error(`no feedback link for ${pick.id}`);
+    const month = new Date(row.date).toLocaleString('en-US', { month: 'short', year: 'numeric' });
+    return {
+      id: `student-${pick.id.slice(0, 12)}`,
+      name: pick.intent ? `Student: ${pick.intent}` : `Student mechanism, ${month}`,
+      source: 'student',
+      blurb: row.message,
+      payload: payloadOf(row.project_url),
+      intent: pick.intent ?? row.intent,
+    };
+  });
+  const made = set.made.map((id): Case => {
+    const test = MADE_CASES.find((m) => m.id === id)!;
+    return {
+      id,
+      name: test.name,
+      source: 'test',
+      blurb: test.blurb,
+      payload: fixturePayload(test.fixture),
+      intent: test.intent,
+    };
+  });
+  return [...set.library.map(libraryCase), ...students, ...made];
+}
+
+function describe_(entry: Case, withBackdrop: boolean) {
   const decoder = new StringTranscoder();
-  decoder.decodeURL(TEMPLATE_LINKAGES[id]);
+  decoder.decodeURL(entry.payload);
   const settings = new SettingsService();
   const target = {
     joints: [],
@@ -66,55 +149,53 @@ function describe_(id: TemplateID, relations: boolean) {
     defaultRpm: settings.inputSpeed.value,
     defaultLinearSpeed: settings.linearInputSpeed.value,
     defaultClockwise: settings.isInputCW.value,
-    relations,
+    relations: true,
+    backdrop: withBackdrop && !!entry.backdrop,
   });
 }
 
 const run = process.env['PMKS_WHAT_IS_THIS'] === '1' ? it : it.skip;
 
 describe('"What is this?" prototype', () => {
-  run('writes the prompts for ten library templates', () => {
+  run('writes one prompt per case', () => {
+    const root = process.cwd();
     const sheet = process.env['PMKS_SHEET'] ?? 'dev';
-    const out = `${process.cwd()}/artifacts/what-is-this/${sheet}`;
-    const motionDir = `${process.cwd()}/artifacts/what-is-this/motion`;
+    const version = process.env['PMKS_PROMPT'] === 'v4' ? 'v4' : 'v5';
+    const out = `${root}/artifacts/what-is-this/${sheet}`;
+    const motionDir = `${root}/artifacts/what-is-this/motion`;
     mkdirSync(`${out}/cases`, { recursive: true });
     mkdirSync(motionDir, { recursive: true });
     const cases = [];
-    for (const id of TEMPLATES) {
-      const card = TEMPLATE_CARDS.find((c) => c.id === id)!;
-      for (const variant of VARIANTS) {
-        const described = describe_(id, variant.relations);
-        const key = `${id}.${variant.id}`;
-        if (described.motions.length) {
-          writeFileSync(`${motionDir}/${id}.json`, JSON.stringify(described.motions[0]));
-        }
-        writeFileSync(`${out}/cases/${key}.prompt.txt`, buildPrompt(described.text));
-        // The picture is the app's own Schematic drawing at the four moments
-        // listed below, captured by run/schematic.mjs; the SVG is kept for the
-        // sheets that came before it.
-        let svg: string | undefined;
-        if (variant.picture && described.svgs.length) {
-          svg = `cases/${id}.svg`;
-          writeFileSync(`${out}/${svg}`, described.svgs[0]);
-        }
-        const machine = described.machines[0];
-        cases.push({
-          key,
-          template: id,
-          name: card.name,
-          libraryBlurb: card.description,
-          appUrl: `${APP_URL}?${TEMPLATE_LINKAGES[id]}`,
-          variant: variant.id,
-          prompt: `cases/${key}.prompt.txt`,
-          svg,
-          image: variant.picture ? `cases/${id}.filmstrip.png` : undefined,
-          film: machine?.frames ?? [],
-          jobs: machine?.jobs ?? [],
-          family: machine?.family ?? [],
-        });
+    for (const entry of casesFrom(process.env['PMKS_CASES'], root)) {
+      // v4's pictures carried no background image, so its sheets do not mention one.
+      const described = describe_(entry, version === 'v5');
+      const key = `${entry.id}.${VARIANT}`;
+      const machine = described.machines[0];
+      if (machine?.motion) {
+        writeFileSync(`${motionDir}/${entry.id}.json`, JSON.stringify(machine.motion));
       }
+      writeFileSync(`${out}/cases/${key}.prompt.txt`, buildPrompt(described.text, version));
+      cases.push({
+        key,
+        template: entry.id,
+        name: entry.name,
+        source: entry.source,
+        intent: entry.intent,
+        libraryBlurb: entry.blurb,
+        appUrl: `${APP_URL}?${entry.payload}`,
+        backdrop: version === 'v5' ? entry.backdrop : undefined,
+        variant: VARIANT,
+        prompt: `cases/${key}.prompt.txt`,
+        image: `cases/${entry.id}.filmstrip.png`,
+        film: machine?.frames ?? [],
+        jobs: machine?.jobs ?? [],
+        family: machine?.family ?? [],
+      });
     }
-    writeFileSync(`${out}/manifest.json`, JSON.stringify({ sheet, cases }, null, 2));
-    expect(cases.length).toBe(TEMPLATES.length * VARIANTS.length);
+    writeFileSync(
+      `${out}/manifest.json`,
+      JSON.stringify({ sheet, prompt: version, cases }, null, 2)
+    );
+    expect(cases.length).toBeGreaterThan(0);
   });
 });

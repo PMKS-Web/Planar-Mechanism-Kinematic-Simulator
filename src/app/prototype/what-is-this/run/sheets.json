@@ -29,5 +29,22 @@
       "Terms come with a meaning, which the panel shows on hover; uses may be fewer than two, and should be what the type is best known for.",
       "After the app's family, the note names the specific machine it strongly resembles, if any: “a Stephenson six-bar that resembles a car hood hinge”."
     ]
+  },
+  "v4f": {
+    "title": "v4 · on the fresh set",
+    "summary": "v4 exactly, on round 3's fresh mechanisms: its prompt, and its picture (axes shown, no background image).",
+    "changes": []
+  },
+  "v5": {
+    "title": "v5 · the app names it, the model recognizes it",
+    "summary": "The family is the app's and shows in the panel's Overview; the note no longer names it. The model says what real machine the mechanism looks like, and gives one or two real products. The picture has the author's background image and no axes.",
+    "changes": [
+      "The note does not name the family: PMKS+ shows the family it matched in the Overview, so the note stands on its own when there is no match and the panel still shows the family when the model fails.",
+      "New field “resembles”: the specific real machine the mechanism looks like it was built to be (“a car hood hinge”), or nothing. For a student's drawing, what it looks like an attempt at.",
+      "Uses are one or two real products a student can picture, not categories.",
+      "A notable sub-structure (two four-bar loops working together) may be pointed out; the prose is otherwise left to the model.",
+      "The picture carries the author's background image when there is one, and no axes; the fact sheet says when an image is there and that it is not part of the mechanism.",
+      "A mechanism PMKS+ cannot solve still gets a picture: one frame, as drawn."
+    ]
   }
 }
