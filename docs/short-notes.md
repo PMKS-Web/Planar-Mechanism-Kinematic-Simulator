@@ -552,6 +552,56 @@ to start from a slider there, and the simultaneous route is what runs it. Where 
 of any limit and neither route starts, the drawer says the solver cannot start it rather than
 sending anyone to drag.
 
+### A frame bar drawn at the input's pivot made the input "join 3 bodies"
+
+Students draw the frame of a four-bar as a bar between its two pivots, the way a textbook does.
+`assignBodies` has always folded such a bar into the world, but `incidentBodies` in `actuator.ts`
+counted it as a body of its own, so the crank's pivot "joined 3 bodies" and its input was refused.
+`isFrameBar` is now asked there, and `framePieceAt` became "every link on this pin is frame".
+`PositionSolver.drivenBody` asked for the input pivot's *first* link, which would have driven the
+frame bar if it was drawn first; it asks the actuator record now.
+
+### `student-mistakes.spec.ts` follows the drawer's own advice, and its report is the point
+
+It draws a few hundred small mechanisms (four-bar, one with a coupler point, slider-crank, Watt
+and Stephenson six-bars; ten links at most), makes one or two mistakes a student makes with a
+click, and follows the first blocker's advice (`follow-advice.ts`) until the drawing runs or the
+sentence names no edit. `artifacts/student-mistakes/summary.md` says, per mistake, how often the
+advice ends in a drawing that runs and in the one that was meant, and quotes every sentence that
+names no edit. That list is where each new message in `mobility-sentences.ts` came from.
+Three things the harness had to get right before its numbers meant anything:
+
+- **Scale.** Fixtures are written in the units a reader types; the app draws at `MODEL_SCALE`. The
+  mobility count does not care, but the solver does: a slider input steps a fixed tenth of a unit
+  in model units, which on an unscaled drawing is longer than the crank. "The solver cannot start
+  a slider-crank from its piston" was this, not the app. `readDrawing` scales before it builds.
+- **Welds are compounds.** A weld in the app merges the two links into one `RealLink` with a
+  `subset`; the `welds` flag alone only marks the joint. And an unweld splits the compound at the
+  remaining welds (`unweldJointTopology`), so a compound welded at two joints comes apart into a
+  pair and a single, not three singles.
+- **A member can hold a stale joint.** Leaves of a compound can keep the joint object a slider
+  replaced; `unweldedAt` matches a leaf's joints by letter.
+
+### A fix that joins two machines has to be counted on both
+
+Grounding a moving joint, dropping a joint beside another, and deleting a link all split one
+linkage into several machines, and each machine's diagnosis sees only its own partition. So the
+readiness helpers carry `drawing()`, and three fixes count across machines: a merge said from
+`besideAnother`, `ungroundAcross` (the union of every machine a grounded joint holds, reached
+through pins *and slots*, with the frame bars each half is solved against), and `reconnectFixes`
+(a free end and the pivot its deleted link left behind). A local unground of a pin another
+machine also hangs from is not offered at all: it counts right for the half it can see.
+
+### When two fixes both count, the history is the tie-breaker, not an LLM
+
+The student-mistakes sweep knows which edit was the mistake. Where the drawer offered more than
+one counted fix (44 steps in 600 drawings), the mistake's own undo was listed first in 27, first
+in 30 when ranked by the newest joint letter a fix touches (letters are handed out in drawing
+order), and among the offered fixes in 39 -- which is what a ranking by "undo the last edit" from
+`SaveHistoryService` would reach. That is deterministic and local; a language model has nothing
+the history does not, except a stated goal ("I am building a windshield wiper"), which the app
+does not ask for.
+
 ### An input on a bar grounded at both ends belongs to no machine
 
 Set a crank's input, then ground its far end: the bar is folded into the frame, the partition hands

@@ -290,7 +290,8 @@ record(
   'and ungrounding it lets the input turn, leaving the next thing to fix',
   !text.includes('cannot turn') &&
     text.includes('This mechanism has 2 degrees of freedom') &&
-    text.includes('Attach a link from joint C to a new grounded joint'),
+    text.includes('Deleting link BC would leave one degree of freedom.') &&
+    text.includes('attach a link from joint C to a new grounded joint'),
   text
 );
 
@@ -323,7 +324,8 @@ record(
   'and deleting that link frees it, leaving the dangling link to fix next',
   !text.includes('cannot turn') &&
     text.includes('link HK can still move') &&
-    text.includes('Attach a link from joint K'),
+    text.includes('Deleting link HK would leave one degree of freedom.') &&
+    text.includes('attach a link from joint K'),
   text
 );
 
@@ -394,6 +396,96 @@ record(
   fromTheFloor.length > 0 && fromTheFloor.every((one) => one.ready),
   fromTheFloor
 );
+
+// --- mistakes the student-mistakes sweep taught the drawer to name ----------
+// Each is followed the way a reader would: the button, then the one edit the
+// sentence asks for, with the control a reader would use for it.
+const readinessNow = () =>
+  page.evaluate(() =>
+    ng
+      .getComponent(document.querySelector('app-new-grid'))
+      .mechanismSrv.readinessOfEachMechanism()
+      .map((one) => ({ ready: one.ready, titles: one.checks.map((check) => check.title) }))
+  );
+const allReady = (machines) => machines.length > 0 && machines.every((one) => one.ready);
+
+await open(galleryQuery('Four-bar with a welded coupler pin'));
+await tab('Kinematic').click();
+await page.waitForTimeout(600);
+text = await drawerText();
+record(
+  'a pin welded by mistake is named, with the unweld counted',
+  text.includes('Unwelding joint C would leave one degree of freedom.'),
+  text
+);
+await page.getByRole('button', { name: 'Go To Joint C', exact: true }).click();
+await page.waitForTimeout(600);
+await page
+  .locator('app-edit-panel segmented-block button', { hasText: 'Revolute' })
+  .first()
+  .click();
+await page.waitForTimeout(700);
+let machinesNow = await readinessNow();
+record('and choosing Revolute for it makes the four-bar run', allReady(machinesNow), machinesNow);
+
+await open(galleryQuery('Rocker dropped beside the coupler pin'));
+await tab('Kinematic').click();
+await page.waitForTimeout(600);
+text = await drawerText();
+record(
+  'a joint dropped beside another is named as that, not as a count',
+  text.includes('Joint E is not joined to joint C') &&
+    text.includes('Dragging joint E onto joint C') &&
+    !text.includes('degrees of freedom'),
+  text
+);
+await page.getByRole('button', { name: 'Go To Joint E', exact: true }).first().click();
+await page.waitForTimeout(600);
+const onScreen = (id) =>
+  page.evaluate((wanted) => {
+    for (const el of document.querySelectorAll('#jointHolder > svg')) {
+      if (el.querySelector('[id^="joint_"]')?.id !== `joint_${wanted}`) continue;
+      const rect = el.getBoundingClientRect();
+      return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+    }
+    return null;
+  }, id);
+const [fromE, toC] = [await onScreen('E'), await onScreen('C')];
+await page.mouse.move(fromE.x, fromE.y);
+await page.mouse.down();
+for (let i = 1; i <= 8; i++) {
+  await page.mouse.move(
+    fromE.x + ((toC.x - fromE.x) * i) / 8,
+    fromE.y + ((toC.y - fromE.y) * i) / 8
+  );
+  await page.waitForTimeout(40);
+}
+await page.mouse.up();
+await page.waitForTimeout(800);
+machinesNow = await readinessNow();
+record('and dragging it onto the other joins them, and the four-bar runs', allReady(machinesNow), {
+  machinesNow,
+  joints: await page.evaluate(() =>
+    ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.joints.map((j) => j.id)
+  ),
+});
+
+await open(galleryQuery('Four-bar braced from its input pivot'));
+await tab('Kinematic').click();
+await page.waitForTimeout(600);
+text = await drawerText();
+record(
+  'a bar from the input pivot is named, and the one to delete',
+  text.includes('The input at joint A has more than one link to turn') &&
+    text.includes('Deleting link AC would leave one degree of freedom.'),
+  text
+);
+await page.getByRole('button', { name: 'Go To Link AC', exact: true }).click();
+await page.waitForTimeout(600);
+await page.keyboard.press('Delete');
+await page.waitForTimeout(700);
+machinesNow = await readinessNow();
+record('and deleting it makes the four-bar run', allReady(machinesNow), machinesNow);
 
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
 

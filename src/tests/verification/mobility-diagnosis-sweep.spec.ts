@@ -100,6 +100,7 @@ describe('readiness across every library drawing, broken one way at a time', () 
         },
         strokeWarning: () => undefined,
         describeSpeed: () => '10.00 RPM',
+        drawing: () => drawing,
       });
       return { partition, mechanism, readiness };
     });
@@ -207,14 +208,104 @@ describe('readiness across every library drawing, broken one way at a time', () 
       deleteLink(drawing, fix.link.id);
       return;
     }
-    const joint = drawing.joints.find((one) => one.id === fix.joint.id) as RealJoint;
+    const byId = (id: string) => drawing.joints.find((one) => one.id === id) as RealJoint;
+    const joint = byId(fix.joint.id);
     if (fix.kind === 'ground') joint.ground = true;
     if (fix.kind === 'unground') joint.ground = false;
     if (fix.kind === 'pin-in-slot') (joint as PrisJoint).rotates = true;
+    if (fix.kind === 'unweld') unweld(drawing, joint, byId);
+    if (fix.kind === 'merge') merge(drawing, joint, byId(fix.onto.id));
+    if (fix.kind === 'connect') connect(drawing, joint, byId(fix.to.id));
+  }
+
+  /**
+   * What Unweld does to the model (`unweldJointTopology`): the compound splits
+   * into the pieces its other welds still hold together, each a compound of
+   * its own where it has more than one member.
+   */
+  function unweld(drawing: Drawing, joint: RealJoint, byId: (id: string) => RealJoint): void {
+    const compound = joint.links.find(
+      (link): link is RealLink => link instanceof RealLink && link.subset.length > 1
+    );
+    if (!compound) return;
+    joint.isWelded = false;
+    const leaves = compound.subset as RealLink[];
+    leaves.forEach((leaf) => (leaf.joints = leaf.joints.map((one) => byId(one.id) ?? one)));
+    const pieces: RealLink[][] = [];
+    const left = [...leaves];
+    while (left.length) {
+      const piece = [left.shift()!];
+      for (let i = 0; i < piece.length; i++) {
+        for (let j = left.length - 1; j >= 0; j--) {
+          const welded = piece[i].joints.some(
+            (one) => one instanceof RealJoint && one.isWelded && left[j].joints.includes(one)
+          );
+          if (welded) piece.push(...left.splice(j, 1));
+        }
+      }
+      pieces.push(piece);
+    }
+    const replacements = pieces.map((piece) => {
+      if (piece.length === 1) return piece[0];
+      const joints = [...new Set(piece.flatMap((leaf) => leaf.joints))];
+      const id = joints
+        .map((one) => one.id)
+        .sort()
+        .join('');
+      return new RealLink(id, joints, 0, 0, undefined, piece);
+    });
+    drawing.links.splice(drawing.links.indexOf(compound), 1, ...replacements);
+    for (const one of compound.joints) {
+      if (!(one instanceof RealJoint)) continue;
+      one.links = one.links.flatMap((link) =>
+        link === compound ? replacements.filter((piece) => piece.joints.includes(one)) : [link]
+      );
+    }
+  }
+
+  /** What dropping one joint onto another does: one joint, holding what both held. */
+  function merge(drawing: Drawing, joint: RealJoint, onto: RealJoint): void {
+    for (const link of joint.links) {
+      link.joints = link.joints.map((one) => (one === joint ? onto : one));
+      if (!onto.links.includes(link)) onto.links.push(link);
+    }
+    onto.ground = onto.ground || joint.ground;
+    for (const other of drawing.joints) {
+      if (!(other instanceof RealJoint)) continue;
+      other.connectedJoints = other.connectedJoints.map((one) => (one === joint ? onto : one));
+    }
+    onto.connectedJoints = [
+      ...new Set([...onto.connectedJoints, ...joint.connectedJoints].filter((one) => one !== onto)),
+    ];
+    drawing.joints = drawing.joints.filter((one) => one !== joint);
+  }
+
+  /** A new link between two joints. */
+  function connect(drawing: Drawing, a: RealJoint, b: RealJoint): void {
+    const link = new RealLink([a.id, b.id].sort().join(''), [a, b]);
+    drawing.links.push(link);
+    a.links.push(link);
+    b.links.push(link);
+    a.connectedJoints.push(b);
+    b.connectedJoints.push(a);
   }
 
   const describeFix = (fix: MobilityFix): string =>
-    fix.kind === 'delete-link' ? `delete ${fix.link.id}` : `${fix.kind} ${fix.joint.id}`;
+    fix.kind === 'delete-link'
+      ? `delete ${fix.link.id}`
+      : fix.kind === 'merge'
+        ? `merge ${fix.joint.id} onto ${fix.onto.id}`
+        : fix.kind === 'connect'
+          ? `connect ${fix.joint.id} to ${fix.to.id}`
+          : `${fix.kind} ${fix.joint.id}`;
+
+  /** The joints of a machine that move: its own, less the grounded pins it may share. */
+  const movingJoints = (partition: MechanismPartition): string[] =>
+    partition.ownJoints
+      .filter(
+        (joint) => joint instanceof RealJoint && !(joint.ground && !(joint instanceof PrisJoint))
+      )
+      .map((joint) => joint.id);
 
   /**
    * The links of a machine that move: the ones no other machine can share, as
@@ -288,7 +379,8 @@ describe('readiness across every library drawing, broken one way at a time', () 
             continue;
           }
           const before = new Set(movingLinks(partition));
-          const diagnosis = diagnoseMobility(partition);
+          const movingBefore = new Set(movingJoints(partition));
+          const diagnosis = diagnoseMobility(partition, drawing);
           const drivenId = partition.ownJoints.find(
             (joint) => joint instanceof RealJoint && joint.input
           )?.id;
@@ -313,8 +405,11 @@ describe('readiness across every library drawing, broken one way at a time', () 
             edit.apply(fixed);
             applyFix(fixed, fix);
             // Every machine that took over a moving part of this one.
-            const after = machines(fixed).filter(({ partition: part }) =>
-              movingLinks(part).some((link) => before.has(link))
+            // By link, and by joint where an unweld has renamed the links.
+            const after = machines(fixed).filter(
+              ({ partition: part }) =>
+                movingLinks(part).some((link) => before.has(link)) ||
+                movingJoints(part).some((joint) => movingBefore.has(joint))
             );
             const counts = after.map(({ mechanism }) => mechanism.dof);
             if (counts.length !== 1 || counts[0] !== 1) {
