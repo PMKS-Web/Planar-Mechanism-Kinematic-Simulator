@@ -141,3 +141,27 @@ fact-sheet variants (base, plus relations, plus relations and a rendered drawing
 Gemini 3.5 Flash-Lite and Muse Spark 1.3 on 22–23 September 2026. Each answer is shown as the
 Analysis panel could show it, with tokens, latency and one reviewer's grade. Template names were
 never sent. The grades are a single reviewer's judgment on ten famous mechanisms, not a benchmark.
+
+## Taste test: one model, fact-sheet versions compared blind
+
+From 23 September 2026 the prototype is committed to GPT-6 Luna (through the Codex CLI, medium
+effort), and what changes is the fact sheet, a little at a time. Each version is a directory under
+the gitignored `artifacts/what-is-this/<version>/`, built by the case builder with `PMKS_SHEET`;
+[`run/sheets.json`](../../src/app/prototype/what-is-this/run/sheets.json) says what each version
+changed, and [`run/rounds.json`](../../src/app/prototype/what-is-this/run/rounds.json) which two
+versions each round puts side by side. `run/taste.mjs` builds a page that shows one mechanism
+moving beside the two answers as Analysis-panel mocks, on sides fixed at random per mechanism,
+and asks a person which they would rather a student read. Which version wrote which is shown only
+after the vote. The published page keeps the votes in its own database.
+
+[taste-rounds.json](taste-rounds.json) is every round's inputs and answers without the pictures:
+both fact sheets, their line diff, both answers, and the automatic checks from
+[`run/rubric.mjs`](../../src/app/prototype/what-is-this/run/rubric.mjs). Those checks catch what a
+script can: part names and numbers the sheet does not contain, motion words the sheet gives no
+ground for (straight line, parallel, a quick return, or denying one the sheet shows), length, and
+whether the family and the uses name the template's real machine. They are a reason to look, not a
+grade.
+
+Round 1 compares v2 (the sheet from the four-model comparison) with v3 (the truth fixes). Four of
+the ten sheets are identical between the two, so those four pairs measure how much Luna varies on
+its own. v3 was also asked a second time (`~2` in the answer file names) for the same purpose.

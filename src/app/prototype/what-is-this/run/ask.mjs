@@ -2,13 +2,18 @@
 //   node src/app/prototype/what-is-this/run/ask.mjs gemini [model]
 //   node src/app/prototype/what-is-this/run/ask.mjs muse [model] [effort]
 //   node src/app/prototype/what-is-this/run/ask.mjs codex [model] [effort]
+// SHEET=v3 picks the fact-sheet version (default v2); SAMPLE=2 asks again and
+// keeps the answer beside the first, to see how much two askings differ.
 // Resumable: a case already answered without an error is skipped.
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
-const root = new URL('../../../../../artifacts/what-is-this/v2/', import.meta.url).pathname;
+const root = new URL(
+  `../../../../../artifacts/what-is-this/${process.env.SHEET ?? 'v2'}/`,
+  import.meta.url
+).pathname;
 const [provider, modelArg, effortArg] = process.argv.slice(2);
 const DEFAULT_MODEL = {
   gemini: 'gemini-3.5-flash-lite',
@@ -246,9 +251,14 @@ async function askCodex(entry) {
   return { text: text.trim(), latencyMs, attempts: 1, usage };
 }
 
+const answerFile = (entry) =>
+  process.env.SAMPLE && process.env.SAMPLE !== '1'
+    ? `${entry.key}~${process.env.SAMPLE}.json`
+    : `${entry.key}.json`;
+
 const todo = cases.filter((entry) => {
   if (process.env.ONLY && !entry.key.includes(process.env.ONLY)) return false;
-  const file = join(outDir, `${entry.key}.json`);
+  const file = join(outDir, answerFile(entry));
   return !existsSync(file) || JSON.parse(readFileSync(file, 'utf8')).error;
 });
 console.log(`${provider} ${model}: ${todo.length} of ${cases.length} cases to ask`);
@@ -267,7 +277,7 @@ async function handle(entry) {
   } catch (error) {
     result.error = String(error).slice(0, 600);
   }
-  writeFileSync(join(outDir, `${entry.key}.json`), JSON.stringify(result, null, 2));
+  writeFileSync(join(outDir, answerFile(entry)), JSON.stringify(result, null, 2));
   console.log(
     `${entry.key}: ${result.error ? 'ERROR ' + result.error.slice(0, 120) : `${result.latencyMs} ms, ${result.parsed ? 'json ok' : result.parseError}`}`
   );

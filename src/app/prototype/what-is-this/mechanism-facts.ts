@@ -8,6 +8,7 @@ import { Mechanism } from '../../model/mechanism/mechanism';
 import { MechanismPartition, partitionMechanisms } from '../../model/mechanism/mechanism-partition';
 import { MODEL_SCALE } from '../../model/render-scale';
 import { drawingSvg } from './drawing-svg';
+import { MachineMotion, machineMotion } from './motion-export';
 import {
   bodyAngles,
   countSelfCrossings,
@@ -55,6 +56,8 @@ export interface DrawingDescription {
   text: string;
   /** Start pose and traced paths of each solvable machine, one SVG per machine. */
   svgs: string[];
+  /** Each solvable machine's motion, for a page to animate. Not sent to the model. */
+  motions: MachineMotion[];
 }
 
 /** The whole fact sheet for every machine in the drawing. */
@@ -62,6 +65,7 @@ export function describeDrawing(drawing: DrawingToDescribe): DrawingDescription 
   const partitioning = partitionMechanisms(drawing.joints, drawing.links, drawing.forces);
   const lines: string[] = [];
   const svgs: string[] = [];
+  const motions: MachineMotion[] = [];
   lines.push(
     `Length unit: ${drawing.lengthUnit}. Angles in degrees, counterclockwise from +x; y points up.`
   );
@@ -83,14 +87,15 @@ export function describeDrawing(drawing: DrawingToDescribe): DrawingDescription 
     const described = describePartition(partition, drawing);
     lines.push(...described.lines);
     if (described.svg) svgs.push(described.svg);
+    if (described.motion) motions.push(described.motion);
   });
-  return { text: lines.join('\n'), svgs };
+  return { text: lines.join('\n'), svgs, motions };
 }
 
 function describePartition(
   partition: MechanismPartition,
   drawing: DrawingToDescribe
-): { lines: string[]; svg?: string } {
+): { lines: string[]; svg?: string; motion?: MachineMotion } {
   const own = new Set(partition.ownJoints.map((joint) => joint.id));
   const cylinders = cylindersIn(partition.joints).filter((c) => own.has(c.seal.id));
   // A cylinder's seal and buried inner end are internal; a reader only ever
@@ -162,9 +167,13 @@ function describePartition(
 
   lines.push('### Solved motion');
   if (!mechanism.isMechanismValid() || mechanism.joints.length < 2) {
+    // "Could not solve" is about the drawing as it stands, not the machine: the
+    // first sheet said "do not describe how it moves" and models read that as
+    // "this mechanism cannot move".
     lines.push(
-      `- The simulator could NOT solve a motion (degrees of freedom ${mechanism.dof}; ` +
-        `reason: ${mechanism.failure ?? 'unknown'}). Do not describe how it moves.`
+      `- The simulator could not solve this drawing's motion as it stands (Gruebler count ` +
+        `${mechanism.dof} degrees of freedom; solver's reason: ${mechanism.failure ?? 'unknown'}). ` +
+        'That says nothing about whether the intended machine can move; no motion facts follow.'
     );
     return { lines };
   }
@@ -199,8 +208,8 @@ function describePartition(
       ...describeRelations({ bodies, visible, hidden, samples, cylinders, label, bodyLabel })
     );
   }
-  const svg = drawingSvg({ bodies, visible, hidden, cylinders, samples });
-  return { lines, svg };
+  const picture = { bodies, visible, hidden, cylinders, samples };
+  return { lines, svg: drawingSvg(picture), motion: machineMotion(picture) };
 }
 
 function describeStructure(
@@ -327,9 +336,7 @@ function describeBodyMotion(
   const pivot = joints.find((j) => grounds.includes(j));
   const name = bodyLabel(body);
   if (joints.every((j) => grounds.includes(j))) return `- ${name} is fixed to the ground.`;
-  if (sweep < 0.5) {
-    return `- ${name} translates without rotating (orientation constant within ${fmt(sweep, 2)} deg).`;
-  }
+  if (sweep < 0.5) return describeTranslation(name, joints, samples, sweep, label, grounds);
   const fullTurn = !samples.mechanism.reciprocates && sweep > 300;
   const around = pivot
     ? `about ground pivot ${label(pivot)}`
@@ -342,6 +349,48 @@ function describeBodyMotion(
     ` (from ${fmt(deg(low), 1)} to ${fmt(deg(high), 1)} deg)` +
     `${strokeTiming(angles, samples)}.`
   );
+}
+
+/**
+ * A body that keeps its orientation. Every point of it traces the same-shaped
+ * path, so one point's path says whether it slides in a straight line or swings
+ * along an arc -- the wiper's parallelogram coupler does the second, and "it
+ * translates" alone was read as "it moves in a straight line".
+ */
+function describeTranslation(
+  name: string,
+  joints: Joint[],
+  samples: Samples,
+  sweep: number,
+  label: (joint: Joint) => string,
+  grounds: Joint[]
+): string {
+  const steady = `orientation constant within ${fmt(sweep, 2)} deg`;
+  const path = samples.paths.get(joints[0].id)!;
+  const line = fitLine(path);
+  if (line.length < 1e-6) return `- ${name} does not move.`;
+  if (line.maxOff / line.length < 0.002) {
+    return `- ${name} translates in a straight line at ${fmt(line.angle, 1)} deg without rotating (${steady}); every point of it moves ${fmt(line.length)} back and forth.`;
+  }
+  const arc = grounds
+    .map((ground) => ({ ground, fit: circleAbout(path, samples.paths.get(ground.id)![0]) }))
+    .find((c) => c.fit);
+  const shape = arc
+    ? `the same circular arc as ${label(joints[0])}'s (radius ${fmt(arc.fit!.radius)} about ${label(arc.ground)})`
+    : 'the same curved path';
+  return `- ${name} translates along a curve without rotating (${steady}): it is not moving in a straight line; every point of it traces ${shape}, just shifted (curvilinear translation).`;
+}
+
+/** The radius of a path that stays a fixed distance from a point, if it does. */
+function circleAbout(
+  path: [number, number][],
+  centre: [number, number]
+): { radius: number } | undefined {
+  const radii = path.map(([x, y]) => Math.hypot(x - centre[0], y - centre[1]));
+  const mean = radii.reduce((s, r) => s + r, 0) / radii.length;
+  return mean > 1e-6 && (Math.max(...radii) - Math.min(...radii)) / mean < 0.002
+    ? { radius: mean }
+    : undefined;
 }
 
 /** A body that turns fully but unevenly is a quick-return's tell. */
@@ -383,10 +432,14 @@ function describeSlider(
     return `- Slider ${label(slider)}: no guide to measure travel against.`;
   }
   const stroke = Math.max(...along) - Math.min(...along);
-  const guide = slider.ground
-    ? 'its fixed guide'
-    : `its guide on ${slider.carrier ? bodyLabel(slider.carrier) : 'a moving body'}`;
-  return `- Slider ${label(slider)} travels ${fmt(stroke)} along ${guide}${strokeTiming(along, samples)}.`;
+  if (slider.ground) {
+    return `- Slider ${label(slider)} travels ${fmt(stroke)} along its fixed guide${strokeTiming(along, samples)}.`;
+  }
+  // Sliding within a moving slot is relative motion, not an output stroke: its
+  // equal times read as "no quick return" on the Whitworth, whose quick return
+  // is in how the slotted link turns.
+  const carrier = slider.carrier ? bodyLabel(slider.carrier) : 'a moving body';
+  return `- Pin ${label(slider)} slides ${fmt(stroke)} back and forth within the slot on ${carrier}; this is motion relative to ${carrier}, not an output stroke.`;
 }
 
 function describeCylinderTravel(
@@ -463,7 +516,7 @@ function describePath(
 
   const closed = !reciprocates;
   const crossings = closed ? countSelfCrossings(path) : 0;
-  const straight = longestStraightRun(path, closed);
+  const straight = longestStraightRun(path, closed, samples.time);
   let text =
     `${name} ${closed ? 'closed curve' : 'curve traced back and forth'}, ` +
     `${fmt(width)} wide x ${fmt(height)} tall`;

@@ -1,0 +1,969 @@
+{
+  "provider": "codex__gpt-6-luna",
+  "variant": "relations+picture",
+  "sheets": {
+    "v2": {
+      "title": "v2 · relations + picture",
+      "summary": "The sheet from the four-model comparison: structure, measured motion, how the parts relate, and the drawing.",
+      "changes": []
+    },
+    "v3": {
+      "title": "v3 · truth fixes",
+      "summary": "v2 with the statements the outside review found untrue or misleading corrected. Nothing new is added except the Whitworth half-turn times, which replace a misleading fact.",
+      "changes": [
+        "“Turn together, so they stay parallel” now says only that the angle between them never changes, and names a parallel pair of lines only when there is one (wiper: P-T stays parallel to Q-U).",
+        "A body that keeps its orientation says whether it moves in a straight line or along an arc (wiper CD: curvilinear translation, not a straight line; Scotch yoke CD: straight line).",
+        "A pin sliding in a moving slot no longer gets stroke times; that “3 s and 3 s” is what made Luna say the Whitworth has no quick return. The slotted link now gives its slow and fast half-turn times (3.65 s vs 2.35 s).",
+        "“Nearly straight for X% of the cycle” is measured in time, counting both passes of a back-and-forth path (Chebyshev 46% → 92%).",
+        "A parallelogram is checked against the coupler actually keeping its angle; a crossed one would be called an antiparallelogram.",
+        "Dropped two unproven causes: “because the input is not at its pivot” and “when one end rises the other falls” (now: the ends move in opposite directions).",
+        "A drawing the solver cannot solve is described as unsolved as drawn, not as a mechanism that cannot move (no template here hits this)."
+      ]
+    }
+  },
+  "rounds": [
+    {
+      "id": "r1",
+      "title": "Round 1 · truth fixes",
+      "a": "v2",
+      "b": "v3",
+      "note": "Same model (GPT-6 Luna, medium effort), same picture, and the same instructions except one sentence about drawings the solver cannot solve, which none of these ten is. Four of the ten sheets are word-for-word identical between the versions, so those pairs show how much the model varies on its own.",
+      "pairs": [
+        {
+          "template": "4-Bar",
+          "name": "Four-Bar",
+          "blurb": "A classic crank-rocker: a crank turns, a rocker swings, and the coupler between them draws a curve.",
+          "appUrl": "https://staging--pmksnew.netlify.app/?2v.Fe,1E8.A,0.1011.6A,A,0mv,0VU,0.0B,B,0e_,E6,0.0C,C,l1,WW,0.4D,D,qD,0Pk,0..YRAB,AB,0,0,0ix,08i,303e9f,A,B,,.YRBC,BC,0,0,32,NJ,26A69A,B,C,,.YRCD,CD,0,0,nd,3P,0d125a,C,D,,...N_p*1HFIjn",
+          "identical": true,
+          "diff": [],
+          "left": {
+            "id": "v3",
+            "sheet": "v3",
+            "sample": 1,
+            "answer": {
+              "family": "crank-rocker four-bar",
+              "certainty": "is",
+              "plainEnglish": "This is a crank-rocker four-bar. **AB** makes full turns about fixed joint **A**, carrying **B** around a circle. **BC** connects the crank to **CD** and rocks as the floating coupler changes angle; **CD** swings back and forth about fixed joint **D**. In this drawing, **BC** rocks through 63.4 degrees, while **CD** rocks through a wider 107.9 degrees, turning the continuous input into an oscillating output.",
+              "useCases": [
+                {
+                  "use": "car windshield wipers",
+                  "why": "The full-turn crank and rocking output link suit driving a wiper back and forth."
+                },
+                {
+                  "use": "rocking-screen mechanisms",
+                  "why": "The oscillating output link can move a screen repeatedly through an arc."
+                }
+              ],
+              "terms": ["crank", "rocker", "coupler", "Grashof"]
+            },
+            "latencyMs": 11048,
+            "usage": {
+              "input": 17816,
+              "cached": 12032,
+              "output": 195,
+              "reasoning": 0
+            },
+            "facts": "Length unit: cm. Angles in degrees, counterclockwise from +x; y points up.\nJoints are single letters; a link is named by its joints’ letters, as in the app’s Links table (e.g. link AB).\nGravity: on.\nSeparate mechanisms in the drawing: 1.\n\n## Mechanism M1\n### Structure\n- Rigid bodies (moving links): 3.\n  - link AB: joins 2 joints.\n  - link BC: joins 2 joints.\n  - link CD: joins 2 joints.\n- Ground pivots (fixed pins): A, D.\n### Start geometry\n- Joints: A (-3.13, -2.01) ground; B (-2.62, 0.9); C (3.01, 2.08); D (3.34, -1.65) ground.\n- Distances between ground joints: A-D 6.48.\n- link AB lengths: A-B 2.96.\n- link BC lengths: B-C 5.75.\n- link CD lengths: C-D 3.74.\n### Input\n- rotary drive at joint A, turning link AB relative to the ground; speed 10 rpm clockwise.\n### Solved motion\n- Degrees of freedom: 1. Solved 361 samples over 6 s.\n- The input runs continuously; the whole motion repeats once per input revolution.\n- link AB turns full revolutions about ground pivot A, at a steady angular speed.\n- link BC rocks (no fixed pivot: a floating coupler) through 63.4 deg (from 5.9 to 69.4 deg); one way takes 3.53 s and the other 2.47 s (time ratio 1.43).\n- link CD rocks about ground pivot D through 107.9 deg (from -111 to -3.1 deg); one way takes 3.23 s and the other 2.77 s (time ratio 1.17).\n### Paths of moving points\n- B: full circle of radius 2.96 about A.\n- C: circular arc of radius 3.74 about D, sweeping 107.9 deg back and forth.\n### How the parts relate\n- Four-bar loop: link AB (A-B) 2.96, link BC (B-C) 5.75, link CD (D-C) 3.74, ground A-D 6.48. It is a Grashof crank-rocker: link AB (A-B) is the shortest bar, so it is able to turn fully while the opposite side bar only rocks (shortest + longest = 9.44 vs the other two = 9.49).",
+            "rubric": {
+              "family": "named",
+              "application": "n/a",
+              "words": 65,
+              "flags": []
+            }
+          },
+          "right": {
+            "id": "v2",
+            "sheet": "v2",
+            "sample": 1,
+            "answer": {
+              "family": "crank-rocker four-bar",
+              "certainty": "is",
+              "plainEnglish": "This is a crank-rocker four-bar: the driven **AB** makes full turns around fixed joint **A**, carrying floating link **BC** through the loop. That motion makes **CD** swing back and forth around fixed joint **D**. In this drawing, the ground pivots **A** and **D** are 6.48 cm apart. The two moving bars therefore have different jobs: **AB** keeps rotating, while **BC** transfers motion to the rocking output **CD**.",
+              "useCases": [
+                {
+                  "use": "automobile windshield wipers",
+                  "why": "A continuously rotating input can drive an output link that swings back and forth, as **CD** does here."
+                },
+                {
+                  "use": "oscillating conveyor drives",
+                  "why": "The rotating **AB** and rocking **CD** show how a four-bar can convert continuous rotation into a repeated swing."
+                }
+              ],
+              "terms": ["crank", "rocker", "floating coupler", "four-bar loop"]
+            },
+            "latencyMs": 10384,
+            "usage": {
+              "input": 17128,
+              "cached": 12032,
+              "output": 249,
+              "reasoning": 0
+            },
+            "facts": "Length unit: cm. Angles in degrees, counterclockwise from +x; y points up.\nJoints are single letters; a link is named by its joints’ letters, as in the app’s Links table (e.g. link AB).\nGravity: on.\nSeparate mechanisms in the drawing: 1.\n\n## Mechanism M1\n### Structure\n- Rigid bodies (moving links): 3.\n  - link AB: joins 2 joints.\n  - link BC: joins 2 joints.\n  - link CD: joins 2 joints.\n- Ground pivots (fixed pins): A, D.\n### Start geometry\n- Joints: A (-3.13, -2.01) ground; B (-2.62, 0.9); C (3.01, 2.08); D (3.34, -1.65) ground.\n- Distances between ground joints: A-D 6.48.\n- link AB lengths: A-B 2.96.\n- link BC lengths: B-C 5.75.\n- link CD lengths: C-D 3.74.\n### Input\n- rotary drive at joint A, turning link AB relative to the ground; speed 10 rpm clockwise.\n### Solved motion\n- Degrees of freedom: 1. Solved 361 samples over 6 s.\n- The input runs continuously; the whole motion repeats once per input revolution.\n- link AB turns full revolutions about ground pivot A, at a steady angular speed.\n- link BC rocks (no fixed pivot: a floating coupler) through 63.4 deg (from 5.9 to 69.4 deg); one way takes 3.53 s and the other 2.47 s (time ratio 1.43).\n- link CD rocks about ground pivot D through 107.9 deg (from -111 to -3.1 deg); one way takes 3.23 s and the other 2.77 s (time ratio 1.17).\n### Paths of moving points\n- B: full circle of radius 2.96 about A.\n- C: circular arc of radius 3.74 about D, sweeping 107.9 deg back and forth.\n### How the parts relate\n- Four-bar loop: link AB (A-B) 2.96, link BC (B-C) 5.75, link CD (D-C) 3.74, ground A-D 6.48. It is a Grashof crank-rocker: link AB (A-B) is the shortest bar, so it is able to turn fully while the opposite side bar only rocks (shortest + longest = 9.44 vs the other two = 9.49).",
+            "rubric": {
+              "family": "named",
+              "application": "n/a",
+              "words": 67,
+              "flags": []
+            }
+          }
+        },
+        {
+          "template": "Slider_Crank",
+          "name": "Slider-Crank",
+          "blurb": "Rotation into a straight push — the engine and the pump both live here.",
+          "appUrl": "https://staging--pmksnew.netlify.app/?2v.Fe,1E8.A,0.1011.6A,A,0mA,0c,0.0B,B,0Yt,bK,0.5C,C,il,H-,0..YRAB,AB,0,0,0fW,IN,303e9f,A,B,,.YRBC,BC,0,0,4y,Rf,0d125a,B,C,,...N_4*1y4TFd",
+          "identical": true,
+          "diff": [],
+          "left": {
+            "id": "v3",
+            "sheet": "v3",
+            "sample": 1,
+            "answer": {
+              "family": "offset slider-crank",
+              "certainty": "is",
+              "plainEnglish": "This is an offset slider-crank. **AB** rotates fully around fixed joint **A**, carrying **B** in a circle; rod **BC** connects **B** to slider **C** and makes it move back and forth along its guide. The guide is offset from **A**, so the two strokes take different times: in this drawing’s motion, the slider’s return takes 3.3 seconds and the other stroke takes 2.7 seconds. The coupler **BC** rocks as it transmits the crank’s rotation to the slider.",
+              "useCases": [
+                {
+                  "use": "Reciprocating pumps",
+                  "why": "The slider’s back-and-forth travel can drive a pump piston."
+                },
+                {
+                  "use": "Internal-combustion engines",
+                  "why": "A slider-crank connects a rotating crank to a piston moving back and forth."
+                },
+                {
+                  "use": "Reciprocating compressors",
+                  "why": "The slider’s reversing travel can move a compressor piston."
+                }
+              ],
+              "terms": ["offset slider-crank", "coupler"]
+            },
+            "latencyMs": 12183,
+            "usage": {
+              "input": 17733,
+              "cached": 12032,
+              "output": 271,
+              "reasoning": 0
+            },
+            "facts": "Length unit: cm. Angles in degrees, counterclockwise from +x; y points up.\nJoints are single letters; a link is named by its joints’ letters, as in the app’s Links table (e.g. link AB).\nGravity: on.\nSeparate mechanisms in the drawing: 1.\n\n## Mechanism M1\n### Structure\n- Rigid bodies (moving links): 2.\n  - link AB: joins 2 joints.\n  - link BC: joins 2 joints.\n- Ground pivots (fixed pins): A.\n- Slider C: pin-in-slot (the riding body may turn as it slides), on a fixed guide at 0 deg.\n### Start geometry\n- Joints: A (-3.08, -0.04) ground; B (-2.23, 2.39); C (2.86, 1.15) slider.\n- link AB lengths: A-B 2.57.\n- link BC lengths: B-C 5.24.\n### Input\n- rotary drive at joint A, turning link AB relative to the ground; speed 10 rpm clockwise.\n### Solved motion\n- Degrees of freedom: 1. Solved 361 samples over 6 s.\n- The input runs continuously; the whole motion repeats once per input revolution.\n- link AB turns full revolutions about ground pivot A, at a steady angular speed.\n- link BC rocks (no fixed pivot: a floating coupler) through 61.1 deg (from -15.3 to 45.8 deg); one way takes 3 s and the other 3 s (time ratio 1).\n- Slider C travels 5.33 along its fixed guide; one way takes 3.3 s and the other 2.7 s (time ratio 1.22).\n### Paths of moving points\n- B: full circle of radius 2.57 about A.\n- C: straight line at 0 deg, length 5.33 (back and forth).\n### How the parts relate\n- Slider-crank: link AB (radius 2.57 about A) drives slider C through rod link BC (length 5.24, 2.04x the crank radius). The guide is offset 1.19 from the crank pivot, which makes one stroke take longer than the other.",
+            "rubric": {
+              "family": "named",
+              "application": "named",
+              "words": 77,
+              "flags": []
+            }
+          },
+          "right": {
+            "id": "v2",
+            "sheet": "v2",
+            "sample": 1,
+            "answer": {
+              "family": "offset slider-crank",
+              "certainty": "is",
+              "plainEnglish": "This is an offset slider-crank: **AB** makes full turns about fixed joint **A**, pushing and pulling **C** along its straight guide through connecting link **BC**. In this drawing, the guide is offset 1.19 cm from **A**, and **C** travels 5.33 cm back and forth. That offset makes the two slider strokes take different times, while **BC** also rocks as it connects the rotating crank to the sliding pin.",
+              "useCases": [
+                {
+                  "use": "reciprocating pumps",
+                  "why": "A crank and connecting rod can convert continuous rotation into the slider's back-and-forth travel."
+                },
+                {
+                  "use": "piston engines",
+                  "why": "The slider-crank layout converts rotation at the crank into straight-line reciprocation of a piston."
+                }
+              ],
+              "terms": ["slider-crank", "connecting link", "offset"]
+            },
+            "latencyMs": 14352,
+            "usage": {
+              "input": 17045,
+              "cached": 14080,
+              "output": 231,
+              "reasoning": 0
+            },
+            "facts": "Length unit: cm. Angles in degrees, counterclockwise from +x; y points up.\nJoints are single letters; a link is named by its joints’ letters, as in the app’s Links table (e.g. link AB).\nGravity: on.\nSeparate mechanisms in the drawing: 1.\n\n## Mechanism M1\n### Structure\n- Rigid bodies (moving links): 2.\n  - link AB: joins 2 joints.\n  - link BC: joins 2 joints.\n- Ground pivots (fixed pins): A.\n- Slider C: pin-in-slot (the riding body may turn as it slides), on a fixed guide at 0 deg.\n### Start geometry\n- Joints: A (-3.08, -0.04) ground; B (-2.23, 2.39); C (2.86, 1.15) slider.\n- link AB lengths: A-B 2.57.\n- link BC lengths: B-C 5.24.\n### Input\n- rotary drive at joint A, turning link AB relative to the ground; speed 10 rpm clockwise.\n### Solved motion\n- Degrees of freedom: 1. Solved 361 samples over 6 s.\n- The input runs continuously; the whole motion repeats once per input revolution.\n- link AB turns full revolutions about ground pivot A, at a steady angular speed.\n- link BC rocks (no fixed pivot: a floating coupler) through 61.1 deg (from -15.3 to 45.8 deg); one way takes 3 s and the other 3 s (time ratio 1).\n- Slider C travels 5.33 along its fixed guide; one way takes 3.3 s and the other 2.7 s (time ratio 1.22).\n### Paths of moving points\n- B: full circle of radius 2.57 about A.\n- C: straight line at 0 deg, length 5.33 (back and forth).\n### How the parts relate\n- Slider-crank: link AB (radius 2.57 about A) drives slider C through rod link BC (length 5.24, 2.04x the crank radius). The guide is offset 1.19 from the crank pivot, which makes one stroke take longer than the other.",
+            "rubric": {
+              "family": "named",
+              "application": "named",
+              "words": 68,
+              "flags": []
+            }
+          }
+        },
+        {
+          "template": "Whitworth_Quick_Return",
+          "name": "Whitworth Quick-Return",
+          "blurb": "Crank longer than the ground offset, so the lever turns instead of rocking.",
+          "appUrl": "https://staging--pmksnew.netlify.app/?2v.Ay,1E8.A,0.1011.6A,A,0,0,0.1B,B,0,ku,0,CD,C,D.4C,C,Fe,0,0.0D,D,095,1A7,0..YRAB,AB,0,0,0,NS,303e9f,A,B,,.YRCD,CD,0,0,3H,b4,0d125a,C,D,,...N_I*0NCbYH",
+          "identical": false,
+          "diff": [
+            {
+              "op": "+",
+              "line": "- Pin B slides 2 back and forth within the slot on link CD; this is motion relative to link CD, not an output stroke."
+            },
+            {
+              "op": "-",
+              "line": "- Slider B travels 2 along its guide on link CD; one way takes 3 s and the other 3 s (time ratio 1)."
+            },
+            {
+              "op": "+",
+              "line": "- link AB (radius 3 about A) drives link CD through pin B riding in a slot on link CD, which pivots at C, 1 from A. The crank radius is larger than that pivot distance, so link CD turns fully but unevenly (the rotating-slotted-link arrangement). Its slowest half-turn takes 3.65 s and the opposite half-turn 2.35 s (time ratio 1.55), so anything it drives back and forth through those two half-turns gets a slow stroke and a quick return."
+            },
+            {
+              "op": "-",
+              "line": "- link AB (radius 3 about A) drives link CD through pin B riding in a slot on link CD, which pivots at C, 1 from A. The crank radius is larger than that pivot distance, so link CD turns fully but unevenly, fast on one half-turn and slow on the other (the rotating-slotted-link arrangement)."
+            }
+          ],
+          "left": {
+            "id": "v2",
+            "sheet": "v2",
+            "sample": 1,
+            "answer": {
+              "family": "Whitworth quick-return mechanism",
+              "certainty": "resembles",
+              "plainEnglish": "This resembles a Whitworth quick-return mechanism. **AB** is the input crank, turning steadily around fixed joint **A**. Its pin **B** rides in the slot of **CD**, making **CD** pivot around fixed joint **C** and turn through full revolutions at a changing speed. In this drawing, **A** and **C** are 1 cm apart, and the two slider directions each take 3 seconds, so the motion has no faster return stroke.",
+              "useCases": [
+                {
+                  "use": "shapers and other metal-shaping machines",
+                  "why": "A rotating-slotted-link arrangement can provide a slower cutting stroke and a quicker return, though this fact sheet shows equal times in both directions."
+                },
+                {
+                  "use": "mechanical presses with reciprocating drives",
+                  "why": "The rotating slotted link converts steady crank rotation into reciprocating motion, as shown by **B** sliding along **CD**."
+                }
+              ],
+              "terms": ["pin-in-slot", "crank", "reciprocating motion"]
+            },
+            "latencyMs": 8959,
+            "usage": {
+              "input": 17043,
+              "cached": 12032,
+              "output": 221,
+              "reasoning": 0
+            },
+            "facts": "Length unit: cm. Angles in degrees, counterclockwise from +x; y points up.\nJoints are single letters; a link is named by its joints’ letters, as in the app’s Links table (e.g. link AB).\nGravity: on.\nSeparate mechanisms in the drawing: 1.\n\n## Mechanism M1\n### Structure\n- Rigid bodies (moving links): 2.\n  - link AB: joins 2 joints.\n  - link CD: joins 2 joints.\n- Ground pivots (fixed pins): A, C.\n- Slider B: pin-in-slot (the riding body may turn as it slides), on a guide carried by moving link CD (slot from C toward D).\n### Start geometry\n- Joints: A (0, 0) ground; B (0, 3) slider; C (1, 0) ground; D (-0.58, 4.74).\n- Distances between ground joints: A-C 1.\n- link AB lengths: A-B 3.\n- link CD lengths: C-D 5.\n### Input\n- rotary drive at joint A, turning link AB relative to the ground; speed 10 rpm clockwise.\n### Solved motion\n- Degrees of freedom: 1. Solved 361 samples over 6 s.\n- The input runs continuously; the whole motion repeats once per input revolution.\n- link AB turns full revolutions about ground pivot A, at a steady angular speed.\n- link CD turns full revolutions about ground pivot C, unevenly: its angular speed ranges from 45 to 90 deg/s (fastest/slowest 2).\n- Slider B travels 2 along its guide on link CD; one way takes 3 s and the other 3 s (time ratio 1).\n### Paths of moving points\n- B: full circle of radius 3 about A.\n- D: full circle of radius 5 about C.\n### How the parts relate\n- link AB (radius 3 about A) drives link CD through pin B riding in a slot on link CD, which pivots at C, 1 from A. The crank radius is larger than that pivot distance, so link CD turns fully but unevenly, fast on one half-turn and slow on the other (the rotating-slotted-link arrangement).",
+            "rubric": {
+              "family": "named",
+              "application": "named",
+              "words": 69,
+              "flags": ["claims denies the quick return the sheet shows"]
+            }
+          },
+          "right": {
+            "id": "v3",
+            "sheet": "v3",
+            "sample": 1,
+            "answer": {
+              "family": "Whitworth quick-return mechanism",
+              "certainty": "is",
+              "plainEnglish": "This is a Whitworth quick-return mechanism. The input link **AB** makes full turns about fixed joint **A**. Pin **B** slides in the slot of link **CD**, which pivots about fixed joint **C**; that makes **CD** rotate fully but unevenly, so an output driven back and forth by **CD** can have a slower working stroke and a quicker return. In this drawing, **A** and **C** are 1 cm apart, and the two half-turns of **CD** take 3.65 s and 2.35 s.",
+              "useCases": [
+                {
+                  "use": "shaper machines",
+                  "why": "Their cutting stroke can be slower while the return stroke is quicker, matching the unequal half-turn times of **CD**."
+                },
+                {
+                  "use": "slotting machines",
+                  "why": "The mechanism can provide a slower working stroke and faster return, as shown by the unequal half-turn times of **CD**."
+                }
+              ],
+              "terms": ["pin-in-slot", "quick return", "half-turn"]
+            },
+            "latencyMs": 10333,
+            "usage": {
+              "input": 17769,
+              "cached": 12032,
+              "output": 226,
+              "reasoning": 0
+            },
+            "facts": "Length unit: cm. Angles in degrees, counterclockwise from +x; y points up.\nJoints are single letters; a link is named by its joints’ letters, as in the app’s Links table (e.g. link AB).\nGravity: on.\nSeparate mechanisms in the drawing: 1.\n\n## Mechanism M1\n### Structure\n- Rigid bodies (moving links): 2.\n  - link AB: joins 2 joints.\n  - link CD: joins 2 joints.\n- Ground pivots (fixed pins): A, C.\n- Slider B: pin-in-slot (the riding body may turn as it slides), on a guide carried by moving link CD (slot from C toward D).\n### Start geometry\n- Joints: A (0, 0) ground; B (0, 3) slider; C (1, 0) ground; D (-0.58, 4.74).\n- Distances between ground joints: A-C 1.\n- link AB lengths: A-B 3.\n- link CD lengths: C-D 5.\n### Input\n- rotary drive at joint A, turning link AB relative to the ground; speed 10 rpm clockwise.\n### Solved motion\n- Degrees of freedom: 1. Solved 361 samples over 6 s.\n- The input runs continuously; the whole motion repeats once per input revolution.\n- link AB turns full revolutions about ground pivot A, at a steady angular speed.\n- link CD turns full revolutions about ground pivot C, unevenly: its angular speed ranges from 45 to 90 deg/s (fastest/slowest 2).\n- Pin B slides 2 back and forth within the slot on link CD; this is motion relative to link CD, not an output stroke.\n### Paths of moving points\n- B: full circle of radius 3 about A.\n- D: full circle of radius 5 about C.\n### How the parts relate\n- link AB (radius 3 about A) drives link CD through pin B riding in a slot on link CD, which pivots at C, 1 from A. The crank radius is larger than that pivot distance, so link CD turns fully but unevenly (the rotating-slotted-link arrangement). Its slowest half-turn takes 3.65 s and the opposite half-turn 2.35 s (time ratio 1.55), so anything it drives back and forth through those two half-turns gets a slow stroke and a quick return.",
+            "rubric": {
+              "family": "named",
+              "application": "named",
+              "words": 80,
+              "flags": []
+            }
+          }
+        },
+        {
+          "template": "Scotch_Yoke",
+          "name": "Scotch Yoke",
+          "blurb": "A welded rider translating on its guide — pure cosine motion.",
+          "appUrl": "https://staging--pmksnew.netlify.app/?2v.Ay,1E8.A,0.1011.6A,A,0,0,0.1B,B,Fe,0,0,CD,C,D.DC,C,Fe,0VG,0.0D,D,Fe,S8,0..YRAB,AB,0,0,7q,0,303e9f,A,B,,.YRCD,CD,0,0,Fe,01a,26A69A,C,D,,...N_J*3kTqik",
+          "identical": false,
+          "diff": [
+            {
+              "op": "+",
+              "line": "- link CD translates in a straight line at 0 deg without rotating (orientation constant within 0 deg); every point of it moves 2 back and forth."
+            },
+            {
+              "op": "+",
+              "line": "- Pin B slides 2 back and forth within the slot on link CD; this is motion relative to link CD, not an output stroke."
+            },
+            {
+              "op": "-",
+              "line": "- link CD translates without rotating (orientation constant within 0 deg)."
+            },
+            {
+              "op": "-",
+              "line": "- Slider B travels 2 along its guide on link CD; one way takes 3 s and the other 3 s (time ratio 1)."
+            }
+          ],
+          "left": {
+            "id": "v2",
+            "sheet": "v2",
+            "sample": 1,
+            "answer": {
+              "family": "Scotch yoke",
+              "certainty": "is",
+              "plainEnglish": "This is a Scotch yoke. **AB** turns around fixed joint **A**, carrying pin **B** around a circle. Because **B** rides in a slot on **CD**, it pushes **CD** back and forth while the slot lets **B** move along the link. **CD** keeps its orientation and carries slider **C** along the fixed guide. In this drawing, **AB** is 1 cm long and **C** travels 2 cm along its guide each cycle.",
+              "useCases": [
+                {
+                  "use": "Reciprocating pumps",
+                  "why": "The yoke’s back-and-forth travel can drive a pump piston."
+                },
+                {
+                  "use": "Small internal combustion engines",
+                  "why": "A Scotch yoke can convert crank rotation into a piston’s reciprocating motion."
+                }
+              ],
+              "terms": ["yoke", "pin-in-slot", "reciprocating"]
+            },
+            "latencyMs": 8859,
+            "usage": {
+              "input": 17074,
+              "cached": 14080,
+              "output": 227,
+              "reasoning": 0
+            },
+            "facts": "Length unit: cm. Angles in degrees, counterclockwise from +x; y points up.\nJoints are single letters; a link is named by its joints’ letters, as in the app’s Links table (e.g. link AB).\nGravity: on.\nSeparate mechanisms in the drawing: 1.\n\n## Mechanism M1\n### Structure\n- Rigid bodies (moving links): 2.\n  - link AB: joins 2 joints.\n  - link CD: joins 2 joints.\n- Ground pivots (fixed pins): A.\n- Slider B: pin-in-slot (the riding body may turn as it slides), on a guide carried by moving link CD (slot from C toward D).\n- Slider C: prismatic (the riding body keeps the guide’s orientation), on a fixed guide at 0 deg.\n### Start geometry\n- Joints: A (0, 0) ground; B (1, 0) slider; C (1, -2) slider; D (1, 1.8).\n- link AB lengths: A-B 1.\n- link CD lengths: C-D 3.8.\n### Input\n- rotary drive at joint A, turning link AB relative to the ground; speed 10 rpm clockwise.\n### Solved motion\n- Degrees of freedom: 1. Solved 361 samples over 6 s.\n- The input runs continuously; the whole motion repeats once per input revolution.\n- link AB turns full revolutions about ground pivot A, at a steady angular speed.\n- link CD translates without rotating (orientation constant within 0 deg).\n- Slider B travels 2 along its guide on link CD; one way takes 3 s and the other 3 s (time ratio 1).\n- Slider C travels 2 along its fixed guide; one way takes 3 s and the other 3 s (time ratio 1).\n### Paths of moving points\n- B: full circle of radius 1 about A.\n- C: straight line at 0 deg, length 2 (back and forth).\n- D: straight line at 0 deg, length 2 (back and forth).\n### How the parts relate\n- link AB (radius 1 about A) drives link CD through pin B riding in a slot on link CD. link CD cannot turn, so it follows only the part of B's circular motion along its own guide: a steady crank gives it a smooth back-and-forth (harmonic) motion.",
+            "rubric": {
+              "family": "named",
+              "application": "named",
+              "words": 70,
+              "flags": []
+            }
+          },
+          "right": {
+            "id": "v3",
+            "sheet": "v3",
+            "sample": 1,
+            "answer": {
+              "family": "Scotch yoke",
+              "certainty": "is",
+              "plainEnglish": "This is a **Scotch yoke**: rotating **AB** carries pin **B** around fixed pivot **A**, and **B** slides in the slot of **CD**. Because **CD** is constrained to slide without turning, it follows the back-and-forth part of **B**’s circular motion; slider **C** moves along the fixed guide with it. In this drawing, **AB** has a length of 1 cm and drives **C** through a 2 cm stroke.",
+              "useCases": [
+                {
+                  "use": "reciprocating pumps",
+                  "why": "The sliding yoke provides a back-and-forth output stroke for driving a pump piston."
+                },
+                {
+                  "use": "small internal-combustion engines",
+                  "why": "The crank pin and sliding yoke can convert rotary motion into a piston’s back-and-forth motion."
+                }
+              ],
+              "terms": ["Scotch yoke", "slot", "stroke", "harmonic"]
+            },
+            "latencyMs": 8588,
+            "usage": {
+              "input": 17112,
+              "cached": 12032,
+              "output": 206,
+              "reasoning": 0
+            },
+            "facts": "Length unit: cm. Angles in degrees, counterclockwise from +x; y points up.\nJoints are single letters; a link is named by its joints’ letters, as in the app’s Links table (e.g. link AB).\nGravity: on.\nSeparate mechanisms in the drawing: 1.\n\n## Mechanism M1\n### Structure\n- Rigid bodies (moving links): 2.\n  - link AB: joins 2 joints.\n  - link CD: joins 2 joints.\n- Ground pivots (fixed pins): A.\n- Slider B: pin-in-slot (the riding body may turn as it slides), on a guide carried by moving link CD (slot from C toward D).\n- Slider C: prismatic (the riding body keeps the guide’s orientation), on a fixed guide at 0 deg.\n### Start geometry\n- Joints: A (0, 0) ground; B (1, 0) slider; C (1, -2) slider; D (1, 1.8).\n- link AB lengths: A-B 1.\n- link CD lengths: C-D 3.8.\n### Input\n- rotary drive at joint A, turning link AB relative to the ground; speed 10 rpm clockwise.\n### Solved motion\n- Degrees of freedom: 1. Solved 361 samples over 6 s.\n- The input runs continuously; the whole motion repeats once per input revolution.\n- link AB turns full revolutions about ground pivot A, at a steady angular speed.\n- link CD translates in a straight line at 0 deg without rotating (orientation constant within 0 deg); every point of it moves 2 back and forth.\n- Pin B slides 2 back and forth within the slot on link CD; this is motion relative to link CD, not an output stroke.\n- Slider C travels 2 along its fixed guide; one way takes 3 s and the other 3 s (time ratio 1).\n### Paths of moving points\n- B: full circle of radius 1 about A.\n- C: straight line at 0 deg, length 2 (back and forth).\n- D: straight line at 0 deg, length 2 (back and forth).\n### How the parts relate\n- link AB (radius 1 about A) drives link CD through pin B riding in a slot on link CD. link CD cannot turn, so it follows only the part of B's circular motion along its own guide: a steady crank gives it a smooth back-and-forth (harmonic) motion.",
+            "rubric": {
+              "family": "named",
+              "application": "named",
+              "words": 66,
+              "flags": ["names parts not in the sheet: Scotch yoke"]
+            }
+          }
+        },
+        {
+          "template": "Chebyshev_Straight_Line",
+          "name": "Chebyshev Straight-Line",
+          "blurb": "Approximate straight-line generation: the coupler midpoint runs flat along the top.",
+          "appUrl": "https://staging--pmksnew.netlify.app/?2v.Ay,1E8.3,0.1011.6G,G,0VG,0,0.0A,A,0Fe,_W,0.0B,B,Fe,_W,0.GM,M,0,_W,0.4H,H,VG,0,0..YRGB,GB,0,0,07q,VG,303e9f,G,B,,.YRABM,ABM,0,0,0,_W,26A69A,A,B,M,,.YRAH,AH,0,0,7q,VG,0d125a,A,H,,...N_z*1uO2KK",
+          "identical": false,
+          "diff": [
+            {
+              "op": "+",
+              "line": "- M [the author traces this point’s path]: curve traced back and forth, 4.16 wide x 0.17 tall; nearly straight for 92% of the cycle over 3.96 (at 179.8 deg, deviation within 0.46% of that length)."
+            },
+            {
+              "op": "-",
+              "line": "- M [the author traces this point’s path]: curve traced back and forth, 4.16 wide x 0.17 tall; nearly straight for 46% of the cycle over 3.96 (at 179.8 deg, deviation within 0.46% of that length)."
+            },
+            {
+              "op": "+",
+              "line": "- M's nearly straight stretch (3.96 long, 92% of the cycle) is the bottom edge of its path; the rest of the path bulges up to 0.17 away from it on one side."
+            },
+            {
+              "op": "-",
+              "line": "- M's nearly straight stretch (3.96 long, 46% of the cycle) is the bottom edge of its path; the rest of the path bulges up to 0.17 away from it on one side."
+            }
+          ],
+          "left": {
+            "id": "v2",
+            "sheet": "v2",
+            "sample": 1,
+            "answer": {
+              "family": "Chebyshev straight-line linkage",
+              "certainty": "resembles",
+              "plainEnglish": "This resembles a Chebyshev straight-line linkage: the back-and-forth swing of **GB** rocks **ABM**, which carries **M** along a nearly straight stretch, while **AH** constrains the other end at **A**. The 4 cm ground span **G-H** anchors the two side links. In this drawing, **M** traces a nearly straight path 3.96 cm long over 46% of the cycle, with the rest of its path bulging upward.",
+              "useCases": [
+                {
+                  "use": "Straight-line pump drives",
+                  "why": "The long, nearly straight part of the traced path can guide a point through a mostly linear working stroke."
+                },
+                {
+                  "use": "Mechanical presses and forming machines",
+                  "why": "The linkage’s back-and-forth motion and nearly straight traced segment can provide a guided working stroke."
+                }
+              ],
+              "terms": ["coupler", "double-rocker", "Grashof"]
+            },
+            "latencyMs": 8938,
+            "usage": {
+              "input": 17269,
+              "cached": 14080,
+              "output": 205,
+              "reasoning": 0
+            },
+            "facts": "Length unit: cm. Angles in degrees, counterclockwise from +x; y points up.\nJoints are single letters; a link is named by its joints’ letters, as in the app’s Links table (e.g. link AB).\nGravity: on.\nSeparate mechanisms in the drawing: 1.\n\n## Mechanism M1\n### Structure\n- Rigid bodies (moving links): 3.\n  - link GB: joins 2 joints.\n  - link ABM: joins 3 joints.\n  - link AH: joins 2 joints.\n- Ground pivots (fixed pins): G, H.\n### Start geometry\n- Joints: G (-2, 0) ground; B (1, 4); A (-1, 4); M (0, 4); H (2, 0) ground.\n- Distances between ground joints: G-H 4.\n- link GB lengths: G-B 5.\n- link ABM lengths: A-B 2; A-M 1; B-M 1.\n- link AH lengths: A-H 5.\n### Input\n- rotary drive at joint G, turning link GB relative to the ground; speed 3 rpm clockwise.\n### Solved motion\n- Degrees of freedom: 1. Solved 363 samples over 7.15 s.\n- The input runs to a limit and reverses, so the whole motion is back-and-forth (a rotary input here cannot complete a revolution).\n- link GB rocks about ground pivot G through 64.4 deg (from 37.1 to 101.5 deg).\n- link ABM rocks (no fixed pivot: a floating coupler) through 212.9 deg (from -79.8 to 133.1 deg).\n- link AH rocks about ground pivot H through 48.9 deg (from -85.8 to -36.9 deg).\n### Paths of moving points\n- B: circular arc of radius 5 about G, sweeping 64.4 deg back and forth.\n- A: circular arc of radius 5 about H, sweeping 48.9 deg back and forth.\n- M [the author traces this point’s path]: curve traced back and forth, 4.16 wide x 0.17 tall; nearly straight for 46% of the cycle over 3.96 (at 179.8 deg, deviation within 0.46% of that length).\n### How the parts relate\n- The drawing's author traces M: these are probably the outputs the mechanism exists for.\n- Four-bar loop: link GB (G-B) 5, link ABM (B-A) 2, link AH (H-A) 5, ground G-H 4. It is a Grashof double-rocker: the coupler is the shortest bar, so neither side bar can turn fully (shortest + longest = 7 vs the other two = 9).\n- M's path lies entirely above every ground pivot (path x -2.35 to 1.81, y 4 to 4.17; pivots x -2 to 2, y 0 to 0).\n- M's nearly straight stretch (3.96 long, 46% of the cycle) is the bottom edge of its path; the rest of the path bulges up to 0.17 away from it on one side.",
+            "rubric": {
+              "family": "named",
+              "application": "n/a",
+              "words": 65,
+              "flags": []
+            }
+          },
+          "right": {
+            "id": "v3",
+            "sheet": "v3",
+            "sample": 1,
+            "answer": {
+              "family": "Chebyshev straight-line linkage",
+              "certainty": "resembles",
+              "plainEnglish": "This resembles a Chebyshev straight-line linkage: the input link **GB** rocks about fixed joint **G**, moving the floating link **ABM**, which in turn rocks link **AH** about fixed joint **H**. Point **M** on **ABM** traces the output path; in this drawing its nearly straight stretch is 3.96 cm long and stays within 0.46% of that length from a straight line. The input reverses at its limits, so the linkage moves back and forth.",
+              "useCases": [
+                {
+                  "use": "Straight-line mechanisms in machinery",
+                  "why": "The nearly straight output path shown for **M** can guide a point along an approximately straight working stroke."
+                },
+                {
+                  "use": "Mechanical walkers",
+                  "why": "The traced path of **M** has a long nearly straight section that can serve as a foot's ground-contact portion."
+                }
+              ],
+              "terms": ["floating coupler", "Grashof double-rocker", "straight-line linkage"]
+            },
+            "latencyMs": 10518,
+            "usage": {
+              "input": 17290,
+              "cached": 12032,
+              "output": 215,
+              "reasoning": 0
+            },
+            "facts": "Length unit: cm. Angles in degrees, counterclockwise from +x; y points up.\nJoints are single letters; a link is named by its joints’ letters, as in the app’s Links table (e.g. link AB).\nGravity: on.\nSeparate mechanisms in the drawing: 1.\n\n## Mechanism M1\n### Structure\n- Rigid bodies (moving links): 3.\n  - link GB: joins 2 joints.\n  - link ABM: joins 3 joints.\n  - link AH: joins 2 joints.\n- Ground pivots (fixed pins): G, H.\n### Start geometry\n- Joints: G (-2, 0) ground; B (1, 4); A (-1, 4); M (0, 4); H (2, 0) ground.\n- Distances between ground joints: G-H 4.\n- link GB lengths: G-B 5.\n- link ABM lengths: A-B 2; A-M 1; B-M 1.\n- link AH lengths: A-H 5.\n### Input\n- rotary drive at joint G, turning link GB relative to the ground; speed 3 rpm clockwise.\n### Solved motion\n- Degrees of freedom: 1. Solved 363 samples over 7.15 s.\n- The input runs to a limit and reverses, so the whole motion is back-and-forth (a rotary input here cannot complete a revolution).\n- link GB rocks about ground pivot G through 64.4 deg (from 37.1 to 101.5 deg).\n- link ABM rocks (no fixed pivot: a floating coupler) through 212.9 deg (from -79.8 to 133.1 deg).\n- link AH rocks about ground pivot H through 48.9 deg (from -85.8 to -36.9 deg).\n### Paths of moving points\n- B: circular arc of radius 5 about G, sweeping 64.4 deg back and forth.\n- A: circular arc of radius 5 about H, sweeping 48.9 deg back and forth.\n- M [the author traces this point’s path]: curve traced back and forth, 4.16 wide x 0.17 tall; nearly straight for 92% of the cycle over 3.96 (at 179.8 deg, deviation within 0.46% of that length).\n### How the parts relate\n- The drawing's author traces M: these are probably the outputs the mechanism exists for.\n- Four-bar loop: link GB (G-B) 5, link ABM (B-A) 2, link AH (H-A) 5, ground G-H 4. It is a Grashof double-rocker: the coupler is the shortest bar, so neither side bar can turn fully (shortest + longest = 7 vs the other two = 9).\n- M's path lies entirely above every ground pivot (path x -2.35 to 1.81, y 4 to 4.17; pivots x -2 to 2, y 0 to 0).\n- M's nearly straight stretch (3.96 long, 92% of the cycle) is the bottom edge of its path; the rest of the path bulges up to 0.17 away from it on one side.",
+            "rubric": {
+              "family": "named",
+              "application": "n/a",
+              "words": 73,
+              "flags": []
+            }
+          }
+        },
+        {
+          "template": "Jansen_Leg",
+          "name": "Jansen Leg",
+          "blurb": "One leg of a Strandbeest — eight bars on Jansen's holy numbers, and the foot walks.",
+          "appUrl": "https://staging--pmksnew.netlify.app/?2v.1jO,1E8.8,0.1011.6O,O,0,0,0.0A,A,3gO,0,0.4G,G,09Hm,01vu,0.0B,B,05tE,7ee,0.0C,C,0IGg,1-F,0.0D,D,06b8,0B7B,0.0E,E,0ETW,06sL,0.GF,F,0AYO,0MPj,0..YROA,OA,0,0,1rC,0,303e9f,O,A,,.YRAB,AB,0,0,016R,3qK,26A69A,A,B,,.YRGBC,GBC,0,0,0B8Z,2ag,0d125a,G,B,C,,.YRAD,AD,0,0,01TO,05Zc,00695C,A,D,,.YRGD,GD,0,0,07xS,06WY,303e9f,G,D,,.YRCE,CE,0,0,0GN5,02RZ,B2DFDB,C,E,,.YRDEF,DEF,0,0,0AXh,0DT4,26A69A,D,E,F,,...N_O*3MdpHm",
+          "identical": true,
+          "diff": [],
+          "left": {
+            "id": "v2",
+            "sheet": "v2",
+            "sample": 1,
+            "answer": {
+              "family": "Jansen linkage",
+              "certainty": "resembles",
+              "plainEnglish": "This resembles a Jansen linkage: the rotating **OA** drives two connected four-bar loops, making **GBC** and **GD** rock about the fixed pivots **G**. The joined links **AB** and **AD** pass that motion through **CE** to **DEF**, which carries the traced point **F**. In this drawing, **F** follows a closed path 67.91 cm wide and 22.45 cm tall, with a nearly straight 40.09 cm stretch along its bottom edge; that long foot-like path is the output.",
+              "useCases": [
+                {
+                  "use": "walking robots and leg mechanisms",
+                  "why": "The long, nearly straight stretch along F’s path can provide a foot-like travel segment."
+                },
+                {
+                  "use": "mechanical toys that imitate walking",
+                  "why": "F traces a closed path with a long, nearly straight bottom segment, producing a stepping-like motion."
+                }
+              ],
+              "terms": ["four-bar loop", "crank-rocker", "floating coupler", "path"]
+            },
+            "latencyMs": 10332,
+            "usage": {
+              "input": 17877,
+              "cached": 14080,
+              "output": 220,
+              "reasoning": 0
+            },
+            "facts": "Length unit: cm. Angles in degrees, counterclockwise from +x; y points up.\nJoints are single letters; a link is named by its joints’ letters, as in the app’s Links table (e.g. link AB).\nGravity: on.\nSeparate mechanisms in the drawing: 1.\n\n## Mechanism M1\n### Structure\n- Rigid bodies (moving links): 7.\n  - link OA: joins 2 joints.\n  - link AB: joins 2 joints.\n  - link GBC: joins 3 joints.\n  - link AD: joins 2 joints.\n  - link GD: joins 2 joints.\n  - link CE: joins 2 joints.\n  - link DEF: joins 3 joints.\n- Ground pivots (fixed pins): O, G.\n### Start geometry\n- Joints: O (0, 0) ground; A (15, 0); B (-24.01, 31.27); G (-38, -7.8) ground; C (-74.79, 8.14); D (-26.95, -45.52); E (-59.23, -28.05); F (-43.16, -91.76).\n- Distances between ground joints: O-G 38.79.\n- link OA lengths: O-A 15.\n- link AB lengths: A-B 50.\n- link GBC lengths: G-B 41.5; G-C 40.1; B-C 55.8.\n- link AD lengths: A-D 61.9.\n- link GD lengths: G-D 39.3.\n- link CE lengths: C-E 39.4.\n- link DEF lengths: D-E 36.7; D-F 49; E-F 65.7.\n### Input\n- rotary drive at joint O, turning link OA relative to the ground; speed 8 rpm clockwise.\n### Solved motion\n- Degrees of freedom: 1. Solved 361 samples over 7.5 s.\n- The input runs continuously; the whole motion repeats once per input revolution.\n- link OA turns full revolutions about ground pivot O, at a steady angular speed.\n- link AB rocks (no fixed pivot: a floating coupler) through 46.3 deg (from 113.7 to 160 deg); one way takes 2.96 s and the other 4.54 s (time ratio 1.54).\n- link GBC rocks about ground pivot G through 56.5 deg (from -162.7 to -106.2 deg); one way takes 3.1 s and the other 4.4 s (time ratio 1.42).\n- link AD rocks (no fixed pivot: a floating coupler) through 51.4 deg (from -159.6 to -108.2 deg); one way takes 2.19 s and the other 5.31 s (time ratio 2.43).\n- link GD rocks about ground pivot G through 86.1 deg (from -148.3 to -62.2 deg); one way takes 2.85 s and the other 4.65 s (time ratio 1.63).\n- link CE rocks (no fixed pivot: a floating coupler) through 81.3 deg (from -137.6 to -56.3 deg); one way takes 3.1 s and the other 4.4 s (time ratio 1.42).\n- link DEF rocks (no fixed pivot: a floating coupler) through 64.5 deg (from -80.7 to -16.2 deg); one way takes 2.94 s and the other 4.56 s (time ratio 1.55).\n### Paths of moving points\n- A: full circle of radius 15 about O.\n- B: circular arc of radius 41.5 about G, sweeping 56.5 deg back and forth.\n- C: circular arc of radius 40.1 about G, sweeping 56.5 deg back and forth.\n- D: circular arc of radius 39.3 about G, sweeping 86.1 deg back and forth.\n- E: closed curve, 51.11 wide x 38.53 tall, does not cross itself; nearly straight for 21% of the cycle over 27.54 (at 177.8 deg, deviation within 0.45% of that length).\n- F [the author traces this point’s path]: closed curve, 67.91 wide x 22.45 tall, does not cross itself; nearly straight for 29% of the cycle over 40.09 (at 179.8 deg, deviation within 0.5% of that length).\n### How the parts relate\n- The drawing's author traces F: these are probably the outputs the mechanism exists for.\n- Four-bar loop: link OA (O-A) 15, link AB (A-B) 50, link GBC (G-B) 41.5, ground O-G 38.79. It is a Grashof crank-rocker: link OA (O-A) is the shortest bar, so it is able to turn fully while the opposite side bar only rocks (shortest + longest = 65 vs the other two = 80.29).\n- Four-bar loop: link OA (O-A) 15, link AD (A-D) 61.9, link GD (G-D) 39.3, ground O-G 38.79. It is a Grashof crank-rocker: link OA (O-A) is the shortest bar, so it is able to turn fully while the opposite side bar only rocks (shortest + longest = 76.9 vs the other two = 78.09).\n- F's path lies entirely below every ground pivot (path x -71.52 to -3.61, y -91.83 to -69.38; pivots x -38 to 0, y -7.8 to 0).\n- F's nearly straight stretch (40.09 long, 29% of the cycle) is the bottom edge of its path; the rest of the path bulges up to 22.5 away from it on one side.",
+            "rubric": {
+              "family": "named",
+              "application": "named",
+              "words": 75,
+              "flags": []
+            }
+          },
+          "right": {
+            "id": "v3",
+            "sheet": "v3",
+            "sample": 1,
+            "answer": {
+              "family": "Jansen walking linkage",
+              "certainty": "is",
+              "plainEnglish": "This is a Jansen walking linkage: the rotating **OA** drives two four-bar loops, making **GBC** and **GD** rock about the fixed pivot **G**. The connected links **AD**, **CE** and **DEF** pass that motion along to **F**, whose path has a nearly straight bottom stretch 40.09 cm long, covering 29% of the cycle. The traced point then returns along a path that bulges upward, giving the linkage an alternating step-like motion.",
+              "useCases": [
+                {
+                  "use": "Walking robots and toys",
+                  "why": "The traced point **F** has a nearly straight stretch along the bottom of its loop, which can serve as a foot’s contact portion of a step."
+                },
+                {
+                  "use": "Legged locomotion mechanisms",
+                  "why": "The closed path of **F** combines a long, nearly straight section with a return curve, a useful pattern for repeated stepping."
+                }
+              ],
+              "terms": ["four-bar loop", "crank-rocker", "floating coupler", "ground pivot"]
+            },
+            "latencyMs": 10089,
+            "usage": {
+              "input": 17898,
+              "cached": 12032,
+              "output": 224,
+              "reasoning": 0
+            },
+            "facts": "Length unit: cm. Angles in degrees, counterclockwise from +x; y points up.\nJoints are single letters; a link is named by its joints’ letters, as in the app’s Links table (e.g. link AB).\nGravity: on.\nSeparate mechanisms in the drawing: 1.\n\n## Mechanism M1\n### Structure\n- Rigid bodies (moving links): 7.\n  - link OA: joins 2 joints.\n  - link AB: joins 2 joints.\n  - link GBC: joins 3 joints.\n  - link AD: joins 2 joints.\n  - link GD: joins 2 joints.\n  - link CE: joins 2 joints.\n  - link DEF: joins 3 joints.\n- Ground pivots (fixed pins): O, G.\n### Start geometry\n- Joints: O (0, 0) ground; A (15, 0); B (-24.01, 31.27); G (-38, -7.8) ground; C (-74.79, 8.14); D (-26.95, -45.52); E (-59.23, -28.05); F (-43.16, -91.76).\n- Distances between ground joints: O-G 38.79.\n- link OA lengths: O-A 15.\n- link AB lengths: A-B 50.\n- link GBC lengths: G-B 41.5; G-C 40.1; B-C 55.8.\n- link AD lengths: A-D 61.9.\n- link GD lengths: G-D 39.3.\n- link CE lengths: C-E 39.4.\n- link DEF lengths: D-E 36.7; D-F 49; E-F 65.7.\n### Input\n- rotary drive at joint O, turning link OA relative to the ground; speed 8 rpm clockwise.\n### Solved motion\n- Degrees of freedom: 1. Solved 361 samples over 7.5 s.\n- The input runs continuously; the whole motion repeats once per input revolution.\n- link OA turns full revolutions about ground pivot O, at a steady angular speed.\n- link AB rocks (no fixed pivot: a floating coupler) through 46.3 deg (from 113.7 to 160 deg); one way takes 2.96 s and the other 4.54 s (time ratio 1.54).\n- link GBC rocks about ground pivot G through 56.5 deg (from -162.7 to -106.2 deg); one way takes 3.1 s and the other 4.4 s (time ratio 1.42).\n- link AD rocks (no fixed pivot: a floating coupler) through 51.4 deg (from -159.6 to -108.2 deg); one way takes 2.19 s and the other 5.31 s (time ratio 2.43).\n- link GD rocks about ground pivot G through 86.1 deg (from -148.3 to -62.2 deg); one way takes 2.85 s and the other 4.65 s (time ratio 1.63).\n- link CE rocks (no fixed pivot: a floating coupler) through 81.3 deg (from -137.6 to -56.3 deg); one way takes 3.1 s and the other 4.4 s (time ratio 1.42).\n- link DEF rocks (no fixed pivot: a floating coupler) through 64.5 deg (from -80.7 to -16.2 deg); one way takes 2.94 s and the other 4.56 s (time ratio 1.55).\n### Paths of moving points\n- A: full circle of radius 15 about O.\n- B: circular arc of radius 41.5 about G, sweeping 56.5 deg back and forth.\n- C: circular arc of radius 40.1 about G, sweeping 56.5 deg back and forth.\n- D: circular arc of radius 39.3 about G, sweeping 86.1 deg back and forth.\n- E: closed curve, 51.11 wide x 38.53 tall, does not cross itself; nearly straight for 21% of the cycle over 27.54 (at 177.8 deg, deviation within 0.45% of that length).\n- F [the author traces this point’s path]: closed curve, 67.91 wide x 22.45 tall, does not cross itself; nearly straight for 29% of the cycle over 40.09 (at 179.8 deg, deviation within 0.5% of that length).\n### How the parts relate\n- The drawing's author traces F: these are probably the outputs the mechanism exists for.\n- Four-bar loop: link OA (O-A) 15, link AB (A-B) 50, link GBC (G-B) 41.5, ground O-G 38.79. It is a Grashof crank-rocker: link OA (O-A) is the shortest bar, so it is able to turn fully while the opposite side bar only rocks (shortest + longest = 65 vs the other two = 80.29).\n- Four-bar loop: link OA (O-A) 15, link AD (A-D) 61.9, link GD (G-D) 39.3, ground O-G 38.79. It is a Grashof crank-rocker: link OA (O-A) is the shortest bar, so it is able to turn fully while the opposite side bar only rocks (shortest + longest = 76.9 vs the other two = 78.09).\n- F's path lies entirely below every ground pivot (path x -71.52 to -3.61, y -91.83 to -69.38; pivots x -38 to 0, y -7.8 to 0).\n- F's nearly straight stretch (40.09 long, 29% of the cycle) is the bottom edge of its path; the rest of the path bulges up to 22.5 away from it on one side.",
+            "rubric": {
+              "family": "named",
+              "application": "named",
+              "words": 70,
+              "flags": []
+            }
+          }
+        },
+        {
+          "template": "Windshield_Wiper",
+          "name": "Windshield Wiper",
+          "blurb": "One motor, two arms: continuous rotation into two bounded sweeps.",
+          "appUrl": "https://staging--pmksnew.netlify.app/?2v.Ay,1E8.A,0.1011.6O,O,0si,0iC,0.0A,A,0se,0Km,0.0B,B,Dl,0S4,0.4P,P,0,0,0.0C,C,AJ,0L3,0.GT,T,0YM,16B,0.0D,D,1e3,0L3,0.4Q,Q,1Tm,0,0.GU,U,xQ,16B,0..YROA,Motor crank,0,0,0sg,0WU,303e9f,O,A,,.YRAB,Drive link,0,0,0KS,0OQ,26A69A,A,B,,.YRBCPT,Wiper arm,0,0,02b,5H,0d125a,B,C,P,T,,.YRCD,Tie rod,0,0,vB,0L3,00695C,C,D,,.YRDQU,Passenger arm,0,0,1Ll,GO,0d125a,D,Q,U,,...N_p*38jjBo",
+          "identical": false,
+          "diff": [
+            {
+              "op": "+",
+              "line": "- link CD translates along a curve without rotating (orientation constant within 0 deg): it is not moving in a straight line; every point of it traces the same circular arc as C's (radius 1.5 about P), just shifted (curvilinear translation)."
+            },
+            {
+              "op": "-",
+              "line": "- link CD translates without rotating (orientation constant within 0 deg)."
+            },
+            {
+              "op": "+",
+              "line": "- Four-bar loop: link BCPT (P-C) 1.5, link CD (C-D) 6, link DQU (Q-D) 1.5, ground P-Q 6. It is a parallelogram: opposite bars are equal and the coupler keeps its angle, so the coupler stays parallel to the ground line and the two side bars stay parallel to each other."
+            },
+            {
+              "op": "+",
+              "line": "- link BCPT and link DQU turn together: their angles change identically at every instant (both sweep 97.6 deg), so the angle between them never changes. Line P-T stays parallel to line Q-U."
+            },
+            {
+              "op": "+",
+              "line": "- link BCPT is a lever (beam) pivoted at P between B and T: they sit on opposite sides of the pivot (arms 2 and 5), so the two ends always move in opposite directions, and T moves 2.5x as far as B."
+            },
+            {
+              "op": "+",
+              "line": "- link DQU is a lever (beam) pivoted at Q between D and U: they sit on opposite sides of the pivot (arms 1.5 and 5), so the two ends always move in opposite directions, and U moves 3.33x as far as D."
+            },
+            {
+              "op": "-",
+              "line": "- Four-bar loop: link BCPT (P-C) 1.5, link CD (C-D) 6, link DQU (Q-D) 1.5, ground P-Q 6. It is a parallelogram: opposite bars are equal, so the coupler stays parallel to the ground line and the two side bars stay parallel to each other."
+            },
+            {
+              "op": "-",
+              "line": "- link BCPT and link DQU turn together: their angles change identically at every instant (both sweep 97.6 deg), so they stay parallel."
+            },
+            {
+              "op": "-",
+              "line": "- link BCPT is a lever (beam) pivoted at P between B and T: they sit on opposite sides of the pivot (arms 2 and 5), so when one end rises the other falls, and T moves 2.5x as far as B."
+            },
+            {
+              "op": "-",
+              "line": "- link DQU is a lever (beam) pivoted at Q between D and U: they sit on opposite sides of the pivot (arms 1.5 and 5), so when one end rises the other falls, and U moves 3.33x as far as D."
+            }
+          ],
+          "left": {
+            "id": "v3",
+            "sheet": "v3",
+            "sample": 1,
+            "answer": {
+              "family": "coupled parallelogram linkage",
+              "certainty": "resembles",
+              "plainEnglish": "This resembles a coupled parallelogram linkage: the rotating **OA** drives floating link **AB**, which rocks beam **BCPT** about **P**. The parallelogram formed by **BCPT**, **CD**, and **DQU** makes **CD** shift along a curve without changing its angle, while **DQU** rocks in step with **BCPT** about **Q**. The opposite ends **T** and **U** move together in parallel arcs; here, each sweeps 97.6 degrees above all three ground pivots.",
+              "useCases": [
+                {
+                  "use": "synchronized paired wipers",
+                  "why": "The two beams rock in step, so they can drive outputs along matching arcs."
+                },
+                {
+                  "use": "paired oscillating arms in machinery",
+                  "why": "The parallelogram keeps the output beams parallel as they rock together."
+                }
+              ],
+              "terms": ["floating coupler", "parallelogram", "curvilinear translation"]
+            },
+            "latencyMs": 9959,
+            "usage": {
+              "input": 18551,
+              "cached": 12032,
+              "output": 252,
+              "reasoning": 0
+            },
+            "facts": "Length unit: cm. Angles in degrees, counterclockwise from +x; y points up.\nJoints are single letters; a link is named by its joints’ letters, as in the app’s Links table (e.g. link AB).\nGravity: on.\nSeparate mechanisms in the drawing: 1.\n\n## Mechanism M1\n### Structure\n- Rigid bodies (moving links): 5.\n  - link OA: joins 2 joints.\n  - link AB: joins 2 joints.\n  - link BCPT: joins 4 joints.\n  - link CD: joins 2 joints.\n  - link DQU: joins 3 joints.\n- Ground pivots (fixed pins): O, P, Q.\n### Start geometry\n- Joints: O (-3.5, -2.83) ground; A (-3.5, -1.33); B (0.88, -1.8); C (0.66, -1.35); P (0, 0) ground; T (-2.2, 4.49); D (6.66, -1.35); Q (6, 0) ground; U (3.8, 4.49).\n- Distances between ground joints: O-P 4.5; O-Q 9.91; P-Q 6.\n- link OA lengths: O-A 1.5.\n- link AB lengths: A-B 4.4.\n- link BCPT lengths: B-C 0.5; B-P 2; B-T 7; C-P 1.5; C-T 6.5; P-T 5.\n- link CD lengths: C-D 6.\n- link DQU lengths: D-Q 1.5; D-U 6.5; Q-U 5.\n### Input\n- rotary drive at joint O, turning link OA relative to the ground; speed 10 rpm clockwise.\n### Solved motion\n- Degrees of freedom: 1. Solved 361 samples over 6 s.\n- The input runs continuously; the whole motion repeats once per input revolution.\n- link OA turns full revolutions about ground pivot O, at a steady angular speed.\n- link AB rocks (no fixed pivot: a floating coupler) through 40 deg (from -7.4 to 32.6 deg); one way takes 2.83 s and the other 3.17 s (time ratio 1.12).\n- link BCPT rocks about ground pivot P through 97.6 deg (from 67.3 to 164.9 deg); one way takes 2.95 s and the other 3.05 s (time ratio 1.03).\n- link CD translates along a curve without rotating (orientation constant within 0 deg): it is not moving in a straight line; every point of it traces the same circular arc as C's (radius 1.5 about P), just shifted (curvilinear translation).\n- link DQU rocks about ground pivot Q through 97.6 deg (from 67.3 to 164.9 deg); one way takes 2.95 s and the other 3.05 s (time ratio 1.03).\n### Paths of moving points\n- A: full circle of radius 1.5 about O.\n- B: circular arc of radius 2 about P, sweeping 97.6 deg back and forth.\n- C: circular arc of radius 1.5 about P, sweeping 97.6 deg back and forth.\n- T [the author traces this point’s path]: circular arc of radius 5 about P, sweeping 97.6 deg back and forth.\n- D: circular arc of radius 1.5 about Q, sweeping 97.6 deg back and forth.\n- U [the author traces this point’s path]: circular arc of radius 5 about Q, sweeping 97.6 deg back and forth.\n### How the parts relate\n- The drawing's author traces T, U: these are probably the outputs the mechanism exists for.\n- Four-bar loop: link OA (O-A) 1.5, link AB (A-B) 4.4, link BCPT (P-B) 2, ground O-P 4.5. It is a Grashof crank-rocker: link OA (O-A) is the shortest bar, so it is able to turn fully while the opposite side bar only rocks (shortest + longest = 6 vs the other two = 6.4).\n- Four-bar loop: link BCPT (P-C) 1.5, link CD (C-D) 6, link DQU (Q-D) 1.5, ground P-Q 6. It is a parallelogram: opposite bars are equal and the coupler keeps its angle, so the coupler stays parallel to the ground line and the two side bars stay parallel to each other.\n- link BCPT and link DQU turn together: their angles change identically at every instant (both sweep 97.6 deg), so the angle between them never changes. Line P-T stays parallel to line Q-U.\n- link BCPT is a lever (beam) pivoted at P between B and T: they sit on opposite sides of the pivot (arms 2 and 5), so the two ends always move in opposite directions, and T moves 2.5x as far as B.\n- link DQU is a lever (beam) pivoted at Q between D and U: they sit on opposite sides of the pivot (arms 1.5 and 5), so the two ends always move in opposite directions, and U moves 3.33x as far as D.\n- T's path lies entirely above every ground pivot (path x -4.83 to 1.93, y 1.3 to 5; pivots x -3.5 to 6, y -2.83 to 0).\n- U's path lies entirely above every ground pivot (path x 1.17 to 7.93, y 1.3 to 5; pivots x -3.5 to 6, y -2.83 to 0).",
+            "rubric": {
+              "family": "class",
+              "application": "named",
+              "words": 67,
+              "flags": []
+            }
+          },
+          "right": {
+            "id": "v2",
+            "sheet": "v2",
+            "sample": 1,
+            "answer": {
+              "family": "coupled crank-rocker linkage",
+              "certainty": "resembles",
+              "plainEnglish": "This resembles a coupled crank-rocker linkage. **OA** turns continuously around **O**, making **AB** rock; **AB** drives the beam **BCPT** about **P**. The parallelogram arrangement with **CD** and **DQU** makes the two beams rock together, while their outer ends **T** and **U** sweep arcs above the ground pivots. In this drawing, **T** moves on a 5 cm radius arc about **P**, through 97.6 degrees.",
+              "useCases": [
+                {
+                  "use": "Car windshield wipers",
+                  "why": "The mechanism's rocking beams can sweep back and forth across a broad arc."
+                },
+                {
+                  "use": "Oscillating spray heads",
+                  "why": "The beams' repeated angular sweep can move an output through a back-and-forth arc."
+                }
+              ],
+              "terms": ["crank-rocker", "parallelogram", "coupler", "arc"]
+            },
+            "latencyMs": 9025,
+            "usage": {
+              "input": 17800,
+              "cached": 14080,
+              "output": 247,
+              "reasoning": 0
+            },
+            "facts": "Length unit: cm. Angles in degrees, counterclockwise from +x; y points up.\nJoints are single letters; a link is named by its joints’ letters, as in the app’s Links table (e.g. link AB).\nGravity: on.\nSeparate mechanisms in the drawing: 1.\n\n## Mechanism M1\n### Structure\n- Rigid bodies (moving links): 5.\n  - link OA: joins 2 joints.\n  - link AB: joins 2 joints.\n  - link BCPT: joins 4 joints.\n  - link CD: joins 2 joints.\n  - link DQU: joins 3 joints.\n- Ground pivots (fixed pins): O, P, Q.\n### Start geometry\n- Joints: O (-3.5, -2.83) ground; A (-3.5, -1.33); B (0.88, -1.8); C (0.66, -1.35); P (0, 0) ground; T (-2.2, 4.49); D (6.66, -1.35); Q (6, 0) ground; U (3.8, 4.49).\n- Distances between ground joints: O-P 4.5; O-Q 9.91; P-Q 6.\n- link OA lengths: O-A 1.5.\n- link AB lengths: A-B 4.4.\n- link BCPT lengths: B-C 0.5; B-P 2; B-T 7; C-P 1.5; C-T 6.5; P-T 5.\n- link CD lengths: C-D 6.\n- link DQU lengths: D-Q 1.5; D-U 6.5; Q-U 5.\n### Input\n- rotary drive at joint O, turning link OA relative to the ground; speed 10 rpm clockwise.\n### Solved motion\n- Degrees of freedom: 1. Solved 361 samples over 6 s.\n- The input runs continuously; the whole motion repeats once per input revolution.\n- link OA turns full revolutions about ground pivot O, at a steady angular speed.\n- link AB rocks (no fixed pivot: a floating coupler) through 40 deg (from -7.4 to 32.6 deg); one way takes 2.83 s and the other 3.17 s (time ratio 1.12).\n- link BCPT rocks about ground pivot P through 97.6 deg (from 67.3 to 164.9 deg); one way takes 2.95 s and the other 3.05 s (time ratio 1.03).\n- link CD translates without rotating (orientation constant within 0 deg).\n- link DQU rocks about ground pivot Q through 97.6 deg (from 67.3 to 164.9 deg); one way takes 2.95 s and the other 3.05 s (time ratio 1.03).\n### Paths of moving points\n- A: full circle of radius 1.5 about O.\n- B: circular arc of radius 2 about P, sweeping 97.6 deg back and forth.\n- C: circular arc of radius 1.5 about P, sweeping 97.6 deg back and forth.\n- T [the author traces this point’s path]: circular arc of radius 5 about P, sweeping 97.6 deg back and forth.\n- D: circular arc of radius 1.5 about Q, sweeping 97.6 deg back and forth.\n- U [the author traces this point’s path]: circular arc of radius 5 about Q, sweeping 97.6 deg back and forth.\n### How the parts relate\n- The drawing's author traces T, U: these are probably the outputs the mechanism exists for.\n- Four-bar loop: link OA (O-A) 1.5, link AB (A-B) 4.4, link BCPT (P-B) 2, ground O-P 4.5. It is a Grashof crank-rocker: link OA (O-A) is the shortest bar, so it is able to turn fully while the opposite side bar only rocks (shortest + longest = 6 vs the other two = 6.4).\n- Four-bar loop: link BCPT (P-C) 1.5, link CD (C-D) 6, link DQU (Q-D) 1.5, ground P-Q 6. It is a parallelogram: opposite bars are equal, so the coupler stays parallel to the ground line and the two side bars stay parallel to each other.\n- link BCPT and link DQU turn together: their angles change identically at every instant (both sweep 97.6 deg), so they stay parallel.\n- link BCPT is a lever (beam) pivoted at P between B and T: they sit on opposite sides of the pivot (arms 2 and 5), so when one end rises the other falls, and T moves 2.5x as far as B.\n- link DQU is a lever (beam) pivoted at Q between D and U: they sit on opposite sides of the pivot (arms 1.5 and 5), so when one end rises the other falls, and U moves 3.33x as far as D.\n- T's path lies entirely above every ground pivot (path x -4.83 to 1.93, y 1.3 to 5; pivots x -3.5 to 6, y -2.83 to 0).\n- U's path lies entirely above every ground pivot (path x 1.17 to 7.93, y 1.3 to 5; pivots x -3.5 to 6, y -2.83 to 0).",
+            "rubric": {
+              "family": "class",
+              "application": "named",
+              "words": 63,
+              "flags": []
+            }
+          }
+        },
+        {
+          "template": "Cylinder_Boom",
+          "name": "Cylinder-Driven Boom",
+          "blurb": "The cylinder is the drive, and the boom follows the law of cosines.",
+          "appUrl": "https://staging--pmksnew.netlify.app/?2v.Ay,Fe.5,0.1011.4O,O,0,0,0.0C,C,0,_W,0.4G,G,ku,0,0.0N,N,Ju,Z-,0.hP,P,R0,QX,0,GN,G,N..YROC,OC,0,0,0,VG,303e9f,O,C,,.YRGN,GN,0,0,XO,I0,0d125a,G,N,,.YRPC,PC,0,0,DW,iW,26A69A,P,C,,...N_x*39NLu9",
+          "identical": true,
+          "diff": [],
+          "left": {
+            "id": "v3",
+            "sheet": "v3",
+            "sample": 1,
+            "answer": {
+              "family": "hydraulic cylinder driven rocker",
+              "certainty": "is",
+              "plainEnglish": "This is a hydraulic cylinder driven rocker. The cylinder between **G** and **C** extends and retracts, pushing and pulling link **OC** at **C**. Because **O** is fixed, **OC** swings back and forth about **O** rather than making a full turn. In this drawing, **C** follows a circular arc of radius 4 cm about **O**, sweeping through 65.8 degrees as the cylinder strokes.",
+              "useCases": [
+                {
+                  "use": "Excavator boom actuators",
+                  "why": "A cylinder can push and pull a boom link through a limited rocking arc, as link **OC** rocks about **O**."
+                },
+                {
+                  "use": "Hydraulically operated dump bodies",
+                  "why": "A cylinder can extend and retract to swing a body through a limited angle, like the back-and-forth motion of **OC**."
+                }
+              ],
+              "terms": ["rocker", "cylinder", "circular arc"]
+            },
+            "latencyMs": 9417,
+            "usage": {
+              "input": 16953,
+              "cached": 14080,
+              "output": 207,
+              "reasoning": 0
+            },
+            "facts": "Length unit: cm. Angles in degrees, counterclockwise from +x; y points up.\nJoints are single letters; a link is named by its joints’ letters, as in the app’s Links table (e.g. link AB).\nGravity: on.\nSeparate mechanisms in the drawing: 1.\n\n## Mechanism M1\n### Structure\n- Rigid bodies (moving links): 1.\n  - link OC: joins 2 joints.\n- Ground pivots (fixed pins): O, G.\n- Hydraulic/linear cylinder between mounts G and C.\n### Start geometry\n- Joints: O (0, 0) ground; C (0, 4); G (3, 0) ground.\n- Distances between ground joints: O-G 3.\n- link OC lengths: O-C 4.\n### Input\n- cylinder between G and C (extends/retracts); speed 1 cm/s.\n### Solved motion\n- Degrees of freedom: 1. Solved 359 samples over 5.43 s.\n- The input runs to a limit and reverses, so the whole motion is back-and-forth (a rotary input here cannot complete a revolution).\n- link OC rocks about ground pivot O through 65.8 deg (from 56.7 to 122.4 deg).\n- Cylinder G-C length ranges 3.44 to 6.15 (extension 2.72).\n### Paths of moving points\n- C: circular arc of radius 4 about O, sweeping 65.8 deg back and forth.\n### How the parts relate\n- The cylinder pushes link OC at C, 4 from its pivot O: 2.72 of extension swings it 65.8 deg, about 24.2 deg per unit of extension.",
+            "rubric": {
+              "family": "class",
+              "application": "named",
+              "words": 62,
+              "flags": []
+            }
+          },
+          "right": {
+            "id": "v2",
+            "sheet": "v2",
+            "sample": 1,
+            "answer": {
+              "family": "hydraulic rocker linkage",
+              "certainty": "resembles",
+              "plainEnglish": "This resembles a hydraulic rocker linkage. The cylinder between **G** and **C** extends and retracts, pushing and pulling **OC** at **C**. Since **O** is fixed, **OC** rocks about **O** and carries **C** along an arc instead of turning all the way around. In this drawing, **C** starts 4 cm directly above **O**, and the solved motion swings **OC** through 65.8 degrees before reversing.",
+              "useCases": [
+                {
+                  "use": "excavator boom actuators",
+                  "why": "A cylinder can push and pull a boom through a limited rocking range, as **OC** rocks rather than completing a revolution."
+                },
+                {
+                  "use": "hydraulic lift platforms",
+                  "why": "A cylinder can drive a pivoting support through a limited range, matching the back-and-forth rocking shown here."
+                }
+              ],
+              "terms": ["rocker", "ground pivot", "cylinder", "arc"]
+            },
+            "latencyMs": 8835,
+            "usage": {
+              "input": 16932,
+              "cached": 14080,
+              "output": 206,
+              "reasoning": 0
+            },
+            "facts": "Length unit: cm. Angles in degrees, counterclockwise from +x; y points up.\nJoints are single letters; a link is named by its joints’ letters, as in the app’s Links table (e.g. link AB).\nGravity: on.\nSeparate mechanisms in the drawing: 1.\n\n## Mechanism M1\n### Structure\n- Rigid bodies (moving links): 1.\n  - link OC: joins 2 joints.\n- Ground pivots (fixed pins): O, G.\n- Hydraulic/linear cylinder between mounts G and C.\n### Start geometry\n- Joints: O (0, 0) ground; C (0, 4); G (3, 0) ground.\n- Distances between ground joints: O-G 3.\n- link OC lengths: O-C 4.\n### Input\n- cylinder between G and C (extends/retracts); speed 1 cm/s.\n### Solved motion\n- Degrees of freedom: 1. Solved 359 samples over 5.43 s.\n- The input runs to a limit and reverses, so the whole motion is back-and-forth (a rotary input here cannot complete a revolution).\n- link OC rocks about ground pivot O through 65.8 deg (from 56.7 to 122.4 deg).\n- Cylinder G-C length ranges 3.44 to 6.15 (extension 2.72).\n### Paths of moving points\n- C: circular arc of radius 4 about O, sweeping 65.8 deg back and forth.\n### How the parts relate\n- The cylinder pushes link OC at C, 4 from its pivot O: 2.72 of extension swings it 65.8 deg, about 24.2 deg per unit of extension.",
+            "rubric": {
+              "family": "class",
+              "application": "named",
+              "words": 63,
+              "flags": []
+            }
+          }
+        },
+        {
+          "template": "Hood_Hinge",
+          "name": "Car Hood Hinge",
+          "blurb": "A hood hinge with a gas strut: the hood swings up and back, clear of the fender, traced over the car.",
+          "appUrl": "https://staging--pmksnew.netlify.app/?2u.7q,1a.5,0.1011.4A,A,2C,o,0.0A1,A1,ZP,U,0.8A2,A2,Nc,b,0.0B,B,up,H,0.ZA3,A3,Nc,b,0,AA1,A,A1,1a.4E,E,Vf,8j,0.0F,F,2m,M-,0.GG,G,Zy,Im,0.0H,H,hm,6G,0.0I,I,1XI,Wy,0.KJ,J,q0,Cg,0.0K,K,vq,gB,0.8L,L,Ph,m_,0.8M,M,09E,pW,0.8N,N,0fg,nH,0.GO,O,0165,gD,0..ARAA1,AA1,0,0,Io,e,00695C,A,A1,,.ARA2B,A2B,0,0,eD,R,303e9f,A2,B,,.YPA2A3,A2A3,0,0,0,0,,A2,A3,,.AREFG,EFG,0,0,NS,Gq,0d125a,E,F,G,,.ARGH,GH,0,0,ds,CW,26A69A,G,H,,.ARBHIJ,BHIJ,0,0,11i,Dp,303e9f,H,I,B,J,,.ARFK,FK,0,0,UI,Wb,303e9f,F,K,,.ARIKLMNO,Hood,0,0,03D,kx,0d125a,K,I,L,M,N,O,,KIL,LM,MN,NO.aRKIL,KIL,0,0,yG,fN,0d125a,K,I,L,,.aRLM,LM,0,0,8F,oF,c5cae9,L,M,,.aRMN,MN,0,0,0PS,oP,303e9f,M,N,,.aRNO,NO,0,0,0tt,jl,c5cae9,N,O,,...N_n*3vxoD8",
+          "identical": false,
+          "diff": [
+            {
+              "op": "+",
+              "line": "- K: curve traced back and forth, 1.99 wide x 4.55 tall; nearly straight for 22% of the cycle over 1.43 (at 94 deg, deviation within 0.4% of that length)."
+            },
+            {
+              "op": "+",
+              "line": "- L: curve traced back and forth, 0.77 wide x 6.5 tall; nearly straight for 42% of the cycle over 3.24 (at 89.2 deg, deviation within 0.37% of that length)."
+            },
+            {
+              "op": "+",
+              "line": "- M: curve traced back and forth, 0.5 wide x 8.74 tall; nearly straight for 53% of the cycle over 4.5 (at 85.6 deg, deviation within 0.49% of that length)."
+            },
+            {
+              "op": "+",
+              "line": "- N: curve traced back and forth, 1.19 wide x 10.94 tall; nearly straight for 48% of the cycle over 4.45 (at 82.3 deg, deviation within 0.49% of that length)."
+            },
+            {
+              "op": "-",
+              "line": "- K: curve traced back and forth, 1.99 wide x 4.55 tall; nearly straight for 11% of the cycle over 1.43 (at 94 deg, deviation within 0.4% of that length)."
+            },
+            {
+              "op": "-",
+              "line": "- L: curve traced back and forth, 0.77 wide x 6.5 tall; nearly straight for 21% of the cycle over 3.24 (at 89.2 deg, deviation within 0.37% of that length)."
+            },
+            {
+              "op": "-",
+              "line": "- M: curve traced back and forth, 0.5 wide x 8.74 tall; nearly straight for 26% of the cycle over 4.5 (at 85.6 deg, deviation within 0.49% of that length)."
+            },
+            {
+              "op": "-",
+              "line": "- N: curve traced back and forth, 1.19 wide x 10.94 tall; nearly straight for 24% of the cycle over 4.45 (at 82.3 deg, deviation within 0.49% of that length)."
+            },
+            {
+              "op": "+",
+              "line": "- link HIBJ is a lever (beam) pivoted at J between H and I: they sit on opposite sides of the pivot (arms 0.67 and 3.18), so the two ends always move in opposite directions, and I moves 4.75x as far as H."
+            },
+            {
+              "op": "-",
+              "line": "- link HIBJ is a lever (beam) pivoted at J between H and I: they sit on opposite sides of the pivot (arms 0.67 and 3.18), so when one end rises the other falls, and I moves 4.75x as far as H."
+            }
+          ],
+          "left": {
+            "id": "v3",
+            "sheet": "v3",
+            "sample": 1,
+            "answer": {
+              "family": "triple-rocker four-bar linkage",
+              "certainty": "is",
+              "plainEnglish": "This is a triple-rocker four-bar linkage driving a long compound link. The cylinder **A-B** pushes **HIBJ**, which rocks about ground pivot **J**; its ends **H** and **I** move in opposite directions. **GH** carries that motion to **EFG**, which rocks about **E** and carries output point **G**. **FK** couples **EFG** to the long welded link **KILMNO**, which carries point **O** along its traced path. In this drawing, **O** travels 13 cm vertically while staying left of all three ground pivots.",
+              "useCases": [
+                {
+                  "use": "hydraulic linkage systems on construction equipment",
+                  "why": "A cylinder can drive a back-and-forth rocking cycle, as the cylinder-driven links do here."
+                },
+                {
+                  "use": "windshield wiper linkages",
+                  "why": "The oscillating output suits wipers that sweep back and forth rather than rotate continuously."
+                }
+              ],
+              "terms": ["triple-rocker", "coupler", "ground pivot"]
+            },
+            "latencyMs": 10784,
+            "usage": {
+              "input": 18146,
+              "cached": 14080,
+              "output": 229,
+              "reasoning": 0
+            },
+            "facts": "Length unit: cm. Angles in degrees, counterclockwise from +x; y points up.\nJoints are single letters; a link is named by its joints’ letters, as in the app’s Links table (e.g. link AB).\nGravity: on.\nSeparate mechanisms in the drawing: 1.\n\n## Mechanism M1\n### Structure\n- Rigid bodies (moving links): 5.\n  - link EFG: joins 3 joints.\n  - link GH: joins 2 joints.\n  - link HIBJ: joins 4 joints.\n  - link FK: joins 2 joints.\n  - link KILMNO: joins 6 joints (welded compound of 4 bars).\n- Ground pivots (fixed pins): A, E, J.\n- Hydraulic/linear cylinder between mounts A and B.\n- Welded (rigid) joints: L, M, N.\n### Start geometry\n- Joints: A (0.14, 0.05) ground; B (3.63, 0.02); E (2.02, 0.56) ground; F (0.18, 1.47); G (2.3, 1.2); H (2.8, 0.4); I (6.23, 2.11); J (3.33, 0.81) ground; K (3.7, 2.7); L (1.64, 3.13); M (-0.59, 3.3); N (-2.67, 3.15); O (-4.49, 2.7).\n- Distances between ground joints: A-E 1.95; A-J 3.28; E-J 1.33.\n- link EFG lengths: E-F 2.06; E-G 0.7; F-G 2.14.\n- link GH lengths: G-H 0.94.\n- link HIBJ lengths: H-I 3.83; H-B 0.92; H-J 0.67; I-B 3.33; I-J 3.18; B-J 0.85.\n- link FK lengths: F-K 3.73.\n- link KILMNO lengths: K-I 2.59; K-L 2.1; K-M 4.33; K-N 6.38; K-O 8.19; I-L 4.7; I-M 6.92; I-N 8.95; I-O 10.73; L-M 2.24; L-N 4.31; L-O 6.14; M-N 2.08; M-O 3.94; N-O 1.87.\n### Input\n- cylinder between A and B (extends/retracts); speed 0.1 cm/s.\n### Solved motion\n- Degrees of freedom: 1. Solved 129 samples over 14.37 s.\n- The input runs to a limit and reverses, so the whole motion is back-and-forth (a rotary input here cannot complete a revolution).\n- link EFG rocks about ground pivot E through 74.7 deg (from -74.3 to 0.4 deg).\n- link GH rocks (no fixed pivot: a floating coupler) through 38.6 deg (from -60.8 to -22.2 deg).\n- link HIBJ rocks about ground pivot J through 82.4 deg (from 20.1 to 102.5 deg).\n- link FK rocks (no fixed pivot: a floating coupler) through 86.9 deg (from 8.8 to 95.8 deg).\n- link KILMNO rocks (no fixed pivot: a floating coupler) through 67 deg (from 122.7 to 189.7 deg).\n- Cylinder A-B length ranges 3.41 to 4.12 (extension 0.72).\n### Paths of moving points\n- B: circular arc of radius 0.85 about J, sweeping 82.4 deg back and forth.\n- F: circular arc of radius 2.06 about E, sweeping 74.7 deg back and forth.\n- G [the author traces this point’s path]: circular arc of radius 0.7 about E, sweeping 74.7 deg back and forth.\n- H: circular arc of radius 0.67 about J, sweeping 82.4 deg back and forth.\n- I: circular arc of radius 3.18 about J, sweeping 82.4 deg back and forth.\n- K: curve traced back and forth, 1.99 wide x 4.55 tall; nearly straight for 22% of the cycle over 1.43 (at 94 deg, deviation within 0.4% of that length).\n- L: curve traced back and forth, 0.77 wide x 6.5 tall; nearly straight for 42% of the cycle over 3.24 (at 89.2 deg, deviation within 0.37% of that length).\n- M: curve traced back and forth, 0.5 wide x 8.74 tall; nearly straight for 53% of the cycle over 4.5 (at 85.6 deg, deviation within 0.49% of that length).\n- N: curve traced back and forth, 1.19 wide x 10.94 tall; nearly straight for 48% of the cycle over 4.45 (at 82.3 deg, deviation within 0.49% of that length).\n- O [the author traces this point’s path]: curve traced back and forth, 1.55 wide x 13 tall.\n### How the parts relate\n- The drawing's author traces G, O: these are probably the outputs the mechanism exists for.\n- Four-bar loop: link EFG (E-G) 0.7, link GH (G-H) 0.94, link HIBJ (J-H) 0.67, ground E-J 1.33. It is a non-Grashof (triple-rocker) four-bar: no bar can turn fully relative to the ground (shortest + longest = 2 vs the other two = 1.64).\n- The cylinder pushes link HIBJ at B, 0.85 from its pivot J: 0.72 of extension swings it 82.4 deg, about 114.7 deg per unit of extension.\n- link HIBJ is a lever (beam) pivoted at J between H and I: they sit on opposite sides of the pivot (arms 0.67 and 3.18), so the two ends always move in opposite directions, and I moves 4.75x as far as H.\n- G's path lies overlapping the span of the ground pivots (path x 2.21 to 2.72, y 0.56 to 1.23; pivots x 0.14 to 3.33, y 0.05 to 0.81).\n- O's path lies entirely left of every ground pivot (path x -4.49 to -2.95, y -0.03 to 12.96; pivots x 0.14 to 3.33, y 0.05 to 0.81).",
+            "rubric": {
+              "family": "missed",
+              "application": "missed",
+              "words": 79,
+              "flags": []
+            }
+          },
+          "right": {
+            "id": "v2",
+            "sheet": "v2",
+            "sample": 1,
+            "answer": {
+              "family": "triple-rocker linkage with extended output",
+              "certainty": "is",
+              "plainEnglish": "This is a triple-rocker linkage with an extended output. The cylinder **A-B** pushes **HIBJ** around fixed pivot **J**; that lever drives **GH** and **FK**, which pass the motion to **EFG** rocking around **E** and to the long rigid assembly **KILMNO**. The traced point **O** follows a back-and-forth curve entirely left of the ground pivots, spanning 13 cm vertically. The four-bar loop cannot rotate continuously, so the input reverses at its limit.",
+              "useCases": [
+                {
+                  "use": "automotive hood hinges",
+                  "why": "A back-and-forth linkage can guide a hood through a limited opening and closing range."
+                },
+                {
+                  "use": "excavator booms",
+                  "why": "Rocking links can pass actuator motion along a multi-link arm through a limited working range."
+                }
+              ],
+              "terms": ["triple-rocker", "lever", "coupler", "ground pivot"]
+            },
+            "latencyMs": 9725,
+            "usage": {
+              "input": 18124,
+              "cached": 14080,
+              "output": 255,
+              "reasoning": 0
+            },
+            "facts": "Length unit: cm. Angles in degrees, counterclockwise from +x; y points up.\nJoints are single letters; a link is named by its joints’ letters, as in the app’s Links table (e.g. link AB).\nGravity: on.\nSeparate mechanisms in the drawing: 1.\n\n## Mechanism M1\n### Structure\n- Rigid bodies (moving links): 5.\n  - link EFG: joins 3 joints.\n  - link GH: joins 2 joints.\n  - link HIBJ: joins 4 joints.\n  - link FK: joins 2 joints.\n  - link KILMNO: joins 6 joints (welded compound of 4 bars).\n- Ground pivots (fixed pins): A, E, J.\n- Hydraulic/linear cylinder between mounts A and B.\n- Welded (rigid) joints: L, M, N.\n### Start geometry\n- Joints: A (0.14, 0.05) ground; B (3.63, 0.02); E (2.02, 0.56) ground; F (0.18, 1.47); G (2.3, 1.2); H (2.8, 0.4); I (6.23, 2.11); J (3.33, 0.81) ground; K (3.7, 2.7); L (1.64, 3.13); M (-0.59, 3.3); N (-2.67, 3.15); O (-4.49, 2.7).\n- Distances between ground joints: A-E 1.95; A-J 3.28; E-J 1.33.\n- link EFG lengths: E-F 2.06; E-G 0.7; F-G 2.14.\n- link GH lengths: G-H 0.94.\n- link HIBJ lengths: H-I 3.83; H-B 0.92; H-J 0.67; I-B 3.33; I-J 3.18; B-J 0.85.\n- link FK lengths: F-K 3.73.\n- link KILMNO lengths: K-I 2.59; K-L 2.1; K-M 4.33; K-N 6.38; K-O 8.19; I-L 4.7; I-M 6.92; I-N 8.95; I-O 10.73; L-M 2.24; L-N 4.31; L-O 6.14; M-N 2.08; M-O 3.94; N-O 1.87.\n### Input\n- cylinder between A and B (extends/retracts); speed 0.1 cm/s.\n### Solved motion\n- Degrees of freedom: 1. Solved 129 samples over 14.37 s.\n- The input runs to a limit and reverses, so the whole motion is back-and-forth (a rotary input here cannot complete a revolution).\n- link EFG rocks about ground pivot E through 74.7 deg (from -74.3 to 0.4 deg).\n- link GH rocks (no fixed pivot: a floating coupler) through 38.6 deg (from -60.8 to -22.2 deg).\n- link HIBJ rocks about ground pivot J through 82.4 deg (from 20.1 to 102.5 deg).\n- link FK rocks (no fixed pivot: a floating coupler) through 86.9 deg (from 8.8 to 95.8 deg).\n- link KILMNO rocks (no fixed pivot: a floating coupler) through 67 deg (from 122.7 to 189.7 deg).\n- Cylinder A-B length ranges 3.41 to 4.12 (extension 0.72).\n### Paths of moving points\n- B: circular arc of radius 0.85 about J, sweeping 82.4 deg back and forth.\n- F: circular arc of radius 2.06 about E, sweeping 74.7 deg back and forth.\n- G [the author traces this point’s path]: circular arc of radius 0.7 about E, sweeping 74.7 deg back and forth.\n- H: circular arc of radius 0.67 about J, sweeping 82.4 deg back and forth.\n- I: circular arc of radius 3.18 about J, sweeping 82.4 deg back and forth.\n- K: curve traced back and forth, 1.99 wide x 4.55 tall; nearly straight for 11% of the cycle over 1.43 (at 94 deg, deviation within 0.4% of that length).\n- L: curve traced back and forth, 0.77 wide x 6.5 tall; nearly straight for 21% of the cycle over 3.24 (at 89.2 deg, deviation within 0.37% of that length).\n- M: curve traced back and forth, 0.5 wide x 8.74 tall; nearly straight for 26% of the cycle over 4.5 (at 85.6 deg, deviation within 0.49% of that length).\n- N: curve traced back and forth, 1.19 wide x 10.94 tall; nearly straight for 24% of the cycle over 4.45 (at 82.3 deg, deviation within 0.49% of that length).\n- O [the author traces this point’s path]: curve traced back and forth, 1.55 wide x 13 tall.\n### How the parts relate\n- The drawing's author traces G, O: these are probably the outputs the mechanism exists for.\n- Four-bar loop: link EFG (E-G) 0.7, link GH (G-H) 0.94, link HIBJ (J-H) 0.67, ground E-J 1.33. It is a non-Grashof (triple-rocker) four-bar: no bar can turn fully relative to the ground (shortest + longest = 2 vs the other two = 1.64).\n- The cylinder pushes link HIBJ at B, 0.85 from its pivot J: 0.72 of extension swings it 82.4 deg, about 114.7 deg per unit of extension.\n- link HIBJ is a lever (beam) pivoted at J between H and I: they sit on opposite sides of the pivot (arms 0.67 and 3.18), so when one end rises the other falls, and I moves 4.75x as far as H.\n- G's path lies overlapping the span of the ground pivots (path x 2.21 to 2.72, y 0.56 to 1.23; pivots x 0.14 to 3.33, y 0.05 to 0.81).\n- O's path lies entirely left of every ground pivot (path x -4.49 to -2.95, y -0.03 to 12.96; pivots x 0.14 to 3.33, y 0.05 to 0.81).",
+            "rubric": {
+              "family": "missed",
+              "application": "named",
+              "words": 71,
+              "flags": []
+            }
+          }
+        },
+        {
+          "template": "Pumpjack",
+          "name": "Pumpjack",
+          "blurb": "Driven where the pitman meets the beam, and the output is a straight-line stroke.",
+          "appUrl": "https://staging--pmksnew.netlify.app/?2v.Ay,1E8.3,0.1011.4A,A,0gB,0oI,0.0M,M,0QZ,0o1,0.2P,P,0d4,0,0.4S,S,0,0,0.0H,H,o0,0,0.5R,R,r8,0eW,OZ..YRAM,AM,0,0,0YN,0oA,303e9f,A,M,,.YRMP,MP,0,0,0Wq,0P1,26A69A,M,P,,.YRPSH,PSH,0,0,3f,0,0d125a,P,S,H,,.YRHR,HR,0,0,pa,0KG,00695C,H,R,,...N_p*0ZX9WU",
+          "identical": false,
+          "diff": [
+            {
+              "op": "+",
+              "line": "- Four-bar loop: link AM (A-M) 1, link MP (M-P) 3.3, link PSH (S-P) 2.5, ground A-S 4.2. It is a Grashof crank-rocker: link AM (A-M) is the shortest bar, so it is able to turn fully while the opposite side bar only rocks (shortest + longest = 5.2 vs the other two = 5.8). In this drawing it does not turn fully: it sweeps 155.2 deg over the solved motion."
+            },
+            {
+              "op": "-",
+              "line": "- Four-bar loop: link AM (A-M) 1, link MP (M-P) 3.3, link PSH (S-P) 2.5, ground A-S 4.2. It is a Grashof crank-rocker: link AM (A-M) is the shortest bar, so it is able to turn fully while the opposite side bar only rocks (shortest + longest = 5.2 vs the other two = 5.8). In this drawing it does not turn fully (it sweeps 155.2 deg), because the input is not at its pivot."
+            },
+            {
+              "op": "+",
+              "line": "- link PSH is a lever (beam) pivoted at S between P and H: they sit on opposite sides of the pivot (arms 2.5 and 3.2), so the two ends always move in opposite directions, and H moves 1.28x as far as P."
+            },
+            {
+              "op": "-",
+              "line": "- link PSH is a lever (beam) pivoted at S between P and H: they sit on opposite sides of the pivot (arms 2.5 and 3.2), so when one end rises the other falls, and H moves 1.28x as far as P."
+            }
+          ],
+          "left": {
+            "id": "v3",
+            "sheet": "v3",
+            "sample": 1,
+            "answer": {
+              "family": "pumpjack linkage",
+              "certainty": "resembles",
+              "plainEnglish": "This resembles a pumpjack linkage: the driven **PSH** beam rocks around fixed joint **S**. Its **P** end moves the four-bar loop **AM**, **MP**, and **PSH**, making **AM** rock around **A** while **MP** connects the moving ends. The other end, **H**, drives **R** up and down along its guide through **HR**. In this drawing, **R** travels 2.09 cm along the vertical guide, with the whole motion reversing back and forth.",
+              "useCases": [
+                {
+                  "use": "oil-well pump jacks",
+                  "why": "A rocking beam can drive a guided output back and forth, as **PSH**, **HR**, and slider **R** do here."
+                },
+                {
+                  "use": "reciprocating pumps",
+                  "why": "The linkage converts beam rocking into straight-line back-and-forth travel at slider **R**."
+                }
+              ],
+              "terms": []
+            },
+            "latencyMs": 9096,
+            "usage": {
+              "input": 17437,
+              "cached": 12032,
+              "output": 207,
+              "reasoning": 0
+            },
+            "facts": "Length unit: cm. Angles in degrees, counterclockwise from +x; y points up.\nJoints are single letters; a link is named by its joints’ letters, as in the app’s Links table (e.g. link AB).\nGravity: on.\nSeparate mechanisms in the drawing: 1.\n\n## Mechanism M1\n### Structure\n- Rigid bodies (moving links): 4.\n  - link AM: joins 2 joints.\n  - link MP: joins 2 joints.\n  - link PSH: joins 3 joints.\n  - link HR: joins 2 joints.\n- Ground pivots (fixed pins): A, S.\n- Slider R: pin-in-slot (the riding body may turn as it slides), on a fixed guide at 90 deg.\n### Start geometry\n- Joints: A (-2.7, -3.22) ground; M (-1.7, -3.2); P (-2.5, 0); S (0, 0) ground; H (3.2, 0); R (3.4, -2.59) slider.\n- Distances between ground joints: A-S 4.2.\n- link AM lengths: A-M 1.\n- link MP lengths: M-P 3.3.\n- link PSH lengths: P-S 2.5; P-H 5.7; S-H 3.2.\n- link HR lengths: H-R 2.6.\n### Input\n- rotary drive at joint P, turning link PSH relative to link MP; speed 3 rpm clockwise.\n### Solved motion\n- Degrees of freedom: 1. Solved 121 samples over 6.67 s.\n- The input runs to a limit and reverses, so the whole motion is back-and-forth (a rotary input here cannot complete a revolution).\n- link AM rocks about ground pivot A through 155.2 deg (from -116.9 to 38.3 deg).\n- link MP rocks (no fixed pivot: a floating coupler) through 28.5 deg (from 75.5 to 104 deg).\n- link PSH rocks about ground pivot S through 37.8 deg (from -15.4 to 22.4 deg).\n- link HR rocks (no fixed pivot: a floating coupler) through 5.3 deg (from -85.6 to -80.2 deg).\n- Slider R travels 2.09 along its fixed guide.\n### Paths of moving points\n- M: circular arc of radius 1 about A, sweeping 155.2 deg back and forth.\n- P: circular arc of radius 2.5 about S, sweeping 37.8 deg back and forth.\n- H: circular arc of radius 3.2 about S, sweeping 37.8 deg back and forth.\n- R: straight line at 90 deg, length 2.09 (back and forth).\n### How the parts relate\n- Four-bar loop: link AM (A-M) 1, link MP (M-P) 3.3, link PSH (S-P) 2.5, ground A-S 4.2. It is a Grashof crank-rocker: link AM (A-M) is the shortest bar, so it is able to turn fully while the opposite side bar only rocks (shortest + longest = 5.2 vs the other two = 5.8). In this drawing it does not turn fully: it sweeps 155.2 deg over the solved motion.\n- Slider-crank arrangement driven by a rocking lever: link PSH (arm 3.2 from its pivot S, swinging 37.8 deg) pushes slider R along its guide through rod link HR (length 2.6).\n- link PSH is a lever (beam) pivoted at S between P and H: they sit on opposite sides of the pivot (arms 2.5 and 3.2), so the two ends always move in opposite directions, and H moves 1.28x as far as P.",
+            "rubric": {
+              "family": "named",
+              "application": "named",
+              "words": 69,
+              "flags": []
+            }
+          },
+          "right": {
+            "id": "v2",
+            "sheet": "v2",
+            "sample": 1,
+            "answer": {
+              "family": "four-bar with slider output",
+              "certainty": "resembles",
+              "plainEnglish": "This resembles a four-bar linkage with a slider output. The input rocks **PSH** about fixed pivot **S**; its arm to **P** moves the four-bar loop, where **AM** rocks about **A** and **MP** connects the loop. The other arm of **PSH** carries **H**, which pushes and pulls slider **R** along its vertical guide through **HR**. In this drawing, **R** travels 2.09 cm back and forth.",
+              "useCases": [
+                {
+                  "use": "car windshield wipers",
+                  "why": "The linkage’s rocking lever and back-and-forth slider output show how rotary drive can produce a repeated reciprocating motion."
+                },
+                {
+                  "use": "reciprocating pumps",
+                  "why": "The guided slider moves back and forth, a motion commonly used to drive a pump piston."
+                }
+              ],
+              "terms": ["four-bar linkage", "slider", "coupler", "reciprocating"]
+            },
+            "latencyMs": 15039,
+            "usage": {
+              "input": 17420,
+              "cached": 14080,
+              "output": 206,
+              "reasoning": 0
+            },
+            "facts": "Length unit: cm. Angles in degrees, counterclockwise from +x; y points up.\nJoints are single letters; a link is named by its joints’ letters, as in the app’s Links table (e.g. link AB).\nGravity: on.\nSeparate mechanisms in the drawing: 1.\n\n## Mechanism M1\n### Structure\n- Rigid bodies (moving links): 4.\n  - link AM: joins 2 joints.\n  - link MP: joins 2 joints.\n  - link PSH: joins 3 joints.\n  - link HR: joins 2 joints.\n- Ground pivots (fixed pins): A, S.\n- Slider R: pin-in-slot (the riding body may turn as it slides), on a fixed guide at 90 deg.\n### Start geometry\n- Joints: A (-2.7, -3.22) ground; M (-1.7, -3.2); P (-2.5, 0); S (0, 0) ground; H (3.2, 0); R (3.4, -2.59) slider.\n- Distances between ground joints: A-S 4.2.\n- link AM lengths: A-M 1.\n- link MP lengths: M-P 3.3.\n- link PSH lengths: P-S 2.5; P-H 5.7; S-H 3.2.\n- link HR lengths: H-R 2.6.\n### Input\n- rotary drive at joint P, turning link PSH relative to link MP; speed 3 rpm clockwise.\n### Solved motion\n- Degrees of freedom: 1. Solved 121 samples over 6.67 s.\n- The input runs to a limit and reverses, so the whole motion is back-and-forth (a rotary input here cannot complete a revolution).\n- link AM rocks about ground pivot A through 155.2 deg (from -116.9 to 38.3 deg).\n- link MP rocks (no fixed pivot: a floating coupler) through 28.5 deg (from 75.5 to 104 deg).\n- link PSH rocks about ground pivot S through 37.8 deg (from -15.4 to 22.4 deg).\n- link HR rocks (no fixed pivot: a floating coupler) through 5.3 deg (from -85.6 to -80.2 deg).\n- Slider R travels 2.09 along its fixed guide.\n### Paths of moving points\n- M: circular arc of radius 1 about A, sweeping 155.2 deg back and forth.\n- P: circular arc of radius 2.5 about S, sweeping 37.8 deg back and forth.\n- H: circular arc of radius 3.2 about S, sweeping 37.8 deg back and forth.\n- R: straight line at 90 deg, length 2.09 (back and forth).\n### How the parts relate\n- Four-bar loop: link AM (A-M) 1, link MP (M-P) 3.3, link PSH (S-P) 2.5, ground A-S 4.2. It is a Grashof crank-rocker: link AM (A-M) is the shortest bar, so it is able to turn fully while the opposite side bar only rocks (shortest + longest = 5.2 vs the other two = 5.8). In this drawing it does not turn fully (it sweeps 155.2 deg), because the input is not at its pivot.\n- Slider-crank arrangement driven by a rocking lever: link PSH (arm 3.2 from its pivot S, swinging 37.8 deg) pushes slider R along its guide through rod link HR (length 2.6).\n- link PSH is a lever (beam) pivoted at S between P and H: they sit on opposite sides of the pivot (arms 2.5 and 3.2), so when one end rises the other falls, and H moves 1.28x as far as P.",
+            "rubric": {
+              "family": "missed",
+              "application": "missed",
+              "words": 64,
+              "flags": []
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

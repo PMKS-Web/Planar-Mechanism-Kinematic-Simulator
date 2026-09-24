@@ -1,0 +1,20 @@
+{
+  "v2": {
+    "title": "v2 · relations + picture",
+    "summary": "The sheet from the four-model comparison: structure, measured motion, how the parts relate, and the drawing.",
+    "changes": []
+  },
+  "v3": {
+    "title": "v3 · truth fixes",
+    "summary": "v2 with the statements the outside review found untrue or misleading corrected. Nothing new is added except the Whitworth half-turn times, which replace a misleading fact.",
+    "changes": [
+      "“Turn together, so they stay parallel” now says only that the angle between them never changes, and names a parallel pair of lines only when there is one (wiper: P-T stays parallel to Q-U).",
+      "A body that keeps its orientation says whether it moves in a straight line or along an arc (wiper CD: curvilinear translation, not a straight line; Scotch yoke CD: straight line).",
+      "A pin sliding in a moving slot no longer gets stroke times; that “3 s and 3 s” is what made Luna say the Whitworth has no quick return. The slotted link now gives its slow and fast half-turn times (3.65 s vs 2.35 s).",
+      "“Nearly straight for X% of the cycle” is measured in time, counting both passes of a back-and-forth path (Chebyshev 46% → 92%).",
+      "A parallelogram is checked against the coupler actually keeping its angle; a crossed one would be called an antiparallelogram.",
+      "Dropped two unproven causes: “because the input is not at its pivot” and “when one end rises the other falls” (now: the ends move in opposite directions).",
+      "A drawing the solver cannot solve is described as unsolved as drawn, not as a mechanism that cannot move (no template here hits this)."
+    ]
+  }
+}

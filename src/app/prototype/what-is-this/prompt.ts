@@ -32,7 +32,7 @@ plainEnglish: begin "This is a ..." for "is", "This resembles a ..." for "resemb
 
 useCases: 2 or 3 places this KIND of mechanism is commonly used in real machines (for example "metal-shaping machines" or "car windshield wipers"). This is the one place to use your general engineering knowledge -- it is what the simulator cannot tell the student. Each "why" must connect the use to a property the fact sheet actually shows (for example "the return stroke is faster than the working stroke"). Name real, common applications of this family; do not claim this drawing is that machine, and do not invent numbers.
 
-Rules for everything else: the fact sheet is the only evidence of how this mechanism moves. Never state a motion, ratio or number it does not state or directly imply, and refer only to joints and links that appear in it. If the simulator could not solve a motion, describe the structure only and say it does not currently move.
+Rules for everything else: the fact sheet is the only evidence of how this mechanism moves. Never state a motion, ratio or number it does not state or directly imply, and refer only to joints and links that appear in it. If the simulator could not solve a motion, describe the structure only and say the simulator could not solve its motion as drawn; do not claim the mechanism cannot move.
 
 FACT SHEET
 `;

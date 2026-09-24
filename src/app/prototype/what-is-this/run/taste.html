@@ -1,0 +1,1924 @@
+<title>What Is This? Taste Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap"
+/>
+<style>
+  /* PMKS+ tokens (src/styles/_tokens.scss), so the panel mocks read as the app. */
+  :root {
+    --surface: #fff;
+    --surface-sunken: #f7f8fc;
+    --surface-chip: #eef0f4;
+    --border-rule: #eceef5;
+    --border-divider: #e0e2ea;
+    --text-strong: #202124;
+    --text-primary: #2c2c2c;
+    --text-secondary: #5f6368;
+    --text-tertiary: #80869a;
+    --brand: #3f51b5;
+    --brand-dark: #303f9f;
+    --brand-tint: #e8eaf6;
+    --brand-wash: #f5f6fb;
+    --success-text: #137333;
+    --success-bg: #e6f4ea;
+    --warning-text: #9a5b00;
+    --warning-bg: #fef3e0;
+    --refusal-text: #c5221f;
+    --refusal-bg: #fce8e6;
+    --page: #eef0f5;
+    --link: #3f51b5;
+    --link-fill: rgba(63, 81, 181, 0.16);
+    --trace: #d62828;
+    --path: #b9bdc9;
+    --guide: rgba(60, 64, 80, 0.22);
+    --shadow: 0 1px 3px rgba(32, 33, 36, 0.12), 0 4px 14px rgba(32, 33, 36, 0.06);
+    --mono: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      color-scheme: dark;
+      --surface: #1b1d24;
+      --surface-sunken: #22252e;
+      --surface-chip: #2c303b;
+      --border-rule: #2e323d;
+      --border-divider: #3a3f4c;
+      --text-strong: #eef0f5;
+      --text-primary: #dcdfe6;
+      --text-secondary: #a8adba;
+      --text-tertiary: #8a90a0;
+      --brand: #9fa8da;
+      --brand-dark: #c5cae9;
+      --brand-tint: #2b3050;
+      --brand-wash: #242841;
+      --success-text: #81c995;
+      --success-bg: #1e3326;
+      --warning-text: #f0b45a;
+      --warning-bg: #3a2c16;
+      --refusal-text: #f28b82;
+      --refusal-bg: #3d2322;
+      --page: #13151b;
+      --link: #9fa8da;
+      --link-fill: rgba(159, 168, 218, 0.2);
+      --trace: #ff7a7a;
+      --path: #4a4f5e;
+      --guide: rgba(200, 205, 220, 0.18);
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    }
+  }
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+    --surface: #1b1d24;
+    --surface-sunken: #22252e;
+    --surface-chip: #2c303b;
+    --border-rule: #2e323d;
+    --border-divider: #3a3f4c;
+    --text-strong: #eef0f5;
+    --text-primary: #dcdfe6;
+    --text-secondary: #a8adba;
+    --text-tertiary: #8a90a0;
+    --brand: #9fa8da;
+    --brand-dark: #c5cae9;
+    --brand-tint: #2b3050;
+    --brand-wash: #242841;
+    --success-text: #81c995;
+    --success-bg: #1e3326;
+    --warning-text: #f0b45a;
+    --warning-bg: #3a2c16;
+    --refusal-text: #f28b82;
+    --refusal-bg: #3d2322;
+    --page: #13151b;
+    --link: #9fa8da;
+    --link-fill: rgba(159, 168, 218, 0.2);
+    --trace: #ff7a7a;
+    --path: #4a4f5e;
+    --guide: rgba(200, 205, 220, 0.18);
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--text-primary);
+    font: 15px/1.55 var(--sans);
+    padding-inline: 16px;
+    padding-block: 22px 64px;
+  }
+  .wrap {
+    max-width: 1240px;
+    margin: 0 auto;
+    display: grid;
+    gap: 18px;
+  }
+  h1,
+  h2,
+  h3 {
+    color: var(--text-strong);
+    text-wrap: balance;
+    margin: 0;
+  }
+  h1 {
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+  h2 {
+    font-size: 20px;
+    font-weight: 500;
+  }
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--brand);
+    font-weight: 500;
+  }
+  .card {
+    background: var(--surface);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: 18px 20px;
+  }
+  button,
+  select,
+  textarea,
+  input {
+    font: inherit;
+    color: inherit;
+  }
+  button:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  input:focus-visible,
+  summary:focus-visible,
+  a:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+  a {
+    color: var(--brand);
+  }
+  kbd {
+    font: 500 11px var(--mono);
+    padding: 0 5px;
+    border-radius: 4px;
+    border: 1px solid var(--border-divider);
+    color: var(--text-tertiary);
+    background: var(--surface-sunken);
+  }
+
+  /* Header */
+  .top {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: end;
+    gap: 12px 24px;
+  }
+  .titles {
+    display: grid;
+    gap: 4px;
+  }
+  .top-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+  }
+  .top-controls select {
+    border: 1px solid var(--border-divider);
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 7px 10px;
+    max-width: 100%;
+  }
+  .seg {
+    display: inline-flex;
+    border: 1px solid var(--border-divider);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .seg button {
+    border: 0;
+    background: none;
+    color: var(--text-secondary);
+    padding: 7px 14px;
+    cursor: pointer;
+  }
+  .seg button + button {
+    border-left: 1px solid var(--border-divider);
+  }
+  .seg button[aria-pressed='true'],
+  .seg button[aria-selected='true'] {
+    background: var(--brand-tint);
+    color: var(--brand-dark);
+    font-weight: 500;
+  }
+  .lede {
+    margin: 0;
+    max-width: 90ch;
+    color: var(--text-secondary);
+    font-size: 14.5px;
+  }
+  .store {
+    font-size: 13px;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .store .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-tertiary);
+    flex: none;
+  }
+  .store.ok .dot {
+    background: var(--success-text);
+  }
+  .store.local {
+    color: var(--warning-text);
+  }
+  .store.local .dot {
+    background: var(--warning-text);
+  }
+
+  /* Progress strip: one chip per mechanism */
+  .strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .strip button {
+    border: 1px solid var(--border-divider);
+    background: var(--surface);
+    color: var(--text-secondary);
+    border-radius: 16px;
+    padding: 4px 12px 4px 9px;
+    cursor: pointer;
+    font-size: 13.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .strip button .tick {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    border: 1.5px solid var(--text-tertiary);
+    flex: none;
+  }
+  .strip button.done .tick {
+    background: var(--brand);
+    border-color: var(--brand);
+  }
+  .strip button[aria-current='true'] {
+    border-color: var(--brand);
+    color: var(--text-strong);
+    box-shadow: inset 0 0 0 1px var(--brand);
+  }
+
+  /* Judge layout */
+  .stage {
+    display: grid;
+    grid-template-columns: 330px minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+  }
+  .mech {
+    display: grid;
+    gap: 12px;
+    position: sticky;
+    top: calc(env(safe-area-inset-top, 0px) + 12px);
+  }
+  .mech h2 {
+    font-size: 21px;
+  }
+  .mech .blurb {
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--text-secondary);
+  }
+  .anim {
+    width: 100%;
+    height: auto;
+    display: block;
+    background: var(--surface-sunken);
+    border-radius: 8px;
+    border: 1px solid var(--border-rule);
+  }
+  .anim-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .anim-controls input[type='range'] {
+    flex: 1;
+    min-width: 0;
+    accent-color: var(--brand);
+  }
+  .icon-btn {
+    border: 1px solid var(--border-divider);
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 4px 10px;
+    cursor: pointer;
+    min-width: 64px;
+  }
+  .anim-controls select {
+    border: 1px solid var(--border-divider);
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 4px 6px;
+  }
+  .legend {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+  .legend i {
+    display: inline-block;
+    width: 14px;
+    height: 0;
+    border-top: 2.5px solid var(--trace);
+    vertical-align: middle;
+    margin-right: 4px;
+  }
+  .legend i.path {
+    border-top: 1.5px dashed var(--path);
+  }
+  details.saw summary {
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+  details.saw img {
+    margin-top: 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border-rule);
+    background: #fff;
+  }
+  details.saw p {
+    font-size: 12.5px;
+    color: var(--text-tertiary);
+    margin: 6px 0 0;
+  }
+
+  .versus {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    align-items: start;
+  }
+  .versus > .span {
+    grid-column: 1 / -1;
+  }
+  .side {
+    display: grid;
+    gap: 8px;
+  }
+  .side-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .side-tag {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--text-strong);
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+  .side.chosen .side-tag {
+    background: var(--brand);
+    color: var(--surface);
+  }
+  .side-meta {
+    font-size: 12.5px;
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+  .wrong {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 2px 4px;
+  }
+  .wrong input {
+    accent-color: var(--refusal-text);
+    width: 16px;
+    height: 16px;
+  }
+  .wrong:has(input:checked) {
+    color: var(--refusal-text);
+  }
+
+  /* The panel mock: the Analysis card as the app draws it. */
+  .panel {
+    background: var(--surface);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    border-top: 4px solid var(--brand);
+    overflow: hidden;
+  }
+  .side.chosen .panel {
+    box-shadow:
+      0 0 0 2px var(--brand),
+      var(--shadow);
+  }
+  .panel-title {
+    padding: 14px 18px 10px;
+    border-bottom: 1px solid var(--border-rule);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .panel-title h3 {
+    font-size: 18px;
+    font-weight: 500;
+  }
+  .status {
+    font-size: 12.5px;
+    padding: 2px 10px;
+    border-radius: 12px;
+    background: var(--success-bg);
+    color: var(--success-text);
+  }
+  .section {
+    padding: 12px 18px 14px;
+    border-bottom: 1px solid var(--border-rule);
+    display: grid;
+    gap: 9px;
+  }
+  .section:last-child {
+    border-bottom: 0;
+  }
+  .section h4 {
+    margin: 0;
+    font-size: 15.5px;
+    font-weight: 500;
+    color: var(--brand);
+  }
+  .rows {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 3px 14px;
+    font-size: 13.5px;
+    margin: 0;
+  }
+  .rows dt {
+    color: var(--text-secondary);
+  }
+  .rows dd {
+    margin: 0;
+    color: var(--text-strong);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .written {
+    background: var(--brand-wash);
+    border: 1px solid var(--border-divider);
+    border-radius: 8px;
+    padding: 11px 13px;
+    display: grid;
+    gap: 8px;
+  }
+  .written .by {
+    font-size: 12px;
+    color: var(--text-tertiary);
+  }
+  .written p {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  .written strong {
+    color: var(--text-strong);
+    font-weight: 700;
+  }
+  .term {
+    text-decoration: underline dotted var(--brand);
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1.5px;
+  }
+  .family-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .cert {
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .cert-is {
+    background: var(--success-bg);
+    color: var(--success-text);
+  }
+  .cert-resembles {
+    background: var(--brand-tint);
+    color: var(--brand-dark);
+  }
+  .cert-unsure {
+    background: var(--warning-bg);
+    color: var(--warning-text);
+  }
+  .uses {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 9px;
+  }
+  .uses li {
+    display: grid;
+    gap: 1px;
+  }
+  .uses .use {
+    font-weight: 500;
+    color: var(--text-strong);
+  }
+  .uses .why {
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+  .caveat {
+    font-size: 12px;
+    color: var(--text-tertiary);
+  }
+  .error {
+    color: var(--refusal-text);
+    background: var(--refusal-bg);
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+
+  /* Verdict */
+  .verdict {
+    display: grid;
+    gap: 12px;
+  }
+  .verdict-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .verdict-head h3 {
+    font-size: 16px;
+    font-weight: 500;
+  }
+  .choice {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .choice button {
+    border: 1px solid var(--border-divider);
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 10px 8px;
+    cursor: pointer;
+    display: grid;
+    gap: 2px;
+    justify-items: center;
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+  .choice button:hover {
+    background: var(--brand-wash);
+  }
+  .choice button[aria-checked='true'] {
+    background: var(--brand);
+    border-color: var(--brand);
+    color: var(--surface);
+  }
+  .choice button[aria-checked='true'] kbd {
+    color: var(--surface);
+    border-color: transparent;
+    background: rgba(255, 255, 255, 0.18);
+  }
+  .reasons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    align-items: center;
+  }
+  .reasons .label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-right: 2px;
+  }
+  .chip {
+    border: 1px solid var(--border-divider);
+    background: var(--surface);
+    color: var(--text-primary);
+    border-radius: 16px;
+    padding: 4px 12px;
+    cursor: pointer;
+    font-size: 13.5px;
+  }
+  .chip[aria-pressed='true'] {
+    background: var(--brand-tint);
+    border-color: var(--brand);
+    color: var(--brand-dark);
+    font-weight: 500;
+  }
+  .reasons[aria-disabled='true'] {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+  textarea {
+    width: 100%;
+    min-height: 76px;
+    resize: vertical;
+    border: 1px solid var(--border-divider);
+    border-radius: 8px;
+    padding: 9px 11px;
+    background: var(--surface-sunken);
+    line-height: 1.5;
+  }
+  .verdict-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+  }
+  .primary {
+    background: var(--brand);
+    color: var(--surface);
+    border: 0;
+    border-radius: 8px;
+    padding: 9px 18px;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .secondary {
+    background: var(--surface);
+    color: var(--brand);
+    border: 1px solid var(--border-divider);
+    border-radius: 8px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .primary:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .hint {
+    font-size: 13px;
+    color: var(--text-tertiary);
+  }
+  .hint.warn {
+    color: var(--warning-text);
+  }
+
+  /* Reveal */
+  .reveal {
+    display: grid;
+    gap: 14px;
+    border-left: 4px solid var(--brand);
+  }
+  .reveal h3 {
+    font-size: 16px;
+    font-weight: 500;
+  }
+  .who-was {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .who-was > div {
+    display: grid;
+    gap: 6px;
+    align-content: start;
+  }
+  .who-was .sheet-name {
+    font-weight: 500;
+    color: var(--text-strong);
+  }
+  .flags {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 4px;
+    font-size: 13.5px;
+  }
+  .flags li {
+    color: var(--warning-text);
+  }
+  .flags li.none {
+    color: var(--text-tertiary);
+  }
+  .fam {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 1px 8px;
+    border-radius: 10px;
+  }
+  .fam.named {
+    background: var(--success-bg);
+    color: var(--success-text);
+  }
+  .fam.class {
+    background: var(--warning-bg);
+    color: var(--warning-text);
+  }
+  .fam.missed,
+  .fam.unknown {
+    background: var(--refusal-bg);
+    color: var(--refusal-text);
+  }
+  .same-sheet {
+    font-size: 14px;
+    color: var(--text-secondary);
+    background: var(--surface-sunken);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .diff {
+    margin: 0;
+    font: 12.5px/1.55 var(--mono);
+    background: var(--surface-sunken);
+    border-radius: 8px;
+    padding: 10px 12px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+  }
+  .diff .del {
+    color: var(--refusal-text);
+  }
+  .diff .add {
+    color: var(--success-text);
+  }
+  details.facts summary {
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+  details.facts pre {
+    margin: 8px 0 0;
+    font: 12px/1.5 var(--mono);
+    white-space: pre-wrap;
+    max-height: 360px;
+    overflow: auto;
+    background: var(--surface-sunken);
+    padding: 10px 12px;
+    border-radius: 8px;
+  }
+
+  /* Results */
+  .results {
+    display: grid;
+    gap: 18px;
+  }
+  .tally-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .bar {
+    display: flex;
+    height: 26px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--surface-chip);
+  }
+  .bar span {
+    display: grid;
+    place-items: center;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--surface);
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .bar .b-a {
+    background: var(--text-tertiary);
+  }
+  .bar .b-same {
+    background: var(--border-divider);
+    color: var(--text-secondary);
+  }
+  .bar .b-b {
+    background: var(--brand);
+  }
+  .bar .b-poor {
+    background: var(--refusal-text);
+  }
+  .bar-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .bar-legend i {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    margin-right: 5px;
+    vertical-align: -1px;
+  }
+  .splits {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+  }
+  .splits .card {
+    display: grid;
+    gap: 8px;
+    background: var(--surface-sunken);
+    box-shadow: none;
+  }
+  .splits h3 {
+    font-size: 15px;
+    font-weight: 500;
+  }
+  .splits p {
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--text-secondary);
+  }
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+  }
+  .stat {
+    display: grid;
+    gap: 2px;
+  }
+  .stat .v {
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--text-strong);
+    font-variant-numeric: tabular-nums;
+  }
+  .stat .k {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .table-scroll {
+    overflow-x: auto;
+  }
+  table.votes {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 13.5px;
+  }
+  .votes th,
+  .votes td {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border-rule);
+    vertical-align: top;
+  }
+  .votes th {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+  .votes td.note {
+    max-width: 46ch;
+    color: var(--text-secondary);
+  }
+  .pill {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--surface-chip);
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+  .pill.win {
+    background: var(--brand-tint);
+    color: var(--brand-dark);
+  }
+  .pill.bad {
+    background: var(--refusal-bg);
+    color: var(--refusal-text);
+  }
+  .changes {
+    margin: 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 4px;
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    max-width: 100ch;
+  }
+
+  @media (max-width: 1080px) {
+    .stage {
+      grid-template-columns: 1fr;
+    }
+    .mech {
+      position: static;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      align-items: start;
+    }
+    .mech > .mech-head,
+    .mech > details,
+    .mech > .mech-links {
+      grid-column: 1 / -1;
+    }
+  }
+  @media (max-width: 720px) {
+    .mech {
+      grid-template-columns: 1fr;
+    }
+    .versus {
+      grid-template-columns: 1fr;
+    }
+    .choice {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .who-was {
+      grid-template-columns: 1fr;
+    }
+    h1 {
+      font-size: 24px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      scroll-behavior: auto !important;
+    }
+  }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="titles">
+      <span class="eyebrow">PMKS+ prototype · “What is this?” · GPT-6 Luna</span>
+      <h1>Taste Test</h1>
+    </div>
+    <div class="top-controls">
+      <label for="round" class="hint">Round</label>
+      <select id="round"></select>
+      <div class="seg" role="tablist" aria-label="View">
+        <button type="button" role="tab" id="tab-judge" aria-selected="true">Judge</button>
+        <button type="button" role="tab" id="tab-results" aria-selected="false">Results</button>
+      </div>
+    </div>
+  </header>
+  <p class="lede" id="lede"></p>
+  <div class="store" id="store">
+    <span class="dot"></span><span id="store-text">Connecting to the vote store…</span>
+  </div>
+
+  <main id="judge">
+    <nav class="strip" id="strip" aria-label="Mechanisms"></nav>
+    <section class="stage" style="margin-top: 14px">
+      <aside class="mech card" aria-labelledby="m-name">
+        <div class="mech-head">
+          <span class="eyebrow" id="m-count"></span>
+          <h2 id="m-name"></h2>
+          <p class="blurb" id="m-blurb"></p>
+        </div>
+        <svg
+          class="anim"
+          id="anim"
+          viewBox="0 0 400 300"
+          role="img"
+          aria-label="The mechanism moving through one cycle"
+        ></svg>
+        <div>
+          <div class="anim-controls">
+            <button type="button" class="icon-btn" id="play">Pause</button>
+            <input
+              type="range"
+              id="scrub"
+              min="0"
+              max="0"
+              value="0"
+              aria-label="Position in the cycle"
+            />
+            <select id="speed" aria-label="Playback speed">
+              <option value="0.5">Slow</option>
+              <option value="1" selected>Normal</option>
+              <option value="2">Fast</option>
+            </select>
+          </div>
+          <div class="legend" style="margin-top: 6px">
+            <span><i></i>traced by the author</span><span><i class="path"></i>other joints</span
+            ><span>one cycle ≈ 4 s</span>
+          </div>
+        </div>
+        <div class="mech-links">
+          <a id="open-app" target="_blank" rel="noopener">Open in PMKS+ ↗</a>
+        </div>
+        <details class="saw">
+          <summary>What the model saw</summary>
+          <img
+            id="saw-img"
+            alt="The simulator’s drawing sent to the model: start pose, traced paths in red"
+          />
+          <p>
+            Plus the fact sheet, which differs between the two sides; it is shown after you vote.
+            The model never sees the mechanism’s name.
+          </p>
+        </details>
+      </aside>
+
+      <div class="versus">
+        <div class="side" id="side-left">
+          <div class="side-head">
+            <span class="side-tag">A</span><span class="side-meta" id="meta-left"></span>
+          </div>
+          <div id="panel-left"></div>
+          <label class="wrong"
+            ><input type="checkbox" id="wrong-left" /> A says something wrong</label
+          >
+        </div>
+        <div class="side" id="side-right">
+          <div class="side-head">
+            <span class="side-tag">B</span><span class="side-meta" id="meta-right"></span>
+          </div>
+          <div id="panel-right"></div>
+          <label class="wrong"
+            ><input type="checkbox" id="wrong-right" /> B says something wrong</label
+          >
+        </div>
+
+        <section class="verdict card span" aria-labelledby="verdict-h">
+          <div class="verdict-head">
+            <h3 id="verdict-h">Which would you rather a student read?</h3>
+            <span class="hint"
+              >Keys: <kbd>1</kbd>–<kbd>4</kbd> pick · <kbd>⌘</kbd><kbd>↵</kbd> save · <kbd>←</kbd
+              ><kbd>→</kbd> move</span
+            >
+          </div>
+          <div class="choice" role="radiogroup" aria-label="Your pick" id="choice">
+            <button type="button" role="radio" aria-checked="false" data-choice="left" id="c-left">
+              <span>A is better</span><kbd>1</kbd>
+            </button>
+            <button type="button" role="radio" aria-checked="false" data-choice="same" id="c-same">
+              <span>About the same</span><kbd>2</kbd>
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked="false"
+              data-choice="right"
+              id="c-right"
+            >
+              <span>B is better</span><kbd>3</kbd>
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked="false"
+              data-choice="both-poor"
+              id="c-poor"
+            >
+              <span>Both poor</span><kbd>4</kbd>
+            </button>
+          </div>
+          <div class="reasons" id="reasons" aria-label="Why"></div>
+          <label for="note" class="hint"
+            >What made the difference? What’s wrong, missing, or especially good?</label
+          >
+          <textarea id="note"></textarea>
+          <div class="verdict-actions">
+            <button type="button" class="primary" id="save">Save</button>
+            <button type="button" class="secondary" id="next">Next mechanism →</button>
+            <span class="hint" id="save-hint"></span>
+          </div>
+        </section>
+
+        <section class="reveal card span" id="reveal" hidden aria-labelledby="reveal-h"></section>
+      </div>
+    </section>
+  </main>
+
+  <main id="results" class="results" hidden></main>
+</div>
+
+<script>
+  const DATA = /*DATA*/ null;
+  const REASONS = [
+    'More correct',
+    'Names it better',
+    'Better uses',
+    'Clearer for a student',
+    'Tighter',
+    'Better detail from this drawing',
+  ];
+  const CYCLE_SECONDS = 4;
+  const esc = (s) =>
+    String(s ?? '').replace(
+      /[&<>"]/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]
+    );
+  const $ = (id) => document.getElementById(id);
+
+  const prefs = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('taste-prefs') || '{}');
+    } catch (e) {
+      return {};
+    }
+  })();
+  const savePrefs = () => {
+    try {
+      localStorage.setItem('taste-prefs', JSON.stringify({ round: state.round, tab: state.tab }));
+    } catch (e) {}
+  };
+
+  const state = {
+    round: DATA.rounds.some((r) => r.id === prefs.round)
+      ? prefs.round
+      : DATA.rounds[DATA.rounds.length - 1].id,
+    index: 0,
+    tab: prefs.tab === 'results' ? 'results' : 'judge',
+    drafts: new Map(),
+    hint: '',
+  };
+  let votes = new Map();
+  let db = null;
+  let storeMode = 'pending';
+  let placedOnFirstUnjudged = false;
+
+  const round = () => DATA.rounds.find((r) => r.id === state.round);
+  const pair = () => round().pairs[state.index];
+  const voteId = (r, p) => `${r.id}~${p.template}`;
+  const voteFor = (p) => votes.get(voteId(round(), p));
+  const sheetTitle = (armId) => DATA.sheets[armId.split('~')[0]]?.title ?? armId;
+  const armLabel = (arm) =>
+    `${sheetTitle(arm.id)}${arm.sample > 1 ? ` (asking ${arm.sample})` : ''}`;
+
+  /* ---------- Vote storage: the page's database, or this browser when there is none ---------- */
+  function localVotes() {
+    try {
+      return new Map(Object.entries(JSON.parse(localStorage.getItem('taste-votes') || '{}')));
+    } catch (e) {
+      return new Map();
+    }
+  }
+  function saveLocal() {
+    try {
+      localStorage.setItem('taste-votes', JSON.stringify(Object.fromEntries(votes)));
+    } catch (e) {}
+  }
+  function renderStore() {
+    const el = $('store');
+    el.className = 'store' + (storeMode === 'db' ? ' ok' : storeMode === 'pending' ? '' : ' local');
+    $('store-text').textContent =
+      storeMode === 'db'
+        ? 'Votes save to this page’s database, where Claude can read them.'
+        : storeMode === 'pending'
+          ? 'Connecting to the vote store…'
+          : 'Votes are saved in this browser only, so Claude can’t read them. Open the page on claude.ai, or use “Copy votes” on the Results tab.';
+  }
+  async function connect() {
+    let ns = null;
+    try {
+      ns = window.claude && window.claude.use ? await window.claude.use('db') : null;
+    } catch (e) {
+      ns = null;
+    }
+    if (!ns) {
+      storeMode = 'local';
+      votes = localVotes();
+      placeOnFirstUnjudged();
+      renderAll();
+      return;
+    }
+    db = ns;
+    storeMode = 'db';
+    db.collection('votes').onSnapshot(
+      (snap) => {
+        votes = new Map(snap.docs.map((d) => [d.id, d.data()]));
+        placeOnFirstUnjudged();
+        renderAll();
+      },
+      () => {
+        storeMode = 'local';
+        votes = localVotes();
+        renderAll();
+      }
+    );
+    renderStore();
+  }
+  function placeOnFirstUnjudged() {
+    if (placedOnFirstUnjudged) return;
+    placedOnFirstUnjudged = true;
+    const first = round().pairs.findIndex((p) => !voteFor(p));
+    state.index = first < 0 ? 0 : first;
+  }
+
+  /* ---------- Draft: what the form holds for the pair on screen ---------- */
+  function draft(p) {
+    const key = voteId(round(), p);
+    if (!state.drafts.has(key)) {
+      const v = votes.get(key);
+      state.drafts.set(
+        key,
+        v
+          ? {
+              choice: v.choice,
+              reasons: [...(v.reasons || [])],
+              note: v.note || '',
+              wrongLeft: !!v.wrongLeft,
+              wrongRight: !!v.wrongRight,
+            }
+          : { choice: null, reasons: [], note: '', wrongLeft: false, wrongRight: false }
+      );
+    }
+    return state.drafts.get(key);
+  }
+
+  async function saveVote() {
+    const p = pair();
+    const d = draft(p);
+    if (!d.choice) {
+      state.hint = 'Pick one of the four first.';
+      renderVerdict();
+      return;
+    }
+    const winner = d.choice === 'left' ? p.left.id : d.choice === 'right' ? p.right.id : d.choice;
+    const vote = {
+      round: round().id,
+      template: p.template,
+      left: p.left.id,
+      right: p.right.id,
+      choice: d.choice,
+      winner,
+      wrongLeft: d.wrongLeft,
+      wrongRight: d.wrongRight,
+      wrong: [d.wrongLeft && p.left.id, d.wrongRight && p.right.id].filter(Boolean),
+      identicalSheets: p.identical,
+      reasons: d.reasons,
+      note: d.note.trim(),
+      savedAt: new Date().toISOString(),
+    };
+    const key = voteId(round(), p);
+    $('save').disabled = true;
+    try {
+      if (db) await db.doc(`votes/${key}`).set(vote);
+      votes.set(key, vote);
+      if (!db) saveLocal();
+      state.hint = db ? 'Saved.' : 'Saved in this browser.';
+    } catch (e) {
+      state.hint = `Not saved: ${e && e.message ? e.message : 'the store refused it'}. Try again.`;
+    }
+    $('save').disabled = false;
+    renderAll();
+  }
+
+  /* ---------- Panel mock ---------- */
+  function renderParagraph(text, terms) {
+    let html = esc(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    for (const term of (terms || []).slice().sort((a, b) => b.length - a.length)) {
+      if (!term) continue;
+      const re = new RegExp(
+        '(^|[^\\w>])(' + term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')(?![\\w<])',
+        'i'
+      );
+      html = html.replace(re, '$1<span class="term" title="Glossary term">$2</span>');
+    }
+    return html;
+  }
+  function panel(p, arm) {
+    if (!arm.answer)
+      return `<div class="error">No answer: ${esc(arm.error || 'the reply was not JSON')}</div>`;
+    const a = arm.answer;
+    const cert = ['is', 'resembles', 'unsure'].includes(a.certainty) ? a.certainty : 'unsure';
+    const rows = p.overview.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
+    const uses = (a.useCases || [])
+      .map(
+        (u) =>
+          `<li><span class="use">${renderParagraph(u.use)}</span><span class="why">${renderParagraph(u.why)}</span></li>`
+      )
+      .join('');
+    return `
+      <article class="panel">
+        <div class="panel-title"><h3>Mechanism M1</h3><span class="status">Ready</span></div>
+        <div class="section"><h4>Overview</h4><dl class="rows">${rows}</dl></div>
+        <div class="section">
+          <h4>In plain English</h4>
+          <div class="written">
+            <div class="by">✎ Written from the facts above, not measured</div>
+            <p>${renderParagraph(a.plainEnglish, a.terms)}</p>
+          </div>
+          <div class="family-line">Family: <strong>${esc(a.family)}</strong><span class="cert cert-${cert}">${esc(cert)}</span></div>
+        </div>
+        <div class="section">
+          <h4>Where you’d find it</h4>
+          <ul class="uses">${uses || '<li class="why">No uses given.</li>'}</ul>
+          <div class="caveat">From general engineering knowledge, not from this drawing.</div>
+        </div>
+      </article>`;
+  }
+
+  /* ---------- Mechanism animation ---------- */
+  const anim = {
+    pair: null,
+    els: null,
+    frame: 0,
+    phase: 0,
+    playing: !matchMedia('(prefers-reduced-motion: reduce)').matches,
+    last: 0,
+  };
+  const NS = 'http://www.w3.org/2000/svg';
+  const svgEl = (tag, attrs, parent) => {
+    const el = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    if (parent) parent.appendChild(el);
+    return el;
+  };
+  function hull(points) {
+    const s = points.map((p, i) => [p[0], p[1], i]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    if (s.length <= 2) return s;
+    const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lower = [];
+    for (const p of s) {
+      while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0)
+        lower.pop();
+      lower.push(p);
+    }
+    const upper = [];
+    for (const p of [...s].reverse()) {
+      while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0)
+        upper.pop();
+      upper.push(p);
+    }
+    return [...lower.slice(0, -1), ...upper.slice(0, -1)];
+  }
+  function setupAnimation(p) {
+    const svg = $('anim');
+    svg.replaceChildren();
+    anim.pair = p;
+    const m = p.motion;
+    if (!m) {
+      anim.els = null;
+      return;
+    }
+    const all = m.frames.flat();
+    const xs = all.map((q) => q[0]);
+    const ys = all.map((q) => q[1]);
+    const W = 400,
+      H = 300,
+      PAD = 26;
+    const minX = Math.min(...xs),
+      maxX = Math.max(...xs),
+      minY = Math.min(...ys),
+      maxY = Math.max(...ys);
+    const k = Math.min(
+      (W - 2 * PAD) / Math.max(maxX - minX, 1e-6),
+      (H - 2 * PAD) / Math.max(maxY - minY, 1e-6)
+    );
+    const ox = (W - (maxX - minX) * k) / 2,
+      oy = (H - (maxY - minY) * k) / 2;
+    const px = (x) => ox + (x - minX) * k;
+    const py = (y) => oy + (maxY - y) * k;
+    const pts = (list) => list.map(([x, y]) => `${px(x).toFixed(1)},${py(y).toFixed(1)}`).join(' ');
+
+    const guides = svgEl('g', {}, svg);
+    for (const [a, b] of m.guides)
+      svgEl(
+        'line',
+        {
+          x1: px(a[0]),
+          y1: py(a[1]),
+          x2: px(b[0]),
+          y2: py(b[1]),
+          stroke: 'var(--guide)',
+          'stroke-width': 9,
+          'stroke-linecap': 'round',
+        },
+        guides
+      );
+    const paths = svgEl('g', { fill: 'none' }, svg);
+    m.joints.forEach((j, i) => {
+      if (j.ground) return;
+      const trail = m.frames.map((f) => f[i]);
+      svgEl(
+        'polyline',
+        {
+          points: pts(trail),
+          stroke: j.traced ? 'var(--trace)' : 'var(--path)',
+          'stroke-width': j.traced ? 2 : 1,
+          'stroke-dasharray': j.traced ? 'none' : '3 2.5',
+        },
+        paths
+      );
+    });
+    const bodies = svgEl('g', {}, svg);
+    const bodyEls = m.bodies.map((ids) =>
+      ids.length === 2
+        ? svgEl(
+            'line',
+            {
+              stroke: 'var(--link)',
+              'stroke-width': 6,
+              'stroke-linecap': 'round',
+              'stroke-opacity': 0.75,
+            },
+            bodies
+          )
+        : svgEl(
+            'polygon',
+            {
+              fill: 'var(--link-fill)',
+              stroke: 'var(--link)',
+              'stroke-width': 2.5,
+              'stroke-linejoin': 'round',
+            },
+            bodies
+          )
+    );
+    const cylEls = m.cylinders.map(() => [
+      svgEl(
+        'line',
+        { stroke: 'var(--text-strong)', 'stroke-width': 10, 'stroke-linecap': 'round' },
+        bodies
+      ),
+      svgEl(
+        'line',
+        { stroke: 'var(--text-tertiary)', 'stroke-width': 4, 'stroke-linecap': 'round' },
+        bodies
+      ),
+    ]);
+    const joints = svgEl('g', {}, svg);
+    const jointEls = m.joints.map((j) => {
+      const g = svgEl('g', {}, joints);
+      if (j.ground)
+        svgEl('polygon', { points: '0,0 -8,13 8,13', fill: 'var(--text-secondary)' }, g);
+      svgEl(
+        'circle',
+        { r: 4, fill: 'var(--surface)', stroke: 'var(--text-strong)', 'stroke-width': 1.6 },
+        g
+      );
+      const t = svgEl(
+        'text',
+        {
+          x: 6,
+          y: -6,
+          fill: 'var(--text-strong)',
+          'font-size': 14,
+          'font-weight': 700,
+          'font-family': 'Roboto, Arial, sans-serif',
+          'paint-order': 'stroke',
+          stroke: 'var(--surface-sunken)',
+          'stroke-width': 3,
+        },
+        g
+      );
+      t.textContent = j.id;
+      return g;
+    });
+    anim.els = { bodyEls, cylEls, jointEls, px, py };
+    anim.phase = 0;
+    $('scrub').max = String(m.frames.length - 1);
+    drawFrame(0);
+  }
+  function drawFrame(f) {
+    const m = anim.pair && anim.pair.motion;
+    if (!m || !anim.els) return;
+    anim.frame = f;
+    const frame = m.frames[f];
+    const { bodyEls, cylEls, jointEls, px, py } = anim.els;
+    m.bodies.forEach((ids, b) => {
+      const el = bodyEls[b];
+      if (ids.length === 2) {
+        const [p, q] = [frame[ids[0]], frame[ids[1]]];
+        el.setAttribute('x1', px(p[0]));
+        el.setAttribute('y1', py(p[1]));
+        el.setAttribute('x2', px(q[0]));
+        el.setAttribute('y2', py(q[1]));
+      } else {
+        el.setAttribute(
+          'points',
+          hull(ids.map((i) => frame[i]))
+            .map(([x, y]) => `${px(x).toFixed(1)},${py(y).toFixed(1)}`)
+            .join(' ')
+        );
+      }
+    });
+    m.cylinders.forEach(([a, b], c) => {
+      const p = frame[a],
+        q = frame[b];
+      const mx = (p[0] + q[0]) / 2,
+        my = (p[1] + q[1]) / 2;
+      const [barrel, rod] = cylEls[c];
+      barrel.setAttribute('x1', px(p[0]));
+      barrel.setAttribute('y1', py(p[1]));
+      barrel.setAttribute('x2', px(mx));
+      barrel.setAttribute('y2', py(my));
+      rod.setAttribute('x1', px(mx));
+      rod.setAttribute('y1', py(my));
+      rod.setAttribute('x2', px(q[0]));
+      rod.setAttribute('y2', py(q[1]));
+    });
+    jointEls.forEach((g, i) =>
+      g.setAttribute(
+        'transform',
+        `translate(${px(frame[i][0]).toFixed(1)} ${py(frame[i][1]).toFixed(1)})`
+      )
+    );
+    $('scrub').value = String(f);
+  }
+  function frameAtPhase(m, phase) {
+    const t0 = m.time[0],
+      span = m.time[m.time.length - 1] - t0;
+    if (!(span > 0)) return Math.floor(phase * (m.frames.length - 1));
+    const target = t0 + phase * span;
+    let lo = 0,
+      hi = m.time.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (m.time[mid] <= target) lo = mid;
+      else hi = mid - 1;
+    }
+    return lo;
+  }
+  function tick(now) {
+    const m = anim.pair && anim.pair.motion;
+    if (m && anim.playing && state.tab === 'judge') {
+      const dt = anim.last ? Math.min(0.1, (now - anim.last) / 1000) : 0;
+      anim.phase = (anim.phase + (dt * Number($('speed').value)) / CYCLE_SECONDS) % 1;
+      const f = frameAtPhase(m, anim.phase);
+      if (f !== anim.frame) drawFrame(f);
+    }
+    anim.last = now;
+    requestAnimationFrame(tick);
+  }
+  $('play').addEventListener('click', () => {
+    anim.playing = !anim.playing;
+    $('play').textContent = anim.playing ? 'Pause' : 'Play';
+  });
+  $('scrub').addEventListener('input', (e) => {
+    const m = anim.pair && anim.pair.motion;
+    if (!m) return;
+    anim.playing = false;
+    $('play').textContent = 'Play';
+    const f = Number(e.target.value);
+    const span = m.time[m.time.length - 1] - m.time[0];
+    anim.phase = span > 0 ? (m.time[f] - m.time[0]) / span : f / (m.frames.length - 1);
+    drawFrame(f);
+  });
+
+  /* ---------- Rendering ---------- */
+  function renderHeader() {
+    $('round').innerHTML = DATA.rounds
+      .map(
+        (r) =>
+          `<option value="${esc(r.id)}" ${r.id === state.round ? 'selected' : ''}>${esc(r.title)}</option>`
+      )
+      .join('');
+    $('tab-judge').setAttribute('aria-selected', String(state.tab === 'judge'));
+    $('tab-results').setAttribute('aria-selected', String(state.tab === 'results'));
+    $('judge').hidden = state.tab !== 'judge';
+    $('results').hidden = state.tab !== 'results';
+    const r = round();
+    const done = r.pairs.filter((p) => voteFor(p)).length;
+    $('lede').textContent =
+      `${done} of ${r.pairs.length} judged. Each mechanism has two answers from GPT-6 Luna, one per fact-sheet version, on randomly chosen sides. Pick the one you’d rather a student read; which version wrote it is shown after you save. ${r.note || ''}`;
+  }
+  function renderStrip() {
+    $('strip').innerHTML = round()
+      .pairs.map(
+        (p, i) =>
+          `<button type="button" data-go="${i}" class="${voteFor(p) ? 'done' : ''}" aria-current="${i === state.index}"><span class="tick"></span>${esc(p.name)}</button>`
+      )
+      .join('');
+  }
+  let shownPair = null;
+  function renderPair() {
+    const p = pair();
+    const r = round();
+    $('m-count').textContent = `Mechanism ${state.index + 1} of ${r.pairs.length}`;
+    $('m-name').textContent = p.name;
+    $('m-blurb').textContent = p.blurb || '';
+    $('open-app').href = p.appUrl;
+    const img = DATA.images[p.left.image || p.right.image];
+    $('saw-img').src = img || '';
+    if (shownPair !== p) {
+      setupAnimation(p);
+      shownPair = p;
+    }
+    $('panel-left').innerHTML = panel(p, p.left);
+    $('panel-right').innerHTML = panel(p, p.right);
+    const secs = (arm) => (arm.latencyMs ? `${(arm.latencyMs / 1000).toFixed(1)} s` : '');
+    $('meta-left').textContent = secs(p.left);
+    $('meta-right').textContent = secs(p.right);
+  }
+  function renderVerdict() {
+    const p = pair();
+    const d = draft(p);
+    for (const [id, c] of [
+      ['c-left', 'left'],
+      ['c-same', 'same'],
+      ['c-right', 'right'],
+      ['c-poor', 'both-poor'],
+    ])
+      $(id).setAttribute('aria-checked', String(d.choice === c));
+    $('side-left').classList.toggle('chosen', d.choice === 'left');
+    $('side-right').classList.toggle('chosen', d.choice === 'right');
+    const reasonsOn = d.choice === 'left' || d.choice === 'right';
+    $('reasons').setAttribute('aria-disabled', String(!reasonsOn));
+    $('reasons').innerHTML =
+      `<span class="label">Why it wins</span>` +
+      REASONS.map(
+        (r, i) =>
+          `<button type="button" class="chip" id="reason-${i}" data-reason="${esc(r)}" aria-pressed="${d.reasons.includes(r)}">${esc(r)}</button>`
+      ).join('');
+    $('wrong-left').checked = d.wrongLeft;
+    $('wrong-right').checked = d.wrongRight;
+    if ($('note') !== document.activeElement) $('note').value = d.note;
+    const saved = voteFor(p);
+    $('save').textContent = saved ? 'Update' : 'Save';
+    $('next').hidden = state.index >= round().pairs.length - 1 && !!saved;
+    $('save-hint').textContent = state.hint;
+    $('save-hint').className =
+      'hint' + (state.hint && !state.hint.startsWith('Saved') ? ' warn' : '');
+  }
+  function renderReveal() {
+    const p = pair();
+    const v = voteFor(p);
+    const el = $('reveal');
+    el.hidden = !v;
+    if (!v) return;
+    const side = (arm, tag) => {
+      const flags = arm.rubric.flags.length
+        ? arm.rubric.flags.map((f) => `<li>${esc(f)}</li>`).join('')
+        : '<li class="none">No automatic flags</li>';
+      const famWord =
+        {
+          named: 'names the family',
+          class: 'names its class only',
+          missed: 'misses the family',
+          unknown: 'no answer',
+        }[arm.rubric.family] || arm.rubric.family;
+      const u = arm.usage || {};
+      return `<div>
+        <span class="sheet-name">${tag} was ${esc(armLabel(arm))}</span>
+        <span><span class="fam ${esc(arm.rubric.family)}">${esc(famWord)}</span> ${arm.rubric.application === 'n/a' ? '' : `<span class="fam ${arm.rubric.application === 'named' ? 'named' : 'missed'}">${arm.rubric.application === 'named' ? 'uses name the real machine' : 'uses miss the real machine'}</span>`}</span>
+        <ul class="flags">${flags}</ul>
+        <span class="hint">${arm.latencyMs ? `${(arm.latencyMs / 1000).toFixed(1)} s · ` : ''}${u.input ?? '–'} in · ${u.output ?? '–'} out${u.reasoning ? ` (${u.reasoning} reasoning)` : ''}</span>
+        <details class="facts"><summary>Fact sheet ${tag} was written from</summary><pre>${esc(arm.facts)}</pre></details>
+      </div>`;
+    };
+    const change = p.identical
+      ? `<div class="same-sheet">The two fact sheets were word for word the same for this mechanism, so any difference here is Luna answering differently on its own. These pairs are the noise control.</div>`
+      : `<div><div class="hint" style="margin-bottom: 6px">What changed in the fact sheet for this mechanism (${esc(sheetTitle(p.left.id === round().a ? p.left.id : p.right.id))} → ${esc(sheetTitle(round().b))})</div><pre class="diff">${p.diff.map((d) => `<span class="${d.op === '+' ? 'add' : 'del'}">${d.op} ${esc(d.line)}</span>`).join('\n')}</pre></div>`;
+    el.innerHTML = `<h3 id="reveal-h">Revealed</h3><div class="who-was">${side(p.left, 'A')}${side(p.right, 'B')}</div>${change}`;
+  }
+
+  function tallyOf(pairs) {
+    const r = round();
+    const t = { a: 0, b: 0, same: 0, poor: 0, n: 0, judged: 0 };
+    for (const p of pairs) {
+      t.n++;
+      const v = voteFor(p);
+      if (!v) continue;
+      t.judged++;
+      if (v.choice === 'same') t.same++;
+      else if (v.choice === 'both-poor') t.poor++;
+      else if (v.winner === r.a) t.a++;
+      else t.b++;
+    }
+    return t;
+  }
+  function bar(t) {
+    const total = Math.max(t.judged, 1);
+    const seg = (cls, n, label) =>
+      n
+        ? `<span class="${cls}" style="width:${(n / total) * 100}%" title="${esc(label)}: ${n}">${n}</span>`
+        : '';
+    return `<div class="bar">${seg('b-a', t.a, sheetTitle(round().a))}${seg('b-same', t.same, 'About the same')}${seg('b-b', t.b, sheetTitle(round().b))}${seg('b-poor', t.poor, 'Both poor')}</div>`;
+  }
+  function renderResults() {
+    const r = round();
+    const all = tallyOf(r.pairs);
+    const changed = r.pairs.filter((p) => !p.identical);
+    const same = r.pairs.filter((p) => p.identical);
+    const wrongCount = (armId) =>
+      r.pairs.filter((p) => (voteFor(p)?.wrong || []).includes(armId)).length;
+    const famCount = (armId, fam) =>
+      r.pairs.filter((p) =>
+        [p.left, p.right].some((arm) => arm.id === armId && arm.rubric.family === fam)
+      ).length;
+    const useCount = (armId) =>
+      r.pairs.filter((p) =>
+        [p.left, p.right].some((arm) => arm.id === armId && arm.rubric.application === 'named')
+      ).length;
+    const useTotal = r.pairs.filter(
+      (p) => p.left.rubric.application !== 'n/a' || p.right.rubric.application !== 'n/a'
+    ).length;
+    const flagCount = (armId) =>
+      r.pairs.reduce(
+        (s, p) =>
+          s +
+          [p.left, p.right]
+            .filter((arm) => arm.id === armId)
+            .reduce((x, arm) => x + arm.rubric.flags.length, 0),
+        0
+      );
+    const sheetB = DATA.sheets[r.b.split('~')[0]];
+    const pick = (p) => {
+      const v = voteFor(p);
+      if (!v) return '<span class="pill">not yet</span>';
+      if (v.choice === 'same') return '<span class="pill">about the same</span>';
+      if (v.choice === 'both-poor') return '<span class="pill bad">both poor</span>';
+      return `<span class="pill win">${esc(sheetTitle(v.winner))}</span>`;
+    };
+    const rows = r.pairs
+      .map((p) => {
+        const v = voteFor(p);
+        return `<tr>
+        <td>${esc(p.name)}</td>
+        <td>${p.identical ? 'identical' : 'changed'}</td>
+        <td>${pick(p)}</td>
+        <td>${v && v.wrong.length ? v.wrong.map((w) => `<span class="pill bad">${esc(sheetTitle(w))}</span>`).join(' ') : ''}</td>
+        <td>${v ? esc((v.reasons || []).join(', ')) : ''}</td>
+        <td class="note">${v ? esc(v.note) : ''}</td></tr>`;
+      })
+      .join('');
+    $('results').innerHTML = `
+      <section class="card" style="display:grid; gap:14px">
+        <div class="tally-head"><h2>${esc(r.title)}</h2><span class="hint">${all.judged} of ${all.n} judged</span></div>
+        ${bar(all)}
+        <div class="bar-legend">
+          <span><i style="background:var(--text-tertiary)"></i>${esc(sheetTitle(r.a))} preferred: ${all.a}</span>
+          <span><i style="background:var(--border-divider)"></i>About the same: ${all.same}</span>
+          <span><i style="background:var(--brand)"></i>${esc(sheetTitle(r.b))} preferred: ${all.b}</span>
+          <span><i style="background:var(--refusal-text)"></i>Both poor: ${all.poor}</span>
+        </div>
+        <div class="splits">
+          <div class="card"><h3>Where the sheet changed (${changed.length})</h3>${bar(tallyOf(changed))}<p>The signal: these answers were written from different facts.</p></div>
+          <div class="card"><h3>Where the sheet was identical (${same.length})</h3>${bar(tallyOf(same))}<p>The noise: the same facts, asked twice. A strong preference here is Luna’s own variation.</p></div>
+        </div>
+        <div class="stats">
+          <div class="stat"><span class="v">${wrongCount(r.a)} · ${wrongCount(r.b)}</span><span class="k">Answers you marked wrong: ${esc(sheetTitle(r.a))} · ${esc(sheetTitle(r.b))}</span></div>
+          <div class="stat"><span class="v">${famCount(r.a, 'named')} · ${famCount(r.b, 'named')}</span><span class="k">Name the family (automatic check, of ${r.pairs.length})</span></div>
+          <div class="stat"><span class="v">${useCount(r.a)} · ${useCount(r.b)}</span><span class="k">Uses name the real machine (automatic check, of ${useTotal})</span></div>
+          <div class="stat"><span class="v">${flagCount(r.a)} · ${flagCount(r.b)}</span><span class="k">Automatic flags: unknown parts, numbers not in the sheet, unsupported motion words</span></div>
+        </div>
+      </section>
+      <section class="card" style="display:grid; gap:10px">
+        <h2>Your votes</h2>
+        <div class="table-scroll"><table class="votes"><thead><tr><th>Mechanism</th><th>Sheet</th><th>Your pick</th><th>Marked wrong</th><th>Why</th><th>Note</th></tr></thead><tbody>${rows}</tbody></table></div>
+        <div class="verdict-actions"><button type="button" class="secondary" id="copy">Copy votes as JSON</button><span class="hint" id="copy-hint"></span></div>
+      </section>
+      <section class="card" style="display:grid; gap:10px">
+        <h2>What ${esc(sheetB?.title || r.b)} changed</h2>
+        <p class="lede">${esc(sheetB?.summary || '')}</p>
+        <ul class="changes">${(sheetB?.changes || []).map((c) => `<li>${esc(c)}</li>`).join('')}</ul>
+      </section>`;
+  }
+  function renderAll() {
+    renderStore();
+    renderHeader();
+    if (state.tab === 'judge') {
+      renderStrip();
+      renderPair();
+      renderVerdict();
+      renderReveal();
+    } else {
+      renderResults();
+    }
+  }
+
+  /* ---------- Events ---------- */
+  function go(index) {
+    const n = round().pairs.length;
+    state.index = Math.max(0, Math.min(n - 1, index));
+    state.hint = '';
+    renderAll();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  $('round').addEventListener('change', (e) => {
+    state.round = e.target.value;
+    placedOnFirstUnjudged = false;
+    placeOnFirstUnjudged();
+    shownPair = null;
+    savePrefs();
+    renderAll();
+  });
+  $('tab-judge').addEventListener('click', () => {
+    state.tab = 'judge';
+    savePrefs();
+    renderAll();
+  });
+  $('tab-results').addEventListener('click', () => {
+    state.tab = 'results';
+    savePrefs();
+    renderAll();
+  });
+  $('strip').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-go]');
+    if (b) go(Number(b.dataset.go));
+  });
+  $('choice').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-choice]');
+    if (!b) return;
+    const d = draft(pair());
+    d.choice = b.dataset.choice;
+    if (d.choice !== 'left' && d.choice !== 'right') d.reasons = [];
+    state.hint = '';
+    renderVerdict();
+  });
+  $('reasons').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-reason]');
+    if (!b) return;
+    const d = draft(pair());
+    const r = b.dataset.reason;
+    d.reasons = d.reasons.includes(r) ? d.reasons.filter((x) => x !== r) : [...d.reasons, r];
+    renderVerdict();
+  });
+  $('wrong-left').addEventListener('change', (e) => {
+    draft(pair()).wrongLeft = e.target.checked;
+  });
+  $('wrong-right').addEventListener('change', (e) => {
+    draft(pair()).wrongRight = e.target.checked;
+  });
+  $('note').addEventListener('input', (e) => {
+    draft(pair()).note = e.target.value;
+  });
+  $('save').addEventListener('click', saveVote);
+  $('next').addEventListener('click', () => {
+    const r = round();
+    const after = r.pairs.findIndex((p, i) => i > state.index && !voteFor(p));
+    go(after >= 0 ? after : state.index + 1);
+  });
+  document.addEventListener('click', async (e) => {
+    if (e.target.id !== 'copy') return;
+    const text = JSON.stringify(
+      [...votes.values()].filter((v) => v.round === state.round),
+      null,
+      2
+    );
+    try {
+      await navigator.clipboard.writeText(text);
+      $('copy-hint').textContent = 'Copied.';
+    } catch (err) {
+      $('copy-hint').textContent = 'Copy was refused; here it is to select:';
+      const pre = document.createElement('pre');
+      pre.className = 'diff';
+      pre.textContent = text;
+      $('copy-hint').after(pre);
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (state.tab !== 'judge') return;
+    const typing = ['TEXTAREA', 'INPUT', 'SELECT'].includes(document.activeElement?.tagName);
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      saveVote();
+      return;
+    }
+    if (typing) return;
+    const map = { 1: 'left', 2: 'same', 3: 'right', 4: 'both-poor' };
+    if (map[e.key]) {
+      draft(pair()).choice = map[e.key];
+      if (!['left', 'right'].includes(map[e.key])) draft(pair()).reasons = [];
+      renderVerdict();
+    } else if (e.key === 'ArrowRight') go(state.index + 1);
+    else if (e.key === 'ArrowLeft') go(state.index - 1);
+  });
+
+  renderAll();
+  requestAnimationFrame(tick);
+  connect();
+</script>
