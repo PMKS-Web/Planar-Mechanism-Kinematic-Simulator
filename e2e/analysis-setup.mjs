@@ -439,6 +439,14 @@ record(
     !text.includes('degrees of freedom'),
   text
 );
+// The part that is a machine only because of the stray joint used to get the
+// generic setup hint in the playback row, beside the drawer's real answer.
+const besideRow = await page.locator('app-playback-bar').innerText();
+record(
+  'and the playback row counts it rather than asking for an input',
+  !besideRow.includes('set one joint as an input') && /1 fix/.test(besideRow),
+  besideRow
+);
 await page.getByRole('button', { name: 'Go To Joint E', exact: true }).first().click();
 await page.waitForTimeout(600);
 const onScreen = (id) =>
