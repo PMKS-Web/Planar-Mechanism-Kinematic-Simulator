@@ -165,3 +165,21 @@ grade.
 Round 1 compares v2 (the sheet from the four-model comparison) with v3 (the truth fixes). Four of
 the ten sheets are identical between the two, so those four pairs measure how much Luna varies on
 its own. v3 was also asked a second time (`~2` in the answer file names) for the same purpose.
+
+### Round 2: v4, and the pairs Claude decides
+
+v4 (see `run/sheets.json`) moves more of the reasoning into the app. Every link is named for its
+job, with each rocker's and slider's ends keyed to the input angle. A family check matches lengths,
+joints and motion against a short catalog, and the note may say "is" only for a match. The sheet
+and the note say "this mechanism", and terms come with meanings. The picture is the app's own
+Schematic drawing at four moments, captured by `run/schematic.mjs` from a development build of
+`feature/drawing-styles`; the [hood hinge's filmstrip](v4-filmstrip-hood-hinge.png) is what the
+model was sent. Link names are hidden in the capture, because an author's names ("Wiper arm",
+"Hood") give the answer away.
+
+From round 2 on, Claude decides the pairs where one answer is clearly better and leaves the close
+calls to a person; each decision is in `run/rounds.json` with its reason, and the page shows it. In
+round 2, v4 won the hood hinge outright ("a Stephenson six-bar that resembles a car hood hinge", in
+both askings) and lost the cylinder boom, whose first v4 answer put no part name in bold. The other
+eight are close calls, and they are the question: whether the v4 note is the one a person would
+rather a student read.

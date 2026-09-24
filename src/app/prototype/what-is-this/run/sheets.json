@@ -16,5 +16,18 @@
       "Dropped two unproven causes: “because the input is not at its pivot” and “when one end rises the other falls” (now: the ends move in opposite directions).",
       "A drawing the solver cannot solve is described as unsolved as drawn, not as a mechanism that cannot move (no template here hits this)."
     ]
+  },
+  "v4": {
+    "title": "v4 · jobs, family check, schematic filmstrip",
+    "summary": "The app does more of the reasoning and says it in the app's words; the picture is the app's own Schematic drawing at four moments; the prompt asks for a glossary with meanings and for the specific machine the mechanism resembles.",
+    "changes": [
+      "Links and their jobs: every link is named for its job (input crank, coupler, rocker, beam, slotted link, yoke, connecting rod, slider), and each rocker's and slider's two ends are keyed to the input's angle, e.g. “reaches its ends when link AB is at 26 deg and 192 deg”. The same list is the panel's Links table.",
+      "Family check: PMKS+ compares lengths, joints and motion with a short catalog (crank-rocker and the other Grashof classes, parallelogram, slider-crank, Scotch yoke, Whitworth and slotted-lever quick returns, Chebyshev, Roberts, Hoeken and Watt straight-line linkages, Jansen, walking beam, crank-rocker driving a parallelogram, cylinder-driven lever) and names the chain type (Watt or Stephenson six-bar). The note may say “This mechanism is a …” only for a match.",
+      "The picture is the app's Schematic style, captured from the drawing-styles build at four moments (a full turn's quarters, or a back-and-forth's two ends and two points between), with authored link names hidden because they give the answer away (“Wiper arm”, “Hood”).",
+      "The sheet leads with what matters (at a glance, family, jobs) and puts coordinates last; long per-body length lists are trimmed to the lengths between connecting joints.",
+      "“This mechanism” throughout, in the sheet and in the note; the note never mentions the fact sheet or the picture.",
+      "Terms come with a meaning, which the panel shows on hover; uses may be fewer than two, and should be what the type is best known for.",
+      "After the app's family, the note names the specific machine it strongly resembles, if any: “a Stephenson six-bar that resembles a car hood hinge”."
+    ]
   }
 }

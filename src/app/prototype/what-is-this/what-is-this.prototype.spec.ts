@@ -2,7 +2,8 @@
 //   PMKS_WHAT_IS_THIS=1 PMKS_SHEET=v3 npx ng test --watch=false \
 //     --include=src/app/prototype/what-is-this/what-is-this.prototype.spec.ts
 // Writes one prompt per template and fact-sheet variant, plus each machine's
-// drawing, to artifacts/what-is-this/<PMKS_SHEET>/, and each template's motion
+// SVG drawing and the moments its filmstrip shows (run/schematic.mjs captures the
+// filmstrip from the app), to artifacts/what-is-this/<PMKS_SHEET>/, and each template's motion
 // to artifacts/what-is-this/motion/. PMKS_VARIANTS is a comma list of variant
 // ids; the default is the one the taste test runs. The model calls are made
 // by the scripts in ./run, which read the manifest this writes.
@@ -88,11 +89,15 @@ describe('"What is this?" prototype', () => {
           writeFileSync(`${motionDir}/${id}.json`, JSON.stringify(described.motions[0]));
         }
         writeFileSync(`${out}/cases/${key}.prompt.txt`, buildPrompt(described.text));
+        // The picture is the app's own Schematic drawing at the four moments
+        // listed below, captured by run/schematic.mjs; the SVG is kept for the
+        // sheets that came before it.
         let svg: string | undefined;
         if (variant.picture && described.svgs.length) {
           svg = `cases/${id}.svg`;
           writeFileSync(`${out}/${svg}`, described.svgs[0]);
         }
+        const machine = described.machines[0];
         cases.push({
           key,
           template: id,
@@ -102,7 +107,10 @@ describe('"What is this?" prototype', () => {
           variant: variant.id,
           prompt: `cases/${key}.prompt.txt`,
           svg,
-          image: svg?.replace(/\.svg$/, '.png'),
+          image: variant.picture ? `cases/${id}.filmstrip.png` : undefined,
+          film: machine?.frames ?? [],
+          jobs: machine?.jobs ?? [],
+          family: machine?.family ?? [],
         });
       }
     }

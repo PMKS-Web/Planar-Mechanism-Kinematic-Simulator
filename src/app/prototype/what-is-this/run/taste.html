@@ -31,8 +31,12 @@
     --link: #3f51b5;
     --link-fill: rgba(63, 81, 181, 0.16);
     --trace: #d62828;
-    --path: #b9bdc9;
-    --guide: rgba(60, 64, 80, 0.22);
+    --path: #b3b8c6;
+    --rail: #e3e5ec;
+    --rail-edge: #7d8294;
+    --highlight: #f29900;
+    --tip-bg: #202124;
+    --tip-text: #fff;
     --shadow: 0 1px 3px rgba(32, 33, 36, 0.12), 0 4px 14px rgba(32, 33, 36, 0.06);
     --mono: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
     --sans: Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -63,8 +67,12 @@
       --link: #9fa8da;
       --link-fill: rgba(159, 168, 218, 0.2);
       --trace: #ff7a7a;
-      --path: #4a4f5e;
-      --guide: rgba(200, 205, 220, 0.18);
+      --path: #535969;
+      --rail: #2c303b;
+      --rail-edge: #8a90a0;
+      --highlight: #fbbc04;
+      --tip-bg: #eef0f5;
+      --tip-text: #13151b;
       --shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
     }
   }
@@ -93,8 +101,12 @@
     --link: #9fa8da;
     --link-fill: rgba(159, 168, 218, 0.2);
     --trace: #ff7a7a;
-    --path: #4a4f5e;
-    --guide: rgba(200, 205, 220, 0.18);
+    --path: #535969;
+    --rail: #2c303b;
+    --rail-edge: #8a90a0;
+    --highlight: #fbbc04;
+    --tip-bg: #eef0f5;
+    --tip-text: #13151b;
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
   }
 
@@ -156,7 +168,9 @@
   textarea:focus-visible,
   input:focus-visible,
   summary:focus-visible,
-  a:focus-visible {
+  a:focus-visible,
+  .term:focus-visible,
+  strong[data-part]:focus-visible {
     outline: 2px solid var(--brand);
     outline-offset: 2px;
   }
@@ -172,7 +186,6 @@
     background: var(--surface-sunken);
   }
 
-  /* Header */
   .top {
     display: flex;
     flex-wrap: wrap;
@@ -214,7 +227,6 @@
   .seg button + button {
     border-left: 1px solid var(--border-divider);
   }
-  .seg button[aria-pressed='true'],
   .seg button[aria-selected='true'] {
     background: var(--brand-tint);
     color: var(--brand-dark);
@@ -250,11 +262,22 @@
     background: var(--warning-text);
   }
 
-  /* Progress strip: one chip per mechanism */
+  /* One chip per mechanism: close calls first, Claude's calls after them. */
   .strip {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
+    align-items: center;
+  }
+  .strip .group {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin: 0 4px 0 8px;
+  }
+  .strip .group:first-child {
+    margin-left: 0;
   }
   .strip button {
     border: 1px solid var(--border-divider);
@@ -279,13 +302,19 @@
     background: var(--brand);
     border-color: var(--brand);
   }
+  .strip button.claude {
+    border-style: dashed;
+  }
+  .strip button.claude .tick {
+    border-radius: 2px;
+  }
   .strip button[aria-current='true'] {
     border-color: var(--brand);
+    border-style: solid;
     color: var(--text-strong);
     box-shadow: inset 0 0 0 1px var(--brand);
   }
 
-  /* Judge layout */
   .stage {
     display: grid;
     grid-template-columns: 330px minmax(0, 1fr);
@@ -313,6 +342,17 @@
     background: var(--surface-sunken);
     border-radius: 8px;
     border: 1px solid var(--border-rule);
+  }
+  .anim .hl {
+    stroke: var(--highlight) !important;
+    stroke-opacity: 1 !important;
+  }
+  .anim polygon.hl {
+    fill: color-mix(in srgb, var(--highlight) 30%, transparent) !important;
+  }
+  .anim g.hl circle {
+    stroke: var(--highlight);
+    stroke-width: 3;
   }
   .anim-controls {
     display: flex;
@@ -344,33 +384,24 @@
     display: flex;
     flex-wrap: wrap;
     gap: 4px 12px;
+    margin-top: 6px;
   }
   .legend i {
     display: inline-block;
-    width: 14px;
-    height: 0;
-    border-top: 2.5px solid var(--trace);
+    width: 16px;
     vertical-align: middle;
-    margin-right: 4px;
+    margin-right: 5px;
+  }
+  .legend i.trace {
+    border-top: 2.5px solid var(--trace);
   }
   .legend i.path {
-    border-top: 1.5px dashed var(--path);
+    border-top: 1.5px solid var(--path);
   }
-  details.saw summary {
-    cursor: pointer;
-    font-size: 14px;
-    color: var(--text-secondary);
-  }
-  details.saw img {
-    margin-top: 8px;
-    border-radius: 6px;
-    border: 1px solid var(--border-rule);
-    background: #fff;
-  }
-  details.saw p {
-    font-size: 12.5px;
-    color: var(--text-tertiary);
-    margin: 6px 0 0;
+  .legend i.rail {
+    height: 7px;
+    background: var(--rail);
+    border-block: 1px solid var(--rail-edge);
   }
 
   .versus {
@@ -494,6 +525,36 @@
     text-align: right;
     font-variant-numeric: tabular-nums;
   }
+  table.links {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 13px;
+  }
+  .links th {
+    text-align: left;
+    font-weight: 500;
+    font-size: 11.5px;
+    color: var(--text-tertiary);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0 8px 4px 0;
+  }
+  .links td {
+    padding: 4px 8px 4px 0;
+    border-top: 1px solid var(--border-rule);
+    vertical-align: top;
+  }
+  .links td:first-child {
+    font-weight: 500;
+    color: var(--text-strong);
+    white-space: nowrap;
+  }
+  .links td:last-child {
+    color: var(--text-secondary);
+  }
+  .links tr.hl td {
+    background: color-mix(in srgb, var(--highlight) 18%, transparent);
+  }
   .written {
     background: var(--brand-wash);
     border: 1px solid var(--border-divider);
@@ -516,10 +577,33 @@
     color: var(--text-strong);
     font-weight: 700;
   }
+  .written strong[data-part],
+  .uses strong[data-part] {
+    cursor: pointer;
+    border-radius: 3px;
+  }
+  .written strong[data-part].hl,
+  .uses strong[data-part].hl {
+    background: color-mix(in srgb, var(--highlight) 30%, transparent);
+  }
   .term {
     text-decoration: underline dotted var(--brand);
     text-underline-offset: 3px;
     text-decoration-thickness: 1.5px;
+    cursor: help;
+  }
+  .term.bare {
+    text-decoration-color: var(--text-tertiary);
+  }
+  .how {
+    font-size: 12px;
+    color: var(--text-tertiary);
+  }
+  .how strong {
+    color: var(--text-secondary);
+  }
+  .how .term {
+    cursor: default;
   }
   .family-line {
     display: flex;
@@ -535,10 +619,12 @@
     font-size: 12px;
     font-weight: 500;
   }
+  .cert-checked,
   .cert-is {
     background: var(--success-bg);
     color: var(--success-text);
   }
+  .cert-reading,
   .cert-resembles {
     background: var(--brand-tint);
     color: var(--brand-dark);
@@ -577,8 +663,25 @@
     border-radius: 8px;
     font-size: 14px;
   }
+  #tip {
+    position: fixed;
+    z-index: 10;
+    max-width: 260px;
+    background: var(--tip-bg);
+    color: var(--tip-text);
+    font-size: 13px;
+    line-height: 1.45;
+    padding: 8px 10px;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    pointer-events: none;
+  }
+  #tip b {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 2px;
+  }
 
-  /* Verdict */
   .verdict {
     display: grid;
     gap: 12px;
@@ -593,6 +696,17 @@
   .verdict-head h3 {
     font-size: 16px;
     font-weight: 500;
+  }
+  .called {
+    font-size: 14px;
+    background: var(--surface-sunken);
+    border-radius: 8px;
+    padding: 10px 12px;
+    border-left: 3px solid var(--brand);
+  }
+  .called b {
+    font-weight: 500;
+    color: var(--text-strong);
   }
   .choice {
     display: grid;
@@ -700,7 +814,6 @@
     color: var(--warning-text);
   }
 
-  /* Reveal */
   .reveal {
     display: grid;
     gap: 14px;
@@ -723,6 +836,11 @@
   .who-was .sheet-name {
     font-weight: 500;
     color: var(--text-strong);
+  }
+  .who-was img {
+    border-radius: 6px;
+    border: 1px solid var(--border-rule);
+    background: #fff;
   }
   .flags {
     list-style: none;
@@ -773,6 +891,8 @@
     padding: 10px 12px;
     overflow-x: auto;
     white-space: pre-wrap;
+    max-height: 420px;
+    overflow-y: auto;
   }
   .diff .del {
     color: var(--refusal-text);
@@ -780,7 +900,8 @@
   .diff .add {
     color: var(--success-text);
   }
-  details.facts summary {
+  details.facts summary,
+  details.saw summary {
     cursor: pointer;
     font-size: 14px;
     color: var(--text-secondary);
@@ -796,7 +917,6 @@
     border-radius: 8px;
   }
 
-  /* Results */
   .results {
     display: grid;
     gap: 18px;
@@ -853,26 +973,6 @@
     margin-right: 5px;
     vertical-align: -1px;
   }
-  .splits {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 14px;
-  }
-  .splits .card {
-    display: grid;
-    gap: 8px;
-    background: var(--surface-sunken);
-    box-shadow: none;
-  }
-  .splits h3 {
-    font-size: 15px;
-    font-weight: 500;
-  }
-  .splits p {
-    margin: 0;
-    font-size: 13.5px;
-    color: var(--text-secondary);
-  }
   .stats {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -915,7 +1015,7 @@
     white-space: nowrap;
   }
   .votes td.note {
-    max-width: 46ch;
+    max-width: 52ch;
     color: var(--text-secondary);
   }
   .pill {
@@ -945,6 +1045,11 @@
     color: var(--text-secondary);
     max-width: 100ch;
   }
+  .empty-judge {
+    text-align: center;
+    padding: 28px 20px;
+    color: var(--text-secondary);
+  }
 
   @media (max-width: 1080px) {
     .stage {
@@ -952,19 +1057,9 @@
     }
     .mech {
       position: static;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      align-items: start;
-    }
-    .mech > .mech-head,
-    .mech > details,
-    .mech > .mech-links {
-      grid-column: 1 / -1;
     }
   }
   @media (max-width: 720px) {
-    .mech {
-      grid-template-columns: 1fr;
-    }
     .versus {
       grid-template-columns: 1fr;
     }
@@ -976,11 +1071,6 @@
     }
     h1 {
       font-size: 24px;
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    * {
-      scroll-behavior: auto !important;
     }
   }
 </style>
@@ -1038,28 +1128,17 @@
               <option value="2">Fast</option>
             </select>
           </div>
-          <div class="legend" style="margin-top: 6px">
-            <span><i></i>traced by the author</span><span><i class="path"></i>other joints</span
-            ><span>one cycle ≈ 4 s</span>
+          <div class="legend">
+            <span><i class="trace"></i>traced path</span>
+            <span><i class="path"></i>path of another joint</span>
+            <span><i class="rail"></i>fixed slider guide</span>
+            <span>one cycle ≈ 4 s</span>
           </div>
         </div>
-        <div class="mech-links">
-          <a id="open-app" target="_blank" rel="noopener">Open in PMKS+ ↗</a>
-        </div>
-        <details class="saw">
-          <summary>What the model saw</summary>
-          <img
-            id="saw-img"
-            alt="The simulator’s drawing sent to the model: start pose, traced paths in red"
-          />
-          <p>
-            Plus the fact sheet, which differs between the two sides; it is shown after you vote.
-            The model never sees the mechanism’s name.
-          </p>
-        </details>
+        <div><a id="open-app" target="_blank" rel="noopener">Open in PMKS+ ↗</a></div>
       </aside>
 
-      <div class="versus">
+      <div class="versus" id="versus">
         <div class="side" id="side-left">
           <div class="side-head">
             <span class="side-tag">A</span><span class="side-meta" id="meta-left"></span>
@@ -1087,6 +1166,7 @@
               ><kbd>→</kbd> move</span
             >
           </div>
+          <div class="called" id="called" hidden></div>
           <div class="choice" role="radiogroup" aria-label="Your pick" id="choice">
             <button type="button" role="radio" aria-checked="false" data-choice="left" id="c-left">
               <span>A is better</span><kbd>1</kbd>
@@ -1132,6 +1212,7 @@
 
   <main id="results" class="results" hidden></main>
 </div>
+<div id="tip" hidden></div>
 
 <script>
   const DATA = /*DATA*/ null;
@@ -1141,7 +1222,7 @@
     'Better uses',
     'Clearer for a student',
     'Tighter',
-    'Better detail from this drawing',
+    'Better detail about this mechanism',
   ];
   const CYCLE_SECONDS = 4;
   const esc = (s) =>
@@ -1176,15 +1257,28 @@
   let votes = new Map();
   let db = null;
   let storeMode = 'pending';
-  let placedOnFirstUnjudged = false;
+  let placed = false;
 
   const round = () => DATA.rounds.find((r) => r.id === state.round);
-  const pair = () => round().pairs[state.index];
+  /** Close calls first, then the ones Claude decided, so the strip reads in the order to judge them. */
+  const ordered = () => {
+    const pairs = round().pairs;
+    return [...pairs.filter((p) => !p.decided), ...pairs.filter((p) => p.decided)];
+  };
+  const pair = () => ordered()[state.index];
   const voteId = (r, p) => `${r.id}~${p.template}`;
   const voteFor = (p) => votes.get(voteId(round(), p));
   const sheetTitle = (armId) => DATA.sheets[armId.split('~')[0]]?.title ?? armId;
   const armLabel = (arm) =>
     `${sheetTitle(arm.id)}${arm.sample > 1 ? ` (asking ${arm.sample})` : ''}`;
+  /** Claude's call on a decided pair, said as a side of this pair: 'left', 'right', 'same' or 'both-poor'. */
+  const claudeSide = (p) => {
+    if (!p.decided) return null;
+    const pick = p.decided.pick;
+    if (pick === 'same' || pick === 'both-poor') return pick;
+    const armId = pick === 'a' ? round().a : round().b;
+    return p.left.id === armId ? 'left' : 'right';
+  };
 
   /* ---------- Vote storage: the page's database, or this browser when there is none ---------- */
   function localVotes() {
@@ -1200,8 +1294,8 @@
     } catch (e) {}
   }
   function renderStore() {
-    const el = $('store');
-    el.className = 'store' + (storeMode === 'db' ? ' ok' : storeMode === 'pending' ? '' : ' local');
+    $('store').className =
+      'store' + (storeMode === 'db' ? ' ok' : storeMode === 'pending' ? '' : ' local');
     $('store-text').textContent =
       storeMode === 'db'
         ? 'Votes save to this page’s database, where Claude can read them.'
@@ -1219,7 +1313,7 @@
     if (!ns) {
       storeMode = 'local';
       votes = localVotes();
-      placeOnFirstUnjudged();
+      placeOnFirstOpen();
       renderAll();
       return;
     }
@@ -1228,7 +1322,7 @@
     db.collection('votes').onSnapshot(
       (snap) => {
         votes = new Map(snap.docs.map((d) => [d.id, d.data()]));
-        placeOnFirstUnjudged();
+        placeOnFirstOpen();
         renderAll();
       },
       () => {
@@ -1239,10 +1333,11 @@
     );
     renderStore();
   }
-  function placeOnFirstUnjudged() {
-    if (placedOnFirstUnjudged) return;
-    placedOnFirstUnjudged = true;
-    const first = round().pairs.findIndex((p) => !voteFor(p));
+  /** Open on the first close call not yet voted on. */
+  function placeOnFirstOpen() {
+    if (placed) return;
+    placed = true;
+    const first = ordered().findIndex((p) => !p.decided && !voteFor(p));
     state.index = first < 0 ? 0 : first;
   }
 
@@ -1287,6 +1382,7 @@
       wrongRight: d.wrongRight,
       wrong: [d.wrongLeft && p.left.id, d.wrongRight && p.right.id].filter(Boolean),
       identicalSheets: p.identical,
+      claudeCall: p.decided ? p.decided.pick : null,
       reasons: d.reasons,
       note: d.note.trim(),
       savedAt: new Date().toISOString(),
@@ -1306,23 +1402,61 @@
   }
 
   /* ---------- Panel mock ---------- */
+  /** A part name as the fact sheet writes it, reduced to what the animation knows it by. */
+  const partKey = (name) =>
+    name
+      .replace(/^(link|joint|slider|pin|cylinder|point)\s+/i, '')
+      .replace(/\s/g, '')
+      .replace('–', '-');
+  /**
+   * Bold names become parts that point into the mechanism; the terms the model
+   * listed become glossary words with their meaning behind them. v3 answers
+   * gave bare terms, which get the underline and a note that nothing is behind it.
+   */
   function renderParagraph(text, terms) {
-    let html = esc(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    for (const term of (terms || []).slice().sort((a, b) => b.length - a.length)) {
-      if (!term) continue;
+    let html = esc(text).replace(
+      /\*\*(.+?)\*\*/g,
+      (_, name) => `<strong data-part="${esc(partKey(name))}" tabindex="0">${name}</strong>`
+    );
+    const list = (terms || [])
+      .map((t) => (typeof t === 'string' ? { term: t } : t))
+      .filter((t) => t && t.term);
+    for (const t of list.sort((a, b) => b.term.length - a.term.length)) {
       const re = new RegExp(
-        '(^|[^\\w>])(' + term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')(?![\\w<])',
+        '(^|[^\\w>])(' + t.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')(?![\\w<])',
         'i'
       );
-      html = html.replace(re, '$1<span class="term" title="Glossary term">$2</span>');
+      const meaning = t.meaning ? esc(t.meaning) : '';
+      html = html.replace(
+        re,
+        `$1<span class="term${meaning ? '' : ' bare'}" tabindex="0" data-term="${esc(t.term)}" data-meaning="${meaning}">$2</span>`
+      );
     }
     return html;
+  }
+  function linksTable(p) {
+    if (!p.jobs || !p.jobs.length) return '';
+    const rows = p.jobs
+      .map(
+        (j) =>
+          `<tr data-part="${esc(partKey(j.name))}"><td>${esc(j.name.replace(/^link /, ''))}</td><td>${esc(j.job.split(';')[0])}</td></tr>`
+      )
+      .join('');
+    return `<div class="section"><h4>Links</h4><table class="links"><thead><tr><th>Part</th><th>Job</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+  function familyLine(arm, a) {
+    if (a.certainty) {
+      const cert = ['is', 'resembles', 'unsure'].includes(a.certainty) ? a.certainty : 'unsure';
+      return `Family: <strong>${esc(a.family)}</strong><span class="cert cert-${cert}">${esc(cert)}</span>`;
+    }
+    return arm.familyCheck
+      ? `Family: <strong>${esc(a.family)}</strong><span class="cert cert-checked" title="PMKS+ matched ${esc(arm.familyCheck)} from lengths, joints and motion">checked by PMKS+</span>`
+      : `Family: <strong>${esc(a.family)}</strong><span class="cert cert-reading" title="PMKS+ found no match in its catalog; this is the model's reading">model’s reading</span>`;
   }
   function panel(p, arm) {
     if (!arm.answer)
       return `<div class="error">No answer: ${esc(arm.error || 'the reply was not JSON')}</div>`;
     const a = arm.answer;
-    const cert = ['is', 'resembles', 'unsure'].includes(a.certainty) ? a.certainty : 'unsure';
     const rows = p.overview.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
     const uses = (a.useCases || [])
       .map(
@@ -1334,26 +1468,74 @@
       <article class="panel">
         <div class="panel-title"><h3>Mechanism M1</h3><span class="status">Ready</span></div>
         <div class="section"><h4>Overview</h4><dl class="rows">${rows}</dl></div>
+        ${linksTable(p)}
         <div class="section">
           <h4>In plain English</h4>
           <div class="written">
             <div class="by">✎ Written from the facts above, not measured</div>
             <p>${renderParagraph(a.plainEnglish, a.terms)}</p>
+            <div class="how">Point at a <strong>bold part</strong> to find it in the mechanism, or a <span class="term">dotted word</span> for its meaning.</div>
           </div>
-          <div class="family-line">Family: <strong>${esc(a.family)}</strong><span class="cert cert-${cert}">${esc(cert)}</span></div>
+          <div class="family-line">${familyLine(arm, a)}</div>
         </div>
         <div class="section">
           <h4>Where you’d find it</h4>
-          <ul class="uses">${uses || '<li class="why">No uses given.</li>'}</ul>
-          <div class="caveat">From general engineering knowledge, not from this drawing.</div>
+          <ul class="uses">${uses || '<li class="why">None given: the model named no common use it was sure of.</li>'}</ul>
+          <div class="caveat">From general engineering knowledge, not from this mechanism.</div>
         </div>
       </article>`;
   }
+
+  /* ---------- Pointing: a part lights up in the mechanism, a term shows its meaning ---------- */
+  function highlight(key) {
+    document.querySelectorAll('.hl').forEach((el) => el.classList.remove('hl'));
+    if (!key) return;
+    document
+      .querySelectorAll(`[data-part="${CSS.escape(key)}"]`)
+      .forEach((el) => el.classList.add('hl'));
+    for (const el of anim.parts.get(key) || []) el.classList.add('hl');
+  }
+  function showTip(el) {
+    const tip = $('tip');
+    const meaning = el.dataset.meaning;
+    tip.innerHTML = `<b>${esc(el.dataset.term)}</b>${meaning || 'The model listed this word but gave no meaning (v3 answers did not).'}`;
+    tip.hidden = false;
+    const r = el.getBoundingClientRect();
+    const w = tip.offsetWidth;
+    const h = tip.offsetHeight;
+    const left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left + r.width / 2 - w / 2));
+    const top = r.top - h - 8 > 8 ? r.top - h - 8 : r.bottom + 8;
+    tip.style.left = `${left}px`;
+    tip.style.top = `${top}px`;
+  }
+  const hideTip = () => ($('tip').hidden = true);
+  document.addEventListener('mouseover', (e) => {
+    const part = e.target.closest('[data-part]');
+    if (part) highlight(part.dataset.part);
+    const term = e.target.closest('.term[data-term]');
+    if (term) showTip(term);
+  });
+  document.addEventListener('mouseout', (e) => {
+    if (e.target.closest('[data-part]')) highlight(null);
+    if (e.target.closest('.term[data-term]')) hideTip();
+  });
+  document.addEventListener('focusin', (e) => {
+    const part = e.target.closest('[data-part]');
+    if (part) highlight(part.dataset.part);
+    const term = e.target.closest('.term[data-term]');
+    if (term) showTip(term);
+  });
+  document.addEventListener('focusout', () => {
+    highlight(null);
+    hideTip();
+  });
+  window.addEventListener('scroll', hideTip, { passive: true });
 
   /* ---------- Mechanism animation ---------- */
   const anim = {
     pair: null,
     els: null,
+    parts: new Map(),
     frame: 0,
     phase: 0,
     playing: !matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -1388,6 +1570,7 @@
     const svg = $('anim');
     svg.replaceChildren();
     anim.pair = p;
+    anim.parts = new Map();
     const m = p.motion;
     if (!m) {
       anim.els = null;
@@ -1396,94 +1579,122 @@
     const all = m.frames.flat();
     const xs = all.map((q) => q[0]);
     const ys = all.map((q) => q[1]);
-    const W = 400,
-      H = 300,
-      PAD = 26;
-    const minX = Math.min(...xs),
-      maxX = Math.max(...xs),
-      minY = Math.min(...ys),
-      maxY = Math.max(...ys);
+    const W = 400;
+    const H = 300;
+    const PAD = 26;
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
     const k = Math.min(
       (W - 2 * PAD) / Math.max(maxX - minX, 1e-6),
       (H - 2 * PAD) / Math.max(maxY - minY, 1e-6)
     );
-    const ox = (W - (maxX - minX) * k) / 2,
-      oy = (H - (maxY - minY) * k) / 2;
+    const ox = (W - (maxX - minX) * k) / 2;
+    const oy = (H - (maxY - minY) * k) / 2;
     const px = (x) => ox + (x - minX) * k;
     const py = (y) => oy + (maxY - y) * k;
     const pts = (list) => list.map(([x, y]) => `${px(x).toFixed(1)},${py(y).toFixed(1)}`).join(' ');
+    const addPart = (key, el) => anim.parts.set(key, [...(anim.parts.get(key) || []), el]);
 
+    // A fixed guide is a rail -- a pale band between two edges -- so it cannot
+    // be mistaken for a path. Paths are solid: a dashed path traced back and
+    // forth over itself reads as solid in places and dashed in others.
     const guides = svgEl('g', {}, svg);
-    for (const [a, b] of m.guides)
+    for (const [a, b] of m.guides) {
+      const x1 = px(a[0]);
+      const y1 = py(a[1]);
+      const x2 = px(b[0]);
+      const y2 = py(b[1]);
+      const len = Math.hypot(x2 - x1, y2 - y1) || 1;
+      const nx = (-(y2 - y1) / len) * 4.5;
+      const ny = ((x2 - x1) / len) * 4.5;
       svgEl(
         'line',
-        {
-          x1: px(a[0]),
-          y1: py(a[1]),
-          x2: px(b[0]),
-          y2: py(b[1]),
-          stroke: 'var(--guide)',
-          'stroke-width': 9,
-          'stroke-linecap': 'round',
-        },
+        { x1, y1, x2, y2, stroke: 'var(--rail)', 'stroke-width': 9, 'stroke-linecap': 'butt' },
         guides
       );
+      for (const s of [1, -1])
+        svgEl(
+          'line',
+          {
+            x1: x1 + s * nx,
+            y1: y1 + s * ny,
+            x2: x2 + s * nx,
+            y2: y2 + s * ny,
+            stroke: 'var(--rail-edge)',
+            'stroke-width': 1,
+          },
+          guides
+        );
+    }
     const paths = svgEl('g', { fill: 'none' }, svg);
     m.joints.forEach((j, i) => {
       if (j.ground) return;
-      const trail = m.frames.map((f) => f[i]);
       svgEl(
         'polyline',
         {
-          points: pts(trail),
+          points: pts(m.frames.map((f) => f[i])),
           stroke: j.traced ? 'var(--trace)' : 'var(--path)',
           'stroke-width': j.traced ? 2 : 1,
-          'stroke-dasharray': j.traced ? 'none' : '3 2.5',
         },
         paths
       );
     });
     const bodies = svgEl('g', {}, svg);
-    const bodyEls = m.bodies.map((ids) =>
-      ids.length === 2
-        ? svgEl(
-            'line',
-            {
-              stroke: 'var(--link)',
-              'stroke-width': 6,
-              'stroke-linecap': 'round',
-              'stroke-opacity': 0.75,
-            },
-            bodies
-          )
-        : svgEl(
-            'polygon',
-            {
-              fill: 'var(--link-fill)',
-              stroke: 'var(--link)',
-              'stroke-width': 2.5,
-              'stroke-linejoin': 'round',
-            },
-            bodies
-          )
-    );
-    const cylEls = m.cylinders.map(() => [
-      svgEl(
-        'line',
-        { stroke: 'var(--text-strong)', 'stroke-width': 10, 'stroke-linecap': 'round' },
-        bodies
-      ),
-      svgEl(
-        'line',
-        { stroke: 'var(--text-tertiary)', 'stroke-width': 4, 'stroke-linecap': 'round' },
-        bodies
-      ),
-    ]);
+    const bodyEls = m.bodies.map((ids) => {
+      const el =
+        ids.length === 2
+          ? svgEl(
+              'line',
+              {
+                stroke: 'var(--link)',
+                'stroke-width': 6,
+                'stroke-linecap': 'round',
+                'stroke-opacity': 0.75,
+              },
+              bodies
+            )
+          : svgEl(
+              'polygon',
+              {
+                fill: 'var(--link-fill)',
+                stroke: 'var(--link)',
+                'stroke-width': 2.5,
+                'stroke-linejoin': 'round',
+              },
+              bodies
+            );
+      addPart(ids.map((i) => m.joints[i].id).join(''), el);
+      return el;
+    });
+    const cylEls = m.cylinders.map(([a, b]) => {
+      const pair = [
+        svgEl(
+          'line',
+          { stroke: 'var(--text-strong)', 'stroke-width': 10, 'stroke-linecap': 'round' },
+          bodies
+        ),
+        svgEl(
+          'line',
+          { stroke: 'var(--text-tertiary)', 'stroke-width': 4, 'stroke-linecap': 'round' },
+          bodies
+        ),
+      ];
+      pair.forEach((el) => addPart(`${m.joints[a].id}-${m.joints[b].id}`, el));
+      return pair;
+    });
     const joints = svgEl('g', {}, svg);
     const jointEls = m.joints.map((j) => {
       const g = svgEl('g', {}, joints);
       if (j.ground)
         svgEl('polygon', { points: '0,0 -8,13 8,13', fill: 'var(--text-secondary)' }, g);
+      if (j.slider)
+        svgEl(
+          'rect',
+          { x: -7, y: -5, width: 14, height: 10, rx: 2, fill: 'var(--text-strong)' },
+          g
+        );
       svgEl(
         'circle',
         { r: 4, fill: 'var(--surface)', stroke: 'var(--text-strong)', 'stroke-width': 1.6 },
@@ -1505,6 +1716,7 @@
         g
       );
       t.textContent = j.id;
+      addPart(j.id, g);
       return g;
     });
     anim.els = { bodyEls, cylEls, jointEls, px, py };
@@ -1536,10 +1748,10 @@
       }
     });
     m.cylinders.forEach(([a, b], c) => {
-      const p = frame[a],
-        q = frame[b];
-      const mx = (p[0] + q[0]) / 2,
-        my = (p[1] + q[1]) / 2;
+      const p = frame[a];
+      const q = frame[b];
+      const mx = (p[0] + q[0]) / 2;
+      const my = (p[1] + q[1]) / 2;
       const [barrel, rod] = cylEls[c];
       barrel.setAttribute('x1', px(p[0]));
       barrel.setAttribute('y1', py(p[1]));
@@ -1559,12 +1771,12 @@
     $('scrub').value = String(f);
   }
   function frameAtPhase(m, phase) {
-    const t0 = m.time[0],
-      span = m.time[m.time.length - 1] - t0;
+    const t0 = m.time[0];
+    const span = m.time[m.time.length - 1] - t0;
     if (!(span > 0)) return Math.floor(phase * (m.frames.length - 1));
     const target = t0 + phase * span;
-    let lo = 0,
-      hi = m.time.length - 1;
+    let lo = 0;
+    let hi = m.time.length - 1;
     while (lo < hi) {
       const mid = (lo + hi + 1) >> 1;
       if (m.time[mid] <= target) lo = mid;
@@ -1611,28 +1823,39 @@
     $('judge').hidden = state.tab !== 'judge';
     $('results').hidden = state.tab !== 'results';
     const r = round();
-    const done = r.pairs.filter((p) => voteFor(p)).length;
+    const close = r.pairs.filter((p) => !p.decided);
+    const done = close.filter((p) => voteFor(p)).length;
+    const decided = r.pairs.length - close.length;
     $('lede').textContent =
-      `${done} of ${r.pairs.length} judged. Each mechanism has two answers from GPT-6 Luna, one per fact-sheet version, on randomly chosen sides. Pick the one you’d rather a student read; which version wrote it is shown after you save. ${r.note || ''}`;
+      (decided
+        ? `Claude decided ${decided} of ${r.pairs.length} pairs where one answer was clearly better or they were plainly alike; ${close.length} close call${close.length === 1 ? ' is' : 's are'} left for you (${done} judged). You can still open any of Claude's and vote. `
+        : `${done} of ${r.pairs.length} judged. `) +
+      'Each mechanism has two answers from GPT-6 Luna, one per fact-sheet version, on randomly chosen sides; which is which shows after you save. ' +
+      (r.note || '');
   }
   function renderStrip() {
-    $('strip').innerHTML = round()
-      .pairs.map(
-        (p, i) =>
-          `<button type="button" data-go="${i}" class="${voteFor(p) ? 'done' : ''}" aria-current="${i === state.index}"><span class="tick"></span>${esc(p.name)}</button>`
-      )
-      .join('');
+    const chip = (p, i) =>
+      `<button type="button" data-go="${i}" class="${voteFor(p) ? 'done' : ''}${p.decided ? ' claude' : ''}" aria-current="${i === state.index}"><span class="tick"></span>${esc(p.name)}</button>`;
+    const list = ordered();
+    const close = list.filter((p) => !p.decided);
+    const decided = list.filter((p) => p.decided);
+    $('strip').innerHTML =
+      (close.length
+        ? `<span class="group">Close calls</span>${close.map((p) => chip(p, list.indexOf(p))).join('')}`
+        : '') +
+      (decided.length
+        ? `<span class="group">Claude decided</span>${decided.map((p) => chip(p, list.indexOf(p))).join('')}`
+        : '');
   }
   let shownPair = null;
   function renderPair() {
     const p = pair();
-    const r = round();
-    $('m-count').textContent = `Mechanism ${state.index + 1} of ${r.pairs.length}`;
+    const list = ordered();
+    $('m-count').textContent =
+      `Mechanism ${state.index + 1} of ${list.length}${p.decided ? ' · Claude decided' : ' · close call'}`;
     $('m-name').textContent = p.name;
     $('m-blurb').textContent = p.blurb || '';
     $('open-app').href = p.appUrl;
-    const img = DATA.images[p.left.image || p.right.image];
-    $('saw-img').src = img || '';
     if (shownPair !== p) {
       setupAnimation(p);
       shownPair = p;
@@ -1666,9 +1889,21 @@
     $('wrong-left').checked = d.wrongLeft;
     $('wrong-right').checked = d.wrongRight;
     if ($('note') !== document.activeElement) $('note').value = d.note;
+    const side = claudeSide(p);
+    $('called').hidden = !side;
+    if (side) {
+      const said = {
+        left: 'A is clearly better',
+        right: 'B is clearly better',
+        same: 'they are about the same',
+        'both-poor': 'both are poor',
+      }[side];
+      $('called').innerHTML =
+        `<b>Claude called this one: ${esc(said)}.</b> ${esc(p.decided.why)} Vote only if you disagree.`;
+    }
     const saved = voteFor(p);
     $('save').textContent = saved ? 'Update' : 'Save';
-    $('next').hidden = state.index >= round().pairs.length - 1 && !!saved;
+    $('next').hidden = state.index >= ordered().length - 1;
     $('save-hint').textContent = state.hint;
     $('save-hint').className =
       'hint' + (state.hint && !state.hint.startsWith('Saved') ? ' warn' : '');
@@ -1677,46 +1912,57 @@
     const p = pair();
     const v = voteFor(p);
     const el = $('reveal');
-    el.hidden = !v;
-    if (!v) return;
+    el.hidden = !v && !p.decided;
+    if (el.hidden) return;
+    const famWord = {
+      named: 'names the family',
+      class: 'names its class only',
+      missed: 'misses the family',
+      unknown: 'no answer',
+    };
     const side = (arm, tag) => {
       const flags = arm.rubric.flags.length
         ? arm.rubric.flags.map((f) => `<li>${esc(f)}</li>`).join('')
         : '<li class="none">No automatic flags</li>';
-      const famWord =
-        {
-          named: 'names the family',
-          class: 'names its class only',
-          missed: 'misses the family',
-          unknown: 'no answer',
-        }[arm.rubric.family] || arm.rubric.family;
+      const app = arm.rubric.application;
       const u = arm.usage || {};
+      const img = arm.image && DATA.images[arm.image];
       return `<div>
         <span class="sheet-name">${tag} was ${esc(armLabel(arm))}</span>
-        <span><span class="fam ${esc(arm.rubric.family)}">${esc(famWord)}</span> ${arm.rubric.application === 'n/a' ? '' : `<span class="fam ${arm.rubric.application === 'named' ? 'named' : 'missed'}">${arm.rubric.application === 'named' ? 'uses name the real machine' : 'uses miss the real machine'}</span>`}</span>
+        <span><span class="fam ${esc(arm.rubric.family)}">${esc(famWord[arm.rubric.family] || arm.rubric.family)}</span> ${app === 'n/a' ? '' : `<span class="fam ${app === 'named' ? 'named' : 'missed'}">${app === 'named' ? 'uses name the real machine' : 'uses miss the real machine'}</span>`}</span>
         <ul class="flags">${flags}</ul>
         <span class="hint">${arm.latencyMs ? `${(arm.latencyMs / 1000).toFixed(1)} s · ` : ''}${u.input ?? '–'} in · ${u.output ?? '–'} out${u.reasoning ? ` (${u.reasoning} reasoning)` : ''}</span>
+        ${img ? `<details class="saw"><summary>Picture ${tag} was sent</summary><img src="${img}" alt="The picture sent with ${esc(armLabel(arm))}"></details>` : ''}
         <details class="facts"><summary>Fact sheet ${tag} was written from</summary><pre>${esc(arm.facts)}</pre></details>
       </div>`;
     };
     const change = p.identical
-      ? `<div class="same-sheet">The two fact sheets were word for word the same for this mechanism, so any difference here is Luna answering differently on its own. These pairs are the noise control.</div>`
-      : `<div><div class="hint" style="margin-bottom: 6px">What changed in the fact sheet for this mechanism (${esc(sheetTitle(p.left.id === round().a ? p.left.id : p.right.id))} → ${esc(sheetTitle(round().b))})</div><pre class="diff">${p.diff.map((d) => `<span class="${d.op === '+' ? 'add' : 'del'}">${d.op} ${esc(d.line)}</span>`).join('\n')}</pre></div>`;
-    el.innerHTML = `<h3 id="reveal-h">Revealed</h3><div class="who-was">${side(p.left, 'A')}${side(p.right, 'B')}</div>${change}`;
+      ? `<div class="same-sheet">The two fact sheets were word for word the same for this mechanism, so any difference here is Luna answering differently on its own.</div>`
+      : `<details><summary class="hint">What changed in the fact sheet for this mechanism (${esc(sheetTitle(round().a))} → ${esc(sheetTitle(round().b))})</summary><pre class="diff">${p.diff.map((d) => `<span class="${d.op === '+' ? 'add' : 'del'}">${d.op} ${esc(d.line)}</span>`).join('\n')}</pre></details>`;
+    el.innerHTML = `<h3 id="reveal-h">${v ? 'Revealed' : 'Revealed with Claude’s call'}</h3><div class="who-was">${side(p.left, 'A')}${side(p.right, 'B')}</div>${change}`;
   }
 
-  function tallyOf(pairs) {
+  /** Each pair's outcome: your vote where you gave one, otherwise Claude's call. */
+  function outcome(p) {
     const r = round();
-    const t = { a: 0, b: 0, same: 0, poor: 0, n: 0, judged: 0 };
+    const v = voteFor(p);
+    if (v) {
+      const winner =
+        v.choice === 'same' || v.choice === 'both-poor' ? v.choice : v.winner === r.a ? 'a' : 'b';
+      return { by: 'you', winner };
+    }
+    if (p.decided) return { by: 'claude', winner: p.decided.pick };
+    return null;
+  }
+  function tallyOf(pairs) {
+    const t = { a: 0, b: 0, same: 0, poor: 0, n: pairs.length, judged: 0 };
     for (const p of pairs) {
-      t.n++;
-      const v = voteFor(p);
-      if (!v) continue;
+      const o = outcome(p);
+      if (!o) continue;
       t.judged++;
-      if (v.choice === 'same') t.same++;
-      else if (v.choice === 'both-poor') t.poor++;
-      else if (v.winner === r.a) t.a++;
-      else t.b++;
+      if (o.winner === 'same') t.same++;
+      else if (o.winner === 'both-poor') t.poor++;
+      else t[o.winner]++;
     }
     return t;
   }
@@ -1731,21 +1977,10 @@
   function renderResults() {
     const r = round();
     const all = tallyOf(r.pairs);
-    const changed = r.pairs.filter((p) => !p.identical);
-    const same = r.pairs.filter((p) => p.identical);
-    const wrongCount = (armId) =>
-      r.pairs.filter((p) => (voteFor(p)?.wrong || []).includes(armId)).length;
-    const famCount = (armId, fam) =>
+    const count = (armId, key, value) =>
       r.pairs.filter((p) =>
-        [p.left, p.right].some((arm) => arm.id === armId && arm.rubric.family === fam)
+        [p.left, p.right].some((arm) => arm.id === armId && arm.rubric[key] === value)
       ).length;
-    const useCount = (armId) =>
-      r.pairs.filter((p) =>
-        [p.left, p.right].some((arm) => arm.id === armId && arm.rubric.application === 'named')
-      ).length;
-    const useTotal = r.pairs.filter(
-      (p) => p.left.rubric.application !== 'n/a' || p.right.rubric.application !== 'n/a'
-    ).length;
     const flagCount = (armId) =>
       r.pairs.reduce(
         (s, p) =>
@@ -1755,50 +1990,45 @@
             .reduce((x, arm) => x + arm.rubric.flags.length, 0),
         0
       );
+    const useTotal = r.pairs.filter((p) => p.left.rubric.application !== 'n/a').length;
     const sheetB = DATA.sheets[r.b.split('~')[0]];
-    const pick = (p) => {
-      const v = voteFor(p);
-      if (!v) return '<span class="pill">not yet</span>';
-      if (v.choice === 'same') return '<span class="pill">about the same</span>';
-      if (v.choice === 'both-poor') return '<span class="pill bad">both poor</span>';
-      return `<span class="pill win">${esc(sheetTitle(v.winner))}</span>`;
+    const pill = (o) => {
+      if (!o) return '<span class="pill">not yet</span>';
+      const who = o.by === 'claude' ? ' (Claude)' : '';
+      if (o.winner === 'same') return `<span class="pill">about the same${who}</span>`;
+      if (o.winner === 'both-poor') return `<span class="pill bad">both poor${who}</span>`;
+      return `<span class="pill win">${esc(sheetTitle(o.winner === 'a' ? r.a : r.b))}${who}</span>`;
     };
     const rows = r.pairs
       .map((p) => {
         const v = voteFor(p);
-        return `<tr>
-        <td>${esc(p.name)}</td>
-        <td>${p.identical ? 'identical' : 'changed'}</td>
-        <td>${pick(p)}</td>
-        <td>${v && v.wrong.length ? v.wrong.map((w) => `<span class="pill bad">${esc(sheetTitle(w))}</span>`).join(' ') : ''}</td>
-        <td>${v ? esc((v.reasons || []).join(', ')) : ''}</td>
-        <td class="note">${v ? esc(v.note) : ''}</td></tr>`;
+        const why = v
+          ? [...(v.reasons || []), v.note].filter(Boolean).join(' — ')
+          : p.decided
+            ? p.decided.why
+            : '';
+        return `<tr><td>${esc(p.name)}</td><td>${p.identical ? 'identical' : 'changed'}</td><td>${pill(outcome(p))}</td><td>${v && v.wrong.length ? v.wrong.map((w) => `<span class="pill bad">${esc(sheetTitle(w))}</span>`).join(' ') : ''}</td><td class="note">${esc(why)}</td></tr>`;
       })
       .join('');
     $('results').innerHTML = `
       <section class="card" style="display:grid; gap:14px">
-        <div class="tally-head"><h2>${esc(r.title)}</h2><span class="hint">${all.judged} of ${all.n} judged</span></div>
+        <div class="tally-head"><h2>${esc(r.title)}</h2><span class="hint">${all.judged} of ${all.n} decided, by you or by Claude</span></div>
         ${bar(all)}
         <div class="bar-legend">
-          <span><i style="background:var(--text-tertiary)"></i>${esc(sheetTitle(r.a))} preferred: ${all.a}</span>
+          <span><i style="background:var(--text-tertiary)"></i>${esc(sheetTitle(r.a))} better: ${all.a}</span>
           <span><i style="background:var(--border-divider)"></i>About the same: ${all.same}</span>
-          <span><i style="background:var(--brand)"></i>${esc(sheetTitle(r.b))} preferred: ${all.b}</span>
+          <span><i style="background:var(--brand)"></i>${esc(sheetTitle(r.b))} better: ${all.b}</span>
           <span><i style="background:var(--refusal-text)"></i>Both poor: ${all.poor}</span>
         </div>
-        <div class="splits">
-          <div class="card"><h3>Where the sheet changed (${changed.length})</h3>${bar(tallyOf(changed))}<p>The signal: these answers were written from different facts.</p></div>
-          <div class="card"><h3>Where the sheet was identical (${same.length})</h3>${bar(tallyOf(same))}<p>The noise: the same facts, asked twice. A strong preference here is Luna’s own variation.</p></div>
-        </div>
         <div class="stats">
-          <div class="stat"><span class="v">${wrongCount(r.a)} · ${wrongCount(r.b)}</span><span class="k">Answers you marked wrong: ${esc(sheetTitle(r.a))} · ${esc(sheetTitle(r.b))}</span></div>
-          <div class="stat"><span class="v">${famCount(r.a, 'named')} · ${famCount(r.b, 'named')}</span><span class="k">Name the family (automatic check, of ${r.pairs.length})</span></div>
-          <div class="stat"><span class="v">${useCount(r.a)} · ${useCount(r.b)}</span><span class="k">Uses name the real machine (automatic check, of ${useTotal})</span></div>
-          <div class="stat"><span class="v">${flagCount(r.a)} · ${flagCount(r.b)}</span><span class="k">Automatic flags: unknown parts, numbers not in the sheet, unsupported motion words</span></div>
+          <div class="stat"><span class="v">${count(r.a, 'family', 'named')} · ${count(r.b, 'family', 'named')}</span><span class="k">Name the family, of ${r.pairs.length}: ${esc(sheetTitle(r.a))} · ${esc(sheetTitle(r.b))}</span></div>
+          <div class="stat"><span class="v">${count(r.a, 'application', 'named')} · ${count(r.b, 'application', 'named')}</span><span class="k">Uses name the real machine, of ${useTotal}</span></div>
+          <div class="stat"><span class="v">${flagCount(r.a)} · ${flagCount(r.b)}</span><span class="k">Automatic flags (each version checked by its own rules)</span></div>
         </div>
       </section>
       <section class="card" style="display:grid; gap:10px">
-        <h2>Your votes</h2>
-        <div class="table-scroll"><table class="votes"><thead><tr><th>Mechanism</th><th>Sheet</th><th>Your pick</th><th>Marked wrong</th><th>Why</th><th>Note</th></tr></thead><tbody>${rows}</tbody></table></div>
+        <h2>Every pair</h2>
+        <div class="table-scroll"><table class="votes"><thead><tr><th>Mechanism</th><th>Sheet</th><th>Better</th><th>You marked wrong</th><th>Why</th></tr></thead><tbody>${rows}</tbody></table></div>
         <div class="verdict-actions"><button type="button" class="secondary" id="copy">Copy votes as JSON</button><span class="hint" id="copy-hint"></span></div>
       </section>
       <section class="card" style="display:grid; gap:10px">
@@ -1822,16 +2052,16 @@
 
   /* ---------- Events ---------- */
   function go(index) {
-    const n = round().pairs.length;
-    state.index = Math.max(0, Math.min(n - 1, index));
+    state.index = Math.max(0, Math.min(ordered().length - 1, index));
     state.hint = '';
+    hideTip();
     renderAll();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   $('round').addEventListener('change', (e) => {
     state.round = e.target.value;
-    placedOnFirstUnjudged = false;
-    placeOnFirstUnjudged();
+    placed = false;
+    placeOnFirstOpen();
     shownPair = null;
     savePrefs();
     renderAll();
@@ -1867,19 +2097,13 @@
     d.reasons = d.reasons.includes(r) ? d.reasons.filter((x) => x !== r) : [...d.reasons, r];
     renderVerdict();
   });
-  $('wrong-left').addEventListener('change', (e) => {
-    draft(pair()).wrongLeft = e.target.checked;
-  });
-  $('wrong-right').addEventListener('change', (e) => {
-    draft(pair()).wrongRight = e.target.checked;
-  });
-  $('note').addEventListener('input', (e) => {
-    draft(pair()).note = e.target.value;
-  });
+  $('wrong-left').addEventListener('change', (e) => (draft(pair()).wrongLeft = e.target.checked));
+  $('wrong-right').addEventListener('change', (e) => (draft(pair()).wrongRight = e.target.checked));
+  $('note').addEventListener('input', (e) => (draft(pair()).note = e.target.value));
   $('save').addEventListener('click', saveVote);
   $('next').addEventListener('click', () => {
-    const r = round();
-    const after = r.pairs.findIndex((p, i) => i > state.index && !voteFor(p));
+    const list = ordered();
+    const after = list.findIndex((p, i) => i > state.index && !p.decided && !voteFor(p));
     go(after >= 0 ? after : state.index + 1);
   });
   document.addEventListener('click', async (e) => {
@@ -1911,8 +2135,9 @@
     if (typing) return;
     const map = { 1: 'left', 2: 'same', 3: 'right', 4: 'both-poor' };
     if (map[e.key]) {
-      draft(pair()).choice = map[e.key];
-      if (!['left', 'right'].includes(map[e.key])) draft(pair()).reasons = [];
+      const d = draft(pair());
+      d.choice = map[e.key];
+      if (!['left', 'right'].includes(d.choice)) d.reasons = [];
       renderVerdict();
     } else if (e.key === 'ArrowRight') go(state.index + 1);
     else if (e.key === 'ArrowLeft') go(state.index - 1);

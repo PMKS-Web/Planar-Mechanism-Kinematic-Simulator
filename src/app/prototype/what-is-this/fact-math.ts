@@ -228,3 +228,38 @@ export function halfTurnTimes(
     ? { slow: Math.max(...durations), fast: Math.min(...durations) }
     : undefined;
 }
+
+/** A body that turns fully but unevenly is a quick-return's tell. */
+export function angularSpeedSpread(angles: number[], samples: Samples): string {
+  const rates: number[] = [];
+  for (let i = 1; i < angles.length; i++) {
+    const dt = samples.time[i] - samples.time[i - 1];
+    if (Math.abs(dt) > 1e-9) rates.push(Math.abs(deg(angles[i] - angles[i - 1]) / dt));
+  }
+  if (!rates.length) return '';
+  const slow = Math.min(...rates);
+  const fast = Math.max(...rates);
+  if (slow < 1e-6 || fast / slow < 1.05) return ', at a steady angular speed';
+  return `, unevenly: its angular speed ranges from ${fmt(slow, 1)} to ${fmt(fast, 1)} deg/s (fastest/slowest ${fmt(fast / slow)})`;
+}
+
+/**
+ * Time spent going min->max versus max->min, when the input turns steadily.
+ * A back-and-forth input has no fixed drive law, so no ratio is claimed.
+ */
+export function strokeTiming(values: number[], samples: Samples): string {
+  if (!samples.period) return '';
+  const time = samples.time;
+  let lo = 0;
+  let hi = 0;
+  values.forEach((v, i) => {
+    if (v < values[lo]) lo = i;
+    if (v > values[hi]) hi = i;
+  });
+  const P = samples.period;
+  const rise = (((time[hi] - time[lo]) % P) + P) % P;
+  const fall = P - rise;
+  if (rise < 1e-6 || fall < 1e-6) return '';
+  const ratio = Math.max(rise, fall) / Math.min(rise, fall);
+  return `; one way takes ${fmt(rise)} s and the other ${fmt(fall)} s (time ratio ${fmt(ratio)})`;
+}

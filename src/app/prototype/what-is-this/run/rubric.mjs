@@ -21,7 +21,7 @@ const FAMILY = {
   Cylinder_Boom: { full: /boom/i, near: /hydraulic|cylinder/i },
   Hood_Hinge: { full: /hood/i, near: /hinge|six[- ]?bar|watt|stephenson/i },
   Pumpjack: {
-    full: /pump ?jack|beam pump|walking beam|nodding donkey|sucker[- ]rod/i,
+    full: /pump ?jack|beam pump|walking[- ]beam|nodding donkey|sucker[- ]rod/i,
     near: /beam/i,
   },
 };
@@ -106,7 +106,7 @@ function unsupportedClaims(text, sheet) {
     /quick return|slow stroke|fast on one half-turn|time ratio (1\.(0[5-9]|[1-9])|[2-9])/i
   );
   if (says(/quick(er)?[- ]return|fast(er)? return/i) && !quickInSheet) claims.push('quick return');
-  if (says(/\bno (faster|quick(er)?) return|equal times|same time in both/i) && quickInSheet)
+  if (says(/\bno (faster|quick(er)?) return|\bequal times|same time in both/i) && quickInSheet)
     claims.push('denies the quick return the sheet shows');
   for (const part of ['gear', 'cam', 'spring', 'belt', 'motor'])
     if (says(new RegExp(`\\b${part}s?\\b`, 'i')) && !sheetSays(new RegExp(`\\b${part}`, 'i')))
@@ -115,6 +115,51 @@ function unsupportedClaims(text, sheet) {
 }
 
 const OPENING = { is: /^This is\b/, resembles: /^This resembles\b/, unsure: /^This linkage\b/ };
+
+/** The family the sheet's own check matched, if it has one (v4 on). */
+function sheetMatch(sheet) {
+  return /^- Matches: ([^.]+)\./m.exec(sheet)?.[1];
+}
+
+/** v4's rules: the opening follows the app's check, the app's words, terms with meanings. */
+function v4Flags(answer, sheet) {
+  const flags = [];
+  const text = answer.plainEnglish ?? '';
+  const match = sheetMatch(sheet);
+  if (match) {
+    if (!/^This mechanism is an? /.test(text))
+      flags.push(`opening is not "This mechanism is a ..." though PMKS+ matched ${match}`);
+    const key = match
+      .toLowerCase()
+      .split(/[ -]/)
+      .filter((w) => w.length > 3)[0];
+    if (key && !(answer.family ?? '').toLowerCase().includes(key))
+      flags.push(`family "${answer.family}" is not the matched ${match}`);
+  } else if (!/^This mechanism (resembles|\w)/.test(text)) {
+    flags.push('opening does not begin "This mechanism"');
+  }
+  const all = [text, ...(answer.useCases ?? []).map((u) => `${u.use} ${u.why}`)].join(' ');
+  if (/\bdrawing\b/i.test(all)) flags.push('says "drawing" instead of "mechanism"');
+  if (/fact sheet/i.test(all)) flags.push('mentions "the fact sheet", which a student never sees');
+  if (!/\*\*[^*]+\*\*/.test(text))
+    flags.push('no part names in bold, so the panel cannot point at any');
+  // Lower case only, so a joint "A" before a word is not read as an article.
+  if (/(^|\s)a (?!one\b|u)(?=[aeiou])/.test(text.replace(/\*\*/g, '')))
+    flags.push('"a" before a vowel');
+  const seal = /the block marked ([A-Z]) on it is the cylinder's own sliding seal/.exec(sheet)?.[1];
+  const called = /seal[,:]?\s*(?:is\s+)?\*\*(?:slider |joint |block )?([A-Z])\*\*/.exec(all)?.[1];
+  if (seal && called && called !== seal)
+    flags.push(`calls ${called} the cylinder's seal; the seal is ${seal}`);
+  if (/\b(this|the) linkage\b/i.test(all))
+    flags.push('says "this linkage" instead of "this mechanism"');
+  for (const term of answer.terms ?? []) {
+    const word = typeof term === 'string' ? term : term.term;
+    if (typeof term === 'string' || !term.meaning) flags.push(`term "${word}" has no meaning`);
+    if (word && !text.toLowerCase().includes(word.toLowerCase()))
+      flags.push(`term "${word}" is not in the paragraph`);
+  }
+  return flags;
+}
 
 export function checkAnswer(template, answer, sheet) {
   if (!answer) return { family: 'unknown', application: 'n/a', flags: ['no parsed answer'] };
@@ -128,10 +173,16 @@ export function checkAnswer(template, answer, sheet) {
   if (numbers.length) flags.push(`numbers not in the sheet: ${numbers.join(', ')}`);
   for (const claim of unsupportedClaims(text, sheet)) flags.push(`claims ${claim}`);
   if (words < 50 || words > 90) flags.push(`${words} words (asked for 50-90)`);
-  if (uses.length < 2 || uses.length > 3) flags.push(`${uses.length} uses (asked for 2-3)`);
-  const opening = OPENING[answer.certainty];
-  if (opening && !opening.test(answer.plainEnglish ?? ''))
-    flags.push(`opening does not match certainty "${answer.certainty}"`);
+  if (answer.certainty) {
+    // v3 and before: 2-3 uses, and the opening follows the model's own certainty.
+    if (uses.length < 2 || uses.length > 3) flags.push(`${uses.length} uses (asked for 2-3)`);
+    const opening = OPENING[answer.certainty];
+    if (opening && !opening.test(answer.plainEnglish ?? ''))
+      flags.push(`opening does not match certainty "${answer.certainty}"`);
+  } else {
+    if (uses.length > 3) flags.push(`${uses.length} uses (asked for at most 3)`);
+    flags.push(...v4Flags(answer, sheet));
+  }
   return {
     family: familyMatch(template, answer),
     application: applicationMatch(template, answer),

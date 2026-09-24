@@ -8,6 +8,23 @@
       "a": "v2",
       "b": "v3",
       "note": "Same model (GPT-6 Luna, medium effort), same picture, and the same instructions except one sentence about drawings the solver cannot solve, which none of these ten is. Four of the ten sheets are word-for-word identical between the versions, so those pairs show how much the model varies on its own."
+    },
+    {
+      "id": "r2",
+      "title": "Round 2 · v4: link jobs, family check, schematic filmstrip",
+      "a": "v3",
+      "b": "v4",
+      "note": "Same model and effort. v4 changes the fact sheet a lot and the prompt a little (see Results), so every sheet differs. Both sides are each version's first asking; v4 was asked twice, and the second asking differs in places (the Four-Bar's second asking names wipers, the Wiper's names no uses).",
+      "decided": {
+        "Hood_Hinge": {
+          "pick": "b",
+          "why": "v4 says it is a Stephenson six-bar that resembles a car hood hinge and names car hood hinges as the use, in both askings; v3 calls it a triple-rocker four-bar and suggests windshield wiper linkages."
+        },
+        "Cylinder_Boom": {
+          "pick": "a",
+          "why": "v4's first asking puts no part name in bold, so the panel cannot point at any part (its second asking does); v3 reads as well and names excavator booms."
+        }
+      }
     }
   ]
 }
