@@ -33,7 +33,6 @@ export interface RelationContext {
 
 export function describeRelations(ctx: RelationContext): string[] {
   const lines = [
-    ...tracedOutputs(ctx),
     ...fourBarLoops(ctx),
     ...sliderCranks(ctx),
     ...slotCranks(ctx),
@@ -45,38 +44,39 @@ export function describeRelations(ctx: RelationContext): string[] {
   return ['### How the parts relate', ...(lines.length ? lines : ['- Nothing notable.'])];
 }
 
-const jointsOf = (ctx: RelationContext, body: Link) =>
+export const jointsOf = (ctx: RelationContext, body: Link) =>
   body.joints.filter((joint) => !ctx.hidden.has(joint.id) && ctx.samples.paths.has(joint.id));
 
 /** How far a body's orientation swings over the solved cycle, in degrees. */
-function sweepOf(ctx: RelationContext, body: Link): number {
+export function sweepOf(ctx: RelationContext, body: Link): number {
   const angles = bodyAngles(jointsOf(ctx, body), ctx.samples);
   return angles ? deg(Math.max(...angles) - Math.min(...angles)) : 0;
 }
 
-const turnsFully = (ctx: RelationContext, body: Link) =>
+export const turnsFully = (ctx: RelationContext, body: Link) =>
   !ctx.samples.mechanism.reciprocates && sweepOf(ctx, body) > 300;
 
-function traced(ctx: RelationContext): Joint[] {
+export function traced(ctx: RelationContext): Joint[] {
   return ctx.visible.filter(
     (joint) => joint instanceof RealJoint && joint.showCurve && !isGroundPin(joint)
   );
 }
 
-function tracedOutputs(ctx: RelationContext): string[] {
-  const points = traced(ctx);
-  return points.length
-    ? [
-        `- The drawing's author traces ${points.map(ctx.label).join(', ')}: these are probably the outputs the mechanism exists for.`,
-      ]
-    : [];
+/** One ground-crank-coupler-crank-ground loop: g1-j1 on `left`, j1-j2 on `coupler`, j2-g2 on `right`. */
+export interface FourBar {
+  g1: Joint;
+  j1: Joint;
+  j2: Joint;
+  g2: Joint;
+  left: Link;
+  coupler: Link;
+  right: Link;
 }
 
-/** Every ground-crank-coupler-crank-ground loop, classified by Grashof's rule. */
-function fourBarLoops(ctx: RelationContext): string[] {
-  const lines: string[] = [];
+/** Every four-bar loop in the mechanism, each once. */
+export function findFourBars(ctx: RelationContext): FourBar[] {
+  const loops: FourBar[] = [];
   const seen = new Set<string>();
-  const len = (a: Joint, b: Joint) => distAt(ctx.samples, a, b);
   for (const left of ctx.bodies) {
     for (const g1 of jointsOf(ctx, left).filter(isGroundPin)) {
       for (const j1 of jointsOf(ctx, left).filter((j) => !isGroundPin(j))) {
@@ -99,37 +99,43 @@ function fourBarLoops(ctx: RelationContext): string[] {
                 .join();
               if (seen.has(key)) continue;
               seen.add(key);
-              lines.push(
-                classifyFourBar([
-                  {
-                    name: `${ctx.bodyLabel(left)} (${g1.id}-${j1.id})`,
-                    value: len(g1, j1),
-                    side: true,
-                    turns: turnsFully(ctx, left),
-                    sweep: sweepOf(ctx, left),
-                  },
-                  {
-                    name: `${ctx.bodyLabel(coupler)} (${j1.id}-${j2.id})`,
-                    value: len(j1, j2),
-                    sweep: sweepOf(ctx, coupler),
-                  },
-                  {
-                    name: `${ctx.bodyLabel(right)} (${g2.id}-${j2.id})`,
-                    value: len(g2, j2),
-                    side: true,
-                    turns: turnsFully(ctx, right),
-                    sweep: sweepOf(ctx, right),
-                  },
-                  { name: `ground ${g1.id}-${g2.id}`, value: len(g1, g2) },
-                ])
-              );
+              loops.push({ g1, j1, j2, g2, left, coupler, right });
             }
           }
         }
       }
     }
   }
-  return lines;
+  return loops;
+}
+
+/** Every four-bar loop, classified by Grashof's rule. */
+function fourBarLoops(ctx: RelationContext): string[] {
+  const len = (a: Joint, b: Joint) => distAt(ctx.samples, a, b);
+  return findFourBars(ctx).map(({ g1, j1, j2, g2, left, coupler, right }) =>
+    classifyFourBar([
+      {
+        name: `${ctx.bodyLabel(left)} (${g1.id}-${j1.id})`,
+        value: len(g1, j1),
+        side: true,
+        turns: turnsFully(ctx, left),
+        sweep: sweepOf(ctx, left),
+      },
+      {
+        name: `${ctx.bodyLabel(coupler)} (${j1.id}-${j2.id})`,
+        value: len(j1, j2),
+        sweep: sweepOf(ctx, coupler),
+      },
+      {
+        name: `${ctx.bodyLabel(right)} (${g2.id}-${j2.id})`,
+        value: len(g2, j2),
+        side: true,
+        turns: turnsFully(ctx, right),
+        sweep: sweepOf(ctx, right),
+      },
+      { name: `ground ${g1.id}-${g2.id}`, value: len(g1, g2) },
+    ])
+  );
 }
 
 function classifyFourBar(
@@ -162,7 +168,7 @@ function classifyFourBar(
           ? `a Grashof crank-rocker: ${s.name} is the shortest bar, so it is able to turn fully while the opposite side bar only rocks (${margin})` +
             (s.turns
               ? ''
-              : `. In this drawing it does not turn fully: it sweeps ${fmt(s.sweep ?? 0, 1)} deg over the solved motion`)
+              : `. In this mechanism it does not turn fully: it sweeps ${fmt(s.sweep ?? 0, 1)} deg over the solved motion`)
           : `a Grashof double-rocker: the coupler is the shortest bar, so neither side bar can turn fully (${margin})`;
   } else {
     verdict = `a non-Grashof (triple-rocker) four-bar: no bar can turn fully relative to the ground (${margin})`;

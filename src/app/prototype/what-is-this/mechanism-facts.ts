@@ -1,5 +1,5 @@
 import { describeActuator, GROUND_BODY } from '../../model/actuator';
-import { Cylinder, cylindersIn } from '../../model/cylinder';
+import { cylindersIn } from '../../model/cylinder';
 import { turnsClockwise } from '../../model/drive-direction';
 import { Force } from '../../model/force';
 import { Joint, PrisJoint, RealJoint } from '../../model/joint';
@@ -8,11 +8,8 @@ import { Mechanism } from '../../model/mechanism/mechanism';
 import { MechanismPartition, partitionMechanisms } from '../../model/mechanism/mechanism-partition';
 import { MODEL_SCALE } from '../../model/render-scale';
 import { drawingSvg } from './drawing-svg';
-import { MachineMotion, machineMotion } from './motion-export';
 import {
-  bodyAngles,
   countSelfCrossings,
-  deg,
   dist,
   fitLine,
   fmt,
@@ -20,20 +17,28 @@ import {
   longestStraightRun,
   Samples,
   unwrap,
+  deg,
 } from './fact-math';
-import { describeRelations } from './relations';
+import { FamilyMatch, familyCheck } from './family-check';
+import { MachineMotion, machineMotion } from './motion-export';
+import { describeRelations, RelationContext } from './relations';
+import { inputAt, InputSeries, inputSeries, LinkJob, linkJobs } from './roles';
 
 /**
- * PROTOTYPE -- "What is this?" fact sheet.
+ * PROTOTYPE -- "What is this?" fact sheet, v4.
  *
- * Turns a drawing into the plain-text measurements an LLM is given in place of
- * the drawing itself: structure, the input, how every body and point actually
- * moves over one solved cycle, and the start geometry -- and, optionally, how
- * the parts relate and a picture. Everything is read from the solver's
- * samples; nothing is inferred from a template's name.
+ * Turns a mechanism into the plain-text facts an LLM is given in place of the
+ * mechanism itself. The app does the reasoning and states conclusions: which
+ * link is the crank and which the coupler, which named family the lengths and
+ * joints match, where each rocker's ends fall in terms of the input angle. The
+ * model only has to put that into words and bring what it knows about where
+ * such mechanisms are used. Everything is read from the solver's samples;
+ * nothing is inferred from a template's name.
  *
- * Not wired into the app. See `docs/llm-features-plan.md` for what a real
- * version would have to add (fact IDs, a family catalog, verified wording).
+ * The sheet speaks the app's language: "this mechanism", "link AB", "driven",
+ * never "the drawing" (docs/ui-vocabulary.md).
+ *
+ * Not wired into the app. See `docs/llm-features-plan.md`.
  */
 
 export interface DrawingToDescribe {
@@ -52,33 +57,48 @@ export interface DrawingToDescribe {
   relations?: boolean;
 }
 
+/** One of the picture's moments: when it is, and what the input reads then. */
+export interface FilmFrame {
+  time: number;
+  label: string;
+}
+
+export interface MachineDescription {
+  svg?: string;
+  motion?: MachineMotion;
+  jobs: LinkJob[];
+  family: FamilyMatch[];
+  frames: FilmFrame[];
+}
+
 export interface DrawingDescription {
   text: string;
   /** Start pose and traced paths of each solvable machine, one SVG per machine. */
   svgs: string[];
   /** Each solvable machine's motion, for a page to animate. Not sent to the model. */
   motions: MachineMotion[];
+  machines: MachineDescription[];
 }
 
-/** The whole fact sheet for every machine in the drawing. */
+/** The whole fact sheet for every mechanism on the grid. */
 export function describeDrawing(drawing: DrawingToDescribe): DrawingDescription {
   const partitioning = partitionMechanisms(drawing.joints, drawing.links, drawing.forces);
   const lines: string[] = [];
-  const svgs: string[] = [];
-  const motions: MachineMotion[] = [];
+  const machines: MachineDescription[] = [];
+  lines.push('Facts PMKS+ computed from its own solution of this mechanism.');
   lines.push(
     `Length unit: ${drawing.lengthUnit}. Angles in degrees, counterclockwise from +x; y points up.`
   );
   lines.push(
-    'Joints are single letters; a link is named by its joints’ letters, as in the app’s Links table (e.g. link AB).'
+    'Links are named by their joints’ letters, as in the app’s Links table: link AB joins joints A and B.'
   );
-  lines.push(`Gravity: ${drawing.gravity ? 'on' : 'off'}.`);
-  lines.push(`Separate mechanisms in the drawing: ${partitioning.mechanisms.length}.`);
+  const count = partitioning.mechanisms.length;
+  if (count > 1) lines.push(`There are ${count} separate mechanisms on the grid, M1 to M${count}.`);
   const loose = partitioning.unassigned.looseJoints.length;
   const floating = partitioning.unassigned.floatingChains.length;
   if (loose || floating) {
     lines.push(
-      `Unconnected pieces: ${loose} loose joints, ${floating} floating chains (not part of any machine).`
+      `Unconnected pieces: ${loose} loose joints, ${floating} floating chains (not part of any mechanism).`
     );
   }
   partitioning.mechanisms.forEach((partition, index) => {
@@ -86,16 +106,20 @@ export function describeDrawing(drawing: DrawingToDescribe): DrawingDescription 
     lines.push(`## Mechanism M${index + 1}`);
     const described = describePartition(partition, drawing);
     lines.push(...described.lines);
-    if (described.svg) svgs.push(described.svg);
-    if (described.motion) motions.push(described.motion);
+    machines.push(described);
   });
-  return { text: lines.join('\n'), svgs, motions };
+  return {
+    text: lines.join('\n'),
+    svgs: machines.flatMap((m) => (m.svg ? [m.svg] : [])),
+    motions: machines.flatMap((m) => (m.motion ? [m.motion] : [])),
+    machines,
+  };
 }
 
 function describePartition(
   partition: MechanismPartition,
   drawing: DrawingToDescribe
-): { lines: string[]; svg?: string; motion?: MachineMotion } {
+): MachineDescription & { lines: string[] } {
   const own = new Set(partition.ownJoints.map((joint) => joint.id));
   const cylinders = cylindersIn(partition.joints).filter((c) => own.has(c.seal.id));
   // A cylinder's seal and buried inner end are internal; a reader only ever
@@ -115,7 +139,7 @@ function describePartition(
     return `link ${ids.join('')}${named}`;
   };
 
-  const lines: string[] = [];
+  const lines: string[] = ['### At a glance'];
   const drivers = partition.ownJoints.filter(
     (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
   );
@@ -137,134 +161,160 @@ function describePartition(
     own
   );
 
-  lines.push(...describeStructure(partition, visible, bodies, cylinders, label, bodyLabel));
-  lines.push(...describeStartGeometry(visible, bodies, label, bodyLabel, hidden));
-
-  lines.push('### Input');
-  if (!driven) {
-    lines.push('- Nothing is driven.');
-  } else {
-    const actuator = describeActuator(driven);
-    const cylinder = cylinders.find((c) => c.seal === driven);
-    const what = cylinder
-      ? `cylinder between ${label(cylinder.mountA)} and ${label(cylinder.mountB)} (extends/retracts)`
-      : typeof actuator === 'string'
-        ? `joint ${label(driven)} (refused as an input: ${actuator})`
-        : `${actuator.kind === 'angle' ? 'rotary' : 'linear'} drive at joint ${label(driven)}, turning ${
-            actuator.drivenBody === GROUND_BODY ? 'ground' : bodyLabel(actuator.drivenBody)
-          } relative to ${actuator.referenceBody === GROUND_BODY ? 'the ground' : bodyLabel(actuator.referenceBody)}`;
-    const speed =
-      driven instanceof PrisJoint
-        ? `${fmt(Math.abs(signedSpeed))} ${drawing.lengthUnit}/s`
-        : `${fmt(Math.abs(signedSpeed))} rpm ${turnsClockwise(signedSpeed) ? 'clockwise' : 'counterclockwise'}`;
-    lines.push(`- ${what}; speed ${speed}.`);
-    if (drivers.length > 1) {
-      lines.push(
-        `- ${drivers.length} joints are marked as inputs: ${drivers.map(label).join(', ')}.`
-      );
-    }
+  const actuator = driven ? describeActuator(driven) : undefined;
+  const drivenBody =
+    actuator && typeof actuator !== 'string' && actuator.drivenBody !== GROUND_BODY
+      ? actuator.drivenBody
+      : undefined;
+  lines.push(`- ${inputSentence()}`);
+  if (drivers.length > 1) {
+    lines.push(`- ${drivers.length} joints are set as inputs: ${drivers.map(label).join(', ')}.`);
   }
 
-  lines.push('### Solved motion');
   if (!mechanism.isMechanismValid() || mechanism.joints.length < 2) {
-    // "Could not solve" is about the drawing as it stands, not the machine: the
-    // first sheet said "do not describe how it moves" and models read that as
-    // "this mechanism cannot move".
+    // "Could not solve" is about the mechanism as it stands, not the machine it
+    // is meant to be: models read "do not describe how it moves" as "it cannot move".
     lines.push(
-      `- The simulator could not solve this drawing's motion as it stands (Gruebler count ` +
+      `- PMKS+ could not solve this mechanism's motion as it stands (Gruebler count ` +
         `${mechanism.dof} degrees of freedom; solver's reason: ${mechanism.failure ?? 'unknown'}). ` +
         'That says nothing about whether the intended machine can move; no motion facts follow.'
     );
-    return { lines };
+    lines.push(`- Links: ${bodies.map(bodyLabel).join(', ')}.`);
+    lines.push(`- Ground pivots: ${visible.filter(isGroundPin).map(label).join(', ') || 'none'}.`);
+    return { lines, jobs: [], family: [], frames: [] };
   }
+
   const samples = collectSamples(mechanism, driven, signedSpeed);
+  const period = samples.time[samples.time.length - 1] - samples.time[0];
   lines.push(
-    `- Degrees of freedom: ${mechanism.dof}. Solved ${samples.time.length} samples over ${fmt(
-      mechanism.cyclePeriod
-    )} s.`
+    `- Degrees of freedom: ${mechanism.dof}. ` +
+      (mechanism.reciprocates
+        ? `The input runs to a limit and reverses, so every part moves back and forth; one full back-and-forth takes ${fmt(period)} s.`
+        : `The motion repeats every ${fmt(period)} s, once per input revolution.`)
   );
-  lines.push(
-    mechanism.reciprocates
-      ? '- The input runs to a limit and reverses, so the whole motion is back-and-forth (a rotary input here cannot complete a revolution).'
-      : '- The input runs continuously; the whole motion repeats once per input revolution.'
+  const ctx: RelationContext = { bodies, visible, hidden, samples, cylinders, label, bodyLabel };
+  const tracedHere = visible.filter(
+    (j) => j instanceof RealJoint && j.showCurve && !isGroundPin(j)
   );
-  const grounds = visible.filter(isGroundPin);
-  for (const body of bodies) {
-    const fact = describeBodyMotion(body, samples, grounds, hidden, bodyLabel, label);
-    if (fact) lines.push(fact);
+  if (tracedHere.length) {
+    const on = (j: Joint) => {
+      const body = bodies.find((b) => b.joints.includes(j));
+      return body ? ` (on ${bodyLabel(body)})` : '';
+    };
+    lines.push(
+      `- Traced points: ${tracedHere.map((j) => `${label(j)}${on(j)}`).join(', ')}. The author chose to show these paths, so they are probably the outputs this mechanism exists for.`
+    );
   }
-  for (const joint of visible) {
-    if (joint instanceof PrisJoint) lines.push(describeSlider(joint, samples, bodyLabel, label));
-  }
-  for (const cylinder of cylinders) lines.push(describeCylinderTravel(cylinder, samples, label));
+
+  const family = familyCheck(ctx);
+  lines.push(...family.lines);
+
+  const input = inputSeries(ctx, driven);
+  const jobs = linkJobs(ctx, drivenBody, driven, input);
+  lines.push('### Links and their jobs');
+  for (const job of jobs) lines.push(`- ${job.name} — ${job.job}: ${job.motion}.`);
+
+  if (drawing.relations) lines.push(...describeRelations(ctx));
 
   lines.push('### Paths of moving points');
+  const grounds = visible.filter(isGroundPin);
   for (const joint of visible) {
     if (isGroundPin(joint)) continue;
     lines.push(describePath(joint, samples, grounds, label, mechanism.reciprocates));
   }
-  if (drawing.relations) {
-    lines.push(
-      ...describeRelations({ bodies, visible, hidden, samples, cylinders, label, bodyLabel })
-    );
-  }
+
+  const frames = filmFrames(samples, mechanism.reciprocates, input);
+  lines.push(
+    '### The picture: this mechanism at four moments, numbered in time order' +
+      (mechanism.reciprocates ? ' (1 and 4 are the two ends of its travel)' : '')
+  );
+  frames.forEach((frame, i) => lines.push(`- ${i + 1}: ${frame.label}.`));
+
+  lines.push(...describeStartGeometry(visible, bodies, label, bodyLabel, hidden, cylinders));
+
   const picture = { bodies, visible, hidden, cylinders, samples };
-  return { lines, svg: drawingSvg(picture), motion: machineMotion(picture) };
+  return {
+    lines,
+    svg: drawingSvg(picture),
+    motion: machineMotion(picture),
+    jobs,
+    family: family.matches,
+    frames,
+  };
+
+  function inputSentence(): string {
+    if (!driven) return 'Nothing is driven.';
+    const cylinder = cylinders.find((c) => c.seal === driven);
+    const speed =
+      driven instanceof PrisJoint
+        ? `${fmt(Math.abs(signedSpeed))} ${drawing.lengthUnit}/s`
+        : `${fmt(Math.abs(signedSpeed))} rpm ${turnsClockwise(signedSpeed) ? 'clockwise' : 'counterclockwise'}`;
+    if (cylinder) {
+      return `Driven input: the cylinder between ${label(cylinder.mountA)} and ${label(cylinder.mountB)}, which extends and retracts at ${speed}.`;
+    }
+    if (typeof actuator === 'string') {
+      return `Driven input: joint ${label(driven)}, which PMKS+ refuses as an input (${actuator}).`;
+    }
+    const turned =
+      actuator!.drivenBody === GROUND_BODY ? 'the ground' : bodyLabel(actuator!.drivenBody);
+    const against =
+      actuator!.referenceBody === GROUND_BODY ? 'the ground' : bodyLabel(actuator!.referenceBody);
+    return actuator!.kind === 'angle'
+      ? `Driven input: joint ${label(driven)} turns ${turned} relative to ${against} at ${speed}.`
+      : `Driven input: slider ${label(driven)} pushes ${turned} along its guide at ${speed}.`;
+  }
 }
 
-function describeStructure(
-  partition: MechanismPartition,
-  visible: Joint[],
-  bodies: Link[],
-  cylinders: Cylinder[],
-  label: (joint: Joint) => string,
-  bodyLabel: (link: Link) => string
-): string[] {
-  const lines = ['### Structure'];
-  const groundPins = visible.filter(isGroundPin);
-  const sliders = visible.filter((joint): joint is PrisJoint => joint instanceof PrisJoint);
-  const welds = visible.filter((joint) => joint instanceof RealJoint && joint.isWelded);
-  lines.push(`- Rigid bodies (moving links): ${bodies.length}.`);
-  for (const body of bodies) {
-    const parts =
-      body instanceof RealLink && body.subset.length
-        ? ` (welded compound of ${body.subset.length} bars)`
-        : '';
-    lines.push(
-      `  - ${bodyLabel(body)}: joins ${body.joints.filter((j) => visible.includes(j)).length} joints${parts}.`
-    );
+/**
+ * When the picture's four frames are. A full turn is shown at its quarters. A
+ * back-and-forth motion is shown from one end of its travel to the other, which
+ * is the part of its cycle a still picture otherwise hides.
+ */
+function filmFrames(samples: Samples, reciprocates: boolean, input?: InputSeries): FilmFrame[] {
+  const time = samples.time;
+  const n = time.length;
+  const at = (t: number) => {
+    let best = 0;
+    time.forEach((v, i) => {
+      if (Math.abs(v - t) < Math.abs(time[best] - t)) best = i;
+    });
+    return best;
+  };
+  let picks: number[];
+  if (!reciprocates || !input) {
+    const period = time[n - 1] - time[0];
+    picks = [0, 0.25, 0.5, 0.75].map((f) => at(time[0] + f * period));
+  } else {
+    let lo = 0;
+    let hi = 0;
+    input.values.forEach((v, i) => {
+      if (v < input.values[lo]) lo = i;
+      if (v > input.values[hi]) hi = i;
+    });
+    const [first, last] = lo < hi ? [lo, hi] : [hi, lo];
+    const span = time[last] - time[first];
+    picks = [first, at(time[first] + span / 3), at(time[first] + (2 * span) / 3), last];
   }
-  lines.push(`- Ground pivots (fixed pins): ${groundPins.map(label).join(', ') || 'none'}.`);
-  for (const slider of sliders) {
-    const guide = slider.ground
-      ? `a fixed guide at ${fmt(deg(slider.angle_rad), 1)} deg`
-      : slider.carrier
-        ? `a guide carried by moving ${bodyLabel(slider.carrier)} (slot from ${slider.slotJointA?.id} toward ${slider.slotJointB?.id})`
-        : 'no guide (dangling)';
-    const kind = slider.rotates
-      ? 'pin-in-slot (the riding body may turn as it slides)'
-      : 'prismatic (the riding body keeps the guide’s orientation)';
-    lines.push(`- Slider ${label(slider)}: ${kind}, on ${guide}.`);
-  }
-  for (const cylinder of cylinders) {
-    lines.push(
-      `- Hydraulic/linear cylinder between mounts ${label(cylinder.mountA)} and ${label(cylinder.mountB)}.`
-    );
-  }
-  if (welds.length) lines.push(`- Welded (rigid) joints: ${welds.map(label).join(', ')}.`);
-  const frameShared = partition.joints.length - partition.ownJoints.length;
-  if (frameShared > 0) lines.push(`- Shares ${frameShared} frame joints with another mechanism.`);
-  return lines;
+  return picks.map((i) => ({
+    time: time[i],
+    label: `${fmt(time[i], 2)} s${input ? `, ${input.what} ${inputAt(input, i)}` : ''}`,
+  }));
 }
 
+/**
+ * Joint positions and the lengths that fix the shape, for reference. A body
+ * with many points gives only the lengths between the joints that connect it
+ * and each point's distance to those, not every pair.
+ */
 function describeStartGeometry(
   visible: Joint[],
   bodies: Link[],
   label: (joint: Joint) => string,
   bodyLabel: (link: Link) => string,
-  hidden: Set<string>
+  hidden: Set<string>,
+  cylinders: { mountA: Joint; mountB: Joint }[]
 ): string[] {
-  const lines = ['### Start geometry'];
+  const lines = ['### Geometry at the start, for reference'];
   lines.push(
     '- Joints: ' +
       visible
@@ -275,25 +325,35 @@ function describeStartGeometry(
         .join('; ') +
       '.'
   );
-  const grounds = visible.filter(isGroundPin);
-  if (grounds.length > 1) {
-    const pairs: string[] = [];
-    for (let a = 0; a < grounds.length; a++)
-      for (let b = a + 1; b < grounds.length; b++)
-        pairs.push(
-          `${grounds[a].id}-${grounds[b].id} ${fmt(dist(grounds[a], grounds[b]) / MODEL_SCALE)}`
-        );
-    lines.push(`- Distances between ground joints: ${pairs.join('; ')}.`);
-  }
+  const connects = (joint: Joint) =>
+    isGroundPin(joint) ||
+    joint instanceof PrisJoint ||
+    bodies.filter((b) => b.joints.includes(joint)).length > 1 ||
+    cylinders.some((c) => c.mountA === joint || c.mountB === joint);
+  const len = (a: Joint, b: Joint) => `${a.id}-${b.id} ${fmt(dist(a, b) / MODEL_SCALE)}`;
   for (const body of bodies) {
     const joints = body.joints.filter((j) => !hidden.has(j.id));
     const pairs: string[] = [];
-    for (let a = 0; a < joints.length; a++)
-      for (let b = a + 1; b < joints.length; b++)
-        pairs.push(
-          `${joints[a].id}-${joints[b].id} ${fmt(dist(joints[a], joints[b]) / MODEL_SCALE)}`
-        );
-    if (pairs.length) lines.push(`- ${bodyLabel(body)} lengths: ${pairs.join('; ')}.`);
+    if (joints.length <= 3) {
+      for (let a = 0; a < joints.length; a++)
+        for (let b = a + 1; b < joints.length; b++) pairs.push(len(joints[a], joints[b]));
+    } else {
+      const hubs = joints.filter(connects);
+      for (let a = 0; a < hubs.length; a++)
+        for (let b = a + 1; b < hubs.length; b++) pairs.push(len(hubs[a], hubs[b]));
+      for (const point of joints.filter((j) => !hubs.includes(j)))
+        for (const hub of hubs) pairs.push(len(hub, point));
+    }
+    const welded =
+      body instanceof RealLink && body.subset.length
+        ? ` (welded from ${body.subset.length} links)`
+        : '';
+    if (pairs.length) lines.push(`- ${bodyLabel(body)}${welded}: ${pairs.join('; ')}.`);
+  }
+  for (const slider of visible.filter((j): j is PrisJoint => j instanceof PrisJoint)) {
+    lines.push(
+      `- Slider ${label(slider)} is ${slider.rotates ? 'a pin in a slot (what rides it may turn)' : 'a block (what rides it keeps the guide’s angle)'}.`
+    );
   }
   return lines;
 }
@@ -318,165 +378,6 @@ function collectSamples(
   return { mechanism, paths, time: mechanism.timeNum.slice(0, mechanism.joints.length), period };
 }
 
-/** How a body turns: fully, rocking about a pivot, translating, or floating. */
-function describeBodyMotion(
-  body: Link,
-  samples: Samples,
-  grounds: Joint[],
-  hidden: Set<string>,
-  bodyLabel: (link: Link) => string,
-  label: (joint: Joint) => string
-): string | undefined {
-  const joints = body.joints.filter((j) => !hidden.has(j.id) && samples.paths.has(j.id));
-  const angles = bodyAngles(joints, samples);
-  if (!angles) return undefined;
-  const low = Math.min(...angles);
-  const high = Math.max(...angles);
-  const sweep = deg(high - low);
-  const pivot = joints.find((j) => grounds.includes(j));
-  const name = bodyLabel(body);
-  if (joints.every((j) => grounds.includes(j))) return `- ${name} is fixed to the ground.`;
-  if (sweep < 0.5) return describeTranslation(name, joints, samples, sweep, label, grounds);
-  const fullTurn = !samples.mechanism.reciprocates && sweep > 300;
-  const around = pivot
-    ? `about ground pivot ${label(pivot)}`
-    : '(no fixed pivot: a floating coupler)';
-  if (fullTurn) {
-    return `- ${name} turns full revolutions ${around}${angularSpeedSpread(angles, samples)}.`;
-  }
-  return (
-    `- ${name} rocks ${around} through ${fmt(sweep, 1)} deg` +
-    ` (from ${fmt(deg(low), 1)} to ${fmt(deg(high), 1)} deg)` +
-    `${strokeTiming(angles, samples)}.`
-  );
-}
-
-/**
- * A body that keeps its orientation. Every point of it traces the same-shaped
- * path, so one point's path says whether it slides in a straight line or swings
- * along an arc -- the wiper's parallelogram coupler does the second, and "it
- * translates" alone was read as "it moves in a straight line".
- */
-function describeTranslation(
-  name: string,
-  joints: Joint[],
-  samples: Samples,
-  sweep: number,
-  label: (joint: Joint) => string,
-  grounds: Joint[]
-): string {
-  const steady = `orientation constant within ${fmt(sweep, 2)} deg`;
-  const path = samples.paths.get(joints[0].id)!;
-  const line = fitLine(path);
-  if (line.length < 1e-6) return `- ${name} does not move.`;
-  if (line.maxOff / line.length < 0.002) {
-    return `- ${name} translates in a straight line at ${fmt(line.angle, 1)} deg without rotating (${steady}); every point of it moves ${fmt(line.length)} back and forth.`;
-  }
-  const arc = grounds
-    .map((ground) => ({ ground, fit: circleAbout(path, samples.paths.get(ground.id)![0]) }))
-    .find((c) => c.fit);
-  const shape = arc
-    ? `the same circular arc as ${label(joints[0])}'s (radius ${fmt(arc.fit!.radius)} about ${label(arc.ground)})`
-    : 'the same curved path';
-  return `- ${name} translates along a curve without rotating (${steady}): it is not moving in a straight line; every point of it traces ${shape}, just shifted (curvilinear translation).`;
-}
-
-/** The radius of a path that stays a fixed distance from a point, if it does. */
-function circleAbout(
-  path: [number, number][],
-  centre: [number, number]
-): { radius: number } | undefined {
-  const radii = path.map(([x, y]) => Math.hypot(x - centre[0], y - centre[1]));
-  const mean = radii.reduce((s, r) => s + r, 0) / radii.length;
-  return mean > 1e-6 && (Math.max(...radii) - Math.min(...radii)) / mean < 0.002
-    ? { radius: mean }
-    : undefined;
-}
-
-/** A body that turns fully but unevenly is a quick-return's tell. */
-function angularSpeedSpread(angles: number[], samples: Samples): string {
-  const rates: number[] = [];
-  for (let i = 1; i < angles.length; i++) {
-    const dt = samples.time[i] - samples.time[i - 1];
-    if (Math.abs(dt) > 1e-9) rates.push(Math.abs(deg(angles[i] - angles[i - 1]) / dt));
-  }
-  if (!rates.length) return '';
-  const slow = Math.min(...rates);
-  const fast = Math.max(...rates);
-  if (slow < 1e-6 || fast / slow < 1.05) return ', at a steady angular speed';
-  return `, unevenly: its angular speed ranges from ${fmt(slow, 1)} to ${fmt(fast, 1)} deg/s (fastest/slowest ${fmt(fast / slow)})`;
-}
-
-function describeSlider(
-  slider: PrisJoint,
-  samples: Samples,
-  bodyLabel: (link: Link) => string,
-  label: (joint: Joint) => string
-): string {
-  const path = samples.paths.get(slider.id)!;
-  let along: number[];
-  if (slider.ground) {
-    const ux = Math.cos(slider.angle_rad);
-    const uy = Math.sin(slider.angle_rad);
-    along = path.map(([x, y]) => x * ux + y * uy);
-  } else if (slider.slotJointA && slider.slotJointB) {
-    const a = samples.paths.get(slider.slotJointA.id)!;
-    const b = samples.paths.get(slider.slotJointB.id)!;
-    along = path.map(([x, y], i) => {
-      const dx = b[i][0] - a[i][0];
-      const dy = b[i][1] - a[i][1];
-      const span = Math.hypot(dx, dy) || 1;
-      return ((x - a[i][0]) * dx + (y - a[i][1]) * dy) / span;
-    });
-  } else {
-    return `- Slider ${label(slider)}: no guide to measure travel against.`;
-  }
-  const stroke = Math.max(...along) - Math.min(...along);
-  if (slider.ground) {
-    return `- Slider ${label(slider)} travels ${fmt(stroke)} along its fixed guide${strokeTiming(along, samples)}.`;
-  }
-  // Sliding within a moving slot is relative motion, not an output stroke: its
-  // equal times read as "no quick return" on the Whitworth, whose quick return
-  // is in how the slotted link turns.
-  const carrier = slider.carrier ? bodyLabel(slider.carrier) : 'a moving body';
-  return `- Pin ${label(slider)} slides ${fmt(stroke)} back and forth within the slot on ${carrier}; this is motion relative to ${carrier}, not an output stroke.`;
-}
-
-function describeCylinderTravel(
-  cylinder: Cylinder,
-  samples: Samples,
-  label: (joint: Joint) => string
-): string {
-  const a = samples.paths.get(cylinder.mountA.id)!;
-  const b = samples.paths.get(cylinder.mountB.id)!;
-  const spans = a.map((p, i) => Math.hypot(b[i][0] - p[0], b[i][1] - p[1]));
-  return (
-    `- Cylinder ${label(cylinder.mountA)}-${label(cylinder.mountB)} length ranges ` +
-    `${fmt(Math.min(...spans))} to ${fmt(Math.max(...spans))} (extension ${fmt(Math.max(...spans) - Math.min(...spans))}).`
-  );
-}
-
-/**
- * Time spent going min->max versus max->min, when the input turns steadily.
- * A back-and-forth input has no fixed drive law, so no ratio is claimed.
- */
-function strokeTiming(values: number[], samples: Samples): string {
-  if (!samples.period) return '';
-  const time = samples.time;
-  let lo = 0;
-  let hi = 0;
-  values.forEach((v, i) => {
-    if (v < values[lo]) lo = i;
-    if (v > values[hi]) hi = i;
-  });
-  const P = samples.period;
-  const rise = (((time[hi] - time[lo]) % P) + P) % P;
-  const fall = P - rise;
-  if (rise < 1e-6 || fall < 1e-6) return '';
-  const ratio = Math.max(rise, fall) / Math.min(rise, fall);
-  return `; one way takes ${fmt(rise)} s and the other ${fmt(fall)} s (time ratio ${fmt(ratio)})`;
-}
-
 /** What shape a point's path is: still, circular, straight, or a curve. */
 function describePath(
   joint: Joint,
@@ -486,8 +387,7 @@ function describePath(
   reciprocates: boolean
 ): string {
   const path = samples.paths.get(joint.id)!;
-  const traced =
-    joint instanceof RealJoint && joint.showCurve ? ' [the author traces this point’s path]' : '';
+  const traced = joint instanceof RealJoint && joint.showCurve ? ' (traced)' : '';
   const xs = path.map((p) => p[0]);
   const ys = path.map((p) => p[1]);
   const width = Math.max(...xs) - Math.min(...xs);

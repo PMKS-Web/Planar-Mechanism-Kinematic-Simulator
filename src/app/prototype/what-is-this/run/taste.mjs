@@ -52,11 +52,19 @@ function diffLines(before, after) {
 
 /** The overview rows the panel shows above the note; read off the sheet, the same for both sides. */
 function overviewOf(facts) {
-  const input = /^### Input\n- (.*)$/m.exec(facts)?.[1] ?? '';
-  const drive = /at joint ([A-Z])/.exec(input)?.[1];
+  // v4 says "Driven input: ..." and "repeats every 6 s"; v3 and before had an Input section.
+  const input =
+    /^- Driven input: (.*)$/m.exec(facts)?.[1] ?? /^### Input\n- (.*)$/m.exec(facts)?.[1] ?? '';
+  const drive = /joint ([A-Z])/.exec(input)?.[1];
   const cylinder = /cylinder between ([A-Z]) and ([A-Z])/.exec(input);
-  const speed = /speed (.*)\.$/.exec(input)?.[1] ?? '';
-  const cycle = /Solved \d+ samples over ([\d.]+) s/.exec(facts)?.[1];
+  const speed =
+    / at ([\d.]+ (?:rpm (?:counter)?clockwise|\w+\/s))/.exec(input)?.[1] ??
+    /speed (.*)\.$/.exec(input)?.[1] ??
+    '';
+  const cycle =
+    /repeats every ([\d.]+) s/.exec(facts)?.[1] ??
+    /back-and-forth takes ([\d.]+) s/.exec(facts)?.[1] ??
+    /Solved \d+ samples over ([\d.]+) s/.exec(facts)?.[1];
   const dof = /Degrees of freedom: (\d+)/.exec(facts)?.[1];
   return [
     ['Degrees of freedom', dof ?? '–'],
@@ -108,6 +116,7 @@ function loadArm(arm, template) {
       latencyMs: saved?.latencyMs,
       usage: saved?.usage,
       image: imageId(join(root, entry.image ?? '')),
+      familyCheck: entry.family?.[0]?.family,
       facts,
       rubric: checkAnswer(template, saved?.parsed, facts),
     },
@@ -140,6 +149,9 @@ const builtRounds = rounds.map((round) => {
       blurb: b.entry.libraryBlurb,
       appUrl: b.entry.appUrl,
       overview: overviewOf(b.facts),
+      // The Links table is the app's, not the model's: the newer sheet's jobs, shown on both sides.
+      jobs: b.entry.jobs?.length ? b.entry.jobs : (a.entry.jobs ?? []),
+      decided: round.decided?.[template],
       motion,
       identical: a.facts === b.facts,
       diff: a.facts === b.facts ? [] : diffLines(a.facts, b.facts),
