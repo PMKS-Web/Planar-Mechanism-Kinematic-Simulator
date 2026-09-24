@@ -3,7 +3,10 @@
 import { readFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 
-const root = new URL('../../../../../artifacts/what-is-this/v2/', import.meta.url);
+const root = new URL(
+  `../../../../../artifacts/what-is-this/${process.env.SHEET ?? 'v2'}/`,
+  import.meta.url
+);
 const { cases } = JSON.parse(readFileSync(new URL('manifest.json', root), 'utf8'));
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 900, height: 650 } });

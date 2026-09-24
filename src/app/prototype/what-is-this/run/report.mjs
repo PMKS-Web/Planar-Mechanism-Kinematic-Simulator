@@ -2,11 +2,14 @@
 //   node src/app/prototype/what-is-this/run/report.mjs
 // Reads the manifest, every provider's answers and grades.json (a human's
 // marks, written after reading the answers), and writes
-// artifacts/what-is-this/v2/what-is-this.html from ./page.html.
+// artifacts/what-is-this/<SHEET>/what-is-this.html from ./page.html.
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const root = new URL('../../../../../artifacts/what-is-this/v2/', import.meta.url).pathname;
+const root = new URL(
+  `../../../../../artifacts/what-is-this/${process.env.SHEET ?? 'v2'}/`,
+  import.meta.url
+).pathname;
 const here = new URL('.', import.meta.url).pathname;
 const { cases } = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
 const providers = readdirSync(join(root, 'answers'));
@@ -59,7 +62,7 @@ const findings = existsSync(join(root, 'findings.json'))
   ? readFileSync(join(root, 'findings.json'), 'utf8')
   : '[]';
 const page = readFileSync(join(here, 'page.html'), 'utf8')
-  .replace('/*DATA*/null', () => JSON.stringify(data).replace(/</g, '\\u003c'))
-  .replace('/*FINDINGS*/[]', () => findings);
+  .replace(/\/\*DATA\*\/\s*null/, () => JSON.stringify(data).replace(/</g, '\\u003c'))
+  .replace(/\/\*FINDINGS\*\/\s*\[\]/, () => findings);
 writeFileSync(join(root, 'what-is-this.html'), page);
 console.log(`wrote ${join(root, 'what-is-this.html')} (${Math.round(page.length / 1024)} KB)`);

@@ -6,6 +6,7 @@ import {
   deg,
   distAt,
   fmt,
+  halfTurnTimes,
   isGroundPin,
   longestStraightRun,
   Samples,
@@ -107,7 +108,11 @@ function fourBarLoops(ctx: RelationContext): string[] {
                     turns: turnsFully(ctx, left),
                     sweep: sweepOf(ctx, left),
                   },
-                  { name: `${ctx.bodyLabel(coupler)} (${j1.id}-${j2.id})`, value: len(j1, j2) },
+                  {
+                    name: `${ctx.bodyLabel(coupler)} (${j1.id}-${j2.id})`,
+                    value: len(j1, j2),
+                    sweep: sweepOf(ctx, coupler),
+                  },
                   {
                     name: `${ctx.bodyLabel(right)} (${g2.id}-${j2.id})`,
                     value: len(g2, j2),
@@ -140,9 +145,13 @@ function classifyFourBar(
   const margin = `shortest + longest = ${fmt(shortLong)} vs the other two = ${fmt(others)}`;
   const near = (x: number, y: number) => Math.abs(x - y) < 0.002 * Math.max(x, y);
   let verdict: string;
-  if (near(a.value, c.value) && near(b.value, d.value)) {
+  // Equal opposite bars are a parallelogram only while the coupler keeps its
+  // angle; crossed, the same four lengths make an antiparallelogram.
+  if (near(a.value, c.value) && near(b.value, d.value) && (b.sweep ?? 0) < 0.5) {
     verdict =
-      'a parallelogram: opposite bars are equal, so the coupler stays parallel to the ground line and the two side bars stay parallel to each other';
+      'a parallelogram: opposite bars are equal and the coupler keeps its angle, so the coupler stays parallel to the ground line and the two side bars stay parallel to each other';
+  } else if (near(a.value, c.value) && near(b.value, d.value)) {
+    verdict = `an antiparallelogram (crossed four-bar): opposite bars are equal, but the coupler turns ${fmt(b.sweep ?? 0, 1)} deg, so it does not stay parallel to the ground line`;
   } else if (near(shortLong, others)) {
     verdict = `a change-point (borderline Grashof) four-bar (${margin})`;
   } else if (shortLong < others) {
@@ -153,7 +162,7 @@ function classifyFourBar(
           ? `a Grashof crank-rocker: ${s.name} is the shortest bar, so it is able to turn fully while the opposite side bar only rocks (${margin})` +
             (s.turns
               ? ''
-              : `. In this drawing it does not turn fully (it sweeps ${fmt(s.sweep ?? 0, 1)} deg), because the input is not at its pivot`)
+              : `. In this drawing it does not turn fully: it sweeps ${fmt(s.sweep ?? 0, 1)} deg over the solved motion`)
           : `a Grashof double-rocker: the coupler is the shortest bar, so neither side bar can turn fully (${margin})`;
   } else {
     verdict = `a non-Grashof (triple-rocker) four-bar: no bar can turn fully relative to the ground (${margin})`;
@@ -218,7 +227,7 @@ function movingTogether(ctx: RelationContext): string[] {
       const sweep = fmt(deg(Math.max(...a.change) - Math.min(...a.change)), 1);
       if (deg(same) < 0.5) {
         lines.push(
-          `- ${ctx.bodyLabel(a.body)} and ${ctx.bodyLabel(b.body)} turn together: their angles change identically at every instant (both sweep ${sweep} deg), so they stay parallel.`
+          `- ${ctx.bodyLabel(a.body)} and ${ctx.bodyLabel(b.body)} turn together: their angles change identically at every instant (both sweep ${sweep} deg), so the angle between them never changes. ${parallelLines(ctx, a.body, b.body)}`
         );
       } else if (deg(mirror) < 0.5) {
         lines.push(
@@ -228,6 +237,45 @@ function movingTogether(ctx: RelationContext): string[] {
     }
   }
   return lines;
+}
+
+/**
+ * Turning together fixes the angle between two bodies; it makes them parallel
+ * only if some line on one is parallel to some line on the other to begin with.
+ * The first sheet said "so they stay parallel" for every such pair.
+ */
+function parallelLines(ctx: RelationContext, a: Link, b: Link): string {
+  const lines = (body: Link) => {
+    const joints = jointsOf(ctx, body);
+    const out: { name: string; angle: number; length: number; pivot: boolean }[] = [];
+    for (let i = 0; i < joints.length; i++)
+      for (let k = i + 1; k < joints.length; k++) {
+        const p = ctx.samples.paths.get(joints[i].id)![0];
+        const q = ctx.samples.paths.get(joints[k].id)![0];
+        out.push({
+          name: `${joints[i].id}-${joints[k].id}`,
+          angle: Math.atan2(q[1] - p[1], q[0] - p[0]),
+          length: Math.hypot(q[0] - p[0], q[1] - p[1]),
+          pivot: isGroundPin(joints[i]) || isGroundPin(joints[k]),
+        });
+      }
+    return out;
+  };
+  // Lines through each body's own pivot first (a wiper's arms, not its tie
+  // points), then the longest pair.
+  const rank = (la: { pivot: boolean; length: number }, lb: { pivot: boolean; length: number }) =>
+    (la.pivot && lb.pivot ? 1000 : 0) + la.length + lb.length;
+  let best: { a: string; b: string; rank: number } | undefined;
+  for (const la of lines(a))
+    for (const lb of lines(b)) {
+      const between = Math.abs(deg(la.angle - lb.angle)) % 180;
+      const off = Math.min(between, 180 - between);
+      if (off < 0.5 && (!best || rank(la, lb) > best.rank))
+        best = { a: la.name, b: lb.name, rank: rank(la, lb) };
+    }
+  return best
+    ? `Line ${best.a} stays parallel to line ${best.b}.`
+    : 'No line on one is parallel to a line on the other, so they are not parallel.';
 }
 
 /** A body pivoted between two of its joints: a beam or seesaw. One line per body. */
@@ -261,7 +309,7 @@ function levers(ctx: RelationContext): string[] {
     if (!best) continue;
     const [short, long] = [best.a, best.b].sort((x, y) => x.length - y.length);
     lines.push(
-      `- ${ctx.bodyLabel(body)} is a lever (beam) pivoted at ${pivot.id} between ${best.a.joint.id} and ${best.b.joint.id}: they sit on opposite sides of the pivot (arms ${fmt(best.a.length)} and ${fmt(best.b.length)}), so when one end rises the other falls, and ${long.joint.id} moves ${fmt(long.length / short.length)}x as far as ${short.joint.id}.`
+      `- ${ctx.bodyLabel(body)} is a lever (beam) pivoted at ${pivot.id} between ${best.a.joint.id} and ${best.b.joint.id}: they sit on opposite sides of the pivot (arms ${fmt(best.a.length)} and ${fmt(best.b.length)}), so the two ends always move in opposite directions, and ${long.joint.id} moves ${fmt(long.length / short.length)}x as far as ${short.joint.id}.`
     );
   }
   return lines;
@@ -295,12 +343,19 @@ function slotCranks(ctx: RelationContext): string[] {
       lines.push(
         `- ${drive}, which pivots at ${slottedPivot.id}, ${fmt(d)} from ${crankPivot.id}. ` +
           (r > d
-            ? `The crank radius is larger than that pivot distance, so ${ctx.bodyLabel(slotted)} turns fully but unevenly, fast on one half-turn and slow on the other (the rotating-slotted-link arrangement).`
+            ? `The crank radius is larger than that pivot distance, so ${ctx.bodyLabel(slotted)} turns fully but unevenly (the rotating-slotted-link arrangement).${halfTurns(ctx, slotted)}`
             : `The crank radius is smaller than that pivot distance, so ${ctx.bodyLabel(slotted)} only rocks, and its two swings take different times (the oscillating-slotted-link arrangement).`)
       );
     }
   }
   return lines;
+}
+
+function halfTurns(ctx: RelationContext, body: Link): string {
+  const angles = bodyAngles(jointsOf(ctx, body), ctx.samples);
+  const times = angles && halfTurnTimes(angles, ctx.samples.time);
+  if (!times || times.slow / times.fast < 1.05) return '';
+  return ` Its slowest half-turn takes ${fmt(times.slow)} s and the opposite half-turn ${fmt(times.fast)} s (time ratio ${fmt(times.slow / times.fast)}), so anything it drives back and forth through those two half-turns gets a slow stroke and a quick return.`;
 }
 
 /** A cylinder pushing a link round its pivot: extension in, rotation out. */
@@ -356,7 +411,7 @@ function pathPlacement(ctx: RelationContext): string[] {
         `- ${joint.id}'s path lies ${where} (path x ${fmt(Math.min(...xs))} to ${fmt(Math.max(...xs))}, y ${fmt(Math.min(...ys))} to ${fmt(Math.max(...ys))}; pivots x ${fmt(Math.min(...gx))} to ${fmt(Math.max(...gx))}, y ${fmt(Math.min(...gy))} to ${fmt(Math.max(...gy))}).`
       );
     }
-    const run = longestStraightRun(path, !reciprocates);
+    const run = longestStraightRun(path, !reciprocates, ctx.samples.time);
     const extent = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
     if (!run || run.length < 0.25 * extent) continue;
     const normal: [number, number] = [-run.direction[1], run.direction[0]];

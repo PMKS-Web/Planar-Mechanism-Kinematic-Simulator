@@ -82,7 +82,12 @@ export interface StraightRun {
   start: number;
   end: number;
   length: number;
-  /** Share of the cycle's samples spent on the run. */
+  /**
+   * Share of the cycle's time the point spends on the run's segment. Time, not
+   * samples: the solver refines its step near hard poses, so a sample count
+   * overstates whatever stretch it refined. Both passes of a back-and-forth
+   * path count.
+   */
   fraction: number;
   angle: number;
   maxOffPercent: number;
@@ -96,7 +101,8 @@ export interface StraightRun {
  */
 export function longestStraightRun(
   path: [number, number][],
-  closed: boolean
+  closed: boolean,
+  time: number[]
 ): StraightRun | undefined {
   const n = path.length;
   const at = (i: number) => path[closed ? i % n : Math.min(i, n - 1)];
@@ -128,13 +134,41 @@ export function longestStraightRun(
   const a = at(best.start);
   const b = at(best.end);
   const direction: [number, number] = [(b[0] - a[0]) / best.length, (b[1] - a[1]) / best.length];
+  const maxOff = deviation(best.start, best.end, best.length);
   return {
     ...best,
-    fraction: (best.end - best.start) / n,
+    fraction: timeOnSegment(path, time, a, direction, best.length, maxOff),
     angle: ((deg(Math.atan2(direction[1], direction[0])) % 180) + 180) % 180,
-    maxOffPercent: (deviation(best.start, best.end, best.length) / best.length) * 100,
+    maxOffPercent: (maxOff / best.length) * 100,
     direction,
   };
+}
+
+/**
+ * Share of the cycle's time spent between consecutive samples that both lie on
+ * the segment. A closed cycle's last sample is its first again, so the wrap
+ * needs no step of its own.
+ */
+function timeOnSegment(
+  path: [number, number][],
+  time: number[],
+  origin: [number, number],
+  direction: [number, number],
+  length: number,
+  maxOff: number
+): number {
+  const n = path.length;
+  const slack = 1e-6 * length;
+  const on = path.map(([x, y]) => {
+    const along = (x - origin[0]) * direction[0] + (y - origin[1]) * direction[1];
+    const off = Math.abs(-(x - origin[0]) * direction[1] + (y - origin[1]) * direction[0]);
+    return along >= -slack && along <= length + slack && off <= maxOff + slack;
+  });
+  const total = time[n - 1] - time[0];
+  if (total <= 0) return 0;
+  let spent = 0;
+  for (let i = 0; i + 1 < n; i++) if (on[i] && on[i + 1]) spent += time[i + 1] - time[i];
+  return spent / total;
 }
 
 /** Crossings between non-neighbouring segments of a closed path. */
@@ -161,4 +195,36 @@ function segmentsCross(a: number[], b: number[], c: number[], d: number[]): bool
 /** "bottom", "top", "left" or "right" for the side a unit vector points to. */
 export function sideWord([x, y]: [number, number]): string {
   return Math.abs(y) >= Math.abs(x) ? (y < 0 ? 'bottom' : 'top') : x < 0 ? 'left' : 'right';
+}
+
+/**
+ * For a body that turns once per cycle: the longest and shortest time it takes
+ * to turn half a revolution, over every starting angle. Anything driven from it
+ * through two opposite half-turns gets a stroke and a return in that ratio.
+ */
+export function halfTurnTimes(
+  angles: number[],
+  time: number[]
+): { slow: number; fast: number } | undefined {
+  const n = angles.length;
+  const total = angles[n - 1] - angles[0];
+  const period = time[n - 1] - time[0];
+  if (Math.abs(total) < 1.9 * Math.PI || period <= 0) return undefined;
+  const sign = Math.sign(total);
+  // A second lap, so a half-turn may start late in the cycle and end in the next.
+  const a = [...angles, ...angles.slice(1).map((v) => v + total)];
+  const t = [...time, ...time.slice(1).map((v) => v + period)];
+  const durations: number[] = [];
+  let k = 0;
+  for (let i = 0; i < n - 1; i++) {
+    const target = a[i] + sign * Math.PI;
+    k = Math.max(k, i);
+    while (k + 1 < a.length && sign * (a[k + 1] - target) < 0) k++;
+    if (k + 1 >= a.length) break;
+    const f = (target - a[k]) / (a[k + 1] - a[k]);
+    durations.push(t[k] + f * (t[k + 1] - t[k]) - t[i]);
+  }
+  return durations.length
+    ? { slow: Math.max(...durations), fast: Math.min(...durations) }
+    : undefined;
 }

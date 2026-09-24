@@ -1,0 +1,13 @@
+{
+  "provider": "codex__gpt-6-luna",
+  "variant": "relations+picture",
+  "rounds": [
+    {
+      "id": "r1",
+      "title": "Round 1 · truth fixes",
+      "a": "v2",
+      "b": "v3",
+      "note": "Same model (GPT-6 Luna, medium effort), same picture, and the same instructions except one sentence about drawings the solver cannot solve, which none of these ten is. Four of the ten sheets are word-for-word identical between the versions, so those pairs show how much the model varies on its own."
+    }
+  ]
+}
