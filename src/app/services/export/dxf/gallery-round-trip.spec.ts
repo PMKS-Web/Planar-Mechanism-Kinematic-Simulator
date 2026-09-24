@@ -14,7 +14,7 @@ import { writeDxf } from './dxf-writer';
  * This is the in-CI stand-in for "does CAD accept it". It cannot be the whole
  * answer -- `dxf-parser` is lenient where a real translator is strict, which is
  * exactly how the R2000 output went a long time with tables an auditor silently
- * repaired on the way in. `docs/tips-and-tricks.md` carries the ezdxf audit
+ * repaired on the way in. `docs/domain-facts.md` carries the ezdxf audit
  * script for that, and it stays a manual step. What this catches is the class
  * of thing that breaks when a mechanism is *unusual* rather than when the
  * writer is wrong: a slot with no travel, a link collapsed onto a point, a

@@ -113,38 +113,11 @@
 }
 
 // The switch that shows or hides the curves from before the drag, on every
-// open graph at once. The app's toggle block, a size down for the subtitle's
-// line: its label at the subtitle's size, its help mark beside it, and the
-// switch itself scaled to the line's height.
+// open graph at once. The app's toggle block at its `compact` size, which is
+// what the block now calls the treatment this file used to write by hand --
+// four rules naming `#toggle-block`'s private ids from outside it.
 #analysisWrapper .compareToggle {
   flex: 0 0 auto;
-
-  #toggle-block .row {
-    gap: 6px;
-  }
-
-  #toggle-block .label {
-    font-size: 12.5px;
-    color: var(--text-primary);
-    white-space: nowrap;
-  }
-
-  #toggle-block .label-help {
-    width: 16px;
-    height: 16px;
-    font-size: 15px;
-    line-height: 16px;
-  }
-
-  #toggle-block .spacer {
-    display: none;
-  }
-
-  mat-slide-toggle {
-    transform: scale(0.8);
-    transform-origin: right center;
-    margin-left: -6px;
-  }
 }
 
 // The rows, on the panel's text gutter, closed off by a rule under the last.
@@ -256,71 +229,10 @@
     cursor: help;
   }
 
+  // The switches are `app-view-button` at its labelled size; what is left
+  // here is the row they sit in.
   .drawingChips {
     display: flex;
     gap: 6px;
-  }
-
-  .drawingChip {
-    // Grown from their natural widths to fill the row, so the last chip's
-    // right edge is the panel's own: the design's chips sat at their natural
-    // widths and left the row ragged against the rows of readings above it.
-    // From their natural widths, not four equal shares: equal shares cut
-    // "Acceleration" off at the panel's width, where at its own width it fits.
-    flex: 1 1 auto;
-    min-width: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    height: 34px;
-    padding: 0 8px;
-    border: 1px solid var(--border-divider);
-    border-radius: 6px;
-    box-sizing: border-box;
-    background: transparent;
-    color: var(--text-secondary);
-    font: inherit;
-    font-size: 11.5px;
-    font-weight: 500;
-    white-space: nowrap;
-    cursor: pointer;
-    transition: background 0.12s;
-
-    &:hover {
-      background: var(--hover-wash);
-    }
-
-    &.drawingChip--on {
-      border-color: var(--selection-border);
-      background: var(--selection);
-      color: var(--brand-dark);
-
-      &:hover {
-        background: var(--selection-hover);
-      }
-    }
-
-    &.drawingChip--off {
-      border-color: var(--border-rule);
-      color: var(--text-disabled);
-      cursor: default;
-
-      &:hover {
-        background: transparent;
-      }
-    }
-  }
-
-  .drawingChipGlyph {
-    flex: none;
-    width: 18px;
-    height: 18px;
-    font-size: 18px;
-  }
-
-  .drawingChipLabel {
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 }

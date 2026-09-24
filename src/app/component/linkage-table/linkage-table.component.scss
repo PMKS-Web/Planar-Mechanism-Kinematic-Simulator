@@ -1,73 +1,40 @@
+/* The debug drawer's table of joints, links and forces.
+   The pick-one above it is `segmented-block`; what is left here is the table.
+   Gone with the radios: `.linkageTabs input[type=radio]`, the `label` styling
+   at 22px Arial, and the five `:checked + label + .tab` selectors that decided
+   what showed. */
 .linkageTabs {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 8px;
   max-width: 400px;
-  //position: absolute;
-  //top: 130px;
-  //left: 10px;
-  opacity: 1;
-  border: 1px solid;
-  overflow: visible;
   background-color: var(--surface);
-  border-collapse: separate;
-  visibility: visible;
-}
-
-.linkageTabs input[type='radio'] {
-  display: none;
-}
-
-.linkageTabs label {
-  background: var(--surface);
-  //font-weight: lighter;
-  border: 1px solid;
-  text-align: center;
-  width: 110px;
-  font-family: Arial, sans-serif;
-  font-size: 22px;
-  cursor: pointer;
 }
 
 .linkageTabs .tab {
   width: 100%;
-  background: var(--surface);
-  order: 1;
-  display: none;
-}
-
-.linkageTabs input[type='radio']:hover + label {
-  background: var(--surface-well);
-}
-
-.linkageTabs input[type='radio']:checked + label + .tab {
   max-width: 400px;
+  background: var(--surface);
   display: table;
   table-layout: fixed;
   border-collapse: collapse;
 }
 
-.linkageTabs input[type='radio']:checked + label {
+.linkageTabs .tab thead {
   background: var(--surface-disabled);
 }
 
-.linkageTabs input[type='radio']:checked + label + .tab thead {
-  background: var(--surface-disabled);
-}
-
-.linkageTabs input[type='radio']:checked + label + .tab th {
+.linkageTabs .tab th,
+.linkageTabs .tab tbody td {
   border: 1px solid var(--text-black);
 }
 
-.linkageTabs input[type='radio']:checked + label + .tab input {
+.linkageTabs .tab input {
   display: table-cell;
   width: 80%;
 }
 
-.linkageTabs input[type='radio']:checked + label + .tab tbody td {
-  border: 1px solid var(--text-black);
-}
-
-.linkageTabs input[type='radio']:checked + label + .tab tbody table {
+.linkageTabs .tab tbody table {
   display: contents;
   text-align: center;
 }

@@ -46,7 +46,7 @@ const inspect = (page) =>
     if (!strip || !card) return { missing: true };
     const box = card.getBoundingClientRect();
     // A hidden element has a zero rect at the origin, which is not "outside".
-    const escaped = [...card.querySelectorAll('.tabButton,.chip')]
+    const escaped = [...card.querySelectorAll('.tabButton,chip-block')]
       .filter((node) => {
         const rect = node.getBoundingClientRect();
         if (rect.width === 0 && rect.height === 0) return false;
@@ -68,7 +68,7 @@ const inspect = (page) =>
       pastEdge: Math.round(
         (history?.getBoundingClientRect().right ?? 0) - document.documentElement.clientWidth
       ),
-      chips: [...document.querySelectorAll('.chip')].map((chip) => chip.textContent.trim()),
+      chips: [...document.querySelectorAll('chip-block')].map((chip) => chip.textContent.trim()),
     };
   });
 

@@ -37,7 +37,7 @@ one runner to the next.
   dev server binds IPv6 loopback only), a filmstrip rather than a screenshot for anything that
   moves, and only the suites that cover your change, because the whole batch takes about an hour.
 - **Memory.** Claude Code keeps notes between sessions; the rest keep nothing. Durable decisions
-  therefore live in the repository — CLAUDE.md, `docs/tips-and-tricks.md`, and the documents
+  therefore live in the repository — CLAUDE.md, the four reference documents under `docs/`, and the documents
   indexed in [`docs/README.md`](docs/README.md). When a maintainer tells you something that should
   outlast the session, write it there, whichever runner you are.
 - **Permissions.** `.claude/settings.json` lists the commands Claude Code may run unasked:
@@ -48,4 +48,4 @@ one runner to the next.
 
 Everything else. Pull requests go to `staging`; `npm run check` before a push; the pull request
 template filled in, with the e2e suites you ran named in it; and a note in
-`docs/tips-and-tricks.md` for anything that cost you an hour.
+`docs/short-notes.md` for anything that cost you an hour.

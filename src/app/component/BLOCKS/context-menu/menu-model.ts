@@ -1,4 +1,4 @@
-import { MenuPosePolicy } from '../../model/edit-permission';
+import { MenuPosePolicy } from '../../../model/edit-permission';
 /**
  * What a right-click menu is made of.
  *

@@ -2,7 +2,7 @@
  * The Lock feature, exercised the way a hand would: lock a link and watch its
  * drag refuse with an Unlock in the message; lock one joint and watch a link
  * drag become a swing about it; undo a lock, which proves the mark rides the
- * URL; leave Edit and watch the black marks stand down.
+ * URL; press play and watch the black marks stand down.
  *
  *   PMKS_BASE_URL=<origin> node e2e/locking.mjs
  */
@@ -361,7 +361,16 @@ record(
   moved
 );
 
-// --- The marks are an Edit affordance: Analysis paints clean ---------------
+// --- The marks answer "is this paused", not "which mode is this" -----------
+//
+// They were an Edit affordance once, and this checked that an analysis mode
+// painted clean. Then the analysis modes were made editable at a paused pose and
+// the marks were deliberately kept: `lockVisualsOn()` is `!isPlaying`, and
+// nothing in it asks which tab is open. The check outlived the rule it was
+// written for by months, and went on passing nothing, because nothing ran it.
+// Both halves are here now, so the next reversal has to argue with one of them.
+const marks = () =>
+  page.evaluate(() => document.querySelectorAll('.lockBadge, .joint-locked, .link-locked').length);
 
 await page.evaluate(() => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
@@ -369,11 +378,23 @@ await page.evaluate(() => {
 });
 await page.waitForTimeout(300);
 record(
-  'lock badges stand down outside Edit',
-  await page.evaluate(
-    () => document.querySelectorAll('.lockBadge, .joint-locked, .link-locked').length === 0
-  )
+  'the marks stay in an analysis mode, where the pose can still be edited',
+  (await marks()) > 0
 );
+
+await page.locator('.playButton').click();
+await page.waitForTimeout(500);
+// If this drawing will not run, the next check is measuring nothing -- so say
+// which of the two failed rather than reporting a clean canvas as a pass.
+const running = await page.evaluate(
+  () => ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.isPlaying
+);
+record('pressing play starts it', running === true, { running });
+record('and the marks stand down while it runs, in every mode', (await marks()) === 0);
+
+await page.locator('.playButton').click();
+await page.waitForTimeout(500);
+record('and come back when it is paused again', (await marks()) > 0);
 
 // ---- a lock says where one end is, not that the bar cannot change length ----
 //

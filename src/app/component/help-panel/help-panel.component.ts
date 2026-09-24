@@ -20,7 +20,6 @@ import { UrlGenerationService } from '../../services/url-generation.service';
 import { ButtonComponent } from '../BLOCKS/button/button.component';
 import { CollapsibleSubsectionComponent } from '../BLOCKS/collapsible-subsection/collapsible-subsection.component';
 import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
-import { SubtitleComponent } from '../BLOCKS/subtitle/subtitle.component';
 import { TitleBlock } from '../BLOCKS/title/title.component';
 import { KeyboardShortcutsService } from '../../services/keyboard-shortcuts.service';
 
@@ -49,7 +48,6 @@ export class MyErrorStateMatcher implements ErrorStateMatcher {
     TitleBlock,
     CollapsibleSubsectionComponent,
     ButtonComponent,
-    SubtitleComponent,
     FormsModule,
     ReactiveFormsModule,
     MatFormField,

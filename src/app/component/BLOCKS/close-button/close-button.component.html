@@ -1,0 +1,11 @@
+<button
+  type="button"
+  class="closeButton"
+  [attr.aria-label]="label()"
+  [matTooltip]="tooltip()"
+  [matTooltipDisabled]="!tooltip()"
+  matTooltipShowDelay="600"
+  (click)="pressed.emit()"
+>
+  <mat-icon>close</mat-icon>
+</button>

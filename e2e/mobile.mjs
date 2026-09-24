@@ -576,7 +576,7 @@ await page.locator('.sheetHandle').click();
 await page.waitForTimeout(600);
 await page.locator('#synthesisPanel .kindCard--on').click({ force: true });
 await page.waitForTimeout(700);
-await page.locator('#synthesisPanel .pill').first().click({ force: true });
+await page.locator('#synthesisPanel button-block').first().click({ force: true });
 await page.waitForTimeout(500);
 await page.locator('.sheetHandle').click();
 await page.waitForTimeout(600);

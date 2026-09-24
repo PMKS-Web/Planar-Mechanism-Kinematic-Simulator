@@ -23,8 +23,29 @@ here.
 `npm run lint:format`, `npm test -- --watch=false`, `npm run build`, `npm run build-storybook` and
 `git diff --check`, and a pull request cannot merge until it passes. `lint:format` covers these
 scripts too, so format an `.mjs` you edit.
-**No e2e suite runs in CI.** They are run by hand, locally, against a dev
-server — so a suite that nobody ran can be broken without anything turning red.
+
+**Some of these suites run in CI now, in two lanes**, and `e2e/suites.mjs` says which lane each one
+is in and why anything is left out of both:
+
+| Lane | When | What | Where |
+| --- | --- | --- | --- |
+| `gate` | every pull request | the fast, steady ones, four shards, about seven minutes | `.github/workflows/e2e-gate.yml` |
+| `nightly` | 09:00 UTC against `staging`, or on demand | everything a runner can drive, eight shards, retried once | `.github/workflows/e2e-nightly.yml` |
+
+```bash
+node e2e/run-suites.mjs --lane gate            # what a pull request will run
+node e2e/run-suites.mjs --list --lane nightly  # what the nightly will run, and how long it takes
+node e2e/run-suites.mjs --only playback        # a slice of a lane, by name
+```
+
+The lanes are not a ranking. A suite is in the gate because it is quick and has been steady, not
+because it matters more: `posed-edit-audit` is a quarter of an hour of the most careful checking
+here and will never gate anything. **The nightly is where a suite earns the gate** — and where one
+that has stopped deserving it gets found out.
+
+Four things no runner can do, listed with their reasons in `suites.mjs`: drive the real system
+cursor (`real-mouse-slots`), hold a performance baseline that is per-machine (`drag-perf`), and
+serve a second build to compare against (`reuse-parity`, `gallery-parity`). Those stay by hand.
 
 ## Prerequisites
 
@@ -36,7 +57,7 @@ server — so a suite that nobody ran can be broken without anything turning red
 - **Run from the repository root.** Suites read `src/` and write `artifacts/` by relative path.
 
 The install commands, the browser cache, why `..` and not `.`, and the localhost rule are in
-[tips-and-tricks: Environment](../docs/tips-and-tricks.md#environment). Some suites need more than
+[environment.md: Environment](../docs/environment.md#environment). Some suites need more than
 Chromium; the catalog below says which.
 
 ## Running
@@ -64,6 +85,14 @@ layout. It saves screenshots and a sign-change filmstrip in `artifacts/worksheet
 `worksheet-layout.mjs` checks the right-side analysis drawer, general FBD definitions, per-body
 force/couple controls, reciprocal signs, equation numbers carried into the system matrix,
 unknown column headings, and phone layout. Evidence is in `artifacts/worksheet-layout/`.
+`force-definition-scroll.mjs` checks that expanded force definitions remain scrollable.
+`force-diagram-equations.mjs` checks the FBD teaching sequence, collapsed sections, known values,
+and symbolic and numerical System views.
+`force-projection-grid.mjs` checks the isolated-link grids and System views for a saved mechanism.
+`force-worksheet-usability.mjs` checks gravity, in-motion balances, collapsible content, stable
+link geometry, and phone layout.
+`kinematic-visuals.mjs` checks angular arrows, loop tracing, closure, alternate paths, equations,
+and phone layout.
 Set `PMKS_STORYBOOK_URL` to also inspect the definitions and numbered-matrix gallery states.
 Set `PMKS_STORYBOOK_URL` to a running local gallery to also check the nine new convention
 and loop-editor stories, including the interactive choice and refusal states.
@@ -73,6 +102,11 @@ gitignored — for example `artifacts/link-holds/` or `artifacts/posed-edit-audi
 older suites share `artifacts/screenshots/`, and most of those prefix their filenames with
 `RUN_PREFIX`. Look at what
 they save: an exit code tells you a check failed, not what the page looked like.
+
+`run-suites.mjs --retries` copies whatever a failing attempt wrote into
+`artifacts/failed-attempts/<suite>/` before running it again. Several suites empty their own
+directory before they write — `filmstrip()` does — so without that, the only frames left after a
+flake are the frames of the attempt that worked, which is the one nobody needs to look at.
 
 **Three suites rewrite tracked files**, and running them dirties the working tree:
 
@@ -116,6 +150,16 @@ Not suites — import them from one.
   them into one image. Anything that animates or responds to a drag needs a filmstrip, not a
   screenshot. The sheet needs Pillow under `python3`; without it the sheet is skipped with a
   warning and the frames are still written.
+- `run-suites.mjs` — runs a lane, in shards, and reports once: `--lane`, `--shard i/N`, `--only`,
+  `--retries`, `--list`. Shards are balanced by each suite's recorded seconds, longest first, and a
+  run that overshoots its own estimate says so. It starts no browser and knows nothing about the
+  app; `suites.mjs` is the list it walks.
+- `suites.mjs` — which lane each script runs in, and for anything in no lane, why. A script it does
+  not name runs in the nightly until it does, so a suite added tomorrow is covered the night it lands
+  without failing anyone's required check.
+- `tools/serve-dist.mjs` — serves a built bundle, so eight CI shards can point at one
+  `ng build --configuration development` instead of starting eight dev servers. Development, not
+  production: `window.ng` is what most of these suites reach through, and optimization removes it.
 - `drag-perf-harness.mjs` — the drag scenarios (`SCENARIOS`) and the machinery `drag-perf.mjs`
   and `drag-profile.mjs` share: `launch()`, `loadScenario`, `plainDrag`, `harnessFloor` (the
   protocol's own cost, to subtract), `profiledDrag`, and call counters that need a dev build.
@@ -151,7 +195,7 @@ Not suites — import them from one.
   machine that is not the master.
 - `posed-edit-audit.mjs` — every menu row, panel field, key and transport control at a displaced
   pose, on three mechanisms, judged on what is left behind. Writes
-  `artifacts/posed-edit-audit/matrix.md`. Slow: tips-and-tricks puts it at about a quarter of an
+  `artifacts/posed-edit-audit/matrix.md`. Slow: about a quarter of an
   hour.
 - `posed-drag-fuzz.mjs` — seeded random drags at random poses; the ghost, the design's sample 0
   and the transport's "from start" must agree. `SEED=` replays, `ONLY=` picks trial numbers. Slow:
@@ -309,6 +353,28 @@ Not suites — import them from one.
   nothing outside the tab card, no sideways scroll, no flicker between label levels.
 - `right-drawer.mjs` — the right drawer's width, left edge and bottom gap against the view
   controls, with the tutorial pinned and on a short window.
+- `reuse-parity.mjs` — the same panel, drawn by two servers, compared pixel for pixel. Written for
+  the reuse backlog, where every edit replaces a hand-rolled copy of a block with the block and is
+  supposed to change nothing a reader can see. Needs **two** dev servers: `PMKS_BASE_URL` serves
+  the change and `PMKS_PARITY_BASE_URL` the branch's base. A mismatch saves the two shots and a
+  red-on-grey diff mask under `artifacts/reuse-parity/`, and is re-shot once before it is believed.
+  `--only <substring>` runs a subset. Its scenes live in `reuse-parity-scenes.mjs`.
+- `reuse-parity-scenes.mjs` — the scene list `reuse-parity.mjs` photographs: which panel, which
+  mode, and the clicks that reach it. Not a check on its own.
+- `gallery-parity.mjs` — the other half of `reuse-parity.mjs`: every **story** in the component
+  gallery, drawn by two builds, compared pixel for pixel. The gallery builds its own page and
+  prepends the app's global stylesheets itself, so a change to `mytheme.scss` or a moved stylesheet
+  can leave the app untouched and still strip the background off every card in the docs — which is
+  exactly what the app suite cannot see. Needs **two Storybook servers**, `PMKS_GALLERY_URL` and
+  `PMKS_GALLERY_BASE_URL`; it reads the story list from Storybook's own `index.json`, so a story
+  added tomorrow is compared tomorrow. Docs pages are skipped: their "Show code" block is the
+  story's source, so every source edit would fail them for no visual reason.
+- `field-overlay-reassert.mjs` — pointing at a number in the Edit panel draws it on the grid, and
+  it comes back when you point at the same field again after a committed edit. That is the one rule
+  in `BLOCKS/field-overlay.ts` that is not obvious: the canvas drops its overlays when the selected
+  object announces itself, and a block that reports only its own *changes* has nothing to say while
+  the pointer has not moved. Covers `hold-field-block`; the file says why the other three are not
+  reachable from here.
 - `reduced-motion.mjs` — the app with `prefers-reduced-motion` on, which `src/styles.scss`
   answers for every stylesheet at once: the boot splash still leaves, the phone sheet still opens
   and shuts by its handle, and no page error.

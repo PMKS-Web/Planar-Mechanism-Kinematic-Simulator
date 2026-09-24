@@ -30,9 +30,10 @@ import {
   TemplateCard,
   TemplateCategoryID,
 } from './template-catalog';
-import { MatIconButton, MatButton } from '@angular/material/button';
+import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { CdkScrollable } from '@angular/cdk/scrolling';
+import { CloseButtonComponent } from '../../BLOCKS/close-button/close-button.component';
 
 /** A filter chip: a category, or the `all` one that stands for every category. */
 export interface CategoryChip {
@@ -55,7 +56,6 @@ export interface TemplateGroup {
   styleUrls: ['./templates.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
-    MatIconButton,
     MatDialogClose,
     MatIcon,
     CdkScrollable,
@@ -63,6 +63,7 @@ export interface TemplateGroup {
     MatButton,
     MatDialogTitle,
     MatDialogActions,
+    CloseButtonComponent,
   ],
 })
 export class TemplatesComponent {
@@ -83,6 +84,11 @@ export class TemplatesComponent {
     MatDialogRef<TemplatesComponent>,
     { optional: true }
   );
+
+  /** Leave without choosing anything. */
+  close(): void {
+    this.dialogRef?.close();
+  }
   private dialog = inject(MatDialog);
   private mechanismSrv = inject(MechanismService);
   private urlProcessor = inject(UrlProcessorService);

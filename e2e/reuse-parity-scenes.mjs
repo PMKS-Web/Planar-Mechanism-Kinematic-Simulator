@@ -1,0 +1,419 @@
+/**
+ * The scenes `reuse-parity.mjs` photographs, and the clicks that reach them.
+ *
+ * One scene per place the reuse backlog touches, plus the neighbors those
+ * edits could disturb. A scene is deliberately a *pose*: a panel opened, a
+ * section expanded, a control hovered or focused — never the animating canvas,
+ * which is compared by the suites that own it.
+ *
+ * `clip` is the element photographed. Prefer the smallest box that contains
+ * the change: a whole-viewport shot fails on anything, and then says nothing
+ * about what moved.
+ *
+ * **`expectedChange` notes expire.** Each one describes a difference against a
+ * particular base, so once that change has merged the base *is* the change and
+ * the note is describing nothing. Clear them when the work they belong to
+ * lands; a scene that declares a change it no longer makes fails, which is the
+ * reminder. The scenes themselves are worth keeping either way -- reaching
+ * thirty-odd panel states is the expensive part of this, not the comparing.
+ */
+
+/**
+ * A window that has been here before and has seen this release, so neither
+ * the tutorial nor the release notes greets the scene uninvited. The same two
+ * marks `quiet-start.mjs` uses.
+ */
+const QUIET = { tutorialSeen: 'true', whatsNewSeen: '2026.09' };
+
+/** The four mode tabs, by the order they sit in the top strip. */
+const MODE = { synthesis: 0, edit: 1, kinematic: 2, force: 3 };
+
+/** Reopen the tutorial from the project menu, where a returning reader finds it. */
+const openTutorial = async (page) => {
+  await page.locator('.brandCard .iconButton').click();
+  await page.locator('#tutorialButton').click();
+  await page.locator('app-tutorial-panel').waitFor({ state: 'visible' });
+};
+
+const clickMode = (page, which) => page.locator('.tabStrip .tabButton').nth(MODE[which]).click();
+
+/** Open a right-drawer page by its number (the statics on RightPanelComponent). */
+const openDrawer = (page, n) =>
+  page.evaluate(
+    (n) => ng.getComponent(document.querySelector('app-right-panel')).constructor.tabClicked(n),
+    n
+  );
+
+/** Select something on the canvas, which is what makes the Edit panel show a form. */
+const selectFirstJoint = async (page) => {
+  await page.locator('.joint, [id^="joint"]').first().click({ force: true });
+};
+
+/**
+ * Select a whole machine, which is the only thing that draws the mechanism
+ * panel. A background click selects the *grid*, not the mechanism, so this
+ * goes through the service the way the setup drawer's own link does.
+ */
+const selectMechanism = (page, index = 0) =>
+  page.evaluate((i) => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    grid.activeObjService.selectMechanism(i);
+    ng.applyChanges(grid);
+  }, index);
+
+export const SCENES = [
+  // ---------------------------------------------------------------- top strip
+  {
+    name: 'top-bar chips, valid mechanism',
+    linkage: '4-Bar',
+    clip: 'app-top-bar .topStrip',
+  },
+  {
+    name: 'top-bar chips, blocked mechanism',
+    // An empty drawing cannot be analyzed, so every chip shows its blocker.
+    query: '',
+    clip: 'app-top-bar .topStrip',
+  },
+  {
+    name: 'top-bar corner card in analysis',
+    linkage: '4-Bar',
+    setup: (page) => clickMode(page, 'kinematic'),
+    clip: 'app-top-bar .topStrip',
+  },
+
+  // ------------------------------------------------------------ left mode card
+  {
+    name: 'synthesis panel',
+    linkage: '4-Bar',
+    setup: (page) => clickMode(page, 'synthesis'),
+    clip: 'app-left-tabs .panel',
+  },
+  {
+    name: 'synthesis panel on empty drawing',
+    query: '',
+    setup: (page) => clickMode(page, 'synthesis'),
+    clip: 'app-left-tabs .panel',
+  },
+  {
+    // The chooser is what Synthesis opens on; the panel with the fields, the
+    // help marks, the switches and the pills is a click further in, and was
+    // not being photographed at all until a help-mark change passed a green
+    // suite while visibly moving.
+    name: 'synthesis working view',
+    query: '',
+    storage: QUIET,
+    setup: async (page) => {
+      await clickMode(page, 'synthesis');
+      await page.locator('.kindCard--on').click();
+      await page.locator('.work').waitFor({ state: 'visible' });
+    },
+    clip: 'app-left-tabs .panel',
+    settle: 700,
+    expectedChange:
+      'two unifications, both visible here. The help marks moved a few pixels: this panel drew its own 15px mark and now uses the shared one from blocks.common.scss, which also gives it the hover it never had. And Add position is button-block at its new filled inline size, where it was a hand-drawn 28px pill.',
+  },
+  {
+    name: 'synthesis working view, on a mechanism',
+    linkage: '4-Bar',
+    storage: QUIET,
+    setup: async (page) => {
+      await clickMode(page, 'synthesis');
+      await page.locator('.kindCard--on').click();
+      await page.locator('.work').waitFor({ state: 'visible' });
+    },
+    clip: 'app-left-tabs .panel',
+    settle: 700,
+    expectedChange:
+      'two unifications, both visible here. The help marks moved a few pixels: this panel drew its own 15px mark and now uses the shared one from blocks.common.scss, which also gives it the hover it never had. And Add position is button-block at its new filled inline size, where it was a hand-drawn 28px pill.',
+  },
+  {
+    name: 'edit panel, nothing selected',
+    linkage: '4-Bar',
+    setup: (page) => clickMode(page, 'edit'),
+    clip: 'app-left-tabs .panel',
+  },
+  {
+    name: 'edit panel, joint selected',
+    linkage: '4-Bar',
+    setup: async (page) => {
+      await clickMode(page, 'edit');
+      await selectFirstJoint(page);
+    },
+    clip: 'app-left-tabs .panel',
+  },
+  {
+    name: 'mechanism panel, editable',
+    linkage: '4-Bar',
+    setup: async (page) => {
+      await clickMode(page, 'edit');
+      await selectMechanism(page);
+    },
+    clip: '.mechanismPanel',
+  },
+  {
+    name: 'mechanism panel, read-only in analysis',
+    linkage: '4-Bar',
+    setup: async (page) => {
+      await clickMode(page, 'kinematic');
+      await selectMechanism(page);
+    },
+    clip: '.mechanismPanel',
+  },
+  {
+    name: 'kinematic analysis panel',
+    linkage: '4-Bar',
+    setup: (page) => clickMode(page, 'kinematic'),
+    clip: 'app-left-tabs .panel',
+  },
+  {
+    // The graphs, and the row of drawing switches under them, only appear once
+    // something is selected -- so the analysis scenes above never photographed
+    // either of them.
+    name: 'kinematic analysis panel, joint selected',
+    linkage: '4-Bar',
+    storage: QUIET,
+    setup: async (page) => {
+      await clickMode(page, 'kinematic');
+      await page.evaluate(() => {
+        const grid = ng.getComponent(document.querySelector('app-new-grid'));
+        const mech = grid.mechanismSrv ?? grid.mechanism;
+        grid.activeObjService.updateSelectedObj(mech.joints[1]);
+        ng.applyChanges(grid);
+      });
+    },
+    clip: 'app-left-tabs .panel',
+    settle: 900,
+  },
+  {
+    name: 'force analysis panel',
+    linkage: '4-Bar',
+    setup: (page) => clickMode(page, 'force'),
+    clip: 'app-left-tabs .panel',
+  },
+
+  {
+    // A tight clip on the part of the synthesis panel that did **not** change,
+    // left undeclared on purpose. The two whole-panel scenes above carry an
+    // `expectedChange`, and a declaration exempts everything in its frame --
+    // so without this the position rows would be riding under a note written
+    // about the help marks and the Add button.
+    name: 'synthesis position rows',
+    query: '',
+    storage: QUIET,
+    setup: async (page) => {
+      await clickMode(page, 'synthesis');
+      await page.locator('.kindCard--on').click();
+      await page.locator('.work').waitFor({ state: 'visible' });
+    },
+    clip: '.poseRow',
+    settle: 700,
+  },
+
+  // ------------------------------------------------------------- right drawer
+  {
+    name: 'drawer settings',
+    linkage: '4-Bar',
+    setup: (page) => openDrawer(page, 1),
+    clip: '#rightPanel',
+  },
+  {
+    name: 'drawer help',
+    linkage: '4-Bar',
+    setup: (page) => openDrawer(page, 3),
+    clip: '#rightPanel',
+  },
+  {
+    name: 'drawer debug and linkage table',
+    linkage: '4-Bar',
+    setup: (page) => openDrawer(page, 4),
+    clip: '#rightPanel',
+    expectedChange:
+      "the linkage table's pick-one is segmented-block now, where it was three bordered boxes of 22px Arial driven entirely by :checked + label + .tab sibling selectors. Its thirteen cells also wear appStandardField, so a click selects the value and Enter commits it.",
+  },
+  {
+    name: 'drawer kinematic setup',
+    linkage: '4-Bar',
+    setup: (page) => openDrawer(page, 5),
+    clip: '#rightPanel',
+  },
+  {
+    name: 'drawer force setup',
+    linkage: '4-Bar',
+    setup: (page) => openDrawer(page, 6),
+    clip: '#rightPanel',
+  },
+  {
+    name: 'drawer export',
+    linkage: '4-Bar',
+    setup: (page) => openDrawer(page, 7),
+    clip: '#rightPanel',
+  },
+  {
+    // An undriven mechanism is the one state that offers "Go To Joint A", the
+    // action button this work moved onto `button-block`. Nothing else reaches
+    // it, so the change went unphotographed until Fable's review said so.
+    name: 'drawer kinematic setup, undriven mechanism',
+    linkage: '4-Bar',
+    storage: QUIET,
+    setup: async (page) => {
+      await page.evaluate(() => {
+        const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+        srv.joints.forEach((joint) => (joint.input = false));
+        srv.updateMechanism();
+      });
+      await page.waitForTimeout(400);
+      await openDrawer(page, 5);
+    },
+    clip: '#rightPanel',
+    settle: 900,
+    expectedChange:
+      "the check's action button is button-block inline, where it was a hand-drawn 32px stroked button. Its press target is now the button rather than a band of empty row beside it -- pressing right of the label used to do nothing.",
+  },
+  {
+    name: 'drawer force setup on empty drawing',
+    query: '',
+    setup: (page) => openDrawer(page, 6),
+    clip: '#rightPanel',
+  },
+
+  // ---------------------------------------------------- tutorial and dialogs
+  {
+    name: 'tutorial card, first step',
+    query: '',
+    storage: QUIET,
+    setup: openTutorial,
+    clip: 'app-tutorial-panel',
+  },
+  {
+    name: 'tutorial card, chip hint on step four',
+    linkage: '4-Bar',
+    storage: QUIET,
+    setup: async (page) => {
+      await openTutorial(page);
+      // Step four is the one lesson about the app rather than about linkages,
+      // and the only place the tutorial quotes a readiness chip.
+      await page.evaluate(() => {
+        const card = ng.getComponent(document.querySelector('app-tutorial-panel'));
+        card.tutorial.goToStep(4);
+        ng.applyChanges(card);
+      });
+    },
+    clip: 'app-tutorial-panel',
+  },
+  {
+    name: 'mechanism library',
+    linkage: '4-Bar',
+    storage: QUIET,
+    setup: async (page) => {
+      await page.locator('.brandCard .iconButton').click();
+      await page.locator('#templatesButton').click();
+      await page.locator('#templates').waitFor({ state: 'visible' });
+    },
+    clip: '#templates',
+    settle: 900,
+    expectedChange:
+      'the close button is now one shared control, 32px and round. This one was a Material 40px icon button. Part of the deliberate unification of five different close buttons.',
+  },
+  {
+    name: 'release notes',
+    linkage: '4-Bar',
+    // A window that has been here before, but not since this release: the one
+    // state that opens the notes.
+    storage: { tutorialSeen: 'true' },
+    clip: '#whatsNew',
+    settle: 900,
+    expectedChange:
+      'the close button is now one shared control, 32px and round. This one was a 36px with 6px corners. Part of the deliberate unification of five different close buttons.',
+  },
+  {
+    name: 'CAD export dialog',
+    linkage: '4-Bar',
+    storage: QUIET,
+    setup: async (page) => {
+      await page.getByRole('button', { name: 'Project menu' }).click();
+      await page.getByRole('button', { name: 'CAD Export' }).click();
+      await page.locator('app-drawing-export').waitFor({ state: 'visible' });
+    },
+    clip: '.drawingExport',
+    settle: 900,
+    expectedChange:
+      'the close button is now one shared control, 32px and round. This one was a Material 40px icon button. Part of the deliberate unification of five different close buttons.',
+  },
+
+  // -------------------------------------------------------- bottom furniture
+  {
+    name: 'playback bar',
+    linkage: '4-Bar',
+    clip: 'app-playback-bar .playbackRow',
+  },
+  {
+    name: 'playback bar, two machines',
+    linkage: 'Slider_Crank',
+    clip: 'app-playback-bar .playbackRow',
+  },
+  {
+    name: 'view controls',
+    linkage: '4-Bar',
+    clip: 'app-view-controls',
+  },
+  {
+    name: 'bottom bar',
+    linkage: '4-Bar',
+    clip: '#bottomBar',
+  },
+
+  // ------------------------------------------------------------------- phone
+  // Below the one breakpoint several of these rules change or switch off, and
+  // two of the backlog's items are rules that currently reach each other
+  // across a media query. A desktop-only comparison would not see it.
+  {
+    name: 'phone playback bar',
+    linkage: '4-Bar',
+    viewport: 'phone',
+    storage: QUIET,
+    clip: 'app-playback-bar .playbackRow',
+  },
+  {
+    name: 'phone export drawer',
+    linkage: '4-Bar',
+    viewport: 'phone',
+    storage: QUIET,
+    setup: (page) => openDrawer(page, 7),
+    clip: '#rightPanel',
+    expectedChange:
+      "each object's note ('grounded, input') is back. The playback bar's " +
+      '.rowNote rule was written without a container selector, so below the ' +
+      'phone breakpoint its display:none was hiding notes in a panel it has ' +
+      'nothing to do with. Scoping that rule is the fix.',
+  },
+  {
+    name: 'phone force setup drawer',
+    linkage: '4-Bar',
+    viewport: 'phone',
+    storage: QUIET,
+    setup: (page) => openDrawer(page, 6),
+    clip: '#rightPanel',
+  },
+  {
+    name: 'phone mechanism library',
+    linkage: '4-Bar',
+    viewport: 'phone',
+    storage: QUIET,
+    setup: async (page) => {
+      await page.locator('.brandCard .iconButton').click();
+      await page.locator('#templatesButton').click();
+      await page.locator('#templates').waitFor({ state: 'visible' });
+    },
+    clip: '#templates',
+    settle: 900,
+    expectedChange:
+      'the close button is now one shared control, 32px and round. This one was a Material 40px icon button. Part of the deliberate unification of five different close buttons.',
+  },
+  {
+    name: 'phone top strip',
+    linkage: '4-Bar',
+    viewport: 'phone',
+    storage: QUIET,
+    clip: 'app-top-bar .topStrip',
+  },
+];

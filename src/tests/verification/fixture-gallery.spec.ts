@@ -139,6 +139,9 @@ describe('the published fixture gallery', () => {
       writeFileSync(GALLERY_PATH, markdown);
       return;
     }
-    expect(readFileSync(GALLERY_PATH, 'utf8'), 'run `npm run fixture-urls`').toBe(markdown);
+    expect(
+      readFileSync(GALLERY_PATH, 'utf8').replace(/\r\n/g, '\n'),
+      'run `npm run fixture-urls`'
+    ).toBe(markdown);
   });
 });

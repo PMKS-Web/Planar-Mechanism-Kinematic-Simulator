@@ -1,5 +1,6 @@
 @use 'sass:map';
 @use '@angular/material' as mat;
+@use '../BLOCKS/blocks.common.scss' as blocks;
 
 @mixin css($theme) {
   $color-config: mat.m2-get-color-config($theme);
@@ -313,11 +314,7 @@
     }
 
     .rowNote {
-      font-size: 12px;
-      color: var(--text-tertiary);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      @include blocks.quiet-note(12px);
     }
 
     .rowUnit {
@@ -345,22 +342,12 @@
     }
 
     .settingRow {
-      display: flex;
-      align-items: center;
-      gap: 10px;
+      @include blocks.field-row(10px);
       padding: 2px 15px;
-
-      &.spaced {
-        margin-top: 6px;
-        padding-top: 12px;
-        border-top: 1px solid var(--border-rule);
-      }
     }
 
     .settingName {
-      font-size: 14px;
-      color: var(--text-secondary);
-      flex: 0 0 auto;
+      @include blocks.field-row-label;
     }
 
     .hint {
@@ -530,10 +517,11 @@
     }
 
     .barRow {
-      display: flex;
+      @include blocks.field-row(10px);
+      // Unlike the rows above, this one may take a second line: its names are
+      // sentences ("Components to export") and the drawer is the view
+      // controls' width.
       flex-wrap: wrap;
-      align-items: center;
-      gap: 10px;
 
       // When the name and the pill do not share a line -- the drawer is the
       // view controls' width now -- the pill takes the next one, on the

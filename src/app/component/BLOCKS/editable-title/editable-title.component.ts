@@ -13,7 +13,7 @@ import { FocusOnShowDirective } from '../../../focus-on-show.directive';
 import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
-import { ShortcutTipDirective } from '../../../shortcut-tip.directive';
+import { ShortcutTipDirective } from '../shortcut-tip/shortcut-tip.directive';
 
 @Component({
   selector: 'editable-title-block',

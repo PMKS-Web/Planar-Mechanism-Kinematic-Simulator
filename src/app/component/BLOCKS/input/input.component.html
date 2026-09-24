@@ -1,4 +1,4 @@
-<div id="input-block" [class.stacked]="stacked()">
+<div id="input-block" [class.stacked]="stacked()" [class.cell]="cell()">
   <div class="row" [formGroup]="formGroup">
     <span class="label" [id]="labelId"><ng-content></ng-content></span>
     <span hidden [id]="labelId + '-unit'">Unit</span>

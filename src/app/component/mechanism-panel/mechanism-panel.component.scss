@@ -1,5 +1,6 @@
 @use 'sass:map';
 @use '@angular/material' as mat;
+@use '../BLOCKS/blocks.common.scss' as blocks;
 
 @mixin css($theme) {
   $color-config: mat.m2-get-color-config($theme);
@@ -89,21 +90,7 @@
   }
 
   .mechanismPanel .sectionHeader {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    height: 40px;
-    padding: 0 15px;
-    border: none;
-    border-top: 1px solid var(--border-rule);
-    background: transparent;
-    font-family: inherit;
-    font-size: 15px;
-    font-weight: 500;
-    color: mat.m2-get-color-from-palette($primary-palette, 500);
-    cursor: pointer;
-    text-align: left;
+    @include blocks.section-header($theme);
   }
 
   .mechanismPanel .factGrid {

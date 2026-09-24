@@ -100,10 +100,14 @@ describe('top bar modes', () => {
     mechanism.joints = [new RevJoint('A', 0, 0)];
     fixture.detectChanges();
 
-    const chips = fixture.nativeElement.querySelectorAll('.chip');
+    const chips = fixture.nativeElement.querySelectorAll('chip-block');
     expect(chips.length).toBe(2);
     for (const chip of chips) {
-      expect(chip.tagName).toBe('SPAN');
+      // `chip-block` draws itself on its own host, so what is asserted here is
+      // that the host is inert: not a button, given no role of its own, and
+      // not in the tab order.
+      expect(chip.tagName).toBe('CHIP-BLOCK');
+      expect(chip.querySelector('button')).toBeNull();
       expect(chip.getAttribute('role')).toBeNull();
       expect(chip.hasAttribute('tabindex')).toBe(false);
       // Inside the mode button, so the whole tab is one target.

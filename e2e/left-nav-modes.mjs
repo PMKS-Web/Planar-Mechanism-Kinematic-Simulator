@@ -63,7 +63,8 @@ const shot = (name) =>
 
 const tab = (label) => page.locator('.tabButton', { hasText: label });
 // The chip is a plain label inside the mode button — one control per mode.
-const chipFor = (label) => page.locator('.tabButton', { hasText: label }).locator('.chip');
+// The readiness chip is `chip-block` now, which draws itself on its own host.
+const chipFor = (label) => page.locator('.tabButton', { hasText: label }).locator('chip-block');
 const timeValue = () => page.locator('#playbackTime').innerText();
 /** The value carries its own unit, so read the leading number off "0.20 s". */
 const timeSeconds = async () => parseFloat(await timeValue());

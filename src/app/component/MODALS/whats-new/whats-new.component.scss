@@ -54,24 +54,6 @@
     color: var(--text-secondary);
   }
 
-  .wnClose {
-    flex: 0 0 auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border: none;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--text-tertiary);
-    cursor: pointer;
-
-    &:hover {
-      background: var(--press-wash);
-    }
-  }
-
   .wnBody {
     flex: 1 1 auto;
     min-height: 0;

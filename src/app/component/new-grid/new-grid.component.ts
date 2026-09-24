@@ -23,8 +23,8 @@ import { LongPress, LongPressDirective } from '../../long-press.directive';
 import { ModelFrameDirective, ModelPoint, UprightDirective } from '../../model-frame.directive';
 import { turnsClockwise } from '../../model/drive-direction';
 import { ViewportService } from '../../services/viewport.service';
-import { ContextMenuComponent } from '../context-menu/context-menu.component';
-import { ContextMenuModel, trackContextMenuPointer } from '../context-menu/menu-model';
+import { ContextMenuComponent } from '../BLOCKS/context-menu/context-menu.component';
+import { ContextMenuModel, trackContextMenuPointer } from '../BLOCKS/context-menu/menu-model';
 import {
   ContextMenuBuilderService,
   MenuHandlers,

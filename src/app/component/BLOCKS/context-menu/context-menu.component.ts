@@ -1,6 +1,6 @@
 import { Component, ChangeDetectionStrategy, DestroyRef, inject, input } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { KeyboardShortcutsService } from '../../services/keyboard-shortcuts.service';
+import { KeyboardShortcutsService } from '../../../services/keyboard-shortcuts.service';
 import { CdkMenu, CdkMenuItem, MENU_STACK } from '@angular/cdk/menu';
 import { MatIcon } from '@angular/material/icon';
 import { MatTooltip } from '@angular/material/tooltip';
