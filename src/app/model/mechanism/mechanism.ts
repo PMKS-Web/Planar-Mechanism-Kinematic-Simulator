@@ -452,7 +452,7 @@ export class Mechanism {
    * (decisions S25 and S28).
    */
   private bodyAssignment(): BodyAssignment {
-    return assignBodies(this.joints[0], this.links[0], this._bodyMerges);
+    return assignBodies(this.joints[0], this.links[0], undefined, this._bodyMerges);
   }
 
   /** The freedoms the drawing's geometry has, second order and all. */

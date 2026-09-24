@@ -67,13 +67,14 @@ describe('why a mechanism will not run', () => {
     const [check] = readiness.checks;
     expect(check.state).toBe('blocker');
     expect(check.title).toBe('This mechanism has 2 degrees of freedom');
-    // The number, and then what to do about it — not "invalid".
-    expect(check.body).toMatch(/Ground another joint, or connect a free joint to a second link/);
+    // The number, which part is loose, and what to do about it — not "invalid".
+    expect(check.body).toContain('link BC can still move');
   });
 
   it('points at the free end that carries the extra freedom', () => {
     // Same loose chain: C hangs on one link, and that is where the second
-    // degree of freedom lives. The message should say so and offer the trip.
+    // degree of freedom lives. Grounding C would leave the pair rigid, so the
+    // way out is a link from C to ground, and the button goes there.
     const readiness = checksFor({
       joints: [
         { id: 'A', x: 0, y: 0, ground: true, input: true },
@@ -85,8 +86,8 @@ describe('why a mechanism will not run', () => {
     });
 
     const [check] = readiness.checks;
-    expect(check.body).toContain('C');
-    expect(check.body).toMatch(/free end/i);
+    expect(check.body).toContain('Attach a link from joint C to a new grounded joint');
+    expect(check.body).not.toContain('Grounding joint C');
     expect(check.at?.id).toBe('C');
     expect(check.action).toBe('Go To Joint');
   });

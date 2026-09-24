@@ -117,7 +117,7 @@ export function cylinderHolds(joints: Joint[], links: Link[]): CylinderHoldRepor
   for (let released = 0; released < candidates.length; released++) {
     const holding = candidates.slice(released);
     const merges = holding.map((cylinder) => [cylinder.barrelRoot.id, cylinder.rodRoot.id]);
-    if (freedomsOf(joints, links, assignBodies(joints, links, merges)).dof >= 1) {
+    if (freedomsOf(joints, links, assignBodies(joints, links, undefined, merges)).dof >= 1) {
       return {
         held: looseSeals(holding),
         loose: looseSeals(candidates.slice(0, released)),
