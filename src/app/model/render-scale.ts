@@ -24,7 +24,13 @@
  *    MODEL_SCALE for display and multiply typed values back.
  *  - Constants that mean a physical length (solver step sizes, no-op guards)
  *    are multiplied by MODEL_SCALE at their definition.
- * Everything in between -- solvers, hit-testing, objectScale-derived visual
- * sizes -- works in internal units and needs no knowledge of this number.
+ *  - The force solver divides it out of every length it is handed, because
+ *    physics happens in real meters: a moment arm or an m·a left in model
+ *    units is two hundred times too large against an I·α, which has no
+ *    length in it. Its reactions and torques leave in real N and N·m, and
+ *    nothing downstream divides them again.
+ * Everything else in between -- the position and kinematic solvers,
+ * hit-testing, objectScale-derived visual sizes -- works in internal units and
+ * needs no knowledge of this number.
  */
 export const MODEL_SCALE = 200;

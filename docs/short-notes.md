@@ -616,6 +616,18 @@ part entirely and a perfectly good ram reads as being past its stop. `buildMecha
 scale to `1 * MODEL_SCALE` and does not scale the fixture's coordinates, which is why
 `cylinderBoomFixture` comes out of it reporting no travel -- that is the mismatch, not the ram.
 
+### A fixture built by `buildMechanism` at raw coordinates is 200 times too small for the force solver
+
+`buildMechanism` keeps a fixture's coordinates as written, because the kinematics suites compare
+positions against MATLAB numbers directly. The force solver reads every length as a model unit,
+`MODEL_SCALE` to one of the reader's, so it analyzes that build as a linkage 200 times smaller than
+the one written. Static reactions do not change with the size, which is why this hid for so long.
+Torques shrink by 200, and every inertia term changes. A spec that checks a torque, a couple or a
+dynamic reaction against real numbers builds from `inModelUnits(fixture)`, as the MATLAB dynamics
+suites, the power-balance audit and the slide statics do. Read positions back in meters by dividing
+by `MODEL_SCALE`. The four-decimal rounding the position solver applies is then finer in meters,
+so a torque pinned at a raw build can move in its fourth decimal.
+
 ### A wrong branch is not a limit, and only one of them is worth a shorter step
 
 `solveLookingAhead` in `mechanism.ts` used to read every refusal as the end of the input's
