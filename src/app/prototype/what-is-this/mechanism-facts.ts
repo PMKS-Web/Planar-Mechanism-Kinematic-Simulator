@@ -55,6 +55,12 @@ export interface DrawingToDescribe {
   includeNames?: boolean;
   /** Add the "How the parts relate" section. */
   relations?: boolean;
+  /**
+   * The author's background image sits behind the mechanism and is in the
+   * picture. Said in the sheet, so the model knows the photograph is a hint and
+   * not part of the mechanism.
+   */
+  backdrop?: boolean;
 }
 
 /** One of the picture's moments: when it is, and what the input reads then. */
@@ -181,7 +187,19 @@ function describePartition(
     );
     lines.push(`- Links: ${bodies.map(bodyLabel).join(', ')}.`);
     lines.push(`- Ground pivots: ${visible.filter(isGroundPin).map(label).join(', ') || 'none'}.`);
-    return { lines, jobs: [], family: [], frames: [] };
+    if (drawing.backdrop) lines.push(BACKDROP_LINE);
+    // Still a picture, of the mechanism as it stands: a stuck drawing is the
+    // one a student most wants explained.
+    const still = stillSamples(visible);
+    lines.push('### The picture: this mechanism as drawn (PMKS+ could not move it)');
+    lines.push(...describeStartGeometry(visible, bodies, label, bodyLabel, hidden, cylinders));
+    return {
+      lines,
+      jobs: [],
+      family: [],
+      frames: [{ time: 0, label: 'as drawn; PMKS+ could not solve its motion' }],
+      motion: machineMotion({ bodies, visible, hidden, cylinders, samples: still }),
+    };
   }
 
   const samples = collectSamples(mechanism, driven, signedSpeed);
@@ -193,6 +211,7 @@ function describePartition(
         : `The motion repeats every ${fmt(period)} s, once per input revolution.`)
   );
   const ctx: RelationContext = { bodies, visible, hidden, samples, cylinders, label, bodyLabel };
+  if (drawing.backdrop) lines.push(BACKDROP_LINE);
   const tracedHere = visible.filter(
     (j) => j instanceof RealJoint && j.showCurve && !isGroundPin(j)
   );
@@ -263,6 +282,17 @@ function describePartition(
       ? `Driven input: joint ${label(driven)} turns ${turned} relative to ${against} at ${speed}.`
       : `Driven input: slider ${label(driven)} pushes ${turned} along its guide at ${speed}.`;
   }
+}
+
+const BACKDROP_LINE =
+  '- A background image sits behind this mechanism in the picture: the author placed it there as a reference, often a photograph or drawing of the real machine. It is not part of the mechanism.';
+
+/** One frame of the joints where they are drawn, for a mechanism PMKS+ could not move. */
+function stillSamples(visible: Joint[]): Samples {
+  const paths = new Map<string, [number, number][]>();
+  for (const joint of visible)
+    paths.set(joint.id, [[joint.x / MODEL_SCALE, joint.y / MODEL_SCALE]]);
+  return { mechanism: undefined as unknown as Mechanism, paths, time: [0] };
 }
 
 /**

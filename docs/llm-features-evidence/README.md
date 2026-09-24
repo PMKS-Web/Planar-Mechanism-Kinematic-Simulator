@@ -183,3 +183,27 @@ round 2, v4 won the hood hinge outright ("a Stephenson six-bar that resembles a 
 both askings) and lost the cylinder boom, whose first v4 answer put no part name in bold. The other
 eight are close calls, and they are the question: whether the v4 note is the one a person would
 rather a student read.
+
+### Round 3: v5 on fresh mechanisms
+
+v5 splits the work: PMKS+ names the family it matched, in the panel's Overview, and the note no
+longer does; the model says what real machine the mechanism looks like (`resembles`) and gives one
+or two real products. The picture carries the author's background image and no axes. The cases are
+new: eight library templates not used before (three with background images), ten mechanisms
+students attached to feedback (five with a stated goal: a steam locomotive, a Scott Russell
+straight-line generator, a Strider linkage, a door opener, cylinder and scissor-lift experiments),
+and three test mechanisms from `made-cases.ts`. `run/case-sets/fresh.json` lists them; the
+students' links stay in the gitignored feedback file, and their fact sheets are left out of
+`taste-rounds.json`.
+
+The first draft of the v5 prompt named example products, and the model gave the same two (a
+windshield wiper and a reciprocating pump) to nearly every mechanism, a Peaucellier cell and a
+toggle clamp included; it also forbade naming any family, so mechanisms the catalog does not know
+went unnamed. Those answers are kept as `answers-draft`; the prompt that was run names no products
+and lets `resembles` name a mechanism the app did not match.
+
+Across the 16 round 3 cases with a known real machine or stated goal, v5 names it in 8 and v4 in
+4: the landing gear, excavator, radial engine, fan, trammel and Peaucellier cell are v5's gains.
+Neither version recognized any student's goal (the locomotive, the Scott Russell, the Strider, the
+door opener), and v5 confidently calls the car steering "paired windshield-wiper linkages" in both
+askings, background photograph notwithstanding. Claude decided 13 pairs and left 8 close calls.

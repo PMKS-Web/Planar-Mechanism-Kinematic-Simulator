@@ -7,7 +7,8 @@
       "title": "Round 1 · truth fixes",
       "a": "v2",
       "b": "v3",
-      "note": "Same model (GPT-6 Luna, medium effort), same picture, and the same instructions except one sentence about drawings the solver cannot solve, which none of these ten is. Four of the ten sheets are word-for-word identical between the versions, so those pairs show how much the model varies on its own."
+      "note": "Same model (GPT-6 Luna, medium effort), same picture, and the same instructions except one sentence about drawings the solver cannot solve, which none of these ten is. Four of the ten sheets are word-for-word identical between the versions, so those pairs show how much the model varies on its own.",
+      "sameInstructions": true
     },
     {
       "id": "r2",
@@ -23,6 +24,67 @@
         "Cylinder_Boom": {
           "pick": "a",
           "why": "v4's first asking puts no part name in bold, so the panel cannot point at any part (its second asking does); v3 reads as well and names excavator booms."
+        }
+      }
+    },
+    {
+      "id": "r3",
+      "title": "Round 3 · v5 on fresh mechanisms",
+      "a": "v4f",
+      "b": "v5",
+      "note": "Fresh mechanisms: eight library templates not used before, ten mechanisms students sent with feedback (five with a stated goal), and three test cases. Both sides are each version's first asking; v5 was also asked a second time.",
+      "decided": {
+        "Aircraft_Landing_Gear": {
+          "pick": "b",
+          "why": "v5 says it looks like an aircraft landing-gear retraction mechanism and names retractable landing gear, in both askings; v4f calls it a triple-rocker four-bar and names no use."
+        },
+        "Excavator_Bucket": {
+          "pick": "b",
+          "why": "v5 recognizes an excavator bucket linkage in both askings; v4f calls it a cylinder-driven beam mechanism and names no use."
+        },
+        "Radial_Engine": {
+          "pick": "b",
+          "why": "v5 says a five-cylinder radial engine in both askings; v4f calls it a five-slider slider-crank assembly and names no use."
+        },
+        "Oscillating_Fan": {
+          "pick": "b",
+          "why": "v5 recognizes an oscillating fan and names pedestal and table fans (its second asking missed it); v4f names windshield wipers."
+        },
+        "Elliptical_Trammel": {
+          "pick": "b",
+          "why": "v5 names a crossed-slot trammel; v4f says only \"two-slider arrangement\". (v5's second asking said Scotch yoke, which is wrong.)"
+        },
+        "Car_Steering": {
+          "pick": "a",
+          "why": "v5 says it looks like paired windshield-wiper linkages, in both askings, despite the wheels in the background image: a confident wrong recognition. v4f says nothing wrong."
+        },
+        "Toggle_Clamp": {
+          "pick": "a",
+          "why": "v4f says it resembles a hand-operated toggle clamp and names toggle clamps; v5's first asking calls it a slow-return crank rocker for power hacksaws (its second asking did say toggle clamp)."
+        },
+        "student-196bdb37388f": {
+          "pick": "a",
+          "why": "Only v4f tells the student that PMKS+ refuses the input at A because three bodies meet there, which is what their message was asking about; v5 describes the motion and leaves that out."
+        },
+        "student-19bc32785b6b": {
+          "pick": "same",
+          "why": "Nearly the same note; both read the Scott Russell attempt as a plain slider-crank."
+        },
+        "student-19afdedcc1a4": {
+          "pick": "same",
+          "why": "Both describe the structure of the stuck drawing and neither sees a Strider attempt."
+        },
+        "student-19716c16710b": {
+          "pick": "same",
+          "why": "Both describe the two unconnected bars the same way; neither sees a door opener."
+        },
+        "student-1943d7a31665": {
+          "pick": "same",
+          "why": "Both list the links of the stuck drawing and say its motion is unknown."
+        },
+        "student-19a3b4a71c6a": {
+          "pick": "same",
+          "why": "The same content in different words; neither names a use."
         }
       }
     }
