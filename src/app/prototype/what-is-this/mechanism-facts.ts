@@ -66,7 +66,7 @@ export interface DrawingToDescribe {
    * each. v6: six moments without it, and the background image once, in a
    * tile of its own before them; links drawn as discs are said to be.
    */
-  picture?: 'v5' | 'v6';
+  picture?: 'v5' | 'v6' | 'v7';
 }
 
 /** One of the picture's moments: when it is, and what the input reads then. */
@@ -144,10 +144,12 @@ function describePartition(
       !cylinders.some((c) => c.barrel === link || c.rod === link)
   );
   const label = (joint: Joint) =>
-    drawing.includeNames && joint.name !== joint.id ? `${joint.id} ("${joint.name}")` : joint.id;
+    drawing.includeNames && typed(joint.name, joint.id)
+      ? `${joint.id} ("${joint.name}")`
+      : joint.id;
   const bodyLabel = (link: Link) => {
     const ids = link.joints.filter((joint) => !hidden.has(joint.id)).map((joint) => joint.id);
-    const named = drawing.includeNames && link.name !== link.id ? ` ("${link.name}")` : '';
+    const named = drawing.includeNames && typed(link.name, link.id) ? ` ("${link.name}")` : '';
     return `link ${ids.join('')}${named}`;
   };
 
@@ -235,7 +237,9 @@ function describePartition(
   lines.push(...family.lines);
 
   const input = inputSeries(ctx, driven);
-  const v6 = drawing.picture === 'v6';
+  // v6 and v7 share the disc facts; v7 also counts the background tile among six.
+  const v6 = drawing.picture === 'v6' || drawing.picture === 'v7';
+  const v7 = drawing.picture === 'v7';
   const jobs = linkJobs(ctx, drivenBody, driven, input, v6);
   lines.push('### Links and their jobs');
   for (const job of jobs) lines.push(`- ${job.name} — ${job.job}: ${job.motion}.`);
@@ -249,18 +253,26 @@ function describePartition(
     lines.push(describePath(joint, samples, grounds, label, mechanism.reciprocates));
   }
 
-  const count = v6 ? 6 : 4;
-  const frames = filmFrames(samples, mechanism.reciprocates, input, count);
   const backdropTile = v6 && drawing.backdrop;
+  // v7 keeps the picture at six tiles: with a background image, five moments.
+  const count = v7 && backdropTile ? 5 : v6 ? 6 : 4;
+  const frames = filmFrames(samples, mechanism.reciprocates, input, count);
+  const words = { 4: 'four', 5: 'five', 6: 'six' }[count];
   lines.push(
     (backdropTile
-      ? `### The picture: tile 0 is the author's background image with this mechanism at its start; tiles 1 to ${count} are this mechanism at ${count} moments, in time order`
-      : `### The picture: this mechanism at ${count === 6 ? 'six' : 'four'} moments, numbered in time order`) +
+      ? `### The picture: tile 0 is the author's background image${v7 ? ', faded,' : ''} with this mechanism at its start${v7 ? ' and a dashed box marking the area the other tiles show' : ''}; tiles 1 to ${count} are this mechanism at ${words} moments, in time order`
+      : `### The picture: this mechanism at ${words} moments, numbered in time order`) +
       (mechanism.reciprocates ? ` (1 and ${count} are the two ends of its travel)` : '')
   );
-  if (backdropTile) lines.push('- 0: the background image, with this mechanism at its start.');
+  if (backdropTile)
+    lines.push(
+      v7
+        ? '- 0: the background image, faded, with this mechanism at its start; the dashed box is the area tiles 1 onward show, larger.'
+        : '- 0: the background image, with this mechanism at its start.'
+    );
   frames.forEach((frame, i) => lines.push(`- ${i + 1}: ${frame.label}.`));
 
+  if (drawing.includeNames) lines.push(...describeLoads(partition.forces, bodyLabel));
   lines.push(...describeStartGeometry(visible, bodies, label, bodyLabel, hidden, cylinders));
 
   const picture = { bodies, visible, hidden, cylinders, samples };
@@ -297,9 +309,37 @@ function describePartition(
 }
 
 function backdropLine(drawing: DrawingToDescribe): string {
+  if (drawing.picture === 'v7')
+    return "- The author placed a background image behind this mechanism as a reference, often a photograph or drawing of the real machine. It is shown once, faded, in the picture's tile 0, where a dashed box marks the part of the image the other tiles show; it is not part of the mechanism.";
   return drawing.picture === 'v6'
     ? "- The author placed a background image behind this mechanism as a reference, often a photograph or drawing of the real machine. It is shown once, in the picture's tile 0; it is not part of the mechanism."
     : '- A background image sits behind this mechanism in the picture: the author placed it there as a reference, often a photograph or drawing of the real machine. It is not part of the mechanism.';
+}
+
+/**
+ * Whether a name is one a person typed. Old drawings carry link names that are
+ * just the ids the link had before its joints were renamed ("ABC" on a link
+ * now called ACN): capitals and digits only, never what somebody wrote.
+ */
+function typed(name: string | undefined, id: string): boolean {
+  return !!name && name !== id && !/^[A-Z][A-Z0-9]*$/.test(name);
+}
+
+/**
+ * The forces the author put on the mechanism, with their names: a load named
+ * "Payload" or "Bucket" says what the mechanism is for.
+ */
+function describeLoads(forces: Force[], bodyLabel: (link: Link) => string): string[] {
+  if (!forces.length) return [];
+  const lines = ['### Loads the author placed'];
+  for (const force of forces) {
+    const named = typed(force.name, force.id) ? ` ("${force.name}")` : '';
+    const at = force.startCoord;
+    lines.push(
+      `- Force ${force.id}${named} on ${bodyLabel(force.link)} at (${fmt(at.x / MODEL_SCALE)}, ${fmt(at.y / MODEL_SCALE)}), magnitude ${fmt(force.mag)}, pointing at ${fmt(deg(force.angleRad), 0)} deg${force.local ? ' (turning with the link)' : ''}.`
+    );
+  }
+  return lines;
 }
 
 /** One frame of the joints where they are drawn, for a mechanism PMKS+ could not move. */

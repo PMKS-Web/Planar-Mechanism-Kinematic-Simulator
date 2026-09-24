@@ -168,6 +168,87 @@
           "why": "The stuck drawing gets a structural description from both."
         }
       }
+    },
+    {
+      "id": "r5",
+      "title": "Round 5 · v7: the authors' names, the image faded and boxed",
+      "a": "v6r5",
+      "b": "v7",
+      "note": "The first round asked blind. Until now the picture reached the model under a file name that was the template's own (cases/Bell_Crank.filmstrip.png), and Codex shows the model that path; from here the picture is sent as picture.png. Twelve library templates (eight never used), eight student mechanisms and one test case. Both sides are each version's first blind asking; both were asked five times blind, and five times with the old file names, to measure the difference.",
+      "decided": {
+        "Offset_Mount_Hatch": {
+          "pick": "b",
+          "why": "v7 says a powered vehicle hatch in all five askings, from the names its author gave the parts (\"Hatch\", \"Offset barrel\", \"Rod bracket\"); v6, without them, says a cylinder-operated swinging arm and names an excavator boom."
+        },
+        "Crane_Two_Loads": {
+          "pick": "b",
+          "why": "v7 says a crane jib luffing mechanism in all five askings, from the names \"Jib\", \"Luffing crank\" and \"Luffing link\"; v6 says a quick-return lever drive and names a shaper (none of its five askings says crane)."
+        },
+        "Pumping_Field": {
+          "pick": "b",
+          "why": "v7 says a walking-beam pump jack; v6's first asking names no resemblance and no use (its other four say a pump jack, as the app's walking-beam match suggests)."
+        },
+        "student-196f7ddefeb9": {
+          "pick": "b",
+          "why": "v6 puts no part name in bold, so the panel cannot point at any, and calls the stuck drawing a pair of linked slotted levers; v7 describes it and claims nothing."
+        },
+        "Hood_Hinge": {
+          "pick": "both-poor",
+          "why": "Both \"Looks like\" lines are wrong: v6 a powered lifting gate, v7 a tractor front loader, though v7's paragraph calls the long link by its author's name, Hood, and two of its other four askings say a car hood. v6 never does in five."
+        },
+        "Aircraft_Landing_Gear": {
+          "pick": "both-poor",
+          "why": "Neither sees landing gear in any of ten blind askings. v6, with the photograph at full strength, says a helicopter rotor linkage every time (it sees the propeller); v7, with it faded, wanders: wipers, a mower deck, a window shade."
+        },
+        "Excavator_Bucket": {
+          "pick": "both-poor",
+          "why": "Both say a reciprocating pump linkage; each names an excavator in two of its five askings."
+        },
+        "Car_Steering": {
+          "pick": "both-poor",
+          "why": "Neither sees steering in any of ten blind askings: twin rockers, wipers, pump beams."
+        },
+        "student-added-steam-": {
+          "pick": "both-poor",
+          "why": "Neither sees a locomotive: v6 three synchronized cranks, v7 rotating display wheels, which nothing suggests."
+        },
+        "made-locomotive-wheels": {
+          "pick": "both-poor",
+          "why": "Neither sees locomotive wheels in any of ten blind askings. The \"locomotive wheel drive\" of round 4 came with the file name made-locomotive-wheels."
+        },
+        "Walking_Pair": {
+          "pick": "same",
+          "why": "Both say a Strandbeest or walking-robot leg, as the app's Jansen match suggests; neither remarks that the two legs are half a cycle apart."
+        },
+        "Hydraulic_Crosshead": {
+          "pick": "same",
+          "why": "Both read a cylinder moving a crosshead and name a hydraulic press ram; v7 has the author's \"Press crosshead\"."
+        },
+        "student-19afdedcc1a4": {
+          "pick": "same",
+          "why": "The stuck drawing gets a structural description from both; neither sees a Strider leg."
+        },
+        "student-192954d7b479": {
+          "pick": "same",
+          "why": "Both describe the crank-rocker correctly and reach for a windshield wiper."
+        },
+        "student-196b93000ce8": {
+          "pick": "same",
+          "why": "The stuck drawing gets a structural description from both."
+        },
+        "student-19b3627c1145": {
+          "pick": "same",
+          "why": "A single link with no input; both say so."
+        },
+        "student-193aae5db4f6": {
+          "pick": "same",
+          "why": "The stuck drawing gets a structural description from both."
+        },
+        "student-196b953c9c0f": {
+          "pick": "same",
+          "why": "The stuck drawing gets a structural description from both."
+        }
+      }
     }
   ]
 }

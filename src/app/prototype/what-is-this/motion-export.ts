@@ -33,6 +33,50 @@ export interface MachineMotion {
 
 const MAX_FRAMES = 240;
 
+/**
+ * Every machine of a drawing as one motion, for a page that animates the whole
+ * drawing. Each keeps its own clock (a pumping field's beams run at different
+ * speeds): the frames span the longest cycle, and a shorter one wraps round.
+ */
+export function mergeMotions(motions: MachineMotion[]): MachineMotion | undefined {
+  if (motions.length <= 1) return motions[0];
+  const period = (m: MachineMotion) => m.time[m.time.length - 1] - m.time[0];
+  const longest = motions.reduce((a, b) => (period(b) > period(a) ? b : a));
+  const nearest = (m: MachineMotion, t: number) => {
+    const at = period(m) > 0 ? m.time[0] + ((t - longest.time[0]) % period(m)) : m.time[0];
+    let best = 0;
+    m.time.forEach((s, i) => {
+      if (Math.abs(s - at) < Math.abs(m.time[best] - at)) best = i;
+    });
+    return m.frames[best];
+  };
+  const offsets: number[] = [];
+  let count = 0;
+  for (const m of motions) {
+    offsets.push(count);
+    count += m.joints.length;
+  }
+  const shift = (i: number, k: number) => i + offsets[k];
+  let bodyCount = 0;
+  const discs: MachineMotion['discs'] = [];
+  motions.forEach((m, k) => {
+    for (const d of m.discs)
+      discs.push({ body: d.body + bodyCount, center: shift(d.center, k), radius: d.radius });
+    bodyCount += m.bodies.length;
+  });
+  return {
+    joints: motions.flatMap((m) => m.joints),
+    bodies: motions.flatMap((m, k) => m.bodies.map((ids) => ids.map((i) => shift(i, k)))),
+    discs,
+    cylinders: motions.flatMap((m, k) =>
+      m.cylinders.map(([a, b]) => [shift(a, k), shift(b, k)] as [number, number])
+    ),
+    guides: motions.flatMap((m) => m.guides),
+    time: longest.time,
+    frames: longest.time.map((t) => motions.flatMap((m) => nearest(m, t))),
+  };
+}
+
 export function machineMotion(ctx: DrawingContext): MachineMotion {
   const joints = ctx.visible.filter((joint) => ctx.samples.paths.has(joint.id));
   const index = new Map(joints.map((joint, i) => [joint.id, i]));

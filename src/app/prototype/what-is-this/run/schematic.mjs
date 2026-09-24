@@ -27,8 +27,11 @@ const root = new URL(
 const base = process.env.PMKS_SCHEMATIC_URL ?? 'http://localhost:4311';
 const { cases, prompt } = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
 // v5 on: no axes. v6: the background image in a tile of its own, not behind every frame.
-const noAxes = prompt === 'v5' || prompt === 'v6';
-const v6 = prompt === 'v6';
+const noAxes = prompt === 'v5' || prompt === 'v6' || prompt === 'v7';
+const v6 = prompt === 'v6' || prompt === 'v7';
+// v7: the author's link names stay in the picture, the background image is faded,
+// and tile 0 boxes the area the motion tiles show.
+const v7 = prompt === 'v7';
 // ONLY=Hood_Hinge re-captures one case.
 const wanted = cases.filter(
   (c) => c.image && c.film?.length && (!process.env.ONLY || c.template.includes(process.env.ONLY))
@@ -54,8 +57,8 @@ const CHROME = [
   'app-templates-popup',
   '.cdk-overlay-container',
   // Link names are whatever the author typed ("Wiper arm", "Hood"): the answer,
-  // in the picture. Joint letters already name every link.
-  '#linkTagHolder',
+  // in the picture, so they were hidden until v7 chose to send them.
+  ...(v7 ? [] : ['#linkTagHolder']),
   // The faint start pose drawn away from the start reads as a second mechanism.
   '#startGhostHolder',
   ...(noAxes ? ['[id="axes"]', '[id="axes_numbers"]'] : []),
@@ -99,7 +102,10 @@ for (const entry of templates) {
     g.settings.isShowTraces.next(true);
   });
   await page.addStyleTag({
-    content: `${CHROME.join(', ')} { visibility: hidden !important; }`,
+    content:
+      `${CHROME.join(', ')} { visibility: hidden !important; }` +
+      // Faded, so the mechanism reads over a large or busy picture.
+      (v7 ? ' #backgroundImageHolder image { opacity: 0.35 !important; }' : ''),
   });
   // The canvas re-frames itself once what it is fitting has been drawn.
   await page.waitForTimeout(900);
@@ -113,10 +119,46 @@ for (const entry of templates) {
     await fitTo(page, await cycleBox(page, still, true));
     const clip = clipOf(await cycleBox(page, still, true));
     if (!still) await seek(page, 0);
+    // v7: a dashed box on the area the motion tiles will show. They are zoomed
+    // to fit the mechanism's own extent with PAD pixels round it, so at this
+    // zoom that padding is PAD divided by the zoom they will use.
+    if (v7) {
+      const own = await cycleBox(page, still, false);
+      const zoom = Math.min(
+        (W - 2 * PAD) / Math.max(own.x1 - own.x0, 1),
+        (H - 2 * PAD) / Math.max(own.y1 - own.y0, 1)
+      );
+      const pad = PAD / zoom;
+      await page.evaluate(
+        ({ own, pad }) => {
+          const box = document.createElement('div');
+          box.id = 'what-is-this-frame-box';
+          Object.assign(box.style, {
+            position: 'fixed',
+            left: `${own.x0 - pad}px`,
+            top: `${own.y0 - pad}px`,
+            width: `${own.x1 - own.x0 + 2 * pad}px`,
+            height: `${own.y1 - own.y0 + 2 * pad}px`,
+            border: '3px dashed #d62828',
+            pointerEvents: 'none',
+            zIndex: 99999,
+          });
+          document.body.appendChild(box);
+        },
+        { own, pad }
+      );
+    }
     await page.waitForTimeout(250);
+    if (v7) await hideIdTags(page);
     const path = join(root, 'cases', `${entry.template}.film-0.png`);
     await page.screenshot({ path, clip });
-    tiles.push({ path, label: '0   background image, mechanism at its start' });
+    tiles.push({
+      path,
+      label: v7
+        ? '0   background image; dashed box = area of tiles 1-5'
+        : '0   background image, mechanism at its start',
+    });
+    await page.evaluate(() => document.getElementById('what-is-this-frame-box')?.remove());
     await page.addStyleTag({
       content: '#backgroundImageHolder { visibility: hidden !important; }',
     });
@@ -128,6 +170,7 @@ for (const entry of templates) {
   for (const [i, frame] of entry.film.entries()) {
     if (!still) await seek(page, frame.time);
     await page.waitForTimeout(250);
+    if (v7) await hideIdTags(page);
     const path = join(root, 'cases', `${entry.template}.film-${i + 1}.png`);
     await page.screenshot({ path, clip });
     tiles.push({ path, label: `${i + 1}   ${frame.label}` });
@@ -172,6 +215,19 @@ function clipOf(box) {
 }
 
 /** Put the mechanism at the solved sample nearest a time. */
+/**
+ * An unnamed link's tag is its joint letters ("ABHKLMNOPQ"), which the joint
+ * labels already say; only a name the author typed is worth the room. Angular
+ * redraws the tags on a seek, so this runs before every screenshot.
+ */
+async function hideIdTags(page) {
+  await page.evaluate(() => {
+    for (const text of document.querySelectorAll('#linkTagHolder text')) {
+      if (/^[A-Z][A-Z0-9]*$/.test(text.textContent.trim())) text.style.visibility = 'hidden';
+    }
+  });
+}
+
 function seek(page, time) {
   return page.evaluate((time) => {
     const g = window.ng.getComponent(document.querySelector('app-new-grid'));
@@ -200,7 +256,10 @@ function cycleBox(page, still, withBackdrop) {
         box.x1 = Math.max(box.x1, x);
         box.y1 = Math.max(box.y1, y);
       };
-      const frames = still ? [g.mechanismSrv.joints] : g.mechanismSrv.masterMechanism().joints;
+      // Every machine on the grid: a drawing of several mechanisms is pictured whole.
+      const frames = still
+        ? [g.mechanismSrv.joints]
+        : g.mechanismSrv.mechanisms.filter((m) => m?.joints?.length > 1).flatMap((m) => m.joints);
       for (const frame of frames) {
         for (const joint of frame) {
           const at = g.svgGrid.modelToScreen({ x: joint.x, y: joint.y });

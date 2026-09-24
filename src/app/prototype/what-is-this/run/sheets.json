@@ -61,5 +61,21 @@
       "A link its author drew as a disc (a wheel or flywheel) is drawn as a disc with spokes in the picture, and its job in the fact sheet says so. (The Schematic style on feature/drawing-styles draws discs as outlines of their joints; the capture used a local fix.)",
       "A link that turns most of a turn and back because the input reverses is called a crank that goes round and back, not a rocker with two ends at the same input position."
     ]
+  },
+  "v6r5": {
+    "title": "v6 · on round 5",
+    "summary": "v6 exactly, on round 5's mechanisms: six moments, the background image once and at full strength, the authors' names hidden.",
+    "changes": []
+  },
+  "v7": {
+    "title": "v7 · the authors' names, the image faded and boxed",
+    "summary": "v6 with the names authors gave their links, joints and forces sent in the fact sheet and written in the picture, and the background image faded, in a tile of its own, with a box showing where the mechanism sits in it.",
+    "changes": [
+      "The names an author typed for a link, a joint or a force go into the fact sheet in quotes after the letters (link GK (\"Luffing crank\")), and a link's name is written on it in the picture. A name that is only letters (\"ABC\", or a stale id like \"A2B\") is left out, in the sheet and in the picture. Only five of the round's twelve templates, and none of the students' drawings, have any.",
+      "The forces an author placed are listed with their names, the link they act on, where, how hard and which way.",
+      "With a background image the picture is still six tiles: the image in tile 0 and five moments, not six.",
+      "The background image is faded to about a third, so the mechanism reads over a large or busy picture, and a dashed box in tile 0 marks the area the other tiles show, so the model can see where the mechanism sits in the image.",
+      "The prompt says the names are the author's own and often say what the part and the mechanism are for, and that the note may use a name after the part's letters."
+    ]
   }
 }

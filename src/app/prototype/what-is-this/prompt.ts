@@ -105,11 +105,26 @@ export const WHAT_IS_THIS_PROMPT_V6 = WHAT_IS_THIS_PROMPT_V5.replace(
   `You get a fact sheet PMKS+ computed from its own solution of this mechanism, and a picture: this mechanism as PMKS+ draws it in its Schematic style, at up to six moments of one cycle numbered in time order, with the paths of any traced points drawn in. A link its author drew as a disc (a wheel or flywheel) is drawn as a disc. If the fact sheet says there is a background image, it is shown once, in a tile numbered 0 before the moments, with the mechanism at its start: the author's own reference picture, often of the real machine. The fact sheet's section "The picture" says what each tile is. Letters in the picture are the joints in the fact sheet.`
 );
 
-export function buildPrompt(factSheet: string, version: 'v4' | 'v5' | 'v6' = 'v6'): string {
+/**
+ * v7: v6 with the author's names (links, joints, forces) sent and written in
+ * the picture, and the background image faded in a tile of its own with a box
+ * showing where the mechanism sits in it. Names make a named template easy;
+ * the point is to give a real student's drawing its best chance.
+ */
+export const WHAT_IS_THIS_PROMPT_V7 = WHAT_IS_THIS_PROMPT_V6.replace(
+  `You get a fact sheet PMKS+ computed from its own solution of this mechanism, and a picture: this mechanism as PMKS+ draws it in its Schematic style, at up to six moments of one cycle numbered in time order, with the paths of any traced points drawn in. A link its author drew as a disc (a wheel or flywheel) is drawn as a disc. If the fact sheet says there is a background image, it is shown once, in a tile numbered 0 before the moments, with the mechanism at its start: the author's own reference picture, often of the real machine. The fact sheet's section "The picture" says what each tile is. Letters in the picture are the joints in the fact sheet.`,
+  `You get a fact sheet PMKS+ computed from its own solution of this mechanism, and a picture: this mechanism as PMKS+ draws it in its Schematic style, at up to six moments of one cycle numbered in time order, with the paths of any traced points drawn in and the names its author gave the links written on them. A link its author drew as a disc (a wheel or flywheel) is drawn as a disc. If the fact sheet says there is a background image, it is shown once, faded, in a tile numbered 0 with the mechanism at its start, and a dashed box in that tile marks the area the later tiles show: the author's own reference picture, often of the real machine, and the box says where in it the mechanism sits. The fact sheet's section "The picture" says what each tile is. Letters in the picture are the joints in the fact sheet.`
+).replace(
+  'Nothing else goes in double asterisks.',
+  `Nothing else goes in double asterisks. Where the author named a part, the fact sheet gives the name in quotes after its letters (link AB ("Crank")) and the picture writes it on the link: the names are the author's own and often say what the part, and the mechanism, are for. You may use a name in plainEnglish after the part's letters.`
+);
+
+export function buildPrompt(factSheet: string, version: 'v4' | 'v5' | 'v6' | 'v7' = 'v7'): string {
   const prompts = {
     v4: WHAT_IS_THIS_PROMPT_V4,
     v5: WHAT_IS_THIS_PROMPT_V5,
     v6: WHAT_IS_THIS_PROMPT_V6,
+    v7: WHAT_IS_THIS_PROMPT_V7,
   };
   return prompts[version] + factSheet;
 }
