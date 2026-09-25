@@ -155,7 +155,7 @@ function refusalSentence(joint: Joint, refusal: ActuatorRefusal): string {
     case 'not-a-joint':
       return 'Only a joint can be an input.';
     case 'welded':
-      return "The links at a welded joint can't move against each other. Unweld it, or set another joint as the input.";
+      return "The links at a welded joint can't move against each other. Set it to Revolute, or Add Input to another joint.";
     case 'frozen-cylinder':
       return describeFrozenCylinderDrive(frozenCylinderAtSeal(joint)!);
     case 'frame': {
@@ -166,15 +166,15 @@ function refusalSentence(joint: Joint, refusal: ActuatorRefusal): string {
       const pinned = joint.links.flatMap((link) => groundPinsElsewhere(link, joint));
       const which = [...new Set(pinned.map((one) => one.name || one.id))].join(' and ');
       return joint.links.length === 1
-        ? `Its link is also grounded at joint ${which}, so it can't turn. Unground joint ${which} to give the input something to turn.`
-        : `Every link on it is also grounded at joint ${which}, so none of them can turn. Unground joint ${which} to give the input something to turn.`;
+        ? `Its link is also grounded at joint ${which}, so it can't turn. Turn off Grounded for joint ${which} to give the input something to turn.`
+        : `Every link on it is also grounded at joint ${which}, so none of them can turn. Turn off Grounded for joint ${which} to give the input something to turn.`;
     }
     case 'one-body':
       return 'An input turns one link against another, or against the ground, and only one link meets here.';
     case 'many-bodies':
-      return `${meetingHere(joint)} meet here, so the input can't tell which pair to move. Set the input where exactly two meet.`;
+      return `${meetingHere(joint)} meet here, so the input can't tell which pair to move. Add Input where exactly two links meet.`;
     case 'no-angle':
-      return "A slider's block is a single point, so it has no angle to turn. Set the input at the other end of its link.";
+      return "A slider's block is a single point, so it has no angle to turn. Add Input at the other end of its link.";
   }
 }
 

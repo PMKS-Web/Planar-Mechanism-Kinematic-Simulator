@@ -92,9 +92,9 @@ function unloaded(gravityOn: boolean, weighted: boolean): SetupIssue {
     : prose`No force is applied and every link is massless.`;
   const fixes = !gravityOn
     ? weighted
-      ? [prose`Turn on gravity in the Settings panel`, prose`Attach a force to any link`]
-      : [prose`Attach a force to any link`, prose`Turn on gravity and give a link mass`]
-    : [prose`Attach a force to any link`, prose`Type a mass in the Masses table`];
+      ? [prose`Turn on Gravity in the Settings panel`, prose`Attach Force to any link`]
+      : [prose`Attach Force to any link`, prose`Turn on Gravity and give a link a mass`]
+    : [prose`Attach Force to any link`, prose`Type a mass in the Masses table`];
   return {
     severity: 'blocker',
     title: 'Nothing loads the mechanism',

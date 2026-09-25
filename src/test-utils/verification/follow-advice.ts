@@ -166,22 +166,25 @@ export function actionOfFix(fix: Prose): Action | undefined {
   if (/^Ground (joint|slider) \S+( to fix its direction)?$/.test(text)) {
     return { kind: 'ground', joint: first };
   }
-  if (/^Unground joint \S+$/.test(text)) return { kind: 'unground', joint: first };
+  if (/^Turn off Grounded for joint \S+$/.test(text)) return { kind: 'unground', joint: first };
   if (/^Set joint \S+ to Pin-in-slot$/.test(text)) return { kind: 'pin-in-slot', joint: first };
   if (/^Set joint \S+ to Prismatic$/.test(text)) return { kind: 'prismatic', joint: first };
-  if (/^Weld joint \S+$/.test(text)) return { kind: 'weld', joint: first };
-  if (/^Unweld joint \S+$/.test(text)) return { kind: 'unweld', joint: first };
+  if (/^Set joint \S+ to Welded$/.test(text)) return { kind: 'weld', joint: first };
+  if (/^Set joint \S+ to Revolute$/.test(text)) return { kind: 'unweld', joint: first };
   if (/^Drag joint \S+ onto joint \S+$/.test(text) && second) {
     return { kind: 'merge', joint: first, onto: second };
   }
-  if (/^Attach a link from joint \S+ to joint \S+$/.test(text) && second) {
+  if (/^Attach Link from joint \S+ to joint \S+$/.test(text) && second) {
     return { kind: 'add-link', joints: first + second };
   }
-  if (/^Attach a grounded link at joint \S+$/.test(text)) return { kind: 'attach', joint: first };
+  if (/^Attach Link at joint \S+, then ground its far end$/.test(text)) {
+    return { kind: 'attach', joint: first };
+  }
   if (/^Delete (link|barrel|rod) \S+$/.test(text)) return { kind: 'delete-link', link: first };
   if (/^Delete joint \S+$/.test(text)) return { kind: 'delete-joint', joint: first };
-  if (/^Set joint \S+ as the input$/.test(text)) return { kind: 'set-input', joint: first };
-  if (/^Move the input to joint \S+$/.test(text)) return { kind: 'move-input', joint: first };
+  // Add Input moves the input where the machine has one already, and adds it
+  // where it has none: the one button does both.
+  if (/^Add Input to joint \S+$/.test(text)) return { kind: 'move-input', joint: first };
   return undefined;
 }
 
@@ -212,9 +215,16 @@ function actionFor(
   drawing: Drawing,
   undos: Undo[]
 ): { action?: Action; offered: MobilityFix[] } {
+  // Add Input moves the input within one machine. Where this machine has none,
+  // it adds one, and another machine's input stays its own.
   const actions = check.fixes
     .map(actionOfFix)
-    .filter((action): action is Action => action !== undefined);
+    .filter((action): action is Action => action !== undefined)
+    .map((action): Action =>
+      action.kind === 'move-input' && check.title === 'No input is set'
+        ? { kind: 'set-input', joint: action.joint }
+        : action
+    );
   const action = actions.find((one) => undoes(one, undos)) ?? actions[0];
   // What the diagnosis counted, for the table of how the ways out rank.
   const offered =

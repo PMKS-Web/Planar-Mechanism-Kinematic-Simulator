@@ -58,8 +58,9 @@ by way of `prose-block` and the `prose` sentences in `model/prose.ts`. These pla
 point at a part their own way:
 
 - **`export-panel.component.ts`** `pointAt` writes `MechanismService.hoveredPart` itself for each
-  row. The rows are rows rather than words in a sentence, so the entry is to route the pointing
-  through `PART_LINK_TARGET` (`PartNavigationService.point`), not to draw them as chips.
+  row, which defers to a selection where a part link's `linkedPart` does not. The rows are rows
+  rather than words in a sentence, so the entry is to decide which of the two it wants, and to
+  route the pointing through `PART_LINK_TARGET` if it is the part link's, not to draw chips.
 - **`analysis-setup.component.html`** `.rowJump`, the arrow beside each row of the Masses table.
   It goes to the Edit panel *and opens its mass section*, which `PartNavigationService.open` does
   not, so the block would need a way to say which section to land on first.
