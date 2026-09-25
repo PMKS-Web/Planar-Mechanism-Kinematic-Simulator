@@ -104,7 +104,7 @@ try {
   const analysisText = await page.evaluate(() => document.body.innerText);
   record(
     'the analysis panel does not report the topology as unsupported',
-    !analysisText.includes('does not have a determinate'),
+    !/does not have a determinate|can't model this kind of mechanism/.test(analysisText),
     { sample: analysisText.slice(0, 0) }
   );
 

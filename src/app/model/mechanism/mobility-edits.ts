@@ -49,10 +49,10 @@ export type MobilityFix =
 export const MAX_CANDIDATES = 40;
 
 /**
- * How many ways out the drawer lists. Each is a line with a button of its own,
- * and past four a list stops being a choice and becomes a search.
+ * How many ways out the diagnosis keeps: the most the drawer lists
+ * (`MOST_FIXES`). Past three a list stops being a choice and becomes a search.
  */
-export const MAX_FIXES = 4;
+export const MAX_FIXES = 3;
 
 /**
  * A point is still when it moves less than this share of the fastest point in

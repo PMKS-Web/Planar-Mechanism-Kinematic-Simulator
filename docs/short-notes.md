@@ -650,6 +650,52 @@ leaves one -- the hanging link's, turning on a pin that joins three bodies. `lea
 asks there that some joint between exactly two bodies, held, leaves nothing free
 (`someInputHolds`), which is the input toggle's own rule.
 
+### A setup message is a `SetupIssue`, and a part it names is a `PartRef`
+
+The setup drawers' issues are structured (`model/mechanism/setup-issue.ts`): a title, a summary,
+an explanation and up to three fixes, the summary and fixes built as `Prose` -- text and parts
+(`model/prose.ts`) -- so the drawer draws each part as a `part-link` without parsing a sentence.
+Write one with the tag: ``prose`Unground ${jointRef(e)}` ``. Two things follow:
+
+- **Nothing reads a `body` any more.** A surface with room for one line quotes `issueText(issue)`,
+  the title and the summary; the transport tooltip, the right-click menu's analysis refusal, the
+  trace refusal and `invalidReason` all do. A test reads an issue through `read()` in
+  `test-utils/verification/issue-text.ts`.
+- **`setup-issue-budgets.spec.ts` holds every message to the spec's budgets** -- title 3 to 7
+  words, summary 16, explanation 35, fix 10 -- over the fixture gallery, six hundred broken student
+  drawings, every solver failure and every force state, and fails on an em dash, a semicolon, a
+  part named in an explanation, or a part named as plain text. `listOf` names two parts and "N
+  more" past three for that reason.
+
+### `part-link` goes through `PART_LINK_TARGET`, which only the app provides
+
+The block hands its two gestures to an injection token rather than to a service, so it can sit in
+any panel and in the gallery. `main.ts` provides `PartNavigationService` for it; a Storybook story
+provides `partLinkStub()` (Actions panel); a component spec provides a stub of its own. The block
+injects it optionally, so a spec that forgot one renders the name and goes nowhere, rather than
+failing to build -- which is also why a link that seems dead in a unit test is not a bug in the
+block. Pointing goes through `MechanismService.hoveredPart`, which defers to a selection: once
+anything is selected, pointing lights nothing.
+
+### `prose-block`'s template is inline and on one line
+
+Whitespace between the pieces lands in the sentence, and Prettier formats `.html` templates:
+reflowed, `Delete` and `link BC` gained a space and a line break between them. An inline
+`template:` string is left alone. Change it with care.
+
+### `describeActuator` is written from `actuatorOrRefusal`
+
+A refused input's issue needs the kind of refusal to write its own title, fact and fixes, and the
+Edit panel and the menu need one sentence. So `actuatorOrRefusal` returns an `ActuatorRefusal`
+kind, and `describeActuator` and `describeActuatorRefusal` format it -- the old route, reading the
+sentence back to tell a weld from a frame bar, would have parsed the model's own words.
+
+### `new RevJoint(id, x, y, input, ground)`: input comes first
+
+A test that meant a grounded pin wrote `new RevJoint('A', 0, 0, true)` and got a driven, floating
+one; the drawing then read as a chain that never reaches ground. Set `ground` and `input` by name
+where it matters.
+
 ### Reset left a clock a few tenths of a microsecond short of zero
 
 `easeToStart` eases each machine's clock back to its start, and skips drawing a frame that moves it

@@ -6,6 +6,7 @@ import { RealLink } from '../../app/model/link';
 import { FlagPacker } from '../../app/services/transcoding/flag-packer';
 import { BoolSetting } from '../../app/services/transcoding/stored-settings';
 import { createMechanismHarness, MechanismHarness } from '../../test-utils/mechanism-harness';
+import { read } from '../../test-utils/verification/issue-text';
 
 // What the Force tab asks for before it will call itself ready, now that
 // gravity is a load and a massless link is an idealization rather than a sin.
@@ -41,19 +42,22 @@ function fourBar(harness: MechanismHarness): RealLink[] {
   return links;
 }
 
-const row = (harness: MechanismHarness, title: string) =>
-  harness.service.forceAnalysisRequirements().find((r) => r.title === title)!;
+/** The issue with this title, as read, or nothing when it is not outstanding. */
+const issue = (harness: MechanismHarness, title: string) =>
+  harness.service
+    .forceSetupIssues()
+    .map(read)
+    .find((one) => one.title === title);
 
 describe('force analysis setup, as a fresh drawing meets it', () => {
   it('starts unloaded: massless everywhere, gravity with nothing to pull on', () => {
     const harness = createMechanismHarness();
     fourBar(harness);
 
-    const load = row(harness, 'A load to react against');
-    expect(load.met).toBe(false);
+    const load = issue(harness, 'Nothing loads the mechanism')!;
+    expect(load.summary).toBe('No force is applied and every link is massless.');
     // Both ways out, kept short: attach a force, or give a link mass.
-    expect(load.body).toContain('Attach a force');
-    expect(load.body).toContain('mass');
+    expect(load.fixes).toEqual(['Attach a force to any link', 'Type a mass in the Masses table']);
     expect(harness.service.forceAnalysisReady()).toBe(false);
   });
 
@@ -63,9 +67,7 @@ describe('force analysis setup, as a fresh drawing meets it', () => {
     links[1].mass = 5;
     harness.service.updateMechanism();
 
-    const load = row(harness, 'A load to react against');
-    expect(load.met).toBe(true);
-    expect(load.body).toContain('Gravity');
+    expect(issue(harness, 'Nothing loads the mechanism')).toBeUndefined();
     expect(harness.service.forceAnalysisReady()).toBe(true);
   });
 
@@ -75,12 +77,13 @@ describe('force analysis setup, as a fresh drawing meets it', () => {
     links[1].mass = 5;
     harness.service.updateMechanism();
 
-    const massless = row(harness, 'Massless links');
-    expect(massless.met).toBe(false);
-    expect(massless.warning).toBe(true);
+    const massless = issue(harness, '2 links are massless')!;
+    expect(massless.severity).toBe('warning');
     // Names the links, and says the idealization is allowed.
-    expect(massless.body).toContain('AB');
-    expect(massless.body).toContain('CD');
+    expect(massless.summary).toBe(
+      'link AB and link CD weigh nothing, so gravity and inertia skip them.'
+    );
+    expect(massless.explain).toContain('fine idealization');
     expect(harness.service.forceAnalysisReady()).toBe(true);
   });
 
@@ -91,42 +94,41 @@ describe('force analysis setup, as a fresh drawing meets it', () => {
     harness.settings.isGravity.next(false);
     harness.service.updateMechanism();
 
-    const load = row(harness, 'A load to react against');
-    expect(load.met).toBe(false);
-    expect(load.body).toContain('gravity is off');
+    const load = issue(harness, 'Nothing loads the mechanism')!;
+    expect(load.summary).toBe('Gravity is off, so link mass weighs nothing.');
     expect(harness.service.forceAnalysisReady()).toBe(false);
   });
 
-  it('offers to turn gravity on where doing so is the whole fix', () => {
+  it('says to turn gravity on first where doing so is the whole fix', () => {
     // Everything the analysis needs is drawn; the only thing in the way is a
-    // switch in another panel, so this refusal is the one the setup drawer can
-    // clear on the reader's behalf.
+    // switch in another panel, and the fix names the panel it lives in.
     const harness = createMechanismHarness();
     const links = fourBar(harness);
     links[1].mass = 5;
     harness.settings.isGravity.next(false);
     harness.service.updateMechanism();
 
-    expect(row(harness, 'A load to react against').act).toBe('gravity');
+    expect(issue(harness, 'Nothing loads the mechanism')!.fixes[0]).toBe(
+      'Turn on gravity in the Settings panel'
+    );
 
     harness.settings.isGravity.next(true);
     harness.service.updateMechanism();
     expect(harness.service.forceAnalysisReady()).toBe(true);
   });
 
-  it('does not offer it where it would leave the reader still blocked', () => {
+  it('does not offer it alone where it would leave the reader still blocked', () => {
     // Gravity off over a drawing with no mass anywhere: turning it on pulls on
-    // nothing, so a button promising a fix would not deliver one. The sentence
-    // still names both halves of the way out.
+    // nothing, so it is not a fix on its own. The fixes name both halves.
     const harness = createMechanismHarness();
     fourBar(harness);
     harness.settings.isGravity.next(false);
     harness.service.updateMechanism();
 
-    const load = row(harness, 'A load to react against');
-    expect(load.act).toBeUndefined();
-    expect(load.body).toContain('Attach a force');
-    expect(load.body).toContain('gravity');
+    expect(issue(harness, 'Nothing loads the mechanism')!.fixes).toEqual([
+      'Attach a force to any link',
+      'Turn on gravity and give a link mass',
+    ]);
   });
 
   it('feeds the gravity setting into the solved mechanism itself', () => {
@@ -214,8 +216,7 @@ describe('mass on a slider', () => {
     harness.service.links.push(...links);
     harness.service.updateMechanism();
 
-    const load = row(harness, 'A load to react against');
-    expect(load.met).toBe(true);
+    expect(issue(harness, 'Nothing loads the mechanism')).toBeUndefined();
   });
 });
 

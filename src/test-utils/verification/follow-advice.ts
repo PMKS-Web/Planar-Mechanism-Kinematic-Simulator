@@ -1,6 +1,5 @@
 // joint.ts first: see the import-cycle note in fixture.ts.
 import '../../app/model/joint';
-import { describeActuator } from '../../app/model/actuator';
 import { PrisJoint, RealJoint } from '../../app/model/joint';
 import { diagnoseMobility, Drawing, MobilityFix } from '../../app/model/mechanism/free-motion';
 import { Mechanism } from '../../app/model/mechanism/mechanism';
@@ -8,11 +7,10 @@ import {
   MechanismPartition,
   partitionMechanisms,
 } from '../../app/model/mechanism/mechanism-partition';
-import {
-  describeUnassigned,
-  ReadinessCheck,
-  readinessOf,
-} from '../../app/model/mechanism/readiness';
+import { readinessOf } from '../../app/model/mechanism/readiness';
+import { SetupIssue } from '../../app/model/mechanism/setup-issue';
+import { unassignedIssues } from '../../app/model/mechanism/unassigned-issues';
+import { isPart, Prose, textOf } from '../../app/model/prose';
 import { MODEL_SCALE } from '../../app/model/render-scale';
 import { buildMechanism, MechanismFixture } from './fixture';
 import { copyFixture, Scenario, Undo } from './student-mistakes';
@@ -21,10 +19,12 @@ import { copyFixture, Scenario, Undo } from './student-mistakes';
  * Doing what the app says, the way a student would.
  *
  * Each step reads the drawing's first blocker -- the top row of the setup
- * drawer -- and turns it into the one edit it asks for: the counted fix, the
- * joint to set as the input, the link to attach. A sentence that names no
- * edit is recorded as it stands and ends the walk, because that is where a
- * reader is left to guess, and those sentences are what this exists to find.
+ * drawer -- opens its fixes, and does one: the one that undoes the mistake
+ * where it is offered, as a reader who knows what they meant would, and the
+ * first otherwise. A fix is read as a reader reads it, by its verb and the parts
+ * it links to. An issue whose fixes name no edit is recorded as it stands and
+ * ends the walk, because that is where a reader is left to guess, and those
+ * issues are what this exists to find.
  */
 
 export type Action =
@@ -48,6 +48,7 @@ export type Action =
 
 export interface Step {
   title: string;
+  /** The summary and the fixes, as a reader sees them with the fixes open. */
   body: string;
   action?: Action;
   /** How many counted fixes the sentence offered, and where the undo sat among them. */
@@ -115,12 +116,6 @@ export function readDrawing(fixture: MechanismFixture) {
       new Set(partition.ownJoints.map((joint) => joint.id))
     );
     const readiness = readinessOf(partition, mechanism, {
-      cylinderName: (id) => id,
-      drivenRefusal: (part) => {
-        const input = part.ownJoints.find((joint) => joint instanceof RealJoint && joint.input);
-        const refusal = input ? describeActuator(input) : undefined;
-        return typeof refusal === 'string' ? refusal : undefined;
-      },
       strokeWarning: () => undefined,
       describeSpeed: () => '10.00 RPM',
       drawing: () => ({ joints: built.joints, links: built.links }),
@@ -128,8 +123,8 @@ export function readDrawing(fixture: MechanismFixture) {
     return { partition, readiness };
   });
   // A frame bar is information, not a blocker: the machines beside it run.
-  const stray = describeUnassigned(unassigned, built.joints).filter(
-    (report) => !report.title.includes('fixed at both ends')
+  const stray = unassignedIssues(unassigned, built.joints).filter(
+    (report) => !/ is grounded at (both ends|every joint)$/.test(report.title)
   );
   return { machines, stray, drawing: { joints: built.joints, links: built.links } };
 }
@@ -142,73 +137,99 @@ export function readDrawing(fixture: MechanismFixture) {
 function firstBlocker(fixture: MechanismFixture) {
   const { machines, stray, drawing } = readDrawing(fixture);
   for (const { partition, readiness } of machines) {
-    const check = readiness.checks.find((one) => one.state === 'blocker');
+    const check = readiness.checks.find((one) => one.severity === 'blocker');
     if (check) return { check, partition, stray, drawing };
   }
   if (machines.length === 0) {
-    const report = stray[0] ?? { title: 'Nothing to run', body: '' };
-    return { check: { state: 'blocker', ...report } as ReadinessCheck, stray, drawing };
+    const check: SetupIssue = stray[0] ?? {
+      severity: 'blocker',
+      title: 'Nothing to run',
+      summary: [],
+      explain: '',
+      fixes: [],
+    };
+    return { check, stray, drawing };
   }
   return { stray, drawing };
 }
 
-const fromFix = (fix: MobilityFix): Action =>
-  fix.kind === 'delete-link'
-    ? { kind: 'delete-link', link: fix.link.id }
-    : fix.kind === 'merge'
-      ? { kind: 'merge', joint: fix.joint.id, onto: fix.onto.id }
-      : fix.kind === 'connect'
-        ? { kind: 'add-link', joints: fix.joint.id + fix.to.id }
-        : { kind: fix.kind, joint: fix.joint.id };
+/**
+ * The edit one fix asks for, read the way a student reads it: the verb it
+ * opens with and the parts it links to. Undefined where it names no edit this
+ * harness can make -- a drag off a limit, "check the link lengths".
+ */
+export function actionOfFix(fix: Prose): Action | undefined {
+  const text = textOf(fix);
+  const ids = fix.filter(isPart).map((piece) => piece.part.id);
+  const [first, second] = ids;
+  if (!first) return undefined;
+  if (/^Ground (joint|slider) \S+( to fix its direction)?$/.test(text)) {
+    return { kind: 'ground', joint: first };
+  }
+  if (/^Unground joint \S+$/.test(text)) return { kind: 'unground', joint: first };
+  if (/^Set joint \S+ to Pin-in-slot$/.test(text)) return { kind: 'pin-in-slot', joint: first };
+  if (/^Set joint \S+ to Prismatic$/.test(text)) return { kind: 'prismatic', joint: first };
+  if (/^Weld joint \S+$/.test(text)) return { kind: 'weld', joint: first };
+  if (/^Unweld joint \S+$/.test(text)) return { kind: 'unweld', joint: first };
+  if (/^Drag joint \S+ onto joint \S+$/.test(text) && second) {
+    return { kind: 'merge', joint: first, onto: second };
+  }
+  if (/^Attach a link from joint \S+ to joint \S+$/.test(text) && second) {
+    return { kind: 'add-link', joints: first + second };
+  }
+  if (/^Attach a grounded link at joint \S+$/.test(text)) return { kind: 'attach', joint: first };
+  if (/^Delete (link|barrel|rod) \S+$/.test(text)) return { kind: 'delete-link', link: first };
+  if (/^Delete joint \S+$/.test(text)) return { kind: 'delete-joint', joint: first };
+  if (/^Set joint \S+ as the input$/.test(text)) return { kind: 'set-input', joint: first };
+  if (/^Move the input to joint \S+$/.test(text)) return { kind: 'move-input', joint: first };
+  return undefined;
+}
 
-/** The edit a sentence asks for, if it names one. */
+/** Whether an edit is the one that undoes a mistake. */
+function undoes(action: Action, undos: Undo[]): boolean {
+  const same = (a: string, b: string) => sortedIds(a) === sortedIds(b);
+  return undos.some((undo) =>
+    action.kind === 'delete-link'
+      ? undo.kind === 'delete-link' && same(undo.link, action.link)
+      : action.kind === 'add-link'
+        ? undo.kind === 'add-link' && same(undo.joints, action.joints)
+        : action.kind === 'merge'
+          ? undo.kind === 'merge' && 'joint' in undo && undo.joint === action.joint
+          : 'joint' in action && undo.kind === action.kind && 'joint' in undo
+            ? undo.joint === action.joint
+            : false
+  );
+}
+
+/**
+ * The edit a reader makes from an issue: of the fixes it lists, the one that
+ * undoes the mistake where it is there -- a reader who knows what they meant
+ * picks that one -- and the first they can act on otherwise.
+ */
 function actionFor(
-  check: ReadinessCheck,
+  check: SetupIssue,
   partition: MechanismPartition | undefined,
   drawing: Drawing,
   undos: Undo[]
 ): { action?: Action; offered: MobilityFix[] } {
-  // Offered several, a reader who knows what they meant picks that one: the
-  // drawer lists every counted way out rather than guessing between them.
-  const chosen = (offered: MobilityFix[]) => offered[rankOf(offered, undos) ?? 0];
-  const at = check.at?.id;
-  if (
+  const actions = check.fixes
+    .map(actionOfFix)
+    .filter((action): action is Action => action !== undefined);
+  const action = actions.find((one) => undoes(one, undos)) ?? actions[0];
+  // What the diagnosis counted, for the table of how the ways out rank.
+  const offered =
     partition &&
-    /degrees of freedom|tied to nothing|cannot turn|cannot slide/.test(check.title)
-  ) {
-    const diagnosis = diagnoseMobility(partition, drawing);
-    if (/also grounded/.test(check.body) && at) {
-      return { action: { kind: 'unground', joint: at }, offered: [] };
-    }
-    const offered = diagnosis.stuck?.fixes ?? diagnosis.fixes;
-    if (offered[0]) return { action: fromFix(chosen(offered)), offered };
-    if (diagnosis.attachAt) {
-      return { action: { kind: 'attach', joint: diagnosis.attachAt.id }, offered };
-    }
-    return { offered };
-  }
-  if (
-    partition &&
-    (check.title === 'This joint cannot be an input' ||
-      /has more than one link to turn$/.test(check.title))
-  ) {
-    const offered = diagnoseMobility(partition, drawing).untangle ?? [];
-    if (offered[0]) return { action: fromFix(chosen(offered)), offered };
-    const instead = check.body.match(/Set the input on joint (\S+) instead\./);
-    return { action: instead ? { kind: 'move-input', joint: instead[1] } : undefined, offered };
-  }
-  const hanging = check.title.match(/^Link (\S+) hangs from joint \S+ and nothing else$/);
-  if (hanging) return { action: { kind: 'delete-link', link: hanging[1] }, offered: [] };
-  const beside = check.title.match(/^Joint (\S+) is not joined to joint (\S+)$/);
-  if (beside) return { action: { kind: 'merge', joint: beside[1], onto: beside[2] }, offered: [] };
-  const stray = check.title.match(/^Link (\S+) is attached to nothing$/);
-  if (stray) return { action: { kind: 'delete-link', link: stray[1] }, offered: [] };
-  if (check.title === 'No input is set' && at) {
-    return { action: { kind: 'set-input', joint: at }, offered: [] };
-  }
-  const loose = check.title.match(/^Joint (\S+) has no link$/);
-  if (loose) return { action: { kind: 'delete-joint', joint: loose[1] }, offered: [] };
-  return { offered: [] };
+    /degrees of freedom|can't move|moves on its own|move freely|can't (turn|slide)/.test(
+      check.title
+    )
+      ? (() => {
+          const diagnosis = diagnoseMobility(partition, drawing);
+          return diagnosis.stuck?.fixes ?? diagnosis.fixes;
+        })()
+      : partition && /can't be the input|links to turn$/.test(check.title)
+        ? (diagnoseMobility(partition, drawing).untangle ?? [])
+        : [];
+  return { action, offered };
 }
 
 function rankOf(offered: MobilityFix[], undos: Undo[]): number | undefined {
@@ -263,7 +284,7 @@ export function followAdvice(scenario: Scenario): Walk {
       const { action, offered } = actionFor(check, partition, drawing, undos);
       steps.push({
         title: check.title,
-        body: check.body,
+        body: [textOf(check.summary), ...check.fixes.map((fix) => `- ${textOf(fix)}`)].join('\n'),
         action,
         offered: offered.length,
         undoRank: rankOf(
