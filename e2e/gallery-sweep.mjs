@@ -58,6 +58,11 @@ const EXPECTED_INVALID = new Set([
   'Four-bar with its rocker deleted',
   'Four-bar driven from its coupler point',
   'Slider-crank with a Prismatic slider',
+  'Four-bar with the weld at its knee left off',
+  'Scotch yoke on a Pin-in-slot guide',
+  // Two things wrong at once, both said together.
+  'Four-bar with a hanging link and no input',
+  'Four-bar driven from its coupler point, with a hanging link',
 ]);
 
 function galleryRows() {
