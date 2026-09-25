@@ -149,7 +149,7 @@ words are fixed where a control or a label repeats:
 | Title | what is wrong, from the student's side, in 3 to 7 words | `Slider D has no slot` |
 | Summary | the one fact that makes it a problem in this drawing | `With no slot and no ground, slider D has no direction to move in.` |
 | Explanation | the rule behind it, true of any drawing, naming no part | `A slider moves along a line, either a slot cut into a link or a fixed direction on the ground.` |
-| Fix | one edit, verb first | `Ground slider D to fix its direction` |
+| Fix | one edit, verb first, in the words of the control that makes it | `Ground slider D to fix its direction` |
 
 - **The toggle** reads `Show fixes` / `Hide fixes`, or `Show more` / `Show less` where there is
   nothing to change.
@@ -157,6 +157,14 @@ words are fixed where a control or a label repeats:
   `Required to run. One way to fix it:` / `Some ways to fix it:`, `Optional, it runs as is.
   Something to try:` / `Some things to try:`, `Optional, analysis skips it for now.` A blocker
   with no fix known says `Required to run.` alone.
+- **A fix says what to press, in the words the Edit panel and the right-click menu use**, so the
+  reader can find the control it names. A joint's type is a value of Joint Type: `Set joint C to
+  Revolute`, `Set joint C to Prismatic`, `Set joint C to Welded` -- never `Unweld`, which is no
+  longer something a reader can do. The Grounded switch is `Ground joint D` and `Turn off Grounded
+  for joint E` -- never `Unground`. The input is the panel's buttons: `Add Input to joint A`
+  (which moves it where the mechanism has one) and `Remove Input from joint D`. Building is the
+  menu's rows: `Attach Link`, `Attach Force`, `Delete link BC`. A number is its field: `Increase
+  the Length of barrel AC`, `Turn on Gravity in the Settings panel`.
 - **Never** `any one of these`, `instead`, or `would leave one degree of freedom` in a fix: the
   label frames the list. No em dash, no semicolon, and no `or` on a line of its own.
 - **Contractions** (`can't`, `isn't`) are the voice of these messages, where they read as a

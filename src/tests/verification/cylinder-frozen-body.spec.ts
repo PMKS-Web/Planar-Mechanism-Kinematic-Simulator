@@ -393,7 +393,7 @@ describe('a cylinder held by two bodies that meet at a pin', () => {
     const seal = joints.find((joint) => joint.id === 'B') as RealJoint;
     expect(describeActuator(seal)).toBe(
       "Both end joints of this cylinder are welded into link ABCDE, so it can't extend. " +
-        'Unweld joint A or joint C, or set another joint as the input.'
+        'Set joint A or joint C to Revolute, or Add Input to another joint.'
     );
     expect(describeActuatorRefusal(seal)?.short).toBe("can't extend");
   });
@@ -430,7 +430,7 @@ describe('the frozen body in the app', () => {
       .map(read);
     expect(warnings.map((check) => check.title)).toEqual(["Cylinder AC can't extend"]);
     expect(warnings[0].summary).toContain('Both end joints of cylinder AC');
-    expect(warnings[0].fixes).toEqual(['Unweld joint A', 'Unweld joint C']);
+    expect(warnings[0].fixes).toEqual(['Set joint A to Revolute', 'Set joint C to Revolute']);
     // The reach warning is about a linkage binding on a ram, and nothing here
     // is binding on anything.
     expect(warnings[0].summary).not.toContain('stroke');

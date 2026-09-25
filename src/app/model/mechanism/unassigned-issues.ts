@@ -74,7 +74,7 @@ export function unassignedIssues(
         "A mechanism needs ground to move against. Until a chain reaches it, analysis can't place any of its joints.",
       fixes: [
         ...(first ? [prose`Ground ${first}`] : []),
-        prose`Connect the chain to a grounded joint`,
+        prose`Attach Link from the chain to a grounded joint`,
       ],
     });
   });
@@ -88,7 +88,7 @@ export function unassignedIssues(
       summary: prose`Every joint on ${link} is grounded, so it's part of the frame.`,
       explain:
         "A link grounded at every joint can't move. That's fine for a fixed reference, and analysis leaves it out.",
-      fixes: grounded ? [prose`Unground ${jointRef(grounded)} to let it move`] : [],
+      fixes: grounded ? [prose`Turn off Grounded for ${jointRef(grounded)}`] : [],
     });
   });
 
@@ -102,8 +102,8 @@ export function unassignedIssues(
       summary: prose`${listOf(refs)} ${one ? "isn't" : "aren't"} held by any link.`,
       explain: 'A joint only moves when a link holds it. Analysis leaves out a joint with no link.',
       fixes: one
-        ? [prose`Attach a link to ${refs[0]}`, prose`Delete ${refs[0]}`]
-        : [prose`Attach a link to each of them`, prose`Delete ${listOf(refs)}`],
+        ? [prose`Attach Link to ${refs[0]}`, prose`Delete ${refs[0]}`]
+        : [prose`Attach Link to each of them`, prose`Delete ${listOf(refs)}`],
     });
   }
 

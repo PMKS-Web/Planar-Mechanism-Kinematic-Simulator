@@ -7187,6 +7187,9 @@ export class MechanismService {
     ) {
       return 'joint-selected';
     }
+    if (this.isLinkedPart(joint)) {
+      return 'joint-pointed';
+    }
     // Selecting a whole machine selects everything in it, so every one of its
     // joints reads as selected rather than the reader having to infer the
     // extent of the thing they just picked.
@@ -7287,8 +7290,25 @@ export class MechanismService {
    */
   hoveredPart: Joint | Link | undefined;
 
+  /**
+   * The part a `part-link` is pointing at: a part named in a sentence, which
+   * the reader is trying to find.
+   *
+   * Unlike `hoveredPart` it is lit whatever is selected, and over the gray a
+   * part wears in an analysis mode when its machine cannot run. Following a
+   * list of fixes, the reader has usually just pressed one part link, and the
+   * next one they point at is the next part to find -- and the parts a setup
+   * drawer names are exactly the ones of a machine that does not run yet.
+   */
+  linkedPart: Joint | Link | undefined;
+
   private isHoveredPart(part: Joint | Link): boolean {
     return !!this.hoveredPart && this.hoveredPart.id === part.id && this.nothingIsChosen();
+  }
+
+  /** Whether a part link is pointing at this part. */
+  private isLinkedPart(part: Joint | Link): boolean {
+    return !!this.linkedPart && this.linkedPart.id === part.id;
   }
 
   /**
@@ -7356,8 +7376,14 @@ export class MechanismService {
    * whichever piece the mark happens to be built around.
    */
   isPointedAtBody(body: Link | undefined): boolean {
-    const pointed = this.hoveredPart;
-    if (!body || !pointed || pointed instanceof Joint || !this.nothingIsChosen()) return false;
+    // A part link's part first, which is lit whatever is selected.
+    const pointed =
+      this.linkedPart && !(this.linkedPart instanceof Joint)
+        ? this.linkedPart
+        : this.nothingIsChosen()
+          ? this.hoveredPart
+          : undefined;
+    if (!body || !pointed || pointed instanceof Joint) return false;
     if (pointed.id === body.id) return true;
     const cylinder = this.cylinderOfBar(pointed);
     return !!cylinder && cylinder === this.cylinderOfBar(body);
@@ -7386,10 +7412,14 @@ export class MechanismService {
   }
 
   private linkStateClass(link: Link) {
+    const chosen = this.activeObjService.containsPart({ kind: 'link', id: link.id });
+    if (this.isLinkedPart(link) && !chosen) {
+      return 'link-pointed';
+    }
     if (this.isPartInert(link)) {
       return 'link-inert';
     }
-    if (this.activeObjService.containsPart({ kind: 'link', id: link.id })) {
+    if (chosen) {
       return 'link-selected';
     }
     if (this.isInSelectedMechanism(link)) {

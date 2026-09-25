@@ -57,7 +57,7 @@ describe('force analysis setup, as a fresh drawing meets it', () => {
     const load = issue(harness, 'Nothing loads the mechanism')!;
     expect(load.summary).toBe('No force is applied and every link is massless.');
     // Both ways out, kept short: attach a force, or give a link mass.
-    expect(load.fixes).toEqual(['Attach a force to any link', 'Type a mass in the Masses table']);
+    expect(load.fixes).toEqual(['Attach Force to any link', 'Type a mass in the Masses table']);
     expect(harness.service.forceAnalysisReady()).toBe(false);
   });
 
@@ -109,7 +109,7 @@ describe('force analysis setup, as a fresh drawing meets it', () => {
     harness.service.updateMechanism();
 
     expect(issue(harness, 'Nothing loads the mechanism')!.fixes[0]).toBe(
-      'Turn on gravity in the Settings panel'
+      'Turn on Gravity in the Settings panel'
     );
 
     harness.settings.isGravity.next(true);
@@ -126,8 +126,8 @@ describe('force analysis setup, as a fresh drawing meets it', () => {
     harness.service.updateMechanism();
 
     expect(issue(harness, 'Nothing loads the mechanism')!.fixes).toEqual([
-      'Attach a force to any link',
-      'Turn on gravity and give a link mass',
+      'Attach Force to any link',
+      'Turn on Gravity and give a link a mass',
     ]);
   });
 

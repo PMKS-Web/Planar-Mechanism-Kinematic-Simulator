@@ -43,7 +43,7 @@ describe('what the drawer says about a mistake it has learned to name', () => {
     const [issue] = said(weldedCouplerPinFixture()).issues;
     expect(issue.title).toBe("Over-constrained, can't move");
     expect(issue.summary).toBe('The count comes to 0 degrees of freedom, so nothing can move.');
-    expect(issue.fixes).toEqual(['Unweld joint C']);
+    expect(issue.fixes).toEqual(['Set joint C to Revolute']);
     expect(issue.parts).toEqual(['C']);
   });
 
@@ -86,7 +86,7 @@ describe('what the drawer says about a mistake it has learned to name', () => {
       ['warning', 'Two joints are set as the input'],
     ]);
     expect(issues[0].summary).toBe('The mechanism runs from joint A and ignores joint D.');
-    expect(issues[0].fixes).toEqual(['Remove the input from joint D']);
+    expect(issues[0].fixes).toEqual(['Remove Input from joint D']);
   });
 
   it('names a stray link, and runs the mechanism beside it', () => {
@@ -104,8 +104,8 @@ describe('what the drawer says about a mistake it has learned to name', () => {
     // is not asked for one: its input is on the other half.
     const { issues } = said(groundedWattJointFixture());
     expect(issues.map((issue) => [issue.title, issue.fixes])).toEqual([
-      ["Over-constrained, can't move", ['Unground joint E']],
-      ["Over-constrained, can't move", ['Unground joint E']],
+      ["Over-constrained, can't move", ['Turn off Grounded for joint E']],
+      ["Over-constrained, can't move", ['Turn off Grounded for joint E']],
     ]);
   });
 
@@ -117,9 +117,9 @@ describe('what the drawer says about a mistake it has learned to name', () => {
     // there. Deleting BC is listed too, and welding it to the crank as an arm;
     // a new pivot is not, with an old one standing right there to join.
     expect(issue.fixes).toEqual([
-      'Attach a link from joint C to joint D',
+      'Attach Link from joint C to joint D',
       'Delete link BC',
-      'Weld joint B',
+      'Set joint B to Welded',
     ]);
   });
 
@@ -135,7 +135,7 @@ describe('what the drawer says about a mistake it has learned to name', () => {
     expect(issue.summary).toBe(
       'Only one link meets at joint E, so it has nothing to turn against.'
     );
-    expect(issue.fixes).toEqual(['Move the input to joint A']);
+    expect(issue.fixes).toEqual(['Add Input to joint A']);
   });
 
   it('welds a bent coupler at its knee, before anything that changes another link', () => {
@@ -144,7 +144,11 @@ describe('what the drawer says about a mistake it has learned to name', () => {
     // Welding B or E counts too, and so does grounding E, but each changes a
     // link the reader drew to turn about a pivot: they are listed after C, and
     // the list stops at three.
-    expect(issue.fixes).toEqual(['Weld joint C', 'Weld joint E', 'Ground joint E']);
+    expect(issue.fixes).toEqual([
+      'Set joint C to Welded',
+      'Set joint E to Welded',
+      'Ground joint E',
+    ]);
   });
 
   it("makes a Scotch yoke's guide Prismatic, so the yoke slides without turning", () => {
@@ -164,8 +168,11 @@ describe('what the drawer says about a mistake it has learned to name', () => {
     ]);
     // With no input to hold, a fix has to leave a freedom some joint could
     // drive: grounding B, or welding it, leaves one -- the hanging link's.
-    expect(issues[0].fixes).toEqual(['Delete link CE', 'Attach a grounded link at joint E']);
-    expect(issues[1].fixes).toEqual(['Set joint A as the input']);
+    expect(issues[0].fixes).toEqual([
+      'Delete link CE',
+      'Attach Link at joint E, then ground its far end',
+    ]);
+    expect(issues[1].fixes).toEqual(['Add Input to joint A']);
   });
 
   it('says an input that cannot be one beside the count, which is not its doing', () => {
@@ -176,7 +183,10 @@ describe('what the drawer says about a mistake it has learned to name', () => {
     ]);
     // Not "with the input held still": this one cannot be held.
     expect(issues[1].summary).toBe('The mechanism can move in 2 independent ways.');
-    expect(issues[1].fixes).toEqual(['Delete link CF', 'Attach a grounded link at joint F']);
+    expect(issues[1].fixes).toEqual([
+      'Delete link CF',
+      'Attach Link at joint F, then ground its far end',
+    ]);
   });
 
   it('runs once the drawer is done with it, every one', () => {

@@ -85,7 +85,7 @@ describe('why a mechanism will not run', () => {
     });
 
     const check = read(readiness.checks[0]);
-    expect(check.fixes).toContain('Attach a grounded link at joint C');
+    expect(check.fixes).toContain('Attach Link at joint C, then ground its far end');
     expect(check.fixes).not.toContain('Ground joint C');
     // The counted fix is deleting BC, so it comes first; the free end is named
     // for the reader who meant to finish the four-bar.
@@ -124,7 +124,7 @@ describe('why a mechanism will not run', () => {
     expect(check.title).toBe('No input is set');
     // Names a joint that can actually take the job, so the fix is an answer
     // rather than a place to start looking.
-    expect(check.fixes).toEqual([expect.stringMatching(/^Set joint [A-Z] as the input$/)]);
+    expect(check.fixes).toEqual([expect.stringMatching(/^Add Input to joint [A-Z]$/)]);
     expect(check.parts).toHaveLength(1);
   });
 
@@ -237,6 +237,6 @@ describe('why a mechanism will not run', () => {
     expect(reports[0].title).toBe('Link EF is attached to nothing');
     expect(reports[0].fixes).toEqual(['Ground joint E', 'Delete link EF']);
     expect(reports[1].title).toBe('Joint G has no link');
-    expect(reports[1].fixes).toEqual(['Attach a link to joint G', 'Delete joint G']);
+    expect(reports[1].fixes).toEqual(['Attach Link to joint G', 'Delete joint G']);
   });
 });

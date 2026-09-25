@@ -421,7 +421,7 @@ describe('a ram whose two ends are welded into one body', () => {
     if (torn.ok) return;
     expect(torn.refusal.code).toBe('cylinder.pose-conflict');
     expect(torn.refusal.long).toContain('would change the shape of');
-    expect(torn.refusal.long).toContain('Unweld joint');
+    expect(torn.refusal.long).toMatch(/Set joint \S+ to Revolute/);
   });
 });
 

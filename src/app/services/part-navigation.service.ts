@@ -23,15 +23,16 @@ export class PartNavigationService implements PartLinkTarget {
   private activeObj = inject(ActiveObjService);
 
   /**
-   * Through the grid's list-pointing mark, the one the export drawer uses. It
-   * defers to a selection, so pointing never takes a reader's own mark away.
+   * Through the grid's list-pointing mark, the one the export drawer uses, but
+   * lit whatever is selected (`MechanismService.linkedPart`): the reader is
+   * finding the parts a list of fixes names, one after another.
    */
   point(part: Joint | Link | undefined): void {
-    this.mechanism.hoveredPart = part;
+    this.mechanism.linkedPart = part;
   }
 
   open(part: Joint | Link): void {
-    this.mechanism.hoveredPart = undefined;
+    this.mechanism.linkedPart = undefined;
     this.tabs.setTab(TabID.EDIT);
     if (part instanceof RealJoint || part instanceof RealLink) {
       this.activeObj.updateSelectedObj(part);

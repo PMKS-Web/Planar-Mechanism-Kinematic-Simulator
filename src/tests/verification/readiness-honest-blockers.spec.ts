@@ -142,7 +142,9 @@ describe('readiness never says a driven mechanism is not driven', () => {
   it('still says it for a machine that really has no input joint', () => {
     const readiness = readinessOf(undrivenPartition(), failing('not-driven'), helpers);
     expect(readiness.checks[0].title).toBe('No input is set');
-    expect(read(readiness.checks[0]).fixes[0]).toMatch(/as the input$/);
+    expect(read(readiness.checks[0]).fixes[0]).toMatch(
+      /^(Add Input to joint [A-Z]|Ground a joint, then Add Input to it)$/
+    );
   });
 });
 

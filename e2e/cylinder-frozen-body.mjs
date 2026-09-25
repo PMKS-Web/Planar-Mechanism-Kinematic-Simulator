@@ -135,7 +135,7 @@ check(
   text.includes('No input is set'),
   text.slice(0, 160)
 );
-check('and offers a joint to drive', /Set joint [A-Z] as the input/.test(text), text.slice(0, 400));
+check('and offers a joint to drive', /Add Input to joint [A-Z]/.test(text), text.slice(0, 400));
 
 // --- with the input on: it runs ---------------------------------------------
 ids = await build({ drive: true });
@@ -186,7 +186,7 @@ check(
 );
 check(
   'and never says nothing drives it',
-  readiness.every((r) => !/No input is set|as the input/.test(r.said)),
+  readiness.every((r) => !/No input is set|Add Input to joint/.test(r.said)),
   readiness.map((r) => r.said).join(' ')
 );
 
@@ -196,7 +196,8 @@ await page.waitForTimeout(500);
 text = await drawerTextOpen();
 check(
   'the drawer says the cylinder cannot extend, and which welds to undo',
-  /Cylinder [A-Z]+ can't extend/.test(text) && /Unweld joint [A-Z]\s+Unweld joint [A-Z]/.test(text),
+  /Cylinder [A-Z]+ can't extend/.test(text) &&
+    /Set joint [A-Z] to Revolute\s+Set joint [A-Z] to Revolute/.test(text),
   text.slice(0, 400)
 );
 check(
@@ -304,7 +305,7 @@ check(
 );
 check(
   'and the reason behind it names the welds to undo',
-  /Unweld joint [A-Z] or joint [A-Z]/.test(inputRow?.long ?? ''),
+  /Set joint [A-Z] or joint [A-Z] to Revolute/.test(inputRow?.long ?? ''),
   inputRow?.long ?? ''
 );
 await page.keyboard.press('Escape');

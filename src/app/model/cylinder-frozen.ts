@@ -100,9 +100,12 @@ function frozenEnds(cylinder: Cylinder): string {
 
 /** Why a drive may not be put on a frozen cylinder's seal, for `describeActuator`. */
 export function describeFrozenCylinderDrive(cylinder: Cylinder): string {
-  const free = cylinder.barrelRoot.id === cylinder.rodRoot.id ? 'Unweld' : 'Free';
+  const free =
+    cylinder.barrelRoot.id === cylinder.rodRoot.id
+      ? `Set ${frozenEnds(cylinder)} to Revolute`
+      : `Free ${frozenEnds(cylinder)}`;
   return (
     `Both end joints of this cylinder ${frozenInto(cylinder)}, so it can't extend. ` +
-    `${free} ${frozenEnds(cylinder)}, or set another joint as the input.`
+    `${free}, or Add Input to another joint.`
   );
 }

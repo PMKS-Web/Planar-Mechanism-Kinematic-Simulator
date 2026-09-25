@@ -356,7 +356,7 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
       if (because === 'closed') {
         return `${part} is already closed as far as it goes, and this edit would bring its two end joints closer still. Move it the other way, or give its barrel a shorter length first.`;
       }
-      return `${part} cannot follow this edit: another body in the drawing needs one of its joints somewhere the part cannot reach. Unweld ${ends}, or move one part at a time.`;
+      return `${part} cannot follow this edit: another body in the drawing needs one of its joints somewhere the part cannot reach. Set ${ends} to Revolute, or move one part at a time.`;
     };
     return {
       ok: false,
@@ -823,8 +823,8 @@ function shapeRefusal(root: Link, part: Cylinder, context: EditContext): PosePla
     short: 'it cannot change shape',
     long: `Moving ${context.names.cylinder(
       part
-    )} as one piece would change the shape of ${body}, which is one rigid body: something else in the drawing needs one of its joints somewhere else. Unweld joint ${context.names.joint(
+    )} as one piece would change the shape of ${body}, which is one rigid body: something else in the drawing needs one of its joints somewhere else. Set joint ${context.names.joint(
       end.id
-    )} to let the cylinder move on its own, or move one part at a time.`,
+    )} to Revolute to let the cylinder move on its own, or move one part at a time.`,
   };
 }

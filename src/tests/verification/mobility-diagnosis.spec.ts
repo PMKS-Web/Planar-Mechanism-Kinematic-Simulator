@@ -78,8 +78,8 @@ describe('which part is loose, and what would fix it', () => {
       // Each a link to its part, for the reader to choose.
       expect(check.fixes).toEqual([
         'Delete link BC',
-        'Weld joint B',
-        'Attach a grounded link at joint C',
+        'Set joint B to Welded',
+        'Attach Link at joint C, then ground its far end',
       ]);
       expect(check.parts).toEqual(['BC', 'BC', 'B', 'C']);
       expect(check.fixes.join(' ')).not.toContain('Ground joint C');
@@ -93,7 +93,10 @@ describe('which part is loose, and what would fix it', () => {
 
       const check = checkFor(boomWithDanglingLinkFixture());
       expect(check.summary).toBe('With the input held still, link CE can still move.');
-      expect(check.fixes).toEqual(['Delete link CE', 'Attach a grounded link at joint E']);
+      expect(check.fixes).toEqual([
+        'Delete link CE',
+        'Attach Link at joint E, then ground its far end',
+      ]);
       // N is the barrel's buried inner end and P the square the rod slides on.
       expect([check.summary, ...check.fixes].join(' ')).not.toMatch(/\b[NP]\b/);
     });
@@ -115,7 +118,9 @@ describe('which part is loose, and what would fix it', () => {
       // is not offered for that reason.
       const { partition } = built(overGroundedFourBarFixture());
       expect(diagnoseMobility(partition).fixes.map(describeFix)).toEqual(['unground C']);
-      expect(checkFor(overGroundedFourBarFixture()).fixes).toEqual(['Unground joint C']);
+      expect(checkFor(overGroundedFourBarFixture()).fixes).toEqual([
+        'Turn off Grounded for joint C',
+      ]);
     });
 
     it('lets a Prismatic slider turn, and does not delete the rod to get there', () => {
@@ -151,7 +156,7 @@ describe('which part is loose, and what would fix it', () => {
       const checks = readinessOf(partition, mechanism, helpers).checks.map(read);
       expect(checks.map((check) => check.title)).toEqual(["Input at joint A can't turn"]);
       expect(checks[0].summary).toBe("link AB is also grounded at joint B, so it can't move.");
-      expect(checks[0].fixes).toEqual(['Unground joint B']);
+      expect(checks[0].fixes).toEqual(['Turn off Grounded for joint B']);
     });
 
     it('grays the input row with the same reason', () => {

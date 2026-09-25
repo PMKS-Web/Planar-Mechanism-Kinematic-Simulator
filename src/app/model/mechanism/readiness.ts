@@ -176,8 +176,8 @@ function noInputIssue(partition: MechanismPartition): SetupIssue {
       "The input is the one joint the animation moves directly, and the rest follows. It's usually a grounded joint at the end of a crank.",
     fixes: [
       candidate
-        ? prose`Set ${jointRef(candidate)} as the input`
-        : prose`Ground a joint, then set it as the input`,
+        ? prose`Add Input to ${jointRef(candidate)}`
+        : prose`Ground a joint, then Add Input to it`,
     ],
   };
 }
@@ -274,7 +274,7 @@ function issueForFailure(
         summary: prose`The barrel of ${name} is too short for the rod to slide.`,
         explain:
           "A cylinder extends by sliding its rod along inside its barrel. With no room inside, it can't extend at all.",
-        fixes: [prose`Increase the length of ${linkRef(cylinder.barrel, cylinders)}`],
+        fixes: [prose`Increase the Length of ${linkRef(cylinder.barrel, cylinders)}`],
       };
     }
 
@@ -298,7 +298,7 @@ function issueForFailure(
           summary: prose`The drawing can move and ${jointRef(driven)} drives it, but no first step works.`,
           explain:
             'The animation solves the motion one small step at a time from the drawn pose. Now and then a pose that can move still gives no first step.',
-          fixes: [prose`Set another joint as the input`],
+          fixes: [prose`Add Input to another joint`],
         };
       }
       const mover = driven && diagnosis.inputStart === 'limit' ? diagnosis.mover : undefined;
@@ -406,7 +406,7 @@ function inputOnFrameIssue(joint: RealJoint, partition: MechanismPartition): Set
         : prose`Every link on ${jointRef(joint)} is also grounded at ${listOf(pins)}.`,
     explain:
       "A link grounded at two joints is part of the frame. It can't move, so an input on it has nothing to turn.",
-    fixes: pins.slice(0, 3).map((pin) => prose`Unground ${pin}`),
+    fixes: pins.slice(0, 3).map((pin) => prose`Turn off Grounded for ${pin}`),
   };
 }
 
@@ -422,7 +422,7 @@ function refusedInputIssue(
   instead: RealJoint | undefined
 ): SetupIssue {
   const joint = jointRef(driven);
-  const moveInput = instead ? [prose`Move the input to ${jointRef(instead)}`] : [];
+  const moveInput = instead ? [prose`Add Input to ${jointRef(instead)}`] : [];
   const twoMeet =
     'An input turns one link against another link or the ground. It has to sit where exactly two of them meet.';
   const base = {
@@ -436,7 +436,7 @@ function refusedInputIssue(
         summary: prose`${joint} is welded, so the links it joins can't move against each other.`,
         explain:
           'An input makes two links move against each other. A weld locks them together, so there is nothing for the input to turn.',
-        fixes: [prose`Unweld ${joint}`, ...moveInput],
+        fixes: [prose`Set ${joint} to Revolute`, ...moveInput],
       };
     case 'frozen-cylinder': {
       const cylinder = frozenCylinderAtSeal(driven)!;
@@ -447,10 +447,10 @@ function refusedInputIssue(
         summary: prose`Both end joints of ${cylinderRef(cylinder)} are on one link, so it can't extend.`,
         explain:
           "A cylinder drives by changing the distance between its two end joints. With both on one link, that distance can't change.",
-        fixes: [...(welded ? ends.map((end) => prose`Unweld ${end}`) : []), ...moveInput].slice(
-          0,
-          3
-        ),
+        fixes: [
+          ...(welded ? ends.map((end) => prose`Set ${end} to Revolute`) : []),
+          ...moveInput,
+        ].slice(0, 3),
       };
     }
     case 'frame':
@@ -460,14 +460,14 @@ function refusedInputIssue(
         ...base,
         summary: prose`Only one link meets at ${joint}, so it has nothing to turn against.`,
         explain: twoMeet,
-        fixes: moveInput.length ? moveInput : [prose`Set the input on a grounded joint`],
+        fixes: moveInput.length ? moveInput : [prose`Add Input to a grounded joint`],
       };
     case 'many-bodies':
       return {
         ...base,
         summary: prose`${meetingHere(driven)} meet at ${joint}, so the input can't pick a pair.`,
         explain: twoMeet,
-        fixes: moveInput.length ? moveInput : [prose`Set the input where exactly two meet`],
+        fixes: moveInput.length ? moveInput : [prose`Add Input where exactly two links meet`],
       };
     case 'no-angle':
       return {
@@ -475,7 +475,7 @@ function refusedInputIssue(
         summary: prose`${joint} is on a slider's block, a single point with no angle to turn.`,
         explain:
           "An angle needs a direction on each side of the joint. A slider's block is a single point, so it gives none.",
-        fixes: moveInput.length ? moveInput : [prose`Set the input at the other end of its link`],
+        fixes: moveInput.length ? moveInput : [prose`Add Input at the other end of its link`],
       };
     case 'not-a-joint':
       return {
@@ -646,7 +646,7 @@ export function readinessOf(
       summary: prose`The mechanism runs from ${jointRef(used)} and ignores ${listOf(ignored.map(jointRef))}.`,
       explain:
         'One input drives one degree of freedom. The mechanism uses the first input it finds and ignores the rest.',
-      fixes: ignored.slice(0, 3).map((joint) => prose`Remove the input from ${jointRef(joint)}`),
+      fixes: ignored.slice(0, 3).map((joint) => prose`Remove Input from ${jointRef(joint)}`),
     });
   }
 
@@ -659,7 +659,10 @@ export function readinessOf(
       summary: prose`The mechanism locks up before ${name} reaches the end of its travel.`,
       explain:
         'A cylinder can only extend as far as the mechanism lets it. If the mechanism locks up first, the rest of the stroke is never used.',
-      fixes: [prose`Shorten the travel of ${name}`, prose`Give the mechanism more room to move`],
+      fixes: [
+        prose`Decrease the Length of ${linkRef(stroke.cylinder.barrel, cylinders)}`,
+        prose`Give the mechanism more room to move`,
+      ],
     });
   }
 
@@ -701,7 +704,10 @@ function frozenCylinderIssue(cylinder: Cylinder): SetupIssue {
     explain:
       'A cylinder moves by changing the distance between its two end joints. On one rigid piece that distance stays fixed, which is fine for a part meant to be solid.',
     fixes: welded
-      ? [prose`Unweld ${jointRef(cylinder.mountA)}`, prose`Unweld ${jointRef(cylinder.mountB)}`]
+      ? [
+          prose`Set ${jointRef(cylinder.mountA)} to Revolute`,
+          prose`Set ${jointRef(cylinder.mountB)} to Revolute`,
+        ]
       : [prose`Remove a link that holds its two ends together`],
   };
 }

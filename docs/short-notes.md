@@ -674,8 +674,10 @@ any panel and in the gallery. `main.ts` provides `PartNavigationService` for it;
 provides `partLinkStub()` (Actions panel); a component spec provides a stub of its own. The block
 injects it optionally, so a spec that forgot one renders the name and goes nowhere, rather than
 failing to build -- which is also why a link that seems dead in a unit test is not a bug in the
-block. Pointing goes through `MechanismService.hoveredPart`, which defers to a selection: once
-anything is selected, pointing lights nothing.
+block. Pointing goes through `MechanismService.linkedPart`, not `hoveredPart`: the export drawer's
+pointing defers to a selection, and a part link's must not, because a reader following fixes has
+usually just pressed the last one. It also wins over `joint-inert` and `link-inert`, the gray an
+analysis mode draws a machine that can't run in -- which is every machine a setup drawer names.
 
 ### `prose-block`'s template is inline and on one line
 
