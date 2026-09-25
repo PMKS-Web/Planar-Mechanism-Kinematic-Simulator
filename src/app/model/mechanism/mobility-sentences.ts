@@ -22,26 +22,28 @@ export { nameOf };
 
 /**
  * One fix as a reader would do it, with its parts as links: "Ground joint D",
- * "Delete link BC". A verb first, and one edit.
+ * "Delete link BC". A verb first, one edit, and the words of the control that
+ * makes it -- the Grounded switch, the Joint Type choice, Attach Link -- so the
+ * reader can find it in the Edit panel or the right-click menu.
  */
 export function fixProse(fix: MobilityFix, partition: MechanismPartition): Prose {
   switch (fix.kind) {
     case 'ground':
       return prose`Ground ${jointRef(fix.joint)}`;
     case 'unground':
-      return prose`Unground ${jointRef(fix.joint)}`;
+      return prose`Turn off Grounded for ${jointRef(fix.joint)}`;
     case 'pin-in-slot':
       return prose`Set ${jointRef(fix.joint)} to Pin-in-slot`;
     case 'prismatic':
       return prose`Set ${jointRef(fix.joint)} to Prismatic`;
     case 'weld':
-      return prose`Weld ${jointRef(fix.joint)}`;
+      return prose`Set ${jointRef(fix.joint)} to Welded`;
     case 'unweld':
-      return prose`Unweld ${jointRef(fix.joint)}`;
+      return prose`Set ${jointRef(fix.joint)} to Revolute`;
     case 'merge':
       return prose`Drag ${jointRef(fix.joint)} onto ${jointRef(fix.onto)}`;
     case 'connect':
-      return prose`Attach a link from ${jointRef(fix.joint)} to ${jointRef(fix.to)}`;
+      return prose`Attach Link from ${jointRef(fix.joint)} to ${jointRef(fix.to)}`;
     case 'delete-link':
       return prose`Delete ${linkRef(fix.link, cylindersIn(partition.joints))}`;
   }
@@ -58,7 +60,7 @@ export function fixesFrom(
 
 /** A free end finished the way a four-bar is: a link from it to the ground. */
 export const attachAdvice = (joint: RealJoint): Prose =>
-  prose`Attach a grounded link at ${jointRef(joint)}`;
+  prose`Attach Link at ${jointRef(joint)}, then ground its far end`;
 
 /** The links that still move with the input held, as parts of a sentence. */
 function looseLinks(diagnosis: MobilityDiagnosis, partition: MechanismPartition): Prose {
@@ -110,7 +112,7 @@ export function tooFree(dof: number, partition: MechanismPartition, drawing?: Dr
     ? fixesFrom(diagnosis.fixes, partition, ...attach)
     : attach.length
       ? attach
-      : [prose`Ground another joint`, prose`Connect a free joint to a second link`];
+      : [prose`Ground another joint`, prose`Attach Link to a joint that moves freely`];
   return {
     severity: 'blocker',
     title: `${dof} degrees of freedom, needs 1`,
@@ -139,7 +141,11 @@ export function overConstrained(
   const welded = partition.ownJoints.some((joint) => joint instanceof RealJoint && joint.isWelded);
   const fixes = diagnosis.fixes.length
     ? fixesFrom(diagnosis.fixes, partition)
-    : [prose`Delete a link`, prose`Unground a joint`, ...(welded ? [prose`Unweld a joint`] : [])];
+    : [
+        prose`Delete a link`,
+        prose`Turn off Grounded for a joint`,
+        ...(welded ? [prose`Set a welded joint to Revolute`] : []),
+      ];
   return {
     severity: 'blocker',
     title: "Over-constrained, can't move",
@@ -183,8 +189,11 @@ export function stuckIssue(
     fixes: stuck.fixes.length
       ? fixesFrom(stuck.fixes, partition)
       : one
-        ? [prose`Delete a link that holds ${links[0]}`, prose`Unground a joint of ${links[0]}`]
-        : [prose`Delete one of the locked links`, prose`Unground one of their joints`],
+        ? [
+            prose`Delete a link that holds ${links[0]}`,
+            prose`Turn off Grounded for a joint of ${links[0]}`,
+          ]
+        : [prose`Delete one of the locked links`, prose`Turn off Grounded for one of their joints`],
   };
 }
 
@@ -219,7 +228,7 @@ export function looseIssue(
       : prose`The count reads 1, but the drawing can move in ${ways} ways.`,
     explain:
       "The count of degrees of freedom can read 1 while a part still swings freely. The input alone can't say where that part goes.",
-    fixes: fixes.length ? fixes : [prose`Attach the loose part to the mechanism`],
+    fixes: fixes.length ? fixes : [prose`Attach Link from the loose part to the mechanism`],
   };
 }
 

@@ -112,7 +112,7 @@ record(
 // where the switch lives rather than throwing it for the reader.
 record(
   'the way out waits behind Show fixes',
-  !text.includes('Turn on gravity') &&
+  !text.includes('Turn on Gravity') &&
     (await page.locator('app-analysis-setup button-block').count()) === 0,
   text
 );
@@ -120,7 +120,7 @@ text = await openText();
 record(
   'naming the way out rather than only the wall',
   text.includes('Required to run. Some ways to fix it:') &&
-    text.includes('Turn on gravity in the Settings panel'),
+    text.includes('Turn on Gravity in the Settings panel'),
   text
 );
 // Turned on where the fix says it lives, by the same steps the Settings toggle takes.
@@ -166,11 +166,7 @@ record(
   text
 );
 text = await openText();
-record(
-  'which names a joint that could take the job',
-  /Set joint [A-Z] as the input/.test(text),
-  text
-);
+record('which names a joint that could take the job', /Add Input to joint [A-Z]/.test(text), text);
 
 const chip = await chipFor('Kinematic').textContent();
 record('and the mode chip counts it', chip.trim() === '1 fix', { chip });
@@ -182,7 +178,7 @@ const label = (await named.textContent()).trim();
 await named.hover();
 await page.waitForTimeout(200);
 const pointed = await page.evaluate(
-  () => ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.hoveredPart?.id
+  () => ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.linkedPart?.id
 );
 record('and pointing at it lights that part on the grid', label.endsWith(` ${pointed}`), {
   label,
@@ -338,7 +334,7 @@ record(
   !text.includes("can't turn") &&
     text.includes('2 degrees of freedom, needs 1') &&
     text.includes('Delete link BC') &&
-    text.includes('Attach a grounded link at joint C'),
+    text.includes('Attach Link at joint C, then ground its far end'),
   text
 );
 
@@ -372,7 +368,7 @@ record(
   !text.includes("can't turn") &&
     text.includes('link HK can still move') &&
     text.includes('Delete link HK') &&
-    text.includes('Attach a grounded link at joint K'),
+    text.includes('Attach Link at joint K, then ground its far end'),
   text
 );
 
@@ -462,7 +458,7 @@ await page.waitForTimeout(600);
 text = await openText();
 record(
   'a pin welded by mistake is named, with the unweld counted',
-  text.includes("Over-constrained, can't move") && text.includes('Unweld joint C'),
+  text.includes("Over-constrained, can't move") && text.includes('Set joint C to Revolute'),
   text
 );
 await partLink('joint C').click();
@@ -554,7 +550,11 @@ const ways = await fixTexts();
 record(
   'three ways out are listed, each naming its part',
   JSON.stringify(ways) ===
-    JSON.stringify(['Delete link BC', 'Weld joint B', 'Attach a grounded link at joint C']),
+    JSON.stringify([
+      'Delete link BC',
+      'Set joint B to Welded',
+      'Attach Link at joint C, then ground its far end',
+    ]),
   ways
 );
 await page.locator('app-analysis-setup li.issueFix').nth(2).locator('part-link button').click();
@@ -564,6 +564,58 @@ const wentTo = await page.evaluate(() => {
   return grid.activeObjService.objType === 'Joint' ? grid.activeObjService.selectedJoint.id : null;
 });
 record('and the last one goes to its own part', wentTo === 'C', { wentTo });
+
+// With joint C now selected, the next part a reader points at still lights: a
+// list of fixes is followed one part after another.
+await partLink('link BC').hover();
+await page.waitForTimeout(250);
+const litWhileSelected = await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const srv = grid.mechanismSrv;
+  return {
+    bc: srv.getLinkCSSClass(srv.links.find((link) => link.id === 'BC')),
+    c: srv.getJointCSSClass(srv.joints.find((joint) => joint.id === 'C')),
+    painted: document.querySelectorAll('.link-pointed').length,
+  };
+});
+record(
+  'and pointing at another part lights it while joint C stays selected',
+  litWhileSelected.bc.includes('link-pointed') &&
+    litWhileSelected.c.includes('joint-selected') &&
+    litWhileSelected.painted > 0,
+  litWhileSelected
+);
+await page.mouse.move(5, 5);
+await page.waitForTimeout(200);
+const letGo = await page.evaluate(() => {
+  const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+  return srv.getLinkCSSClass(srv.links.find((link) => link.id === 'BC'));
+});
+record('and lets go of it when the pointer leaves', !letGo.includes('link-pointed'), letGo);
+
+// In an analysis mode a machine that cannot run is drawn gray, and those are
+// exactly the parts a setup drawer names: pointing lights them all the same.
+await open(galleryQuery('Link hanging from a pivot'));
+await tab('Kinematic').click();
+await page.waitForTimeout(800);
+await chipFor('Kinematic').click();
+await page.waitForTimeout(600);
+await partLink('link DE').hover();
+await page.waitForTimeout(250);
+const litWhileInert = await page.evaluate(() => {
+  const grid = ng.getComponent(document.querySelector('app-new-grid'));
+  const srv = grid.mechanismSrv;
+  return {
+    tab: grid.tabService.getCurrentTab(),
+    de: srv.getLinkCSSClass(srv.links.find((link) => link.id === 'DE')),
+  };
+});
+record(
+  'and lights a part of a machine the analysis mode draws gray',
+  litWhileInert.tab === 2 && litWhileInert.de.includes('link-pointed'),
+  litWhileInert
+);
+await page.mouse.move(5, 5);
 
 // --- more than one thing wrong, said at once ---------------------------------
 // The solver stops at the count; a missing input does not wait on it, so the
@@ -609,7 +661,7 @@ await openText();
 const kneeWays = await fixTexts();
 record(
   'a weld left off is offered first, before the fixes that change another link',
-  kneeWays.length === 3 && kneeWays[0] === 'Weld joint C',
+  kneeWays.length === 3 && kneeWays[0] === 'Set joint C to Welded',
   kneeWays
 );
 await page.locator('app-analysis-setup li.issueFix').first().locator('part-link button').click();

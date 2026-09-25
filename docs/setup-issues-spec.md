@@ -246,8 +246,12 @@ Written by the designer against `feature/explain-blockers-check-answers`, then b
 own guides ahead of it ([`ui-vocabulary.md`](ui-vocabulary.md), [`ui-style-guide.md`](ui-style-guide.md)).
 What changed on the way:
 
-- **No "Make".** The vocabulary bans it, so a joint's type is set: "Set joint C to Prismatic",
-  "Set joint C to Pin-in-slot".
+- **Fixes use the words of the controls that make them**, not the spec's verbs. A joint's type
+  is a value of Joint Type: "Set joint C to Revolute" where the spec says "Unweld joint C" (a
+  reader can't unweld any more; they pick Revolute), "Set joint C to Welded", "Set joint C to
+  Prismatic", never "Make". The Grounded switch is "Ground joint D" and "Turn off Grounded for
+  joint E", never "Unground". The input is the Edit panel's buttons, "Add Input to joint A" and
+  "Remove Input from joint D"; building is the menu's rows, "Attach Link", "Attach Force".
 - **A link is named as its own panel titles it**, not by a blanket "avoid body": "link BCE" for a
   three-joint link, "barrel AC" and "rod CB" for a cylinder's members (`linkRef` in
   `model/prose.ts`, through `bodyLabelParts`).
@@ -256,9 +260,10 @@ What changed on the way:
   dot), `--border-rule`, and the text tiers. The explanation's `#3c4043` is `--text-primary`, the
   nearest tier. The section header is 44px here; the shared `section-header` mixin stays 40px.
 - **A part link switches to Edit and selects the part**, as the Go To buttons did, because most
-  fixes (delete, weld, attach) are Edit-mode edits. Pointing lights the part through the grid's
-  list-pointing mark (`MechanismService.hoveredPart`), which defers to a selection: once a part is
-  selected, pointing at another lights nothing, as in the export drawer.
+  fixes (delete, weld, attach) are Edit-mode edits. Pointing lights the part with the grid's
+  list-pointing mark, whatever is selected and over the gray an analysis mode draws a machine
+  that can't run in (`MechanismService.linkedPart`). The export drawer's pointing still defers to
+  a selection (`hoveredPart`).
 - **Lists name two parts and "N more" past three**, so a summary naming four or more links keeps
   to sixteen words: "link ACD, link CE and 2 more".
 - **Budgets hold for every message the drawer builds**, which `setup-issue-budgets.spec.ts` checks
