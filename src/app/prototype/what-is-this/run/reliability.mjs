@@ -8,7 +8,7 @@
 // recognizing anything.
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { NO_MACHINE, recognitionMatch } from './rubric.mjs';
+import { drawingOf, NO_MACHINE, recognitionMatch } from './rubric.mjs';
 
 const base = new URL('../../../../../artifacts/what-is-this/', import.meta.url).pathname;
 const sheets = (process.env.SHEETS ?? 'v6r5,v7').split(',');
@@ -56,7 +56,7 @@ for (const c of manifest(sheets[sheets.length - 1]).cases) {
     const gatedPhoto = gated || !!entry.backdrop;
     const p = (gatePhoto[sheet] ??= { shown: 0, right: 0, invented: 0 });
     const g = (gate[sheet] ??= { shown: 0, right: 0, invented: 0, hidden: 0, hiddenRight: 0 });
-    if (NO_MACHINE.has(c.template) && answers.length) {
+    if (NO_MACHINE.has(drawingOf(c.template)) && answers.length) {
       // No machine to recognize: every "Looks like" is a machine the model made up.
       const said = answers.filter((a) => (a.resembles ?? '').trim()).length;
       row[sheet] = { claims: said, n: answers.length, looks };

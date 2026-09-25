@@ -43,9 +43,10 @@ const tellsPurpose = (name: string) =>
  * Whether the author's background photograph opens the gate too. It depends on
  * the model: GPT-6 Astra, Claude Opus 5.5 and Gemini 3.5 Flash-Lite read the
  * photographs (the landing gear, the steering, the excavator: 17 of 18 more
- * lines right), GPT-6 Luna misread them (4 of 6 wrong). Off while Luna writes the note.
+ * lines right), GPT-6 Luna misread them (4 of 6 wrong). On, now that Gemini
+ * writes the note; it would go off again for a model that misreads them.
  */
-export const PHOTO_OPENS_GATE = false;
+export const PHOTO_OPENS_GATE = true;
 
 export function looksLikeGate(
   authorNames: string[],

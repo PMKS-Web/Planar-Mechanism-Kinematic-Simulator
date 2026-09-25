@@ -80,6 +80,10 @@ const REAL_MACHINE = {
   Pumping_Field: /pump ?jack|oil well|nodding|beam pump/i,
   Bell_Crank: /bell ?crank/i,
   Straight_Line_Pair: /peaucellier/i,
+  // From v9 a drawing of several machines is a case per machine ("__M2"),
+  // each checked against its drawing's machine unless it differs from it.
+  Straight_Line_Pair__M1: /chebyshev/i,
+  Straight_Line_Pair__M2: /peaucellier/i,
   Hydraulic_Crosshead: /crosshead|\bpress\b/i,
   'made-coupled-wheels': /locomotive|train|railway|shunter/i,
 };
@@ -102,8 +106,11 @@ export const NO_MACHINE = new Set([
   'Slider_Crank_Inversions',
 ]);
 
+/** A per-machine case's drawing: "Pumping_Field__M2" is Pumping_Field's second machine. */
+export const drawingOf = (template) => template.replace(/__M\d+$/, '');
+
 export function recognitionMatch(template, answer) {
-  const expected = REAL_MACHINE[template];
+  const expected = REAL_MACHINE[template] ?? REAL_MACHINE[drawingOf(template)];
   if (!expected || !answer) return 'n/a';
   const text = [
     answer.resembles ?? '',

@@ -11,6 +11,7 @@ import { drawingSvg } from './drawing-svg';
 import {
   countSelfCrossings,
   dist,
+  distAt,
   fitLine,
   fmt,
   isGroundPin,
@@ -68,10 +69,18 @@ export interface DrawingToDescribe {
    * tile of its own before them; links drawn as discs are said to be. v7: the
    * image faded, boxed, and counted among six tiles. v8: v7 without the fade,
    * the v8 catalog, and only the mechanisms PMKS+ can solve (the panel shows
-   * something else for one it cannot).
+   * something else for one it cannot). v9: v8, and one sheet for each machine
+   * besides the whole drawing's (`machineSheets`), since the panel is a machine's.
    */
-  picture?: 'v5' | 'v6' | 'v7' | 'v8';
+  picture?: Picture;
 }
+
+const PICTURES = ['v5', 'v6', 'v7', 'v8', 'v9'] as const;
+type Picture = (typeof PICTURES)[number];
+
+/** Whether a sheet is version v or later: each keeps what the ones before it added. */
+const since = (drawing: DrawingToDescribe, v: Picture) =>
+  drawing.picture !== undefined && PICTURES.indexOf(drawing.picture) >= PICTURES.indexOf(v);
 
 /** One of the picture's moments: when it is, and what the input reads then. */
 export interface FilmFrame {
@@ -84,6 +93,8 @@ export interface MachineDescription {
   solved: boolean;
   /** The names the author typed for its links, joints and forces, when the sheet sends names. */
   authorNames: string[];
+  /** Its link lengths, rounded and sorted: two copies of one design have the same. */
+  signature: string;
   svg?: string;
   motion?: MachineMotion;
   jobs: LinkJob[];
@@ -100,6 +111,20 @@ export interface DrawingDescription {
   machines: MachineDescription[];
   /** Whether the panel shows the model's "Looks like" for this drawing. Not sent to the model. */
   looksLike: LooksLikeGate;
+  /**
+   * v9: one sheet for each machine PMKS+ can solve. The Analysis panel speaks
+   * for one machine at a time ("Analysis for Mechanism M2"), so its note is
+   * written from that machine's sheet, which names the others only as context.
+   */
+  machineSheets: MachineSheet[];
+}
+
+export interface MachineSheet {
+  /** The machine's place in the app's own numbering: 1 is M2. */
+  index: number;
+  text: string;
+  looksLike: LooksLikeGate;
+  machine: MachineDescription;
 }
 
 /** The whole fact sheet for every mechanism on the grid. */
@@ -120,9 +145,9 @@ export function describeDrawing(drawing: DrawingToDescribe): DrawingDescription 
   }));
   // v8 leaves out what PMKS+ cannot solve, and keeps the app's own numbers for
   // the rest, so M3 in the sheet is M3 in the panel.
-  const shown = drawing.picture === 'v8' ? every.filter((m) => m.described.solved) : every;
+  const shown = since(drawing, 'v8') ? every.filter((m) => m.described.solved) : every;
   const count = partitioning.mechanisms.length;
-  if (drawing.picture === 'v8') {
+  if (since(drawing, 'v8')) {
     if (shown.length > 1)
       lines.push(
         `There are ${shown.length} separate mechanisms on the grid: ${listOf(shown.map((m) => `M${m.index + 1}`))}.`
@@ -153,7 +178,59 @@ export function describeDrawing(drawing: DrawingToDescribe): DrawingDescription 
       machines.flatMap((m) => m.family),
       !!drawing.backdrop
     ),
+    machineSheets: since(drawing, 'v9')
+      ? shown.map(({ index, described }) => ({
+          index,
+          text: [
+            ...lines.slice(0, 3),
+            ...otherMachines(index, shown),
+            '',
+            `## Mechanism M${index + 1}`,
+            ...described.lines,
+          ].join('\n'),
+          looksLike: looksLikeGate(described.authorNames, described.family, !!drawing.backdrop),
+          machine: described,
+        }))
+      : [],
   };
+}
+
+/**
+ * What one machine's sheet says of the others on the grid: which are copies of
+ * its design and what PMKS+ matched the rest as. A pair of legs half a cycle
+ * apart, or a field of pumps, is about how the machines relate.
+ */
+function otherMachines(
+  index: number,
+  shown: { index: number; described: MachineDescription }[]
+): string[] {
+  if (shown.length < 2) return [];
+  const self = shown.find((m) => m.index === index)!.described;
+  const others = shown
+    .filter((m) => m.index !== index)
+    .map(({ index: other, described }) => {
+      if (described.signature === self.signature)
+        return `M${other + 1} is the same design as this one (the same link lengths), with its own input`;
+      const family = described.family[0]?.family;
+      return `M${other + 1} is a different design${family ? ` (PMKS+ matched ${family})` : ''}`;
+    });
+  return [
+    `- This drawing holds ${shown.length} mechanisms PMKS+ can solve, each with its own input; this sheet is about M${index + 1} alone. ${capitalized(others.join('; '))}.`,
+  ];
+}
+
+const capitalized = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+/** Every length between joints of one body, rounded, sorted: a design's fingerprint. */
+function designSignature(bodies: Link[], visible: Joint[], samples: Samples): string {
+  const lengths: number[] = [];
+  for (const body of bodies) {
+    const joints = body.joints.filter((j) => visible.includes(j) && samples.paths.has(j.id));
+    for (let i = 0; i < joints.length; i++)
+      for (let k = i + 1; k < joints.length; k++)
+        lengths.push(Math.round(distAt(samples, joints[i], joints[k]) * 100) / 100);
+  }
+  return lengths.sort((a, b) => a - b).join(',');
 }
 
 function describePartition(
@@ -241,6 +318,7 @@ function describePartition(
     return {
       solved: false,
       authorNames,
+      signature: '',
       lines,
       jobs: [],
       family: [],
@@ -265,7 +343,7 @@ function describePartition(
     cylinders,
     label,
     bodyLabel,
-    catalogV8: drawing.picture === 'v8',
+    catalogV8: since(drawing, 'v8'),
   };
   if (drawing.backdrop) lines.push(backdropLine(drawing));
   const tracedHere = visible.filter(
@@ -287,8 +365,8 @@ function describePartition(
   const input = inputSeries(ctx, driven);
   // v6 on share the disc facts; v7 on count the background tile among six and
   // box the mechanism in it; only v7 faded the image.
-  const v6 = drawing.picture === 'v6' || drawing.picture === 'v7' || drawing.picture === 'v8';
-  const v7 = drawing.picture === 'v7' || drawing.picture === 'v8';
+  const v6 = since(drawing, 'v6');
+  const v7 = since(drawing, 'v7');
   const faded = drawing.picture === 'v7';
   const jobs = linkJobs(ctx, drivenBody, driven, input, v6);
   lines.push('### Links and their jobs');
@@ -329,6 +407,7 @@ function describePartition(
   return {
     solved: true,
     authorNames,
+    signature: designSignature(bodies, visible, samples),
     lines,
     svg: drawingSvg(picture),
     motion: machineMotion(picture),
@@ -361,7 +440,7 @@ function describePartition(
 }
 
 function backdropLine(drawing: DrawingToDescribe): string {
-  if (drawing.picture === 'v7' || drawing.picture === 'v8')
+  if (since(drawing, 'v7'))
     return `- The author placed a background image behind this mechanism as a reference, often a photograph or drawing of the real machine. It is shown once, ${drawing.picture === 'v7' ? 'faded, ' : ''}in the picture's tile 0, where a dashed box marks the part of the image the other tiles show; it is not part of the mechanism.`;
   return drawing.picture === 'v6'
     ? "- The author placed a background image behind this mechanism as a reference, often a photograph or drawing of the real machine. It is shown once, in the picture's tile 0; it is not part of the mechanism."
