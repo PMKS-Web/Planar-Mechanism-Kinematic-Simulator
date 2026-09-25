@@ -1,0 +1,2310 @@
+<title>What Is This? Taste Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap"
+/>
+<style>
+  /* PMKS+ tokens (src/styles/_tokens.scss), so the panel mocks read as the app. */
+  :root {
+    --surface: #fff;
+    --surface-sunken: #f7f8fc;
+    --surface-chip: #eef0f4;
+    --border-rule: #eceef5;
+    --border-divider: #e0e2ea;
+    --text-strong: #202124;
+    --text-primary: #2c2c2c;
+    --text-secondary: #5f6368;
+    --text-tertiary: #80869a;
+    --brand: #3f51b5;
+    --brand-dark: #303f9f;
+    --brand-tint: #e8eaf6;
+    --brand-wash: #f5f6fb;
+    --success-text: #137333;
+    --success-bg: #e6f4ea;
+    --warning-text: #9a5b00;
+    --warning-bg: #fef3e0;
+    --refusal-text: #c5221f;
+    --refusal-bg: #fce8e6;
+    --page: #eef0f5;
+    --link: #3f51b5;
+    --link-fill: rgba(63, 81, 181, 0.16);
+    --trace: #d62828;
+    --path: #b3b8c6;
+    --rail: #e3e5ec;
+    --rail-edge: #7d8294;
+    --highlight: #f29900;
+    --tip-bg: #202124;
+    --tip-text: #fff;
+    --shadow: 0 1px 3px rgba(32, 33, 36, 0.12), 0 4px 14px rgba(32, 33, 36, 0.06);
+    --mono: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      color-scheme: dark;
+      --surface: #1b1d24;
+      --surface-sunken: #22252e;
+      --surface-chip: #2c303b;
+      --border-rule: #2e323d;
+      --border-divider: #3a3f4c;
+      --text-strong: #eef0f5;
+      --text-primary: #dcdfe6;
+      --text-secondary: #a8adba;
+      --text-tertiary: #8a90a0;
+      --brand: #9fa8da;
+      --brand-dark: #c5cae9;
+      --brand-tint: #2b3050;
+      --brand-wash: #242841;
+      --success-text: #81c995;
+      --success-bg: #1e3326;
+      --warning-text: #f0b45a;
+      --warning-bg: #3a2c16;
+      --refusal-text: #f28b82;
+      --refusal-bg: #3d2322;
+      --page: #13151b;
+      --link: #9fa8da;
+      --link-fill: rgba(159, 168, 218, 0.2);
+      --trace: #ff7a7a;
+      --path: #535969;
+      --rail: #2c303b;
+      --rail-edge: #8a90a0;
+      --highlight: #fbbc04;
+      --tip-bg: #eef0f5;
+      --tip-text: #13151b;
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    }
+  }
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+    --surface: #1b1d24;
+    --surface-sunken: #22252e;
+    --surface-chip: #2c303b;
+    --border-rule: #2e323d;
+    --border-divider: #3a3f4c;
+    --text-strong: #eef0f5;
+    --text-primary: #dcdfe6;
+    --text-secondary: #a8adba;
+    --text-tertiary: #8a90a0;
+    --brand: #9fa8da;
+    --brand-dark: #c5cae9;
+    --brand-tint: #2b3050;
+    --brand-wash: #242841;
+    --success-text: #81c995;
+    --success-bg: #1e3326;
+    --warning-text: #f0b45a;
+    --warning-bg: #3a2c16;
+    --refusal-text: #f28b82;
+    --refusal-bg: #3d2322;
+    --page: #13151b;
+    --link: #9fa8da;
+    --link-fill: rgba(159, 168, 218, 0.2);
+    --trace: #ff7a7a;
+    --path: #535969;
+    --rail: #2c303b;
+    --rail-edge: #8a90a0;
+    --highlight: #fbbc04;
+    --tip-bg: #eef0f5;
+    --tip-text: #13151b;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--text-primary);
+    font: 15px/1.55 var(--sans);
+    padding-inline: 16px;
+    padding-block: 22px 64px;
+  }
+  .wrap {
+    max-width: 1240px;
+    margin: 0 auto;
+    display: grid;
+    gap: 18px;
+  }
+  h1,
+  h2,
+  h3 {
+    color: var(--text-strong);
+    text-wrap: balance;
+    margin: 0;
+  }
+  h1 {
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+  h2 {
+    font-size: 20px;
+    font-weight: 500;
+  }
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--brand);
+    font-weight: 500;
+  }
+  .card {
+    background: var(--surface);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: 18px 20px;
+  }
+  button,
+  select,
+  textarea,
+  input {
+    font: inherit;
+    color: inherit;
+  }
+  button:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  input:focus-visible,
+  summary:focus-visible,
+  a:focus-visible,
+  .term:focus-visible,
+  strong[data-part]:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+  a {
+    color: var(--brand);
+  }
+  kbd {
+    font: 500 11px var(--mono);
+    padding: 0 5px;
+    border-radius: 4px;
+    border: 1px solid var(--border-divider);
+    color: var(--text-tertiary);
+    background: var(--surface-sunken);
+  }
+
+  .top {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: end;
+    gap: 12px 24px;
+  }
+  .titles {
+    display: grid;
+    gap: 4px;
+  }
+  .top-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+  }
+  .top-controls select {
+    border: 1px solid var(--border-divider);
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 7px 10px;
+    max-width: 100%;
+  }
+  .seg {
+    display: inline-flex;
+    border: 1px solid var(--border-divider);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .seg button {
+    border: 0;
+    background: none;
+    color: var(--text-secondary);
+    padding: 7px 14px;
+    cursor: pointer;
+  }
+  .seg button + button {
+    border-left: 1px solid var(--border-divider);
+  }
+  .seg button[aria-selected='true'] {
+    background: var(--brand-tint);
+    color: var(--brand-dark);
+    font-weight: 500;
+  }
+  .lede {
+    margin: 0;
+    max-width: 90ch;
+    color: var(--text-secondary);
+    font-size: 14.5px;
+  }
+  .store {
+    font-size: 13px;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .store .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-tertiary);
+    flex: none;
+  }
+  .store.ok .dot {
+    background: var(--success-text);
+  }
+  .store.local {
+    color: var(--warning-text);
+  }
+  .store.local .dot {
+    background: var(--warning-text);
+  }
+
+  /* One chip per mechanism: close calls first, Claude's calls after them. */
+  .strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  .strip .group {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin: 0 4px 0 8px;
+  }
+  .strip .group:first-child {
+    margin-left: 0;
+  }
+  .strip button {
+    border: 1px solid var(--border-divider);
+    background: var(--surface);
+    color: var(--text-secondary);
+    border-radius: 16px;
+    padding: 4px 12px 4px 9px;
+    cursor: pointer;
+    font-size: 13.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .strip button .tick {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    border: 1.5px solid var(--text-tertiary);
+    flex: none;
+  }
+  .strip button.done .tick {
+    background: var(--brand);
+    border-color: var(--brand);
+  }
+  .strip button.claude {
+    border-style: dashed;
+  }
+  .strip button.claude .tick {
+    border-radius: 2px;
+  }
+  .strip button[aria-current='true'] {
+    border-color: var(--brand);
+    border-style: solid;
+    color: var(--text-strong);
+    box-shadow: inset 0 0 0 1px var(--brand);
+  }
+
+  .stage {
+    display: grid;
+    grid-template-columns: 330px minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+  }
+  .mech {
+    display: grid;
+    gap: 12px;
+    position: sticky;
+    top: calc(env(safe-area-inset-top, 0px) + 12px);
+  }
+  .mech h2 {
+    font-size: 21px;
+  }
+  .mech .blurb {
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--text-secondary);
+  }
+  .anim {
+    width: 100%;
+    height: auto;
+    display: block;
+    background: var(--surface-sunken);
+    border-radius: 8px;
+    border: 1px solid var(--border-rule);
+  }
+  .anim .hl {
+    stroke: var(--highlight) !important;
+    stroke-opacity: 1 !important;
+  }
+  .anim polygon.hl {
+    fill: color-mix(in srgb, var(--highlight) 30%, transparent) !important;
+  }
+  .anim g.hl circle {
+    stroke: var(--highlight);
+    stroke-width: 3;
+  }
+  .anim-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .anim-controls input[type='range'] {
+    flex: 1;
+    min-width: 0;
+    accent-color: var(--brand);
+  }
+  .icon-btn {
+    border: 1px solid var(--border-divider);
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 4px 10px;
+    cursor: pointer;
+    min-width: 64px;
+  }
+  .anim-controls select {
+    border: 1px solid var(--border-divider);
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 4px 6px;
+  }
+  .legend {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    margin-top: 6px;
+  }
+  .legend i {
+    display: inline-block;
+    width: 16px;
+    vertical-align: middle;
+    margin-right: 5px;
+  }
+  .legend i.trace {
+    border-top: 2.5px solid var(--trace);
+  }
+  .legend i.path {
+    border-top: 1.5px solid var(--path);
+  }
+  .legend i.rail {
+    height: 7px;
+    background: var(--rail);
+    border-block: 1px solid var(--rail-edge);
+  }
+
+  .versus {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    align-items: start;
+  }
+  .versus > .span {
+    grid-column: 1 / -1;
+  }
+  .side {
+    display: grid;
+    gap: 8px;
+  }
+  .side-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .side-tag {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--text-strong);
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+  .side.chosen .side-tag {
+    background: var(--brand);
+    color: var(--surface);
+  }
+  .side-meta {
+    font-size: 12.5px;
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+  .wrong {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 2px 4px;
+  }
+  .wrong input {
+    accent-color: var(--refusal-text);
+    width: 16px;
+    height: 16px;
+  }
+  .wrong:has(input:checked) {
+    color: var(--refusal-text);
+  }
+
+  /* The panel mock: the Analysis card as the app draws it. */
+  .panel {
+    background: var(--surface);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    border-top: 4px solid var(--brand);
+    overflow: hidden;
+  }
+  .side.chosen .panel {
+    box-shadow:
+      0 0 0 2px var(--brand),
+      var(--shadow);
+  }
+  .panel-title {
+    padding: 14px 18px 10px;
+    border-bottom: 1px solid var(--border-rule);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .panel-title h3 {
+    font-size: 18px;
+    font-weight: 500;
+  }
+  .status {
+    font-size: 12.5px;
+    padding: 2px 10px;
+    border-radius: 12px;
+    background: var(--success-bg);
+    color: var(--success-text);
+  }
+  .section {
+    padding: 12px 18px 14px;
+    border-bottom: 1px solid var(--border-rule);
+    display: grid;
+    gap: 9px;
+  }
+  .section:last-child {
+    border-bottom: 0;
+  }
+  .section h4 {
+    margin: 0;
+    font-size: 15.5px;
+    font-weight: 500;
+    color: var(--brand);
+  }
+  .rows {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 3px 14px;
+    font-size: 13.5px;
+    margin: 0;
+  }
+  .rows dt {
+    color: var(--text-secondary);
+  }
+  .rows dd {
+    margin: 0;
+    color: var(--text-strong);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  table.links {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 13px;
+  }
+  .links th {
+    text-align: left;
+    font-weight: 500;
+    font-size: 11.5px;
+    color: var(--text-tertiary);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0 8px 4px 0;
+  }
+  .links td {
+    padding: 4px 8px 4px 0;
+    border-top: 1px solid var(--border-rule);
+    vertical-align: top;
+  }
+  .links td:first-child {
+    font-weight: 500;
+    color: var(--text-strong);
+    white-space: nowrap;
+  }
+  .links td:last-child {
+    color: var(--text-secondary);
+  }
+  .links tr.hl td {
+    background: color-mix(in srgb, var(--highlight) 18%, transparent);
+  }
+  .written {
+    background: var(--brand-wash);
+    border: 1px solid var(--border-divider);
+    border-radius: 8px;
+    padding: 11px 13px;
+    display: grid;
+    gap: 8px;
+  }
+  .written .by {
+    font-size: 12px;
+    color: var(--text-tertiary);
+  }
+  .written p {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  .written strong {
+    color: var(--text-strong);
+    font-weight: 700;
+  }
+  .written strong[data-part],
+  .uses strong[data-part] {
+    cursor: pointer;
+    border-radius: 3px;
+  }
+  .written strong[data-part].hl,
+  .uses strong[data-part].hl {
+    background: color-mix(in srgb, var(--highlight) 30%, transparent);
+  }
+  .term {
+    text-decoration: underline dotted var(--brand);
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1.5px;
+    cursor: help;
+  }
+  .term.bare {
+    text-decoration-color: var(--text-tertiary);
+  }
+  .how {
+    font-size: 12px;
+    color: var(--text-tertiary);
+  }
+  .how strong {
+    color: var(--text-secondary);
+  }
+  .how .term {
+    cursor: default;
+  }
+  .family-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .cert {
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .cert-checked,
+  .cert-is {
+    background: var(--success-bg);
+    color: var(--success-text);
+  }
+  .cert-reading,
+  .cert-resembles {
+    background: var(--brand-tint);
+    color: var(--brand-dark);
+  }
+  .cert-unsure {
+    background: var(--warning-bg);
+    color: var(--warning-text);
+  }
+  .uses {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 9px;
+  }
+  .uses li {
+    display: grid;
+    gap: 1px;
+  }
+  .uses .use {
+    font-weight: 500;
+    color: var(--text-strong);
+  }
+  .uses .why {
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+  .caveat {
+    font-size: 12px;
+    color: var(--text-tertiary);
+  }
+  .looks {
+    font-size: 14px;
+    color: var(--text-strong);
+    font-weight: 500;
+  }
+  .looks-label {
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--brand);
+    margin-right: 4px;
+  }
+  .written.unavailable {
+    background: var(--surface-sunken);
+  }
+  .source {
+    display: inline-block;
+    font-size: 11.5px;
+    font-weight: 500;
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: var(--surface-chip);
+    color: var(--text-secondary);
+    margin-right: 6px;
+    vertical-align: 1px;
+  }
+  .intent {
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--text-strong);
+  }
+  .intent b {
+    font-weight: 500;
+  }
+  .said {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-style: italic;
+    max-height: 7.5em;
+    overflow: auto;
+  }
+  .error {
+    color: var(--refusal-text);
+    background: var(--refusal-bg);
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+  #tip {
+    position: fixed;
+    z-index: 10;
+    max-width: 260px;
+    background: var(--tip-bg);
+    color: var(--tip-text);
+    font-size: 13px;
+    line-height: 1.45;
+    padding: 8px 10px;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    pointer-events: none;
+  }
+  #tip b {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 2px;
+  }
+
+  .verdict {
+    display: grid;
+    gap: 12px;
+  }
+  .verdict-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .verdict-head h3 {
+    font-size: 16px;
+    font-weight: 500;
+  }
+  .called {
+    font-size: 14px;
+    background: var(--surface-sunken);
+    border-radius: 8px;
+    padding: 10px 12px;
+    border-left: 3px solid var(--brand);
+  }
+  .called b {
+    font-weight: 500;
+    color: var(--text-strong);
+  }
+  .choice {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .choice button {
+    border: 1px solid var(--border-divider);
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 10px 8px;
+    cursor: pointer;
+    display: grid;
+    gap: 2px;
+    justify-items: center;
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+  .choice button:hover {
+    background: var(--brand-wash);
+  }
+  .choice button[aria-checked='true'] {
+    background: var(--brand);
+    border-color: var(--brand);
+    color: var(--surface);
+  }
+  .choice button[aria-checked='true'] kbd {
+    color: var(--surface);
+    border-color: transparent;
+    background: rgba(255, 255, 255, 0.18);
+  }
+  .reasons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    align-items: center;
+  }
+  .reasons .label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-right: 2px;
+  }
+  .chip {
+    border: 1px solid var(--border-divider);
+    background: var(--surface);
+    color: var(--text-primary);
+    border-radius: 16px;
+    padding: 4px 12px;
+    cursor: pointer;
+    font-size: 13.5px;
+  }
+  .chip[aria-pressed='true'] {
+    background: var(--brand-tint);
+    border-color: var(--brand);
+    color: var(--brand-dark);
+    font-weight: 500;
+  }
+  .reasons[aria-disabled='true'] {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+  textarea {
+    width: 100%;
+    min-height: 76px;
+    resize: vertical;
+    border: 1px solid var(--border-divider);
+    border-radius: 8px;
+    padding: 9px 11px;
+    background: var(--surface-sunken);
+    line-height: 1.5;
+  }
+  .verdict-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+  }
+  .primary {
+    background: var(--brand);
+    color: var(--surface);
+    border: 0;
+    border-radius: 8px;
+    padding: 9px 18px;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .secondary {
+    background: var(--surface);
+    color: var(--brand);
+    border: 1px solid var(--border-divider);
+    border-radius: 8px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .primary:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .hint {
+    font-size: 13px;
+    color: var(--text-tertiary);
+  }
+  .hint.warn {
+    color: var(--warning-text);
+  }
+
+  .reveal {
+    display: grid;
+    gap: 14px;
+    border-left: 4px solid var(--brand);
+  }
+  .reveal h3 {
+    font-size: 16px;
+    font-weight: 500;
+  }
+  .who-was {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .who-was > div {
+    display: grid;
+    gap: 6px;
+    align-content: start;
+  }
+  .who-was .sheet-name {
+    font-weight: 500;
+    color: var(--text-strong);
+  }
+  .who-was img {
+    border-radius: 6px;
+    border: 1px solid var(--border-rule);
+    background: #fff;
+  }
+  .flags {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 4px;
+    font-size: 13.5px;
+  }
+  .flags li {
+    color: var(--warning-text);
+  }
+  .flags li.none {
+    color: var(--text-tertiary);
+  }
+  .fam {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 1px 8px;
+    border-radius: 10px;
+  }
+  .fam.named {
+    background: var(--success-bg);
+    color: var(--success-text);
+  }
+  .fam.class {
+    background: var(--warning-bg);
+    color: var(--warning-text);
+  }
+  .fam.missed,
+  .fam.unknown {
+    background: var(--refusal-bg);
+    color: var(--refusal-text);
+  }
+  .same-sheet {
+    font-size: 14px;
+    color: var(--text-secondary);
+    background: var(--surface-sunken);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .diff {
+    margin: 0;
+    font: 12.5px/1.55 var(--mono);
+    background: var(--surface-sunken);
+    border-radius: 8px;
+    padding: 10px 12px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    max-height: 420px;
+    overflow-y: auto;
+  }
+  .diff .del {
+    color: var(--refusal-text);
+  }
+  .diff .add {
+    color: var(--success-text);
+  }
+  details.facts summary,
+  details.saw summary {
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+  details.facts pre {
+    margin: 8px 0 0;
+    font: 12px/1.5 var(--mono);
+    white-space: pre-wrap;
+    max-height: 360px;
+    overflow: auto;
+    background: var(--surface-sunken);
+    padding: 10px 12px;
+    border-radius: 8px;
+  }
+
+  .results {
+    display: grid;
+    gap: 18px;
+  }
+  .tally-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .bar {
+    display: flex;
+    height: 26px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--surface-chip);
+  }
+  .bar span {
+    display: grid;
+    place-items: center;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--surface);
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .bar .b-a {
+    background: var(--text-tertiary);
+  }
+  .bar .b-same {
+    background: var(--border-divider);
+    color: var(--text-secondary);
+  }
+  .bar .b-b {
+    background: var(--brand);
+  }
+  .bar .b-poor {
+    background: var(--refusal-text);
+  }
+  .bar-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .bar-legend i {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    margin-right: 5px;
+    vertical-align: -1px;
+  }
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+  }
+  .stat {
+    display: grid;
+    gap: 2px;
+  }
+  .stat .v {
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--text-strong);
+    font-variant-numeric: tabular-nums;
+  }
+  .stat .k {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .table-scroll {
+    overflow-x: auto;
+  }
+  table.votes {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 13.5px;
+  }
+  .votes th,
+  .votes td {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border-rule);
+    vertical-align: top;
+  }
+  .votes th {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+  .votes td.note {
+    max-width: 52ch;
+    color: var(--text-secondary);
+  }
+  .pill {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--surface-chip);
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+  .pill.win {
+    background: var(--brand-tint);
+    color: var(--brand-dark);
+  }
+  .pill.bad {
+    background: var(--refusal-bg);
+    color: var(--refusal-text);
+  }
+  .changes {
+    margin: 0;
+    padding-left: 18px;
+    display: grid;
+    gap: 4px;
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    max-width: 100ch;
+  }
+  .empty-judge {
+    text-align: center;
+    padding: 28px 20px;
+    color: var(--text-secondary);
+  }
+
+  @media (max-width: 1080px) {
+    .stage {
+      grid-template-columns: 1fr;
+    }
+    .mech {
+      position: static;
+    }
+  }
+  @media (max-width: 720px) {
+    .versus {
+      grid-template-columns: 1fr;
+    }
+    .choice {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .who-was {
+      grid-template-columns: 1fr;
+    }
+    h1 {
+      font-size: 24px;
+    }
+  }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="titles">
+      <span class="eyebrow">PMKS+ prototype · “What is this?”</span>
+      <h1>Taste Test</h1>
+    </div>
+    <div class="top-controls">
+      <label for="round" class="hint">Round</label>
+      <select id="round"></select>
+      <div class="seg" role="tablist" aria-label="View">
+        <button type="button" role="tab" id="tab-judge" aria-selected="true">Judge</button>
+        <button type="button" role="tab" id="tab-results" aria-selected="false">Results</button>
+      </div>
+    </div>
+  </header>
+  <p class="lede" id="lede"></p>
+  <div class="store" id="store">
+    <span class="dot"></span><span id="store-text">Connecting to the vote store…</span>
+  </div>
+
+  <main id="judge">
+    <nav class="strip" id="strip" aria-label="Mechanisms"></nav>
+    <section class="stage" style="margin-top: 14px">
+      <aside class="mech card" aria-labelledby="m-name">
+        <div class="mech-head">
+          <span class="eyebrow" id="m-count"></span>
+          <h2 id="m-name"></h2>
+          <p class="intent" id="m-intent" hidden></p>
+          <p class="blurb" id="m-blurb"></p>
+        </div>
+        <svg
+          class="anim"
+          id="anim"
+          viewBox="0 0 400 300"
+          role="img"
+          aria-label="The mechanism moving through one cycle"
+        ></svg>
+        <div>
+          <div class="anim-controls">
+            <button type="button" class="icon-btn" id="play">Pause</button>
+            <input
+              type="range"
+              id="scrub"
+              min="0"
+              max="0"
+              value="0"
+              aria-label="Position in the cycle"
+            />
+            <select id="speed" aria-label="Playback speed">
+              <option value="0.5">Slow</option>
+              <option value="1" selected>Normal</option>
+              <option value="2">Fast</option>
+            </select>
+          </div>
+          <div class="legend">
+            <span><i class="trace"></i>traced path</span>
+            <span><i class="path"></i>path of another joint</span>
+            <span><i class="rail"></i>fixed slider guide</span>
+            <span>one cycle ≈ 4 s</span>
+          </div>
+        </div>
+        <div><a id="open-app" target="_blank" rel="noopener">Open in PMKS+ ↗</a></div>
+      </aside>
+
+      <div class="versus" id="versus">
+        <div class="side" id="side-left">
+          <div class="side-head">
+            <span class="side-tag">A</span><span class="side-meta" id="meta-left"></span>
+          </div>
+          <div id="panel-left"></div>
+          <label class="wrong"
+            ><input type="checkbox" id="wrong-left" /> A says something wrong</label
+          >
+        </div>
+        <div class="side" id="side-right">
+          <div class="side-head">
+            <span class="side-tag">B</span><span class="side-meta" id="meta-right"></span>
+          </div>
+          <div id="panel-right"></div>
+          <label class="wrong"
+            ><input type="checkbox" id="wrong-right" /> B says something wrong</label
+          >
+        </div>
+
+        <section class="verdict card span" aria-labelledby="verdict-h">
+          <div class="verdict-head">
+            <h3 id="verdict-h">Which would you rather a student read?</h3>
+            <span class="hint"
+              >Keys: <kbd>1</kbd>–<kbd>4</kbd> pick · <kbd>⌘</kbd><kbd>↵</kbd> save · <kbd>←</kbd
+              ><kbd>→</kbd> move</span
+            >
+          </div>
+          <div class="called" id="called" hidden></div>
+          <div class="choice" role="radiogroup" aria-label="Your pick" id="choice">
+            <button type="button" role="radio" aria-checked="false" data-choice="left" id="c-left">
+              <span>A is better</span><kbd>1</kbd>
+            </button>
+            <button type="button" role="radio" aria-checked="false" data-choice="same" id="c-same">
+              <span>About the same</span><kbd>2</kbd>
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked="false"
+              data-choice="right"
+              id="c-right"
+            >
+              <span>B is better</span><kbd>3</kbd>
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked="false"
+              data-choice="both-poor"
+              id="c-poor"
+            >
+              <span>Both poor</span><kbd>4</kbd>
+            </button>
+          </div>
+          <div class="reasons" id="reasons" aria-label="Why"></div>
+          <label for="note" class="hint"
+            >What made the difference? What’s wrong, missing, or especially good?</label
+          >
+          <textarea id="note"></textarea>
+          <div class="verdict-actions">
+            <button type="button" class="primary" id="save">Save</button>
+            <button type="button" class="secondary" id="next">Next mechanism →</button>
+            <span class="hint" id="save-hint"></span>
+          </div>
+        </section>
+
+        <section class="reveal card span" id="reveal" hidden aria-labelledby="reveal-h"></section>
+      </div>
+    </section>
+  </main>
+
+  <main id="results" class="results" hidden></main>
+</div>
+<div id="tip" hidden></div>
+
+<script>
+  const DATA = /*DATA*/ null;
+  const REASONS = [
+    'More correct',
+    'Names it better',
+    'Better uses',
+    'Clearer for a student',
+    'Tighter',
+    'Better detail about this mechanism',
+  ];
+  const CYCLE_SECONDS = 4;
+  const esc = (s) =>
+    String(s ?? '').replace(
+      /[&<>"]/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]
+    );
+  const $ = (id) => document.getElementById(id);
+
+  const prefs = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('taste-prefs') || '{}');
+    } catch (e) {
+      return {};
+    }
+  })();
+  const savePrefs = () => {
+    try {
+      localStorage.setItem('taste-prefs', JSON.stringify({ round: state.round, tab: state.tab }));
+    } catch (e) {}
+  };
+
+  const state = {
+    round: DATA.rounds.some((r) => r.id === prefs.round)
+      ? prefs.round
+      : DATA.rounds[DATA.rounds.length - 1].id,
+    index: 0,
+    tab: prefs.tab === 'results' ? 'results' : 'judge',
+    drafts: new Map(),
+    hint: '',
+  };
+  let votes = new Map();
+  let db = null;
+  let storeMode = 'pending';
+  let placed = false;
+
+  const round = () => DATA.rounds.find((r) => r.id === state.round);
+  /** Close calls first, then the ones Claude decided, so the strip reads in the order to judge them. */
+  const ordered = () => {
+    const pairs = round().pairs;
+    return [...pairs.filter((p) => !p.decided), ...pairs.filter((p) => p.decided)];
+  };
+  const pair = () => ordered()[state.index];
+  const voteId = (r, p) => `${r.id}~${p.template}`;
+  const voteFor = (p) => votes.get(voteId(round(), p));
+  /** An arm is `<sheet>[@<model>][~<asking>]`: "v8@astra" is v8 answered by GPT-6 Astra. */
+  const armSheet = (armId) => armId.split('~')[0].split('@')[0];
+  const armModel = (armId) => armId.split('~')[0].split('@')[1];
+  const MODEL_NAMES = {
+    luna: 'GPT-6 Luna',
+    astra: 'GPT-6 Astra',
+    opus: 'Claude Opus 5.5',
+    'flash-lite': 'Gemini 3.5 Flash-Lite',
+  };
+  const sheetTitle = (armId) => {
+    const model = armModel(armId);
+    const title = DATA.sheets[armSheet(armId)]?.title ?? armId;
+    return model ? `${title} · ${MODEL_NAMES[model] ?? model}` : title;
+  };
+  const armLabel = (arm) =>
+    `${sheetTitle(arm.id)}${arm.sample > 1 ? ` (asking ${arm.sample})` : ''}`;
+  /** Claude's call on a decided pair, said as a side of this pair: 'left', 'right', 'same' or 'both-poor'. */
+  const claudeSide = (p) => {
+    if (!p.decided) return null;
+    const pick = p.decided.pick;
+    if (pick === 'same' || pick === 'both-poor') return pick;
+    const armId = pick === 'a' ? round().a : round().b;
+    return p.left.id === armId ? 'left' : 'right';
+  };
+
+  /* ---------- Vote storage: the page's database, or this browser when there is none ---------- */
+  function localVotes() {
+    try {
+      return new Map(Object.entries(JSON.parse(localStorage.getItem('taste-votes') || '{}')));
+    } catch (e) {
+      return new Map();
+    }
+  }
+  function saveLocal() {
+    try {
+      localStorage.setItem('taste-votes', JSON.stringify(Object.fromEntries(votes)));
+    } catch (e) {}
+  }
+  function renderStore() {
+    $('store').className =
+      'store' + (storeMode === 'db' ? ' ok' : storeMode === 'pending' ? '' : ' local');
+    $('store-text').textContent =
+      storeMode === 'db'
+        ? 'Votes save to this page’s database, where Claude can read them.'
+        : storeMode === 'pending'
+          ? 'Connecting to the vote store…'
+          : 'Votes are saved in this browser only, so Claude can’t read them. Open the page on claude.ai, or use “Copy votes” on the Results tab.';
+  }
+  async function connect() {
+    let ns = null;
+    try {
+      ns = window.claude && window.claude.use ? await window.claude.use('db') : null;
+    } catch (e) {
+      ns = null;
+    }
+    if (!ns) {
+      storeMode = 'local';
+      votes = localVotes();
+      placeOnFirstOpen();
+      renderAll();
+      return;
+    }
+    db = ns;
+    storeMode = 'db';
+    db.collection('votes').onSnapshot(
+      (snap) => {
+        votes = new Map(snap.docs.map((d) => [d.id, d.data()]));
+        placeOnFirstOpen();
+        renderAll();
+      },
+      () => {
+        storeMode = 'local';
+        votes = localVotes();
+        renderAll();
+      }
+    );
+    renderStore();
+  }
+  /** Open on the first close call not yet voted on. */
+  function placeOnFirstOpen() {
+    if (placed) return;
+    placed = true;
+    const first = ordered().findIndex((p) => !p.decided && !voteFor(p));
+    state.index = first < 0 ? 0 : first;
+  }
+
+  /* ---------- Draft: what the form holds for the pair on screen ---------- */
+  function draft(p) {
+    const key = voteId(round(), p);
+    if (!state.drafts.has(key)) {
+      const v = votes.get(key);
+      state.drafts.set(
+        key,
+        v
+          ? {
+              choice: v.choice,
+              reasons: [...(v.reasons || [])],
+              note: v.note || '',
+              wrongLeft: !!v.wrongLeft,
+              wrongRight: !!v.wrongRight,
+            }
+          : { choice: null, reasons: [], note: '', wrongLeft: false, wrongRight: false }
+      );
+    }
+    return state.drafts.get(key);
+  }
+
+  async function saveVote() {
+    const p = pair();
+    const d = draft(p);
+    if (!d.choice) {
+      state.hint = 'Pick one of the four first.';
+      renderVerdict();
+      return;
+    }
+    const winner = d.choice === 'left' ? p.left.id : d.choice === 'right' ? p.right.id : d.choice;
+    const vote = {
+      round: round().id,
+      template: p.template,
+      left: p.left.id,
+      right: p.right.id,
+      choice: d.choice,
+      winner,
+      wrongLeft: d.wrongLeft,
+      wrongRight: d.wrongRight,
+      wrong: [d.wrongLeft && p.left.id, d.wrongRight && p.right.id].filter(Boolean),
+      identicalSheets: p.identical,
+      claudeCall: p.decided ? p.decided.pick : null,
+      reasons: d.reasons,
+      note: d.note.trim(),
+      savedAt: new Date().toISOString(),
+    };
+    const key = voteId(round(), p);
+    $('save').disabled = true;
+    try {
+      if (db) await db.doc(`votes/${key}`).set(vote);
+      votes.set(key, vote);
+      if (!db) saveLocal();
+      state.hint = db ? 'Saved.' : 'Saved in this browser.';
+    } catch (e) {
+      state.hint = `Not saved: ${e && e.message ? e.message : 'the store refused it'}. Try again.`;
+    }
+    $('save').disabled = false;
+    renderAll();
+  }
+
+  /* ---------- Panel mock ---------- */
+  /** A part name as the fact sheet writes it, reduced to what the animation knows it by. */
+  const partKey = (name) =>
+    name
+      // An author's name after the letters, raw or escaped: link KILMNO ("Hood").
+      .replace(/\s*\((?:"|&quot;).*?(?:"|&quot;)\)$/, '')
+      .replace(/^(link|joint|slider|pin|cylinder|point)\s+/i, '')
+      .replace(/\s/g, '')
+      .replace('–', '-');
+  /**
+   * Bold names become parts that point into the mechanism; the terms the model
+   * listed become glossary words with their meaning behind them. v3 answers
+   * gave bare terms, which get the underline and a note that nothing is behind it.
+   */
+  /** The names authors gave parts ("hood"), from the Links table, each to its part's key. */
+  function namesOf(jobs) {
+    const names = {};
+    for (const j of jobs || []) {
+      const named = /\("([^"]+)"\)$/.exec(j.name);
+      if (named) names[named[1].toLowerCase()] = partKey(j.name);
+    }
+    return names;
+  }
+  function renderParagraph(text, terms, names = {}) {
+    let html = esc(text).replace(
+      /\*\*(.+?)\*\*/g,
+      (_, name) =>
+        `<strong data-part="${esc(names[name.toLowerCase()] ?? partKey(name))}" tabindex="0">${name}</strong>`
+    );
+    const list = (terms || [])
+      .map((t) => (typeof t === 'string' ? { term: t } : t))
+      .filter((t) => t && t.term);
+    for (const t of list.sort((a, b) => b.term.length - a.term.length)) {
+      const re = new RegExp(
+        '(^|[^\\w>])(' + t.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')(?![\\w<])',
+        'i'
+      );
+      const meaning = t.meaning ? esc(t.meaning) : '';
+      html = html.replace(
+        re,
+        `$1<span class="term${meaning ? '' : ' bare'}" tabindex="0" data-term="${esc(t.term)}" data-meaning="${meaning}">$2</span>`
+      );
+    }
+    return html;
+  }
+  function linksTable(p) {
+    if (!p.jobs || !p.jobs.length) return '';
+    const rows = p.jobs
+      .map(
+        (j) =>
+          `<tr data-part="${esc(partKey(j.name))}"><td>${esc(j.name.replace(/^link /, ''))}</td><td>${esc(j.job.split(';')[0])}</td></tr>`
+      )
+      .join('');
+    return `<div class="section"><h4>Links</h4><table class="links"><thead><tr><th>Part</th><th>Job</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+  /**
+   * The Analysis card. What PMKS+ computed (the family it matched, the overview,
+   * the Links table) is drawn whatever the model did, so a failed note costs
+   * the student the paragraph and nothing else.
+   */
+  function panel(p, arm) {
+    // With no match there is simply no Family row.
+    const family = p.appFamily ? [['Family', p.appFamily]] : [];
+    const rows = [...family, ...p.overview]
+      .map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`)
+      .join('');
+    const head = `
+        <div class="panel-title"><h3>Mechanism M1</h3><span class="status">Ready</span></div>
+        <div class="section"><h4>Overview</h4><dl class="rows">${rows}</dl></div>
+        ${linksTable(p)}`;
+    if (!arm.answer) {
+      return `
+      <article class="panel">${head}
+        <div class="section">
+          <h4>In plain English</h4>
+          <div class="written unavailable">
+            <p>The plain-English note could not be written this time. Everything above is computed by PMKS+ and is unaffected.</p>
+            <div class="by">${esc(arm.error || 'the reply was not JSON')}</div>
+          </div>
+        </div>
+      </article>`;
+    }
+    const a = arm.answer;
+    const names = namesOf(p.jobs);
+    const uses = (a.useCases || [])
+      .map(
+        (u) =>
+          `<li><span class="use">${renderParagraph(u.use, [], names)}</span><span class="why">${renderParagraph(u.why, [], names)}</span></li>`
+      )
+      .join('');
+    // From v8, PMKS+ shows "Looks like" only when the author's names or a family
+    // it matched back it up (looks-like-gate.ts); older sheets always showed it.
+    const looks =
+      a.resembles && arm.looksLike?.show !== false
+        ? `<div class="looks"><span class="looks-label">Looks like</span> ${esc(a.resembles)}</div>`
+        : '';
+    return `
+      <article class="panel">${head}
+        <div class="section">
+          <h4>In plain English</h4>
+          <div class="written">
+            <div class="by">✎ Written from the facts above, not measured</div>
+            ${looks}
+            <p>${renderParagraph(a.plainEnglish, a.terms, names)}</p>
+            <div class="how">Point at a <strong>bold part</strong> to find it in the mechanism, or a <span class="term">dotted word</span> for its meaning.</div>
+          </div>
+        </div>
+        <div class="section">
+          <h4>Where you’d find it</h4>
+          <ul class="uses">${uses || '<li class="why">None given: the model named no common use it was sure of.</li>'}</ul>
+          <div class="caveat">From general engineering knowledge, not from this mechanism.</div>
+        </div>
+      </article>`;
+  }
+
+  /* ---------- Pointing: a part lights up in the mechanism, a term shows its meaning ---------- */
+  function highlight(key) {
+    document.querySelectorAll('.hl').forEach((el) => el.classList.remove('hl'));
+    if (!key) return;
+    document
+      .querySelectorAll(`[data-part="${CSS.escape(key)}"]`)
+      .forEach((el) => el.classList.add('hl'));
+    for (const el of anim.parts.get(key) || []) el.classList.add('hl');
+  }
+  function showTip(el) {
+    const tip = $('tip');
+    const meaning = el.dataset.meaning;
+    tip.innerHTML = `<b>${esc(el.dataset.term)}</b>${meaning || 'The model listed this word but gave no meaning (v3 answers did not).'}`;
+    tip.hidden = false;
+    const r = el.getBoundingClientRect();
+    const w = tip.offsetWidth;
+    const h = tip.offsetHeight;
+    const left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left + r.width / 2 - w / 2));
+    const top = r.top - h - 8 > 8 ? r.top - h - 8 : r.bottom + 8;
+    tip.style.left = `${left}px`;
+    tip.style.top = `${top}px`;
+  }
+  const hideTip = () => ($('tip').hidden = true);
+  document.addEventListener('mouseover', (e) => {
+    const part = e.target.closest('[data-part]');
+    if (part) highlight(part.dataset.part);
+    const term = e.target.closest('.term[data-term]');
+    if (term) showTip(term);
+  });
+  document.addEventListener('mouseout', (e) => {
+    if (e.target.closest('[data-part]')) highlight(null);
+    if (e.target.closest('.term[data-term]')) hideTip();
+  });
+  document.addEventListener('focusin', (e) => {
+    const part = e.target.closest('[data-part]');
+    if (part) highlight(part.dataset.part);
+    const term = e.target.closest('.term[data-term]');
+    if (term) showTip(term);
+  });
+  document.addEventListener('focusout', () => {
+    highlight(null);
+    hideTip();
+  });
+  window.addEventListener('scroll', hideTip, { passive: true });
+
+  /* ---------- Mechanism animation ---------- */
+  const anim = {
+    pair: null,
+    els: null,
+    parts: new Map(),
+    frame: 0,
+    phase: 0,
+    playing: !matchMedia('(prefers-reduced-motion: reduce)').matches,
+    last: 0,
+  };
+  const NS = 'http://www.w3.org/2000/svg';
+  const svgEl = (tag, attrs, parent) => {
+    const el = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    if (parent) parent.appendChild(el);
+    return el;
+  };
+  function hull(points) {
+    const s = points.map((p, i) => [p[0], p[1], i]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    if (s.length <= 2) return s;
+    const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lower = [];
+    for (const p of s) {
+      while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0)
+        lower.pop();
+      lower.push(p);
+    }
+    const upper = [];
+    for (const p of [...s].reverse()) {
+      while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0)
+        upper.pop();
+      upper.push(p);
+    }
+    return [...lower.slice(0, -1), ...upper.slice(0, -1)];
+  }
+  function setupAnimation(p) {
+    const svg = $('anim');
+    svg.replaceChildren();
+    anim.pair = p;
+    anim.parts = new Map();
+    const m = DATA.motions[p.template];
+    if (!m) {
+      anim.els = null;
+      return;
+    }
+    const all = m.frames.flat();
+    const xs = all.map((q) => q[0]);
+    const ys = all.map((q) => q[1]);
+    const W = 400;
+    const H = 300;
+    const PAD = 26;
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const k = Math.min(
+      (W - 2 * PAD) / Math.max(maxX - minX, 1e-6),
+      (H - 2 * PAD) / Math.max(maxY - minY, 1e-6)
+    );
+    const ox = (W - (maxX - minX) * k) / 2;
+    const oy = (H - (maxY - minY) * k) / 2;
+    const px = (x) => ox + (x - minX) * k;
+    const py = (y) => oy + (maxY - y) * k;
+    const pts = (list) => list.map(([x, y]) => `${px(x).toFixed(1)},${py(y).toFixed(1)}`).join(' ');
+    const addPart = (key, el) => anim.parts.set(key, [...(anim.parts.get(key) || []), el]);
+
+    // A fixed guide is a rail -- a pale band between two edges -- so it cannot
+    // be mistaken for a path. Paths are solid: a dashed path traced back and
+    // forth over itself reads as solid in places and dashed in others.
+    const guides = svgEl('g', {}, svg);
+    for (const [a, b] of m.guides) {
+      const x1 = px(a[0]);
+      const y1 = py(a[1]);
+      const x2 = px(b[0]);
+      const y2 = py(b[1]);
+      const len = Math.hypot(x2 - x1, y2 - y1) || 1;
+      const nx = (-(y2 - y1) / len) * 4.5;
+      const ny = ((x2 - x1) / len) * 4.5;
+      svgEl(
+        'line',
+        { x1, y1, x2, y2, stroke: 'var(--rail)', 'stroke-width': 9, 'stroke-linecap': 'butt' },
+        guides
+      );
+      for (const s of [1, -1])
+        svgEl(
+          'line',
+          {
+            x1: x1 + s * nx,
+            y1: y1 + s * ny,
+            x2: x2 + s * nx,
+            y2: y2 + s * ny,
+            stroke: 'var(--rail-edge)',
+            'stroke-width': 1,
+          },
+          guides
+        );
+    }
+    const paths = svgEl('g', { fill: 'none' }, svg);
+    m.joints.forEach((j, i) => {
+      if (j.ground) return;
+      svgEl(
+        'polyline',
+        {
+          points: pts(m.frames.map((f) => f[i])),
+          stroke: j.traced ? 'var(--trace)' : 'var(--path)',
+          'stroke-width': j.traced ? 2 : 1,
+        },
+        paths
+      );
+    });
+    const bodies = svgEl('g', {}, svg);
+    // A link its author drew as a disc (a wheel, a flywheel) is a circle about
+    // its pivot with spokes to its other joints, the spokes turning with it.
+    const discOf = new Map((m.discs || []).map((d) => [d.body, d]));
+    const bodyEls = m.bodies.map((ids, b) => {
+      const disc = discOf.get(b);
+      if (disc) {
+        const circle = svgEl(
+          'circle',
+          {
+            r: disc.radius * k,
+            fill: 'var(--link-fill)',
+            stroke: 'var(--link)',
+            'stroke-width': 2.5,
+          },
+          bodies
+        );
+        const spokes = svgEl(
+          'path',
+          { fill: 'none', stroke: 'var(--link)', 'stroke-width': 3, 'stroke-linecap': 'round' },
+          bodies
+        );
+        const key = ids.map((i) => m.joints[i].id).join('');
+        addPart(key, circle);
+        addPart(key, spokes);
+        return { disc, circle, spokes };
+      }
+      const el =
+        ids.length === 2
+          ? svgEl(
+              'line',
+              {
+                stroke: 'var(--link)',
+                'stroke-width': 6,
+                'stroke-linecap': 'round',
+                'stroke-opacity': 0.75,
+              },
+              bodies
+            )
+          : svgEl(
+              'polygon',
+              {
+                fill: 'var(--link-fill)',
+                stroke: 'var(--link)',
+                'stroke-width': 2.5,
+                'stroke-linejoin': 'round',
+              },
+              bodies
+            );
+      addPart(ids.map((i) => m.joints[i].id).join(''), el);
+      return el;
+    });
+    const cylEls = m.cylinders.map(([a, b]) => {
+      const pair = [
+        svgEl(
+          'line',
+          { stroke: 'var(--text-strong)', 'stroke-width': 10, 'stroke-linecap': 'round' },
+          bodies
+        ),
+        svgEl(
+          'line',
+          { stroke: 'var(--text-tertiary)', 'stroke-width': 4, 'stroke-linecap': 'round' },
+          bodies
+        ),
+      ];
+      pair.forEach((el) => addPart(`${m.joints[a].id}-${m.joints[b].id}`, el));
+      return pair;
+    });
+    const joints = svgEl('g', {}, svg);
+    const jointEls = m.joints.map((j) => {
+      const g = svgEl('g', {}, joints);
+      if (j.ground)
+        svgEl('polygon', { points: '0,0 -8,13 8,13', fill: 'var(--text-secondary)' }, g);
+      if (j.slider)
+        svgEl(
+          'rect',
+          { x: -7, y: -5, width: 14, height: 10, rx: 2, fill: 'var(--text-strong)' },
+          g
+        );
+      svgEl(
+        'circle',
+        { r: 4, fill: 'var(--surface)', stroke: 'var(--text-strong)', 'stroke-width': 1.6 },
+        g
+      );
+      const t = svgEl(
+        'text',
+        {
+          x: 6,
+          y: -6,
+          fill: 'var(--text-strong)',
+          'font-size': 14,
+          'font-weight': 700,
+          'font-family': 'Roboto, Arial, sans-serif',
+          'paint-order': 'stroke',
+          stroke: 'var(--surface-sunken)',
+          'stroke-width': 3,
+        },
+        g
+      );
+      t.textContent = j.id;
+      addPart(j.id, g);
+      return g;
+    });
+    anim.els = { bodyEls, cylEls, jointEls, px, py };
+    anim.phase = 0;
+    $('scrub').max = String(m.frames.length - 1);
+    drawFrame(0);
+  }
+  function drawFrame(f) {
+    const m = anim.pair && DATA.motions[anim.pair.template];
+    if (!m || !anim.els) return;
+    anim.frame = f;
+    const frame = m.frames[f];
+    const { bodyEls, cylEls, jointEls, px, py } = anim.els;
+    m.bodies.forEach((ids, b) => {
+      const el = bodyEls[b];
+      if (el.disc) {
+        const c = frame[el.disc.center];
+        el.circle.setAttribute('cx', px(c[0]));
+        el.circle.setAttribute('cy', py(c[1]));
+        el.spokes.setAttribute(
+          'd',
+          ids
+            .filter((i) => i !== el.disc.center)
+            .map((i) => `M ${px(c[0])} ${py(c[1])} L ${px(frame[i][0])} ${py(frame[i][1])}`)
+            .join(' ')
+        );
+      } else if (ids.length === 2) {
+        const [p, q] = [frame[ids[0]], frame[ids[1]]];
+        el.setAttribute('x1', px(p[0]));
+        el.setAttribute('y1', py(p[1]));
+        el.setAttribute('x2', px(q[0]));
+        el.setAttribute('y2', py(q[1]));
+      } else {
+        el.setAttribute(
+          'points',
+          hull(ids.map((i) => frame[i]))
+            .map(([x, y]) => `${px(x).toFixed(1)},${py(y).toFixed(1)}`)
+            .join(' ')
+        );
+      }
+    });
+    m.cylinders.forEach(([a, b], c) => {
+      const p = frame[a];
+      const q = frame[b];
+      const mx = (p[0] + q[0]) / 2;
+      const my = (p[1] + q[1]) / 2;
+      const [barrel, rod] = cylEls[c];
+      barrel.setAttribute('x1', px(p[0]));
+      barrel.setAttribute('y1', py(p[1]));
+      barrel.setAttribute('x2', px(mx));
+      barrel.setAttribute('y2', py(my));
+      rod.setAttribute('x1', px(mx));
+      rod.setAttribute('y1', py(my));
+      rod.setAttribute('x2', px(q[0]));
+      rod.setAttribute('y2', py(q[1]));
+    });
+    jointEls.forEach((g, i) =>
+      g.setAttribute(
+        'transform',
+        `translate(${px(frame[i][0]).toFixed(1)} ${py(frame[i][1]).toFixed(1)})`
+      )
+    );
+    $('scrub').value = String(f);
+  }
+  function frameAtPhase(m, phase) {
+    const t0 = m.time[0];
+    const span = m.time[m.time.length - 1] - t0;
+    if (!(span > 0)) return Math.floor(phase * (m.frames.length - 1));
+    const target = t0 + phase * span;
+    let lo = 0;
+    let hi = m.time.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (m.time[mid] <= target) lo = mid;
+      else hi = mid - 1;
+    }
+    return lo;
+  }
+  function tick(now) {
+    const m = anim.pair && DATA.motions[anim.pair.template];
+    if (m && anim.playing && state.tab === 'judge') {
+      const dt = anim.last ? Math.min(0.1, (now - anim.last) / 1000) : 0;
+      anim.phase = (anim.phase + (dt * Number($('speed').value)) / CYCLE_SECONDS) % 1;
+      const f = frameAtPhase(m, anim.phase);
+      if (f !== anim.frame) drawFrame(f);
+    }
+    anim.last = now;
+    requestAnimationFrame(tick);
+  }
+  $('play').addEventListener('click', () => {
+    anim.playing = !anim.playing;
+    $('play').textContent = anim.playing ? 'Pause' : 'Play';
+  });
+  $('scrub').addEventListener('input', (e) => {
+    const m = anim.pair && DATA.motions[anim.pair.template];
+    if (!m) return;
+    anim.playing = false;
+    $('play').textContent = 'Play';
+    const f = Number(e.target.value);
+    const span = m.time[m.time.length - 1] - m.time[0];
+    anim.phase = span > 0 ? (m.time[f] - m.time[0]) / span : f / (m.frames.length - 1);
+    drawFrame(f);
+  });
+
+  /* ---------- Rendering ---------- */
+  function renderHeader() {
+    $('round').innerHTML = DATA.rounds
+      .map(
+        (r) =>
+          `<option value="${esc(r.id)}" ${r.id === state.round ? 'selected' : ''}>${esc(r.title)}</option>`
+      )
+      .join('');
+    $('tab-judge').setAttribute('aria-selected', String(state.tab === 'judge'));
+    $('tab-results').setAttribute('aria-selected', String(state.tab === 'results'));
+    $('judge').hidden = state.tab !== 'judge';
+    $('results').hidden = state.tab !== 'results';
+    const r = round();
+    const close = r.pairs.filter((p) => !p.decided);
+    const done = close.filter((p) => voteFor(p)).length;
+    const decided = r.pairs.length - close.length;
+    $('lede').textContent =
+      (decided
+        ? `Claude decided ${decided} of ${r.pairs.length} pairs where one answer was clearly better or they were plainly alike; ${close.length} close call${close.length === 1 ? ' is' : 's are'} left for you (${done} judged). You can still open any of Claude's and vote. `
+        : `${done} of ${r.pairs.length} judged. `) +
+      (armModel(r.a) || armModel(r.b)
+        ? 'Each mechanism has two answers to the same fact sheet, one from each model, on randomly chosen sides; which is which shows after you save. '
+        : 'Each mechanism has two answers from GPT-6 Luna, one per fact-sheet version, on randomly chosen sides; which is which shows after you save. ') +
+      (r.note || '');
+  }
+  function renderStrip() {
+    const chip = (p, i) =>
+      `<button type="button" data-go="${i}" class="${voteFor(p) ? 'done' : ''}${p.decided ? ' claude' : ''}" aria-current="${i === state.index}"><span class="tick"></span>${esc(p.name)}</button>`;
+    const list = ordered();
+    const close = list.filter((p) => !p.decided);
+    const decided = list.filter((p) => p.decided);
+    $('strip').innerHTML =
+      (close.length
+        ? `<span class="group">Close calls</span>${close.map((p) => chip(p, list.indexOf(p))).join('')}`
+        : '') +
+      (decided.length
+        ? `<span class="group">Claude decided</span>${decided.map((p) => chip(p, list.indexOf(p))).join('')}`
+        : '');
+  }
+  let shownPair = null;
+  function renderPair() {
+    const p = pair();
+    const list = ordered();
+    $('m-count').textContent =
+      `Mechanism ${state.index + 1} of ${list.length}${p.decided ? ' · Claude decided' : ' · close call'}`;
+    const source = { library: 'Library', student: 'Student’s mechanism', test: 'Test case' }[
+      p.source || 'library'
+    ];
+    $('m-name').innerHTML = `<span class="source">${esc(source)}</span>${esc(p.name)}`;
+    $('m-intent').hidden = !p.intent;
+    $('m-intent').innerHTML = p.intent
+      ? `<b>Really:</b> ${esc(p.intent)} <span class="hint">(never sent to the model)</span>`
+      : '';
+    // A student's own words: what they wrote when they sent it, never sent to the model.
+    $('m-blurb').className = p.source === 'student' ? 'said' : 'blurb';
+    $('m-blurb').textContent = p.source === 'student' ? `They wrote: “${p.blurb}”` : p.blurb || '';
+    $('open-app').href = p.appUrl;
+    if (shownPair !== p) {
+      setupAnimation(p);
+      shownPair = p;
+    }
+    $('panel-left').innerHTML = panel(p, p.left);
+    $('panel-right').innerHTML = panel(p, p.right);
+    const secs = (arm) => (arm.latencyMs ? `${(arm.latencyMs / 1000).toFixed(1)} s` : '');
+    $('meta-left').textContent = secs(p.left);
+    $('meta-right').textContent = secs(p.right);
+  }
+  function renderVerdict() {
+    const p = pair();
+    const d = draft(p);
+    for (const [id, c] of [
+      ['c-left', 'left'],
+      ['c-same', 'same'],
+      ['c-right', 'right'],
+      ['c-poor', 'both-poor'],
+    ])
+      $(id).setAttribute('aria-checked', String(d.choice === c));
+    $('side-left').classList.toggle('chosen', d.choice === 'left');
+    $('side-right').classList.toggle('chosen', d.choice === 'right');
+    const reasonsOn = d.choice === 'left' || d.choice === 'right';
+    $('reasons').setAttribute('aria-disabled', String(!reasonsOn));
+    $('reasons').innerHTML =
+      `<span class="label">Why it wins</span>` +
+      REASONS.map(
+        (r, i) =>
+          `<button type="button" class="chip" id="reason-${i}" data-reason="${esc(r)}" aria-pressed="${d.reasons.includes(r)}">${esc(r)}</button>`
+      ).join('');
+    $('wrong-left').checked = d.wrongLeft;
+    $('wrong-right').checked = d.wrongRight;
+    if ($('note') !== document.activeElement) $('note').value = d.note;
+    const side = claudeSide(p);
+    $('called').hidden = !side;
+    if (side) {
+      const said = {
+        left: 'A is clearly better',
+        right: 'B is clearly better',
+        same: 'they are about the same',
+        'both-poor': 'both are poor',
+      }[side];
+      $('called').innerHTML =
+        `<b>Claude called this one: ${esc(said)}.</b> ${esc(p.decided.why)} Vote only if you disagree.`;
+    }
+    const saved = voteFor(p);
+    $('save').textContent = saved ? 'Update' : 'Save';
+    $('next').hidden = state.index >= ordered().length - 1;
+    $('save-hint').textContent = state.hint;
+    $('save-hint').className =
+      'hint' + (state.hint && !state.hint.startsWith('Saved') ? ' warn' : '');
+  }
+  /** The automatic checks as chips; a check that has no key for this case says nothing. */
+  function chips(arm, famWord, app) {
+    const out = [];
+    const known = arm.rubric.family !== 'unknown' || !arm.answer;
+    if (known)
+      out.push(
+        `<span class="fam ${esc(arm.rubric.family)}">${esc(famWord[arm.rubric.family] || arm.rubric.family)}</span>`
+      );
+    if (app && app !== 'n/a')
+      out.push(
+        `<span class="fam ${app === 'named' ? 'named' : 'missed'}">${app === 'named' ? 'uses name the real machine' : 'uses miss the real machine'}</span>`
+      );
+    const rec = arm.rubric.recognition;
+    if (rec && rec !== 'n/a')
+      out.push(
+        `<span class="fam ${rec === 'named' ? 'named' : 'missed'}">${rec === 'named' ? 'recognizes what it really is' : 'misses what it really is'}</span>`
+      );
+    return out.join(' ');
+  }
+  function renderReveal() {
+    const p = pair();
+    const v = voteFor(p);
+    const el = $('reveal');
+    el.hidden = !v && !p.decided;
+    if (el.hidden) return;
+    const famWord = {
+      named: 'names the family',
+      class: 'names its class only',
+      missed: 'misses the family',
+      unknown: 'no answer',
+    };
+    const side = (arm, tag) => {
+      const flags = arm.rubric.flags.length
+        ? arm.rubric.flags.map((f) => `<li>${esc(f)}</li>`).join('')
+        : '<li class="none">No automatic flags</li>';
+      const app = arm.rubric.application;
+      const u = arm.usage || {};
+      const img = arm.image && DATA.images[arm.image];
+      const said = arm.answer?.resembles;
+      const gate = arm.looksLike
+        ? `<span class="hint">“Looks like” ${arm.looksLike.show ? 'shown' : 'hidden'}: ${esc(arm.looksLike.because)}${!arm.looksLike.show && said ? `. The model said “${esc(said)}”.` : '.'}</span>`
+        : '';
+      return `<div>
+        <span class="sheet-name">${tag} was ${esc(armLabel(arm))}</span>
+        <span>${chips(arm, famWord, app)}</span>
+        ${gate}
+        <ul class="flags">${flags}</ul>
+        <span class="hint">${arm.latencyMs ? `${(arm.latencyMs / 1000).toFixed(1)} s · ` : ''}${u.input ?? '–'} in · ${u.output ?? '–'} out${u.reasoning ? ` (${u.reasoning} reasoning)` : ''}</span>
+        ${img ? `<details class="saw"><summary>Picture ${tag} was sent</summary><img src="${img}" alt="The picture sent with ${esc(armLabel(arm))}"></details>` : ''}
+        <details class="facts"><summary>Fact sheet ${tag} was written from</summary><pre>${esc(DATA.facts[arm.factsId] ?? '')}</pre></details>
+      </div>`;
+    };
+    const change = p.identical
+      ? `<div class="same-sheet">The two fact sheets were word for word the same for this mechanism, so any difference here is Luna answering differently on its own.</div>`
+      : p.sameFacts
+        ? `<div class="same-sheet">The fact sheets were the same for this mechanism; the instructions (and, from v5, the picture) differ. What changed is listed on the Results tab.</div>`
+        : `<details><summary class="hint">What changed in the fact sheet for this mechanism (${esc(sheetTitle(round().a))} → ${esc(sheetTitle(round().b))})</summary><pre class="diff">${p.diff.map((d) => `<span class="${d.op === '+' ? 'add' : 'del'}">${d.op} ${esc(d.line)}</span>`).join('\n')}</pre></details>`;
+    el.innerHTML = `<h3 id="reveal-h">${v ? 'Revealed' : 'Revealed with Claude’s call'}</h3><div class="who-was">${side(p.left, 'A')}${side(p.right, 'B')}</div>${change}`;
+  }
+
+  /** Each pair's outcome: your vote where you gave one, otherwise Claude's call. */
+  function outcome(p) {
+    const r = round();
+    const v = voteFor(p);
+    if (v) {
+      const winner =
+        v.choice === 'same' || v.choice === 'both-poor' ? v.choice : v.winner === r.a ? 'a' : 'b';
+      return { by: 'you', winner };
+    }
+    if (p.decided) return { by: 'claude', winner: p.decided.pick };
+    return null;
+  }
+  function tallyOf(pairs) {
+    const t = { a: 0, b: 0, same: 0, poor: 0, n: pairs.length, judged: 0 };
+    for (const p of pairs) {
+      const o = outcome(p);
+      if (!o) continue;
+      t.judged++;
+      if (o.winner === 'same') t.same++;
+      else if (o.winner === 'both-poor') t.poor++;
+      else t[o.winner]++;
+    }
+    return t;
+  }
+  function bar(t) {
+    const total = Math.max(t.judged, 1);
+    const seg = (cls, n, label) =>
+      n
+        ? `<span class="${cls}" style="width:${(n / total) * 100}%" title="${esc(label)}: ${n}">${n}</span>`
+        : '';
+    return `<div class="bar">${seg('b-a', t.a, sheetTitle(round().a))}${seg('b-same', t.same, 'About the same')}${seg('b-b', t.b, sheetTitle(round().b))}${seg('b-poor', t.poor, 'Both poor')}</div>`;
+  }
+  function renderResults() {
+    const r = round();
+    const all = tallyOf(r.pairs);
+    const count = (armId, key, value) =>
+      r.pairs.filter((p) =>
+        [p.left, p.right].some((arm) => arm.id === armId && arm.rubric[key] === value)
+      ).length;
+    const flagCount = (armId) =>
+      r.pairs.reduce(
+        (s, p) =>
+          s +
+          [p.left, p.right]
+            .filter((arm) => arm.id === armId)
+            .reduce((x, arm) => x + arm.rubric.flags.length, 0),
+        0
+      );
+    const useTotal = r.pairs.filter((p) => p.left.rubric.application !== 'n/a').length;
+    const sheetB = DATA.sheets[armSheet(r.b)];
+    const pill = (o) => {
+      if (!o) return '<span class="pill">not yet</span>';
+      const who = o.by === 'claude' ? ' (Claude)' : '';
+      if (o.winner === 'same') return `<span class="pill">about the same${who}</span>`;
+      if (o.winner === 'both-poor') return `<span class="pill bad">both poor${who}</span>`;
+      return `<span class="pill win">${esc(sheetTitle(o.winner === 'a' ? r.a : r.b))}${who}</span>`;
+    };
+    const rows = r.pairs
+      .map((p) => {
+        const v = voteFor(p);
+        const why = v
+          ? [...(v.reasons || []), v.note].filter(Boolean).join(' — ')
+          : p.decided
+            ? p.decided.why
+            : '';
+        return `<tr><td>${esc(p.name)}</td><td>${p.identical ? 'identical' : p.sameFacts ? 'same sheet, new prompt' : 'changed'}</td><td>${pill(outcome(p))}</td><td>${v && v.wrong.length ? v.wrong.map((w) => `<span class="pill bad">${esc(sheetTitle(w))}</span>`).join(' ') : ''}</td><td class="note">${esc(why)}</td></tr>`;
+      })
+      .join('');
+    $('results').innerHTML = `
+      <section class="card" style="display:grid; gap:14px">
+        <div class="tally-head"><h2>${esc(r.title)}</h2><span class="hint">${all.judged} of ${all.n} decided, by you or by Claude</span></div>
+        ${bar(all)}
+        <div class="bar-legend">
+          <span><i style="background:var(--text-tertiary)"></i>${esc(sheetTitle(r.a))} better: ${all.a}</span>
+          <span><i style="background:var(--border-divider)"></i>About the same: ${all.same}</span>
+          <span><i style="background:var(--brand)"></i>${esc(sheetTitle(r.b))} better: ${all.b}</span>
+          <span><i style="background:var(--refusal-text)"></i>Both poor: ${all.poor}</span>
+        </div>
+        <div class="stats">
+          <div class="stat"><span class="v">${count(r.a, 'family', 'named')} · ${count(r.b, 'family', 'named')}</span><span class="k">Name the family, of ${r.pairs.length}: ${esc(sheetTitle(r.a))} · ${esc(sheetTitle(r.b))}</span></div>
+          <div class="stat"><span class="v">${count(r.a, 'application', 'named')} · ${count(r.b, 'application', 'named')}</span><span class="k">Uses name the real machine, of ${useTotal}</span></div>
+          <div class="stat"><span class="v">${count(r.a, 'recognition', 'named')} · ${count(r.b, 'recognition', 'named')}</span><span class="k">Recognize what it really is, of ${r.pairs.filter((p) => p.left.rubric.recognition !== 'n/a' || p.right.rubric.recognition !== 'n/a').length}</span></div>
+          <div class="stat"><span class="v">${flagCount(r.a)} · ${flagCount(r.b)}</span><span class="k">Automatic flags (each version checked by its own rules)</span></div>
+        </div>
+      </section>
+      <section class="card" style="display:grid; gap:10px">
+        <h2>Every pair</h2>
+        <div class="table-scroll"><table class="votes"><thead><tr><th>Mechanism</th><th>Sheet</th><th>Better</th><th>You marked wrong</th><th>Why</th></tr></thead><tbody>${rows}</tbody></table></div>
+        <div class="verdict-actions"><button type="button" class="secondary" id="copy">Copy votes as JSON</button><span class="hint" id="copy-hint"></span></div>
+      </section>
+      <section class="card" style="display:grid; gap:10px">
+        <h2>What ${esc(sheetB?.title || r.b)} changed</h2>
+        <p class="lede">${esc(sheetB?.summary || '')}</p>
+        <ul class="changes">${(sheetB?.changes || []).map((c) => `<li>${esc(c)}</li>`).join('')}</ul>
+      </section>`;
+  }
+  function renderAll() {
+    renderStore();
+    renderHeader();
+    if (state.tab === 'judge') {
+      renderStrip();
+      renderPair();
+      renderVerdict();
+      renderReveal();
+    } else {
+      renderResults();
+    }
+  }
+
+  /* ---------- Events ---------- */
+  function go(index) {
+    state.index = Math.max(0, Math.min(ordered().length - 1, index));
+    state.hint = '';
+    hideTip();
+    renderAll();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  $('round').addEventListener('change', (e) => {
+    state.round = e.target.value;
+    placed = false;
+    placeOnFirstOpen();
+    shownPair = null;
+    savePrefs();
+    renderAll();
+  });
+  $('tab-judge').addEventListener('click', () => {
+    state.tab = 'judge';
+    savePrefs();
+    renderAll();
+  });
+  $('tab-results').addEventListener('click', () => {
+    state.tab = 'results';
+    savePrefs();
+    renderAll();
+  });
+  $('strip').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-go]');
+    if (b) go(Number(b.dataset.go));
+  });
+  $('choice').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-choice]');
+    if (!b) return;
+    const d = draft(pair());
+    d.choice = b.dataset.choice;
+    if (d.choice !== 'left' && d.choice !== 'right') d.reasons = [];
+    state.hint = '';
+    renderVerdict();
+  });
+  $('reasons').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-reason]');
+    if (!b) return;
+    const d = draft(pair());
+    const r = b.dataset.reason;
+    d.reasons = d.reasons.includes(r) ? d.reasons.filter((x) => x !== r) : [...d.reasons, r];
+    renderVerdict();
+  });
+  $('wrong-left').addEventListener('change', (e) => (draft(pair()).wrongLeft = e.target.checked));
+  $('wrong-right').addEventListener('change', (e) => (draft(pair()).wrongRight = e.target.checked));
+  $('note').addEventListener('input', (e) => (draft(pair()).note = e.target.value));
+  $('save').addEventListener('click', saveVote);
+  $('next').addEventListener('click', () => {
+    const list = ordered();
+    const after = list.findIndex((p, i) => i > state.index && !p.decided && !voteFor(p));
+    go(after >= 0 ? after : state.index + 1);
+  });
+  document.addEventListener('click', async (e) => {
+    if (e.target.id !== 'copy') return;
+    const text = JSON.stringify(
+      [...votes.values()].filter((v) => v.round === state.round),
+      null,
+      2
+    );
+    try {
+      await navigator.clipboard.writeText(text);
+      $('copy-hint').textContent = 'Copied.';
+    } catch (err) {
+      $('copy-hint').textContent = 'Copy was refused; here it is to select:';
+      const pre = document.createElement('pre');
+      pre.className = 'diff';
+      pre.textContent = text;
+      $('copy-hint').after(pre);
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (state.tab !== 'judge') return;
+    const typing = ['TEXTAREA', 'INPUT', 'SELECT'].includes(document.activeElement?.tagName);
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      saveVote();
+      return;
+    }
+    if (typing) return;
+    const map = { 1: 'left', 2: 'same', 3: 'right', 4: 'both-poor' };
+    if (map[e.key]) {
+      const d = draft(pair());
+      d.choice = map[e.key];
+      if (!['left', 'right'].includes(d.choice)) d.reasons = [];
+      renderVerdict();
+    } else if (e.key === 'ArrowRight') go(state.index + 1);
+    else if (e.key === 'ArrowLeft') go(state.index - 1);
+  });
+
+  renderAll();
+  requestAnimationFrame(tick);
+  connect();
+</script>

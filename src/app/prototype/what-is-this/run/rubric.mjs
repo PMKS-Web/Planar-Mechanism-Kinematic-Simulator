@@ -1,0 +1,334 @@
+// PROTOTYPE: the checks a script can make on one answer, so a person's vote is
+// spent on taste. Every check compares the answer with the fact sheet it was
+// written from; none of them knows what the mechanism really is, except the
+// family keywords, which are the library's own names for the ten templates.
+//
+// A flag is a reason to look, not a verdict: a number can be derived honestly
+// (a difference of two stated numbers), and a family can be right in other words.
+
+/** Words that name each template's family: `full` is the name, `near` is its class. */
+const FAMILY = {
+  '4-Bar': { full: /crank[- ]?rocker/i, near: /four[- ]?bar/i },
+  Slider_Crank: { full: /slider[- ]?crank/i, near: /crank|piston/i },
+  Whitworth_Quick_Return: { full: /whitworth/i, near: /quick[- ]?return|slotted[- ]link/i },
+  Scotch_Yoke: { full: /scotch[- ]?yoke/i, near: /yoke|slotted/i },
+  Chebyshev_Straight_Line: { full: /chebyshev|tchebych/i, near: /straight[- ]?line/i },
+  Jansen_Leg: { full: /jansen|strandbeest/i, near: /walking|leg/i },
+  Windshield_Wiper: {
+    full: /wiper/i,
+    near: /parallelogram|crank[- ]?rocker|dual[- ]rocker|double[- ]rocker/i,
+  },
+  Cylinder_Boom: { full: /boom/i, near: /hydraulic|cylinder/i },
+  Hood_Hinge: { full: /hood/i, near: /hinge|six[- ]?bar|watt|stephenson/i },
+  Pumpjack: {
+    full: /pump ?jack|beam pump|walking[- ]beam|nodding donkey|sucker[- ]rod/i,
+    near: /beam/i,
+  },
+};
+
+/** The machine each template is drawn from, as its uses would name it; none for a generic linkage. */
+const APPLICATION = {
+  Slider_Crank: /engine|pump|compressor/i,
+  Whitworth_Quick_Return: /shaper|slotting|planer|metal/i,
+  Scotch_Yoke: /pump|engine|compressor|valve/i,
+  Jansen_Leg: /walk|robot|strandbeest|legged/i,
+  Windshield_Wiper: /wiper/i,
+  Cylinder_Boom: /excavator|boom|backhoe|crane|loader/i,
+  Hood_Hinge: /hood/i,
+  Pumpjack: /oil|well|pump ?jack/i,
+};
+
+/**
+ * The real machine each later case is, or what the student said they were
+ * building, as a recognizing answer would name it (round 3 on). The model's
+ * `resembles`, its uses and its paragraph all count.
+ */
+const REAL_MACHINE = {
+  Aircraft_Landing_Gear: /landing gear|undercarriage/i,
+  Excavator_Bucket: /excavator|backhoe|digger/i,
+  Car_Steering: /steering/i,
+  Peaucellier: /peaucellier/i,
+  Toggle_Clamp: /toggle clamp|clamp/i,
+  Radial_Engine: /radial engine|radial aircraft engine|radial piston/i,
+  Oscillating_Fan: /\bfan\b/i,
+  Elliptical_Trammel: /trammel|ellipsograph|elliptic/i,
+  'made-chebyshev-near-miss': /chebyshev/i,
+  'made-hoeken': /hoeken/i,
+  'made-watts-linkage': /axle|suspension|watt/i,
+  'student-added-steam-': /locomotive|steam|train/i,
+  'student-19bc32785b6b': /scott[- ]russell/i,
+  'student-19afdedcc1a4': /strider/i,
+  'student-19716c16710b': /\bdoor\b/i,
+  'student-19124f492aa1': /scissor/i,
+  Hood_Hinge: /hood/i,
+  Flywheel_Engine: /engine/i,
+  Punch_Press: /\bpress\b|punch/i,
+  Scissor_Lift: /scissor|lift/i,
+  Pantograph: /pantograph|copying|enlarg/i,
+  Derrick_Crane: /crane|derrick/i,
+  Shaper_Quick_Return: /shaper/i,
+  Pedaling_Leg: /pedal|bicycl|cycling/i,
+  Reciprocating_Saw: /\bsaw\b/i,
+  Cylinder_Gripper: /gripper|grip|claw/i,
+  'made-locomotive-wheels': /locomotive|steam|train|railway/i,
+  // Round 5's held-out templates. Slotted_Tool_Drive is a demonstration of load
+  // frames with no real machine behind it, so it has no entry. The app already
+  // names Chebyshev in Straight_Line_Pair; the other machine is the test.
+  Offset_Mount_Hatch: /hatch|\blid\b|tailgate|trunk|liftgate/i,
+  Crane_Two_Loads: /crane|\bjib\b|luffing/i,
+  Walking_Pair: /jansen|strandbeest|walk|gait/i,
+  Pumping_Field: /pump ?jack|oil well|nodding|beam pump/i,
+  Bell_Crank: /bell ?crank/i,
+  Straight_Line_Pair: /peaucellier/i,
+  // From v9 a drawing of several machines is a case per machine ("__M2"),
+  // each checked against its drawing's machine unless it differs from it.
+  Straight_Line_Pair__M1: /chebyshev/i,
+  Straight_Line_Pair__M2: /peaucellier/i,
+  Hydraulic_Crosshead: /crosshead|\bpress\b/i,
+  'made-coupled-wheels': /locomotive|train|railway|shunter/i,
+};
+
+/**
+ * Library templates that teach a chain or a load case and were never a machine:
+ * a "Looks like" naming a machine for one of these is invented. Round 6 counts
+ * how often the model claims one anyway.
+ */
+export const NO_MACHINE = new Set([
+  'Watt_I',
+  'Watt_II',
+  'Stephenson_III',
+  'Locked_Four_Bar',
+  'Elliptical_Crank',
+  'Offset_Load_Rocker',
+  'Double_Butterfly',
+  'Three_Machines',
+  'Four_Bar_Inversions',
+  'Slider_Crank_Inversions',
+]);
+
+/** A per-machine case's drawing: "Pumping_Field__M2" is Pumping_Field's second machine. */
+export const drawingOf = (template) => template.replace(/__M\d+$/, '');
+
+export function recognitionMatch(template, answer) {
+  const expected = REAL_MACHINE[template] ?? REAL_MACHINE[drawingOf(template)];
+  if (!expected || !answer) return 'n/a';
+  const text = [
+    answer.resembles ?? '',
+    answer.family ?? '',
+    // Bold is a part's name, and from v7 that can be its author's ("**Hood**"):
+    // repeating it is not recognizing anything.
+    (answer.plainEnglish ?? '').replace(/\*\*[^*]+\*\*/g, ' '),
+    ...(answer.useCases ?? []).map((u) => `${u.use} ${u.why}`),
+  ].join(' ');
+  return expected.test(text) ? 'named' : 'missed';
+}
+
+export function applicationMatch(template, answer) {
+  const expected = APPLICATION[template];
+  if (!expected) return 'n/a';
+  const uses = (answer?.useCases ?? []).map((u) => `${u.use} ${u.why}`).join(' ');
+  return expected.test(uses) ? 'named' : 'missed';
+}
+
+export function familyMatch(template, answer) {
+  const keys = FAMILY[template];
+  if (!keys || !answer) return 'unknown';
+  const opening = `${answer.family ?? ''} ${(answer.plainEnglish ?? '').split(/[.:;]/)[0]}`;
+  if (keys.full.test(opening)) return 'named';
+  if (keys.near.test(opening)) return 'class';
+  return 'missed';
+}
+
+function sheetNames(sheet) {
+  const joints = new Set();
+  // One Joints line per machine: a drawing of several has several.
+  for (const [, jointLine] of sheet.matchAll(/^- Joints: (.*)$/gm))
+    for (const m of jointLine.matchAll(/(?:^|; )([A-Z])(?: \("[^"]*"\))? \(/g)) joints.add(m[1]);
+  const links = new Set([...sheet.matchAll(/\blink ([A-Z]{2,})\b/g)].map((m) => m[1]));
+  // v7: the authors' own names, which the panel points from as it does from letters.
+  const named = new Set(
+    [...sheet.matchAll(/\b(?:link|joint|slider|pin|Force) [A-Z0-9-]+ \("([^"]+)"\)/g)].map((m) =>
+      m[1].toLowerCase()
+    )
+  );
+  return { joints, links, named };
+}
+
+/** A bold span or "link XY" that names no joint or link of the sheet. */
+function unknownParts(text, sheet) {
+  const { joints, links, named } = sheetNames(sheet);
+  const known = (token) => {
+    const t = token
+      .replace(/\s*\("[^"]*"\)$/, '')
+      .replace(/^(link|joint|pin|slider|cylinder|ground|point)\s+/i, '')
+      .trim();
+    if (joints.has(t) || links.has(t) || named.has(t.toLowerCase())) return true;
+    const pair = /^([A-Z])\s*[-–]\s*([A-Z])$/.exec(t);
+    return !!pair && joints.has(pair[1]) && joints.has(pair[2]);
+  };
+  const flagged = new Set();
+  for (const m of text.matchAll(/\*\*([^*]+)\*\*/g)) if (!known(m[1])) flagged.add(m[1]);
+  for (const m of text.matchAll(/\blinks? ([A-Z]{2,})\b/g)) if (!known(m[1])) flagged.add(m[1]);
+  return [...flagged];
+}
+
+/** Numbers in the answer that no number in the sheet rounds to. */
+function unsupportedNumbers(text, sheet) {
+  const plain = text.replace(/\*\*[^*]+\*\*/g, ' ');
+  const stated = [...sheet.matchAll(/-?\d+(?:\.\d+)?/g)].map((m) => Number(m[0]));
+  const out = [];
+  for (const m of plain.matchAll(/(?<![A-Za-z\d.])-?\d+(?:\.\d+)?(?![A-Za-z\d])/g)) {
+    const x = Number(m[0]);
+    const decimals = (m[0].split('.')[1] ?? '').length;
+    const half = 0.5 * 10 ** -decimals;
+    const ok = stated.some(
+      (y) => Math.abs(x - y) <= Math.max(half, 0.005 * Math.abs(y)) || Math.abs(x + y) <= half
+    );
+    if (!ok) out.push(m[0]);
+  }
+  return [...new Set(out)];
+}
+
+/** Motion words an answer used that its sheet gives no ground for. */
+function unsupportedClaims(text, sheet) {
+  const claims = [];
+  const says = (re) => re.test(text);
+  const sheetSays = (re) => re.test(sheet);
+  if (says(/straight[- ]?line|straight path|in a straight/i) && !sheetSays(/straight/i))
+    claims.push('straight-line motion');
+  if (says(/parallel/i) && !sheetSays(/parallel/i)) claims.push('parallel');
+  const quickInSheet = sheetSays(
+    /quick return|slow stroke|fast on one half-turn|time ratio (1\.(0[5-9]|[1-9])|[2-9])/i
+  );
+  if (says(/quick(er)?[- ]return|fast(er)? return/i) && !quickInSheet) claims.push('quick return');
+  if (says(/\bno (faster|quick(er)?) return|\bequal times|same time in both/i) && quickInSheet)
+    claims.push('denies the quick return the sheet shows');
+  // A landing gear or valve gear is a machine, not a gear wheel, and once an
+  // answer has said so, "the gear" later on means the same machine.
+  const gearIsMachine = says(/\b(landing|valve) gear/i);
+  for (const part of ['gear', 'cam', 'spring', 'belt', 'motor'])
+    if (
+      !(part === 'gear' && gearIsMachine) &&
+      says(new RegExp(`\\b${part}s?\\b`, 'i')) &&
+      !sheetSays(new RegExp(`\\b${part}`, 'i'))
+    )
+      claims.push(`a ${part}`);
+  return claims;
+}
+
+const OPENING = { is: /^This is\b/, resembles: /^This resembles\b/, unsure: /^This linkage\b/ };
+
+/** The family the sheet's own check matched, if it has one (v4 on). */
+function sheetMatch(sheet) {
+  return /^- Matches: ([^.]+)\./m.exec(sheet)?.[1];
+}
+
+/** What v4 and v5 share: the app's words, bold part names, terms with meanings, the seal. */
+function wordingFlags(answer, sheet) {
+  const flags = [];
+  const text = answer.plainEnglish ?? '';
+  const all = [text, ...(answer.useCases ?? []).map((u) => `${u.use} ${u.why}`)].join(' ');
+  // "A straight-line drawing machine" is drafting, not the mechanism.
+  if (/\b(this|the) drawing\b/i.test(all)) flags.push('says "drawing" instead of "mechanism"');
+  if (/fact sheet/i.test(all)) flags.push('mentions "the fact sheet", which a student never sees');
+  if (/https?:\/\//.test(all)) flags.push('cites a web page: the model used a search tool');
+  if (!/\*\*[^*]+\*\*/.test(text))
+    flags.push('no part names in bold, so the panel cannot point at any');
+  if (/(^|\s)a (?!one\b|u)(?=[aeiou])/.test(text.replace(/\*\*/g, '')))
+    flags.push('"a" before a vowel');
+  const seal = /the block marked ([A-Z]) on it is the cylinder's own sliding seal/.exec(sheet)?.[1];
+  const called = /seal[,:]?\s*(?:is\s+)?\*\*(?:slider |joint |block )?([A-Z])\*\*/.exec(all)?.[1];
+  if (seal && called && called !== seal)
+    flags.push(`calls ${called} the cylinder's seal; the seal is ${seal}`);
+  if (/\b(this|the) linkage\b/i.test(all))
+    flags.push('says "this linkage" instead of "this mechanism"');
+  for (const term of answer.terms ?? []) {
+    const word = typeof term === 'string' ? term : term.term;
+    if (typeof term === 'string' || !term.meaning) flags.push(`term "${word}" has no meaning`);
+    if (word && !text.toLowerCase().includes(word.toLowerCase()))
+      flags.push(`term "${word}" is not in the paragraph`);
+  }
+  return flags;
+}
+
+/**
+ * v5: the panel shows the app's family, so the note must not name it, and
+ * uses are one or two real products.
+ */
+function v5Flags(answer, sheet) {
+  const flags = wordingFlags(answer, sheet);
+  const text = (answer.plainEnglish ?? '').toLowerCase();
+  const match = sheetMatch(sheet);
+  if (match) {
+    // The whole name, or its proper-noun first word ("Chebyshev", "Whitworth").
+    const first = match.split(/[ -]/)[0];
+    if (
+      text.includes(match.toLowerCase()) ||
+      (/^[A-Z]/.test(first) && text.includes(first.toLowerCase()))
+    )
+      flags.push(`names the family "${match}", which the panel already shows`);
+  }
+  const uses = answer.useCases ?? [];
+  if (uses.length < 1 || uses.length > 2) flags.push(`${uses.length} uses (asked for 1 or 2)`);
+  return flags;
+}
+
+/** v4's rules: the opening follows the app's check, the app's words, terms with meanings. */
+function v4Flags(answer, sheet) {
+  const flags = [];
+  const text = answer.plainEnglish ?? '';
+  const match = sheetMatch(sheet);
+  if (match) {
+    if (!/^This mechanism is an? /.test(text))
+      flags.push(`opening is not "This mechanism is a ..." though PMKS+ matched ${match}`);
+    const key = match
+      .toLowerCase()
+      .split(/[ -]/)
+      .filter((w) => w.length > 3)[0];
+    if (key && !(answer.family ?? '').toLowerCase().includes(key))
+      flags.push(`family "${answer.family}" is not the matched ${match}`);
+  } else if (!/^This mechanism (resembles|\w)/.test(text)) {
+    flags.push('opening does not begin "This mechanism"');
+  }
+  flags.push(...wordingFlags(answer, sheet));
+  return flags;
+}
+
+export function checkAnswer(template, answer, sheet) {
+  if (!answer)
+    return {
+      family: 'unknown',
+      application: 'n/a',
+      recognition: 'n/a',
+      flags: ['no parsed answer'],
+    };
+  const uses = answer.useCases ?? [];
+  const text = [answer.plainEnglish ?? '', ...uses.map((u) => `${u.use}. ${u.why}`)].join('\n');
+  const words = (answer.plainEnglish ?? '').split(/\s+/).filter(Boolean).length;
+  const flags = [];
+  const parts = unknownParts(text, sheet);
+  if (parts.length) flags.push(`names parts not in the sheet: ${parts.join(', ')}`);
+  const numbers = unsupportedNumbers(text, sheet);
+  if (numbers.length) flags.push(`numbers not in the sheet: ${numbers.join(', ')}`);
+  for (const claim of unsupportedClaims(text, sheet)) flags.push(`claims ${claim}`);
+  if (words < 50 || words > 90) flags.push(`${words} words (asked for 50-90)`);
+  if (answer.certainty) {
+    // v3 and before: 2-3 uses, and the opening follows the model's own certainty.
+    if (uses.length < 2 || uses.length > 3) flags.push(`${uses.length} uses (asked for 2-3)`);
+    const opening = OPENING[answer.certainty];
+    if (opening && !opening.test(answer.plainEnglish ?? ''))
+      flags.push(`opening does not match certainty "${answer.certainty}"`);
+  } else if (!('family' in answer)) {
+    flags.push(...v5Flags(answer, sheet));
+  } else {
+    if (uses.length > 3) flags.push(`${uses.length} uses (asked for at most 3)`);
+    flags.push(...v4Flags(answer, sheet));
+  }
+  return {
+    family: familyMatch(template, answer),
+    application: applicationMatch(template, answer),
+    recognition: recognitionMatch(template, answer),
+    words,
+    flags,
+  };
+}

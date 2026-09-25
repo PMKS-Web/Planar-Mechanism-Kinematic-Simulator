@@ -1,0 +1,26 @@
+{
+  "note": "Round 3's cases: library templates not used before, mechanisms students attached to feedback (by message id; the links stay in the gitignored artifacts/what-is-this/feedback/feedback.jsonl), and test cases from made-cases.ts. An intent is what the student said they were building, read from their message; it is never sent to the model.",
+  "library": [
+    "Aircraft_Landing_Gear",
+    "Excavator_Bucket",
+    "Car_Steering",
+    "Peaucellier",
+    "Toggle_Clamp",
+    "Radial_Engine",
+    "Oscillating_Fan",
+    "Elliptical_Trammel"
+  ],
+  "user": [
+    { "id": "added-steam-locomotive", "intent": "steam locomotive" },
+    { "id": "19bc32785b6b7cb0", "intent": "Scott Russell straight-line generator" },
+    { "id": "19afdedcc1a43245", "intent": "Strider linkage (a walking leg)" },
+    { "id": "19716c16710b9ec9", "intent": "a linkage to open a door through 90 degrees" },
+    { "id": "19124f492aa1d461", "intent": "hydraulic cylinder or scissor-lift experiments" },
+    { "id": "196bdb37388fab22" },
+    { "id": "1943d7a31665ff85" },
+    { "id": "1931b6161a924b0d" },
+    { "id": "19a3b4a71c6ab786" },
+    { "id": "1995dd30c510cc41" }
+  ],
+  "made": ["made-chebyshev-near-miss", "made-hoeken", "made-watts-linkage"]
+}

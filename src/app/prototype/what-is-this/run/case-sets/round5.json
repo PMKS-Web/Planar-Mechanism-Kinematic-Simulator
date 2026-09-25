@@ -1,0 +1,28 @@
+{
+  "note": "Round 5 tests v7 (authors' names sent; the background image faded, once, boxed to show where the mechanism sits) against v6. It holds out eight library templates never used before, three of them drawings of several machines at once, and the student mechanisms not yet used; it brings back the four templates with background images, which the box and fade are for, and the two students whose goal is known.",
+  "library": [
+    "Hood_Hinge",
+    "Aircraft_Landing_Gear",
+    "Excavator_Bucket",
+    "Car_Steering",
+    "Offset_Mount_Hatch",
+    "Crane_Two_Loads",
+    "Walking_Pair",
+    "Pumping_Field",
+    "Bell_Crank",
+    "Straight_Line_Pair",
+    "Hydraulic_Crosshead",
+    "Slotted_Tool_Drive"
+  ],
+  "user": [
+    { "id": "added-steam-locomotive", "intent": "steam locomotive" },
+    { "id": "19afdedcc1a43245", "intent": "Strider linkage (a walking leg)" },
+    { "id": "192954d7b47995ab" },
+    { "id": "196b93000ce88e8d" },
+    { "id": "196f7ddefeb97a3a" },
+    { "id": "19b3627c114562a0" },
+    { "id": "193aae5db4f6dd5b" },
+    { "id": "196b953c9c0f70b2" }
+  ],
+  "made": ["made-locomotive-wheels"]
+}

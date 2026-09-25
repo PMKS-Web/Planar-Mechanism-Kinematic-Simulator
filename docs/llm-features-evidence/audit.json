@@ -1,0 +1,282 @@
+{
+  "source_revision": "72fe0fcdf70b171942433d5bfb7c2ddd26f70d80",
+  "method": "Static recount of saved records; no fresh inference or mechanical replay.",
+  "generation_raw": {
+    "G1-minimal__flash-lite": {
+      "saved_requests": 8,
+      "requests_with_candidates": 8,
+      "candidates": 24,
+      "candidates_with_trace": 0,
+      "candidates_with_named_link": 0
+    },
+    "G1-minimal__haiku": {
+      "saved_requests": 8,
+      "requests_with_candidates": 8,
+      "candidates": 24,
+      "candidates_with_trace": 0,
+      "candidates_with_named_link": 0
+    },
+    "G1-minimal__opus": {
+      "saved_requests": 8,
+      "requests_with_candidates": 8,
+      "candidates": 24,
+      "candidates_with_trace": 0,
+      "candidates_with_named_link": 0
+    },
+    "G2-engineered__flash-lite": {
+      "saved_requests": 8,
+      "requests_with_candidates": 8,
+      "candidates": 24,
+      "candidates_with_trace": 0,
+      "candidates_with_named_link": 0
+    },
+    "G2-engineered__haiku": {
+      "saved_requests": 8,
+      "requests_with_candidates": 7,
+      "candidates": 21,
+      "candidates_with_trace": 0,
+      "candidates_with_named_link": 0
+    },
+    "G2-engineered__opus": {
+      "saved_requests": 8,
+      "requests_with_candidates": 7,
+      "candidates": 21,
+      "candidates_with_trace": 0,
+      "candidates_with_named_link": 0
+    },
+    "G3-designed__flash-lite": {
+      "saved_requests": 8,
+      "requests_with_candidates": 8,
+      "candidates": 24,
+      "candidates_with_trace": 24,
+      "candidates_with_named_link": 0
+    },
+    "G3-designed__opus": {
+      "saved_requests": 8,
+      "requests_with_candidates": 7,
+      "candidates": 21,
+      "candidates_with_trace": 21,
+      "candidates_with_named_link": 0
+    },
+    "G4-parts__flash-lite": {
+      "saved_requests": 8,
+      "requests_with_candidates": 8,
+      "candidates": 24,
+      "candidates_with_trace": 24,
+      "candidates_with_named_link": 0
+    },
+    "G4-parts__opus": {
+      "saved_requests": 8,
+      "requests_with_candidates": 7,
+      "candidates": 21,
+      "candidates_with_trace": 21,
+      "candidates_with_named_link": 0
+    },
+    "G5-parts__flash-lite": {
+      "saved_requests": 8,
+      "requests_with_candidates": 7,
+      "candidates": 21,
+      "candidates_with_trace": 21,
+      "candidates_with_named_link": 21
+    },
+    "G5-parts__opus": {
+      "saved_requests": 8,
+      "requests_with_candidates": 6,
+      "candidates": 18,
+      "candidates_with_trace": 18,
+      "candidates_with_named_link": 18
+    }
+  },
+  "generation_historical_gate": {
+    "G1-minimal__flash-lite": {
+      "report_rows": 24,
+      "tested_candidates": 24,
+      "passing_candidates": 6,
+      "requests_with_any_pass": 4,
+      "requests_with_first_pass": 1,
+      "attempted_requests": 8
+    },
+    "G1-minimal__haiku": {
+      "report_rows": 24,
+      "tested_candidates": 24,
+      "passing_candidates": 11,
+      "requests_with_any_pass": 5,
+      "requests_with_first_pass": 3,
+      "attempted_requests": 8
+    },
+    "G1-minimal__opus": {
+      "report_rows": 24,
+      "tested_candidates": 24,
+      "passing_candidates": 13,
+      "requests_with_any_pass": 6,
+      "requests_with_first_pass": 5,
+      "attempted_requests": 8
+    },
+    "G2-engineered__flash-lite": {
+      "report_rows": 24,
+      "tested_candidates": 24,
+      "passing_candidates": 15,
+      "requests_with_any_pass": 7,
+      "requests_with_first_pass": 5,
+      "attempted_requests": 8
+    },
+    "G2-engineered__haiku": {
+      "report_rows": 22,
+      "tested_candidates": 21,
+      "passing_candidates": 21,
+      "requests_with_any_pass": 7,
+      "requests_with_first_pass": 7,
+      "attempted_requests": 8
+    },
+    "G2-engineered__opus": {
+      "report_rows": 21,
+      "tested_candidates": 21,
+      "passing_candidates": 21,
+      "requests_with_any_pass": 7,
+      "requests_with_first_pass": 7,
+      "attempted_requests": 8
+    }
+  },
+  "stale_selection_reports": [
+    {
+      "report": "g3-links.json",
+      "file": "straightline__G3-designed__opus.json",
+      "raw_candidates": 3
+    },
+    {
+      "report": "g3-links.json",
+      "file": "lift__G3-designed__opus.json",
+      "raw_candidates": 3
+    },
+    {
+      "report": "g3-links.json",
+      "file": "leg__G3-designed__opus.json",
+      "raw_candidates": 3
+    }
+  ],
+  "correction_records": 33,
+  "repair_call_records": 78,
+  "explanation_call_records": 6,
+  "repair_prose_audit": {
+    "unsupported-causal-or-necessity-claim": 6,
+    "no-specific-contradiction-found": 25,
+    "contradicted": 3
+  },
+  "description_response_files": {
+    "responses-v1": 45,
+    "responses-v2": 45,
+    "responses-v3": 36
+  },
+  "gemini_description_records": {
+    "gemini-3.5-flash-lite": {
+      "records": 18,
+      "http_200": 18
+    },
+    "gemini-3.6-flash": {
+      "records": 18,
+      "http_200": 15
+    },
+    "gemini-3.5-flash": {
+      "records": 18,
+      "http_200": 15
+    }
+  },
+  "generation_sha256": {
+    "figure8__G1-minimal__flash-lite.json": "9e06e2a1fa682a4af70068cc49d3e7f8a500788fb87dfe57eae431b0391267cf",
+    "figure8__G1-minimal__haiku.json": "e59bf045dfbc5202b7d664981ff575eae9e12278313f52483fd35426a252e32d",
+    "figure8__G1-minimal__opus.json": "1165081ce7217c8b4fe5b69997233a3605dbd3731f6316cd8182099e543334d3",
+    "figure8__G2-engineered__flash-lite.json": "a9a083b8f1571544c142f8f64a2942901fdb4c2be9f059c58b4145239e7943d2",
+    "figure8__G2-engineered__haiku.json": "661bf1d6a71d37bc44e70a704ee01f41d748efca1d47e19e8acd56fd90c6b8b4",
+    "figure8__G2-engineered__opus.json": "040b8e1dca9e252d3920804bb25df8f812ce036ba0613f3f4b673ef8b826bf7a",
+    "figure8__G3-designed__flash-lite.json": "c8b337db4805dad5df6caf668c37eb28a8ac12d4fcedf63ea8f6734231cd5560",
+    "figure8__G3-designed__opus.json": "273c187acc8c1d6c2383f02e1f7e035250e89a61267043cd57a5cded7046c873",
+    "figure8__G4-parts__flash-lite.json": "bc21d9702c3758f32c027bce73a83a83721f0be1026e40b385aedc0b714cd83c",
+    "figure8__G4-parts__opus.json": "833e8c4731d0c8cf1ad36f91556d33f5468e1c1ac04c8577770f58c1a6eed02b",
+    "figure8__G5-parts__flash-lite.json": "ab9c060453535937ef1bbf49cb9668ba00e514d969f9197c77609560981b741b",
+    "figure8__G5-parts__opus.json": "8dc71bfcd4132015974e857a4ceaa5b8588ffcc32665c7f97dbcbc4a46a511cf",
+    "leg__G1-minimal__flash-lite.json": "5352f58c696a409adb56ff4245e09bafad02ac8376a8ce08e1725f95496c6f73",
+    "leg__G1-minimal__haiku.json": "ed337dea544c3024b973fed2ae254e55be1b8099526afcd63a445fa6fabb2a1b",
+    "leg__G1-minimal__opus.json": "8dc1a427a87f38ac483f13a29d0d58432102260b164b19aed013e71b2185b12d",
+    "leg__G2-engineered__flash-lite.json": "59b482bb11dd2fa766f147c1b4e23a98d1cc95f0c45cfc336e058937879f10a8",
+    "leg__G2-engineered__haiku.json": "b24ec0c0a0ab4a36513ecc8a28954d1627da4a95e78ce25777b95cd42862e91a",
+    "leg__G2-engineered__opus.json": "5771d08fff486d30f497a0cebcee31d71d026d4eb9cc23738f062f91346dfe0d",
+    "leg__G3-designed__flash-lite.json": "272f59040f28e4cd318d8691f9f9a82c929e8af34f25688b60b00c65463d0324",
+    "leg__G3-designed__opus.json": "e452f162ac53aaf7ce0e8eb9a0cea8904c1153df1ea65e1509cfd12e5395122e",
+    "leg__G4-parts__flash-lite.json": "6173a713be422186595c516e3f74a9f49b22a99dab80f58df7d5c980e8712838",
+    "leg__G4-parts__opus.json": "5a5f6597e7e21accd37f7fd869b14b2eeafd48249d5abcd5427dcfac8ae9182f",
+    "leg__G5-parts__flash-lite.json": "96502fbe410c4ef96ba3ce7ae4001b98d952fd9f64a0635b50074ab5fa6dda65",
+    "leg__G5-parts__opus.json": "3ad22976f27c8e4c38a1f399d82ee6f0cd06c6695e9093bdeca2d40f577b11cc",
+    "lift__G1-minimal__flash-lite.json": "6734980bf5261d88f58b883f301318cdab512d9d404930a906dac3739c88505f",
+    "lift__G1-minimal__haiku.json": "0ebec4602fef772682cae19c1e0ae7e00e479258f2a15215b20ea59c2210fcd1",
+    "lift__G1-minimal__opus.json": "a196a1d85efa59fb528848b27cff5cdc06616b9c5579df4ba49e3e100a18f222",
+    "lift__G2-engineered__flash-lite.json": "d83d1f8cebe4f1173a191f1beff2dc34236ee5a38091ff95fe2b29a7e22cef38",
+    "lift__G2-engineered__haiku.json": "29018922bd0b85a478855f3f200267b4cd7461f4da02aea586d9f04c12248094",
+    "lift__G2-engineered__opus.json": "4fb0af8fd467a6f8af905fadb1b68a89d67c0d28e42a2759f6c5ab3cdabfaf53",
+    "lift__G3-designed__flash-lite.json": "294b5a57b3f952d5bbe1cd7bf4f97765ef568cf7d5f4e3cd719e8e9dee0c7a14",
+    "lift__G3-designed__opus.json": "f362ba348847cdd691f19a2b8a0e1764b148685d21904c480b451c21e5980013",
+    "lift__G4-parts__flash-lite.json": "271ab8108b0aee88e5bc4e671daa5fcace862deae7f1f47b4d6f209282bf8cb3",
+    "lift__G4-parts__opus.json": "c3a462ce5401a52eaf1924445b7bdc5a7c448e26cb07151f2a849d5ae7099d02",
+    "lift__G5-parts__flash-lite.json": "e825bca30a955dd9ae3c221dfe8e6bc0215234f3baa97d21d4cf1880ac2fbf7e",
+    "lift__G5-parts__opus.json": "0c2b9da495aafeadd0b3b05c2da4cb6087fbfd9e085efa27cd538ea1f6957471",
+    "piston__G1-minimal__flash-lite.json": "45e65251f52a9cfc8a665dce6c72cb1f03cbfa36cbe7fd42f0bb2976d65c5970",
+    "piston__G1-minimal__haiku.json": "b2ae47e9fcf50d192c30bf6a7d71b54b61dcf963dfd7b6ecc3ffdab39e017eaf",
+    "piston__G1-minimal__opus.json": "8a3170731abca029770e67253adc92b2c3aa0087e0d1388c7cb230559671e156",
+    "piston__G2-engineered__flash-lite.json": "bc9d271d3a26aa9a95b232c6e7e366c05325e48222efcfe140b24a82fc656773",
+    "piston__G2-engineered__haiku.json": "942eaa3102c2913119bea05985a537046690695c0b8c02e1ac6f773693a81e18",
+    "piston__G2-engineered__opus.json": "d7f2f6ebe0ad9533afc1ed6b26a1bfe7473392d84533b8f452f49c5efb7e587e",
+    "piston__G3-designed__flash-lite.json": "b7a07477c287925939b858b06f1975837be86d4855a389ba20d020537a14051c",
+    "piston__G3-designed__opus.json": "48a678bcd20da15cdf7c3055184d8c5e30812a4e42760b9e749e1b378e0f05b5",
+    "piston__G4-parts__flash-lite.json": "0631b08f242911a655f1f5ee4dfdc98af0f9fc03a844b31204f4b3b9684a4e2b",
+    "piston__G4-parts__opus.json": "68ba25a9860e7b4dd5808e24dffe7e041c87db7a7cc25e78cf4b615d0cd9669f",
+    "piston__G5-parts__flash-lite.json": "4f9467e89fdeab49f48888bbc705009f0917c28b54692551efee5fc6004b3376",
+    "piston__G5-parts__opus.json": "7a2bfc8686afcd28cdc5740a79c93e504a61dc898a8a7115c1a883c2151d84a9",
+    "quickreturn__G1-minimal__flash-lite.json": "bc07978aa9fa94c550b4b6000536ee0bfd482ddd94116aba3abbfcef8551c57d",
+    "quickreturn__G1-minimal__haiku.json": "915fae5ae0cb759346068ed5806f7a2fdee22f07b46d3a367150ed459f77868b",
+    "quickreturn__G1-minimal__opus.json": "997487e54e0520f2c2e10b8c69eadacf8f9505e62aacb5fc6dccc1ab508592a6",
+    "quickreturn__G2-engineered__flash-lite.json": "4df35614ad18e1959402952a4e1996f5965ef1945b0693991cdb1f982310dc4c",
+    "quickreturn__G2-engineered__haiku.json": "aa9e782a93d4b341f677386c32de7e80aab94c7758c49503556a617c4fa6b9ad",
+    "quickreturn__G2-engineered__opus.json": "d7b0a3bb59bac5481e5d268842eb02d18fb046b6708a74e779ce5efb5677690b",
+    "quickreturn__G3-designed__flash-lite.json": "ef8fb607fa62c9eae2be4d344a2eb02a221fcd7eca5ee48b284280bde9e66be7",
+    "quickreturn__G3-designed__opus.json": "8ff37e6ae2ea634a08396ab04fd0583fc57ae9f8eb21ac85065e3e7ed48a509d",
+    "quickreturn__G4-parts__flash-lite.json": "0fc0a13898b99f27fa66951b9194f33a2ac43145e6593e93b7fd4429f7dfde45",
+    "quickreturn__G4-parts__opus.json": "a46086c6a6c5f9dec4912d28451add6fd8595138ea8e309ac21c806bd28c198a",
+    "quickreturn__G5-parts__flash-lite.json": "c9f65987262a0d803cfafb5565c9bf5ce99251660e693512ea87c8b7cdb92da7",
+    "quickreturn__G5-parts__opus.json": "7b9c742ace164c3230bb873d51e3f08f6c36befbc346842a27f073888e82863f",
+    "rocking__G1-minimal__flash-lite.json": "592ac70175e2bbf100df704c215a4891f56b1669face06172105197e09aaea39",
+    "rocking__G1-minimal__haiku.json": "a1a6d5ca9be01d750cf6e0e71fa0c93a171c3808726c8daf87da24b599be5ca5",
+    "rocking__G1-minimal__opus.json": "1bdbdb46a12c5c984099bcb46478f4d66a9f99a79ffe5533f10da72d45196711",
+    "rocking__G2-engineered__flash-lite.json": "6cfb397790fc553fd66d7a524bb6f143a5abe7838383e0d877bcf7e5b35f52c3",
+    "rocking__G2-engineered__haiku.json": "3b46121589f9876c7787bb3d8d6d54274e8fa6f96728093b2fdb3fa24738bb7f",
+    "rocking__G2-engineered__opus.json": "e7160b8c1819a91e533ba2ad5a9cd9a7fc4ddd874fcce6174723b0dcdab682d5",
+    "rocking__G3-designed__flash-lite.json": "f7d26dc0903d06362c72fd3976682e2010f6ba33479cc16681bbc91d11c92a67",
+    "rocking__G3-designed__opus.json": "a26a45d11d262f7ce3f9f0ab48bedb124e4c6115c4960c953b7d9031da9c526c",
+    "rocking__G4-parts__flash-lite.json": "93ab6fab682e78c5cca583be4f0c1f0f0754743f2aca4ebc907b047ddba60752",
+    "rocking__G4-parts__opus.json": "0f38a74af2177ab9d65bd29a3f07946080b372d2749b9154e4c620e2566d1168",
+    "rocking__G5-parts__flash-lite.json": "fad1c68f27cbbce59c59132d0d736c24b85109cc17cd4083fb11648ab1713729",
+    "rocking__G5-parts__opus.json": "2a60377a70ed8666088f9cbd76f17232a3689f5323eb5491ccf88b3d44c7f674",
+    "straightline__G1-minimal__flash-lite.json": "12db63f90623cac69e1b6a3af97bf494b08335169e9f9f77156e3d59c41b13eb",
+    "straightline__G1-minimal__haiku.json": "52c4470f4604af9ef564c281f13cf0a0a933ebbfd9c4fdf43523f17a4d61a62d",
+    "straightline__G1-minimal__opus.json": "a969747c541c427d87b0d0912e727692eaf85b4c733911f44c62e1948f2ba603",
+    "straightline__G2-engineered__flash-lite.json": "608bb0ab245eccbcae659a79cc58fedaa9d75be71716a69d872ca867ac1928a1",
+    "straightline__G2-engineered__haiku.json": "9adbb9c1af8642b09881e929db0eda4766e9c11ad3add96ec94f087058bf0a82",
+    "straightline__G2-engineered__opus.json": "f7ea4c7197f755ce49768414b703439bb26afb8e3d08966ba830aa0655a85972",
+    "straightline__G3-designed__flash-lite.json": "8516db187f9d9ccf547c9b33725194bd9153b4ea3339e199b9225acaa607ddc2",
+    "straightline__G3-designed__opus.json": "6a8cd3adedcab5a729c90c7948303d534eeb59952e35a25d306dbc53cbb90e8d",
+    "straightline__G4-parts__flash-lite.json": "c1a087fc1268b50af8ac8b60028ebedfbe2c25719d37ed9f8748e083a760625b",
+    "straightline__G4-parts__opus.json": "3be27353a8f78a5d4332a77a364e68a54342cdbb144e69b21eaa9b9b9a3f695b",
+    "straightline__G5-parts__flash-lite.json": "5d88fed0d64076f71b86772022bb8f2ee346e3b5abc71649ae73e517d44e8359",
+    "straightline__G5-parts__opus.json": "74b048c0920d2165b582f5ac5ee78b76fd188ca673db0b529b0abfde6ada71ed",
+    "wiper__G1-minimal__flash-lite.json": "8cd173ab8947351a26597f48eff685768179cdc76b4b211e474c4bf52086e793",
+    "wiper__G1-minimal__haiku.json": "03d8aca6f228b5dbad7a830d0f96004aede16c540a97f7e1643f79a183cee05c",
+    "wiper__G1-minimal__opus.json": "dac4c61858cf8b44551b0ee5741ad648036fe68d5c594bb1c44f82cb214b7552",
+    "wiper__G2-engineered__flash-lite.json": "1a8914bf7dfdfcf094c1c64e0327a81a6910769af3872aaeb315d3c10be53317",
+    "wiper__G2-engineered__haiku.json": "20e366b030879d0e063935f2bccaef6cc9d93dd39c1eaa3844401fbe4d232a52",
+    "wiper__G2-engineered__opus.json": "0247c802760e8093807738d3294ccafe6990e4b72d136bada8581c9ca848fa50",
+    "wiper__G3-designed__flash-lite.json": "bc2073561a566495252b39fa0a7ac4e54b45445af9d14f9cfbc1624dae895130",
+    "wiper__G3-designed__opus.json": "e8e5349e98bf0a399dd6a0deb2c1bdd0cbc0a6ae97568ea04f50dd30c4007b68",
+    "wiper__G4-parts__flash-lite.json": "891d2f9bd0e4a581fb5ece7b97c2c8e5dae844a00648f6d8d3e5e2af69a7b8f6",
+    "wiper__G4-parts__opus.json": "e2093819f4270a45bfa48bd9c4871895e6cef64c37e8fb3c037cc8d86ef24cac",
+    "wiper__G5-parts__flash-lite.json": "8ec0861a7f9de6005257bd407e36cad566be40b5471a7b2e6260364432931e8d",
+    "wiper__G5-parts__opus.json": "0a168633f078d7a0028d5a46935b783991d1f49dd5dd3f192678780596cce8fa"
+  }
+}

@@ -1,0 +1,798 @@
+<title>What Is This? Trial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap"
+/>
+<style>
+  /* PMKS+ tokens (src/styles/_tokens.scss), so the panel mock reads as the app. */
+  :root {
+    --surface: #fff;
+    --surface-sunken: #f7f8fc;
+    --surface-field: #f0f1f5;
+    --surface-chip: #eef0f4;
+    --border-rule: #eceef5;
+    --border-divider: #e6e7ee;
+    --text-strong: #202124;
+    --text-primary: #2c2c2c;
+    --text-secondary: #5f6368;
+    --text-tertiary: #8a8f9e;
+    --brand: #3f51b5;
+    --brand-dark: #303f9f;
+    --brand-tint: #e8eaf6;
+    --brand-wash: #f5f6fb;
+    --brand-pale: #c5cae9;
+    --success-text: #137333;
+    --success-bg: #e6f4ea;
+    --warning-text: #b26a00;
+    --warning-bg: #fef3e0;
+    --refusal-text: #c5221f;
+    --refusal-bg: #fce8e6;
+    --page: #eef0f5;
+    --shadow: 0 1px 3px rgba(32, 33, 36, 0.12), 0 4px 14px rgba(32, 33, 36, 0.06);
+    --mono: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      color-scheme: dark;
+      --surface: #1b1d24;
+      --surface-sunken: #22252e;
+      --surface-field: #2a2d37;
+      --surface-chip: #2c303b;
+      --border-rule: #2e323d;
+      --border-divider: #353a46;
+      --text-strong: #eef0f5;
+      --text-primary: #dcdfe6;
+      --text-secondary: #a8adba;
+      --text-tertiary: #858b99;
+      --brand: #9fa8da;
+      --brand-dark: #c5cae9;
+      --brand-tint: #2b3050;
+      --brand-wash: #242841;
+      --brand-pale: #4a5288;
+      --success-text: #81c995;
+      --success-bg: #1e3326;
+      --warning-text: #f0b45a;
+      --warning-bg: #3a2c16;
+      --refusal-text: #f28b82;
+      --refusal-bg: #3d2322;
+      --page: #13151b;
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    }
+  }
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+    --surface: #1b1d24;
+    --surface-sunken: #22252e;
+    --surface-field: #2a2d37;
+    --surface-chip: #2c303b;
+    --border-rule: #2e323d;
+    --border-divider: #353a46;
+    --text-strong: #eef0f5;
+    --text-primary: #dcdfe6;
+    --text-secondary: #a8adba;
+    --text-tertiary: #858b99;
+    --brand: #9fa8da;
+    --brand-dark: #c5cae9;
+    --brand-tint: #2b3050;
+    --brand-wash: #242841;
+    --brand-pale: #4a5288;
+    --success-text: #81c995;
+    --success-bg: #1e3326;
+    --warning-text: #f0b45a;
+    --warning-bg: #3a2c16;
+    --refusal-text: #f28b82;
+    --refusal-bg: #3d2322;
+    --page: #13151b;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--text-primary);
+    font: 15px/1.55 var(--sans);
+    padding-inline: 16px;
+    padding-block: 28px 64px;
+  }
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    display: grid;
+    gap: 28px;
+  }
+  h1,
+  h2,
+  h3 {
+    color: var(--text-strong);
+    text-wrap: balance;
+    margin: 0;
+  }
+  h1 {
+    font-size: 30px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+  h2 {
+    font-size: 19px;
+    font-weight: 500;
+  }
+  .lede {
+    max-width: 72ch;
+    color: var(--text-secondary);
+    margin: 8px 0 0;
+  }
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--brand);
+    font-weight: 500;
+  }
+  .sheet {
+    background: var(--surface);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: 20px 22px;
+  }
+
+  /* Scorecard */
+  .table-scroll {
+    overflow-x: auto;
+  }
+  table.score {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  .score th,
+  .score td {
+    padding: 9px 10px;
+    text-align: right;
+    border-bottom: 1px solid var(--border-rule);
+    white-space: nowrap;
+  }
+  .score th {
+    font-weight: 500;
+    color: var(--text-secondary);
+    font-size: 12px;
+    letter-spacing: 0.03em;
+  }
+  .score th:first-child,
+  .score td:first-child,
+  .score th:nth-child(2),
+  .score td:nth-child(2) {
+    text-align: left;
+  }
+  .score tr.model-start td {
+    border-top: 2px solid var(--border-divider);
+  }
+  .score .model {
+    font-weight: 500;
+    color: var(--text-strong);
+  }
+  .bar {
+    display: inline-block;
+    height: 8px;
+    border-radius: 4px;
+    background: var(--brand);
+    vertical-align: middle;
+    margin-left: 8px;
+    opacity: 0.8;
+  }
+  .findings {
+    display: grid;
+    gap: 10px;
+    margin: 14px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .findings li {
+    padding-left: 18px;
+    position: relative;
+    max-width: 90ch;
+  }
+  .findings li::before {
+    content: '';
+    position: absolute;
+    left: 2px;
+    top: 0.62em;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--brand);
+  }
+  .note {
+    color: var(--text-tertiary);
+    font-size: 13px;
+    margin-top: 12px;
+    max-width: 95ch;
+  }
+
+  /* Explorer controls */
+  .controls {
+    display: grid;
+    gap: 12px;
+  }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .chip-btn {
+    font: inherit;
+    font-size: 14px;
+    border: 1px solid var(--border-divider);
+    background: var(--surface);
+    color: var(--text-primary);
+    border-radius: 18px;
+    padding: 6px 14px;
+    cursor: pointer;
+  }
+  .chip-btn:hover {
+    background: var(--brand-wash);
+  }
+  .chip-btn[aria-pressed='true'] {
+    background: var(--brand);
+    border-color: var(--brand);
+    color: var(--surface);
+  }
+  .chip-btn:focus-visible,
+  .seg button:focus-visible,
+  summary:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+  .seg {
+    display: inline-flex;
+    border: 1px solid var(--border-divider);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--surface);
+    flex-wrap: wrap;
+  }
+  .seg button {
+    font: inherit;
+    font-size: 14px;
+    border: 0;
+    background: none;
+    color: var(--text-secondary);
+    padding: 7px 14px;
+    cursor: pointer;
+  }
+  .seg button + button {
+    border-left: 1px solid var(--border-divider);
+  }
+  .seg button[aria-pressed='true'] {
+    background: var(--brand-tint);
+    color: var(--brand-dark);
+    font-weight: 500;
+  }
+  .seg-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+  }
+  .seg-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .subject {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    gap: 22px;
+    align-items: start;
+  }
+  .subject img {
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid var(--border-rule);
+    background: #fff;
+  }
+  .truth {
+    display: grid;
+    gap: 6px;
+  }
+  .truth .name {
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--text-strong);
+  }
+  .truth .blurb {
+    color: var(--text-secondary);
+    max-width: 60ch;
+  }
+  .variant-note {
+    font-size: 14px;
+    color: var(--text-secondary);
+    max-width: 60ch;
+  }
+
+  .pair {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 22px;
+    align-items: start;
+  }
+  .col {
+    display: grid;
+    gap: 10px;
+  }
+  .col-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .col-head .who {
+    font-weight: 500;
+    color: var(--text-strong);
+  }
+  .col-head .meta {
+    font-size: 12.5px;
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The panel mock: Analysis card as the app draws it. */
+  .panel {
+    background: var(--surface);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    border-top: 4px solid var(--brand);
+    overflow: hidden;
+  }
+  .panel-title {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border-rule);
+    display: grid;
+    gap: 8px;
+  }
+  .panel-title h3 {
+    font-size: 20px;
+    font-weight: 500;
+  }
+  .status {
+    justify-self: start;
+    font-size: 13px;
+    padding: 2px 10px;
+    border-radius: 12px;
+    background: var(--success-bg);
+    color: var(--success-text);
+  }
+  .section {
+    padding: 14px 20px 16px;
+    border-bottom: 1px solid var(--border-rule);
+    display: grid;
+    gap: 10px;
+  }
+  .section:last-child {
+    border-bottom: 0;
+  }
+  .section h4 {
+    margin: 0;
+    font-size: 16.5px;
+    font-weight: 500;
+    color: var(--brand);
+  }
+  .written {
+    background: var(--brand-wash);
+    border: 1px solid var(--border-divider);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: grid;
+    gap: 8px;
+  }
+  .written .by {
+    font-size: 12.5px;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .written p {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  .written strong {
+    color: var(--text-strong);
+    font-weight: 700;
+  }
+  .term {
+    text-decoration: underline dotted var(--brand);
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1.5px;
+  }
+  .family-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .cert {
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .cert-is {
+    background: var(--success-bg);
+    color: var(--success-text);
+  }
+  .cert-resembles {
+    background: var(--brand-tint);
+    color: var(--brand-dark);
+  }
+  .cert-unsure {
+    background: var(--warning-bg);
+    color: var(--warning-text);
+  }
+  .uses {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 10px;
+  }
+  .uses li {
+    display: grid;
+    gap: 2px;
+  }
+  .uses .use {
+    font-weight: 500;
+    color: var(--text-strong);
+  }
+  .uses .why {
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+  .caveat {
+    font-size: 12.5px;
+    color: var(--text-tertiary);
+  }
+  .actions {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    color: var(--brand);
+  }
+  .actions span:last-child {
+    color: var(--text-tertiary);
+  }
+
+  .marks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .mark {
+    font-size: 12.5px;
+    padding: 2px 9px;
+    border-radius: 10px;
+    background: var(--surface-chip);
+    color: var(--text-secondary);
+  }
+  .mark.good {
+    background: var(--success-bg);
+    color: var(--success-text);
+  }
+  .mark.mid {
+    background: var(--warning-bg);
+    color: var(--warning-text);
+  }
+  .mark.bad {
+    background: var(--refusal-bg);
+    color: var(--refusal-text);
+  }
+  .comment {
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    max-width: 70ch;
+  }
+  .error {
+    color: var(--refusal-text);
+    background: var(--refusal-bg);
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+
+  details {
+    background: var(--surface);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+  }
+  summary {
+    cursor: pointer;
+    padding: 14px 20px;
+    font-weight: 500;
+    color: var(--text-strong);
+  }
+  details pre {
+    margin: 0;
+    padding: 0 20px 18px;
+    font: 12.5px/1.55 var(--mono);
+    white-space: pre-wrap;
+    color: var(--text-primary);
+    overflow-x: auto;
+  }
+
+  @media (max-width: 760px) {
+    .subject {
+      grid-template-columns: 1fr;
+    }
+    h1 {
+      font-size: 25px;
+    }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">PMKS+ prototype · “What is this?”</div>
+    <h1>What Is This? Trial</h1>
+    <p class="lede" id="lede"></p>
+  </header>
+
+  <section class="sheet" aria-labelledby="score-h">
+    <h2 id="score-h">Scorecard</h2>
+    <div class="table-scroll"><table class="score" id="score"></table></div>
+    <p class="note" id="score-note"></p>
+    <ul class="findings" id="findings"></ul>
+  </section>
+
+  <section class="controls" aria-label="Choose a mechanism and fact sheet">
+    <div class="chips" id="templates" role="group" aria-label="Mechanism"></div>
+    <div class="seg-row">
+      <span class="seg-label">Fact sheet sent</span>
+      <div class="seg" id="variants" role="group" aria-label="Fact sheet variant"></div>
+    </div>
+  </section>
+
+  <section class="subject sheet" id="subject"></section>
+  <section class="pair" id="pair"></section>
+
+  <details id="facts">
+    <summary>Fact sheet sent for this case</summary>
+    <pre id="facts-text"></pre>
+  </details>
+  <details>
+    <summary>Instructions the fact sheet is appended to</summary>
+    <pre id="system"></pre>
+  </details>
+</div>
+
+<script>
+  const DATA = /*DATA*/ null;
+  const FINDINGS = /*FINDINGS*/ [];
+  const VARIANTS = [
+    {
+      id: 'base',
+      label: 'Base',
+      note: 'Structure, input, measured motion of every link and point, start geometry.',
+    },
+    {
+      id: 'relations',
+      label: '+ Relations',
+      note: 'Base plus “How the parts relate”: four-bar Grashof class, slider-crank offset, slotted-link type, levers, parts that turn together, where a traced path sits.',
+    },
+    {
+      id: 'relations+picture',
+      label: '+ Relations + picture',
+      note: 'The same text plus the drawing on the left, rendered from the solver’s samples. No names, no backdrop.',
+    },
+  ];
+  const PROVIDER_NAME = (p) =>
+    p.startsWith('gemini')
+      ? 'Gemini 3.5 Flash-Lite'
+      : p.startsWith('muse')
+        ? 'Muse Spark 1.3 (contributor)'
+        : p;
+
+  let state = { template: DATA.templates[0].id, variant: 'relations' };
+  try {
+    const saved = JSON.parse(localStorage.getItem('wit-state') || 'null');
+    if (saved && DATA.templates.some((t) => t.id === saved.template)) state = saved;
+  } catch (e) {}
+  const save = () => {
+    try {
+      localStorage.setItem('wit-state', JSON.stringify(state));
+    } catch (e) {}
+  };
+
+  const esc = (s) =>
+    String(s ?? '').replace(
+      /[&<>"]/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]
+    );
+  const fmtK = (n) => (n == null ? '–' : n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
+
+  /** Bold **part names**, underline glossary terms the model listed. */
+  function renderParagraph(text, terms) {
+    let html = esc(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    for (const term of (terms || []).slice().sort((a, b) => b.length - a.length)) {
+      if (!term) continue;
+      const re = new RegExp(
+        '(^|[^\\w>])(' + term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')(?![\\w<])',
+        'i'
+      );
+      html = html.replace(re, '$1<span class="term" title="Glossary term">$2</span>');
+    }
+    return html;
+  }
+
+  function markClass(v) {
+    return v === '✓' || v === 0 || v === 'good'
+      ? 'good'
+      : v === '◐' || v === 'weak' || v === 1
+        ? 'mid'
+        : 'bad';
+  }
+
+  function panel(answer) {
+    if (!answer) return '<div class="error">No answer recorded for this case.</div>';
+    if (!answer.parsed) {
+      return `<div class="error">${esc(answer.error || 'The reply was not JSON.')}</div>${answer.raw ? `<pre>${esc(answer.raw)}</pre>` : ''}`;
+    }
+    const a = answer.parsed;
+    const cert = ['is', 'resembles', 'unsure'].includes(a.certainty) ? a.certainty : 'unsure';
+    const uses = (a.useCases || [])
+      .map(
+        (u) =>
+          `<li><span class="use">${esc(u.use)}</span><span class="why">${esc(u.why)}</span></li>`
+      )
+      .join('');
+    return `
+      <article class="panel">
+        <div class="panel-title"><h3>Analysis for Mechanism M1</h3><span class="status">Ready</span></div>
+        <div class="section">
+          <h4>In plain English</h4>
+          <div class="written">
+            <div class="by">✎ Written from the facts above, not measured</div>
+            <p>${renderParagraph(a.plainEnglish, a.terms)}</p>
+          </div>
+          <div class="family-line">Family: <strong>${esc(a.family)}</strong><span class="cert cert-${cert}">${esc(cert)}</span></div>
+          <div class="actions"><span>ⓘ Ask about this mechanism</span><span>Write it again</span></div>
+        </div>
+        <div class="section">
+          <h4>Where you’d find it</h4>
+          <ul class="uses">${uses || '<li class="why">No uses given.</li>'}</ul>
+          <div class="caveat">From general engineering knowledge, not from this drawing.</div>
+        </div>
+      </article>`;
+  }
+
+  function marks(grade) {
+    if (!grade) return '';
+    const chips = [
+      `<span class="mark ${markClass(grade.family)}">Family ${esc(grade.family)}</span>`,
+      `<span class="mark ${grade.errors === 0 ? 'good' : grade.errors === 1 ? 'mid' : 'bad'}">${grade.errors} unsupported claim${grade.errors === 1 ? '' : 's'}</span>`,
+      `<span class="mark ${markClass(grade.uses)}">Uses ${esc(grade.uses)}</span>`,
+    ].join('');
+    return `<div class="marks">${chips}</div>${grade.comment ? `<div class="comment">${esc(grade.comment)}</div>` : ''}`;
+  }
+
+  function render() {
+    const t = DATA.templates.find((x) => x.id === state.template);
+    const variant = t.variants[state.variant];
+    const vmeta = VARIANTS.find((v) => v.id === state.variant);
+    document.getElementById('templates').innerHTML = DATA.templates
+      .map(
+        (x) =>
+          `<button class="chip-btn" type="button" id="t-${esc(x.id)}" data-t="${esc(x.id)}" aria-pressed="${x.id === t.id}">${esc(x.name)}</button>`
+      )
+      .join('');
+    document.getElementById('variants').innerHTML = VARIANTS.map(
+      (v) =>
+        `<button type="button" id="v-${esc(v.id)}" data-v="${esc(v.id)}" aria-pressed="${v.id === state.variant}">${esc(v.label)}</button>`
+    ).join('');
+    document.getElementById('subject').innerHTML = `
+      <div>${t.image ? `<img src="${t.image}" alt="The simulator’s drawing of ${esc(t.name)} at its start pose, with traced paths in red">` : ''}</div>
+      <div class="truth">
+        <span class="eyebrow">What it actually is (never sent)</span>
+        <span class="name">${esc(t.name)}</span>
+        <span class="blurb">Library card: ${esc(t.blurb)}</span>
+        <span class="variant-note"><strong>${esc(vmeta.label)}:</strong> ${esc(vmeta.note)}</span>
+      </div>`;
+    document.getElementById('pair').innerHTML = DATA.providers
+      .map((p) => {
+        const a = variant.answers[p];
+        const u = a?.usage || {};
+        const meta = a
+          ? `${(a.latencyMs / 1000).toFixed(1)} s · ${fmtK(u.input)} in · ${fmtK(u.output)} out${u.reasoning ? ` (${fmtK(u.reasoning)} reasoning)` : ''}`
+          : '';
+        return `<div class="col"><div class="col-head"><span class="who">${esc(PROVIDER_NAME(p))}</span><span class="meta">${meta}</span></div>${panel(a)}${marks(a?.grade)}</div>`;
+      })
+      .join('');
+    document.getElementById('facts-text').textContent = variant.factSheet;
+  }
+
+  function scorecard() {
+    const rows = [];
+    for (const p of DATA.providers) {
+      VARIANTS.forEach((v, i) => {
+        const answers = DATA.templates.map((t) => t.variants[v.id]?.answers[p]).filter(Boolean);
+        const graded = answers.filter((a) => a.grade);
+        const fam = (sym) => graded.filter((a) => a.grade.family === sym).length;
+        const errors = graded.reduce((s, a) => s + (a.grade.errors || 0), 0);
+        const goodUses = graded.filter((a) => a.grade.uses === 'good').length;
+        const avg = (f) =>
+          Math.round(answers.reduce((s, a) => s + (f(a) || 0), 0) / Math.max(answers.length, 1));
+        const lat = answers.map((a) => a.latencyMs).sort((x, y) => x - y);
+        const mid = Math.floor(lat.length / 2);
+        const median = !lat.length ? 0 : lat.length % 2 ? lat[mid] : (lat[mid - 1] + lat[mid]) / 2;
+        rows.push({
+          p,
+          v,
+          first: i === 0,
+          n: graded.length,
+          right: fam('✓'),
+          partly: fam('◐'),
+          errors,
+          goodUses,
+          input: avg((a) => a.usage?.input),
+          output: avg((a) => a.usage?.output),
+          reasoning: avg((a) => a.usage?.reasoning),
+          median,
+        });
+      });
+    }
+    const maxRight = 10;
+    document.getElementById('score').innerHTML =
+      `<thead><tr><th>Model</th><th>Fact sheet</th><th>Family right</th><th>Partly</th><th>Unsupported claims</th><th>Good uses</th><th>Input tokens</th><th>Output (reasoning)</th><th>Median time</th></tr></thead><tbody>` +
+      rows
+        .map(
+          (r) => `<tr class="${r.first ? 'model-start' : ''}">
+        <td class="model">${r.first ? esc(PROVIDER_NAME(r.p)) : ''}</td>
+        <td>${esc(r.v.label)}</td>
+        <td>${r.right}/${r.n}<span class="bar" style="width:${(r.right / maxRight) * 60}px"></span></td>
+        <td>${r.partly}</td>
+        <td>${r.errors}</td>
+        <td>${r.goodUses}/${r.n}</td>
+        <td>${fmtK(r.input)}</td>
+        <td>${fmtK(r.output)}${r.reasoning ? ` (${fmtK(r.reasoning)})` : ''}</td>
+        <td>${(r.median / 1000).toFixed(1)} s</td></tr>`
+        )
+        .join('') +
+      '</tbody>';
+  }
+
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-t]');
+    const v = e.target.closest('[data-v]');
+    if (t) {
+      state.template = t.dataset.t;
+      save();
+      render();
+    }
+    if (v) {
+      state.variant = v.dataset.v;
+      save();
+      render();
+    }
+  });
+
+  document.getElementById('lede').textContent =
+    `Ten library mechanisms, each described three ways and sent to two models: ${DATA.templates.length * 3 * DATA.providers.length} answers. ` +
+    'Template names never reach the model; it sees only what the simulator measured. Each answer is shown the way the Analysis panel could show it.';
+  document.getElementById('score-note').textContent =
+    'Marks are one reviewer’s judgment against the known template. Family ✓ names the mechanism or its standard family; ◐ is a correct but generic class or a near miss. ' +
+    'Unsupported claims count statements about this drawing that the fact sheet does not support. Muse’s input includes about 18.6k tokens of its own agent instructions on every call.';
+  document.getElementById('findings').innerHTML = FINDINGS.map((f) => `<li>${f}</li>`).join('');
+  document.getElementById('system').textContent = DATA.systemPrompt;
+  scorecard();
+  render();
+</script>

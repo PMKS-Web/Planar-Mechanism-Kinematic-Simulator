@@ -1,0 +1,31 @@
+{
+  "note": "Round 4 tests v6's picture: the background image once, six moments, discs drawn as discs. So it repeats the four templates with background images and the student's locomotive (the cases the changes are for), and adds library templates and student mechanisms not used before, and one test case.",
+  "library": [
+    "Hood_Hinge",
+    "Aircraft_Landing_Gear",
+    "Excavator_Bucket",
+    "Car_Steering",
+    "Flywheel_Engine",
+    "Punch_Press",
+    "Scissor_Lift",
+    "Pantograph",
+    "Derrick_Crane",
+    "Shaper_Quick_Return",
+    "Pedaling_Leg",
+    "Reciprocating_Saw",
+    "Cylinder_Gripper"
+  ],
+  "user": [
+    { "id": "added-steam-locomotive", "intent": "steam locomotive" },
+    { "id": "194ec874c92d9cef" },
+    { "id": "19525c2680cb2b85" },
+    { "id": "195c83613e3de5a7" },
+    { "id": "1963530d1a414b9f" },
+    { "id": "194c3d7423a5ce24" },
+    { "id": "1995cf5131eb91c4" },
+    { "id": "18d9e70368b7ec2c" },
+    { "id": "196b99409ef88d71" },
+    { "id": "196c708f280bb37f" }
+  ],
+  "made": ["made-locomotive-wheels"]
+}
