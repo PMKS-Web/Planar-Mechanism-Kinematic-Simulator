@@ -5,14 +5,26 @@ import { MechanismService } from '../../services/mechanism.service';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { SettingsService } from '../../services/settings.service';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
+import { SetupIssue } from '../../model/mechanism/setup-issue';
+import { RevJoint } from '../../model/joint';
+import { jointRef, prose } from '../../model/prose';
+import { PART_LINK_TARGET } from '../BLOCKS/part-link/part-link-target';
 import { AnalysisSetupComponent } from './analysis-setup.component';
 
 interface SetupState {
-  /** What each mechanism still has in the way. Empty means ready. */
-  checks?: { state: 'blocker' | 'warning'; title: string; body: string }[];
-  /** Force requirements, in the shape `forceAnalysisRequirements` returns. */
-  requirements?: { met: boolean; warning?: boolean; title: string; body: string }[];
+  /** What the mechanism still has in the way. Empty means ready. */
+  issues?: SetupIssue[];
+  /** What force analysis still wants, as `forceSetupIssues` returns it. */
+  force?: SetupIssue[];
 }
+
+const blocker = (title: string, fixes = [prose`Delete a link`]): SetupIssue => ({
+  severity: 'blocker',
+  title,
+  summary: prose`Something about the drawing.`,
+  explain: 'The rule behind it.',
+  fixes,
+});
 
 /**
  * The drawer over a stubbed drawing. Only the questions the template asks are
@@ -20,18 +32,17 @@ interface SetupState {
  * one's, and what is being checked here is what the drawer does with them.
  */
 async function createSetup(mode: 'kinematic' | 'force', tab: TabID, state: SetupState = {}) {
-  const checks = state.checks ?? [];
-  const requirements = state.requirements ?? [];
-  const blockers = checks.filter((check) => check.state === 'blocker').length;
+  const issues = state.issues ?? [];
+  const force = state.force ?? [];
+  const blockers = issues.filter((issue) => issue.severity === 'blocker').length;
   const mechanism = {
     links: [],
     joints: [],
     onMechUpdateState: new BehaviorSubject(0),
-    readinessOfEachMechanism: () => [{ id: 'M1', checks }],
+    readinessOfEachMechanism: () => [{ id: 'M1', checks: issues }],
     unassignedReports: () => [],
-    forceAnalysisRequirements: () => requirements,
-    forceAnalysisReady: () =>
-      requirements.every((requirement) => requirement.met || requirement.warning === true),
+    forceSetupIssues: () => force,
+    forceAnalysisReady: () => force.every((issue) => issue.severity !== 'blocker'),
     oneValidMechanismExists: () => blockers === 0,
     blockerCount: () => blockers,
     bodyLabel: () => '',
@@ -40,6 +51,7 @@ async function createSetup(mode: 'kinematic' | 'force', tab: TabID, state: Setup
 
   const setTab = vi.fn();
   const tabs = { getCurrentTab: () => tab, setTab } as unknown as SelectedTabService;
+  const target = { point: vi.fn(), open: vi.fn() };
 
   await TestBed.configureTestingModule({
     imports: [AnalysisSetupComponent],
@@ -48,6 +60,7 @@ async function createSetup(mode: 'kinematic' | 'force', tab: TabID, state: Setup
       { provide: ActiveObjService, useValue: new ActiveObjService() },
       { provide: SettingsService, useValue: new SettingsService() },
       { provide: SelectedTabService, useValue: tabs },
+      { provide: PART_LINK_TARGET, useValue: target },
     ],
     schemas: [NO_ERRORS_SCHEMA],
   }).compileComponents();
@@ -56,7 +69,7 @@ async function createSetup(mode: 'kinematic' | 'force', tab: TabID, state: Setup
     TestBed.createComponent(AnalysisSetupComponent);
   fixture.componentRef.setInput('mode', mode);
   fixture.detectChanges();
-  return { fixture, setTab };
+  return { fixture, setTab, target };
 }
 
 function enterButton(fixture: ComponentFixture<AnalysisSetupComponent>): HTMLButtonElement | null {
@@ -78,7 +91,7 @@ describe('AnalysisSetupComponent way in', () => {
 
   it('offers no way in while a blocker stands', async () => {
     const { fixture } = await createSetup('kinematic', TabID.EDIT, {
-      checks: [{ state: 'blocker', title: 'No input', body: 'Pick a joint to drive.' }],
+      issues: [blocker('No input is set')],
     });
 
     expect(enterButton(fixture)).toBeNull();
@@ -89,24 +102,19 @@ describe('AnalysisSetupComponent way in', () => {
     // Kinematically ready and force-unready at once: the drawing runs, but
     // nothing loads it, so the force drawer must not offer its mode.
     const { fixture } = await createSetup('force', TabID.EDIT, {
-      requirements: [
-        { met: true, title: 'A mechanism that runs', body: 'There is one.' },
-        { met: false, title: 'Something to load it', body: 'Attach a force.' },
-      ],
+      force: [blocker('Nothing loads the mechanism')],
     });
 
     expect(enterButton(fixture)).toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('Something to load it');
+    expect(fixture.nativeElement.textContent).toContain('Nothing loads the mechanism');
     fixture.destroy();
   });
 
-  it('replaces the empty force accordion with the way in', async () => {
-    const { fixture, setTab } = await createSetup('force', TabID.ANALYZE, {
-      requirements: [{ met: true, title: 'A mechanism that runs', body: 'There is one.' }],
-    });
+  it('shows a ready force section as its name and chip, with the way in under it', async () => {
+    const { fixture, setTab } = await createSetup('force', TabID.ANALYZE);
 
-    // The section that would have held the list is gone with the list.
-    expect(fixture.nativeElement.querySelector('.checkList')).toBeNull();
+    expect(fixture.nativeElement.querySelector('issue-block')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Ready');
     const button = enterButton(fixture);
     expect(button?.textContent?.trim()).toBe('Switch to Force Analysis');
     button!.click();
@@ -119,5 +127,119 @@ describe('AnalysisSetupComponent way in', () => {
 
     expect(enterButton(fixture)).toBeNull();
     fixture.destroy();
+  });
+});
+
+describe('AnalysisSetupComponent issues', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const text = (element: Element | null) => element?.textContent?.replace(/\s+/g, ' ').trim();
+
+  it('shows what is wrong, and keeps how to fix it behind Show fixes', async () => {
+    const { fixture } = await createSetup('kinematic', TabID.EDIT, {
+      issues: [blocker('No input is set')],
+    });
+    const issue: HTMLElement = fixture.nativeElement.querySelector('issue-block');
+
+    expect(text(issue.querySelector('.issueTitle'))).toBe('No input is set');
+    expect(text(issue.querySelector('.issueSummary'))).toBe('Something about the drawing.');
+    expect(issue.querySelector('.issuePanel')).toBeNull();
+    const toggle: HTMLButtonElement = issue.querySelector('.issueToggle')!;
+    expect(text(toggle)).toContain('Show fixes');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+
+    toggle.click();
+    fixture.detectChanges();
+    const panel = issue.querySelector('.issuePanel')!;
+    expect(text(toggle)).toContain('Hide fixes');
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(toggle.getAttribute('aria-controls')).toBe(panel.id);
+    expect(text(panel.querySelector('.issueExplain'))).toBe('The rule behind it.');
+    expect(text(panel.querySelector('.issueLabel'))).toBe('Required to run. One way to fix it:');
+    // One fix is a sentence, not a list of one.
+    expect(panel.querySelector('ul')).toBeNull();
+    expect(text(panel.querySelector('.issueFix'))).toBe('Delete a link');
+    fixture.destroy();
+  });
+
+  it('lists two or more fixes as suggestions, each a bullet', async () => {
+    const { fixture } = await createSetup('kinematic', TabID.EDIT, {
+      issues: [
+        blocker('2 degrees of freedom, needs 1', [prose`Ground a joint`, prose`Delete a link`]),
+      ],
+    });
+    const issue: HTMLElement = fixture.nativeElement.querySelector('issue-block');
+    (issue.querySelector('.issueToggle') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(text(issue.querySelector('.issueLabel'))).toBe('Required to run. Some ways to fix it:');
+    expect([...issue.querySelectorAll('li.issueFix')].map(text)).toEqual([
+      'Ground a joint',
+      'Delete a link',
+    ]);
+    fixture.destroy();
+  });
+
+  it('says Show more, and the note, where a warning has nothing to change', async () => {
+    const toggle: SetupIssue = {
+      severity: 'warning',
+      title: 'Passes through a toggle',
+      summary: prose`Near dead-center, a small input move gives a large output move.`,
+      explain: 'Clamps use this on purpose.',
+      fixes: [],
+      note: 'Nothing to change.',
+    };
+    const { fixture } = await createSetup('kinematic', TabID.EDIT, { issues: [toggle] });
+    const issue: HTMLElement = fixture.nativeElement.querySelector('issue-block');
+    const button = issue.querySelector('.issueToggle') as HTMLButtonElement;
+    expect(text(button)).toContain('Show more');
+    button.click();
+    fixture.detectChanges();
+
+    expect(text(button)).toContain('Show less');
+    expect(text(issue.querySelector('.issueLabel'))).toBe('Optional, it runs as is.');
+    expect(text(issue.querySelector('.issueNote'))).toBe('Nothing to change.');
+    fixture.destroy();
+  });
+
+  it('draws a part the text names as a link to it, and no Go To buttons', async () => {
+    const c = new RevJoint('C', 0, 0);
+    const { fixture, target } = await createSetup('kinematic', TabID.EDIT, {
+      issues: [blocker("Joint C can't be the input", [prose`Unweld ${jointRef(c)}`])],
+    });
+    const issue: HTMLElement = fixture.nativeElement.querySelector('issue-block');
+    (issue.querySelector('.issueToggle') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('button-block')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Go To');
+    const link: HTMLButtonElement = issue.querySelector('part-link button')!;
+    expect(text(link)).toBe('joint C');
+    link.dispatchEvent(new Event('pointerenter'));
+    expect(target.point).toHaveBeenCalledWith(c);
+    link.click();
+    expect(target.open).toHaveBeenCalledWith(c);
+    fixture.destroy();
+  });
+
+  it('folds a section with issues, and gives a ready one no chevron', async () => {
+    const withIssues = await createSetup('kinematic', TabID.EDIT, {
+      issues: [blocker('No input is set')],
+    });
+    const header: HTMLButtonElement =
+      withIssues.fixture.nativeElement.querySelector('.sectionHeader');
+    expect(header.getAttribute('aria-expanded')).toBe('true');
+    header.click();
+    withIssues.fixture.detectChanges();
+    expect(withIssues.fixture.nativeElement.querySelector('issue-block')).toBeNull();
+    withIssues.fixture.destroy();
+    TestBed.resetTestingModule();
+
+    const ready = await createSetup('kinematic', TabID.ANALYZE);
+    const readyHeader: HTMLButtonElement =
+      ready.fixture.nativeElement.querySelector('.sectionHeader');
+    expect(readyHeader.querySelector('mat-icon')).toBeNull();
+    expect(readyHeader.getAttribute('aria-expanded')).toBeNull();
+    ready.fixture.destroy();
   });
 });

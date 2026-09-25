@@ -88,7 +88,7 @@ export function frozenCylinderName(cylinder: Cylinder): string {
  */
 function frozenInto(cylinder: Cylinder): string {
   return cylinder.barrelRoot.id === cylinder.rodRoot.id
-    ? `are welded into ${labelForBody(cylinder.barrelRoot, undefined, [cylinder])}`
+    ? `are welded into ${labelForBody(cylinder.barrelRoot, undefined, [cylinder]).replace(/^\S+/, (noun) => noun.toLowerCase())}`
     : 'are on one rigid body';
 }
 
@@ -102,25 +102,7 @@ function frozenEnds(cylinder: Cylinder): string {
 export function describeFrozenCylinderDrive(cylinder: Cylinder): string {
   const free = cylinder.barrelRoot.id === cylinder.rodRoot.id ? 'Unweld' : 'Free';
   return (
-    `Both of this cylinder's end joints ${frozenInto(cylinder)}, so it cannot extend. ` +
-    `${free} ${frozenEnds(cylinder)}, or set a different joint as the input.`
-  );
-}
-
-/**
- * What readiness says about a cylinder that will not stroke because it cannot.
- *
- * A warning rather than a blocker: the mechanism runs perfectly well, and the
- * only thing worth knowing is that the part a reader drew as a cylinder is
- * behaving as a shape. It replaces the "can only use 0% of its stroke" warning,
- * which blamed the linkage for binding and offered a shorter travel -- neither
- * of which is true of a part held still by its own body.
- */
-export function describeFrozenCylinderStroke(cylinder: Cylinder): string {
-  const free = cylinder.barrelRoot.id === cylinder.rodRoot.id ? 'Unweld' : 'Free';
-  return (
-    `Cylinder ${frozenCylinderName(cylinder)} is a fixed part of the body it is in: both of its ` +
-    `end joints ${frozenInto(cylinder)}, so it is carried round rather than stroking. ` +
-    `${free} ${frozenEnds(cylinder)} to give it travel again.`
+    `Both end joints of this cylinder ${frozenInto(cylinder)}, so it can't extend. ` +
+    `${free} ${frozenEnds(cylinder)}, or set another joint as the input.`
   );
 }

@@ -1,0 +1,35 @@
+<mat-icon class="issueIcon" [class]="issue().severity" aria-hidden="true">{{ icon() }}</mat-icon>
+<div class="issueBody">
+  <div class="issueTitle">{{ issue().title }}</div>
+  <p class="issueSummary"><prose-block [sentence]="issue().summary" /></p>
+  <button
+    type="button"
+    class="issueToggle"
+    [attr.aria-expanded]="isOpen()"
+    [attr.aria-controls]="panelId"
+    (click)="toggle()"
+  >
+    {{ toggleText() }}
+    <mat-icon aria-hidden="true">{{ isOpen() ? 'expand_less' : 'expand_more' }}</mat-icon>
+  </button>
+  @if (isOpen()) {
+    <div class="issuePanel" [id]="panelId">
+      <p class="issueExplain">{{ issue().explain }}</p>
+      <p class="issueLabel" [class]="issue().severity">{{ label() }}</p>
+      <!-- One fix is a sentence, not a list of one: a lone bullet reads as a
+           list with the rest missing. -->
+      @if (issue().fixes.length === 1) {
+        <p class="issueFix"><prose-block [sentence]="issue().fixes[0]" /></p>
+      } @else if (issue().fixes.length > 1) {
+        <ul class="issueFixes">
+          @for (fix of issue().fixes; track $index) {
+            <li class="issueFix"><prose-block [sentence]="fix" /></li>
+          }
+        </ul>
+      }
+      @if (issue().note) {
+        <p class="issueNote">{{ issue().note }}</p>
+      }
+    </div>
+  }
+</div>

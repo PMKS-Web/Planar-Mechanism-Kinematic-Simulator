@@ -1,53 +1,36 @@
 <div class="setup" appScrollShadow>
   <div class="setupHead">
     <div class="setupTitle">{{ title }}</div>
-    <p class="setupSummary">{{ summary }}</p>
+    @if (emptyLine) {
+      <p class="setupSummary">{{ emptyLine }}</p>
+    }
   </div>
 
   @if (mode() === 'kinematic') {
     @for (item of readiness; track item.id) {
       <div class="mechBlock">
-        <button class="sectionHeader" (click)="toggle(item)">
+        <!-- The whole band folds the section, but only a section with
+             something behind it: a ready mechanism is its name and a chip, and
+             an arrow that opens onto nothing is a promise it cannot keep. -->
+        <button
+          class="sectionHeader"
+          [class.fixed]="item.checks.length === 0"
+          [attr.aria-expanded]="item.checks.length > 0 ? isOpen(item) : null"
+          (click)="toggle(item)"
+        >
           <span class="sectionName">
             <span class="mechLink" (click)="select($index, $event)">Mechanism {{ item.id }}</span>
             <chip-block [kind]="chipFor(item).kind">{{ chipFor(item).text }}</chip-block>
           </span>
-          <!-- Only where there is something behind it. A ready mechanism has
-               no blockers, and an arrow that opens onto nothing is a promise
-               the panel cannot keep. -->
           @if (item.checks.length > 0) {
             <mat-icon>{{ isOpen(item) ? 'expand_less' : 'expand_more' }}</mat-icon>
           }
         </button>
 
         @if (isOpen(item)) {
-          <div class="checkList">
-            @for (check of item.checks; track check.title) {
-              <div class="check">
-                <mat-icon class="checkIcon" [class]="check.state">{{ iconFor(check) }}</mat-icon>
-                <div class="checkBody">
-                  <div class="checkTitle">{{ check.title }}</div>
-                  <p class="checkText">{{ check.body }}</p>
-                  <!-- Several ways out, each with its own button: every one of
-                       them runs, and which is right is what the reader meant. -->
-                  @if (check.ways?.length) {
-                    <ul class="ways">
-                      @for (way of check.ways; track way.text) {
-                        <li class="way">
-                          <span class="wayText">{{ way.text }}</span>
-                          <button-block inline (pressed)="goTo(way.at)">
-                            {{ way.action }} {{ nameOf(way.at) }}
-                          </button-block>
-                        </li>
-                      }
-                    </ul>
-                  } @else if (check.action && check.at) {
-                    <button-block inline (pressed)="goTo(check.at)">
-                      {{ check.action }} {{ nameOf(check.at) }}
-                    </button-block>
-                  }
-                </div>
-              </div>
+          <div class="issueList">
+            @for (issue of item.checks; track issue.title) {
+              <issue-block [issue]="issue" />
             }
           </div>
         }
@@ -126,9 +109,9 @@
                   Reset All
                 </button>
               </div>
-              <p class="checkText note">
-                A body left at zero mass is skipped by gravity and inertia. Open a link to place its
-                center of mass.
+              <p class="note">
+                Gravity and inertia skip a link with no mass. Open a link to place its center of
+                mass.
               </p>
             }
           </div>
@@ -136,60 +119,39 @@
       </div>
     }
 
-    <!-- Only while something is outstanding. With every requirement met this
-         was a heading over an empty list, and the summary above has already
-         said the analysis is ready to run. -->
-    @if (forceChecks.length > 0) {
-      <div class="mechBlock">
-        <button class="sectionHeader" (click)="forceOpen = !forceOpen">
-          <span class="sectionName">
-            Force Analysis
-            <!-- Outstanding requirements stop force analysis running at all,
-                 so they are red. What is left when none are outstanding is
-                 advice, which is amber. -->
-            @if (forceOutstanding > 0) {
-              <chip-block kind="blocker">{{ fixes(forceOutstanding) }}</chip-block>
-            } @else {
-              <chip-block kind="warning">{{ toCheck(forceWarnings) }}</chip-block>
-            }
-          </span>
+    <div class="mechBlock">
+      <button
+        class="sectionHeader"
+        [class.fixed]="forceIssues.length === 0"
+        [attr.aria-expanded]="forceIssues.length > 0 ? forceOpen : null"
+        (click)="forceOpen = forceIssues.length > 0 ? !forceOpen : forceOpen"
+      >
+        <span class="sectionName">
+          Force Analysis
+          <chip-block [kind]="forceChip.kind">{{ forceChip.text }}</chip-block>
+        </span>
+        @if (forceIssues.length > 0) {
           <mat-icon>{{ forceOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
-        </button>
-
-        @if (forceOpen) {
-          <div class="checkList">
-            @for (requirement of forceChecks; track requirement.title) {
-              <div class="check">
-                <mat-icon class="checkIcon" [class]="requirement.warning ? 'warning' : 'blocker'">{{
-                  requirement.warning ? 'warning_amber' : 'error_outline'
-                }}</mat-icon>
-                <div class="checkBody">
-                  <div class="checkTitle">
-                    {{ requirement.title }}
-                    <span class="sevTag" [class.warn]="requirement.warning">{{
-                      requirement.warning ? 'Check' : 'Fix'
-                    }}</span>
-                  </div>
-                  <p class="checkText">{{ requirement.body }}</p>
-                  <!-- Only where the panel can carry the fix out itself, and
-                       only where the reader is allowed to edit: the sentence
-                       above names the way out in either case, so a button that
-                       cannot be pressed would add nothing but a dead control. -->
-                  @if (requirement.act === 'gravity' && massEditable()) {
-                    <button-block inline (pressed)="turnGravityOn()">Turn On Gravity</button-block>
-                  }
-                </div>
-              </div>
-            }
-          </div>
         }
-      </div>
-    }
+      </button>
+
+      @if (forceOpen && forceIssues.length > 0) {
+        <div class="issueList">
+          @for (issue of forceIssues; track issue.title) {
+            <issue-block [issue]="issue" />
+          }
+        </div>
+      }
+    </div>
   }
 
   @if (mode() === 'kinematic' && unassigned.length > 0) {
     <div class="mechBlock">
-      <button class="sectionHeader muted" (click)="unassignedOpen = !unassignedOpen">
+      <button
+        class="sectionHeader muted"
+        [attr.aria-expanded]="unassignedOpen"
+        (click)="unassignedOpen = !unassignedOpen"
+      >
         <span class="sectionName">
           Not in any mechanism
           <!-- Amber: the machines that do exist still analyze, but part of
@@ -200,24 +162,10 @@
       </button>
 
       @if (unassignedOpen) {
-        <div class="checkList">
-          <p class="checkText note">
-            Drawn dashed on the grid. Analysis skips these, and they count towards no mechanism's
-            degrees of freedom.
-          </p>
-          @for (report of unassigned; track report.title) {
-            <div class="check">
-              <mat-icon class="checkIcon muted">scatter_plot</mat-icon>
-              <div class="checkBody">
-                <div class="checkTitle">{{ report.title }}</div>
-                <p class="checkText">{{ report.body }}</p>
-                @if (report.at) {
-                  <button-block inline (pressed)="goTo(report.at)">
-                    Go To Joint {{ nameOf(report.at) }}
-                  </button-block>
-                }
-              </div>
-            </div>
+        <p class="sectionNote">Drawn dashed on the grid. Analysis skips these.</p>
+        <div class="issueList">
+          @for (issue of unassigned; track issue.title) {
+            <issue-block [issue]="issue" />
           }
         </div>
       }
