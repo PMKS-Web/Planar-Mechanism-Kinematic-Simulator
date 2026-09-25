@@ -210,6 +210,7 @@ describe('"What is this?" prototype', () => {
         film: machine?.frames ?? [],
         jobs,
         family: machine?.family ?? [],
+        looksLike: described.looksLike,
       });
     }
     writeFileSync(

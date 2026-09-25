@@ -467,6 +467,224 @@
           "why": "A single crank; both describe it and reach for a motor-driven use."
         }
       }
+    },
+    {
+      "id": "r8",
+      "title": "Round 8 · the same v8 sheets, GPT-6 Astra against Claude Opus 5.5",
+      "a": "v8@astra",
+      "b": "v8@opus",
+      "note": "The two strongest models on the same blind v8 sheets and pictures, medium effort. Over two askings both name the real machine in 18 of 22 library askings; Astra is wrong in 2 of its 20 \"Looks like\" lines and Opus in 4 of 22. Both take about 15 s. Opus writes longer (median 84 words to 74, five times over the 90 asked) and more specifically (\"an 0-6-0 switcher's three coupled drivers\"), and more often gives a real use for a teaching chain that has none. The panels apply the \"Looks like\" gate. Both sides are each model's first asking.",
+      "decided": {
+        "Bell_Crank": {
+          "pick": "a",
+          "why": "Astra claims nothing for the bell crank; Opus suggests a windshield wiper and a loom (its \"Looks like\" is hidden by the gate, its uses are not) and runs to 102 words."
+        },
+        "Watt_II": {
+          "pick": "a",
+          "why": "A teaching chain: Astra claims nothing; Opus a windshield wiper drive."
+        },
+        "Stephenson_III": {
+          "pick": "a",
+          "why": "A teaching chain: Astra claims nothing; Opus a weaving loom's sley drive."
+        },
+        "Offset_Load_Rocker": {
+          "pick": "a",
+          "why": "A load-case template: Astra claims nothing; Opus aircraft control linkages and a throttle linkage."
+        },
+        "Straight_Line_Pair": {
+          "pick": "b",
+          "why": "Opus names two real uses of these linkages (Chebyshev's walking machine, piston-rod guides on steam engines); Astra gives none."
+        },
+        "student-19a3120907fb": {
+          "pick": "b",
+          "why": "Opus sees a lone crank, an unfinished linkage; Astra suggests a motor-driven stirrer."
+        },
+        "Hood_Hinge": {
+          "pick": "same",
+          "why": "Both say a car hood hinge; Opus at 99 words."
+        },
+        "Excavator_Bucket": {
+          "pick": "same",
+          "why": "Both say an excavator bucket linkage."
+        },
+        "Offset_Mount_Hatch": {
+          "pick": "same",
+          "why": "Both say a powered hatch."
+        },
+        "Crane_Two_Loads": {
+          "pick": "same",
+          "why": "Both say a luffing jib crane."
+        },
+        "Walking_Pair": {
+          "pick": "same",
+          "why": "Both say walking legs; Opus notes they are out of step."
+        },
+        "Pumping_Field": {
+          "pick": "same",
+          "why": "Both say oil-well pumpjacks."
+        },
+        "Hydraulic_Crosshead": {
+          "pick": "same",
+          "why": "Both say a hydraulic press."
+        },
+        "Watt_I": {
+          "pick": "same",
+          "why": "Both describe it and claim nothing."
+        },
+        "Locked_Four_Bar": {
+          "pick": "same",
+          "why": "Both describe it; the gate hides Opus's \"attempt at a crank-and-rocker\"."
+        },
+        "Elliptical_Crank": {
+          "pick": "same",
+          "why": "Both describe it; the gate hides Astra's ellipse tracer, and neither gives a use."
+        },
+        "Double_Butterfly": {
+          "pick": "same",
+          "why": "Both describe it and claim nothing."
+        },
+        "Three_Machines": {
+          "pick": "same",
+          "why": "Both invent a pump and a wiper for three teaching mechanisms."
+        },
+        "Slider_Crank_Inversions": {
+          "pick": "same",
+          "why": "Both name the engine and shaper inversions."
+        },
+        "student-added-steam-": {
+          "pick": "same",
+          "why": "Both say a steam locomotive; Opus an 0-6-0 switcher."
+        },
+        "student-192954d7b479": {
+          "pick": "same",
+          "why": "Both reach for a windshield wiper drive."
+        },
+        "student-18b209757f54": {
+          "pick": "same",
+          "why": "Both describe it and claim nothing."
+        },
+        "student-192957a6eb46": {
+          "pick": "same",
+          "why": "Both reach for a windshield wiper drive."
+        },
+        "made-locomotive-wheels": {
+          "pick": "same",
+          "why": "Both say steam locomotive wheels (Opus in its uses only: the family already says so, and it will not repeat it)."
+        },
+        "made-coupled-wheels": {
+          "pick": "same",
+          "why": "Both say steam locomotive driving wheels."
+        }
+      }
+    },
+    {
+      "id": "r9",
+      "title": "Round 9 · the same v8 sheets, Claude Opus 5.5 against Gemini 3.5 Flash-Lite",
+      "a": "v8@opus",
+      "b": "v8@flash-lite",
+      "note": "The strongest model against the cheapest, on the same blind v8 sheets and pictures. Over two askings Flash-Lite names the real machine in 17 of 21 library askings to Opus's 18 of 22, in about 2 s to 15 s, but it gives the same generic use (\"packaging machinery\") over and over, drops the bold part names four times, repeats the family PMKS+ matched, and wrote invalid JSON in 4 of 87 replies. (Its instructions reach it as a system instruction, as in the first model comparison, rather than in the message.) The panels apply the \"Looks like\" gate. Both sides are each model's first asking.",
+      "decided": {
+        "Hood_Hinge": {
+          "pick": "a",
+          "why": "Both say a car hood hinge; Flash-Lite says \"this linkage\" and names a part the sheet does not have."
+        },
+        "Crane_Two_Loads": {
+          "pick": "a",
+          "why": "Both say a luffing crane; Flash-Lite puts no part in bold, so its panel cannot point at any."
+        },
+        "Walking_Pair": {
+          "pick": "a",
+          "why": "Both say walking legs; Flash-Lite puts no part in bold and repeats the family."
+        },
+        "Pumping_Field": {
+          "pick": "a",
+          "why": "Opus says an oil-well pumpjack; Flash-Lite repeats the family and puts no part in bold."
+        },
+        "Slotted_Tool_Drive": {
+          "pick": "a",
+          "why": "Opus says a shaper and a power hacksaw; Flash-Lite \"packaging machinery\"."
+        },
+        "Straight_Line_Pair": {
+          "pick": "a",
+          "why": "Opus names two real uses; Flash-Lite a generic guiding mechanism."
+        },
+        "Watt_I": {
+          "pick": "a",
+          "why": "A teaching chain: Opus claims nothing; Flash-Lite repeats the family and suggests packaging machinery."
+        },
+        "Elliptical_Crank": {
+          "pick": "a",
+          "why": "Opus claims nothing; Flash-Lite packaging machinery."
+        },
+        "Locked_Four_Bar": {
+          "pick": "a",
+          "why": "Opus claims no use; Flash-Lite a rocker-arm suspension, and a parallel the sheet does not state."
+        },
+        "Four_Bar_Inversions": {
+          "pick": "a",
+          "why": "Opus names the Grashof inversions and their real uses; Flash-Lite generic transmissions."
+        },
+        "Slider_Crank_Inversions": {
+          "pick": "a",
+          "why": "Opus names the inversions sheet and its engine and shaper; Flash-Lite repeats the family."
+        },
+        "student-18b209757f54": {
+          "pick": "a",
+          "why": "Opus claims nothing (at 95 words); Flash-Lite packaging machinery and an automatic door."
+        },
+        "Bell_Crank": {
+          "pick": "both-poor",
+          "why": "Opus invents a wiper and a loom, Flash-Lite packaging machinery."
+        },
+        "Watt_II": {
+          "pick": "both-poor",
+          "why": "A teaching chain: Opus invents a wiper drive, Flash-Lite an industrial press."
+        },
+        "Stephenson_III": {
+          "pick": "both-poor",
+          "why": "A teaching chain: Opus invents a loom drive, Flash-Lite a straight-line mechanism."
+        },
+        "Offset_Load_Rocker": {
+          "pick": "both-poor",
+          "why": "A load case: Opus invents aircraft controls, Flash-Lite a conveyor."
+        },
+        "Offset_Mount_Hatch": {
+          "pick": "same",
+          "why": "Both say a powered hatch."
+        },
+        "Hydraulic_Crosshead": {
+          "pick": "same",
+          "why": "Both say a press."
+        },
+        "Double_Butterfly": {
+          "pick": "same",
+          "why": "Both describe it and claim nothing that shows."
+        },
+        "student-added-steam-": {
+          "pick": "same",
+          "why": "Both say a steam locomotive."
+        },
+        "student-192954d7b479": {
+          "pick": "same",
+          "why": "Both reach for a windshield wiper drive."
+        },
+        "student-192957a6eb46": {
+          "pick": "same",
+          "why": "Both reach for a windshield wiper drive."
+        },
+        "student-19a3120907fb": {
+          "pick": "same",
+          "why": "Both see a lone rotating crank."
+        },
+        "made-locomotive-wheels": {
+          "pick": "same",
+          "why": "Both say steam locomotive wheels."
+        },
+        "made-coupled-wheels": {
+          "pick": "same",
+          "why": "Both say a locomotive side-rod drive."
+        }
+      }
     }
   ]
 }

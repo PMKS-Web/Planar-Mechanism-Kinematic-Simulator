@@ -37,6 +37,16 @@ export interface FamilyCheck {
   matches: FamilyMatch[];
 }
 
+/**
+ * Families that name only a class of chain -- a Grashof class, a six-bar's
+ * type, a slider-crank, a lever a cylinder pushes -- which engines, pumps,
+ * wipers and presses all share. Every other family in the catalog points at a
+ * kind of machine: a Jansen leg, a walking beam, a locomotive's running gear.
+ */
+const CHAIN_CLASS = /four-bar$|six-bar$|slider-crank$|^cylinder-driven lever$/;
+
+export const pointsAtMachine = (match: FamilyMatch): boolean => !CHAIN_CLASS.test(match.family);
+
 const TOLERANCE = 0.03;
 const near = (x: number, y: number, tol = TOLERANCE) =>
   Math.abs(x - y) <= tol * Math.max(Math.abs(x), Math.abs(y), 1e-9);

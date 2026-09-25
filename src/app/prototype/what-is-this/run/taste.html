@@ -1121,7 +1121,7 @@
 <div class="wrap">
   <header class="top">
     <div class="titles">
-      <span class="eyebrow">PMKS+ prototype · “What is this?” · GPT-6 Luna</span>
+      <span class="eyebrow">PMKS+ prototype · “What is this?”</span>
       <h1>Taste Test</h1>
     </div>
     <div class="top-controls">
@@ -1315,10 +1315,16 @@
   /** An arm is `<sheet>[@<model>][~<asking>]`: "v8@astra" is v8 answered by GPT-6 Astra. */
   const armSheet = (armId) => armId.split('~')[0].split('@')[0];
   const armModel = (armId) => armId.split('~')[0].split('@')[1];
+  const MODEL_NAMES = {
+    luna: 'GPT-6 Luna',
+    astra: 'GPT-6 Astra',
+    opus: 'Claude Opus 5.5',
+    'flash-lite': 'Gemini 3.5 Flash-Lite',
+  };
   const sheetTitle = (armId) => {
     const model = armModel(armId);
     const title = DATA.sheets[armSheet(armId)]?.title ?? armId;
-    return model ? `${title} · GPT-6 ${model.charAt(0).toUpperCase()}${model.slice(1)}` : title;
+    return model ? `${title} · ${MODEL_NAMES[model] ?? model}` : title;
   };
   const armLabel = (arm) =>
     `${sheetTitle(arm.id)}${arm.sample > 1 ? ` (asking ${arm.sample})` : ''}`;
@@ -1542,9 +1548,12 @@
           `<li><span class="use">${renderParagraph(u.use, [], names)}</span><span class="why">${renderParagraph(u.why, [], names)}</span></li>`
       )
       .join('');
-    const looks = a.resembles
-      ? `<div class="looks"><span class="looks-label">Looks like</span> ${esc(a.resembles)}</div>`
-      : '';
+    // From v8, PMKS+ shows "Looks like" only when the author's names or a family
+    // it matched back it up (looks-like-gate.ts); older sheets always showed it.
+    const looks =
+      a.resembles && arm.looksLike?.show !== false
+        ? `<div class="looks"><span class="looks-label">Looks like</span> ${esc(a.resembles)}</div>`
+        : '';
     return `
       <article class="panel">${head}
         <div class="section">
@@ -1649,7 +1658,7 @@
     svg.replaceChildren();
     anim.pair = p;
     anim.parts = new Map();
-    const m = p.motion;
+    const m = DATA.motions[p.template];
     if (!m) {
       anim.els = null;
       return;
@@ -1828,7 +1837,7 @@
     drawFrame(0);
   }
   function drawFrame(f) {
-    const m = anim.pair && anim.pair.motion;
+    const m = anim.pair && DATA.motions[anim.pair.template];
     if (!m || !anim.els) return;
     anim.frame = f;
     const frame = m.frames[f];
@@ -1899,7 +1908,7 @@
     return lo;
   }
   function tick(now) {
-    const m = anim.pair && anim.pair.motion;
+    const m = anim.pair && DATA.motions[anim.pair.template];
     if (m && anim.playing && state.tab === 'judge') {
       const dt = anim.last ? Math.min(0.1, (now - anim.last) / 1000) : 0;
       anim.phase = (anim.phase + (dt * Number($('speed').value)) / CYCLE_SECONDS) % 1;
@@ -1914,7 +1923,7 @@
     $('play').textContent = anim.playing ? 'Pause' : 'Play';
   });
   $('scrub').addEventListener('input', (e) => {
-    const m = anim.pair && anim.pair.motion;
+    const m = anim.pair && DATA.motions[anim.pair.template];
     if (!m) return;
     anim.playing = false;
     $('play').textContent = 'Play';
@@ -2071,13 +2080,18 @@
       const app = arm.rubric.application;
       const u = arm.usage || {};
       const img = arm.image && DATA.images[arm.image];
+      const said = arm.answer?.resembles;
+      const gate = arm.looksLike
+        ? `<span class="hint">“Looks like” ${arm.looksLike.show ? 'shown' : 'hidden'}: ${esc(arm.looksLike.because)}${!arm.looksLike.show && said ? `. The model said “${esc(said)}”.` : '.'}</span>`
+        : '';
       return `<div>
         <span class="sheet-name">${tag} was ${esc(armLabel(arm))}</span>
         <span>${chips(arm, famWord, app)}</span>
+        ${gate}
         <ul class="flags">${flags}</ul>
         <span class="hint">${arm.latencyMs ? `${(arm.latencyMs / 1000).toFixed(1)} s · ` : ''}${u.input ?? '–'} in · ${u.output ?? '–'} out${u.reasoning ? ` (${u.reasoning} reasoning)` : ''}</span>
         ${img ? `<details class="saw"><summary>Picture ${tag} was sent</summary><img src="${img}" alt="The picture sent with ${esc(armLabel(arm))}"></details>` : ''}
-        <details class="facts"><summary>Fact sheet ${tag} was written from</summary><pre>${esc(arm.facts)}</pre></details>
+        <details class="facts"><summary>Fact sheet ${tag} was written from</summary><pre>${esc(DATA.facts[arm.factsId] ?? '')}</pre></details>
       </div>`;
     };
     const change = p.identical

@@ -2,6 +2,7 @@
 //   node src/app/prototype/what-is-this/run/ask.mjs gemini [model]
 //   node src/app/prototype/what-is-this/run/ask.mjs muse [model] [effort]
 //   node src/app/prototype/what-is-this/run/ask.mjs codex [model] [effort]
+//   node src/app/prototype/what-is-this/run/ask.mjs claude [model] [effort]
 // SHEET=v3 picks the fact-sheet version (default v2); SAMPLE=2 asks again and
 // keeps the answer beside the first, to see how much two askings differ.
 // Resumable: a case already answered without an error is skipped.
@@ -28,6 +29,7 @@ const DEFAULT_MODEL = {
   gemini: 'gemini-3.5-flash-lite',
   muse: 'muse-spark-1.3-contributor',
   codex: 'gpt-6-luna',
+  claude: 'claude-opus-5-5',
 };
 const model = modelArg ?? DEFAULT_MODEL[provider];
 const effort = effortArg ?? 'medium';
@@ -132,9 +134,6 @@ async function askGemini(entry) {
   }
 }
 
-const museCwd = join(root, 'muse-cwd');
-mkdirSync(museCwd, { recursive: true });
-
 function run(command, args, cwd) {
   return new Promise((resolve) => {
     const child = spawn(command, args, { cwd });
@@ -173,7 +172,10 @@ function museUsage(sessionId) {
 }
 
 async function askMuse(entry) {
-  const promptFile = join(museCwd, `${entry.key}.txt`);
+  // A fresh directory and a file named for nothing: the case key names the
+  // template, and a CLI may show the model the paths it was handed.
+  const promptDir = mkdtempSync(join(tmpdir(), 'prompt-'));
+  const promptFile = join(promptDir, 'prompt.txt');
   writeFileSync(
     promptFile,
     `${readFileSync(join(root, entry.prompt), 'utf8')}\n\nThe student asks: ${QUESTION}\n`
@@ -199,9 +201,10 @@ async function askMuse(entry) {
   const picture = blindPicture(entry);
   if (picture) args.push('--image', picture.path);
   const started = Date.now();
-  const { stdout, stderr, code } = await run('muse', args, museCwd).finally(() =>
-    picture?.remove()
-  );
+  const { stdout, stderr, code } = await run('muse', args, promptDir).finally(() => {
+    picture?.remove();
+    rmSync(promptDir, { recursive: true, force: true });
+  });
   const latencyMs = Date.now() - started;
   let text;
   let failure;
@@ -296,6 +299,87 @@ async function askCodex(entry) {
   return { text: text.trim(), latencyMs, attempts: 1, usage };
 }
 
+// Claude through the Claude Code CLI, which signs in with the user's account
+// (there is no API key here). Everything is shut out that could tell the model
+// what it is looking at: no tools, no settings, no MCP servers, a system prompt
+// of one sentence, a fresh empty directory, and the picture sent inline as
+// base64, so no file name reaches it. Asked to quote what it received, Opus 5.5
+// reported only that, the working directory, the date and the user's email.
+const claudeCwd = () => mkdtempSync(join(tmpdir(), 'blind-'));
+
+async function askClaude(entry) {
+  const content = [];
+  if (entry.image)
+    content.push({
+      type: 'image',
+      source: {
+        type: 'base64',
+        media_type: 'image/png',
+        data: readFileSync(join(root, entry.image)).toString('base64'),
+      },
+    });
+  content.push({
+    type: 'text',
+    text: `${readFileSync(join(root, entry.prompt), 'utf8')}\n\nThe student asks: ${QUESTION}\n`,
+  });
+  const args = [
+    '-p',
+    '--model',
+    model,
+    '--effort',
+    effort,
+    '--tools',
+    '',
+    '--system-prompt',
+    'Answer the request in the user message.',
+    '--setting-sources',
+    '',
+    '--strict-mcp-config',
+    '--mcp-config',
+    '{"mcpServers":{}}',
+    '--no-session-persistence',
+    '--input-format',
+    'stream-json',
+    '--output-format',
+    'stream-json',
+    '--verbose',
+  ];
+  const cwd = claudeCwd();
+  const started = Date.now();
+  const { stdout, stderr, code } = await new Promise((resolve) => {
+    const child = spawn('claude', args, { cwd });
+    let out = '';
+    let err = '';
+    child.stdout.on('data', (d) => (out += d));
+    child.stderr.on('data', (d) => (err += d));
+    child.on('close', (exit) => resolve({ stdout: out, stderr: err, code: exit }));
+    child.stdin.end(JSON.stringify({ type: 'user', message: { role: 'user', content } }) + '\n');
+  }).finally(() => rmSync(cwd, { recursive: true, force: true }));
+  const latencyMs = Date.now() - started;
+  let result;
+  for (const line of stdout.split('\n')) {
+    try {
+      const event = JSON.parse(line);
+      if (event.type === 'result') result = event;
+    } catch {
+      continue;
+    }
+  }
+  if (!result || result.is_error)
+    throw new Error(result?.result ?? `claude exited ${code}: ${stderr.slice(-400)}`);
+  const u = result.usage ?? {};
+  return {
+    text: String(result.result).trim(),
+    latencyMs,
+    attempts: 1,
+    usage: {
+      input: u.input_tokens,
+      cached: u.cache_read_input_tokens,
+      output: u.output_tokens,
+    },
+  };
+}
+
 const answerFile = (entry) =>
   process.env.SAMPLE && process.env.SAMPLE !== '1'
     ? `${entry.key}~${process.env.SAMPLE}.json`
@@ -316,7 +400,7 @@ async function handle(entry) {
     effort: provider === 'gemini' ? undefined : effort,
   };
   try {
-    const ask = { gemini: askGemini, muse: askMuse, codex: askCodex }[provider];
+    const ask = { gemini: askGemini, muse: askMuse, codex: askCodex, claude: askClaude }[provider];
     Object.assign(result, await ask(entry));
     Object.assign(result, parseReply(result.text));
   } catch (error) {

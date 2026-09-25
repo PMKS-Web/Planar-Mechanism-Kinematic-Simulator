@@ -31,6 +31,7 @@ const invented = {};
 // The panel showing "Looks like" only when the author named parts or PMKS+
 // matched a specific family: how many a student would see, and how many are right.
 const gate = {};
+const gatePhoto = {};
 const rows = [];
 for (const c of manifest(sheets[sheets.length - 1]).cases) {
   const row = { template: c.template, source: c.source ?? 'library', named: false };
@@ -49,7 +50,11 @@ for (const c of manifest(sheets[sheets.length - 1]).cases) {
       Boolean
     );
     const looks = answers.map((a) => a.resembles || '—');
-    const gated = row.named || specific;
+    // The app's own gate where the sheet has one (v8 on), else the same rule estimated.
+    const gated = entry.looksLike ? entry.looksLike.show : row.named || specific;
+    // A variant: a background photograph opens the gate too.
+    const gatedPhoto = gated || !!entry.backdrop;
+    const p = (gatePhoto[sheet] ??= { shown: 0, right: 0, invented: 0 });
     const g = (gate[sheet] ??= { shown: 0, right: 0, invented: 0, hidden: 0, hiddenRight: 0 });
     if (NO_MACHINE.has(c.template) && answers.length) {
       // No machine to recognize: every "Looks like" is a machine the model made up.
@@ -63,6 +68,10 @@ for (const c of manifest(sheets[sheets.length - 1]).cases) {
         g.shown += said;
         g.invented += said;
       } else g.hidden += said;
+      if (gatedPhoto) {
+        p.shown += said;
+        p.invented += said;
+      }
       continue;
     }
     const marks = answers.map((a) =>
@@ -71,6 +80,10 @@ for (const c of manifest(sheets[sheets.length - 1]).cases) {
     if (!marks.length || marks[0] === 'n/a') continue;
     answers.forEach((a, i) => {
       if (!(a.resembles ?? '').trim()) return;
+      if (gatedPhoto) {
+        p.shown++;
+        if (marks[i] === 'named') p.right++;
+      }
       if (gated) {
         g.shown++;
         if (marks[i] === 'named') g.right++;
@@ -133,6 +146,11 @@ console.log(
 for (const [sheet, g] of Object.entries(gate))
   console.log(
     `${sheet.padEnd(16)} shown ${g.shown}: right ${g.right}, made up for a chain with no machine ${g.invented}, wrong ${g.shown - g.right - g.invented}; hidden ${g.hidden}, of which right ${g.hiddenRight}`
+  );
+console.log('The same, with a background photograph also opening it:');
+for (const [sheet, g] of Object.entries(gatePhoto))
+  console.log(
+    `${sheet.padEnd(16)} shown ${g.shown}: right ${g.right}, made up for a chain with no machine ${g.invented}, wrong ${g.shown - g.right - g.invented}`
   );
 if (process.argv.includes('--looks'))
   for (const r of rows)
