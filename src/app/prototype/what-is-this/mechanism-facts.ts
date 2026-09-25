@@ -20,6 +20,7 @@ import {
   deg,
 } from './fact-math';
 import { FamilyMatch, familyCheck } from './family-check';
+import { LooksLikeGate, looksLikeGate } from './looks-like-gate';
 import { MachineMotion, machineMotion } from './motion-export';
 import { describeRelations, RelationContext } from './relations';
 import { inputAt, InputSeries, inputSeries, LinkJob, linkJobs, listOf } from './roles';
@@ -81,6 +82,8 @@ export interface FilmFrame {
 export interface MachineDescription {
   /** Whether PMKS+ solved its motion; the rest is a still picture when not. */
   solved: boolean;
+  /** The names the author typed for its links, joints and forces, when the sheet sends names. */
+  authorNames: string[];
   svg?: string;
   motion?: MachineMotion;
   jobs: LinkJob[];
@@ -95,6 +98,8 @@ export interface DrawingDescription {
   /** Each solvable machine's motion, for a page to animate. Not sent to the model. */
   motions: MachineMotion[];
   machines: MachineDescription[];
+  /** Whether the panel shows the model's "Looks like" for this drawing. Not sent to the model. */
+  looksLike: LooksLikeGate;
 }
 
 /** The whole fact sheet for every mechanism on the grid. */
@@ -143,6 +148,11 @@ export function describeDrawing(drawing: DrawingToDescribe): DrawingDescription 
     svgs: machines.flatMap((m) => (m.svg ? [m.svg] : [])),
     motions: machines.flatMap((m) => (m.motion ? [m.motion] : [])),
     machines,
+    looksLike: looksLikeGate(
+      [...new Set(machines.flatMap((m) => m.authorNames))],
+      machines.flatMap((m) => m.family),
+      !!drawing.backdrop
+    ),
   };
 }
 
@@ -170,6 +180,15 @@ function describePartition(
     const named = drawing.includeNames && typed(link.name, link.id) ? ` ("${link.name}")` : '';
     return `link ${ids.join('')}${named}`;
   };
+  const authorNames = drawing.includeNames
+    ? [
+        ...bodies.filter((link) => typed(link.name, link.id)).map((link) => link.name),
+        ...visible.filter((joint) => typed(joint.name, joint.id)).map((joint) => joint.name),
+        ...partition.forces
+          .filter((force) => typed(force.name, force.id))
+          .map((force) => force.name),
+      ]
+    : [];
 
   const lines: string[] = ['### At a glance'];
   const drivers = partition.ownJoints.filter(
@@ -221,6 +240,7 @@ function describePartition(
     lines.push(...describeStartGeometry(visible, bodies, label, bodyLabel, hidden, cylinders));
     return {
       solved: false,
+      authorNames,
       lines,
       jobs: [],
       family: [],
@@ -308,6 +328,7 @@ function describePartition(
   const picture = { bodies, visible, hidden, cylinders, samples };
   return {
     solved: true,
+    authorNames,
     lines,
     svg: drawingSvg(picture),
     motion: machineMotion(picture),

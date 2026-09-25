@@ -18,6 +18,14 @@ const { provider, variant, rounds } = JSON.parse(readFileSync(join(here, 'rounds
 const sheets = JSON.parse(readFileSync(join(here, 'sheets.json'), 'utf8'));
 
 /** "v3" is the first asking of sheet v3; "v3~2" the second. */
+/** The models an arm can name after "@", by the directory their answers are kept in. */
+const MODELS = {
+  luna: 'codex__gpt-6-luna',
+  astra: 'codex__gpt-6-astra',
+  opus: 'claude__claude-opus-5-5',
+  'flash-lite': 'gemini__gemini-3.5-flash-lite',
+};
+
 /**
  * An arm is `<sheet>[@<model>][~<asking>]`: "v8~2" is v8's second asking, and
  * "v8@astra" v8 answered by GPT-6 Astra rather than the rounds' own model.
@@ -25,7 +33,8 @@ const sheets = JSON.parse(readFileSync(join(here, 'sheets.json'), 'utf8'));
 function parseArm(arm) {
   const [sheetAndModel, sample = '1'] = arm.split('~');
   const [sheet, model] = sheetAndModel.split('@');
-  return { sheet, sample, model: model ? `codex__gpt-6-${model}` : provider };
+  if (model && !MODELS[model]) throw new Error(`unknown model "${model}" in arm ${arm}`);
+  return { sheet, sample, model: model ? MODELS[model] : provider };
 }
 
 function factsOf(prompt) {
@@ -148,6 +157,8 @@ function loadArm(arm, template) {
       sheet,
       sample: Number(sample),
       model,
+      // Whether this version's panel would show "Looks like" (from v8's gate on; older sheets always did).
+      looksLike: entry.looksLike,
       answer: saved?.parsed,
       error: saved ? (saved.error ?? saved.parseError) : 'not asked yet',
       latencyMs: saved?.latencyMs,
@@ -217,11 +228,31 @@ const builtRounds = rounds.map((round) => {
   return { ...round, pairs };
 });
 
+// Rounds that compare models share one mechanism's motion and fact sheet across
+// every pair; each is kept once and pointed at, or nine rounds pass 16 MB.
+const motions = {};
+const facts = {};
+const factsId = (text) => {
+  if (text === undefined) return undefined;
+  const id = createHash('sha1').update(text).digest('hex').slice(0, 12);
+  facts[id] ??= text;
+  return id;
+};
+const pageRounds = builtRounds.map((round) => ({
+  ...round,
+  pairs: round.pairs.map(({ motion, ...pair }) => {
+    if (motion) motions[pair.template] ??= motion;
+    const arm = ({ facts: text, ...side }) => ({ ...side, factsId: factsId(text) });
+    return { ...pair, left: arm(pair.left), right: arm(pair.right) };
+  }),
+}));
 const data = {
   provider,
   variant,
   sheets,
-  rounds: builtRounds,
+  rounds: pageRounds,
+  motions,
+  facts,
   images,
   generated: new Date().toISOString(),
 };

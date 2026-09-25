@@ -354,3 +354,66 @@ Astra names these in both askings:
 Where there is no machine it mostly says so, or names what the template is: "a four-bar teaching
 demonstrator", "a crank-driven ellipse tracer". More reasoning effort on Luna took four times as long
 and recognized no more. The same simulated gate on Astra shows 21 answers, 18 of them right.
+
+### The "Looks like" gate
+
+`looks-like-gate.ts` decides whether the panel shows the model's "Looks like". PMKS+ makes the
+call, not the model, and it uses only facts it has. The line shows in two cases:
+
+- **A name that says what the mechanism is for.** The author named a part with a word beyond the
+  vocabulary for linkage parts: "Hood", "Jib", "Press crosshead" count; "Input lever", "Coupler",
+  "Drag crank" don't.
+- **A family that points at a kind of machine.** PMKS+ matched a Jansen leg, a walking beam, a
+  straight-line linkage, a quick-return, a locomotive's running gear and the like, rather than only
+  a Grashof class, a six-bar's type, a slider-crank or a cylinder-driven lever.
+
+Round 6's teaching templates are why role words don't count: their authors named parts "Coupler"
+and "Rocker", and the model invented a machine for them anyway. The case builder records the gate
+and its reason in each manifest. The page's panels apply it, and its reveal says why the line was
+shown or hidden, and what the model said when it was hidden.
+
+A background photograph could open the gate too, and whether it should depends on the model (see
+below). `PHOTO_OPENS_GATE` holds it shut while Luna writes the note.
+
+### Rounds 8 and 9: Claude Opus 5.5 and Gemini 3.5 Flash-Lite
+
+The same blind v8 sheets and pictures went to two more models:
+
+- **Claude Opus 5.5**, through the Claude Code CLI at medium effort. It ran with no tools, no
+  settings and no MCP servers, a one-sentence system prompt, an empty directory, and the picture
+  inline, so it saw no file name. Asked to quote everything it received, it listed only that, the
+  directory, the date and the account's email.
+- **Gemini 3.5 Flash-Lite** as a baseline, with the picture inline as always.
+
+Opus answered three times, Flash-Lite three times, and the Codex models twice before the account's
+limit, so the table uses each model's first two askings:
+
+| v8, two blind askings per case | Luna | Luna, high | Astra | Opus 5.5 | Flash-Lite |
+| --- | --- | --- | --- | --- | --- |
+| Library: names the machine | 68% | 64% | 82% | 82% | 81% |
+| Library: "Looks like" wrong, of those given | 29% | 36% | 10% | 18% | 19% |
+| Gate as built: "Looks like" shown, right | 21, 18 | 22, 18 | 21, 18 | 20, 16 | 21, 17 |
+| A photograph opening the gate too: shown, right | 27, 20 | – | 27, 24 | 26, 21 | 27, 23 |
+| Median time per answer | 9 s | 40 s | 15 s | 15 s | 2 s |
+
+Recognition alone does not separate the top three; how each writes does:
+
+- **Astra** is the most restrained. It claims nothing for a chain with no machine behind it, and
+  it is right most often when it does claim one.
+- **Opus** is the most specific ("an 0-6-0 switcher's three coupled drivers", "light airplane's
+  inward-retracting main landing gear", real historical uses for Chebyshev's linkage). It is the
+  strictest about not repeating the family PMKS+ matched: for the made locomotive it left "Looks
+  like" empty and put the locomotive in its uses. It runs long (median 84 words; 5 of 58 answers
+  over the 90 asked), and more often invents a use for a teaching chain.
+- **Flash-Lite** recognizes nearly as often, in a seventh of the time. It gives "packaging
+  machinery" as the use over and over, drops the bold part names (4 of 58), says "this linkage"
+  (4 of 58), and names the matched family as its "Looks like". In 4 of 87 replies it wrote invalid
+  JSON: it copied the authors' quoted names without escaping them. Its instructions reach it as a
+  system instruction, as in the first model comparison, rather than in the message.
+
+The photograph row is the model-dependent part of the gate. Astra, Opus and Flash-Lite read the
+background photographs of the landing gear, steering and excavator, and letting a photograph open
+the gate adds 17 right lines of 18 across the three. Luna misreads them, adding 2 right and 4 wrong.
+
+Round 8 on the page puts Astra against Opus and round 9 Opus against Flash-Lite, each with the gate
+in the panels.
