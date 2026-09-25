@@ -249,11 +249,11 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
     // mechanism -- repeating it above every graph made the loudest thing on
     // the panel a remark about numbers that are all correct.
     const { fixture, fixtureData } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'AB');
-    fixtureData.service.cylinderReachWarning = () => 'Cylinder GC can only use 62% of its stroke.';
+    fixtureData.service.cylinderReachWarning = () => ({ cylinder: {} as never, percent: 62 });
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('#cylinderReachContainer')).toBeNull();
-    expect(fixture.nativeElement.textContent).not.toContain('62% of its stroke');
+    expect(fixture.nativeElement.textContent).not.toContain('62%');
     fixture.destroy();
   });
 

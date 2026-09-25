@@ -2,12 +2,13 @@
 // initializes cleanly when entered here (see test-utils/verification/fixture.ts).
 import '../../app/model/joint';
 import { partitionMechanisms } from '../../app/model/mechanism/mechanism-partition';
-import {
-  describeUnassigned,
-  ReadinessHelpers,
-  readinessOf,
-} from '../../app/model/mechanism/readiness';
+import { ReadinessHelpers, readinessOf } from '../../app/model/mechanism/readiness';
+import { unassignedIssues } from '../../app/model/mechanism/unassigned-issues';
+import { Cylinder } from '../../app/model/cylinder';
+import { RealJoint } from '../../app/model/joint';
+import { RealLink } from '../../app/model/link';
 import { buildMechanism, MechanismFixture } from '../../test-utils/verification/fixture';
+import { read } from '../../test-utils/verification/issue-text';
 
 /**
  * What the app tells a student who has pressed play and got nothing.
@@ -20,8 +21,6 @@ import { buildMechanism, MechanismFixture } from '../../test-utils/verification/
  */
 describe('why a mechanism will not run', () => {
   const noHelpers: ReadinessHelpers = {
-    cylinderName: (id: string) => id,
-    drivenRefusal: () => undefined,
     strokeWarning: () => undefined,
     describeSpeed: () => '20.00 RPM CCW',
   };
@@ -64,11 +63,11 @@ describe('why a mechanism will not run', () => {
 
     expect(readiness.ready).toBe(false);
     expect(readiness.checks).toHaveLength(1);
-    const [check] = readiness.checks;
-    expect(check.state).toBe('blocker');
-    expect(check.title).toBe('This mechanism has 2 degrees of freedom');
+    const check = read(readiness.checks[0]);
+    expect(check.severity).toBe('blocker');
+    expect(check.title).toBe('2 degrees of freedom, needs 1');
     // The number, which part is loose, and what to do about it — not "invalid".
-    expect(check.body).toContain('link BC can still move');
+    expect(check.summary).toBe('With the input held still, link BC can still move.');
   });
 
   it('points at the free end that carries the extra freedom', () => {
@@ -85,20 +84,19 @@ describe('why a mechanism will not run', () => {
       inputAngVel: 1,
     });
 
-    const [check] = readiness.checks;
-    expect(check.ways?.map((way) => way.text)).toContain(
-      'Attach a link from joint C to a new grounded joint'
-    );
-    expect(check.body).not.toContain('Grounding joint C');
-    // The counted fix is deleting BC, so that is where the button goes; the
-    // free end is named in the sentence for the reader who meant to finish it.
-    expect(check.at?.id).toBe('BC');
-    expect(check.action).toBe('Go To Link');
+    const check = read(readiness.checks[0]);
+    expect(check.fixes).toContain('Attach a grounded link at joint C');
+    expect(check.fixes).not.toContain('Ground joint C');
+    // The counted fix is deleting BC, so it comes first; the free end is named
+    // for the reader who meant to finish the four-bar.
+    expect(check.fixes[0]).toBe('Delete link BC');
+    expect(check.parts).toEqual(expect.arrayContaining(['BC', 'C']));
   });
 
-  it('reports the mobility first when a linkage is both loose and undriven', () => {
+  it('reports the mobility first, and the missing input beside it', () => {
     // Both are wrong, and the order matters: giving this an input would not
-    // make it run, so sending the reader to add one first wastes the fix.
+    // make it run, so the count is first. Neither waits on the other, so both
+    // are said at once.
     const readiness = checksFor({
       joints: [
         { id: 'A', x: 0, y: 0, ground: true },
@@ -109,7 +107,10 @@ describe('why a mechanism will not run', () => {
       inputAngVel: 1,
     });
 
-    expect(readiness.checks[0].title).toBe('This mechanism has 2 degrees of freedom');
+    expect(readiness.checks.map((check) => check.title)).toEqual([
+      '2 degrees of freedom, needs 1',
+      'No input is set',
+    ]);
   });
 
   it('names a joint that could take the drive when nothing is driven', () => {
@@ -119,13 +120,12 @@ describe('why a mechanism will not run', () => {
     });
 
     expect(readiness.checks).toHaveLength(1);
-    const [check] = readiness.checks;
+    const check = read(readiness.checks[0]);
     expect(check.title).toBe('No input is set');
-    // Points at a joint that can actually take the job, so the button is an
-    // answer rather than a place to start looking.
-    expect(check.at).toBeDefined();
-    expect(check.action).toBe('Go To Joint');
-    expect(check.body).toMatch(/Right-click joint [A-Z] and set it as the input/);
+    // Names a joint that can actually take the job, so the fix is an answer
+    // rather than a place to start looking.
+    expect(check.fixes).toEqual([expect.stringMatching(/^Set joint [A-Z] as the input$/)]);
+    expect(check.parts).toHaveLength(1);
   });
 
   it('names the slider when one has nothing to slide along', () => {
@@ -148,10 +148,12 @@ describe('why a mechanism will not run', () => {
       inputAngVel: 1,
     });
 
-    const [check] = readiness.checks;
-    expect(check.title).toBe('A slider has nothing to slide along');
-    expect(check.body).toMatch(/Drag it onto a link to cut a slot, or ground it/);
-    expect(check.at).toBeDefined();
+    const check = read(readiness.checks[0]);
+    expect(check.title).toBe('Slider C has no slot');
+    expect(check.fixes).toEqual([
+      'Drag slider C onto a link to cut a slot',
+      'Ground slider C to fix its direction',
+    ]);
   });
 
   it('leaves a good linkage alone when a detached slider floats beside it', () => {
@@ -182,29 +184,35 @@ describe('why a mechanism will not run', () => {
     // The refusal is asked of every mechanism, not only broken ones: the toggle
     // guards this, but a later edit can add a third body to a joint that was
     // legitimately driven when it was switched on.
-    const readiness = checksFor(workingFourBar, {
-      ...noHelpers,
-      drivenRefusal: () =>
-        'A slider’s block is a single point, so there is no angle to turn it through.',
-    });
+    const built = buildMechanism(workingFourBar);
+    const { mechanisms } = partitionMechanisms(built.joints, built.links, built.forces);
+    // A brace drawn from the input's pivot after the input was set, and after
+    // the solve: the pivot now joins three bodies.
+    const [a, c] = ['A', 'C'].map((id) => built.joints.find((one) => one.id === id) as RealJoint);
+    a.links.push(new RealLink('AC', [a, c]));
+    const readiness = readinessOf(mechanisms[0], built.mechanism, noHelpers);
 
     expect(readiness.ready).toBe(false);
-    expect(readiness.checks).toHaveLength(1);
-    expect(readiness.checks[0].state).toBe('blocker');
-    expect(readiness.checks[0].title).toBe('This joint cannot be an input');
+    expect(readiness.checks[0].severity).toBe('blocker');
+    expect(readiness.checks[0].title).toMatch(/^Joint A (can't be the input|has 2 links to turn)$/);
   });
 
   it('treats a cylinder that cannot use its whole stroke as a warning, not a blocker', () => {
+    const built = buildMechanism(workingFourBar);
+    const [a, b] = ['A', 'B'].map((id) => built.joints.find((one) => one.id === id)!);
+    const barrel = built.links.find((link) => link.id === 'AB')!;
+    const cylinder = { barrel, mountA: a, mountB: b } as unknown as Cylinder;
     const readiness = checksFor(workingFourBar, {
       ...noHelpers,
-      strokeWarning: () => 'Cylinder AB can only use 40% of its stroke — the linkage binds first.',
+      strokeWarning: () => ({ cylinder, percent: 40 }),
     });
 
     // It runs, and every number it reports is right; there is simply something
     // about the result worth knowing.
     expect(readiness.ready).toBe(true);
     expect(readiness.checks).toHaveLength(1);
-    expect(readiness.checks[0].state).toBe('warning');
+    expect(readiness.checks[0].severity).toBe('warning');
+    expect(readiness.checks[0].title).toBe('Cylinder AB uses 40% of its stroke');
   });
 
   it('tells a floating chain what it is missing, and a lone joint what it is', () => {
@@ -222,15 +230,13 @@ describe('why a mechanism will not run', () => {
       inputAngVel: 1,
     });
     const { unassigned } = partitionMechanisms(built.joints, built.links, built.forces);
-    const reports = describeUnassigned(unassigned);
+    const reports = unassignedIssues(unassigned).map(read);
 
     expect(reports).toHaveLength(2);
     // One link on its own is named as one, with the two ways out a reader has.
     expect(reports[0].title).toBe('Link EF is attached to nothing');
-    expect(reports[0].body).toMatch(
-      /Delete it, or ground one of its joints to make it a mechanism of its own/
-    );
+    expect(reports[0].fixes).toEqual(['Ground joint E', 'Delete link EF']);
     expect(reports[1].title).toBe('Joint G has no link');
-    expect(reports[1].body).toMatch(/Attach a link to it, or delete it/);
+    expect(reports[1].fixes).toEqual(['Attach a link to joint G', 'Delete joint G']);
   });
 });

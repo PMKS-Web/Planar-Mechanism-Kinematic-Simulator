@@ -8,14 +8,15 @@ import { NumberUnitParserService } from '../../services/number-unit-parser.servi
 import { SettingsService } from '../../services/settings.service';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { EditPermissionService } from '../../services/edit-permission.service';
-import { MechanismReadiness, ReadinessCheck } from '../../model/mechanism/readiness';
+import { MechanismReadiness } from '../../model/mechanism/readiness';
+import { SetupIssue } from '../../model/mechanism/setup-issue';
+import { IssueComponent } from '../BLOCKS/issue/issue.component';
 import { MatIcon } from '@angular/material/icon';
 import { ScrollShadowDirective } from '../../scroll-shadow.directive';
 import { NotificationService } from '../../services/notification.service';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { InputComponent } from '../BLOCKS/input/input.component';
 import { ChipComponent } from '../BLOCKS/chip/chip.component';
-import { ButtonComponent } from '../BLOCKS/button/button.component';
 import { Subscription } from 'rxjs';
 import { NOT_A } from '../../ui-text';
 import { editPanelHandle } from '../../services/edit-panel-handle';
@@ -41,12 +42,14 @@ export interface MassRow {
  * The app used to answer "why is nothing happening?" with one sentence about
  * the whole document, first blocker wins — which for a drawing holding several
  * machines is a sentence about whichever of them the loop reached first. Each
- * is now listed on its own, with its own blockers, and each blocker says the
- * way out rather than only naming the wall.
+ * is now listed on its own, with its own issues, each saying what is wrong and,
+ * behind "Show fixes", the rule behind it and the edits to try
+ * (`docs/setup-issues-spec.md`).
  *
  * Anything that is fine says nothing at all. A list of green ticks reads as
  * reassurance the first time and as noise every time after, and it buries the
- * one line that matters.
+ * one line that matters. A section with nothing in the way is its name and a
+ * "Ready" chip.
  */
 @Component({
   selector: 'app-analysis-setup',
@@ -59,7 +62,7 @@ export interface MassRow {
     ReactiveFormsModule,
     InputComponent,
     ChipComponent,
-    ButtonComponent,
+    IssueComponent,
   ],
 })
 export class AnalysisSetupComponent {
@@ -95,86 +98,34 @@ export class AnalysisSetupComponent {
   }
 
   /**
-   * What force analysis still wants, listed beside the kinematic blockers
-   * rather than in a drawer of its own.
-   *
-   * The two questions have different answers but the same shape, and a reader
-   * who has just been refused by one tab is well served by seeing what the
-   * other would say too. Only shown while something is outstanding: a met
-   * requirement is a tick nobody needs to read twice.
+   * What force analysis still wants: only what is outstanding, blockers first,
+   * because the thing that stops the analysis goes above the thing merely
+   * worth a look, whatever order the service found them in.
    */
-  get forceRequirements() {
-    // Blockers first: the mock puts the thing that stops the analysis above
-    // the thing merely worth a look, whatever order the service found them.
+  get forceIssues(): SetupIssue[] {
     return this.mechanism
-      .forceAnalysisRequirements()
+      .forceSetupIssues()
       .slice()
-      .sort((a, b) => (a.warning ? 1 : 0) - (b.warning ? 1 : 0));
+      .sort((a, b) => (a.severity === 'blocker' ? 0 : 1) - (b.severity === 'blocker' ? 0 : 1));
   }
 
-  /**
-   * The requirements still worth a row. A met one is a tick nobody needs to
-   * read, and when none are left the section they sit in has nothing in it —
-   * which is what the way-in button below stands in for.
-   */
-  get forceChecks() {
-    return this.forceRequirements.filter((requirement) => !requirement.met);
+  get forceChip(): { text: string; kind: 'blocker' | 'warning' | 'ok' } {
+    return this.chipOf(this.forceIssues);
   }
 
-  get forceOutstanding(): number {
-    return this.forceRequirements.filter((requirement) => !requirement.met && !requirement.warning)
-      .length;
-  }
-
-  get forceWarnings(): number {
-    return this.forceRequirements.filter((requirement) => !requirement.met && requirement.warning)
-      .length;
-  }
-
-  /**
-   * One line for the whole drawing.
-   *
-   * Counted rather than listed, because the list is right underneath it.
-   */
   get title(): string {
     return this.mode() === 'force' ? 'Force Analysis setup' : 'Analysis setup';
   }
 
-  get summary(): string {
-    if (this.mode() === 'force') {
-      const blockers = this.forceOutstanding;
-      const warnings = this.forceWarnings;
-      if (blockers > 0) {
-        return warnings > 0
-          ? `${READINESS.fixes(blockers)} before forces can be solved, and ${READINESS.toCheck(warnings)}.`
-          : `${READINESS.fixes(blockers)} before forces can be solved.`;
-      }
-      return warnings > 0
-        ? `Force Analysis runs, with ${READINESS.toCheck(warnings)} before trusting the numbers.`
-        : 'Force Analysis is ready to run.';
-    }
-    const all = this.readiness;
-    if (all.length === 0) {
-      return this.unassigned.length > 0
-        ? 'Nothing here is a mechanism yet. A chain has to reach ground before it has a position to solve for.'
-        : 'Draw a mechanism to analyze it.';
-    }
-    const blockers = this.mechanism.blockerCount();
-    if (blockers > 0) {
-      return `${READINESS.fixes(blockers)} before ${
-        all.length === 1 ? 'this mechanism' : 'every mechanism'
-      } will run.`;
-    }
-    const warnings = all.reduce(
-      (n, r) => n + r.checks.filter((c) => c.state === 'warning').length,
-      0
-    );
-    if (warnings > 0) {
-      return `Everything runs, with ${READINESS.toCheck(warnings)} before trusting the numbers.`;
-    }
-    return all.length === 1
-      ? 'Ready to animate.'
-      : `All ${all.length} mechanisms are ready to animate.`;
+  /**
+   * The one line a drawer with no section under it needs. Everything else is
+   * counted by the chips, and a sentence restating the count said it twice.
+   */
+  get emptyLine(): string | undefined {
+    if (this.mode() !== 'kinematic') return undefined;
+    return this.readiness.length === 0 && this.unassigned.length === 0
+      ? 'Draw a mechanism to analyze it.'
+      : undefined;
   }
 
   /** The mode this drawer is about — not the one the reader is standing in. */
@@ -229,24 +180,19 @@ export class AnalysisSetupComponent {
     }
   }
 
-  /** The shared wording, for the template. */
-  fixes(count: number): string {
-    return READINESS.fixes(count);
-  }
-
-  toCheck(count: number): string {
-    return READINESS.toCheck(count);
-  }
-
+  /**
+   * Red if anything stops it running, amber if it runs with something to check,
+   * green if nothing is in the way. One word for each everywhere -- see
+   * READINESS in ui-text.
+   */
   chipFor(readiness: MechanismReadiness): { text: string; kind: 'blocker' | 'warning' | 'ok' } {
-    const blockers = readiness.checks.filter((c) => c.state === 'blocker').length;
-    if (blockers > 0) {
-      return { text: READINESS.fixes(blockers), kind: 'blocker' };
-    }
-    const warnings = readiness.checks.length;
-    if (warnings > 0) {
-      return { text: READINESS.toCheck(warnings), kind: 'warning' };
-    }
+    return this.chipOf(readiness.checks);
+  }
+
+  private chipOf(issues: SetupIssue[]): { text: string; kind: 'blocker' | 'warning' | 'ok' } {
+    const blockers = issues.filter((issue) => issue.severity === 'blocker').length;
+    if (blockers > 0) return { text: READINESS.fixes(blockers), kind: 'blocker' };
+    if (issues.length > 0) return { text: READINESS.toCheck(issues.length), kind: 'warning' };
     return { text: 'Ready', kind: 'ok' };
   }
 
@@ -259,10 +205,6 @@ export class AnalysisSetupComponent {
   select(index: number, event: Event): void {
     event.stopPropagation();
     this.activeObj.selectMechanism(index);
-  }
-
-  iconFor(check: ReadinessCheck): string {
-    return check.state === 'blocker' ? 'error_outline' : 'warning_amber';
   }
 
   /**
@@ -479,20 +421,6 @@ export class AnalysisSetupComponent {
     this.mechanism.onMechUpdateState.next(2);
   }
 
-  /**
-   * Turn gravity back on from here, rather than sending the reader to Settings.
-   *
-   * The same edit the settings toggle makes, by the same three steps: gravity
-   * changes what a force analysis means, so the mechanisms are rebuilt, the
-   * change is undoable, and an open force graph is asked to redraw.
-   */
-  turnGravityOn(): void {
-    if (!this.massEditable() || this.settings.isGravity.value) return;
-    this.settings.isGravity.next(true);
-    this.mechanism.updateMechanism(true);
-    this.mechanism.onMechUpdateState.next(2);
-  }
-
   private applyMass(row: MassRow, raw: string): void {
     if (!this.massEditable()) return;
     const [success, value] = this.nup.parseMassString(
@@ -527,8 +455,9 @@ export class AnalysisSetupComponent {
   }
 
   /**
-   * Go to the part a check is about: select it, and switch to the mode where it
-   * can be changed.
+   * Go to the body a mass row is about: select it, and switch to the mode where
+   * its center of mass can be placed. A part named in an issue's text is a
+   * `part-link`, which goes there on its own.
    *
    * Deliberately not an undo step. Being shown where a problem is has not
    * changed the mechanism, and pressing Undo afterwards should take back the
@@ -544,10 +473,5 @@ export class AnalysisSetupComponent {
     // The arrow next to a mass cell points at the mass fields, so land on
     // them even when the reader last left that section folded shut.
     if (part instanceof RealLink) editPanelHandle()?.expandSection('LMass');
-  }
-
-  nameOf(part: Joint | Link | undefined): string {
-    if (!part) return '';
-    return (part as RealJoint).name || part.id;
   }
 }

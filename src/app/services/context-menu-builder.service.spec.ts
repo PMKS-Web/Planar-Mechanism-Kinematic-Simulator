@@ -337,8 +337,8 @@ describe('the right-click menu', () => {
 
       const driven = row(harness.builder.build(parts.a, noHandlers), 'Driven Input')!;
       expect(driven.disabled).toBe(true);
-      expect(driven.refusal!.short).toBe('3 bodies meet');
-      expect(driven.refusal!.long).toContain('would not say which pair moves');
+      expect(driven.refusal!.short).toBe('more than 2 meet');
+      expect(driven.refusal!.long).toContain("can't tell which pair to move");
     });
 
     it('grays the weld on a joint with nothing to fuse', () => {

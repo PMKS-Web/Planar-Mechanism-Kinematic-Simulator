@@ -97,6 +97,7 @@
 
     .sectionHeader {
       @include blocks.section-header($theme);
+      min-height: 44px;
 
       // This drawer's own two: a section that is not a mechanism says so
       // quietly, and the whole band answers the pointer because the whole
@@ -124,55 +125,40 @@
       cursor: pointer;
     }
 
-    .checkList {
-      padding: 4px 15px 14px;
-    }
-
-    .check {
+    // The issues of one section, each an `issue-block`: 14px apart, and inset
+    // to the header's own 15px so the icons sit under the section's name.
+    .issueList {
       display: flex;
-      gap: 10px;
-      padding-top: 10px;
+      flex-direction: column;
+      gap: 14px;
+      padding: 6px 15px 16px;
     }
 
-    .checkIcon {
-      flex: 0 0 auto;
-      width: 19px;
-      height: 19px;
-      font-size: 19px;
-      line-height: 19px;
-
-      &.blocker {
-        color: var(--danger);
-      }
-
-      &.warning {
-        color: var(--warning-text);
-      }
-
-      &.muted {
-        color: var(--text-muted);
-      }
-    }
-
-    .checkBody {
-      flex: 1 1 auto;
-      min-width: 0;
-    }
-
-    .checkTitle {
-      font-size: 13px;
-      font-weight: 500;
-    }
-
-    .checkText {
+    // The one line under "Not in any mechanism", above its issues.
+    .sectionNote {
+      margin: 0;
+      padding: 0 15px 4px;
       font-size: 12px;
       line-height: 18px;
       color: var(--text-secondary);
-      margin: 2px 0 0;
+    }
 
-      &.note {
-        margin: 4px 0 0;
+    // A section with nothing in the way is its name and a chip, and folds
+    // nothing, so it neither answers the pointer nor promises to.
+    .sectionHeader.fixed {
+      cursor: default;
+
+      &:hover {
+        background: transparent;
       }
+    }
+
+    // The line under the mass table.
+    .note {
+      margin: 4px 0 0;
+      font-size: 12px;
+      line-height: 18px;
+      color: var(--text-secondary);
     }
 
     .massTable {
@@ -394,58 +380,6 @@
 
       &:hover {
         background: mat.m2-get-color-from-palette($primary-palette, 700);
-      }
-    }
-
-    // The button is `button-block inline`; what stays here is where it sits.
-    button-block {
-      display: block;
-      margin-top: 10px;
-    }
-
-    // One line per way out: what to do, then the button that goes there.
-    .ways {
-      list-style: none;
-      margin: 8px 0 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .way {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-
-      button-block {
-        margin-top: 0;
-        flex: 0 0 auto;
-      }
-    }
-
-    .wayText {
-      font-size: 12px;
-      line-height: 18px;
-      color: var(--text-primary);
-      min-width: 0;
-    }
-
-    .checkIcon.blocker {
-      color: var(--refusal-text);
-    }
-
-    .sevTag {
-      font-size: 10px;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      font-weight: 600;
-      color: var(--refusal-text);
-      margin-left: 6px;
-
-      &.warn {
-        color: var(--warning-text);
       }
     }
   }

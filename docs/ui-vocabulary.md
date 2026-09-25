@@ -138,6 +138,37 @@ longer appear there. On a menu whose group heading already carries the verb —
 (`Link`, `Cylinder`, `Tracer Point`), because the heading has said the verb
 once and repeating it down five rows says nothing new.
 
+### Setup issues
+
+The setup drawers list what stands in the way of an analysis, one issue per problem
+([`setup-issues-spec.md`](setup-issues-spec.md) is the whole of it). Each part has one job, and the
+words are fixed where a control or a label repeats:
+
+| Part | Says | Example |
+| --- | --- | --- |
+| Title | what is wrong, from the student's side, in 3 to 7 words | `Slider D has no slot` |
+| Summary | the one fact that makes it a problem in this drawing | `With no slot and no ground, slider D has no direction to move in.` |
+| Explanation | the rule behind it, true of any drawing, naming no part | `A slider moves along a line, either a slot cut into a link or a fixed direction on the ground.` |
+| Fix | one edit, verb first | `Ground slider D to fix its direction` |
+
+- **The toggle** reads `Show fixes` / `Hide fixes`, or `Show more` / `Show less` where there is
+  nothing to change.
+- **The label over the fixes** says whether they are needed and calls them suggestions:
+  `Required to run. One way to fix it:` / `Some ways to fix it:`, `Optional, it runs as is.
+  Something to try:` / `Some things to try:`, `Optional, analysis skips it for now.` A blocker
+  with no fix known says `Required to run.` alone.
+- **Never** `any one of these`, `instead`, or `would leave one degree of freedom` in a fix: the
+  label frames the list. No em dash, no semicolon, and no `or` on a line of its own.
+- **Contractions** (`can't`, `isn't`) are the voice of these messages, where they read as a
+  person talking a student through it rather than as a system notice.
+- **Counts are said as counts**: `2 degrees of freedom, needs 1`. An over-constrained drawing is
+  `Over-constrained, can't move` in its title, and the number goes in its summary.
+- **`Starts at a limit`** in a title; *dead position* and *dead-center* are fine in an explanation
+  or a summary.
+- **A part named in a summary or a fix is a part link**, `part-link` in the gallery: `joint C`,
+  `link DE`, `slider D`, `cylinder EF`, `barrel AC`. Lower case in a sentence, as the panel's
+  title is in Title Case (`Edit Joint C`), and always with its noun.
+
 ### Refusals wear their reason
 
 A control a reader could reasonably expect is **grayed with the reason beside

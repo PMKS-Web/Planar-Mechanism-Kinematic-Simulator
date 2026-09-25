@@ -8,6 +8,7 @@ import { LoopSolver } from '../../app/model/mechanism/loop-solver';
 import { RealJoint, RevJoint } from '../../app/model/joint';
 import { RealLink } from '../../app/model/link';
 import { MODEL_SCALE } from '../../app/model/render-scale';
+import { read } from '../../test-utils/verification/issue-text';
 
 /**
  * Two rules about what readiness is allowed to say (decision S25).
@@ -40,6 +41,16 @@ function drivenPartition(): MechanismPartition {
   const bar = new RealLink('ADE', [a, d, e]);
   [a, d, e].forEach((joint) => joint.links.push(bar));
   return { id: 'M1', joints: [a, d, e], ownJoints: [a, d, e], links: [bar], forces: [] };
+}
+
+/**
+ * The same drawing with its input on `D`, a pin with one link and no ground:
+ * the actuator model refuses it, whatever the solver makes of the rest.
+ */
+function refusedPartition(): MechanismPartition {
+  const partition = drivenPartition();
+  partition.ownJoints.forEach((joint) => ((joint as RealJoint).input = joint.id === 'D'));
+  return partition;
 }
 
 /** The same drawing with nothing driven, so the sentence is true of it. */
@@ -76,11 +87,16 @@ function failing(failure: MechanismFailure | undefined, dof = 1): Mechanism {
 }
 
 const helpers: ReadinessHelpers = {
-  cylinderName: (sliderId) => sliderId,
-  drivenRefusal: () => undefined,
   strokeWarning: () => undefined,
   describeSpeed: () => '10.00 RPM',
 };
+
+/** Everything a reader can read of the issues, as one string. */
+const text = (partition: MechanismPartition, mechanism: Mechanism) =>
+  readinessOf(partition, mechanism, helpers)
+    .checks.map(read)
+    .map((issue) => [issue.title, issue.summary, issue.explain, ...issue.fixes].join(' '))
+    .join(' ');
 
 /** Every failure the type has, so a new one arrives here rather than nowhere. */
 const EVERY_FAILURE: MechanismFailure[] = [
@@ -100,58 +116,54 @@ describe('readiness never says a driven mechanism is not driven', () => {
     it(`says nothing about switching on an input for "${failure}"`, () => {
       const partition = drivenPartition();
       const readiness = readinessOf(partition, failing(failure), helpers);
-      const said = readiness.checks.map((check) => `${check.title} ${check.body}`).join(' ');
+      const said = text(partition, failing(failure));
       expect(said).not.toContain('Nothing drives');
-      expect(said).not.toContain('set it as the input');
-      expect(said).not.toContain('Driven Input');
+      // Moving the input elsewhere is fair advice for a driven machine; being
+      // asked to set one is not.
+      expect(said).not.toMatch(/Set joint \S+ as the input|then set it as the input/);
+      expect(said).not.toContain('No input is set');
       // And it still says *something*: a red chip with nothing under it is the
       // other half of what this file is about.
-      expect(readiness.checks.filter((check) => check.state === 'blocker').length).toBeGreaterThan(
-        0
-      );
+      expect(
+        readiness.checks.filter((check) => check.severity === 'blocker').length
+      ).toBeGreaterThan(0);
       expect(readiness.ready).toBe(false);
     });
   });
 
   it('mentions the joint that is driven when the solver says none is', () => {
     const readiness = readinessOf(drivenPartition(), failing('not-driven'), helpers);
-    const blocker = readiness.checks[0];
-    expect(blocker.title).toBe('This mechanism could not be solved');
-    expect(blocker.body).toContain('has its input at joint E');
-    expect(blocker.at?.id).toBe('E');
+    const blocker = read(readiness.checks[0]);
+    expect(blocker.title).toBe("The mechanism couldn't be solved");
+    expect(blocker.summary).toBe('The input is joint E and the count is 1, but nothing moved.');
+    expect(blocker.parts).toContain('E');
   });
 
   it('still says it for a machine that really has no input joint', () => {
     const readiness = readinessOf(undrivenPartition(), failing('not-driven'), helpers);
     expect(readiness.checks[0].title).toBe('No input is set');
-    expect(readiness.checks[0].body).toContain('set it as the input');
+    expect(read(readiness.checks[0]).fixes[0]).toMatch(/as the input$/);
   });
 });
 
 describe('a drive that cannot be driven is the cause, not a symptom', () => {
-  /** The same drawing, with the drive itself refused for a reason. */
-  const refusing: ReadinessHelpers = {
-    ...helpers,
-    drivenRefusal: () =>
-      "Both of this cylinder's end joints are welded into Link ABCDE, so it cannot extend. " +
-      'Unweld joint A or joint C, or set a different joint as the input.',
-  };
-
   it('states the refusal and leaves the solver\u2019s downstream complaint out', () => {
     // A cylinder driven while it could extend, and welded shut afterwards, fails
     // the solve as "nothing moves when the input turns" -- which is true, and
     // sends the reader to check connections that are perfectly sound.
-    const readiness = readinessOf(drivenPartition(), failing('nothing-can-move'), refusing);
-    expect(readiness.checks.map((check) => check.title)).toEqual(['This joint cannot be an input']);
-    expect(readiness.checks[0].body).toContain('so it cannot extend');
+    const readiness = readinessOf(refusedPartition(), failing('nothing-can-move'), helpers);
+    expect(readiness.checks.map((check) => check.title)).toEqual(["Joint D can't be the input"]);
+    expect(read(readiness.checks[0]).summary).toBe(
+      'Only one link meets at joint D, so it has nothing to turn against.'
+    );
     expect(readiness.ready).toBe(false);
   });
 
   it('is said first even where the solver accepted the mechanism', () => {
     const valid = failing(undefined);
     Object.assign(valid, { mechanismValid: true });
-    const readiness = readinessOf(drivenPartition(), valid, refusing);
-    expect(readiness.checks[0].title).toBe('This joint cannot be an input');
+    const readiness = readinessOf(refusedPartition(), valid, helpers);
+    expect(readiness.checks[0].title).toBe("Joint D can't be the input");
     expect(readiness.ready).toBe(false);
   });
 });
@@ -161,32 +173,28 @@ describe('the fallback when nothing here has a sentence', () => {
     const readiness = readinessOf(drivenPartition(), failing(undefined, 1), helpers);
     expect(readiness.ready).toBe(false);
     expect(readiness.checks).toHaveLength(1);
-    expect(readiness.checks[0]).toEqual(
+    expect(read(readiness.checks[0])).toEqual(
       expect.objectContaining({
-        state: 'blocker',
-        title: 'This mechanism could not be solved',
-        action: 'Go To Joint',
+        severity: 'blocker',
+        title: "The mechanism couldn't be solved",
+        summary: 'The input is joint E and the count is 1, but nothing moved.',
+        fixes: [
+          'Drag a joint to change the starting pose',
+          'Undo the last change and make it in smaller steps',
+        ],
       })
-    );
-    expect(readiness.checks[0].body).toBe(
-      'It has 1 degree of freedom and has its input at joint E, and no motion came out of the pose ' +
-        'it starts in. Drag a joint to start it somewhere else, or undo the last change and make ' +
-        'it a step at a time.'
     );
   });
 
   it('says what it knows when there is no ground and no drive either', () => {
     const readiness = readinessOf(undrivenPartition(), failing(undefined, NaN), helpers);
-    expect(readiness.checks[0].body).toContain('It has no ground to move against');
-    expect(readiness.checks[0].body).toContain('has no input joint');
-    expect(readiness.checks[0].action).toBeUndefined();
+    expect(read(readiness.checks[0]).summary).toBe(
+      'Nothing is grounded, and nothing moved from the drawn pose.'
+    );
   });
 
   it('uses no internal word for what went wrong', () => {
-    const said = readinessOf(drivenPartition(), failing(undefined), helpers)
-      .checks.map((check) => `${check.title} ${check.body}`)
-      .join(' ')
-      .toLowerCase();
+    const said = text(drivenPartition(), failing(undefined)).toLowerCase();
     for (const banned of ['failure', 'undefined', 'unknown error', 'null', 'exception']) {
       expect(said, `no "${banned}" in a sentence a reader sees`).not.toContain(banned);
     }
@@ -225,8 +233,7 @@ describe('a solve that throws', () => {
 
     const readiness = readinessOf(partition, mechanism, helpers);
     expect(readiness.ready).toBe(false);
-    expect(readiness.checks[0].title).toBe('This mechanism could not be solved');
-    expect(readiness.checks[0].body).toContain('has its input at joint E');
-    expect(readiness.checks[0].body).not.toContain('Driven Input');
+    expect(readiness.checks[0].title).toBe("The mechanism couldn't be solved");
+    expect(read(readiness.checks[0]).summary).toContain('The input is joint E');
   });
 });

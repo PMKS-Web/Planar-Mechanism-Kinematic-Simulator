@@ -46,13 +46,10 @@ import {
   partitionMechanisms,
   UnassignedGeometry,
 } from '../model/mechanism/mechanism-partition';
-import {
-  describeUnassigned,
-  ForceRequirement,
-  MechanismReadiness,
-  readinessOf,
-  UnassignedReport,
-} from '../model/mechanism/readiness';
+import { MechanismReadiness, readinessOf } from '../model/mechanism/readiness';
+import { unassignedIssues } from '../model/mechanism/unassigned-issues';
+import { forceIssues } from '../model/mechanism/force-issues';
+import { issueText, SetupIssue } from '../model/mechanism/setup-issue';
 import { InstantCenter } from '../model/instant-center';
 import {
   jointStates,
@@ -1704,18 +1701,15 @@ export class MechanismService {
       // Not before Force Analysis could be entered: a reaction drawn from an
       // analysis the setup drawer still refuses is a number nobody has been
       // allowed to read yet, and the same rule grays the mode's own tab.
-      const unmet = this.forceAnalysisRequirements().find((one) => !one.met && !one.warning);
+      const unmet = this.forceSetupIssues().find((one) => one.severity === 'blocker');
       if (unmet) {
-        return {
-          short: 'force analysis not ready',
-          long: `${unmet.title}. ${unmet.body}`,
-        };
+        return { short: 'force analysis not ready', long: issueText(unmet) };
       }
       const series = solved.getForceAnalysis(this.settingsService.forceAnalysisMode.value);
       if (series.successfulFrames === 0) {
         return {
           short: 'no force solution',
-          long: series.diagnostic ?? 'This mechanism has no determinate force-equilibrium model.',
+          long: series.diagnostic ?? "Force analysis can't model this kind of mechanism yet.",
         };
       }
       if (!this.jointHasReactionVector(part)) {
@@ -3999,18 +3993,6 @@ export class MechanismService {
       const mechanism = this.mechanisms[index];
       if (!mechanism) return [];
       return readinessOf(partition, mechanism, {
-        cylinderName: (sliderId) => {
-          const found = this.sealedStructures().find((c) => c.seal.id === sliderId);
-          return found ? this.cylinderName(found) : sliderId;
-        },
-        drivenRefusal: (part) => {
-          const driven = part.ownJoints.find((joint) => joint instanceof RealJoint && joint.input);
-          if (!driven) {
-            return undefined;
-          }
-          const refusal = describeActuator(driven);
-          return typeof refusal === 'string' ? refusal : undefined;
-        },
         strokeWarning: (part) => this.strokeWarningFor(part),
         drawing: () => ({ joints: this.joints, links: this.links }),
         describeSpeed: (part) => {
@@ -4163,7 +4145,7 @@ export class MechanismService {
 
   /**
    * What force analysis still needs, asked of the force solver rather than
-   * guessed at.
+   * guessed at, and only what is outstanding.
    *
    * The solver already refuses precisely and says why -- an unsupported
    * topology, mass properties that are not numbers, an equilibrium that is
@@ -4171,90 +4153,40 @@ export class MechanismService {
    * drift from the first, and the drift would show as a tab that says Ready
    * above a panel that says it cannot solve.
    */
-  forceAnalysisRequirements(): ForceRequirement[] {
-    if (this.gestureIsSettling() && this.requirementsCache) return this.requirementsCache.list;
-    if (this.requirementsCache?.revision !== this.solveRevision) {
-      this.requirementsCache = { revision: this.solveRevision, list: this.buildRequirements() };
+  forceSetupIssues(): SetupIssue[] {
+    if (this.gestureIsSettling() && this.forceIssuesCache) return this.forceIssuesCache.list;
+    if (this.forceIssuesCache?.revision !== this.solveRevision) {
+      this.forceIssuesCache = { revision: this.solveRevision, list: this.buildForceIssues() };
     }
-    return this.requirementsCache.list;
+    return this.forceIssuesCache.list;
   }
 
   /** Cached for the same reason readiness is, and against the same counter. */
-  private requirementsCache?: { revision: number; list: ForceRequirement[] };
+  private forceIssuesCache?: { revision: number; list: SetupIssue[] };
 
-  private buildRequirements(): ForceRequirement[] {
-    const requirements: ForceRequirement[] = [];
-
+  private buildForceIssues(): SetupIssue[] {
     const runnable = this.mechanisms.filter((mechanism) => mechanism.isMechanismValid());
-    requirements.push({
-      met: runnable.length > 0,
-      title: 'A mechanism that runs',
-      body:
-        runnable.length > 0
-          ? 'Forces are solved over a cycle the kinematics already close, and there is one.'
-          : 'Forces are solved at each position of a cycle, so the kinematics have to work first. Analysis setup lists what is missing.',
-    });
-    if (runnable.length === 0) {
-      return requirements;
-    }
-
     // Ask for the analysis the panel would show. It is memoised per mechanism,
     // so this costs nothing after the first time.
-    const refused = runnable
-      .map((mechanism) => ({ mechanism, series: mechanism.getForceAnalysis('static') }))
-      .filter(({ series }) => series.successfulFrames === 0);
-    requirements.push({
-      met: refused.length === 0,
-      title: 'A topology the solver can balance',
-      body:
-        refused.length === 0
-          ? 'Every body has an equilibrium the solver can write down.'
-          : (refused[0].series.diagnostic ??
-            'One of these mechanisms has no determinate force-equilibrium model.'),
-    });
-
-    // Supports that share a line -- two rails holding one jaw at one height --
-    // leave the split of the load between them to stiffness, which statics
-    // cannot see. The solver takes the evenest split rather than refusing the
-    // cycle, and this is where it says so.
-    const shared = runnable
-      .map((mechanism) => mechanism.getForceAnalysis('static'))
-      .filter((series) => series.sharedSupportFrames > 0);
-    if (shared.length > 0) {
-      requirements.push({
-        met: false,
-        warning: true,
-        title: 'Supports that share a line',
-        body:
-          'Two or more supports hold a body along one line, so equilibrium alone cannot say how ' +
-          'they share the load. The reactions shown split it evenly, the way equal stiffness ' +
-          'would. Offset one support if the split matters.',
-      });
-    }
+    const series = runnable.map((mechanism) => mechanism.getForceAnalysis('static'));
+    const refused = series.find((one) => one.successfulFrames === 0);
 
     // Only the links of machines that could actually be analyzed. A massless
     // bar in some unrelated -- or unassigned -- corner of the drawing used to
     // block force analysis for a perfectly good mechanism.
+    const valid = this.partitions.filter((_, index) => this.mechanisms[index]?.isMechanismValid());
     const analysable = new Set(
-      this.partitions
-        .filter((_, index) => this.mechanisms[index]?.isMechanismValid())
-        .flatMap((partition) => partition.links.map((link) => link.id))
+      valid.flatMap((partition) => partition.links.map((link) => link.id))
+    );
+    const analysableJoints = new Set(
+      valid.flatMap((partition) => partition.joints.map((joint) => joint.id))
     );
     // Something has to load the linkage, but weight counts: with gravity on,
     // a link with mass hangs from it, and that is a complete static problem.
-    // Demanding a drawn arrow on top of that refused analyses that meant
-    // something.
-    const loads = this.forces.filter((force) => analysable.has(force.link?.id));
-    // Any body's mass, and a slider's is the sliding joint's own now: the solver
-    // hangs its weight from gravity exactly as it hung the block's, so a drawing
-    // whose only massive body is a slider is genuinely loaded. (The massless
-    // *warning* below stays about links -- every slider starts massless, and
-    // naming them all would be noise.)
-    const analysableJoints = new Set(
-      this.partitions
-        .filter((_, index) => this.mechanisms[index]?.isMechanismValid())
-        .flatMap((partition) => partition.joints.map((joint) => joint.id))
-    );
+    // Any body's mass counts, and a slider's is the sliding joint's own now:
+    // the solver hangs its weight from gravity exactly as it hung the block's.
+    // (The massless *warning* stays about links -- every slider starts
+    // massless, and naming them all would be noise.)
     const weighted =
       this.links.some(
         (link) => link instanceof RealLink && analysable.has(link.id) && link.mass > 0
@@ -4262,68 +4194,33 @@ export class MechanismService {
       this.joints.some(
         (joint) => joint instanceof PrisJoint && analysableJoints.has(joint.id) && joint.mass > 0
       );
-    const gravityLoads = this.settingsService.isGravity.value && weighted;
-    const loaded = loads.length > 0 || gravityLoads;
-
-    // A massless link is a legitimate idealization -- the solver simply skips
-    // its weight and inertia -- so this is a warning, not a gate. It is worth
-    // one, because zero is the mass nobody chose: every link starts there.
-    // Only once something loads the mechanism, though: the unloaded blocker
-    // below already says every link is massless, and saying it twice made the
-    // list read longer than the problem is.
-    if (loaded) {
-      const massless = this.links.filter(
+    return forceIssues({
+      runs: runnable.length > 0,
+      refused: refused
+        ? {
+            status: refused.frames[0]?.status ?? 'unsupported-topology',
+            message: refused.diagnostic,
+          }
+        : undefined,
+      sharedSupport: series.some((one) => one.sharedSupportFrames > 0),
+      massless: this.links.filter(
         (link) => link instanceof RealLink && analysable.has(link.id) && !(link.mass > 0)
-      ) as RealLink[];
-      requirements.push({
-        met: massless.length === 0,
-        warning: true,
-        title: 'Massless links',
-        body:
-          massless.length === 0
-            ? 'Every link has a mass and a moment of inertia.'
-            : `${massless
-                .map((link) => this.bodyLabel(link))
-                .join(
-                  ', '
-                )} ${massless.length === 1 ? 'weighs' : 'weigh'} nothing, so gravity and inertia pass ${massless.length === 1 ? 'it' : 'them'} by. Fine for an idealized bar — type a mass in the table above to include ${massless.length === 1 ? 'it' : 'them'}.`,
-      });
-    }
-
-    // Gravity off over a drawing that does have mass is the one refusal here
-    // with a one-click way out, so it gets a button as well as a sentence:
-    // everything the analysis needs is already drawn, and the only thing
-    // standing in the way is a switch in another panel.
-    const gravityWouldLoad = !this.settingsService.isGravity.value && weighted;
-    requirements.push({
-      met: loads.length > 0 || gravityLoads,
-      title: 'A load to react against',
-      act: gravityWouldLoad ? 'gravity' : undefined,
-      body:
-        loads.length > 0
-          ? `${loads.length} ${loads.length === 1 ? 'force is' : 'forces are'} applied.`
-          : gravityLoads
-            ? 'Gravity loads the links that have mass.'
-            : gravityWouldLoad
-              ? 'Nothing loads this mechanism: gravity is off, so the mass it has weighs nothing. Turn gravity on, or attach a force.'
-              : this.settingsService.isGravity.value
-                ? 'Nothing loads this mechanism yet: no force is applied and every link is massless. Attach a force or give a link mass.'
-                : 'Nothing loads this mechanism: gravity is off and no force is applied. Attach a force, or turn gravity on in Settings and give a link mass.',
+      ),
+      cylinders: this.sealedStructures(),
+      forces: this.forces.filter((force) => analysable.has(force.link?.id)).length,
+      gravityOn: this.settingsService.isGravity.value,
+      weighted,
     });
-
-    return requirements;
   }
 
   /** Can the Force tab show anything worth reading? */
   forceAnalysisReady(): boolean {
-    return this.forceAnalysisRequirements().every(
-      (requirement) => requirement.met || requirement.warning === true
-    );
+    return this.forceSetupIssues().every((issue) => issue.severity !== 'blocker');
   }
 
   /** What to say about geometry that is in no mechanism. */
-  unassignedReports(): UnassignedReport[] {
-    return describeUnassigned(this.unassigned, this.joints);
+  unassignedReports(): SetupIssue[] {
+    return unassignedIssues(this.unassigned, this.joints);
   }
 
   /**
@@ -4337,7 +4234,7 @@ export class MechanismService {
   blockerCount(): number {
     const inMechanisms = this.readinessOfEachMechanism().reduce(
       (total, readiness) =>
-        total + readiness.checks.filter((check) => check.state === 'blocker').length,
+        total + readiness.checks.filter((check) => check.severity === 'blocker').length,
       0
     );
     return inMechanisms + this.unassignedReports().length;
@@ -4354,58 +4251,23 @@ export class MechanismService {
   warningCount(): number {
     return this.readinessOfEachMechanism().reduce(
       (total, readiness) =>
-        total + readiness.checks.filter((check) => check.state !== 'blocker').length,
+        total + readiness.checks.filter((check) => check.severity !== 'blocker').length,
       0
     );
   }
 
+  /**
+   * The first thing standing between the drawing and any mechanism running, as
+   * one line: the setup drawer's own first blocker, not a second copy of its
+   * sentences free to drift from the first.
+   */
   invalidReason(): string | undefined {
-    if (this.oneValidMechanismExists()) {
-      return undefined;
-    }
-    if (this.joints.length === 0) {
-      return undefined;
-    }
-    const dangling = this.joints.filter((joint) => joint instanceof PrisJoint && joint.isDangling);
-    if (dangling.length > 0) {
-      const names = dangling.map((joint) => joint.name || joint.id).join(', ');
-      return `Slider ${names} has nothing to slide along. Drag it onto a link to cut a slot, or ground it to fix its direction.`;
-    }
-    if (!this.joints.some((joint) => joint instanceof RealJoint && joint.input)) {
-      return 'Set one joint as an input to say what moves the mechanism.';
-    }
-    // A driven joint the actuator record cannot describe -- most often because
-    // an edit added a third body to it long after Driven was switched on. The
-    // toggle refuses this, but nothing stops a later edit walking around it.
-    const driven = this.joints.find((joint) => joint instanceof RealJoint && joint.input);
-    if (driven) {
-      const refusal = describeActuator(driven);
-      if (typeof refusal === 'string') {
-        return refusal;
-      }
-    }
-    // Nothing in the drawing runs, so the mobility worth reporting is the first
-    // one that is wrong -- not whichever mechanism happened to be built first.
-    const dof = (this.mechanisms.find((m) => !m.isMechanismValid()) ?? this.mechanisms[0])?.dof;
-    if (dof !== undefined && Number.isNaN(dof)) {
-      return 'Nothing is holding this mechanism in place. Ground a joint, or ground a slider\u2019s guide.';
-    }
-    if (dof !== undefined && dof !== 1) {
-      return dof > 1
-        ? `This mechanism has ${dof} degrees of freedom, and one input can only drive one. Add a constraint, or remove a body.`
-        : `This mechanism has ${dof} degrees of freedom \u2014 it is over-constrained and cannot move. Remove a constraint.`;
-    }
-    const noTravel = PositionSolver.unusableCylinderDrive;
-    if (noTravel) {
-      const cylinder = this.sealedStructures().find((found) => found.seal.id === noTravel);
-      const name = cylinder ? this.cylinderName(cylinder) : noTravel;
-      return `Cylinder ${name} has no travel: its barrel is too short to slide in at all. Increase Barrel Length to provide room for the piston to travel.`;
-    }
-    const stuck = PositionSolver.unsolvableJoints;
-    if (stuck.length > 0) {
-      return `These joints cannot be placed from the ones around them: ${stuck.join(', ')}. They may need another link, or an input joint nearer to them.`;
-    }
-    return 'This mechanism reached a position it could not solve from the one before it \u2014 usually a toggle, where the mechanism locks.';
+    if (this.oneValidMechanismExists() || this.joints.length === 0) return undefined;
+    const first =
+      this.readinessOfEachMechanism()
+        .flatMap((readiness) => readiness.checks)
+        .find((issue) => issue.severity === 'blocker') ?? this.unassignedReports()[0];
+    return first ? issueText(first) : undefined;
   }
 
   /**
@@ -4422,7 +4284,7 @@ export class MechanismService {
    * resize a part the user sized, and the interesting information \u2014 *this ram
    * is bigger than this machine needs* \u2014 is exactly what clamping would hide.
    */
-  cylinderReachWarning(): string | undefined {
+  cylinderReachWarning(): { cylinder: Cylinder; percent: number } | undefined {
     // A template getter, so this is asked on every change-detection pass while
     // the answer only changes when the mechanism is rebuilt. `cylinderRevision`
     // is bumped exactly once per rebuild and never by an animation frame, which
@@ -4437,9 +4299,9 @@ export class MechanismService {
   }
 
   private reachWarningRevision = -1;
-  private reachWarningCache: string | undefined;
+  private reachWarningCache: { cylinder: Cylinder; percent: number } | undefined;
 
-  private computeCylinderReachWarning(): string | undefined {
+  private computeCylinderReachWarning(): { cylinder: Cylinder; percent: number } | undefined {
     return this.strokeWarningFor();
   }
 
@@ -4447,7 +4309,9 @@ export class MechanismService {
    * The first cylinder in `only` -- or in the whole drawing -- that the linkage
    * stops before the barrel does.
    */
-  private strokeWarningFor(only?: MechanismPartition): string | undefined {
+  private strokeWarningFor(
+    only?: MechanismPartition
+  ): { cylinder: Cylinder; percent: number } | undefined {
     for (const cylinder of this.sealedStructures()) {
       if (only && !only.joints.some((joint) => joint.id === cylinder.seal.id)) {
         continue;
@@ -4493,17 +4357,9 @@ export class MechanismService {
       // tolerance in model units either cried wolf on every cylinder or went
       // deaf on small ones, because the shortfall scales with the stroke.
       if (used >= stroke - (3 * stroke) / SAMPLES_PER_STROKE) continue;
-      const percent = Math.round((used / stroke) * 100);
-      return `Cylinder ${this.cylinderName(cylinder)} can only use ${percent}% of its stroke \u2014 the mechanism binds before the cylinder does. Shorten its travel, or give the mechanism more room.`;
+      return { cylinder, percent: Math.round((used / stroke) * 100) };
     }
     return undefined;
-  }
-
-  /** What to call a cylinder in a message: its two mounts, as the panel titles it. */
-  private cylinderName(cylinder: Cylinder): string {
-    return (
-      (cylinder.mountA.name || cylinder.mountA.id) + (cylinder.mountB.name || cylinder.mountB.id)
-    );
   }
 
   /**

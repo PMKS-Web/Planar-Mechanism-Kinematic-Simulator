@@ -139,7 +139,7 @@ export class EditPermissionService {
   /** The worst thing readiness has to say about any machine, if it has one. */
   private firstBlocker(): string | null {
     for (const readiness of this.mechanism.readinessOfEachMechanism()) {
-      const blocker = readiness.checks.find((check) => check.state === 'blocker');
+      const blocker = readiness.checks.find((check) => check.severity === 'blocker');
       if (blocker) return `${readiness.id}: ${blocker.title}`;
     }
     return null;

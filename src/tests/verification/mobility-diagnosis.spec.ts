@@ -8,6 +8,7 @@ import { Mechanism } from '../../app/model/mechanism/mechanism';
 import { partitionMechanisms } from '../../app/model/mechanism/mechanism-partition';
 import { ReadinessHelpers, readinessOf } from '../../app/model/mechanism/readiness';
 import { buildMechanism, MechanismFixture } from '../../test-utils/verification/fixture';
+import { read } from '../../test-utils/verification/issue-text';
 import {
   boomWithDanglingLinkFixture,
   bracedFourBarFixture,
@@ -29,8 +30,6 @@ import {
  */
 describe('which part is loose, and what would fix it', () => {
   const helpers: ReadinessHelpers = {
-    cylinderName: (id: string) => id,
-    drivenRefusal: () => undefined,
     strokeWarning: () => undefined,
     describeSpeed: () => '10.00 RPM',
   };
@@ -45,7 +44,7 @@ describe('which part is loose, and what would fix it', () => {
     const { partition, mechanism } = built(fixture);
     const readiness = readinessOf(partition, mechanism, helpers);
     expect(readiness.ready).toBe(false);
-    return readiness.checks[0];
+    return read(readiness.checks[0]);
   }
 
   const describeFix = (fix: MobilityFix): string =>
@@ -59,13 +58,9 @@ describe('which part is loose, and what would fix it', () => {
       expect(diagnosis.fixes.map(describeFix)).toEqual(['ground D']);
 
       const check = checkFor(ungroundedPivotFourBarFixture());
-      expect(check.title).toBe('This mechanism has 3 degrees of freedom');
-      expect(check.body).toBe(
-        'With the input held still, links BC and CD can still move, so the input alone cannot ' +
-          'say where they go. Grounding joint D would leave one degree of freedom.'
-      );
-      expect(check.at?.id).toBe('D');
-      expect(check.action).toBe('Go To Joint');
+      expect(check.title).toBe('3 degrees of freedom, needs 1');
+      expect(check.summary).toBe('With the input held still, link BC and link CD can still move.');
+      expect(check.fixes).toEqual(['Ground joint D']);
     });
 
     it('offers no ground that does not work, and every way a hanging link goes', () => {
@@ -79,16 +74,15 @@ describe('which part is loose, and what would fix it', () => {
       expect(diagnosis.attachAt?.id).toBe('C');
 
       const check = checkFor(danglingLinkFixture());
-      expect(check.body).toContain('link BC can still move');
-      // Each with its own button, for the reader to choose.
-      expect(check.body).toContain('Any one of these would leave one degree of freedom:');
-      expect(check.ways?.map((way) => [way.text, way.action, way.at.id])).toEqual([
-        ['Delete link BC', 'Go To Link', 'BC'],
-        ['Weld joint B', 'Go To Joint', 'B'],
-        ['Attach a link from joint C to a new grounded joint', 'Go To Joint', 'C'],
+      expect(check.summary).toBe('With the input held still, link BC can still move.');
+      // Each a link to its part, for the reader to choose.
+      expect(check.fixes).toEqual([
+        'Delete link BC',
+        'Weld joint B',
+        'Attach a grounded link at joint C',
       ]);
-      expect(check.body).not.toContain('Grounding');
-      expect(check.at?.id).toBe('BC');
+      expect(check.parts).toEqual(['BC', 'BC', 'B', 'C']);
+      expect(check.fixes.join(' ')).not.toContain('Ground joint C');
     });
 
     it('holds a cylinder input along its own axis, and never names a joint the cylinder places', () => {
@@ -98,14 +92,10 @@ describe('which part is loose, and what would fix it', () => {
       expect(diagnosis.looseJoints.map((joint) => joint.id)).toEqual(['E']);
 
       const check = checkFor(boomWithDanglingLinkFixture());
-      expect(check.body).toContain('link CE can still move');
-      expect(check.ways?.map((way) => way.text)).toEqual([
-        'Delete link CE',
-        'Attach a link from joint E to a new grounded joint',
-      ]);
+      expect(check.summary).toBe('With the input held still, link CE can still move.');
+      expect(check.fixes).toEqual(['Delete link CE', 'Attach a grounded link at joint E']);
       // N is the barrel's buried inner end and P the square the rod slides on.
-      expect(check.body).not.toMatch(/\b[NP]\b/);
-      expect(check.at?.id).toBe('CE');
+      expect([check.summary, ...check.fixes].join(' ')).not.toMatch(/\b[NP]\b/);
     });
   });
 
@@ -115,13 +105,9 @@ describe('which part is loose, and what would fix it', () => {
       expect(diagnoseMobility(partition).fixes.map(describeFix)).toEqual(['delete-link BD']);
 
       const check = checkFor(bracedFourBarFixture());
-      expect(check.title).toBe('This mechanism has 0 degrees of freedom');
-      expect(check.body).toBe(
-        'It is over-constrained, so nothing can move at all. Deleting link BD would leave one ' +
-          'degree of freedom.'
-      );
-      expect(check.at?.id).toBe('BD');
-      expect(check.action).toBe('Go To Link');
+      expect(check.title).toBe("Over-constrained, can't move");
+      expect(check.summary).toBe('The count comes to 0 degrees of freedom, so nothing can move.');
+      expect(check.fixes).toEqual(['Delete link BD']);
     });
 
     it('finds the ground that is one too many, and does not take the coupler away', () => {
@@ -129,9 +115,7 @@ describe('which part is loose, and what would fix it', () => {
       // is not offered for that reason.
       const { partition } = built(overGroundedFourBarFixture());
       expect(diagnoseMobility(partition).fixes.map(describeFix)).toEqual(['unground C']);
-      expect(checkFor(overGroundedFourBarFixture()).body).toContain(
-        'Ungrounding joint C would leave one degree of freedom.'
-      );
+      expect(checkFor(overGroundedFourBarFixture()).fixes).toEqual(['Unground joint C']);
     });
 
     it('lets a Prismatic slider turn, and does not delete the rod to get there', () => {
@@ -139,9 +123,7 @@ describe('which part is loose, and what would fix it', () => {
       // slider. That is taking the mechanism apart, and it is not offered.
       const { partition } = built(lockedSliderCrankFixture());
       expect(diagnoseMobility(partition).fixes.map(describeFix)).toEqual(['pin-in-slot C']);
-      expect(checkFor(lockedSliderCrankFixture()).body).toContain(
-        'Making joint C a Pin-in-slot would leave one degree of freedom.'
-      );
+      expect(checkFor(lockedSliderCrankFixture()).fixes).toEqual(['Set joint C to Pin-in-slot']);
     });
   });
 
@@ -166,14 +148,10 @@ describe('which part is loose, and what would fix it', () => {
         'degree',
         new Set(partition.ownJoints.map((joint) => joint.id))
       );
-      const checks = readinessOf(partition, mechanism, helpers).checks;
-      expect(checks.map((check) => check.title)).toEqual(['The input at joint A cannot turn']);
-      expect(checks[0].body).toBe(
-        'Its link is also grounded at joint B, so it cannot turn. Unground joint B so the ' +
-          'input has something to drive.'
-      );
-      expect(checks[0].at?.id).toBe('B');
-      expect(checks[0].action).toBe('Go To Joint');
+      const checks = readinessOf(partition, mechanism, helpers).checks.map(read);
+      expect(checks.map((check) => check.title)).toEqual(["Input at joint A can't turn"]);
+      expect(checks[0].summary).toBe("link AB is also grounded at joint B, so it can't move.");
+      expect(checks[0].fixes).toEqual(['Unground joint B']);
     });
 
     it('grays the input row with the same reason', () => {
@@ -196,14 +174,11 @@ describe('which part is loose, and what would fix it', () => {
       expect(diagnosis.stuck?.fixes.map(describeFix)).toEqual(['delete-link CE']);
 
       const check = checkFor(stuckInputFixture());
-      expect(check.title).toBe('The input at joint A cannot turn');
-      expect(check.body).toBe(
-        'Links ACD, CE, DHI and BEI form a rigid structure with the ground, so none of them can ' +
-          'move. The one degree of freedom it counts is link HK, moving on its own. Deleting ' +
-          'link CE would let the input move them.'
-      );
-      expect(check.at?.id).toBe('CE');
-      expect(check.action).toBe('Go To Link');
+      expect(check.title).toBe("Input at joint A can't turn");
+      expect(check.summary).toBe('link ACD, link CE and 2 more are locked in place by the ground.');
+      // The count reads one, and the explanation says whose that one is.
+      expect(check.explain).toContain('If the count still says 1');
+      expect(check.fixes).toEqual(['Delete link CE']);
     });
 
     it('does not call a rocker that is still for an instant stuck', () => {

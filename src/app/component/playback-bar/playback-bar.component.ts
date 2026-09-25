@@ -713,7 +713,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
   private refusalRows(): PlaybackRow[] {
     const readiness = this.mechanism.readinessOfEachMechanism();
     const rows = readiness.map((one, index) => {
-      const blockers = one.checks.filter((check) => check.state === 'blocker');
+      const blockers = one.checks.filter((check) => check.severity === 'blocker');
       // The generic hint is for a machine nobody has set an input on, and
       // nothing else wrong with it. One whose input is set but cannot turn --
       // on a bar grounded at both ends -- was told to set one beside its arrow,

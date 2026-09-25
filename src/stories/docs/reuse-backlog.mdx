@@ -50,6 +50,26 @@ Each entry is **where** it is, what it draws, and the block to use instead.
   see below — and these are the same shape: they want inputs on the block, most likely `hideHelp`
   and a named width, rather than a fourth caller knowing the block's private markup.
 
+## Parts named in text: `part-link`
+
+`part-link` (Actions/Part Link) is the one way to name a joint or link so a reader can find it:
+pointing lights the part on the grid, and pressing selects it. The setup drawers are built from it,
+by way of `prose-block` and the `prose` sentences in `model/prose.ts`. These places still name or
+point at a part their own way:
+
+- **`export-panel.component.ts`** `pointAt` writes `MechanismService.hoveredPart` itself for each
+  row. The rows are rows rather than words in a sentence, so the entry is to route the pointing
+  through `PART_LINK_TARGET` (`PartNavigationService.point`), not to draw them as chips.
+- **`analysis-setup.component.html`** `.rowJump`, the arrow beside each row of the Masses table.
+  It goes to the Edit panel *and opens its mass section*, which `PartNavigationService.open` does
+  not, so the block would need a way to say which section to land on first.
+- **`mechanism-panel`**'s "Input joint" fact is the joint's letter as plain text, where a
+  `part-link` would take the reader to it.
+- **Sentences that name parts as plain strings**: `describeActuator`'s refusals (the Driven Input
+  row's hover), the cylinder edits' `asCloseAs` news in `NotificationService`, and the force
+  solver's `invalidProperty` messages. Each would first have to return a `Prose` rather than a
+  string, and a tooltip or a snackbar has to be able to draw one.
+
 ## Blocks that overlap
 
 - **`dual-input-block` is still not `input-block` with a `count` of two.** The overlay half of that

@@ -110,7 +110,7 @@ export class MechanismPanelComponent {
     return (
       this.mechanism
         .readinessOfEachMechanism()
-        [this.index]?.checks.filter((check) => check.state === 'blocker').length ?? 0
+        [this.index]?.checks.filter((check) => check.severity === 'blocker').length ?? 0
     );
   }
 

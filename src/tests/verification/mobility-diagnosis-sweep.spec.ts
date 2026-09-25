@@ -1,7 +1,6 @@
 // joint.ts first: the model modules form an import cycle that only
 // initializes cleanly when entered here (see test-utils/verification/fixture.ts).
 import '../../app/model/joint';
-import { describeActuator } from '../../app/model/actuator';
 import { cylindersIn } from '../../app/model/cylinder';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../../app/model/joint';
 import { Link, RealLink } from '../../app/model/link';
@@ -14,6 +13,7 @@ import {
 } from '../../app/model/mechanism/mechanism-partition';
 import { readinessOf } from '../../app/model/mechanism/readiness';
 import { MODEL_SCALE } from '../../app/model/render-scale';
+import { read } from '../../test-utils/verification/issue-text';
 import { ActiveObjService } from '../../app/services/active-obj.service';
 import { MechanismService } from '../../app/services/mechanism.service';
 import { SettingsService } from '../../app/services/settings.service';
@@ -92,12 +92,6 @@ describe('readiness across every library drawing, broken one way at a time', () 
         new Set(partition.ownJoints.map((joint) => joint.id))
       );
       const readiness = readinessOf(partition, mechanism, {
-        cylinderName: (sliderId) => sliderId,
-        drivenRefusal: (part) => {
-          const input = part.ownJoints.find((joint) => joint instanceof RealJoint && joint.input);
-          const refusal = input ? describeActuator(input) : undefined;
-          return typeof refusal === 'string' ? refusal : undefined;
-        },
         strokeWarning: () => undefined,
         describeSpeed: () => '10.00 RPM',
         drawing: () => drawing,
@@ -377,7 +371,8 @@ describe('readiness across every library drawing, broken one way at a time', () 
 
         for (const { partition, readiness } of built) {
           for (const check of readiness.checks) {
-            const said = `${check.title} ${check.body}`;
+            const issue = read(check);
+            const said = [issue.title, issue.summary, issue.explain, ...issue.fixes].join(' ');
             if (check.title === 'No input is set') {
               const orphan = partition.joints.find(
                 (joint) => joint instanceof RealJoint && joint.input && !owned.has(joint.id)
@@ -391,16 +386,22 @@ describe('readiness across every library drawing, broken one way at a time', () 
                 problems.push(`${where}: names the cylinder's buried joint ${buried}: ${said}`);
               }
             }
-            if (check.at && (hidden.has(check.at.id) || !present.has(check.at.id))) {
-              problems.push(`${where}: "${check.title}" goes to ${check.at.id}`);
+            for (const id of issue.parts) {
+              if (hidden.has(id) || !present.has(id)) {
+                problems.push(`${where}: "${check.title}" links to ${id}`);
+              }
             }
-            if (!check.title || !check.body) {
-              problems.push(`${where}: a check with nothing to say: ${JSON.stringify(said)}`);
+            // The explanation teaches the rule, true of any drawing.
+            if (/\b(joint|link|slider|cylinder|barrel|rod) [A-Z][A-Z0-9]*\b/.test(issue.explain)) {
+              problems.push(`${where}: "${check.title}" names a part in its explanation`);
+            }
+            if (!issue.title || !issue.summary || !issue.explain) {
+              problems.push(`${where}: an issue with nothing to say: ${JSON.stringify(said)}`);
             }
           }
           if (
             !readiness.checks.some((check) =>
-              /degrees of freedom|tied to nothing|cannot (turn|slide)|dead position/.test(
+              /degrees of freedom|Over-constrained|on (its|their) own|moves freely|can't (turn|slide)|Starts at a limit/.test(
                 check.title
               )
             )
@@ -474,14 +475,13 @@ describe('readiness across every library drawing, broken one way at a time', () 
     // The Scotch yoke driven from its yoke, drawn at the end of the stroke:
     // a dead center, and dragging the crank pin takes it off one.
     const yoke = drivenFrom('Scotch_Yoke', 'C');
-    expect(yoke.map((check) => check.title)).toEqual(['This mechanism starts at a dead position']);
-    expect(yoke[0].body).toContain('Drag joint B a little');
-    expect(yoke[0].at?.id).toBe('B');
+    expect(yoke.map((check) => check.title)).toEqual(['Starts at a limit']);
+    expect(read(yoke[0]).fixes).toEqual(['Drag joint B a little way off the limit']);
     // Not at a limit, and neither of the solver's routes can start it: said
     // as the solver's failure, with no limit to drag off.
     const gear = drivenFrom('Aircraft_Landing_Gear', 'A');
-    expect(gear.map((check) => check.title)).toEqual(['The solver cannot start this mechanism']);
-    expect(gear[0].body).not.toContain('Drag');
+    expect(gear.map((check) => check.title)).toEqual(["The mechanism can't take a first step"]);
+    expect(read(gear[0]).fixes.join(' ')).not.toContain('Drag');
   });
 
   it('actually checked some fixes', () => {

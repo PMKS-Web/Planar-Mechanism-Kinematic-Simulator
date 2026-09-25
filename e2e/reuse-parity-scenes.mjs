@@ -249,9 +249,9 @@ export const SCENES = [
     clip: '#rightPanel',
   },
   {
-    // An undriven mechanism is the one state that offers "Go To Joint A", the
-    // action button this work moved onto `button-block`. Nothing else reaches
-    // it, so the change went unphotographed until Fable's review said so.
+    // An undriven mechanism: the drawer's issue for it, with the part it names
+    // drawn as a link. It used to be the one state that offered a Go To
+    // button, which is why this scene exists.
     name: 'drawer kinematic setup, undriven mechanism',
     linkage: '4-Bar',
     storage: QUIET,

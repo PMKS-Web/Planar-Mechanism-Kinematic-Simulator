@@ -17,6 +17,7 @@ import { MODEL_SCALE } from '../../app/model/render-scale';
 import { KinematicsSolver } from '../../app/model/mechanism/kinematic-solver';
 import { Mechanism } from '../../app/model/mechanism/mechanism';
 import { Joint, RealJoint } from '../../app/model/joint';
+import { read } from '../../test-utils/verification/issue-text';
 import { describeActuator, describeActuatorRefusal } from '../../app/model/actuator';
 import { isFrozenCylinder } from '../../app/model/cylinder-frozen';
 import { cylindersIn } from '../../app/model/cylinder';
@@ -373,14 +374,17 @@ describe('a cylinder held by two bodies that meet at a pin', () => {
     service.updateMechanism(true);
 
     const readiness = service.readinessOfEachMechanism();
-    const said = readiness.flatMap((one) => one.checks).map((one) => `${one.title} ${one.body}`);
+    const said = readiness
+      .flatMap((one) => one.checks)
+      .map(read)
+      .map((one) => [one.title, one.summary, ...one.fixes].join(' '));
     // The ram genuinely cannot move the pair, and the app says so rather than
     // telescoping the rod out of its barrel.
     expect(readiness[0].ready).toBe(false);
-    expect(said.join(' ')).toContain('Nothing moves when the input turns');
+    expect(said.join(' ')).toMatch(/The input (moves nothing|can't reach)/);
     // And never the sentence this package is about: a joint *is* driven here.
     expect(said.join(' ')).not.toContain('Nothing drives');
-    expect(said.join(' ')).not.toContain('switch on Driven Input');
+    expect(said.join(' ')).not.toContain('No input is set');
   });
 
   it('refuses a drive on its seal, saying which welds to undo', () => {
@@ -388,10 +392,10 @@ describe('a cylinder held by two bodies that meet at a pin', () => {
     void links;
     const seal = joints.find((joint) => joint.id === 'B') as RealJoint;
     expect(describeActuator(seal)).toBe(
-      "Both of this cylinder's end joints are welded into Link ABCDE, so it cannot extend. " +
-        'Unweld joint A or joint C, or set a different joint as the input.'
+      "Both end joints of this cylinder are welded into link ABCDE, so it can't extend. " +
+        'Unweld joint A or joint C, or set another joint as the input.'
     );
-    expect(describeActuatorRefusal(seal)?.short).toBe('cannot extend');
+    expect(describeActuatorRefusal(seal)?.short).toBe("can't extend");
   });
 });
 
@@ -404,7 +408,7 @@ describe('the frozen body in the app', () => {
     const readiness = service.readinessOfEachMechanism();
     expect(readiness).toHaveLength(1);
     expect(readiness[0].ready).toBe(true);
-    expect(said(service).filter((check) => check.state === 'blocker')).toEqual([]);
+    expect(said(service).filter((check) => check.severity === 'blocker')).toEqual([]);
   });
 
   it('never says nothing drives it, because joint E does', () => {
@@ -412,28 +416,32 @@ describe('the frozen body in the app', () => {
     const driven = service.joints.find((joint) => (joint as RealJoint).input) as RealJoint;
     expect(driven.id).toBe('E');
     const text = said(service)
-      .map((check) => `${check.title} ${check.body}`)
+      .map(read)
+      .map((check) => [check.title, check.summary, ...check.fixes].join(' '))
       .join(' ');
     expect(text).not.toContain('Nothing drives');
-    expect(text).not.toContain('switch on Driven Input');
+    expect(text).not.toContain('No input is set');
   });
 
   it('warns that the cylinder cannot extend, instead of blaming the linkage', () => {
     const service = openInApp(fixturePayload(drivenFrozenCylinderBodyFixture()));
-    const warnings = said(service).filter((check) => check.state === 'warning');
-    expect(warnings.map((check) => check.title)).toEqual(['A cylinder cannot extend']);
-    expect(warnings[0].body).toContain('both of its end joints are welded into Link ABCDE');
-    expect(warnings[0].body).toContain('Unweld joint A or joint C');
+    const warnings = said(service)
+      .filter((check) => check.severity === 'warning')
+      .map(read);
+    expect(warnings.map((check) => check.title)).toEqual(["Cylinder AC can't extend"]);
+    expect(warnings[0].summary).toContain('Both end joints of cylinder AC');
+    expect(warnings[0].fixes).toEqual(['Unweld joint A', 'Unweld joint C']);
     // The reach warning is about a linkage binding on a ram, and nothing here
     // is binding on anything.
-    expect(warnings[0].body).not.toContain('stroke —');
+    expect(warnings[0].summary).not.toContain('stroke');
   });
 
   it('names no joint the reader has never been shown', () => {
     const service = openInApp(fixturePayload(drivenFrozenCylinderBodyFixture()));
     const inner = service.sealedStructures()[0].inner.id;
     const text = said(service)
-      .map((check) => `${check.title} ${check.body}`)
+      .map(read)
+      .map((check) => [check.title, check.summary, check.explain, ...check.fixes].join(' '))
       .join(' ');
     expect(service.visibleJoints().map((joint) => joint.id)).not.toContain(inner);
     expect(text).not.toContain(inner);
@@ -458,6 +466,6 @@ describe('the frozen body in the app', () => {
     const service = openInApp(fixturePayload(drivenFrozenCylinderBodyFixture()));
     const seal = service.sealedStructures()[0].seal;
     TestBed.inject(ActiveObjService).updateSelectedObj(seal);
-    expect(describeActuatorRefusal(seal)?.long).toContain('so it cannot extend');
+    expect(describeActuatorRefusal(seal)?.long).toContain("so it can't extend");
   });
 });

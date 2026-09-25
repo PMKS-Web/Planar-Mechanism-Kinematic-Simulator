@@ -160,9 +160,8 @@ const EVENEST_REFINEMENTS = 3;
  * is the solver talking to itself.
  */
 export const SECOND_ORDER_LOCK_MESSAGE =
-  'The loads push along a motion the linkage locks only at second order: it can sag or swing ' +
-  'a hair until a guide binds, so no finite reactions balance them. Hold the part that moves ' +
-  'with another support, or take the load off it.';
+  'The loads push along a direction the mechanism only resists after a tiny sag, so no finite ' +
+  'reactions balance them. Add another support to the part that moves, or take the load off it.';
 /**
  * The smallest scaled pivot the elimination accepts before calling the pose
  * singular.
@@ -602,7 +601,7 @@ export class ForceSolver {
         // reaction, so it is said as the motion it is, not as a residual.
         sharedSupport
           ? SECOND_ORDER_LOCK_MESSAGE
-          : `Force equilibrium residual ${solution.residual.toExponential(2)} exceeds tolerance.`,
+          : `The forces don't balance at this pose (residual ${solution.residual.toExponential(2)}).`,
         solution.rank,
         solution.residual
       );
@@ -717,13 +716,13 @@ export class ForceSolver {
   static statusMessage(status: ForceAnalysisStatus): string {
     switch (status) {
       case 'singular':
-        return 'Force equilibrium is singular at this position.';
+        return 'The force equations have no single answer at this pose.';
       case 'unsupported-topology':
-        return 'This topology does not have a determinate force-equilibrium model.';
+        return "Force analysis can't model this kind of mechanism yet.";
       case 'missing-kinematics':
-        return 'Dynamic analysis is missing motion data for one or more bodies.';
+        return 'Some links are missing the motion data in-motion analysis needs.';
       case 'invalid-properties':
-        return 'Mass, moment of inertia, or force properties are invalid.';
+        return "A mass, moment of inertia or force value isn't a usable number.";
       default:
         return '';
     }
@@ -963,7 +962,7 @@ export class ForceSolver {
     cylinders: readonly Cylinder[] = []
   ): string | undefined {
     if (!Object.values(units).every(Number.isFinite)) {
-      return 'The unit conversion is invalid — reselect the global units.';
+      return "The units don't convert. Choose them again in the Settings panel.";
     }
     // The name the canvas tags the body with. It was the body's own, which is
     // its id -- and a barrel's id holds the buried inner end (D14, S11), so a
@@ -972,11 +971,11 @@ export class ForceSolver {
     const nameOf = (body: Link): string => visibleBodyName(body, cylinders);
     for (const body of bodies) {
       if (!Number.isFinite(body.mass) || body.mass < 0) {
-        return `Link ${nameOf(body)} has a mass that is not a usable number. Set Link Mass in Mass Settings.`;
+        return `Link ${nameOf(body)} has a mass that isn't a usable number. Type it again in the Masses table.`;
       }
       if (body instanceof RealLink) {
         if (!Number.isFinite(body.massMoI) || body.massMoI < 0) {
-          return `Link ${nameOf(body)} has a moment of inertia that is not a usable number. Set it in Mass Settings.`;
+          return `Link ${nameOf(body)} has a moment of inertia that isn't a usable number. Type it again in the Masses table.`;
         }
         for (const force of body.forces) {
           if (
@@ -985,7 +984,7 @@ export class ForceSolver {
             !Number.isFinite(force.startCoord.x) ||
             !Number.isFinite(force.startCoord.y)
           ) {
-            return `The force on link ${nameOf(body)} has an invalid magnitude or position. Select it and re-enter its values.`;
+            return `The force on link ${nameOf(body)} has a magnitude or position that isn't a number. Select it and type its values again.`;
           }
         }
       }

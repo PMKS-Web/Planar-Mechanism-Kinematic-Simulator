@@ -68,17 +68,23 @@ export function incidentBodies(joint: RealJoint): (Link | typeof GROUND_BODY)[] 
 }
 
 /**
- * The actuator this joint would be, or why it cannot be one.
+ * Why a joint cannot be an input, as a kind the setup drawer can write its
+ * own sentences from. `describeActuator` says the same thing as one sentence,
+ * for a menu row's hover and the Edit panel.
+ */
+export type ActuatorRefusal =
+  'not-a-joint' | 'welded' | 'frozen-cylinder' | 'frame' | 'one-body' | 'many-bodies' | 'no-angle';
+
+/**
+ * The actuator this joint would be, or the kind of reason it cannot be one.
  *
  * The v1 restriction is exactly two incident bodies. With three, "the angle
  * between the bodies" names no particular pair, and every answer the solvers
  * could pick is a guess the user never made. Refused with a reason rather than
  * driven wrongly.
  */
-export function describeActuator(joint: Joint): Actuator | string {
-  if (!(joint instanceof RealJoint)) {
-    return 'Only a joint can be an input.';
-  }
+export function actuatorOrRefusal(joint: Joint): Actuator | ActuatorRefusal {
+  if (!(joint instanceof RealJoint)) return 'not-a-joint';
   // A weld is the statement that these bodies do *not* move relative to each
   // other, so there is no freedom at this joint for an input to prescribe.
   // Most welds fuse their links into one compound and are caught by the count
@@ -92,40 +98,23 @@ export function describeActuator(joint: Joint): Actuator | string {
   // prescribes there is the travel along it -- which is how every cylinder in
   // the app is driven. The bit used to sit on a coincident pin that was not the
   // joint a drive was ever set on, so this never had to say so out loud.
-  if (joint.isWelded && !joint.ground && !(joint instanceof PrisJoint)) {
-    return 'This joint is welded, so the bodies it joins cannot move relative to each other. Unweld it, or set a joint with a freedom as the input.';
-  }
+  if (joint.isWelded && !joint.ground && !(joint instanceof PrisJoint)) return 'welded';
   // The same statement made about a cylinder, where it is a weld somewhere else
   // rather than a weld here (decision S25). Both of the part's end joints being
   // in one body leaves one body on each side of the seal, so the slide holds
   // nothing apart and there is no travel for a drive to command. Asked before
   // the count below, which would otherwise answer "a driven joint needs two
   // bodies" -- true, and no use to a reader looking at a cylinder.
-  const frozen = frozenCylinderAtSeal(joint);
-  if (frozen) return describeFrozenCylinderDrive(frozen);
+  if (frozenCylinderAtSeal(joint)) return 'frozen-cylinder';
   // Asked before the count, which folds a frame bar into the ground and would
   // otherwise answer "needs two bodies" -- true, and no help. The drawing
   // arrives here easily: set a crank's input, then ground its far end, and
   // the partition folds the crank into the frame, so the joint belongs to no
   // mechanism and the reader was told "No input is set" beside its arrow.
-  //
-  // "Its link" rather than the link's name: a link's id can carry a
-  // cylinder's buried joint, which only `visibleBodyName` knows to leave out,
-  // and it needs the drawing's cylinders, which a joint cannot see from here.
-  if (framePieceAt(joint)) {
-    const pinned = joint.links.flatMap((link) => groundPinsElsewhere(link, joint));
-    const which = [...new Set(pinned.map((one) => one.name || one.id))].join(' and ');
-    return joint.links.length === 1
-      ? `Its link is also grounded at joint ${which}, so it cannot turn. Unground joint ${which} so the input has something to drive.`
-      : `Every link on it is also grounded at joint ${which}, so none of them can turn. Unground joint ${which} so the input has something to drive.`;
-  }
+  if (framePieceAt(joint)) return 'frame';
   const bodies = incidentBodies(joint);
-  if (bodies.length < 2) {
-    return 'An input joint needs two bodies to move relative to each other.';
-  }
-  if (bodies.length > 2) {
-    return `This joint joins ${bodies.length} bodies, so the input would not say which pair moves. Set a joint where exactly two meet as the input.`;
-  }
+  if (bodies.length < 2) return 'one-body';
+  if (bodies.length > 2) return 'many-bodies';
 
   // Ground first when it is there: a crank's angle is read from the world, not
   // the world's angle from the crank. `incidentBodies` already puts it first.
@@ -145,38 +134,80 @@ export function describeActuator(joint: Joint): Actuator | string {
     const missing = [actuator.referenceBody, actuator.drivenBody].some(
       (body) => body !== GROUND_BODY && !angleReference(body, joint)
     );
-    if (missing) {
-      return "A slider's block is a single point, so there is no angle to turn it through. Set the joint at the other end of the link as the input instead.";
-    }
+    if (missing) return 'no-angle';
   }
   return actuator;
+}
+
+/**
+ * The actuator this joint would be, or why it cannot be one, as the sentence a
+ * menu row's hover and the Edit panel show.
+ */
+export function describeActuator(joint: Joint): Actuator | string {
+  const found = actuatorOrRefusal(joint);
+  return typeof found === 'string' ? refusalSentence(joint, found) : found;
+}
+
+/** What each kind of refusal says, about this joint. */
+function refusalSentence(joint: Joint, refusal: ActuatorRefusal): string {
+  if (!(joint instanceof RealJoint)) return 'Only a joint can be an input.';
+  switch (refusal) {
+    case 'not-a-joint':
+      return 'Only a joint can be an input.';
+    case 'welded':
+      return "The links at a welded joint can't move against each other. Unweld it, or set another joint as the input.";
+    case 'frozen-cylinder':
+      return describeFrozenCylinderDrive(frozenCylinderAtSeal(joint)!);
+    case 'frame': {
+      // "Its link" rather than the link's name: a link's id can carry a
+      // cylinder's buried joint, which only `visibleBodyName` knows to leave
+      // out, and it needs the drawing's cylinders, which a joint cannot see
+      // from here.
+      const pinned = joint.links.flatMap((link) => groundPinsElsewhere(link, joint));
+      const which = [...new Set(pinned.map((one) => one.name || one.id))].join(' and ');
+      return joint.links.length === 1
+        ? `Its link is also grounded at joint ${which}, so it can't turn. Unground joint ${which} to give the input something to turn.`
+        : `Every link on it is also grounded at joint ${which}, so none of them can turn. Unground joint ${which} to give the input something to turn.`;
+    }
+    case 'one-body':
+      return 'An input turns one link against another, or against the ground, and only one link meets here.';
+    case 'many-bodies':
+      return `${meetingHere(joint)} meet here, so the input can't tell which pair to move. Set the input where exactly two meet.`;
+    case 'no-angle':
+      return "A slider's block is a single point, so it has no angle to turn. Set the input at the other end of its link.";
+  }
+}
+
+/** "3 links", or "2 links and the ground": what meets at a joint, counted. */
+export function meetingHere(joint: RealJoint): string {
+  const bodies = incidentBodies(joint);
+  const links = bodies.filter((body) => body !== GROUND_BODY).length;
+  const counted = `${links} ${links === 1 ? 'link' : 'links'}`;
+  return bodies.includes(GROUND_BODY) ? `${counted} and the ground` : counted;
 }
 
 /**
  * A driven-joint refusal in two lengths: a few words for a menu row's
  * right-hand slot, and the model's own sentence for the hover behind it.
  *
- * One source, two lengths. `describeActuator` already writes the sentence the
- * setup panel shows; the short form is derived from the same branch rather
- * than written again somewhere else, so a menu and a panel cannot end up
- * disagreeing about why a joint will not take an input.
+ * One source, two lengths: both are written from the same kind of refusal, so
+ * a menu and a panel cannot end up disagreeing about why a joint will not take
+ * an input.
  */
 export function describeActuatorRefusal(joint: Joint): { short: string; long: string } | undefined {
-  const found = describeActuator(joint);
+  const found = actuatorOrRefusal(joint);
   if (typeof found !== 'string') return undefined;
-  const long = found;
-  if (!(joint instanceof RealJoint)) return { short: 'not a joint', long };
-  if (joint.isWelded && !joint.ground && !(joint instanceof PrisJoint)) {
-    return { short: 'welded, no freedom', long };
-  }
-  if (frozenCylinderAtSeal(joint)) {
-    return { short: 'cannot extend', long };
-  }
-  if (framePieceAt(joint)) return { short: 'link is grounded', long };
-  const bodies = incidentBodies(joint).length;
-  if (bodies < 2) return { short: 'needs 2 bodies', long };
-  if (bodies > 2) return { short: `${bodies} bodies meet`, long };
-  return { short: 'no angle here', long };
+  const long = refusalSentence(joint, found);
+  const short: Record<ActuatorRefusal, string> = {
+    'not-a-joint': 'not a joint',
+    welded: 'welded, no freedom',
+    'frozen-cylinder': "can't extend",
+    frame: 'link is grounded',
+    'one-body': 'needs 2 links',
+    'many-bodies': 'more than 2 meet',
+    'no-angle': 'no angle here',
+  };
+  return { short: short[found], long };
 }
 
 /**
@@ -221,7 +252,7 @@ export function framePieceAt(joint: Joint): boolean {
 
 /** The actuator this joint would be, or nothing. */
 export function resolveActuator(joint: Joint): Actuator | undefined {
-  const found = describeActuator(joint);
+  const found = actuatorOrRefusal(joint);
   return typeof found === 'string' ? undefined : found;
 }
 

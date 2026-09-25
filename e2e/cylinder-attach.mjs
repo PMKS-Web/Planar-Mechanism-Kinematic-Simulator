@@ -56,7 +56,7 @@ const state = () =>
     joints: document.querySelectorAll('[id^="joint_"]').length,
     // The block a stranded slider wears when it has nothing to slide along.
     dangling: document.querySelectorAll('.dangling-slider, [data-dangling="true"]').length,
-    invalid: document.body.textContent.includes('nothing to slide along'),
+    invalid: /has no slot|nothing to slide along/.test(document.body.textContent),
   }));
 
 const centerOf = (id) =>
