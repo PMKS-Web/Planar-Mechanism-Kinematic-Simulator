@@ -129,7 +129,7 @@ function casesFrom(setName: string | undefined, root: string): Case[] {
   return [...set.library.map(libraryCase), ...students, ...made];
 }
 
-function describe_(entry: Case, withBackdrop: boolean, picture: 'v5' | 'v6' | 'v7' | 'v8') {
+function describe_(entry: Case, withBackdrop: boolean, picture: 'v5' | 'v6' | 'v7' | 'v8' | 'v9') {
   const decoder = new StringTranscoder();
   decoder.decodeURL(entry.payload);
   const settings = new SettingsService();
@@ -154,7 +154,7 @@ function describe_(entry: Case, withBackdrop: boolean, picture: 'v5' | 'v6' | 'v
     backdrop: withBackdrop && !!entry.backdrop,
     picture,
     // From v7 the author's own names go too: the best chance for a real drawing.
-    includeNames: picture === 'v7' || picture === 'v8',
+    includeNames: picture === 'v7' || picture === 'v8' || picture === 'v9',
   });
 }
 
@@ -166,7 +166,9 @@ describe('"What is this?" prototype', () => {
     const sheet = process.env['PMKS_SHEET'] ?? 'dev';
     const asked = process.env['PMKS_PROMPT'];
     const version: PromptVersion =
-      asked === 'v4' || asked === 'v5' || asked === 'v6' || asked === 'v7' ? asked : 'v8';
+      asked === 'v4' || asked === 'v5' || asked === 'v6' || asked === 'v7' || asked === 'v8'
+        ? asked
+        : 'v9';
     const out = `${root}/artifacts/what-is-this/${sheet}`;
     const motionDir = `${root}/artifacts/what-is-this/motion`;
     mkdirSync(`${out}/cases`, { recursive: true });
@@ -178,40 +180,69 @@ describe('"What is this?" prototype', () => {
       const described = describe_(
         entry,
         version !== 'v4',
-        version === 'v8' || version === 'v7' || version === 'v6' ? version : 'v5'
+        version === 'v4' || version === 'v5' ? 'v5' : version
       );
       // From v8 a drawing PMKS+ cannot solve is not asked about at all.
-      if (version === 'v8' && !described.machines.length) {
+      if ((version === 'v8' || version === 'v9') && !described.machines.length) {
         skipped.push(entry.id);
         continue;
       }
-      const key = `${entry.id}.${VARIANT}`;
-      // The filmstrip and the family are the first machine's; the page's
-      // animation and Links table show them all.
-      const machine = described.machines[0];
       const motion = mergeMotions(described.motions);
-      if (motion) writeFileSync(`${motionDir}/${entry.id}.json`, JSON.stringify(motion));
-      const jobs = described.machines
-        .flatMap((m) => m.jobs)
-        .filter((job, i, all) => all.findIndex((j) => j.name === job.name) === i);
-      writeFileSync(`${out}/cases/${key}.prompt.txt`, buildPrompt(described.text, version));
-      cases.push({
-        key,
-        template: entry.id,
-        name: entry.name,
-        source: entry.source,
-        intent: entry.intent,
-        libraryBlurb: entry.blurb,
-        appUrl: `${APP_URL}?${entry.payload}`,
-        backdrop: version !== 'v4' ? entry.backdrop : undefined,
-        variant: VARIANT,
-        prompt: `cases/${key}.prompt.txt`,
-        image: `cases/${entry.id}.filmstrip.png`,
-        film: machine?.frames ?? [],
-        jobs,
-        family: machine?.family ?? [],
-        looksLike: described.looksLike,
-      });
+      // Up to v8, one note for the drawing: the filmstrip and the family are the
+      // first machine's, and the Links table lists them all. From v9, one note
+      // per machine, as the panel has one per machine; a drawing of several
+      // becomes a case for each ("Pumping_Field__M2"), each with its own
+      // filmstrip, cropped to its machine by run/schematic.mjs.
+      const several = version === 'v9' && described.machineSheets.length > 1;
+      const notes =
+        version === 'v9'
+          ? described.machineSheets.map((sheet) => ({
+              id: several ? `${entry.id}__M${sheet.index + 1}` : entry.id,
+              name: several ? `${entry.name} · M${sheet.index + 1}` : entry.name,
+              text: sheet.text,
+              machine: sheet.machine,
+              index: several ? sheet.index : undefined,
+              jobs: sheet.machine.jobs,
+              looksLike: sheet.looksLike,
+            }))
+          : [
+              {
+                id: entry.id,
+                name: entry.name,
+                text: described.text,
+                machine: described.machines[0],
+                index: undefined,
+                jobs: described.machines
+                  .flatMap((m) => m.jobs)
+                  .filter((job, i, all) => all.findIndex((j) => j.name === job.name) === i),
+                looksLike: described.looksLike,
+              },
+            ];
+      for (const note of notes) {
+        const key = `${note.id}.${VARIANT}`;
+        // The page animates the whole drawing whichever machine a note is about.
+        if (motion) writeFileSync(`${motionDir}/${note.id}.json`, JSON.stringify(motion));
+        writeFileSync(`${out}/cases/${key}.prompt.txt`, buildPrompt(note.text, version));
+        cases.push({
+          key,
+          template: note.id,
+          name: note.name,
+          source: entry.source,
+          intent: entry.intent,
+          libraryBlurb: entry.blurb,
+          appUrl: `${APP_URL}?${entry.payload}`,
+          backdrop: version !== 'v4' ? entry.backdrop : undefined,
+          variant: VARIANT,
+          prompt: `cases/${key}.prompt.txt`,
+          image: `cases/${note.id}.filmstrip.png`,
+          // The machine a per-machine note is about, for the capture to crop to.
+          machine: note.index,
+          film: note.machine?.frames ?? [],
+          jobs: note.jobs,
+          family: note.machine?.family ?? [],
+          looksLike: note.looksLike,
+        });
+      }
     }
     writeFileSync(
       `${out}/manifest.json`,

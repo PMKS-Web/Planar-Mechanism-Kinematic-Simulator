@@ -94,5 +94,16 @@
       "The background image is at full strength again, still boxed in tile 0: faded, the landing gear's propeller no longer told the model it was looking at an aircraft.",
       "A mechanism PMKS+ cannot solve is left out of the sheet, and a drawing with none it can solve is not asked about: the panel shows something else for them. The rule about describing an unsolved mechanism leaves the prompt."
     ]
+  },
+  "v9": {
+    "title": "v9 · a note per machine, for Gemini",
+    "summary": "v8 split per machine, as the Analysis panel is, with the reply held to a schema and the app checking whatever the model writes before it shows.",
+    "changes": [
+      "One fact sheet, one picture and one note per machine PMKS+ can solve. A drawing of several becomes a case for each (\"Pumping_Field__M2\"); each sheet names the others as context (\"M1 is the same design as this one (the same link lengths), with its own input\"), and its filmstrip is cropped to its machine.",
+      "The prompt says the note is about the machine in the heading alone, and that a use is a product a student could picture by name, never a category of machinery.",
+      "Gemini is held to a JSON schema for the reply (responseSchema), so it cannot write invalid JSON.",
+      "A background photograph opens the \"Looks like\" gate, and the gate now covers the uses too.",
+      "The app turns the answer into the panel's pieces (note-prose.ts): every part it names becomes a part link, bold or not, a named part's (\"Hood\") included; a \"Looks like\" that repeats the family is dropped; a term the paragraph does not contain is dropped."
+    ]
   }
 }

@@ -34,7 +34,40 @@ const DEFAULT_MODEL = {
 const model = modelArg ?? DEFAULT_MODEL[provider];
 const effort = effortArg ?? 'medium';
 const QUESTION = 'What is this?';
-const { cases } = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
+const { cases, prompt: sheetVersion } = JSON.parse(
+  readFileSync(join(root, 'manifest.json'), 'utf8')
+);
+
+/**
+ * The reply's shape, which Gemini is held to from v9: Flash-Lite copied an
+ * author's quoted name into a JSON string unescaped in 4 of 87 v8 replies,
+ * and a schema makes invalid JSON impossible rather than unlikely.
+ */
+const REPLY_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    plainEnglish: { type: 'STRING' },
+    resembles: { type: 'STRING' },
+    useCases: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: { use: { type: 'STRING' }, why: { type: 'STRING' } },
+        required: ['use', 'why'],
+      },
+    },
+    terms: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: { term: { type: 'STRING' }, meaning: { type: 'STRING' } },
+        required: ['term', 'meaning'],
+      },
+    },
+  },
+  required: ['plainEnglish', 'resembles', 'useCases', 'terms'],
+  propertyOrdering: ['plainEnglish', 'resembles', 'useCases', 'terms'],
+};
 // Medium is the effort every round has used; another effort keeps its own answers.
 const outDir = join(
   root,
@@ -99,6 +132,7 @@ async function askGemini(entry) {
             temperature: 0.4,
             maxOutputTokens: 8192,
             responseMimeType: 'application/json',
+            ...(sheetVersion === 'v9' ? { responseSchema: REPLY_SCHEMA } : {}),
           },
         }),
       }

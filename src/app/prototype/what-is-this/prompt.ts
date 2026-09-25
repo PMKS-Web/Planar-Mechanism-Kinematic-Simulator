@@ -133,15 +133,30 @@ export const WHAT_IS_THIS_PROMPT_V8 = WHAT_IS_THIS_PROMPT_V7.replace(
   ''
 );
 
-export type PromptVersion = 'v4' | 'v5' | 'v6' | 'v7' | 'v8';
+/**
+ * v9: one note per machine, as the panel has one per machine, and uses that are
+ * products rather than categories (Gemini Flash-Lite gave "packaging machinery"
+ * for most of what it could not place). No example products: the first v5 draft
+ * named two, and the model gave those two to nearly everything.
+ */
+export const WHAT_IS_THIS_PROMPT_V9 = WHAT_IS_THIS_PROMPT_V8.replace(
+  'Your note sits under the label "Written from the facts above, not measured".',
+  'Your note sits under the label "Written from the facts above, not measured". A drawing can hold several mechanisms, each with its own input and its own panel; the fact sheet is about the one named in its heading (Mechanism M2, say), and your note is about that one alone, mentioning another only where the sheet says how it relates.'
+).replace(
+  'Different mechanisms should get different answers.',
+  'Different mechanisms should get different answers. Each is a specific product or machine a student could picture by name, never a category of machinery ("packaging machinery", "industrial equipment").'
+);
 
-export function buildPrompt(factSheet: string, version: PromptVersion = 'v8'): string {
+export type PromptVersion = 'v4' | 'v5' | 'v6' | 'v7' | 'v8' | 'v9';
+
+export function buildPrompt(factSheet: string, version: PromptVersion = 'v9'): string {
   const prompts = {
     v4: WHAT_IS_THIS_PROMPT_V4,
     v5: WHAT_IS_THIS_PROMPT_V5,
     v6: WHAT_IS_THIS_PROMPT_V6,
     v7: WHAT_IS_THIS_PROMPT_V7,
     v8: WHAT_IS_THIS_PROMPT_V8,
+    v9: WHAT_IS_THIS_PROMPT_V9,
   };
   return prompts[version] + factSheet;
 }

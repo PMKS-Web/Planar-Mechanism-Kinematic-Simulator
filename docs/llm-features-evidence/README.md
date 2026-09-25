@@ -417,3 +417,43 @@ the gate adds 17 right lines of 18 across the three. Luna misreads them, adding 
 
 Round 8 on the page puts Astra against Opus and round 9 Opus against Flash-Lite, each with the gate
 in the panels.
+
+### Round 10: v9 on Gemini, and the mock-up
+
+v9 splits the fact sheet per machine, as the Analysis panel on feature/explain-blockers-check-answers
+is split ("Analysis for Mechanism M2"). Each machine gets its own sheet, its own filmstrip cropped
+to it, and its own note; the sheet names the other machines only as context. Gemini's reply is held
+to a JSON schema. A background photograph now opens the "Looks like" gate, and the gate covers the
+uses too. Whatever the model writes goes through `note-prose.ts` before the panel shows it:
+
+- every part it names becomes a part link, whether the model bolded it or not;
+- a "Looks like" that only repeats the family is dropped;
+- a term the paragraph does not use is dropped.
+
+Round 6's cases become 41 per-machine cases. Gemini 3.5 Flash-Lite answered each twice, blind:
+
+| Flash-Lite, two askings | v8 | v9 |
+| --- | --- | --- |
+| Invalid JSON | 1 of 58 | 0 of 82 |
+| A use that is a category ("packaging machinery") | 9 of 58 | 1 of 106 |
+| Paragraph with no bold part name | 4 | 2 (linked by the app regardless) |
+| Library: names the machine / "Looks like" wrong | 87% / 13% | 87% / 13% |
+| With the gate: lines shown, right | 13, 13 (6 right ones hidden) | 38, 31 (none right hidden) |
+| Median time per answer | 2.2 s | 2.5 s |
+
+Gemini 3.8 Flash on the same key answered 1 of 7 requests: three came back overloaded (503) and
+three out of quota (429). A class cannot rely on it at the free tier.
+
+The mock-up is a design canvas, "What Is This? in PMKS+", built by `run/mockup.mjs` and
+`run/mockup-canvas.mjs` from these answers. It shows the note in the app's panel as the
+explain-blockers branch draws it:
+
+- one mechanism;
+- two machines, switched by the playback bar's rows;
+- a note the gate trims;
+- a machine that does not run, answered by the setup drawer's issue block in that branch's own
+  words;
+- the section's other states.
+
+[what-is-this-shipping.md](../what-is-this-shipping.md) is how it would reach students: the
+Netlify Function that holds the key, caching and rate limits, and the Gemini terms to settle first.

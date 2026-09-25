@@ -27,12 +27,12 @@ const root = new URL(
 const base = process.env.PMKS_SCHEMATIC_URL ?? 'http://localhost:4311';
 const { cases, prompt } = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
 // v5 on: no axes. v6: the background image in a tile of its own, not behind every frame.
-const noAxes = ['v5', 'v6', 'v7', 'v8'].includes(prompt);
-const v6 = ['v6', 'v7', 'v8'].includes(prompt);
+const noAxes = ['v5', 'v6', 'v7', 'v8', 'v9'].includes(prompt);
+const v6 = ['v6', 'v7', 'v8', 'v9'].includes(prompt);
 // v7 on: the author's link names stay in the picture, and tile 0 boxes the
 // area the motion tiles show. Only v7 faded the image: faded, the landing gear's
 // propeller no longer told the model it was looking at an aircraft.
-const v7 = prompt === 'v7' || prompt === 'v8';
+const v7 = ['v7', 'v8', 'v9'].includes(prompt);
 const faded = prompt === 'v7';
 // ONLY=Hood_Hinge re-captures one case.
 const wanted = cases.filter(
@@ -125,7 +125,7 @@ for (const entry of templates) {
     // to fit the mechanism's own extent with PAD pixels round it, so at this
     // zoom that padding is PAD divided by the zoom they will use.
     if (v7) {
-      const own = await cycleBox(page, still, false);
+      const own = await cycleBox(page, still, false, entry.machine);
       const zoom = Math.min(
         (W - 2 * PAD) / Math.max(own.x1 - own.x0, 1),
         (H - 2 * PAD) / Math.max(own.y1 - own.y0, 1)
@@ -167,8 +167,8 @@ for (const entry of templates) {
   }
   // Before v6 the image sat behind every frame, so the crop kept it.
   const imageInFrames = !!backdrop && !v6;
-  await fitTo(page, await cycleBox(page, still, imageInFrames));
-  const clip = clipOf(await cycleBox(page, still, imageInFrames));
+  await fitTo(page, await cycleBox(page, still, imageInFrames, entry.machine));
+  const clip = clipOf(await cycleBox(page, still, imageInFrames, entry.machine));
   for (const [i, frame] of entry.film.entries()) {
     if (!still) await seek(page, frame.time);
     await page.waitForTimeout(250);
@@ -247,9 +247,9 @@ function seek(page, time) {
  * stands, for a mechanism with no cycle -- and the background image with it,
  * which is context the picture should keep.
  */
-function cycleBox(page, still, withBackdrop) {
+function cycleBox(page, still, withBackdrop, machine) {
   return page.evaluate(
-    ({ still, withBackdrop }) => {
+    ({ still, withBackdrop, machine }) => {
       const g = window.ng.getComponent(document.querySelector('app-new-grid'));
       const box = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
       const take = (x, y) => {
@@ -258,10 +258,13 @@ function cycleBox(page, still, withBackdrop) {
         box.x1 = Math.max(box.x1, x);
         box.y1 = Math.max(box.y1, y);
       };
-      // Every machine on the grid: a drawing of several mechanisms is pictured whole.
+      // Every machine on the grid, so a drawing of several is pictured whole --
+      // unless the note is about one of them (v9), when the tiles frame that one.
+      const machines = g.mechanismSrv.mechanisms;
+      const chosen = machine === undefined ? machines : [machines[machine]];
       const frames = still
         ? [g.mechanismSrv.joints]
-        : g.mechanismSrv.mechanisms.filter((m) => m?.joints?.length > 1).flatMap((m) => m.joints);
+        : chosen.filter((m) => m?.joints?.length > 1).flatMap((m) => m.joints);
       for (const frame of frames) {
         for (const joint of frame) {
           const at = g.svgGrid.modelToScreen({ x: joint.x, y: joint.y });
@@ -276,7 +279,7 @@ function cycleBox(page, still, withBackdrop) {
       }
       return box;
     },
-    { still, withBackdrop }
+    { still, withBackdrop, machine }
   );
 }
 

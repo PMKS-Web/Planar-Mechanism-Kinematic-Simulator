@@ -37,6 +37,7 @@ In this order, the first time:
 ## Design records
 
 - [llm-features-plan.md](llm-features-plan.md) — planning review of the explain-why experiments and current slider/cylinder model; contracts, workflow, and evaluation gates for “What is this” and “Make this for me,” with a reproducible offline replay. *Reference — planning only*
+- [what-is-this-shipping.md](what-is-this-shipping.md) — how “What is this?” reaches students: its section in the per-machine panel, the Netlify Function that holds the Gemini key, caching and rate limits, and the Gemini terms to settle first. *Design, not built*
 - [joint-type-and-cylinder-plan.md](joint-type-and-cylinder-plan.md) — plan of record: joint type as one four-way choice, a slider as one joint, a cylinder as a sealed slide; retires the bodies-and-joints migration. Stages R, 0, 1 and 2 and Split Joint (D7) are built. *Built*
 - [joint-types-plan.md](joint-types-plan.md) — plan of record for floating slots, slides, driven prismatic joints and cylinders, Phases 0–7a. *Partly built*
 - [floating-slot-kinematics-design.md](floating-slot-kinematics-design.md) — velocity and acceleration through a floating slot (Phase 2, task 2.9). *Built*
