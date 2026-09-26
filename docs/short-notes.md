@@ -2542,3 +2542,13 @@ The live free barrel and rod do not use that easing. `ghostArtwork` must request
 for free cylinder members as well: routing them through `linkArtwork` made the ghost's corners
 differ from the live part, despite matching colors. The ghost-artwork spec and cylinder-colors
 browser suite guard the actual painter.
+
+### Restacking the cylinder and setup branches (2026-09-26)
+
+PR bases alone do not make a stack current: verify that each parent's head is an ancestor of
+its child. The late cylinder commit in #30 overlapped #33's display sizing and tabs and #35's
+mobility and setup refactors. Preserve cylinder holding and drive-direction behavior, but use
+the newer geometry-preserving display sizing. Carry Holding Force into the shared force tabs,
+and migrate cylinder notes and their tests from `state`/`body` to `severity`/`summary`/`fixes`.
+Notes remain informational and do not count as warnings. Keep the solver's loose-cylinder
+advice too. Save original refs before replaying, and compare each PR's old and new ranges.

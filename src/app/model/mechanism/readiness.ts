@@ -166,7 +166,7 @@ function danglingIssue(partition: MechanismPartition): SetupIssue {
 function noInputIssue(partition: MechanismPartition): SetupIssue {
   // Point at a joint that could actually take the job, so the fix is an
   // answer rather than a place to start looking.
-  const candidate = partition.ownJoints.find(
+  const candidate = shown(partition.ownJoints, partition.joints).find(
     (joint) => joint instanceof RealJoint && canDrive(joint)
   );
   return {
@@ -226,6 +226,23 @@ function issueForFailure(
             prose`Ground a joint, such as a crank's pivot`,
             ...(slides ? [prose`Ground a slider to fix its direction`] : []),
           ],
+        };
+      }
+      // The solver already identified the cylinders whose length is still free.
+      // Keep that advice when adapting the older cylinder report to setup issues.
+      const loose = cylinders.filter((cylinder) =>
+        mechanism.looseCylinderSeals.has(cylinder.seal.id)
+      );
+      if (dof > 1 && loose.length > 0) {
+        return {
+          severity: 'blocker',
+          title: `${dof} degrees of freedom, needs 1`,
+          summary: prose`${listOf(loose.map(cylinderRef))} can still change length independently.`,
+          explain:
+            'One input drives one motion. A cylinder whose length is not determined adds another freedom until it is driven or constrained.',
+          fixes: loose
+            .slice(0, 3)
+            .map((cylinder) => prose`Add Input to ${jointRef(cylinder.seal)}`),
         };
       }
       return dof > 1
@@ -645,9 +662,13 @@ export function readinessOf(
   if (holding.length > 0) {
     add({
       severity: 'note',
-      title: holding.length === 1 ? 'A cylinder is holding its length' : 'Cylinders are holding their length',
-      summary: prose`${listParts(holding.map(cylinderRef))} ${holding.length === 1 ? 'stays' : 'stay'} at the drawn length.`,
-      explain: 'An undriven cylinder holds its length when the mechanism does not move it. It counts as a rigid link.',
+      title:
+        holding.length === 1
+          ? 'A cylinder is holding its length'
+          : 'Cylinders are holding their length',
+      summary: prose`${listOf(holding.map(cylinderRef))} ${holding.length === 1 ? 'stays' : 'stay'} at the drawn length.`,
+      explain:
+        'An undriven cylinder holds its length when the mechanism does not move it. It counts as a rigid link.',
       fixes: holding.map((cylinder) => prose`Add Input to ${jointRef(cylinder.seal)}`),
     });
   }

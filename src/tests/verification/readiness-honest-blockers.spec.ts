@@ -228,7 +228,7 @@ describe('a machine whose cylinders are holding their length', () => {
 
   it('says nothing false when it has nothing to hold', () => {
     const readiness = readinessOf(holdingPartition(), failing(undefined, 1), helpers);
-    expect(readiness.checks.some((check) => check.state === 'note')).toBe(false);
+    expect(readiness.checks.some((check) => check.severity === 'note')).toBe(false);
   });
 
   it('counts a note as neither a blocker nor a warning', () => {
@@ -236,7 +236,7 @@ describe('a machine whose cylinders are holding their length', () => {
     Object.assign(valid, { mechanismValid: true });
     const readiness = readinessOf(holdingPartition(), valid, helpers);
     expect(readiness.ready).toBe(true);
-    expect(readiness.checks.filter((check) => check.state === 'warning')).toEqual([]);
+    expect(readiness.checks.filter((check) => check.severity === 'warning')).toEqual([]);
   });
 
   it('uses no internal word for holding a length', () => {
@@ -244,7 +244,7 @@ describe('a machine whose cylinders are holding their length', () => {
       .map((word) => word)
       .filter((word) =>
         readinessOf(holdingPartition(), failing('mobility', 3), helpers)
-          .checks.map((check) => `${check.title} ${check.body}`)
+          .checks.map((check) => JSON.stringify(read(check)))
           .join(' ')
           .toLowerCase()
           .includes(word)
