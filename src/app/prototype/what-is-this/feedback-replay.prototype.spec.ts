@@ -13,10 +13,12 @@ import { SettingsService } from '../../services/settings.service';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { MechanismService } from '../../services/mechanism.service';
 import { PrisJoint, RealJoint } from '../../model/joint';
-import { describeActuator } from '../../model/actuator';
 import { Mechanism } from '../../model/mechanism/mechanism';
 import { partitionMechanisms } from '../../model/mechanism/mechanism-partition';
-import { describeUnassigned, readinessOf } from '../../model/mechanism/readiness';
+import { readinessOf } from '../../model/mechanism/readiness';
+import { unassignedIssues } from '../../model/mechanism/unassigned-issues';
+import { textOf } from '../../model/prose';
+import { SetupIssue } from '../../model/mechanism/setup-issue';
 import { MODEL_SCALE } from '../../model/render-scale';
 
 interface Row {
@@ -70,14 +72,9 @@ function replay(url: string) {
       new Set(partition.ownJoints.map((joint) => joint.id))
     );
     const readiness = readinessOf(partition, mechanism, {
-      cylinderName: (sliderId) => sliderId,
-      drivenRefusal: (part) => {
-        const input = part.ownJoints.find((joint) => joint instanceof RealJoint && joint.input);
-        const refusal = input ? describeActuator(input) : undefined;
-        return typeof refusal === 'string' ? refusal : undefined;
-      },
       strokeWarning: () => undefined,
       describeSpeed: () => `${Math.abs(signed)}`,
+      drawing: () => target,
     });
     return {
       joints: partition.ownJoints.length,
@@ -87,17 +84,24 @@ function replay(url: string) {
       samples: mechanism.joints.length,
       failure: mechanism.failure ?? null,
       ready: readiness.ready,
-      checks: readiness.checks.map((c) => ({ state: c.state, title: c.title, body: c.body })),
+      checks: readiness.checks.map(issueRow),
     };
   });
   return {
     joints: target.joints.length,
     links: target.links.length,
     machines,
-    unassigned: describeUnassigned(partitioning.unassigned).map((u) => ({
-      title: u.title,
-      body: u.body,
-    })),
+    unassigned: unassignedIssues(partitioning.unassigned, target.joints).map(issueRow),
+  };
+}
+
+/** An issue as a row of plain text: what it is, and the fixes it offers. */
+function issueRow(issue: SetupIssue) {
+  return {
+    severity: issue.severity,
+    title: issue.title,
+    summary: textOf(issue.summary),
+    fixes: issue.fixes.map(textOf),
   };
 }
 

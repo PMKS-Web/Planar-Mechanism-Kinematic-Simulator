@@ -100,7 +100,8 @@
               "buildTarget": "PMKSWeb:build:production"
             },
             "development": {
-              "buildTarget": "PMKSWeb:build:development"
+              "buildTarget": "PMKSWeb:build:development",
+              "proxyConfig": "src/proxy.conf.json"
             }
           },
           "defaultConfiguration": "development"

@@ -1,0 +1,147 @@
+@mixin css($theme) {
+  app-what-is-this-note {
+    display: block;
+  }
+
+  .whatIsThis {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 4px 15px 14px;
+    font-size: 13px;
+    line-height: 20px;
+    color: var(--text-primary);
+
+    > * {
+      align-self: stretch;
+    }
+
+    > button-block {
+      align-self: flex-start;
+    }
+  }
+
+  .whatIsThis .noteMessage {
+    margin: 0;
+    color: var(--text-secondary);
+  }
+
+  // Says who wrote what follows: everything above it is PMKS+'s own.
+  .whatIsThis .noteCaption {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-tertiary);
+
+    .mat-icon {
+      width: 16px;
+      height: 16px;
+      font-size: 16px;
+      line-height: 16px;
+    }
+  }
+
+  .whatIsThis .noteSkeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    span {
+      height: 10px;
+      border-radius: 5px;
+      background: var(--surface-chip);
+    }
+
+    .short {
+      width: 60%;
+    }
+  }
+
+  .whatIsThis .noteChanged {
+    margin: 0;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: var(--warning-bg);
+    color: var(--warning-text);
+  }
+
+  .whatIsThis .note {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    // An earlier note, kept in view until a new one is asked for.
+    &.faded {
+      opacity: 0.55;
+    }
+  }
+
+  .whatIsThis .looksLike {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: var(--surface-sunken);
+  }
+
+  .whatIsThis .looksLikeLabel {
+    flex: 0 0 auto;
+    font-size: 11px;
+    color: var(--text-tertiary);
+  }
+
+  .whatIsThis .looksLikeValue {
+    font-weight: 500;
+    color: var(--text-strong);
+  }
+
+  .whatIsThis .noteParagraph {
+    margin: 0;
+    line-height: 22px;
+  }
+
+  .whatIsThis .noteTerms {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0;
+
+    div {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0 6px;
+    }
+
+    dt {
+      font-weight: 500;
+    }
+
+    dd {
+      margin: 0;
+      color: var(--text-secondary);
+    }
+  }
+
+  .whatIsThis .noteSubhead {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+  }
+
+  .whatIsThis .noteUse {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .whatIsThis .noteUseName {
+    font-weight: 500;
+    color: var(--text-strong);
+  }
+
+  .whatIsThis .noteUseWhy {
+    color: var(--text-secondary);
+  }
+}
