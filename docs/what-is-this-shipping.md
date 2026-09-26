@@ -10,9 +10,10 @@ Gemini key is kept, and what the release process adds.
 
 ## What the student sees
 
-**What Is This?** is a section of the per-machine panel, **Analysis for Mechanism M2** (and **Edit
-Mechanism M2** in Edit), under its Mechanism Overview and Links. A drawing of several machines has a
-note per machine, reached the way the panel is: the machine's row in the playback bar.
+**What Is This?** is a section of the analysis modes' machine panel, under its Mechanism Overview
+and Links; Edit's machine panel is about changing the machine and has no note. The machine panel is
+what the analysis panel shows whenever no part is selected. A drawing of several machines has a note
+per machine, reached by the panel's switcher or the machine's row in the playback bar.
 
 - **Everything above the note is PMKS+'s own**, and shows whether or not the note does: the family
   it matched (the Overview's **Family** row), and each link's job in the Links rows, whose names are
@@ -20,8 +21,9 @@ note per machine, reached the way the panel is: the machine's row in the playbac
   the panel used to guess: it calls IJ a coupler where the panel said "Input".
 - **The note** is a paragraph under "Written by AI from the facts above, not measured". Every part it
   names is a `part-link`, drawn by `prose-block` exactly as the setup drawer's are: pointing lights
-  the part on the grid, pressing selects it. The terms it explains follow it as a short glossary,
-  rather than a hover over the word, which a phone cannot do.
+  the part on the grid, pressing selects it. A term the note explains is marked with a dotted rule
+  where the paragraph uses it, and pointing the mouse at it shows the meaning under the paragraph.
+  On touch there is nothing to hover, so the paragraph comes plain, with no terms marked.
 - **"Looks like" and "Where You'd Find It"** show only when `looks-like-gate.ts` opens: the author
   named a part with a word that says what it is for, PMKS+ matched a family that points at a kind of
   machine, or the author put a background image behind it.

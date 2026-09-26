@@ -5103,19 +5103,14 @@ export class NewGridComponent implements OnDestroy {
   /**
    * Whether either member of this cylinder is picked, however it was picked.
    *
-   * Including by selecting the whole machine it belongs to: the cylinder is
-   * drawn as one part by its own skin rather than through the link classes, so
-   * it was the one body a machine-wide selection left unlit.
-   *
    * What it is *for* is the mass overlay, which is a question about the part
    * rather than about one member. The outlines ask per member instead.
    */
   isBodySelected(mark: CylinderMark): boolean {
     return [mark.barrelLink, mark.rodLink].some(
       (link) =>
-        (this.activeObjService.objType === 'Link' &&
-          this.activeObjService.selectedLink?.id === link.id) ||
-        this.mechanismSrv.isPartInSelectedMechanism(link)
+        this.activeObjService.objType === 'Link' &&
+        this.activeObjService.selectedLink?.id === link.id
     );
   }
 

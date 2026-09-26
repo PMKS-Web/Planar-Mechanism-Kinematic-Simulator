@@ -36,57 +36,9 @@
     margin: 6px 0 10px;
   }
 
-  // The status is also the way to the list behind it, which is why it is a
-  // control rather than a label.
-  .mechStatus {
-    display: inline-flex;
-    align-items: center;
-    height: 20px;
-    padding: 0 8px;
-    border-radius: 10px;
-    background: var(--refusal-bg);
-    color: var(--refusal-text);
-    font-size: 12px;
-    cursor: pointer;
-
-    &.ready {
-      background: var(--success-bg);
-      color: var(--success-text);
-    }
-  }
-
-  .mechActions {
-    display: flex;
-    gap: 10px;
-  }
-
-  .mechButton {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    flex: 1 1 0;
-    height: 32px;
-    padding: 0 10px;
-    border: 1px solid mat.m2-get-color-from-palette($primary-palette, 500);
-    border-radius: 4px;
-    background: var(--surface);
-    color: mat.m2-get-color-from-palette($primary-palette, 500);
-    font-family: inherit;
-    font-size: 14px;
-    cursor: pointer;
-
-    mat-icon {
-      width: 17px;
-      height: 17px;
-      font-size: 17px;
-      line-height: 17px;
-    }
-
-    &.danger {
-      border-color: var(--danger);
-      color: var(--danger);
-    }
+  .mechHead .mechanismSwitcher {
+    display: block;
+    margin-top: 4px;
   }
 
   .mechanismPanel .sectionHeader {

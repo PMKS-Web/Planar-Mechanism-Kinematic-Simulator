@@ -5,7 +5,7 @@ import { Link } from '../link';
 import { textOf } from '../prose';
 import { machineFactSheets } from './machine-sheet';
 import { noteKey } from './note-key';
-import { noteProse } from './note-parts';
+import { isTerm, noteProse, withTerms } from './note-parts';
 import { noteVocabulary, notePieces } from './note-prose';
 import { panelRole } from './roles';
 
@@ -29,6 +29,45 @@ describe('a note’s part names', () => {
   it('keep their words when the drawing no longer has the part', () => {
     const prose = noteProse(['The ', { part: 'ZZ', label: 'link ZZ' }, ' is gone.'], sheet.parts);
     expect(prose).toEqual(['The link ZZ is gone.']);
+  });
+});
+
+describe('the terms a note explains', () => {
+  const meaning = 'a lever whose two arms meet at an angle.';
+
+  it('are marked where the paragraph first uses them, in its own words', () => {
+    const pieces = withTerms(
+      ['A Bell crank turns, and the bell crank turns again.'],
+      [{ term: 'bell crank', meaning }]
+    );
+    expect(pieces).toEqual([
+      'A ',
+      { text: 'Bell crank', meaning },
+      ' turns, and the bell crank turns again.',
+    ]);
+  });
+
+  it('prefer the longer of two overlapping terms, and skip a word inside another', () => {
+    const pieces = withTerms(
+      ['The input crank drives the crankshaft.'],
+      [
+        { term: 'crank', meaning: 'short' },
+        { term: 'input crank', meaning: 'long' },
+      ]
+    );
+    expect(pieces.filter(isTerm).map((t) => t.text)).toEqual(['input crank']);
+  });
+
+  it('leave a part link alone, and drop a term the text never uses', () => {
+    const part = { part: {} as Link, label: 'link CDE' };
+    const pieces = withTerms(
+      ['Through ', part, ' it rocks.'],
+      [
+        { term: 'link', meaning: 'x' },
+        { term: 'coupler', meaning: 'y' },
+      ]
+    );
+    expect(pieces).toEqual(['Through ', part, ' it rocks.']);
   });
 });
 

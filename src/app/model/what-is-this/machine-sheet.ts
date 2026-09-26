@@ -4,6 +4,7 @@ import { turnsClockwise } from '../drive-direction';
 import { Joint, PrisJoint, RealJoint } from '../joint';
 import { Link } from '../link';
 import { Mechanism } from '../mechanism/mechanism';
+import { mechanismName } from '../mechanism/mechanism-name';
 import { MechanismPartition } from '../mechanism/mechanism-partition';
 import { CycleMoment, cycleMoments, cycleSamples } from './cycle';
 import { distAt, fmt, isGroundPin, Samples } from './fact-math';
@@ -74,6 +75,8 @@ export interface MachineFactSheet {
 /** One solvable machine, described, before it is set among the others. */
 interface Described {
   index: number;
+  /** "M2", or `M2 ("Pump jack")` when its author named it. */
+  heading: string;
   lines: string[];
   jobs: LinkJob[];
   family: FamilyMatch[];
@@ -99,7 +102,7 @@ export function machineFactSheets(drawing: WhatIsThisDrawing): MachineFactSheet[
       ...head,
       ...otherMachines(machine, described),
       '',
-      `## Mechanism M${machine.index + 1}`,
+      `## Mechanism ${machine.heading}`,
       ...machine.lines,
     ].join('\n');
     return {
@@ -128,9 +131,9 @@ function otherMachines(self: Described, all: Described[]): string[] {
     .filter((m) => m !== self)
     .map((other) => {
       if (other.signature === self.signature)
-        return `M${other.index + 1} is the same design as this one (the same link lengths), with its own input`;
+        return `${other.heading} is the same design as this one (the same link lengths), with its own input`;
       const family = other.family[0]?.family;
-      return `M${other.index + 1} is a different design${family ? ` (PMKS+ matched ${family})` : ''}`;
+      return `${other.heading} is a different design${family ? ` (PMKS+ matched ${family})` : ''}`;
     });
   const list = others.join('; ');
   return [
@@ -193,7 +196,10 @@ function describeMachine(
     const named = typed(link.name, link.id) ? ` ("${link.name}")` : '';
     return `link ${bodyKey(link)}${named}`;
   };
+  // The name its author gave the whole machine says most of all what it is for.
+  const machineName = mechanismName(partition);
   const authorNames = [
+    ...(machineName ? [machineName] : []),
     ...bodies.filter((link) => typed(link.name, link.id)).map((link) => link.name),
     ...visible.filter((joint) => typed(joint.name, joint.id)).map((joint) => joint.name),
     ...partition.forces.filter((force) => typed(force.name, force.id)).map((force) => force.name),
@@ -310,6 +316,7 @@ function describeMachine(
 
   return {
     index,
+    heading: `M${index + 1}${machineName ? ` ("${machineName}")` : ''}`,
     lines,
     jobs,
     family: family.matches,

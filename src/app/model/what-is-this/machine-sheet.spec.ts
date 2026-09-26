@@ -1,5 +1,6 @@
 import { TEMPLATE_LINKAGES } from '../../component/MODALS/templates/template-linkages';
 import { whatIsThisDrawing } from '../../../test-utils/what-is-this/drawing';
+import { writeMechanismName } from '../mechanism/mechanism-name';
 import { machineFactSheets } from './machine-sheet';
 
 const sheetsOf = (id: keyof typeof TEMPLATE_LINKAGES, backdrop?: string) =>
@@ -33,6 +34,15 @@ describe('machineFactSheets', () => {
     const [sheet] = sheetsOf('Hood_Hinge');
     expect(sheet.text).toContain('("Hood")');
     expect(sheet.gate.show).toBe(true);
+  });
+
+  it('names a machine its author named, here and in the others’ sheets', () => {
+    const drawing = whatIsThisDrawing(TEMPLATE_LINKAGES['Pumping_Field']);
+    writeMechanismName(drawing.partitions[1], 'Pump jack');
+    const [m1, m2] = machineFactSheets(drawing);
+    expect(m2.text).toContain('## Mechanism M2 ("Pump jack")');
+    expect(m1.text).toContain('M2 ("Pump jack") is the same design as this one');
+    expect(m1.text).not.toContain('## Mechanism M1 (');
   });
 
   it('gives the background image’s file name, and lays out six tiles with it first', () => {

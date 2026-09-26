@@ -139,10 +139,24 @@ record(
   'no "Looks like" or uses when nothing says what it is for',
   (await note.locator('.looksLike').count()) === 0 && (await note.locator('.noteUse').count()) === 0
 );
+const term = note.locator('.noteTerm');
 record(
-  'the glossary reads as a glossary',
-  (await note.locator('.noteTerms dt').allInnerTexts()).join() === 'Bell crank'
+  'a term the note explains is marked where the paragraph uses it',
+  (await term.allInnerTexts()).join() === 'bell crank',
+  await term.allInnerTexts()
 );
+record(
+  'its meaning is not on show until pointed at',
+  !(await note.locator('.termMeaning').isVisible())
+);
+await term.first().hover();
+const meaning = await note.locator('.termMeaning').innerText();
+record(
+  'pointing at it shows the meaning under the paragraph',
+  /Bell crank\s+— a lever whose two arms meet at an angle/.test(meaning),
+  meaning
+);
+await page.mouse.move(900, 800);
 
 // --- out of date after an edit, current again after Undo --------------------
 await page.evaluate(() => {
@@ -198,6 +212,31 @@ answer = () => ({ status: 200, json: { reply: REPLY } });
 await note.getByRole('button', { name: 'Try Again' }).click();
 await note.locator('.note:not(.faded) .noteParagraph').waitFor({ timeout: 20000 });
 record('and then the note is written', true);
+
+// --- a phone has no pointer to hover, so it gets the paragraph plain ------------
+const phone = await browser.newPage({
+  viewport: { width: 390, height: 844 },
+  hasTouch: true,
+  isMobile: true,
+});
+await phone.route('**/assets/what-is-this/library-notes.json', (route) =>
+  route.fulfill({ json: { version: 'none', notes: {} } })
+);
+await phone.route('**/api/what-is-this', (route) =>
+  route.fulfill({ status: 200, json: { reply: REPLY } })
+);
+await phone.goto(`${BASE}/?${payloads['Bell_Crank']}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(phone);
+await phone.locator('.tabButton', { hasText: 'Kinematic' }).first().click();
+await phone
+  .locator('app-what-is-this-note .noteParagraph')
+  .waitFor({ state: 'attached', timeout: 20000 });
+record(
+  'on touch the note marks no terms',
+  (await phone.locator('app-what-is-this-note .noteTerm').count()) === 0 &&
+    (await phone.locator('app-what-is-this-note .noteParagraph part-link').count()) > 0
+);
+await phone.close();
 
 record('no page errors', errors.length === 0, errors);
 await browser.close();

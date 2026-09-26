@@ -128,6 +128,7 @@ export class MechanismBuilder {
     if (!(joint instanceof PrisJoint)) joint.isWelded = jointData.isWelded;
     joint.showCurve = jointData.showCurve;
     joint.driveSpeed = jointData.driveSpeed;
+    joint.machineName = jointData.machineName;
     console.log('build joint', jointData.type);
 
     return joint;

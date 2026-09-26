@@ -71,7 +71,13 @@ export class JointData {
      * is a mass to write, so every URL of a massless slider — which is every
      * URL written before this — keeps exactly the tokens it had.
      */
-    public mass: number = 0
+    public mass: number = 0,
+    /**
+     * The name of the mechanism this joint keeps (`model/mechanism/mechanism-name.ts`),
+     * or empty. Written after the mass and only when there is a name, so
+     * every URL without one keeps exactly the tokens it had.
+     */
+    public machineName: string = ''
   ) {}
 }
 

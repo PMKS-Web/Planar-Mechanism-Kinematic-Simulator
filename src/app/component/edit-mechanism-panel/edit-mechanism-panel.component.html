@@ -1,0 +1,28 @@
+@if (overview.exists(index())) {
+  <div class="editMechanism">
+    <editable-title-block
+      [displayName]="overview.title(index())"
+      [renameTo]="rename"
+      [renameFrom]="overview.name(index()) ?? ''"
+      [takenNames]="takenNames"
+      [deleteAction]="deleteMechanism"
+      deleteHint="Delete Mechanism"
+    >
+      Edit
+    </editable-title-block>
+    <app-mechanism-status class="editMechanismStatus" [index]="index()" />
+    <app-mechanism-switcher [index]="index()" />
+
+    <div class="editMechanismLinks">
+      @for (link of overview.links(index()); track $index) {
+        <div class="linkRow">
+          <span class="linkName"
+            ><part-link [part]="link.part">{{ link.name }}</part-link></span
+          >
+          <span class="linkSpacer"></span>
+          <span class="linkLength">{{ link.length }}</span>
+        </div>
+      }
+    </div>
+  </div>
+}
