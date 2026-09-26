@@ -564,22 +564,30 @@ export function gripperFixture(scale: number = 1): MechanismFixture {
 }
 
 /**
- * A parallel gripper the way a manufacturer draws one: a carriage on the ram,
- * two vertical rails, and a jaw on each side hung from the carriage by two
- * equal links whose far pins ride the rails.
+ * A parallel gripper: a carriage on the ram, a vertical rail, and a jaw on
+ * each side hung from the carriage by two equal links, the outer one's far pin
+ * riding the rail.
  *
- * The rails hold each jaw level and the links turn the carriage's travel into
- * the jaw's: pushing the carriage toward the jaws swings the links flatter and
- * draws both jaws in to the axis, and they meet flat at the tips. The rails
- * are drawn as bars pinned to ground at both ends with the slots cut into
- * them, which is how the reference drawing (MotionGen, 5 Sep 2026) has them
- * and which the force solver treats as frame.
+ * The links keep each jaw level and turn the carriage's travel into the jaw's:
+ * pushing the carriage toward the jaws swings the links flatter and draws both
+ * jaws in to the axis, and they meet flat at the tips. The rail is drawn as a
+ * bar pinned to ground at both ends with the slots cut into it, which the
+ * force solver treats as frame. The reference drawing (MotionGen, 5 Sep 2026)
+ * had a second rail under the inner pins.
  *
  * Symmetric about the axis, and proportioned so the tips meet on the axis a
- * hair before the links go level, which is where the closing stroke ends. The carriage is not on a slide of its own: the
- * two parallelograms and the four rail pins already fix its attitude, and a
- * fifth guide would only be a redundant constraint for the mobility check
- * to rescue.
+ * hair before the links go level, which is where the closing stroke ends.
+ *
+ * The barrel is welded to a bar grounded behind it along its own axis, so the
+ * cylinder is part of the frame, and the rod is welded to the carriage, so the
+ * carriage slides with the rod and nothing else. Pinned at its mount alone,
+ * the barrel could swing and take the carriage up and down with it: the jaw
+ * links and rails fix the carriage's attitude but not its height, a freedom
+ * the count missed and the geometry finds (decision S30).
+ *
+ * Each jaw rides one rail. Its parallelogram already keeps it level, and a
+ * second rail exactly the jaw's width away would hold it level twice: the
+ * motion does not mind, but the jaw's forces then have no single answer.
  */
 /**
  * Where the ram is mounted and how far along its travel it starts: chosen so
@@ -609,6 +617,7 @@ export function slideGripperFixture(
   return {
     joints: [
       { id: 'A', ...at(mount.x, mount.y), ground: true },
+      { id: 'Y', ...at(mount.x - 0.85, mount.y), ground: true },
       { id: 'B', ...at(barrelEnd.x, barrelEnd.y) },
       { id: 'C', ...at(pin.x, pin.y) },
       { id: 'D', ...at(driven.x, driven.y) },
@@ -618,8 +627,6 @@ export function slideGripperFixture(
       { id: 'J', ...at(1, -PIN_Y) },
       { id: 'K', ...at(RAIL_LEFT, 3.8), ground: true },
       { id: 'L', ...at(RAIL_LEFT, -3.8), ground: true },
-      { id: 'O', ...at(RAIL_RIGHT, 3.8), ground: true },
-      { id: 'P', ...at(RAIL_RIGHT, -3.8), ground: true },
       { id: 'M', ...at(RAIL_LEFT, PIN_Y + LIFT) },
       { id: 'Q', ...at(RAIL_RIGHT, PIN_Y + LIFT) },
       { id: 'S', ...at(RAIL_RIGHT + TIP.x, PIN_Y + LIFT + TIP.y) },
@@ -628,11 +635,20 @@ export function slideGripperFixture(
       { id: 'X', ...at(RAIL_RIGHT + TIP.x, -PIN_Y - LIFT - TIP.y) },
     ],
     links: [
-      { joints: 'AB', name: 'Barrel' },
-      { joints: 'CD', name: 'Rod' },
-      { joints: 'DGHIJ', name: 'Carriage' },
+      {
+        joints: 'ABY',
+        name: 'Frame',
+        subset: [{ joints: 'AB', name: 'Barrel' }, { joints: 'AY' }],
+      },
+      {
+        joints: 'CDGHIJ',
+        name: 'Carriage',
+        subset: [
+          { joints: 'CD', name: 'Rod' },
+          { joints: 'DGHIJ', name: 'Carriage' },
+        ],
+      },
       { joints: 'KL', name: 'Rail' },
-      { joints: 'OP', name: 'Rail' },
       { joints: 'GM' },
       { joints: 'HQ' },
       { joints: 'MQS', name: 'Jaw' },
@@ -641,13 +657,11 @@ export function slideGripperFixture(
       { joints: 'TVX', name: 'Jaw' },
     ],
     sliders: [
-      { at: 'C', on: { carrier: 'AB', a: 'A', b: 'B' }, sealed: true, input: true },
+      { at: 'C', on: { carrier: 'ABY', a: 'A', b: 'B' }, sealed: true, input: true },
       { at: 'M', on: { carrier: 'KL', a: 'K', b: 'L' } },
-      { at: 'Q', on: { carrier: 'OP', a: 'O', b: 'P' } },
       { at: 'T', on: { carrier: 'KL', a: 'K', b: 'L' } },
-      { at: 'V', on: { carrier: 'OP', a: 'O', b: 'P' } },
     ],
-    welds: ['C'],
+    welds: ['C', 'A', 'D'],
     inputAngVel: INPUT_SPEED * scale,
   };
 }

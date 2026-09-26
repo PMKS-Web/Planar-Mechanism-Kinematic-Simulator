@@ -1,9 +1,5 @@
 import '../../app/model/joint';
-import {
-  ForceAnalysisSeries,
-  ForceSolver,
-  SECOND_ORDER_LOCK_MESSAGE,
-} from '../../app/model/mechanism/force-solver';
+import { ForceAnalysisSeries, ForceSolver } from '../../app/model/mechanism/force-solver';
 import { Mechanism } from '../../app/model/mechanism/mechanism';
 import { buildMechanism, MechanismFixture } from '../../test-utils/verification/fixture';
 import { buildMechanismFixture } from '../fixtures/mechanism-fixtures';
@@ -102,13 +98,17 @@ describe('force analysis with supports that share a line', () => {
   // takes the evenest split now, says so on the frame, and the reactions are
   // the size the loads make them rather than the enormous cancelling pair the
   // exact solution of a nearly dependent system would be.
-  it('solves the gripper on rails at every frame, marked as a shared support', () => {
+  it('solves the gripper on its rail at every frame, with no support to share', () => {
+    // Each jaw rides one rail and its parallelogram keeps it level, so its
+    // forces have one answer. Drawn with a second rail under the inner pins,
+    // the jaw was held level twice and its load split between the two rails
+    // in no unique way (decision S30).
     const { mechanism } = buildMechanismFixture(TEMPLATE_LINKAGES['Cylinder_Gripper']);
     expect(mechanism.isMechanismValid()).toBe(true);
     const series = mechanism.getForceAnalysis('static');
     expect(series.diagnostic).toBeUndefined();
     expect(series.successfulFrames).toBe(series.frames.length);
-    expect(series.sharedSupportFrames).toBe(series.frames.length);
+    expect(series.sharedSupportFrames).toBe(0);
     // Two loads of a newton each: nothing in the answer should be far above it.
     const peak = Math.max(
       ...series.frames.flatMap((frame) =>
@@ -168,26 +168,16 @@ describe('force analysis with supports that share a line', () => {
     }
   });
 
-  it('refuses the weighted gripper as a motion the linkage locks only at second order', () => {
-    // The gripper with masses on everything and gravity on. Its cylinder
-    // hangs on one ground pin, so the whole assembly can swing about that
-    // pin while the carriage rides up the rails -- a motion the rails allow
-    // to first order and bind against only at second. The weight does work
-    // along it, and no finite reaction resists it, so the cycle is refused;
-    // in words that name the motion, not the residual.
+  it('refuses the old weighted gripper before any force is asked of it', () => {
+    // The gripper as it was drawn before: its cylinder hangs on one ground
+    // pin, so the whole assembly can swing about that pin while the carriage
+    // rides up the rails. Force analysis used to meet that motion as one the
+    // rails lock only at second order. The count now finds it first -- the
+    // geometry is believed wherever it finds more than Gruebler (S30) -- and
+    // the drawing never reaches a force solve.
     const { mechanism } = buildMechanismFixture(WEIGHTED_GRIPPER);
-    mechanism.gravity = true;
-    expect(mechanism.isMechanismValid()).toBe(true);
-    const weighted = mechanism.getForceAnalysis('static');
-    expect(weighted.successfulFrames).toBe(0);
-    expect(weighted.diagnostic).toBe(SECOND_ORDER_LOCK_MESSAGE);
-    // Without the weight the loads do no work along that motion, and the
-    // same drawing solves on the evenest split of its rails.
-    const { mechanism: weightless } = buildMechanismFixture(WEIGHTED_GRIPPER);
-    weightless.gravity = false;
-    const unweighted = weightless.getForceAnalysis('static');
-    expect(unweighted.successfulFrames).toBeGreaterThan(unweighted.frames.length - 5);
-    expect(unweighted.sharedSupportFrames).toBe(unweighted.successfulFrames);
+    expect(mechanism.dof).toBeGreaterThan(1);
+    expect(mechanism.isMechanismValid()).toBe(false);
   });
 
   it('still refuses a load nothing balances', () => {

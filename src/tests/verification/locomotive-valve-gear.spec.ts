@@ -26,11 +26,12 @@ const LOCOMOTIVE =
 describe('a locomotive drive whose combination lever hangs free', () => {
   it('is refused as a part tied to nothing, not as a dead position', () => {
     const { mechanism } = buildMechanismFixture(LOCOMOTIVE);
-    // Gruebler's count, which is what decides whether the solver is tried.
-    expect(mechanism.dof).toBe(1);
+    // Gruebler counts one, and the geometry finds the second: the lever's
+    // freedom. The geometry is believed wherever it finds more (decision S30),
+    // so the drawing is refused before a solve is tried, as a count of two.
+    expect(mechanism.dof).toBe(2);
     expect(mechanism.isMechanismValid()).toBe(false);
-    expect((mechanism as unknown as { _failure: string })._failure).toBe('hidden-freedom');
-    expect(mechanism.hiddenFreedoms).toBe(2);
+    expect(mechanism.failure).toBe('mobility');
   });
 
   it('is still refused with W tied down, because the welded valve rod cannot tilt', () => {

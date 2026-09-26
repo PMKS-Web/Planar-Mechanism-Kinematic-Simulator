@@ -1243,8 +1243,17 @@ export class PositionSolver {
       }
     };
 
+    // Known joints first, as `bodyRows` asks: a bar pinned to ground at two
+    // points is frame, and its other joints are placed from both pins at once.
+    // In the order the link lists them an unknown joint became an anchor, and
+    // was tied to the two pins by two distances -- which say nothing across
+    // the line when the three are collinear, as a cylinder's barrel welded to
+    // a bar grounded along its own axis is, and the solve was refused.
     for (const link of links) {
-      bodyRows(link.joints);
+      bodyRows([
+        ...link.joints.filter((joint) => !unknown.has(joint.id)),
+        ...link.joints.filter((joint) => unknown.has(joint.id)),
+      ]);
     }
 
     for (const joint of joints) {

@@ -16,6 +16,7 @@ import {
   staysHeld,
   Trial,
   unweldedAt,
+  prismaticAt,
   weldedAt,
   withoutBody,
   withoutLink,
@@ -459,9 +460,9 @@ export function typeFixes(
     if (joint instanceof PrisJoint) {
       if (!joint.rotates || joint.isSealed) continue;
       if (refuseJointType(joint, 'prismatic', context)) continue;
-      const rotates = (one: PrisJoint) => (one === joint ? false : one.rotates);
-      const edit: Edit = { groundedAt: (one) => one.ground, assignment, rotates };
-      if (leavesOneMachine(trial, edit)) fixes.push({ kind: 'prismatic', joint });
+      if (leavesOneMachine(trial, prismaticAt(assignment, joint))) {
+        fixes.push({ kind: 'prismatic', joint });
+      }
       continue;
     }
     // The input's own pin welded is the input with nothing left to turn.
