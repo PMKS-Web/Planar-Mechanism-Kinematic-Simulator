@@ -242,8 +242,7 @@ Spell it **center of mass** in prose and **CoM** in a label. Not `COM`, not
 | **rod** | the thin bar that slides out | — |
 | **joint** | either end, where it attaches — and the square between them | ~~mount~~, ~~seal~~ |
 | **stroke** / **travel** | how far the rod moves | — |
-| **holds its length** | what a cylinder nothing drives does, when the machine does not move it either | ~~locked~~ (a Lock is about position), ~~frozen~~, ~~rigid~~ |
-| **Holding Force** | the axial force such a cylinder has to hold, on the slide's own panel | ~~reaction~~, ~~strut force~~ |
+| **change length on its own** | what a cylinder nothing drives can do, which is a degree of freedom | ~~telescope freely~~, ~~float~~ |
 | **closed** / **open** | the two ends of the travel | ~~retracted~~, ~~extended~~ |
 | **closing** / **opening** | which way it is moving right now | ~~retracting~~, ~~extending~~ |
 

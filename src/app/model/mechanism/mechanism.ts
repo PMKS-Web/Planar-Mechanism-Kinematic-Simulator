@@ -3,7 +3,6 @@ import { Link, RealLink } from '../link';
 import { assignBodies, BodyAssignment } from './bodies';
 import { mobilityFromGeometry } from './mobility';
 import { freedomsOf } from './freedoms';
-import { cylinderHolds } from './cylinder-hold';
 import { Force } from '../force';
 import { PositionSolver, PositionSolverDriveState, PRISMATIC_INPUT_STEP } from './position-solver';
 import { InstantCenter } from '../instant-center';
@@ -389,22 +388,14 @@ export class Mechanism {
   }
 
   /**
-   * The mobility this machine is judged by, once its passive cylinders have
-   * been asked whether they are holding their length.
+   * The mobility this machine is judged by.
    *
-   * The count itself is `freedoms.ts`; what happens here is deciding the
-   * machine it is a count *of*. A cylinder nothing drives and nothing moves is
-   * a rigid link of the length it was drawn at (decision S28), so it is merged
-   * into one body with its two members -- exactly as a cylinder welded shut at
-   * both ends already is (S25) -- and the count is taken of what results. The
-   * number every reader is shown, and every solver works to, is therefore the
-   * machine's effective mobility rather than a count of a drawing nobody meant.
+   * The count itself is `freedoms.ts`, taken over the drawing's own bodies. A
+   * cylinder is a sliding joint like any other and adds its freedom, unless
+   * both its ends are on one rigid body, which `assignBodies` already knows
+   * (S25).
    */
   determineDegreesOfFreedom(): number {
-    const holds = cylinderHolds(this.joints[0], this.links[0]);
-    this._heldCylinderSeals = holds.held;
-    this._looseCylinderSeals = holds.loose;
-    this._bodyMerges = holds.merges;
     const { counted, dof } = freedomsOf(this.joints[0], this.links[0], this.bodyAssignment());
     this.countedFreedoms = counted;
     return dof;
@@ -413,28 +404,8 @@ export class Mechanism {
   /** Gruebler's own count, kept for the diagnosis a failed solve makes. */
   private countedFreedoms = 0;
 
-  /** The seal ids of this machine's cylinders that are holding their length. */
-  private _heldCylinderSeals: ReadonlySet<string> = new Set<string>();
-
-  /** Barrel/rod root pairs those holds make one body of. */
-  private _bodyMerges: string[][] = [];
-
-  /** Seals whose length nothing decides, which a freedom had to be left for. */
-  private _looseCylinderSeals: ReadonlySet<string> = new Set<string>();
-
-  /** See `_heldCylinderSeals`; empty for every machine with nothing to hold. */
-  get heldCylinderSeals(): ReadonlySet<string> {
-    return this._heldCylinderSeals;
-  }
-
-  /** See `CylinderHoldReport.loose`: where a surplus freedom actually is. */
-  get looseCylinderSeals(): ReadonlySet<string> {
-    return this._looseCylinderSeals;
-  }
-
   /**
-   * What a rigid body is in *this* machine: the drawing's own answer, plus
-   * whatever its passive cylinders are holding rigid.
+   * What a rigid body is in *this* machine: the drawing's own answer.
    *
    * Two links pinned to each other at two or more shared joints cannot move
    * relative to each other — the second pin constrains nothing the first did
@@ -445,14 +416,9 @@ export class Mechanism {
    * already spans): a perfectly ordinary four-bar then counts as DOF 0 and
    * refuses to simulate. Collapsing such links into one body before counting
    * removes the paradox.
-   *
-   * A cylinder holding its length is merged here too, and by the same call:
-   * `cylinderHolds` has already decided which, and a passive ram the machine
-   * cannot move is one body with its members exactly as a welded-shut one is
-   * (decisions S25 and S28).
    */
   private bodyAssignment(): BodyAssignment {
-    return assignBodies(this.joints[0], this.links[0], undefined, this._bodyMerges);
+    return assignBodies(this.joints[0], this.links[0]);
   }
 
   /** The freedoms the drawing's geometry has, second order and all. */
@@ -741,7 +707,7 @@ export class Mechanism {
     PositionSolver.resetStaticVariables();
     // After the reset, which is what puts the default back.
     PositionSolver.revoluteSampleStep = revoluteStep;
-    PositionSolver.determineJointOrder(this.joints[0], this.links[0], this._heldCylinderSeals);
+    PositionSolver.determineJointOrder(this.joints[0], this.links[0]);
     // A grounded slider's refined spacing, once its stroke has been walked at
     // the fixed one. After the joint order, which is where a cylinder sets
     // its own; a cylinder is never refined, its stroke being known up front.
@@ -1700,8 +1666,7 @@ export class Mechanism {
         this.links[index],
         analysisType,
         this.gravity,
-        this.unit,
-        this._heldCylinderSeals
+        this.unit
       );
       for (const joint of this.joints[index].filter((candidate) =>
         this.isForceAnalysisJoint(candidate)

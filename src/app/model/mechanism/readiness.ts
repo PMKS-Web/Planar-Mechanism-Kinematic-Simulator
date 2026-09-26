@@ -42,7 +42,6 @@ import {
   tooFree,
 } from './mobility-sentences';
 import { SetupIssue } from './setup-issue';
-import { cylinderHoldOrder } from './cylinder-hold';
 
 /** A named number about a mechanism, for the overview grid. */
 export interface MechanismFact {
@@ -226,23 +225,6 @@ function issueForFailure(
             prose`Ground a joint, such as a crank's pivot`,
             ...(slides ? [prose`Ground a slider to fix its direction`] : []),
           ],
-        };
-      }
-      // The solver already identified the cylinders whose length is still free.
-      // Keep that advice when adapting the older cylinder report to setup issues.
-      const loose = cylinders.filter((cylinder) =>
-        mechanism.looseCylinderSeals.has(cylinder.seal.id)
-      );
-      if (dof > 1 && loose.length > 0) {
-        return {
-          severity: 'blocker',
-          title: `${dof} degrees of freedom, needs 1`,
-          summary: prose`${listOf(loose.map(cylinderRef))} can still change length independently.`,
-          explain:
-            'One input drives one motion. A cylinder whose length is not determined adds another freedom until it is driven or constrained.',
-          fixes: loose
-            .slice(0, 3)
-            .map((cylinder) => prose`Add Input to ${jointRef(cylinder.seal)}`),
         };
       }
       return dof > 1
@@ -646,33 +628,6 @@ export function readinessOf(
     .filter((cylinder) => isFrozenCylinder(cylinder, bodyOf))
     .forEach((cylinder) => add(frozenCylinderIssue(cylinder)));
 
-  // And the other reason a cylinder does not stroke: nothing drives it and the
-  // machine does not move it, so it is holding the length it was drawn at and
-  // the mobility above is the machine's rather than the drawing's (decision
-  // S28). A note, because nothing is wrong -- but said, because a reader who
-  // expected a cylinder to telescope would otherwise think the solver is
-  // broken. Before the stroke warning for the same reason as the one above:
-  // a ram holding its length uses none of its travel because it is not being
-  // asked to.
-  // Named in the order a reader would read the list in, which is the order the
-  // rule itself decides them in -- not the order the drawing stores its joints.
-  const holding = cylinders
-    .filter((cylinder) => mechanism.heldCylinderSeals.has(cylinder.seal.id))
-    .sort((a, b) => cylinderHoldOrder(a).localeCompare(cylinderHoldOrder(b)));
-  if (holding.length > 0) {
-    add({
-      severity: 'note',
-      title:
-        holding.length === 1
-          ? 'A cylinder is holding its length'
-          : 'Cylinders are holding their length',
-      summary: prose`${listOf(holding.map(cylinderRef))} ${holding.length === 1 ? 'stays' : 'stay'} at the drawn length.`,
-      explain:
-        'An undriven cylinder holds its length when the mechanism does not move it. It counts as a rigid link.',
-      fixes: holding.map((cylinder) => prose`Add Input to ${jointRef(cylinder.seal)}`),
-    });
-  }
-
   // One input drives one freedom, and the solver takes the first it finds.
   // A second is ignored without a word, which reads as the app choosing for
   // the reader; saying which one runs is what makes the choice theirs.
@@ -695,7 +650,7 @@ export function readinessOf(
     });
   }
 
-  const stroke = holding.length > 0 ? undefined : helpers.strokeWarning(partition);
+  const stroke = helpers.strokeWarning(partition);
   if (stroke) {
     const name = cylinderRef(stroke.cylinder);
     add({

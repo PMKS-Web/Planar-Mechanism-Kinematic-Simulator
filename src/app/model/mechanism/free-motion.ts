@@ -1,7 +1,6 @@
 import { Joint, PrisJoint, RealJoint } from '../joint';
 import { Link, RealLink } from '../link';
 import { assignBodies, BodyAssignment, WORLD } from './bodies';
-import { holdingCylinders } from './cylinder-hold';
 import { MechanismPartition } from './mechanism-partition';
 import {
   Constraint,
@@ -9,15 +8,19 @@ import {
   constraintSystemOf,
   freeDirectionsOf,
   freedomsOf,
+  holdSlide,
   pointMotion,
 } from './mobility';
+import { Cylinder, cylindersIn } from '../cylinder';
+import { isFrozenCylinder } from '../cylinder-frozen';
 import {
+  Edit,
   hiddenJoints,
   holdFor,
   MAX_FIXES,
   MobilityFix,
   STILL,
-  takesOneAway,
+  takesSomeAway,
   Trial,
 } from './mobility-edits';
 import { describeActuator } from '../actuator';
@@ -69,6 +72,12 @@ export interface MobilityDiagnosis {
   looseLinks: RealLink[];
   /** Joints a reader can see that still move while the input is held still. */
   looseJoints: RealJoint[];
+  /**
+   * Cylinders nothing drives whose length can still change with the input held
+   * still. Each is a freedom of its own, and naming the cylinder says where it
+   * is better than naming its barrel and rod as two parts that move.
+   */
+  looseCylinders?: Cylinder[];
   /** Single edits that leave exactly one degree of freedom, each counted, not guessed. */
   fixes: MobilityFix[];
   /**
@@ -138,16 +147,13 @@ export function diagnoseMobility(
 function diagnose(partition: MechanismPartition, drawing?: Drawing): MobilityDiagnosis {
   const { joints, links } = partition;
   const assignment = assignBodies(joints, links);
-  const drawn = constraintSystemOf(joints, links, assignment);
-  if (!drawn) return NOTHING;
+  const system = constraintSystemOf(joints, links, assignment);
+  if (!system) return NOTHING;
 
   const driven = partition.ownJoints.find(
     (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
   );
-  const hold = driven ? holdFor(driven, drawn, assignment) : undefined;
-  // Counted as the machine counts it, with the cylinders nothing drives
-  // holding their length, so the count here is the one in the drawer's title.
-  const system = holdingCylinders(drawn, joints, assignment, hold);
+  const hold = driven ? holdFor(driven, system, assignment) : undefined;
   const held = hold ? [...system.constraints, hold] : system.constraints;
   const hidden = hiddenJoints(joints);
   const own = new Set(partition.ownJoints.map((joint) => joint.id));
@@ -180,9 +186,13 @@ function diagnose(partition: MechanismPartition, drawing?: Drawing): MobilityDia
 
   // Two links left hanging need two edits, and no single one counts to one:
   // what each loose part needs is said instead, and the reader makes one each.
+  const step = (edit: Edit) => takesSomeAway(trial, edit, free);
   const steps =
     free > 2 && fixes.length === 0
-      ? danglingDeletes(trial, assignment, own, hidden, (edit) => takesOneAway(trial, edit, free))
+      ? [
+          ...danglingDeletes(trial, assignment, own, hidden, step),
+          ...groundingFixes(trial, loose.looseJoints, hidden, step),
+        ]
       : [];
 
   const directions = driven && free >= 1 ? freeMotionOf(system) : [];
@@ -198,6 +208,7 @@ function diagnose(partition: MechanismPartition, drawing?: Drawing): MobilityDia
 
   return {
     ...loose,
+    looseCylinders: looseCylindersOf(joints, system, assignment, held),
     fixes: fixes.slice(0, MAX_FIXES),
     // Beside a deleted dangling link as well as instead of every other fix:
     // the link may be the first bar of more linkage rather than a mistake.
@@ -215,6 +226,35 @@ function diagnose(partition: MechanismPartition, drawing?: Drawing): MobilityDia
         ? untangleFixes(trial, assignment, own, hidden).slice(0, MAX_FIXES)
         : undefined,
   };
+}
+
+/**
+ * The cylinders nothing drives whose slide still moves with the input held:
+ * holding one still takes a freedom away. A cylinder frozen inside one body
+ * has no slide to hold.
+ */
+function looseCylindersOf(
+  joints: Joint[],
+  system: ConstraintSystem,
+  assignment: BodyAssignment,
+  held: Constraint[]
+): Cylinder[] {
+  const passive = cylindersIn(joints).filter(
+    (cylinder) => !cylinder.seal.input && !isFrozenCylinder(cylinder, assignment.bodyOf)
+  );
+  if (passive.length === 0) return [];
+  const free = freedomsOf(system, held);
+  if (free === 0) return [];
+  return passive.filter((cylinder) => {
+    const { seal } = cylinder;
+    const stop = holdSlide(
+      { x: seal.x, y: seal.y },
+      system.bodyAt(assignment.bodyOf(cylinder.rodRoot)),
+      system.bodyAt(assignment.bodyOf(cylinder.barrelRoot)),
+      seal.slotAngle
+    );
+    return freedomsOf(system, [...held, stop]) < free;
+  });
 }
 
 /**

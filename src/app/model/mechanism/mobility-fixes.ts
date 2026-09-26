@@ -37,7 +37,9 @@ import {
 export function groundingFixes(
   trial: Trial,
   looseJoints: RealJoint[],
-  hidden: Set<string>
+  hidden: Set<string>,
+  /** What the edit has to count to: one freedom by default, or a step toward it. */
+  counts: (edit: Edit) => boolean = (edit) => leavesOneMachine(trial, edit)
 ): MobilityFix[] {
   const { joints, links } = trial.partition;
   const fixes: MobilityFix[] = [];
@@ -49,7 +51,7 @@ export function groundingFixes(
       assignment: assignBodies(joints, links, groundedAt),
       touchesInput: joint === trial.driven,
     };
-    if (leavesOneMachine(trial, edit)) fixes.push({ kind: 'ground', joint });
+    if (counts(edit)) fixes.push({ kind: 'ground', joint });
   }
   return fixes;
 }

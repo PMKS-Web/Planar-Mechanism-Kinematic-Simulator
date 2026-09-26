@@ -356,10 +356,16 @@ export function applied(fixture: MechanismFixture, action: Action): MechanismFix
       const meeting = next.links.filter((link) => link.joints.includes(action.joint));
       const members = meeting.flatMap((link) => link.subset ?? [{ joints: link.joints }]);
       next.links = next.links.filter((link) => !meeting.includes(link));
-      next.links.push({
-        joints: sortedIds(meeting.map((link) => link.joints).join('')),
-        subset: members,
-      });
+      const compound = sortedIds(meeting.map((link) => link.joints).join(''));
+      next.links.push({ joints: compound, subset: members });
+      // A slot cut in a link that is now a member is cut in the compound, as
+      // the app moves it: a cylinder's barrel welded to a bar keeps its bore.
+      const merged = new Set(meeting.map((link) => link.joints));
+      next.sliders = next.sliders?.map((slider) =>
+        slider.on && merged.has(slider.on.carrier)
+          ? { ...slider, on: { ...slider.on, carrier: compound } }
+          : slider
+      );
       next.welds = [...(next.welds ?? []), action.joint];
       return next;
     }

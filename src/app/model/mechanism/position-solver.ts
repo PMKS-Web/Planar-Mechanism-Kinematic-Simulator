@@ -29,10 +29,8 @@ import {
   residuals,
   SimultaneousSystem,
   solveSimultaneous,
-  heldPoseTolerance,
 } from './simultaneous-solver';
 import { angleReference, GROUND_BODY, resolveActuator } from '../actuator';
-import { heldCylinderSeals } from './cylinder-hold';
 import { MARK } from '../joint-marks';
 import { SettingsService } from '../../services/settings.service';
 
@@ -593,42 +591,9 @@ export class PositionSolver {
     this.stepCount = 0;
     this.unsolvableJoints = [];
     this.unusableCylinderDrive = undefined;
-    this.heldSeals = new Set<string>();
   }
 
-  /**
-   * The seals of the cylinders holding their length (decision S28).
-   *
-   * Set once per ordering, from the machine's own answer where the caller has
-   * one, and read in two places below: a drawing with a held ram has to be
-   * solved as one system rather than walked, and each held ram writes one more
-   * row saying its seal does not move along its own barrel.
-   */
-  static heldSeals: ReadonlySet<string> = new Set<string>();
-
-  /**
-   * How near a simultaneous solve has to come before this drawing accepts it.
-   *
-   * The ordinary precision for everything, and `heldPoseTolerance` for a
-   * drawing holding a cylinder's length -- whose rows pin two unknowns rigidly
-   * to two boundary joints that are each stored rounded, so a grain of the
-   * rounding is a disagreement nothing can close. Measured against this
-   * system's own size, which `admitCoupledSystem` has already taken. Read where
-   * the coupled route solves, and nowhere else.
-   */
-  private static get poseTolerance(): number | undefined {
-    return this.heldSeals.size > 0 ? heldPoseTolerance(this.boundaryScale) : undefined;
-  }
-
-  static determineJointOrder(
-    joints: Joint[],
-    links: Link[],
-    // The machine has already decided this at its start pose; asking again
-    // here would be a second opinion about one question. Computed where a
-    // caller has no answer to hand, which is every spec and nothing else.
-    held: ReadonlySet<string> = heldCylinderSeals(joints, links)
-  ) {
-    this.heldSeals = held;
+  static determineJointOrder(joints: Joint[], links: Link[]) {
     const knownJointsIds: string[] = [];
     let orderNum = 1;
     // pre-condition: Save all the joints as initial Values
@@ -695,12 +660,7 @@ export class PositionSolver {
     // only after the drive branch below had already walked the deferred joints
     // meant a ram-driven carriage -- the commonest arrangement this route
     // exists for -- never reached it.
-    // A ram holding its length is a shape the walk has no primitive for: its
-    // two mounts stay a fixed distance apart, and nothing the walk knows says
-    // so -- the rigidity is a row in the constraint set and nowhere else
-    // (decision S28). So a drawing with one is solved whole, exactly as a
-    // welded mount already is.
-    const coupled = this.forceCoupledRoute || this.mountEnhanced(joints) || this.heldSeals.size > 0;
+    const coupled = this.forceCoupledRoute || this.mountEnhanced(joints);
 
     if (
       this.registerCylinderDrive(cylinders, inputJoint) ||
@@ -1219,19 +1179,6 @@ export class PositionSolver {
     const touches = (...ids: string[]) => ids.some((id) => unknown.has(id));
     const constraints: Constraint[] = [];
     const at = (joint: Joint): [number, number] => [joint.x, joint.y];
-    // The parts whose rigidity the rows below write themselves, and the three
-    // ordinary rows each of them therefore replaces (decision S28).
-    const heldParts = cylindersIn(joints).filter((one) => this.heldSeals.has(one.seal.id));
-    const heldSeals = new Set(heldParts.map((one) => one.seal.id));
-    // Only a member that is a link in its own right. One welded into a
-    // neighbor is a leaf of a compound this loop never reaches, and the
-    // compound's own rows are nobody's to suppress.
-    const heldMembers = new Set(
-      heldParts.flatMap((one) => [
-        ...(one.barrel.id === one.barrelRoot.id ? [one.barrel.id] : []),
-        ...(one.rod.id === one.rodRoot.id ? [one.rod.id] : []),
-      ])
-    );
 
     /**
      * A rigid body of n joints, pinned by 2n-3 rows: the first pair, then
@@ -1297,17 +1244,11 @@ export class PositionSolver {
     };
 
     for (const link of links) {
-      // A held part's own members: the four joints are one body, written once
-      // below, and the barrel's length and the rod's are two of its rows.
-      if (heldMembers.has(link.id)) continue;
       bodyRows(link.joints);
     }
 
     for (const joint of joints) {
       if (!(joint instanceof PrisJoint)) continue;
-      // A held seal does not slide, so "it is somewhere on this line" is the
-      // weaker half of what the body row below already says exactly.
-      if (heldSeals.has(joint.id)) continue;
       if (joint.isFloating && joint.slotJointA && joint.slotJointB) {
         if (touches(joint.id, joint.slotJointA.id, joint.slotJointB.id)) {
           constraints.push({
@@ -1332,36 +1273,9 @@ export class PositionSolver {
       }
     }
 
-    // A cylinder holding its length is one rigid body of four joints (decision
-    // S28) and is written here as one, by the same rule every other body
-    // follows. The rows it replaces -- the two members' lengths, the slot row
-    // and the weld's angle -- are each something this body already says.
-    //
-    // **Its joints are collinear, which is why this is a body and not a
-    // distance.** Written as "the seal stands |AS| from the mount", the seal
-    // carried two distance rows to two anchors *on a line through it*, both
-    // gradients along the axis: precisely the degenerate pair `rigidOffset`
-    // exists to replace. The maintainer's triangle is the drawing that showed
-    // it -- every row satisfied to 5e-7 at the drawn pose, and a least-squares
-    // answer that could get no nearer than 1.3e-5 of one.
-    //
-    // **Known joints first.** A body row between two joints the walk has
-    // already placed constrains no unknown and is a promise about the boundary
-    // instead -- which the boundary, stored on a grid of rounded coordinates,
-    // is not quite able to keep. Ordering the frame onto what is known leaves
-    // every row about something the solve can still move.
-    for (const cylinder of heldParts) {
-      const members = [cylinder.mountA, cylinder.inner, cylinder.seal, cylinder.mountB];
-      bodyRows([
-        ...members.filter((joint) => !unknown.has(joint.id)),
-        ...members.filter((joint) => unknown.has(joint.id)),
-      ]);
-    }
-
     // A weld at a block is what stops the rider turning inside its slot, and
     // nothing above says so — the rider's distances leave it free to rotate.
     for (const assembly of slideAssemblies(joints)) {
-      if (heldSeals.has(assembly.slider.id)) continue;
       const slider = assembly.slider;
       const rider = assembly.riders[0];
       if (!rider) continue;
@@ -2037,18 +1951,13 @@ export class PositionSolver {
     // that *can* be reached instead. The offsets below are thousandths of a
     // sample, and the pose moves by a few thousandths of a unit with them.
     let settledSpan = drive.span;
-    let settled = solveSimultaneous(
-      system,
-      this.jointMapPositions,
-      settledSpan,
-      this.poseTolerance
-    );
+    let settled = solveSimultaneous(system, this.jointMapPositions, settledSpan);
     if (!settled) {
       const nudges = [1e-3, 1e-2, 1e-1, 1].flatMap((size) => [size, -size]);
       for (const nudge of nudges) {
         drawn.forEach((position, id) => this.jointMapPositions.set(id, [...position]));
         settledSpan = drive.span + nudge * drive.step;
-        if (solveSimultaneous(system, this.jointMapPositions, settledSpan, this.poseTolerance)) {
+        if (solveSimultaneous(system, this.jointMapPositions, settledSpan)) {
           settled = true;
           break;
         }
@@ -2429,7 +2338,7 @@ export class PositionSolver {
 
     to.forEach((position, id) => this.jointMapPositions.set(id, [...position]));
     // No driven row exists, so the command is read by nothing.
-    if (!solveSimultaneous(system, this.jointMapPositions, 0, this.poseTolerance)) {
+    if (!solveSimultaneous(system, this.jointMapPositions, 0)) {
       return halve();
     }
     if (
@@ -2455,10 +2364,9 @@ export class PositionSolver {
    * boundary is doing. It is not a rounding where two unknowns are held rigid
    * to *two different* boundary joints: their separation is fixed and the
    * shrunk boundary's is not, so no pose satisfies the rows at all and the
-   * halving refuses a sample it was subdividing in order to reach. A cylinder
-   * holding its length ties its mounts together exactly that way (decision
-   * S28), and the maintainer's triangle of three of them could not take a
-   * single step until this was the arc.
+   * halving refuses a sample it was subdividing in order to reach. A rigid
+   * body tied to two moving boundary joints is exactly that, and a triangle of
+   * three rams held rigid could not take a single step until this was the arc.
    *
    * So the moving part of the boundary is fitted with the rigid motion that
    * carries `from` to `to`, and the half step is that motion's own square
@@ -2657,7 +2565,7 @@ export class PositionSolver {
    * as before.
    */
   private static settledOnItsBranch(system: SimultaneousSystem, command: number): boolean {
-    if (!solveSimultaneous(system, this.jointMapPositions, command, this.poseTolerance)) {
+    if (!solveSimultaneous(system, this.jointMapPositions, command)) {
       return false;
     }
     this.refusalKind = 'none';
