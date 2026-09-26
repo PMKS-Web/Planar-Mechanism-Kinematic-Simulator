@@ -1,64 +1,26 @@
 import { SettingsService } from '../../services/settings.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
-import { RealJoint } from '../../model/joint';
 import { RealLink } from '../../model/link';
 import { MechanismService } from '../../services/mechanism.service';
-import { Mechanism } from '../../model/mechanism/mechanism';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
 import { MechanismFact } from '../../model/mechanism/readiness';
 import { MatIcon } from '@angular/material/icon';
 import { ExportCatalogService } from '../../services/export/export-catalog.service';
+import { panelRole } from '../../model/what-is-this/roles';
+import { WhatIsThisService } from '../../services/what-is-this/what-is-this.service';
+import { PartLinkComponent } from '../BLOCKS/part-link/part-link.component';
+import { WhatIsThisNoteComponent } from '../what-is-this-note/what-is-this-note.component';
 
 /** One line of the Links section: what a link is, and how long. */
 interface LinkRow {
+  /** The link itself, which its name points at on the grid. */
+  part: RealLink;
   name: string;
   role: string;
   length: string;
-}
-
-/**
- * How much of a turn a link makes about its ground pivot over one cycle, as
- * "all the way round" or not.
- *
- * Unwrapped, so a bar that swings out and back reads as the arc it covered
- * rather than as ending where it started -- the same reason drive-profile
- * unwraps the input's own turn. Undefined when the cycle cannot say: too few
- * samples, or a link the solved copies do not carry.
- */
-function sweepOf(link: RealLink, solved: Mechanism): boolean | undefined {
-  const frames = solved.joints;
-  if (frames.length < 3) return undefined;
-  const pivot = link.joints.find((joint) => (joint as RealJoint).ground);
-  const arm = link.joints.find((joint) => joint !== pivot);
-  if (!pivot || !arm) return undefined;
-  const atPivot = frames[0].findIndex((joint) => joint.id === pivot.id);
-  const atArm = frames[0].findIndex((joint) => joint.id === arm.id);
-  if (atPivot === -1 || atArm === -1) return undefined;
-
-  let turned = 0;
-  let least = 0;
-  let most = 0;
-  let previous: number | undefined;
-  for (const frame of frames) {
-    const angle = Math.atan2(frame[atArm].y - frame[atPivot].y, frame[atArm].x - frame[atPivot].x);
-    if (previous !== undefined) {
-      let step = angle - previous;
-      // One sample is a degree of input, so a jump of more than half a turn is
-      // the branch cut of atan2 rather than the link having gone that far.
-      if (step > Math.PI) step -= 2 * Math.PI;
-      if (step < -Math.PI) step += 2 * Math.PI;
-      turned += step;
-      least = Math.min(least, turned);
-      most = Math.max(most, turned);
-    }
-    previous = angle;
-  }
-  // Short of a whole turn by the width of the last sample or two still counts:
-  // the cycle stops a step before it repeats its first pose.
-  return most - least >= 2 * Math.PI * 0.98;
 }
 
 /**
@@ -74,7 +36,7 @@ function sweepOf(link: RealLink, solved: Mechanism): boolean | undefined {
   templateUrl: './mechanism-panel.component.html',
   styleUrls: ['./mechanism-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [MatIcon],
+  imports: [MatIcon, PartLinkComponent, WhatIsThisNoteComponent],
 })
 export class MechanismPanelComponent {
   mechanism = inject(MechanismService);
@@ -83,12 +45,14 @@ export class MechanismPanelComponent {
   private nup = inject(NumberUnitParserService);
   private tabs = inject(SelectedTabService);
   private exportCatalog = inject(ExportCatalogService);
+  private whatIsThis = inject(WhatIsThisService);
 
   /** Edit offers to rename and delete; analysis only reports. */
   readonly editable = input(false);
 
   overviewOpen = true;
   linksOpen = true;
+  noteOpen = true;
 
   get index(): number {
     return this.activeObj.selectedMechanismIndex;
@@ -131,78 +95,40 @@ export class MechanismPanelComponent {
   }
 
   /**
-   * Every link in the machine, with what it does.
+   * Every link in the machine, with its job.
    *
-   * The role is read off the geometry rather than stored: a bar with one end on
-   * ground is a crank or a rocker depending on whether it can go all the way
-   * round, and one with neither end grounded couples the two.
+   * The job is the one the fact sheet gives it (`model/what-is-this/roles.ts`),
+   * read off the solved cycle: which body the input drives, which are pinned
+   * to the ground, which turn all the way round. A machine that does not run
+   * has no cycle to read, so its links are listed without one.
    */
   get links(): LinkRow[] {
     const partition = this.mechanism.partitions[this.index];
     if (!partition) {
       return [];
     }
+    const jobs = this.whatIsThis.sheetFor(this.index)?.jobs ?? [];
     return partition.links
       .filter((link): link is RealLink => link instanceof RealLink)
-      .map((link) => ({
-        // The name on the canvas, not the link's id: a body welded to a
-        // barrel mount carries the buried inner end in its id (D14, S11), and
-        // this list had it under `AA1D` while the tag beside it read `AD`.
-        name: this.mechanism.visibleBodyName(link),
-        role: this.roleOf(link),
-        length: this.lengthOf(link),
-      }));
+      .map((link) => {
+        const job = jobs.find((candidate) => candidate.links.includes(link));
+        return {
+          part: link,
+          // The name on the canvas, not the link's id: a body welded to a
+          // barrel mount carries the buried inner end in its id (D14, S11), and
+          // this list had it under `AA1D` while the tag beside it read `AD`.
+          name: this.mechanism.visibleBodyName(link),
+          role: job ? panelRole(job) : '',
+          length: this.lengthOf(link),
+        };
+      });
   }
 
-  /**
-   * What one link does, in the words a reader of a four-bar expects.
-   *
-   * "Grounded" is reserved for a body that genuinely cannot move: two of its
-   * joints pinned to the frame leave it nowhere to go. One pinned joint is a
-   * pivot, not a fixture -- the output of an ordinary crank-rocker has one, and
-   * calling it grounded describes it as fixed while it swings on screen.
-   */
-  private roleOf(link: RealLink): string {
-    if (link.joints.some((joint) => (joint as RealJoint).input)) {
-      return 'Input';
-    }
-    const grounded = link.joints.filter((joint) => (joint as RealJoint).ground).length;
-    if (grounded === 0) {
-      return 'Coupler';
-    }
-    if (grounded > 1 || link.joints.length < 2) {
-      return 'Grounded';
-    }
-    const full = this.turnsFully(link);
-    // Whether it revolves is a fact about the solved cycle, and a machine that
-    // does not run has no cycle to read it from. Say what is known -- it turns
-    // on ground -- rather than pick one of the two names at random.
-    return full === undefined ? 'Grounded pivot' : full ? 'Crank' : 'Rocker';
+  /** What PMKS+ matched the machine as, most specific first, if anything. */
+  get family(): string | undefined {
+    const match = this.whatIsThis.sheetFor(this.index)?.family[0]?.family;
+    return match ? match.charAt(0).toUpperCase() + match.slice(1) : undefined;
   }
-
-  /**
-   * Does this link carry all the way round its ground pivot?
-   *
-   * Measured off the solved cycle rather than from link lengths: Grashof
-   * answers this for a four-bar and says nothing about the six-bars and
-   * slider chains the same panel has to describe. Cached against the Mechanism
-   * object, which is replaced whenever the drawing changes, because the
-   * template asks for every row on every change-detection pass.
-   */
-  private turnsFully(link: RealLink): boolean | undefined {
-    const solved = this.mechanism.mechanisms[this.index];
-    if (!solved?.isMechanismValid()) return undefined;
-    if (this.rotationCache?.mechanism !== solved) {
-      this.rotationCache = { mechanism: solved, byLink: new Map() };
-    }
-    const known = this.rotationCache.byLink.get(link.id);
-    if (known !== undefined) return known;
-    const answer = sweepOf(link, solved);
-    this.rotationCache.byLink.set(link.id, answer);
-    return answer;
-  }
-
-  private rotationCache?: { mechanism: Mechanism; byLink: Map<string, boolean | undefined> };
 
   /** End to end, in the units the mechanism is drawn in. */
   private lengthOf(link: RealLink): string {

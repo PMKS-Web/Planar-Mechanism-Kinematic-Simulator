@@ -1325,6 +1325,55 @@ export class MechanismService {
     }
   }
 
+  /**
+   * Draw the drawing at each of several moments, hand each to `look`, and put
+   * every machine back where it was, playing or not.
+   *
+   * All inside the caller's task, so nothing in between is ever painted: the
+   * "What is this?" picture is taken from the canvas, and a reader should not
+   * see their mechanism jump through six poses to get it. Each moment is a pose
+   * time in machine `index`'s own cycle -- the times its solved samples carry --
+   * and the other machines show the same time of the shared clock, as the
+   * scrubber would put them, which is how the pictures the feature was
+   * evaluated on were taken.
+   */
+  lookAt<T>(index: number, poseTimes: readonly number[], look: (poseTime: number) => T): T[] {
+    const held = this.ownSeconds.slice();
+    const step = this.mechanismTimeStep;
+    const playing = this.isPlaying;
+    // Drawing a pose paused writes both clocks; a running machine carries on
+    // from where they were, as though no frame had been missed.
+    const clock = { seconds: this.playbackTimeSeconds, ms: this.playbackClockMs };
+    const mechanism = this.mechanisms[index];
+    const period = mechanism?.cyclePeriod ?? 0;
+    try {
+      return poseTimes.map((poseTime) => {
+        // A reversed machine walks its frames the other way (`poseSecondsOf`).
+        const seconds =
+          mechanism?.framesRunBackwards && poseTime !== 0 && period > 0
+            ? period - poseTime
+            : poseTime;
+        this.mechanisms.forEach((other, k) => {
+          const own = other?.cyclePeriod ?? 0;
+          this.ownSeconds[k] =
+            k === index || !(own > 0) || seconds === own ? seconds : ((seconds % own) + own) % own;
+        });
+        this.drawOwnClocks(false);
+        return look(poseTime);
+      });
+    } finally {
+      this.ownSeconds = held;
+      this.seekingOneMechanism = true;
+      try {
+        this.animate(step, playing);
+      } finally {
+        this.seekingOneMechanism = false;
+      }
+      this.playbackTimeSeconds = clock.seconds;
+      this.playbackClockMs = clock.ms;
+    }
+  }
+
   save() {
     // Held while a pose-capturing edit is mid-flight: it will save once, at the
     // end, so the whole gesture is one entry in the history rather than one for

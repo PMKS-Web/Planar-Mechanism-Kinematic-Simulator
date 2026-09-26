@@ -1,0 +1,1329 @@
+{
+  "version": "v9",
+  "notes": {
+    "0061d9bb4543ba181c548c86ba29": {
+      "plainEnglish": "This mechanism converts continuous rotation into oscillating motion. The driven input turns **link AB** in full revolutions at 10 rpm counterclockwise about **A**. This drives **link BC**, which moves in general plane motion to swing **link CD** back and forth through an angle of 47.2 deg about **D**. **link AD** remains fixed as part of the frame, completing the four-bar loop.",
+      "resembles": "Grashof crank-rocker mechanism",
+      "useCases": [
+        {
+          "use": "Windshield wiper linkage",
+          "why": "It transforms a continuous motor rotation into the back-and-forth sweeping motion required of wiper arms."
+        },
+        {
+          "use": "Reciprocating conveyor drive",
+          "why": "It converts rotary motor input into an oscillating output stroke to push materials periodically."
+        }
+      ],
+      "terms": [
+        {
+          "term": "general plane motion",
+          "meaning": "Combined translation and rotation of a rigid body in a two-dimensional plane."
+        },
+        {
+          "term": "oscillating motion",
+          "meaning": "Back-and-forth movement between two limits or positions."
+        }
+      ]
+    },
+    "00985bb775aadf01291181a129d5": {
+      "plainEnglish": "In this mechanism, the driven input is joint A turning link ABR (\"Flywheel\") relative to the ground. As link ABR (\"Flywheel\") rotates fully, it pushes link BC (\"Connecting rod\") to drive slider C back and forth. **slider C** travels a distance of 2 along a fixed guide. Each full rotation takes 6 s, with the motion repeating continuously.",
+      "resembles": "In-line slider-crank mechanism",
+      "useCases": [
+        {
+          "use": "Reciprocating compressor",
+          "why": "It uses a rotating crank and connecting rod to drive a piston linearly inside a cylinder."
+        },
+        {
+          "use": "Internal combustion engine",
+          "why": "It converts linear piston motion into rotational power at the crankshaft using a connecting rod."
+        }
+      ],
+      "terms": [
+        {
+          "term": "driven input",
+          "meaning": "The energy or motion source applied to the mechanism to make it move."
+        },
+        {
+          "term": "fixed guide",
+          "meaning": "A stationary track that constrains a moving part to travel in a straight line."
+        }
+      ]
+    },
+    "00a776b01dbc760d774b0ea4bb99": {
+      "plainEnglish": "In this mechanism, the driven input turns **link EF** continuously in full revolutions. Through **link FG**, this continuous rotation drives **link GH** to rock back and forth through an angle of 60 deg. One complete cycle takes 6 s. The four-bar loop behaves as a Grashof crank-rocker, where **link EF** acts as the shortest bar capable of full rotation while **link GH** swings between its limits with a time ratio of 1.95.",
+      "resembles": "Grashof crank-rocker mechanism",
+      "useCases": [
+        {
+          "use": "windshield wiper drive",
+          "why": "It converts continuous motor rotation into the oscillating back-and-forth rocking motion required to sweep a wiper across a windshield."
+        },
+        {
+          "use": "conveyor transfer arm",
+          "why": "The rocking output delivers a periodic sweeping motion that can push items from one belt to another."
+        }
+      ],
+      "terms": [
+        {
+          "term": "Grashof crank-rocker",
+          "meaning": "A four-bar linkage where the shortest link rotates fully while the opposite link rocks."
+        },
+        {
+          "term": "time ratio",
+          "meaning": "The ratio of the time taken for the return stroke to the forward stroke."
+        }
+      ]
+    },
+    "00ee4a884fa89819d02f4f2a3304": {
+      "plainEnglish": "The driven input makes **AB** turn continuously at 10 rpm. This rotation drives **BC**, which pulls **CD** so that it also rotates completely around ground **D** at an uneven angular speed ranging from 27.3 to 131.9 deg/s. The motion repeats every 6 s, carrying traced point C in a continuous path.",
+      "resembles": "Drag-link mechanism",
+      "useCases": [
+        {
+          "use": "Rotary agitator",
+          "why": "It transmits continuous rotary motion from a motor to an output shaft with variable speed."
+        }
+      ],
+      "terms": [
+        {
+          "term": "angular speed",
+          "meaning": "The rate at which an object rotates around a fixed axis."
+        },
+        {
+          "term": "traced point",
+          "meaning": "A specific location on a link whose path is tracked during motion."
+        }
+      ]
+    },
+    "018295884d5c47158e3e43a636f6": {
+      "plainEnglish": "In this mechanism, the driven input is **cylinder A-D**, which extends and retracts to drive **link CDL** and **link DE**. As **cylinder A-D** changes length, it moves **link CDL**, which causes **link IJBEK** to swing back and forth. This motion guides the traced point J along a smooth curve with a width of 1.89 cm. **link ABCH** acts as a supporting beam pivoted on the ground at **A**, helping coordinate the entire multi-link movement.",
+      "resembles": "backhoe bucket linkage",
+      "useCases": [
+        {
+          "use": "Backhoe loader bucket mechanism",
+          "why": "It uses a hydraulic cylinder and multi-bar linkage to curl and dump an excavator bucket."
+        }
+      ],
+      "terms": [
+        {
+          "term": "driven input",
+          "meaning": "The primary actuator or force applied to make the mechanism move."
+        },
+        {
+          "term": "traced point",
+          "meaning": "A specific location on a link whose path of motion is tracked during operation."
+        }
+      ]
+    },
+    "01fceacd5d552d09807f3f23f6db": {
+      "plainEnglish": "In this mechanism, joint A turns link AB relative to the ground as the driven input, rocking back and forth through 38.6 deg to move the entire assembly. This action drives two separate four-bar loops simultaneously. Link BC and link BE act as couplers to move link CDLMNOP and link EFGHIJK, which function as beams that rock back and forth about ground D and ground F by 78.5 deg and 77.7 deg respectively. Traced point B follows a circular arc of radius 0.3 m.",
+      "resembles": "vehicle steering geometry linkage",
+      "useCases": [
+        {
+          "use": "automobile steering linkage",
+          "why": "It coordinates the angular movement of two steering knuckles on opposite sides of a vehicle."
+        }
+      ],
+      "terms": [
+        {
+          "term": "driven input",
+          "meaning": "The external force or motion applied to start the movement of a mechanism."
+        },
+        {
+          "term": "couplers",
+          "meaning": "Connecting links in a mechanism that transmit motion without having a fixed pivot."
+        },
+        {
+          "term": "traced point",
+          "meaning": "A specific point on a link whose path of motion is tracked as the mechanism operates."
+        }
+      ]
+    },
+    "036fb39662746b09375488642923": {
+      "plainEnglish": "In this mechanism, the driven input is **link AB**, which rotates continuously to drive the linkage. As **link AB** turns, it pushes **link BD** and **link BF**, causing **link CDE** and **link CF** to rock back and forth about ground pivot **C**. These motions coordinate to move **link FGH**, driving the traced point H along a closed curve with a nearly straight stretch spanning 40.37 cm.",
+      "resembles": "Strandbeest walking leg mechanism",
+      "useCases": [
+        {
+          "use": "Walking robots",
+          "why": "It generates a foot trajectory with a long flat bottom edge for smooth walking strides."
+        }
+      ],
+      "terms": [
+        {
+          "term": "traced point",
+          "meaning": "A specific location on a link whose path is tracked during motion."
+        },
+        {
+          "term": "ground pivot",
+          "meaning": "A stationary hinge or mounting point fixed to the frame."
+        }
+      ]
+    },
+    "03ae9656e473a11937fd7cbad637": {
+      "plainEnglish": "In this mechanism, joint **E** turns **link EF** as the input, which rotates in full revolutions and drives **slider G** back and forth along a fixed guide through **link FG**. As **link EF** turns, **link FG** swings back and forth through 38.9 deg while it moves. **slider G** travels a length of 2 back and forth along the fixed guide.",
+      "resembles": "reciprocating piston mechanism",
+      "useCases": [
+        {
+          "use": "reciprocating compressor",
+          "why": "It converts rotary motion from a motor into the linear motion required to compress gas."
+        },
+        {
+          "use": "internal combustion engine",
+          "why": "It transforms linear piston strokes into the continuous rotation of a crankshaft."
+        }
+      ],
+      "terms": [
+        {
+          "term": "linear motion",
+          "meaning": "movement in a straight line"
+        },
+        {
+          "term": "rotary motion",
+          "meaning": "turning movement around a fixed center or axis"
+        }
+      ]
+    },
+    "041d82072c9a3d063c23b7b584f0": {
+      "plainEnglish": "In this mechanism, the driven input **link OA (\"Motor crank\")** turns full revolutions about ground O to drive **link AB (\"Drive link\")**. This coupler moves **link BCPT (\"Wiper arm\")**, causing it to rock back and forth through an angle of 97.6 deg about ground pivot P. At the same time, **link CD (\"Tie rod\")** translates horizontally to drive **link DQU (\"Passenger arm\")**, which rocks in step through the same angle of 97.6 deg about ground Q. Traced points T and U sweep parallel arcs at the upper ends of the beams.",
+      "resembles": "dual wiper linkage",
+      "useCases": [
+        {
+          "use": "windshield wiper system",
+          "why": "It drives two synchronized oscillating arms across parallel paths from a single rotating motor."
+        }
+      ],
+      "terms": [
+        {
+          "term": "translates",
+          "meaning": "Moves along a path without rotating."
+        },
+        {
+          "term": "rock",
+          "meaning": "To swing back and forth through an angle."
+        },
+        {
+          "term": "coupler",
+          "meaning": "A link that has no fixed pivot and experiences general plane motion."
+        }
+      ]
+    },
+    "04a8b484d31d2a1df616d16e3a85": {
+      "plainEnglish": "In this mechanism, the driven input is joint H turning link HI at 12 rpm counterclockwise. This rotation drives link IJ, which acts as a coupler transmitting motion to link JK. As link HI completes full revolutions, link JK rocks back and forth through an angle of 47.7 deg. The cycle time is 5 s, and the entire assembly operates as a single four-bar loop supported by the ground.",
+      "resembles": "grashof crank-rocker mechanism",
+      "useCases": [
+        {
+          "use": "windshield wiper drive",
+          "why": "It converts continuous rotary motion from a motor into the oscillating back-and-forth rocking motion required by wiper arms."
+        },
+        {
+          "use": "reciprocating conveyor",
+          "why": "The continuous rotation of an input crank drives an output link through a limited angular range to shift materials."
+        }
+      ],
+      "terms": [
+        {
+          "term": "coupler",
+          "meaning": "A connecting link in a mechanism that transmits motion between other links without having a fixed pivot."
+        },
+        {
+          "term": "angular speed",
+          "meaning": "The rate at which an object rotates around a center or axis, measured here in rpm."
+        }
+      ]
+    },
+    "04f65c37a1267216a1ad0c355192": {
+      "plainEnglish": "In this mechanism, the driven input at joint C rotates link CD to move the other connected members. Ground provides fixed pivots at A and B. As link CD turns full revolutions, it drives link ACN to rock back and forth about ground A through an angle of 89.1 deg. At the same time, link DB rocks about ground B through 79.2 deg, completing its cycle in 6 s.",
+      "resembles": "Coupler rocker linkage",
+      "useCases": [
+        {
+          "use": "Rocking conveyor drive",
+          "why": "It converts continuous rotary input into an oscillating rocking motion suitable for shaking or feeding parts."
+        }
+      ],
+      "terms": [
+        {
+          "term": "driven input",
+          "meaning": "The external force or torque applied to start and maintain the mechanism's motion."
+        },
+        {
+          "term": "rock",
+          "meaning": "To swing back and forth through a limited angular range rather than rotating fully."
+        }
+      ]
+    },
+    "060eabe189c5f60d305981613db9": {
+      "plainEnglish": "In this mechanism, the driven input **link PQ** rocks about ground **P** through 54.6 deg. This rocking motion pushes **link QR**, which is a connecting rod swinging back and forth through 167.6 deg. Finally, **link QR** drives **slider R** along a fixed guide, traveling 1.4 back and forth. One full back-and-forth cycle takes 1.82 s.",
+      "resembles": "Rocking lever slider mechanism",
+      "useCases": [
+        {
+          "use": "Reciprocating pump",
+          "why": "It uses a rocking input lever to drive a linear reciprocating piston."
+        }
+      ],
+      "terms": [
+        {
+          "term": "rocking",
+          "meaning": "Swinging back and forth through a limited angle rather than rotating fully."
+        },
+        {
+          "term": "connecting rod",
+          "meaning": "A link that transfers motion between two other moving parts without a fixed pivot."
+        },
+        {
+          "term": "reciprocating",
+          "meaning": "Moving straight back and forth repeatedly along a single path."
+        }
+      ]
+    },
+    "0699ef0f47202a0fb240267f673d": {
+      "plainEnglish": "In this mechanism, the driven input is joint G turning link GR relative to the ground at 10 rpm clockwise, causing the four-bar loop to drive link RST and swing link HS back and forth through 57.5 deg. This motion guides link JLT and link KP while carrying traced point T and traced point P along closed curves. Meanwhile, link JKO rocks about ground O through 16.5 deg, driving the upper linkages to generate complex coordinated paths.",
+      "resembles": "Eight-bar motion generator mechanism",
+      "useCases": [
+        {
+          "use": "Industrial stamping press",
+          "why": "It uses multi-bar linkages to guide a tool along a specific complex path during each cycle."
+        }
+      ],
+      "terms": [
+        {
+          "term": "four-bar loop",
+          "meaning": "A closed chain of four links connected by pin joints that transmits motion."
+        },
+        {
+          "term": "traced point",
+          "meaning": "A specific point on a link whose path is tracked as the mechanism moves."
+        },
+        {
+          "term": "general plane motion",
+          "meaning": "Combined translation and rotation of a body in a two-dimensional plane."
+        }
+      ]
+    },
+    "06d7137ee3af790abae3b10d72d9": {
+      "plainEnglish": "In this mechanism, the driven input **link JK** turns full revolutions about ground J at a steady speed. As it rotates, pin K slides back and forth within the slot on **link MN**, forcing this slotted rocker to pivot back and forth about ground M through 55 deg. Because the crank radius is smaller than the pivot distance, the two swings take different times with a time ratio of 1.86.",
+      "resembles": "shaper quick-return mechanism",
+      "useCases": [
+        {
+          "use": "metal shaper machine tool",
+          "why": "It provides a slower cutting stroke and a faster return stroke to improve machining efficiency."
+        }
+      ],
+      "terms": [
+        {
+          "term": "time ratio",
+          "meaning": "The ratio of the time taken for the return stroke to the time taken for the cutting stroke."
+        }
+      ]
+    },
+    "06edbf8a9cc7e91dec94fcf922b4": {
+      "plainEnglish": "This mechanism converts rotational movement into reciprocating angular motion through a four-bar linkage. The input rocker **link AB** rocks back and forth about ground pivot **A** through 152 deg, driven at 10 rpm. This motion is transmitted via coupler **link BC** to rocker **link CD**, which swings about ground pivot **D** through 100.1 deg over a cycle time of 5.07 s. No link makes a full rotation relative to the ground.",
+      "resembles": "Triple-rocker four-bar linkage",
+      "useCases": [
+        {
+          "use": "Windshield wiper mechanism",
+          "why": "It converts rotational input into the rocking motion needed to sweep an arm back and forth."
+        }
+      ],
+      "terms": [
+        {
+          "term": "reciprocating",
+          "meaning": "Moving back and forth in a linear or angular path."
+        },
+        {
+          "term": "linkage",
+          "meaning": "An assembly of rigid bodies connected to transmit force and motion."
+        }
+      ]
+    },
+    "070be92d10364f195452b9245fb6": {
+      "plainEnglish": "In this mechanism, the driven input **link AB (",
+      "resembles": "Scotch yoke mechanism",
+      "useCases": [
+        {
+          "use": "reciprocating pump",
+          "why": "It converts rotational motion into linear reciprocating motion for fluid displacement."
+        }
+      ],
+      "terms": [
+        {
+          "term": "harmonic motion",
+          "meaning": "Smooth back-and-forth oscillation following a sinusoidal pattern."
+        }
+      ]
+    },
+    "0768e101cd32f21042bfe6524e34": {
+      "plainEnglish": "In this mechanism, the driven input is **cylinder A-B**, which extends and retracts to drive **link GA (\"Offset barrel\")**. As **cylinder A-B** pushes **link GA (\"Offset barrel\")**, it rotates about ground pivot G through 16.2 deg. This rocking motion moves **link BE (\"Rod bracket\")**, which acts as a coupler to swing **link OET (\"Hatch\")** about ground pivot O through 75.1 deg. As **link OET (\"Hatch\")** swings, traced point T moves along a circular arc of radius 7.21 to open and close a hatch.",
+      "resembles": "Hatch actuation mechanism",
+      "useCases": [
+        {
+          "use": "Aircraft cargo door actuator",
+          "why": "It uses a linear actuator to swing a heavy panel or hatch through a wide angular range."
+        },
+        {
+          "use": "Industrial enclosure latch",
+          "why": "It provides controlled rotational positioning of a hinged cover using a reciprocating drive."
+        }
+      ],
+      "terms": [
+        {
+          "term": "driven input",
+          "meaning": "The primary source of motion or energy applied to make a mechanism move."
+        },
+        {
+          "term": "coupler",
+          "meaning": "An intermediate link that connects the input to the output without a fixed ground pivot."
+        },
+        {
+          "term": "traced point",
+          "meaning": "A specific location on a link whose path is tracked as the mechanism moves."
+        },
+        {
+          "term": "linear actuator",
+          "meaning": "A device that creates motion in a straight line, such as a hydraulic or pneumatic cylinder."
+        }
+      ]
+    },
+    "077b2d115e9a1e1fb682c193f236": {
+      "plainEnglish": "In this mechanism, the driven input is **cylinder G-C**, which extends and retracts at 1 cm/s. As **cylinder G-C** changes length, it pushes against **link OC** at **C**, causing **link OC** to swing back and forth as a rocker about ground pivot **O**. This rocking motion covers 65.8 deg over a cycle time of 5.43 s, with **C** tracing a circular arc of radius 4 about **O**.",
+      "resembles": "hydraulic cylinder actuated lever",
+      "useCases": [
+        {
+          "use": "hydraulic excavator boom actuator",
+          "why": "It uses a linear hydraulic cylinder to swing a pivoting structural arm through a controlled angular range."
+        },
+        {
+          "use": "industrial gate opener",
+          "why": "It employs an extending linear actuator to rotate a heavy hinged gate or lever about a fixed pivot."
+        }
+      ],
+      "terms": [
+        {
+          "term": "driven input",
+          "meaning": "The component supplied with external power or motion to drive the mechanism."
+        },
+        {
+          "term": "rocker",
+          "meaning": "A link that oscillates back and forth through a limited angle rather than rotating fully."
+        },
+        {
+          "term": "actuator",
+          "meaning": "A device that converts power into linear or rotational motion."
+        }
+      ]
+    },
+    "07b95accec540a167f1af3109bd7": {
+      "plainEnglish": "In this mechanism, joint A turns link AB relative to the ground to drive the motion, completing full revolutions. This rotation moves link BCE, which drives link CD to rock back and forth and simultaneously moves link EF to cause link FG to rock about ground G through 36.4 deg. Point E traces a closed curve that is nearly straight for 16% of the cycle over 1.76 cm.",
+      "resembles": "Stephenson six-bar dwell linkage",
+      "useCases": [
+        {
+          "use": "conveyor transfer mechanism",
+          "why": "The extended nearly straight path segment allows items to be pushed or transferred smoothly along a flat plane."
+        },
+        {
+          "use": "automatic printing press feed",
+          "why": "The dwell or nearly linear motion portion provides a steady interval for operations like stamping or feeding paper."
+        }
+      ],
+      "terms": [
+        {
+          "term": "general plane motion",
+          "meaning": "Motion combining both rotation and translation in a two-dimensional plane."
+        },
+        {
+          "term": "dwell",
+          "meaning": "A period in the cycle where an output link remains stationary while the input continues moving."
+        }
+      ]
+    },
+    "07cb43203f78100aa68b59f6dec4": {
+      "plainEnglish": "In this mechanism, the driven input **AB** turns full revolutions about ground **A** at a steady angular speed. This rotation drives **slider C** back and forth along a fixed guide through connecting rod **BC**, which swings through 30.2 deg while translating. The symmetric strokes cause **slider C** to travel a distance of 2.4.",
+      "resembles": "reciprocating pump mechanism",
+      "useCases": [
+        {
+          "use": "reciprocating piston pump",
+          "why": "It converts rotational input into linear reciprocating motion for fluid displacement."
+        },
+        {
+          "use": "internal combustion engine",
+          "why": "It translates the continuous rotation of a crankshaft into linear piston movement."
+        }
+      ],
+      "terms": [
+        {
+          "term": "angular speed",
+          "meaning": "The rate at which an object rotates around a central point or axis."
+        },
+        {
+          "term": "reciprocating",
+          "meaning": "Moving back and forth in a straight line repeatedly."
+        }
+      ]
+    },
+    "08034f730a04570b29abeb6b5897": {
+      "plainEnglish": "In this mechanism, joint J turns link JKL relative to link IJ at 8 rpm counterclockwise, driving the assembly back and forth. Link HI acts as a rocker moving through 155.2 deg, and link IJ serves as a coupler transmitting motion. Link JKL functions as a rocking input beam pivoted at ground K, pushing link LM which acts as a connecting rod. Finally, slider M travels 2.09 back and forth along a fixed guide, completing one full cycle in 2.5 s.",
+      "resembles": "walking-beam pump drive",
+      "useCases": [
+        {
+          "use": "beam pump",
+          "why": "It translates rotational drive into reciprocating linear motion suitable for operating a sucker-rod pump."
+        }
+      ],
+      "terms": [
+        {
+          "term": "reciprocating",
+          "meaning": "Moving back and forth in a linear motion."
+        },
+        {
+          "term": "coupler",
+          "meaning": "A link that connects other moving links without having any fixed pivot to the ground."
+        }
+      ]
+    },
+    "089ff276a98dbe1eae09bf486698": {
+      "plainEnglish": "In this mechanism, input **link AB** turns full revolutions and drives coupler **link BC**, which carries traced point C in a closed curve. This motion moves connecting rod **link CDE**, causing crank **link DF** to turn unevenly while slider **slider E** travels back and forth along a fixed guide for a distance of 1.74.",
+      "resembles": "six-bar slider-crank linkage",
+      "useCases": [
+        {
+          "use": "reciprocating pump",
+          "why": "It converts rotary input motion into a linear reciprocating stroke."
+        },
+        {
+          "use": "shaper machine",
+          "why": "It provides a cyclic sliding motion with variable stroke timing."
+        }
+      ],
+      "terms": [
+        {
+          "term": "coupler",
+          "meaning": "A link connecting the input to other moving parts without a fixed pivot."
+        },
+        {
+          "term": "reciprocating",
+          "meaning": "Moving back and forth in a linear path."
+        }
+      ]
+    },
+    "0997e9c42cafb114fc2529c9def2": {
+      "plainEnglish": "This mechanism operates as a double-rocker driven by an input rocker. The driven input rotates joint M to rock **link MN** back and forth across 59.7 degrees. This motion moves **link NO**, which acts as a coupler undergoing general plane motion. In turn, **link OP** swings back and forth about ground P through 27.9 degrees. One full back-and-forth cycle takes 1.99 s while connected to the ground via **link MP**.",
+      "resembles": "Grashof double-rocker linkage",
+      "useCases": [
+        {
+          "use": "Wiper mechanism",
+          "why": "It translates continuous input rotation into a limited angular oscillation suitable for sweeping windshield wipers."
+        },
+        {
+          "use": "Adjustable louver actuator",
+          "why": "It rocks connected slats back and forth through a restricted angle to control airflow."
+        }
+      ],
+      "terms": [
+        {
+          "term": "double-rocker",
+          "meaning": "A four-bar linkage where both input and output links cannot make full rotations and only rock back and forth."
+        },
+        {
+          "term": "coupler",
+          "meaning": "The connecting link in a mechanism that has no fixed pivot and experiences general plane motion."
+        },
+        {
+          "term": "general plane motion",
+          "meaning": "Combined translation and rotation of a rigid body in a two-dimensional plane."
+        }
+      ]
+    },
+    "0b48294bf80d9d07f24b8c6b8a21": {
+      "plainEnglish": "In this mechanism, continuous rotation from joint G drives **link GK (\"Luffing crank\")** to turn in full revolutions. This rotation moves **link CK (\"Luffing link\")**, acting as a coupler, which pushes and pulls **link OCT (\"Jib\")**. As a result, the rocker **link OCT (\"Jib\")** swings back and forth through an angular range of 52.2 deg about ground pivot O, carrying point T along a circular arc of radius 7 cm during its 6.67 s cycle.",
+      "resembles": "crank-rocker crane luffing mechanism",
+      "useCases": [
+        {
+          "use": "Crane luffing drive",
+          "why": "It converts continuous motor rotation into the oscillating lifting and lowering motion of a crane boom."
+        }
+      ],
+      "terms": [
+        {
+          "term": "coupler",
+          "meaning": "A link that connects the input to the output without having any fixed pivot of its own."
+        },
+        {
+          "term": "rocker",
+          "meaning": "An output link that swings back and forth through a limited angle rather than rotating fully."
+        }
+      ]
+    },
+    "0bba891e646a791e08ea7406896d": {
+      "plainEnglish": "This mechanism converts continuous rotation into an oscillating motion using four connected links. The input is provided by **AB**, a rotating crank driven at a steady speed. As **AB** turns in full circles, it pushes and pulls **BC**, the coupler. The coupler in turn drives **CD**, a rocker that swings back and forth through an angle of 107.9 deg about pivot **D**. This motion repeats every 6 s.",
+      "resembles": "crank-rocker mechanism",
+      "useCases": [
+        {
+          "use": "windshield wiper drive",
+          "why": "It transforms continuous motor rotation into the back-and-forth sweeping motion required for wiper blades."
+        },
+        {
+          "use": " reciprocating conveyor drive",
+          "why": "It turns rotary motor power into alternating linear swings to index parts along an assembly line."
+        }
+      ],
+      "terms": [
+        {
+          "term": "oscillating motion",
+          "meaning": "Movement that swings back and forth repeatedly between two points."
+        },
+        {
+          "term": "crank",
+          "meaning": "A link that rotates in a full circle around a fixed pivot."
+        },
+        {
+          "term": "rocker",
+          "meaning": "A link that pivots back and forth through a limited angle rather than rotating fully."
+        },
+        {
+          "term": "coupler",
+          "meaning": "An intermediate link that transmits motion between the input and output links."
+        }
+      ]
+    },
+    "0bf6a0675804ba1ad862f49977e1": {
+      "plainEnglish": "In this mechanism, joint H turns the input crank **link HE (\"Handle\")** relative to the ground at 10 rpm clockwise to drive the output. As **link HE (\"Handle\")** rotates, it pushes **link EP (\"Toggle link\")**, which acts as a coupler transmitting motion to **link NP (",
+      "resembles": "quick-return clamping linkage",
+      "useCases": [
+        {
+          "use": "toggle clamp",
+          "why": "It uses a pivoting handle and a clamping bar to lock workpieces securely in place."
+        }
+      ],
+      "terms": [
+        {
+          "term": "coupler",
+          "meaning": "A connecting link that transfers motion between an input and an output without a fixed pivot."
+        },
+        {
+          "term": "rocker",
+          "meaning": "An output link that swings back and forth through a limited angular range."
+        }
+      ]
+    },
+    "0bf6ff10bb8f6d03e43763904882": {
+      "plainEnglish": "In this mechanism, the driven input link **AB** rotates fully about ground at 10 rpm clockwise and drives link **CD** through pin **B**, which slides back and forth within the slot on link **CD**. Because the crank radius is larger than the pivot distance, link **CD** turns fully about ground **C** but unevenly. Its slowest half-turn takes 3.65 s and the opposite half-turn takes 2.35 s, giving a time ratio of 1.55.",
+      "resembles": "Whitworth quick-return mechanism",
+      "useCases": [
+        {
+          "use": "shaper machine",
+          "why": "It uses the unequal half-turn timing to provide a slow cutting stroke and a fast return stroke."
+        }
+      ],
+      "terms": [
+        {
+          "term": "time ratio",
+          "meaning": "The ratio of the time taken for the return stroke to the cutting stroke."
+        }
+      ]
+    },
+    "0c55f3a4af2ad215fcf445e73899": {
+      "plainEnglish": "This mechanism operates when the input link **GB** is driven by joint G, causing it to rock back and forth. This motion swings the coupler link **ABM**, which carries the traced point M. As link **GB** moves, link **AH** rocks about ground pivot H, guiding the coupler so that point M traces a curve that is nearly straight for 92% of its cycle over a length of 3.96.",
+      "resembles": "Chebyshev straight-line linkage",
+      "useCases": [
+        {
+          "use": "straight-line engine guidance",
+          "why": "It converts rotational input into an approximately straight-line output motion."
+        }
+      ],
+      "terms": [
+        {
+          "term": "coupler",
+          "meaning": "A connecting link in a mechanism that transmits motion between other moving links without being directly connected to the ground."
+        },
+        {
+          "term": "rocker",
+          "meaning": "A link that oscillates back and forth through a limited angle rather than rotating completely."
+        }
+      ]
+    },
+    "0cae1cc1516d6d0cdc0395fabd0c": {
+      "plainEnglish": "In this mechanism, the driven input **link FG** turns full revolutions about ground **F** at 10 rpm counterclockwise. As it rotates, **pin G** rides back and forth within the slot on **link EH**, forcing **link EH** to turn fully about ground **E**. Because the input crank radius exceeds the distance between the fixed pivots, **link EH** rotates unevenly with its angular speed ranging from 41.1 to 111.4 deg/s. Its slowest half-turn takes 3.92 s and the opposite half-turn takes 2.08 s, providing an unequal time ratio of 1.88 that creates a slow working stroke and a quick return.",
+      "resembles": "rotating slotted link quick-return mechanism",
+      "useCases": [
+        {
+          "use": "shaper machine",
+          "why": "It uses the time ratio between the slow cutting stroke and the quick return stroke to improve machining efficiency."
+        }
+      ],
+      "terms": [
+        {
+          "term": "angular speed",
+          "meaning": "The rate of rotational speed measured in degrees or radians per second."
+        },
+        {
+          "term": "time ratio",
+          "meaning": "The ratio of the duration of the return stroke to the cutting stroke."
+        }
+      ]
+    },
+    "0cb880eed50bb90ca1991d2e387e": {
+      "plainEnglish": "In this mechanism, joint C drives link CDE to rock back and forth through 37.8 deg about ground D. This rocking movement causes link AB to rock through 155.2 deg via coupler link BC. At the other end of link CDE, point E moves up and down, pushing connecting rod link EF to drive slider F along a fixed guide for a distance of 2.09.",
+      "resembles": "walking beam pump",
+      "useCases": [
+        {
+          "use": "beam pump",
+          "why": "It uses a rocking walking beam driven by a linkage to drive a vertical pump rod back and forth."
+        }
+      ],
+      "terms": [
+        {
+          "term": "rock",
+          "meaning": "To swing back and forth through a limited angle."
+        },
+        {
+          "term": "coupler",
+          "meaning": "A connecting link experiencing general plane motion without a fixed pivot."
+        }
+      ]
+    },
+    "0cd624bc14e6cb01d1de14837394": {
+      "plainEnglish": "This mechanism uses a central driven input crank **link OA** rotating at 8 rpm clockwise to simultaneously drive five radial slider-crank loops. As **link OA** turns, connecting rods **link AB**, **link AC**, **link AD**, **link AE**, and **link AF** push and pull **slider B**, **slider C**, **slider D**, **slider E**, and **slider F** back and forth along five fixed guides radiating outward, each traveling a distance of 2.",
+      "resembles": "Multi-cylinder radial engine mechanism",
+      "useCases": [
+        {
+          "use": "Radial engine",
+          "why": "It uses a single central crank connected to multiple pistons moving along radiating axes."
+        }
+      ],
+      "terms": [
+        {
+          "term": "radial",
+          "meaning": "Arranged like rays branching out from a central point."
+        }
+      ]
+    },
+    "0ddfa3e7cf9928007cc1691f5155": {
+      "plainEnglish": "In this mechanism, joint K drives **link KP** relative to ground pivot H, causing **link HK** to rock back and forth through an angle of 42.9 deg. As **link KP** swings in general plane motion, it pushes **link BP**, which is a rocker carrying traced point P. Point P traces a circular arc of radius 1.7 about ground pivot B, sweeping through 163.2 deg over a cycle time of 5.5 s.",
+      "resembles": "four-bar rocker linkage",
+      "useCases": [
+        {
+          "use": "wiper mechanism",
+          "why": "It converts rotational input into a rocking, back-and-forth angular sweep."
+        }
+      ],
+      "terms": [
+        {
+          "term": "general plane motion",
+          "meaning": "Combined translation and rotation in a two-dimensional plane."
+        },
+        {
+          "term": "rocker",
+          "meaning": "A link that swings back and forth through a limited angular range."
+        }
+      ]
+    },
+    "0e84f9e3cc3e371d264bed611831": {
+      "plainEnglish": "In this mechanism, the driven input **link AC** rocks back and forth to drive the system. **link AC** moves **link BCD**, which acts as a coupler and carries the traced point **D**. At the same time, **link BE** acts as a rocker pivoting on the ground. The motion causes traced point **D** to trace a curve that is nearly straight for 85% of the cycle over a length of 3.89 cm.",
+      "resembles": "Chebyshev straight-line linkage",
+      "useCases": [
+        {
+          "use": "straight-line mechanism",
+          "why": "It generates an approximately straight line motion for guiding tool paths without sliding guides."
+        }
+      ],
+      "terms": [
+        {
+          "term": "coupler",
+          "meaning": "A floating link connecting the input and output bars in a mechanism."
+        },
+        {
+          "term": "rocker",
+          "meaning": "A link that oscillates back and forth through a limited angle without full rotation."
+        }
+      ]
+    },
+    "0ff8d3c5370c361e6477ae7243e6": {
+      "plainEnglish": "In this mechanism, **slider A** acts as the input slider, driven along a fixed guide to push **link ABT**. As **slider A** moves back and forth, it causes **link ABT** to undergo general plane motion while **slider B** is constrained to travel 1.32 cm back and forth along its own fixed guide. During this motion, point T traces a smooth curve across the cycle.",
+      "resembles": "trammel of Archimedes",
+      "useCases": [
+        {
+          "use": "ellipse drafting machine",
+          "why": "The point T on the connecting link traces a curve useful for generating geometric shapes."
+        },
+        {
+          "use": "old engine valve gear",
+          "why": "It translates linear reciprocating motion between perpendicular axes."
+        }
+      ],
+      "terms": [
+        {
+          "term": "general plane motion",
+          "meaning": "Motion combining both rotation and translation in a two-dimensional plane."
+        },
+        {
+          "term": "input slider",
+          "meaning": "A driven component that slides along a fixed track to power the mechanism."
+        }
+      ]
+    },
+    "105d2687a317fc15bb2e93a63ede": {
+      "plainEnglish": "This mechanism uses **cylinder G-C** as the driven input to rotate **link OC** about fixed pivot **O**. As **cylinder G-C** extends and retracts with a travel of 2.72, it pushes **link OC** at joint **C**, swinging it through an arc of 65.8 deg back and forth.",
+      "resembles": "hydraulic lever actuator",
+      "useCases": [
+        {
+          "use": "excavator boom tilt mechanism",
+          "why": "It uses a linear hydraulic cylinder to swing a heavy lifting arm about a fixed pivot point."
+        }
+      ],
+      "terms": [
+        {
+          "term": "driven input",
+          "meaning": "The power source or actuator that forces the mechanism to move."
+        },
+        {
+          "term": "fixed pivot",
+          "meaning": "A stationary hinge joint anchored to the ground frame."
+        }
+      ]
+    },
+    "10a9784d9a37ca1b94057557027e": {
+      "plainEnglish": "In this mechanism, the driven input spins **link AB** about **A**, which pushes **pin B** inside a slot on **link CD**. Because **slider C** travels along a fixed guide, **link CD** is forced into a smooth back-and-forth straight-line translation without turning. Over a cycle time of 6 s, **slider C** travels a distance of 2 back and forth along its fixed guide, reaching its endpoints when **link AB** sits at 180 deg and 0 deg.",
+      "resembles": "Scotch yoke mechanism",
+      "useCases": [
+        {
+          "use": "reciprocating pump",
+          "why": "It converts rotational motion into linear reciprocating motion for fluid displacement."
+        },
+        {
+          "use": "control valve actuator",
+          "why": "It provides smooth linear displacement from a rotating motor input."
+        }
+      ],
+      "terms": [
+        {
+          "term": "translation",
+          "meaning": "Motion without rotation where every point moves parallel along a path."
+        },
+        {
+          "term": "reciprocating",
+          "meaning": "Moving repeatedly back and forth in a straight line."
+        }
+      ]
+    },
+    "1270b927b52f910b05d8640154d5": {
+      "plainEnglish": "This mechanism converts continuous rotational motion into oscillating rocking motion. The input is provided by **link GK**, which rotates fully about ground pivot **G**. As **link GK** turns, it pushes and pulls **link CK**, acting as a coupler to drive the output. This forces **link OCT** to rock back and forth about ground pivot **O** through an angle of 52.3 degrees, moving **T** along a circular arc with a radius of 6.",
+      "resembles": "crane luffing mechanism",
+      "useCases": [
+        {
+          "use": "jib crane",
+          "why": "It raises and lowers the boom to adjust the operating radius for lifting loads."
+        }
+      ],
+      "terms": [
+        {
+          "term": "coupler",
+          "meaning": "A link that connects the input to the output without having a fixed pivot to the ground."
+        },
+        {
+          "term": "rocking motion",
+          "meaning": "An oscillatory rotational movement that swings back and forth between two limits rather than completing full revolutions."
+        }
+      ]
+    },
+    "1292308e1c0b300c1103f03eff64": {
+      "plainEnglish": "In this mechanism, the driven input is **link OA**, which turns about ground O to drive the entire linkage. **Link AB** and **link AD** act as couplers transmitting motion to **link GBC** and **link GD**, which rock about ground G. **Link CE** and **link DEF** guide the motion downward, causing the traced point **F** on **link DEF** to sweep out a closed curve measuring 67.91 wide by 22.45 tall with a nearly straight stretch spanning 40.09 long.",
+      "resembles": "Strandbeest leg mechanism",
+      "useCases": [
+        {
+          "use": "walking robot leg",
+          "why": "It converts rotary crank input into a foot trajectory featuring a long straight horizontal stroke for smooth walking motion."
+        }
+      ],
+      "terms": [
+        {
+          "term": "coupler",
+          "meaning": "A moving link that connects other links and experiences general plane motion without a fixed pivot."
+        },
+        {
+          "term": "rock",
+          "meaning": "To swing back and forth through a limited angular range rather than rotating fully."
+        }
+      ]
+    },
+    "12be876822b96208e383e7b7ec4a": {
+      "plainEnglish": "In this mechanism, **cylinder A-B** acts as the driven input by extending and retracting with a travel of 0.72 cm. This linear motion pushes **link HIBJ**, swinging it about ground J and driving **link EFG** and **link FK**. As these links move, they guide **link KILMNO (\"Hood\")**, carrying traced point O along a curved path to open and close a vehicle hood over a full cycle time of 14.37 s.",
+      "resembles": "Automotive hood hinge mechanism",
+      "useCases": [
+        {
+          "use": "Vehicle hood lift system",
+          "why": "It guides an engine cover along a controlled arc using a multi-bar linkage driven by a linear actuator."
+        }
+      ],
+      "terms": [
+        {
+          "term": "linear actuator",
+          "meaning": "a device that creates motion in a straight line"
+        }
+      ]
+    },
+    "1369344cba54621d1549cc529152": {
+      "plainEnglish": "In this mechanism, the driven input is **link AB**, which turns full revolutions about ground **A** at a steady angular speed. This rotation drives **slider C** back and forth along a fixed guide through connecting rod **link BC**, which swings back and forth through 55 deg while it moves. **slider C** travels 2.4 back and forth along a fixed guide at 0 deg, reaching its two ends when **link AB**'s angle is 180 deg and 0 deg.",
+      "resembles": "In-line slider-crank mechanism",
+      "useCases": [
+        {
+          "use": "Reciprocating compressor",
+          "why": "It uses a rotating crank and connecting rod to drive a piston linearly inside a cylinder."
+        },
+        {
+          "use": "Internal combustion engine",
+          "why": "It converts the linear reciprocating motion of a piston into the rotational motion of a crankshaft."
+        }
+      ],
+      "terms": [
+        {
+          "term": "angular speed",
+          "meaning": "The rate at which an object rotates around a center or axis."
+        },
+        {
+          "term": "connecting rod",
+          "meaning": "A link that transmits motion from a rotating crank to a sliding part."
+        },
+        {
+          "term": "reciprocating",
+          "meaning": "Moving back and forth in a straight line."
+        }
+      ]
+    },
+    "1433f918fe77b70b41f5369817bd": {
+      "plainEnglish": "In this mechanism, the driven input is **cylinder A-B**, which extends and retracts linearly to drive **bcd** back and forth. As **cylinder A-B** changes length, it pushes **bcd** along a straight line without turning. The entire cycle takes 6.99 s, with **bcd** moving through a travel distance of 3.49 cm.",
+      "resembles": "Linear actuator press mechanism",
+      "useCases": [
+        {
+          "use": "Hydraulic stamping press",
+          "why": "It uses a linear actuator to drive a crosshead back and forth in a straight line for pressing operations."
+        }
+      ],
+      "terms": [
+        {
+          "term": "driven input",
+          "meaning": "The part supplied with external energy to make the mechanism move."
+        },
+        {
+          "term": "crosshead",
+          "meaning": "A sliding block or link guided in a straight line to transmit motion."
+        }
+      ]
+    },
+    "146fb3f7f45dab03684c1de5e79f": {
+      "plainEnglish": "In this mechanism, the driven input is **link ACD**, which turns full revolutions about ground **A** at 10 rpm clockwise. This rotation pushes multiple connected links through general plane motion, causing **link BFJ** to rock back and forth about ground **B** through an angle of 66.4 deg. The complex arrangement features several floating couplers that transmit motion across the eight-bar chain to create coordinated angular oscillations.",
+      "resembles": "eight-bar planetary linkage",
+      "useCases": [
+        {
+          "use": "heavy industrial press",
+          "why": "The multi-link chain provides complex mechanical advantage and precise displacement paths for heavy loads."
+        }
+      ],
+      "terms": [
+        {
+          "term": "general plane motion",
+          "meaning": "Simultaneous translation and rotation of a rigid body in a two-dimensional plane."
+        },
+        {
+          "term": "eight-bar chain",
+          "meaning": "A closed kinematic chain consisting of eight links connected by joints."
+        }
+      ]
+    },
+    "1496f54638d4b0191b4a9d607ca8": {
+      "plainEnglish": "In this mechanism, the driven input is joint A, which turns link AB at 10 rpm clockwise to drive the rest of the system. Link BC acts as a coupler, moving the three-joint link CDE which functions as a bell crank. Link CDE rocks about ground E through 39.6 deg. Through link DF acting as another coupler, this rocking motion drives link FG to rock about ground G through 53.3 deg.",
+      "resembles": "six-bar motion converter linkage",
+      "useCases": [
+        {
+          "use": "heavy industrial press mechanism",
+          "why": "It utilizes a crank-driven six-bar linkage to translate continuous rotation into regulated oscillating rocker motion."
+        }
+      ],
+      "terms": [
+        {
+          "term": "bell crank",
+          "meaning": "A type of rocking lever whose two arms meet at an angle at its pivot."
+        },
+        {
+          "term": "coupler",
+          "meaning": "A link that has no fixed pivot and undergoes general plane motion."
+        },
+        {
+          "term": "rocker",
+          "meaning": "A link that swings back and forth through a limited angular range."
+        }
+      ]
+    },
+    "15788a01e0f5c30d1ee6e5ad34ab": {
+      "plainEnglish": "This mechanism is driven by **cylinder A-D**, which extends and retracts to push **link GDMK** about its fixed pivot at **G**. As **link GDMK** rocks back and forth, it drives **slider S** along its guide through **link SMT** while simultaneously moving **link TU** vertically through pin **K** riding in a slot. The input motion causes **link TU** to achieve a straight-line translation of 8.95 cm back and forth.",
+      "resembles": "hydraulic actuator driven rocker mechanism",
+      "useCases": [
+        {
+          "use": "industrial material handling lift",
+          "why": "The linear actuator drive provides controlled lifting and lowering strokes via a rocking lever."
+        }
+      ],
+      "terms": [
+        {
+          "term": "straight-line translation",
+          "meaning": "motion where every point of a body moves along parallel straight paths without rotation"
+        },
+        {
+          "term": "linear actuator",
+          "meaning": "a device that creates motion in a straight line from a rotating or fluid power input"
+        }
+      ]
+    },
+    "170b0bb0dd774a1bdffa1f218c7e": {
+      "plainEnglish": "In this mechanism, the driven input **AB** turns continuously in full revolutions and drives the coupler **BCD**. The motion continues through **DE** and **EF** to rock the bell crank **FCG** back and forth through an angle of 45.8 deg about ground G. Within this motion, one direction takes 3.58 s and the return takes 2.42 s, resulting in a time ratio of 1.48.",
+      "resembles": "six-bar toggle press mechanism",
+      "useCases": [
+        {
+          "use": "quick-return mechanism",
+          "why": "It provides a unequal time ratio between forward and return strokes for efficient cycle timing."
+        }
+      ],
+      "terms": [
+        {
+          "term": "bell crank",
+          "meaning": "A pivoting lever with two arms meeting at an angle to change force direction."
+        },
+        {
+          "term": "time ratio",
+          "meaning": "The ratio of the time taken for the return stroke to the forward stroke."
+        }
+      ]
+    },
+    "17c333abc9161a19c8832ed5052f": {
+      "plainEnglish": "In this mechanism, continuous rotation from the input crank **UV** drives a connecting coupler **TU**, which in turn causes the rocker **GT** to oscillate back and forth through an angle of 40.9 degrees about the ground pivot **G**. The shortest link **UV** rotates fully while the opposite side rocks, creating a continuous cyclic motion.",
+      "resembles": "crank-rocker mechanism",
+      "useCases": [
+        {
+          "use": "windshield wiper drive",
+          "why": "It converts continuous motor rotation into the oscillating motion needed to sweep a blade back and forth."
+        }
+      ],
+      "terms": [
+        {
+          "term": "oscillate",
+          "meaning": "To swing back and forth repeatedly between two points."
+        },
+        {
+          "term": "continuous rotation",
+          "meaning": "Turning in a complete circle endlessly in one direction."
+        }
+      ]
+    },
+    "18371d1ee989731445933bd221c1": {
+      "plainEnglish": "In this mechanism, the driven input is **cylinder A-D**, which extends and retracts to push **link DGHIJ (\"Carriage\")** back and forth in straight-line translation. As **link DGHIJ (\"Carriage\")** moves horizontally, it swings the connecting couplers **link GM**, **link HQ**, **link IT**, and **link JV**. These couplers drive **link MQS (\"Jaw\")** and **link TVX (\"Jaw\")**, causing both jaws to translate vertically in opposite directions with a stroke of 0.69 cm.",
+      "resembles": "parallel jaw gripper",
+      "useCases": [
+        {
+          "use": "industrial robot end effector",
+          "why": "It uses synchronized straight-line jaw translation driven by a linear actuator to clamp and release objects."
+        }
+      ],
+      "terms": [
+        {
+          "term": "straight-line translation",
+          "meaning": "motion in a single linear direction without any rotation."
+        },
+        {
+          "term": "coupler",
+          "meaning": "an ungrounded link that connects other moving links to transmit motion."
+        },
+        {
+          "term": "linear actuator",
+          "meaning": "a device that creates motion in a straight line from a power source."
+        }
+      ]
+    },
+    "18633638d792d51ccc113080244a": {
+      "plainEnglish": "In this mechanism, joint W drives **link WX** back and forth to act as an input rocker. **Link WX** pushes **link XY**, which serves as a coupler and swings through general plane motion. This motion drives **link YZ** as a rocker, which oscillates about ground Z through 109.7 deg. Every part moves back and forth over a cycle time of 14.73 s.",
+      "resembles": "rocker-driven linkage mechanism",
+      "useCases": [
+        {
+          "use": "adjustable louver window",
+          "why": "It rocks multiple slats back and forth through a limited angular range."
+        },
+        {
+          "use": "windshield wiper linkage",
+          "why": "It converts a reciprocating input into an oscillating output stroke."
+        }
+      ],
+      "terms": [
+        {
+          "term": "input rocker",
+          "meaning": "A driven link that oscillates back and forth instead of rotating fully."
+        },
+        {
+          "term": "general plane motion",
+          "meaning": "Combined translation and rotation in a two-dimensional plane."
+        }
+      ]
+    },
+    "187399b2e438600353d1146c9d70": {
+      "plainEnglish": "In this mechanism, the driven input link **CP** rocks back and forth and drives link **OA** and link **OB**. These rockers push the four equal links **AP**, **BP**, **AQ**, and **BQ**, which form a rhombus that guides traced point **Q** along a straight line of length 11.58.",
+      "resembles": "Peaucellier straight-line generator",
+      "useCases": [
+        {
+          "use": "precision suspension guidance",
+          "why": "It translates rotational motion into a precise straight-line path without sliding guides."
+        }
+      ],
+      "terms": [
+        {
+          "term": "rhombus",
+          "meaning": "A four-sided polygon with all sides of equal length."
+        },
+        {
+          "term": "traced point",
+          "meaning": "A point on a link whose path is tracked during motion."
+        }
+      ]
+    },
+    "18e7d110ab00dc1a81a9c145aa38": {
+      "plainEnglish": "In this mechanism, the driven input turns **AB** back and forth through an angle of 309 deg. This motion is transmitted through **BC** to swing **CDL** about fixed pivot D. As the input reverses, **CDL** rocks through an angle of 73.2 deg, completing one full back-and-forth cycle in 6.44 s while carrying force F1.",
+      "resembles": "triple-rocker linkage",
+      "useCases": [
+        {
+          "use": "wiper mechanism",
+          "why": "It transforms a continuous or reversing input into an oscillating output swing suitable for sweeping an arc."
+        }
+      ],
+      "terms": [
+        {
+          "term": "driven input",
+          "meaning": "The power source or driving force that initiates motion in the mechanism."
+        },
+        {
+          "term": "oscillating",
+          "meaning": "Swinging back and forth repeatedly between two limits."
+        }
+      ]
+    },
+    "1a679195bfa20b12c3a2139a26ec": {
+      "plainEnglish": "In this mechanism, the driven input link HI rocks back and forth to move the linkage. Four equal links form a rhombus with parallel sides that constrain point L on link JL to trace a straight line of length 11.58 without riding a guide. Rockers like link GJ and link GK pivot on the ground to support the structure while couplers transfer motion through general plane motion.",
+      "resembles": "Peaucellier-Lipkin straight-line linkage",
+      "useCases": [
+        {
+          "use": "precision suspension guide",
+          "why": "It translates rotational movement into an exact straight-line output without sliding tracks."
+        },
+        {
+          "use": "historical steam engine valve gear",
+          "why": "It provides unguided linear guidance from a pivoting driver."
+        }
+      ],
+      "terms": [
+        {
+          "term": "rhombus",
+          "meaning": "A four-sided polygon with all sides of equal length."
+        },
+        {
+          "term": "general plane motion",
+          "meaning": "Combined translation and rotation in a two-dimensional plane."
+        },
+        {
+          "term": "inversor",
+          "meaning": "A linkage that converts circular motion into exact straight-line motion."
+        }
+      ]
+    },
+    "1bb78288ed6cb415bc5e2fe63956": {
+      "plainEnglish": "In this mechanism, the driven input turns **link AB** full revolutions about ground joint A. As it rotates, **pin B** slides back and forth within the slot on **link CD**, causing **link CD** to rock back and forth about ground pivot C through an angle of 38.9 deg. This rocking motion drives **slider R** along a fixed guide through **link DR**, producing a linear reciprocating stroke of length 3.33.",
+      "resembles": "quick-return shaper mechanism",
+      "useCases": [
+        {
+          "use": "metal shaper machine",
+          "why": "It provides a slow cutting stroke and a fast return stroke to improve machining efficiency."
+        }
+      ],
+      "terms": [
+        {
+          "term": "linear reciprocating stroke",
+          "meaning": "A repetitive linear back and forth motion along a straight path."
+        },
+        {
+          "term": "rocking motion",
+          "meaning": "An oscillating rotational movement back and forth between two limits."
+        }
+      ]
+    },
+    "1be32216c7d7050c856a5998fa3e": {
+      "plainEnglish": "In this mechanism, joint Q turns link QRS relative to link PQ at 12 rpm counterclockwise, driving the linked parts through a reversing cycle that takes 1.67 s. As the input rocks, link OP oscillates about ground O while link PQ swings back and forth. The motion transfers through link QRS, which pivots about ground R to rock its opposite end. Finally, connecting rod link ST pushes slider T back and forth over a travel length of 2.09 along a fixed guide at 90 deg.",
+      "resembles": "walking-beam mechanism",
+      "useCases": [
+        {
+          "use": "reciprocating pump",
+          "why": "The rocking beam drives linear motion at the output slider."
+        },
+        {
+          "use": "beam engine",
+          "why": "A pivoting lever translates rotational input into linear reciprocating stroke output."
+        }
+      ],
+      "terms": [
+        {
+          "term": "oscillates",
+          "meaning": "swings back and forth repeatedly around a central pivot"
+        },
+        {
+          "term": "reciprocating",
+          "meaning": "moving alternately back and forth in a straight line"
+        }
+      ]
+    },
+    "1c8cba313c71d810e6d9149d5b52": {
+      "plainEnglish": "In this mechanism, joint A turns **link AB (\"Input crank\")** as the driven input to drive **link BCX (\"Tool carrier\")**, which acts as a coupler and swings back and forth through 39 deg. This motion causes **link CD (\"Return rocker\")** to rock about ground D, while **link EF (\"Loaded output\")** rocks about ground E through 20.5 deg. At the same time, pin F slides back and forth by 1.97 within the slot on link BCX (\"Tool carrier\").",
+      "resembles": "six-bar rocker linkage mechanism",
+      "useCases": [
+        {
+          "use": "shaper machine mechanism",
+          "why": "It converts continuous rotary input into reciprocating output motion with varying stroke timing."
+        }
+      ],
+      "terms": [
+        {
+          "term": "driven input",
+          "meaning": "The power source or force applied to make the mechanism move."
+        },
+        {
+          "term": "coupler",
+          "meaning": "A link connecting other moving links without having a fixed pivot to the ground."
+        },
+        {
+          "term": "general plane motion",
+          "meaning": "Combined translation and rotation motion in a two-dimensional plane."
+        }
+      ]
+    },
+    "1ca6bae964393e12f276b4f07972": {
+      "plainEnglish": "This mechanism operates by using joint **I** to drive **link IJ** in full revolutions at 10 rpm counterclockwise. This motion pushes **link JK**, which acts as a coupler and drives **link KL** to rotate fully about ground **L** with an angular speed ranging from 30.6 to 130.5 deg/s. The arrangement forms a Grashof double-crank where the shortest link is the ground, allowing both side cranks to complete full continuous rotations.",
+      "resembles": "double-crank linkage",
+      "useCases": [
+        {
+          "use": "rotary agitator drive",
+          "why": "It transmits continuous rotational motion from one shaft to another while varying output speed."
+        }
+      ],
+      "terms": [
+        {
+          "term": "Grashof double-crank",
+          "meaning": "A four-bar linkage where the shortest link is fixed as the ground, enabling both input and output cranks to rotate fully."
+        },
+        {
+          "term": "coupler",
+          "meaning": "A moving link in a mechanism that connects driver and follower links without having a fixed pivot."
+        }
+      ]
+    },
+    "1cb72a5944e8711f4ad907ba08e9": {
+      "plainEnglish": "In this mechanism, the linear actuator **cylinder I-E** acts as the driven input, extending and retracting between lengths of 1.39 and 2.31 to push **link EJG**. This bell crank rocks about **ground** pivot J and drives **link HG**, which in turn swings the rocker **link ABHKLMNOPQ** about **ground** pivot A through 84.7 degrees. Point B on this rocker traces a curved path as the mechanism cycles back and forth.",
+      "resembles": "aircraft landing gear retraction mechanism",
+      "useCases": [
+        {
+          "use": "Aircraft landing gear retraction",
+          "why": "It uses a hydraulic cylinder and bell crank linkage to swing a wheel assembly between extended and stowed positions inside a wing."
+        }
+      ],
+      "terms": [
+        {
+          "term": "linear actuator",
+          "meaning": "A device that creates motion in a straight line."
+        },
+        {
+          "term": "bell crank",
+          "meaning": "A pivoting double-armed lever used to change the direction of motion."
+        },
+        {
+          "term": "rocker",
+          "meaning": "A link that oscillates back and forth about a fixed pivot."
+        }
+      ]
+    },
+    "1cc6c7b55b39a114e66754991d5b": {
+      "plainEnglish": "The driven input turns **link AB** in full revolutions, which drives **slider C** back and forth along a fixed guide through connecting rod **link BC**. The guide is offset 1.19 from the crank's pivot, causing **slider C** to travel a distance of 5.33 with a time ratio of 1.22 between its strokes.",
+      "resembles": "Offset slider-crank mechanism",
+      "useCases": [
+        {
+          "use": "Reciprocating compressor",
+          "why": "It converts rotary motor input into linear piston motion inside a cylinder."
+        },
+        {
+          "use": "Internal combustion engine",
+          "why": "It translates the linear motion of a piston into the rotational output of a crankshaft."
+        }
+      ],
+      "terms": [
+        {
+          "term": "connecting rod",
+          "meaning": "A link that transfers motion between a rotating crank and a reciprocating part."
+        },
+        {
+          "term": "time ratio",
+          "meaning": "The ratio of the time taken for the forward stroke to the return stroke."
+        }
+      ]
+    },
+    "1d05070fa557c70b22a68b17c234": {
+      "plainEnglish": "In this mechanism, joint P turns link PSH relative to link MP at 3 rpm clockwise to serve as the driven input. Link MP swings back and forth through 28.5 deg, driving link AM to rock about ground A through 155.2 deg. Meanwhile, link PSH rocks about ground S through 37.8 deg, moving its opposite end H to drive connecting rod link HR. This pushes slider R back and forth along a fixed guide by a distance of 2.09.",
+      "resembles": "walking beam mechanism",
+      "useCases": [
+        {
+          "use": "beam pump",
+          "why": "It uses a rocking beam to translate rotational input into linear reciprocating motion for lifting operations."
+        }
+      ],
+      "terms": [
+        {
+          "term": "general plane motion",
+          "meaning": "Motion combining both translation and rotation in a two-dimensional plane."
+        },
+        {
+          "term": "reciprocating motion",
+          "meaning": "Repetitive backward and forward linear motion."
+        }
+      ]
+    },
+    "1f29423292853108978a7e1861b4": {
+      "plainEnglish": "In this mechanism, the continuous rotation of input **link AB** drives two connected loops to produce oscillating motion. As **link AB** turns, it pushes **link BC** to rock the bell crank **link CDE** through 61 deg. This bell crank then pushes **link EF** to make **link FG** rock back and forth through 42.3 deg. The first loop acts as a crank-rocker, while the second loop functions as a triple-rocker mechanism.",
+      "resembles": "multi-loop power press linkage",
+      "useCases": [
+        {
+          "use": "heavy stamping press",
+          "why": "It uses multi-bar linkages to translate continuous motor rotation into precisely timed rocking outputs for tooling."
+        }
+      ],
+      "terms": [
+        {
+          "term": "bell crank",
+          "meaning": "A pivoting lever with two arms meeting at an angle to change the direction of motion."
+        },
+        {
+          "term": "crank-rocker",
+          "meaning": "A four-bar linkage where the input rotates fully while the output oscillates back and forth."
+        }
+      ]
+    },
+    "1f47a670b01970114dc57515aa62": {
+      "plainEnglish": "This mechanism operates when the input crank **link IJ** rotates continuously about ground pivot **I**, driving two four-bar loops that articulate **link KLM** and **link KN** as rockers. These connected links move couplers **link JL**, **link JN**, **link MO**, and **link NOP** in general plane motion. Consequently, traced point **P** on **link NOP** follows a smooth closed curve, featuring a nearly straight stretch measuring 40.37 cm that accounts for 28% of the cycle.",
+      "resembles": "Strandbeest walking leg",
+      "useCases": [
+        {
+          "use": "Walking robots",
+          "why": "It converts rotational motion into a foot-like path with a long straight stride for smooth locomotion."
+        }
+      ],
+      "terms": [
+        {
+          "term": "general plane motion",
+          "meaning": "Motion combining both translation and rotation in a two-dimensional plane."
+        },
+        {
+          "term": "rockers",
+          "meaning": "Links that swing back and forth through a limited angular range."
+        },
+        {
+          "term": "couplers",
+          "meaning": "Links without a fixed pivot that connect input and output members."
+        }
+      ]
+    }
+  }
+}

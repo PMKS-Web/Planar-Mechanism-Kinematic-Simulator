@@ -3,6 +3,7 @@
 @use 'src/app/component/analysis-setup/analysis-setup.component.scss' as analysis-setup;
 @use 'src/app/component/playback-bar/playback-bar.component.scss' as playback-bar;
 @use 'src/app/component/mechanism-panel/mechanism-panel.component.scss' as mechanism-panel;
+@use 'src/app/component/what-is-this-note/what-is-this-note.component.scss' as what-is-this-note;
 @use 'src/app/component/left-tabs/left-tabs.component.scss' as left-tabs;
 @use 'src/app/component/view-controls/view-controls.component.scss' as view-controls;
 @use 'app/component/BLOCKS/view-button/view-button.component.scss' as view-button;
@@ -94,6 +95,7 @@ $my-theme: mat.m2-define-light-theme(
 @include analysis-setup.css($my-theme);
 @include playback-bar.css($my-theme);
 @include mechanism-panel.css($my-theme);
+@include what-is-this-note.css($my-theme);
 @include left-tabs.css($my-theme);
 @include view-controls.css($my-theme);
 @include view-button.css($my-theme);

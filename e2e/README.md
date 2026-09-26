@@ -426,6 +426,9 @@ Not suites — import them from one.
   the drawing.
 - `background-image.mjs` — placing, moving, resizing, fading and deleting a background image, which
   cannot be clicked or dragged and follows the grid's zoom.
+- `what-is-this.mjs` — the machine panel's "What Is This?" note with the model stubbed: the request
+  is a sheet and a PNG, the picture leaves the view as it was, the note's parts are part links, and
+  the written, out-of-date, failed and busy states. Needs no Gemini key.
 
 ### Library, synthesis and export
 

@@ -21,6 +21,12 @@
     </button>
     @if (overviewOpen) {
       <div class="factGrid">
+        @if (family) {
+          <div class="fact wide">
+            <span class="factLabel">Family</span>
+            <span class="factValue">{{ family }}</span>
+          </div>
+        }
         @for (fact of facts; track fact.label) {
           <div class="fact">
             <span class="factLabel">{{ fact.label }}</span>
@@ -41,13 +47,23 @@
              called after the joint buried inside it. -->
         @for (link of links; track $index) {
           <div class="linkRow">
-            <span class="linkName">{{ link.name }}</span>
+            <span class="linkName"
+              ><part-link [part]="link.part">{{ link.name }}</part-link></span
+            >
             <span class="linkRole">{{ link.role }}</span>
             <span class="linkSpacer"></span>
             <span class="linkLength">{{ link.length }}</span>
           </div>
         }
       </div>
+    }
+
+    <button class="sectionHeader" (click)="noteOpen = !noteOpen">
+      <span>What Is This?</span>
+      <mat-icon>{{ noteOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+    </button>
+    @if (noteOpen) {
+      <app-what-is-this-note [index]="index" />
     }
 
     <!-- The same hint row the Edit and Analysis panels' empty states use, so

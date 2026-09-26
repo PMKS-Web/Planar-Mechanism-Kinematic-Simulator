@@ -177,6 +177,25 @@ words are fixed where a control or a label repeats:
   `link DE`, `slider D`, `cylinder EF`, `barrel AC`. Lower case in a sentence, as the panel's
   title is in Title Case (`Edit Joint C`), and always with its noun.
 
+### What Is This?
+
+The machine panel's note ([`what-is-this-shipping.md`](what-is-this-shipping.md)). The note itself
+is the model's words; these are the app's around it.
+
+| Part | Says |
+| --- | --- |
+| Section heading | `What Is This?` |
+| Over the note | `Written by AI from the facts above, not measured` — who wrote it, and that the Overview and Links above are PMKS+'s own |
+| The machine it resembles | `Looks like` |
+| The uses | `Where You'd Find It` |
+| Buttons | `Try Again` after a failure or while busy, `Write a New Note` after an edit |
+| After an edit | `This note was written before your last edit, so it may no longer match.` |
+
+- **A family keeps its name.** `Chebyshev straight-line linkage` and `Jansen linkage` are what those
+  mechanisms are called, so the Family row says so; the ban on *linkage* is on the word standing in
+  for *mechanism*.
+- **A part the note names is a part link**, as in a setup issue, whether or not the model marked it.
+
 ### Refusals wear their reason
 
 A control a reader could reasonably expect is **grayed with the reason beside
