@@ -161,6 +161,19 @@ npm start          # http://localhost:4200
 Open it as `localhost`, never `127.0.0.1`, and give a second server its own port; both rules are
 under [Environment](#environment).
 
+**"What Is This?" needs its function running beside the app.** The dev server has no Netlify
+Functions, so `src/proxy.conf.json` sends `/api` to port 8788, where this runs the very function
+Netlify deploys, with the Gemini key from your shell:
+
+```bash
+npm run what-is-this:dev    # needs GEMINI_API_KEY in the environment
+```
+
+Without it every note says it could not be written, and the rest of the app is unaffected. The
+proxy is fixed at 8788, so a second worktree shares the first one's function rather than starting
+another. [what-is-this-shipping.md](what-is-this-shipping.md) has the function itself and the
+release step that writes the library's notes.
+
 **The dev server does not see a file replaced by rename, and it never recovers.** `sed -i ''`
 writes a new file and renames it over the old one. The running `ng serve` kept serving the copy it
 had cached, went on rebuilding for every other edit, and ignored that one file from then on: a

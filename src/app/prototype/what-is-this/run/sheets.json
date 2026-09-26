@@ -1,0 +1,109 @@
+{
+  "v2": {
+    "title": "v2 · relations + picture",
+    "summary": "The sheet from the four-model comparison: structure, measured motion, how the parts relate, and the drawing.",
+    "changes": []
+  },
+  "v3": {
+    "title": "v3 · truth fixes",
+    "summary": "v2 with the statements the outside review found untrue or misleading corrected. Nothing new is added except the Whitworth half-turn times, which replace a misleading fact.",
+    "changes": [
+      "“Turn together, so they stay parallel” now says only that the angle between them never changes, and names a parallel pair of lines only when there is one (wiper: P-T stays parallel to Q-U).",
+      "A body that keeps its orientation says whether it moves in a straight line or along an arc (wiper CD: curvilinear translation, not a straight line; Scotch yoke CD: straight line).",
+      "A pin sliding in a moving slot no longer gets stroke times; that “3 s and 3 s” is what made Luna say the Whitworth has no quick return. The slotted link now gives its slow and fast half-turn times (3.65 s vs 2.35 s).",
+      "“Nearly straight for X% of the cycle” is measured in time, counting both passes of a back-and-forth path (Chebyshev 46% → 92%).",
+      "A parallelogram is checked against the coupler actually keeping its angle; a crossed one would be called an antiparallelogram.",
+      "Dropped two unproven causes: “because the input is not at its pivot” and “when one end rises the other falls” (now: the ends move in opposite directions).",
+      "A drawing the solver cannot solve is described as unsolved as drawn, not as a mechanism that cannot move (no template here hits this)."
+    ]
+  },
+  "v4": {
+    "title": "v4 · jobs, family check, schematic filmstrip",
+    "summary": "The app does more of the reasoning and says it in the app's words; the picture is the app's own Schematic drawing at four moments; the prompt asks for a glossary with meanings and for the specific machine the mechanism resembles.",
+    "changes": [
+      "Links and their jobs: every link is named for its job (input crank, coupler, rocker, beam, slotted link, yoke, connecting rod, slider), and each rocker's and slider's two ends are keyed to the input's angle, e.g. “reaches its ends when link AB is at 26 deg and 192 deg”. The same list is the panel's Links table.",
+      "Family check: PMKS+ compares lengths, joints and motion with a short catalog (crank-rocker and the other Grashof classes, parallelogram, slider-crank, Scotch yoke, Whitworth and slotted-lever quick returns, Chebyshev, Roberts, Hoeken and Watt straight-line linkages, Jansen, walking beam, crank-rocker driving a parallelogram, cylinder-driven lever) and names the chain type (Watt or Stephenson six-bar). The note may say “This mechanism is a …” only for a match.",
+      "The picture is the app's Schematic style, captured from the drawing-styles build at four moments (a full turn's quarters, or a back-and-forth's two ends and two points between), with authored link names hidden because they give the answer away (“Wiper arm”, “Hood”).",
+      "The sheet leads with what matters (at a glance, family, jobs) and puts coordinates last; long per-body length lists are trimmed to the lengths between connecting joints.",
+      "“This mechanism” throughout, in the sheet and in the note; the note never mentions the fact sheet or the picture.",
+      "Terms come with a meaning, which the panel shows on hover; uses may be fewer than two, and should be what the type is best known for.",
+      "After the app's family, the note names the specific machine it strongly resembles, if any: “a Stephenson six-bar that resembles a car hood hinge”."
+    ]
+  },
+  "v4f": {
+    "title": "v4 · on the fresh set",
+    "summary": "v4 exactly, on round 3's fresh mechanisms: its prompt, and its picture (axes shown, no background image).",
+    "changes": []
+  },
+  "v5": {
+    "title": "v5 · the app names it, the model recognizes it",
+    "summary": "The family is the app's and shows in the panel's Overview; the note no longer names it. The model says what real machine the mechanism looks like, and gives one or two real products. The picture has the author's background image and no axes.",
+    "changes": [
+      "The note does not name the family: PMKS+ shows the family it matched in the Overview, so the note stands on its own when there is no match and the panel still shows the family when the model fails.",
+      "New field “resembles”: the specific real machine the mechanism looks like it was built to be (“a car hood hinge”), or nothing. For a student's drawing, what it looks like an attempt at.",
+      "Uses are one or two real products a student can picture, not categories.",
+      "A notable sub-structure (two four-bar loops working together) may be pointed out; the prose is otherwise left to the model.",
+      "The picture carries the author's background image when there is one, and no axes; the fact sheet says when an image is there and that it is not part of the mechanism.",
+      "A mechanism PMKS+ cannot solve still gets a picture: one frame, as drawn."
+    ]
+  },
+  "v5n": {
+    "title": "v5 · on round 4",
+    "summary": "v5 exactly, on round 4's mechanisms: four moments, the background image behind each, links drawn as discs shown as outlines.",
+    "changes": []
+  },
+  "v6": {
+    "title": "v6 · six moments, the image once, discs as discs",
+    "summary": "v5 with a different picture: six moments instead of four; the background image once, in a tile of its own; links drawn as discs shown as discs, and said to be in the fact sheet.",
+    "changes": [
+      "Six moments of the cycle instead of four (a full turn in sixths; a back-and-forth from one end of its travel to the other).",
+      "The background image appears once, as tile 0, with the mechanism at its start; the six moments are drawn without it and cropped to the mechanism, so it is larger.",
+      "A link its author drew as a disc (a wheel or flywheel) is drawn as a disc with spokes in the picture, and its job in the fact sheet says so. (The Schematic style on feature/drawing-styles draws discs as outlines of their joints; the capture used a local fix.)",
+      "A link that turns most of a turn and back because the input reverses is called a crank that goes round and back, not a rocker with two ends at the same input position."
+    ]
+  },
+  "v6r5": {
+    "title": "v6 · on round 5",
+    "summary": "v6 exactly, on round 5's mechanisms: six moments, the background image once and at full strength, the authors' names hidden.",
+    "changes": []
+  },
+  "v7": {
+    "title": "v7 · the authors' names, the image faded and boxed",
+    "summary": "v6 with the names authors gave their links, joints and forces sent in the fact sheet and written in the picture, and the background image faded, in a tile of its own, with a box showing where the mechanism sits in it.",
+    "changes": [
+      "The names an author typed for a link, a joint or a force go into the fact sheet in quotes after the letters (link GK (\"Luffing crank\")), and a link's name is written on it in the picture. A name that is only letters (\"ABC\", or a stale id like \"A2B\") is left out, in the sheet and in the picture. Only five of the round's twelve templates, and none of the students' drawings, have any.",
+      "The forces an author placed are listed with their names, the link they act on, where, how hard and which way.",
+      "With a background image the picture is still six tiles: the image in tile 0 and five moments, not six.",
+      "The background image is faded to about a third, so the mechanism reads over a large or busy picture, and a dashed box in tile 0 marks the area the other tiles show, so the model can see where the mechanism sits in the image.",
+      "The prompt says the names are the author's own and often say what the part and the mechanism are for, and that the note may use a name after the part's letters."
+    ]
+  },
+  "v7r6": {
+    "title": "v7 · on round 6",
+    "summary": "v7 exactly, on round 6's mechanisms, asked blind. The pictures come from feature/drawing-styles as merged (its own disc drawing, not the local fix).",
+    "changes": []
+  },
+  "v8": {
+    "title": "v8 · a wider catalog, the image at full strength, solvable only",
+    "summary": "v7 with more of the recognizing done by the app: side rods, locomotive running gear, bell cranks and exact straight lines named; a disc no longer called a lever; the background image at full strength; and mechanisms PMKS+ cannot solve no longer sent.",
+    "changes": [
+      "Cranks tied to turn together by a rod that keeps its angle are coupled by a side rod; the rod's job says so (\"side rod (a coupling rod): ties link OAR and link PBS to turn together\"). Drawn as wheels, they match \"coupled wheels (side-rod drive)\"; with one of them joined by a rod to a block on a fixed guide, \"steam-locomotive running gear (driving wheels, side rod and main rod)\".",
+      "A pivoted rocker whose two arms meet at 45 to 135 deg, each joined to another part, is a bell crank, with the angle between its arms.",
+      "A point that moves along an exactly straight line (within 0.1% of its length) without riding a guide is an exact straight-line linkage; with four equal links in a rhombus through it, a Peaucellier-Lipkin linkage.",
+      "A link drawn as a disc is no longer described as a lever (beam) pivoted between its crank pin and a spoke point.",
+      "The background image is at full strength again, still boxed in tile 0: faded, the landing gear's propeller no longer told the model it was looking at an aircraft.",
+      "A mechanism PMKS+ cannot solve is left out of the sheet, and a drawing with none it can solve is not asked about: the panel shows something else for them. The rule about describing an unsolved mechanism leaves the prompt."
+    ]
+  },
+  "v9": {
+    "title": "v9 · a note per machine, for Gemini",
+    "summary": "v8 split per machine, as the Analysis panel is, with the reply held to a schema and the app checking whatever the model writes before it shows.",
+    "changes": [
+      "One fact sheet, one picture and one note per machine PMKS+ can solve. A drawing of several becomes a case for each (\"Pumping_Field__M2\"); each sheet names the others as context (\"M1 is the same design as this one (the same link lengths), with its own input\"), and its filmstrip is cropped to its machine.",
+      "The prompt says the note is about the machine in the heading alone, and that a use is a product a student could picture by name, never a category of machinery.",
+      "Gemini is held to a JSON schema for the reply (responseSchema), so it cannot write invalid JSON.",
+      "A background photograph opens the \"Looks like\" gate, and the gate now covers the uses too.",
+      "The app turns the answer into the panel's pieces (note-prose.ts): every part it names becomes a part link, bold or not, a named part's (\"Hood\") included; a \"Looks like\" that repeats the family is dropped; a term the paragraph does not contain is dropped."
+    ]
+  }
+}

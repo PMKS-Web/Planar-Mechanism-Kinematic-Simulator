@@ -205,6 +205,7 @@ export const SUITES = [
   { name: 'ui-copy', seconds: 18, lanes: BOTH },
   { name: 'unit-undo-view', seconds: 10, lanes: BOTH },
   { name: 'whats-new', seconds: 33, lanes: BOTH },
+  { name: 'what-is-this', seconds: 40, lanes: NIGHTLY },
 ];
 
 /** Files in `e2e/` that are not suites, and suites no runner can drive. */

@@ -13,6 +13,31 @@ whose title covers it, and leave a heading here only if someone would still sear
 
 ---
 
+### svg-pan-zoom writes a zoom to the page on the next animation frame
+
+`panZoomObject.zoom()` updates the library's cached state at once -- `SvgGridService.getZoom()`
+answers the new zoom, `handleZoom` runs, and an `ApplicationRef.tick()` redraws every mark sized
+for it -- but the viewport group's `transform`, and `SvgGridService.CTM` with it, are written by a
+`requestAnimationFrame`. `WhatIsThisPictureService` leans on that: it zooms, draws, copies the
+canvas and zooms back inside one task, so the reader's view is the one the frame paints. The copy
+therefore sets its own viewport transform, because the DOM still carries the reader's, and anything
+else that zooms and then reads positions off the page in the same task reads the old zoom.
+
+### `MechanismService.lookAt` poses the drawing and puts every clock back
+
+Built for the "What is this?" picture: it draws machine *i* at pose times from its own solved
+samples (the other machines at the same time of the shared clock), hands each pose to a callback,
+and restores every clock, the paused sample and the running playback clock, as
+`encodeFromStartPose` does for saving. A reversed machine's clock runs against its frames
+(`poseSecondsOf`), which `lookAt` accounts for so a pose time means the frame with that time.
+
+### The fact sheet reads the start of the cycle from the solved frames, not from the drawing
+
+Playback moves the editable joints and forces in place, so a sheet built from `partition.joints`
+while paused mid-cycle described the paused pose as the start -- a different text, so a different
+note key, and a note the library could never match. `describeStartGeometry` and `describeLoads` take
+the positions from the machine's first solved frame.
+
 ### An e2e suite that launches the machine's own Chrome is not portable
 
 Eight suites read `PMKS_CHROME` and hand Playwright an `executablePath` rather than using the

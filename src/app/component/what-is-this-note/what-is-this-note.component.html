@@ -1,0 +1,82 @@
+<div class="whatIsThis" [attr.data-status]="state.status">
+  @switch (state.status) {
+    @case ('cannot-run') {
+      <p class="noteMessage">PMKS+ writes a note about a mechanism once it runs.</p>
+    }
+    @case ('unsolved') {
+      <p class="noteMessage">
+        PMKS+ works out this drawing's motion when you press Play or open an analysis, and writes
+        the note then.
+      </p>
+    }
+    @case ('writing') {
+      <div class="noteCaption" role="status">
+        <mat-icon>edit_note</mat-icon>
+        Writing a note about this mechanism…
+      </div>
+      @if (!drawn) {
+        <div class="noteSkeleton" aria-hidden="true">
+          <span></span><span></span><span></span><span class="short"></span>
+        </div>
+      }
+    }
+    @case ('failed') {
+      <p class="noteMessage">
+        The note could not be written this time. Everything above is worked out by PMKS+ and is
+        unaffected.
+      </p>
+      <button-block icon="refresh" inline (pressed)="write()">Try Again</button-block>
+    }
+    @case ('busy') {
+      <p class="noteMessage">Too many notes are being written at once. Try again in a minute.</p>
+      <button-block icon="refresh" inline [disabled]="!busyOver" (pressed)="write()">
+        Try Again
+      </button-block>
+    }
+    @case ('unwritten') {
+      @if (state.stale) {
+        <p class="noteChanged">
+          This note was written before your last edit, so it may no longer match.
+        </p>
+        <button-block icon="refresh" inline (pressed)="write()">Write a New Note</button-block>
+      }
+    }
+  }
+
+  @if (drawn) {
+    <div class="note" [class.faded]="state.stale">
+      @if (!state.stale) {
+        <div class="noteCaption">
+          <mat-icon>edit_note</mat-icon>
+          Written by AI from the facts above, not measured
+        </div>
+      }
+      @if (drawn.looksLike) {
+        <div class="looksLike">
+          <span class="looksLikeLabel">Looks like</span>
+          <span class="looksLikeValue">{{ drawn.looksLike }}</span>
+        </div>
+      }
+      <p class="noteParagraph"><prose-block [sentence]="drawn.paragraph" /></p>
+      @if (drawn.terms.length) {
+        <dl class="noteTerms">
+          @for (term of drawn.terms; track term.term) {
+            <div>
+              <dt>{{ term.term }}</dt>
+              <dd>{{ term.meaning }}</dd>
+            </div>
+          }
+        </dl>
+      }
+      @if (drawn.uses.length) {
+        <div class="noteSubhead">Where You'd Find It</div>
+        @for (use of drawn.uses; track $index) {
+          <div class="noteUse">
+            <div class="noteUseName"><prose-block [sentence]="use.use" /></div>
+            <div class="noteUseWhy"><prose-block [sentence]="use.why" /></div>
+          </div>
+        }
+      }
+    </div>
+  }
+</div>
