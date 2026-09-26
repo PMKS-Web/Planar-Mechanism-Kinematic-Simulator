@@ -30,7 +30,7 @@ const BOTH = ['gate', 'nightly'];
 const NIGHTLY = ['nightly'];
 
 export const SUITES = [
-  { name: 'drawing-styles', seconds: 70, lanes: NIGHTLY },
+  { name: 'drawing-styles', seconds: 70, lanes: BOTH },
   { name: 'bug-fixes-2', seconds: 90, lanes: NIGHTLY },
   { name: 'analysis-audit', seconds: 224, lanes: NIGHTLY },
   { name: 'analysis-drawing-switches', seconds: 11, lanes: BOTH },
@@ -57,7 +57,6 @@ export const SUITES = [
   { name: 'cylinder-mount', seconds: 36, lanes: BOTH },
   { name: 'cylinder-mount-render', seconds: 48, lanes: BOTH },
   { name: 'cylinder-mount-slot', seconds: 50, lanes: BOTH },
-  { name: 'cylinder-object-size', seconds: 16, lanes: BOTH },
   { name: 'cylinder-panel', seconds: 45, lanes: BOTH },
   { name: 'cylinder-skin', seconds: 9, lanes: BOTH },
   { name: 'cylinder-welded-drag', seconds: 66, lanes: BOTH },
@@ -212,6 +211,10 @@ export const SUITES = [
 
 /** Files in `e2e/` that are not suites, and suites no runner can drive. */
 export const NOT_RUN = [
+  {
+    name: 'cylinder-object-size',
+    why: 'Object Size was retired by Drawing Style. The drawing-styles gate covers cylinder geometry through style, zoom, and Fit changes.',
+  },
   { name: 'app-ready', why: 'A helper the suites import: `waitForReady` and `openMechanism`.' },
   { name: 'filmstrip', why: 'A helper: burst frames and the contact sheet that tiles them.' },
   { name: 'quiet-start', why: 'A helper: seeds `localStorage` so no dialog covers the canvas.' },
