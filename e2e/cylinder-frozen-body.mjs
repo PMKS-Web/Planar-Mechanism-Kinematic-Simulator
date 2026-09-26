@@ -52,8 +52,9 @@ const drawerText = () =>
     .catch(() => '');
 /** The drawer's text with every issue's fixes open, as a reader who asked for them sees it. */
 const drawerTextOpen = async () => {
-  const toggles = page.locator('app-analysis-setup issue-block .issueToggle');
-  for (let i = 0; i < (await toggles.count()); i++) await toggles.nth(i).click();
+  // Only the shut ones: an issue alone in its section starts open.
+  const closed = page.locator('app-analysis-setup issue-block .issueToggle[aria-expanded="false"]');
+  while ((await closed.count()) > 0) await closed.first().click();
   return drawerText();
 };
 const panelText = () => page.locator('app-left-tabs').innerText();

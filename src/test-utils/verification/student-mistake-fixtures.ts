@@ -184,6 +184,35 @@ export function couplerInputAndHangingLinkFixture(): MechanismFixture {
   return fixture;
 }
 
+/**
+ * A crank plate turning about its input D, with a link hanging loose from each
+ * of its other corners: three degrees of freedom, and no single edit leaves
+ * one. Each loose link needs a fix of its own.
+ */
+export function plateWithTwoHangingLinksFixture(): MechanismFixture {
+  return {
+    joints: [
+      { id: 'A', x: -2, y: 1.5 },
+      { id: 'B', x: -1, y: 0.5 },
+      { id: 'D', x: 0, y: 0, ground: true, input: true },
+      { id: 'F', x: 1.5, y: 0.8 },
+      { id: 'G', x: 3, y: 0.4 },
+    ],
+    links: [{ joints: 'AB' }, { joints: 'BDF' }, { joints: 'FG' }],
+    inputAngVel: 1,
+  };
+}
+
+/**
+ * The same plate with G grounded: FG holds the plate still against the ground,
+ * so the input can't turn, and AB still hangs loose.
+ */
+export function plateHeldByAGroundedLinkFixture(): MechanismFixture {
+  const fixture = plateWithTwoHangingLinksFixture();
+  fixture.joints[4].ground = true;
+  return fixture;
+}
+
 const entry = (
   name: string,
   purpose: string,
@@ -268,6 +297,16 @@ export const STUDENT_MISTAKE_GALLERY = [
     'Four-bar driven from its coupler point, with a hanging link',
     'Does not run on purpose: the input is on a coupler point and CF hangs loose, both said at once',
     couplerInputAndHangingLinkFixture()
+  ),
+  entry(
+    'Crank plate with two links hanging loose',
+    'Does not run on purpose: AB and FG each need a fix, and no single edit is enough',
+    plateWithTwoHangingLinksFixture()
+  ),
+  entry(
+    'Crank plate held by a grounded link',
+    'Does not run on purpose: FG pins the plate to the ground, and AB hangs loose',
+    plateHeldByAGroundedLinkFixture()
   ),
   entry(
     'Scotch yoke on a Pin-in-slot guide',

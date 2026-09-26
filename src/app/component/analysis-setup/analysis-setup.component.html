@@ -30,7 +30,7 @@
         @if (isOpen(item)) {
           <div class="issueList">
             @for (issue of item.checks; track issue.title) {
-              <issue-block [issue]="issue" />
+              <issue-block [issue]="issue" [startOpen]="item.checks.length === 1" />
             }
           </div>
         }
@@ -138,7 +138,7 @@
       @if (forceOpen && forceIssues.length > 0) {
         <div class="issueList">
           @for (issue of forceIssues; track issue.title) {
-            <issue-block [issue]="issue" />
+            <issue-block [issue]="issue" [startOpen]="forceIssues.length === 1" />
           }
         </div>
       }
@@ -165,7 +165,7 @@
         <p class="sectionNote">Drawn dashed on the grid. Analysis skips these.</p>
         <div class="issueList">
           @for (issue of unassigned; track issue.title) {
-            <issue-block [issue]="issue" />
+            <issue-block [issue]="issue" [startOpen]="unassigned.length === 1" />
           }
         </div>
       }

@@ -108,11 +108,11 @@ record(
   text.includes('Nothing loads the mechanism') && !text.includes('Mechanism M1'),
   text
 );
-// The fixes wait behind "Show fixes", and none is a button: the drawer says
-// where the switch lives rather than throwing it for the reader.
+// The one issue in the Force drawer opens with its fixes showing, and none is
+// a button: the drawer says where the switch lives rather than throwing it.
 record(
-  'the way out waits behind Show fixes',
-  !text.includes('Turn on Gravity') &&
+  'a lone issue opens with its fixes, none of them a button',
+  text.includes('Turn on Gravity in the Settings panel') &&
     (await page.locator('app-analysis-setup button-block').count()) === 0,
   text
 );

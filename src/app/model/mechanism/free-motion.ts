@@ -10,7 +10,15 @@ import {
   freedomsOf,
   pointMotion,
 } from './mobility';
-import { hiddenJoints, holdFor, MAX_FIXES, MobilityFix, STILL, Trial } from './mobility-edits';
+import {
+  hiddenJoints,
+  holdFor,
+  MAX_FIXES,
+  MobilityFix,
+  STILL,
+  takesOneAway,
+  Trial,
+} from './mobility-edits';
 import { describeActuator } from '../actuator';
 import {
   danglingDeletes,
@@ -68,6 +76,14 @@ export interface MobilityDiagnosis {
    * checked result, because the link it asks for does not exist yet.
    */
   attachAt?: RealJoint;
+  /**
+   * Where no single edit leaves one degree of freedom, the single edits that
+   * each take one away -- a link hanging loose, deleted -- so a drawing with two
+   * loose links is told what to do about each. Counted.
+   */
+  steps?: MobilityFix[];
+  /** Every loose free end a new link to ground would hold, for the same drawing. */
+  freeEnds?: RealJoint[];
   /**
    * The input's own part, when it cannot move at all: set only where the
    * drawing has a freedom and none of it is the input's -- so the count reads
@@ -158,6 +174,13 @@ function diagnose(partition: MechanismPartition, drawing?: Drawing): MobilityDia
         ? [...merges, ...rigidOnes(trial, assignment, drawing, own, hidden)]
         : merges;
 
+  // Two links left hanging need two edits, and no single one counts to one:
+  // what each loose part needs is said instead, and the reader makes one each.
+  const steps =
+    free > 2 && fixes.length === 0
+      ? danglingDeletes(trial, assignment, own, hidden, (edit) => takesOneAway(trial, edit, free))
+      : [];
+
   const directions = driven && free >= 1 ? freeMotionOf(system) : [];
   const stuck =
     directions.length > 0
@@ -178,6 +201,8 @@ function diagnose(partition: MechanismPartition, drawing?: Drawing): MobilityDia
     attachAt: fixes.every((fix) => fix.kind === 'delete-link' || fix.kind === 'weld')
       ? freeEndOf(loose.looseJoints)
       : undefined,
+    steps,
+    freeEnds: free > 2 && fixes.length === 0 ? freeEndsOf(loose.looseJoints) : [],
     stuck,
     inputStart,
     mover,
@@ -281,7 +306,12 @@ function keepingWhatWasDrawn(fixes: MobilityFix[], driven: RealJoint | undefined
 }
 
 function freeEndOf(looseJoints: RealJoint[]): RealJoint | undefined {
-  return looseJoints.find(
+  return freeEndsOf(looseJoints)[0];
+}
+
+/** Every loose joint at the end of a single bar, the way a four-bar is finished at one. */
+function freeEndsOf(looseJoints: RealJoint[]): RealJoint[] {
+  return looseJoints.filter(
     (joint) =>
       !(joint instanceof PrisJoint) &&
       !joint.ground &&

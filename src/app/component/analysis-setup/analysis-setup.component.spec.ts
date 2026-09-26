@@ -136,8 +136,9 @@ describe('AnalysisSetupComponent issues', () => {
   const text = (element: Element | null) => element?.textContent?.replace(/\s+/g, ' ').trim();
 
   it('shows what is wrong, and keeps how to fix it behind Show fixes', async () => {
+    // Two issues, so the list is one to scan: each starts with its fixes shut.
     const { fixture } = await createSetup('kinematic', TabID.EDIT, {
-      issues: [blocker('No input is set')],
+      issues: [blocker('No input is set'), blocker('Slider D has no slot')],
     });
     const issue: HTMLElement = fixture.nativeElement.querySelector('issue-block');
 
@@ -162,6 +163,23 @@ describe('AnalysisSetupComponent issues', () => {
     fixture.destroy();
   });
 
+  it('opens the fixes of an issue alone in its section', async () => {
+    const { fixture } = await createSetup('kinematic', TabID.EDIT, {
+      issues: [blocker('No input is set')],
+    });
+    const issue: HTMLElement = fixture.nativeElement.querySelector('issue-block');
+    const toggle: HTMLButtonElement = issue.querySelector('.issueToggle')!;
+
+    expect(issue.querySelector('.issuePanel')).not.toBeNull();
+    expect(text(toggle)).toContain('Hide fixes');
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    // And it still folds.
+    toggle.click();
+    fixture.detectChanges();
+    expect(issue.querySelector('.issuePanel')).toBeNull();
+    fixture.destroy();
+  });
+
   it('lists two or more fixes as suggestions, each a bullet', async () => {
     const { fixture } = await createSetup('kinematic', TabID.EDIT, {
       issues: [
@@ -169,8 +187,6 @@ describe('AnalysisSetupComponent issues', () => {
       ],
     });
     const issue: HTMLElement = fixture.nativeElement.querySelector('issue-block');
-    (issue.querySelector('.issueToggle') as HTMLButtonElement).click();
-    fixture.detectChanges();
 
     expect(text(issue.querySelector('.issueLabel'))).toBe('Required to run. Some ways to fix it:');
     expect([...issue.querySelectorAll('li.issueFix')].map(text)).toEqual([
@@ -180,7 +196,7 @@ describe('AnalysisSetupComponent issues', () => {
     fixture.destroy();
   });
 
-  it('says Show more, and the note, where a warning has nothing to change', async () => {
+  it('says Show less, and the note, where a warning has nothing to change', async () => {
     const toggle: SetupIssue = {
       severity: 'warning',
       title: 'Passes through a toggle',
@@ -192,10 +208,7 @@ describe('AnalysisSetupComponent issues', () => {
     const { fixture } = await createSetup('kinematic', TabID.EDIT, { issues: [toggle] });
     const issue: HTMLElement = fixture.nativeElement.querySelector('issue-block');
     const button = issue.querySelector('.issueToggle') as HTMLButtonElement;
-    expect(text(button)).toContain('Show more');
-    button.click();
-    fixture.detectChanges();
-
+    // Alone in its section, so it opens with its note showing.
     expect(text(button)).toContain('Show less');
     expect(text(issue.querySelector('.issueLabel'))).toBe('Optional, it runs as is.');
     expect(text(issue.querySelector('.issueNote'))).toBe('Nothing to change.');
@@ -205,11 +218,10 @@ describe('AnalysisSetupComponent issues', () => {
   it('draws a part the text names as a link to it, and no Go To buttons', async () => {
     const c = new RevJoint('C', 0, 0);
     const { fixture, target } = await createSetup('kinematic', TabID.EDIT, {
-      issues: [blocker("Joint C can't be the input", [prose`Unweld ${jointRef(c)}`])],
+      issues: [blocker("Joint C can't be the input", [prose`Set ${jointRef(c)} to Revolute`])],
     });
+    // Alone in its section, so its fixes are already open.
     const issue: HTMLElement = fixture.nativeElement.querySelector('issue-block');
-    (issue.querySelector('.issueToggle') as HTMLButtonElement).click();
-    fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('button-block')).toBeNull();
     expect(fixture.nativeElement.textContent).not.toContain('Go To');

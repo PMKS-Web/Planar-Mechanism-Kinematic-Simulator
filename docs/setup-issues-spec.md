@@ -264,6 +264,17 @@ What changed on the way:
   list-pointing mark, whatever is selected and over the gray an analysis mode draws a machine
   that can't run in (`MechanismService.linkedPart`). The export drawer's pointing still defers to
   a selection (`hoveredPart`).
+- **An issue alone in its section starts with its fixes open.** With nothing to scan past, the
+  fixes are what the reader came for. Several issues still start shut, and a second issue arriving
+  later does not shut the first (`startOpen` is read once).
+- **A drawing that needs more than one edit lists what each loose part needs**, up to four
+  (`MOST_STEPS`): two links hanging loose from a crank plate get "Delete link AB", "Delete link
+  FG" and "Attach Link at joint A, then ground its far end" for each free end, with an explanation
+  that says to make one for each loose part. No single edit counts to one there, and the list
+  used to fall back to one piece of advice.
+- **A stuck input lists the parts that free it** even when doing so leaves something else loose:
+  "Turn off Grounded for joint G", "Delete link FG", rather than "Delete one of the locked links".
+  What still moves afterwards is the next issue.
 - **Lists name two parts and "N more" past three**, so a summary naming four or more links keeps
   to sixteen words: "link ACD, link CE and 2 more".
 - **Budgets hold for every message the drawer builds**, which `setup-issue-budgets.spec.ts` checks

@@ -235,6 +235,11 @@ export function aloneWith(
  * The edits that would let the input move its part, counted on that part alone:
  * one freedom as drawn, none with the input held, and the machine still in one
  * piece. Asked in the order `rigidFixes` asks them.
+ *
+ * Where none counts that far -- a link hangs loose somewhere else too, so no
+ * single edit leaves exactly one -- the edits that let the input move its part
+ * at all, whatever else still moves. Freeing the input is the step this issue
+ * is about; what still moves after it is the next issue, and says so.
  */
 export function stuckFixes(
   trial: Trial,
@@ -243,6 +248,27 @@ export function stuckFixes(
   frame: Link[],
   own: Set<string>,
   hidden: Set<string>
+): MobilityFix[] {
+  const counted = stuckEdits(trial, assignment, around, frame, own, hidden, 'one');
+  return counted.length
+    ? counted
+    : stuckEdits(trial, assignment, around, frame, own, hidden, 'moves');
+}
+
+/**
+ * The candidate edits, each tested as `test` asks: `'one'` for one freedom left
+ * to the input's part, `'moves'` for any that the input drives. A link deleted
+ * under `'moves'` may leave a ground pivot with nothing on it -- a rocker
+ * taken off the pivot it hung from -- which the counted test does not allow.
+ */
+function stuckEdits(
+  trial: Trial,
+  assignment: BodyAssignment,
+  around: Link[],
+  frame: Link[],
+  own: Set<string>,
+  hidden: Set<string>,
+  test: 'one' | 'moves'
 ): MobilityFix[] {
   const { partition, driven } = trial;
   const { joints, links } = partition;
@@ -256,9 +282,14 @@ export function stuckFixes(
     );
     const alone = aloneWith(joints, kept, edit.assignment, keep, edit.rotates);
     const hold = alone ? holdFor(driven, alone, edit.assignment) : undefined;
-    return alone !== undefined && hold !== undefined && leavesOne(alone, alone.constraints, hold);
+    if (!alone || !hold) return false;
+    if (test === 'one') return leavesOne(alone, alone.constraints, hold);
+    const free = freedomsOf(alone);
+    return free >= 1 && freedomsOf(alone, [...alone.constraints, hold]) < free;
   };
   const touches = new Set(around.flatMap((link) => link.joints.map((joint) => joint.id)));
+  const pivotLeftBare = (joint: Joint) =>
+    test === 'moves' && joint instanceof RealJoint && joint.ground && !(joint instanceof PrisJoint);
 
   for (const joint of joints) {
     if (tried >= MAX_CANDIDATES) break;
@@ -294,7 +325,9 @@ export function stuckFixes(
     if (link.joints.some((joint) => hidden.has(joint.id) || !own.has(joint.id))) continue;
     // The input's own link is what it drives; taking it away is not a fix.
     if (driven?.links.includes(link)) continue;
-    if (!link.joints.every((joint) => staysHeld(joint, link, joints))) continue;
+    if (!link.joints.every((joint) => staysHeld(joint, link, joints) || pivotLeftBare(joint))) {
+      continue;
+    }
     const edit: Edit = {
       groundedAt: (one) => one.ground,
       assignment: withoutBody(assignment, body),

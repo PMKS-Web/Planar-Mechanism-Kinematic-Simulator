@@ -177,7 +177,9 @@ export function danglingDeletes(
   trial: Trial,
   assignment: BodyAssignment,
   own: Set<string>,
-  hidden: Set<string>
+  hidden: Set<string>,
+  /** What the drawing the delete leaves has to count: one freedom, unless a step is asked for. */
+  counts: (edit: Edit) => boolean = (edit) => leavesOneMachine(trial, edit)
 ): MobilityFix[] {
   const { links, joints } = trial.partition;
   const freeEnd = (joint: Joint, link: Link) =>
@@ -206,7 +208,7 @@ export function danglingDeletes(
         (joint) => !(link.joints.includes(joint) && freeEnd(joint, link))
       ),
     };
-    if (leavesOneMachine(trial, edit)) fixes.push({ kind: 'delete-link', link });
+    if (counts(edit)) fixes.push({ kind: 'delete-link', link });
   }
   return fixes;
 }
