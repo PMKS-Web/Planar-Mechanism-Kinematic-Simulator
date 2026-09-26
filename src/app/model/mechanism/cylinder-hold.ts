@@ -38,7 +38,14 @@ import { Cylinder, cylindersIn } from '../cylinder';
 import { isFrozenCylinder } from '../cylinder-frozen';
 import { GROUND_BODY, resolveActuator } from '../actuator';
 import { assignBodies, BodyAssignment, WORLD } from './bodies';
-import { FreedomFrame, freedomFrameOf } from './mobility';
+import {
+  Constraint,
+  ConstraintSystem,
+  FreedomFrame,
+  freedomFrameOf,
+  freedomsOf as freedomsLeft,
+  holdSlide,
+} from './mobility';
 import { freedomsOf } from './freedoms';
 
 /** What a machine's passive cylinders came to, and the bodies that follow. */
@@ -126,6 +133,64 @@ export function cylinderHolds(joints: Joint[], links: Link[]): CylinderHoldRepor
     }
   }
   return { held: new Set<string>(), loose: looseSeals(candidates), merges: [] };
+}
+
+/**
+ * The same rule, asked of the drawing an edit would leave.
+ *
+ * A fix is counted before it is made (`mobility-edits.ts`), and a count that
+ * forgot this rule disagreed with the one the reader gets after making it:
+ * grounding the free end of a ram that hangs off a linkage left a loop the
+ * machine then counted at one, and the advice, counting two, never offered it.
+ *
+ * Each held cylinder is a row that stops its slide rather than a merge of its
+ * two bodies, because an edit's bodies are described rather than rebuilt; for
+ * the count the two are the same thing. The order, the gate and the release
+ * are `cylinderHolds`', asked of the rows instead of the joints.
+ */
+export function holdingCylinders(
+  system: ConstraintSystem,
+  joints: Joint[],
+  assignment: BodyAssignment,
+  /** The input held still, where the edited drawing has one to hold. */
+  drive?: Constraint
+): ConstraintSystem {
+  const passive = cylindersIn(joints)
+    .filter((cylinder) => !cylinder.seal.input)
+    .filter((cylinder) => !isFrozenCylinder(cylinder, assignment.bodyOf))
+    .sort((a, b) => cylinderHoldOrder(a).localeCompare(cylinderHoldOrder(b)));
+  if (passive.length === 0 || !(freedomsLeft(system) > 1)) return system;
+
+  const driven = drive ? [...system.constraints, drive] : system.constraints;
+  const free = freedomsLeft(system, driven);
+  const candidates = passive
+    .map((cylinder) => stopped(cylinder, system, assignment))
+    .filter((row): row is Constraint => row !== undefined)
+    .filter((row) => freedomsLeft(system, [...driven, row]) < free);
+
+  for (let released = 0; released < candidates.length; released++) {
+    const constraints = [...system.constraints, ...candidates.slice(released)];
+    if (freedomsLeft(system, constraints) >= 1) return { ...system, constraints };
+  }
+  return system;
+}
+
+/** The row that stops a cylinder's slide where it was drawn. */
+function stopped(
+  cylinder: Cylinder,
+  system: ConstraintSystem,
+  assignment: BodyAssignment
+): Constraint | undefined {
+  const { seal } = cylinder;
+  const barrel = assignment.bodyOf(cylinder.barrelRoot);
+  const rod = assignment.bodyOf(cylinder.rodRoot);
+  if (barrel === rod) return undefined;
+  return holdSlide(
+    { x: seal.x, y: seal.y },
+    system.bodyAt(rod),
+    system.bodyAt(barrel),
+    seal.slotAngle
+  );
 }
 
 /** Just the seal ids, for the many callers that want nothing else. */

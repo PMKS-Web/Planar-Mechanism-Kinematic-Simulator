@@ -62,6 +62,7 @@ const EXPECTED_INVALID = new Set([
   'Scotch yoke on a Pin-in-slot guide',
   'Crank plate with two links hanging loose',
   'Crank plate held by a grounded link',
+  'Ram with a free end',
   // Two things wrong at once, both said together.
   'Four-bar with a hanging link and no input',
   'Four-bar driven from its coupler point, with a hanging link',

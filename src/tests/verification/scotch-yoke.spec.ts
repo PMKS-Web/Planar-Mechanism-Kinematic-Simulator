@@ -6,6 +6,7 @@ import { buildMechanism, BuiltMechanism } from '../../test-utils/verification/fi
 import {
   GUIDE_DROP,
   scotchYokeFixture,
+  scotchYokeOnTwoGuidesFixture,
   scotchYokeWithTracerFixture,
   swingingBlockFixture,
   TRACER_OFFSET,
@@ -59,6 +60,26 @@ describe('a Scotch yoke', () => {
       );
       expect(jointAt(built, step, 'D').x, `D at step ${step}`).toBeCloseTo(
         YOKE_CRANK * Math.cos(theta),
+        3
+      );
+    }
+  });
+
+  it('carries the yoke on two grounded guides, one at each end', () => {
+    const built = buildMechanism(scotchYokeOnTwoGuidesFixture());
+
+    expect(PositionSolver.unsolvableJoints).toEqual([]);
+    expect(built.mechanism.dof).toBe(1);
+    for (const step of SAMPLES) {
+      const theta = crankAngle(built, step);
+      for (const id of ['C', 'D']) {
+        expect(jointAt(built, step, id).x, `${id} at step ${step}`).toBeCloseTo(
+          YOKE_CRANK * Math.cos(theta),
+          3
+        );
+      }
+      expect(jointAt(built, step, 'B').x, `B at step ${step}`).toBeCloseTo(
+        jointAt(built, step, 'C').x,
         3
       );
     }

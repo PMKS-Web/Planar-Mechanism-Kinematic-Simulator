@@ -1777,9 +1777,20 @@ export class PositionSolver {
     while (progress) {
       progress = false;
       const pending = joints.filter(
-        (j): j is RealJoint => j instanceof RealJoint && !known.includes(j.id)
+        (j): j is RealJoint =>
+          j instanceof RealJoint && (!known.includes(j.id) || this.unslidGuide(j))
       );
       for (const joint of pending) {
+        // A guide the sweep reaches only because it has not slid yet is asked
+        // about the one step that slides a guide, and nothing else.
+        if (known.includes(joint.id)) {
+          const slid = this.orderSlideAssembly(joints, links, joint, orderNum, known);
+          if (slid !== undefined) {
+            orderNum = slid;
+            progress = true;
+          }
+          continue;
+        }
         // The two cylinder primitives come first. A sealed cylinder's joints
         // also match the generic slot primitives, and letting one of those win
         // would solve the part joint by joint — which is exactly the freedom
@@ -2957,7 +2968,9 @@ export class PositionSolver {
     // leaving it behind here stretched the zero-length block a little further
     // every timestep.
     const movable = members.filter((member) => !member.ground || member instanceof PrisJoint);
-    const pending = movable.filter((member) => !known.includes(member.id));
+    const pending = movable.filter(
+      (member) => !known.includes(member.id) || this.unslidGuide(member)
+    );
     if (pending.length === 0) {
       return undefined;
     }
@@ -2981,13 +2994,29 @@ export class PositionSolver {
     this.slideAssemblyMap.set(key.id, { guide, ...source, targets });
     this.desiredAnalysisJointMap.set(key.id, 'slideAssemblyThroughSlot');
     this.jointNumOrderSolverMap.set(orderNum, targets);
-    pending.forEach((member) => known.push(member.id));
+    pending.forEach((member) => {
+      if (!known.includes(member.id)) known.push(member.id);
+    });
 
     let next = orderNum + 1;
     for (const placed of pending) {
       next = this.detJointOrder(joints, links, placed, next, known);
     }
     return next;
+  }
+
+  /**
+   * A grounded slider no step has moved yet.
+   *
+   * Seeded as known, because its slot line is fixed in the world, and still
+   * waiting to be slid along it. A yoke on two grounded guides has nothing else
+   * left to place once the crank pin is down, so a sweep that looked only at
+   * joints not yet known never reached it, and the yoke stood still while its
+   * pin left the slot.
+   */
+  private static unslidGuide(joint: RealJoint): boolean {
+    if (!(joint instanceof PrisJoint) || !joint.ground || joint.input) return false;
+    return ![...this.jointNumOrderSolverMap.values()].some((ids) => ids.includes(joint.id));
   }
 
   /**

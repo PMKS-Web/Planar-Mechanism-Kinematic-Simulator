@@ -9,7 +9,10 @@ import {
   heldCouplerFixture,
   heldCylinderTriangleFixture,
   mixedCylinderFixture,
+  ramGroundedAtItsFreeEndFixture,
+  ramWithAFreeEndFixture,
 } from '../../test-utils/verification/held-cylinder-fixtures';
+import { readDrawing } from '../../test-utils/verification/follow-advice';
 import { velocityAgreesWithPositions } from '../../test-utils/verification/rates';
 import { cylinderBoomFixture } from '../../test-utils/verification/slot-fixtures';
 import { MechanismService } from '../../app/services/mechanism.service';
@@ -341,6 +344,24 @@ describe('what the reader is told', () => {
     const blocker = readiness.checks.find((check) => check.severity === 'blocker')!;
     expect(blocker.title).toBe('No input is set');
     expect(read(blocker).summary).not.toContain('degrees of freedom');
+  });
+});
+
+describe('the advice, counted the way the machine counts', () => {
+  it('offers to ground the free end of a ram, which holds once the loop closes', () => {
+    const [machine] = readDrawing(ramWithAFreeEndFixture()).machines;
+    const blocker = machine.readiness.checks.find((check) => check.severity === 'blocker')!;
+    expect(blocker.title).toBe('3 degrees of freedom, needs 1');
+    // Counted without the rule, grounding either end left two freedoms, and
+    // the drawer fell back to a link to ground from F, which leaves two.
+    expect(read(blocker).fixes).toEqual(['Ground joint A', 'Ground joint F']);
+  });
+
+  it('runs once it is grounded there, with the ram holding its length', () => {
+    const [machine] = readDrawing(ramGroundedAtItsFreeEndFixture()).machines;
+    expect(machine.readiness.ready).toBe(true);
+    const note = machine.readiness.checks.find((check) => check.severity === 'note')!;
+    expect(note.title).toBe('A cylinder is holding its length');
   });
 });
 
