@@ -48,6 +48,19 @@ const browser = await chromium.launch();
 const context = await browser.newContext({ viewport: { width: 1500, height: 950 } });
 await startQuiet(context);
 const page = await context.newPage();
+// Machine notes are exercised separately; this suite needs no external model.
+await page.route('**/api/what-is-this', (route) =>
+  route.fulfill({
+    json: {
+      reply: {
+        plainEnglish: 'A mechanism with cylinders.',
+        resembles: null,
+        useCases: [],
+        terms: [],
+      },
+    },
+  })
+);
 page.on('console', (m) => {
   if (m.type() === 'error') consoleErrors.push(m.text());
 });
@@ -157,9 +170,9 @@ if (!/holding their length/i.test(drawer)) {
 check(
   'the drawer names the three cylinders holding their length',
   /Cylinders are holding their length/i.test(drawer) &&
-    /cylinders AC, CE and EA/i.test(drawer) &&
-    /Driven Input/i.test(drawer),
-  drawer.split('\n').find((line) => /Nothing drives any of cylinders/i.test(line)) ?? ''
+    /cylinder AC, cylinder CE and cylinder EA/i.test(drawer) &&
+    /Add Input/i.test(drawer),
+  drawer.split('\n').find((line) => /cylinder AC/i.test(line)) ?? ''
 );
 check(
   'it reads as a note, not as a fault',
@@ -273,12 +286,12 @@ await tab('Force').click();
 await page.waitForTimeout(700);
 const forceDrawer = await drawerText();
 check(
-  'and says why its forces cannot be split, in the drawing\u2019s own terms',
-  /more supports than equilibrium can determine/i.test(forceDrawer) &&
+  'and explains that its force equations have no single answer',
+  /equations with no single answer/i.test(forceDrawer) &&
     !/holding their length/i.test(forceDrawer.split('A topology')[1] ?? ''),
   forceDrawer
     .split('\n')
-    .find((line) => /more supports/i.test(line))
+    .find((line) => /equations/i.test(line))
     ?.slice(0, 110) ?? ''
 );
 await film.shot('force-indeterminate');

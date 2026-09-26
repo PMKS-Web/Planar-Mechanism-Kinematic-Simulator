@@ -34,7 +34,7 @@ export function assignBodies(
    * stops being frame the moment one of them is not.
    */
   groundedAt: (joint: RealJoint) => boolean = (joint) => joint.ground,
-    /**
+  /**
    * Groups of link ids the caller knows to be one rigid body for a reason the
    * drawing does not state. A cylinder holding its length is the case
    * (decision S28): its barrel and its rod share one joint, and what stops

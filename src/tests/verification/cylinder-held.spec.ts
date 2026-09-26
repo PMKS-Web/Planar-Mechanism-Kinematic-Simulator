@@ -24,6 +24,7 @@ import { readinessOf, ReadinessHelpers } from '../../app/model/mechanism/readine
 import { partitionMechanisms } from '../../app/model/mechanism/mechanism-partition';
 import { ForceSolver } from '../../app/model/mechanism/force-solver';
 import { cylindersIn } from '../../app/model/cylinder';
+import { read } from '../../test-utils/verification/issue-text';
 
 /**
  * A cylinder nothing drives holds its length (decision S28).
@@ -264,10 +265,8 @@ describe('the forces a held cylinder carries', () => {
   });
 });
 
-/** The four stubs `readinessOf` needs, none of which these cases exercise. */
+/** The stubs `readinessOf` needs, none of which these cases exercise. */
 const helpers: ReadinessHelpers = {
-  cylinderName: (id) => id,
-  drivenRefusal: () => undefined,
   strokeWarning: () => undefined,
   describeSpeed: () => '10 RPM',
 };
@@ -278,15 +277,32 @@ function readinessFor(one: ReturnType<typeof triangle>) {
 }
 
 describe('what the reader is told', () => {
+  it("keeps the solver's advice when a cylinder still contributes a free length", () => {
+    const one = triangle();
+    // Exercise the readiness contract for a surplus-freedom solver report.
+    Object.defineProperties(one.mechanism, {
+      dof: { value: 2 },
+      failure: { value: 'mobility' },
+      looseCylinderSeals: { value: new Set(['B']) },
+    });
+    const issue = readinessFor(one).checks.find((check) => check.severity === 'blocker')!;
+    expect(read(issue).summary).toBe('cylinder AC can still change length independently.');
+    expect(read(issue).fixes).toEqual(['Add Input to joint B']);
+  });
+
   it('names the cylinders, their length and how to make one move', () => {
     const readiness = readinessFor(triangle());
-    const note = readiness.checks.find((check) => check.state === 'note')!;
+    const note = readiness.checks.find((check) => check.severity === 'note')!;
     expect(note.title).toBe('Cylinders are holding their length');
-    expect(note.body).toContain('cylinders AC, CE and EA');
-    expect(note.body).toContain('holds the length it was drawn at');
-    expect(note.body).toContain('Driven Input');
+    expect(read(note).summary).toContain('cylinder AC, cylinder CE and cylinder EA');
+    expect(read(note).summary).toContain('stay at the drawn length');
+    expect(read(note).fixes).toEqual([
+      'Add Input to joint B',
+      'Add Input to joint D',
+      'Add Input to joint F',
+    ]);
     // A note is not a fault, so it does not stop the machine being ready.
-    expect(readiness.checks.some((check) => check.state === 'blocker')).toBe(false);
+    expect(readiness.checks.some((check) => check.severity === 'blocker')).toBe(false);
     expect(readiness.ready).toBe(true);
   });
 
@@ -303,7 +319,7 @@ describe('what the reader is told', () => {
     expect(interior.length).toBe(3);
     const readiness = readinessFor(one);
     const said = readiness.checks
-      .map((check) => `${check.title} ${check.body}`)
+      .map((check) => JSON.stringify(read(check)))
       .concat(readiness.facts.map((fact) => `${fact.label} ${fact.value}`))
       .join(' ');
     for (const id of interior) {
@@ -322,9 +338,9 @@ describe('what the reader is told', () => {
     expect(one.mechanism.dof).toBe(1);
     expect(one.mechanism.failure).toBe('not-driven');
     const readiness = readinessFor(one);
-    const blocker = readiness.checks.find((check) => check.state === 'blocker')!;
+    const blocker = readiness.checks.find((check) => check.severity === 'blocker')!;
     expect(blocker.title).toBe('No input is set');
-    expect(blocker.body).not.toContain('degrees of freedom');
+    expect(read(blocker).summary).not.toContain('degrees of freedom');
   });
 });
 
