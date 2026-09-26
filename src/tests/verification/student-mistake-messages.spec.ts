@@ -16,6 +16,8 @@ import {
   rockerBesideCouplerFixture,
   STUDENT_MISTAKE_GALLERY,
   strayLinkFixture,
+  plateHeldByAGroundedLinkFixture,
+  plateWithTwoHangingLinksFixture,
   twoInputsFixture,
   unweldedKneeFixture,
   weldedCouplerPinFixture,
@@ -187,6 +189,29 @@ describe('what the drawer says about a mistake it has learned to name', () => {
       'Delete link CF',
       'Attach Link at joint F, then ground its far end',
     ]);
+  });
+
+  it('says what each loose link needs, where no single edit is enough', () => {
+    const [issue] = said(plateWithTwoHangingLinksFixture()).issues;
+    expect(issue.title).toBe('3 degrees of freedom, needs 1');
+    expect(issue.summary).toBe('With the input held still, link AB and link FG can still move.');
+    expect(issue.explain).toContain('make one for each loose part');
+    // Every way out for each: deleting it, or holding its free end to ground.
+    expect(issue.fixes).toEqual([
+      'Delete link AB',
+      'Delete link FG',
+      'Attach Link at joint A, then ground its far end',
+      'Attach Link at joint G, then ground its far end',
+    ]);
+  });
+
+  it('names what frees a stuck input, though a loose link will still need its own fix', () => {
+    const [issue] = said(plateHeldByAGroundedLinkFixture()).issues;
+    expect(issue.title).toBe("Input at joint D can't turn");
+    expect(issue.summary).toBe('link BDF and link FG are locked in place by the ground.');
+    // Neither leaves exactly one freedom, because AB still hangs loose -- the
+    // next issue, once the input can turn. The parts are named, not described.
+    expect(issue.fixes).toEqual(['Turn off Grounded for joint G', 'Delete link FG']);
   });
 
   it('runs once the drawer is done with it, every one', () => {
