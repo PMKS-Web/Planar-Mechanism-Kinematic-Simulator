@@ -1,3 +1,4 @@
+import { writeMechanismName } from '../model/mechanism/mechanism-name';
 import { orphanedByLinkRemoval } from '../model/link-removal';
 import { graftJoint } from '../model/graft-joint';
 import { pruneUnlinkedJoints } from '../model/prune-unlinked-joints';
@@ -3203,6 +3204,7 @@ export class MechanismService {
     if (from.name !== from.id) to.name = from.name;
     to.showCurve = from.showCurve;
     to.driveSpeed = from.driveSpeed;
+    to.machineName = from.machineName;
     to.locked = from.locked;
     to.colorFamily = from.colorFamily;
     to.r = from.r;
@@ -7239,14 +7241,11 @@ export class MechanismService {
     if (this.isLinkedPart(joint)) {
       return 'joint-pointed';
     }
-    // Selecting a whole machine selects everything in it, so every one of its
-    // joints reads as selected rather than the reader having to infer the
-    // extent of the thing they just picked.
     if (this.isPartInert(joint)) {
       return 'joint-inert';
     }
-    if (this.isInSelectedMechanism(joint)) {
-      return 'joint-selected';
+    if (this.isMutedBySelectedMechanism(joint)) {
+      return 'joint-muted';
     }
     if (this.isHoveredPart(joint)) {
       return 'joint-pointed';
@@ -7315,6 +7314,62 @@ export class MechanismService {
       return false;
     }
     return this.isInPartition(part, this.activeObjService.selectedMechanismIndex);
+  }
+
+  /**
+   * Is this part of another machine than the one the reader picked?
+   *
+   * A picked machine used to draw every one of its parts as selected, which
+   * left nothing to show when its panel then pointed at one of them: the part
+   * a note names was already amber. So a picked machine is left as drawn and
+   * the others step back instead, and with one machine on the grid nothing
+   * changes at all -- which machine the panel means is not a question then.
+   */
+  private isMutedBySelectedMechanism(part: Joint | Link): boolean {
+    return (
+      this.activeObjService.objType === 'Mechanism' &&
+      this.partitions.length > 1 &&
+      !this.isInSelectedMechanism(part)
+    );
+  }
+
+  /** The same, for a mark drawn apart from its joint: a slider's block, a motor. */
+  isMutedJointId(id: string): boolean {
+    if (this.activeObjService.objType !== 'Mechanism' || this.partitions.length < 2) return false;
+    const joint = this.joints.find((candidate) => candidate.id === id);
+    return !!joint && this.isMutedBySelectedMechanism(joint);
+  }
+
+  /** Stable across rebuilds, which renumber the machines: see `partitionKey`. */
+  private overviewKey?: string;
+
+  /**
+   * The machine an overview panel is about: the one the reader picked, or, when
+   * nothing is picked, the one they picked last, or else the first. An index
+   * into `partitions`, like `ActiveObjService.selectedMechanismIndex`.
+   */
+  overviewIndex(): number {
+    const picked = this.activeObjService.selectedMechanismIndex;
+    if (
+      this.activeObjService.objType === 'Mechanism' &&
+      picked >= 0 &&
+      picked < this.partitions.length
+    ) {
+      this.overviewKey = partitionKey(this.partitions[picked]);
+      return picked;
+    }
+    const last = this.partitions.findIndex(
+      (partition) => partitionKey(partition) === this.overviewKey
+    );
+    return last >= 0 ? last : 0;
+  }
+
+  /** Name a machine, or clear its name with an empty one; one undo entry. */
+  renameMechanism(index: number, name: string): void {
+    const partition = this.partitions[index];
+    if (!partition) return;
+    writeMechanismName(partition, name);
+    this.updateMechanism(true);
   }
 
   /**
@@ -7471,8 +7526,8 @@ export class MechanismService {
     if (chosen) {
       return 'link-selected';
     }
-    if (this.isInSelectedMechanism(link)) {
-      return 'link-selected';
+    if (this.isMutedBySelectedMechanism(link)) {
+      return 'link-muted';
     }
     if (this.isHoveredPart(link)) {
       return 'link-pointed';

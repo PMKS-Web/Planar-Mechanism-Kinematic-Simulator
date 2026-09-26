@@ -17,17 +17,29 @@
       <app-multi-edit-panel></app-multi-edit-panel>
     }
 
-    @if (this.activeSrv.objType == 'Grid' || this.activeSrv.objType == 'Nothing') {
+    <!-- Nothing selected, or a whole machine picked: on a grid that holds a
+         machine, the machine is what the panel is about, with the ways to build
+         on it below. An empty grid, or loose parts that make no machine yet,
+         get the bare help. -->
+    @if (
+      this.activeSrv.objType == 'Grid' ||
+      this.activeSrv.objType == 'Nothing' ||
+      this.activeSrv.objType == 'Mechanism'
+    ) {
       <div class="helpPanel" [attr.inert]="panelIsFrozen() || null">
-        <div class="helpTitle">Edit</div>
-        <!-- An empty grid has nothing to click, so it is not told to click. -->
-        <p class="helpLead">
-          @if (gridIsEmpty()) {
-            Draw something to edit.
-          } @else {
-            Select a joint or link on the grid to edit its properties.
-          }
-        </p>
+        @if (mechanismService.partitions.length > 0) {
+          <app-edit-mechanism-panel [index]="mechanismService.overviewIndex()" />
+        } @else {
+          <div class="helpTitle">Edit</div>
+          <!-- An empty grid has nothing to click, so it is not told to click. -->
+          <p class="helpLead">
+            @if (gridIsEmpty()) {
+              Draw something to edit.
+            } @else {
+              Select a joint or link on the grid to edit its properties.
+            }
+          </p>
+        }
         <div class="helpRule"></div>
         <div class="helpHints">
           @if (!gridIsEmpty()) {
@@ -152,13 +164,6 @@
           </div>
         </panel-section>
       }
-    }
-
-    @if (this.activeSrv.objType == 'Mechanism') {
-      <app-mechanism-panel
-        [editable]="true"
-        [attr.inert]="panelIsFrozen() || null"
-      ></app-mechanism-panel>
     }
 
     <!--  JOINT PANEL-->

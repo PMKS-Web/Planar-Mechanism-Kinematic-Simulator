@@ -1,18 +1,9 @@
-@if (exists) {
+@if (overview.exists(index())) {
   <div class="mechanismPanel">
     <div class="mechHead">
-      <div class="mechTitle">{{ editable() ? 'Edit' : 'Analysis for' }} Mechanism {{ id }}</div>
-      <div class="mechStatusRow">
-        <span class="mechStatus" [class.ready]="ready" (click)="openSetup()">{{ statusText }}</span>
-      </div>
-      @if (editable()) {
-        <div class="mechActions">
-          <button class="mechButton danger" (click)="deleteMechanism()">
-            <mat-icon>delete_outline</mat-icon>
-            Delete
-          </button>
-        </div>
-      }
+      <div class="mechTitle">{{ overview.title(index()) }}</div>
+      <app-mechanism-status class="mechStatusRow" [index]="index()" />
+      <app-mechanism-switcher [index]="index()" />
     </div>
 
     <button class="sectionHeader" (click)="overviewOpen = !overviewOpen">
@@ -21,13 +12,13 @@
     </button>
     @if (overviewOpen) {
       <div class="factGrid">
-        @if (family) {
+        @if (overview.family(index()); as family) {
           <div class="fact wide">
             <span class="factLabel">Family</span>
             <span class="factValue">{{ family }}</span>
           </div>
         }
-        @for (fact of facts; track fact.label) {
+        @for (fact of overview.facts(index()); track fact.label) {
           <div class="fact">
             <span class="factLabel">{{ fact.label }}</span>
             <span class="factValue" [class.bad]="fact.bad">{{ fact.value }}</span>
@@ -45,7 +36,7 @@
         <!-- By position, not by name: a name here is the one a reader sees,
              and two bodies can share one once a welded body stops being
              called after the joint buried inside it. -->
-        @for (link of links; track $index) {
+        @for (link of overview.links(index()); track $index) {
           <div class="linkRow">
             <span class="linkName"
               ><part-link [part]="link.part">{{ link.name }}</part-link></span
@@ -63,15 +54,13 @@
       <mat-icon>{{ noteOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
     </button>
     @if (noteOpen) {
-      <app-what-is-this-note [index]="index" />
+      <app-what-is-this-note [index]="index()" />
     }
 
-    <!-- The same hint row the Edit and Analysis panels' empty states use, so
-         "something else is to be clicked" looks the same everywhere. A machine
-         that cannot run has nothing to click *for*, so it is sent to its
-         blockers instead. -->
+    <!-- A machine that cannot run has nothing to click *for*, so it is sent to
+         its blockers instead. -->
     <div class="mechFooter">
-      @if (ready || editable()) {
+      @if (overview.ready(index())) {
         <div class="helpHint">
           <mat-icon>touch_app</mat-icon>
           <span>{{ footerHint }}</span>

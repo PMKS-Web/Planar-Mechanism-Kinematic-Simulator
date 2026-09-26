@@ -139,6 +139,7 @@ export function splitJoint(
   // Slider speed is linear. Carrying it onto the revolute pin would silently
   // reinterpret that number as rpm the next time the pin became an input.
   original.driveSpeed = joint instanceof PrisJoint ? 0 : joint.driveSpeed;
+  original.machineName = joint.machineName;
 
   const at = joints.findIndex((candidate) => candidate === joint);
   joints[at] = original;

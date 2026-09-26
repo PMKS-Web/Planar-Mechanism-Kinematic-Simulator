@@ -57,17 +57,19 @@
           <span class="looksLikeValue">{{ drawn.looksLike }}</span>
         </div>
       }
-      <p class="noteParagraph"><prose-block [sentence]="drawn.paragraph" /></p>
-      @if (drawn.terms.length) {
-        <dl class="noteTerms">
-          @for (term of drawn.terms; track term.term) {
-            <div>
-              <dt>{{ term.term }}</dt>
-              <dd>{{ term.meaning }}</dd>
-            </div>
-          }
-        </dl>
-      }
+      <p class="noteParagraph">
+        <app-note-sentence
+          [sentence]="drawn.paragraph"
+          [shown]="shownTerm"
+          (show)="shownTerm = $event"
+        />
+      </p>
+      <div class="termMeaning" [class.empty]="!shownTerm">
+        @if (shownTerm) {
+          <span class="termName">{{ capitalized(shownTerm.text) }}</span>
+          <span> — {{ shownTerm.meaning }}</span>
+        }
+      </div>
       @if (drawn.uses.length) {
         <div class="noteSubhead">Where You'd Find It</div>
         @for (use of drawn.uses; track $index) {

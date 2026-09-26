@@ -1,12 +1,13 @@
 /**
- * Selecting a whole machine, rather than a part of one.
+ * A whole machine, rather than a part of one.
  *
- * The facts about a mechanism — its mobility, what drives it, how long a cycle
- * takes — used to appear in the setup drawer beside the blockers, which meant
- * the same six numbers in two places and no way to act on the mechanism as a
- * thing. They live in its own panel now, and this checks the two routes to it:
- * the transport chip while analyzing, and the drawer's own name in either mode,
- * which is the only route Edit has.
+ * With nothing selected, the left panel is about a machine: Edit's shows its
+ * name to change, its links and Delete; the analysis modes' show its facts,
+ * its links' jobs and the What Is This? note. Picking a machine -- its row in
+ * the transport, its name in the setup drawer, or the switcher when there are
+ * several -- no longer paints every part of it as selected, which left nothing
+ * for the panel's part links to point at; the other machines step back
+ * instead, and with one machine nothing on the grid changes at all.
  *
  *   PMKS_BASE_URL=<origin> node e2e/mechanism-panel.mjs
  */
@@ -63,78 +64,140 @@ const panelText = () =>
     .innerText()
     .catch(() => '');
 
+const editText = () =>
+  page
+    .locator('app-edit-mechanism-panel')
+    .innerText()
+    .catch(() => '');
+/** How many joints and links wear each state class. */
+const classes = () =>
+  page.evaluate(() => {
+    const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+    const count = {};
+    for (const part of [...srv.joints, ...srv.links]) {
+      const kind = (part.links ? srv.getJointCSSClass(part) : srv.getLinkCSSClass(part)).split(
+        ' '
+      )[0];
+      count[kind] = (count[kind] ?? 0) + 1;
+    }
+    return count;
+  });
+const clearSelection = () =>
+  page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    grid.activeObjService.updateSelectedObj(null);
+    ng.applyChanges(grid);
+  });
+
+// --- one machine: the panel is about it without anything being picked --------
 await page.goto(`${BASE}/?${payloads['4-Bar']}`, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
-
-// --- the transport chip selects the machine it names ------------------------
 await tab('Kinematic').click();
 await page.waitForTimeout(800);
-await page.locator('.mechChip').first().click();
-await page.waitForTimeout(700);
 let text = await panelText();
+record('with nothing selected, analysis shows the machine', text.includes('Mechanism M1'), text);
 record(
-  'the transport chip selects the whole mechanism',
-  text.includes('Analysis for Mechanism M1'),
-  text
-);
-record(
-  'and the panel reports what it is',
+  'and reports what it is',
   /Degrees of freedom[\s\S]*Input joint[\s\S]*Cycle time/.test(text),
   text
 );
-record('with a line per link', (await page.locator('.linkRow').count()) >= 3);
+record('with a line per link', (await page.locator('app-mechanism-panel .linkRow').count()) >= 3);
+record('and the note', text.includes('What Is This?'), text);
+record('with one machine there is nothing to switch between', !text.includes('M2'), text);
 
-// --- selecting the machine highlights all of it -----------------------------
-const selected = await page.evaluate(() => {
-  const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
-  return {
-    joints: srv.joints.filter((j) => srv.getJointCSSClass(j) === 'joint-selected').length,
-    links: srv.links.filter((l) => srv.getLinkCSSClass(l) === 'link-selected').length,
-    total: { joints: srv.joints.length, links: srv.links.length },
-  };
-});
+await page.locator('.mechChip').first().click();
+await page.waitForTimeout(700);
+let seen = await classes();
 record(
-  'every joint and link of it reads as selected, not just one',
-  selected.joints === selected.total.joints && selected.links === selected.total.links,
-  selected
+  'picking the only machine changes nothing on the grid',
+  !seen['joint-selected'] && !seen['link-selected'] && !seen['joint-muted'] && !seen['link-muted'],
+  seen
 );
 
-// --- the same selection in Edit is the editable panel ------------------------
+// --- Edit's own panel ---------------------------------------------------------
 await tab('Edit').click();
 await page.waitForTimeout(800);
+text = await editText();
+record('Edit shows Edit Mechanism for it', text.includes('Edit Mechanism M1'), text);
+record('which offers Rename', text.includes('Rename'), text);
+record('and no note, which is for the analysis modes', !text.includes('What Is This?'), text);
+await clearSelection();
+await page.waitForTimeout(400);
+record(
+  'clicking away in Edit still shows the machine, with the ways to build on it',
+  (await editText()).includes('Edit Mechanism M1') &&
+    (await page.locator('app-edit-panel').innerText()).includes('Right-click the grid'),
+  await page.locator('app-edit-panel').innerText()
+);
+
+// --- a name ------------------------------------------------------------------
+await page.locator('app-edit-mechanism-panel button', { hasText: 'Rename' }).click();
+await page.locator('#title-input-box').fill('Wiper drive');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(600);
+record('a machine can be named', (await editText()).includes('Edit Wiper drive'), await editText());
+await tab('Kinematic').click();
+await page.waitForTimeout(700);
 text = await panelText();
 record(
-  'switching to Edit shows Edit Mechanism for the same selection',
-  text.includes('Edit Mechanism M1'),
+  'and the analysis panel calls it by its name, with its code for the playback row',
+  text.includes('Wiper drive') && text.includes('M1'),
   text
 );
-record('which offers to delete it', text.includes('Delete'), text);
+await tab('Edit').click();
+await page.waitForTimeout(500);
+await page.locator('body').click({ position: { x: 1100, y: 700 } });
+await page.keyboard.press(process.platform === 'darwin' ? 'Meta+z' : 'Control+z');
+await page.waitForTimeout(700);
+record(
+  'and one Undo takes the name back',
+  (await editText()).includes('Edit Mechanism M1'),
+  await editText()
+);
 
-// --- and Edit has a route of its own ----------------------------------------
-await page.evaluate(() => {
-  const active = ng.getComponent(document.querySelector('app-new-grid')).activeObjService;
-  active.updateSelectedObj(null);
-});
-await page.waitForTimeout(400);
-record('deselecting clears the panel', (await panelText()) === '');
+// --- several machines: the others step back -----------------------------------
+await page.goto(`${BASE}/?${payloads['Pumping_Field']}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await tab('Kinematic').click();
+await page.waitForTimeout(800);
+const switcher = page.locator('app-mechanism-panel app-mechanism-switcher button');
+record('several machines get a switcher', (await switcher.count()) === 3, await switcher.count());
+await switcher.nth(1).click();
+await page.waitForTimeout(700);
+text = await panelText();
+seen = await classes();
+record('the switcher picks one', text.includes('Mechanism M2'), text);
+record(
+  'and the others step back rather than it lighting up',
+  seen['joint-muted'] > 0 &&
+    seen['link-muted'] > 0 &&
+    !seen['joint-selected'] &&
+    !seen['link-selected'],
+  seen
+);
+await page.locator('app-mechanism-panel part-link button').first().hover();
+await page.waitForTimeout(300);
+seen = await classes();
+record(
+  'so a part link in its panel still lights its part',
+  (seen['link-pointed'] ?? 0) + (seen['joint-pointed'] ?? 0) === 1,
+  seen
+);
+await page.mouse.move(1100, 700);
 
 await openSetupFor('Kinematic');
 await page.waitForTimeout(700);
-await page.locator('.mechLink').first().click();
+await page.locator('.mechLink').nth(2).click();
 await page.waitForTimeout(700);
 record(
-  'the drawer name selects it too, which is the route Edit has',
-  (await panelText()).includes('Mechanism M1'),
+  'the drawer name picks a machine too',
+  (await panelText()).includes('Mechanism M3'),
   await panelText()
 );
 
 // --- the facts appear once, not twice ---------------------------------------
 const drawer = await page.locator('app-analysis-setup').innerText();
-record(
-  'and the drawer no longer repeats the facts',
-  !drawer.includes('Degrees of freedom'),
-  drawer
-);
+record('and the drawer does not repeat the facts', !drawer.includes('Degrees of freedom'), drawer);
 
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
 

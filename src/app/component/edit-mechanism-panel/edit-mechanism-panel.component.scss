@@ -1,0 +1,44 @@
+@mixin css($theme) {
+  // It heads the Edit panel's help card, whose padding it gives back: the title
+  // block and the rows keep the 15px inset every Edit panel has.
+  app-edit-mechanism-panel {
+    display: block;
+    margin: -14px -15px 0;
+  }
+
+  .editMechanism {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .editMechanismStatus,
+  .editMechanism app-mechanism-switcher {
+    display: block;
+    padding: 0 15px;
+  }
+
+  .editMechanismLinks {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 6px 15px 0;
+    border-top: 1px solid var(--border-rule);
+
+    .linkRow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-top: 4px;
+      font-size: 13px;
+    }
+
+    .linkName {
+      font-weight: 500;
+    }
+
+    .linkSpacer {
+      flex: 1 1 auto;
+    }
+  }
+}

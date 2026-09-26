@@ -1,3 +1,4 @@
+import { MechanismPanelComponent } from '../mechanism-panel/mechanism-panel.component';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { AnalysisGraphSectionComponent } from '../analysis-graph-section/analysis-graph-section.component';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
@@ -48,7 +49,9 @@ async function createPanel(payload: string, selectedId: string, mode: TabID = Ta
     // standalone component the panel brings the real section along, so it is
     // removed here to keep the label an attribute the specs can read.
     .overrideComponent(AnalysisPanelComponent, {
-      remove: { imports: [AnalysisGraphSectionComponent] },
+      // The machine panel likewise: it is its own component with its own specs,
+      // and here it is enough to know which of the two the panel chose.
+      remove: { imports: [AnalysisGraphSectionComponent, MechanismPanelComponent] },
       add: { schemas: [NO_ERRORS_SCHEMA] },
     })
     .compileComponents();
@@ -257,10 +260,22 @@ describe('AnalysisPanelComponent welded mechanism regression', () => {
     fixture.destroy();
   });
 
+  it('shows the machine, not the empty state, when nothing is selected', async () => {
+    const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], '', TabID.ANALYZE);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-mechanism-panel')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.helpPanel')).toBeNull();
+    fixture.destroy();
+  });
+
   it('offers the empty state the graphs of the mode it is standing in', async () => {
     // Force mode used to promise position, velocity and acceleration graphs --
-    // the other mode's answer, on the panel that draws reactions.
-    const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], '', TabID.FORCE);
+    // the other mode's answer, on the panel that draws reactions. With a
+    // machine on the grid the panel describes that instead, so this asks a grid
+    // holding none.
+    const { fixture, fixtureData } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], '', TabID.FORCE);
+    fixtureData.service.partitions = [];
     fixture.detectChanges();
 
     const help = fixture.nativeElement.querySelector('.helpPanel').textContent;

@@ -328,7 +328,14 @@
        because a ground mark overlapped it. -->
   <g id="jointBGHolder" modelFrame pointer-events="none">
     @for (joint of mechanismSrv.getJoints(); track joint) {
-      <svg [attr.x]="joint.x" [attr.y]="joint.y" width="10" height="10" style="overflow: visible">
+      <svg
+        [attr.x]="joint.x"
+        [attr.y]="joint.y"
+        width="10"
+        height="10"
+        style="overflow: visible"
+        [class.muted]="mechanismSrv.isMutedJointId(joint.id)"
+      >
         @if (
           gridUtils.getGround(joint) &&
           gridUtils.typeOfJoint(joint) !== 'P' &&
@@ -450,7 +457,11 @@
        them exactly as it passes over the case. -->
   <g id="motorHolder" modelFrame pointer-events="none">
     @for (motor of drivenPinMotors; track motor.id) {
-      <g [upright]="motor" [uprightTurnedBy]="motor.angle">
+      <g
+        [upright]="motor"
+        [uprightTurnedBy]="motor.angle"
+        [class.muted]="mechanismSrv.isMutedJointId(motor.id)"
+      >
         <path [attr.d]="drivenPinCase" fill="#000000" filter="url(#elevation-1)" />
       </g>
     }
@@ -696,6 +707,7 @@
         <g
           [attr.transform]="sliderMarks.frame(item.mark)"
           [attr.class]="item.kind === 'block' ? 'slider-mark' : null"
+          [class.muted]="mechanismSrv.isMutedJointId(item.mark.joint.id)"
           [attr.data-slider]="item.mark.id"
         >
           @switch (item.kind) {
@@ -1287,6 +1299,7 @@
            nothing. Still under `jointHolder`, so the pin itself stays on top. -->
       <g
         [attr.transform]="'translate(' + motor.x + ' ' + motor.y + ') rotate(' + motor.angle + ')'"
+        [class.muted]="mechanismSrv.isMutedJointId(motor.id)"
       >
         <image
           [attr.xlink:href]="

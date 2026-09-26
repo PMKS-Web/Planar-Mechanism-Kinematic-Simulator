@@ -184,7 +184,7 @@ is the model's words; these are the app's around it.
 
 | Part | Says |
 | --- | --- |
-| Section heading | `What Is This?` |
+| Section heading | `What Is This?`, in the analysis modes' machine panel only |
 | Over the note | `Written by AI from the facts above, not measured` — who wrote it, and that the Overview and Links above are PMKS+'s own |
 | The machine it resembles | `Looks like` |
 | The uses | `Where You'd Find It` |
@@ -195,6 +195,15 @@ is the model's words; these are the app's around it.
   mechanisms are called, so the Family row says so; the ban on *linkage* is on the word standing in
   for *mechanism*.
 - **A part the note names is a part link**, as in a setup issue, whether or not the model marked it.
+
+### A machine's name
+
+A machine is `Mechanism M2` until its author names it in Edit's machine panel (Rename); then it is
+the name, `Pump jack`, with its code beside it wherever that has to be matched to its playback row,
+which has room for the code alone. Edit's panel is headed `Edit Mechanism M2` or `Edit Pump jack`,
+the analysis modes' `Mechanism M2` or `Pump jack`. A name follows the rules every name does (letters,
+numbers, spaces, hyphens, underscores, apostrophes and parentheses), may not repeat another
+machine's, and an empty one takes it back to the code.
 
 ### Refusals wear their reason
 

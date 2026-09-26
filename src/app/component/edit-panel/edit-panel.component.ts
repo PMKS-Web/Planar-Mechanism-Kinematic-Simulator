@@ -57,7 +57,7 @@ import { BackgroundImageService, MIN_WIDTH } from 'src/app/services/background-i
 import { NOT_A } from 'src/app/ui-text';
 import { MatIcon } from '@angular/material/icon';
 import { TutorialService } from '../../services/tutorial.service';
-import { MechanismPanelComponent } from '../mechanism-panel/mechanism-panel.component';
+import { EditMechanismPanelComponent } from '../edit-mechanism-panel/edit-mechanism-panel.component';
 import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
 import { EditableTitleComponent } from '../BLOCKS/editable-title/editable-title.component';
 import { CollapsibleSubsectionComponent } from '../BLOCKS/collapsible-subsection/collapsible-subsection.component';
@@ -104,7 +104,7 @@ const INPUT_SPEED_UNITS = [
     MatTooltip,
     MatIcon,
     StateInputComponent,
-    MechanismPanelComponent,
+    EditMechanismPanelComponent,
     PanelSectionComponent,
     EditableTitleComponent,
     CollapsibleSubsectionComponent,

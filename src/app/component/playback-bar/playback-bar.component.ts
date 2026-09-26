@@ -1,3 +1,4 @@
+import { mechanismLabel } from '../../model/mechanism/mechanism-name';
 import {
   AfterViewChecked,
   AfterViewInit,
@@ -983,6 +984,12 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
    * for their own reasons; asking here covers the rest, `app-view-controls`
    * and its whole subtree included.
    */
+  /** "Pump jack (M2)" for a named machine; the row itself has room only for M2. */
+  labelOf(row: PlaybackRow): string {
+    const partition = this.mechanism.partitions[row.index];
+    return partition ? mechanismLabel(partition, row.index, true) : row.id;
+  }
+
   selectMechanism(row: PlaybackRow, event?: Event): void {
     const from = event?.target as HTMLElement | null;
     if (from?.closest?.('button, a, input, select, app-view-controls')) return;

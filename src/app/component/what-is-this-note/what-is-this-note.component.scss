@@ -103,26 +103,34 @@
     line-height: 22px;
   }
 
-  .whatIsThis .noteTerms {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    margin: 0;
+  // A term the note explains, where the paragraph uses it: plain text with a
+  // dotted rule under it, which the mouse points at for the meaning.
+  .whatIsThis .noteTerm {
+    border-bottom: 1px dotted var(--brand);
+    cursor: help;
 
-    div {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0 6px;
+    &.shown {
+      background: var(--brand-tint);
     }
+  }
 
-    dt {
-      font-weight: 500;
-    }
+  .whatIsThis .termMeaning {
+    margin-top: -4px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: var(--brand-wash);
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--text-secondary);
 
-    dd {
-      margin: 0;
-      color: var(--text-secondary);
+    &.empty {
+      display: none;
     }
+  }
+
+  .whatIsThis .termName {
+    font-weight: 500;
+    color: var(--text-primary);
   }
 
   .whatIsThis .noteSubhead {

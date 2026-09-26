@@ -102,6 +102,11 @@
 
   <!-- Nothing selected, or a selection whose own machine cannot be solved -->
 
+  <!-- Nothing selected: the machine is what the reader is asking about. -->
+  @if (showOverview) {
+    <app-mechanism-panel [index]="mechanismService.overviewIndex()" />
+  }
+
   @if (showAnalysisHelp) {
     <div class="helpPanel">
       <div class="helpTitle">Analysis Help</div>
@@ -118,10 +123,6 @@
         </div>
       </div>
     </div>
-  }
-
-  @if (shownType == 'Mechanism') {
-    <app-mechanism-panel></app-mechanism-panel>
   }
 
   <!-- Joint Kinematics-->

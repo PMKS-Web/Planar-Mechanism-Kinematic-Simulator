@@ -158,6 +158,8 @@ export function buildMechanismFixture(payload: string): MechanismFixture {
   service.partitionContaining = MechanismService.prototype.partitionContaining.bind(service);
   service.driveSpeedOf = MechanismService.prototype.driveSpeedOf.bind(service);
   service.isPartSimulatable = MechanismService.prototype.isPartSimulatable.bind(service);
+  // Which machine a machine panel is about, when nothing is picked.
+  service.overviewIndex = MechanismService.prototype.overviewIndex.bind(service);
   // Which part the canvas is holding, borrowed rather than restated. The
   // panels ask this to mark the row a reader has already picked, and a copy
   // here could disagree with the canvas about what "selected" means -- a

@@ -1,3 +1,4 @@
+import { mechanismName } from '../../model/mechanism/mechanism-name';
 import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { Joint, PrisJoint, RealJoint } from '../../model/joint';
 import { Link, RealLink } from '../../model/link';
@@ -202,6 +203,11 @@ export class AnalysisSetupComponent {
    * The way to a mechanism's own panel in *either* mode: the transport chip
    * only exists while analyzing, and Edit needs a route too.
    */
+  /** "Mechanism M2", or the name its author gave it. */
+  labelOf(item: { id: string }, index: number): string {
+    return mechanismName(this.mechanism.partitions?.[index]) ?? `Mechanism ${item.id}`;
+  }
+
   select(index: number, event: Event): void {
     event.stopPropagation();
     this.activeObj.selectMechanism(index);

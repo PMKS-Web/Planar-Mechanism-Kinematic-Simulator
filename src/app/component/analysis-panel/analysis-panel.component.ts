@@ -310,10 +310,22 @@ export class AnalysisPanelComponent implements OnInit, OnDestroy, DoCheck {
     return part ? this.mechanismService.isPartSimulatable(part) : false;
   }
 
+  /**
+   * With no part selected, the panel is about a machine: the one picked, or
+   * the last one picked. Only a grid with no machine on it has nothing to say.
+   */
+  get showOverview(): boolean {
+    const selected = this.shownType;
+    return (
+      (selected === 'Grid' || selected === 'Nothing' || selected === 'Mechanism') &&
+      this.mechanismService.partitions.length > 0
+    );
+  }
+
   /** The empty state stands in wherever the selection has no graphs to show. */
   get showAnalysisHelp(): boolean {
     const selected = this.shownType;
-    if (selected === 'Grid' || selected === 'Nothing') return true;
+    if (selected === 'Grid' || selected === 'Nothing') return !this.showOverview;
     return (selected === 'Joint' || selected === 'Link') && !this.selectionIsSimulatable;
   }
 

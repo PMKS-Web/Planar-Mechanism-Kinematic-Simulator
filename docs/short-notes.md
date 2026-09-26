@@ -13,6 +13,21 @@ whose title covers it, and leave a heading here only if someone would still sear
 
 ---
 
+### `segmented-block` options must keep their identity
+
+The block measures its options whenever its `options` input changes, and a measurement asks for
+another check. Bound to an array built afresh in a getter -- `partitions.map(...)` -- every check is
+a change, and the page never settles: nothing threw, the frame rate dropped to nothing and
+Playwright's screenshots timed out. `MechanismOverviewService.choices` hands back the same array for
+as long as the words are the same.
+
+### The title block asks for the selected object before it validates
+
+`editable-title-block` renamed only the selected part, and its checks read
+`ActiveObjService.getSelectedObj()`, which throws with nothing selected. Renaming a whole machine
+(`renameTo`) happens with nothing selected, so that branch has to come first; a throw in a click
+handler reaches only Angular's error handler, and the field simply stayed open.
+
 ### svg-pan-zoom writes a zoom to the page on the next animation frame
 
 `panZoomObject.zoom()` updates the library's cached state at once -- `SvgGridService.getZoom()`

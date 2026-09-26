@@ -19,7 +19,9 @@
           (click)="toggle(item)"
         >
           <span class="sectionName">
-            <span class="mechLink" (click)="select($index, $event)">Mechanism {{ item.id }}</span>
+            <span class="mechLink" (click)="select($index, $event)">{{
+              labelOf(item, $index)
+            }}</span>
             <chip-block [kind]="chipFor(item).kind">{{ chipFor(item).text }}</chip-block>
           </span>
           @if (item.checks.length > 0) {
