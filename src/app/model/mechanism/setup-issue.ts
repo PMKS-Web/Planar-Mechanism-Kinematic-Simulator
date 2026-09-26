@@ -31,6 +31,13 @@ export interface SetupIssue {
 /** The most fixes an issue lists. Past three a list stops being a choice. */
 export const MOST_FIXES = 3;
 
+/**
+ * The most a list of steps holds, where the drawing needs one edit for each of
+ * several loose parts rather than one edit of several: two ways for each of
+ * two loose links.
+ */
+export const MOST_STEPS = 4;
+
 /** What the title and summary say together, for a surface with room for one line. */
 export function issueText(issue: SetupIssue): string {
   return `${issue.title}. ${textOf(issue.summary)}`;

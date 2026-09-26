@@ -29,7 +29,7 @@ const issues: Record<string, SetupIssue> = {
     summary: prose`${jointRef(parts.c)} is welded, so the links it joins can't move against each other.`,
     explain:
       'An input makes two links move against each other. A weld locks them together, so there is nothing for the input to turn.',
-    fixes: [prose`Unweld ${jointRef(parts.c)}`],
+    fixes: [prose`Set ${jointRef(parts.c)} to Revolute`],
   },
   someFixes: {
     severity: 'blocker',
@@ -40,7 +40,7 @@ const issues: Record<string, SetupIssue> = {
     fixes: [
       prose`Ground ${jointRef(parts.d)}`,
       prose`Delete ${linkRef(parts.de, [])}`,
-      prose`Attach a grounded link at ${jointRef(parts.d)}`,
+      prose`Attach Link at ${jointRef(parts.d)}, then ground its far end`,
     ],
   },
   slider: {

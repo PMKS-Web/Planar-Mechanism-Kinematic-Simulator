@@ -8,7 +8,7 @@ import { SECOND_ORDER_LOCK_MESSAGE } from '../../app/model/mechanism/force-solve
 import { Mechanism, MechanismFailure } from '../../app/model/mechanism/mechanism';
 import { MechanismPartition } from '../../app/model/mechanism/mechanism-partition';
 import { readinessOf } from '../../app/model/mechanism/readiness';
-import { SetupIssue } from '../../app/model/mechanism/setup-issue';
+import { MOST_STEPS, SetupIssue } from '../../app/model/mechanism/setup-issue';
 import { textOf, wordCount } from '../../app/model/prose';
 import { MODEL_SCALE } from '../../app/model/render-scale';
 import { FIXTURE_GALLERY } from '../../test-utils/verification/fixture-gallery';
@@ -19,7 +19,8 @@ import { studentScenarios } from '../../test-utils/verification/student-mistakes
  * Every setup message, held to the budgets and punctuation of
  * `docs/setup-issues-spec.md` §6: a title of 3 to 7 words, a summary of 16 at
  * most, an explanation of 35 at most that names no part, fixes of 10 words at
- * most and 3 at most, and no em dash or semicolon anywhere.
+ * most and 3 at most (4 where each of two loose parts needs its own), and no em
+ * dash or semicolon anywhere.
  *
  * Asked of the messages the drawer actually builds rather than of a list of
  * strings, because most of them are assembled from parts and counts: every
@@ -166,7 +167,8 @@ describe('every setup message keeps to its budget', () => {
       if (title + wordCount(summary) > 25) {
         over.add(`visible before Show fixes: "${issue.title}. ${summary}" (${where})`);
       }
-      if (issue.fixes.length > 3) over.add(`${issue.fixes.length} fixes: "${issue.title}"`);
+      if (issue.fixes.length > MOST_STEPS)
+        over.add(`${issue.fixes.length} fixes: "${issue.title}"`);
       for (const fix of issue.fixes.map(textOf)) {
         if (!budget(fix, 10)) over.add(`fix: "${fix}" (${where})`);
       }

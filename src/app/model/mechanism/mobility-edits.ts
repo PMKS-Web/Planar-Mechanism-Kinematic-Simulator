@@ -157,6 +157,19 @@ function someInputHolds(system: ConstraintSystem, joints: Joint[], edit: Edit): 
   });
 }
 
+/**
+ * Whether an edit leaves one machine with one degree of freedom fewer than
+ * `before`: a step toward one, where no single edit gets there. A drawing with
+ * two links hanging loose needs one step for each.
+ */
+export function takesOneAway({ partition }: Trial, edit: Edit, before: number): boolean {
+  const kept = edit.links ?? partition.links;
+  const joints = edit.joints ?? partition.joints;
+  if (!staysOnePiece(joints, edit)) return false;
+  const system = constraintSystemOf(joints, kept, edit.assignment, edit.rotates);
+  return system !== undefined && freedomsOf(system) === before - 1;
+}
+
 /** Whether the moving bodies an edit leaves are joined into one machine. */
 export function staysOnePiece(joints: Joint[], edit: Edit): boolean {
   const { movingBodies, bodiesAt } = edit.assignment;

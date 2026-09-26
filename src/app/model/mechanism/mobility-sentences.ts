@@ -10,7 +10,7 @@ import {
   StuckInput,
 } from './free-motion';
 import { MechanismPartition } from './mechanism-partition';
-import { IssueSeverity, MOST_FIXES, SetupIssue } from './setup-issue';
+import { IssueSeverity, MOST_FIXES, MOST_STEPS, SetupIssue } from './setup-issue';
 
 /**
  * What the setup drawer says about a mechanism with the wrong number of
@@ -105,6 +105,27 @@ export function tooFree(dof: number, partition: MechanismPartition, drawing?: Dr
   if (diagnosis.stuck) return stuckIssue(diagnosis.stuck, diagnosis, partition, dof);
   const beside = besideIssueOf(diagnosis);
   if (beside) return beside;
+  const summary =
+    holdsInput(partition) && diagnosis.looseLinks.length > 0
+      ? prose`With the input held still, ${looseLinks(diagnosis, partition)} can still move.`
+      : prose`The mechanism can move in ${dof} independent ways.`;
+  // No single edit gets there: each loose part needs one of its own, and the
+  // reader is told what each can have rather than one piece of advice.
+  const steps = diagnosis.steps ?? [];
+  const freeEnds = diagnosis.freeEnds ?? [];
+  if (diagnosis.fixes.length === 0 && steps.length + freeEnds.length > 0) {
+    return {
+      severity: 'blocker',
+      title: `${dof} degrees of freedom, needs 1`,
+      summary,
+      explain:
+        'One input drives one motion, and each part that moves on its own adds another. Each of these takes one away, so make one for each loose part.',
+      fixes: [...steps.map((fix) => fixProse(fix, partition)), ...freeEnds.map(attachAdvice)].slice(
+        0,
+        MOST_STEPS
+      ),
+    };
+  }
   // A link left hanging is as likely the first bar of more linkage as a
   // mistake, so finishing it is offered beside deleting it.
   const attach = diagnosis.attachAt ? [attachAdvice(diagnosis.attachAt)] : [];
@@ -116,10 +137,7 @@ export function tooFree(dof: number, partition: MechanismPartition, drawing?: Dr
   return {
     severity: 'blocker',
     title: `${dof} degrees of freedom, needs 1`,
-    summary:
-      holdsInput(partition) && diagnosis.looseLinks.length > 0
-        ? prose`With the input held still, ${looseLinks(diagnosis, partition)} can still move.`
-        : prose`The mechanism can move in ${dof} independent ways.`,
+    summary,
     explain:
       'One input drives one motion. With more degrees of freedom than inputs, part of the mechanism can move on its own.',
     fixes,

@@ -667,6 +667,17 @@ Write one with the tag: ``prose`Unground ${jointRef(e)}` ``. Two things follow:
   part named in an explanation, or a part named as plain text. `listOf` names two parts and "N
   more" past three for that reason.
 
+### When no single edit counts, the drawer still names the edits
+
+A fix is offered once the drawing it leaves has been counted, and two cases have no single edit
+that counts to one. **Two links hanging loose** (3 degrees of freedom) need one edit each:
+`diagnoseMobility` then fills `steps` -- dangling deletes counted by `takesOneAway`, one freedom
+fewer -- and `freeEnds`, and the issue lists both kinds for every loose link under "make one for
+each loose part" (`MOST_STEPS`, four). **A stuck input with a link hanging loose elsewhere** can't
+reach exactly one either: `stuckFixes` falls back from `'one'` to `'moves'`, the edits that let the
+input move its part at all, and may then delete a link off a ground pivot it leaves bare. Both
+came from drawings where the drawer used to say "Delete one of the locked links".
+
 ### `part-link` goes through `PART_LINK_TARGET`, which only the app provides
 
 The block hands its two gestures to an injection token rather than to a service, so it can sit in

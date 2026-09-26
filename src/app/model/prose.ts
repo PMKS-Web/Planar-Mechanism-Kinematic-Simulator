@@ -61,7 +61,7 @@ export const cylinderRef = (cylinder: Cylinder): PartRef => ({
 });
 
 /**
- * Builds a sentence from text and parts: prose`Unweld ${jointRef(c)}`.
+ * Builds a sentence from text and parts: prose`Set ${jointRef(c)} to Revolute`.
  * A value may be a string, a number, a part, or another sentence.
  */
 export function prose(
