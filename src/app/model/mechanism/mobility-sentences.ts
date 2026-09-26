@@ -1,7 +1,16 @@
 import { describeActuator } from '../actuator';
 import { cylindersIn } from '../cylinder';
 import { PrisJoint, RealJoint } from '../joint';
-import { capitalized, jointRef, linkRef, listOf, nameOf, Prose, prose } from '../prose';
+import {
+  capitalized,
+  cylinderRef,
+  jointRef,
+  linkRef,
+  listOf,
+  nameOf,
+  Prose,
+  prose,
+} from '../prose';
 import {
   diagnoseMobility,
   Drawing,
@@ -65,7 +74,21 @@ export const attachAdvice = (joint: RealJoint): Prose =>
 /** The links that still move with the input held, as parts of a sentence. */
 function looseLinks(diagnosis: MobilityDiagnosis, partition: MechanismPartition): Prose {
   const cylinders = cylindersIn(partition.joints);
-  return listOf(diagnosis.looseLinks.map((link) => linkRef(link, cylinders)));
+  // A cylinder whose length is free is named as the cylinder: its barrel and
+  // rod moving apart is the freedom, not two parts that happen to move.
+  const lengths = diagnosis.looseCylinders ?? [];
+  const members = new Set(lengths.flatMap((cylinder) => [cylinder.barrel.id, cylinder.rod.id]));
+  return listOf([
+    ...lengths.map(cylinderRef),
+    ...diagnosis.looseLinks
+      .filter((link) => !members.has(link.id))
+      .map((link) => linkRef(link, cylinders)),
+  ]);
+}
+
+/** Whether one of the freedoms is a cylinder's own length. */
+function freeLength(diagnosis: MobilityDiagnosis): boolean {
+  return (diagnosis.looseCylinders ?? []).length > 0;
 }
 
 /**
@@ -118,8 +141,9 @@ export function tooFree(dof: number, partition: MechanismPartition, drawing?: Dr
       severity: 'blocker',
       title: `${dof} degrees of freedom, needs 1`,
       summary,
-      explain:
-        'One input drives one motion, and each part that moves on its own adds another. Each of these takes one away, so make one for each loose part.',
+      explain: freeLength(diagnosis)
+        ? 'One input drives one motion. Each part that moves on its own adds another, and so does a cylinder nothing drives. Each of these takes at least one away. Make one for each loose part.'
+        : 'One input drives one motion, and each part that moves on its own adds another. Each of these takes at least one away, so make one for each loose part.',
       fixes: [...steps.map((fix) => fixProse(fix, partition)), ...freeEnds.map(attachAdvice)].slice(
         0,
         MOST_STEPS
@@ -138,8 +162,9 @@ export function tooFree(dof: number, partition: MechanismPartition, drawing?: Dr
     severity: 'blocker',
     title: `${dof} degrees of freedom, needs 1`,
     summary,
-    explain:
-      'One input drives one motion. With more degrees of freedom than inputs, part of the mechanism can move on its own.',
+    explain: freeLength(diagnosis)
+      ? 'One input drives one motion. A cylinder that nothing drives can change length on its own, and that adds a degree of freedom.'
+      : 'One input drives one motion. With more degrees of freedom than inputs, part of the mechanism can move on its own.',
     fixes,
   };
 }

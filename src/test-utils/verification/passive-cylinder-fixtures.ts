@@ -1,24 +1,20 @@
 import { MechanismFixture } from './fixture';
+import type { GalleryEntry } from './fixture-gallery';
 import { cylinderBetween } from './slot-fixtures';
 
 /**
- * Four drawings for "a cylinder nothing drives holds its length" (decision
- * S28), chosen so that between them they say what the rule is *and* what it is
- * not.
+ * Drawings with a cylinder nothing drives, which is a sliding joint like any
+ * other and adds its freedom to the count.
  *
- * The maintainer, on the first of them:
+ * Most of these once ran because a passive ram was taken to hold its length
+ * (decision S28, withdrawn by S30); they now count the freedom and say where
+ * it is. One is a **follower**, whose length the linkage decides, and it runs
+ * as it always did.
  *
- * > *"This one should also simulate no?"*
- *
- * Two of these are held and run because of it; one is a **follower** that must
- * not be held, because the machine around it decides its length and always did;
- * and the last has one of each in one machine, which is the case a rule that
- * simply held every passive cylinder would get wrong.
- *
- * All four are built the way `frozen-cylinder-fixtures.ts` builds its cylinder:
- * `cylinderBetween` inverts the model's own span rule to place the barrel's
- * buried end and the seal, so the part is exactly the one the app would draw
- * between those two mounts.
+ * All of them are built the way `frozen-cylinder-fixtures.ts` builds its
+ * cylinder: `cylinderBetween` inverts the model's own span rule to place the
+ * barrel's buried end and the seal, so the part is exactly the one the app
+ * would draw between those two mounts.
  */
 
 /** The welded corner's ink, which the ram welded into it has to share. */
@@ -53,20 +49,17 @@ function ram(
 }
 
 /**
- * **The maintainer's drawing**, as a fixture: three cylinders in a triangle,
- * with a bar from one corner to a grounded, driven pin.
+ * Three cylinders in a triangle, with a bar from one corner to a grounded,
+ * driven pin.
  *
- * Five bodies and six full joints, so Gruebler counts three freedoms and is
- * right about the drawing. Nobody means that: with nothing driving any of the
- * three rams, the triangle is three struts and it turns about its pin as one
- * rigid body. All three are held, the count that follows is one, and the
- * machine runs.
+ * Five bodies and six full joints, so Gruebler counts three freedoms, and the
+ * count is right: each ram nothing drives can change length.
  *
  * The corner at `A` is a welded body -- the first ram's barrel, the third's rod
  * and the bar to ground -- which is what fixes the angle between two sides of
  * the triangle and makes the whole of it rigid rather than a four-bar.
  */
-export function heldCylinderTriangleFixture(scale: number = 1): MechanismFixture {
+export function cylinderTriangleFixture(scale: number = 1): MechanismFixture {
   const A = { x: 0, y: 0 };
   const C = { x: 6, y: 0 };
   const E = { x: 3, y: 5 };
@@ -108,13 +101,11 @@ export function heldCylinderTriangleFixture(scale: number = 1): MechanismFixture
 }
 
 /**
- * A four-bar whose coupler is a passive cylinder.
- *
- * The simplest drawing the rule is for. Counted, it has two freedoms -- the
- * crank turns and the ram telescopes -- and the reader drew a four-bar. Held,
- * the coupler is a rigid bar and it runs as one.
+ * A four-bar whose coupler is a passive cylinder: two freedoms, the crank's
+ * and the ram's length. Welding either end of the ram to the bar it meets
+ * leaves one.
  */
-export function heldCouplerFixture(scale: number = 1): MechanismFixture {
+export function cylinderCouplerFixture(scale: number = 1): MechanismFixture {
   const B = { x: 0, y: 3 };
   const C = { x: 6, y: 4 };
   const coupler = ram(B, C, { mountA: 'B', inner: 'N', seal: 'S', mountB: 'C' }, scale);
@@ -132,16 +123,10 @@ export function heldCouplerFixture(scale: number = 1): MechanismFixture {
 }
 
 /**
- * **The case that must not be held**: a cylinder the machine itself moves.
- *
- * A crank-rocker with a telescoping strut from the coupler's far point down to
- * ground. Counted, it has one freedom: the four-bar determines where the
- * strut's top end goes, so the strut's length is *forced* to change. It runs
- * today, exactly as it is, and holding it would turn a mechanism into a
- * structure.
- *
- * The rule never even looks at it -- it fires only where the count is above one
- * -- and this fixture is here to keep that true.
+ * A cylinder the machine itself moves: a crank-rocker with a telescoping strut
+ * from the coupler's far point down to ground. Counted, it has one freedom: the
+ * four-bar decides where the strut's top end goes, so its length is *forced*
+ * to change, and it runs.
  */
 export function followerCylinderFixture(scale: number = 1): MechanismFixture {
   const P = { x: 4.5, y: 4.5 };
@@ -164,15 +149,10 @@ export function followerCylinderFixture(scale: number = 1): MechanismFixture {
 }
 
 /**
- * **The mixed case**: one cylinder the machine moves, one it does not.
- *
- * The follower above, with a second ram hung off the coupler's far point by a
- * short bar and pinned to ground -- a dyad whose only freedom is the second
- * ram's own length. Counted, two freedoms. With the crank held still the
- * strut's length cannot change at all, because the four-bar has already decided
- * where its top end is; the second ram's length can. So the second is held and
- * the strut is left to follow, which is what a rule that held every passive
- * cylinder would get wrong.
+ * One cylinder the machine moves, one it does not: the follower above, with a
+ * second ram hung off the coupler's far point by a short bar and pinned to
+ * ground -- a dyad whose only freedom is the second ram's own length. Two
+ * freedoms, and the drawer names the second ram as the one that is loose.
  */
 export function mixedCylinderFixture(scale: number = 1): MechanismFixture {
   const base = followerCylinderFixture(scale);
@@ -194,14 +174,12 @@ export function mixedCylinderFixture(scale: number = 1): MechanismFixture {
 }
 
 /**
- * A ram hanging from a linkage by its barrel, its far end loose: the
+ * A ram hanging from a linkage by its barrel, its far end loose: a
  * maintainer's drawing, with the input on the pin between the coupler and the
  * arm the barrel is welded to.
  *
- * Nothing drives the ram, so it holds its length and the arm and ram are one
- * body: three bodies, three pins, three degrees of freedom. The advice counts
- * that way too, which is what makes grounding F -- the loop closes, the ram
- * holds, one freedom is left -- a way out it offers.
+ * Four moving bodies, three pins and the ram's slide: four freedoms. No single
+ * edit leaves one, so the drawer lists steps, grounding F among them.
  */
 export function ramWithAFreeEndFixture(scale: number = 1): MechanismFixture {
   const A = { x: -2, y: 1 };
@@ -227,9 +205,9 @@ export function ramWithAFreeEndFixture(scale: number = 1): MechanismFixture {
 }
 
 /**
- * The same drawing with F grounded, as the drawer advises. Gruebler counts two
- * freedoms, and one of them is the ram's length, which nothing drives: it holds,
- * and the loop runs as a four-bar whose coupler is the arm and the ram together.
+ * The same drawing with F grounded. Four moving bodies and five one-freedom
+ * joints, so two freedoms: the loop's and the ram's length, which nothing
+ * drives.
  */
 export function ramGroundedAtItsFreeEndFixture(scale: number = 1): MechanismFixture {
   const fixture = ramWithAFreeEndFixture(scale);
@@ -238,3 +216,69 @@ export function ramGroundedAtItsFreeEndFixture(scale: number = 1): MechanismFixt
   );
   return fixture;
 }
+
+/** The pace the library's templates run at, which these share. */
+const LIBRARY_RPM = 10;
+
+/** These drawings in the fixture gallery, each with what it is for. */
+export const PASSIVE_CYLINDER_GALLERY: GalleryEntry[] = [
+  {
+    name: 'Three cylinders in a triangle',
+    purpose:
+      'Does not run on purpose: nothing drives the three rams, so each adds a freedom and the count is three',
+    spec: 'cylinder-passive.spec.ts',
+    floatingSlot: true,
+    slide: true,
+    speed: { rpm: LIBRARY_RPM },
+    fixture: cylinderTriangleFixture(),
+  },
+  {
+    name: 'Four-bar on a passive cylinder',
+    purpose:
+      'Does not run on purpose: a coupler nothing drives changes length, so the count is two',
+    spec: 'cylinder-passive.spec.ts',
+    floatingSlot: true,
+    slide: true,
+    speed: { rpm: LIBRARY_RPM },
+    fixture: cylinderCouplerFixture(),
+  },
+  {
+    name: 'Telescoping strut',
+    purpose: 'The cylinder a four-bar moves: its length follows the linkage, and it runs',
+    spec: 'cylinder-passive.spec.ts',
+    floatingSlot: true,
+    slide: true,
+    speed: { rpm: LIBRARY_RPM },
+    fixture: followerCylinderFixture(),
+  },
+  {
+    name: 'One follower and one surplus',
+    purpose:
+      'Does not run on purpose: two passive cylinders, one the linkage moves and one nothing decides',
+    spec: 'cylinder-passive.spec.ts',
+    floatingSlot: true,
+    slide: true,
+    speed: { rpm: LIBRARY_RPM },
+    fixture: mixedCylinderFixture(),
+  },
+  {
+    name: 'Ram with a free end',
+    purpose:
+      'Does not run on purpose: four freedoms, one of them the ram’s length, and the drawer lists steps',
+    spec: 'cylinder-passive.spec.ts',
+    floatingSlot: true,
+    slide: true,
+    speed: { rpm: LIBRARY_RPM },
+    fixture: ramWithAFreeEndFixture(),
+  },
+  {
+    name: 'Ram grounded at its free end',
+    purpose:
+      'Does not run on purpose: two freedoms, the four-bar’s and the ram’s length nothing drives',
+    spec: 'cylinder-passive.spec.ts',
+    floatingSlot: true,
+    slide: true,
+    speed: { rpm: LIBRARY_RPM },
+    fixture: ramGroundedAtItsFreeEndFixture(),
+  },
+];

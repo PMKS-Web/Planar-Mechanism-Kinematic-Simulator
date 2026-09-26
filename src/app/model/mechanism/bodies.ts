@@ -33,16 +33,7 @@ export function assignBodies(
    * what ungrounding one joint would do, and a bar pinned down at both ends
    * stops being frame the moment one of them is not.
    */
-  groundedAt: (joint: RealJoint) => boolean = (joint) => joint.ground,
-  /**
-   * Groups of link ids the caller knows to be one rigid body for a reason the
-   * drawing does not state. A cylinder holding its length is the case
-   * (decision S28): its barrel and its rod share one joint, and what stops
-   * them sliding is that nothing drives the part -- not a second pin and not a
-   * weld. Passed in rather than merged afterwards so there stays one answer to
-   * "what is a rigid body", which is the whole point of this module.
-   */
-  extraRigid: readonly string[][] = []
+  groundedAt: (joint: RealJoint) => boolean = (joint) => joint.ground
 ): BodyAssignment {
   /**
    * Whether this joint holds its point still.
@@ -67,7 +58,6 @@ export function assignBodies(
     .map((link) => link.id);
   const rigidBody = groupRigidBodies(links, [
     ...slideAssemblies(joints).map(assemblyBodyIds),
-    ...extraRigid.map((group) => [...group]),
     anchored,
   ]);
 

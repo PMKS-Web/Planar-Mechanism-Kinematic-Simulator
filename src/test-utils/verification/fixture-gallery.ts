@@ -5,14 +5,7 @@ import {
   slottedToolDriveFixture,
 } from './part2-library-fixtures';
 import { MechanismFixture } from './fixture';
-import {
-  followerCylinderFixture,
-  heldCouplerFixture,
-  heldCylinderTriangleFixture,
-  mixedCylinderFixture,
-  ramGroundedAtItsFreeEndFixture,
-  ramWithAFreeEndFixture,
-} from './held-cylinder-fixtures';
+import { PASSIVE_CYLINDER_GALLERY } from './passive-cylinder-fixtures';
 import {
   fourBarDrivenAtFixture,
   sliderCrankTracerFixture,
@@ -823,62 +816,7 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     speed: { rpm: LIBRARY_RPM },
     fixture: frozenCylinderCouplerFixture(),
   },
-  {
-    name: 'Three cylinders in a triangle',
-    purpose:
-      'Nothing drives the rams, so each holds its length and the triangle turns as one rigid body',
-    spec: 'cylinder-held.spec.ts',
-    floatingSlot: true,
-    slide: true,
-    speed: { rpm: LIBRARY_RPM },
-    fixture: heldCylinderTriangleFixture(),
-  },
-  {
-    name: 'Four-bar on a held cylinder',
-    purpose: 'A coupler nothing drives holds its length, and the count drops from two to one',
-    spec: 'cylinder-held.spec.ts',
-    floatingSlot: true,
-    slide: true,
-    speed: { rpm: LIBRARY_RPM },
-    fixture: heldCouplerFixture(),
-  },
-  {
-    name: 'Telescoping strut',
-    purpose: 'The cylinder a four-bar moves: it follows, it is never held, and it runs as it did',
-    spec: 'cylinder-held.spec.ts',
-    floatingSlot: true,
-    slide: true,
-    speed: { rpm: LIBRARY_RPM },
-    fixture: followerCylinderFixture(),
-  },
-  {
-    name: 'One follower and one surplus',
-    purpose: 'Two passive cylinders, one the machine moves and one it does not — only one is held',
-    spec: 'cylinder-held.spec.ts',
-    floatingSlot: true,
-    slide: true,
-    speed: { rpm: LIBRARY_RPM },
-    fixture: mixedCylinderFixture(),
-  },
-  {
-    name: 'Ram with a free end',
-    purpose:
-      'Does not run on purpose: three freedoms, and grounding either end of the arm closes the loop',
-    spec: 'cylinder-held.spec.ts',
-    floatingSlot: true,
-    slide: true,
-    speed: { rpm: LIBRARY_RPM },
-    fixture: ramWithAFreeEndFixture(),
-  },
-  {
-    name: 'Ram grounded at its free end',
-    purpose: 'Gruebler counts two; the ram holds its length, and it runs as a four-bar',
-    spec: 'cylinder-held.spec.ts',
-    floatingSlot: true,
-    slide: true,
-    speed: { rpm: LIBRARY_RPM },
-    fixture: ramGroundedAtItsFreeEndFixture(),
-  },
+  ...PASSIVE_CYLINDER_GALLERY,
   {
     name: 'Cylinder riding a slot',
     purpose:

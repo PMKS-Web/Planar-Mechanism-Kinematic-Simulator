@@ -2333,41 +2333,13 @@ has its own coordinate rule and never read `DriveProfile.along`.
 Halving a step took the midpoint of each boundary joint's own chord, and a body
 turning through an angle does not pass through its chords' midpoints — it
 arrives very slightly **shrunk**. Most drawings absorb that in their own slack
-and never notice. A held cylinder (S28) has none to absorb it with: it pins two
-unknowns rigidly to two *different* boundary joints, their separation is fixed
+and never notice. A body held rigid between two unknowns has none to absorb it
+with: it pins two unknowns rigidly to two *different* boundary joints, their separation is fixed
 and the shrunk boundary's is not, so no pose satisfies the rows and the halving
 refuses the very sample it was subdividing to reach. `halfwayBoundary` takes the
 square root of the fitted rigid motion instead — `R(θ/2)` with the translation
 that, applied twice, lands exactly on the far end — and falls back to chords for
 a boundary the fit cannot reproduce.
-
-### A solved position is stored rounded to four decimals, which is why `heldPoseTolerance` exists
-
-`recordJointPosition` and `incrementRevInput` both round, so a driven body
-placed joint by joint is not quite a rigid body, and the error wanders a little
-further with every sample of the walk. `solveSimultaneous` aims at `1e-6` and
-that is unreachable for a system holding a cylinder's length. Its *acceptance*
-is therefore a parameter, asked for by name: loosening it for everything costs
-the guard that refuses a six-bar converging at full rank onto the wrong assembly
-mode (`boundary-driven-branch.spec.ts`), which fails the moment the gate moves.
-
-### The rows for a held cylinder are a *body*, not a distance to its mount
-
-Written as "the seal stands |AS| from the mount", the seal carried two distance
-rows to two anchors on a line through it — both gradients along the axis, which
-is exactly the degenerate pair `rigidOffset` exists to replace. Every row of the
-maintainer's triangle was satisfied to 5e-7 at the drawn pose and least squares
-could get no nearer than 1.3e-5 of one. `collectConstraints` writes the four
-joints as one body instead, **known joints first**, so no row is a promise about
-two boundary joints that the walk can break on its way.
-
-### A triangle of held cylinders is force-*indeterminate*, and so are its bars
-
-Welding one corner makes two bodies pinned at two points, which share their load
-in no unique way. The drawer says "more supports than equilibrium can determine"
-— about the drawing, not about the holding — and the same shape drawn as plain
-bars says it too. Ask the holding force of a determinate machine (the published
-*Four-bar on a held cylinder*) when you want a number.
 
 ### Split Joint treats a floating slot's carrier as a body
 
@@ -2551,7 +2523,7 @@ mobility and setup refactors. Preserve cylinder holding and drive-direction beha
 the newer geometry-preserving display sizing. Carry Holding Force into the shared force tabs,
 and migrate cylinder notes and their tests from `state`/`body` to `severity`/`summary`/`fixes`.
 Notes remain informational and do not count as warnings. Keep the solver's loose-cylinder
-advice too. Save original refs before replaying, and compare each PR's old and new ranges.
+advice too. Save original refs before replaying, and compare each PR's old and new ranges. (Cylinder holding, its note and Holding Force were withdrawn afterwards, decision S30.)
 
 
 ### A grounded slider is "known" before anything has slid it
@@ -2563,10 +2535,9 @@ alone never got a step: a Scotch yoke on two guides placed its crank pin, found 
 pending, and stood still while the pin left the slot. `unslidGuide` puts such a guide back in
 the sweep, for `orderSlideAssembly` only.
 
-### The advice counts an edit with the held cylinders held
+### A step toward one freedom may take more than one away
 
-`cylinderHolds` decides which passive rams hold their length for the drawing as it stands.
-The mobility advice counts drawings nobody has made yet, so it asks `holdingCylinders` of each
-edit's constraint system: the same order, gate and release, written as a row that stops each
-held slide. Without it, grounding the free end of a ram hanging off a linkage counted two,
-though the machine counts one once it is done, and the drawer never offered it.
+Where no single edit leaves one freedom, the drawer lists steps (`takesSomeAway`): edits that
+leave fewer freedoms, at least one, and the input still driving exactly one of them. Grounding
+the free end of a ram takes two at once; grounding a plate's hanging link where it pins the
+input's own part takes two as well, and is left out because the input could no longer turn.

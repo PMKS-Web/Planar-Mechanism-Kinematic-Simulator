@@ -63,6 +63,11 @@ const EXPECTED_INVALID = new Set([
   'Crank plate with two links hanging loose',
   'Crank plate held by a grounded link',
   'Ram with a free end',
+  'Ram grounded at its free end',
+  // A cylinder nothing drives adds its freedom (S30).
+  'Three cylinders in a triangle',
+  'Four-bar on a passive cylinder',
+  'One follower and one surplus',
   // Two things wrong at once, both said together.
   'Four-bar with a hanging link and no input',
   'Four-bar driven from its coupler point, with a hanging link',

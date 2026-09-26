@@ -199,18 +199,6 @@
                     (expandedChange)="setExpanded('JInputForce', $event)"
                   ></app-analysis-graph-section>
                 }
-                @if (holdsItsLength()) {
-                  <app-analysis-graph-section
-                    label="Holding Force"
-                    help="The axial force this cylinder has to hold to keep its length"
-                    analysis="force"
-                    [analysisType]="forceAnalysisMode()"
-                    mechProp="Holding Force"
-                    mechPart="{{ shownJoint.id }}"
-                    [expanded]="isExpanded('JHoldingForce')"
-                    (expandedChange)="setExpanded('JHoldingForce', $event)"
-                  ></app-analysis-graph-section>
-                }
               </div>
             } @else {
               <div class="rowList">
