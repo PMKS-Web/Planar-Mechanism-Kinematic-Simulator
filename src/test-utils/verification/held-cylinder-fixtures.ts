@@ -192,3 +192,49 @@ export function mixedCylinderFixture(scale: number = 1): MechanismFixture {
     welds: [...(base.welds ?? []), 'T'],
   };
 }
+
+/**
+ * A ram hanging from a linkage by its barrel, its far end loose: the
+ * maintainer's drawing, with the input on the pin between the coupler and the
+ * arm the barrel is welded to.
+ *
+ * Nothing drives the ram, so it holds its length and the arm and ram are one
+ * body: three bodies, three pins, three degrees of freedom. The advice counts
+ * that way too, which is what makes grounding F -- the loop closes, the ram
+ * holds, one freedom is left -- a way out it offers.
+ */
+export function ramWithAFreeEndFixture(scale: number = 1): MechanismFixture {
+  const A = { x: -2, y: 1 };
+  const F = { x: -3.5, y: -2.5 };
+  const arm = ram(A, F, { mountA: 'A', inner: 'N', seal: 'E', mountB: 'F' }, scale);
+  return {
+    joints: [
+      { id: 'B', x: 0, y: 0, input: true },
+      { id: 'C', x: 4 * scale, y: -1 * scale },
+      { id: 'D', x: 4 * scale, y: 3 * scale, ground: true },
+      ...arm.joints,
+    ],
+    links: [
+      { joints: 'CD' },
+      { joints: 'BC' },
+      { joints: 'ABN', subset: [{ joints: 'AB' }, { joints: 'AN' }] },
+      { joints: 'EF' },
+    ],
+    sliders: [{ ...arm.slider, on: { carrier: 'ABN', a: 'A', b: 'N' } }],
+    welds: ['E', 'A'],
+    inputAngVel: 1,
+  };
+}
+
+/**
+ * The same drawing with F grounded, as the drawer advises. Gruebler counts two
+ * freedoms, and one of them is the ram's length, which nothing drives: it holds,
+ * and the loop runs as a four-bar whose coupler is the arm and the ram together.
+ */
+export function ramGroundedAtItsFreeEndFixture(scale: number = 1): MechanismFixture {
+  const fixture = ramWithAFreeEndFixture(scale);
+  fixture.joints = fixture.joints.map((joint) =>
+    joint.id === 'F' ? { ...joint, ground: true } : joint
+  );
+  return fixture;
+}

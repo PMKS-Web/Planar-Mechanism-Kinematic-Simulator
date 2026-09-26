@@ -2552,3 +2552,21 @@ the newer geometry-preserving display sizing. Carry Holding Force into the share
 and migrate cylinder notes and their tests from `state`/`body` to `severity`/`summary`/`fixes`.
 Notes remain informational and do not count as warnings. Keep the solver's loose-cylinder
 advice too. Save original refs before replaying, and compare each PR's old and new ranges.
+
+
+### A grounded slider is "known" before anything has slid it
+
+`PositionSolver.determineJointOrder` seeds every grounded joint as known, a grounded
+`PrisJoint` included, because its slot line is fixed; the joint itself still travels. The
+deferred sweep used to look only at joints not yet known, so a body carried on grounded guides
+alone never got a step: a Scotch yoke on two guides placed its crank pin, found nothing
+pending, and stood still while the pin left the slot. `unslidGuide` puts such a guide back in
+the sweep, for `orderSlideAssembly` only.
+
+### The advice counts an edit with the held cylinders held
+
+`cylinderHolds` decides which passive rams hold their length for the drawing as it stands.
+The mobility advice counts drawings nobody has made yet, so it asks `holdingCylinders` of each
+edit's constraint system: the same order, gate and release, written as a row that stops each
+held slide. Without it, grounding the free end of a ram hanging off a linkage counted two,
+though the machine counts one once it is done, and the drawer never offered it.

@@ -230,6 +230,25 @@ export function scotchYokeFixture(swapSlotJoints: boolean = false): MechanismFix
 }
 
 /**
+ * The yoke on two grounded guides, one at each end: the plain yoke with its far
+ * end made Prismatic and grounded as well, which is what a reader gets by doing
+ * exactly that to the template.
+ *
+ * Two parallel guides on one body say the same thing twice, so the count is
+ * rescued by the geometry and comes to one. Every joint the crank reaches is
+ * placed before the walk ends, and both guides are grounded, so nothing was left
+ * pending -- and the yoke stood still while its pin left the slot.
+ */
+export function scotchYokeOnTwoGuidesFixture(): MechanismFixture {
+  const fixture = scotchYokeFixture();
+  return {
+    ...fixture,
+    sliders: [...fixture.sliders!, { at: 'D', angleRad: 0 }],
+    welds: ['C', 'D'],
+  };
+}
+
+/**
  * The same yoke with the guide moved to the far end of the slot, so the loop
  * reaches the welded rider along an ordinary **link** edge rather than across
  * the slot.

@@ -10,6 +10,8 @@ import {
   heldCouplerFixture,
   heldCylinderTriangleFixture,
   mixedCylinderFixture,
+  ramGroundedAtItsFreeEndFixture,
+  ramWithAFreeEndFixture,
 } from './held-cylinder-fixtures';
 import {
   fourBarDrivenAtFixture,
@@ -41,6 +43,7 @@ import {
   offsetPivotLeverWeldedRodFixture,
   scotchYokeFixture,
   scotchYokeGuidedAtFarEndFixture,
+  scotchYokeOnTwoGuidesFixture,
   scotchYokeWithTracerFixture,
   motionGenGripperFixture,
   pivotingGripperFixture,
@@ -519,6 +522,15 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     fixture: scotchYokeGuidedAtFarEndFixture(),
   },
   {
+    name: 'Scotch yoke on two guides',
+    purpose:
+      'Both ends of the yoke on grounded guides: the yoke slides with the pin, not left behind',
+    spec: 'scotch-yoke.spec.ts',
+    floatingSlot: true,
+    slide: true,
+    fixture: scotchYokeOnTwoGuidesFixture(),
+  },
+  {
     name: 'Elliptical trammel',
     purpose: 'Mobility for a linkage held only by its guides — no pin touches ground',
     spec: 'slot-mobility.spec.ts',
@@ -847,6 +859,25 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     slide: true,
     speed: { rpm: LIBRARY_RPM },
     fixture: mixedCylinderFixture(),
+  },
+  {
+    name: 'Ram with a free end',
+    purpose:
+      'Does not run on purpose: three freedoms, and grounding either end of the arm closes the loop',
+    spec: 'cylinder-held.spec.ts',
+    floatingSlot: true,
+    slide: true,
+    speed: { rpm: LIBRARY_RPM },
+    fixture: ramWithAFreeEndFixture(),
+  },
+  {
+    name: 'Ram grounded at its free end',
+    purpose: 'Gruebler counts two; the ram holds its length, and it runs as a four-bar',
+    spec: 'cylinder-held.spec.ts',
+    floatingSlot: true,
+    slide: true,
+    speed: { rpm: LIBRARY_RPM },
+    fixture: ramGroundedAtItsFreeEndFixture(),
   },
   {
     name: 'Cylinder riding a slot',

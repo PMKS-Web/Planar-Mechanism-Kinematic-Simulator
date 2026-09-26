@@ -1,6 +1,7 @@
 import { Joint, PrisJoint, RealJoint } from '../joint';
 import { Link, RealLink } from '../link';
 import { assignBodies, BodyAssignment, WORLD } from './bodies';
+import { holdingCylinders } from './cylinder-hold';
 import { MechanismPartition } from './mechanism-partition';
 import {
   Constraint,
@@ -137,13 +138,16 @@ export function diagnoseMobility(
 function diagnose(partition: MechanismPartition, drawing?: Drawing): MobilityDiagnosis {
   const { joints, links } = partition;
   const assignment = assignBodies(joints, links);
-  const system = constraintSystemOf(joints, links, assignment);
-  if (!system) return NOTHING;
+  const drawn = constraintSystemOf(joints, links, assignment);
+  if (!drawn) return NOTHING;
 
   const driven = partition.ownJoints.find(
     (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
   );
-  const hold = driven ? holdFor(driven, system, assignment) : undefined;
+  const hold = driven ? holdFor(driven, drawn, assignment) : undefined;
+  // Counted as the machine counts it, with the cylinders nothing drives
+  // holding their length, so the count here is the one in the drawer's title.
+  const system = holdingCylinders(drawn, joints, assignment, hold);
   const held = hold ? [...system.constraints, hold] : system.constraints;
   const hidden = hiddenJoints(joints);
   const own = new Set(partition.ownJoints.map((joint) => joint.id));

@@ -3,6 +3,7 @@ import { cylindersIn, isInsideCylinder } from '../cylinder';
 import { Joint, PrisJoint, RealJoint } from '../joint';
 import { Link, RealLink } from '../link';
 import { assignBodies, BodyAssignment, WORLD } from './bodies';
+import { holdingCylinders } from './cylinder-hold';
 import { MechanismPartition } from './mechanism-partition';
 import {
   Constraint,
@@ -104,11 +105,11 @@ export interface Edit {
  * machine of its own that cannot move -- however well the other piece runs, and
  * however well the two count together.
  */
-export function leavesOneMachine({ partition, driven, needsHold }: Trial, edit: Edit): boolean {
-  const kept = edit.links ?? partition.links;
+export function leavesOneMachine(trial: Trial, edit: Edit): boolean {
+  const { partition, driven, needsHold } = trial;
   const joints = edit.joints ?? partition.joints;
   if (!staysOnePiece(joints, edit)) return false;
-  const system = constraintSystemOf(joints, kept, edit.assignment, edit.rotates);
+  const system = systemAfter(trial, edit);
   if (!system) return false;
   if (edit.hold) {
     const hold = edit.hold(system);
@@ -162,12 +163,32 @@ function someInputHolds(system: ConstraintSystem, joints: Joint[], edit: Edit): 
  * `before`: a step toward one, where no single edit gets there. A drawing with
  * two links hanging loose needs one step for each.
  */
-export function takesOneAway({ partition }: Trial, edit: Edit, before: number): boolean {
-  const kept = edit.links ?? partition.links;
-  const joints = edit.joints ?? partition.joints;
-  if (!staysOnePiece(joints, edit)) return false;
-  const system = constraintSystemOf(joints, kept, edit.assignment, edit.rotates);
+export function takesOneAway(trial: Trial, edit: Edit, before: number): boolean {
+  if (!staysOnePiece(edit.joints ?? trial.partition.joints, edit)) return false;
+  const system = systemAfter(trial, edit);
   return system !== undefined && freedomsOf(system) === before - 1;
+}
+
+/**
+ * The constraints the edited drawing would have, counted the way the machine
+ * counts it once the edit is made: with each cylinder nothing drives holding
+ * its length wherever the machine does not move it (decision S28).
+ */
+function systemAfter({ partition, driven }: Trial, edit: Edit): ConstraintSystem | undefined {
+  const joints = edit.joints ?? partition.joints;
+  const system = constraintSystemOf(
+    joints,
+    edit.links ?? partition.links,
+    edit.assignment,
+    edit.rotates
+  );
+  if (!system) return undefined;
+  const drive = edit.hold
+    ? edit.hold(system)
+    : driven && !edit.touchesInput
+      ? holdFor(driven, system, edit.assignment)
+      : undefined;
+  return holdingCylinders(system, joints, edit.assignment, drive);
 }
 
 /** Whether the moving bodies an edit leaves are joined into one machine. */
