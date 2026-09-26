@@ -729,36 +729,16 @@ menu), `readinessOf` finds the input among the frame joints it is handed (`input
 `inputSetFor` is the one question the other surfaces ask. A new surface that decides "no input" by
 looking only at `ownJoints` reintroduces the bug; ask `inputSetFor`.
 
-### The library's gripper counts one freedom and measures three, and runs on the count
+### The library's gripper counted one freedom and measured three (resolved, S30)
 
-`Cylinder_Gripper` -- the card, and `slideGripperFixture` the gallery generates it from -- has
-Gruebler's count at 1 and `mobilityFromGeometry` at **3**. `determineDegreesOfFreedom` returns the
-count wherever the count is at least one and never asks the geometry, so the drawing is admitted
-and solved. Two of those three freedoms are therefore motions nothing in the drawing determines,
-and the solver picks a pose for them.
-
-The 3 is not a numerical artifact, which is the first thing to suspect and the first thing to rule
-out. Perturbing a corner of one of its parallelograms by 1e-9, 1e-6, 1e-4 and 1e-3 -- the last of
-which is the resolution the URL itself carries -- leaves it at 3 every time.
-
-**What is not known is which two motions they are.** Grounding `B`, the barrel's near end, drops
-the measurement to 1, which looks like the barrel's swing about its single mount until you notice
-that `gripperFixture` beside it in the gallery has its barrel equally free on one pin and measures
-1. So the barrel is not a sufficient explanation, and no better one has been written down. Note
-also that grounding `B` is not a drawing a reader could make: `isInsideCylinder` counts the
-barrel's near end as inside the part, so it is not an attachment point.
-
-Three siblings in the gallery measure 1 and are worth comparing against before concluding
-anything: `gripperFixture` (railed, hand-placed coordinates), `pivotingGripperFixture` ("the same
-gripper, jaws pivoting instead of railed") and `parallelGripperFixture` ("the way a manufacturer
-draws one"). The difference is not exact symmetry: `slideGripperFixture` builds its parallelograms
-from shared constants and is exact, `gripperFixture`'s are hand-typed and only nearly so, but
-breaking the exact ones by hand does not move the number.
-
-One warning for anyone thinking of gating on the measurement. It is robust on this drawing and
-knife-edge on a near neighbor: the same gripper with `B` grounded flips between 1 and 2 on a 1e-9
-nudge to a parallelogram corner. Whether that shape is reachable by a reader is a separate
-question, but a refusal rule reading this number needs to answer it first.
+`Cylinder_Gripper` had Gruebler's count at 1 and `mobilityFromGeometry` at **3**, and ran because
+the geometry was asked only below one. The motions were real: the cylinder hung on one ground pin,
+so the whole carriage could ride up and down as the barrel swung, and the jaws' two rails exactly
+their own width apart held each jaw level a second time, which paid for it in the count. The
+geometry is now believed wherever it finds more, and the gripper is redrawn: barrel welded to a
+bar grounded along its axis, rod welded to the carriage, each jaw on one rail. A near neighbor once
+flipped between 1 and 2 on a 1e-9 nudge, so `template-count-stability.spec.ts` nudges every
+template's joints and requires the count to hold.
 
 ### The mobility count reads a floating slot's live direction
 
@@ -2541,3 +2521,18 @@ Where no single edit leaves one freedom, the drawer lists steps (`takesSomeAway`
 leave fewer freedoms, at least one, and the input still driving exactly one of them. Grounding
 the free end of a ram takes two at once; grounding a plate's hanging link where it pins the
 input's own part takes two as well, and is left out because the input could no longer turn.
+
+### A body's rows are written from its known joints first
+
+`collectConstraints` writes each link as a rigid body from its first two joints, and a third is
+placed from both at once (`rigidOffset`) only when both are anchors it can measure from. In the
+order a link lists its joints, an unknown one could be an anchor: a cylinder's barrel welded to a
+bar grounded at A and Y, listed A, B, Y, tied B to A and to Y by two distances, which say nothing
+across the line when the three are collinear, and the solve was refused. Known joints go first.
+
+### Making a Pin-in-slot Prismatic fuses every rider, not just the turn
+
+A Prismatic joint holds every link riding it rigid with the others (`assignBodies`). Counting the
+change as "this slide may no longer turn" is the same thing only for one rider; the gripper's rail
+pin carries a link and a jaw, and the advice offered a Prismatic change that counted one and made
+the drawing over-constrained. `prismaticAt` fuses the riders' bodies as well.

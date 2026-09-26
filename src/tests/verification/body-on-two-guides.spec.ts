@@ -50,7 +50,9 @@ describe('a body standing on two grounded guides', () => {
   it('is refused rather than solved, because it has more than one freedom', () => {
     const { mechanism } = buildMechanismFixture(BODY_ON_TWO_GUIDES);
 
-    expect(mechanism.dof).toBe(2);
+    // Three, the geometry's answer: it is believed wherever it finds more than
+    // the count, which after charging the second Slide correctly reads two.
+    expect(mechanism.dof).toBe(3);
     expect(mechanism.isMechanismValid()).toBe(false);
     // One sample: the drawing as it stands, and no motion worked out from it.
     expect(mechanism.joints.length).toBe(1);

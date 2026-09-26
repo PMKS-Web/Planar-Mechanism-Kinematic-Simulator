@@ -514,14 +514,34 @@ export function isFreeEnd(joint: Joint, link: Link, joints: Joint[]): boolean {
 export function weldedAt(assignment: BodyAssignment, joint: RealJoint): Edit | undefined {
   const fused = [...assignment.bodiesAt(joint)].filter((body) => body !== WORLD);
   if (fused.length < 2) return undefined;
+  return { groundedAt: (one) => one.ground, assignment: fusing(assignment, fused) };
+}
+
+/**
+ * The drawing with a Pin-in-slot made Prismatic: its riders may no longer
+ * turn against the slot, and so not against each other either -- a Prismatic
+ * joint holds every link riding it rigid with the rest (`assignBodies`). With
+ * one rider that is only the turn; with two, a link and the jaw it holds, it
+ * is one body where there were two, and counting the turn alone missed it.
+ */
+export function prismaticAt(assignment: BodyAssignment, joint: PrisJoint): Edit {
+  const riders = [...new Set(joint.links.map((link) => assignment.bodyOf(link)))].filter(
+    (body) => body !== WORLD
+  );
+  return {
+    groundedAt: (one) => one.ground,
+    assignment: riders.length < 2 ? assignment : fusing(assignment, riders),
+    rotates: (one) => (one === joint ? false : one.rotates),
+  };
+}
+
+/** These moving bodies as one. */
+function fusing(assignment: BodyAssignment, fused: string[]): BodyAssignment {
   const into = fused.join('+');
   const merged = (body: string) => (fused.includes(body) ? into : body);
   return {
-    groundedAt: (one) => one.ground,
-    assignment: {
-      bodyOf: (link) => merged(assignment.bodyOf(link)),
-      movingBodies: new Set([...assignment.movingBodies].map(merged)),
-      bodiesAt: (at) => new Set([...assignment.bodiesAt(at)].map(merged)),
-    },
+    bodyOf: (link) => merged(assignment.bodyOf(link)),
+    movingBodies: new Set([...assignment.movingBodies].map(merged)),
+    bodiesAt: (at) => new Set([...assignment.bodiesAt(at)].map(merged)),
   };
 }

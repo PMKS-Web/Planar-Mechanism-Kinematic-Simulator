@@ -74,8 +74,9 @@ Open it before debugging anything about a mechanism, a unit, a direction or an e
 direction: it charges twice for constraints that say the same thing, so a linkage whose redundancy
 is *geometric* comes out too low. The textbook case gets drawn here — a parallelogram with a third
 parallel crank counts as zero and turns perfectly well, because the third crank repeats what the
-first two already said. So when the count says a mechanism cannot move, and only then,
-`model/mechanism/mobility.ts` asks the drawing instead: **freedoms = coordinates − rank(J)**, over
+first two already said. The same redundancy can hide a freedom from a count that reads one: a
+duplicated constraint somewhere pays for a motion nothing holds somewhere else. So
+`model/mechanism/mobility.ts` asks the drawing every time: **freedoms = coordinates − rank(J)**, over
 three coordinates per moving body and two rows per joint.
 
 **A rank deficiency is not a motion, and believing it is will break a working app.** It says the
@@ -86,11 +87,13 @@ and put back together — if the gap that opens has a part no first-order correc
 a tangency and the freedom is dropped. Two existing specs (`slide-mobility`, `motiongen-gripper`)
 encode exactly that case and are what caught it.
 
-Two rules keep the whole thing conservative, and both matter:
+One rule keeps it honest, and one keeps it conservative:
 
-- The geometry is asked **only when the count says < 1**, so nothing the count already gets right can
-  be reached.
-- Its answer is taken **only when it is ≥ 1** — a rescue, never a demotion. Where both agree nothing
+- The geometry's answer is taken **wherever it finds more than the count** (decision S30). The
+  library's Cylinder Gripper once counted 1 with nothing fixing its carriage's height, and ran
+  only because the solver kept the carriage where it was drawn; that is a freedom decided for the
+  reader rather than by the drawing.
+- It is taken **only when it is ≥ 1** — never a demotion. Where both agree nothing
   moves, Gruebler's own number is the more useful: `-2` says how much has to come out, and a flat
   zero from a rank count says only that it is stuck. `e2e/phase1-drag.mjs` pins that.
 
