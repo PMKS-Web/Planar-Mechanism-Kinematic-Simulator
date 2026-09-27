@@ -221,14 +221,11 @@ export function aloneWith(
     movingBodies: new Set([...assignment.movingBodies].filter((body) => keep.has(body))),
     bodiesAt: (joint) => new Set([...assignment.bodiesAt(joint)].filter(inside)),
   };
-  // A slot cut into a body outside the group holds nothing inside it.
-  const held = joints.filter(
-    (joint) =>
-      !(joint instanceof PrisJoint) ||
-      joint.ground ||
-      (joint.carrier !== undefined && inside(assignment.bodyOf(joint.carrier)))
-  );
-  return constraintSystemOf(held, links, alone, rotates);
+  // A slot cut into a body outside the group holds nothing inside it, but the
+  // joint is still a pin between the links that ride it: a crank and a link
+  // both grounded, joined at a pin that rides a plate's slot, are a rigid
+  // triangle with the ground whether or not the plate is there (`slidePair`).
+  return constraintSystemOf(joints, links, alone, rotates);
 }
 
 /**

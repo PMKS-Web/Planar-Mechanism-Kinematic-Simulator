@@ -460,6 +460,13 @@ export function typeFixes(
     if (joint instanceof PrisJoint) {
       if (!joint.rotates || joint.isSealed) continue;
       if (refuseJointType(joint, 'prismatic', context)) continue;
+      // A Prismatic joint riding a slot in a moving link counts, and the solver
+      // refuses it: the rider's angle follows a carrier that is itself unknown
+      // (`swingingBlockFixture`). Offered, it led from a count of three to
+      // "can't take a first step". Only a slot in the frame is offered.
+      if (!joint.ground && (!joint.carrier || assignment.bodyOf(joint.carrier) !== WORLD)) {
+        continue;
+      }
       if (leavesOneMachine(trial, prismaticAt(assignment, joint))) {
         fixes.push({ kind: 'prismatic', joint });
       }

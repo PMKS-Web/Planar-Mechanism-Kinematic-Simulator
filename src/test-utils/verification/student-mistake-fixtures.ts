@@ -213,6 +213,33 @@ export function plateHeldByAGroundedLinkFixture(): MechanismFixture {
   return fixture;
 }
 
+/**
+ * A crank and a link both grounded, joined at a pin that rides a plate's slot:
+ * the crank, the link and the ground are a rigid triangle, so the input cannot
+ * turn from any start. The count still reads one, because the plate, hung from
+ * a grounded link, swings about the pin. It was reported as a start at a limit
+ * and sent the reader to drag a joint off it.
+ */
+export function crankLockedAtASlotPinFixture(): MechanismFixture {
+  const B = { x: -3.095, y: 0.715 };
+  const D = { x: 2.51, y: 0.74 };
+  const along = (x: number) => B.y + ((D.y - B.y) * (x - B.x)) / (D.x - B.x);
+  return {
+    joints: [
+      { id: 'B', ...B },
+      { id: 'D', ...D },
+      { id: 'E', x: -0.385, y: 2.84 },
+      { id: 'F', x: -2.675, y: 3.365, ground: true },
+      { id: 'H', x: -2.29, y: -2.105, ground: true, input: true },
+      { id: 'I', x: -0.375, y: along(-0.375) },
+      { id: 'J', x: 1.82, y: -2.105, ground: true },
+    ],
+    links: [{ joints: 'BDE' }, { joints: 'EF' }, { joints: 'HI' }, { joints: 'IJ' }],
+    sliders: [{ at: 'I', on: { carrier: 'BDE', a: 'B', b: 'D' } }],
+    inputAngVel: 1,
+  };
+}
+
 const entry = (
   name: string,
   purpose: string,
@@ -307,6 +334,11 @@ export const STUDENT_MISTAKE_GALLERY = [
     'Crank plate held by a grounded link',
     'Does not run on purpose: FG pins the plate to the ground, and AB hangs loose',
     plateHeldByAGroundedLinkFixture()
+  ),
+  entry(
+    'Crank locked by a grounded link at a slot pin',
+    'Does not run on purpose: the crank and link are a rigid triangle with the ground',
+    crankLockedAtASlotPinFixture()
   ),
   entry(
     'Scotch yoke on a Pin-in-slot guide',

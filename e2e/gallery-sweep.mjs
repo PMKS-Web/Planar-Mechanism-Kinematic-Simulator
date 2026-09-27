@@ -62,6 +62,7 @@ const EXPECTED_INVALID = new Set([
   'Scotch yoke on a Pin-in-slot guide',
   'Crank plate with two links hanging loose',
   'Crank plate held by a grounded link',
+  'Crank locked by a grounded link at a slot pin',
   'Ram with a free end',
   'Ram grounded at its free end',
   // A cylinder nothing drives adds its freedom (S30).
