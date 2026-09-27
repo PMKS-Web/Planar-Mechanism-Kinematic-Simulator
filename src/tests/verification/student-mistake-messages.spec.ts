@@ -7,6 +7,7 @@ import { read } from '../../test-utils/verification/issue-text';
 import {
   braceAtInputFixture,
   couplerInputAndHangingLinkFixture,
+  crankLockedAtASlotPinFixture,
   deletedRockerFixture,
   frameBarFixture,
   groundedWattJointFixture,
@@ -156,8 +157,10 @@ describe('what the drawer says about a mistake it has learned to name', () => {
   it("makes a Scotch yoke's guide Prismatic, so the yoke slides without turning", () => {
     const [issue] = said(yokeOnPinInSlotFixture()).issues;
     expect(issue.summary).toBe('With the input held still, link CD can still move.');
-    // B Prismatic counts as well, and locks the crank to the yoke's angle.
-    expect(issue.fixes).toEqual(['Set joint C to Prismatic', 'Set joint B to Prismatic']);
+    // B Prismatic counts as well, but B rides a slot in the moving yoke, and
+    // the solver refuses a Prismatic joint on a moving carrier; it is not
+    // offered.
+    expect(issue.fixes).toEqual(['Set joint C to Prismatic']);
   });
 
   it('says a count that is wrong and an input that is missing together', () => {
@@ -212,6 +215,13 @@ describe('what the drawer says about a mistake it has learned to name', () => {
     // Neither leaves exactly one freedom, because AB still hangs loose -- the
     // next issue, once the input can turn. The parts are named, not described.
     expect(issue.fixes).toEqual(['Turn off Grounded for joint G', 'Delete link FG']);
+  });
+
+  it('says a crank locked by a grounded link at a slot pin cannot turn, not that it is at a limit', () => {
+    const [issue] = said(crankLockedAtASlotPinFixture()).issues;
+    expect(issue.title).toBe("Input at joint H can't turn");
+    expect(issue.summary).toBe('link HI and link IJ are locked in place by the ground.');
+    expect(issue.fixes).toEqual(['Turn off Grounded for joint J', 'Delete link IJ']);
   });
 
   it('runs once the drawer is done with it, every one', () => {

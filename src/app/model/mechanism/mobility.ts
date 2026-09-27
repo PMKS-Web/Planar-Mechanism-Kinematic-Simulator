@@ -512,7 +512,9 @@ function slidePair(
     : joint.carrier
       ? assignment.bodyOf(joint.carrier)
       : undefined;
-  if (carrierBody === undefined) return undefined;
+  // A slot cut into a body the caller has let go of holds nothing: whatever
+  // rides it is left pinned to each other at the joint, and nothing more.
+  if (carrierBody === undefined || !meeting.includes(carrierBody)) return undefined;
   const rest = meeting.filter((body) => body !== carrierBody);
   if (rest.length === 0) return undefined;
   const [rider, ...alsoHere] = rest;

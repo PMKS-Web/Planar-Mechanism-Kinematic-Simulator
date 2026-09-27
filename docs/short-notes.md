@@ -2536,3 +2536,18 @@ A Prismatic joint holds every link riding it rigid with the others (`assignBodie
 change as "this slide may no longer turn" is the same thing only for one rider; the gripper's rail
 pin carries a link and a jaw, and the advice offered a Prismatic change that counted one and made
 the drawing over-constrained. `prismaticAt` fuses the riders' bodies as well.
+
+### A slot let go of still leaves its riders pinned together
+
+`aloneWith` asks whether the input's own part can move with the rest of the drawing let go. A
+sliding joint whose slot is cut in a body that was let go used to be dropped entirely, and with
+it the pin joining the links that ride it: a crank and a link both grounded, joined at a pin in a
+plate's slot, read as two free cranks rather than a rigid triangle, and the drawer said the input
+started at a limit. `slidePair` now declines a slot whose carrier is not among the bodies, and the
+riders are pinned to each other as at any other joint.
+
+### The advice offers Prismatic only on a slot in the frame
+
+A Pin-in-slot riding a slot in a moving link, made Prismatic, counts right and the solver refuses
+it (`swingingBlockFixture`): the rider's angle follows a carrier that is itself unknown. Offered,
+it took a reader from three freedoms to "can't take a first step". `typeFixes` skips it.
