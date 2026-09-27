@@ -221,7 +221,8 @@ for (const part of ['body', 'barrel', 'rod', 'seal', 'end joint']) {
   const said = await readingsFor(part);
   check(
     `the ${part} panel offers kinematics rather than refusing them`,
-    !said.includes('not in a mechanism that can be solved') && said.includes('Readings at'),
+    !said.includes('not in a mechanism that can be solved') &&
+      (await page.locator('app-analysis-graph-section').count()) > 0,
     said.slice(0, 140).replace(/\n/g, ' / ')
   );
   check(
