@@ -306,7 +306,7 @@ text = await drawerText();
 record(
   'an input on a grounded link says it cannot turn, not that there is none',
   text.includes("Input at joint A can't turn") &&
-    text.includes('link AB is also grounded at joint B') &&
+    text.includes('Link AB is also grounded at joint B') &&
     !text.includes('No input is set'),
   text
 );
@@ -680,10 +680,12 @@ await openText();
 const yokeWays = await fixTexts();
 record(
   "a yoke's guide left free to turn is offered Prismatic first",
-  yokeWays.length === 2 && yokeWays[0] === 'Set joint C to Prismatic',
+  // The only one: B rides a slot in the moving yoke, and a Prismatic joint on
+  // a moving carrier is a shape the solver refuses, so it is not offered.
+  yokeWays.length === 1 && yokeWays[0] === 'Set joint C to Prismatic',
   yokeWays
 );
-await page.locator('app-analysis-setup li.issueFix').first().locator('part-link button').click();
+await page.locator('app-analysis-setup .issueFix').first().locator('part-link button').click();
 await page.waitForTimeout(600);
 await page
   .locator('app-edit-panel segmented-block button', { hasText: 'Prismatic' })

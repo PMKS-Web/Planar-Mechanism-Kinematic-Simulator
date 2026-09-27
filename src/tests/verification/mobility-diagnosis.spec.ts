@@ -155,7 +155,7 @@ describe('which part is loose, and what would fix it', () => {
       );
       const checks = readinessOf(partition, mechanism, helpers).checks.map(read);
       expect(checks.map((check) => check.title)).toEqual(["Input at joint A can't turn"]);
-      expect(checks[0].summary).toBe("link AB is also grounded at joint B, so it can't move.");
+      expect(checks[0].summary).toBe("Link AB is also grounded at joint B, so it can't move.");
       expect(checks[0].fixes).toEqual(['Turn off Grounded for joint B']);
     });
 
@@ -180,7 +180,7 @@ describe('which part is loose, and what would fix it', () => {
 
       const check = checkFor(stuckInputFixture());
       expect(check.title).toBe("Input at joint A can't turn");
-      expect(check.summary).toBe('link ACD, link CE and 2 more are locked in place by the ground.');
+      expect(check.summary).toBe('Link ACD, link CE and 2 more are locked in place by the ground.');
       // The count reads one, and the explanation says whose that one is.
       expect(check.explain).toContain('If the count still says 1');
       expect(check.fixes).toEqual(['Delete link CE']);

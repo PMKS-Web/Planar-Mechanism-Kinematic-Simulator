@@ -175,7 +175,9 @@ words are fixed where a control or a label repeats:
   or a summary.
 - **A part named in a summary or a fix is a part link**, `part-link` in the gallery: `joint C`,
   `link DE`, `slider D`, `cylinder EF`, `barrel AC`. Lower case in a sentence, as the panel's
-  title is in Title Case (`Edit Joint C`), and always with its noun.
+  title is in Title Case (`Edit Joint C`), and always with its noun. A sentence that opens on a
+  part still opens with a capital (`Link AB is also grounded at joint B`); `prose-block` does it,
+  through `opening`, so the model writes every part the same way.
 
 ### Refusals wear their reason
 
