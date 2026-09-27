@@ -61,7 +61,17 @@ export class JointData {
      * document-wide default. Zero is safe to spend that way because a drive
      * that does not move is not a speed anyone chose -- the panel refuses it.
      */
-    public driveSpeed: number = 0
+    public driveSpeed: number = 0,
+    /**
+     * The mass of the block riding a slot, which is a joint's own now.
+     *
+     * It used to be a link's, because a slider was three objects and only a
+     * link could carry a mass (Stage 1 of
+     * `docs/joint-type-and-cylinder-plan.md`). Written last and only when there
+     * is a mass to write, so every URL of a massless slider — which is every
+     * URL written before this — keeps exactly the tokens it had.
+     */
+    public mass: number = 0
   ) {}
 }
 

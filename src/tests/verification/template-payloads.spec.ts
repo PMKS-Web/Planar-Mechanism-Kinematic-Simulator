@@ -10,9 +10,12 @@ import {
 } from '../../app/component/MODALS/templates/template-linkages';
 import { fixturePayload } from '../../test-utils/verification/fixture-gallery';
 import {
+  FORCE_STUDY_TEMPLATES,
   libraryTemplateEntry,
   libraryTemplateMasses,
 } from '../../test-utils/verification/template-fixtures';
+import { buildMechanism } from '../../test-utils/verification/fixture';
+import { PrisJoint } from '../../app/model/joint';
 import { libraryTemplateFills, logicalFills } from '../../test-utils/verification/template-colors';
 import { urlGeneratorFor } from '../../test-utils/url-encoding';
 import { RealLink } from '../../app/model/link';
@@ -65,15 +68,23 @@ function replaceBlock(source: string, block: string): string {
 }
 
 /**
- * The five templates that predate the generator, kept to the same color rule.
+ * The six templates that predate the generator, kept to the same color rule.
  *
  * Their geometry is hand-authored and stays that way — there is no fixture to
- * regenerate them from. But color is not geometry, and five cards colored by
+ * regenerate them from. But color is not geometry, and six cards colored by
  * whatever order somebody drew them in, sitting in a dialog beside thirty-four
  * colored from their structure, is the inconsistency this rule exists to
- * remove. So the payload is decoded, repainted and re-encoded: everything but
- * the six color fields comes back byte-identical, which is what makes it safe
- * to do to a string nothing else can regenerate.
+ * remove. So the payload is decoded, repainted and re-encoded.
+ *
+ * That round trip used to come back byte-identical but for the six color
+ * fields, and that was what made it safe to do to a string nothing else can
+ * regenerate. Since Stage 1 it also *normalizes* a slider: a payload spelling
+ * one as three objects is folded on the way in and written back as the single
+ * joint, which is why `Slider_Crank` changed shape here the first time this
+ * ran after the fold landed. That much is wanted — the dialog should hand out
+ * what the app writes today — and `transcoding/url-slider-fold.spec.ts` is
+ * what proves the fold loses nothing. Anything *else* coming back different
+ * is a bug in the codec, not a repaint.
  */
 const HAND_AUTHORED = [
   '4-Bar',
@@ -86,8 +97,9 @@ const HAND_AUTHORED = [
 
 function recolored(id: string, payload: string): string {
   const { service, settings } = buildMechanismFixture(payload);
-  // Only the drawn bodies: a slider's block is a Link but not a RealLink, and
-  // it is drawn black rather than in one of the six.
+  // Only the drawn bodies, which is also what narrows the type. A slider used
+  // to put a `Link` that is not a `RealLink` in here, drawn black rather than
+  // in one of the six; it is one joint now and brings no body of its own.
   const bodies = service.links.filter((link): link is RealLink => link instanceof RealLink);
   const grounds = new Set(
     service.joints
@@ -107,26 +119,94 @@ function recolored(id: string, payload: string): string {
   return urlGeneratorFor(service, settings).generateUrlQuery();
 }
 
-function replaceHandAuthored(source: string): string {
+/**
+ * Everything a payload says except what color it says it in.
+ *
+ * `recolored` is allowed to change the six fill fields and nothing else, and
+ * `Slider_Crank` proved how easy that is to miss: the fold changed its shape
+ * the first time the generator ran after it landed, and the only thing that
+ * announced it was a reviewer reading the diff. Decoded rather than diffed as
+ * text, because a codec change is exactly the case this has to catch and a
+ * codec change moves every byte.
+ */
+function contentDigest(payload: string): string {
+  const decoder = new StringTranscoder();
+  decoder.decodeURL(payload);
+  return JSON.stringify({
+    joints: decoder.getJoints(),
+    links: decoder.getLinks().map(({ color: _color, ...rest }) => rest),
+    forces: decoder.getForces(),
+  });
+}
+
+function replaceHandAuthored(source: string, announce: boolean): string {
   return HAND_AUTHORED.reduce((text, id) => {
     // The key is quoted only when it is not a bare identifier ('4-Bar' is not).
     const row = new RegExp(`^( {2}'?${id}'?:\\n {4}')([^']+)(',)$`, 'm');
     const found = text.match(row);
     if (!found) throw new Error(`template-linkages.ts has lost its ${id} row`);
-    return text.replace(row, `$1${recolored(id, found[2]).replace(/\\/g, '\\\\')}$3`);
+    const rewritten = recolored(id, found[2]);
+    // These six have no fixture to regenerate them from, so a rewrite here is
+    // the only copy of that mechanism changing. Said out loud on the way past:
+    // the read path's fixed-point check below is a real guard, but the write
+    // path a developer actually runs had nothing to say, so the next codec
+    // change would rewrite all six as silently as this one did.
+    if (announce && contentDigest(rewritten) !== contentDigest(found[2])) {
+      console.warn(
+        `template-payloads: ${id} changed beyond its colors — check the diff before committing.`
+      );
+    }
+    return text.replace(row, `$1${rewritten.replace(/\\/g, '\\\\')}$3`);
   }, source);
 }
 
 describe('library template payloads', () => {
   it('match what their verification fixtures encode to', () => {
     const source = readFileSync(SOURCE_PATH, 'utf8');
-    const regenerated = replaceHandAuthored(replaceBlock(source, generatedBlock()));
-    if (process.env['PMKS_WRITE_TEMPLATE_PAYLOADS']) {
+    const writing = !!process.env['PMKS_WRITE_TEMPLATE_PAYLOADS'];
+    const regenerated = replaceHandAuthored(replaceBlock(source, generatedBlock()), writing);
+    if (writing) {
       writeFileSync(SOURCE_PATH, regenerated);
       return;
     }
     expect(source, 'run `npm run template-payloads`').toBe(regenerated);
   });
+});
+
+describe('the five force studies the library publishes', () => {
+  // `scaleLoading` walks what a mechanism is made of and multiplies its weight,
+  // and a slider's weight moved from a zero-length block link onto the joint in
+  // Stage 1 of `docs/joint-type-and-cylinder-plan.md`. Walking `links` alone
+  // after that left Punch_Press with a 6 kg ram beside a 200 kg crank and a
+  // 300 kg rod, in the one template whose comment explains that these masses
+  // were scaled so Static and In-motion stop reporting the same number -- and
+  // nothing said so, because this file compares the payload against what the
+  // same helper generates. So the scaling is asserted here rather than only
+  // being applied.
+  for (const id of FORCE_STUDY_TEMPLATES) {
+    it(`${id} scales every massive part, sliders included`, () => {
+      const { service } = buildMechanismFixture(TEMPLATE_LINKAGES[id]);
+      const entry = libraryTemplateEntry(id);
+      const source = buildMechanism(entry.fixture);
+      const scale = (libraryTemplateMasses(id) as { mass: number }).mass;
+
+      const wanted = new Map<string, number>();
+      source.links.forEach((link) => wanted.set(`link:${link.id}`, link.mass * scale));
+      source.joints.forEach((joint) => {
+        if (joint instanceof PrisJoint) wanted.set(`joint:${joint.id}`, joint.mass * scale);
+      });
+
+      const got = new Map<string, number>();
+      service.links.forEach((link) => got.set(`link:${link.id}`, link.mass));
+      service.joints.forEach((joint) => {
+        if (joint instanceof PrisJoint) got.set(`joint:${joint.id}`, joint.mass);
+      });
+
+      for (const [part, mass] of wanted) {
+        expect(got.get(part), `${id} ${part}`).toBeCloseTo(mass, 6);
+      }
+    });
+  }
 });
 
 describe('every template the library dialog offers', () => {

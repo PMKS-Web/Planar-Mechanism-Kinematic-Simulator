@@ -79,10 +79,14 @@ export class StringTranscoder extends GenericTranscoder {
     // It has to land *after* the slot triple, so a joint with a speed and no
     // slot writes the triple empty; without those placeholders the decoder
     // would read the speed as a carrier id.
-    let driveString =
-      joint.isInput && joint.driveSpeed !== 0
-        ? ',' + this.encodeDecimalNumber(joint.driveSpeed)
-        : '';
+    // A slider's mass rides last, for the same reason the speed rides
+    // second-to-last and with the same placeholders behind it: a massless
+    // slider -- every one in every URL written while the mass belonged to the
+    // block -- keeps exactly the tokens it had.
+    let massString = joint.mass !== 0 ? ',' + this.encodeDecimalNumber(joint.mass) : '';
+    let speedString =
+      joint.isInput && joint.driveSpeed !== 0 ? this.encodeDecimalNumber(joint.driveSpeed) : '';
+    let driveString = speedString !== '' ? ',' + speedString : massString !== '' ? ',' : '';
     let slotString =
       joint.carrierID === ''
         ? driveString === ''
@@ -103,7 +107,8 @@ export class StringTranscoder extends GenericTranscoder {
       ',' +
       angleString +
       slotString +
-      driveString
+      driveString +
+      massString
     );
   }
 
@@ -131,6 +136,10 @@ export class StringTranscoder extends GenericTranscoder {
     // Zero past the end, which is how a URL written before per-mechanism speed
     // says "use the document-wide default".
     let driveSpeed = sd.nextDecimalNumber();
+    // Zero past the end again, which is what every URL that kept a slider's
+    // mass on its block says: the mass is read off that block instead, and
+    // folded onto this joint once the links are built.
+    let mass = sd.nextDecimalNumber();
 
     return new JointData(
       jointType,
@@ -147,7 +156,8 @@ export class StringTranscoder extends GenericTranscoder {
       slotJointAID,
       slotJointBID,
       isSealed,
-      driveSpeed
+      driveSpeed,
+      mass
     );
   }
 

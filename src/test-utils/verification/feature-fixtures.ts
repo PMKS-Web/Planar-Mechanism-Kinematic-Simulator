@@ -83,7 +83,7 @@ export function flywheelSliderCrankFixture(): MechanismFixture {
       { joints: 'BC', mass: 0, moi: 0, name: 'Connecting rod' },
     ],
     // The bore, on the crankshaft's own centerline.
-    slider: { at: 'C', prisId: 'P', angleRad: 0, pistonMass: 0 },
+    slider: { at: 'C', angleRad: 0, pistonMass: 0 },
     inputAngVel: radPerSecond(RPM),
   };
 }
@@ -290,7 +290,7 @@ export function threeMachinesFixture(): MechanismFixture {
       { joints: 'IJ', mass: 0, moi: 0, name: 'Rocker coupler' },
       { joints: 'JK', mass: 0, moi: 0, name: 'Rocker' },
     ],
-    slider: { at: 'G', prisId: 'P', angleRad: 0, pistonMass: 0 },
+    slider: { at: 'G', angleRad: 0, pistonMass: 0 },
     // One Mechanism cannot hold three machines, so this is only what the
     // harness solves the drawing at when it is handed to the solver whole;
     // what each machine actually runs at is the `driveSpeed` on its own pin.

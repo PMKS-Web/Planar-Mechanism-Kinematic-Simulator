@@ -35,7 +35,7 @@ const INVERTED_SLIDER_CRANK: MechanismFixture = {
     { id: 'D', x: 3, y: 2 },
   ],
   links: [{ joints: 'AB' }, { joints: 'CD' }],
-  sliders: [{ at: 'B', prisId: 'P', on: { carrier: 'CD', a: 'C', b: 'D' } }],
+  sliders: [{ at: 'B', on: { carrier: 'CD', a: 'C', b: 'D' } }],
   inputAngVel: 1,
 };
 
@@ -73,8 +73,8 @@ describe('mobility with slots', () => {
       joints: [...INVERTED_SLIDER_CRANK.joints, { id: 'E', x: 0, y: 1 }],
       links: [...INVERTED_SLIDER_CRANK.links, { joints: 'AE' }],
       sliders: [
-        { at: 'B', prisId: 'P', on: { carrier: 'CD', a: 'C', b: 'D' } },
-        { at: 'E', prisId: 'Q', on: { carrier: 'CD', a: 'C', b: 'D' } },
+        { at: 'B', on: { carrier: 'CD', a: 'C', b: 'D' } },
+        { at: 'E', on: { carrier: 'CD', a: 'C', b: 'D' } },
       ],
     };
     const { mechanism } = buildMechanism(twoSlots);

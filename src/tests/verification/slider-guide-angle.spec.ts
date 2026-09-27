@@ -1,7 +1,7 @@
 // joint.ts first: the model modules form an import cycle that only
 // initializes cleanly when entered here (see test-utils/verification/fixture.ts).
 import '../../app/model/joint';
-import { Joint } from '../../app/model/joint';
+import { Joint, PrisJoint } from '../../app/model/joint';
 import { buildMechanism, MechanismFixture } from '../../test-utils/verification/fixture';
 
 // A slider-crank has an exact closed form for any guide angle, so these cases
@@ -30,7 +30,7 @@ function sliderCrankOnGuide(angleRad: number): MechanismFixture {
       { id: 'C', x: SLIDER_START[0], y: SLIDER_START[1] },
     ],
     links: [{ joints: 'AB' }, { joints: 'BC' }],
-    slider: { at: 'C', prisId: 'D', angleRad },
+    slider: { at: 'C', angleRad },
     inputAngVel: (10 * Math.PI) / 30,
   };
 }
@@ -146,13 +146,26 @@ describe('slider-crank on an arbitrary guide angle', () => {
         });
       });
 
-      it('keeps the prismatic joint coincident with its revolute', () => {
+      it('slides on one joint, with no twin that could drift from it', () => {
+        // This used to assert that the prismatic joint stayed exactly on the
+        // revolute beside it, because a slider was two coincident joints and a
+        // solve that placed them separately stretched the zero-length block
+        // between them a little further every sample. There is one joint now,
+        // so the coincidence cannot be broken -- what is left to assert is that
+        // it really is one: the slider is C itself, and nothing else stands
+        // where it stands.
         const { mechanism } = buildMechanism(sliderCrankOnGuide(angleRad));
 
         mechanism.joints.forEach((joints, timestep) => {
           const c = jointAt(joints, 'C');
-          const d = jointAt(joints, 'D');
-          expect([d.x, d.y], `timestep ${timestep}`).toEqual([c.x, c.y]);
+          expect(c, `timestep ${timestep}`).toBeInstanceOf(PrisJoint);
+          const alsoHere = joints.filter(
+            (joint) => joint.id !== 'C' && Math.hypot(joint.x - c.x, joint.y - c.y) < 1e-9
+          );
+          expect(
+            alsoHere.map((joint) => joint.id),
+            `timestep ${timestep}`
+          ).toEqual([]);
         });
       });
     });

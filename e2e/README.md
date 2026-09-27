@@ -186,7 +186,7 @@ Not suites — import them from one.
 
 ### Drag, snap and pointer input
 
-- `phase1-drag.mjs` — joint snap ring and merge, merging onto a slider's pin, refusing an
+- `phase1-drag.mjs` — joint snap ring and merge, merging onto a slider, refusing an
   over-constraining merge, whole-link drag, one undo entry per gesture, click without nudge. Needs
   installed Chrome (`PMKS_CHROME`).
 - `snap-alignment.mjs` — a dragged joint squares up with its neighbors; a body dragged by its
@@ -244,7 +244,7 @@ Not suites — import them from one.
 - `phase4-marks.mjs` — slot channels, slider blocks, weld plates and rails drawn on the four
   reference linkages.
 - `phase4-animation.mjs` — the marks stay anchored to the right thing while the mechanism plays.
-- `phase4-invariants.mjs` — every slider mark sits on its pin, along its slot, centered in a
+- `phase4-invariants.mjs` — every slider mark sits on its joint, along its slot, centered in a
   floating channel, with weld plates reaching their joint — at rest, after drags and after a scale
   change.
 - `phase4-corner-arcs.mjs` — every corner arc of a link outline bulges outward, across a drag.

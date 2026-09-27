@@ -239,7 +239,7 @@ describe('splitting a drawing into the machines it contains', () => {
         { id: 'E', x: 1.5, y: 1.5 },
       ],
       links: [{ joints: 'AB' }, { joints: 'BC' }, { joints: 'CD' }],
-      sliders: [{ at: 'E', prisId: 'P', on: { carrier: 'BC', a: 'B', b: 'C' } }],
+      sliders: [{ at: 'E', on: { carrier: 'BC', a: 'B', b: 'C' } }],
       inputAngVel: 1,
     });
 

@@ -30,8 +30,8 @@
  */
 
 import { Cylinder, CylinderPose } from './cylinder';
-import { Joint, RealJoint } from './joint';
-import { Link, RealLink, SliderBlock } from './link';
+import { Joint } from './joint';
+import { Link, RealLink } from './link';
 
 export interface Point {
   x: number;
@@ -195,21 +195,6 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
     return true;
   };
 
-  // Every joint the plan can reach, so a block partner can be found by id.
-  const jointById = new Map<string, Joint>();
-  for (const cylinder of context.cylinders) {
-    for (const root of [cylinder.barrelRoot, cylinder.rodRoot]) {
-      jointsOfBody(root).forEach((joint) => jointById.set(joint.id, joint));
-    }
-    [
-      cylinder.barrelFar,
-      cylinder.barrelNear,
-      cylinder.pin,
-      cylinder.rodFar,
-      cylinder.slider,
-    ].forEach((joint) => jointById.set(joint.id, joint));
-  }
-
   /** Which rams hang off each mount, so a moved joint knows who to wake. */
   const ramsAtMount = new Map<string, Cylinder[]>();
   for (const cylinder of context.cylinders) {
@@ -220,27 +205,11 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
     }
   }
 
-  /**
-   * A block is zero-length, so its two joints are one point — including a
-   * block bolted to a *mount*, which belongs to no cylinder body and would
-   * otherwise be left behind. A grounded one cannot be repaired afterwards by
-   * the floating-slider reseat, so it has to be in the plan.
-   */
-  const settleBlocks = (): string[] => {
-    const changed: string[] = [];
-    for (const [id, to] of [...placements]) {
-      const joint = jointById.get(id);
-      if (!(joint instanceof RealJoint)) continue;
-      for (const link of joint.links) {
-        if (!(link instanceof SliderBlock)) continue;
-        for (const partner of link.joints) {
-          if (partner.id === id) continue;
-          if (put(partner.id, { x: to.x, y: to.y })) changed.push(partner.id);
-        }
-      }
-    }
-    return changed;
-  };
+  // A block used to need settling here: it was zero-length, so its two joints
+  // were one point, and a block bolted to a *mount* belonged to no cylinder body
+  // and would otherwise have been left behind. A slider is one joint now (Stage
+  // 1 of `docs/joint-type-and-cylinder-plan.md`), so there is no partner to
+  // carry and the plan moves the joint it was asked to move.
 
   /** Lay out one ram and carry its two bodies. Returns the ids that moved. */
   const settle = (cylinder: Cylinder): string[] => {
@@ -348,7 +317,6 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
   };
   (request.poses ?? []).forEach(({ cylinder }) => wake(cylinder));
   for (const id of placements.keys()) (ramsAtMount.get(id) ?? []).forEach(wake);
-  settleBlocks().forEach((id) => (ramsAtMount.get(id) ?? []).forEach(wake));
 
   // Enough revisits for every ram to answer every other one, and no more: a
   // drawing whose demands genuinely cycle stops here and is judged below.
@@ -388,7 +356,7 @@ export function planEdit(request: EditRequest, context: EditContext): EditPlanRe
         },
       };
     }
-    [...moved, ...settleBlocks()].forEach((id) => (ramsAtMount.get(id) ?? []).forEach(wake));
+    moved.forEach((id) => (ramsAtMount.get(id) ?? []).forEach(wake));
   }
 
   // --- what the settled drawing has to satisfy ------------------------------

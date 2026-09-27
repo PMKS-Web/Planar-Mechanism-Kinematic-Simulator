@@ -281,7 +281,7 @@ export function linearActuatorRockerFixture(scale: number = 1): MechanismFixture
     ],
     // A grounded guide along the x axis, and no `on`, so this is an ordinary
     // slot cut into the world rather than the barrel of a cylinder.
-    slider: { at: 'A', prisId: 'P', angleRad: 0, input: true },
+    slider: { at: 'A', angleRad: 0, input: true },
     // Length per second, not rpm: 13.2 units of travel out and back at 2.2 a
     // second is a six-second cycle, the same as the pin-driven fixtures here.
     inputAngVel: SCREW_JACK_SPEED * scale,

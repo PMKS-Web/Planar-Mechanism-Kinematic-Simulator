@@ -6,7 +6,7 @@
 // that stops following its slot when the joints defining it move, geometry that
 // stops tracking when the scale changes:
 //
-//   1. the block sits on its pin
+//   1. the block sits on its joint
 //   2. the block's long axis runs along the slot
 //   3. a floating slot's channel is centered between the joints that define it,
 //      and points the same way
@@ -101,12 +101,13 @@ const violations = () =>
       const block = mark.querySelector('.slider-block path');
       if (!block) return void bad.push(`${slider.id}: no block`);
 
-      const pin = slider.links
-        .find((l) => l.constructor.name === 'SliderBlock')
-        ?.joints.find((j) => j.constructor.name !== 'PrisJoint');
-      if (!pin) return void bad.push(`${slider.id}: no pin`);
+      // The slider *is* the pin since Stage 1 of
+      // `docs/joint-type-and-cylinder-plan.md`: there is no block link and no
+      // coincident `RevJoint` to look through any more. Left as it was, this
+      // found nothing and pushed "no pin" for every slider on the grid.
+      const pin = slider;
 
-      // 1. the block sits on its pin
+      // 1. the block sits on its joint
       const origin = toModel(block, 0, 0);
       if (!near(origin, [pin.x, pin.y])) {
         bad.push(
@@ -130,9 +131,9 @@ const violations = () =>
       // 4. a weld plate reaches the joint its rider reaches
       const plate = mark.querySelector('.slider-plate path');
       if (plate) {
-        const riders = pin.links.filter(
-          (l) => l.constructor.name === 'RealLink' && l.constructor.name !== 'SliderBlock'
-        );
+        // Every link at a slider is a rider now; the block it used to have to
+        // be told apart from is gone.
+        const riders = pin.links.filter((l) => l.constructor.name === 'RealLink');
         const far = riders[0]?.joints.find((j) => j.id !== pin.id);
         if (far) {
           // The plate is one unioned outline, so its point furthest from the
@@ -423,9 +424,7 @@ for (const [name, query] of Object.entries(MECHANISMS)) {
       // A slider's own pin counts as touched whether the slot floats or not --
       // a grounded guide still travels with the joint it sits on, so dragging
       // that joint moving the block is the correct answer, not a violation.
-      s.links
-        .find((l) => l.constructor.name === 'SliderBlock')
-        ?.joints.forEach((j) => touched.add(j.id));
+      touched.add(s.id);
       if (!s.isFloating) continue;
       touched.add(s.slotJointA.id);
       touched.add(s.slotJointB.id);

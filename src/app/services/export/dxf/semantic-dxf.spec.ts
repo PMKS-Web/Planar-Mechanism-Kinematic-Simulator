@@ -10,7 +10,7 @@ import DxfParser, {
 import { Coord } from '../../../model/coord';
 import { Force } from '../../../model/force';
 import { PrisJoint, RealJoint, RevJoint } from '../../../model/joint';
-import { RealLink, SliderBlock } from '../../../model/link';
+import { RealLink } from '../../../model/link';
 import { LengthUnit } from '../../../model/unit-enums';
 import { MODEL_SCALE } from '../../../model/render-scale';
 import { BASIC_CENTERLINE_GOLDEN } from '../../../../test-data/dxf/basic-centerline.golden';
@@ -33,7 +33,7 @@ function lineEnds(line: ILineEntity): number[][] {
   return line.vertices.map((point) => [point.x, point.y]);
 }
 
-function wire(link: RealLink | SliderBlock): void {
+function wire(link: RealLink): void {
   link.joints.forEach((joint) => {
     if (joint instanceof RealJoint && !joint.links.includes(link)) joint.links.push(link);
   });
@@ -260,22 +260,23 @@ describe('semantic DXF centerline geometry', () => {
   it('reduces a sealed cylinder to its two visible attachment centers and connecting axis', () => {
     const barrelFar = new RevJoint('A', -4 * S, 0);
     const barrelNear = new RevJoint('B', 0, 0);
-    const pin = new RevJoint('C', 1 * S, 0);
+    // The seal and the pin the rod hangs on are one joint: a prismatic joint,
+    // a coincident `RevJoint` and a zero-length block joining them until Stage
+    // 1 of `docs/joint-type-and-cylinder-plan.md`.
+    const slider = new PrisJoint('C', 1 * S, 0);
     const rodFar = new RevJoint('D', 5 * S, 0);
-    const slider = new PrisJoint('P', pin.x, pin.y);
     slider.isSealed = true;
     slider.input = true;
-    pin.isWelded = true;
+    slider.rotates = false;
     const barrel = new RealLink('AB', [barrelFar, barrelNear]);
-    const rod = new RealLink('CD', [pin, rodFar]);
-    const block = new SliderBlock('CP', [pin, slider]);
-    [barrel, rod, block].forEach(wire);
+    const rod = new RealLink('CD', [slider, rodFar]);
+    [barrel, rod].forEach(wire);
     slider.slideOn(barrel, barrelFar, barrelNear);
 
     const parsed = parsedOf(
       buildSemanticDxf({
-        joints: [barrelFar, barrelNear, pin, rodFar, slider],
-        links: [barrel, rod, block],
+        joints: [barrelFar, barrelNear, slider, rodFar],
+        links: [barrel, rod],
         forces: [],
         lengthUnit: 'cm',
         defaultInputClockwise: true,
@@ -299,7 +300,9 @@ describe('semantic DXF centerline geometry', () => {
       entitiesOn(parsed.entities, DXF_LAYER.joints).filter((entity) => entity.type === 'CIRCLE')
     ).toHaveLength(2);
     const labels = entitiesOn(parsed.entities, DXF_LAYER.labels) as ITextEntity[];
-    expect(labels.map((label) => label.text)).not.toEqual(expect.arrayContaining(['B', 'C', 'P']));
+    // The two joints between the mounts are never labeled. There were three
+    // while the pin and the slider were separate objects.
+    expect(labels.map((label) => label.text)).not.toEqual(expect.arrayContaining(['B', 'C']));
     expect(entitiesOn(parsed.entities, DXF_LAYER.annotations).length).toBeGreaterThan(0);
   });
 

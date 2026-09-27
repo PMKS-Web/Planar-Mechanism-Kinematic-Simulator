@@ -415,9 +415,13 @@ describe('the export drawer', () => {
     const { flow } = flowFor(TEMPLATE_LINKAGES['Scotch_Yoke'], { forces: true });
     const parts = flow.offeredParts();
 
-    // A slot is a joint to the solver and nothing at all to a reader: a
-    // zero-sized marker, no hitbox, no panel. Nor is the block between them,
-    // which is a zero-length link binding one to the other.
+    // One row per slider, under the letter the reader sees. A slider used to be
+    // three objects -- a prismatic joint whose letter nothing ever drew, a
+    // coincident pin, and a zero-length block binding the two -- so the
+    // prismatic one was filtered out of this list and the pin stood in for it.
+    // It is one joint now (Stage 1 of `docs/joint-type-and-cylinder-plan.md`),
+    // and it is the joint wearing the marker, the hitbox and the letter: B and
+    // C are this yoke's two sliders, and they are listed as themselves.
     expect(parts.map((part) => part.label)).toEqual([
       'Joint A',
       'Joint B',

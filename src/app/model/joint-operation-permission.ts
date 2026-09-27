@@ -91,16 +91,11 @@ function refuseWeld(
   context: JointOperationContext,
   after?: JointOperation
 ): OperationRefusal | undefined {
-  // The slider itself is the freedom between its block and its guide; a weld
-  // would be the claim that there is none. The pin riding it welds.
-  if (joint instanceof PrisJoint) {
-    return {
-      code: 'weld.is-the-slider',
-      short: 'it is the slider',
-      long: 'A weld fuses the links that meet at a pin, and this is the slider itself: the freedom between its block and its guide. Weld the pin riding it instead.',
-    };
-  }
-  if (joint.isWelded) return undefined;
+  // Welding a slider is what makes it a Slide: its riders stop turning against
+  // the slot and the assembly keeps the slot's angle. It used to be refused
+  // here, because the weld had to land on the coincident pin instead — the
+  // object a slider no longer has.
+  if (joint instanceof PrisJoint ? !joint.rotates : joint.isWelded) return undefined;
 
   // A mount welds like any other joint: it is where a cylinder attaches to the
   // rest of the drawing, so fusing one into a bracket is the ordinary thing to
@@ -132,18 +127,59 @@ function refuseWeld(
 }
 
 /**
- * A weld fuses the links that meet at a joint, so it needs two.
+ * Whether a weld that a change of type *keeps* still has two bodies to fuse
+ * once the slot leaves.
  *
- * Counted on the joint as it will stand once `after` has run. A block is a link
- * of the pin it rides: gaining one gives a pin on a single bar the second link
- * a weld needs, and losing one takes that link away again.
+ * Prismatic and Welded are both welded, so `stepsBetween` emits no weld step
+ * between them and nothing asks `weldNeedsLinks` — the change is the slot
+ * coming off, and the weld simply stays. On a Slide with one bar that weld was
+ * the bar held to the slot, and with the slot gone the reconciler finds nothing
+ * for it to be rigid about and takes it away: the reader who chose Welded would
+ * be handed a Revolute without a word.
+ *
+ * Asked the way that reconciler looks — a compound already standing at the
+ * joint, or two bars it can still fuse into one. A compound counts as one link,
+ * which is why counting `links` is not enough.
+ */
+export function weldOutlivesTheSlot(joint: RealJoint): OperationRefusal | undefined {
+  const bars = joint.links.filter((link): link is RealLink => link instanceof RealLink);
+  if (bars.length >= 2 || bars.some((bar) => bar.subset.length > 0)) return undefined;
+  return {
+    code: 'weld.needs-two-links',
+    short: 'needs 2 links',
+    long: 'A weld fuses the links that meet at a joint, and without its slot only one meets here.',
+  };
+}
+
+/**
+ * What a weld needs to hold, which depends on what it is welding.
+ *
+ * On a slider the weld is the Slide: the riders stop turning against the slot,
+ * so one rider is enough and the slot is the other half. On every other joint it
+ * fuses the links that meet there, so it needs two of them.
+ *
+ * Judged on the joint as it will stand once `after` has run — the second half of
+ * a change of type, where one press gives a pin its slot and welds it in the
+ * same edit (`model/joint-type.ts`). A block used to be a link of the pin it
+ * rode, so gaining one gave a pin on a single bar its second link; a slider is
+ * the joint itself now, and what it holds is whatever rides it.
  */
 export function weldNeedsLinks(
   joint: RealJoint,
   after?: JointOperation
 ): OperationRefusal | undefined {
-  const blocks = after === 'add-slider' ? 1 : after === 'remove-slider' ? -1 : 0;
-  const meeting = joint.links.length + blocks;
+  const slides =
+    after === 'add-slider' || (joint instanceof PrisJoint && after !== 'remove-slider');
+  const bars = joint.links.filter((link): link is RealLink => link instanceof RealLink);
+  if (slides) {
+    if (bars.length >= 1) return undefined;
+    return {
+      code: 'weld.needs-a-rider',
+      short: 'nothing rides it',
+      long: 'A Slide holds what rides the slot still against it, and nothing rides this one.',
+    };
+  }
+  const meeting = joint.links.length;
   if (meeting >= 2) return undefined;
   // A loose joint has no links at all, and telling it "only one meets here" is
   // a sentence about a link that is not there.
@@ -154,30 +190,8 @@ export function weldNeedsLinks(
       meeting <= 0
         ? 'A weld fuses the links that meet at a joint, and this joint is on none.'
         : after === 'remove-slider'
-          ? 'A weld fuses the links that meet at a joint, and without its block only one meets here.'
+          ? 'A weld fuses the links that meet at a joint, and without its slot only one meets here.'
           : 'A weld fuses the links that meet at a joint, and only one meets here.',
-  };
-}
-
-/**
- * Whether a welded joint's weld still holds anything once its block has gone.
- *
- * A weld fuses the bars at a joint into one compound link and leaves the block
- * out of it, so once made, the bars are counted by the compound rather than as
- * links -- counting links sees one. A Slide on two bars keeps their compound,
- * and its weld, when the block comes off. A Slide on one bar has no compound:
- * its weld was the bar held to the block, and without the block
- * `reconcileAssemblyWelds` finds nothing for it to be rigid about and takes it
- * away. Asked the way that reconciler looks: a compound at the joint, or two
- * bars it can still fuse into one.
- */
-export function weldOutlivesBlock(joint: RealJoint): OperationRefusal | undefined {
-  const bars = joint.links.filter((link): link is RealLink => link instanceof RealLink);
-  if (bars.length >= 2 || bars.some((bar) => bar.subset.length > 0)) return undefined;
-  return {
-    code: 'weld.needs-two-links',
-    short: 'needs 2 links',
-    long: 'A weld fuses the links that meet at a joint, and without its block only one meets here.',
   };
 }
 
@@ -185,7 +199,13 @@ function refuseUnweld(
   joint: RealJoint,
   context: JointOperationContext
 ): OperationRefusal | undefined {
-  if (!joint.isWelded) return undefined;
+  // Read the way `refuseWeld` reads it, and for the same reason: a slider
+  // records its weld in `rotates`, so asking `isWelded` of one answers false
+  // however welded it is. That made this fail *open* -- the guard below, which
+  // is what stops a reader taking a sealed cylinder apart, stopped firing at
+  // the one joint a cylinder is sealed at.
+  const welded = joint instanceof PrisJoint ? !joint.rotates : joint.isWelded;
+  if (!welded) return undefined;
   // The sealed pin's weld is what makes a cylinder one part, and it never
   // comes off. A welded *mount* has no block of its own, so taking one back
   // out of a neighboring compound is an ordinary unweld and stays legal —
@@ -220,13 +240,15 @@ function refuseAddSlider(
     };
   }
 
-  // A block is a body too, so adding one to a driven pin puts a third at the
-  // joint. Taking one away is always allowed.
+  // A drive on a pin turns; a drive on a slot travels. They are measured in
+  // different units and prescribe different freedoms, so a joint cannot change
+  // from one to the other while it is the drive. Taking a slot away is always
+  // allowed.
   if (context.isDriven(joint)) {
     return {
       code: 'slider.is-driven',
       short: 'it is driven',
-      long: 'A block is a body of its own, so adding one to a driven joint would put three there. Remove the input first.',
+      long: 'This joint is the drive, and a drive on a pin turns where a drive on a slot travels. Remove the input first.',
     };
   }
   return undefined;

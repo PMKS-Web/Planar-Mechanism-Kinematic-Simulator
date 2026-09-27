@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Joint, PrisJoint, RealJoint } from '../model/joint';
-import { Link, RealLink, SliderBlock } from '../model/link';
+import { Link, RealLink } from '../model/link';
 import { Cylinder, cylinderHeadHalf, sealedCylinders } from '../model/cylinder';
 import {
   barrelPath,
@@ -73,11 +73,15 @@ export interface RiderDraw {
 export interface SliderMark {
   id: string;
   /**
-   * The pin the block sits on. The block is a far bigger target than the joint
-   * marker at its center, so the canvas lets a drag start on it and hands the
-   * gesture to the pin -- the two are coincident, so it is the same grab.
+   * The sliding joint this mark draws.
+   *
+   * The block is a far bigger target than the joint marker at its center, so
+   * the canvas lets a drag start on the block and hands the gesture to this --
+   * the same grab, at the same point. It was the coincident *pin* beside the
+   * slider until Stage 1 of `docs/joint-type-and-cylinder-plan.md` made the two
+   * one joint.
    */
-  pin: Joint;
+  joint: PrisJoint;
   x: number;
   y: number;
   /** Slot direction in degrees, already corrected for the canvas y-flip. */
@@ -263,8 +267,7 @@ export class SliderMarkService {
           driveForward,
           this.crossingsFor(slider.id, bands, r)
         )
-      )
-      .filter((mark): mark is SliderMark => mark !== undefined);
+      );
     this.fuseSharedPlates(marks, r, joints);
     return marks;
   }
@@ -282,7 +285,7 @@ export class SliderMarkService {
     const welded = marks.filter((mark) => mark.welded);
     const groupOf = new Map<string, SliderMark[]>();
     for (const mark of welded) {
-      const riders = this.ridersOn(mark.pin as RealJoint);
+      const riders = this.ridersOn(mark.joint);
       const leader = riders
         .map((rider) => groupOf.get(rider.id))
         .find((group): group is SliderMark[] => group !== undefined);
@@ -299,11 +302,9 @@ export class SliderMarkService {
     }
   }
 
-  /** The links pinned to a block, which are what a weld fuses it to. */
-  private ridersOn(pin: RealJoint): RealLink[] {
-    return pin.links.filter(
-      (link): link is RealLink => link instanceof RealLink && !(link instanceof SliderBlock)
-    );
+  /** The links pinned to a slider, which are what a Slide holds against its slot. */
+  private ridersOn(slider: PrisJoint): RealLink[] {
+    return slider.links.filter((link): link is RealLink => link instanceof RealLink);
   }
 
   /**
@@ -451,41 +452,33 @@ export class SliderMarkService {
     claimed: Set<string>,
     driveForward: DriveForward,
     otherGuides: GuideBand[]
-  ): SliderMark | undefined {
-    const block = slider.links.find((link): link is SliderBlock => link instanceof SliderBlock);
-    if (!block) return undefined;
-    const pin = block.joints.find(
-      (joint): joint is RealJoint => joint instanceof RealJoint && !(joint instanceof PrisJoint)
-    );
-    if (!pin) return undefined;
-
+  ): SliderMark {
+    // Every slider draws a mark. This used to return nothing when the joint had
+    // no block beside it or the block had no coincident pin -- two shapes that
+    // cannot exist now a slider is one joint, and two ways for a slider to be
+    // drawn as nothing at all.
     const angle = slider.slotAngle;
-    const welded = pin.isWelded;
-    const driven = slider.input || pin.input;
-    // The block's own zero-length link is a RealLink subclass and has no
-    // outline at all; it is the thing being welded to, not a rider on it.
-    const riders = pin.links.filter(
-      (link): link is RealLink =>
-        link instanceof RealLink && !(link instanceof SliderBlock) && !claimed.has(link.id)
+    // A Slide: the riders cannot turn against the slot, so the plate draws them
+    // fused to the block. The bit sat on the coincident pin's `isWelded`.
+    const welded = !slider.rotates;
+    const driven = slider.input;
+    const riders = slider.links.filter(
+      (link): link is RealLink => link instanceof RealLink && !claimed.has(link.id)
     );
     riders.forEach((rider) => claimed.add(rider.id));
 
     return {
       id: slider.id,
-      pin,
-      // The block is drawn at its pin: the two are coincident by construction,
-      // and the sliding joint tracks the pin rather than the other way round.
-      x: pin.x,
-      y: pin.y,
+      joint: slider,
+      x: slider.x,
+      y: slider.y,
       rotation: toDegrees(angle),
       block: blockPath(r),
       welded,
       driven,
-      plate: welded ? this.plateFor(pin, riders, angle, r, joints) : undefined,
-      riders: welded ? [] : this.ridersFor(pin, riders, angle, r, joints),
-      arrows: driven
-        ? straightArrowPaths(r, driveForward(slider.input ? slider : pin) ? 1 : -1)
-        : [],
+      plate: welded ? this.plateFor(slider, riders, angle, r, joints) : undefined,
+      riders: welded ? [] : this.ridersFor(slider, riders, angle, r, joints),
+      arrows: driven ? straightArrowPaths(r, driveForward(slider) ? 1 : -1) : [],
       rails: slider.ground ? this.railsFor(slider, guide, angle, r, otherGuides) : undefined,
       dangling: !slider.ground && !slider.isFloating,
     };
@@ -567,8 +560,8 @@ export class SliderMarkService {
     const shapes: string[] = [];
     for (const mark of group) {
       const angle = (mark.rotation * Math.PI) / 180;
-      shapes.push(this.placed(blockPath(r), mark.pin, angle));
-      for (const rider of this.ridersOn(mark.pin as RealJoint)) {
+      shapes.push(this.placed(blockPath(r), mark.joint, angle));
+      for (const rider of this.ridersOn(mark.joint)) {
         if (links.has(rider.id) || !rider.d) continue;
         links.set(rider.id, rider);
         shapes.push(rider.d);
@@ -581,13 +574,13 @@ export class SliderMarkService {
     const intoLeader = (path: string) =>
       transformRigidPath(
         path,
-        leader.pin,
-        { x: leader.pin.x + Math.cos(leaderAngle), y: leader.pin.y + Math.sin(leaderAngle) },
+        leader.joint,
+        { x: leader.joint.x + Math.cos(leaderAngle), y: leader.joint.y + Math.sin(leaderAngle) },
         { x: 0, y: 0 },
         { x: 1, y: 0 }
       );
     const cuts = [...links.values()].flatMap((rider) =>
-      this.channelsInLocalFrame(rider, leader.pin as RealJoint, leaderAngle, r, joints)
+      this.channelsInLocalFrame(rider, leader.joint, leaderAngle, r, joints)
     );
     const outline = intoLeader(fused.path);
     return {

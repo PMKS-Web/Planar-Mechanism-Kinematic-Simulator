@@ -3,7 +3,7 @@ import { Cylinder, cylinderJoints } from '../model/cylinder';
 import { Coord } from '../model/coord';
 import { Force } from '../model/force';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
-import { Link, RealLink, SliderBlock } from '../model/link';
+import { Link, RealLink } from '../model/link';
 import { SelectedPartRef } from '../model/selection';
 import { MechanismService } from './mechanism.service';
 
@@ -171,14 +171,14 @@ function planDeletion(mechanism: MechanismService, resolved: ResolvedPart[]): De
   const orphanCandidates = new Set<string>();
 
   const removeCylinder = (cylinder: Cylinder) => {
-    for (const body of [cylinder.barrel, cylinder.rod, cylinder.block]) {
+    for (const body of [cylinder.barrel, cylinder.rod]) {
       const root = rootOf(mechanism, body);
       if (root) {
         removeRoots.add(root);
         root.joints.forEach((joint) => orphanCandidates.add(joint.id));
       }
     }
-    for (const joint of [cylinder.barrelNear, cylinder.pin, cylinder.slider]) {
+    for (const joint of [cylinder.barrelNear, cylinder.slider]) {
       removeJointIds.add(joint.id);
     }
   };
@@ -209,10 +209,7 @@ function planDeletion(mechanism: MechanismService, resolved: ResolvedPart[]): De
     if (removeRoots.has(root)) continue;
     const selectedOnRoot = root.joints.filter((joint) => selectedJointIds.has(joint.id));
     if (selectedOnRoot.length === 0) continue;
-    if (root instanceof SliderBlock) {
-      removeRoots.add(root);
-      root.joints.forEach((joint) => removeJointIds.add(joint.id));
-    } else if (!(root instanceof RealLink) || root.subset.length === 0) {
+    if (!(root instanceof RealLink) || root.subset.length === 0) {
       if (root.joints.length - selectedOnRoot.length < 2) removeRoots.add(root);
     } else {
       const survivors = root.subset.filter(
@@ -278,7 +275,6 @@ function duplicateClosure(
     cylinderJoints(cylinder).forEach((joint) => joints.add(joint));
     addRoot(rootOf(mechanism, cylinder.barrel));
     addRoot(rootOf(mechanism, cylinder.rod));
-    addRoot(rootOf(mechanism, cylinder.block));
   };
 
   for (const part of resolved) {
@@ -308,18 +304,13 @@ function duplicateClosure(
     [...roots].forEach((root) => root.joints.forEach((joint) => joints.add(joint)));
     for (const joint of [...joints]) {
       if (!(joint instanceof RealJoint)) continue;
-      for (const block of joint.links.filter(
-        (link): link is SliderBlock => link instanceof SliderBlock
-      )) {
-        addRoot(rootOf(mechanism, block));
-        block.joints.forEach((member) => joints.add(member));
-        const slider = block.joints.find(
-          (member): member is PrisJoint => member instanceof PrisJoint
-        );
-        if (slider?.isSealed) {
-          const cylinder = mechanism.cylinderAt(slider);
-          if (cylinder) addCylinder(cylinder);
-        }
+      // A copy of a sealed slider has to bring the whole ram, or the copy has
+      // a rod-shaped hole in it. This used to walk each joint's blocks to find
+      // the slider riding it and its coincident partner; a slider is one joint
+      // now, so a slider in the closure is simply this joint.
+      if (joint instanceof PrisJoint && joint.isSealed) {
+        const cylinder = mechanism.cylinderAt(joint);
+        if (cylinder) addCylinder(cylinder);
       }
       if (joint instanceof PrisJoint && joint.isFloating) {
         const carrier = rootOf(mechanism, joint.carrier!);
@@ -374,9 +365,7 @@ function copyClosure(
       .sort()
       .join('');
     let copy: Link;
-    if (source instanceof SliderBlock) {
-      copy = new SliderBlock(id, mapped, source.mass);
-    } else if (source instanceof RealLink) {
+    if (source instanceof RealLink) {
       const subsets = source.subset.map(copyLink);
       const realCopy = new RealLink(
         id,
@@ -471,6 +460,11 @@ function copyJoint(
     );
     slider.angle_rad = source.angle_rad;
     slider.isSealed = source.isSealed;
+    // What the block and the coincident pin used to carry between them. Left
+    // behind, a duplicated Slide came back as a Pin-in-slot and a duplicated
+    // slider came back weightless.
+    slider.rotates = source.rotates;
+    slider.mass = source.mass;
     copy = slider;
   } else if (source instanceof RevJoint) {
     copy = new RevJoint(id, source.x + delta.x, source.y + delta.y, source.input, source.ground);

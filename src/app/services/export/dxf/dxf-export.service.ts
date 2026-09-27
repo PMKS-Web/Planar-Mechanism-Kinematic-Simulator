@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { Joint, PrisJoint, RealJoint } from '../../../model/joint';
-import { Link, RealLink, SliderBlock } from '../../../model/link';
+import { Link, RealLink } from '../../../model/link';
 import { MODEL_SCALE } from '../../../model/render-scale';
 import { LengthUnit } from '../../../model/unit-enums';
 import { MechanismService } from '../../mechanism.service';
@@ -392,13 +392,19 @@ export class DxfExportService {
         (inUnit(joint.y, unit) - shift.y).toFixed(6),
         joint instanceof RealJoint && joint.ground ? 'yes' : 'no',
         joint instanceof RealJoint && joint.input ? 'yes' : 'no',
+        // A sliding joint carries its own weight, since Stage 1 of
+        // `docs/joint-type-and-cylinder-plan.md`. It used to be a zero-length
+        // block link, so it had a row of its own in the link table; the row
+        // went with the block and the weight had nowhere left to be printed.
+        // Blank for a pin, which has none rather than none yet.
+        joint instanceof PrisJoint ? joint.mass.toFixed(6) : '',
         // Which parts meet here: DXF cannot say that a hole in one layer and a
         // hole in another are the same pin, and that is exactly what somebody
         // checking an assembly against this table needs to know.
         connectedLinks(joint).join(' '),
       ].join(',')
     );
-    return ['id,name,type,x,y,grounded,input,links', ...rows].join('\r\n') + '\r\n';
+    return ['id,name,type,x,y,grounded,input,mass,links', ...rows].join('\r\n') + '\r\n';
   }
 
   private linkCsv(unit: DxfExportUnit): string {
@@ -410,7 +416,7 @@ export class DxfExportService {
         inUnit(lengthOf(link), unit).toFixed(6),
         link.mass.toFixed(6),
         link instanceof RealLink ? link.massMoI.toFixed(6) : '',
-        link instanceof SliderBlock ? 'prismatic' : 'rigid',
+        'rigid',
       ].join(',')
     );
     return ['id,name,joints,length,mass,inertia,type', ...rows].join('\r\n') + '\r\n';
@@ -466,6 +472,8 @@ export class DxfExportService {
           y: inUnit(joint.y, unit) - shift.y,
           grounded: joint instanceof RealJoint && joint.ground,
           input: joint instanceof RealJoint && joint.input,
+          // See `jointCsv`: a sliding joint's own weight, null for a pin.
+          mass: joint instanceof PrisJoint ? joint.mass : null,
           links: connectedLinks(joint),
         })),
         links: this.mechanism.links.map((link) => ({
@@ -475,7 +483,7 @@ export class DxfExportService {
           length: inUnit(lengthOf(link), unit),
           mass: link.mass,
           inertia: link instanceof RealLink ? link.massMoI : null,
-          type: link instanceof SliderBlock ? 'prismatic' : 'rigid',
+          type: 'rigid',
         })),
         forces: this.mechanism.forces.map((force) => ({
           id: force.id,

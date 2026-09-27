@@ -91,8 +91,9 @@ const state = (id) =>
     const mech = grid.mechanismSrv;
     const joint = mech.joints.find((one) => one.id === jointId);
     return {
-      slider: joint.connectedJoints.some((one) => one.constructor.name === 'PrisJoint'),
-      welded: joint.isWelded === true,
+      slider: joint.constructor.name === 'PrisJoint',
+      welded:
+        joint.constructor.name === 'PrisJoint' ? joint.rotates === false : joint.isWelded === true,
       ground: (mech.sliderFor(joint)?.ground ?? joint.ground) === true,
       entries: grid.saveHistoryService.history.length,
       index: grid.saveHistoryService.index,

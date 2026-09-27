@@ -29,7 +29,7 @@ import {
   ContextMenuBuilderService,
   MenuHandlers,
 } from '../../services/context-menu-builder.service';
-import { Link, RealLink, SliderBlock } from '../../model/link';
+import { Link, RealLink } from '../../model/link';
 import { Lockable } from '../../model/lock-set';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../../model/joint';
 import { Coord } from '../../model/coord';
@@ -2307,8 +2307,7 @@ export class NewGridComponent implements OnDestroy {
   /**
    * The joints a drag of this link would carry, filtered to the ones the
    * current Lock marks hold still. Carried means moved *as a body*: the
-   * link's own joints, the coincident block joints riding them, and a sealed
-   * cylinder's five.
+   * link's own joints, and a sealed cylinder's.
    *
    * A floating slider riding this link is not among them, locked or not. Its
    * mark holds where it sits along the slot, and moving the link moves the
@@ -2323,13 +2322,10 @@ export class NewGridComponent implements OnDestroy {
     if (bodyCylinder) {
       cylinderJoints(bodyCylinder).forEach(add);
     } else {
-      link.joints.forEach((joint) => {
-        add(joint);
-        if (!(joint instanceof RealJoint)) return;
-        joint.links.forEach((other) => {
-          if (other instanceof SliderBlock) other.joints.forEach(add);
-        });
-      });
+      // The link's own joints. A slider riding one of them used to bring the
+      // coincident partner the block paired it with; a slider is one joint now,
+      // so a slider that is a member of this body is already among them.
+      link.joints.forEach(add);
     }
     const frozen = this.gridUtils.frozenJointIds();
     return [...carried.values()].filter((joint) => frozen.has(joint.id));
@@ -2339,12 +2335,10 @@ export class NewGridComponent implements OnDestroy {
   private refuseLockedJoint(joint: RealJoint): boolean {
     if (!this.gridUtils.isJointFrozen(joint)) return false;
     const holds = this.gridUtils.locksHolding(joint);
-    // A mark on the other half of a block counts as this joint's own: the two
-    // are the same point, and only one of them has a letter the reader can see
-    // to unlock.
-    const block = joint.links.find((link): link is SliderBlock => link instanceof SliderBlock);
-    const itself = new Set([joint.id, ...(block?.joints.map((member) => member.id) ?? [])]);
-    const heldByItself = holds.some((lock) => itself.has(lock.id));
+    // A mark on the other half of a block used to count as this joint's own:
+    // the two were the same point, and only one of them had a letter the reader
+    // could see to unlock. One joint carries the letter and the mark now.
+    const heldByItself = holds.some((lock) => lock.id === joint.id);
     const slider = this.mechanismSrv.sliderFor(joint);
     // A locked block has not been pinned to the grid — its slot is free to
     // move and will take it along. What it cannot do is slide, so that is what
@@ -2941,10 +2935,14 @@ export class NewGridComponent implements OnDestroy {
     // no rule there worth explaining -- but dropping on top of it must not then
     // quietly cut a slot into whatever else passes through that point. Landing
     // a joint on a joint gave the four-bar a fifth one.
+    // A slider counts. It used to be excluded because it was an invisible
+    // object sitting exactly on the pin beside it, so counting both would have
+    // read one point as two joints; the slider is the visible joint now (Stage
+    // 1 of `docs/joint-type-and-cylinder-plan.md`), and a drop landing on one is
+    // a drop on a joint rather than a slot to cut.
     const overAJoint = this.mechanismSrv.joints.some(
       (joint) =>
         joint.id !== this.activeObjService.selectedJoint?.id &&
-        !(joint instanceof PrisJoint) &&
         Math.hypot(joint.x - mousePos.x, joint.y - mousePos.y) < this.snapRadius()
     );
     this.slotCandidate =
@@ -4516,7 +4514,7 @@ export class NewGridComponent implements OnDestroy {
     // riders with it, and this getter is read several times a change and once
     // per pointer move, so the turned geometry is kept until the angle moves.
     return marks.map((mark) => {
-      if (mark.pin.id !== pinID) return mark;
+      if (mark.joint.id !== pinID) return mark;
       if (this.previewMark?.key !== `${pinID}|${slotAngleDeg}` || this.previewMark.from !== mark) {
         this.previewMark = {
           key: `${pinID}|${slotAngleDeg}`,
@@ -4626,15 +4624,16 @@ export class NewGridComponent implements OnDestroy {
    * white will read.
    */
   get drivenFloatingPins(): Joint[] {
-    return this.mechanismSrv
-      .getJoints()
-      .filter(
-        (joint) =>
-          this.gridUtils.getInput(joint) &&
-          !this.gridUtils.getGround(joint) &&
-          this.gridUtils.typeOfJoint(joint) === 'R' &&
-          !this.gridUtils.isAttachedToSlider(joint)
-      );
+    return this.mechanismSrv.getJoints().filter(
+      (joint) =>
+        this.gridUtils.getInput(joint) &&
+        !this.gridUtils.getGround(joint) &&
+        // A slider is excluded by its own kind: its drive shows as the
+        // straight arrows on its block. It used to take a second test,
+        // because the driven joint was the prismatic half of a pair and the
+        // pin beside it read as an ordinary pin.
+        this.gridUtils.typeOfJoint(joint) === 'R'
+    );
   }
 
   /**
@@ -5234,7 +5233,7 @@ export class NewGridComponent implements OnDestroy {
 
   /** A slider the cylinder skin has replaced. */
   isSkinned(mark: SliderMark): boolean {
-    return this.cylinderList.some((cylinder) => cylinder.pin.id === (mark.pin as Joint).id);
+    return this.cylinderList.some((cylinder) => cylinder.pin.id === mark.joint.id);
   }
 
   /**
@@ -5661,10 +5660,10 @@ export class NewGridComponent implements OnDestroy {
 
   /** A member link of a sealed cylinder: never a slot-drop target. */
   private isCylinderMemberLink(link: Link): boolean {
-    return this.cylinderList.some(
-      (mark) =>
-        mark.barrelId === link.id || mark.rodId === link.id || mark.cylinder.block.id === link.id
-    );
+    // Two members, where there were three: the sliding body was a zero-length
+    // block link of its own until Stage 1 of
+    // `docs/joint-type-and-cylinder-plan.md`.
+    return this.cylinderList.some((mark) => mark.barrelId === link.id || mark.rodId === link.id);
   }
 
   /**
@@ -5967,8 +5966,12 @@ export class NewGridComponent implements OnDestroy {
           // grounded guide's angle turns its whole mark while every coordinate
           // in the mechanism stays exactly where it was -- so both have to be in
           // here, or editing the angle field redraws nothing.
+          //
+          // `rotates` too: it decides whether the mark draws a weld plate or
+          // its riders, and it moves no joint at all. The bit lived on the
+          // coincident pin, so it used to arrive in that joint's own `base`.
           return joint instanceof PrisJoint
-            ? `${base},${joint.angle_rad},${joint.carrier?.id},${joint.slotJointA?.id},${joint.slotJointB?.id}`
+            ? `${base},${joint.rotates},${joint.angle_rad},${joint.carrier?.id},${joint.slotJointA?.id},${joint.slotJointB?.id}`
             : base;
         })
         .join(';');

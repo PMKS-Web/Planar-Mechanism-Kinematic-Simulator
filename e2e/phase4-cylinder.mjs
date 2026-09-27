@@ -211,7 +211,7 @@ checkThat(
 );
 checkThat(
   'the committed gesture built the complete assembly',
-  state.joints.length === 5 && state.links.length === 3 && state.marks === 1,
+  state.joints.length === 4 && state.links.length === 2 && state.marks === 1,
   JSON.stringify({ joints: state.joints.map((j) => j.id), links: state.links, marks: state.marks })
 );
 const sealedSlider = state.joints.find((j) => j.kind === 'PrisJoint');
@@ -361,7 +361,7 @@ checkThat(
 );
 checkThat(
   'the skin survived the flood',
-  (await page.locator('.cylinder-mark').count()) === 1 && floodAfter.joints.length === 5
+  (await page.locator('.cylinder-mark').count()) === 1 && floodAfter.joints.length === 4
 );
 
 // -------------------------------------------------------- 3. ground a mount
@@ -510,7 +510,7 @@ await page.waitForTimeout(700);
 state = await model();
 checkThat(
   'one undo brings the whole cylinder back',
-  state.joints.length === 5 && state.links.length === 3 && state.marks === 1,
+  state.joints.length === 4 && state.links.length === 2 && state.marks === 1,
   JSON.stringify({ joints: state.joints.length, marks: state.marks })
 );
 checkThat(

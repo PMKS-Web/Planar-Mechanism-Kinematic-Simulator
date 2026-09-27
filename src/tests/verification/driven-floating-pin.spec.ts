@@ -1,7 +1,7 @@
 // joint.ts first: the model modules form an import cycle that only
 // initializes cleanly when entered here (see test-utils/verification/fixture.ts).
 import '../../app/model/joint';
-import { Joint, RevJoint } from '../../app/model/joint';
+import { Joint, PrisJoint, RevJoint } from '../../app/model/joint';
 import { RealLink } from '../../app/model/link';
 import { buildMechanism, buildMechanismAtScale } from '../../test-utils/verification/fixture';
 import { fourBarDrivenAtFixture } from '../../test-utils/verification/fixtures';
@@ -179,27 +179,37 @@ describe('what a driven joint names', () => {
   });
 
   it('refuses a welded joint, which has no freedom to drive', () => {
-    // A Slide's weld does not fuse its links -- the block stays separate -- so
-    // the joint still looks like two bodies meeting. Driving it would lay a
-    // commanded angle on top of the weld's own constraint, and the mechanism
-    // would come back unsolvable without ever saying why.
-    // objectScale is a process-wide static and a cylinder's stroke is measured
-    // against it, so pin it: otherwise the travel depends on file order.
-    const { joints } = buildMechanismAtScale(cylinderBoomFixture(MODEL_SCALE), 1 * MODEL_SCALE);
-    const weldedPin = joints.find((joint) => joint.id === 'P')! as RevJoint;
-    expect(weldedPin.isWelded).toBe(true);
-    expect(incidentBodies(weldedPin).length).toBe(2);
+    // An ordinary weld on an ordinary pin. This used to be asked of a
+    // cylinder's pin, because that pin carried the weld sealing the ram -- and
+    // that pin is the sliding joint itself now, whose Slide is a different
+    // statement (the case below). The rule it stood for is this one: a weld
+    // says these bodies do not move relative to each other, so there is no
+    // freedom here for an input to prescribe.
+    const pin = new RevJoint('C', 0, 0);
+    const left = new RevJoint('A', -1, 0);
+    const right = new RevJoint('D', 1, 0);
+    pin.links.push(bar('AC', [left, pin]), bar('CD', [pin, right]));
+    pin.isWelded = true;
 
-    const refusal = describeActuator(weldedPin);
+    expect(incidentBodies(pin).length).toBe(2);
+    const refusal = describeActuator(pin);
     expect(typeof refusal).toBe('string');
     expect(refusal as string).toContain('welded');
   });
 
-  it('still drives the cylinder through its slider, which is not welded', () => {
-    // The cylinder's drive is the sliding joint, not the welded pin: the block
-    // slides in the barrel, and that is the freedom being commanded.
-    const { joints } = buildMechanism(cylinderBoomFixture(MODEL_SCALE));
-    const slider = joints.find((joint) => joint.id === 'S')! as RevJoint;
+  it('still drives the cylinder through its slider, which that refusal must not reach', () => {
+    // The cylinder's drive is the joint that slides, and that joint is also the
+    // pin the rod hangs on: one joint where there were two. Its Slide says the
+    // rod cannot *turn* against the slot, which says nothing about the travel
+    // being commanded -- so it is driven as a length, and the weld refusal
+    // above has to stop short of it.
+    // objectScale is a process-wide static and a cylinder's stroke is measured
+    // against it, so pin it: otherwise the travel depends on file order.
+    const { joints } = buildMechanismAtScale(cylinderBoomFixture(MODEL_SCALE), 1 * MODEL_SCALE);
+    const slider = joints.find((joint) => joint.id === 'P')! as PrisJoint;
+    expect(slider.rotates, 'the rod is rigid with the slot').toBe(false);
+    expect(incidentBodies(slider).length).toBe(2);
+
     const actuator = describeActuator(slider);
     expect(typeof actuator).not.toBe('string');
     if (typeof actuator === 'string') return;

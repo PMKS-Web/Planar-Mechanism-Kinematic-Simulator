@@ -48,7 +48,7 @@ export function cylinderMembers(joints: readonly Joint[]): Map<string, Cylinder>
 export function membersOf(cylinders: readonly Cylinder[]): Map<string, Cylinder> {
   const members = new Map<string, Cylinder>();
   for (const sealed of cylinders) {
-    for (const part of [sealed.barrel, sealed.rod, sealed.block]) {
+    for (const part of [sealed.barrel, sealed.rod]) {
       if (part) members.set(part.id, sealed);
     }
   }
@@ -82,8 +82,11 @@ export function cylinderOf(
   cylinders?: readonly Cylinder[]
 ): Cylinder | undefined {
   if (!link) return undefined;
-  // Any member, including the block, which is a SliderBlock rather than a
-  // RealLink and is as clickable as the other two.
+  // Either member: a hold asked of the rod and a hold asked of the barrel are
+  // the same hold. There was a third until Stage 1 of
+  // `docs/joint-type-and-cylinder-plan.md` -- the sliding body, a zero-length
+  // block link -- which was as clickable as the other two; it is the sliding
+  // joint's own now, and a joint carries no hold.
   return (cylinders ? membersOf(cylinders) : cylinderMembers(joints)).get(link.id);
 }
 

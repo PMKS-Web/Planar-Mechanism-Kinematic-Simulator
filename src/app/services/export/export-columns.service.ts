@@ -168,11 +168,24 @@ export class ExportColumnsService {
       const solved = this.mechanism.mechanisms[part.mechanismIndex];
       if (!solved?.isMechanismValid()) return;
       const index = solved.getForceAnalysis(mode).reactionIndex;
+      // The body the slot reaction is written on, so it can be put last below.
+      const slotBodyId =
+        part.kind === 'joint'
+          ? this.mechanism.slotReactionOf(part.part as RealJoint)?.againstId
+          : undefined;
       const columns: ExportColumn[] =
         part.kind === 'joint'
-          ? (index.linksByJoint.get(part.id) ?? []).flatMap((linkId) =>
-              this.jointReaction(part, linkId, index)
-            )
+          ? (index.linksByJoint.get(part.id) ?? [])
+              .slice()
+              // The bar the reader can point at first, the force in the slot
+              // after it. The solver lists a slider's own point body ahead of
+              // the bar, which opened the row with a force named after
+              // something that has no marker, no hitbox and no row -- and left
+              // the drawer disagreeing with the Force panel, which reads bar
+              // then slot. Only these two ever share a joint, so this orders a
+              // pair rather than imposing a rank on reactions generally.
+              .sort((a, b) => Number(a === slotBodyId) - Number(b === slotBodyId))
+              .flatMap((linkId) => this.jointReaction(part, linkId, index))
           : // Every link the body is made of: a ram's two mounts sit on
             // different ones, so asking about the rod alone gave the force at
             // one end of it and nothing at the end it is pushing.
@@ -253,7 +266,7 @@ export class ExportColumnsService {
     index: { jointsByLink: Map<string, string[]> }
   ): ExportColumn[] {
     const slot = this.mechanism.slotReactionOf(part.part as RealJoint);
-    if (slot && slot.block.id === linkId) {
+    if (slot && slot.againstId === linkId) {
       return [
         this.force(
           `Force on ${slot.on}`,

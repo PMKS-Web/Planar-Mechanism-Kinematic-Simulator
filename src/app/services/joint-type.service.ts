@@ -103,14 +103,21 @@ export class JointTypeService {
     }
     const grounded = this.isGrounded(joint);
     const selected = this.active.selectedJoint;
+    // By letter, not by object. Gaining or losing a slot exchanges the joint for
+    // one of the other class -- a `PrisJoint` for a `RevJoint` -- keeping its
+    // letter (`MechanismService.sliderTopology`), so every step after the first
+    // has to find the joint that is in the drawing *now*. Held as an object, the
+    // weld that finishes a change of type from Revolute to Prismatic landed on
+    // the pin that had just been replaced and did nothing at all.
+    const id = joint.id;
     try {
       this.mechanism.capturingPose(joint, () =>
         this.mechanism.batched(() => {
-          for (const step of stepsBetween(from, type)) this.run(joint, step);
+          for (const step of stepsBetween(from, type)) this.run(id, step);
           // Grounded is its own switch beside the choice, and while it is on
           // the choice draws every type standing on the frame (D2) -- so a
-          // change of type keeps it. Taking the block away takes the ground its
-          // slot carried with it, and that is given back here.
+          // change of type keeps it. Taking the slot away takes the ground it
+          // carried with it, and that is given back here.
           //
           // Except to a slot that came back riding a carrier: `toggleGround`
           // goes through `groundAt`, which clears `_carrier` and both slot
@@ -119,19 +126,58 @@ export class JointTypeService {
           // `sliderTopology` just restored from the stash taken off it without
           // a word. A floating slot is already fixed in direction by its
           // carrier, which is what the ground was standing in for.
-          if (grounded && !this.isGrounded(joint) && !this.mechanism.sliderFor(joint)?.isFloating) {
-            this.active.selectedJoint = joint;
+          const now = this.live(id);
+          if (
+            now &&
+            grounded &&
+            !this.isGrounded(now) &&
+            !this.mechanism.sliderFor(now)?.isFloating
+          ) {
+            this.active.selectedJoint = now;
+            // `toggleGround`'s plain-joint branch ends `input = false`, which is
+            // its own rule about un-grounding and has nothing to say about
+            // putting a ground back. A grounded pin is the standard crank, and
+            // the exchange carries the drive across, so taking a grounded,
+            // driven slider to Revolute came back grounded and un-driven with
+            // nothing said. Carried around the call rather than written past
+            // it, so the toggle keeps its rule for its own callers.
+            const driven = now.input;
+            const speed = now.driveSpeed;
             this.mechanism.toggleGround();
+            if (driven) {
+              now.input = true;
+              now.driveSpeed = speed;
+            }
           }
         })
       );
     } finally {
-      this.active.selectedJoint = selected;
+      // By letter here too, and for the same reason. The selection is normally
+      // the joint being retyped -- the panel changes the type of whatever is
+      // selected -- and gaining or losing a slot exchanges that joint for one
+      // of the other class. Put back as an object it is the joint the drawing
+      // has just dropped, and the panel reads the selection on every press: the
+      // next one would ask a joint that is no longer there, be told it already
+      // has the type wanted, and quietly do nothing.
+      //
+      // Written to the field rather than through `updateSelectedObj`, which
+      // replaces the whole part selection: a group changing type one joint at a
+      // time would be collapsed to the last one it touched.
+      this.active.selectedJoint = (selected && this.live(selected.id)) ?? selected;
     }
-    return this.typeOf(joint) === type;
+    const after = this.live(id);
+    return after !== undefined && this.typeOf(after) === type;
   }
 
-  private run(joint: RealJoint, step: JointOperation): void {
+  /** The joint with this letter as the drawing holds it now. */
+  private live(id: string): RealJoint | undefined {
+    const found = this.mechanism.joints.find((candidate) => candidate.id === id);
+    return found instanceof RealJoint ? found : undefined;
+  }
+
+  private run(id: string, step: JointOperation): void {
+    const joint = this.live(id);
+    if (!joint) return;
     switch (step) {
       case 'add-slider':
       case 'remove-slider':

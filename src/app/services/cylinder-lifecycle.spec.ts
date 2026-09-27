@@ -32,7 +32,10 @@ function harnessWithCylinder() {
   const slider = harness.service.joints.find(
     (joint): joint is PrisJoint => joint instanceof PrisJoint
   )!;
-  const sealed = sealedCylinderAt(slider.connectedJoints[0] ?? slider)!;
+  // Asked of the slider itself. This used to ask the coincident pin beside it
+  // -- `connectedJoints[0]` -- which is the joint Stage 1 of
+  // `docs/joint-type-and-cylinder-plan.md` folded into the slider.
+  const sealed = sealedCylinderAt(slider)!;
   return { ...harness, sealed };
 }
 
@@ -50,12 +53,17 @@ describe('creating a cylinder from the two-point gesture', () => {
 
     harness.service.createCylinderFrom(start, end);
 
-    expect(harness.service.joints).toHaveLength(5);
-    expect(harness.service.links).toHaveLength(3);
+    // Four joints and two links, where it was five and three: the seal and the
+    // pin the rod hangs on are one joint, and the zero-length block that joined
+    // them is gone (Stage 1 of `docs/joint-type-and-cylinder-plan.md`).
+    expect(harness.service.joints).toHaveLength(4);
+    expect(harness.service.links).toHaveLength(2);
     const sealed = resolve(harness);
     expect(sealed).toBeDefined();
     expect(sealed.slider.isSealed).toBe(true);
-    expect(sealed.pin.isWelded).toBe(true);
+    // The seal says its rod cannot turn against the bore in `rotates`; it was
+    // the weld on that coincident pin.
+    expect(sealed.slider.rotates).toBe(false);
     // The start point is the barrel-side mount; the rod finishes at the cursor.
     expect(Math.hypot(sealed.barrelFar.x - start.x, sealed.barrelFar.y - start.y)).toBeLessThan(
       0.01
@@ -97,22 +105,27 @@ describe('creating a cylinder from the two-point gesture', () => {
 });
 
 describe('permanence of a sealed cylinder', () => {
-  it('gives a mount a block of its own, and leaves the ram sealed', () => {
-    // A mount is not the ram's inside. It used to be refused a block on the
+  it('lets a mount slide, and leaves the ram sealed', () => {
+    // A mount is not the ram's inside. It used to be refused a slider on the
     // strength of *membership* -- turned away for the slider the cylinder
     // keeps in its bore, which is nothing to do with the mount -- and a
     // carriage on a mount is how an excavator's boom is drawn.
     const h = harnessWithCylinder();
+    const mountId = h.sealed.rodFar.id;
     h.active.updateSelectedObj(h.sealed.rodFar);
     const before = h.service.links.length;
 
     h.service.toggleSlider();
 
-    expect(h.service.links.length, 'a block and its guide arrived').toBe(before + 1);
+    // No new link and no new letter: the mount *becomes* the slider, where it
+    // used to gain a prismatic joint of its own and a block joining the two.
+    expect(h.service.links.length, 'nothing was added to draw').toBe(before);
+    const now = h.service.joints.find((joint) => joint.id === mountId);
+    expect(now instanceof PrisJoint, 'the mount slides now').toBe(true);
     const still = resolve(h);
     expect(still, 'and the ram is still a ram').toBeDefined();
     expect(still.slider.isSealed).toBe(true);
-    expect(still.pin.isWelded).toBe(true);
+    expect(still.slider.rotates).toBe(false);
   });
 
   it('refuses detaching the sealed block from its bore', () => {
@@ -124,25 +137,27 @@ describe('permanence of a sealed cylinder', () => {
     expect(resolve(h)).toBeDefined();
   });
 
-  it('refuses unwelding the sealed pin', () => {
+  it('refuses unwelding the seal', () => {
     const h = harnessWithCylinder();
-    h.active.updateSelectedObj(h.sealed.pin);
+    h.active.updateSelectedObj(h.sealed.slider);
 
     h.service.unweldSelectedJoint();
 
-    expect(h.sealed.pin.isWelded).toBe(true);
+    // The Slide is what holds the rod rigid with the bore, and it never comes
+    // off. It was a weld on the coincident pin; it is `rotates` on the slider.
+    expect(h.sealed.slider.rotates).toBe(false);
     expect(resolve(h)).toBeDefined();
   });
 
   it('refuses merges into the interior joints', () => {
     const h = harnessWithCylinder();
-    const stray = new RevJoint('Z', h.sealed.pin.x, h.sealed.pin.y);
+    const stray = new RevJoint('Z', h.sealed.slider.x, h.sealed.slider.y);
     const bar = new RealLink('Z' + h.sealed.rodFar.id, [stray, h.sealed.rodFar]);
     h.service.joints.push(stray);
     h.service.links.push(bar);
     wireGraph(h.service);
 
-    expect(h.service.mergeJoints(stray, h.sealed.pin as RealJoint)).toBe('sealed-cylinder');
+    expect(h.service.mergeJoints(stray, h.sealed.slider)).toBe('sealed-cylinder');
     expect(resolve(h)).toBeDefined();
   });
 
@@ -241,11 +256,10 @@ describe('the invariant: no write can leave a sealed cylinder bent', () => {
 
   it('straightens a garbage pin position on the next mechanism update', () => {
     const h = harnessWithCylinder();
-    // A write that bypassed every gesture: the pin flung far off the axis.
-    h.sealed.pin.x += 137;
-    h.sealed.pin.y -= 89;
-    h.sealed.slider.x = h.sealed.pin.x;
-    h.sealed.slider.y = h.sealed.pin.y;
+    // A write that bypassed every gesture: the seal flung far off the axis.
+    // One joint to fling, where it used to take two kept coincident by hand.
+    h.sealed.slider.x += 137;
+    h.sealed.slider.y -= 89;
 
     h.service.updateMechanism();
 
@@ -325,7 +339,7 @@ describe('the invariant: no write can leave a sealed cylinder bent', () => {
     // The guards and drag routing must not fail open mid-repair — that lapse
     // is exactly how a fast drag used to tear a cylinder for good.
     const h = harnessWithCylinder();
-    h.sealed.pin.y += 300;
+    h.sealed.slider.y += 300;
 
     expect(h.service.cylinderAt(h.sealed.rodFar)).toBeDefined();
     expect(h.service.cylinderAt(h.sealed.barrel)).toBeDefined();

@@ -4,7 +4,7 @@ import { Coord } from '../model/coord';
 import { sealedCylinderStructures } from '../model/cylinder';
 import { Force } from '../model/force';
 import { Joint, PrisJoint, RevJoint } from '../model/joint';
-import { RealLink, SliderBlock } from '../model/link';
+import { RealLink } from '../model/link';
 import { createMechanismHarness, wireGraph } from '../../test-utils/mechanism-harness';
 import { SelectionBatchService } from './selection-batch.service';
 
@@ -132,18 +132,19 @@ describe('SelectionBatchService duplication', () => {
   it('preserves a floating slider and its carrier without copying unrelated topology', () => {
     const h = createMechanismHarness();
     const a = new RevJoint('A', 0, 0);
-    const b = new RevJoint('B', 100, 0);
+    // B *is* the slider: a pin with a coincident prismatic joint and a
+    // zero-length block joining them until Stage 1 of
+    // `docs/joint-type-and-cylinder-plan.md`.
+    const b = new PrisJoint('B', 100, 0);
     const c = new RevJoint('C', 0, 200);
     const d = new RevJoint('D', 200, 200);
     const outsider = new RevJoint('E', 300, 0);
     const rider = new RealLink('AB', [a, b]);
     const carrier = new RealLink('CD', [c, d]);
     const outside = new RealLink('BE', [b, outsider]);
-    const slot = new PrisJoint('P', b.x, b.y);
-    slot.slideOn(carrier, c, d);
-    const block = new SliderBlock('BP', [b, slot]);
-    h.service.joints = [a, b, c, d, outsider, slot];
-    h.service.links = [rider, carrier, outside, block];
+    b.slideOn(carrier, c, d);
+    h.service.joints = [a, b, c, d, outsider];
+    h.service.links = [rider, carrier, outside];
     wireGraph(h.service);
     const batch = runInInjectionContext(h.injector, () => new SelectionBatchService());
 
@@ -151,13 +152,15 @@ describe('SelectionBatchService duplication', () => {
 
     expect(result.ok).toBe(true);
     const copiedSlots = h.service.joints.filter(
-      (joint): joint is PrisJoint => joint instanceof PrisJoint && joint !== slot
+      (joint): joint is PrisJoint => joint instanceof PrisJoint && joint !== b
     );
     expect(copiedSlots).toHaveLength(1);
     expect(copiedSlots[0].isFloating).toBe(true);
     expect(copiedSlots[0].isSlotWellFormed).toBe(true);
     expect(copiedSlots[0].carrier).not.toBe(carrier);
-    expect(h.service.links.length).toBe(7);
+    // Three links, plus copies of the rider and the carrier the slot needs.
+    // It was four and three while the block was a link of its own.
+    expect(h.service.links.length).toBe(5);
     expect(h.service.joints.filter((joint) => joint.x === outsider.x + 20)).toHaveLength(0);
     expect(h.saveCount()).toBe(1);
   });
@@ -241,12 +244,15 @@ describe('SelectionBatchService duplication', () => {
     expect(cylinders).toHaveLength(2);
     const copy = cylinders.find((candidate) => candidate.slider !== original.slider)!;
     expect(copy.slider.isSealed).toBe(true);
-    expect(copy.pin.isWelded).toBe(true);
+    // The seal is `rotates` on the sliding joint now: it was the weld on the
+    // coincident pin the block paired it with.
+    expect(copy.slider.rotates).toBe(false);
     expect(copy.slider.locked).toBe(false);
     expect(copy.barrelFar.y).toBeCloseTo(original.barrelFar.y + 100, 6);
     expect(copy.rodFar.y).toBeCloseTo(original.rodFar.y + 100, 6);
-    expect(h.service.joints).toHaveLength(10);
-    expect(h.service.links).toHaveLength(6);
+    // Four joints and two links per ram, where it was five and three.
+    expect(h.service.joints).toHaveLength(8);
+    expect(h.service.links).toHaveLength(4);
     expect(h.saveCount() - beforeSaves).toBe(1);
   });
 });
@@ -313,9 +319,9 @@ describe('SelectionBatchService deletion', () => {
     const carrier = new RealLink('CD', [c, d]);
     const slot = new PrisJoint('P', b.x, b.y);
     slot.slideOn(carrier, c, d);
-    const block = new SliderBlock('BP', [b, slot]);
+    const riderOnSlot = new RealLink('BP', [b, slot]);
     h.service.joints = [a, b, c, d, slot];
-    h.service.links = [rider, carrier, block];
+    h.service.links = [rider, carrier, riderOnSlot];
     wireGraph(h.service);
     const batch = runInInjectionContext(h.injector, () => new SelectionBatchService());
 

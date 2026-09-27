@@ -113,14 +113,34 @@ export class LoopSolver {
         continue;
       }
       this.neighborsOf(desiredGround, slotNeighbors, neighborCache).forEach((next) => {
+        const path: PathStep[] = [
+          { jointId: desiredGround.id },
+          { jointId: next.joint.id, viaSliderId: next.viaSliderId },
+        ];
+        // Two grounds with one body between them, which the walk below cannot
+        // see: it starts *at* the neighbor and only records a loop when it
+        // finds a ground among that neighbor's own neighbors, so a chain that
+        // is already complete here was never written down.
+        //
+        // That was harmless while both ends were pins. A bar pinned to the
+        // frame at each end is frame, and a loop saying so says nothing. A bar
+        // whose ends *slide* is a mechanism -- the elliptical trammel is
+        // exactly this shape now that a slider is one joint, where before it
+        // was guide, pin, bar, pin, guide and the walk found the chain in the
+        // middle. With no loop, its rates fall to `determineLooplessKinematics`,
+        // which models the drive as a rotation about the input joint and leaves
+        // the sliding end at exactly zero.
+        if (groundJoints.indexOf(next.joint) !== -1 && this.slidesAcross(desiredGround, next)) {
+          const edges = this.edgesAlong(path, links);
+          if (edges) {
+            loops.push({ id: loopId(edges), edges });
+          }
+        }
         this.findGround(
           next.joint,
           groundJoints,
           new Set([next.joint.id]),
-          [
-            { jointId: desiredGround.id },
-            { jointId: next.joint.id, viaSliderId: next.viaSliderId },
-          ],
+          path,
           loops,
           links,
           slotNeighbors,
@@ -160,9 +180,15 @@ export class LoopSolver {
         parts.push(`?${joint.id}`);
         continue;
       }
+      // `rotates` belongs in the key as much as the slot's shape does. It is
+      // what tells a Slide from a Pin-in-slot, and a Slide holds its rider's
+      // orientation -- so two drawings alike in every other respect have
+      // different closures, and a cache keyed without it serves one the other's
+      // loops. It used to ride `isWelded` on the coincident pin, which the walk
+      // already recorded below.
       const slot =
         joint instanceof PrisJoint
-          ? `P${joint.isFloating ? 1 : 0}${joint.isSlotWellFormed ? 1 : 0}` +
+          ? `P${joint.isFloating ? 1 : 0}${joint.isSlotWellFormed ? 1 : 0}${joint.rotates ? 1 : 0}` +
             `${joint.slotJointA?.id ?? ''}.${joint.slotJointB?.id ?? ''}.${joint.carrier?.id ?? ''}`
           : 'R';
       const linked = joint.connectedJoints.map((one) => one.id).join('.');
@@ -339,24 +365,53 @@ export class LoopSolver {
    */
   private static deduplicate(loops: Loop[]): Loop[] {
     const bySignature = new Map<string, Loop>();
-    for (const loop of loops) {
-      const signature = loop.edges
+    const signatureOf = (loop: Loop): string =>
+      loop.edges
         .map((edge) => (edge.kind === 'slot' ? edge.sliderId : edge.linkId))
         .sort()
-        .join(',');
+        .join(',') +
+      // Where the chain ends, when it ends on a slider. A grounded guide used to
+      // be crossed along its block's own edge, so the block's id sat in the list
+      // above and told two such closures apart. The walk steps straight onto the
+      // joint now, so two chains over the same bodies ending at two different
+      // guides would sign the same -- and one of them would be dropped as a
+      // repeat of the other, taking its equation with it.
+      `|${this.slidingEnds(loop).join('.')}`;
+    for (const loop of loops) {
+      const signature = signatureOf(loop);
       const existing = bySignature.get(signature);
       if (!existing || loop.id < existing.id) {
         bySignature.set(signature, loop);
       }
     }
-    return loops.filter(
-      (loop) =>
-        bySignature.get(
-          loop.edges
-            .map((edge) => (edge.kind === 'slot' ? edge.sliderId : edge.linkId))
-            .sort()
-            .join(',')
-        ) === loop
+    return loops.filter((loop) => bySignature.get(signatureOf(loop)) === loop);
+  }
+
+  /**
+   * The chain's two ends, which go into the dedup key beside the bodies.
+   *
+   * Both of them, unconditionally. The name and this comment used to promise a
+   * filter -- "kept only where an end slides" -- that the body never applied,
+   * which made the key stricter for every chain and stopped a chain and its
+   * reverse deduping here. Nothing broke, because `independent()` still
+   * eliminates the reverse over GF(2); the promise was simply not true.
+   */
+  private static slidingEnds(loop: Loop): string[] {
+    if (loop.edges.length === 0) return [];
+    return [loop.edges[0].fromId, loop.edges[loop.edges.length - 1].toId];
+  }
+
+  /**
+   * Whether one body reaching from one ground to another can move at all.
+   *
+   * Both ends pinned to the frame is frame. One end that slides, or a step
+   * taken along a slot, is a degree of freedom, and a loop is worth recording.
+   */
+  private static slidesAcross(ground: RealJoint, next: Neighbor): boolean {
+    return (
+      next.viaSliderId !== undefined ||
+      ground instanceof PrisJoint ||
+      next.joint instanceof PrisJoint
     );
   }
 

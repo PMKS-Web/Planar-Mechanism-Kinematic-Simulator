@@ -296,12 +296,13 @@
             </collapsible-subsection>
           </div>
         }
-        <!-- The sliding body's own mass. It lives on a link nobody can select --
-           clicking a block picks the pin it rides on -- so this is the only
-           place in Edit it can be reached; before it, the mass table in the
-           force-analysis drawer was the only door, and there was no sign from
-           the joint's own panel that a slider weighed anything at all. -->
-        @if (sliderBlock) {
+        <!-- The sliding body's own mass, which is the sliding joint's own (D6).
+           It lived on a link nobody could select -- clicking a block picked the
+           pin it rode on -- so this is the only place in Edit it can be
+           reached; before it, the mass table in the force-analysis drawer was
+           the only door, and there was no sign from the joint's own panel that
+           a slider weighed anything at all. -->
+        @if (sliderMassJoint) {
           <collapsible-subsection
             panelLive
             [attr.inert]="playingNow() || null"

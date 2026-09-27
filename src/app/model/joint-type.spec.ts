@@ -1,8 +1,8 @@
 // joint.ts first: the model modules form an import cycle that only initializes
 // cleanly when entered here.
 import './joint';
-import { PrisJoint, RevJoint } from './joint';
-import { RealLink, SliderBlock } from './link';
+import { PrisJoint, RealJoint, RevJoint } from './joint';
+import { RealLink } from './link';
 import { JointOperation, JointOperationContext } from './joint-operation-permission';
 import {
   JOINT_TYPES,
@@ -20,21 +20,24 @@ import {
 const context: JointOperationContext = {
   cylinders: [],
   isDriven: (joint) => joint.input,
-  hasSlider: (joint) => joint.links.some((link) => link instanceof SliderBlock),
+  // A slider is the joint, not something hanging off it (Stage 1 of
+  // `docs/joint-type-and-cylinder-plan.md`).
+  hasSlider: (joint) => joint instanceof PrisJoint,
 };
 
-/** Joint B at the end of `bars` bars, with a block riding it, welded or driven as asked. */
-function pinOn(bars: number, { block = false, welded = false, driven = false } = {}): RevJoint {
-  const b = new RevJoint('B', 0, 0);
+/** Joint B at the end of `bars` bars, sliding, welded or driven as asked. */
+function pinOn(bars: number, { block = false, welded = false, driven = false } = {}): RealJoint {
+  // The joint *is* the slider when it slides, so which class B is depends on
+  // what is being asked for -- there is no second joint to hang a block from.
+  const b: RealJoint = block ? new PrisJoint('B', 0, 0) : new RevJoint('B', 0, 0);
   for (let i = 0; i < bars; i++) {
     const other = new RevJoint(String.fromCharCode(67 + i), i + 1, 1);
     b.links.push(new RealLink(`B${other.id}`, [b, other]));
   }
-  if (block) {
-    const slider = new PrisJoint('P', 0, 0, false, false, [], [b]);
-    b.links.push(new SliderBlock('BP', [b, slider]));
-  }
-  b.isWelded = welded;
+  // A slider records a weld as `rotates`: its riders cannot turn against the
+  // slot. Every other joint records it as `isWelded`.
+  if (b instanceof PrisJoint) b.rotates = !welded;
+  else b.isWelded = welded;
   b.input = driven;
   return b;
 }
@@ -91,7 +94,7 @@ describe('joint type', () => {
     );
     // A Prismatic keeps its weld, but nothing is left for it to hold the bar to.
     const slide = pinOn(1, { block: true, welded: true });
-    expect(refuseJointType(slide, 'welded', context)?.long).toContain('without its block');
+    expect(refuseJointType(slide, 'welded', context)?.long).toContain('without its slot');
     // With a second bar the weld still has two links once the block has gone.
     expect(refuseJointType(pinOn(2, { block: true, welded: true }), 'welded', context)).toBe(
       undefined

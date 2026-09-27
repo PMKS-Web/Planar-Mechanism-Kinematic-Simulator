@@ -12,16 +12,25 @@
  */
 
 import { Joint, PrisJoint, RealJoint } from './joint';
-import { Link, RealLink, SliderBlock } from './link';
+import { Link, RealLink } from './link';
 import { slideAssemblyAt } from './slide-assembly';
 import { CYLINDER, MARK } from './joint-marks';
 import { SettingsService } from '../services/settings.service';
 
 export interface Cylinder {
   slider: PrisJoint;
+  /**
+   * The joint the rod is pinned to, which *is* the slider.
+   *
+   * Two joints until Stage 1 of `docs/joint-type-and-cylinder-plan.md`: a
+   * prismatic joint, a coincident `RevJoint` carrying the weld that sealed
+   * them, and a zero-length block joining the two. Both names are kept
+   * pointing at the one joint rather than folded away here, because a cylinder
+   * is a record of *roles* -- the sliding seal and the pin the rod hangs on are
+   * the same joint now but not the same idea -- and Stage 2 replaces this whole
+   * record with one derived from the seal.
+   */
   pin: RealJoint;
-  /** The zero-length block binding pin to slider. */
-  block: SliderBlock;
   /** The carrier, drawn as the barrel. A leaf when welded into a compound. */
   barrel: Link;
   /** The rider, drawn as the rod. A leaf when welded into a compound. */
@@ -219,9 +228,11 @@ function describeCylinderStructure(joint: Joint): Cylinder | string {
   if (!assembly.slider.isFloating || !assembly.slider.isSlotWellFormed) {
     return 'The slot has to be cut into a link — the barrel — rather than fixed to the ground.';
   }
-  if (assembly.riders.length !== 1) return 'A cylinder has exactly one rod on its block.';
+  if (assembly.riders.length !== 1) return 'A cylinder has exactly one rod on its slider.';
 
-  const pin = assembly.weldJoint;
+  // The seal and the pin the rod hangs on are one joint, so there is nothing to
+  // look up: whatever rides the slot is pinned to the slider itself.
+  const pin = assembly.slider;
   const slotA = assembly.slider.slotJointA!;
   const slotB = assembly.slider.slotJointB!;
   // A mount welded into a neighboring link turns the carrier (or rider) into
@@ -259,7 +270,6 @@ function describeCylinderStructure(joint: Joint): Cylinder | string {
   return {
     slider: assembly.slider,
     pin,
-    block: assembly.block,
     barrel: barrel.leaf,
     rod: rod.leaf,
     barrelRoot: barrel.root,
@@ -341,9 +351,16 @@ export function sealedCylinderStructures(joints: Joint[]): Cylinder[] {
     .filter((found): found is Cylinder => found !== undefined);
 }
 
-/** All five joints of a cylinder: mounts, buried barrel end, pin, slider. */
+/**
+ * Every joint of a cylinder: its two mounts, the buried barrel end, and the
+ * slider the rod is pinned to.
+ *
+ * Four, where it used to be five. The pin and the slider were two coincident
+ * joints and are one now, and callers count, delete and freeze by this list --
+ * so it names four things rather than the same joint twice.
+ */
 export function cylinderJoints(cylinder: Cylinder): Joint[] {
-  return [cylinder.barrelFar, cylinder.barrelNear, cylinder.pin, cylinder.slider, cylinder.rodFar];
+  return [cylinder.barrelFar, cylinder.barrelNear, cylinder.slider, cylinder.rodFar];
 }
 
 /**
@@ -410,7 +427,7 @@ export function cylinderOfLink(joints: Joint[], link: Link | undefined): Cylinde
 
 /** Whether `link`, or anything nested under it, is one of the cylinder's bars. */
 function ownsMember(link: Link, cylinder: Cylinder): boolean {
-  const memberIds = [cylinder.barrel.id, cylinder.rod.id, cylinder.block.id];
+  const memberIds = [cylinder.barrel.id, cylinder.rod.id];
   // Recursive, and not one level: a compound that has itself been welded into
   // something larger still owns the member, and a delete or a drag that missed
   // it would tear the ram it was carrying.
@@ -454,9 +471,7 @@ export function cylinderOfBarIn(
   link: Link | undefined
 ): Cylinder | undefined {
   if (!link) return undefined;
-  return cylinders.find((cylinder) =>
-    [cylinder.barrel.id, cylinder.rod.id, cylinder.block.id].includes(link.id)
-  );
+  return cylinders.find((cylinder) => [cylinder.barrel.id, cylinder.rod.id].includes(link.id));
 }
 
 /** The link-membership question against a precomputed structure list. */
@@ -469,7 +484,7 @@ export function cylinderOfLinkIn(
 
 /** The joints of a cylinder that get no hitbox, hover or selection at all. */
 export function isCylinderInterior(cylinder: Cylinder, joint: Joint): boolean {
-  return [cylinder.barrelNear.id, cylinder.pin.id, cylinder.slider.id].includes(joint.id);
+  return [cylinder.barrelNear.id, cylinder.slider.id].includes(joint.id);
 }
 
 /** A freshly drawn cylinder opens at mid-travel, so it has room to go either way. */
@@ -696,7 +711,7 @@ export interface CylinderPose {
   atMinimum?: boolean;
   barrelFar: { x: number; y: number };
   barrelNear: { x: number; y: number };
-  /** The pin and its coincident slider both go here. */
+  /** Where the slider the rod hangs on goes. */
   pin: { x: number; y: number };
   rodFar: { x: number; y: number };
 }
