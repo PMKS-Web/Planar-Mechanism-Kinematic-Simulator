@@ -358,7 +358,7 @@ if (!undriven.trim()) {
 }
 check(
   'with nothing driving it, the drawer says so rather than counting freedoms',
-  /Nothing drives this mechanism/i.test(undriven) && !/degrees of freedom/i.test(undriven),
+  /No input is set/i.test(undriven) && !/degrees of freedom/i.test(undriven),
   undriven.split('\n').slice(0, 4).join(' / ')
 );
 await film.shot('input-off');
@@ -393,7 +393,7 @@ if (!drivenText.trim()) {
 }
 check(
   'and the drawer never says nothing drives a machine that is driven',
-  !/Nothing drives this mechanism/i.test(drivenText),
+  !/No input is set/i.test(drivenText),
   drivenText.split('\n').slice(0, 3).join(' / ')
 );
 await film.shot('driven-ram');

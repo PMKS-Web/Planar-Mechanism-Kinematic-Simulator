@@ -323,7 +323,7 @@ describe('what the reader is told', () => {
     expect(one.mechanism.failure).toBe('not-driven');
     const readiness = readinessFor(one);
     const blocker = readiness.checks.find((check) => check.state === 'blocker')!;
-    expect(blocker.title).toBe('Nothing drives this mechanism');
+    expect(blocker.title).toBe('No input is set');
     expect(blocker.body).not.toContain('degrees of freedom');
   });
 });
