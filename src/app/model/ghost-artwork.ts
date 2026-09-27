@@ -1,4 +1,5 @@
 import { Cylinder, cylinderOfBarIn } from './cylinder';
+import { memberSilhouette } from './cylinder-fusion';
 import { transformRigidPath } from './compound-link-path';
 import { Joint } from './joint';
 import { Link, RealLink } from './link';
@@ -79,9 +80,20 @@ export function ghostArtwork(
       ? part.subset.map(schematicPath).join(' ')
       : linkSkeletonPath(part);
   };
-  const path = schematic
-    ? schematicPath(snapshot.link)
-    : `${linkArtwork(snapshot.link, scale, snapshot.cylinders)} ${snapshot.channels}`;
+  // A free member has the skin's square cuts. Easing belongs to a welded
+  // union; using it here makes the ghost differ from the live cylinder.
+  const member = cylinderOfBarIn(snapshot.cylinders, snapshot.link);
+  const outline = schematic
+    ? ''
+    : member
+      ? memberSilhouette(
+          member,
+          member.barrel.id === snapshot.link.id ? 'barrel' : 'rod',
+          0.15 * scale,
+          0
+        )
+      : linkArtwork(snapshot.link, scale, snapshot.cylinders);
+  const path = schematic ? schematicPath(snapshot.link) : `${outline} ${snapshot.channels}`;
   const { from, to, there, thereEnd } = ghost.move;
   snapshot.key = key;
   snapshot.path = transformRigidPath(path, from, to, there, thereEnd);

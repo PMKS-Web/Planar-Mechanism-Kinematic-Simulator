@@ -2295,3 +2295,12 @@ since ac24921a the Edit and analysis clearances subtract that padding so the *ca
 by design, and the controls, on `--layer-cluster` above `--layer-panel`, still take the press there.
 `editor-followups` measured the frame and failed at 506 against 502 for as long as the rule had been
 right; measure the card, as `bug-fixes-2` does, and hit-test the strip if the press matters.
+
+
+### A cylinder ghost needs the skin's square cuts
+
+`memberSilhouette` defaults to eased cut corners so a welded union does not fillet them away.
+The live free barrel and rod do not use that easing. `ghostArtwork` must request zero easing
+for free cylinder members as well: routing them through `linkArtwork` made the ghost's corners
+differ from the live part, despite matching colors. The ghost-artwork spec and cylinder-colors
+browser suite guard the actual painter.

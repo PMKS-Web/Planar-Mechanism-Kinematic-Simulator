@@ -3,6 +3,8 @@ import { RevJoint } from './joint';
 import { RealLink } from './link';
 import { GhostBody } from './mechanism/anchor';
 import { ghostArtwork } from './ghost-artwork';
+import { cylindersIn } from './cylinder';
+import { ram } from '../../test-utils/cylinder-graph';
 
 describe('a held ghost follows drawing style without changing its held shape', () => {
   it('retains the last reachable geometry after an edit and a zoom', () => {
@@ -30,5 +32,27 @@ describe('a held ghost follows drawing style without changing its held shape', (
     expect(ghostArtwork(held, link, [], 60, false, '')).toBe(larger);
     expect(ghostArtwork(held, link, [], 60, true, '')).toBe(lines);
     expect([b.x, b.y]).toEqual([800, 200]);
+  });
+});
+
+describe('a cylinder ghost keeps the live skin corners', () => {
+  it('keeps square cuts for both members across display scales', () => {
+    const parts = ram();
+    const cylinders = cylindersIn(parts.joints);
+    for (const link of [parts.barrel, parts.rod]) {
+      const [from, to] = link.joints;
+      const body: GhostBody = {
+        d: link.d,
+        fill: link.fill,
+        transform: '',
+        linkId: link.id,
+        move: { from, to, there: from, thereEnd: to },
+      };
+      for (const scale of [20, 60]) {
+        const path = ghostArtwork(body, link, cylinders, scale, false, '');
+        expect(path.replace(/[^A-Za-z]/g, '')).toBe('MLALZ');
+        expect(path).not.toContain('NaN');
+      }
+    }
   });
 });
