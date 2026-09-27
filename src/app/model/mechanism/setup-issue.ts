@@ -1,4 +1,4 @@
-import { Prose, textOf } from '../prose';
+import { opening, Prose, textOf } from '../prose';
 
 /**
  * One thing standing between a drawing and its analysis, as the setup drawers
@@ -40,7 +40,7 @@ export const MOST_STEPS = 4;
 
 /** What the title and summary say together, for a surface with room for one line. */
 export function issueText(issue: SetupIssue): string {
-  return `${issue.title}. ${textOf(issue.summary)}`;
+  return `${issue.title}. ${textOf(opening(issue.summary))}`;
 }
 
 /**

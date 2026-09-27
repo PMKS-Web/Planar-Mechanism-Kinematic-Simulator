@@ -81,7 +81,7 @@ describe('force analysis setup, as a fresh drawing meets it', () => {
     expect(massless.severity).toBe('warning');
     // Names the links, and says the idealization is allowed.
     expect(massless.summary).toBe(
-      'link AB and link CD weigh nothing, so gravity and inertia skip them.'
+      'Link AB and link CD weigh nothing, so gravity and inertia skip them.'
     );
     expect(massless.explain).toContain('fine idealization');
     expect(harness.service.forceAnalysisReady()).toBe(true);

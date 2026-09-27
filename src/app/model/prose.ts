@@ -118,6 +118,21 @@ export function textOf(sentence: Prose): string {
 export const capitalized = (text: string): string =>
   text ? text[0].toUpperCase() + text.slice(1) : text;
 
+/**
+ * The sentence as it opens a line: its first word capitalized, a part's name
+ * included. A part is named in lower case inside a sentence (`link DE`), and a
+ * summary that opens on one -- "link HI and link IJ are locked in place" --
+ * still starts with a capital, as any sentence does.
+ */
+export function opening(sentence: Prose): Prose {
+  const [first, ...rest] = sentence;
+  if (first === undefined) return sentence;
+  return [
+    isPart(first) ? { ...first, label: capitalized(first.label) } : capitalized(first),
+    ...rest,
+  ];
+}
+
 /** The words in a piece of text, the way the spec's budgets count them. */
 export const wordCount = (text: string): number =>
   text.split(/\s+/).filter((word) => /[\p{L}\p{N}]/u.test(word)).length;

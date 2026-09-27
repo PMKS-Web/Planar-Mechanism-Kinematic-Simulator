@@ -57,7 +57,7 @@ describe('what the drawer says about a mistake it has learned to name', () => {
       "Joint E isn't joined to joint C",
     ]);
     expect(issues[0].summary).toBe(
-      "joint E sits almost on top of joint C, but they're two joints."
+      "Joint E sits almost on top of joint C, but they're two joints."
     );
     expect(issues[0].fixes).toEqual(['Drag joint E onto joint C']);
   });
@@ -67,7 +67,7 @@ describe('what the drawer says about a mistake it has learned to name', () => {
     expect(ready).toEqual([true, false]);
     expect(issues[0].title).toBe('Link DE hangs from joint D');
     expect(issues[0].summary).toBe(
-      'link DE turns freely about joint D, joined to nothing else that moves.'
+      'Link DE turns freely about joint D, joined to nothing else that moves.'
     );
     expect(issues[0].fixes).toEqual([
       'Delete link DE',
@@ -211,7 +211,7 @@ describe('what the drawer says about a mistake it has learned to name', () => {
   it('names what frees a stuck input, though a loose link will still need its own fix', () => {
     const [issue] = said(plateHeldByAGroundedLinkFixture()).issues;
     expect(issue.title).toBe("Input at joint D can't turn");
-    expect(issue.summary).toBe('link BDF and link FG are locked in place by the ground.');
+    expect(issue.summary).toBe('Link BDF and link FG are locked in place by the ground.');
     // Neither leaves exactly one freedom, because AB still hangs loose -- the
     // next issue, once the input can turn. The parts are named, not described.
     expect(issue.fixes).toEqual(['Turn off Grounded for joint G', 'Delete link FG']);
@@ -220,7 +220,7 @@ describe('what the drawer says about a mistake it has learned to name', () => {
   it('says a crank locked by a grounded link at a slot pin cannot turn, not that it is at a limit', () => {
     const [issue] = said(crankLockedAtASlotPinFixture()).issues;
     expect(issue.title).toBe("Input at joint H can't turn");
-    expect(issue.summary).toBe('link HI and link IJ are locked in place by the ground.');
+    expect(issue.summary).toBe('Link HI and link IJ are locked in place by the ground.');
     expect(issue.fixes).toEqual(['Turn off Grounded for joint J', 'Delete link IJ']);
   });
 
