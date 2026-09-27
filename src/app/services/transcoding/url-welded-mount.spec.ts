@@ -2,7 +2,7 @@ import '../../model/joint';
 import { Coord } from '../../model/coord';
 import { PrisJoint, RealJoint, RevJoint } from '../../model/joint';
 import { RealLink } from '../../model/link';
-import { sealedCylinderAt, sealedCylinders } from '../../model/cylinder';
+import { cylinderAtSeal, cylindersIn } from '../../model/cylinder';
 import { createMechanismHarness, wireGraph } from '../../../test-utils/mechanism-harness';
 import { encodeUrlOf } from '../../../test-utils/url-encoding';
 import { ActiveObjService } from '../active-obj.service';
@@ -44,8 +44,8 @@ function weldedMountDrawing() {
   // Asked of the slider itself. This used to hop to `connectedJoints[0]`,
   // which was the coincident pin a slider no longer has -- that hop now lands
   // on whichever link-mate happens to be first, and resolves nothing.
-  const sealed = sealedCylinderAt(slider)!;
-  const mount = sealed.rodFar as RealJoint;
+  const sealed = cylinderAtSeal(slider)!;
+  const mount = sealed.mountB as RealJoint;
   const tip = new RevJoint('W', mount.x + S, mount.y + S);
   const bracket = new RealLink(mount.id + tip.id, [mount, tip]);
   harness.service.joints.push(tip);
@@ -92,14 +92,14 @@ describe('a welded mount through the URL', () => {
 
     const target = reopen(h.service);
 
-    const cylinders = sealedCylinders(target.joints);
+    const cylinders = cylindersIn(target.joints);
     expect(cylinders).toHaveLength(1);
-    expect(cylinders[0].slider.isSealed).toBe(true);
+    expect(cylinders[0].seal.isSealed).toBe(true);
     // What the pin's weld used to record: the rod cannot turn against the slot.
-    expect(cylinders[0].slider.rotates).toBe(false);
+    expect(cylinders[0].seal.rotates).toBe(false);
     // The rod is a leaf of the compound now, and the resolver follows it there.
     expect(cylinders[0].rod.id).toBe(h.sealed.rod.id);
-    expect(cylinders[0].rodFar.id).toBe(h.mount.id);
+    expect(cylinders[0].mountB.id).toBe(h.mount.id);
   });
 
   it('writes the same bytes the second time round', () => {
@@ -134,7 +134,7 @@ describe('a welded mount through the URL', () => {
     // Two blocks on two distinct pins: the ram's own, sealed and floating, and
     // an external one on the barrel's mount.
     const h = weldedMountDrawing();
-    const far = h.service.joints.find((joint) => joint.id === h.sealed.barrelFar.id)!;
+    const far = h.service.joints.find((joint) => joint.id === h.sealed.mountA.id)!;
     h.active.updateSelectedObj(far);
     (h.service as unknown as { sliderTopology: () => void }).sliderTopology();
     h.service.finishStructuralEdit(true);
@@ -144,7 +144,7 @@ describe('a welded mount through the URL', () => {
     const blocks = target.joints.filter((joint): joint is PrisJoint => joint instanceof PrisJoint);
     expect(blocks, 'two blocks, on two pins').toHaveLength(2);
     expect(blocks.filter((block) => block.isSealed)).toHaveLength(1);
-    expect(sealedCylinders(target.joints)).toHaveLength(1);
+    expect(cylindersIn(target.joints)).toHaveLength(1);
   });
 
   it('survives a merge that renames one end of the ram’s own slot', () => {
@@ -152,17 +152,17 @@ describe('a welded mount through the URL', () => {
     // the barrel's mount replaces one of those names. Encoded by reference,
     // the payload would point at a joint that no longer exists.
     const h = weldedMountDrawing();
-    const loose = new RevJoint('Q', h.sealed.barrelFar.x - S, h.sealed.barrelFar.y);
-    const stub = new RevJoint('R', h.sealed.barrelFar.x - 2 * S, h.sealed.barrelFar.y + S);
+    const loose = new RevJoint('Q', h.sealed.mountA.x - S, h.sealed.mountA.y);
+    const stub = new RevJoint('R', h.sealed.mountA.x - 2 * S, h.sealed.mountA.y + S);
     h.service.joints.push(loose, stub);
     h.service.links.push(new RealLink('QR', [loose, stub]));
     wireGraph(h.service);
 
-    expect(h.service.mergeJoints(loose, h.sealed.barrelFar as RealJoint)).toBeUndefined();
+    expect(h.service.mergeJoints(loose, h.sealed.mountA as RealJoint)).toBeUndefined();
     h.service.finishStructuralEdit(true);
 
     const target = reopen(h.service);
-    expect(sealedCylinders(target.joints)).toHaveLength(1);
+    expect(cylindersIn(target.joints)).toHaveLength(1);
     const slider = target.joints.find(
       (joint): joint is PrisJoint => joint instanceof PrisJoint && joint.isSealed
     )!;

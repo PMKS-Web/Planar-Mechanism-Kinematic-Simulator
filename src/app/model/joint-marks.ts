@@ -21,33 +21,73 @@
  * how thick its own line is to sit flush against the rail.
  */
 
+/**
+ * R itself, as a share of `objectScale`.
+ *
+ * Every dimension below is a multiple of R, and R is a fixed fraction of the
+ * document's object scale — so this is the one conversion between the two, and
+ * the only reason a caller working in drawing units ever needs to know it.
+ */
+export const R_PER_SCALE = 0.15;
+
+/**
+ * Half the width of a bar, of a slider's block, and of a cylinder's rod.
+ *
+ * One number, because the three meet end to end all over a drawing: a rod runs
+ * out of a block and into a pin on an ordinary link, and a slider's block sits
+ * under the bar it rides. A step where two of them meet reads as a mistake
+ * rather than as a design, and a 9% step is exactly big enough to see and too
+ * small to look deliberate — which is what a bar at `objectScale / 4` (5/3 R)
+ * beside a rod at 1.525 R looked like.
+ *
+ * The rod did not move. The bar came down to it, because the rod's half-width
+ * is the block's, the block is the one piece here whose proportions the mark
+ * system actually specifies, and a bar is the piece with no number of its own.
+ */
+export const BAR_HALF_R = 1.525;
+
+/**
+ * The same half-width as a share of `objectScale`, which is the unit a link
+ * outline is built in. Defined from the number above rather than beside it, so
+ * the two cannot drift: 1.525 R is 0.22875 objectScale and nothing may say one
+ * without the other.
+ */
+export const BAR_HALF_SCALE = BAR_HALF_R * R_PER_SCALE;
+
+/** Half a link bar, in the drawing's own units at the scale in force. */
+export function barHalfWidth(objectScale: number): number {
+  return BAR_HALF_SCALE * objectScale;
+}
+
 /** Every dimension of the mark system, in multiples of R. */
 export const MARK = {
   /** Block: 7.68R along the slot by 3.05R across, corner 0.34R. */
   blockAlongHalf: 3.84,
-  blockAcrossHalf: 1.525,
+  blockAcrossHalf: BAR_HALF_R,
   blockCorner: 0.34,
 
   /** Channel: a 2.3R window subtracted from the carrier, outlined in its color. */
   channelHalfWidth: 1.15,
 
   /**
-   * Half a link bar, which is `objectScale / 4` and therefore exactly 5/3 R.
+   * Half a link bar, said in R for the marks that have to sit on one.
    *
-   * The design package rounded this to 1.84 off a mockup, and 1.84 is 10% wider
-   * than the bars the app actually draws. Everything derived from it inherited
-   * that error: the weld plate, which redraws a rider, stood proud of the rider
-   * all the way round as a pale halo, and it is the one number here that is not
-   * free to be chosen — it belongs to the link drawing, not to this system.
+   * It was 5/3 — `objectScale / 4`, the width the link drawing happened to be
+   * built at — and before that the design package rounded it to 1.84 off a
+   * mockup, which was 10% wider than the bars the app actually draws and showed
+   * as a pale halo round every weld plate. It is `BAR_HALF_R` now: a bar, a
+   * block and a rod are one half-width (decision S23), and this is that number
+   * rather than a second opinion about it.
    */
-  barHalf: 5 / 3,
+  barHalf: BAR_HALF_R,
 
   /**
    * Fillet radius where the weld plate fuses a rider to its block. The same
    * radius `buildCompoundPath` softens a welded compound link with, because it
-   * is the same join being drawn.
+   * is the same join being drawn — and the same number as the bar's half-width,
+   * because the join being drawn is the corner between two bars.
    */
-  plateFillet: 5 / 3,
+  plateFillet: BAR_HALF_R,
 
   /**
    * Grounded rails and their ground ticks.
@@ -87,7 +127,13 @@ export const MARK = {
    */
   slotInset: 2.8,
 
-  /** Driven overlay. Always white, which the black block underneath guarantees. */
+  /**
+   * Driven overlay. Always white, which the black block underneath guarantees.
+   *
+   * `arrowTail` is where each arrow leaves the mark, and on a slide that is
+   * the edge of the bar it leaves: equal to `slideAlongHalf` below, which
+   * `joint-marks.spec.ts` pins so the pair cannot drift apart silently.
+   */
   arrowTail: 1.4,
   arrowHeadBase: 2.6,
   arrowTip: 3.0,
@@ -95,6 +141,26 @@ export const MARK = {
   arrowHeadHalf: 0.46,
   /** How much larger the arrow the block sets off along is drawn. */
   arrowEmphasis: 1.25,
+
+  /**
+   * The arrow's shaft, in R like the rest of the mark.
+   *
+   * It was the one dimension of a driven mark measured in *screen* pixels --
+   * 2.5 of them, 4.5 on the emphasised arrow, divided by the zoom in the
+   * template. So the shaft alone stayed put while the block, the head and the
+   * arrowhead all grew and shrank with the zoom: zoomed in the shafts were
+   * hairlines under big heads, and zoomed out they were fat bars swallowing
+   * them. The one part of the mark whose proportions depended on how close the
+   * reader was standing.
+   *
+   * The numbers are those two widths measured at the zoom the marks are sized
+   * for, which is the app's own pairing rather than a taste: `updateObjectScale`
+   * sets the object scale to `MARK_TARGET_PX` (60) pixels per scale, and R is
+   * 0.15 of a scale, so one R is nine pixels there. 2.5/9 and 4.5/9, and the
+   * emphasis ratio between the two arrows is what it always was.
+   */
+  arrowShaft: 2.5 / 9,
+  arrowShaftEmphasised: 4.5 / 9,
 
   /** A driven floating pin has no block, so the overlay brings its own backing. */
   pinBackingHalf: 2.2,
@@ -109,6 +175,39 @@ export const MARK = {
   /** The welded marker, replacing the circle at 1.47R across. */
   plusArm: 0.22,
   plusExtent: 0.735,
+
+  /**
+   * The slide's marker: a 2.8R by 1.4R bar lying along the slot, corner 0.25R.
+   *
+   * A slider whose riders cannot turn used to wear the weld cross, which is
+   * true and says nothing — a `+` on a square reads as "fused here" and leaves
+   * the reader to find the slot before they know which way the thing goes. The
+   * bar is the same fact with a direction in it: its shape says the riders are
+   * rigid with the block, and its *orientation* says what they are rigid
+   * against. A pin-in-slot slider keeps its circle, so the two sliders can be
+   * told apart at a glance rather than by tracing what is attached to them.
+   */
+  slideAlongHalf: 1.4,
+  slideAcrossHalf: 0.7,
+  slideCorner: 0.25,
+
+  /**
+   * The most of the host block's half-length the mark is allowed to take.
+   *
+   * The mark sits on a black block, and on the two it sits on that block is
+   * not always the same size: an ordinary slider's is a full 3.84R half, but a
+   * cylinder's piston head shrinks with the barrel, down to a 1.525R square
+   * (`CYLINDER.headAlongHalfMin`). Drawn at full size on the shortest head the
+   * bar would leave 0.125R of black at each end — a margin thinner than the
+   * mark's own corner radius, which reads as a cream block with a dark rim
+   * rather than as a mark on a block.
+   *
+   * So the whole mark scales, proportions and all, until it fits this share of
+   * the block it is on. At 0.7 the shortest head keeps 0.46R of black at each
+   * end, and a full-size block is untouched: 0.7 × 3.84R is well over the
+   * 1.4R the mark wants, so the clamp never binds where there is room.
+   */
+  slideHostShare: 0.7,
 } as const;
 
 /**
@@ -171,8 +270,31 @@ export const CYLINDER = {
    * It was 1.84 — the same mockup rounding `barHalf` documents — and the extra
    * 0.315R showed as the rod standing proud of the block above and below where
    * the two meet.
+   *
+   * Which makes it an ordinary bar's half-width too (`BAR_HALF_R`), and that is
+   * the point rather than a coincidence: a rod ends at a pin on an ordinary
+   * link as often as it ends inside its own block, and the drawing should not
+   * step at either meeting.
    */
   rodHalf: MARK.blockAcrossHalf,
+  /**
+   * How much a square cut is eased for a silhouette that is going into a union.
+   *
+   * A Boolean union fillets every corner it finds, and that is exactly what
+   * makes a welded mount read as one body (decision S16) — but it cannot tell
+   * the elbow, where two parts meet, from the barrel's own mouth, where nothing
+   * does. Filleted at the weld's radius the mouth stopped being a cut plane and
+   * came out a capsule, and the rod's square back lifted off the head block it
+   * is flush with, letting the black through at both corners.
+   *
+   * `buildCompoundPath` leaves a corner alone when it turns less than fifteen
+   * degrees, which is why the black block's own rounded corners survive being
+   * welded into a plate. A curve is flattened in steps well under that, so a
+   * cut eased by *any* amount comes back out of the union exactly as drawn.
+   * This is the smallest radius that does it and still reads as no radius at
+   * all: a twentieth of R is a fraction of a pixel at any zoom.
+   */
+  cutEase: 0.05,
   // The skin carries no arrow dimensions of its own any more. It had a larger
   // set, sized for the full 3.84 R block it used to draw; the head is shorter
   // than that now, and the honest answer is the block's own arrows scaled by
@@ -196,12 +318,24 @@ export const CYLINDER = {
  * the *exposed* rod changes, which is what a ram actually does — and how much
  * rod is still inside is the stroke, legible without any annotation.
  */
-export function barrelPath(r: number, anchor: number, mouth: number): string {
+export function barrelPath(r: number, anchor: number, mouth: number, cutEase = 0): string {
   const h = CYLINDER.barrelHalf * r;
+  if (!(cutEase > 0)) {
+    return (
+      `M ${mouth} ${-h} L ${anchor} ${-h} ` +
+      `A ${h} ${h} 0 0 0 ${anchor} ${h} ` +
+      `L ${mouth} ${h} Z`
+    );
+  }
+  // Quadratics rather than arcs, for the reason `motorBodyPath` gives: the same
+  // curve at any size, with none of the sweep-flag arithmetic a mirrored
+  // coordinate system makes so easy to get backwards.
+  const e = Math.min(cutEase, Math.abs(mouth - anchor) / 2, h);
   return (
-    `M ${mouth} ${-h} L ${anchor} ${-h} ` +
+    `M ${mouth - e} ${-h} L ${anchor} ${-h} ` +
     `A ${h} ${h} 0 0 0 ${anchor} ${h} ` +
-    `L ${mouth} ${h} Z`
+    `L ${mouth - e} ${h} Q ${mouth} ${h} ${mouth} ${h - e} ` +
+    `L ${mouth} ${-h + e} Q ${mouth} ${-h} ${mouth - e} ${-h} Z`
   );
 }
 
@@ -213,11 +347,23 @@ export function barrelPath(r: number, anchor: number, mouth: number): string {
  * still inside the bore reads as a darker band. One cue, no callout, and it is
  * the cue that carries the whole structure.
  */
-export function rodBodyPath(r: number, reach: number, headHalf: number): string {
+export function rodBodyPath(r: number, reach: number, headHalf: number, cutEase = 0): string {
   const h = CYLINDER.rodHalf * r;
-  const inner = -headHalf * Math.sign(reach || 1);
+  const out = Math.sign(reach || 1);
+  const inner = -headHalf * out;
   const sweep = reach > 0 ? 1 : 0;
-  return `M ${inner} ${-h} L ${reach} ${-h} A ${h} ${h} 0 0 ${sweep} ${reach} ${h} L ${inner} ${h} Z`;
+  if (!(cutEase > 0)) {
+    return `M ${inner} ${-h} L ${reach} ${-h} A ${h} ${h} 0 0 ${sweep} ${reach} ${h} L ${inner} ${h} Z`;
+  }
+  // The cut plane eased, so a union that fuses this rod into a welded body
+  // does not fillet it off the head block it is flush with (`CYLINDER.cutEase`).
+  const e = Math.min(cutEase, Math.abs(reach - inner) / 2, h);
+  const back = inner + e * out;
+  return (
+    `M ${back} ${-h} L ${reach} ${-h} A ${h} ${h} 0 0 ${sweep} ${reach} ${h} ` +
+    `L ${back} ${h} Q ${inner} ${h} ${inner} ${h - e} ` +
+    `L ${inner} ${-h + e} Q ${inner} ${-h} ${back} ${-h} Z`
+  );
 }
 
 // The skin used to carry two stop notches on the barrel's edges, marking where
@@ -231,6 +377,36 @@ export function rodBodyPath(r: number, reach: number, headHalf: number): string 
  * the rod. The barrel's flat cut ends underneath it, and a rounded corner there
  * drew a sliver of daylight between two parts that are supposed to be flush.
  */
+/**
+ * Where the seal's letter goes, as an offset from the seal in drawing units.
+ *
+ * Every other joint wears its letter up and a little to the left, at half an
+ * objectScale — a rule that works because a joint has nothing of its own above
+ * it. A seal sits in the middle of its own part, so "up" is along the barrel as
+ * often as it is clear of it, and on a cylinder drawn upright the letter came
+ * out painted on the metal.
+ *
+ * So it goes out along the part's own normal instead, clear of the barrel's
+ * widest edge, on whichever of the two sides reads as up on the screen. `axis`
+ * is the cylinder's own direction and need not be a unit vector; a part with no
+ * axis at all takes plain up, which is as good an answer as any.
+ */
+export function cylinderLabelOffset(
+  axis: { x: number; y: number },
+  r: number
+): { x: number; y: number } {
+  const span = Math.hypot(axis.x, axis.y);
+  const normal = span < 1e-9 ? { x: 0, y: 1 } : { x: -axis.y / span, y: axis.x / span };
+  // Model +y is up on screen, and x breaks a vertical part's tie so the answer
+  // does not flip between two cylinders drawn the same way round.
+  const up = normal.y > 1e-9 || (Math.abs(normal.y) <= 1e-9 && normal.x > 0) ? 1 : -1;
+  const clear = (CYLINDER.barrelHalf + LABEL_CLEAR_R) * r;
+  return { x: up * normal.x * clear, y: up * normal.y * clear };
+}
+
+/** How far past the barrel's edge that letter stands, in R. */
+const LABEL_CLEAR_R = 1.5;
+
 export function cylinderBlockPath(r: number, headHalf: number): string {
   const a = headHalf;
   const c = MARK.blockAcrossHalf * r;
@@ -293,11 +469,7 @@ export function cylinderContourPath(
  * arrow is the obvious move and it inverts the emphasis: clamped to the head it
  * came out *smaller* than the arrow it is supposed to be shouting over.
  */
-export function cylinderArrowPaths(
-  r: number,
-  headHalf: number,
-  leading?: 1 | -1
-): { line: Segment; head: string; emphasised: boolean }[] {
+export function cylinderArrowPaths(r: number, headHalf: number, leading?: 1 | -1): DriveArrow[] {
   const fit = headHalf / (MARK.blockAlongHalf * r);
   return [1, -1].map((side) => {
     const emphasised = side === leading;
@@ -316,9 +488,27 @@ export function cylinderArrowPaths(
         MARK.arrowHeadLength * r * grow,
         MARK.arrowHeadHalf * r * grow
       ),
+      // By `fit` and not by `grow`: the pair is scaled together on a shrunken
+      // head, and the emphasis between the two arrows is already in the choice
+      // of constant.
+      width: arrowShaftWidth(r * fit, emphasised),
       emphasised,
     };
   });
+}
+
+/** One of a driven mark's two arrows, in the mark's own frame. */
+export interface DriveArrow {
+  line: Segment;
+  head: string;
+  /** The shaft's stroke, in drawing units — never in screen pixels (§4.2b). */
+  width: number;
+  emphasised: boolean;
+}
+
+/** The shaft of one arrow, in the drawing's own units. */
+function arrowShaftWidth(r: number, emphasised: boolean): number {
+  return (emphasised ? MARK.arrowShaftEmphasised : MARK.arrowShaft) * r;
 }
 
 /** A line segment, in the frame the caller asked for. */
@@ -405,6 +595,37 @@ export function motorBodyPath(r: number): string {
   // and that union fillets the corner where the two meet. A wedge added here as
   // well is a second fillet on the same corner, which draws as a blister.
   return roundedRect(-h, -h, 2 * h, 2 * h, MARK.blockCorner * 2 * r);
+}
+
+/**
+ * How much of its drawn size the slide's mark keeps on the block it sits on.
+ *
+ * 1 wherever there is room, which is every ordinary slider and every cylinder
+ * long enough to carry a full piston head. `hostAlongHalf` is that block's own
+ * half-length along the slot; pass nothing where the caller does not know it
+ * and the mark is drawn at full size.
+ */
+export function slideMarkFit(r: number, hostAlongHalf?: number): number {
+  if (hostAlongHalf === undefined) return 1;
+  return Math.min(1, (MARK.slideHostShare * hostAlongHalf) / (MARK.slideAlongHalf * r));
+}
+
+/**
+ * The slide's marker: the cream bar a slider whose riders cannot turn wears in
+ * place of a pin's circle, drawn along +x so the caller's slot frame aims it.
+ *
+ * `inset` pulls every edge in by that much, which is how the selection ring is
+ * stroked *inside* the mark rather than around it — the same thing a pin's
+ * ring does by shrinking its radius. A weld cross has no inside edge to ring
+ * and wears the accent as an outline instead; this mark has one, so it does
+ * not.
+ */
+export function slideMarkPath(r: number, hostAlongHalf?: number, inset = 0): string {
+  const fit = slideMarkFit(r, hostAlongHalf);
+  const a = Math.max(MARK.slideAlongHalf * r * fit - inset, 0);
+  const c = Math.max(MARK.slideAcrossHalf * r * fit - inset, 0);
+  const k = Math.max(MARK.slideCorner * r * fit - inset, 0);
+  return roundedRect(-a, -c, 2 * a, 2 * c, k);
 }
 
 /** The welded marker: a plus, 1.47R across, in place of the free circle. */
@@ -684,10 +905,7 @@ function sliceSegment(segment: Segment, from: number, to: number): Segment {
  * — they cannot say which way, which is the one thing a driven mark exists to
  * tell you. Pass nothing where the direction is not known and both are equal.
  */
-export function straightArrowPaths(
-  r: number,
-  leading?: 1 | -1
-): { line: Segment; head: string; emphasised: boolean }[] {
+export function straightArrowPaths(r: number, leading?: 1 | -1): DriveArrow[] {
   return [1, -1].map((side) => {
     const emphasised = side === leading;
     // Bounded by the block: at the emphasis factor the tip still lands inside
@@ -707,6 +925,7 @@ export function straightArrowPaths(
         MARK.arrowHeadLength * r * grow,
         MARK.arrowHeadHalf * r * grow
       ),
+      width: arrowShaftWidth(r, emphasised),
       emphasised,
     };
   });

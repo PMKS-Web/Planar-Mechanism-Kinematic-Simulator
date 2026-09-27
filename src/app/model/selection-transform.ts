@@ -22,7 +22,7 @@ export interface SelectionAffineTransform {
    *
    * A pair is what the edge grips ask for -- pulling the right edge should
    * widen the selection without making it taller. It stays an affine map either
-   * way, so collinear things stay collinear: a cylinder's three joints are
+   * way, so collinear things stay collinear: a cylinder's four joints are
    * still on one line after the box has been squashed, which is the property
    * that makes this safe to offer at all.
    */

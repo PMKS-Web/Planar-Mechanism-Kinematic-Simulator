@@ -362,20 +362,70 @@ export class PrisJoint extends RealJoint {
   }
 
   /**
+   * The body the slot is actually cut into: the smallest part of the carrier
+   * that still holds both of the slot's ends.
+   *
+   * A carrier is a *root*, and a root may be a compound — so the bar the reader
+   * cut the slot into can be a leaf two levels down. Walking to it is what lets
+   * the question below be asked of the bar rather than of everything welded to
+   * it. With nothing welded, the walk stops on the carrier and the answer is
+   * the carrier, which is how every slot that is not a cylinder's seal is
+   * judged, exactly as before.
+   *
+   * Structural rather than `instanceof RealLink`: a runtime import of `link`
+   * here closes the joint → link → joint module cycle (see the file header).
+   */
+  private get slotHost(): Link {
+    let host = this._carrier!;
+    const a = this._slotJointA!.id;
+    const b = this._slotJointB!.id;
+    const holdsBothEnds = (link: Link) =>
+      link.joints.some((joint) => joint.id === a) && link.joints.some((joint) => joint.id === b);
+    // `seen` because a rebuild caught mid-edit can leave a compound naming
+    // itself among its own leaves, and a predicate that never returns is a
+    // worse answer than any answer.
+    const seen = new Set<Link>([host]);
+    for (;;) {
+      const inside = ((host as { subset?: Link[] }).subset ?? []).find(
+        (leaf) => !seen.has(leaf) && holdsBothEnds(leaf)
+      );
+      if (!inside) return host;
+      seen.add(inside);
+      host = inside;
+    }
+  }
+
+  /**
    * Whether a floating slot still has a defined direction (§2.10 items 4, 6).
    * Two coincident slot joints leave the line undefined — reachable by a
    * Phase 1.2 snap that stops just short of merging.
+   *
+   * A slot cut into a body that holds the slider itself has no meaning, with
+   * one exception, and the exception is a cylinder. **A seal's slot is cut in
+   * the barrel, and a barrel never holds the seal** — but weld the cylinder's
+   * two end joints into one body and the rod becomes another leaf of the body
+   * the barrel is in, so the *root* holds the seal while the bore it names is
+   * as real as it ever was. Asked of the root, this answered "malformed", and
+   * `reconcileSlots` replied by detaching a bore that cannot be invented back:
+   * the part stopped being a cylinder, the URL it then wrote was one the decoder
+   * refuses, and a reload, a share or an undo opened an empty grid. Asked of
+   * the barrel, the weld is an ordinary rigid statement — the part can never
+   * extend, which `cylinder.both-ends-fused` says in words — and unwelding
+   * gives back exactly the two bodies that were there. An ordinary slider is
+   * judged by its carrier as it always was: its rider welded into its carrier
+   * really does leave nothing to slide.
    */
   get isSlotWellFormed(): boolean {
     if (!this._carrier || !this._slotJointA || !this._slotJointB) {
       return false;
     }
     const members = this._carrier.joints;
+    const host = this.isSealed ? this.slotHost : this._carrier;
     return (
       this._slotJointA.id !== this._slotJointB.id &&
       members.some((joint) => joint.id === this._slotJointA!.id) &&
       members.some((joint) => joint.id === this._slotJointB!.id) &&
-      !members.some((joint) => joint.id === this.id) &&
+      !host.joints.some((joint) => joint.id === this.id) &&
       Math.hypot(this._slotJointB.x - this._slotJointA.x, this._slotJointB.y - this._slotJointA.y) >
         1e-9
     );

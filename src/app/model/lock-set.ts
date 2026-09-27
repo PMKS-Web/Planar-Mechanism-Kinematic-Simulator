@@ -1,7 +1,7 @@
 import { Joint, RealJoint } from './joint';
 import { Link } from './link';
 import { Force } from './force';
-import { Cylinder, cylinderJoints, sealedCylinderStructures } from './cylinder';
+import { Cylinder, cylinderJoints, cylindersIn } from './cylinder';
 
 /**
  * Which joints the current Lock marks hold still.
@@ -81,9 +81,9 @@ function closeOverConsequences(
 ): Set<string> {
   const rules: Implication[] = [];
 
-  (sealedParts ?? sealedCylinderStructures(joints)).forEach((sealed) => {
+  (sealedParts ?? cylindersIn(joints)).forEach((sealed) => {
     rules.push({
-      ifAnyOf: [sealed.slider.id, sealed.barrelNear.id],
+      ifAnyOf: [sealed.seal.id, sealed.inner.id],
       freeze: cylinderJoints(sealed).map((joint) => joint.id),
     });
   });

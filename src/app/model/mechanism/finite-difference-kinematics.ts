@@ -1,5 +1,5 @@
 import { Joint } from '../joint';
-import { Link, RealLink } from '../link';
+import { bodiesUnder, Link, RealLink } from '../link';
 
 /**
  * Velocities and accelerations read off the solved positions, for the joints
@@ -59,12 +59,14 @@ export function fillRatesByDifference(mechanism: Sampled, index: number, rates: 
     }
   }
 
-  for (const link of mechanism.links[index] ?? []) {
-    if (!(link instanceof RealLink)) continue;
+  // The leaves as well as the roots: a cylinder's barrel and rod stay two
+  // bodies a reader can select after a weld has folded them into a compound,
+  // and the rate solver walks roots -- so those two panels read every number as
+  // a dash. Each leaf is copied into every sample (`cloneLinkSubset`), so the
+  // difference has the same three poses it has for any other bar.
+  for (const link of bodiesUnder(mechanism.links[index])) {
     const bodyAt = (i: number): RealLink | undefined =>
-      mechanism.links[i]?.find(
-        (one): one is RealLink => one.id === link.id && one instanceof RealLink
-      );
+      bodiesUnder(mechanism.links[i]).find((one) => one.id === link.id);
     const comX = (i: number) => bodyAt(i)?.CoM.x;
     const comY = (i: number) => bodyAt(i)?.CoM.y;
     if (!finite(rates.linkCoM.get(link.id))) rates.linkCoM.set(link.id, [link.CoM.x, link.CoM.y]);

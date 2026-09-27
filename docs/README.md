@@ -36,7 +36,7 @@ In this order, the first time:
 
 ## Design records
 
-- [joint-type-and-cylinder-plan.md](joint-type-and-cylinder-plan.md) — plan of record: joint type as one four-way choice, a slider as one joint, a cylinder as a sealed slide; retires the bodies-and-joints migration. Stages R and 0 (the choice itself) and 1 (a slider as one joint) are built. *Partly built*
+- [joint-type-and-cylinder-plan.md](joint-type-and-cylinder-plan.md) — plan of record: joint type as one four-way choice, a slider as one joint, a cylinder as a sealed slide; retires the bodies-and-joints migration. Stages R, 0, 1 and 2 are built; Split Joint (D7) is deferred and unscoped. *Built*
 - [joint-types-plan.md](joint-types-plan.md) — plan of record for floating slots, slides, driven prismatic joints and cylinders, Phases 0–7a. *Partly built*
 - [floating-slot-kinematics-design.md](floating-slot-kinematics-design.md) — velocity and acceleration through a floating slot (Phase 2, task 2.9). *Built*
 - [phase-3-slide-spec.md](phase-3-slide-spec.md) — implementation spec for the Slide, the welded slider assembly. *Built*

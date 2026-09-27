@@ -3,7 +3,7 @@ import {
   cylinderJoints,
   cylinderOfJointIn,
   cylinderOfLinkIn,
-  sealedCylinderStructures,
+  cylindersIn,
 } from './cylinder';
 import { Force } from './force';
 import { Joint, PrisJoint, RealJoint } from './joint';
@@ -44,7 +44,7 @@ export function canonicalSelectionClosure(
   joints: readonly Joint[],
   links: readonly Link[]
 ): CanonicalSelectionClosure {
-  const cylinders = sealedCylinderStructures([...joints]);
+  const cylinders = cylindersIn([...joints]);
   const closureJoints: Joint[] = [];
   const closureLinks: Link[] = [];
   const canonicalParts: SelectedPart[] = [];

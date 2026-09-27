@@ -81,8 +81,8 @@
       [disabled]="deleteDisabled()"
       mat-stroked-button
       color="warn"
-      [attr.aria-label]="deleteLabel() ?? 'Delete'"
-      [matTooltip]="deleteLabel() ?? 'Delete'"
+      [attr.aria-label]="deleteHint() ?? deleteLabel() ?? 'Delete'"
+      [matTooltip]="deleteHint() ?? deleteLabel() ?? 'Delete'"
       matTooltipShowDelay="600"
       (click)="deleteAction()()"
     >

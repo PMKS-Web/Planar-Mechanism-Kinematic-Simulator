@@ -127,7 +127,8 @@ and turning it on swaps the four glyphs for the set that stands on the frame.
 | **Nowhere to slide.** | the bold lead of the one state the choice says in words: a block with no slot and no ground. `dangling` is the code's word for it, never the reader's |
 | **Starts at** | where a cylinder's rod begins its cycle, as a share of the stroke |
 | **Barrel**, **Rod** | a cylinder's two members, once each has a panel of its own (Stage 2 of `joint-type-and-cylinder-plan.md`) |
-| **inside a cylinder** | the short refusal on the joint a cylinder slides on (Stage 2) |
+| **inside a cylinder** | the short refusal on either joint a cylinder places for itself — the square it slides on, and the barrel's buried end (Stage 2) |
+| **ground an end joint instead** | the refusal on Grounded at that square: a cylinder is bolted to the world at its ends, never in the middle |
 | **Split Joint** | taking apart two joints merged by dropping one on the other — not built yet |
 
 The Edit panel's toggles already worked this way; the right-click menu followed
@@ -200,21 +201,75 @@ Spell it **center of mass** in prose and **CoM** in a label. Not `COM`, not
 | **cylinder** | the whole part | ~~ram~~ |
 | **barrel** | the fat outer body it slides in | ~~cylinder~~ (that is the whole part here) |
 | **rod** | the thin bar that slides out | — |
-| **joint** | either end, where it attaches | ~~mount~~ |
+| **joint** | either end, where it attaches — and the square between them | ~~mount~~, ~~seal~~ |
 | **stroke** / **travel** | how far the rod moves | — |
+| **holds its length** | what a cylinder nothing drives does, when the machine does not move it either | ~~locked~~ (a Lock is about position), ~~frozen~~, ~~rigid~~ |
+| **Holding Force** | the axial force such a cylinder has to hold, on the slide's own panel | ~~reaction~~, ~~strut force~~ |
 | **closed** / **open** | the two ends of the travel | ~~retracted~~, ~~extended~~ |
 | **closing** / **opening** | which way it is moving right now | ~~retracting~~, ~~extending~~ |
 
-The black block on the rod has **no user-facing name**. Describe what it does —
-"where the rod begins its cycle" — rather than calling it a piston. If it ever
-needs discussing on its own it should get a label on the drawing first, and then
-the word is earned.
+**Those two words are a cylinder's and nobody else's.** A bare block on a slot
+has nothing to be open or shut, so its two directions are **forward** and
+**backward** — along the slot, whichever way that happens to point. The
+maintainer said it plainly: *"for a driven slider, closing and opening doesn't
+seem right since there is no concept of open or close. Maybe backwards, and
+forwards?"* Where there is room to say what forward is measured along, say it:
+
+| Use | For | Not |
+| --- | --- | --- |
+| **Forward** / **Backward** | which way a driven **slider** is going | ~~opening~~, ~~closing~~, ~~clockwise~~ |
+| **Forward along slot** / **Backward along slot** | the same, on a control with room to name the slot | ~~forward~~ alone, where the slot is not stated nearby |
+
+One table decides all three pairs — `driveDirectionWord` in
+`model/drive-direction.ts` — because the transport, the Edit panel's direction
+button, the readiness fact and the field help each used to spell their own and
+two of the four disagreed. A drive is a **pin**, a **cylinder** or a **slider**,
+and nothing else picks the words.
+
+**The glyph beside the word comes from the same table** (`driveDirectionIcon`):
+a turn is drawn as a turn and a translation as a straight arrow. The transport
+drew `rotate_right` for every drive, so a cylinder read *Opening* beside an icon
+of something spinning — and on a phone, where the word is hidden, the icon was
+the only thing said. Both are read from one pair of facts, so neither can drift
+from the other again, and the button's label carries the word for a reader who
+cannot see either.
+
+The black block on the rod is **a joint, and is called one**. It is the sliding
+joint the rod hangs on: it wears a letter, it can be selected, dragged and given
+an input, and its panel is headed `Edit Joint C` like any other (Stage 2c,
+decision D9). What it must not be called is a piston, a head or a seal —
+describe what it does, "where the rod begins its cycle", if it needs describing
+at all.
 
 **`mount` is a code word, not a user word.** `barrelFar`, `rodFar`,
 `dragCylinderMount` keep it, because in code it usefully separates the two
-joints a user can reach from the three interior ones that have no hitbox. A user
-never sees those three, so from their side a cylinder has exactly two joints and
-"joint" is unambiguous. Same treatment as `playback` and `actuator`.
+joints at the ends from the ones the part places for itself. A user never sees
+the barrel's buried inner end, and calls all three of the rest "joint", so
+"joint" is unambiguous from their side. Same treatment as `playback` and
+`actuator`.
+
+**The barrel's buried inner end is never named, anywhere a reader reads.** Not
+on the canvas, not in a panel, not in a menu, not in a notification, not in an
+`aria-label`, and **not in a file the app writes** — no CSV column, no JSON
+field, no DXF layer name, no report. A link's id is the sorted ids of its
+joints, so the name to avoid is not only `C1` but every id built on one: `CC1`
+for the barrel, `CC1F` for a bracket welded to its mount. `visibleBodyName` in
+`model/body-label.ts` is the one answer, reached through
+`MechanismService.visibleBodyName` / `bodyLabel` on screen and through
+`services/export/export-names.ts` in a file. The **one exception** is the
+developer drawer (right-panel tab 4), which production never reaches and which
+exists to show the model as the model is. `e2e/hidden-joint-audit.mjs` is what
+keeps the rest honest. This used to say the ids were fine in an export because
+the export was keyed on them; the maintainer overruled it on September 21,
+2026 — "a user should not see it under any circumstance" — and a key that has
+to stay unique now says what kind of body it is (`AD welded`) rather than
+falling back to the id.
+
+**Barrel and Rod are the names in every mode, not just Edit.** The two members
+are selected apart and hold different numbers, so `Kinematics for Barrel AC` and
+`Forces for Rod CB` read exactly as `Edit Barrel AC` and `Edit Rod CB` do, and
+the cylinder's own name — `Cylinder AD`, by its two end joints — is for the
+whole part: the export catalog's row for it, and a sentence about the part.
 
 **`ram` survives in code comments** — 113 of them — and was left there
 deliberately. This guide governs what the app *says*; rewriting a hundred

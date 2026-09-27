@@ -430,33 +430,56 @@ record(
   (await drawer().locator('.pickRow.onGrid').count()) === 0
 );
 
-// --- a slot is not a part, because a reader cannot point at one -------------
+// --- every joint the canvas draws is a part, and the one it hides is not ----
+//
+// The yoke is where "every drawn joint is offered" is asked, because it is all
+// sliders and a slider used to be the awkward case: a slot with a zero-sized
+// marker, a block, and a coincident pin. Stage 1 of
+// `docs/joint-type-and-cylinder-plan.md` made it one joint with a marker of
+// its own, so the yoke now draws every joint it has and hides none -- which
+// left the other half of this check with no subject and failing for want of
+// one.
 await page.goto(`${BASE}/?${payloads['Scotch_Yoke']}`, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
 await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
 await page.waitForTimeout(700);
 await openDrawer();
 const yokeParts = await drawer().locator('.pickRow .rowName').allInnerTexts();
-const invisible = await page.evaluate(() =>
-  [...document.querySelectorAll('[id^="joint_"]')]
-    .filter((marker) => marker.getBoundingClientRect().width === 0)
-    .map((marker) => 'Joint ' + marker.id.replace('joint_', ''))
-);
+const drawnJoints = () =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('[id^="joint_"]')]
+      .filter((marker) => marker.getBoundingClientRect().width > 0)
+      .map((marker) => 'Joint ' + marker.id.replace('joint_', ''))
+  );
 record(
-  'a joint the canvas draws nothing for is not offered as a part',
-  invisible.length > 0 && invisible.every((name) => !yokeParts.includes(name)),
-  { invisible, yokeParts }
-);
-record(
-  'and every joint it does draw is',
-  (
-    await page.evaluate(() =>
-      [...document.querySelectorAll('[id^="joint_"]')]
-        .filter((marker) => marker.getBoundingClientRect().width > 0)
-        .map((marker) => 'Joint ' + marker.id.replace('joint_', ''))
-    )
-  ).every((name) => yokeParts.includes(name)),
+  'every joint the canvas draws is offered as a part',
+  (await drawnJoints()).every((name) => yokeParts.includes(name)),
   yokeParts
+);
+
+// The hidden joint is a cylinder's buried barrel end now, and it is the only
+// one there is (decision S11). Nothing draws a marker for it at all, so it is
+// asked for by the id the record gives rather than by a zero-width marker.
+await page.goto(`${BASE}/?${payloads['Cylinder_Boom']}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await page.locator('.tabButton', { hasText: 'Kinematic' }).click();
+await page.waitForTimeout(700);
+await openDrawer();
+const boomParts = await drawer().locator('.pickRow .rowName').allInnerTexts();
+const hidden = await page.evaluate(() => {
+  const m = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+  const one = m.sealedStructures()[0];
+  return { id: one.inner.id, marker: !!document.querySelector(`#joint_${one.inner.id}`) };
+});
+record(
+  'the one joint the canvas draws nothing for is not offered as a part',
+  !hidden.marker && !boomParts.includes(`Joint ${hidden.id}`),
+  { hidden, boomParts }
+);
+record(
+  'and every joint it does draw there is offered',
+  (await drawnJoints()).every((name) => boomParts.includes(name)),
+  boomParts
 );
 
 // --- the forces question, on a drawing that has forces ----------------------

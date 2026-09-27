@@ -1121,17 +1121,32 @@ export class SvgGridService {
   private adoptScaleForDrawing(drawn: Rect): void {
     const suits = this.scaleSuitedTo(drawn);
     if (suits === undefined) return;
-    SettingsService._objectScale.next(suits);
-    // A link's outline is computed once and cached, and its width is a fraction
-    // of this scale, so a route that changes it has to say so.
-    this.injector.get(MechanismService).applyObjectScaleChange();
+    // Held for the whole of it, because the size reaches the rebuild twice
+    // when the Settings panel is open and neither pass can tell whose change
+    // it is (decision S29). A drawing that was whole when it was saved is
+    // whole when it is opened at its saved size -- the question only arises
+    // because the app is about to change that size, and a cylinder repaired
+    // to follow it belongs to the opening rather than to the reader.
+    SettingsService.objectScaleAdopting = true;
+    try {
+      SettingsService._objectScale.next(suits);
+      // A link's outline is computed once and cached, and its width is a
+      // fraction of this scale, so a route that changes it has to say so --
+      // and a cylinder's head has a travel measured in the same scale, so the
+      // same call puts any part this left in two pieces back together.
+      this.injector.get(MechanismService).applyObjectScaleChange();
+    } finally {
+      SettingsService.objectScaleAdopting = false;
+    }
     // And the state the drawing arrived in has to say so too. This runs on the
     // frame after the load, by which time the arrival is already recorded --
     // with the default mark size, because that is what was set when it was
     // written. Undo then restored a drawing whose joints were two and a half
     // times too big. The entry is revised rather than added to: sizing the
     // marks to the drawing is part of how it opened, not an edit the reader
-    // made and might want back.
+    // made and might want back -- and the same is true of the barrel a
+    // cylinder needed to follow it, which is why the repair runs above this
+    // line rather than after it.
     this.injector.get(SaveHistoryService).restate();
   }
 

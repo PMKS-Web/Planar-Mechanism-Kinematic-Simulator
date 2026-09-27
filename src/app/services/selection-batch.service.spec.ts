@@ -1,7 +1,8 @@
 import '../model/joint';
 import { runInInjectionContext } from '@angular/core';
 import { Coord } from '../model/coord';
-import { sealedCylinderStructures } from '../model/cylinder';
+import { cylindersIn } from '../model/cylinder';
+import { paintCylinderMember, rodFillOf } from '../model/cylinder-skin';
 import { Force } from '../model/force';
 import { Joint, PrisJoint, RevJoint } from '../model/joint';
 import { RealLink } from '../model/link';
@@ -224,8 +225,8 @@ describe('SelectionBatchService duplication', () => {
   it('duplicates a sealed cylinder as one complete unlocked part', () => {
     const h = createMechanismHarness();
     h.service.createCylinderFrom(new Coord(0, 0), new Coord(600, 0));
-    const original = sealedCylinderStructures(h.service.joints)[0];
-    original.slider.locked = true;
+    const original = cylindersIn(h.service.joints)[0];
+    original.seal.locked = true;
     const beforeSaves = h.saveCount();
     const batch = runInInjectionContext(h.injector, () => new SelectionBatchService());
 
@@ -240,21 +241,84 @@ describe('SelectionBatchService duplication', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.selection).toHaveLength(1);
-    const cylinders = sealedCylinderStructures(h.service.joints);
+    const cylinders = cylindersIn(h.service.joints);
     expect(cylinders).toHaveLength(2);
-    const copy = cylinders.find((candidate) => candidate.slider !== original.slider)!;
-    expect(copy.slider.isSealed).toBe(true);
+    const copy = cylinders.find((candidate) => candidate.seal !== original.seal)!;
+    expect(copy.seal.isSealed).toBe(true);
     // The seal is `rotates` on the sliding joint now: it was the weld on the
     // coincident pin the block paired it with.
-    expect(copy.slider.rotates).toBe(false);
-    expect(copy.slider.locked).toBe(false);
-    expect(copy.barrelFar.y).toBeCloseTo(original.barrelFar.y + 100, 6);
-    expect(copy.rodFar.y).toBeCloseTo(original.rodFar.y + 100, 6);
+    expect(copy.seal.rotates).toBe(false);
+    expect(copy.seal.locked).toBe(false);
+    expect(copy.mountA.y).toBeCloseTo(original.mountA.y + 100, 6);
+    expect(copy.mountB.y).toBeCloseTo(original.mountB.y + 100, 6);
     // Four joints and two links per ram, where it was five and three.
     expect(h.service.joints).toHaveLength(8);
     expect(h.service.links).toHaveLength(4);
     expect(h.saveCount() - beforeSaves).toBe(1);
+
+    // And the copy is named the way a freshly drawn one is (decision S9): the
+    // two ends and the seal take letters, the buried barrel end an interior
+    // name hung off its own mount. Every joint used to take a letter here, so
+    // a duplicated cylinder came out with a hidden joint wearing one no marker
+    // on the grid did -- and pushed every later joint down the alphabet.
+    const lettered = /^[A-Za-z]+$/;
+    expect(copy.mountA.id).toMatch(lettered);
+    expect(copy.mountB.id).toMatch(lettered);
+    expect(copy.seal.id).toMatch(lettered);
+    expect(copy.inner.id).toBe(`${copy.mountA.id}1`);
+    expect(h.service.determineNextLetter()).toBe('G');
+    // Along the part, like a new one: the barrel's mount, the slide, the far
+    // end. The closure is built from whatever was clicked, so before S9 was
+    // amended a copy taken by its seal lettered the seal first.
+    expect([copy.mountA.id, copy.seal.id, copy.mountB.id]).toEqual(['D', 'E', 'F']);
   });
+
+  it('letters a copy along the part whichever of its joints was clicked', () => {
+    const h = createMechanismHarness();
+    h.service.createCylinderFrom(new Coord(0, 0), new Coord(600, 0));
+    const original = cylindersIn(h.service.joints)[0];
+    const batch = runInInjectionContext(h.injector, () => new SelectionBatchService());
+
+    // Taken by the square in the middle of the part rather than by a member.
+    const result = batch.duplicateSelected([{ kind: 'joint', id: original.seal.id }], {
+      x: 0,
+      y: 100,
+    });
+
+    expect(result.ok).toBe(true);
+    const copy = cylindersIn(h.service.joints).find(
+      (candidate) => candidate.seal !== original.seal
+    )!;
+    expect([copy.mountA.id, copy.seal.id, copy.mountB.id]).toEqual(['D', 'E', 'F']);
+    expect(copy.inner.id).toBe('D1');
+  });
+
+  for (const recolored of [false, true]) {
+    it(`copies a cylinder whose rod ${recolored ? 'was' : 'was not'} recolored, as it is drawn`, () => {
+      // Whether the rod's fill is a choice or a number nobody has drawn is
+      // carried by a flag, not by the color (decision S15), so a copy that
+      // took only the color would come back in the wrong one either way.
+      const h = createMechanismHarness();
+      h.service.createCylinderFrom(new Coord(0, 0), new Coord(600, 0));
+      const original = cylindersIn(h.service.joints)[0];
+      paintCylinderMember(original.rod, '#b2dfdb', recolored ? original : undefined);
+      const batch = runInInjectionContext(h.injector, () => new SelectionBatchService());
+
+      batch.duplicateSelected(
+        [
+          { kind: 'link', id: original.barrel.id },
+          { kind: 'link', id: original.rod.id },
+        ],
+        { x: 0, y: 100 }
+      );
+
+      const copy = cylindersIn(h.service.joints).find(
+        (candidate) => candidate.seal !== original.seal
+      )!;
+      expect(copy.rod.ownColor).toBe(recolored);
+      expect(rodFillOf(copy)).toBe(rodFillOf(original));
+    });
+  }
 });
 
 describe('SelectionBatchService deletion', () => {
@@ -399,14 +463,14 @@ describe('SelectionBatchService deletion', () => {
   it('deletes a sealed cylinder without leaving its hidden implementation parts', () => {
     const h = createMechanismHarness();
     h.service.createCylinderFrom(new Coord(0, 0), new Coord(600, 0));
-    const cylinder = sealedCylinderStructures(h.service.joints)[0];
+    const cylinder = cylindersIn(h.service.joints)[0];
     const beforeSaves = h.saveCount();
     const batch = runInInjectionContext(h.injector, () => new SelectionBatchService());
 
     const result = batch.deleteSelected([{ kind: 'link', id: cylinder.rod.id }]);
 
     expect(result.ok).toBe(true);
-    expect(sealedCylinderStructures(h.service.joints)).toHaveLength(0);
+    expect(cylindersIn(h.service.joints)).toHaveLength(0);
     expect(h.service.joints).toHaveLength(0);
     expect(h.service.links).toHaveLength(0);
     expect(h.saveCount() - beforeSaves).toBe(1);
@@ -415,8 +479,8 @@ describe('SelectionBatchService deletion', () => {
   it('deletes a locked cylinder and its whole closure', () => {
     const h = createMechanismHarness();
     h.service.createCylinderFrom(new Coord(0, 0), new Coord(600, 0));
-    const cylinder = sealedCylinderStructures(h.service.joints)[0];
-    cylinder.slider.locked = true;
+    const cylinder = cylindersIn(h.service.joints)[0];
+    cylinder.seal.locked = true;
     const beforeSaves = h.saveCount();
     const batch = runInInjectionContext(h.injector, () => new SelectionBatchService());
 
@@ -425,7 +489,7 @@ describe('SelectionBatchService deletion', () => {
     // All of it, or none: the assembly is one part, and a mark on its slider
     // says where it sits rather than whether it stays.
     expect(result.ok).toBe(true);
-    expect(sealedCylinderStructures(h.service.joints)).toHaveLength(0);
+    expect(cylindersIn(h.service.joints)).toHaveLength(0);
     expect(h.service.joints).toHaveLength(0);
     expect(h.service.links).toHaveLength(0);
     expect(h.saveCount() - beforeSaves).toBe(1);
