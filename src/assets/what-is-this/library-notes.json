@@ -1009,30 +1009,6 @@
         }
       ]
     },
-    "18371d1ee989731445933bd221c1": {
-      "plainEnglish": "In this mechanism, the driven input is **cylinder A-D**, which extends and retracts to push **link DGHIJ (\"Carriage\")** back and forth in straight-line translation. As **link DGHIJ (\"Carriage\")** moves horizontally, it swings the connecting couplers **link GM**, **link HQ**, **link IT**, and **link JV**. These couplers drive **link MQS (\"Jaw\")** and **link TVX (\"Jaw\")**, causing both jaws to translate vertically in opposite directions with a stroke of 0.69 cm.",
-      "resembles": "parallel jaw gripper",
-      "useCases": [
-        {
-          "use": "industrial robot end effector",
-          "why": "It uses synchronized straight-line jaw translation driven by a linear actuator to clamp and release objects."
-        }
-      ],
-      "terms": [
-        {
-          "term": "straight-line translation",
-          "meaning": "motion in a single linear direction without any rotation."
-        },
-        {
-          "term": "coupler",
-          "meaning": "an ungrounded link that connects other moving links to transmit motion."
-        },
-        {
-          "term": "linear actuator",
-          "meaning": "a device that creates motion in a straight line from a power source."
-        }
-      ]
-    },
     "18633638d792d51ccc113080244a": {
       "plainEnglish": "In this mechanism, joint W drives **link WX** back and forth to act as an input rocker. **Link WX** pushes **link XY**, which serves as a coupler and swings through general plane motion. This motion drives **link YZ** as a rocker, which oscillates about ground Z through 109.7 deg. Every part moves back and forth over a cycle time of 14.73 s.",
       "resembles": "rocker-driven linkage mechanism",
@@ -1122,6 +1098,30 @@
         {
           "term": "inversor",
           "meaning": "A linkage that converts circular motion into exact straight-line motion."
+        }
+      ]
+    },
+    "1b24a2fdd21ee90aa401a6521a80": {
+      "plainEnglish": "In this mechanism, the driven input is **cylinder A-D**, which extends and retracts to push **link DGHIJ (\"Carriage\")** back and forth in straight-line translation. As **link DGHIJ (\"Carriage\")** moves horizontally, it swings the connecting couplers **link GM**, **link HQ**, **link IT**, and **link JV**. These couplers drive **link MQS (\"Jaw\")** and **link TVX (\"Jaw\")**, causing both jaws to translate vertically in opposite directions with a stroke of 0.53 cm.",
+      "resembles": "parallel jaw gripper",
+      "useCases": [
+        {
+          "use": "industrial robot end effector",
+          "why": "It uses synchronized straight-line jaw translation driven by a linear actuator to clamp and release objects."
+        }
+      ],
+      "terms": [
+        {
+          "term": "straight-line translation",
+          "meaning": "motion in a single linear direction without any rotation."
+        },
+        {
+          "term": "coupler",
+          "meaning": "an ungrounded link that connects other moving links to transmit motion."
+        },
+        {
+          "term": "linear actuator",
+          "meaning": "a device that creates motion in a straight line from a power source."
         }
       ]
     },

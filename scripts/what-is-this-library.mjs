@@ -72,11 +72,16 @@ console.log(`${Object.keys(sorted).length} notes, ${asked} newly written: ${OUT.
 
 /** One machine's note, shown in its panel; retried while the model is busy or fails. */
 async function noteFor(index) {
-  await page.evaluate((index) => {
+  const runnable = await page.evaluate((index) => {
     const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
+    if (!grid.mechanismSrv.mechanisms[index]?.isMechanismValid()) return false;
     grid.activeObjService.selectMechanism(index);
     window.ng.applyChanges(grid);
+    return true;
   }, index);
+  if (!runnable) return undefined;
+  // Notes live in the analysis machine panel; Edit has its own panel now.
+  await page.locator('.tabButton', { hasText: 'Kinematic' }).first().click();
   await page.waitForSelector('app-what-is-this-note', { timeout: 10000 });
   for (let attempt = 0; attempt < 6; attempt++) {
     const state = await page.waitForFunction(
