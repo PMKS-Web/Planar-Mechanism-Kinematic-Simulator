@@ -166,24 +166,24 @@ const backdropNow = () =>
 await page.goto(`${BASE}?library`, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
 await page.waitForTimeout(1200);
-await page.locator('#templates [data-template="Backhoe_Bucket"]').click();
+await page.locator('#templates [data-template="Excavator_Bucket"]').click();
 await page.waitForTimeout(3000);
 const opened = await backdropNow();
 check(
   'a card with a backdrop opens on top of it',
-  opened?.src === 'assets/backdrops/backhoe-arm.svg' && opened.width > 0,
+  opened?.src === 'assets/backdrops/backhoe-bucket.png' && opened.width > 0,
   JSON.stringify(opened)
 );
 
 // The same payload with nothing after it, for the fragment to be measured
 // against.
-await page.goto(`${BASE}?${payloads['Backhoe_Bucket']}`, { waitUntil: 'domcontentloaded' });
+await page.goto(`${BASE}?${payloads['Excavator_Bucket']}`, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
 await page.waitForTimeout(1500);
 const plainLinks = await linkCount(page);
 
 // The address a New Tab builds, walked into directly.
-await page.goto(`${BASE}?${payloads['Backhoe_Bucket']}#backdrop=Backhoe_Bucket`, {
+await page.goto(`${BASE}?${payloads['Excavator_Bucket']}#backdrop=Excavator_Bucket`, {
   waitUntil: 'domcontentloaded',
 });
 await waitForReady(page);
@@ -192,7 +192,7 @@ const inNewTab = await backdropNow();
 const withFragment = await linkCount(page);
 check(
   'and a new tab picks it up from the fragment',
-  inNewTab?.src === 'assets/backdrops/backhoe-arm.svg',
+  inNewTab?.src === 'assets/backdrops/backhoe-bucket.png',
   JSON.stringify(inNewTab)
 );
 // The fragment must not reach the decoder: everything after the '?' used to be
