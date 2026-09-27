@@ -35,7 +35,7 @@ export const SUITES = [
   { name: 'analysis-audit', seconds: 224, lanes: NIGHTLY },
   { name: 'analysis-drawing-switches', seconds: 11, lanes: BOTH },
   { name: 'analysis-editing', seconds: 42, lanes: NIGHTLY },
-  { name: 'analysis-setup', seconds: 8, lanes: BOTH },
+  { name: 'analysis-setup', seconds: 90, lanes: BOTH },
   { name: 'attach-cylinder', seconds: 9, lanes: BOTH },
   { name: 'background-image', seconds: 26, lanes: BOTH },
   { name: 'circular-link', seconds: 4, lanes: BOTH },
