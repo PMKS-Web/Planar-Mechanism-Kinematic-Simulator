@@ -49,9 +49,12 @@ const EXPECTED_INVALID = new Set([
   'Crank grounded at both ends',
   'Braced four-bar with a dangling link',
   // The drawings the student-mistakes sweep taught the drawer to name; the
-  // ones that run anyway (a stray link, two inputs, a frame bar, a link hung
-  // off a pivot beside a four-bar that works) are not listed.
+  // ones that run anyway (a stray link, two inputs, a frame bar) are not
+  // listed, nor are the two whose driven half runs beside the half left
+  // unjoined (a rod short of the crank pin, a coupler missing). A link hung
+  // off a pivot the four-bar uses is part of the four-bar.
   'Four-bar with a welded coupler pin',
+  'Link hanging from a pivot',
   'Rocker dropped beside the coupler pin',
   'Four-bar braced from its input pivot',
   'Watt six-bar with a grounded rocker joint',
@@ -63,6 +66,14 @@ const EXPECTED_INVALID = new Set([
   'Crank plate with two links hanging loose',
   'Crank plate held by a grounded link',
   'Crank locked by a grounded link at a slot pin',
+  'Stephenson six-bar with a link hung beside a joint',
+  'Rocker dropped on the coupler pin',
+  'Rocker dropped beside the coupler pin, locked',
+  'Scotch yoke braced across its slot',
+  'Bent four-bar driven from its welded knee',
+  'Bent four-bar with its knee grounded and unwelded',
+  // Frame alone: no machine to be valid.
+  'Plate grounded at every joint',
   'Ram with a free end',
   'Ram grounded at its free end',
   // A cylinder nothing drives adds its freedom (S30).

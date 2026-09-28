@@ -2054,10 +2054,10 @@ export class MechanismService {
     this.cancelPosedEdit();
     const partition = this.partitions[index];
     if (!partition) return;
-    // A joint another machine is also built on is not this machine's to take.
-    // Ground pivots are the usual case: two cranks bolted to the same point
-    // each own that joint, so deleting one machine wholesale took the other's
-    // pivot out from under it and left it a chain hanging off nothing.
+    // A joint another machine is also built on is not this machine's to take:
+    // deleting one machine wholesale must not leave another hanging off
+    // nothing. Two cranks on one pivot are one machine now, so this is a guard
+    // rather than the usual case.
     const shared = new Set(
       this.partitions
         .filter((other) => other !== partition)

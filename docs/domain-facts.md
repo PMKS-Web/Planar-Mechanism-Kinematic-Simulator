@@ -47,6 +47,15 @@ Open it before debugging anything about a mechanism, a unit, a direction or an e
 - **Do not assume mechanism index 0.** One drawing can hold several machines, each with its own
   input, speed and playback row. Ask `partitions`. `mechanisms[0]` is not necessarily the master —
   `masterMechanism()` is, and the transport steps by *its* frame count.
+- **What makes two machines one is a shared joint, a grounded pivot included.** Chains on pivots
+  of their own are separate machines; a link hung off a pivot the linkage already uses is part of
+  that linkage, and it runs or fails with it. It used to be a machine of its own, which ran the
+  linkage and left the reader's extra link beside it as though it had been meant. Only the ground
+  itself does not join: were it to, every library drawing with two machines would be one.
+- **Where one linkage is drawn as two machines**, the setup drawer asks for the join before
+  anything else (`join-machines.ts`): a joint dropped beside another, a free end short of a joint,
+  or a link never drawn between two free ends -- each counted on the two machines together, and
+  offered only where they come out one machine that the input drives.
 - **A cycle's last sample repeats the first**, and the period *is* the last sample's time. A step
   that lands exactly on the period wraps to zero, so the final frame is reachable only by accident
   unless you index frames rather than add time.

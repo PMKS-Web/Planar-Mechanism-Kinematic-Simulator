@@ -170,6 +170,19 @@ export function stuckInputFixture(): MechanismFixture {
   };
 }
 
+/** A plate grounded at all three of its joints: frame, and one support short of turning. */
+export function plateGroundedEverywhereFixture(): MechanismFixture {
+  return {
+    joints: [
+      { id: 'A', x: 0, y: 0, ground: true },
+      { id: 'B', x: 3, y: 0, ground: true },
+      { id: 'C', x: 1, y: 1, ground: true },
+    ],
+    links: [{ joints: 'ABC' }],
+    inputAngVel: 1,
+  };
+}
+
 /**
  * A crank-rocker driven from its rocker, drawn at the end of the rocker's swing
  * with crank and coupler in one line. It runs -- the solver turns back at the
@@ -250,6 +263,13 @@ export const MOBILITY_GALLERY: GalleryEntry[] = [
     spec: 'mobility-diagnosis.spec.ts',
     floatingSlot: false,
     fixture: stuckInputFixture(),
+  },
+  {
+    name: 'Plate grounded at every joint',
+    purpose: 'Frame, and no machine: letting it turn takes all but one support off',
+    spec: 'student-mistake-messages.spec.ts',
+    floatingSlot: false,
+    fixture: plateGroundedEverywhereFixture(),
   },
   {
     name: 'Crank-rocker driven from the rocker at its limit',

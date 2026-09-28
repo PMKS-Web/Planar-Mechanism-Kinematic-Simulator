@@ -25,15 +25,12 @@ import { Mechanism, MechanismFailure } from './mechanism';
 import { MechanismPartition } from './mechanism-partition';
 import { assignBodies } from './bodies';
 import { diagnoseMobility, Drawing } from './free-motion';
+import { inputOnTheFrame } from './readiness-situations';
+import { joinAcross } from './join-machines';
+import { unweldingDrives } from './mobility-fixes';
 import {
-  besideAnother,
-  hangingLink,
-  inputOnTheFrame,
-  splitFromADrivenOne,
-} from './readiness-situations';
-import {
-  besideIssue,
   besideIssueOf,
+  joinIssue,
   drivenOwnJoint,
   fixesFrom,
   looseIssue,
@@ -161,13 +158,19 @@ function danglingIssue(partition: MechanismPartition): SetupIssue {
   };
 }
 
+/**
+ * A joint of this machine that could take the input: pointed at, so the fix is
+ * an answer rather than a place to start looking.
+ */
+function inputCandidate(partition: MechanismPartition): RealJoint | undefined {
+  return shown(partition.ownJoints, partition.joints).find(
+    (joint): joint is RealJoint => joint instanceof RealJoint && canDrive(joint)
+  );
+}
+
 /** A machine nobody has set an input on. */
 function noInputIssue(partition: MechanismPartition): SetupIssue {
-  // Point at a joint that could actually take the job, so the fix is an
-  // answer rather than a place to start looking.
-  const candidate = shown(partition.ownJoints, partition.joints).find(
-    (joint) => joint instanceof RealJoint && canDrive(joint)
-  );
+  const candidate = inputCandidate(partition);
   return {
     severity: 'blocker',
     title: NO_INPUT_SET,
@@ -197,14 +200,18 @@ function issueForFailure(
   mechanism: Mechanism,
   helpers: ReadinessHelpers
 ): SetupIssue {
-  // One of this machine's joints dropped beside a joint of another part of the
-  // drawing instead of on it. That is the mistake whatever the count, the
-  // solver or the missing input make of it: it splits one linkage into two
-  // machines, and every other fix would make one of them run as something
-  // nobody drew.
+  // One linkage drawn as two machines: a joint dropped beside the one it was
+  // meant for, a link never drawn between them. That is the mistake whatever
+  // the count, the solver or the missing input make of it, and every other fix
+  // would make one of them run as something nobody drew -- so where one edit
+  // joins the two into a machine that runs, it is said instead.
   if (['mobility', 'dead-position', 'hidden-freedom', 'not-driven'].includes(failure)) {
-    const beside = besideAnother(partition, helpers.drawing?.().joints ?? []);
-    if (beside) return besideIssue(beside[0], beside[1]);
+    const drawing = helpers.drawing?.();
+    const join = drawing && joinAcross(partition, drawing);
+    if (join) {
+      const alone = failure === 'not-driven' ? inputCandidate(partition) : undefined;
+      return joinIssue(join, partition, alone && prose`Add Input to ${jointRef(alone)}`);
+    }
   }
   const cylinders = cylindersIn(partition.joints);
   switch (failure) {
@@ -240,27 +247,6 @@ function issueForFailure(
       // whatever went wrong is not that. Telling somebody to switch on the
       // input they have already switched on is how this was reported.
       if (drivenOwnJoint(partition)) return unexplainedIssue(partition, mechanism);
-      // A single link hanging from a grounded joint and nothing else: drawn
-      // off a pivot the rest of the linkage uses, it turns on its own, so the
-      // partition made it a machine of its own. Asking for its input would
-      // set a crank turning that nobody drew as one.
-      const hanging = hangingLink(partition);
-      if (hanging) {
-        const link = linkRef(hanging.link, cylinders);
-        const pivot = jointRef(hanging.pivot);
-        const end = hanging.link.joints.find((joint) => joint !== hanging.pivot);
-        return {
-          severity: 'blocker',
-          title: `${capitalized(link.label)} hangs from joint ${nameOf(hanging.pivot)}`,
-          summary: prose`${link} turns freely about ${pivot}, joined to nothing else that moves.`,
-          explain:
-            'A link pinned at one end and free at the other swings on its own. No input anywhere else can move it.',
-          fixes: [
-            prose`Delete ${link}`,
-            ...(end ? [prose`Drag ${jointRef(end)} onto the joint it should hold`] : []),
-          ],
-        };
-      }
       return noInputIssue(partition);
     }
 
@@ -436,7 +422,13 @@ function refusedInputIssue(
         summary: prose`${joint} is welded, so the links it joins can't move against each other.`,
         explain:
           'An input makes two links move against each other. A weld locks them together, so there is nothing for the input to turn.',
-        fixes: [prose`Set ${joint} to Revolute`, ...moveInput],
+        // Revolute only where it is counted: a knee welded on purpose turns
+        // freely once unwelded, and the input was meant for another joint.
+        fixes: unweldingDrives(partition, driven)
+          ? [prose`Set ${joint} to Revolute`, ...moveInput]
+          : moveInput.length
+            ? moveInput
+            : [prose`Add Input to a grounded joint`],
       };
     case 'frozen-cylinder': {
       const cylinder = frozenCylinderAtSeal(driven)!;
@@ -551,7 +543,6 @@ export function readinessOf(
 ): MechanismReadiness {
   const checks: SetupIssue[] = [];
   const add = (check: SetupIssue) => checks.push(check);
-  const drawingJoints = helpers.drawing?.().joints ?? [];
   const cylinders = cylindersIn(partition.joints);
 
   // Asked first, and asked even of a mechanism the solver accepted: the toggle
@@ -606,8 +597,7 @@ export function readinessOf(
     if (
       BEFORE_THE_SOLVE.has(failure) &&
       !driven &&
-      !besideAnother(partition, drawingJoints) &&
-      !splitFromADrivenOne(partition, drawingJoints)
+      !joinAcross(partition, helpers.drawing?.() ?? { joints: [], links: [] })
     ) {
       add(issueForFailure('not-driven', partition, mechanism, helpers));
     }

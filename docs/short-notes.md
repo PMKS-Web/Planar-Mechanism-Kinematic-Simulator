@@ -589,13 +589,34 @@ Three things the harness had to get right before its numbers meant anything:
 
 ### A fix that joins two machines has to be counted on both
 
-Grounding a moving joint, dropping a joint beside another, and deleting a link all split one
-linkage into several machines, and each machine's diagnosis sees only its own partition. So the
-readiness helpers carry `drawing()`, and three fixes count across machines: a merge said from
-`besideAnother`, `ungroundAcross` (the union of every machine a grounded joint holds, reached
-through pins *and slots*, with the frame bars each half is solved against), and `reconnectFixes`
-(a free end and the pivot its deleted link left behind). A local unground of a pin another
-machine also hangs from is not offered at all: it counts right for the half it can see.
+Dropping a joint beside another, leaving a rod short of the crank pin it was meant for, and never
+drawing a coupler all split one linkage into two machines, and each machine's diagnosis sees only
+its own partition. So the readiness helpers carry `drawing()`, and `joinAcross`
+(`join-machines.ts`) counts every join on the two machines together: a merge of two joints all but
+on top of each other (exactly on top included), a free end within a quarter of its link's length
+of a joint of the other machine, and a new link between a free end of each. A join is offered
+only where the two come out one machine with one freedom the input drives, so a link hung by a
+joint of a six-bar is not merged into it as a brace. A locked joint is never the one dragged: the
+join drags the other onto it. `reconnectFixes` still joins a free end to the pivot its deleted
+link left behind.
+
+A grounded joint used to split a linkage too, and needed `ungroundAcross` and a sentence of its
+own for a link hung off a pivot another machine used. Since every shared joint joins what meets at
+it, a grounded pivot included, both are one machine, and both went.
+
+### Where no single edit frees a rigid drawing, two in order may
+
+A bent coupler whose knee was grounded and whose weld was left off counts 0, ungrounding the knee
+alone counts 2, and welding it alone counts -1. `twoStepFixes` counts an unground followed by a
+weld, or by a second unground, and says the pair as one fix ("Turn off Grounded for joint C, then
+set joint C to Welded"), the pair at one joint first. Each half keeps the ten-word budget.
+
+### A fix that counts and starts at a limit goes after one that leaves the drawing ready
+
+A brace across a Scotch yoke counts 0, and making the guide Pin-in-slot counts 1 -- and leaves the
+yoke starting at a limit, with a drag to make before anything plays. `rigidFixes` asks
+`startsAtLimit` of each counted edit and lists those after the rest, so deleting the brace comes
+first.
 
 ### When two fixes both count, list them all rather than guess
 
@@ -640,8 +661,8 @@ count, fixed it, and only then heard about the input. All three can be read off 
 a count beside an input the actuator refuses. What stays alone: the count beside a slider with
 nothing to slide along (the slot is part of what it counts), anything beside a joint dropped next
 to another (joining them is the whole answer), a count beside an input whose own fix is counted
-(deleting the brace mends both), and an input asked of half a linkage split at a grounded joint
-whose input is on the other half (`splitFromADrivenOne`). What the solve finds -- a dead position,
+(deleting the brace mends both). A linkage split at a grounded joint is no longer two halves to
+keep apart: every pin, a grounded one included, joins what meets at it into one machine. What the solve finds -- a dead position,
 a cycle that never closes -- still waits for these, because nothing is solved until they are fixed.
 
 Saying the count without an input exposed a hole in counting a fix: with no input to hold, "one

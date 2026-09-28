@@ -198,6 +198,11 @@ describe('readiness across every library drawing, broken one way at a time', () 
   }
 
   function applyFix(drawing: Drawing, fix: MobilityFix): void {
+    if (fix.kind === 'then') {
+      applyFix(drawing, fix.first);
+      applyFix(drawing, fix.second);
+      return;
+    }
     if (fix.kind === 'delete-link') {
       deleteLink(drawing, fix.link.id);
       return;
@@ -314,13 +319,15 @@ describe('readiness across every library drawing, broken one way at a time', () 
   }
 
   const describeFix = (fix: MobilityFix): string =>
-    fix.kind === 'delete-link'
-      ? `delete ${fix.link.id}`
-      : fix.kind === 'merge'
-        ? `merge ${fix.joint.id} onto ${fix.onto.id}`
-        : fix.kind === 'connect'
-          ? `connect ${fix.joint.id} to ${fix.to.id}`
-          : `${fix.kind} ${fix.joint.id}`;
+    fix.kind === 'then'
+      ? `${describeFix(fix.first)}, then ${describeFix(fix.second)}`
+      : fix.kind === 'delete-link'
+        ? `delete ${fix.link.id}`
+        : fix.kind === 'merge'
+          ? `merge ${fix.joint.id} onto ${fix.onto.id}`
+          : fix.kind === 'connect'
+            ? `connect ${fix.joint.id} to ${fix.to.id}`
+            : `${fix.kind} ${fix.joint.id}`;
 
   /** The joints of a machine that move: its own, less the grounded pins it may share. */
   const movingJoints = (partition: MechanismPartition): string[] =>

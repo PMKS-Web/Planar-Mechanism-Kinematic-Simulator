@@ -30,8 +30,8 @@ import {
   mergeFixes,
   reconnectFixes,
   rigidFixes,
+  twoStepFixes,
   typeFixes,
-  ungroundAcross,
   untangleFixes,
 } from './mobility-fixes';
 import { fastestJoint, freeMotionOf, startOf, StuckInput, stuckInput } from './stuck-input';
@@ -129,9 +129,8 @@ const NOTHING: MobilityDiagnosis = { looseLinks: [], looseJoints: [], fixes: [] 
 export function diagnoseMobility(
   partition: MechanismPartition,
   /**
-   * The whole drawing, where the caller has it: the fixes that join this
-   * machine to another -- a joint grounded that split one linkage in two, a
-   * free end and the pivot its deleted link left behind -- need both halves.
+   * The whole drawing, where the caller has it: a free end and the pivot its
+   * deleted link left behind are joined only by a fix that can see both.
    */
   drawing?: Drawing
 ): MobilityDiagnosis {
@@ -181,7 +180,7 @@ function diagnose(partition: MechanismPartition, drawing?: Drawing): MobilityDia
           driven
         )
       : free === 0
-        ? [...merges, ...rigidOnes(trial, assignment, drawing, own, hidden)]
+        ? [...merges, ...rigidOnes(trial, assignment, own, hidden)]
         : merges;
 
   // Two links left hanging need two edits, and no single one counts to one:
@@ -365,18 +364,15 @@ function freeEndsOf(looseJoints: RealJoint[]): RealJoint[] {
 }
 
 /**
- * The fixes for a machine nothing can move. A joint that split one linkage in
- * two, ungrounded, is the whole answer where there is one: the half this
- * machine can fix alone -- ungrounding a real pivot -- leaves the other half
- * rigid, and counts right only for the half it can see.
+ * The fixes for a machine nothing can move: one edit where one does it, and
+ * otherwise two in order, counted as the pair.
  */
 function rigidOnes(
   trial: Trial,
   assignment: BodyAssignment,
-  drawing: Drawing | undefined,
   own: Set<string>,
   hidden: Set<string>
 ): MobilityFix[] {
-  const across = drawing ? ungroundAcross(trial, drawing, own, hidden) : [];
-  return across.length ? across : rigidFixes(trial, assignment, own, hidden);
+  const single = rigidFixes(trial, assignment, own, hidden);
+  return single.length ? single : twoStepFixes(trial, own, hidden);
 }

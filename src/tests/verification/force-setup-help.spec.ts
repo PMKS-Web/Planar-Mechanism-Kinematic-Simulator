@@ -87,39 +87,35 @@ describe('force analysis setup, as a fresh drawing meets it', () => {
     expect(harness.service.forceAnalysisReady()).toBe(true);
   });
 
-  it('with gravity off, mass alone is no longer a load, and the message says so', () => {
+  it('with gravity off, mass is still a load in motion, and Static reads zero', () => {
+    // Accelerating a link with mass takes force, so In-motion has something to
+    // solve; Static balances loads, and with gravity off there are none.
     const harness = createMechanismHarness();
     const links = fourBar(harness);
     links[1].mass = 5;
     harness.settings.isGravity.next(false);
     harness.service.updateMechanism();
 
-    const load = issue(harness, 'Nothing loads the mechanism')!;
-    expect(load.summary).toBe('Gravity is off, so link mass weighs nothing.');
-    expect(harness.service.forceAnalysisReady()).toBe(false);
-  });
-
-  it('says to turn gravity on first where doing so is the whole fix', () => {
-    // Everything the analysis needs is drawn; the only thing in the way is a
-    // switch in another panel, and the fix names the panel it lives in.
-    const harness = createMechanismHarness();
-    const links = fourBar(harness);
-    links[1].mass = 5;
-    harness.settings.isGravity.next(false);
-    harness.service.updateMechanism();
-
-    expect(issue(harness, 'Nothing loads the mechanism')!.fixes[0]).toBe(
-      'Turn on Gravity in the Settings panel'
+    expect(issue(harness, 'Nothing loads the mechanism')).toBeUndefined();
+    const inertia = issue(harness, 'Only inertia loads the mechanism')!;
+    expect(inertia.severity).toBe('warning');
+    expect(inertia.summary).toBe(
+      'Gravity is off and no force is applied, so every Static reading is zero.'
     );
-
-    harness.settings.isGravity.next(true);
-    harness.service.updateMechanism();
+    expect(inertia.fixes[0]).toBe('Turn on Gravity in the Settings panel');
     expect(harness.service.forceAnalysisReady()).toBe(true);
+    const dynamic = harness.service.mechanisms[0].getForceAnalysis('dynamic');
+    const peak = Math.max(
+      ...dynamic.frames.flatMap((frame) =>
+        [...frame.jointReactions.values()].map(([x, y]) => Math.hypot(x, y))
+      )
+    );
+    expect(peak).toBeGreaterThan(0);
   });
 
-  it('does not offer it alone where it would leave the reader still blocked', () => {
+  it('asks for a mass or a force where nothing has either, gravity on or off', () => {
     // Gravity off over a drawing with no mass anywhere: turning it on pulls on
-    // nothing, so it is not a fix on its own. The fixes name both halves.
+    // nothing, so it is not a fix. The same two ways out as with it on.
     const harness = createMechanismHarness();
     fourBar(harness);
     harness.settings.isGravity.next(false);
@@ -127,7 +123,7 @@ describe('force analysis setup, as a fresh drawing meets it', () => {
 
     expect(issue(harness, 'Nothing loads the mechanism')!.fixes).toEqual([
       'Attach Force to any link',
-      'Turn on Gravity and give a link a mass',
+      'Type a mass in the Masses table',
     ]);
   });
 

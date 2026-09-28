@@ -1,6 +1,7 @@
 import { describeActuator } from '../actuator';
 import { cylindersIn } from '../cylinder';
 import { PrisJoint, RealJoint } from '../joint';
+import { Link, RealLink } from '../link';
 import {
   capitalized,
   cylinderRef,
@@ -18,6 +19,7 @@ import {
   MobilityFix,
   StuckInput,
 } from './free-motion';
+import { Join } from './join-machines';
 import { MechanismPartition } from './mechanism-partition';
 import { IssueSeverity, MOST_FIXES, MOST_STEPS, SetupIssue } from './setup-issue';
 
@@ -55,7 +57,21 @@ export function fixProse(fix: MobilityFix, partition: MechanismPartition): Prose
       return prose`Attach Link from ${jointRef(fix.joint)} to ${jointRef(fix.to)}`;
     case 'delete-link':
       return prose`Delete ${linkRef(fix.link, cylindersIn(partition.joints))}`;
+    case 'then':
+      return [
+        ...fixProse(fix.first, partition),
+        ', then ',
+        ...lowered(fixProse(fix.second, partition)),
+      ];
   }
+}
+
+/** A fix said as the second half of a sentence: "then set joint C to Welded". */
+function lowered(sentence: Prose): Prose {
+  const [first, ...rest] = sentence;
+  return typeof first === 'string'
+    ? [first.charAt(0).toLowerCase() + first.slice(1), ...rest]
+    : sentence;
 }
 
 /** The counted fixes, and any advice after them, cut to the most a list shows. */
@@ -84,6 +100,31 @@ function looseLinks(diagnosis: MobilityDiagnosis, partition: MechanismPartition)
       .filter((link) => !members.has(link.id))
       .map((link) => linkRef(link, cylinders)),
   ]);
+}
+
+/** The link a step is about: the one it deletes, or the one its joint ends. */
+function partOf(fix: MobilityFix): Link | undefined {
+  if (fix.kind === 'delete-link') return fix.link;
+  return 'joint' in fix ? fix.joint.links[0] : undefined;
+}
+
+/**
+ * The steps, the ways out for one loose part together: two ways to finish one
+ * link, then two for the next, so the reader sees a choice for each part
+ * rather than a list to work down. In the order the summary names the parts.
+ */
+function byLoosePart(
+  diagnosis: MobilityDiagnosis,
+  steps: { part: Link | undefined; said: Prose }[]
+): Prose[] {
+  const order = (part: Link | undefined) => {
+    const at = part ? diagnosis.looseLinks.indexOf(part as RealLink) : -1;
+    return at === -1 ? diagnosis.looseLinks.length : at;
+  };
+  return steps
+    .map((step, index) => ({ ...step, index }))
+    .sort((a, b) => order(a.part) - order(b.part) || a.index - b.index)
+    .map((step) => step.said);
 }
 
 /** Whether one of the freedoms is a cylinder's own length. */
@@ -120,8 +161,9 @@ function holdsInput(partition: MechanismPartition): boolean {
  * "Ground another joint, or connect a free joint to a second link" was advice
  * for no drawing in particular, and on the simplest loose chain -- A-B-C
  * grounded at A -- grounding C leaves it rigid. Every fix named here has been
- * counted; where none of the simple edits works, what is left is said as
- * advice, and the label over the list says it is a suggestion.
+ * counted, the one exception being a link to ground at a free end, which does
+ * not exist yet to be counted. Where nothing counts, the summary names the
+ * loose parts and no fix is offered.
  */
 export function tooFree(dof: number, partition: MechanismPartition, drawing?: Drawing): SetupIssue {
   const diagnosis = diagnoseMobility(partition, drawing);
@@ -142,22 +184,20 @@ export function tooFree(dof: number, partition: MechanismPartition, drawing?: Dr
       title: `${dof} degrees of freedom, needs 1`,
       summary,
       explain: freeLength(diagnosis)
-        ? 'One input drives one motion. Each part that moves on its own adds another, and so does a cylinder nothing drives. Each of these takes at least one away. Make one for each loose part.'
-        : 'One input drives one motion, and each part that moves on its own adds another. Each of these takes at least one away, so make one for each loose part.',
-      fixes: [...steps.map((fix) => fixProse(fix, partition)), ...freeEnds.map(attachAdvice)].slice(
-        0,
-        MOST_STEPS
-      ),
+        ? 'One input drives one motion. Each part that moves on its own adds another, and so does a cylinder nothing drives. Each of these takes at least one away: make one, and this list updates.'
+        : 'One input drives one motion, and each part that moves on its own adds another. Each of these takes at least one away: make one, and this list updates.',
+      fixes: byLoosePart(diagnosis, [
+        ...steps.map((fix) => ({ part: partOf(fix), said: fixProse(fix, partition) })),
+        ...freeEnds.map((joint) => ({ part: joint.links[0], said: attachAdvice(joint) })),
+      ]).slice(0, MOST_STEPS),
     };
   }
   // A link left hanging is as likely the first bar of more linkage as a
   // mistake, so finishing it is offered beside deleting it.
   const attach = diagnosis.attachAt ? [attachAdvice(diagnosis.attachAt)] : [];
-  const fixes = diagnosis.fixes.length
-    ? fixesFrom(diagnosis.fixes, partition, ...attach)
-    : attach.length
-      ? attach
-      : [prose`Ground another joint`, prose`Attach Link to a joint that moves freely`];
+  // Where nothing counts, nothing is offered: the summary has named the loose
+  // parts, and "ground another joint" was advice for no drawing in particular.
+  const fixes = diagnosis.fixes.length ? fixesFrom(diagnosis.fixes, partition, ...attach) : attach;
   return {
     severity: 'blocker',
     title: `${dof} degrees of freedom, needs 1`,
@@ -290,14 +330,41 @@ export function besideIssueOf(diagnosis: MobilityDiagnosis): SetupIssue | undefi
 export function besideIssue(
   joint: RealJoint,
   onto: RealJoint,
-  severity: IssueSeverity = 'blocker'
+  severity: IssueSeverity = 'blocker',
+  /** Drawn all but on top of each other, rather than merely close. */
+  touching = true
 ): SetupIssue {
   return {
     severity,
     title: `Joint ${nameOf(joint)} isn't joined to joint ${nameOf(onto)}`,
-    summary: prose`${jointRef(joint)} sits almost on top of ${jointRef(onto)}, but they're two joints.`,
+    summary: touching
+      ? prose`${jointRef(joint)} sits almost on top of ${jointRef(onto)}, but they're two joints.`
+      : prose`${jointRef(joint)} stops just short of ${jointRef(onto)}, so they're two joints.`,
     explain:
       'Links move together only where they share one joint. Two joints drawn in the same place still let their links come apart.',
     fixes: [prose`Drag ${jointRef(joint)} onto ${jointRef(onto)}`],
+  };
+}
+
+/**
+ * One linkage drawn as two machines, and the counted edit that joins them
+ * (`join-machines.ts`): a merge said as two joints beside each other, a new
+ * link as two parts with nothing between them. `instead` is the other reading,
+ * where there is one: the part as a machine of its own, given its own input.
+ */
+export function joinIssue(join: Join, partition: MechanismPartition, instead?: Prose): SetupIssue {
+  const { fix } = join;
+  if (fix.kind === 'merge') return besideIssue(fix.joint, fix.onto, 'blocker', join.beside);
+  if (fix.kind !== 'connect') return overConstrained(0, partition);
+  const cylinders = cylindersIn(partition.joints);
+  const ours = linkRef(fix.joint.links[0], cylinders);
+  const theirs = linkRef(fix.to.links[0], cylinders);
+  return {
+    severity: 'blocker',
+    title: `${capitalized(ours.label)} isn't joined to ${theirs.label}`,
+    summary: prose`Nothing joins ${ours} to ${theirs}, so they're two mechanisms.`,
+    explain:
+      'Links move together only where a joint or a link joins them. Apart, each needs an input of its own.',
+    fixes: [fixProse(fix, partition), ...(instead ? [instead] : [])],
   };
 }

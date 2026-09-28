@@ -148,7 +148,9 @@ Most of today's messages put all four jobs into one `body`. Splitting them is mo
 
 ### 6.2 Length budgets
 
-- Title 3–7 words. Summary ≤ 16 words. Explanation ≤ 35 words. Fix ≤ 10 words.
+- Title 3–7 words. Summary ≤ 16 words. Explanation ≤ 35 words. Fix ≤ 10 words. A fix that is two
+  edits in order ("Turn off Grounded for joint C, then set joint C to Welded") holds each edit to
+  10 words: it is offered only where no single edit counts.
 - Everything visible before "Show fixes" should total about 25 words or fewer.
 - If an explanation needs more than two sentences, it's teaching two rules. Keep the one this issue needs.
 
@@ -222,7 +224,8 @@ Punctuation: no em dashes, no semicolons, and no "or" on a line of its own. Use 
 
 **No load (force)**
 - Before: Nothing loads this mechanism: gravity is off, so the mass it has weighs nothing. Turn gravity on, or attach a force. `[Turn On Gravity]`
-- After: **Nothing loads the mechanism.** Summary: Gravity is off, so link mass weighs nothing. Explanation: Force analysis finds the reactions that balance the loads. With no load, every reaction is zero. Fixes: Turn on gravity in the Settings panel · Attach a force to any link.
+- After: **Nothing loads the mechanism.** Summary: No force is applied and every link is massless. Explanation: Force analysis finds the reactions that balance the loads. With no load, every reaction is zero. Fixes: Attach Force to any link · Type a mass in the Masses table.
+- Mass with gravity off is not "no load": moving a link with mass takes force, so In-motion readings are real. That drawing gets a warning, not a blocker: **Only inertia loads the mechanism.** Summary: Gravity is off and no force is applied, so every Static reading is zero. Fixes: Turn on Gravity in the Settings panel · Attach Force to any link.
 
 ---
 

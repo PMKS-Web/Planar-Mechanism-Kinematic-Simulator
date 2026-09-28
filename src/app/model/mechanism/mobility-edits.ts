@@ -8,6 +8,7 @@ import {
   Constraint,
   ConstraintSystem,
   constraintSystemOf,
+  freeDirectionsOf,
   freedomsOf,
   holdSlide,
   holdTurn,
@@ -37,7 +38,12 @@ export type MobilityFix =
   /** Drag `joint` onto `onto`: two joints drawn beside each other that were meant as one. */
   | { kind: 'merge'; joint: RealJoint; onto: RealJoint }
   /** A new link from `joint` to `to`, a grounded pivot left with nothing on it. */
-  | { kind: 'connect'; joint: RealJoint; to: RealJoint };
+  | { kind: 'connect'; joint: RealJoint; to: RealJoint }
+  /**
+   * Two edits, in order, where no single one counts: a moving joint grounded
+   * and its weld left off take both to undo. Counted as the pair.
+   */
+  | { kind: 'then'; first: MobilityFix; second: MobilityFix };
 
 /**
  * How many candidate edits are counted before giving up.
@@ -98,11 +104,10 @@ export interface Edit {
  * Whether an edit leaves one machine with one degree of freedom as drawn, and
  * none once the input is held.
  *
- * "One machine" is asked first, and the way `partitionMechanisms` asks it,
- * because ground anchors what meets it without joining it: grounding a joint in
- * the middle of a chain can cut the chain in two, and a piece left rigid is a
- * machine of its own that cannot move -- however well the other piece runs, and
- * however well the two count together.
+ * "One piece" is asked first (`staysOnePiece`): grounding a joint in the middle
+ * of a chain can leave a piece held to the rest by that pin alone, and a piece
+ * left rigid there has been turned into frame -- however well the rest runs,
+ * and however well the two count together.
  */
 export function leavesOneMachine({ partition, driven, needsHold }: Trial, edit: Edit): boolean {
   const kept = edit.links ?? partition.links;
@@ -180,7 +185,33 @@ export function takesSomeAway({ partition, driven }: Trial, edit: Edit, before: 
   return hold === undefined || freedomsOf(system, [...system.constraints, hold]) === after - 1;
 }
 
-/** Whether the moving bodies an edit leaves are joined into one machine. */
+/**
+ * Whether the drawing an edit leaves starts its input at a limit: held still,
+ * it keeps a freedom to first order that dies at the second (`startOf`). Such
+ * an edit counts, and still leaves the reader a drag to make before anything
+ * plays, so it is listed after the edits that leave a drawing ready to run.
+ */
+export function startsAtLimit({ partition, driven }: Trial, edit: Edit): boolean {
+  if (!driven) return false;
+  const system = constraintSystemOf(
+    edit.joints ?? partition.joints,
+    edit.links ?? partition.links,
+    edit.assignment,
+    edit.rotates
+  );
+  if (!system) return false;
+  const hold = edit.hold ? edit.hold(system) : holdFor(driven, system, edit.assignment);
+  if (!hold) return false;
+  const held = [...system.constraints, hold];
+  return freeDirectionsOf(system, held).length > 0 && freedomsOf(system, held) === 0;
+}
+
+/**
+ * Whether the moving bodies an edit leaves are joined into one piece through
+ * joints that move with them. Stricter than the partition, which joins at a
+ * grounded pin too: this asks whether the edit keeps the linkage a linkage,
+ * not which machine it belongs to.
+ */
 export function staysOnePiece(joints: Joint[], edit: Edit): boolean {
   const { movingBodies, bodiesAt } = edit.assignment;
   const parent = new Map([...movingBodies].map((body) => [body, body]));
@@ -191,7 +222,7 @@ export function staysOnePiece(joints: Joint[], edit: Edit): boolean {
   };
   for (const joint of joints) {
     if (!(joint instanceof RealJoint)) continue;
-    // A grounded pin anchors; a grounded slider still carries a moving point.
+    // A grounded pin holds; a grounded slider still carries a moving point.
     if (edit.groundedAt(joint) && !(joint instanceof PrisJoint)) continue;
     const moving = [...bodiesAt(joint)].filter((body) => parent.has(body));
     moving.slice(1).forEach((body) => parent.set(find(body), find(moving[0])));
@@ -450,7 +481,8 @@ export function mergedAt(
 
 /**
  * Pairs of joints drawn so close they were surely meant as one: nearer each
- * other than a twentieth of the drawing's own size, on no link together. The
+ * other than a twentieth of the drawing's own size, exactly on top included,
+ * on no link together. The
  * joint with fewer links -- or, between equals, the later one -- is the one
  * that was dropped, and goes onto the other.
  */
@@ -468,7 +500,9 @@ export function jointsBeside(joints: Joint[], hidden: Set<string>): [RealJoint, 
   pins.forEach((a, i) =>
     pins.slice(i + 1).forEach((b) => {
       const distance = Math.hypot(a.x - b.x, a.y - b.y);
-      if (distance === 0 || distance > near) return;
+      // Exactly on top counts too: two joints at one point look joined and
+      // are not, which is the mistake at its least visible.
+      if (distance > near) return;
       if (a.links.some((link) => b.links.includes(link))) return;
       // The one holding fewer links was dropped; between equals, the later one,
       // since joints take their letters in the order they are drawn.

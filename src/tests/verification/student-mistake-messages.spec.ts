@@ -4,17 +4,28 @@ import '../../app/model/joint';
 import { MechanismFixture } from '../../test-utils/verification/fixture';
 import { followAdvice, readDrawing } from '../../test-utils/verification/follow-advice';
 import { read } from '../../test-utils/verification/issue-text';
+import { plateGroundedEverywhereFixture } from '../../test-utils/verification/mobility-fixtures';
+import { partitionMechanisms } from '../../app/model/mechanism/mechanism-partition';
+import { unassignedIssues } from '../../app/model/mechanism/unassigned-issues';
 import {
   braceAtInputFixture,
+  bracedScotchYokeFixture,
   couplerInputAndHangingLinkFixture,
   crankLockedAtASlotPinFixture,
   deletedRockerFixture,
   frameBarFixture,
+  groundedKneeLeftUnweldedFixture,
   groundedWattJointFixture,
   hangingLinkNoInputFixture,
   inputOnCouplerPointFixture,
+  inputOnTheWeldedKneeFixture,
   linkHangingFromPivotFixture,
+  lockedRockerBesideCouplerFixture,
+  missingCouplerFixture,
   rockerBesideCouplerFixture,
+  rockerOnTheCouplerPinFixture,
+  rodShortOfTheCrankPinFixture,
+  sixBarLinkHungBesideAJointFixture,
   STUDENT_MISTAKE_GALLERY,
   strayLinkFixture,
   plateHeldByAGroundedLinkFixture,
@@ -32,6 +43,13 @@ import {
  * pins the words, one drawing each, where a reviewer can read them.
  */
 describe('what the drawer says about a mistake it has learned to name', () => {
+  /** What is said about the frame and the loose geometry, which belongs to no machine. */
+  function unassignedOf(fixture: MechanismFixture) {
+    const { drawing } = readDrawing(fixture);
+    const { unassigned } = partitionMechanisms(drawing.joints, drawing.links, []);
+    return unassignedIssues(unassigned, drawing.joints).map(read);
+  }
+
   /** Every issue of every machine, as read, then what is in no machine at all. */
   function said(fixture: MechanismFixture) {
     const { machines, stray } = readDrawing(fixture);
@@ -62,17 +80,14 @@ describe('what the drawer says about a mistake it has learned to name', () => {
     expect(issues[0].fixes).toEqual(['Drag joint E onto joint C']);
   });
 
-  it('names a link hanging from a pivot, and lets the machine beside it run', () => {
+  it('counts a link hanging from a pivot as part of the linkage on that pivot', () => {
+    // One machine, not a four-bar and a link beside it: a reader who hangs a
+    // link off a pivot the linkage uses has drawn one thing, and it does not run.
     const { issues, ready } = said(linkHangingFromPivotFixture());
-    expect(ready).toEqual([true, false]);
-    expect(issues[0].title).toBe('Link DE hangs from joint D');
-    expect(issues[0].summary).toBe(
-      'Link DE turns freely about joint D, joined to nothing else that moves.'
-    );
-    expect(issues[0].fixes).toEqual([
-      'Delete link DE',
-      'Drag joint E onto the joint it should hold',
-    ]);
+    expect(ready).toEqual([false]);
+    expect(issues[0].title).toBe('2 degrees of freedom, needs 1');
+    expect(issues[0].summary).toBe('With the input held still, link DE can still move.');
+    expect(issues[0].fixes).toEqual(['Delete link DE', 'Set joint D to Welded', 'Ground joint E']);
   });
 
   it('names the links on an input pivot, and the one to take off it', () => {
@@ -101,13 +116,11 @@ describe('what the drawer says about a mistake it has learned to name', () => {
     expect(stray[0].fixes).toEqual(['Ground joint E', 'Delete link EF']);
   });
 
-  it('ungrounds the joint that split a six-bar in two, counted on both halves', () => {
-    // Ungrounding D also counts one on the half that holds it, and leaves the
-    // other half rigid: it is not offered. The half with no input of its own
-    // is not asked for one: its input is on the other half.
+  it('ungrounds the joint that split a six-bar in two', () => {
+    // The halves share the grounded joint, so they are one machine and hear
+    // one sentence, not the same sentence twice.
     const { issues } = said(groundedWattJointFixture());
     expect(issues.map((issue) => [issue.title, issue.fixes])).toEqual([
-      ["Over-constrained, can't move", ['Turn off Grounded for joint E']],
       ["Over-constrained, can't move", ['Turn off Grounded for joint E']],
     ]);
   });
@@ -198,12 +211,13 @@ describe('what the drawer says about a mistake it has learned to name', () => {
     const [issue] = said(plateWithTwoHangingLinksFixture()).issues;
     expect(issue.title).toBe('3 degrees of freedom, needs 1');
     expect(issue.summary).toBe('With the input held still, link AB and link FG can still move.');
-    expect(issue.explain).toContain('make one for each loose part');
-    // Every way out for each: deleting it, or holding its free end to ground.
+    expect(issue.explain).toContain('make one, and this list updates');
+    // Every way out for each, the two for one link together: deleting it, or
+    // holding its free end to ground.
     expect(issue.fixes).toEqual([
       'Delete link AB',
-      'Delete link FG',
       'Attach Link at joint A, then ground its far end',
+      'Delete link FG',
       'Attach Link at joint G, then ground its far end',
     ]);
   });
@@ -222,6 +236,74 @@ describe('what the drawer says about a mistake it has learned to name', () => {
     expect(issue.title).toBe("Input at joint H can't turn");
     expect(issue.summary).toBe('Link HI and link IJ are locked in place by the ground.');
     expect(issue.fixes).toEqual(['Turn off Grounded for joint J', 'Delete link IJ']);
+  });
+
+  it('counts a link hung beside a joint with the linkage, and does not brace it there', () => {
+    // H sits a hair from F, but joining them braces the six-bar rigid: the
+    // merge is counted on the whole machine, and it is not offered.
+    const { issues, ready } = said(sixBarLinkHungBesideAJointFixture());
+    expect(ready).toEqual([false]);
+    expect(issues[0].summary).toBe('With the input held still, link DH can still move.');
+    expect(issues[0].fixes).toEqual(['Delete link DH', 'Set joint D to Welded', 'Ground joint H']);
+  });
+
+  it('joins a rod dropped short of the crank pin, rather than giving it a slider of its own', () => {
+    const { issues, ready } = said(rodShortOfTheCrankPinFixture());
+    expect(ready).toEqual([true, false]);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].title).toBe("Joint D isn't joined to joint B");
+    expect(issues[0].summary).toBe("Joint D stops just short of joint B, so they're two joints.");
+    expect(issues[0].fixes).toEqual(['Drag joint D onto joint B']);
+  });
+
+  it('draws the missing coupler first, and only then offers the rocker its own input', () => {
+    const { issues } = said(missingCouplerFixture());
+    expect(issues.map((issue) => issue.title)).toEqual(["Link CD isn't joined to link AB"]);
+    expect(issues[0].summary).toBe("Nothing joins link CD to link AB, so they're two mechanisms.");
+    expect(issues[0].fixes).toEqual([
+      'Attach Link from joint C to joint B',
+      'Add Input to joint D',
+    ]);
+  });
+
+  it('names two joints drawn exactly on top of each other', () => {
+    const { issues } = said(rockerOnTheCouplerPinFixture());
+    expect(issues.map((issue) => issue.fixes)).toEqual([
+      ['Drag joint E onto joint C'],
+      ['Drag joint E onto joint C'],
+    ]);
+  });
+
+  it('drags the joint that is not locked onto the one that is', () => {
+    const { issues } = said(lockedRockerBesideCouplerFixture());
+    expect(issues[0].title).toBe("Joint C isn't joined to joint E");
+    expect(issues[0].fixes).toEqual(['Drag joint C onto joint E']);
+  });
+
+  it('deletes a brace across a Scotch yoke before freeing a guide that starts at a limit', () => {
+    // Pin-in-slot at C counts one too, but the yoke then starts at a limit: it
+    // is listed after the edit that leaves the drawing ready to play.
+    const [issue] = said(bracedScotchYokeFixture()).issues;
+    expect(issue.title).toBe("Over-constrained, can't move");
+    expect(issue.fixes).toEqual(['Delete link BD', 'Set joint C to Pin-in-slot']);
+  });
+
+  it('moves an input off a welded knee, and does not unweld a knee that counts two', () => {
+    const [issue] = said(inputOnTheWeldedKneeFixture()).issues;
+    expect(issue.title).toBe("Joint C can't be the input");
+    expect(issue.fixes).toEqual(['Add Input to joint A']);
+  });
+
+  it('names both edits where a knee was grounded and its weld left off', () => {
+    const [issue] = said(groundedKneeLeftUnweldedFixture()).issues;
+    expect(issue.title).toBe("Over-constrained, can't move");
+    expect(issue.fixes[0]).toBe('Turn off Grounded for joint C, then set joint C to Welded');
+  });
+
+  it('lets a plate grounded at every joint turn by leaving it one support', () => {
+    const [issue] = unassignedOf(plateGroundedEverywhereFixture());
+    expect(issue.title).toBe('Link ABC is grounded at every joint');
+    expect(issue.fixes).toEqual(['Turn off Grounded for joint A and joint B']);
   });
 
   it('runs once the drawer is done with it, every one', () => {

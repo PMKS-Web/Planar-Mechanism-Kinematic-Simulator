@@ -170,7 +170,9 @@ describe('every setup message keeps to its budget', () => {
       if (issue.fixes.length > MOST_STEPS)
         over.add(`${issue.fixes.length} fixes: "${issue.title}"`);
       for (const fix of issue.fixes.map(textOf)) {
-        if (!budget(fix, 10)) over.add(`fix: "${fix}" (${where})`);
+        // Two edits in order are two fixes in one sentence: each keeps to its own.
+        const steps = /, then (?!ground its far end)/.test(fix) ? fix.split(', then ') : [fix];
+        if (!steps.every((step) => budget(step, 10))) over.add(`fix: "${fix}" (${where})`);
       }
     }
     expect([...over]).toEqual([]);

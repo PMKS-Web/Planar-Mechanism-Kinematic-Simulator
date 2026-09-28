@@ -45,7 +45,12 @@ export function forceIssues(facts: ForceFacts): SetupIssue[] {
   if (facts.refused) issues.push(unbalanced(facts.refused.status, facts.refused.message));
 
   const loaded = facts.forces > 0 || (facts.gravityOn && facts.weighted);
-  if (!loaded) issues.push(unloaded(facts.gravityOn, facts.weighted));
+  // Mass with nothing else is still a load in motion: accelerating a link takes
+  // force, so In-motion readings are real while Static ones are zero. Only a
+  // drawing with no mass and no force has nothing to solve at all.
+  const inertiaOnly = !loaded && facts.weighted;
+  if (inertiaOnly) issues.push(inertiaAlone());
+  else if (!loaded) issues.push(unloaded());
 
   // Supports that share a line -- two rails holding one jaw at one height --
   // leave the split of the load between them to stiffness, which statics
@@ -66,7 +71,7 @@ export function forceIssues(facts: ForceFacts): SetupIssue[] {
   // Only once something loads the mechanism: the unloaded blocker already says
   // nothing weighs anything, and saying it twice made the list longer than the
   // problem.
-  if (loaded && facts.massless.length > 0) {
+  if ((loaded || inertiaOnly) && facts.massless.length > 0) {
     const refs = facts.massless.map((link) => linkRef(link, facts.cylinders));
     const one = refs.length === 1;
     issues.push({
@@ -83,25 +88,30 @@ export function forceIssues(facts: ForceFacts): SetupIssue[] {
   return issues;
 }
 
-/** Nothing to react against: gravity off, or nothing with mass, and no force. */
-function unloaded(gravityOn: boolean, weighted: boolean): SetupIssue {
-  const summary = !gravityOn
-    ? weighted
-      ? prose`Gravity is off, so link mass weighs nothing.`
-      : prose`Gravity is off and no force is applied.`
-    : prose`No force is applied and every link is massless.`;
-  const fixes = !gravityOn
-    ? weighted
-      ? [prose`Turn on Gravity in the Settings panel`, prose`Attach Force to any link`]
-      : [prose`Attach Force to any link`, prose`Turn on Gravity and give a link a mass`]
-    : [prose`Attach Force to any link`, prose`Type a mass in the Masses table`];
+/** Gravity off and no force, with mass to accelerate: In-motion has a load, Static has none. */
+function inertiaAlone(): SetupIssue {
+  return {
+    severity: 'warning',
+    title: 'Only inertia loads the mechanism',
+    summary: prose`Gravity is off and no force is applied, so every Static reading is zero.`,
+    explain:
+      'Moving a link with mass takes force, so In-motion readings show the inertia alone. Static readings balance loads, and there are none.',
+    fixes: [prose`Turn on Gravity in the Settings panel`, prose`Attach Force to any link`],
+  };
+}
+
+/**
+ * Nothing to react against: no force, and no mass for gravity to weigh or the
+ * motion to accelerate. The same whether gravity is on or off.
+ */
+function unloaded(): SetupIssue {
   return {
     severity: 'blocker',
     title: 'Nothing loads the mechanism',
-    summary,
+    summary: prose`No force is applied and every link is massless.`,
     explain:
       'Force analysis finds the reactions that balance the loads. With no load, every reaction is zero.',
-    fixes,
+    fixes: [prose`Attach Force to any link`, prose`Type a mass in the Masses table`],
   };
 }
 

@@ -48,7 +48,11 @@ describe('which part is loose, and what would fix it', () => {
   }
 
   const describeFix = (fix: MobilityFix): string =>
-    fix.kind === 'delete-link' ? `${fix.kind} ${fix.link.id}` : `${fix.kind} ${fix.joint.id}`;
+    fix.kind === 'then'
+      ? `${describeFix(fix.first)}, then ${describeFix(fix.second)}`
+      : fix.kind === 'delete-link'
+        ? `${fix.kind} ${fix.link.id}`
+        : `${fix.kind} ${fix.joint.id}`;
 
   describe('too many degrees of freedom', () => {
     it('names the links that fold with the input held, and grounds the pivot that was missed', () => {

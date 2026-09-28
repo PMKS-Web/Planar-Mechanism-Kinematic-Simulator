@@ -81,14 +81,19 @@ export function unassignedIssues(
 
   unassigned.fixedLinks.forEach((body) => {
     const link = linkRef(body, cylinders);
-    const grounded = body.joints.find((joint) => joint instanceof RealJoint && joint.ground);
+    const grounded = body.joints.filter(
+      (joint): joint is RealJoint => joint instanceof RealJoint && joint.ground
+    );
+    // To turn, the link keeps one pivot and lets go of every other: one fewer
+    // on a plate grounded at three still leaves it pinned at two.
+    const release = grounded.slice(0, -1).map(jointRef);
     issues.push({
       severity: 'unassigned',
       title: `${capitalized(link.label)} is grounded at ${body.joints.length === 2 ? 'both ends' : 'every joint'}`,
       summary: prose`Every joint on ${link} is grounded, so it's part of the frame.`,
       explain:
-        "A link grounded at every joint can't move. That's fine for a fixed reference, and analysis leaves it out.",
-      fixes: grounded ? [prose`Turn off Grounded for ${jointRef(grounded)}`] : [],
+        "A link grounded at every joint can't move. That's fine for a fixed reference. To let it turn, keep one joint grounded.",
+      fixes: release.length ? [prose`Turn off Grounded for ${listOf(release)}`] : [],
     });
   });
 

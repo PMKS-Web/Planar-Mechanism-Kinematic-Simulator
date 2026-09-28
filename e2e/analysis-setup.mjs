@@ -70,29 +70,11 @@ async function open(payload) {
 
 // --- a mechanism that runs says so, and stays out of the way ----------------
 await open(payloads['4-Bar']);
-// Weight is a load: gravity hanging on links that have mass is a complete static
-// problem. But a template arrives massless -- zero is the mass nobody chose, and
-// every link starts there -- so a mass has to be given before gravity is worth
-// switching off. That order is the whole point of what follows. The drawer only
-// offers to turn gravity back on where doing so would settle the matter by
-// itself, which means where something already has mass to be pulled on; with
-// every link at zero, turning gravity on would fix nothing and the sentence says
-// so instead ("turn gravity on in Settings *and give a link mass*").
-//
-// This used to skip the mass and expect the button anyway, on the strength of a
-// comment claiming the four-bar arrives ready. It does not, and the button was
-// correctly withheld.
-//
-// Set through the same three steps the Settings toggle and the mass field use,
-// not by poking the subject alone: both are edits, and readiness is cached
-// against the rebuild every edit funnels through. A bare `next()` leaves the
-// cached readiness answering for the drawing as it was.
-await page.evaluate(() => {
-  const grid = ng.getComponent(document.querySelector('app-new-grid'));
-  grid.mechanismSrv.links[0].mass = 1;
-  grid.settings.isGravity.next(false);
-  grid.mechanismSrv.updateMechanism(true);
-});
+// A template arrives massless -- zero is the mass nobody chose, and every link
+// starts there -- and with no force applied there is nothing for a reaction to
+// balance, in Static or In-motion alike. Mass alone is a load (gravity weighs
+// it, and the motion accelerates it even with gravity off), so the way out the
+// drawer names is to give a link one.
 await tab('Force').click();
 await page.waitForTimeout(600);
 let text = await drawerText();
@@ -109,10 +91,10 @@ record(
   text
 );
 // The one issue in the Force drawer opens with its fixes showing, and none is
-// a button: the drawer says where the switch lives rather than throwing it.
+// a button: the drawer says where the mass is typed rather than typing it.
 record(
   'a lone issue opens with its fixes, none of them a button',
-  text.includes('Turn on Gravity in the Settings panel') &&
+  text.includes('Type a mass in the Masses table') &&
     (await page.locator('app-analysis-setup button-block').count()) === 0,
   text
 );
@@ -120,13 +102,13 @@ text = await openText();
 record(
   'naming the way out rather than only the wall',
   text.includes('Needs a fix to run. Some options:') &&
-    text.includes('Turn on Gravity in the Settings panel'),
+    text.includes('Type a mass in the Masses table'),
   text
 );
-// Turned on where the fix says it lives, by the same steps the Settings toggle takes.
+// A mass typed, by the same steps the mass field takes.
 await page.evaluate(() => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
-  grid.settings.isGravity.next(true);
+  grid.mechanismSrv.links[0].mass = 1;
   grid.mechanismSrv.updateMechanism(true);
 });
 await page.waitForTimeout(600);
@@ -595,24 +577,25 @@ record('and lets go of it when the pointer leaves', !letGo.includes('link-pointe
 
 // In an analysis mode a machine that cannot run is drawn gray, and those are
 // exactly the parts a setup drawer names: pointing lights them all the same.
-await open(galleryQuery('Link hanging from a pivot'));
+// The crank runs; the rocker beside it, with its coupler never drawn, does not.
+await open(galleryQuery('Four-bar with its coupler missing'));
 await tab('Kinematic').click();
 await page.waitForTimeout(800);
 await chipFor('Kinematic').click();
 await page.waitForTimeout(600);
-await partLink('link DE').hover();
+await partLink('link CD').hover();
 await page.waitForTimeout(250);
 const litWhileInert = await page.evaluate(() => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   const srv = grid.mechanismSrv;
   return {
     tab: grid.tabService.getCurrentTab(),
-    de: srv.getLinkCSSClass(srv.links.find((link) => link.id === 'DE')),
+    cd: srv.getLinkCSSClass(srv.links.find((link) => link.id === 'CD')),
   };
 });
 record(
   'and lights a part of a machine the analysis mode draws gray',
-  litWhileInert.tab === 2 && litWhileInert.de.includes('link-pointed'),
+  litWhileInert.tab === 2 && litWhileInert.cd.includes('link-pointed'),
   litWhileInert
 );
 await page.mouse.move(5, 5);

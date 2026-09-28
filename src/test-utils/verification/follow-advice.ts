@@ -44,7 +44,8 @@ export type Action =
   | { kind: 'delete-link'; link: string }
   | { kind: 'add-link'; joints: string }
   | { kind: 'attach'; joint: string }
-  | { kind: 'merge'; joint: string; onto: string };
+  | { kind: 'merge'; joint: string; onto: string }
+  | { kind: 'then'; first: Action; second: Action };
 
 export interface Step {
   title: string;
@@ -159,6 +160,22 @@ function firstBlocker(fixture: MechanismFixture) {
  * harness can make -- a drag off a limit, "check the link lengths".
  */
 export function actionOfFix(fix: Prose): Action | undefined {
+  // "Turn off Grounded for joint C, then set joint C to Welded": two edits.
+  const at = fix.findIndex((piece) => typeof piece === 'string' && piece.includes(', then '));
+  if (at !== -1 && !/^Attach Link at joint \S+, then ground its far end$/.test(textOf(fix))) {
+    const piece = fix[at] as string;
+    const cut = piece.indexOf(', then ');
+    const rest = piece.slice(cut + ', then '.length);
+    const first = actionOfFix(
+      [...fix.slice(0, at), piece.slice(0, cut)].filter((one) => one !== '')
+    );
+    const after = [rest, ...fix.slice(at + 1)].filter((one) => one !== '');
+    const [head, ...tail] = after;
+    const second = actionOfFix(
+      typeof head === 'string' ? [head.charAt(0).toUpperCase() + head.slice(1), ...tail] : after
+    );
+    return first && second ? { kind: 'then', first, second } : undefined;
+  }
   const text = textOf(fix);
   const ids = fix.filter(isPart).map((piece) => piece.part.id);
   const [first, second] = ids;
@@ -167,6 +184,13 @@ export function actionOfFix(fix: Prose): Action | undefined {
     return { kind: 'ground', joint: first };
   }
   if (/^Turn off Grounded for joint \S+$/.test(text)) return { kind: 'unground', joint: first };
+  if (/^Turn off Grounded for joint \S+ and joint \S+$/.test(text) && second) {
+    return {
+      kind: 'then',
+      first: { kind: 'unground', joint: first },
+      second: { kind: 'unground', joint: second },
+    };
+  }
   if (/^Set joint \S+ to Pin-in-slot$/.test(text)) return { kind: 'pin-in-slot', joint: first };
   if (/^Set joint \S+ to Prismatic$/.test(text)) return { kind: 'prismatic', joint: first };
   if (/^Set joint \S+ to Welded$/.test(text)) return { kind: 'weld', joint: first };
@@ -258,6 +282,7 @@ function rankOf(offered: MobilityFix[], undos: Undo[]): number | undefined {
 
 /** The latest letter a fix touches: a stand-in for how recently it was drawn. */
 function newestLetter(fix: MobilityFix): number {
+  if (fix.kind === 'then') return Math.max(newestLetter(fix.first), newestLetter(fix.second));
   const ids =
     fix.kind === 'delete-link'
       ? fix.link.id
@@ -328,11 +353,15 @@ function withoutOrphans(fixture: MechanismFixture): MechanismFixture {
   fixture.sliders = fixture.sliders?.filter((slider) => kept.has(slider.at));
   fixture.welds = fixture.welds?.filter((id) => kept.has(id));
   fixture.detach = fixture.detach?.filter((id) => kept.has(id));
+  if (fixture.locks?.joints) {
+    fixture.locks = { ...fixture.locks, joints: fixture.locks.joints.filter((id) => kept.has(id)) };
+  }
   return fixture;
 }
 
 /** The drawing with one edit made, as the app would make it. */
 export function applied(fixture: MechanismFixture, action: Action): MechanismFixture {
+  if (action.kind === 'then') return applied(applied(fixture, action.first), action.second);
   const next = copyFixture(fixture);
   const joint = 'joint' in action ? next.joints.find((one) => one.id === action.joint) : undefined;
   switch (action.kind) {
@@ -407,7 +436,14 @@ export function applied(fixture: MechanismFixture, action: Action): MechanismFix
         link.joints = sortedIds(link.joints.replace(action.joint, action.onto));
         link.subset?.forEach(rename);
       };
+      // A locked joint refuses the drag, as the canvas does: advice to drag one
+      // is advice nobody can follow.
+      if (next.locks?.joints?.includes(action.joint)) {
+        throw new Error(`Joint ${action.joint} is locked`);
+      }
       next.links.forEach(rename);
+      const onto = next.joints.find((one) => one.id === action.onto);
+      if (onto && joint?.ground) onto.ground = true;
       next.joints = next.joints.filter((one) => one.id !== action.joint);
       return withoutOrphans(next);
     }
