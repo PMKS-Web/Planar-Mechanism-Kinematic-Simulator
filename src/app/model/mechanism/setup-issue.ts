@@ -45,19 +45,20 @@ export function issueText(issue: SetupIssue): string {
 
 /**
  * The line over the fixes, which says whether they are needed and presents
- * them as suggestions. Exact strings, from the spec's table.
+ * them as suggestions: a blocker's single fix is an example, never "the" way,
+ * since other edits would fix it too. Exact strings, from the spec's table.
  */
 export function fixesLabel(issue: SetupIssue): string {
   const count = issue.fixes.length;
   const lead =
     issue.severity === 'blocker'
-      ? 'Required to run.'
+      ? 'Needs a fix to run.'
       : issue.severity === 'warning' || issue.severity === 'note'
         ? 'Optional, it runs as is.'
         : 'Optional, analysis skips it for now.';
   if (count === 0) return lead;
   if (issue.severity === 'blocker') {
-    return `${lead} ${count === 1 ? 'One way to fix it:' : 'Some ways to fix it:'}`;
+    return `${lead} ${count === 1 ? 'For example:' : 'Some options:'}`;
   }
   return `${lead} ${count === 1 ? 'Something to try:' : 'Some things to try:'}`;
 }

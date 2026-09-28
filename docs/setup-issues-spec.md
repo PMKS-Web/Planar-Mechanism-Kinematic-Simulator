@@ -22,7 +22,7 @@ Each issue splits into **what is wrong** (title and one-line summary, always vis
         Show fixes ▾                            ← text button
         ┌───────────────────────────────────┐   ← appears only when open
         │ Explanation (teaching)            │
-        │ Required to run. Some ways to fix it:
+        │ Needs a fix to run. Some options:
         │ • Fix one, with {joint C}         │
         │ • Fix two                         │
         └───────────────────────────────────┘
@@ -104,8 +104,8 @@ Uses the existing drawer tokens: Roboto, primary `#3f51b5`, card top border 5px 
 
 | Severity | Fixes | Label |
 |---|---|---|
-| blocker | 1 | Required to run. One way to fix it: |
-| blocker | 2–3 | Required to run. Some ways to fix it: |
+| blocker | 1 | Needs a fix to run. For example: |
+| blocker | 2–3 | Needs a fix to run. Some options: |
 | warning | 1 | Optional, it runs as is. Something to try: |
 | warning | 2–3 | Optional, it runs as is. Some things to try: |
 | warning | 0 | Optional, it runs as is. |
@@ -282,7 +282,7 @@ What changed on the way:
   force-analysis state. The spec's own examples that ran over were cut ("Set joint A as the
   input" without "from its right-click menu or the edit panel").
 - **A blocker with no fix** (a force equilibrium with no single answer, an arrangement the force
-  model cannot write) shows "Show more" and the label "Required to run." alone. §4's table had no
+  model cannot write) shows "Show more" and the label "Needs a fix to run." alone. §4's table had no
   row for it.
 - **The Masses table in the Force drawer stays**, unchanged: it is not in the design, and the
   change was to issues and their words.

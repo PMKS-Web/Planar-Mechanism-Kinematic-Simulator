@@ -156,7 +156,7 @@ describe('AnalysisSetupComponent issues', () => {
     expect(toggle.getAttribute('aria-expanded')).toBe('true');
     expect(toggle.getAttribute('aria-controls')).toBe(panel.id);
     expect(text(panel.querySelector('.issueExplain'))).toBe('The rule behind it.');
-    expect(text(panel.querySelector('.issueLabel'))).toBe('Required to run. One way to fix it:');
+    expect(text(panel.querySelector('.issueLabel'))).toBe('Needs a fix to run. For example:');
     // One fix is a sentence, not a list of one.
     expect(panel.querySelector('ul')).toBeNull();
     expect(text(panel.querySelector('.issueFix'))).toBe('Delete a link');
@@ -188,7 +188,7 @@ describe('AnalysisSetupComponent issues', () => {
     });
     const issue: HTMLElement = fixture.nativeElement.querySelector('issue-block');
 
-    expect(text(issue.querySelector('.issueLabel'))).toBe('Required to run. Some ways to fix it:');
+    expect(text(issue.querySelector('.issueLabel'))).toBe('Needs a fix to run. Some options:');
     expect([...issue.querySelectorAll('li.issueFix')].map(text)).toEqual([
       'Ground a joint',
       'Delete a link',

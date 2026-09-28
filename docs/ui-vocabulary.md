@@ -154,9 +154,10 @@ words are fixed where a control or a label repeats:
 - **The toggle** reads `Show fixes` / `Hide fixes`, or `Show more` / `Show less` where there is
   nothing to change.
 - **The label over the fixes** says whether they are needed and calls them suggestions:
-  `Required to run. One way to fix it:` / `Some ways to fix it:`, `Optional, it runs as is.
+  `Needs a fix to run. For example:` / `Some options:`, `Optional, it runs as is.
   Something to try:` / `Some things to try:`, `Optional, analysis skips it for now.` A blocker
-  with no fix known says `Required to run.` alone.
+  with no fix known says `Needs a fix to run.` alone. A single fix is never "the way" or "one
+  way": other edits would fix it too, so it is an example.
 - **A fix says what to press, in the words the Edit panel and the right-click menu use**, so the
   reader can find the control it names. A joint's type is a value of Joint Type: `Set joint C to
   Revolute`, `Set joint C to Prismatic`, `Set joint C to Welded` -- never `Unweld`, which is no

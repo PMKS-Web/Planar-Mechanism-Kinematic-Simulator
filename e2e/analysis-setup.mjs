@@ -119,7 +119,7 @@ record(
 text = await openText();
 record(
   'naming the way out rather than only the wall',
-  text.includes('Required to run. Some ways to fix it:') &&
+  text.includes('Needs a fix to run. Some options:') &&
     text.includes('Turn on Gravity in the Settings panel'),
   text
 );
