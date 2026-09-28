@@ -1,3 +1,4 @@
+import { mechanismLabel } from '../../model/mechanism/mechanism-name';
 import {
   AfterViewChecked,
   AfterViewInit,
@@ -1036,6 +1037,12 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
 
   toggleSync(): void {
     this.mechanism.setSyncMechanisms(!this.mechanism.syncMechanisms);
+  }
+
+  /** "Pump jack (M2)" for a named machine; the row itself has room only for M2. */
+  labelOf(row: PlaybackRow): string {
+    const partition = this.mechanism.partitions[row.index];
+    return partition ? mechanismLabel(partition, row.index, true) : row.id;
   }
 
   /**

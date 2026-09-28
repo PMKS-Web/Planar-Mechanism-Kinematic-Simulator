@@ -277,24 +277,26 @@ export class RightPanelComponent implements DoCheck {
     if (!this.isOpen) {
       return;
     }
-    // The force drawer holds the mass table, whose own header offers "Switch
-    // to Edit mode" — a switch that must not close the thing that offered it.
-    // So it survives Edit as well as Force, and only leaves for Synthesis.
-    const forceDrawerBelongs = tab === TabID.FORCE || tab === TabID.EDIT;
+    // Both setup drawers survive Edit, where their fixes are made: a part link
+    // in the list takes the reader to Edit and selects the part, and the list
+    // stays beside it, updating as each fix lands. The force drawer holds the
+    // mass table too, whose header offers "Switch to Edit mode" -- a switch
+    // that must not close the thing that offered it. Each leaves for the other
+    // analysis mode and for Synthesis.
     const wanted =
       tab === TabID.FORCE
         ? RightPanelComponent.FORCE_SETUP_TAB
         : tab === TabID.ANALYZE
           ? RightPanelComponent.KINEMATIC_SETUP_TAB
           : -1;
-    if (this.openTab === RightPanelComponent.FORCE_SETUP_TAB) {
-      if (!forceDrawerBelongs) {
+    const isSetup =
+      this.openTab === RightPanelComponent.FORCE_SETUP_TAB ||
+      this.openTab === RightPanelComponent.KINEMATIC_SETUP_TAB;
+    if (isSetup) {
+      if (tab !== TabID.EDIT && this.openTab !== wanted) {
         this.isOpen = false;
       }
       return;
-    }
-    if (this.openTab === RightPanelComponent.KINEMATIC_SETUP_TAB && this.openTab !== wanted) {
-      this.isOpen = false;
     }
     // Export is an analysis-mode command: there is nothing to take away from a
     // mechanism being drawn, and the drawer's own lists come from a solved

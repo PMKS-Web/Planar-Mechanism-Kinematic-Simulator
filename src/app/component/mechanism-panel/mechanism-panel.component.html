@@ -1,68 +1,140 @@
-@if (exists) {
+@if (overview.count() > 0) {
   <div class="mechanismPanel">
-    <div class="mechHead">
-      <div class="mechTitle">{{ editable() ? 'Edit' : 'Analysis for' }} Mechanism {{ id }}</div>
-      <div class="mechStatusRow">
-        <span class="mechStatus" [class.ready]="ready" (click)="openSetup()">{{ statusText }}</span>
+    @if (showsList) {
+      <!-- Every machine, one row each: a name of any length wraps inside its
+           row, and a row is the way into that machine. -->
+      <div class="mechHead">
+        <div class="mechTitle">All mechanisms</div>
+        <p class="mechLead">
+          {{ viewport.isTouch() ? 'Tap' : 'Select' }} one for its family, facts and links.
+        </p>
       </div>
-      @if (editable()) {
-        <div class="mechActions">
-          <button class="mechButton danger" (click)="deleteMechanism()">
-            <mat-icon>delete_outline</mat-icon>
-            Delete
+      <div class="machineList" role="list">
+        @for (index of machines; track index) {
+          <button
+            type="button"
+            class="machineRow"
+            role="listitem"
+            [attr.data-machine]="overview.code(index)"
+            (click)="pick(index)"
+            (pointerenter)="point(index)"
+            (pointerleave)="point(-1)"
+            (focus)="point(index)"
+            (blur)="point(-1)"
+          >
+            <span class="machineText">
+              <span class="machineName">{{ overview.title(index) }}</span>
+              <!-- A name hides the code the transport's rows go by, so it is
+                   said under it; "Mechanism M2" already carries it. -->
+              @if (subtitle(index); as line) {
+                <span class="machineFamily">{{ line }}</span>
+              }
+            </span>
+            <chip-block [kind]="overview.chip(index).kind">{{
+              overview.chip(index).text
+            }}</chip-block>
           </button>
-        </div>
-      }
-    </div>
-
-    <button class="sectionHeader" (click)="overviewOpen = !overviewOpen">
-      <span>Mechanism Overview</span>
-      <mat-icon>{{ overviewOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
-    </button>
-    @if (overviewOpen) {
-      <div class="factGrid">
-        @for (fact of facts; track fact.label) {
-          <div class="fact">
-            <span class="factLabel">{{ fact.label }}</span>
-            <span class="factValue" [class.bad]="fact.bad">{{ fact.value }}</span>
-          </div>
         }
       </div>
-    }
-
-    <button class="sectionHeader" (click)="linksOpen = !linksOpen">
-      <span>Links</span>
-      <mat-icon>{{ linksOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
-    </button>
-    @if (linksOpen) {
-      <div class="linkList">
-        <!-- By position, not by name: a name here is the one a reader sees,
-             and two bodies can share one once a welded body stops being
-             called after the joint buried inside it. -->
-        @for (link of links; track $index) {
-          <div class="linkRow">
-            <span class="linkName">{{ link.name }}</span>
-            <span class="linkRole">{{ link.role }}</span>
-            <span class="linkSpacer"></span>
-            <span class="linkLength">{{ link.length }}</span>
-          </div>
-        }
-      </div>
-    }
-
-    <!-- The same hint row the Edit and Analysis panels' empty states use, so
-         "something else is to be clicked" looks the same everywhere. A machine
-         that cannot run has nothing to click *for*, so it is sent to its
-         blockers instead. -->
-    <div class="mechFooter">
-      @if (ready || editable()) {
-        <div class="helpHint">
-          <mat-icon>touch_app</mat-icon>
-          <span>{{ footerHint }}</span>
-        </div>
-      } @else {
-        <p>{{ footerHint }}</p>
+      @if (overview.count() > mostMachines) {
+        <p class="mechNote">
+          Only the first {{ mostMachines }} mechanisms are simulated. The rest are drawn, and their
+          chips say why.
+        </p>
       }
-    </div>
+    } @else {
+      <div class="mechHead">
+        @if (overview.count() > 1) {
+          <button type="button" class="backLink" (click)="showAll()">
+            <mat-icon>arrow_back</mat-icon>
+            All mechanisms
+          </button>
+        }
+        @if (editable()) {
+          <editable-title-block
+            [displayName]="overview.title(index)"
+            [renameTo]="rename"
+            [renameFrom]="overview.name(index) ?? ''"
+            [takenNames]="overview.namesBesides(index)"
+            [deleteAction]="deleteMechanism"
+            deleteHint="Delete Mechanism"
+          >
+            Edit
+          </editable-title-block>
+        } @else {
+          <div class="mechTitle">{{ overview.title(index) }}</div>
+        }
+        <app-mechanism-status class="mechStatusRow" [index]="index" />
+      </div>
+
+      <button
+        class="sectionHeader"
+        [attr.aria-expanded]="overviewOpen"
+        (click)="overviewOpen = !overviewOpen"
+      >
+        <span>Mechanism Overview</span>
+        <mat-icon>{{ overviewOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+      </button>
+      @if (overviewOpen) {
+        <div class="factGrid">
+          <!-- Said only where PMKS+ recognizes the machine: a family is a
+               finding, and a guess would be worse than nothing. -->
+          @if (overview.family(index); as family) {
+            <div class="fact wide">
+              <span class="factLabel">Family</span>
+              <span class="factValue">{{ family.name }}</span>
+              <span class="factBasis">{{ family.basis }}</span>
+            </div>
+          }
+          @for (fact of overview.facts(index); track fact.label) {
+            <div class="fact">
+              <span class="factLabel">{{ fact.label }}</span>
+              <span class="factValue" [class.bad]="fact.bad">{{ fact.value }}</span>
+            </div>
+          }
+        </div>
+      }
+
+      <button
+        class="sectionHeader"
+        [attr.aria-expanded]="linksOpen"
+        (click)="linksOpen = !linksOpen"
+      >
+        <span>Links</span>
+        <mat-icon>{{ linksOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+      </button>
+      @if (linksOpen) {
+        <div class="linkList">
+          <!-- By position, not by name: two bodies can share a name once a
+               welded body stops being called after the joint buried inside it. -->
+          @for (link of overview.links(index); track $index) {
+            <div class="linkRow">
+              <span class="linkName"
+                ><part-link [part]="link.part">{{ link.name }}</part-link></span
+              >
+              <span class="linkRole">{{ link.role }}</span>
+              <span class="linkSpacer"></span>
+              <span class="linkLength">{{ link.length }}</span>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Edit's own hints come in below instead: how to select and build. -->
+      @if (!editable()) {
+        <div class="mechFooter">
+          @if (overview.ready(index)) {
+            <div class="helpHint">
+              <mat-icon>touch_app</mat-icon>
+              <span>{{ footerHint }}</span>
+            </div>
+          } @else {
+            <p>{{ footerHint }}</p>
+          }
+        </div>
+      }
+    }
+    <!-- What the host adds under the machines: Edit's ways to build. -->
+    <div class="mechExtra"><ng-content /></div>
   </div>
 }

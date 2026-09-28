@@ -14,6 +14,7 @@ import {
 import { animate, style, transition, trigger } from '@angular/animations';
 import { MatDialog } from '@angular/material/dialog';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
+import { ViewportService } from '../../services/viewport.service';
 import { MechanismService } from '../../services/mechanism.service';
 import { SaveHistoryService } from '../../services/save-history.service';
 import { AnalyticsService } from '../../services/analytics.service';
@@ -152,6 +153,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   private analytics: AnalyticsService = inject(AnalyticsService);
   shortcuts = inject(KeyboardShortcutsService);
   private gridUtils = inject(GridUtilsService);
+  private viewport = inject(ViewportService);
 
   readonly tabStrip = viewChild<ElementRef<HTMLElement>>('tabStrip');
   readonly strip = viewChild<ElementRef<HTMLElement>>('strip');
@@ -397,7 +399,37 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
       RightPanelComponent.tabClicked(setup);
     } else {
       this.tabs.setTab(tab);
+      if (this.offersSetupOnArrival(tab)) RightPanelComponent.insistOn(setup);
     }
+  }
+
+  /**
+   * Whether arriving in a mode opens its setup drawer too.
+   *
+   * One machine running is enough to enter Kinematic Analysis, so a drawing
+   * with a second that cannot run used to open straight onto the first one's
+   * graphs, and its chip said "1 fix" about a list nothing had opened. So
+   * arriving opens the list whenever a machine in it is blocked -- once, on
+   * arrival, and a reader who closes it keeps it closed until they come back.
+   *
+   * Not over Settings, Help or Export, which the reader opened for themselves,
+   * and not on a phone, where the drawer covers the drawing they came to see:
+   * the chip is the way in there. Force Analysis cannot be entered with a
+   * blocker in its own list, so only Kinematic Analysis asks.
+   */
+  private offersSetupOnArrival(tab: TabID): boolean {
+    if (tab !== TabID.ANALYZE || this.viewport.isPhone()) return false;
+    const showing = RightPanelComponent.isOpen ? RightPanelComponent.openTab : undefined;
+    if (
+      showing !== undefined &&
+      showing !== RightPanelComponent.KINEMATIC_SETUP_TAB &&
+      showing !== RightPanelComponent.FORCE_SETUP_TAB
+    ) {
+      return false;
+    }
+    return this.mechanism
+      .readinessOfEachMechanism()
+      .some((machine) => machine.checks.some((check) => check.severity === 'blocker'));
   }
 
   /** The setup drawer that answers for a mode, or null for a mode with none. */

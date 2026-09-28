@@ -1,0 +1,102 @@
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { createMechanismHarness } from '../../../test-utils/mechanism-harness';
+import { MechanismBuilder } from '../../services/transcoding/mechanism-builder';
+import { StringTranscoder } from '../../services/transcoding/string-transcoder';
+import { PART_LINK_TARGET } from '../BLOCKS/part-link/part-link-target';
+import { TEMPLATE_LINKAGES } from '../MODALS/templates/template-linkages';
+import { SelectedTabService, TabID } from '../../selected-tab.service';
+import { ActiveObjService } from '../../services/active-obj.service';
+import { MechanismService } from '../../services/mechanism.service';
+import { SettingsService } from '../../services/settings.service';
+import { MechanismPanelComponent } from './mechanism-panel.component';
+
+/**
+ * The machines on the grid, with nothing selected: every one in a list, or
+ * one in detail, the same way in Edit and in the analysis modes.
+ */
+async function createPanel(payload: string, editable = false) {
+  const harness = createMechanismHarness();
+  const decoder = new StringTranscoder();
+  decoder.decodeURL(payload);
+  new MechanismBuilder(harness.service, decoder, harness.settings, harness.active).build(true);
+  harness.service.updateMechanism();
+  const data = harness;
+  const tabs = {
+    getCurrentTab: () => (editable ? TabID.EDIT : TabID.ANALYZE),
+  } as unknown as SelectedTabService;
+  await TestBed.configureTestingModule({
+    imports: [NoopAnimationsModule, MechanismPanelComponent],
+    providers: [
+      { provide: ActiveObjService, useValue: data.active },
+      { provide: MechanismService, useValue: data.service },
+      { provide: SettingsService, useValue: data.settings },
+      { provide: SelectedTabService, useValue: tabs },
+      { provide: PART_LINK_TARGET, useValue: { point: () => undefined, open: () => undefined } },
+    ],
+  }).compileComponents();
+  const fixture: ComponentFixture<MechanismPanelComponent> =
+    TestBed.createComponent(MechanismPanelComponent);
+  fixture.componentRef.setInput('editable', editable);
+  fixture.detectChanges();
+  return { fixture, data };
+}
+
+const text = (fixture: ComponentFixture<unknown>, selector: string): string[] =>
+  [...(fixture.nativeElement as HTMLElement).querySelectorAll(selector)].map(
+    (node) => node.textContent?.replace(/\s+/g, ' ').trim() ?? ''
+  );
+
+describe('MechanismPanelComponent', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('lists every machine, with what PMKS+ recognized, when none is picked', async () => {
+    const { fixture } = await createPanel(TEMPLATE_LINKAGES['Straight_Line_Pair']);
+    expect(text(fixture, '.mechTitle')).toEqual(['All mechanisms']);
+    const rows = text(fixture, '.machineRow');
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toContain('Mechanism M1');
+    expect(rows[0]).toContain('Chebyshev straight-line linkage');
+    expect(rows[1]).toContain('Peaucellier-Lipkin straight-line linkage');
+    fixture.destroy();
+  });
+
+  it('shows the one picked, and goes back to all of them', async () => {
+    const { fixture, data } = await createPanel(TEMPLATE_LINKAGES['Straight_Line_Pair']);
+    (fixture.nativeElement.querySelectorAll('.machineRow')[1] as HTMLElement).click();
+    fixture.detectChanges();
+    expect(data.active.objType).toBe('Mechanism');
+    expect(data.active.selectedMechanismIndex).toBe(1);
+    expect(text(fixture, '.mechTitle')).toEqual(['Mechanism M2']);
+    expect(text(fixture, '.fact.wide')[0]).toContain('Peaucellier-Lipkin straight-line linkage');
+
+    (fixture.nativeElement.querySelector('.backLink') as HTMLElement).click();
+    fixture.detectChanges();
+    expect(text(fixture, '.mechTitle')).toEqual(['All mechanisms']);
+    fixture.destroy();
+  });
+
+  it('shows a lone machine in detail at once, with nothing to go back to', async () => {
+    const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar']);
+    expect(text(fixture, '.mechTitle')).toEqual(['Mechanism M1']);
+    expect(fixture.nativeElement.querySelector('.backLink')).toBeNull();
+    expect(text(fixture, '.linkRole')).toEqual(expect.arrayContaining(['Input crank', 'Rocker']));
+    fixture.destroy();
+  });
+
+  it('says a family only where PMKS+ recognizes one', async () => {
+    const { fixture } = await createPanel(TEMPLATE_LINKAGES['Pantograph']);
+    expect(fixture.nativeElement.querySelector('.fact.wide')).toBeNull();
+    fixture.destroy();
+  });
+
+  it('names a machine by the name its author gave it, with its code beside it', async () => {
+    const { fixture, data } = await createPanel(TEMPLATE_LINKAGES['Straight_Line_Pair'], true);
+    data.service.renameMechanism(1, 'Straight arm');
+    fixture.detectChanges();
+    const rows = text(fixture, '.machineRow');
+    expect(rows[1]).toContain('Straight arm');
+    expect(rows[1]).toContain('M2 ·');
+    fixture.destroy();
+  });
+});

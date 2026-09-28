@@ -83,7 +83,10 @@ export class StringTranscoder extends GenericTranscoder {
     // second-to-last and with the same placeholders behind it: a massless
     // slider -- every one in every URL written while the mass belonged to the
     // block -- keeps exactly the tokens it had.
-    let massString = joint.mass !== 0 ? ',' + this.encodeDecimalNumber(joint.mass) : '';
+    // A mechanism's name rides after the mass, behind the same placeholders.
+    let nameString = joint.machineName !== '' ? ',' + joint.machineName : '';
+    let massString =
+      joint.mass !== 0 ? ',' + this.encodeDecimalNumber(joint.mass) : nameString !== '' ? ',' : '';
     let speedString =
       joint.isInput && joint.driveSpeed !== 0 ? this.encodeDecimalNumber(joint.driveSpeed) : '';
     let driveString = speedString !== '' ? ',' + speedString : massString !== '' ? ',' : '';
@@ -108,7 +111,8 @@ export class StringTranscoder extends GenericTranscoder {
       angleString +
       slotString +
       driveString +
-      massString
+      massString +
+      nameString
     );
   }
 
@@ -140,6 +144,8 @@ export class StringTranscoder extends GenericTranscoder {
     // mass on its block says: the mass is read off that block instead, and
     // folded onto this joint once the links are built.
     let mass = sd.nextDecimalNumber();
+    // Empty past the end: a mechanism nobody named.
+    let machineName = sd.nextToken();
 
     return new JointData(
       jointType,
@@ -157,7 +163,8 @@ export class StringTranscoder extends GenericTranscoder {
       slotJointBID,
       isSealed,
       driveSpeed,
-      mass
+      mass,
+      machineName
     );
   }
 

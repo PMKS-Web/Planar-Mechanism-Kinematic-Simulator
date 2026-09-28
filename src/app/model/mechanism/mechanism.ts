@@ -28,7 +28,9 @@ export type MechanismFailure =
   | 'cycle-never-closes'
   | 'cylinder-has-no-travel'
   /** The solve threw. Nothing is known but that, and readiness says so. */
-  | 'solver-error';
+  | 'solver-error'
+  /** Past the most machines one drawing runs (`MOST_MACHINES`), so not solved at all. */
+  | 'too-many-machines';
 
 /**
  * One component of a rate, as a cell of an exported table.
@@ -120,7 +122,10 @@ export class Mechanism {
     // driven pin reads as this machine's input: it is handed the foreign
     // speed, skips the "nothing drives this" blocker, and then solves a
     // mechanism nothing actually turns. Omitted means every joint is its own.
-    ownJointIds?: ReadonlySet<string>
+    ownJointIds?: ReadonlySet<string>,
+    // Refused before anything is solved: a machine past the most one drawing
+    // runs is still built, so every panel can name it, and costs no solve.
+    refused?: MechanismFailure
   ) {
     joints.forEach((j) => {
       const clone = this.cloneJointAt(j, j.x, j.y);
@@ -189,7 +194,9 @@ export class Mechanism {
     // order the panel reports them in: a slider with nothing to slide along has
     // no mobility worth counting, and adding an input to a linkage whose
     // mobility is wrong will not make it run.
-    if (dangling) {
+    if (refused) {
+      this.setMechanismInvalid(refused);
+    } else if (dangling) {
       this.setMechanismInvalid('dangling-slider');
     } else if (this._dof !== 1) {
       this.setMechanismInvalid('mobility');

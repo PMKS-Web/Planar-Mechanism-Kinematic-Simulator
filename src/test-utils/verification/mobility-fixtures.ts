@@ -170,6 +170,20 @@ export function stuckInputFixture(): MechanismFixture {
   };
 }
 
+/** Five cranks, each on a pivot of its own and driven: one more machine than a drawing runs. */
+export function fiveCranksFixture(): MechanismFixture {
+  const letters = 'ABCDEFGHIJ';
+  const joints = [0, 1, 2, 3, 4].flatMap((n) => [
+    { id: letters[2 * n], x: 3 * n, y: 0, ground: true, input: true },
+    { id: letters[2 * n + 1], x: 3 * n + 1, y: 1 },
+  ]);
+  return {
+    joints,
+    links: [0, 1, 2, 3, 4].map((n) => ({ joints: letters[2 * n] + letters[2 * n + 1] })),
+    inputAngVel: 1,
+  };
+}
+
 /** A plate grounded at all three of its joints: frame, and one support short of turning. */
 export function plateGroundedEverywhereFixture(): MechanismFixture {
   return {
@@ -263,6 +277,13 @@ export const MOBILITY_GALLERY: GalleryEntry[] = [
     spec: 'mobility-diagnosis.spec.ts',
     floatingSlot: false,
     fixture: stuckInputFixture(),
+  },
+  {
+    name: 'Five cranks',
+    purpose: 'The first four run; the fifth is past the most one drawing runs, and is not solved',
+    spec: 'machine-limit.spec.ts',
+    floatingSlot: false,
+    fixture: fiveCranksFixture(),
   },
   {
     name: 'Plate grounded at every joint',

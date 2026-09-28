@@ -68,6 +68,7 @@ import { TutorialService } from '../../services/tutorial.service';
 import { MechanismPanelComponent } from '../mechanism-panel/mechanism-panel.component';
 import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.component';
 import { EditableTitleComponent } from '../BLOCKS/editable-title/editable-title.component';
+import { NgTemplateOutlet } from '@angular/common';
 import { CollapsibleSubsectionComponent } from '../BLOCKS/collapsible-subsection/collapsible-subsection.component';
 import { DualInputComponent } from '../BLOCKS/dual-input/dual-input.component';
 import { HoldFieldComponent } from '../BLOCKS/hold-field/hold-field.component';
@@ -113,6 +114,7 @@ const INPUT_SPEED_UNITS = [
     MatIcon,
     StateInputComponent,
     MechanismPanelComponent,
+    NgTemplateOutlet,
     PanelSectionComponent,
     EditableTitleComponent,
     CollapsibleSubsectionComponent,

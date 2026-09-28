@@ -2572,3 +2572,34 @@ riders are pinned to each other as at any other joint.
 A Pin-in-slot riding a slot in a moving link, made Prismatic, counts right and the solver refuses
 it (`swingingBlockFixture`): the rider's angle follows a carrier that is itself unknown. Offered,
 it took a reader from three freedoms to "can't take a first step". `typeFixes` skips it.
+
+### The title block asks for the selected object before it validates
+
+`editable-title-block` renamed only the selected part, and its checks read
+`ActiveObjService.getSelectedObj()`, which throws with nothing selected. Renaming a whole machine
+(`renameTo`) happens with nothing selected, so that branch has to come first; a throw in a click
+handler reaches only Angular's error handler, and the field simply stayed open.
+
+### A picked machine fades the others rather than painting itself
+
+Picking a whole machine used to draw every one of its parts as selected, which left a part link in
+its panel nothing to light: the part was already amber. `getJointCSSClass` / `getLinkCSSClass` now
+leave the picked machine as drawn and give the others `joint-muted` / `link-muted`, and the marks
+drawn apart from their joint (ground, motor case, slider block) ask `isMutedJointId`. With one
+machine nothing fades. Hovering a machine's name -- a list row, the drawer's title, a transport
+chip -- still lights it through `hoveredMechanismIndex`.
+
+### Family recognition counts a frame bar as the ground
+
+`model/machine-facts/` is the recognition the What Is This? fact sheet was built on, kept without
+the sheet's text or any model call. Its chain count read a bar drawn between two grounded pivots as
+a fifth link, so every four-bar with its frame drawn -- the Four-bar inversions -- matched nothing.
+`machineFacts` hands the family check the bodies less `isFrameBar`, and the link jobs all of them,
+since "Part of the frame" is a job worth listing.
+
+### A machine past the fourth is built and never solved
+
+`MOST_MACHINES` is four. `updateMechanism` still builds a `Mechanism` for a fifth, refused with
+`'too-many-machines'` before any solve, so every panel can name it and its setup can say why. Its
+build is keyed apart (`|past` on the fingerprint): a machine that moves under the limit when
+another is deleted has to be solved, though nothing it is made of changed.

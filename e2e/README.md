@@ -359,8 +359,10 @@ Not suites — import them from one.
 - `template-graphs.mjs` — every template's kinematic graphs read as numbers and cross-checked:
   position against solved joints, velocity and acceleration against difference quotients. Slow;
   `PMKS_ONLY=4-Bar,Slider_Crank` narrows it.
-- `mechanism-panel.mjs` — selecting a whole machine from the transport chip or the setup drawer's
-  name.
+- `mechanism-panel.mjs` — the machines with nothing selected: the All mechanisms list, picking one
+  (from a row, the setup drawer's name), the others fading, the drawer folding to it and opening
+  on arrival when a machine cannot run, a part link keeping the drawer open in Edit, and a
+  rename riding the URL.
 - `two-mechanisms.mjs` — two machines in one drawing: a row each in the transport, a section each
   in the setup drawer, and a sync toggle that decouples them.
 

@@ -180,6 +180,33 @@ words are fixed where a control or a label repeats:
   part still opens with a capital (`Link AB is also grounded at joint B`); `prose-block` does it,
   through `opening`, so the model writes every part the same way.
 
+### The machines panel
+
+With nothing selected, the left panel is about the machines on the grid.
+
+| Part | Says |
+| --- | --- |
+| Several machines, none picked | `All mechanisms`, then one row each: its name, its chip, and the family PMKS+ recognized |
+| One picked, or the only one | its name as the title (`Edit Mechanism M2` in Edit), `All mechanisms` with a back arrow above it when there are others |
+| Sections | `Mechanism Overview` (Family first, where PMKS+ recognized one), `Links` (each link's job: `Input crank`, `Coupler`, `Rocker`) |
+| Past the fourth | `Only 4 mechanisms run at once`; the list adds `Only the first 4 mechanisms are simulated.` |
+
+- **The chip is the setup drawer's chip**, word for word (`Ready`, `1 fix`, `2 to check`), and
+  pressing it opens the drawer.
+- **A family keeps its name.** `Chebyshev straight-line linkage` and `Jansen linkage` are what those
+  mechanisms are called, so the Family row says so; the ban on *linkage* is on the word standing in
+  for *mechanism*. The row is left out where nothing in PMKS+'s catalog matched: a family is a
+  finding, and a guess is worse than nothing.
+
+### A machine's name
+
+A machine is `Mechanism M2` until its author names it in Edit's machine panel (Rename); then it is
+the name, `Pump jack`, with its code beside it wherever that has to be matched to its playback row,
+which has room for the code alone (`M2 · Walking-beam mechanism` under the name in the list). A
+name follows the rules every name does (letters, numbers, spaces, hyphens, underscores,
+apostrophes and parentheses), may not repeat another machine's, and an empty one takes it back to
+the code.
+
 ### Refusals wear their reason
 
 A control a reader could reasonably expect is **grayed with the reason beside

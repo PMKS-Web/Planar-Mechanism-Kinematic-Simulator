@@ -578,11 +578,15 @@ record('and lets go of it when the pointer leaves', !letGo.includes('link-pointe
 // In an analysis mode a machine that cannot run is drawn gray, and those are
 // exactly the parts a setup drawer names: pointing lights them all the same.
 // The crank runs; the rocker beside it, with its coupler never drawn, does not.
+// Arriving opens the drawer on its own: one of the two cannot run.
 await open(galleryQuery('Four-bar with its coupler missing'));
 await tab('Kinematic').click();
-await page.waitForTimeout(800);
-await chipFor('Kinematic').click();
-await page.waitForTimeout(600);
+await page.waitForTimeout(900);
+record(
+  'arriving in a mode with a machine that cannot run opens its list',
+  (await drawerText()).includes("Link CD isn't joined to link AB"),
+  await drawerText()
+);
 await partLink('link CD').hover();
 await page.waitForTimeout(250);
 const litWhileInert = await page.evaluate(() => {

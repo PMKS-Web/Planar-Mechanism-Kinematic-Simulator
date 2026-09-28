@@ -30,63 +30,95 @@
   }
 
   .mechStatusRow {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 6px 0 10px;
+    margin: 6px 0 2px;
   }
 
-  // The status is also the way to the list behind it, which is why it is a
-  // control rather than a label.
-  .mechStatus {
+  .mechLead,
+  .mechNote {
+    margin: 4px 0 0;
+    font-size: 13px;
+    line-height: 19px;
+    color: var(--text-secondary);
+  }
+
+  .mechNote {
+    padding: 0 15px 12px;
+  }
+
+  // Back to the list: a text button in the primary ink, the way a part link
+  // reads, so it is plainly the way out rather than part of the title.
+  .backLink {
     display: inline-flex;
     align-items: center;
-    height: 20px;
-    padding: 0 8px;
-    border-radius: 10px;
-    background: var(--refusal-bg);
-    color: var(--refusal-text);
-    font-size: 12px;
-    cursor: pointer;
-
-    &.ready {
-      background: var(--success-bg);
-      color: var(--success-text);
-    }
-  }
-
-  .mechActions {
-    display: flex;
-    gap: 10px;
-  }
-
-  .mechButton {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    flex: 1 1 0;
-    height: 32px;
-    padding: 0 10px;
-    border: 1px solid mat.m2-get-color-from-palette($primary-palette, 500);
-    border-radius: 4px;
-    background: var(--surface);
+    gap: 4px;
+    margin: 0 0 6px -2px;
+    padding: 2px;
+    border: none;
+    background: none;
     color: mat.m2-get-color-from-palette($primary-palette, 500);
     font-family: inherit;
-    font-size: 14px;
+    font-size: 13px;
     cursor: pointer;
 
     mat-icon {
-      width: 17px;
-      height: 17px;
-      font-size: 17px;
-      line-height: 17px;
+      width: 16px;
+      height: 16px;
+      font-size: 16px;
+      line-height: 16px;
+    }
+  }
+
+  .machineList {
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid var(--border-rule);
+  }
+
+  // One machine: its code, its name (wrapping, however long), what PMKS+
+  // recognized it as, and the chip the setup drawer shows beside it.
+  .machineRow {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 15px;
+    border: none;
+    border-bottom: 1px solid var(--border-rule);
+    background: none;
+    color: var(--text-primary);
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible {
+      background: var(--surface-hover);
     }
 
-    &.danger {
-      border-color: var(--danger);
-      color: var(--danger);
+    chip-block {
+      flex: 0 0 auto;
     }
+  }
+
+  .machineText {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+    gap: 1px;
+  }
+
+  .machineName {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    overflow-wrap: anywhere;
+  }
+
+  .machineFamily {
+    font-size: 12px;
+    line-height: 17px;
+    color: var(--text-secondary);
   }
 
   .mechanismPanel .sectionHeader {
@@ -105,6 +137,16 @@
     flex-direction: column;
     gap: 1px;
     min-width: 0;
+  }
+
+  .mechanismPanel .fact.wide {
+    grid-column: 1 / -1;
+  }
+
+  .mechanismPanel .factBasis {
+    font-size: 12px;
+    line-height: 17px;
+    color: var(--text-secondary);
   }
 
   .mechanismPanel .factLabel {
@@ -171,6 +213,14 @@
 
   .linkLength {
     color: var(--text-primary);
+  }
+
+  .mechExtra {
+    padding: 0 15px;
+
+    &:not(:empty) {
+      padding-bottom: 16px;
+    }
   }
 
   .mechFooter {

@@ -22,7 +22,7 @@ import {
   sliderRef,
 } from '../prose';
 import { Mechanism, MechanismFailure } from './mechanism';
-import { MechanismPartition } from './mechanism-partition';
+import { MechanismPartition, MOST_MACHINES } from './mechanism-partition';
 import { assignBodies } from './bodies';
 import { diagnoseMobility, Drawing } from './free-motion';
 import { inputOnTheFrame } from './readiness-situations';
@@ -362,6 +362,18 @@ function issueForFailure(
       // The solve threw, so there is no finding to report -- only what the
       // drawing itself says, which is exactly what the fallback is made of.
       return unexplainedIssue(partition, mechanism);
+
+    case 'too-many-machines':
+      return {
+        severity: 'blocker',
+        title: `Only ${MOST_MACHINES} mechanisms run at once`,
+        summary: prose`${partition.id} comes after the first ${MOST_MACHINES}, so it isn't simulated.`,
+        explain: `PMKS+ simulates up to ${MOST_MACHINES} mechanisms in one drawing, in the order of their joint letters. The rest are drawn but not simulated.`,
+        fixes: [
+          prose`Delete Mechanism ${partition.id} if it's a leftover`,
+          prose`Attach Link from it to another mechanism`,
+        ],
+      };
 
     default: {
       // Exhaustive: a new `MechanismFailure` with no sentence of its own lands

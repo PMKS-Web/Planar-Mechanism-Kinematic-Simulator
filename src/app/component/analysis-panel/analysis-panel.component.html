@@ -125,6 +125,12 @@
 
   <!-- Nothing selected, or a selection whose own machine cannot be solved -->
 
+  <!-- Nothing selected, or a machine picked: the machines are what the reader
+       is asking about -- every one in a list, or the one picked. -->
+  @if (showOverview) {
+    <app-mechanism-panel />
+  }
+
   @if (showAnalysisHelp) {
     <div class="helpPanel">
       <div class="helpTitle">Analysis Help</div>
@@ -141,10 +147,6 @@
         </div>
       </div>
     </div>
-  }
-
-  @if (shownType == 'Mechanism') {
-    <app-mechanism-panel></app-mechanism-panel>
   }
 
   <ng-template #forceContent>
