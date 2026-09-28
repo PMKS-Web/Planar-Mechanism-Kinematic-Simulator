@@ -186,9 +186,11 @@ With nothing selected, the left panel is about the machines on the grid.
 
 | Part | Says |
 | --- | --- |
-| Several machines, none picked | `All mechanisms`, then one row each: its name, its chip, and the family PMKS+ recognized |
+| Several machines, none picked | `All mechanisms`, then one row each: its name, its chip, and under it how free it is in Edit (`1 degree of freedom`) or the family PMKS+ recognized in an analysis mode |
 | One picked, or the only one | its name as the title (`Edit Mechanism M2` in Edit), `All mechanisms` with a back arrow above it when there are others |
-| Sections | `Mechanism Overview` (Family first, where PMKS+ recognized one), `Links` (each link's job: `Input crank`, `Coupler`, `Rocker`) |
+| Sections | `Mechanism Overview` -- in Edit `Degrees of freedom`, `Objects`, `Input joint`; in an analysis mode Family first (where PMKS+ recognized one), then speed, `Cycle time` and `Motion` -- and `Links` (each link's job, `Input crank`, `Coupler`, `Rocker`, and its length) |
+| A shut mode tab | tooltip `Force Analysis opens once a mechanism runs.` |
+| The Kinematic tab inviting | tooltip `Kinematic Analysis is ready: open it for the motion's graphs.` |
 | Past the fourth | `Only 4 mechanisms run at once`; the list adds `Only the first 4 mechanisms are simulated.` |
 
 - **The chip is the setup drawer's chip**, word for word (`Ready`, `1 fix`, `2 to check`), and

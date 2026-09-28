@@ -191,6 +191,46 @@
     &.notReady .tabLabel {
       color: var(--text-secondary);
     }
+
+    // Ready and never opened: the tab asks for the press the reader has not
+    // thought to make, tinted like a selection until Kinematic Analysis has
+    // been opened once, and pulsing at the moment the mechanism starts to run.
+    &.invite:not(.active) {
+      background: var(--selection);
+      box-shadow: inset 0 0 0 1px var(--selection-border);
+      color: mat.m2-get-color-from-palette($primary-palette, 500);
+
+      .tabLabel,
+      mat-icon {
+        color: mat.m2-get-color-from-palette($primary-palette, 500);
+      }
+    }
+
+    &.pulse:not(.active) {
+      animation: tab-invite 900ms ease-in-out 3;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      &.pulse:not(.active) {
+        animation: none;
+      }
+    }
+
+    // Shut until a mechanism runs: the label and icon in the disabled ink,
+    // and no hover wash promising a press that does nothing.
+    &.locked {
+      cursor: not-allowed;
+      color: var(--text-disabled);
+
+      .tabLabel,
+      mat-icon {
+        color: var(--text-disabled);
+      }
+
+      &:hover {
+        background: none;
+      }
+    }
   }
 
   // The short spelling only appears once the long one has gone.
@@ -464,5 +504,15 @@
     .topStrip .tabCard::-webkit-scrollbar {
       display: none;
     }
+  }
+}
+
+@keyframes tab-invite {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
   }
 }

@@ -88,17 +88,37 @@ record(
   text.includes('Edit Mechanism M1') && !text.includes('All mechanisms'),
   text
 );
-record('with the family PMKS+ recognized', text.includes('Crank-rocker four-bar'), text);
-record('and each link by its job', /Input crank/.test(text) && /Rocker/.test(text), text);
+// Building, the panel is about what an edit changes: how free the machine is
+// and how long its links are. How it moves is the analysis modes' business.
+record(
+  'Edit says how free it is and how long its links are',
+  text.includes('Degrees of freedom') && /\d+\.\d+ cm/.test(text),
+  text
+);
+record(
+  'but not its family or its cycle',
+  !text.includes('Crank-rocker four-bar') && !text.includes('Cycle time'),
+  text
+);
+const gutter = await page.evaluate(() => {
+  const left = (selector) =>
+    Math.round(
+      document.querySelector(`app-mechanism-panel ${selector}`).getBoundingClientRect().left
+    );
+  return { title: left('.editModeRow'), section: left('.sectionHeader span') };
+});
+record(
+  'the title lines up with the sections under it, not indented twice',
+  Math.abs(gutter.title - gutter.section) <= 1,
+  gutter
+);
 
 // --- several: the list, then one --------------------------------------------
 await open(payloads['Straight_Line_Pair']);
 text = await panelText();
 record(
-  'several machines list every one, with its family',
-  text.includes('All mechanisms') &&
-    text.includes('Chebyshev straight-line linkage') &&
-    text.includes('Peaucellier-Lipkin straight-line linkage'),
+  'several machines list every one, with how free each is',
+  text.includes('All mechanisms') && text.includes('1 degree of freedom'),
   text
 );
 record('and nothing is faded before one is picked', (await muted()).links === 0, await muted());
@@ -137,10 +157,26 @@ await page.waitForTimeout(800);
 record('every machine ready: arriving opens no drawer', !(await drawerOpen()), await drawerText());
 await page.mouse.click(760, 480);
 await page.waitForTimeout(300);
+text = await panelText();
 record(
-  'the analysis panel lists the machines too',
-  (await panelText()).includes('All mechanisms'),
-  await panelText()
+  'the analysis panel lists the machines too, each with its family',
+  text.includes('All mechanisms') &&
+    text.includes('Chebyshev straight-line linkage') &&
+    text.includes('Peaucellier-Lipkin straight-line linkage'),
+  text
+);
+record(
+  'and says a joint or link opens its graphs straight from the list',
+  text.includes('for its position, velocity and acceleration graphs'),
+  text
+);
+await page.locator('.machineRow').nth(0).click();
+await page.waitForTimeout(300);
+text = await panelText();
+record(
+  'a machine picked in an analysis mode shows its family and its cycle',
+  text.includes('Chebyshev straight-line linkage') && text.includes('Cycle time'),
+  text
 );
 
 // --- one blocked: arriving opens the list, and one pick drives both ---------

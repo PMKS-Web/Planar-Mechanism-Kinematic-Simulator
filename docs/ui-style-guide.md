@@ -137,6 +137,17 @@ laid out for), `$cluster-wraps` (780px) and `$cluster-clears-panel` (1340px). A 
 writes one of those numbers as a literal fails the spec. A width one element needs for itself
 alone may stay a literal, with a comment saying what overflowed at it.
 
+**A card has one gutter, and the block owns it.** Everything in a card lines up 15px in from its
+edge: a title, a section header, a field row, a hint. The blocks that sit directly in a card
+already pad themselves to that line -- `editable-title-block` (`10px 15px`), the section headers
+of `collapsible-subsection` and `blocks.section-header`, `panel-section`'s rows -- so **never wrap
+a block in a container that pads again**. A `div` with `padding: 0 15px` around an
+`editable-title-block` puts the title 30px in while the section below it sits at 15px, and every
+agent that has composed a panel has made this mistake at least once. Pad only your own markup (a
+paragraph, a list you wrote), and let a block sit on the card's edge. Before calling a panel done,
+compare the left edges in a screenshot: the title's first letter, the section header's, and the
+first field's label should share one x.
+
 **Layers are tokens.** Who paints over whom at the app level is the `--layer-*` group in the token
 file: panel, strip, status, cluster, drawer, menu, toast, loading, in that order. A card's own
 stacking context keeps small literals (a sticky head over its rows, a thumb over its track), and

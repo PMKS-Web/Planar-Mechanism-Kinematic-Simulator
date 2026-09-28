@@ -74,11 +74,36 @@ export class MechanismPanelComponent {
     return this.mechanism.partitions.map((_, index) => index);
   }
 
-  /** Under a row's name: its code, where a name hides it, and what PMKS+ recognized. */
+  /**
+   * Under a row's name: its code, where a name hides it, and then what the
+   * mode is about -- in Edit how free it is, in an analysis what PMKS+
+   * recognized it as.
+   */
   protected subtitle(index: number): string {
-    const family = this.overview.family(index)?.name;
     const code = this.overview.name(index) ? this.overview.code(index) : undefined;
-    return [code, family].filter(Boolean).join(' · ');
+    const about = this.editable()
+      ? this.overview.freedoms(index)
+      : this.overview.family(index)?.name;
+    return [code, about].filter(Boolean).join(' · ');
+  }
+
+  /** The list's lead: what picking a row shows in this mode. */
+  protected get listLead(): string {
+    const press = this.viewport.isTouch() ? 'Tap' : 'Select';
+    return this.editable()
+      ? `${press} one for its links and their lengths.`
+      : `${press} one for its family and motion.`;
+  }
+
+  /**
+   * The way to graphs, said whether or not a machine is picked: a joint or a
+   * link on the grid opens its graphs straight from the list.
+   */
+  protected get graphsHint(): string {
+    const press = this.viewport.isTouch() ? 'Tap' : 'Select';
+    return this.tabs.getCurrentTab() === TabID.FORCE
+      ? `${press} a joint or link on the grid for the reactions it carries, or the input for the effort that drives it.`
+      : `${press} a joint or link on the grid for its position, velocity and acceleration graphs.`;
   }
 
   protected pick(index: number): void {
@@ -100,14 +125,10 @@ export class MechanismPanelComponent {
 
   protected readonly deleteMechanism = () => this.mechanism.deleteMechanism(this.index);
 
-  /** What the analysis panel points a reader at next, which differs by mode. */
+  /** What the analysis panel points a reader at under one machine. */
   protected get footerHint(): string {
-    const press = this.viewport.isTouch() ? 'Tap' : 'Select';
-    if (!this.overview.ready(this.index)) {
-      return 'This mechanism cannot run yet. Its chip above opens what it needs.';
-    }
-    return this.tabs.getCurrentTab() === TabID.FORCE
-      ? `${press} a joint or link on the grid for the reactions it carries, or the input for the effort that drives this mechanism.`
-      : `${press} a joint or link on the grid for its position, velocity and acceleration graphs.`;
+    return this.overview.ready(this.index)
+      ? this.graphsHint
+      : 'This mechanism cannot run yet. Its chip above opens what it needs.';
   }
 }

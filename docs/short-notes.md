@@ -2603,3 +2603,11 @@ since "Part of the frame" is a job worth listing.
 `'too-many-machines'` before any solve, so every panel can name it and its setup can say why. Its
 build is keyed apart (`|past` on the fingerprint): a machine that moves under the limit when
 another is deleted has to be solved, though nothing it is made of changed.
+
+### A shut mode tab is aria-disabled, not disabled
+
+Force Analysis is shut until a machine runs, and its tooltip says why. A `disabled` button takes
+no pointer events, so the tooltip that explains it would never show; `aria-disabled` keeps the
+hover and tells assistive technology, and `select` refuses the press. Playwright will not click
+an `aria-disabled` button either, so a suite that checks the press does nothing presses it with
+`force: true`.

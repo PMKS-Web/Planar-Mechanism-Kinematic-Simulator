@@ -53,6 +53,29 @@ interface TabStatus {
 /** The shortcuts the project menu prints on its own rows, and so must honor. */
 const MENU_SHORTCUTS: ShortcutId[] = ['app.settings', 'app.help'];
 
+/** Written the first time a reader opens Kinematic Analysis. */
+const ANALYSIS_VISITED_KEY = 'analysisVisited';
+
+/** Three pulses of the invitation, matching `tab-invite` in the stylesheet. */
+const INVITE_PULSE_MS = 3 * 900;
+
+/** A mark in local storage, read safely: a private window may refuse the store. */
+function readFlag(key: string): boolean {
+  try {
+    return localStorage.getItem(key) !== null;
+  } catch {
+    return false;
+  }
+}
+
+function writeFlag(key: string): void {
+  try {
+    localStorage.setItem(key, 'true');
+  } catch {
+    // Without storage the invitation simply comes back next time.
+  }
+}
+
 /**
  * The strip across the top: what may be done to the mechanism, and whether it
  * is ready to be analyzed.
@@ -219,6 +242,58 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     this.watchCard();
     this.fitLabels();
     this.scheduleHighlight();
+    this.watchInvitation();
+  }
+
+  /**
+   * Whether the Kinematic Analysis tab is inviting a press.
+   *
+   * Students who get a mechanism running tend to stay where they are, playing
+   * it back in Edit, with no idea that the graphs are one press away. So until
+   * a reader has opened Kinematic Analysis once -- ever, on this browser -- the
+   * tab wears the invitation tint whenever a mechanism runs, and pulses at the
+   * moment one starts to.
+   */
+  invites(): boolean {
+    return (
+      !this.analysisVisited &&
+      this.hasStatus() &&
+      !this.isActive(TabID.ANALYZE) &&
+      this.canAnalyze(TabID.ANALYZE)
+    );
+  }
+
+  /** The pulse, for a moment after the tab starts inviting. */
+  pulsing = false;
+
+  private analysisVisited = readFlag(ANALYSIS_VISITED_KEY);
+  private wasInviting = false;
+  private pulseTimer?: ReturnType<typeof setTimeout>;
+
+  /**
+   * Notice the two moments the invitation changes: the reader arriving in
+   * Kinematic Analysis, which ends it for good, and a mechanism starting to
+   * run, which starts the pulse.
+   */
+  private watchInvitation(): void {
+    if (!this.analysisVisited && this.isActive(TabID.ANALYZE)) {
+      this.analysisVisited = true;
+      writeFlag(ANALYSIS_VISITED_KEY);
+    }
+    const inviting = this.invites();
+    if (inviting && !this.wasInviting) {
+      // After this check: a class set during one would be a change in it.
+      queueMicrotask(() => {
+        this.pulsing = true;
+        this.changes.markForCheck();
+      });
+      clearTimeout(this.pulseTimer);
+      this.pulseTimer = setTimeout(() => {
+        this.pulsing = false;
+        this.changes.markForCheck();
+      }, INVITE_PULSE_MS);
+    }
+    this.wasInviting = inviting;
   }
 
   /**
@@ -366,6 +441,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
    */
   select(tab: TabID): void {
     this.closeMenu();
+    if (this.locked(tab)) return;
     const setup = this.setupTabFor(tab);
     if (setup === null) {
       this.tabs.setTab(tab);
@@ -500,7 +576,21 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
    * here or it is not said at all.
    */
   nameOf(tab: TabID, name: string): string {
+    if (this.locked(tab)) return `${name}, unavailable until a mechanism runs`;
     return this.hasStatus() ? `${name}: ${this.statusOf(tab).text}` : name;
+  }
+
+  /**
+   * Whether a mode cannot even be asked about yet.
+   *
+   * Force Analysis solves the reactions along a cycle, so until some machine
+   * runs there is nothing it could say -- and its setup drawer, answering
+   * "what does this need?", sent students to a masses table for a mechanism
+   * that did not move. It stays shut, with the reason on its tooltip, until
+   * Kinematic Analysis has something to show.
+   */
+  locked(tab: TabID): boolean {
+    return tab === TabID.FORCE && !this.isActive(tab) && !this.mechanism.oneValidMechanismExists();
   }
 
   /**
@@ -511,6 +601,10 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
    * find out by pressing.
    */
   tipFor(tab: TabID, name: string): string {
+    if (this.locked(tab)) return `${name} opens once a mechanism runs.`;
+    if (tab === TabID.ANALYZE && this.invites()) {
+      return `${name} is ready: open it for the motion's graphs.`;
+    }
     if (this.canAnalyze(tab) && !this.isActive(tab)) return name;
     const shown =
       this.canAnalyze(tab) &&

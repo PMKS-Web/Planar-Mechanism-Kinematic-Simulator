@@ -88,12 +88,28 @@ export class MechanismOverviewService {
     return chipOf(this.mechanism.readinessOfEachMechanism()[index]?.checks ?? []);
   }
 
-  facts(index: number): MechanismFact[] {
+  /**
+   * What the Overview says of a machine, by what the reader is doing with it.
+   * Building it, what matters is how free it is and what drives it -- the
+   * count a deleted or added link changes. Analyzing it, how it moves too:
+   * its speed, how long a cycle takes, whether it turns or rocks.
+   */
+  facts(index: number, building = false): MechanismFact[] {
     const facts = this.mechanism.readinessOfEachMechanism()[index]?.facts ?? [];
     const count = this.exportCatalog.partGroups(false)[index]?.parts.length ?? 0;
-    return facts.map((fact) =>
-      fact.label === 'Links / joints' ? { label: 'Objects', value: String(count) } : fact
-    );
+    return facts
+      .map((fact) =>
+        fact.label === 'Links / joints' ? { label: 'Objects', value: String(count) } : fact
+      )
+      .filter((fact) => !building || BUILDING_FACTS.has(fact.label));
+  }
+
+  /** "1 degree of freedom", for a list row; nothing where the count is not a number. */
+  freedoms(index: number): string | undefined {
+    const value = this.facts(index).find((fact) => fact.label === 'Degrees of freedom')?.value;
+    const count = Number(value);
+    if (value === undefined || !Number.isFinite(count)) return undefined;
+    return `${count} ${count === 1 ? 'degree' : 'degrees'} of freedom`;
   }
 
   /**
@@ -167,6 +183,9 @@ export class MechanismOverviewService {
     return this.nup.formatModelLength(span, this.settings.lengthUnit.value);
   }
 }
+
+/** The facts Edit shows: the ones a structural edit changes. */
+const BUILDING_FACTS = new Set(['Degrees of freedom', 'Objects', 'Input joint']);
 
 /** Red if anything stops it running, amber if it runs with something to check, green if not. */
 export function chipOf(issues: readonly SetupIssue[]): MachineChip {

@@ -84,6 +84,13 @@ describe('MechanismPanelComponent', () => {
     fixture.destroy();
   });
 
+  it('in Edit, says how free a machine is, and leaves family and motion to analysis', async () => {
+    const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], true);
+    expect(fixture.nativeElement.querySelector('.fact.wide')).toBeNull();
+    expect(text(fixture, '.factLabel')).toEqual(['Degrees of freedom', 'Objects', 'Input joint']);
+    fixture.destroy();
+  });
+
   it('says a family only where PMKS+ recognizes one', async () => {
     const { fixture } = await createPanel(TEMPLATE_LINKAGES['Pantograph']);
     expect(fixture.nativeElement.querySelector('.fact.wide')).toBeNull();
@@ -96,7 +103,9 @@ describe('MechanismPanelComponent', () => {
     fixture.detectChanges();
     const rows = text(fixture, '.machineRow');
     expect(rows[1]).toContain('Straight arm');
-    expect(rows[1]).toContain('M2 ·');
+    // In Edit the line under a name is how free it is, not what it is.
+    expect(rows[1]).toContain('M2 · 1 degree of freedom');
+    expect(rows[1]).not.toContain('Peaucellier');
     fixture.destroy();
   });
 });

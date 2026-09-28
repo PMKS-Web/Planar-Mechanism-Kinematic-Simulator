@@ -71,6 +71,8 @@
         class="tabButton"
         [class.active]="isActive(TabID.ANALYZE)"
         [class.notReady]="!canAnalyze(TabID.ANALYZE)"
+        [class.invite]="invites()"
+        [class.pulse]="pulsing && invites()"
         (click)="select(TabID.ANALYZE)"
         [attr.aria-label]="nameOf(TabID.ANALYZE, 'Kinematic Analysis')"
         [appShortcutTip]="tipFor(TabID.ANALYZE, 'Kinematic Analysis')"
@@ -87,10 +89,14 @@
         }
       </button>
 
+      <!-- Shut, not refused, until a mechanism runs: aria-disabled rather than
+           disabled, so the tooltip that says why still answers the pointer. -->
       <button
         class="tabButton"
         [class.active]="isActive(TabID.FORCE)"
         [class.notReady]="!canAnalyze(TabID.FORCE)"
+        [class.locked]="locked(TabID.FORCE)"
+        [attr.aria-disabled]="locked(TabID.FORCE) || null"
         (click)="select(TabID.FORCE)"
         [attr.aria-label]="nameOf(TabID.FORCE, 'Force Analysis')"
         [appShortcutTip]="tipFor(TabID.FORCE, 'Force Analysis')"
@@ -99,8 +105,9 @@
         <mat-icon>balance</mat-icon>
         <span class="tabLabel long">Force Analysis</span>
         <span class="tabLabel short">Force</span>
-        <!-- Nothing drawn, nothing to be ready for. -->
-        @if (hasStatus()) {
+        <!-- Nothing drawn, nothing to be ready for; and nothing to count
+             while the mode is shut. -->
+        @if (hasStatus() && !locked(TabID.FORCE)) {
           <chip-block [kind]="statusOf(TabID.FORCE).kind">{{
             statusOf(TabID.FORCE).text
           }}</chip-block>

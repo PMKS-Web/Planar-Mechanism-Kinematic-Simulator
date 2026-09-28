@@ -682,6 +682,70 @@ await page.waitForTimeout(700);
 machinesNow = await readinessNow();
 record('and making C Prismatic makes the yoke run', allReady(machinesNow), machinesNow);
 
+// --- the mode tabs lead the way in -------------------------------------------
+// A fresh browser: the invitation lasts until Kinematic Analysis has been
+// opened once, and this page's earlier visits already opened it.
+const fresh = await browser.newPage({ viewport: { width: 1500, height: 950 } });
+fresh.on('pageerror', (error) => errors.push(String(error)));
+const freshTab = (name) => fresh.locator('.tabButton', { hasText: name });
+const classesOf = (name) => freshTab(name).getAttribute('class');
+async function freshOpen(query) {
+  await fresh.goto(`${BASE}/?${query}`, { waitUntil: 'domcontentloaded' });
+  await waitForReady(fresh);
+  await fresh.waitForTimeout(400);
+}
+
+// Nothing runs: Force Analysis is shut, and pressing it does nothing.
+await freshOpen(galleryQuery('Four-bar with a welded coupler pin'));
+record(
+  'Force Analysis is shut until a mechanism runs',
+  (await classesOf('Force')).includes('locked') &&
+    (await freshTab('Force').getAttribute('aria-disabled')) === 'true',
+  await classesOf('Force')
+);
+// Forced: Playwright will not press an aria-disabled button, and a reader can.
+await freshTab('Force').click({ force: true });
+await fresh.waitForTimeout(500);
+const afterShut = await fresh.evaluate(() => ({
+  tab: ng.getComponent(document.querySelector('app-new-grid')).tabService.getCurrentTab(),
+  drawer: !!document.querySelector('app-analysis-setup'),
+}));
+record(
+  'and pressing it neither switches nor opens a drawer',
+  afterShut.tab === 1 && !afterShut.drawer,
+  afterShut
+);
+
+// A mechanism that runs, never analyzed: the Kinematic tab invites the press.
+await freshOpen(payloads['4-Bar']);
+record(
+  'a mechanism that runs makes Kinematic Analysis invite, and pulse',
+  (await classesOf('Kinematic')).includes('invite') &&
+    (await classesOf('Kinematic')).includes('pulse'),
+  await classesOf('Kinematic')
+);
+record(
+  'and Force Analysis opens again',
+  !(await classesOf('Force')).includes('locked'),
+  await classesOf('Force')
+);
+await freshTab('Kinematic').click();
+await fresh.waitForTimeout(700);
+await freshTab('Edit').click();
+await fresh.waitForTimeout(500);
+record(
+  'once opened, it stops inviting',
+  !(await classesOf('Kinematic')).includes('invite'),
+  await classesOf('Kinematic')
+);
+await freshOpen(payloads['4-Bar']);
+record(
+  'and stays that way on the next visit',
+  !(await classesOf('Kinematic')).includes('invite'),
+  await classesOf('Kinematic')
+);
+await fresh.close();
+
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
 
 await browser.close();

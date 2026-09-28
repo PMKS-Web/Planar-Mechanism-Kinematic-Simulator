@@ -31,6 +31,25 @@
 
   .mechStatusRow {
     margin: 6px 0 2px;
+
+    // Under Edit's title block, which pads itself: the row takes the gutter.
+    &.padded {
+      margin: 0;
+      padding: 0 15px 14px;
+    }
+  }
+
+  // The way back, on its own line above whichever title follows.
+  .mechBack {
+    padding: 10px 15px 0;
+
+    .backLink {
+      margin-bottom: 0;
+    }
+  }
+
+  .mechHead.underBack {
+    padding-top: 6px;
   }
 
   .mechLead,

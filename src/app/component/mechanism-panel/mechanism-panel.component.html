@@ -5,9 +5,7 @@
            row, and a row is the way into that machine. -->
       <div class="mechHead">
         <div class="mechTitle">All mechanisms</div>
-        <p class="mechLead">
-          {{ viewport.isTouch() ? 'Tap' : 'Select' }} one for its family, facts and links.
-        </p>
+        <p class="mechLead">{{ listLead }}</p>
       </div>
       <div class="machineList" role="list">
         @for (index of machines; track index) {
@@ -42,30 +40,46 @@
           chips say why.
         </p>
       }
+      <!-- A joint or link opens its graphs from here too: picking a machine
+           first is not a step on the way to them. -->
+      @if (!editable()) {
+        <div class="mechFooter">
+          <div class="helpHint">
+            <mat-icon>touch_app</mat-icon>
+            <span>{{ graphsHint }}</span>
+          </div>
+        </div>
+      }
     } @else {
-      <div class="mechHead">
-        @if (overview.count() > 1) {
+      <!-- The title block pads itself to the card's gutter, so in Edit it
+           sits on the card's edge rather than inside the padded head: wrapped,
+           it was indented twice (docs/ui-style-guide.md#layout). -->
+      @if (overview.count() > 1) {
+        <div class="mechBack">
           <button type="button" class="backLink" (click)="showAll()">
             <mat-icon>arrow_back</mat-icon>
             All mechanisms
           </button>
-        }
-        @if (editable()) {
-          <editable-title-block
-            [displayName]="overview.title(index)"
-            [renameTo]="rename"
-            [renameFrom]="overview.name(index) ?? ''"
-            [takenNames]="overview.namesBesides(index)"
-            [deleteAction]="deleteMechanism"
-            deleteHint="Delete Mechanism"
-          >
-            Edit
-          </editable-title-block>
-        } @else {
+        </div>
+      }
+      @if (editable()) {
+        <editable-title-block
+          [displayName]="overview.title(index)"
+          [renameTo]="rename"
+          [renameFrom]="overview.name(index) ?? ''"
+          [takenNames]="overview.namesBesides(index)"
+          [deleteAction]="deleteMechanism"
+          deleteHint="Delete Mechanism"
+        >
+          Edit
+        </editable-title-block>
+        <app-mechanism-status class="mechStatusRow padded" [index]="index" />
+      } @else {
+        <div class="mechHead" [class.underBack]="overview.count() > 1">
           <div class="mechTitle">{{ overview.title(index) }}</div>
-        }
-        <app-mechanism-status class="mechStatusRow" [index]="index" />
-      </div>
+          <app-mechanism-status class="mechStatusRow" [index]="index" />
+        </div>
+      }
 
       <button
         class="sectionHeader"
@@ -78,15 +92,16 @@
       @if (overviewOpen) {
         <div class="factGrid">
           <!-- Said only where PMKS+ recognizes the machine: a family is a
-               finding, and a guess would be worse than nothing. -->
-          @if (overview.family(index); as family) {
+               finding, and a guess would be worse than nothing. And only
+               while analyzing: building, it is the count that matters. -->
+          @if (!editable() && overview.family(index); as family) {
             <div class="fact wide">
               <span class="factLabel">Family</span>
               <span class="factValue">{{ family.name }}</span>
               <span class="factBasis">{{ family.basis }}</span>
             </div>
           }
-          @for (fact of overview.facts(index); track fact.label) {
+          @for (fact of overview.facts(index, editable()); track fact.label) {
             <div class="fact">
               <span class="factLabel">{{ fact.label }}</span>
               <span class="factValue" [class.bad]="fact.bad">{{ fact.value }}</span>
