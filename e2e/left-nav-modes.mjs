@@ -210,15 +210,17 @@ try {
   record('the floating controls stay inside the window', spill === false);
 
   // --- pressing a mode that cannot be entered -------------------------------
-  // Gravity hanging the links' own weight is a load, so the four-bar as it
-  // arrives no longer trips the gate. Turn gravity off and the drawing is
-  // genuinely unloaded — the refusal has to come back.
-  await page.evaluate(() => {
+  // The links' own weight is a load under gravity, and their inertia is one in
+  // motion even without it, so only a drawing with no mass and no force is
+  // genuinely unloaded -- the refusal has to come back for that one.
+  const masses = await page.evaluate(() => {
     const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
+    const kept = grid.mechanismSrv.links.map((link) => link.mass);
+    grid.mechanismSrv.links.forEach((link) => (link.mass = 0));
     // An edit, through the rebuild every edit funnels through — readiness is
     // cached against it, so a bare next() would leave the chips stale.
-    grid.settings.isGravity.next(false);
     grid.mechanismSrv.updateMechanism(true);
+    return kept;
   });
   await tab('Force').click();
   await page.waitForTimeout(800);
@@ -232,13 +234,11 @@ try {
     'and answers with the setup list instead of nothing',
     (await page.locator('app-analysis-setup').count()) === 1
   );
-  await page.evaluate(() => {
+  await page.evaluate((kept) => {
     const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
-    // An edit, through the rebuild every edit funnels through — readiness is
-    // cached against it, so a bare next() would leave the chips stale.
-    grid.settings.isGravity.next(true);
+    grid.mechanismSrv.links.forEach((link, index) => (link.mass = kept[index]));
     grid.mechanismSrv.updateMechanism(true);
-  });
+  }, masses);
 
   // --- play, then leave: the pose survives, the motion does not --------------
   //
