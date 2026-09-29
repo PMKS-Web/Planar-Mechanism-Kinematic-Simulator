@@ -208,8 +208,8 @@ export class AppComponent implements DoCheck {
     }
     // A joint's four types, each drawn floating and standing on the frame, for
     // the Joint Type choice in the Edit panel and the right-click menu: the
-    // Grounded switch decides which set the reader sees. `joint_split` waits
-    // for Split Joint, which is not built yet.
+    // Grounded switch decides which set the reader sees. `joint_split` is the
+    // action beside Add Input and in the joint menu's Actions footer.
     const jointGlyphs = [
       'joint_revolute',
       'joint_prismatic',

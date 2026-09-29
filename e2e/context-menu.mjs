@@ -186,9 +186,15 @@ const jointA = await openOn('#joint_A');
 check('a joint menu names the joint it is about', jointA?.title === 'Joint A', jointA?.title);
 check('and what it is made of', jointA?.subtitle === 'Pin · Links OA, ACT', jointA?.subtitle);
 check(
-  'the ladder is Attach, State, Traces',
-  JSON.stringify(jointA?.groups) === JSON.stringify(['ATTACH', 'STATE', 'TRACES']),
+  'the ladder is Attach, State, Traces, Actions',
+  JSON.stringify(jointA?.groups) === JSON.stringify(['ATTACH', 'STATE', 'TRACES', 'ACTIONS']),
   jointA?.groups
+);
+check(
+  'Split Joint names the number of bodies it will separate',
+  rowNamed(jointA, 'Split Joint')?.off === false &&
+    rowNamed(jointA, 'Split Joint')?.slot === '2 links',
+  rowNamed(jointA, 'Split Joint')
 );
 check(
   'the deletions are the last rows, and the only red ones',
