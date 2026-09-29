@@ -3395,6 +3395,10 @@ export class NewGridComponent implements OnDestroy {
   private letGoOfEverything(revert = false): void {
     // The red ring a force drag put on a pin goes with the drag.
     this.forceRefusedJoint = undefined;
+    // The preview is rendered independently of the drag state, so canceling
+    // that state alone leaves a frozen arrow behind after another right-click.
+    this.forceGhost = undefined;
+    this.forceCreateOn = undefined;
     this.restoreSelectionAfterDrag(this.dragState.travelled);
     this.beforeDrag = undefined;
     this.linkCreateFrom = undefined;
@@ -6182,8 +6186,6 @@ export class NewGridComponent implements OnDestroy {
       this.dragState.isDragging;
     if (!armed) return;
     this.letGoOfEverything(true);
-    this.forceGhost = undefined;
-    this.forceCreateOn = undefined;
     this.mechanismSrv.onMechUpdateState.next(3);
   }
 
