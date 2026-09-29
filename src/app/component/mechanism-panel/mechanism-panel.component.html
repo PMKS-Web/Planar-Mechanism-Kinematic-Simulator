@@ -66,6 +66,7 @@
       @if (editable()) {
         <editable-title-block
           class="mechEditTitle"
+          [attr.inert]="frozen() || null"
           [displayName]="overview.title(index)"
           [renameTo]="rename"
           [renameFrom]="overview.name(index) ?? ''"
@@ -143,7 +144,14 @@
               ><part-link [part]="link.part">{{ link.name }}</part-link></span
             >
             <span class="linkRole">{{ link.role }}</span>
-            <span class="linkLength">{{ link.length }}</span>
+            <!-- A plate's sides take their own line under its row: beside the
+                 job they squeezed it onto two lines at Edit's width. -->
+            @if (link.spans) {
+              <span class="linkLength"></span>
+              <span class="linkSides" [attr.title]="link.spans">{{ link.length }}</span>
+            } @else {
+              <span class="linkLength">{{ link.length }}</span>
+            }
           }
         </div>
       }
@@ -163,6 +171,6 @@
       }
     }
     <!-- What the host adds under the machines: Edit's ways to build. -->
-    <div class="mechExtra"><ng-content /></div>
+    <div class="mechExtra" [attr.inert]="frozen() || null"><ng-content /></div>
   </div>
 }

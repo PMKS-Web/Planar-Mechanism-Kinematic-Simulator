@@ -363,6 +363,16 @@ function issueForFailure(
       // drawing itself says, which is exactly what the fallback is made of.
       return unexplainedIssue(partition, mechanism);
 
+    case 'input-refused': {
+      // Said by the input's own refusal, which readiness puts first; here only
+      // where the two models were asked about different joints.
+      const driven = drivenOwnJoint(partition);
+      const found = driven ? actuatorOrRefusal(driven) : undefined;
+      return driven && typeof found === 'string'
+        ? refusedInputIssue(driven, found, partition, undefined)
+        : unexplainedIssue(partition, mechanism);
+    }
+
     case 'too-many-machines':
       return {
         severity: 'blocker',

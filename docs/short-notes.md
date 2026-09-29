@@ -2619,3 +2619,18 @@ to the next, and a reader could not tell "not a known type" from "not worked out
 `familyReading` always answers: a family the catalog matched, else a pins-only linkage of four to
 eight bodies named by its count, else "Not recognized" in secondary ink. Motion is listed only
 where no named family says it -- a crank-rocker's name already says the crank turns fully.
+
+### A pin input the actuator refuses is not solved
+
+A second crank drawn from the driven pivot left the input joining three bodies. The setup drawer
+said "Joint A can't be the input", and the solver drove whichever pair it found first, so the
+transport played it anyway. `Mechanism` now refuses a pin input `actuatorOrRefusal` refuses
+(`'input-refused'`). A slider input is left alone: one on a floating slot has no actuator the
+model can describe and is driven correctly all the same (the gripper's ram). `refuseAttach`
+closes a driven pin that already joins two bodies, so neither end of a new link can land there.
+
+### A plate's size is its sides
+
+A three-joint link listed one "length" -- end to end between whichever two joints it held first
+-- which described a triangle by an arbitrary edge. The Links rows give a plate its three sides on
+a line of their own under the row, each pair named on hover, and a link of more joints its count.

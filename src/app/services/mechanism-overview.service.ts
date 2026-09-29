@@ -23,7 +23,13 @@ export interface LinkRow {
   part: RealLink;
   name: string;
   role: string;
+  /**
+   * How big it is: a bar's length; a three-joint plate's three sides; for more
+   * joints than that, how many, since one number cannot say a plate's shape.
+   */
   length: string;
+  /** Each span by the joints it runs between, for the tooltip. */
+  spans: string;
 }
 
 /** Whether a machine runs, as the chip beside its name says it everywhere. */
@@ -150,7 +156,7 @@ export class MechanismOverviewService {
           // barrel mount carries the buried inner end in its id (D14, S11).
           name: this.mechanism.visibleBodyName(link),
           role: job ? panelRole(job) : jobs ? '' : heldAs(link),
-          length: this.lengthOf(link),
+          ...this.sizeOf(link),
         };
       });
   }
@@ -174,15 +180,38 @@ export class MechanismOverviewService {
   /** Keyed on the solved machine, which a rebuild replaces whenever it changes. */
   private factsCache = new WeakMap<object, { facts: MachineFacts | undefined }>();
 
-  /** End to end, in the units the mechanism is drawn in. */
-  private lengthOf(link: RealLink): string {
-    const ends = link.joints;
-    if (ends.length < 2) return '—';
-    const span = Math.hypot(
-      ends[ends.length - 1].x - ends[0].x,
-      ends[ends.length - 1].y - ends[0].y
+  /**
+   * A link's size, in the units the mechanism is drawn in, over the joints a
+   * reader can see on it. A bar has one length. A plate of three joints has
+   * three sides, and quoting one of them -- end to end, whichever two the list
+   * happened to hold first -- described a triangle by an arbitrary edge. Past
+   * three, the spans are not sides and there are too many to list in a row,
+   * so the row says how many joints and the tooltip has every span.
+   */
+  private sizeOf(link: RealLink): { length: string; spans: string } {
+    const shown = new Set(this.mechanism.visibleJoints().map((joint) => joint.id));
+    const joints = link.joints.filter((joint) => shown.has(joint.id));
+    if (joints.length < 2) return { length: '—', spans: '' };
+    const unit = this.settings.lengthUnit.value;
+    const pairs = joints.flatMap((a, i) => joints.slice(i + 1).map((b) => [a, b] as const));
+    const spans = pairs.map(([a, b]) => ({
+      name: `${a.name || a.id}${b.name || b.id}`,
+      value: Math.hypot(b.x - a.x, b.y - a.y),
+    }));
+    const said = spans.map(
+      (span) => `${span.name} ${this.nup.formatModelLength(span.value, unit)}`
     );
-    return this.nup.formatModelLength(span, this.settings.lengthUnit.value);
+    if (joints.length === 2) {
+      return { length: this.nup.formatModelLength(spans[0].value, unit), spans: '' };
+    }
+    if (joints.length === 3) {
+      // One unit for the three, after the last, as a row has room for.
+      const numbers = spans.map((span) => this.nup.formatModelLength(span.value, unit));
+      const suffix = numbers[0].replace(/^[-\d.,\s]+/, '');
+      const bare = numbers.map((number) => number.slice(0, number.length - suffix.length).trim());
+      return { length: `${bare.join(' · ')} ${suffix}`.trim(), spans: said.join(' · ') };
+    }
+    return { length: `${joints.length} joints`, spans: said.join(' · ') };
   }
 }
 

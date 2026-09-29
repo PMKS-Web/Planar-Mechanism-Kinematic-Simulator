@@ -27,7 +27,10 @@
       this.activeSrv.objType == 'Mechanism'
     ) {
       @if (mechanismService.partitions.length > 0) {
-        <app-mechanism-panel [editable]="true" [attr.inert]="panelIsFrozen() || null">
+        <!-- Not inert as a whole while the mechanism plays: picking a machine
+             or going back to the list is selection, not an edit. Only what
+             edits is frozen, inside the panel. -->
+        <app-mechanism-panel [editable]="true" [frozen]="panelIsFrozen()">
           <ng-container *ngTemplateOutlet="buildHints" />
         </app-mechanism-panel>
       } @else {

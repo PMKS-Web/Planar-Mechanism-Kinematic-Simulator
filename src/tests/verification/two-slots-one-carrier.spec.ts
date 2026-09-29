@@ -1,7 +1,7 @@
 // joint.ts first: the model modules form an import cycle that only initializes
 // cleanly when entered here.
 import '../../app/model/joint';
-import { Joint, PrisJoint } from '../../app/model/joint';
+import { Joint, PrisJoint, RealJoint } from '../../app/model/joint';
 import { ActiveObjService } from '../../app/services/active-obj.service';
 import { SettingsService } from '../../app/services/settings.service';
 import { MechanismBuilder } from '../../app/services/transcoding/mechanism-builder';
@@ -13,6 +13,12 @@ import { MODEL_SCALE } from '../../app/model/render-scale';
  * Two blocks riding one bar, each pushed by its own crank off a common ground
  * pivot. A user's mechanism, and the first one with two floating slots cut into
  * the same carrier.
+ *
+ * Driven from the bar's own pivot A. The user's input was on the cranks'
+ * shared pivot C, which joins three bodies and so names no pair to turn: the
+ * solver used to settle that by picking one, and now refuses it, as the setup
+ * drawer always did. Turned from A, the bar carries both blocks and each
+ * crank follows its own, which is the motion this is about.
  *
  * A sliding joint is on its slot or it is not a sliding joint. The second one
  * was solved by a primitive that never looked at its slot, so it left the bar
@@ -34,6 +40,10 @@ function build() {
     new SettingsService(),
     new ActiveObjService()
   ).build(true);
+  harness.service.updateMechanism(false);
+  const byId = (id: string) => harness.service.joints.find((joint) => joint.id === id) as RealJoint;
+  byId('C').input = false;
+  byId('A').input = true;
   harness.service.updateMechanism(false);
   return harness;
 }

@@ -324,10 +324,18 @@
     color: var(--text-secondary);
   }
 
-  .linkLength {
+  .linkLength,
+  .linkSides {
     color: var(--text-strong);
     text-align: right;
     font-variant-numeric: tabular-nums;
+  }
+
+  // Under the job and the length column, right-aligned with the lengths above
+  // and below it, and pulled up to its row.
+  .linkSides {
+    grid-column: 2 / -1;
+    margin-top: -6px;
   }
 
   .mechFooter {

@@ -41,6 +41,13 @@ export class MechanismPanelComponent {
   /** Edit offers to rename and delete; the analysis modes only report. */
   readonly editable = input(false);
 
+  /**
+   * Whether edits are refused just now -- the mechanism is playing. Only the
+   * controls that edit go inert: rows, the way back and the part links are
+   * selection, which playback never refuses.
+   */
+  readonly frozen = input(false);
+
   protected readonly mostMachines = MOST_MACHINES;
 
   overviewOpen = true;

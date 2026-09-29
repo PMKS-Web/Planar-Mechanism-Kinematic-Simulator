@@ -263,4 +263,24 @@ describe('whether a joint may have something attached to it', () => {
       expect(refuseAttach(joint, context), joint.id).toBeUndefined();
     }
   });
+
+  it('closes a driven pin to a third body, at either end of a new link', () => {
+    // An input turns one body against another: a crank and the ground, or two
+    // links. The first crank on a driven pivot is welcome; a second is not.
+    const pivot = new RevJoint('A', 0, 0, true, true);
+    const context = { cylinders: [] };
+    expect(refuseAttach(pivot, context)).toBeUndefined();
+
+    const tip = new RevJoint('B', 1, 0);
+    const crank = new RealLink('AB', [pivot, tip]);
+    pivot.links.push(crank);
+    tip.links.push(crank);
+    expect(refuseAttach(pivot, context)?.short).toBe('input already connected');
+    // The far end of the crank is not driven, and takes a coupler as usual.
+    expect(refuseAttach(tip, context)).toBeUndefined();
+
+    // Not driven, the same pivot takes as many links as it is given.
+    pivot.input = false;
+    expect(refuseAttach(pivot, context)).toBeUndefined();
+  });
 });
