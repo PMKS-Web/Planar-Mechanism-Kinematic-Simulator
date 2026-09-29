@@ -3,8 +3,8 @@
  * a selection the row's own surface carries.
  *
  * Three things this has to hold that a screenshot alone will not. The reading
- * has to be right -- a crank comes round again, a driven ram turns back -- and
- * it has to be one sentence about the group when the machines are synced. The
+ * has to be lean -- whether a cycle loops or turns back is the machine panel's
+ * to say, and which way the input goes is said only while it is going. The
  * handle has to get the card's whole width. And the selection has to sit under
  * the whole row without any control crossing its edge, which is the thing the
  * old filled chip could not do.
@@ -87,7 +87,13 @@ await waitForReady(page);
 await kinematic();
 
 let text = await rowText();
-record('a crank says it loops', /Loops/.test(text) && !/Reverses/.test(text), text);
+// Loops or Reverses lives in the machine panel now; paused at the start, the
+// line holds the name and the readings, and no direction.
+record(
+  'paused, the row says neither how the cycle ends nor which way it turns',
+  !/Loops|Reverses/.test(text) && !/Clockwise|Counter-clockwise/.test(text),
+  text
+);
 await page.screenshot({
   path: `${OUT}/01-one-crank.png`,
   clip: { x: 300, y: 760, width: 1180, height: 180 },
@@ -114,8 +120,22 @@ await page.goto(`${BASE}/?${payloads['Cylinder_Boom']}`, { waitUntil: 'domconten
 await waitForReady(page);
 await kinematic();
 
+await page.locator('.playButton').click();
+await page.waitForTimeout(500);
 text = await rowText();
-record('a driven ram says it reverses', /Reverses/.test(text) && !/Loops/.test(text), text);
+record(
+  'running, it says which way the input is going, and still not how the cycle ends',
+  /Opening|Closing/.test(text) && !/Reverses|Loops/.test(text),
+  text
+);
+await page.locator('.playButton').click();
+await page.waitForTimeout(400);
+text = await rowText();
+record(
+  'paused away from the start, the direction gives way to how far it is from it',
+  /from start/.test(text) && !/Opening|Closing/.test(text),
+  text
+);
 await page.screenshot({
   path: `${OUT}/02-one-ram.png`,
   clip: { x: 300, y: 760, width: 1180, height: 180 },
@@ -134,8 +154,8 @@ record(
   }
 );
 record(
-  'and the row speaks for both at once, in one reading',
-  (await rowText()).match(/Loops/g)?.length === 1,
+  'and the row speaks for both at once, as All',
+  /\bAll\b/.test(await rowText()) && !/Loops/.test(await rowText()),
   await rowText()
 );
 await page.screenshot({
@@ -323,9 +343,10 @@ await page.waitForTimeout(1400);
 await kinematic();
 
 const mixed = await rowText();
+// How each one's cycle ends is its panel's to say now; the synced row is All.
 record(
-  'synced over two kinds of machine, the row names which does which',
-  /M1 reverses/.test(mixed) && /M2 loops/.test(mixed),
+  'synced over two kinds of machine, the row is one line, All, with no ends listed',
+  /\bAll\b/.test(mixed) && !/reverses|loops/i.test(mixed),
   mixed
 );
 await page.screenshot({

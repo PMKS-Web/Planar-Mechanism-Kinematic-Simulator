@@ -27,8 +27,10 @@
   .mechHead {
     padding: 12px 15px 14px;
 
+    // Under "All mechanisms" the back link is the head's first line, and the
+    // title follows it rather than starting a second block of padding.
     &.underBack {
-      padding-top: 6px;
+      padding-top: 2px;
     }
   }
 
@@ -49,6 +51,12 @@
     padding: 12px 15px 14px;
     white-space: normal;
 
+    // The block holds a row 34px high for the rename field; showing the name
+    // it is only the title's own 28px.
+    .editModeRow.titleRow {
+      min-height: 0;
+    }
+
     .titleRow {
       font-size: 20px;
       font-weight: 500;
@@ -59,7 +67,7 @@
     }
 
     .row {
-      margin-top: 10px;
+      margin-top: 8px;
 
       > button {
         flex: 1 1 0;
@@ -125,6 +133,10 @@
   // reads, so it is plainly the way out rather than part of the title.
   .mechBack {
     padding: 10px 15px 0;
+  }
+
+  .mechBack + .mechEditTitle #editable-title-block {
+    padding-top: 2px;
   }
 
   .backLink {
@@ -221,10 +233,12 @@
 
   // Facts as a spelled-out list, label left and value right: every label fits
   // in full at 250px, and this is a teaching app.
+  // Tight under its header: the header's own 40px already leaves room, and a
+  // second band of padding under it read as an empty row.
   .mechanismPanel .factList {
     display: flex;
     flex-direction: column;
-    padding: 7px 15px 11px;
+    padding: 2px 15px 11px;
   }
 
   .mechanismPanel .fact {
@@ -262,7 +276,7 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
-    padding: 5px 0 10px;
+    padding: 4px 0 10px;
     margin-bottom: 5px;
     border-bottom: 1px solid var(--border-rule);
 

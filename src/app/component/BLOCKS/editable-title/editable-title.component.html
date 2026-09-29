@@ -12,10 +12,19 @@
     <div class="editModeRow" [formGroup]="newIDForm">
       <ng-container *ngTemplateOutlet="contentTpl"></ng-container>
       <mat-form-field class="customInputForm">
+        <!-- Nothing here is a person's name, and Safari fills anything it
+             thinks is one from the reader's contact card: no autocomplete,
+             and a label that does not say "name". -->
         <input
           class="customInput"
           id="title-input-box"
-          aria-label="Name"
+          aria-label="Title"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          data-1p-ignore
+          data-lpignore="true"
           matInput
           type="text"
           #field

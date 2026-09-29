@@ -204,8 +204,10 @@ With nothing selected, the left panel is about the machines on the grid.
 ### A machine's name
 
 A machine is `Mechanism 2` until its author names it in Edit's machine panel (Rename); then it is
-the name, `Pump jack`. The panels and the setup drawer never show the code; the transport, which
-has room for nothing more, shows `M2`, and its tooltip says `Pump jack (M2)`. A
+the name, `Pump jack`. The panels and the setup drawer never show the code. The transport shows the
+name too, cut with an ellipsis where it is long, and `M2` only for a machine with no name; its
+tooltip says `Pump jack (M2)`. Its rows say the direction (`Clockwise`, `Opening`) only while
+the input is going, and `42 deg from start` when paused away from the start. A
 name follows the rules every name does (letters, numbers, spaces, hyphens, underscores,
 apostrophes and parentheses), may not repeat another machine's, and an empty one takes it back to
 the code.

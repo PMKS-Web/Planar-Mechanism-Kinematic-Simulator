@@ -1,4 +1,4 @@
-import { mechanismLabel } from '../../model/mechanism/mechanism-name';
+import { mechanismLabel, mechanismName } from '../../model/mechanism/mechanism-name';
 import {
   AfterViewChecked,
   AfterViewInit,
@@ -57,24 +57,16 @@ function cssPixels(style: CSSStyleDeclaration, name: string, fallback: number): 
   return Number.isFinite(declared) ? declared : fallback;
 }
 
-/**
- * What the input does when it reaches the end of its track.
- *
- * Two facts, not a good one and a bad one, so both are drawn in the same gray:
- * a crank comes round again, a ram turns back. On the combined row one of these
- * stands for every machine that behaves that way, which is why the words are
- * carried rather than derived from a flag at the point of drawing.
- */
-export interface CycleEnd {
-  /** `loop` for a machine that comes round again, `swap_horiz` for one that turns back. */
-  glyph: string;
-  /** "Loops", "Reverses" -- or, on the combined row, "M1, M2 reverse". */
-  text: string;
-}
-
 /** One line in the transport: a machine, or all of them together. */
 export interface PlaybackRow {
+  /** The machine's code, "M2", or "All": what the row is keyed and spoken by. */
   id: string;
+  /**
+   * What the row's chip says: the name its author gave the machine, where it
+   * has one, else its code. The panels say "Mechanism 2"; the chip has room
+   * only for the code.
+   */
+  label: string;
   /** -1 for the combined row, which stands for every machine at once. */
   index: number;
   /** The machine the row's handle is measured against. */
@@ -128,16 +120,17 @@ export interface PlaybackRow {
    * should move in one frame.
    */
   togglePoint: boolean;
-  /** Which way the input is going right now: "Clockwise", "Closing", ... */
+  /**
+   * Which way the input is going, while it is going: "Clockwise", "Closing".
+   * Paused, the row says how far it is from its start instead (`displaced`),
+   * and whether the cycle loops or turns back is the machine panel's.
+   */
   note: string;
+  /** The same word whether or not it is going, for the direction button to say. */
+  heading: string;
   playing: boolean;
   /** Whether this line carries a play button of its own. */
   ownPlay: boolean;
-  /**
-   * What happens at the end of the cycle: one entry for a machine, and for the
-   * combined row one per behavior present among the machines it stands for.
-   */
-  ends: CycleEnd[];
   period: number;
   /**
    * Why this line cannot be played, when it cannot.
@@ -587,18 +580,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
       if (alone) {
         return [this.rowFor(lead.index, true, false)];
       }
-      // Synced, the row stands for every machine at once, so what happens at
-      // the end of the cycle is said about the group rather than about the one
-      // machine the handle happens to follow.
-      return [
-        this.rowFor(
-          lead.index,
-          true,
-          false,
-          'All',
-          this.combinedEnds(runnable.map((r) => r.index))
-        ),
-      ];
+      return [this.rowFor(lead.index, true, false, 'All')];
     }
 
     return runnable.map(({ index }, position) =>
@@ -606,18 +588,13 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
     );
   }
 
-  private rowFor(
-    index: number,
-    master: boolean,
-    ownPlay: boolean,
-    name?: string,
-    ends?: CycleEnd[]
-  ): PlaybackRow {
+  private rowFor(index: number, master: boolean, ownPlay: boolean, name?: string): PlaybackRow {
     const mechanism = this.mechanism.mechanisms[index];
     const seconds = this.mechanism.secondsOf(index);
     const combined = name !== undefined;
     return {
       id: name ?? this.nameOf(index),
+      label: name ?? this.chipLabelOf(index),
       // Sample 0 is the start pose by construction -- re-anchoring is what
       // makes that true after an edit at a pose -- so where the start is on
       // *this* track is where sample 0's input sits along the input's travel.
@@ -646,10 +623,10 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
       // those round writes `playbackDirection` and leaves the drive as it was.
       directionIcon: combined ? '' : this.iconFor(index),
       togglePoint: mechanism?.hasAddedSamples ?? false,
-      note: combined ? '' : this.noteFor(index),
+      note: combined || !this.mechanism.isMechanismPlaying(index) ? '' : this.noteFor(index),
+      heading: combined ? '' : this.noteFor(index),
       playing: this.mechanism.isMechanismPlaying(index),
       ownPlay,
-      ends: ends ?? [this.endOf(index)],
       period: mechanism.cyclePeriod || 1,
       inert: false,
       deferred: this.mechanism.solvingIsDeferred,
@@ -797,6 +774,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
       }
       return {
         id: partition.id,
+        label: this.chipLabelOf(index),
         index,
         leader: index,
         isMechanism: true,
@@ -818,9 +796,9 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
         ),
         togglePoint: false,
         note: '',
+        heading: '',
         playing: false,
         ownPlay: false,
-        ends: [],
         period: 1,
         inert: false,
         deferred: true,
@@ -833,6 +811,7 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
   private inertRow(id: string, index: number, refusal: RowRefusal): PlaybackRow {
     return {
       id,
+      label: this.mechanism.partitions[index] ? this.chipLabelOf(index) : id,
       index,
       leader: index,
       isMechanism: false,
@@ -846,9 +825,9 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
       anchorAt: undefined,
       togglePoint: false,
       note: '',
+      heading: '',
       playing: false,
       ownPlay: false,
-      ends: [],
       period: 1,
       refusal,
       inert: true,
@@ -1140,46 +1119,9 @@ export class PlaybackBarComponent implements OnInit, AfterViewInit, AfterViewChe
     return this.mechanism.partitions[index]?.id ?? `M${index + 1}`;
   }
 
-  /**
-   * What this machine does when its handle reaches the end of the track.
-   *
-   * The row said where the input was and which way it was going, and nothing at
-   * all about either end of the track -- so a handle that jumped back to the
-   * start and a handle that turned round and came back looked the same until
-   * you watched one happen.
-   */
-  private endOf(index: number): CycleEnd {
-    return this.endWords(!this.mechanism.mechanisms[index].reciprocates);
-  }
-
-  private endWords(loops: boolean): CycleEnd {
-    return { glyph: loops ? 'loop' : 'swap_horiz', text: loops ? 'Loops' : 'Reverses' };
-  }
-
-  /**
-   * The same fact about several machines at once.
-   *
-   * Grouped by behavior rather than listed per machine: what the reader wants
-   * from the combined row is how many kinds of ending there are, and with one
-   * kind the names are noise -- the row is already called All.
-   */
-  private combinedEnds(indices: number[]): CycleEnd[] {
-    const groups = new Map<boolean, string[]>();
-    indices.forEach((index) => {
-      const loops = !this.mechanism.mechanisms[index].reciprocates;
-      groups.set(loops, [...(groups.get(loops) ?? []), this.nameOf(index)]);
-    });
-    if (groups.size === 1) {
-      return [this.endWords([...groups.keys()][0])];
-    }
-    return [...groups].map(([loops, names]) => {
-      // One machine is the subject of a singular verb, several of a plural one.
-      const verb = loops ? 'loop' : 'reverse';
-      return {
-        glyph: this.endWords(loops).glyph,
-        text: `${names.join(', ')} ${names.length === 1 ? verb + 's' : verb}`,
-      };
-    });
+  /** The chip's word: the machine's own name where it has one, else its code. */
+  private chipLabelOf(index: number): string {
+    return mechanismName(this.mechanism.partitions[index]) ?? this.nameOf(index);
   }
 
   /**

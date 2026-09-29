@@ -45,6 +45,7 @@ const state = () =>
       rowPlaying: srv.mechanisms.map((_, i) => srv.isMechanismPlaying(i)),
       scrub: [...document.querySelectorAll('.rowScrubber')].map((s) => +s.value),
       notes: [...document.querySelectorAll('.rowNote')].map((n) => n.textContent.trim()),
+      icons: [...document.querySelectorAll('.dirButton mat-icon')].map((n) => n.textContent.trim()),
       // The drawn pose: reversing must not move the drawing.
       pose: srv.joints.map((j) => [j.x, j.y]),
     };
@@ -57,21 +58,24 @@ await page.waitForTimeout(900);
 
 // --- the label names the direction, not the kind of machine -----------------
 const atRest = await state();
-record(
-  'the row says which way the input is going',
-  // Six words, two per kind of drive (`model/drive-direction.ts`): a pin turns,
-  // a cylinder opens and closes, and every other slider runs forward and
-  // backward along its slot -- it has nothing to be open or shut.
-  ['Clockwise', 'Counter-clockwise', 'Opening', 'Closing', 'Forward', 'Backward'].includes(
-    atRest.notes[0]
-  ),
-  atRest.notes
-);
+// Paused, which way it turns is the direction button's to show: the line keeps
+// its room for how far the machine is from its start.
+record('paused, the row says no direction in words', atRest.notes.length === 0, atRest.notes);
 
 // --- a clockwise drive runs the handle left to right ------------------------
 await page.locator('.transportCard .playButton').click();
 await page.waitForTimeout(1200);
 const running = await state();
+record(
+  'running, the row says which way the input is going',
+  // Six words, two per kind of drive (`model/drive-direction.ts`): a pin turns,
+  // a cylinder opens and closes, and every other slider runs forward and
+  // backward along its slot -- it has nothing to be open or shut.
+  ['Clockwise', 'Counter-clockwise', 'Opening', 'Closing', 'Forward', 'Backward'].includes(
+    running.notes[0]
+  ),
+  running.notes
+);
 record('the handle has moved off the left end', running.scrub[0] > atRest.scrub[0], {
   atRest,
   running,
@@ -113,9 +117,9 @@ record(
   Math.abs(after.phase - (before.period - before.phase)) < 1e-8 && after.sample === before.sample,
   { before, after }
 );
-record('and the label changed with it', after.notes[0] !== before.notes[0], {
-  before: before.notes,
-  after: after.notes,
+record('and the direction button changed with it', after.icons[0] !== before.icons[0], {
+  before: before.icons,
+  after: after.icons,
 });
 
 // Capture the first resumed frames: the old bug held the canvas still until
@@ -308,7 +312,9 @@ const slidingRow = async (sign) => {
     let checked = 0;
     for (let i = 1; i < times.length - 1; i++) {
       srv.seekMechanism(index, times[i]);
-      const note = row()?.note;
+      // The word the row says while running, asked for directly: a seek
+      // leaves the clock paused, where the row says its distance from start.
+      const note = row()?.heading;
       const icon = row()?.directionIcon;
       said.push(note);
       const into = places[i] - places[i - 1];
@@ -336,7 +342,7 @@ const slidingRow = async (sign) => {
       checked,
       samples: times.length,
       icon: row()?.directionIcon,
-      note: row()?.note,
+      note: row()?.heading,
     };
   });
 };
@@ -378,7 +384,7 @@ await page.waitForTimeout(500);
 const crank = await page.evaluate(() => {
   const bar = ng.getComponent(document.querySelector('app-playback-bar'));
   const row = bar.rows.find((one) => one.isMechanism);
-  return { note: row?.note, icon: row?.directionIcon };
+  return { note: row?.heading, icon: row?.directionIcon };
 });
 record(
   'a crank keeps its turning word and its turning glyph',
