@@ -1,8 +1,8 @@
 import { Coord } from './coord';
 
-/** The preview and commit must use the same bearing, with Option as an escape. */
-export function placementBearing(start: Coord | undefined, end: Coord, free: boolean): Coord {
-  if (!start || free) return end;
+/** The preview and commit stay free unless Option requests an angle snap. */
+export function placementBearing(start: Coord | undefined, end: Coord, snap: boolean): Coord {
+  if (!start || !snap) return end;
   const length = Math.hypot(end.x - start.x, end.y - start.y);
   if (length < 1e-9) return end;
   const step = Math.PI / 12;

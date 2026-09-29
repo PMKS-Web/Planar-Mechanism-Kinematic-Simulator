@@ -18,6 +18,7 @@ const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
 import { waitForReady } from './app-ready.mjs';
+import { filmstrip, contactSheet } from './filmstrip.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
@@ -154,7 +155,7 @@ record(
 // on coordinates like 3.87. Both ends of the gesture are checked, because they
 // are set in different places: the start at the right-click, the finish at the
 // left one.
-const drawBar = async ({ option, snap }) => {
+const drawBar = async ({ option, snap, kind = 'Link' }) => {
   await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => localStorage.setItem('tutorialSeen', '1'));
   await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
@@ -175,27 +176,44 @@ const drawBar = async ({ option, snap }) => {
   await page.mouse.click(620, 430, { button: 'right' });
   if (option) await page.keyboard.up('Alt');
   await page.waitForTimeout(500);
-  await page.locator('.cm-row:has(.cm-row__label:text-is("Link"))').first().click();
+  await page.locator(`.cm-row:has(.cm-row__label:text-is("${kind}"))`).first().click();
   await page.waitForTimeout(400);
-  // The canvas places a joint from tracked movement, so move before the click.
-  await page.mouse.move(800, 500);
-  await page.waitForTimeout(150);
-  await page.mouse.move(803, 507);
+  const dir = `artifacts/placement-angle-${kind}-${option}-${snap}`;
+  const film = filmstrip(page, dir);
+  await film.shot('armed');
   if (option) await page.keyboard.down('Alt');
+  await film.during(40, 5, 'preview', () => page.mouse.move(803, 507, { steps: 15 }));
+  const preview = await page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const end = grid.creationLanding();
+    return [end.x, end.y];
+  });
   await page.mouse.click(803, 507);
   if (option) await page.keyboard.up('Alt');
   await page.waitForTimeout(800);
+  await film.shot('placed');
+  await contactSheet(`${dir}/*.png`, `${dir}-sheet.png`, 4, 0.4);
 
-  return page.evaluate(() => {
+  const joints = await page.evaluate((which) => {
     const grid = ng.getComponent(document.querySelector('app-new-grid'));
     const cell = grid.svgGrid.minorCellSize;
     const onGrid = (value) => Math.abs(value / cell - Math.round(value / cell)) < 1e-6;
-    return grid.mechanismSrv.joints.map((joint) => ({
+    const cylinder = grid.mechanismSrv.sealedStructures()[0];
+    const ends =
+      which === 'Cylinder' ? [cylinder.mountA, cylinder.mountB] : grid.mechanismSrv.joints;
+    return ends.map((joint) => ({
       id: joint.id,
       at: [Math.round(joint.x * 1e4) / 1e4, Math.round(joint.y * 1e4) / 1e4],
       onGrid: onGrid(joint.x) && onGrid(joint.y),
     }));
-  });
+  }, kind);
+  record(
+    `${kind}: the placed end matches its preview (Option ${option}, grid ${snap})`,
+    joints.length === 2 &&
+      Math.hypot(joints[1].at[0] - preview[0], joints[1].at[1] - preview[1]) < 1e-3,
+    { joints, preview }
+  );
+  return joints;
 };
 
 function onBearing(joints) {
@@ -205,26 +223,26 @@ function onBearing(joints) {
   return Math.abs(degrees / 15 - Math.round(degrees / 15)) < 1e-4;
 }
 
-const snapped = await drawBar({ option: false, snap: true });
-record(
-  'the start lands on the grid and the end on a 15-degree bearing',
-  snapped.length === 2 && snapped[0].onGrid && onBearing(snapped),
-  snapped
-);
+for (const kind of ['Link', 'Cylinder']) {
+  const gridded = await drawBar({ kind, option: false, snap: true });
+  record(
+    `${kind}: grid snapping still places both ends on the grid`,
+    gridded.length === 2 && gridded.every((joint) => joint.onGrid),
+    gridded
+  );
 
-const held = await drawBar({ option: true, snap: true });
-record(
-  'and Option places them wherever the pointer is, both ends alike',
-  held.length === 2 && held.every((joint) => !joint.onGrid),
-  held
-);
+  const free = await drawBar({ kind, option: false, snap: false });
+  record(`${kind}: the bearing is free by default`, free.length === 2 && !onBearing(free), free);
 
-const free = await drawBar({ option: false, snap: false });
-record(
-  'bearing snapping works with grid snapping off, and Option releases it',
-  free.length === 2 && onBearing(free) && !onBearing(held),
-  { free, held }
-);
+  for (const snap of [false, true]) {
+    const held = await drawBar({ kind, option: true, snap });
+    record(
+      `${kind}: Option snaps the bearing with grid snapping ${snap ? 'on' : 'off'}`,
+      held.length === 2 && onBearing(held) && !held[0].onGrid,
+      held
+    );
+  }
+}
 
 record('nothing threw', errors.length === 0, errors.slice(0, 2));
 await browser.close();

@@ -1783,7 +1783,7 @@ export class NewGridComponent implements OnDestroy {
    * on a grid came out on coordinates like 3.87. Read by the preview as well as
    * by the click, so the bar commits where the ghost was standing.
    *
-   * Option suspends it, the way it suspends every other snap on the canvas.
+   * Option bypasses the grid and requests a fifteen-degree bearing instead.
    */
   get creationMergeTarget(): RealJoint | undefined {
     if (!this.dragState.isCreatingLink && this.dragState.grid !== gridStates.createCylinder)
@@ -4152,7 +4152,7 @@ export class NewGridComponent implements OnDestroy {
         if (this.dragState.grid === gridStates.createForce) {
           const start = this.svgGrid.screenToModel(this.lastRightClickCoord);
           // The arrow lands where the preview has been pointing: at the
-          // snapped bearing, unless Option is held.
+          // cursor's bearing, or a fifteen-degree step while Option is held.
           const end = placementBearing(start, mousePosInSvg, $event.altKey);
           this.mechanismSrv.createForce(start, end, this.forceCreateOn);
           this.dragState.finishCreating();
