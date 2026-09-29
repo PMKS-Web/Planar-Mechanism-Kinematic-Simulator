@@ -128,12 +128,12 @@ await page.waitForTimeout(600);
 text = await drawerText();
 record(
   'an undriven mechanism is refused with its own reason',
-  text.includes('Nothing drives this mechanism'),
+  text.includes('No input is set'),
   text
 );
 record(
   'which names a joint that could take the job',
-  /Right-click joint [A-Z] and switch on Driven Input/.test(text),
+  /Right-click joint [A-Z] and set it as the input/.test(text),
   text
 );
 

@@ -104,6 +104,30 @@ describe('welded force URL compatibility', () => {
     expect(targetSettings.forceUnit.value).toBe(ForceUnit.NEWTON);
   });
 
+  it('round-trips an inward force without moving its two endpoints', () => {
+    const source = weldedSource();
+    source.force.flipForce();
+    const settings = new SettingsService();
+    const encoded = urlGeneratorFor(
+      { ...source, mechanismTimeStep: 0 } as unknown as MechanismService,
+      settings
+    ).generateUrlQuery();
+    const decoder = new StringTranscoder();
+    decoder.decodeURL(encoded);
+    const target = targetService();
+    new MechanismBuilder(target, decoder, new SettingsService(), new ActiveObjService()).build(
+      false
+    );
+    const force = target.forces[0];
+    expect(force.arrowOutward).toBe(false);
+    expect(force.startCoord.x).toBeCloseTo(source.force.startCoord.x, 3);
+    expect(force.startCoord.y).toBeCloseTo(source.force.startCoord.y, 3);
+    expect(force.endCoord.x).toBeCloseTo(source.force.endCoord.x, 3);
+    expect(force.endCoord.y).toBeCloseTo(source.force.endCoord.y, 3);
+    expect(force.xComp).toBeCloseTo(source.force.xComp, 6);
+    expect(force.yComp).toBeCloseTo(source.force.yComp, 6);
+  });
+
   it('maps legacy subset-owned forces to the compound root', () => {
     const source = weldedSource();
     const settings = new SettingsService();

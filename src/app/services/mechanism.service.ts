@@ -1,3 +1,8 @@
+import { orphanedByLinkRemoval } from '../model/link-removal';
+import { graftJoint } from '../model/graft-joint';
+import { pruneUnlinkedJoints } from '../model/prune-unlinked-joints';
+import { selectableLinks } from '../model/selection';
+import { LinkTraceService } from './link-trace.service';
 import { Injectable, Injector, inject } from '@angular/core';
 import { LinkHold } from '../model/link';
 import {
@@ -98,6 +103,7 @@ import { ForceAnalysisSeries, ForceAnalysisMode } from '../model/mechanism/force
 import {
   arrowPath,
   buildVectorTrace,
+  sweptSpanOf,
   DrawnVectorTrace,
   LiveVectorArrow,
   planar,
@@ -750,7 +756,7 @@ export class MechanismService {
       const from = `${force.startCoord.x},${force.startCoord.y}`;
       const to = `${force.endCoord.x},${force.endCoord.y}`;
       const at = `${from}-${to}`;
-      return `${force.id}>${force.link.id}@${at}m${force.mag}${force.local ? 'l' : ''}`;
+      return `${force.id}>${force.link.id}@${at}m${force.mag}${force.local ? 'l' : ''}${force.arrowOutward ? 'out' : 'in'}`;
     });
     return [
       joints.join('|'),
@@ -1401,10 +1407,12 @@ export class MechanismService {
       force,
       local: force.local,
       magnitude: force.mag,
+      outward: force.arrowOutward,
       angle: force.angleRad + (force.local ? frames[index]!.angle : 0),
     }));
     this.editingAtStartPose(() => {
-      requested.forEach(({ force, local, magnitude, angle }) => {
+      requested.forEach(({ force, local, magnitude, angle, outward }) => {
+        force.arrowOutward = outward;
         force.setLocal(local);
         force.setMagnitude(magnitude);
         force.setDirectionRadians(angle);
@@ -1652,6 +1660,7 @@ export class MechanismService {
    * different drawing that happens to spell its joints with the same letters.
    */
   clearVectorTraces(): void {
+    this.injector.get(LinkTraceService).clear();
     if (this.vectorTraceKeys.size === 0) return;
     this.vectorTraceKeys.clear();
     this.vectorTraceRevision++;
@@ -1781,8 +1790,8 @@ export class MechanismService {
    * Cached on `solveRevision`, like the readiness list beside it: every input
    * is written by an edit, and a cycle of arrows costs one solve per sample.
    * The mode and the force-analysis kind are in the key because they change
-   * which traces are drawn and what a force one reads, and neither moves the
-   * revision.
+   * which traces are drawn and what a force one reads. While dragging, keep
+   * the sampled paths until release; live arrows still follow the current pose.
    */
   vectorTracePaths(): DrawnVectorTrace[] {
     const tab = this.tabs.getCurrentTab();
@@ -1790,7 +1799,7 @@ export class MechanismService {
     const held = this.vectorTraceCache;
     if (
       !held ||
-      held.revision !== this.solveRevision ||
+      (held.revision !== this.solveRevision && !this.injector.get(DragStateService).isDragging) ||
       held.switches !== this.vectorTraceRevision ||
       held.tab !== tab ||
       held.mode !== mode
@@ -1855,7 +1864,7 @@ export class MechanismService {
       solved.joints.length,
       this.positionSamplerFor(solved, part),
       vectorAt,
-      this.sweptSpanOf(solved)
+      sweptSpanOf(solved.joints, MODEL_SCALE)
     );
   }
 
@@ -1865,7 +1874,7 @@ export class MechanismService {
       return (index: number) => solved.joints[index]?.find((one) => one.id === part.id);
     }
     return (index: number) => {
-      const link = solved.links[index]?.find((one) => one.id === part.id);
+      const link = selectableLinks(solved.links[index] ?? []).find((one) => one.id === part.id);
       return link instanceof RealLink ? link.CoM : undefined;
     };
   }
@@ -1896,26 +1905,6 @@ export class MechanismService {
           : "Linear Link's CoM Acc";
     return (index) =>
       planar(this.samples.sampleAt(solved, index, 'kinematic', '', property, part.id));
-  }
-
-  /** How big this machine is on the drawing: the box its cycle sweeps out. */
-  private sweptSpanOf(solved: Mechanism): number {
-    let minX = Number.POSITIVE_INFINITY;
-    let minY = Number.POSITIVE_INFINITY;
-    let maxX = Number.NEGATIVE_INFINITY;
-    let maxY = Number.NEGATIVE_INFINITY;
-    solved.joints.forEach((frame) =>
-      frame.forEach((joint) => {
-        minX = Math.min(minX, joint.x);
-        maxX = Math.max(maxX, joint.x);
-        minY = Math.min(minY, joint.y);
-        maxY = Math.max(maxY, joint.y);
-      })
-    );
-    const span = Math.hypot(maxX - minX, maxY - minY);
-    // A machine whose joints all sit on one point sweeps nothing; one user
-    // length keeps the arrows from collapsing to nothing with it.
-    return Number.isFinite(span) && span > 0 ? span : MODEL_SCALE;
   }
 
   /**
@@ -2415,38 +2404,12 @@ export class MechanismService {
    * name the cascade before the click rather than after it.
    */
   jointsOrphanedByDeleting(link: Link): RealJoint[] {
-    // Everything the deletion actually takes, worked out the way the deletion
-    // works it out: the body's own leaves, plus the bars of every ram the body
-    // owns, because deleting a body takes its rams whole. Asking the body's
-    // own joint list alone missed the ram's *opposite* mount -- a joint at the
-    // far end of the drawing, plainly visible, that the row did not mention
-    // and the click removed.
-    const doomed = new Set<string>(
-      [link, ...(link instanceof RealLink ? link.subset : [])].map((one) => one.id)
+    return orphanedByLinkRemoval(
+      link,
+      this.links,
+      this.visibleJoints(),
+      this.cylindersOfLink(link)
     );
-    for (const sealed of this.cylindersOfLink(link)) {
-      for (const bar of [sealed.barrel, sealed.rod]) doomed.add(bar.id);
-    }
-    const survives = (candidate: Link): boolean => {
-      if (doomed.has(candidate.id)) return false;
-      if (!(candidate instanceof RealLink) || candidate.subset.length === 0) return true;
-      // A compound survives only as much of it as is left.
-      return candidate.subset.some((leaf) => !doomed.has(leaf.id));
-    };
-    const held = (joint: Joint) =>
-      this.links.some(
-        (candidate) =>
-          survives(candidate) &&
-          (candidate.joints.includes(joint) ||
-            (candidate instanceof RealLink &&
-              candidate.subset.some((leaf) => !doomed.has(leaf.id) && leaf.joints.includes(joint))))
-      );
-    // Only what the reader can see (D14): saying "and 2 joints" about points
-    // nobody is shown would be a number they cannot check against the screen.
-    // That is one joint per cylinder now, its derived inner end -- the seal is
-    // the square on the skin, so a click that takes it is a click that takes
-    // something visible away.
-    return this.visibleJoints().filter((joint) => !held(joint));
   }
 
   /**
@@ -3718,7 +3681,7 @@ export class MechanismService {
 
   changeForceDirection() {
     const force = this.activeObjService.selectedForce;
-    this.editForcesAtPose([force], () => force.reverseDirection());
+    this.editForcesAtPose([force], () => force.flipForce());
   }
 
   changeForceLocal() {
@@ -3801,22 +3764,7 @@ export class MechanismService {
    * its own.
    */
   private graftJointOnto(joint: RealJoint, link: RealLink): void {
-    link.joints.forEach((member) => {
-      if (!(member instanceof RealJoint)) return;
-      member.connectedJoints.push(joint);
-      joint.connectedJoints.push(member);
-    });
-    // A welded compound is drawn from its leaves, so the leaf the user actually
-    // clicked has to grow too or the new joint belongs to a body nothing draws.
-    if (link.isWelded && link.lastSelectedSublink) {
-      link.lastSelectedSublink.id = link.lastSelectedSublink.id.concat(joint.id);
-      link.lastSelectedSublink.fixedLocations.push({ id: joint.id, label: joint.id });
-      link.lastSelectedSublink.joints.push(joint);
-    }
-    joint.links.push(link);
-    link.joints.push(joint);
-    link.id += joint.id;
-    link.d = link.getPathString();
+    graftJoint(joint, link, (this.rootLinkOwning(link) as RealLink) ?? link);
   }
 
   deleteLink() {
@@ -3853,31 +3801,26 @@ export class MechanismService {
       )) {
         this.deleteCylinderTopology(sealed);
       }
-      this.joints = this.joints.filter(
-        (joint) =>
-          !(joint instanceof RealJoint) ||
-          this.links.some((candidate) => candidate.joints.includes(joint))
-      );
+      this.joints = pruneUnlinkedJoints(this.joints, this.links, link.joints);
       this.activeObjService.updateSelectedObj(undefined);
       this.finishStructuralEdit(true);
       return;
     }
     const linkIndex = this.links.findIndex((candidate) => candidate === link);
-    if (linkIndex === -1) return;
+    if (linkIndex === -1 && !this.rootLinkOwning(link)) return;
 
     const ownedLinkIDs = new Set([
       link.id,
       ...(link instanceof RealLink ? link.subset.map((subset) => subset.id) : []),
     ]);
     this.forces
-      .filter((force) => ownedLinkIDs.has(force.link.id))
+      .filter(
+        (force) => ownedLinkIDs.has(force.link.id) || ownedLinkIDs.has(force.anchoredTo ?? '')
+      )
       .forEach((force) => this.detachForce(force));
-    this.links.splice(linkIndex, 1);
-    this.joints = this.joints.filter(
-      (joint) =>
-        !(joint instanceof RealJoint) ||
-        this.links.some((candidate) => candidate.joints.includes(joint))
-    );
+    if (linkIndex === -1) this.releaseFromCompounds(ownedLinkIDs);
+    else this.links.splice(linkIndex, 1);
+    this.joints = pruneUnlinkedJoints(this.joints, this.links, link.joints);
     this.activeObjService.updateSelectedObj(undefined);
     this.finishStructuralEdit(true);
   }
@@ -4865,11 +4808,7 @@ export class MechanismService {
     const interior = new Set([sealed.seal.id, sealed.inner.id]);
     [...interior, sealed.mountA.id, sealed.mountB.id].forEach((id) => this.slotStashes.delete(id));
     this.joints = this.joints.filter((joint) => !interior.has(joint.id));
-    this.joints = this.joints.filter(
-      (joint) =>
-        !(joint instanceof RealJoint) ||
-        this.links.some((candidate) => candidate.joints.includes(joint))
-    );
+    this.joints = pruneUnlinkedJoints(this.joints, this.links, [sealed.mountA, sealed.mountB]);
 
     // Scrub what survived of what did not.
     //
@@ -5639,6 +5578,7 @@ export class MechanismService {
       f.startCoord.y = from.startCoord.y + (to.startCoord.y - from.startCoord.y) * blend;
       f.endCoord.x = from.endCoord.x + (to.endCoord.x - from.endCoord.x) * blend;
       f.endCoord.y = from.endCoord.y + (to.endCoord.y - from.endCoord.y) * blend;
+      f.arrowOutward = from.arrowOutward;
       f.local = from.local;
       f.mag = from.mag + (to.mag - from.mag) * blend;
       f.angleRad = blendAngle(from.angleRad, to.angleRad, blend);

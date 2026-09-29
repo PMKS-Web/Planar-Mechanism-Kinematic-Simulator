@@ -115,12 +115,12 @@ describe('why a mechanism will not run', () => {
 
     expect(readiness.checks).toHaveLength(1);
     const [check] = readiness.checks;
-    expect(check.title).toBe('Nothing drives this mechanism');
+    expect(check.title).toBe('No input is set');
     // Points at a joint that can actually take the job, so the button is an
     // answer rather than a place to start looking.
     expect(check.at).toBeDefined();
     expect(check.action).toBe('Go To Joint');
-    expect(check.body).toMatch(/Right-click joint [A-Z] and switch on Driven Input/);
+    expect(check.body).toMatch(/Right-click joint [A-Z] and set it as the input/);
   });
 
   it('names the slider when one has nothing to slide along', () => {
@@ -186,7 +186,7 @@ describe('why a mechanism will not run', () => {
     expect(readiness.ready).toBe(false);
     expect(readiness.checks).toHaveLength(1);
     expect(readiness.checks[0].state).toBe('blocker');
-    expect(readiness.checks[0].title).toBe('The driven joint cannot be driven');
+    expect(readiness.checks[0].title).toBe('This joint cannot be an input');
   });
 
   it('treats a cylinder that cannot use its whole stroke as a warning, not a blocker', () => {

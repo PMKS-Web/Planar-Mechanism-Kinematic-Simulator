@@ -11,6 +11,7 @@
   [class.sheet]="viewport.isPhone()"
   [class.collapsed]="viewport.isPhone() && !sheetExpanded()"
   [class.analysis]="this.tabs.isAnalysisMode()"
+  [class.edit]="this.tabs.getCurrentTab() === TabID.EDIT"
   [class.behindDrawer]="drawerOpen"
 >
   @if (this.tabs.getCurrentTab() === TabID.SYNTHESIZE) {

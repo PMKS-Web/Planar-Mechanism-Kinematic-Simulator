@@ -2134,3 +2134,40 @@ bars says it too. Ask the holding force of a determinate machine (the published
 ### Split Joint treats a floating slot's carrier as a body
 
 A floating `PrisJoint` is absent from its carrier's `joints`: that absence is what makes it a slot rather than a pin. Split Joint counts the carrier so the action is offered, but releases that constraint instead of inserting a carrier pin. The same `PrisJoint`, drive units, and all rider memberships remain; it becomes dangling and moves a small distance normal to its former slot. Ordinary shared pins spread by a small fraction of the drawn joint scale. Both motions use the constrained drag path, so position locks and holds remain authoritative. Counting only `joint.links` makes every ordinary floating pin-in-slot look like a one-link refusal.
+
+### A force flip needs a solve-cache key even when no point moves
+
+`Flip Force` keeps `startCoord`/`endCoord` fixed and toggles `arrowOutward`. Omitting that bit from the solve fingerprint reused the old solution, which overwrote the new orientation when the paused pose was restored. Include the bit, carry it through posed edits and pose interpolation, and test both the endpoints and the sign of the physical components. Numeric exports use `directionCoord` because their endpoint-only representation cannot encode an inward arrow.
+
+### Numeric drags should commit once, through the field
+
+Previewing each pointer move through Angular's input event made a gesture produce several undo states. `NumberDragDirective` previews the text locally and dispatches input/change/blur only on release; Escape and pointer cancellation restore the original text. The browser regression checks that one Undo restores the value before the whole drag.
+
+
+### PR32 follow-ups: animation anchors, orphan cleanup, and vector drag cost
+
+A bar label's offset must choose an end from the authored pose, then follow that end during playback. Choosing the currently higher end flips the label across its CoM every horizontal crossing (`bar-label-axis.ts`). Deleting a link or cylinder must prune only its own newly unlinked joints: sweeping every orphan also deleted unrelated standalone inputs.
+
+Number adjustment now starts on the field label, preserving the value's native text selection. Tables without an individual label keep ordinary text editing. Deletion consequences occupy a second menu line, keeping the 320px cap and Delete shortcut. The Edit panel measures horizontal overlap with playback cards before reserving their height.
+
+Vector paths were rebuilding all cycle samples on every drag move. In a four-bar drag with velocity and acceleration on B and C, this cost 30 rebuilds / 254ms and 143,144 sample reads. Reusing the cycle paths during the gesture and refreshing on release reduced this to one rebuild / 7ms and 20,032 reads; the current-pose arrows continue updating. The measured frame p90 fell from 17ms to 9ms on this machine (`e2e/vector-drag-profile.mjs`). Ask `DragStateService.isDragging`, not `onMechUpdateState`: a solve emits state 2 during the drag, so that observable alone cannot guard the expensive work.
+
+Shared reproductions: [Luffing crank label](https://deploy-preview-32--pmksnew.netlify.app/?2v.Ay,1E8.A,1V.1011.4O,O,0,0,0.0C,C,Qv,cP,0.0T,T,rn,1Co,0.6G,G,YO,09O,0.1K,K,Fs,Me,0,OCT,O,T..ARGK,Luffing%20crank,mr0,1T,P7,6e,303e9f,G,K,,.MROCT,Boom,4a_0,S7,LX,Uk,0d125a,O,C,T,,..1F1,OCT,F1,rn,1Co,sg,1X7,d4..N_P*2IoWB5), [HI beside orphan G](https://deploy-preview-32--pmksnew.netlify.app/?2v.EK,1E8.A,0.1011.6G,G,YO,09O,0.9H,H,1C4,0F2,0.0I,I,1TR,051,0..ARHI,HI,0,0,1Km,0A2,303e9f,H,I,,...N_d*1yshxG), [Standalone input A](https://deploy-preview-32--pmksnew.netlify.app/?2v.Ay,1E8.A,0.1011.6A,A,0d1,8J,0,,,,02SG....N_k*418cfy).
+
+
+### A tracer selected through a compound primitive still belongs to the root
+
+The second click on a compound now selects a primitive object, not the root with a remembered leaf. `graftJoint` must grow that primitive and every containing compound, while the new joint’s `links` and `connectedJoints` name the rigid root. Growing only the leaf left a point visible but absent from the topology serialized and solved. Preserve force `anchoredTo` identities when the growing primitive changes its ID. `e2e/force-frame.mjs` exercises the supplied HI/IJ drawing through add, drag, undo, redo, and URL reconstruction.
+
+The designer’s “Force rendering and frame visualization-2.zip” final card 2a replaces the older force weld-plus grammar: a disc and ring/keyway stay at the application point, independent of arrow sense. The inward tip stops one shaft width before the anchor. The lock badge is offset beside the disc so the frame stays legible. The panel Angle and its hover/focus guide both measure from the owning body for Local, and from +x for Grid; stored `angleRad` continues to be the physical world direction.
+
+[Compound tracer reproduction on PR32](https://deploy-preview-32--pmksnew.netlify.app/?2v.9x,1E8.A,0.1011.0H,H,ve,0Cg,0.8I,I,11m,He,0.0J,J,1YS,01G,0..ARHIJ,HIJ,0,0,17v,5L,303e9f,H,I,J,,HI,IJ.aRHI,HI,0,0,zi,2V,303e9f,H,I,,.aRIJ,IJ,0,0,1I6,8C,0d125a,I,J,,...N_l*2yNYpD).
+
+
+### Force marks need one geometry scale, and inward shafts end at the head’s base
+
+The final force designer SVG uses the same proportions at every zoom: a 9-unit shaft, 2.7-unit selection stroke and handle outline, 3-unit white disc outline, and 3.2-unit keyway at object scale 90. Mixing screen-sized strokes with model-sized discs made the mark lose its proportions. Keep those marks in model scale, with the angle assistance remaining screen-scaled. The selected centerline is amber, the datum follows the force ink, and the square is cream. Hover lightens the chosen color rather than replacing the whole palette with one blue. An inward triangle’s tip is inset from the application disc, so its shaft must stop three shaft widths before the anchor, at the triangle base. `e2e/force-precision.mjs` compares actual Angular-rendered glyphs against the designer’s final card 2a, isolates them on identical scenery, and exercises all six colors.
+
+### Delete must address a selected primitive through its owning compound
+
+After a second click, `selectedLink` is a primitive absent from the root link array. A root-only index lookup made Delete silently return. Release that primitive through the existing compound split operation, remove forces anchored to it, and prune only its newly unlinked joints. Deletion previews must check surviving primitive membership rather than the compound’s old joint union. The HI/IJ reproduction is covered through keyboard Delete, panel Delete, and Undo in `e2e/force-frame.mjs`; a unit test preserves the remaining multi-member weld and its force.

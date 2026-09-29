@@ -171,7 +171,7 @@ record(
   'the drawer names both mechanisms and blames only the broken one',
   drawer.includes('Mechanism M1') &&
     drawer.includes('Mechanism M2') &&
-    drawer.includes('Nothing drives this mechanism'),
+    drawer.includes('No input is set'),
   drawer
 );
 

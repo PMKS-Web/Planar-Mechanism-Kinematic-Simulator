@@ -512,16 +512,16 @@ describe('AnalysisPanelComponent drawing switches', () => {
     fixture.destroy();
   });
 
-  it('keeps a link’s trace and force chips in place, grayed as joints-only', async () => {
+  it('offers a link center-of-mass path while keeping reactions joints-only', async () => {
     const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], 'BC');
     fixture.detectChanges();
     const byKey = Object.fromEntries(switches(fixture).map((one) => [one.key, one]));
-    expect(byKey['traces'].off).toBe(true);
+    expect(byKey['traces'].off).toBe(false);
     expect(byKey['force'].off).toBe(true);
     expect(byKey['velocity'].off).toBe(false);
     expect(byKey['acceleration'].off).toBe(false);
     const traces = fixture.componentInstance.drawingSwitches.find((one) => one.key === 'traces')!;
-    expect(fixture.componentInstance.drawingSwitchTip(traces)).toContain('joints only');
+    expect(fixture.componentInstance.drawingSwitchTip(traces)).toContain('center of mass');
     fixture.destroy();
   });
 

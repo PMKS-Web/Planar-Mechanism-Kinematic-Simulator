@@ -205,7 +205,7 @@ check(
   'and says the mechanism goes',
   /deleted/i.test(await page.locator('[mat-dialog-content], mat-dialog-content').innerText())
 );
-await page.getByRole('button', { name: 'Keep my mechanism' }).click();
+await page.getByRole('button', { name: 'Cancel' }).click();
 await page.waitForTimeout(600);
 check(
   'declining leaves the drawing alone',

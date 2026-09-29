@@ -644,13 +644,15 @@
     }
   }
 
-  .forceEndpointHandle {
-    fill: mat.m2-get-color-from-palette($accent-palette, 50);
-    stroke: mat.m2-get-color-from-palette($accent-palette, 500);
+  .forceLabel {
+    fill: var(--text-primary);
+    stroke: var(--canvas-halo);
+    paint-order: stroke;
+  }
 
-    &:hover {
-      fill: mat.m2-get-color-from-palette($accent-palette, 100);
-    }
+  .forceEndpointHandle {
+    fill: var(--accent-tint);
+    stroke: var(--accent);
   }
 
   .forceLine {
@@ -690,18 +692,6 @@
   .snapRefused {
     fill: none;
     stroke: var(--danger);
-    pointer-events: none;
-  }
-
-  // The refusal in words, under its ring. Painted rather than stroked -- a
-  // stroked glyph at this size closes its own counters -- and carrying the
-  // page's own background as a halo so it stays readable over whatever bar
-  // happens to be behind it.
-  .snapRefusedReason {
-    fill: var(--danger);
-    stroke: var(--canvas-halo);
-    stroke-width: 0.09em;
-    paint-order: stroke fill;
     pointer-events: none;
   }
 

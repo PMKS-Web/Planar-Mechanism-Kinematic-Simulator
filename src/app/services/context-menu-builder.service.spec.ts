@@ -1,3 +1,4 @@
+import { LinkTraceService } from './link-trace.service';
 import { Injector } from '@angular/core';
 import { ContextMenuBuilderService, MenuHandlers } from './context-menu-builder.service';
 import { ContextMenuModel, MenuRow } from '../component/BLOCKS/context-menu/menu-model';
@@ -64,6 +65,7 @@ function createBuilderHarness() {
   if (!ColorService.instance) new ColorService();
   const injector = Injector.create({
     providers: [
+      { provide: LinkTraceService, deps: [] },
       { provide: SettingsService, deps: [] },
       { provide: NumberUnitParserService, deps: [] },
       { provide: ActiveObjService, deps: [] },
@@ -244,6 +246,25 @@ describe('the right-click menu', () => {
     });
   });
 
+  it('allows the first link on an orphan grounded input joint', () => {
+    const joint = new RevJoint('A', 0, 0, true, true);
+    harness.mechanism.joints = [joint];
+    harness.mechanism.updateMechanism();
+    expect(row(harness.builder.build(joint, noHandlers), 'Link')!.disabled).toBe(false);
+  });
+
+  it('refuses new links and cylinders in both analysis modes, including bare grid', () => {
+    const parts = fourBar(harness.mechanism);
+    for (const mode of [TabID.ANALYZE, TabID.FORCE]) {
+      harness.tabs.setTab(mode);
+      for (const target of ['Grid', parts.t, parts.coupler]) {
+        const model = harness.builder.build(target, noHandlers);
+        expect(row(model, 'Link')!.refusal?.short).toBe('Edit mode only');
+        expect(row(model, 'Cylinder')!.refusal?.short).toBe('Edit mode only');
+      }
+    }
+  });
+
   describe('the ladder', () => {
     it('runs Attach, State, grouped Traces, then the destructive footer', () => {
       const parts = fourBar(harness.mechanism);
@@ -333,7 +354,7 @@ describe('the right-click menu', () => {
       const model = harness.builder.build(parts.a, noHandlers);
       // Welded grays on a driven joint...
       expect(model.choice!.options.find((one) => one.label === 'Welded')!.refusal!.short).toBe(
-        'it is driven'
+        'it is an input'
       );
       // ...and the switch that resolves it stays live.
       expect(row(model, 'Driven Input')!.disabled).toBe(false);
@@ -480,7 +501,8 @@ describe('the right-click menu', () => {
         (one) => one.destructive
       )!;
       // O is on the crank alone and goes with it; A is on two links and stays.
-      expect(remove.label).toBe('Delete Link (and Joint O)');
+      expect(remove.label).toBe('Delete Link');
+      expect(remove.detail).toBe('Also removes Joint O');
     });
 
     it('names the links deleting a joint would take with it', () => {
@@ -489,7 +511,8 @@ describe('the right-click menu', () => {
         (one) => one.destructive
       )!;
       // The crank is left with one end; the three-joint coupler survives.
-      expect(remove.label).toBe('Delete Joint (and Link OA)');
+      expect(remove.label).toBe('Delete Joint');
+      expect(remove.detail).toBe('Also removes Link OA');
     });
 
     it('says plain Delete Joint when nothing else goes with it', () => {
@@ -497,7 +520,8 @@ describe('the right-click menu', () => {
       const remove = rows(harness.builder.build(parts.c, noHandlers)).find(
         (one) => one.destructive
       )!;
-      expect(remove.label).toBe('Delete Joint (and Link CD)');
+      expect(remove.label).toBe('Delete Joint');
+      expect(remove.detail).toBe('Also removes Link CD');
       expect(
         rows(harness.builder.build(parts.t, noHandlers)).find((one) => one.destructive)!.label
       ).toBe('Delete Joint');
@@ -687,10 +711,10 @@ describe('the right-click menu', () => {
     harness.mechanism.forces = [force];
     harness.active.updateSelectedObj(force);
     const model = harness.builder.build(force, noHandlers);
-    expect(row(model, 'Reverse Direction')!.disabled).toBe(true);
+    expect(row(model, 'Flip Force')!.disabled).toBe(true);
     expect(row(model, 'Global Frame')!.disabled).toBe(false);
     const before = force.angleRad;
-    row(model, 'Reverse Direction')!.action();
+    row(model, 'Flip Force')!.action();
     expect(force.angleRad).toBe(before);
   });
 
@@ -700,7 +724,7 @@ describe('the right-click menu', () => {
       const parts = fourBar(harness.mechanism);
       harness.mechanism.mechanismTimeStep = 12;
       const paused = harness.builder.build(parts.t, noHandlers);
-      expect(row(paused, 'Grounded')!.refusal!.short).toBe('not at the start');
+      expect(row(paused, 'Grounded')!.refusal!.short).toBe('return to start');
       expect(row(paused, 'Trace path')!.disabled).toBe(false);
       expect(row(paused, 'Locked')!.disabled).toBe(false);
       expect(rows(paused).find((r) => r.label.startsWith('Delete Joint'))!.disabled).toBe(false);
@@ -941,7 +965,7 @@ describe('the right-click menu, on a cylinder', () => {
       const sealed = cylinder();
       const model = harness.builder.build(sealed.seal, noHandlers);
       expect(row(model, 'Locked')!.shortcut).toBe('K');
-      expect(labels(model)).toContain('Delete Joint (and Cylinder)');
+      expect(labels(model)).toContain('Delete Joint');
     });
   });
 
@@ -972,7 +996,7 @@ describe('the right-click menu, on a cylinder', () => {
       const choice = model.choice!;
       const slot = choice.options[JOINT_TYPES.indexOf('pin-in-slot')];
       expect(slot.refusal).toBeUndefined();
-      expect(labels(model)).toContain('Delete Joint (and Cylinder)');
+      expect(labels(model)).toContain('Delete Joint');
     });
   });
 
@@ -1079,13 +1103,13 @@ describe('the right-click menu, on a cylinder', () => {
       // By prefix: the cascade is written into the label itself, which is the
       // whole point -- "Delete Joint (and Link AD)".
       const takes = rows(model).find((one) => one.label.startsWith('Delete Joint'))!;
-      expect(takes.label).not.toContain(part.inner.id);
-      expect(takes.label).toContain(`Link ${[part.mountA.id, tip.id].sort().join('')}`);
+      expect(takes.detail).not.toContain(part.inner.id);
+      expect(takes.detail).toContain(`Link ${[part.mountA.id, tip.id].sort().join('')}`);
       // And the body's own delete row names it the same way.
       const own = rows(harness.builder.build(body, noHandlers)).find((one) =>
         one.label.startsWith('Delete Link')
       )!;
-      expect(own.label).not.toContain(part.inner.id);
+      expect(own.detail).not.toContain(part.inner.id);
     });
   });
 

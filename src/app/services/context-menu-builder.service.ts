@@ -1,3 +1,4 @@
+import { LinkTraceService } from './link-trace.service';
 import { Injectable, inject } from '@angular/core';
 import { NumberUnitParserService } from './number-unit-parser.service';
 import { AngleUnit } from '../model/utils';
@@ -75,6 +76,7 @@ export interface DrawingSwitch {
 @Injectable({ providedIn: 'root' })
 export class ContextMenuBuilderService {
   private mechanism = inject(MechanismService);
+  private linkTraces = inject(LinkTraceService);
   private gridUtils = inject(GridUtilsService);
   private multiEdit = inject(MultiEditService);
   private settings = inject(SettingsService);
@@ -304,10 +306,16 @@ export class ContextMenuBuilderService {
     groups.push({
       label: 'Add',
       rows: [
-        new MenuRow({ label: 'Link', icon: 'new_link', action: () => handlers.attachLink() }),
+        new MenuRow({
+          label: 'Link',
+          icon: 'new_link',
+          posePolicy: 'create',
+          action: () => handlers.attachLink(),
+        }),
         new MenuRow({
           label: 'Cylinder',
           icon: 'add_cylinder',
+          posePolicy: 'create',
           action: () => handlers.attachCylinder(),
         }),
         new MenuRow({
@@ -464,12 +472,13 @@ export class ContextMenuBuilderService {
     const driven = this.gridUtils.isVisuallyInput(joint);
     // A third body at a driven joint is what "driven" stops being able to
     // describe: an input prescribes the freedom between *two* bodies.
-    const drivenCrowds: MenuRefusal | undefined = driven
-      ? {
-          short: 'it is driven',
-          long: 'An input prescribes the freedom between two bodies, so a third arriving here would leave "driven" naming no pair. Remove the input first.',
-        }
-      : undefined;
+    const drivenCrowds: MenuRefusal | undefined =
+      driven && joint.links.length + (joint.ground ? 1 : 0) >= 2
+        ? {
+            short: 'input already connected',
+            long: 'An input prescribes the freedom between two bodies, so a third arriving here would leave the input naming no pair. Remove the input first.',
+          }
+        : undefined;
     // The joint a cylinder slides on takes nothing at all, in the same four
     // words the model's other four refusals use there (D9). First, because a
     // reader pointing at the square wants to be told what the square is before
@@ -486,6 +495,7 @@ export class ContextMenuBuilderService {
       new MenuRow({
         label: 'Link',
         icon: 'new_link',
+        posePolicy: 'create',
         action: () => handlers.attachLink(),
         refusal: crowds,
       }),
@@ -501,6 +511,7 @@ export class ContextMenuBuilderService {
         new MenuRow({
           label: 'Cylinder',
           icon: 'add_cylinder',
+          posePolicy: 'create',
           action: () => handlers.attachCylinder(),
           // A weld used to veto this here, on the grounds that a cylinder's
           // joint arriving would be a third body inside one rigid statement.
@@ -658,15 +669,19 @@ export class ContextMenuBuilderService {
    * Turning one on turns the global switch on with it. A per-joint trace that
    * draws nothing because the view control is off is a switch that lies.
    */
-  private traceRow(joint: RealJoint): MenuRow {
+  private traceRow(joint: RealJoint | RealLink): MenuRow {
     return new MenuRow({
       label: 'Trace path',
       icon: 'show_path',
       kind: 'toggle',
-      checked: this.gridUtils.getJointShowCurve(joint),
+      checked:
+        joint instanceof RealLink
+          ? this.linkTraces.isOn(joint)
+          : this.gridUtils.getJointShowCurve(joint),
       alwaysAllowed: true,
       action: () => {
-        this.gridUtils.toggleCurve(joint);
+        if (joint instanceof RealLink) this.linkTraces.toggle(joint);
+        else this.gridUtils.toggleCurve(joint);
         if (!this.settings.isShowTraces.value) this.settings.isShowTraces.next(true);
       },
     });
@@ -728,16 +743,7 @@ export class ContextMenuBuilderService {
       short: 'joints only',
       long: `${what} Pick one of this link’s joints.`,
     });
-    const trace =
-      part instanceof RealJoint
-        ? this.traceRow(part)
-        : new MenuRow({
-            label: 'Trace path',
-            icon: 'show_path',
-            kind: 'toggle',
-            action: () => undefined,
-            refusal: jointsOnly('A path is traced by a joint.'),
-          });
+    const trace = this.traceRow(part);
     const vector = (quantity: VectorQuantity): MenuRow =>
       part instanceof RealJoint || quantity !== 'force'
         ? this.vectorRow(part, quantity)
@@ -749,7 +755,11 @@ export class ContextMenuBuilderService {
             refusal: jointsOnly('A reaction is carried at a joint.'),
           });
     return [
-      { key: 'traces', row: trace, help: 'Draws the path this joint follows through the cycle.' },
+      {
+        key: 'traces',
+        row: trace,
+        help: 'Draws the path of the joint or link center of mass through the cycle.',
+      },
       {
         key: 'velocity',
         row: vector('velocity'),
@@ -775,9 +785,10 @@ export class ContextMenuBuilderService {
     //
     // A lock does not gray this. It holds the joint where it is, and a part
     // that is going does not need holding -- see `isLockedTarget`.
-    const label = this.deleteJointLabel(joint, sealed);
+    const detail = this.deleteJointDetail(joint, sealed);
     return new MenuRow({
-      label,
+      label: 'Delete Joint',
+      detail: detail || undefined,
       posePolicy: this.mechanism.canDeleteTracerAtPose(joint) ? 'attachment' : 'start',
       poseGuard: () =>
         this.mechanism.canDeleteTracerAtPose(joint)
@@ -805,7 +816,7 @@ export class ContextMenuBuilderService {
     });
   }
 
-  private deleteJointLabel(joint: RealJoint, sealed: Cylinder | undefined): string {
+  private deleteJointDetail(joint: RealJoint, sealed: Cylinder | undefined): string {
     // A cylinder's own members are not named: the word "cylinder" already covers
     // them, and what is left is the neighboring bar the mount was also holding,
     // which the reader does have to be told about.
@@ -818,8 +829,7 @@ export class ContextMenuBuilderService {
     const doomed = this.mechanism
       .linksRemovedByDeleting(joint)
       .filter((link) => !inside.has(link.id));
-    // The thing named goes; what goes with it is in brackets, so the row reads
-    // as one action with a consequence rather than a list of three things.
+    // The consequence occupies a second line, leaving the shortcut visible.
     //
     // One casualty is named, several are counted. "and Links AB, BG, BH" was
     // already the widest row in the menu at three, and a joint on a plate can
@@ -827,9 +837,9 @@ export class ContextMenuBuilderService {
     // out of reach of the pointer.
     const also = this.casualties(doomed, 'link');
     if (!sealed) {
-      return also ? `Delete Joint (and ${also})` : 'Delete Joint';
+      return also ? `Also removes ${also}` : '';
     }
-    return also ? `Delete Joint (and Cylinder, ${also})` : 'Delete Joint (and Cylinder)';
+    return `Also removes ${['Cylinder', also].filter(Boolean).join(', ')}`;
   }
 
   /**
@@ -956,7 +966,7 @@ export class ContextMenuBuilderService {
       groups: [
         { label: 'Attach', rows: this.linkAttachRows(bar, handlers) },
         { label: 'State', rows: this.linkStateRows(bar) },
-        { label: 'Traces', rows: this.vectorRows(bar) },
+        { label: 'Traces', rows: [this.traceRow(bar), ...this.vectorRows(bar)] },
         { rows: this.positionRows(handlers, undefined) },
         { rows: [this.deleteLinkRow(bar), this.deleteMechanismRow(bar)] },
       ],
@@ -992,7 +1002,7 @@ export class ContextMenuBuilderService {
           label: 'State',
           rows: [...this.memberHoldRows(member), this.lockRow(member, undefined)],
         },
-        { label: 'Traces', rows: this.vectorRows(member) },
+        { label: 'Traces', rows: [this.traceRow(member), ...this.vectorRows(member)] },
         {
           rows: [
             new MenuRow({
@@ -1026,12 +1036,14 @@ export class ContextMenuBuilderService {
       new MenuRow({
         label: 'Link',
         icon: 'new_link',
+        posePolicy: 'create',
         action: () => handlers.attachLink(),
         refusal: fillet,
       }),
       new MenuRow({
         label: 'Cylinder',
         icon: 'add_cylinder',
+        posePolicy: 'create',
         action: () => handlers.attachCylinder(),
         refusal: fillet,
       }),
@@ -1252,9 +1264,10 @@ export class ContextMenuBuilderService {
     const rams = this.mechanism.cylindersOfLink(link).length;
     const part = rams === 1 ? 'Cylinder' : rams > 1 ? `${rams} cylinders` : '';
     const takes = [part, also].filter((one) => one).join(', ');
-    const label = takes ? `Delete Link (and ${takes})` : 'Delete Link';
+    const detail = takes ? `Also removes ${takes}` : undefined;
     return new MenuRow({
-      label,
+      label: 'Delete Link',
+      detail,
       icon: 'remove',
       destructive: true,
       shortcut: this.keys.keysFor('edit.delete'),
@@ -1301,7 +1314,7 @@ export class ContextMenuBuilderService {
           label: 'Set',
           rows: [
             new MenuRow({
-              label: 'Reverse Direction',
+              label: 'Flip Force',
               posePolicy: 'attachment',
               poseGuard: () => this.attachmentRefusal(force.link),
               refusal: force.locked

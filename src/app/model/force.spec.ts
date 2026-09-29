@@ -17,6 +17,23 @@ describe('Force', () => {
     return new Force('F1', new RealLink('AB', [a, b]), start, end, local, outward, magnitude);
   }
 
+  it('joins the shaft to the triangle base for both arrow senses and rotated forces', () => {
+    for (const angle of [0, Math.PI / 3, -2.3]) {
+      for (const outward of [true, false]) {
+        const force = makeForce(
+          new Coord(0, 0),
+          new Coord(500 * Math.cos(angle), 500 * Math.sin(angle)),
+          false,
+          outward
+        );
+        const points = force.forceArrow.match(/-?\d+(?:\.\d+)?(?:e[+-]?\d+)?/g)!.map(Number);
+        const shaft = force.forceLine.match(/-?\d+(?:\.\d+)?(?:e[+-]?\d+)?/g)!.map(Number);
+        expect(shaft[2]).toBeCloseTo((points[2] + points[4]) / 2);
+        expect(shaft[3]).toBeCloseTo((points[3] + points[5]) / 2);
+      }
+    }
+  });
+
   it('keeps magnitude and direction as the canonical physical vector', () => {
     const force = makeForce();
     expect(force.xComp).toBeCloseTo(10, 12);
@@ -72,15 +89,36 @@ describe('Force', () => {
     expect(force.yComp).toBeCloseTo(-10, 12);
   });
 
-  it('normalizes legacy inward arrows and initializes local styling', () => {
-    const force = makeForce(new Coord(0, 0), new Coord(1, 0), true, false, 2);
-    expect(force.arrowOutward).toBe(true);
+  it('preserves inward arrows, their physical vector and local styling', () => {
+    const force = makeForce(new Coord(0, 0), new Coord(100, 0), true, false, 2);
+    expect(force.arrowOutward).toBe(false);
+    expect(force.endCoord).toEqual(new Coord(100, 0));
     expect(Math.abs(force.angleRad)).toBeCloseTo(Math.PI, 12);
     expect(force.xComp).toBeCloseTo(-2, 12);
     expect(force.stroke).toBe('blue');
     expect(force.fill).toBe('blue');
     expect(force.forceLine).not.toBe('');
     expect(force.forceArrow).not.toBe('');
+  });
+
+  it('flips in place, reverses the load, and keeps the application point', () => {
+    const force = makeForce(new Coord(1, 0), new Coord(1, 3));
+    const before = force.forceArrow;
+    force.flipForce();
+    expect(force.startCoord).toEqual(new Coord(1, 0));
+    expect(force.endCoord).toEqual(new Coord(1, 3));
+    expect(force.tailCoord).toEqual(force.endCoord);
+    expect(force.yComp).toBeCloseTo(-10);
+    expect(force.forceArrow).not.toBe(before);
+    force.updateInternalValues();
+    expect(force.yComp).toBeCloseTo(-10);
+    force.setDirectionRadians(0);
+    expect(force.xComp).toBeCloseTo(10);
+    expect(force.endCoord.x).toBeCloseTo(-2);
+    force.moveDirectionHandle(new Coord(1, 2));
+    expect(force.yComp).toBeCloseTo(-10);
+    force.flipForce();
+    expect(force.yComp).toBeCloseTo(10);
   });
 
   it('uses a stable default width for one force and bounded relative widths for several', () => {
