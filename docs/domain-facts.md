@@ -312,13 +312,14 @@ dependent system is a huge canceling pair that would make an unbalanced load loo
 warning. A toggle that loses its pivot at two poses in the cycle keeps its gaps, because the first
 pass solved the rest, and a load nothing balances fails the residual and stays singular either way.
 
-### A force is placed at fifteen-degree bearings unless Option is held
+### Holding Option snaps placement to fifteen-degree bearings
 
-`forceEndSnapped` in `new-grid.component.ts` rounds the bearing from the anchor to the cursor to
-the nearest fifteen degrees while a force is being placed -- preview and commit alike -- keeping
-the cursor's distance; Option (`altKey`) frees it, the same key that frees a joint from the grid.
-Only placement snaps: dragging an existing force's handle is left exact, because
-`e2e/force-edit.mjs` and the panel both expect a handle to land where it was put.
+`placementBearing` in `model/placement-snap.ts` leaves new link, cylinder, and force bearings
+free by default. Holding Option (`altKey`) rounds the bearing from the start to the cursor to
+the nearest fifteen degrees, keeping the cursor's distance. Preview and commit use the same
+rule. An eligible existing joint still takes precedence for link and cylinder placement.
+Option continues to bypass positional grid snapping; it enables the separate angle snap.
+Dragging an existing force's handle remains exact.
 
 ### The rate solver walks dyads; where it cannot, the graphs difference the poses
 
