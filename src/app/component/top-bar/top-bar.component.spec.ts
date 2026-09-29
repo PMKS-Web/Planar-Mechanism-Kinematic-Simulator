@@ -98,23 +98,36 @@ describe('top bar modes', () => {
     expect(RightPanelComponent.isOpen).toBe(false);
   });
 
-  it('invites Kinematic Analysis once a mechanism runs, until it is opened', () => {
-    localStorage.removeItem('analysisVisited');
+  it('says Kinematic Analysis is ready the first time Play is pressed in Edit, once', async () => {
+    localStorage.removeItem('analysisInviteSeen');
     fixture = TestBed.createComponent(TopBarComponent);
     bar = fixture.componentInstance;
     ready(true);
     mechanism.joints = [new RevJoint('A', 0, 0)];
     fixture.detectChanges();
-    const kinematic = () => fixture.nativeElement.querySelectorAll('.tabButton')[2] as HTMLElement;
-    expect(kinematic().classList).toContain('invite');
+    expect(bar.inviteOpen).toBe(false);
 
-    bar.select(TabID.ANALYZE);
+    mechanism.isPlaying = true;
     fixture.detectChanges();
+    await Promise.resolve();
+    fixture.detectChanges();
+    expect(bar.inviteOpen).toBe(true);
+    expect(document.querySelector('.analysisInvite')?.textContent).toContain('Your mechanism runs');
+
+    // The action it steers toward, and then it is gone for good.
+    bar.acceptInvite();
+    expect(tabs.getCurrentTab()).toBe(TabID.ANALYZE);
+    expect(bar.inviteOpen).toBe(false);
+    expect(localStorage.getItem('analysisInviteSeen')).toBe('true');
+
     bar.select(TabID.EDIT);
+    mechanism.isPlaying = false;
     fixture.detectChanges();
-    expect(kinematic().classList).not.toContain('invite');
-    expect(localStorage.getItem('analysisVisited')).toBe('true');
-    localStorage.removeItem('analysisVisited');
+    mechanism.isPlaying = true;
+    fixture.detectChanges();
+    await Promise.resolve();
+    expect(bar.inviteOpen).toBe(false);
+    localStorage.removeItem('analysisInviteSeen');
   });
 
   it('sends the mode keys through the same three-way gate', () => {

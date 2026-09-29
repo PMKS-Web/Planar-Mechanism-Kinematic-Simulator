@@ -87,7 +87,7 @@ record(
 // to read past the other mode's list to find out why.
 record(
   'and the list answers the question that was asked, not the other one',
-  text.includes('Nothing loads the mechanism') && !text.includes('Mechanism M1'),
+  text.includes('Nothing loads the mechanism') && !text.includes('Mechanism 1'),
   text
 );
 // The one issue in the Force drawer opens with its fixes showing, and none is
@@ -716,12 +716,14 @@ record(
   afterShut
 );
 
-// A mechanism that runs, never analyzed: the Kinematic tab invites the press.
+// A mechanism that runs, never analyzed: nothing on the tab, until the first
+// Play in Edit drops a card from it saying what the mode is for.
+const invite = () => fresh.locator('.analysisInvite');
+const play = () => fresh.locator('app-playback-bar button[aria-label*="Play" i]').first();
 await freshOpen(payloads['4-Bar']);
 record(
-  'a mechanism that runs makes Kinematic Analysis invite, and pulse',
-  (await classesOf('Kinematic')).includes('invite') &&
-    (await classesOf('Kinematic')).includes('pulse'),
+  'a mechanism that runs leaves the Kinematic tab as it is, with no card yet',
+  !(await classesOf('Kinematic')).includes('invite') && (await invite().count()) === 0,
   await classesOf('Kinematic')
 );
 record(
@@ -729,20 +731,39 @@ record(
   !(await classesOf('Force')).includes('locked'),
   await classesOf('Force')
 );
-await freshTab('Kinematic').click();
-await fresh.waitForTimeout(700);
-await freshTab('Edit').click();
-await fresh.waitForTimeout(500);
+await play().click();
+await fresh.waitForTimeout(600);
 record(
-  'once opened, it stops inviting',
-  !(await classesOf('Kinematic')).includes('invite'),
-  await classesOf('Kinematic')
+  'the first Play in Edit drops the card from the tab',
+  (await invite().count()) === 1 &&
+    (await invite().innerText()).includes('Your mechanism runs') &&
+    (await invite().innerText()).includes('Open Kinematic Analysis'),
+  await invite()
+    .innerText()
+    .catch(() => '')
 );
+await invite().locator('button', { hasText: 'Not Now' }).click();
+await fresh.waitForTimeout(300);
+record('Not Now puts it away', (await invite().count()) === 0);
 await freshOpen(payloads['4-Bar']);
+await play().click();
+await fresh.waitForTimeout(600);
+record('for good: the next Play says nothing', (await invite().count()) === 0);
+
+// And its action is the mode itself.
+await fresh.evaluate(() => localStorage.removeItem('analysisInviteSeen'));
+await freshOpen(payloads['4-Bar']);
+await play().click();
+await fresh.waitForTimeout(600);
+await invite().locator('button', { hasText: 'Open Kinematic Analysis' }).click();
+await fresh.waitForTimeout(700);
+const arrived = await fresh.evaluate(() =>
+  ng.getComponent(document.querySelector('app-new-grid')).tabService.getCurrentTab()
+);
 record(
-  'and stays that way on the next visit',
-  !(await classesOf('Kinematic')).includes('invite'),
-  await classesOf('Kinematic')
+  'Open Kinematic Analysis opens it, and the card goes',
+  arrived === 2 && (await invite().count()) === 0,
+  arrived
 );
 await fresh.close();
 

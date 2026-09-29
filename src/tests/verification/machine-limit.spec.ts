@@ -51,9 +51,9 @@ describe('the most machines one drawing runs', () => {
   it('says why the fifth does not run, and what to do about it', () => {
     const [issue] = fiveCranks().readinessOfEachMechanism()[4].checks.map(read);
     expect(issue.title).toBe('Only 4 mechanisms run at once');
-    expect(issue.summary).toBe("M5 comes after the first 4, so it isn't simulated.");
+    expect(issue.summary).toBe("Mechanism 5 comes after the first 4, so it isn't simulated.");
     expect(issue.fixes).toEqual([
-      "Delete Mechanism M5 if it's a leftover",
+      "Delete Mechanism 5 if it's a leftover",
       'Attach Link from it to another mechanism',
     ]);
   });

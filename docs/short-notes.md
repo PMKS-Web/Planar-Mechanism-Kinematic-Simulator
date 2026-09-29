@@ -2611,3 +2611,11 @@ no pointer events, so the tooltip that explains it would never show; `aria-disab
 hover and tells assistive technology, and `select` refuses the press. Playwright will not click
 an `aria-disabled` button either, so a suite that checks the press does nothing presses it with
 `force: true`.
+
+### The Family row never hides, so the panel keeps its shape
+
+A Family row that appeared only for a recognized machine changed the panel's shape from one machine
+to the next, and a reader could not tell "not a known type" from "not worked out yet".
+`familyReading` always answers: a family the catalog matched, else a pins-only linkage of four to
+eight bodies named by its count, else "Not recognized" in secondary ink. Motion is listed only
+where no named family says it -- a crank-rocker's name already says the crank turns fully.

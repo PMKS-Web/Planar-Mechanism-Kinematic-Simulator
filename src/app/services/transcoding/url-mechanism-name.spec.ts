@@ -86,8 +86,8 @@ describe('a mechanism’s name', () => {
     expect(mechanismLabel(partitionOf(drawing), 0)).toBe('Arm');
   });
 
-  it('says Mechanism M1 when there is none', () => {
-    expect(mechanismLabel(partitionOf(crank()), 0)).toBe('Mechanism M1');
+  it('says Mechanism 1 when there is none', () => {
+    expect(mechanismLabel(partitionOf(crank()), 0)).toBe('Mechanism 1');
   });
 
   it('keeps every library template’s URL exactly as it was', () => {

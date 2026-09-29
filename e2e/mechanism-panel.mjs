@@ -85,7 +85,7 @@ await open(payloads['4-Bar']);
 let text = await panelText();
 record(
   'a lone machine shows in detail, with nothing to go back to',
-  text.includes('Edit Mechanism M1') && !text.includes('All mechanisms'),
+  text.includes('Edit Mechanism 1') && !text.includes('All mechanisms'),
   text
 );
 // Building, the panel is about what an edit changes: how free the machine is
@@ -136,7 +136,7 @@ await page.waitForTimeout(400);
 text = await panelText();
 record(
   'picking a row shows that machine',
-  text.includes('Edit Mechanism M2') && text.includes('All mechanisms'),
+  text.includes('Edit Mechanism 2') && text.includes('All mechanisms'),
   text
 );
 const faded = await muted();
@@ -194,7 +194,7 @@ await page.locator('app-analysis-setup .mechLink').nth(0).click();
 await page.waitForTimeout(400);
 record(
   "the drawer's machine name picks it in the panel",
-  (await panelText()).includes('Mechanism M1'),
+  (await panelText()).includes('Mechanism 1'),
   await panelText()
 );
 text = await drawerText();
@@ -209,7 +209,7 @@ await page.waitForTimeout(400);
 record(
   'picking the other opens its section',
   (await drawerText()).includes("Link CD isn't joined") &&
-    (await panelText()).includes('Mechanism M2'),
+    (await panelText()).includes('Mechanism 2'),
   await drawerText()
 );
 
@@ -239,7 +239,11 @@ record('rename names the machine', (await panelText()).includes('Edit Straight a
 await page.locator('.backLink').click();
 await page.waitForTimeout(300);
 text = await panelText();
-record('the list says the name, and the code under it', /Straight arm\s+M1 ·/.test(text), text);
+record(
+  'the list says the name, with no code beside it',
+  /Straight arm\s+1 degree of freedom/.test(text) && !/\bM1\b/.test(text),
+  text
+);
 const named = await page.evaluate(() =>
   ng.getComponent(document.querySelector('app-top-bar')).urlGeneration.generateUrlQuery()
 );

@@ -367,10 +367,10 @@ function issueForFailure(
       return {
         severity: 'blocker',
         title: `Only ${MOST_MACHINES} mechanisms run at once`,
-        summary: prose`${partition.id} comes after the first ${MOST_MACHINES}, so it isn't simulated.`,
+        summary: prose`Mechanism ${partition.id.replace(/^M/, '')} comes after the first ${MOST_MACHINES}, so it isn't simulated.`,
         explain: `PMKS+ simulates up to ${MOST_MACHINES} mechanisms in one drawing, in the order of their joint letters. The rest are drawn but not simulated.`,
         fixes: [
-          prose`Delete Mechanism ${partition.id} if it's a leftover`,
+          prose`Delete Mechanism ${partition.id.replace(/^M/, '')} if it's a leftover`,
           prose`Attach Link from it to another mechanism`,
         ],
       };
@@ -732,7 +732,7 @@ function factsOf(
   // input on a frame bar that belongs to nobody is this machine's, though, and
   // "Not set" beside its arrow is the sentence the blocker above replaced.
   const driven = inputSetFor(partition);
-  const moving = partition.links.length;
+  const moving = partition.links.filter((link) => !isFrameBar(link)).length;
   const dof = mechanism.dof;
   const facts: MechanismFact[] = [
     // One is the only mobility a machine with one input can have; anything
@@ -742,10 +742,10 @@ function factsOf(
       value: Number.isFinite(dof) ? String(dof) : '—',
       bad: !Number.isFinite(dof) || dof !== 1,
     },
-    {
-      label: 'Links / joints',
-      value: `${moving} / ${shown(partition.ownJoints, partition.joints).length}`,
-    },
+    // The two numbers the count of degrees of freedom is built from, spelled
+    // out: a frame drawn as a bar is the ground, not one more link.
+    { label: 'Links', value: `${moving} + ground` },
+    { label: 'Joints', value: String(shown(partition.ownJoints, partition.joints).length) },
     { label: 'Input joint', value: driven ? driven.name || driven.id : 'Not set' },
   ];
   if (mechanism.isMechanismValid()) {

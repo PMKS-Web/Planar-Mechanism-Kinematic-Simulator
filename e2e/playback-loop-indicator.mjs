@@ -195,7 +195,7 @@ const panel = await page
   .first()
   .innerText()
   .catch(() => '');
-record('the selection reaches the analysis panel', /Mechanism M1/.test(panel), panel.slice(0, 160));
+record('the selection reaches the analysis panel', /Mechanism 1/.test(panel), panel.slice(0, 160));
 
 // --- the handle's bar is drawn, not themed ----------------------------------
 // The reported defect: left to the browser the track keeps a 1px rim, a gray

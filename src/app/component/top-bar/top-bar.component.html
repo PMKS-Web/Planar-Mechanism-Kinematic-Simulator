@@ -71,8 +71,7 @@
         class="tabButton"
         [class.active]="isActive(TabID.ANALYZE)"
         [class.notReady]="!canAnalyze(TabID.ANALYZE)"
-        [class.invite]="invites()"
-        [class.pulse]="pulsing && invites()"
+        #kinematicTab
         (click)="select(TabID.ANALYZE)"
         [attr.aria-label]="nameOf(TabID.ANALYZE, 'Kinematic Analysis')"
         [appShortcutTip]="tipFor(TabID.ANALYZE, 'Kinematic Analysis')"
@@ -212,5 +211,37 @@
     @if (isDevMode()) {
       <button class="menuItem" (click)="openDebug()"><mat-icon>bug_report</mat-icon>Debug</button>
     }
+  </div>
+}
+
+<!-- The first Play in Edit on a mechanism that runs, for a reader who has never
+     opened Kinematic Analysis: a card under its tab, saying so once. Fixed to
+     the window rather than inside the strip, which clips and, on a phone,
+     scrolls. -->
+@if (inviteOpen) {
+  <div
+    class="analysisInvite"
+    role="dialog"
+    aria-labelledby="analysisInviteTitle"
+    [style.top.px]="inviteAt.top"
+    [style.left.px]="inviteAt.left"
+    (keydown.escape)="dismissInvite()"
+  >
+    <div class="inviteArrow"></div>
+    <div class="inviteBody">
+      <div class="inviteText">
+        <div class="inviteTitle" id="analysisInviteTitle">Your mechanism runs</div>
+        <p class="inviteWhy">
+          Kinematic Analysis graphs the position, velocity and acceleration of any joint or link as
+          it moves.
+        </p>
+      </div>
+      <div class="inviteButtons">
+        <button type="button" class="inviteLater" (click)="dismissInvite()">Not Now</button>
+        <button type="button" class="inviteGo" (click)="acceptInvite()">
+          Open Kinematic Analysis
+        </button>
+      </div>
+    </div>
   </div>
 }

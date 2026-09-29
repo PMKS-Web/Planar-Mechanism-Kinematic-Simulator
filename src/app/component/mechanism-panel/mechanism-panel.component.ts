@@ -9,7 +9,7 @@ import { ViewportService } from '../../services/viewport.service';
 import { ChipComponent } from '../BLOCKS/chip/chip.component';
 import { EditableTitleComponent } from '../BLOCKS/editable-title/editable-title.component';
 import { PartLinkComponent } from '../BLOCKS/part-link/part-link.component';
-import { MechanismStatusComponent } from './mechanism-status.component';
+import { RightPanelComponent } from '../right-panel/right-panel.component';
 
 /**
  * The machines on the grid, for when no part is selected: every one of them in
@@ -29,13 +29,7 @@ import { MechanismStatusComponent } from './mechanism-status.component';
   templateUrl: './mechanism-panel.component.html',
   styleUrls: ['./mechanism-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [
-    MatIcon,
-    ChipComponent,
-    EditableTitleComponent,
-    PartLinkComponent,
-    MechanismStatusComponent,
-  ],
+  imports: [MatIcon, ChipComponent, EditableTitleComponent, PartLinkComponent],
 })
 export class MechanismPanelComponent {
   protected overview = inject(MechanismOverviewService);
@@ -75,23 +69,22 @@ export class MechanismPanelComponent {
   }
 
   /**
-   * Under a row's name: its code, where a name hides it, and then what the
-   * mode is about -- in Edit how free it is, in an analysis what PMKS+
-   * recognized it as.
+   * Under a row's name, what the mode is about: in Edit how free it is, in an
+   * analysis what PMKS+ recognized it as. No code: a machine is its name, and
+   * "Mechanism 2" where it has none.
    */
-  protected subtitle(index: number): string {
-    const code = this.overview.name(index) ? this.overview.code(index) : undefined;
-    const about = this.editable()
-      ? this.overview.freedoms(index)
-      : this.overview.family(index)?.name;
-    return [code, about].filter(Boolean).join(' · ');
+  protected subtitle(index: number): string | undefined {
+    if (this.editable()) return this.overview.freedoms(index);
+    // A machine that cannot run has no cycle to recognize, and a blank line
+    // left its row shorter than its neighbors: say why instead.
+    return this.overview.ready(index) ? this.overview.family(index).name : 'Not running';
   }
 
   /** The list's lead: what picking a row shows in this mode. */
   protected get listLead(): string {
     const press = this.viewport.isTouch() ? 'Tap' : 'Select';
     return this.editable()
-      ? `${press} one for its links and their lengths.`
+      ? `${press} one to see its details.`
       : `${press} one for its family and motion.`;
   }
 
@@ -124,6 +117,17 @@ export class MechanismPanelComponent {
   protected readonly rename = (name: string) => this.mechanism.renameMechanism(this.index, name);
 
   protected readonly deleteMechanism = () => this.mechanism.deleteMechanism(this.index);
+
+  /** "2 things to fix", for the banner over a machine that cannot run. */
+  protected get fixesBeforeAnalysis(): string {
+    const count = this.overview.blockers(this.index);
+    return count === 1 ? '1 thing to fix' : `${count} things to fix`;
+  }
+
+  /** The drawer that lists what the machine needs, opened rather than toggled. */
+  protected openSetup(): void {
+    RightPanelComponent.insistOn(RightPanelComponent.KINEMATIC_SETUP_TAB);
+  }
 
   /** What the analysis panel points a reader at under one machine. */
   protected get footerHint(): string {

@@ -53,11 +53,11 @@ interface TabStatus {
 /** The shortcuts the project menu prints on its own rows, and so must honor. */
 const MENU_SHORTCUTS: ShortcutId[] = ['app.settings', 'app.help'];
 
-/** Written the first time a reader opens Kinematic Analysis. */
-const ANALYSIS_VISITED_KEY = 'analysisVisited';
+/** Written once the analysis invitation has had its say, however it ended. */
+const ANALYSIS_INVITE_KEY = 'analysisInviteSeen';
 
-/** Three pulses of the invitation, matching `tab-invite` in the stylesheet. */
-const INVITE_PULSE_MS = 3 * 900;
+/** The invitation card's width, as the design gives it. */
+const INVITE_WIDTH = 320;
 
 /** A mark in local storage, read safely: a private window may refuse the store. */
 function readFlag(key: string): boolean {
@@ -246,54 +246,81 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   }
 
   /**
-   * Whether the Kinematic Analysis tab is inviting a press.
+   * The card that steers a first-time reader from Edit into Kinematic
+   * Analysis.
    *
    * Students who get a mechanism running tend to stay where they are, playing
-   * it back in Edit, with no idea that the graphs are one press away. So until
-   * a reader has opened Kinematic Analysis once -- ever, on this browser -- the
-   * tab wears the invitation tint whenever a mechanism runs, and pulses at the
-   * moment one starts to.
+   * it back in Edit, with no idea that the graphs are one press away. So the
+   * first time a reader presses Play in Edit on a mechanism that runs -- and
+   * has never opened Kinematic Analysis -- a card drops from its tab and says
+   * so, with the one action it is steering toward. Either button, or opening
+   * the mode any other way, puts it away for good. A tint on the tab was tried
+   * first and read as a second selected mode beside Edit.
    */
-  invites(): boolean {
-    return (
-      !this.analysisVisited &&
-      this.hasStatus() &&
-      !this.isActive(TabID.ANALYZE) &&
-      this.canAnalyze(TabID.ANALYZE)
-    );
-  }
+  inviteOpen = false;
+  /** Where the card stands: under the Kinematic Analysis tab, in window pixels. */
+  inviteAt = { top: 0, left: 0 };
 
-  /** The pulse, for a moment after the tab starts inviting. */
-  pulsing = false;
-
-  private analysisVisited = readFlag(ANALYSIS_VISITED_KEY);
-  private wasInviting = false;
-  private pulseTimer?: ReturnType<typeof setTimeout>;
+  private readonly kinematicTab = viewChild<ElementRef<HTMLElement>>('kinematicTab');
+  private inviteDone = readFlag(ANALYSIS_INVITE_KEY);
+  private wasPlaying = false;
 
   /**
-   * Notice the two moments the invitation changes: the reader arriving in
-   * Kinematic Analysis, which ends it for good, and a mechanism starting to
-   * run, which starts the pulse.
+   * Notice the two moments the card answers to: Play pressed in Edit, which
+   * opens it once, and the reader arriving in Kinematic Analysis, which ends
+   * it for good however they got there.
    */
   private watchInvitation(): void {
-    if (!this.analysisVisited && this.isActive(TabID.ANALYZE)) {
-      this.analysisVisited = true;
-      writeFlag(ANALYSIS_VISITED_KEY);
+    if (this.isActive(TabID.ANALYZE)) {
+      if (!this.inviteDone) this.finishInvite();
+      this.wasPlaying = this.mechanism.isPlaying;
+      return;
     }
-    const inviting = this.invites();
-    if (inviting && !this.wasInviting) {
-      // After this check: a class set during one would be a change in it.
+    const playing = this.mechanism.isPlaying;
+    const started = playing && !this.wasPlaying;
+    this.wasPlaying = playing;
+    if (
+      started &&
+      !this.inviteDone &&
+      !this.inviteOpen &&
+      this.isActive(TabID.EDIT) &&
+      this.canAnalyze(TabID.ANALYZE)
+    ) {
+      // After this check: opening the card during it would be a change in it.
       queueMicrotask(() => {
-        this.pulsing = true;
+        this.placeInvite();
+        this.inviteOpen = true;
         this.changes.markForCheck();
       });
-      clearTimeout(this.pulseTimer);
-      this.pulseTimer = setTimeout(() => {
-        this.pulsing = false;
-        this.changes.markForCheck();
-      }, INVITE_PULSE_MS);
     }
-    this.wasInviting = inviting;
+  }
+
+  /** Under the tab it points at, its arrow on the tab's icon. */
+  private placeInvite(): void {
+    const tab = this.kinematicTab()?.nativeElement.getBoundingClientRect();
+    if (!tab) return;
+    const width = Math.min(INVITE_WIDTH, window.innerWidth - 24);
+    this.inviteAt = {
+      top: tab.bottom + 14,
+      left: Math.max(12, Math.min(tab.left - 6, window.innerWidth - width - 12)),
+    };
+  }
+
+  /** Not Now: the card goes, and does not come back. */
+  dismissInvite(): void {
+    this.finishInvite();
+  }
+
+  /** The action the card is steering toward. */
+  acceptInvite(): void {
+    this.finishInvite();
+    this.select(TabID.ANALYZE);
+  }
+
+  private finishInvite(): void {
+    this.inviteDone = true;
+    this.inviteOpen = false;
+    writeFlag(ANALYSIS_INVITE_KEY);
   }
 
   /**
@@ -602,9 +629,6 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
    */
   tipFor(tab: TabID, name: string): string {
     if (this.locked(tab)) return `${name} opens once a mechanism runs.`;
-    if (tab === TabID.ANALYZE && this.invites()) {
-      return `${name} is ready: open it for the motion's graphs.`;
-    }
     if (this.canAnalyze(tab) && !this.isActive(tab)) return name;
     const shown =
       this.canAnalyze(tab) &&

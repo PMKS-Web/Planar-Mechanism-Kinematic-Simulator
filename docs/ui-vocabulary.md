@@ -186,11 +186,12 @@ With nothing selected, the left panel is about the machines on the grid.
 
 | Part | Says |
 | --- | --- |
-| Several machines, none picked | `All mechanisms`, then one row each: its name, its chip, and under it how free it is in Edit (`1 degree of freedom`) or the family PMKS+ recognized in an analysis mode |
-| One picked, or the only one | its name as the title (`Edit Mechanism M2` in Edit), `All mechanisms` with a back arrow above it when there are others |
-| Sections | `Mechanism Overview` -- in Edit `Degrees of freedom`, `Objects`, `Input joint`; in an analysis mode Family first (where PMKS+ recognized one), then speed, `Cycle time` and `Motion` -- and `Links` (each link's job, `Input crank`, `Coupler`, `Rocker`, and its length) |
+| Several machines, none picked | `All mechanisms`, `Select one to see its details.` in Edit, then one row each: its name, its chip, a chevron, and under the name how free it is in Edit (`1 degree of freedom`) or its family in an analysis mode (`Not running` where it cannot run) |
+| One picked, or the only one | its name as the title (`Edit Mechanism 2` in Edit), `All mechanisms` with a back arrow above it when there are others; no chip. In Edit, a machine that cannot run gets `Can’t run yet. 2 things to fix before analysis. Open Setup` |
+| Sections | `Mechanism Overview`, a label-and-value list -- in Edit `Degrees of freedom`, `Links` (`3 + ground`), `Joints`, `Input joint`; in an analysis mode the same after the Family, then `Input speed` and `Cycle time` (and `Motion` where no named family says it) -- and `Links` (each link's name, its job, `Input crank`, `Coupler`, `Rocker`, and its length) |
+| The Family | a name PMKS+ matched (`Crank-rocker four-bar`); else `Six-bar linkage`, `Named by its 6 bodies, ground included. Not matched to a named type.`; else `Not recognized` |
 | A shut mode tab | tooltip `Force Analysis opens once a mechanism runs.` |
-| The Kinematic tab inviting | tooltip `Kinematic Analysis is ready: open it for the motion's graphs.` |
+| The first Play in Edit | a card under the Kinematic Analysis tab: `Your mechanism runs`, `Kinematic Analysis graphs the position, velocity and acceleration of any joint or link as it moves.`, `Not Now` / `Open Kinematic Analysis` |
 | Past the fourth | `Only 4 mechanisms run at once`; the list adds `Only the first 4 mechanisms are simulated.` |
 
 - **The chip is the setup drawer's chip**, word for word (`Ready`, `1 fix`, `2 to check`), and
@@ -202,9 +203,9 @@ With nothing selected, the left panel is about the machines on the grid.
 
 ### A machine's name
 
-A machine is `Mechanism M2` until its author names it in Edit's machine panel (Rename); then it is
-the name, `Pump jack`, with its code beside it wherever that has to be matched to its playback row,
-which has room for the code alone (`M2 · Walking-beam mechanism` under the name in the list). A
+A machine is `Mechanism 2` until its author names it in Edit's machine panel (Rename); then it is
+the name, `Pump jack`. The panels and the setup drawer never show the code; the transport, which
+has room for nothing more, shows `M2`, and its tooltip says `Pump jack (M2)`. A
 name follows the rules every name does (letters, numbers, spaces, hyphens, underscores,
 apostrophes and parentheses), may not repeat another machine's, and an empty one takes it back to
 the code.

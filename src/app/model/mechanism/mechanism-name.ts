@@ -43,7 +43,7 @@ export function mechanismName(partition: MechanismPartition | undefined): string
 }
 
 /**
- * What a reader calls the machine: its name, or "Mechanism M2". The letter
+ * What a reader calls the machine: its name, or "Mechanism 2". The letter
  * code stays beside a name ("Pump jack (M2)") wherever the playback rows,
  * which have room only for the code, need to be matched to it.
  */
@@ -54,7 +54,9 @@ export function mechanismLabel(
 ): string {
   const code = partition?.id ?? `M${index + 1}`;
   const name = mechanismName(partition);
-  if (!name) return `Mechanism ${code}`;
+  // Spelled "Mechanism 2", not "Mechanism M2": the panels speak to a reader,
+  // and the code is the transport's shorthand, which has room for nothing more.
+  if (!name) return withCode ? `Mechanism ${index + 1} (${code})` : `Mechanism ${index + 1}`;
   return withCode ? `${name} (${code})` : name;
 }
 

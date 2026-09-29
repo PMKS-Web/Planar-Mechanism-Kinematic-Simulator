@@ -2,6 +2,11 @@
 @use '@angular/material' as mat;
 @use '../BLOCKS/blocks.common.scss' as blocks;
 
+// One title metric, one rule token, one hint row: the machine panel is read
+// in Edit and in the analysis modes, and switching between them must not move
+// a title by two pixels or resize a hint. Every divider in here is
+// --border-rule and runs the card's full width; the hint row is left-tabs'
+// `.helpHint` and nothing else.
 @mixin css($theme) {
   $color-config: mat.m2-get-color-config($theme);
   $primary-palette: map.get($color-config, 'primary');
@@ -21,35 +26,84 @@
 
   .mechHead {
     padding: 12px 15px 14px;
+
+    &.underBack {
+      padding-top: 6px;
+    }
   }
 
   .mechTitle {
     font-size: 20px;
     font-weight: 500;
     line-height: 28px;
+    letter-spacing: 0.0125em;
+    color: var(--text-strong);
+    overflow-wrap: anywhere;
+    text-wrap: pretty;
   }
 
-  .mechStatusRow {
-    margin: 6px 0 2px;
+  // Edit's head: the title block, on the card's edge (it pads itself), set in
+  // the panel's one title metric and allowed to wrap, with Rename and Delete
+  // sharing the row under it at equal width.
+  .mechanismPanel .mechEditTitle #editable-title-block {
+    padding: 12px 15px 14px;
+    white-space: normal;
 
-    // Under Edit's title block, which pads itself: the row takes the gutter.
-    &.padded {
-      margin: 0;
-      padding: 0 15px 14px;
+    .titleRow {
+      font-size: 20px;
+      font-weight: 500;
+      line-height: 28px;
+      letter-spacing: 0.0125em;
+      color: var(--text-strong);
+      overflow-wrap: anywhere;
+    }
+
+    .row {
+      margin-top: 10px;
+
+      > button {
+        flex: 1 1 0;
+      }
     }
   }
 
-  // The way back, on its own line above whichever title follows.
-  .mechBack {
-    padding: 10px 15px 0;
+  // Readiness speaks in Edit only when something is wrong, and says where to go.
+  .mechBanner {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 15px;
+    background: var(--refusal-bg);
+    color: var(--refusal-text);
+    font-size: 13px;
+    line-height: 19px;
 
-    .backLink {
-      margin-bottom: 0;
+    mat-icon {
+      flex: 0 0 auto;
+      width: 18px;
+      height: 19px;
+      font-size: 18px;
+      line-height: 19px;
+    }
+
+    span {
+      text-wrap: pretty;
+    }
+
+    b {
+      font-weight: 500;
     }
   }
 
-  .mechHead.underBack {
-    padding-top: 6px;
+  .bannerLink {
+    padding: 0;
+    border: none;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-weight: 500;
+    text-decoration: underline;
+    cursor: pointer;
   }
 
   .mechLead,
@@ -58,19 +112,26 @@
     font-size: 13px;
     line-height: 19px;
     color: var(--text-secondary);
+    text-wrap: balance;
   }
 
   .mechNote {
-    padding: 0 15px 12px;
+    padding: 10px 15px 12px;
+    margin: 0;
+    border-top: 1px solid var(--border-rule);
   }
 
   // Back to the list: a text button in the primary ink, the way a part link
   // reads, so it is plainly the way out rather than part of the title.
+  .mechBack {
+    padding: 10px 15px 0;
+  }
+
   .backLink {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    margin: 0 0 6px -2px;
+    margin-left: -2px;
     padding: 2px;
     border: none;
     background: none;
@@ -93,14 +154,14 @@
     border-top: 1px solid var(--border-rule);
   }
 
-  // One machine: its code, its name (wrapping, however long), what PMKS+
-  // recognized it as, and the chip the setup drawer shows beside it.
+  // One machine: its name (wrapping, however long), the line under it, the
+  // chip the setup drawer shows beside it, and a chevron saying the row opens.
   .machineRow {
     display: flex;
-    align-items: flex-start;
-    gap: 10px;
+    align-items: center;
+    gap: 8px;
     width: 100%;
-    padding: 10px 15px;
+    padding: 10px 10px 10px 15px;
     border: none;
     border-bottom: 1px solid var(--border-rule);
     background: none;
@@ -108,6 +169,11 @@
     font-family: inherit;
     text-align: left;
     cursor: pointer;
+
+    // The rule that follows the list closes it; a second one would stack.
+    &:last-child {
+      border-bottom: 0;
+    }
 
     &:hover,
     &:focus-visible {
@@ -134,32 +200,87 @@
     overflow-wrap: anywhere;
   }
 
-  .machineFamily {
+  .machineSubtitle {
     font-size: 12px;
     line-height: 17px;
     color: var(--text-secondary);
+  }
+
+  .machineChevron {
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+    line-height: 20px;
+    color: var(--text-tertiary);
   }
 
   .mechanismPanel .sectionHeader {
     @include blocks.section-header($theme);
   }
 
-  .mechanismPanel .factGrid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px 12px;
-    padding: 10px 15px 14px;
+  // Facts as a spelled-out list, label left and value right: every label fits
+  // in full at 250px, and this is a teaching app.
+  .mechanismPanel .factList {
+    display: flex;
+    flex-direction: column;
+    padding: 7px 15px 11px;
   }
 
   .mechanismPanel .fact {
     display: flex;
-    flex-direction: column;
-    gap: 1px;
-    min-width: 0;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    padding: 5px 0;
   }
 
-  .mechanismPanel .fact.wide {
-    grid-column: 1 / -1;
+  .mechanismPanel .factLabel {
+    font-size: 13px;
+    line-height: 20px;
+    color: var(--text-secondary);
+  }
+
+  .mechanismPanel .factValue {
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 500;
+    color: var(--text-strong);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+
+    // The one number on the panel that can be wrong, in the ink the chip uses
+    // for a blocker.
+    &.bad {
+      color: var(--refusal-text);
+    }
+  }
+
+  // The Family leads the analysis list, stacked because its name and its
+  // reason are sentences rather than numbers, and ruled off from the facts.
+  .mechanismPanel .familyFact {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 5px 0 10px;
+    margin-bottom: 5px;
+    border-bottom: 1px solid var(--border-rule);
+
+    .factLabel {
+      font-size: 12px;
+      line-height: 16px;
+      color: var(--text-tertiary);
+    }
+
+    .factValue {
+      font-size: 16px;
+      line-height: 22px;
+      text-align: left;
+
+      &.unrecognized {
+        color: var(--text-secondary);
+      }
+    }
   }
 
   .mechanismPanel .factBasis {
@@ -168,82 +289,35 @@
     color: var(--text-secondary);
   }
 
-  .mechanismPanel .factLabel {
-    font-size: 11px;
-    color: var(--text-tertiary);
-  }
-
-  .mechanismPanel .factValue {
-    font-size: 13px;
-    color: var(--text-primary);
-
-    // The one number on the panel that can be wrong, in the ink the status
-    // chip uses for a blocker.
-    &.bad {
-      color: var(--refusal-text);
-      font-weight: 500;
-    }
-  }
-
-  .mechFooter .helpHint {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    font-size: 13px;
-    line-height: 19px;
-    color: var(--text-secondary);
-
-    mat-icon {
-      flex: 0 0 auto;
-      width: 18px;
-      height: 18px;
-      font-size: 18px;
-      line-height: 19px;
-      color: mat.m2-get-color-from-palette($primary-palette, 500);
-    }
-  }
-
+  // Name, job, length: three columns, the lengths right-aligned in tabular
+  // figures so 3.00 and 9.44 line up.
   .linkList {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 10px 15px 14px;
-  }
-
-  .linkRow {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
-    gap: 8px;
+    column-gap: 10px;
+    row-gap: 6px;
+    padding: 10px 15px 14px;
     font-size: 13px;
+    line-height: 20px;
   }
 
   .linkName {
     font-weight: 500;
-    min-width: 34px;
   }
 
   .linkRole {
-    color: var(--text-tertiary);
-  }
-
-  .linkSpacer {
-    flex: 1 1 auto;
+    color: var(--text-secondary);
   }
 
   .linkLength {
-    color: var(--text-primary);
-  }
-
-  .mechExtra {
-    padding: 0 15px;
-
-    &:not(:empty) {
-      padding-bottom: 16px;
-    }
+    color: var(--text-strong);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
   }
 
   .mechFooter {
-    padding: 12px 15px 16px;
+    padding: 14px 15px 16px;
     border-top: 1px solid var(--border-rule);
 
     p {
@@ -251,6 +325,26 @@
       line-height: 19px;
       color: var(--text-secondary);
       margin: 0;
+      text-wrap: pretty;
+    }
+
+    .helpHint span {
+      text-wrap: pretty;
+    }
+  }
+
+  .mechExtra {
+    padding: 0 15px;
+
+    &:not(:empty) {
+      padding-bottom: 8px;
+    }
+
+    // Edit's hints arrive under the last section, and their rule has to run
+    // edge to edge like every other one here.
+    .helpRule {
+      margin: 0 -15px 14px;
+      background: var(--border-rule);
     }
   }
 }

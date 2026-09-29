@@ -211,9 +211,12 @@ export class AnalysisSetupComponent {
     return chipOf(readiness.checks);
   }
 
-  /** "Mechanism M2", or the name its author gave it. */
+  /** "Mechanism 2", or the name its author gave it: as the machine panel says it. */
   labelOf(readiness: MechanismReadiness, index: number): string {
-    return mechanismName(this.mechanism.partitions?.[index]) ?? `Mechanism ${readiness.id}`;
+    return (
+      mechanismName(this.mechanism.partitions?.[index]) ??
+      `Mechanism ${readiness.id.replace(/^M/, '')}`
+    );
   }
 
   /**

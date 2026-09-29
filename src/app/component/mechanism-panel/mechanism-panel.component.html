@@ -13,6 +13,7 @@
             type="button"
             class="machineRow"
             role="listitem"
+            title="Show details"
             [attr.data-machine]="overview.code(index)"
             (click)="pick(index)"
             (pointerenter)="point(index)"
@@ -22,15 +23,14 @@
           >
             <span class="machineText">
               <span class="machineName">{{ overview.title(index) }}</span>
-              <!-- A name hides the code the transport's rows go by, so it is
-                   said under it; "Mechanism M2" already carries it. -->
               @if (subtitle(index); as line) {
-                <span class="machineFamily">{{ line }}</span>
+                <span class="machineSubtitle">{{ line }}</span>
               }
             </span>
             <chip-block [kind]="overview.chip(index).kind">{{
               overview.chip(index).text
             }}</chip-block>
+            <mat-icon class="machineChevron">chevron_right</mat-icon>
           </button>
         }
       </div>
@@ -51,9 +51,6 @@
         </div>
       }
     } @else {
-      <!-- The title block pads itself to the card's gutter, so in Edit it
-           sits on the card's edge rather than inside the padded head: wrapped,
-           it was indented twice (docs/ui-style-guide.md#layout). -->
       @if (overview.count() > 1) {
         <div class="mechBack">
           <button type="button" class="backLink" (click)="showAll()">
@@ -62,22 +59,37 @@
           </button>
         </div>
       }
+      <!-- The name and, in Edit, its two actions: nothing else. Whether it runs
+           is said only when it does not, in the banner below. The title block
+           pads itself to the card's gutter, so it sits on the card's edge
+           (docs/ui-style-guide.md#layout). -->
       @if (editable()) {
         <editable-title-block
+          class="mechEditTitle"
           [displayName]="overview.title(index)"
           [renameTo]="rename"
           [renameFrom]="overview.name(index) ?? ''"
           [takenNames]="overview.namesBesides(index)"
           [deleteAction]="deleteMechanism"
+          deleteLabel="Delete"
           deleteHint="Delete Mechanism"
         >
           Edit
         </editable-title-block>
-        <app-mechanism-status class="mechStatusRow padded" [index]="index" />
+        @if (!overview.ready(index)) {
+          <div class="mechBanner" role="status">
+            <mat-icon>error_outline</mat-icon>
+            <span
+              ><b>Can’t run yet.</b> {{ fixesBeforeAnalysis }} before analysis.
+              <button type="button" class="bannerLink" (click)="openSetup()">
+                Open Setup
+              </button></span
+            >
+          </div>
+        }
       } @else {
         <div class="mechHead" [class.underBack]="overview.count() > 1">
           <div class="mechTitle">{{ overview.title(index) }}</div>
-          <app-mechanism-status class="mechStatusRow" [index]="index" />
         </div>
       }
 
@@ -90,14 +102,16 @@
         <mat-icon>{{ overviewOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
       </button>
       @if (overviewOpen) {
-        <div class="factGrid">
-          <!-- Said only where PMKS+ recognizes the machine: a family is a
-               finding, and a guess would be worse than nothing. And only
-               while analyzing: building, it is the count that matters. -->
-          @if (!editable() && overview.family(index); as family) {
-            <div class="fact wide">
+        <div class="factList">
+          <!-- Analyzing, the Family leads, and never hides: a name PMKS+
+               matched, its body count, or that it could not say. -->
+          @if (!editable()) {
+            @let family = overview.family(index);
+            <div class="familyFact">
               <span class="factLabel">Family</span>
-              <span class="factValue">{{ family.name }}</span>
+              <span class="factValue" [class.unrecognized]="family.kind === 'none'">{{
+                family.name
+              }}</span>
               <span class="factBasis">{{ family.basis }}</span>
             </div>
           }
@@ -119,18 +133,17 @@
         <mat-icon>{{ linksOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
       </button>
       @if (linksOpen) {
+        <!-- Three columns: the name, its job, and its length in tabular
+             figures, so the lengths line up. By position, not by name: two
+             bodies can share a name once a welded body stops being called
+             after the joint buried inside it. -->
         <div class="linkList">
-          <!-- By position, not by name: two bodies can share a name once a
-               welded body stops being called after the joint buried inside it. -->
           @for (link of overview.links(index); track $index) {
-            <div class="linkRow">
-              <span class="linkName"
-                ><part-link [part]="link.part">{{ link.name }}</part-link></span
-              >
-              <span class="linkRole">{{ link.role }}</span>
-              <span class="linkSpacer"></span>
-              <span class="linkLength">{{ link.length }}</span>
-            </div>
+            <span class="linkName"
+              ><part-link [part]="link.part">{{ link.name }}</part-link></span
+            >
+            <span class="linkRole">{{ link.role }}</span>
+            <span class="linkLength">{{ link.length }}</span>
           }
         </div>
       }

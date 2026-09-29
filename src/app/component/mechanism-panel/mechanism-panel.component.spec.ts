@@ -55,7 +55,7 @@ describe('MechanismPanelComponent', () => {
     expect(text(fixture, '.mechTitle')).toEqual(['All mechanisms']);
     const rows = text(fixture, '.machineRow');
     expect(rows).toHaveLength(2);
-    expect(rows[0]).toContain('Mechanism M1');
+    expect(rows[0]).toContain('Mechanism 1');
     expect(rows[0]).toContain('Chebyshev straight-line linkage');
     expect(rows[1]).toContain('Peaucellier-Lipkin straight-line linkage');
     fixture.destroy();
@@ -67,8 +67,8 @@ describe('MechanismPanelComponent', () => {
     fixture.detectChanges();
     expect(data.active.objType).toBe('Mechanism');
     expect(data.active.selectedMechanismIndex).toBe(1);
-    expect(text(fixture, '.mechTitle')).toEqual(['Mechanism M2']);
-    expect(text(fixture, '.fact.wide')[0]).toContain('Peaucellier-Lipkin straight-line linkage');
+    expect(text(fixture, '.mechTitle')).toEqual(['Mechanism 2']);
+    expect(text(fixture, '.familyFact')[0]).toContain('Peaucellier-Lipkin straight-line linkage');
 
     (fixture.nativeElement.querySelector('.backLink') as HTMLElement).click();
     fixture.detectChanges();
@@ -78,7 +78,7 @@ describe('MechanismPanelComponent', () => {
 
   it('shows a lone machine in detail at once, with nothing to go back to', async () => {
     const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar']);
-    expect(text(fixture, '.mechTitle')).toEqual(['Mechanism M1']);
+    expect(text(fixture, '.mechTitle')).toEqual(['Mechanism 1']);
     expect(fixture.nativeElement.querySelector('.backLink')).toBeNull();
     expect(text(fixture, '.linkRole')).toEqual(expect.arrayContaining(['Input crank', 'Rocker']));
     fixture.destroy();
@@ -86,14 +86,34 @@ describe('MechanismPanelComponent', () => {
 
   it('in Edit, says how free a machine is, and leaves family and motion to analysis', async () => {
     const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar'], true);
-    expect(fixture.nativeElement.querySelector('.fact.wide')).toBeNull();
-    expect(text(fixture, '.factLabel')).toEqual(['Degrees of freedom', 'Objects', 'Input joint']);
+    expect(fixture.nativeElement.querySelector('.familyFact')).toBeNull();
+    expect(text(fixture, '.factLabel')).toEqual([
+      'Degrees of freedom',
+      'Links',
+      'Joints',
+      'Input joint',
+    ]);
     fixture.destroy();
   });
 
-  it('says a family only where PMKS+ recognizes one', async () => {
-    const { fixture } = await createPanel(TEMPLATE_LINKAGES['Pantograph']);
-    expect(fixture.nativeElement.querySelector('.fact.wide')).toBeNull();
+  it('never hides the Family: a match, else the body count, else not recognized', async () => {
+    const counted = await createPanel(TEMPLATE_LINKAGES['Pantograph']);
+    expect(text(counted.fixture, '.familyFact')[0]).toContain('Eight-bar linkage');
+    // Motion is said where no family says it for the reader.
+    expect(text(counted.fixture, '.factLabel')).toContain('Motion');
+    counted.fixture.destroy();
+    TestBed.resetTestingModule();
+
+    const none = await createPanel(TEMPLATE_LINKAGES['Elliptical_Trammel']);
+    expect(text(none.fixture, '.familyFact')[0]).toContain('Not recognized');
+    expect(none.fixture.nativeElement.querySelector('.familyFact .unrecognized')).not.toBeNull();
+    none.fixture.destroy();
+  });
+
+  it('leaves Motion out where a named family already says it', async () => {
+    const { fixture } = await createPanel(TEMPLATE_LINKAGES['4-Bar']);
+    expect(text(fixture, '.familyFact')[0]).toContain('Crank-rocker four-bar');
+    expect(text(fixture, '.factLabel')).not.toContain('Motion');
     fixture.destroy();
   });
 
@@ -103,8 +123,10 @@ describe('MechanismPanelComponent', () => {
     fixture.detectChanges();
     const rows = text(fixture, '.machineRow');
     expect(rows[1]).toContain('Straight arm');
-    // In Edit the line under a name is how free it is, not what it is.
-    expect(rows[1]).toContain('M2 · 1 degree of freedom');
+    // In Edit the line under a name is how free it is, not what it is, and
+    // no code: a machine is its name.
+    expect(rows[1]).toContain('1 degree of freedom');
+    expect(rows[1]).not.toContain('M2');
     expect(rows[1]).not.toContain('Peaucellier');
     fixture.destroy();
   });

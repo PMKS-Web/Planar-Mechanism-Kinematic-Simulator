@@ -1,15 +1,18 @@
 import { Injectable, inject } from '@angular/core';
 import { RealJoint } from '../model/joint';
 import { RealLink } from '../model/link';
-import { FamilyMatch } from '../model/machine-facts/family-check';
-import { MachineFacts, machineFacts } from '../model/machine-facts/machine-facts';
+import {
+  FamilyReading,
+  familyReading,
+  MachineFacts,
+  machineFacts,
+} from '../model/machine-facts/machine-facts';
 import { panelRole } from '../model/machine-facts/roles';
 import { mechanismLabel, mechanismName } from '../model/mechanism/mechanism-name';
 import { MechanismFact } from '../model/mechanism/readiness';
 import { SetupIssue } from '../model/mechanism/setup-issue';
 import { READINESS } from '../ui-text';
 import { DragStateService } from './drag-state.service';
-import { ExportCatalogService } from './export/export-catalog.service';
 import { MechanismService } from './mechanism.service';
 import { NumberUnitParserService } from './number-unit-parser.service';
 import { SettingsService } from './settings.service';
@@ -29,13 +32,6 @@ export interface MachineChip {
   kind: 'blocker' | 'warning' | 'ok';
 }
 
-/** The family PMKS+ matched, as the panel shows it: a name, and why. */
-export interface FamilyRow {
-  name: string;
-  /** Why it matched, for a reader who asks: "AB turns fully; CD rocks". */
-  basis: string;
-}
-
 /**
  * What the machine panels say about each machine: its name, whether it runs,
  * its family, its facts and its links. The same in Edit and in the analysis
@@ -46,7 +42,6 @@ export class MechanismOverviewService {
   private mechanism = inject(MechanismService);
   private settings = inject(SettingsService);
   private nup = inject(NumberUnitParserService);
-  private exportCatalog = inject(ExportCatalogService);
   private dragState = inject(DragStateService);
 
   count(): number {
@@ -57,7 +52,7 @@ export class MechanismOverviewService {
     return index >= 0 && index < this.count();
   }
 
-  /** "Pump jack", or "Mechanism M2" for a machine nobody named. */
+  /** "Pump jack", or "Mechanism 2" for a machine nobody named. */
   title(index: number): string {
     return mechanismLabel(this.mechanism.partitions[index], index);
   }
@@ -83,6 +78,13 @@ export class MechanismOverviewService {
     return this.mechanism.mechanisms[index]?.isMechanismValid() ?? false;
   }
 
+  /** How many things stop it running. */
+  blockers(index: number): number {
+    return (this.mechanism.readinessOfEachMechanism()[index]?.checks ?? []).filter(
+      (check) => check.severity === 'blocker'
+    ).length;
+  }
+
   /** The chip the setup drawer shows beside this machine, word for word. */
   chip(index: number): MachineChip {
     return chipOf(this.mechanism.readinessOfEachMechanism()[index]?.checks ?? []);
@@ -96,12 +98,13 @@ export class MechanismOverviewService {
    */
   facts(index: number, building = false): MechanismFact[] {
     const facts = this.mechanism.readinessOfEachMechanism()[index]?.facts ?? [];
-    const count = this.exportCatalog.partGroups(false)[index]?.parts.length ?? 0;
-    return facts
-      .map((fact) =>
-        fact.label === 'Links / joints' ? { label: 'Objects', value: String(count) } : fact
-      )
-      .filter((fact) => !building || BUILDING_FACTS.has(fact.label));
+    if (building) return facts.filter((fact) => BUILDING_FACTS.has(fact.label));
+    // A named family already says how the input moves -- a crank-rocker's
+    // crank turns fully -- so Motion is said only where no family is.
+    const named = this.family(index).kind === 'named';
+    return facts.filter(
+      (fact) => ANALYZING_FACTS.has(fact.label) || (fact.label === 'Motion' && !named)
+    );
   }
 
   /** "1 degree of freedom", for a list row; nothing where the count is not a number. */
@@ -113,17 +116,16 @@ export class MechanismOverviewService {
   }
 
   /**
-   * What PMKS+ matched the machine as, most specific first, or nothing: a
-   * family is said only where its catalog recognizes one, and a machine that
-   * does not run has no cycle to recognize.
+   * The Family row: what PMKS+ matched the machine as, or failing that its
+   * body count, or that it could not say (`familyReading`). Never nothing, so
+   * the panel keeps its shape from one machine to the next.
    */
-  family(index: number): FamilyRow | undefined {
-    const match: FamilyMatch | undefined = this.factsOf(index)?.family[0];
-    if (!match) return undefined;
-    return {
-      name: match.family.charAt(0).toUpperCase() + match.family.slice(1),
-      basis: match.basis.charAt(0).toUpperCase() + match.basis.slice(1) + '.',
-    };
+  family(index: number): FamilyReading {
+    return familyReading(
+      this.mechanism.partitions[index],
+      this.mechanism.mechanisms[index],
+      this.factsOf(index)
+    );
   }
 
   /**
@@ -184,8 +186,15 @@ export class MechanismOverviewService {
   }
 }
 
-/** The facts Edit shows: the ones a structural edit changes. */
-const BUILDING_FACTS = new Set(['Degrees of freedom', 'Objects', 'Input joint']);
+/** The facts Edit shows: the count, what it is built from, and what drives it. */
+const BUILDING_FACTS = new Set(['Degrees of freedom', 'Links', 'Joints', 'Input joint']);
+
+/**
+ * The facts the analysis modes show under the Family: the same, and the
+ * input's speed beside the cycle time it sets (60 / rpm), so a student can
+ * check one against the other.
+ */
+const ANALYZING_FACTS = new Set([...BUILDING_FACTS, 'Input speed', 'Cycle time']);
 
 /** Red if anything stops it running, amber if it runs with something to check, green if not. */
 export function chipOf(issues: readonly SetupIssue[]): MachineChip {
