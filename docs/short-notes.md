@@ -2637,3 +2637,15 @@ each pair named on hover, and a link of more joints its count. The job and the s
 line that wraps (`.linkRest`), not two grid cells: the size falls under the job, still flush right,
 only when the two do not fit, so the analysis panel's 400px keeps every link on one line and only
 a plate's sides wrap at Edit's 250px. A second line reserved for every plate read as a gap.
+
+### A cover lifts on the fit, not on the render
+
+The boot splash came down one frame after Angular's first render, and the loading overlay with the
+decode. Neither is when the drawing is on screen as the reader should see it: the fit that frames it
+runs a render later (`scaleToFitLinkage` is `afterNextRender` plus a task, and can be queued behind
+a settling panel), and svg-pan-zoom applies its matrix on the frame after that. Until then the view
+is svg-pan-zoom's own -- `fit: true` over the whole SVG, a zoom near 475 -- or, behind the overlay,
+the old drawing's. `SvgGridService.framed()` resolves `firstFramed` and any `nextFramed()` from a
+rAF registered after the library's, so the frame that paints next carries the fitted matrix. The
+splash's removal timer starts in a rAF too: a fit is often followed by a long task (the grid
+redrawn at its new zoom), and a 220 ms timer started before it expired inside it and cut the fade.

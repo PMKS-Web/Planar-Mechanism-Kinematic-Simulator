@@ -260,11 +260,14 @@ The **modes are tabs in the top strip, not a left rail**, and there are four of 
   `TemplatesComponent.openIn`.
 - **Loading indicators.** Decoding a URL solves every sample of the mechanism synchronously, so
   nothing can paint during it. Two covers answer that: the `#bootSplash` block in `index.html`,
-  painted out of the HTML before the bundle runs and removed by `AppComponent`'s
-  `afterNextRender`; and `LoadingService.during`, which raises `app-loading-overlay`, waits for it
-  to actually reach the glass, and only then runs the work. Anything that replaces the whole
-  drawing goes through `during` -- undo and redo deliberately do not, because a cover flashing on
-  every undo is worse than the wait.
+  painted out of the HTML before the bundle runs; and `LoadingService.during`, which raises
+  `app-loading-overlay`, waits for it to actually reach the glass, and only then runs the work.
+  Anything that replaces the whole drawing goes through `during` -- undo and redo deliberately do
+  not, because a cover flashing on every undo is worse than the wait. **Neither lifts before the
+  drawing is framed**: the splash waits for `SvgGridService.firstFramed`, and a drawing opened
+  behind the overlay passes `() => svgGrid.nextFramed()` as `during`'s third argument. Lifted on
+  the first render, the splash showed svg-pan-zoom's own view, hundreds of times too close, until
+  the fit landed; `e2e/first-frame.mjs` checks every uncovered frame against the settled view.
 - Onboarding is the **tutorial**: `services/tutorial.service.ts` with `model/tutorial-steps.ts`, shown by `component/tutorial-panel/` as a card *pinned* in the right drawer above whatever page is open (it is not one of the numbered pages). Its step is derived from the drawing by `progressFor`, never counted, which is what lets it start on a half-built mechanism and follow an undo backwards. It is offered from the Edit panel's empty state, reopened from the project menu, and remembers in `localStorage` (`tutorialSeen`) that it has been finished, dismissed or walked out of. The `intro.js` overlay tour it replaced is gone, dependency and all.
 - The tutorial card asks the drawing for its step from `ngDoCheck`, not a subscription: every edit ends in `updateMechanism`, which publishes on nothing that could be listened to — `onMechUpdateState` carries the *analysis* state, which is why caches elsewhere key on `poseRevision` instead.
 

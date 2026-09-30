@@ -16,6 +16,13 @@ import { RightPanelComponent } from './component/right-panel/right-panel.compone
 import { NotificationComponent } from './component/notification/notification.component';
 import { LoadingOverlayComponent } from './component/loading-overlay/loading-overlay.component';
 import { AnalysisCompareService } from './services/analysis-compare.service';
+import { SvgGridService } from './services/svg-grid.service';
+
+/**
+ * The longest the boot splash waits for the canvas to be framed. Far past any
+ * real decode, a Jansen leg's included; it only has to be finite.
+ */
+const SPLASH_LONGEST_MS = 10_000;
 
 @Component({
   selector: 'app-root',
@@ -40,6 +47,7 @@ export class AppComponent implements DoCheck {
   private matIconRegistry = inject(MatIconRegistry);
   private domSanitizer = inject(DomSanitizer);
   private comparison = inject(AnalysisCompareService);
+  private grid = inject(SvgGridService);
 
   /**
    * The tuning gesture is polled, and polled here first: the status strip, the
@@ -230,12 +238,17 @@ export class AppComponent implements DoCheck {
 
     // Take down the splash `index.html` painted before any of this existed.
     //
-    // `afterNextRender` rather than a lifecycle hook, because the thing it has
-    // to wait for is not this component: the canvas is built during the first
-    // render and decodes the address while it is, and that is the freeze the
-    // splash is covering. Then a frame, so what replaces it is a drawn app
-    // rather than a flash of empty grid.
-    afterNextRender(() => requestAnimationFrame(() => this.hideBootSplash()));
+    // Not on Angular's first render: the canvas is built then, and decodes the
+    // address while it is, but the view it is built with is svg-pan-zoom's own,
+    // fitted to the whole SVG, hundreds of times too close. The fit that frames
+    // the drawing lands a task or more later -- over a second on a large one --
+    // so the splash waits for it, and the first frame the reader sees is the
+    // drawing already framed. The timer is for a canvas that never frames at
+    // all, which would otherwise leave the splash over the app for good.
+    afterNextRender(() => {
+      const giveUp = new Promise<void>((resolve) => setTimeout(resolve, SPLASH_LONGEST_MS));
+      void Promise.race([this.grid.firstFramed, giveUp]).then(() => this.hideBootSplash());
+    });
   }
 
   /** Fade it out, then let it go. Idempotent: it can only be removed once. */
@@ -244,10 +257,14 @@ export class AppComponent implements DoCheck {
     if (!splash) return;
     splash.style.transition = 'opacity 180ms ease-out';
     splash.style.opacity = '0';
+    splash.style.pointerEvents = 'none';
     // Not `transitionend`: a reader with reduced motion, or a browser that
     // never runs the transition because the tab was in the background for it,
     // would leave a white sheet over the whole app forever. A timer always
-    // fires.
-    setTimeout(() => splash.remove(), 220);
+    // fires. Counted from the first frame the fade runs in, not from now: the
+    // fit is often followed by a long task (the grid redrawn at its new zoom,
+    // nearly a second for a Jansen leg), and a timer started before it expired
+    // inside it, taking the splash away in one cut with no fade at all.
+    requestAnimationFrame(() => setTimeout(() => splash.remove(), 220));
   }
 }

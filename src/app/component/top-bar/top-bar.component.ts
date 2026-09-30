@@ -24,6 +24,7 @@ import { READINESS } from '../../ui-text';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
 import { ExportFlowService } from '../../services/export/export-flow.service';
 import { LoadingService } from 'src/app/services/loading.service';
+import { SvgGridService } from 'src/app/services/svg-grid.service';
 import { TemplatesComponent } from '../MODALS/templates/templates.component';
 import { NotificationService } from '../../services/notification.service';
 import { TutorialService } from '../../services/tutorial.service';
@@ -163,6 +164,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   private urlGeneration = inject(UrlGenerationService);
   private urlProcessor = inject(UrlProcessorService);
   private loading = inject(LoadingService);
+  private svgGrid = inject(SvgGridService);
   private dialog = inject(MatDialog);
   private zone = inject(NgZone);
   private changes = inject(ChangeDetectorRef);
@@ -881,8 +883,11 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
       // incoming mechanism takes the thread, so an opened file used to be a few
       // seconds of a window that had stopped answering.
       this.loading
-        .during('Opening mechanism…', () =>
-          this.urlProcessor.updateFromURL(reader.result as string)
+        .during(
+          'Opening mechanism…',
+          () => this.urlProcessor.updateFromURL(reader.result as string),
+          // Up until the drawing is framed, as a template's open is.
+          () => this.svgGrid.nextFramed()
         )
         .then(() => this.afterUpload(input))
         // The cover comes down in `during`'s own `finally`; this is only so a
