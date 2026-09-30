@@ -139,6 +139,11 @@ Not suites — import them from one.
 
 ### Broad sweeps and tours
 
+- `first-frame.mjs` — the first frame a reader sees when a cover lifts is the drawing already
+  framed. Logs every animation frame in the page (splash opacity, loading overlay, canvas matrix)
+  on arrival at an address (empty, a Watt six-bar, a Jansen leg, a phone) and on opening a card
+  from the library, and fails any uncovered frame whose matrix is not the one the canvas settles
+  on. The boot splash and the overlay each used to lift before the fit.
 - `full-tour.mjs` — panels, templates, settings, share URL, help, and a fresh load at phone size.
   Fails on a NaN degrees of freedom, a page wider than its viewport, a Save that starts no
   download, or a template dialog that will not close. Needs installed Chrome (`PMKS_CHROME`).
