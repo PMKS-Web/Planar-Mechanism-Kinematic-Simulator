@@ -303,12 +303,14 @@
     color: var(--text-secondary);
   }
 
-  // Name, job, length: three columns, the lengths right-aligned in tabular
-  // figures so 3.00 and 9.44 line up.
+  // Two columns: the name, then the job and the size on one line. The size
+  // keeps its figures tabular and flush right, so 3.00 and 9.44 line up, and
+  // wraps under the job, still flush right, only when the two do not fit --
+  // a plate's three sides at Edit's width, never a bar's one length.
   .linkList {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: center;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: baseline;
     column-gap: 10px;
     row-gap: 6px;
     padding: 10px 15px 14px;
@@ -320,22 +322,24 @@
     font-weight: 500;
   }
 
+  .linkRest {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 10px;
+    min-width: 0;
+  }
+
   .linkRole {
     color: var(--text-secondary);
   }
 
-  .linkLength,
-  .linkSides {
+  .linkLength {
+    margin-left: auto;
     color: var(--text-strong);
     text-align: right;
+    white-space: nowrap;
     font-variant-numeric: tabular-nums;
-  }
-
-  // Under the job and the length column, right-aligned with the lengths above
-  // and below it, and pulled up to its row.
-  .linkSides {
-    grid-column: 2 / -1;
-    margin-top: -6px;
   }
 
   .mechFooter {

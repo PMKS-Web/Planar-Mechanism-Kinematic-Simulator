@@ -2632,5 +2632,8 @@ closes a driven pin that already joins two bodies, so neither end of a new link 
 ### A plate's size is its sides
 
 A three-joint link listed one "length" -- end to end between whichever two joints it held first
--- which described a triangle by an arbitrary edge. The Links rows give a plate its three sides on
-a line of their own under the row, each pair named on hover, and a link of more joints its count.
+-- which described a triangle by an arbitrary edge. The Links rows give a plate its three sides,
+each pair named on hover, and a link of more joints its count. The job and the size are one flex
+line that wraps (`.linkRest`), not two grid cells: the size falls under the job, still flush right,
+only when the two do not fit, so the analysis panel's 400px keeps every link on one line and only
+a plate's sides wrap at Edit's 250px. A second line reserved for every plate read as a gap.

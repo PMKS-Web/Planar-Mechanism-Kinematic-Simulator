@@ -4,6 +4,8 @@
  *
  * - A background click shows "All mechanisms", a row per machine with its chip
  *   and the family PMKS+ recognized; a lone machine shows in detail at once.
+ * - A link's job and size share its row, the size wrapping under it only
+ *   where they do not fit: a plate's three sides at Edit's width.
  * - Pointing at a row lights its machine; picking it shows its detail, fades
  *   the others, and folds the setup drawer to its section. "All mechanisms"
  *   goes back.
@@ -112,6 +114,36 @@ record(
   Math.abs(gutter.title - gutter.section) <= 1,
   gutter
 );
+
+// --- a link's job and size share its row when they fit ----------------------
+/** Per link row: does the size sit on the job's line? */
+const linkRowsOnOneLine = () =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('app-mechanism-panel .linkRest')].map((row) => {
+      const job = row.querySelector('.linkRole').getBoundingClientRect();
+      const size = row.querySelector('.linkLength');
+      return {
+        size: size.innerText,
+        oneLine: Math.abs(job.top - size.getBoundingClientRect().top) < 4,
+      };
+    })
+  );
+await open(payloads['Watt_I']);
+let rows = await linkRowsOnOneLine();
+record(
+  "in Edit's width a bar's length stays on its row, and only a plate's sides may wrap",
+  rows.length > 0 && rows.every((row) => row.oneLine || row.size.includes('·')),
+  rows
+);
+await tab('Kinematic').click();
+await page.waitForTimeout(600);
+rows = await linkRowsOnOneLine();
+record(
+  "in the analysis panel's width every link, plates too, is one line",
+  rows.length > 0 && rows.every((row) => row.oneLine),
+  rows
+);
+await tab('Edit').click();
 
 // --- several: the list, then one --------------------------------------------
 await open(payloads['Straight_Line_Pair']);

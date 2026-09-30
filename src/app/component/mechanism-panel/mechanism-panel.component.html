@@ -134,7 +134,7 @@
         <mat-icon>{{ linksOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
       </button>
       @if (linksOpen) {
-        <!-- Three columns: the name, its job, and its length in tabular
+        <!-- Two columns: the name, then its job and its size in tabular
              figures, so the lengths line up. By position, not by name: two
              bodies can share a name once a welded body stops being called
              after the joint buried inside it. -->
@@ -143,15 +143,13 @@
             <span class="linkName"
               ><part-link [part]="link.part">{{ link.name }}</part-link></span
             >
-            <span class="linkRole">{{ link.role }}</span>
-            <!-- A plate's sides take their own line under its row: beside the
-                 job they squeezed it onto two lines at Edit's width. -->
-            @if (link.spans) {
-              <span class="linkLength"></span>
-              <span class="linkSides" [attr.title]="link.spans">{{ link.length }}</span>
-            } @else {
-              <span class="linkLength">{{ link.length }}</span>
-            }
+            <!-- The job and the size share a line when they fit, and the size
+                 wraps under the job, still flush right, only when they do not:
+                 a plate's three sides at Edit's width. -->
+            <span class="linkRest">
+              <span class="linkRole">{{ link.role }}</span>
+              <span class="linkLength" [attr.title]="link.spans || null">{{ link.length }}</span>
+            </span>
           }
         </div>
       }
