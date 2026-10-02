@@ -26,17 +26,64 @@ const OUT = 'artifacts/gallery-sweep';
 /**
  * Mechanisms the gallery publishes that are *meant* not to solve. The trammel
  * is published in its undriven form, which is a mobility case: nothing drives
- * it, so there is nothing to animate. The MotionGen gripper is published
- * over-constrained on purpose — its whole point is that PMKS+ reports DOF 0 and
- * refuses it, which its own spec asserts. The hydraulic cylinder used to belong
- * here too -- a Slide on a moving carrier was out of scope until Phase 5 --
- * and now solves like the rest.
+ * it, so there is nothing to animate. The MotionGen gripper used to belong here
+ * too, over-constrained by count and refused because the joint-by-joint walk
+ * could not start it; a build now hands such a drawing to the simultaneous
+ * route, which runs it along MotionGen's own paths. So did the hydraulic
+ * cylinder -- a Slide on a moving carrier was out of scope until Phase 5 --
+ * and it now solves like the rest.
  *
  * This list is kept by hand and the gallery is not, which is how the gripper
  * came to be reported as a failure for as long as it has been published. A
  * fixture that is meant not to solve should say so where it is defined.
  */
-const EXPECTED_INVALID = new Set(['Elliptical trammel', 'MotionGen gripper']);
+const EXPECTED_INVALID = new Set([
+  'Elliptical trammel',
+  // The mobility-diagnosis drawings, each with the wrong number of degrees of
+  // freedom and a readiness row that says which part and what fixes it.
+  'Four-bar with an ungrounded pivot',
+  'Crank with a dangling link',
+  'Cylinder boom with a dangling link',
+  'Braced four-bar',
+  'Four-bar with a grounded coupler pin',
+  'Crank grounded at both ends',
+  'Braced four-bar with a dangling link',
+  // The drawings the student-mistakes sweep taught the drawer to name; the
+  // ones that run anyway (a stray link, two inputs, a frame bar) are not
+  // listed, nor are the two whose driven half runs beside the half left
+  // unjoined (a rod short of the crank pin, a coupler missing). A link hung
+  // off a pivot the four-bar uses is part of the four-bar.
+  'Four-bar with a welded coupler pin',
+  'Link hanging from a pivot',
+  'Rocker dropped beside the coupler pin',
+  'Four-bar braced from its input pivot',
+  'Watt six-bar with a grounded rocker joint',
+  'Four-bar with its rocker deleted',
+  'Four-bar driven from its coupler point',
+  'Slider-crank with a Prismatic slider',
+  'Four-bar with the weld at its knee left off',
+  'Scotch yoke on a Pin-in-slot guide',
+  'Crank plate with two links hanging loose',
+  'Crank plate held by a grounded link',
+  'Crank locked by a grounded link at a slot pin',
+  'Stephenson six-bar with a link hung beside a joint',
+  'Rocker dropped on the coupler pin',
+  'Rocker dropped beside the coupler pin, locked',
+  'Scotch yoke braced across its slot',
+  'Bent four-bar driven from its welded knee',
+  'Bent four-bar with its knee grounded and unwelded',
+  // Frame alone: no machine to be valid.
+  'Plate grounded at every joint',
+  'Ram with a free end',
+  'Ram grounded at its free end',
+  // A cylinder nothing drives adds its freedom (S30).
+  'Three cylinders in a triangle',
+  'Four-bar on a passive cylinder',
+  'One follower and one surplus',
+  // Two things wrong at once, both said together.
+  'Four-bar with a hanging link and no input',
+  'Four-bar driven from its coupler point, with a hanging link',
+]);
 
 function galleryRows() {
   return readFileSync('docs/fixture-urls.md', 'utf8')

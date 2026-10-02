@@ -57,7 +57,7 @@ const TWO_IN_ONE_BRACKET =
 /**
  * A cylinder grounded at one mount with a bar hanging free off the other.
  *
- * Two freedoms even after the ram holds its length, so it is the one drawing
+ * More than one freedom, so it is the one drawing
  * here that reaches readiness's *surplus freedom* sentence -- which points at
  * "joints that hang on only one link", and a barrel's buried end is exactly
  * such a joint. It named it, on every drawing with a cylinder in it, until

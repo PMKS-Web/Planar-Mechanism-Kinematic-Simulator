@@ -491,36 +491,275 @@ the solver run, and not against Gruebler's. A crosshead on two slides counts -1 
 to one by the same geometry; comparing against -1 called the solver's every failure on such a
 drawing a hidden freedom, when the rescue was the count agreeing with the drawing.
 
-### The library's gripper counts one freedom and measures three, and runs on the count
+### `diagnoseMobility` counts every fix it offers, and a fix can still be wrong
 
-`Cylinder_Gripper` -- the card, and `slideGripperFixture` the gallery generates it from -- has
-Gruebler's count at 1 and `mobilityFromGeometry` at **3**. `determineDegreesOfFreedom` returns the
-count wherever the count is at least one and never asks the geometry, so the drawing is admitted
-and solved. Two of those three freedoms are therefore motions nothing in the drawing determines,
-and the solver picks a pose for them.
+`free-motion.ts` names what is loose by holding the input still (`holdTurn` / `holdSlide` in
+`mobility.ts`) and looking for motion that is left, and offers an edit only when counting the
+edited drawing comes back at one freedom as drawn and none with the input held. Four things
+about that surprised the first version:
 
-The 3 is not a numerical artifact, which is the first thing to suspect and the first thing to rule
-out. Perturbing a corner of one of its parallelograms by 1e-9, 1e-6, 1e-4 and 1e-3 -- the last of
-which is the resolution the URL itself carries -- leaves it at 3 every time.
+- **The advice it replaced was wrong on its own spec's drawing.** "Ground another joint" on the
+  open chain A-B-C grounded at A grounds C and leaves a rigid pair, not a mechanism. No single
+  ground fixes a dangling link; a link from its free end to a new ground does, and that is the one
+  piece of advice that cannot be counted (the link does not exist yet), so it is said as advice.
+- **Ungrounding has to assign the bodies again.** A bar pinned down at both ends is folded into
+  the frame by `assignBodies`, and removing the world from one joint's `bodiesAt` leaves it
+  frame. `assignBodies` takes a `groundedAt` override for exactly this. And when the *driven*
+  joint is on such a bar, the partition does not count it as the machine's own joint at all, so
+  there is no input to hold -- which is how "delete the coupler" once passed as a fix.
+- **"Leaves one freedom" is not "fixes the mechanism".** Deleting a slider-crank's rod leaves the
+  crank turning on its own; deleting a four-bar's coupler does the same. A deletion is offered only
+  for a brace: every joint it meets keeps two links, or one and the ground (`staysHeld`). The
+  driven joint is never ungrounded, and an edit that leaves the input nothing to drive is refused.
+- **One freedom in total can be two machines.** Ground anchors without joining, so grounding a
+  joint in the middle of a chain cuts it in two, and the partition then builds a machine that runs
+  and a rigid piece that is a machine of its own at 0 degrees of freedom. The sum is one; the app
+  shows two rows, one of them broken. So every edit is checked with `staysOnePiece`, which unions
+  bodies the way `partitionMechanisms` does, before it is counted. Pinning each body to the world
+  where it stood (the first version) got the count right and missed the split.
 
-**What is not known is which two motions they are.** Grounding `B`, the barrel's near end, drops
-the measurement to 1, which looks like the barrel's swing about its single mount until you notice
-that `gripperFixture` beside it in the gallery has its barrel equally free on one pin and measures
-1. So the barrel is not a sufficient explanation, and no better one has been written down. Note
-also that grounding `B` is not a drawing a reader could make: `isInsideCylinder` counts the
-barrel's near end as inside the part, so it is not an attachment point.
+`mobility-diagnosis.spec.ts` builds each fix for real and asks the solver's count too, so the two
+counts cannot drift apart; the drawings are in the fixture gallery (`MOBILITY_GALLERY`).
+`mobility-diagnosis-sweep.spec.ts` does it to every library template broken one edit at a time --
+about 900 drawings and 430 offered fixes -- and is where the split above was found.
 
-Three siblings in the gallery measure 1 and are worth comparing against before concluding
-anything: `gripperFixture` (railed, hand-placed coordinates), `pivotingGripperFixture` ("the same
-gripper, jaws pivoting instead of railed") and `parallelGripperFixture` ("the way a manufacturer
-draws one"). The difference is not exact symmetry: `slideGripperFixture` builds its parallelograms
-from shared constants and is exact, `gripperFixture`'s are hand-typed and only nearly so, but
-breaking the exact ones by hand does not move the number.
+### "A dead position" was also said of an input that cannot move at all
 
-One warning for anyone thinking of gating on the measurement. It is robust on this drawing and
-knife-edge on a near neighbor: the same gripper with `B` grounded flips between 1 and 2 on a 1e-9
-nudge to a parallelogram corner. Whether that shape is reachable by a reader is a separate
-question, but a refusal rule reading this number needs to answer it first.
+A four-bar with a bar across it counts zero; a link left hanging off it counts one. The total reads
+one, Gruebler and the geometry agree, and the solver cannot take a step -- so `Mechanism` called it
+a dead position and the drawer said to drag a joint off the limit. No drag frees it. `stuckInput`
+in `free-motion.ts` tells the two apart: take the bodies that do not move in any freedom the drawing
+has, find the group the input's body is in, and count that group's freedoms with nothing else
+attached. Zero is a stuck input; a rocker at the end of its swing is still for an instant too, but
+on its own it turns. The fixes are counted on that group alone (deleting a link that is not the
+input's own, ungrounding, Pin-in-slot), since the freedom that dangles elsewhere is the next
+problem, not this one.
+
+Not every other "dead position" was one either. With the input moved to a different joint,
+several library templates could not be started by the joint-by-joint walk, and that failure looked
+exactly like a dead position. The simultaneous route solves them (Scissor_Lift at A and S,
+Hood_Hinge at A, Slotted_Tool_Drive at E, Cylinder_Boom at G, Aircraft_Landing_Gear at I). So
+`Mechanism.solveWholeInstead` asks it once, by setting `PositionSolver.forceCoupledRoute` for
+one re-solve, when the walk cannot take a first step. If that fails too, the walk runs again, so
+the failure and the solver's statics (`unsolvableJoints` among them) stay the walk's own.
+`scotch-yoke.spec.ts` checks exactly that on the swinging block.
+
+The two halves depend on each other. "Drag joint B a little" is said only where the geometry calls
+it a limit: held still, the input keeps a freedom to first order that dies at the second
+(`inputStart` in the diagnosis). Even then it only became true once the fallback existed. On the
+Scotch yoke driven from its yoke, a drag that clears the dead center leaves the walk still unable
+to start from a slider there, and the simultaneous route is what runs it. Where the input is clear
+of any limit and neither route starts, the drawer says the solver cannot start it rather than
+sending anyone to drag.
+
+### A frame bar drawn at the input's pivot made the input "join 3 bodies"
+
+Students draw the frame of a four-bar as a bar between its two pivots, the way a textbook does.
+`assignBodies` has always folded such a bar into the world, but `incidentBodies` in `actuator.ts`
+counted it as a body of its own, so the crank's pivot "joined 3 bodies" and its input was refused.
+`isFrameBar` is now asked there, and `framePieceAt` became "every link on this pin is frame".
+`PositionSolver.drivenBody` asked for the input pivot's *first* link, which would have driven the
+frame bar if it was drawn first; it asks the actuator record now.
+
+### `student-mistakes.spec.ts` follows the drawer's own advice, and its report is the point
+
+It draws a few hundred small mechanisms (four-bar, one with a coupler point, one with a bent
+coupler, slider-crank, Scotch yoke, Watt and Stephenson six-bars; ten links at most), makes one or two mistakes a student makes with a
+click, and follows the first blocker's advice (`follow-advice.ts`) until the drawing runs or the
+sentence names no edit. `artifacts/student-mistakes/summary.md` says, per mistake, how often the
+advice ends in a drawing that runs and in the one that was meant, and quotes every sentence that
+names no edit. That list is where each new message in `mobility-sentences.ts` came from.
+Three things the harness had to get right before its numbers meant anything:
+
+- **Scale.** Fixtures are written in the units a reader types; the app draws at `MODEL_SCALE`. The
+  mobility count does not care, but the solver does: a slider input steps a fixed tenth of a unit
+  in model units, which on an unscaled drawing is longer than the crank. "The solver cannot start
+  a slider-crank from its piston" was this, not the app. `readDrawing` scales before it builds.
+- **Welds are compounds.** A weld in the app merges the two links into one `RealLink` with a
+  `subset`; the `welds` flag alone only marks the joint. And an unweld splits the compound at the
+  remaining welds (`unweldJointTopology`), so a compound welded at two joints comes apart into a
+  pair and a single, not three singles.
+- **A member can hold a stale joint.** Leaves of a compound can keep the joint object a slider
+  replaced; `unweldedAt` matches a leaf's joints by letter.
+- **So could a slot.** `buildMechanism` binds a slot's two ends when its own slider is made, so a
+  slot whose end became a slider later in the list named the discarded pin: a Scotch yoke whose
+  yoke rides a rail, with the crank pin's slot cut from the rail's joint, solved against a slot end
+  that never moved, and "the motion never repeats ... 0.00 units away" came from that. The builder
+  rebinds every slot once all joints exist now, as the app's reader always did.
+
+### A fix that joins two machines has to be counted on both
+
+Dropping a joint beside another, leaving a rod short of the crank pin it was meant for, and never
+drawing a coupler all split one linkage into two machines, and each machine's diagnosis sees only
+its own partition. So the readiness helpers carry `drawing()`, and `joinAcross`
+(`join-machines.ts`) counts every join on the two machines together: a merge of two joints all but
+on top of each other (exactly on top included), a free end within a quarter of its link's length
+of a joint of the other machine, and a new link between a free end of each. A join is offered
+only where the two come out one machine with one freedom the input drives, so a link hung by a
+joint of a six-bar is not merged into it as a brace. A locked joint is never the one dragged: the
+join drags the other onto it. `reconnectFixes` still joins a free end to the pivot its deleted
+link left behind.
+
+A grounded joint used to split a linkage too, and needed `ungroundAcross` and a sentence of its
+own for a link hung off a pivot another machine used. Since every shared joint joins what meets at
+it, a grounded pivot included, both are one machine, and both went.
+
+### Where no single edit frees a rigid drawing, two in order may
+
+A bent coupler whose knee was grounded and whose weld was left off counts 0, ungrounding the knee
+alone counts 2, and welding it alone counts -1. `twoStepFixes` counts an unground followed by a
+weld, or by a second unground, and says the pair as one fix ("Turn off Grounded for joint C, then
+set joint C to Welded"), the pair at one joint first. Each half keeps the ten-word budget.
+
+### A fix that counts and starts at a limit goes after one that leaves the drawing ready
+
+A brace across a Scotch yoke counts 0, and making the guide Pin-in-slot counts 1 -- and leaves the
+yoke starting at a limit, with a drag to make before anything plays. `rigidFixes` asks
+`startsAtLimit` of each counted edit and lists those after the rest, so deleting the brace comes
+first.
+
+### When two fixes both count, list them all rather than guess
+
+The student-mistakes sweep knows which edit was the mistake. Where the drawer had more than one
+counted fix, putting the first-counted one first matched the mistake's undo in 22 of 38 steps, and
+ranking by the newest joint letter in 25. Ranking by "undo the last edit" from the history would
+match more often, and would be the wrong design: a reader who wants the drawing back as it was
+presses Undo. What they want from the drawer is the way forward they meant, and the drawing cannot
+say which that is. So a check with more than one way out carries `ways` -- each an instruction and
+its own Go To -- and the drawer lists them (`resolution` in `mobility-sentences.ts`). The meant fix
+is on the list in 34 of 38. A link left hanging gets "Delete link BC" and "Attach a link from joint
+C to a new grounded joint" side by side, because it is as often the first bar of more linkage as a
+mistake. `follow-advice.ts` picks the way that matches the mistake when it is offered, which is the
+reader who knows what they meant.
+
+### A weld and a Prismatic slot are fixes too, and they are listed after what keeps the drawing
+
+A drawing one freedom too loose can often be closed by fusing two bodies: welding a pin
+(`weldedAt`) or making a Pin-in-slot Prismatic. Both are counted like every other fix (`typeFixes`
+in `mobility-fixes.ts`), each refused where the joint's own type menu would refuse it
+(`refuseJointType`). They multiply the ways out -- a bent coupler with its knee left unwelded counts
+"Weld joint C", "Weld joint E", "Weld joint B" and "Ground joint E" -- so `keepingWhatWasDrawn` in
+`free-motion.ts` lists last the ones that give part of the drawing up: a ground that pins a link
+down at both ends, so a link drawn to move becomes frame, and a weld or a Prismatic slot on the
+input's own link. The knee comes first, and on a Scotch yoke the guide comes before the crank pin.
+A weld on a dangling link (an arm welded to what it hangs from) goes after deleting the link, and
+"attach its end to a new grounded joint" is still offered beside both.
+
+Two things the brace rule (`staysHeld`) did not know until a Scotch yoke asked: a slider pin's slot
+holds it as a second link would, and the end of a slot is a point on the link it is cut in -- so a
+brace from the yoke's pin to the yoke's end can be deleted. And a brace riding a Prismatic slider
+is one body with the yoke; `withoutLink` assigns the bodies again without it rather than striking
+the shared body out, and asks each joint about the links it has left, because its own `links`
+still names the deleted one.
+
+### The solver stops at the first thing wrong; the drawer does not
+
+`Mechanism` asks for a slot on every slider, then one degree of freedom, then an input, and sets
+one `failure` at the first that fails. A drawing with a wrong count and no input was told about the
+count, fixed it, and only then heard about the input. All three can be read off the drawing, so
+`readinessOf` says the missing input beside the other two (`BEFORE_THE_SOLVE`), and says a slot or
+a count beside an input the actuator refuses. What stays alone: the count beside a slider with
+nothing to slide along (the slot is part of what it counts), anything beside a joint dropped next
+to another (joining them is the whole answer), a count beside an input whose own fix is counted
+(deleting the brace mends both). A linkage split at a grounded joint is no longer two halves to
+keep apart: every pin, a grounded one included, joins what meets at it into one machine. What the solve finds -- a dead position,
+a cycle that never closes -- still waits for these, because nothing is solved until they are fixed.
+
+Saying the count without an input exposed a hole in counting a fix: with no input to hold, "one
+freedom left" was enough, and grounding the crank of a four-bar with a link hanging off its coupler
+leaves one -- the hanging link's, turning on a pin that joins three bodies. `leavesOneMachine` now
+asks there that some joint between exactly two bodies, held, leaves nothing free
+(`someInputHolds`), which is the input toggle's own rule.
+
+### A setup message is a `SetupIssue`, and a part it names is a `PartRef`
+
+The setup drawers' issues are structured (`model/mechanism/setup-issue.ts`): a title, a summary,
+an explanation and up to three fixes, the summary and fixes built as `Prose` -- text and parts
+(`model/prose.ts`) -- so the drawer draws each part as a `part-link` without parsing a sentence.
+Write one with the tag: ``prose`Unground ${jointRef(e)}` ``. Two things follow:
+
+- **Nothing reads a `body` any more.** A surface with room for one line quotes `issueText(issue)`,
+  the title and the summary; the transport tooltip, the right-click menu's analysis refusal, the
+  trace refusal and `invalidReason` all do. A test reads an issue through `read()` in
+  `test-utils/verification/issue-text.ts`.
+- **`setup-issue-budgets.spec.ts` holds every message to the spec's budgets** -- title 3 to 7
+  words, summary 16, explanation 35, fix 10 -- over the fixture gallery, six hundred broken student
+  drawings, every solver failure and every force state, and fails on an em dash, a semicolon, a
+  part named in an explanation, or a part named as plain text. `listOf` names two parts and "N
+  more" past three for that reason.
+
+### When no single edit counts, the drawer still names the edits
+
+A fix is offered once the drawing it leaves has been counted, and two cases have no single edit
+that counts to one. **Two links hanging loose** (3 degrees of freedom) need one edit each:
+`diagnoseMobility` then fills `steps` -- dangling deletes counted by `takesOneAway`, one freedom
+fewer -- and `freeEnds`, and the issue lists both kinds for every loose link under "make one for
+each loose part" (`MOST_STEPS`, four). **A stuck input with a link hanging loose elsewhere** can't
+reach exactly one either: `stuckFixes` falls back from `'one'` to `'moves'`, the edits that let the
+input move its part at all, and may then delete a link off a ground pivot it leaves bare. Both
+came from drawings where the drawer used to say "Delete one of the locked links".
+
+### `part-link` goes through `PART_LINK_TARGET`, which only the app provides
+
+The block hands its two gestures to an injection token rather than to a service, so it can sit in
+any panel and in the gallery. `main.ts` provides `PartNavigationService` for it; a Storybook story
+provides `partLinkStub()` (Actions panel); a component spec provides a stub of its own. The block
+injects it optionally, so a spec that forgot one renders the name and goes nowhere, rather than
+failing to build -- which is also why a link that seems dead in a unit test is not a bug in the
+block. Pointing goes through `MechanismService.linkedPart`, not `hoveredPart`: the export drawer's
+pointing defers to a selection, and a part link's must not, because a reader following fixes has
+usually just pressed the last one. It also wins over `joint-inert` and `link-inert`, the gray an
+analysis mode draws a machine that can't run in -- which is every machine a setup drawer names.
+
+### `prose-block`'s template is inline and on one line
+
+Whitespace between the pieces lands in the sentence, and Prettier formats `.html` templates:
+reflowed, `Delete` and `link BC` gained a space and a line break between them. An inline
+`template:` string is left alone. Change it with care.
+
+### `describeActuator` is written from `actuatorOrRefusal`
+
+A refused input's issue needs the kind of refusal to write its own title, fact and fixes, and the
+Edit panel and the menu need one sentence. So `actuatorOrRefusal` returns an `ActuatorRefusal`
+kind, and `describeActuator` and `describeActuatorRefusal` format it -- the old route, reading the
+sentence back to tell a weld from a frame bar, would have parsed the model's own words.
+
+### `new RevJoint(id, x, y, input, ground)`: input comes first
+
+A test that meant a grounded pin wrote `new RevJoint('A', 0, 0, true)` and got a driven, floating
+one; the drawing then read as a chain that never reaches ground. Set `ground` and `input` by name
+where it matters.
+
+### Reset left a clock a few tenths of a microsecond short of zero
+
+`easeToStart` eases each machine's clock back to its start, and skips drawing a frame that moves it
+less than a microsecond. The eased curve is flat at its end, so on a short cycle -- a slider's can be
+a tenth of a second -- the last few frames were all under that and were never written, and the clock
+stopped at about 1.6e-7 s. `atStartPose` asks for exactly zero, so the edit gate called the machine
+parked away from its start, and with the shared step at zero it said so in the unsynced wording:
+"Return every mechanism to edit." The last frame now lands on zero and is always drawn.
+
+### An input on a bar grounded at both ends belongs to no machine
+
+Set a crank's input, then ground its far end: the bar is folded into the frame, the partition hands
+the pivot to no machine, and `Mechanism` clears `input` on every joint it does not own. The machine
+hanging off the bar was then told "No input is set" in the drawer, "Input joint: Not set" in its
+facts, and "Ground a joint and set one joint as an input." in the playback row -- all beside the
+input's arrow. `describeActuator` now refuses that joint (`framePieceAt`, "link is grounded" in the
+menu), `readinessOf` finds the input among the frame joints it is handed (`inputOnTheFrame`), and
+`inputSetFor` is the one question the other surfaces ask. A new surface that decides "no input" by
+looking only at `ownJoints` reintroduces the bug; ask `inputSetFor`.
+
+### The library's gripper counted one freedom and measured three (resolved, S30)
+
+`Cylinder_Gripper` had Gruebler's count at 1 and `mobilityFromGeometry` at **3**, and ran because
+the geometry was asked only below one. The motions were real: the cylinder hung on one ground pin,
+so the whole carriage could ride up and down as the barrel swung, and the jaws' two rails exactly
+their own width apart held each jaw level a second time, which paid for it in the count. The
+geometry is now believed wherever it finds more, and the gripper is redrawn: barrel welded to a
+bar grounded along its axis, rod welded to the carriage, each jaw on one rail. A near neighbor once
+flipped between 1 and 2 on a 1e-9 nudge, so `template-count-stability.spec.ts` nudges every
+template's joints and requires the count to hold.
 
 ### The mobility count reads a floating slot's live direction
 
@@ -2095,41 +2334,13 @@ has its own coordinate rule and never read `DriveProfile.along`.
 Halving a step took the midpoint of each boundary joint's own chord, and a body
 turning through an angle does not pass through its chords' midpoints — it
 arrives very slightly **shrunk**. Most drawings absorb that in their own slack
-and never notice. A held cylinder (S28) has none to absorb it with: it pins two
-unknowns rigidly to two *different* boundary joints, their separation is fixed
+and never notice. A body held rigid between two unknowns has none to absorb it
+with: it pins two unknowns rigidly to two *different* boundary joints, their separation is fixed
 and the shrunk boundary's is not, so no pose satisfies the rows and the halving
 refuses the very sample it was subdividing to reach. `halfwayBoundary` takes the
 square root of the fitted rigid motion instead — `R(θ/2)` with the translation
 that, applied twice, lands exactly on the far end — and falls back to chords for
 a boundary the fit cannot reproduce.
-
-### A solved position is stored rounded to four decimals, which is why `heldPoseTolerance` exists
-
-`recordJointPosition` and `incrementRevInput` both round, so a driven body
-placed joint by joint is not quite a rigid body, and the error wanders a little
-further with every sample of the walk. `solveSimultaneous` aims at `1e-6` and
-that is unreachable for a system holding a cylinder's length. Its *acceptance*
-is therefore a parameter, asked for by name: loosening it for everything costs
-the guard that refuses a six-bar converging at full rank onto the wrong assembly
-mode (`boundary-driven-branch.spec.ts`), which fails the moment the gate moves.
-
-### The rows for a held cylinder are a *body*, not a distance to its mount
-
-Written as "the seal stands |AS| from the mount", the seal carried two distance
-rows to two anchors on a line through it — both gradients along the axis, which
-is exactly the degenerate pair `rigidOffset` exists to replace. Every row of the
-maintainer's triangle was satisfied to 5e-7 at the drawn pose and least squares
-could get no nearer than 1.3e-5 of one. `collectConstraints` writes the four
-joints as one body instead, **known joints first**, so no row is a promise about
-two boundary joints that the walk can break on its way.
-
-### A triangle of held cylinders is force-*indeterminate*, and so are its bars
-
-Welding one corner makes two bodies pinned at two points, which share their load
-in no unique way. The drawer says "more supports than equilibrium can determine"
-— about the drawing, not about the holding — and the same shape drawn as plain
-bars says it too. Ask the holding force of a determinate machine (the published
-*Four-bar on a held cylinder*) when you want a number.
 
 ### Split Joint treats a floating slot's carrier as a body
 
@@ -2304,3 +2515,60 @@ The live free barrel and rod do not use that easing. `ghostArtwork` must request
 for free cylinder members as well: routing them through `linkArtwork` made the ghost's corners
 differ from the live part, despite matching colors. The ghost-artwork spec and cylinder-colors
 browser suite guard the actual painter.
+
+### Restacking the cylinder and setup branches (2026-09-26)
+
+PR bases alone do not make a stack current: verify that each parent's head is an ancestor of
+its child. The late cylinder commit in #30 overlapped #33's display sizing and tabs and #35's
+mobility and setup refactors. Preserve cylinder holding and drive-direction behavior, but use
+the newer geometry-preserving display sizing. Carry Holding Force into the shared force tabs,
+and migrate cylinder notes and their tests from `state`/`body` to `severity`/`summary`/`fixes`.
+Notes remain informational and do not count as warnings. Keep the solver's loose-cylinder
+advice too. Save original refs before replaying, and compare each PR's old and new ranges. (Cylinder holding, its note and Holding Force were withdrawn afterwards, decision S30.)
+
+
+### A grounded slider is "known" before anything has slid it
+
+`PositionSolver.determineJointOrder` seeds every grounded joint as known, a grounded
+`PrisJoint` included, because its slot line is fixed; the joint itself still travels. The
+deferred sweep used to look only at joints not yet known, so a body carried on grounded guides
+alone never got a step: a Scotch yoke on two guides placed its crank pin, found nothing
+pending, and stood still while the pin left the slot. `unslidGuide` puts such a guide back in
+the sweep, for `orderSlideAssembly` only.
+
+### A step toward one freedom may take more than one away
+
+Where no single edit leaves one freedom, the drawer lists steps (`takesSomeAway`): edits that
+leave fewer freedoms, at least one, and the input still driving exactly one of them. Grounding
+the free end of a ram takes two at once; grounding a plate's hanging link where it pins the
+input's own part takes two as well, and is left out because the input could no longer turn.
+
+### A body's rows are written from its known joints first
+
+`collectConstraints` writes each link as a rigid body from its first two joints, and a third is
+placed from both at once (`rigidOffset`) only when both are anchors it can measure from. In the
+order a link lists its joints, an unknown one could be an anchor: a cylinder's barrel welded to a
+bar grounded at A and Y, listed A, B, Y, tied B to A and to Y by two distances, which say nothing
+across the line when the three are collinear, and the solve was refused. Known joints go first.
+
+### Making a Pin-in-slot Prismatic fuses every rider, not just the turn
+
+A Prismatic joint holds every link riding it rigid with the others (`assignBodies`). Counting the
+change as "this slide may no longer turn" is the same thing only for one rider; the gripper's rail
+pin carries a link and a jaw, and the advice offered a Prismatic change that counted one and made
+the drawing over-constrained. `prismaticAt` fuses the riders' bodies as well.
+
+### A slot let go of still leaves its riders pinned together
+
+`aloneWith` asks whether the input's own part can move with the rest of the drawing let go. A
+sliding joint whose slot is cut in a body that was let go used to be dropped entirely, and with
+it the pin joining the links that ride it: a crank and a link both grounded, joined at a pin in a
+plate's slot, read as two free cranks rather than a rigid triangle, and the drawer said the input
+started at a limit. `slidePair` now declines a slot whose carrier is not among the bodies, and the
+riders are pinned to each other as at any other joint.
+
+### The advice offers Prismatic only on a slot in the frame
+
+A Pin-in-slot riding a slot in a moving link, made Prismatic, counts right and the solver refuses
+it (`swingingBlockFixture`): the rider's angle follows a carrier that is itself unknown. Offered,
+it took a reader from three freedoms to "can't take a first step". `typeFixes` skips it.

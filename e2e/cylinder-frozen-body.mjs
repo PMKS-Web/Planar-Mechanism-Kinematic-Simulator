@@ -50,6 +50,13 @@ const drawerText = () =>
     .locator('app-analysis-setup')
     .innerText()
     .catch(() => '');
+/** The drawer's text with every issue's fixes open, as a reader who asked for them sees it. */
+const drawerTextOpen = async () => {
+  // Only the shut ones: an issue alone in its section starts open.
+  const closed = page.locator('app-analysis-setup issue-block .issueToggle[aria-expanded="false"]');
+  while ((await closed.count()) > 0) await closed.first().click();
+  return drawerText();
+};
 const panelText = () => page.locator('app-left-tabs').innerText();
 
 /**
@@ -123,17 +130,13 @@ async function build({ drive }) {
 let ids = await build({ drive: false });
 await tab('Kinematic').click();
 await page.waitForTimeout(600);
-let text = await drawerText();
+let text = await drawerTextOpen();
 check(
   'with nothing driven, the drawer says nothing drives it',
   text.includes('No input is set'),
   text.slice(0, 160)
 );
-check(
-  'and offers a joint to drive',
-  /Right-click joint [A-Z] and set it as the input/.test(text),
-  text.slice(0, 200)
-);
+check('and offers a joint to drive', /Add Input to joint [A-Z]/.test(text), text.slice(0, 400));
 
 // --- with the input on: it runs ---------------------------------------------
 ids = await build({ drive: true });
@@ -158,8 +161,18 @@ const readiness = await page.evaluate(() => {
   const m = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
   return m.readinessOfEachMechanism().map((r) => ({
     ready: r.ready,
-    blockers: r.checks.filter((c) => c.state === 'blocker').map((c) => c.title),
-    said: r.checks.map((c) => `${c.title} ${c.body}`).join(' '),
+    blockers: r.checks.filter((c) => c.severity === 'blocker').map((c) => c.title),
+    said: r.checks
+      .map((c) =>
+        [c.title, c.summary, ...c.fixes]
+          .map((piece) =>
+            Array.isArray(piece)
+              ? piece.map((bit) => (typeof bit === 'string' ? bit : bit.label)).join('')
+              : piece
+          )
+          .join(' ')
+      )
+      .join(' '),
   }));
 });
 check(
@@ -174,22 +187,23 @@ check(
 );
 check(
   'and never says nothing drives it',
-  readiness.every((r) => !/No input is set|set it as the input/.test(r.said)),
+  readiness.every((r) => !/No input is set|Add Input to joint/.test(r.said)),
   readiness.map((r) => r.said).join(' ')
 );
 
 // The chip's own drawer, opened the way a reader opens it.
 await page.locator('.tabButton', { hasText: 'Kinematic' }).locator('chip-block').click();
 await page.waitForTimeout(500);
-text = await drawerText();
+text = await drawerTextOpen();
 check(
   'the drawer says the cylinder cannot extend, and which welds to undo',
-  text.includes('A cylinder cannot extend') && /Unweld joint [A-Z] or joint [A-Z]/.test(text),
-  text.slice(0, 260)
+  /Cylinder [A-Z]+ can't extend/.test(text) &&
+    /Set joint [A-Z] to Revolute\s+Set joint [A-Z] to Revolute/.test(text),
+  text.slice(0, 400)
 );
 check(
   'and does not blame the linkage for binding on it',
-  !text.includes('the mechanism binds before the cylinder does'),
+  !text.includes('locks up before'),
   text.slice(0, 260)
 );
 await page.keyboard.press('Escape');
@@ -288,12 +302,12 @@ const inputRow = menu.rows.find((one) => /Input/.test(one.label ?? ''));
 check('right-clicking the seal opens its own card', menu.title === `Joint ${ids.seal}`, menu.title);
 check(
   'the Add Input row is grayed with the reason the model gives',
-  !!inputRow && inputRow.off === true && /cannot extend/.test(inputRow.why ?? ''),
+  !!inputRow && inputRow.off === true && /can't extend/.test(inputRow.why ?? ''),
   JSON.stringify(inputRow)
 );
 check(
   'and the reason behind it names the welds to undo',
-  /Unweld joint [A-Z] or joint [A-Z]/.test(inputRow?.long ?? ''),
+  /Set joint [A-Z] or joint [A-Z] to Revolute/.test(inputRow?.long ?? ''),
   inputRow?.long ?? ''
 );
 await page.keyboard.press('Escape');

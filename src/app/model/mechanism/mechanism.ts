@@ -3,7 +3,6 @@ import { Link, RealLink } from '../link';
 import { assignBodies, BodyAssignment } from './bodies';
 import { mobilityFromGeometry } from './mobility';
 import { freedomsOf } from './freedoms';
-import { cylinderHolds } from './cylinder-hold';
 import { Force } from '../force';
 import { PositionSolver, PositionSolverDriveState, PRISMATIC_INPUT_STEP } from './position-solver';
 import { InstantCenter } from '../instant-center';
@@ -389,22 +388,14 @@ export class Mechanism {
   }
 
   /**
-   * The mobility this machine is judged by, once its passive cylinders have
-   * been asked whether they are holding their length.
+   * The mobility this machine is judged by.
    *
-   * The count itself is `freedoms.ts`; what happens here is deciding the
-   * machine it is a count *of*. A cylinder nothing drives and nothing moves is
-   * a rigid link of the length it was drawn at (decision S28), so it is merged
-   * into one body with its two members -- exactly as a cylinder welded shut at
-   * both ends already is (S25) -- and the count is taken of what results. The
-   * number every reader is shown, and every solver works to, is therefore the
-   * machine's effective mobility rather than a count of a drawing nobody meant.
+   * The count itself is `freedoms.ts`, taken over the drawing's own bodies. A
+   * cylinder is a sliding joint like any other and adds its freedom, unless
+   * both its ends are on one rigid body, which `assignBodies` already knows
+   * (S25).
    */
   determineDegreesOfFreedom(): number {
-    const holds = cylinderHolds(this.joints[0], this.links[0]);
-    this._heldCylinderSeals = holds.held;
-    this._looseCylinderSeals = holds.loose;
-    this._bodyMerges = holds.merges;
     const { counted, dof } = freedomsOf(this.joints[0], this.links[0], this.bodyAssignment());
     this.countedFreedoms = counted;
     return dof;
@@ -413,28 +404,8 @@ export class Mechanism {
   /** Gruebler's own count, kept for the diagnosis a failed solve makes. */
   private countedFreedoms = 0;
 
-  /** The seal ids of this machine's cylinders that are holding their length. */
-  private _heldCylinderSeals: ReadonlySet<string> = new Set<string>();
-
-  /** Barrel/rod root pairs those holds make one body of. */
-  private _bodyMerges: string[][] = [];
-
-  /** Seals whose length nothing decides, which a freedom had to be left for. */
-  private _looseCylinderSeals: ReadonlySet<string> = new Set<string>();
-
-  /** See `_heldCylinderSeals`; empty for every machine with nothing to hold. */
-  get heldCylinderSeals(): ReadonlySet<string> {
-    return this._heldCylinderSeals;
-  }
-
-  /** See `CylinderHoldReport.loose`: where a surplus freedom actually is. */
-  get looseCylinderSeals(): ReadonlySet<string> {
-    return this._looseCylinderSeals;
-  }
-
   /**
-   * What a rigid body is in *this* machine: the drawing's own answer, plus
-   * whatever its passive cylinders are holding rigid.
+   * What a rigid body is in *this* machine: the drawing's own answer.
    *
    * Two links pinned to each other at two or more shared joints cannot move
    * relative to each other — the second pin constrains nothing the first did
@@ -445,14 +416,9 @@ export class Mechanism {
    * already spans): a perfectly ordinary four-bar then counts as DOF 0 and
    * refuses to simulate. Collapsing such links into one body before counting
    * removes the paradox.
-   *
-   * A cylinder holding its length is merged here too, and by the same call:
-   * `cylinderHolds` has already decided which, and a passive ram the machine
-   * cannot move is one body with its members exactly as a welded-shut one is
-   * (decisions S25 and S28).
    */
   private bodyAssignment(): BodyAssignment {
-    return assignBodies(this.joints[0], this.links[0], this._bodyMerges);
+    return assignBodies(this.joints[0], this.links[0]);
   }
 
   /** The freedoms the drawing's geometry has, second order and all. */
@@ -497,6 +463,73 @@ export class Mechanism {
 
   /** One refinement per build, and never again after its fallback re-solve. */
   private refineAttempted = false;
+
+  /** Whether this build has already been asked of the simultaneous route. */
+  private wholeAttempted = false;
+
+  /**
+   * Solve the drawing as one system when the joint-by-joint walk cannot take a
+   * first step from where it was drawn.
+   *
+   * The walk places joints outward from the input one at a time, and some
+   * drawings cannot be put in that order from where their input is: set the
+   * input on a scissor lift's floor pivot, or on a hood hinge's grounded arm,
+   * and it finds no first step in either direction. That was reported as a dead
+   * position, with advice to drag a joint off a limit the drawing was not at --
+   * and the simultaneous route, which a welded mount has used all along, solves
+   * them. So it is asked once, from the same start, before anything is called
+   * a dead position. Returns whether it was asked, since its answer then
+   * stands, valid or not.
+   */
+  private solveWholeInstead(
+    inputAngVel: number,
+    revoluteStep: number,
+    prismaticStep: number | undefined
+  ): boolean {
+    if (this.wholeAttempted || PositionSolver.coupledRoute) return false;
+    this.wholeAttempted = true;
+    // Nothing past the start pose was kept, and the start is what the walk
+    // was given. Held rather than trusted to survive: a failed attempt clears
+    // the frames, and the walk may need them again.
+    const start = {
+      joints: this._joints[0],
+      links: this._links[0],
+      forces: this._forces[0],
+      loops: this._requiredLoops.slice(),
+      speed: this._inputAngularVelocities[0],
+    };
+    const rewind = () => {
+      this._joints = [start.joints];
+      this._links = [start.links];
+      this._forces = [start.forces];
+      this._timeNum = [];
+      this._addedSamples = [];
+      this._inputAngularVelocities = [start.speed];
+      this._requiredLoops = start.loops.slice();
+      this.mechanismValid = true;
+      this._failure = undefined;
+      this._cycleGap = undefined;
+      this._hiddenFreedoms = undefined;
+      this._unreachableJoints = [];
+    };
+    rewind();
+    const forced = PositionSolver.forceCoupledRoute;
+    PositionSolver.forceCoupledRoute = true;
+    try {
+      this.findFullMovementPos(inputAngVel, revoluteStep, prismaticStep);
+    } finally {
+      PositionSolver.forceCoupledRoute = forced;
+    }
+    if (!this.mechanismValid) {
+      // As the refinement does when its fine pass fails: walk it again, so the
+      // failure reported, and the solver's statics everything after a build
+      // reads -- what the walk could not place, among them -- are the walk's
+      // own rather than a route this drawing was only tried on.
+      rewind();
+      this.findFullMovementPos(inputAngVel, revoluteStep, prismaticStep);
+    }
+    return true;
+  }
 
   /**
    * How far a joint may move between two samples before the step is cut finer.
@@ -674,7 +707,7 @@ export class Mechanism {
     PositionSolver.resetStaticVariables();
     // After the reset, which is what puts the default back.
     PositionSolver.revoluteSampleStep = revoluteStep;
-    PositionSolver.determineJointOrder(this.joints[0], this.links[0], this._heldCylinderSeals);
+    PositionSolver.determineJointOrder(this.joints[0], this.links[0]);
     // A grounded slider's refined spacing, once its stroke has been walked at
     // the fixed one. After the joint order, which is where a cylinder sets
     // its own; a cylinder is never refined, its stroke being known up front.
@@ -928,7 +961,14 @@ export class Mechanism {
         // any other. Falling back to the one-turn cycle instead left it
         // labeled as looping, with the drawing teleporting at every wrap.
         if ((!simForward && currentTimeStamp === 0) || falseTwice === 2) {
-          //If we are here, the mechnism is in a toggle point
+          // No first step either way is a walk that could not start before it
+          // is a dead position; see `solveWholeInstead`.
+          if (
+            currentTimeStamp === 0 &&
+            this.solveWholeInstead(requestedAngVel, revoluteStep, prismaticStep)
+          ) {
+            return;
+          }
           this.explainDeadPosition();
           return;
         }
@@ -1626,8 +1666,7 @@ export class Mechanism {
         this.links[index],
         analysisType,
         this.gravity,
-        this.unit,
-        this._heldCylinderSeals
+        this.unit
       );
       for (const joint of this.joints[index].filter((candidate) =>
         this.isForceAnalysisJoint(candidate)

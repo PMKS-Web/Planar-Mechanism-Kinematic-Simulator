@@ -38,9 +38,71 @@ export function mobilityFromGeometry(
   links: Link[],
   assignment: BodyAssignment
 ): number | undefined {
-  const frame = coordinateFrame(joints, links, assignment);
-  if (!frame) return undefined;
-  const { constraints, rows, reach, width } = frame;
+  const system = constraintSystemOf(joints, links, assignment);
+  return system ? freedomsOf(system) : undefined;
+}
+
+/**
+ * The drawing written as coordinates and what its joints forbid, so a caller can
+ * ask about an edit before anyone makes it.
+ *
+ * `mobilityFromGeometry` asks one question of this; `free-motion.ts` asks
+ * several -- which parts still move with the input held, and whether grounding
+ * or ungrounding one joint would leave exactly one freedom -- by adding a hold,
+ * or building the system again for the drawing an edit would leave, and counting
+ * again, never by touching a joint.
+ */
+export interface ConstraintSystem {
+  /** Three coordinates for every moving body. */
+  readonly width: number;
+  /** How far the drawing reaches, so every tolerance means the same at any scale. */
+  readonly reach: number;
+  /** What every joint forbids, as the drawing stands. */
+  readonly constraints: Constraint[];
+  /** Where a body's coordinates sit in the vector; the world has none. */
+  bodyAt(body: string): Body;
+}
+
+/** Undefined where there is nothing to ask: no moving body, or nothing joined. */
+export function constraintSystemOf(
+  joints: Joint[],
+  links: Link[],
+  assignment: BodyAssignment,
+  rotates: (joint: PrisJoint) => boolean = (joint) => joint.rotates
+): ConstraintSystem | undefined {
+  const bodies = [...assignment.movingBodies];
+  if (bodies.length === 0) return undefined;
+  const column = new Map(bodies.map((body, index) => [body, index * 3]));
+
+  // Each body turns about its own joints' average rather than about the origin.
+  // A body's turn column is its joints' offsets from that point, so a drawing
+  // sitting far from the origin would otherwise have turn columns hundreds of
+  // times the size of its translation columns and the rank test would be
+  // reading rounding noise.
+  const pivot = pivotsOf(links, assignment);
+  const bodyAt = (body: string): Body => ({
+    at: column.get(body),
+    pivot: pivot.get(body) ?? { x: 0, y: 0 },
+  });
+
+  const constraints = constraintsOf(joints, assignment, bodyAt, rotates);
+  if (constraints.length === 0) return undefined;
+  return { width: bodies.length * 3, reach: reachOf(links), constraints, bodyAt };
+}
+
+/**
+ * How many freedoms these constraints leave that the linkage can actually take.
+ *
+ * Every freedom the rank finds is put to a second question -- step along it and
+ * see whether the constraints can be brought back together -- and only the ones
+ * that survive are counted.
+ */
+export function freedomsOf(
+  system: ConstraintSystem,
+  constraints: Constraint[] = system.constraints
+): number {
+  const { width, reach } = system;
+  const rows = constraints.flatMap((one) => rowsFor(one, width));
   const free = nullSpace(rows, width);
   if (free.length === 0) return 0;
 
@@ -54,135 +116,49 @@ export function mobilityFromGeometry(
   return Math.max(oneByOne, survivingSubspace(free, constraints, rows, reach, width));
 }
 
-/** The drawing written as coordinates, rows and a size: everything below reads it. */
-interface CoordinateFrame {
-  constraints: Constraint[];
-  rows: number[][];
-  width: number;
-  reach: number;
-  bodyAt: (body: string) => Body;
-  assignment: BodyAssignment;
+/**
+ * The directions these constraints leave free to first order, each with the
+ * verdict of the second-order test on its own.
+ */
+export function freeDirectionsOf(
+  system: ConstraintSystem,
+  constraints: Constraint[] = system.constraints
+): { direction: number[]; survives: boolean }[] {
+  const { width, reach } = system;
+  const rows = constraints.flatMap((one) => rowsFor(one, width));
+  return nullSpace(rows, width).map((direction) => ({
+    direction,
+    survives: survivesSecondOrder(direction, constraints, rows, reach, width),
+  }));
 }
 
-/**
- * The drawing as a vector of body coordinates, with the rows its joints write.
- *
- * Split out because two questions are asked of the same arithmetic: how many
- * freedoms there are, and -- for `heldCylinderSeals` -- which of them a
- * particular slide moves in. Building it twice would be two chances for the two
- * answers to be about different drawings.
- */
-function coordinateFrame(
-  joints: Joint[],
-  links: Link[],
-  assignment: BodyAssignment
-): CoordinateFrame | undefined {
-  const bodies = [...assignment.movingBodies];
-  if (bodies.length === 0) return undefined;
-  const column = new Map(bodies.map((body, index) => [body, index * 3]));
-  const width = bodies.length * 3;
-
-  // Each body turns about its own joints' average rather than about the origin.
-  // A body's turn column is its joints' offsets from that point, so a drawing
-  // sitting far from the origin would otherwise have turn columns hundreds of
-  // times the size of its translation columns and the rank test would be
-  // reading rounding noise.
-  const pivot = pivotsOf(links, assignment);
-  const bodyAt = (body: string): Body => ({
-    at: column.get(body),
-    pivot: pivot.get(body) ?? { x: 0, y: 0 },
-  });
-
-  const constraints = constraintsOf(joints, assignment, bodyAt);
-  if (constraints.length === 0) return undefined;
-
+/** How fast a body's copy of a point moves along a free direction, to first order. */
+export function pointMotion(
+  body: Body,
+  at: { x: number; y: number },
+  direction: number[]
+): { x: number; y: number } {
+  if (body.at === undefined) return { x: 0, y: 0 };
+  const turn = direction[body.at + 2];
   return {
-    constraints,
-    rows: constraints.flatMap((one) => rowsFor(one, width)),
-    width,
-    reach: reachOf(links),
-    bodyAt,
-    assignment,
+    x: direction[body.at] - turn * (at.y - body.pivot.y),
+    y: direction[body.at + 1] + turn * (at.x - body.pivot.x),
   };
 }
 
-/**
- * What a drawing's freedoms are, and what a given slide does in each of them.
- *
- * The same Jacobian mobility is counted from, opened up for the one other
- * question anybody asks of it: with the input held still, can this slide still
- * move? That is a null-space question and nothing else -- a row is added for
- * the driven coordinate, the remaining freedoms are taken, and each slide's
- * travel is read off them. Deciding it any other way would be a second opinion
- * about the same geometry (decision S28).
- */
-export interface FreedomFrame {
-  /** How far the drawing reaches, which every tolerance here is a fraction of. */
-  readonly reach: number;
-  /** A basis for the motions the rows allow, each scaled to a step of that size. */
-  freedoms(extraRows?: readonly number[][]): number[][];
-  /** The row that holds this slide's travel still, or nothing if it has no slot. */
-  slideRow(joint: PrisJoint): number[] | undefined;
-  /** The row that holds a body's turn still, measured against another body. */
-  turnRow(driven: string, reference?: string): number[] | undefined;
-  /** How far this slide's rider travels along its slot under a displacement. */
-  slideAlong(row: readonly number[], displacement: readonly number[]): number;
+/** Holds two bodies' angle to each other: a pin input, held still. */
+export function holdTurn(a: Body, b: Body): Constraint {
+  return { kind: 'turn', a, b };
 }
 
-/** The drawing's freedoms, ready to be asked what each of them moves. */
-export function freedomFrameOf(
-  joints: Joint[],
-  links: Link[],
-  assignment: BodyAssignment
-): FreedomFrame | undefined {
-  const frame = coordinateFrame(joints, links, assignment);
-  if (!frame) return undefined;
-  const { rows, width, reach, bodyAt, constraints } = frame;
-  const blank = () => new Array<number>(width).fill(0);
-
-  return {
-    reach,
-    freedoms(extraRows: readonly number[][] = []): number[][] {
-      return nullSpace([...rows, ...extraRows], width)
-        .map((direction) => scaledStep(direction, constraints, reach))
-        .filter((step): step is number[] => step !== undefined);
-    },
-    slideRow(joint: PrisJoint): number[] | undefined {
-      const pair = slidePair(joint, frame.assignment, bodyAt);
-      if (!pair) return undefined;
-      // The same row the slot's own constraint writes, turned a quarter turn:
-      // that one forbids leaving the slot, this one measures going along it.
-      const alongX = Math.cos(pair.angle);
-      const alongY = Math.sin(pair.angle);
-      const row = blank();
-      for (const [body, sign] of [
-        [pair.rider, 1],
-        [pair.carrier, -1],
-      ] as const) {
-        if (body.at === undefined) continue;
-        const rx = joint.x - body.pivot.x;
-        const ry = joint.y - body.pivot.y;
-        row[body.at] += sign * alongX;
-        row[body.at + 1] += sign * alongY;
-        row[body.at + 2] += sign * (alongY * rx - alongX * ry);
-      }
-      return row;
-    },
-    turnRow(driven: string, reference?: string): number[] | undefined {
-      const on = bodyAt(driven);
-      const against = reference === undefined ? undefined : bodyAt(reference);
-      // A drive against the world holds the one body's turn; a drive between
-      // two moving bodies holds the difference, which is what it prescribes.
-      if (on.at === undefined && against?.at === undefined) return undefined;
-      const row = blank();
-      if (on.at !== undefined) row[on.at + 2] += 1;
-      if (against?.at !== undefined) row[against.at + 2] -= 1;
-      return row;
-    },
-    slideAlong(row: readonly number[], displacement: readonly number[]): number {
-      return row.reduce((total, value, index) => total + value * displacement[index], 0);
-    },
-  };
+/** Holds a rider where it is along its slot: a slider or cylinder input, held still. */
+export function holdSlide(
+  at: { x: number; y: number },
+  rider: Body,
+  carrier: Body,
+  angle: number
+): Constraint {
+  return { kind: 'along', at, rider, carrier, angle };
 }
 
 /**
@@ -344,6 +320,13 @@ function sum(a: number[], b: number[]): number[] {
   return a.map((value, index) => value + b[index]);
 }
 
+/** The bodies a constraint ties together. */
+function bodiesOf(constraint: Constraint): Body[] {
+  return constraint.kind === 'pin' || constraint.kind === 'turn'
+    ? [constraint.a, constraint.b]
+    : [constraint.rider, constraint.carrier];
+}
+
 /**
  * A freedom scaled so the step moves the drawing by a thousandth of its own
  * size, whatever units it is drawn in and however the freedom mixes turning
@@ -356,11 +339,10 @@ function scaledStep(
 ): number[] | undefined {
   let worst = 0;
   for (const constraint of constraints) {
-    const bodies =
-      constraint.kind === 'pin'
-        ? [constraint.a, constraint.b]
-        : [constraint.rider, constraint.carrier];
-    for (const body of bodies) {
+    // A held turn has no point of its own; its bodies' motion is measured at
+    // the points the other constraints put them.
+    if (constraint.kind === 'turn') continue;
+    for (const body of bodiesOf(constraint)) {
       if (body.at === undefined) continue;
       const armX = constraint.at.x - body.pivot.x;
       const armY = constraint.at.y - body.pivot.y;
@@ -374,13 +356,23 @@ function scaledStep(
 }
 
 /** A body's place in the coordinate vector; `at` undefined is the world, which is fixed. */
-interface Body {
+export interface Body {
   at: number | undefined;
   pivot: { x: number; y: number };
 }
 
-type Constraint =
+export type Constraint =
   | { kind: 'pin'; at: { x: number; y: number }; a: Body; b: Body }
+  /** Two bodies may not turn against each other: a driven pin, held. */
+  | { kind: 'turn'; a: Body; b: Body }
+  /** A rider may not move along its slot: a driven slider, held. */
+  | {
+      kind: 'along';
+      at: { x: number; y: number };
+      rider: Body;
+      carrier: Body;
+      angle: number;
+    }
   | {
       kind: 'slide';
       at: { x: number; y: number };
@@ -457,7 +449,8 @@ function reachOf(links: Link[]): number {
 function constraintsOf(
   joints: Joint[],
   assignment: BodyAssignment,
-  bodyAt: (body: string) => Body
+  bodyAt: (body: string) => Body,
+  rotates: (joint: PrisJoint) => boolean
 ): Constraint[] {
   const constraints: Constraint[] = [];
   for (const joint of joints) {
@@ -475,7 +468,7 @@ function constraintsOf(
           rider: pair.rider,
           carrier: pair.carrier,
           angle: pair.angle,
-          rotates: joint.rotates,
+          rotates: rotates(joint),
         });
         // Anything else riding here is pinned to the first rider, and the count
         // stays the k-1 pairings Gruebler charges for.
@@ -519,7 +512,9 @@ function slidePair(
     : joint.carrier
       ? assignment.bodyOf(joint.carrier)
       : undefined;
-  if (carrierBody === undefined) return undefined;
+  // A slot cut into a body the caller has let go of holds nothing: whatever
+  // rides it is left pinned to each other at the joint, and nothing more.
+  if (carrierBody === undefined || !meeting.includes(carrierBody)) return undefined;
   const rest = meeting.filter((body) => body !== carrierBody);
   if (rest.length === 0) return undefined;
   const [rider, ...alsoHere] = rest;
@@ -554,6 +549,30 @@ function rowsFor(constraint: Constraint, width: number): number[][] {
       inY[body.at + 2] += sign * r.x;
     }
     return [inX, inY];
+  }
+
+  if (constraint.kind === 'turn') {
+    const turning = row();
+    if (constraint.a.at !== undefined) turning[constraint.a.at + 2] += 1;
+    if (constraint.b.at !== undefined) turning[constraint.b.at + 2] -= 1;
+    return [turning];
+  }
+
+  if (constraint.kind === 'along') {
+    const directionX = Math.cos(constraint.angle);
+    const directionY = Math.sin(constraint.angle);
+    const along = row();
+    for (const [body, sign] of [
+      [constraint.rider, 1],
+      [constraint.carrier, -1],
+    ] as const) {
+      if (body.at === undefined) continue;
+      const r = arm(body, constraint.at);
+      along[body.at] += sign * directionX;
+      along[body.at + 1] += sign * directionY;
+      along[body.at + 2] += sign * (directionY * r.x - directionX * r.y);
+    }
+    return [along];
   }
 
   const normalX = -Math.sin(constraint.angle);
@@ -600,6 +619,16 @@ function residual(constraint: Constraint, d: number[]): number[] {
     const b = moved(constraint.b, constraint.at, d);
     return [a.x - b.x, a.y - b.y];
   }
+  const turnOf = (body: Body) => (body.at === undefined ? 0 : d[body.at + 2]);
+  if (constraint.kind === 'turn') {
+    return [turnOf(constraint.a) - turnOf(constraint.b)];
+  }
+  if (constraint.kind === 'along') {
+    const angle = constraint.angle + turnOf(constraint.carrier);
+    const rider = moved(constraint.rider, constraint.at, d);
+    const carrier = moved(constraint.carrier, constraint.at, d);
+    return [Math.cos(angle) * (rider.x - carrier.x) + Math.sin(angle) * (rider.y - carrier.y)];
+  }
   // The slot turns with the body it is cut into, so the direction across it
   // does too -- reading it as fixed is what makes a floating slot look rigid.
   const carrierTurn = constraint.carrier.at === undefined ? 0 : d[constraint.carrier.at + 2];
@@ -638,11 +667,10 @@ function survivesSecondOrder(
   // sliding.
   let worst = 0;
   for (const constraint of constraints) {
-    const bodies =
-      constraint.kind === 'pin'
-        ? [constraint.a, constraint.b]
-        : [constraint.rider, constraint.carrier];
-    for (const body of bodies) {
+    // A held turn has no point of its own; its bodies' motion is measured at
+    // the points the other constraints put them.
+    if (constraint.kind === 'turn') continue;
+    for (const body of bodiesOf(constraint)) {
       if (body.at === undefined) continue;
       const armX = constraint.at.x - body.pivot.x;
       const armY = constraint.at.y - body.pivot.y;

@@ -56,34 +56,31 @@ describe('naming a machine so it survives a rebuild', () => {
     expect(partitionKey(onlySecond.mechanisms[0])).toBe(second);
   });
 
-  it('tells two cranks sharing one ground pivot apart', () => {
-    // A grounded joint belongs to every machine bolted to it, so it cannot be
-    // anybody's name. Only the moving joints can.
+  it('names a machine by a moving joint, never by its pivot', () => {
+    // Both machines start on a grounded letter; neither is named by it.
     const { mechanisms } = split({
       joints: [
         { id: 'A', x: 0, y: 0, ground: true, input: true },
         { id: 'B', x: 0, y: 1 },
         { id: 'C', x: 3, y: 2 },
         { id: 'D', x: 4, y: 0, ground: true },
-        { id: 'E', x: 1, y: -1 },
-        { id: 'F', x: 3, y: -3 },
-        { id: 'G', x: 5, y: 0, ground: true },
+        { id: 'E', x: 6, y: 0, ground: true, input: true },
+        { id: 'F', x: 6, y: 1 },
+        { id: 'G', x: 9, y: 2 },
+        { id: 'H', x: 10, y: 0, ground: true },
       ],
       links: [
         { joints: 'AB' },
         { joints: 'BC' },
         { joints: 'CD' },
-        { joints: 'AE' },
         { joints: 'EF' },
         { joints: 'FG' },
+        { joints: 'GH' },
       ],
       inputAngVel: 1,
     });
 
-    expect(mechanisms).toHaveLength(2);
-    const keys = mechanisms.map(partitionKey);
-    expect(new Set(keys).size).toBe(2);
-    expect(keys.some((key) => key === 'A')).toBe(false);
+    expect(mechanisms.map(partitionKey)).toEqual(['B', 'F']);
   });
 });
 

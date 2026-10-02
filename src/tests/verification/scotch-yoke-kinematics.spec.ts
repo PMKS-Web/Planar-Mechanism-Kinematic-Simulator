@@ -5,6 +5,7 @@ import {
   INPUT_SPEED,
   scotchYokeFixture,
   scotchYokeGuidedAtFarEndFixture,
+  scotchYokeOnTwoGuidesFixture,
   scotchYokeWithTracerFixture,
   YOKE_CRANK,
 } from '../../test-utils/verification/slot-fixtures';
@@ -47,6 +48,22 @@ describe('the kinematics of a Scotch yoke', () => {
       );
       // Welded to a horizontal guide, so there is no cross-guide motion at all.
       expect(velocity[1], `C y-dot at step ${step}`).toBeCloseTo(0, 6);
+    }
+  });
+
+  it('moves a yoke on two grounded guides at the same rate', () => {
+    const built = buildMechanism(scotchYokeOnTwoGuidesFixture());
+
+    for (const step of SAMPLES) {
+      const { theta } = solveAt(built, step);
+      for (const id of ['C', 'D']) {
+        const velocity = KinematicsSolver.jointVelMap.get(id)!;
+        expect(velocity[0], `${id} x-dot at step ${step}`).toBeCloseTo(
+          -YOKE_CRANK * INPUT_SPEED * Math.sin(theta),
+          3
+        );
+        expect(velocity[1], `${id} y-dot at step ${step}`).toBeCloseTo(0, 6);
+      }
     }
   });
 

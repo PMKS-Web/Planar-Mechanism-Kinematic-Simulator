@@ -1,0 +1,483 @@
+import { isFrameBar } from '../actuator';
+import { cylindersIn } from '../cylinder';
+import { refuseJointType } from '../joint-type';
+import { Joint, PrisJoint, RealJoint } from '../joint';
+import { Link, RealLink } from '../link';
+import { assignBodies, BodyAssignment, WORLD } from './bodies';
+import { ConstraintSystem, holdTurn } from './mobility';
+import { MechanismPartition } from './mechanism-partition';
+import {
+  Edit,
+  isFreeEnd,
+  jointsBeside,
+  leavesOneMachine,
+  MAX_CANDIDATES,
+  mergedAt,
+  MobilityFix,
+  staysHeld,
+  Trial,
+  unweldedAt,
+  prismaticAt,
+  startsAtLimit,
+  weldedAt,
+  withoutBody,
+  withoutLink,
+} from './mobility-edits';
+
+/**
+ * The single edits that would give a mechanism one degree of freedom, each
+ * counted on the drawing it would leave (`mobility-edits.ts`).
+ */
+
+/**
+ * Grounding one loose joint, counted: one machine, one degree of freedom without
+ * the hold, none with it.
+ *
+ * The bodies are assigned again rather than pinned where they are, because that
+ * is what the Grounded switch does to the drawing: a link whose last free end is
+ * grounded becomes frame, and the chain through the joint stops being one chain.
+ */
+export function groundingFixes(
+  trial: Trial,
+  looseJoints: RealJoint[],
+  hidden: Set<string>,
+  /** What the edit has to count to: one freedom by default, or a step toward it. */
+  counts: (edit: Edit) => boolean = (edit) => leavesOneMachine(trial, edit)
+): MobilityFix[] {
+  const { joints, links } = trial.partition;
+  const fixes: MobilityFix[] = [];
+  for (const joint of looseJoints.slice(0, MAX_CANDIDATES)) {
+    if (joint instanceof PrisJoint || joint.ground || hidden.has(joint.id)) continue;
+    const groundedAt = (one: RealJoint) => one === joint || one.ground;
+    const edit: Edit = {
+      groundedAt,
+      assignment: assignBodies(joints, links, groundedAt),
+      touchesInput: joint === trial.driven,
+    };
+    if (counts(edit)) fixes.push({ kind: 'ground', joint });
+  }
+  return fixes;
+}
+
+/**
+ * The edits that could free a mechanism nothing can move, counted.
+ *
+ * Asked in the order a reader would try them: a ground that is one too many, a
+ * Prismatic joint that would move if it were allowed to turn, then a link that
+ * is one too many. Each is a different drawing, so each is described by what
+ * the edit changes and counted on its own.
+ */
+export function rigidFixes(
+  trial: Trial,
+  assignment: BodyAssignment,
+  own: Set<string>,
+  hidden: Set<string>
+): MobilityFix[] {
+  const { joints, links } = trial.partition;
+  const asDrawn = (joint: RealJoint) => joint.ground;
+  const ready: MobilityFix[] = [];
+  const atLimit: MobilityFix[] = [];
+  let tried = 0;
+  let last: Edit | undefined;
+  const counts = (edit: Edit): boolean => {
+    tried++;
+    last = edit;
+    return leavesOneMachine(trial, edit);
+  };
+  // An edit that counts and leaves the input at a limit is listed after the
+  // ones that leave a drawing ready to play.
+  const fixes = {
+    push: (fix: MobilityFix) => (last && startsAtLimit(trial, last) ? atLimit : ready).push(fix),
+  };
+
+  for (const joint of joints) {
+    if (tried >= MAX_CANDIDATES) break;
+    if (!(joint instanceof RealJoint) || joint instanceof PrisJoint || !joint.ground) continue;
+    // The driven joint's ground is what the input turns against.
+    if (joint === trial.driven || !own.has(joint.id) || hidden.has(joint.id)) continue;
+    // Assigned again rather than edited: a bar pinned down at both ends is part
+    // of the frame, and it stops being frame the moment one end is ungrounded.
+    const groundedAt = (one: RealJoint) => one !== joint && one.ground;
+    if (counts({ groundedAt, assignment: assignBodies(joints, links, groundedAt) })) {
+      fixes.push({ kind: 'unground', joint });
+    }
+  }
+
+  for (const joint of joints) {
+    if (tried >= MAX_CANDIDATES) break;
+    if (!(joint instanceof PrisJoint) || joint.rotates || joint.isSealed) continue;
+    if (!own.has(joint.id) || hidden.has(joint.id)) continue;
+    const rotates = (one: PrisJoint) => one === joint || one.rotates;
+    if (counts({ groundedAt: asDrawn, assignment, rotates })) {
+      fixes.push({ kind: 'pin-in-slot', joint });
+    }
+  }
+
+  // A pin welded that was meant to turn: Welded is one choice away from
+  // Revolute in the joint's type, and nothing on the canvas says which a
+  // joint is until it refuses to move.
+  for (const joint of joints) {
+    if (tried >= MAX_CANDIDATES) break;
+    if (!(joint instanceof RealJoint) || joint instanceof PrisJoint || !joint.isWelded) continue;
+    if (!own.has(joint.id) || hidden.has(joint.id)) continue;
+    const edit = unweldedAt(joints, links, assignment, joint, trial.driven);
+    if (edit && counts(edit)) fixes.push({ kind: 'unweld', joint });
+  }
+
+  const bodyCount = new Map<string, number>();
+  links.forEach((link) => {
+    const body = assignment.bodyOf(link);
+    bodyCount.set(body, (bodyCount.get(body) ?? 0) + 1);
+  });
+  for (const link of links) {
+    if (tried >= MAX_CANDIDATES) break;
+    if (!(link instanceof RealLink)) continue;
+    const body = assignment.bodyOf(link);
+    // Only a link that is a body of its own: deleting one member of a welded
+    // group is not deleting a body, and a cylinder's parts go with the cylinder.
+    if (body === WORLD || bodyCount.get(body) !== 1) continue;
+    if (link.joints.some((joint) => hidden.has(joint.id) || !own.has(joint.id))) continue;
+    // Only a brace: every joint it meets keeps two links, or one and the
+    // ground, once it is gone. Deleting the rod of a slider-crank does leave
+    // one freedom -- the crank's -- by stranding the slider, and deleting a
+    // coupler leaves a crank turning on its own; that is taking the mechanism
+    // apart, not fixing it.
+    if (!link.joints.every((joint) => staysHeld(joint, link, joints))) continue;
+    const kept = links.filter((one) => one !== link);
+    if (counts({ groundedAt: asDrawn, assignment: withoutBody(assignment, body), links: kept })) {
+      fixes.push({ kind: 'delete-link', link });
+    }
+  }
+  return [...ready, ...atLimit];
+}
+
+/**
+ * Two edits that free a mechanism nothing can move, where no one edit does:
+ * a pin ungrounded, then that pin or another welded or ungrounded too. A
+ * moving joint grounded by mistake over a weld that was left off is the pair
+ * this finds; either edit alone leaves the drawing rigid or loose.
+ */
+export function twoStepFixes(trial: Trial, own: Set<string>, hidden: Set<string>): MobilityFix[] {
+  const { joints, links } = trial.partition;
+  const context = {
+    cylinders: cylindersIn(joints),
+    isDriven: (joint: RealJoint) => joint.input,
+    hasSlider: (joint: RealJoint) => joint instanceof PrisJoint,
+  };
+  const pins = joints.filter(
+    (joint): joint is RealJoint =>
+      joint instanceof RealJoint &&
+      !(joint instanceof PrisJoint) &&
+      joint.ground &&
+      joint !== trial.driven &&
+      own.has(joint.id) &&
+      !hidden.has(joint.id)
+  );
+  const fixes: MobilityFix[] = [];
+  let tried = 0;
+  // The pin welded where it was just ungrounded first: a moving joint grounded
+  // by mistake whose weld was left off is one mistake at one joint, and welding
+  // somewhere else changes a link the reader drew to turn.
+  const sameJointFirst = () =>
+    [...fixes].sort((a, b) => Number(!sameJoint(a)) - Number(!sameJoint(b)));
+  for (const [index, pin] of pins.entries()) {
+    const unground: MobilityFix = { kind: 'unground', joint: pin };
+    const groundedAt = (one: RealJoint) => one !== pin && one.ground;
+    const assignment = assignBodies(joints, links, groundedAt);
+    for (const joint of joints) {
+      if (tried >= MAX_CANDIDATES) return sameJointFirst();
+      if (!(joint instanceof RealJoint) || joint instanceof PrisJoint || joint.isWelded) continue;
+      if (joint === trial.driven || !own.has(joint.id) || hidden.has(joint.id)) continue;
+      if (refuseJointType(joint, 'welded', context)) continue;
+      const weld = weldedAt(assignment, joint);
+      if (!weld) continue;
+      tried++;
+      if (leavesOneMachine(trial, { ...weld, groundedAt })) {
+        fixes.push({ kind: 'then', first: unground, second: { kind: 'weld', joint } });
+      }
+    }
+    for (const other of pins.slice(index + 1)) {
+      if (tried >= MAX_CANDIDATES) return sameJointFirst();
+      tried++;
+      const both = (one: RealJoint) => one !== other && groundedAt(one);
+      if (
+        leavesOneMachine(trial, { groundedAt: both, assignment: assignBodies(joints, links, both) })
+      ) {
+        fixes.push({ kind: 'then', first: unground, second: { kind: 'unground', joint: other } });
+      }
+    }
+  }
+  return sameJointFirst();
+}
+
+/** Whether a two-step fix makes both its edits at one joint. */
+function sameJoint(fix: MobilityFix): boolean {
+  return (
+    fix.kind === 'then' &&
+    'joint' in fix.first &&
+    'joint' in fix.second &&
+    fix.first.joint === fix.second.joint
+  );
+}
+
+/**
+ * Two joints drawn beside each other, merged: the likeliest single mistake
+ * there is, and the one no other fix recovers -- grounding the stray joint, or
+ * hanging a link off it, makes a drawing that runs and is not the one meant.
+ * Asked first, and counted like every other fix.
+ */
+export function mergeFixes(
+  trial: Trial,
+  assignment: BodyAssignment,
+  own: Set<string>,
+  hidden: Set<string>
+): MobilityFix[] {
+  const { joints } = trial.partition;
+  return jointsBeside(joints, hidden)
+    .filter(([joint, onto]) => own.has(joint.id) || own.has(onto.id))
+    .slice(0, MAX_CANDIDATES)
+    .filter(([joint, onto]) =>
+      leavesOneMachine(trial, {
+        ...mergedAt(joints, assignment, joint, onto),
+        touchesInput: joint === trial.driven || onto === trial.driven,
+      })
+    )
+    .map(([joint, onto]): MobilityFix => ({ kind: 'merge', joint, onto }));
+}
+
+/**
+ * A link left hanging -- one end on the mechanism, the other on nothing --
+ * deleted. Whether that is the fix depends on what the reader meant: it is as
+ * likely the first bar of more linkage, which is why the sentence offers the
+ * link to ground beside it rather than instead of it.
+ */
+export function danglingDeletes(
+  trial: Trial,
+  assignment: BodyAssignment,
+  own: Set<string>,
+  hidden: Set<string>,
+  /** What the drawing the delete leaves has to count: one freedom, unless a step is asked for. */
+  counts: (edit: Edit) => boolean = (edit) => leavesOneMachine(trial, edit)
+): MobilityFix[] {
+  const { links, joints } = trial.partition;
+  const freeEnd = (joint: Joint, link: Link) =>
+    isFreeEnd(joint, link, joints) && !(joint as RealJoint).input;
+  // What the link hung from keeps what it had before the link was drawn: a
+  // crank's tip is a crank's tip again. Only a joint left on nothing at all
+  // would be taken apart.
+  const keptOn = (joint: Joint, link: Link) =>
+    joint instanceof RealJoint && (joint.ground || joint.links.some((one) => one !== link));
+  const fixes: MobilityFix[] = [];
+  for (const link of links.slice(0, MAX_CANDIDATES)) {
+    if (!(link instanceof RealLink)) continue;
+    const body = assignment.bodyOf(link);
+    if (body === WORLD || links.some((one) => one !== link && assignment.bodyOf(one) === body)) {
+      continue;
+    }
+    if (link.joints.some((joint) => hidden.has(joint.id) || !own.has(joint.id))) continue;
+    if (!link.joints.some((joint) => freeEnd(joint, link))) continue;
+    if (!link.joints.every((joint) => freeEnd(joint, link) || keptOn(joint, link))) continue;
+    const kept = links.filter((one) => one !== link);
+    const edit: Edit = {
+      groundedAt: (one) => one.ground,
+      assignment: withoutBody(assignment, body),
+      links: kept,
+      joints: trial.partition.joints.filter(
+        (joint) => !(link.joints.includes(joint) && freeEnd(joint, link))
+      ),
+    };
+    if (counts(edit)) fixes.push({ kind: 'delete-link', link });
+  }
+  return fixes;
+}
+
+/**
+ * The link to take off an input's pivot, where a third body there leaves the
+ * input unable to say which to turn: a brace drawn from the crank's pivot, or
+ * a link left hanging off it. Counted with the input held on the one link that
+ * is left, because the drawing as it stands has no input to hold.
+ */
+export function untangleFixes(
+  trial: Trial,
+  assignment: BodyAssignment,
+  own: Set<string>,
+  hidden: Set<string>
+): MobilityFix[] {
+  const { driven } = trial;
+  if (!driven || driven instanceof PrisJoint || !driven.ground) return [];
+  const atInput = driven.links.filter(
+    (link): link is RealLink => link instanceof RealLink && !isFrameBar(link)
+  );
+  if (atInput.length !== 2) return [];
+  const { links, joints } = trial.partition;
+  const freeEnd = (joint: Joint, link: Link) => isFreeEnd(joint, link, joints);
+  const fixes: MobilityFix[] = [];
+  const holdOn = (kept: Link) => (system: ConstraintSystem) =>
+    holdTurn(system.bodyAt(assignment.bodyOf(kept)), system.bodyAt(WORLD));
+  for (const link of atInput) {
+    const [kept] = atInput.filter((one) => one !== link);
+    const body = assignment.bodyOf(link);
+    if (body === WORLD) continue;
+    if (link.joints.some((joint) => hidden.has(joint.id) || !own.has(joint.id))) continue;
+    if (
+      !link.joints.every(
+        (joint) => joint === driven || freeEnd(joint, link) || staysHeld(joint, link, joints)
+      )
+    ) {
+      continue;
+    }
+    const keptLinks = links.filter((one) => one !== link);
+    const keptJoints = trial.partition.joints.filter(
+      (joint) => !(link.joints.includes(joint) && freeEnd(joint, link))
+    );
+    // A brace riding a Prismatic slider shares its body with the yoke.
+    const shared = links.some((one) => one !== link && assignment.bodyOf(one) === body);
+    const after = shared ? withoutLink(keptJoints, links, link) : withoutBody(assignment, body);
+    const edit: Edit = {
+      groundedAt: (one) => one.ground,
+      assignment: after,
+      links: keptLinks,
+      joints: keptJoints,
+      hold: (system) => holdTurn(system.bodyAt(after.bodyOf(kept)), system.bodyAt(WORLD)),
+    };
+    if (leavesOneMachine(trial, edit)) fixes.push({ kind: 'delete-link', link });
+  }
+  // Or the far end of one of them grounded, which makes it frame: the bar a
+  // student draws between two pivots, with the second pivot left ungrounded.
+  for (const link of atInput) {
+    const loose = link.joints.filter(
+      (joint): joint is RealJoint =>
+        joint !== driven &&
+        joint instanceof RealJoint &&
+        !joint.ground &&
+        !(joint instanceof PrisJoint)
+    );
+    if (loose.length !== 1 || hidden.has(loose[0].id) || !own.has(loose[0].id)) continue;
+    const [pivot] = loose;
+    const [kept] = atInput.filter((one) => one !== link);
+    const groundedAt = (one: RealJoint) => one === pivot || one.ground;
+    const edit: Edit = {
+      groundedAt,
+      assignment: assignBodies(trial.partition.joints, links, groundedAt),
+      hold: holdOn(kept),
+    };
+    if (leavesOneMachine(trial, edit)) fixes.push({ kind: 'ground', joint: pivot });
+  }
+  return fixes;
+}
+
+/**
+ * A link from a free end to a grounded pivot that has nothing on it. Deleting
+ * a link leaves its pivot behind as a joint on its own, and the free end it
+ * held is the other half of the same mistake: joining them is the drawing that
+ * was there before.
+ */
+export function reconnectFixes(
+  trial: Trial,
+  assignment: BodyAssignment,
+  drawing: { joints: Joint[]; links: Link[] },
+  looseJoints: RealJoint[],
+  hidden: Set<string>
+): MobilityFix[] {
+  const pivots = drawing.joints.filter(
+    (joint): joint is RealJoint =>
+      joint instanceof RealJoint &&
+      joint.ground &&
+      !(joint instanceof PrisJoint) &&
+      joint.links.length === 0 &&
+      !hidden.has(joint.id)
+  );
+  const ends = looseJoints.filter(
+    (joint) => !joint.ground && !(joint instanceof PrisJoint) && !hidden.has(joint.id)
+  );
+  const pairs = ends
+    .flatMap((end) => pivots.map((pivot) => [end, pivot] as const))
+    .sort(([a, b], [c, d]) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(c.x - d.x, c.y - d.y));
+  const fixes: MobilityFix[] = [];
+  for (const [end, pivot] of pairs.slice(0, MAX_CANDIDATES)) {
+    const bar = `${end.id}+${pivot.id}`;
+    const movingBodies = new Set(assignment.movingBodies).add(bar);
+    const edit: Edit = {
+      groundedAt: (one) => one.ground,
+      joints: [...trial.partition.joints, pivot],
+      assignment: {
+        ...assignment,
+        movingBodies,
+        bodiesAt: (at) => {
+          const bodies = assignment.bodiesAt(at);
+          if (at === end || at === pivot) bodies.add(bar);
+          return bodies;
+        },
+      },
+    };
+    if (leavesOneMachine(trial, edit)) fixes.push({ kind: 'connect', joint: end, to: pivot });
+  }
+  return fixes;
+}
+
+/**
+ * A joint one type away from the one drawn, where the drawing has a freedom too
+ * many: a pin welded, whose links then turn as one, or a Pin-in-slot made
+ * Prismatic, whose riders then no longer turn in the slot. Both are one choice
+ * in the joint's type, and nothing on the canvas says which a joint was meant
+ * to be until it moves the wrong way. Offered only where the joint's type
+ * choice would allow it (`refuseJointType`), so the drawer never suggests what
+ * the menu greys out.
+ */
+export function typeFixes(
+  trial: Trial,
+  assignment: BodyAssignment,
+  own: Set<string>,
+  hidden: Set<string>
+): MobilityFix[] {
+  const { joints } = trial.partition;
+  const context = {
+    cylinders: cylindersIn(joints),
+    isDriven: (joint: RealJoint) => joint.input,
+    hasSlider: (joint: RealJoint) => joint instanceof PrisJoint,
+  };
+  const fixes: MobilityFix[] = [];
+  for (const joint of joints.slice(0, MAX_CANDIDATES)) {
+    if (!(joint instanceof RealJoint) || !own.has(joint.id) || hidden.has(joint.id)) continue;
+    if (joint instanceof PrisJoint) {
+      if (!joint.rotates || joint.isSealed) continue;
+      if (refuseJointType(joint, 'prismatic', context)) continue;
+      // A Prismatic joint riding a slot in a moving link counts, and the solver
+      // refuses it: the rider's angle follows a carrier that is itself unknown
+      // (`swingingBlockFixture`). Offered, it led from a count of three to
+      // "can't take a first step". Only a slot in the frame is offered.
+      if (!joint.ground && (!joint.carrier || assignment.bodyOf(joint.carrier) !== WORLD)) {
+        continue;
+      }
+      if (leavesOneMachine(trial, prismaticAt(assignment, joint))) {
+        fixes.push({ kind: 'prismatic', joint });
+      }
+      continue;
+    }
+    // The input's own pin welded is the input with nothing left to turn.
+    if (joint.isWelded || joint === trial.driven) continue;
+    if (refuseJointType(joint, 'welded', context)) continue;
+    const edit = weldedAt(assignment, joint);
+    if (edit && leavesOneMachine(trial, edit)) fixes.push({ kind: 'weld', joint });
+  }
+  return fixes;
+}
+
+/**
+ * Whether setting a welded input to Revolute leaves one machine with one
+ * freedom, and that freedom the input's: the pin turning between the two
+ * pieces the weld held together. A bent coupler's knee welded on purpose
+ * counts two once it turns, and the input belonged somewhere else.
+ */
+export function unweldingDrives(partition: MechanismPartition, driven: RealJoint): boolean {
+  const { joints, links } = partition;
+  const edit = unweldedAt(joints, links, assignBodies(joints, links), driven);
+  if (!edit) return false;
+  const hold = (system: ConstraintSystem) => {
+    const bodies = [...edit.assignment.bodiesAt(driven)];
+    return bodies.length === 2
+      ? holdTurn(system.bodyAt(bodies[0]), system.bodyAt(bodies[1]))
+      : undefined;
+  };
+  return leavesOneMachine({ partition, driven, needsHold: true }, { ...edit, hold });
+}

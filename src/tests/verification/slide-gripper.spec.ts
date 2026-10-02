@@ -62,12 +62,13 @@ describe('a gripper on rails', () => {
     }
   });
 
-  it('keeps every rail pin on its rail', () => {
+  it('keeps every rail pin on its rail, and each jaw level', () => {
     for (const at of solved) {
       expect(at('M').x / S).toBeCloseTo(at('K').x / S, 3);
       expect(at('T').x / S).toBeCloseTo(at('K').x / S, 3);
-      expect(at('Q').x / S).toBeCloseTo(at('O').x / S, 3);
-      expect(at('V').x / S).toBeCloseTo(at('O').x / S, 3);
+      // The parallelogram holds the jaw level; no second rail does it twice.
+      expect(at('Q').y / S).toBeCloseTo(at('M').y / S, 3);
+      expect(at('V').y / S).toBeCloseTo(at('T').y / S, 3);
     }
   });
 

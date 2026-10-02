@@ -28,14 +28,12 @@ export function assignBodies(
   joints: Joint[],
   links: Link[],
   /**
-   * Groups of link ids the caller knows to be one rigid body for a reason the
-   * drawing does not state. A cylinder holding its length is the case
-   * (decision S28): its barrel and its rod share one joint, and what stops
-   * them sliding is that nothing drives the part -- not a second pin and not a
-   * weld. Passed in rather than merged afterwards so there stays one answer to
-   * "what is a rigid body", which is the whole point of this module.
+   * Whether a joint counts as grounded. The drawing's own answer unless a
+   * caller is asking about an edit before making it -- `free-motion.ts` asks
+   * what ungrounding one joint would do, and a bar pinned down at both ends
+   * stops being frame the moment one of them is not.
    */
-  extraRigid: readonly string[][] = []
+  groundedAt: (joint: RealJoint) => boolean = (joint) => joint.ground
 ): BodyAssignment {
   /**
    * Whether this joint holds its point still.
@@ -49,7 +47,7 @@ export function assignBodies(
    * line; this is the same line, in the one place that decides what a body is.
    */
   const pinnedDown = (joint: Joint): boolean =>
-    joint instanceof RealJoint && joint.ground && !(joint instanceof PrisJoint);
+    joint instanceof RealJoint && groundedAt(joint) && !(joint instanceof PrisJoint);
 
   // A Slide's riders are held rigid by something no joint count can see, so the
   // caller names them. Links pinned to ground at every joint are merged for the
@@ -60,7 +58,6 @@ export function assignBodies(
     .map((link) => link.id);
   const rigidBody = groupRigidBodies(links, [
     ...slideAssemblies(joints).map(assemblyBodyIds),
-    ...extraRigid.map((group) => [...group]),
     anchored,
   ]);
 
@@ -85,7 +82,7 @@ export function assignBodies(
    */
   const bodiesAt = (joint: RealJoint): Set<string> => {
     const bodies = new Set(joint.links.map(bodyOf));
-    if (joint.ground) {
+    if (groundedAt(joint)) {
       bodies.add(WORLD);
     }
     if (joint instanceof PrisJoint && !joint.ground) {

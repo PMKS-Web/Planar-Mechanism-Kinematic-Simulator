@@ -254,7 +254,7 @@ check(
 const tracerT = await openOn('#joint_T');
 check(
   'a tracer cannot be driven, and the model says why',
-  rowNamed(tracerT, 'Driven Input')?.slot === 'needs 2 bodies',
+  rowNamed(tracerT, 'Driven Input')?.slot === 'needs 2 links',
   rowNamed(tracerT, 'Driven Input')
 );
 check(

@@ -72,10 +72,11 @@ describe('splitting a drawing into the machines it contains', () => {
     expect(ids(mechanisms[1])).toEqual(['E', 'F', 'G', 'H']);
   });
 
-  it('keeps two cranks pinned to the same fixed point apart', () => {
+  it('makes two cranks pinned to the same fixed point one machine', () => {
     // The rule under test. Both chains hold joint A, and A is the only thing
-    // they share — but it is grounded, so neither crank can feel the other and
-    // they are two machines that happen to be bolted to the same spot.
+    // they share. It is grounded, so neither crank can feel the other -- but a
+    // reader who draws a second chain off a pivot the first already uses has
+    // drawn one thing, and it runs or does not as one.
     const { mechanisms, unassigned } = split({
       joints: [
         { id: 'A', x: 0, y: 0, ground: true, input: true },
@@ -97,10 +98,8 @@ describe('splitting a drawing into the machines it contains', () => {
       inputAngVel: 1,
     });
 
-    expect(mechanisms).toHaveLength(2);
-    // The shared pin belongs to both, because it really is part of both frames.
-    expect(ids(mechanisms[0])).toEqual(['A', 'B', 'C', 'D']);
-    expect(ids(mechanisms[1])).toEqual(['A', 'E', 'F', 'G']);
+    expect(mechanisms).toHaveLength(1);
+    expect(ids(mechanisms[0])).toEqual(['A', 'B', 'C', 'D', 'E', 'F', 'G']);
     expect(unassigned.floatingChains).toEqual([]);
   });
 
