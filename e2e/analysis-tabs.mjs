@@ -141,7 +141,9 @@ try {
     layout.fonts.every((size) => size === '13.5px') &&
       layout.borders.join('|') === '0px|1px|1px' &&
       layout.tabHeight === 40 &&
-      !layout.subtitle,
+      // Two rows above the tabs, as the joint's head has: the title, then when
+      // the readings are from, which holds the comparison when there is one.
+      layout.subtitle,
     layout
   );
   const semantics = await panel.evaluate((host) =>
@@ -198,8 +200,9 @@ try {
     during
   );
   check(
-    'comparison is available in the compact title row after tuning',
-    await page.locator('.panelTitle .compareToggle').isVisible()
+    'comparison is available on the second row after tuning, not in the title',
+    (await page.locator('.panelSub .compareToggle').isVisible()) &&
+      (await page.locator('.panelTitle .compareToggle').count()) === 0
   );
   await shot('comparison');
   await contactSheet(`${OUT}/tuning-film/*-drag.png`, `${OUT}/tuning-film.png`, 5);

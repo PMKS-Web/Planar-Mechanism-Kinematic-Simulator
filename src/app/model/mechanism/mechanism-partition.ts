@@ -3,6 +3,14 @@ import { Link } from '../link';
 import { Force } from '../force';
 import { assignBodies, WORLD } from './bodies';
 
+/**
+ * The most machines one drawing runs at once. Past it, a machine is drawn and
+ * named but not solved: every machine solves a whole cycle on every edit and
+ * adds a row to the transport, and the library's largest drawings -- the
+ * inversion sets -- hold four.
+ */
+export const MOST_MACHINES = 4;
+
 /** One independently solvable machine within the drawing. */
 export interface MechanismPartition {
   /**

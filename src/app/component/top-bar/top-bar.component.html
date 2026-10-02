@@ -71,6 +71,7 @@
         class="tabButton"
         [class.active]="isActive(TabID.ANALYZE)"
         [class.notReady]="!canAnalyze(TabID.ANALYZE)"
+        #kinematicTab
         (click)="select(TabID.ANALYZE)"
         [attr.aria-label]="nameOf(TabID.ANALYZE, 'Kinematic Analysis')"
         [appShortcutTip]="tipFor(TabID.ANALYZE, 'Kinematic Analysis')"
@@ -87,10 +88,14 @@
         }
       </button>
 
+      <!-- Shut, not refused, until a mechanism runs: aria-disabled rather than
+           disabled, so the tooltip that says why still answers the pointer. -->
       <button
         class="tabButton"
         [class.active]="isActive(TabID.FORCE)"
         [class.notReady]="!canAnalyze(TabID.FORCE)"
+        [class.locked]="locked(TabID.FORCE)"
+        [attr.aria-disabled]="locked(TabID.FORCE) || null"
         (click)="select(TabID.FORCE)"
         [attr.aria-label]="nameOf(TabID.FORCE, 'Force Analysis')"
         [appShortcutTip]="tipFor(TabID.FORCE, 'Force Analysis')"
@@ -99,8 +104,9 @@
         <mat-icon>balance</mat-icon>
         <span class="tabLabel long">Force Analysis</span>
         <span class="tabLabel short">Force</span>
-        <!-- Nothing drawn, nothing to be ready for. -->
-        @if (hasStatus()) {
+        <!-- Nothing drawn, nothing to be ready for; and nothing to count
+             while the mode is shut. -->
+        @if (hasStatus() && !locked(TabID.FORCE)) {
           <chip-block [kind]="statusOf(TabID.FORCE).kind">{{
             statusOf(TabID.FORCE).text
           }}</chip-block>
@@ -205,5 +211,37 @@
     @if (isDevMode()) {
       <button class="menuItem" (click)="openDebug()"><mat-icon>bug_report</mat-icon>Debug</button>
     }
+  </div>
+}
+
+<!-- The first Play in Edit on a mechanism that runs, for a reader who has never
+     opened Kinematic Analysis: a card under its tab, saying so once. Fixed to
+     the window rather than inside the strip, which clips and, on a phone,
+     scrolls. -->
+@if (inviteOpen) {
+  <div
+    class="analysisInvite"
+    role="dialog"
+    aria-labelledby="analysisInviteTitle"
+    [style.top.px]="inviteAt.top"
+    [style.left.px]="inviteAt.left"
+    (keydown.escape)="dismissInvite()"
+  >
+    <div class="inviteArrow"></div>
+    <div class="inviteBody">
+      <div class="inviteText">
+        <div class="inviteTitle" id="analysisInviteTitle">Your mechanism runs</div>
+        <p class="inviteWhy">
+          Kinematic Analysis graphs the position, velocity and acceleration of any joint or link as
+          it moves.
+        </p>
+      </div>
+      <div class="inviteButtons">
+        <button type="button" class="inviteLater" (click)="dismissInvite()">Not Now</button>
+        <button type="button" class="inviteGo" (click)="acceptInvite()">
+          Open Kinematic Analysis
+        </button>
+      </div>
+    </div>
   </div>
 }

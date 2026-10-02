@@ -108,7 +108,8 @@ export function refuseJointOperation(
  * stands where the barrel's length and the part's travel put it. A bar, a second
  * cylinder or a load hung there would be a third body asking to be carried by a
  * point nothing is free to move. The joints at the two ends are where a cylinder
- * attaches to the drawing, and they take all three.
+ * attaches to the drawing, and they take all three. And a driven pin that
+ * already joins two bodies takes no third, at either end of a new link.
  *
  * Exported as well as reachable through `refuseJointOperation`, because the
  * Attach rows ask about one thing and have no type change to walk.
@@ -123,6 +124,22 @@ export function refuseAttach(
   context: Pick<JointOperationContext, 'cylinders'>
 ): OperationRefusal | undefined {
   if (!(joint instanceof RealJoint)) return undefined;
+  // A driven pin turns one body against another, so it has room for two: a
+  // crank and the ground, or two links. A third arriving leaves the input no
+  // way to say which pair to move -- and the solver used to pick one and run
+  // anyway, under a setup drawer saying the input was refused. The same rule a
+  // drop onto the joint already keeps (`MERGE_REFUSAL_MESSAGES['driven-joint']`).
+  if (
+    joint.input &&
+    !(joint instanceof PrisJoint) &&
+    joint.links.length + (joint.ground ? 1 : 0) >= 2
+  ) {
+    return {
+      code: 'input.two-bodies',
+      short: 'input already connected',
+      long: 'An input prescribes the freedom between two bodies, so a third arriving here would leave the input naming no pair. Remove the input first.',
+    };
+  }
   if (cylindersEnclosing(context.cylinders, joint).length === 0) return undefined;
   return {
     code: 'cylinder.attach-at-an-end-joint',

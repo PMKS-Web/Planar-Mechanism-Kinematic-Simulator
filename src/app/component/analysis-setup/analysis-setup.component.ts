@@ -2,7 +2,8 @@ import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core
 import { Joint, PrisJoint, RealJoint } from '../../model/joint';
 import { Link, RealLink } from '../../model/link';
 import { MechanismService } from '../../services/mechanism.service';
-import { READINESS } from '../../ui-text';
+import { chipOf, MachineChip } from '../../services/mechanism-overview.service';
+import { mechanismName } from '../../model/mechanism/mechanism-name';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { SettingsService } from '../../services/settings.service';
@@ -83,8 +84,6 @@ export class AnalysisSetupComponent {
    * not have to read past the other's list to find out why.
    */
   readonly mode = input<'kinematic' | 'force'>('kinematic');
-  /** Which mechanisms the reader has folded away, by id. */
-  private collapsed = new Set<string>();
   unassignedOpen = false;
   forceOpen = true;
   massesOpen = true;
@@ -110,7 +109,7 @@ export class AnalysisSetupComponent {
   }
 
   get forceChip(): { text: string; kind: 'blocker' | 'warning' | 'ok' } {
-    return this.chipOf(this.forceIssues);
+    return chipOf(this.forceIssues);
   }
 
   get title(): string {
@@ -162,50 +161,78 @@ export class AnalysisSetupComponent {
     this.tabs.setTab(this.modeTab);
   }
 
-  isOpen(readiness: MechanismReadiness): boolean {
-    // Open when something is wrong, closed when nothing is — so a drawing that
-    // is fine collapses to a list of names. What a mechanism *is* lives in its
-    // own panel now; this drawer carries only what is in the way.
-    return this.collapsed.has(readiness.id) ? false : readiness.checks.length > 0;
+  /**
+   * Whether a machine's section is open.
+   *
+   * One selection drives the machine panel, the grid and this drawer: with a
+   * machine picked, its section is the one open and the others fold away, so
+   * the drawer beside its panel is about the same machine. With none picked,
+   * every section with something in it is open -- a drawing that is fine
+   * collapses to a list of names. Either way a section the reader folded or
+   * opened stays as they left it until the pick changes.
+   */
+  isOpen(readiness: MechanismReadiness, index: number): boolean {
+    if (readiness.checks.length === 0) return false;
+    this.forgetFoldsIfThePickChanged();
+    const chosen = this.folds.get(readiness.id);
+    if (chosen !== undefined) return chosen;
+    const picked = this.pickedIndex();
+    return picked === undefined || picked === index;
   }
 
-  toggle(readiness: MechanismReadiness): void {
-    if (readiness.checks.length === 0) {
-      return;
-    }
-    if (this.isOpen(readiness)) {
-      this.collapsed.add(readiness.id);
-    } else {
-      this.collapsed.delete(readiness.id);
-    }
+  toggle(readiness: MechanismReadiness, index: number): void {
+    if (readiness.checks.length === 0) return;
+    this.folds.set(readiness.id, !this.isOpen(readiness, index));
+  }
+
+  /** The machine picked as a whole, if one is. */
+  pickedIndex(): number | undefined {
+    return this.activeObj.objType === 'Mechanism'
+      ? this.activeObj.selectedMechanismIndex
+      : undefined;
+  }
+
+  /** The reader's own folds, by machine, since the pick last changed. */
+  private folds = new Map<string, boolean>();
+  private foldsFor: number | undefined;
+
+  private forgetFoldsIfThePickChanged(): void {
+    const picked = this.pickedIndex();
+    if (picked === this.foldsFor) return;
+    this.foldsFor = picked;
+    this.folds.clear();
   }
 
   /**
    * Red if anything stops it running, amber if it runs with something to check,
-   * green if nothing is in the way. One word for each everywhere -- see
-   * READINESS in ui-text.
+   * green if nothing is in the way: the chip the machine panel shows too.
    */
-  chipFor(readiness: MechanismReadiness): { text: string; kind: 'blocker' | 'warning' | 'ok' } {
-    return this.chipOf(readiness.checks);
+  chipFor(readiness: MechanismReadiness): MachineChip {
+    return chipOf(readiness.checks);
   }
 
-  private chipOf(issues: SetupIssue[]): { text: string; kind: 'blocker' | 'warning' | 'ok' } {
-    const blockers = issues.filter((issue) => issue.severity === 'blocker').length;
-    if (blockers > 0) return { text: READINESS.fixes(blockers), kind: 'blocker' };
-    const warnings = issues.filter((issue) => issue.severity === 'warning').length;
-    if (warnings > 0) return { text: READINESS.toCheck(warnings), kind: 'warning' };
-    return { text: 'Ready', kind: 'ok' };
+  /** "Mechanism 2", or the name its author gave it: as the machine panel says it. */
+  labelOf(readiness: MechanismReadiness, index: number): string {
+    return (
+      mechanismName(this.mechanism.partitions?.[index]) ??
+      `Mechanism ${readiness.id.replace(/^M/, '')}`
+    );
   }
 
   /**
-   * Select the whole machine this section is about.
-   *
-   * The way to a mechanism's own panel in *either* mode: the transport chip
-   * only exists while analyzing, and Edit needs a route too.
+   * Pick the machine this section is about, in whichever mode the reader is
+   * in: its panel opens on the left, the others fade on the grid, and this
+   * drawer folds to its section.
    */
   select(index: number, event: Event): void {
     event.stopPropagation();
+    this.mechanism.hoveredMechanismIndex = -1;
     this.activeObj.selectMechanism(index);
+  }
+
+  /** Pointing at a machine's name lights it on the grid before it is picked. */
+  point(index: number): void {
+    this.mechanism.hoveredMechanismIndex = index;
   }
 
   /**

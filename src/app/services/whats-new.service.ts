@@ -26,6 +26,7 @@ const TRACES_OF_A_PREVIOUS_VISIT = [
   'snapToAlignment',
   'showCoM',
   'dismiss',
+  'analysisInviteSeen',
   SEEN_KEY,
 ];
 

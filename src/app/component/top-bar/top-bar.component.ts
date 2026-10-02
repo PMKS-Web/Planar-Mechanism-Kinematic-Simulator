@@ -14,6 +14,7 @@ import {
 import { animate, style, transition, trigger } from '@angular/animations';
 import { MatDialog } from '@angular/material/dialog';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
+import { ViewportService } from '../../services/viewport.service';
 import { MechanismService } from '../../services/mechanism.service';
 import { SaveHistoryService } from '../../services/save-history.service';
 import { AnalyticsService } from '../../services/analytics.service';
@@ -23,6 +24,7 @@ import { READINESS } from '../../ui-text';
 import { RightPanelComponent } from '../right-panel/right-panel.component';
 import { ExportFlowService } from '../../services/export/export-flow.service';
 import { LoadingService } from 'src/app/services/loading.service';
+import { SvgGridService } from 'src/app/services/svg-grid.service';
 import { TemplatesComponent } from '../MODALS/templates/templates.component';
 import { NotificationService } from '../../services/notification.service';
 import { TutorialService } from '../../services/tutorial.service';
@@ -51,6 +53,29 @@ interface TabStatus {
 
 /** The shortcuts the project menu prints on its own rows, and so must honor. */
 const MENU_SHORTCUTS: ShortcutId[] = ['app.settings', 'app.help'];
+
+/** Written once the analysis invitation has had its say, however it ended. */
+const ANALYSIS_INVITE_KEY = 'analysisInviteSeen';
+
+/** The invitation card's width, as the design gives it. */
+const INVITE_WIDTH = 320;
+
+/** A mark in local storage, read safely: a private window may refuse the store. */
+function readFlag(key: string): boolean {
+  try {
+    return localStorage.getItem(key) !== null;
+  } catch {
+    return false;
+  }
+}
+
+function writeFlag(key: string): void {
+  try {
+    localStorage.setItem(key, 'true');
+  } catch {
+    // Without storage the invitation simply comes back next time.
+  }
+}
 
 /**
  * The strip across the top: what may be done to the mechanism, and whether it
@@ -139,6 +164,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   private urlGeneration = inject(UrlGenerationService);
   private urlProcessor = inject(UrlProcessorService);
   private loading = inject(LoadingService);
+  private svgGrid = inject(SvgGridService);
   private dialog = inject(MatDialog);
   private zone = inject(NgZone);
   private changes = inject(ChangeDetectorRef);
@@ -152,6 +178,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
   private analytics: AnalyticsService = inject(AnalyticsService);
   shortcuts = inject(KeyboardShortcutsService);
   private gridUtils = inject(GridUtilsService);
+  private viewport = inject(ViewportService);
 
   readonly tabStrip = viewChild<ElementRef<HTMLElement>>('tabStrip');
   readonly strip = viewChild<ElementRef<HTMLElement>>('strip');
@@ -217,6 +244,85 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     this.watchCard();
     this.fitLabels();
     this.scheduleHighlight();
+    this.watchInvitation();
+  }
+
+  /**
+   * The card that steers a first-time reader from Edit into Kinematic
+   * Analysis.
+   *
+   * Students who get a mechanism running tend to stay where they are, playing
+   * it back in Edit, with no idea that the graphs are one press away. So the
+   * first time a reader presses Play in Edit on a mechanism that runs -- and
+   * has never opened Kinematic Analysis -- a card drops from its tab and says
+   * so, with the one action it is steering toward. Either button, or opening
+   * the mode any other way, puts it away for good. A tint on the tab was tried
+   * first and read as a second selected mode beside Edit.
+   */
+  inviteOpen = false;
+  /** Where the card stands: under the Kinematic Analysis tab, in window pixels. */
+  inviteAt = { top: 0, left: 0 };
+
+  private readonly kinematicTab = viewChild<ElementRef<HTMLElement>>('kinematicTab');
+  private inviteDone = readFlag(ANALYSIS_INVITE_KEY);
+  private wasPlaying = false;
+
+  /**
+   * Notice the two moments the card answers to: Play pressed in Edit, which
+   * opens it once, and the reader arriving in Kinematic Analysis, which ends
+   * it for good however they got there.
+   */
+  private watchInvitation(): void {
+    if (this.isActive(TabID.ANALYZE)) {
+      if (!this.inviteDone) this.finishInvite();
+      this.wasPlaying = this.mechanism.isPlaying;
+      return;
+    }
+    const playing = this.mechanism.isPlaying;
+    const started = playing && !this.wasPlaying;
+    this.wasPlaying = playing;
+    if (
+      started &&
+      !this.inviteDone &&
+      !this.inviteOpen &&
+      this.isActive(TabID.EDIT) &&
+      this.canAnalyze(TabID.ANALYZE)
+    ) {
+      // After this check: opening the card during it would be a change in it.
+      queueMicrotask(() => {
+        this.placeInvite();
+        this.inviteOpen = true;
+        this.changes.markForCheck();
+      });
+    }
+  }
+
+  /** Under the tab it points at, its arrow on the tab's icon. */
+  private placeInvite(): void {
+    const tab = this.kinematicTab()?.nativeElement.getBoundingClientRect();
+    if (!tab) return;
+    const width = Math.min(INVITE_WIDTH, window.innerWidth - 24);
+    this.inviteAt = {
+      top: tab.bottom + 14,
+      left: Math.max(12, Math.min(tab.left - 6, window.innerWidth - width - 12)),
+    };
+  }
+
+  /** Not Now: the card goes, and does not come back. */
+  dismissInvite(): void {
+    this.finishInvite();
+  }
+
+  /** The action the card is steering toward. */
+  acceptInvite(): void {
+    this.finishInvite();
+    this.select(TabID.ANALYZE);
+  }
+
+  private finishInvite(): void {
+    this.inviteDone = true;
+    this.inviteOpen = false;
+    writeFlag(ANALYSIS_INVITE_KEY);
   }
 
   /**
@@ -364,6 +470,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
    */
   select(tab: TabID): void {
     this.closeMenu();
+    if (this.locked(tab)) return;
     const setup = this.setupTabFor(tab);
     if (setup === null) {
       this.tabs.setTab(tab);
@@ -397,7 +504,37 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
       RightPanelComponent.tabClicked(setup);
     } else {
       this.tabs.setTab(tab);
+      if (this.offersSetupOnArrival(tab)) RightPanelComponent.insistOn(setup);
     }
+  }
+
+  /**
+   * Whether arriving in a mode opens its setup drawer too.
+   *
+   * One machine running is enough to enter Kinematic Analysis, so a drawing
+   * with a second that cannot run used to open straight onto the first one's
+   * graphs, and its chip said "1 fix" about a list nothing had opened. So
+   * arriving opens the list whenever a machine in it is blocked -- once, on
+   * arrival, and a reader who closes it keeps it closed until they come back.
+   *
+   * Not over Settings, Help or Export, which the reader opened for themselves,
+   * and not on a phone, where the drawer covers the drawing they came to see:
+   * the chip is the way in there. Force Analysis cannot be entered with a
+   * blocker in its own list, so only Kinematic Analysis asks.
+   */
+  private offersSetupOnArrival(tab: TabID): boolean {
+    if (tab !== TabID.ANALYZE || this.viewport.isPhone()) return false;
+    const showing = RightPanelComponent.isOpen ? RightPanelComponent.openTab : undefined;
+    if (
+      showing !== undefined &&
+      showing !== RightPanelComponent.KINEMATIC_SETUP_TAB &&
+      showing !== RightPanelComponent.FORCE_SETUP_TAB
+    ) {
+      return false;
+    }
+    return this.mechanism
+      .readinessOfEachMechanism()
+      .some((machine) => machine.checks.some((check) => check.severity === 'blocker'));
   }
 
   /** The setup drawer that answers for a mode, or null for a mode with none. */
@@ -468,7 +605,21 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
    * here or it is not said at all.
    */
   nameOf(tab: TabID, name: string): string {
+    if (this.locked(tab)) return `${name}, unavailable until a mechanism runs`;
     return this.hasStatus() ? `${name}: ${this.statusOf(tab).text}` : name;
+  }
+
+  /**
+   * Whether a mode cannot even be asked about yet.
+   *
+   * Force Analysis solves the reactions along a cycle, so until some machine
+   * runs there is nothing it could say -- and its setup drawer, answering
+   * "what does this need?", sent students to a masses table for a mechanism
+   * that did not move. It stays shut, with the reason on its tooltip, until
+   * Kinematic Analysis has something to show.
+   */
+  locked(tab: TabID): boolean {
+    return tab === TabID.FORCE && !this.isActive(tab) && !this.mechanism.oneValidMechanismExists();
   }
 
   /**
@@ -479,6 +630,7 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
    * find out by pressing.
    */
   tipFor(tab: TabID, name: string): string {
+    if (this.locked(tab)) return `${name} opens once a mechanism runs.`;
     if (this.canAnalyze(tab) && !this.isActive(tab)) return name;
     const shown =
       this.canAnalyze(tab) &&
@@ -731,8 +883,11 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
       // incoming mechanism takes the thread, so an opened file used to be a few
       // seconds of a window that had stopped answering.
       this.loading
-        .during('Opening mechanism…', () =>
-          this.urlProcessor.updateFromURL(reader.result as string)
+        .during(
+          'Opening mechanism…',
+          () => this.urlProcessor.updateFromURL(reader.result as string),
+          // Up until the drawing is framed, as a template's open is.
+          () => this.svgGrid.nextFramed()
         )
         .then(() => this.afterUpload(input))
         // The cover comes down in `during`'s own `finally`; this is only so a

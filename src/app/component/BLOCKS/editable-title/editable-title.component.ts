@@ -56,6 +56,17 @@ export class EditableTitleComponent {
   readonly renamable = input(true);
 
   /**
+   * Rename something that is not the selected part: a whole machine, which
+   * nothing selects when its panel shows. Given this, the field opens on
+   * `renameFrom`, an empty name is allowed and clears the one there, the
+   * names it must not repeat are `takenNames`, and the block offers no lock of
+   * its own.
+   */
+  readonly renameTo = input<(name: string) => void>();
+  readonly renameFrom = input<string>('');
+  readonly takenNames = input<readonly string[]>([]);
+
+  /**
    * A word for the trash can, for a row that has room for one.
    *
    * Icon-only is right when Rename and Lock are already taking the row: three
@@ -96,7 +107,9 @@ export class EditableTitleComponent {
    * still whatever is typed here.
    */
   protected gotoEditMode() {
-    const shown = this.displayName() ?? this.activeObjService.getSelectedObj().name;
+    const shown = this.renameTo()
+      ? this.renameFrom()
+      : (this.displayName() ?? this.activeObjService.getSelectedObj().name);
     this.newIDForm.controls['newID'].setValue(shown);
     this.editMode = true;
   }
@@ -108,6 +121,8 @@ export class EditableTitleComponent {
   // Check whether new id name is valid
   // Return empty string if valid, or error message if not
   private validateNewID(newID: string): string {
+    // An own-named thing can go back to having no name; a part cannot.
+    if (newID === '' && this.renameTo()) return '';
     // If the new ID only contains spaces, don't save it
     if (newID === '') {
       return 'The name cannot be empty.';
@@ -121,8 +136,15 @@ export class EditableTitleComponent {
     // Names appear together in selections, graphs, and exported files. Treat
     // case as presentation rather than identity so `Crank` and `crank` cannot
     // silently describe two different objects in the same drawing.
-    const active = this.activeObjService.getSelectedObj();
     const normalized = newID.toLowerCase();
+    // Before the selection is asked for: a machine is renamed with nothing
+    // selected, and asking then throws.
+    if (this.renameTo()) {
+      return this.takenNames().some((name) => name.trim().toLowerCase() === normalized)
+        ? `The name ${newID} is already in use. Use a unique name.`
+        : '';
+    }
+    const active = this.activeObjService.getSelectedObj();
     const taken = [
       ...this.mechanismService.joints,
       ...this.mechanismService.links,
@@ -151,6 +173,13 @@ export class EditableTitleComponent {
       return;
     }
 
+    const renameTo = this.renameTo();
+    if (renameTo) {
+      this.editMode = false;
+      if (newID !== this.renameFrom()) renameTo(newID);
+      return;
+    }
+
     let activeObj = this.activeObjService.getSelectedObj();
     this.editMode = false;
     // Against what is on screen as well as what is on file. The field opens on
@@ -176,6 +205,7 @@ export class EditableTitleComponent {
    * every panel this block heads is about the selected object anyway.
    */
   private lockTarget(): RealJoint | Link | Force | undefined {
+    if (this.renameTo()) return undefined;
     const obj = this.activeObjService.getSelectedObj();
     if (obj instanceof RealJoint || obj instanceof Link || obj instanceof Force) return obj;
     return undefined;

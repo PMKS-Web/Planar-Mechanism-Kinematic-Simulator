@@ -43,11 +43,11 @@ describe('SplitJointService', () => {
 
     const original = s.service.joints.find((joint) => joint.id === 'A') as RevJoint;
     const created = s.service.joints.find((joint) => joint.id === 'D') as RevJoint;
-    expect(original.x).toBeLessThan(0);
+    // The pin that keeps the ground stays where the pivot was drawn, and the
+    // new one steps the whole distance away.
+    expect([original.x, original.y]).toEqual([0, 0]);
     expect(created.x).toBeGreaterThan(0);
-    expect(original.y).toBeCloseTo(0);
     expect(created.y).toBeCloseTo(0);
-    expect(original.x + created.x).toBeCloseTo(0);
     expect(s.ab.joints.map((joint) => joint.id)).toContain('A');
     expect(s.ac.joints.map((joint) => joint.id)).toContain('D');
     expect([original.name, original.input, original.ground, original.showCurve]).toEqual([
@@ -76,7 +76,22 @@ describe('SplitJointService', () => {
     expect(s.saveCount()).toBe(1);
   });
 
-  it('spreads every pin in a three-body split around the former center', () => {
+  it('parts an ungrounded pin half each way', () => {
+    const s = scene();
+    s.a.ground = false;
+    s.a.input = false;
+    s.service.finishStructuralEdit(false);
+
+    expect(s.split.split(s.a)).toBe(true);
+
+    const original = s.service.joints.find((joint) => joint.id === 'A') as RevJoint;
+    const created = s.service.joints.find((joint) => joint.id === 'D') as RevJoint;
+    expect(original.x).toBeLessThan(0);
+    expect(created.x).toBeGreaterThan(0);
+    expect(original.x + created.x).toBeCloseTo(0);
+  });
+
+  it('keeps a grounded pin put in a three-body split, spreading the others', () => {
     const s = scene();
     const e = new RevJoint('E', -1, 0);
     s.service.joints.push(e);
@@ -89,10 +104,11 @@ describe('SplitJointService', () => {
       (joint) => !['B', 'C', 'E'].includes(joint.id)
     ) as RevJoint[];
     expect(pins).toHaveLength(3);
-    expect(pins.every((pin) => Math.hypot(pin.x, pin.y) > 0)).toBe(true);
+    const grounded = pins.filter((pin) => pin.ground);
+    expect(grounded.map((pin) => [pin.x, pin.y])).toEqual([[0, 0]]);
+    const moved = pins.filter((pin) => !pin.ground);
+    expect(moved.every((pin) => Math.hypot(pin.x, pin.y) > 0)).toBe(true);
     expect(new Set(pins.map((pin) => `${pin.x},${pin.y}`)).size).toBe(3);
-    expect(pins.reduce((sum, pin) => sum + pin.x, 0)).toBeCloseTo(0);
-    expect(pins.reduce((sum, pin) => sum + pin.y, 0)).toBeCloseTo(0);
   });
 
   it('keeps a held link held while the constrained drag path separates its pin', () => {

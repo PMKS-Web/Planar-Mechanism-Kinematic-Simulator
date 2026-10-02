@@ -470,22 +470,14 @@ export class ContextMenuBuilderService {
   // it is about. See `PlaybackBarComponent.moveStartHere`.
 
   private jointAttachRows(joint: RealJoint, handlers: MenuHandlers): MenuRow[] {
-    const driven = this.gridUtils.isVisuallyInput(joint);
-    // A third body at a driven joint is what "driven" stops being able to
-    // describe: an input prescribes the freedom between *two* bodies.
-    const drivenCrowds: MenuRefusal | undefined =
-      driven && joint.links.length + (joint.ground ? 1 : 0) >= 2
-        ? {
-            short: 'input already connected',
-            long: 'An input prescribes the freedom between two bodies, so a third arriving here would leave the input naming no pair. Remove the input first.',
-          }
-        : undefined;
-    // The joint a cylinder slides on takes nothing at all, in the same four
-    // words the model's other four refusals use there (D9). First, because a
-    // reader pointing at the square wants to be told what the square is before
-    // being told about the input it happens to be carrying.
-    const closed = this.quote(refuseAttach(joint, this.gridUtils.operationContext()));
-    const crowds = closed ?? drivenCrowds;
+    // The model's answer, which the canvas asks too at the far end of the
+    // gesture: a joint a cylinder slides on takes nothing, and a driven pin
+    // that already joins two bodies takes no third.
+    const refusal = refuseAttach(joint, this.gridUtils.operationContext());
+    const crowds = this.quote(refusal);
+    // A load is not a body arriving, so the input's two-body rule leaves it
+    // alone; a cylinder's inner joint refuses it like anything else.
+    const closed = refusal?.code.startsWith('cylinder.') ? crowds : undefined;
     // A Lock is not among the reasons below. It says where this joint is, and a
     // new bar, cylinder or load built onto it moves nothing that is held: the
     // joint keeps its coordinate and the new part is drawn out from it. The

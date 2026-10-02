@@ -82,13 +82,13 @@
                 <button
                   class="mechChip"
                   (click)="selectMechanism(row); $event.stopPropagation()"
-                  [attr.title]="'Select ' + row.id"
+                  [attr.title]="'Select ' + labelOf(row)"
                 >
-                  {{ row.id }}
+                  {{ row.label }}
                 </button>
               } @else {
                 <span class="mechChip plain" title="All mechanisms move together">{{
-                  row.id
+                  row.label
                 }}</span>
               }
 
@@ -208,16 +208,6 @@
                 </span>
               }
 
-              <!-- What the handle does when it gets to the end of the track.
-                   Gray in both readings: coming round again and turning back
-                   are two facts, not a good one and a bad one. -->
-              @for (end of row.ends; track end.text) {
-                <span class="rowEnd">
-                  <mat-icon>{{ end.glyph }}</mat-icon>
-                  {{ end.text }}
-                </span>
-              }
-
               <!-- Where the input is, and how long it has been going. Read
                    only: the handle is how you move it, and a typed time is a
                    question about a coordinate the transport no longer uses. A
@@ -273,9 +263,9 @@
               <button
                 class="dirButton"
                 (click)="flipDirection(row); $event.stopPropagation()"
-                [title]="row.note ? 'Input direction: ' + row.note : 'Input direction'"
+                [title]="row.heading ? 'Input direction: ' + row.heading : 'Input direction'"
                 [attr.aria-label]="
-                  row.note ? 'Reverse ' + row.id + ', now ' + row.note : 'Reverse ' + row.id
+                  row.heading ? 'Reverse ' + row.id + ', now ' + row.heading : 'Reverse ' + row.id
                 "
               >
                 <mat-icon>{{ row.directionIcon }}</mat-icon>

@@ -57,6 +57,7 @@ const EXPECTED_INVALID = new Set([
   'Link hanging from a pivot',
   'Rocker dropped beside the coupler pin',
   'Four-bar braced from its input pivot',
+  'Four-bar with a second crank on its input',
   'Watt six-bar with a grounded rocker joint',
   'Four-bar with its rocker deleted',
   'Four-bar driven from its coupler point',

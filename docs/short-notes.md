@@ -2572,3 +2572,80 @@ riders are pinned to each other as at any other joint.
 A Pin-in-slot riding a slot in a moving link, made Prismatic, counts right and the solver refuses
 it (`swingingBlockFixture`): the rider's angle follows a carrier that is itself unknown. Offered,
 it took a reader from three freedoms to "can't take a first step". `typeFixes` skips it.
+
+### The title block asks for the selected object before it validates
+
+`editable-title-block` renamed only the selected part, and its checks read
+`ActiveObjService.getSelectedObj()`, which throws with nothing selected. Renaming a whole machine
+(`renameTo`) happens with nothing selected, so that branch has to come first; a throw in a click
+handler reaches only Angular's error handler, and the field simply stayed open.
+
+### A picked machine fades the others rather than painting itself
+
+Picking a whole machine used to draw every one of its parts as selected, which left a part link in
+its panel nothing to light: the part was already amber. `getJointCSSClass` / `getLinkCSSClass` now
+leave the picked machine as drawn and give the others `joint-muted` / `link-muted`, and the marks
+drawn apart from their joint (ground, motor case, slider block) ask `isMutedJointId`. With one
+machine nothing fades. Hovering a machine's name -- a list row, the drawer's title, a transport
+chip -- still lights it through `hoveredMechanismIndex`.
+
+### Family recognition counts a frame bar as the ground
+
+`model/machine-facts/` is the recognition the What Is This? fact sheet was built on, kept without
+the sheet's text or any model call. Its chain count read a bar drawn between two grounded pivots as
+a fifth link, so every four-bar with its frame drawn -- the Four-bar inversions -- matched nothing.
+`machineFacts` hands the family check the bodies less `isFrameBar`, and the link jobs all of them,
+since "Part of the frame" is a job worth listing.
+
+### A machine past the fourth is built and never solved
+
+`MOST_MACHINES` is four. `updateMechanism` still builds a `Mechanism` for a fifth, refused with
+`'too-many-machines'` before any solve, so every panel can name it and its setup can say why. Its
+build is keyed apart (`|past` on the fingerprint): a machine that moves under the limit when
+another is deleted has to be solved, though nothing it is made of changed.
+
+### A shut mode tab is aria-disabled, not disabled
+
+Force Analysis is shut until a machine runs, and its tooltip says why. A `disabled` button takes
+no pointer events, so the tooltip that explains it would never show; `aria-disabled` keeps the
+hover and tells assistive technology, and `select` refuses the press. Playwright will not click
+an `aria-disabled` button either, so a suite that checks the press does nothing presses it with
+`force: true`.
+
+### The Family row never hides, so the panel keeps its shape
+
+A Family row that appeared only for a recognized machine changed the panel's shape from one machine
+to the next, and a reader could not tell "not a known type" from "not worked out yet".
+`familyReading` always answers: a family the catalog matched, else a pins-only linkage of four to
+eight bodies named by its count, else "Not recognized" in secondary ink. Motion is listed only
+where no named family says it -- a crank-rocker's name already says the crank turns fully.
+
+### A pin input the actuator refuses is not solved
+
+A second crank drawn from the driven pivot left the input joining three bodies. The setup drawer
+said "Joint A can't be the input", and the solver drove whichever pair it found first, so the
+transport played it anyway. `Mechanism` now refuses a pin input `actuatorOrRefusal` refuses
+(`'input-refused'`). A slider input is left alone: one on a floating slot has no actuator the
+model can describe and is driven correctly all the same (the gripper's ram). `refuseAttach`
+closes a driven pin that already joins two bodies, so neither end of a new link can land there.
+
+### A plate's size is its sides
+
+A three-joint link listed one "length" -- end to end between whichever two joints it held first
+-- which described a triangle by an arbitrary edge. The Links rows give a plate its three sides,
+each pair named on hover, and a link of more joints its count. The job and the size are one flex
+line that wraps (`.linkRest`), not two grid cells: the size falls under the job, still flush right,
+only when the two do not fit, so the analysis panel's 400px keeps every link on one line and only
+a plate's sides wrap at Edit's 250px. A second line reserved for every plate read as a gap.
+
+### A cover lifts on the fit, not on the render
+
+The boot splash came down one frame after Angular's first render, and the loading overlay with the
+decode. Neither is when the drawing is on screen as the reader should see it: the fit that frames it
+runs a render later (`scaleToFitLinkage` is `afterNextRender` plus a task, and can be queued behind
+a settling panel), and svg-pan-zoom applies its matrix on the frame after that. Until then the view
+is svg-pan-zoom's own -- `fit: true` over the whole SVG, a zoom near 475 -- or, behind the overlay,
+the old drawing's. `SvgGridService.framed()` resolves `firstFramed` and any `nextFramed()` from a
+rAF registered after the library's, so the frame that paints next carries the fitted matrix. The
+splash's removal timer starts in a rAF too: a fit is often followed by a long task (the grid
+redrawn at its new zoom), and a 220 ms timer started before it expired inside it and cut the fade.

@@ -87,7 +87,7 @@ record(
 // to read past the other mode's list to find out why.
 record(
   'and the list answers the question that was asked, not the other one',
-  text.includes('Nothing loads the mechanism') && !text.includes('Mechanism M1'),
+  text.includes('Nothing loads the mechanism') && !text.includes('Mechanism 1'),
   text
 );
 // The one issue in the Force drawer opens with its fixes showing, and none is
@@ -578,11 +578,15 @@ record('and lets go of it when the pointer leaves', !letGo.includes('link-pointe
 // In an analysis mode a machine that cannot run is drawn gray, and those are
 // exactly the parts a setup drawer names: pointing lights them all the same.
 // The crank runs; the rocker beside it, with its coupler never drawn, does not.
+// Arriving opens the drawer on its own: one of the two cannot run.
 await open(galleryQuery('Four-bar with its coupler missing'));
 await tab('Kinematic').click();
-await page.waitForTimeout(800);
-await chipFor('Kinematic').click();
-await page.waitForTimeout(600);
+await page.waitForTimeout(900);
+record(
+  'arriving in a mode with a machine that cannot run opens its list',
+  (await drawerText()).includes("Link CD isn't joined to link AB"),
+  await drawerText()
+);
 await partLink('link CD').hover();
 await page.waitForTimeout(250);
 const litWhileInert = await page.evaluate(() => {
@@ -677,6 +681,91 @@ await page
 await page.waitForTimeout(700);
 machinesNow = await readinessNow();
 record('and making C Prismatic makes the yoke run', allReady(machinesNow), machinesNow);
+
+// --- the mode tabs lead the way in -------------------------------------------
+// A fresh browser: the invitation lasts until Kinematic Analysis has been
+// opened once, and this page's earlier visits already opened it.
+const fresh = await browser.newPage({ viewport: { width: 1500, height: 950 } });
+fresh.on('pageerror', (error) => errors.push(String(error)));
+const freshTab = (name) => fresh.locator('.tabButton', { hasText: name });
+const classesOf = (name) => freshTab(name).getAttribute('class');
+async function freshOpen(query) {
+  await fresh.goto(`${BASE}/?${query}`, { waitUntil: 'domcontentloaded' });
+  await waitForReady(fresh);
+  await fresh.waitForTimeout(400);
+}
+
+// Nothing runs: Force Analysis is shut, and pressing it does nothing.
+await freshOpen(galleryQuery('Four-bar with a welded coupler pin'));
+record(
+  'Force Analysis is shut until a mechanism runs',
+  (await classesOf('Force')).includes('locked') &&
+    (await freshTab('Force').getAttribute('aria-disabled')) === 'true',
+  await classesOf('Force')
+);
+// Forced: Playwright will not press an aria-disabled button, and a reader can.
+await freshTab('Force').click({ force: true });
+await fresh.waitForTimeout(500);
+const afterShut = await fresh.evaluate(() => ({
+  tab: ng.getComponent(document.querySelector('app-new-grid')).tabService.getCurrentTab(),
+  drawer: !!document.querySelector('app-analysis-setup'),
+}));
+record(
+  'and pressing it neither switches nor opens a drawer',
+  afterShut.tab === 1 && !afterShut.drawer,
+  afterShut
+);
+
+// A mechanism that runs, never analyzed: nothing on the tab, until the first
+// Play in Edit drops a card from it saying what the mode is for.
+const invite = () => fresh.locator('.analysisInvite');
+const play = () => fresh.locator('app-playback-bar button[aria-label*="Play" i]').first();
+await freshOpen(payloads['4-Bar']);
+record(
+  'a mechanism that runs leaves the Kinematic tab as it is, with no card yet',
+  !(await classesOf('Kinematic')).includes('invite') && (await invite().count()) === 0,
+  await classesOf('Kinematic')
+);
+record(
+  'and Force Analysis opens again',
+  !(await classesOf('Force')).includes('locked'),
+  await classesOf('Force')
+);
+await play().click();
+await fresh.waitForTimeout(600);
+record(
+  'the first Play in Edit drops the card from the tab',
+  (await invite().count()) === 1 &&
+    (await invite().innerText()).includes('Your mechanism runs') &&
+    (await invite().innerText()).includes('Open Kinematic Analysis'),
+  await invite()
+    .innerText()
+    .catch(() => '')
+);
+await invite().locator('button', { hasText: 'Not Now' }).click();
+await fresh.waitForTimeout(300);
+record('Not Now puts it away', (await invite().count()) === 0);
+await freshOpen(payloads['4-Bar']);
+await play().click();
+await fresh.waitForTimeout(600);
+record('for good: the next Play says nothing', (await invite().count()) === 0);
+
+// And its action is the mode itself.
+await fresh.evaluate(() => localStorage.removeItem('analysisInviteSeen'));
+await freshOpen(payloads['4-Bar']);
+await play().click();
+await fresh.waitForTimeout(600);
+await invite().locator('button', { hasText: 'Open Kinematic Analysis' }).click();
+await fresh.waitForTimeout(700);
+const arrived = await fresh.evaluate(() =>
+  ng.getComponent(document.querySelector('app-new-grid')).tabService.getCurrentTab()
+);
+record(
+  'Open Kinematic Analysis opens it, and the card goes',
+  arrived === 2 && (await invite().count()) === 0,
+  arrived
+);
+await fresh.close();
 
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
 

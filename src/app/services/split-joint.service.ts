@@ -60,14 +60,21 @@ export class SplitJointService {
         this.mechanism.finishStructuralEdit(false);
         const pins = [result.original, ...result.created];
         const separation = SPLIT_SEPARATION_FACTOR * this.settings.objectScale;
+        // A grounded joint splits into one pin that keeps its ground and pins
+        // that do not. The grounded one is the frame and stays where the frame
+        // was drawn; the others step the whole distance away rather than the
+        // two parting half each, which moved a pivot the reader had placed.
+        const anchored = pins.some((pin) => pin.ground);
         pins.forEach((pin, index) => {
+          if (anchored && pin.ground) return;
+          const reach = anchored ? 2 * separation : separation;
           const angle =
             slotAngle === undefined
               ? (2 * Math.PI * index) / pins.length + Math.PI
               : slotAngle + Math.PI / 2;
           this.grid.dragJoint(
             pin,
-            new Coord(live.x + separation * Math.cos(angle), live.y + separation * Math.sin(angle)),
+            new Coord(live.x + reach * Math.cos(angle), live.y + reach * Math.sin(angle)),
             false
           );
         });

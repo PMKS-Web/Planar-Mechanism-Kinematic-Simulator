@@ -139,6 +139,11 @@ Not suites — import them from one.
 
 ### Broad sweeps and tours
 
+- `first-frame.mjs` — the first frame a reader sees when a cover lifts is the drawing already
+  framed. Logs every animation frame in the page (splash opacity, loading overlay, canvas matrix)
+  on arrival at an address (empty, a Watt six-bar, a Jansen leg, a phone) and on opening a card
+  from the library, and fails any uncovered frame whose matrix is not the one the canvas settles
+  on. The boot splash and the overlay each used to lift before the fit.
 - `full-tour.mjs` — panels, templates, settings, share URL, help, and a fresh load at phone size.
   Fails on a NaN degrees of freedom, a page wider than its viewport, a Save that starts no
   download, or a template dialog that will not close. Needs installed Chrome (`PMKS_CHROME`).
@@ -359,8 +364,10 @@ Not suites — import them from one.
 - `template-graphs.mjs` — every template's kinematic graphs read as numbers and cross-checked:
   position against solved joints, velocity and acceleration against difference quotients. Slow;
   `PMKS_ONLY=4-Bar,Slider_Crank` narrows it.
-- `mechanism-panel.mjs` — selecting a whole machine from the transport chip or the setup drawer's
-  name.
+- `mechanism-panel.mjs` — the machines with nothing selected: the All mechanisms list, picking one
+  (from a row, the setup drawer's name), the others fading, the drawer folding to it and opening
+  on arrival when a machine cannot run, a part link keeping the drawer open in Edit, and a
+  rename riding the URL.
 - `two-mechanisms.mjs` — two machines in one drawing: a row each in the transport, a section each
   in the setup drawer, and a sync toggle that decouples them.
 
