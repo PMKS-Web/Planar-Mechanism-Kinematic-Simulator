@@ -256,6 +256,21 @@ export function resolveActuator(joint: Joint): Actuator | undefined {
   return typeof found === 'string' ? undefined : found;
 }
 
+/**
+ * The link an input on this joint turns.
+ *
+ * The body the actuator record names, and otherwise the joint's first link.
+ * The first link used to be the whole answer, everywhere a solver needed it,
+ * and a crank pivot whose frame bar was drawn before its crank drove the
+ * frame. Asked here so the position solve and the rate solve cannot disagree
+ * about it: when only the first did, the drawing animated and every reading in
+ * Kinematic Analysis was wrong.
+ */
+export function drivenLink(joint: RealJoint): Link | undefined {
+  const actuator = resolveActuator(joint);
+  return actuator && actuator.drivenBody !== GROUND_BODY ? actuator.drivenBody : joint.links[0];
+}
+
 /** Whether this joint could be driven at all — the panel's enable rule. */
 export function canDrive(joint: Joint): boolean {
   return resolveActuator(joint) !== undefined;

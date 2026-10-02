@@ -4,6 +4,7 @@ import { matLeastSquares } from '../utils';
 import { Loop, LoopEdge } from './loop-solver';
 import { hasFixedOrientation, SlideAssembly, slideAssemblies } from '../slide-assembly';
 import { PositionSolver } from './position-solver';
+import { drivenLink } from '../actuator';
 
 /** A slot edge's geometry in the frame being solved. */
 interface SlotFrame {
@@ -472,10 +473,12 @@ export class KinematicsSolver {
       // neither a column nor an angular velocity, so every loop it appeared in
       // summed a known term of `undefined` -- and the whole known side came out
       // NaN, which the solve then spread to every rate in the mechanism.
-      this.inputLinkIndex =
-        inputJoint instanceof PrisJoint
-          ? -1
-          : links.findIndex((l) => l.id === inputJoint.links[0].id);
+      //
+      // Which body turns is the actuator's to say, as it is for the position
+      // solve: the pivot's first link is the frame bar whenever that was drawn
+      // first, and marking the frame left the crank without a rate.
+      const driven = inputJoint instanceof PrisJoint ? undefined : drivenLink(inputJoint);
+      this.inputLinkIndex = driven ? links.findIndex((l) => l.id === driven.id) : -1;
     }
 
     for (const entry of this.groundJointIndexMap.entries()) {
