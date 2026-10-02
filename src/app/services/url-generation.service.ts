@@ -22,6 +22,7 @@ import {
 } from './transcoding/transcoder-data';
 import { SettingsService } from './settings.service';
 import { MODEL_SCALE } from '../model/render-scale';
+import { fineScaleToken } from './transcoding/fine-scale';
 import { DEFAULT_FORCE_COLOR } from '../model/joint-colors';
 import { SynthesisBuilderService } from './synthesis/synthesis-builder.service';
 import { encodeSynthesisDesign } from './synthesis/synthesis-url';
@@ -314,11 +315,12 @@ export class UrlGenerationService {
       // preference now and the decoder no longer reads this bit. Writing the
       // live value would churn every generated URL for a bit nobody consumes.
       encoder.addBoolSetting(BoolSetting.IS_SHOW_COM, false);
-      encoder.addDecimalSetting(DecimalSetting.SCALE, this.settings.objectScale / MODEL_SCALE);
-      encoder.addDecimalSetting(
-        DecimalSetting.CYLINDER_SCALE,
-        SettingsService.preservedCylinderScale / MODEL_SCALE
-      );
+      const scale = this.settings.objectScale / MODEL_SCALE;
+      const cylinderScale = SettingsService.preservedCylinderScale / MODEL_SCALE;
+      encoder.addDecimalSetting(DecimalSetting.SCALE, scale);
+      encoder.addDecimalSetting(DecimalSetting.CYLINDER_SCALE, cylinderScale);
+      encoder.addDecimalSetting(DecimalSetting.FINE_SCALE, fineScaleToken(scale));
+      encoder.addDecimalSetting(DecimalSetting.FINE_CYLINDER_SCALE, fineScaleToken(cylinderScale));
 
       encoder.addIntSetting(IntSetting.TIMESTEP, cachedAnimationFrame);
 

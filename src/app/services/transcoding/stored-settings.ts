@@ -25,6 +25,13 @@ export enum DecimalSetting {
    */
   LINEAR_INPUT_SPEED,
   CYLINDER_SCALE,
+  /**
+   * SCALE and CYLINDER_SCALE again, in millionths, for a scale the thousandths
+   * above round away. Zero -- every URL that predates them, and every one that
+   * did not need them -- means "read the token above" (fine-scale.ts).
+   */
+  FINE_SCALE,
+  FINE_CYLINDER_SCALE,
 }
 
 export enum BoolSetting {

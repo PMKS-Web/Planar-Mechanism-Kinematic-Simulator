@@ -30,7 +30,7 @@ import {
   SimultaneousSystem,
   solveSimultaneous,
 } from './simultaneous-solver';
-import { angleReference, GROUND_BODY, resolveActuator } from '../actuator';
+import { angleReference, drivenLink, resolveActuator } from '../actuator';
 import { MARK } from '../joint-marks';
 import { SettingsService } from '../../services/settings.service';
 
@@ -1656,23 +1656,14 @@ export class PositionSolver {
    * The joints the drive carries with it: those of the one link it turns.
    *
    * A ground pivot can hold several links, and only one of them is being
-   * driven. Which one is not something the model says, so the first non-block
-   * link on the joint is taken and the rest are left to the solver — the same
-   * arbitrary-but-consistent choice `incrementRevInput` was already making when
-   * it picked a neighbor to measure the crank radius from.
+   * driven; `drivenLink` says which, for this solve and the rate solve alike.
    */
   private static drivenBody(inputJoint: RealJoint): Set<string> {
-    // The body the actuator record says it drives, and otherwise the first
-    // link, simply. The first link used to be the whole answer, and a crank
-    // pivot whose frame bar was drawn before its crank drove the frame. It
-    // also used to skip any link holding a prismatic joint, which was how it
+    // This used to skip any link holding a prismatic joint, which was how it
     // stepped over the zero-length block; with the block gone that test would
     // instead skip the *rider* of a slider, which is exactly the body a drive
     // turns.
-    const actuator = resolveActuator(inputJoint);
-    const driven =
-      actuator && actuator.drivenBody !== GROUND_BODY ? actuator.drivenBody : inputJoint.links[0];
-    const members = driven?.joints ?? [];
+    const members = drivenLink(inputJoint)?.joints ?? [];
     return new Set(members.filter((joint) => joint.id !== inputJoint.id).map((joint) => joint.id));
   }
 
