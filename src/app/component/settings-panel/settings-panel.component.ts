@@ -41,9 +41,10 @@ function scaleText(scale: number): string {
  * How small and how large a drawn joint may be, as a multiple of the internal
  * scale.
  *
- * The floor is the field's own resolution: it shows two decimals, so anything
- * under a hundredth reads back as "0.00" and stops being a number this panel
- * can restore. The ceiling is generous -- fifty times is already a drawing made
+ * The floor only has to keep the size positive: the field shows three
+ * significant figures rather than two decimals, and the URL carries a scale
+ * this small in a token of its own (transcoding/fine-scale.ts), so undo, redo
+ * and a shared link bring it back. The ceiling is generous -- fifty times is already a drawing made
  * entirely of one joint -- and exists so a mistyped row of digits is refused
  * rather than spending a second re-deriving every outline.
  */
