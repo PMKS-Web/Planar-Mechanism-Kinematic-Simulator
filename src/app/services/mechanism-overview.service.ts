@@ -149,7 +149,11 @@ export class MechanismOverviewService {
     return partition.links
       .filter((link): link is RealLink => link instanceof RealLink)
       .map((link) => {
-        const job = jobs?.find((candidate) => candidate.links.includes(link));
+        // By id, not by object: the facts are cached against the solve, and an
+        // undo that changes no geometry -- a rename, say -- rebuilds every
+        // editable link while the solve, and the facts naming the old links,
+        // stay. Matched by object, every role went blank.
+        const job = jobs?.find((candidate) => candidate.links.some((part) => part.id === link.id));
         return {
           part: link,
           // The name on the canvas, not the link's id: a body welded to a

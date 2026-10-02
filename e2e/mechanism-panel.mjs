@@ -14,6 +14,8 @@
  *   drawer; with every machine ready it does not.
  * - A part link in the drawer goes to Edit and leaves the drawer open.
  * - A machine is renamed in Edit, one undo, and the name rides the URL.
+ * - Undoing a rename keeps the links' jobs: the facts are cached against the
+ *   solve, which a rename does not change, while undo replaces every link.
  *
  *   PMKS_PLAYWRIGHT_DIR=<dir> PMKS_BASE_URL=<origin> node e2e/mechanism-panel.mjs
  */
@@ -286,6 +288,28 @@ text = await panelText();
 record('one undo takes the name back', !text.includes('Straight arm'), text);
 await open(named);
 record('and a reload keeps it', (await panelText()).includes('Straight arm'), await panelText());
+
+// --- undoing a rename keeps every link's job ---------------------------------
+const roles = () =>
+  page
+    .locator('app-mechanism-panel .linkRole')
+    .evaluateAll((cells) => cells.map((cell) => cell.innerText.trim()));
+await open(payloads['4-Bar']);
+const before = await roles();
+await page
+  .locator('app-mechanism-panel editable-title-block button', { hasText: 'Rename' })
+  .click();
+await page.locator('#title-input-box').fill('Crank and rocker');
+await page.locator('#title-input-box').press('Enter');
+await page.waitForTimeout(500);
+await page.evaluate(() => ng.getComponent(document.querySelector('app-top-bar')).undo());
+await page.waitForTimeout(500);
+const after = await roles();
+record(
+  'undoing a rename leaves every link its job',
+  before.includes('Input crank') && JSON.stringify(after) === JSON.stringify(before),
+  { before, after }
+);
 
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
 
