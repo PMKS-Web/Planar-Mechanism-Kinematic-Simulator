@@ -9,9 +9,9 @@ import { MechanismBuilder } from './mechanism-builder';
 import { StringTranscoder } from './string-transcoder';
 import { MODEL_SCALE } from '../../model/render-scale';
 
-// Every decimal rides the URL in thousandths, so an object scale of 0.0001 --
-// which Custom Object Size accepts -- used to come back from undo, redo or a
-// shared link as zero, and the joints vanished with it (fine-scale.ts).
+// Every decimal rides the URL in thousandths, so an object scale of 0.0001 used
+// to come back from undo, redo or a shared link as zero, and the joints
+// vanished with it (fine-scale.ts).
 
 const S = MODEL_SCALE;
 
@@ -71,7 +71,7 @@ describe('a small object scale in the URL', () => {
     expect(roundTrip(0.0001).scale).toBeCloseTo(0.0001, 9);
   });
 
-  it('keeps the smallest size the panel accepts, to the figures it shows', () => {
+  it('keeps a size of a few millionths, to three figures', () => {
     expect(roundTrip(0.00000123).scale).toBeCloseTo(0.00000123, 11);
   });
 
