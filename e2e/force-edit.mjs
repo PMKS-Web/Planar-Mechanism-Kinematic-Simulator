@@ -443,12 +443,16 @@ const arrowMid = await toScreen(
 await page.mouse.click(arrowMid.x, arrowMid.y);
 await page.waitForTimeout(500);
 const handles = await page.evaluate(() => ({
-  circles: document.querySelectorAll('#startForceEndpoint circle, #endForceEndpoint circle').length,
-  rects: document.querySelectorAll('#startForceEndpoint rect, #endForceEndpoint rect').length,
+  square: document.querySelectorAll('#endForceEndpoint rect.forceEndpointHandle').length,
+  targets: [
+    ...document.querySelectorAll('#startForceEndpoint circle, #endForceEndpoint circle'),
+  ].map((node) => node.getAttribute('fill')),
 }));
 record(
-  'anchor is round and direction handle is square',
-  handles.circles === 1 && handles.rects === 1,
+  'the direction handle is square and its wider pointer targets are invisible',
+  handles.square === 1 &&
+    handles.targets.length > 0 &&
+    handles.targets.every((fill) => fill === 'transparent'),
   handles
 );
 

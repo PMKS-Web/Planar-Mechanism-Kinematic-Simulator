@@ -280,8 +280,8 @@ record(
   { labels: type.labels.map((l) => l.size), want: type.tagFontSize }
 );
 
-// Sized in the drawing's units, not the screen's: the name is the size of the
-// thing it names, so making the parts bigger makes their names bigger.
+// This fixture already reaches Standard's upper screen-size limit. Increasing
+// the legacy base scale must not make its labels grow beyond that limit.
 await page.evaluate(() => {
   const settings = ng.getComponent(document.querySelector('app-new-grid')).settings;
   settings.constructor._objectScale.next(settings.objectScale * 2);
@@ -293,10 +293,14 @@ const doubled = await page.evaluate(() => {
   const text = document.querySelector('#linkTagHolder text');
   return +(parseFloat(getComputedStyle(text).fontSize) * perUnit).toFixed(1);
 });
-record('and it grows with the object scale', doubled > type.labels[0].size * 1.6, {
-  was: type.labels[0].size,
-  now: doubled,
-});
+record(
+  'labels stay at the readable upper limit when the base scale grows',
+  Math.abs(doubled - type.labels[0].size) < 0.5,
+  {
+    was: type.labels[0].size,
+    now: doubled,
+  }
+);
 
 // --- a joint's name lands wherever its joint is -----------------------------
 await load(payloads['Stephenson_III']);

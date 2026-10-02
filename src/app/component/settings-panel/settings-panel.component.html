@@ -92,39 +92,14 @@
       >
         Snap to Alignment
       </toggle-block>
-      <div class="displayChoice">
-        <span>Object Size</span>
-        <segmented-block
-          [options]="['Compact', 'Normal', 'Large']"
-          [selected]="objectDisplay.selectedSize()"
-          (selectedChange)="objectDisplay.chooseSize($event)"
-          [disabled]="mechanismSrv.links.length === 0"
-        />
-        <p>
-          Proportional to the links. Zoom and display size keep cylinder lengths and travel
-          unchanged.
-        </p>
-      </div>
-      <div class="displayChoice">
-        <span>Link Appearance</span>
-        <segmented-block
-          [options]="['Filled', 'Lines']"
-          [selected]="settingsService.isLineDrawing.value ? 1 : 0"
-          (selectedChange)="objectDisplay.chooseLines($event)"
-        />
-        <p>
-          Lines simplify dense drawings. Joints, cylinders, and analysis keep their usual meaning.
-        </p>
-      </div>
-      <input-block
-        type="number"
-        [formGroup]="this.settingsForm"
-        _formControl="objectScale"
-        tooltip="Fine-tune visual thickness. This does not change authored lengths or cylinder travel."
-        >Custom Object Size
-      </input-block>
-      <button-block icon="auto_fix_normal" [click]="updateObjectScale.bind(this)"
-        >Auto-size Objects</button-block
+      <radio-block
+        option1="Standard"
+        option2="Fine"
+        option3="Schematic"
+        [formGroup]="settingsForm"
+        _formControl="drawingStyle"
+        tooltip="Standard shows filled bodies. Fine uses slimmer bodies and symbols. Schematic shows connections and outlined cylinders and sliders. All three stay readable as you zoom, without changing dimensions or analysis."
+        >Drawing Style</radio-block
       >
     </collapsible-subsection>
 

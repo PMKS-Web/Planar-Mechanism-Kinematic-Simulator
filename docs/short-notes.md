@@ -2196,3 +2196,111 @@ changes `NewGridComponent.showsCoM` after the grid can already be checked, produ
 when leaving analysis. Keep that predicate independent of panel creation/destruction.
 Tabs also consume their navigation keys before the global canvas nudge shortcuts; otherwise
 Left/Right changes the tab and moves the selected mechanism in the same keypress.
+
+### Drawing scale cannot publish into OBJECT_SCALE
+
+`Coord` closeness tests, slot travel and solver fingerprints still read the legacy object scale.
+Automatic zoom limits must use an independent presentation scale. Keep display copies out of
+`RealLink.d`/`outlineLoops()` as well: those paths are CAD data, and solved frames carry deferred
+snapshots of them. Cache display copies by shape and size and rigidly place them for playback.
+`cylinderSkinFrame` must use the physical clearance even when `preservedCylinderScale` is zero;
+falling back to the requested display radius makes old cylinder heads change length during zoom.
+A held start-pose ghost also needs a geometry snapshot before rebuilding it at another display size.
+Do not add `non-scaling-stroke` to a weld whose inline selection stroke is already inverse-zoom
+scaled: at extreme zoom-out it turns into a huge solid block. Check the rendered ink, not just
+the path bounds or pin radius, in the zoom filmstrip.
+
+### A weld's inline stroke width beats any stylesheet width
+
+The weld cross binds `[style.stroke-width]`, because a picked weld's selection ring is that same
+stroke. An inline style beats a class rule that is not `!important`, so a Schematic hairline set in
+`new-grid.component.scss` was drawn at the ring's width instead: the welds came out as solid ink
+squares. Give the weld's unselected width through the same binding (`scaleWithZoom(1)` in
+Schematic) and keep `non-scaling-stroke` off it, for the reason in the note above.
+
+### `getBBox` is single precision, so compare what it measures with a tolerance
+
+It answers in float32, and it bounds a curve through the curve, not only its end points. A
+cylinder head reaching exactly from -80.64 to 80.64 measured 161.27999 under most corner radii
+and 161.28001 under a few. The radius differs by drawing style and follows the zoom a load fits
+to, so an exact `JSON.stringify` comparison of head lengths across styles in
+`e2e/drawing-styles.mjs` failed now and then with nothing changed. Compare with a tolerance
+well under any change you mean to catch.
+
+### A schematic part inside a welded body was picked by its line alone
+
+`pickLinkAt` tested a part's schematic skeleton with `isPointInStroke` only, so the shaded inside
+of a plate or disc welded into a body never picked that part: the second click in the middle of a
+welded flywheel went on selecting the whole body. It now asks the lines first and the shaded
+insides second. Asking both at once would let a plate listed later in the body take a click aimed
+at a bar lying across it.
+
+### A disc's schematic comes from `RealLink.discCenter`, not from `isCircle`
+
+`isCircle` is what was asked for, and it survives a link losing the ground pin its disc is centered
+on; `drawnAsDisc` is only as fresh as the last rebuild of `d`. `discCenter()` is the answer both
+Standard's outline and `linkSkeletonPath` use, so the Schematic cannot draw as a bar what Standard
+draws as a disc. Anything else that has to know whether a link is shown as a disc should ask it too.
+
+### Schematic riders are drawn by the slider layer, not the link layer
+
+`#linkHolder` is under every block, so a rider drawn there disappears under the block it is pinned
+to. In Schematic the slot stack draws each rider's and weld plate's line at its depth, and the link
+layer skips every link `drawnBySlotStack` names. Selectors that count schematic bars must include
+`.schematicRider` as well as `#linkHolder > path`.
+
+### A cylinder member's tag is its own name, on its own half
+
+The barrel and the rod each have a Rename, so each wears its own tag: `linkDisplayName` is
+`visibleBodyName` for a member as for any body, and `linkLabelStyle` puts the barrel's between A
+and S and the rod's between S and B. The one tag that named the part by its two mounts is gone,
+along with `isSecondaryCylinderTag`: renaming a member changed nothing on the grid. A member welded
+into a compound is still named by the compound's tag, as every primitive in a compound is.
+
+### A cylinder member's center of mass takes the grab only to refuse it
+
+A member's center of mass follows its shape (decision S14), so its mark is not a handle. It still
+takes the pointer while its member is selected (`comGrabbable`), and `startComDrag` answers with a
+refusal rather than a drag. Left transparent to the pointer, the grab fell through to the member
+and dragged the whole cylinder.
+
+### The start ghost's own rule takes the stroke off every body
+
+`.startGhost .ghostBody { stroke: none }` is right for a filled ghost and fatal for a schematic one,
+whose bodies are nothing but their stroke: Schematic also sets `fill: none`, so the ghost drew
+nothing while its transparent grab lines still took the click and jumped the drawing to its start.
+The schematic ghost's stroke is bound as an inline style, which the class cannot override.
+
+### A CSS `drop-shadow` on an SVG shape is measured in the drawing's units
+
+A `filter: drop-shadow(0 0 2px …)` on a path inside the canvas blurs by two *user units* of that
+path, not two screen pixels, so a selection glow that looked right on a four-bar vanished on a
+drawing at another scale. Safari applies no CSS filter functions to SVG shapes at all. Schematic's
+selection is a band of its own, drawn under the line with a `scaleWithZoom` width.
+
+### `#primitiveSelection` holds two paths when the part belongs to a body
+
+A part picked inside a compound draws its own solid edge, `.link-selected`, over a dashed edge
+round the whole body, `.compound-context`. A check aimed at `#primitiveSelection path` found one
+path until the dashed edge arrived, then failed Playwright's strict mode in `editor-bug-fixes` and
+`editor-followups`. Aim at `.link-selected` for the part and `.compound-context` for its body.
+Both are in the selection yellow, so compare the path's `d` against the part's own shape, such as
+a cylinder mark's `barrel` or `objectDisplay.path(part)`, to tell the two apart.
+
+### The left panel's `.panel` is the frame; measure `#normalPanel` for the card
+
+`app-left-tabs .panel` keeps `$shadow-room` (16px) of padding under the card for its shadow, and
+since ac24921a the Edit and analysis clearances subtract that padding so the *card* stops one
+`$card-inset` (12px) above the playback cards. The frame therefore reaches 4px into the controls
+by design, and the controls, on `--layer-cluster` above `--layer-panel`, still take the press there.
+`editor-followups` measured the frame and failed at 506 against 502 for as long as the rule had been
+right; measure the card, as `bug-fixes-2` does, and hit-test the strip if the press matters.
+
+
+### A cylinder ghost needs the skin's square cuts
+
+`memberSilhouette` defaults to eased cut corners so a welded union does not fillet them away.
+The live free barrel and rod do not use that easing. `ghostArtwork` must request zero easing
+for free cylinder members as well: routing them through `linkArtwork` made the ghost's corners
+differ from the live part, despite matching colors. The ghost-artwork spec and cylinder-colors
+browser suite guard the actual painter.

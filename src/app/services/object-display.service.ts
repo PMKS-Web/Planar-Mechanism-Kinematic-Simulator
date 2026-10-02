@@ -1,40 +1,93 @@
 import { Injectable, inject } from '@angular/core';
-import { proportionalObjectScale } from '../model/proportional-object-scale';
+import { DRAWING_STYLES, storeDrawingStyle } from '../model/drawing-style';
+import { linkArtwork, schematicLink } from '../model/link-artwork';
+import { Link, RealLink } from '../model/link';
+import { Halo, holds, selectionHalos } from '../model/selection-halo';
+import { ActiveObjService } from './active-obj.service';
 import { MechanismService } from './mechanism.service';
-import { SaveHistoryService } from './save-history.service';
-import { SettingsService, writeStoredFlag } from './settings.service';
+import { SettingsService } from './settings.service';
 
-const SIZE_FACTORS = [0.65, 1, 1.4] as const;
-
-/** Display controls cannot edit cylinder lengths, stroke, or solved motion. */
+/** The whole drawing shares one style. It has no route to document history or the solver. */
 @Injectable({ providedIn: 'root' })
 export class ObjectDisplayService {
   private mechanism = inject(MechanismService);
-  private history = inject(SaveHistoryService);
+  private active = inject(ActiveObjService);
   readonly settings = inject(SettingsService);
 
-  selectedSize(): number {
-    const normal = proportionalObjectScale(this.mechanism.links);
-    if (!normal) return -1;
-    return SIZE_FACTORS.findIndex(
-      (factor) => Math.abs(SettingsService.objectScale / normal - factor) < 0.01
+  selectedStyle(): string {
+    return String(DRAWING_STYLES.indexOf(this.settings.drawingStyle.value));
+  }
+
+  chooseStyle(index: string | null): void {
+    const style = DRAWING_STYLES[Number(index)];
+    if (!style) return;
+    this.settings.drawingStyle.next(style);
+    storeDrawingStyle(style);
+  }
+
+  path(link: Link): string {
+    return linkArtwork(link, this.settings.drawingScale, this.mechanism.sealedStructures());
+  }
+
+  skeleton(link: Link): string {
+    return schematicLink(link, this.mechanism.sealedStructures());
+  }
+
+  /** Schematic's selection bands, under the lines they mark. */
+  halos(): Halo[] {
+    if (!this.settings.isSchematic) return [];
+    return selectionHalos(
+      this.mechanism.getLinks(),
+      (link) => this.mechanism.getLinkCSSClass(link),
+      this.pickedPart(),
+      this.mechanism.sealedStructures()
     );
   }
 
-  chooseSize(index: number): void {
-    const normal = proportionalObjectScale(this.mechanism.links);
-    const factor = SIZE_FACTORS[index];
-    if (!normal || !factor || this.selectedSize() === index) return;
-    SettingsService.preserveCylinderGeometry();
-    SettingsService.objectScaleChosen = true;
-    SettingsService._objectScale.next(normal * factor);
-    this.mechanism.applyObjectScaleChange();
-    this.history.save();
+  /** A part picked inside a compound, rather than a whole body. */
+  pickedPart(): Link | undefined {
+    const link = this.active.selectedLink;
+    const whole = link && this.mechanism.getLinks().includes(link);
+    return this.active.objType === 'Link' && link && !whole ? link : undefined;
   }
 
-  chooseLines(index: number): void {
-    const lines = index === 1;
-    this.settings.isLineDrawing.next(lines);
-    writeStoredFlag('lineDrawing', lines);
+  /** The body a picked part was welded into. */
+  compoundOf(part: Link): Link | undefined {
+    return this.mechanism.getLinks().find((root) => root.id !== part.id && holds(root, part));
+  }
+
+  /**
+   * The center-of-mass mark's radius: the style's size, but never under 6px,
+   * because it is a handle as well as a glyph and a thin style made it one
+   * nobody could hit.
+   */
+  comRadius(): number {
+    return Math.max(0.11 * this.settings.drawingScale, this.pixels(6));
+  }
+
+  /** Where a grab on that mark lands: a 12px radius at the least. */
+  comHitRadius(): number {
+    return Math.max(0.16 * this.settings.drawingScale, this.pixels(12));
+  }
+
+  private pixels(px: number): number {
+    const zoom = this.settings.drawingZoom;
+    return zoom > 0 ? px / zoom : 0;
+  }
+
+  comPaths(link: Link): string[] {
+    if (!(link instanceof RealLink)) return [];
+    const { x, y } = link.CoM;
+    const r = this.comRadius();
+    const points = [
+      [x - r, y],
+      [x, y + r],
+      [x + r, y],
+      [x, y - r],
+    ];
+    return points.map(([a, b], i) => {
+      const [c, d] = points[(i + 1) % 4];
+      return `M ${x} ${y} L ${a} ${b} A ${r} ${r} 0 0 0 ${c} ${d} Z`;
+    });
   }
 }

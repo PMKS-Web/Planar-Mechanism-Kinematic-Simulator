@@ -338,6 +338,8 @@ check(
   JSON.stringify({ barrel: ghosted.barrel, rod: ghosted.rod })
 );
 
+await page.screenshot({ path: `${OUT}/05-ghost-shape.png` });
+
 // And a rod given a color of its own: the ghost follows the choice, not the
 // record it was following a moment ago.
 await select('rod');
