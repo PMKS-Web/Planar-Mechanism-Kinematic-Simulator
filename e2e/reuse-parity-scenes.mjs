@@ -326,7 +326,7 @@ export const SCENES = [
       'the close button is now one shared control, 32px and round. This one was a 36px with 6px corners. Part of the deliberate unification of five different close buttons.',
   },
   {
-    name: 'CAD export dialog',
+    name: 'CAD Export dialog',
     linkage: '4-Bar',
     storage: QUIET,
     setup: async (page) => {

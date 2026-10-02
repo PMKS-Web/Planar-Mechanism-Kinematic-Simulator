@@ -787,7 +787,7 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
 
   /** The ram's own size and position, read back off its joints. */
   private cylinderSize(sealed: Cylinder) {
-    return cylinderSizeOf(sealed, 0.15 * this.settingsService.objectScale);
+    return cylinderSizeOf(sealed, 0.15 * SettingsService.cylinderObjectScale);
   }
 
   /** The Starts-at field's value: where the rod begins, as a share of the stroke. */
@@ -1494,6 +1494,11 @@ export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, On
             this.settingsService.isInputCW.next(clockwise);
           }
           this.mechanismService.updateMechanism(true);
+        } else {
+          this.notify.refusal(
+            'input.speed',
+            'Input Speed must be a nonzero number. Use Pause to stop the animation.'
+          );
         }
         this.patchInputSpeedField();
       })

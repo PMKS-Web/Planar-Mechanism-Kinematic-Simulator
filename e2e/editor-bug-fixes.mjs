@@ -161,6 +161,7 @@ try {
     'the first link graph starts expanded',
     (await page.locator('.graphHeader').first().getAttribute('aria-expanded')) === 'true'
   );
+  await page.getByRole('tab', { name: 'Center of mass', exact: true }).click();
   await page.locator('app-view-button[data-switch="traces"] button').click();
   check(
     'a massless primitive link has a CoM path and mark',
@@ -280,7 +281,7 @@ try {
   await page.getByRole('button', { name: 'Project menu' }).click();
   check(
     'Export Data is disabled in the narrow hamburger menu without analysis',
-    await page.getByRole('button', { name: /Export data/i, exact: true }).isDisabled()
+    await page.getByRole('button', { name: /Export Data/i, exact: true }).isDisabled()
   );
   await page.screenshot({ path: `${OUT}/narrow-export.png` });
   await page.keyboard.press('Escape');

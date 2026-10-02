@@ -191,11 +191,14 @@ export function buildMechanism(
   sampling: 'adaptive' | 'degree' = 'degree'
 ): BuiltMechanism {
   const previousScale = SettingsService.objectScale;
+  const previousCylinderScale = SettingsService.preservedCylinderScale;
+  SettingsService.preservedCylinderScale = 0;
   SettingsService._objectScale.next(SOLVING_OBJECT_SCALE);
   try {
     return buildMechanismNow(fixture, sampling);
   } finally {
     SettingsService._objectScale.next(previousScale);
+    SettingsService.preservedCylinderScale = previousCylinderScale;
   }
 }
 
@@ -403,10 +406,13 @@ export function buildMechanismAtScale(
   objectScale: number
 ): BuiltMechanism {
   const previous = SettingsService.objectScale;
+  const previousCylinderScale = SettingsService.preservedCylinderScale;
+  SettingsService.preservedCylinderScale = 0;
   SettingsService._objectScale.next(objectScale);
   try {
     return buildMechanismNow(fixture);
   } finally {
     SettingsService._objectScale.next(previous);
+    SettingsService.preservedCylinderScale = previousCylinderScale;
   }
 }

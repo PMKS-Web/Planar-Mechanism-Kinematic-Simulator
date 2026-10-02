@@ -35,6 +35,12 @@ export const BUILT_IN_TEMPLATE_IDS = [
   // Real-life use cases, drawn by hand over a picture of the machine on 7 Sep
   // 2026 and pasted in as the URLs the app produced. Each card ships the
   // picture it was traced over as its backdrop (template-catalog.ts).
+  //
+  // Edited deliberately once, in the three with a ram: the rod stored the id
+  // it was drawn with as its name (`A2B`). The reader gives that seal a letter
+  // on opening, so the id moved on, the name did not, and it read as a typed
+  // name offering a joint nobody can find. The name is empty now and follows
+  // the id; template-linkages.spec.ts keeps it that way.
   'Aircraft_Landing_Gear',
   'Hood_Hinge',
   'Excavator_Bucket',
@@ -60,7 +66,8 @@ export const LIBRARY_TEMPLATE_IDS = [
   'Windshield_Wiper',
   'Elliptical_Crank',
   'Jansen_Leg',
-  'Backhoe_Bucket',
+  'Hydraulic_Crosshead',
+  'Offset_Mount_Hatch',
   // No Toggle_Press: its lesson is the toggle clamp's, which teaches it better
   // by carrying the load that makes the point. Its fixture and gallery entry
   // stay — the verification suite still asserts on them.
@@ -87,7 +94,8 @@ export const LIBRARY_TEMPLATE_IDS = [
   'Straight_Line_Pair',
   'Pumping_Field',
   // A pair of machines that happen to be one aircraft's landing gear.
-  'Landing_Gear',
+  'Reciprocating_Saw',
+  'Slotted_Tool_Drive',
   'Four_Bar_Inversions',
   'Slider_Crank_Inversions',
 ] as const;
@@ -131,11 +139,11 @@ export const TEMPLATE_LINKAGES: Record<TemplateID, string> = {
   Cylinder_Gripper:
     '2v.Ay,6G.5,0.1011.4A,A,01E8,0,0.0B,B,0w9,0,0.8C,C,0vV,0,0.0D,D,0bW,0,0.0G,G,0Fe,Fe,0.0H,H,Fe,Fe,0.0I,I,0Fe,0Fe,0.0J,J,Fe,0Fe,0.4K,K,0T4,xO,0.4L,L,0T4,0xO,0.4O,O,2C,xO,0.4P,P,2C,0xO,0.0M,M,0T4,XI,0.0Q,Q,2C,XI,0.0S,S,11U,Dc,0.0T,T,0T4,0XI,0.0V,V,2C,0XI,0.0X,X,11U,0Dc,0.ZE,E,0vV,0,0,AB,A,B.1N,N,0T4,XI,0,KL,K,L.1R,R,2C,XI,0,OP,O,P.1U,U,0T4,0XI,0,KL,K,L.1W,W,2C,0XI,0,OP,O,P..ARAB,Barrel,0,0,0148,0,00695C,A,B,,.ARCD,Rod,0,0,0lV,0,26A69A,C,D,,.MRDGHIJ,Carriage,0,0,07W,0,c5cae9,D,G,H,I,J,,.MRKL,Rail,0,0,0T4,0,0d125a,K,L,,.MROP,Rail,0,0,2C,0,0d125a,O,P,,.MRGM,GM,0,0,0MM,OT,B2DFDB,G,M,,.MRHQ,HQ,0,0,8w,OT,B2DFDB,H,Q,,.MRMQS,Jaw,0,0,Ct,Qk,00695C,M,Q,S,,.MRIT,IT,0,0,0MM,0OT,B2DFDB,I,T,,.MRJV,JV,0,0,8w,0OT,B2DFDB,J,V,,.MRTVX,Jaw,0,0,Ct,0Qk,00695C,T,V,X,,.YPCE,CE,0,0,0,0,,C,E,,.YPMN,MN,0,0,0,0,,M,N,,.YPQR,QR,0,0,0,0,,Q,R,,.YPTU,TU,0,0,0,0,,T,U,,.YPVW,VW,0,0,0,0,,V,W,,..2F1,MQS,F1,11U,Dc,11U,cx,Fe.2F2,TVX,F2,11U,0Dc,11m,0h6,Fe..N_.KFF1~303e9f,KFF2~303e9fM*1NvmfZ',
   Aircraft_Landing_Gear:
-    '2u.7S,38.5,0.1011.4A,A,1Lu,1Cf,0.OB,B,1N1,Kp,0.0E,E,10g,1F6,0.0G,G,19p,_1,0.0H,H,1MN,ug,0.4I,I,1MG,1Hx,0.0I1,I1,16T,1Ft,0.8I2,I2,1GT,1HA,0.ZI3,I3,1GT,1HA,0,II1,I,I1,38.CJ,J,rR,17h,0.8K,K,1BI,KU,0.0L,L,1BO,4E,0.0M,M,1Ih,4G,0.0N,N,1ID,Vb,0.0O,O,1BJ,VJ,0.0P,P,1F4,XA,0.0Q,Q,1Eg,2q,0..ARHG,HG,0,0,1G5,xM,26A69A,H,G,,.ARII1,II1,0,0,1EN,1Gv,00695C,I,I1,,.AREI2,EI2,0,0,18Z,1G8,c5cae9,I2,E,,.YPI2I3,I2I3,0,0,0,0,,I2,I3,,.AREGJ,EGJ,0,0,zL,177,303e9f,E,J,G,,EJ,JG.ARABHKLMNOPQ,ABHKLMNOPQ,0,0,1IA,Tx,0d125a,A,B,H,K,L,M,N,O,P,Q,,ABH,BK,KLMNOPQ.aREJ,EJ,0,0,x3,1BP,B2DFDB,E,J,,.aRJG,JG,0,0,-d,12s,26A69A,J,G,,.aRABH,ABH,0,0,1MR,pN,0d125a,A,B,H,,.aRBK,BK,0,0,1HA,Kf,c5cae9,B,K,,.aRKLMNOPQ,KLMNOPQ,0,0,1EN,IH,303e9f,K,L,M,N,O,P,Q,,...N_d*4a5AYE',
+    '2u.7S,38.5,0.1011.4A,A,1Lu,1Cf,0.OB,B,1N1,Kp,0.0E,E,10g,1F6,0.0G,G,19p,_1,0.0H,H,1MN,ug,0.4I,I,1MG,1Hx,0.0I1,I1,16T,1Ft,0.8I2,I2,1GT,1HA,0.ZI3,I3,1GT,1HA,0,II1,I,I1,38.CJ,J,rR,17h,0.8K,K,1BI,KU,0.0L,L,1BO,4E,0.0M,M,1Ih,4G,0.0N,N,1ID,Vb,0.0O,O,1BJ,VJ,0.0P,P,1F4,XA,0.0Q,Q,1Eg,2q,0..ARHG,HG,0,0,1G5,xM,26A69A,H,G,,.ARII1,II1,0,0,1EN,1Gv,00695C,I,I1,,.AREI2,,0,0,18Z,1G8,c5cae9,I2,E,,.YPI2I3,I2I3,0,0,0,0,,I2,I3,,.AREGJ,EGJ,0,0,zL,177,303e9f,E,J,G,,EJ,JG.ARABHKLMNOPQ,ABHKLMNOPQ,0,0,1IA,Tx,0d125a,A,B,H,K,L,M,N,O,P,Q,,ABH,BK,KLMNOPQ.aREJ,EJ,0,0,x3,1BP,B2DFDB,E,J,,.aRJG,JG,0,0,-d,12s,26A69A,J,G,,.aRABH,ABH,0,0,1MR,pN,0d125a,A,B,H,,.aRBK,BK,0,0,1HA,Kf,c5cae9,B,K,,.aRKLMNOPQ,KLMNOPQ,0,0,1EN,IH,303e9f,K,L,M,N,O,P,Q,,...N_a*2Y3xq5',
   Hood_Hinge:
-    '2u.7q,1a.5,0.1011.4A,A,2C,o,0.0A1,A1,ZP,U,0.8A2,A2,Nc,b,0.0B,B,up,H,0.ZA3,A3,Nc,b,0,AA1,A,A1,1a.4E,E,Vf,8j,0.0F,F,2m,M-,0.GG,G,Zy,Im,0.0H,H,hm,6G,0.0I,I,1XI,Wy,0.KJ,J,q0,Cg,0.0K,K,vq,gB,0.8L,L,Ph,m_,0.8M,M,09E,pW,0.8N,N,0fg,nH,0.GO,O,0165,gD,0..ARAA1,AA1,0,0,Io,e,00695C,A,A1,,.ARA2B,A2B,0,0,eD,R,303e9f,A2,B,,.YPA2A3,A2A3,0,0,0,0,,A2,A3,,.AREFG,EFG,0,0,NS,Gq,0d125a,E,F,G,,.ARGH,GH,0,0,ds,CW,26A69A,G,H,,.ARBHIJ,BHIJ,0,0,11i,Dp,303e9f,H,I,B,J,,.ARFK,FK,0,0,UI,Wb,303e9f,F,K,,.ARIKLMNO,Hood,0,0,03D,kx,0d125a,K,I,L,M,N,O,,KIL,LM,MN,NO.aRKIL,KIL,0,0,yG,fN,0d125a,K,I,L,,.aRLM,LM,0,0,8F,oF,c5cae9,L,M,,.aRMN,MN,0,0,0PS,oP,303e9f,M,N,,.aRNO,NO,0,0,0tt,jl,c5cae9,N,O,,...N_n*3vxoD8',
+    '2u.7q,1a.5,0.1011.4A,A,2C,o,0.0A1,A1,ZP,U,0.8A2,A2,Nc,b,0.0B,B,up,H,0.ZA3,A3,Nc,b,0,AA1,A,A1,1a.4E,E,Vf,8j,0.0F,F,2m,M-,0.GG,G,Zy,Im,0.0H,H,hm,6G,0.0I,I,1XI,Wy,0.KJ,J,q0,Cg,0.0K,K,vq,gB,0.8L,L,Ph,m_,0.8M,M,09E,pW,0.8N,N,0fg,nH,0.GO,O,0165,gD,0..ARAA1,AA1,0,0,Io,e,00695C,A,A1,,.ARA2B,,0,0,eD,R,303e9f,A2,B,,.YPA2A3,A2A3,0,0,0,0,,A2,A3,,.AREFG,EFG,0,0,NS,Gq,0d125a,E,F,G,,.ARGH,GH,0,0,ds,CW,26A69A,G,H,,.ARBHIJ,BHIJ,0,0,11i,Dp,303e9f,H,I,B,J,,.ARFK,FK,0,0,UI,Wb,303e9f,F,K,,.ARIKLMNO,Hood,0,0,03D,kx,0d125a,K,I,L,M,N,O,,KIL,LM,MN,NO.aRKIL,KIL,0,0,yG,fN,0d125a,K,I,L,,.aRLM,LM,0,0,8F,oF,c5cae9,L,M,,.aRMN,MN,0,0,0PS,oP,303e9f,M,N,,.aRNO,NO,0,0,0tt,jl,c5cae9,N,O,,...N_k*2zlhwI',
   Excavator_Bucket:
-    '2v.4i,Fe.5,0.1011.4A,A,0Mi,Nd,0.0B,B,Gd,0FP,0.0C,C,o,d,0.0D,D,E5,5C,0.0A1,A1,1r,BL,0.8A2,A2,0AS,HU,0.ZA3,A3,0AS,HU,0,AA1,A,A1,0Fe.0E,E,NC,08I,0.KH,H,0Wk,RB,0.8I,I,VG,0NS,0.GJ,J,KK,0YO,0.8K,K,WM,0FQ,0.0L,L,6U,4m,0..ARABCH,ABCH,0,0,0CT,BQ,0d125a,A,B,C,H,,.ARCDL,CD,0,0,77,3X,c5cae9,C,D,L,,.ARAA1,AA1,0,0,0AS,HU,26A69A,A,A1,,.ARA2D,A2D,0,0,1r,BL,00695C,A2,D,,.YPA2A3,A2A3,0,0,0,0,,A2,A3,,.ARDE,DE,0,0,If,01Z,0d125a,D,E,,.ARBEIJK,BEIJK,1w4W,28,RD,0KT,26A69A,I,J,B,E,K,,IJ,BEK,KI.aRIJ,IJ,eiB,0,Po,0Sw,00695C,I,J,,.aRBEK,BEK,eiB,0,O3,0D2,B2DFDB,B,E,K,,.aRKI,KI,eiB,0,Vp,0JR,c5cae9,K,I,,...N_R*3rBBwf',
+    '2v.4i,Fe.5,0.1011.4A,A,0Mi,Nd,0.0B,B,Gd,0FP,0.0C,C,o,d,0.0D,D,E5,5C,0.0A1,A1,1r,BL,0.8A2,A2,0AS,HU,0.ZA3,A3,0AS,HU,0,AA1,A,A1,0Fe.0E,E,NC,08I,0.KH,H,0Wk,RB,0.8I,I,VG,0NS,0.GJ,J,KK,0YO,0.8K,K,WM,0FQ,0.0L,L,6U,4m,0..ARABCH,ABCH,0,0,0CT,BQ,0d125a,A,B,C,H,,.ARCDL,CD,0,0,77,3X,c5cae9,C,D,L,,.ARAA1,AA1,0,0,0AS,HU,26A69A,A,A1,,.ARA2D,,0,0,1r,BL,00695C,A2,D,,.YPA2A3,A2A3,0,0,0,0,,A2,A3,,.ARDE,DE,0,0,If,01Z,0d125a,D,E,,.ARBEIJK,BEIJK,1w4W,28,RD,0KT,26A69A,I,J,B,E,K,,IJ,BEK,KI.aRIJ,IJ,eiB,0,Po,0Sw,00695C,I,J,,.aRBEK,BEK,eiB,0,O3,0D2,B2DFDB,B,E,K,,.aRKI,KI,eiB,0,Vp,0JR,c5cae9,K,I,,...N_O*3Ia4n7',
   Car_Steering:
     '2v.o,o.2,0.2012.6A,A,0,0,0,,,,0VG.GB,B,01N,4Q,0.0C,C,8f,1y,0.CD,D,BD,G,0.0E,E,0BV,3N,0.CF,F,0B7,G,0.8G,G,0Dj,0-,0.0H,H,0Fb,32,0.0I,I,0Dz,3o,0.0J,J,0Bv,04w,0.0K,K,0AG,04A,0.8L,L,DL,20,0.0M,M,Ap,5R,0.0N,N,9Z,4X,0.0O,O,En,02X,0.0P,P,G0,01d,0..ARAB,AB,0,0,0h,2D,0d125a,A,B,,.ARBC,BC,0,0,3f,3B,26A69A,B,C,,.ARBE,BE,0,0,06R,3u,B2DFDB,B,E,,.AREFGHIJK,EFGHIJK,0,0,0CD,J,0d125a,E,F,G,H,I,J,K,,EF,FG,GHIJK.ARCDLMNOP,CDLMNOP,0,0,Bg,1E,0d125a,C,D,L,M,N,O,P,,CD,DL,LMNOP.aREF,EF,0,0,0BJ,1p,0d125a,E,F,,.aRFG,FG,0,0,0CQ,0O,00695C,F,G,,.aRGHIJK,GHIJK,0,0,0D5,0f,c5cae9,G,H,I,J,K,,.aRCD,CD,0,0,9x,16,0d125a,C,D,,.aRDL,DL,0,0,CH,18,303e9f,D,L,,.aRLMNOP,LMNOP,0,0,Cv,1a,c5cae9,L,M,N,O,P,,...N_t*2O6jjZ',
   // <generated by `npm run template-payloads` — do not edit by hand>
@@ -155,8 +163,10 @@ export const TEMPLATE_LINKAGES: Record<TemplateID, string> = {
     '2v.Ay,1E8.A,0.1011.6A,A,0ix,X,0.0B,B,0zu,7O,0.GC,C,0qC,Lr,0.0D,D,085,Av,0.5E,E,aY,v,03.4F,F,0,0,0..YRAB,AB,0,0,0rQ,3y,303e9f,A,B,,.YRBC,BC,0,0,0v2,Ed,26A69A,B,C,,.YRCDE,CDE,0,0,07x,BD,00695C,C,D,E,,.YRDF,DF,0,0,043,5S,0d125a,D,F,,...N_n*3ZqyAU',
   Jansen_Leg:
     '2v.1jO,1E8.8,0.1011.6O,O,0,0,0.0A,A,3gO,0,0.4G,G,09Hm,01vu,0.0B,B,05tE,7ee,0.0C,C,0IGg,1-F,0.0D,D,06b8,0B7B,0.0E,E,0ETW,06sL,0.GF,F,0AYO,0MPj,0..YROA,OA,0,0,1rC,0,303e9f,O,A,,.YRAB,AB,0,0,016R,3qK,26A69A,A,B,,.YRGBC,GBC,0,0,0B8Z,2ag,0d125a,G,B,C,,.YRAD,AD,0,0,01TO,05Zc,00695C,A,D,,.YRGD,GD,0,0,07xS,06WY,303e9f,G,D,,.YRCE,CE,0,0,0GN5,02RZ,B2DFDB,C,E,,.YRDEF,DEF,0,0,0AXh,0DT4,26A69A,D,E,F,,...N_O*3MdpHm',
-  Backhoe_Bucket:
-    '2v.Ay,Im.5,0.1011.4A,A,01jO,0,0.0B,B,0sb,Py,0.hC,C,018N,HX,0,AB,A,B.0D,D,0Ha,hT,0.4G,G,0,0,0.0H,H,VG,Im,0.4J,J,o0,0P0,0.0K,K,1BI,2i,0.0T,T,1NW,0ee,0..YRAB,AB,0,0,01H-,C_,303e9f,A,B,,.YRCD,CD,0,0,0iz,UV,26A69A,C,D,,.YRDGH,DGH,0,0,4a,Kl,0d125a,D,G,H,,.YRHK,HK,0,0,rH,Ak,00695C,H,K,,.YRJKT,JKT,0,0,16x,0K-,303e9f,J,K,T,,...N_C*3qHKRi',
+  Hydraulic_Crosshead:
+    '2v.Ay,Fe.5,0.1011.CA,A,0,0,0.0N,N,vD,0,0.hS,S,aZ,0,0,ANG,A,N.8B,B,1Tm,0,0.4G,G,0,0VG,0.0C,C,1Tm,S8,0.0D,D,1Tm,0S8,0..YRANG,Fixed frame,0,0,J4,0AR,303e9f,A,N,G,,AN,AG.YRSBCD,Press crosshead,0,0,1FT,0,26A69A,S,B,C,D,,SB,BCD.NRAN,AN,0,0,Sd,0,303e9f,A,N,,.NRAG,AG,0,0,0,0Fe,303e9f,A,G,,.NRSB,SB,0,0,119,0,26A69A,S,B,,.NRBCD,BCD,0,0,1Tm,0,26A69A,B,C,D,,...N_h*2R7x89',
+  Offset_Mount_Hatch:
+    '2v.Ay,9O.5,0.1011.4G,G,0VG,0,0.8A,A,0,0,0.0N,N,tQ,0,0.hS,S,cM,0,0,GAN,A,N.8B,B,1Tm,0,0.0E,E,1jO,Fe,0.4O,O,1E8,0VG,0.GT,T,2Ce,_W,0..YRGAN,Offset barrel,0,0,83,0,303e9f,G,A,N,,GA,AN.YRSBE,Rod bracket,0,0,1GV,5D,26A69A,S,B,E,,SB,BE.YROET,Hatch,0,0,1jO,Fe,0d125a,O,E,T,,.NRGA,GA,0,0,0Fe,0,303e9f,G,A,,.NRAN,AN,0,0,Rj,0,303e9f,A,N,,.NRSB,SB,0,0,123,0,26A69A,S,B,,.NRBE,BE,0,0,1ba,7q,26A69A,B,E,,...N_N*1TK6Jb',
   Scissor_Lift:
     '2v.Ay,Fe.5,0.1011.4A,A,2SG,0,0.0B,B,1fl,a3,0.hC,C,1wL,OD,0,AB,A,B.0D,D,17q,yH,0.4G,G,0,0,0.0M,M,1Vm,1GM,0.1K,K,2-X,2Wj,0,TU,T,U.5S,S,2-X,0,0.0T,T,0,2Wj,0.0U,U,3_1,2Wj,0..YRAB,AB,0,0,230,I2,303e9f,A,B,,.YRCD,CD,0,0,1X5,gF,26A69A,C,D,,.YRGDMK,GDMK,0,0,1Pn,1BL,0d125a,G,D,M,K,,.YRSMT,SMT,0,0,1Vm,1GM,00695C,S,M,T,,.YRTU,TU,0,0,1-0,2Wj,26A69A,T,U,,...N_d*16GXx2',
   Shaper_Quick_Return:
@@ -197,8 +207,10 @@ export const TEMPLATE_LINKAGES: Record<TemplateID, string> = {
     '2v.Ay,1E8.5,0.1011.6A,A,0VG,0,0,,,,2SG.0B,B,0Fe,_W,0.0C,C,Fe,_W,0.GD,D,0,_W,0.4E,E,VG,0,0.4G,G,2hu,NS,0.6H,H,2hu,07q,0,,,,2SG.0I,I,36y,0NS,0.0J,J,3jj,0If,0.0K,K,2lP,0sd,0.GL,L,3MA,0nq,0..YRAC,AC,0,0,07q,VG,303e9f,A,C,,.YRBCD,BCD,0,0,0,_W,26A69A,B,C,D,,.YRBE,BE,0,0,7q,VG,0d125a,B,E,,.YRHI,HI,0,0,2vQ,0Fe,303e9f,H,I,,.YRGJ,GJ,0,0,3Cp,2Q,0d125a,G,J,,.YRGK,GK,0,0,2jf,0Fb,0d125a,G,K,,.YRJI,JI,0,0,3QL,0L2,26A69A,J,I,,.YRKI,KI,0,0,2xB,0d1,26A69A,K,I,,.YRJL,JL,0,0,3Xy,0YE,00695C,J,L,,.YRKL,KL,0,0,32o,0qD,00695C,K,L,,...N_M*1og8mL',
   Pumping_Field:
     '2v.Ay,1E8.5,0.1011.4A,A,0gB,0oI,0.0B,B,0QZ,0o1,0.2C,C,0d4,0,0,,,,2SG.4D,D,0,0,0.0E,E,o0,0,0.5F,F,r8,0eW,OZ.4H,H,2Wz,0oI,0.0I,I,2mb,0o1,0.2J,J,2a4,0,0,,,,1z0.4K,K,3B8,0,0.0L,L,3z8,0,0.5M,M,40G,0eW,OZ.4O,O,5i5,0oI,0.0P,P,5xj,0o1,0.2Q,Q,5lC,0,0,,,,2xW.4R,R,6MG,0,0.0S,S,78G,0,0.5T,T,7BO,0eW,OZ..YRAB,AB,0,0,0YN,0oA,303e9f,A,B,,.YRBC,BC,0,0,0Wq,0P1,26A69A,B,C,,.YRCDE,CDE,0,0,3f,0,0d125a,C,D,E,,.YREF,EF,0,0,pa,0KG,00695C,E,F,,.YRHI,HI,0,0,2en,0oA,303e9f,H,I,,.YRIJ,IJ,0,0,2gK,0P1,26A69A,I,J,,.YRJKL,JKL,0,0,3En,0,0d125a,J,K,L,,.YRLM,LM,0,0,3_i,0KG,00695C,L,M,,.YROP,OP,0,0,5pv,0oA,303e9f,O,P,,.YRPQ,PQ,0,0,5rS,0P1,26A69A,P,Q,,.YRQRS,QRS,0,0,6Pv,0,0d125a,Q,R,S,,.YRST,ST,0,0,79q,0KG,00695C,S,T,,...N_E*2Ixuix',
-  Landing_Gear:
-    '2v.Ay,5U.5,0.1011.4A,A,Zy,38,0.0B,B,bm,03h,0.GC,C,iS,0Sa,0.4D,D,Cw,JG,0.0E,E,NL,9f,0.hF,F,RL,5z,0,DE,D,E.4G,G,0Zy,38,0.0H,H,0bm,03h,0.GI,I,0iS,0Sa,0.4J,J,0Cw,JG,0.0K,K,0NL,9f,0.hL,L,0RL,5z,0,JK,J,K..YRABC,Starboard leg,0,0,dO,09j,303e9f,A,B,C,,.YRDE,DE,0,0,I7,ET,0d125a,D,E,,.YRBF,BF,0,0,WZ,19,26A69A,B,F,,.YRGHI,Port leg,0,0,0dO,09j,303e9f,G,H,I,,.YRJK,JK,0,0,0I7,ET,0d125a,J,K,,.YRHL,HL,0,0,0WZ,19,00695C,H,L,,...N_j*3XB8Vd',
+  Reciprocating_Saw:
+    '2v.Ay,1E8.A,0.1011.6A,A,0,0,0.1B,B,Fe,0,0,CDE,C,D.DC,C,Fe,0VG,0.0D,D,Fe,S8,0.0E,E,1E8,0VG,0..ARAB,Flywheel crank,OQW,OQW,7q,0,303e9f,A,B,,.ARCDE,Saw carriage,OQW,OQW,aT,0BT,26A69A,C,D,E,,CD,CE.NRCD,CD,OQW,OQW,Fe,01a,26A69A,C,D,,.NRCE,CE,OQW,OQW,ku,0VG,26A69A,C,E,,..2F1,CDE,F1,1E8,0VG,_W,0VG,CW.2F2,CDE,F2,ku,0VG,ku,0ku,38..N_G*01rYDD',
+  Slotted_Tool_Drive:
+    '2v.Ay,1E8.A,0.1011.6A,A,0,0,0.0B,B,Fe,0,0.0C,C,d4,ec,0.4D,D,_W,0,0.4E,E,VG,7q,0.1F,F,bo,cO,0,BCX,B,X.0X,X,tU,151,0..ARAB,Input crank,OQW,OQW,7q,0,303e9f,A,B,,.ARBCX,Tool carrier,OQW,OQW,ak,aY,26A69A,B,C,X,,.ARCD,Return rocker,OQW,OQW,oo,KJ,0d125a,C,D,,.AREF,Loaded output,OQW,OQW,YX,N6,303e9f,E,F,,..3F1,BCX,F1,d4,ec,PY,mQ,9O.2F2,EF,F2,bo,cO,bo,Mm,Fe..N_i*0h2tD2',
   Four_Bar_Inversions:
     '2v.Ay,1E8.5,0.1011.6A,A,0,1Tm,0,,,,2SG.0B,B,7q,1hI,0.0C,C,JQ,28J,0.4D,D,d4,1Tm,0.6E,E,2Ce,1Tm,0,,,,2SG.0F,F,2KS,1hI,0.0G,G,2ey,2CY,0.4H,H,2hu,1Tm,0.6I,I,0,0,0,,,,2SG.0J,J,05R,Uo,0.0K,K,fR,TL,0.4L,L,Fe,0,0.6M,M,2Ce,0,0,,,,2SG.0N,N,2UZ,Pc,0.0O,O,2gp,ZK,0.4P,P,2xW,0,0..YRAB,L1,0,0,3w,1aX,303e9f,A,B,,.YRBC,L2,0,0,Dd,1vp,26A69A,B,C,,.YRCD,L3,0,0,TF,1p2,0d125a,C,D,,.YRAD,L4,0,0,JY,1Tm,00695C,A,D,,.YREF,L1,0,0,2GY,1aX,303e9f,E,F,,.YRFG,L4,0,0,2Ui,1xw,00695C,F,G,,.YRGH,L3,0,0,2gQ,1r9,0d125a,G,H,,.YREH,L2,0,0,2SG,1Tm,26A69A,E,H,,.YRIJ,L2,0,0,02k,FP,26A69A,I,J,,.YRJK,L3,0,0,I0,U3,0d125a,J,K,,.YRKL,L4,0,0,SY,Eh,00695C,K,L,,.YRIL,L1,0,0,7q,0,303e9f,I,L,,.YRMN,L2,0,0,2Lc,Cp,26A69A,M,N,,.YRNO,L1,0,0,2ah,UT,303e9f,N,O,,.YROP,L4,0,0,2p9,Hg,00695C,O,P,,.YRMP,L3,0,0,2a4,0,0d125a,M,P,,...N_c*1FONsX',
   Slider_Crank_Inversions:

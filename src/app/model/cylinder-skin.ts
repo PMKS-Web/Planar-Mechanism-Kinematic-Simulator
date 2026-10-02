@@ -11,6 +11,7 @@
  * Kept out of the canvas because it does not depend on the canvas.
  */
 
+import { SettingsService } from '../services/settings.service';
 import { Cylinder, cylinderHeadHalf, isCylinderInner } from './cylinder';
 import { Joint } from './joint';
 import { RealLink } from './link';
@@ -116,7 +117,10 @@ export function cylinderSkinFrame(cylinder: Cylinder, r: number): CylinderSkinFr
     // The head is full size on any cylinder with room for it and shrinks only
     // on one too short to hold it, so it is read off this barrel rather than
     // assumed.
-    headHalf: cylinderHeadHalf(mouth - anchor, r),
+    headHalf: cylinderHeadHalf(
+      mouth - anchor,
+      SettingsService.preservedCylinderScale ? 0.15 * SettingsService.cylinderObjectScale : r
+    ),
   };
 }
 

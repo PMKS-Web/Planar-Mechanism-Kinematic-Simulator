@@ -3,7 +3,7 @@
        list between them moves; Back and Next are always reachable, however
        long the drawing is. -->
   <div class="exportHead">
-    <div class="exportTitle">Export data</div>
+    <div class="exportTitle">Export Data</div>
     <p class="exportLead">{{ lead }}</p>
 
     <!-- One rule, one question each. Forces used to be a tab inside the
@@ -314,8 +314,8 @@
         </div>
       }
       @if (hasMagnitude()) {
-        <div class="barRow">
-          <span class="settingName">Components to export</span>
+        <div class="barRow barRow--components">
+          <span class="settingName">Components</span>
           <mat-icon
             class="label-help"
             [matTooltip]="help['components']"
@@ -360,6 +360,14 @@
     </div>
   }
 
+  @if (!canGoOn() && flow.step !== 'parts') {
+    <p class="quantityHint" role="status">
+      Select at least one quantity to export.
+      @if (flow.step === 'forces') {
+        You can go back to choose kinematic quantities.
+      }
+    </p>
+  }
   <div class="exportFoot">
     @if (flow.previousStep()) {
       <button class="backButton" (click)="back()">

@@ -525,3 +525,15 @@ Not suites — import them from one.
 `force-frame.mjs` checks compound-primitive tracer ownership and primitive deletion (keyboard/panel) through undo/redo, the force-panel Flip Force action, fixed application marks, local frame angle editing and hover guides, playback suppression, and locked force behavior. It writes tracer, flip, and playback filmstrips to `artifacts/force-frame/`.
 
 `force-precision.mjs` compares the actual rendered force against the designer’s selected and entering SVGs, checks resting/hover/selected/entering states for all six force colors, and records a real hover/selection filmstrip. Comparison images and the palette matrix go to `artifacts/force-precision/`; original reference drawings live in `e2e/reference/force/`.
+
+- `bug-fixes-2.mjs` — audit regressions, synthesis units/Undo, and display-size cylinder invariants.
+- `pr33-followups.mjs` — pointer-specific help, compact synthesis actions, meter-scaled pose chips,
+  responsive analysis switches, and context-aware export copy. Writes screenshots and a unit-change
+  filmstrip to `artifacts/pr33-followups/`.
+
+`template-animations.mjs` also refreshes each selected card's still from its first frame, keeping hover framing identical. Use `ONLY` to regenerate just the intended examples.
+
+- `analysis-tabs.mjs` — Rotation/Center of mass and Static/In-motion navigation, keyboard focus
+  without canvas nudges, independent expansion choices, session tab memory, CoM preview, shared
+  gutters and typography, sticky headers and narrow layouts. Screenshots and a tab-switching
+  filmstrip in `artifacts/analysis-tabs/`.

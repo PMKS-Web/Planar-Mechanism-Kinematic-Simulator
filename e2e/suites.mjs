@@ -30,6 +30,7 @@ const BOTH = ['gate', 'nightly'];
 const NIGHTLY = ['nightly'];
 
 export const SUITES = [
+  { name: 'bug-fixes-2', seconds: 90, lanes: NIGHTLY },
   { name: 'analysis-audit', seconds: 224, lanes: NIGHTLY },
   { name: 'analysis-drawing-switches', seconds: 11, lanes: BOTH },
   { name: 'analysis-editing', seconds: 42, lanes: NIGHTLY },
@@ -188,6 +189,8 @@ export const SUITES = [
   },
   { name: 'posed-editing-adversarial', seconds: 22, lanes: BOTH },
   { name: 'posed-menu', seconds: 17, lanes: BOTH },
+  { name: 'pr33-followups', seconds: 30, lanes: NIGHTLY },
+  { name: 'analysis-tabs', seconds: 35, lanes: NIGHTLY },
   { name: 'reduced-motion', seconds: 3, lanes: BOTH },
   { name: 'release-export-ui', seconds: 6, lanes: BOTH },
   { name: 'right-drawer', seconds: 10, lanes: BOTH },
