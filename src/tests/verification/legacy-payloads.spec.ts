@@ -6,6 +6,7 @@ import { RealLink } from '../../app/model/link';
 import { LEGACY_TEMPLATE_PAYLOADS } from '../../test-data/legacy-payloads';
 import { TEMPLATE_LINKAGES } from '../../app/component/MODALS/templates/template-linkages';
 import { buildMechanismFixture } from '../fixtures/mechanism-fixtures';
+import { MODEL_SCALE } from '../../app/model/render-scale';
 import { MechanismService } from '../../app/services/mechanism.service';
 
 /**
@@ -30,7 +31,10 @@ interface Shape {
 }
 
 function shapeOf(service: MechanismService): Shape {
-  const round = (value: number) => Math.round(value * 1e6) / 1e6;
+  // Old URLs store thousandths of a user unit; compare their quantized
+  // drawing against the precise modern one at that original storage grain.
+  const position = (value: number) => Math.round((value / MODEL_SCALE) * 1000);
+  const mass = (value: number) => Math.round(value * 1000);
   return {
     joints: service.joints
       .map((joint) => {
@@ -39,9 +43,9 @@ function shapeOf(service: MechanismService): Shape {
         return [
           joint.id,
           slot ? 'slot' : 'pin',
-          round(joint.x),
-          round(joint.y),
-          `m=${slot ? round((joint as PrisJoint).mass) : 0}`,
+          position(joint.x),
+          position(joint.y),
+          `m=${slot ? mass((joint as PrisJoint).mass) : 0}`,
           `rotates=${slot ? (joint as PrisJoint).rotates : '-'}`,
           `ground=${real ? (joint as RealJoint).ground : '-'}`,
           `input=${real ? (joint as RealJoint).input : '-'}`,
@@ -55,7 +59,7 @@ function shapeOf(service: MechanismService): Shape {
           `${link.id}[${link.joints
             .map((joint) => joint.id)
             .sort()
-            .join('')}] m=${Math.round(link.mass * 1e6) / 1e6}`
+            .join('')}] m=${mass(link.mass)}`
       )
       .sort(),
   };

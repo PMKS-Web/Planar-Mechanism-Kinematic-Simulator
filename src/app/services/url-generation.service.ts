@@ -146,7 +146,7 @@ export class UrlGenerationService {
     encoder.addForce(
       new ForceData(
         force.id,
-        force.link.id,
+        force.anchoredTo ?? force.link.id,
         force.name,
         force.startCoord.x / MODEL_SCALE,
         force.startCoord.y / MODEL_SCALE,

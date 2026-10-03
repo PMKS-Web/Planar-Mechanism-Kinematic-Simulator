@@ -529,3 +529,5 @@ Not suites — import them from one.
   without canvas nudges, independent expansion choices, session tab memory, CoM preview, shared
   gutters and typography, sticky headers and narrow layouts. Screenshots and a tab-switching
   filmstrip in `artifacts/analysis-tabs/`.
+
+- `mechanism-audit.mjs` — retained audit controls for immobile welded geometry, clockwise six-second cycle with filmstrip, tiny degree-acceleration graph and disconnected Jansen negative control.

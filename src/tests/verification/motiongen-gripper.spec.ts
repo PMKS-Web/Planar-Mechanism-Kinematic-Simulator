@@ -1,7 +1,7 @@
 // joint.ts first: the model modules form an import cycle that only
 // initializes cleanly when entered here (see test-utils/verification/fixture.ts).
 import '../../app/model/joint';
-import { Joint } from '../../app/model/joint';
+import { Joint, PrisJoint } from '../../app/model/joint';
 import { readFileSync } from 'node:fs';
 import { buildMechanism, buildMechanismAtScale } from '../../test-utils/verification/fixture';
 import { motionGenGripperFixture } from '../../test-utils/verification/slot-fixtures';
@@ -15,39 +15,13 @@ import { MechanismService } from '../../app/services/mechanism.service';
 import { MechanismBuilder } from '../../app/services/transcoding/mechanism-builder';
 import { StringTranscoder } from '../../app/services/transcoding/string-transcoder';
 
-// A second engine, checking the joint types this release adds -- and finding
-// the edge of what this one will accept.
-//
-// This is the MotionGen library's "Gripper" rebuilt joint for joint: a cylinder
-// pushes a plate, the plate reaches two jaws through four short links, and each
-// jaw rides two fixed vertical rails. MotionGen animates it. PMKS+ refuses it,
-// and is not wrong to: the mechanism is over-constrained, and moves only
-// because its geometry makes the surplus constraint a dependent one.
-//
-// Count it by hand. Each jaw has two points on two parallel vertical rails, so
-// each jaw can only translate vertically: one freedom apiece. The plate is
-// pinned to a block on a horizontal rail, so it has two -- along the rail, and
-// turning about that pin. That is four freedoms. The four links from the plate
-// to the jaws each fix a length, which is four constraints. Four minus four is
-// zero, and PMKS+ reports zero.
-//
-// It nevertheless moves, because the plate does not in fact turn, so the four
-// constraints are not independent. Recognizing that needs a rank test on the
-// constraint Jacobian rather than a count of joints and bodies, which is a
-// different mobility criterion from the one this engine implements (plan
-// docs/joint-types-plan.md, the DOF rules in mechanism.ts). That rank test
-// exists now (model/mechanism/mobility.ts) and counts this at one; what
-// remains is the position solver, which cannot yet walk a redundant
-// constraint set from this pose.
-//
-// So what is asserted here is the refusal, plus the evidence that the refusal
-// is a limitation and not a correct rejection: the captured reference shows the
-// jaws closing from 2.371 apart to 0.010 apart, which is a mechanism moving.
-// When PMKS+ gains a rank-based mobility test, this spec is the case to turn
-// back on -- the comparison it would need is already sitting in the CSV.
-//
-// Capture, provenance and the reasons it is not a v1 reference case are in the
-// PMKS_Verification repository, reference-data/motiongen-library/README.md.
+// MotionGen's library gripper is geometrically redundant: two parallel
+// guides fix each jaw's heading, and the four plate-to-jaw rods repeat a
+// constraint. The mobility test recognizes its one continuous freedom. The
+// position solve must also write the heading implied by each guide pair,
+// rather than relying on URL rounding to perturb the permanent tangency.
+// The captured paths independently verify the resulting motion.
+// Capture provenance: PMKS_Verification/reference-data/motiongen-library/README.md.
 
 interface Pose {
   [joint: string]: { x: number; y: number };
@@ -98,18 +72,27 @@ describe('the MotionGen gripper, rebuilt in PMKS+', () => {
 
   const reference = motionGenPoses();
 
-  it('is counted at one freedom, and refused from its verbatim coordinates', () => {
-    // One, now: the geometry rescue asks which first-order freedoms survive
-    // *together*, and finds the translation the four dependent links leave.
-    // From MotionGen's coordinates to the last digit, neither of the solver's
-    // routes can take a first step, and the refusal stands -- the failure mode
-    // worth preventing is still not the refusal but a mechanism that comes
-    // back "valid" and draws a linkage tearing itself apart. The drawing a
-    // reader opens is the gallery's URL, rounded as every URL is, and that one
-    // runs: see the next describe.
-    expect((mechanism as unknown as { dof: number }).dof).toBe(1);
-    expect(mechanism.isMechanismValid()).toBe(false);
-    expect(frames).toBeLessThan(3);
+  it('counts one freedom and runs from its verbatim coordinates', () => {
+    expect(mechanism.dof).toBe(1);
+    expect(mechanism.isMechanismValid()).toBe(true);
+    expect(frames).toBeGreaterThan(3);
+    // Every jaw remains rigid, including the direction that a first-order
+    // distance row cannot constrain at the permanent tangency.
+    for (const pair of [
+      ['F', 'G'],
+      ['H', 'I'],
+    ]) {
+      const offset = (frame: Joint[]) => {
+        const a = frame.find((joint) => joint.id === pair[0])!;
+        const b = frame.find((joint) => joint.id === pair[1])!;
+        return [b.x - a.x, b.y - a.y];
+      };
+      const authored = offset(mechanism.joints[0]);
+      for (const frame of mechanism.joints) {
+        const current = offset(frame);
+        expect(Math.hypot(current[0] - authored[0], current[1] - authored[1])).toBeLessThan(1e-5);
+      }
+    }
   });
 
   it('has a reference that shows the refusal costs something real', () => {
@@ -147,12 +130,11 @@ describe('the MotionGen gripper, rebuilt in PMKS+', () => {
   });
 
   it('places every joint where MotionGen does at the pose it was captured in', () => {
-    // The rebuild is checked against the source even though it will not run:
+    // The rebuild is checked against the source:
     // a fixture that does not match the model it claims to be would make the
-    // mobility finding above about the wrong mechanism. Frame 60 of the
+    // comparison above about the wrong mechanism. Frame 60 of the
     // reference is the pose the model is stored in.
-    // The editable joints, not mechanism.joints[0]: a mechanism this engine
-    // refuses precomputes no frames at all.
+    // The editable joints retain the authored pose while the mechanism holds its cycle.
     const drawn = reference.find((pose) => Math.abs(pose['J1'].x - -1.924786) < 1e-6)!;
     expect(drawn).toBeDefined();
     for (const [theirs, mine] of Object.entries(AS_PMKS)) {
@@ -166,10 +148,8 @@ describe('the MotionGen gripper, rebuilt in PMKS+', () => {
 });
 
 describe('the MotionGen gripper as the gallery publishes it', () => {
-  // Decoded from its URL, which is the drawing a reader opens. The joint-by-
-  // joint walk still cannot start it; the build hands it to the simultaneous
-  // route (`Mechanism.solveWholeInstead`), which does -- and this is the
-  // comparison the spec above kept the reference for.
+  // The gallery saves the same exact geometry, including guide angles. The
+  // simultaneous route must run it and agree with the independent capture.
   function fromTheGallery(): Mechanism {
     const row = readFileSync('docs/fixture-urls.md', 'utf8')
       .split('\n')
@@ -197,7 +177,7 @@ describe('the MotionGen gripper as the gallery publishes it', () => {
       false,
       'cm',
       (driven as RealJoint).driveSpeed || MODEL_SCALE,
-      'degree',
+      'adaptive',
       new Set(partition.ownJoints.map((joint) => joint.id))
     );
   }
@@ -236,8 +216,8 @@ describe('the MotionGen gripper as the gallery publishes it', () => {
     }
     // All but the ends of MotionGen's stroke lie inside the one solved here.
     expect(compared).toBeGreaterThan(40);
-    // The URL rounds each coordinate; within a hundredth of a unit of
-    // MotionGen, against jaws that close through 2.37 of them.
+    // The independently captured geometry is hand-placed and not perfectly
+    // symmetric; compare within a hundredth against a 2.37-unit jaw stroke.
     expect(worstInside).toBeLessThan(0.01);
     // Except where the jaws close, at the end of the stroke: the linkage folds
     // there, the jaws move fast for the input, and the straight line between

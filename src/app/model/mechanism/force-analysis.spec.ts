@@ -127,7 +127,19 @@ describe('ForceSolver physical model', () => {
   it('adds centripetal inertia dynamically and scales it with speed squared', () => {
     const makeMechanism = (speed: number) => {
       const model = singleBody('m');
-      return new Mechanism(model.joints, model.links, [model.force], [], false, 'm', speed);
+      return new Mechanism(
+        model.joints,
+        model.links,
+        [model.force],
+        [],
+        false,
+        'm',
+        speed,
+        'degree',
+        undefined,
+        undefined,
+        1
+      );
     };
     const slow = makeMechanism(1).getForceAnalysis('dynamic').frames[0];
     const fast = makeMechanism(2).getForceAnalysis('dynamic').frames[0];
@@ -140,7 +152,19 @@ describe('ForceSolver physical model', () => {
 
   it('makes zero-speed dynamic equilibrium identical to static equilibrium', () => {
     const model = singleBody('m');
-    const mechanism = new Mechanism(model.joints, model.links, [model.force], [], true, 'm', 0);
+    const mechanism = new Mechanism(
+      model.joints,
+      model.links,
+      [model.force],
+      [],
+      true,
+      'm',
+      0,
+      'degree',
+      undefined,
+      undefined,
+      1
+    );
     const staticFrame = mechanism.getForceAnalysis('static').frames[0];
     const dynamicFrame = mechanism.getForceAnalysis('dynamic').frames[0];
     expectOk(staticFrame);

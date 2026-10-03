@@ -1322,7 +1322,7 @@ export class MechanismService {
     link: RealLink
   ): { point: (point: Coord) => Coord; angle: number } | undefined {
     if (this.isAtStartPose()) return { point: (point) => new Coord(point.x, point.y), angle: 0 };
-    const index = this.indexOfMechanismContaining(link);
+    const index = this.indexOfMechanismSolving(link);
     const frames = this.mechanisms[index];
     // An unsolved or unassigned body is never animated, even when another
     // independent machine is paused away from its start.
@@ -2655,7 +2655,11 @@ export class MechanismService {
     });
   }
 
-  private attachForceToLink(force: Force, link: RealLink): void {
+  private attachForceToLink(
+    force: Force,
+    link: RealLink,
+    owner: RealLink = (this.rootLinkOwning(link) as RealLink | undefined) ?? link
+  ): void {
     this.links.forEach((candidate) => {
       candidate.forces = candidate.forces.filter((item) => item !== force && item.id !== force.id);
       if (candidate instanceof RealLink) {
@@ -2664,12 +2668,13 @@ export class MechanismService {
         });
       }
     });
-    force.link = link;
+    force.link = owner;
     // A leaf is a body somebody can point at; a compound is what a weld makes
     // of several. So the *member* is what is remembered, and welding onto a
     // compound leaves that memory alone -- it is what an unweld will need.
     if (link.subset.length === 0) force.anchoredTo = link.id;
-    if (!link.forces.some((candidate) => candidate.id === force.id)) link.forces.push(force);
+    if (!force.link.forces.some((candidate) => candidate.id === force.id))
+      force.link.forces.push(force);
   }
 
   private detachForce(force: Force): void {
@@ -7836,7 +7841,9 @@ export class MechanismService {
             this.distanceFromForceToLink(force, left) - this.distanceFromForceToLink(force, right);
           return distance === 0 ? left.id.localeCompare(right.id) : distance;
         })[0];
-      if (owner) this.attachForceToLink(force, owner);
+      // The replacements are not in `this.links` yet: looking up ownership
+      // there would reattach a leaf to the compound being removed.
+      if (owner) this.attachForceToLink(force, owner, owner);
       else this.detachForce(force);
     }
     return replacements;

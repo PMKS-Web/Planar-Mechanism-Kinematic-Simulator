@@ -1,3 +1,4 @@
+import { preciseValues, restorePreciseValue } from './precise-values';
 import { BaseNConverter, fromUrlSafeDecimal, toUrlSafeDecimal } from './base64-converter';
 import { Checksum } from './checksum';
 import { FlagPacker } from './flag-packer';
@@ -494,6 +495,7 @@ export class StringTranscoder extends GenericTranscoder {
       ...this.synthesisMarks,
       ...this.partColors,
       ...this.holds,
+      ...preciseValues(this.numericRecords()),
     ];
     if (trailing.length > 0) {
       fullString += '.' + trailing.join(',');
@@ -623,7 +625,8 @@ export class StringTranscoder extends GenericTranscoder {
     while (!sd.isEmpty()) {
       let entry = sd.nextToken(',');
       if (entry === '') continue;
-      if (entry.charAt(0) === 'C') this.comAnchors.push(entry);
+      if (entry.charAt(0) === 'P') restorePreciseValue(entry, this.numericRecords());
+      else if (entry.charAt(0) === 'C') this.comAnchors.push(entry);
       else if (entry.charAt(0) === 'S') this.synthesisMarks.push(entry);
       else if (entry.charAt(0) === 'K') this.partColors.push(entry);
       else if (entry.charAt(0) === 'H') this.holds.push(entry);
@@ -638,6 +641,16 @@ export class StringTranscoder extends GenericTranscoder {
 
     this.setActiveObj(new ActiveObjData(typeEnum, activeID));
     this.validateDecodedData();
+  }
+
+  private numericRecords() {
+    return {
+      joints: this.joints,
+      links: this.links,
+      forces: this.forces,
+      decimals: this.decimalData,
+      integers: this.intData,
+    };
   }
 
   private validateDecodedData(): void {

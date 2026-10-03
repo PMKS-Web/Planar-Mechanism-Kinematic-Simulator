@@ -1,3 +1,4 @@
+import { auditGalleryRows } from './audit-gallery';
 import {
   hydraulicCrossheadFixture,
   offsetMountHatchFixture,
@@ -868,6 +869,10 @@ export function galleryMarkdown(baseUrl: string): string {
     'so until Stage 1 ships to production, regenerate against a deploy preview before quoting',
     'one of these.',
     '',
+    'New saves preserve numeric precision in tagged corrections; older readers refuse those tags.',
+    'The audit rows retain the exact old URLs, including damage already saved into them.',
+    'Where a source drawing exists, its link is supplied for a fresh conversion and save.',
+    '',
     'A mechanism marked "floating slot" is the case that *is* gated: on a release that predates',
     'Phase 2 the three extra URL tokens are refused rather than silently ignored, which is',
     'deliberate (§2.4a). A mechanism marked "Slide" decodes wherever a slider decodes at all,',
@@ -883,6 +888,7 @@ export function galleryMarkdown(baseUrl: string): string {
     '| Mechanism | What it is for | Floating slot | Slide | Asserted in |',
     '| --- | --- | --- | --- | --- |',
     ...rows,
+    ...auditGalleryRows(baseUrl),
     '',
   ].join('\n');
 }

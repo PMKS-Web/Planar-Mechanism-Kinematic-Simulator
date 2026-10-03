@@ -1,3 +1,4 @@
+import { resolveActuator, GROUND_BODY } from '../actuator';
 import { Joint, PrisJoint, RealJoint } from '../joint';
 import { Link, RealLink } from '../link';
 import { Cylinder, cylindersIn } from '../cylinder';
@@ -86,6 +87,8 @@ interface MechanismFrames {
   timeNum: number[];
   inputAngularVelocities: number[];
   requiredLoops: Loop[];
+  coordinateScale?: number;
+  prepareSolvers?(): void;
   gravity: boolean;
   unit: string;
 }
@@ -306,6 +309,7 @@ export class ForceSolver {
   ): ForceAnalysisFrame {
     let kinematics: FrameKinematics | undefined;
     if (mode === 'dynamic') {
+      mechanism.prepareSolvers?.();
       // Clear the solver's shared maps each frame so a mid-solve failure at
       // frame k cannot leave frame k-1's finite values in place — which would
       // read as "current" and hide the failure from the fallback below.
@@ -335,7 +339,8 @@ export class ForceSolver {
       mechanism.unit,
       mechanism.timeNum[index] ?? index,
       kinematics,
-      evenest
+      evenest,
+      mechanism.coordinateScale ?? 1
     );
   }
 
@@ -347,7 +352,8 @@ export class ForceSolver {
     unit: string,
     timeSeconds = 0,
     kinematics?: FrameKinematics,
-    evenest = false
+    evenest = false,
+    coordinateScale = 1
   ): ForceAnalysisFrame {
     const every = links.filter((link): link is RealLink => link instanceof RealLink);
     // A body pinned to the world at two points is fixed: it is frame, not a
@@ -355,6 +361,9 @@ export class ForceSolver {
     const frame = this.frameBodies(every);
     const bodies = [...every.filter((body) => !frame.has(body.id)), ...this.pointBodies(joints)];
     const units = this.unitFactors(unit);
+    // Mass and inertia are already physical; only coordinates and their
+    // linear derivatives carry the drawing's model scale.
+    const distanceToM = units.distanceToM / coordinateScale;
     const empty = (
       status: ForceAnalysisStatus,
       message = this.statusMessage(status),
@@ -445,6 +454,7 @@ export class ForceSolver {
       (joint): joint is RealJoint => joint instanceof RealJoint && joint.input
     );
     let inputBody: Link | undefined;
+    let referenceBody: Link | undefined;
     let inputKind: 'torque' | 'force' | undefined;
     let inputDirection: ForceVector = [0, 0];
     if (inputJoint) {
@@ -456,7 +466,15 @@ export class ForceSolver {
         // somewhere different at every timestep.
         inputDirection = [Math.cos(inputJoint.slotAngle), Math.sin(inputJoint.slotAngle)];
       } else {
-        inputBody = incident.find((body) => body instanceof RealLink);
+        const actuator = resolveActuator(inputJoint);
+        inputBody =
+          actuator && actuator.drivenBody !== GROUND_BODY
+            ? this.rootBody(bodies, actuator.drivenBody)
+            : incident.find((body) => body instanceof RealLink);
+        referenceBody =
+          actuator && actuator.referenceBody !== GROUND_BODY
+            ? this.rootBody(bodies, actuator.referenceBody)
+            : undefined;
         inputKind = inputBody ? 'torque' : undefined;
       }
     }
@@ -489,8 +507,8 @@ export class ForceSolver {
       A[rows.start][column] += sign * direction[0];
       A[rows.start + 1][column] += sign * direction[1];
       if (body instanceof RealLink) {
-        const rx = (joint.x - body.CoM.x) * units.distanceToM;
-        const ry = (joint.y - body.CoM.y) * units.distanceToM;
+        const rx = (joint.x - body.CoM.x) * distanceToM;
+        const ry = (joint.y - body.CoM.y) * distanceToM;
         A[rows.start + 2][column] += sign * (rx * direction[1] - ry * direction[0]);
       }
     };
@@ -527,6 +545,7 @@ export class ForceSolver {
       const rows = bodyRows.get(inputBody.id)!;
       if (inputKind === 'torque' && inputBody instanceof RealLink) {
         A[rows.start + 2][inputColumn] = 1;
+        if (referenceBody) A[bodyRows.get(referenceBody.id)!.start + 2][inputColumn] -= 1;
       } else if (inputKind === 'force') {
         A[rows.start][inputColumn] = inputDirection[0];
         A[rows.start + 1][inputColumn] = inputDirection[1];
@@ -553,8 +572,8 @@ export class ForceSolver {
             ? kinematics!.linkAccelerations.get(body.id)!
             : kinematics!.pistonAccelerations.get(body.id)!
           : ([0, 0] as ForceVector);
-      b[rows.start] = massKg * acceleration[0] * units.distanceToM;
-      b[rows.start + 1] = massKg * acceleration[1] * units.distanceToM;
+      b[rows.start] = massKg * acceleration[0] * distanceToM;
+      b[rows.start + 1] = massKg * acceleration[1] * distanceToM;
 
       if (gravity) b[rows.start + 1] += massKg * GRAVITY;
 
@@ -566,8 +585,8 @@ export class ForceSolver {
         for (const force of body.forces) {
           const fx = force.mag * Math.cos(force.angleRad) * units.forceToN;
           const fy = force.mag * Math.sin(force.angleRad) * units.forceToN;
-          const rx = (force.startCoord.x - body.CoM.x) * units.distanceToM;
-          const ry = (force.startCoord.y - body.CoM.y) * units.distanceToM;
+          const rx = (force.startCoord.x - body.CoM.x) * distanceToM;
+          const ry = (force.startCoord.y - body.CoM.y) * distanceToM;
           b[rows.start] -= fx;
           b[rows.start + 1] -= fy;
           b[rows.start + 2] -= rx * fy - ry * fx;
