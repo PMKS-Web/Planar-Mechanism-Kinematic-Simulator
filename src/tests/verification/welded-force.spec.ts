@@ -45,9 +45,12 @@ describe('welded five-bar force regression', () => {
     const rows = mechanism.forceAnalysis('dynamics');
     expect(rows).toHaveLength(mechanism.timeNum.length);
     expect(rows.every((row) => Number.isFinite(Number(row[torqueColumn])))).toBe(true);
+    // Independent circle geometry differentiated at theta = 45, 46 and 47
+    // degrees: (rate of body kinetic energy - load power) / input speed.
+    // Full-precision poses remove the old four-decimal pose bias.
     expect(Number(rows[0][torqueColumn])).toBeCloseTo(2.9396, 4);
-    expect(Number(rows[1][torqueColumn])).toBeCloseTo(3.0096, 4);
-    expect(Number(rows[2][torqueColumn])).toBeCloseTo(3.2182, 4);
+    expect(Number(rows[1][torqueColumn])).toBeCloseTo(3.0098, 4);
+    expect(Number(rows[2][torqueColumn])).toBeCloseTo(3.2185, 4);
 
     for (const mode of ['static', 'dynamic'] as const) {
       const result = mechanism.getForceAnalysis(mode);

@@ -275,7 +275,7 @@ export class ExportTableService {
    * have produced without them.
    */
   private exportedSteps(solved: Mechanism): number[] {
-    const steps = solved.timeNum.map((_, step) => step);
+    const steps = solved.samplesInPlaybackOrder();
     if (!this.flow.uniformRows || !solved.hasAddedSamples) return steps;
     const added = solved.addedSamples;
     return steps.filter((step) => !added[step]);
@@ -287,7 +287,7 @@ export class ExportTableService {
   ): Promise<ExportTable> {
     const solved = this.mechanism.mechanisms[index];
     const times = solved?.isMechanismValid()
-      ? this.exportedSteps(solved).map((step) => solved.timeNum[step])
+      ? this.exportedSteps(solved).map((step) => solved.elapsedTimeAtSample(step))
       : [];
     const plots = solved ? await this.plotsAsync(solved, index, piece.parts, piece.columns) : [];
     return { ...this.shapeOf(piece.name, piece.suffix, index, times, plots) };
@@ -302,7 +302,7 @@ export class ExportTableService {
   ): ExportTable {
     const solved = this.mechanism.mechanisms[index];
     const times = solved?.isMechanismValid()
-      ? this.exportedSteps(solved).map((step) => solved.timeNum[step])
+      ? this.exportedSteps(solved).map((step) => solved.elapsedTimeAtSample(step))
       : [];
     const plots = solved ? this.plots(solved, index, parts, columns) : [];
     return this.shapeOf(name, suffix, index, times, plots);

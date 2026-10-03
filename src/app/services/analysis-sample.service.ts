@@ -15,7 +15,7 @@ import { SettingsService } from './settings.service';
  * printed it in scientific notation and the graph drew its jitter as a
  * mountain range, because a chart scales its axis to whatever range it is
  * given. One part in 1e9 of the units on screen is far below anything the
- * drawing can express -- solved positions are held to four decimals -- and
+ * drawing can express -- the position solver retains floating-point precision -- and
  * some sixteen orders above nothing, so everything real passes untouched.
  */
 const NOISE_FLOOR = 1e-9;
@@ -131,15 +131,9 @@ export class AnalysisSampleService {
     }
 
     if (mechProp === 'Input Torque' || mechProp === 'Input Effort') {
-      // A torque's moment arms are internal model lengths (MODEL_SCALE times
-      // the user's unit), so the solved value divides back down for display. An
-      // input *force* has no length in it and is invariant.
       if (!frame.inputEffort) return [Number.NaN];
       const isForce = frame.inputEffort.kind === 'force';
-      return [
-        (frame.inputEffort.valueSI * (isForce ? forceConversion : torqueConversion)) /
-          (isForce ? 1 : MODEL_SCALE),
-      ];
+      return [frame.inputEffort.valueSI * (isForce ? forceConversion : torqueConversion)];
     }
 
     const byLink = frame.jointReactionsByLink.get(mechPart);

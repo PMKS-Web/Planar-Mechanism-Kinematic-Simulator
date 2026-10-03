@@ -1,3 +1,4 @@
+import { isFrozenCylinder } from '../cylinder-frozen';
 import { Cylinder } from '../cylinder';
 import { Joint, PrisJoint, RealJoint } from '../joint';
 import { Link, RealLink } from '../link';
@@ -376,28 +377,45 @@ function halfTurns(ctx: RelationContext, body: Link): string {
   return ` Its slowest half-turn takes ${fmt(times.slow)} s and the opposite half-turn ${fmt(times.fast)} s (time ratio ${fmt(times.slow / times.fast)}), so anything it drives back and forth through those two half-turns gets a slow stroke and a quick return.`;
 }
 
-/** A cylinder pushing a link round its pivot: extension in, rotation out. */
-function cylinderLevers(ctx: RelationContext): string[] {
-  const lines: string[] = [];
+/** A driven, extending cylinder with a fixed anchor and a pivoted output. */
+export function drivenCylinderLevers(ctx: RelationContext) {
+  const out: { cylinder: Cylinder; mount: Joint; other: Joint; lever: Link; extension: number }[] =
+    [];
   for (const cylinder of ctx.cylinders) {
-    const a = ctx.samples.paths.get(cylinder.mountA.id)!;
-    const b = ctx.samples.paths.get(cylinder.mountB.id)!;
+    if (!cylinder.seal.input || isFrozenCylinder(cylinder)) continue;
+    const a = ctx.samples.paths.get(cylinder.mountA.id);
+    const b = ctx.samples.paths.get(cylinder.mountB.id);
+    if (!a || !b) continue;
     const spans = a.map((p, i) => Math.hypot(b[i][0] - p[0], b[i][1] - p[1]));
     const extension = Math.max(...spans) - Math.min(...spans);
+    if (extension <= Math.max(...spans) * 1e-8) continue;
     for (const mount of [cylinder.mountA, cylinder.mountB]) {
       if (isGroundPin(mount)) continue;
+      const other = mount === cylinder.mountA ? cylinder.mountB : cylinder.mountA;
+      const path = ctx.samples.paths.get(other.id)!;
+      if (
+        path.some(
+          (point) =>
+            Math.hypot(point[0] - path[0][0], point[1] - path[0][1]) > Math.max(...spans) * 1e-8
+        )
+      )
+        continue;
       const lever = ctx.bodies.find(
         (body) => jointsOf(ctx, body).includes(mount) && jointsOf(ctx, body).some(isGroundPin)
       );
-      if (!lever || extension < 1e-6) continue;
-      const pivot = jointsOf(ctx, lever).find(isGroundPin)!;
-      const sweep = sweepOf(ctx, lever);
-      lines.push(
-        `- The cylinder pushes ${ctx.bodyLabel(lever)} at ${mount.id}, ${fmt(distAt(ctx.samples, pivot, mount))} from its pivot ${pivot.id}: ${fmt(extension)} of extension swings it ${fmt(sweep, 1)} deg, about ${fmt(sweep / extension, 1)} deg per unit of extension.`
-      );
+      if (lever) out.push({ cylinder, mount, other, lever, extension });
     }
   }
-  return lines;
+  return out;
+}
+
+/** A cylinder pushing a link round its pivot: extension in, rotation out. */
+function cylinderLevers(ctx: RelationContext): string[] {
+  return drivenCylinderLevers(ctx).map(({ mount, lever, extension }) => {
+    const pivot = jointsOf(ctx, lever).find(isGroundPin)!;
+    const sweep = sweepOf(ctx, lever);
+    return `- The cylinder pushes ${ctx.bodyLabel(lever)} at ${mount.id}, ${fmt(distAt(ctx.samples, pivot, mount))} from its pivot ${pivot.id}: ${fmt(extension)} of extension swings it ${fmt(sweep, 1)} deg, about ${fmt(sweep / extension, 1)} deg per unit of extension.`;
+  });
 }
 
 /**

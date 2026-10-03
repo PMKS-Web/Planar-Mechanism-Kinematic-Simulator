@@ -394,7 +394,10 @@ function buildMechanismNow(
     // The MATLAB tables are stated one row per degree of crank and compared
     // one to one, so this harness defaults to the grid they are stated on;
     // the specs that exercise adaptive sampling ask for it by name.
-    sampling
+    sampling,
+    undefined,
+    undefined,
+    1
   );
   return { mechanism, joints, links, forces, fixture };
 }

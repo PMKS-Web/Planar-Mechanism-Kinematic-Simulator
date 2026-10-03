@@ -1,3 +1,4 @@
+import { grueblerCount } from './freedoms';
 import { describeActuator, GROUND_BODY } from '../actuator';
 import { cylindersIn, isInsideCylinder } from '../cylinder';
 import { Joint, PrisJoint, RealJoint } from '../joint';
@@ -113,6 +114,10 @@ export function leavesOneMachine({ partition, driven, needsHold }: Trial, edit: 
   const kept = edit.links ?? partition.links;
   const joints = edit.joints ?? partition.joints;
   if (!staysOnePiece(joints, edit)) return false;
+  // A fix must pass the same mobility policy as the rebuilt mechanism. The
+  // geometric test can remove a tangent freedom from a count above one, but
+  // that count is still a blocker, rather than an edit that leaves it running.
+  if (grueblerCount(joints, kept, edit.assignment, edit.rotates) > 1) return false;
   const system = constraintSystemOf(joints, kept, edit.assignment, edit.rotates);
   if (!system) return false;
   if (edit.hold) {

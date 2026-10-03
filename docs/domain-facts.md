@@ -335,13 +335,44 @@ Dragging an existing force's handle remains exact.
 walk uses. A mechanism the position solver had to settle all at once (§2.7a of `docs/joint-types-plan.md`: the gripper on rails,
 whose carriage, four links and two jaws no two known joints locate) solves its poses and then has
 no rates at all, and every velocity graph was a row of gaps over a mechanism that visibly moved.
-`AnalysisSampleService` now fills the blanks from the solved positions
-(`model/mechanism/finite-difference-kinematics.ts`): a central difference for velocity, and for
-acceleration the derivative of that velocity series rather than a second difference of positions
--- a settled pose carries the solver's tolerance as a zigzag of a hair between neighbors, invisible
-to a first difference and a spike of several units to a second. Only blanks are filled; where the
-analytic answer exists it stands. `slide-gripper.spec.ts` pins it, and `e2e/template-graphs.mjs`
-checks every plotted rate against a difference quotient of its source.
+`AnalysisSampleService` fills missing or singular rates from the full-precision solved positions
+(`model/mechanism/finite-difference-kinematics.ts`). Polynomial differences use the actual sample
+clock and stay on one input-direction branch, becoming one-sided near travel stops. Too few branch
+samples leave a gap. A commanded abrupt reversal does not define a finite instantaneous
+acceleration; neighboring samples represent branch limits. Welded leaf rates come from the root's
+rigid-body motion, and cylinder interiors from mount/axis geometry. Angular positions use degrees;
+angular velocities and accelerations use radians. Display angle conversion must preserve the data.
+`slide-gripper.spec.ts` and `mechanism-audit.spec.ts` cover these contracts; `e2e/template-graphs.mjs`
+checks plotted rates against their positions.
+
+### Solved precision, saved precision and physical force units have separate boundaries
+
+The position solver keeps floating-point poses. Geometric mobility weights angular constraints
+by characteristic length so scaling a drawing does not change a second-order tangency test.
+Parallel grounded guides on one rigid body imply a fixed body heading even when their pins may turn.
+
+The URL's optional `P` tail restores exact finite values that differ from the legacy thousandth-unit
+body. It covers geometry, guide angles, speed, mass, inertia, CoM, force data and numeric settings.
+Old payloads retain their old meaning. Old readers reject unknown precision tags; they cannot
+silently substitute default speed for a tiny nonzero value. Data already rounded away in an old
+URL requires an original source drawing to restore.
+
+The force solver converts model coordinates and accelerations to SI at equation assembly,
+using `distanceToM / coordinateScale`; production `Mechanism` supplies `MODEL_SCALE`, while
+physical-unit verification harnesses supply 1. Mass and inertia are already SI. Returned force is
+newtons and torque is newton-meters. Display conversion must not divide physical torque by model
+scale. Floating motor torques act oppositely on both connected bodies.
+
+### Reversed elapsed time and welded attachments follow physical ownership
+
+Cached reversal reuses poses but reverses their elapsed-time ordering. `elapsedTimeAtSample`,
+`samplesInPlaybackOrder` and `playbackRowOfSample` keep plotted rows, CSV and graph markers on the
+playback clock. Velocities negate; accelerations at the same pose do not.
+
+A welded leaf is selected and saved by member identity, but its force belongs to the physical root
+body. `anchoredTo` retains the member so unwelding can restore the load to it. During compound
+replacement, pass the new owner explicitly: the service's old graph still contains the compound.
+Paused tracer attachment uses `indexOfMechanismSolving`, including leaves and shared frame parts.
 
 ### A link pinned to ground twice is frame, and the force solver treats it so
 

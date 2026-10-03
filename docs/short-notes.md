@@ -2649,3 +2649,28 @@ the old drawing's. `SvgGridService.framed()` resolves `firstFramed` and any `nex
 rAF registered after the library's, so the frame that paints next carries the fitted matrix. The
 splash's removal timer starts in a rAF too: a fit is often followed by a long task (the grid
 redrawn at its new zoom), and a 220 ms timer started before it expired inside it and cut the fade.
+
+### Mobility angular residuals need the same characteristic scale as length rows
+
+`mobility.ts` previously mixed radians with model lengths in its second-order compatibility test.
+Finding #1 then animated a rigid welded rod by changing its segment lengths. Weight angular rows
+and residuals by reach; retain redundant parallelogram controls and small/large scale controls.
+`grueblerCount` for a hypothetical edit must also read that edit's `rotates` callback; otherwise
+Prismatic advice is assessed as the old Pin-in-slot. Intermediate advice may still leave several
+freedoms: `takesSomeAway` is not the final one-freedom gate.
+
+### Try the coupled position route before halving the first input step
+
+Exact parallel grounded rails imply a fixed heading for the body riding them, even with rotating
+pins. `parallel-guide-headings.ts` supplies that consequence to position and differentiated
+constraints. MotionGen's exact right-angle rails exposed it: rounded saved angles had accidentally
+made the old solver easier. Trying startup halving before `solveWholeInstead` reduced a valid
+coupled step below numerical resolution. Try the whole system first, then back off boundedly.
+
+### Unwelding force ownership cannot be resolved against the compound being replaced
+
+`splitCompoundAtRemainingWelds` builds its replacement links before removing the old root from the
+service's link list. Calling the ordinary root lookup there found the old compound and put the
+force back on it. Pass the replacement owner directly to `attachForceToLink`; keep member identity
+in `anchoredTo` and the URL link field. The audit attachment test checks immediate loading, physical
+load-point power, following the member, fresh reopening and finally unwelding.

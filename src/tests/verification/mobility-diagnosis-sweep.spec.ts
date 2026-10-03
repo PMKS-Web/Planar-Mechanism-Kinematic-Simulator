@@ -484,11 +484,10 @@ describe('readiness across every library drawing, broken one way at a time', () 
     const yoke = drivenFrom('Scotch_Yoke', 'C');
     expect(yoke.map((check) => check.title)).toEqual(['Starts at a limit']);
     expect(read(yoke[0]).fixes).toEqual(['Drag joint B a little way off the limit']);
-    // Not at a limit, and neither of the solver's routes can start it: said
-    // as the solver's failure, with no limit to drag off.
+    // A smaller initial step now starts this narrow drive. Its former first-
+    // step refusal must not survive as a stale readiness diagnostic.
     const gear = drivenFrom('Aircraft_Landing_Gear', 'A');
-    expect(gear.map((check) => check.title)).toEqual(["The mechanism can't take a first step"]);
-    expect(read(gear[0]).fixes.join(' ')).not.toContain('Drag');
+    expect(gear).toEqual([]);
   });
 
   it('actually checked some fixes', () => {

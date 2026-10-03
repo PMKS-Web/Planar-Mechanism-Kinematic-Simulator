@@ -1121,8 +1121,8 @@ export class AnalysisGraphComponent
     // is usually the fact the reader came for.
     held.yaxis.push({ y: 0, borderColor: '#c8ccd8', strokeDashArray: 0 });
     const timeIndex = this.ownSample();
-    const timeSeconds =
-      this.mechanismService.mechanismForId(this.mechPart)?.timeNum[timeIndex] ?? timeIndex;
+    const mechanism = this.mechanismService.mechanismForId(this.mechPart);
+    const timeSeconds = mechanism?.elapsedTimeAtSample(timeIndex) ?? timeIndex;
     const anyShown =
       this.seriesCheckboxForm.value.x ||
       this.seriesCheckboxForm.value.y ||
@@ -1132,7 +1132,7 @@ export class AnalysisGraphComponent
       // each curve reads there is the row's own number, so a box on the plot
       // said both a second time.
       held.xaxis.push({ x: timeSeconds, borderColor: '#2c2c2c', strokeDashArray: 0 });
-      this.markCurves(timeIndex, timeSeconds);
+      this.markCurves(mechanism?.playbackRowOfSample(timeIndex) ?? timeIndex, timeSeconds);
     }
     if (!this.chart) return;
     this.chart.clearAnnotations();
@@ -1204,7 +1204,7 @@ export class AnalysisGraphComponent
   /**
    * Put an angular series into the unit the axis beside it is lettered in.
    *
-   * In place, and to the four decimals this has always shown: the conversion
+   * Keep the solved precision; formatting belongs to the labels. The conversion
    * itself now lives with the model, so the file the export writes and the
    * curve drawn here cannot end up in different units.
    */
@@ -1212,7 +1212,7 @@ export class AnalysisGraphComponent
     const scale = angularScale(mechProp, this.settingsService.angleUnit.getValue());
     if (scale === 1) return;
     for (let i = 0; i < series.length; i++) {
-      series[i] = Number((series[i] * scale).toFixed(4));
+      series[i] = series[i] * scale;
     }
   }
 
@@ -1386,7 +1386,9 @@ export class AnalysisGraphComponent
     // ApexCharts/Safari can fail the entire chart when one exact toggle pose
     // contributes NaN or Infinity. A null point creates an intentional gap at
     // that singular timestep while preserving the rest of the series.
-    const times = mechanism?.timeNum ?? [];
+    const times =
+      mechanism?.samplesInPlaybackOrder().map((index) => mechanism.elapsedTimeAtSample(index)) ??
+      [];
     // Turned back onto the anchor, where a gesture at a displaced pose has
     // turned the cycle away from it: mid-drag the provisional cycle starts at
     // the pose under the hand, so plotted raw the live curve is the baseline
@@ -1437,8 +1439,8 @@ export class AnalysisGraphComponent
     if (analysis === 'force') {
       const mode: ForceAnalysisMode = analysisType === 'dynamic' ? 'dynamic' : 'static';
       const result = mechanism.getForceAnalysis(mode);
-      result.frames.forEach((frame, index) => {
-        categories.push(frame.timeSeconds.toString());
+      mechanism.samplesInPlaybackOrder().forEach((index) => {
+        categories.push(mechanism.elapsedTimeAtSample(index).toString());
         collect(index);
       });
 
@@ -1449,13 +1451,15 @@ export class AnalysisGraphComponent
       // silent gap at a toggle position reads as a plotting bug, when it is
       // the most physical thing on the chart.
       const failed = result.frames.length - result.successfulFrames;
-      const firstFailed = result.frames.find((frame) => frame.status !== 'ok');
+      const firstFailedIndex = mechanism
+        .samplesInPlaybackOrder()
+        .find((index) => result.frames[index].status !== 'ok');
       this.analysisGap =
-        hasFiniteData && failed > 0 && firstFailed
+        hasFiniteData && failed > 0 && firstFailedIndex !== undefined
           ? {
               failed,
               total: result.frames.length,
-              firstSeconds: firstFailed.timeSeconds,
+              firstSeconds: mechanism.elapsedTimeAtSample(firstFailedIndex),
               mechIndex: Math.max(this.mechanismService.mechanisms.indexOf(mechanism), 0),
             }
           : null;
@@ -1475,8 +1479,8 @@ export class AnalysisGraphComponent
     // clean set of them rather than from the last mechanism graphed.
     KinematicsSolver.resetVariables();
     KinematicsSolver.requiredLoops = mechanism.requiredLoops;
-    mechanism.joints.forEach((_, index) => {
-      categories.push(mechanism.timeNum[index]?.toString() ?? index.toString());
+    mechanism.samplesInPlaybackOrder().forEach((index) => {
+      categories.push(mechanism.elapsedTimeAtSample(index).toString());
       collect(index);
     });
     return [[datum_X, datum_Y, datum_Z], categories];

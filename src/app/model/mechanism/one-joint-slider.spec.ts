@@ -86,7 +86,19 @@ function build(joints: Joint[], links: Link[], gravity = false, inputAngVel = 1)
   wire(joints, links);
   // 'degree' spacing, as the verification harness uses: the assertions here are
   // about the count and the walk, not about adaptive sampling.
-  return new Mechanism(joints, links, [], [], gravity, 'm', inputAngVel, 'degree');
+  return new Mechanism(
+    joints,
+    links,
+    [],
+    [],
+    gravity,
+    'm',
+    inputAngVel,
+    'degree',
+    undefined,
+    undefined,
+    1
+  );
 }
 
 /**
