@@ -50,6 +50,18 @@ All test paths below are under `src/tests/verification/` unless noted otherwise.
 | `src/app/services/transcoding/precise-values.spec.ts` | Legacy payload decoding, exact numeric round trips and malformed extension rejection |
 | Existing force, MATLAB, fixture, template, mobility and cycle suites | Compatibility controls beyond the audit reproductions |
 
+## Browser evidence
+
+`e2e/mechanism-audit.mjs` opens the retained #1, #58, #64 and #68 payloads in a
+fresh browser context. It checks rejected immobile geometry, #64's full six-second
+cycle and stationary slider, the independently expected nonzero peak in the actual
+angular-acceleration graph, and the Jansen negative control. It captures the cycle
+quarters and the small graph for visual review.
+
+![Clockwise cycle with the slider stationary](images/mechanism-audit/clockwise-filmstrip.png)
+
+![Small nonzero degree acceleration](images/mechanism-audit/small-acceleration.png)
+
 ## Acceptance ledger
 
 Each finding has exactly one primary category. Secondary dependencies are described in the sections above.
