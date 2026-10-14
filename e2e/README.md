@@ -333,16 +333,11 @@ Not suites — import them from one.
   ready on both chips, keep that joint on its slot through the cycle, and survive an undo and a redo
   after a drag — the path that matters most, because undo replays a URL. Filmstrips and contact
   sheets to `artifacts/cylinder-mount-slot/`, `sheet-reopened.png` among them.
-- `cylinder-object-size.mjs` — decision S29: Object Size is how a drawing is drawn, so it never
-  moves a joint a reader can see and never leaves a cylinder in two pieces. The size is changed
-  through the three doors a reader has — the Settings field, the Auto-size Objects button, and a
-  drawing that adopts a size as it opens — and after each one every cylinder is asked whether its
-  head is inside its travel, whether the silhouette is one piece (**measured off the drawn paths**,
-  because "two pieces" is a fact about the picture), whether any visible joint moved, and whether
-  *Starts at* is still a percentage. It also holds the undo story — a size the reader chose is one
-  entry with the repair inside it, a size the app adopted is none — and the two things the same
-  reader is looking at: the driven arrows keep their proportions at every zoom, and the transport
-  says *Forward* of a bare slider and *Opening* of a cylinder.
+- `cylinder-object-size.mjs` — historical coverage for the retired Object Size controls (S29).
+  It is excluded from CI after Drawing Style replaced those controls. `drawing-styles.mjs`
+  now runs in the gate and checks cylinder geometry, physical clearance, solver inputs, history,
+  and authored outlines through style, zoom, and Fit changes. `playback-direction.mjs` retains
+  the bare-slider direction checks.
 - `cylinder-panel.mjs` — the cylinder panel's past defects: a picker that moved the part, an edit
   that could not be undone, a silent limit, a rounded position.
 - `cylinder-skin.mjs` — the head's stops are drawn by the skin itself, with no annotation on the
@@ -526,6 +521,7 @@ Not suites — import them from one.
 
 `force-precision.mjs` compares the actual rendered force against the designer’s selected and entering SVGs, checks resting/hover/selected/entering states for all six force colors, and records a real hover/selection filmstrip. Comparison images and the palette matrix go to `artifacts/force-precision/`; original reference drawings live in `e2e/reference/force/`.
 
+- `drawing-styles.mjs` — whole-drawing styles, bounded zoom symbols, geometry/CAD invariants, cylinder playback filmstrips, and responsive Settings.
 - `bug-fixes-2.mjs` — audit regressions, synthesis units/Undo, and display-size cylinder invariants.
 - `pr33-followups.mjs` — pointer-specific help, compact synthesis actions, meter-scaled pose chips,
   responsive analysis switches, and context-aware export copy. Writes screenshots and a unit-change

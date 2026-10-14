@@ -3,10 +3,9 @@ import { URL_DECIMAL_PLACES } from './base64-converter';
 /**
  * How an object scale too small for the URL's thousandths still survives one.
  *
- * Every decimal rides the URL in thousandths, so a scale of 0.0001 -- which
- * Custom Object Size accepts, and which a unit conversion can reach on its own
- * -- was written as zero, and undo, redo and every shared link brought the
- * drawing back with no joints to see. The scale keeps its old token, rounded as
+ * Every decimal rides the URL in thousandths, so a scale of 0.0001 -- which a
+ * unit conversion can reach on its own -- was written as zero, and undo, redo
+ * and every shared link brought the drawing back with no joints to see. The scale keeps its old token, rounded as
  * always, so a link stays readable by what wrote it; a second, appended token
  * carries the same value in millionths, and is written only when the first
  * would lose what the panel shows. Every URL that never needed it ends in the
@@ -15,8 +14,8 @@ import { URL_DECIMAL_PLACES } from './base64-converter';
 const FINE_SCALE_FACTOR = 1_000_000;
 
 /**
- * Three figures, because that is what the Custom Object Size field shows
- * (settings-panel's `scaleText`) -- the precision a reader can see go missing.
+ * Three figures: past that, a difference in a mark's size is not one anybody
+ * could see, so losing it is not worth a token.
  */
 const SHOWN_FIGURES = 3;
 

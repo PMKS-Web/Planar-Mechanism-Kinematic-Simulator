@@ -172,7 +172,7 @@ try {
     );
     await settings();
     const sizeFilm = filmstrip(page, `${OUT}/${id}-sizes`);
-    for (const preset of ['Compact', 'Normal', 'Large']) {
+    for (const preset of ['Fine', 'Schematic', 'Standard']) {
       await sizeFilm.during(70, 7, preset, () =>
         page.getByRole('button', { name: preset, exact: true }).click()
       );
@@ -183,17 +183,17 @@ try {
         { before: authored.cylinders, after: now.cylinders, physical: now.physical }
       );
     }
-    const large = await geometry();
     await page.getByRole('button', { name: 'Close', exact: true }).click();
+    // Styles are local view preferences, so Undo still addresses the typed edit.
     await page.getByRole('button', { name: 'Undo', exact: true }).click();
-    check(`${id}: Undo size keeps authored lengths`, same(authored, await geometry()));
+    check(`${id}: Undo restores the previous typed rod length`, same(typed, await geometry()));
     await page.getByRole('button', { name: 'Redo', exact: true }).click();
-    check(`${id}: Redo size keeps authored lengths`, same(authored, await geometry()));
+    check(`${id}: Redo restores authored lengths`, same(authored, await geometry()));
     const beforeZoom = await geometry();
     await grid((g) => g.svgGrid.panZoomObject.zoomBy(2));
     await grid((g) => g.svgGrid.panZoomObject.zoomBy(0.25));
     check(
-      `${id}: zoom cannot change physical or visual sizes`,
+      `${id}: zoom cannot change document geometry or clearance`,
       same(authored, await geometry()) && (await geometry()).visual === beforeZoom.visual
     );
     const query = await grid((g) => g.saveHistoryService.urlGenerationService.generateUrlQuery());
@@ -218,10 +218,10 @@ try {
     );
     await page.getByRole('button', { name: 'Metric (cm)', exact: true }).click();
     check(`${id}: unit conversion round-trip`, same(restored, await geometry()));
-    await page.getByRole('button', { name: 'Lines', exact: true }).click();
+    await page.getByRole('button', { name: 'Schematic', exact: true }).click();
     await page.waitForTimeout(220);
     await page.screenshot({ path: `${OUT}/${id}-lines.png` });
-    await page.getByRole('button', { name: 'Filled', exact: true }).click();
+    await page.getByRole('button', { name: 'Standard', exact: true }).click();
     await contactSheet(`${OUT}/${id}-sizes/*.png`, `${OUT}/${id}-size-film.png`, 7, 0.25);
   }
   await load('4-Bar');

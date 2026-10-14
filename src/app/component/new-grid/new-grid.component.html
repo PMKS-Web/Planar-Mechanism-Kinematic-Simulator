@@ -1,5 +1,7 @@
 <svg
   id="canvas"
+  [class.schematic]="settings.isSchematic"
+  [attr.data-drawing-style]="settings.drawingStyle.value"
   display="block"
   width="100%"
   height="100%"
@@ -15,10 +17,10 @@
 >
   <defs>
     <filter id="elevation-1" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur in="SourceAlpha" [attr.stdDeviation]="0.008 * settings.objectScale" />
+      <feGaussianBlur in="SourceAlpha" [attr.stdDeviation]="0.008 * settings.drawingScale" />
       <feOffset
-        [attr.dx]="0.004 * settings.objectScale"
-        [attr.dy]="-0.004 * settings.objectScale"
+        [attr.dx]="0.004 * settings.drawingScale"
+        [attr.dy]="-0.004 * settings.drawingScale"
       />
       <feComponentTransfer>
         <feFuncA type="linear" slope="0.4" />
@@ -29,10 +31,10 @@
       </feMerge>
     </filter>
     <filter id="elevation-2" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur in="SourceAlpha" [attr.stdDeviation]="0.016 * settings.objectScale" />
+      <feGaussianBlur in="SourceAlpha" [attr.stdDeviation]="0.016 * settings.drawingScale" />
       <feOffset
-        [attr.dx]="0.012 * settings.objectScale"
-        [attr.dy]="-0.012 * settings.objectScale"
+        [attr.dx]="0.012 * settings.drawingScale"
+        [attr.dy]="-0.012 * settings.drawingScale"
       />
       <feComponentTransfer>
         <feFuncA type="linear" slope="0.5" />
@@ -43,8 +45,11 @@
       </feMerge>
     </filter>
     <filter id="elevation-3" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur in="SourceAlpha" [attr.stdDeviation]="0.024 * settings.objectScale" />
-      <feOffset [attr.dx]="0.02 * settings.objectScale" [attr.dy]="-0.02 * settings.objectScale" />
+      <feGaussianBlur in="SourceAlpha" [attr.stdDeviation]="0.024 * settings.drawingScale" />
+      <feOffset
+        [attr.dx]="0.02 * settings.drawingScale"
+        [attr.dy]="-0.02 * settings.drawingScale"
+      />
       <feComponentTransfer>
         <feFuncA type="linear" slope="0.6" />
       </feComponentTransfer>
@@ -331,10 +336,10 @@
         ) {
           <image
             xlink:href="../../../assets/Ground.svg"
-            [attr.width]="settings.objectScale * 1.2"
-            [attr.x]="settings.objectScale * -0.6"
-            [attr.y]="settings.objectScale * -0.35 * 1.2"
-            [attr.height]="settings.objectScale * 1.2"
+            [attr.width]="settings.drawingScale * 1.2"
+            [attr.x]="settings.drawingScale * -0.6"
+            [attr.y]="settings.drawingScale * -0.35 * 1.2"
+            [attr.height]="settings.drawingScale * 1.2"
             upright
           />
         }
@@ -349,10 +354,10 @@
                against the actual motion. -->
           <image
             xlink:href="../../../assets/InputCW.svg"
-            [attr.width]="settings.objectScale * 1.2"
-            [attr.x]="settings.objectScale * -0.505 * 1.2"
-            [attr.y]="settings.objectScale * -0.435 * 1.2"
-            [attr.height]="settings.objectScale * 1.2"
+            [attr.width]="settings.drawingScale * 1.2"
+            [attr.x]="settings.drawingScale * -0.505 * 1.2"
+            [attr.y]="settings.drawingScale * -0.435 * 1.2"
+            [attr.height]="settings.drawingScale * 1.2"
             upright
           />
         }
@@ -364,10 +369,10 @@
         ) {
           <image
             xlink:href="../../../assets/InputCCW.svg"
-            [attr.width]="settings.objectScale * 1.2"
-            [attr.x]="settings.objectScale * -0.505 * 1.2"
-            [attr.y]="settings.objectScale * -0.435 * 1.2"
-            [attr.height]="settings.objectScale * 1.2"
+            [attr.width]="settings.drawingScale * 1.2"
+            [attr.x]="settings.drawingScale * -0.505 * 1.2"
+            [attr.y]="settings.drawingScale * -0.435 * 1.2"
+            [attr.height]="settings.drawingScale * 1.2"
             upright
           />
         }
@@ -488,6 +493,7 @@
               class="ghostBody"
               [attr.d]="ghostBodyPath(body)"
               [attr.fill]="ghostBodyFill(body)"
+              [style.stroke]="settings.isSchematic ? ghostBodyFill(body) : null"
               fill-rule="evenodd"
             />
           }
@@ -522,11 +528,14 @@
             }
           }
           @for (pin of ghost.pins; track $index) {
+            <!-- Schematic draws the ghost's pins as the schematic's own pins. -->
             <circle
               class="ghostPin"
               [attr.cx]="pin.x"
               [attr.cy]="pin.y"
-              [attr.r]="svgGrid.scaleWithZoom(4)"
+              [attr.r]="
+                settings.isSchematic ? 0.15 * settings.drawingScale : svgGrid.scaleWithZoom(4)
+              "
               [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
             />
           }
@@ -543,11 +552,32 @@
   @if (dragArcs(); as arcs) {
     <g id="dragTraceHolder" modelFrame pointer-events="none">
       @for (arc of arcs; track $index) {
-        <path class="dragTrace" [attr.d]="arc" [attr.stroke-width]="0.01 * settings.objectScale" />
+        <path class="dragTrace" [attr.d]="arc" [attr.stroke-width]="0.01 * settings.drawingScale" />
       }
     </g>
   }
 
+  <!-- Schematic says "picked" with a band of amber under the line, so the line
+       keeps its own color and a new color shows while it is still picked. A
+       drawn band rather than a CSS glow: a filter's blur is measured in the
+       drawing's own units, so it vanished at some scales, and Safari does not
+       filter SVG shapes at all. -->
+  @if (settings.isSchematic) {
+    <g id="selectionHaloHolder" modelFrame pointer-events="none">
+      @for (halo of objectDisplay.halos(); track halo.key) {
+        <path
+          [class]="'selection-halo ' + halo.kind"
+          [attr.d]="halo.d"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(halo.kind === 'picked' ? 11 : 7)"
+          [attr.stroke-dasharray]="
+            halo.kind === 'context'
+              ? svgGrid.scaleWithZoom(10) + ' ' + svgGrid.scaleWithZoom(12)
+              : null
+          "
+        />
+      }
+    </g>
+  }
   <g id="linkHolder" modelFrame>
     @for (link of mechanismSrv.getLinks(); track link) {
       <ng-container>
@@ -556,7 +586,10 @@
              under the head block for a barrel, over it for a rod. It is left
              out of this layer entirely rather than emptied, so the body's id
              belongs to the one element that draws it. -->
-        @if (gridUtils.typeOfLink(link) == 'R' && !bodyDrawnByACylinder(link)) {
+        @if (
+          gridUtils.typeOfLink(link) == 'R' &&
+          (settings.isSchematic ? !drawnBySlotStack(link) : !bodyDrawnByACylinder(link))
+        ) {
           <path
             (pointerover)="link.showHighlight = true"
             (pointerout)="link.showHighlight = false"
@@ -564,16 +597,15 @@
             (contextmenu)="setLastRightClick(link, $event)"
             [attr.cursor]="mechanismSrv.isLinkLockedVisual(link) ? 'not-allowed' : null"
             [attr.d]="
-              settings.isLineDrawing.value ? linkSkeletonPath(link) : linkPathWithChannels(link)
+              settings.isSchematic ? objectDisplay.skeleton(link) : linkPathWithChannels(link)
             "
             [attr.id]="link.id"
             [attr.data-channels]="channelCountOn(link)"
-            [attr.fill]="
-              settings.isLineDrawing.value ? 'none' : mechanismSrv.getLinkProp(link, 'fill')
-            "
+            [attr.fill]="mechanismSrv.getLinkProp(link, 'fill')"
             fill-rule="evenodd"
             [attr.fill-opacity]="0.7"
             [attr.stroke]="mechanismSrv.getLinkProp(link, 'fill')"
+            [style.stroke]="settings.isSchematic ? mechanismSrv.getLinkProp(link, 'fill') : null"
             [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
             [class]="mechanismSrv.getLinkCSSClass(link)"
           ></path>
@@ -584,18 +616,16 @@
                shape hands the holes back — unpainted, so the slot still reads as
                a slot, and under the block, so grabbing the block still grabs the
                block. -->
-          @if (settings.isLineDrawing.value || hasChannelHit(link)) {
+          @if (settings.isSchematic || hasChannelHit(link)) {
             <path
               (pointerover)="link.showHighlight = true"
               (pointerout)="link.showHighlight = false"
               (pointerdown)="setLastLeftClick(link, $event)"
               (contextmenu)="setLastRightClick(link, $event)"
               [attr.cursor]="mechanismSrv.isLinkLockedVisual(link) ? 'not-allowed' : null"
-              [attr.d]="
-                settings.isLineDrawing.value ? linkSkeletonPath(link) : channelsCutInto(link)
-              "
+              [attr.d]="settings.isSchematic ? objectDisplay.skeleton(link) : channelsCutInto(link)"
               stroke="transparent"
-              [attr.stroke-width]="settings.isLineDrawing.value ? svgGrid.scaleWithZoom(12) : 0"
+              [attr.stroke-width]="settings.isSchematic ? svgGrid.scaleWithZoom(12) : 0"
               [attr.id]="link.id + '__slotHit'"
               fill="none"
               pointer-events="all"
@@ -603,6 +633,7 @@
           }
         }
         @if (
+          !settings.isSchematic &&
           gridUtils.typeOfLink(link) == 'R' &&
           gridUtils.getLinkSubset(link).length > 0 &&
           activeObjService.objType == 'Link' &&
@@ -611,12 +642,16 @@
           <g [attr.id]="link.id + '__components'" pointer-events="none">
             @for (subLink of gridUtils.getLinkSubset(link); track subLink) {
               <path
-                [attr.d]="mechanismSrv.getLinkProp(subLink, 'd')"
+                [attr.d]="
+                  settings.isSchematic
+                    ? objectDisplay.skeleton(subLink)
+                    : objectDisplay.path(subLink)
+                "
                 [attr.id]="link.id + '__' + subLink.id + '__component'"
-                fill="rgba(0,0,0,0.3)"
+                fill="none"
                 stroke="black"
-                [attr.stroke-width]="0.01 * settings.objectScale"
-                [attr.stroke-dasharray]="0.1 * settings.objectScale"
+                [attr.stroke-width]="0.01 * settings.drawingScale"
+                [attr.stroke-dasharray]="0.1 * settings.drawingScale"
               ></path>
             }
           </g>
@@ -642,113 +677,155 @@
          the two shared a link -- which is what a pair of dangling blocks on one
          bar looks like. -->
     @for (item of slotStack; track item.key) {
-      <!-- The positioned group carries the mark identity: it is the one with
+      <!-- Schematic draws a rider as its own line at the rider's depth, above
+           the block it is pinned to, exactly as the filled rider sits above it.
+           In the drawing's own frame rather than the slot's, because the line
+           is the link's joints and nothing else. -->
+      @if (settings.isSchematic && item.kind !== 'block') {
+        @for (rider of item.rider ? [item.rider.link] : (item.plate?.links ?? []); track rider.id) {
+          <ng-container
+            [ngTemplateOutlet]="schematicRider"
+            [ngTemplateOutletContext]="{ $implicit: rider }"
+          />
+        }
+      } @else {
+        <!-- The positioned group carries the mark identity: it is the one with
            the slot's transform on it, and the one anything measuring an
            assembly has to find. Ordering by depth means DOM order no longer
            follows joint order, so it is named rather than counted. -->
-      <g
-        [attr.transform]="sliderMarks.frame(item.mark)"
-        [attr.class]="item.kind === 'block' ? 'slider-mark' : null"
-        [attr.data-slider]="item.mark.id"
-      >
-        @switch (item.kind) {
-          @case ('block') {
-            <!-- Grabbing the block starts a drag on its pin (§4.4). The block is
+        <g
+          [attr.transform]="sliderMarks.frame(item.mark)"
+          [attr.class]="item.kind === 'block' ? 'slider-mark' : null"
+          [attr.data-slider]="item.mark.id"
+        >
+          @switch (item.kind) {
+            @case ('block') {
+              <!-- Grabbing the block starts a drag on its pin (§4.4). The block is
                  a far bigger target than the marker at its center, and the two
                  sit on the same point, so it is the same grab with a better
                  hitbox. Pointing at it lights that marker, and only that
                  marker: the block is the handle, the mark is the joint. -->
-            <g
-              class="slider-block"
-              [class.link-inert]="mechanismSrv.isPartInert(item.mark.joint)"
-              cursor="move"
-              (pointerover)="item.mark.joint.showHighlight = true"
-              (pointerout)="item.mark.joint.showHighlight = false"
-              (pointerdown)="setLastLeftClick(item.mark.joint, $event)"
-              (contextmenu)="setLastRightClick(item.mark.joint)"
-            >
-              <!-- The block stays #000 even when the slider has nowhere to
+              <g
+                class="slider-block"
+                [class.driven]="item.mark.driven"
+                [class.link-inert]="mechanismSrv.isPartInert(item.mark.joint)"
+                cursor="move"
+                (pointerover)="item.mark.joint.showHighlight = true"
+                (pointerout)="item.mark.joint.showHighlight = false"
+                (pointerdown)="setLastLeftClick(item.mark.joint, $event)"
+                (contextmenu)="setLastRightClick(item.mark.joint)"
+              >
+                <!-- The block stays #000 even when the slider has nowhere to
                    slide: the red is a highlight around it, the way the
                    orphan-joint mark works, not a different block. §2.8 rule 3
                    has no exceptions. -->
-              <path [attr.d]="item.mark.block" fill="#000000" filter="url(#elevation-1)" />
-            </g>
-          }
-          @case ('rider') {
-            @if (item.rider) {
-              <path
-                (pointerover)="item.rider.link.showHighlight = true"
-                (pointerout)="item.rider.link.showHighlight = false"
-                (pointerdown)="setLastLeftClick(item.rider.link, $event)"
-                (contextmenu)="setLastRightClick(item.rider.link, $event)"
-                [attr.d]="markPathWithPreview(item.mark, item.rider, item.rider.link)"
-                [attr.id]="item.rider.link.id + '__rider'"
-                fill-rule="evenodd"
-                [attr.fill]="item.rider.fill"
-                fill-opacity="0.7"
-                [attr.stroke]="item.rider.fill"
-                [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
-                [class]="mechanismSrv.getLinkCSSClass(item.rider.link)"
-              ></path>
-              <!-- Its own slot handed back, as in the link layer: a link can be
-                   a rider of one block and the carrier of another. -->
-              @if (item.rider.cuts.length > 0 || channelCountOn(item.rider.link) > 0) {
+                <path [attr.d]="item.mark.block" fill="#000000" filter="url(#elevation-1)" />
+              </g>
+            }
+            @case ('rider') {
+              @if (item.rider && !settings.isSchematic) {
                 <path
                   (pointerover)="item.rider.link.showHighlight = true"
                   (pointerout)="item.rider.link.showHighlight = false"
                   (pointerdown)="setLastLeftClick(item.rider.link, $event)"
                   (contextmenu)="setLastRightClick(item.rider.link, $event)"
-                  [attr.d]="markChannelsCutInto(item.mark, item.rider, item.rider.link)"
-                  fill="none"
-                  pointer-events="all"
+                  [attr.d]="markPathWithPreview(item.mark, item.rider, item.rider.link)"
+                  [attr.id]="item.rider.link.id + '__rider'"
+                  fill-rule="evenodd"
+                  [attr.fill]="item.rider.fill"
+                  fill-opacity="0.7"
+                  [attr.stroke]="item.rider.fill"
+                  [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+                  [class]="mechanismSrv.getLinkCSSClass(item.rider.link)"
                 ></path>
+                <!-- Its own slot handed back, as in the link layer: a link can be
+                   a rider of one block and the carrier of another. -->
+                @if (item.rider.cuts.length > 0 || channelCountOn(item.rider.link) > 0) {
+                  <path
+                    (pointerover)="item.rider.link.showHighlight = true"
+                    (pointerout)="item.rider.link.showHighlight = false"
+                    (pointerdown)="setLastLeftClick(item.rider.link, $event)"
+                    (contextmenu)="setLastRightClick(item.rider.link, $event)"
+                    [attr.d]="markChannelsCutInto(item.mark, item.rider, item.rider.link)"
+                    fill="none"
+                    pointer-events="all"
+                  ></path>
+                }
               }
             }
-          }
-          @case ('plate') {
-            <!-- The rider's ordinary drawing is suppressed while this stands in
+            @case ('plate') {
+              <!-- The rider's ordinary drawing is suppressed while this stands in
                  for it, so the two cannot double their alpha over each other or
                  leave the rider's own outline showing as a seam through the
                  plate. That makes the plate the only thing left to click, so it
                  carries the rider's selection the way the link body would. -->
-            @if (item.plate) {
-              <g class="slider-plate">
-                <path
-                  cursor="move"
-                  (pointerover)="item.plate.links[0].showHighlight = true"
-                  (pointerout)="item.plate.links[0].showHighlight = false"
-                  (pointerdown)="setLastLeftClick(item.plate.links[0], $event)"
-                  (contextmenu)="setLastRightClick(item.plate.links[0], $event)"
-                  [attr.d]="markPathWithPreview(item.mark, item.plate, item.plate.links[0])"
-                  fill-rule="evenodd"
-                  [attr.fill]="item.plate.fill"
-                  fill-opacity="0.7"
-                  [attr.stroke]="item.plate.fill"
-                  [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
-                  [class]="mechanismSrv.getLinkCSSClass(item.plate.links[0])"
-                />
-                <!-- The plate is the only thing left to click for the rider it
-                     stands in for, so it is also the only thing that can hand
-                     back the slot cut through it — the Scotch yoke's yoke is
-                     both a carrier and a welded rider. -->
-                @if (item.plate.cuts.length > 0 || channelCountOn(item.plate.links[0]) > 0) {
+              @if (item.plate && !settings.isSchematic) {
+                <g class="slider-plate">
                   <path
                     cursor="move"
                     (pointerover)="item.plate.links[0].showHighlight = true"
                     (pointerout)="item.plate.links[0].showHighlight = false"
                     (pointerdown)="setLastLeftClick(item.plate.links[0], $event)"
                     (contextmenu)="setLastRightClick(item.plate.links[0], $event)"
-                    [attr.d]="markChannelsCutInto(item.mark, item.plate, item.plate.links[0])"
-                    fill="none"
-                    pointer-events="all"
+                    [attr.d]="markPathWithPreview(item.mark, item.plate, item.plate.links[0])"
+                    fill-rule="evenodd"
+                    [attr.fill]="item.plate.fill"
+                    fill-opacity="0.7"
+                    [attr.stroke]="item.plate.fill"
+                    [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+                    [class]="mechanismSrv.getLinkCSSClass(item.plate.links[0])"
                   />
-                }
-              </g>
+                  <!-- The plate is the only thing left to click for the rider it
+                     stands in for, so it is also the only thing that can hand
+                     back the slot cut through it — the Scotch yoke's yoke is
+                     both a carrier and a welded rider. -->
+                  @if (item.plate.cuts.length > 0 || channelCountOn(item.plate.links[0]) > 0) {
+                    <path
+                      cursor="move"
+                      (pointerover)="item.plate.links[0].showHighlight = true"
+                      (pointerout)="item.plate.links[0].showHighlight = false"
+                      (pointerdown)="setLastLeftClick(item.plate.links[0], $event)"
+                      (contextmenu)="setLastRightClick(item.plate.links[0], $event)"
+                      [attr.d]="markChannelsCutInto(item.mark, item.plate, item.plate.links[0])"
+                      fill="none"
+                      pointer-events="all"
+                    />
+                  }
+                </g>
+              }
             }
           }
-        }
-      </g>
+        </g>
+      }
     }
+    <ng-template #schematicRider let-link>
+      <path
+        (pointerover)="link.showHighlight = true"
+        (pointerout)="link.showHighlight = false"
+        (pointerdown)="setLastLeftClick(link, $event)"
+        (contextmenu)="setLastRightClick(link, $event)"
+        [attr.cursor]="mechanismSrv.isLinkLockedVisual(link) ? 'not-allowed' : null"
+        [attr.d]="objectDisplay.skeleton(link)"
+        [attr.id]="link.id"
+        class="schematicRider"
+        [attr.fill]="mechanismSrv.getLinkProp(link, 'fill')"
+        [style.stroke]="mechanismSrv.getLinkProp(link, 'fill')"
+        [class]="mechanismSrv.getLinkCSSClass(link)"
+      ></path>
+      <path
+        (pointerover)="link.showHighlight = true"
+        (pointerout)="link.showHighlight = false"
+        (pointerdown)="setLastLeftClick(link, $event)"
+        (contextmenu)="setLastRightClick(link, $event)"
+        [attr.cursor]="mechanismSrv.isLinkLockedVisual(link) ? 'not-allowed' : null"
+        [attr.d]="objectDisplay.skeleton(link)"
+        [attr.id]="link.id + '__slotHit'"
+        stroke="transparent"
+        [attr.stroke-width]="svgGrid.scaleWithZoom(12)"
+        fill="none"
+        pointer-events="all"
+      ></path>
+    </ng-template>
     <!-- A slider with nowhere to slide, marked the way an orphan joint is. Drawn
          after every body rather than on the block itself: a welded block is
          covered by its own weld plate, so a highlight painted under it was the
@@ -770,7 +847,17 @@
          are always white, and that is only safe because what is underneath is
          always the black block. -->
     @for (mark of sliderMarkList; track mark.id) {
-      @if (mark.driven && !isSkinned(mark)) {
+      @if (mark.driven && !isSkinned(mark) && settings.isSchematic) {
+        <g
+          class="slider-arrows schematic-heads"
+          pointer-events="none"
+          [attr.transform]="sliderMarks.frame(mark)"
+        >
+          @for (arrow of mark.schematicArrows; track $index) {
+            <path [attr.d]="arrow.head" />
+          }
+        </g>
+      } @else if (mark.driven && !isSkinned(mark)) {
         <g class="slider-arrows" pointer-events="none" [attr.transform]="sliderMarks.frame(mark)">
           <!-- The heavier arrow is the way the block sets off. Two matched
                arrows only say "this translates"; they cannot say which way it
@@ -823,8 +910,9 @@
                inert, locked), read off each member rather than off the part, so a
                picked barrel and a picked rod look different. The stroke below is a
                presentation attribute, and the class's stroke beats it. -->
-          @if (!memberIsFused(cyl, 'barrel')) {
+          @if (settings.isSchematic || !memberIsFused(cyl, 'barrel')) {
             <path
+              pointer-events="all"
               [class]="'cylinder-barrel ' + mechanismSrv.getLinkCSSClass(cyl.barrelLink)"
               [attr.cursor]="
                 mechanismSrv.isLinkLockedVisual(cyl.barrelLink) ? 'not-allowed' : 'move'
@@ -833,11 +921,31 @@
               (pointerout)="cyl.barrelLink.showHighlight = false"
               (pointerdown)="setLastLeftClick(cyl.barrelLink, $event)"
               (contextmenu)="setLastRightClick(cyl.barrelLink, $event)"
-              [attr.d]="cyl.barrel"
+              [attr.d]="settings.isSchematic ? cyl.barrelLine : cyl.barrel"
               [attr.fill]="cyl.barrelFill"
               fill-opacity="0.7"
               [attr.stroke]="cyl.barrelFill"
+              [style.stroke]="settings.isSchematic ? cyl.barrelFill : null"
               [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+            />
+          }
+          <!-- Schematic's members are bare lines, so each gets the wide
+               invisible target a schematic bar has. -->
+          @if (settings.isSchematic) {
+            <path
+              class="cylinder-member-hit"
+              [attr.cursor]="
+                mechanismSrv.isLinkLockedVisual(cyl.barrelLink) ? 'not-allowed' : 'move'
+              "
+              (pointerover)="cyl.barrelLink.showHighlight = true"
+              (pointerout)="cyl.barrelLink.showHighlight = false"
+              (pointerdown)="setLastLeftClick(cyl.barrelLink, $event)"
+              (contextmenu)="setLastRightClick(cyl.barrelLink, $event)"
+              [attr.d]="cyl.barrelLine"
+              stroke="transparent"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(12)"
+              fill="none"
+              pointer-events="all"
             />
           }
           <!-- The seal's own square. It stays #000 in every state — the accent
@@ -847,33 +955,54 @@
                band inside the bore read darker. Its hitbox is in that pass too.
                No stop notches and no dotted motion line: the bore is the head's
                own length, so the silhouette says where the travel ends. -->
-          <path
-            class="cylinder-seal"
-            pointer-events="none"
-            [class.link-inert]="mechanismSrv.isPartInert(cyl.barrelLink)"
-            [attr.d]="cyl.block"
-            fill="#000000"
-            [attr.filter]="mechanismSrv.isPartInert(cyl.barrelLink) ? null : 'url(#elevation-1)'"
-          />
-          @if (!memberIsFused(cyl, 'rod')) {
+          <!-- Schematic has no head: the seal's own mark, drawn in the joint
+               layer, is where the two lines meet and slide. -->
+          @if (!settings.isSchematic) {
             <path
+              class="cylinder-seal"
+              pointer-events="none"
+              [class.link-inert]="mechanismSrv.isPartInert(cyl.barrelLink)"
+              [attr.d]="cyl.block"
+              fill="#000000"
+              [attr.filter]="mechanismSrv.isPartInert(cyl.barrelLink) ? null : 'url(#elevation-1)'"
+            />
+          }
+          @if (settings.isSchematic || !memberIsFused(cyl, 'rod')) {
+            <path
+              pointer-events="all"
               [class]="'cylinder-rod ' + mechanismSrv.getLinkCSSClass(cyl.rodLink)"
               [attr.cursor]="mechanismSrv.isLinkLockedVisual(cyl.rodLink) ? 'not-allowed' : 'move'"
               (pointerover)="cyl.rodLink.showHighlight = true"
               (pointerout)="cyl.rodLink.showHighlight = false"
               (pointerdown)="setLastLeftClick(cyl.rodLink, $event)"
               (contextmenu)="setLastRightClick(cyl.rodLink, $event)"
-              [attr.d]="cyl.rod"
+              [attr.d]="settings.isSchematic ? cyl.rodLine : cyl.rod"
               [attr.fill]="cyl.rodFill"
               fill-opacity="0.7"
               [attr.stroke]="cyl.rodFill"
+              [style.stroke]="settings.isSchematic ? cyl.rodFill : null"
               [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
+            />
+          }
+          @if (settings.isSchematic) {
+            <path
+              class="cylinder-member-hit"
+              [attr.cursor]="mechanismSrv.isLinkLockedVisual(cyl.rodLink) ? 'not-allowed' : 'move'"
+              (pointerover)="cyl.rodLink.showHighlight = true"
+              (pointerout)="cyl.rodLink.showHighlight = false"
+              (pointerdown)="setLastLeftClick(cyl.rodLink, $event)"
+              (contextmenu)="setLastRightClick(cyl.rodLink, $event)"
+              [attr.d]="cyl.rodLine"
+              stroke="transparent"
+              [attr.stroke-width]="svgGrid.scaleWithZoom(12)"
+              fill="none"
+              pointer-events="all"
             />
           }
         </g>
       } @else if (step.fused; as fused) {
         <ng-container
-          [ngTemplateOutlet]="fusedCylinderBody"
+          [ngTemplateOutlet]="settings.isSchematic ? null : fusedCylinderBody"
           [ngTemplateOutletContext]="{ $implicit: fused }"
         />
       }
@@ -907,11 +1036,19 @@
           (pointerout)="cyl.seal.showHighlight = false"
           (pointerdown)="setLastLeftClick(cyl.seal, $event)"
           (contextmenu)="setLastRightClick(cyl.seal, $event)"
-          [attr.d]="cyl.block"
+          [attr.d]="settings.isSchematic ? cyl.sealBlock : cyl.block"
           fill="transparent"
         />
-        @if (cyl.driven && !mechanismSrv.isPartInert(cyl.barrelLink)) {
-          <g pointer-events="none">
+        @if (cyl.driven && !mechanismSrv.isPartInert(cyl.barrelLink) && settings.isSchematic) {
+          <g class="cylinder-arrows schematic-heads" pointer-events="none">
+            <!-- A driver is black in Schematic, as a driven pin's motor is. -->
+            <path class="schematic-drive-block" [attr.d]="cyl.sealBlock" />
+            @for (arrow of cyl.schematicArrows; track $index) {
+              <path [attr.d]="arrow.head" />
+            }
+          </g>
+        } @else if (cyl.driven && !mechanismSrv.isPartInert(cyl.barrelLink)) {
+          <g class="cylinder-arrows" pointer-events="none">
             <!-- The heavier arrow is the way the block sets off, same as the
                  unskinned driven mark (§4.2b): the skin changes the drawing,
                  not what the mark has to say. -->
@@ -935,20 +1072,22 @@
              (decision S12), and an outline round the fused silhouette would say
              the reader had picked the whole part. A selection that closes over
              the cylinder lights all three, as bars in a selection do. -->
-        @if (cylinderMemberOutline(cyl, 'barrel'); as barrelState) {
+        @if (!settings.isSchematic && cylinderMemberOutline(cyl, 'barrel'); as barrelState) {
           <path
             [class]="'cylinder-selected cylinder-barrel-selected ' + barrelState"
             pointer-events="none"
-            [attr.d]="cyl.barrel"
+            [attr.d]="settings.isSchematic ? cyl.barrelLine : cyl.barrel"
+            [style.stroke]="settings.isSchematic ? cyl.barrelFill : null"
             fill="none"
             [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
           />
         }
-        @if (cylinderMemberOutline(cyl, 'rod'); as rodState) {
+        @if (!settings.isSchematic && cylinderMemberOutline(cyl, 'rod'); as rodState) {
           <path
             [class]="'cylinder-selected cylinder-rod-selected ' + rodState"
             pointer-events="none"
-            [attr.d]="cyl.rod"
+            [attr.d]="settings.isSchematic ? cyl.rodLine : cyl.rod"
+            [style.stroke]="settings.isSchematic ? cyl.rodFill : null"
             fill="none"
             [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
           />
@@ -1082,13 +1221,50 @@
         opacity="0.5"
         [attr.transform]="sliderMarks.frame(ghost)"
       >
-        <!-- Same per-path alphas as the committed skin, so the black block
-             reads through the rod exactly as it will once built — and the same
-             color, which is the one the barrel is about to be handed rather
-             than a stand-in that changes at the moment of the click. -->
-        <path [attr.d]="ghost.barrel" [attr.fill]="ghost.fill" fill-opacity="0.7" />
-        <path [attr.d]="ghost.block" fill="#000000" />
-        <path [attr.d]="ghost.rod" [attr.fill]="ghost.fill" fill-opacity="0.7" />
+        @if (settings.isSchematic) {
+          <!-- What Schematic will draw once it is built: a line from mount A
+               to the seal and one on to the rod's end, the seal's mark where
+               they meet, and a pin at each end. -->
+          <path
+            class="cylinder-barrel"
+            fill="none"
+            [attr.d]="'M ' + ghost.anchor + ' 0 H 0'"
+            [style.stroke]="ghost.fill"
+          />
+          <path
+            class="cylinder-rod"
+            fill="none"
+            [attr.d]="'M 0 0 H ' + ghost.reach"
+            [style.stroke]="ghost.fill"
+          />
+          <path class="preview-joint" [attr.d]="ghost.seal" />
+          @for (at of [ghost.anchor, ghost.reach]; track $index) {
+            <circle
+              class="preview-joint"
+              [attr.cx]="at"
+              cy="0"
+              [attr.r]="0.15 * settings.drawingScale"
+            />
+          }
+        } @else {
+          <!-- Same per-path alphas as the committed skin, so the black block
+               reads through the rod exactly as it will once built — and the same
+               color, which is the one the barrel is about to be handed rather
+               than a stand-in that changes at the moment of the click. -->
+          <path
+            class="cylinder-barrel"
+            [attr.d]="ghost.barrel"
+            [attr.fill]="ghost.fill"
+            fill-opacity="0.7"
+          />
+          <path class="cylinder-seal" [attr.d]="ghost.block" fill="#000000" />
+          <path
+            class="cylinder-rod"
+            [attr.d]="ghost.rod"
+            [attr.fill]="ghost.fill"
+            fill-opacity="0.7"
+          />
+        }
       </g>
     }
   </g>
@@ -1131,11 +1307,20 @@
   </g>
   <!-- A primitive picked inside a compound needs its own edge above the fused
        body. Cylinder members use their actual skin, not their model bar hull. -->
-  @let primitive = activeObjService.selectedLink;
-  @if (
-    activeObjService.objType === 'Link' && primitive && !mechanismSrv.getLinks().includes(primitive)
-  ) {
+  @let primitive = objectDisplay.pickedPart();
+  @if (primitive && !settings.isSchematic) {
     <g id="primitiveSelection" modelFrame pointer-events="none">
+      <!-- The body it belongs to, dashed, so a picked part never reads as a
+           picked whole. -->
+      @if (objectDisplay.compoundOf(primitive); as body) {
+        <path
+          class="compound-context"
+          fill="none"
+          [attr.d]="objectDisplay.path(body)"
+          [attr.stroke-width]="svgGrid.scaleWithZoom(2)"
+          [attr.stroke-dasharray]="svgGrid.scaleWithZoom(6) + ' ' + svgGrid.scaleWithZoom(4)"
+        />
+      }
       @if (mechanismSrv.cylinderOfBar(primitive)) {
         @for (cyl of cylinderList; track cyl.id) {
           @if (cyl.barrelLink === primitive || cyl.rodLink === primitive) {
@@ -1153,7 +1338,9 @@
         <path
           class="link-selected"
           fill="none"
-          [attr.d]="mechanismSrv.getLinkProp(primitive, 'd')"
+          [attr.d]="
+            settings.isSchematic ? objectDisplay.skeleton(primitive) : objectDisplay.path(primitive)
+          "
           [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
         />
       }
@@ -1164,7 +1351,7 @@
       <ng-container>
         @if (mechanismSrv.isJointOrphan(joint)) {
           <circle
-            [attr.r]="0.25 * settings.objectScale"
+            [attr.r]="0.25 * settings.drawingScale"
             [attr.cx]="joint.x"
             [attr.cy]="joint.y"
             [attr.fill]="orphanMarkFill"
@@ -1193,7 +1380,7 @@
     @if (snapTargetJoint || creationMergeTarget; as target) {
       <circle
         class="snapTarget"
-        [attr.r]="0.4 * settings.objectScale"
+        [attr.r]="0.4 * settings.drawingScale"
         [attr.cx]="target.x"
         [attr.cy]="target.y"
         [attr.stroke-width]="svgGrid.scaleWithZoom(4)"
@@ -1203,7 +1390,7 @@
     @if (forceRefusedJoint; as pin) {
       <circle
         class="snapRefused"
-        [attr.r]="0.38 * settings.objectScale"
+        [attr.r]="0.38 * settings.drawingScale"
         [attr.cx]="pin.x"
         [attr.cy]="pin.y"
         [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
@@ -1213,7 +1400,7 @@
     @if (refusedTarget) {
       <circle
         class="snapRefused"
-        [attr.r]="0.38 * settings.objectScale"
+        [attr.r]="0.38 * settings.drawingScale"
         [attr.cx]="refusedTarget.joint.x"
         [attr.cy]="refusedTarget.joint.y"
         [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
@@ -1249,7 +1436,7 @@
     @if (holdRing) {
       <circle
         class="snapRefused holdRefused"
-        [attr.r]="0.38 * settings.objectScale"
+        [attr.r]="0.38 * settings.drawingScale"
         [attr.cx]="holdRing.x"
         [attr.cy]="holdRing.y"
         [attr.stroke-width]="svgGrid.scaleWithZoom(3)"
@@ -1287,8 +1474,8 @@
                it is a pointer rather than a part. -->
           @if (isTutorialTarget(joint)) {
             <g class="tutorialRing" pointer-events="none">
-              <circle [attr.r]="settings.objectScale * 0.5" cx="0" cy="0" class="ringOuter" />
-              <circle [attr.r]="settings.objectScale * 0.35" cx="0" cy="0" class="ringInner" />
+              <circle [attr.r]="settings.drawingScale * 0.5" cx="0" cy="0" class="ringOuter" />
+              <circle [attr.r]="settings.drawingScale * 0.35" cx="0" cy="0" class="ringInner" />
             </g>
           }
           <!-- Grouped so a refused or completed drop can animate the whole joint -->
@@ -1296,13 +1483,18 @@
             <!-- Hitbox. Every joint, not only a pin: a slider is the joint a
                  reader grabs now, and it had none of its own because the
                  coincident pin beside it carried every gesture. -->
-            <circle [attr.r]="settings.objectScale / 4" cx="0" cy="0" fill="transparent" />
+            <circle
+              [attr.r]="Math.max(settings.drawingScale / 4, svgGrid.scaleWithZoom(9))"
+              cx="0"
+              cy="0"
+              fill="transparent"
+            />
             <!--      Normal Joint-->
             @if (!gridUtils.getWelded(joint)) {
               <circle
                 id="joint_{{ joint.id }}"
                 class="joint_circles"
-                [attr.r]="settings.objectScale * gridUtils.getJointR(joint)"
+                [attr.r]="settings.drawingScale * gridUtils.getJointR(joint)"
                 [attr.cx]="0"
                 [attr.cy]="0"
                 [class]="mechanismSrv.getJointCSSClass(joint)"
@@ -1315,7 +1507,7 @@
                 <circle
                   class="jointSelectionRing"
                   [attr.r]="
-                    settings.objectScale * gridUtils.getJointR(joint) - selectionRingWidth() / 2
+                    settings.drawingScale * gridUtils.getJointR(joint) - selectionRingWidth() / 2
                   "
                   cx="0"
                   cy="0"
@@ -1365,10 +1557,17 @@
               <path
                 [attr.id]="'joint_' + joint.id"
                 [class]="mechanismSrv.getJointCSSClass(joint)"
+                class="weldMark"
                 [attr.d]="weldMarkerPath"
                 [style.fill]="jointFillOf(joint)"
                 [style.stroke]="selectionRingOn(joint)"
-                [style.stroke-width]="selectionRingWidth()"
+                [style.stroke-width]="
+                  selectionRingOn(joint)
+                    ? selectionRingWidth()
+                    : settings.isSchematic
+                      ? svgGrid.scaleWithZoom(1)
+                      : null
+                "
               ></path>
             }
             <!-- The lock cue: a small padlock riding the joint's shoulder.
@@ -1388,7 +1587,7 @@
                 @if (isWeldMark(joint)) {
                   <circle
                     class="lockChip"
-                    [attr.r]="0.13 * settings.objectScale"
+                    [attr.r]="0.13 * settings.drawingScale"
                     [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
                   />
                 }
@@ -1601,10 +1800,10 @@
               @if (!gd.input) {
                 <image
                   xlink:href="../../../assets/Ground.svg"
-                  [attr.width]="settings.objectScale * 1.2"
-                  [attr.height]="settings.objectScale * 1.2"
-                  [attr.x]="settings.objectScale * -0.6"
-                  [attr.y]="settings.objectScale * -0.35 * 1.2"
+                  [attr.width]="settings.drawingScale * 1.2"
+                  [attr.height]="settings.drawingScale * 1.2"
+                  [attr.x]="settings.drawingScale * -0.6"
+                  [attr.y]="settings.drawingScale * -0.35 * 1.2"
                   upright
                 />
               }
@@ -1619,10 +1818,10 @@
                       ? '../../../assets/InputCW.svg'
                       : '../../../assets/InputCCW.svg'
                   "
-                  [attr.width]="settings.objectScale * 1.2"
-                  [attr.height]="settings.objectScale * 1.2"
-                  [attr.x]="settings.objectScale * -0.505 * 1.2"
-                  [attr.y]="settings.objectScale * -0.435 * 1.2"
+                  [attr.width]="settings.drawingScale * 1.2"
+                  [attr.height]="settings.drawingScale * 1.2"
+                  [attr.x]="settings.drawingScale * -0.505 * 1.2"
+                  [attr.y]="settings.drawingScale * -0.435 * 1.2"
                   upright
                 />
               }
@@ -1633,7 +1832,7 @@
               class="synthPreviewJoint"
               [attr.cx]="jt.x"
               [attr.cy]="jt.y"
-              [attr.r]="0.15 * settings.objectScale"
+              [attr.r]="0.15 * settings.drawingScale"
               [attr.stroke-width]="svgGrid.scaleWithZoom(1.4)"
             />
           }
@@ -1690,14 +1889,14 @@
             class="synthPosePin"
             [attr.cx]="bar.x1"
             [attr.cy]="bar.y1"
-            [attr.r]="0.15 * settings.objectScale"
+            [attr.r]="0.15 * settings.drawingScale"
             [attr.stroke-width]="svgGrid.scaleWithZoom(1.4)"
           />
           <circle
             class="synthPosePin"
             [attr.cx]="bar.x2"
             [attr.cy]="bar.y2"
-            [attr.r]="0.15 * settings.objectScale"
+            [attr.r]="0.15 * settings.drawingScale"
             [attr.stroke-width]="svgGrid.scaleWithZoom(1.4)"
           />
           <!-- Where this position is measured from, and what it turns about.
@@ -1977,7 +2176,7 @@
           [attr.data-link-trace]="trace.id"
           [attr.d]="trace.d"
           fill="none"
-          [attr.stroke-width]="0.01 * settings.objectScale"
+          [attr.stroke-width]="0.01 * settings.drawingScale"
           modelFrame
           style="pointer-events: none"
         ></path>
@@ -1989,7 +2188,7 @@
             <path
               [attr.d]="mechanismSrv.getJointPath(joint)"
               fill="none"
-              [attr.stroke-width]="0.01 * settings.objectScale"
+              [attr.stroke-width]="0.01 * settings.drawingScale"
               modelFrame
               style="pointer-events: none"
             ></path>
@@ -2054,18 +2253,18 @@
       <g [attr.id]="force.id">
         <!-- Transpent thicker force to increase hitbox for the group for highliting-->
         <path
-          [attr.d]="force.forceLine"
+          [attr.d]="force.createForceLine(force.startCoord, force.endCoord, settings.forceScale)"
           class="forceLine"
           [style.stroke]="forceInkOf(force)"
-          [attr.stroke-width]="force.visualWidth * settings.objectScale"
+          [attr.stroke-width]="force.visualWidth * settings.forceScale"
         ></path>
         <path
           [attr.d]="force.forceLineLong"
           stroke="transparent"
-          [attr.stroke-width]="force.visualWidth * settings.objectScale + svgGrid.scaleWithZoom(10)"
+          [attr.stroke-width]="force.visualWidth * settings.forceScale + svgGrid.scaleWithZoom(10)"
         ></path>
         <path
-          [attr.d]="force.forceArrow"
+          [attr.d]="force.createForceArrow(force.startCoord, force.endCoord, settings.forceScale)"
           class="forceArrow"
           [style.fill]="forceInkOf(force)"
         ></path>
@@ -2088,10 +2287,10 @@
             <g
               class="lockBadge"
               pointer-events="none"
-              [upright]="{ x: 0.24 * settings.objectScale, y: 0.24 * settings.objectScale }"
+              [upright]="{ x: 0.24 * settings.forceScale, y: 0.24 * settings.forceScale }"
             >
               <circle
-                [attr.r]="0.13 * settings.objectScale"
+                [attr.r]="0.13 * settings.forceScale"
                 fill="#ffffff"
                 stroke="#26323855"
                 [attr.stroke-width]="svgGrid.scaleWithZoom(1)"
@@ -2115,7 +2314,7 @@
             id="startForceEndpoint"
             [attr.x]="force.startCoord.x"
             [attr.y]="force.startCoord.y"
-            [attr.stroke-width]="0.03 * settings.objectScale"
+            [attr.stroke-width]="0.03 * settings.forceScale"
             (pointerdown)="pressForceBase(force, $event)"
             height="10"
             width="10"
@@ -2123,7 +2322,7 @@
             style="overflow: visible"
           >
             <circle
-              [attr.r]="0.09 * settings.objectScale"
+              [attr.r]="Math.max(0.09 * settings.forceScale, svgGrid.scaleWithZoom(10))"
               fill="transparent"
               stroke="none"
             ></circle>
@@ -2132,7 +2331,7 @@
             id="endForceEndpoint"
             [attr.x]="force.endCoord.x"
             [attr.y]="force.endCoord.y"
-            [attr.stroke-width]="0.03 * settings.objectScale"
+            [attr.stroke-width]="0.03 * settings.forceScale"
             (pointerdown)="
               setLastLeftClick(force);
               activeObjService.updateSelectedObj(force.endCoord, force);
@@ -2144,13 +2343,18 @@
             cursor="move"
             style="overflow: visible"
           >
+            <!-- A target wider than the square, in every style. -->
+            <circle
+              [attr.r]="Math.max(0.12 * settings.forceScale, svgGrid.scaleWithZoom(10))"
+              fill="transparent"
+            />
             <rect
-              [attr.x]="-0.075 * settings.objectScale"
-              [attr.y]="-0.075 * settings.objectScale"
-              [attr.width]="0.15 * settings.objectScale"
-              [attr.height]="0.15 * settings.objectScale"
+              [attr.x]="-0.075 * settings.forceScale"
+              [attr.y]="-0.075 * settings.forceScale"
+              [attr.width]="0.15 * settings.forceScale"
+              [attr.height]="0.15 * settings.forceScale"
               [attr.transform]="'rotate(' + force.angleRad * 57.29577951308232 + ')'"
-              [attr.stroke-width]="0.03 * settings.objectScale"
+              [attr.stroke-width]="0.03 * settings.forceScale"
               class="forceEndpointHandle"
             />
           </svg>
@@ -2223,7 +2427,7 @@
                overlap into an unreadable smudge. One label naming the merge says
                what is about to happen instead. -->
           <text
-            [attr.stroke-width]="settings.objectScale * 0.035"
+            [attr.stroke-width]="settings.drawingScale * 0.035"
             [style.font-size.px]="tagFontSize"
             style="text-anchor: middle"
           >
@@ -2243,7 +2447,7 @@
                slider, so it wears one too (decision S11). Only the buried
                barrel end is still nameless. -->
           <text
-            [attr.stroke-width]="settings.objectScale * 0.035"
+            [attr.stroke-width]="settings.drawingScale * 0.035"
             [style.font-size.px]="tagFontSize"
             style="text-anchor: middle"
           >
@@ -2272,7 +2476,7 @@
               <circle
                 [attr.cx]="centroid.x"
                 [attr.cy]="centroid.y"
-                [attr.r]="0.035 * settings.objectScale"
+                [attr.r]="0.035 * settings.drawingScale"
                 fill="black"
                 fill-opacity="0.55"
               ></circle>
@@ -2285,19 +2489,32 @@
                  bar, which is where a hand naturally lands, then opened no
                  menu at all until the reader right-clicked a second time. -->
             <g
-              [style.pointer-events]="comDraggable(link) ? 'auto' : 'none'"
-              [style.cursor]="comDraggable(link) ? 'move' : null"
-              (pointerdown)="comDraggable(link) && startComDrag($any(link), $event)"
+              [style.pointer-events]="comGrabbable(link) ? 'auto' : 'none'"
+              [style.cursor]="
+                comDraggable(link) ? 'move' : comGrabbable(link) ? 'not-allowed' : null
+              "
+              (pointerdown)="comGrabbable(link) && startComDrag($any(link), $event)"
               (contextmenu)="setLastRightClick(link, $event)"
             >
-              <!-- The selected link's mark is a handle: the dashed accent ring
-                   says grab me, and doubles as the hit area. -->
+              <!-- The selected link's mark is a handle, with a target wider
+                   than the mark. A cylinder member's takes the grab only to
+                   say why its center cannot move. -->
+              @if (comGrabbable(link)) {
+                <circle
+                  class="com-hit"
+                  [attr.cx]="$any(link).CoM.x"
+                  [attr.cy]="$any(link).CoM.y"
+                  [attr.r]="objectDisplay.comHitRadius()"
+                  fill="transparent"
+                ></circle>
+              }
+              <!-- The dashed accent ring says grab me. -->
               @if (comDraggable(link)) {
                 <circle
                   class="com-drag-ring"
                   [attr.cx]="$any(link).CoM.x"
                   [attr.cy]="$any(link).CoM.y"
-                  [attr.r]="0.16 * settings.objectScale"
+                  [attr.r]="1.45 * objectDisplay.comRadius()"
                   fill="transparent"
                   [attr.stroke-width]="svgGrid.scaleWithZoom(1.5)"
                   [attr.stroke-dasharray]="
@@ -2305,15 +2522,7 @@
                   "
                 ></circle>
               }
-              @for (
-                quarter of [
-                  mechanismSrv.getLinkProp(link, 'CoM_d1'),
-                  mechanismSrv.getLinkProp(link, 'CoM_d2'),
-                  mechanismSrv.getLinkProp(link, 'CoM_d3'),
-                  mechanismSrv.getLinkProp(link, 'CoM_d4'),
-                ];
-                track $index
-              ) {
+              @for (quarter of objectDisplay.comPaths(link); track $index) {
                 <path
                   [attr.d]="quarter"
                   [attr.fill]="$index % 2 === 0 ? 'black' : 'white'"
@@ -2390,11 +2599,7 @@
                link any more (Stage 1 of
                `docs/joint-type-and-cylinder-plan.md`), so nothing is excluded
                here by kind. -->
-          @if (
-            this.showLinkLengthOverlay < -1 &&
-            this.showLinkAngleOverlay < -1 &&
-            !isSecondaryCylinderTag(link)
-          ) {
+          @if (this.showLinkLengthOverlay < -1 && this.showLinkAngleOverlay < -1) {
             <!-- The name, the center-of-mass mark and a locked length's chip
                  all belong at the center of the link, so when either of the
                  other two is being shown the name steps up out of its way --
@@ -2437,9 +2642,9 @@
           ) {
             <text
               class="forceLabel"
-              [style.font-size.px]="settings.objectScale / 6"
-              [attr.y]="0.1 * settings.objectScale"
-              [attr.stroke-width]="(3.5 / 90) * settings.objectScale"
+              [style.font-size.px]="Math.max(settings.drawingScale / 6, svgGrid.scaleWithZoom(11))"
+              [attr.y]="0.1 * settings.drawingScale"
+              [attr.stroke-width]="(3.5 / 90) * settings.drawingScale"
               style="text-anchor: middle; dominant-baseline: middle"
             >
               {{ force.name }}
@@ -2470,13 +2675,13 @@
            preview is the color the click will leave behind rather than the
            model's default black. -->
       <path
-        [attr.d]="ghost.forceLine"
+        [attr.d]="ghost.createForceLine(ghost.startCoord, ghost.endCoord, settings.forceScale)"
         class="forceLine"
-        [attr.stroke-width]="ghost.visualWidth * settings.objectScale"
+        [attr.stroke-width]="ghost.visualWidth * settings.forceScale"
         [style.stroke]="ghost.color || null"
       ></path>
       <path
-        [attr.d]="ghost.forceArrow"
+        [attr.d]="ghost.createForceArrow(ghost.startCoord, ghost.endCoord, settings.forceScale)"
         class="forceArrow"
         [style.fill]="ghost.color || null"
       ></path>

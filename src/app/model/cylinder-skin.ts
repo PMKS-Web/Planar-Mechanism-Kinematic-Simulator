@@ -117,10 +117,7 @@ export function cylinderSkinFrame(cylinder: Cylinder, r: number): CylinderSkinFr
     // The head is full size on any cylinder with room for it and shrinks only
     // on one too short to hold it, so it is read off this barrel rather than
     // assumed.
-    headHalf: cylinderHeadHalf(
-      mouth - anchor,
-      SettingsService.preservedCylinderScale ? 0.15 * SettingsService.cylinderObjectScale : r
-    ),
+    headHalf: cylinderHeadHalf(mouth - anchor, 0.15 * SettingsService.cylinderObjectScale),
   };
 }
 

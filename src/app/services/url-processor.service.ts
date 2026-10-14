@@ -196,14 +196,10 @@ export class UrlProcessorService {
   ) {
     const mechanismSrv = this.injector.get(MechanismService);
     // A different mechanism reuses the same joint letters and means something
-    // different by them, so nothing remembered per joint may carry across --
-    // nor does whether somebody chose a mark size, which was a fact about the
-    // drawing being replaced. It is the incoming URL that says what size this
-    // one's marks are, and that number is the only evidence there is about
-    // whether its author picked it (svg-grid.service, adoptScaleForDrawing).
+    // different by them, so nothing remembered per joint may carry across.
+    // Drawing Style is a local view preference and survives document changes.
     if (!continuingHistory) {
       mechanismSrv.forgetSessionPreferences();
-      SettingsService.objectScaleChosen = false;
     }
 
     // Rewind before the incoming mechanism takes the joints array over.
