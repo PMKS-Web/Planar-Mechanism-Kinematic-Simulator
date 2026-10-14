@@ -285,8 +285,8 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Parallel Gripper',
     category: 'slots',
     description:
-      'A cylinder carriage, two rails, and jaws hung on equal links whose ' +
-      'pins ride the rails. The jaws stay level and meet flat.',
+      'A cylinder carriage and jaws hung on equal links, the outer pin of ' +
+      'each riding a rail. The jaws stay level and meet flat.',
     thumbnail: 'assets/gifs/cylinder-gripper.png',
     animation: 'assets/gifs/cylinder-gripper.gif',
   },

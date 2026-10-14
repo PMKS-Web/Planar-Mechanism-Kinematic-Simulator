@@ -126,7 +126,7 @@ describe('a driven pin that a later edit made ambiguous', () => {
     const pin = joints.find((joint) => joint.id === 'C')! as RevJoint;
     const refusal = describeActuator(pin);
     expect(typeof refusal).toBe('string');
-    expect(refusal as string).toContain('3 bodies');
+    expect(refusal as string).toContain('3 links meet here');
   });
 });
 
@@ -175,7 +175,7 @@ describe('what a driven joint names', () => {
 
     const refusal = describeActuator(pin);
     expect(typeof refusal).toBe('string');
-    expect(refusal as string).toContain('3 bodies');
+    expect(refusal as string).toContain('3 links meet here');
   });
 
   it('refuses a welded joint, which has no freedom to drive', () => {

@@ -202,9 +202,21 @@ describe('AnalysisGraphComponent production fixtures', () => {
       const fixture = buildMechanismFixture(payload);
       const mechanism = fixture.mechanism;
       const component = createComponent(fixture);
-      const joint = mechanism.joints[0].find(
-        (candidate): candidate is RealJoint => candidate instanceof RealJoint && candidate.ground
-      )!;
+      // A grounded joint, unless every one is on a frame body -- a bar pinned to
+      // ground at two points carries no reaction of its own, and the gripper's
+      // barrel and rail are both -- and then a joint that carries one.
+      const reacting = mechanism
+        .getForceAnalysis('static')
+        .frames.find((frame) => frame.status === 'ok')?.jointReactions;
+      const joint =
+        mechanism.joints[0].find(
+          (candidate): candidate is RealJoint =>
+            candidate instanceof RealJoint && candidate.ground && !!reacting?.has(candidate.id)
+        ) ??
+        mechanism.joints[0].find(
+          (candidate): candidate is RealJoint =>
+            candidate instanceof RealJoint && !!reacting?.has(candidate.id)
+        )!;
       const compound = mechanism.links[0].find(
         (candidate): candidate is RealLink =>
           candidate instanceof RealLink && candidate.subset.length > 0

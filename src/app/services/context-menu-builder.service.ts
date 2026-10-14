@@ -19,6 +19,7 @@ import { SynthesisPose } from './synthesis/synthesis-util';
 import { Cylinder } from '../model/cylinder';
 import { labelForBody } from '../model/body-label';
 import { describeActuatorRefusal } from '../model/actuator';
+import { issueText } from '../model/mechanism/setup-issue';
 import { OperationRefusal, refuseAttach } from '../model/joint-operation-permission';
 import { MechanismService } from './mechanism.service';
 import { GridUtilsService } from './grid-utils.service';
@@ -1492,18 +1493,18 @@ export class ContextMenuBuilderService {
     if (!readiness) {
       return {
         short: 'not in a mechanism',
-        long: 'This part is not joined into a mechanism that can be analyzed. Connect it to a grounded chain.',
+        long: "This part isn't in a mechanism that can be analyzed. Connect it to a grounded chain.",
       };
     }
     const several = this.mechanism.partitions.length > 1;
-    const blocker = readiness.checks.find((check) => check.state === 'blocker');
+    const blocker = readiness.checks.find((check) => check.severity === 'blocker');
     return {
       // Named when there is more than one machine on the grid: "not ready" on
       // a drawing holding two of them does not say which one is meant.
       short: several ? `${readiness.id} is not ready` : 'not ready',
       long: blocker
-        ? `${blocker.title}. ${blocker.body}`
-        : `${several ? readiness.id : 'This mechanism'} cannot be analyzed yet.`,
+        ? issueText(blocker)
+        : `${several ? readiness.id : 'This mechanism'} can't be analyzed yet.`,
     };
   }
 

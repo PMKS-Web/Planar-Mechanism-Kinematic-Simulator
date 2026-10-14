@@ -53,7 +53,7 @@ export function splitJointChoice(
       count,
       refusal: 'welded',
       short: 'unweld first',
-      long: 'Unweld this joint before splitting it.',
+      long: 'Set this joint to Revolute before splitting it.',
     };
   }
   if (count < 2) {

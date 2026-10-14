@@ -1,0 +1,11 @@
+<button
+  type="button"
+  class="partLink"
+  (pointerenter)="point(true)"
+  (pointerleave)="point(false)"
+  (focus)="point(true)"
+  (blur)="point(false)"
+  (click)="open()"
+>
+  <ng-content></ng-content>
+</button>

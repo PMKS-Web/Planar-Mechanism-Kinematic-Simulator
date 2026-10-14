@@ -2,7 +2,6 @@ import { Joint, PrisJoint, RealJoint } from '../joint';
 import { Link, RealLink } from '../link';
 import { Cylinder, cylindersIn } from '../cylinder';
 import { BodyOfLink, frozenCylinderAtSeal } from '../cylinder-frozen';
-import { heldCylinderSeals } from './cylinder-hold';
 import { visibleBodyName } from '../body-label';
 import { slideAssemblies } from '../slide-assembly';
 import { assignBodies } from './bodies';
@@ -38,15 +37,6 @@ export interface ForceAnalysisFrame {
    * prismatic pairs carry one; a free-turning block cannot transmit a moment.
    */
   guideCouples: Map<string, number>;
-  /**
-   * The axial force each cylinder holding its length has to hold, keyed by the
-   * sliding joint's id. Newtons, positive when the part is in compression --
-   * pushing its two mounts apart (decision S28).
-   *
-   * The same unknown a driven cylinder's drive supplies, under the other name
-   * it has when nothing is driving it: what somebody sizing the ram wants.
-   */
-  holdingForces: Map<string, number>;
   inputEffort?: ForceAnalysisEffort;
   rank: number;
   residual: number;
@@ -98,12 +88,6 @@ interface MechanismFrames {
   requiredLoops: Loop[];
   gravity: boolean;
   unit: string;
-  /**
-   * The machine's own answer to which cylinders are holding their length
-   * (decision S28), decided once at its start pose. Asked again here it would
-   * be a second opinion, and an expensive one: this runs per sample.
-   */
-  heldCylinderSeals?: ReadonlySet<string>;
 }
 
 type UnitFactors = SiUnitFactors;
@@ -138,25 +122,6 @@ interface GuideCouple {
   rider: RealLink;
   /** The slot's carrier when it is cut into a moving body; −1 in its moment row. */
   carrier?: Link;
-  column: number;
-}
-
-/**
- * The axial force a cylinder holding its length exchanges with its own barrel
- * (decision S28).
- *
- * The same shape as the drive's effort on a driven cylinder -- a force along
- * the slot, pushing on the seal and back on the barrel -- and for the same
- * reason: an actuator pushes against something, and leaving the reaction off
- * would make it an outside hand pushing the rod through space.
- */
-interface HoldingForce {
-  slider: PrisJoint;
-  /** The seal's own point body; +1 along the slot. */
-  piston: Link;
-  /** The barrel the seal pushes back on; −1 along the slot. */
-  carrier: Link;
-  direction: ForceVector;
   column: number;
 }
 
@@ -195,9 +160,8 @@ const EVENEST_REFINEMENTS = 3;
  * is the solver talking to itself.
  */
 export const SECOND_ORDER_LOCK_MESSAGE =
-  'The loads push along a motion the linkage locks only at second order: it can sag or swing ' +
-  'a hair until a guide binds, so no finite reactions balance them. Hold the part that moves ' +
-  'with another support, or take the load off it.';
+  'The loads push along a direction the mechanism only resists after a tiny sag, so no finite ' +
+  'reactions balance them. Add another support to the part that moves, or take the load off it.';
 /**
  * The smallest scaled pivot the elimination accepts before calling the pose
  * singular.
@@ -265,26 +229,12 @@ export class ForceSolver {
     links: Link[],
     analysisType: string,
     gravity: boolean,
-    unit: string,
-    // The machine's own answer, where the caller has one. Asked of each
-    // sample's own pose instead, the set could differ from one frame to the
-    // next and the export would be written to two force models.
-    heldSeals?: ReadonlySet<string>
+    unit: string
   ): ForceAnalysisFrame {
     const mode = this.normalizeMode(analysisType);
     const kinematics =
       mode === 'dynamic' ? this.captureCurrentKinematics(joints, links) : undefined;
-    const result = this.analyzeFrame(
-      joints,
-      links,
-      mode,
-      gravity,
-      unit,
-      0,
-      kinematics,
-      false,
-      heldSeals
-    );
+    const result = this.analyzeFrame(joints, links, mode, gravity, unit, 0, kinematics, false);
 
     this.lastResult = result;
     this.unknownVariableForcesMap = new Map(
@@ -385,8 +335,7 @@ export class ForceSolver {
       mechanism.unit,
       mechanism.timeNum[index] ?? index,
       kinematics,
-      evenest,
-      mechanism.heldCylinderSeals
+      evenest
     );
   }
 
@@ -398,10 +347,7 @@ export class ForceSolver {
     unit: string,
     timeSeconds = 0,
     kinematics?: FrameKinematics,
-    evenest = false,
-    // Computed where a caller has no machine to ask, which is every direct
-    // call from a spec or a panel and nothing on the per-sample path.
-    heldSeals: ReadonlySet<string> = heldCylinderSeals(joints, links)
+    evenest = false
   ): ForceAnalysisFrame {
     const every = links.filter((link): link is RealLink => link instanceof RealLink);
     // A body pinned to the world at two points is fixed: it is frame, not a
@@ -421,7 +367,6 @@ export class ForceSolver {
       jointReactionsByLink: new Map(),
       jointReactions: new Map(),
       guideCouples: new Map(),
-      holdingForces: new Map(),
       rank,
       residual,
       message,
@@ -516,32 +461,7 @@ export class ForceSolver {
       }
     }
 
-    // A cylinder holding its length carries an axial force between its two
-    // members, and unlike S25's cylinder frozen inside one body that force is
-    // **determinate**: barrel and rod are two bodies joined by the slide -- a
-    // normal force and a couple -- plus the hold. Three unknowns, which is
-    // exactly the driven cylinder's set with the drive's effort standing in for
-    // the axial one, so the model here is the driven one at zero rate
-    // (decision S28). Worth solving for as well as worth showing: it is the
-    // force the part has to hold, which is what somebody sizing one asks.
-    const holds: HoldingForce[] = [];
-    for (const cylinder of cylindersIn(joints)) {
-      if (!heldSeals.has(cylinder.seal.id)) continue;
-      const piston = bodies.find((body) => body.id === cylinder.seal.id);
-      const carrier = this.rootBody(bodies, cylinder.seal.carrier);
-      if (!piston || !carrier) continue;
-      holds.push({
-        slider: cylinder.seal,
-        piston,
-        carrier,
-        // The slot's own direction, which turns with the barrel it is bored in.
-        direction: [Math.cos(cylinder.seal.slotAngle), Math.sin(cylinder.seal.slotAngle)],
-        column: reactions.length + couples.length + holds.length,
-      });
-    }
-
-    const unknownCount =
-      reactions.length + couples.length + holds.length + (inputBody && inputKind ? 1 : 0);
+    const unknownCount = reactions.length + couples.length + (inputBody && inputKind ? 1 : 0);
     if (unknownCount !== rowCount) {
       // Cause first, arithmetic second: "10 equations, 9 unknowns" is the
       // solver talking to itself. What a reader can act on is which way the
@@ -602,12 +522,7 @@ export class ForceSolver {
       }
     }
 
-    for (const hold of holds) {
-      addForceCoefficient(hold.piston, hold.slider, hold.direction, hold.column, 1);
-      addForceCoefficient(hold.carrier, hold.slider, hold.direction, hold.column, -1);
-    }
-
-    const inputColumn = reactions.length + couples.length + holds.length;
+    const inputColumn = reactions.length + couples.length;
     if (inputBody && inputKind) {
       const rows = bodyRows.get(inputBody.id)!;
       if (inputKind === 'torque' && inputBody instanceof RealLink) {
@@ -686,7 +601,7 @@ export class ForceSolver {
         // reaction, so it is said as the motion it is, not as a residual.
         sharedSupport
           ? SECOND_ORDER_LOCK_MESSAGE
-          : `Force equilibrium residual ${solution.residual.toExponential(2)} exceeds tolerance.`,
+          : `The forces don't balance at this pose (residual ${solution.residual.toExponential(2)}).`,
         solution.rank,
         solution.residual
       );
@@ -725,11 +640,6 @@ export class ForceSolver {
       guideCouples.set(couple.slider.id, solution.values[couple.column]);
     }
 
-    const holdingForces = new Map<string, number>();
-    for (const hold of holds) {
-      holdingForces.set(hold.slider.id, solution.values[hold.column]);
-    }
-
     const inputEffort =
       inputJoint && inputKind
         ? {
@@ -746,7 +656,6 @@ export class ForceSolver {
       jointReactionsByLink,
       jointReactions,
       guideCouples,
-      holdingForces,
       inputEffort,
       rank: solution.rank,
       residual: solution.residual,
@@ -807,13 +716,13 @@ export class ForceSolver {
   static statusMessage(status: ForceAnalysisStatus): string {
     switch (status) {
       case 'singular':
-        return 'Force equilibrium is singular at this position.';
+        return 'The force equations have no single answer at this pose.';
       case 'unsupported-topology':
-        return 'This topology does not have a determinate force-equilibrium model.';
+        return "Force analysis can't model this kind of mechanism yet.";
       case 'missing-kinematics':
-        return 'Dynamic analysis is missing motion data for one or more bodies.';
+        return 'Some links are missing the motion data in-motion analysis needs.';
       case 'invalid-properties':
-        return 'Mass, moment of inertia, or force properties are invalid.';
+        return "A mass, moment of inertia or force value isn't a usable number.";
       default:
         return '';
     }
@@ -1053,7 +962,7 @@ export class ForceSolver {
     cylinders: readonly Cylinder[] = []
   ): string | undefined {
     if (!Object.values(units).every(Number.isFinite)) {
-      return 'The unit conversion is invalid — reselect the global units.';
+      return "The units don't convert. Choose them again in the Settings panel.";
     }
     // The name the canvas tags the body with. It was the body's own, which is
     // its id -- and a barrel's id holds the buried inner end (D14, S11), so a
@@ -1062,11 +971,11 @@ export class ForceSolver {
     const nameOf = (body: Link): string => visibleBodyName(body, cylinders);
     for (const body of bodies) {
       if (!Number.isFinite(body.mass) || body.mass < 0) {
-        return `Link ${nameOf(body)} has a mass that is not a usable number. Set Link Mass in Mass Settings.`;
+        return `Link ${nameOf(body)} has a mass that isn't a usable number. Type it again in the Masses table.`;
       }
       if (body instanceof RealLink) {
         if (!Number.isFinite(body.massMoI) || body.massMoI < 0) {
-          return `Link ${nameOf(body)} has a moment of inertia that is not a usable number. Set it in Mass Settings.`;
+          return `Link ${nameOf(body)} has a moment of inertia that isn't a usable number. Type it again in the Masses table.`;
         }
         for (const force of body.forces) {
           if (
@@ -1075,7 +984,7 @@ export class ForceSolver {
             !Number.isFinite(force.startCoord.x) ||
             !Number.isFinite(force.startCoord.y)
           ) {
-            return `The force on link ${nameOf(body)} has an invalid magnitude or position. Select it and re-enter its values.`;
+            return `The force on link ${nameOf(body)} has a magnitude or position that isn't a number. Select it and type its values again.`;
           }
         }
       }

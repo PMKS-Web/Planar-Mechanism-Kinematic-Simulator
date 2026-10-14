@@ -5,12 +5,7 @@ import {
   slottedToolDriveFixture,
 } from './part2-library-fixtures';
 import { MechanismFixture } from './fixture';
-import {
-  followerCylinderFixture,
-  heldCouplerFixture,
-  heldCylinderTriangleFixture,
-  mixedCylinderFixture,
-} from './held-cylinder-fixtures';
+import { PASSIVE_CYLINDER_GALLERY } from './passive-cylinder-fixtures';
 import {
   fourBarDrivenAtFixture,
   sliderCrankTracerFixture,
@@ -41,6 +36,7 @@ import {
   offsetPivotLeverWeldedRodFixture,
   scotchYokeFixture,
   scotchYokeGuidedAtFarEndFixture,
+  scotchYokeOnTwoGuidesFixture,
   scotchYokeWithTracerFixture,
   motionGenGripperFixture,
   pivotingGripperFixture,
@@ -93,6 +89,8 @@ import {
   drivenFrozenCylinderBodyFixture,
   frozenCylinderCouplerFixture,
 } from './frozen-cylinder-fixtures';
+import { MOBILITY_GALLERY } from './mobility-fixtures';
+import { STUDENT_MISTAKE_GALLERY } from './student-mistake-fixtures';
 import { ActiveObjService } from '../../app/services/active-obj.service';
 import { MODEL_SCALE } from '../../app/model/render-scale';
 
@@ -361,7 +359,7 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
   {
     name: 'MotionGen gripper',
     purpose:
-      "A second engine's mechanism, rebuilt: over-constrained, so PMKS+ reports DOF 0 and refuses it",
+      "A second engine's mechanism, rebuilt: over-constrained by count, and runs along MotionGen's own paths",
     spec: 'motiongen-gripper.spec.ts',
     floatingSlot: false,
     slide: false,
@@ -515,6 +513,15 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     floatingSlot: true,
     slide: true,
     fixture: scotchYokeGuidedAtFarEndFixture(),
+  },
+  {
+    name: 'Scotch yoke on two guides',
+    purpose:
+      'Both ends of the yoke on grounded guides: the yoke slides with the pin, not left behind',
+    spec: 'scotch-yoke.spec.ts',
+    floatingSlot: true,
+    slide: true,
+    fixture: scotchYokeOnTwoGuidesFixture(),
   },
   {
     name: 'Elliptical trammel',
@@ -809,43 +816,7 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     speed: { rpm: LIBRARY_RPM },
     fixture: frozenCylinderCouplerFixture(),
   },
-  {
-    name: 'Three cylinders in a triangle',
-    purpose:
-      'Nothing drives the rams, so each holds its length and the triangle turns as one rigid body',
-    spec: 'cylinder-held.spec.ts',
-    floatingSlot: true,
-    slide: true,
-    speed: { rpm: LIBRARY_RPM },
-    fixture: heldCylinderTriangleFixture(),
-  },
-  {
-    name: 'Four-bar on a held cylinder',
-    purpose: 'A coupler nothing drives holds its length, and the count drops from two to one',
-    spec: 'cylinder-held.spec.ts',
-    floatingSlot: true,
-    slide: true,
-    speed: { rpm: LIBRARY_RPM },
-    fixture: heldCouplerFixture(),
-  },
-  {
-    name: 'Telescoping strut',
-    purpose: 'The cylinder a four-bar moves: it follows, it is never held, and it runs as it did',
-    spec: 'cylinder-held.spec.ts',
-    floatingSlot: true,
-    slide: true,
-    speed: { rpm: LIBRARY_RPM },
-    fixture: followerCylinderFixture(),
-  },
-  {
-    name: 'One follower and one surplus',
-    purpose: 'Two passive cylinders, one the machine moves and one it does not — only one is held',
-    spec: 'cylinder-held.spec.ts',
-    floatingSlot: true,
-    slide: true,
-    speed: { rpm: LIBRARY_RPM },
-    fixture: mixedCylinderFixture(),
-  },
+  ...PASSIVE_CYLINDER_GALLERY,
   {
     name: 'Cylinder riding a slot',
     purpose:
@@ -858,6 +829,9 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     speed: { unitsPerSecond: 0.2 },
     fixture: cylinderOnASlotFixture(),
   },
+  // Drawings that do not run on purpose, kept beside their fixtures.
+  ...MOBILITY_GALLERY,
+  ...STUDENT_MISTAKE_GALLERY,
 ];
 
 /**

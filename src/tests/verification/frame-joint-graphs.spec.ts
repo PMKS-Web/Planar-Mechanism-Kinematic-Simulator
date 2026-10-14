@@ -15,15 +15,15 @@ import { createMechanismHarness, withTestInjector } from '../../test-utils/mecha
 /**
  * The pins at the ends of a bar that is anchored at every joint.
  *
- * The library's gripper rides two of them: each jaw runs along a rail pinned
- * to the frame top and bottom. A bar like that is the world rather than a
+ * The library's gripper rides one: each jaw runs along a rail pinned to the
+ * frame top and bottom. A bar like that is the world rather than a
  * body, so the partitioner hands it to the machine that runs along it without
  * giving it to that machine -- it is in `partition.joints` and not in
  * `ownJoints`, which is what keeps a neighbor's driven joint from being read
  * as this machine's input.
  *
  * Every analysis question used to go through ownership, and ownership says
- * "no machine" for those four pins. The rail's *link* was found anyway, since
+ * "no machine" for those pins. The rail's *link* was found anyway, since
  * the index claims `partition.links` and the frame pieces are in it -- so the
  * rail graphed its angle and its center of mass while each of the pins holding
  * its own ends answered fourteen graphs with three empty series and no
@@ -31,7 +31,7 @@ import { createMechanismHarness, withTestInjector } from '../../test-utils/mecha
  * solved about a machine reading Ready.
  */
 
-const RAIL_PINS = ['K', 'L', 'O', 'P'];
+const RAIL_PINS = ['K', 'L'];
 
 function gripper(): { service: MechanismService; graph: AnalysisGraphComponent } {
   const { service, settings, active } = createMechanismHarness();

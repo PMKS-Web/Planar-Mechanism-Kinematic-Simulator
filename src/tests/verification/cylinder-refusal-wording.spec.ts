@@ -162,9 +162,10 @@ describe('every refusal a cylinder edit can raise, over welded barrels', () => {
 
   it('says what to do about it, every time', () => {
     for (const saying of everySaying()) {
-      // Every refusal ends on a move the reader can make. The verbs are the
-      // ones the menus use (ui-vocabulary.md): Unweld, Unlock, Release, Move.
-      expect(saying.text, saying.code).toMatch(/Unweld|Unlock|Release|Move|Shorten|Give/);
+      // Every refusal ends on a move the reader can make, in the words of the
+      // control that makes it (ui-vocabulary.md): a Joint Type value, Unlock,
+      // Release, Move. A weld is undone by setting the joint to Revolute.
+      expect(saying.text, saying.code).toMatch(/to Revolute|Unlock|Release|Move|Shorten|Give/);
     }
   });
 
