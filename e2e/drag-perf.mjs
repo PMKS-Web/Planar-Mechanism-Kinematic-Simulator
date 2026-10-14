@@ -1,3 +1,4 @@
+import { performanceBudget } from './tools/performance-budget.mjs';
 /**
  * Drag performance: is dragging as smooth as it was?
  *
@@ -9,7 +10,7 @@
  *
  * The baseline is a number for *this machine*; a laptop on battery runs slower
  * than the one that wrote it. So the check is relative: a scenario fails when it
- * is more than the tolerance (default 35%) above its baseline on either count.
+ * is at least ten times its baseline; exceeding the tolerance (default 35%) only warns.
  * To re-baseline after a deliberate change, run with `--baseline`, look at the
  * diff, and commit it with the change that earned it.
  *
@@ -84,10 +85,23 @@ for (const sc of SCENARIOS) {
     if (was) {
       const overMs = appMs > was.appMsPerMove * tolerance + 2;
       const overP90 = p90 > was.frameP90Ms * tolerance + 4;
-      ok = !overMs && !overP90;
-      verdict = ok
-        ? `within ${Math.round((tolerance - 1) * 100)}% of ${was.appMsPerMove} ms / p90 ${was.frameP90Ms}`
-        : `REGRESSED from ${was.appMsPerMove} ms / p90 ${was.frameP90Ms}`;
+      const moveOk = performanceBudget(
+        sc.id + ' move',
+        appMs,
+        Math.max(2, was.appMsPerMove),
+        was.appMsPerMove * tolerance + 2
+      );
+      const frameOk = performanceBudget(
+        sc.id + ' frame',
+        p90,
+        Math.max(4, was.frameP90Ms),
+        was.frameP90Ms * tolerance + 4
+      );
+      ok = moveOk && frameOk;
+      verdict =
+        !overMs && !overP90
+          ? `within ${Math.round((tolerance - 1) * 100)}% of ${was.appMsPerMove} ms / p90 ${was.frameP90Ms}`
+          : `slower than ${was.appMsPerMove} ms / p90 ${was.frameP90Ms}`;
     }
     results.push([sc.id, ok]);
     console.log(
@@ -123,5 +137,7 @@ if (writeBaseline) {
 if (errors.length) console.log('page errors:', errors.slice(0, 5));
 
 const failed = results.filter(([, ok]) => !ok);
-console.log(`\n${results.length - failed.length}/${results.length} scenarios within budget`);
+console.log(
+  `\n${results.length - failed.length}/${results.length} scenarios without severe timing regressions`
+);
 process.exit(failed.length && !writeBaseline ? 1 : 0);

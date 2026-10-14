@@ -103,7 +103,7 @@ export function describeFrozenCylinderDrive(cylinder: Cylinder): string {
   const free = cylinder.barrelRoot.id === cylinder.rodRoot.id ? 'Unweld' : 'Free';
   return (
     `Both of this cylinder's end joints ${frozenInto(cylinder)}, so it cannot extend. ` +
-    `${free} ${frozenEnds(cylinder)}, or drive a different joint.`
+    `${free} ${frozenEnds(cylinder)}, or set a different joint as the input.`
   );
 }
 

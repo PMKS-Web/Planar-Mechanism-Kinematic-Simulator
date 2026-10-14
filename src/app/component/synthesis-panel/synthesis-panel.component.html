@@ -65,7 +65,7 @@
              made the requirement read like a contradiction. -->
         <collapsible-subsection class="sect" titleLabel="End-effector link" [expanded]="true">
           <div class="row">
-            <span class="row__label">Length</span>
+            <span class="row__label" [numberDrag]="lengthField">Length</span>
             <mat-icon class="label-help" [matTooltip]="help.length" [matTooltipShowDelay]="400">
               help_outline
             </mat-icon>
@@ -76,6 +76,7 @@
                 type="text"
                 inputmode="decimal"
                 formControlName="length"
+                #lengthField
                 spellcheck="false"
                 aria-label="End-effector link length"
               />
@@ -156,7 +157,7 @@
               >
                 {{ i }}
               </button>
-              <span class="poseRow__axis">X</span>
+              <span class="poseRow__axis" [numberDrag]="poseX">X</span>
               <label class="field field--num">
                 <input
                   appStandardField
@@ -165,12 +166,13 @@
                   spellcheck="false"
                   placeholder="—"
                   [formControlName]="'p' + i + 'x'"
+                  #poseX
                   [attr.aria-label]="'Position ' + i + ' X'"
                   (focus)="aimAtRow(i)"
                   (click)="$event.stopPropagation()"
                 />
               </label>
-              <span class="poseRow__axis">Y</span>
+              <span class="poseRow__axis" [numberDrag]="poseY">Y</span>
               <label class="field field--num">
                 <input
                   appStandardField
@@ -179,12 +181,15 @@
                   spellcheck="false"
                   placeholder="—"
                   [formControlName]="'p' + i + 'y'"
+                  #poseY
                   [attr.aria-label]="'Position ' + i + ' Y'"
                   (focus)="aimAtRow(i)"
                   (click)="$event.stopPropagation()"
                 />
               </label>
-              <span class="poseRow__axis poseRow__axis--angle">&#8894;</span>
+              <span class="poseRow__axis poseRow__axis--angle" [numberDrag]="poseAngle"
+                >&#8894;</span
+              >
               <label class="field field--angle">
                 <input
                   appStandardField
@@ -193,6 +198,7 @@
                   spellcheck="false"
                   placeholder="—"
                   [formControlName]="'p' + i + 'theta'"
+                  #poseAngle
                   [attr.aria-label]="'Position ' + i + ' angle'"
                   (focus)="aimAtRow(i)"
                   (click)="$event.stopPropagation()"
@@ -267,40 +273,44 @@
                        still show their digits, so the unit is said once for
                        all of them and the boxes hold plain numbers. -->
                   <div class="region__fields">
-                    <span class="region__tag">X</span>
+                    <span class="region__tag" [numberDrag]="rxField">X</span>
                     <label class="field field--tiny"
                       ><input
                         appStandardField
                         type="text"
                         inputmode="decimal"
                         formControlName="rx"
+                        #rxField
                         aria-label="Region X"
                     /></label>
-                    <span class="region__tag">Y</span>
+                    <span class="region__tag" [numberDrag]="ryField">Y</span>
                     <label class="field field--tiny"
                       ><input
                         appStandardField
                         type="text"
                         inputmode="decimal"
                         formControlName="ry"
+                        #ryField
                         aria-label="Region Y"
                     /></label>
-                    <span class="region__tag">W</span>
+                    <span class="region__tag" [numberDrag]="rwField">W</span>
                     <label class="field field--tiny"
                       ><input
                         appStandardField
                         type="text"
                         inputmode="decimal"
                         formControlName="rw"
+                        #rwField
                         aria-label="Region width"
                     /></label>
-                    <span class="region__tag">H</span>
+                    <span class="region__tag" [numberDrag]="rhField">H</span>
                     <label class="field field--tiny"
                       ><input
                         appStandardField
                         type="text"
                         inputmode="decimal"
                         formControlName="rh"
+                        #rhField
                         aria-label="Region height"
                     /></label>
                     <span class="region__unit">{{ lengthUnit }}</span>

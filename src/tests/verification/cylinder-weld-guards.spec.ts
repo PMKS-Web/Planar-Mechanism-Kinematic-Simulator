@@ -1,3 +1,4 @@
+import { LinkTraceService } from '../../app/services/link-trace.service';
 // joint.ts first: the model modules form an import cycle that only
 // initializes cleanly when entered here (see test-utils/verification/fixture.ts).
 import '../../app/model/joint';

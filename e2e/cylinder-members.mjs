@@ -1370,6 +1370,7 @@ async function menuAt(model) {
       rows: (menu?.groups ?? []).flatMap((group) =>
         group.rows.map((row) => ({
           label: row.label,
+          detail: row.detail ?? '',
           off: !!row.refusal,
           why: row.refusal?.short ?? '',
         }))
@@ -1429,9 +1430,11 @@ await page.waitForTimeout(150);
 ids = await oneCylinder();
 part = await ram();
 check(
-  'its delete row names the cascade rather than hiding it',
-  endMenu.rows.some((row) => /^Delete Joint \(and Cylinder/.test(row.label)),
-  JSON.stringify(endMenu.rows.map((row) => row.label))
+  'its concise delete row still explains the cylinder cascade',
+  endMenu.rows.some(
+    (row) => row.label === 'Delete Joint' && /^Also removes Cylinder/.test(row.detail)
+  ),
+  JSON.stringify(endMenu.rows.filter((row) => row.label === 'Delete Joint'))
 );
 // Attaching at an end joint is the whole point of an end joint, and it is the
 // rule the slide refuses with "inside a cylinder" -- so the two cards read as
