@@ -98,6 +98,43 @@ export interface TemplateCard {
  */
 export const TEMPLATE_CARDS: readonly TemplateCard[] = [
   {
+    id: 'Hydraulic_Crosshead',
+    name: 'Hydraulic Crosshead',
+    category: 'cylinders',
+    description:
+      'A barrel welded to its frame and a crosshead welded to its rod: both ends keep their attachments rigid.',
+    thumbnail: 'assets/gifs/hydraulic-crosshead.png',
+    animation: 'assets/gifs/hydraulic-crosshead.gif',
+  },
+  {
+    id: 'Offset_Mount_Hatch',
+    name: 'Bracketed Hatch',
+    category: 'cylinders',
+    description:
+      'Welded offsets at both cylinder ends lift a hinged hatch. Trace the hatch tip and compare its travel with the cylinder stroke.',
+    thumbnail: 'assets/gifs/offset-mount-hatch.png',
+    animation: 'assets/gifs/offset-mount-hatch.gif',
+  },
+  {
+    id: 'Reciprocating_Saw',
+    name: 'Reciprocating Saw',
+    category: 'forces',
+    description:
+      'A yoke drives a loaded saw carriage. Compare crank torque and guide reactions over the cutting and return strokes.',
+    thumbnail: 'assets/gifs/reciprocating-saw.png',
+    animation: 'assets/gifs/reciprocating-saw.gif',
+  },
+  {
+    id: 'Slotted_Tool_Drive',
+    name: 'Slotted Tool Drive',
+    category: 'forces',
+    description:
+      'A tool-normal load turns with its slotted carrier while a hanging load stays vertical. Compare input torque and pin reactions.',
+    thumbnail: 'assets/gifs/slotted-tool-drive.png',
+    animation: 'assets/gifs/slotted-tool-drive.gif',
+  },
+
+  {
     id: '4-Bar',
     name: 'Four-Bar',
     category: 'start',
@@ -185,7 +222,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Shaper Quick-Return',
     category: 'slots',
     description:
-      'A floating slot handing off to a grounded one: the ram cuts slow and returns fast.',
+      'A floating slot handing off to a grounded one: the tool slide cuts slow and returns fast.',
     thumbnail: 'assets/gifs/shaper-quick-return.png',
     animation: 'assets/gifs/shaper-quick-return.gif',
   },
@@ -244,43 +281,14 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     animation: 'assets/gifs/cylinder-boom.gif',
   },
   {
-    id: 'Landing_Gear',
-    name: 'Aircraft Landing Gear',
-    category: 'cylinders',
-    description:
-      'An aircraft head-on: two mechanisms, a ram each, swinging the legs out of the belly and ' +
-      'holding them at full stroke.',
-    thumbnail: 'assets/gifs/landing-gear.png',
-    animation: 'assets/gifs/landing-gear.gif',
-  },
-  {
     id: 'Cylinder_Gripper',
     name: 'Parallel Gripper',
     category: 'slots',
     description:
-      'A carriage on the ram, two rails, and a jaw each side hung on two equal links whose ' +
+      'A cylinder carriage, two rails, and jaws hung on equal links whose ' +
       'pins ride the rails. The jaws stay level and meet flat.',
     thumbnail: 'assets/gifs/cylinder-gripper.png',
     animation: 'assets/gifs/cylinder-gripper.gif',
-  },
-  {
-    id: 'Backhoe_Bucket',
-    name: 'Backhoe Bucket',
-    category: 'cylinders',
-    description:
-      'A driven cylinder feeding an ordinary four-bar: bell crank, link, and the bucket curls.',
-    thumbnail: 'assets/gifs/backhoe-bucket.png',
-    animation: 'assets/gifs/backhoe-bucket.gif',
-    // The machine the linkage is a linkage *of*, to build against. Placed to
-    // put the drawn pins under the template's own joints, so a reader can see
-    // at once which bar is the boom and which is the tipping link.
-    backdrop: {
-      src: 'assets/backdrops/backhoe-arm.svg',
-      width: 16,
-      centerX: -0.7,
-      centerY: 0.1,
-      opacity: 0.45,
-    },
   },
   {
     id: 'Scissor_Lift',
@@ -417,7 +425,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Three Mechanisms',
     category: 'machines',
     description:
-      'Three mechanisms in one drawing, each on its own playback row at its own speed and ' +
+      'Three mechanisms in one drawing, each on its own animation row at its own speed and ' +
       'direction.',
     thumbnail: 'assets/gifs/three-machines.png',
     animation: 'assets/gifs/three-machines.gif',
@@ -448,7 +456,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     category: 'machines',
     description:
       'Three beams on three clocks, drifting out of step the way a real field does — three ' +
-      'playback rows, seen from the grid.',
+      'animation rows, seen from the grid.',
     thumbnail: 'assets/gifs/pumping-field.png',
     animation: 'assets/gifs/pumping-field.gif',
   },
@@ -481,7 +489,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Aircraft Landing Gear',
     category: 'realworld',
     description:
-      'A ram folds the main gear up into the wing: drag brace, strut and wheel, traced over the aircraft.',
+      'A cylinder folds the main gear up into the wing: drag brace, strut and wheel, traced over the aircraft.',
     thumbnail: 'assets/gifs/aircraft-landing-gear.png',
     animation: 'assets/gifs/aircraft-landing-gear.gif',
     backdrop: {
@@ -513,7 +521,7 @@ export const TEMPLATE_CARDS: readonly TemplateCard[] = [
     name: 'Excavator Bucket',
     category: 'realworld',
     description:
-      'The bucket curl of an excavator, traced over its drawing: a ram, a bell crank, and the link that tips the bucket.',
+      'The bucket curl of an excavator, traced over its drawing: a cylinder, a bell crank, and the link that tips the bucket.',
     thumbnail: 'assets/gifs/excavator-bucket.png',
     animation: 'assets/gifs/excavator-bucket.gif',
     backdrop: {
@@ -556,7 +564,7 @@ export const DEV_TEMPLATE_CARDS: readonly TemplateCard[] = [
     category: 'dev',
     description:
       'A crank, a cylinder, a slider and a chain that never reaches ground — every readiness state ' +
-      'and every playback row at once.',
+      'and every animation row at once.',
     thumbnail: 'assets/gifs/dev-all-machines.png',
   },
   {
