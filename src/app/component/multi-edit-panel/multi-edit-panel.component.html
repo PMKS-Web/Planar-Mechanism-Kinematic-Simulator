@@ -30,10 +30,27 @@
       >
         Joint Position
       </dual-input-block>
-      <!-- The same three switches the one-joint panel carries, in the same
-           order and with the same words. A group in two minds shows mixed and
-           the switch says what pressing it will make them: eight joints half
-           grounded have no state to toggle to. -->
+      <!-- The one-joint panel's Joint Type and Grounded, in the same order and
+           with the same words. A group in two minds says so: no type is chosen
+           and the row reads Mixed, and the switch says what pressing it will
+           make them, because eight joints half grounded have no state to toggle
+           to. Choosing a type makes every selected joint that type, as one
+           edit. -->
+      @if (jointTypeChoice(); as choice) {
+        <segmented-block
+          label="Joint Type"
+          tooltip="How the bodies meeting at each selected joint move against each other."
+          wrap
+          [options]="choice.labels"
+          [icons]="choice.icons"
+          [selected]="choice.chosen"
+          [disabledAt]="choice.disabledAt"
+          [reasons]="choice.reasons"
+          [mixed]="choice.chosen === -1"
+          [disabled]="structureIsFrozen()"
+          (selectedChange)="setJointType($event)"
+        ></segmented-block>
+      }
       <toggle-block
         [formGroup]="form"
         _formControl="ground"
@@ -43,26 +60,6 @@
         tooltip="Fixes every selected joint to the frame, so nothing can move them."
       >
         Grounded
-      </toggle-block>
-      <toggle-block
-        [formGroup]="form"
-        _formControl="slider"
-        [disabled]="form.controls.slider.disabled"
-        dataAction="slider"
-        [mixed]="sliderState().kind === 'mixed'"
-        tooltip="Give every selected joint a sliding block. Off is a pin."
-      >
-        Slider
-      </toggle-block>
-      <toggle-block
-        [formGroup]="form"
-        _formControl="weld"
-        [disabled]="form.controls.weld.disabled"
-        dataAction="weld"
-        [mixed]="weldState().kind === 'mixed'"
-        tooltip="Fuses whatever meets at each selected joint into one rigid body."
-      >
-        Welded
       </toggle-block>
     </collapsible-subsection>
     <collapsible-subsection titleLabel="Visual Settings" [expanded]="true">

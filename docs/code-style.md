@@ -83,9 +83,12 @@ read.
 **Refusals come from one model, and are quoted, never restated.** Whether an edit is allowed is
 answered by `model/edit-permission.ts` (through `services/edit-permission.service.ts`). The
 specific refusals have one home each: `describeActuatorRefusal` in `model/actuator.ts`,
-`weldRefusal` in `services/grid-utils.service.ts`, and `locksHolding` in `model/lock-set.ts`. A
-menu row, a panel strip and a drag gate all ask these and show what they say. Writing the rule a
-second time is how the menu and the panel came to disagree.
+`refuseJointOperation` / `weldNeedsLinks` in `model/joint-operation-permission.ts` for a weld,
+`refuseJointType` in `model/joint-type.ts` for a change of joint type, and `locksHolding` in
+`model/lock-set.ts`. A menu row, a panel strip and a drag gate all ask these and show what they
+say. Writing the rule a second time is how the menu and the panel came to disagree.
+(`GridUtilsService.weldRefusal` is a thin wrapper over the first of those, which picks the
+direction the control would go in; the specs use it, no surface does.)
 
 **Rotation direction goes through `model/drive-direction.ts`.** Negative speed is clockwise, and
 `turnsClockwise(speed)` / `speedTurning(clockwise, magnitude)` are the only places that know it.

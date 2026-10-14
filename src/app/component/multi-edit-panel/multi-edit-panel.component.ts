@@ -17,7 +17,6 @@ import { AngleUnit, LengthUnit, MassUnit } from '../../model/utils';
 import { ActiveObjService } from '../../services/active-obj.service';
 import { EditPermissionService } from '../../services/edit-permission.service';
 import { MechanismService } from '../../services/mechanism.service';
-import { GridUtilsService } from '../../services/grid-utils.service';
 import { MultiEditResult, MultiEditService } from '../../services/multi-edit.service';
 import { NotificationService } from '../../services/notification.service';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
@@ -34,6 +33,8 @@ import { PanelSectionComponent } from '../BLOCKS/panel-section/panel-section.com
 import { RadioComponent } from '../BLOCKS/radio/radio.component';
 import { ToggleComponent } from '../BLOCKS/toggle/toggle.component';
 import { EditBannerComponent } from '../BLOCKS/banner/edit-banner.component';
+import { SegmentedComponent } from '../BLOCKS/segmented/segmented.component';
+import { JOINT_TYPES, JointTypeChoice } from '../../model/joint-type';
 
 /** The Edit drawer used when more than one typed mechanism part is selected. */
 @Component({
@@ -51,6 +52,7 @@ import { EditBannerComponent } from '../BLOCKS/banner/edit-banner.component';
     InputComponent,
     PanelSectionComponent,
     RadioComponent,
+    SegmentedComponent,
     ToggleComponent,
   ],
 })
@@ -58,7 +60,6 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
   readonly active = inject(ActiveObjService);
   private mechanism = inject(MechanismService);
   private multi = inject(MultiEditService);
-  private grid = inject(GridUtilsService);
   private batch = inject(SelectionBatchService);
   private nup = inject(NumberUnitParserService);
   private settings = inject(SettingsService);
@@ -99,7 +100,7 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
       const held = name === 'forceAngle' && this.forces.some((force) => force.locked);
       const frozen = ['x', 'y', 'length', 'angle'].includes(name)
         ? placementFrozen
-        : ['ground', 'weld', 'slider'].includes(name)
+        : name === 'ground'
           ? structureFrozen
           : ['magnitude', 'forceAngle', 'isGlobal'].includes(name)
             ? forceFrozen
@@ -119,12 +120,10 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
     mass: new FormControl('', { nonNullable: true, updateOn: 'blur' }),
     trace: new FormControl(false, { nonNullable: true }),
     locked: new FormControl(false, { nonNullable: true }),
-    // The structural switches a joint carries, and the two values a bar can
-    // hold. Assigned rather than toggled: a mixed group has no one state to
-    // flip, so what the switch shows is what the group will be.
+    // The one structural switch a joint carries beside its type, and the two
+    // values a bar can hold. Assigned rather than toggled: a mixed group has no
+    // one state to flip, so what the switch shows is what the group will be.
     ground: new FormControl(false, { nonNullable: true }),
-    weld: new FormControl(false, { nonNullable: true }),
-    slider: new FormControl(false, { nonNullable: true }),
     fixedLength: new FormControl(false, { nonNullable: true }),
     fixedAngle: new FormControl(false, { nonNullable: true }),
     // A force's three: how big, which way, and whether it turns with the body.
@@ -160,12 +159,6 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
       .subscribe((value) =>
         this.apply(this.multi.setGrounded(this.active.selectedPartRefs, value))
       );
-    this.form.controls.weld.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((value) => this.apply(this.multi.setWelded(this.active.selectedPartRefs, value)));
-    this.form.controls.slider.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((value) => this.apply(this.multi.setSlider(this.active.selectedPartRefs, value)));
     this.form.controls.fixedLength.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((value) => this.setHold('length', value));
@@ -361,12 +354,18 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
     );
   }
 
-  weldState(): CommonValue<boolean> {
-    return this.common(this.joints.map((joint) => joint.isWelded === true));
+  /**
+   * The group's Joint Type choice: the type every selected joint shares, or
+   * none when they disagree, with each type grayed for the group's own reason.
+   */
+  jointTypeChoice(): JointTypeChoice | undefined {
+    return this.multi.jointTypeChoice(this.active.selectedPartRefs);
   }
 
-  sliderState(): CommonValue<boolean> {
-    return this.common(this.joints.map((joint) => this.grid.isAttachedToSlider(joint)));
+  setJointType(index: number): void {
+    const type = JOINT_TYPES[index];
+    if (!type || this.structureIsFrozen()) return;
+    this.apply(this.multi.setJointType(this.active.selectedPartRefs, type));
   }
 
   holdState(which: LinkHold): CommonValue<boolean> {
@@ -379,14 +378,6 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
 
   groundChecked(): boolean {
     return this.checked(this.groundState());
-  }
-
-  weldChecked(): boolean {
-    return this.checked(this.weldState());
-  }
-
-  sliderChecked(): boolean {
-    return this.checked(this.sliderState());
   }
 
   holdChecked(which: LinkHold): boolean {
@@ -553,8 +544,6 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
         trace: this.traceChecked(),
         locked: this.lockChecked(),
         ground: this.groundChecked(),
-        weld: this.weldChecked(),
-        slider: this.sliderChecked(),
         fixedLength: this.holdChecked('length'),
         fixedAngle: this.holdChecked('angle'),
         magnitude: this.magnitudeText(this.forceValue('magnitude')),

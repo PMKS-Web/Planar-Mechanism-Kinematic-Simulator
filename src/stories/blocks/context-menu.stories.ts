@@ -2,6 +2,7 @@ import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular-
 import { ContextMenuComponent } from '../../app/component/BLOCKS/context-menu/context-menu.component';
 import {
   ContextMenuModel,
+  MenuChoice,
   MenuRefusal,
   MenuRow,
 } from '../../app/component/BLOCKS/context-menu/menu-model';
@@ -15,9 +16,10 @@ import { shortcutsStub } from '../support/stubs';
  * answers out of the model that enforces them -- so a grayed row here carries
  * the model's own words in its right-hand slot, never a sentence written in
  * the template. The shape is fixed: a header naming what was clicked, the
- * ladder of groups (Attach, State, Traces), and a red footer that is always
- * last. The models below are the builder's rows for a joint and for a link,
- * icon for icon, with the app's own SVG glyphs.
+ * choice of what the part can be, the ladder of groups (Attach, State,
+ * Traces), and a red footer that is always last. The models below are the
+ * builder's for a joint and for a link, icon for icon, with the app's own SVG
+ * glyphs.
  */
 const noop = () => undefined;
 
@@ -28,10 +30,25 @@ const crossing = {
   action: noop,
 };
 
+const TYPES = ['Revolute', 'Prismatic', 'Pin-in-slot', 'Welded'];
+const GLYPHS = ['joint_revolute', 'joint_prismatic', 'joint_pin_in_slot', 'joint_welded'];
+
+/** The four things a joint can be, as the card's top block. */
+function jointType(chosen: number, extra: Partial<MenuChoice> = {}): MenuChoice {
+  return {
+    label: 'Joint Type',
+    chosen,
+    posePolicy: 'start',
+    options: TYPES.map((label, index) => ({ label, icon: GLYPHS[index], action: noop })),
+    ...extra,
+  };
+}
+
 /** The rows every joint gets, in the builder's order. */
 function jointMenu(): ContextMenuModel {
   return {
-    header: { title: 'Joint B', subtitle: 'Pin · Links AB, BC', crossing },
+    header: { title: 'Joint B', subtitle: 'Pin · Links AB, BG', crossing },
+    choice: jointType(0),
     groups: [
       {
         label: 'Attach',
@@ -60,17 +77,6 @@ function jointMenu(): ContextMenuModel {
             action: noop,
           }),
           new MenuRow({ label: 'Driven Input', icon: 'add_input', kind: 'toggle', action: noop }),
-          new MenuRow({ label: 'Slider', icon: 'add_slider', kind: 'toggle', action: noop }),
-          new MenuRow({
-            label: 'Welded',
-            icon: 'weld_joint',
-            kind: 'toggle',
-            action: noop,
-            refusal: {
-              short: 'needs two links',
-              long: 'A weld fuses two links at a joint; this one has two, but one of them is grounded.',
-            },
-          }),
           new MenuRow({
             label: 'Locked',
             icon: 'lock',
@@ -218,12 +224,13 @@ function linkMenu(): ContextMenuModel {
   };
 }
 
-/** Parked mid-cycle: every row that would write a pose carries the same reason, and the traces stay live. */
+/** Parked mid-cycle: every row and value that would write a pose carries the same reason, and the traces stay live. */
 function paused(model: ContextMenuModel): ContextMenuModel {
   const reason: MenuRefusal = {
     short: 'needs the start pose',
     long: 'Return to the start pose to change the mechanism.',
   };
+  for (const option of model.choice?.options ?? []) option.refusal ??= reason;
   for (const group of model.groups) {
     if (group.label === 'Traces') continue;
     for (const row of group.rows) row.refusal ??= reason;
@@ -257,8 +264,67 @@ const meta: Meta = {
 export default meta;
 type Story = StoryObj;
 
-/** A joint's menu: Attach, State and Traces, then the footer. Force is grayed because two links meet here. */
+/** A joint's menu: the type it is, then Attach, State and Traces, then the footer. Force is grayed because two links meet here. */
 export const Joint: Story = { args: { model: jointMenu() } };
+
+/** A grounded slider: every value wears the glyph that stands on the frame, and Pin-in-slot is chosen. */
+export const JointGroundedSlider: Story = {
+  args: {
+    model: {
+      ...jointMenu(),
+      header: { title: 'Joint C', subtitle: 'Slider · Link BC', crossing },
+      choice: jointType(2, {
+        options: TYPES.map((label, index) => ({
+          label,
+          icon: `${GLYPHS[index]}_grounded`,
+          action: noop,
+        })),
+      }),
+    },
+  },
+};
+
+/** The chosen value cannot stand as drawn: a block with nowhere to slide, in the refusal ink, with the way out on hover. */
+export const JointNowhereToSlide: Story = {
+  args: {
+    model: {
+      ...jointMenu(),
+      header: { title: 'Joint F', subtitle: 'Slider pin · Link EF', crossing },
+      choice: jointType(2, {
+        fault: {
+          short: 'nowhere to slide',
+          long: 'Nowhere to slide. Drag it onto a link to cut its slot, or ground it.',
+        },
+      }),
+    },
+  },
+};
+
+/** A driven pin can be nothing else: every other value is grayed with the model's reason. */
+export const JointTypeRefused: Story = {
+  args: {
+    model: {
+      ...jointMenu(),
+      choice: jointType(0, {
+        options: TYPES.map((label, index) => ({
+          label,
+          icon: GLYPHS[index],
+          action: noop,
+          refusal:
+            index === 0
+              ? undefined
+              : {
+                  short: 'it is driven',
+                  long:
+                    index === 3
+                      ? 'A weld says these bodies do not move relative to each other, and an input says they do. Remove the input first.'
+                      : 'A block is a body of its own, so adding one to a driven joint would put three there. Remove the input first.',
+                },
+        })),
+      }),
+    },
+  },
+};
 
 /** A bar's menu, with its length held: the two hold rows carry the value each would fix. */
 export const Link: Story = { args: { model: linkMenu() } };

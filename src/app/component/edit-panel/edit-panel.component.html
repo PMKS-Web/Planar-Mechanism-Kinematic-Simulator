@@ -8,7 +8,7 @@
        nothing here may be touched, and `inert` takes the whole subtree out of
        pointer, keyboard and focus reach in one attribute. Merely paused away
        from the start, the structural half is live -- Grounded, Driven Input,
-       Weld, Rename, Delete apply to the design without needing the pose -- and
+       Joint Type, Rename, Delete apply to the design without needing the pose -- and
        only the pose-bound fields are frozen, which the component does on the
        controls themselves. The numbers stay readable either way: watching a
        joint's coordinates tick is the reason the panel stays at all. -->
@@ -184,6 +184,39 @@
           >
             Joint Position
           </dual-input-block>
+          <!-- A joint's type, as one choice of four (D1 in
+             docs/joint-type-and-cylinder-plan.md). The two facts it is made of,
+             a block and a weld, were two switches here, and between them they
+             hid the four things a joint can be. A value this joint cannot take
+             is grayed, with the model's reason on hover. -->
+          @if (jointTypeChoice; as choice) {
+            <segmented-block
+              class="jointType"
+              label="Joint Type"
+              tooltip="How the bodies meeting at this joint move against each other."
+              wrap
+              [options]="choice.labels"
+              [icons]="choice.icons"
+              [selected]="choice.chosen"
+              [disabledAt]="choice.disabledAt"
+              [reasons]="choice.reasons"
+              [invalid]="choice.invalid"
+              (selectedChange)="setJointType($event)"
+            ></segmented-block>
+            <!-- A block with nowhere to slide, which the canvas cannot say for
+               itself: the drawing looks the same either way. It is the one state
+               that takes a line of the panel (D4); every other refusal rides the
+               control's tooltip. Which link a slot is cut into is drawn on that
+               link, so it is not repeated here. -->
+            @if (choice.invalid) {
+              <div class="nowhereToSlide" role="status">
+                <mat-icon>error_outline</mat-icon>
+                <span
+                  ><b>{{ nowhereToSlide.lead }}</b> {{ nowhereToSlide.sentence }}</span
+                >
+              </div>
+            }
+          }
           <toggle-block
             [formGroup]="jointForm"
             _formControl="ground"
@@ -191,37 +224,20 @@
           >
             Grounded
           </toggle-block>
-          <!-- The angle belongs to a grounded guide alone: a floating slot's
+          <!-- Its own row, and only on a grounded slot (D3): a floating slot's
              direction is the line through two of its carrier's joints, so
              there is no number to type and no frame to type it in. You change
              it by dragging those joints. -->
-          <toggle-block
-            [addInput]="isGroundedSlider"
-            [disableInput]="!isGroundedSlider"
-            [formGroup]="jointForm"
-            _formControl="slider"
-            _formControlForInput="prisAngle"
-            tooltip="Give this joint a sliding block. Off is a pin."
-            (fieldEntry)="setSlotAngleOverlay($event)"
-          >
-            Slider
-          </toggle-block>
-          <!-- A slider with nowhere to slide, which the canvas cannot say for
-             itself: the drawing looks the same either way, and this is the one
-             thing about a slot a reader cannot see. Which link the slot is cut
-             into is drawn on that link, so it is not repeated here. -->
-          @if (isDanglingSlider) {
-            <div class="sliderWarning">
-              This slider has nowhere to slide. Drag it onto a link to cut its slot, or ground it.
-            </div>
+          @if (isGroundedSlider) {
+            <input-block
+              [formGroup]="jointForm"
+              _formControl="prisAngle"
+              [emitterOutputID]="-1"
+              (fieldEntry)="setSlotAngleOverlay($event !== -2)"
+              tooltip="The direction the slot runs. Counter-clockwise is positive."
+              >Slider Angle
+            </input-block>
           }
-          <toggle-block
-            [formGroup]="jointForm"
-            _formControl="weld"
-            tooltip="Fuses whatever meets at this joint into one rigid body."
-          >
-            Welded
-          </toggle-block>
           <!-- The same block every other button in this panel is built from, so
              its border, its label and its icon take the panel's own colors.
              Written out by hand it was the one control here that did not: gray

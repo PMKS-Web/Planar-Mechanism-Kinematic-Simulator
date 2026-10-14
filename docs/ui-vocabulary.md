@@ -95,14 +95,40 @@ so no label rewrites itself as it is used:
 
 | A verb, because it acts | A state, because it describes |
 | --- | --- |
-| `Attach Link`, `Delete Joint`, `Reverse Direction` | `Grounded`, `Driven Input`, `Slider`, `Welded`, `Locked`, `Trace Path`, `Global Frame`, `Drawn as a Disc` |
+| `Attach Link`, `Delete Joint`, `Reverse Direction` | `Grounded`, `Driven Input`, `Locked`, `Trace Path`, `Global Frame`, `Drawn as a Disc` |
 
 The Edit panel spells the same states the same way — its toggles read
-`Grounded`, `Slider`, `Welded` and `Trace Path`, not `Ground`, `Weld` or
-`Show Joint Path`. Where the panel has a button rather than a switch it names
-the act without reaching for `Make`: the disc control is `Draw as a Disc` /
-`Draw as a Bar`, which is the right-click menu's `Drawn as a Disc` said as a
-verb.
+`Grounded` and `Trace Path`, not `Ground` or `Show Joint Path`. Where the panel
+has a button rather than a switch it names the act without reaching for
+`Make`: the disc control is `Draw as a Disc` / `Draw as a Bar`, which is the
+right-click menu's `Drawn as a Disc` said as a verb.
+
+### A joint's type
+
+A joint is one of four things, and the reader picks which in one choice,
+**Joint Type**, in the Edit panel and at the top of a joint's right-click menu.
+It replaced two switches, `Slider` and `Welded`, which between them hid the
+four. The values are Title Case, because each one labels an option:
+
+| Value | What the joint is |
+| --- | --- |
+| **Revolute** | a pin: the bodies meeting here turn about it |
+| **Prismatic** | a block welded to what rides it: it slides along its slot and does not turn |
+| **Pin-in-slot** | a pin riding a slot: it slides along the slot and turns in it |
+| **Welded** | the bodies meeting here fused into one |
+
+**Welded** is the type's name as well as the state it describes, because it is
+the same fact. **Grounded** is not a type: it stays a switch beside the choice,
+and turning it on swaps the four glyphs for the set that stands on the frame.
+
+| Use | For |
+| --- | --- |
+| **Slider Angle** | the field that aims a grounded slot, on a row of its own under Grounded |
+| **Nowhere to slide.** | the bold lead of the one state the choice says in words: a block with no slot and no ground. `dangling` is the code's word for it, never the reader's |
+| **Starts at** | where a cylinder's rod begins its cycle, as a share of the stroke |
+| **Barrel**, **Rod** | a cylinder's two members, once each has a panel of its own (Stage 2 of `joint-type-and-cylinder-plan.md`) |
+| **inside a cylinder** | the short refusal on the joint a cylinder slides on (Stage 2) |
+| **Split Joint** | taking apart two joints merged by dropping one on the other — not built yet |
 
 The Edit panel's toggles already worked this way; the right-click menu followed
 in the context-menu redesign, which is why `Add Ground` / `Remove Ground` no

@@ -48,6 +48,15 @@ const APP_ICONS: Record<string, string> = {
   vector_acceleration: 'vector_acceleration',
   vector_force: 'vector_force',
   delete_mechanism: 'delete_mechanism',
+  joint_revolute: 'joint_revolute',
+  joint_prismatic: 'joint_prismatic',
+  joint_pin_in_slot: 'joint_pin_in_slot',
+  joint_welded: 'joint_welded',
+  joint_revolute_grounded: 'joint_revolute_grounded',
+  joint_prismatic_grounded: 'joint_prismatic_grounded',
+  joint_pin_in_slot_grounded: 'joint_pin_in_slot_grounded',
+  joint_welded_grounded: 'joint_welded_grounded',
+  joint_split: 'joint_split',
 };
 
 /** Registers every app icon before the first story renders. */

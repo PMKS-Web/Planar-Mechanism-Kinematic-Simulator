@@ -317,11 +317,13 @@ describe('and the inside of a cylinder is still sealed', () => {
     // in it is, and the sentence comes from the same model -- so a rule that
     // came off the one-joint path and stayed on the group's, or the other way
     // about, would show here.
+    // Asked as the group's Joint Type choice asks it: a weld is the Welded
+    // value, and a block is whichever value flips the one the joint has.
     for (const { name, joint } of interiors()) {
       const refs = [{ kind: 'joint' as const, id: joint.id }];
-      expect(multi.weldRefusal(refs, !joint.isWelded), `welding ${name} in a group`).toBeDefined();
+      expect(multi.jointTypeRefusal(refs, 'welded'), `welding ${name} in a group`).toBeDefined();
       expect(
-        multi.sliderRefusal(refs, !grid.isAttachedToSlider(joint)),
+        multi.jointTypeRefusal(refs, grid.isAttachedToSlider(joint) ? 'revolute' : 'pin-in-slot'),
         `a block on ${name} in a group`
       ).toBeDefined();
     }

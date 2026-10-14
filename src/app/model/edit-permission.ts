@@ -346,7 +346,7 @@ export function displacementRefusal(state: EditState): EditRefusal | null {
 }
 
 /** What an action needs in order to preserve the authored start. */
-export type MenuPosePolicy = 'start' | 'preserve' | 'attachment' | 'view';
+export type MenuPosePolicy = 'start' | 'structure' | 'preserve' | 'attachment' | 'view';
 
 /** A paused pose allows edits with a defined mapping back to the authored drawing. */
 export function menuRefusal(
@@ -357,6 +357,11 @@ export function menuRefusal(
   if (policy === 'view') return null;
   if (state.mode === 'synthesis') return IN_SYNTHESIS;
   if (state.atStart || policy === 'preserve') return null;
+  // A control the Edit panel offers under the same name asks the panel's own
+  // question, so the two cannot answer differently about one named thing. Not
+  // `'preserve'`: that would also offer it in an analysis mode away from the
+  // start, where `structure` is refused and topology changes stay closed.
+  if (policy === 'structure') return refusalFor('structure', state);
   if (policy === 'attachment') return state.solveDeferred ? DEFERRED_DISPLACED : null;
   return displacementRefusal(state);
 }

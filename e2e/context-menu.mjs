@@ -54,9 +54,22 @@ const readMenu = () =>
       row.querySelector('.cm-row__key')?.textContent?.trim() ??
       (row.querySelector('.cm-row__check') ? 'check' : '');
     const cross = card.querySelector('.cm-cross');
+    const grid = card.querySelector('.cm-choice');
     return {
       title: card.querySelector('.cm-header__title')?.textContent?.trim() ?? null,
       subtitle: card.querySelector('.cm-header__subtitle')?.textContent?.trim() ?? null,
+      // What the part can be, above the ladder: one cell per value.
+      choice: grid
+        ? {
+            label: grid.getAttribute('aria-label'),
+            cells: [...grid.querySelectorAll('.cm-choice__cell')].map((cell) => ({
+              label: cell.querySelector('.cm-choice__label')?.textContent?.trim() ?? '',
+              chosen: cell.classList.contains('cm-choice__cell--chosen'),
+              off: cell.classList.contains('cm-choice__cell--off'),
+              fault: cell.classList.contains('cm-choice__cell--fault'),
+            })),
+          }
+        : null,
       cross: cross ? (cross.classList.contains('cm-cross--off') ? 'off' : 'on') : null,
       // Upper-cased by the stylesheet, so the text node keeps its own case.
       groups: [...card.querySelectorAll('.cm-group__label')].map((one) =>
@@ -188,10 +201,18 @@ check(
 );
 check(
   'states are states, not verbs that rewrite themselves',
-  ['Grounded', 'Driven Input', 'Slider', 'Welded', 'Trace path', 'Locked'].every((label) =>
-    rowNamed(jointA, label)
-  ) && !jointA?.rows.some((one) => /^(Add|Remove) /.test(one.label)),
+  ['Grounded', 'Driven Input', 'Trace path', 'Locked'].every((label) => rowNamed(jointA, label)) &&
+    !jointA?.rows.some((one) => /^(Add|Remove) /.test(one.label)),
   jointA?.rows.map((one) => one.label)
+);
+check(
+  'and what the joint is is one choice above them, not two rows among them',
+  jointA?.choice?.label === 'Joint Type' &&
+    JSON.stringify(jointA.choice.cells.map((one) => one.label)) ===
+      JSON.stringify(['Revolute', 'Prismatic', 'Pin-in-slot', 'Welded']) &&
+    jointA.choice.cells.find((one) => one.chosen)?.label === 'Revolute' &&
+    !jointA.rows.some((one) => /^(Slider|Welded)$/.test(one.label)),
+  jointA?.choice
 );
 check(
   'a load will not anchor where two links share the pin',
@@ -216,9 +237,9 @@ check(
   { subtitle: groundO?.subtitle, grounded: rowNamed(groundO, 'Grounded') }
 );
 check(
-  'a weld with nothing to fuse is grayed with the reason',
-  rowNamed(groundO, 'Welded')?.slot === 'needs 2 links',
-  rowNamed(groundO, 'Welded')
+  'a weld with nothing to fuse is grayed in the choice',
+  groundO?.choice?.cells.find((one) => one.label === 'Welded')?.off === true,
+  groundO?.choice
 );
 
 const tracerT = await openOn('#joint_T');
@@ -343,8 +364,8 @@ check(
 // row says the arithmetic.
 check(
   'a mount alone is refused a weld for having nothing to weld to',
-  rowNamed(cylinderJoint, 'Welded')?.slot === 'needs 2 links',
-  rowNamed(cylinderJoint, 'Welded')
+  cylinderJoint?.choice?.cells.find((one) => one.label === 'Welded')?.off === true,
+  cylinderJoint?.choice
 );
 check(
   'and the deletion says it takes the whole part',
@@ -356,8 +377,8 @@ check(
 // inside, and none of those three joints is selectable to right-click on.
 check(
   'a mount takes a block, like any other joint',
-  rowNamed(cylinderJoint, 'Slider') !== undefined && rowNamed(cylinderJoint, 'Slider')?.slot === '',
-  rowNamed(cylinderJoint, 'Slider')
+  cylinderJoint?.choice?.cells.find((one) => one.label === 'Pin-in-slot')?.off === false,
+  cylinderJoint?.choice
 );
 
 const cylinderBody = await openOn('[id="AB"]');
@@ -466,17 +487,18 @@ const SLIDER_AND_LOAD =
 await openMechanism(page, BASE + SLIDER_AND_LOAD);
 const sliderPin = await openOn('#joint_B');
 check(
-  'a slider pin says it is one, and its Slider switch is on',
-  /^Slider pin · /.test(sliderPin?.subtitle ?? '') && rowNamed(sliderPin, 'Slider')?.on === true,
+  'a slider pin says it is one, and the choice shows Pin-in-slot',
+  /^Slider pin · /.test(sliderPin?.subtitle ?? '') &&
+    sliderPin?.choice?.cells.find((one) => one.chosen)?.label === 'Pin-in-slot',
   sliderPin
 );
 check(
   // Offered rather than hidden: the model has no rule against welding a slider
-  // pin, and the panel offers it, so the menu does too and the refusal comes
-  // with its reason if the fuse cannot stand.
-  'and keeps its Weld row, as the panel does',
-  rowNamed(sliderPin, 'Welded')?.off === false,
-  sliderPin?.rows.map((one) => one.label)
+  // pin, and the panel offers it, so the menu does too -- a slot welded to what
+  // rides it is a Slide, which the choice names Prismatic.
+  'and Prismatic is live on it, as the panel offers',
+  sliderPin?.choice?.cells.find((one) => one.label === 'Prismatic')?.off === false,
+  sliderPin?.choice
 );
 
 const forceTarget = await openOnForce('F1');

@@ -50,12 +50,17 @@ describe('always-on force and weld UI', () => {
     const fixture: ComponentFixture<EditPanelComponent> =
       TestBed.createComponent(EditPanelComponent);
     fixture.detectChanges();
-    // One Weld toggle, not a Weld/Unweld button pair: welding is one axis of
-    // the 2x2 (§2.1), and two buttons cannot show which side of it the joint is
-    // currently on. Unwelding is the same control turned off.
-    expect(fixture.nativeElement.textContent).toContain('Weld');
+    // Welding is one of the four values of Joint Type (Stage 0 of
+    // docs/joint-type-and-cylinder-plan.md), not a switch of its own, and
+    // unwelding is the choice moved off Welded rather than a second button.
+    expect(fixture.nativeElement.textContent).toContain('Welded');
     expect(fixture.nativeElement.textContent).not.toContain('Unweld');
-    expect(fixture.nativeElement.querySelectorAll('mat-slide-toggle').length).toBeGreaterThan(2);
+    const types = [...fixture.nativeElement.querySelectorAll('segmented-block .text')].map(
+      (option: Element) => option.textContent?.trim()
+    );
+    expect(types).toEqual(['Revolute', 'Prismatic', 'Pin-in-slot', 'Welded']);
+    // Grounded and Trace path are the switches a joint has left.
+    expect(fixture.nativeElement.querySelectorAll('mat-slide-toggle').length).toBe(2);
 
     active.objType = 'Link';
     active.selectedLink = bc;
