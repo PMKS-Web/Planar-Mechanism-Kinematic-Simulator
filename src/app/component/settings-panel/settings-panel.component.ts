@@ -123,9 +123,10 @@ export class SettingsPanelComponent implements OnDestroy {
         );
 
         // This used to cast every Link to RealLink and call reComputeDPath,
-        // which throws on the first SliderBlock and abandons every link after
-        // it -- so any mechanism with a slider logged a TypeError the moment
-        // Settings opened. The service does it now, guarded by type.
+        // which threw on the first link that was not one -- a slider's block --
+        // and abandoned every link after it, so any mechanism with a slider
+        // logged a TypeError the moment Settings opened. The service does it
+        // now, guarded by type.
         this.mechanismSrv.applyObjectScaleChange();
       })
     );

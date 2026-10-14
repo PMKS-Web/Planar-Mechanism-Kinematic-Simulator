@@ -1,7 +1,7 @@
 import '../../model/joint';
 import { Coord } from '../../model/coord';
 import { PrisJoint, RevJoint } from '../../model/joint';
-import { RealLink, SliderBlock } from '../../model/link';
+import { Link, RealLink } from '../../model/link';
 import {
   cylinderHeadHalf,
   cylinderSpanLayoutFrom,
@@ -67,7 +67,7 @@ function sealedSource(options: { sealed?: boolean; angle?: number } = {}) {
 
   const barrel = new RealLink('AB', [a, b], 1, 1);
   const rod = new RealLink('CD', [c, d], 1, 1);
-  const block = new SliderBlock('CP', [c, slider], 1);
+  const block = new Link('CP', [c, slider], 1);
 
   [a, b].forEach((joint) => joint.links.push(barrel));
   [c, d].forEach((joint) => joint.links.push(rod));
@@ -109,7 +109,7 @@ describe('sealed cylinder URL round-trip', () => {
   it('keeps the sealed bit through encode → decode → rebuild', () => {
     const target = rebuild(encode(sealedSource()));
 
-    const slider = target.joints.find((joint) => joint.id === 'P') as PrisJoint;
+    const slider = target.joints.find((joint) => joint.id === 'C') as PrisJoint;
     expect(slider.isSealed).toBe(true);
     expect(slider.isFloating).toBe(true);
   });
@@ -117,6 +117,8 @@ describe('sealed cylinder URL round-trip', () => {
   it('still qualifies geometrically after quantization, with room to spare', () => {
     const target = rebuild(encode(sealedSource()));
 
+    // The seal and the pin the rod hangs on are one joint now, so this is the
+    // same lookup the slider gets above.
     const pin = target.joints.find((joint) => joint.id === 'C')!;
     const found = sealedCylinderAt(pin);
     expect(found).toBeDefined();
@@ -140,7 +142,7 @@ describe('sealed cylinder URL round-trip', () => {
   it('leaves an unsealed welded slide unsealed — and unskinned', () => {
     const target = rebuild(encode(sealedSource({ sealed: false })));
 
-    const slider = target.joints.find((joint) => joint.id === 'P') as PrisJoint;
+    const slider = target.joints.find((joint) => joint.id === 'C') as PrisJoint;
     expect(slider.isSealed).toBe(false);
     // A plain slide never skins any more: sealed ⇔ skinned.
     expect(sealedCylinders(target.joints)).toHaveLength(0);

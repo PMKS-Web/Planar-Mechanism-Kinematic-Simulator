@@ -73,7 +73,7 @@ function ramWithNeighbors(): MechanismFixture {
       { joints: 'WX' },
       { joints: 'WY' },
     ],
-    sliders: [{ at: 'C', prisId: 'P', on: { carrier: 'AB', a: 'A', b: 'B' }, sealed: true }],
+    sliders: [{ at: 'C', on: { carrier: 'AB', a: 'A', b: 'B' }, sealed: true }],
     welds: ['C'],
     inputAngVel: 1,
   };
@@ -115,7 +115,10 @@ describe('a cylinder mount is an ordinary joint now', () => {
     const sealed = ram();
     expect(sealed, 'the ram still resolves').toBeDefined();
     expect(sealed.slider.isSealed, 'still sealed').toBe(true);
-    expect(sealed.pin.isWelded, 'the pin is still welded').toBe(true);
+    // The seal and the pin the rod hangs on are one joint now, so what used to
+    // be the pin's weld is the slider saying its rod cannot turn against the
+    // slot.
+    expect(sealed.slider.rotates, 'the rod is still rigid with the slot').toBe(false);
     return sealed;
   }
 
@@ -291,9 +294,11 @@ describe('and the inside of a cylinder is still sealed', () => {
     for (const { name, joint } of interiors()) {
       const refusal = grid.weldRefusal(joint);
       expect(refusal, `a weld at ${name}`).toBeDefined();
-      expect(refusal!.short, name).toBe(
-        joint === ram().slider ? 'it is the slider' : 'part is sealed'
-      );
+      // All three for the same reason now. The slider used to be refused for
+      // being the slider — a weld had to land on its coincident pin — and with
+      // that pin gone it is refused for what it actually is: a joint inside a
+      // sealed part.
+      expect(refusal!.short, name).toBe('part is sealed');
     }
   });
 
@@ -337,17 +342,17 @@ describe('and the inside of a cylinder is still sealed', () => {
     }
     // And nothing was taken apart on the way through.
     expect(mechanism.sealedStructures()).toHaveLength(1);
-    expect(ram().pin.isWelded).toBe(true);
+    expect(ram().slider.rotates).toBe(false);
     expect(ram().slider.isSealed).toBe(true);
   });
 
   it('refuses to unweld the pin, which is what makes the part one thing', () => {
-    const pin = ram().pin as RealJoint;
+    const pin = ram().slider;
     expect(grid.weldRefusal(pin)?.short).toBe('part is sealed');
 
     mechanism.unWeldJoint(pin);
 
-    expect(pin.isWelded, 'still welded').toBe(true);
+    expect(pin.rotates, 'the rod is still rigid with the slot').toBe(false);
     expect(mechanism.sealedStructures()).toHaveLength(1);
   });
 });

@@ -8,7 +8,7 @@ import {
 import { Force } from './force';
 import { Joint, PrisJoint, RealJoint } from './joint';
 import { frozenJointIds } from './lock-set';
-import { Link, RealLink, SliderBlock } from './link';
+import { Link, RealLink } from './link';
 import { SelectedPart } from './selection';
 
 export interface CanonicalSelectionClosure {
@@ -70,7 +70,7 @@ export function canonicalSelectionClosure(
     canonicalParts.push(part);
   };
   const addCylinder = (cylinder: Cylinder) => {
-    [cylinder.barrel, cylinder.rod, cylinder.block].forEach(addLink);
+    [cylinder.barrel, cylinder.rod].forEach(addLink);
     cylinderJoints(cylinder).forEach(addJoint);
   };
 
@@ -97,16 +97,19 @@ export function canonicalSelectionClosure(
     }
   });
 
-  // Slider pairs are coincident, and a floating slider follows its selected carrier.
-  // Iterate because adding one member can reveal another composite one step away.
+  // A floating slider follows its selected carrier, and a cylinder's joint
+  // brings the whole part. Iterate because adding one member can reveal another
+  // composite one step away.
+  //
+  // There used to be a third rule here, walking each joint's blocks so that a
+  // selected pin brought the slider riding it. A slider is one joint now
+  // (Stage 1 of `docs/joint-type-and-cylinder-plan.md`), so a selected slider
+  // is already in the closure and there is no coincident partner to fetch.
   let grew = true;
   while (grew) {
     const before = jointIds.size + linkObjects.size;
     [...closureJoints].forEach((joint) => {
       if (!(joint instanceof RealJoint)) return;
-      joint.links
-        .filter((link): link is SliderBlock => link instanceof SliderBlock)
-        .forEach(addLink);
       const cylinder = cylinderOfJointIn(cylinders, joint);
       if (cylinder) addCylinder(cylinder);
     });
@@ -117,9 +120,6 @@ export function canonicalSelectionClosure(
           return;
         }
         addJoint(slider);
-        slider.links
-          .filter((link): link is SliderBlock => link instanceof SliderBlock)
-          .forEach(addLink);
       });
     grew = before !== jointIds.size + linkObjects.size;
   }

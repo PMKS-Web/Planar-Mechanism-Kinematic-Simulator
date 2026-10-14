@@ -2,27 +2,31 @@
  * A joint's type, offered as one choice in the Edit panel and the right-click
  * menu: Revolute, Prismatic, Pin-in-slot or Welded.
  *
- * Nothing stores a type. Until a slider becomes one joint (Stage 1 of
- * `docs/joint-type-and-cylinder-plan.md`), what a joint is comes down to two
- * facts the drawing already records -- whether a sliding block rides it, and
- * whether the bodies meeting at it are welded -- and the four types are those
- * two facts' four combinations (D1): Revolute has neither, Pin-in-slot has the
- * block, Prismatic has the block welded to what rides it (the Slide), and
- * Welded has the weld alone. A change of type is therefore one or two of the
- * edits those facts already have, and this says which, in what order, and
- * whether the joint may take them.
+ * Nothing stores a type. What a joint is comes down to two facts the drawing
+ * already records -- whether it slides, and whether the bodies meeting at it
+ * are held rigid -- and the four types are those two facts' four combinations
+ * (D1): Revolute has neither, Pin-in-slot slides, Prismatic slides with its
+ * riders held to the slot (the Slide), and Welded is the weld alone. A change
+ * of type is therefore one or two of the edits those facts already have, and
+ * this says which, in what order, and whether the joint may take them.
+ *
+ * Where each fact lives moved in Stage 1 of
+ * `docs/joint-type-and-cylinder-plan.md`: a slider used to be a prismatic joint
+ * with a coincident pin joined by a block, so sliding meant "a block rides this
+ * pin" and the Slide's weld sat on that pin. A slider is one joint now, so
+ * sliding is what the joint *is* and the weld is `rotates` on it.
  *
  * Pure, like the refusal model it asks: a spec, the panel and the menu put the
  * same question to the same drawing.
  */
 
-import { RealJoint } from './joint';
+import { PrisJoint, RealJoint } from './joint';
 import {
   JointOperation,
   JointOperationContext,
   OperationRefusal,
   refuseJointOperation,
-  weldOutlivesBlock,
+  weldOutlivesTheSlot,
 } from './joint-operation-permission';
 
 export type JointType = 'revolute' | 'prismatic' | 'pin-in-slot' | 'welded';
@@ -67,9 +71,18 @@ export function bitsOf(type: JointType): JointTypeBits {
   };
 }
 
-/** The type a joint is now, read the way the refusal model reads it. */
+/**
+ * The type a joint is now, read the way the refusal model reads it.
+ *
+ * A slider says whether its riders may turn against the slot in `rotates`; every
+ * other joint says whether the bodies meeting at it are fused in `isWelded`.
+ * The two were one bit before a slider became one joint — the weld then lived on
+ * the coincident pin, which is the object that no longer exists.
+ */
 export function jointTypeAt(joint: RealJoint, context: JointOperationContext): JointType {
-  return jointTypeOf({ slider: context.hasSlider(joint), welded: joint.isWelded });
+  const slider = context.hasSlider(joint);
+  const welded = joint instanceof PrisJoint ? !joint.rotates : joint.isWelded;
+  return jointTypeOf({ slider, welded });
 }
 
 /**
@@ -86,11 +99,11 @@ export function jointTypeIcon(type: JointType, grounded: boolean): string {
  * The edits that take a joint from one type to another, in the order they have
  * to run.
  *
- * A block goes on before a weld, because the block is a body of its own and a
- * weld needs two to fuse: a pin on a single bar becomes Prismatic by gaining
- * the block and then welding the bar to it. A weld comes off before a block
- * does, so the block leaves a plain pin behind rather than a weld with nothing
- * left to fuse.
+ * The slot goes on before the weld: a pin on a single bar becomes Prismatic by
+ * starting to slide and then holding that bar to its slot, and asking for the
+ * weld first would be asking a plain pin to hold something to a slot it does
+ * not have. A weld comes off before the slot does, so what is left behind is a
+ * plain pin rather than a weld with nothing to hold.
  */
 export function stepsBetween(from: JointType, to: JointType): JointOperation[] {
   const was = bitsOf(from);
@@ -107,12 +120,9 @@ export function stepsBetween(from: JointType, to: JointType): JointOperation[] {
  * Why this joint cannot become `to`, in the refusal model's own words, or
  * `undefined` if it can.
  *
- * Each step is judged on the joint as the step before it leaves it, so a weld
- * made in the same change as a new block counts the block. And a weld the
- * change keeps is asked whether it outlives the block: a Prismatic pin on one
- * bar, made Welded, would keep a weld with nothing left to fuse, which the
- * reconciler takes away -- and the reader who chose Welded would be handed a
- * Revolute without a word.
+ * Each step is judged on the joint as the step before it leaves it, so the weld
+ * that finishes a change is asked about the joint that change is making, not the
+ * one it started from.
  */
 export function refuseJointType(
   joint: RealJoint,
@@ -126,8 +136,11 @@ export function refuseJointType(
     if (refused) return refused;
     before = step;
   }
+  // Prismatic to Welded runs no weld step -- both are welded, so the change is
+  // only the slot coming off -- which leaves the one case no step can speak
+  // for: a weld the change keeps, losing the body it was fusing to.
   if (bitsOf(from).welded && bitsOf(to).welded && before === 'remove-slider') {
-    return weldOutlivesBlock(joint);
+    return weldOutlivesTheSlot(joint);
   }
   return undefined;
 }

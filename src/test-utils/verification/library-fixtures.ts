@@ -201,7 +201,6 @@ export function excavatorBucketFixture(scale: number = 1): MechanismFixture {
     ],
     slider: {
       at: 'C',
-      prisId: 'E',
       on: { carrier: 'AB', a: 'A', b: 'B' },
       sealed: true,
       input: true,
@@ -275,8 +274,8 @@ export function togglePressFixture(scale: number = 1): MechanismFixture {
     ],
     links: [{ joints: 'AB' }, { joints: 'CD' }, { joints: 'GD' }, { joints: 'DR' }],
     sliders: [
-      { at: 'C', prisId: 'E', on: { carrier: 'AB', a: 'A', b: 'B' }, sealed: true, input: true },
-      { at: 'R', prisId: 'F', angleRad: Math.PI / 2 },
+      { at: 'C', on: { carrier: 'AB', a: 'A', b: 'B' }, sealed: true, input: true },
+      { at: 'R', angleRad: Math.PI / 2 },
     ],
     welds: ['C'],
     inputAngVel: INPUT_SPEED * scale,
@@ -336,8 +335,8 @@ export function shaperQuickReturnFixture(): MechanismFixture {
     ],
     links: [{ joints: 'AB' }, { joints: 'CD' }, { joints: 'DR' }],
     sliders: [
-      { at: 'B', prisId: 'P', on: { carrier: 'CD', a: 'C', b: 'D' } },
-      { at: 'R', prisId: 'Q', angleRad: 0 },
+      { at: 'B', on: { carrier: 'CD', a: 'C', b: 'D' } },
+      { at: 'R', angleRad: 0 },
     ],
     inputAngVel: INPUT_SPEED,
   };
@@ -594,7 +593,7 @@ export function pumpjackFixture(): MechanismFixture {
     ],
     // Pitman first: the drive reads the beam's angle against the pitman.
     links: [{ joints: 'AM' }, { joints: 'MP' }, { joints: 'PSH' }, { joints: 'HR' }],
-    slider: { at: 'R', prisId: 'W', angleRad: Math.PI / 2 },
+    slider: { at: 'R', angleRad: Math.PI / 2 },
     inputAngVel: INPUT_SPEED,
   };
 }
@@ -678,9 +677,9 @@ export function scissorLiftFixture(scale: number = 1): MechanismFixture {
       { joints: 'TU' },
     ],
     sliders: [
-      { at: 'C', prisId: 'E', on: { carrier: 'AB', a: 'A', b: 'B' }, sealed: true, input: true },
-      { at: 'S', prisId: 'N', angleRad: 0 },
-      { at: 'K', prisId: 'P', on: { carrier: 'TU', a: 'T', b: 'U' } },
+      { at: 'C', on: { carrier: 'AB', a: 'A', b: 'B' }, sealed: true, input: true },
+      { at: 'S', angleRad: 0 },
+      { at: 'K', on: { carrier: 'TU', a: 'T', b: 'U' } },
     ],
     welds: ['C'],
     inputAngVel: INPUT_SPEED * scale,
@@ -796,8 +795,8 @@ export function landingGearFixture(scale: number = 1): MechanismFixture {
       { joints: 'HL' },
     ],
     sliders: [
-      { at: 'F', prisId: 'M', on: { carrier: 'DE', a: 'D', b: 'E' }, sealed: true, input: true },
-      { at: 'L', prisId: 'N', on: { carrier: 'JK', a: 'J', b: 'K' }, sealed: true, input: true },
+      { at: 'F', on: { carrier: 'DE', a: 'D', b: 'E' }, sealed: true, input: true },
+      { at: 'L', on: { carrier: 'JK', a: 'J', b: 'K' }, sealed: true, input: true },
     ],
     welds: ['F', 'L'],
     inputAngVel: INPUT_SPEED * scale,

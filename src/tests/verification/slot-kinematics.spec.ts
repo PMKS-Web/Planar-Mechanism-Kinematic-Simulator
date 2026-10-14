@@ -54,8 +54,10 @@ function sample(fixture: MechanismFixture): Sample[] {
     const b = at('B');
     samples.push({
       theta: Math.atan2(b.y - a.y, b.x - a.x),
-      slideRate: KinematicsSolver.slideRateMap.get('P') ?? NaN,
-      slideAccel: KinematicsSolver.slideAccelMap.get('P') ?? NaN,
+      // Keyed by the joint that slides, which is the crank pin B itself. It
+      // was the prismatic twin beside it, P, while a slider was three objects.
+      slideRate: KinematicsSolver.slideRateMap.get('B') ?? NaN,
+      slideAccel: KinematicsSolver.slideAccelMap.get('B') ?? NaN,
       leverAngVel: KinematicsSolver.linkAngVelMap.get('CD') ?? NaN,
       leverAngAcc: KinematicsSolver.linkAngAccMap.get('CD') ?? NaN,
     });
@@ -73,7 +75,11 @@ describe('velocity through a moving slot', () => {
     const { mechanism } = buildMechanism(invertedSliderCrank(OFFSET));
 
     expect(mechanism.requiredLoops).toHaveLength(1);
-    expect(mechanism.requiredLoops[0].id).toBe('A-B-P~P~C');
+    // A-B, then straight across the slot and on to the lever's pivot. The walk
+    // used to step from the pin B along the block's own edge to the prismatic
+    // joint P before crossing, which is the edge a one-joint slider does not
+    // have.
+    expect(mechanism.requiredLoops[0].id).toBe('A-B~B~C');
   });
 
   it('matches the closed form for travel rate along the slot', () => {
@@ -234,7 +240,7 @@ describe('either order of the two slot joints', () => {
   // TypeError that escaped kinematicLoopAnalysis uncaught.
   const swapped = (): MechanismFixture => ({
     ...invertedSliderCrank(OFFSET),
-    sliders: [{ at: 'B', prisId: 'P', on: { carrier: 'CD', a: 'D', b: 'C' } }],
+    sliders: [{ at: 'B', on: { carrier: 'CD', a: 'D', b: 'C' } }],
   });
 
   it('reaches the carrier from its free end without throwing', () => {
@@ -246,7 +252,7 @@ describe('either order of the two slot joints', () => {
 
     // Anchored at D, the walk crosses the slot to D and then runs the lever to
     // ground -- one edge longer than anchoring at C, and the same circuit.
-    expect(mechanism.requiredLoops.map((loop) => loop.id)).toEqual(['A-B-P~P~D-C']);
+    expect(mechanism.requiredLoops.map((loop) => loop.id)).toEqual(['A-B~B~D-C']);
   });
 
   it('gives the same lever motion either way round', () => {

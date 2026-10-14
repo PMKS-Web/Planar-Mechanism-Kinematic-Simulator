@@ -2,8 +2,8 @@
 // initializes cleanly when entered here (see test-utils/verification/fixture.ts).
 import '../../app/model/joint';
 import { Checksum } from '../../app/services/transcoding/checksum';
-import { PrisJoint, RealJoint, RevJoint } from '../../app/model/joint';
-import { SliderBlock, RealLink } from '../../app/model/link';
+import { PrisJoint, RealJoint } from '../../app/model/joint';
+import { RealLink } from '../../app/model/link';
 import {
   BUILT_IN_TEMPLATE_IDS,
   TEMPLATE_LINKAGES,
@@ -105,9 +105,15 @@ describe('built-in template URLs', () => {
           // coarser than that.
           const frame = mechanism.joints[timestep];
           const sample = baseline.samples[index];
-          expect(frame.map((joint) => joint.id)).toEqual(sample.map(([id]) => id));
-          frame.forEach((joint, jointIndex) => {
-            const [id, x, y] = sample[jointIndex];
+          // By letter, not by place in the array. The order the solver hands
+          // joints back in is not something a shared URL ever promised -- it is
+          // an artifact of how the drawing was assembled, and folding a
+          // slider's three objects into one reorders it. Which joints there
+          // are, and where each of them is, is the whole of what this pins.
+          expect(frame.map((joint) => joint.id).sort()).toEqual(sample.map(([id]) => id).sort());
+          const drawn = new Map(frame.map((joint) => [joint.id, joint]));
+          sample.forEach(([id, x, y]) => {
+            const joint = drawn.get(id)!;
             expect(joint.x / MODEL_SCALE, `${id} x at t=${timestep}`).toBeCloseTo(x, 3);
             expect(joint.y / MODEL_SCALE, `${id} y at t=${timestep}`).toBeCloseTo(y, 3);
           });
@@ -120,36 +126,55 @@ describe('built-in template URLs', () => {
 // The slider-crank is the template that exercises the prismatic path, so its
 // structure gets asserted explicitly rather than only through the snapshot.
 describe('Slider_Crank prismatic structure', () => {
-  it('pairs a grounded prismatic joint with a coincident revolute via a slider block', () => {
+  it('stores the slider as one grounded prismatic joint, with no block beside it', () => {
+    // The stored form. This payload used to spell the slider as three objects
+    // -- a pin, a coincident prismatic joint, and a zero-length block link
+    // joining them -- because that is what the writer emitted when it was
+    // typed in. The reader folds that spelling and the writer cannot produce
+    // it any more, so regenerating the payload rewrote it into the one joint
+    // (Stage 1 of `docs/joint-type-and-cylinder-plan.md`).
+    //
+    // That a URL in the *old* spelling still opens to the same drawing is
+    // proved in `services/transcoding/url-slider-fold.spec.ts`, which builds
+    // the trio and encodes it rather than pasting bytes that could drift from
+    // what the app used to write. This asserts the other half: that nothing
+    // here still emits the old spelling.
     const transcoder = decode(TEMPLATE_LINKAGES['Slider_Crank']);
     const jointC = transcoder.getJoints().find((joint) => joint.id === 'C')!;
-    const jointD = transcoder.getJoints().find((joint) => joint.id === 'D')!;
-    const linkCD = transcoder.getLinks().find((link) => link.id === 'CD')!;
 
-    expect(jointC.type).toBe(JOINT_TYPE.REVOLUTE);
-    expect(jointD.type).toBe(JOINT_TYPE.PRISMATIC);
-    expect(jointD.isGrounded).toBe(true);
-    expect([jointD.x, jointD.y]).toEqual([jointC.x, jointC.y]);
+    expect(transcoder.getJoints().map((joint) => joint.id)).toEqual(['A', 'B', 'C']);
+    expect(jointC.type).toBe(JOINT_TYPE.PRISMATIC);
+    expect(jointC.isGrounded).toBe(true);
 
-    expect(linkCD.type).toBe(LINK_TYPE.PISTON);
-    expect(linkCD.jointIDs).toEqual(['C', 'D']);
+    expect(transcoder.getLinks().map((link) => link.id)).toEqual(['AB', 'BC']);
+    expect(transcoder.getLinks().some((link) => link.type === LINK_TYPE.PISTON)).toBe(false);
   });
 
-  it('builds a SliderBlock whose two joints stay coincident at every timestep', () => {
+  it('opens as that one joint, and the rod holds it at every timestep', () => {
+    // The test above is what the URL *says*; this is what opening it gives.
+    // The joint carries the pin's letter -- C, the one the canvas always drew
+    // and the one link BC is named after, since a slider's own letter is never
+    // shown.
+    //
+    // Keeping a pin and a prismatic joint coincident used to be a constraint
+    // the solver had to meet at every timestep, and this is where that was
+    // checked. There are no longer two of them to come apart, so what is
+    // checked instead is that the one joint is the one the rod is holding --
+    // at every timestep, not only the first.
     const { mechanism } = buildMechanismFixture(TEMPLATE_LINKAGES['Slider_Crank']);
 
-    const block = mechanism.links[0].find((link) => link instanceof SliderBlock);
-    expect(block).toBeInstanceOf(SliderBlock);
-    expect(block!.joints).toHaveLength(2);
-    expect(block!.joints.some((joint) => joint instanceof PrisJoint)).toBe(true);
-    expect(block!.joints.some((joint) => joint instanceof RevJoint)).toBe(true);
-    expect(mechanism.links[0].some((link) => link instanceof RealLink)).toBe(true);
+    expect(mechanism.links[0].every((link) => link instanceof RealLink)).toBe(true);
+    expect(mechanism.links[0].map((link) => link.id).sort()).toEqual(['AB', 'BC']);
 
     for (let timestep = 0; timestep < mechanism.joints.length; timestep++) {
       const joints = mechanism.joints[timestep];
+      expect(joints.map((joint) => joint.id).sort(), `t=${timestep}`).toEqual(['A', 'B', 'C']);
       const jointC = joints.find((joint) => joint.id === 'C')!;
-      const jointD = joints.find((joint) => joint.id === 'D')!;
-      expect([jointD.x, jointD.y]).toEqual([jointC.x, jointC.y]);
+      expect(jointC, `t=${timestep}`).toBeInstanceOf(PrisJoint);
+      // Identity, not id: a rod holding some other copy of the joint would read
+      // a position that never moves.
+      const rod = mechanism.links[timestep].find((link) => link.id === 'BC')!;
+      expect(rod.joints, `t=${timestep}`).toContain(jointC);
     }
   });
 

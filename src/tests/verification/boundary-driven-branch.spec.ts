@@ -129,7 +129,16 @@ describe('a boundary-driven six-bar near two assembly modes', () => {
     // reference path.
     const continued = advanceOneDegree(100);
     const continuedCheck = advanceOneDegree(20);
-    expect(distance(continued, continuedCheck)).toBeLessThan(2e-4);
+    // Five ten-thousandths, where this used to say two. The bound is about the
+    // reference path in this file, not about the mechanism: the two walks agree
+    // to 3.5e-4 now against 2e-4 before, because the constraint set lost a
+    // coincidence row when a slider stopped being two joints held together by a
+    // zero-length block (Stage 1 of `docs/joint-type-and-cylinder-plan.md`), and
+    // three unknowns damp differently from four. What the bound has to be small
+    // against is the distance between the two assembly modes, which is 0.89 --
+    // three orders of magnitude, exactly as before. The drawing itself has not
+    // moved: the next assertion holds to 2.4e-4 of what the mechanism drew.
+    expect(distance(continued, continuedCheck)).toBeLessThan(5e-4);
 
     // What the mechanism actually drew. Positions are kept to four decimals and
     // this pose amplifies, so the bound is thousandths rather than the solver's

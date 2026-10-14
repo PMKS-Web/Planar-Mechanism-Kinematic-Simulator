@@ -106,7 +106,9 @@ describe.each([
     // How far the block sits from the slot's end: the quantity the drive names.
     const along = frames.map((frame) => {
       const a = frame.find((joint) => joint.id === 'A')!;
-      const e = frame.find((joint) => joint.id === 'E')!;
+      // D is the block that rides the slot. It keeps the pin's letter: the
+      // prismatic twin these URLs wrote as E folds into it on decode.
+      const e = frame.find((joint) => joint.id === 'D')!;
       return Math.hypot(e.x - a.x, e.y - a.y);
     });
     const steps = along.slice(1).map((now, index) => Math.abs(now - along[index]));

@@ -17,7 +17,7 @@ import {
 /**
  * Who owns a cylinder's bars, once a mount can be welded into something else.
  *
- * A ram is five joints and three links recognized structurally on demand, and
+ * A ram is four joints and two links recognized structurally on demand, and
  * the recognition used to answer one question: which two-joint bar is the
  * barrel, which is the rod. That is the right answer for the *skin*, which
  * draws those bars, and the wrong one for an *edit*, which has to move whatever
@@ -121,7 +121,7 @@ describe('which body owns a cylinder’s bars', () => {
     // rod is not a question the drawing answers, and guessing would make the
     // skin depend on the order the reader drew them.
     const parts = ram();
-    const decoy = new RealLink('CE', [parts.pin, new RevJoint('E', 6, 5)]);
+    const decoy = new RealLink('CE', [parts.slider, new RevJoint('E', 6, 5)]);
     const compound = new RealLink(
       'CDE',
       [...parts.rod.joints, decoy.joints[1]],
@@ -130,7 +130,8 @@ describe('which body owns a cylinder’s bars', () => {
       undefined,
       [parts.rod, decoy]
     );
-    parts.pin.links = [parts.block, compound];
+    // Only the compound. The slider's other link used to be its own block.
+    parts.slider.links = [compound];
 
     const joints = parts.joints;
     expect(sealedCylinderStructures(joints)).toHaveLength(0);
@@ -168,14 +169,17 @@ describe('the roles a joint plays on a cylinder', () => {
     expect(cylinderMountsAt(cylinders, parts.barrelFar)).toHaveLength(1);
     expect(cylinderInteriorsAt(cylinders, parts.barrelFar)).toHaveLength(0);
 
-    for (const inside of [parts.barrelNear, parts.pin, parts.slider]) {
+    // Two interior joints, where there were three: the slider and the pin the
+    // rod hangs on are one joint (Stage 1 of
+    // `docs/joint-type-and-cylinder-plan.md`).
+    for (const inside of [parts.barrelNear, parts.slider]) {
       expect(isCylinderInterior(cylinder, inside)).toBe(true);
       expect(cylinderInteriorsAt(cylinders, inside)).toHaveLength(1);
       expect(cylinderMountsAt(cylinders, inside)).toHaveLength(0);
     }
   });
 
-  it('answers membership for all five, which is the third and different question', () => {
+  it('answers membership for every joint, which is the third and different question', () => {
     for (const member of joints) {
       expect(cylindersOfJointIn(cylinders, member)).toHaveLength(1);
     }
@@ -204,12 +208,10 @@ describe('which cylinders a link owns', () => {
     const joints = [
       first.barrelFar,
       first.barrelNear,
-      first.pin,
       first.rodFar,
       first.slider,
       second.barrelFar,
       second.barrelNear,
-      second.pin,
       second.rodFar,
       second.slider,
     ];

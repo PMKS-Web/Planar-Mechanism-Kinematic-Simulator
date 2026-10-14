@@ -1,5 +1,5 @@
-import { Joint, PrisJoint, RealJoint } from './joint';
-import { Link, RealLink, SliderBlock } from './link';
+import { Joint, PrisJoint } from './joint';
+import { Link, RealLink } from './link';
 
 /**
  * How deep in the stack each body sits, so nothing is drawn over something it
@@ -28,13 +28,9 @@ export interface DrawDepths {
 }
 
 export function drawDepths(joints: Joint[]): DrawDepths {
-  const sliders = joints.filter((joint): joint is PrisJoint => joint instanceof PrisJoint);
-  const assemblies = sliders
-    .map((slider) => ({ slider, riders: ridersOf(slider) }))
-    .filter((assembly) => assembly.riders !== undefined) as {
-    slider: PrisJoint;
-    riders: Link[];
-  }[];
+  const assemblies = joints
+    .filter((joint): joint is PrisJoint => joint instanceof PrisJoint)
+    .map((slider) => ({ slider, riders: ridersOf(slider) }));
 
   const link = new Map<string, number>();
   const block = new Map<string, number>();
@@ -67,14 +63,16 @@ export function drawDepths(joints: Joint[]): DrawDepths {
   return { link, block };
 }
 
-/** The links pinned to a slider's block, or nothing if it has no pin. */
-function ridersOf(slider: PrisJoint): Link[] | undefined {
-  const body = slider.links.find((member): member is SliderBlock => member instanceof SliderBlock);
-  const pin = body?.joints.find(
-    (joint): joint is RealJoint => joint instanceof RealJoint && !(joint instanceof PrisJoint)
-  );
-  if (!pin) return undefined;
-  return pin.links.filter(
-    (member): member is RealLink => member instanceof RealLink && !(member instanceof SliderBlock)
-  );
+/**
+ * The links pinned to a slider.
+ *
+ * Its own links, and that is the whole of it. A slider used to be a prismatic
+ * joint, a coincident pin and a block joining them, so the riders were the
+ * *pin's* links and had to be reached through the block -- and a slider with no
+ * pin had no answer at all. One joint carries them now (Stage 1 of
+ * `docs/joint-type-and-cylinder-plan.md`), so there is always an answer and it
+ * is never empty by accident.
+ */
+function ridersOf(slider: PrisJoint): Link[] {
+  return slider.links.filter((member): member is RealLink => member instanceof RealLink);
 }

@@ -114,8 +114,17 @@ export function partitionMechanisms(
 
   // A grounded joint anchors; it does not connect. Everything else joins the
   // moving bodies that meet at it into one machine.
+  //
+  // "Grounded" has to mean *pinned* here rather than merely flagged. A grounded
+  // slider holds a line, not a point: the joint travels along that line, so two
+  // bodies meeting there share a moving point and belong to one machine. The
+  // coincident pin used to do that unioning and carried no ground flag of its
+  // own; with the slider as the joint, reading the flag alone cuts every chain
+  // that runs through one -- a parallel gripper whose two halves hang off its
+  // ram fell into two machines, and the transport then played half a gripper.
+  const pinnedDown = (joint: RealJoint): boolean => joint.ground && !(joint instanceof PrisJoint);
   realJoints
-    .filter((joint) => !joint.ground)
+    .filter((joint) => !pinnedDown(joint))
     .forEach((joint) => {
       const moving = [...bodiesAt(joint)].filter((body) => parent.has(body));
       moving.slice(1).forEach((body) => union(moving[0], body));
@@ -176,6 +185,27 @@ export function partitionMechanisms(
       }
     });
   });
+
+  // A slider carrying no rider link of its own has no body, and every step
+  // above reaches a joint through one. It still belongs to the machine it
+  // rides -- the slot is the connection, which is exactly what makes a
+  // floating slot a joint at all. The zero-length block used to supply that
+  // body; with one joint per slider nothing does, so the joint has to be
+  // placed by the thing it slides against. Left out it reads as a loose joint
+  // asking to be connected to something it is already riding.
+  realJoints
+    .filter((joint): joint is PrisJoint => joint instanceof PrisJoint && joint.links.length === 0)
+    .forEach((joint) => {
+      if (!joint.carrier) {
+        return;
+      }
+      const body = bodyOf(joint.carrier);
+      if (body === WORLD || !members.has(find(body))) {
+        return;
+      }
+      memberOf(find(body)).joints.add(joint);
+      memberOf(find(body)).owned.add(joint);
+    });
 
   // A slot's carrier and the two joints that draw its line live outside
   // `links` and `connectedJoints` (§2.3 Option A), so nothing above reaches

@@ -70,7 +70,7 @@ describe('a bracket welded to a cylinder mount', () => {
 
     // The ram's own bars answer both the same way, which is why nothing else
     // ever had to tell the questions apart.
-    [ram.barrel, ram.rod, ram.block].forEach((bar) => {
+    [ram.barrel, ram.rod].forEach((bar) => {
       expect(service.cylinderAt(bar)?.barrel.id).toBe(ram.barrel.id);
       expect(service.cylinderOfBar(bar)?.barrel.id).toBe(ram.barrel.id);
     });

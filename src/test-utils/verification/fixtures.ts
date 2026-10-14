@@ -49,7 +49,7 @@ export function teachingLabSliderCrankFixture(gravity = false): MechanismFixture
       { joints: 'AB', mass: 1.08532, moi: 0.0004647594, com: [0, 0.1] },
       { joints: 'BC', mass: 0.50144, moi: 0.0030344427, com: [0.5, 0.7] },
     ],
-    slider: { at: 'C', prisId: 'D', angleRad: 0, pistonMass: 1.31788 },
+    slider: { at: 'C', angleRad: 0, pistonMass: 1.31788 },
     inputAngVel: rpmToRadPerSec(15.1),
     gravity,
   };
@@ -68,7 +68,7 @@ export function sliderCrankTracerFixture(): MechanismFixture {
       { joints: 'AB', mass: 5, moi: 0.1 },
       { joints: 'BCD', mass: 10, moi: 0.2 },
     ],
-    slider: { at: 'C', prisId: 'E', angleRad: 0 },
+    slider: { at: 'C', angleRad: 0 },
     inputAngVel: rpmToRadPerSec(10),
   };
 }

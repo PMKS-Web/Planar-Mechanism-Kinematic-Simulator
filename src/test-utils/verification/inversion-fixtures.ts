@@ -258,7 +258,7 @@ export function sliderCrankInversionsFixture(): MechanismFixture {
       { joints: 'AB', name: 'L2', mass: 0, moi: 0 },
       { joints: 'BC', name: 'L3', mass: 0, moi: 0 },
     ],
-    sliders: [{ at: 'C', prisId: 'D', angleRad: 0 }],
+    sliders: [{ at: 'C', angleRad: 0 }],
     inputAngVel: radPerSecond(LIBRARY_RPM),
   };
 
@@ -286,7 +286,7 @@ export function sliderCrankInversionsFixture(): MechanismFixture {
       { joints: 'EH', name: 'L1', mass: 0, moi: 0 },
       { joints: 'EF', name: 'L2', mass: 0, moi: 0 },
     ],
-    sliders: [{ at: 'G', prisId: 'I', on: { carrier: 'EH', a: 'E', b: 'H' } }],
+    sliders: [{ at: 'G', on: { carrier: 'EH', a: 'E', b: 'H' } }],
     inputAngVel: radPerSecond(LIBRARY_RPM),
   };
 
@@ -310,7 +310,7 @@ export function sliderCrankInversionsFixture(): MechanismFixture {
       { joints: 'MN', name: 'L1', mass: 0, moi: 0 },
       { joints: 'JM', name: 'L3', mass: 0, moi: 0 },
     ],
-    sliders: [{ at: 'K', prisId: 'L', on: { carrier: 'MN', a: 'M', b: 'N' } }],
+    sliders: [{ at: 'K', on: { carrier: 'MN', a: 'M', b: 'N' } }],
     inputAngVel: radPerSecond(LIBRARY_RPM),
   };
 
@@ -334,7 +334,7 @@ export function sliderCrankInversionsFixture(): MechanismFixture {
       { joints: 'PQ', name: 'L3', mass: 0, moi: 0 },
       { joints: 'QR', name: 'L2', mass: 0, moi: 0 },
     ],
-    sliders: [{ at: 'R', prisId: 'S', angleRad: 0 }],
+    sliders: [{ at: 'R', angleRad: 0 }],
     inputAngVel: radPerSecond(LIBRARY_RPM),
   };
 

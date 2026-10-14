@@ -116,9 +116,13 @@ describe('a cylinder-driven gripper', () => {
     for (const frame of solved) {
       // The rod, the barrel and the block all on one line is what makes the
       // part a cylinder rather than three bars that happen to touch.
+      //
+      // C is the block. It was the rod's pin, with a prismatic twin E beside it
+      // and a zero-length link joining them, so the line had to be asked about
+      // both and the two had to be checked against each other as well. One
+      // joint answers for all of it now.
       expect(offLine(frame.at('D'), frame.at('A'), frame.at('B'))).toBeLessThan(1e-6);
-      expect(offLine(frame.at('E'), frame.at('A'), frame.at('B'))).toBeLessThan(1e-6);
-      expect(distance(frame.at('C'), frame.at('E'))).toBeLessThan(1e-6);
+      expect(offLine(frame.at('C'), frame.at('A'), frame.at('B'))).toBeLessThan(1e-6);
     }
   });
 
