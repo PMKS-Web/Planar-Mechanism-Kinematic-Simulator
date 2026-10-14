@@ -12,10 +12,21 @@ import {
   viewChildren,
 } from '@angular/core';
 import { MatIcon } from '@angular/material/icon';
-import { MatTooltip } from '@angular/material/tooltip';
+import { MatTooltip, TooltipPosition } from '@angular/material/tooltip';
+import { TOOLTIPS_ARE_LABELS } from '../tooltips-are-labels';
 
 /** Makes each block's element ids its own, however many share a page. */
 let blocksMade = 0;
+
+/**
+ * How many options share a row in the wrapping mode.
+ *
+ * The stylesheet is where it happens -- `&.wrap .cell` takes half the track
+ * minus a gap -- and this is the same number said where the component can read
+ * it, so that "which row is this option on" is arithmetic rather than a guess
+ * at four.
+ */
+const WRAPPED_COLUMNS = 2;
 
 /**
  * One of a few, chosen by pressing it: a track with a pill that slides to the
@@ -37,6 +48,7 @@ let blocksMade = 0;
   styleUrls: ['./segmented.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
   imports: [MatIcon, MatTooltip],
+  providers: [TOOLTIPS_ARE_LABELS],
 })
 export class SegmentedComponent implements AfterViewInit, OnDestroy {
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -150,6 +162,32 @@ export class SegmentedComponent implements AfterViewInit, OnDestroy {
   /** Why an option is grayed, when it is grayed and a reason was given. */
   protected reasonAt(index: number): string | undefined {
     return this.isDisabledAt(index) ? this.reasons()[index] || undefined : undefined;
+  }
+
+  /** How many options share a row: two when wrapped, otherwise all of them. */
+  private columns(): number {
+    return this.wrap() ? WRAPPED_COLUMNS : this.options().length;
+  }
+
+  /**
+   * Which side of the control an option's reason opens on: above for an option
+   * on the top row, below for one on a row under it -- so with the two rows
+   * this control wraps into, a reason never lies over one of the options.
+   *
+   * It used to open above whichever option was pointed at, which on the bottom
+   * row put the sentence squarely over the top row. Reported on a joint whose
+   * Welded is grayed: reading why takes the pointer to the bottom row, the
+   * reason covers Revolute and Prismatic, and the press that was meant for one
+   * of them lands on the reason instead. A control on one row keeps what it
+   * has, because there is no row for a tooltip above it to cover.
+   *
+   * Wrapped onto three rows or more there is no side that covers nothing, and
+   * the middle rows open downwards. Nothing in the app wraps that far, and a
+   * reason that cannot take a press (`TOOLTIPS_ARE_LABELS`) is why an option
+   * under one still answers.
+   */
+  protected sideFor(index: number): TooltipPosition {
+    return index < this.columns() ? 'above' : 'below';
   }
 
   /**

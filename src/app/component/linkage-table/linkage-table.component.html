@@ -149,7 +149,11 @@
           <tr>
             <!-- ID -->
             <td>
-              {{ link.id }}
+              <!-- The name a reader sees, which is the id everywhere but on a
+                   body holding a cylinder's buried inner end: that joint has no
+                   row in the table above this one, so naming a link after it
+                   pointed at something the table itself does not list. -->
+              {{ nameOf(link) }}
             </td>
             <!-- Every link gets every cell. A slider's block was the one link
                  with no mass properties of its own to show, so these four
@@ -233,7 +237,7 @@
               />
             </td>
             <td>
-              {{ force.link.id }}
+              {{ nameOf(force.link) }}
             </td>
             <td>
               <input

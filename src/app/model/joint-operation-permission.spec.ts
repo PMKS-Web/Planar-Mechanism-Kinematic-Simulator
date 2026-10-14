@@ -1,7 +1,12 @@
 import { Joint, PrisJoint, RealJoint, RevJoint } from './joint';
 import { Link, RealLink } from './link';
-import { sealedCylinderStructures } from './cylinder';
-import { JointOperationContext, refuseJointOperation } from './joint-operation-permission';
+import { cylindersIn } from './cylinder';
+import {
+  JointOperationContext,
+  refuseGround,
+  refuseAttach,
+  refuseJointOperation,
+} from './joint-operation-permission';
 
 /**
  * The one place that answers whether a structural edit may happen at a joint.
@@ -55,7 +60,7 @@ function drawing() {
   );
 
   const context: JointOperationContext = {
-    cylinders: sealedCylinderStructures(joints),
+    cylinders: cylindersIn(joints),
     isDriven: (joint) => joint.input,
     hasSlider: (joint) => joint instanceof PrisJoint,
   };
@@ -121,11 +126,12 @@ describe('whether a weld may be made at a joint', () => {
     expect(refuseJointOperation(elbow, 'weld', context)?.short).toBe('it is driven');
   });
 
-  it('lets a mount weld, and refuses the ram’s inside', () => {
+  it('lets a mount weld, and refuses the cylinder’s inside', () => {
     // The ban that used to be here is gone on purpose: a mount is where a
     // cylinder meets the drawing, so fusing one into a bracket is the ordinary
-    // thing to want. What is sealed is the ram's inside, and welding anything
-    // to one of those three joints would fuse the part to its own workings.
+    // thing to want. What is sealed is the part's inside, and welding anything
+    // to either of the two joints it places would fuse the part to its own
+    // workings.
     const { barrelFar, rodFar, barrelNear, context } = drawing();
 
     // A mount with one link on it is refused for arithmetic, not for being a
@@ -135,7 +141,7 @@ describe('whether a weld may be made at a joint', () => {
     }
 
     const refused = refuseJointOperation(barrelNear, 'weld', context);
-    expect(refused?.short).toBe('part is sealed');
+    expect(refused?.short).toBe('inside a cylinder');
     expect(refused?.code).toBe('cylinder.sealed-weld');
   });
 });
@@ -198,5 +204,55 @@ describe('whether a block may be added or removed at a joint', () => {
     expect(refuseJointOperation(pin, 'remove-slider', context)?.code).toBe(
       'cylinder.sealed-slider'
     );
+  });
+});
+
+describe('whether a joint may be grounded', () => {
+  it('sends a cylinder’s own joints to the ends of the part', () => {
+    // A cylinder is bolted to the world at the joints at its two ends. The
+    // seal is a square a reader can select and right-click, so this is a row
+    // somebody will press (decision D9) rather than a rule nothing can reach.
+    const { pin, barrelNear, context } = drawing();
+    for (const inside of [pin, barrelNear]) {
+      const refused = refuseGround(inside, context);
+      expect(refused?.short, inside.id).toBe('ground an end joint instead');
+      expect(refused?.code, inside.id).toBe('cylinder.ground-an-end-joint');
+      // The same answer through the operation table, so the menu and the panel
+      // can ask whichever way suits them.
+      expect(refuseJointOperation(inside, 'ground', context)?.code).toBe(
+        'cylinder.ground-an-end-joint'
+      );
+    }
+  });
+
+  it('says nothing about the joints at those ends, or about a plain joint', () => {
+    const { barrelFar, rodFar, elbow, context } = drawing();
+    for (const joint of [barrelFar, rodFar, elbow]) {
+      expect(refuseGround(joint, context), joint.id).toBeUndefined();
+    }
+  });
+});
+
+describe('whether a joint may have something attached to it', () => {
+  it('sends a new body to the ends of the part, in the same four words', () => {
+    // The Attach rows on the seal's card (D9). A third body there would be
+    // carried by a joint the cylinder places rather than solves for, so there
+    // is nothing for the solver to honor it with.
+    const { pin, barrelNear, context } = drawing();
+    for (const inside of [pin, barrelNear]) {
+      const refused = refuseAttach(inside, context);
+      expect(refused?.short, inside.id).toBe('inside a cylinder');
+      expect(refused?.code, inside.id).toBe('cylinder.attach-at-an-end-joint');
+      expect(refuseJointOperation(inside, 'attach', context)?.code).toBe(
+        'cylinder.attach-at-an-end-joint'
+      );
+    }
+  });
+
+  it('says nothing about the joints at those ends, or about a plain joint', () => {
+    const { barrelFar, rodFar, elbow, context } = drawing();
+    for (const joint of [barrelFar, rodFar, elbow]) {
+      expect(refuseAttach(joint, context), joint.id).toBeUndefined();
+    }
   });
 });

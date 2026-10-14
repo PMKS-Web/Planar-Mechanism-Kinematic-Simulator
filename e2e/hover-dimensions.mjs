@@ -4,11 +4,12 @@
  * Pointing at a number in the Edit panel draws that number on the grid, where
  * it is measured. There are ten of them now -- a bar's length and angle, a
  * joint's distance and bearing to a neighbor, a center of mass's two offsets, a
- * ram's travel and where it starts, a cylinder's angle, a slot's angle -- and
- * they arrived at different times. The later ones were drawn in their own ink
- * at their own model-scaled width, with a bare label wearing a halo, so a
- * reader who pointed at a cylinder's Travel got a different-looking thing from
- * the one who pointed at a bar's Length, and the difference said nothing.
+ * cylinder member's length and the part's angle, where the rod starts, a slot's
+ * angle -- and they arrived at different times. The later ones were drawn in
+ * their own ink at their own model-scaled width, with a bare label wearing a
+ * halo, so a reader who pointed at a cylinder's *Starts at* got a
+ * different-looking thing from the one who pointed at a bar's Length, and the
+ * difference said nothing.
  *
  * So this is a style check, not a geometry one: every dimension carries a chip,
  * every chip is the same size in screen pixels, every hairline is the same
@@ -103,11 +104,19 @@ all.push(
     grid.activeObjService.updateSelectedObj(grid.mechanismSrv.joints[1]);
   }))
 );
+// A cylinder answers in two panels now: a member states its own Length and the
+// part's Angle, and the slide states the Slider Angle and where the rod starts.
 all.push(
   ...(await dimensionsOf('Cylinder_Boom', () => {
     const grid = ng.getComponent(document.querySelector('app-new-grid'));
-    const body = grid.mechanismSrv.links.find((link) => grid.mechanismSrv.cylinderAt(link));
+    const body = grid.mechanismSrv.links.find((link) => grid.mechanismSrv.cylinderOfBar(link));
     grid.activeObjService.updateSelectedObj(body);
+  }))
+);
+all.push(
+  ...(await dimensionsOf('Cylinder_Boom', () => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    grid.activeObjService.updateSelectedObj(grid.mechanismSrv.sealedStructures()[0].seal);
   }))
 );
 all.push(
@@ -162,6 +171,66 @@ record(
   radianAngles.length > 0 && radianAngles.every((one) => / rad$/.test(one.label)),
   radianAngles.map((one) => one.label)
 );
+
+// A member's Length is the member's own span, and its Angle is the part's one
+// bearing (decision D10). Both used to be drawn end joint to end joint, which
+// is what the whole cylinder measures: the rod's field read 0.89 cm and
+// hovering it drew 1.97 cm across the part. So the chip has to read what the
+// field reads, exactly, character for character.
+async function memberChipVersusField(which) {
+  await openMechanism(page, `${BASE}/?${payloads['Cylinder_Boom']}`);
+  await page.locator('.tabButton', { hasText: 'Edit' }).first().click();
+  await page.waitForTimeout(600);
+  await page.evaluate((part) => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const one = grid.mechanismSrv.sealedStructures()[0];
+    grid.activeObjService.updateSelectedObj(part === 'barrel' ? one.barrel : one.rod);
+  }, which);
+  await page.waitForTimeout(700);
+
+  const seen = {};
+  for (const row of ['length', 'angle']) {
+    const field = page.locator(`[data-hold-field="${row}"]`).first();
+    await field.hover({ force: true });
+    await page.waitForTimeout(450);
+    const [drawnNow] = await drawn();
+    seen[row] = {
+      field: (await field.inputValue()).trim(),
+      chip: drawnNow ? drawnNow.label : null,
+    };
+    await page.mouse.move(1400, 900);
+    await page.waitForTimeout(200);
+  }
+  // What the part measures end to end, for the length to be shown *not* to be.
+  seen.span = await page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const one = grid.mechanismSrv.sealedStructures()[0];
+    return grid.nup.formatModelLength(
+      Math.hypot(one.mountB.x - one.mountA.x, one.mountB.y - one.mountA.y),
+      grid.settings.lengthUnit.getValue()
+    );
+  });
+  return seen;
+}
+
+for (const which of ['barrel', 'rod']) {
+  const seen = await memberChipVersusField(which);
+  record(
+    `the ${which}'s length chip reads exactly what its Length field reads`,
+    seen.length.chip === seen.length.field,
+    seen.length
+  );
+  record(
+    `and measures the ${which} rather than the whole cylinder`,
+    seen.length.chip !== seen.span || seen.length.field === seen.span,
+    { ...seen.length, span: seen.span }
+  );
+  record(
+    `the ${which}'s angle chip reads exactly what its Angle field reads`,
+    seen.angle.chip === seen.angle.field,
+    seen.angle
+  );
+}
 
 await page.screenshot({ path: `${OUT}/last.png` });
 record('nothing threw', errors.length === 0, errors.slice(0, 3));

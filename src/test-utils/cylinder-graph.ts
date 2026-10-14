@@ -51,40 +51,41 @@ export function rewire(joints: Joint[], links: Link[]): void {
  * are different lengths is not a shape the app can produce, and asserting
  * behavior against one proves something about a drawing nobody has.
  *
- * Four joints. The seal and the pin the rod hangs on were a prismatic joint, a
- * coincident `RevJoint` and a zero-length block joining them until Stage 1 of
- * `docs/joint-type-and-cylinder-plan.md`; they are one joint now, and `pin` is
- * kept as a second name for it because a cylinder record still has both roles.
+ * Four joints, named as the record names them: the two mounts A and B, the
+ * inner end N, and the seal S. The seal and the pin the rod hangs on were a
+ * prismatic joint, a coincident `RevJoint` and a zero-length block joining
+ * them until Stage 1 of `docs/joint-type-and-cylinder-plan.md`.
  */
 export function ram(suffix: string = '') {
   const mount = { x: 0, y: 0 };
   const eye = { x: 10, y: 0 };
   const laid = cylinderBetween(mount, eye, 0.5);
 
-  const barrelFar = new RevJoint(`A${suffix}`, mount.x, mount.y);
-  const barrelNear = new RevJoint(`B${suffix}`, laid.barrelEnd.x, laid.barrelEnd.y);
-  const rodFar = new RevJoint(`D${suffix}`, eye.x, eye.y);
-  const slider = new PrisJoint(`C${suffix}`, laid.pin.x, laid.pin.y);
+  const mountA = new RevJoint(`A${suffix}`, mount.x, mount.y);
+  const inner = new RevJoint(`B${suffix}`, laid.barrelEnd.x, laid.barrelEnd.y);
+  const mountB = new RevJoint(`D${suffix}`, eye.x, eye.y);
+  const seal = new PrisJoint(`C${suffix}`, laid.pin.x, laid.pin.y);
 
-  const barrel = new RealLink(`A${suffix}B${suffix}`, [barrelFar, barrelNear]);
-  const rod = new RealLink(`C${suffix}D${suffix}`, [slider, rodFar]);
+  const barrel = new RealLink(`A${suffix}B${suffix}`, [mountA, inner]);
+  const rod = new RealLink(`C${suffix}D${suffix}`, [seal, mountB]);
 
-  slider.slideOn(barrel, barrelFar, barrelNear);
-  slider.isSealed = true;
+  // Mount first, inner end second, as creation writes it: the slot's order is
+  // what says which barrel joint is which (decision S1).
+  seal.slideOn(barrel, mountA, inner);
+  seal.isSealed = true;
   // What the weld on the coincident pin used to say: the rod cannot turn
   // against the barrel's slot, which is what makes the ram one rigid part.
-  slider.rotates = false;
+  seal.rotates = false;
 
-  const joints: Joint[] = [barrelFar, barrelNear, rodFar, slider];
+  const joints: Joint[] = [mountA, inner, mountB, seal];
   const links: Link[] = [barrel, rod];
   rewire(joints, links);
 
   return {
-    barrelFar,
-    barrelNear,
-    pin: slider,
-    rodFar,
-    slider,
+    mountA,
+    inner,
+    mountB,
+    seal,
     barrel,
     rod,
     joints,

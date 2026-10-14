@@ -1,4 +1,5 @@
-import { PrisJoint, RealJoint } from '../joint';
+import { Joint, PrisJoint, RealJoint } from '../joint';
+import { CoordinateRule, coordinatesAcross, slotCoordinateRuleFor } from './anchor';
 import { Mechanism } from './mechanism';
 
 /**
@@ -57,7 +58,20 @@ export interface RamEnds {
  * slot's rail, a ram's bore and a pin's crank are described three different
  * ways in the model and are all just a moving joint here.
  */
-export function driveProfileOf(mechanism: Mechanism, ram?: RamEnds): DriveProfile | undefined {
+export function driveProfileOf(
+  mechanism: Mechanism,
+  ram?: RamEnds,
+  /**
+   * The driven joint as the *drawing* holds it, not as these frames copy it.
+   *
+   * Which way a slot points is a question about the drawing — a floating slot's
+   * direction is its carrier's, and a frame's joints are positions with no
+   * carrier to ask. Handed in for that reason alone, and only to get the rule
+   * the **anchor** is taken against: it is what gives a bare slider's
+   * coordinate a *direction*. See `slotwiseOf` below.
+   */
+  block?: Joint
+): DriveProfile | undefined {
   const frames = mechanism.joints;
   if (!mechanism.isMechanismValid() || frames.length < 2) {
     return undefined;
@@ -71,9 +85,14 @@ export function driveProfileOf(mechanism: Mechanism, ram?: RamEnds): DriveProfil
   // A ram is measured by how far out its rod is, not by how far its slider has
   // moved from wherever the drawing put it: the two run opposite ways as often
   // as not, and the second one has no name a reader would recognize. Anything
-  // else linear has no extension to speak of, so it is measured along the line
-  // it slides on.
-  const raw = linear ? ((ram && lengthOf(frames, ram)) ?? strokeOf(frames, at)) : turnOf(mechanism);
+  // else linear is measured along its own slot, in the slot's own forward
+  // sense — and only where the drawing could not say which way that is does it
+  // fall back to the line the block happens to travel.
+  const raw = linear
+    ? ((ram && lengthOf(frames, ram)) ??
+      slotwiseOf(frames, block && slotCoordinateRuleFor(block)) ??
+      strokeOf(frames, at))
+    : turnOf(mechanism);
   if (!raw) {
     return undefined;
   }
@@ -123,7 +142,53 @@ function lengthOf(frames: Mechanism['joints'], ram: RamEnds): number[] | undefin
   );
 }
 
-/** How far the input has moved along the line it slides on, sample by sample. */
+/**
+ * How far along its own slot the block stands, sample by sample, in the slot's
+ * own forward sense.
+ *
+ * **This is the coordinate that has a direction**, and it is the anchor's: the
+ * same `CoordinateRule` that says where a machine's cycle starts says which way
+ * its input runs, so the scrub handle, the transport's *Forward* / *Backward*,
+ * the Edit panel's *Forward along slot* button, the heavier of the two drive
+ * arrows and the sign of `Joint.driveSpeed` are all one fact. They were not:
+ * `strokeOf` below takes its axis from the two ends of the path the block
+ * actually travels, which is a direction the *drawing* chose rather than one
+ * the slot has, so reversing the drive left every sample of `along` identical
+ * and the transport reported the same heading either way. Measured on
+ * `Scotch_Yoke` and `Punch_Press`; `Slider_Crank` happened to reverse its
+ * sample order and so happened to flip.
+ *
+ * **A floating slot turns with its carrier, and "forward along it" turns with
+ * it too.** The rule answers that by measuring the block from the carrier's own
+ * end along the carrier's own direction, re-read in every pose — a quantity a
+ * moving carrier cannot change, where a world projection is one it can. So the
+ * coordinate is the block's place *in the part it slides in*, and a carrier
+ * swinging under a block that has not slid contributes nothing to it. A
+ * grounded guide has no carrier and takes the slot's stored axis instead, which
+ * is fixed in the world because the guide is.
+ *
+ * Nothing here is unwrapped or normalized: `driveProfileOf` does both, and an
+ * angle rule never reaches this because a slider's rule is always `'length'`.
+ */
+function slotwiseOf(
+  frames: Mechanism['joints'],
+  rule: CoordinateRule | undefined
+): number[] | undefined {
+  if (!rule || rule.kind !== 'length') return undefined;
+  const read = coordinatesAcross(rule, frames);
+  // All or nothing. A frame the rule cannot read is a frame with no place on
+  // the track, and a track with a hole in it is worse than one measured the old
+  // way: every consumer here interpolates between neighbors.
+  return read.every((value): value is number => value !== undefined) ? read : undefined;
+}
+
+/**
+ * How far the input has moved along the line it slides on, sample by sample.
+ *
+ * The fallback, for a drive whose slot the drawing cannot describe — a block
+ * with no carrier and no readable angle. Direction-blind by construction, and
+ * documented as such: there is no slot here to be forward along.
+ */
 function strokeOf(frames: Mechanism['joints'], at: number): number[] | undefined {
   const start = frames[0][at];
   // The two ends of the path it actually takes give its direction; a stored

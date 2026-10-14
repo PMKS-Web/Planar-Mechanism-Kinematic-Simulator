@@ -45,7 +45,10 @@
        four cells in order and Left and Right are swallowed. That is what a
        `role="menu"` is per the APG, and it is deliberate here -- two columns
        are a way to fit four values in a card 224px wide, not a claim that the
-       values are arranged in two dimensions. -->
+       values are arranged in two dimensions.
+
+       A refused value's reason opens away from the card, on the side its column
+       is on, so that it is never over another value: see `reasonSide`. -->
   @if (model().choice; as choice) {
     <div class="cm-choice" cdkMenuGroup [attr.aria-label]="choice.label">
       @for (option of choice.options; track $index) {
@@ -59,7 +62,7 @@
           [class.cm-choice__cell--fault]="$index === choice.chosen && !!choice.fault"
           [matTooltip]="hoverTextFor(choice, option, $index)"
           [matTooltipDisabled]="!hoverTextFor(choice, option, $index)"
-          matTooltipPosition="right"
+          [matTooltipPosition]="reasonSide($index)"
           [matTooltipShowDelay]="500"
           (cdkMenuItemTriggered)="choose(option)"
         >

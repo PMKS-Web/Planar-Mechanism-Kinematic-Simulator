@@ -31,6 +31,17 @@
 //
 // 3. **Two solved numbers were re-pinned**, both on Cylinder_Gripper and both
 //    toward the symmetry that drawing has. See the comment on `D` below.
+//
+// Changed a second time, in Stage 2c of the same plan, when a cylinder's seal
+// became the square a reader selects and so earned a letter (decision S9).
+// **Three sample ids moved and no number did**: `Excavator_Bucket`'s `A2` reads
+// `M`, `Hood_Hinge`'s `A2` reads `P`, `Aircraft_Landing_Gear`'s `I2` reads `R`.
+// Each of those three was drawn in the app and pasted in as the URL it wrote,
+// back when a seal was hidden and took an interior name; the reader gives such
+// a seal the next free letter as the last step of the build. The `joints` and
+// `links` snapshots above each one are untouched, because they pin what the
+// *stored* URL says and the codec did not change -- which is the clearest
+// evidence there is that this was a rename and nothing else.
 
 export interface TemplateJointSnapshot {
   id: string;
@@ -1400,7 +1411,7 @@ export const TEMPLATE_BASELINES: Record<string, TemplateBaseline> = {
         ['H', 5.527, 3.626],
         ['I', 5.52, 5.243],
         ['I1', 4.509, 5.111],
-        ['I2', 5.149, 5.194],
+        ['R', 5.149, 5.194],
         ['J', 3.419, 4.587],
         ['K', 4.818, 1.31],
         ['L', 4.824, 0.27],
@@ -1418,7 +1429,7 @@ export const TEMPLATE_BASELINES: Record<string, TemplateBaseline> = {
         ['H', 4.4857, 4.1201],
         ['I', 5.52, 5.243],
         ['I1', 4.5045, 5.3343],
-        ['I2', 4.6944, 5.3173],
+        ['R', 4.6944, 5.3173],
         ['J', 3.419, 4.587],
         ['K', 2.2015, 3.3143],
         ['L', 1.3686, 2.6916],
@@ -1436,7 +1447,7 @@ export const TEMPLATE_BASELINES: Record<string, TemplateBaseline> = {
         ['H', 4.2255, 4.7548],
         ['I', 5.52, 5.243],
         ['I1', 4.5036, 5.3235],
-        ['I2', 4.2353, 5.3447],
+        ['R', 4.2353, 5.3447],
         ['J', 3.419, 4.587],
         ['K', 1.8534, 5.2446],
         ['L', 0.8185, 5.1416],
@@ -1454,7 +1465,7 @@ export const TEMPLATE_BASELINES: Record<string, TemplateBaseline> = {
         ['H', 4.4857, 4.1201],
         ['I', 5.52, 5.243],
         ['I1', 4.5045, 5.3343],
-        ['I2', 4.6944, 5.3173],
+        ['R', 4.6944, 5.3173],
         ['J', 3.419, 4.587],
         ['K', 2.2015, 3.3143],
         ['L', 1.3686, 2.6916],
@@ -1654,7 +1665,7 @@ export const TEMPLATE_BASELINES: Record<string, TemplateBaseline> = {
       [
         ['A', 0.14, 0.05],
         ['A1', 2.265, 0.03],
-        ['A2', 1.51, 0.037],
+        ['P', 1.51, 0.037],
         ['B', 3.635, 0.017],
         ['E', 2.025, 0.557],
         ['F', 0.176, 1.471],
@@ -1671,7 +1682,7 @@ export const TEMPLATE_BASELINES: Record<string, TemplateBaseline> = {
       [
         ['A', 0.14, 0.05],
         ['A1', 2.2615, 0.1733],
-        ['A2', 1.8663, 0.1503],
+        ['P', 1.8663, 0.1503],
         ['B', 3.9878, 0.2736],
         ['E', 2.025, 0.557],
         ['F', 0.8326, 2.24],
@@ -1688,7 +1699,7 @@ export const TEMPLATE_BASELINES: Record<string, TemplateBaseline> = {
       [
         ['A', 0.14, 0.05],
         ['A1', 2.2479, 0.3195],
-        ['A2', 2.0333, 0.2921],
+        ['P', 2.0333, 0.2921],
         ['B', 4.1413, 0.5616],
         ['E', 2.025, 0.557],
         ['F', 1.3468, 2.5049],
@@ -1705,7 +1716,7 @@ export const TEMPLATE_BASELINES: Record<string, TemplateBaseline> = {
       [
         ['A', 0.14, 0.05],
         ['A1', 2.2648, 0.0861],
-        ['A2', 1.6894, 0.0763],
+        ['P', 1.6894, 0.0763],
         ['B', 3.8142, 0.1123],
         ['E', 2.025, 0.557],
         ['F', 0.4646, 1.9058],
@@ -1880,7 +1891,7 @@ export const TEMPLATE_BASELINES: Record<string, TemplateBaseline> = {
         ['C', 0.05, 0.039],
         ['D', 0.901, 0.332],
         ['A1', 0.1169, 0.7249],
-        ['A2', -0.6679, 1.1181],
+        ['M', -0.6679, 1.1181],
         ['E', 1.484, -0.53],
         ['H', -2.094, 1.739],
         ['I', 2, -1.5],
@@ -1894,7 +1905,7 @@ export const TEMPLATE_BASELINES: Record<string, TemplateBaseline> = {
         ['C', 0.05, 0.039],
         ['D', 0.7478, 0.6075],
         ['A1', 0.1713, 0.8443],
-        ['A2', -0.8755, 1.2742],
+        ['M', -0.8755, 1.2742],
         ['E', 1.1126, -0.3671],
         ['H', -2.094, 1.739],
         ['I', 2.1179, -0.8105],
@@ -1908,7 +1919,7 @@ export const TEMPLATE_BASELINES: Record<string, TemplateBaseline> = {
         ['C', 0.05, 0.039],
         ['D', 0.9305, 0.2257],
         ['A1', 0.0924, 0.6778],
-        ['A2', -0.614, 1.0589],
+        ['M', -0.614, 1.0589],
         ['E', 1.5544, -0.6071],
         ['H', -2.094, 1.739],
         ['I', 1.9002, -1.65],
@@ -1922,7 +1933,7 @@ export const TEMPLATE_BASELINES: Record<string, TemplateBaseline> = {
         ['C', 0.05, 0.039],
         ['D', 0.876, -0.3185],
         ['A1', -0.0722, 0.4267],
-        ['A2', -0.5038, 0.7659],
+        ['M', -0.5038, 0.7659],
         ['E', 1.6828, -0.9757],
         ['H', -2.094, 1.739],
         ['I', 1.3369, -2.0185],

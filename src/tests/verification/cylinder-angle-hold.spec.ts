@@ -2,7 +2,7 @@ import '../../app/model/joint';
 import { buildMechanism } from '../../test-utils/verification/fixture';
 import { cylinderBoomFixture } from '../../test-utils/verification/slot-fixtures';
 import { RealLink } from '../../app/model/link';
-import { sealedCylinderStructures } from '../../app/model/cylinder';
+import { cylindersIn } from '../../app/model/cylinder';
 import {
   cylinderOf,
   heldBars,
@@ -35,7 +35,7 @@ describe('a cylinder that holds its angle', () => {
   /** The Gate 5 boom: ground pins O and G, boom O->C, cylinder G->C. */
   function boom() {
     const built = buildMechanism(cylinderBoomFixture());
-    const sealed = sealedCylinderStructures(built.joints)[0];
+    const sealed = cylindersIn(built.joints)[0];
     return { ...built, sealed, barrel: sealed.barrel as RealLink };
   }
 

@@ -351,6 +351,66 @@ const ringInCard = (page) =>
   await context.close();
 }
 
+// --- the card of the joint a cylinder slides on ------------------------------
+// Three of its four values are closed ("inside a cylinder", D9), which is the
+// one card where most of the grid cannot be pressed. The keys still have to
+// reach every cell -- a value a reader cannot arrow onto is a value whose
+// reason they cannot read -- and pressing a closed one has to change nothing.
+{
+  const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+  await startQuiet(context);
+  const page = await context.newPage();
+  page.setDefaultTimeout(15000);
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await waitForReady(page);
+  await page.waitForTimeout(400);
+  const seal = await page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    grid.mechanismSrv.createCylinderFrom({ x: -600, y: 0 }, { x: 600, y: 0 });
+    grid.activeObjService.updateSelectedObj(null);
+    return grid.mechanismSrv.sealedStructures()[0].seal.id;
+  });
+  await page.waitForTimeout(400);
+  const at = await page.locator(`#joint_${seal}`).boundingBox();
+  await page.mouse.click(at.x + at.width / 2, at.y + at.height / 2, { button: 'right' });
+  await page.locator('#contextMenu.show').waitFor();
+  await page.waitForTimeout(300);
+
+  const shape = () =>
+    page.evaluate(() => {
+      const m = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+      return `${m.joints.length}/${m.links.length}/${m.sealedStructures().length}`;
+    });
+  const before = await shape();
+
+  const walk = [await ringInCard(page)];
+  for (let step = 0; step < 3; step++) {
+    await page.keyboard.press('ArrowDown');
+    await page.waitForTimeout(200);
+    walk.push(await ringInCard(page));
+  }
+  check(
+    'the arrows reach all four values, closed ones included, so every reason can be read',
+    walk.every((seen) => seen.kind === 'value') &&
+      ['Revolute', 'Prismatic', 'Pin-in-slot', 'Welded'].every((label) =>
+        walk.some((seen) => seen.on === label)
+      ),
+    JSON.stringify(walk.map((seen) => seen.on))
+  );
+  await page.locator('#contextMenu').screenshot({ path: `${OUT}/card-cylinder-seal.png` });
+
+  // Parked on Welded, which is closed. Pressing it takes the cylinder apart if
+  // the refusal is only a paint job.
+  await page.keyboard.press(' ');
+  await page.waitForTimeout(800);
+  check(
+    'and pressing a closed value changes nothing about the part',
+    (await shape()) === before && before === '4/2/1',
+    JSON.stringify({ before, after: await shape() })
+  );
+  await context.close();
+}
+
 await browser.close();
 writeFileSync(`${OUT}/report.json`, JSON.stringify({ results }, null, 2));
 const failed = results.filter((r) => !r.pass).length;

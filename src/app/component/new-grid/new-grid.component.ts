@@ -1,5 +1,7 @@
 import { SvgGridService } from '../../services/svg-grid.service';
 import { heldBars, heldBarsReaching, heldBySentence, holdList } from '../../model/link-holds';
+import { holdChips } from '../../model/hold-chips';
+import { overlayBarEnds } from '../../model/hover-dimension';
 import {
   OnDestroy,
   Component,
@@ -11,6 +13,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NgTemplateOutlet } from '@angular/common';
 import { fromEvent } from 'rxjs';
 import { MechanismService } from '../../services/mechanism.service';
 import { TutorialService } from '../../services/tutorial.service';
@@ -69,14 +72,18 @@ import {
   Channel,
   CylinderMark,
   Guide,
+  PlatedSlide,
   RiderDraw,
+  SlideMarkDraw,
   SliderMark,
   SliderMarkService,
   WeldPlate,
 } from '../../services/slider-mark.service';
 import {
+  barHalfWidth,
   barrelPath,
   cylinderBlockPath,
+  cylinderLabelOffset,
   GROUND_STROKE,
   MARK,
   orientedCapsulePath,
@@ -94,10 +101,12 @@ import {
   MergeRefusal,
   resolveDropCandidate,
   resolveSlotDropTarget,
+  rideAlongSlot,
   SlotDropCandidate,
 } from '../../model/drop-target';
 import { mergedChannels, transformRigidPath } from '../../model/compound-link-path';
 import { GhostBody } from '../../model/mechanism/anchor';
+import { ghostInkOf, ghostPathOf } from '../../model/ghost-paint';
 import {
   Cylinder,
   cylinderCreationLayout,
@@ -105,8 +114,9 @@ import {
   cylinderSizeOf,
   cylinderSpanRange,
   cylinderJoints,
-  isCylinderInterior as isCylinderInteriorOf,
 } from '../../model/cylinder';
+import { accentOutlineClass, CylinderRole, hiddenByCylinder } from '../../model/cylinder-skin';
+import { memberIsFused, PaintStep } from '../../model/cylinder-paint-order';
 import { SnapGuide, snapToAxes } from '../../model/axis-snap';
 import { drawDepths } from '../../model/draw-order';
 import { MODEL_SCALE } from '../../model/render-scale';
@@ -196,6 +206,7 @@ const SELECTION_RING_PX = 3;
     ContextMenuComponent,
     LongPressDirective,
     ModelFrameDirective,
+    NgTemplateOutlet,
     UprightDirective,
   ],
 })
@@ -443,7 +454,6 @@ export class NewGridComponent implements OnDestroy {
         // The hover previews die with the selection they described: a panel
         // swap can eat the mouseleave that would have cleared them.
         this.comMeasure = undefined;
-        this.cylinderPartPreview = undefined;
         this.settings.previewCoMLinkId = null;
         //Disable focus on any text input when changing active object
         if (document.activeElement instanceof HTMLElement) {
@@ -972,12 +982,16 @@ export class NewGridComponent implements OnDestroy {
     );
     const r = 0.15 * this.settings.objectScale;
     return {
-      x: creation.pin.x,
-      y: creation.pin.y,
+      x: creation.seal.x,
+      y: creation.seal.y,
       rotation: (creation.angleRad * 180) / Math.PI,
       // The preview is the part it will become: the barrel at its own length,
       // straddling the piston, with the rod telescoping out of its mouth.
-      barrel: barrelPath(r, -creation.pinFromMount, creation.barrelLength - creation.pinFromMount),
+      barrel: barrelPath(
+        r,
+        -creation.sealFromMount,
+        creation.barrelLength - creation.sealFromMount
+      ),
       rod: rodBodyPath(r, creation.rodLength, cylinderHeadHalf(creation.barrelLength, r)),
       block: cylinderBlockPath(r, cylinderHeadHalf(creation.barrelLength, r)),
       // The color the barrel will be handed when the click builds it, which
@@ -1766,7 +1780,7 @@ export class NewGridComponent implements OnDestroy {
     const from = this.linkCreateStart;
     if (!this.dragState.isCreatingLink || !from) return undefined;
     const to = this.creationLanding();
-    const half = this.settings.objectScale / 4;
+    const half = barHalfWidth(this.settings.objectScale);
     const span = Math.hypot(to.x - from.x, to.y - from.y);
     // Nothing to point along yet: the first pixel of the gesture would spin a
     // zero-length bar through every angle at once.
@@ -1865,9 +1879,12 @@ export class NewGridComponent implements OnDestroy {
       at = this.heldOffJoint(link, shared, at, margin);
       at = constrainForceAnchor(link, at, 0);
       this.forceRefusedJoint = shared;
+      // The body by the name the canvas tags it with: a bracket welded to a
+      // barrel mount carries the cylinder's buried inner end in its id (D14,
+      // S11), so this named a joint the drawing never shows.
       this.notify.refusal(
         'force.shared-joint',
-        `A force cannot sit on joint ${shared.id}: several links meet there, so it would not say which body it pushes on. It is held on ${link.name || link.id} short of the pin.`
+        `A force cannot sit on joint ${shared.id}: several links meet there, so it would not say which body it pushes on. It is held on ${this.mechanismSrv.visibleBodyName(link)} short of the pin.`
       );
     } else {
       this.forceRefusedJoint = undefined;
@@ -2073,23 +2090,50 @@ export class NewGridComponent implements OnDestroy {
         // assembly re-poses about the OTHER mount, collinear by construction
         // (§ cylinder 6). Mounts merge onto other joints like any joint does —
         // that is how a cylinder attaches — with the refusal rules keeping
-        // welded targets and the part's own joints out. Slot drops stay off
-        // the table: a mount never rides a slot.
+        // welded targets and the part's own joints out. And they take a slot
+        // drop like any pin (decision S22): a rod end pushing a collar along a
+        // rail is the textbook case, and the rules that keep a slot off a
+        // member and off the body already holding the other end live in
+        // `resolveSlotDropTarget` rather than here.
         const draggedCylinders = this.mechanismSrv.cylindersAt(this.activeObjService.selectedJoint);
-        if (draggedCylinders.length > 0) {
-          this.updateDropCandidate(mousePosInSvg, $event.altKey);
+        // Grabbing the seal is *Starts at* by hand (decision S7): it runs along
+        // its own axis between the stops, and never merges with anything. So no
+        // drop candidate is even looked for — a slide is not an attachment, and
+        // a ring under a square that is only going to slide would promise one.
+        // With both end joints grounded it simply stays put, silently, which is
+        // what `dragCylinderSeal` answers.
+        if (
+          draggedCylinders.some((one) => one.seal.id === this.activeObjService.selectedJoint.id)
+        ) {
+          this.setDropCandidate(undefined);
           this.slotCandidate = undefined;
           this.axisSnapGuides = [];
-          // Snap to the axis of the ram the gesture is most obviously about --
-          // the first -- but re-pose all of them, so a mount two rams share
-          // does not drag one and deform the other.
+          // Raw, not snapped to the grid: the seal is projected onto its own
+          // axis, so a grid position would be rounded in a direction the part
+          // cannot move and then thrown away.
+          this.gridUtils.dragJoint(this.activeObjService.selectedJoint, mousePosInSvg);
+          this.dragState.noteMechanismModified();
+          this.activeObjService.updateSelectedObj(this.activeObjService.selectedJoint);
+          this.showPathWhileDragging();
+          break;
+        }
+        if (draggedCylinders.length > 0) {
+          this.updateDropCandidate(mousePosInSvg, $event.altKey);
+          this.axisSnapGuides = [];
+          // The same three claims on the drop the ordinary branch weighs, in
+          // the same order: a ring on a joint, or a channel in a bar, or the
+          // slot this joint is already riding. Only when none of them speaks
+          // does the drag square itself against the axis of the ram the
+          // gesture is most obviously about -- the first -- and every ram on
+          // the joint is re-posed either way, so a mount two rams share does
+          // not drag one and deform the other.
           const wanted = this.snapTargetJoint
             ? new Coord(this.snapTargetJoint.x, this.snapTargetJoint.y)
-            : this.mountAxisSnap(
-                draggedCylinders[0],
-                this.activeObjService.selectedJoint,
-                mousePosInSvg
-              );
+            : this.slotCandidate
+              ? new Coord(this.slotCandidate.x, this.slotCandidate.y)
+              : this.alongItsSlot(this.activeObjService.selectedJoint, mousePosInSvg, (at) =>
+                  this.mountAxisSnap(draggedCylinders[0], this.activeObjService.selectedJoint, at)
+                );
           // Through dragJoint rather than straight at dragCylinderMount, so a
           // mount two rams share is agreed between them before either moves.
           this.gridUtils.dragJoint(this.activeObjService.selectedJoint, wanted);
@@ -2179,7 +2223,7 @@ export class NewGridComponent implements OnDestroy {
           // mounts are the handles for re-posing. It follows the cursor freely,
           // the same way a bar does, measured on the mount the ram is named
           // from.
-          const mount = bodyCylinder.barrelFar;
+          const mount = bodyCylinder.mountA;
           const target = this.placeDraggedBody(mount, mousePosInSvg, $event.altKey);
           this.gridUtils.dragCylinder(bodyCylinder, target.x - mount.x, target.y - mount.y);
           this.linkDragAnchor = mousePosInSvg;
@@ -2355,10 +2399,14 @@ export class NewGridComponent implements OnDestroy {
 
   private refuseHeldLink(link: Link, held: Joint[]): void {
     const holds = this.uniqueLocks(held.flatMap((joint) => this.gridUtils.locksHolding(joint)));
+    // `bodyLabel` rather than `Link ${link.name}`, for two reasons at once: a
+    // body welded to a barrel mount would have been named after the buried
+    // inner end, and a cylinder member reads `Barrel AC` here as it does
+    // everywhere else.
     const text = this.mechanismSrv.isLockedTarget(link)
       ? this.mechanismSrv.cylinderOfBar(link)
         ? 'This cylinder is locked.'
-        : `Link ${link.name} is locked.`
+        : `${this.mechanismSrv.bodyLabel(link)} is locked.`
       : 'Two of the joints this drag would carry are locked. Unlock one to swing the body about the other.';
     this.refuseWithUnlock('lock.link', text, holds);
   }
@@ -2463,22 +2511,20 @@ export class NewGridComponent implements OnDestroy {
    */
   heldChips(): { id: string; x: number; y: number; text: string; w: number }[] {
     const chips: { id: string; x: number; y: number; text: string; w: number }[] = [];
-    // The solver's own bars, so a cylinder's chip sits in the wedge of the
-    // angle it is actually holding -- mount to mount -- rather than in the
-    // barrel's, which is a pair of joints inside the part.
-    for (const bar of heldBars(this.mechanismSrv.links, this.mechanismSrv.sealedStructures())) {
-      const link = this.mechanismSrv.links.find((one) => one.id === bar.id);
-      if (!(link instanceof RealLink) || this.mechanismSrv.isLockedTarget(link)) continue;
-      const a = this.mechanismSrv.joints.find((joint) => joint.id === bar.a);
-      const b = this.mechanismSrv.joints.find((joint) => joint.id === bar.b);
-      if (!a || !b) continue;
-      const hold = bar.hold;
+    // What reads as held, which is not what the solver is fed: a member's
+    // fixed length is honored by the layout rather than by the solver, and a
+    // list taken from the solver's bars left the reader's own padlock
+    // undrawn (`model/hold-chips.ts`).
+    for (const { id, link, hold, a, b } of holdChips(
+      this.mechanismSrv.links,
+      this.mechanismSrv.sealedStructures()
+    )) {
+      if (this.mechanismSrv.isLockedTarget(link)) continue;
       const dx = b.x - a.x;
       const dy = b.y - a.y;
-      const span = Math.hypot(dx, dy) || 1;
       const text =
         hold === 'length'
-          ? this.nup.formatModelLength(span, this.settings.lengthUnit.getValue())
+          ? this.nup.formatModelLength(Math.hypot(dx, dy) || 1, this.settings.lengthUnit.getValue())
           : // The same reading as the panel's field and the hover pill: atan2's,
             // signed, so a bar pointing down reads -37 deg on all three.
             this.nup.formatValueAndUnit(
@@ -2498,14 +2544,12 @@ export class NewGridComponent implements OnDestroy {
         hold === 'length'
           ? this.lengthLabelAt(a.x, a.y, b.x, b.y)
           : this.angleLabelAt(a.x, a.y, b.x, b.y);
-      if (hold === 'length') {
-        const placed = this.lengthChipPlace(link, w);
-        if (placed) {
-          at.x = placed.x;
-          at.y = placed.y;
-        }
+      const placed = hold === 'length' ? this.lengthChipPlace(link, w) : undefined;
+      if (placed) {
+        at.x = placed.x;
+        at.y = placed.y;
       }
-      chips.push({ id: link.id, x: at.x, y: at.y, text, w });
+      chips.push({ id, x: at.x, y: at.y, text, w });
     }
     return chips;
   }
@@ -2516,19 +2560,13 @@ export class NewGridComponent implements OnDestroy {
    */
   overlayValueLocked(which: 'length' | 'angle'): boolean {
     if (this.activeObjService.objType !== 'Link') return false;
-    const link = this.activeObjService.selectedLink;
-    return this.mechanismSrv.holdOf(link) === which && !this.mechanismSrv.isLockedTarget(link);
+    return this.holdReads(this.activeObjService.selectedLink, which);
   }
 
   /**
-   * A ghost body with the slots the real one carries cut into it.
-   *
-   * The ghost is the link's outline moved rigidly to the start pose. A slot is
-   * not part of that outline -- the canvas subtracts it when it draws the real
-   * link -- so the ghost of a slotted bar came out solid, and the moment
-   * playback carried the real bar away the slot looked as though it had been
-   * filled in behind it. The channel is rigid with its carrier, so the same
-   * move that carried the outline carries the channel to the same place.
+   * A ghost body, drawn as `model/ghost-paint.ts` says the canvas is drawing
+   * that body: its slots cut into it, and a cylinder member as the skin's
+   * silhouette rather than the bar its two joints describe.
    */
   ghostBodyPath(body: GhostBody): string {
     // Cut once per body and kept. A ghost the anchor can no longer reach is
@@ -2542,16 +2580,16 @@ export class NewGridComponent implements OnDestroy {
     const held = this.ghostCuts.get(body);
     if (held && held.scale === scale) return held.path;
     const link = this.mechanismSrv.links.find((one) => one.id === body.linkId);
-    let path = body.d;
-    if (link) {
-      const channels = this.channelsCutInto(link);
-      if (channels !== '') {
-        const { from, to, there, thereEnd } = body.move;
-        path = `${body.d} ${transformRigidPath(channels, from, to, there, thereEnd)}`;
-      }
-    }
+    const cuts = link ? this.channelsCutInto(link) : '';
+    const path = ghostPathOf(body, link, this.mechanismSrv.sealedStructures(), 0.15 * scale, cuts);
     this.ghostCuts.set(body, { scale, path });
     return path;
+  }
+
+  /** The ink the ghost paints a body in: the one the canvas is painting it in. */
+  ghostBodyFill(body: GhostBody): string {
+    const link = this.mechanismSrv.links.find((one) => one.id === body.linkId);
+    return ghostInkOf(body, link, this.mechanismSrv.sealedStructures());
   }
 
   private ghostCuts = new WeakMap<GhostBody, { scale: number; path: string }>();
@@ -2913,9 +2951,11 @@ export class NewGridComponent implements OnDestroy {
           this.activeObjService.selectedJoint,
           mousePos.x,
           mousePos.y,
-          // A sealed cylinder's interior joints are not attachment points, so
-          // they never capture a drop; the mounts remain ordinary targets.
-          this.mechanismSrv.joints.filter((joint) => !this.isCylinderInterior(joint)),
+          // The buried barrel end is not on the grid at all, so it cannot be
+          // pointed at. The seal can be — it is a square with a hitbox — and it
+          // stays in the list so that aiming at it is marked red and says why,
+          // rather than the drag silently finding the next joint along.
+          this.mechanismSrv.joints.filter((joint) => !this.isCylinderInner(joint)),
           this.snapRadius(),
           // The full structural picture rides along separately: the filtered
           // list above cannot answer mount questions (the pins are gone), and
@@ -2967,47 +3007,35 @@ export class NewGridComponent implements OnDestroy {
   /**
    * Where a block in a channel is allowed to go (§4.4).
    *
-   * Dragging the block along its slot sets s₀ and changes nothing else, so the
-   * drag is projected onto the slot line and clamped to the span the channel
-   * actually occupies — the block cannot leave a hole it is inside of, and one
-   * drag stays one quantity.
+   * The arithmetic is `rideAlongSlot`; what is here is the part that only the
+   * canvas can answer — which joint is a block at all, what the drawing's
+   * radius is, and what to do with a drag that is not on a slot.
    *
    * Only for a floating slot. A grounded guide's line is fixed in the world
    * rather than cut into a body, so dragging its joint repositions the whole
    * guide; constraining that would leave no way to move a guide at all.
+   *
+   * `free` is where a drag that is not riding a slot goes, and a cylinder's end
+   * joint has its own answer for that (decision S22): the assembly's own joints
+   * travel with the drag, so squaring up against them is the drag chasing its
+   * own tail, which is what `mountAxisSnap` exists to avoid.
    */
-  private alongItsSlot(joint: Joint, wanted: Coord): Coord {
+  private alongItsSlot(joint: Joint, wanted: Coord, free?: (at: Coord) => Coord): Coord {
+    const loose = free ?? ((at: Coord) => this.withAxisSnap(joint, at));
     const slider = this.mechanismSrv.sliderFor(joint);
-    if (!slider?.isFloating || !slider.isSlotWellFormed) return this.withAxisSnap(joint, wanted);
-
-    const a = slider.slotJointA!;
-    const b = slider.slotJointB!;
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    const length = Math.hypot(dx, dy);
-    if (length < 1e-9) return wanted;
-
-    const ux = dx / length;
-    const uy = dy / length;
-    const midX = (a.x + b.x) / 2;
-    const midY = (a.y + b.y) / 2;
-    const half = slotHalfLength(0.15 * this.settings.objectScale, length);
-    const offset = (wanted.x - midX) * ux + (wanted.y - midY) * uy;
-    const across = -(wanted.x - midX) * uy + (wanted.y - midY) * ux;
-
-    // Sticky, then it lets go (§4.4). Sliding along the slot is by far the
-    // commoner intent, so the block stays on its line through any amount of
-    // sideways wobble -- but a slot is not a life sentence, and pulling clear
-    // of the bar is the one gesture that plainly means "take this off here".
-    // What is left behind is the dangling block: a slider with nowhere to
-    // slide, drawn red until it is dropped on a link again.
-    if (Math.abs(across) > this.slotReleaseDistance()) {
+    if (!slider?.isFloating || !slider.isSlotWellFormed) return loose(wanted);
+    const r = 0.15 * this.settings.objectScale;
+    const ride = rideAlongSlot(slider, wanted, r, this.slotReleaseDistance());
+    if (!ride) return wanted;
+    // Pulled clear of the bar. What is left behind is the dangling block: a
+    // slider with nowhere to slide, drawn red until it is dropped on a link
+    // again — a cylinder's end joint included, which then leaves the part
+    // hanging off nothing until it lands somewhere.
+    if (ride === 'release') {
       this.mechanismSrv.detachSlider(slider);
-      return this.withAxisSnap(joint, wanted);
+      return loose(wanted);
     }
-
-    const along = Math.max(-half, Math.min(half, offset));
-    return new Coord(midX + along * ux, midY + along * uy);
+    return new Coord(ride.x, ride.y);
   }
 
   /**
@@ -3120,7 +3148,7 @@ export class NewGridComponent implements OnDestroy {
     // 180, which is what a bar has always been able to do against its own far
     // joint. The rest of the assembly travels with the drag, and squaring
     // against those is the drag chasing its own tail.
-    const opposite = dragged?.id === sealed.barrelFar.id ? sealed.rodFar : sealed.barrelFar;
+    const opposite = dragged?.id === sealed.mountA.id ? sealed.mountB : sealed.mountA;
     memberIds.delete(opposite.id);
     const others = this.mechanismSrv
       .getJoints()
@@ -3693,19 +3721,9 @@ export class NewGridComponent implements OnDestroy {
       // taking the message away must not take the record with it.
       this.mechanismSrv.markStartMoved(outcome.lost);
     }
-    if (outcome.lost && !structuralNews) {
-      // Half the words it used to have, and a verb rather than a report: what
-      // happened is that the machine starts here now. Indigo rather than an
-      // alarm color, because nothing failed -- the edit landed exactly as it
-      // was asked for, and this is the consequence that came with it. Undo
-      // rides the message, per the app's rule that a consequence carries its
-      // own exit.
-      this.notify.news(
-        'anchor.unreachable',
-        `${outcome.lost} starts here now — its old start is out of reach.`,
-        { actions: [{ label: 'Undo', run: () => this.saveHistoryService.undo() }] }
-      );
-    }
+    // In the service's own words, which a menu edit now says too: one sentence
+    // about a moved start, wherever the edit came from.
+    if (outcome.lost && !structuralNews) this.mechanismSrv.sayStartMoved(outcome.lost);
   }
 
   /**
@@ -4025,6 +4043,43 @@ export class NewGridComponent implements OnDestroy {
     return a !== -1 && b !== -1 && a !== b;
   }
 
+  /**
+   * Whether this press would build something onto a joint that takes nothing.
+   *
+   * Asked once, above the six branches, because each of them wires the joint
+   * itself before any service sees it — so there is no later place that could
+   * still refuse without also having to undo. The joint it asks about is
+   * whichever end this gesture touches: the one it was started from, and the
+   * one the press has landed on.
+   *
+   * The menu already grays Attach at a cylinder's interior. That was the whole
+   * of the rule, and it only ever covered *starting* a gesture there: a link
+   * begun on bare grid finishes on whatever it is released over, and finishing
+   * is the same attachment seen from the other end.
+   *
+   * Left the way Escape leaves it — nothing built, nothing selected mid-air,
+   * no entry to undo.
+   */
+  private refusesCreationHere(): boolean {
+    const armed =
+      this.dragState.isCreatingLink || this.dragState.grid === gridStates.createCylinder;
+    if (!armed) return false;
+    const landed =
+      this.lastLeftClickType === 'Joint' && this.lastLeftClick instanceof Joint
+        ? this.lastLeftClick
+        : undefined;
+    const ends: (Joint | Link | undefined)[] = [landed, this.linkCreateFrom, this.cylinderCreateAt];
+    const closed = ends
+      .map((part) => this.mechanismSrv.attachRefusal(part))
+      .find((refusal) => refusal !== undefined);
+    if (!closed) return false;
+    this.notify.refusal(closed.code, closed.long);
+    this.abandonGesture();
+    this.cylinderCreateOn = undefined;
+    this.cylinderCreateAt = undefined;
+    return true;
+  }
+
   /** The part a creation gesture is growing from, if it is growing from one. */
   private creationAnchorPart(): Joint | Link | Force | undefined {
     if (this.cylinderCreateOn) return this.cylinderCreateOn;
@@ -4092,6 +4147,8 @@ export class NewGridComponent implements OnDestroy {
       this.beginSelectionGesture('translate', mousePosInSvg, this.pendingPartReplacement);
       return;
     }
+
+    if ($event.button === 0 && this.refusesCreationHere()) return;
 
     switch ($event.button) {
       case 0: // Handle Left-Click on canvas
@@ -4728,13 +4785,16 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * Which of the cylinder panel's two size fields is being pointed at, if any.
-   * 'travel' is how far the rod goes; 'start' is where in that it sits now.
+   * Set while the slide's *Starts at* field is being pointed at.
+   *
+   * A pair of values until the Edit Cylinder panel was retired, because Travel
+   * was a field of its own and wanted the same line drawn with a length on it.
+   * The travel is the barrel's Length now and the line has one reader left.
    */
-  cylinderRangeOverlay?: 'travel' | 'start';
+  startsAtOverlay = false;
 
-  setCylinderRangeOverlay(which: 'travel' | 'start' | undefined): void {
-    this.cylinderRangeOverlay = which;
+  setStartsAtOverlay(showing: boolean): void {
+    this.startsAtOverlay = showing;
   }
 
   /**
@@ -4768,7 +4828,9 @@ export class NewGridComponent implements OnDestroy {
       link instanceof RealLink &&
       this.activeObjService.objType === 'Link' &&
       this.activeObjService.selectedLink === link &&
-      !this.mechanismSrv.cylinderOfBar(link) &&
+      // A cylinder member's center follows its shape and nothing else
+      // (decision S14), so its mark is a glyph rather than a handle.
+      !this.mechanismSrv.memberInertiaIsDerived(link) &&
       this.canEditNow()
     );
   }
@@ -4871,9 +4933,10 @@ export class NewGridComponent implements OnDestroy {
 
   /** Say why a locked link's center of mass will not follow the pointer. */
   private refuseLockedCoM(link: RealLink): void {
+    // The name on the canvas, not the link's id -- see `refuseHeldLink`.
     this.notify.refusal(
       'com.locked',
-      `Link ${link.name || link.id} is locked. Unlock it to move its center of mass.`
+      `${this.mechanismSrv.bodyLabel(link)} is locked. Unlock it to move its center of mass.`
     );
   }
 
@@ -4910,22 +4973,6 @@ export class NewGridComponent implements OnDestroy {
       }
     }
     return best ?? pos;
-  }
-
-  /** Which cylinder part's mass field is being pointed at in the panel. */
-  cylinderPartPreview?: 'barrel' | 'rod' | 'head';
-
-  setCylinderPartPreview(part: NewGridComponent['cylinderPartPreview']): void {
-    this.cylinderPartPreview = part;
-  }
-
-  /** The pointed-at part's own outline, in the hover accent — barrel and rod
-   *  by their skins, the piston head by the block that draws it. */
-  cylinderPartPreviewPath(cyl: CylinderMark): string | null {
-    if (!this.cylinderPartPreview || !this.isBodySelected(cyl)) return null;
-    if (this.cylinderPartPreview === 'barrel') return cyl.barrel;
-    if (this.cylinderPartPreview === 'rod') return cyl.rod;
-    return cyl.block;
   }
 
   /** The measured stretch: the frame's zero to the CoM's coordinate on one axis. */
@@ -4976,44 +5023,42 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * The stretch of ground the rod's mount covers, drawn on the canvas.
+   * The stretch of ground the rod's end joint covers, drawn on the canvas, with
+   * the share of it *Starts at* names marked on it.
    *
-   * One picture for both fields, because they are two readings of one line:
-   * *Travel* is how long it is, and *Starts at* is how far along it the ram is
-   * standing. Drawn as the mount's own path rather than as a bar beside the
-   * barrel — what a user wants to see when typing a stroke is where the end of
-   * the ram will get to, and that is a place on the grid rather than a length
-   * in the abstract.
+   * Drawn as that joint's own path rather than as a bar beside the barrel —
+   * what a reader typing a percentage wants to see is where the end of the part
+   * will get to, and that is a place on the grid rather than a length in the
+   * abstract.
    *
    * Nothing is drawn for a ram with no usable travel: the line would be a point
    * and the number beside it a zero, which says less than the panel already does.
    */
-  get cylinderRange():
-    { from: Coord; to: Coord; at: Coord; showsPosition: boolean; label: string } | undefined {
-    if (!this.cylinderRangeOverlay) return undefined;
-    const sealed = this.mechanismSrv.cylinderOfBar(this.activeObjService.selectedLink);
+  get cylinderRange(): { from: Coord; to: Coord; at: Coord; label: string } | undefined {
+    if (!this.startsAtOverlay) return undefined;
+    // From whichever the reader picked: the field is the slide's own now (D9).
+    const picked = this.activeObjService;
+    const sealed =
+      this.mechanismSrv.cylinderAt(picked.objType === 'Joint' ? picked.selectedJoint : undefined) ??
+      this.mechanismSrv.cylinderOfBar(picked.selectedLink);
     if (!sealed) return undefined;
     const r = 0.15 * this.settings.objectScale;
     const size = cylinderSizeOf(sealed, r);
     if (!(size.stroke > 0)) return undefined;
 
-    const { barrelFar, rodFar } = sealed;
-    const span = Math.hypot(rodFar.x - barrelFar.x, rodFar.y - barrelFar.y);
+    const { mountA, mountB } = sealed;
+    const span = Math.hypot(mountB.x - mountA.x, mountB.y - mountA.y);
     if (!(span > 1e-9)) return undefined;
-    const ux = (rodFar.x - barrelFar.x) / span;
-    const uy = (rodFar.y - barrelFar.y) / span;
-    const at = (along: number) => new Coord(barrelFar.x + along * ux, barrelFar.y + along * uy);
+    const ux = (mountB.x - mountA.x) / span;
+    const uy = (mountB.y - mountA.y) / span;
+    const at = (along: number) => new Coord(mountA.x + along * ux, mountA.y + along * uy);
 
-    const ends = cylinderSpanRange(size.stroke, r);
-    const showsPosition = this.cylinderRangeOverlay === 'start';
+    const ends = cylinderSpanRange({ barrel: size.barrelLength, rod: size.rodLength }, r);
     return {
       from: at(ends.retracted),
       to: at(ends.extended),
       at: at(span),
-      showsPosition,
-      label: showsPosition
-        ? `${Math.round(size.start * 1000) / 10}%`
-        : this.nup.formatModelLength(size.stroke, this.settings.lengthUnit.getValue()),
+      label: `${Math.round(size.start * 1000) / 10}%`,
     };
   }
 
@@ -5111,44 +5156,55 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * Whether the selection is this cylinder's body, however it was selected.
+   * Whether either member of this cylinder is picked, however it was picked.
    *
    * Including by selecting the whole machine it belongs to: the cylinder is
    * drawn as one part by its own skin rather than through the link classes, so
    * it was the one body a machine-wide selection left unlit.
+   *
+   * What it is *for* is the mass overlay, which is a question about the part
+   * rather than about one member. The outlines ask per member instead.
    */
   isBodySelected(mark: CylinderMark): boolean {
-    if (
-      this.activeObjService.objType === 'Link' &&
-      this.activeObjService.selectedLink?.id === mark.body.id
-    ) {
-      return true;
-    }
-    return this.mechanismSrv.isPartInSelectedMechanism(mark.body);
-  }
-
-  /** The reader is pointing at this cylinder's machine in the transport. */
-  isBodyHovered(mark: CylinderMark): boolean {
-    return this.mechanismSrv.isPartInHoveredMechanism(mark.body) || this.isBodyPointedAt(mark);
-  }
-
-  /** Or at this ram itself, from a list that offers it as one part. */
-  isBodyPointedAt(mark: CylinderMark): boolean {
-    return this.mechanismSrv.isPointedAtBody(mark.body);
-  }
-
-  /**
-   * The selection stroke traces the part's exact silhouette — sharp at every
-   * profile step, curved only at the two end caps. The mark computes it
-   * analytically, so there is no union to pay for or to soften the corners.
-   */
-  cylinderSilhouette(mark: CylinderMark): string {
-    return mark.contour;
+    return [mark.barrelLink, mark.rodLink].some(
+      (link) =>
+        (this.activeObjService.objType === 'Link' &&
+          this.activeObjService.selectedLink?.id === link.id) ||
+        this.mechanismSrv.isPartInSelectedMechanism(link)
+    );
   }
 
   /** A link the cylinder skin is standing in for, so it is not drawn twice. */
   private skinnedLink(link: Link): CylinderMark | undefined {
     return this.cylinderList.find((mark) => mark.barrelId === link.id || mark.rodId === link.id);
+  }
+
+  /**
+   * Everything the skin layer paints, in the order it paints them (S24).
+   *
+   * One order for the whole drawing rather than a stack per cylinder: a body
+   * welded to two cylinders is painted once, and only an order that knows about
+   * both can put it under one head and over the other. `model/cylinder-paint-
+   * order.ts` is the rule; this is the list the template walks.
+   */
+  get cylinderPaint(): PaintStep<CylinderMark, PlatedSlide>[] {
+    return this.sliderMarks.paintOrder(this.cylinderList, this.sliderMarkList);
+  }
+
+  /** Whether anything bigger has swallowed this member, so the skin does not paint it alone. */
+  memberIsFused(mark: CylinderMark, role: CylinderRole): boolean {
+    return memberIsFused(this.cylinderPaint, mark, role);
+  }
+
+  /**
+   * A body a cylinder step paints, which the links layer therefore leaves alone.
+   *
+   * Walked rather than spread: this runs for every link on every
+   * change-detection pass, which is dozens of times per pointer move, and the
+   * list it walks holds one step per cylinder and per welded mount.
+   */
+  bodyDrawnByACylinder(link: Link): boolean {
+    return this.cylinderPaint.some((step) => step.fused?.body.id === link.id);
   }
 
   /**
@@ -5164,12 +5220,17 @@ export class NewGridComponent implements OnDestroy {
    */
   get slotStack(): SlotStackItem[] {
     const depths = drawDepths(this.mechanismSrv.getJoints());
+    const marks = this.sliderMarkList;
     const items: SlotStackItem[] = [];
-    for (const mark of this.sliderMarkList) {
+    for (const mark of marks) {
       if (this.isSkinned(mark)) continue;
       const blockDepth = depths.block.get(mark.id) ?? 1;
       items.push({ key: `${mark.id}:block`, depth: blockDepth, kind: 'block', mark });
-      const plate = mark.plate;
+      // A plate holding a cylinder member is painted in that member's place in
+      // the skin's stack instead (S18), so this layer draws the block alone.
+      const plate = this.sliderMarks.plateIsPainted(mark, this.cylinderList, marks)
+        ? undefined
+        : mark.plate;
       if (plate) {
         items.push({
           key: `${mark.id}:plate`,
@@ -5233,37 +5294,66 @@ export class NewGridComponent implements OnDestroy {
 
   /** A slider the cylinder skin has replaced. */
   isSkinned(mark: SliderMark): boolean {
-    return this.cylinderList.some((cylinder) => cylinder.pin.id === mark.joint.id);
+    return this.cylinderList.some((cylinder) => cylinder.seal.id === mark.joint.id);
+  }
+
+  /** The one joint a cylinder hides: N, the barrel's buried inner end. */
+  isCylinderInner(joint: Joint): boolean {
+    return hiddenByCylinder(this.cylinderList, this.mechanismSrv.cylinderAt(joint), joint);
+  }
+
+  /** The cylinder whose seal this joint is, for the drag and the label. */
+  private cylinderSealedAt(joint: Joint): Cylinder | undefined {
+    const sealed = this.mechanismSrv.cylinderAt(joint);
+    return sealed && sealed.seal.id === joint.id ? sealed : undefined;
   }
 
   /**
-   * A cylinder's interior joints — the buried barrel end, the pin, and the
-   * sliding joint — get no hitbox, hover, label or selection at all. Only the
-   * two mounts remain selectable; the skin's own geometry selects the body.
+   * Where a joint's letter goes, in the tag layer's own half-flipped frame.
+   *
+   * Up and a little to the left of the joint, for every joint but one. A seal
+   * sits in the middle of its own part, so "up" is along the barrel as often as
+   * it is clear of it — and the letter came out painted on the metal. Its own
+   * letter goes out along the axis's normal instead, clear of the barrel's
+   * widest edge, on whichever side of the part is nearer the top of the screen.
    */
-  isCylinderInterior(joint: Joint): boolean {
-    // Checked against the structural resolution as well as the drawn marks:
-    // the marks are geometric, and mid-edit (a weld landing, a drag in
-    // flight) they can lag a frame — long enough for an interior label to
-    // blink into view.
-    if (
-      this.cylinderList.some(
-        (mark) =>
-          mark.hiddenJointId === joint.id ||
-          mark.pin.id === joint.id ||
-          mark.cylinder.slider.id === joint.id
-      )
-    ) {
-      return true;
-    }
-    const sealed = this.mechanismSrv.cylinderAt(joint);
-    return !!sealed && isCylinderInteriorOf(sealed, joint);
+  jointTagAnchor(joint: Joint): { x: number; y: number } {
+    const scale = this.settings.objectScale;
+    const sealed = this.cylinderSealedAt(joint);
+    if (!sealed) return { x: joint.x - scale * 0.3, y: -joint.y - scale * 0.5 };
+    const off = cylinderLabelOffset(
+      { x: sealed.mountB.x - sealed.mountA.x, y: sealed.mountB.y - sealed.mountA.y },
+      0.15 * scale
+    );
+    return { x: joint.x + off.x, y: -(joint.y + off.y) };
   }
 
-  /** One tag per part: the rod defers to the barrel's tag. */
+  /**
+   * One tag per part: the rod defers to the barrel's tag, which names the whole
+   * cylinder. See `linkDisplayName` for why it is one and not two.
+   */
   isSecondaryCylinderTag(link: Link): boolean {
     const sealed = this.mechanismSrv.cylinderOfBar(link);
     return !!sealed && link.id !== sealed.barrel.id;
+  }
+
+  /**
+   * The stroke a cylinder member wears when it is picked or pointed at, or
+   * nothing when it is neither.
+   *
+   * Its own path, not the part's fused silhouette: selecting the rod selects
+   * the rod (decision S12), and an outline round the whole cylinder would say
+   * the reader had picked the whole cylinder. Read off the same state class a
+   * bar's own outline is drawn from, so a member in a selection reads exactly
+   * as the bars beside it do.
+   */
+  cylinderMemberOutline(mark: CylinderMark, which: 'barrel' | 'rod'): string | undefined {
+    const link = which === 'barrel' ? mark.barrelLink : mark.rodLink;
+    const state = accentOutlineClass(this.mechanismSrv.getLinkCSSClass(link));
+    // A list that offers the whole cylinder as one part points at one of its
+    // bars, and means the part: both members answer, as the fused silhouette
+    // used to.
+    return state ?? (this.mechanismSrv.isPointedAtBody(link) ? 'link-pointed' : undefined);
   }
 
   /**
@@ -5323,15 +5413,37 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
+   * The cream bar a slider whose riders cannot turn wears in place of a pin's
+   * circle, or nothing for a joint that wears something else.
+   *
+   * It wore the weld cross until now. True, and mute: a `+` says the bodies
+   * meeting here are fused and leaves which way the thing slides to be worked
+   * out from whatever is drawn underneath it.
+   */
+  slideMarkOn(joint: Joint): SlideMarkDraw | undefined {
+    return this.sliderMarks.slideMarkFor(joint, this.sliderMarkList, this.cylinderList, {
+      r: 0.15 * this.settings.objectScale,
+      ring: this.selectionRingWidth(),
+    });
+  }
+
+  /** And which joints keep the weld cross: a welded revolute, and nothing else. */
+  isWeldMark(joint: Joint): boolean {
+    return !(joint instanceof PrisJoint) && this.gridUtils.getWelded(joint);
+  }
+
+  /**
    * The padlock's ink on a given joint.
    *
    * The badge is drawn on the joint rather than beside it, so on a dark one the
    * default near-black glyph disappears into the pin it is sitting on. A welded
-   * joint brings its own white chip and the glyph stands on that instead.
+   * joint brings its own white chip and the glyph stands on that instead; a
+   * slide's bar is chip enough, exactly as a pin's circle is, so it flips its
+   * ink the same way.
    */
   lockInkOn(joint: Joint): string | null {
     const fill = this.jointFillOf(joint);
-    if (!fill || this.gridUtils.getWelded(joint)) return null;
+    if (!fill || this.isWeldMark(joint)) return null;
     return luminanceOf(fill) > INK_FLIPS_AT ? '#263238' : '#eceff1';
   }
 
@@ -5521,11 +5633,20 @@ export class NewGridComponent implements OnDestroy {
 
   /** Whether this bar wears a length chip right now. */
   private lengthChipShown(link: Link): boolean {
-    return (
-      this.holdsVisible() &&
-      this.mechanismSrv.holdOf(link) === 'length' &&
-      !this.mechanismSrv.isLockedTarget(link)
-    );
+    return this.holdsVisible() && this.holdReads(link, 'length');
+  }
+
+  /**
+   * Whether this body reads as holding that value, member or bar.
+   *
+   * Two questions with one answer, because the chip on the drawing and the pill
+   * the panel raises have to agree: `holdOf` is the part's hold, which for a
+   * cylinder is its angle and never a member's length, and `memberHoldOf` is
+   * the member's own row.
+   */
+  private holdReads(link: Link, which: 'length' | 'angle'): boolean {
+    if (this.mechanismSrv.isLockedTarget(link)) return false;
+    return this.mechanismSrv.holdOf(link) === which || this.mechanismSrv.memberHoldOf(link, which);
   }
 
   /** How far from the center anything must sit to clear the center-of-mass mark. */
@@ -5641,21 +5762,22 @@ export class NewGridComponent implements OnDestroy {
   }
 
   /**
-   * What a link's canvas tag calls it. A sealed cylinder's interior joints are
-   * an implementation detail, so its letters come from the two mounts alone —
-   * and a compound that swallowed a member keeps only its visible letters too.
+   * What a link's canvas tag calls it.
+   *
+   * A cylinder wears **one** tag, and it names the part rather than either
+   * member: the two ends it runs between, as it always has. Its members have
+   * names of their own now (`model/body-label.ts`, decision S10) — Barrel AC,
+   * Rod CB — and two tags were drawn and looked at before this stayed at one.
+   * They are written along the same axis, a bar-width apart at the widest, and
+   * on a cylinder near its own minimum size they land on top of each other and
+   * on the square between them. A panel title has room for a member's name and
+   * the canvas does not.
    */
   linkDisplayName(link: Link): string {
     const sealed = this.mechanismSrv.cylinderOfBar(link);
-    if (!sealed) return link.name;
-    const interior = new Set(
-      [sealed.pin.id, sealed.slider.id, sealed.barrelNear.id].map((id) => id)
-    );
-    const stripped = [...link.name].filter((letter) => !interior.has(letter)).join('');
-    if (link.id === sealed.barrel.id || link.id === sealed.rod.id) {
-      return `${sealed.barrelFar.name}${sealed.rodFar.name}`;
-    }
-    return stripped || link.name;
+    if (!sealed) return this.mechanismSrv.visibleBodyName(link);
+    const named = (joint: Joint) => joint.name || joint.id;
+    return `${named(sealed.mountA)}${named(sealed.mountB)}`;
   }
 
   /** A member link of a sealed cylinder: never a slot-drop target. */
@@ -5762,9 +5884,19 @@ export class NewGridComponent implements OnDestroy {
     // is fused to as one outline, so drawing the rider here as well would put
     // its own edge inside that outline and double the fill's alpha over itself.
     if (this.platedLink(link)) return '';
+    return this.bodyPath(link);
+  }
+
+  /**
+   * A body's own outline, motor and channels and all, wherever it is painted.
+   *
+   * The links layer is no longer the only place: a body welded to a cylinder
+   * mount is painted in that member's place in the skin's stack, and it has to
+   * be the same shape there as it would have been here.
+   */
+  bodyPath(link: Link): string {
     const outline = this.outlineWithMotor(link);
     const channels = this.channelsCutInto(link);
-
     return channels === '' ? outline : `${outline} ${channels}`;
   }
 
@@ -6222,65 +6354,33 @@ export class NewGridComponent implements OnDestroy {
     return NewGridComponent.debugLines;
   }
 
+  /**
+   * The two points the hover dimension is drawn between.
+   *
+   * The two overlays are one at a time and an angle wins, which is what the
+   * pair of index fields says: an index of -2 is "off", -1 is the selected
+   * body's own span, and anything above names one of the joints the Edit
+   * panel listed beside the selected one. Which span a *body* has is
+   * `overlayBarEnds`, because a cylinder member's length and its angle are
+   * measured between different pairs.
+   */
   findStartAndEndPoints() {
-    let x1, y1, x2, y2;
-    if (this.showLinkAngleOverlay == -2) {
-      switch (this.showLinkLengthOverlay) {
-        case -2:
-          //Throw an error
-          throw new Error(
-            'showLinkLengthOverlay should not be -2, this means an overlay was requested even though the objects to show the overlay based on was not selected'
-          );
-          break;
-        case -1: {
-          const link = this.activeObjService.selectedLink;
-          // A cylinder body's span is mount to mount, not the barrel's own
-          // two joints (one of which is buried inside the part).
-          const sealed = this.mechanismSrv.cylinderOfBar(link);
-          const [from, to] = sealed ? [sealed.barrelFar, sealed.rodFar] : link.joints;
-          x1 = from.x;
-          y1 = from.y;
-          x2 = to.x;
-          y2 = to.y;
-          break;
-        }
-        default:
-          let thisJoint = this.activeObjService.selectedJoint;
-          let otherJoint = this.overlayOtherJoints[this.showLinkLengthOverlay];
-          x1 = thisJoint.x;
-          y1 = thisJoint.y;
-          x2 = otherJoint.x;
-          y2 = otherJoint.y;
-      }
-    } else {
-      switch (this.showLinkAngleOverlay) {
-        case -2:
-          //Throw an error
-          throw new Error(
-            'showLinkLengthOverlay should not be -2, this means an overlay was requested even though the objects to show the overlay based on was not selected'
-          );
-          break;
-        case -1: {
-          const link = this.activeObjService.selectedLink;
-          const sealed = this.mechanismSrv.cylinderOfBar(link);
-          const [from, to] = sealed ? [sealed.barrelFar, sealed.rodFar] : link.joints;
-          x1 = from.x;
-          y1 = from.y;
-          x2 = to.x;
-          y2 = to.y;
-          break;
-        }
-        default:
-          let thisJoint = this.activeObjService.selectedJoint;
-          let otherJoint = this.overlayOtherJoints[this.showLinkAngleOverlay];
-          x1 = thisJoint.x;
-          y1 = thisJoint.y;
-          x2 = otherJoint.x;
-          y2 = otherJoint.y;
-      }
+    const which = this.showLinkAngleOverlay === -2 ? 'length' : 'angle';
+    const index = which === 'length' ? this.showLinkLengthOverlay : this.showLinkAngleOverlay;
+    if (index === -2) {
+      throw new Error(
+        'showLinkLengthOverlay should not be -2, this means an overlay was requested even though the objects to show the overlay based on was not selected'
+      );
     }
-
-    return { x1, y1, x2, y2 };
+    const [from, to] =
+      index === -1
+        ? overlayBarEnds(
+            this.activeObjService.selectedLink,
+            which,
+            this.mechanismSrv.sealedStructures()
+          )
+        : [this.activeObjService.selectedJoint, this.overlayOtherJoints[index]];
+    return { x1: from.x, y1: from.y, x2: to.x, y2: to.y };
   }
 
   /**
