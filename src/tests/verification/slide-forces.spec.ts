@@ -3,7 +3,12 @@ import { RealJoint } from '../../app/model/joint';
 import { RealLink } from '../../app/model/link';
 import { ForceAnalysisSeries, ForceSolver } from '../../app/model/mechanism/force-solver';
 import { Mechanism } from '../../app/model/mechanism/mechanism';
-import { buildMechanism, MechanismFixture } from '../../test-utils/verification/fixture';
+import { MODEL_SCALE } from '../../app/model/render-scale';
+import {
+  buildMechanism,
+  inModelUnits,
+  MechanismFixture,
+} from '../../test-utils/verification/fixture';
 import {
   loadedInvertedSliderCrankFixture,
   scotchYokeFixture,
@@ -32,9 +37,13 @@ import {
 //
 // Both are evaluated from the mechanism's own positions at each step — the
 // formulas are hand-derived, the coordinates are whatever the position solver
-// (with its four-decimal rounding) actually produced. τ barely depends on
-// where along the rider the guide sits, which is why the same two formulas
-// cover both yoke variants.
+// (with its four-decimal rounding) actually produced, read back in meters. τ
+// barely depends on where along the rider the guide sits, which is why the
+// same two formulas cover both yoke variants.
+//
+// The yoke is built in model units, as the app draws it, so a moment arm the
+// solver took in the wrong length unit shows here as a torque off by
+// MODEL_SCALE rather than cancelling out.
 
 /** Horizontal load on the yoke, newtons. */
 const P = 40;
@@ -45,7 +54,7 @@ const loadedYoke = (
   vector: [number, number] = [P, 0]
 ): Mechanism => {
   fixture.load = { onLink: 'CD', at, vector };
-  return buildMechanism(fixture).mechanism;
+  return buildMechanism(inModelUnits(fixture)).mechanism;
 };
 
 const everyFrameOk = (series: ForceAnalysisSeries): void => {
@@ -54,17 +63,19 @@ const everyFrameOk = (series: ForceAnalysisSeries): void => {
   expect(series.frames.length).toBeGreaterThan(300);
 };
 
-/** Hand statics evaluated at timestep t's own (rounded) geometry. */
+/** Hand statics evaluated at timestep t's own (rounded) geometry, in meters. */
 const handStatics = (mechanism: Mechanism, t: number, guideId: string) => {
+  const meters = (modelLength: number) => modelLength / MODEL_SCALE;
   const at = (id: string) => mechanism.joints[t].find((joint) => joint.id === id)!;
   const load = (mechanism.links[t].find((link) => link.id === 'CD') as RealLink).forces[0];
   const fx = load.mag * Math.cos(load.angleRad);
   const fy = load.mag * Math.sin(load.angleRad);
-  const pinHeight = at('B').y - at('A').y;
+  const pinHeight = meters(at('B').y - at('A').y);
   return {
     torque: fx * pinHeight,
     couple:
-      fx * (load.startCoord.y - at('A').y - pinHeight) - fy * (load.startCoord.x - at(guideId).x),
+      fx * (meters(load.startCoord.y - at('A').y) - pinHeight) -
+      fy * meters(load.startCoord.x - at(guideId).x),
   };
 };
 

@@ -357,6 +357,44 @@ function buildMechanismNow(
 }
 
 /**
+ * The same fixture with every coordinate in model units, the way the app
+ * holds a drawing: MODEL_SCALE of them to one of the fixture's own
+ * (render-scale.ts).
+ *
+ * Fixtures are written in the reader's units because the kinematics specs
+ * compare positions against MATLAB numbers directly, and a build at those raw
+ * coordinates moves exactly as the app's does. Forces are not so forgiving:
+ * the force solver reads lengths as model units, so a raw build is analyzed as
+ * a mechanism MODEL_SCALE times smaller than the one written. Statics hides
+ * that -- only the torque changes -- but every inertia term depends on it, so a
+ * spec that checks a torque or a dynamic reaction against real numbers builds
+ * from this.
+ *
+ * Only positions scale. A load's vector is a force, a slot's angle is an
+ * angle, and a slider's drive speed is already in the reader's units.
+ */
+export function inModelUnits(fixture: MechanismFixture): MechanismFixture {
+  const point = ([x, y]: [number, number]): [number, number] => [x * MODEL_SCALE, y * MODEL_SCALE];
+  const link = (spec: FixtureLink): FixtureLink => ({
+    ...spec,
+    com: spec.com && point(spec.com),
+    subset: spec.subset?.map(link),
+  });
+  const load = (spec: FixtureLoad): FixtureLoad => ({ ...spec, at: point(spec.at) });
+  return {
+    ...fixture,
+    joints: fixture.joints.map((joint) => ({
+      ...joint,
+      x: joint.x * MODEL_SCALE,
+      y: joint.y * MODEL_SCALE,
+    })),
+    links: fixture.links.map(link),
+    load: fixture.load && load(fixture.load),
+    loads: fixture.loads?.map(load),
+  };
+}
+
+/**
  * Build a fixture at a given drawing scale, leaving the shared static as found.
  *
  * `SettingsService.objectScale` is process-wide, and a cylinder's stroke and a

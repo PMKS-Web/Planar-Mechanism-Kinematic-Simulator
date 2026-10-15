@@ -4,6 +4,7 @@ import { slideAssemblies } from '../slide-assembly';
 import { KinematicsSolver } from './kinematic-solver';
 import { Loop } from './loop-solver';
 import { siUnitFactors, SiUnitFactors } from '../unit-conversions';
+import { MODEL_SCALE } from '../render-scale';
 
 export type ForceAnalysisMode = 'static' | 'dynamic';
 
@@ -169,9 +170,10 @@ export const SECOND_ORDER_LOCK_MESSAGE =
  * transcendentals differently at the last bit. Chrome refused the square-rod
  * tangency frame while Safari "solved" it into 8.5e5 N reactions from a 10 N
  * load. Refusing anything below this line makes the call deterministic. The
- * smallest scaled pivot of any healthy solve across the whole fixture corpus
- * is 3.4e-3, 34x above the line (force-solver.fixture.spec.ts holds every
- * frame above 1e-3), so frames the sampler lands merely *near* a toggle still
+ * smallest scaled pivot of any healthy solve is 1.3e-2 across the production
+ * fixtures and templates (force-solver.fixture.spec.ts holds every frame above
+ * 1e-3) and 2.9e-3 across the fixture gallery, the same in every unit since
+ * `momentArmScale`, so frames the sampler lands merely *near* a toggle still
  * solve, as designed.
  */
 const SINGULAR_PIVOT_TOLERANCE = 1e-4;
@@ -454,6 +456,7 @@ export class ForceSolver {
 
     const A = Array.from({ length: rowCount }, () => Array(unknownCount).fill(0));
     const b = Array(rowCount).fill(0);
+    const armScale = this.momentArmScale(bodies, units);
 
     const addForceCoefficient = (
       body: Link,
@@ -491,11 +494,12 @@ export class ForceSolver {
       }
     }
 
-    // A couple has no force resultant: it enters moment rows alone.
+    // A couple has no force resultant: it enters moment rows alone, written
+    // at the linkage's own size (see `momentArmScale`).
     for (const couple of couples) {
-      A[bodyRows.get(couple.rider.id)!.start + 2][couple.column] += 1;
+      A[bodyRows.get(couple.rider.id)!.start + 2][couple.column] += armScale;
       if (couple.carrier) {
-        A[bodyRows.get(couple.carrier.id)!.start + 2][couple.column] -= 1;
+        A[bodyRows.get(couple.carrier.id)!.start + 2][couple.column] -= armScale;
       }
     }
 
@@ -503,7 +507,7 @@ export class ForceSolver {
     if (inputBody && inputKind) {
       const rows = bodyRows.get(inputBody.id)!;
       if (inputKind === 'torque' && inputBody instanceof RealLink) {
-        A[rows.start + 2][inputColumn] = 1;
+        A[rows.start + 2][inputColumn] = armScale;
       } else if (inputKind === 'force') {
         A[rows.start][inputColumn] = inputDirection[0];
         A[rows.start + 1][inputColumn] = inputDirection[1];
@@ -614,7 +618,7 @@ export class ForceSolver {
 
     const guideCouples = new Map<string, number>();
     for (const couple of couples) {
-      guideCouples.set(couple.slider.id, solution.values[couple.column]);
+      guideCouples.set(couple.slider.id, solution.values[couple.column] * armScale);
     }
 
     const inputEffort =
@@ -622,7 +626,7 @@ export class ForceSolver {
         ? {
             jointId: inputJoint.id,
             kind: inputKind,
-            valueSI: solution.values[inputColumn],
+            valueSI: solution.values[inputColumn] * (inputKind === 'torque' ? armScale : 1),
           }
         : undefined;
 
@@ -1050,8 +1054,44 @@ export class ForceSolver {
     return result;
   }
 
+  /**
+   * The length a torque or couple column is written in: the longest moment arm
+   * any body has, in meters.
+   *
+   * Every other column is a force, and its moment-row entries are arms. A
+   * torque entered its row as a bare 1 instead, so against arms of a few
+   * centimeters it was dozens of times larger than its neighbors and against
+   * arms of meters about their size. Scaled pivoting judges a row by its
+   * largest entry, so how close a pose came to the singular line depended on
+   * the unit it was drawn in. Written as armScale × (τ / armScale), a torque
+   * sits in its row like a force at the linkage's own size; a change of unit
+   * then only rescales whole rows, which the pivoting ignores, and whether a
+   * pose is singular is a question about its geometry alone.
+   */
+  private static momentArmScale(bodies: Link[], units: UnitFactors): number {
+    let longest = 0;
+    for (const body of bodies) {
+      if (!(body instanceof RealLink)) continue;
+      for (const joint of body.joints) {
+        longest = Math.max(longest, Math.hypot(joint.x - body.CoM.x, joint.y - body.CoM.y));
+      }
+    }
+    const meters = longest * units.distanceToM;
+    return Number.isFinite(meters) && meters > 0 ? meters : 1;
+  }
+
+  /**
+   * SI factors for what this solver is handed, whose lengths are model units:
+   * MODEL_SCALE of them to one of the reader's (render-scale.ts). The scale is
+   * folded into the length factor so every moment arm and every m·a is in real
+   * meters. Left out, the force rows carried m·a two hundred times over and the
+   * moment rows weighed I·α, which has no length in it, against arms two
+   * hundred times too long -- statics never showed it, because there every
+   * term of a moment row scales together and only the torque came out large.
+   */
   private static unitFactors(unit: string): UnitFactors {
-    return siUnitFactors(unit);
+    const units = siUnitFactors(unit);
+    return { ...units, distanceToM: units.distanceToM / MODEL_SCALE };
   }
 
   /**

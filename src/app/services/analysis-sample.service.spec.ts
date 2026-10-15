@@ -10,7 +10,7 @@ import { AnalysisSampleService } from './analysis-sample.service';
 import { SettingsService } from './settings.service';
 import { withTestInjector } from '../../test-utils/mechanism-harness';
 import { ForceUnit, LengthUnit } from '../model/unit-enums';
-import { METERS_PER_INCH, NEWTONS_PER_LBF } from '../model/unit-conversions';
+import { METERS_PER_INCH, NEWTONS_PER_LBF, siUnitFactors } from '../model/unit-conversions';
 
 /** Standard gravity, the value the force solver works to. */
 const GRAVITY = 9.80665;
@@ -278,6 +278,32 @@ describe('AnalysisSampleService', () => {
       fixture.settings.lengthUnit.next(LengthUnit.INCH);
       expect(reaction()).toBeCloseTo(newtons / NEWTONS_PER_LBF, 9);
       expect(torque()).toBeCloseTo(newtonMeters / (NEWTONS_PER_LBF * METERS_PER_INCH), 6);
+    });
+
+    it('reads an input torque that does the work gravity takes, in real units', () => {
+      // Virtual work, through nothing the force solver computed. Holding the
+      // linkage against its own weight, the drive's power cancels what gravity
+      // takes from every moving center of mass, and those velocities are read
+      // back here in the reader's own unit. A torque whose moment arms were
+      // left in model units -- or divided back down twice -- misses by a
+      // factor of MODEL_SCALE.
+      const units = siUnitFactors(fixture.mechanism.unit);
+      fixture.settings.forceUnit.next(ForceUnit.NEWTON);
+      for (const index of [0, 40, 120, 250]) {
+        let gravityPower = 0;
+        let largest = 0;
+        for (const link of fixture.mechanism.links[index]) {
+          const lift = exactly(index, "Linear Link's CoM Vel", link.id)[1] * units.distanceToM;
+          const power = link.mass * units.massToKg * GRAVITY * lift;
+          gravityPower -= power;
+          largest = Math.max(largest, Math.abs(power));
+        }
+        // Newtons times the drawing's own length, so back to N·m first.
+        const torque = exactForce(index, 'static', 'Input Torque', 'A')[0] * units.distanceToM;
+        const drivePower = torque * fixture.mechanism.inputAngularVelocities[index];
+        expect(largest).toBeGreaterThan(0);
+        expect(Math.abs(drivePower + gravityPower)).toBeLessThan(1e-6 * largest);
+      }
     });
 
     it('reads a reaction from the link asked for, and gaps where that link is absent', () => {

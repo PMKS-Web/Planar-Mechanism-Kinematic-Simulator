@@ -46,6 +46,7 @@ import {
   punchPressFixture,
   toggleClampFixture,
 } from './force-fixtures';
+import { spinningBarFixture, weightedRockerFourBarFixture } from './inertia-fixtures';
 import {
   landingGearFixture,
   excavatorBucketFixture,
@@ -373,6 +374,20 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     // per cycle rather than 360, and 16 RPM is what puts that at 6.4 s.
     speed: { rpm: 16 },
     fixture: offsetLoadFourBarFixture(),
+  },
+  {
+    name: 'Spinning bar',
+    purpose: 'A bar pinned at one end and turning steadily: its pin pulls it round with m·ω²·r',
+    spec: 'force-solver.model-scale.spec.ts',
+    floatingSlot: false,
+    fixture: spinningBarFixture(true),
+  },
+  {
+    name: 'Four-bar with a weighted rocker',
+    purpose: 'Only the rocker has mass, so its m·a and I·α loads can be checked by hand',
+    spec: 'force-solver.model-scale.spec.ts',
+    floatingSlot: false,
+    fixture: weightedRockerFourBarFixture(),
   },
   {
     name: 'Hydraulic cylinder',

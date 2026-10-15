@@ -134,6 +134,26 @@ be the one system whose moment did not follow it, so a reader measuring in cm wa
 meters with a silent hundredth in the middle of it. `AnalysisSampleService` divides the solver's
 newton-meters by both factors, and `analysis-sample.service.spec.ts` pins all four combinations.
 
+**The force solver is the one solver that works in real meters, and it takes `MODEL_SCALE` out
+itself.** Everything it is handed is in model units: positions, and the kinematic solver's
+accelerations. `ForceSolver.unitFactors` folds `MODEL_SCALE` into the length factor, so every moment
+arm and every m·a is in meters, and every reaction, torque and guide couple leaves in real N and
+N·m. Nothing downstream divides them again. Until this was fixed, the solver took a model unit for
+a meter. Statics hid it, because every term of a moment row grew together and only the torque came
+out 200 times too large, and the graph divided that back down. Dynamics could not hide it: m·a
+came out 200 times too large, and I·α, which has no length in it, was weighed against arms 200 times
+too long. A spinning 2 kg bar read −400 N at its pin instead of −2 N. A spec that checks a force
+against real numbers must build in model units, like the app. `inModelUnits(fixture)` in
+`test-utils/verification/fixture.ts` does that. A raw `buildMechanism(fixture)` is analyzed as a
+linkage 200 times smaller.
+
+The torque and couple columns are written at the linkage's own size, `momentArmScale`, rather
+than as a bare 1. Scaled pivoting judges a row by its largest entry, so a bare 1 beside the arms
+made the singular verdict depend on the unit and the size of the drawing. Before this change the
+TeachingLab four-bar solved at every pose in centimeters and at 1 pose in 361 in meters. Now a
+change of unit only rescales whole rows, and `force-solver.model-scale.spec.ts` checks that the
+pivots are the same in all three units.
+
 **Adding a unit to one of these enums means appending it, after `NULL`.** The URL codec encodes an
 enum setting as the *index of its key* in `Object.keys`, one base-64 character, so a value inserted
 anywhere but the end renames every value already in circulation. `InertiaUnit.G_CM2` and
