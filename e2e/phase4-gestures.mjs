@@ -168,12 +168,24 @@ await page.waitForTimeout(500);
 checkThat('redo puts it back', (await sliderState()).blocks === 1);
 
 // -------------------------------------------------------------- 4.1 the panel
-console.log('\n4.1 — the panel toggles');
+console.log('\n4.1 — the panel’s Joint Type choice');
 await page.click('#joint_E');
 await page.waitForTimeout(400);
 
 const panelText = await page.evaluate(() => document.body.innerText);
-checkThat('the panel offers Slider and Weld', /Slider/.test(panelText) && /Weld/.test(panelText));
+const typeChoice = await page.evaluate(() =>
+  [...document.querySelectorAll('app-edit-panel segmented-block .cell')].map((cell) => ({
+    label: cell.querySelector('.text')?.textContent.trim(),
+    chosen: cell.querySelector('button')?.getAttribute('aria-pressed') === 'true',
+  }))
+);
+checkThat(
+  'the panel offers the four joint types, with the slot just cut chosen',
+  JSON.stringify(typeChoice.map((one) => one.label)) ===
+    JSON.stringify(['Revolute', 'Prismatic', 'Pin-in-slot', 'Welded']) &&
+    typeChoice.find((one) => one.chosen)?.label === 'Pin-in-slot',
+  JSON.stringify(typeChoice)
+);
 checkThat('and no longer offers a separate Unweld button', !/Unweld\b/.test(panelText));
 // The panel used to say "Slot on: CD" in words. The canvas draws the slot on
 // its carrier, so the panel no longer repeats it -- but the gesture still has
@@ -204,8 +216,18 @@ async function toggle(label) {
   return true;
 }
 
-const weldToggled = await toggle('Weld');
-checkThat('the Weld toggle is reachable', weldToggled);
+/** Pick a type in the Edit panel's Joint Type choice by its label; false if it cannot be. */
+async function chooseType(label) {
+  const option = page.locator('app-edit-panel segmented-block button', { hasText: label }).first();
+  if ((await option.count()) === 0 || (await option.isDisabled())) return false;
+  await option.click();
+  await page.waitForTimeout(500);
+  return true;
+}
+
+// A slot welded to what rides it is a Slide, which the choice names Prismatic.
+const weldToggled = await chooseType('Prismatic');
+checkThat('the Joint Type choice is reachable', weldToggled);
 const welded = await sliderState();
 checkThat(
   'welding the slider draws a plate — a Slide',
@@ -214,7 +236,7 @@ checkThat(
 );
 await page.screenshot({ path: `${OUT}/5-slide.png` });
 
-await toggle('Weld');
+await chooseType('Pin-in-slot');
 const unwelded = await sliderState();
 checkThat(
   'unwelding gives a Slot back, not a pin',
@@ -320,8 +342,7 @@ const markTransforms = () =>
     .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('transform')));
 const beforeAngle = await markTransforms();
 const angleField = page
-  .locator('#toggle-block .row')
-  .filter({ hasText: 'Slider' })
+  .locator('app-edit-panel input-block', { hasText: 'Slider Angle' })
   .first()
   .locator('input');
 await angleField.fill('45 deg');
@@ -336,21 +357,25 @@ checkThat(
 await page.screenshot({ path: `${OUT}/10-angle-edit.png` });
 
 // A weld with nothing to fuse is grayed rather than offered-then-refused:
-// joint A connects a single link, so the switch is disabled outright and the
-// state it shows (off) is the state the mechanism is in.
+// joint A connects a single link, so Welded is disabled outright in the Joint
+// Type choice, and the type it shows chosen is the type the joint is.
 await load(FOUR_BAR);
 await page.click('#joint_A');
 await page.waitForTimeout(400);
-const weldSwitch = page
-  .locator('#toggle-block .row')
-  .filter({ hasText: 'Weld' })
-  .first()
-  .locator('button[role="switch"], .mdc-switch')
-  .first();
-await weldSwitch.click({ force: true, timeout: 5000 }).catch(() => {});
+const typeOption = (label) =>
+  page.locator('app-edit-panel segmented-block button', { hasText: label }).first();
+await typeOption('Welded')
+  .click({ force: true, timeout: 5000 })
+  .catch(() => {});
 await page.waitForTimeout(600);
-checkThat('a weld with nothing to fuse is grayed out', (await weldSwitch.isDisabled()) === true);
-checkThat('and the switch stays off', (await weldSwitch.getAttribute('aria-checked')) === 'false');
+checkThat(
+  'a weld with nothing to fuse is grayed out',
+  (await typeOption('Welded').isDisabled()) === true
+);
+checkThat(
+  'and Revolute stays the chosen type',
+  (await typeOption('Revolute').getAttribute('aria-pressed')) === 'true'
+);
 checkThat(
   'and the joint keeps its circle rather than becoming a plus',
   (await page.locator('#joint_A').evaluate((n) => n.tagName.toLowerCase())) === 'circle'
@@ -373,7 +398,7 @@ checkThat('a slot to remember', (await sliderState()).channels === 1);
 
 await page.click('#joint_E');
 await page.waitForTimeout(300);
-await toggle('Slider');
+await chooseType('Revolute');
 checkThat('slider off', (await sliderState()).blocks === 0);
 
 await page.click('text=Undo');
@@ -383,10 +408,10 @@ await page.waitForTimeout(500);
 
 await page.click('#joint_E');
 await page.waitForTimeout(300);
-await toggle('Slider');
+await chooseType('Pin-in-slot');
 const restored = await sliderState();
 checkThat(
-  'turning Slider back on restores the slot rather than dangling',
+  'choosing Pin-in-slot again restores the slot rather than dangling',
   restored.blocks === 1 && restored.dangling === 0 && restored.channels === 1,
   JSON.stringify(restored)
 );
@@ -401,8 +426,7 @@ await load(ELLIPTICAL);
 await page.click('#joint_A');
 await page.waitForTimeout(400);
 const badAngle = page
-  .locator('#toggle-block .row')
-  .filter({ hasText: 'Slider' })
+  .locator('app-edit-panel input-block', { hasText: 'Slider Angle' })
   .first()
   .locator('input');
 await badAngle.fill('bogus');

@@ -61,11 +61,14 @@ describe('weld on a joint that connects fewer than two links', () => {
     expect(s.saveCount()).toBe(0);
   });
 
-  it('tolerates a toggle with no resolvable selection', () => {
+  it('tolerates a weld aimed at a joint that is no longer in the drawing', () => {
     const s = linkWithTracer();
-    // A stale selection: the menu can fire after the joint is gone.
-    s.active.updateSelectedObj(new RevJoint('Z', 9, 9));
-    expect(() => s.service.toggleWeldedJoint()).not.toThrow();
+    // The card can fire after the joint is gone: the choice carries the joint
+    // it was built for, so the joint reaching the mutation can be a stranger.
+    const gone = new RevJoint('Z', 9, 9);
+    expect(() => s.service.weldJoint(gone)).not.toThrow();
+    expect(gone.isWelded).toBe(false);
+    expect(s.saveCount()).toBe(0);
   });
 
   it('still makes a Slide when the second "link" is the slider block itself', () => {

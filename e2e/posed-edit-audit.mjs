@@ -272,7 +272,7 @@ const undoToBefore = async (before) => {
 // ---- the invariants ----------------------------------------------------------
 
 /** The rows that read the pose they are made at (§6.2: capturing). */
-const CAPTURING = /^(Link|Cylinder|Force|Tracer Point|Welded|Slider|Duplicate)/;
+const CAPTURING = /^(Link|Cylinder|Force|Tracer Point|Joint Type|Welded|Slider|Duplicate)/;
 
 const clocksAgree = (state) =>
   state.atStart ===
@@ -428,15 +428,28 @@ const rowsFor = (kind, id) =>
       else if (kind === 'force') part = s.forces.find((f) => f.id === id);
       if (kind === 'canvas') g.setLastRightClick(undefined);
       else g.setLastRightClick(part);
-      return g.cMenu.groups.flatMap((group, gi) =>
-        group.rows.map((row, ri) => ({
-          gi,
-          ri,
-          label: row.label,
-          refused: row.refusal ? row.refusal.short || row.refusal.long || 'refused' : null,
-          disabled: !!row.disabled,
-        }))
-      );
+      // The card's choice first: its values are edits like any row, and they
+      // are the ones that used to be the Slider and Welded rows. `gi` of -1
+      // says "the choice" to `runRow` below.
+      const choice = (g.cMenu.choice?.options ?? []).map((option, ri) => ({
+        gi: -1,
+        ri,
+        label: `Joint Type: ${option.label}`,
+        refused: option.refusal ? option.refusal.short || option.refusal.long || 'refused' : null,
+        disabled: !!option.refusal,
+      }));
+      return [
+        ...choice,
+        ...g.cMenu.groups.flatMap((group, gi) =>
+          group.rows.map((row, ri) => ({
+            gi,
+            ri,
+            label: row.label,
+            refused: row.refusal ? row.refusal.short || row.refusal.long || 'refused' : null,
+            disabled: !!row.disabled,
+          }))
+        ),
+      ];
     },
     [kind, id]
   );
@@ -465,7 +478,7 @@ const runRow = (kind, id, gi, ri) =>
         g.lastRightClickCoord.x = at.x;
         g.lastRightClickCoord.y = at.y;
       }
-      const row = g.cMenu.groups[gi].rows[ri];
+      const row = gi === -1 ? g.cMenu.choice.options[ri] : g.cMenu.groups[gi].rows[ri];
       row.action?.();
       return g.dragState.grid;
     },

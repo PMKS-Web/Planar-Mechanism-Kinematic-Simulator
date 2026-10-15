@@ -325,6 +325,9 @@ export class KeyboardShortcutsService {
     if (this.typingInAField(event)) return;
     // And Space or Enter on something that answers them itself belongs to it.
     if (this.targetAnswersKey(event)) return;
+    // And a key pressed into an open menu belongs to the menu, which answers
+    // the arrows by being one.
+    if (this.insideAnOpenMenu(event)) return;
     // And a key pressed while something stands over the canvas belongs to that
     // thing, or to nothing. These are the canvas's keys: with the Templates
     // dialog open, Delete was removing the selected joint behind it, out of
@@ -398,5 +401,30 @@ export class KeyboardShortcutsService {
     if (tag === 'BUTTON' || tag === 'SUMMARY') return true;
     if (tag === 'A' && target.hasAttribute('href')) return true;
     return target.getAttribute('role') === 'button';
+  }
+
+  /**
+   * Whether the keystroke was aimed at a menu standing open over the canvas.
+   *
+   * The same rule as a dialog, and for the same reason: what is over the canvas
+   * gets the keys. Walking the items with the arrows is not a shortcut anybody
+   * assigned, it is what a menu is, and the CDK moves focus into one as it
+   * opens. This service answered the arrows wherever they were pressed -- and a
+   * right-click selects what it opened the card on, so Down nudged that joint
+   * behind the card while the card closed itself on the shortcut it had fired.
+   *
+   * Asked of the focused element rather than of any open overlay: a card can
+   * stand while focus is elsewhere, and those keys are still the canvas's.
+   *
+   * Scoped to a CDK menu rather than to `[role="menu"]`, which also matches the
+   * phone's visibility drawer (`view-controls.component.html`). That sheet's
+   * rows are plain buttons that keep focus after a tap and it stays open until
+   * its backdrop is clicked, so the broader selector left every shortcut dead
+   * from the moment a row there was tapped -- and it answers no arrow keys, so
+   * none of the reasoning above applies to it.
+   */
+  private insideAnOpenMenu(event: KeyboardEvent): boolean {
+    const target = event.target;
+    return target instanceof Element && !!target.closest('.cdk-menu');
   }
 }

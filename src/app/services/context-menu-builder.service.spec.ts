@@ -23,6 +23,7 @@ import { RevJoint } from '../model/joint';
 import { RealLink } from '../model/link';
 import { MODEL_SCALE } from '../model/render-scale';
 import { MultiEditService } from './multi-edit.service';
+import { JointTypeService } from './joint-type.service';
 import { SelectionBatchService } from './selection-batch.service';
 
 /**
@@ -76,6 +77,7 @@ function createBuilderHarness() {
       { provide: ContextMenuBuilderService, deps: [] },
       { provide: SelectionBatchService, deps: [MechanismService] },
       { provide: MultiEditService, deps: [] },
+      { provide: JointTypeService, deps: [] },
     ],
   });
   return {
@@ -164,17 +166,24 @@ describe('the right-click menu', () => {
     });
 
     it('carries the joint switches, and says Mixed when the group disagrees', () => {
-      // The same four the one-joint menu carries, in the same words: a reader
-      // who has learned where Grounded is should not learn again because they
-      // selected two joints.
+      // The same switches the one-joint menu carries, in the same words: a
+      // reader who has learned where Grounded is should not learn again because
+      // they selected two joints.
       const parts = fourBar(harness.mechanism);
       harness.active.replacePartSelection(parts.o);
       harness.active.togglePartSelection(parts.a);
 
       const model = harness.builder.build(parts.a, noHandlers);
-      expect(labels(model)).toEqual(
-        expect.arrayContaining(['Grounded', 'Slider', 'Welded', 'Trace Path', 'Locked'])
-      );
+      expect(labels(model)).toEqual(expect.arrayContaining(['Grounded', 'Trace Path', 'Locked']));
+      // What the joints *are* is the choice at the top of the card, as it is on
+      // one joint, rather than two rows down in State.
+      expect(model.choice?.label).toBe('Joint Type');
+      expect(model.choice?.options.map((one) => one.label)).toEqual([
+        'Revolute',
+        'Prismatic',
+        'Pin-in-slot',
+        'Welded',
+      ]);
       // O is ground and A is not, so there is no one state to show.
       expect(row(model, 'Grounded')!.checked).toBe(false);
       expect(row(model, 'Grounded')!.hint).toBe('Mixed');
@@ -194,16 +203,16 @@ describe('the right-click menu', () => {
       expect(driven.refusal?.short).toBe('one input per machine');
     });
 
-    it('grays a group weld for the reason one joint would have been grayed for', () => {
+    it('grays a group type for the reason one joint would have been grayed for', () => {
       const parts = fourBar(harness.mechanism);
       harness.active.replacePartSelection(parts.a);
       harness.active.togglePartSelection(parts.t);
 
       const model = harness.builder.build(parts.a, noHandlers);
-      const welded = row(model, 'Welded')!;
+      const welded = model.choice!.options.find((one) => one.label === 'Welded')!;
       // T is a tracer on one link, so there is nothing at it to fuse -- and
-      // the sentence is the one `weldRefusal` writes, naming the joint.
-      expect(welded.refusal?.long).toContain('T cannot be welded');
+      // the sentence is the one the refusal model writes, naming the joint.
+      expect(welded.refusal?.long).toContain('T cannot become Welded');
       expect(welded.refusal?.long).toContain(harness.grid.weldRefusal(parts.t)!.long);
     });
 
@@ -300,17 +309,19 @@ describe('the right-click menu', () => {
 
     it('grays the weld on a joint with nothing to fuse', () => {
       const parts = fourBar(harness.mechanism);
-      const weld = row(harness.builder.build(parts.t, noHandlers), 'Welded')!;
-      expect(weld.disabled).toBe(true);
-      expect(weld.refusal!.short).toBe('needs 2 links');
+      const model = harness.builder.build(parts.t, noHandlers);
+      const welded = model.choice!.options.find((one) => one.label === 'Welded')!;
+      expect(welded.refusal!.short).toBe('needs 2 links');
     });
 
     it('leaves both directions of a mutually exclusive pair usable', () => {
       const parts = fourBar(harness.mechanism);
       parts.a.input = true;
       const model = harness.builder.build(parts.a, noHandlers);
-      // Weld grays on a driven joint...
-      expect(row(model, 'Welded')!.refusal!.short).toBe('it is driven');
+      // Welded grays on a driven joint...
+      expect(model.choice!.options.find((one) => one.label === 'Welded')!.refusal!.short).toBe(
+        'it is driven'
+      );
       // ...and the switch that resolves it stays live.
       expect(row(model, 'Driven Input')!.disabled).toBe(false);
       expect(row(model, 'Driven Input')!.checked).toBe(true);
