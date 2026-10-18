@@ -1,0 +1,158 @@
+<collapsible-subsection titleLabel="Degrees of Freedom" [expanded]="true">
+  <div class="explanation">
+    <p>
+      Degrees of freedom (DOF) count the independent motions needed to describe a mechanism's
+      position.
+    </p>
+    @if (count().hasGround) {
+      <p class="result">
+        Reported DOF: <strong>{{ dof() }}</strong>
+      </p>
+      <p class="equationLabel">Grübler–Kutzbach count</p>
+      <p class="generalEquation">M = 3(N − 1) − 2J₁ − J₂</p>
+      <p class="equation" data-testid="mobility-substitution">
+        M = 3({{ count().N }} − 1) − 2 × {{ count().J1 }} − {{ count().J2 }} =
+        <strong>{{ count().counted }}</strong>
+      </p>
+      <dl class="terms">
+        <div>
+          <dt>N · Bodies, including ground</dt>
+          <dd>{{ count().N }}</dd>
+        </div>
+        <div>
+          <dt>J₁ · Lower pairs</dt>
+          <dd>{{ count().J1 }}</dd>
+        </div>
+        <div>
+          <dt>J₂ · Higher pairs</dt>
+          <dd>{{ count().J2 }}</dd>
+        </div>
+      </dl>
+      @if (dof() !== count().counted) {
+        <p class="geometryNote" data-testid="mobility-rescue">
+          Geometry adjustment: the count gives {{ count().counted }}, but the geometry check finds
+          {{ dof() }} independent motion(s). Some constraints repeat others, so counting each one
+          separately subtracts too much freedom.
+        </p>
+      }
+      @if (hiddenFreedoms() !== undefined) {
+        <p class="geometryNote">
+          The position solve also found {{ hiddenFreedoms() }} independent motions in the geometry.
+          The reported count alone does not describe this mechanism. Open its analysis setup for the
+          motion that needs constraining.
+        </p>
+      }
+      @if (count().counted < 0) {
+        <p>
+          A negative count indicates excess counted constraints; it is not a negative number of
+          physical motions.
+        </p>
+      }
+    } @else {
+      <p>Add ground to define a fixed frame before PMKS+ reports this mechanism's DOF.</p>
+    }
+    <p>
+      One DOF needs one independent input. A count of one alone does not guarantee that the
+      mechanism can animate.
+    </p>
+  </div>
+
+  <collapsible-subsection titleLabel="Equations and Rules">
+    <div class="explanation">
+      <h3>Kutzbach's planar equation</h3>
+      <p class="equation">M = 3(N − 1) − 2J₁ − J₂</p>
+      <p>
+        M is mobility. A free planar body can translate in two directions and rotate, giving three
+        freedoms. Subtracting one body fixes the ground.
+      </p>
+      <p>
+        A lower pair (pin or slider) permits one relative motion and removes two freedoms. A higher
+        pair permits two relative motions and removes one freedom.
+      </p>
+      <h3>Grübler's lower-pair form</h3>
+      <p class="equation">M = 3(N − 1) − 2J₁</p>
+      <p>
+        PMKS+ represents its connections with pins and sliders, including explicit blocks in slots,
+        so J₂ = 0. For a one-DOF mechanism this becomes 3N − 2J₁ − 4 = 0.
+      </p>
+      <p>
+        A four-bar example has four bodies including ground and four pin pairs: 3(4 − 1) − 2 × 4 =
+        1.
+      </p>
+      <ul>
+        <li>Count all ground as one body, including fully anchored rails.</li>
+        <li>Welded links and links sharing two or more joints count as one rigid body.</li>
+        <li>
+          A joint joining k distinct bodies contributes k − 1 lower pairs. Three bodies at one pin
+          contribute two pairs.
+        </li>
+        <li>A tracer point on just one body contributes no pair.</li>
+        <li>
+          Count each mechanism separately. An input drives an existing freedom; it is not subtracted
+          from this count.
+        </li>
+      </ul>
+      <h3>When geometry changes the answer</h3>
+      <p>
+        The equations assume independent constraints. When the count is below one, PMKS+ checks the
+        constraint geometry.
+      </p>
+      <p class="equation">Instantaneous mobility =<br />3(N − 1) − rank(A)</p>
+      <p>
+        A is the constraint Jacobian. PMKS+ then checks whether the candidate motions survive a
+        second-order constraint check. An instantaneous freedom at a tangency may not produce finite
+        motion.
+      </p>
+      <p>
+        The geometry result replaces the count only if it finds at least one surviving motion. A
+        failed position solve may also check for additional freedoms.
+      </p>
+      <a href="https://www.cs.cmu.edu/~rapidproto/mechanisms/chpt4.html#HDR56"
+        >Reference: Carnegie Mellon, planar mechanism mobility</a
+      >
+    </div>
+  </collapsible-subsection>
+
+  <collapsible-subsection titleLabel="Bodies and Joints">
+    <div class="explanation">
+      <p>
+        Each row below is one counted body. Names joined in a row belong to the same rigid body.
+      </p>
+      <ul>
+        @for (body of count().bodies; track body.id) {
+          <li>
+            {{ body.id === world ? 'Ground' : 'Body'
+            }}{{ body.links.length ? ': ' + body.links.join(', ') : '' }}
+          </li>
+        }
+      </ul>
+      <table>
+        <caption>
+          Lower pairs contributed by each joint
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Joint</th>
+            <th scope="col">Bodies</th>
+            <th scope="col">Pairs</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (joint of count().joints; track joint.id) {
+            <tr>
+              <th scope="row">{{ joint.name }} · {{ joint.kind }}</th>
+              <td>{{ joint.bodies }}</td>
+              <td>{{ joint.pairs }}</td>
+            </tr>
+          }
+        </tbody>
+        <tfoot>
+          <tr>
+            <th scope="row" colspan="2">Total J₁</th>
+            <td>{{ count().J1 }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </collapsible-subsection>
+</collapsible-subsection>

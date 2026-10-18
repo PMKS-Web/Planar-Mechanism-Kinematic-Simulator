@@ -11,6 +11,7 @@ import { RightPanelComponent } from '../right-panel/right-panel.component';
 import { MechanismFact } from '../../model/mechanism/readiness';
 import { MatIcon } from '@angular/material/icon';
 import { ExportCatalogService } from '../../services/export/export-catalog.service';
+import { MobilityExplanationComponent } from '../mobility-explanation/mobility-explanation.component';
 
 /** One line of the Links section: what a link is, and how long. */
 interface LinkRow {
@@ -74,7 +75,7 @@ function sweepOf(link: RealLink, solved: Mechanism): boolean | undefined {
   templateUrl: './mechanism-panel.component.html',
   styleUrls: ['./mechanism-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [MatIcon],
+  imports: [MatIcon, MobilityExplanationComponent],
 })
 export class MechanismPanelComponent {
   mechanism = inject(MechanismService);
@@ -104,6 +105,10 @@ export class MechanismPanelComponent {
 
   get ready(): boolean {
     return this.mechanism.mechanisms[this.index]?.isMechanismValid() ?? false;
+  }
+
+  protected get solved(): Mechanism | undefined {
+    return this.mechanism.mechanisms[this.index];
   }
 
   get blockers(): number {
