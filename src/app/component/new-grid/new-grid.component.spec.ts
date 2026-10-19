@@ -17,7 +17,10 @@ import { SynthesisBuilderService } from '../../services/synthesis/synthesis-buil
 import { NotificationService } from '../../services/notification.service';
 import { EditPermissionService } from '../../services/edit-permission.service';
 import { Coord } from '../../model/coord';
+import { SaveHistoryService } from '../../services/save-history.service';
 import { LONGEST_ARROW_FRACTION, PATH_ARROW_COUNT } from '../../model/vector-trace';
+import { CYLINDER, MARK, slideMarkPath } from '../../model/joint-marks';
+import { ColorService } from '../../services/color.service';
 
 /**
  * NewGridComponent renders through svg-pan-zoom, which needs real SVG layout;
@@ -82,6 +85,153 @@ async function configureGridTestBed() {
     .overrideProvider(SvgGridService, { useValue: svgGridStub })
     .compileComponents();
 }
+
+/**
+ * A cylinder drawn on a bare grid, through the service call the canvas makes.
+ *
+ * The seal is the square mid-skin and the joint a reader selects (decision D9);
+ * the barrel's buried inner end is the one joint nothing draws (decision S11).
+ */
+function drawnCylinder() {
+  // Creation asks the palette for the barrel's color, and the palette is a
+  // static the app builds at startup rather than a provider.
+  if (!ColorService.instance) new ColorService();
+  const mechanism = TestBed.inject(MechanismService);
+  mechanism.createCylinderFrom(new Coord(0, 0), new Coord(4 * MODEL_SCALE, 0));
+  const cylinder = mechanism.sealedStructures()[0];
+  const fixture = TestBed.createComponent(NewGridComponent);
+  fixture.detectChanges();
+  return { mechanism, cylinder, fixture, component: fixture.componentInstance };
+}
+
+describe('NewGridComponent cylinder selectables', () => {
+  beforeEach(configureGridTestBed);
+
+  it('gives the seal a hitbox and a letter, and the buried barrel end neither', () => {
+    const { cylinder, fixture, component } = drawnCylinder();
+
+    expect(component.isCylinderInner(cylinder.inner)).toBe(true);
+    expect(component.isCylinderInner(cylinder.seal)).toBe(false);
+    // The seal is drawn from the ordinary joint loop like any other Prismatic
+    // slider: its cream bar rides the head the skin draws. Only N is skipped.
+    expect(component.slideMarkOn(cylinder.seal)).toBeDefined();
+    expect(component.isWeldMark(cylinder.seal)).toBe(false);
+
+    const hit = fixture.nativeElement.querySelector(`#joint_${cylinder.seal.id}`);
+    expect(hit, 'the seal has a hitbox').not.toBeNull();
+    expect(hit.classList, 'and it is the slide mark that carries it').toContain('slideMark');
+    expect(fixture.nativeElement.querySelector(`#joint_${cylinder.inner.id}`)).toBeNull();
+
+    const letters = [...fixture.nativeElement.querySelectorAll('#jointTagHolder text')].map(
+      (node: Element) => node.textContent?.trim()
+    );
+    expect(letters).toContain(cylinder.seal.id);
+    expect(letters).not.toContain(cylinder.inner.id);
+  });
+
+  it('outlines whichever member is picked, and neither when the seal is', () => {
+    const { fixture, component, cylinder } = drawnCylinder();
+    const active = TestBed.inject(ActiveObjService);
+    const outlineOf = (which: 'barrel' | 'rod') =>
+      component.cylinderMemberOutline(component.cylinderList[0], which);
+
+    active.updateSelectedObj(cylinder.barrel as RealLink);
+    fixture.detectChanges();
+    expect(outlineOf('barrel')).toBe('link-selected');
+    expect(outlineOf('rod')).toBeUndefined();
+
+    active.updateSelectedObj(cylinder.rod as RealLink);
+    fixture.detectChanges();
+    expect(outlineOf('barrel')).toBeUndefined();
+    expect(outlineOf('rod')).toBe('link-selected');
+
+    // The seal is a joint, so picking it picks neither body — and it says so
+    // on its own mark, the way every other joint does, rather than by outlining
+    // the head it rides.
+    active.updateSelectedObj(cylinder.seal as RevJoint);
+    fixture.detectChanges();
+    expect(outlineOf('barrel')).toBeUndefined();
+    expect(outlineOf('rod')).toBeUndefined();
+    expect(fixture.nativeElement.querySelector('.cylinder-seal-selected')).toBeNull();
+    const mark = fixture.nativeElement.querySelector(`#joint_${cylinder.seal.id}`);
+    expect(mark.classList).toContain('joint-selected');
+    // And the head under it is painted no differently for being picked.
+    const head = fixture.nativeElement.querySelector('.cylinder-seal');
+    expect(head.getAttribute('fill')).toBe('#000000');
+  });
+
+  it('turns the seal mark along its own axis and keeps it inside the head', () => {
+    const { component, cylinder, fixture } = drawnCylinder();
+    const mark = component.cylinderList[0];
+    const bar = component.slideMarkOn(cylinder.seal)!;
+
+    // The frame the head is drawn in, reused rather than measured again.
+    expect(bar.frame).toBe(component.sliderMarks.frame({ x: 0, y: 0, rotation: mark.rotation }));
+    const drawn = fixture.nativeElement.querySelector(`#joint_${cylinder.seal.id}`);
+    expect(drawn.closest('g').getAttribute('transform')).toContain(`rotate(${mark.rotation})`);
+
+    // A full-size ram carries a full-size head, so the mark is undiminished --
+    // and still well inside the black it is marked on.
+    const r = 0.15 * TestBed.inject(SettingsService).objectScale;
+    expect(mark.headAlongHalf).toBeCloseTo(MARK.blockAlongHalf * r, 9);
+    expect(bar.path).toBe(slideMarkPath(r));
+    expect(MARK.slideAlongHalf * r).toBeLessThan(mark.headAlongHalf);
+  });
+
+  it('keeps the seal off every drop candidate list, and the buried end out of the search', () => {
+    const { component, cylinder, mechanism } = drawnCylinder();
+    const offered = mechanism.joints.filter((joint) => !component.isCylinderInner(joint));
+    // Visible but refused: aiming a drag at the square is marked red and told
+    // why, rather than skipping quietly to the next joint along.
+    expect(offered.map((joint) => joint.id)).toContain(cylinder.seal.id);
+    expect(offered.map((joint) => joint.id)).not.toContain(cylinder.inner.id);
+  });
+
+  it('draws a member’s center-of-mass mark as a glyph, not a handle', () => {
+    // A member's center follows its own shape and no surface offers a field
+    // for it (decision S14), so the mark has nothing to drag it to.
+    const { component, cylinder, mechanism } = drawnCylinder();
+    const active = TestBed.inject(ActiveObjService);
+    const plain = mechanism.addBar(
+      new Coord(0, 6 * MODEL_SCALE),
+      new Coord(4 * MODEL_SCALE, 6 * MODEL_SCALE)
+    )!;
+
+    for (const member of [cylinder.barrel, cylinder.rod]) {
+      active.updateSelectedObj(member as RealLink);
+      expect(component.comDraggable(member)).toBe(false);
+    }
+    active.updateSelectedObj(plain);
+    expect(component.comDraggable(plain)).toBe(true);
+  });
+
+  it('wears one tag, naming the part rather than either member', () => {
+    const { component, cylinder } = drawnCylinder();
+    expect(component.linkDisplayName(cylinder.barrel)).toBe(
+      `${cylinder.mountA.name}${cylinder.mountB.name}`
+    );
+    expect(component.isSecondaryCylinderTag(cylinder.barrel)).toBe(false);
+    expect(component.isSecondaryCylinderTag(cylinder.rod)).toBe(true);
+  });
+
+  it('puts the seal’s letter clear of the barrel, across the part’s own axis', () => {
+    const { component, cylinder } = drawnCylinder();
+    const anchor = component.jointTagAnchor(cylinder.seal);
+    // The part runs along x, so its normal is y and the letter goes up the
+    // screen -- the tag layer flips y by hand, so "up" is a smaller number.
+    expect(anchor.x).toBeCloseTo(cylinder.seal.x, 6);
+    expect(anchor.y).toBeLessThan(-cylinder.seal.y);
+    // Clear of the barrel's own widest edge rather than at the ordinary
+    // half-objectScale, which lands on the metal for a part drawn upright.
+    const clear = -anchor.y - cylinder.seal.y;
+    expect(clear).toBeGreaterThan(CYLINDER.barrelHalf * 0.15 * SettingsService.objectScale);
+
+    // An ordinary joint keeps the offset every joint has always had.
+    const plain = component.jointTagAnchor(cylinder.mountA);
+    expect(plain.x).toBeCloseTo(cylinder.mountA.x - SettingsService.objectScale * 0.3, 6);
+    expect(plain.y).toBeCloseTo(-cylinder.mountA.y - SettingsService.objectScale * 0.5, 6);
+  });
+});
 
 describe('NewGridComponent welded SVG presentation', () => {
   beforeEach(configureGridTestBed);
@@ -291,6 +441,65 @@ describe('NewGridComponent link creation at a welded joint', () => {
     expect(compounds[0].subset).toHaveLength(3);
     expect(mechanism.links).toHaveLength(1);
     expect(b.isWelded).toBe(true);
+  });
+});
+
+/**
+ * A link begun on bare grid finishes wherever it is released, and the slide is
+ * a square with a hitbox. So the menu graying Attach at the interior only ever
+ * covered *starting* a gesture there, and the other end was open: the bar
+ * landed, `finishStructuralEdit` welded it into the rod, and one seal was left
+ * with two bars answering to "the rod" -- so the lookup found neither and the
+ * cylinder stopped being a recognized part at all.
+ */
+describe('NewGridComponent link creation on a cylinder’s slide', () => {
+  beforeEach(configureGridTestBed);
+
+  /** Begin a bar on bare grid, then press the left button on `onto`. */
+  function finishALinkOn(component: NewGridComponent, onto: RevJoint) {
+    component['timeMouseDown'] = 0;
+    component['startX'] = 0;
+    component['startY'] = 0;
+    component['linkCreateStart'] = new Coord(0, 6 * MODEL_SCALE);
+    TestBed.inject(DragStateService).beginCreatingLinkFromGrid();
+    component.setLastLeftClick(onto);
+    TestBed.inject(ActiveObjService).updateSelectedObj(onto);
+    component.mouseDown(
+      new MouseEvent('mousedown', { button: 0, clientX: onto.x, clientY: onto.y })
+    );
+  }
+
+  it('refuses the press, and leaves the part and the history as they were', () => {
+    const { mechanism, cylinder, component } = drawnCylinder();
+    const notify = vi.spyOn(NotificationService.prototype, 'refusal').mockImplementation(() => {});
+    const saved = vi.spyOn(SaveHistoryService.prototype, 'save').mockImplementation(() => {});
+    const joints = mechanism.joints.length;
+    const links = mechanism.links.length;
+
+    finishALinkOn(component, cylinder.seal as unknown as RevJoint);
+
+    expect(mechanism.joints).toHaveLength(joints);
+    expect(mechanism.links).toHaveLength(links);
+    expect(mechanism.sealedStructures()).toHaveLength(1);
+    expect(mechanism.links.some((link) => link instanceof RealLink && link.subset.length > 0)).toBe(
+      false
+    );
+    expect(saved).not.toHaveBeenCalled();
+    expect(notify).toHaveBeenCalled();
+    expect(notify.mock.calls[0][0]).toBe('cylinder.attach-at-an-end-joint');
+    expect(notify.mock.calls[0][1]).toContain('inside a cylinder');
+    // And the gesture is put down rather than left armed with a ghost.
+    expect(TestBed.inject(DragStateService).isCreatingLink).toBe(false);
+  });
+
+  it('still lets a bar land on either of the joints at the ends', () => {
+    const { mechanism, cylinder, component } = drawnCylinder();
+    const joints = mechanism.joints.length;
+
+    finishALinkOn(component, cylinder.mountB as RevJoint);
+
+    expect(mechanism.joints.length).toBe(joints + 1);
+    expect(mechanism.sealedStructures()).toHaveLength(1);
   });
 });
 

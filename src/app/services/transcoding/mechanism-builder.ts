@@ -3,7 +3,8 @@ import { MechanismService } from '../mechanism.service';
 import { Link, RealLink } from 'src/app/model/link';
 import { Force } from 'src/app/model/force';
 import { Coord } from 'src/app/model/coord';
-import { sealedCylinderStructures } from 'src/app/model/cylinder';
+import { cylinderAtSeal, cylindersIn } from 'src/app/model/cylinder';
+import { isLetteredId, nextFreeLetter } from 'src/app/model/joint-letters';
 import { GenericTranscoder } from './transcoder-interface';
 import { ForceData, JOINT_TYPE, JointData, LINK_TYPE, LinkData } from './transcoder-data';
 import { SettingsService } from '../settings.service';
@@ -11,6 +12,38 @@ import { AngleUnit, ForceUnit, GlobalUnit, LengthUnit } from 'src/app/model/util
 import { BoolSetting, DecimalSetting, EnumSetting, IntSetting } from './stored-settings';
 import { ActiveObjService } from '../active-obj.service';
 import { MODEL_SCALE } from 'src/app/model/render-scale';
+
+/**
+ * Follow one joint's rename through every link that holds it, however deep.
+ *
+ * A link's id is the sorted concatenation of its joints' letters, so renaming a
+ * joint renames every body it is on -- the two-joint bar itself and any
+ * compound that has swallowed it. The two id-keyed fields beside it move for
+ * the same reason: `fixedLocations` is the list of points a panel offers and
+ * `comAnchor` is the joint a hand-placed center of mass is measured from, and
+ * both name a joint by id.
+ *
+ * The same walk `MechanismService.replaceJointInLink` makes for a merge, which
+ * is the other place a joint's name changes under the links holding it.
+ */
+function renameJointInLinks(links: Link[], was: string, now: string): void {
+  const walk = (link: Link) => {
+    if (link instanceof RealLink) link.subset.forEach(walk);
+    if (!link.joints.some((joint) => joint.id === now)) return;
+    link.id = link.joints
+      .map((joint) => joint.id)
+      .sort()
+      .join('');
+    link.fixedLocations = link.fixedLocations.map((location) =>
+      location.id === was ? { id: now, label: now } : location
+    );
+    if (link.fixedLocation.fixedPoint === was) link.fixedLocation.fixedPoint = now;
+    if (link instanceof RealLink && typeof link.comAnchor === 'object') {
+      if (link.comAnchor.joint === was) link.comAnchor = { joint: now };
+    }
+  };
+  links.forEach(walk);
+}
 
 /*
  * MechanismBuilder is a class that takes in a decoder and mechanism service and
@@ -309,6 +342,81 @@ export class MechanismBuilder {
     return renamed;
   }
 
+  /**
+   * Put a sealed slot in mount-first order: A the barrel's outer mount, B its
+   * inner end (Stage 2 of `docs/joint-type-and-cylinder-plan.md`, decision S1).
+   *
+   * **The one place the old distance rule survives.** A cylinder's roles used
+   * to be worked out by measuring — the barrel joint further from the rod's
+   * mount is the mount — every time anything asked, because a URL written
+   * before Stage 2 promises nothing about which way round its slot was stored.
+   * Creation has always written it mount-first, so this is a no-op for
+   * everything the app itself has emitted; it is the reader's job to make the
+   * promise true for the rest, once, before anything asks.
+   *
+   * Idempotent, which matters more here than it looks: undo and redo replay
+   * URLs, so this runs again on every step of the history. A swap puts the
+   * further joint in A, where the same test then leaves it. Equal distances
+   * and a rod that will not resolve are both left exactly as they arrived --
+   * there is nothing to learn from measuring either.
+   *
+   * Runs after `foldLegacySliders`, so the seal is the one joint it is now,
+   * and after `addAdjacentLinksForJoints`, which is what lets a cylinder
+   * resolve at all.
+   */
+  private orderSealedSlots(joints: Joint[]): void {
+    for (const joint of joints) {
+      if (!(joint instanceof PrisJoint) || !joint.isSealed) continue;
+      const cylinder = cylinderAtSeal(joint);
+      if (!cylinder) continue;
+      const a = joint.slotJointA!;
+      const b = joint.slotJointB!;
+      const from = cylinder.mountB;
+      const reach = (end: Joint) => Math.hypot(end.x - from.x, end.y - from.y);
+      if (reach(b) > reach(a)) joint.slideOn(joint.carrier!, b, a);
+    }
+  }
+
+  /**
+   * Give every seal a letter, and rename the links that hold it (decision S9).
+   *
+   * A cylinder's seal used to be interior: no marker, no hitbox, no letter, so
+   * creation spent an interior name on it (`A2`). It is the square a reader
+   * selects now, and an interior name is not something to show in a panel
+   * title, a canvas label or an export column — so a payload that carries one
+   * is given the next free letter here, by exactly the rule creation follows.
+   *
+   * **The last step of the build, and only after the id-keyed sections above.**
+   * Locks, holds, colors and center-of-mass anchors are looked up by the ids
+   * the URL wrote; renaming before them would leave every one of those
+   * pointing at a joint that no longer answers to that name.
+   *
+   * Idempotent, which undo and redo need: after one pass the seal's id is a
+   * letter, and a letter is left alone. The buried barrel end is never renamed
+   * — nothing shows it, and its name is what keeps `nextFreeLetter` from
+   * counting it.
+   */
+  private letterSealedSeals(joints: Joint[], links: Link[]): void {
+    const taken = new Set(joints.map((joint) => joint.id));
+    // In the order the payload wrote its joints, so a drawing with two of them
+    // hands out the same two letters every time it is opened.
+    for (const cylinder of cylindersIn(joints)) {
+      const seal = cylinder.seal;
+      if (isLetteredId(seal.id)) continue;
+      const was = seal.id;
+      // `name` falls back to the id when nobody has set one -- but the codec
+      // writes the getter's answer, so every decoded joint comes back with its
+      // name spelled out. A seal whose name is only its own old id has not been
+      // renamed by anybody, and letting go of it is what makes the new letter
+      // the name a reader sees. A name someone chose is left exactly as it is.
+      if (seal.name === was) seal.name = '';
+      seal.id = nextFreeLetter(taken);
+      taken.delete(was);
+      taken.add(seal.id);
+      renameJointInLinks(links, was, seal.id);
+    }
+  }
+
   // For each joint, add links that are adjacent to the joint
   public addSubsetLinks(linkDatas: LinkData[], links: Link[]): void {
     linkDatas.forEach((linkData, index) => {
@@ -443,11 +551,22 @@ export class MechanismBuilder {
     // keeps a colored part colored through one -- the same reason the locks
     // above are re-armed. The transcoder has already refused any reference that
     // does not resolve.
+    //
+    // Before `letterSealedSeals` at the foot of this method, like every other
+    // section here: a 'KR' entry names the rod's id as the URL wrote it, and
+    // the re-lettering pass renames the links holding a seal that arrived with
+    // an interior name.
     this.transcoder.getPartColors().forEach((entry: string) => {
       const [id, value] = entry.substring(2).split('~');
-      if (entry.charAt(1) === 'J') {
+      const kind = entry.charAt(1);
+      if (kind === 'J') {
         const joint = jointNamed(id);
         if (joint) joint.colorFamily = value;
+      } else if (kind === 'R') {
+        // Through `getLinkByID`, which reaches inside compounds: a rod welded
+        // at its far end is a subset leaf, and that is where the flag belongs.
+        const link = this.getLinkByID(links, id);
+        if (link instanceof RealLink) link.ownColor = true;
       } else {
         const force = forces.find((candidate) => candidate.id === id);
         if (force) force.color = '#' + value;
@@ -470,14 +589,24 @@ export class MechanismBuilder {
       link.captureComOffset();
     });
 
-    // A sealed cylinder's parts always follow their own shapes. Nothing that
-    // shipped ever let anyone choose their inertia or centers — the values in
-    // circulating URLs are fixture defaults — so decoding migrates the parts
-    // to auto rather than freezing numbers nobody picked. Masses stay exactly
-    // as stored: mass carries no flag and is always somebody's choice. After
+    // Which barrel joint is the mount is the slot's order, so an old payload
+    // has to be put in that order before anything reads a cylinder off it.
+    this.orderSealedSlots(joints);
+
+    // A cylinder member's inertia and center follow its own shape, and nothing
+    // lets anyone choose either: the Barrel and Rod panels offer mass alone
+    // (decision S14), the linkage table and the analysis setup refuse the same
+    // edit, and the center-of-mass mark on a member is a glyph rather than a
+    // handle. So this stays a migration rather than becoming a loss. Every
+    // cylinder URL in circulation carries the flags frozen on both members —
+    // fixture defaults, from a format that kept them while the panel was the
+    // retired Edit Cylinder one — and the codec has no marker that could tell
+    // those from a number somebody typed. Clearing them is therefore the only
+    // reading of the file that is true. Masses stay exactly as stored: mass
+    // carries no flag and is always somebody's choice. After
     // addAdjacentLinksForJoints, which is what wires the joints to their
     // links; before it, the structure detector sees no cylinders at all.
-    for (const sealed of sealedCylinderStructures(joints)) {
+    for (const sealed of cylindersIn(joints)) {
       for (const part of [sealed.barrel, sealed.rod]) {
         if (part instanceof RealLink) {
           part.moiIsCustom = false;
@@ -485,6 +614,10 @@ export class MechanismBuilder {
         }
       }
     }
+
+    // Last, and after every section above that looks a joint or a link up by
+    // the id the URL wrote: a seal carrying an interior name gets a letter.
+    this.letterSealedSeals(joints, links);
 
     // Nothing is selected in a mechanism that has just been built.
     //

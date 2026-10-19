@@ -18,6 +18,7 @@ import { SynthesisPose } from './synthesis/synthesis-util';
 import { Cylinder } from '../model/cylinder';
 import { labelForBody } from '../model/body-label';
 import { describeActuatorRefusal } from '../model/actuator';
+import { OperationRefusal, refuseAttach } from '../model/joint-operation-permission';
 import { MechanismService } from './mechanism.service';
 import { GridUtilsService } from './grid-utils.service';
 import { SettingsService } from './settings.service';
@@ -454,12 +455,18 @@ export class ContextMenuBuilderService {
     const driven = this.gridUtils.isVisuallyInput(joint);
     // A third body at a driven joint is what "driven" stops being able to
     // describe: an input prescribes the freedom between *two* bodies.
-    const crowds: MenuRefusal | undefined = driven
+    const drivenCrowds: MenuRefusal | undefined = driven
       ? {
           short: 'it is driven',
           long: 'An input prescribes the freedom between two bodies, so a third arriving here would leave "driven" naming no pair. Remove the input first.',
         }
       : undefined;
+    // The joint a cylinder slides on takes nothing at all, in the same four
+    // words the model's other four refusals use there (D9). First, because a
+    // reader pointing at the square wants to be told what the square is before
+    // being told about the input it happens to be carrying.
+    const closed = this.quote(refuseAttach(joint, this.gridUtils.operationContext()));
+    const crowds = closed ?? drivenCrowds;
     // A Lock is not among the reasons below. It says where this joint is, and a
     // new bar, cylinder or load built onto it moves nothing that is held: the
     // joint keeps its coordinate and the new part is drawn out from it. The
@@ -519,17 +526,19 @@ export class ContextMenuBuilderService {
         action: () => {
           if (bar) handlers.attachForce(bar);
         },
-        refusal: !bar
-          ? {
-              short: 'not on a link',
-              long: 'A load has to have a body to push on, and this joint is on none. Attach a link here first.',
-            }
-          : bodiesHere > 1
+        refusal:
+          closed ??
+          (!bar
             ? {
-                short: bars.length > 1 ? `${bars.length} links share it` : 'a block shares it',
-                long: 'A load applied where several bodies meet does not say which one carries it. Attach it to the link instead.',
+                short: 'not on a link',
+                long: 'A load has to have a body to push on, and this joint is on none. Attach a link here first.',
               }
-            : undefined,
+            : bodiesHere > 1
+              ? {
+                  short: bars.length > 1 ? `${bars.length} links share it` : 'a block shares it',
+                  long: 'A load applied where several bodies meet does not say which one carries it. Attach it to the link instead.',
+                }
+              : undefined),
       })
     );
     return rows;
@@ -543,6 +552,12 @@ export class ContextMenuBuilderService {
         kind: 'toggle',
         checked: this.groundedNow(joint),
         action: () => this.mechanism.toggleGround(),
+        // A cylinder is bolted to the world at the joints at its two ends, so
+        // the one in the middle of it says where to go instead. Named and
+        // grayed rather than left off the card: D9 drew it as a missing row,
+        // and a row that is there on one joint and gone on the next is a row
+        // a reader cannot learn the place of.
+        refusal: this.quote(this.gridUtils.groundRefusal(joint)),
       }),
       new MenuRow({
         label: 'Driven Input',
@@ -808,24 +823,51 @@ export class ContextMenuBuilderService {
       const one = bodies[0];
       return one instanceof Joint
         ? `Joint ${this.nameOf(one)}`
-        : labelForBody(one, this.mechanism.cylinderOfBar(one));
+        : labelForBody(one, this.mechanism.cylinderOfBar(one), this.mechanism.sealedStructures());
     }
     return `${bodies.length} ${kind}s`;
   }
 
   private jointSubtitle(joint: Joint): string {
     const sealed = this.mechanism.cylinderAt(joint);
-    if (sealed) {
-      const end = joint.id === sealed.rodFar.id ? 'Rod joint' : 'Barrel joint';
-      return `${end} · ${this.cylinderName(sealed)}`;
+    // The seal names the whole part. It is the one joint of a cylinder that is
+    // not on the drawing anywhere else, and "Slider · Rod SB" would name the
+    // half of the part it happens to hang on rather than the thing that slides.
+    //
+    // Every *other* joint of a cylinder is one of its ends, and an end is a pin
+    // like any other (D13): it says what kind of pin it is and which body it is
+    // on, exactly as a pin on a bar does, with the member named as the member.
+    // All four used to read "Barrel joint · Cylinder AB", which told a reader
+    // neither.
+    if (sealed && joint.id === sealed.seal.id) {
+      return `${this.jointKind(joint, [])} · ${this.cylinderName(sealed)}`;
     }
     const bodies = joint instanceof RealJoint ? joint.links : [];
     const holding = heldBarsAt(joint, this.mechanism.links, this.mechanism.sealedStructures());
     const held =
       holding.length > 0
-        ? ` · on fixed ${holding.map((bar) => bar.name || bar.id).join(', ')}`
+        ? ` · on fixed ${holding.map((bar) => this.heldName(bar)).join(', ')}`
         : '';
     return `${this.jointKind(joint, bodies)} · ${this.bodyList(bodies)}${held}`;
+  }
+
+  /**
+   * What a hold is called where it is named rather than described.
+   *
+   * A cylinder by its two ends, the way its panel and `describeHold` name it: a
+   * hold on one is written on whichever member was free, and that member's id is
+   * a pair of letters no reader has been shown.
+   *
+   * Everything else by the name the canvas tags it with. It was the link's own
+   * name, which is its id -- and a body welded to a barrel mount carries the
+   * cylinder's buried inner end in that id (D14, S11), so this subtitle named a
+   * joint the drawing never shows.
+   */
+  private heldName(bar: RealLink): string {
+    const sealed = this.mechanism.cylinderOfBar(bar);
+    return sealed
+      ? `${this.nameOf(sealed.mountA)}${this.nameOf(sealed.mountB)}`
+      : this.mechanism.visibleBodyName(bar);
   }
 
   /**
@@ -853,7 +895,10 @@ export class ContextMenuBuilderService {
    */
   private bodyList(bodies: Link[]): string {
     if (bodies.length === 0) return 'not on a link';
-    const labels = bodies.map((link) => labelForBody(link, this.mechanism.cylinderOfBar(link)));
+    const cylinders = this.mechanism.sealedStructures();
+    const labels = bodies.map((link) =>
+      labelForBody(link, this.mechanism.cylinderOfBar(link), cylinders)
+    );
     const plain = labels.every((label) => label.startsWith('Link '));
     if (!plain) return labels.join(', ');
     const names = labels.map((label) => label.slice('Link '.length));
@@ -869,47 +914,12 @@ export class ContextMenuBuilderService {
     // Cylinder that took the ram and left the bracket standing -- while Delete
     // on that same selection took the whole body.
     const sealed = this.mechanism.cylinderOfBar(link);
+    if (sealed && link instanceof RealLink) return this.forCylinderMember(link, sealed);
     const header = {
-      title: sealed ? this.cylinderName(sealed) : labelForBody(link, undefined),
-      subtitle: this.linkSubtitle(link, sealed),
+      title: labelForBody(link, undefined, this.mechanism.sealedStructures()),
+      subtitle: this.linkSubtitle(link),
       crossing: this.crossing(link),
     };
-    if (sealed) {
-      // No Attach group at all: a sealed assembly takes no third body, and a
-      // copy of one would land a second cylinder on the same joints.
-      return {
-        header,
-        groups: [
-          {
-            label: 'State',
-            rows: [
-              new MenuRow({
-                label: 'Driven Input',
-                icon: 'add_input',
-                kind: 'toggle',
-                checked: sealed.slider.input,
-                action: () => this.mechanism.toggleCylinderInput(sealed),
-              }),
-              ...this.cylinderHoldRows(link as RealLink),
-              this.lockRow(link as RealLink, undefined),
-            ],
-          },
-          { label: 'Traces', rows: this.vectorRows(link as RealLink) },
-          {
-            rows: [
-              new MenuRow({
-                label: 'Delete Cylinder',
-                icon: 'remove',
-                destructive: true,
-                shortcut: this.keys.keysFor('edit.delete'),
-                action: () => this.mechanism.deleteCylinder(sealed),
-              }),
-              this.deleteMechanismRow(link),
-            ],
-          },
-        ],
-      };
-    }
     // A slider's block is a body in the model and not one on the drawing: it
     // has no bar to attach to and no disc to be drawn as, and the pin sitting
     // on top of it is what a reader can see and click. Not reachable by
@@ -928,6 +938,52 @@ export class ContextMenuBuilderService {
         { label: 'Traces', rows: this.vectorRows(bar) },
         { rows: this.positionRows(handlers, undefined) },
         { rows: [this.deleteLinkRow(bar), this.deleteMechanismRow(bar)] },
+      ],
+    };
+  }
+
+  /**
+   * A cylinder's barrel or its rod: the body the pointer is on, not the part it
+   * is half of.
+   *
+   * One card stood here for the whole cylinder until Stage 2c of
+   * `docs/joint-type-and-cylinder-plan.md`: either member opened it, it was
+   * headed `Cylinder AB`, and two bodies with two lengths and two padlocks
+   * answered to one name. The seal wears a letter now, so each member can say
+   * which half of the part it is (decisions S10, D12) and the card is that
+   * member's.
+   *
+   * Nothing is left of the whole-cylinder card. There is no Attach group --
+   * a member takes no third body, and a copy of one would land a second
+   * cylinder on the same joints -- and no Driven Input row, because the drive
+   * belongs to the joint that slides and is offered on its card (D9). Nor is
+   * there a display-shape row: a cylinder is drawn as a cylinder.
+   */
+  private forCylinderMember(member: RealLink, sealed: Cylinder): ContextMenuModel {
+    return {
+      header: {
+        title: this.mechanism.bodyLabel(member),
+        subtitle: this.cylinderName(sealed),
+        crossing: this.crossing(member),
+      },
+      groups: [
+        {
+          label: 'State',
+          rows: [...this.memberHoldRows(member), this.lockRow(member, undefined)],
+        },
+        { label: 'Traces', rows: this.vectorRows(member) },
+        {
+          rows: [
+            new MenuRow({
+              label: 'Delete Cylinder',
+              icon: 'remove',
+              destructive: true,
+              shortcut: this.keys.keysFor('edit.delete'),
+              action: () => this.mechanism.deleteCylinder(sealed),
+            }),
+            this.deleteMechanismRow(member),
+          ],
+        },
       ],
     };
   }
@@ -1020,47 +1076,62 @@ export class ContextMenuBuilderService {
   }
 
   /**
-   * Fixed Length and Fixed Angle: the two numbers a bar can hold against
-   * edits. Each row carries the value it would hold, so what is held is what
-   * is named. A link holds one or the other -- both is what Lock means -- so
-   * the row for the other says it moves the hold rather than adding one, and
-   * a locked link, which already holds both, offers neither.
-   */
-  /**
-   * A cylinder holds the direction it points in, the way a bar holds its angle.
+   * Fixed Length and Fixed Angle on one member of a cylinder: the pair a bar
+   * carries, reading what decision S5 says they read.
    *
-   * Only the angle. The distance between a cylinder's mounts is its stroke,
-   * which is the quantity its drive moves, so a hold on that would be a hold
-   * against the drive rather than a constraint on the drawing -- which is why
-   * this is one row where the bar's pair is two.
+   * The length is this member's own; the angle is the *part's*, written on
+   * whichever member was free to take it and ticked on both. So both rows of
+   * one member can be on at once, and pressing either member's angle row is the
+   * same press. `holdOf` answers with one value and cannot say either of those,
+   * which is why these ask `memberHoldOf`.
+   *
+   * There was one row here, Fixed Angle, while a cylinder was one body: the
+   * distance between its two ends is the stroke, which is what the drive moves,
+   * so the part has no length to hold. Each member does, and holding one is what
+   * decides which half gives when a mount is dragged past a stop (decision S4).
    */
-  private cylinderHoldRows(link: RealLink): MenuRow[] {
-    const on = this.mechanism.holdOf(link) === 'angle';
-    return [
-      new MenuRow({
-        label: 'Fixed Angle',
+  private memberHoldRows(member: RealLink): MenuRow[] {
+    // The same sentence a bar's padlocks are refused with, because it is the
+    // same rule: a Lock holds the part where it is, which is both values at
+    // once. One mark, on the seal, stands for the whole cylinder (S8).
+    const refusal: MenuRefusal | undefined = this.mechanism.isLockedTarget(member)
+      ? {
+          short: 'locked in place',
+          long: 'Locked in place already holds the length and the angle.',
+        }
+      : undefined;
+    const row = (which: 'length' | 'angle', label: string, icon: string, value: string) => {
+      const on = this.mechanism.memberHoldOf(member, which);
+      return new MenuRow({
+        label,
         posePolicy: 'preserve',
-        icon: 'architecture',
+        icon,
         material: true,
         kind: 'toggle',
         checked: on,
-        hint: on ? undefined : this.cylinderAngle(link),
-        action: () => this.mechanism.setHold(link, on ? undefined : 'angle'),
-        refusal: this.mechanism.isLockedTarget(link)
-          ? { short: 'locked in place', long: 'Locked in place already holds the angle.' }
-          : undefined,
-        tip: 'Hold this cylinder at the angle it points now. Dragging a mount slides it along that line.',
-      }),
+        // The value it would hold, so what is held is what is named -- the
+        // same right-hand slot a bar's rows carry.
+        hint: on ? undefined : value,
+        refusal,
+        action: () => this.mechanism.setMemberHold(member, which, !on),
+        tip:
+          which === 'length'
+            ? 'Fix this half of the cylinder at its current length. A mount dragged past a stop then takes it all out of the other half.'
+            : 'Hold this cylinder at the angle it points now. Dragging a mount slides it along that line.',
+      });
+    };
+    return [
+      row('length', 'Fixed Length', 'straighten', this.lengthOf(member)),
+      row('angle', 'Fixed Angle', 'architecture', this.cylinderAngle(member)),
     ];
   }
 
   /** A cylinder's bearing, mount to mount -- the number the row would hold. */
   private cylinderAngle(link: RealLink): string {
-    const sealed = this.mechanism.cylinderOfLink(link);
+    const sealed = this.mechanism.cylinderOfBar(link);
     if (!sealed) return '';
     const degrees =
-      (Math.atan2(sealed.rodFar.y - sealed.barrelFar.y, sealed.rodFar.x - sealed.barrelFar.x) *
-        180) /
+      (Math.atan2(sealed.mountB.y - sealed.mountA.y, sealed.mountB.x - sealed.mountA.x) * 180) /
       Math.PI;
     return this.nup.formatValueAndUnit(
       this.nup.convertAngle(degrees, AngleUnit.DEGREE, this.settings.angleUnit.getValue()),
@@ -1068,6 +1139,16 @@ export class ContextMenuBuilderService {
     );
   }
 
+  /**
+   * Fixed Length and Fixed Angle: the two numbers a bar can hold against
+   * edits. Each row carries the value it would hold, so what is held is what
+   * is named. A link holds one or the other -- both is what Lock means -- so
+   * the row for the other says it moves the hold rather than adding one, and
+   * a locked link, which already holds both, offers neither.
+   *
+   * It had drifted up above the cylinder's rows, one function too early, and
+   * described neither of the two it was sitting between.
+   */
   private holdRows(link: RealLink): MenuRow[] {
     const refusal: MenuRefusal | undefined = !holdableBar(link)
       ? {
@@ -1160,24 +1241,23 @@ export class ContextMenuBuilderService {
     });
   }
 
-  private linkSubtitle(link: Link, sealed: Cylinder | undefined): string {
+  private linkSubtitle(link: Link): string {
     // A slider's block has no subsets and no bar to describe.
-    if (!sealed && !(link instanceof RealLink)) {
-      const joints = link.joints.map((joint) => this.nameOf(joint)).join(', ');
+    //
+    // A cylinder's own members never reach here: each has a card of its own
+    // (`forCylinderMember`), headed with the half of the part it is and
+    // subtitled with the part. "Barrel and rod · Joints A, B" stood here while
+    // one card served both.
+    if (!(link instanceof RealLink)) {
+      const joints = this.jointsShownOn(link);
       return `Block · Joints ${joints}`;
     }
-    // Not "sealed assembly": to a reader a cylinder is one part, and how it
-    // is built out of a slider and a weld underneath is not their business.
-    if (sealed) {
-      const ends = [sealed.barrelFar, sealed.rodFar].map((joint) => this.nameOf(joint));
-      return `Barrel and rod · Joints ${ends.join(', ')}`;
-    }
-    const bar = link as RealLink;
+    const bar = link;
     // "Bar" is only true of two joints. Past that the link is drawn as a filled
     // shape and behaves as one rigid body carrying three or more pins, so it is
     // called what it is rather than what the two-joint case is called.
     const kind = bar.subset.length > 0 ? 'Compound' : bar.joints.length > 2 ? 'Body' : 'Bar';
-    const joints = bar.joints.map((joint) => this.nameOf(joint)).join(', ');
+    const joints = this.jointsShownOn(bar);
     const locked = this.mechanism.isLockedTarget(bar) ? ' · locked' : '';
     const held = !locked && holdOf(bar) ? ` · fixed ${holdOf(bar)}` : '';
     return `${kind} · Joints ${joints}${locked}${held}`;
@@ -1188,7 +1268,9 @@ export class ContextMenuBuilderService {
   private forForce(force: Force): ContextMenuModel {
     const header = {
       title: `Force ${force.name || force.id}`,
-      subtitle: `On ${labelForBody(force.link, undefined)} · ${force.local ? 'local' : 'global'} frame`,
+      subtitle: `On ${labelForBody(force.link, undefined, this.mechanism.sealedStructures())} · ${
+        force.local ? 'local' : 'global'
+      } frame`,
       crossing: this.crossing(force),
     };
     return {
@@ -1274,7 +1356,9 @@ export class ContextMenuBuilderService {
     // Named only where there is more than one machine: "M1" on a drawing
     // holding exactly one says nothing the reader did not know.
     const named = this.mechanism.partitions.length > 1 && partition ? ` ${partition.id}` : '';
-    const joints = partition?.ownJoints.length ?? 0;
+    // What the reader can see, which is what they can check the number against:
+    // a cylinder's derived inner end is not drawn and is not counted (D14).
+    const joints = partition ? this.mechanism.visibleJoints(partition.ownJoints).length : 0;
     return new MenuRow({
       // Named and marked apart from the row above it. Both were "remove" in
       // red, one line apart, and the one that takes the whole machine was
@@ -1447,7 +1531,33 @@ export class ContextMenuBuilderService {
     return (part as { name?: string }).name || part.id;
   }
 
+  /**
+   * The joints of a body a reader could point at, named.
+   *
+   * A cylinder's buried inner end is not one of them: it has no marker, no
+   * letter and no hitbox, and is left out of every count the app shows (D14,
+   * S11) -- so a bracket welded to a barrel mount was subtitled "Compound ·
+   * Joints A, A1, D" over a canvas showing two.
+   */
+  private jointsShownOn(body: Link): string {
+    return this.mechanism
+      .visibleJoints(body.joints)
+      .map((joint) => this.nameOf(joint))
+      .join(', ');
+  }
+
+  /**
+   * A permission model's answer as a row wears it.
+   *
+   * The two lengths are already the two the row has a slot for; what is dropped
+   * is the code, which is for a notification to deduplicate on and means nothing
+   * on a card.
+   */
+  private quote(refused: OperationRefusal | undefined): MenuRefusal | undefined {
+    return refused ? { short: refused.short, long: refused.long } : undefined;
+  }
+
   private cylinderName(sealed: Cylinder): string {
-    return `Cylinder ${this.nameOf(sealed.barrelFar)}${this.nameOf(sealed.rodFar)}`;
+    return `Cylinder ${this.nameOf(sealed.mountA)}${this.nameOf(sealed.mountB)}`;
   }
 }

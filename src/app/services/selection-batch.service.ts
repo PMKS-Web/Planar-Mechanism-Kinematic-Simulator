@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Cylinder, cylinderJoints } from '../model/cylinder';
+import { Cylinder, cylinderJoints, isCylinderInner } from '../model/cylinder';
 import { Coord } from '../model/coord';
 import { Force } from '../model/force';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../model/joint';
@@ -178,7 +178,7 @@ function planDeletion(mechanism: MechanismService, resolved: ResolvedPart[]): De
         root.joints.forEach((joint) => orphanCandidates.add(joint.id));
       }
     }
-    for (const joint of [cylinder.barrelNear, cylinder.slider]) {
+    for (const joint of [cylinder.inner, cylinder.seal]) {
       removeJointIds.add(joint.id);
     }
   };
@@ -349,8 +349,47 @@ function copyClosure(
     ]),
     ...mechanism.forces.map((force) => force.name),
   ]);
+  // The visible joints first, then the buried barrel ends (decision S9). A
+  // cylinder's inner joint is named after the letter its own barrel mount ends
+  // up with, and that letter is handed out in this same pass -- so the copies
+  // that can be seen are lettered before anything is named after one of them.
+  //
+  // It used to be one pass, which spent a letter on the inner joint too: a
+  // duplicated cylinder came out with a hidden joint holding a letter no marker
+  // on the grid wore, and pushed every later joint further down the alphabet.
+  const innerOf = new Map<Joint, Cylinder>();
   for (const source of closure.joints) {
+    const cylinder = mechanism.cylinderAt(source);
+    if (cylinder && isCylinderInner(cylinder, source)) innerOf.set(source, cylinder);
+  }
+  // A cylinder's three visible joints are lettered *along the part* -- the
+  // barrel's mount, the slide, the rod's far end -- whichever of them the
+  // closure happened to reach first. The closure is built from whatever was
+  // clicked, so copying a ram by its seal used to letter the seal A; a copy now
+  // reads down the part the way a newly drawn cylinder does (S9, amended).
+  const inClosure = new Set(closure.joints);
+  const lettered = new Set<Joint>();
+  const letterOrder: Joint[] = [];
+  for (const source of closure.joints) {
+    const cylinder = mechanism.cylinderAt(source);
+    const along = cylinder ? [cylinder.mountA, cylinder.seal, cylinder.mountB] : [source];
+    for (const joint of along) {
+      if (lettered.has(joint) || !inClosure.has(joint)) continue;
+      lettered.add(joint);
+      letterOrder.push(joint);
+    }
+  }
+  for (const source of letterOrder) {
+    if (innerOf.has(source)) continue;
     const id = mechanism.determineNextLetter(reserved);
+    reserved.push(id);
+    jointMap.set(source, copyJoint(source, id, delta, usedNames));
+  }
+  for (const [source, cylinder] of innerOf) {
+    // Hung off the copy of the barrel's own mount, so the name reads as
+    // belonging to the cylinder it was copied into.
+    const base = jointMap.get(cylinder.mountA)?.id ?? cylinder.mountA.id;
+    const [id] = mechanism.determineInteriorNames(base, 1, reserved);
     reserved.push(id);
     jointMap.set(source, copyJoint(source, id, delta, usedNames));
   }
@@ -489,6 +528,10 @@ function copyRealLinkState(source: RealLink, copy: RealLink, joints: Map<Joint, 
   copy.moiIsCustom = source.moiIsCustom;
   copy.comIsCustom = source.comIsCustom;
   copy.fill = source.fill;
+  // Whether the fill above is a choice or a number nobody has drawn: a copy of
+  // a cylinder whose rod was recolored has to come back recolored, and a copy
+  // of one that was not has to go on wearing its barrel's color.
+  copy.ownColor = source.ownColor;
   copy.isCircle = source.isCircle;
   copy.hold = source.hold;
   const anchor = source.comAnchor;

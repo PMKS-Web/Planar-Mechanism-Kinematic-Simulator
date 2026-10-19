@@ -7,6 +7,7 @@ import { SynthesisBuilderService } from './synthesis-builder.service';
 import { SynthesisSolutionService } from './synthesis-solution.service';
 import { solveFourBar, endLetters } from './synthesis-candidates';
 import { COR } from './synthesis-util';
+import { barHalfWidth } from 'src/app/model/joint-marks';
 
 /** A bar drawn on the grid: two pins, a fill, and what it is called. */
 export interface PoseBar {
@@ -134,10 +135,10 @@ function directionMark(x1: number, y1: number, x2: number, y2: number, r: number
  * A bar between two pins, as a filled outline.
  *
  * The same shape `RealLink` computes for a two-joint link, at the same radius
- * -- a quarter of the object scale -- so a position and a previewed solution
- * are drawn to the dimensions the drawing itself uses. They were strokes on a
- * line before, which matched by arithmetic rather than by construction and
- * looked subtly unlike every other bar on the canvas.
+ * -- `barHalfWidth`, which is every bar's and every rod's -- so a position and
+ * a previewed solution are drawn to the dimensions the drawing itself uses.
+ * They were strokes on a line before, which matched by arithmetic rather than
+ * by construction and looked subtly unlike every other bar on the canvas.
  */
 function capsulePath(x1: number, y1: number, x2: number, y2: number, r: number): string {
   const theta = Math.atan2(y2 - y1, x2 - x1);
@@ -196,9 +197,16 @@ export class SynthesisCanvasService {
 
   // --- what is drawn -------------------------------------------------------
 
-  /** Half the thickness a pose bar is drawn at, in model units. */
-  private barHalfWidth(): number {
-    return 0.25 * this.settings.objectScale;
+  /**
+   * Half the thickness a pose bar is drawn at, in model units.
+   *
+   * The canvas's own bar, asked of the one place that knows how wide that is
+   * (decision S23). A synthesis pose is a picture of the link the reader is
+   * about to insert, so a pose bar drawn at a width of its own would promise
+   * one part and deliver a thinner one.
+   */
+  private barHalf(): number {
+    return barHalfWidth(this.settings.objectScale);
   }
 
   poseBars(): PoseBar[] {
@@ -213,14 +221,14 @@ export class SynthesisCanvasService {
           pose.posBack.y,
           pose.posFront.x,
           pose.posFront.y,
-          this.settings.objectScale / 4
+          this.barHalf()
         ),
         arrow: directionMark(
           pose.posBack.x,
           pose.posBack.y,
           pose.posFront.x,
           pose.posFront.y,
-          this.settings.objectScale / 4
+          this.barHalf()
         ),
         refX: pose.position.x,
         refY: pose.position.y,
@@ -275,7 +283,7 @@ export class SynthesisCanvasService {
     const length = this.design.length;
     const ahead = this.design.COR === COR.CENTER ? length / 2 + pad : length + pad;
     const behind = this.design.COR === COR.CENTER ? length / 2 + pad : pad;
-    const half = this.settings.objectScale / 4 + pad / 2;
+    const half = this.barHalf() + pad / 2;
     // Model coordinates throughout, y up. The grid draws this inside its own
     // y-flip, so the flip is already accounted for.
     const cx = pose.position.x;
@@ -342,20 +350,8 @@ export class SynthesisCanvasService {
           ? { x: this.cursor.x - dx, y: this.cursor.y - dy }
           : { x: this.cursor.x - dx / 2, y: this.cursor.y - dy / 2 };
     return {
-      d: capsulePath(
-        anchor.x,
-        anchor.y,
-        anchor.x + dx,
-        anchor.y + dy,
-        this.settings.objectScale / 4
-      ),
-      arrow: directionMark(
-        anchor.x,
-        anchor.y,
-        anchor.x + dx,
-        anchor.y + dy,
-        this.settings.objectScale / 4
-      ),
+      d: capsulePath(anchor.x, anchor.y, anchor.x + dx, anchor.y + dy, this.barHalf()),
+      arrow: directionMark(anchor.x, anchor.y, anchor.x + dx, anchor.y + dy, this.barHalf()),
     };
   }
 
@@ -383,7 +379,7 @@ export class SynthesisCanvasService {
   previewLinks(): PreviewLink[] {
     const solved = this.previewing() ? this.solution.previewPose() : null;
     if (!solved) return [];
-    const r = this.settings.objectScale / 4;
+    const r = this.barHalf();
     const bar = (a: Coord, b: Coord, colorIndex: number): PreviewLink => ({
       d: capsulePath(a.x, a.y, b.x, b.y, r),
       // The colors the linkage will actually be built in, asked of the same
@@ -515,7 +511,7 @@ export class SynthesisCanvasService {
     if (!base) return [];
     const solved = solveFourBar(base, base.thetas[0], base.sign);
     if (!solved) return [];
-    const r = this.settings.objectScale / 4;
+    const r = this.barHalf();
     const ghost = (a: Coord, b: Coord): PreviewLink => ({
       d: capsulePath(a.x, a.y, b.x, b.y, r),
       color: '#9aa0ac',

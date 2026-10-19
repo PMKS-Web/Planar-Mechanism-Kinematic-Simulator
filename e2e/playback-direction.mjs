@@ -59,7 +59,12 @@ await page.waitForTimeout(900);
 const atRest = await state();
 record(
   'the row says which way the input is going',
-  ['Clockwise', 'Counter-clockwise', 'Opening', 'Closing'].includes(atRest.notes[0]),
+  // Six words, two per kind of drive (`model/drive-direction.ts`): a pin turns,
+  // a cylinder opens and closes, and every other slider runs forward and
+  // backward along its slot -- it has nothing to be open or shut.
+  ['Clockwise', 'Counter-clockwise', 'Opening', 'Closing', 'Forward', 'Backward'].includes(
+    atRest.notes[0]
+  ),
   atRest.notes
 );
 
@@ -240,6 +245,154 @@ record(
   'and pausing the master pauses every row',
   !masterOff.playing && masterOff.rowPlaying.every((p) => !p),
   masterOff
+);
+
+// --- a drive that slides, not one that turns ---------------------------------
+//
+// The transport said "Opening" and "Closing" of every linear drive and drew a
+// rotate glyph beside them, so a block on a rail -- which has nothing to open
+// and does not turn -- was reported as opening, twice over. It runs Forward and
+// Backward along its slot now, and the glyph is a straight arrow. Underneath
+// that, the coordinate the word is read from had no direction at all for a bare
+// slider: reversing the drive left every sample identical, so the word did not
+// change. `Scotch_Yoke` is the drawing that showed it.
+await page.goto(`${BASE}/?${payloads['Scotch_Yoke']}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+
+/** Drive the block at the sign given, and read what the row says about it. */
+const slidingRow = async (sign) => {
+  await page.evaluate((sign) => {
+    const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+    const block = srv.joints.find((joint) => joint.slotAngle !== undefined);
+    srv.joints.forEach((joint) => (joint.input = false));
+    block.input = true;
+    srv.updateMechanism();
+    srv.setDriveSpeed(block, sign * Math.abs(srv.driveSpeedOf(block) || 1));
+    srv.updateMechanism();
+  }, sign);
+  await page.waitForTimeout(700);
+  return page.evaluate(() => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const srv = grid.mechanismSrv;
+    const bar = ng.getComponent(document.querySelector('app-playback-bar'));
+    const block = srv.joints.find((joint) => joint.slotAngle !== undefined);
+    const index = srv.indexOfMechanismContaining(block);
+    const solved = srv.mechanisms[index];
+    const row = () => bar.rows.find((one) => one.isMechanism && one.index === index);
+    // The block's place along its own slot, measured here rather than asked of
+    // the thing under test. The slot is floating, so its direction is its
+    // carrier's and has to be re-read in every pose.
+    const ends = block.carrier
+      ? block.carrier.joints.filter((joint) => joint.id !== block.id).slice(0, 2)
+      : [];
+    const placeIn = (frame) => {
+      const at = frame.find((joint) => joint.id === block.id);
+      if (ends.length < 2)
+        return at.x * Math.cos(block.angle_rad) + at.y * Math.sin(block.angle_rad);
+      const from = frame.find((joint) => joint.id === ends[0].id);
+      const to = frame.find((joint) => joint.id === ends[1].id);
+      const length = Math.hypot(to.x - from.x, to.y - from.y);
+      return ((at.x - from.x) * (to.x - from.x) + (at.y - from.y) * (to.y - from.y)) / length;
+    };
+    // Walk the cycle on its own samples, in the order the clock runs them, and
+    // collect what the row said against what the block did.
+    const period = solved.cyclePeriod;
+    const times = solved.timeNum.map((t) => (solved.framesRunBackwards ? period - t : t));
+    const places = times.map((t) => {
+      srv.seekMechanism(index, t);
+      return placeIn(srv.joints);
+    });
+    const said = [];
+    let wrong = 0;
+    let turns = 0;
+    let checked = 0;
+    for (let i = 1; i < times.length - 1; i++) {
+      srv.seekMechanism(index, times[i]);
+      const note = row()?.note;
+      const icon = row()?.directionIcon;
+      said.push(note);
+      const into = places[i] - places[i - 1];
+      const outOf = places[i + 1] - places[i];
+      if (Math.abs(into) < 1e-6 || Math.abs(outOf) < 1e-6) continue;
+      // At a turnaround the step into the sample and the step out of it point
+      // opposite ways, and the word -- which is read across both neighbours --
+      // cannot match both. Counted, not silently dropped.
+      if (into * outOf < 0) {
+        turns++;
+        continue;
+      }
+      checked++;
+      const moving = into > 0 ? 'Forward' : 'Backward';
+      if (note !== moving) wrong++;
+      if (icon !== (moving === 'Forward' ? 'arrow_forward' : 'arrow_back')) wrong++;
+    }
+    srv.seekMechanism(index, 0);
+    return {
+      speed: srv.driveSpeedOf(block),
+      words: [...new Set(said)],
+      firstWord: said[0],
+      wrong,
+      turns,
+      checked,
+      samples: times.length,
+      icon: row()?.directionIcon,
+      note: row()?.note,
+    };
+  });
+};
+
+const forwards = await slidingRow(1);
+const backwards = await slidingRow(-1);
+record(
+  'a driven block runs forward and backward, never opens or closes',
+  [...forwards.words, ...backwards.words].every(
+    (word) => word === 'Forward' || word === 'Backward'
+  ),
+  { forwards: forwards.words, backwards: backwards.words }
+);
+record(
+  'and the word matches the way the block is actually going, at every sample',
+  forwards.wrong === 0 &&
+    backwards.wrong === 0 &&
+    forwards.checked > 8 &&
+    // A block on a yoke turns back twice a cycle and no more; a suite that
+    // skipped every sample would say so here.
+    forwards.turns <= 2 &&
+    backwards.turns <= 2,
+  { forwards, backwards }
+);
+record(
+  'reversing the drive reverses the word it sets off with',
+  forwards.firstWord !== backwards.firstWord,
+  { forwards: forwards.firstWord, backwards: backwards.firstWord }
+);
+record(
+  'the glyph is a straight arrow, because a block does not turn',
+  /^arrow_/.test(forwards.icon) && /^arrow_/.test(backwards.icon),
+  { forwards: forwards.icon, backwards: backwards.icon }
+);
+// The rotary drawing again, to pin the glyph it keeps.
+await page.goto(`${BASE}/?${payloads['4-Bar']}`, { waitUntil: 'domcontentloaded' });
+await waitForReady(page);
+await page.waitForTimeout(500);
+const crank = await page.evaluate(() => {
+  const bar = ng.getComponent(document.querySelector('app-playback-bar'));
+  const row = bar.rows.find((one) => one.isMechanism);
+  return { note: row?.note, icon: row?.directionIcon };
+});
+record(
+  'a crank keeps its turning word and its turning glyph',
+  /lockwise$/.test(crank.note ?? '') && /^rotate_/.test(crank.icon ?? ''),
+  crank
+);
+record(
+  'and the button says which way it is going',
+  await page
+    .locator('.dirButton')
+    .first()
+    .getAttribute('aria-label')
+    .then((label) => (label ?? '').includes(crank.note)),
+  await page.locator('.dirButton').first().getAttribute('aria-label')
 );
 
 record('nothing threw', errors.length === 0, errors.slice(0, 3));

@@ -208,6 +208,24 @@ a hole in the carrier, the block sits in the hole, the rider attaches at the mar
 Rendering rules that follow: the break in a grounded slot's rail must track the rod's actual
 direction; hatching never rotates, carrier bars always do.
 
+> **2026-09-19 — a third marker, and the first bullet no longer covers a slider.** A slider whose
+> riders cannot turn wears a cream rounded bar lying along its slot instead of the `+`: the shape
+> says the riders are rigid and the *orientation* says what they are rigid against, which a `+`
+> centred on a symmetric block cannot. A Pin-in-slot slider keeps the circle and a welded
+> **revolute** keeps the `+`, so the bullet still holds everywhere but the slide. The bar also
+> carries the selection ring *inside* its own edge, where the `+` has no inside edge and wears the
+> accent as an outline. Decision S13 of `joint-type-and-cylinder-plan.md`; geometry in
+> `MARK.slide*`.
+
+> **2026-09-20 — the Slide bullet describes a plate, and a plate is not always in this layer.**
+> A Slide's block is `#000` like a Slot's; what carries the rider's color is the weld plate painted
+> over it, which is the union of the block with the rider. Where the rider is a cylinder member
+> that union is the *skin's* silhouette and the plate is painted in the skin's own stack — a
+> barrel's under the head block, a rod's over it — not in the slider layer, because the slider
+> layer is under every skin and a rod drawn there loses the band inside the bore. The color rule is
+> unchanged and still borrows nothing: the ink is the one that part is already drawn in
+> (`fillShownOn`). Decision S18 of `joint-type-and-cylinder-plan.md`.
+
 ### 2.9 An actuator is an ordered record, not a boolean
 
 An input prescribes a *relative* freedom between **two bodies**. `input: boolean` on a joint cannot

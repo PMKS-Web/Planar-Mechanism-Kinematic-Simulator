@@ -6,7 +6,7 @@ import { buildMechanism, buildMechanismAtScale } from '../../test-utils/verifica
 import { RATE_TOLERANCE, velocityAgreesWithPositions } from '../../test-utils/verification/rates';
 import { BUCKET, excavatorBucketFixture } from '../../test-utils/verification/library-fixtures';
 import { turningPoints } from '../../test-utils/verification/compare';
-import { sealedCylinders } from '../../app/model/cylinder';
+import { cylindersIn } from '../../app/model/cylinder';
 import { MODEL_SCALE } from '../../app/model/render-scale';
 import { SettingsService } from '../../app/services/settings.service';
 
@@ -77,7 +77,7 @@ function sampleMotion(): { samples: Sample[]; cylinders: number; frames: number 
   });
   return {
     samples,
-    cylinders: sealedCylinders(mechanism.joints[0]).length,
+    cylinders: cylindersIn(mechanism.joints[0]).length,
     frames: mechanism.joints.length,
   };
 }

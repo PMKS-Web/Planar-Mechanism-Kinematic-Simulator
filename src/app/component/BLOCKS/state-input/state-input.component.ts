@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatFormField, MatSuffix } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
+import { selectAll } from '../select-all';
 
 /**
  * A bare field with a derived-vs-typed marker, and nothing else.
@@ -25,7 +26,7 @@ import { MatInput } from '@angular/material/input';
       <div class="row" [formGroup]="formGroup">
         <mat-form-field
           class="customInputForm"
-          (click)="field.select()"
+          (click)="selectAll(field)"
           (mouseenter)="hovered.emit(true)"
           (mouseleave)="hovered.emit(false)"
         >
@@ -60,6 +61,13 @@ import { MatInput } from '@angular/material/input';
   styleUrl: './state-input.component.scss',
 })
 export class StateInputComponent {
+  /**
+   * A click selects the whole value — including a second click on a field
+   * that already has focus, which `select()` alone loses to the caret the
+   * browser places afterwards (`BLOCKS/select-all.ts`).
+   */
+  protected readonly selectAll = selectAll;
+
   @Input() formGroup!: FormGroup;
   @Input() _formControl!: string;
   @Input() state: 'none' | 'auto' | 'custom' = 'none';

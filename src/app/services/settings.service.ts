@@ -150,6 +150,20 @@ export class SettingsService {
    */
   static objectScaleChosen = false;
 
+  /**
+   * Set while a size the *app* chose is being adopted, rather than one the
+   * reader asked for.
+   *
+   * The repair a size change runs on a cylinder (decision S29) is an edit's
+   * worth of geometry, and a size the reader typed earns an undo entry for it.
+   * A size adopted on load must not: the drawing has not been edited, it has
+   * been opened, and `adoptScaleForDrawing` revises the state it arrived in
+   * instead. Recorded rather than passed down, because the size reaches the
+   * rebuild twice -- once through this service's own subject, which every open
+   * panel is subscribed to -- and neither pass can tell whose change it is.
+   */
+  static objectScaleAdopting = false;
+
   static get objectScale(): number {
     return SettingsService._objectScale.value;
   }

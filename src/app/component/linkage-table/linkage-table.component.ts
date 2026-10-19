@@ -3,6 +3,7 @@ import { Force } from '../../model/force';
 import { Link, RealLink } from '../../model/link';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../../model/joint';
 import { Coord } from '../../model/coord';
+import { isCylinderInner } from '../../model/cylinder';
 import { roundNumber } from '../../model/utils';
 import { MechanismService } from '../../services/mechanism.service';
 import { MODEL_SCALE } from '../../model/render-scale';
@@ -166,9 +167,10 @@ export class LinkageTableComponent implements OnInit {
         if (isNaN(Number(($event.target as HTMLInputElement).value))) {
           return this.notify.refusal('value.momentOfInertia', NOT_A.momentOfInertia);
         }
-        // A sealed cylinder's parts always follow their own shapes — the
-        // debug table gets no back door to re-freeze them.
-        if (this.mechanismService.cylinderOfBar(link)) break;
+        // A cylinder member's inertia and center follow its own shape
+        // (decision S14) — the debug table gets no back door to freeze either,
+        // and it asks the same predicate the panels ask.
+        if (this.mechanismService.memberInertiaIsDerived(link)) break;
         link.massMoI = Number(($event.target as HTMLInputElement).value);
         link.moiIsCustom = true;
         break;
@@ -176,6 +178,7 @@ export class LinkageTableComponent implements OnInit {
         if (isNaN(Number(($event.target as HTMLInputElement).value))) {
           return this.notify.refusal('value.length', NOT_A.length);
         }
+        if (this.mechanismService.memberInertiaIsDerived(link)) break;
         link.placeCustomCoM({
           x: Number(($event.target as HTMLInputElement).value) * MODEL_SCALE,
           y: link.CoM.y,
@@ -185,6 +188,7 @@ export class LinkageTableComponent implements OnInit {
         if (isNaN(Number(($event.target as HTMLInputElement).value))) {
           return this.notify.refusal('value.length', NOT_A.length);
         }
+        if (this.mechanismService.memberInertiaIsDerived(link)) break;
         link.placeCustomCoM({
           x: link.CoM.x,
           y: Number(($event.target as HTMLInputElement).value) * MODEL_SCALE,
@@ -307,25 +311,41 @@ export class LinkageTableComponent implements OnInit {
     }
   }
 
+  /**
+   * The joints this one meets, filtered the way the table's own rows are.
+   *
+   * A cylinder's buried barrel end is a joint of the barrel like any other, so
+   * a mount's "Connected joints" cell listed it — `C1`, in a table whose own
+   * rows deliberately leave it out (`getJoints`). A reader could read the name
+   * of a joint here and then fail to find it anywhere else in the app.
+   */
   connectedJoints(joint: Joint) {
     if (!(joint instanceof PrisJoint || joint instanceof RevJoint)) {
       return;
     }
-    return joint.connectedJoints;
+    const shown = new Set(this.getJoints().map((one) => one.id));
+    return joint.connectedJoints.filter((one) => shown.has(one.id));
   }
 
   getJoints() {
-    // A sealed cylinder's interior joints (pin, slider, buried barrel end)
-    // are not editable anywhere, so the table does not list them either —
-    // editing one by number would bend a part that cannot bend.
+    // Every joint the canvas draws a marker for. A cylinder's buried barrel end
+    // is the one that is left out: nothing shows it and editing it by number
+    // would bend a part that cannot bend. Its seal is listed like any other
+    // slider — typing an X or a Y there goes through `dragJoint`, which slides
+    // the seal along its own axis (decision S7).
     return this.mechanismService.joints.filter((joint) => {
       const sealed = this.mechanismService.cylinderAt(joint);
-      return !sealed || joint.id === sealed.barrelFar.id || joint.id === sealed.rodFar.id;
+      return !sealed || !isCylinderInner(sealed, joint);
     });
   }
 
   getLinks() {
     return this.mechanismService.links;
+  }
+
+  /** What this body is called on screen, which is the one name the app shows. */
+  nameOf(link: Link): string {
+    return this.mechanismService.visibleBodyName(link);
   }
 
   getForces() {

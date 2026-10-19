@@ -3,12 +3,14 @@
 import './joint';
 import { PrisJoint, RealJoint, RevJoint } from './joint';
 import { RealLink } from './link';
+import { cylindersIn } from './cylinder';
 import { JointOperation, JointOperationContext } from './joint-operation-permission';
 import {
   JOINT_TYPES,
   JointType,
   JointTypeBits,
   bitsOf,
+  jointTypeAt,
   jointTypeChoice,
   jointTypeIcon,
   jointTypeOf,
@@ -109,6 +111,34 @@ describe('joint type', () => {
     compound.subset = [new RealLink('BC', [slideOnTwo, c]), new RealLink('BD', [slideOnTwo, d])];
     slideOnTwo.links.unshift(compound);
     expect(refuseJointType(slideOnTwo, 'welded', context)).toBeUndefined();
+  });
+
+  it('leaves a cylinder’s seal Prismatic, and refuses the other three', () => {
+    // The square mid-skin is joint S, and selecting it shows this choice
+    // (decision D9). Prismatic is what it is; the other three would take the
+    // part apart, and each says so in the model's own words.
+    const seal = new PrisJoint('C', 6, 0);
+    seal.isSealed = true;
+    seal.rotates = false;
+    const mountA = new RevJoint('A', 0, 0);
+    const inner = new RevJoint('B', 6, 0);
+    const mountB = new RevJoint('D', 10, 0);
+    const barrel = new RealLink('AB', [mountA, inner]);
+    const rod = new RealLink('CD', [seal, mountB]);
+    [mountA, inner].forEach((joint) => joint.links.push(barrel));
+    [seal, mountB].forEach((joint) => joint.links.push(rod));
+    seal.slideOn(barrel, mountA, inner);
+    const sealed: JointOperationContext = {
+      ...context,
+      cylinders: cylindersIn([mountA, inner, seal, mountB]),
+    };
+
+    expect(sealed.cylinders, 'the fixture really is a cylinder').toHaveLength(1);
+    expect(jointTypeAt(seal, sealed)).toBe('prismatic');
+    expect(refuseJointType(seal, 'prismatic', sealed)).toBeUndefined();
+    for (const type of ['revolute', 'pin-in-slot', 'welded'] as const) {
+      expect(refuseJointType(seal, type, sealed)?.short, type).toBe('inside a cylinder');
+    }
   });
 
   it('refuses a block and a weld on a driven pin, each in its own words', () => {

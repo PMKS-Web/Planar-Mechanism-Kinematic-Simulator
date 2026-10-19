@@ -14,7 +14,8 @@ import {
   unitsPerCentimeter,
 } from './dxf-options';
 import { DxfEntity } from './dxf-model';
-import { sealedCylinderStructures } from '../../../model/cylinder';
+import { cylindersIn } from '../../../model/cylinder';
+import { ExportNames, exportNames } from '../export-names';
 import { defaultPinDiameter, linkBodyWidth, SlotTravel } from './link-bodies';
 import { buildSemanticDxf, originShift, TracedPath } from './semantic-dxf';
 import { writeDxf } from './dxf-writer';
@@ -120,7 +121,7 @@ export class DxfExportService {
         unit,
         { ...choices, pinDiameter: this.pinDiameter(options) },
         {
-          cylinders: sealedCylinderStructures(this.mechanism.joints).length > 0,
+          cylinders: cylindersIn(this.mechanism.joints).length > 0,
           slots: this.mechanism.joints.some((joint) => joint instanceof PrisJoint),
         },
         this.tableUnits()
@@ -277,9 +278,22 @@ export class DxfExportService {
     return this.mechanism.joints.length > 0;
   }
 
-  /** The joints a reader may put the origin on. */
+  /**
+   * The joints a reader may put the origin on.
+   *
+   * Every joint the canvas draws a marker for. A cylinder's buried inner end
+   * was in this list, so the dialog offered the reader an origin called `C1` —
+   * a joint with no marker, no hitbox and no letter they could find (D14, S11).
+   */
   originJointChoices(): { id: string; name: string }[] {
-    return this.mechanism.joints.map((joint) => ({ id: joint.id, name: joint.name || joint.id }));
+    return this.readerNames()
+      .shown(this.mechanism.joints)
+      .map((joint) => ({ id: joint.id, name: joint.name || joint.id }));
+  }
+
+  /** What this drawing's files may call its joints and bodies. */
+  private readerNames(): ExportNames {
+    return exportNames(this.mechanism.joints, this.mechanism.links);
   }
 
   /** The first grounded joint, which is what "First ground joint" means. */
@@ -383,7 +397,12 @@ export class DxfExportService {
 
   private jointCsv(unit: DxfExportUnit, options: DxfExportOptions = {}): string {
     const shift = this.tableShift(unit, options);
-    const rows = this.mechanism.joints.map((joint) =>
+    const names = this.readerNames();
+    // Every joint the canvas draws a marker for. A cylinder's buried inner end
+    // had a row of its own here, with its interior name in the id column and
+    // the barrel's id beside it (D14, S11) -- a joint the table's reader could
+    // not find anywhere in the app it came from.
+    const rows = names.shown(this.mechanism.joints).map((joint) =>
       [
         joint.id,
         joint.name,
@@ -401,18 +420,22 @@ export class DxfExportService {
         // Which parts meet here: DXF cannot say that a hole in one layer and a
         // hole in another are the same pin, and that is exactly what somebody
         // checking an assembly against this table needs to know.
-        connectedLinks(joint).join(' '),
+        connectedLinks(joint, names).join(' '),
       ].join(',')
     );
     return ['id,name,type,x,y,grounded,input,mass,links', ...rows].join('\r\n') + '\r\n';
   }
 
   private linkCsv(unit: DxfExportUnit): string {
+    const names = this.readerNames();
     const rows = this.mechanism.links.map((link) =>
       [
-        link.id,
-        link.name,
-        link.joints.map((joint) => joint.id).join(' '),
+        names.idOf(link),
+        names.nameOf(link),
+        names
+          .shown(link.joints)
+          .map((joint) => joint.id)
+          .join(' '),
         inUnit(lengthOf(link), unit).toFixed(6),
         link.mass.toFixed(6),
         link instanceof RealLink ? link.massMoI.toFixed(6) : '',
@@ -432,11 +455,12 @@ export class DxfExportService {
    */
   private forceCsv(unit: DxfExportUnit, options: DxfExportOptions = {}): string {
     const shift = this.tableShift(unit, options);
+    const names = this.readerNames();
     const rows = this.mechanism.forces.map((force) =>
       [
         force.id,
         force.name,
-        force.link?.id ?? '',
+        force.link ? names.idOf(force.link) : '',
         (inUnit(force.startCoord.x, unit) - shift.x).toFixed(6),
         (inUnit(force.startCoord.y, unit) - shift.y).toFixed(6),
         (inUnit(force.endCoord.x, unit) - shift.x).toFixed(6),
@@ -458,13 +482,16 @@ export class DxfExportService {
 
   private dataJson(unit: DxfExportUnit, options: DxfExportOptions = {}): string {
     const shift = this.tableShift(unit, options);
+    const names = this.readerNames();
     return JSON.stringify(
       {
         source: 'PMKS+',
         units: unitWord(unit),
         ...this.tableUnits(),
         pose: 'start',
-        joints: this.mechanism.joints.map((joint) => ({
+        // The same two rules the tables beside it follow: no buried joint has a
+        // row, and no body is named after one.
+        joints: names.shown(this.mechanism.joints).map((joint) => ({
           id: joint.id,
           name: joint.name,
           type: joint instanceof PrisJoint ? 'prismatic' : 'revolute',
@@ -474,12 +501,12 @@ export class DxfExportService {
           input: joint instanceof RealJoint && joint.input,
           // See `jointCsv`: a sliding joint's own weight, null for a pin.
           mass: joint instanceof PrisJoint ? joint.mass : null,
-          links: connectedLinks(joint),
+          links: connectedLinks(joint, names),
         })),
         links: this.mechanism.links.map((link) => ({
-          id: link.id,
-          name: link.name,
-          joints: link.joints.map((joint) => joint.id),
+          id: names.idOf(link),
+          name: names.nameOf(link),
+          joints: names.shown(link.joints).map((joint) => joint.id),
           length: inUnit(lengthOf(link), unit),
           mass: link.mass,
           inertia: link instanceof RealLink ? link.massMoI : null,
@@ -488,7 +515,7 @@ export class DxfExportService {
         forces: this.mechanism.forces.map((force) => ({
           id: force.id,
           name: force.name,
-          link: force.link?.id,
+          link: force.link ? names.idOf(force.link) : undefined,
           at: {
             x: inUnit(force.startCoord.x, unit) - shift.x,
             y: inUnit(force.startCoord.y, unit) - shift.y,
@@ -746,10 +773,10 @@ function handoffNotes(
 }
 
 /** The links that meet at a joint, by id, in a stable order. */
-function connectedLinks(joint: Joint): string[] {
+function connectedLinks(joint: Joint, names: ExportNames): string[] {
   const links = joint instanceof RealJoint ? joint.links : [];
   return links
-    .map((link) => link.id)
+    .map((link) => names.idOf(link))
     .filter((id, index, all) => all.indexOf(id) === index)
     .sort();
 }

@@ -449,9 +449,11 @@ await page.waitForTimeout(600);
 await page.locator('.cylinder-rod').click();
 await page.waitForTimeout(400);
 const padlock = page.locator('[data-hold-toggle="angle"]');
+// Two padlocks on a member, holding two different things (decision S5): the
+// length is this half of the part, the angle is the whole of it.
 record(
-  "a cylinder's panel offers one padlock, on its angle",
-  (await padlock.count()) === 1 && (await page.locator('[data-hold-toggle="length"]').count()) === 0
+  "a cylinder member's panel offers both padlocks",
+  (await padlock.count()) === 1 && (await page.locator('[data-hold-toggle="length"]').count()) === 1
 );
 await padlock.click();
 await page.waitForTimeout(600);

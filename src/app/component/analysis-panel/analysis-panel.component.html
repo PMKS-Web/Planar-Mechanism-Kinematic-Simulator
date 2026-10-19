@@ -213,6 +213,22 @@
                 (expandedChange)="graphExpanded['JInputForce'] = $event"
               ></app-analysis-graph-section>
             }
+            <!-- Where a driven cylinder shows what its drive has to supply, one
+                 holding its length shows what it has to hold: the same axial
+                 unknown under the name it has when nothing is driving it
+                 (decision S28), and the number somebody sizing a ram wants. -->
+            @if (holdsItsLength()) {
+              <app-analysis-graph-section
+                label="Holding Force"
+                help="The axial force this cylinder has to hold to keep its length"
+                analysis="force"
+                [analysisType]="forceAnalysisMode()"
+                mechProp="Holding Force"
+                mechPart="{{ shownJoint.id }}"
+                [expanded]="isExpanded('JHoldingForce')"
+                (expandedChange)="graphExpanded['JHoldingForce'] = $event"
+              ></app-analysis-graph-section>
+            }
           </div>
         }
       }
@@ -343,9 +359,10 @@
                 (expandedChange)="graphExpanded['LForce_' + row.jointId] = $event"
               ></app-analysis-graph-section>
             }
-            <!-- A ram's drive sits on a joint inside the part, which has no marker
-                 and no hitbox -- so its effort belongs on the part's own panel, the
-                 way its speed already does. -->
+            <!-- A cylinder's drive sits on the slide inside the part. The slide
+                 has a row of its own now, and this stays because a reader who
+                 picked the cylinder is asking about the cylinder -- the way its
+                 speed already is. -->
             @if (inputEffortJoint(); as driven) {
               <app-analysis-graph-section
                 label="Input {{ inputEffortLabel(driven) }}"
@@ -394,13 +411,13 @@
         <span>
           @if (inForceAnalysis) {
             <button type="button" class="forceRedirectAction" (click)="graphTheLinkUnder()">
-              Graph {{ shownForce.link.name }}</button
+              Graph {{ forceBodyLabel }}</button
             >, which carries it.
           } @else {
             <button type="button" class="forceRedirectAction" (click)="goToForceAnalysis()">
               Switch to Force Analysis
             </button>
-            to read what it does to {{ shownForce.link.name }}.
+            to read what it does to {{ forceBodyLabel }}.
           }
         </span>
       </div>

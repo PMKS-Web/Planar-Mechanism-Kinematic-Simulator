@@ -12,6 +12,7 @@ import { MatTooltip } from '@angular/material/tooltip';
 import { MatFormField } from '@angular/material/form-field';
 import { MatInput } from '@angular/material/input';
 import { FieldOverlay } from '../field-overlay';
+import { selectAll } from '../select-all';
 
 let nextInputId = 0;
 
@@ -23,6 +24,13 @@ let nextInputId = 0;
   imports: [MatIcon, MatTooltip, FormsModule, ReactiveFormsModule, MatFormField, MatInput],
 })
 export class DualInputComponent {
+  /**
+   * A click selects the whole value — including a second click on a field
+   * that already has focus, which `select()` alone loses to the caret the
+   * browser places afterwards (`BLOCKS/select-all.ts`).
+   */
+  protected readonly selectAll = selectAll;
+
   protected readonly labelId = `pmks-dual-input-label-${nextInputId++}`;
 
   /** Speak the quantity, including where the compact caption is only a glyph. */

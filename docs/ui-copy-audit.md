@@ -271,9 +271,19 @@ sees, so from the user's side a cylinder has exactly two joints and there is
 nothing to be ambiguous with. It takes the last special word out of the
 cylinder's user vocabulary, which is what option A was for.
 
-`mount` stays in the *code*, where it usefully separates the two reachable
-joints from the three interior ones — the same split this guide already makes
-for `playback` and `actuator`. See `docs/ui-vocabulary.md`.
+`mount` stays in the *code*, where it usefully separates the joints at the ends
+from the ones the part places for itself — the same split this guide already
+makes for `playback` and `actuator`. See `docs/ui-vocabulary.md`.
+
+> Overtaken since, and the decision survives it. A cylinder is four joints
+> rather than five, and the reader can now select, drag and drive the square in
+> the middle of it (Stage 2 of `docs/joint-type-and-cylinder-plan.md`). So a
+> cylinder has *three* joints from the user's side rather than two — and all
+> three are still called `joint`, which is the whole of what option A asked
+> for. One joint is hidden now, the barrel's buried end, and it is what `mount`
+> in the code is still separating the rest from. The `Travel` row in the
+> tooltip table above is gone with the Edit Cylinder panel; the barrel's own
+> `Length` says that number now.
 
 **Also here**
 

@@ -210,23 +210,27 @@ export class MultiEditPanelComponent implements OnInit, DoCheck {
   }
 
   /**
-   * Which link every selected force is on, when they agree.
+   * Which body every selected force is on, when they agree.
    *
    * The Local option names it -- "Local (Link AB)" -- and eight forces spread
    * over four bars have no one bar to name, so the word stands on its own.
+   *
+   * Through `bodyLabel`, so a force left on a cylinder member by an older
+   * drawing names the member rather than the concatenated id of two joints, one
+   * of which is the buried end nobody has ever been shown.
    */
   get sharedForceLink(): string | undefined {
-    const names = this.forces.map((force) => force.link.name || force.link.id);
+    const names = this.forces.map((force) => this.mechanism.bodyLabel(force.link));
     return names.length > 0 && names.every((name) => name === names[0]) ? names[0] : undefined;
   }
 
   get localOptionLabel(): string {
-    const link = this.sharedForceLink;
+    const body = this.sharedForceLink;
     // Named when they share one, because the one-force panel names it. Eight
     // forces spread over four bars have no one bar to name, so the word carries
     // the meaning on its own -- and the field is narrow enough that a longer
     // phrase would be clipped rather than read.
-    return link ? `Local (Link ${link})` : 'Local (own link)';
+    return body ? `Local (${body})` : 'Local (own link)';
   }
 
   forceValue(field: 'magnitude' | 'angle'): CommonValue<number> {

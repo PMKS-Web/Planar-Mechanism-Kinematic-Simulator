@@ -5,13 +5,14 @@ import { RealLink } from '../../app/model/link';
 import { RealJoint } from '../../app/model/joint';
 
 /**
- * A ram is four joints and shows two of them.
+ * A cylinder is four joints and shows three of them.
  *
- * The two inside it — the barrel's near end, and the slider the rod hangs on —
- * are never drawn, labeled or listed, so spending a letter on each ran a
- * drawing through the alphabet faster than the joints anyone could see. There
- * were three until a slider became one joint: the seal and the pin were
- * coincident, and the block joining them was a body of its own.
+ * The one inside it — the barrel's near end, buried under the rod — is never
+ * drawn, labeled or listed, so spending a letter on it would run a drawing
+ * through the alphabet faster than the joints anyone can see. The seal used to
+ * be in that class and is not any more (decision S9): it is the square a reader
+ * selects, so it takes a letter like the ends — and the three are handed out
+ * *along the part*, so the letters read down the cylinder's own axis.
  */
 function drawCylinder() {
   const harness = createMechanismHarness();
@@ -20,23 +21,32 @@ function drawCylinder() {
 }
 
 describe('Naming the joints of a cylinder', () => {
-  it('spends letters on the two mounts and no others', () => {
+  it('spends letters on the two ends and the seal, and none on the buried one', () => {
     const { service } = drawCylinder();
     const ids = service.joints.map((joint) => joint.id);
     expect(ids).toHaveLength(4);
 
     const lettered = ids.filter((id) => /^[A-Za-z]+$/.test(id));
     const inside = ids.filter((id) => !/^[A-Za-z]+$/.test(id));
-    // The mounts, which a reader points at and a panel names.
-    expect(lettered.sort()).toEqual(['A', 'B']);
-    // And the interior, hung off the mount's own letter.
-    expect(inside.sort()).toEqual(['A1', 'A2']);
+    // Along the part: the end the gesture started from, the slide, the far end.
+    expect(lettered.sort()).toEqual(['A', 'B', 'C']);
+    const sealed = service.sealedStructures()[0];
+    expect([sealed.mountA.id, sealed.seal.id, sealed.mountB.id]).toEqual(['A', 'B', 'C']);
+    // And the buried barrel end, hung off the mount's own letter.
+    expect(inside.sort()).toEqual(['A1']);
   });
 
-  it('leaves the next drawn joint the letter after the mounts', () => {
+  it('names each member after its own two visible joints', () => {
     const { service } = drawCylinder();
-    // C, not E: the two interior names took none of the alphabet.
-    expect(service.determineNextLetter()).toBe('C');
+    const sealed = service.sealedStructures()[0];
+    expect(service.bodyLabel(sealed.barrel)).toBe('Barrel AB');
+    expect(service.bodyLabel(sealed.rod)).toBe('Rod BC');
+  });
+
+  it('leaves the next drawn joint the letter after the seal', () => {
+    const { service } = drawCylinder();
+    // D, not E: the one interior name took none of the alphabet.
+    expect(service.determineNextLetter()).toBe('D');
   });
 
   it('gives a second ram on the same mount names of its own', () => {

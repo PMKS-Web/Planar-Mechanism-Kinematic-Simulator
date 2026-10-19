@@ -130,6 +130,14 @@ export class AnalysisSampleService {
       return mechProp === 'Joint Forces' ? [Number.NaN, Number.NaN, Number.NaN] : [Number.NaN];
     }
 
+    // A cylinder holding its length carries one number, a force along its own
+    // bore, and it converts like any other force -- no length in it, so no
+    // model scale to divide back out (decision S28).
+    if (mechProp === 'Holding Force') {
+      const holding = frame.holdingForces.get(mechPart);
+      return [holding === undefined ? Number.NaN : holding * forceConversion];
+    }
+
     if (mechProp === 'Input Torque' || mechProp === 'Input Effort') {
       // A torque's moment arms are internal model lengths (MODEL_SCALE times
       // the user's unit), so the solved value divides back down for display. An
