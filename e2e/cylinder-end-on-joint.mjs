@@ -133,7 +133,7 @@ record(
 );
 record(
   'and no free end was left standing on top of it',
-  after.joints.length === before.joints.length + 4,
+  after.joints.length === before.joints.length + 3,
   { before: before.joints, after: after.joints }
 );
 

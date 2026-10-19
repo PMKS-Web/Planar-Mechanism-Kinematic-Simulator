@@ -100,11 +100,11 @@ describe('the published fixture gallery', () => {
       const payload = fixturePayload(entry.fixture);
       const decoder = new StringTranscoder();
       expect(() => decoder.decodeURL(payload), entry.name).not.toThrow();
-      expect(decoder.getJoints().length, entry.name).toBe(
-        entry.fixture.joints.length +
-          (entry.fixture.sliders?.length ?? 0) +
-          (entry.fixture.slider ? 1 : 0)
-      );
+      // Exactly the fixture's own joints. A slider used to add a second one
+      // beside the joint that slides -- a prismatic twin joined to it by a
+      // block -- and the count had to allow for one per slot; a slider is that
+      // joint now, so a mechanism with four slots still encodes four joints.
+      expect(decoder.getJoints().length, entry.name).toBe(entry.fixture.joints.length);
     }
   });
 

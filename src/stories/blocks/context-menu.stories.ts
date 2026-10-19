@@ -289,7 +289,7 @@ export const JointNowhereToSlide: Story = {
   args: {
     model: {
       ...jointMenu(),
-      header: { title: 'Joint F', subtitle: 'Slider pin · Link EF', crossing },
+      header: { title: 'Joint F', subtitle: 'Slider · Link EF', crossing },
       choice: jointType(2, {
         fault: {
           short: 'nowhere to slide',

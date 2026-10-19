@@ -1,7 +1,7 @@
 import '../joint';
 import { PrisJoint, RevJoint } from '../joint';
 import { Coord } from '../coord';
-import { RealLink, SliderBlock } from '../link';
+import { RealLink } from '../link';
 import { PositionSolver } from './position-solver';
 
 /** Wire a chain of pin-jointed links through the given joints, in order. */
@@ -84,7 +84,8 @@ describe('deferring a slot whose carrier is not placed yet', () => {
    */
   function invertedSliderCrank() {
     const a = new RevJoint('A', 0, 0, true, true);
-    const b = new RevJoint('B', 0, 1);
+    // The crank pin *is* the slider: one joint, riding the lever's slot.
+    const b = new PrisJoint('B', 0, 1);
     const c = new RevJoint('C', 3, 0, false, true);
     const span = Math.hypot(0 - 3, 1);
     const d = new RevJoint('D', 3 + (5 * (0 - 3)) / span, (5 * 1) / span);
@@ -98,18 +99,12 @@ describe('deferring a slot whose carrier is not placed yet', () => {
     c.connectedJoints.push(d);
     d.connectedJoints.push(c);
 
-    const slot = new PrisJoint('P', b.x, b.y);
-    slot.slideOn(cd, c, d);
-    const block = new SliderBlock('BP', [b, slot], 1);
-    b.links.push(block);
-    slot.links.push(block);
-    b.connectedJoints.push(slot);
-    slot.connectedJoints.push(b);
+    b.slideOn(cd, c, d);
 
-    return { joints: [a, b, c, d, slot], links: [ab, cd, block] };
+    return { joints: [a, b, c, d], links: [ab, cd] };
   }
 
-  it('orders the carrier only after the block that locates it', () => {
+  it('orders the carrier only after the rider that locates it', () => {
     PositionSolver.resetStaticVariables();
     const { joints, links } = invertedSliderCrank();
 
@@ -118,8 +113,9 @@ describe('deferring a slot whose carrier is not placed yet', () => {
     const order = [...PositionSolver.jointNumOrderSolverMap.entries()]
       .sort(([a], [b]) => a - b)
       .map(([, targets]) => targets);
-    // Crank pin, then the block riding on it, then the lever it swings.
-    expect(order).toEqual([['B'], ['P'], ['D']]);
+    // Crank pin, then the lever its slot swings. The step between them is gone
+    // with the block: there is no second joint left to place on top of the pin.
+    expect(order).toEqual([['B'], ['D']]);
     expect(PositionSolver.unsolvableJoints).toEqual([]);
   });
 
@@ -131,7 +127,8 @@ describe('deferring a slot whose carrier is not placed yet', () => {
   function riderReachedBeforeItsCarrier() {
     const a = new RevJoint('A', 0, 0, true, true);
     const b = new RevJoint('B', 1, 0);
-    const f = new RevJoint('F', 2, 1);
+    // The rod's far end is the slider itself.
+    const f = new PrisJoint('F', 2, 1);
     const c = new RevJoint('C', 3, 0, false, true);
     const span = Math.hypot(2 - 3, 1);
     const d = new RevJoint('D', 3 + (2 * (2 - 3)) / span, (2 * 1) / span);
@@ -148,15 +145,9 @@ describe('deferring a slot whose carrier is not placed yet', () => {
     c.connectedJoints.push(d);
     d.connectedJoints.push(c);
 
-    const slot = new PrisJoint('P', f.x, f.y);
-    slot.slideOn(cd, c, d);
-    const block = new SliderBlock('FP', [f, slot], 1);
-    f.links.push(block);
-    slot.links.push(block);
-    f.connectedJoints.push(slot);
-    slot.connectedJoints.push(f);
+    f.slideOn(cd, c, d);
 
-    return { joints: [a, b, f, c, d, slot], links: [ab, bf, cd, block] };
+    return { joints: [a, b, f, c, d], links: [ab, bf, cd] };
   }
 
   it('will not place a rider on a slot whose carrier is still unknown', () => {
@@ -173,14 +164,15 @@ describe('deferring a slot whose carrier is not placed yet', () => {
   });
 
   it('reports the circular case unsolvable instead of guessing', () => {
-    // F needs the lever's pose, the lever needs the block, and the block needs
-    // F. That is a simultaneous system, which v1 names rather than solves.
+    // F needs the lever's pose and the lever needs F. That is a simultaneous
+    // system, which v1 names rather than solves. One name shorter than it used
+    // to be, the block's sliding joint having been folded into F itself.
     PositionSolver.resetStaticVariables();
     const { joints, links } = riderReachedBeforeItsCarrier();
 
     PositionSolver.determineJointOrder(joints, links);
 
-    expect(PositionSolver.unsolvableJoints.sort()).toEqual(['D', 'F', 'P']);
+    expect(PositionSolver.unsolvableJoints.sort()).toEqual(['D', 'F']);
   });
 
   it('places the whole carrier in a single step', () => {

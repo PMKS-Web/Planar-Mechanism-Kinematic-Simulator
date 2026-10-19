@@ -140,7 +140,10 @@ describe('velocity through a slot whose carrier is solved first', () => {
 
     const ids = mechanism.requiredLoops.map((loop) => loop.id);
     expect(ids).toContain('A-B-C-D');
-    expect(ids).toContain('A-B~P~P-F-E');
+    // The loop crosses the slot at F, which is the rider itself. It used to
+    // cross at a prismatic twin P beside it, joined by a zero-length block, so
+    // the same crossing was spelled with two letters instead of one.
+    expect(ids).toContain('A-B~F~F-E');
   });
 
   it('keeps the rider on a circle about its own pivot', () => {
@@ -208,7 +211,7 @@ describe('velocity through a slot whose carrier is solved first', () => {
       const f = at(joints, 'F');
       const omega = KinematicsSolver.linkAngVelMap.get('BCX')!;
       const alpha = KinematicsSolver.linkAngAccMap.get('BCX')!;
-      const rate = KinematicsSolver.slideRateMap.get('P')!;
+      const rate = KinematicsSolver.slideRateMap.get('F')!;
       const riderAcc = KinematicsSolver.jointAccMap.get('F')!;
       const pinAcc = KinematicsSolver.jointAccMap.get('B')!;
 
@@ -240,7 +243,7 @@ describe('the forward case with its slot joints declared the other way round', (
   // carrier is the coupler and neither slot joint is grounded, so both orders
   // have to work off a joint the four-bar settled first.
   const swapped = slottedCouplerFixture();
-  swapped.sliders = [{ at: 'F', prisId: 'P', on: { carrier: 'BCX', a: 'X', b: 'B' } }];
+  swapped.sliders = [{ at: 'F', on: { carrier: 'BCX', a: 'X', b: 'B' } }];
 
   function solveSwappedAt(timestep: number) {
     const { mechanism } = buildMechanism(swapped);

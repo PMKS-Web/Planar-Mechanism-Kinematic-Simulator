@@ -38,7 +38,9 @@ function travel(mechanism: { joints: Joint[][] }, sliderId: string): number[] {
 describe('a block held inside the slot it rides', () => {
   it('runs the whole cycle when the slot is long enough for it', () => {
     const { mechanism } = buildMechanism(scotchYokeFixture());
-    const along = travel(mechanism as unknown as { joints: Joint[][] }, 'E');
+    // B is the crank pin that rides the yoke's slot, and it is the sliding
+    // joint itself: the separate prismatic twin it used to carry is gone.
+    const along = travel(mechanism as unknown as { joints: Joint[][] }, 'B');
 
     // The yoke's own slot comfortably contains its travel, so nothing here
     // changes: a full revolution, and the block always in the channel.
@@ -58,7 +60,7 @@ describe('a block held inside the slot it rides', () => {
       ),
     };
     const { mechanism } = buildMechanism(short);
-    const along = travel(mechanism as unknown as { joints: Joint[][] }, 'E');
+    const along = travel(mechanism as unknown as { joints: Joint[][] }, 'B');
 
     expect(Math.max(...along)).toBeLessThanOrEqual(1.01);
     // It still moves, and it still comes back: a limit, not a refusal to solve.
@@ -72,7 +74,7 @@ describe('a block held inside the slot it rides', () => {
     // so the rule above must not apply to it. The boom is the case: its rider
     // reaches about 1.14 of the slot segment and always has.
     const { mechanism } = buildMechanism(cylinderBoomFixture(MODEL_SCALE));
-    const along = travel(mechanism as unknown as { joints: Joint[][] }, 'S');
+    const along = travel(mechanism as unknown as { joints: Joint[][] }, 'P');
 
     expect(mechanism.joints.length).toBeGreaterThan(100);
     expect(Math.max(...along)).toBeGreaterThan(1.05);

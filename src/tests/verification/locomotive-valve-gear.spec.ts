@@ -1,6 +1,6 @@
 import '../../app/model/joint';
 import { buildMechanismFixture, mechanismLengthUnit } from '../fixtures/mechanism-fixtures';
-import { Joint, RealJoint } from '../../app/model/joint';
+import { Joint, PrisJoint, RealJoint } from '../../app/model/joint';
 import { Mechanism } from '../../app/model/mechanism/mechanism';
 import { KinematicsSolver } from '../../app/model/mechanism/kinematic-solver';
 import { MechanismService } from '../../app/services/mechanism.service';
@@ -55,8 +55,12 @@ describe('a locomotive drive whose combination lever hangs free', () => {
     const { service, settings } = buildMechanismFixture(LOCOMOTIVE);
     const w = service.joints.find((joint) => joint.id === 'W') as RealJoint;
     w.ground = true;
-    const t = service.joints.find((joint) => joint.id === 'T') as RealJoint;
-    t.isWelded = false;
+    // T is the valve rod's block, and it is one joint: freeing the rod to tilt
+    // is letting its rider turn against the slot. The bit sat on the coincident
+    // pin's `isWelded` while a slider was three objects, and clearing that on a
+    // slider now changes nothing at all.
+    const t = service.joints.find((joint) => joint.id === 'T') as PrisJoint;
+    t.rotates = true;
     const tied = rebuild(service, settings);
     expect(tied.dof).toBe(1);
     expect(tied.isMechanismValid()).toBe(true);
@@ -100,7 +104,7 @@ describe('the same drive with its combination lever pinned to the frame', () => 
 
   describe('with the valve rod free to tilt at T', () => {
     const { service, settings } = buildMechanismFixture(PINNED_LEVER);
-    (service.joints.find((joint) => joint.id === 'T') as RealJoint).isWelded = false;
+    (service.joints.find((joint) => joint.id === 'T') as PrisJoint).rotates = true;
     const free = rebuild(service, settings);
     const frames = free.joints;
     const at = (frame: Joint[], id: string) => frame.find((one) => one.id === id)!;
@@ -130,7 +134,9 @@ describe('the same drive with its combination lever pinned to the frame', () => 
         const c = at(frame, 'c');
         const s = at(frame, 'S');
         const w = at(frame, 'W');
-        const d = at(frame, 'd');
+        // R is the block riding the lever's slot. It keeps the pin's letter:
+        // the prismatic twin beside it, which this drawing called d, is gone.
+        const d = at(frame, 'R');
         expect(c.x).toBe(at(frames[0], 'c').x);
         expect(c.y).toBe(at(frames[0], 'c').y);
         expect(Math.hypot(c.x - s.x, c.y - s.y)).toBeCloseTo(cS, 3);
@@ -152,7 +158,7 @@ describe('the same drive with its combination lever pinned to the frame', () => 
       const last = frames[reversal - 1];
       const s = at(last, 'S');
       const w = at(last, 'W');
-      const d = at(last, 'd');
+      const d = at(last, 'R');
       const along =
         ((d.x - s.x) * (w.x - s.x) + (d.y - s.y) * (w.y - s.y)) /
         Math.hypot(w.x - s.x, w.y - s.y) ** 2;
@@ -175,7 +181,7 @@ describe('the same drive with its combination lever pinned to the frame', () => 
       for (let t = 0; t < reversal; t++) {
         KinematicsSolver.determineKinematics(frames[t], free.links[t], speeds[t]);
         expect(KinematicsSolver.jointVelMap.get('c')).toEqual([0, 0]);
-        for (const id of ['S', 'W', 'T', 'd']) {
+        for (const id of ['S', 'W', 'T', 'R']) {
           velocity.set(id, [
             ...(velocity.get(id) ?? []),
             [...KinematicsSolver.jointVelMap.get(id)!],
@@ -184,7 +190,7 @@ describe('the same drive with its combination lever pinned to the frame', () => 
       }
       for (let t = 1; t < reversal - 1; t++) {
         const dt = time[t + 1] - time[t - 1];
-        for (const id of ['S', 'W', 'T', 'd']) {
+        for (const id of ['S', 'W', 'T', 'R']) {
           const v = velocity.get(id)![t];
           const fdx = (at(frames[t + 1], id).x - at(frames[t - 1], id).x) / dt;
           const fdy = (at(frames[t + 1], id).y - at(frames[t - 1], id).y) / dt;
@@ -230,8 +236,9 @@ describe('the drive with its valve rod split at a pin', () => {
       at(frames[0], 'f').y - at(frames[0], 'S').y
     );
     for (const frame of frames) {
-      // The weld holds T, its block e and the rod's own pin f on one line.
-      for (const id of ['T', 'e', 'f']) {
+      // The Slide holds T and the rod's own pin f on one line. It used to hold
+      // three: T, the block's coincident joint e, and f. T is the block now.
+      for (const id of ['T', 'f']) {
         expect(at(frame, id).y).toBeCloseTo(level, 6);
       }
       expect(
@@ -247,7 +254,7 @@ describe('the drive with its valve rod split at a pin', () => {
     const reversal = speeds.findIndex((speed) => Math.sign(speed) !== Math.sign(speeds[0]));
     for (let t = 0; t < reversal; t++) {
       KinematicsSolver.determineKinematics(frames[t], mechanism.links[t], speeds[t]);
-      for (const id of ['T', 'e', 'f']) {
+      for (const id of ['T', 'f']) {
         expect(Math.abs(KinematicsSolver.jointVelMap.get(id)![1])).toBeLessThan(1e-6);
       }
       // And the whole assembly travels as one.

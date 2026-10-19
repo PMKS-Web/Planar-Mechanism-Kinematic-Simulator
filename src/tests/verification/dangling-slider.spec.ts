@@ -2,7 +2,7 @@
 // cleanly when entered here.
 import '../../app/model/joint';
 import { PrisJoint } from '../../app/model/joint';
-import { Link, SliderBlock } from '../../app/model/link';
+import { Link, RealLink } from '../../app/model/link';
 import { MechanismService } from '../../app/services/mechanism.service';
 import { SettingsService } from '../../app/services/settings.service';
 import { ActiveObjService } from '../../app/services/active-obj.service';
@@ -31,7 +31,9 @@ function loadIntoService(): { service: MechanismService; slider: PrisJoint } {
   const decoder = new StringTranscoder();
   decoder.decodeURL(fixturePayload(invertedSliderCrankFixture()));
   new MechanismBuilder(service, decoder, new SettingsService(), active).build(true);
-  return { service, slider: sliderIn(service.joints, 'P') };
+  // B, the crank pin that rides the lever's slot. It *is* the slider: the
+  // prismatic twin beside it, which this used to look up as P, is gone.
+  return { service, slider: sliderIn(service.joints, 'B') };
 }
 
 function sliderIn(joints: unknown[], id: string): PrisJoint {
@@ -41,7 +43,7 @@ function sliderIn(joints: unknown[], id: string): PrisJoint {
 describe('a slider with nowhere to slide', () => {
   it('is neither grounded nor floating', () => {
     const built = buildMechanism(invertedSliderCrankFixture());
-    const slider = built.joints.find((joint) => joint.id === 'P') as PrisJoint;
+    const slider = built.joints.find((joint) => joint.id === 'B') as PrisJoint;
 
     expect(slider.isFloating).toBe(true);
     expect(slider.isDangling).toBe(false);
@@ -57,7 +59,7 @@ describe('a slider with nowhere to slide', () => {
     // Otherwise toggling Ground back on silently rebuilds a guide at zero, which
     // is a different mechanism wearing the same controls.
     const built = buildMechanism(invertedSliderCrankFixture());
-    const slider = built.joints.find((joint) => joint.id === 'P') as PrisJoint;
+    const slider = built.joints.find((joint) => joint.id === 'B') as PrisJoint;
     const before = slider.slotAngle;
 
     slider.groundAt(slider.slotAngle);
@@ -87,14 +89,21 @@ describe('reconciling a slot that lost its carrier', () => {
     expect(slider.ground).toBe(false);
   });
 
-  it('still keeps the block, so the slider the user drew is not thrown away', () => {
+  it('still slides, so the slider the user drew is not thrown away', () => {
+    // The block was the thing to look for while a slider was three objects:
+    // losing the carrier had to leave the block behind rather than quietly
+    // turning the joint back into a pin. The joint *is* the slider now, so
+    // what survives is the joint's own kind and the bar still riding it.
     const { service, slider } = loadIntoService();
     const carrier = slider.carrier!;
 
     service.links = service.links.filter((link: Link) => link.id !== carrier.id);
     service.finishStructuralEdit(false);
 
-    expect(slider.links.some((link) => link instanceof SliderBlock)).toBe(true);
+    expect(slider).toBeInstanceOf(PrisJoint);
+    expect(slider.links.filter((link) => link instanceof RealLink).map((link) => link.id)).toEqual([
+      'AB',
+    ]);
     expect(service.joints).toContain(slider);
   });
 
@@ -115,7 +124,7 @@ describe('a mechanism holding a dangling slider', () => {
   it('is invalid, and claims no degrees of freedom it cannot justify', () => {
     expect(buildMechanism(invertedSliderCrankFixture()).mechanism.isMechanismValid()).toBe(true);
 
-    const broken = buildMechanism({ ...invertedSliderCrankFixture(), detach: ['P'] });
+    const broken = buildMechanism({ ...invertedSliderCrankFixture(), detach: ['B'] });
 
     expect(broken.mechanism.isMechanismValid()).toBe(false);
   });
@@ -125,7 +134,7 @@ describe('a mechanism holding a dangling slider', () => {
     // the stashed angle when there are no slot joints -- so an ungated dangling
     // slider does not throw, it solves a mechanism the user did not draw. The
     // gate is what makes this a refusal instead of a wrong answer.
-    const broken = buildMechanism({ ...invertedSliderCrankFixture(), detach: ['P'] });
+    const broken = buildMechanism({ ...invertedSliderCrankFixture(), detach: ['B'] });
 
     broken.mechanism.joints.forEach((frame, step) => {
       frame.forEach((joint) => {
@@ -142,10 +151,10 @@ describe('a dangling slider through the URL', () => {
     // three extra tokens, a grounded one sets the ground flag, and a dangling
     // one does neither. What has to hold is that the round trip preserves which.
     const first = buildMechanismFixture(fixturePayload(invertedSliderCrankFixture()));
-    sliderIn(first.service.joints, 'P').detach();
+    sliderIn(first.service.joints, 'B').detach();
 
     const payload = urlGeneratorFor(first.service, first.settings).generateUrlQuery();
-    const restored = sliderIn(buildMechanismFixture(payload).service.joints, 'P');
+    const restored = sliderIn(buildMechanismFixture(payload).service.joints, 'B');
 
     expect(restored.isDangling, 'still dangling after a round trip').toBe(true);
     expect(restored.ground).toBe(false);
@@ -154,13 +163,13 @@ describe('a dangling slider through the URL', () => {
 
   it('carries its stashed angle across, so grounding it lands where it was', () => {
     const first = buildMechanismFixture(fixturePayload(invertedSliderCrankFixture()));
-    const slider = sliderIn(first.service.joints, 'P');
+    const slider = sliderIn(first.service.joints, 'B');
     const angle = slider.slotAngle;
     slider.groundAt(angle);
     slider.detach();
 
     const payload = urlGeneratorFor(first.service, first.settings).generateUrlQuery();
-    const restored = sliderIn(buildMechanismFixture(payload).service.joints, 'P');
+    const restored = sliderIn(buildMechanismFixture(payload).service.joints, 'B');
     restored.groundAt(restored.slotAngle);
 
     // Three places, not more: the codec packs decimals at a fixed precision, so

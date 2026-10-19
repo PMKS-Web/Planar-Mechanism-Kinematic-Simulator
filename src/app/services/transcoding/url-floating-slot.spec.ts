@@ -1,7 +1,7 @@
 import '../../model/joint';
 import { Coord } from '../../model/coord';
 import { PrisJoint, RevJoint } from '../../model/joint';
-import { RealLink, SliderBlock } from '../../model/link';
+import { Link, RealLink } from '../../model/link';
 import { ActiveObjService } from '../active-obj.service';
 import { MechanismService } from '../mechanism.service';
 import { SettingsService } from '../settings.service';
@@ -44,7 +44,7 @@ function invertedSliderCrank() {
 
   const slot = new PrisJoint('P', 1 * S, 0);
   slot.slideOn(cd, c, d);
-  const block = new SliderBlock('BP', [b, slot], 1);
+  const block = new Link('BP', [b, slot], 1);
 
   [a, b].forEach((joint) => (joint.links = [ab]));
   [c, d].forEach((joint) => (joint.links = [cd]));
@@ -78,7 +78,7 @@ describe('floating slot URL round-trip', () => {
   it('restores the carrier and both slot joints as the rebuilt objects', () => {
     const target = rebuild(encode(invertedSliderCrank()));
 
-    const slot = target.joints.find((joint) => joint.id === 'P') as PrisJoint;
+    const slot = target.joints.find((joint) => joint.id === 'B') as PrisJoint;
     const carrier = target.links.find((link) => link.id === 'CD')!;
     expect(slot.isFloating).toBe(true);
     // Identity, not just id: a slot bound to objects from a different copy of
@@ -91,7 +91,7 @@ describe('floating slot URL round-trip', () => {
 
   it('carries the slot direction rather than a stored angle', () => {
     const target = rebuild(encode(invertedSliderCrank()));
-    const slot = target.joints.find((joint) => joint.id === 'P') as PrisJoint;
+    const slot = target.joints.find((joint) => joint.id === 'B') as PrisJoint;
 
     // C is at (3,0) and D at (3,2), so the slot points straight up — a value
     // that was never encoded anywhere, only re-derived.
@@ -105,7 +105,7 @@ describe('floating slot URL round-trip', () => {
     const ab = new RealLink('AB', [a, b], 1, 1, new Coord(0.5 * S, 0));
     const slot = new PrisJoint('P', 1 * S, 0, false, true);
     slot.angle_rad = Math.PI / 6;
-    const block = new SliderBlock('BP', [b, slot], 1);
+    const block = new Link('BP', [b, slot], 1);
     a.links = [ab];
     b.links = [ab, block];
     slot.links = [block];
@@ -115,11 +115,13 @@ describe('floating slot URL round-trip', () => {
 
     // Five tokens, exactly as before floating slots existed. A grounded slider
     // that grew three empty tokens would still decode, but every shared URL
-    // would silently get longer.
+    // would silently get longer. A slider carrying mass writes a sixth token
+    // now (the block's mass became the joint's); this one is massless, so the
+    // record is byte-for-byte what it always was.
     expect(slotRecord.split(',')).toHaveLength(5);
 
     const target = rebuild(encoded);
-    const rebuilt = target.joints.find((joint) => joint.id === 'P') as PrisJoint;
+    const rebuilt = target.joints.find((joint) => joint.id === 'B') as PrisJoint;
     expect(rebuilt.isFloating).toBe(false);
     // Three decimals is all the URL stores. A floating slot has no such loss:
     // it re-derives its angle from coordinates instead of carrying a number.
@@ -133,7 +135,7 @@ describe('floating slot URL round-trip', () => {
     const legacy = withChecksum(new Checksum().strip(encoded).replace(',CD,C,D', ''));
 
     const target = rebuild(legacy);
-    const slot = target.joints.find((joint) => joint.id === 'P') as PrisJoint;
+    const slot = target.joints.find((joint) => joint.id === 'B') as PrisJoint;
 
     expect(slot.isFloating).toBe(false);
     expect(slot.carrier).toBeUndefined();

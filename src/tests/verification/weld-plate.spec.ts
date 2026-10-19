@@ -63,8 +63,10 @@ function slide(welded: boolean, at = { x: 3, y: 0 }) {
   )!;
   slider.slideOn(ab, a, b);
   if (welded) {
-    harness.active.updateSelectedObj(c);
-    harness.service.weldJoint();
+    // The slider, not the pin this started as. A pin *becomes* the slider now,
+    // keeping its letter, so the object `c` still refers to is no longer in the
+    // drawing -- and welding it welded nothing.
+    harness.service.weldJoint(slider);
   }
   harness.service.finishStructuralEdit(false);
   return harness;
@@ -167,8 +169,7 @@ describe('the weld plate', () => {
         .filter((joint): joint is PrisJoint => joint instanceof PrisJoint)
         .find((joint) => !joint.isFloating || joint.carrier?.id !== carrier.id)!;
       slider.slideOn(carrier, a, b);
-      harness.active.updateSelectedObj(pin);
-      harness.service.weldJoint();
+      harness.service.weldJoint(slider);
     }
     harness.service.finishStructuralEdit(false);
 

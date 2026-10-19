@@ -25,12 +25,26 @@ export interface BodyAssignment {
  * on the screen. So both read this, and there is one definition to be wrong.
  */
 export function assignBodies(joints: Joint[], links: Link[]): BodyAssignment {
-  // A Slide's rider and block share one joint, so the shared-joint rule cannot
-  // see the weld that makes them one body. Links pinned to ground at every
-  // joint are merged for the same reason: they cannot move, so they are one
-  // body — the world's, as settled below where the world exists.
+  /**
+   * Whether this joint holds its point still.
+   *
+   * `ground` reads two ways and only one of them means that. On a pin it does.
+   * On a slider it says the *slot line* is fixed in the world while the joint
+   * itself travels along it -- so a bar whose two ends are grounded sliders is
+   * an elliptical trammel, which moves. Read as pinned, both its ends looked
+   * fixed, the bar was folded into the world, and a one-freedom mechanism
+   * counted as rigid. `frameBodies` in the force solver has always drawn this
+   * line; this is the same line, in the one place that decides what a body is.
+   */
+  const pinnedDown = (joint: Joint): boolean =>
+    joint instanceof RealJoint && joint.ground && !(joint instanceof PrisJoint);
+
+  // A Slide's riders are held rigid by something no joint count can see, so the
+  // caller names them. Links pinned to ground at every joint are merged for the
+  // same reason: they cannot move, so they are one body — the world's, as
+  // settled below where the world exists.
   const anchored = links
-    .filter((link) => link.joints.length > 0 && link.joints.every((j) => (j as RealJoint).ground))
+    .filter((link) => link.joints.length > 0 && link.joints.every(pinnedDown))
     .map((link) => link.id);
   const rigidBody = groupRigidBodies(links, [
     ...slideAssemblies(joints).map(assemblyBodyIds),
@@ -45,9 +59,7 @@ export function assignBodies(joints: Joint[], links: Link[]): BodyAssignment {
     [...new Set(links.map(groupOf))].filter((group) =>
       links
         .filter((link) => groupOf(link) === group)
-        .every(
-          (link) => link.joints.length > 0 && link.joints.every((j) => (j as RealJoint).ground)
-        )
+        .every((link) => link.joints.length > 0 && link.joints.every(pinnedDown))
     )
   );
   const bodyOf = (link: Link) => (anchoredGroups.has(groupOf(link)) ? WORLD : groupOf(link));

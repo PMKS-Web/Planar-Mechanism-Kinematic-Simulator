@@ -39,15 +39,17 @@ describe('a linear actuator pushing a rocker', () => {
   });
 
   it('is driven from a plain grounded prismatic joint, not a cylinder', () => {
-    const guide = built.joints.find((joint) => joint.id === 'P') as PrisJoint;
+    // A, which is the joint that slides: the guide was a prismatic twin named
+    // P beside it until a slider became one joint.
+    const guide = built.joints.find((joint) => joint.id === 'A') as PrisJoint;
     expect(guide).toBeInstanceOf(PrisJoint);
     expect(guide.input).toBe(true);
     // Grounded, so the slot is cut into the world; unsealed, so it is a bare
-    // guide rather than the barrel of a cylinder; and the pin is free to turn
-    // in the block, so there is no Slide either.
+    // guide rather than the barrel of a cylinder; and its rider may turn
+    // against the slot, so there is no Slide either.
     expect(guide.ground).toBe(true);
     expect(guide.isSealed).toBe(false);
-    expect((built.joints.find((joint) => joint.id === 'A') as RealJoint).isWelded).toBe(false);
+    expect(guide.rotates).toBe(true);
     expect(guide.angle_rad).toBeCloseTo(0, 9);
   });
 
@@ -89,9 +91,13 @@ describe('a linear actuator pushing a rocker', () => {
     // 6.6 units of travel each way at 2.2 a second, so exactly six.
     expect(mechanism.cyclePeriod).toBeGreaterThan(5);
     expect(mechanism.cyclePeriod).toBeLessThan(8);
+    // Every body, with no exception to make: the block link AP used to be one
+    // of them and had to be skipped because the fixture gives it no mass. The
+    // mass a block carried is the sliding joint's own now, and this fixture
+    // leaves that at zero too.
     for (const link of mechanism.links[0]) {
-      if (link.id === 'AP') continue; // the block, which the fixture does not mass
-      expect(link.mass).toBe(0);
+      expect(link.mass, link.id).toBe(0);
     }
+    expect((mechanism.joints[0].find((joint) => joint.id === 'A') as PrisJoint).mass).toBe(0);
   });
 });

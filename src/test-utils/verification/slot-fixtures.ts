@@ -84,7 +84,7 @@ export function invertedSliderCrankFixture(
       { id: 'D', x: offset + (LEVER * (bx - offset)) / span, y: (LEVER * by) / span },
     ],
     links: [{ joints: 'AB' }, { joints: 'CD' }],
-    sliders: [{ at: 'B', prisId: 'P', on: { carrier: 'CD', a: 'C', b: 'D' } }],
+    sliders: [{ at: 'B', on: { carrier: 'CD', a: 'C', b: 'D' } }],
     inputAngVel: INPUT_SPEED,
   };
 }
@@ -173,7 +173,7 @@ export function slottedCouplerFixture(): MechanismFixture {
       { id: 'X', x: slotEnd[0], y: slotEnd[1] },
     ],
     links: [{ joints: 'AB' }, { joints: 'BCX' }, { joints: 'CD' }, { joints: 'EF' }],
-    sliders: [{ at: 'F', prisId: 'P', on: { carrier: 'BCX', a: 'B', b: 'X' } }],
+    sliders: [{ at: 'F', on: { carrier: 'BCX', a: 'B', b: 'X' } }],
     inputAngVel: INPUT_SPEED,
   };
 }
@@ -221,8 +221,8 @@ export function scotchYokeFixture(swapSlotJoints: boolean = false): MechanismFix
     ],
     links: [{ joints: 'AB' }, { joints: 'CD' }],
     sliders: [
-      { at: 'B', prisId: 'E', on: { carrier: 'CD', ...slot } },
-      { at: 'C', prisId: 'F', angleRad: 0 },
+      { at: 'B', on: { carrier: 'CD', ...slot } },
+      { at: 'C', angleRad: 0 },
     ],
     welds: ['C'],
     inputAngVel: INPUT_SPEED,
@@ -251,8 +251,8 @@ export function scotchYokeGuidedAtFarEndFixture(): MechanismFixture {
     ],
     links: [{ joints: 'AB' }, { joints: 'CD' }],
     sliders: [
-      { at: 'B', prisId: 'E', on: { carrier: 'CD', a: 'C', b: 'D' } },
-      { at: 'D', prisId: 'G', angleRad: 0 },
+      { at: 'B', on: { carrier: 'CD', a: 'C', b: 'D' } },
+      { at: 'D', angleRad: 0 },
     ],
     welds: ['D'],
     inputAngVel: INPUT_SPEED,
@@ -289,7 +289,7 @@ export function swingingBlockFixture(): MechanismFixture {
       { id: 'R', x: rx, y: ry },
     ],
     links: [{ joints: 'AB' }, { joints: 'CD' }, { joints: 'BR' }],
-    sliders: [{ at: 'R', prisId: 'P', on: { carrier: 'CD', a: 'C', b: 'D' } }],
+    sliders: [{ at: 'R', on: { carrier: 'CD', a: 'C', b: 'D' } }],
     welds: ['R'],
     inputAngVel: INPUT_SPEED,
   };
@@ -332,7 +332,7 @@ export function squareRodSliderCrankFixture(): MechanismFixture {
       { id: 'C', x: SQUARE_ROD_CRANK + reach, y: 0 },
     ],
     links: [{ joints: 'AB' }, { joints: 'BC' }],
-    sliders: [{ at: 'C', prisId: 'P', angleRad: 0 }],
+    sliders: [{ at: 'C', angleRad: 0 }],
     inputAngVel: INPUT_SPEED,
   };
 }
@@ -362,8 +362,8 @@ export function scotchYokeWithTracerFixture(): MechanismFixture {
     ],
     links: [{ joints: 'AB' }, { joints: 'CDG' }],
     sliders: [
-      { at: 'B', prisId: 'E', on: { carrier: 'CDG', a: 'C', b: 'D' } },
-      { at: 'C', prisId: 'F', angleRad: 0 },
+      { at: 'B', on: { carrier: 'CDG', a: 'C', b: 'D' } },
+      { at: 'C', angleRad: 0 },
     ],
     welds: ['C'],
     inputAngVel: INPUT_SPEED,
@@ -399,8 +399,8 @@ export function ellipticalTrammelFixture(
     ],
     links: [{ joints: driven ? 'ABT' : 'AB' }],
     sliders: [
-      { at: 'A', prisId: 'C', angleRad: 0, input: driven },
-      { at: 'B', prisId: 'D', angleRad: Math.PI / 2 },
+      { at: 'A', angleRad: 0, input: driven },
+      { at: 'B', angleRad: Math.PI / 2 },
     ],
     inputAngVel: INPUT_SPEED * scale,
   };
@@ -431,7 +431,7 @@ export function cylinderSkinFixture(): MechanismFixture {
       { id: 'E', x: driven.x, y: 3, ground: true, input: true },
     ],
     links: [{ joints: 'AB' }, { joints: 'CD' }, { joints: 'DE' }],
-    sliders: [{ at: 'C', prisId: 'P', on: { carrier: 'AB', a: 'A', b: 'B' }, sealed: true }],
+    sliders: [{ at: 'C', on: { carrier: 'AB', a: 'A', b: 'B' }, sealed: true }],
     welds: ['C'],
     inputAngVel: INPUT_SPEED,
   };
@@ -466,7 +466,6 @@ export function cylinderBoomFixture(scale: number = 1): MechanismFixture {
     links: [{ joints: 'OC' }, { joints: 'GN' }, { joints: 'PC' }],
     slider: {
       at: 'P',
-      prisId: 'S',
       on: { carrier: 'GN', a: 'G', b: 'N' },
       sealed: true,
       input: true,
@@ -534,11 +533,11 @@ export function gripperFixture(scale: number = 1): MechanismFixture {
       { joints: 'TVX' },
     ],
     sliders: [
-      { at: 'C', prisId: 'E', on: { carrier: 'AB', a: 'A', b: 'B' }, sealed: true, input: true },
-      { at: 'M', prisId: 'N', on: { carrier: 'KL', a: 'K', b: 'L' } },
-      { at: 'Q', prisId: 'R', on: { carrier: 'OP', a: 'O', b: 'P' } },
-      { at: 'T', prisId: 'U', on: { carrier: 'KL', a: 'K', b: 'L' } },
-      { at: 'V', prisId: 'W', on: { carrier: 'OP', a: 'O', b: 'P' } },
+      { at: 'C', on: { carrier: 'AB', a: 'A', b: 'B' }, sealed: true, input: true },
+      { at: 'M', on: { carrier: 'KL', a: 'K', b: 'L' } },
+      { at: 'Q', on: { carrier: 'OP', a: 'O', b: 'P' } },
+      { at: 'T', on: { carrier: 'KL', a: 'K', b: 'L' } },
+      { at: 'V', on: { carrier: 'OP', a: 'O', b: 'P' } },
     ],
     welds: ['C'],
     inputAngVel: INPUT_SPEED * scale,
@@ -623,11 +622,11 @@ export function slideGripperFixture(
       { joints: 'TVX', name: 'Jaw' },
     ],
     sliders: [
-      { at: 'C', prisId: 'E', on: { carrier: 'AB', a: 'A', b: 'B' }, sealed: true, input: true },
-      { at: 'M', prisId: 'N', on: { carrier: 'KL', a: 'K', b: 'L' } },
-      { at: 'Q', prisId: 'R', on: { carrier: 'OP', a: 'O', b: 'P' } },
-      { at: 'T', prisId: 'U', on: { carrier: 'KL', a: 'K', b: 'L' } },
-      { at: 'V', prisId: 'W', on: { carrier: 'OP', a: 'O', b: 'P' } },
+      { at: 'C', on: { carrier: 'AB', a: 'A', b: 'B' }, sealed: true, input: true },
+      { at: 'M', on: { carrier: 'KL', a: 'K', b: 'L' } },
+      { at: 'Q', on: { carrier: 'OP', a: 'O', b: 'P' } },
+      { at: 'T', on: { carrier: 'KL', a: 'K', b: 'L' } },
+      { at: 'V', on: { carrier: 'OP', a: 'O', b: 'P' } },
     ],
     welds: ['C'],
     inputAngVel: INPUT_SPEED * scale,
@@ -731,9 +730,7 @@ export function pinchingGripperFixture(scale: number = 1): MechanismFixture {
       // The lower lever: ground pivot J, coupled at K, jaw at L.
       { joints: 'JKL' },
     ],
-    sliders: [
-      { at: 'C', prisId: 'E', on: { carrier: 'AB', a: 'A', b: 'B' }, sealed: true, input: true },
-    ],
+    sliders: [{ at: 'C', on: { carrier: 'AB', a: 'A', b: 'B' }, sealed: true, input: true }],
     welds: ['C'],
     inputAngVel: INPUT_SPEED * scale,
   };
@@ -790,11 +787,11 @@ export function motionGenGripperFixture(scale: number = 1): MechanismFixture {
     sliders: [
       // The cylinder's freedom: along the line from its ground anchor at
       // (-4.86561, -0.000826) to A, which is 8.7e-5 rad off the x axis.
-      { at: 'A', prisId: 'P', angleRad: 8.7e-5, input: true },
-      { at: 'F', prisId: 'Q', angleRad: RAIL },
-      { at: 'G', prisId: 'R', angleRad: RAIL },
-      { at: 'H', prisId: 'S', angleRad: RAIL },
-      { at: 'I', prisId: 'T', angleRad: RAIL },
+      { at: 'A', angleRad: 8.7e-5, input: true },
+      { at: 'F', angleRad: RAIL },
+      { at: 'G', angleRad: RAIL },
+      { at: 'H', angleRad: RAIL },
+      { at: 'I', angleRad: RAIL },
     ],
     inputAngVel: INPUT_SPEED * scale,
   };
@@ -847,8 +844,8 @@ export function pivotingGripperFixture(scale: number = 1): MechanismFixture {
       { joints: 'HIJ' },
     ],
     sliders: [
-      { at: 'A', prisId: 'P', angleRad: 0, input: true },
-      { at: 'M', prisId: 'N', angleRad: 0 },
+      { at: 'A', angleRad: 0, input: true },
+      { at: 'M', angleRad: 0 },
     ],
     inputAngVel: INPUT_SPEED * scale,
   };
@@ -889,7 +886,7 @@ export function ellipticalCrankFixture(scale: number = 1): MechanismFixture {
       { id: 'F', ...at(0, 0), ground: true },
     ],
     links: [{ joints: 'AB' }, { joints: 'BC' }, { joints: 'CDE' }, { joints: 'DF' }],
-    slider: { at: 'E', prisId: 'P', angleRad: GUIDE },
+    slider: { at: 'E', angleRad: GUIDE },
     inputAngVel: INPUT_SPEED,
   };
 }
@@ -924,7 +921,7 @@ export function boundaryBranchJumpFixture(): MechanismFixture {
       { id: 'F', x: 4.085514, y: -5.223341, ground: true },
     ],
     links: [{ joints: 'AB' }, { joints: 'BC' }, { joints: 'CDE' }, { joints: 'DF' }],
-    sliders: [{ at: 'E', prisId: 'P', angleRad: -0.002808914061466237 }],
+    sliders: [{ at: 'E', angleRad: -0.002808914061466237 }],
     inputAngVel: INPUT_SPEED,
   };
 }
@@ -941,7 +938,6 @@ export const RADIAL_ROD = 3;
 export const RADIAL_CYLINDERS = 5;
 /** The pistons' joint letters, and their blocks'. */
 export const RADIAL_PISTON_IDS = ['B', 'C', 'D', 'E', 'F'].slice(0, RADIAL_CYLINDERS);
-const RADIAL_BLOCK_IDS = ['P', 'Q', 'R', 'S', 'T'].slice(0, RADIAL_CYLINDERS);
 /** Evenly spaced, first one straight up, the way they are drawn end-on. */
 export const RADIAL_AXES = Array.from(
   { length: RADIAL_CYLINDERS },
@@ -974,10 +970,10 @@ export function radialEngineFixture(): MechanismFixture {
     const s = b + Math.sqrt(b * b - c);
     return { x: s * dir[0], y: s * dir[1] };
   };
-  // One letter per piston and one per block, taken in order, so the count is
-  // the only thing that has to change to build a seven- or nine-cylinder one.
+  // One letter per piston, taken in order, so the count is the only thing that
+  // has to change to build a seven- or nine-cylinder one. There was a second
+  // letter per block until a slider became one joint.
   const pistonIds = RADIAL_PISTON_IDS;
-  const blockIds = RADIAL_BLOCK_IDS;
   return {
     joints: [
       { id: 'O', x: 0, y: 0, ground: true, input: true },
@@ -987,7 +983,6 @@ export function radialEngineFixture(): MechanismFixture {
     links: [{ joints: 'OA' }, ...pistonIds.map((id) => ({ joints: `A${id}` }))],
     sliders: RADIAL_AXES.map((axis, index) => ({
       at: pistonIds[index],
-      prisId: blockIds[index],
       angleRad: axis,
     })),
     inputAngVel: INPUT_SPEED,
@@ -1314,7 +1309,7 @@ export function parallelGripperFixture(scale: number = 1): MechanismFixture {
       { joints: 'IJK', name: 'Jaw' },
       { joints: 'AI' },
     ],
-    sliders: [{ at: 'A', prisId: 'L', angleRad: 0, input: true }],
+    sliders: [{ at: 'A', angleRad: 0, input: true }],
     inputAngVel: INPUT_SPEED * scale,
   };
 }
@@ -1344,8 +1339,8 @@ export function offsetPivotLeverFixture(): MechanismFixture {
     ],
     links: [{ joints: 'AB' }, { joints: 'CDE' }, { joints: 'DF' }],
     sliders: [
-      { at: 'B', prisId: 'P', on: { carrier: 'CDE', a: 'D', b: 'E' } },
-      { at: 'F', prisId: 'Q', angleRad: 0 },
+      { at: 'B', on: { carrier: 'CDE', a: 'D', b: 'E' } },
+      { at: 'F', angleRad: 0 },
     ],
     inputAngVel: INPUT_SPEED,
   };
@@ -1379,7 +1374,7 @@ export function guidedRodOnALinkFixture(): MechanismFixture {
       { id: 'T', x: 6, y: 0 },
     ],
     links: [{ joints: 'AB' }, { joints: 'BF' }, { joints: 'FT' }],
-    sliders: [{ at: 'T', prisId: 'G', angleRad: 0 }],
+    sliders: [{ at: 'T', angleRad: 0 }],
     welds: ['T'],
     inputAngVel: INPUT_SPEED,
   };

@@ -121,7 +121,7 @@ for (const member of ['GN', 'PC']) {
 // --- A ram's own drive is graphed where the ram is ---------------------------
 // The one input whose joint the reader cannot select: it is buried inside the
 // part, with no marker and no hitbox, so its effort belongs on the part.
-for (const member of ['GN', 'PC', 'PS']) {
+for (const member of ['GN', 'PC']) {
   await select(member);
   const rows = await titles();
   record(
@@ -157,7 +157,7 @@ const readingOf = async (id, title) => {
   }, title);
 };
 const onThePart = await readingOf('GN', 'Input Force');
-const onTheJoint = await readingOf('S', 'Input Force');
+const onTheJoint = await readingOf('P', 'Input Force');
 record('and reads exactly what the buried joint reads', onThePart === onTheJoint && !!onThePart, {
   onThePart,
   onTheJoint,

@@ -246,7 +246,7 @@ function scaledStep(
     const bodies =
       constraint.kind === 'pin'
         ? [constraint.a, constraint.b]
-        : [constraint.block, constraint.carrier];
+        : [constraint.rider, constraint.carrier];
     for (const body of bodies) {
       if (body.at === undefined) continue;
       const armX = constraint.at.x - body.pivot.x;
@@ -268,7 +268,25 @@ interface Body {
 
 type Constraint =
   | { kind: 'pin'; at: { x: number; y: number }; a: Body; b: Body }
-  | { kind: 'slide'; at: { x: number; y: number }; block: Body; carrier: Body; angle: number };
+  | {
+      kind: 'slide';
+      at: { x: number; y: number };
+      /**
+       * The body that rides the slot. It used to be the zero-length block, and
+       * is the rider itself now that a slider is one joint -- which is also why
+       * it is always a body that exists: the block was a body only because it
+       * was a link, and a joint could not carry a rotation column.
+       */
+      rider: Body;
+      carrier: Body;
+      angle: number;
+      /**
+       * Whether the rider may turn against the slot: a Pin-in-slot may, a Slide
+       * may not. It decides whether this joint writes one row or two, which is
+       * the whole difference between a two-freedom joint and a one-freedom one.
+       */
+      rotates: boolean;
+    };
 
 /** The point each body turns about: the average of the joints on it. */
 function pivotsOf(
@@ -316,10 +334,12 @@ function reachOf(links: Link[]): number {
 /**
  * What every joint forbids.
  *
- * A pin says two bodies' copies of one point move together. A slider says the
- * block may not turn in its slot and may not leave it, and says nothing about
- * sliding along it. Both are one-freedom joints in the plane, so both cost two,
- * which is what Gruebler charges them as well.
+ * A pin says two bodies' copies of one point move together, and says nothing
+ * about turning: one freedom, two rows. A slider says its rider may not leave
+ * the slot, and -- only if it is a Slide -- may not turn in it either. So a
+ * Slide is a one-freedom joint and writes two rows like a pin, while a
+ * Pin-in-slot keeps two freedoms and writes one. That is the same split
+ * Gruebler's count makes between a full joint and a half one.
  */
 function constraintsOf(
   joints: Joint[],
@@ -343,7 +363,7 @@ function constraintsOf(
           : undefined;
       const rest = meeting.filter((body) => body !== carrierBody);
       if (carrierBody !== undefined && rest.length > 0) {
-        const [block, ...alsoHere] = rest;
+        const [rider, ...alsoHere] = rest;
         // The slot's direction as it is now, not the angle stored on the
         // joint: a floating slot's direction lives in the two joints it is cut
         // between, and the stored angle is only what a grounded guide keeps.
@@ -353,14 +373,15 @@ function constraintsOf(
         constraints.push({
           kind: 'slide',
           at,
-          block: bodyAt(block),
+          rider: bodyAt(rider),
           carrier: bodyAt(carrierBody),
           angle: joint.slotAngle,
+          rotates: joint.rotates,
         });
-        // Anything else meeting the block here is pinned to it, and the count
+        // Anything else riding here is pinned to the first rider, and the count
         // stays the k-1 pairings Gruebler charges for.
         for (const other of alsoHere) {
-          constraints.push({ kind: 'pin', at, a: bodyAt(block), b: bodyAt(other) });
+          constraints.push({ kind: 'pin', at, a: bodyAt(rider), b: bodyAt(other) });
         }
         continue;
       }
@@ -404,7 +425,7 @@ function rowsFor(constraint: Constraint, width: number): number[][] {
   const across = row();
   const turning = row();
   for (const [body, sign] of [
-    [constraint.block, 1],
+    [constraint.rider, 1],
     [constraint.carrier, -1],
   ] as const) {
     if (body.at === undefined) continue;
@@ -414,7 +435,12 @@ function rowsFor(constraint: Constraint, width: number): number[][] {
     across[body.at + 2] += sign * (normalY * r.x - normalX * r.y);
     turning[body.at + 2] += sign;
   }
-  return [across, turning];
+  // A Pin-in-slot forbids leaving the slot and nothing else. Writing the
+  // turning row for it as well would charge it as a one-freedom joint, which
+  // is what the block used to absorb: the block could not turn, and the rider
+  // got its freedom back through the pin they shared. With the block gone there
+  // is no second joint to give it back, so the row has to go instead.
+  return constraint.rotates ? [across] : [across, turning];
 }
 
 /** Where a body's copy of a point ends up after a displacement is applied. */
@@ -444,13 +470,14 @@ function residual(constraint: Constraint, d: number[]): number[] {
   const angle = constraint.angle + carrierTurn;
   const normalX = -Math.sin(angle);
   const normalY = Math.cos(angle);
-  const block = moved(constraint.block, constraint.at, d);
+  const rider = moved(constraint.rider, constraint.at, d);
   const carrier = moved(constraint.carrier, constraint.at, d);
-  const blockTurn = constraint.block.at === undefined ? 0 : d[constraint.block.at + 2];
-  return [
-    normalX * (block.x - carrier.x) + normalY * (block.y - carrier.y),
-    blockTurn - carrierTurn,
-  ];
+  const riderTurn = constraint.rider.at === undefined ? 0 : d[constraint.rider.at + 2];
+  const across = normalX * (rider.x - carrier.x) + normalY * (rider.y - carrier.y);
+  // One entry per row `rowsFor` wrote, or the second-order test reads a
+  // Pin-in-slot's gap against a Slide's Jacobian and compares vectors of
+  // different lengths -- which comes back as a freedom that dies for no reason.
+  return constraint.rotates ? [across] : [across, riderTurn - carrierTurn];
 }
 
 /**
@@ -478,7 +505,7 @@ function survivesSecondOrder(
     const bodies =
       constraint.kind === 'pin'
         ? [constraint.a, constraint.b]
-        : [constraint.block, constraint.carrier];
+        : [constraint.rider, constraint.carrier];
     for (const body of bodies) {
       if (body.at === undefined) continue;
       const armX = constraint.at.x - body.pivot.x;

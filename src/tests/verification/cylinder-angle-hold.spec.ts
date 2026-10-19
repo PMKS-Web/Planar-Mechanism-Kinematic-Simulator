@@ -57,7 +57,7 @@ describe('a cylinder that holds its angle', () => {
   it('answers the same whichever member the reader clicked', () => {
     const { links, joints, sealed, barrel } = boom();
     barrel.hold = 'angle';
-    for (const part of [sealed.barrel, sealed.rod, sealed.block]) {
+    for (const part of [sealed.barrel, sealed.rod]) {
       if (!part) continue;
       expect(cylinderOf(part, joints)?.barrel.id).toBe(barrel.id);
       expect(holdOf(part, joints)).toBe('angle');

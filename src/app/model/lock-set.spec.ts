@@ -1,7 +1,7 @@
 import './joint';
 import { Coord } from './coord';
 import { PrisJoint, RevJoint } from './joint';
-import { RealLink, SliderBlock } from './link';
+import { RealLink } from './link';
 import { cylinderHeadHalf, cylinderSpanLayoutFrom, HEAD_CLEARANCE_R } from './cylinder';
 import { frozenJointIds, locksHolding } from './lock-set';
 import { MODEL_SCALE } from './render-scale';
@@ -12,7 +12,7 @@ const S = MODEL_SCALE;
  * What a Lock mark holds still is a set of joints, and this file pins the
  * translation: marks spread along consequence, not membership. The directed
  * cases — a mount that stays free while an interior joint seals the part, a
- * floating pin that holds its own place without holding its channel — are
+ * floating slider that holds its own place without holding its channel — are
  * exactly the ones a symmetric "traveling group" closure gets wrong.
  */
 
@@ -30,7 +30,13 @@ function fourBar() {
   return { joints: [a, b, c, d], links: [ab, bc, cd], a, b, c, d, ab, bc, cd };
 }
 
-/** The sealed-cylinder shape url-sealed-cylinder.spec builds, minus the codec. */
+/**
+ * The sealed-cylinder shape url-sealed-cylinder.spec builds, minus the codec.
+ *
+ * Four joints, not five: C is the slider the rod hangs on. It was a coincident
+ * pin and a prismatic joint joined by a zero-length block until Stage 1 of
+ * `docs/joint-type-and-cylinder-plan.md`.
+ */
 function sealedCylinder() {
   const angle = 0.31;
   const at = (along: number) => new Coord(along * Math.cos(angle) * S, along * Math.sin(angle) * S);
@@ -42,29 +48,24 @@ function sealedCylinder() {
 
   const a = new RevJoint('A', at(-4).x, at(-4).y, false, true);
   const b = new RevJoint('B', at(buried).x, at(buried).y);
-  const c = new RevJoint('C', at(pinAlong).x, at(pinAlong).y);
+  const c = new PrisJoint('C', at(pinAlong).x, at(pinAlong).y);
   const d = new RevJoint('D', at(4).x, at(4).y);
-  const slider = new PrisJoint('P', c.x, c.y);
-  slider.isSealed = true;
+  c.isSealed = true;
+  c.rotates = false;
 
   const barrel = new RealLink('AB', [a, b], 1, 1);
   const rod = new RealLink('CD', [c, d], 1, 1);
-  const block = new SliderBlock('CP', [c, slider], 1);
   [a, b].forEach((joint) => joint.links.push(barrel));
   [c, d].forEach((joint) => joint.links.push(rod));
-  c.links.push(block);
-  slider.links.push(block);
-  c.isWelded = true;
-  slider.slideOn(barrel, a, b);
+  c.slideOn(barrel, a, b);
 
   return {
-    joints: [a, b, c, d, slider],
-    links: [barrel, rod, block],
+    joints: [a, b, c, d],
+    links: [barrel, rod],
     mountA: a,
     buried: b,
-    pin: c,
+    slider: c,
     mountD: d,
-    slider,
   };
 }
 
@@ -88,22 +89,25 @@ describe('what a Lock mark holds still', () => {
     expect(frozenJointIds(joints, links)).toEqual(new Set(['C']));
   });
 
-  it('a slider pin and its block joint hold each other — they are coincident', () => {
-    const pin = new RevJoint('A', 0, 0);
+  it('a locked slider holds itself and nothing else', () => {
+    // There used to be a symmetric rule here: a slider was a prismatic joint
+    // and a coincident pin joined by a block, and holding either had to hold
+    // both. One joint carries the mark now, so the pair it spoke about is gone
+    // and so is the rule.
     const slider = new PrisJoint('P', 0, 0);
-    const block = new SliderBlock('AP', [pin, slider], 1);
-    pin.links.push(block);
-    slider.links.push(block);
-    pin.locked = true;
+    const far = new RevJoint('E', 2 * S, 0);
+    const rider = new RealLink('EP', [slider, far], 1, 1);
+    [slider, far].forEach((joint) => joint.links.push(rider));
+    slider.locked = true;
 
-    expect(frozenJointIds([pin, slider], [block])).toEqual(new Set(['A', 'P']));
+    expect(frozenJointIds([slider, far], [rider])).toEqual(new Set(['P']));
   });
 
   it('a locked interior joint seals the whole cylinder', () => {
     const part = sealedCylinder();
     part.slider.locked = true;
 
-    expect(frozenJointIds(part.joints, part.links)).toEqual(new Set(['A', 'B', 'C', 'D', 'P']));
+    expect(frozenJointIds(part.joints, part.links)).toEqual(new Set(['A', 'B', 'C', 'D']));
   });
 
   it('a locked mount holds only the mount — the ram still re-poses and swings about it', () => {
@@ -113,21 +117,20 @@ describe('what a Lock mark holds still', () => {
     expect(frozenJointIds(part.joints, part.links)).toEqual(new Set(['A']));
   });
 
-  it('a locked floating pin holds its own block and leaves its channel free', () => {
-    // The block's mark is parametric: it spends the one freedom the block has,
-    // which is where it sits along the slot. The two joints that cut the slot
-    // keep moving, and the reseat takes the block with them.
+  it('a locked floating slider holds its place in the slot and leaves the channel free', () => {
+    // The mark is parametric: it spends the one freedom the slider has, which
+    // is where it sits along the slot. The two joints that cut the slot keep
+    // moving, and the reseat takes the slider with them.
     const { joints, links, a, b, ab } = fourBar();
     const slider = new PrisJoint('P', 1 * S, 1 * S);
-    const rider = new RevJoint('E', 1 * S, 1 * S);
-    const block = new SliderBlock('EP', [rider, slider], 1);
-    rider.links.push(block);
-    slider.links.push(block);
+    const far = new RevJoint('E', 1 * S, 3 * S);
+    const rider = new RealLink('EP', [slider, far], 1, 1);
+    [slider, far].forEach((joint) => joint.links.push(rider));
     slider.slideOn(ab, a, b);
-    const withSlot = { joints: [...joints, slider, rider], links: [...links, block] };
+    const withSlot = { joints: [...joints, slider, far], links: [...links, rider] };
 
     slider.locked = true;
-    expect(frozenJointIds(withSlot.joints, withSlot.links)).toEqual(new Set(['P', 'E']));
+    expect(frozenJointIds(withSlot.joints, withSlot.links)).toEqual(new Set(['P']));
 
     slider.locked = false;
     a.locked = true;

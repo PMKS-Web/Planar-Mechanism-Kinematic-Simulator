@@ -1,6 +1,6 @@
 import { Component, OnInit, ChangeDetectionStrategy, inject } from '@angular/core';
 import { Force } from '../../model/force';
-import { SliderBlock, Link, RealLink } from '../../model/link';
+import { Link, RealLink } from '../../model/link';
 import { Joint, PrisJoint, RealJoint, RevJoint } from '../../model/joint';
 import { Coord } from '../../model/coord';
 import { roundNumber } from '../../model/utils';
@@ -278,8 +278,6 @@ export class LinkageTableComponent implements OnInit {
     switch (link.constructor) {
       case RealLink:
         return 'R';
-      case SliderBlock:
-        return 'P';
     }
     return '?';
   }

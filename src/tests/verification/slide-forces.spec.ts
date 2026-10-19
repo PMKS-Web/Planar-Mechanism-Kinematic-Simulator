@@ -1,5 +1,5 @@
 import '../../app/model/joint';
-import { RealJoint } from '../../app/model/joint';
+import { PrisJoint } from '../../app/model/joint';
 import { RealLink } from '../../app/model/link';
 import { ForceAnalysisSeries, ForceSolver } from '../../app/model/mechanism/force-solver';
 import { Mechanism } from '../../app/model/mechanism/mechanism';
@@ -77,7 +77,9 @@ describe('force analysis of a welded slide assembly', () => {
     series.frames.forEach((frame, t) => {
       const expected = handStatics(mechanism, t, 'C');
       expect(frame.inputEffort!.valueSI).toBeCloseTo(expected.torque, 6);
-      expect(frame.guideCouples.get('F')).toBeCloseTo(expected.couple, 6);
+      // Keyed by the joint that slides, which is the guide pin C itself: the
+      // prismatic twin this used to name was F.
+      expect(frame.guideCouples.get('C')).toBeCloseTo(expected.couple, 6);
     });
   });
 
@@ -92,7 +94,7 @@ describe('force analysis of a welded slide assembly', () => {
     series.frames.forEach((frame, t) => {
       const expected = handStatics(mechanism, t, 'D');
       expect(frame.inputEffort!.valueSI).toBeCloseTo(expected.torque, 6);
-      expect(frame.guideCouples.get('G')).toBeCloseTo(expected.couple, 6);
+      expect(frame.guideCouples.get('D')).toBeCloseTo(expected.couple, 6);
     });
   });
 
@@ -108,7 +110,7 @@ describe('force analysis of a welded slide assembly', () => {
     series.frames.forEach((frame, t) => {
       const expected = handStatics(mechanism, t, 'C');
       expect(frame.inputEffort!.valueSI).toBeCloseTo(expected.torque, 6);
-      expect(frame.guideCouples.get('F')).toBeCloseTo(expected.couple, 6);
+      expect(frame.guideCouples.get('C')).toBeCloseTo(expected.couple, 6);
     });
   });
 
@@ -116,8 +118,11 @@ describe('force analysis of a welded slide assembly', () => {
     const mechanism = loadedYoke(scotchYokeFixture());
     const frame = mechanism.getForceAnalysis('static').frames[45];
 
-    const acrossSlot = frame.jointReactionsByLink.get('E')!;
-    const onBlock = acrossSlot.get('BE') ?? [...acrossSlot.values()][0];
+    // At B, the crank pin that rides the yoke's slot: the two bodies meeting
+    // there are the crank AB and the yoke CD the slot is cut into. It was the
+    // prismatic twin E and the block BE before a slider became one joint.
+    const acrossSlot = frame.jointReactionsByLink.get('B')!;
+    const onBlock = acrossSlot.get('AB') ?? [...acrossSlot.values()][0];
     const onCarrier = acrossSlot.get('CD') ?? [...acrossSlot.values()][1];
     expect(onBlock[0] + onCarrier[0]).toBeCloseTo(0, 8);
     expect(onBlock[1] + onCarrier[1]).toBeCloseTo(0, 8);
@@ -150,7 +155,10 @@ describe('force analysis of a welded slide assembly', () => {
     // effort has nowhere to go — and the honest answer is a refusal, not a
     // number.
     const welded = buildMechanism(loadedInvertedSliderCrankFixture());
-    (welded.joints.find((joint) => joint.id === 'B') as RealJoint).isWelded = true;
+    // Welding a slider is its riders losing the freedom to turn against the
+    // slot, which is `rotates` on the joint that slides. `isWelded` on one
+    // means nothing now: the pin that carried it is gone.
+    (welded.joints.find((joint) => joint.id === 'B') as PrisJoint).rotates = false;
 
     const frame = ForceSolver.analyzeFrame(welded.joints, welded.links, 'static', true, 'm');
 

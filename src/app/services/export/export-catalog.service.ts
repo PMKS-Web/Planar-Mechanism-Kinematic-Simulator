@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Joint, PrisJoint, RealJoint } from '../../model/joint';
 import { Cylinder, cylinderJoints } from '../../model/cylinder';
-import { Link, RealLink, SliderBlock } from '../../model/link';
+import { Link, RealLink } from '../../model/link';
 import { AngleUnit, LengthUnit } from '../../model/unit-enums';
 import { MechanismService } from '../mechanism.service';
 import { NumberUnitParserService } from '../number-unit-parser.service';
@@ -36,19 +36,20 @@ export class ExportCatalogService {
       const valid = solved?.isMechanismValid() ?? false;
       const joints = partition.ownJoints
         .filter((joint): joint is RealJoint => joint instanceof RealJoint)
-        // Every joint the canvas draws a marker for, and no others. A slot is
-        // a joint to the solver and nothing at all to a reader: it has a
-        // zero-sized marker, no hitbox and no panel, so a row for it offered
-        // numbers no graph in the app can show -- and the force it carries is
-        // reachable from the block that rides in it.
-        .filter((joint) => !(joint instanceof PrisJoint))
+        // Every joint the canvas draws a marker for, and no others.
+        //
+        // A slot used to be a joint to the solver and nothing at all to a
+        // reader -- a zero-sized marker, no hitbox, no panel -- so it was
+        // dropped here and the force it carries was reached through the block
+        // riding in it. A slider *is* the joint a reader points at now (Stage 1
+        // of `docs/joint-type-and-cylinder-plan.md`): it wears the letter, the
+        // marker and the hitbox, so dropping it would take a part the reader
+        // can plainly see out of the list.
         .filter((joint) => !this.isInsideCylinder(cylinders, joint))
         .map((joint) => this.jointPart(joint, partition.id, index, withForces));
-      // Bars, and the rods that stand for rams. A slider's block is a
-      // zero-length link binding a pin to a slot: a reader sees one slider
-      // where the solver has three bodies, and the block's own reactions are
-      // its pin's force negated and the force in the slot -- both of which the
-      // pin now carries. See `slotReactionOf`.
+      // Bars, and the rods that stand for rams. A reader sees one slider where
+      // the solver has two bodies, and what the slider has of its own is the
+      // force in its slot -- which the joint carries. See `slotReactionOf`.
       const links = partition.links
         .filter((link): link is RealLink => link instanceof RealLink)
         // A sealed cylinder stands in the list as one part. Its barrel, its
@@ -101,15 +102,12 @@ export class ExportCatalogService {
    * Whether a body is a piece of a cylinder, and if so which piece.
    *
    * The rod stands for the whole ram — it is the member that moves, and it
-   * shares the barrel's angle — so it keeps its row under the cylinder's name;
-   * the barrel and the piston are hidden behind it.
+   * shares the barrel's angle — so it keeps its row under the cylinder's name
+   * and the barrel is hidden behind it.
    */
   private standsForCylinder(cylinders: Cylinder[], link: Link): 'rod' | 'hidden' | 'none' {
     const cylinder = cylinders.find(
-      (candidate) =>
-        candidate.rod.id === link.id ||
-        candidate.barrel.id === link.id ||
-        candidate.block.id === link.id
+      (candidate) => candidate.rod.id === link.id || candidate.barrel.id === link.id
     );
     if (!cylinder) return 'none';
     return cylinder.rod.id === link.id ? 'rod' : 'hidden';
@@ -165,7 +163,6 @@ export class ExportCatalogService {
     const notes: string[] = [];
     const ram = this.standsForCylinder(cylinders, link) === 'rod';
     if (ram) notes.push('cylinder');
-    else if (link instanceof SliderBlock) notes.push('slider block');
     const input = link.joints.find((joint) => (joint as RealJoint).input);
     if (input) notes.push(input instanceof PrisJoint ? 'driven' : 'input crank');
     if (link instanceof RealLink && link.subset.length > 0) notes.push('compound');
@@ -204,10 +201,7 @@ export class ExportCatalogService {
   labelFor(link: Link): string {
     const cylinders = this.mechanism.sealedStructures();
     const cylinder = cylinders.find(
-      (candidate) =>
-        candidate.rod.id === link.id ||
-        candidate.barrel.id === link.id ||
-        candidate.block.id === link.id
+      (candidate) => candidate.rod.id === link.id || candidate.barrel.id === link.id
     );
     return cylinder ? this.cylinderLabel(cylinders, cylinder.rod) : this.mechanism.bodyLabel(link);
   }
@@ -215,16 +209,19 @@ export class ExportCatalogService {
   /**
    * The links a body is made of, for asking the force solver about it.
    *
-   * One for an ordinary bar. A cylinder is one part to the reader and three
-   * links to the solver, and its two mounts sit on different ones — the barrel
+   * One for an ordinary bar. A cylinder is one part to the reader and two links
+   * to the solver, and its two mounts sit on different ones — the barrel
    * carries the far mount and the rod the other — so asking about the rod
    * alone listed the force at one end of a ram and nothing at the end it is
    * pushing. The same rule the analysis panel uses, for the same reason.
+   *
+   * Two links where there were three: the sliding body was a zero-length block
+   * link of its own until Stage 1 of `docs/joint-type-and-cylinder-plan.md`.
    */
   memberIdsOf(linkId: string): string[] {
     const body = this.mechanism.links.find((link) => link.id === linkId);
     const sealed = body && this.mechanism.cylinderOfBar(body);
-    return sealed ? [sealed.barrel.id, sealed.rod.id, sealed.block.id] : [linkId];
+    return sealed ? [sealed.barrel.id, sealed.rod.id] : [linkId];
   }
 
   /**

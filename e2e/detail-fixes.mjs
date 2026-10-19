@@ -510,22 +510,26 @@ await page.evaluate(() => {
 });
 await page.waitForTimeout(700);
 const idle = await switches();
-// A slider block has a mass and no center-of-mass mark, so it must not make
-// the switch look useful.
-await load(payloads['4-Bar']);
+// A slider carries a mass and draws no center-of-mass mark, so it must not make
+// the switch look useful. On a mechanism that actually has one: this used to
+// hunt for a `SliderBlock` on the four-bar, which has no slider at all, so it
+// passed on `!hasBlock` whatever the switch did. The mass moved onto the joint
+// in Stage 1 of `docs/joint-type-and-cylinder-plan.md`, which is exactly the
+// behavior this is here to check.
+await load(payloads['Slider_Crank']);
 const blockOnly = await page.evaluate(() => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   const srv = grid.mechanismSrv;
   srv.links.forEach((link) => (link.mass = 0));
-  const block = srv.links.find((link) => link.constructor.name === 'SliderBlock');
-  if (block) block.mass = 5;
+  const slider = srv.joints.find((joint) => joint.constructor.name === 'PrisJoint');
+  if (slider) slider.mass = 5;
   srv.updateMechanism(false);
   const button = [...document.querySelectorAll('.viewControls .viewButton')][0];
-  return { hasBlock: !!block, disabled: button.disabled };
+  return { hasSlider: !!slider, disabled: button.disabled };
 });
 record(
-  'a mass on a slider block does not make the center-of-mass switch look useful',
-  !blockOnly.hasBlock || blockOnly.disabled,
+  'a mass on a slider does not make the center-of-mass switch look useful',
+  blockOnly.hasSlider && blockOnly.disabled,
   blockOnly
 );
 
