@@ -78,6 +78,7 @@ export interface TemplateGroup {
     '(input)': 'focusKeeper.note($event)',
     '(keyup)': 'focusKeeper.note($event)',
     '(mouseup)': 'focusKeeper.note($event)',
+    '(select)': 'focusKeeper.note($event)',
   },
   imports: [
     MatDialogClose,

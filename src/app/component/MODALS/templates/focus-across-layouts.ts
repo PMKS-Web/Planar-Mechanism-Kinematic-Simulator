@@ -66,5 +66,9 @@ export class FocusAcrossLayouts {
         // A field type without a caret, such as email in some browsers.
       }
     }
+    // Focusing it was itself a focus event, which noted the caret at the end
+    // before the line above moved it back: noted again, or a second turn
+    // would give back the end.
+    this.focused = was;
   }
 }

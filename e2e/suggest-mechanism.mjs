@@ -480,6 +480,20 @@ check(
   (await page.inputValue('#librarySearch')) === 'FourX',
   await page.inputValue('#librarySearch')
 );
+// Twice over, without typing between: the caret stays where it was put.
+await page.evaluate(() => document.querySelector('#librarySearch').setSelectionRange(2, 2));
+await page.keyboard.press('ArrowLeft');
+await page.keyboard.press('ArrowRight');
+await page.setViewportSize({ width: 390, height: 844 });
+await page.waitForTimeout(700);
+await page.setViewportSize({ width: 844, height: 390 });
+await page.waitForTimeout(700);
+await page.keyboard.type('Y');
+check(
+  'and through two turns in a row, with the caret where it was',
+  (await page.inputValue('#librarySearch')) === 'FoYurX',
+  await page.inputValue('#librarySearch')
+);
 
 check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 
