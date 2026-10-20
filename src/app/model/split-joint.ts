@@ -36,8 +36,8 @@ export function splitJointChoice(
     return {
       count,
       refusal: 'dangling',
-      short: 'nowhere to slide',
-      long: 'This slider has nowhere to slide. Drag it onto a link or ground it first.',
+      short: 'convert to revolute first',
+      long: 'Convert this joint to Revolute before splitting it.',
     };
   }
   if (cylindersEnclosing(cylinders, joint).length > 0) {
