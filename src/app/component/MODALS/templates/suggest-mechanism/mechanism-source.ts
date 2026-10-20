@@ -175,7 +175,7 @@ export function readPastedLink(text: string, here: string): PastedLink {
   } catch {
     return { kind: 'broken' };
   }
-  const read = withCylindersSizedFor(transcoder, () => {
+  const read = withDrawingSizedFor(transcoder, () => {
     const drawing = { joints: [], links: [], forces: [] } as unknown as MechanismService;
     try {
       new MechanismBuilder(
@@ -204,18 +204,21 @@ export function readPastedLink(text: string, here: string): PastedLink {
 }
 
 /**
- * Run `work` with cylinders sized the way the link sizes them.
+ * Run `work` with the drawing sized the way the link sizes it.
  *
- * A cylinder's clearance is read from one app-wide number, and the link's own
- * is only applied by a real open. Read against the reader's drawing, the
- * Aircraft Landing Gear came back "Not recognized" and "Does Not Run" from a
- * fresh grid. The link's value is lent for the read and handed back, on the
- * plain static rather than the object-size subject, which the open drawing's
- * panels and its cylinders listen to.
+ * Two app-wide numbers size what a solve checks: the object size (how close
+ * two points are, how far a floating slot reaches) and a cylinder's clearance.
+ * Only a real open sets them from a link, so read against the reader's own
+ * drawing a pasted Aircraft Landing Gear came back "Does Not Run" from a fresh
+ * grid, and a Parallel Gripper from a drawing at size 7. The link's values are
+ * lent for the read and handed back in the same turn, before anything can
+ * draw with them. The object size is a subject, and Synthesis's poses
+ * recompute when it changes; they recompute from the size alone, so the
+ * second change puts them back exactly where the first found them.
  */
-function withCylindersSizedFor<T>(transcoder: StringTranscoder, work: () => T): T {
+function withDrawingSizedFor<T>(transcoder: StringTranscoder, work: () => T): T {
   const decimal = (setting: DecimalSetting) => transcoder.getDecimalSetting(setting);
-  const own =
+  const cylinder =
     scaleFromTokens(
       decimal(DecimalSetting.CYLINDER_SCALE),
       decimal(DecimalSetting.FINE_CYLINDER_SCALE)
@@ -223,14 +226,15 @@ function withCylindersSizedFor<T>(transcoder: StringTranscoder, work: () => T): 
   const size =
     scaleFromTokens(decimal(DecimalSetting.SCALE), decimal(DecimalSetting.FINE_SCALE)) *
     MODEL_SCALE;
-  const held = SettingsService.preservedCylinderScale;
-  // Zero is what a link written before the clearance had a field says, and it
-  // means "follow the object size" -- the link's, here.
-  SettingsService.preservedCylinderScale = own || size || held;
+  const heldCylinder = SettingsService.preservedCylinderScale;
+  const heldSize = SettingsService.objectScale;
+  SettingsService.preservedCylinderScale = cylinder;
+  if (size > 0 && size !== heldSize) SettingsService._objectScale.next(size);
   try {
     return work();
   } finally {
-    SettingsService.preservedCylinderScale = held;
+    SettingsService.preservedCylinderScale = heldCylinder;
+    if (SettingsService.objectScale !== heldSize) SettingsService._objectScale.next(heldSize);
   }
 }
 

@@ -4,6 +4,7 @@ import {
   ElementRef,
   OnDestroy,
   OnInit,
+  effect,
   inject,
   input,
   output,
@@ -82,6 +83,7 @@ const READ_AFTER_MS = 250;
   selector: 'app-suggest-mechanism',
   templateUrl: './suggest-mechanism.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
+  host: { '(focusin)': 'noteFocus($event)' },
   imports: [
     ReactiveFormsModule,
     MatIcon,
@@ -147,6 +149,34 @@ export class SuggestMechanismComponent implements OnInit, OnDestroy {
   previewOpen = false;
 
   private watching?: Subscription;
+  /** The field last focused, by id, to give the focus back to after a re-layout. */
+  private focusedId = '';
+
+  constructor() {
+    // The phone and the desktop lay the same fields out from different
+    // branches, so turning a phone on its side builds them again and the field
+    // being typed in is gone from under the caret. Its replacement gets the
+    // focus, once it is there.
+    let first = true;
+    effect(() => {
+      this.viewport.isPhone();
+      if (first) {
+        first = false;
+        return;
+      }
+      const id = this.focusedId;
+      if (!id) return;
+      setTimeout(() => {
+        const lost = !this.host.nativeElement.contains(document.activeElement);
+        if (lost) this.host.nativeElement.querySelector<HTMLElement>(`#${id}`)?.focus();
+      });
+    });
+  }
+
+  noteFocus(event: FocusEvent): void {
+    const target = event.target as HTMLElement | null;
+    if (target?.id) this.focusedId = target.id;
+  }
 
   ngOnInit(): void {
     const form = this.form();

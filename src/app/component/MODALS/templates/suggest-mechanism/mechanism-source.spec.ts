@@ -1,6 +1,7 @@
 import { isPmksHost, readPastedLink } from './mechanism-source';
 import { TEMPLATE_LINKAGES } from '../template-linkages';
 import { SettingsService } from '../../../../services/settings.service';
+import { MODEL_SCALE } from '../../../../model/render-scale';
 
 describe('a pasted link', () => {
   const here = 'localhost';
@@ -46,6 +47,23 @@ describe('a pasted link', () => {
       expect(SettingsService.preservedCylinderScale).toBe(0);
     } finally {
       SettingsService.preservedCylinderScale = held;
+    }
+  });
+
+  it('reads a floating slot at the link’s own size, and gives the drawing’s back', () => {
+    const held = SettingsService.objectScale;
+    // A drawing at size 7, ten times the default.
+    SettingsService._objectScale.next(7 * MODEL_SCALE);
+    try {
+      const read = readPastedLink(
+        `https://app.pmksplus.com/?${TEMPLATE_LINKAGES['Cylinder_Gripper']}`,
+        here
+      );
+      expect(read.kind).toBe('opened');
+      if (read.kind === 'opened') expect(read.summary.runs).toBe(true);
+      expect(SettingsService.objectScale).toBe(7 * MODEL_SCALE);
+    } finally {
+      SettingsService._objectScale.next(held);
     }
   });
 

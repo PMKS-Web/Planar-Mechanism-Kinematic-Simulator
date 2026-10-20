@@ -436,6 +436,23 @@ check(
   await page.evaluate(() => !!document.activeElement?.closest('.rail .suggestCard'))
 );
 
+// --- turning the phone while typing ------------------------------------------------
+await page.setViewportSize({ width: 390, height: 844 });
+await page.waitForTimeout(600);
+await page.locator('.categoryButton').click();
+await page.waitForTimeout(400);
+await page.locator('.categorySheet .suggestCard button').click();
+await page.waitForTimeout(500);
+await page.locator('#suggest-title').click();
+await page.setViewportSize({ width: 844, height: 390 });
+await page.waitForTimeout(700);
+await page.keyboard.type('!');
+check(
+  'turning the phone keeps the focus in the field being typed in',
+  (await page.evaluate(() => document.activeElement?.id)) === 'suggest-title' &&
+    (await page.inputValue('#suggest-title')).endsWith('!')
+);
+
 check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 
 await browser.close();
