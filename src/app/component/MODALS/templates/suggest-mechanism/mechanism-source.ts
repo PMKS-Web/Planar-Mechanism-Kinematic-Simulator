@@ -252,7 +252,10 @@ function solveEach(
   try {
     const { mechanisms } = partitionMechanisms(joints, links, forces);
     let stopped: string | undefined;
-    const machines = mechanisms.slice(0, MOST_MACHINES).map((partition) => {
+    // Every machine, counted the way the app counts them: one past the most a
+    // drawing runs is built and refused rather than left out, so the summary
+    // says "4 of 5 Run" as the open drawing would.
+    const machines = mechanisms.map((partition, index) => {
       const driven = partition.ownJoints.find(
         (joint) => joint instanceof RealJoint && joint.input
       ) as RealJoint | undefined;
@@ -268,7 +271,8 @@ function solveEach(
         'cm',
         (speed * Math.PI) / 30,
         'adaptive',
-        new Set(partition.ownJoints.map((joint) => joint.id))
+        new Set(partition.ownJoints.map((joint) => joint.id)),
+        index >= MOST_MACHINES ? 'too-many-machines' : undefined
       );
       const runs = mechanism.isMechanismValid();
       if (!runs && !stopped) {

@@ -2,6 +2,8 @@ import { isPmksHost, readPastedLink } from './mechanism-source';
 import { TEMPLATE_LINKAGES } from '../template-linkages';
 import { SettingsService } from '../../../../services/settings.service';
 import { MODEL_SCALE } from '../../../../model/render-scale';
+import { fixturePayload } from '../../../../../test-utils/verification/fixture-payload';
+import { fiveCranksFixture } from '../../../../../test-utils/verification/mobility-fixtures';
 
 describe('a pasted link', () => {
   const here = 'localhost';
@@ -65,6 +67,17 @@ describe('a pasted link', () => {
     } finally {
       SettingsService._objectScale.next(held);
     }
+  });
+
+  it('counts a machine past the fourth as one that does not run, not as none', () => {
+    const read = readPastedLink(
+      `https://app.pmksplus.com/?${fixturePayload(fiveCranksFixture())}`,
+      here
+    );
+    expect(read.kind).toBe('opened');
+    if (read.kind !== 'opened') return;
+    expect(read.summary.name).toBe('5 mechanisms');
+    expect(read.summary.verdict).toBe('4 of 5 Run');
   });
 
   it('opens a whole link without touching anything, and says what it is', () => {
