@@ -468,6 +468,19 @@ check(
   )
 );
 
+// The library's own search, across the same turn.
+await page.locator('.suggestHead .iconButton').click();
+await page.waitForTimeout(400);
+await page.locator('#librarySearch').fill('Four');
+await page.setViewportSize({ width: 844, height: 390 });
+await page.waitForTimeout(700);
+await page.keyboard.type('X');
+check(
+  'turning the phone keeps the focus in the library’s search',
+  (await page.inputValue('#librarySearch')) === 'FourX',
+  await page.inputValue('#librarySearch')
+);
+
 check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 
 await browser.close();

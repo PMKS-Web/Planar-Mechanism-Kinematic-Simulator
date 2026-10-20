@@ -45,6 +45,7 @@ import { SuggestMechanismComponent } from './suggest-mechanism/suggest-mechanism
 import { SuggestionSentComponent } from './suggest-mechanism/suggestion-sent.component';
 import { SentSuggestion, SuggestionForm } from './suggest-mechanism/suggestion';
 import { SuggestionDraftService } from './suggest-mechanism/suggestion-draft.service';
+import { FocusAcrossLayouts } from './focus-across-layouts';
 
 /** A filter chip: a category, or the `all` one that stands for every category. */
 export interface CategoryChip {
@@ -72,6 +73,12 @@ export interface TemplateGroup {
   templateUrl: './templates.component.html',
   styleUrls: ['./templates.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
+  host: {
+    '(focusin)': 'focusKeeper.note($event)',
+    '(input)': 'focusKeeper.note($event)',
+    '(keyup)': 'focusKeeper.note($event)',
+    '(mouseup)': 'focusKeeper.note($event)',
+  },
   imports: [
     MatDialogClose,
     MatIcon,
@@ -137,6 +144,11 @@ export class TemplatesComponent {
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
   readonly viewport = inject(ViewportService);
   readonly drafts = inject(SuggestionDraftService);
+  /** The search being typed in, given back when a phone turns. */
+  readonly focusKeeper = new FocusAcrossLayouts(
+    () => this.host.nativeElement,
+    () => this.viewport.isPhone()
+  );
 
   /** Asks whether to replace the mechanism already on the grid or open a new tab. */
   readonly openChoiceDialog = viewChild.required<TemplateRef<unknown>>('openChoiceDialog');

@@ -4,7 +4,6 @@ import {
   ElementRef,
   OnDestroy,
   OnInit,
-  effect,
   inject,
   input,
   output,
@@ -47,6 +46,7 @@ import {
   whatToFix,
 } from './suggestion';
 import { SuggestionDraftService } from './suggestion-draft.service';
+import { FocusAcrossLayouts } from '../focus-across-layouts';
 
 /**
  * The EmailJS template a suggestion is sent with.
@@ -84,11 +84,11 @@ const READ_AFTER_MS = 250;
   templateUrl: './suggest-mechanism.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   host: {
-    '(focusin)': 'noteFocus($event)',
-    '(input)': 'noteFocus($event)',
-    '(keyup)': 'noteFocus($event)',
-    '(mouseup)': 'noteFocus($event)',
-    '(select)': 'noteFocus($event)',
+    '(focusin)': 'focusKeeper.note($event)',
+    '(input)': 'focusKeeper.note($event)',
+    '(keyup)': 'focusKeeper.note($event)',
+    '(mouseup)': 'focusKeeper.note($event)',
+    '(select)': 'focusKeeper.note($event)',
   },
   imports: [
     ReactiveFormsModule,
@@ -155,63 +155,11 @@ export class SuggestMechanismComponent implements OnInit, OnDestroy {
   previewOpen = false;
 
   private watching?: Subscription;
-  /**
-   * The field last focused, and where its caret was, to give back after a
-   * re-layout.
-   */
-  private focused?: { id: string; start: number | null; end: number | null };
-
-  constructor() {
-    // The phone and the desktop lay the same fields out from different
-    // branches, so turning a phone on its side builds them again and the field
-    // being typed in is gone from under the caret. Its replacement gets the
-    // focus and the caret back -- but only where the focus has fallen to the
-    // page: the head's Back arrow survives a rotation, and taking the focus
-    // from it would make the next Enter a Send.
-    let first = true;
-    effect(() => {
-      this.viewport.isPhone();
-      if (first) {
-        first = false;
-        return;
-      }
-      const was = this.focused;
-      if (!was) return;
-      setTimeout(() => {
-        const active = document.activeElement;
-        if (active && active !== document.body) return;
-        const field = this.host.nativeElement.querySelector<HTMLElement>(`#${was.id}`);
-        field?.focus();
-        if (
-          (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) &&
-          was.start !== null &&
-          was.end !== null
-        ) {
-          try {
-            field.setSelectionRange(was.start, was.end);
-          } catch {
-            // A field type without a caret, such as email in some browsers.
-          }
-        }
-      });
-    });
-  }
-
-  noteFocus(event: Event): void {
-    const target = event.target as HTMLElement | null;
-    if (!target?.id) return;
-    const text =
-      target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement ? target : null;
-    let start: number | null = null;
-    let end: number | null = null;
-    try {
-      start = text?.selectionStart ?? null;
-      end = text?.selectionEnd ?? null;
-    } catch {
-      // Some input types refuse to say where the caret is.
-    }
-    this.focused = { id: target.id, start, end };
-  }
+  /** The field being typed in, given back when a phone turns. */
+  readonly focusKeeper = new FocusAcrossLayouts(
+    () => this.host.nativeElement,
+    () => this.viewport.isPhone()
+  );
 
   ngOnInit(): void {
     const form = this.form();
