@@ -443,14 +443,29 @@ await page.locator('.categoryButton').click();
 await page.waitForTimeout(400);
 await page.locator('.categorySheet .suggestCard button').click();
 await page.waitForTimeout(500);
-await page.locator('#suggest-title').click();
+await page.fill('#suggest-title', 'Alpha Beta');
+await page.locator('#suggest-title').focus();
+await page.evaluate(() => document.querySelector('#suggest-title').setSelectionRange(2, 2));
+await page.keyboard.press('ArrowLeft');
+await page.keyboard.press('ArrowRight');
 await page.setViewportSize({ width: 844, height: 390 });
 await page.waitForTimeout(700);
-await page.keyboard.type('!');
+await page.keyboard.type('X');
 check(
-  'turning the phone keeps the focus in the field being typed in',
+  'turning the phone keeps the focus and the caret in the field being typed in',
   (await page.evaluate(() => document.activeElement?.id)) === 'suggest-title' &&
-    (await page.inputValue('#suggest-title')).endsWith('!')
+    (await page.inputValue('#suggest-title')) === 'AlXpha Beta',
+  await page.inputValue('#suggest-title')
+);
+// And a focus that survived the turn is left where it is.
+await page.locator('.suggestHead .iconButton').focus();
+await page.setViewportSize({ width: 390, height: 844 });
+await page.waitForTimeout(700);
+check(
+  'a turn leaves the focus on the Back arrow when that is where it was',
+  await page.evaluate(
+    () => document.activeElement?.getAttribute('aria-label') === 'Back to the library'
+  )
 );
 
 check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
