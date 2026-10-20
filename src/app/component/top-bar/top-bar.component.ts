@@ -425,33 +425,41 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
     // frame -- cancels the measurement before it can ever run, and the
     // highlight sits on whichever tab was active last time things went quiet.
     if (this.pendingFrame) return;
-    this.pendingFrame = requestAnimationFrame(() => {
-      this.pendingFrame = 0;
-      const pill = this.tabStrip()?.nativeElement.querySelector<HTMLElement>('.tabButton.active');
-      const next = pill
-        ? { left: pill.offsetLeft, width: pill.offsetWidth, visible: this.tabs.isTabVisible() }
-        : { ...this.highlight, visible: false };
-      // Only on a real change, so the measure-every-pass above settles instead
-      // of asking for another pass forever.
-      if (
-        next.left === this.highlight.left &&
-        next.width === this.highlight.width &&
-        next.visible === this.highlight.visible
-      ) {
-        return;
-      }
-      // Back inside Angular to assign it. An animation frame runs outside, so
-      // the new position would sit in the field unrendered until something else
-      // happened to trigger a pass -- which is the next tab change, leaving the
-      // highlight permanently one behind.
-      this.zone.run(() => {
-        this.highlight = next;
-        // And re-check this view explicitly. The assignment happens after the
-        // pass that would have rendered it, so without this the new position
-        // waits for whatever causes the *next* pass -- which is the next tab
-        // change, leaving the highlight permanently one behind.
-        this.changes.detectChanges();
-      });
+    // Outside Angular, because this is asked after every pass. A frame booked
+    // inside the zone is a pass of its own when it fires, which asks for the
+    // next frame -- a whole-app check sixty times a second with nothing on
+    // screen changing, and every keystroke in every field waiting behind it.
+    this.pendingFrame = this.zone.runOutsideAngular(() =>
+      requestAnimationFrame(() => this.measureHighlight())
+    );
+  }
+
+  private measureHighlight(): void {
+    this.pendingFrame = 0;
+    const pill = this.tabStrip()?.nativeElement.querySelector<HTMLElement>('.tabButton.active');
+    const next = pill
+      ? { left: pill.offsetLeft, width: pill.offsetWidth, visible: this.tabs.isTabVisible() }
+      : { ...this.highlight, visible: false };
+    // Only on a real change, so the measure-every-pass above settles instead
+    // of asking for another pass forever.
+    if (
+      next.left === this.highlight.left &&
+      next.width === this.highlight.width &&
+      next.visible === this.highlight.visible
+    ) {
+      return;
+    }
+    // Back inside Angular to assign it. An animation frame runs outside, so
+    // the new position would sit in the field unrendered until something else
+    // happened to trigger a pass -- which is the next tab change, leaving the
+    // highlight permanently one behind.
+    this.zone.run(() => {
+      this.highlight = next;
+      // And re-check this view explicitly. The assignment happens after the
+      // pass that would have rendered it, so without this the new position
+      // waits for whatever causes the *next* pass -- which is the next tab
+      // change, leaving the highlight permanently one behind.
+      this.changes.detectChanges();
     });
   }
 
