@@ -54,6 +54,14 @@
       width: 100%;
     }
 
+    // Room for a message at the size one is written, without dragging the
+    // corner first: two rows invited a sentence, and a bug report is a
+    // paragraph. The type a step smaller so a paragraph fits in the box.
+    .feedbackMessage {
+      font-size: 12px;
+      line-height: 16px;
+    }
+
     // The list of keys: a name on the left, the key on the right, and the
     // groups apart far enough that a heading belongs to what is under it.
     .keyGroup + .keyGroup {
