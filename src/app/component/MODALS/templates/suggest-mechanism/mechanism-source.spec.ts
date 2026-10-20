@@ -1,5 +1,6 @@
 import { isPmksHost, readPastedLink } from './mechanism-source';
 import { TEMPLATE_LINKAGES } from '../template-linkages';
+import { SettingsService } from '../../../../services/settings.service';
 
 describe('a pasted link', () => {
   const here = 'localhost';
@@ -27,6 +28,25 @@ describe('a pasted link', () => {
 
   it('is cut short when a PMKS+ link will not decode', () => {
     expect(readPastedLink(fourBar.slice(0, 60), here).kind).toBe('broken');
+  });
+
+  it('reads a cylinder at the link’s own size, not the open drawing’s', () => {
+    const held = SettingsService.preservedCylinderScale;
+    // A fresh grid, whose cylinders follow its own object size rather than
+    // the landing gear's.
+    SettingsService.preservedCylinderScale = 0;
+    try {
+      const read = readPastedLink(
+        `https://app.pmksplus.com/?${TEMPLATE_LINKAGES['Aircraft_Landing_Gear']}`,
+        here
+      );
+      expect(read.kind).toBe('opened');
+      if (read.kind === 'opened') expect(read.summary.runs).toBe(true);
+      // And handed back afterwards.
+      expect(SettingsService.preservedCylinderScale).toBe(0);
+    } finally {
+      SettingsService.preservedCylinderScale = held;
+    }
   });
 
   it('opens a whole link without touching anything, and says what it is', () => {

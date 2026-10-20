@@ -277,9 +277,18 @@ const staleRetry = await page.evaluate(() =>
 );
 check('a send that goes takes the earlier Try again away with it', !staleRetry);
 
-await page.locator('.sentActions .btnOutlined').click();
+check(
+  'the focus lands on what was sent, not on the page',
+  await page.evaluate(() => document.activeElement?.id === 'sentTitle')
+);
+await page.locator('.sentActions .btnOutlined').focus();
+await page.keyboard.press('Enter');
 await page.waitForTimeout(400);
 check('Suggest Another starts blank', (await page.inputValue('#suggest-title')) === '');
+check(
+  'with the focus at the top of the new form',
+  await page.evaluate(() => document.activeElement?.id === 'suggestTitle')
+);
 
 // --- a pasted link, in each of its states --------------------------------------
 await page.locator('.sourceChoice button', { hasText: 'Paste a Link' }).click();
@@ -412,6 +421,19 @@ await page.waitForTimeout(400);
 check(
   'back from a form the sheet opened, the focus is on the Category button',
   await page.evaluate(() => document.activeElement?.classList.contains('categoryButton'))
+);
+// The same, with the phone turned on its side while the form was up.
+await page.locator('.categoryButton').click();
+await page.waitForTimeout(400);
+await page.locator('.categorySheet .suggestCard button').click();
+await page.waitForTimeout(500);
+await page.setViewportSize({ width: 844, height: 390 });
+await page.waitForTimeout(600);
+await page.keyboard.press('Escape');
+await page.waitForTimeout(400);
+check(
+  'and turned on its side, on the rail’s Suggest button',
+  await page.evaluate(() => !!document.activeElement?.closest('.rail .suggestCard'))
 );
 
 check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));

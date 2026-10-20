@@ -221,7 +221,6 @@ export class TemplatesComponent {
     this.opener = focused instanceof HTMLElement ? focused : undefined;
     this.categorySheetOpen = false;
     this.show('suggest');
-    setTimeout(() => this.host.nativeElement.querySelector<HTMLElement>('#suggestTitle')?.focus());
   }
 
   /** Back to the library as it was left: same section, same search, same scroll. */
@@ -230,11 +229,14 @@ export class TemplatesComponent {
     this.show('browse');
     const opener = this.opener;
     setTimeout(() => {
-      // The phone's sheet is gone by now, and its Suggest button with it: the
-      // focus goes to the Category button that raised the sheet instead.
+      // The phone's sheet is gone by now, and its Suggest button with it, and
+      // a phone turned on its side has swapped the sheet's Category button for
+      // the rail: the focus goes to whichever of them is there.
       const target = opener?.isConnected
         ? opener
-        : this.host.nativeElement.querySelector<HTMLElement>('.categoryButton');
+        : this.host.nativeElement.querySelector<HTMLElement>(
+            '.categoryButton, .rail .suggestCard button'
+          );
       target?.focus();
     });
   }
@@ -253,8 +255,16 @@ export class TemplatesComponent {
     this.drafts.startOver();
   }
 
+  /**
+   * Change view, and put the focus at the top of the new one: the button that
+   * was pressed to get there has gone with the old view, and focus left on a
+   * removed element falls to the page.
+   */
   private show(view: LibraryView): void {
     this.view = view;
+    if (view === 'browse') return;
+    const heading = view === 'suggest' ? '#suggestTitle' : '#sentTitle';
+    setTimeout(() => this.host.nativeElement.querySelector<HTMLElement>(heading)?.focus());
   }
 
   // ---------- the phone's categories ----------

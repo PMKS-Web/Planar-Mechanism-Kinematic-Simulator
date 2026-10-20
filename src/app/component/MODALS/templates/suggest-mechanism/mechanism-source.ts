@@ -18,6 +18,9 @@ import { MechanismService } from '../../../../services/mechanism.service';
 import { SettingsService } from '../../../../services/settings.service';
 import { MechanismBuilder } from '../../../../services/transcoding/mechanism-builder';
 import { StringTranscoder } from '../../../../services/transcoding/string-transcoder';
+import { DecimalSetting } from '../../../../services/transcoding/stored-settings';
+import { scaleFromTokens } from '../../../../services/transcoding/fine-scale';
+import { MODEL_SCALE } from '../../../../model/render-scale';
 import {
   looksLikeQueryParameters,
   payloadOfAddress,
@@ -165,25 +168,32 @@ export function readPastedLink(text: string, here: string): PastedLink {
   // app's front door rather than a mechanism.
   if (payload === null || looksLikeQueryParameters(payload)) return { kind: 'foreign' };
 
-  let joints: Joint[];
-  let links: Link[];
-  let forces: Force[];
+  let transcoder: StringTranscoder;
   try {
-    const transcoder = new StringTranscoder();
+    transcoder = new StringTranscoder();
     transcoder.decodeURL(payload);
-    const drawing = { joints: [], links: [], forces: [] } as unknown as MechanismService;
-    new MechanismBuilder(drawing, transcoder, new SettingsService(), new ActiveObjService()).build(
-      false,
-      false
-    );
-    ({ joints, links, forces } = drawing);
   } catch {
     return { kind: 'broken' };
   }
-  if (joints.length === 0) return { kind: 'broken' };
-
-  const { machines, stopped } = solveEach(joints, links, forces);
-  const summary = summarize(joints, links, machines, stopped);
+  const read = withCylindersSizedFor(transcoder, () => {
+    const drawing = { joints: [], links: [], forces: [] } as unknown as MechanismService;
+    try {
+      new MechanismBuilder(
+        drawing,
+        transcoder,
+        new SettingsService(),
+        new ActiveObjService()
+      ).build(false, false);
+    } catch {
+      return undefined;
+    }
+    const { joints, links, forces } = drawing;
+    if (joints.length === 0) return undefined;
+    const { machines, stopped } = solveEach(joints, links, forces);
+    return { joints, links, summary: summarize(joints, links, machines, stopped) };
+  });
+  if (!read) return { kind: 'broken' };
+  const { joints, links, summary } = read;
   summary.inLibrary = libraryCardFor(payload);
   return {
     kind: 'opened',
@@ -191,6 +201,37 @@ export function readPastedLink(text: string, here: string): PastedLink {
     summary,
     still: svgDataUrl(mechanismSvg(joints, links, 560, 400)),
   };
+}
+
+/**
+ * Run `work` with cylinders sized the way the link sizes them.
+ *
+ * A cylinder's clearance is read from one app-wide number, and the link's own
+ * is only applied by a real open. Read against the reader's drawing, the
+ * Aircraft Landing Gear came back "Not recognized" and "Does Not Run" from a
+ * fresh grid. The link's value is lent for the read and handed back, on the
+ * plain static rather than the object-size subject, which the open drawing's
+ * panels and its cylinders listen to.
+ */
+function withCylindersSizedFor<T>(transcoder: StringTranscoder, work: () => T): T {
+  const decimal = (setting: DecimalSetting) => transcoder.getDecimalSetting(setting);
+  const own =
+    scaleFromTokens(
+      decimal(DecimalSetting.CYLINDER_SCALE),
+      decimal(DecimalSetting.FINE_CYLINDER_SCALE)
+    ) * MODEL_SCALE;
+  const size =
+    scaleFromTokens(decimal(DecimalSetting.SCALE), decimal(DecimalSetting.FINE_SCALE)) *
+    MODEL_SCALE;
+  const held = SettingsService.preservedCylinderScale;
+  // Zero is what a link written before the clearance had a field says, and it
+  // means "follow the object size" -- the link's, here.
+  SettingsService.preservedCylinderScale = own || size || held;
+  try {
+    return work();
+  } finally {
+    SettingsService.preservedCylinderScale = held;
+  }
 }
 
 /**
