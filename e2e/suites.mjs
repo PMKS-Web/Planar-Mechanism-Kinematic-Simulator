@@ -197,6 +197,7 @@ export const SUITES = [
   { name: 'snap-alignment', seconds: 18, lanes: BOTH },
   { name: 'split-joint', seconds: 15, lanes: NIGHTLY },
   { name: 'snap-to-grid', seconds: 12, lanes: BOTH },
+  { name: 'suggest-mechanism', seconds: 20, lanes: NIGHTLY },
   { name: 'synthesis-redesign', seconds: 94, lanes: NIGHTLY },
   { name: 'template-backdrops', seconds: 2, lanes: BOTH },
   { name: 'template-graphs', seconds: 438, lanes: NIGHTLY },

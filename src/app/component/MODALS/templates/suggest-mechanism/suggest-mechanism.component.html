@@ -1,0 +1,393 @@
+<div class="suggestSplit">
+  <form
+    id="suggestForm"
+    [formGroup]="form()"
+    class="suggestForm"
+    aria-label="Your suggestion"
+    novalidate
+    (ngSubmit)="send()"
+  >
+    <!-- One switch for every field and both choices while a send is out, so
+         nothing changes under a message already on its way. -->
+    <fieldset class="suggestFields" [disabled]="sending">
+      @if (!viewport.isPhone()) {
+        <p class="intro">
+          Send a mechanism you think belongs in the library. The ones we add carry your name.
+        </p>
+      }
+
+      <div class="sourceChoice">
+        <segmented-block
+          label="Mechanism"
+          [options]="sourceOptions"
+          [selected]="source === 'open-mechanism' ? 0 : 1"
+          [disabledAt]="gridEmpty ? [0] : []"
+          [reasons]="gridEmpty ? [emptyReason] : []"
+          [disabled]="sending"
+          (selectedChange)="chooseSource($event)"
+        ></segmented-block>
+        @if (gridEmpty) {
+          <!-- Beside the grayed choice, and not only on hover: a reader who
+               cannot point still needs to know why it is gray. -->
+          <div class="reason">
+            <mat-icon aria-hidden="true">info</mat-icon><span>{{ emptyReason }}</span>
+          </div>
+        }
+      </div>
+
+      @if (source === 'pasted-link') {
+        <div class="field">
+          <label class="fieldLabel" for="suggest-link">Link</label>
+          <div class="inputIcon">
+            <input
+              id="suggest-link"
+              class="input"
+              type="url"
+              formControlName="link"
+              placeholder="Paste a link from Share Project"
+              autocomplete="off"
+              [class.bad]="linkMessage.bad"
+              [attr.aria-invalid]="linkMessage.bad"
+              aria-describedby="suggest-link-hint"
+            />
+            @if (reading) {
+              <mat-icon class="state busy" aria-hidden="true">hourglass_top</mat-icon>
+            } @else if (pasted.kind === 'opened') {
+              <mat-icon class="state ok" aria-hidden="true">check_circle</mat-icon>
+            } @else if (linkMessage.bad) {
+              <mat-icon class="state err" aria-hidden="true">error</mat-icon>
+            }
+          </div>
+          <div
+            id="suggest-link-hint"
+            class="hintRow"
+            [class.bad]="linkMessage.bad"
+            aria-live="polite"
+          >
+            <span>{{ linkMessage.text }}</span>
+          </div>
+        </div>
+      }
+
+      @if (summary; as found) {
+        <div class="source" aria-live="polite">
+          <img
+            class="srcThumb"
+            [src]="still"
+            [alt]="
+              source === 'open-mechanism'
+                ? 'The mechanism on your grid'
+                : 'The mechanism in the link'
+            "
+          />
+          <div class="srcText">
+            <span class="srcName">{{ found.name }}</span>
+            <span class="srcMeta">{{ found.meta }}</span>
+          </div>
+          @if (found.verdict) {
+            <span class="statusChip" [class.stuck]="!found.runs">
+              <mat-icon aria-hidden="true">{{ found.runs ? 'check_circle' : 'error' }}</mat-icon
+              >{{ found.verdict }}
+            </span>
+          }
+        </div>
+        @if (found.stopped) {
+          <div class="warnNote">
+            <mat-icon aria-hidden="true">warning</mat-icon>
+            <span>{{ found.stopped }} Fix it in Edit first, or send it as it is.</span>
+          </div>
+        }
+        @if (found.inLibrary; as card) {
+          <div class="warnNote">
+            <mat-icon aria-hidden="true">warning</mat-icon>
+            <span
+              >This is <b>{{ card.name }}</b> from {{ card.section }}. Send it anyway if yours shows
+              something the library’s does not.</span
+            >
+          </div>
+        }
+        @if (source === 'open-mechanism' && !viewport.isPhone()) {
+          <p class="srcNote">
+            We send the drawing as it is now. Edits you make after sending are not included.
+          </p>
+        }
+      }
+
+      @if (viewport.isPhone()) {
+        <!-- The preview folds into one row on a phone: the card at its real
+             width is most of the screen, and the fields are what is being
+             filled in. -->
+        <div class="pvBox" [class.open]="previewOpen">
+          <button
+            class="pvToggle"
+            type="button"
+            [attr.aria-expanded]="previewOpen"
+            aria-controls="suggest-preview"
+            (click)="previewOpen = !previewOpen"
+          >
+            @if (!previewOpen) {
+              <img class="pvMini" [src]="still" alt="" />
+            }
+            <span class="pvText">
+              <span class="pvTitle">Card Preview</span>
+              @if (!previewOpen) {
+                <span class="pvSub"
+                  >{{ face.name }}{{ face.credit ? ' · Suggested by ' + face.credit : '' }}</span
+                >
+              }
+            </span>
+            <span class="pvHide">
+              {{ previewOpen ? 'Hide' : '' }}
+              <mat-icon aria-hidden="true">{{
+                previewOpen ? 'expand_less' : 'expand_more'
+              }}</mat-icon>
+            </span>
+          </button>
+          @if (previewOpen) {
+            <div class="pvBody" id="suggest-preview">
+              <div class="pvSection">{{ previewSection }}</div>
+              <app-template-card class="live" [card]="face">
+                <div class="cardActions">
+                  <button class="openStandIn" type="button" tabindex="-1" aria-hidden="true">
+                    Open
+                  </button>
+                </div>
+              </app-template-card>
+              <div class="pvNote">
+                <mat-icon aria-hidden="true">{{ previewNote.icon }}</mat-icon
+                ><span>{{ previewNote.text }}</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <ng-container *ngTemplateOutlet="titleField"></ng-container>
+        <ng-container *ngTemplateOutlet="descriptionField"></ng-container>
+        <ng-container *ngTemplateOutlet="sectionField"></ng-container>
+        <ng-container *ngTemplateOutlet="creditField"></ng-container>
+        <ng-container *ngTemplateOutlet="emailField"></ng-container>
+      } @else {
+        <div class="formRow titleSection">
+          <ng-container *ngTemplateOutlet="titleField"></ng-container>
+          <ng-container *ngTemplateOutlet="sectionField"></ng-container>
+        </div>
+        <ng-container *ngTemplateOutlet="descriptionField"></ng-container>
+        <div class="formRow two">
+          <ng-container *ngTemplateOutlet="creditField"></ng-container>
+          <ng-container *ngTemplateOutlet="emailField"></ng-container>
+        </div>
+      }
+
+      <div class="field">
+        <label class="check">
+          <input
+            id="suggest-consent"
+            type="checkbox"
+            formControlName="consent"
+            [attr.aria-invalid]="!!error('consent')"
+            [attr.aria-describedby]="error('consent') ? 'suggest-consent-error' : null"
+          />
+          <span
+            >PMKS+ may add this mechanism to the library, with the title, description and credit
+            above.</span
+          >
+        </label>
+        @if (error('consent'); as message) {
+          <div id="suggest-consent-error" class="hintRow bad">
+            <span>{{ message }}</span>
+          </div>
+        }
+      </div>
+    </fieldset>
+
+    <!-- The fields, written once and laid out twice: two columns on a desktop,
+         one on a phone, in the order each layout reads. Templates rather than
+         CSS `order`, which would move them on screen and leave Tab going the
+         old way. -->
+    <ng-template #titleField>
+      <div class="field">
+        <label class="fieldLabel" for="suggest-title">Title</label>
+        <input
+          id="suggest-title"
+          class="input"
+          type="text"
+          formControlName="title"
+          autocomplete="off"
+          [class.bad]="!!error('title')"
+          [attr.aria-invalid]="!!error('title')"
+          aria-describedby="suggest-title-hint"
+        />
+        <div id="suggest-title-hint" class="hintRow" [class.bad]="!!error('title')">
+          <span>{{
+            error('title') ||
+              (viewport.isPhone()
+                ? 'Short, like Four-Bar or Scotch Yoke.'
+                : 'Short, like the library’s own: Four-Bar, Scotch Yoke.')
+          }}</span>
+          <span class="counter" [class.over]="over('title', titleLimit)"
+            >{{ form().controls.title.value.length }} / {{ titleLimit }}</span
+          >
+        </div>
+      </div>
+    </ng-template>
+
+    <ng-template #sectionField>
+      <div class="field">
+        <label class="fieldLabel" for="suggest-section"
+          >Library Section <span class="opt">Optional</span></label
+        >
+        <div class="selectWrap">
+          <select id="suggest-section" class="input" formControlName="section">
+            @for (section of sections; track section.id) {
+              <option [value]="section.id">{{ section.name }}</option>
+            }
+          </select>
+          <mat-icon aria-hidden="true">expand_more</mat-icon>
+        </div>
+        @if (!viewport.isPhone()) {
+          <div class="hintRow"><span>A guess is fine. We may move it.</span></div>
+        }
+      </div>
+    </ng-template>
+
+    <ng-template #descriptionField>
+      <div class="field">
+        <label class="fieldLabel" for="suggest-description">Description</label>
+        <textarea
+          id="suggest-description"
+          class="input"
+          formControlName="description"
+          rows="2"
+          [class.bad]="!!error('description')"
+          [attr.aria-invalid]="!!error('description')"
+          aria-describedby="suggest-description-hint"
+        ></textarea>
+        <div id="suggest-description-hint" class="hintRow" [class.bad]="!!error('description')">
+          <span>{{
+            error('description') ||
+              (viewport.isPhone()
+                ? 'One sentence about what it does.'
+                : 'One sentence about what it does. It shows on the card under the title.')
+          }}</span>
+          <span class="counter" [class.over]="over('description', descriptionLimit)"
+            >{{ form().controls.description.value.length }} / {{ descriptionLimit }}</span
+          >
+        </div>
+      </div>
+    </ng-template>
+
+    <ng-template #creditField>
+      <div class="field">
+        <label class="fieldLabel" for="suggest-credit"
+          >Credit As <span class="opt">Optional</span></label
+        >
+        <input
+          id="suggest-credit"
+          class="input"
+          type="text"
+          formControlName="credit"
+          placeholder="Ex. Pat Lee, or ME 3310"
+          autocomplete="name"
+          [class.bad]="!!error('credit')"
+          [attr.aria-invalid]="!!error('credit')"
+          aria-describedby="suggest-credit-hint"
+        />
+        <div id="suggest-credit-hint" class="hintRow" [class.bad]="!!error('credit')">
+          <span>{{
+            error('credit') ||
+              (viewport.isPhone()
+                ? 'Shown on the card. Leave it blank to stay anonymous.'
+                : 'Shown on the card. A name, a class or a lab. Leave it blank to stay anonymous.')
+          }}</span>
+        </div>
+      </div>
+    </ng-template>
+
+    <ng-template #emailField>
+      <div class="field">
+        <label class="fieldLabel" for="suggest-email"
+          >Your Email <span class="opt">Optional</span></label
+        >
+        <input
+          id="suggest-email"
+          class="input"
+          type="email"
+          formControlName="email"
+          placeholder="Ex. pat@example.com"
+          autocomplete="email"
+          [class.bad]="!!error('email')"
+          [attr.aria-invalid]="!!error('email')"
+          aria-describedby="suggest-email-hint"
+        />
+        <div id="suggest-email-hint" class="hintRow" [class.bad]="!!error('email')">
+          <span>{{
+            error('email') || 'For a reply when it is added, or if we have a question. Never shown.'
+          }}</span>
+        </div>
+      </div>
+    </ng-template>
+  </form>
+
+  @if (!viewport.isPhone()) {
+    <aside class="previewColumn" aria-label="Card preview">
+      <div class="pvHead">
+        <span class="pvTitle">Card Preview</span>
+        <span class="pvWhere">How it will look in the library</span>
+      </div>
+      <div class="pvStage">
+        <div class="pvSection">{{ previewSection }}</div>
+        <div class="pvRow">
+          <app-template-card class="live" [card]="face">
+            <div class="cardActions">
+              <button class="openStandIn" type="button" tabindex="-1" aria-hidden="true">
+                Open
+              </button>
+            </div>
+          </app-template-card>
+          <app-template-card class="ghost" aria-hidden="true" [card]="neighbor">
+            <div class="cardActions">
+              <button class="openStandIn" type="button" tabindex="-1">Open</button>
+            </div>
+          </app-template-card>
+        </div>
+      </div>
+
+      <div class="sends">
+        <div class="sendsTitle">
+          <mat-icon aria-hidden="true">outgoing_mail</mat-icon>What We Send
+        </div>
+        <dl>
+          @for (row of sends; track row.label) {
+            <dt>{{ row.label }}</dt>
+            <dd [class.none]="row.none">{{ row.value }}</dd>
+          }
+        </dl>
+      </div>
+
+      <div class="pvNote">
+        <mat-icon aria-hidden="true">{{ previewNote.icon }}</mat-icon
+        ><span>{{ previewNote.text }}</span>
+      </div>
+    </aside>
+  }
+</div>
+
+<div class="suggestFooter">
+  <div class="footNote">
+    <mat-icon aria-hidden="true">mail</mat-icon>
+    @if (viewport.isPhone()) {
+      Sends to {{ helpAddress }}
+    } @else {
+      Sends to {{ helpAddress }}. Nothing appears in the library until we add it.
+    }
+  </div>
+  @if (!viewport.isPhone()) {
+    <button class="btnQuiet" type="button" [disabled]="sending" (click)="back.emit()">
+      Cancel
+    </button>
+  }
+  <button class="btnFilled" type="submit" form="suggestForm" [disabled]="sending">
+    <mat-icon aria-hidden="true">{{ sending ? 'hourglass_top' : 'send' }}</mat-icon>
+    {{ sending ? 'Sending…' : 'Send Suggestion' }}
+  </button>
+</div>
