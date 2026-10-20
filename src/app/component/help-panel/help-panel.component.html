@@ -42,7 +42,13 @@
       <form [formGroup]="commentForm">
         <mat-form-field class="max-width" subscriptSizing="dynamic">
           <mat-label>Leave a message</mat-label>
-          <textarea type="text" matInput formControlName="comment"></textarea>
+          <textarea
+            type="text"
+            matInput
+            class="feedbackMessage"
+            rows="8"
+            formControlName="comment"
+          ></textarea>
           @if (commentForm.controls['comment'].hasError('required')) {
             <mat-error> Type a message before sending it. </mat-error>
           }
