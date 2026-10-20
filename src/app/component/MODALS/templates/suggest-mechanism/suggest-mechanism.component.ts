@@ -45,6 +45,7 @@ import {
   TITLE_LIMIT,
   whatToFix,
 } from './suggestion';
+import { SuggestionDraftService } from './suggestion-draft.service';
 
 /**
  * The EmailJS template a suggestion is sent with.
@@ -60,6 +61,9 @@ const SUGGESTION_TEMPLATE = 'template_kfwdx5c';
 const NO_STILL = svgDataUrl(
   '<svg xmlns="http://www.w3.org/2000/svg" width="560" height="400"></svg>'
 );
+
+const INCOMPLETE = 'suggest.incomplete';
+const SEND_FAILED = 'suggest.send-failed';
 
 /** How long typing in the link field waits before the link is read. */
 const READ_AFTER_MS = 250;
@@ -92,6 +96,7 @@ export class SuggestMechanismComponent implements OnInit, OnDestroy {
   private mail = inject(MailService);
   private notify = inject(NotificationService);
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private drafts = inject(SuggestionDraftService);
   readonly viewport = inject(ViewportService);
 
   readonly form = input.required<SuggestionForm>();
@@ -125,7 +130,10 @@ export class SuggestMechanismComponent implements OnInit, OnDestroy {
 
   /** Errors show from the first Send on, and follow the typing after that. */
   submitted = false;
-  sending = false;
+  /** Kept on the session's draft, so the views around the form hold still too. */
+  get sending(): boolean {
+    return this.drafts.sending;
+  }
   /** The phone's Card Preview row, folded until it is asked for. */
   previewOpen = false;
 
@@ -142,6 +150,8 @@ export class SuggestMechanismComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.watching?.unsubscribe();
     clearTimeout(this.readTimer);
+    // Its Try again would send from a form that is no longer on screen.
+    this.notify.dismissId(SEND_FAILED);
   }
 
   get source(): MechanismSourceKind {
@@ -281,12 +291,18 @@ export class SuggestMechanismComponent implements OnInit, OnDestroy {
         : form.controls[field as keyof SuggestionForm['controls']].invalid
     );
     if (failing.length > 0) {
-      this.notify.refusal('suggest.incomplete', whatToFix(failing));
+      // Said again rather than left standing: a second Send after fixing one
+      // field has a shorter list, and the old one would name a fixed field.
+      this.notify.dismissId(INCOMPLETE);
+      this.notify.refusal(INCOMPLETE, whatToFix(failing), { cooldownMs: 0 });
       this.focus(failing[0]);
       return;
     }
 
-    this.sending = true;
+    this.drafts.sending = true;
+    // An earlier failure's Try again is this send now; left up, it would be a
+    // second one.
+    this.notify.dismissId(SEND_FAILED);
     const value = form.getRawValue();
     const project =
       this.source === 'open-mechanism'
@@ -317,12 +333,12 @@ export class SuggestMechanismComponent implements OnInit, OnDestroy {
     } catch (error: unknown) {
       console.log(error);
       this.notify.failure(
-        'suggest.send-failed',
+        SEND_FAILED,
         'The suggestion did not send. Everything you typed is still here.',
         { actions: [{ label: 'Try again', run: () => void this.send() }] }
       );
     } finally {
-      this.sending = false;
+      this.drafts.sending = false;
     }
   }
 

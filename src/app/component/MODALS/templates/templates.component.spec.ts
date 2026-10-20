@@ -227,6 +227,16 @@ describe('library dialog', () => {
     expect(component.draft.controls.title.value).toBe('Half typed');
   });
 
+  it('keeps a draft when the library closes, for the next time it opens', () => {
+    const first = open();
+    first.componentInstance.suggest();
+    first.componentInstance.draft.controls.title.setValue('Kept');
+    first.destroy();
+    const again = open();
+    again.componentInstance.suggest();
+    expect(again.componentInstance.draft.controls.title.value).toBe('Kept');
+  });
+
   it('starts a new suggestion blank once one has gone', () => {
     const fixture = open();
     const component = fixture.componentInstance;

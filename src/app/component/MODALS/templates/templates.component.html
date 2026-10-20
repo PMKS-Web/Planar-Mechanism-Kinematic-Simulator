@@ -158,12 +158,17 @@
         class="iconButton"
         type="button"
         aria-label="Back to the library"
+        [disabled]="drafts.sending"
         (click)="backToLibrary()"
       >
         <mat-icon aria-hidden="true">arrow_back</mat-icon>
       </button>
       <h1 id="suggestTitle" tabindex="-1">Suggest a Mechanism</h1>
-      <close-button label="Close the library" (pressed)="close()"></close-button>
+      <close-button
+        label="Close the library"
+        [disabled]="drafts.sending"
+        (pressed)="close()"
+      ></close-button>
     </div>
     @if (view === 'suggest') {
       <app-suggest-mechanism

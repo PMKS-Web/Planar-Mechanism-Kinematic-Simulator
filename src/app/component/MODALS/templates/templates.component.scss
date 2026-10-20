@@ -402,8 +402,13 @@
       color: var(--text-secondary);
       cursor: pointer;
 
-      &:hover {
+      &:hover:not(:disabled) {
         background: var(--hover-wash);
+      }
+
+      &:disabled {
+        color: var(--text-disabled);
+        cursor: default;
       }
     }
 
@@ -644,6 +649,13 @@
       flex-direction: column;
       flex: 1 1 auto;
       min-height: 0;
+    }
+
+    // Asked of the view's own width, not the window's: the dialog is 90% of
+    // a window capped at 80vw, so the window says little about the room the
+    // form actually has.
+    .suggestView {
+      container: suggest / inline-size;
     }
 
     .suggestSplit {
@@ -1145,6 +1157,35 @@
         height: 18px;
         font-size: 18px;
         line-height: 18px;
+      }
+    }
+
+    // After the rules they replace, which they match in specificity.
+    // Side by side, the preview's 500px left an 800px window's form 140px
+    // wide. Below what the two columns need, the preview goes under the form
+    // and the pair scroll as one.
+    @container suggest (max-width: 1000px) {
+      .suggestSplit {
+        display: block;
+        overflow-y: auto;
+      }
+
+      .suggestForm {
+        overflow: visible;
+        padding-right: 24px;
+      }
+
+      .previewColumn {
+        overflow: visible;
+        border-left: none;
+        border-top: 1px solid var(--border-rule);
+      }
+    }
+
+    @container suggest (max-width: 600px) {
+      .formRow.two,
+      .formRow.titleSection {
+        grid-template-columns: minmax(0, 1fr);
       }
     }
 

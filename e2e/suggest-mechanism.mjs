@@ -218,7 +218,21 @@ check(
 mailAnswer = 200;
 mailed = null;
 await page.locator('.suggestFooter .btnFilled').click();
-await page.waitForTimeout(1500);
+await page.waitForTimeout(100);
+// Leaving now would lose the answer and let the same draft go twice.
+await page.keyboard.press('Escape');
+await page.waitForTimeout(100);
+const held = {
+  backDisabled: await page.locator('.suggestHead .iconButton').isDisabled(),
+  closeDisabled: await page.locator('.suggestHead .closeButton').isDisabled(),
+  stillOnForm: await page.locator('app-suggest-mechanism').isVisible(),
+};
+check(
+  'while it sends, Escape, the back arrow and close all wait',
+  held.backDisabled && held.closeDisabled && held.stillOnForm,
+  held
+);
+await page.waitForTimeout(1400);
 const params = mailed?.template_params ?? {};
 check(
   'the email carries every field',
@@ -247,6 +261,12 @@ check(
   sentView
 );
 await page.screenshot({ path: `${OUT}/03-sent.png` });
+const staleRetry = await page.evaluate(() =>
+  [...document.querySelectorAll('.notification button')].some((one) =>
+    /Try again/.test(one.textContent)
+  )
+);
+check('a send that goes takes the earlier Try again away with it', !staleRetry);
 
 await page.locator('.sentActions .btnOutlined').click();
 await page.waitForTimeout(400);
@@ -295,6 +315,38 @@ check(
   back.chosen === 'Paths and Curves' && back.focused === 'Suggest one that belongs here',
   back
 );
+
+// --- a draft outlives the dialog -----------------------------------------------
+await page.locator('.rail .suggestCard button').click();
+await page.waitForTimeout(400);
+await page.fill('#suggest-title', 'Kept for later');
+await page.keyboard.press('Escape');
+await page.waitForTimeout(300);
+await page.keyboard.press('Escape');
+await page.waitForTimeout(500);
+const closed = (await page.locator('#templates').count()) === 0;
+await openLibrary();
+await page.locator('.rail .suggestCard button').click();
+await page.waitForTimeout(400);
+check(
+  'closing the library keeps what was typed for the next time',
+  closed && (await page.inputValue('#suggest-title')) === 'Kept for later'
+);
+
+// --- between a phone and a desktop -----------------------------------------------
+await page.setViewportSize({ width: 800, height: 800 });
+await page.waitForTimeout(600);
+const narrow = await page.evaluate(() => {
+  const title = document.querySelector('#suggest-title').getBoundingClientRect();
+  const preview = document.querySelector('.previewColumn')?.getBoundingClientRect();
+  return { title: Math.round(title.width), previewBelow: !!preview && preview.top >= title.bottom };
+});
+check(
+  'at 800px the preview goes under the form instead of squeezing it',
+  narrow.title > 250 && narrow.previewBelow,
+  narrow
+);
+await page.screenshot({ path: `${OUT}/05-narrow.png` });
 
 check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 

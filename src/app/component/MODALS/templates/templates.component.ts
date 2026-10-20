@@ -42,7 +42,8 @@ import { ViewportService } from 'src/app/services/viewport.service';
 import { TemplateCardComponent } from './template-card/template-card.component';
 import { SuggestMechanismComponent } from './suggest-mechanism/suggest-mechanism.component';
 import { SuggestionSentComponent } from './suggest-mechanism/suggestion-sent.component';
-import { blankSuggestion, SentSuggestion } from './suggest-mechanism/suggestion';
+import { SentSuggestion, SuggestionForm } from './suggest-mechanism/suggestion';
+import { SuggestionDraftService } from './suggest-mechanism/suggestion-draft.service';
 
 /** A filter chip: a category, or the `all` one that stands for every category. */
 export interface CategoryChip {
@@ -98,12 +99,18 @@ export class TemplatesComponent {
    * stylesheet: at 90% of 390px the side margins were scrim nobody could use,
    * and a media query follows a phone turned on its side where a size set
    * here once would not.
+   *
+   * Escape and the scrim are answered by the library itself (`leave`), not by
+   * the dialog: over the phone's categories they close the sheet, over the
+   * form they step back to the library, and while a suggestion is on its way
+   * out they do nothing at all.
    */
   static openIn(dialog: MatDialog): MatDialogRef<TemplatesComponent> {
     return dialog.open(TemplatesComponent, {
       height: '90%',
       width: '90%',
       autoFocus: false,
+      disableClose: true,
       panelClass: 'libraryDialog',
     });
   }
@@ -115,6 +122,7 @@ export class TemplatesComponent {
 
   /** Leave without choosing anything. */
   close(): void {
+    if (this.drafts.sending) return;
     this.dialogRef?.close();
   }
   private dialog = inject(MatDialog);
@@ -126,6 +134,7 @@ export class TemplatesComponent {
   private design = inject(SynthesisBuilderService);
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
   readonly viewport = inject(ViewportService);
+  readonly drafts = inject(SuggestionDraftService);
 
   /** Asks whether to replace the mechanism already on the grid or open a new tab. */
   readonly openChoiceDialog = viewChild.required<TemplateRef<unknown>>('openChoiceDialog');
@@ -149,29 +158,46 @@ export class TemplatesComponent {
   /** The phone's categories, raised from the Category button as a bottom sheet. */
   categorySheetOpen = false;
 
-  /**
-   * The suggestion being written. Held here rather than in the form's own
-   * view, so it outlives a trip back to the library and the Sent view both.
-   */
-  draft = blankSuggestion();
-  /** What went, once something has; the next suggestion starts blank. */
-  lastSent?: SentSuggestion;
+  /** The suggestion being written, which outlives this dialog. */
+  get draft(): SuggestionForm {
+    return this.drafts.form;
+  }
+
+  get lastSent(): SentSuggestion | undefined {
+    return this.drafts.lastSent;
+  }
+
   /** The button that opened the form, which gets the focus back. */
   private opener?: HTMLElement;
 
   constructor() {
     this.refresh();
-    // Escape and a click on the scrim close the library -- except over the
-    // form, where they would throw away what was typed, and over the phone's
-    // categories, which they should close first.
+    const destroyed = inject(DestroyRef);
     this.dialogRef
       ?.keydownEvents()
-      .pipe(takeUntilDestroyed(inject(DestroyRef)))
+      .pipe(takeUntilDestroyed(destroyed))
       .subscribe((event) => {
-        if (event.key !== 'Escape') return;
-        if (this.categorySheetOpen) this.closeCategorySheet();
-        else if (this.view !== 'browse') this.backToLibrary();
+        if (event.key === 'Escape') this.leave(false);
       });
+    this.dialogRef
+      ?.backdropClick()
+      .pipe(takeUntilDestroyed(destroyed))
+      .subscribe(() => this.leave(true));
+  }
+
+  /**
+   * Escape, or a press on the scrim: one step out of wherever the reader is.
+   *
+   * The scrim does not step back from the form -- a stray click beside the
+   * dialog is not a request to stop writing -- but Escape does, and from the
+   * library either one closes it. Nothing typed is lost either way: the draft
+   * is the session's (`SuggestionDraftService`).
+   */
+  private leave(scrim: boolean): void {
+    if (this.drafts.sending) return;
+    if (this.categorySheetOpen) this.closeCategorySheet();
+    else if (this.view === 'browse') this.close();
+    else if (!scrim) this.backToLibrary();
   }
 
   // ---------- the suggest views ----------
@@ -198,13 +224,14 @@ export class TemplatesComponent {
 
   /** Back to the library as it was left: same section, same search, same scroll. */
   backToLibrary(): void {
+    if (this.drafts.sending) return;
     this.show('browse');
     const opener = this.opener;
     setTimeout(() => opener?.focus());
   }
 
   onSent(sent: SentSuggestion): void {
-    this.lastSent = sent;
+    this.drafts.lastSent = sent;
     this.show('sent');
   }
 
@@ -214,31 +241,21 @@ export class TemplatesComponent {
   }
 
   private startOver(): void {
-    this.draft = blankSuggestion();
-    this.lastSent = undefined;
+    this.drafts.startOver();
   }
 
   private show(view: LibraryView): void {
     this.view = view;
-    this.holdOpen();
-  }
-
-  /** Escape and the scrim are answered by the dialog itself only while nothing would be lost. */
-  private holdOpen(): void {
-    if (this.dialogRef)
-      this.dialogRef.disableClose = this.view !== 'browse' || this.categorySheetOpen;
   }
 
   // ---------- the phone's categories ----------
 
   openCategorySheet(): void {
     this.categorySheetOpen = true;
-    this.holdOpen();
   }
 
   closeCategorySheet(): void {
     this.categorySheetOpen = false;
-    this.holdOpen();
   }
 
   chooseFromSheet(id: TemplateCategoryID | 'all'): void {

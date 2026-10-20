@@ -26,6 +26,7 @@ describe('Suggest a Mechanism, sending', () => {
             refusal: record('refusal'),
             failure: record('failure'),
             success: record('success'),
+            dismissId: () => undefined,
           },
         },
         {
