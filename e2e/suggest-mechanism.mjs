@@ -403,6 +403,17 @@ check(
     (await page.evaluate(() => document.activeElement?.classList.contains('categoryButton')))
 );
 
+await page.keyboard.press('Enter');
+await page.waitForTimeout(400);
+await page.locator('.categorySheet .suggestCard button').click();
+await page.waitForTimeout(500);
+await page.keyboard.press('Escape');
+await page.waitForTimeout(400);
+check(
+  'back from a form the sheet opened, the focus is on the Category button',
+  await page.evaluate(() => document.activeElement?.classList.contains('categoryButton'))
+);
+
 check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 
 await browser.close();

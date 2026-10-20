@@ -229,7 +229,14 @@ export class TemplatesComponent {
     if (this.drafts.sending) return;
     this.show('browse');
     const opener = this.opener;
-    setTimeout(() => opener?.focus());
+    setTimeout(() => {
+      // The phone's sheet is gone by now, and its Suggest button with it: the
+      // focus goes to the Category button that raised the sheet instead.
+      const target = opener?.isConnected
+        ? opener
+        : this.host.nativeElement.querySelector<HTMLElement>('.categoryButton');
+      target?.focus();
+    });
   }
 
   onSent(sent: SentSuggestion): void {
