@@ -120,7 +120,17 @@
 
     @if (viewport.isPhone() && categorySheetOpen) {
       <div class="sheetScrim" (click)="closeCategorySheet()"></div>
-      <div class="categorySheet" role="dialog" aria-labelledby="categorySheetTitle">
+      <!-- Holds the focus while it is up, starting on the chosen section, and
+           hands it back to the Category button when it goes: left alone, Tab
+           walked into the cards behind it and Enter opened one. -->
+      <div
+        class="categorySheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="categorySheetTitle"
+        cdkTrapFocus
+        [cdkTrapFocusAutoCapture]="true"
+      >
         <div class="handle" aria-hidden="true"></div>
         <div class="sheetHead">
           <h2 id="categorySheetTitle">Categories</h2>
@@ -214,6 +224,7 @@
   <button
     class="category"
     type="button"
+    [attr.cdkFocusInitial]="sheet && category === chip.id ? '' : null"
     [class.on]="category === chip.id"
     [attr.aria-pressed]="category === chip.id"
     (click)="sheet ? chooseFromSheet(chip.id) : selectCategory(chip.id)"

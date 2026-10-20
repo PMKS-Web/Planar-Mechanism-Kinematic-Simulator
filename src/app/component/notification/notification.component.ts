@@ -14,6 +14,8 @@ import {
   NotificationService,
 } from '../../services/notification.service';
 import { MatIcon } from '@angular/material/icon';
+import { MatDialog } from '@angular/material/dialog';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 /**
  * The glyph that says which of the four this is before the sentence is read.
@@ -68,6 +70,16 @@ export class NotificationComponent implements AfterViewInit, DoCheck {
   /** The newest message the stack was raised for. */
   private raisedFor?: number;
 
+  constructor() {
+    // A message still up when a dialog opens would go under it: a failure the
+    // reader has not dismissed yet is as much about the screen as a new one.
+    inject(MatDialog)
+      .afterOpened.pipe(takeUntilDestroyed())
+      .subscribe(() => {
+        if (this.notifications.live.length > 0) this.raise();
+      });
+  }
+
   ngAfterViewInit(): void {
     this.raise();
   }
@@ -87,8 +99,8 @@ export class NotificationComponent implements AfterViewInit, DoCheck {
    * browser's top layer, which no z-index reaches: the library's Suggest a
    * Mechanism form refused, failed and offered Try again entirely behind its
    * own dialog. The stack is a popover too, and the top layer is ordered by
-   * who was shown last, so it is shown again whenever a message arrives --
-   * over whatever opened since. Skipped where there is no popover API (the
+   * who was shown last, so it is shown again whenever a message arrives or a
+   * dialog opens. Skipped where there is no popover API (the
    * unit tests' DOM), which leaves it an ordinary fixed element.
    */
   private raise(): void {

@@ -373,14 +373,20 @@
 </div>
 
 <div class="suggestFooter">
-  <div class="footNote">
-    <mat-icon aria-hidden="true">mail</mat-icon>
-    @if (viewport.isPhone()) {
-      Sends to {{ helpAddress }}
-    } @else {
-      Sends to {{ helpAddress }}. Nothing appears in the library until we add it.
-    }
-  </div>
+  @if (problem) {
+    <div class="footNote problem" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>{{ problem }}
+    </div>
+  } @else {
+    <div class="footNote">
+      <mat-icon aria-hidden="true">mail</mat-icon>
+      @if (viewport.isPhone()) {
+        Sends to {{ helpAddress }}
+      } @else {
+        Sends to {{ helpAddress }}. Nothing appears in the library until we add it.
+      }
+    </div>
+  }
   @if (!viewport.isPhone()) {
     <button class="btnQuiet" type="button" [disabled]="sending" (click)="back.emit()">
       Cancel

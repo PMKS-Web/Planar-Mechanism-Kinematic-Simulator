@@ -86,7 +86,10 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      flex: 0 0 360px;
+      // Gives way before the close button does: at a 650px window a fixed
+      // 360px pushed Close off the dialog's edge.
+      flex: 0 1 360px;
+      min-width: 160px;
       box-sizing: border-box;
       height: 36px;
       padding: 0 10px;
@@ -1157,6 +1160,10 @@
         height: 18px;
         font-size: 18px;
         line-height: 18px;
+      }
+
+      &.problem {
+        color: var(--refusal-text);
       }
     }
 

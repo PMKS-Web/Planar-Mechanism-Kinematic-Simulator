@@ -64,6 +64,7 @@ const NO_STILL = svgDataUrl(
 
 const INCOMPLETE = 'suggest.incomplete';
 const SEND_FAILED = 'suggest.send-failed';
+const SEND_FAILED_TEXT = 'The suggestion did not send. Everything you typed is still here.';
 
 /** How long typing in the link field waits before the link is read. */
 const READ_AFTER_MS = 250;
@@ -134,6 +135,14 @@ export class SuggestMechanismComponent implements OnInit, OnDestroy {
   get sending(): boolean {
     return this.drafts.sending;
   }
+  /**
+   * Why the last Send did not go, said in the form as well as in a message.
+   *
+   * The dialog traps the focus and hides the rest of the app from assistive
+   * technology while it is open, so the message's Try again cannot be reached
+   * from the keyboard. This line can, and Send is its Try again.
+   */
+  problem = '';
   /** The phone's Card Preview row, folded until it is asked for. */
   previewOpen = false;
 
@@ -300,6 +309,7 @@ export class SuggestMechanismComponent implements OnInit, OnDestroy {
     }
 
     this.drafts.sending = true;
+    this.problem = '';
     // An earlier failure's Try again is this send now; left up, it would be a
     // second one.
     this.notify.dismissId(SEND_FAILED);
@@ -319,6 +329,7 @@ export class SuggestMechanismComponent implements OnInit, OnDestroy {
     try {
       const outcome = await this.mail.send(SUGGESTION_TEMPLATE, params);
       if (outcome === 'no-key') {
+        this.problem = NO_MAIL_KEY;
         this.notify.failure('suggest.no-key', NO_MAIL_KEY);
         return;
       }
@@ -332,11 +343,10 @@ export class SuggestMechanismComponent implements OnInit, OnDestroy {
       });
     } catch (error: unknown) {
       console.log(error);
-      this.notify.failure(
-        SEND_FAILED,
-        'The suggestion did not send. Everything you typed is still here.',
-        { actions: [{ label: 'Try again', run: () => void this.send() }] }
-      );
+      this.problem = SEND_FAILED_TEXT;
+      this.notify.failure(SEND_FAILED, SEND_FAILED_TEXT, {
+        actions: [{ label: 'Try again', run: () => void this.send() }],
+      });
     } finally {
       this.drafts.sending = false;
     }

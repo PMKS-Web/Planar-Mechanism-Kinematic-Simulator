@@ -207,6 +207,15 @@ const failed = await page.evaluate(() => ({
   title: document.querySelector('#suggest-title')?.value,
 }));
 check(
+  'and says it in the form too, where the keyboard can reach it',
+  (
+    await page
+      .locator('.suggestFooter [role="alert"]')
+      .innerText()
+      .catch(() => '')
+  ).includes('The suggestion did not send.')
+);
+check(
   'a failed send says so, keeps what was typed and offers Try again',
   failed.text.includes('The suggestion did not send. Everything you typed is still here.') &&
     failed.retry &&
@@ -347,6 +356,52 @@ check(
   narrow
 );
 await page.screenshot({ path: `${OUT}/05-narrow.png` });
+
+// --- the header at a small desktop window ----------------------------------------
+await page.locator('.suggestHead .iconButton').click();
+await page.waitForTimeout(300);
+await page.setViewportSize({ width: 650, height: 800 });
+await page.waitForTimeout(500);
+const header = await page.evaluate(() => {
+  const dialog = document.querySelector('#templates').getBoundingClientRect();
+  const close = document.querySelector('.titleRow .closeButton').getBoundingClientRect();
+  const search = document.querySelector('.titleRow .searchBox').getBoundingClientRect();
+  return {
+    dialogRight: Math.round(dialog.right),
+    closeRight: Math.round(close.right),
+    searchWidth: Math.round(search.width),
+  };
+});
+check(
+  'at 650px the search gives way and Close stays inside the dialog',
+  header.closeRight <= header.dialogRight && header.searchWidth >= 150,
+  header
+);
+
+// --- the phone's categories hold the focus ---------------------------------------
+await page.setViewportSize({ width: 390, height: 844 });
+await page.waitForTimeout(600);
+await page.locator('.categoryButton').focus();
+await page.keyboard.press('Enter');
+await page.waitForTimeout(400);
+const sheetFocus = [];
+sheetFocus.push(await page.evaluate(() => !!document.activeElement?.closest('.categorySheet')));
+for (let press = 0; press < 15; press++) {
+  await page.keyboard.press('Tab');
+  sheetFocus.push(await page.evaluate(() => !!document.activeElement?.closest('.categorySheet')));
+}
+check(
+  'the category sheet takes the focus and keeps it',
+  sheetFocus.every(Boolean),
+  sheetFocus.join(',')
+);
+await page.keyboard.press('Escape');
+await page.waitForTimeout(400);
+check(
+  'and gives it back to the Category button when it closes',
+  (await page.locator('.categorySheet').count()) === 0 &&
+    (await page.evaluate(() => document.activeElement?.classList.contains('categoryButton')))
+);
 
 check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 
