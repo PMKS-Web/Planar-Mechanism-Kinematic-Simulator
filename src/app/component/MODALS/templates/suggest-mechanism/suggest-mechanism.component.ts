@@ -48,15 +48,8 @@ import {
 import { SuggestionDraftService } from './suggestion-draft.service';
 import { FocusAcrossLayouts } from '../focus-across-layouts';
 
-/**
- * The EmailJS template a suggestion is sent with.
- *
- * The feedback form's, for now: `suggestionParams` writes the whole suggestion
- * into the `message` that template reads, beside each field on its own, so a
- * template written for suggestions can replace this id without the form
- * changing.
- */
-const SUGGESTION_TEMPLATE = 'template_kfwdx5c';
+/** The dedicated EmailJS template keeps library suggestions apart from feedback. */
+const SUGGESTION_TEMPLATE = 'template_qsmwl3o';
 
 /** A picture for a card whose drawing is not there yet: white, like the grid. */
 const NO_STILL = svgDataUrl(

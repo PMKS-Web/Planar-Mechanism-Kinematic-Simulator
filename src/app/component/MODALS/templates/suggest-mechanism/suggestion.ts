@@ -146,10 +146,10 @@ export interface SentSuggestion {
 /**
  * The parameters the EmailJS template reads.
  *
- * Every field on its own, for a template written for suggestions, and the same
- * facts as one readable `message` as well -- so the feedback template, which
- * reads only `message`, `email`, `diagnostic` and `project`, delivers a
- * complete suggestion too.
+ * Every field on its own, which is what the "Library suggestion" template
+ * reads, and the same facts as one readable `message` as well: a template
+ * that reads only `message`, as the feedback form's does, still delivers a
+ * complete suggestion.
  */
 export function suggestionParams(
   value: ReturnType<SuggestionForm['getRawValue']>,
@@ -171,6 +171,10 @@ export function suggestionParams(
     section,
     credit,
     email,
+    // The bare address, or nothing: what a template's Reply To can use.
+    // `email` says "No reply wanted" when there is none, which is right in a
+    // sentence and not an address a mail header will take.
+    reply_to: value.email.trim(),
     source,
     project,
     summary,

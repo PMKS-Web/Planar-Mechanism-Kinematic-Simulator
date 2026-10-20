@@ -249,6 +249,7 @@ check(
     params.section === 'Paths and Curves' &&
     params.credit === 'Pat Lee' &&
     params.email === 'pat@example.com' &&
+    params.reply_to === 'pat@example.com' &&
     params.source === 'open-mechanism' &&
     params.consent === 'yes' &&
     /^https?:\/\/.*\?/.test(params.project ?? '') &&

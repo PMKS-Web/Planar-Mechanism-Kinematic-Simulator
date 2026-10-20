@@ -49,6 +49,14 @@ describe('a suggestion', () => {
     expect(names[names.length - 1]).toBe('Not Sure');
   });
 
+  it('gives Reply To the bare address when there is one', () => {
+    const form = blankSuggestion();
+    form.controls.email.setValue('  pat@example.com ');
+    const params = suggestionParams(form.getRawValue(), '', '', '');
+    expect(params['email']).toBe('pat@example.com');
+    expect(params['reply_to']).toBe('pat@example.com');
+  });
+
   it('sends every field, and says what an empty one means', () => {
     const form = blankSuggestion();
     form.setValue({
@@ -72,6 +80,8 @@ describe('a suggestion', () => {
     expect(params['section']).toBe('Not sure');
     expect(params['credit']).toBe('Anonymous');
     expect(params['email']).toBe('No reply wanted');
+    // A header needs an address or nothing, never the sentence.
+    expect(params['reply_to']).toBe('');
     expect(params['source']).toBe('pasted-link');
     expect(params['project']).toBe('https://app.pmksplus.com/?z=1');
     expect(params['consent']).toBe('yes');
