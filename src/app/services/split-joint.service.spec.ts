@@ -221,7 +221,8 @@ describe('SplitJointService', () => {
     a.isWelded = true;
     expect(splitJointChoice(a, [one], []).short).toBe('unweld first');
     const dangling = new PrisJoint('P', 0, 0);
-    expect(splitJointChoice(dangling, [], []).refusal).toBe('dangling');
+    expect(splitJointChoice(dangling, [], []).refusal).toBe('needs-links');
+    expect(splitJointChoice(dangling, [], []).short).toBe('needs 2 links');
   });
 
   it.each(['mountA', 'mountB'] as const)(

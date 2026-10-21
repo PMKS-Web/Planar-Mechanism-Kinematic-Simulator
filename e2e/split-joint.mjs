@@ -203,6 +203,7 @@ const floatingBefore = await page.evaluate(() => {
 });
 await page.locator(`#joint_${floatingBefore.id}`).click();
 await page.getByRole('button', { name: 'Split Joint' }).click();
+await page.getByRole('button', { name: 'Disconnect Guide', exact: true }).click();
 const floatingState = () =>
   page.evaluate((id) => {
     const grid = ng.getComponent(document.querySelector('app-new-grid'));

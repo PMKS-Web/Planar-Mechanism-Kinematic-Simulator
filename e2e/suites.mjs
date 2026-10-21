@@ -190,6 +190,8 @@ export const SUITES = [
   { name: 'right-drawer', seconds: 10, lanes: BOTH },
   { name: 'snap-alignment', seconds: 18, lanes: BOTH },
   { name: 'split-joint', seconds: 15, lanes: NIGHTLY },
+  { name: 'split-joint-selection', seconds: 30, lanes: NIGHTLY },
+  { name: 'separate-all', seconds: 15, lanes: NIGHTLY },
   { name: 'snap-to-grid', seconds: 12, lanes: BOTH },
   { name: 'synthesis-redesign', seconds: 94, lanes: NIGHTLY },
   { name: 'template-backdrops', seconds: 2, lanes: BOTH },

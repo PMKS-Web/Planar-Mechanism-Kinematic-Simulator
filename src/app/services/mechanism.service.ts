@@ -1,4 +1,5 @@
 import { Injectable, Injector, inject } from '@angular/core';
+import { weldComponents } from '../model/weld-components';
 import { LinkHold } from '../model/link';
 import {
   cylinderMemberLinks,
@@ -7939,25 +7940,9 @@ export class MechanismService {
   }
 
   private splitCompoundAtRemainingWelds(compound: RealLink): RealLink[] {
-    const remaining = compound.subset.filter((link): link is RealLink => link instanceof RealLink);
-    const components: RealLink[][] = [];
-    while (remaining.length > 0) {
-      const component: RealLink[] = [];
-      const queue = [remaining.shift()!];
-      while (queue.length > 0) {
-        const current = queue.shift()!;
-        component.push(current);
-        for (let index = remaining.length - 1; index >= 0; index--) {
-          const candidate = remaining[index];
-          const sharesWeld = current.joints.some(
-            (joint) =>
-              joint instanceof RealJoint && joint.isWelded && candidate.joints.includes(joint)
-          );
-          if (sharesWeld) queue.push(...remaining.splice(index, 1));
-        }
-      }
-      components.push(component);
-    }
+    const components = weldComponents(
+      compound.subset.filter((link): link is RealLink => link instanceof RealLink)
+    );
     // Which of the pieces, if any, is the body carrying on. One compound left
     // and the rest coming out as single bars is a body that lost members; two
     // compounds is a body that split, and neither of them is the original --

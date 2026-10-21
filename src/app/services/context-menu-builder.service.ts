@@ -801,7 +801,7 @@ export class ContextMenuBuilderService {
       posePolicy: 'structure',
       hint: choice.refusal ? choice.short : `${choice.count} links`,
       refusal: choice.refusal ? { short: choice.short!, long: choice.long! } : undefined,
-      action: () => this.splitJoints.split(joint),
+      action: () => this.splitJoints.request(joint),
     });
   }
 
