@@ -283,11 +283,8 @@
             but2Text="Split Joint"
             [btn2Disabled]="!!splitJoints.choiceFor(activeSrv.selectedJoint).refusal"
             [btn2Tooltip]="splitJoints.choiceFor(activeSrv.selectedJoint).long"
-            [but2Action]="splitJoints.request.bind(splitJoints, activeSrv.selectedJoint)"
+            [but2Action]="splitJoints.split.bind(splitJoints, activeSrv.selectedJoint)"
           ></dual-button>
-          @if (splitJoints.requestedFor(activeSrv.selectedJoint)) {
-            <app-split-joint [joint]="activeSrv.selectedJoint"></app-split-joint>
-          }
         </collapsible-subsection>
         @if (gridUtils.isVisuallyInput(activeSrv.selectedJoint)) {
           <div class="inputSettings">

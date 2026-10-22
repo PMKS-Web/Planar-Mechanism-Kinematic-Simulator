@@ -79,7 +79,6 @@ import { MultiEditPanelComponent } from '../multi-edit-panel/multi-edit-panel.co
 import { SegmentedComponent } from '../BLOCKS/segmented/segmented.component';
 import { JointTypeService } from '../../services/joint-type.service';
 import { SplitJointService } from '../../services/split-joint.service';
-import { SplitJointComponent } from '../split-joint/split-joint.component';
 import { JOINT_TYPES, JointTypeChoice, NOWHERE_TO_SLIDE } from '../../model/joint-type';
 
 /**
@@ -119,7 +118,6 @@ const INPUT_SPEED_UNITS = [
     RadioComponent,
     MultiEditPanelComponent,
     SegmentedComponent,
-    SplitJointComponent,
   ],
 })
 export class EditPanelComponent implements OnInit, AfterContentInit, DoCheck, OnDestroy {

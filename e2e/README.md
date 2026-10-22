@@ -196,15 +196,6 @@ Not suites — import them from one.
 - `split-joint.mjs` — the panel action, exact refusal tooltip, one-step undo and redo, dragging one
   of two overlapping pins free, and the same action from the phone sheet. Its screenshots and drag
   filmstrip land in `artifacts/split-joint/`.
-- `split-joint-selection.mjs` — choosing one link or a group at a shared pin, retaining both
-  kinds of slider (floating and grounded), explicit guide disconnection, Cancel, one-step
-  undo/redo, the context-menu entry and the phone sheet. Includes detached red blocks with two
-  riders and the shared "needs 2 links" refusal afterward. Uses the seven published split examples;
-  screenshots and an independent-drag filmstrip land in `artifacts/split-joint-selection/`.
-- `separate-all.mjs` — one activation immediately separates every link at a three- or four-link
-  pin, without a second Separate press, by mouse and keyboard and on the phone sheet. Checks
-  one-step Undo/Redo, independent memberships, and distinct pin positions; activation filmstrips
-  and screenshots land in `artifacts/separate-all/`.
 - `edit-undo.mjs` — one committed edit is one undo step, whether it was dragged or typed.
 - `unit-undo-view.mjs` — undoing a unit change does not move the view.
 

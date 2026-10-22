@@ -1,5 +1,4 @@
 import { MechanismFixture } from './fixture';
-import { SPLIT_JOINT_GALLERY } from './split-joint-gallery';
 import {
   followerCylinderFixture,
   heldCouplerFixture,
@@ -161,7 +160,6 @@ export interface GalleryEntry {
 const LIBRARY_RPM = 10;
 
 export const FIXTURE_GALLERY: GalleryEntry[] = [
-  ...SPLIT_JOINT_GALLERY,
   {
     name: 'Punch press',
     purpose:
