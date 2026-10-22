@@ -95,6 +95,30 @@ describe('SplitJointService', () => {
     expect(pins.reduce((sum, pin) => sum + pin.y, 0)).toBeCloseTo(0);
   });
 
+  it('keeps the pins of a four-body split at least as far apart as a two-body pair', () => {
+    const pair = scene();
+    pair.split.split(pair.a);
+    const [p, q] = pair.service.joints.filter((joint) => ['A', 'D'].includes(joint.id));
+    const pairGap = Math.hypot(p.x - q.x, p.y - q.y);
+
+    const s = scene();
+    const ends = [new RevJoint('E', -1, 0), new RevJoint('F', 0, -1)];
+    ends.forEach((end) => {
+      s.service.joints.push(end);
+      s.service.links.push(new RealLink('A' + end.id, [s.a, end]));
+    });
+    s.service.finishStructuralEdit(false);
+
+    expect(s.split.split(s.a)).toBe(true);
+
+    const pins = s.service.joints.filter((joint) => !['B', 'C', 'E', 'F'].includes(joint.id));
+    expect(pins).toHaveLength(4);
+    const gaps = pins.flatMap((one, index) =>
+      pins.slice(index + 1).map((other) => Math.hypot(one.x - other.x, one.y - other.y))
+    );
+    expect(Math.min(...gaps)).toBeGreaterThanOrEqual(pairGap);
+  });
+
   it('keeps a held link held while the constrained drag path separates its pin', () => {
     const s = scene();
     s.ab.hold = 'length';

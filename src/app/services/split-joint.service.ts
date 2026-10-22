@@ -11,6 +11,12 @@ import { SettingsService } from './settings.service';
 
 /** Each unconstrained pin moves this far from the former shared center. */
 const SPLIT_SEPARATION_FACTOR = 0.2;
+/**
+ * Three or more pins share one circle, so neighbors sit closer than an
+ * opposite pair does. At the two-pin distance a four-way split leaves pins
+ * whose hit targets overlap, and grabbing one can take its neighbor.
+ */
+const CROWDED_SPLIT_SEPARATION_FACTOR = 0.6;
 
 @Injectable({ providedIn: 'root' })
 export class SplitJointService {
@@ -59,7 +65,9 @@ export class SplitJointService {
         // ordinary constrained drag path is asked to move them.
         this.mechanism.finishStructuralEdit(false);
         const pins = [result.original, ...result.created];
-        const separation = SPLIT_SEPARATION_FACTOR * this.settings.objectScale;
+        const separation =
+          (pins.length > 2 ? CROWDED_SPLIT_SEPARATION_FACTOR : SPLIT_SEPARATION_FACTOR) *
+          this.settings.objectScale;
         pins.forEach((pin, index) => {
           const angle =
             slotAngle === undefined
