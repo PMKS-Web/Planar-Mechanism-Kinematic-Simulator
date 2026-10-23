@@ -1,5 +1,6 @@
 import type { GalleryEntry } from './fixture-gallery';
 import {
+  nearlyParallelPinFixture,
   plainPinFixture,
   splitSliderFixture,
   twoSlotsAtOnePinFixture,
@@ -10,14 +11,15 @@ export const SPLIT_JOINT_GALLERY: GalleryEntry[] = [
   {
     name: 'Split Joint: two plain links',
     purpose:
-      'Select A and Split Joint: both pins spread evenly, since nothing depends on where A is',
+      'Select A and Split Joint: A keeps its place, and the other link steps off along itself, clear of its bar',
     spec: 'split-joint-sliders.spec.ts',
     floatingSlot: false,
     fixture: plainPinFixture(),
   },
   {
     name: 'Split Joint: four plain links',
-    purpose: 'Select A and Split Joint: four pins spread far enough apart to grab each one',
+    purpose:
+      'Select A and Split Joint: one link keeps A, and each other one steps off along itself, clear of the rest',
     spec: 'split-joint-sliders.spec.ts',
     floatingSlot: false,
     fixture: plainPinFixture(4),
@@ -69,9 +71,9 @@ export const SPLIT_JOINT_GALLERY: GalleryEntry[] = [
     fixture: splitSliderFixture(1, { prismatic: true }),
   },
   {
-    name: 'Split Joint refused: two riders on a Prismatic block',
+    name: 'Split Joint: two riders on a Prismatic block',
     purpose:
-      'Select B: Split Joint is refused, because the block welds its two riders into one body',
+      'Select B and Split Joint: the weld through the block lets go, the block stays Prismatic, and each rider gets its own pin',
     spec: 'split-joint-sliders.spec.ts',
     floatingSlot: false,
     slide: true,
@@ -84,5 +86,20 @@ export const SPLIT_JOINT_GALLERY: GalleryEntry[] = [
     spec: 'split-joint-sliders.spec.ts',
     floatingSlot: true,
     fixture: splitSliderFixture(1, { shortRider: true }),
+  },
+  {
+    name: 'Split Joint: a welded joint',
+    purpose: 'Select A and Split Joint: the weld lets go first, then each link gets its own pin',
+    spec: 'split-joint-sliders.spec.ts',
+    floatingSlot: false,
+    fixture: plainPinFixture(2, true),
+  },
+  {
+    name: 'Split Joint: two links almost on top of each other',
+    purpose:
+      'Select A and Split Joint: along itself the link would barely part, so it steps sideways',
+    spec: 'split-placement.spec.ts',
+    floatingSlot: false,
+    fixture: nearlyParallelPinFixture(),
   },
 ];

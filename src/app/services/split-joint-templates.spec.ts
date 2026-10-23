@@ -1,6 +1,7 @@
 import { Injector } from '@angular/core';
 import { TEMPLATE_IDS, TEMPLATE_LINKAGES } from '../component/MODALS/templates/template-linkages';
 import { PrisJoint, RealJoint } from '../model/joint';
+import { BAR_HALF_SCALE } from '../model/joint-marks';
 import { MODEL_SCALE } from '../model/render-scale';
 import { createMechanismHarness } from '../../test-utils/mechanism-harness';
 import { encodeUrlOf } from '../../test-utils/url-encoding';
@@ -27,6 +28,29 @@ function offSlot(block: PrisJoint): number {
   const length = Math.hypot(b.x - a.x, b.y - a.y);
   if (length < 1e-9) return 0;
   return Math.abs((b.x - a.x) * (a.y - block.y) - (a.x - block.x) * (b.y - a.y)) / length;
+}
+
+function offBar(
+  p: { x: number; y: number },
+  a: { x: number; y: number },
+  b: { x: number; y: number }
+): number {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const length = dx * dx + dy * dy;
+  const t =
+    length < 1e-18 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / length));
+  return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy);
+}
+
+/** The bar from a to b runs through the split point with a on one side of it. */
+function throughPoint(
+  at: { x: number; y: number },
+  a: { x: number; y: number },
+  b: { x: number; y: number }
+): boolean {
+  const far = (p: { x: number; y: number }) => Math.hypot(p.x - at.x, p.y - at.y) > 1e-9;
+  return far(a) && far(b) && offBar(at, a, b) < 1e-3 * MODEL_SCALE;
 }
 
 const visibleJointIds = (payload: string): string[] =>
@@ -94,6 +118,24 @@ describe('Split Joint across the library', () => {
       pins
         .slice(index + 1)
         .forEach((other) => expect(Math.hypot(one.x - other.x, one.y - other.y)).toBeGreaterThan(0))
+    );
+
+    // And none of them is left sitting on another one's bar. A bar that ran on
+    // through the split point -- a scissor's arm -- crossed the others there
+    // before the split and is allowed to still.
+    const clearance = 2 * BAR_HALF_SCALE * s.settings.objectScale + 0.2 * s.settings.objectScale;
+    const free = wasBlock ? pins : pins.filter((one) => !s.service.frozenJoints().has(one.id));
+    free.forEach((one) =>
+      pins
+        .filter((other) => other !== one)
+        .forEach((other) =>
+          other.links
+            .flatMap((body) =>
+              body.joints.filter((end) => end !== other).map((end) => [other, end])
+            )
+            .filter(([a, b]) => !throughPoint(at, a, b))
+            .forEach(([a, b]) => expect(offBar(one, a, b)).toBeGreaterThanOrEqual(clearance * 0.95))
+        )
     );
 
     // And the result survives the trip through a URL.

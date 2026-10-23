@@ -91,10 +91,10 @@ const topology = () =>
   });
 let state = await topology();
 check(
-  'one click moves both pins apart and keeps the original selected',
+  'one click keeps B in place, steps the other link off it, and keeps B selected',
   state.b &&
     state.i &&
-    Math.hypot(state.b.x - beforeSplit.x, state.b.y - beforeSplit.y) > 0 &&
+    Math.hypot(state.b.x - beforeSplit.x, state.b.y - beforeSplit.y) === 0 &&
     Math.hypot(state.i.x - beforeSplit.x, state.i.y - beforeSplit.y) > 0 &&
     Math.hypot(state.b.x - state.i.x, state.b.y - state.i.y) > 0 &&
     state.selected === 'B',

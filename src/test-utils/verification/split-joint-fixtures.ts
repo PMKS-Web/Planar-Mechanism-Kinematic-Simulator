@@ -54,7 +54,7 @@ export function twoSlotsAtOnePinFixture(): MechanismFixture {
 }
 
 /** Plain links meeting at A, with nothing that depends on where A is. */
-export function plainPinFixture(links: 2 | 3 | 4 = 2): MechanismFixture {
+export function plainPinFixture(links: 2 | 3 | 4 = 2, welded = false): MechanismFixture {
   const ends = [
     { id: 'B', x: 3, y: 0 },
     { id: 'C', x: 0, y: 3 },
@@ -64,6 +64,21 @@ export function plainPinFixture(links: 2 | 3 | 4 = 2): MechanismFixture {
   return {
     joints: [{ id: 'A', x: 0, y: 0 }, ...ends],
     links: ends.map((end) => ({ joints: 'A' + end.id })),
+    welds: welded ? ['A'] : [],
+    inputAngVel: 0,
+  };
+}
+
+/** Two links at A that lie almost on top of each other: along themselves they barely part. */
+export function nearlyParallelPinFixture(): MechanismFixture {
+  const apart = (8 * Math.PI) / 180;
+  return {
+    joints: [
+      { id: 'A', x: 0, y: 0 },
+      { id: 'B', x: 3, y: 0 },
+      { id: 'C', x: 3 * Math.cos(apart), y: 3 * Math.sin(apart) },
+    ],
+    links: ['AB', 'AC'].map((joints) => ({ joints })),
     inputAngVel: 0,
   };
 }

@@ -4,7 +4,7 @@ import { PrisJoint, RealJoint, RevJoint } from './joint';
 import { nextFreeLetter } from './joint-letters';
 import { Link, RealLink } from './link';
 
-export type SplitJointRefusal = 'needs-links' | 'welded' | 'cylinder' | 'dangling';
+export type SplitJointRefusal = 'needs-links' | 'cylinder' | 'dangling';
 
 export interface SplitJointChoice {
   count: number;
@@ -18,16 +18,52 @@ function rootsAt(joint: RealJoint, links: Link[]): Link[] {
 }
 
 /**
+ * How many bodies meet at the joint once its own weld lets go. A weld fuses
+ * the links at it into one compound; releasing it leaves whatever the
+ * compound's other welds still hold together, so two leaves welded again
+ * somewhere else stay one body.
+ */
+function bodiesOnceReleased(joint: RealJoint, links: Link[]): number {
+  return rootsAt(joint, links).reduce((count, root) => {
+    if (!joint.isWelded || !(root instanceof RealLink) || root.subset.length === 0) {
+      return count + 1;
+    }
+    const leaves = root.subset;
+    const group = leaves.map((_, index) => index);
+    const find = (index: number): number =>
+      group[index] === index ? index : (group[index] = find(group[index]));
+    leaves.forEach((one, i) =>
+      leaves.forEach((other, j) => {
+        const welded = one.joints.some(
+          (shared) =>
+            shared.id !== joint.id &&
+            shared instanceof RealJoint &&
+            shared.isWelded &&
+            other.joints.includes(shared)
+        );
+        if (i < j && welded) group[find(i)] = find(j);
+      })
+    );
+    const touching = leaves
+      .map((leaf, index) => (leaf.joints.some((one) => one.id === joint.id) ? find(index) : -1))
+      .filter((root) => root >= 0);
+    return count + new Set(touching).size;
+  }, 0);
+}
+
+/**
  * A slider block is a part in its own right: splitting takes every rider off
  * it, so one rider is already two things to separate. A pin is only a meeting
- * point, so it needs two links before there is anything to split.
+ * point, so it needs two links before there is anything to split. A weld is no
+ * reason to refuse: splitting lets it go first, so its links are counted as
+ * the bodies that releasing it would leave.
  */
 export function splitJointChoice(
   joint: RealJoint,
   links: Link[],
   cylinders: Cylinder[]
 ): SplitJointChoice {
-  const count = rootsAt(joint, links).length;
+  const count = bodiesOnceReleased(joint, links);
   const slider = joint instanceof PrisJoint;
   if (slider && joint.isDangling) {
     return {
@@ -43,24 +79,6 @@ export function splitJointChoice(
       refusal: 'cylinder',
       short: 'inside a cylinder',
       long: 'A joint inside a cylinder cannot be split. Split a joint at one of its ends instead.',
-    };
-  }
-  // A Prismatic block welds two riders into one body through itself, so they
-  // are a single rigid part rather than links that happen to meet at it.
-  if (slider && joint.isWelded) {
-    return {
-      count,
-      refusal: 'welded',
-      short: 'riders welded',
-      long: `The links on joint ${joint.name} are welded to its block. Set it to Pin-in-slot to split them.`,
-    };
-  }
-  if (joint.isWelded) {
-    return {
-      count,
-      refusal: 'welded',
-      short: 'welded',
-      long: `Joint ${joint.name} is welded. Set it to Revolute to split it.`,
     };
   }
   if (count < (slider ? 1 : 2)) {
@@ -163,7 +181,9 @@ export function splitJoint(
   forces: Force[],
   cylinders: Cylinder[]
 ): SplitJointResult | undefined {
-  if (splitJointChoice(joint, links, cylinders).refusal) return undefined;
+  // A weld is let go by the service, through the ordinary unweld path, before
+  // it gets here; splitting the compound as one body would separate nothing.
+  if (joint.isWelded || splitJointChoice(joint, links, cylinders).refusal) return undefined;
   const bodies = rootsAt(joint, links);
   const taken = new Set(joints.map((candidate) => candidate.id));
   const fresh = (): RevJoint => {

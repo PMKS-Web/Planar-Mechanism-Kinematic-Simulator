@@ -2,6 +2,7 @@ import { Injector } from '@angular/core';
 import { Coord } from '../model/coord';
 import { PrisJoint, RealJoint, RevJoint } from '../model/joint';
 import { RealLink } from '../model/link';
+import { splitJointChoice } from '../model/split-joint';
 import { MODEL_SCALE } from '../model/render-scale';
 import { createMechanismHarness } from '../../test-utils/mechanism-harness';
 import { encodeUrlOf } from '../../test-utils/url-encoding';
@@ -49,6 +50,8 @@ function offSlot(block: PrisJoint): number {
 function blockHalfAcross(settings: SettingsService): number {
   return 1.525 * 0.15 * settings.objectScale;
 }
+
+const cm = (value: number): number => value * MODEL_SCALE;
 
 describe('splitting a slider block', () => {
   it.each([
@@ -117,20 +120,24 @@ describe('splitting a slider block', () => {
   );
 
   it.each([false, true])(
-    'refuses a Prismatic block whose two riders it welds together (grounded: %s)',
+    'splits a Prismatic block with two riders and keeps it Prismatic (grounded: %s)',
     (grounded) => {
       const s = scene(splitSliderFixture(2, { grounded, prismatic: true }));
       const block = s.joint('B') as PrisJoint;
-      const before = encodeUrlOf(s.service, s.settings);
+      const before = s.service.joints.length;
+      expect(block.isWelded).toBe(true);
+      expect(s.split.choiceFor(block)).toEqual({ count: 2 });
 
-      expect(s.split.choiceFor(block)).toMatchObject({
-        refusal: 'welded',
-        short: 'riders welded',
-        long: 'The links on joint B are welded to its block. Set it to Pin-in-slot to split them.',
-      });
-      expect(s.split.split(block)).toBe(false);
-      expect(encodeUrlOf(s.service, s.settings)).toBe(before);
-      expect(s.saveCount()).toBe(0);
+      expect(s.split.split(block)).toBe(true);
+
+      expect(s.joint('B')).toBe(block);
+      expect([block.rotates, block.ground]).toEqual([false, grounded]);
+      expect(s.service.isJointOrphan(block)).toBe(true);
+      const pins = s.service.joints.slice(before) as RealJoint[];
+      expect(pins).toHaveLength(2);
+      expect(pins.every((pin) => pin instanceof RevJoint && pin.links.length === 1)).toBe(true);
+      expect(pins[0].links[0]).not.toBe(pins[1].links[0]);
+      expect(s.saveCount()).toBe(1);
     }
   );
 
@@ -192,6 +199,44 @@ describe('splitting a slider block', () => {
   });
 });
 
+describe('splitting a welded joint', () => {
+  it('lets the weld go and gives each link its own pin, in one undo step', () => {
+    const s = scene(plainPinFixture());
+    s.service.weldJoint(s.joint('A'));
+    const saves = s.saveCount();
+    expect(s.service.links).toHaveLength(1);
+    expect(s.split.choiceFor(s.joint('A'))).toEqual({ count: 2 });
+
+    expect(s.split.split(s.joint('A'))).toBe(true);
+
+    expect(s.joint('A').isWelded).toBe(false);
+    expect(s.service.links.map((link) => link.id).sort()).toEqual(['AB', 'CD']);
+    expect(s.saveCount() - saves).toBe(1);
+  });
+
+  it('refuses a corner of a triangle welded at every corner, which stays one body', () => {
+    const [a, b, c] = [
+      new RevJoint('A', 0, 0),
+      new RevJoint('B', cm(3), 0),
+      new RevJoint('C', 0, cm(3)),
+    ];
+    [a, b, c].forEach((joint) => (joint.isWelded = true));
+    const triangle = new RealLink('ABC', [a, b, c]);
+    triangle.subset = [
+      new RealLink('AB', [a, b]),
+      new RealLink('BC', [b, c]),
+      new RealLink('AC', [a, c]),
+    ];
+    expect(splitJointChoice(a, [triangle], [])).toMatchObject({
+      refusal: 'needs-links',
+      short: 'needs 2 links',
+    });
+    // Welded at A and B only, C is still a pin: letting A go frees AC.
+    c.isWelded = false;
+    expect(splitJointChoice(a, [triangle], [])).toEqual({ count: 2 });
+  });
+});
+
 describe('what stays put when a pin splits', () => {
   it("keeps a slot's end still so its slider stays on it (Shaper, joint D)", () => {
     const s = scene(shaperQuickReturnFixture());
@@ -230,7 +275,7 @@ describe('what stays put when a pin splits', () => {
     const cylinder = harness.service.sealedStructures()[0];
     const mount = cylinder.mountA as RevJoint;
     const at = { x: mount.x, y: mount.y };
-    const tip = new RevJoint('Z', mount.x, mount.y + MODEL_SCALE);
+    const tip = new RevJoint('Z', mount.x, mount.y + 3 * MODEL_SCALE);
     harness.service.joints.push(tip);
     harness.service.links.push(new RealLink(mount.id + tip.id, [mount, tip]));
     harness.service.finishStructuralEdit(false);
@@ -249,11 +294,12 @@ describe('what stays put when a pin splits', () => {
     expect(moved.x).toBeCloseTo(at.x);
   });
 
-  it('still spreads two plain links evenly when neither has anything depending on it', () => {
+  it('keeps one plain link still and steps the other off along itself', () => {
     const s = scene(plainPinFixture());
     expect(s.split.split(s.joint('A'))).toBe(true);
     const [a, d] = ['A', 'D'].map((id) => s.joint(id));
-    expect(a.x + d.x).toBeCloseTo(0);
-    expect(a.y + d.y).toBeCloseTo(0);
+    expect([a.x, a.y]).toEqual([0, 0]);
+    expect(d.x).toBeCloseTo(0);
+    expect(d.y).toBeGreaterThan(0);
   });
 });

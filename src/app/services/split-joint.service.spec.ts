@@ -18,8 +18,8 @@ describe('SplitJointService', () => {
   function scene() {
     const harness = createMechanismHarness();
     const a = new RevJoint('A', 0, 0, true, true);
-    const b = new RevJoint('B', 1, 0);
-    const c = new RevJoint('C', 0, 1);
+    const b = new RevJoint('B', 3 * MODEL_SCALE, 0);
+    const c = new RevJoint('C', 0, 3 * MODEL_SCALE);
     const ab = new RealLink('AB', [a, b]);
     const ac = new RealLink('AC', [a, c]);
     harness.service.joints = [a, b, c];
@@ -43,11 +43,10 @@ describe('SplitJointService', () => {
 
     const original = s.service.joints.find((joint) => joint.id === 'A') as RevJoint;
     const created = s.service.joints.find((joint) => joint.id === 'D') as RevJoint;
-    expect(original.x).toBeLessThan(0);
-    expect(created.x).toBeGreaterThan(0);
-    expect(original.y).toBeCloseTo(0);
-    expect(created.y).toBeCloseTo(0);
-    expect(original.x + created.x).toBeCloseTo(0);
+    // The grounded pin keeps its place; the other link steps off along itself.
+    expect([original.x, original.y]).toEqual([0, 0]);
+    expect(created.x).toBeCloseTo(0);
+    expect(created.y).toBeGreaterThan(0);
     expect(s.ab.joints.map((joint) => joint.id)).toContain('A');
     expect(s.ac.joints.map((joint) => joint.id)).toContain('D');
     expect([original.name, original.input, original.ground, original.showCurve]).toEqual([
@@ -76,23 +75,24 @@ describe('SplitJointService', () => {
     expect(s.saveCount()).toBe(1);
   });
 
-  it('spreads every pin in a three-body split around the former center', () => {
+  it('keeps the first pin and moves each other one along its own link', () => {
     const s = scene();
-    const e = new RevJoint('E', -1, 0);
+    const e = new RevJoint('E', -3 * MODEL_SCALE, 0);
     s.service.joints.push(e);
     s.service.links.push(new RealLink('AE', [s.a, e]));
     s.service.finishStructuralEdit(false);
 
     expect(s.split.split(s.a)).toBe(true);
 
-    const pins = s.service.joints.filter(
-      (joint) => !['B', 'C', 'E'].includes(joint.id)
-    ) as RevJoint[];
-    expect(pins).toHaveLength(3);
-    expect(pins.every((pin) => Math.hypot(pin.x, pin.y) > 0)).toBe(true);
-    expect(new Set(pins.map((pin) => `${pin.x},${pin.y}`)).size).toBe(3);
-    expect(pins.reduce((sum, pin) => sum + pin.x, 0)).toBeCloseTo(0);
-    expect(pins.reduce((sum, pin) => sum + pin.y, 0)).toBeCloseTo(0);
+    const pinOf = (end: string) =>
+      s.service.links
+        .find((link) => link.joints.some((joint) => joint.id === end))!
+        .joints.find((joint) => joint.id !== end)!;
+    expect([pinOf('B').x, pinOf('B').y]).toEqual([0, 0]);
+    expect(pinOf('C').x).toBeCloseTo(0);
+    expect(pinOf('C').y).toBeGreaterThan(0);
+    expect(pinOf('E').x).toBeLessThan(0);
+    expect(pinOf('E').y).toBeCloseTo(0);
   });
 
   it('keeps the pins of a four-body split at least as far apart as a two-body pair', () => {
@@ -102,7 +102,7 @@ describe('SplitJointService', () => {
     const pairGap = Math.hypot(p.x - q.x, p.y - q.y);
 
     const s = scene();
-    const ends = [new RevJoint('E', -1, 0), new RevJoint('F', 0, -1)];
+    const ends = [new RevJoint('E', -3 * MODEL_SCALE, 0), new RevJoint('F', 0, -3 * MODEL_SCALE)];
     ends.forEach((end) => {
       s.service.joints.push(end);
       s.service.links.push(new RealLink('A' + end.id, [s.a, end]));
@@ -155,10 +155,9 @@ describe('SplitJointService', () => {
     expect(splitJointChoice(new RevJoint('Z', 0, 0), [], []).long).toBe(
       'No links are on this joint, so there is nothing to split.'
     );
+    // A weld is no reason to refuse; it is counted by what releasing it leaves.
     a.isWelded = true;
-    expect(splitJointChoice(a, [one], []).long).toBe(
-      'Joint A is welded. Set it to Revolute to split it.'
-    );
+    expect(splitJointChoice(a, [one], []).refusal).toBe('needs-links');
     const dangling = new PrisJoint('P', 0, 0);
     expect(splitJointChoice(dangling, [], []).refusal).toBe('dangling');
   });
