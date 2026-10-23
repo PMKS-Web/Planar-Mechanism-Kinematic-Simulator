@@ -147,93 +147,6 @@ describe('SplitJointService', () => {
     expect(s.ac.comAnchor).toEqual({ joint: 'D' });
   });
 
-  it('detaches a floating pin-in-slot without creating or replacing a joint', () => {
-    const harness = createMechanismHarness();
-    const a = new RevJoint('A', 0, 0);
-    const b = new RevJoint('B', 2, 0);
-    const p = new PrisJoint('P', 1, 0);
-    const carrier = new RealLink('AB', [a, b]);
-    const c = new RevJoint('C', 1, 1);
-    const rider = new RealLink('CP', [c, p]);
-    p.slideOn(carrier, a, b);
-    harness.service.joints = [a, b, c, p];
-    harness.service.links = [carrier, rider];
-    harness.service.finishStructuralEdit(false);
-    const split = Injector.create({
-      parent: harness.injector,
-      providers: [{ provide: SplitJointService, deps: [] }],
-    }).get(SplitJointService);
-
-    expect(split.choiceFor(p)).toEqual({ count: 2 });
-    expect(split.split(p)).toBe(true);
-    expect(harness.service.joints).toEqual([a, b, c, p]);
-    expect(harness.service.joints.find((joint) => joint.id === 'P')).toBe(p);
-    expect(p).toBeInstanceOf(PrisJoint);
-    expect(p.isDangling).toBe(true);
-    expect(p.x).toBeCloseTo(1);
-    expect(p.y).toBeGreaterThan(0);
-    expect(carrier.joints).toEqual([a, b]);
-    expect(rider.joints).toContain(p);
-  });
-
-  it.each([true, false])(
-    'keeps a %s-rotating slider and every rider together when detaching its carrier',
-    (rotates) => {
-      const harness = createMechanismHarness();
-      const a = new RevJoint('A', 0, 0);
-      const b = new RevJoint('B', 2, 0);
-      const p = new PrisJoint('P', 1, 0, true);
-      p.rotates = rotates;
-      p.driveSpeed = 3.5;
-      p.name = 'Follower';
-      const c = new RevJoint('C', 1, 1);
-      const d = new RevJoint('D', 1, -1);
-      const carrier = new RealLink('AB', [a, b]);
-      const riders = [new RealLink('CP', [c, p]), new RealLink('DP', [d, p])];
-      p.slideOn(carrier, a, b);
-      harness.service.joints = [a, b, c, d, p];
-      harness.service.links = [carrier, ...riders];
-      harness.service.finishStructuralEdit(false);
-      const split = Injector.create({
-        parent: harness.injector,
-        providers: [{ provide: SplitJointService, deps: [] }],
-      }).get(SplitJointService);
-
-      expect(split.choiceFor(p)).toEqual({ count: 3 });
-      expect(split.split(p)).toBe(true);
-      expect(harness.service.joints).toHaveLength(5);
-      expect(riders.every((link) => link.joints.includes(p))).toBe(true);
-      expect([p.rotates, p.input, p.driveSpeed, p.name, p.isDangling]).toEqual([
-        rotates,
-        true,
-        3.5,
-        'Follower',
-        true,
-      ]);
-      expect(harness.saveCount()).toBe(1);
-    }
-  );
-
-  it('does not reinterpret a slider input speed as revolutions per minute', () => {
-    const harness = createMechanismHarness();
-    const p = new PrisJoint('P', 0, 0, true, true);
-    p.driveSpeed = 3.5;
-    const a = new RevJoint('A', 1, 0);
-    const b = new RevJoint('B', 0, 1);
-    harness.service.joints = [p, a, b];
-    harness.service.links = [new RealLink('AP', [a, p]), new RealLink('BP', [b, p])];
-    harness.service.finishStructuralEdit(false);
-    const split = Injector.create({
-      parent: harness.injector,
-      providers: [{ provide: SplitJointService, deps: [] }],
-    }).get(SplitJointService);
-
-    expect(split.split(p)).toBe(true);
-    const original = harness.service.joints.find((joint) => joint.id === 'P') as RevJoint;
-    expect(original.input).toBe(false);
-    expect(original.driveSpeed).toBe(0);
-  });
-
   it('states each structural refusal at the model boundary', () => {
     const a = new RevJoint('A', 0, 0);
     const b = new RevJoint('B', 1, 0);
@@ -243,7 +156,9 @@ describe('SplitJointService', () => {
       'No links are on this joint, so there is nothing to split.'
     );
     a.isWelded = true;
-    expect(splitJointChoice(a, [one], []).short).toBe('unweld first');
+    expect(splitJointChoice(a, [one], []).long).toBe(
+      'Joint A is welded. Set it to Revolute to split it.'
+    );
     const dangling = new PrisJoint('P', 0, 0);
     expect(splitJointChoice(dangling, [], []).refusal).toBe('dangling');
   });

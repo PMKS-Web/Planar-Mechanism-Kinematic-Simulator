@@ -799,7 +799,9 @@ export class ContextMenuBuilderService {
       label: 'Split Joint',
       icon: 'joint_split',
       posePolicy: 'structure',
-      hint: choice.refusal ? choice.short : `${choice.count} links`,
+      hint: choice.refusal
+        ? choice.short
+        : `${choice.count} ${choice.count === 1 ? 'link' : 'links'}`,
       refusal: choice.refusal ? { short: choice.short!, long: choice.long! } : undefined,
       action: () => this.splitJoints.split(joint),
     });

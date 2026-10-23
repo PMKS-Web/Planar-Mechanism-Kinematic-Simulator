@@ -14,25 +14,22 @@ export interface SplitJointChoice {
 }
 
 function rootsAt(joint: RealJoint, links: Link[]): Link[] {
-  const roots = links.filter((link) => link.joints.some((candidate) => candidate.id === joint.id));
-  if (
-    joint instanceof PrisJoint &&
-    joint.isFloating &&
-    joint.carrier &&
-    !roots.includes(joint.carrier)
-  ) {
-    roots.push(joint.carrier);
-  }
-  return roots;
+  return links.filter((link) => link.joints.some((candidate) => candidate.id === joint.id));
 }
 
+/**
+ * A slider block is a part in its own right: splitting takes every rider off
+ * it, so one rider is already two things to separate. A pin is only a meeting
+ * point, so it needs two links before there is anything to split.
+ */
 export function splitJointChoice(
   joint: RealJoint,
   links: Link[],
   cylinders: Cylinder[]
 ): SplitJointChoice {
   const count = rootsAt(joint, links).length;
-  if (joint instanceof PrisJoint && joint.isDangling) {
+  const slider = joint instanceof PrisJoint;
+  if (slider && joint.isDangling) {
     return {
       count,
       refusal: 'dangling',
@@ -48,19 +45,29 @@ export function splitJointChoice(
       long: 'A joint inside a cylinder cannot be split. Split a joint at one of its ends instead.',
     };
   }
-  if (joint.isWelded || (joint instanceof PrisJoint && !joint.rotates && !joint.isFloating)) {
+  // A Prismatic block welds two riders into one body through itself, so they
+  // are a single rigid part rather than links that happen to meet at it.
+  if (slider && joint.isWelded) {
     return {
       count,
       refusal: 'welded',
-      short: 'unweld first',
-      long: 'Unweld this joint before splitting it.',
+      short: 'riders welded',
+      long: `The links on joint ${joint.name} are welded to its block. Set it to Pin-in-slot to split them.`,
     };
   }
-  if (count < 2) {
+  if (joint.isWelded) {
+    return {
+      count,
+      refusal: 'welded',
+      short: 'welded',
+      long: `Joint ${joint.name} is welded. Set it to Revolute to split it.`,
+    };
+  }
+  if (count < (slider ? 1 : 2)) {
     return {
       count,
       refusal: 'needs-links',
-      short: 'needs 2 links',
+      short: slider ? 'no links' : 'needs 2 links',
       long:
         count === 0
           ? 'No links are on this joint, so there is nothing to split.'
@@ -113,63 +120,87 @@ function replaceInBody(
   renameLink(link, source.id, replacement.id, forces);
 }
 
-/** Give each body its own pin, or detach a floating slider from its carrier. */
+function newPin(id: string, joint: RealJoint): RevJoint {
+  const pin = new RevJoint(id, joint.x, joint.y);
+  pin.locked = joint.locked;
+  pin.r = joint.r;
+  return pin;
+}
+
+/** Slots that end at the split joint follow their carrier onto its new pin. */
+function rebindSlots(joints: RealJoint[], source: RealJoint, pinOf: Map<Link, RealJoint>): void {
+  joints.forEach((candidate) => {
+    if (!(candidate instanceof PrisJoint) || !candidate.isFloating) return;
+    const a = candidate.slotJointA!;
+    const b = candidate.slotJointB!;
+    const carrier = candidate.carrier!;
+    const replacement = pinOf.get(carrier);
+    if (!replacement) return;
+    candidate.slideOn(
+      carrier,
+      a.id === source.id ? replacement : a,
+      b.id === source.id ? replacement : b
+    );
+  });
+}
+
+export interface SplitJointResult {
+  /** The joint that keeps the source's id: a pin with one body, or the bare slider block. */
+  original: RealJoint;
+  created: RevJoint[];
+  /** Each body that was at the joint, with the pin it holds now. */
+  pinOf: Map<Link, RealJoint>;
+}
+
+/**
+ * Give each body its own pin. A slider block stays where it is, on its slot,
+ * and every rider leaves it for a Revolute pin of its own.
+ */
 export function splitJoint(
   joint: RealJoint,
   joints: RealJoint[],
   links: Link[],
   forces: Force[],
   cylinders: Cylinder[]
-): { original: RealJoint; created: RevJoint[] } | undefined {
+): SplitJointResult | undefined {
   if (splitJointChoice(joint, links, cylinders).refusal) return undefined;
-  // A floating slider already belongs only to its rider bodies. Its carrier is
-  // a constraint, not another joint membership: splitting releases that
-  // constraint and leaves the same authored slider dangling.
-  if (joint instanceof PrisJoint && joint.isFloating) {
-    joint.detach();
-    return { original: joint, created: [] };
-  }
   const bodies = rootsAt(joint, links);
+  const taken = new Set(joints.map((candidate) => candidate.id));
+  const fresh = (): RevJoint => {
+    const id = nextFreeLetter(taken);
+    taken.add(id);
+    const pin = newPin(id, joint);
+    joints.push(pin);
+    return pin;
+  };
+  const pinOf = new Map<Link, RealJoint>();
+
+  if (joint instanceof PrisJoint) {
+    const created = bodies.map((body) => {
+      const pin = fresh();
+      pinOf.set(body, pin);
+      replaceInBody(body, joint, pin, forces);
+      return pin;
+    });
+    rebindSlots(joints, joint, pinOf);
+    return { original: joint, created, pinOf };
+  }
+
   const original = new RevJoint(joint.id, joint.x, joint.y, joint.input, joint.ground);
   original.name = joint.name;
   original.showCurve = joint.showCurve;
   original.colorFamily = joint.colorFamily;
   original.locked = joint.locked;
   original.r = joint.r;
-  // Slider speed is linear. Carrying it onto the revolute pin would silently
-  // reinterpret that number as rpm the next time the pin became an input.
-  original.driveSpeed = joint instanceof PrisJoint ? 0 : joint.driveSpeed;
-
-  const at = joints.findIndex((candidate) => candidate === joint);
-  joints[at] = original;
-  const replacements = [original];
-  const taken = new Set(joints.map((candidate) => candidate.id));
-  for (let index = 1; index < bodies.length; index++) {
-    const id = nextFreeLetter(taken);
-    taken.add(id);
-    const pin = new RevJoint(id, joint.x, joint.y);
-    pin.locked = joint.locked;
-    pin.r = joint.r;
-    replacements.push(pin);
-    joints.push(pin);
-  }
-
+  original.driveSpeed = joint.driveSpeed;
+  joints[joints.findIndex((candidate) => candidate === joint)] = original;
+  const created: RevJoint[] = [];
   bodies.forEach((body, index) => {
-    const replacement = replacements[index];
-    replaceInBody(body, joint, replacement, forces);
+    const pin = index === 0 ? original : fresh();
+    if (pin !== original) created.push(pin);
+    pinOf.set(body, pin);
+    replaceInBody(body, joint, pin, forces);
   });
-  joints.forEach((candidate) => {
-    if (!(candidate instanceof PrisJoint) || !candidate.isFloating) return;
-    const a = candidate.slotJointA!;
-    const b = candidate.slotJointB!;
-    const carrier = candidate.carrier!;
-    const replacement = replacements[bodies.indexOf(carrier)];
-    if (!replacement) return;
-    candidate.slideOn(
-      carrier,
-      a.id === joint.id ? replacement : a,
-      b.id === joint.id ? replacement : b
-    );
-  });
-  return { original, created: replacements.slice(1) };
+  rebindSlots(joints, joint, pinOf);
+  return { original, created, pinOf };
 }
