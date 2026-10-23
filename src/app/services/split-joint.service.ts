@@ -178,7 +178,11 @@ export class SplitJointService {
     return Math.hypot(dx, dy) > 1e-9 ? Math.atan2(dy, dx) : undefined;
   }
 
-  /** How far a pin has to go in this direction to land clear of the block. */
+  /**
+   * How far a pin has to go in this direction to land clear of the block: out
+   * of its outline, and then the gap two pins keep. Half of that left the pin
+   * touching the block's edge, which reads as still riding it.
+   */
   private clearOfBlock(block: PrisJoint, angle: number): number {
     const r = R_PER_SCALE * this.settings.objectScale;
     const relative = angle - block.slotAngle;
@@ -188,7 +192,7 @@ export class SplitJointService {
       along > 1e-9 ? (MARK.blockAlongHalf * r) / along : Infinity,
       across > 1e-9 ? (MARK.blockAcrossHalf * r) / across : Infinity
     );
-    return exit + SPLIT_SEPARATION_FACTOR * this.settings.objectScale;
+    return exit + PAIR_GAP_FACTOR * this.settings.objectScale;
   }
 
   private crowded(targets: Coord[]): boolean {
