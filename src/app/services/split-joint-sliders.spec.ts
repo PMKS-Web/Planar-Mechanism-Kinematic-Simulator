@@ -5,10 +5,13 @@ import { RealLink } from '../model/link';
 import { MODEL_SCALE } from '../model/render-scale';
 import { createMechanismHarness } from '../../test-utils/mechanism-harness';
 import { encodeUrlOf } from '../../test-utils/url-encoding';
-import { buildMechanism, MechanismFixture } from '../../test-utils/verification/fixture';
+import {
+  buildMechanism,
+  inModelUnits,
+  MechanismFixture,
+} from '../../test-utils/verification/fixture';
 import { shaperQuickReturnFixture } from '../../test-utils/verification/library-fixtures';
 import {
-  atDrawnSize,
   plainPinFixture,
   splitSliderFixture,
   twoSlotsAtOnePinFixture,
@@ -22,7 +25,7 @@ import { StringTranscoder } from './transcoding/string-transcoder';
 
 function scene(fixture: MechanismFixture) {
   const harness = createMechanismHarness();
-  const built = buildMechanism(atDrawnSize(fixture));
+  const built = buildMechanism(inModelUnits(fixture));
   harness.service.joints = built.joints;
   harness.service.links = built.links;
   harness.service.finishStructuralEdit(false);

@@ -1,25 +1,4 @@
-import { MODEL_SCALE } from '../../app/model/render-scale';
 import { MechanismFixture } from './fixture';
-
-/**
- * The same fixture at the size it opens at from its URL.
- *
- * Fixtures are written in the reader's units and only scaled into the model
- * world when they are published. Split Joint measures its steps in joint
- * sizes, so a fixture built raw in a spec is a two-hundredth of the size a
- * reader sees: every link is shorter than one step and every test quietly
- * takes the fallback spread instead of the path it means to check.
- */
-export function atDrawnSize(fixture: MechanismFixture): MechanismFixture {
-  return {
-    ...fixture,
-    joints: fixture.joints.map((joint) => ({
-      ...joint,
-      x: joint.x * MODEL_SCALE,
-      y: joint.y * MODEL_SCALE,
-    })),
-  };
-}
 
 /** A block at B with one or two riders, on a slot cut in AC or on the ground. */
 export function splitSliderFixture(
