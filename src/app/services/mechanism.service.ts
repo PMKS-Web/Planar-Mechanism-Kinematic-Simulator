@@ -4376,7 +4376,7 @@ export class MechanismService {
       return `Slider ${names} has nothing to slide along. Drag it onto a link to cut a slot, or ground it to fix its direction.`;
     }
     if (!this.joints.some((joint) => joint instanceof RealJoint && joint.input)) {
-      return 'No joint is driven. Right-click a joint and switch on Driven Input to say what moves the mechanism.';
+      return 'Set one joint as an input to say what moves the mechanism.';
     }
     // A driven joint the actuator record cannot describe -- most often because
     // an edit added a third body to it long after Driven was switched on. The
@@ -4407,7 +4407,7 @@ export class MechanismService {
     }
     const stuck = PositionSolver.unsolvableJoints;
     if (stuck.length > 0) {
-      return `These joints cannot be placed from the ones around them: ${stuck.join(', ')}. They may need another link, or a driven joint nearer to them.`;
+      return `These joints cannot be placed from the ones around them: ${stuck.join(', ')}. They may need another link, or an input joint nearer to them.`;
     }
     return 'This mechanism reached a position it could not solve from the one before it \u2014 usually a toggle, where the mechanism locks.';
   }

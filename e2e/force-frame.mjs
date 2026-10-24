@@ -43,7 +43,7 @@ try {
   await page.mouse.click(target.x, target.y);
   await page.mouse.click(target.x, target.y);
   check('second click selects HI', await grid((g) => g.activeObjService.selectedLink.id === 'HI'));
-  await page.getByRole('button', { name: 'Add tracer point', exact: true }).click();
+  await page.getByRole('button', { name: 'Add Tracer Point', exact: true }).click();
   const topology = () =>
     grid((g) => {
       const root = g.mechanismSrv.links[0];

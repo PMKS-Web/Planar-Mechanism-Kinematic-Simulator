@@ -725,7 +725,7 @@ export class SvgGridService {
     // and resizes the drawing to suit it; "Reset view" keeps the drawing and
     // moves the view back to it.
     const fixes = [
-      { label: 'Auto-size objects', run: () => this.updateObjectScale(true) },
+      { label: 'Auto-size Objects', run: () => this.updateObjectScale(true) },
       { label: 'Fit to view', run: () => this.scaleToFitLinkage() },
     ];
     if (drawnAt < 5) {
