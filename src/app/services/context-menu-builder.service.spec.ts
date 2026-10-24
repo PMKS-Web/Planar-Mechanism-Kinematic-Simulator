@@ -282,7 +282,7 @@ describe('the right-click menu', () => {
       expect(split.hint).toBe('2 links');
       expect(split.disabled).toBe(false);
       const labels = rows(harness.builder.build(parts.a, noHandlers)).map((one) => one.label);
-      expect(labels.indexOf('Split Joint')).toBeLessThan(labels.indexOf('Delete entire mechanism'));
+      expect(labels.indexOf('Split Joint')).toBeLessThan(labels.indexOf('Delete Entire Mechanism'));
     });
 
     it('groups every trace directly below Locked', () => {
@@ -306,7 +306,7 @@ describe('the right-click menu', () => {
         const destructive = all.filter((one) => one.destructive);
         expect(destructive.length).toBe(2);
         expect(all.slice(-2)).toEqual(destructive);
-        expect(destructive[1].label.startsWith('Delete entire mechanism')).toBe(true);
+        expect(destructive[1].label.startsWith('Delete Entire Mechanism')).toBe(true);
       }
     });
 
@@ -533,7 +533,7 @@ describe('the right-click menu', () => {
       const parts = fourBar(harness.mechanism);
       harness.mechanism.updateMechanism();
       for (const target of [parts.a, parts.coupler]) {
-        const machine = row(harness.builder.build(target, noHandlers), 'Delete entire mechanism')!;
+        const machine = row(harness.builder.build(target, noHandlers), 'Delete Entire Mechanism')!;
         expect(machine.destructive).toBe(true);
         expect(machine.hint).toBe('5 joints');
         expect(machine.disabled).toBe(false);
@@ -544,14 +544,14 @@ describe('the right-click menu', () => {
       const parts = fourBar(harness.mechanism);
       // Nothing partitioned, so no part belongs to a machine — the state a
       // bar dropped on the grid on its own is in.
-      const machine = row(harness.builder.build(parts.a, noHandlers), 'Delete entire mechanism')!;
+      const machine = row(harness.builder.build(parts.a, noHandlers), 'Delete Entire Mechanism')!;
       expect(machine.refusal!.short).toBe('not in a mechanism');
     });
 
     it('takes the whole machine when the row is used', () => {
       const parts = fourBar(harness.mechanism);
       harness.mechanism.updateMechanism();
-      row(harness.builder.build(parts.crank, noHandlers), 'Delete entire mechanism')!.action();
+      row(harness.builder.build(parts.crank, noHandlers), 'Delete Entire Mechanism')!.action();
       expect(harness.mechanism.joints.length).toBe(0);
       expect(harness.mechanism.links.length).toBe(0);
     });
@@ -1029,7 +1029,7 @@ describe('the right-click menu, on a cylinder', () => {
         expect(labels(model), gone).not.toContain(gone);
       }
       expect(labels(model)).toContain('Delete Cylinder');
-      expect(labels(model)).toContain('Delete entire mechanism');
+      expect(labels(model)).toContain('Delete Entire Mechanism');
     });
 
     it('holds its own length and the whole part’s angle (decision S5)', () => {
@@ -1130,7 +1130,7 @@ describe('the right-click menu, on a cylinder', () => {
       const machine = harness.mechanism.sealedStructures()[0];
       const model = harness.builder.build(machine.seal, noHandlers);
       expect(harness.mechanism.partitions[0].ownJoints.length).toBe(4);
-      expect(row(model, 'Delete entire mechanism')!.hint).toBe('3 joints');
+      expect(row(model, 'Delete Entire Mechanism')!.hint).toBe('3 joints');
     });
 
     it('leaves Lock All counting the marks it sets that anyone can see', () => {
