@@ -18,6 +18,7 @@ import { filmstrip, contactSheet } from './filmstrip.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const browser = await chromium.launch();
 const context = await browser.newContext({ viewport: { width: 1500, height: 950 } });
@@ -186,7 +187,7 @@ const fresh = await startPose();
 record('reversing never moved the pose the drawing starts from', home === fresh, { home, fresh });
 
 // --- master and rows agree ---------------------------------------------------
-await page.evaluate(() => {
+await inAngular(page, () => {
   // A second four-bar, so the transport has rows of its own to get out of step.
   const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
   const JointClass = Object.getPrototypeOf(srv.joints[0]).constructor;
@@ -265,17 +266,21 @@ await waitForReady(page);
 
 /** Drive the block at the sign given, and read what the row says about it. */
 const slidingRow = async (sign) => {
-  await page.evaluate((sign) => {
-    const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
-    const block = srv.joints.find((joint) => joint.slotAngle !== undefined);
-    srv.joints.forEach((joint) => (joint.input = false));
-    block.input = true;
-    srv.updateMechanism();
-    srv.setDriveSpeed(block, sign * Math.abs(srv.driveSpeedOf(block) || 1));
-    srv.updateMechanism();
-  }, sign);
+  await inAngular(
+    page,
+    (sign) => {
+      const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+      const block = srv.joints.find((joint) => joint.slotAngle !== undefined);
+      srv.joints.forEach((joint) => (joint.input = false));
+      block.input = true;
+      srv.updateMechanism();
+      srv.setDriveSpeed(block, sign * Math.abs(srv.driveSpeedOf(block) || 1));
+      srv.updateMechanism();
+    },
+    sign
+  );
   await page.waitForTimeout(700);
-  return page.evaluate(() => {
+  return inAngular(page, () => {
     const grid = ng.getComponent(document.querySelector('app-new-grid'));
     const srv = grid.mechanismSrv;
     const bar = ng.getComponent(document.querySelector('app-playback-bar'));

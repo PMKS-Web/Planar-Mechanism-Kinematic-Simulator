@@ -14,6 +14,7 @@ const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
 import { waitForReady } from './app-ready.mjs';
+import { inAngular } from './in-angular.mjs';
 import { ALL_LINKAGES as payloads } from './template-payloads.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
@@ -39,7 +40,8 @@ const load = async (height) => {
 };
 
 const openTab = async (n) => {
-  await page.evaluate(
+  await inAngular(
+    page,
     (n) => ng.getComponent(document.querySelector('app-right-panel')).constructor.tabClicked(n),
     n
   );

@@ -22,6 +22,7 @@ import { filmstrip, contactSheet } from './filmstrip.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
@@ -164,9 +165,13 @@ const drawBar = async ({ option, snap, kind = 'Link' }) => {
   await page.waitForTimeout(400);
   // Off by default -- it is remembered per machine rather than carried in the
   // URL -- so the suite says which state it is testing.
-  await page.evaluate((on) => {
-    ng.getComponent(document.querySelector('app-new-grid')).settings.isSnapToGrid.next(on);
-  }, snap);
+  await inAngular(
+    page,
+    (on) => {
+      ng.getComponent(document.querySelector('app-new-grid')).settings.isSnapToGrid.next(on);
+    },
+    snap
+  );
   await page.waitForTimeout(200);
 
   await page.mouse.move(620, 430);

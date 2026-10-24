@@ -11,6 +11,7 @@ const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
 import { waitForReady } from './app-ready.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 
@@ -68,7 +69,7 @@ await page.waitForTimeout(400);
 
 // --- Lock a link from the service, as the menu item does -------------------
 
-await page.evaluate(() => {
+await inAngular(page, () => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
   c.mechanismSrv.toggleLock(c.mechanismSrv.links.find((l) => l.id === 'BC'));
 });
@@ -154,7 +155,7 @@ const cBeforeToggle = await page.evaluate(
       .getComponent(document.querySelector('app-new-grid'))
       .mechanismSrv.joints.find((j) => j.id === 'C').locked
 );
-await page.evaluate(() => {
+await inAngular(page, () => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
   c.mechanismSrv.toggleLock(c.mechanismSrv.joints.find((j) => j.id === 'C'));
 });
@@ -182,7 +183,7 @@ record(
 // --- One held joint turns a link drag into a swing about it ----------------
 // From a clean slate: exactly one mark, on B.
 
-await page.evaluate(() => {
+await inAngular(page, () => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
   c.mechanismSrv.setAllLocks(false);
   c.mechanismSrv.toggleLock(c.mechanismSrv.joints.find((j) => j.id === 'B'));
@@ -202,7 +203,7 @@ const grab = {
   x: bScreen.x + (cScreen.x - bScreen.x) / 3,
   y: bScreen.y + (cScreen.y - bScreen.y) / 3,
 };
-await page.evaluate(() => {
+await inAngular(page, () => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
   c.activeObjService.updateSelectedObj(c.mechanismSrv.links.find((l) => l.id === 'BC'));
 });
@@ -239,7 +240,7 @@ record('the body kept its length through the swing', Math.abs(lengthAfter - leng
 
 // --- Two held joints leave the body nowhere to go --------------------------
 
-await page.evaluate(() => {
+await inAngular(page, () => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
   c.mechanismSrv.toggleLock(c.mechanismSrv.joints.find((j) => j.id === 'C'));
 });
@@ -259,7 +260,7 @@ record(
 // dragJoint, so dragJoint is where the lock has to hold whoever asks.
 
 const cHeld = await jointModel('C');
-await page.evaluate(() => {
+await inAngular(page, () => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
   c.gridUtils.dragJoint(
     c.mechanismSrv.joints.find((j) => j.id === 'C'),
@@ -281,7 +282,7 @@ record(
 await page.goto(`${BASE}/?${INVERTED_SLIDER_CRANK}`, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
 await page.waitForTimeout(400);
-await page.evaluate(() => {
+await inAngular(page, () => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
   c.mechanismSrv.toggleLock(c.mechanismSrv.joints.find((j) => j.id === 'B'));
 });
@@ -343,7 +344,7 @@ record(
 const carrierBefore = { c: await jointModel('C'), d: await jointModel('D') };
 const cSlot = await jointOnScreen('C');
 const dSlot = await jointOnScreen('D');
-await page.evaluate(() => {
+await inAngular(page, () => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
   c.activeObjService.updateSelectedObj(c.mechanismSrv.links.find((l) => l.id === 'CD'));
 });
@@ -372,7 +373,7 @@ record(
 const marks = () =>
   page.evaluate(() => document.querySelectorAll('.lockBadge, .joint-locked, .link-locked').length);
 
-await page.evaluate(() => {
+await inAngular(page, () => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
   c.tabService.setTab(2); // TabID.ANALYZE
 });
@@ -415,7 +416,7 @@ const jointAt = (id) =>
     return j ? { x: Math.round(j.x * 1e4) / 1e4, y: Math.round(j.y * 1e4) / 1e4 } : null;
   }, id);
 
-await page.evaluate(() => {
+await inAngular(page, () => {
   const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
   const b = grid.mechanismSrv.joints.find((one) => one.id === 'B');
   grid.activeObjService.updateSelectedObj(b);
@@ -434,7 +435,7 @@ record(
 
 const wasA = await jointAt('A');
 const wasB = await jointAt('B');
-await page.evaluate(() =>
+await inAngular(page, () =>
   window.ng
     .getComponent(document.querySelector('app-edit-panel'))
     .linkForm.get('length')
@@ -452,7 +453,7 @@ record('while the free end does', Math.hypot(nowA.x - wasA.x, nowA.y - wasA.y) >
   nowA,
 });
 
-await page.evaluate(() => {
+await inAngular(page, () => {
   const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
   const a = grid.mechanismSrv.joints.find((one) => one.id === 'A');
   grid.activeObjService.updateSelectedObj(a);
@@ -479,7 +480,7 @@ await page.goto(`${BASE}/?${FOUR_BAR}`, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
 await page.locator('.tabButton', { hasText: 'Edit' }).click();
 await page.waitForTimeout(600);
-await page.evaluate(() => {
+await inAngular(page, () => {
   const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
   grid.mechanismSrv.toggleLock(grid.mechanismSrv.joints.find((one) => one.id === 'B'));
 });

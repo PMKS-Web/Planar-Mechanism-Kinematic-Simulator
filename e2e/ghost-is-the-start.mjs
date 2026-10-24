@@ -24,6 +24,7 @@ import { openMechanism } from './app-ready.mjs';
 import { startQuiet } from './quiet-start.mjs';
 import { filmstrip, contactSheet } from './filmstrip.mjs';
 import { ALL_LINKAGES } from './template-payloads.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? process.env.PMKS_URL ?? 'http://localhost:4200';
 const SHOTS = 'artifacts/ghost-is-the-start';
@@ -226,7 +227,8 @@ const drag = async (id, dx, dy) => {
 
 /** Park a machine part way through its cycle, and re-frame so it can be aimed at. */
 const displace = async (index = 0, fraction = 1 / 3) => {
-  await page.evaluate(
+  await inAngular(
+    page,
     ([i, f]) => {
       const srv = window.ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
       srv.seekMechanism(i, srv.mechanisms[i].cyclePeriod * f);
@@ -328,7 +330,7 @@ await scene('a machine off its own start is not "at the start"', async () => {
     { atStart: state.atStart, showGhost: state.showGhost }
   );
   const before = state.machines.map((m) => JSON.stringify(m.sample0));
-  await page.evaluate(() =>
+  await inAngular(page, () =>
     window.ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.updateMechanism()
   );
   await page.waitForTimeout(400);
@@ -374,7 +376,7 @@ await scene('play, pause, edit, undo leaves it there too', async () => {
   // undo by eye was the one nothing said a word about.
   await fresh('Cylinder_Boom');
   await displace();
-  const said = await page.evaluate(() => {
+  const said = await inAngular(page, () => {
     const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
     const srv = grid.mechanismSrv;
     const joint = srv.joints.find((j) => j.id === 'G');
@@ -497,7 +499,8 @@ const STEPS = {
     if (!ids.length) return null;
     const id = ids[Math.floor(r() * ids.length)];
     const which = Math.floor(r() * 4);
-    const ran = await page.evaluate(
+    const ran = await inAngular(
+      page,
       ([id, which]) => {
         const grid = window.ng.getComponent(document.querySelector('app-new-grid'));
         const joint = grid.mechanismSrv.joints.find((j) => j.id === id);

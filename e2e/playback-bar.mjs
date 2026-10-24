@@ -17,6 +17,7 @@ import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
@@ -194,7 +195,8 @@ await page.goto(
 await waitForReady(page);
 const afterReset = [];
 for (const step of [5, 10, 15]) {
-  await page.evaluate(
+  await inAngular(
+    page,
     (at) => ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.animate(at, false),
     step
   );
