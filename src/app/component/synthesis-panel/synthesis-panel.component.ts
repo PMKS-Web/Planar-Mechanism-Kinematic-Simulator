@@ -233,6 +233,16 @@ export class SynthesisPanelComponent implements OnInit, DoCheck, OnDestroy {
     this.subs.push(
       this.poseForm.valueChanges.subscribe((value) => {
         if (this.syncing) return;
+        const [validLength, length] = this.nup.parseLengthString(
+          String(value.length ?? ''),
+          this.settings.lengthUnit.value
+        );
+        if (!validLength || !Number.isFinite(length) || length <= 0) {
+          this.notify.refusal(
+            'synthesis.length',
+            'End-effector link length must be greater than zero.'
+          );
+        }
         this.syncing = true;
         const before = new Set(this.design.getAllPoses().map((pose) => pose.id));
         const applied = this.design.updatePosesFromForm({ ...value, cor: this.corIndex() });
@@ -460,15 +470,23 @@ export class SynthesisPanelComponent implements OnInit, DoCheck, OnDestroy {
         unit
       );
     });
-    if (parsed.some(([ok]) => !ok)) {
+    if (
+      parsed.some(([ok, value]) => !ok || !Number.isFinite(value)) ||
+      parsed[2][1] <= 0 ||
+      parsed[3][1] <= 0
+    ) {
+      this.notify.refusal(
+        'synthesis.region',
+        'Type a valid position and a width and height greater than zero.'
+      );
       this.readFromModel();
       return;
     }
     this.design.region = {
       x: parsed[0][1],
       y: parsed[1][1],
-      w: Math.max(MODEL_SCALE, parsed[2][1]),
-      h: Math.max(MODEL_SCALE, parsed[3][1]),
+      w: parsed[2][1],
+      h: parsed[3][1],
     };
     this.readFromModel();
     this.record();
@@ -1437,7 +1455,7 @@ export class SynthesisPanelComponent implements OnInit, DoCheck, OnDestroy {
     // One commit per press. Each press used to start its own wind-back, so a
     // double-press committed twice -- rebuilding the linkage, and writing two
     // entries into the history for one intention.
-    if (this.windingBack) return;
+    if (this.windingBack || (!force && this.solutionIsOnGrid)) return;
     // Only the first press winds back; the retries from the warning below are
     // already home.
     if (!force && this.solution.phase !== null) {

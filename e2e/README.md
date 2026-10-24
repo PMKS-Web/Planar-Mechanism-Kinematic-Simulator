@@ -526,8 +526,8 @@ Not suites — import them from one.
 
 `force-precision.mjs` compares the actual rendered force against the designer’s selected and entering SVGs, checks resting/hover/selected/entering states for all six force colors, and records a real hover/selection filmstrip. Comparison images and the palette matrix go to `artifacts/force-precision/`; original reference drawings live in `e2e/reference/force/`.
 
-- `bug-fixes-2.mjs` — interaction-audit regressions: synthesis units.
-- `pr33-followups.mjs` — meter-scaled pose chips. Writes screenshots and a unit-change
-  filmstrip to `artifacts/pr33-followups/`.
+- `bug-fixes-2.mjs` — interaction-audit regressions: synthesis units, validation and Undo.
+- `pr33-followups.mjs` — compact synthesis actions and meter-scaled pose chips. Writes screenshots and a
+  unit-change filmstrip to `artifacts/pr33-followups/`.
 
 `template-animations.mjs` also refreshes each selected card's still from its first frame, keeping hover framing identical. Use `ONLY` to regenerate just the intended examples.
