@@ -53,6 +53,8 @@ import {
   toggleClampFixture,
 } from './force-fixtures';
 import { spinningBarFixture, weightedRockerFourBarFixture } from './inertia-fixtures';
+import { drawnIn } from './force-oracle';
+import { oracleSixBar } from './oracle-fixtures';
 import {
   landingGearFixture,
   excavatorBucketFixture,
@@ -211,6 +213,14 @@ export const FIXTURE_GALLERY: GalleryEntry[] = [
     spec: 'force-solver.model-scale.spec.ts',
     floatingSlot: false,
     fixture: weightedRockerFourBarFixture(),
+  },
+  {
+    name: 'Force oracle six-bar',
+    purpose:
+      'Every body held to Newton–Euler from its positions alone, in m, cm and in: the force analysis has to agree',
+    spec: 'force-oracle.spec.ts',
+    floatingSlot: false,
+    fixture: drawnIn(oracleSixBar(), 'cm'),
   },
   {
     name: 'Hydraulic cylinder',

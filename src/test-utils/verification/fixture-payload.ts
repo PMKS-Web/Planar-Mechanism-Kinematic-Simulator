@@ -6,6 +6,7 @@ import { urlGeneratorFor } from '../url-encoding';
 import { Link, RealLink } from '../../app/model/link';
 import { PrisJoint } from '../../app/model/joint';
 import { MODEL_SCALE } from '../../app/model/render-scale';
+import { LengthUnit } from '../../app/model/unit-enums';
 
 /**
  * Turning a fixture into the query string the app opens it from.
@@ -225,6 +226,8 @@ export interface PublishedLoading {
   offsetCom?: Record<string, { between: [string, string]; at: number }>;
 }
 
+const PUBLISHED_LENGTH_UNIT = { m: LengthUnit.METER, cm: LengthUnit.CM, in: LengthUnit.INCH };
+
 /** Whichever of the two input speeds a mechanism actually uses. */
 export interface PublishedSpeed {
   /** Turns per minute, for a mechanism driven at a pin. */
@@ -275,6 +278,9 @@ export function fixturePayload(
     const settings = new SettingsService();
     if (speed.rpm !== undefined) settings.inputSpeed.next(speed.rpm);
     if (speed.unitsPerSecond !== undefined) settings.linearInputSpeed.next(speed.unitsPerSecond);
+    // Only a fixture that names its unit says so in the URL; every other
+    // payload keeps the bytes it has always had.
+    if (fixture.unit) settings.lengthUnit.next(PUBLISHED_LENGTH_UNIT[fixture.unit]);
     return urlGeneratorFor(
       {
         joints: built.joints,

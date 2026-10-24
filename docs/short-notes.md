@@ -725,6 +725,55 @@ suites, the power-balance audit and the slide statics do. Read positions back in
 by `MODEL_SCALE`. The four-decimal rounding the position solver applies is then finer in meters,
 so a torque pinned at a raw build can move in its fourth decimal.
 
+### `auditForces` checks the force solver without borrowing anything from it
+
+`src/tests/verification/force-oracle.spec.ts` holds the force analysis to Newton and Euler with an
+oracle (`test-utils/verification/force-oracle.ts`) that shares nothing with `ForceSolver`. It came
+out of the 200× error #38 fixed, and the second fix of the same error in #42 that merged cleanly on
+top of it and would have divided by 200 twice. It reads only the joint positions the app solved
+and the sample clock. Masses, inertias, centers of mass, loads and *g* come from its own SI
+description (`oracleSixBar`). Unit factors come from its own table, built from the definitions of
+the inch, the pound and the pound-force rather than from `siUnitFactors`. Velocities and
+accelerations come from differencing positions, not from `KinematicsSolver`. The mechanism is
+opened from its URL in m, in cm and in inches, as a reader would open it. Then, on every frame,
+every body's two force equations and one moment equation, the block's equation along its guide,
+and the whole machine's power balance must all close, against the reactions and torque the solver
+reports. For a linkage whose reactions are determined, answers that close every body's equations
+are the only answers, so this is a full check and not a bound.
+
+**It notices scale errors, and the spec proves it on every run.** A solver that mistakes its length
+unit by *k* gives exactly the answers a correct solver gives for the drawing *k* times larger,
+because every moment arm and every m·a scale by *k* while *g*, the masses and the loads do not. So
+the spec hands the oracle the analysis of the drawing stretched by `MODEL_SCALE` and by
+`1 / MODEL_SCALE`, and requires residuals above 0.25. Answers that are right close to 9e-4 (bodies)
+and 4e-3 (power). The stretched answers miss by 0.53 to 1.8. Injecting the real errors into
+`force-solver.ts` gives the same residuals to three figures. Those errors are the extra
+`/ MODEL_SCALE` on every `distanceToM` use, and `MODEL_SCALE` left out of `unitFactors`. Under
+either, all 18 oracle tests fail.
+
+**What it cannot see:**
+
+- **Anything after the solver.** Graph axes, the export, the panels and the unit conversion for
+  display all come later. #38 also removed a compensating `/ MODEL_SCALE` from
+  `AnalysisSampleService`. A display-side error like that is invisible here.
+- **Errors under about 1%.** Positions are rounded to four decimals of a model unit, and the URL
+  rounds coordinates to a thousandth of a user unit. Differencing twice turns that into noise of
+  about 1e-3, and it is worst in meters. That is why the stencil spans four samples (`STRIDE`).
+  Tolerances are 5e-3 for bodies and 2e-2 for power. A wrong constant of a fraction of a percent
+  passes.
+- **Positions.** It believes them. They are what the MATLAB kinematics suites verify.
+- **How to split an indeterminate load.** On shared supports or held-cylinder triangles, every
+  split balances. Frames the solver refuses are skipped, and the spec requires 90% of frames
+  checked.
+- **Other topologies.** One pin-jointed six-bar with one grounded slider. Floating slots, welded
+  compounds, cylinders, force drives, local loads and guide couples are not covered. Nor is the
+  guide's normal force, because only the block's equation along the guide is written. Adding a
+  topology means adding its equations to `auditForces`, not only a fixture.
+
+It also reads the drawing at the stored units every URL in circulation was written in: g and
+kg·cm² in a cm drawing, lbm and lbm·in² in an inch one. If the stored units change, it fails, and
+that is intended, because every saved link would change what it means.
+
 ### A wrong branch is not a limit, and only one of them is worth a shorter step
 
 `solveLookingAhead` in `mechanism.ts` used to read every refusal as the end of the input's

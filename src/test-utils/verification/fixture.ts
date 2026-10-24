@@ -87,6 +87,13 @@ export interface MechanismFixture {
   /** Input speed in rad/s, using the v1 manifest's exact rpm*pi/30 conversion. */
   inputAngVel: number;
   gravity?: boolean;
+  /**
+   * The length system every number above is written in, which also fixes the
+   * mass, inertia and force units the solver reads them in. Meters when left
+   * out, which is what every fixture written before this was solved in; a
+   * published link left without one opens in the app's default, centimeters.
+   */
+  unit?: 'm' | 'cm' | 'in';
 }
 
 /** A constant force applied at a point of `onLink`, in newtons. */
@@ -375,7 +382,7 @@ function buildMechanismNow(
     forces,
     [],
     fixture.gravity ?? false,
-    'm',
+    fixture.unit ?? 'm',
     fixture.inputAngVel,
     // The MATLAB tables are stated one row per degree of crank and compared
     // one to one, so this harness defaults to the grid they are stated on;
