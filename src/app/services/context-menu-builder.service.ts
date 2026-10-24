@@ -1401,7 +1401,7 @@ export class ContextMenuBuilderService {
       // being pressed by hand aiming for the one that takes a part. "Entire"
       // is the word doing the work, and a different glyph is what a reader
       // moving quickly actually reads.
-      label: `Delete entire mechanism${named}`,
+      label: `Delete Entire Mechanism${named}`,
       // A ternary body with the trash as its badge: the same trash as the row
       // above, behind something that is more than one link, so a reader
       // moving quickly reads the difference before the word "entire".
