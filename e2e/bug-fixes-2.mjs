@@ -261,6 +261,7 @@ try {
     'release removes temporary drag traces',
     (await page.locator('#dragTraceHolder path').count()) === 0
   );
+  await page.getByRole('tab', { name: 'Center of mass', exact: true }).click();
   await page.getByRole('button', { name: 'Path', exact: true }).click();
   check(
     'link Path chip agrees with its visible trace',
@@ -282,7 +283,7 @@ try {
   );
   check(
     'phone drawing chips retain their complete labels',
-    chips.length === 4 && chips.every((c) => c.width >= c.content),
+    chips.length === 3 && chips.every((c) => c.width >= c.content),
     chips
   );
   await page.waitForTimeout(200);
