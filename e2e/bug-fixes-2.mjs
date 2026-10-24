@@ -68,6 +68,11 @@ try {
     Math.abs(angle - 89.954) < 0.1,
     angle
   );
+  check(
+    'synthesis Undo is enabled',
+    await page.getByRole('button', { name: 'Undo', exact: true }).isEnabled()
+  );
+  await page.getByRole('switch', { name: 'Ground pins inside a region', exact: true }).click();
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
   await settings();
   const unitsFilm = filmstrip(page, `${OUT}/units`);
@@ -75,6 +80,24 @@ try {
     page.getByRole('button', { name: 'SI (m)', exact: true }).click()
   );
   await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByRole('button', { name: 'Synthesis', exact: true }).click();
+  await enter('Region X', '-0.02');
+  check(
+    'region edits preserve sub-unit dimensions',
+    parseFloat(await field('Region width').inputValue()) < 0.1,
+    await field('Region width').inputValue()
+  );
+  await page.screenshot({ path: `${OUT}/synthesis-si.png` });
+  await load('4-Bar');
+  await page.getByRole('button', { name: 'Synthesis', exact: true }).click();
+  await page.getByRole('button', { name: /Motion — 3 positions/ }).click();
+  const length = field('End-effector Link length');
+  const validLength = await length.inputValue();
+  for (const bad of ['-2', '0']) {
+    await length.fill(bad);
+    await length.press('Tab');
+    check(`synthesis rejects length ${bad}`, (await length.inputValue()) === validLength);
+  }
 } catch (e) {
   console.error(e);
   results.push({ label: 'suite completion', ok: false, detail: String(e) });

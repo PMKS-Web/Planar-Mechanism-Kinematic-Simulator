@@ -967,6 +967,8 @@ check(
     const afterOneUndo = await grid('(g) => g.mechanismSrv.joints.length');
     await panel('(p) => { p.solution.releaseOwnership(); }');
     await page.waitForTimeout(300);
+    if (!(committed === 1 && joints > 0 && afterOneUndo === 0))
+      console.log('Insert history diagnostic', { committed, joints, afterOneUndo });
     return committed === 1 && joints > 0 && afterOneUndo === 0;
   })()
 );
