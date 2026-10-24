@@ -101,8 +101,8 @@ export class EditableTitleComponent {
     this.editMode = true;
   }
 
-  private isAlphanumeric(str: string): boolean {
-    return /^[a-zA-Z0-9]+$/.test(str);
+  private hasValidNameCharacters(str: string): boolean {
+    return /^[a-zA-Z0-9][a-zA-Z0-9 '’()_-]*$/.test(str);
   }
 
   // Check whether new id name is valid
@@ -113,9 +113,9 @@ export class EditableTitleComponent {
       return 'The name cannot be empty.';
     }
 
-    // If new ID is not purely alphanumeric, don't save it
-    if (!this.isAlphanumeric(newID)) {
-      return 'Use one word made of English letters (A–Z) and numbers (0–9).';
+    // Display names may be descriptive phrases; IDs remain separate.
+    if (!this.hasValidNameCharacters(newID)) {
+      return 'Use letters and numbers; spaces, hyphens, underscores, apostrophes, and parentheses are also allowed.';
     }
 
     // Names appear together in selections, graphs, and exported files. Treat

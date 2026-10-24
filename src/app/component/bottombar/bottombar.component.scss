@@ -30,7 +30,14 @@
     font-weight: 400;
     color: var(--text-primary);
 
+    .status {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     .mode {
+      flex-shrink: 0;
       font-weight: 500;
       white-space: nowrap;
     }

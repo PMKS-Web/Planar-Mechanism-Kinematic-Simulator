@@ -2778,7 +2778,7 @@ export class NewGridComponent implements OnDestroy {
   dragArcs(): string[] {
     const dragging =
       this.dragState.joint === jointStates.dragging || this.dragState.link === linkStates.dragging;
-    if (!dragging) return [];
+    if (!dragging || !this.dragState.travelled) return [];
     const joints =
       this.dragState.link === linkStates.dragging
         ? (this.activeObjService.selectedLink?.joints ?? [])

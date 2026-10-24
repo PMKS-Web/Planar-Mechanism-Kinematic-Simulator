@@ -82,7 +82,7 @@ describe('always-on force and weld UI', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Edit Force');
     expect(fixture.nativeElement.textContent).toContain('Force Components');
-    expect(fixture.nativeElement.textContent).toContain('Reference frame');
+    expect(fixture.nativeElement.textContent).toContain('Reference Frame');
 
     // A negative magnitude must not silently erase a load while the field
     // continues to show the rejected number.
