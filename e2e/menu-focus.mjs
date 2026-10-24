@@ -31,6 +31,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { openMechanism, waitForReady } from './app-ready.mjs';
 import { startQuiet } from './quiet-start.mjs';
 import { TEMPLATE_LINKAGES } from './template-payloads.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const OUT = 'artifacts/menu-focus';
 mkdirSync(OUT, { recursive: true });
@@ -364,7 +365,7 @@ const ringInCard = (page) =>
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
   await waitForReady(page);
   await page.waitForTimeout(400);
-  const seal = await page.evaluate(() => {
+  const seal = await inAngular(page, () => {
     const grid = ng.getComponent(document.querySelector('app-new-grid'));
     grid.mechanismSrv.createCylinderFrom({ x: -600, y: 0 }, { x: 600, y: 0 });
     grid.activeObjService.updateSelectedObj(null);

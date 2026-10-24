@@ -16,6 +16,7 @@ const { chromium } = await import(
 );
 import { waitForReady } from './app-ready.mjs';
 import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 
@@ -114,7 +115,7 @@ record(
 const noArrowsYet = await page.evaluate(() => !document.querySelector('#vectorTraceHolder'));
 // Pressed through the element: the chips sit at the bottom of a scrolling
 // panel under a sticky head, where a pointer click can land a row off.
-await page.evaluate(() =>
+await inAngular(page, () =>
   document
     .querySelector('app-analysis-panel app-view-button[data-switch="velocity"] .viewButton')
     .click()
@@ -140,7 +141,7 @@ record(
 const afterFlip = await switches();
 record('and the chip reads as on', afterFlip[1].on === true, afterFlip);
 // Off again, through the menu's own switch: the panel follows the drawing.
-await page.evaluate(() => {
+await inAngular(page, () => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   grid.mechanismSrv.toggleVectorTrace(grid.activeObjService.selectedJoint, 'velocity');
 });
@@ -188,7 +189,7 @@ record(
 // --- and the same rows in Force Analysis ------------------------------------
 await page.locator('.tabButton', { hasText: 'Edit' }).click();
 await page.waitForTimeout(300);
-await page.evaluate(() => {
+await inAngular(page, () => {
   const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
   srv.links.forEach((link) => {
     link.mass = 1;

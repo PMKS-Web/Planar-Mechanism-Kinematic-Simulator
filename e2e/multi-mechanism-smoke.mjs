@@ -16,6 +16,7 @@ import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
@@ -81,7 +82,7 @@ const before = await page.evaluate(() => {
   const box = document.querySelector('#joint_B').getBoundingClientRect();
   return { x: box.x, y: box.y };
 });
-await page.evaluate(() => {
+await inAngular(page, () => {
   const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
   srv.animate(srv.stepAtTime(srv.cyclePeriod() / 2));
 });

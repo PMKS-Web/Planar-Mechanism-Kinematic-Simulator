@@ -26,6 +26,7 @@ const { chromium } = await import(
 );
 import { openMechanism } from './app-ready.mjs';
 import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const OUT = 'artifacts/hover-dimensions';
@@ -76,7 +77,7 @@ async function dimensionsOf(template, select) {
   await openMechanism(page, `${BASE}/?${payload}`);
   await page.locator('.tabButton', { hasText: 'Edit' }).first().click();
   await page.waitForTimeout(600);
-  await page.evaluate(select);
+  await inAngular(page, select);
   await page.waitForTimeout(800);
 
   const fields = page.locator('app-edit-panel .customInputForm');
@@ -161,7 +162,7 @@ record(
   angles.map((one) => one.label)
 );
 
-await page.evaluate(() => {
+await inAngular(page, () => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   grid.settings.angleUnit.next(11); // AngleUnit.RADIAN
 });
@@ -187,11 +188,15 @@ async function memberChipVersusField(which) {
   await openMechanism(page, `${BASE}/?${payloads['Cylinder_Boom']}`);
   await page.locator('.tabButton', { hasText: 'Edit' }).first().click();
   await page.waitForTimeout(600);
-  await page.evaluate((part) => {
-    const grid = ng.getComponent(document.querySelector('app-new-grid'));
-    const one = grid.mechanismSrv.sealedStructures()[0];
-    grid.activeObjService.updateSelectedObj(part === 'barrel' ? one.barrel : one.rod);
-  }, which);
+  await inAngular(
+    page,
+    (part) => {
+      const grid = ng.getComponent(document.querySelector('app-new-grid'));
+      const one = grid.mechanismSrv.sealedStructures()[0];
+      grid.activeObjService.updateSelectedObj(part === 'barrel' ? one.barrel : one.rod);
+    },
+    which
+  );
   await page.waitForTimeout(700);
 
   const seen = {};

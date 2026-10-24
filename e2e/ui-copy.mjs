@@ -20,6 +20,7 @@ import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 import { ALL_LINKAGES as payloads } from './template-payloads.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });
@@ -271,7 +272,7 @@ await page.waitForTimeout(500);
 // start, the way out is the transport rather than the mode. One sentence for
 // both, because the same press clears either and the note used to rewrite
 // itself as the animation ran on and stopped.
-await page.evaluate(() => {
+await inAngular(page, () => {
   const srv = window.ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
   srv.seekMechanism(0, srv.mechanisms[0].cyclePeriod / 3);
 });
