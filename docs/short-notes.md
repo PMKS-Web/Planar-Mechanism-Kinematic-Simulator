@@ -2592,3 +2592,15 @@ riders are pinned to each other as at any other joint.
 A Pin-in-slot riding a slot in a moving link, made Prismatic, counts right and the solver refuses
 it (`swingingBlockFixture`): the rider's angle follows a carrier that is itself unknown. Offered,
 it took a reader from three freedoms to "can't take a first step". `typeFixes` skips it.
+
+### A cover lifts on the fit, not on the render
+
+The boot splash came down one frame after Angular's first render, and the loading overlay with the
+decode. Neither is when the drawing is on screen as the reader should see it: the fit that frames it
+runs a render later (`scaleToFitLinkage` is `afterNextRender` plus a task, and can be queued behind
+a settling panel), and svg-pan-zoom applies its matrix on the frame after that. Until then the view
+is svg-pan-zoom's own -- `fit: true` over the whole SVG, a zoom near 475 -- or, behind the overlay,
+the old drawing's. `SvgGridService.framed()` resolves `firstFramed` and any `nextFramed()` from a
+rAF registered after the library's, so the frame that paints next carries the fitted matrix. The
+splash's removal timer starts in a rAF too: a fit is often followed by a long task (the grid
+redrawn at its new zoom), and a 220 ms timer started before it expired inside it and cut the fade.
