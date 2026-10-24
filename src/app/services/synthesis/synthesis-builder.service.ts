@@ -6,6 +6,7 @@ import { NumberUnitParserService } from '../number-unit-parser.service';
 import { SettingsService } from '../settings.service';
 import { MODEL_SCALE } from 'src/app/model/render-scale';
 import { CandidateSearch, PosePoint } from './synthesis-candidates';
+import { AngleUnit } from '../../model/unit-enums';
 
 /*
 Service responsible for storing end-effector poses to be synthesized
@@ -301,7 +302,11 @@ export class SynthesisBuilderService {
       edits.push({
         index: i,
         position: new Coord(maybeX, maybeY),
-        thetaDegrees: maybeTheta,
+        thetaDegrees: this.nup.convertAngle(
+          maybeTheta,
+          this.settings.angleUnit.value,
+          AngleUnit.DEGREE
+        ),
         fresh: !defined,
       });
     }
@@ -496,6 +501,7 @@ export class SynthesisBuilderService {
     // inserted machine as moved by hand.
     this.ownedAt = this.ownedAt.map((at) => ({ x: at.x * scale, y: at.y * scale }));
     this._length = this._length * scale;
+    this.getAllPoses().forEach((pose) => pose.recompute());
     this.valueChanges.next(true);
   }
 
