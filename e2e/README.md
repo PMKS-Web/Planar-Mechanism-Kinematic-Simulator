@@ -298,17 +298,6 @@ Not suites — import them from one.
   machine. A filmstrip of the running body goes to `artifacts/cylinder-frozen-body/` with
   `running-sheet.png` beside it; the head must not drift along the bore and the fused outline must
   stay one body.
-- `cylinder-held.mjs` — the maintainer's drawing from decision S28: three cylinders in a triangle
-  with one corner on a bar out to a driven grounded pin. Nothing drives the rams, so each holds the
-  length it was drawn at and the count a reader is shown is the machine's **1** rather than the
-  drawing's 3. It opens the published fixture cold, checks the kinematic chip reads ready, reads
-  the drawer's note (which cylinders, at what length, and how to make one extend), plays the cycle
-  and samples it — the triangle has to stay a triangle and every head stay where it is along its
-  own bore — opens the panels for a barrel, a rod and a slide, checks the drawer says *why* the
-  triangle's forces cannot be split (the same thing its bars would say), finds the **Holding
-  Force** row and a number for it on the determinate *Four-bar on a held cylinder*, switches the
-  input off (the blocker must become "Nothing drives this mechanism", never a count of freedoms)
-  and then switches one on at a ram instead. Filmstrip in `artifacts/cylinder-held/`.
 - `cylinder-members.mjs` — a cylinder as three selectables: the square is joint S, lettered and
   draggable along its own axis; each member selects and outlines itself; a member drag still
   carries the whole part; an old payload's seal opens with a letter. Then the panels each piece

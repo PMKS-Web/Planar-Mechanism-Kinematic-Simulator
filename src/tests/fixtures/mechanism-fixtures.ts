@@ -188,7 +188,7 @@ export function buildMechanismFixture(payload: string): MechanismFixture {
   };
   // The document-wide gate on Force Analysis, which the force switch quotes.
   // Nothing in these fixtures is left unset, so the harness says so.
-  service.forceAnalysisRequirements = () => [];
+  service.forceSetupIssues = () => [];
   service.isVectorTraceOn = MechanismService.prototype.isVectorTraceOn.bind(service);
   service.toggleVectorTrace = MechanismService.prototype.toggleVectorTrace.bind(service);
   service.vectorTraceRefusal = MechanismService.prototype.vectorTraceRefusal.bind(service);

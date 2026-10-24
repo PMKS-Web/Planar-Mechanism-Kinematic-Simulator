@@ -183,6 +183,40 @@ const clickable = await page.evaluate(
 );
 record('and is not clickable', clickable === 'none', { clickable });
 
+// --- Reset lands on the start exactly ----------------------------------------
+// A slider's cycle can be a tenth of a second. Eased back from its first half,
+// the clock came to rest a few tenths of a microsecond short of zero, and the
+// edit gate called the mechanism "parked away from its start" right after
+// Reset. The drawing is the one it was reported on.
+await page.goto(
+  `${BASE}/?2v.Ay,1E8.5,0.1011.4A,A,0_Y,0EV,0.0B,B,0f5,Mh,0.BC,C,CT,bO,0,DEF,D,E.4D,D,6G,ku,0.8E,E,Ti,Ay,0.0F,F,02P,07b,0..ARAB,AB,0,0,0pp,46,c5cae9,A,B,,.ARBC,BC,0,0,0EK,U1,303e9f,B,C,,.ARDEF,DEF,0,0,Fq,FJ,00695C,D,E,F,,DE,EF.aRDE,DE,0,0,H_,Sw,00695C,D,E,,.aREF,EF,0,0,Df,1h,c5cae9,E,F,,...N_X*2gW7L9`
+);
+await waitForReady(page);
+const afterReset = [];
+for (const step of [5, 10, 15]) {
+  await page.evaluate(
+    (at) => ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.animate(at, false),
+    step
+  );
+  await page.waitForTimeout(200);
+  await page
+    .locator('app-playback-bar button', { hasText: /^stop$/ })
+    .first()
+    .click();
+  await page.waitForTimeout(600);
+  afterReset.push(
+    await page.evaluate(() => {
+      const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
+      return { atStart: srv.isAtStartPose(), seconds: srv.secondsOf(0) };
+    })
+  );
+}
+record(
+  'Reset from the first half of a short cycle is at the start',
+  afterReset.every((one) => one.atStart && one.seconds === 0),
+  afterReset
+);
+
 record('nothing threw', errors.length === 0, errors.slice(0, 3));
 
 await browser.close();

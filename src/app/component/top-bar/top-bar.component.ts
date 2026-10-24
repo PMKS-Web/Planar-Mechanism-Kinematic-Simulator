@@ -430,8 +430,8 @@ export class TopBarComponent implements AfterViewInit, AfterViewChecked, OnDestr
       // Split rather than filtered away: what is unmet and not a warning stops
       // the analysis, and what is only a warning still has to reach the chip or
       // a mechanism with something odd about it reads as clear.
-      const outstanding = this.mechanism.forceAnalysisRequirements().filter((r) => !r.met);
-      const missing = outstanding.filter((r) => !r.warning).length;
+      const outstanding = this.mechanism.forceSetupIssues();
+      const missing = outstanding.filter((issue) => issue.severity === 'blocker').length;
       // Gray, where kinematics would be red. Forces are the one analysis a
       // reader can legitimately never want: a mechanism with no masses and no
       // loads is not a broken mechanism, it is one nobody has asked this

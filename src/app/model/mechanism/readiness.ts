@@ -1,34 +1,44 @@
 import { Joint, PrisJoint, RealJoint } from '../joint';
-import { Link } from '../link';
-import { cylindersIn } from '../cylinder';
-import { describeFrozenCylinderStroke, isFrozenCylinder } from '../cylinder-frozen';
-import { visibleBodyName } from '../body-label';
-import { canDrive } from '../actuator';
-import { MODEL_SCALE } from '../render-scale';
+import { Cylinder, cylindersIn } from '../cylinder';
+import { frozenCylinderAtSeal, isFrozenCylinder } from '../cylinder-frozen';
+import {
+  actuatorOrRefusal,
+  ActuatorRefusal,
+  canDrive,
+  groundPinsElsewhere,
+  isFrameBar,
+  meetingHere,
+} from '../actuator';
+import {
+  capitalized,
+  cylinderRef,
+  jointRef,
+  linkRef,
+  listOf,
+  nameOf,
+  PartRef,
+  Prose,
+  prose,
+  sliderRef,
+} from '../prose';
 import { Mechanism, MechanismFailure } from './mechanism';
-import { MechanismPartition, UnassignedGeometry } from './mechanism-partition';
+import { MechanismPartition } from './mechanism-partition';
 import { assignBodies } from './bodies';
-import { cylinderHoldOrder, describeHeldCylinders } from './cylinder-hold';
-
-/**
- * A blocker stops the mechanism running at all. A warning means it runs, and
- * there is something about the result worth knowing before trusting it. A note
- * means it runs and the app did something worth saying out loud -- nothing is
- * wrong, so it is drawn plainly and counted by neither chip.
- */
-export type CheckState = 'blocker' | 'warning' | 'note';
-
-export interface ReadinessCheck {
-  state: CheckState;
-  /** A short sentence-case phrase naming the situation. */
-  title: string;
-  /** What is wrong and what to do about it. */
-  body: string;
-  /** The part at fault, so the panel can offer to go to it. */
-  at?: Joint | Link;
-  /** Title Case, because it labels a button. */
-  action?: string;
-}
+import { diagnoseMobility, Drawing } from './free-motion';
+import { inputOnTheFrame } from './readiness-situations';
+import { joinAcross } from './join-machines';
+import { unweldingDrives } from './mobility-fixes';
+import {
+  besideIssueOf,
+  joinIssue,
+  drivenOwnJoint,
+  fixesFrom,
+  looseIssue,
+  overConstrained,
+  stuckIssue,
+  tooFree,
+} from './mobility-sentences';
+import { SetupIssue } from './setup-issue';
 
 /** A named number about a mechanism, for the overview grid. */
 export interface MechanismFact {
@@ -41,21 +51,25 @@ export interface MechanismFact {
 export interface MechanismReadiness {
   id: string;
   ready: boolean;
-  checks: ReadinessCheck[];
+  /** What stands in the way, in the order a reader should work down it. */
+  checks: SetupIssue[];
   /** What this mechanism *is*, for a reader whose question is not "why is it broken". */
   facts: MechanismFact[];
 }
 
-/** The two strings only the service can produce, passed in rather than reached for. */
+/** What only the service can measure, passed in rather than reached for. */
 export interface ReadinessHelpers {
-  /** What to call a cylinder identified by its slider joint's id. */
-  cylinderName(sliderId: string): string;
-  /** Why this mechanism's driven joint cannot be driven, if it cannot. */
-  drivenRefusal(partition: MechanismPartition): string | undefined;
-  /** The cylinder-cannot-use-its-whole-stroke warning for this mechanism. */
-  strokeWarning(partition: MechanismPartition): string | undefined;
+  /** A cylinder in this mechanism that the mechanism stops short of its stroke, and how far it gets. */
+  strokeWarning(partition: MechanismPartition): { cylinder: Cylinder; percent: number } | undefined;
   /** This mechanism's input speed, in the units the panel shows it in. */
   describeSpeed(partition: MechanismPartition): string;
+  /**
+   * The whole drawing, where the caller has it. A machine sees only its own
+   * joints and links, and the commonest mistakes -- two joints dropped beside
+   * each other, a moving joint grounded, a link deleted -- are exactly the ones
+   * that split one linkage into several machines.
+   */
+  drawing?(): Drawing;
 }
 
 /**
@@ -66,28 +80,21 @@ export interface ReadinessHelpers {
  * marker, no hitbox and no letter anyone can read (D14, S11). Naming it, or
  * counting it, offers a joint the drawing never draws.
  */
-const shown = (joints: readonly Joint[], from: readonly Joint[] = joints): Joint[] => {
+export const shown = (joints: readonly Joint[], from: readonly Joint[] = joints): Joint[] => {
   const buried = new Set(cylindersIn([...from]).map((cylinder) => cylinder.inner.id));
   return joints.filter((joint) => !buried.has(joint.id));
 };
 
-const names = (joints: Joint[]): string =>
-  joints.map((joint) => (joint as RealJoint).name || joint.id).join(', ');
-
 /**
- * The joint of *this machine* the reader has switched Driven Input on for.
+ * The joint the reader set as this machine's input: its own, or one on a frame
+ * bar it hangs from, which is set even though it cannot turn anything.
  *
- * `ownJoints` rather than everything the partition was handed, and the reason
- * is that `ownJoints` is exactly the set `Mechanism` was given as
- * `ownJointIds`: it clears `input` on every copy outside that set, so this list
- * and the solver's answer are two readings of one fact. A machine solved
- * against a frame piece it shares with a neighbor is handed that neighbor's
- * driven pin in `joints`, and reading *that* would make "nothing drives this
- * mechanism" unsayable for a machine which genuinely has no drive of its own.
+ * Asked by every surface that would otherwise say "set an input" -- the
+ * playback row, the facts under the list -- because the one thing those
+ * sentences must never do is ask for an input the reader can see.
  */
-function drivenOwnJoint(partition: MechanismPartition): RealJoint | undefined {
-  return partition.ownJoints.find((joint) => joint instanceof RealJoint && joint.input) as
-    RealJoint | undefined;
+export function inputSetFor(partition: MechanismPartition): RealJoint | undefined {
+  return drivenOwnJoint(partition) ?? inputOnTheFrame(partition)?.joint;
 }
 
 /**
@@ -99,32 +106,87 @@ function drivenOwnJoint(partition: MechanismPartition): RealJoint | undefined {
  * carrying no failure at all. Either way the reader is looking at a red chip,
  * and the old code put nothing under it.
  *
- * So it says what *is* known rather than apologizing: the mobility the count
- * came to, which joint drives it, and one thing to try. "Nothing to report" is
- * not a finding, and neither is an error code.
+ * So it says what *is* known rather than apologizing: the count, and two
+ * things to try. "Nothing to report" is not a finding, and neither is an
+ * error code.
  */
-function unexplainedBlocker(partition: MechanismPartition, mechanism: Mechanism): ReadinessCheck {
-  const driven = drivenOwnJoint(partition);
+function unexplainedIssue(partition: MechanismPartition, mechanism: Mechanism): SetupIssue {
   const dof = mechanism.dof;
-  const freedoms = Number.isFinite(dof)
-    ? `${dof} ${Math.abs(dof) === 1 ? 'degree' : 'degrees'} of freedom`
-    : 'no ground to move against';
-  const drive = driven
-    ? `has its input at joint ${driven.name || driven.id}`
-    : 'has no input joint';
+  const driven = drivenOwnJoint(partition);
+  const count = `${dof} ${Math.abs(dof) === 1 ? 'degree' : 'degrees'} of freedom`;
   return {
-    state: 'blocker',
-    title: 'This mechanism could not be solved',
-    body:
-      `It has ${freedoms} and ${drive}, and no motion came out of the pose it starts in. ` +
-      'Drag a joint to start it somewhere else, or undo the last change and make it a step at a time.',
-    at: driven,
-    action: driven ? 'Go To Joint' : undefined,
+    severity: 'blocker',
+    title: "The mechanism couldn't be solved",
+    summary: !Number.isFinite(dof)
+      ? prose`Nothing is grounded, and nothing moved from the drawn pose.`
+      : driven
+        ? prose`The input is ${jointRef(driven)} and the count is ${dof}, but nothing moved.`
+        : prose`The count is ${count}, but nothing moved from the drawn pose.`,
+    explain:
+      'Sometimes a drawing counts right and still gives no motion from where it starts. A different starting pose often gets it going.',
+    fixes: [
+      prose`Drag a joint to change the starting pose`,
+      prose`Undo the last change and make it in smaller steps`,
+    ],
+  };
+}
+
+/** A slider with no slot and no ground: one issue, naming every one of them. */
+function danglingIssue(partition: MechanismPartition): SetupIssue {
+  const dangling = partition.joints.filter(
+    (joint) => joint instanceof PrisJoint && joint.isDangling
+  );
+  const refs = dangling.map(sliderRef);
+  const one = refs.length === 1;
+  return {
+    severity: 'blocker',
+    title: one
+      ? `Slider ${nameOf(dangling[0])} has no slot`
+      : `Sliders ${dangling.map(nameOf).join(', ')} have no slot`,
+    summary: prose`With no slot and no ground, ${listOf(refs)} ${one ? 'has' : 'have'} no direction to move in.`,
+    explain:
+      'A slider moves along a line, either a slot cut into a link or a fixed direction on the ground.',
+    fixes: one
+      ? [
+          prose`Drag ${refs[0]} onto a link to cut a slot`,
+          prose`Ground ${refs[0]} to fix its direction`,
+        ]
+      : [
+          prose`Drag each slider onto a link to cut a slot`,
+          prose`Ground each slider to fix its direction`,
+        ],
   };
 }
 
 /**
- * The one blocker a named failure earns, worst first.
+ * A joint of this machine that could take the input: pointed at, so the fix is
+ * an answer rather than a place to start looking.
+ */
+function inputCandidate(partition: MechanismPartition): RealJoint | undefined {
+  return shown(partition.ownJoints, partition.joints).find(
+    (joint): joint is RealJoint => joint instanceof RealJoint && canDrive(joint)
+  );
+}
+
+/** A machine nobody has set an input on. */
+function noInputIssue(partition: MechanismPartition): SetupIssue {
+  const candidate = inputCandidate(partition);
+  return {
+    severity: 'blocker',
+    title: NO_INPUT_SET,
+    summary: prose`Nothing drives the motion yet.`,
+    explain:
+      "The input is the one joint the animation moves directly, and the rest follows. It's usually a grounded joint at the end of a crank.",
+    fixes: [
+      candidate
+        ? prose`Add Input to ${jointRef(candidate)}`
+        : prose`Ground a joint, then Add Input to it`,
+    ],
+  };
+}
+
+/**
+ * The one issue a named failure earns.
  *
  * **The switch is exhaustive on purpose.** `default` narrows `failure` to
  * `never`, so adding a member to `MechanismFailure` without a sentence for it
@@ -132,94 +194,49 @@ function unexplainedBlocker(partition: MechanismPartition, mechanism: Mechanism)
  * fallback stands behind that for a value the types cannot see -- an older
  * saved state, a string from outside.
  */
-function blockerForFailure(
+function issueForFailure(
   failure: MechanismFailure,
   partition: MechanismPartition,
   mechanism: Mechanism,
   helpers: ReadinessHelpers
-): ReadinessCheck {
-  switch (failure) {
-    case 'dangling-slider': {
-      const dangling = partition.joints.filter(
-        (joint) => joint instanceof PrisJoint && joint.isDangling
-      );
-      return {
-        state: 'blocker',
-        title: 'A slider has nothing to slide along',
-        body: `Slider ${names(dangling)} has no slot and no ground, so there is no direction for it to move in. Drag it onto a link to cut a slot, or ground it to fix its direction.`,
-        at: dangling[0],
-        action: 'Go To Slider',
-      };
+): SetupIssue {
+  // One linkage drawn as two machines: a joint dropped beside the one it was
+  // meant for, a link never drawn between them. That is the mistake whatever
+  // the count, the solver or the missing input make of it, and every other fix
+  // would make one of them run as something nobody drew -- so where one edit
+  // joins the two into a machine that runs, it is said instead.
+  if (['mobility', 'dead-position', 'hidden-freedom', 'not-driven'].includes(failure)) {
+    const drawing = helpers.drawing?.();
+    const join = drawing && joinAcross(partition, drawing);
+    if (join) {
+      const alone = failure === 'not-driven' ? inputCandidate(partition) : undefined;
+      return joinIssue(join, partition, alone && prose`Add Input to ${jointRef(alone)}`);
     }
+  }
+  const cylinders = cylindersIn(partition.joints);
+  switch (failure) {
+    case 'dangling-slider':
+      return danglingIssue(partition);
 
     case 'mobility': {
       const dof = mechanism.dof;
       if (Number.isNaN(dof)) {
+        const slides = partition.joints.some((joint) => joint instanceof PrisJoint);
         return {
-          state: 'blocker',
-          title: 'Nothing holds this mechanism in place',
-          body: 'It has no ground, so every part of it is free to drift. Ground a joint, or ground a slider’s guide.',
+          severity: 'blocker',
+          title: 'Nothing is grounded',
+          summary: prose`No joint is grounded, so the whole mechanism can drift.`,
+          explain:
+            'A mechanism moves against the ground. At least one joint has to be grounded to hold it in place.',
+          fixes: [
+            prose`Ground a joint, such as a crank's pivot`,
+            ...(slides ? [prose`Ground a slider to fix its direction`] : []),
+          ],
         };
       }
-      if (dof > 1) {
-        // Point at the loose ends when there are any: a joint on one link with
-        // no ground is a freedom the reader can see. Only on a *binary* link,
-        // though — a third joint riding a link that already has two is a tracer
-        // point, and a tracer adds no freedom worth sending anyone to.
-        //
-        // Through `shown`, because a barrel's buried end is a joint of one
-        // binary bar and nothing else: it matched this filter on every drawing
-        // with a cylinder, and the sentence offered a letter the drawing never
-        // draws (S20). It is also the wrong advice about one, which is what the
-        // cylinder clause below says instead.
-        const freeEnds = shown(
-          partition.ownJoints.filter(
-            (joint) =>
-              joint instanceof RealJoint &&
-              !(joint instanceof PrisJoint) &&
-              !joint.ground &&
-              joint.links.length === 1 &&
-              joint.links[0].joints.length <= 2
-          ),
-          partition.joints
-        );
-        // A cylinder whose length nothing decides is a freedom too, and a more
-        // useful one to be told about: the way out is to drive it, not to
-        // ground something (decision S28).
-        const loose = cylindersIn(partition.joints).filter((cylinder) =>
-          mechanism.looseCylinderSeals.has(cylinder.seal.id)
-        );
-        return {
-          state: 'blocker',
-          title: `This mechanism has ${dof} degrees of freedom`,
-          body:
-            `One input controls only one degree of freedom. Ground another joint, or connect a free joint to a second link, until this reads 1.` +
-            (loose.length > 0
-              ? ` ${loose.length === 1 ? 'Cylinder' : 'Cylinders'} ${loose
-                  .map((cylinder) => cylinderHoldOrder(cylinder))
-                  .join(', ')} ${
-                  loose.length === 1 ? 'is' : 'are'
-                } free to change length, which is one of those freedoms — switch on Driven Input at the joint inside ${loose.length === 1 ? 'it' : 'one of them'} to drive it.`
-              : '') +
-            (freeEnds.length > 0
-              ? ` ${freeEnds.length === 1 ? 'Joint' : 'Joints'} ${names(freeEnds)} ${
-                  freeEnds.length === 1 ? 'hangs' : 'hang'
-                } on only one link — free ends like that are where extra freedom usually lives.`
-              : ''),
-          at: freeEnds[0],
-          action: freeEnds.length > 0 ? 'Go To Joint' : undefined,
-        };
-      }
-      const welded = partition.ownJoints.some(
-        (joint) => joint instanceof RealJoint && joint.isWelded
-      );
-      return {
-        state: 'blocker',
-        title: `This mechanism has ${dof} degrees of freedom`,
-        body:
-          'It is over-constrained, so nothing can move at all. Remove a link, or unground a joint, until this reads 1.' +
-          (welded ? ' A weld also removes freedom — unwelding a joint is another way out.' : ''),
-      };
+      return dof > 1
+        ? tooFree(dof, partition, helpers.drawing?.())
+        : overConstrained(dof, partition, helpers.drawing?.());
     }
 
     case 'not-driven': {
@@ -229,64 +246,88 @@ function blockerForFailure(
       // drawing is what the reader sees, and if it has a driven joint then
       // whatever went wrong is not that. Telling somebody to switch on the
       // input they have already switched on is how this was reported.
-      const alreadyDriven = drivenOwnJoint(partition);
-      if (alreadyDriven) return unexplainedBlocker(partition, mechanism);
-      // Point at a joint that could actually take the job, so the button is an
-      // answer rather than a place to start looking. Through `shown`, like
-      // every other list here: a joint the reader has never been offered is no
-      // answer at all, whatever the actuator model makes of it (S20).
-      const candidate = shown(partition.ownJoints, partition.joints).find(
-        (joint) => joint instanceof RealJoint && canDrive(joint)
-      );
-      return {
-        state: 'blocker',
-        title: 'No input is set',
-        body: candidate
-          ? `There is no time to solve against until one joint is set as the input. Right-click joint ${(candidate as RealJoint).name || candidate.id} and set it as the input.`
-          : 'There is no time to solve against until one joint is set as the input. Right-click a grounded joint and set it as the input.',
-        at: candidate,
-        action: candidate ? 'Go To Joint' : undefined,
-      };
+      if (drivenOwnJoint(partition)) return unexplainedIssue(partition, mechanism);
+      return noInputIssue(partition);
     }
 
     case 'cylinder-has-no-travel': {
-      const id = mechanism.unusableCylinder;
-      const subject = id ? `Cylinder ${helpers.cylinderName(id)}` : 'This cylinder';
+      const cylinder = cylinders.find((one) => one.seal.id === mechanism.unusableCylinder);
+      if (!cylinder) return unexplainedIssue(partition, mechanism);
+      const name = cylinderRef(cylinder);
       return {
-        state: 'blocker',
-        title: 'A cylinder has no travel',
-        body: `${subject} has a barrel too short for its rod to slide in at all. Increase Barrel Length to provide room for the piston to travel.`,
+        severity: 'blocker',
+        title: `${capitalized(name.label)} has no travel`,
+        summary: prose`The barrel of ${name} is too short for the rod to slide.`,
+        explain:
+          "A cylinder extends by sliding its rod along inside its barrel. With no room inside, it can't extend at all.",
+        fixes: [prose`Increase the Length of ${linkRef(cylinder.barrel, cylinders)}`],
       };
     }
 
-    case 'dead-position':
+    case 'dead-position': {
+      // An input whose part cannot move at all reads to the solver exactly
+      // like one at a limit, and no drag frees it; the geometry tells the two
+      // apart, and says whether there is a limit here at all.
+      const diagnosis = diagnoseMobility(partition, helpers.drawing?.());
+      if (diagnosis.stuck) return stuckIssue(diagnosis.stuck, diagnosis, partition, mechanism.dof);
+      const beside = besideIssueOf(diagnosis);
+      if (beside) return beside;
+      const driven = drivenOwnJoint(partition);
+      if (driven && diagnosis.inputStart === 'clear') {
+        // Not a limit, and both of the solver's routes have been asked: the
+        // drawing moves and the input drives it, and the failure is the
+        // solver's. Said so, rather than sending anyone to drag off a limit
+        // that is not there.
+        return {
+          severity: 'blocker',
+          title: "The mechanism can't take a first step",
+          summary: prose`The drawing can move and ${jointRef(driven)} drives it, but no first step works.`,
+          explain:
+            'The animation solves the motion one small step at a time from the drawn pose. Now and then a pose that can move still gives no first step.',
+          fixes: [prose`Add Input to another joint`],
+        };
+      }
+      const mover = driven && diagnosis.inputStart === 'limit' ? diagnosis.mover : undefined;
       return {
-        state: 'blocker',
-        title: 'This mechanism starts at a dead position',
-        body: 'The input joint is at a limit of its travel and cannot turn away from it in either direction. Drag a joint to move the mechanism off the limit.',
+        severity: 'blocker',
+        title: 'Starts at a limit',
+        summary: driven
+          ? prose`The input at ${jointRef(driven)} starts exactly at the end of its travel.`
+          : prose`The input starts at the end of its travel and can't move either way.`,
+        explain:
+          "At a limit, two links line up and the input can't move either way. The animation needs to start a little short of it.",
+        fixes: [
+          mover
+            ? prose`Drag ${jointRef(mover)} a little way off the limit`
+            : prose`Drag a joint a little way off the limit`,
+        ],
       };
+    }
 
     case 'hidden-freedom': {
-      const ways = mechanism.hiddenFreedoms ?? 2;
-      return {
-        state: 'blocker',
-        title: 'A part of this mechanism is tied to nothing',
-        body: `It counts as one degree of freedom, but the drawing can move in ${ways} independent ways: some part is held by nothing but its own joints, so the input alone cannot say where it goes. Attach its free end, ground it, or remove it.`,
-      };
+      const diagnosis = diagnoseMobility(partition, helpers.drawing?.());
+      if (diagnosis.stuck) return stuckIssue(diagnosis.stuck, diagnosis, partition);
+      const beside = besideIssueOf(diagnosis);
+      if (beside) return beside;
+      return looseIssue(mechanism.hiddenFreedoms ?? 2, diagnosis, partition);
     }
 
     case 'cycle-never-closes': {
       const gap = mechanism.cycleGap;
+      const known = gap !== undefined && Number.isFinite(gap);
+      const near = known && gap < 0.5;
       return {
-        state: 'blocker',
+        severity: 'blocker',
         title: 'The motion never repeats',
-        body:
-          'This mechanism never comes back to the pose it started in, so there is no cycle to animate.' +
-          (gap !== undefined && Number.isFinite(gap)
-            ? gap < 0.5
-              ? ` The closest it comes is ${gap.toFixed(2)} units away — a loop that only just fails to close usually has a link length slightly off.`
-              : ` The closest it comes is ${gap.toFixed(1)} units away — the motion wanders rather than repeating. Check the link lengths.`
-            : ' Check the link lengths — a loop that only just closes can wander instead of repeating.'),
+        summary: !known
+          ? prose`The mechanism never returns to the pose it started in.`
+          : near
+            ? prose`The mechanism comes within ${gap.toFixed(2)} ${mechanism.unit} of its start pose but never returns.`
+            : prose`The mechanism wanders and never comes closer than ${gap.toFixed(1)} ${mechanism.unit} to its start pose.`,
+        explain: near
+          ? 'Animation needs a cycle. A loop that only just misses closing usually has one link length slightly off.'
+          : "Animation needs a cycle that returns to its start. A mechanism that wanders usually has a link length that doesn't fit its loop.",
+        fixes: [prose`Check the link lengths`],
       };
     }
 
@@ -295,38 +336,196 @@ function blockerForFailure(
         partition.ownJoints.filter((joint) => mechanism.unreachableJoints.includes(joint.id)),
         partition.joints
       );
+      const refs = unreachable.map(jointRef);
       return {
-        state: 'blocker',
-        title: 'Nothing moves when the input turns',
-        body:
-          unreachable.length > 0
-            ? `The solver never finds a position for ${
-                unreachable.length === 1 ? 'joint' : 'joints'
-              } ${names(unreachable)} — the input joint cannot reach ${
-                unreachable.length === 1 ? 'it' : 'them'
-              } through the links. Check the connections between the input and ${
-                unreachable.length === 1 ? 'that joint' : 'those joints'
-              }.`
-            : 'The input joint cannot reach the rest of the mechanism, so no other joint has a position to solve for. Check that it is connected through links to the parts you expect it to move.',
-        at: unreachable[0],
-        action: unreachable.length > 0 ? 'Go To Joint' : undefined,
+        severity: 'blocker',
+        title:
+          refs.length === 1
+            ? `The input can't reach joint ${nameOf(unreachable[0])}`
+            : refs.length > 1
+              ? "The input can't reach some joints"
+              : 'The input moves nothing',
+        summary: refs.length
+          ? prose`No position was found for ${listOf(refs)} as the input moves.`
+          : prose`No other joint gets a position when the input moves.`,
+        explain:
+          "The input moves the links on its own joint, and those move the next ones. A joint with no chain of links back to the input can't be placed.",
+        fixes: [
+          refs.length
+            ? prose`Check the links between the input and ${refs[0]}`
+            : prose`Check that the input's link joins the rest`,
+        ],
       };
     }
 
     case 'solver-error':
       // The solve threw, so there is no finding to report -- only what the
       // drawing itself says, which is exactly what the fallback is made of.
-      return unexplainedBlocker(partition, mechanism);
+      return unexplainedIssue(partition, mechanism);
 
     default: {
       // Exhaustive: a new `MechanismFailure` with no sentence of its own lands
       // here and fails the build, which is the whole point of the assignment.
       const unhandled: never = failure;
       void unhandled;
-      return unexplainedBlocker(partition, mechanism);
+      return unexplainedIssue(partition, mechanism);
     }
   }
 }
+
+/**
+ * The input set on a link grounded at its other end too. Said the same way
+ * whether the partition gave the joint to this machine or to none.
+ */
+function inputOnFrameIssue(joint: RealJoint, partition: MechanismPartition): SetupIssue {
+  const cylinders = cylindersIn(partition.joints);
+  const pins = [...new Set(joint.links.flatMap((link) => groundPinsElsewhere(link, joint)))].map(
+    jointRef
+  );
+  const links = joint.links.map((link) => linkRef(link, cylinders));
+  return {
+    severity: 'blocker',
+    title: `Input at joint ${nameOf(joint)} can't turn`,
+    summary:
+      links.length === 1
+        ? prose`${links[0]} is also grounded at ${listOf(pins)}, so it can't move.`
+        : prose`Every link on ${jointRef(joint)} is also grounded at ${listOf(pins)}.`,
+    explain:
+      "A link grounded at two joints is part of the frame. It can't move, so an input on it has nothing to turn.",
+    fixes: pins.slice(0, 3).map((pin) => prose`Turn off Grounded for ${pin}`),
+  };
+}
+
+/**
+ * A driven joint the actuator model refuses, said from the kind of refusal so
+ * each gets its own fact and its own fixes. `instead` is a joint that could
+ * take the input, where the drawing has one.
+ */
+function refusedInputIssue(
+  driven: RealJoint,
+  refusal: ActuatorRefusal,
+  partition: MechanismPartition,
+  instead: RealJoint | undefined
+): SetupIssue {
+  const joint = jointRef(driven);
+  const moveInput = instead ? [prose`Add Input to ${jointRef(instead)}`] : [];
+  const twoMeet =
+    'An input turns one link against another link or the ground. It has to sit where exactly two of them meet.';
+  const base = {
+    severity: 'blocker' as const,
+    title: `Joint ${nameOf(driven)} can't be the input`,
+  };
+  switch (refusal) {
+    case 'welded':
+      return {
+        ...base,
+        summary: prose`${joint} is welded, so the links it joins can't move against each other.`,
+        explain:
+          'An input makes two links move against each other. A weld locks them together, so there is nothing for the input to turn.',
+        // Revolute only where it is counted: a knee welded on purpose turns
+        // freely once unwelded, and the input was meant for another joint.
+        fixes: unweldingDrives(partition, driven)
+          ? [prose`Set ${joint} to Revolute`, ...moveInput]
+          : moveInput.length
+            ? moveInput
+            : [prose`Add Input to a grounded joint`],
+      };
+    case 'frozen-cylinder': {
+      const cylinder = frozenCylinderAtSeal(driven)!;
+      const welded = cylinder.barrelRoot.id === cylinder.rodRoot.id;
+      const ends = [jointRef(cylinder.mountA), jointRef(cylinder.mountB)];
+      return {
+        ...base,
+        summary: prose`Both end joints of ${cylinderRef(cylinder)} are on one link, so it can't extend.`,
+        explain:
+          "A cylinder drives by changing the distance between its two end joints. With both on one link, that distance can't change.",
+        fixes: [
+          ...(welded ? ends.map((end) => prose`Set ${end} to Revolute`) : []),
+          ...moveInput,
+        ].slice(0, 3),
+      };
+    }
+    case 'frame':
+      return inputOnFrameIssue(driven, partition);
+    case 'one-body':
+      return {
+        ...base,
+        summary: prose`Only one link meets at ${joint}, so it has nothing to turn against.`,
+        explain: twoMeet,
+        fixes: moveInput.length ? moveInput : [prose`Add Input to a grounded joint`],
+      };
+    case 'many-bodies':
+      return {
+        ...base,
+        summary: prose`${meetingHere(driven)} meet at ${joint}, so the input can't pick a pair.`,
+        explain: twoMeet,
+        fixes: moveInput.length ? moveInput : [prose`Add Input where exactly two links meet`],
+      };
+    case 'no-angle':
+      return {
+        ...base,
+        summary: prose`${joint} is on a slider's block, a single point with no angle to turn.`,
+        explain:
+          "An angle needs a direction on each side of the joint. A slider's block is a single point, so it gives none.",
+        fixes: moveInput.length ? moveInput : [prose`Add Input at the other end of its link`],
+      };
+    case 'not-a-joint':
+      return {
+        ...base,
+        summary: prose`Only a joint can be an input.`,
+        explain: twoMeet,
+        fixes: moveInput,
+      };
+  }
+}
+
+/**
+ * The input's pivot holding more than one link to turn, with the counted edit
+ * that leaves it one.
+ */
+function tangledInputIssue(
+  driven: RealJoint,
+  partition: MechanismPartition,
+  fixes: Prose[]
+): SetupIssue {
+  const cylinders = cylindersIn(partition.joints);
+  const onPivot = driven.links.filter((link) => !isFrameBar(link));
+  const refs = onPivot.map((link) => linkRef(link, cylinders));
+  return {
+    severity: 'blocker',
+    title: `Joint ${nameOf(driven)} has ${onPivot.length} links to turn`,
+    summary: prose`The input can't tell whether to turn ${orList(refs)}.`,
+    explain:
+      "An input turns one link against the ground. With more than one link on its joint, it can't say which one should move.",
+    fixes,
+  };
+}
+
+/** "link AB or link AC", "link AB, link AC or link AD". */
+function orList(refs: PartRef[]): Prose {
+  const pieces: (string | PartRef)[] = [];
+  refs.forEach((ref, index) => {
+    if (index > 0) pieces.push(index === refs.length - 1 ? ' or ' : ', ');
+    pieces.push(ref);
+  });
+  return prose`${pieces}`;
+}
+
+/**
+ * The title of the one blocker that is about setup rather than about the
+ * drawing: a machine nobody has set an input on. The playback row says the
+ * generic setup hint for it and a count of fixes for everything else.
+ */
+export const NO_INPUT_SET = 'No input is set';
+
+/**
+ * What the solver asks before it solves anything, in this order, stopping at
+ * the first that fails: a slot for every slider, one degree of freedom, an
+ * input. Each can be read off the drawing, so more than one can be said at
+ * once -- except the count beside a slider with nothing to slide along, which
+ * the slot is part of.
+ */
+const BEFORE_THE_SOLVE = new Set<MechanismFailure>(['dangling-slider', 'mobility']);
 
 /**
  * Everything standing between one mechanism and its animation, worst first.
@@ -342,8 +541,9 @@ export function readinessOf(
   mechanism: Mechanism,
   helpers: ReadinessHelpers
 ): MechanismReadiness {
-  const checks: ReadinessCheck[] = [];
-  const add = (check: ReadinessCheck) => checks.push(check);
+  const checks: SetupIssue[] = [];
+  const add = (check: SetupIssue) => checks.push(check);
+  const cylinders = cylindersIn(partition.joints);
 
   // Asked first, and asked even of a mechanism the solver accepted: the toggle
   // refuses a joint it cannot describe, but nothing stops a later edit taking
@@ -355,31 +555,58 @@ export function readinessOf(
   // move, fails somewhere downstream and reports that: "Nothing moves when the
   // input turns" is true of such a drawing and tells the reader to go and check
   // connections that are perfectly sound. So where the drive itself is refused,
-  // that refusal is the whole of the answer and the failure's own sentence is
-  // left out rather than stacked on top of it.
-  const refusal = helpers.drivenRefusal(partition);
+  // what the solve found downstream of it is left out rather than stacked on
+  // top of the refusal.
   const driven = drivenOwnJoint(partition);
-  if (refusal) {
-    add({
-      state: 'blocker',
-      title: 'This joint cannot be an input',
-      body: refusal,
-      at: driven,
-      action: driven ? 'Go To Joint' : undefined,
-    });
+  const onFrame = driven ? undefined : inputOnTheFrame(partition);
+  const found = driven ? actuatorOrRefusal(driven) : undefined;
+  const refusal = typeof found === 'string' ? found : undefined;
+  if (onFrame) add(inputOnFrameIssue(onFrame.joint, partition));
+  // A third body on the input's pivot is usually one link too many, drawn from
+  // it: say which, counted, rather than only that there are three.
+  const untangle =
+    refusal && driven ? (diagnoseMobility(partition, helpers.drawing?.()).untangle ?? []) : [];
+  if (refusal && driven) {
+    if (untangle.length) {
+      add(tangledInputIssue(driven, partition, fixesFrom(untangle, partition)));
+    } else {
+      // Otherwise a joint that could take the input instead, where one can: an
+      // input on a coupler point or a lone slider is the input on the wrong
+      // joint, and the reader should not have to find the right one.
+      const instead = partition.ownJoints.find(
+        (joint): joint is RealJoint =>
+          joint !== driven && joint instanceof RealJoint && joint.ground && canDrive(joint)
+      );
+      add(refusedInputIssue(driven, refusal, partition, instead));
+    }
   }
 
   const failure = mechanism.failure;
-  if (refusal) {
-    // The cause is already stated.
+  if (refusal || onFrame) {
+    // The cause is already stated, of anything the solve found after it. A
+    // slot with nothing to slide along, or a count that is wrong, is not the
+    // input's doing, and is said beside it -- unless the refusal's own fix is
+    // counted, and so already mends the count, or the input is on the frame.
+    if (!onFrame && !untangle.length && failure && BEFORE_THE_SOLVE.has(failure)) {
+      add(issueForFailure(failure, partition, mechanism, helpers));
+    }
   } else if (failure !== undefined) {
-    add(blockerForFailure(failure, partition, mechanism, helpers));
+    add(issueForFailure(failure, partition, mechanism, helpers));
+    // The solver stops at the first of these it finds, and a missing input does
+    // not wait on the other two: said together, not one after another.
+    if (
+      BEFORE_THE_SOLVE.has(failure) &&
+      !driven &&
+      !joinAcross(partition, helpers.drawing?.() ?? { joints: [], links: [] })
+    ) {
+      add(issueForFailure('not-driven', partition, mechanism, helpers));
+    }
   } else if (!mechanism.isMechanismValid()) {
     // Invalid and carrying no reason. Nothing produces this today, and `ready`
     // read it as "not ready" with an empty list underneath -- a red chip with
     // nothing to act on, which is the state this blocker exists to make
     // impossible.
-    add(unexplainedBlocker(partition, mechanism));
+    add(unexplainedIssue(partition, mechanism));
   }
 
   // Said before the stroke warning, and instead of it: a cylinder frozen inside
@@ -387,37 +614,46 @@ export function readinessOf(
   // linkage binding on it (decision S25). It is not binding on anything; it is
   // the shape the reader welded.
   const { bodyOf } = assignBodies(partition.joints, partition.links);
-  const cylinders = cylindersIn(partition.joints);
   cylinders
     .filter((cylinder) => isFrozenCylinder(cylinder, bodyOf))
-    .forEach((cylinder) =>
-      add({
-        state: 'warning',
-        title: 'A cylinder cannot extend',
-        body: describeFrozenCylinderStroke(cylinder),
-      })
-    );
+    .forEach((cylinder) => add(frozenCylinderIssue(cylinder)));
 
-  // And the other reason a cylinder does not stroke: nothing drives it and the
-  // machine does not move it, so it is holding the length it was drawn at and
-  // the mobility above is the machine's rather than the drawing's (decision
-  // S28). A note, because nothing is wrong -- but said, because a reader who
-  // expected a cylinder to telescope would otherwise think the solver is
-  // broken. Before the stroke warning for the same reason as the one above:
-  // a ram holding its length uses none of its travel because it is not being
-  // asked to.
-  // Named in the order a reader would read the list in, which is the order the
-  // rule itself decides them in -- not the order the drawing stores its joints.
-  const holding = cylinders
-    .filter((cylinder) => mechanism.heldCylinderSeals.has(cylinder.seal.id))
-    .sort((a, b) => cylinderHoldOrder(a).localeCompare(cylinderHoldOrder(b)));
-  if (holding.length > 0) {
-    add({ state: 'note', ...describeHeldCylinders(holding, mechanism.unit, MODEL_SCALE) });
+  // One input drives one freedom, and the solver takes the first it finds.
+  // A second is ignored without a word, which reads as the app choosing for
+  // the reader; saying which one runs is what makes the choice theirs.
+  const inputs = partition.joints.filter(
+    (joint): joint is RealJoint =>
+      joint instanceof RealJoint && joint.input && partition.ownJoints.includes(joint)
+  );
+  if (inputs.length > 1) {
+    const [used, ...ignored] = inputs;
+    add({
+      severity: 'warning',
+      title:
+        inputs.length === 2
+          ? 'Two joints are set as the input'
+          : `${inputs.length} joints are set as the input`,
+      summary: prose`The mechanism runs from ${jointRef(used)} and ignores ${listOf(ignored.map(jointRef))}.`,
+      explain:
+        'One input drives one degree of freedom. The mechanism uses the first input it finds and ignores the rest.',
+      fixes: ignored.slice(0, 3).map((joint) => prose`Remove Input from ${jointRef(joint)}`),
+    });
   }
 
-  const stroke = holding.length > 0 ? undefined : helpers.strokeWarning(partition);
+  const stroke = helpers.strokeWarning(partition);
   if (stroke) {
-    add({ state: 'warning', title: 'A cylinder cannot use its whole stroke', body: stroke });
+    const name = cylinderRef(stroke.cylinder);
+    add({
+      severity: 'warning',
+      title: `${capitalized(name.label)} uses ${stroke.percent}% of its stroke`,
+      summary: prose`The mechanism locks up before ${name} reaches the end of its travel.`,
+      explain:
+        'A cylinder can only extend as far as the mechanism lets it. If the mechanism locks up first, the rest of the stroke is never used.',
+      fixes: [
+        prose`Decrease the Length of ${linkRef(stroke.cylinder.barrel, cylinders)}`,
+        prose`Give the mechanism more room to move`,
+      ],
+    });
   }
 
   // Only a mechanism that needed cutting finer has one of these, and needing it
@@ -425,22 +661,44 @@ export function readinessOf(
   // moved further than a linkage should move in one frame.
   if (mechanism.hasAddedSamples) {
     add({
-      state: 'warning',
-      title: 'The linkage passes through a toggle',
-      body:
-        'Somewhere in the cycle this mechanism reaches a position where a very small movement of ' +
-        'the input produces a very large one at the output — a toggle, or dead-center. The motion ' +
-        'there is solved at a finer step so it can be animated smoothly, but it is genuinely fast: ' +
-        'velocities and accelerations near that point are large and change quickly, and a real ' +
-        'linkage built to this drawing would be hard to control through it.',
+      severity: 'warning',
+      title: 'Passes through a toggle',
+      summary: prose`Near dead-center, a small input move gives a large output move.`,
+      explain:
+        'At a toggle, two links line up and the input has almost no leverage over the output. Clamps use this on purpose.',
+      fixes: [],
+      note: 'Nothing to change. Expect sharp peaks in the velocity and acceleration graphs.',
     });
   }
 
   return {
     id: partition.id,
-    ready: mechanism.isMechanismValid() && checks.every((check) => check.state !== 'blocker'),
+    ready: mechanism.isMechanismValid() && checks.every((check) => check.severity !== 'blocker'),
     checks,
     facts: factsOf(partition, mechanism, helpers),
+  };
+}
+
+/**
+ * A cylinder frozen inside one body (decision S25): a warning rather than a
+ * blocker, because the mechanism runs perfectly well, and the only thing worth
+ * knowing is that the part a reader drew as a cylinder is behaving as a shape.
+ */
+function frozenCylinderIssue(cylinder: Cylinder): SetupIssue {
+  const name = cylinderRef(cylinder);
+  const welded = cylinder.barrelRoot.id === cylinder.rodRoot.id;
+  return {
+    severity: 'warning',
+    title: `${capitalized(name.label)} can't extend`,
+    summary: prose`Both end joints of ${name} are on one rigid piece.`,
+    explain:
+      'A cylinder moves by changing the distance between its two end joints. On one rigid piece that distance stays fixed, which is fine for a part meant to be solid.',
+    fixes: welded
+      ? [
+          prose`Set ${jointRef(cylinder.mountA)} to Revolute`,
+          prose`Set ${jointRef(cylinder.mountB)} to Revolute`,
+        ]
+      : [prose`Remove a link that holds its two ends together`],
   };
 }
 
@@ -458,9 +716,10 @@ function factsOf(
 ): MechanismFact[] {
   // Its own, not everything it is handed: a shared frame piece carries the
   // neighbor's driven pin along with it, and naming that as this machine's
-  // "Driven joint" pointed the reader at a joint in another mechanism.
-  const driven = partition.ownJoints.find((joint) => joint instanceof RealJoint && joint.input) as
-    RealJoint | undefined;
+  // "Driven joint" pointed the reader at a joint in another mechanism. An
+  // input on a frame bar that belongs to nobody is this machine's, though, and
+  // "Not set" beside its arrow is the sentence the blocker above replaced.
+  const driven = inputSetFor(partition);
   const moving = partition.links.length;
   const dof = mechanism.dof;
   const facts: MechanismFact[] = [
@@ -486,81 +745,4 @@ function factsOf(
     });
   }
   return facts;
-}
-
-/** One condition force analysis needs, and whether the drawing meets it. */
-export interface ForceRequirement {
-  met: boolean;
-  /**
-   * Unmet-but-not-blocking: the analysis runs anyway, and the row is worth
-   * reading before trusting the numbers. Warnings do not gate readiness and
-   * are not counted by the "N to set" chips.
-   */
-  warning?: boolean;
-  /** A short sentence-case phrase naming the condition. */
-  title: string;
-  /** Met: what is true. Unmet: what is missing, and how to supply it. */
-  body: string;
-  /**
-   * A fix the panel can carry out itself, where there is one.
-   *
-   * Turning gravity back on is the only one so far, and only where it settles
-   * the matter on its own. The other ways out of an unloaded drawing -- attach
-   * a force, give a body mass -- are a gesture on the canvas and a row in the
-   * table directly below, and a button here would stand in for neither.
-   */
-  act?: 'gravity';
-}
-
-export interface UnassignedReport {
-  /** The part at fault, so the panel can offer to go to it. */
-  at?: Joint;
-  title: string;
-  body: string;
-}
-
-/**
- * What to say about geometry that is in no mechanism.
- *
- * Split by cause, because the two have different ways out: a floating chain
- * needs grounding, a joint on its own needs connecting.
- */
-export function describeUnassigned(unassigned: UnassignedGeometry): UnassignedReport[] {
-  const reports: UnassignedReport[] = [];
-  // Every joint this report can reach, so the cylinders among them can be
-  // resolved: a cylinder is looked up from its seal, and the seal is not
-  // always on the body being named. What that buys is the buried inner end
-  // left out of these sentences, as it is left out of every other (D14, S11).
-  const around = [
-    ...unassigned.floatingChains.flatMap((chain) => chain.joints),
-    ...unassigned.looseJoints,
-    ...unassigned.fixedLinks.flatMap((link) => link.joints),
-  ];
-  const cylinders = cylindersIn(around);
-
-  unassigned.floatingChains.forEach((chain) => {
-    const sorted = shown(chain.joints, around).sort((a, b) => a.id.localeCompare(b.id));
-    reports.push({
-      at: sorted[0],
-      title: `Joints ${names(sorted)} never reach ground`,
-      body: 'Nothing anchors this chain, so there is nothing for it to move against and no position to solve for. Ground one of its joints to make it a mechanism.',
-    });
-  });
-
-  unassigned.fixedLinks.forEach((link) => {
-    reports.push({
-      title: `Link ${visibleBodyName(link, cylinders)} is fixed at both ends`,
-      body: 'Every joint on it is grounded, so it is part of the frame and nothing about it can move. Unground one of its joints to make it a mechanism, or leave it as a fixed reference.',
-    });
-  });
-
-  unassigned.looseJoints.forEach((joint) => {
-    reports.push({
-      at: joint,
-      title: `Joint ${(joint as RealJoint).name || joint.id} has no link`,
-      body: 'A joint on its own is not part of any mechanism and is skipped by analysis. Attach a link to it, or delete it.',
-    });
-  });
-
-  return reports;
 }

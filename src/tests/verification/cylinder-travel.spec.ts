@@ -322,7 +322,7 @@ describe('a ram bigger than the machine it drives', () => {
     urls.updateFromURL(fixturePayload(overRammedBoom()), false, true, false);
     const warning = mechanism.cylinderReachWarning();
     expect(warning, 'a ram that outruns its linkage should say so').toBeDefined();
-    expect(warning).toContain('% of its stroke');
+    expect(warning!.percent).toBeLessThan(100);
     // Warned about, not clamped: the mechanism still runs, and every number it
     // reports is right. Clamping would silently resize a part the user sized
     // and hide the one thing worth knowing.
