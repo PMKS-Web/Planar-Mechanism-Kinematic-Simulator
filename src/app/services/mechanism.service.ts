@@ -1631,7 +1631,7 @@ export class MechanismService {
 
   /** True where anything at all is switched on, for the canvas's own guard. */
   get anyVectorTrace(): boolean {
-    return this.vectorTraceKeys.size > 0;
+    return this.vectorTraceKeys.size > 0 && this.vectorTracePaths().length > 0;
   }
 
   private vectorKey(part: Joint | Link, quantity: VectorQuantity): string {
