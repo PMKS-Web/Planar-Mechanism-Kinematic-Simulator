@@ -177,15 +177,16 @@ export class AnalysisGraphSectionComponent {
   /**
    * The row's number: what the plot's chosen series read right now.
    *
-   * The pair as "x, y" and a magnitude on its own, so the closed row already
-   * says what the open one would draw.
+   * The pair as "(x, y)" and a magnitude on its own, so the closed row already
+   * says what the open one would draw. Bare, "3.2, -1.5" read as two numbers
+   * rather than as one point.
    */
   get readout(): string {
     const preview = this.preview;
     if (!preview.length) return '';
     if (preview.length === 1) return preview[0].text;
     if (preview.length === 3 && this.mode === 'mag') return preview[2].text;
-    return `${preview[0].text}, ${preview[1].text}`;
+    return `(${preview[0].text}, ${preview[1].text})`;
   }
 
   /** The two halves of the split, held so the pill is not handed a new array each pass. */
