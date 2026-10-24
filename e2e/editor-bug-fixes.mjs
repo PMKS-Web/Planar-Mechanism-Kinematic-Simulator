@@ -161,6 +161,7 @@ try {
     'the first link graph starts expanded',
     (await page.locator('.graphHeader').first().getAttribute('aria-expanded')) === 'true'
   );
+  await page.getByRole('tab', { name: 'Center of mass', exact: true }).click();
   await page.locator('app-view-button[data-switch="traces"] button').click();
   check(
     'a massless primitive link has a CoM path and mark',

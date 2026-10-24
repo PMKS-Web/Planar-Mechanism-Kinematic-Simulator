@@ -148,6 +148,7 @@
   /* A bare or icon button under the pointer. Translucent, unlike
      --surface-hover, because the button may sit on any surface. */
   --hover-wash: rgba(0, 0, 0, 0.04);
+  --tab-hover: rgba(0, 0, 0, 0.03);
   /* The same button while pressed, or a row that is active. */
   --press-wash: rgba(0, 0, 0, 0.06);
   /* The edge of a keycap drawn in a tooltip or a menu row. */
