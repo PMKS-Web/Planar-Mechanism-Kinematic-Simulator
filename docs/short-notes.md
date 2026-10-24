@@ -2192,6 +2192,9 @@ The final force designer SVG uses the same proportions at every zoom: a 9-unit s
 
 After a second click, `selectedLink` is a primitive absent from the root link array. A root-only index lookup made Delete silently return. Release that primitive through the existing compound split operation, remove forces anchored to it, and prune only its newly unlinked joints. Deletion previews must check surviving primitive membership rather than the compound’s old joint union. The HI/IJ reproduction is covered through keyboard Delete, panel Delete, and Undo in `e2e/force-frame.mjs`; a unit test preserves the remaining multi-member weld and its force.
 
+- **An Angular template guard must see the same pruned trace state as its child.** `anyVectorTrace`
+  checked a Set before `vectorTracePaths()` removed deleted parts; the next verification pass saw
+  the guard change and raised NG0100. Resolve the cached paths before returning the guard.
 - **Synthesis length conversion must finish before recomputing pose endpoints.** Moving centers
   before converting the shared length leaves endpoint caches in the old unit even though fields
   look right. Recompute after both are converted.

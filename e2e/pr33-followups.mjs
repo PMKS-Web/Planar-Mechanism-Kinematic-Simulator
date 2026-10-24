@@ -34,6 +34,13 @@ async function openExport() {
 }
 
 await openMechanism(page, BASE);
+const mouseHelp = await page.locator('#editWrapper .helpHints').innerText();
+check(
+  'desktop help names only right-click',
+  /Right-click/.test(mouseHelp) && !/press and hold/i.test(mouseHelp),
+  mouseHelp
+);
+
 await page.getByRole('button', { name: 'Synthesis', exact: true }).click();
 await page.getByRole('button', { name: /Motion — 3 positions/ }).click();
 await enter('Position 1 X', '1 cm');
@@ -88,6 +95,67 @@ check(
 );
 await page.screenshot({ path: `${OUT}/meter-positions.png` });
 await contactSheet(`${OUT}/meter-film/*-switch.png`, `${OUT}/meter-film.png`, 4);
+
+await openMechanism(page, `${BASE}/?${payloads['4-Bar']}`);
+await page.locator('#linkHolder path').nth(1).click({ force: true });
+await page.getByRole('button', { name: /Kinematic Analysis/ }).click();
+await openExport();
+const exportPanel = page.locator('app-export-panel');
+await exportPanel.getByRole('button', { name: 'Select All', exact: true }).click();
+await exportPanel.getByRole('button', { name: 'Next', exact: true }).click();
+await exportPanel.getByRole('button', { name: 'Select None', exact: true }).click();
+const noForceHint = await exportPanel.locator('.quantityHint').innerText();
+check(
+  'kinematics-only export hint does not suggest returning to kinematics',
+  noForceHint === 'Select at least one quantity to export.',
+  noForceHint
+);
+const componentRow = await exportPanel.locator('.barRow--components').evaluate((host) => {
+  const name = host.querySelector('.settingName').getBoundingClientRect();
+  const pick = host.querySelector('segmented-block').getBoundingClientRect();
+  return {
+    label: host.querySelector('.settingName').textContent.trim(),
+    sameLine: Math.abs(name.top - pick.top) < 12,
+    fits: host.scrollWidth <= host.clientWidth + 1,
+  };
+});
+check(
+  'export components and choices share one line',
+  componentRow.label === 'Components' && componentRow.sameLine && componentRow.fits,
+  componentRow
+);
+await page.screenshot({ path: `${OUT}/export-components.png` });
+
+await openMechanism(page, `${BASE}/?${payloads['Punch_Press']}`);
+await page.getByRole('button', { name: /Kinematic Analysis/ }).click();
+await openExport();
+await exportPanel.getByRole('button', { name: 'Select All', exact: true }).click();
+await exportPanel.getByRole('button', { name: 'Next', exact: true }).click();
+await exportPanel.getByRole('button', { name: 'Select None', exact: true }).click();
+await exportPanel.getByRole('button', { name: 'Next', exact: true }).click();
+await exportPanel.getByRole('button', { name: 'Select None', exact: true }).click();
+const forceHint = await exportPanel.locator('.quantityHint').innerText();
+check(
+  'force export alone explains the route back to kinematic quantities',
+  /go back to choose kinematic quantities/.test(forceHint),
+  forceHint
+);
+
+const touch = await browser.newContext({
+  viewport: { width: 900, height: 800 },
+  isMobile: true,
+  hasTouch: true,
+});
+await startQuiet(touch);
+const tablet = await touch.newPage();
+await openMechanism(tablet, BASE);
+const touchHelp = await tablet.locator('#editWrapper .helpHints').innerText();
+check(
+  'wide touch device names only press and hold',
+  /Press and hold/.test(touchHelp) && !/Right-click/.test(touchHelp),
+  touchHelp
+);
+await touch.close();
 
 check('no browser errors', errors.length === 0, errors);
 await context.close();
