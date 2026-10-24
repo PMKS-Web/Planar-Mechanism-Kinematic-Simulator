@@ -89,9 +89,12 @@ export class SettingsPanelComponent implements OnDestroy {
             const block = this.globalUnits().nativeElement as HTMLElement;
             const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
             block.scrollIntoView({ block: 'nearest', behavior: still ? 'auto' : 'smooth' });
-            block
-              .querySelector<HTMLButtonElement>('button[aria-pressed="true"], button')
-              ?.focus({ preventScroll: true });
+            // Two lookups, not one selector list: a list matches in page order,
+            // so it handed back the first option rather than the chosen one.
+            const chosen =
+              block.querySelector<HTMLButtonElement>('button[aria-pressed="true"]') ??
+              block.querySelector<HTMLButtonElement>('button');
+            chosen?.focus({ preventScroll: true });
           },
           wasFolded ? 200 : 0
         );
