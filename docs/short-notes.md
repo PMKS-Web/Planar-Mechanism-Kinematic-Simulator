@@ -2191,3 +2191,11 @@ The final force designer SVG uses the same proportions at every zoom: a 9-unit s
 ### Delete must address a selected primitive through its owning compound
 
 After a second click, `selectedLink` is a primitive absent from the root link array. A root-only index lookup made Delete silently return. Release that primitive through the existing compound split operation, remove forces anchored to it, and prune only its newly unlinked joints. Deletion previews must check surviving primitive membership rather than the compound’s old joint union. The HI/IJ reproduction is covered through keyboard Delete, panel Delete, and Undo in `e2e/force-frame.mjs`; a unit test preserves the remaining multi-member weld and its force.
+
+- **Synthesis length conversion must finish before recomputing pose endpoints.** Moving centers
+  before converting the shared length leaves endpoint caches in the old unit even though fields
+  look right. Recompute after both are converted.
+- **Scale synthesis chip outlines with the SVG viewport.** Chip circles and text already use
+  `scaleWithZoom`, but a CSS `stroke-width: 1` stays in model units. Switching from centimeters to
+  meters then magnifies each white outline into a large halo. Bind the stroke width through
+  `scaleWithZoom(1)` on the SVG circle so it stays about one screen pixel in every unit.

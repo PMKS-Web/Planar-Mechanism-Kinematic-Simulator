@@ -1,3 +1,4 @@
+import { AngleUnit } from '../../model/unit-enums';
 import { NumberDragDirective } from '../../directives/number-drag.directive';
 import { SegmentedComponent } from '../BLOCKS/segmented/segmented.component';
 import { ChipComponent } from '../BLOCKS/chip/chip.component';
@@ -385,7 +386,11 @@ export class SynthesisPanelComponent implements OnInit, DoCheck, OnDestroy {
   }
 
   private angleText(degrees: number): string {
-    return this.nup.formatValueAndUnit(degrees, this.settings.angleUnit.getValue());
+    const unit = this.settings.angleUnit.value;
+    return this.nup.formatValueAndUnit(
+      this.nup.convertAngle(degrees, AngleUnit.DEGREE, unit),
+      unit
+    );
   }
 
   /** A model length in the reader's own unit, to two places, without a unit. */

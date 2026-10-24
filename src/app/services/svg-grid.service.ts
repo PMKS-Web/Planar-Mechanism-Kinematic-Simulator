@@ -197,13 +197,15 @@ export class SvgGridService {
 
   private panLockOut: boolean = false;
 
-  // The same visual range as the old 3300/0.04, divided by MODEL_SCALE: model
-  // coordinates are 200x larger, so the matrix is 200x smaller for the same
-  // picture. Keeping MAX_ZOOM at ~16.5 is the guarantee that the compositor's
-  // white-streak failure regime (matrix scale ≳450; verified clean at ≤11.3)
-  // can never be zoomed into again.
-  private MAX_ZOOM: number = 16.5;
-  private MIN_ZOOM: number = 0.0002;
+  // Unit conversion changes model coordinates, so it must change the allowed
+  // zoom by the reciprocal factor too. Otherwise Fit clamps an SI drawing to
+  // one hundredth of its intended screen size.
+  private get MAX_ZOOM(): number {
+    return 16.5 * LENGTH_IN_CM[this.settingsService.lengthUnit.value];
+  }
+  private get MIN_ZOOM(): number {
+    return 0.0002 * LENGTH_IN_CM[this.settingsService.lengthUnit.value];
+  }
 
   setNewElement(root: HTMLElement) {
     var eventsHandler;
