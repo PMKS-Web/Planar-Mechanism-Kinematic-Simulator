@@ -20,6 +20,7 @@ const playwright = await import(
 const { chromium } = playwright;
 import { waitForReady } from './app-ready.mjs';
 import { filmstrip, contactSheet } from './filmstrip.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const OUT = 'artifacts/link-holds';
@@ -310,7 +311,7 @@ await page.waitForTimeout(350);
 await clickRow('Fixed Length');
 // Lock C so BC's far end is fixed: B is then between two held lengths from two
 // fixed points, a rigid triangle.
-await page.evaluate(() => {
+await inAngular(page, () => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
   c.mechanismSrv.toggleLock(c.mechanismSrv.joints.find((j) => j.id === 'C'));
 });
@@ -356,7 +357,7 @@ await page.waitForTimeout(150);
 
 // --- Undo takes the last hold off: the hold rides the URL ------------------
 
-await page.evaluate(() => {
+await inAngular(page, () => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
   c.mechanismSrv.toggleLock(c.mechanismSrv.joints.find((j) => j.id === 'C'));
 });
@@ -372,7 +373,7 @@ record('and AB still holds its length', (await holdOf('AB')) === 'length');
 
 // --- One locked end keeps the padlocks, and a typed length solves about it --
 
-await page.evaluate(() => {
+await inAngular(page, () => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
   c.mechanismSrv.toggleLock(c.mechanismSrv.joints.find((j) => j.id === 'A'));
   c.activeObjService.updateSelectedObj(c.mechanismSrv.links.find((l) => l.id === 'AB'));
@@ -403,7 +404,7 @@ record(
     aAfterTyping.y === aLocked.y,
   { aLocked, aAfterTyping, bAfterTyping }
 );
-await page.evaluate(() => {
+await inAngular(page, () => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
   c.mechanismSrv.toggleLock(c.mechanismSrv.joints.find((j) => j.id === 'A'));
 });
@@ -411,7 +412,7 @@ await page.waitForTimeout(300);
 
 // --- A locked link still takes new parts from its menu ----------------------
 
-await page.evaluate(() => {
+await inAngular(page, () => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
   c.mechanismSrv.toggleLock(c.mechanismSrv.links.find((l) => l.id === 'CD'));
 });
@@ -429,7 +430,7 @@ record(
 );
 await page.keyboard.press('Escape');
 await page.waitForTimeout(150);
-await page.evaluate(() => {
+await inAngular(page, () => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
   c.mechanismSrv.toggleLock(c.mechanismSrv.links.find((l) => l.id === 'CD'));
 });

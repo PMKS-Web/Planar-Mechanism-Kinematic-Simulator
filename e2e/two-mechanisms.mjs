@@ -16,6 +16,7 @@ import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
+import { inAngular } from './in-angular.mjs';
 
 /** Two four-bars side by side, each with its own drive: one drawing, two clocks. */
 const TWO_FOUR_BARS =
@@ -49,7 +50,7 @@ await waitForReady(page);
  * than importing the classes: this runs in the page, where the modules are not
  * addressable by name.
  */
-await page.evaluate(() => {
+await inAngular(page, () => {
   const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
   const seedJoint = srv.joints[0];
   const seedLink = srv.links[0];
@@ -149,7 +150,7 @@ record(
 );
 
 // --- the setup drawer accounts for both -------------------------------------
-await page.evaluate(() => {
+await inAngular(page, () => {
   const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
   srv.joints.filter((j) => j.id === 'E').forEach((j) => (j.input = false));
   srv.updateMechanism();
@@ -195,7 +196,7 @@ const shapeOf = (target) =>
   });
 
 const asDrawn = await shapeOf(page);
-await page.evaluate(() => {
+await inAngular(page, () => {
   const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
   srv.setSyncMechanisms(false);
   srv.seekMechanism(1, srv.mechanisms[1].cyclePeriod * 0.25);

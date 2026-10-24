@@ -22,6 +22,7 @@ const { chromium } = await import(
 );
 import { openMechanism, waitForReady } from './app-ready.mjs';
 import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const OUT = 'artifacts/force-units';
@@ -133,7 +134,7 @@ await page.locator('#settingsWrapper').screenshot({ path: `${OUT}/settings-metri
 // ---- The panel reads the same number in the new unit -------------------------
 // Selected through the service, because a force's arrow is a drag handle and a
 // click aimed at one is a gesture; what is being checked is the field's text.
-await page.evaluate(() => {
+await inAngular(page, () => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   grid.mechanismSrv.activeObjService.updateSelectedObj(grid.mechanismSrv.forces[0]);
 });
@@ -154,7 +155,7 @@ record(
 );
 
 // And a number typed in kilograms-force is stored as the newtons it is worth.
-const typed = await page.evaluate(() => {
+const typed = await inAngular(page, () => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   const panel = ng.getComponent(document.querySelector('app-edit-panel'));
   panel.forceForm.controls['magnitude'].setValue('2');
@@ -192,7 +193,7 @@ record(
 // not, so a reader measuring in cm read a moment in meters, a hundredth of the
 // number the drawing was actually saying.
 const torqueCaption = async () => {
-  await page.evaluate(() => {
+  await inAngular(page, () => {
     const grid = ng.getComponent(document.querySelector('app-new-grid'));
     const driven = grid.mechanismSrv.joints.find((joint) => joint.input);
     grid.mechanismSrv.activeObjService.updateSelectedObj(driven);
@@ -251,7 +252,7 @@ record(
 await waitForReady(page);
 await openSettings();
 // Parked mid-cycle, every unit switch grays.
-await page.evaluate(() => {
+await inAngular(page, () => {
   const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
   srv.seekMechanism(0, srv.mechanisms[0].cyclePeriod / 3);
 });

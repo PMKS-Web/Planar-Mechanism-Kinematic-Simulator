@@ -11,6 +11,7 @@ const { chromium } = await import(
   (process.env.PMKS_PLAYWRIGHT_DIR ?? '/tmp/pmks-playwright') + '/node_modules/playwright/index.mjs'
 );
 import { waitForReady } from './app-ready.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const OUT = 'artifacts/phase5-driven-cylinder';
@@ -224,7 +225,7 @@ checkThat(
 );
 
 // The panel, back at rest: a cylinder talks about extension, not RPM.
-await page.evaluate(() => {
+await inAngular(page, () => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
   c.mechanismSrv.mechanismTimeStep = 0;
 });
@@ -235,7 +236,7 @@ await page
 await page.waitForTimeout(400);
 // The drive is the slide's, and so is the panel that states it (D9): the square
 // mid-skin is joint S, and Add Input, the direction and the speed are its rows.
-await page.evaluate(() => {
+await inAngular(page, () => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   grid.activeObjService.updateSelectedObj(grid.mechanismSrv.sealedStructures()[0].seal);
 });

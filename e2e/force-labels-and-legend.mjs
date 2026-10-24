@@ -25,6 +25,7 @@ import { waitForReady } from './app-ready.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const results = [];
 const record = (what, ok, detail) => {
@@ -42,20 +43,24 @@ const openForce = async (name) => {
   await page.goto(`${BASE}/?${payloads[name]}`, { waitUntil: 'domcontentloaded' });
   await waitForReady(page);
   await page.waitForTimeout(700);
-  await page.evaluate(() =>
+  await inAngular(page, () =>
     ng.getComponent(document.querySelector('app-new-grid')).tabService.setTab(3)
   );
   await page.waitForTimeout(900);
 };
 
 const select = async (id) => {
-  await page.evaluate((wanted) => {
-    const c = ng.getComponent(document.querySelector('app-new-grid'));
-    const part =
-      c.mechanismSrv.joints.find((joint) => joint.id === wanted) ??
-      c.mechanismSrv.links.find((link) => link.id === wanted);
-    c.activeObjService.updateSelectedObj(part);
-  }, id);
+  await inAngular(
+    page,
+    (wanted) => {
+      const c = ng.getComponent(document.querySelector('app-new-grid'));
+      const part =
+        c.mechanismSrv.joints.find((joint) => joint.id === wanted) ??
+        c.mechanismSrv.links.find((link) => link.id === wanted);
+      c.activeObjService.updateSelectedObj(part);
+    },
+    id
+  );
   await page.waitForTimeout(800);
 };
 
@@ -201,7 +206,7 @@ record('and reads exactly what the slide itself reads', onThePart === onTheJoint
 // really do change" check of its premise. The position of the crank pin
 // cannot hold still -- moving is what it is for.
 await openForce('Slider_Crank');
-await page.evaluate(() =>
+await inAngular(page, () =>
   ng.getComponent(document.querySelector('app-new-grid')).tabService.setTab(2)
 );
 await page.waitForTimeout(600);
@@ -222,9 +227,13 @@ const legendAt = () =>
 
 const frames = [];
 for (const step of [0, 12, 25, 37, 48]) {
-  await page.evaluate((at) => {
-    ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.animate(at, false);
-  }, step);
+  await inAngular(
+    page,
+    (at) => {
+      ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv.animate(at, false);
+    },
+    step
+  );
   await page.waitForTimeout(400);
   frames.push(await legendAt());
 }

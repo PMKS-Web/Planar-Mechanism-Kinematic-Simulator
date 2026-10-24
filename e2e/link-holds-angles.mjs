@@ -12,6 +12,7 @@ const { chromium } = await import(
 import { waitForReady } from './app-ready.mjs';
 import { contactSheet } from './filmstrip.mjs';
 import { mkdirSync, rmSync } from 'node:fs';
+import { inAngular } from './in-angular.mjs';
 const base = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const FOUR_BAR =
   '0P.TY.K,0.101.MA,A,0mv,0VU,0.GB,B,0e_,E6,0.GC,C,l1,WW,0.KD,D,qD,0Pk,0..YRAB,AB,Fe,Fe,0ix,08i,c5cae9,A,B,,.YRBC,BC,Fe,Fe,32,NJ,303e9f,B,C,,.YRCD,CD,Fe,Fe,nd,3P,0d125a,C,D,,...JBq';
@@ -26,7 +27,7 @@ const page = await browser.newPage({
 await page.goto(`${base}/?${FOUR_BAR}`, { waitUntil: 'domcontentloaded' });
 await waitForReady(page);
 await page.waitForTimeout(400);
-await page.evaluate(() => {
+await inAngular(page, () => {
   const c = ng.getComponent(document.querySelector('app-new-grid'));
   c.settings.isShowCOM.next(true);
   c.mechanismSrv.setHold(
@@ -41,18 +42,22 @@ const overlaps = (a, b) =>
 let bad = 0;
 for (let step = 0; step < 8; step++) {
   const angle = step * 45;
-  await page.evaluate((deg) => {
-    const c = ng.getComponent(document.querySelector('app-new-grid'));
-    const m = c.mechanismSrv;
-    const a = m.joints.find((j) => j.id === 'A');
-    const b = m.joints.find((j) => j.id === 'B');
-    const r = Math.hypot(b.x - a.x, b.y - a.y);
-    c.gridUtils.dragJoint(b, {
-      x: a.x + r * Math.cos((deg * Math.PI) / 180),
-      y: a.y + r * Math.sin((deg * Math.PI) / 180),
-    });
-    c.activeObjService.updateSelectedObj(undefined);
-  }, angle);
+  await inAngular(
+    page,
+    (deg) => {
+      const c = ng.getComponent(document.querySelector('app-new-grid'));
+      const m = c.mechanismSrv;
+      const a = m.joints.find((j) => j.id === 'A');
+      const b = m.joints.find((j) => j.id === 'B');
+      const r = Math.hypot(b.x - a.x, b.y - a.y);
+      c.gridUtils.dragJoint(b, {
+        x: a.x + r * Math.cos((deg * Math.PI) / 180),
+        y: a.y + r * Math.sin((deg * Math.PI) / 180),
+      });
+      c.activeObjService.updateSelectedObj(undefined);
+    },
+    angle
+  );
   await page.waitForTimeout(350);
   const boxes = await page.evaluate(() => {
     const rect = (el) => {

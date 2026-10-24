@@ -16,6 +16,7 @@ const { chromium } = await import(
 );
 import { waitForReady } from './app-ready.mjs';
 import { filmstrip, contactSheet } from './filmstrip.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const OUT = 'artifacts/cylinder-mount';
@@ -52,93 +53,97 @@ async function weldedMount(options = {}) {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
   await waitForReady(page);
   await page.waitForTimeout(250);
-  return page.evaluate((how) => {
-    const grid = ng.getComponent(document.querySelector('app-new-grid'));
-    const m = grid.mechanismSrv;
-    const S = 200;
-    const far = (link, anchor) => link.joints.find((j) => j.id !== anchor.id);
+  return inAngular(
+    page,
+    (how) => {
+      const grid = ng.getComponent(document.querySelector('app-new-grid'));
+      const m = grid.mechanismSrv;
+      const S = 200;
+      const far = (link, anchor) => link.joints.find((j) => j.id !== anchor.id);
 
-    m.createCylinderFrom({ x: -4 * S, y: 0 }, { x: 2 * S, y: 0 });
-    const ram = m.sealedStructures()[0];
-    const mount = ram.mountB;
+      m.createCylinderFrom({ x: -4 * S, y: 0 }, { x: 2 * S, y: 0 });
+      const ram = m.sealedStructures()[0];
+      const mount = ram.mountB;
 
-    const bar = m.addBarFrom(mount, { x: mount.x + 2 * S, y: mount.y + 3 * S });
-    const tip = far(bar, mount);
-    if (how.weld !== false) {
-      grid.activeObjService.updateSelectedObj(mount);
-      m.weldJoint();
-    }
-
-    // A machine with exactly one freedom, and something to watch when it runs:
-    // the ram is anchored at its barrel end, its rod mount carries the
-    // bracket, and the bracket's far end rides a block. Four bodies and four
-    // one-freedom joints, so extending the ram drives the block along its
-    // slot -- and both the joint the weld brought in and an external block are
-    // on screen the whole time.
-    if (how.closed) {
-      grid.activeObjService.updateSelectedObj(ram.mountA);
-      m.toggleGround();
-      grid.activeObjService.updateSelectedObj(tip);
-      m.toggleSlider();
-      // A fresh slot is neither anchored in the world nor riding a carrier --
-      // it dangles until one of the two is given to it, and a dangling slot is
-      // not solvable. Grounding pins the direction it is already pointing.
-      m.toggleGround();
-      // The drive is the seal's own, through the ordinary input door.
-      grid.activeObjService.updateSelectedObj(m.sealedStructures()[0].seal);
-      m.adjustInput();
-    }
-
-    // A joint on its own, parked clear, for the drag checks.
-    let loose;
-    if (how.loose) {
-      loose = m.createRevJoint(String(mount.x + 5 * S), String(mount.y - 4 * S));
-      m.mergeToJoints([loose]);
-    }
-
-    // A second chain well clear of the ram: its own machine, and the only
-    // other joint a slider can be put on without touching the ram.
-    let other;
-    if (how.otherBar) {
-      // Kept in clear canvas: further down the screen and the playback bar
-      // is over it, and a right-click meant for a joint dismisses a menu
-      // instead of opening one.
-      const one = m.addBar(
-        { x: mount.x + 2 * S, y: mount.y - 2 * S },
-        { x: mount.x + 4 * S, y: mount.y - 2 * S }
-      );
-      const two = m.addBarFrom(one.joints[1], {
-        x: mount.x + 4 * S,
-        y: mount.y - 0.5 * S,
-      });
-      other = { near: one.joints[0].id, mid: one.joints[1].id, far: far(two, one.joints[1]).id };
-      // A component that never reaches ground has no solvable position, so it
-      // is not a machine yet and is not one of the partitions. Anchoring each
-      // chain is what makes them two.
-      if (how.groundBoth) {
-        [one.joints[0], ram.mountA].forEach((j) => {
-          grid.activeObjService.updateSelectedObj(j);
-          m.toggleGround();
-        });
+      const bar = m.addBarFrom(mount, { x: mount.x + 2 * S, y: mount.y + 3 * S });
+      const tip = far(bar, mount);
+      if (how.weld !== false) {
+        grid.activeObjService.updateSelectedObj(mount);
+        m.weldJoint();
       }
-    }
 
-    m.finishStructuralEdit(true);
-    const compound = m.links.find((l) => (l.subset ?? []).length > 0);
-    return {
-      samples: m.masterMechanism()?.joints.length ?? 0,
-      mount: mount.id,
-      tip: tip.id,
-      barrelFar: ram.mountA.id,
-      pin: ram.seal.id,
-      barrelNear: ram.inner.id,
-      slider: ram.seal.id,
-      barrel: ram.barrel.id,
-      compound: compound ? compound.id : undefined,
-      loose: loose ? loose.id : undefined,
-      other,
-    };
-  }, options);
+      // A machine with exactly one freedom, and something to watch when it runs:
+      // the ram is anchored at its barrel end, its rod mount carries the
+      // bracket, and the bracket's far end rides a block. Four bodies and four
+      // one-freedom joints, so extending the ram drives the block along its
+      // slot -- and both the joint the weld brought in and an external block are
+      // on screen the whole time.
+      if (how.closed) {
+        grid.activeObjService.updateSelectedObj(ram.mountA);
+        m.toggleGround();
+        grid.activeObjService.updateSelectedObj(tip);
+        m.toggleSlider();
+        // A fresh slot is neither anchored in the world nor riding a carrier --
+        // it dangles until one of the two is given to it, and a dangling slot is
+        // not solvable. Grounding pins the direction it is already pointing.
+        m.toggleGround();
+        // The drive is the seal's own, through the ordinary input door.
+        grid.activeObjService.updateSelectedObj(m.sealedStructures()[0].seal);
+        m.adjustInput();
+      }
+
+      // A joint on its own, parked clear, for the drag checks.
+      let loose;
+      if (how.loose) {
+        loose = m.createRevJoint(String(mount.x + 5 * S), String(mount.y - 4 * S));
+        m.mergeToJoints([loose]);
+      }
+
+      // A second chain well clear of the ram: its own machine, and the only
+      // other joint a slider can be put on without touching the ram.
+      let other;
+      if (how.otherBar) {
+        // Kept in clear canvas: further down the screen and the playback bar
+        // is over it, and a right-click meant for a joint dismisses a menu
+        // instead of opening one.
+        const one = m.addBar(
+          { x: mount.x + 2 * S, y: mount.y - 2 * S },
+          { x: mount.x + 4 * S, y: mount.y - 2 * S }
+        );
+        const two = m.addBarFrom(one.joints[1], {
+          x: mount.x + 4 * S,
+          y: mount.y - 0.5 * S,
+        });
+        other = { near: one.joints[0].id, mid: one.joints[1].id, far: far(two, one.joints[1]).id };
+        // A component that never reaches ground has no solvable position, so it
+        // is not a machine yet and is not one of the partitions. Anchoring each
+        // chain is what makes them two.
+        if (how.groundBoth) {
+          [one.joints[0], ram.mountA].forEach((j) => {
+            grid.activeObjService.updateSelectedObj(j);
+            m.toggleGround();
+          });
+        }
+      }
+
+      m.finishStructuralEdit(true);
+      const compound = m.links.find((l) => (l.subset ?? []).length > 0);
+      return {
+        samples: m.masterMechanism()?.joints.length ?? 0,
+        mount: mount.id,
+        tip: tip.id,
+        barrelFar: ram.mountA.id,
+        pin: ram.seal.id,
+        barrelNear: ram.inner.id,
+        slider: ram.seal.id,
+        barrel: ram.barrel.id,
+        compound: compound ? compound.id : undefined,
+        loose: loose ? loose.id : undefined,
+        other,
+      };
+    },
+    options
+  );
 }
 
 /** What the model says, in the shapes these checks ask about. */
@@ -376,7 +381,7 @@ console.log('\nslot drops at a mount');
 ids = await weldedMount();
 await menuOnJoint(ids.mount);
 await chooseBlock(true);
-const slotStates = await page.evaluate(() => {
+const slotStates = await inAngular(page, () => {
   const grid = ng.getComponent(document.querySelector('app-new-grid'));
   const m = grid.mechanismSrv;
   const slot = () => m.joints.find((j) => j.constructor?.name === 'PrisJoint' && !j.isSealed);
@@ -761,39 +766,43 @@ check(
   JSON.stringify({ partitions: running.partitions, valid: running.valid })
 );
 
-const paused = await page.evaluate((where) => {
-  const grid = ng.getComponent(document.querySelector('app-new-grid'));
-  const m = grid.mechanismSrv;
-  const at = (id) => {
-    const j = m.joints.find((one) => one.id === id);
-    return { x: j.x, y: j.y };
-  };
-  const compounds = () => m.links.filter((l) => (l.subset ?? []).length > 0).length;
-  const mount = () => m.joints.find((one) => one.id === where.mount);
+const paused = await inAngular(
+  page,
+  (where) => {
+    const grid = ng.getComponent(document.querySelector('app-new-grid'));
+    const m = grid.mechanismSrv;
+    const at = (id) => {
+      const j = m.joints.find((one) => one.id === id);
+      return { x: j.x, y: j.y };
+    };
+    const compounds = () => m.links.filter((l) => (l.subset ?? []).length > 0).length;
+    const mount = () => m.joints.find((one) => one.id === where.mount);
 
-  const start = at(where.mount);
-  // animate() takes a sample index, not a fraction of the cycle.
-  m.animate(Math.max(1, Math.round(where.samples * 0.35)), false);
-  const displaced = at(where.mount);
+    const start = at(where.mount);
+    // animate() takes a sample index, not a fraction of the cycle.
+    m.animate(Math.max(1, Math.round(where.samples * 0.35)), false);
+    const displaced = at(where.mount);
 
-  m.unWeldJoint(mount());
-  const afterEdit = at(where.mount);
-  const loose = compounds();
+    m.unWeldJoint(mount());
+    const afterEdit = at(where.mount);
+    const loose = compounds();
 
-  grid.activeObjService.updateSelectedObj(mount());
-  m.weldJoint();
-  return {
-    start,
-    displaced,
-    afterEdit,
-    loose,
-    rewelded: compounds(),
-    moved: Math.hypot(displaced.x - start.x, displaced.y - start.y) > 1,
-    backOnItsAnchor: Math.hypot(afterEdit.x - start.x, afterEdit.y - start.y) < 1e-6,
-    valid: m.mechanisms.some((one) => !!one?.isMechanismValid()),
-    rams: m.sealedStructures().length,
-  };
-}, ids);
+    grid.activeObjService.updateSelectedObj(mount());
+    m.weldJoint();
+    return {
+      start,
+      displaced,
+      afterEdit,
+      loose,
+      rewelded: compounds(),
+      moved: Math.hypot(displaced.x - start.x, displaced.y - start.y) > 1,
+      backOnItsAnchor: Math.hypot(afterEdit.x - start.x, afterEdit.y - start.y) < 1e-6,
+      valid: m.mechanisms.some((one) => !!one?.isMechanismValid()),
+      rams: m.sealedStructures().length,
+    };
+  },
+  ids
+);
 check(
   'the mount really is somewhere else mid-cycle',
   paused.moved,

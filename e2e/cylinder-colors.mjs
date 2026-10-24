@@ -22,6 +22,7 @@ const { chromium } = await import(
 );
 import { TEMPLATE_LINKAGES as payloads } from './template-payloads.mjs';
 import { waitForReady } from './app-ready.mjs';
+import { inAngular } from './in-angular.mjs';
 
 const BASE = process.env.PMKS_BASE_URL ?? 'http://localhost:4200';
 const OUT = 'artifacts/cylinder-colors';
@@ -68,11 +69,15 @@ const painted = () =>
 
 /** Select one member of the cylinder, so the Edit panel opens on it. */
 async function select(which) {
-  await page.evaluate((role) => {
-    const grid = ng.getComponent(document.querySelector('app-new-grid'));
-    const found = grid.mechanismSrv.sealedStructures()[0];
-    grid.activeObjService.updateSelectedObj(role === 'rod' ? found.rod : found.barrel);
-  }, which);
+  await inAngular(
+    page,
+    (role) => {
+      const grid = ng.getComponent(document.querySelector('app-new-grid'));
+      const found = grid.mechanismSrv.sealedStructures()[0];
+      grid.activeObjService.updateSelectedObj(role === 'rod' ? found.rod : found.barrel);
+    },
+    which
+  );
   await page.waitForTimeout(500);
 }
 
@@ -144,7 +149,7 @@ async function freshRam() {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
   await waitForReady(page);
   await page.waitForTimeout(250);
-  await page.evaluate(() => {
+  await inAngular(page, () => {
     const m = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
     m.createCylinderFrom({ x: -600, y: 0 }, { x: 600, y: 0 });
   });
@@ -286,7 +291,7 @@ await page.waitForTimeout(400);
 await page.screenshot({ path: `${GHOST_OUT}/00-at-the-start.png` });
 // Parked a third of the way through the stroke, which is where the ghost
 // appears at all: at the start pose there is nothing to be a ghost of.
-await page.evaluate(() => {
+await inAngular(page, () => {
   const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
   srv.seekMechanism(0, srv.mechanisms[0].cyclePeriod / 3);
 });
@@ -348,7 +353,7 @@ await openVisualSettings();
 // that swatch 2 hands out, and a rod given the color it is standing in would
 // prove nothing.
 await pressSwatch(5);
-await page.evaluate(() => {
+await inAngular(page, () => {
   const srv = ng.getComponent(document.querySelector('app-new-grid')).mechanismSrv;
   srv.seekMechanism(0, srv.mechanisms[0].cyclePeriod / 3);
 });
