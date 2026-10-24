@@ -134,11 +134,18 @@ describe('the published fixture gallery', () => {
   });
 
   it('matches the generated file that is checked in', () => {
-    const markdown = galleryMarkdown(process.env['PMKS_FIXTURE_BASE_URL'] ?? DEFAULT_BASE_URL);
+    const saved = readFileSync(GALLERY_PATH, 'utf8');
+    // A PR preview is an intentional publish destination, not stale content.
+    // Keep the declared origin when checking without a regeneration override.
+    const published = saved.match(/^Links point at `([^`]+)`\.$/m)?.[1];
+    const markdown = galleryMarkdown(
+      process.env['PMKS_FIXTURE_BASE_URL'] ?? published ?? DEFAULT_BASE_URL
+    );
     if (process.env['PMKS_WRITE_FIXTURE_URLS']) {
       writeFileSync(GALLERY_PATH, markdown);
       return;
     }
-    expect(readFileSync(GALLERY_PATH, 'utf8'), 'run `npm run fixture-urls`').toBe(markdown);
+    expect(published, 'the gallery must declare its publish destination').toBeDefined();
+    expect(saved, 'run `npm run fixture-urls`').toBe(markdown);
   });
 });

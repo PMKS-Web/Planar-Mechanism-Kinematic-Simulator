@@ -1,3 +1,4 @@
+import { transferCylinderRates } from './cylinder-rates';
 import { Joint } from '../joint';
 import { bodiesUnder, Link, RealLink } from '../link';
 
@@ -31,15 +32,20 @@ interface Sampled {
   joints: Joint[][];
   links: Link[][];
   timeNum: number[];
+  framesRunBackwards?: boolean;
+  inputAngularVelocities?: number[];
 }
 
 const finite = (value: [number, number] | undefined): boolean =>
   !!value && Number.isFinite(value[0]) && Number.isFinite(value[1]);
 
 export function fillRatesByDifference(mechanism: Sampled, index: number, rates: SampleRates): void {
+  transferCylinderRates(mechanism.joints[index] ?? [], rates);
   const count = Math.min(mechanism.joints.length, mechanism.timeNum.length);
   if (count < 3) return;
   const times = mechanism.timeNum;
+  const direction = mechanism.framesRunBackwards ? -1 : 1;
+  const bounds = branchBounds(mechanism, index, count);
 
   for (const joint of mechanism.joints[index] ?? []) {
     if (finite(rates.jointVel.get(joint.id)) && finite(rates.jointAcc.get(joint.id))) continue;
@@ -47,14 +53,14 @@ export function fillRatesByDifference(mechanism: Sampled, index: number, rates: 
     const ys = (i: number) => mechanism.joints[i]?.find((one) => one.id === joint.id)?.y;
     if (!finite(rates.jointVel.get(joint.id))) {
       rates.jointVel.set(joint.id, [
-        derivative(xs, times, index, count, 1),
-        derivative(ys, times, index, count, 1),
+        direction * derivative(xs, times, index, count, 1, bounds),
+        direction * derivative(ys, times, index, count, 1, bounds),
       ]);
     }
     if (!finite(rates.jointAcc.get(joint.id))) {
       rates.jointAcc.set(joint.id, [
-        acceleration(xs, times, index, count),
-        acceleration(ys, times, index, count),
+        acceleration(xs, times, index, count, bounds),
+        acceleration(ys, times, index, count, bounds),
       ]);
     }
   }
@@ -72,14 +78,14 @@ export function fillRatesByDifference(mechanism: Sampled, index: number, rates: 
     if (!finite(rates.linkCoM.get(link.id))) rates.linkCoM.set(link.id, [link.CoM.x, link.CoM.y]);
     if (!finite(rates.linkVel.get(link.id))) {
       rates.linkVel.set(link.id, [
-        derivative(comX, times, index, count, 1),
-        derivative(comY, times, index, count, 1),
+        direction * derivative(comX, times, index, count, 1, bounds),
+        direction * derivative(comY, times, index, count, 1, bounds),
       ]);
     }
     if (!finite(rates.linkAcc.get(link.id))) {
       rates.linkAcc.set(link.id, [
-        acceleration(comX, times, index, count),
-        acceleration(comY, times, index, count),
+        acceleration(comX, times, index, count, bounds),
+        acceleration(comY, times, index, count, bounds),
       ]);
     }
     // The bar's bearing, unwrapped across the samples so a turn through the
@@ -92,13 +98,42 @@ export function fillRatesByDifference(mechanism: Sampled, index: number, rates: 
     const unwrapped = unwrapAround(bearing, index, count);
     if (!Number.isFinite(rates.linkAngPos.get(link.id))) {
       const here = bearing(index);
-      if (here !== undefined) rates.linkAngPos.set(link.id, here);
+      if (here !== undefined) rates.linkAngPos.set(link.id, (here * 180) / Math.PI);
     }
     if (!Number.isFinite(rates.linkAngVel.get(link.id))) {
-      rates.linkAngVel.set(link.id, derivative(unwrapped, times, index, count, 1));
+      rates.linkAngVel.set(
+        link.id,
+        direction * derivative(unwrapped, times, index, count, 1, bounds)
+      );
     }
     if (!Number.isFinite(rates.linkAngAcc.get(link.id))) {
-      rates.linkAngAcc.set(link.id, acceleration(unwrapped, times, index, count));
+      rates.linkAngAcc.set(link.id, acceleration(unwrapped, times, index, count, bounds));
+    }
+  }
+
+  // Fallback mount rates must carry the same axis motion to both interiors.
+  transferCylinderRates(mechanism.joints[index] ?? [], rates);
+
+  // A weld has one motion. Transferring its parent rates is exact and avoids
+  // differentiating each member's sampled CoM into a different acceleration.
+  for (const root of mechanism.links[index]) {
+    if (!(root instanceof RealLink) || root.subset.length === 0) continue;
+    const velocity = rates.linkVel.get(root.id);
+    const acc = rates.linkAcc.get(root.id);
+    const omega = rates.linkAngVel.get(root.id);
+    const alpha = rates.linkAngAcc.get(root.id);
+    if (!finite(velocity) || !finite(acc) || !Number.isFinite(omega) || !Number.isFinite(alpha))
+      continue;
+    for (const member of bodiesUnder(root.subset)) {
+      const rx = member.CoM.x - root.CoM.x;
+      const ry = member.CoM.y - root.CoM.y;
+      rates.linkVel.set(member.id, [velocity![0] - omega! * ry, velocity![1] + omega! * rx]);
+      rates.linkAcc.set(member.id, [
+        acc![0] - alpha! * ry - omega! ** 2 * rx,
+        acc![1] + alpha! * rx - omega! ** 2 * ry,
+      ]);
+      rates.linkAngVel.set(member.id, omega!);
+      rates.linkAngAcc.set(member.id, alpha!);
     }
   }
 }
@@ -138,14 +173,15 @@ function acceleration(
   value: (i: number) => number | undefined,
   times: number[],
   index: number,
-  count: number
+  count: number,
+  bounds: [number, number]
 ): number {
   const velocity = (i: number): number | undefined => {
-    if (i < 0 || i >= count) return undefined;
-    const v = derivative(value, times, i, count, 1);
+    if (i < bounds[0] || i > bounds[1]) return undefined;
+    const v = derivative(value, times, i, count, 1, bounds);
     return Number.isFinite(v) ? v : undefined;
   };
-  return derivative(velocity, times, index, count, 1);
+  return derivative(velocity, times, index, count, 1, bounds);
 }
 
 /**
@@ -159,9 +195,11 @@ function derivative(
   times: number[],
   index: number,
   count: number,
-  order: 1 | 2
+  order: 1 | 2,
+  bounds: [number, number]
 ): number {
-  const center = Math.min(Math.max(index, 1), count - 2);
+  if (bounds[1] - bounds[0] < 2) return Number.NaN;
+  const center = Math.min(Math.max(index, bounds[0] + 1), bounds[1] - 1);
   const t0 = times[center - 1];
   const t1 = times[center];
   const t2 = times[center + 1];
@@ -182,4 +220,16 @@ function derivative(
   const c2 = y2! / (d02 * d12);
   if (order === 2) return 2 * (c0 + c1 + c2);
   return c0 * (2 * t - t1 - t2) + c1 * (2 * t - t0 - t2) + c2 * (2 * t - t0 - t1);
+}
+
+/** A difference never crosses an abrupt reversal into the other commanded branch. */
+function branchBounds(mechanism: Sampled, index: number, count: number): [number, number] {
+  const speeds = mechanism.inputAngularVelocities;
+  if (!speeds) return [0, count - 1];
+  const direction = Math.sign(speeds[index]);
+  let first = index,
+    last = index;
+  while (first > 0 && Math.sign(speeds[first - 1]) === direction) first--;
+  while (last < count - 1 && Math.sign(speeds[last + 1]) === direction) last++;
+  return [first, last];
 }
