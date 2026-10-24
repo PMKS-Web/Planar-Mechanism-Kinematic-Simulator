@@ -114,7 +114,7 @@ function jointMenu(): ContextMenuModel {
             shortcut: '⌫',
           }),
           new MenuRow({
-            label: 'Delete entire mechanism',
+            label: 'Delete Entire Mechanism',
             icon: 'delete_mechanism',
             destructive: true,
             action: noop,
@@ -213,7 +213,7 @@ function linkMenu(): ContextMenuModel {
             shortcut: '⌫',
           }),
           new MenuRow({
-            label: 'Delete entire mechanism',
+            label: 'Delete Entire Mechanism',
             icon: 'delete_mechanism',
             destructive: true,
             action: noop,
@@ -318,7 +318,7 @@ function cylinderSealMenu(): ContextMenuModel {
             shortcut: '⌫',
           }),
           new MenuRow({
-            label: 'Delete entire mechanism',
+            label: 'Delete Entire Mechanism',
             icon: 'delete_mechanism',
             destructive: true,
             action: noop,
@@ -386,7 +386,7 @@ function cylinderMemberMenu(): ContextMenuModel {
             shortcut: '⌫',
           }),
           new MenuRow({
-            label: 'Delete entire mechanism',
+            label: 'Delete Entire Mechanism',
             icon: 'delete_mechanism',
             destructive: true,
             action: noop,
