@@ -2,7 +2,7 @@
   <panel-section>
     <!-- {{ this.currentAngleUnit }} -->
     <title-block> Settings</title-block>
-    <collapsible-subsection titleLabel="Basic Settings" [expanded]="true">
+    <collapsible-subsection #basicSettings titleLabel="Basic Settings" [expanded]="true">
       <!-- The Edit panel's own strip, verbatim: same indigo, same glyph, same
            underlined way out. It was a bare sentence here, which read as a
            note somebody had left rather than as the panel saying why the
@@ -17,6 +17,7 @@
         <app-edit-banner class="settingsBanner" [refusal]="why" />
       }
       <radio-block
+        #globalUnits
         option1="English (in)"
         option2="Metric (cm)"
         option3="SI (m)"

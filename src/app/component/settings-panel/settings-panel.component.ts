@@ -4,7 +4,19 @@ import { EditPermissionService } from '../../services/edit-permission.service';
 import { EditRefusal, SETTINGS_AT_START_ONLY } from '../../model/edit-permission';
 import { SelectedTabService, TabID } from '../../selected-tab.service';
 import { environment } from '../../../environments/environment';
-import { Component, ChangeDetectionStrategy, OnDestroy, inject } from '@angular/core';
+import {
+  Component,
+  ChangeDetectionStrategy,
+  ElementRef,
+  Injector,
+  OnDestroy,
+  afterNextRender,
+  effect,
+  inject,
+  untracked,
+  viewChild,
+} from '@angular/core';
+import { SettingsFocusService } from '../../services/settings-focus.service';
 import { SettingsService, writeStoredFlag } from 'src/app/services/settings.service';
 import { LengthUnit, AngleUnit, ForceUnit, GlobalUnit } from 'src/app/model/utils';
 import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -44,6 +56,49 @@ export class SettingsPanelComponent implements OnDestroy {
   private nup = inject(NumberUnitParserService);
   private tabs = inject(SelectedTabService);
   private permission = inject(EditPermissionService);
+  private settingsFocus = inject(SettingsFocusService);
+  private injector = inject(Injector);
+  private basicSettings = viewChild.required('basicSettings', {
+    read: CollapsibleSubsectionComponent,
+  });
+  private globalUnits = viewChild.required('globalUnits', { read: ElementRef });
+
+  constructor() {
+    // The bottom bar's units label asks for this. Read untracked, so showing
+    // the units is the only thing this effect ever reacts to.
+    effect(() => {
+      if (this.settingsFocus.unitsWanted()) untracked(() => this.showUnits());
+    });
+  }
+
+  /**
+   * Open Basic Settings if it was folded, bring the unit choices into view and
+   * put the focus on the chosen length unit, so the next key changes it.
+   */
+  private showUnits(): void {
+    this.settingsFocus.unitsWanted.set(false);
+    const section = this.basicSettings();
+    const wasFolded = !section.expanded;
+    section.expanded = true;
+    afterNextRender(
+      () => {
+        // A folded section grows open over 0.15 s; measured before that, the
+        // block is still at height zero and the scroll lands short.
+        setTimeout(
+          () => {
+            const block = this.globalUnits().nativeElement as HTMLElement;
+            const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+            block.scrollIntoView({ block: 'nearest', behavior: still ? 'auto' : 'smooth' });
+            block
+              .querySelector<HTMLButtonElement>('button[aria-pressed="true"], button')
+              ?.focus({ preventScroll: true });
+          },
+          wasFolded ? 200 : 0
+        );
+      },
+      { injector: this.injector }
+    );
+  }
 
   readonly appVersion = environment.appVersion;
 
