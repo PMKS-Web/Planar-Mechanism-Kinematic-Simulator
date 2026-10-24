@@ -4,6 +4,8 @@ import { ActiveObjService } from '../../services/active-obj.service';
 import { holdOf } from '../../model/link-holds';
 import { NumberUnitParserService } from '../../services/number-unit-parser.service';
 import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
+import { RightPanelComponent } from '../right-panel/right-panel.component';
+import { SettingsFocusService } from '../../services/settings-focus.service';
 import { AngleUnit, GlobalUnit } from '../../model/utils';
 import { SettingsService } from '../../services/settings.service';
 import { MechanismService } from '../../services/mechanism.service';
@@ -31,6 +33,13 @@ export class BottombarComponent {
   private design = inject(SynthesisBuilderService);
   private solution = inject(SynthesisSolutionService);
   private comparison = inject(AnalysisCompareService);
+  private settingsFocus = inject(SettingsFocusService);
+
+  /** Open Settings at its unit choices, without closing it if it is already open. */
+  openUnitSettings(): void {
+    RightPanelComponent.insistOn(1);
+    this.settingsFocus.showUnits();
+  }
 
   /**
    * Which mode the app is in, spelled the way the tabs spell it.
