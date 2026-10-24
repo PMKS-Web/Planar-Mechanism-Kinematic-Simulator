@@ -36,5 +36,10 @@ export class CloseButtonComponent {
   readonly label = input('Close');
   /** Shown on hover. Off by default: most of these sit beside their own title. */
   readonly tooltip = input('');
+  /**
+   * Grayed for the moment: while something cannot be left, such as a message
+   * on its way out of a form, whose answer the view behind it is waiting for.
+   */
+  readonly disabled = input(false);
   readonly pressed = output<void>();
 }

@@ -42,10 +42,35 @@ function returningToThePage(): boolean {
  * tag, a click id -- and the right answer is the empty grid `/` already gives,
  * not an error about a mechanism nobody sent.
  */
-function looksLikeQueryParameters(url: string): boolean {
+export function looksLikeQueryParameters(url: string): boolean {
   const pieces = url.split('&').filter((piece) => piece.length > 0);
   return pieces.length > 0 && pieces.every((piece) => /^[^=]+=[^=]*$/.test(piece));
 }
+/**
+ * The mechanism part of an address: what follows the '?' and stops at a '#'.
+ *
+ * The fragment is not part of the query and never was, but this took
+ * everything to the end of the string -- so a shared link with any anchor on
+ * the end handed the decoder a payload with `#whatever` glued to it, failed
+ * the checksum, and opened an empty grid saying the link could not be read.
+ * Nothing in the codec's alphabet is a '#' (see `BaseNConverter.baseNChars`),
+ * so the first one is always where the mechanism ends.
+ *
+ * Exported because the address bar is not the only place a link arrives: the
+ * library's Suggest a Mechanism form reads one the reader pastes.
+ */
+export function payloadOfAddress(href: string): string | null {
+  const fullURL = decodeURI(href);
+  const index = fullURL.indexOf('?');
+  if (index === -1) return null;
+  const content = fullURL.substring(index + 1);
+  const fragment = content.indexOf('#');
+  const query = fragment === -1 ? content : content.substring(0, fragment);
+  // A bare '?' carries nothing, and nothing is what `/` means: it opened an
+  // empty grid under "that shared link could not be opened".
+  return query.length > 0 ? query : null;
+}
+
 /** What a new tab's fragment says before the template's name. */
 const BACKDROP_QUERY = 'backdrop=';
 
@@ -148,26 +173,9 @@ export class UrlProcessorService {
     return at === -1 ? null : hash.slice(at + BACKDROP_QUERY.length) || null;
   }
 
-  /**
-   * The content part of the address: what follows the '?' and stops at a '#'.
-   *
-   * The fragment is not part of the query and never was, but this took
-   * everything to the end of the string -- so a shared link with any anchor on
-   * the end handed the decoder a payload with `#whatever` glued to it, failed
-   * the checksum, and opened an empty grid saying the link could not be read.
-   * Nothing in the codec's alphabet is a '#' (see `BaseNConverter.baseNChars`),
-   * so the first one is always where the mechanism ends.
-   */
+  /** The content part of the address bar. See `payloadOfAddress`. */
   private getURLContent(): string | null {
-    const fullURL = decodeURI(window.location.href);
-    const index = fullURL.indexOf('?');
-    if (index === -1) return null;
-    const content = fullURL.substring(index + 1);
-    const fragment = content.indexOf('#');
-    const query = fragment === -1 ? content : content.substring(0, fragment);
-    // A bare '?' carries nothing, and nothing is what `/` means: it opened an
-    // empty grid under "that shared link could not be opened".
-    return query.length > 0 ? query : null;
+    return payloadOfAddress(window.location.href);
   }
 
   private reportInvalidURL(error: unknown): void {

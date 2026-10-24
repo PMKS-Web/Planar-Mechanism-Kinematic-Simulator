@@ -1,11 +1,14 @@
 import {
   Component,
   ChangeDetectionStrategy,
+  DestroyRef,
+  ElementRef,
   isDevMode,
   TemplateRef,
   inject,
   viewChild,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   MatDialog,
   MatDialogRef,
@@ -33,8 +36,16 @@ import {
 } from './template-catalog';
 import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
-import { CdkScrollable } from '@angular/cdk/scrolling';
+import { NgTemplateOutlet } from '@angular/common';
+import { CdkTrapFocus } from '@angular/cdk/a11y';
 import { CloseButtonComponent } from '../../BLOCKS/close-button/close-button.component';
+import { ViewportService } from 'src/app/services/viewport.service';
+import { TemplateCardComponent } from './template-card/template-card.component';
+import { SuggestMechanismComponent } from './suggest-mechanism/suggest-mechanism.component';
+import { SuggestionSentComponent } from './suggest-mechanism/suggestion-sent.component';
+import { SentSuggestion, SuggestionForm } from './suggest-mechanism/suggestion';
+import { SuggestionDraftService } from './suggest-mechanism/suggestion-draft.service';
+import { FocusAcrossLayouts } from './focus-across-layouts';
 
 /** A filter chip: a category, or the `all` one that stands for every category. */
 export interface CategoryChip {
@@ -43,6 +54,12 @@ export interface CategoryChip {
   /** How many cards it would show right now — which the search changes. */
   count: number;
 }
+
+/**
+ * Which of the dialog's three views is up: the library itself, the Suggest a
+ * Mechanism form, or the page that says a suggestion went.
+ */
+export type LibraryView = 'browse' | 'suggest' | 'sent';
 
 /** One heading and the cards under it. */
 export interface TemplateGroup {
@@ -56,15 +73,26 @@ export interface TemplateGroup {
   templateUrl: './templates.component.html',
   styleUrls: ['./templates.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
+  host: {
+    '(focusin)': 'focusKeeper.note($event)',
+    '(input)': 'focusKeeper.note($event)',
+    '(keyup)': 'focusKeeper.note($event)',
+    '(mouseup)': 'focusKeeper.note($event)',
+    '(select)': 'focusKeeper.note($event)',
+  },
   imports: [
     MatDialogClose,
     MatIcon,
-    CdkScrollable,
     MatDialogContent,
     MatButton,
     MatDialogTitle,
     MatDialogActions,
+    NgTemplateOutlet,
+    CdkTrapFocus,
     CloseButtonComponent,
+    TemplateCardComponent,
+    SuggestMechanismComponent,
+    SuggestionSentComponent,
   ],
 })
 export class TemplatesComponent {
@@ -76,9 +104,25 @@ export class TemplatesComponent {
    * own copy of the same dimensions. A library that is 90% of the window from
    * one door and something else from another is one paste away, and nothing
    * would fail.
+   *
+   * On a phone it is the whole window, which `.libraryDialog` says in the
+   * stylesheet: at 90% of 390px the side margins were scrim nobody could use,
+   * and a media query follows a phone turned on its side where a size set
+   * here once would not.
+   *
+   * Escape and the scrim are answered by the library itself (`leave`), not by
+   * the dialog: over the phone's categories they close the sheet, over the
+   * form they step back to the library, and while a suggestion is on its way
+   * out they do nothing at all.
    */
   static openIn(dialog: MatDialog): MatDialogRef<TemplatesComponent> {
-    return dialog.open(TemplatesComponent, { height: '90%', width: '90%', autoFocus: false });
+    return dialog.open(TemplatesComponent, {
+      height: '90%',
+      width: '90%',
+      autoFocus: false,
+      disableClose: true,
+      panelClass: 'libraryDialog',
+    });
   }
 
   private dialogRef = inject<MatDialogRef<TemplatesComponent> | null>(
@@ -88,6 +132,7 @@ export class TemplatesComponent {
 
   /** Leave without choosing anything. */
   close(): void {
+    if (this.drafts.sending) return;
     this.dialogRef?.close();
   }
   private dialog = inject(MatDialog);
@@ -97,6 +142,14 @@ export class TemplatesComponent {
   private svgGrid = inject(SvgGridService);
   private backdrop = inject(BackgroundImageService);
   private design = inject(SynthesisBuilderService);
+  private host = inject<ElementRef<HTMLElement>>(ElementRef);
+  readonly viewport = inject(ViewportService);
+  readonly drafts = inject(SuggestionDraftService);
+  /** The search being typed in, given back when a phone turns. */
+  readonly focusKeeper = new FocusAcrossLayouts(
+    () => this.host.nativeElement,
+    () => this.viewport.isPhone()
+  );
 
   /** Asks whether to replace the mechanism already on the grid or open a new tab. */
   readonly openChoiceDialog = viewChild.required<TemplateRef<unknown>>('openChoiceDialog');
@@ -113,8 +166,149 @@ export class TemplatesComponent {
   chips: CategoryChip[] = [];
   groups: TemplateGroup[] = [];
 
+  /** "Search 45 mechanisms": the count is how many this build offers. */
+  readonly searchPlaceholder = `Search ${this.allCards.length} mechanisms`;
+
+  view: LibraryView = 'browse';
+  /** The phone's categories, raised from the Category button as a bottom sheet. */
+  categorySheetOpen = false;
+
+  /** The suggestion being written, which outlives this dialog. */
+  get draft(): SuggestionForm {
+    return this.drafts.form;
+  }
+
+  get lastSent(): SentSuggestion | undefined {
+    return this.drafts.lastSent;
+  }
+
+  /** The button that opened the form, which gets the focus back. */
+  private opener?: HTMLElement;
+
   constructor() {
     this.refresh();
+    const destroyed = inject(DestroyRef);
+    this.dialogRef
+      ?.keydownEvents()
+      .pipe(takeUntilDestroyed(destroyed))
+      .subscribe((event) => {
+        if (event.key === 'Escape') this.leave(false);
+      });
+    this.dialogRef
+      ?.backdropClick()
+      .pipe(takeUntilDestroyed(destroyed))
+      .subscribe(() => this.leave(true));
+  }
+
+  /**
+   * Escape, or a press on the scrim: one step out of wherever the reader is.
+   *
+   * The scrim does not step back from the form -- a stray click beside the
+   * dialog is not a request to stop writing -- but Escape does, and from the
+   * library either one closes it. Nothing typed is lost either way: the draft
+   * is the session's (`SuggestionDraftService`).
+   */
+  private leave(scrim: boolean): void {
+    if (this.drafts.sending) return;
+    if (this.categorySheetOpen) this.closeCategorySheet();
+    else if (this.view === 'browse') this.close();
+    else if (!scrim) this.backToLibrary();
+  }
+
+  // ---------- the suggest views ----------
+
+  /**
+   * Open the form, filed under a section where the reader asked from one, and
+   * titled with what they searched for where the search found nothing.
+   */
+  suggest(section?: TemplateCategoryID | 'all', title?: string): void {
+    // A draft that has gone is not one to send again.
+    if (this.lastSent) this.startOver();
+    if (section && section !== 'all' && section !== 'dev') {
+      this.draft.controls.section.setValue(section);
+    }
+    if (title?.trim() && this.draft.controls.title.value === '') {
+      this.draft.controls.title.setValue(title.trim());
+    }
+    const focused = document.activeElement;
+    this.opener = focused instanceof HTMLElement ? focused : undefined;
+    this.categorySheetOpen = false;
+    this.show('suggest');
+  }
+
+  /** Back to the library as it was left: same section, same search, same scroll. */
+  backToLibrary(): void {
+    if (this.drafts.sending) return;
+    this.show('browse');
+    const opener = this.opener;
+    setTimeout(() => {
+      // The phone's sheet is gone by now, and its Suggest button with it, and
+      // a phone turned on its side has swapped the sheet's Category button for
+      // the rail: the focus goes to whichever of them is there.
+      const target = opener?.isConnected
+        ? opener
+        : this.host.nativeElement.querySelector<HTMLElement>(
+            '.categoryButton, .rail .suggestCard button'
+          );
+      target?.focus();
+    });
+  }
+
+  onSent(sent: SentSuggestion): void {
+    this.drafts.lastSent = sent;
+    this.show('sent');
+  }
+
+  suggestAnother(): void {
+    this.startOver();
+    this.show('suggest');
+  }
+
+  private startOver(): void {
+    this.drafts.startOver();
+  }
+
+  /**
+   * Change view, and put the focus at the top of the new one: the button that
+   * was pressed to get there has gone with the old view, and focus left on a
+   * removed element falls to the page.
+   */
+  private show(view: LibraryView): void {
+    this.view = view;
+    if (view === 'browse') return;
+    const heading = view === 'suggest' ? '#suggestTitle' : '#sentTitle';
+    setTimeout(() => this.host.nativeElement.querySelector<HTMLElement>(heading)?.focus());
+  }
+
+  // ---------- the phone's categories ----------
+
+  openCategorySheet(): void {
+    this.categorySheetOpen = true;
+  }
+
+  closeCategorySheet(): void {
+    this.categorySheetOpen = false;
+  }
+
+  chooseFromSheet(id: TemplateCategoryID | 'all'): void {
+    this.selectCategory(id);
+    this.closeCategorySheet();
+  }
+
+  /** The line after the last card: this is all there is, and where to send what is not. */
+  get endLine(): string {
+    const query = this.query.trim();
+    if (this.category === 'all') {
+      return query ? `That is everything that matches “${query}”.` : 'That is the whole library.';
+    }
+    return query
+      ? `That is everything in ${this.categoryName} that matches “${query}”.`
+      : `That is everything in ${this.categoryName}.`;
+  }
+
+  /** How many cards the pressed category holds right now, for the phone's Category button. */
+  get categoryCount(): number {
+    return this.chips.find((chip) => chip.id === this.category)?.count ?? 0;
   }
 
   selectCategory(id: TemplateCategoryID | 'all') {

@@ -1028,7 +1028,11 @@ const screenOf = (id) =>
   });
 }
 
-// --- the library, which used to be a column of chips with a box over them ----
+// --- the library: the whole window, its categories behind one button -------
+//
+// It used to be a column of chips with a box over them, then one row of chips
+// scrolling sideways. Now the library fills the phone, the search sits above
+// a Category button, and the categories open as a sheet from the bottom.
 {
   await open();
   await waitForReady(page).catch(() => undefined);
@@ -1038,24 +1042,45 @@ const screenOf = (id) =>
   await page.locator('#templatesButton').click();
   await page.waitForTimeout(1400);
   const bars = await page.evaluate(() => {
-    const chips = document.querySelector('.chipRow').getBoundingClientRect();
+    const dialog = document.querySelector('#templates').getBoundingClientRect();
     const search = document.querySelector('.searchBox').getBoundingClientRect();
-    const overlapping = !(
-      search.bottom <= chips.top ||
-      search.top >= chips.bottom ||
-      search.right <= chips.left ||
-      search.left >= chips.right
-    );
+    const category = document.querySelector('.categoryButton').getBoundingClientRect();
     return {
-      overlapping,
-      chipRows: Math.round(chips.height),
+      dialogWidth: Math.round(dialog.width),
+      windowWidth: window.innerWidth,
       searchHeight: Math.round(search.height),
-      searchAbove: search.bottom <= chips.top,
+      searchAbove: search.bottom <= category.top,
+      categoryWidth: Math.round(category.width),
+      rail: !!document.querySelector('.rail'),
     };
   });
-  record('the library search does not sit over the categories', !bars.overlapping, bars);
-  record('it is above them, at its own height', bars.searchAbove && bars.searchHeight < 60, bars);
-  record('and the categories are one scrolling row', bars.chipRows < 60, bars);
+  record('the library fills the phone', bars.dialogWidth === bars.windowWidth, bars);
+  record('the search is above the Category button', bars.searchAbove, bars);
+  record('and the side rail is not drawn', !bars.rail, bars);
+  await page.locator('.categoryButton').click();
+  await page.waitForTimeout(500);
+  const sheet = await page.evaluate(() => {
+    const box = document.querySelector('.categorySheet')?.getBoundingClientRect();
+    return box
+      ? {
+          bottom: Math.round(box.bottom),
+          windowHeight: window.innerHeight,
+          rows: document.querySelectorAll('.categorySheet .category').length,
+          suggest: !!document.querySelector('.categorySheet .suggestCard button'),
+        }
+      : null;
+  });
+  record(
+    'Category opens the sections as a sheet at the bottom, with Suggest at its foot',
+    !!sheet && Math.abs(sheet.bottom - sheet.windowHeight) <= 2 && sheet.rows > 2 && sheet.suggest,
+    sheet
+  );
+  await page.locator('.categorySheet .category').nth(2).click();
+  await page.waitForTimeout(400);
+  record(
+    'choosing a section closes the sheet',
+    (await page.locator('.categorySheet').count()) === 0
+  );
   await page.keyboard.press('Escape').catch(() => undefined);
   await page.waitForTimeout(600);
 }

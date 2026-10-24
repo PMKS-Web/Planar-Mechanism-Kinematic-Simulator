@@ -448,6 +448,10 @@ Not suites — import them from one.
 - `template-open.mjs` — a template loads in place on an empty grid, and offers new tab / replace /
   cancel over existing work, with replace undoable.
 - `template-backdrops.mjs` — the real-life library section and the picture each card opens on.
+- `suggest-mechanism.mjs` — the library's side rail and end-of-section line, and Suggest a
+  Mechanism end to end: what Send refuses and where the focus goes, a message drawn over the
+  dialog, a failed and a good send (the key function and EmailJS are answered by the suite, so no
+  mail goes out), the pasted-link states, and the way back to the library as it was left.
 - `synthesis-redesign.mjs` — Synthesis end to end: place three positions, generate, browse and
   compare candidates, preview, insert, undo, and survive a shared link.
 - `export-flow.mjs` — the Export Data drawer end to end, including reading the downloaded file.
