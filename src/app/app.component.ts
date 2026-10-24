@@ -192,7 +192,7 @@ export class AppComponent implements DoCheck {
     // otherwise entirely in the app's own family. Velocity and acceleration
     // are a quantity leaving a joint -- one open head, then two on the same
     // shaft -- and force is a load arriving at one, so its arrow is turned
-    // round. Delete entire mechanism is a ternary body with the trash where
+    // round. Delete Entire Mechanism is a ternary body with the trash where
     // `new_link` and the `add_*` glyphs put their plus.
     const menuGlyphs = [
       'vector_velocity',
