@@ -10,6 +10,7 @@ import {
   teachingLabSliderCrankFixture,
 } from '../../../test-utils/verification/fixtures';
 import { ForceAnalysisFrame, ForceSolver } from './force-solver';
+import { MODEL_SCALE } from '../render-scale';
 import { Mechanism } from './mechanism';
 
 interface SingleBodyModel {
@@ -23,15 +24,19 @@ function initializeModels(): void {
   new SettingsService();
 }
 
+/**
+ * A 2 m bar pinned at one end, in the given unit system, drawn the way the app
+ * draws it: every coordinate MODEL_SCALE times the reader's number.
+ */
 function singleBody(unit: 'm' | 'cm' | 'in', welded = false): SingleBodyModel {
   initializeModels();
   const factors =
     unit === 'm'
-      ? { distance: 1, mass: 1, inertia: 1, force: 1 }
+      ? { distance: MODEL_SCALE, mass: 1, inertia: 1, force: 1 }
       : unit === 'cm'
-        ? { distance: 100, mass: 1000, inertia: 1 / 0.0001, force: 1 }
+        ? { distance: 100 * MODEL_SCALE, mass: 1000, inertia: 1 / 0.0001, force: 1 }
         : {
-            distance: 1 / 0.0254,
+            distance: MODEL_SCALE / 0.0254,
             mass: 1 / 0.45359237,
             inertia: 1 / (0.45359237 * 0.0254 * 0.0254),
             force: 1 / 4.4482216152605,
